@@ -3,7 +3,7 @@ import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { getTenantPrivate, DODO_ON_HOLD_FIELD } from '@/lib/tenant-private';
 import { billingActionUnavailable, resolveBillingOwnership } from '@/lib/billing-processor';
 import { resolveTenantGraceState, DODO_GRACE_PERIOD_MS } from '@/lib/tenant-lifecycle';
-import type { TenantPlan } from '@/types/tenant.types';
+import type { PricedPlan } from '@/types/tenant.types';
 import { resolvePlanFromProductId } from './catalogue';
 import type { BillingPeriod } from './provider';
 
@@ -37,7 +37,17 @@ export interface DodoSubscriptionContext {
   /** The Dodo subscription this tenant's billing runs on. Never empty. */
   readonly subscriptionId: string;
   /** The tier the tenant is on RIGHT NOW, resolved from its recorded product. */
-  readonly plan: TenantPlan;
+  /**
+   * The tier the tenant is on RIGHT NOW, resolved from its recorded product.
+   *
+   * 🔴 `PricedPlan`. This context only exists for a tenant with a live Dodo
+   * subscription, and it is resolved FROM a Dodo product id — so it is
+   * structurally impossible for it to be the Forever Free tier, which has no
+   * product. Saying so in the type is what lets the add-on and change-plan
+   * routes hand this straight to `requireProductId` without a narrowing check
+   * that could only ever be dead code.
+   */
+  readonly plan: PricedPlan;
   /**
    * The billing period the tenant is on RIGHT NOW.
    *

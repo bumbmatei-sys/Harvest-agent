@@ -128,7 +128,7 @@ import {
   type DodoAddonMeaning,
 } from '@/lib/dodo/catalogue';
 import type { BillingPeriod } from '@/lib/dodo/provider';
-import type { TenantPlan } from '@/types/tenant.types';
+import type { PricedPlan } from '@/types/tenant.types';
 import { __setDodoClientForTests } from '@/lib/dodo/dodo-provider';
 
 // ── The add-ons in play, named through the REAL catalogue ────────────────────
@@ -174,7 +174,7 @@ const MAX_MONTHLY = requireProductId('max', 'monthly');
 // ones: Individual carries AI Assistant, Admin Seat and Campus; Small Team adds
 // Contacts +500; Ministry adds Unlimited Contacts. Named by MEANING and resolved
 // to ids through the real catalogue, never retyped.
-const ATTACHED_MEANINGS: Readonly<Record<TenantPlan, readonly DodoAddonMeaning[]>> = {
+const ATTACHED_MEANINGS: Readonly<Record<PricedPlan, readonly DodoAddonMeaning[]>> = {
   plus: ['aiAssistant', 'adminSeat', 'campus'],
   pro: ['aiAssistant', 'adminSeat', 'campus', 'contactPack'],
   max: ['aiAssistant', 'adminSeat', 'campus', 'contactPack', 'unlimitedContacts'],
@@ -183,7 +183,7 @@ const ATTACHED_MEANINGS: Readonly<Record<TenantPlan, readonly DodoAddonMeaning[]
 /** productId → the add-on ids Dodo reports on it, for all six products. */
 function attachmentByProduct(): Map<string, string[]> {
   const byProduct = new Map<string, string[]>();
-  for (const plan of Object.keys(ATTACHED_MEANINGS) as TenantPlan[]) {
+  for (const plan of Object.keys(ATTACHED_MEANINGS) as PricedPlan[]) {
     for (const period of ['monthly', 'yearly'] as BillingPeriod[]) {
       byProduct.set(
         requireProductId(plan, period),

@@ -1,4 +1,34 @@
-export type TenantPlan = 'plus' | 'pro' | 'max';
+/**
+ * The tenant's TIER.
+ *
+ * 🔴 `free` IS NOT A PRICED TIER, and the type system says so rather than
+ * leaving it to a comment. `PricedPlan` below is the subset that has a row in
+ * `PLAN_PRICING`, a Dodo product and a billing term; `TenantPlan` is every tier
+ * that exists. A `Record<TenantPlan, …>` therefore demands a `free` cell and a
+ * `Record<PricedPlan, …>` refuses one — which is exactly the distinction each
+ * of those maps needs, and the reason `planPriceUsd('free', …)` is a compile
+ * error instead of an `undefined` that renders as `$NaN/mo`.
+ *
+ * Free is FIRST in `PLAN_ORDER` (plan-features.ts) because that array is
+ * cheapest → most expensive and `FEATURE_MIN_PLAN` walks it to name the
+ * cheapest tier carrying a feature.
+ */
+export type TenantPlan = 'free' | 'plus' | 'pro' | 'max';
+
+/**
+ * Every tier a church can BUY — `TenantPlan` minus the free one.
+ *
+ * ⚠️ Written as an `Exclude` rather than a second literal union on purpose: a
+ * new tier added to `TenantPlan` lands here automatically, and the only way to
+ * make a tier unpriced is to exclude it here deliberately. A hand-maintained
+ * copy of the list is how `FEATURE_MIN_PLAN`'s two predecessor maps drifted
+ * (see the note on `getFeatureMinPlan`).
+ *
+ * Anything keyed on money keys on THIS: `PLAN_PRICING`, the Dodo catalogue,
+ * `PLATFORM_FEE_MAP`, `PLAN_LIMITS`. Anything keyed on presentation or
+ * entitlement keys on `TenantPlan`.
+ */
+export type PricedPlan = Exclude<TenantPlan, 'free'>;
 
 /**
  * The tenant's LIFECYCLE state — where it sits with billing.

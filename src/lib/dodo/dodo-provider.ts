@@ -1,5 +1,5 @@
 import DodoPayments from 'dodopayments';
-import type { TenantPlan } from '@/types/tenant.types';
+import type { PricedPlan } from '@/types/tenant.types';
 import { dodoConfig } from './config';
 import { catalogueEntry, requireProductId, resolvePlanFromProductId } from './catalogue';
 import type {
@@ -242,7 +242,7 @@ export const dodoBillingProvider: SubscriptionBillingProvider = {
 
   resolvePlanFromProductRef(
     productRef: string,
-  ): { plan: TenantPlan; period: BillingPeriod } | null {
+  ): { plan: PricedPlan; period: BillingPeriod } | null {
     // Dodo puts the price on the product, so the app's "product reference" IS a
     // Dodo product id. A Stripe implementation would resolve a price id here.
     return resolvePlanFromProductId(productRef);
@@ -386,7 +386,7 @@ export async function retrieveDodoProductAddonIds(productId: string): Promise<Se
  */
 export async function planDodoAddonCarryOver(
   subscription: DodoSubscriptionLike,
-  plan: TenantPlan,
+  plan: PricedPlan,
   period: BillingPeriod,
 ): Promise<DodoAddonCarryOver> {
   const held = readHeldDodoAddons(subscription);
@@ -474,7 +474,7 @@ function addonsPayload(addons: readonly DodoAddonSelection[]): Array<DodoAddonSe
  */
 export async function previewDodoPlanChange(
   subscriptionId: string,
-  plan: TenantPlan,
+  plan: PricedPlan,
   period: BillingPeriod,
   addons: readonly DodoAddonSelection[],
 ): Promise<DodoPlanChangePreview> {
@@ -513,7 +513,7 @@ export async function previewDodoPlanChange(
  */
 export async function executeDodoPlanChange(
   subscriptionId: string,
-  plan: TenantPlan,
+  plan: PricedPlan,
   period: BillingPeriod,
   addons: readonly DodoAddonSelection[],
 ): Promise<void> {

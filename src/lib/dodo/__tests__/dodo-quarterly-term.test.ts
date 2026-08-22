@@ -1,3 +1,7 @@
+// 🔴 PRICED tiers only. This suite is about prices and rendered plan CARDS,
+// and the Forever Free tier has neither a price nor a card (it has no Dodo
+// product to check out with). PLAN_ORDER now includes it; PRICED_PLAN_ORDER is
+// the list this file has always meant. See plan-features.ts.
 import { describe, it, expect, vi } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -19,7 +23,7 @@ import {
   offerableAddonMeanings,
   DODO_TERM_FREQUENCY,
 } from '../catalogue';
-import { BILLING_TERMS, PLAN_ORDER, PLAN_PRICING, planPriceUsd } from '@/utils/plan-features';
+import { BILLING_TERMS, PRICED_PLAN_ORDER, PLAN_PRICING, planPriceUsd } from '@/utils/plan-features';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    THE-195, the parts that live between the catalogue and the add-on table.
@@ -34,30 +38,30 @@ describe('the three quarterly product ids resolve', () => {
     max: 'pdt_0NloCatUWEkEUq1usWJ0n',
   } as const;
 
-  it.each(PLAN_ORDER)('%s resolves to its verified quarterly product', (plan) => {
+  it.each(PRICED_PLAN_ORDER)('%s resolves to its verified quarterly product', (plan) => {
     expect(DODO_LIVE_CATALOGUE[plan].quarterly.productId).toBe(QUARTERLY[plan]);
   });
 
   it('gives each tier its OWN quarterly product — no id is shared', () => {
     // A shared id is a church on one tier billed at another's price, and it
     // would satisfy every per-tier assertion above taken one at a time.
-    const ids = PLAN_ORDER.map((p) => DODO_LIVE_CATALOGUE[p].quarterly.productId);
+    const ids = PRICED_PLAN_ORDER.map((p) => DODO_LIVE_CATALOGUE[p].quarterly.productId);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
   it('never collides with a monthly or annual id', () => {
-    const others = PLAN_ORDER.flatMap((p) => [
+    const others = PRICED_PLAN_ORDER.flatMap((p) => [
       DODO_LIVE_CATALOGUE[p].monthly.productId,
       DODO_LIVE_CATALOGUE[p].yearly.productId,
     ]);
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       expect(others).not.toContain(DODO_LIVE_CATALOGUE[plan].quarterly.productId);
     }
   });
 
   it('publishes the quarterly price Dodo actually charges, in both units', () => {
     const CENTS = { plus: 9900, pro: 19900, max: 39900 } as const;
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       expect(DODO_LIVE_CATALOGUE[plan].quarterly.priceMinorUnits).toBe(CENTS[plan]);
       expect(DODO_LIVE_CATALOGUE[plan].quarterly.priceUsd).toBe(CENTS[plan] / 100);
       expect(planPriceUsd(plan, 'quarterly')).toBe(CENTS[plan] / 100);
@@ -162,7 +166,7 @@ describe('no price literal appears outside the single source', () => {
   }
 
   const modules = walk(SRC).filter((f) => !PRICE_BEARING.some((a) => f.endsWith(a)));
-  const CURRENT = [...new Set(PLAN_ORDER.flatMap((p) => BILLING_TERMS.map((t) => String(planPriceUsd(p, t)))))];
+  const CURRENT = [...new Set(PRICED_PLAN_ORDER.flatMap((p) => BILLING_TERMS.map((t) => String(planPriceUsd(p, t)))))];
   /**
    * Prices THE-195 retired. None may survive in executable source.
    *
@@ -213,8 +217,8 @@ describe('no price literal appears outside the single source', () => {
   });
 
   it('leaves PLAN_PRICING as the only table, with the nine numbers in it', () => {
-    expect(Object.keys(PLAN_PRICING).sort()).toEqual([...PLAN_ORDER].sort());
-    for (const plan of PLAN_ORDER) {
+    expect(Object.keys(PLAN_PRICING).sort()).toEqual([...PRICED_PLAN_ORDER].sort());
+    for (const plan of PRICED_PLAN_ORDER) {
       expect(Object.keys(PLAN_PRICING[plan]).sort()).toEqual([...BILLING_TERMS].sort());
     }
   });

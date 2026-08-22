@@ -9,7 +9,8 @@ import {
   UNLIMITED,
   type CapacityCandidate,
 } from '../contact-capacity';
-import { PLAN_ORDER, getPlanFeatures } from '../plan-features';
+import { PLAN_ORDER,
+  PRICED_PLAN_ORDER, getPlanFeatures } from '../plan-features';
 import { SUPER_ADMIN_EMAILS } from '../super-admins';
 
 /**
@@ -46,7 +47,20 @@ const donorRows = (n: number) => Array.from({ length: n }, donorOnly);
 describe('resolveContactLimit — the number comes from PLAN_FEATURES', () => {
   // ── 8 ──────────────────────────────────────────────────────────────────────
   it('resolves 150 / 500 / 2,000 for Individual / Small Team / Ministry', () => {
-    expect(PLAN_ORDER.map((p) => resolveContactLimit(p))).toEqual([150, 500, 2_000]);
+    // 🔴 The three PAID tiers, unchanged. Free is asserted separately below
+    // rather than folded into this list, because its 500 is a different KIND of
+    // number — a bound on a free tier, not a rung on the paid capacity ladder.
+    expect(PRICED_PLAN_ORDER.map((p) => resolveContactLimit(p))).toEqual([150, 500, 2_000]);
+  });
+
+  it('resolves 500 for the Forever Free tier (THE-200)', () => {
+    // ⚠️ DELIBERATELY ABOVE INDIVIDUAL'S 150. The founder chose a capped-but-
+    // generous free tier over an unlimited one so the ladder stays honest the
+    // other way: an unlimited free tier means an evangelist with 800 disciples
+    // gets a WORSE product by paying $39. Nothing enforces this cell yet —
+    // the server-side gate on member signup is THE-201.
+    expect(resolveContactLimit('free')).toBe(500);
+    expect(PLAN_ORDER[0]).toBe('free');
   });
 
   it('reads the plan matrix rather than carrying its own copy of the numbers', () => {

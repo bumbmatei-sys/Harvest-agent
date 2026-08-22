@@ -5,6 +5,7 @@ import {
   PLAN_PRICING,
   TERM_MONTHS,
   PLAN_ORDER,
+  isPricedPlan,
   AI_ASSISTANT_ADDON_PRICING,
   AI_TELEGRAM_ASSISTANT_ENABLED,
 } from '@/utils/plan-features';
@@ -26,7 +27,6 @@ export const revalidate = 3600; // CDN cache: re-generate at most once per hour
 export async function GET() {
   const plans = PLAN_ORDER.map((id) => {
     const features = getPlanFeatures(id);
-    const pricing = PLAN_PRICING[id];
     return {
       id,
       name: PLAN_DISPLAY_NAMES[id],
@@ -34,13 +34,23 @@ export async function GET() {
       // a month at a time — the figure a saving is measured against. Both are
       // read from the price table; nothing here recomputes a discount, because
       // the discounts no longer divide into whole months (see PLAN_PRICING).
-      pricing: {
-        monthlyUsd: pricing.monthly,
-        quarterlyUsd: pricing.quarterly,
-        yearlyUsd: pricing.yearly,
-        quarterlyOriginalUsd: pricing.monthly * TERM_MONTHS.quarterly,
-        yearlyOriginalUsd: pricing.monthly * TERM_MONTHS.yearly,
-      },
+      //
+      // 🔴 `null` FOR THE FOREVER FREE TIER, not a block of zeros. Free has no
+      // price and no billing term, so there is no `monthlyUsd` to state and no
+      // "original" for a saving to be measured against — `quarterlyOriginalUsd:
+      // 0` would invite the consumer to render "$0, was $0, save 0%". `null` is
+      // the one value a marketing card cannot mistake for a price, and the free
+      // card must lead with the audience and the 500-member cap rather than a
+      // figure. The three priced entries' shape is UNCHANGED.
+      pricing: isPricedPlan(id)
+        ? {
+            monthlyUsd: PLAN_PRICING[id].monthly,
+            quarterlyUsd: PLAN_PRICING[id].quarterly,
+            yearlyUsd: PLAN_PRICING[id].yearly,
+            quarterlyOriginalUsd: PLAN_PRICING[id].monthly * TERM_MONTHS.quarterly,
+            yearlyOriginalUsd: PLAN_PRICING[id].monthly * TERM_MONTHS.yearly,
+          }
+        : null,
       // `donationRetentionPct` is intentionally absent. Every tier now charges
       // a 0% platform fee on donations, so the number it published was the
       // constant 100 — and it was a hand-maintained complement of the real fee

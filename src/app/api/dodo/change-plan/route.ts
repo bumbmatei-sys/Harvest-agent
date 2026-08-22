@@ -15,8 +15,8 @@ import {
   type DodoSubscriptionLike,
 } from '@/lib/dodo/dodo-provider';
 import type { BillingPeriod } from '@/lib/dodo/provider';
-import { PLAN_ORDER } from '@/utils/plan-features';
-import type { TenantPlan } from '@/types/tenant.types';
+import { PRICED_PLAN_ORDER } from '@/utils/plan-features';
+import type { PricedPlan } from '@/types/tenant.types';
 import { BILLING_TERMS } from '@/utils/plan-features';
 
 /**
@@ -77,9 +77,23 @@ import { BILLING_TERMS } from '@/utils/plan-features';
 
 export const dynamic = 'force-dynamic';
 
-function readPlan(raw: unknown): TenantPlan | null {
-  return typeof raw === 'string' && (PLAN_ORDER as readonly string[]).includes(raw)
-    ? (raw as TenantPlan)
+/**
+ * The plan the caller wants to move TO, refusing anything unsellable.
+ *
+ * 🔴 `PRICED_PLAN_ORDER`, not `PLAN_ORDER` — see the longer note on the
+ * identically-shaped validator in `/api/dodo/checkout`. Here the consequence is
+ * sharper: this is a DESTINATION plan handed to Dodo's change-plan API, so
+ * accepting `'free'` off an untrusted body would be a request to move a paying
+ * church's live subscription onto a product that does not exist.
+ *
+ * ⚠️ "Downgrade to free" is therefore NOT this endpoint, and must not be bolted
+ * on here. A tenant leaving a paid plan cancels its subscription and lands in
+ * the lifecycle state the webhook writes; free is a provisioning state, not a
+ * product to switch to.
+ */
+function readPlan(raw: unknown): PricedPlan | null {
+  return typeof raw === 'string' && (PRICED_PLAN_ORDER as readonly string[]).includes(raw)
+    ? (raw as PricedPlan)
     : null;
 }
 

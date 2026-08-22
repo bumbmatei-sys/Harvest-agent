@@ -139,9 +139,25 @@ describe('SMS is unmetered on every tier', () => {
     }
   });
 
-  it('has exactly three tiers — ultra is gone', async () => {
+  it('has one row per tier, ultra gone and free added', async () => {
+    // 🔴 THE-200 added the Forever Free tier, so this is four rows, not three.
+    // `ultra` staying absent is the assertion that still matters — the tier was
+    // deleted and folded into max, and a row reappearing here would mean it
+    // came back through a Record<TenantPlan, …> nobody read.
     const { PLAN_LIMITS } = await import('../planLimits');
-    expect(Object.keys(PLAN_LIMITS)).toEqual(['plus', 'pro', 'max']);
+    expect(Object.keys(PLAN_LIMITS)).toEqual(['free', 'plus', 'pro', 'max']);
+    expect(Object.keys(PLAN_LIMITS)).not.toContain('ultra');
+  });
+
+  it('gives the free tier ZERO AI budget, because it has no AI', async () => {
+    // Not a placeholder: free carries aiChat: false and aiKnowledge: false, so
+    // it reaches neither the RAG query path nor the ingest path. A non-zero
+    // budget would be COGS allocated to a tier that cannot spend it — the same
+    // defect as the SMS budgets this file exists to document.
+    const { PLAN_LIMITS } = await import('../planLimits');
+    expect(PLAN_LIMITS.free.queryTokensPerMonth).toBe(0);
+    expect(PLAN_LIMITS.free.ingestTokensTotal).toBe(0);
+    expect(PLAN_LIMITS.free.smsSegmentsPerMonth).toBeNull();
   });
 
   it('keeps max on its own token numbers — it did not inherit ultra 150M/30M', async () => {

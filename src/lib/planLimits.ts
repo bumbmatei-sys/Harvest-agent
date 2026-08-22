@@ -23,7 +23,7 @@ import type { TenantPlan } from '@/types/tenant.types';
 //     (shares the month-keyed usage doc with queryTokens).
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type PlanId = TenantPlan; // 'plus' | 'pro' | 'max'
+export type PlanId = TenantPlan; // 'free' | 'plus' | 'pro' | 'max'
 
 export interface PlanLimits {
   /** Monthly RAG/chat query budget, in MiMo tokens. Resets each month. */
@@ -74,6 +74,19 @@ export interface PlanLimits {
 // ~10× by country, US ~$0.0109 vs UK ~$0.04 vs Brazil ~$0.075. Sends are
 // restricted to US destinations regardless; see sms-destination.ts.)
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
+  // Forever Free — ZERO on both AI budgets, and that is a real value rather
+  // than a placeholder: free carries `aiChat: false` and `aiKnowledge: false`,
+  // so a free tenant reaches neither the RAG chat endpoint nor the ingest path.
+  // A non-zero budget here would be COGS allocated to a tier that cannot spend
+  // it, and the mirror of the defect this file already documents below — three
+  // tiers metered for an SMS feature their plan flag denied them.
+  //
+  // ⚠️ It is deliberately 0 and not `null`. `null` on `smsSegmentsPerMonth`
+  // means UNMETERED (reserve returns allowed and writes nothing); the token
+  // fields carry no such sentinel, and 0 is the honest cap for a tier with no
+  // AI. If the free tier is ever given a taste of AI chat, this is the one line
+  // that changes.
+  free: { queryTokensPerMonth: 0,          ingestTokensTotal: 0,          smsSegmentsPerMonth: null },
   plus: { queryTokensPerMonth: 2_000_000,  ingestTokensTotal: 500_000,    smsSegmentsPerMonth: null },
   pro:  { queryTokensPerMonth: 10_000_000, ingestTokensTotal: 2_000_000,  smsSegmentsPerMonth: null },
   max:  { queryTokensPerMonth: 50_000_000, ingestTokensTotal: 10_000_000, smsSegmentsPerMonth: null },

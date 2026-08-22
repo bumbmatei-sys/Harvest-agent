@@ -24,12 +24,13 @@ import {
   FEATURE_MIN_PLAN,
   FEATURE_MAP,
   PLAN_ORDER,
+  PRICED_PLAN_ORDER,
   TOP_PLAN,
   PLAN_DISPLAY_NAMES,
   getMinPlanForFeatureCell,
   type FeatureKey,
 } from '../plan-features';
-import type { TenantPlan } from '@/types/tenant.types';
+import type { TenantPlan, PricedPlan } from '@/types/tenant.types';
 import * as planFeaturesModule from '../plan-features';
 // The rate actually charged. This import used to carry a warning: the fee map
 // shared a module with the STRIPE_PRICE_* env reads, so pulling it in was only
@@ -274,16 +275,20 @@ describe('AI_ASSISTANT_ADDON_PRICING', () => {
 // Test #1 of the repricing. The `ultra` tier folded into `max`.
 
 describe('the ultra tier is deleted', () => {
-  it('PLAN_ORDER is exactly [plus, pro, max]', () => {
-    expect([...PLAN_ORDER]).toEqual(['plus', 'pro', 'max']);
+  it('PLAN_ORDER is exactly [free, plus, pro, max]', () => {
+    // 🔴 THE-200 added the Forever Free tier at the FRONT. `ultra` staying gone
+    // is what this block is about; the tier count is incidental to it, and was
+    // never the claim worth pinning.
+    expect([...PLAN_ORDER]).toEqual(['free', 'plus', 'pro', 'max']);
+    expect([...PRICED_PLAN_ORDER]).toEqual(['plus', 'pro', 'max']);
   });
 
-  it('TenantPlan has no ultra — PLAN_FEATURES has exactly three keys and none is ultra', () => {
+  it('TenantPlan has no ultra — PLAN_FEATURES has exactly four keys and none is ultra', () => {
     // PLAN_FEATURES is the runtime source of truth for which plan ids are real
     // (toTenantPlan coerces against it), so this is the observable stand-in for
     // the compile-time union.
     const ids = PLAN_ORDER.map((p) => p);
-    expect(ids).toHaveLength(3);
+    expect(ids).toHaveLength(4);
     expect(ids).not.toContain('ultra');
     expect(getPlanFeatures('ultra' as any)).toEqual(getPlanFeatures('plus'));
   });
@@ -352,30 +357,48 @@ describe('retired matrix cells stay retired', () => {
 // Test #5 of the repricing.
 
 describe('capacity limits per tier', () => {
+  // 🔴 THE PAID capacity ladder, unchanged by THE-200. Free's own caps are a
+  // different kind of number (a bound on a free tier, not a rung a church buys)
+  // and are asserted in plan-features.free-tier.test.ts.
   it('maxContacts is 150 / 500 / 2000', () => {
-    expect(PLAN_ORDER.map((p) => getPlanFeatures(p).maxContacts)).toEqual([150, 500, 2_000]);
+    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).maxContacts)).toEqual([150, 500, 2_000]);
   });
 
   it('maxAdmins is 2 / 5 / 15', () => {
-    expect(PLAN_ORDER.map((p) => getPlanFeatures(p).maxAdmins)).toEqual([2, 5, 15]);
+    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).maxAdmins)).toEqual([2, 5, 15]);
   });
 
   it('maxCourses is 2 / 5 / 15', () => {
-    expect(PLAN_ORDER.map((p) => getPlanFeatures(p).maxCourses)).toEqual([2, 5, 15]);
+    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).maxCourses)).toEqual([2, 5, 15]);
   });
 
-  it('maxChurches is 1 on every tier — no tier gets unlimited campuses', () => {
-    expect(PLAN_ORDER.map((p) => getPlanFeatures(p).maxChurches)).toEqual([1, 1, 1]);
+  it('maxChurches is 1 on every PAID tier — no tier gets unlimited campuses', () => {
+    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).maxChurches)).toEqual([1, 1, 1]);
+    // Free gets 0, not 1: one evangelist is not a campus. 0 is falsy to
+    // hasFeature, which is what keeps the min-plan label off Free for it.
+    expect(getPlanFeatures('free').maxChurches).toBe(0);
   });
 
   it('no capacity cell is unlimited (-1) any more', () => {
     // The deleted ultra tier carried -1 for churches, courses and admins.
     // Nothing inherited it: every cap is a finite number, which is what makes
     // the add-on model (buy more contacts / seats / campuses) coherent.
+    //
+    // ⚠️ `>= 0`, not `> 0`, across ALL tiers: free's maxChurches is a real 0
+    // (hidden), which is finite and correct. UNLIMITED_CAP is -1, so the guard
+    // that matters is "never negative", and that is what is asserted.
     PLAN_ORDER.forEach((plan) => {
       const f = getPlanFeatures(plan);
       (['maxChurches', 'maxContacts', 'maxCourses', 'maxAdmins'] as const).forEach((cell) => {
-        expect(f[cell], `${plan}.${cell} is unlimited`).toBeGreaterThan(0);
+        expect(f[cell], `${plan}.${cell} is unlimited`).toBeGreaterThanOrEqual(0);
+        expect(f[cell], `${plan}.${cell} is the unlimited sentinel`).not.toBe(-1);
+      });
+    });
+    // And every PAID tier's caps are still strictly positive.
+    PRICED_PLAN_ORDER.forEach((plan) => {
+      const f = getPlanFeatures(plan);
+      (['maxChurches', 'maxContacts', 'maxCourses', 'maxAdmins'] as const).forEach((cell) => {
+        expect(f[cell], `${plan}.${cell}`).toBeGreaterThan(0);
       });
     });
   });
@@ -387,11 +410,14 @@ describe('capacity limits per tier', () => {
 
 describe('aiChat / aiKnowledge are untouched by the repricing', () => {
   it('aiChat is false / true / true', () => {
-    expect(PLAN_ORDER.map((p) => getPlanFeatures(p).aiChat)).toEqual([false, true, true]);
+    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).aiChat)).toEqual([false, true, true]);
+    // Free has no AI at all — and PLAN_LIMITS.free budgets 0 tokens to match.
+    expect(getPlanFeatures('free').aiChat).toBe(false);
   });
 
   it('aiKnowledge is false / true / true', () => {
-    expect(PLAN_ORDER.map((p) => getPlanFeatures(p).aiKnowledge)).toEqual([false, true, true]);
+    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).aiKnowledge)).toEqual([false, true, true]);
+    expect(getPlanFeatures('free').aiKnowledge).toBe(false);
   });
 
   it('neither was moved to the top tier or given away on plus', () => {
@@ -441,13 +467,18 @@ describe('getFeatureMinPlan / FEATURE_MIN_PLAN (derived)', () => {
     expect(getFeatureMinPlan('accounting')).toBe('max');
   });
 
-  it('puts CRM on Individual — the cheapest tier there is', () => {
-    // THE-161 put CRM on every tier. The label is DERIVED, so the upgrade copy
-    // followed the cell with no literal edited anywhere; these two lines are
-    // what prove it went all the way down rather than one step.
-    expect(getFeatureMinPlan('crm')).toBe('plus');
-    expect(FEATURE_MIN_PLAN.crm).toBe('Individual');
+  it('puts CRM on Free — the cheapest tier there is (moved by THE-200)', () => {
+    // THE-161 put CRM on every PAID tier and this said 'Individual'. THE-200
+    // added a cheaper tier that ALSO has CRM, and the label followed the cell
+    // with no literal edited in any component — which is the whole point of
+    // deriving it. 🔴 This is the ONE FEATURE_MIN_PLAN value the free tier
+    // moved, and it is a TRUE statement: free genuinely carries crm: true, so
+    // no church is being shown a claim about a tier that lacks the feature.
+    expect(getFeatureMinPlan('crm')).toBe('free');
+    expect(FEATURE_MIN_PLAN.crm).toBe('Free');
     expect(FEATURE_MIN_PLAN.crm).not.toBe('Ministry');
+    // The cheapest PAID tier still has it — CRM did not become free-only.
+    expect(getPlanFeatures('plus').crm).toBe(true);
   });
 
   it('puts tax receipts on Ministry (max)', () => {
@@ -563,6 +594,12 @@ describe('customDomain tier (Ministry / max only)', () => {
 // that names it, so reverting any one of them fails here by name rather than
 // silently shipping.
 
+// 🔴 EVERY LOOP IN THIS BLOCK WALKS `PRICED_PLAN_ORDER`, NOT `PLAN_ORDER`.
+// The block is about the nine stored PRICES; the Forever Free tier has none, so
+// including it would make `planPriceUsd` a compile error and "prices ascending"
+// a claim about a tier with no price. Free's own absence from PLAN_PRICING is
+// asserted in the free-tier block below — that is the seam, and it is tested
+// there deliberately rather than being smuggled in as a loop bound here.
 describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
   /* 🔴 TEST 1: the nine plan prices, per tier and per term, against the Dodo
      catalogue. Written out rather than derived from the table under test: a
@@ -576,7 +613,7 @@ describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
   } as const;
 
   it.each(
-    (Object.keys(DODO_CATALOGUE_USD) as TenantPlan[]).flatMap((plan) =>
+    (Object.keys(DODO_CATALOGUE_USD) as PricedPlan[]).flatMap((plan) =>
       BILLING_TERMS.map((term) => [plan, term] as const),
     ),
   )('%s on %s matches the Dodo catalogue exactly', (plan, term) => {
@@ -584,7 +621,7 @@ describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
   });
 
   it('prices every tier on every term, in whole dollars', () => {
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       for (const term of BILLING_TERMS) {
         expect(Number.isInteger(planPriceUsd(plan, term))).toBe(true);
         expect(planPriceUsd(plan, term)).toBeGreaterThan(0);
@@ -594,7 +631,7 @@ describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
 
   it('prices the tiers in ascending order on every term', () => {
     for (const term of BILLING_TERMS) {
-      const figures = PLAN_ORDER.map((p) => planPriceUsd(p, term));
+      const figures = PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, term));
       expect(figures, `${term} prices are not ascending`).toEqual([...figures].sort((a, b) => a - b));
     }
   });
@@ -608,7 +645,7 @@ describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
     expect(mod.ANNUAL_FREE_MONTHS).toBeUndefined();
     expect(mod.annualMonthlyEquivalent).toBeUndefined();
     // And no term's price IS a whole number of months at the monthly rate.
-    for (const p of PLAN_ORDER) {
+    for (const p of PRICED_PLAN_ORDER) {
       for (const term of DISCOUNTED_TERMS) {
         const inMonths = planPriceUsd(p, term) / planPriceUsd(p, 'monthly');
         expect(Number.isInteger(inMonths), `${p} ${term} is exactly ${inMonths} months`).toBe(false);
@@ -617,7 +654,7 @@ describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
   });
 
   it('makes every longer term cheaper than the same span bought monthly', () => {
-    for (const p of PLAN_ORDER) {
+    for (const p of PRICED_PLAN_ORDER) {
       for (const term of DISCOUNTED_TERMS) {
         expect(planPriceUsd(p, term)).toBeLessThan(planPriceUsd(p, 'monthly') * TERM_MONTHS[term]);
       }
@@ -636,7 +673,7 @@ describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
   /* 🔴 TEST 4: no copy claims a saving larger than the smallest actual one. */
   it('states a percentage flat only when the WORST tier actually reaches it', () => {
     for (const term of DISCOUNTED_TERMS) {
-      const worst = Math.min(...PLAN_ORDER.map((p) => actualSavingPct(p, term)));
+      const worst = Math.min(...PRICED_PLAN_ORDER.map((p) => actualSavingPct(p, term)));
       if (discountClaimShape(term) === 'flat') {
         expect(ADVERTISED_DISCOUNT_PCT[term]).toBeLessThanOrEqual(worst);
       }
@@ -661,12 +698,12 @@ describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
 
   it('never advertises more than even the BEST tier saves, under any wording', () => {
     for (const term of DISCOUNTED_TERMS) {
-      const best = Math.max(...PLAN_ORDER.map((p) => actualSavingPct(p, term)));
+      const best = Math.max(...PRICED_PLAN_ORDER.map((p) => actualSavingPct(p, term)));
       expect(ADVERTISED_DISCOUNT_PCT[term]).toBeLessThanOrEqual(best);
     }
     // The per-tier savings this change actually produces, pinned.
-    expect(PLAN_ORDER.map((p) => Number(actualSavingPct(p, 'quarterly').toFixed(1)))).toEqual([15.4, 16.0, 16.4]);
-    expect(PLAN_ORDER.map((p) => Number(actualSavingPct(p, 'yearly').toFixed(1)))).toEqual([29.7, 30.5, 30.3]);
+    expect(PRICED_PLAN_ORDER.map((p) => Number(actualSavingPct(p, 'quarterly').toFixed(1)))).toEqual([15.4, 16.0, 16.4]);
+    expect(PRICED_PLAN_ORDER.map((p) => Number(actualSavingPct(p, 'yearly').toFixed(1)))).toEqual([29.7, 30.5, 30.3]);
   });
 
   it('renders the charged figure and cycle through formatPlanPrice', () => {
@@ -694,7 +731,7 @@ describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
     // charged figure are the same number on the same cycle, so the card shows
     // the headline alone and the note is suppressed (the card test asserts the
     // suppression; this asserts the two figures really do coincide).
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       expect(formatPlanMonthlyHeadline(plan, 'monthly')).toBe(
         `$${planPriceUsd(plan, 'monthly').toLocaleString()}`,
       );
@@ -709,7 +746,7 @@ describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
     // `Math.round` the Individual yearly headline was $27 (implying $324
     // against a charged $329) and Small Team quarterly was $66 (implying $198
     // against $199). Both would fail here.
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       for (const term of BILLING_TERMS) {
         const charged = planPriceUsd(plan, term);
         const implied = planTermMonthlyDisplayed(plan, term) * TERM_MONTHS[term];
@@ -724,7 +761,7 @@ describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
   it('the headline reconciles with the charged total, not merely exceeds it', () => {
     // Ceiling to the DOLLAR would also pass the guard above while putting $336
     // beside a charged $329. The cent bounds the gap at the rounding itself.
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       for (const term of BILLING_TERMS) {
         const charged = planPriceUsd(plan, term);
         const implied = planTermMonthlyDisplayed(plan, term) * TERM_MONTHS[term];
@@ -770,11 +807,14 @@ describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
 
 describe('PLAN_DISPLAY_NAMES (repriced)', () => {
   it('is Individual / Small Team / Ministry', () => {
-    expect(PLAN_ORDER.map((p) => PLAN_DISPLAY_NAMES[p])).toEqual([
+    expect(PRICED_PLAN_ORDER.map((p) => PLAN_DISPLAY_NAMES[p])).toEqual([
       'Individual',
       'Small Team',
       'Ministry',
     ]);
+    // Plus the free tier's own name, added by THE-200 and deliberately plain:
+    // the card's differentiator is the audience (the blurb) and the price.
+    expect(PLAN_DISPLAY_NAMES.free).toBe('Free');
   });
 
   it('no longer calls the top tier Community', () => {
