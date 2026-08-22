@@ -76,7 +76,18 @@ export async function POST(request: NextRequest) {
       adminAuth.getUser(uid),
     ]);
 
-    const applicantTenantId = (applicantSnap.data() as { tenantId?: unknown } | undefined)?.tenantId;
+    const rawApplicantTenantId = (applicantSnap.data() as { tenantId?: unknown } | undefined)
+      ?.tenantId;
+    // 🔴 Narrow ONCE, here, and use the narrowed value everywhere below.
+    // `String(undefined)` is the string `"undefined"` — non-empty, so it sails
+    // straight through `assertConcreteTenantId` and would write
+    // `capRefusedTenantId: "undefined"`. That is the "default that hides an
+    // error" shape AGENTS.md forbids, in the one module whose whole job is
+    // refusing to write against a non-concrete tenant. No coercion, ever.
+    const applicantTenantId: string | null =
+      typeof rawApplicantTenantId === 'string' && rawApplicantTenantId !== ''
+        ? rawApplicantTenantId
+        : null;
     // D3 — "is this person already a member?" is answered from the Auth custom
     // claim, NOT the `users` doc: the doc is client-writable (rules:144), the
     // claim is not.
@@ -85,7 +96,7 @@ export async function POST(request: NextRequest) {
 
     const capacity = await decideMemberCapacity({
       uid,
-      applicantTenantId: typeof applicantTenantId === 'string' ? applicantTenantId : null,
+      applicantTenantId,
       existingClaimTenantId:
         typeof existingClaimTenantId === 'string' ? existingClaimTenantId : null,
     });
@@ -93,7 +104,14 @@ export async function POST(request: NextRequest) {
     if (capacity.status === 'refused') {
       // C2 — stamp the ghost so the follow-up sweep can find it. Best-effort
       // and non-throwing by contract; it must not turn a clean 403 into a 500.
-      await stampRefusal(uid, String(applicantTenantId));
+      //
+      // 🔴 `applicantTenantId` is the NARROWED value and is non-null on every
+      // path that can reach a refusal (the gate is skipped entirely when it is
+      // null — see D7). The `if` is belt-and-braces so a future edit to the
+      // decision cannot silently start stamping a coerced string.
+      if (applicantTenantId) {
+        await stampRefusal(uid, applicantTenantId);
+      }
 
       return NextResponse.json(
         {

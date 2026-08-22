@@ -875,6 +875,22 @@ the only claim issuer, so the enforcement point is complete for the paths that e
 future path that creates a member — an admin "invite member" flow, a bulk importer — must
 call `decideMemberCapacity` too. There is no structural test that would catch a new one.
 
+**R7 — the refusal stamp is client-erasable, so the R2 sweep cannot trust it.**
+`stampRefusal` writes `capRefusedAt` / `capRefusedTenantId` onto the applicant's own
+`users/{uid}` doc. The self-update rule at `firestore.rules:153-158` denies writes only to
+`role`, `permissions`, `tenantId`, `plan` and the six affiliate fields. Neither stamp field
+is on that deny list, so the refused ghost can delete or backdate its own marker from
+devtools — a ghost that can hide itself from the sweep that exists to find it.
+
+Adding the two field names to that `affectedKeys().hasAny([…])` list is a one-line fix and
+is exactly the `firestore.rules` change §14 forbids in this PR (auto-deploys to production
+on merge, no CI rules test). **So the constraint on the follow-up is:** the R2 sweep must
+not depend on a client-writable marker as its only signal — it should reconcile from the
+authoritative pair (a `users` doc carrying `tenantId` + an Auth record with no matching
+custom claim), and treat the stamp as a hint that speeds the query up, never as proof.
+**Follow-up card: "Deny-list `capRefusedAt`/`capRefusedTenantId` on self-update
+(firestore.rules)," to ship with or before the R2 sweep.**
+
 ---
 
 ## 14. FILES DELIBERATELY NOT TOUCHED
