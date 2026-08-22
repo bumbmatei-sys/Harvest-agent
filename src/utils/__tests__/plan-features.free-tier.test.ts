@@ -158,8 +158,23 @@ describe('THE-200 — what a free tenant gets', () => {
     }
   });
 
+  // ── 7b ── 🔴 THE-205 ──────────────────────────────────────────────────────
+  it('free HAS pwaApp — the installable app is on every tier', () => {
+    // Founder-confirmed in THE-205, reversing the value THE-200 shipped. Asserted
+    // POSITIVELY and in its own case rather than by deleting the old
+    // `toBe(false)` line from test 8: a removed assertion is weaker coverage than
+    // the one it replaced, and this cell has now moved once already.
+    expect(free.pwaApp).toBe(true);
+    expect(hasFeature('free', 'pwaApp')).toBe(true);
+    for (const plan of PRICED_PLAN_ORDER) {
+      expect(getPlanFeatures(plan).pwaApp, `${plan} lost pwaApp`).toBe(true);
+    }
+  });
+
   // ── 8 ── ENUMERATED, NOT PATTERN-MATCHED ──────────────────────────────────
   it('every other feature is false on free — each named individually', () => {
+    // `pwaApp` is deliberately ABSENT from this list — it is true on free as of
+    // THE-205 and is asserted in test 7b directly above.
     // 🔴 Written out cell by cell on purpose. `Object.entries(free).filter(...)`
     // would pass against a matrix that had silently lost half its keys.
     expect(free.blog).toBe(false);
@@ -276,7 +291,7 @@ describe('THE-200 — FEATURE_MIN_PLAN still names the cheapest tier that HAS ea
       givingStatements: 'max',
       pledgeCampaigns: 'max',
       textToGive: 'plus',       // free is false → unchanged, still Individual
-      pwaApp: 'plus',           // free is false → unchanged, still Individual
+      pwaApp: 'free',           // ⬅️ MOVED from 'plus' by THE-205
     };
     for (const [cell, expected] of Object.entries(EXPECTED) as [keyof PlanFeatures, TenantPlan | null][]) {
       expect(getMinPlanForFeatureCell(cell), `min plan for ${cell}`).toBe(expected);
