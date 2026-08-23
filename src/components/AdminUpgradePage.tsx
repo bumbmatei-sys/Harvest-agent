@@ -10,10 +10,11 @@ import {
   planPriceUsd,
   formatPlanMonthlyHeadline,
   formatPlanPrice,
+  isPricedPlan,
   type BillingTerm,
 } from '../utils/plan-features';
 import { authFetch } from '../utils/auth-fetch';
-import { fetchBillingProcessor, runDodoPlanChange, subscriptionProcessorAttribution, type PlanChangeProcessor } from '../utils/plan-change';
+import { fetchBillingProcessor, needsFirstSubscription, runDodoPlanChange, startFirstSubscription, subscriptionProcessorAttribution, type PlanChangeProcessor } from '../utils/plan-change';
 import { getTenantId } from './settings/useTenantId';
 import { BillingTermToggle } from './settings/BillingTermToggle';
 
@@ -62,6 +63,12 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
     return getTenantId();
   };
 
+  // 🔴 THE-212. True for a tenant on a tier with no price — Forever Free today.
+  // It owns no subscription with any processor, so every "manage"/"cancel"
+  // affordance on this page is inert for it and the plan cards ARE its action.
+  // One derivation, read by the click routing and by all three portal controls.
+  const isFirstSubscriptionTenant = needsFirstSubscription(currentPlan);
+
   /**
    * One entry point per plan card, same shape as PlanUpgradeSection: a Dodo
    * tenant changes plan in place (preview → confirm → the plan_changed webhook
@@ -72,6 +79,17 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
   const handlePlanSelect = async (planId: TenantPlan, isDowngrade: boolean) => {
     setCheckoutLoading(planId);
     try {
+      // ── 🔴 THE FREE TENANT'S FIRST SUBSCRIPTION (THE-212). ────────────────
+      // Checked before the processor, and that order is the fix — see the note
+      // above `needsFirstSubscription`. A free tenant has no subscription, so
+      // `/api/billing/invoices` reports its Stripe default and this page sent
+      // the tenant to `/api/stripe/checkout` and a Stripe price id. The tier is
+      // the question, not the processor.
+      if (isFirstSubscriptionTenant && isPricedPlan(planId)) {
+        const result = await startFirstSubscription({ plan: planId, billing: billingPeriod });
+        if (!result.ok && result.message) alert(result.message);
+        return;
+      }
       const proc = processor !== undefined ? processor : await fetchBillingProcessor();
       if (proc === 'dodo') {
         const tid = await resolveTenantId();
@@ -182,13 +200,24 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
                 <span className="text-xs text-faint">{formatPlanPrice(currentPlan, 'monthly')}</span>
               </div>
             </div>
-            <button
-              onClick={handleManageSubscription}
-              disabled={portalLoading}
-              className="flex items-center gap-1 text-sm font-medium text-body hover:text-strong transition-colors disabled:opacity-50 whitespace-nowrap"
-            >
-              {portalLoading ? 'Opening…' : <>Manage subscription <ChevronRight size={15} /></>}
-            </button>
+            {/* 🔴 NOT FOR A FREE TENANT (THE-212). This opens the hosted
+                customer portal — cancel, replace a card, read an invoice — and
+                a Forever Free tenant has none of those with any processor. The
+                route answers "No Stripe subscription found. Please subscribe
+                first.", so the control's only outcome was an error on the page
+                whose whole purpose is to sell this tenant a plan. The cards
+                below are its action; nothing replaces this link here because
+                they are already the next thing on the screen. */}
+            {!isFirstSubscriptionTenant && (
+              <button
+                data-testid="upgrade-page-manage-action"
+                onClick={handleManageSubscription}
+                disabled={portalLoading}
+                className="flex items-center gap-1 text-sm font-medium text-body hover:text-strong transition-colors disabled:opacity-50 whitespace-nowrap"
+              >
+                {portalLoading ? 'Opening…' : <>Manage subscription <ChevronRight size={15} /></>}
+              </button>
+            )}
           </div>
         </div>
       ) : (
@@ -300,7 +329,10 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
         })}
       </div>
 
-      {/* Billing & Invoices */}
+      {/* Billing & Invoices — a free tenant has no payment method and no
+          invoice to open a portal for, so the whole region is absent for it
+          rather than offering a button that can only error (THE-212). */}
+      {!isFirstSubscriptionTenant && (
       <div className="border-t border-line pt-6">
         <h4 className="text-xs font-semibold uppercase tracking-wider text-muted mb-3">Billing &amp; Invoices</h4>
         <p className="text-sm text-muted mb-3">
@@ -321,9 +353,10 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
           <p className="text-xs text-faint mt-2">{subscriptionProcessorAttribution(processor)}</p>
         )}
       </div>
+      )}
 
-      {/* Cancel subscription */}
-      {currentPlan && (
+      {/* Cancel subscription — never offered to a tenant that has none. */}
+      {currentPlan && !isFirstSubscriptionTenant && (
         <div className="text-center pt-2">
           <button
             onClick={handleManageSubscription}

@@ -556,6 +556,32 @@ export function isPricedPlan(plan: TenantPlan): plan is PricedPlan {
 }
 
 /**
+ * Is `raw` a tier this build KNOWS and that has NO price? (THE-212)
+ *
+ * Forever Free, today, and derived rather than named — a second tier that stops
+ * being sold lands here the moment it leaves `PLAN_PRICING`.
+ *
+ * 🔴 THE `PLAN_ORDER` HALF IS LOAD-BEARING, and it is why this is not simply
+ * `!isPricedPlan(raw)`. `plan` reaches this predicate as an untyped Firestore
+ * string, and a RETIRED tier name — 'ultra', which this app carried and
+ * deleted, and which live tenant documents still hold — is equally absent from
+ * `PLAN_PRICING`. Treating "not priced" as "free" would tell a legacy tenant it
+ * has no subscription, when in fact it has one nobody can name. So the tier
+ * must be one this build recognises AND unpriced; anything unrecognised is a
+ * legacy record and keeps whatever path it has today, untouched.
+ *
+ * The complement of `isPricedPlan` over the tiers this build knows, and the one
+ * question "does this tenant have a subscription to manage?" is answered from.
+ */
+export function isUnpricedTier(raw: unknown): boolean {
+  return (
+    typeof raw === 'string' &&
+    (PLAN_ORDER as readonly string[]).includes(raw) &&
+    !isPricedPlan(raw as TenantPlan)
+  );
+}
+
+/**
  * What a term works out to per month, exactly, unrounded. The arithmetic only —
  * nothing renders this. It is the reference the displayed figure is checked
  * against.

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Crown, Settings2, Bot, Plug, AlertTriangle, Check, FileText, MessageSquare, SlidersHorizontal, ChevronRight, DollarSign, CreditCard, Palette } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
-import { getPlanFeatures, AI_TELEGRAM_ASSISTANT_ENABLED, PLAN_DISPLAY_NAMES, PLAN_ORDER, formatPlanPrice } from '../utils/plan-features';
+import { getPlanFeatures, AI_TELEGRAM_ASSISTANT_ENABLED, PLAN_DISPLAY_NAMES, PLAN_ORDER, formatPlanPrice, isUnpricedTier } from '../utils/plan-features';
 import { hasPlatformOverride } from '../utils/tenant-scope';
 import SettingsAccordion from './settings/SettingsAccordion';
 import PaymentSection from './settings/PaymentSection';
@@ -41,6 +41,15 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   // a super admin.
   const platformOverride = hasPlatformOverride();
 
+  // 🔴 THE-212. A tier with no price has no subscription with any processor, so
+  // "Manage" and "Cancel Subscription" below are both inert for it: they open
+  // `/api/stripe/portal`, which has no customer id to open a portal against and
+  // answers "No Stripe subscription found. Please subscribe first." Offering a
+  // church a Cancel button for a subscription it does not have is the worse
+  // half of that. Asks the pricing table rather than naming the tier, the same
+  // rule `isPricedPlan` is written under. An UNRECOGNISED tier is not treated
+  // as free — see `isUnpricedTier` — so a legacy record keeps its controls.
+  const hasSubscription = currentPlan !== undefined && !isUnpricedTier(currentPlan);
   const currentPlanData = currentPlan ? PLANS_DISPLAY.find(p => p.id === currentPlan) : null;
   const currentFeatures = currentPlan ? getPlanFeatures(currentPlan) : null;
   // Compact, comma/dot-separated plan summary, e.g. "Unlimited courses · Blog · AI Chat".
@@ -280,7 +289,10 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
           </button>
         </div>
       ),
-      hidden: !currentPlan,
+      // 🔴 Hidden for a tier with no subscription as well as for a super admin:
+      // there is nothing to cancel, and the button's only outcome is the
+      // portal route's "please subscribe first".
+      hidden: !hasSubscription,
       danger: true,
     },
   ];
@@ -379,12 +391,20 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
             <p className="text-sm font-semibold text-strong">{currentPlanData?.name || 'Current'} plan</p>
             <p className="text-xs text-muted">{planSummary}</p>
           </div>
-          <button
-            onClick={handleManageSubscription}
-            className={`shrink-0 px-4 py-2 rounded-brand border border-line bg-surface-raised text-[13px] font-semibold text-strong hover:bg-surface-sunken transition-colors ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}
-          >
-            Manage
-          </button>
+          {/* Absent for a tier with no subscription — see `hasSubscription`.
+              No upgrade action is minted here in its place: this screen has no
+              route to the plan cards, and the two surfaces that DO (Billing and
+              the upgrade page) each offer one. Inventing a third navigation
+              here would be a new flow, not a fix. */}
+          {hasSubscription && (
+            <button
+              data-testid="settings-manage-action"
+              onClick={handleManageSubscription}
+              className={`shrink-0 px-4 py-2 rounded-brand border border-line bg-surface-raised text-[13px] font-semibold text-strong hover:bg-surface-sunken transition-colors ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}
+            >
+              Manage
+            </button>
+          )}
         </div>
       ) : (
         <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-4 flex items-center gap-4">
