@@ -154,7 +154,18 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
               color: BRAND,
             }}
           >
-            <Sparkles size={13} /> Payment received
+            {/* 🔴 THE-214. This screen is reached by ANY tenant still carrying
+                `setupCompleted: false`, and a Forever Free tenant has paid
+                nothing to get here. Read off the tenant's OWN plan, loaded just
+                above, and failing closed to the payment badge: `plan` is null
+                until that read resolves and falls back to 'plus' when it
+                fails, so a church that paid is never left unacknowledged.
+
+                Free tenants created from THE-214 onward choose their address at
+                signup and arrive with `setupCompleted: true`, so they never
+                reach this screen at all — this is for the ones provisioned
+                before that, who otherwise meet the same false claim here. */}
+            <Sparkles size={13} /> {plan === 'free' ? 'Account created' : 'Payment received'}
           </div>
           <h1 className="font-display" style={{ fontWeight: 300, fontSize: 32, letterSpacing: '-0.02em', color: 'var(--text-heading, #2D2519)' }}>
             Finish setting up your ministry

@@ -1,14 +1,17 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { auth, db } from '../firebase';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { Church, ArrowRight, Sparkles, Loader2, AlertCircle } from 'lucide-react';
+import { Church, ArrowRight, Sparkles, Loader2, AlertCircle, Globe, CheckCircle2 } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import { PLAN_DISPLAY_NAMES, PRICED_PLAN_ORDER } from '../utils/plan-features';
 import { SIGNUP_CHECKOUT_ENDPOINT, WALLET_FALLBACK_LINE, resolveSignupBillingPeriod } from '../utils/signup-checkout';
 import { TERM_BILLED_PHRASE } from '../utils/plan-features';
+import { isSubdomainAvailable } from '../utils/tenant.utils';
 
 const BRAND = 'var(--brand-color, #B8962E)';
+const SUCCESS = 'var(--brand-success, #6E8E52)';
+const DANGER = 'var(--brand-danger, #C4553B)';
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
 
 /* ── Shared brand chrome (cream editorial ground, Fraunces display) ─────────── */
@@ -49,6 +52,13 @@ interface ChurchOnboardingProps {
  *
  * The plan is chosen upstream (marketing site → ?plan=…&signup=church) and is
  * shown here read-only — there is intentionally NO in-app plan picker.
+ *
+ * 🔴 THE-214 — TWO LANES, ONE SCREEN. Everything above describes the PAID lane
+ * and still holds for it, unchanged. The Forever Free lane collects a SUBDOMAIN
+ * instead of a ministry name and provisions the tenant in place, because it has
+ * no payment to send anyone to and therefore no reason to defer the address to
+ * a post-payment screen. The two lanes are separated by `isFree` and share this
+ * screen's chrome; nothing in the paid lane is conditional on the free one.
  */
 const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
   const urlPlan = typeof window !== 'undefined'
@@ -78,17 +88,72 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
     typeof window !== 'undefined' ? window.location.search : '',
   );
 
+  /**
+   * 🔴 THE-214 — THE FREE LANE ASKS FOR AN ADDRESS, NOT A CHURCH NAME.
+   *
+   * Forever Free is sold to a single evangelist. There is no church, so "Name
+   * your ministry" asks for something that does not exist, and the address the
+   * evangelist actually cares about was then collected a whole screen later, in
+   * first-run setup, on the far side of a bounce through the member app. This
+   * lane collapses that: the ONE thing a free signup must decide is decided
+   * here, and `/api/tenants/provision-free` builds the tenant at it directly, so
+   * there is nothing left for a first-run screen to ask.
+   *
+   * ⚠️ The tenant still gets a `name` — the label chosen here, verbatim. It is
+   * NOT left blank: `tenant.name` drives the admin header, the white-label PWA
+   * manifest and every public page (calendar, form, campaign, post), and a blank
+   * one would show an empty heading on all of them. Using the address the user
+   * chose is the only value here that was chosen by them rather than invented.
+   *
+   * ⚠️ The paid lane below is untouched, deliberately and to the element: it
+   * still asks for a ministry name, still shows the term, and still ends at the
+   * processor's checkout. A church that pays sees exactly what it saw before.
+   */
+  const isFree = selectedPlan === 'free';
+
   const [ministryName, setMinistryName] = useState('');
+  const [subdomain, setSubdomain] = useState('');
+  const [subStatus, setSubStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [focus, setFocus] = useState(false);
 
-  const canSubmit = ministryName.trim().length >= 2;
+  /**
+   * Live availability, the same check and the same debounce `FirstRunSetup`
+   * runs — this screen has taken over that screen's job for the free tier, so
+   * it has to answer the same question at the same moment.
+   *
+   * ⚠️ A failed lookup reads as AVAILABLE, exactly as first-run treats it. The
+   * server settles the name for real (`generateUniqueSubdomain` re-checks and
+   * suffixes a collision rather than refusing), so a transient read error must
+   * not lock someone out of their own signup — the worst it can cost is a
+   * suffix on an address the check could not confirm.
+   */
+  useEffect(() => {
+    if (!isFree) return;
+    if (subdomain.length < 3) { setSubStatus('idle'); return; }
+    setSubStatus('checking');
+    const timer = setTimeout(async () => {
+      try {
+        setSubStatus((await isSubdomainAvailable(subdomain)) ? 'available' : 'taken');
+      } catch {
+        setSubStatus('available');
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [isFree, subdomain]);
+
+  const canSubmit = isFree
+    ? subdomain.length >= 3 && subStatus === 'available'
+    : ministryName.trim().length >= 2;
 
   const handleContinue = async () => {
     const user = auth.currentUser;
     if (!user) { setError('You must be logged in.'); return; }
-    if (!canSubmit) { setError('Ministry name is required.'); return; }
+    if (!canSubmit) {
+      setError(isFree ? 'Choose a web address to continue.' : 'Ministry name is required.');
+      return;
+    }
 
     setSubmitting(true);
     setError('');
@@ -120,12 +185,42 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
       // deliberately NO client-side release — a church that has paid but
       // whose webhook is still in flight must never be shown a re-checkout
       // button, which is a double charge.
-      const marker = {
-        signupInProgress: true,
-        signupPlan: selectedPlan,
-        signupBilling: selectedBilling,
-        signupMinistryName: ministryName.trim(),
-      };
+      //
+      // 🔴 THE-214, THE FREE HALF OF THE SAME MARKER. It is written for a free
+      // signup too, and must be: it is the recovery thread above, and a free
+      // signup can still be interrupted between this write and the tenant
+      // landing (a dropped request, a closed tab). What differs is what rides
+      // on it.
+      //
+      //   `signupBilling` is OMITTED. Free has no billing term — nothing about
+      //     this signup is ever billed — and stamping one would put a term on a
+      //     tier that has no price to attach it to. `resolveSignupBillingPeriod`
+      //     fails closed to 'monthly', so writing it unconditionally is not a
+      //     harmless default: it is the word "monthly" recorded against an
+      //     account that pays nothing, and `OnboardingGate` reads this marker
+      //     back to restart a checkout.
+      //   `signupSubdomain` is ADDED, so a restart re-provisions at the SAME
+      //     address the evangelist chose rather than silently landing them on a
+      //     different one — the free equivalent of the term travelling with the
+      //     plan on the paid lane.
+      //
+      // ⚠️ Still no client-side release of `signupInProgress` on either lane.
+      // On the free lane the server clears it inside `provisionFreeTenant`, in
+      // the same request that creates the tenant, which is why no webhook is
+      // needed and why a free signup is never left flagged.
+      const marker = isFree
+        ? {
+            signupInProgress: true,
+            signupPlan: selectedPlan,
+            signupMinistryName: subdomain,
+            signupSubdomain: subdomain,
+          }
+        : {
+            signupInProgress: true,
+            signupPlan: selectedPlan,
+            signupBilling: selectedBilling,
+            signupMinistryName: ministryName.trim(),
+          };
       const userRef = doc(db, 'users', user.uid);
       const snap = await getDoc(userRef);
       if (snap.exists()) {
@@ -146,7 +241,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
         await setDoc(userRef, {
           uid: user.uid,
           email: user.email,
-          displayName: user.displayName || ministryName.trim(),
+          displayName: user.displayName || (isFree ? subdomain : ministryName.trim()),
           role: 'user',
           createdAt: new Date().toISOString(),
           ...marker,
@@ -187,22 +282,37 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
       // `referrerId` is not sent either: an affiliate commission is 15% of what
       // a church pays, and this church pays nothing. The stored referrer is
       // left untouched in localStorage, so it still attaches if they upgrade.
-      if (selectedPlan === 'free') {
+      if (isFree) {
         const freeResp = await fetch('/api/tenants/provision-free', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ministryName: ministryName.trim() }),
+          // The address IS the name: one field was collected, and the tenant
+          // needs both. `subdomain` is what the server builds the address from;
+          // `ministryName` is what it stores as the tenant's display name, so
+          // no surface that reads `tenant.name` is left with a blank.
+          body: JSON.stringify({ ministryName: subdomain, subdomain }),
         });
         const freeData = await freeResp.json();
-        if (freeResp.ok && freeData.tenantId) {
-          // Straight to the app on this origin. OnboardingGate reads the
-          // now-released marker and the new tenant's `setupCompleted: false`,
-          // and renders first-run setup.
-          window.location.href = '/';
-        } else {
+        if (!freeResp.ok || !freeData.tenantId) {
           setError(freeData.error || 'Could not create your ministry. Please try again.');
           setSubmitting(false);
         }
+        // 🔴 THE-214: NO `window.location.href = '/'` ON SUCCESS, and that
+        // removal is the second defect this ticket names.
+        //
+        // That line was the trip through the member app the founder called
+        // unclean. Landing on "/" re-enters the SPA with the gate still
+        // resolving, so `OnboardingGate` renders `children` — the whole
+        // signed-in member app — for as long as the user-doc read takes, and
+        // only then swaps it for a funnel screen. Nothing was accomplished by
+        // the round trip: this component is already inside the gate.
+        //
+        // On success there is nothing to navigate to at all. The marker write
+        // above already unmounted this screen (the gate paints "Creating your
+        // ministry…" while `signupInProgress` is set and no tenant exists yet),
+        // and the moment provisioning lands the gate sees the tenant id arrive
+        // on the same listener and paints the account-created confirmation
+        // itself. The gate owns every screen in this funnel; this one included.
         return;
       }
 
@@ -251,8 +361,16 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
           }}
         >
           <Sparkles size={14} /> {PLAN_DISPLAY_NAMES[selectedPlan]} plan
-          <span aria-hidden style={{ opacity: 0.55 }}>·</span>
-          {TERM_BILLED_PHRASE[selectedBilling]}
+          {/* THE-214: the term is shown because the church is about to be
+              charged for it. Free is never charged, so there is no term to
+              state — and `resolveSignupBillingPeriod` would have printed
+              "billed monthly" beside a plan that bills nothing. */}
+          {!isFree && (
+            <>
+              <span aria-hidden style={{ opacity: 0.55 }}>·</span>
+              {TERM_BILLED_PHRASE[selectedBilling]}
+            </>
+          )}
         </span>
       </div>
 
@@ -267,16 +385,69 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
 
         <div className="mb-7 flex justify-center">
           <div className="flex h-[62px] w-[62px] items-center justify-center rounded-brand-lg" style={{ background: 'color-mix(in srgb, var(--brand-color, #C9963A) 13%, white)', color: BRAND }}>
-            <Church size={30} />
+            {isFree ? <Globe size={30} /> : <Church size={30} />}
           </div>
         </div>
 
         <div className="mb-1.5 text-center text-xs font-semibold uppercase" style={{ letterSpacing: '0.19em', color: BRAND }}>Almost there</div>
-        <h1 className="text-center font-display" style={{ fontWeight: 300, fontSize: 28, letterSpacing: '-0.02em', color: 'var(--text-heading, #2D2519)' }}>Name your ministry</h1>
+        <h1 className="text-center font-display" style={{ fontWeight: 300, fontSize: 28, letterSpacing: '-0.02em', color: 'var(--text-heading, #2D2519)' }}>
+          {isFree ? 'Choose your web address' : 'Name your ministry'}
+        </h1>
         <p className="mx-auto mt-2.5 max-w-[38ch] text-center text-[13px] leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>
-          You&apos;ll customise your subdomain, logo and colours right after payment.
+          {isFree
+            ? 'This is where your app will live. It is the only thing we need \u2014 you can change everything else later in Settings.'
+            : 'You\u2019ll customise your subdomain, logo and colours right after payment.'}
         </p>
 
+        {isFree ? (
+          /* THE-214 — the free lane's one field. Same sanitising as first-run
+             setup (lowercase, [a-z0-9-] only) so the string typed here is the
+             string that becomes the address, and the same live availability
+             line, because this screen now answers the question that screen
+             used to. */
+          <div className="mt-7">
+            <label className="mb-1.5 block text-xs font-semibold" style={{ color: 'var(--text-heading, #2D2519)' }}>
+              Your web address
+            </label>
+            <div className="flex items-stretch">
+              <input
+                type="text"
+                value={subdomain}
+                onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                onKeyDown={(e) => { if (e.key === 'Enter' && canSubmit && !submitting) handleContinue(); }}
+                onFocus={() => setFocus(true)}
+                onBlur={() => setFocus(false)}
+                className="min-w-0 flex-1 rounded-l-lg px-4 font-mono text-sm outline-none transition-colors"
+                style={{
+                  height: 48,
+                  border: `1px solid ${subStatus === 'taken' ? DANGER : subStatus === 'available' ? SUCCESS : (focus ? BRAND : 'var(--stone-200, #E8E2D9)')}`,
+                  borderRight: 'none',
+                  color: 'var(--text-heading, #2D2519)',
+                  background: 'var(--surface-raised, white)',
+                }}
+                placeholder="yourname"
+                autoFocus
+              />
+              <span
+                className="flex items-center whitespace-nowrap rounded-r-lg px-4 text-sm"
+                style={{ border: '1px solid var(--stone-300, #D6CCBE)', background: 'var(--surface-sunken, #F3EEE7)', color: 'var(--text-body, #4A4038)' }}
+              >
+                .theharvest.app
+              </span>
+            </div>
+            <div className="mt-2 h-5 text-xs">
+              {subStatus === 'checking' && (
+                <span className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted, #8B7355)' }}><Loader2 size={12} className="animate-spin" /> Checking availability…</span>
+              )}
+              {subStatus === 'available' && (
+                <span className="inline-flex items-center gap-1.5" style={{ color: SUCCESS }}><CheckCircle2 size={13} /> {subdomain}.theharvest.app is available</span>
+              )}
+              {subStatus === 'taken' && (
+                <span className="inline-flex items-center gap-1.5" style={{ color: DANGER }}><AlertCircle size={13} /> That address is taken — try another.</span>
+              )}
+            </div>
+          </div>
+        ) : (
         <div className="mt-7">
           <label className="mb-1.5 block text-xs font-semibold" style={{ color: 'var(--text-heading, #2D2519)' }}>
             Ministry name
@@ -300,6 +471,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
             />
           </div>
         </div>
+        )}
 
         {/* Action */}
         <div className="mt-7 flex justify-end">
@@ -315,16 +487,22 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
             }}
           >
             {submitting ? (
-              <><Loader2 size={16} className="animate-spin" /> Redirecting to payment…</>
+              <><Loader2 size={16} className="animate-spin" /> {isFree ? 'Creating your account…' : 'Redirecting to payment…'}</>
             ) : (
-              <>Continue to payment <ArrowRight size={16} /></>
+              <>{isFree ? 'Create my account' : 'Continue to payment'} <ArrowRight size={16} /></>
             )}
           </button>
         </div>
 
-        <p className="mt-4 text-center text-xs leading-relaxed" style={{ color: 'var(--text-muted, #8B7355)' }}>
-          {WALLET_FALLBACK_LINE}
-        </p>
+        {/* The wallet fallback is card advice, and the free lane takes no card.
+            Printing it would put the word "payment" on the one screen this
+            ticket exists to keep it off — the same reasoning OnboardingGate
+            already applies to its own free branch. */}
+        {!isFree && (
+          <p className="mt-4 text-center text-xs leading-relaxed" style={{ color: 'var(--text-muted, #8B7355)' }}>
+            {WALLET_FALLBACK_LINE}
+          </p>
+        )}
       </div>
     </MinShell>
   );
