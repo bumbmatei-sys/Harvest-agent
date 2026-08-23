@@ -54,16 +54,30 @@ export const ALLOWED_EVENT_NAMES: readonly string[] = Object.freeze([
 ]);
 
 /**
- * Property keys Harvest itself attaches to an event. Two, both derived from the
- * URL shape and the signed-in account kind — neither reads a document.
+ * Property keys Harvest itself attaches to an event. Three, all derived from
+ * the URL shape and the signed-in account kind — none reads a document.
  *
- * `app_surface` is the route family ('admin' | 'member'), never the route: an
- * id-bearing path like `/admin/docs/:id` is reduced to 'admin' before it is
- * ever a property.
+ * `app_surface` is the route family ('admin' | 'member' | 'public'), never the
+ * route: an id-bearing path like `/admin/docs/:id` is reduced to 'admin' before
+ * it is ever a property.
+ *
+ * ⚠️ `route` is THE-206's one addition to this list, and it is an addition made
+ * the way this file intends — by editing it. It carries the normalised route
+ * PATTERN and nothing else: `/form/[formId]`, never `/form/aB3xQ…`. The
+ * enumeration that produces it is `routes.ts`, which matches a path against a
+ * fixed list and answers `/[unrouted]` when it recognises nothing, so a live
+ * path segment cannot arrive through it.
+ *
+ * 🔴 It exists because `app_surface` alone cannot answer the question the
+ * public routes were added for. 'public' is one bucket holding a blog, a form,
+ * an event page and a check-in screen; "how many people opened a form?" needs
+ * the route. Pattern, not path — the count is identical either way, because one
+ * pattern is exactly the set of pages it matches.
  */
 export const ALLOWED_EVENT_PROPERTY_KEYS: readonly string[] = Object.freeze([
   'app_surface',
   'is_platform_admin',
+  'route',
 ]);
 
 /**
@@ -101,8 +115,8 @@ export const TENANT_GROUP_TYPE = 'tenant';
  *   ContactActivity  src/hooks/queries/useCRMQueries.ts   description, amount
  *
  * Over-redaction is the intended failure mode, exactly as in `sentry-scrub.ts`:
- * the vocabulary above is two keys wide, so nothing legitimate can collide with
- * these. A generic-looking label (`text`, `state`, `description`) costs us
+ * the vocabulary above is three keys wide, so nothing legitimate can collide
+ * with these. A generic-looking label (`text`, `state`, `description`) costs us
  * nothing and closes a real field.
  */
 

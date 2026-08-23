@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { redirect } from 'next/navigation';
 import { AI_TELEGRAM_ASSISTANT_ENABLED } from '../../utils/plan-features';
+import PublicRouteAnalytics from '../../components/PublicRouteAnalytics';
 
 type PageState = 'loading' | 'signing-in' | 'connected' | 'not-connected' | 'check-email' | 'expired' | 'error';
 
@@ -143,6 +144,7 @@ export default function AiAssistantPage() {
 
   return (
     <div className="min-h-screen bg-surface-tint flex items-center justify-center p-4">
+      <PublicRouteAnalytics route="/ai-assistant" />
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-4">

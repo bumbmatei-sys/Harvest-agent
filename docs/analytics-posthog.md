@@ -169,12 +169,87 @@ before paying (THE-85). `PREAUTH_PATHS` is imported from `preauth-theme.ts`, not
 restated, so the list cannot drift; neither it nor the pre-paint script was
 touched.
 
-**Scope, stated plainly**: the bridge covers the SPA shell only. The dedicated
-Next routes — `/blog`, `/event/:id`, `/form/:slug`, `/campaign`, `/pledge`,
-`/post`, `/checkin`, `/courses`, `/calendar` — are separate entry points and are
-**not** instrumented by this PR. That is worth knowing before reading the
-dashboard as whole-product traffic. It is also convenient: `/form/:slug` is a
-public contact form.
+**Scope, stated plainly (THE-36)**: the bridge covered the SPA shell only. The
+dedicated Next routes were separate entry points and were **not** instrumented.
+
+### 5b. THE-206 — the public routes, and the whole route map
+
+⚠️ **THE-206 closed that gap.** The ten dedicated Next routes each mount
+`PublicRouteAnalytics` (`src/components/PublicRouteAnalytics.tsx`), a
+side-effect client component that fires one `$pageview` on mount. There is no
+router to subscribe to — a Next page mounting IS the navigation.
+
+🔴 **The enumeration lives in `src/lib/analytics/routes.ts`**, and a test walks
+`src/app` and fails if a `page.tsx` exists that the registry does not name. That
+is what stops the next route repeating this bug.
+
+| Route | Entry | Surface | Before | After |
+|---|---|---|---|---|
+| `/` | SPA | member | ✅ | ✅ |
+| `/admin` | SPA | admin | ✅ | ✅ |
+| `/admin/[section]` | SPA | admin | ✅ | ✅ |
+| `/admin/[section]/[itemId]` | SPA | admin | ✅ | ✅ |
+| `/ai-assistant` | Next page | public | ❌ | ✅ |
+| `/blog/[id]` | Next page | public | ❌ | ✅ |
+| `/calendar` | Next page | public | ❌ | ✅ |
+| `/campaign/[campaignId]` | Next page | public | ❌ | ✅ |
+| `/checkin/[sessionId]` | Next page | public | ❌ | ✅ |
+| `/courses/[id]` | Next page | public | ❌ | ✅ |
+| `/event/[eventId]` | Next page | public | ❌ | ✅ |
+| `/form/[formId]` | Next page | public | ❌ | ✅ |
+| `/pledge/[campaignId]` | Next page | public | ❌ | ✅ |
+| `/post/[postId]` | Next page | public | ❌ | ✅ |
+| `/auth`, `/onboarding`, `/church-onboarding` | SPA | — | ❌ | ❌ **by design** |
+| `/api/**` (117), `/calendar/ical`, `/manifest.webmanifest` | handler | — | n/a | n/a |
+
+**What a path sends.** 🔴 The route PATTERN, never the resolved path:
+`/form/[formId]`, not `/form/aB3xQ7nJ5kL2mZ8w`. Counts are identical — one
+pattern is exactly the set of pages it matches — and no Firestore id, blog id or
+check-in session id reaches PostHog. Normalisation is applied twice, because
+there are two ways a path gets out:
+
+* the `route` property, built from the literal the page passes; and
+* `$current_url`, `$referrer` and `$pathname`, which posthog-js builds from
+  `location.href` itself — normalised in `before_send` by extending the existing
+  query-string strip. Without this half, a `route` property would have been sent
+  *beside* the live path rather than instead of it.
+
+An unrecognised path becomes `/[unrouted]` rather than being passed through.
+Over-redaction is the intended failure mode, as everywhere else in this module.
+
+⚠️ **An external referrer keeps its host and loses its path** —
+`https://mail.example/read/abc` → `https://mail.example/[unrouted]`. This cannot
+tell our hosts from anyone else's (churches provision custom domains), and
+posthog-js records the host separately as `$referring_domain`, so attribution
+still works.
+
+**What an anonymous visitor is.** `person_profiles: 'identified_only'` means an
+unauthenticated visitor gets a random device id in first-party storage and **no
+stored person profile** — posthog-js marks the event
+`$process_person_profile: false`. Public routes never call `identify()`, so:
+
+* no name, no email, no uid, no tenant group;
+* no `is_platform_admin` property either — nobody was identified, so the honest
+  answer is "unknown", and an absent property says that where `false` would lie.
+  Select public traffic with `app_surface = 'public'`; exclude platform staff
+  with `is_platform_admin is not true`.
+
+⚠️ A visitor who signed in earlier in the same browser still carries their
+persisted `distinct_id`, so their blog visit is attributed to them. That is the
+same person, and it is correct.
+
+🔴 **Nothing was relaxed to get here.** `disable_session_recording` and
+`disable_external_dependency_loading` are both still `true`; autocapture,
+heatmaps, dead clicks, rageclicks and `$copy_autocapture` are all still off; the
+vocabulary is still closed. It gained exactly one property key, `route`, by
+editing `events.ts` — which is the mechanism that list exists to force.
+
+**Weight on the public pages.** `client.ts` now imports `identity.ts`
+**dynamically**, inside `identifyUser`. `identity.ts` reaches Firestore through
+`tenant-scope.ts`, and `/blog/[id]` ships no Firebase at all — a static import
+would have put the whole client SDK on a church's blog for a function those
+pages never call. `resolveAppSurface` moved to `routes.ts` for the same reason:
+it is the one thing `client.ts` needed from that module on a path with no user.
 
 ### 6. Capacitor
 
@@ -202,6 +277,31 @@ this repo, and `NEXT_PUBLIC_POSTHOG_KEY` is unset, so there is nothing to
 initialise yet. The reasoning above is from the config and the SDK's behaviour,
 not from a run.
 
+**THE-206 — does the native shell need different handling?** ⚠️ **No, and the
+reason is verifiable from the config rather than assumed.**
+
+`server.url` is `https://theharvest.app`, so the webview loads the SAME Next.js
+application the browser does. There is no separate native router, no bundled
+`file://` build in play, and no second code path: the SPA routes go through
+`App.tsx`'s `BrowserRouter` and `AnalyticsBridge`, and the ten public routes are
+server-rendered pages that mount `PublicRouteAnalytics`. **Fixing the web fixed
+both** — the native shell has no route-change mechanism of its own to miss.
+
+🔴 **Still not device-verified, and this PR does not claim otherwise.** What is
+established: one code path, one router, one origin, and the same `$pageview`
+call sites. What is NOT established, because it needs a device and a project
+key: that the webview's persistence behaves as a browser's does in practice,
+and that no native-shell navigation bypasses React Router. The `webDir: 'out'`
+setting is a static-export fallback that `server.url` overrides at runtime; if
+`server.url` were ever removed, the origin would become `capacitor://localhost`
+and cookie persistence would silently fail — that is the failure mode to test
+for first on a device.
+
+⚠️ One asymmetry worth knowing: `server.url` is the APEX host, so a native
+session starts on `theharvest.app`, not on a church's subdomain. Tenant-scoped
+public pages (`nations.theharvest.app/form/…`) are reached in the native shell
+only if the webview navigates to that host.
+
 ### 7. Vercel Analytics — keep both, for now
 
 `@vercel/analytics/next` is imported at `src/app/layout.tsx:4` and rendered at
@@ -210,16 +310,17 @@ but the founder should decide.
 
 They do not measure the same thing:
 
-| | Vercel Analytics | PostHog (as configured here) |
+| | Vercel Analytics | PostHog (after THE-206) |
 |---|---|---|
-| Coverage | every Next route, including `/blog`, `/form/:slug`, `/event/:id` | the SPA shell only, pre-auth excluded |
-| Unit | anonymous page views and Web Vitals | identified people and churches |
+| Coverage | every Next route | every route except the pre-auth funnel |
+| Unit | anonymous page views and Web Vitals | identified people and churches, plus anonymous public traffic |
 | Question it answers | "is the site fast, and how much traffic?" | "which churches use the CRM, and how often?" |
 
-The overlap is real for `/` and `/admin/*`, and the counts **will** disagree —
-PostHog is not counting the pre-auth funnel or the public routes, so its
-pageview number will be structurally lower. That is a difference in definition,
-not a bug in either.
+⚠️ **THE-206 changed this row.** The overlap is now nearly total: PostHog counts
+the public routes too. The counts will still disagree, but for one remaining
+reason rather than two — PostHog does not count `/auth`, `/onboarding` or
+`/church-onboarding`, deliberately. That is a difference in definition, not a
+bug in either.
 
 The recommendation is to keep both until PostHog has a month of data, then drop
 Vercel Analytics if its Web Vitals are not being read — `capture_performance` is
@@ -258,7 +359,12 @@ build a consent banner.
 
 ## The privacy policy gap
 
-🔴 **The published privacy policy makes no mention of analytics.**
+⚠️ **This section was written for THE-36 and its opening claim is now out of
+date.** The policy HAS since been given an analytics disclosure — see
+"THE-206 makes one sentence of it false" below, which is the live item.
+
+🔴 **(THE-36, as written then) The published privacy policy makes no mention of
+analytics.**
 
 The canonical policies live on `theharvest.site` and the app links to them
 (`src/lib/legal-links.ts` — deliberately, so there is one source and it is not
@@ -278,6 +384,42 @@ It needs a paragraph on the site naming PostHog, the region, what is collected
 no message content) and the retention period. That is a policy edit in a
 different repo, not a code change here, which is why it is reported rather than
 fixed.
+
+### 🔴 THE-206 makes one sentence of it false
+
+That paragraph was since written. It now lives in
+`bumbmatei-sys/harvest-presentation-site`, at `src/content/legal.ts`, in the
+section *"4. Where the data lives, and who else touches it"*. **Its last
+sentence is made false by this PR, and the founder has already agreed to change
+it.** Verbatim, so it can be found and corrected:
+
+> What is sent instead is a short, fixed list: that a screen was opened, whether
+> it was an admin or a member screen, the internal account id of the person
+> signed in, and the church that account belongs to. No names, no email
+> addresses, no giving, no message or prayer content. **Screens outside the
+> signed-in application — this marketing site, sign-in and onboarding, and
+> public blog, form and event pages — send nothing at all.**
+
+Three corrections are needed, not one:
+
+1. 🔴 **The bolded sentence is now false.** Public blog, form and event pages —
+   and seven more like them — now send a pageview. Only the marketing site
+   (a different application) and sign-in/onboarding still send nothing.
+2. ⚠️ **"whether it was an admin or a member screen"** is now three values, not
+   two: `admin`, `member` or `public`.
+3. ⚠️ **"the internal account id of the person signed in"** no longer describes
+   every event. A public-page visitor is not signed in; what is recorded is a
+   random device id and **no stored person profile**. The policy's own earlier
+   sentence — *"each event is recorded against the internal account id of the
+   person signed in, and against the church their account belongs to"* (section
+   3) — needs the same qualification.
+
+The route pattern itself (`/form/[formId]`) is worth naming in the replacement
+text as what is stored, since it is deliberately not the visited URL.
+
+⚠️ `src/content/legal.test.ts` in that repo may pin this prose; expect it to
+need updating alongside. The policy's `LEGAL_UPDATED` constant reads
+`'2026-08-10'` and should move with the edit.
 
 ## What the founder must do
 

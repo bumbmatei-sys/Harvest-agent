@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { getTenantFromHost } from '@/lib/server-tenant';
 import PublicCampaign from '@/components/PublicCampaign';
+import PublicRouteAnalytics from '@/components/PublicRouteAnalytics';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,12 +97,15 @@ export default async function PublicCampaignPage({
 
   const branding = (tenant as any).config || {};
   return (
-    <PublicCampaign
-      tenantId={tenant.id}
-      tenantName={tenant.name}
-      logo={branding.logo || null}
-      primaryColor={isValidHex(branding.primaryColor) ? branding.primaryColor : '#B8962E'}
-      campaign={campaign}
-    />
+    <>
+      <PublicRouteAnalytics route="/campaign/[campaignId]" />
+      <PublicCampaign
+        tenantId={tenant.id}
+        tenantName={tenant.name}
+        logo={branding.logo || null}
+        primaryColor={isValidHex(branding.primaryColor) ? branding.primaryColor : '#B8962E'}
+        campaign={campaign}
+      />
+    </>
   );
 }

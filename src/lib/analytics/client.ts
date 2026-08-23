@@ -10,6 +10,23 @@
  * phone, for a feature that is off until the founder creates the project —
  * would be paid by every member of every church for nothing.
  *
+ * ─── 🔴 Why `identity.ts` is imported DYNAMICALLY too (THE-206) ──────────────
+ *
+ * `identity.ts` reaches Firebase: it calls `getTenantScope()`, which imports
+ * `../firebase` and `firebase/firestore`. THE-36 could import it statically
+ * because the only caller was `AnalyticsBridge`, inside a SPA that already
+ * ships Firebase.
+ *
+ * THE-206 makes this module reachable from the PUBLIC Next routes, and
+ * `/blog/[id]` ships 325 B of page JS with no Firestore SDK on it at all — it
+ * is a church's blog, the most performance-sensitive page in the product. A
+ * static import here would have put the entire Firebase client into it for a
+ * function those pages never call, because they never identify anybody.
+ *
+ * So the import moved inside `identifyUser`, which is the only thing that needs
+ * it, and which already awaits a chunk load on the line above. The type import
+ * is erased at compile time and costs nothing.
+ *
  * ─── Degrading silently, on purpose ──────────────────────────────────────────
  *
  * With no `NEXT_PUBLIC_POSTHOG_KEY`, every function here returns without
@@ -29,11 +46,14 @@ import {
   TENANT_GROUP_TYPE,
   type AnalyticsEventName,
 } from './events';
+// 🔴 TYPE-ONLY, and it must stay that way — see the header. The runtime import
+// lives inside `identifyUser`.
+import type { AnalyticsUser } from './identity';
 import {
-  resolveAnalyticsIdentity,
+  normalizeAnalyticsPath,
   resolveAppSurface,
-  type AnalyticsUser,
-} from './identity';
+  type AnalyticsRoutePattern,
+} from './routes';
 
 /**
  * The in-flight (or settled) load. Held as a promise so a capture that arrives
@@ -120,14 +140,56 @@ export async function captureEvent(
   client?.capture(event, allowedProperties(properties));
 }
 
-/** Capture a pageview for an in-app (never pre-auth) route. */
+/**
+ * Capture a pageview for an in-app (never pre-auth) route.
+ *
+ * ⚠️ THE-206 added `route`. `app_surface` is the route FAMILY ('admin' |
+ * 'member' | 'public') and always was; on its own it cannot answer "how many
+ * people opened a form?", which is the question the public routes exist to
+ * answer. `route` is the normalised PATTERN — `/form/[formId]`, never
+ * `/form/aB3xQ…` — resolved by the enumeration in `routes.ts`.
+ */
 export async function capturePageview(
   pathname: string,
   isPlatformAdmin: boolean,
 ): Promise<void> {
   await captureEvent(ANALYTICS_EVENTS.PAGEVIEW, {
+    route: normalizeAnalyticsPath(pathname),
     app_surface: resolveAppSurface(pathname),
     is_platform_admin: isPlatformAdmin,
+  });
+}
+
+/**
+ * THE-206 — capture a pageview for a PUBLIC route: one of the ten dedicated
+ * Next pages that never render `App.tsx`, seen by a visitor with no account.
+ *
+ * Takes the pattern itself rather than a pathname. The caller is the page whose
+ * filename that pattern is, so it knows its own route exactly and there is
+ * nothing to match; `AnalyticsRoutePattern` makes an unregistered one a compile
+ * error.
+ *
+ * 🔴 Three differences from `capturePageview`, all deliberate:
+ *
+ *   • **No identify.** These visitors are anonymous, and this path must not
+ *     reach `identity.ts` — that is what keeps Firebase out of the blog. A
+ *     visitor who signed in earlier in the same browser still carries their
+ *     persisted `distinct_id`; that is the same person, and correct.
+ *
+ *   • **No `is_platform_admin`.** Nobody was identified, so the honest answer
+ *     is "unknown", and an absent property says that where `false` would lie.
+ *     Exclude platform staff from a product metric with `is_platform_admin is
+ *     not true`, and select these pages with `app_surface = 'public'`.
+ *
+ *   • **No stored person profile.** `person_profiles: 'identified_only'` means
+ *     an anonymous visitor is a count, not a record — see `config.ts`.
+ */
+export async function capturePublicPageview(
+  route: AnalyticsRoutePattern,
+): Promise<void> {
+  await captureEvent(ANALYTICS_EVENTS.PAGEVIEW, {
+    route: normalizeAnalyticsPath(route),
+    app_surface: resolveAppSurface(route),
   });
 }
 
@@ -145,6 +207,11 @@ export async function identifyUser(
   // read, not a cache fill, nothing.
   const client = await initAnalytics();
   if (!client) return null;
+
+  // 🔴 Loaded here, not at module scope. `identity.ts` pulls in Firestore
+  // through `tenant-scope.ts`, and the public routes that now import this
+  // module must never download it — see the header.
+  const { resolveAnalyticsIdentity } = await import('./identity');
 
   const identity = await resolveAnalyticsIdentity(user);
   if (!identity) return null;
