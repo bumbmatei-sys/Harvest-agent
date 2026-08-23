@@ -60,8 +60,31 @@ export async function provisionFreeTenant(params: {
   userId: string;
   ministryName: string;
   userEmail: string | null;
+  /**
+   * 🔴 THE-214 — the address the evangelist CHOSE, when they chose one.
+   *
+   * A free signup now picks its subdomain on the signup screen itself rather
+   * than in a post-payment first-run step it has no payment to earn. When that
+   * happened this carries the choice, and two things follow from it:
+   *
+   *  - it becomes the BASE for `generateUniqueSubdomain` rather than the
+   *    ministry name. Deliberately the base and not the final id: that helper
+   *    re-checks the namespace server-side and suffixes a collision instead of
+   *    refusing. A refusal here would leave `signupInProgress: true` with no
+   *    tenant behind it, which is the stuck free account this whole path is
+   *    built to make impossible. Losing the exact string costs a suffix; losing
+   *    the tenant costs the account.
+   *  - `setupCompleted` lands TRUE, because first-run setup exists to ask for a
+   *    subdomain and it has already been answered. Leaving it false would show
+   *    the evangelist the very screen this moved off their path.
+   *
+   * Absent — the pre-THE-214 shape, still reachable from any caller that has
+   * only a name — everything behaves exactly as it did: the id is generated
+   * from the ministry name and `setupCompleted` is false, so first-run runs.
+   */
+  requestedSubdomain?: string;
 }): Promise<FreeProvisioningOutcome> {
-  const { userId, ministryName, userEmail } = params;
+  const { userId, ministryName, userEmail, requestedSubdomain } = params;
 
   if (!userId) {
     throw new FreeProvisioningError('missing-user', 'No user id: a tenant cannot be provisioned without an owner.');
@@ -84,7 +107,8 @@ export async function provisionFreeTenant(params: {
     return { outcome: 'already-provisioned', tenantId: existingTenantId as string };
   }
 
-  const newTenantId = await generateUniqueSubdomain(name);
+  const chosenAddress = (requestedSubdomain || '').trim();
+  const newTenantId = await generateUniqueSubdomain(chosenAddress || name);
   const now = new Date().toISOString();
 
   // ONE batch: both docs land, or neither does. A tenant doc without its
@@ -99,7 +123,10 @@ export async function provisionFreeTenant(params: {
     config: {},
     ownerId: userId,
     createdBy: userId,
-    setupCompleted: false, // gates the first-run "Finish setup" screen
+    // Gates the first-run "Finish setup" screen — whose only question for a
+    // free tenant is the subdomain. THE-214: when that was already answered at
+    // signup there is nothing left to ask, so the screen is not owed.
+    setupCompleted: chosenAddress !== '',
     createdAt: now,
     updatedAt: now,
   });

@@ -463,6 +463,37 @@ describe('each funnel screen is constrained at desktop widths', () => {
         'not this paragraph — this file keeps its measurements at all five viewports ' +
         'and its rendering hash at every mobile viewport, all still passing unedited.',
     },
+    {
+      file: 'ChurchOnboarding.tsx',
+      ticket: 'THE-214',
+      why:
+        'A THIRD entry for this file, for the reason THE-203\'s entry states: an ' +
+        'exemption only asserts that a file DIFFERS, so a later edit riding in on an ' +
+        'existing entry would stop the list describing why. THE-214 added the Forever ' +
+        'Free lane — when the chosen plan is free the screen asks for a SUBDOMAIN ' +
+        'instead of a church name (there is no church; it is a single evangelist), ' +
+        'omits the billing term from the plan badge and the wallet-fallback line, and ' +
+        'provisions in place instead of bouncing through the member app. Every one of ' +
+        'those is behind `isFree`, which is false for the plan this batch measured, so ' +
+        'the PAID tree is unchanged element for element — which is what the pins below ' +
+        'actually check: this file keeps its 452px cap, its measurements at all five ' +
+        'viewports and its rendering hash at every mobile viewport, all unedited.',
+    },
+    {
+      file: 'FirstRunSetup.tsx',
+      ticket: 'THE-214',
+      why:
+        'The header badge said "Payment received" to every tenant reaching this screen, ' +
+        'including a Forever Free one that paid nothing — the reported bug, on a second ' +
+        'surface. It now reads the tenant\'s own plan (already loaded by this component ' +
+        'for its feature gating) and says "Account created" for free, failing closed to ' +
+        'the payment badge while that read is pending or has failed, so a church that ' +
+        'paid is never left unacknowledged. A text swap inside an existing element: no ' +
+        'element, class or inline style was added, removed or reordered, and the plan ' +
+        'this batch measured is not free, so the rendered tree is identical. As with ' +
+        'the entries above, the proof is the pins — measurements at all five viewports ' +
+        'and the rendering hash at every mobile viewport, still passing unedited.',
+    },
   ];
 
   const EXEMPT_FILES = EDITED_SINCE_MEASUREMENT.map((e) => e.file);
@@ -484,6 +515,8 @@ describe('each funnel screen is constrained at desktop widths', () => {
       'THE-195 ChurchOnboarding.tsx',
       'THE-201 AuthPage.tsx',
       'THE-203 ChurchOnboarding.tsx',
+      'THE-214 ChurchOnboarding.tsx',
+      'THE-214 FirstRunSetup.tsx',
     ]);
 
     for (const { file, why } of EDITED_SINCE_MEASUREMENT) {

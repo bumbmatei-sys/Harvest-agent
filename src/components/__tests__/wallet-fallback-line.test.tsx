@@ -64,7 +64,13 @@ vi.mock('../../utils/super-admins', () => ({
 vi.mock('../../utils/tenant.utils', () => ({ checkRosterAdmin: vi.fn(async () => false) }));
 vi.mock('../../lib/theme-runtime', () => ({ useForcedLightTheme: () => {} }));
 vi.mock('../FirstRunSetup', () => ({ default: () => null }));
-vi.mock('../WorkspaceHandoff', () => ({ default: () => null }));
+// The COMPONENT is stubbed (these suites are about the gate, not the handoff
+// screen); its module constants are re-exported for real rather than restated,
+// so the gate under test compares against the same values production does.
+vi.mock('../WorkspaceHandoff', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../WorkspaceHandoff')>()),
+  default: () => null,
+}));
 
 let container: HTMLDivElement;
 let root: Root | null = null;

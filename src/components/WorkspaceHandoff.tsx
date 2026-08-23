@@ -38,6 +38,36 @@ const POLL_INTERVAL_MS = 2000;
  */
 const STALLED_AFTER_MS = 180000;
 
+/**
+ * WHAT THIS SCREEN IS CONFIRMING. (THE-214)
+ *
+ * 🔴 THE DEFECT THIS EXISTS TO CLOSE. Until now the screen had exactly one
+ * thing to say — "Your payment went through." — and it was reached from TWO
+ * places with different reasons behind them. `OnboardingGate` renders it once
+ * as the pre-hop payment confirmation (which really is keyed off a payment: see
+ * `readPendingPaymentConfirmation`, which refuses to fire unless the URL says
+ * the payer is back from checkout) and once at the END OF FIRST-RUN SETUP —
+ * which is keyed off ARRIVING, not off paying. A Forever Free tenant takes no
+ * card, has no checkout and no webhook, and reached that second render exactly
+ * like a paying church did. So it was congratulated on a payment it never made,
+ * which is the first thing a free signup was shown about its own account.
+ *
+ * The reason is therefore stated by the CALLER, which is the only place that
+ * knows it. Nothing is inferred here: this component has no idea whether money
+ * moved and must not guess — it renders one screen with one sentence swapped.
+ *
+ * ⚠️ IT FAILS CLOSED TO `CONFIRMS_PAYMENT`, and that direction is deliberate.
+ * A church that paid and is told nothing about it is the chargeback this whole
+ * screen was built to prevent (see the module note below); a free tenant shown
+ * the payment sentence is the bug being fixed. The first is worse, so an
+ * omitted or unknown reason still says the payment went through — a caller must
+ * KNOW a signup was free to claim it was.
+ */
+export const CONFIRMS_PAYMENT = 'payment';
+/** No card, no checkout, no webhook — the account itself is the good news. */
+export const CONFIRMS_ACCOUNT = 'account';
+export type HandoffConfirms = typeof CONFIRMS_PAYMENT | typeof CONFIRMS_ACCOUNT;
+
 interface WorkspaceHandoffProps {
   /** The tenant id the workspace lives at — this is also its subdomain label. */
   tenantId: string;
@@ -81,6 +111,12 @@ interface WorkspaceHandoffProps {
    * this origin, which already holds the fact.
    */
   suppressRepeatAtDestination?: boolean;
+  /**
+   * Why this screen is being shown — a payment that landed, or an account that
+   * was created without one. See `CONFIRMS_PAYMENT` above for why the caller
+   * decides and why the default is the payment claim.
+   */
+  confirms?: HandoffConfirms;
 }
 
 /** Soft gold halo, matching the other transitional screens in this funnel. */
@@ -121,7 +157,7 @@ const Halo = () => (
  * place to be wrong about it — on the one screen where the customer is actively
  * thinking about what they were charged.
  */
-const WorkspaceHandoff: React.FC<WorkspaceHandoffProps> = ({ tenantId, fallbackMinistryName, onContinue, suppressRepeatAtDestination }) => {
+const WorkspaceHandoff: React.FC<WorkspaceHandoffProps> = ({ tenantId, fallbackMinistryName, onContinue, suppressRepeatAtDestination, confirms = CONFIRMS_PAYMENT }) => {
   // This screen has no path of its own — it renders at "/" like the rest of the
   // gate's funnel screens, so the URL cannot classify it and it declares itself.
   // `useForcedLightTheme` is a counter, so the gate asserting the same force
@@ -176,6 +212,14 @@ const WorkspaceHandoff: React.FC<WorkspaceHandoffProps> = ({ tenantId, fallbackM
 
   const address = `${tenantId}.theharvest.app`;
   const displayName = ministryName || fallbackMinistryName || 'Your ministry';
+
+  /**
+   * THE-214: did money move? Read from the caller's stated reason and nowhere
+   * else — see `CONFIRMS_PAYMENT`. Everything below that is not this one
+   * sentence (the address block, the readiness guard, the cross-origin warning,
+   * the single action) is identical on both, because it is true on both.
+   */
+  const confirmsPayment = confirms === CONFIRMS_PAYMENT;
 
   /**
    * 🔴 Is the destination actually a DIFFERENT origin from the one we are
@@ -249,13 +293,13 @@ const WorkspaceHandoff: React.FC<WorkspaceHandoffProps> = ({ tenantId, fallbackM
             color: SUCCESS,
           }}
         >
-          <CheckCircle2 size={14} /> Payment received
+          <CheckCircle2 size={14} /> {confirmsPayment ? 'Payment received' : 'Account created'}
         </div>
         <h1
           className="font-display"
           style={{ fontWeight: 300, fontSize: 30, letterSpacing: '-0.02em', color: 'var(--text-heading, #2D2519)' }}
         >
-          Your payment went through.
+          {confirmsPayment ? 'Your payment went through.' : 'Your account is ready.'}
         </h1>
 
         {/* (2) What was created, by name, so they can see it is the right thing. */}
@@ -332,7 +376,9 @@ const WorkspaceHandoff: React.FC<WorkspaceHandoffProps> = ({ tenantId, fallbackM
                 <AlertCircle size={16} style={{ color: BRAND }} /> This is taking longer than usual.
               </div>
               <p className="mt-2 max-w-[40ch] text-[13px] leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>
-                Your payment is safe and your account exists — there is nothing to pay again.
+                {confirmsPayment
+                  ? 'Your payment is safe and your account exists \u2014 there is nothing to pay again.'
+                  : 'Your account exists and nothing was charged for it.'}{' '}
                 Send us a note and we&rsquo;ll finish setting it up by hand.
               </p>
               <a

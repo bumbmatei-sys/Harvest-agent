@@ -17,7 +17,7 @@ import {
 import { getTenantIdFromHost } from '../utils/tenant-scope';
 import { useForcedLightTheme } from '../lib/theme-runtime';
 import FirstRunSetup from './FirstRunSetup';
-import WorkspaceHandoff from './WorkspaceHandoff';
+import WorkspaceHandoff, { CONFIRMS_ACCOUNT, CONFIRMS_PAYMENT } from './WorkspaceHandoff';
 
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
 const BRAND = 'var(--brand-color, #B8962E)';
@@ -62,11 +62,33 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
   // wrong price for the term they picked — the two travel together, always.
   const [signupBilling, setSignupBilling] = useState<SignupBillingPeriod>('monthly');
   const [signupMinistryName, setSignupMinistryName] = useState<string>('');
+  /**
+   * THE-214: the address a free signup chose on the signup screen, carried on
+   * the same marker as the plan so a restart re-provisions at the SAME address
+   * rather than quietly moving the evangelist to a different one.
+   */
+  const [signupSubdomain, setSignupSubdomain] = useState<string>('');
+  /**
+   * The tenant's own plan, off the user doc — the DURABLE answer to "was this
+   * signup free?", written by whichever path provisioned the account. Read
+   * alongside the `signupPlan` intent marker because the two fail in opposite
+   * directions: the marker exists before the tenant does, and the plan outlives
+   * the marker. Both absent means "unknown", which is treated as paid.
+   */
+  const [accountPlan, setAccountPlan] = useState<TenantPlan | null>(null);
   const [pollTimedOut, setPollTimedOut] = useState(false);
   const [restarting, setRestarting] = useState(false);
   // The tenant id first-run setup finished on, i.e. the workspace this user is
   // being handed off to. Non-null means the handoff screen is showing.
   const [handoffTenantId, setHandoffTenantId] = useState<string | null>(null);
+  /**
+   * THE-214: "this mount watched a free signup go out with no tenant." Set when
+   * the user doc shows a free signup in flight, consumed the moment a tenant id
+   * lands on the same listener. A ref rather than state because it must be read
+   * inside the snapshot callback that also sets it — a state value there would
+   * be a render behind and would miss the very transition it exists to catch.
+   */
+  const freeSignupInFlight = useRef(false);
 
   // Is the user returning from the payment processor right now? BOTH spellings
   // count (?stripe=success and ?dodo=success): a customer who was mid-checkout
@@ -119,6 +141,44 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
         // closed to 'monthly' rather than travel into a checkout body.
         setSignupBilling(readSignupBillingPeriod(data?.signupBilling));
         setSignupMinistryName((data?.signupMinistryName as string) || '');
+        setSignupSubdomain((data?.signupSubdomain as string) || '');
+        setAccountPlan((data?.plan as TenantPlan) || null);
+
+        /**
+         * 🔴 THE-214 — WATCHING A FREE SIGNUP COMPLETE, so the evangelist is
+         * told their account exists before being sent to another origin.
+         *
+         * A paying church gets its confirmation from the paid-arrival lane
+         * (`?dodo=success` in the URL, held by App.tsx) and then first-run
+         * setup, whose completion paints the handoff. A free signup has NEITHER
+         * — no processor comes back with a success URL, and there is no
+         * first-run step left once the address is chosen at signup — so without
+         * this it would go straight from the signup form into a login prompt on
+         * a subdomain, which is the "sign in again with no explanation" the
+         * cross-origin copy exists to prevent.
+         *
+         * ⚠️ THIS IS NOT A SECOND WRITER OF THE PAID ARRIVAL MARKER, and that
+         * is the point. It writes no storage key, dispatches no event, reads no
+         * query parameter and shares no vocabulary with `paid-arrival.ts`. It
+         * is a TRANSITION this component's own listener already observes —
+         * "signup in flight with no tenant" becoming "tenant" — remembered in a
+         * ref for the lifetime of this mount. The paid lane's marker, event and
+         * `?payment_confirmed=` hint are untouched and still have exactly one
+         * writer each.
+         *
+         * ⚠️ Gated on the signup being FREE. The same transition happens on the
+         * paid lane the moment a webhook provisions, and firing there would put
+         * this screen in front of first-run setup — reordering the paid funnel,
+         * which nothing here may do. `signupPlan` is read from the snapshot in
+         * hand rather than from state, which has not re-rendered yet.
+         */
+        const freeSignup = (data?.signupPlan as TenantPlan) === 'free'
+          || (data?.plan as TenantPlan) === 'free';
+        if (inProgress && !tId && freeSignup) freeSignupInFlight.current = true;
+        if (tId && freeSignupInFlight.current) {
+          freeSignupInFlight.current = false;
+          setHandoffTenantId(tId);
+        }
 
         if (tId) {
           setTenantId(tId);
@@ -242,7 +302,18 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
    * turned up in the meantime), so pressing this twice cannot build two
    * churches.
    */
-  const isFreeSignup = signupPlan === 'free';
+  const isFreeSignup = signupPlan === 'free' || accountPlan === 'free';
+
+  /**
+   * THE-214: which sentence the confirmation screen is allowed to say.
+   *
+   * Derived from the SAME signal as everything else free on this screen, so a
+   * tenant cannot be free enough to skip the wallet line and paid enough to be
+   * congratulated on a payment. It fails closed to the payment claim — see
+   * `CONFIRMS_PAYMENT` — because a church that paid and is told nothing is a
+   * chargeback, while a free tenant told nothing is merely quiet.
+   */
+  const confirms = isFreeSignup ? CONFIRMS_ACCOUNT : CONFIRMS_PAYMENT;
 
   const restartFreeProvisioning = async () => {
     const user = auth.currentUser;
@@ -253,7 +324,13 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
       const resp = await fetch('/api/tenants/provision-free', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ministryName: signupMinistryName || '' }),
+        // THE-214: the address travels with the plan, exactly as the term does
+        // on the paid lane. Restarting without it would hand the evangelist a
+        // different address from the one they chose and were shown.
+        body: JSON.stringify({
+          ministryName: signupMinistryName || '',
+          subdomain: signupSubdomain || '',
+        }),
       });
       const data = await resp.json();
       // The onSnapshot listener above flips this screen to first-run as soon as
@@ -311,7 +388,7 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
   // performed here: the screen this replaces offered an IN-ORIGIN /admin link,
   // and the church is already on /admin.
   if (handoffTenantId && !handoffRepeatsGivenConfirmation) {
-    return <WorkspaceHandoff tenantId={handoffTenantId} fallbackMinistryName={signupMinistryName} />;
+    return <WorkspaceHandoff tenantId={handoffTenantId} fallbackMinistryName={signupMinistryName} confirms={confirms} />;
   }
 
   /**
@@ -334,6 +411,11 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
       <WorkspaceHandoff
         tenantId={confirmingTenantId}
         fallbackMinistryName={signupMinistryName}
+        /* Always the payment claim, and not via `confirms` above: this render
+           is reachable only through `readPendingPaymentConfirmation`, which
+           refuses unless the URL says the user is back from a checkout. A
+           signup that reached a checkout is a signup that was charged. */
+        confirms={CONFIRMS_PAYMENT}
         onContinue={completePaymentConfirmation}
         /* THE-138 part 2: this is the render whose acknowledgement has to
            outlive the origin hop, so its action carries the hint that stops the
@@ -353,8 +435,17 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
 
   if (status === 'paying') {
-    return pollTimedOut
-      ? <CenteredScreen spin={false} title="Payment received — finishing setup" subtitle="Almost there. Refresh in a moment if this screen doesn't update on its own." />
+    // 🔴 THE-214. `pollTimedOut` is only ever set when the URL carries a
+    // processor success marker (see the poll effect), so its copy is reachable
+    // by a payer alone and stays as it was. The waiting copy is NOT: a free
+    // signup sits here for the length of one server request, and "Confirming
+    // your payment" was the second place it was told about a payment it never
+    // made.
+    if (pollTimedOut) {
+      return <CenteredScreen spin={false} title="Payment received — finishing setup" subtitle="Almost there. Refresh in a moment if this screen doesn't update on its own." />;
+    }
+    return isFreeSignup
+      ? <CenteredScreen title="Creating your ministry…" subtitle="This only takes a moment." />
       : <CenteredScreen title="Setting up your account…" subtitle="Confirming your payment and creating your ministry. This usually takes a few seconds." />;
   }
 

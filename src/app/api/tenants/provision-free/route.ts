@@ -65,11 +65,19 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}));
     const ministryName = typeof body?.ministryName === 'string' ? body.ministryName : '';
+    // THE-214: the address the signup screen collected, when it collected one.
+    // Untrusted like everything else off a request body, and sanitised by
+    // `generateUniqueSubdomain` rather than here — that helper already strips
+    // it to [a-z0-9-], caps its length, refuses the reserved labels and
+    // de-collides, and a second opinion about what a legal subdomain is would
+    // be the fifth one in this repo.
+    const subdomain = typeof body?.subdomain === 'string' ? body.subdomain : '';
 
     const result = await provisionFreeTenant({
       userId: userOrErr.uid,
       ministryName,
       userEmail: userOrErr.email || null,
+      requestedSubdomain: subdomain,
     });
 
     return NextResponse.json({
