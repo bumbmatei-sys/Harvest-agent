@@ -575,6 +575,24 @@ const EDITED_SINCE_MEASUREMENT: ReadonlyArray<{ file: string; ticket: string; wh
       'all asserted elsewhere in this file and all still passing. Only the ' +
       'byte-identity proxy for them moved.',
   },
+  {
+    file: 'MainApp.tsx',
+    ticket: 'THE-205',
+    why:
+      'Gated the NEWS FEED, which free does not have, and moved what "Home" is ' +
+      'as a consequence. The feed WAS Home: `topTabs[0]` was an unconditional ' +
+      "`{ id: 'news' }` and the desktop sidebar's Home entry is an alias of it, " +
+      'so dropping it for free without moving Home would land a member on a tab ' +
+      'that is not there. `homeTabId` now derives Home — the feed where the tier ' +
+      'has it, otherwise the course — and `effectiveTopTab` resolves the rendered ' +
+      'tab during render so no free member sees a frame of the feed. This is a ' +
+      'BEHAVIOUR change and is not claimed to be anything else. What it is not is ' +
+      'a LAYOUT change, which is what this batch measured: the JSX element tree is ' +
+      'identical tag for tag, and every class literal is unchanged — the two ' +
+      'className expressions that differ do so only because the variable ' +
+      'interpolated INSIDE them was renamed. Both are asserted directly below, ' +
+      'in place of the whole-file proxy that can no longer state this.',
+  },
 ];
 
 const EXEMPT_FILES = EDITED_SINCE_MEASUREMENT.map((e) => e.file);
@@ -593,6 +611,7 @@ describe('the byte-identity exemption list is exactly the edits that justify it'
     // review, rather than a silent side effect of touching a shell file.
     expect(EDITED_SINCE_MEASUREMENT.map((e) => `${e.ticket} ${e.file}`)).toEqual([
       'THE-202 MainApp.tsx',
+      'THE-205 MainApp.tsx',
     ]);
   });
 
@@ -749,7 +768,18 @@ describe('the Messages gate is unchanged', () => {
   it('MainApp still gates the Messages TAB and the Messages ROUTE on communityGroups', () => {
     const src = read('MainApp.tsx');
     expect(src).toContain('hasCommunityGroups');
-    expect(src).toMatch(/activeTopTab === 'messages' && \(\s*\n\s*hasCommunityGroups \?/);
+    // `activeTopTab` → `effectiveTopTab` is THE-205's rename, and it is the ONLY
+    // thing about this gate that moved: the tab it matches, the flag it reads
+    // and the PlanUpgradeScreen it falls through to are all unchanged. The
+    // rename is deliberately spelled out here rather than loosened to `\w+`,
+    // so a future edit that swapped the CONDITION rather than the variable name
+    // would still fail this line.
+    expect(src).toMatch(/effectiveTopTab === 'messages' && \(\s*\n\s*hasCommunityGroups \?/);
+    // Messages is gated on `communityGroups` and NOTHING else — in particular
+    // not on THE-205's `hasNewsFeed`, which would take a Ministry feature away
+    // from the tier that pays for it. Community Groups is `max` only; the feed
+    // is every tier but free. Two gates, two flags.
+    expect(src).not.toMatch(/effectiveTopTab === 'messages' && \(\s*\n\s*hasNewsFeed/);
     // Byte-identity dropped here, not weakened: THE-202 edited MainApp (see
     // EDITED_SINCE_MEASUREMENT). The two assertions above ARE the Messages gate
     // — the tab condition and the route condition — and they still hold
@@ -799,20 +829,37 @@ describe('no behaviour changed on any screen in scope', () => {
     expect(norm(read('AIChat.tsx'))).toBe(norm(at('AIChat.tsx')));
   });
 
-  it('MainApp and LivestreamView carry no behaviour change, so nothing there could have moved', () => {
+  it('MainApp and LivestreamView carry no LAYOUT change, so nothing measured could have moved', () => {
     // LivestreamView is still byte-identical and asserted as such.
     expect(read('LivestreamView.tsx')).toBe(at('LivestreamView.tsx'));
-    // MainApp is exempted from byte-identity by THE-202, so the behavioural
-    // claim is made directly instead of through the file-level proxy: with
-    // comments and className VALUES stripped, the ONLY difference from the
-    // pre-PR revision is the Give tab's plan clause. Any second edit — a moved
-    // query, a changed gate, a reordered tab — fails here.
-    const norm = (src: string) => strip(src)
-      .replace(
-        /\(isMainSite \|\| \(isPlanReady && features\?\.fundraising === true\)\) && \{ id: 'partner', label: 'Give' \}/,
-        "{ id: 'partner', label: 'Give' }",
-      );
-    expect(norm(read('MainApp.tsx'))).toBe(norm(at('MainApp.tsx')));
+
+    // MainApp is exempted from byte-identity twice now (THE-202, THE-205). This
+    // test used to fold THE-202's one-line Give clause out of the whole file and
+    // compare the rest; THE-205 is a real behaviour change — a new gate, a
+    // derived Home, a renamed render variable — and folding a change of that
+    // size through a normaliser would GUT this test rather than extend it. So
+    // the claim narrows to the one this batch actually measured, and says so:
+    // layout did not move. Two inventories state it exactly, and neither is
+    // weaker than the proxy they replace in the layout dimension.
+    //
+    //   • THE ELEMENT TREE — every JSX tag, in order. THE-205 added no element,
+    //     removed none and reordered none; it only put conditions in front of
+    //     ones already there. A wrapper, a moved block or a dropped node fails
+    //     here.
+    const tags = (src: string) =>
+      [...stripComments(src).matchAll(/<([A-Za-z][A-Za-z0-9.]*)/g)].map((m) => m[1]);
+    expect(tags(read('MainApp.tsx')), 'MainApp changed its element tree').toEqual(tags(at('MainApp.tsx')));
+
+    //   • EVERY CLASS LITERAL, in order. Two className expressions differ, and
+    //     only because `activeTopTab` was renamed `effectiveTopTab` INSIDE the
+    //     interpolation that chooses between them — the classes chosen FROM are
+    //     character-for-character what they were. Undoing a rename is the whole
+    //     of the normalisation below; it folds away no class, no width and no
+    //     token. Any real class edit fails here.
+    const classes = (src: string) =>
+      [...stripComments(src).matchAll(/className=\{`([^`]*)`\}|className="([^"]*)"/g)]
+        .map((m) => (m[1] ?? m[2]).replace(/\beffectiveTopTab\b/g, 'activeTopTab'));
+    expect(classes(read('MainApp.tsx')), 'MainApp changed a class literal').toEqual(classes(at('MainApp.tsx')));
   });
 });
 

@@ -3,6 +3,37 @@ import { TenantAddons, TenantPlan, PricedPlan } from '../types/tenant.types';
 export interface PlanFeatures {
   /** Show blog tab in user app + blog management in admin */
   blog: boolean;
+  /**
+   * The church NEWS FEED — `NewsTab` / `AllNews` and the public post permalink,
+   * all reading `/community_posts`.
+   *
+   * 🔴 THREE DIFFERENT PRODUCTS SHARE THE WORD "COMMUNITY" HERE, and this cell
+   * is only the first of them. Getting the distinction wrong is what THE-164 on
+   * the marketing site and PR 332 in this repo each had to correct, in opposite
+   * directions:
+   *
+   *   news feed        → NewsTab / AllNews → `/community_posts`. Announcements,
+   *                      polls, photos, events and comments, posted by admins
+   *                      and read by members. THIS cell.
+   *   Community Groups → UserMessages → tenants/{t}/{channels,directMessages,…}.
+   *                      Private channels + DMs. `communityGroups`, Ministry
+   *                      only. NOT this cell.
+   *   blog             → BlogTab → `/blog_posts`. Long-form articles. `blog`,
+   *                      Individual and above. NOT this cell.
+   *
+   * PR 332 established that the feed is a DIFFERENT thing from Community Groups
+   * and left it ungated on every tier, which was right at the time: every tier
+   * then in the matrix had it. THE-205 adds the first tier that does not.
+   *
+   * 🔴 GATES A SURFACE, NEVER THE DATA. `/community_posts` documents, their
+   * comments, likes, polls and RSVPs are untouched by this cell, and so are
+   * firestore.rules — a tenant that upgrades off free gets its feed back with
+   * its history intact. The gate is: the News tab is absent from `topTabs`,
+   * `NewsTab`/`AllNews` never mount (so no `/community_posts` listener opens),
+   * and the public post permalink refuses server-side. See MainApp.tsx and
+   * app/post/[postId]/page.tsx.
+   */
+  newsFeed: boolean;
   /** Show AI chat in user app */
   aiChat: boolean;
   /** Show AI Knowledge Base in admin */
@@ -189,6 +220,25 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
   // `publicCalendar` from this interface.
   free: {
     blog: false,
+    // 🔴 FALSE — THE ONLY TIER WITHOUT THE FEED (THE-205, founder-corrected).
+    // "Literally the only thing is discipleship, the discipleship page for the
+    // user and for admin." The feed was ungated on every tier until this cell
+    // existed, so free is the tier that forced it into being — the same shape
+    // as `fundraising` directly below, which free was also the first to carry
+    // false.
+    //
+    // ⚠️ THIS MOVES THE MEMBER'S HOME. The news feed WAS Home: `topTabs[0]` was
+    // an unconditional `{ id: 'news' }` and the desktop sidebar's "Home" entry
+    // is an alias of it. A free member now lands on their discipleship course
+    // instead — the founder's intent, and the one thing free is for. See the
+    // `homeTabId` derivation in MainApp.tsx; no free-only Home component exists
+    // and none is needed, because CourseExperience is already the courses tab.
+    //
+    // The admin composer goes with it: it lives INSIDE NewsTab (there is no
+    // separate admin news screen — MainApp is NewsTab's only caller), so a tier
+    // with no feed has no composer, which is correct. A free tenant is one
+    // admin and no members reading a feed.
+    newsFeed: false,
     aiChat: false,
     aiKnowledge: false,
     map: false,
@@ -281,6 +331,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
   // Individual — $49/mo
   plus: {
     blog: true,
+    // Unchanged by THE-205 — the feed is on every tier that pays.
+    newsFeed: true,
     // AI chat is available on Small Team (pro) and above; gated to match the pricing page.
     aiChat: false,
     aiKnowledge: false,
@@ -329,6 +381,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
   // Small Team — $99/mo
   pro: {
     blog: true,
+    // Unchanged by THE-205 — the feed is on every tier that pays.
+    newsFeed: true,
     aiChat: true,
     aiKnowledge: true,
     map: true,
@@ -375,6 +429,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
   // in the PlanFeatures interface.
   max: {
     blog: true,
+    // Unchanged by THE-205 — the feed is on every tier that pays.
+    newsFeed: true,
     aiChat: true,
     aiKnowledge: true,
     map: true,
@@ -1184,6 +1240,35 @@ export const FEATURE_MIN_PLAN: Readonly<Record<FeatureKey, string>> = Object.fre
     (Object.keys(FEATURE_MAP) as FeatureKey[]).map((k) => [k, getFeatureMinPlanName(k)])
   ) as Record<FeatureKey, string>
 );
+
+/**
+ * The CRM feature's display name FOR ONE TIER — the single definition of that
+ * label in this repo.
+ *
+ * 🔴 "DONORS" IS A CLAIM ABOUT `fundraising`, NOT ABOUT `crm`. A tier with no
+ * donate page cannot receive a gift, so no donor record can ever exist in its
+ * CRM — naming donors there advertises half a roster the tier is structurally
+ * unable to fill. Every tier that pays has `fundraising: true`, so all three
+ * priced tiers read "CRM (Donors & Members)" exactly as they always have; free
+ * is the only tier this answers differently, and it is the only tier whose
+ * `fundraising` cell is false.
+ *
+ * Derived rather than written per card for the reason PlanUpgradeScreen's
+ * minimum-plan labels are derived: a hand-written label is a second copy of the
+ * matrix that drifts from it silently. Taking `PlanFeatures` rather than a
+ * `TenantPlan` means a caller that has already resolved the tier's features
+ * — every card renderer does — reads the matrix once, and an add-on-adjusted
+ * `EffectiveFeatures` answers for what the tenant actually holds.
+ *
+ * ⚠️ The marketing site carries its own copy of these two strings (see
+ * `crmLabel` in harvest-presentation-site components/Pricing.tsx). That is the
+ * same deliberate two-sided seam as the cross-repo price contract: two
+ * independently-written copies, kept honest by a test on each side rather than
+ * by an import neither repo can make. Change them together.
+ */
+export function crmLabel(features: Pick<PlanFeatures, 'fundraising'>): string {
+  return features.fundraising ? 'CRM (Donors & Members)' : 'CRM (Members)';
+}
 
 /**
  * Branding-family entitlement — does this plan's feature set unlock the admin

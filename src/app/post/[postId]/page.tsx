@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { getTenantFromHost } from '@/lib/server-tenant';
+import { getPlanFeatures, toTenantPlan } from '@/utils/plan-features';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,29 @@ const isValidHex = (value: string | undefined): value is string =>
 async function loadPost(postId: string, host: string) {
   const tenant = await getTenantFromHost(host);
   if (!tenant) return null;
+
+  // 🔴 THE FREE TIER HAS NO NEWS FEED — THE-205, server side.
+  //
+  // `free.newsFeed` is false and MainApp drops the News tab and refuses the
+  // NewsTab/AllNews routes, but THIS page is a PUBLIC PERMALINK: it is
+  // `force-dynamic`, unauthenticated, indexable, and reads through the Admin
+  // SDK, which bypasses firestore.rules entirely. A hidden tab is not a gate —
+  // precedent THE-193 — so anyone holding a share link from before a downgrade
+  // could otherwise still render a feed post, and its excerpt and image would
+  // still go out in the OpenGraph tags below.
+  //
+  // ⚠️ REFUSES THE SURFACE, NOT THE DATA. The post document, its comments,
+  // likes and RSVPs are untouched, and no rule changed: a tenant that upgrades
+  // gets this permalink working again with its history intact, which a delete
+  // could not undo. Placed before the document read so a free tenant's feed is
+  // never fetched at all.
+  //
+  // Refused as a 404 (`loadPost` returning null is what both callers below turn
+  // into `notFound()` / "Post Not Found") rather than an explanatory error: the
+  // reader is an anonymous visitor, and a church's subscription tier is not
+  // theirs to be told — the same reasoning written on the donate route's
+  // refusal in app/api/stripe/donate/route.ts.
+  if (getPlanFeatures(toTenantPlan(tenant.plan)).newsFeed === false) return null;
 
   // Server-side read via the Admin SDK (bypasses client rules). A logged-out
   // visitor never opens a client Firestore session — the gate is structural.

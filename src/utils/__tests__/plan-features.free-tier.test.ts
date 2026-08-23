@@ -264,6 +264,10 @@ describe('THE-200 — FEATURE_MIN_PLAN still names the cheapest tier that HAS ea
     // (500 contacts, 1 course, 1 admin) rather than capabilities it lacks.
     const EXPECTED: Record<keyof PlanFeatures, TenantPlan | null> = {
       blog: 'plus',
+      // ⬅️ NEW CELL (THE-205). free is false, so the feed's floor is the
+      // cheapest tier that pays — the same answer `blog` gives, and for the
+      // same reason. The feed was ungated entirely before this cell existed.
+      newsFeed: 'plus',
       aiChat: 'pro',
       aiKnowledge: 'pro',
       map: 'pro',
@@ -318,14 +322,20 @@ describe('THE-200 — the three priced tiers are untouched', () => {
   // ── 10 ── NO-REGRESSION, PER TIER ─────────────────────────────────────────
   //
   // The full feature row for each priced tier, transcribed from the matrix as
-  // it stood at d07203fb — BEFORE the free tier existed. Written out rather
+  // it stood at d07203fb — BEFORE the free tier existed.
+  //
+  // ⚠️ `newsFeed` did not exist as a CELL at d07203fb: the news feed was ungated
+  // on every tier, so every tier had it. `newsFeed: true` below is therefore the
+  // faithful transcription of that state, not a new grant — THE-205 added the
+  // cell precisely because free became the first tier to answer it `false`, and
+  // these three rows are what proves it took nothing from a tier that pays. Written out rather
   // than compared against getPlanFeatures, which would compare the subject with
   // itself. If adding a tier changed one cell on a plan a church pays for, one
   // of these three fails and names it.
 
   const BEFORE: Record<PricedPlan, PlanFeatures> = {
     plus: {
-      blog: true, aiChat: false, aiKnowledge: false, map: false,
+      newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: false,
       maxChurches: 1, maxContacts: 150, maxCourses: 2, maxAdmins: 2,
       customDomain: false, customBranding: false,
       newsletterAutomation: false, automatedNewsletter: false,
@@ -337,7 +347,7 @@ describe('THE-200 — the three priced tiers are untouched', () => {
       pledgeCampaigns: false, textToGive: true, pwaApp: true,
     },
     pro: {
-      blog: true, aiChat: true, aiKnowledge: true, map: true,
+      newsFeed: true, blog: true, aiChat: true, aiKnowledge: true, map: true,
       maxChurches: 1, maxContacts: 500, maxCourses: 5, maxAdmins: 5,
       customDomain: false, customBranding: false,
       newsletterAutomation: true, automatedNewsletter: false,
@@ -349,7 +359,7 @@ describe('THE-200 — the three priced tiers are untouched', () => {
       pledgeCampaigns: false, textToGive: true, pwaApp: true,
     },
     max: {
-      blog: true, aiChat: true, aiKnowledge: true, map: true,
+      newsFeed: true, blog: true, aiChat: true, aiKnowledge: true, map: true,
       maxChurches: 1, maxContacts: 2_000, maxCourses: 15, maxAdmins: 15,
       customDomain: true, customBranding: true,
       newsletterAutomation: true, automatedNewsletter: true,
