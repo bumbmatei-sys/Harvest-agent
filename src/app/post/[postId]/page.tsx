@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { getTenantFromHost } from '@/lib/server-tenant';
-import { getPlanFeatures, toTenantPlan } from '@/utils/plan-features';
 import PublicRouteAnalytics from '@/components/PublicRouteAnalytics';
+import { tenantFeatures } from '@/lib/tenant-features';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,7 +45,15 @@ async function loadPost(postId: string, host: string) {
   // reader is an anonymous visitor, and a church's subscription tier is not
   // theirs to be told — the same reasoning written on the donate route's
   // refusal in app/api/stripe/donate/route.ts.
-  if (getPlanFeatures(toTenantPlan(tenant.plan)).newsFeed === false) return null;
+  //
+  // ⚠️ THE-213 moved this from `getPlanFeatures` (the TIER's published matrix)
+  // to `tenantFeatures` (the TENANT's effective set, add-ons layered on). The
+  // answer is identical today — no add-on lifts a boolean cell — and that is
+  // precisely why the base-matrix read survived review here. Every gate asking
+  // the tenant question is what stops the first add-on-liftable boolean from
+  // silently answering wrongly on whichever surfaces happened to ask the other
+  // one.
+  if (tenantFeatures(tenant).newsFeed === false) return null;
 
   // Server-side read via the Admin SDK (bypasses client rules). A logged-out
   // visitor never opens a client Firestore session — the gate is structural.

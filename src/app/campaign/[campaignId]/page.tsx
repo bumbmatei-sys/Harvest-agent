@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { getTenantFromHost } from '@/lib/server-tenant';
 import PublicCampaign from '@/components/PublicCampaign';
 import PublicRouteAnalytics from '@/components/PublicRouteAnalytics';
+import { tenantFeatures } from '@/lib/tenant-features';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,31 @@ const isValidHex = (value: string | undefined): value is string =>
 async function loadCampaign(campaignId: string, host: string) {
   const tenant = await getTenantFromHost(host);
   if (!tenant) return null;
+
+  // 🔴 A TIER WITHOUT `fundraising` HAS NO DONATE PAGE — THE-213.
+  //
+  // THIS IS THAT PAGE. It renders a campaign with an amount picker and a Donate
+  // button posting to /api/stripe/donate, and it is public, `force-dynamic` and
+  // read through the Admin SDK, so firestore.rules never sees it. `free` is the
+  // only tier carrying `fundraising: false`, and the whole premise of that cell
+  // — "they get a public subdomain… but not a donate page" — is false while
+  // this route answers. The donate ROUTE already refuses (THE-202), but a
+  // refusal one click later is a giving surface that 403s, not an absent one,
+  // and the CRM's "no donor can exist on free" claim is only true if the page
+  // that could create one is gone too.
+  //
+  // Every priced tier has `fundraising: true`, so Individual, Small Team and
+  // Ministry are untouched — free is the only tier this answers differently.
+  //
+  // Refused as the same `null` the missing/foreign/inactive-campaign branches
+  // below return (both callers turn it into `notFound()` / "Campaign Not
+  // Found"), not an explanatory error: the reader is an anonymous visitor and a
+  // church's subscription tier is not theirs to be told.
+  //
+  // ⚠️ REFUSES THE SURFACE, NOT THE DATA. The campaign document, its totals and
+  // every gift already recorded against it are untouched, and no rule changed —
+  // a tenant that upgrades gets this page back with its history intact.
+  if (!tenantFeatures(tenant).fundraising) return null;
 
   // Server-side read via the Admin SDK (bypasses client rules). Mirrors the
   // pledge page's proven-safe pattern — no client Firestore for logged-out visitors.

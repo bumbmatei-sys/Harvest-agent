@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { tenantFeaturesById } from '@/lib/tenant-features';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +20,27 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // 🔴 THE TIER MUST HOLD CHECK-IN — THE-213, server side.
+    //
+    // `checkInSystem` is false on Free and on Individual, and this route is
+    // PUBLIC: no auth, `force-dynamic`, served through the Admin SDK, which
+    // bypasses firestore.rules entirely. AdminCheckin hiding its Check-In
+    // sub-tab is not a gate — precedent THE-193 — so a QR printed before a
+    // downgrade, or a link someone kept, would otherwise still open the form
+    // that POSTs to /api/checkin/submit.
+    //
+    // Refused as the 404 this route already gives a missing session, not as an
+    // explanatory 403: the caller is an anonymous visitor at a door, and a
+    // church's subscription tier is not theirs to be told.
+    //
+    // Placed before the session read, so a refused tenant's sessions are never
+    // fetched. Nothing is deleted — the sessions and their attendees are
+    // untouched and come back whole on an upgrade.
+    const features = await tenantFeaturesById(tenantId);
+    if (!features?.checkInSystem) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+    }
+
     const snap = await adminDb
       .collection('tenants').doc(tenantId)
       .collection('checkinSessions').doc(sessionId)

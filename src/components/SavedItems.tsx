@@ -2,6 +2,8 @@
 import React from 'react';
 import { ArrowLeft, FileText, GraduationCap, MessageSquare, BookOpen, Bookmark, Trash2, ChevronRight } from 'lucide-react';
 import { useSavedItems } from '../contexts/SavedItemsContext';
+import { useTenantOptional } from '../contexts/TenantContext';
+import { getEffectiveFeatures, toTenantPlan } from '../utils/plan-features';
 import {
   SavedEntry,
   SavedBlog,
@@ -35,6 +37,33 @@ const GROUPS: { type: SavedType; label: string; empty: string; Icon: any }[] = [
 
 const SavedItems: React.FC<SavedItemsProps> = ({ onBack, onOpenBlog, onOpenLesson, onOpenPost }) => {
   const { savedItems, ready, removeSave } = useSavedItems();
+
+  /**
+   * 🔴 THE LAST NEWS-FEED ENTRY POINT — THE-213.
+   *
+   * THE-205 gated NewsTab, AllNews and the public permalink, and it pointed
+   * `onOpenPost` at Home so a saved post could not navigate to a feed that is
+   * not there. What it did not do is stop this list RENDERING the post: the
+   * Posts group prints "{author}'s post" and the body `snippet` stored on the
+   * save, so on a tier with `newsFeed: false` the feed's content was still on
+   * screen — one tap from Profile, with no feed anywhere in the app.
+   *
+   * A saved post is a cached copy of a `/community_posts` document, so showing
+   * it is showing the feed. The group is HIDDEN, not the saves deleted: every
+   * entry stays in `savedItems` untouched and the group returns whole the
+   * moment the tenant is on a tier that has the feed. Gate the surface, never
+   * the data.
+   *
+   * Effective features, not the tier matrix, and `useTenantOptional` because
+   * this screen is also mounted standalone. No context or no resolved plan
+   * falls back to the same 'plus' coercion every other unresolved-plan reader
+   * applies — a member's saved list must not blink its Posts group off while
+   * the tenant document is in flight, and the feed's own surfaces (NewsTab,
+   * AllNews, the permalink) are what actually refuse the content either way.
+   */
+  const ctx = useTenantOptional();
+  const features = ctx?.planFeatures ?? getEffectiveFeatures(toTenantPlan(ctx?.tenantPlan), null);
+  const groups = features.newsFeed ? GROUPS : GROUPS.filter((g) => g.type !== 'post');
 
   // Newest first within each group.
   const entries = Object.values(savedItems).sort(
@@ -144,15 +173,22 @@ const SavedItems: React.FC<SavedItemsProps> = ({ onBack, onOpenBlog, onOpenLesso
             <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
               style={{ borderColor: BRAND, borderTopColor: 'transparent' }} />
           </div>
-        ) : entries.length === 0 ? (
+        ) : groups.every((g) => byType(g.type).length === 0) ? (
           <div className="text-center py-16 text-faint">
             <Bookmark size={40} className="mx-auto mb-3 opacity-30" />
             <p className="font-medium text-strong">Nothing saved yet</p>
-            <p className="text-sm mt-1">Bookmark articles, lessons, posts and verses to find them here.</p>
+            {/* Names only what this tier can actually bookmark — on a tier with
+                no news feed there are no posts to save, so promising them here
+                would advertise a surface the app does not have. */}
+            <p className="text-sm mt-1">
+              {features.newsFeed
+                ? 'Bookmark articles, lessons, posts and verses to find them here.'
+                : 'Bookmark articles, lessons and verses to find them here.'}
+            </p>
           </div>
         ) : (
           <div className="space-y-6">
-            {GROUPS.map(({ type, label, empty, Icon }) => {
+            {groups.map(({ type, label, empty, Icon }) => {
               const items = byType(type);
               return (
                 <div key={type}>
