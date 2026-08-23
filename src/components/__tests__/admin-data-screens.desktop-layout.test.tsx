@@ -740,6 +740,22 @@ const EDITED_SINCE_MEASUREMENT: ReadonlyArray<{ file: string; ticket: string; wh
       'class or inline style changed — which is what the two assertions below ' +
       'still prove, unedited.',
   },
+  {
+    file: 'AdminDashboard.tsx',
+    ticket: 'THE-216',
+    why:
+      'Narrowed the plan bypass those render-time gates carried. Each read ' +
+      '`platformOverride || !isTenantAdmin || (features && features.X)`, and the ' +
+      'middle term is `!resolvedPlan` — "the plan failed to resolve, therefore ' +
+      'unlock everything", a gate that opens on its own failure. It is replaced by ' +
+      'one `planAllows` helper over `platformOverride || !isWhiteLabel`, which ' +
+      'states the case the term was actually for (the platform tenant / no tenant ' +
+      'in scope) and fails CLOSED on an unresolved plan. platformOverride is ' +
+      'untouched and no feature flag moved. Same shape of edit as THE-202 above ' +
+      'and the same reason it is not a layout change: no wrapper, padding, class ' +
+      'or inline style changed, and every `perms.X` term is still byte-identical — ' +
+      'which the assertion below still proves, unedited.',
+  },
 ];
 
 const EXEMPT_FILES = EDITED_SINCE_MEASUREMENT.map((e) => e.file);
@@ -751,6 +767,7 @@ describe('the digest exemption list is exactly the edits that justify it', () =>
     // to this line, visible in review.
     expect(EDITED_SINCE_MEASUREMENT.map((e) => `${e.ticket} ${e.file}`)).toEqual([
       'THE-202 AdminDashboard.tsx',
+      'THE-216 AdminDashboard.tsx',
     ]);
   });
 

@@ -334,16 +334,81 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const features = resolvedPlan ? getPlanFeatures(resolvedPlan) : null;
   const isTenantAdmin = !!resolvedPlan;
   const hasFullAccess = isSuperAdmin || isChurchAdmin || perms.fullAccess;
+
+  // ── The plan gate, in ONE place (THE-216) ────────────────────────────────
+  //
+  // Every plan-gated surface below asks the same question — "does this tenant's
+  // tier carry this cell?" — and every one of them used to spell it out inline
+  // as `platformOverride || !isTenantAdmin || (features && features.X)`.
+  //
+  // 🔴 `!isTenantAdmin` WAS A BLANKET BYPASS AND IS GONE. `isTenantAdmin` is
+  // `!!resolvedPlan` — it does not mean "is an admin of a tenant", it means "a
+  // plan resolved". So the old middle term read: THE PLAN FAILED TO RESOLVE,
+  // THEREFORE UNLOCK EVERYTHING. That is a gate that opens on its own failure.
+  // A white-label tenant whose `tenants/{id}` doc carries no `plan` field, or
+  // whose read errored (TenantContext's catch still clears `isLoading`), landed
+  // here with `features === null` and was handed every paid screen — Newsletter,
+  // AI Knowledge, Notes, Community, Forms, Accounting, Events, Livestream — in
+  // full working order, on a tier that bought none of them.
+  //
+  // What the term was FOR is the platform itself: the apex domain and the
+  // platform tenant have no tenant plan to gate on, so "no plan resolved" was
+  // being used as a proxy for "we are not a tenant". That proxy is what fails
+  // open. `planUnlocked` states the real condition directly instead:
+  //
+  //   platformOverride — the super admin in the platform context. Deliberate,
+  //                      unchanged, and per tenant-scope.ts's own contract the
+  //                      ONLY condition under which plan gating is bypassed.
+  //                      (On a tenant subdomain it is false BY DESIGN: a super
+  //                      admin keeps full access but is gated by that tenant's
+  //                      plan — so this narrowing costs a super admin nothing.)
+  //   !isWhiteLabel    — no tenant in scope, or the platform tenant itself.
+  //                      The same predicate `isPlanReady` below already uses to
+  //                      decide who has a plan worth waiting for, so the two can
+  //                      no longer disagree about what "is a tenant" means.
+  //
+  // Everything else falls through to the cell, and a null `features` now fails
+  // CLOSED — an unresolved plan shows PlanUpgradeScreen, which is the honest
+  // answer to "we do not know what you bought".
+  //
+  // ⚠️ NOT A NAV GATE. Which tabs exist is decided by PERMISSIONS alone; THE-202
+  // deliberately moved the plan clause out of the nav array so a tier that lacks
+  // a feature sees the tab and reaches PlanUpgradeScreen instead of the tab being
+  // absent. This gate decides which SCREEN a tab mounts, and nothing else.
+  const planUnlocked = platformOverride || !isWhiteLabel;
+  /**
+   * Does the tenant's plan carry this cell?
+   *
+   * Takes the CELL, already read off `features`, rather than a key — the four
+   * non-boolean gates (`maxCourses !== 0`, `accountingTools || givingStatements`,
+   * `hasBrandingAccess(features)`) are expressions, not lookups, and a key-based
+   * helper would have forced them back into open-coded gates beside this one.
+   *
+   * `=== true` rather than a truthiness test, deliberately: `features && …`
+   * yields `null` while the plan is unresolved, and a gate that cannot tell
+   * `null` from `false` is the same "unknown reads as yes" defect one level down.
+   */
+  const planAllows = (cell: boolean | null | undefined): boolean => planUnlocked || cell === true;
   // Plan readiness. A white-label tenant's plan is loaded async from the tenant
-  // doc (TenantContext); until it resolves we must NOT build the plan-gated nav —
-  // the `!isTenantAdmin` fallback in the tab list treats an unknown plan as
-  // "platform", which would flash paid tabs (AI Knowledge, CRM, …) before the plan
-  // confirms them. Fold plan-readiness into `isLoading` so the dashboard shows its
-  // loading skeleton until the plan is known, then builds the nav from the real
-  // plan. `tenantLoading` is false once the tenant doc has been read — even when it
+  // doc (TenantContext); until it resolves we must NOT build the plan-gated
+  // screens. Fold plan-readiness into `isLoading` so the dashboard shows its
+  // loading skeleton until the plan is known, then builds from the real plan.
+  // `tenantLoading` is false once the tenant doc has been read — even when it
   // yields no plan — and platform/apex contexts have no tenant plan to wait on, so
   // this never hangs into an infinite skeleton.
-  const isPlanReady = platformOverride || !isWhiteLabel || !tenantLoading;
+  //
+  // ⚠️ THIS IS NO LONGER THE ONLY THING STANDING BETWEEN AN UNRESOLVED PLAN AND A
+  // PAID SCREEN, and it never should have been. Its original note said the
+  // `!isTenantAdmin` fallback "treats an unknown plan as platform, which would
+  // flash paid tabs before the plan confirms them" — i.e. this gate existed to
+  // cover for a fail-OPEN gate downstream, and covered only the window it could
+  // see (a plan still loading), not the states it could not (a tenant doc with no
+  // `plan` field, or a read that errored). `planAllows` above now fails closed on
+  // all of them, so this is back to being what its name says: a loading gate.
+  // Note the shared `platformOverride || !isWhiteLabel` head — deliberately the
+  // same predicate, so "who has a plan to wait for" and "who has a plan to gate
+  // on" cannot drift apart.
+  const isPlanReady = planUnlocked || !tenantLoading;
   // Roster readiness — scoped to the users the answer can actually change.
   //
   // The roster feeds exactly one thing: isChurchAdmin → hasFullAccess. It can
@@ -412,8 +477,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // The OR chain lives in hasBrandingAccess (plan-features) so the per-tier
   // visibility is asserted in one place; it dropped the retired customBackground
   // flag without changing which tiers see the tab.
-  const canBranding = !!((platformOverride || !isTenantAdmin ||
-    (features && hasBrandingAccess(features))) && (hasFullAccess || perms.manageBranding));
+  const canBranding = !!(planAllows(features && hasBrandingAccess(features)) && (hasFullAccess || perms.manageBranding));
 
   // Settings tab entitlement — a manageSettings admin (or full access / super
   // admin) can reach the integrations/config screen. Branding lives in its own
@@ -894,7 +958,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               />
             </div>
           ) : activeTab === 'blog' ? (
-            (platformOverride || !isTenantAdmin || (features && features.blog))
+            planAllows(features?.blog)
               ? <div className="p-4 lg:p-0"><AdminBlog /></div>
               : <PlanUpgradeScreen featureName="Blog" featureKey="blog" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'inbox' ? (
@@ -902,15 +966,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           ) : activeTab === 'churches' ? (
             <div className="p-4 lg:p-0"><AdminChurches /></div>
           ) : activeTab === 'courses' ? (
-            (platformOverride || !isTenantAdmin || (features && features.maxCourses !== 0))
+            planAllows(features && features.maxCourses !== 0)
               ? <div className="p-4 lg:p-0"><AdminCourses /></div>
               : <PlanUpgradeScreen featureName="Courses" featureKey="maxCourses" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'ai' ? (
-            (platformOverride || !isTenantAdmin || (features && features.aiKnowledge))
+            planAllows(features?.aiKnowledge)
               ? <div className="p-4 lg:p-0"><AdminRAG /></div>
               : <PlanUpgradeScreen featureName="AI Knowledge" featureKey="aiKnowledge" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'newsletter' ? (
-            (platformOverride || !isTenantAdmin || (features && features.newsletterAutomation))
+            planAllows(features?.newsletterAutomation)
               ? <div className="p-4 lg:p-0">
                   {newsletterView === 'editor' ? (
                     <NewsletterEditor
@@ -937,27 +1001,27 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               </div>
             ) : null
           ) : activeTab === 'fundraising' ? (
-            (platformOverride || !isTenantAdmin || (features && features.fundraising))
+            planAllows(features?.fundraising)
               ? <div className="p-4 lg:p-0"><AdminFundraising initialCampaignId={itemId} onItemConsumed={clearItemId} /></div>
               : <PlanUpgradeScreen featureName="Fundraising" featureKey="fundraising" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'docs' ? (
-            (platformOverride || !isTenantAdmin || (features && features.docs))
+            planAllows(features?.docs)
               ? <div className="p-4 lg:p-0"><AdminDocs initialDocId={itemId} onItemConsumed={clearItemId} /></div>
               : <PlanUpgradeScreen featureName="Notes" featureKey="docs" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'events' ? (
-            (platformOverride || !isTenantAdmin || (features && features.eventRegistration))
+            planAllows(features?.eventRegistration)
               ? <div className="p-4 lg:p-0"><AdminEvents /></div>
               : <PlanUpgradeScreen featureName="Events" featureKey="event_registration" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'crm' ? (
-            (platformOverride || !isTenantAdmin || (features && features.crm))
+            planAllows(features?.crm)
               ? <div className="p-4 lg:p-0"><AdminCRM currentUserRole={isSuperAdmin ? 'super_admin' : userRole} currentUserPermissions={isChurchAdmin ? { fullAccess: true } as any : userPermissions} initialContactId={itemId} onItemConsumed={clearItemId} /></div>
               : <PlanUpgradeScreen featureName="CRM" featureKey="crm" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'accounting' ? (
-            (platformOverride || !isTenantAdmin || (features && (features.accountingTools || features.givingStatements)))
+            planAllows(features && (features.accountingTools || features.givingStatements))
               ? <div className="p-4 lg:p-0"><AdminAccounting canManageAccounting={hasFullAccess || !!perms.manageAccounting} canManageStatements={hasFullAccess || !!perms.manageGivingStatements} /></div>
               : <PlanUpgradeScreen featureName="Accounting" featureKey="accounting" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'forms' ? (
-            (platformOverride || !isTenantAdmin || (features && features.customForms))
+            planAllows(features?.customForms)
               ? <div className="p-4 lg:p-0"><AdminForms /></div>
               : <PlanUpgradeScreen featureName="Forms" featureKey="customForms" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'checkin' ? (
@@ -965,15 +1029,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             // when the tenant lacks checkInSystem, so it's always safe to mount here.
             <div className="p-4 lg:p-0"><AdminCheckin canCheckin={hasFullAccess || !!perms.manageCheckin} canQR={hasFullAccess || !!perms.manageQR} /></div>
           ) : activeTab === 'livestream' ? (
-            (platformOverride || !isTenantAdmin || (features && features.livestream))
+            planAllows(features?.livestream)
               ? <div className="p-4 lg:p-0"><AdminLivestream /></div>
               : <PlanUpgradeScreen featureName="Livestream" featureKey="livestream" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'sms' ? (
-            (platformOverride || !isTenantAdmin || (features && features.smsAutomation))
+            planAllows(features?.smsAutomation)
               ? <div className="p-4 lg:p-0"><AdminSms /></div>
               : <PlanUpgradeScreen featureName="SMS" featureKey="smsAutomation" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'community' ? (
-            (platformOverride || !isTenantAdmin || (features && features.communityGroups))
+            planAllows(features?.communityGroups)
               ? <div className="p-4 pb-0 lg:p-0 h-full"><AdminCommunity onOpenAttachment={(type, id) => {
                   if (type === 'doc') navigate(`/admin/docs/${id}`);
                   else if (type === 'contact') navigate(`/admin/crm/${id}`);
