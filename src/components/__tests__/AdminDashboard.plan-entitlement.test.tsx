@@ -480,6 +480,31 @@ describe('a super admin still sees everything through platformOverride', () => {
     const { screen } = await openTab(null, GATED_TABS.find((r) => r.label === 'Notes')!);
     expect(screen).toBe('AdminDocs');
   });
+
+  it('unlocks the platform tenant on its own subdomain, where platformOverride is false', async () => {
+    /**
+     * ⚠️ A DELIBERATE BEHAVIOUR CHANGE, pinned so it is visible rather than
+     * incidental.
+     *
+     * `harvest.theharvest.app` resolves as a tenant slug, so `platformOverride`
+     * is false there. `scripts/seed-platform-tenant.js` writes that tenant
+     * `plan: 'ministry'` — NOT one of the four ids in PLAN_ORDER — so
+     * `getPlanFeatures` fell through its `|| PLAN_FEATURES.plus` default and the
+     * platform's own admin surface was silently gated to INDIVIDUAL. `plan`
+     * being truthy also meant `!isTenantAdmin` was false, so the old bypass
+     * never fired here either.
+     *
+     * `!isWhiteLabel` now answers this the way every other platform-tenant check
+     * in the shell already does (`isPlanReady`, `showInbox`, the logo choice):
+     * Harvest is not a customer, so there is no tier to hold it to. The seed's
+     * invalid plan id is a separate defect and is reported, not fixed here.
+     */
+    store.current = { ...store.current, currentTenantId: 'harvest' };
+    hasPlatformOverrideMock.mockReturnValue(false);
+    const { screen } = await openTab('ministry' as TenantPlan, GATED_TABS.find((r) => r.label === 'Notes')!);
+    expect(getPlanFeatures('ministry' as TenantPlan).docs, "the seed's plan id falls back to Individual").toBe(false);
+    expect(screen).toBe('AdminDocs');
+  });
 });
 
 // ── 7. Role gates are orthogonal to plan ─────────────────────────────────────
