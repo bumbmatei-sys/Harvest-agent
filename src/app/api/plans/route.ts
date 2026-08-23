@@ -58,6 +58,11 @@ export async function GET() {
       // against a real 2.5% charge. See plan-features.ts.
       features: {
         blog: features.blog,
+        // The church news feed (`/community_posts`). Published because the
+        // marketing site's pricing card and comparison table both make a claim
+        // about it, and free is the tier that answers it differently — a
+        // consumer deriving a card from this catalog must be able to see that.
+        newsFeed: features.newsFeed,
         aiChat: features.aiChat,
         aiKnowledge: features.aiKnowledge,
         map: features.map,

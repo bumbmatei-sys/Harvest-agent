@@ -125,6 +125,22 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   // flag — none of them is communityGroups, and none of them is touched.
   const hasCommunityGroups = isMainSite || (isPlanReady && features?.communityGroups === true);
 
+  // The church NEWS FEED — `/community_posts`, via NewsTab and AllNews. Free is
+  // the only tier without it (THE-205): free is discipleship only, and the feed
+  // is neither discipleship nor something a one-person tenant has an audience
+  // for.
+  //
+  // 🔴 NOT `communityGroups`, and not `blog`. The note directly above draws that
+  // line for Messages and explicitly named the feed as a surface it must NOT
+  // take with it — this cell is what the feed gets INSTEAD, so the two gates
+  // stay independent and Ministry-only Community Groups is untouched on every
+  // tier. `blog` still governs BlogTab alone.
+  //
+  // Same `=== true` shape as every gate around it, and deliberately not
+  // usePlanGate(): `features` is null until the tenant doc resolves, so an
+  // unknown plan reads as "no", never as "yes".
+  const hasNewsFeed = isMainSite || (isPlanReady && features?.newsFeed === true);
+
   // 'loading' means we haven't fetched yet — hide tab until we know.
   // 'empty' means 0 member-visible courses — hide tab.
   // 'present' means at least 1 course exists — show tab.
@@ -156,15 +172,11 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     return () => { cancelled = true; };
   }, []);
 
-  // If courses disappear after being visible, navigate away from the tab
-  useEffect(() => {
-    if (coursesStatus === 'empty' && activeTopTab === 'courses') {
-      setActiveTopTab('news');
-    }
-  }, [coursesStatus, activeTopTab]);
-
   const topTabs = [
-    { id: 'news', label: 'News' },
+    // 🔴 WAS AN UNCONDITIONAL LITERAL, exactly as `messages` was before THE-162.
+    // The feed is every tier's Home, so this is the entry whose absence moves
+    // where a free member lands — see `homeTabId` below.
+    hasNewsFeed && { id: 'news', label: 'News' },
     (isMainSite || (isPlanReady && features?.blog === true)) && { id: 'blog', label: 'Blog' },
     // Only include Courses tab once we know at least 1 course exists
     coursesStatus === 'present' && { id: 'courses', label: 'Courses' },
@@ -178,6 +190,52 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     (isMainSite || (isPlanReady && features?.fundraising === true)) && { id: 'partner', label: 'Give' },
   ].filter(Boolean) as { id: string; label: string }[];
 
+  /**
+   * 🔴 WHAT "HOME" IS — derived, not the `'news'` literal it used to be.
+   *
+   * The news feed WAS Home: `topTabs[0]` was an unconditional News entry, the
+   * desktop sidebar's "Home" item is an alias of that tab, and every "go back
+   * to Home" path in this file jumped to `'news'` by name. Take the feed away
+   * from free and all of that lands on a tab that is no longer there — a member
+   * signing in to nothing, which is worse than the feature being absent.
+   *
+   * So Home is now the first of: the feed, when the tier has it; otherwise THE
+   * COURSE, which is the founder's intent and the whole of what free is for;
+   * otherwise the first tab that survived the tier's gates. That last arm is
+   * not decoration — `coursesStatus` is 'loading' on first paint and 'empty'
+   * for a tenant that has adopted no course yet, and on free the only other
+   * survivor is Prayer. A real screen either way; never a blank one.
+   *
+   * No free-only Home COMPONENT exists and none is needed: 'courses' renders
+   * the same CourseExperience the Courses tab already renders on every tier.
+   */
+  const homeTabId =
+    topTabs.find((t) => t.id === 'news')?.id
+    ?? topTabs.find((t) => t.id === 'courses')?.id
+    ?? topTabs[0]?.id
+    ?? 'news';
+
+  /**
+   * The tab actually RENDERED. `activeTopTab` is what the member last selected;
+   * this is what survives the tier's gates, resolved during render so a free
+   * member never sees a frame of the feed before an effect moves them off it.
+   *
+   * ⚠️ SCOPED TO THE FEED ON PURPOSE. A blanket "not in `topTabs` → go Home"
+   * would also swallow `messages`, which must be able to hold `activeTopTab`
+   * while absent from the strip — that is how a member on a tier without
+   * Community Groups reaches PlanUpgradeScreen (THE-162), and swallowing it
+   * would re-open THE-193: a jump whose destination simply never appears.
+   */
+  const effectiveTopTab = activeTopTab === 'news' && !hasNewsFeed ? homeTabId : activeTopTab;
+
+  // If courses disappear after being visible, navigate away from the tab —
+  // to whatever Home is for this tier, which on free is no longer the feed.
+  useEffect(() => {
+    if (coursesStatus === 'empty' && activeTopTab === 'courses') {
+      setActiveTopTab(homeTabId);
+    }
+  }, [coursesStatus, activeTopTab, homeTabId]);
+
   const bottomTabs = [
     { id: 'home', label: 'Home', icon: Home },
     { id: 'bible', label: 'Bible', icon: BookOpen },
@@ -186,8 +244,9 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     { id: 'profile', label: 'My Profile', icon: User },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
   // 'home' is always the unconditional first entry above — desktop's grouped
-  // sidebar replaces it with the "Home" alias of the News top-tab (see below),
-  // so only the rest are looked up by id for the desktop groups.
+  // sidebar replaces it with the "Home" alias of whichever top-tab `homeTabId`
+  // resolves to (see below), so only the rest are looked up by id for the
+  // desktop groups.
   const [, ...restBottomTabs] = bottomTabs;
 
   // Desktop sidebar groups (Phase 1.6) — FEED / COMMUNITY / SUPPORT US. Resolves
@@ -200,14 +259,17 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   const desktopTopTabItem = (id: string): DesktopNavItem | null => {
     const tab = topTabs.find(t => t.id === id);
     if (!tab) return null;
-    // The News top-tab is the desktop sidebar's "Home" entry point (mobile's
-    // "News" label inside the Home top-tabs is untouched).
-    const isHome = tab.id === 'news';
+    // Whichever top-tab IS Home for this tier is the desktop sidebar's "Home"
+    // entry point (mobile's own label inside the Home top-tabs is untouched).
+    // Keyed on `homeTabId` rather than the `'news'` literal it used to be: on
+    // free the feed is gone, and a sidebar whose Home entry resolved to a tab
+    // that no longer exists would leave a member no way to click Home at all.
+    const isHome = tab.id === homeTabId;
     return {
       id: `desktop-${tab.id}`,
       label: isHome ? 'Home' : tab.label,
       icon: isHome ? Home : TOP_TAB_ICONS[tab.id],
-      isActive: activeBottomTab === 'home' && activeTopTab === tab.id,
+      isActive: activeBottomTab === 'home' && effectiveTopTab === tab.id,
       onClick: () => { setActiveBottomTab('home'); handleTopTabClick(tab.id); },
     };
   };
@@ -232,7 +294,18 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   const desktopNavGroups: { label: string; items: DesktopNavItem[] }[] = [
     {
       label: 'FEED',
-      items: [desktopTopTabItem('news'), desktopTopTabItem('blog'), desktopTopTabItem('courses'), desktopBottomTabItem('bible')].filter(isDesktopNavItem),
+      // Home first, then the rest of the group MINUS whichever tab is Home —
+      // otherwise the tab that already renders as "Home" is listed a second
+      // time under its own name, with a duplicate React key. On a tier with the
+      // feed this resolves to exactly the old order: Home(News), Blog, Courses,
+      // Bible.
+      items: [
+        desktopTopTabItem(homeTabId),
+        ...['news', 'blog', 'courses']
+          .filter((id) => id !== homeTabId)
+          .map((id) => desktopTopTabItem(id)),
+        desktopBottomTabItem('bible'),
+      ].filter(isDesktopNavItem),
     },
     {
       label: 'COMMUNITY',
@@ -246,9 +319,9 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
 
   // Desktop top bar (Phase 1.6): page title + date for Home; view name elsewhere.
   const desktopTitle = activeBottomTab === 'home'
-    ? (activeTopTab === 'news' ? 'Home' : (topTabs.find(t => t.id === activeTopTab)?.label ?? 'Home'))
+    ? (effectiveTopTab === homeTabId ? 'Home' : (topTabs.find(t => t.id === effectiveTopTab)?.label ?? 'Home'))
     : (activeBottomTab === 'chat' ? askLabel : (bottomTabs.find(t => t.id === activeBottomTab)?.label ?? ''));
-  const showDesktopDate = activeBottomTab === 'home' && activeTopTab === 'news';
+  const showDesktopDate = activeBottomTab === 'home' && effectiveTopTab === homeTabId;
   const desktopDate = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date());
 
   useEffect(() => {
@@ -282,27 +355,27 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
 
   useEffect(() => {
     if (topTabsRef.current) {
-      const activeTabElement = topTabsRef.current.querySelector(`[data-tab-id="${activeTopTab}"]`);
+      const activeTabElement = topTabsRef.current.querySelector(`[data-tab-id="${effectiveTopTab}"]`);
       if (activeTabElement) {
         activeTabElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
       }
     }
-  }, [activeTopTab]);
+  }, [effectiveTopTab]);
 
   const handleTopTabClick = useCallback((tabId: string) => {
-    const currentIndex = topTabs.findIndex(t => t.id === activeTopTab);
+    const currentIndex = topTabs.findIndex(t => t.id === effectiveTopTab);
     const nextIndex = topTabs.findIndex(t => t.id === tabId);
     if (currentIndex !== nextIndex) {
       setDirection(nextIndex > currentIndex ? 1 : -1);
       setActiveTopTab(tabId);
     }
-  }, [activeTopTab]);
+  }, [effectiveTopTab]);
 
   const handleDragEnd = useCallback((e: any, { offset, velocity }: any) => {
     const swipeDistance = offset.x;
     const swipeVelocity = velocity.x;
 
-    const currentIndex = topTabs.findIndex(t => t.id === activeTopTab);
+    const currentIndex = topTabs.findIndex(t => t.id === effectiveTopTab);
 
     if (swipeDistance < -50 || swipeVelocity < -500) {
       // Swipe left -> next tab
@@ -317,7 +390,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
         setActiveTopTab(topTabs[currentIndex - 1].id);
       }
     }
-  }, [activeTopTab]);
+  }, [effectiveTopTab]);
 
   const tabVariants = {
     enter: (direction: number) => ({
@@ -352,10 +425,13 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     setFullScreenView({ type: 'course', data: { courseId, lessonId } });
   }, []);
 
+  // A saved post drops the member back on Home. On a tier with the feed that IS
+  // the feed the post came from; on free the post's surface is gone and Home is
+  // the course, which is where they land rather than on a tab that is not there.
   const openSavedPost = useCallback(() => {
     setActiveBottomTab('home');
-    setActiveTopTab('news');
-  }, []);
+    setActiveTopTab(homeTabId);
+  }, [homeTabId]);
 
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     if (fullScreenView.type !== 'none') return;
@@ -419,7 +495,13 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     </div>
   );
 
-  if (fullScreenView.type === 'all-news') {
+  // The ROUTE, gated as well as its entry point — the same reasoning written on
+  // the Messages route below. `onOpenAllNews` lives inside NewsTab, which a
+  // tier without the feed never mounts, so this state should be unreachable
+  // there; "should be unreachable" is exactly what THE-193 assumed about a
+  // hidden screen. AllNews opens its own `/community_posts` listeners, so it is
+  // refused here rather than merely unlinked.
+  if (fullScreenView.type === 'all-news' && hasNewsFeed) {
     return (
       <AllNews
         onBack={() => setFullScreenView({type: 'none'})}
@@ -558,12 +640,12 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                   data-tab-id={tab.id}
                   onClick={() => handleTopTabClick(tab.id)}
                   className={`whitespace-nowrap pb-3 font-bold text-[13px] transition-colors relative snap-start ${
-                    activeTopTab === tab.id ? '' : 'text-muted'
+                    effectiveTopTab === tab.id ? '' : 'text-muted'
                   }`}
-                  style={activeTopTab === tab.id ? { color: 'var(--brand-color, #e6b325)' } : undefined}
+                  style={effectiveTopTab === tab.id ? { color: 'var(--brand-color, #e6b325)' } : undefined}
                 >
                   {tab.label}
-                  {activeTopTab === tab.id && (
+                  {effectiveTopTab === tab.id && (
                     <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: 'var(--brand-color, #e6b325)' }} />
                   )}
                 </button>
@@ -575,13 +657,13 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
 
         {/* Main Content Area */}
         <ErrorBoundary>
-        <div className={`flex-1 overflow-x-hidden relative ${activeBottomTab === 'map' ? '' : (activeBottomTab === 'chat' || (activeBottomTab === 'home' && activeTopTab === 'messages')) ? 'overflow-hidden pb-[65px] lg:pb-0' : 'overflow-y-auto pb-24 lg:pb-0'}`} onScroll={handleScroll}>
+        <div className={`flex-1 overflow-x-hidden relative ${activeBottomTab === 'map' ? '' : (activeBottomTab === 'chat' || (activeBottomTab === 'home' && effectiveTopTab === 'messages')) ? 'overflow-hidden pb-[65px] lg:pb-0' : 'overflow-y-auto pb-24 lg:pb-0'}`} onScroll={handleScroll}>
           {activeBottomTab === 'home' ? (
             <DesktopContainer className="h-full">
             <div className="relative w-full h-full">
               <AnimatePresence initial={false} custom={direction} mode="popLayout">
                 <motion.div
-                  key={activeTopTab}
+                  key={effectiveTopTab}
                   custom={direction}
                   variants={tabVariants}
                   initial="enter"
@@ -593,12 +675,19 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                   }}
                   drag={enableSwipe ? "x" : false}
                   dragConstraints={{ left: 0, right: 0 }}
-                  dragElastic={{ left: activeTopTab === topTabs[topTabs.length - 1].id ? 0 : 1, right: activeTopTab === topTabs[0].id ? 0 : 1 }}
+                  dragElastic={{ left: effectiveTopTab === topTabs[topTabs.length - 1].id ? 0 : 1, right: effectiveTopTab === topTabs[0].id ? 0 : 1 }}
                   onDragEnd={handleDragEnd}
                   className="absolute w-full h-full p-4 space-y-6 lg:space-y-4"
                 >
-                  {/* Content based on activeTopTab */}
-                  {activeTopTab === 'news' && (
+                  {/* Content based on effectiveTopTab */}
+                  {/* 🔴 `hasNewsFeed &&` is NOT redundant with `effectiveTopTab`.
+                      It reads that way — `effectiveTopTab` can only be 'news'
+                      on a tier that has the feed — but that is an inference
+                      across two derivations, and NewsTab opening its
+                      `/community_posts` listeners is the thing being refused.
+                      The gate is stated where the mount happens, so a later
+                      edit to either derivation cannot silently re-open it. */}
+                  {effectiveTopTab === 'news' && hasNewsFeed && (
                     <>
                       {/* Live banner is mobile-only — on desktop the right rail's
                           "Live Now" card already surfaces the live stream, so the
@@ -616,13 +705,13 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                       />
                     </>
                   )}
-                  {activeTopTab === 'partner' && (
+                  {effectiveTopTab === 'partner' && (
                     <PartnerWithUsTab />
                   )}
-                  {activeTopTab === 'blog' && (
+                  {effectiveTopTab === 'blog' && (
                     <BlogTab onOpenArticle={(post) => setFullScreenView({type: 'article', data: post})} />
                   )}
-                  {activeTopTab === 'courses' && (
+                  {effectiveTopTab === 'courses' && (
                     <CourseExperience onOpenCourse={(courseId, lessonId) => setFullScreenView({type: 'course', data: {courseId, lessonId}})} />
                   )}
                   {/* The ROUTE, gated as well as the nav entry. Dropping Messages
@@ -631,7 +720,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                       jump, a swipe, or any state that survives the plan resolving —
                       and UserMessages would mount and open its channel/DM listeners
                       anyway. Gating here is what actually refuses it. */}
-                  {activeTopTab === 'messages' && (
+                  {effectiveTopTab === 'messages' && (
                     hasCommunityGroups ? (
                       <div className="-m-4 lg:-mx-10 xl:-mx-12 h-full lg:h-[calc(100%+2rem)]">
                         <UserMessages embedded onBack={() => {}} />
@@ -641,16 +730,16 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                         featureName="Community Groups"
                         featureKey="community_chat"
                         audience="member"
-                        onBack={() => setActiveTopTab('news')}
+                        onBack={() => setActiveTopTab(homeTabId)}
                       />
                     )
                   )}
-                  {activeTopTab === 'prayer' && (
+                  {effectiveTopTab === 'prayer' && (
                     <PrayerWall />
                   )}
-                  {activeTopTab !== 'news' && activeTopTab !== 'partner' && activeTopTab !== 'blog' && activeTopTab !== 'courses' && activeTopTab !== 'messages' && activeTopTab !== 'prayer' && (
+                  {effectiveTopTab !== 'news' && effectiveTopTab !== 'partner' && effectiveTopTab !== 'blog' && effectiveTopTab !== 'courses' && effectiveTopTab !== 'messages' && effectiveTopTab !== 'prayer' && (
                     <div className="flex flex-col items-center justify-center h-64 text-faint">
-                      <p>{topTabs.find(t => t.id === activeTopTab)?.label} content coming soon.</p>
+                      <p>{topTabs.find(t => t.id === effectiveTopTab)?.label} content coming soon.</p>
                     </div>
                   )}
                 </motion.div>

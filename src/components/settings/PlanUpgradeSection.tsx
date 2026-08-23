@@ -5,6 +5,7 @@ import { TenantPlan } from '../../types/tenant.types';
 import {
   getPlanFeatures,
   getPlanDisplayName,
+  crmLabel,
   PLAN_DISPLAY_NAMES,
   PLAN_ORDER,
   PRICED_PLAN_ORDER,
@@ -101,6 +102,14 @@ type CardFeature = {
   key: keyof PlanFeatures;
   /** Boolean cell — the line printed when the tier has it. */
   label?: string;
+  /**
+   * Boolean cell whose LABEL is itself tier-dependent, derived from the same
+   * resolved feature set the line's presence is. Only `crm` needs this today
+   * (its "Donors" half is a claim about `fundraising` — see `crmLabel`), and a
+   * function rather than a second literal is what stops the two halves drifting.
+   * Takes precedence over `label`.
+   */
+  labelFor?: (features: PlanFeatures) => string;
   /** Numeric cell — [singular, plural] noun printed against the tier's count. */
   count?: readonly [string, string];
 };
@@ -132,7 +141,7 @@ const CARD_FEATURES: CardFeature[] = [
   { key: 'fundraising', label: 'Fundraising' },
   { key: 'eventRegistration', label: 'Event Registration' },
   { key: 'docs', label: 'Notes' },
-  { key: 'crm', label: 'CRM (Donors & Members)' },
+  { key: 'crm', labelFor: crmLabel },
   { key: 'accountingTools', label: 'Accounting Tools' },
   { key: 'taxReceipt', label: 'Tax Receipts' },
   { key: 'givingStatements', label: 'Giving Statements' },
@@ -168,7 +177,8 @@ function cardLine(feature: CardFeature, features: PlanFeatures): string | null {
     if (n === UNLIMITED_CAP) return `Unlimited ${many}`;
     return `${n.toLocaleString()} ${n === 1 ? one : many}`;
   }
-  return value ? feature.label! : null;
+  if (!value) return null;
+  return feature.labelFor ? feature.labelFor(features) : feature.label!;
 }
 
 /**
