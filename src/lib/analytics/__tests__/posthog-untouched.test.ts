@@ -145,7 +145,33 @@ const PINNED: ReadonlyArray<readonly [string, string]> = [
   ['src/lib/dodo/lifecycle.ts', 'cbb85d69d7fccf88f6cf41598f64e5a24e4d4f723c5eab46071fdea9c8aaf1c2'],
   ['src/lib/dodo/plan-change.ts', '7f583417d59d476ddc41c6530acbfe3cd9dcaaf9e8d15279842b9d3db984ce9f'],
   ['src/lib/dodo/provider.ts', '81a795086eee9b9c0d9599bf1cbdf65ceb6820dcd3453629bad5c2838d187bb9'],
-  ['src/lib/dodo/provisioning.ts', '31c5f1929fa17bcd8fa841910647f241cb2d29f64af6296c0567366b5c503ab4'],
+  // ─── THE-203 REGENERATED THIS ONE, deliberately and with reason ───────────
+  //
+  // Two changes, both structural, neither touching what an existing paid signup
+  // does:
+  //
+  //  1. `subscription.active` now tries `handleFirstSubscriptionAttach` FIRST
+  //     and returns early on a match. A free tenant buying its first
+  //     subscription carries `firstSubscription: 'true'` metadata, which
+  //     `readSignupMetadata` reads as `not-a-signup` — so without this the
+  //     church would be charged by Dodo and never leave the free tier. The two
+  //     markers are mutually exclusive by construction (`newTenant` vs
+  //     `firstSubscription`, and a payload carrying both is refused), so an
+  //     ordinary paid signup takes exactly the path it took before: the new
+  //     call answers `not-a-first-subscription` without reading a document.
+  //
+  //  2. `generateUniqueSubdomain` MOVED to `@/lib/tenant-subdomain` and is
+  //     re-exported from here unchanged. Naming a tenant has nothing to do with
+  //     a processor, and free tenants are named without one — the import fence
+  //     in `dodo-billing-flag.test.ts` refuses any non-Dodo file that reaches
+  //     into `lib/dodo/`, and it was RIGHT to refuse `lib/free-provisioning.ts`
+  //     rather than be widened for it. Moved, not copied, so there is still one
+  //     implementation on this path; the Stripe webhook keeps its own private
+  //     copy exactly as before.
+  //
+  // No provisioning write, no batch, no idempotency guard and no add-on
+  // handling changed. `dodo-provisioning*.test.ts` passes unedited.
+  ['src/lib/dodo/provisioning.ts', '4bac3ec097b440b784b4384cd3cad5a0a541a370941fea9ff1c8064395ac2dd2'],
   ['src/lib/dodo/renewal.ts', 'fe7fb940ac15edfafd53bca346526e3a43266ad57c29a791a049ef8c512fc6a9'],
   ['src/lib/dodo/subscription-convergence.ts', 'b047d54e588b939ffe5f35e138cf02771033fffb2644a202726098061c3376b4'],
   ['src/lib/dodo/webhook-dispatch.ts', '6d5d6e18824efa41eb2b00273c60d8a4724eb15a9f9559fe83913950e07d0e5e'],

@@ -169,6 +169,43 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
       //    way, including the `referrerId` that carries affiliate attribution
       //    into subscription metadata.
       const token = await user.getIdToken();
+
+      // ── 🔴 THE FREE FORK (THE-203). ───────────────────────────────────────
+      //
+      // Forever Free has no Dodo product, so it has no checkout to send anyone
+      // to. `/api/dodo/checkout` validates against PRICED_PLAN_ORDER and would
+      // answer `400 Invalid plan/billing: free/monthly` — which is the RIGHT
+      // answer from that route and the wrong end of the funnel to discover it.
+      //
+      // The free route builds the tenant in its own request and clears
+      // `signupInProgress` itself, because no webhook is coming to do it. So
+      // there is no redirect and no waiting screen: on success the church
+      // exists, and a reload lands on first-run setup.
+      //
+      // `selectedBilling` is deliberately NOT sent. Free has no billing term,
+      // and passing one would put a term on a tier that is never billed.
+      // `referrerId` is not sent either: an affiliate commission is 15% of what
+      // a church pays, and this church pays nothing. The stored referrer is
+      // left untouched in localStorage, so it still attaches if they upgrade.
+      if (selectedPlan === 'free') {
+        const freeResp = await fetch('/api/tenants/provision-free', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ministryName: ministryName.trim() }),
+        });
+        const freeData = await freeResp.json();
+        if (freeResp.ok && freeData.tenantId) {
+          // Straight to the app on this origin. OnboardingGate reads the
+          // now-released marker and the new tenant's `setupCompleted: false`,
+          // and renders first-run setup.
+          window.location.href = '/';
+        } else {
+          setError(freeData.error || 'Could not create your ministry. Please try again.');
+          setSubmitting(false);
+        }
+        return;
+      }
+
       const resp = await fetch(SIGNUP_CHECKOUT_ENDPOINT, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },

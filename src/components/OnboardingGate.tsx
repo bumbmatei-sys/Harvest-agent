@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { onAuthStateChanged, getIdToken } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { Loader2, CreditCard } from 'lucide-react';
+import { Loader2, CreditCard, Sparkles } from 'lucide-react';
 import { auth, db } from '../firebase';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { checkRosterAdmin } from '../utils/tenant.utils';
@@ -228,6 +228,42 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
     (status === 'loading' && onCheckoutSuccess);
   useForcedLightTheme(rendersFunnelScreen);
 
+  /**
+   * 🔴 A FREE SIGNUP IS NEVER RESUMED THROUGH A CHECKOUT. (THE-203)
+   *
+   * `signupPlan` is read from the user's own Firestore doc, so it can be
+   * 'free'. Sending that to SIGNUP_CHECKOUT_ENDPOINT is answered `400 Invalid
+   * plan/billing: free/monthly` — free is absent from PRICED_PLAN_ORDER by
+   * design — and the button below would spin, fail silently, and leave the
+   * evangelist on a payment screen for a plan that costs nothing and cannot be
+   * paid for. That is precisely the "permanently flagged mid-signup" trap.
+   *
+   * The free route is idempotent (it answers with the existing tenant if one
+   * turned up in the meantime), so pressing this twice cannot build two
+   * churches.
+   */
+  const isFreeSignup = signupPlan === 'free';
+
+  const restartFreeProvisioning = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+    setRestarting(true);
+    try {
+      const token = await user.getIdToken();
+      const resp = await fetch('/api/tenants/provision-free', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ministryName: signupMinistryName || '' }),
+      });
+      const data = await resp.json();
+      // The onSnapshot listener above flips this screen to first-run as soon as
+      // the user doc gains its tenantId, so there is nothing to navigate to.
+      if (!resp.ok || !data.tenantId) setRestarting(false);
+    } catch {
+      setRestarting(false);
+    }
+  };
+
   const restartCheckout = async () => {
     const user = auth.currentUser;
     if (!user) return;
@@ -349,14 +385,18 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={HARVEST_LOGO} alt="Harvest" className="mb-6 h-12 w-auto object-contain" />
         <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-brand-lg" style={{ background: 'color-mix(in srgb, var(--brand-color, #C9963A) 13%, white)', color: BRAND }}>
-          <CreditCard size={28} />
+          {isFreeSignup ? <Sparkles size={28} /> : <CreditCard size={28} />}
         </div>
-        <h1 className="font-display" style={{ fontWeight: 300, fontSize: 28, letterSpacing: '-0.02em', color: 'var(--text-heading, #2D2519)' }}>Complete your payment</h1>
+        <h1 className="font-display" style={{ fontWeight: 300, fontSize: 28, letterSpacing: '-0.02em', color: 'var(--text-heading, #2D2519)' }}>
+          {isFreeSignup ? 'Finish setting up' : 'Complete your payment'}
+        </h1>
         <p className="mt-2.5 max-w-sm text-sm leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>
-          Your ministry isn&apos;t active yet. Finish checkout to create your account and get started.
+          {isFreeSignup
+            ? 'Your ministry isn\u2019t active yet. There is nothing to pay \u2014 press the button and we\u2019ll finish creating it.'
+            : 'Your ministry isn\u2019t active yet. Finish checkout to create your account and get started.'}
         </p>
         <button
-          onClick={restartCheckout}
+          onClick={isFreeSignup ? restartFreeProvisioning : restartCheckout}
           disabled={restarting}
           className="mt-7 inline-flex items-center gap-2 rounded-lg font-semibold text-white"
           style={{
@@ -365,11 +405,18 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
             cursor: restarting ? 'wait' : 'pointer', opacity: restarting ? 0.7 : 1, fontSize: '15px',
           }}
         >
-          {restarting ? <><Loader2 size={18} className="animate-spin" /> Redirecting…</> : <>Continue to payment</>}
+          {restarting
+            ? <><Loader2 size={18} className="animate-spin" /> {isFreeSignup ? 'Creating\u2026' : 'Redirecting\u2026'}</>
+            : <>{isFreeSignup ? 'Create my ministry' : 'Continue to payment'}</>}
         </button>
-        <p className="mt-4 max-w-sm text-xs leading-relaxed" style={{ color: 'var(--text-muted, #8B7355)' }}>
-          {WALLET_FALLBACK_LINE}
-        </p>
+        {/* The wallet fallback is card advice. It has no meaning for a tier
+            that takes no card, and printing it would put the word "payment"
+            back on a screen this ticket exists to keep it off. */}
+        {!isFreeSignup && (
+          <p className="mt-4 max-w-sm text-xs leading-relaxed" style={{ color: 'var(--text-muted, #8B7355)' }}>
+            {WALLET_FALLBACK_LINE}
+          </p>
+        )}
       </div>
     </div>
   );
