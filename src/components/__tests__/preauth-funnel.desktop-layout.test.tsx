@@ -446,6 +446,23 @@ describe('each funnel screen is constrained at desktop widths', () => {
         'measured revision and all still passing unedited. That is the real claim; ' +
         'only the byte-identity proxy for it moved.',
     },
+    {
+      file: 'ChurchOnboarding.tsx',
+      ticket: 'THE-203',
+      why:
+        'A SECOND entry for this file, deliberately, rather than letting a later edit ' +
+        'ride in on THE-195\'s. The digest assertion only checks that an exempted file ' +
+        'DIFFERS, so any subsequent change to ChurchOnboarding.tsx would have passed ' +
+        'silently under the existing entry and the list would have stopped describing ' +
+        'why the file actually differs. THE-203 forked the submit handler: when the ' +
+        'chosen plan is Forever Free it POSTs /api/tenants/provision-free instead of ' +
+        'the Dodo checkout, because free has no product and that checkout answers 400 ' +
+        'for it. The fork is inside the existing async handler and returns early; no ' +
+        'element, class or inline style was added, removed or reordered, and the render ' +
+        'is unchanged until a handler runs. As with THE-195 and THE-201, the proof is ' +
+        'not this paragraph — this file keeps its measurements at all five viewports ' +
+        'and its rendering hash at every mobile viewport, all still passing unedited.',
+    },
   ];
 
   const EXEMPT_FILES = EDITED_SINCE_MEASUREMENT.map((e) => e.file);
@@ -466,6 +483,7 @@ describe('each funnel screen is constrained at desktop widths', () => {
     expect(EDITED_SINCE_MEASUREMENT.map((e) => `${e.ticket} ${e.file}`)).toEqual([
       'THE-195 ChurchOnboarding.tsx',
       'THE-201 AuthPage.tsx',
+      'THE-203 ChurchOnboarding.tsx',
     ]);
 
     for (const { file, why } of EDITED_SINCE_MEASUREMENT) {
