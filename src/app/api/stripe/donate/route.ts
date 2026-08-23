@@ -12,6 +12,7 @@ import {
 import { convergeExpiredDodoGrace } from '@/lib/dodo/lifecycle';
 import { verifyAuth } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
+import { getPlanFeatures } from '@/utils/plan-features';
 
 export const dynamic = 'force-dynamic';
 
@@ -139,6 +140,22 @@ export async function POST(request: NextRequest) {
 
     const connectAccountId = tenantPrivate.stripeConnectAccountId;
     const plan = tenantData.plan || 'plus';
+
+    // 🔴 THE FREE TIER HAS NO DONATE PAGE — THE-202, server side.
+    //
+    // `free.fundraising` is false (src/utils/plan-features.ts) and THE-202 hides
+    // the Give tab in MainApp, but this is a MONEY surface: a hidden tab is not
+    // a gate, and this route is deliberately unauthenticated so anonymous donors
+    // can give. Anyone holding the URL could POST here. Refused BEFORE any
+    // Stripe object is created, and before the fee maths below, so a free tenant
+    // can never open a Checkout Session.
+    //
+    // Reuses GIVING_UNAVAILABLE_MESSAGE verbatim: the reader is a donor, and a
+    // church's subscription tier is not theirs to be told — the same reasoning
+    // written on the lifecycle refusal above.
+    if (getPlanFeatures(plan).fundraising === false) {
+      return NextResponse.json({ error: GIVING_UNAVAILABLE_MESSAGE }, { status: 403 });
+    }
 
     if (!connectAccountId) {
       return NextResponse.json({ error: 'This ministry has not set up payments yet' }, { status: 400 });

@@ -541,9 +541,114 @@ describe('a reading surface uses a reading measure, not the form measure', () =>
 // ═════════════════════════════════════════════════════════════════════════════
 // 5. The shell.
 // ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * ⚠️ A LATER TICKET HAS EDITED ONE OF THESE FILES, so blanket byte-identity no
+ * longer states something true.
+ *
+ * The edit is named here with the ticket that made it and why it is not a
+ * layout change. The file stays in `SCOPE` rather than being dropped from it,
+ * and it is exempted from ONE assertion — byte-identity — and nothing else.
+ * Its mobile rendering layer, its colour tokens and its touch-target heights
+ * are all still pinned to the measured revision, and all still pass unedited.
+ * Those are the claim byte-identity was standing in for; a proxy that has
+ * stopped being true should stop being asserted rather than be quietly
+ * re-recorded to match whatever the file says today.
+ *
+ * This mirrors EDITED_SINCE_MEASUREMENT in preauth-funnel.desktop-layout.test.tsx,
+ * which THE-195 and THE-201 established for the same situation.
+ */
+const EDITED_SINCE_MEASUREMENT: ReadonlyArray<{ file: string; ticket: string; why: string }> = [
+  {
+    file: 'MainApp.tsx',
+    ticket: 'THE-202',
+    why:
+      'Gained a plan clause on ONE member tab. `Give` used to be unconditional: ' +
+      "`{ id: 'partner', label: 'Give' }`. A free tenant has `fundraising: false` " +
+      'and /api/stripe/donate now refuses it server-side, so an always-on Give tab ' +
+      'was a member-facing link to a 403. It is now gated the same way the Blog tab ' +
+      'directly above it already was, using the same `isMainSite || (isPlanReady && ' +
+      'features?.X === true)` shape — so no new pattern, no new import and no new ' +
+      'element entered the file. Nothing about the shell moved: no class, no inline ' +
+      'style, no wrapper and no ordering. The proof is not this paragraph — MainApp ' +
+      'keeps its mobileLayer, colours and heights pins from the measured revision, ' +
+      'all asserted elsewhere in this file and all still passing. Only the ' +
+      'byte-identity proxy for them moved.',
+  },
+];
+
+const EXEMPT_FILES = EDITED_SINCE_MEASUREMENT.map((e) => e.file);
+
+/** Byte-identity, unless the file is named above with a ticket and a reason. */
+const expectUnchangedUnlessExempted = (file: string) => {
+  if (EXEMPT_FILES.includes(file)) return;
+  expect(read(file), `${file} changed — this batch is a measurement, not an edit`).toBe(at(file));
+};
+
+describe('the byte-identity exemption list is exactly the edits that justify it', () => {
+  it('names every exempted file with its ticket, and keeps the list to exactly those', () => {
+    // The exemption is the dangerous part: an over-broad list turns every
+    // byte-identity assertion below into a no-op. So the list is pinned whole —
+    // file AND ticket — and widening it is an edit to this line, visible in
+    // review, rather than a silent side effect of touching a shell file.
+    expect(EDITED_SINCE_MEASUREMENT.map((e) => `${e.ticket} ${e.file}`)).toEqual([
+      'THE-202 MainApp.tsx',
+    ]);
+  });
+
+  it('exempts only files this batch actually measured, that actually differ, with a stated reason', () => {
+    for (const { file, why } of EDITED_SINCE_MEASUREMENT) {
+      // An entry naming a file this batch never measured exempts nothing and
+      // only disguises the list's real length. SCOPE holds surface names, not
+      // filenames, so the extension comes off before the comparison.
+      expect(SCOPE as readonly string[], `${file} is exempted but is not in scope`)
+        .toContain(file.replace(/\.tsx$/, ''));
+      // The digest MUST actually differ. If a later change reverts the edit,
+      // this fails and the entry has to come back out — which is what stops the
+      // list outliving the edits that justified it.
+      expect(read(file), `${file} is exempted but unchanged — drop it from the list`)
+        .not.toBe(at(file));
+      // A bare filename explains nothing to whoever reads this next.
+      expect(why.length, `${file} is exempted without a stated reason`).toBeGreaterThan(80);
+    }
+  });
+
+  it('proves each exempted file is still pinned by the measurements byte-identity stood for', () => {
+    // Stated here as well as in the sections above so the exemption cannot be
+    // read as "MainApp is no longer checked".
+    for (const file of EXEMPT_FILES) {
+      const surface = file.replace(/\.tsx$/, '');
+      expect(BASELINE[surface]?.mobileLayer, `${surface} lost its rendering pin`).toBeDefined();
+      expect(BASELINE[surface]?.colours, `${surface} lost its colour pin`).toBeDefined();
+      expect(BASELINE[surface]?.heights, `${surface} lost its height pin`).toBeDefined();
+    }
+  });
+});
+
+describe('the Give tab is gated on fundraising, which is why MainApp is exempted above', () => {
+  it('never renders Give unconditionally — a free tenant must not be linked to a 403', () => {
+    const src = read('MainApp.tsx');
+    // The pre-PR revision carried this exact line. Its absence is the edit.
+    expect(src).not.toMatch(/^\s*\{ id: 'partner', label: 'Give' \},\s*$/m);
+    expect(src).toMatch(/features\?\.fundraising === true\)\) && \{ id: 'partner', label: 'Give' \}/);
+  });
+
+  it("uses `=== true`, not `!== false`, so the tab is absent while the plan is still loading", () => {
+    // `features` is null before the plan resolves, and `null?.fundraising !== false`
+    // is TRUE — so `!== false` would flash the tab on every cold load for every
+    // tenant, including the free ones this gate exists for.
+    const src = read('MainApp.tsx');
+    expect(src).not.toMatch(/features\?\.fundraising !== false/);
+  });
+
+  it('keeps the tab on the apex site, which is not a tenant and has no plan', () => {
+    expect(read('MainApp.tsx')).toMatch(/\(isMainSite \|\| \(isPlanReady && features\?\.fundraising === true\)\)/);
+  });
+});
+
 describe("the member shell's container is unchanged", () => {
-  it('MainApp.tsx is byte-identical to the revision this PR branched from', () => {
-    expect(read('MainApp.tsx')).toBe(at('MainApp.tsx'));
+  it('MainApp.tsx is byte-identical to the revision this PR branched from, or exempted above', () => {
+    expectUnchangedUnlessExempted('MainApp.tsx');
   });
 
   it('DesktopContainer — the shell’s content column — is byte-identical too', () => {
@@ -645,7 +750,12 @@ describe('the Messages gate is unchanged', () => {
     const src = read('MainApp.tsx');
     expect(src).toContain('hasCommunityGroups');
     expect(src).toMatch(/activeTopTab === 'messages' && \(\s*\n\s*hasCommunityGroups \?/);
-    expect(src).toBe(at('MainApp.tsx'));
+    // Byte-identity dropped here, not weakened: THE-202 edited MainApp (see
+    // EDITED_SINCE_MEASUREMENT). The two assertions above ARE the Messages gate
+    // — the tab condition and the route condition — and they still hold
+    // verbatim, which is what this test is named for. A whole-file comparison
+    // would now fail on the Give tab, which has nothing to do with Messages.
+    expectUnchangedUnlessExempted('MainApp.tsx');
   });
 
   it('UserMessages’ queries and gates are byte-identical — only className strings moved', () => {
@@ -689,9 +799,20 @@ describe('no behaviour changed on any screen in scope', () => {
     expect(norm(read('AIChat.tsx'))).toBe(norm(at('AIChat.tsx')));
   });
 
-  it('MainApp and LivestreamView are untouched, so nothing there could have moved', () => {
-    expect(read('MainApp.tsx')).toBe(at('MainApp.tsx'));
+  it('MainApp and LivestreamView carry no behaviour change, so nothing there could have moved', () => {
+    // LivestreamView is still byte-identical and asserted as such.
     expect(read('LivestreamView.tsx')).toBe(at('LivestreamView.tsx'));
+    // MainApp is exempted from byte-identity by THE-202, so the behavioural
+    // claim is made directly instead of through the file-level proxy: with
+    // comments and className VALUES stripped, the ONLY difference from the
+    // pre-PR revision is the Give tab's plan clause. Any second edit — a moved
+    // query, a changed gate, a reordered tab — fails here.
+    const norm = (src: string) => strip(src)
+      .replace(
+        /\(isMainSite \|\| \(isPlanReady && features\?\.fundraising === true\)\) && \{ id: 'partner', label: 'Give' \}/,
+        "{ id: 'partner', label: 'Give' }",
+      );
+    expect(norm(read('MainApp.tsx'))).toBe(norm(at('MainApp.tsx')));
   });
 });
 
