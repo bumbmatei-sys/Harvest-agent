@@ -707,9 +707,97 @@ describe('conflicting inline widths are removed, not overridden', () => {
 // nothing in it to constrain that was not also a resize of every other screen,
 // and the batch's own instruction for that case is to report and stop.
 // ═════════════════════════════════════════════════════════════════════════════
+/**
+ * ⚠️ A LATER TICKET HAS EDITED THE SHELL, so blanket byte-identity no longer
+ * states something true.
+ *
+ * The edit is named here with the ticket that made it and why it is not a
+ * layout change. AdminDashboard.tsx stays in `SOURCE.digests` rather than being
+ * dropped from it, and it is exempted from ONE assertion — the digest — and
+ * nothing else. The two assertions directly below it, which are what section 5
+ * is actually about, have no exemption list and still pass unedited: the shell
+ * spends no rule from the shared layout module, and it still mounts every
+ * screen in the same per-tab wrapper at the same padding. Those are the claim
+ * the digest was standing in for.
+ *
+ * Mirrors EDITED_SINCE_MEASUREMENT in preauth-funnel.desktop-layout.test.tsx,
+ * established by THE-195 and THE-201 for the same situation.
+ */
+const EDITED_SINCE_MEASUREMENT: ReadonlyArray<{ file: string; ticket: string; why: string }> = [
+  {
+    file: 'AdminDashboard.tsx',
+    ticket: 'THE-202',
+    why:
+      'Moved the plan clause on each gated tab from the NAV ARRAY to the RENDER ' +
+      'switch, so a tier that lacks a feature now sees the tab and reaches ' +
+      'PlanUpgradeScreen instead of the tab being absent. Ten tabs already had ' +
+      'exactly that render-time gate before this ticket (fundraising, docs, events, ' +
+      'crm, accounting, forms, livestream, sms, community, branding); THE-202 gave ' +
+      'the same treatment to the four that did not (blog, courses, ai, newsletter) ' +
+      'and removed the now-redundant nav clause from all of them. Permission ' +
+      'clauses were NOT touched: every `hasFullAccess || perms.X` term is byte-identical, ' +
+      'so a limited admin sees exactly what they saw before. No wrapper, padding, ' +
+      'class or inline style changed — which is what the two assertions below ' +
+      'still prove, unedited.',
+  },
+];
+
+const EXEMPT_FILES = EDITED_SINCE_MEASUREMENT.map((e) => e.file);
+
+describe('the digest exemption list is exactly the edits that justify it', () => {
+  it('names every exempted file with its ticket, and keeps the list to exactly those', () => {
+    // An over-broad list turns both digest assertions in this file into no-ops,
+    // so the list is pinned whole — file AND ticket — and widening it is an edit
+    // to this line, visible in review.
+    expect(EDITED_SINCE_MEASUREMENT.map((e) => `${e.ticket} ${e.file}`)).toEqual([
+      'THE-202 AdminDashboard.tsx',
+    ]);
+  });
+
+  it('exempts only recorded files that actually differ, each with a stated reason', () => {
+    for (const { file, why } of EDITED_SINCE_MEASUREMENT) {
+      expect(SOURCE.digests, `${file} is exempted but was never recorded`).toHaveProperty(file);
+      // The digest MUST actually differ. If a later change reverts the edit this
+      // fails and the entry has to come out, so the list cannot outlive it.
+      expect(sha256(readSrc(file)), `${file} is exempted but unchanged — drop it from the list`)
+        .not.toBe(SOURCE.digests[file]);
+      expect(why.length, `${file} is exempted without a stated reason`).toBeGreaterThan(80);
+    }
+  });
+});
+
 describe("the admin shell's container is unchanged", () => {
-  it('is byte-for-byte the file it was before this batch', () => {
+  it('is byte-for-byte the file it was before this batch, unless exempted above', () => {
+    if (EXEMPT_FILES.includes('AdminDashboard.tsx')) return;
     expect(sha256(readSrc('AdminDashboard.tsx'))).toBe(SOURCE.digests['AdminDashboard.tsx']);
+  });
+
+  it('kept every permission clause it had, so plan gating did not widen into access control', () => {
+    // 🔴 This is the assertion that makes the exemption above safe to grant.
+    //
+    // THE-202 moved PLAN clauses out of the nav array. The `perms.*` terms in
+    // the same expressions are a DIFFERENT gate — a limited admin's
+    // restrictions are orthogonal to which plan the tenant bought — and had to
+    // survive untouched. Removing one would hand a limited admin a tab their
+    // role denies them, which no plan gate would catch.
+    //
+    // Pinned with MULTIPLICITY, not as a set: `manageCheckin` appears twice
+    // because Check-In is reachable from two entries, and a set comparison
+    // would let one of them be deleted silently. The list is a literal rather
+    // than a re-read of the pre-PR file, so it cannot become a comparison of
+    // the file with itself.
+    const permTerms = [...readSrc('AdminDashboard.tsx').matchAll(/perms\.(\w+)/g)]
+      .map((m) => m[1]).sort();
+    expect(permTerms).toEqual([
+      'analytics', 'createCourses', 'fullAccess', 'fullAccess',
+      'manageAccounting', 'manageAccounting', 'manageAdmins', 'manageAffiliate',
+      'manageBranding', 'manageCRM', 'manageCheckin', 'manageCheckin',
+      'manageCommunity', 'manageDocs', 'manageEvents', 'manageForms',
+      'manageFundraising', 'manageGivingStatements', 'manageGivingStatements',
+      'manageLivestream', 'manageNewsletter', 'manageQR', 'manageQR',
+      'manageSettings', 'manageSms', 'modifyChurches', 'uploadRag',
+      'writeArticles',
+    ]);
   });
 
   it('spends no rule from the shared layout module', () => {
@@ -832,6 +920,7 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
     // not about a revision the CI runner's shallow clone cannot resolve.
     const moved = Object.entries(SOURCE.digests)
       .filter(([f]) => existsSync(path.join(SRC, f)))
+      .filter(([f]) => !EXEMPT_FILES.includes(f))
       .filter(([f, digest]) => sha256(readSrc(f)) !== digest)
       .map(([f]) => f);
     expect(moved, 'these files are out of scope for this batch and changed anyway').toEqual([]);
