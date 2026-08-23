@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 
 import { capturePublicPageview } from '../lib/analytics/client';
 import type { AnalyticsRoutePattern } from '../lib/analytics/routes';
@@ -56,11 +57,29 @@ interface PublicRouteAnalyticsProps {
  * `distinct_id` from persisted state, so their blog visit is attributed to
  * them. That is correct — it is the same person — and it is not something this
  * component does or could undo.
+ *
+ * ─── ⚠️ Why the effect depends on the PATHNAME it does not send ──────────────
+ *
+ * Every public page today is reached by a hard navigation — they use plain
+ * `<a href>`, not `next/link`, so each visit is a fresh document and a fresh
+ * mount. But `route` is the same string for every page in a family: were a
+ * `<Link>` ever added from one blog post to another, Next would soft-navigate,
+ * React would keep this component mounted, and an effect keyed on `route`
+ * alone would not fire again. The second post would go uncounted — quietly,
+ * and for exactly as long as nobody checked, which is the failure THE-206
+ * exists to fix rather than to reproduce.
+ *
+ * 🔴 So `pathname` is a DEPENDENCY and never a value. It is what changed; the
+ * pattern is what is sent.
  */
 export default function PublicRouteAnalytics({ route }: PublicRouteAnalyticsProps) {
+  const pathname = usePathname();
+
   useEffect(() => {
     void capturePublicPageview(route);
-  }, [route]);
+    // `pathname` is deliberately in this list and deliberately unused in the
+    // body — see above. It is the thing that changes on a soft navigation.
+  }, [route, pathname]);
 
   return null;
 }

@@ -60,6 +60,14 @@ vi.mock('../../../utils/tenant-scope', () => ({
   PLATFORM_TENANT_ID: 'harvest',
 }));
 
+/**
+ * `usePathname` needs an App Router tree, which a unit test does not have.
+ * Mocked as a settable value so the soft-navigation case below is testable at
+ * all — it is the case that has no `<Link>` to exercise it today.
+ */
+const { navState } = vi.hoisted(() => ({ navState: { pathname: '/' } }));
+vi.mock('next/navigation', () => ({ usePathname: () => navState.pathname }));
+
 const { authState } = vi.hoisted(() => ({
   authState: { callback: null as null | ((user: unknown) => void) },
 }));
@@ -217,6 +225,7 @@ function render(element: React.ReactElement) {
  * expects nothing must drain the full budget before it may say so.
  */
 async function mountPublicRoute(route: AnalyticsRoutePattern, expectPageview = true) {
+  navState.pathname = RESOLVED_PATH[route];
   render(React.createElement(PublicRouteAnalytics, { route }));
   await (expectPageview ? flushForPageviews() : flush());
 }
@@ -351,6 +360,29 @@ describe('1 — every route in the stated list emits a pageview', () => {
       );
     },
   );
+
+  it('a soft navigation within one route family is counted twice, not once', async () => {
+    // ⚠️ Every public page is reached by a hard `<a href>` today, so this cannot
+    // happen yet. It is pinned because `route` is one string for a whole family:
+    // add a `<Link>` from one blog post to another and an effect keyed on
+    // `route` alone would keep the component mounted and never fire again — the
+    // second post uncounted, quietly, which is the bug THE-206 exists to fix.
+    navState.pathname = '/blog/7bQxs2LmNfA4dR8v';
+    render(React.createElement(PublicRouteAnalytics, { route: '/blog/[id]' }));
+    await flushForPageviews(1);
+    expect(pageviews()).toHaveLength(1);
+
+    navState.pathname = '/blog/Mn2Vb7Kd4Sx9Lp0R';
+    act(() => {
+      root!.render(React.createElement(PublicRouteAnalytics, { route: '/blog/[id]' }));
+    });
+    await flushForPageviews(2);
+
+    expect(pageviews()).toHaveLength(2);
+    // 🔴 Both carry the PATTERN. The pathname is what changed, never what is sent.
+    expect(pageviews().map(([, p]) => (p as { route: string }).route))
+      .toEqual(['/blog/[id]', '/blog/[id]']);
+  });
 
   it('every rendered branch of the form page is counted, not only the happy one', () => {
     // `/form/[formId]` answers a closed form with a notice instead of the form.
@@ -703,6 +735,9 @@ describe('10 — identity is still uid, and a super admin is still not attribute
     const component = codeOf('src/components/PublicRouteAnalytics.tsx');
     expect(component).toMatch(/capturePublicPageview/);
     expect(component).not.toMatch(/identify|resolveAnalyticsIdentity|getTenantScope/);
+    // It reads the pathname only to know that one changed; it never sends it.
+    expect(component).toMatch(/usePathname/);
+    expect(component).not.toMatch(/capturePublicPageview\(pathname/);
   });
 });
 
