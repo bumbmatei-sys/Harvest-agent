@@ -14,6 +14,7 @@ import {
 import type { BillingPeriod } from './provider';
 import type { DodoWebhookEvent } from './events';
 import { reactivateTenantForDodoSubscription } from './lifecycle';
+import { handleFirstSubscriptionAttach } from './first-subscription';
 
 /**
  * Build-on-payment, on Dodo: turn a paid Dodo subscription into a tenant.
@@ -134,33 +135,22 @@ export function readSignupMetadata(raw: unknown): DodoSignupMetadata | null {
 }
 
 /**
- * Turn a ministry name into a unique, free tenant subdomain.
+ * Re-exported, not defined here, since THE-203.
  *
- * A deliberate character-for-character copy of `generateUniqueSubdomain` in the
- * Stripe webhook: the id it produces IS the church's public address, and two
- * processors that name churches differently would be visible to customers. The
- * shared reserved-label set comes from `NON_TENANT_SUBDOMAINS`, so a new
- * non-tenant subdomain is automatically unassignable on both paths.
+ * Naming a tenant has nothing to do with a processor, and Forever Free tenants
+ * are named without one. `src/lib/free-provisioning.ts` therefore cannot import
+ * it from this module — the import fence in `dodo-billing-flag.test.ts` refuses
+ * any non-Dodo file that reaches into `lib/dodo/`, and it was right to: this
+ * module can provision, charge and cancel.
+ *
+ * The implementation MOVED to `@/lib/tenant-subdomain` rather than being
+ * copied, so there is still exactly one of it on this path and every existing
+ * importer of `generateUniqueSubdomain` from here is unaffected.
  */
-export async function generateUniqueSubdomain(ministryName: string): Promise<string> {
-  const RESERVED = new Set([...NON_TENANT_SUBDOMAINS, 'api', 'harvest', 'nations', 'platform']);
-  const base = (ministryName || 'ministry')
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 30) || 'ministry';
-
-  let candidate = base;
-  for (let i = 0; i < 10; i++) {
-    const exists = (await adminDb.collection('tenants').doc(candidate).get()).exists;
-    if (!RESERVED.has(candidate) && !exists) return candidate;
-    const suffix = Math.random().toString(36).slice(2, 6);
-    candidate = `${base}-${suffix}`.slice(0, 40);
-  }
-  return candidate;
-}
+export { generateUniqueSubdomain } from '@/lib/tenant-subdomain';
+// Imported as well as re-exported: `provisionTenantFromDodoSubscription`
+// below calls it, and a bare re-export does not bind the name in this scope.
+import { generateUniqueSubdomain } from '@/lib/tenant-subdomain';
 
 /** What `provisionTenantFromDodoSubscription` decided. */
 export type DodoProvisioningOutcome =
@@ -447,6 +437,27 @@ export async function handleDodoSubscriptionActive(
   event: DodoWebhookEvent,
 ): Promise<DodoProvisioningOutcome> {
   const payload = (event.data || {}) as unknown as DodoSubscriptionPayload;
+
+  // ── THE-203: a FIRST subscription for an existing free tenant. ────────────
+  //
+  // Tried before provisioning, and it returns early on a match, because the two
+  // are mutually exclusive: `readFirstSubscriptionMetadata` requires
+  // `firstSubscription: 'true'` and refuses a payload that ALSO carries
+  // `newTenant: 'true'`, while `readSignupMetadata` requires `newTenant`. A
+  // first-subscription payload therefore reads as `not-a-signup` below and
+  // would otherwise fall through to no handler at all — the tenant would be
+  // charged and never leave the free tier.
+  const firstSub = await handleFirstSubscriptionAttach(payload);
+  if (firstSub.outcome !== 'not-a-first-subscription') {
+    // Mapped onto this handler's own outcome type. A refusal is reported inside
+    // `handleFirstSubscriptionAttach` and is NOT thrown: `subscription.active`
+    // is durable, and throwing would make Dodo redeliver an event whose refusal
+    // is a state problem no redelivery can fix.
+    return firstSub.outcome === 'attached'
+      ? { outcome: 'created', tenantId: firstSub.tenantId, plan: firstSub.plan as TenantPlan, period: firstSub.period }
+      : { outcome: 'already-provisioned', tenantId: firstSub.tenantId };
+  }
+
   const result = await provisionTenantFromDodoSubscription(payload);
 
   if (result.outcome === 'already-provisioned') {
