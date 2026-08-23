@@ -84,7 +84,29 @@ const PINNED: ReadonlyArray<readonly [string, string]> = [
   ['src/app/api/stripe/connect/login-link/route.ts', '560d9643926e72e66fc9300fccb0ba42bc827b8ead3211c090f662a7cb70e83e'],
   ['src/app/api/stripe/connect/route.ts', 'c3f2e3f1d0780515ded1a81a143b4279ced52533c676b997996a8254049a6a03'],
   ['src/app/api/stripe/connect/webhook/route.ts', 'febfc599c9ffedb31843bc7cb00e58ae50fb2db09998dfd455ad6b2d37054b1e'],
-  ['src/app/api/stripe/donate/route.ts', 'c9eb696359bbdbf3e82a46d8c51e4164419e346f831552f32e502bba1b148566'],
+  // ─── THE-202 REGENERATED THIS ONE, deliberately and with reason ───────────
+  //
+  // 🔴 The free tier has no donate page, and this is where that becomes true.
+  //
+  // `free.fundraising` is false in the feature matrix and THE-202 hides the
+  // Give tab in MainApp, but a hidden tab is not a gate: this route is
+  // deliberately reachable without auth so an anonymous donor can give, so
+  // anyone holding the URL could POST to it. The route now reads the tenant's
+  // plan features and answers 403 BEFORE any Stripe object is created and
+  // before the fee arithmetic runs, so a free tenant can never open a Checkout
+  // Session.
+  //
+  // The refusal reuses GIVING_UNAVAILABLE_MESSAGE verbatim rather than naming
+  // the tier: the reader is a donor, and a church's subscription plan is not
+  // theirs to be told. That is the same reasoning the lifecycle refusal above
+  // it already applies.
+  //
+  // No fee, split, currency, Connect account or webhook path was touched — the
+  // added block returns or falls through, and donate-platform-fee.test.ts
+  // still passes unedited, which is what proves the money arithmetic did not
+  // move. The refusal itself is asserted in
+  // src/app/api/stripe/__tests__/donate-free-tier-refused.test.ts.
+  ['src/app/api/stripe/donate/route.ts', '8620ef3d28d12e2f6fec3c8f87fd7c778c26d38480720c98ac04eedd459900c2'],
   ['src/app/api/stripe/portal/route.ts', 'cbe0b50f7f96845444e6995ae94d61a17354309b4e2c4f56109b9ec703bd237f'],
   ['src/app/api/stripe/remove-church-billing/route.ts', '496d8343c2ae764ccddf1c7d23d710562709add397c8d5cbf6809e6d724bd7d3'],
   ['src/app/api/stripe/standalone-checkout/route.ts', 'bcd83e66f2b346718b7cf1289881a136f0027c8270f863cb2f59324a4c63cccc'],
