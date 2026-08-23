@@ -63,6 +63,20 @@ vi.mock('@/lib/firebase-admin', () => {
     update: async (data: unknown) => { docWrites.push({ collection, id, op: 'update', data }); },
     delete: async () => { docDeletes.push({ collection, id }); },
   });
+  /**
+   * 🔴 THE ROSTER IS POPULATED, and that is what makes "nobody was removed"
+   * checkable. A query double that returned an empty page would let code that
+   * enumerates the members and deletes them past the cap pass this suite —
+   * there would simply be nobody to delete. So a collection read hands back
+   * 500 real member documents, each with a `ref` whose `delete` records.
+   */
+  const roster = (collection: string) => {
+    const docs = Array.from({ length: 500 }, (_, i) => {
+      const id = `member_${i}`;
+      return { id, ref: makeDoc(collection, id), exists: true, data: () => ({ tenantId: 't1' }) };
+    });
+    return { docs, size: docs.length, empty: false, forEach: (fn: (d: unknown) => void) => docs.forEach(fn) };
+  };
   return {
     adminDb: {
       collection: (name: string) => {
@@ -71,9 +85,12 @@ vi.mock('@/lib/firebase-admin', () => {
           doc: (id: string) => makeDoc(name, id),
           get: async () => {
             docReads.push({ collection: name, id: '*' });
-            return { docs: [], size: 0 };
+            return roster(name);
           },
-          where: () => ({ get: async () => { docReads.push({ collection: name, id: '*' }); return { docs: [], size: 0 }; } }),
+          where: () => ({
+            get: async () => { docReads.push({ collection: name, id: '*' }); return roster(name); },
+            limit: () => ({ get: async () => { docReads.push({ collection: name, id: '*' }); return roster(name); } }),
+          }),
         };
       },
       batch: () => ({

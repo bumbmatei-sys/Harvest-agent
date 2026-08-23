@@ -332,11 +332,41 @@ describe('a paid Dodo tenant’s manage action reaches Dodo’s portal, not Stri
 // ── 6 ────────────────────────────────────────────────────────────────────────
 describe('the checkout route still refuses when tenantId is set', () => {
   it('refuses a body carrying a tenantId, so no church opens a second subscription', async () => {
+    // 🔴 THE CALLER BELONGS TO NOTHING, deliberately. The route carries a
+    // SECOND 400 a few lines below this guard — "You already belong to an
+    // organization" — and a caller who has a tenant is refused by that one
+    // whether or not the tenantId guard exists. Asserting a 400 against such a
+    // caller is a test that passes with the guard deleted. So the signer-up
+    // here has no tenant of their own, and the only thing left that can refuse
+    // the request is the guard under test.
+    mockRequireAuth.mockResolvedValue({
+      uid: 'u9', email: 'new@example.com', tenantId: null, isAdmin: false, isSuperAdmin: false,
+    });
+
     const res = await dodoCheckoutPOST(
       post('api/dodo/checkout', { plan: 'pro', billing: 'monthly', tenantId: 't1', ministryName: 'Grace' }),
     );
 
     expect(res.status).toBe(400);
+    // Named, not merely a status: this must be THIS refusal.
+    expect((await res.json()).error).toMatch(/new ministries only/i);
+    expect(mockCheckoutCreate).not.toHaveBeenCalled();
+  });
+
+  it('and it refuses one even from a super admin, who is exempt from the other guard', async () => {
+    // The apex super admin passes "you already belong to an organization" by
+    // design. If the tenantId guard were the one carrying that case, this is
+    // the request that would create the second subscription.
+    mockRequireAuth.mockResolvedValue({
+      uid: 'root', email: 'root@example.com', tenantId: null, isAdmin: true, isSuperAdmin: true,
+    });
+
+    const res = await dodoCheckoutPOST(
+      post('api/dodo/checkout', { plan: 'max', billing: 'yearly', tenantId: 't1', ministryName: 'Grace' }),
+    );
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/new ministries only/i);
     expect(mockCheckoutCreate).not.toHaveBeenCalled();
   });
 
