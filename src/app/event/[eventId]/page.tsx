@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { getTenantFromHost } from '@/lib/server-tenant';
 import PublicEventRegistration from '@/components/PublicEventRegistration';
+import PublicRouteAnalytics from '@/components/PublicRouteAnalytics';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,12 +58,15 @@ export default async function PublicEventPage({
   const branding = (tenant as any).config || {};
 
   return (
-    <PublicEventRegistration
-      tenantId={tenant.id}
-      tenantName={tenant.name}
-      logo={branding.logo || null}
-      primaryColor={branding.primaryColor || '#B8962E'}
-      event={event}
-    />
+    <>
+      <PublicRouteAnalytics route="/event/[eventId]" />
+      <PublicEventRegistration
+        tenantId={tenant.id}
+        tenantName={tenant.name}
+        logo={branding.logo || null}
+        primaryColor={branding.primaryColor || '#B8962E'}
+        event={event}
+      />
+    </>
   );
 }

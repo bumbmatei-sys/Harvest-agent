@@ -6,6 +6,7 @@ import sanitizeHtml from 'sanitize-html';
 import { adminDb } from '@/lib/firebase-admin';
 import { getTenantFromHost } from '@/lib/server-tenant';
 import { getPlanFeatures } from '@/utils/plan-features';
+import PublicRouteAnalytics from '@/components/PublicRouteAnalytics';
 
 const DEFAULT_BRAND_COLOR = '#D4AF37';
 const HEX_COLOR_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
@@ -124,6 +125,7 @@ export default async function BlogPostPage({
 
   return (
     <div className="min-h-screen bg-surface-raised" style={brandColorVars}>
+      <PublicRouteAnalytics route="/blog/[id]" />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

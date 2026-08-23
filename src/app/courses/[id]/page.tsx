@@ -5,6 +5,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { getTenantFromHost } from '@/lib/server-tenant';
 import { stripHtml } from '@/utils/stripHtml';
 import type { Course, Level } from '@/types/course.types';
+import PublicRouteAnalytics from '@/components/PublicRouteAnalytics';
 
 interface CourseDoc extends Course {
   status?: string;
@@ -77,6 +78,7 @@ export default async function CoursePublicPage({
 
   return (
     <div className="min-h-screen bg-surface-raised">
+      <PublicRouteAnalytics route="/courses/[id]" />
       {/* Minimal header */}
       <header className="border-b border-line-subtle">
         <div className="max-w-2xl mx-auto px-4 py-4">

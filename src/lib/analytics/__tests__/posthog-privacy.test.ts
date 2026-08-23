@@ -158,7 +158,15 @@ describe('3 — no captured event carries an email, phone, donor name, prayer re
 
   it('the vocabulary Harvest may attach contains none of them', () => {
     // The whole vocabulary, read in full — this is short on purpose.
-    expect(ALLOWED_EVENT_PROPERTY_KEYS).toEqual(['app_surface', 'is_platform_admin']);
+    //
+    // ⚠️ THE-206 ADDED `route`, deliberately and by editing `events.ts`, which
+    // is the mechanism this list exists to force. It carries the normalised
+    // route PATTERN — `/form/[formId]`, never `/form/aB3xQ…` — because
+    // `app_surface` alone cannot answer "how many people opened a form?" once
+    // 'public' is one bucket holding a blog, a form and an event page. The
+    // assertion below still does its real job: `route` is checked against the
+    // forbidden labels like every other key.
+    expect(ALLOWED_EVENT_PROPERTY_KEYS).toEqual(['app_surface', 'is_platform_admin', 'route']);
     expect(ALLOWED_PERSON_PROPERTY_KEYS).toEqual(['account_kind']);
 
     for (const key of [...ALLOWED_EVENT_PROPERTY_KEYS, ...ALLOWED_PERSON_PROPERTY_KEYS]) {
@@ -214,9 +222,37 @@ describe('3 — no captured event carries an email, phone, donor name, prayer re
       },
     }))!;
 
-    expect(sent.properties!.$current_url).toBe('https://grace.theharvest.app/admin/crm');
-    expect(sent.properties!.$referrer).toBe('https://mail.example.com/read');
-    expect(sent.properties!.$pathname).toBe('/admin/crm');
+    // The query string is gone — the original point of this test, unchanged.
+    expect(sent.properties!.$current_url).not.toContain('jane%40example.org');
+    expect(sent.properties!.$current_url).not.toContain('token=abc');
+    expect(sent.properties!.$referrer).not.toContain('jane%40example.org');
+    expect(sent.properties!.$pathname).not.toContain('jane%40example.org');
+
+    // 🔴 THE-206 ADDED THE SECOND HALF: the PATH is normalised too. Until it,
+    // every instrumented route was the SPA shell, whose paths carry nothing.
+    // Instrumenting the public routes puts identifiers in the path
+    // (`/form/aB3xQ…`, `/event/9f2c…`), and posthog-js builds `$current_url`
+    // from `location.href` itself — so a `route` property alone would not have
+    // stopped the live path being sent beside it.
+    expect(sent.properties!.$current_url).toBe('https://grace.theharvest.app/admin/[section]');
+    expect(sent.properties!.$pathname).toBe('/admin/[section]');
+    // ⚠️ An external referrer keeps its HOST and loses its path. That is
+    // over-redaction on purpose: this cannot tell our hosts from anyone else's
+    // (churches provision custom domains), and posthog-js records the host
+    // separately as `$referring_domain`, so attribution still works.
+    expect(sent.properties!.$referrer).toBe('https://mail.example.com/[unrouted]');
+  });
+
+  it('a public route id never survives into $current_url — THE-206', async () => {
+    const sent = beforeSendEvent(captured({
+      event: ANALYTICS_EVENTS.PAGEVIEW,
+      properties: {
+        $current_url: 'https://nations.theharvest.app/checkin/9fZc3Rt8yUq1BwEo',
+      },
+    }))!;
+
+    // A children's check-in session id, on a page a parent opens from a QR code.
+    expect(sent.properties!.$current_url).toBe('https://nations.theharvest.app/checkin/[sessionId]');
   });
 
   it('the DOM-reading events are refused by name, not merely switched off', () => {

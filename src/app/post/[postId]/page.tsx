@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { getTenantFromHost } from '@/lib/server-tenant';
+import PublicRouteAnalytics from '@/components/PublicRouteAnalytics';
 
 export const dynamic = 'force-dynamic';
 
@@ -116,6 +117,7 @@ export default async function PublicPostPage({
 
   return (
     <div className="min-h-screen bg-surface-tint py-10 px-4">
+      <PublicRouteAnalytics route="/post/[postId]" />
       <div className="max-w-xl mx-auto">
         {/* Tenant branding — never leak Harvest branding on a white-label host. */}
         <div className="text-center mb-6">
