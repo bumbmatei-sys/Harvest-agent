@@ -8,7 +8,7 @@ import { PLAN_PRICES, AI_ASSISTANT_MONTHLY } from '@/lib/billing';
 import { logReferralCapture, resolveAffiliateReferrer } from '@/lib/affiliate-referrer';
 import { tenantPrivateRef, getTenantPrivate } from '@/lib/tenant-private';
 import { billingActionUnavailable, blocksStripeAction, resolveBillingOwnership } from '@/lib/billing-processor';
-import { AI_TELEGRAM_ASSISTANT_ENABLED } from '@/utils/plan-features';
+import { AI_TELEGRAM_ASSISTANT_ENABLED, DODO_BILLING_ENABLED, isUnpricedTier } from '@/utils/plan-features';
 
 export const dynamic = 'force-dynamic';
 
@@ -242,6 +242,55 @@ export async function POST(request: NextRequest) {
 
     // The tenant doc was already read (and proved to exist) by the owner gate.
     const tenantData = ownerOrErr.tenantData;
+
+    // ── 🔴 A TENANT WITH NO SUBSCRIPTION DOES NOT BUY ITS FIRST ONE HERE. ────
+    //
+    // THE-212. `blocksStripeAction` deliberately lets `reason: 'none'` through
+    // — a tenant carrying no identifier has no Dodo subscription for a Stripe
+    // charge to duplicate — and the one path that depended on that was "a
+    // legacy or hand-made free tenant subscribing for the FIRST time through
+    // /api/stripe/checkout". Forever Free (THE-203) turned that from a legacy
+    // corner into the normal state of a whole tier, and THE-203 built the
+    // path it belongs on: `/api/dodo/first-subscription`.
+    //
+    // What reaching this line does to a free tenant is not merely the wrong
+    // processor. `getValidCustomerId` below CREATES a Stripe customer and
+    // PERSISTS `stripeCustomerId` on the tenant BEFORE the checkout session is
+    // built — so even the failed attempt leaves a permanent Stripe identifier
+    // on a church that has never paid Stripe a cent. The moment that church
+    // later buys through Dodo it carries identifiers from both processors, and
+    // `resolveBillingOwnership` reads that as `reason: 'conflict'` — the
+    // fingerprint of the double-billing bug — which freezes its plan changes
+    // and its add-ons. One press of Upgrade was enough to do it.
+    //
+    // So this is a TIGHTENING, and the `tenantId` guard on `/api/dodo/checkout`
+    // is untouched: that route still refuses every request carrying a tenantId,
+    // and this one now refuses an existing-tenant plan change for a tier that
+    // has no plan to change from. The two remain complementary, and the third
+    // path stays the only way an existing tenant gains a first subscription.
+    //
+    // ⚠️ Conditional on DODO_BILLING_ENABLED so it can never strand a tenant.
+    // If Dodo billing were switched off, `/api/dodo/first-subscription` returns
+    // 503 and Stripe is the only checkout there is — so the refusal lifts with
+    // the flag rather than leaving a tier that can be sold nowhere.
+    //
+    // ⚠️ `isUnpricedTier`, not `!isPricedPlan`. `plan` is an untyped Firestore
+    // string and a RETIRED tier name is equally absent from `PLAN_PRICING`; a
+    // legacy tenant on one has a subscription nobody can name, and must keep
+    // the documented Stripe path rather than be told it has none.
+    if (DODO_BILLING_ENABLED && isUnpricedTier(tenantData?.plan)) {
+      return NextResponse.json(
+        {
+          error:
+            'This organization has no subscription yet, so there is no plan to change. Starting a first subscription goes through /api/dodo/first-subscription.',
+          code: 'billing-action-unavailable',
+          processor: null,
+          reason: 'no-subscription',
+        },
+        { status: 409 },
+      );
+    }
+
     const customerId = await getValidCustomerId(
       stripe,
       privateData.stripeCustomerId,

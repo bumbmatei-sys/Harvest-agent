@@ -1,5 +1,6 @@
 import { authFetch } from './auth-fetch';
-import type { BillingTerm } from './plan-features';
+import { isUnpricedTier, type BillingTerm } from './plan-features';
+import type { PricedPlan, TenantPlan } from '../types/tenant.types';
 
 /**
  * Client-side routing for the existing-tenant plan change (THE-89).
@@ -130,4 +131,109 @@ export async function runDodoPlanChange(args: {
     ok: true,
     message: confirmData?.message || 'Your plan change is confirmed. It may take a moment to appear.',
   };
+}
+
+// ─── The free tenant's FIRST subscription (THE-212) ──────────────────────────
+//
+// 🔴 WHAT WAS BROKEN, AND WHY IT LOOKED LIKE A MISSING PRICE.
+//
+// A Forever Free tenant is provisioned with NO billing identifiers at all — no
+// `dodoCustomerId`, no `dodoSubscriptionId`, no `billingProcessor`, no `stripe*`
+// (see `lib/free-provisioning.ts`, which lists every field it deliberately
+// omits). `resolveBillingOwnership` therefore answers `reason: 'none'`, and
+// `/api/billing/invoices` reports that tenant as `processor: 'stripe'` — the
+// default it falls through to when it finds no Stripe customer.
+//
+// So `fetchBillingProcessor()` said "stripe" about a tenant that has never had
+// a subscription with anyone, both upgrade surfaces took the `proc !== 'dodo'`
+// arm, and a free tenant pressing Upgrade was sent to `/api/stripe/checkout` —
+// which resolves a STRIPE PRICE ID out of `lib/billing.ts`'s `PLAN_PRICES`.
+// That is where the "price id" in the founder's error came from: Dodo has
+// products and no price-ID concept at all, so the vocabulary of the error was
+// itself the proof that the wrong processor had been reached.
+//
+// ⚠️ THE FIX ROUTES ON THE TENANT'S OWN TIER, NOT ON `processor`. A tier with
+// no row in `PLAN_PRICING` has no price, no billing term and no subscription
+// anywhere — so there is nothing for a processor to own and nothing a
+// processor-shaped answer can say about it. That is a fact about the tenant,
+// knowable without a network call, and it cannot be defaulted to the wrong
+// value the way `processor` was.
+//
+// ⚠️ ASKS THE PRICING TABLE, NEVER `=== 'free'`. Same rule `isPricedPlan` is
+// written under: a literal comparison needs editing the next time a tier stops
+// being sold; this cannot fall out of step with the table it guards.
+
+/**
+ * Does this tenant need its FIRST subscription rather than a plan change?
+ *
+ * True only for a tenant on a tier this build knows and that has no price —
+ * Forever Free today. `undefined` (a super admin, or the plan not yet loaded)
+ * and any UNRECOGNISED tier are both false, so a legacy record keeps exactly
+ * the flow it has: see `isUnpricedTier` for why "not priced" alone is the wrong
+ * question to ask of a Firestore string.
+ */
+export function needsFirstSubscription(currentPlan: TenantPlan | undefined): boolean {
+  return isUnpricedTier(currentPlan);
+}
+
+/**
+ * The affiliate referrer stored in the browser at the ORIGINAL visit.
+ *
+ * Read here rather than at free signup on purpose: a commission is 15% of what
+ * a church PAYS, and a Forever Free tenant pays nothing, so attribution belongs
+ * to the moment it starts paying. An evangelist who arrived through an
+ * affiliate link and upgraded months later still attributes.
+ */
+function readStoredReferrerId(): string | undefined {
+  try {
+    const stored = localStorage.getItem('affiliateReferrerId');
+    if (!stored) return undefined;
+    const parsed = JSON.parse(stored);
+    return parsed?.id || stored;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Start a free tenant's first subscription: a Dodo Checkout for `plan` on
+ * `billing`, and a redirect to it.
+ *
+ * 🔴 SENDS PLAN AND TERM. It does not send, resolve, or possess a price of any
+ * kind. `/api/dodo/first-subscription` hands the pair to
+ * `dodoBillingProvider.createPlanCheckout`, which resolves the Dodo PRODUCT
+ * through `requireProductId(plan, period)` — a `(plan, period) → product`
+ * lookup. Dodo puts the price on the product and has no price object, so there
+ * is no price to resolve from and nothing here may invent one.
+ *
+ * ⚠️ WRITES NOTHING, AND MUST NOT. The route creates a Checkout and returns a
+ * URL; the tier lands on the tenant when the `subscription.active` webhook
+ * attaches it. The caller redirects and re-reads on return — it never applies
+ * the tier it asked for.
+ *
+ * ⚠️ The 14-day trial on the product is intended (THE-208) and no trial
+ * override is sent, so the product's own trial applies.
+ *
+ * Resolves `{ ok: false, message }` when the route refused; on success the
+ * browser is already navigating and the promise's value is moot.
+ */
+export async function startFirstSubscription(args: {
+  plan: PricedPlan;
+  billing: BillingTerm;
+}): Promise<{ ok: boolean; message: string }> {
+  const referrerId = readStoredReferrerId();
+  const resp = await authFetch('/api/dodo/first-subscription', {
+    method: 'POST',
+    body: JSON.stringify({
+      plan: args.plan,
+      billing: args.billing,
+      ...(referrerId ? { referrerId } : {}),
+    }),
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok || !data?.url) {
+    return { ok: false, message: data?.error || 'Failed to start checkout. Please try again.' };
+  }
+  window.location.href = data.url;
+  return { ok: true, message: '' };
 }

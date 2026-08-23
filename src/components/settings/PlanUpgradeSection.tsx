@@ -10,6 +10,7 @@ import {
   PLAN_ORDER,
   PRICED_PLAN_ORDER,
   PLAN_PRICING,
+  isPricedPlan,
   AI_TELEGRAM_ASSISTANT_ENABLED,
   UNLIMITED_CAP,
   formatPlanPrice,
@@ -21,7 +22,7 @@ import {
 } from '../../utils/plan-features';
 import { PLATFORM_FEE_MAP } from '../../lib/stripe-connect';
 import { authFetch } from '../../utils/auth-fetch';
-import { fetchBillingProcessor, runDodoPlanChange, subscriptionProcessorAttribution, PlanChangeProcessor } from '../../utils/plan-change';
+import { fetchBillingProcessor, needsFirstSubscription, runDodoPlanChange, startFirstSubscription, subscriptionProcessorAttribution, PlanChangeProcessor } from '../../utils/plan-change';
 import { getTenantId } from './useTenantId';
 import { BillingTermToggle } from './BillingTermToggle';
 
@@ -320,6 +321,12 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
     return getTenantId();
   };
 
+  // Does this tenant need its FIRST subscription rather than a plan change?
+  // One derivation, read by both the click routing and the footer action, so a
+  // tenant can never be offered a manage action and a first-subscription
+  // checkout at the same time.
+  const isFirstSubscriptionTenant = needsFirstSubscription(currentPlan);
+
   /**
    * One entry point per plan card. Dodo tenants get the in-place
    * preview-then-confirm change (up AND down — Dodo's hosted portal has no plan
@@ -330,6 +337,21 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
   const handlePlanSelect = async (planId: TenantPlan, isDowngrade: boolean) => {
     setCheckoutLoading(planId);
     try {
+      // ── 🔴 THE FREE TENANT'S FIRST SUBSCRIPTION (THE-212). ────────────────
+      //
+      // Checked BEFORE the processor, and that order is the fix. A free tenant
+      // owns no subscription, so `/api/billing/invoices` has no processor to
+      // report and answers with its Stripe default — which sent every free
+      // tenant pressing Upgrade into `/api/stripe/checkout` and a Stripe PRICE
+      // ID. See the note above `needsFirstSubscription` for the whole chain.
+      //
+      // The tier is the question here, not the processor: a tenant with no
+      // priced plan has no subscription to change and needs its first one.
+      if (isFirstSubscriptionTenant && isPricedPlan(planId)) {
+        const result = await startFirstSubscription({ plan: planId, billing: billingPeriod });
+        if (!result.ok && result.message) alert(result.message);
+        return;
+      }
       const proc = processor !== undefined ? processor : await fetchBillingProcessor();
       if (proc === 'dodo') {
         const tid = await resolveTenantId();
@@ -735,26 +757,65 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
         </div>
       )}
 
-      {/* Billing & Payments */}
-      <div className="flex flex-col items-center gap-3 pt-2">
-        <button
-          onClick={handleManageSubscription}
-          disabled={portalLoading}
-          className="flex items-center gap-2 px-5 py-2.5 bg-earth text-cream rounded-xl text-sm font-semibold hover:bg-warm-dark dark:bg-cream dark:text-earth dark:hover:bg-stone-200 transition-colors disabled:opacity-50"
-        >
-          {portalLoading ? (
-            <>
-              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Opening portal...
-            </>
-          ) : (
-            'Manage Subscription'
+      {/* ── Billing & Payments ───────────────────────────────────────────────
+          🔴 A FREE TENANT HAS NOTHING TO MANAGE (THE-212). The button below
+          opens `/api/stripe/portal` — the hosted customer portal where a
+          subscription is cancelled, a card replaced and an invoice read. A
+          Forever Free tenant has no subscription, no card and no invoice with
+          any processor, so there is no portal to open: the route finds no
+          customer id and answers "No Stripe subscription found. Please
+          subscribe first." A control whose only outcome is that error is worse
+          than no control — on the one screen where this tenant is supposed to
+          be able to start PAYING, it offered them an exit from a subscription
+          they do not have.
+
+          So the action is replaced rather than merely hidden, and it is
+          replaced by the thing this tenant actually needs: the plan cards
+          directly above, which are the purchase. The attribution line goes with
+          it — `processor` is 'stripe' for a tenant with no billing records at
+          all (see `needsFirstSubscription`), and "Powered by Stripe" under an
+          upgrade action would be a claim about a processor this tenant has
+          never paid and, once it upgrades, never will.
+
+          ⚠️ Keyed on the TIER, exactly as the routing above is, so the two
+          cannot disagree about who this tenant is. */}
+      {isFirstSubscriptionTenant ? (
+        <div className="flex flex-col items-center gap-3 pt-2">
+          <button
+            data-testid="billing-upgrade-action"
+            onClick={() => {
+              planScrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+            className="flex items-center gap-2 px-5 py-2.5 bg-earth text-cream rounded-xl text-sm font-semibold hover:bg-warm-dark dark:bg-cream dark:text-earth dark:hover:bg-stone-200 transition-colors"
+          >
+            Upgrade Your Plan
+          </button>
+          <p className="text-xs text-faint">
+            You&apos;re on the Free plan — there&apos;s no subscription to manage yet.
+          </p>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center gap-3 pt-2">
+          <button
+            data-testid="billing-manage-action"
+            onClick={handleManageSubscription}
+            disabled={portalLoading}
+            className="flex items-center gap-2 px-5 py-2.5 bg-earth text-cream rounded-xl text-sm font-semibold hover:bg-warm-dark dark:bg-cream dark:text-earth dark:hover:bg-stone-200 transition-colors disabled:opacity-50"
+          >
+            {portalLoading ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Opening portal...
+              </>
+            ) : (
+              'Manage Subscription'
+            )}
+          </button>
+          {subscriptionProcessorAttribution(processor) && (
+            <p className="text-xs text-faint">{subscriptionProcessorAttribution(processor)}</p>
           )}
-        </button>
-        {subscriptionProcessorAttribution(processor) && (
-          <p className="text-xs text-faint">{subscriptionProcessorAttribution(processor)}</p>
-        )}
-      </div>
+        </div>
+      )}
 
     </div>
   );
