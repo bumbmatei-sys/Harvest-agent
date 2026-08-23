@@ -101,14 +101,15 @@ export async function resolveAnalyticsIdentity(
   };
 }
 
-/**
- * The route family an event happened on — 'admin' or 'member'.
+/*
+ * ⚠️ `resolveAppSurface` MOVED to `routes.ts` in THE-206, and must not come
+ * back.
  *
- * Deliberately coarse. `$current_url` already carries the path (query stripped,
- * see config.ts); this exists so a metric can be split by surface without
- * grouping on a path that contains a document id. Pre-auth paths never reach
- * here — AnalyticsBridge does not capture on them at all.
+ * It answers a question about ROUTES, not about identity, and it was the only
+ * thing in this module that `client.ts` needed on a path with no signed-in
+ * user. Leaving it here forced `client.ts` to import this file statically —
+ * which imports `tenant-scope.ts`, which imports Firestore — and THE-206 makes
+ * `client.ts` reachable from `/blog/[id]`, a page that ships 325 B and no
+ * Firebase. The move is what keeps it that way; `client.ts` now loads this
+ * module dynamically, only inside `identifyUser`.
  */
-export function resolveAppSurface(pathname: string): 'admin' | 'member' {
-  return pathname.toLowerCase().startsWith('/admin') ? 'admin' : 'member';
-}

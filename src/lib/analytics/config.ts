@@ -42,6 +42,16 @@
  *    messages by way of `console.error` in the webhook routes. Sending the same
  *    strings to a second vendor with none of that scrubbing would undo it.
  *
+ * ⚠️ ANONYMOUS VISITORS GET NO PROFILE, and THE-206 is when that started to
+ *    matter. `person_profiles: 'identified_only'` was set by THE-36 while every
+ *    instrumented surface was behind a login, so it never had an anonymous
+ *    visitor to apply to. The public routes are unauthenticated by definition,
+ *    and this setting is what makes them a COUNT rather than a growing pile of
+ *    profiles for people who never signed up: posthog-js marks such events
+ *    `$process_person_profile: false`, so no person record is created or
+ *    updated. What the visitor does get is a random device id in first-party
+ *    storage — not a name, not an email, and nothing this app ever reads.
+ *
  * ─── Region ──────────────────────────────────────────────────────────────────
  *
  * The host defaults to PostHog's EU cloud. See `docs/analytics-posthog.md` —
@@ -55,6 +65,7 @@ import {
   ALLOWED_EVENT_NAMES,
   isForbiddenPropertyLabel,
 } from './events';
+import { normalizeUrlPath } from './routes';
 
 /* ── environment ───────────────────────────────────────────────────────────── */
 
@@ -107,7 +118,8 @@ export function isAnalyticsConfigured(): boolean {
 const MAX_SCRUB_DEPTH = 6;
 
 /**
- * A URL with its query string and fragment removed.
+ * A URL with its query string and fragment removed, and its path reduced to a
+ * route pattern.
  *
  * Query strings are where PII reaches analytics without anyone deciding to send
  * it: a link mailed to a member arrives as `?email=…`, a share link carries a
@@ -116,13 +128,26 @@ const MAX_SCRUB_DEPTH = 6;
  * SHAPE (anything that looks like a URL) rather than by an enumerated key list
  * that would fall behind the next SDK release.
  *
+ * 🔴 THE-206 added the second half. Until it, only the query string was a
+ * problem, because every instrumented route was the SPA shell and its paths
+ * (`/`, `/admin/crm`) carry nothing. Instrumenting the public routes puts
+ * identifiers in the PATH — `/form/aB3xQ…`, `/event/9f2c…`, `/checkin/…` —
+ * and `$current_url` would have carried them whether we sent a `route`
+ * property or not, because the SDK builds it from `location.href` itself.
+ *
+ * ⚠️ So the path is normalised HERE as well as at the capture site: this is the
+ * only place that sees the SDK's own properties. `/form/aB3xQ…` becomes
+ * `/form/[formId]`; an unrecognised path becomes `/[unrouted]`. The host is
+ * kept — it is a church's subdomain, the same slug already used as the group
+ * key, not a person.
+ *
  * Campaign attribution is unaffected: posthog-js reads `utm_*` and click ids
  * from `location.search` directly, into their own properties, not out of this
  * string.
  */
 function stripUrlNoise(value: string): string {
   const cut = value.search(/[?#]/);
-  return cut === -1 ? value : value.slice(0, cut);
+  return normalizeUrlPath(cut === -1 ? value : value.slice(0, cut));
 }
 
 function looksLikeUrl(value: string): boolean {

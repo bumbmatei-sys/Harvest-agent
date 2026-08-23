@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { getTenantFromHost } from '@/lib/server-tenant';
 import PublicPledge from '@/components/PublicPledge';
+import PublicRouteAnalytics from '@/components/PublicRouteAnalytics';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,12 +39,15 @@ export default async function PublicPledgePage({
 
   const branding = (tenant as any).config || {};
   return (
-    <PublicPledge
-      tenantId={tenant.id}
-      tenantName={tenant.name}
-      logo={branding.logo || null}
-      primaryColor={branding.primaryColor || '#B8962E'}
-      campaign={campaign}
-    />
+    <>
+      <PublicRouteAnalytics route="/pledge/[campaignId]" />
+      <PublicPledge
+        tenantId={tenant.id}
+        tenantName={tenant.name}
+        logo={branding.logo || null}
+        primaryColor={branding.primaryColor || '#B8962E'}
+        campaign={campaign}
+      />
+    </>
   );
 }

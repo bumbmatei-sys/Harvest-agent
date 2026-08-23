@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { getTenantFromHost } from '@/lib/server-tenant';
 import PublicCalendar from '@/components/PublicCalendar';
+import PublicRouteAnalytics from '@/components/PublicRouteAnalytics';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,12 +58,15 @@ export default async function PublicCalendarPage() {
   const branding = (tenant as any).config || {};
 
   return (
-    <PublicCalendar
-      tenantId={tenant.id}
-      tenantName={tenant.name}
-      logo={branding.logo || null}
-      primaryColor={branding.primaryColor || '#B8962E'}
-      events={events}
-    />
+    <>
+      <PublicRouteAnalytics route="/calendar" />
+      <PublicCalendar
+        tenantId={tenant.id}
+        tenantName={tenant.name}
+        logo={branding.logo || null}
+        primaryColor={branding.primaryColor || '#B8962E'}
+        events={events}
+      />
+    </>
   );
 }

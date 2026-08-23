@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { getTenantFromHost } from '@/lib/server-tenant';
 import PublicForm, { type PublicFormField } from '@/components/PublicForm';
+import PublicRouteAnalytics from '@/components/PublicRouteAnalytics';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,6 +43,7 @@ export default async function PublicFormPage({
   if (data.active === false) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-tint p-6">
+        <PublicRouteAnalytics route="/form/[formId]" />
         <div className="bg-surface-raised rounded-2xl shadow-sm border border-line-subtle p-8 max-w-md text-center">
           <h1 className="font-display text-lg font-bold text-strong mb-2">{tenant.name}</h1>
           <p className="text-body">This form is no longer accepting responses.</p>
@@ -53,16 +55,19 @@ export default async function PublicFormPage({
   const branding = (tenant as any).config || {};
 
   return (
-    <PublicForm
-      tenantId={tenant.id}
-      tenantName={tenant.name}
-      logo={branding.logo || null}
-      primaryColor={branding.primaryColor || '#B8962E'}
-      formId={formId}
-      title={data.title || 'Form'}
-      description={data.description || ''}
-      successMessage={data.successMessage || "Thank you! We'll be in touch."}
-      fields={Array.isArray(data.fields) ? data.fields : []}
-    />
+    <>
+      <PublicRouteAnalytics route="/form/[formId]" />
+      <PublicForm
+        tenantId={tenant.id}
+        tenantName={tenant.name}
+        logo={branding.logo || null}
+        primaryColor={branding.primaryColor || '#B8962E'}
+        formId={formId}
+        title={data.title || 'Form'}
+        description={data.description || ''}
+        successMessage={data.successMessage || "Thank you! We'll be in touch."}
+        fields={Array.isArray(data.fields) ? data.fields : []}
+      />
+    </>
   );
 }

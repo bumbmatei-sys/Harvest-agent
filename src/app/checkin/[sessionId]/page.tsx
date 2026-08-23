@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { getTenantFromHost } from '@/lib/server-tenant';
 import PublicCheckin from '@/components/PublicCheckin';
+import PublicRouteAnalytics from '@/components/PublicRouteAnalytics';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,14 +30,17 @@ export default async function PublicCheckinPage({
   const closed = data.status === 'closed';
 
   return (
-    <PublicCheckin
-      tenantId={tenant.id}
-      tenantName={tenant.name}
-      logo={branding.logo || null}
-      primaryColor={branding.primaryColor || '#B8962E'}
-      sessionId={sessionId}
-      sessionName={data.name || 'Check-In'}
-      closed={closed}
-    />
+    <>
+      <PublicRouteAnalytics route="/checkin/[sessionId]" />
+      <PublicCheckin
+        tenantId={tenant.id}
+        tenantName={tenant.name}
+        logo={branding.logo || null}
+        primaryColor={branding.primaryColor || '#B8962E'}
+        sessionId={sessionId}
+        sessionName={data.name || 'Check-In'}
+        closed={closed}
+      />
+    </>
   );
 }
