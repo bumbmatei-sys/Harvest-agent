@@ -39,7 +39,8 @@ import DonationHistory from './DonationHistory';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { SUPER_ADMIN_EMAIL, isSuperAdmin as checkIsSuperAdmin, getTenantScope } from '../utils/tenant-scope';
 import { isSuperAdminEmail } from '../utils/super-admins';
-import { getPlanFeatures } from '../utils/plan-features';
+import { getEffectiveFeatures, toTenantPlan } from '../utils/plan-features';
+import { useTenantOptional } from '../contexts/TenantContext';
 import { useAppStore } from '../store/useAppStore';
 
 
@@ -57,6 +58,34 @@ interface ProfileProps {
 
 const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap, onOpenSavedBlog, onOpenSavedLesson, onOpenSavedPost }) => {
   const { tenantPlan } = useAppStore();
+  const tenantCtx = useTenantOptional();
+  /**
+   * 🔴 GIVING IS A PLAN CAPABILITY — THE-213.
+   *
+   * `fundraising: false` means the tenant has no donate page at all, so a
+   * Partnership card is a claim about money this church cannot take: "Donor",
+   * a lifetime given figure, "Give again →", "Partner with Us →" and a
+   * Donation History that can only ever be empty. The member app already drops
+   * the Give tab on that cell (MainApp `topTabs`); this section is what THE-205
+   * left behind, and it is reachable from both Profile call sites — the member
+   * app AND the admin area's "My Profile" overlay — which is why the gate lives
+   * here rather than at either caller.
+   *
+   * EFFECTIVE features, not `getPlanFeatures`: a gate answers what this TENANT
+   * holds, not what the tier publishes. The context value is already
+   * add-on-layered; the fallback covers a Profile mounted outside a
+   * TenantProvider and coerces an unresolved plan to 'plus' exactly as every
+   * other unresolved-plan reader does, so a paying member's card never blinks
+   * off while the tenant document is in flight.
+   *
+   * ⚠️ HIDES THE SURFACE, NOT THE RECORD. `donationSubscriptionId`,
+   * `donationAmount` and `totalDonated` are still read off the user document
+   * below and are never written, cleared or cancelled by this gate — a member
+   * whose church upgrades gets the card back with their partnership and their
+   * whole giving history intact.
+   */
+  const planFeatures = tenantCtx?.planFeatures ?? getEffectiveFeatures(toTenantPlan(tenantPlan), null);
+  const hasGiving = planFeatures.fundraising;
   const [showMyEvents, setShowMyEvents] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const [showDonationHistory, setShowDonationHistory] = useState(false);
@@ -553,10 +582,20 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  </div>
 
  {/* Second settings group — Partnership, Support & Info and Log Out. Sits
-     beside Account Settings from `xl` up and directly under it below that. */}
+     beside Account Settings from `xl` up and directly under it below that.
+
+     🔴 On a tenant without `fundraising` the Partnership block is absent and
+     this group is Support & Info + Log Out. That leaves NO GAP: the group is a
+     `space-y-6` stack, which spaces the children it actually has, and the two
+     survivors are self-contained cards with their own headings — nothing here
+     reserved a slot for Partnership or measured against it. Below `xl` the
+     column simply gets shorter; from `xl` up the two groups are independent
+     stacks (see the note above the grid), so the left column keeps its own
+     rhythm rather than being tied to this one's height. */}
  <div className="space-y-6">
 
- {/* Partnership */}
+ {/* Partnership — see `hasGiving` at the top of this component. */}
+ {hasGiving && (
  <div>
  <h4 className="text-[10px] font-bold text-faint tracking-wider uppercase mb-3 ml-2">Partnership</h4>
  <div className="bg-surface-raised rounded-3xl shadow-sm border border-line overflow-hidden p-4">
@@ -650,6 +689,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  />
  </div>
  </div>
+ )}
 
  {/* Support & Info */}
  <div>
@@ -785,7 +825,13 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  </div>
  )}
 
- {showDonationHistory && (
+ {/* `hasGiving &&` is not redundant with the state. The only setter lives
+     inside the Partnership block above, so on a tier without `fundraising`
+     this can never open — but the ROUTE is gated as well as the entry point,
+     for the reason MainApp writes on its Messages tab: an entry point alone
+     only hides a screen, and DonationHistory opens its own receipt queries the
+     moment it mounts. */}
+ {showDonationHistory && hasGiving && (
  <div className="fixed inset-0 z-[300] bg-surface-tint">
  <DonationHistory onBack={() => setShowDonationHistory(false)} />
  </div>

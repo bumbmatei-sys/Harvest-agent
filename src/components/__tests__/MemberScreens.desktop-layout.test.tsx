@@ -593,6 +593,24 @@ const EDITED_SINCE_MEASUREMENT: ReadonlyArray<{ file: string; ticket: string; wh
       'interpolated INSIDE them was renamed. Both are asserted directly below, ' +
       'in place of the whole-file proxy that can no longer state this.',
   },
+  {
+    file: 'MainApp.tsx',
+    ticket: 'THE-213',
+    why:
+      'Gated the GIVE ROUTE, not only the Give tab THE-202 gated. The tab entry ' +
+      'was the only thing reading `fundraising`, and three paths set ' +
+      "`activeTopTab` to 'partner' without going near the tab strip — Profile's " +
+      '"Give again →", NewsTab\'s giving CTA and the `?giving=1` deep link a ' +
+      'printed QR carries — so a free member still reached a full donate form. ' +
+      'The tab clause is now named `hasGiving` and read in three places: the tab, ' +
+      "the `effectiveTopTab` redirect (where 'partner' joins 'news' in falling " +
+      'back to Home) and the route itself, which is the pair the Messages tab has ' +
+      'carried since THE-162. A BEHAVIOUR change, not a layout one: no JSX element ' +
+      'was added or removed, no class literal changed, and no wrapper or ordering ' +
+      "moved — the route's existing `&&` chain gained one more term. MainApp keeps " +
+      'its mobileLayer, colours and heights pins from the measured revision, all ' +
+      'asserted elsewhere in this file and all still passing.',
+  },
 ];
 
 const EXEMPT_FILES = EDITED_SINCE_MEASUREMENT.map((e) => e.file);
@@ -612,6 +630,7 @@ describe('the byte-identity exemption list is exactly the edits that justify it'
     expect(EDITED_SINCE_MEASUREMENT.map((e) => `${e.ticket} ${e.file}`)).toEqual([
       'THE-202 MainApp.tsx',
       'THE-205 MainApp.tsx',
+      'THE-213 MainApp.tsx',
     ]);
   });
 
@@ -649,7 +668,10 @@ describe('the Give tab is gated on fundraising, which is why MainApp is exempted
     const src = read('MainApp.tsx');
     // The pre-PR revision carried this exact line. Its absence is the edit.
     expect(src).not.toMatch(/^\s*\{ id: 'partner', label: 'Give' \},\s*$/m);
-    expect(src).toMatch(/features\?\.fundraising === true\)\) && \{ id: 'partner', label: 'Give' \}/);
+    // THE-213 named the clause `hasGiving` and moved it above `topTabs`, because
+    // the tab was no longer its only reader — the redirect and the route read it
+    // too. The tab is still gated; the gate now just has a name.
+    expect(src).toMatch(/hasGiving && \{ id: 'partner', label: 'Give' \}/);
   });
 
   it("uses `=== true`, not `!== false`, so the tab is absent while the plan is still loading", () => {
@@ -661,7 +683,20 @@ describe('the Give tab is gated on fundraising, which is why MainApp is exempted
   });
 
   it('keeps the tab on the apex site, which is not a tenant and has no plan', () => {
-    expect(read('MainApp.tsx')).toMatch(/\(isMainSite \|\| \(isPlanReady && features\?\.fundraising === true\)\)/);
+    expect(read('MainApp.tsx')).toMatch(
+      /const hasGiving = isMainSite \|\| \(isPlanReady && features\?\.fundraising === true\);/,
+    );
+  });
+
+  it('🔴 gates the ROUTE too — a hidden tab is not a gate (THE-213)', () => {
+    // Profile's "Give again →", NewsTab's giving CTA and the `?giving=1` deep
+    // link all set `activeTopTab` directly, so the tab strip is not on the path.
+    // Both halves are asserted: the redirect that sends a stale 'partner' Home,
+    // and the render guard that keeps PartnerWithUsTab from mounting a donate
+    // form on a tenant with no donate page.
+    const src = read('MainApp.tsx');
+    expect(src).toMatch(/\(activeTopTab === 'partner' && !hasGiving\)/);
+    expect(src).toMatch(/effectiveTopTab === 'partner' && hasGiving && \(/);
   });
 });
 

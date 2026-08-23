@@ -28,6 +28,7 @@ import {
 } from '../hooks/queries/useCRMQueries';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { useTenant } from '@/contexts/TenantContext';
+import { getEffectiveFeatures, toTenantPlan } from '../utils/plan-features';
 import {
   resolveContactLimit, countContactAccounts, isAtContactLimit, contactLimitMessage,
 } from '../utils/contact-capacity';
@@ -359,8 +360,47 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   //
   // No new query: `counts.memberAccounts` is #279's existing server-side
   // aggregate, so the cap adds zero reads and cannot miss an index.
-  const { tenantPlan } = useTenant();
+  const { tenantPlan, planFeatures } = useTenant();
   const maxContacts = resolveContactLimit(tenantPlan);
+
+  /**
+   * 🔴 WHETHER THIS TENANT CAN HAVE A DONOR AT ALL — THE-213.
+   *
+   * `fundraising: false` means the tenant has NO DONATE PAGE (the member Give
+   * tab is gone, /campaign/[id] refuses, and /api/stripe/donate 403s), so no
+   * gift can ever arrive and no donor record can ever be created. Every
+   * giving-shaped thing on this screen is therefore not "empty" on such a
+   * tenant, it is STRUCTURALLY IMPOSSIBLE: a Donors count that can only read 0,
+   * a Total Given that can only read $0, a pipeline whose every contact is
+   * pinned in the first column forever, a Last Gift column of em dashes.
+   *
+   * THE-205 fixed the pricing CARD's label (`crmLabel`); the screen itself was
+   * never touched. This is the screen.
+   *
+   * ⚠️ HIDES PRESENTATION ONLY — never a query, a write, a document or a rule.
+   * `totalDonated` and `lastDonationAt` are still read, still merged and still
+   * saved exactly as before, and `resolvePipelineStage` still derives a stage
+   * for every contact; a tenant that upgrades gets all of it back on screen
+   * with its history intact. Nothing here touches the contact write path, the
+   * CSV import, or the 500-row ceiling handling.
+   *
+   * ⚠️ THE `Type` COLUMN AND ITS Donor / Donor & Member PILLS STAY, on every
+   * tier. They report what a document actually SAYS — a value an admin chose in
+   * the form or an importer mapped from a spreadsheet column — not a claim the
+   * plan makes, and this list is the MERGED contact/member view: hiding the
+   * column that identifies which side of that merge a row came from would break
+   * the shape PR 338's importer and the merge logic both depend on. Hiding it
+   * would also make a `donor` row carried over from a downgrade unreadable,
+   * which is deleting data with CSS. See the PR body for the full item-by-item
+   * list.
+   *
+   * Effective features (the context value is already add-on-layered), falling
+   * back to the same 'plus' coercion `resolveContactLimit` applies one line
+   * above when the plan has not resolved — one unknown-plan rule for the whole
+   * screen rather than two that can disagree.
+   */
+  const crmFeatures = planFeatures ?? getEffectiveFeatures(toTenantPlan(tenantPlan), null);
+  const showGiving = crmFeatures.fundraising;
   // The platform-wide super-admin view counts EVERY church's users (the reads are
   // unscoped there), so a tenant plan cap is meaningless against it — gating on
   // that number would lock the platform CRM at 150. On a tenant subdomain a super
@@ -1038,7 +1078,11 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           </div>
           {/* Pipeline Stage is not an editable field. It is derived from giving,
               so the form shows where this contact currently sits and why, rather
-              than a row of chips that would write a stage nothing reads. */}
+              than a row of chips that would write a stage nothing reads. Absent
+              on a tenant with no donate page: its own explanation ("Set
+              automatically from total given ($0)") describes a mechanism that
+              tier has no way to feed. */}
+          {showGiving && (
           <div>
             <label className="text-xs font-semibold text-muted mb-2 block">Pipeline Stage</label>
             <div className="flex items-center gap-2 flex-wrap">
@@ -1053,6 +1097,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
               </span>
             </div>
           </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-semibold text-muted mb-1 block">Email</label>
@@ -1131,15 +1176,19 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                 </span>
                 {selected.memberSince && <span className="text-xs text-faint">· Member since {fmtDate(selected.memberSince)}</span>}
               </div>
-              {/* Derived stage — a badge, not a selector. */}
-              <div className="flex gap-1.5 flex-wrap mt-2">
-                <span
-                  className="px-2.5 py-1 rounded-full text-[10px] font-bold"
-                  style={{ backgroundColor: stageOf(selected).color, color: '#fff' }}
-                >
-                  {stageOf(selected).label}
-                </span>
-              </div>
+              {/* Derived stage — a badge, not a selector, and absent entirely
+                  on a tenant with no donate page, where it can only ever read
+                  'Member'. Same call as the list's Stage column. */}
+              {showGiving && (
+                <div className="flex gap-1.5 flex-wrap mt-2">
+                  <span
+                    className="px-2.5 py-1 rounded-full text-[10px] font-bold"
+                    style={{ backgroundColor: stageOf(selected).color, color: '#fff' }}
+                  >
+                    {stageOf(selected).label}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex gap-2 flex-shrink-0">
@@ -1156,12 +1205,21 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           </div>
         </div>
 
-        {/* Stats strip */}
+        {/* Stats strip. The two GIVING_PILLs are the card's copy of the list's
+            Given and Last Gift columns and go with them — "$0 total given"
+            beside "No donations yet" is a statement about a church that has
+            raised nothing, not about one whose plan has no donate page. The
+            activity count is NOT giving-shaped (notes, calls, meetings and
+            emails all land there) and stays on every tier. */}
         <div className="flex gap-2 flex-wrap mb-5">
-          <span className={GIVING_PILL}>{fmt(selected.totalDonated || 0)} total given</span>
-          <span data-testid="crm-last-gift" className={GIVING_PILL}>
-            {lastGiftBadge(selected)}
-          </span>
+          {showGiving && (
+            <>
+              <span className={GIVING_PILL}>{fmt(selected.totalDonated || 0)} total given</span>
+              <span data-testid="crm-last-gift" className={GIVING_PILL}>
+                {lastGiftBadge(selected)}
+              </span>
+            </>
+          )}
           {/* Never render "0 activities" off a failed read — that is the lie the
               silent `= []` default used to tell. */}
           {activitiesFailed ? (
@@ -1335,8 +1393,25 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
               <div className="p-5 space-y-4">
                 <div>
                   <label className="text-xs font-semibold text-muted mb-2 block">Type</label>
+                  {/* 🔴 THE ONE GIVING ELEMENT ON THIS SCREEN THAT WRITES.
+                      Choosing `donation` here does not merely label an entry:
+                      `addActivity` adds the amount to the contact's
+                      `totalDonated` and stamps `lastDonationAt`, which promotes
+                      them up the pipeline and into the Donors count. On a
+                      tenant with no donate page that is an admin manufacturing
+                      a donor the plan says cannot exist — a "Donors: 1" the
+                      church could never have earned. The chip is withheld, so
+                      the type cannot be selected; `actForm.type` starts at
+                      'note' and nothing else sets it.
+
+                      EXISTING donation activities still render in the timeline
+                      below, amount and all. This gates the surface that creates
+                      one, never the history — a tenant that upgrades finds
+                      every gift it ever recorded still there. */}
                   <div className="flex gap-2 overflow-x-auto pb-1">
-                    {(['note', 'donation', 'email', 'call', 'meeting'] as ContactActivity['type'][]).map(t => (
+                    {((showGiving
+                      ? ['note', 'donation', 'email', 'call', 'meeting']
+                      : ['note', 'email', 'call', 'meeting']) as ContactActivity['type'][]).map(t => (
                       <button
                         key={t}
                         onClick={() => setActForm({ ...actForm, type: t })}
@@ -1480,11 +1555,23 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   const listIsPartial = !!counts && (counts.contactsTruncated || counts.usersTruncated);
   const nf = (n: number) => n.toLocaleString();
 
+  // Three of these four tiles are giving figures — Donors counts the `donor` /
+  // `both` types a gift creates, Total Given sums `totalDonated`, and Champions
+  // is `resolvePipelineStage` reporting who has crossed the $10,000 mark. On a
+  // tenant with no donate page all three are pinned at zero forever, so they
+  // are dropped rather than shown empty: a row of zeroes reads as a church that
+  // has raised nothing, which is a different and much worse statement than a
+  // church whose plan does not do fundraising. Members is the tier's actual
+  // roster and stays.
   const stats: { label: string; value: React.ReactNode; icon: React.ReactNode }[] = [
     { label: 'Members', value: memberCount, icon: <Users size={15} /> },
-    { label: 'Donors', value: donorCount, icon: <Heart size={15} /> },
-    { label: 'Total Given', value: fmt(totalGiven), icon: <DollarSign size={15} /> },
-    { label: 'Champions', value: championCount, icon: <Award size={15} /> },
+    ...(showGiving
+      ? [
+          { label: 'Donors', value: donorCount, icon: <Heart size={15} /> },
+          { label: 'Total Given', value: fmt(totalGiven), icon: <DollarSign size={15} /> },
+          { label: 'Champions', value: championCount, icon: <Award size={15} /> },
+        ]
+      : []),
   ];
 
   return (
@@ -1495,7 +1582,12 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           rem gap, so it renders 16px on a tablet and 14.5px on a monitor — the
           same split the container measures were moved off. The column count is
           untouched. */}
-      <div className={`grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 ${CONTROL_DENSITY.rowGap} ${CONTROL_DENSITY.columnGap}`}>
+      {/* Column count follows the tile count rather than being fixed at four,
+          so a tier without the giving tiles gets one full-width card instead of
+          one card and three empty grid cells. Both class strings are written
+          out whole — Tailwind scans source text, so an interpolated
+          `lg:grid-cols-${n}` would never be generated. */}
+      <div className={`grid ${stats.length > 1 ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1'} gap-4 mb-6 ${CONTROL_DENSITY.rowGap} ${CONTROL_DENSITY.columnGap}`}>
         {stats.map(s => (
           <div key={s.label} className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-5">
             <div className="flex items-start justify-between">
@@ -1591,9 +1683,14 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             placeholder="Search by name or email…"
             className={`w-full bg-surface-raised pl-11 pr-4 py-3 text-sm border border-line rounded-brand-lg text-strong placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent ${CONTROL_DENSITY.control}`} />
         </div>
-        {/* Type filter segmented */}
+        {/* Type filter segmented. The Donors segment is a filter for a record
+            this tenant cannot produce, so it goes with the tiles — leaving All
+            and Members, which on such a tenant genuinely differ (All includes
+            rows whose `type` is unset or unrecognised). The `filter` state is
+            unaffected: it starts at 'all' and 'donor' is only ever set by the
+            button that is no longer rendered. */}
         <div className="flex gap-0.5 bg-surface-sunken rounded-lg p-1 shrink-0">
-          {([['all', 'All'], ['member', 'Members'], ['donor', 'Donors']] as ['all' | Contact['type'], string][]).map(([val, label]) => (
+          {(([['all', 'All'], ['member', 'Members'], ...(showGiving ? [['donor', 'Donors']] : [])]) as ['all' | Contact['type'], string][]).map(([val, label]) => (
             <button
               key={val}
               onClick={() => setFilter(val)}
@@ -1603,7 +1700,15 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             </button>
           ))}
         </div>
-        {/* List / Pipeline view toggle */}
+        {/* List / Pipeline view toggle. The pipeline's three columns ARE the
+            giving ladder — `resolvePipelineStage` reads `totalDonated` and
+            nothing else — so on a tenant with no donate page the board is one
+            column holding every contact and two that can never fill. The toggle
+            goes and the list stands alone; `KanbanBoard`, `STAGES` and
+            `resolvePipelineStage` are untouched and the board returns whole on
+            an upgrade. `listMode` starts at 'list' and is only moved by the
+            button below. */}
+        {showGiving && (
         <div className="flex gap-0.5 bg-surface-sunken rounded-lg p-1 shrink-0">
           <button onClick={() => setListMode('list')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${listMode === 'list' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'}`}>
@@ -1614,6 +1719,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             <LayoutGrid size={13} /> Pipeline
           </button>
         </div>
+        )}
         {/* THE-74 — import a member list. Sits beside the manual add because it
             is the same act at a different scale, and carries the SAME cap gate:
             disabled at the limit, with `contactLimitMessage` on hover. Secondary
@@ -1644,7 +1750,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         </button>
       </div>
 
-      {listMode === 'kanban' ? (
+      {listMode === 'kanban' && showGiving ? (
         <KanbanBoard
           contacts={filtered}
           stages={STAGES}
@@ -1654,7 +1760,11 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         <div className="text-center py-16 text-faint">
           <Users size={40} className="mx-auto mb-3 opacity-30" />
           <p className="font-medium font-display">{search || filter !== 'all' ? 'No contacts match' : 'No contacts yet'}</p>
-          {!search && filter === 'all' && <p className="text-sm mt-1">Add your first donor or member</p>}
+          {!search && filter === 'all' && (
+            <p className="text-sm mt-1">
+              {showGiving ? 'Add your first donor or member' : 'Add your first member'}
+            </p>
+          )}
         </div>
       ) : (
         <>
@@ -1683,13 +1793,20 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                     <span className="block text-sm font-semibold text-strong truncate">{c.firstName} {c.lastName}</span>
                     {c.email && <span className="block text-xs text-faint truncate">{c.email}</span>}
                   </span>
+                  {/* The Type badge stays on every tier — see `showGiving`.
+                      The stage and the total beside it are the giving figures
+                      the desktop table drops in its Stage / Given / Last Gift
+                      columns; the phone shows the same three facts stacked, so
+                      it drops the same three. */}
                   <span className="flex flex-col items-end gap-1 shrink-0">
                     <span data-testid="crm-type-badge" className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${typeColor(c.type)}`}>{typeLabel(c.type)}</span>
-                    <span className="flex items-center gap-1.5 text-[11px] font-semibold text-muted">
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: stage.color }} />
-                      {stage.label}
-                    </span>
-                    {c.totalDonated > 0 && <span className="text-[11px] font-semibold text-field-700">{fmt(c.totalDonated)}</span>}
+                    {showGiving && (
+                      <span className="flex items-center gap-1.5 text-[11px] font-semibold text-muted">
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: stage.color }} />
+                        {stage.label}
+                      </span>
+                    )}
+                    {showGiving && c.totalDonated > 0 && <span className="text-[11px] font-semibold text-field-700">{fmt(c.totalDonated)}</span>}
                   </span>
                 </button>
               );
@@ -1704,9 +1821,20 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                 <tr className="border-b border-line">
                   <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Contact</th>
                   <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Type</th>
-                  <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Stage</th>
-                  <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em] text-right">Given</th>
-                  <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em] text-right">Last Gift</th>
+                  {/* Stage / Given / Last Gift are the three giving columns. On
+                      a tenant with no donate page Stage is 'Member' on every
+                      row by construction, Given is an em dash on every row and
+                      Last Gift likewise — three columns of the same non-answer,
+                      taking half the table's width. Dropped together; Contact
+                      and Type carry the whole list on such a tier and the
+                      table's `min-w-[720px]` still holds them comfortably. */}
+                  {showGiving && (
+                    <>
+                      <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Stage</th>
+                      <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em] text-right">Given</th>
+                      <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em] text-right">Last Gift</th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
@@ -1732,18 +1860,22 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                       <td className="px-6 py-3.5">
                         <span data-testid="crm-type-badge" className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${typeColor(c.type)}`}>{typeLabel(c.type)}</span>
                       </td>
-                      <td className="px-6 py-3.5">
-                        <span className="inline-flex items-center gap-1.5 text-sm text-muted">
-                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color }} />
-                          {stage.label}
-                        </span>
-                      </td>
-                      <td className="px-6 py-3.5 text-right">
-                        <span className={`text-sm font-semibold ${c.totalDonated > 0 ? 'text-strong' : 'text-faint'}`}>{c.totalDonated > 0 ? fmt(c.totalDonated) : '—'}</span>
-                      </td>
-                      <td className="px-6 py-3.5 text-right">
-                        <span data-testid="crm-last-gift-cell" className="text-sm text-faint">{lastGiftCell(c)}</span>
-                      </td>
+                      {showGiving && (
+                        <>
+                          <td className="px-6 py-3.5">
+                            <span className="inline-flex items-center gap-1.5 text-sm text-muted">
+                              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color }} />
+                              {stage.label}
+                            </span>
+                          </td>
+                          <td className="px-6 py-3.5 text-right">
+                            <span className={`text-sm font-semibold ${c.totalDonated > 0 ? 'text-strong' : 'text-faint'}`}>{c.totalDonated > 0 ? fmt(c.totalDonated) : '—'}</span>
+                          </td>
+                          <td className="px-6 py-3.5 text-right">
+                            <span data-testid="crm-last-gift-cell" className="text-sm text-faint">{lastGiftCell(c)}</span>
+                          </td>
+                        </>
+                      )}
                     </tr>
                   );
                 })}

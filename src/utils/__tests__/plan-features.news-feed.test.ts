@@ -259,7 +259,14 @@ describe('the public post permalink refuses a free tenant server-side', () => {
   it('derives the refusal from the matrix rather than naming the free tier', () => {
     // `plan === 'free'` would be a second copy of the matrix: a later tier
     // without a feed would silently keep the permalink.
-    expect(PAGE).toContain('getPlanFeatures(toTenantPlan(tenant.plan)).newsFeed === false');
+    //
+    // THE-213 moved the call from `getPlanFeatures(toTenantPlan(tenant.plan))`
+    // — the TIER's published matrix — to `tenantFeatures(tenant)`, the shared
+    // server helper that resolves the TENANT's effective set with its add-ons
+    // layered on. Same derivation, same answer today (no add-on lifts a boolean
+    // cell); what changed is that every server gate now asks the same question.
+    expect(PAGE).toContain('tenantFeatures(tenant).newsFeed === false');
+    expect(PAGE).toContain("import { tenantFeatures } from '@/lib/tenant-features'");
     expect(PAGE).not.toMatch(/plan\s*===\s*'free'/);
   });
 

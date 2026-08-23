@@ -4,6 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
 import { sendAutomatedSms } from '@/lib/twilio';
 import { captureHandledError } from '@/lib/money-path-sentry';
+import { tenantFeaturesById } from '@/lib/tenant-features';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +32,29 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // 🔴 THE TIER MUST HOLD CHECK-IN — THE-213, server side, and this is the
+    // one that matters: THIS ROUTE WRITES. It appends an `attendees` document,
+    // increments `attendeeCount`, adds a `contactActivities` row against a
+    // matched CRM contact and can send an automated SMS — all through the
+    // Admin SDK, which bypasses firestore.rules entirely, on a PUBLIC no-auth
+    // endpoint. `checkInSystem` is false on Free and on Individual, so without
+    // this a tier with no check-in still accumulates attendance records.
+    //
+    // A hidden sub-tab is not a gate and a disabled button is a suggestion:
+    // the admin screen already withholds Check-In on those tiers, and the
+    // founder still reached a working check-in. This is the refusal.
+    //
+    // 404, matching the missing-session answer below, rather than a 403 naming
+    // the plan: the caller is an anonymous visitor at a door.
+    //
+    // Placed before the session read, so a refused tenant's documents are never
+    // touched. Existing attendees, sessions and activities are untouched and
+    // return whole on an upgrade.
+    const features = await tenantFeaturesById(tenantId);
+    if (!features?.checkInSystem) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+    }
+
     const sessionRef = adminDb.collection('tenants').doc(tenantId).collection('checkinSessions').doc(sessionId);
     const sessionSnap = await sessionRef.get();
     if (!sessionSnap.exists) {

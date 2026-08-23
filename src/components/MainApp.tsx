@@ -141,6 +141,25 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   // unknown plan reads as "no", never as "yes".
   const hasNewsFeed = isMainSite || (isPlanReady && features?.newsFeed === true);
 
+  /**
+   * GIVING — the `partner` ("Partner with Us") tab and everything that jumps to
+   * it. `fundraising` is false on free only: no donate page, so no giving
+   * surface anywhere in the member app.
+   *
+   * 🔴 NAMED AND HOISTED BY THE-213 because the tab entry was the ONLY thing
+   * reading this cell, and a nav entry is not a gate. Three paths set
+   * `activeTopTab` to 'partner' without going near the strip — Profile's
+   * "Give again →" / "Partner with Us →", NewsTab's giving CTA, and the
+   * `?giving=1` deep link a printed QR or a Text-to-Give reply carries — so a
+   * free member reached a full donate form with no Give tab in sight. Both the
+   * REDIRECT and the ROUTE below now read this, the same double gate Messages
+   * has carried since THE-162.
+   *
+   * Same `=== true` shape as the gates around it: `features` is null until the
+   * tenant document resolves, so an unknown plan reads as "no", never "yes".
+   */
+  const hasGiving = isMainSite || (isPlanReady && features?.fundraising === true);
+
   // 'loading' means we haven't fetched yet — hide tab until we know.
   // 'empty' means 0 member-visible courses — hide tab.
   // 'present' means at least 1 course exists — show tab.
@@ -184,10 +203,10 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     { id: 'prayer', label: 'Prayer' },        // all plans, all users
     // Give — plan-gated. A free tenant has `fundraising: false` and the donate
     // route refuses it server-side (THE-202), so an always-on Give tab would be
-    // a member-facing link to a 403. `=== true` deliberately, not `!== false`:
-    // `features` is null before the plan loads and `!== false` is truthy then.
-    // `isMainSite` keeps the tab on theharvest.app, which is not a tenant.
-    (isMainSite || (isPlanReady && features?.fundraising === true)) && { id: 'partner', label: 'Give' },
+    // a member-facing link to a 403. See `hasGiving` above: the tab entry is
+    // only one of the three ways this screen is reached, and it was for a while
+    // the only one that asked.
+    hasGiving && { id: 'partner', label: 'Give' },
   ].filter(Boolean) as { id: string; label: string }[];
 
   /**
@@ -220,13 +239,25 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
    * this is what survives the tier's gates, resolved during render so a free
    * member never sees a frame of the feed before an effect moves them off it.
    *
-   * ⚠️ SCOPED TO THE FEED ON PURPOSE. A blanket "not in `topTabs` → go Home"
-   * would also swallow `messages`, which must be able to hold `activeTopTab`
-   * while absent from the strip — that is how a member on a tier without
-   * Community Groups reaches PlanUpgradeScreen (THE-162), and swallowing it
-   * would re-open THE-193: a jump whose destination simply never appears.
+   * ⚠️ STILL NOT A BLANKET "not in `topTabs` → go Home". Such a rule would also
+   * swallow `messages`, which must be able to hold `activeTopTab` while absent
+   * from the strip — that is how a member on a tier without Community Groups
+   * reaches PlanUpgradeScreen (THE-162), and swallowing it would re-open
+   * THE-193: a jump whose destination simply never appears.
+   *
+   * 🔴 `partner` JOINS `news` HERE (THE-213), and joins it rather than taking
+   * the Messages treatment for a reason. Messages sends a member to an upgrade
+   * screen because Community Groups is a feature their church could buy and
+   * they might reasonably ask for. Giving is not: a member cannot make their
+   * church able to take donations, and answering a QR code someone printed with
+   * an ad for a subscription tier is the worst version of this screen. So a
+   * stale `?giving=1` link, a saved deep link, or a jump that outlived a
+   * downgrade lands on Home — the feed's exact precedent, one line above.
    */
-  const effectiveTopTab = activeTopTab === 'news' && !hasNewsFeed ? homeTabId : activeTopTab;
+  const effectiveTopTab =
+    (activeTopTab === 'news' && !hasNewsFeed) || (activeTopTab === 'partner' && !hasGiving)
+      ? homeTabId
+      : activeTopTab;
 
   // If courses disappear after being visible, navigate away from the tab —
   // to whatever Home is for this tier, which on free is no longer the feed.
@@ -705,7 +736,13 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                       />
                     </>
                   )}
-                  {effectiveTopTab === 'partner' && (
+                  {/* 🔴 `hasGiving &&` is NOT redundant with `effectiveTopTab`.
+                      It reads that way — the redirect above already sends
+                      'partner' Home on a tier without it — but the two are
+                      separate derivations, and PartnerWithUsTab mounting a
+                      donate form on a tenant with no donate page is the thing
+                      being refused. Exactly the pair NewsTab carries below. */}
+                  {effectiveTopTab === 'partner' && hasGiving && (
                     <PartnerWithUsTab />
                   )}
                   {effectiveTopTab === 'blog' && (
