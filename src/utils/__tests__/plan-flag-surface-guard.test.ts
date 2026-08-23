@@ -32,6 +32,14 @@ import { getPlanFeatures, PLAN_ORDER, type PlanFeatures } from '../plan-features
  * SO THE REGISTRY BELOW IS DECLARED, AND THE TEST CHECKS THE DECLARATION.
  * Every cell must name either the surfaces that gate on it, or a written reason
  * why it gates nothing. Adding a cell fails this file until someone says which.
+ *
+ * 🔴 AND IT FAILS AT THE TYPE LEVEL FIRST. `Registry` is
+ * `Record<keyof PlanFeatures, …>`, so a new cell with no entry is a `tsc`
+ * error — "Property 'x' is missing … but required in type 'Registry'" — before
+ * a single test runs. That is the strongest half of this guard and it costs one
+ * type annotation. The runtime assertions below exist for what a type cannot
+ * say: that the named file still exists, and still consults the cell.
+ *
  * That is the whole mechanism, and it is deliberately the cheap half:
  *
  *   WHAT THIS BUYS — a cell with no gate cannot be added silently again
@@ -189,7 +197,9 @@ describe('THE GUARD — every plan flag is mapped to the surface that refuses it
     expect(Object.keys(FLAG_SURFACES).sort()).toEqual([...CELLS].sort());
   });
 
-  it.each(CELLS.filter((c) => 'gates' in FLAG_SURFACES[c]))(
+  // `?? {}` so a cell missing from the registry reaches the NAMED assertion above
+  // rather than crashing this `it.each` at collection time with a raw TypeError.
+  it.each(CELLS.filter((c) => 'gates' in (FLAG_SURFACES[c] ?? {})))(
     '%s — every named gate site exists and still consults the cell',
     (cell) => {
       const entry = FLAG_SURFACES[cell] as { gates: readonly string[] };
@@ -204,7 +214,7 @@ describe('THE GUARD — every plan flag is mapped to the surface that refuses it
   it('every flagless cell states WHY, at length', () => {
     // A one-word reason is how "gates nothing" becomes the default answer.
     for (const cell of CELLS) {
-      const entry = FLAG_SURFACES[cell];
+      const entry = FLAG_SURFACES[cell] ?? {};
       if (!('flagless' in entry)) continue;
       expect(entry.flagless.length, `${cell}'s reason is too short to be one`).toBeGreaterThan(120);
     }
@@ -213,7 +223,7 @@ describe('THE GUARD — every plan flag is mapped to the surface that refuses it
   it('🔴 names the flagless cells out loud, so the list cannot grow quietly', () => {
     // Two today. A third appearing is a decision somebody has to make in review
     // rather than a consequence of adding a cell and moving on.
-    expect(CELLS.filter((c) => 'flagless' in FLAG_SURFACES[c])).toEqual(['textToGive', 'pwaApp']);
+    expect(CELLS.filter((c) => 'flagless' in (FLAG_SURFACES[c] ?? {}))).toEqual(['textToGive', 'pwaApp']);
   });
 
   it('🔴 every cell free carries as false has a gate, or is one of the two pinned exceptions', () => {
@@ -228,7 +238,7 @@ describe('THE GUARD — every plan flag is mapped to the surface that refuses it
     const free = getPlanFeatures('free');
     const ungated = CELLS.filter((cell) => {
       const off = free[cell] === false || free[cell] === 0;
-      return off && !('gates' in FLAG_SURFACES[cell]);
+      return off && !('gates' in (FLAG_SURFACES[cell] ?? {}));
     });
     expect(ungated, 'a cell free turns off can be reached by a free tenant').toEqual(['textToGive']);
   });
