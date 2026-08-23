@@ -685,6 +685,20 @@ describe('9 — every route is instrumented, and paths are normalised to route p
       .toBe(`https://mail.example${UNROUTED_PATTERN}`);
   });
 
+  it('the pattern type is a real union, so a misspelled route cannot compile', () => {
+    // ⚠️ `AnalyticsRoutePattern` is read from the `as const satisfies` table, NOT
+    // from the exported `ANALYTICS_ROUTES` — whose explicit `readonly
+    // AnalyticsRoute[]` annotation widens `pattern` back to `string`. That
+    // widening is invisible: everything compiles, every test passes, and the
+    // only symptom is that `route="/blgo/[id]"` stops being caught. Vitest
+    // transpiles without typechecking, so the guard has to live in the source;
+    // this asserts the guard is still there for `npm run typecheck` to enforce.
+    const routes = readFileSync(path.join(ROOT, 'src/lib/analytics/routes.ts'), 'utf8');
+    expect(routes).toMatch(/\] as const satisfies readonly AnalyticsRoute\[\];/);
+    expect(routes).toMatch(/AnalyticsRoutePattern = \(typeof ROUTE_TABLE\)\[number\]\['pattern'\]/);
+    expect(routes).toMatch(/type Narrow<T extends string> = string extends T \? never : T;/);
+  });
+
   it('matching is by enumeration, never by value shape', () => {
     const routes = codeOf('src/lib/analytics/routes.ts');
     // A rule like "a segment that looks like an id" passes whatever it fails to

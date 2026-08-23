@@ -99,7 +99,7 @@ export const UNROUTED_PATTERN = '/[unrouted]';
  * inputs. `PREAUTH_PATHS` remains the gate in `AnalyticsBridge`; they are named
  * here only in {@link PRE_AUTH_PATTERNS} so a reader can see the whole map.
  */
-export const ANALYTICS_ROUTES: readonly AnalyticsRoute[] = Object.freeze([
+const ROUTE_TABLE = [
   /* ── the SPA shell (THE-36 already covered these) ───────────────────────── */
   { pattern: '/', entry: 'spa', surface: 'member', public: false },
   { pattern: '/admin', entry: 'spa', surface: 'admin', public: false },
@@ -117,7 +117,9 @@ export const ANALYTICS_ROUTES: readonly AnalyticsRoute[] = Object.freeze([
   { pattern: '/form/[formId]', entry: 'next-page', surface: 'public', public: true },
   { pattern: '/pledge/[campaignId]', entry: 'next-page', surface: 'public', public: true },
   { pattern: '/post/[postId]', entry: 'next-page', surface: 'public', public: true },
-] as const);
+] as const satisfies readonly AnalyticsRoute[];
+
+export const ANALYTICS_ROUTES: readonly AnalyticsRoute[] = Object.freeze(ROUTE_TABLE);
 
 /**
  * The pre-auth screens, named so the enumeration is complete and a reader can
@@ -132,8 +134,31 @@ export const PRE_AUTH_PATTERNS: readonly string[] = Object.freeze([
   '/church-onboarding',
 ]);
 
-/** Every pattern a `$pageview` may carry. */
-export type AnalyticsRoutePattern = (typeof ANALYTICS_ROUTES)[number]['pattern'];
+/**
+ * Every pattern a `$pageview` may carry — a UNION of the literals above, not
+ * `string`.
+ *
+ * 🔴 Read from `ROUTE_TABLE`, not from `ANALYTICS_ROUTES`. The exported constant
+ * carries an explicit `readonly AnalyticsRoute[]` annotation, which widens
+ * `pattern` back to `string` — and a `string` here would let
+ * `<PublicRouteAnalytics route="/blgo/[id]" />` compile happily and report a
+ * route that does not exist. `satisfies` above checks the shape without
+ * widening the literals, so the typo is a compile error instead.
+ */
+export type AnalyticsRoutePattern = (typeof ROUTE_TABLE)[number]['pattern'];
+
+/**
+ * A compile-time proof that the union above did not widen back to `string`.
+ *
+ * ⚠️ This is not decoration. The widening it guards against is invisible —
+ * everything still compiles, every test still passes, and the only symptom is
+ * that a misspelled route stops being caught. `string extends T` is true only
+ * when `T` IS `string`, so a widened union makes `Narrow<…>` resolve to `never`
+ * and the assignment below fails to compile.
+ */
+type Narrow<T extends string> = string extends T ? never : T;
+const PATTERN_UNION_IS_NARROW: Narrow<AnalyticsRoutePattern> = '/';
+void PATTERN_UNION_IS_NARROW;
 
 /* ── matching ──────────────────────────────────────────────────────────────── */
 
