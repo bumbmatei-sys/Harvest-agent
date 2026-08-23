@@ -79,7 +79,37 @@ const PINNED: ReadonlyArray<readonly [string, string]> = [
   ['src/app/api/stripe/add-church-billing/route.ts', '4827c8a6ff99863546065ab2b6abd2308d2d44ee1e1ff6ac407cef02dea8c115'],
   ['src/app/api/stripe/cancel-addon/route.ts', '0136081290e5b0b8b87d9959b67b3483d5cd79e8698f2edb59d4c5285baa9c1e'],
   ['src/app/api/stripe/cancel-partnership/route.ts', 'cd8bdbe7b0ae839a81f76955cc1df285fa6b0e1eb326b3804fa16ff161426829'],
-  ['src/app/api/stripe/checkout/route.ts', '6186fe2f126dc1d38582c0c675d7ee13cc6c2359e2912025a113046c2c561dc9'],
+  // ─── THE-212 REGENERATED THIS ONE, deliberately and with reason ───────────
+  //
+  // 🔴 ONE ADDED REFUSAL. The existing-tenant plan-change branch now answers
+  // 409 when the tenant is on a tier this build knows and that has no price —
+  // Forever Free — and it answers BEFORE `getValidCustomerId`.
+  //
+  // That ordering is the point. `getValidCustomerId` CREATES a Stripe customer
+  // and PERSISTS `stripeCustomerId` on the tenant before the checkout session
+  // is built, so a free tenant pressing Upgrade left a permanent Stripe
+  // identifier on a church that has never paid Stripe — and the moment that
+  // church bought through Dodo it carried identifiers from both processors,
+  // which `resolveBillingOwnership` reads as `reason: 'conflict'`: its plan
+  // changes and add-ons frozen, by one press of a button.
+  //
+  // ⚠️ A TIGHTENING, NOT A RELAXATION. `blocksStripeAction` still lets
+  // `reason: 'none'` through, unchanged, and `/api/dodo/checkout`'s tenantId
+  // guard is untouched. What changed is that the one case that depended on
+  // `none` — "a free tenant subscribing for the FIRST time through
+  // /api/stripe/checkout" — now has the route THE-203 built for it, and is
+  // sent there. `isUnpricedTier`, not `!isPricedPlan`: a RETIRED tier name is
+  // also absent from `PLAN_PRICING`, and a legacy tenant on one has a
+  // subscription nobody can name and keeps its current path.
+  //
+  // ⚠️ Conditional on DODO_BILLING_ENABLED, so switching Dodo off restores the
+  // Stripe path rather than leaving a tier that can be sold nowhere.
+  //
+  // No price, no fee, no line item, no metadata, no trial and no signup branch
+  // moved. `billing-processor-routing.test.ts` and `checkout/__tests__` pass
+  // unedited; the refusal itself is asserted in
+  // `src/app/api/dodo/__tests__/the-212-free-tenant-upgrade.test.ts`.
+  ['src/app/api/stripe/checkout/route.ts', '255aa9c4cae626ac0f59afa369147fb206a971e471f6dedd9f1737902df73a5e'],
   ['src/app/api/stripe/connect/callback/route.ts', '52f43a788bb1a5cd60a8ea71d5d97a82fd7347cf4725a61bc11b3e94d53aabc8'],
   ['src/app/api/stripe/connect/login-link/route.ts', '560d9643926e72e66fc9300fccb0ba42bc827b8ead3211c090f662a7cb70e83e'],
   ['src/app/api/stripe/connect/route.ts', 'c3f2e3f1d0780515ded1a81a143b4279ced52533c676b997996a8254049a6a03'],
