@@ -84,27 +84,6 @@ service cloud.firestore {
         && uid == get(/databases/$(database)/documents/tenants/$(tenantId)).data.get('ownerId', '');
     }
 
-    // The tenant's plan, read from the SAME billing-authority doc isTenantOwner
-    // already reads: tenants/{id}.plan is written only by the Stripe webhook /
-    // billing routes via the Admin SDK, and the tenants rule above blocks
-    // 'plan' from every client update — so it cannot be self-raised. Mirrors
-    // the isTenantOwner() exists()+get() idiom deliberately: this touches the
-    // same document isTenantOwner() fetches inside hasPermission(), and
-    // repeated access to one document counts ONCE against the rules' 10-access
-    // limit, so a plan gate stacked on a hasPermission() gate adds no document
-    // read. Missing tenant doc -> '' (never 'free'), so a gate built on this
-    // fails OPEN rather than locking a real ministry out of its own data.
-    function tenantPlan(tenantId) {
-      return tenantId is string && tenantId.size() > 0
-        && exists(/databases/$(database)/documents/tenants/$(tenantId))
-        ? get(/databases/$(database)/documents/tenants/$(tenantId)).data.get('plan', '')
-        : '';
-    }
-
-    function isFreePlan(tenantId) {
-      return tenantPlan(tenantId) == 'free';
-    }
-
     function requestHasCorrectTenant() {
       return isAuthenticated() &&
         (isSuperAdmin() || request.resource.data.tenantId == userTenantId());
@@ -321,26 +300,7 @@ service cloud.firestore {
 
     match /courses/{courseId} {
       allow read: if isAuthenticated() && belongsToTenant(resource.data.get('tenantId', ''));
-
-      // THE-206 — FREE TIER AUTHORS NO COURSES. Free gets `maxCourses: 1`
-      // (src/utils/plan-features.ts), and the product decision is that the one
-      // course is ADOPTED from the shared platform library
-      // (tenants/{t}/adoptedCourses, written server-side by
-      // /api/courses/adopt), never authored here. Until #228 this was only a
-      // disabled button in AdminCourses — a direct client write still landed.
-      // This closes it server-side, on CREATE ONLY:
-      //   • update/delete are untouched — a tenant that drops to free keeps
-      //     full edit and delete control of the course it already has.
-      //   • read is untouched — no `plan` term was added to any read/list
-      //     condition, so no query shape changes (rules are not filters, #236/#239).
-      //   • super admin (tenantId null) is exempted explicitly, matching every
-      //     other gate in this file; platform-library courses live in
-      //     /libraryCourses anyway, a separate match block left untouched.
-      //   • enrolment/progress writes by members are elsewhere and untouched.
-      allow create: if isAuthenticated()
-        && hasPermission('createCourses', request.resource.data.get('tenantId', ''))
-        && (isSuperAdmin() || !isFreePlan(request.resource.data.get('tenantId', '')));
-
+      allow create: if isAuthenticated() && hasPermission('createCourses', request.resource.data.get('tenantId', ''));
       allow update: if isAuthenticated() && hasPermission('createCourses', resource.data.tenantId);
       allow delete: if isAuthenticated() && hasPermission('createCourses', resource.data.tenantId);
     }

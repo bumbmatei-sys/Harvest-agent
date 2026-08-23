@@ -32,9 +32,8 @@ Each of these has already cost real time. None are obvious from the code.
 - **`firestore.rules` auto-deploys to production on merge.** `.github/workflows/deploy-rules.yml`
   fires on any push to `main` touching `firestore.rules`, `storage.rules` or
   `firebase.json`. CI runs **no** emulator rules tests — `npm test` only covers `src/**`.
-  There are **378 rules tests** in `tests/rules/` (10 files); run `npm run test:rules`
-  yourself for
-  any rules change, because nothing else will.
+  There are **378 rules tests** across the 10 files in `tests/rules/`; run
+  `npm run test:rules` yourself for any rules change, because nothing else will.
 - **`functions/` does NOT deploy on merge.** It needs a separate
   `firebase deploy --only functions` from Cloud Shell, and its own
   `npm install && npm run build` inside `functions/` first. Merging a Cloud Function
