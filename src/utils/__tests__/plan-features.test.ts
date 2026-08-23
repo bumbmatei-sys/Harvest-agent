@@ -177,7 +177,11 @@ describe('hasFeature', () => {
     expect(hasFeature('max', 'givingStatements')).toBe(true);
   });
 
-  it('pwaApp (mobile app) is available on all plans', () => {
+  it('pwaApp (mobile app) is available on all plans, free included', () => {
+    // The name said "all plans" while only three were asserted; free was added
+    // to the matrix by THE-200 and given pwaApp by THE-205, so it is named here
+    // explicitly rather than left implied by the title.
+    expect(hasFeature('free', 'pwaApp')).toBe(true);
     expect(hasFeature('plus', 'pwaApp')).toBe(true);
     expect(hasFeature('pro', 'pwaApp')).toBe(true);
     expect(hasFeature('max', 'pwaApp')).toBe(true);

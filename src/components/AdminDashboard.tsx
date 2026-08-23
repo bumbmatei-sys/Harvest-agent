@@ -451,58 +451,47 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     // Dashboard is always visible — placeholder/welcome screen (analytics moved to CRM)
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     (hasFullAccess || perms.modifyChurches) && { id: 'churches', label: isTenantAdmin && features && features.maxChurches === 1 ? 'Church' : 'Church List', icon: Church },
-    (platformOverride || !isTenantAdmin || (features && features.blog)) && (hasFullAccess || perms.createCourses) && { id: 'courses', label: 'Courses', icon: GraduationCap },
-    (platformOverride || !isTenantAdmin || (features && features.blog)) && (hasFullAccess || perms.writeArticles) && { id: 'blog', label: 'Blog', icon: FileText },
-    (platformOverride || !isTenantAdmin || (features && features.aiKnowledge)) && (hasFullAccess || perms.uploadRag) && { id: 'ai', label: 'AI Knowledge', icon: BrainCircuit },
-    // Newsletter tab — gated behind plan feature
-    (platformOverride || !isTenantAdmin || (features && features.newsletterAutomation)) &&
-      (hasFullAccess || perms.manageNewsletter) &&
+    (hasFullAccess || perms.createCourses) && { id: 'courses', label: 'Courses', icon: GraduationCap },
+    (hasFullAccess || perms.writeArticles) && { id: 'blog', label: 'Blog', icon: FileText },
+    (hasFullAccess || perms.uploadRag) && { id: 'ai', label: 'AI Knowledge', icon: BrainCircuit },
+    // Newsletter tab — plan-gated at RENDER time (PlanUpgradeScreen), not hidden here.
+    (hasFullAccess || perms.manageNewsletter) &&
       { id: 'newsletter', label: 'Newsletter', icon: Mail },
     // Fundraising campaigns
-    (platformOverride || !isTenantAdmin || (features && features.fundraising)) &&
-      (hasFullAccess || perms.manageFundraising) &&
+    (hasFullAccess || perms.manageFundraising) &&
       { id: 'fundraising', label: 'Fundraising', icon: Heart },
     // Event registration (Pretix)
-    (platformOverride || !isTenantAdmin || (features && features.eventRegistration)) &&
-      (hasFullAccess || perms.manageEvents) &&
+    (hasFullAccess || perms.manageEvents) &&
       { id: 'events', label: 'Events', icon: CalendarCheck },
     // Docs (TipTap)
-    (platformOverride || !isTenantAdmin || (features && features.docs)) &&
-      (hasFullAccess || perms.manageDocs) &&
+    (hasFullAccess || perms.manageDocs) &&
       { id: 'docs', label: 'Notes', icon: FileText },
     // CRM (Contacts · Analytics · Roles sub-tabs). Shown to anyone who can use ANY
     // sub-tab: manageCRM (Contacts), analytics (Analytics) or manageAdmins (Roles),
     // since those screens only live inside the CRM page.
-    (platformOverride || !isTenantAdmin || (features && features.crm)) &&
-      (hasFullAccess || perms.manageCRM || perms.analytics || perms.manageAdmins) &&
+    (hasFullAccess || perms.manageCRM || perms.analytics || perms.manageAdmins) &&
       { id: 'crm', label: 'CRM', icon: Users },
     // Accounting (Crater) — Statements is now a sub-tab inside this screen, so the
     // entry is shown when EITHER the accounting or giving-statements feature is on,
     // and the admin holds either permission.
-    (platformOverride || !isTenantAdmin || (features && (features.accountingTools || features.givingStatements))) &&
-      (hasFullAccess || perms.manageAccounting || perms.manageGivingStatements) &&
+    (hasFullAccess || perms.manageAccounting || perms.manageGivingStatements) &&
       { id: 'accounting', label: 'Accounting', icon: Receipt },
     // Custom Forms → CRM pipeline
-    (platformOverride || !isTenantAdmin || (features && features.customForms)) &&
-      (hasFullAccess || perms.manageForms) &&
+    (hasFullAccess || perms.manageForms) &&
       { id: 'forms', label: 'Forms', icon: ClipboardList },
     // Check-In System (QR attendance) — the QR Code generator is now a sub-tab
-    // inside this screen. Check-In is Small Team (pro) and above (checkInSystem), so the nav
-    // entry itself is gated by plan, same pattern as livestream/SMS below.
-    (platformOverride || !isTenantAdmin || (features && features.checkInSystem)) &&
-      (hasFullAccess || perms.manageCheckin || perms.manageQR) &&
+    // inside this screen. QR is available on every plan and AdminCheckin self-gates
+    // the Check-In sub-tab, so the nav entry carries no plan clause.
+    (hasFullAccess || perms.manageCheckin || perms.manageQR) &&
       { id: 'checkin', label: 'Check-In', icon: QrCode },
     // Livestream (YouTube + live giving)
-    (platformOverride || !isTenantAdmin || (features && features.livestream)) &&
-      (hasFullAccess || perms.manageLivestream) &&
+    (hasFullAccess || perms.manageLivestream) &&
       { id: 'livestream', label: 'Livestream', icon: Radio },
     // SMS Automation (Twilio)
-    (platformOverride || !isTenantAdmin || (features && features.smsAutomation)) &&
-      (hasFullAccess || perms.manageSms) &&
+    (hasFullAccess || perms.manageSms) &&
       { id: 'sms', label: 'SMS', icon: MessageSquare },
     // Community (Rocket.Chat)
-    (platformOverride || !isTenantAdmin || (features && features.communityGroups)) &&
-      (hasFullAccess || perms.manageCommunity) &&
+    (hasFullAccess || perms.manageCommunity) &&
       { id: 'community', label: 'Community', icon: MessageSquare },
     // Platform course library — super admin authors the shared catalogue that
     // every tenant can adopt. Same super-admin-only gate as Tenants below.
@@ -905,32 +894,40 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               />
             </div>
           ) : activeTab === 'blog' ? (
-            <div className="p-4 lg:p-0"><AdminBlog /></div>
+            (platformOverride || !isTenantAdmin || (features && features.blog))
+              ? <div className="p-4 lg:p-0"><AdminBlog /></div>
+              : <PlanUpgradeScreen featureName="Blog" featureKey="blog" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'inbox' ? (
             <div className="p-4 lg:p-0"><PlatformInbox /></div>
           ) : activeTab === 'churches' ? (
             <div className="p-4 lg:p-0"><AdminChurches /></div>
           ) : activeTab === 'courses' ? (
-            <div className="p-4 lg:p-0"><AdminCourses /></div>
+            (platformOverride || !isTenantAdmin || (features && features.maxCourses !== 0))
+              ? <div className="p-4 lg:p-0"><AdminCourses /></div>
+              : <PlanUpgradeScreen featureName="Courses" featureKey="maxCourses" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'ai' ? (
-            <div className="p-4 lg:p-0"><AdminRAG /></div>
+            (platformOverride || !isTenantAdmin || (features && features.aiKnowledge))
+              ? <div className="p-4 lg:p-0"><AdminRAG /></div>
+              : <PlanUpgradeScreen featureName="AI Knowledge" featureKey="aiKnowledge" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'newsletter' ? (
-            <div className="p-4 lg:p-0">
-              {newsletterView === 'editor' ? (
-                <NewsletterEditor
-                  tenantId={tenantId || PLATFORM_TENANT_ID}
-                  tenantName={tenantName}
-                  onBack={() => setNewsletterView('list')}
-                  canAutoGenerate={platformOverride || !!(features?.automatedNewsletter)}
-                />
-              ) : (
-                <NewsletterCampaigns
-                  tenantId={tenantId || PLATFORM_TENANT_ID}
-                  onBack={() => go('dashboard')}
-                  onCreateNew={() => setNewsletterView('editor')}
-                />
-              )}
-            </div>
+            (platformOverride || !isTenantAdmin || (features && features.newsletterAutomation))
+              ? <div className="p-4 lg:p-0">
+                  {newsletterView === 'editor' ? (
+                    <NewsletterEditor
+                      tenantId={tenantId || PLATFORM_TENANT_ID}
+                      tenantName={tenantName}
+                      onBack={() => setNewsletterView('list')}
+                      canAutoGenerate={platformOverride || !!(features?.automatedNewsletter)}
+                    />
+                  ) : (
+                    <NewsletterCampaigns
+                      tenantId={tenantId || PLATFORM_TENANT_ID}
+                      onBack={() => go('dashboard')}
+                      onCreateNew={() => setNewsletterView('editor')}
+                    />
+                  )}
+                </div>
+              : <PlanUpgradeScreen featureName="Newsletter" featureKey="newsletterAutomation" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'canvas' ? (
             !canvasId ? (
               <div className="p-4 lg:p-0">

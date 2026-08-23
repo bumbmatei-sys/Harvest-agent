@@ -255,12 +255,28 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     pledgeCampaigns: false,
     // False for the same reason as `smsAutomation` directly above — see there.
     textToGive: false,
-    // False. The installable PWA is a paid-tier capability; a free tenant's
-    // member reaches the discipleship page in a browser. ⚠️ This is the cell in
-    // this block least forced by the brief and most worth the founder
-    // confirming — it costs Harvest nothing to serve and is a retention
-    // surface. Reported rather than quietly flipped.
-    pwaApp: false,
+    // 🔴 TRUE — FOUNDER-CONFIRMED (THE-205). This cell shipped false with THE-200
+    // and was flagged there as the one least forced by the brief; the founder has
+    // now called it the other way, so it is flipped deliberately rather than left
+    // dissenting in a comment. The reasoning: the installable PWA is the SAME
+    // static shell every tier already downloads, so serving it to a free tenant
+    // costs Harvest nothing, and an icon on a member's home screen is the single
+    // strongest retention surface the free tier has.
+    //
+    // NOT a fourth capability — a DELIVERY SURFACE for the two free already has
+    // (one adopted course, CRM). Installing the app cannot reach a donate page,
+    // a blog or a livestream that `fundraising`/`blog`/`livestream` still hold
+    // false directly above; the shell renders whatever the tier's other cells
+    // allow and nothing more.
+    //
+    // ⚠️ THIS MOVES A MINIMUM-PLAN LABEL. `getMinPlanForFeatureCell('pwaApp')`
+    // walks PLAN_ORDER and now answers 'free' instead of 'plus' — correctly, and
+    // with no edit needed here, because that derivation is the point of not
+    // hand-maintaining a literal map. `pwaApp` has no `FeatureKey`, so
+    // FEATURE_MIN_PLAN (the seven gate keys) is untouched. Sales copy that still
+    // lists the PWA as something you get BY UPGRADING is now advertising a free
+    // feature as paid — see the PR for the file:line list.
+    pwaApp: true,
   },
   // Individual — $49/mo
   plus: {

@@ -158,8 +158,23 @@ describe('THE-200 — what a free tenant gets', () => {
     }
   });
 
+  // ── 7b ── 🔴 THE-205 ──────────────────────────────────────────────────────
+  it('free HAS pwaApp — the installable app is on every tier', () => {
+    // Founder-confirmed in THE-205, reversing the value THE-200 shipped. Asserted
+    // POSITIVELY and in its own case rather than by deleting the old
+    // `toBe(false)` line from test 8: a removed assertion is weaker coverage than
+    // the one it replaced, and this cell has now moved once already.
+    expect(free.pwaApp).toBe(true);
+    expect(hasFeature('free', 'pwaApp')).toBe(true);
+    for (const plan of PRICED_PLAN_ORDER) {
+      expect(getPlanFeatures(plan).pwaApp, `${plan} lost pwaApp`).toBe(true);
+    }
+  });
+
   // ── 8 ── ENUMERATED, NOT PATTERN-MATCHED ──────────────────────────────────
   it('every other feature is false on free — each named individually', () => {
+    // `pwaApp` is deliberately ABSENT from this list — it is true on free as of
+    // THE-205 and is asserted in test 7b directly above.
     // 🔴 Written out cell by cell on purpose. `Object.entries(free).filter(...)`
     // would pass against a matrix that had silently lost half its keys.
     expect(free.blog).toBe(false);
@@ -184,7 +199,6 @@ describe('THE-200 — what a free tenant gets', () => {
     expect(free.givingStatements).toBe(false);
     expect(free.pledgeCampaigns).toBe(false);
     expect(free.textToGive).toBe(false);
-    expect(free.pwaApp).toBe(false);
 
     // Numeric cells, by name too. 0 = none; `hasFeature` reads 0 as false.
     expect(free.maxChurches).toBe(0);
@@ -198,14 +212,15 @@ describe('THE-200 — what a free tenant gets', () => {
     // seat count still means something.
     expect(free.maxAdmins).toBe(1);
 
-    // Belt and braces on the enumeration itself: exactly the two entitlements
-    // free carries are truthy. This DERIVED check is allowed only because every
+    // Belt and braces on the enumeration itself: exactly the entitlements free
+    // carries are truthy. This DERIVED check is allowed only because every
     // cell above is also asserted by name — it catches a NEW cell added to the
     // interface and defaulted true on free, which the named list cannot see.
+    // `pwaApp` joined this set in THE-205 (asserted by name in test 7b).
     const truthy = (Object.keys(free) as (keyof PlanFeatures)[])
       .filter((k) => hasFeature('free', k))
       .sort();
-    expect(truthy).toEqual(['crm', 'maxContacts', 'maxCourses', 'maxAdmins'].sort());
+    expect(truthy).toEqual(['crm', 'maxContacts', 'maxCourses', 'maxAdmins', 'pwaApp'].sort());
   });
 });
 
@@ -277,7 +292,7 @@ describe('THE-200 — FEATURE_MIN_PLAN still names the cheapest tier that HAS ea
       givingStatements: 'max',
       pledgeCampaigns: 'max',
       textToGive: 'plus',       // free is false → unchanged, still Individual
-      pwaApp: 'plus',           // free is false → unchanged, still Individual
+      pwaApp: 'free',           // ⬅️ MOVED from 'plus' by THE-205
     };
     for (const [cell, expected] of Object.entries(EXPECTED) as [keyof PlanFeatures, TenantPlan | null][]) {
       expect(getMinPlanForFeatureCell(cell), `min plan for ${cell}`).toBe(expected);
