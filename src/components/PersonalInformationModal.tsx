@@ -54,6 +54,12 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  const [deleteMessage, setDeleteMessage] = useState('');
  const [deletePassword, setDeletePassword] = useState('');
 
+ // Download-my-data outcome (THE-188). Same three-state shape as the delete
+ // flow above and for the same reason: a right that fails silently is not a
+ // right. 'working' disables the button, 'error' renders why.
+ const [exportState, setExportState] = useState<'idle' | 'working' | 'error'>('idle');
+ const [exportMessage, setExportMessage] = useState('');
+
  // Cancel Partnership state
  const [hasActivePartnership, setHasActivePartnership] = useState(false);
  const [showCancelPartnershipConfirm, setShowCancelPartnershipConfirm] = useState(false);
@@ -256,7 +262,87 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
   * a non-2xx naming the step, and is rendered below. There is no longer any
   * path through this handler that removes one half and reports success.
   */
- const handleDeleteAccount = async () => {
+/**
+  * THE-188 — DOWNLOAD EVERYTHING THIS APP HOLDS ABOUT ME.
+  *
+  * 🔴 THE HALF THAT WAS MISSING. Deletion shipped first and shipped alone: a
+  * member could erase themselves across 25 collections and had no way to take a
+  * copy first. This is the GDPR Art. 15/20 counterpart, and it sits in this
+  * panel deliberately — beside the delete button, because that is where a member
+  * is standing when it matters most.
+  *
+  * The file is built and named HERE rather than served as an attachment: the
+  * response is an authenticated `authFetch` with a bearer token, so it cannot be
+  * a plain link the browser navigates to.
+  *
+  * ⚠️ A PARTIAL EXPORT COMES BACK NON-2XX AND STILL CARRIES ITS ROWS. The route
+  * refuses to dress a half-read file as a whole one, so a `status: 'partial'`
+  * body is downloaded AND the failure is rendered — losing twenty-four sections
+  * because one failed would serve nobody.
+  */
+ const handleExportData = async () => {
+ if (!auth.currentUser) {
+ setExportState('error');
+ setExportMessage('You are not signed in. Sign in again and retry.');
+ return;
+ }
+
+ setExportState('working');
+ setExportMessage('');
+
+ const uid = auth.currentUser.uid;
+
+ let res: Response;
+ let data: { format?: string; status?: string; error?: string; code?: string };
+ try {
+ // Same reason as the delete flow: the route wants an `auth_time` inside
+ // five minutes and the cached ID token can be an hour old.
+ await auth.currentUser.getIdToken(true);
+ res = await authFetch('/api/account/export', {
+ method: 'POST',
+ body: JSON.stringify({ userId: uid }),
+ });
+ data = await res.json().catch(() => ({}));
+ } catch (error: unknown) {
+ console.error('Error exporting data:', error);
+ setExportState('error');
+ setExportMessage('Could not reach the server. Check your connection and try again.');
+ return;
+ }
+
+ if (data?.format === 'harvest.member-export') {
+ const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+ const url = URL.createObjectURL(blob);
+ const link = document.createElement('a');
+ link.href = url;
+ link.download = `harvest-my-data-${new Date().toISOString().slice(0, 10)}.json`;
+ link.click();
+ URL.revokeObjectURL(url);
+ }
+
+ if (res.ok) {
+ setExportState('idle');
+ setExportMessage('Your data has been downloaded.');
+ return;
+ }
+
+ if (data?.code === 'auth/requires-recent-login') {
+ setExportState('error');
+ setExportMessage(
+ 'For your security, this needs a recent sign-in. Sign out, sign back in, and download within a few minutes.',
+ );
+ return;
+ }
+
+ setExportState('error');
+ setExportMessage(
+ data?.status === 'partial'
+ ? 'Part of your data could not be read, so the file you just downloaded is incomplete — it names what is missing. Please try again.'
+ : data?.error || 'Your data could not be exported. Please try again.',
+ );
+ };
+
+  const handleDeleteAccount = async () => {
  if (!auth.currentUser) {
  setDeleteState('error');
  setDeleteMessage('You are not signed in. Sign in again and retry.');
@@ -760,6 +846,31 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
 
  {cancelPartnershipMsg && !showCancelPartnershipConfirm && (
    <p className="text-xs text-center text-green-600 -mt-1">{cancelPartnershipMsg}</p>
+ )}
+
+ {/* 🔴 THE-188 — the export sits BESIDE the delete, not somewhere else in
+     Settings. A member who has decided to leave is exactly the person who
+     needs their giving history first, and deletion shipped without it. Never
+     gated: no plan check, and an archived church's members download the same
+     file a paying church's do. */}
+ <button
+   onClick={handleExportData}
+   disabled={exportState === 'working'}
+   className="w-full flex items-center justify-between p-4 bg-surface rounded-2xl hover:bg-surface-sunken transition-colors disabled:opacity-50"
+ >
+   <span className="text-sm font-bold text-strong">
+     {exportState === 'working' ? 'Preparing your download…' : 'Download My Data'}
+   </span>
+   <ChevronRight size={18} className="text-faint" />
+ </button>
+
+ {exportMessage && (
+   <p
+     role={exportState === 'error' ? 'alert' : 'status'}
+     className={`text-xs text-center ${exportState === 'error' ? 'text-red-600' : 'text-green-600'}`}
+   >
+     {exportMessage}
+   </p>
  )}
 
  {showDeleteConfirm ? (

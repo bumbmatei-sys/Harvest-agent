@@ -94,6 +94,18 @@ export interface MemberDataEntry {
    * Returns how many documents it touched.
    */
   sweep?: (ctx: MemberContext) => Promise<number>;
+  /**
+   * The concrete collection paths this entry covers that hold member data with
+   * NO usable member key — the gaps this module reports rather than guesses at.
+   *
+   * ⚠️ Machine-readable ON PURPOSE (THE-188). The reason text below already says
+   * "GAP" in words, and the member EXPORT has to declare the same three
+   * collections the erasure cannot reach. Parsing them back out of prose, or
+   * splitting the `collection` label on its ' + ', would be a second
+   * enumeration one edit away from disagreeing with this one. Present only on
+   * the gap entries; absent everywhere else.
+   */
+  unkeyed?: readonly string[];
 }
 
 /** Everything a sweep needs, all of it proven concrete before the first write. */
@@ -794,6 +806,7 @@ export const MEMBER_DATA_MAP: MemberDataEntry[] = [
     collection: 'tenants/{t}/livestreamSessions/{id}/prayers',
     disposition: 'retain',
     holds: 'name (free text), prayerText',
+    unkeyed: ['tenants/{t}/livestreamSessions/{id}/prayers'],
     reason:
       '⚠️ GAP. The write path stores no uid and no email — only a display name typed into the box — so a row cannot be attributed to a member without matching on a name, which would hit every other member sharing it. Reported rather than guessed at.',
   },
@@ -801,6 +814,7 @@ export const MEMBER_DATA_MAP: MemberDataEntry[] = [
     collection: 'tenants/{t}/smsLogs + smsBroadcasts/{id}/logs',
     disposition: 'retain',
     holds: 'phone',
+    unkeyed: ['tenants/{t}/smsLogs', 'tenants/{t}/smsBroadcasts/{id}/logs'],
     reason:
       "⚠️ GAP. Delivery logs are keyed by phone number with no uid, and the member's phone lives on the users doc that is about to go. Reported; clearing them needs a phone-indexed sweep this PR does not add.",
   },

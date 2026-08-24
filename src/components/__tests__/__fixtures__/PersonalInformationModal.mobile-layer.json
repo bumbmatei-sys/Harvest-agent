@@ -59,6 +59,10 @@
   "57\tspan\tfont-bold text-sm text-strong",
   "58\tsvg\tlucide lucide-chevron-right text-faint",
   "59\tpath\t",
-  "60\tbutton\tbg-red-50 flex hover:bg-red-100 items-center justify-center mt-4 p-4 rounded-2xl transition-colors w-full",
-  "61\tspan\tfont-bold text-red-600 text-sm"
+  "60\tbutton\tbg-surface disabled:opacity-50 flex hover:bg-surface-sunken items-center justify-between p-4 rounded-2xl transition-colors w-full",
+  "61\tspan\tfont-bold text-sm text-strong",
+  "62\tsvg\tlucide lucide-chevron-right text-faint",
+  "63\tpath\t",
+  "64\tbutton\tbg-red-50 flex hover:bg-red-100 items-center justify-center mt-4 p-4 rounded-2xl transition-colors w-full",
+  "65\tspan\tfont-bold text-red-600 text-sm"
 ]

@@ -33,6 +33,31 @@ export interface WhereCall {
 /** Every `where()` the code under test built, in order. */
 export const recordedWheres: WhereCall[] = [];
 
+/** One `get()` against the store — the page bound it asked for, and from where. */
+export interface ReadCall {
+  /** Collection path the read was built on ('' for a collection group). */
+  path: string;
+  /** Collection-group id, when this was a collectionGroup query. */
+  group?: string;
+  /** The `limit()` in force. `Infinity` means the caller set none — an UNBOUNDED read. */
+  limit: number;
+  /** The `startAfter()` cursor doc id, or null on a first page. */
+  after: string | null;
+  /** How many documents came back. */
+  returned: number;
+}
+
+/**
+ * Every read the code under test performed, in order.
+ *
+ * Recorded so a test can prove a large collection was PAGED rather than pulled
+ * in one `get()` — an export is a read path, so the write-batch cap that pins
+ * the deletion side says nothing about it. An entry with `limit: Infinity` is an
+ * unbounded read; a paged run shows repeated bounded reads with a moving
+ * `after`.
+ */
+export const recordedReads: ReadCall[] = [];
+
 type Data = Record<string, unknown>;
 
 /** path → { docId → data }. Path is the parent collection, e.g. `tenants/t1/invoices`. */
@@ -41,6 +66,7 @@ const store = new Map<string, Map<string, Data>>();
 export function __reset(): void {
   store.clear();
   recordedWheres.length = 0;
+  recordedReads.length = 0;
   deletedObjects.length = 0;
   storageShouldThrow.value = false;
 }
@@ -170,7 +196,15 @@ function makeQuery(path: string | null, group: string | null, filters: Filter[],
         const idx = rows.findIndex(([, id]) => id === after);
         rows = idx >= 0 ? rows.slice(idx + 1) : rows;
       }
-      return snapshotFor(rows.slice(0, cap));
+      const page = rows.slice(0, cap);
+      recordedReads.push({
+        path: path ?? '',
+        ...(group ? { group } : {}),
+        limit: cap,
+        after,
+        returned: page.length,
+      });
+      return snapshotFor(page);
     },
   };
   return self;
