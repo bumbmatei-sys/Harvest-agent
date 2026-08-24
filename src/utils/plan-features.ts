@@ -1149,6 +1149,25 @@ export function hasFeature(plan: TenantPlan, feature: keyof PlanFeatures): boole
 export const PLAN_ORDER: readonly TenantPlan[] = ['free', 'plus', 'pro', 'max'] as const;
 
 /**
+ * The one tier that is not sold, named once.
+ *
+ * 🔴 THE ADMIN NAV READS THIS, and it is the only tier whose nav is not derived
+ * from its own feature cells. THE-202 built the free tier's "see every feature,
+ * read-only" mode from the founder's words — "the admin of this free plan can
+ * see all the features and can navigate through them but he cannot use any of
+ * them" — and THE-220 is the correction to its scope: only free shows the whole
+ * list. A priced tier shows what it bought.
+ *
+ * ⚠️ NAMED, not spelled, precisely because it is a bypass. A gate that opens for
+ * one tier is worth being able to grep for, and `resolvedPlan === 'free'` in a
+ * component is not — it reads as an ordinary comparison rather than as the
+ * deliberate exception it is. `isPricedPlan()` is NOT the inverse to reach for
+ * here: it also answers false for a retired or unrecognised tier name, so a
+ * legacy tenant would silently inherit the free tier's see-everything nav.
+ */
+export const FREE_PLAN: TenantPlan = 'free';
+
+/**
  * The tiers a church can BUY, cheapest → most expensive — `PLAN_ORDER` minus
  * the free one.
  *

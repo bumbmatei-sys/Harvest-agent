@@ -371,25 +371,54 @@ describe.each([
   });
 });
 
-// ── The nav itself, which THE-202 decided ────────────────────────────────────
-describe('the nav is the same on every tier, and that is deliberate (THE-202)', () => {
-  it('shows the same permission-filtered tabs on free, Individual and Small Team', async () => {
+// ── The nav itself: THE-202's decision, as THE-220 corrected its SCOPE ───────
+//
+// 🔴 THIS BLOCK USED TO ASSERT THE OPPOSITE, and it was pinning a defect.
+//
+// THE-202 built the free tier's "see every feature, read-only" mode by deleting
+// the plan clause from the nav array outright, which applied the mode to EVERY
+// tier — so these two tests asserted that free, Individual and Small Team all
+// showed one identical sixteen-item nav. That is the behaviour the founder then
+// corrected: "Only the evangelist has to see the entire list of features.
+// Individual doesn't have to see the features from Ministry."
+//
+// So the free half stays (it was right) and the paid half inverts. The tests
+// below are the same two questions asked of the corrected rule.
+describe('only the free tier shows every tab; a priced tier shows what it bought (THE-220)', () => {
+  it('keeps the free nav whole, and it is the ONLY tier whose nav ignores its own cells', async () => {
     const navs = new Map<string, string[]>();
     for (const plan of ['free', 'plus', 'pro'] as const) {
       navs.set(plan, (await openTab(plan, UNGATED_TABS[0])).nav);
     }
-    // The label on the churches tab is the one intentional per-tier difference:
-    // a tier capped at one campus says 'Church', an uncapped/unknown one says
-    // 'Church List'. Compare the rest.
+    // The churches label is the one intentional per-tier difference: a tier
+    // capped at one campus says 'Church', an uncapped/unknown one 'Church List'.
     const withoutChurch = (l: string[]) => l.filter((x) => x !== 'Church' && x !== 'Church List');
-    expect(withoutChurch(navs.get('plus')!)).toEqual(withoutChurch(navs.get('free')!));
-    expect(withoutChurch(navs.get('plus')!)).toEqual(withoutChurch(navs.get('pro')!));
+
+    // Free carries every gated tab, none of which its own cells unlock.
+    for (const row of GATED_TABS) {
+      expect(navs.get('free')!, `free lost "${row.label}" — the point of the tier`).toContain(row.label);
+    }
+    // And the priced tiers are now strictly narrower, which is the correction.
+    expect(withoutChurch(navs.get('plus')!).length)
+      .toBeLessThan(withoutChurch(navs.get('free')!).length);
+    expect(withoutChurch(navs.get('pro')!).length)
+      .toBeLessThan(withoutChurch(navs.get('free')!).length);
+    // Individual ⊂ Small Team ⊂ free, as the matrix is monotonic by tier.
+    for (const label of withoutChurch(navs.get('plus')!)) {
+      expect(navs.get('pro')!, `Small Team lost "${label}" that Individual has`).toContain(label);
+    }
   });
 
-  it('lists every gated tab in an Individual nav even though eight of them are walled', async () => {
+  it('drops from an Individual nav every gated tab that tier did not buy', async () => {
     const { nav } = await openTab('plus', UNGATED_TABS[0]);
+    const plusFeatures = getPlanFeatures('plus');
     for (const row of GATED_TABS) {
-      expect(nav, `THE-202 says "${row.label}" stays in the nav and reaches an upgrade wall`).toContain(row.label);
+      if (row.entitled(plusFeatures)) {
+        expect(nav, `"${row.label}" is one of Individual's own tabs`).toContain(row.label);
+      } else {
+        expect(nav, `"${row.label}" is a tab Individual cannot use and must not see`)
+          .not.toContain(row.label);
+      }
     }
   });
 });
@@ -570,9 +599,26 @@ describe('no nav item is shown by a bypass that skips its feature check', () => 
     // A tenth item cannot be added the same way: the bypass exists in exactly
     // one place, so there is no per-site term left to get wrong.
     const gateCount = (CODE.match(/planAllows\(/g) ?? []).length;
-    // The 13 gated tabs, plus canBranding. The declaration does not match — it
-    // reads `const planAllows = (cell…`, so this counts CALL SITES only.
-    expect(gateCount).toBe(GATED_TABS.length + 1);
+    // The 13 gated tabs, plus canBranding, plus ONE more: THE-220's `navAllows`
+    // delegates to this helper rather than restating `planUnlocked || cell ===
+    // true`, so the nav layer and the render layer cannot drift on what "the
+    // plan allows" means. That delegation is the whole reason the count moved,
+    // and the next assertion pins its shape.
+    expect(gateCount).toBe(GATED_TABS.length + 1 + 1);
+  });
+
+  it('builds the NAV gate from the render gate plus exactly one term: the free tier', () => {
+    // 🔴 The nav layer must be the render layer widened by free, and nothing
+    // else. Any other cell in this expression is a second definition of "which
+    // feature does this tab need", which is the drift THE-220 closed — the old
+    // nav clause gated Courses on `blog` while the screen gated it on
+    // `maxCourses`, and neither layer knew.
+    expect(CODE).toMatch(
+      /navAllows = \(cell: boolean \| null \| undefined\): boolean =>\s*resolvedPlan === FREE_PLAN \|\| planAllows\(cell\);/,
+    );
+    expect((CODE.match(/const navAllows =/g) ?? []).length).toBe(1);
+    // The free bypass is NAMED, never spelled inline, so it is greppable.
+    expect(CODE, "the free tier is compared as a bare string literal").not.toMatch(/resolvedPlan === 'free'/);
   });
 
   it('has no open-coded plan bypass left anywhere in the shell', () => {
