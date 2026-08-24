@@ -31,13 +31,21 @@
  *
  * ─── Purity ─────────────────────────────────────────────────────────────────
  *
- * 🔴 This module imports NOTHING. That is load-bearing, not tidiness.
+ * 🔴 This module reaches NOTHING. That is load-bearing, not tidiness.
  * `client.ts` imports it, and `client.ts` is now imported by the public pages —
  * including `/blog/[id]`, the most performance-sensitive page in the product.
  * `identity.ts` reaches Firebase through `tenant-scope.ts`; if anything on that
  * path became reachable from here, every blog reader would download the
  * Firestore SDK. See the dynamic import in `client.ts`.
+ *
+ * ⚠️ THE-227 gives it exactly one import, and the rule is unchanged rather than
+ * relaxed: `admin-sections.ts` is a table of string literals that imports
+ * nothing itself, so the transitive set this file pulls into the blog bundle is
+ * still empty. `posthog-admin-sections.test.ts` asserts that module's import
+ * count stays at zero, which is what keeps the sentence above true.
  */
+
+import { ADMIN_SECTION_SLUGS, type AdminSectionSlug } from '../admin-sections';
 
 /* ── the surfaces ──────────────────────────────────────────────────────────── */
 
@@ -99,12 +107,62 @@ export const UNROUTED_PATTERN = '/[unrouted]';
  * inputs. `PREAUTH_PATHS` remains the gate in `AnalyticsBridge`; they are named
  * here only in {@link PRE_AUTH_PATTERNS} so a reader can see the whole map.
  */
+/**
+ * THE-227 — one row per KNOWN admin section, so `/admin/crm` and
+ * `/admin/accounting` are two rows on a dashboard instead of one.
+ *
+ * ─── 🔴 This is not an exception to the rule above. It is more enumeration ───
+ *
+ * The rule this file opens with — *a resolved path never becomes a property* —
+ * holds unchanged. `/admin/crm` does not "pass through": it is MATCHED, against
+ * a row that exists because `admin-sections.ts` lists `crm`, and the string that
+ * leaves is that row's pattern. There is no exception list, nothing is exempted
+ * from matching, and `matchAnalyticsRoute` is untouched — a literal segment
+ * already beat a parameter at the same position, which is the whole mechanism.
+ *
+ * ⚠️ WHAT MAKES THIS SAFE IS THE SHAPE OF THE VALUE, and it is the opposite of
+ * `/form/[formId]`. A form id is a Firestore document id: minted per document,
+ * unbounded, and the identifier of a thing a person filled in. A section is a
+ * FEATURE NAME from a fixed vocabulary this app defines in its own nav — the
+ * same category of word as `app_surface: 'admin'`, which every one of these
+ * events already carries. `admin-sections.ts` states the rule that keeps it that
+ * way and its test enforces it.
+ *
+ * 🔴 THE `[itemId]` SEGMENT IS UNCHANGED AND MUST STAY THAT WAY. No row is
+ * generated for `/admin/<section>/[itemId]`, so `/admin/crm/9f2c…` still matches
+ * `/admin/[section]/[itemId]` and still sends that. The second segment IS a
+ * document id — a contact, a doc, a campaign — and naming the section there
+ * would buy one more dimension at the price of the guarantee.
+ *
+ * 🔴 AND A SECTION NOBODY REGISTERED STILL NORMALISES. `/admin/prayer-wall`,
+ * added to the nav tomorrow, or `/admin/crmm` typed by hand, matches no row here
+ * and falls to `/admin/[section]` — because that row is still in the table
+ * below, unchanged. Over-redaction remains the failure mode.
+ */
+const ADMIN_SECTION_ROUTES = ADMIN_SECTION_SLUGS.map(
+  (slug) =>
+    ({
+      // `as const` keeps this a template LITERAL type (`'/admin/crm'`), not
+      // `string` — see the note on `AnalyticsRoutePattern` below, which this
+      // would otherwise widen and silently disarm.
+      pattern: `/admin/${slug}` as const,
+      entry: 'spa',
+      surface: 'admin',
+      public: false,
+    }) as const satisfies AnalyticsRoute,
+);
+
 const ROUTE_TABLE = [
   /* ── the SPA shell (THE-36 already covered these) ───────────────────────── */
   { pattern: '/', entry: 'spa', surface: 'member', public: false },
   { pattern: '/admin', entry: 'spa', surface: 'admin', public: false },
   { pattern: '/admin/[section]', entry: 'spa', surface: 'admin', public: false },
   { pattern: '/admin/[section]/[itemId]', entry: 'spa', surface: 'admin', public: false },
+
+  /* ── the named admin sections (THE-227 adds these) ──────────────────────── */
+  // Generated from the nav's own vocabulary rather than restated, so a section
+  // renamed there cannot leave a stale row here.
+  ...ADMIN_SECTION_ROUTES,
 
   /* ── the dedicated Next routes (THE-206 adds these) ─────────────────────── */
   { pattern: '/ai-assistant', entry: 'next-page', surface: 'public', public: true },
@@ -159,6 +217,24 @@ export type AnalyticsRoutePattern = (typeof ROUTE_TABLE)[number]['pattern'];
 type Narrow<T extends string> = string extends T ? never : T;
 const PATTERN_UNION_IS_NARROW: Narrow<AnalyticsRoutePattern> = '/';
 void PATTERN_UNION_IS_NARROW;
+
+/**
+ * THE-227 — the other half of the same proof: the generated section rows are IN
+ * the union as literals.
+ *
+ * ⚠️ `Narrow` alone would not catch the mistake this guards. A single
+ * `pattern: string` row anywhere in the table widens the whole union, and
+ * `Narrow` would catch that — but the subtler slip is the section rows
+ * contributing `` `/admin/${string}` `` instead of the twenty-four literals,
+ * which is still narrow, still compiles, and would let `/admin/anything` be
+ * assigned. The `@ts-expect-error` below fails to compile if that ever happens,
+ * because the error it expects would no longer occur.
+ */
+const A_KNOWN_SECTION_IS_A_LITERAL: AnalyticsRoutePattern = `/admin/${'crm' satisfies AdminSectionSlug}`;
+// @ts-expect-error — an unregistered section is not a pattern, and must not be.
+const AN_UNKNOWN_SECTION_IS_NOT: AnalyticsRoutePattern = '/admin/prayer-wall';
+void A_KNOWN_SECTION_IS_A_LITERAL;
+void AN_UNKNOWN_SECTION_IS_NOT;
 
 /* ── matching ──────────────────────────────────────────────────────────────── */
 
