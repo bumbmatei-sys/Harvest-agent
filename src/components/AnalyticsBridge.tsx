@@ -59,10 +59,48 @@ export default function AnalyticsBridge() {
   const identifiedUidRef = useRef<string | null>(null);
   const isPlatformAdminRef = useRef(false);
 
+  /**
+   * The `(uid, pathname)` pair the last $pageview was actually sent for.
+   *
+   * ⚠️ The SECOND lock on double-counting, and it guards a different failure from
+   * the stable-identity fix above: that one stops the effect re-running for an
+   * unchanged user, this one stops a re-run that does happen from sending a
+   * duplicate — React 18's development double-invoke, a remount, or any future
+   * dependency added to the effect.
+   *
+   * 🔴 SET AFTER THE AWAIT, NOT BEFORE. Claiming the pair up front would let a
+   * run that is then cancelled (the identify below is async) block the run that
+   * superseded it, and the screen would be counted ZERO times rather than twice.
+   * Under-counting is the failure this whole file exists to fix, so the guard is
+   * placed where it can only ever suppress a send that already happened.
+   *
+   * The pair, not the path alone: signing out and back in at the same screen is
+   * two different people looking at it, and both count. Only the LAST pair is
+   * held, so `/admin` → `/admin/crm` → `/admin` is three pageviews, correctly.
+   */
+  const lastCapturedRef = useRef<string | null>(null);
+
   useEffect(() => {
     return onAuthStateChanged(auth, (user) => {
       if (user) {
-        setAuthUser({ uid: user.uid, email: user.email });
+        // 🔴 THE SAME PERSON MUST BE THE SAME VALUE (THE-220). Firebase re-fires
+        // this listener for the same account — an ID-token refresh, a
+        // `getIdToken()`, a second tab settling — and a fresh object literal each
+        // time makes `authUser` a NEW dependency of the capture effect below, so
+        // the effect re-runs and files a SECOND $pageview for a screen nobody
+        // navigated to. That is not hypothetical: the live project holds two
+        // `/admin` pageviews five seconds apart in one session
+        // (2026-08-23T23:13:34Z and :39Z), which is this.
+        //
+        // Returning `prev` unchanged when the identity has not changed keeps the
+        // reference stable, so a token refresh is invisible to React. `email` is
+        // compared too — it is the other field the effect consumes, so a real
+        // change to it must still propagate.
+        setAuthUser((prev) =>
+          prev && prev.uid === user.uid && prev.email === user.email
+            ? prev
+            : { uid: user.uid, email: user.email },
+        );
         return;
       }
       // Signed out. Forget the person before the next one arrives — a church
@@ -91,6 +129,9 @@ export default function AnalyticsBridge() {
         identifiedUidRef.current = authUser.uid;
         isPlatformAdminRef.current = result?.isPlatformAdmin ?? false;
       }
+      const captureKey = `${authUser?.uid ?? ''}\u0000${pathname}`;
+      if (lastCapturedRef.current === captureKey) return;
+      lastCapturedRef.current = captureKey;
       await capturePageview(pathname, isPlatformAdminRef.current);
     })();
 

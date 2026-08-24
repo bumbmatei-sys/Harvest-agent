@@ -756,6 +756,22 @@ const EDITED_SINCE_MEASUREMENT: ReadonlyArray<{ file: string; ticket: string; wh
       'or inline style changed, and every `perms.X` term is still byte-identical — ' +
       'which the assertion below still proves, unedited.',
   },
+  {
+    file: 'AdminDashboard.tsx',
+    ticket: 'THE-220',
+    why:
+      'Put a PLAN clause back on each gated nav entry — the clause THE-202 above removed — but ' +
+      'widened by exactly one term, the free tier. THE-202 built free\'s "see every feature, ' +
+      'read-only" mode by deleting the clause outright, which applied that mode to EVERY tier, so ' +
+      'an Individual tenant listed all sixteen tabs and could use seven. Restoring the old clause ' +
+      'verbatim would have hidden them from free too, and would have restored a second defect: the ' +
+      'old Courses clause read `features.blog` while the Courses screen reads `maxCourses`. Each ' +
+      'entry now reads `navAllows(cell) && (<its existing permission clause>)`, with navAllows = ' +
+      'free || planAllows, so the nav layer and the render layer consult the SAME cell. Check-In ' +
+      'deliberately keeps no plan clause (it hosts QR Codes, which every tier carries). No wrapper, ' +
+      'padding, class or inline style changed, no feature flag moved, and every permission term is ' +
+      'still byte-identical — which the assertion below still proves, unedited.',
+  },
 ];
 
 const EXEMPT_FILES = EDITED_SINCE_MEASUREMENT.map((e) => e.file);
@@ -768,6 +784,7 @@ describe('the digest exemption list is exactly the edits that justify it', () =>
     expect(EDITED_SINCE_MEASUREMENT.map((e) => `${e.ticket} ${e.file}`)).toEqual([
       'THE-202 AdminDashboard.tsx',
       'THE-216 AdminDashboard.tsx',
+      'THE-220 AdminDashboard.tsx',
     ]);
   });
 

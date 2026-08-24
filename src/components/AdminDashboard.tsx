@@ -37,7 +37,7 @@ import MyAccountMenu, { type BillingAccess } from './MyAccountMenu';
 import BillingAndPayments from './BillingAndPayments';
 import GraceWindowBanner from './GraceWindowBanner';
 import { AdminScreenHeader, AdminHeaderContext, AdminHeaderOverride } from './AdminScreenHeader';
-import { getPlanFeatures, hasBrandingAccess, AFFILIATE_PROGRAM_ENABLED } from '../utils/plan-features';
+import { getPlanFeatures, hasBrandingAccess, AFFILIATE_PROGRAM_ENABLED, FREE_PLAN } from '../utils/plan-features';
 import { db, auth } from '../firebase';
 import { checkRosterAdminStatus } from '../utils/tenant.utils';
 import { readCachedRosterAnswer } from '../utils/roster-cache';
@@ -406,6 +406,38 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
    * `null` from `false` is the same "unknown reads as yes" defect one level down.
    */
   const planAllows = (cell: boolean | null | undefined): boolean => planUnlocked || cell === true;
+  /**
+   * Does this tenant's NAV show the tab this cell gates? (THE-220)
+   *
+   * 🔴 TWO LAYERS, TWO QUESTIONS, ONE CELL. `planAllows` above answers "may this
+   * tenant USE the feature" and decides which SCREEN a tab mounts — the real one
+   * or PlanUpgradeScreen. This answers "may this tenant SEE the tab", and decides
+   * whether the entry exists in the nav at all. They read the SAME cell, so the
+   * two layers cannot disagree about which feature a tab is; they differ by
+   * exactly one term, and that term is the free tier.
+   *
+   * ⚠️ THIS IS NOT THE CLAUSE THE-202 REMOVED, and restoring that one verbatim
+   * would have been the wrong fix. THE-202 (49b2a0c) deleted
+   * `platformOverride || !isTenantAdmin || (features && features.X)` from every
+   * nav entry to build the free tier's "see every feature" mode, which applied
+   * that mode to EVERY tier — so an Individual tenant showed all sixteen tabs,
+   * nine of which it cannot use. Putting the old clause back would have hidden
+   * those tabs from free as well, which is the half THE-202 got right.
+   *
+   * So the clause is the old one PLUS the free tier:
+   *
+   *   free                     → every tab, each walled by PlanUpgradeScreen.
+   *   plus / pro / max         → the tabs their own cells carry.
+   *   platform / no tenant     → everything (`planUnlocked`, via planAllows).
+   *
+   * ⚠️ A PLAN CLAUSE, NEVER A PERMISSION ONE. Each entry below is
+   * `navAllows(cell) && (<the permission clause it already had>)`, both of which
+   * must hold: the tenant bought the feature AND this admin's role grants it. The
+   * permission terms are byte-identical to what THE-202 left, and
+   * `admin-data-screens.desktop-layout` pins them with multiplicity.
+   */
+  const navAllows = (cell: boolean | null | undefined): boolean =>
+    resolvedPlan === FREE_PLAN || planAllows(cell);
   // Plan readiness. A white-label tenant's plan is loaded async from the tenant
   // doc (TenantContext); until it resolves we must NOT build the plan-gated
   // screens. Fold plan-readiness into `isLoading` so the dashboard shows its
@@ -532,47 +564,76 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     // Dashboard is always visible — placeholder/welcome screen (analytics moved to CRM)
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     (hasFullAccess || perms.modifyChurches) && { id: 'churches', label: isTenantAdmin && features && features.maxChurches === 1 ? 'Church' : 'Church List', icon: Church },
-    (hasFullAccess || perms.createCourses) && { id: 'courses', label: 'Courses', icon: GraduationCap },
-    (hasFullAccess || perms.writeArticles) && { id: 'blog', label: 'Blog', icon: FileText },
-    (hasFullAccess || perms.uploadRag) && { id: 'ai', label: 'AI Knowledge', icon: BrainCircuit },
-    // Newsletter tab — plan-gated at RENDER time (PlanUpgradeScreen), not hidden here.
-    (hasFullAccess || perms.manageNewsletter) &&
+    // Courses — the cell is `maxCourses !== 0`, matching the render switch below.
+    // ⚠️ NOT `blog`, which is what THE-202 removed from this entry: the nav read
+    // `features.blog` while the screen read `maxCourses`, so the two layers were
+    // already gating Courses on different features. Restoring the removed clause
+    // verbatim would have restored that disagreement too. Every tier's
+    // `maxCourses` is non-zero, so no tier's Courses tab moves.
+    navAllows(features && features.maxCourses !== 0) &&
+      (hasFullAccess || perms.createCourses) && { id: 'courses', label: 'Courses', icon: GraduationCap },
+    navAllows(features?.blog) &&
+      (hasFullAccess || perms.writeArticles) && { id: 'blog', label: 'Blog', icon: FileText },
+    navAllows(features?.aiKnowledge) &&
+      (hasFullAccess || perms.uploadRag) && { id: 'ai', label: 'AI Knowledge', icon: BrainCircuit },
+    // Newsletter tab — Small Team and above; free sees it walled.
+    navAllows(features?.newsletterAutomation) &&
+      (hasFullAccess || perms.manageNewsletter) &&
       { id: 'newsletter', label: 'Newsletter', icon: Mail },
     // Fundraising campaigns
-    (hasFullAccess || perms.manageFundraising) &&
+    navAllows(features?.fundraising) &&
+      (hasFullAccess || perms.manageFundraising) &&
       { id: 'fundraising', label: 'Fundraising', icon: Heart },
     // Event registration (Pretix)
-    (hasFullAccess || perms.manageEvents) &&
+    navAllows(features?.eventRegistration) &&
+      (hasFullAccess || perms.manageEvents) &&
       { id: 'events', label: 'Events', icon: CalendarCheck },
     // Docs (TipTap)
-    (hasFullAccess || perms.manageDocs) &&
+    navAllows(features?.docs) &&
+      (hasFullAccess || perms.manageDocs) &&
       { id: 'docs', label: 'Notes', icon: FileText },
     // CRM (Contacts · Analytics · Roles sub-tabs). Shown to anyone who can use ANY
     // sub-tab: manageCRM (Contacts), analytics (Analytics) or manageAdmins (Roles),
     // since those screens only live inside the CRM page.
-    (hasFullAccess || perms.manageCRM || perms.analytics || perms.manageAdmins) &&
+    navAllows(features?.crm) &&
+      (hasFullAccess || perms.manageCRM || perms.analytics || perms.manageAdmins) &&
       { id: 'crm', label: 'CRM', icon: Users },
     // Accounting (Crater) — Statements is now a sub-tab inside this screen, so the
     // entry is shown when EITHER the accounting or giving-statements feature is on,
     // and the admin holds either permission.
-    (hasFullAccess || perms.manageAccounting || perms.manageGivingStatements) &&
+    navAllows(features && (features.accountingTools || features.givingStatements)) &&
+      (hasFullAccess || perms.manageAccounting || perms.manageGivingStatements) &&
       { id: 'accounting', label: 'Accounting', icon: Receipt },
     // Custom Forms → CRM pipeline
-    (hasFullAccess || perms.manageForms) &&
+    navAllows(features?.customForms) &&
+      (hasFullAccess || perms.manageForms) &&
       { id: 'forms', label: 'Forms', icon: ClipboardList },
-    // Check-In System (QR attendance) — the QR Code generator is now a sub-tab
-    // inside this screen. QR is available on every plan and AdminCheckin self-gates
-    // the Check-In sub-tab, so the nav entry carries no plan clause.
+    // Check-In System (QR attendance) — the QR Code generator is a sub-tab inside
+    // this screen.
+    //
+    // 🔴 DELIBERATELY THE ONE GATED TAB WITH NO PLAN CLAUSE, and THE-220 kept it
+    // that way after checking. `checkInSystem` gates only HALF this tab: QR Codes
+    // is on every tier on purpose (THE-213), and the check-in half self-gates
+    // inside AdminCheckin and again server-side. So the plan clause that would
+    // read naturally here — `navAllows(features?.checkInSystem)` — would hide the
+    // tab from free and Individual and take QR Codes away from two tiers that
+    // genuinely have it, to hide a sub-tab those tiers already cannot open. The
+    // render switch below carries no plan clause for the same reason, so the two
+    // layers agree; `AdminDashboard.tier-tab-matrix` records this as the one
+    // named exception to "visible in the nav implies the feature is on".
     (hasFullAccess || perms.manageCheckin || perms.manageQR) &&
       { id: 'checkin', label: 'Check-In', icon: QrCode },
     // Livestream (YouTube + live giving)
-    (hasFullAccess || perms.manageLivestream) &&
+    navAllows(features?.livestream) &&
+      (hasFullAccess || perms.manageLivestream) &&
       { id: 'livestream', label: 'Livestream', icon: Radio },
     // SMS Automation (Twilio)
-    (hasFullAccess || perms.manageSms) &&
+    navAllows(features?.smsAutomation) &&
+      (hasFullAccess || perms.manageSms) &&
       { id: 'sms', label: 'SMS', icon: MessageSquare },
     // Community (Rocket.Chat)
-    (hasFullAccess || perms.manageCommunity) &&
+    navAllows(features?.communityGroups) &&
+      (hasFullAccess || perms.manageCommunity) &&
       { id: 'community', label: 'Community', icon: MessageSquare },
     // Platform course library — super admin authors the shared catalogue that
     // every tenant can adopt. Same super-admin-only gate as Tenants below.
