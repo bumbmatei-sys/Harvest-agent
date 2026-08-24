@@ -1,6 +1,7 @@
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { setCustomClaims } from '@/lib/set-custom-claims';
+import { PROVISIONED_TENANT_OWNER_ROLE } from '@/lib/roles';
 import { tenantPrivateRef, TENANT_PRIVATE_COLLECTION } from '@/lib/tenant-private';
 import { NON_TENANT_SUBDOMAINS } from '@/utils/non-tenant-subdomains';
 import { readTenantAddons } from '@/utils/plan-features';
@@ -351,7 +352,7 @@ export async function provisionTenantFromDodoSubscription(
   // OnboardingGate from its "Setting up your account…" poll.
   await adminDb.collection('users').doc(meta.userId).update({
     tenantId: newTenantId,
-    role: 'admin',
+    role: PROVISIONED_TENANT_OWNER_ROLE,
     plan,
     onboardingCompleted: true,
     signupInProgress: false,

@@ -45,10 +45,10 @@ import {
   withPaymentConfirmationHandoff,
 } from './utils/paid-arrival';
 import { usePreAuthTheme, useForcedLightTheme } from './lib/theme-runtime';
+import { isTenantAdminRole } from './lib/roles';
 
 /** Paths that represent the auth / onboarding funnel (used to decide redirects). */
 const FUNNEL_PATHS = ['/auth', '/onboarding', '/church-onboarding'];
-const ADMIN_ROLES = ['admin', 'church_admin', 'super_admin'];
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -324,7 +324,7 @@ const AppInner: React.FC = () => {
               // PWA / refresh persistence: only redirect away from the auth funnel.
               // A deep link (e.g. /admin/crm) on refresh is left intact so the user
               // stays on the page they were on.
-              const hasAdminRole = ADMIN_ROLES.includes(role) || isSuperAdminEmail(user?.email);
+              const hasAdminRole = isTenantAdminRole(role) || isSuperAdminEmail(user?.email);
               const homeBase = (isAdminDomain || hasAdminRole) ? '/admin' : '/';
 
               // One-shot intent flag: when an admin taps "Go to User App", the admin
@@ -341,15 +341,60 @@ const AppInner: React.FC = () => {
                 if (intentionalUserView) sessionStorage.removeItem('intentionalUserView');
               } catch {}
 
-              if (FUNNEL_PATHS.includes(path)) {
-                navigate(homeBase, { replace: true });
-              } else if (path === '/' && (isAdminDomain || hasAdminRole) && !intentionalUserView) {
+              // 🔴 THE-219 — "SEND THEM HOME" IS ONE DECISION, AND IT IS NOT
+              // ALWAYS A NAVIGATION.
+              //
+              // These two arms used to disagree about what "home" means. Both
+              // say the same thing — this user has finished onboarding and is
+              // sitting on a page that should hand them to their workspace —
+              // but only the '/' arm knew that a tenant owner's workspace is on
+              // ANOTHER ORIGIN. The funnel arm called `navigate(homeBase)` and
+              // stopped, which on the apex is apex `/admin`: a route that
+              // resolves NO tenant, so the roster is never asked, `hasFullAccess`
+              // is false and the nav collapses to Dashboard + an empty More.
+              //
+              // That is the founder's report, and it is a LANDING bug, not a role
+              // bug — the role written there ('admin') is the same value both
+              // paid paths write and every reader accepts (see lib/roles.ts).
+              //
+              // 🔴 WHY IT WAS ONLY EVER SEEN ON THE FREE LANE. Which arm a signup
+              // ends on is decided by where its funnel stops:
+              //   paid — the processor returns to `/?dodo=success`, so it lands on
+              //          the '/' arm and has always hopped;
+              //   free — there is no processor and no redirect (THE-214 removed the
+              //          trip through '/'), so it finishes ON `/church-onboarding`,
+              //          a FUNNEL_PATH, and took the arm that could not hop.
+              // PR #376 saw one instance of this (a refresh mid-confirmation) and
+              // read it as a confirmation-screen edge. It is wider than that: the
+              // arm is wrong for EVERY re-entry, and `api/tenants/delete` leaves
+              // `onboardingCompleted: true` on a detached user, so a second signup
+              // reaches this code with that flag already set and needs no refresh
+              // to get here.
+              //
+              // ⚠️ NOTHING IS REORDERED. `FUNNEL_PATHS` is untouched, so is
+              // `resolvePostAuthFunnelRoute`'s precedence, and so is the '/' arm's
+              // own condition — including `intentionalUserView`, which still gates
+              // only that arm (a funnel path is never where "Go to User App" lands).
+              // The single change is that the funnel arm now reaches the SAME hop
+              // the '/' arm already performed, tenant-existence check and payment
+              // confirmation included.
+              const wantsHome =
+                FUNNEL_PATHS.includes(path)
+                || (path === '/' && (isAdminDomain || hasAdminRole) && !intentionalUserView);
+              if (wantsHome) {
                 // If the user belongs to a real tenant but is currently on the apex
                 // (e.g. they clicked a "buy a plan" link while already signed in), send
                 // them to THEIR tenant's subdomain admin instead of the apex admin —
                 // which resolves no tenant and shows a broken/limited view. Super admins
                 // (no tenantId) stay on the apex admin as before.
-                if (data.tenantId && !onSubdomain) {
+                //
+                // ⚠️ `(isAdminDomain || hasAdminRole)` is carried onto the hop
+                // itself rather than left on the '/' arm. A MEMBER also has a
+                // tenantId, and members reach this code on a funnel path every
+                // time they sign in — hopping them across an origin is a change
+                // to member sign-in that this ticket does not make. With the
+                // guard they keep `navigate(homeBase)` ('/'), byte-for-byte.
+                if (data.tenantId && !onSubdomain && (isAdminDomain || hasAdminRole)) {
                   // Before hard-redirecting to the tenant's subdomain, confirm the
                   // tenant still exists. An orphaned user doc (tenantId pointing at a
                   // deleted tenant) would otherwise bounce the user to a dead
@@ -423,7 +468,11 @@ const AppInner: React.FC = () => {
                     navigate('/admin', { replace: true });
                   }
                 } else {
-                  navigate('/admin', { replace: true });
+                  // No tenant (a super admin), already on the subdomain, or a
+                  // member: the in-origin destination, exactly as before. On the
+                  // '/' arm `homeBase` is '/admin' by that arm's own guard, so
+                  // this is the same value it always navigated to.
+                  navigate(homeBase, { replace: true });
                 }
               }
               // else: keep the current deep-linked path
@@ -504,7 +553,7 @@ const AppInner: React.FC = () => {
   }, [navigate]);
 
   const isAdmin =
-    ADMIN_ROLES.includes(userRole) ||
+    isTenantAdminRole(userRole) ||
     isAdminDomain ||
     isSuperAdminEmail(auth.currentUser?.email);
 

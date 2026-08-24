@@ -18,10 +18,10 @@ import { getTenantIdFromHost } from '../utils/tenant-scope';
 import { useForcedLightTheme } from '../lib/theme-runtime';
 import FirstRunSetup from './FirstRunSetup';
 import WorkspaceHandoff, { CONFIRMS_ACCOUNT, CONFIRMS_PAYMENT } from './WorkspaceHandoff';
+import { isTenantAdminRole } from '../lib/roles';
 
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
 const BRAND = 'var(--brand-color, #B8962E)';
-const ADMIN_ROLES = ['admin', 'church_admin', 'super_admin'];
 
 type GateStatus = 'loading' | 'ready' | 'paying' | 'needs-payment' | 'first-run';
 
@@ -188,7 +188,7 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
             // Only a brand-new tenant (explicit false) gates first-run, and only
             // for its admin. Legacy tenants (no field) and members pass through.
             if (!t || t.setupCompleted !== false) { setStatus('ready'); return; }
-            if (ADMIN_ROLES.includes(role)) { setStatus('first-run'); return; }
+            if (isTenantAdminRole(role)) { setStatus('first-run'); return; }
             // Roster fallback: the adminEmails roster moved off the public
             // tenant doc to the server-only tenant_private doc, so ask the API.
             checkRosterAdmin(tId)

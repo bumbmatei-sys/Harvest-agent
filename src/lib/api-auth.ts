@@ -5,6 +5,7 @@ import { adminAuth, adminDb } from './firebase-admin';
 // extension, which let the API's idea of a super admin drift from firestore.rules'.
 import { isSuperAdminEmail } from '@/utils/super-admins';
 import { getTenantPrivate } from '@/lib/tenant-private';
+import { isTenantAdminRole } from './roles';
 
 export interface AuthenticatedUser {
   uid: string;
@@ -53,7 +54,7 @@ export async function verifyAuth(request: NextRequest): Promise<AuthenticatedUse
         if (userDoc.exists) {
           const data = userDoc.data();
           tenantId = tenantId || data?.tenantId || null;
-          if (!isAdmin && ['admin', 'church_admin', 'super_admin'].includes(data?.role)) {
+          if (!isAdmin && isTenantAdminRole(data?.role)) {
             isAdmin = true;
           }
         }
