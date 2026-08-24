@@ -94,7 +94,11 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
       if (proc === 'dodo') {
         const tid = await resolveTenantId();
         if (!tid) { alert('Unable to find your organization. Please try again.'); return; }
-        const result = await runDodoPlanChange({ tenantId: tid, plan: planId, billing: billingPeriod });
+        // 🔴 NO `billing` (THE-226). `billingPeriod` is this page's price
+        // toggle — what the owner is LOOKING at, never what they pay — and
+        // sending it is what made a plan change read as a term switch.
+        // `runDodoPlanChange` reads the tenant's real term from the server.
+        const result = await runDodoPlanChange({ tenantId: tid, plan: planId });
         if (result.ok) {
           alert(result.message);
           window.location.reload();

@@ -23,9 +23,19 @@ function jsonResponse(body: unknown) {
   return { ok: true, json: async () => body } as unknown as Response;
 }
 
-/** The preview the route returns, then the confirm's acknowledgement. */
+/**
+ * The three-call exchange: the TERM READ, then the preview, then the confirm.
+ *
+ * ⚠️ THE TERM READ IS FIRST, and it is not optional (THE-226). The client no
+ * longer takes the billing term from its caller — the plan surfaces were handing
+ * it a price toggle's state, which the route correctly read as a term switch —
+ * so `runDodoPlanChange` asks `GET /api/dodo/change-plan` what the tenant is
+ * actually billed on before it previews anything. `'monthly'` here is what that
+ * GET reports for this tenant, and it is what the two POSTs below then carry.
+ */
 function stubExchange(preview: Record<string, unknown>) {
   mockAuthFetch
+    .mockResolvedValueOnce(jsonResponse({ plan: 'plus', billing: 'monthly' }))
     .mockResolvedValueOnce(jsonResponse({ preview }))
     .mockResolvedValueOnce(jsonResponse({ ok: true, message: 'Your plan change is confirmed.' }));
 }
@@ -99,9 +109,16 @@ describe('the confirm dialog names the add-ons the change would remove', () => {
     const result = await runDodoPlanChange(args);
 
     expect(result.ok).toBe(false);
-    // Only the preview was ever sent: declining charges nothing and removes
-    // nothing.
-    expect(mockAuthFetch).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(mockAuthFetch.mock.calls[0][1].body).confirm).toBeUndefined();
+    // 🔴 NO CONFIRM WAS EVER SENT: declining charges nothing and removes
+    // nothing. Asserted over EVERY call rather than by counting them — the
+    // count became two when the term read was added in front of the preview
+    // (THE-226), and a bare count would have gone on passing while saying
+    // something else. What must be true is that nothing carried `confirm`.
+    const bodies = mockAuthFetch.mock.calls
+      .map(([, init]: any[]) => (init?.body ? JSON.parse(init.body) : undefined))
+      .filter(Boolean);
+    expect(bodies.every((body: any) => body.confirm === undefined)).toBe(true);
+    // The term read, then the preview — and nothing after it.
+    expect(mockAuthFetch).toHaveBeenCalledTimes(2);
   });
 });

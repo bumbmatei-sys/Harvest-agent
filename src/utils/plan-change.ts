@@ -1,5 +1,5 @@
 import { authFetch } from './auth-fetch';
-import { isUnpricedTier, type BillingTerm } from './plan-features';
+import { BILLING_TERMS, isUnpricedTier, type BillingTerm } from './plan-features';
 import type { PricedPlan, TenantPlan } from '../types/tenant.types';
 
 /**
@@ -65,8 +65,68 @@ const fmtMinor = (minor: number, currency: string) =>
   }).format(Math.abs(minor) / 100);
 
 /**
+ * The term a tenant is ACTUALLY billed on, straight from the server.
+ *
+ * 🔴 THE SAME SOURCE `/api/dodo/change-plan`'s POST COMPARES AGAINST — the GET
+ * on that very route, resolving through the same
+ * `resolveDodoSubscriptionContext` call in the same file. Asking anything else
+ * (Dodo's live subscription, a value cached at login, the tenant doc) reopens
+ * THE-226: a client that sends a term the route will reject is the whole defect,
+ * and two sources that can disagree is how that happens.
+ *
+ * Returns null when the term cannot be established — never a guess. `'monthly'`
+ * as a fallback is exactly the value that made this bug look like a term switch,
+ * and a wrong term here is a request to move a paying church onto a different
+ * Dodo product. The caller refuses instead.
+ */
+async function fetchCurrentBillingTerm(
+  tenantId: string,
+): Promise<{ term: BillingTerm | null; message: string }> {
+  try {
+    const resp = await authFetch(
+      `/api/dodo/change-plan?tenantId=${encodeURIComponent(tenantId)}`,
+    );
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      // The route's own refusal — THE-128's failed-card message, the ownership
+      // 409, "we could not determine your current plan". Each is a better
+      // sentence than anything this layer could invent, so it is passed through
+      // rather than replaced.
+      return { term: null, message: data?.error || '' };
+    }
+    const term = data?.billing;
+    return (BILLING_TERMS as readonly string[]).includes(term)
+      ? { term: term as BillingTerm, message: '' }
+      : { term: null, message: '' };
+  } catch {
+    return { term: null, message: '' };
+  }
+}
+
+/**
  * The Dodo plan change, end to end: preview the proration, show the owner the
  * exact amount, and only on their confirmation perform the change.
+ *
+ * ─── 🔴 THE TERM IS READ, NEVER TAKEN FROM THE CALLER (THE-226) ──────────────
+ *
+ * Both plan surfaces own a `BillingTermToggle` that starts at `'monthly'` and
+ * moves whenever the owner looks at another term's PRICE. Both passed that state
+ * here as `billing`, and it went on the wire — so an Individual church on
+ * monthly that clicked "Yearly" to compare Small Team's price and then pressed
+ * Upgrade sent `billing: 'yearly'` against a monthly subscription. The route read
+ * that as a term switch and refused it with THE-88's message. The church was
+ * changing PLAN; the toggle was a price viewer, and its state was never a
+ * statement about what anyone pays.
+ *
+ * So the term is now fetched from the server immediately before the preview.
+ * A church browsing yearly prices while on monthly changes plan normally, and
+ * the term it is billed on does not move because a display control did.
+ *
+ * ⚠️ THIS DOES NOT WEAKEN THE THE-88 GUARD, and must not be made to. The route
+ * still compares what it is sent against what the tenant is on and still refuses
+ * a mismatch; a caller that deliberately posts a different term is refused
+ * exactly as before. This only stops the client MANUFACTURING that mismatch out
+ * of a toggle.
  *
  * Resolves to `{ ok: true }` when the change was accepted (the plan itself is
  * moved by the `subscription.plan_changed` webhook moments later), and
@@ -76,11 +136,32 @@ const fmtMinor = (minor: number, currency: string) =>
 export async function runDodoPlanChange(args: {
   tenantId: string;
   plan: string;
-  billing: BillingTerm;
+  /**
+   * ⚠️ IGNORED, DELIBERATELY, AND IT MUST STAY IGNORED. This is the display
+   * toggle's state; see the block above for what happened when it reached the
+   * wire. It survives in the type only because `PlanUpgradeSection` still passes
+   * it and that file is frozen under THE-225 — dropping the property there is
+   * the follow-up, and nothing here may start reading it again in the meantime.
+   */
+  billing?: BillingTerm;
 }): Promise<{ ok: boolean; message: string }> {
+  const { term, message: termMessage } = await fetchCurrentBillingTerm(args.tenantId);
+  if (!term) {
+    return {
+      ok: false,
+      message:
+        termMessage ||
+        'We could not confirm which billing term your organization is on, so your plan was left unchanged. Please try again in a few minutes.',
+    };
+  }
+
+  // 🔴 `args.billing` is NOT spread in. The body carries the term the tenant is
+  // billed on and nothing the toggle has to say about it.
+  const body = { tenantId: args.tenantId, plan: args.plan, billing: term };
+
   const previewResp = await authFetch('/api/dodo/change-plan', {
     method: 'POST',
-    body: JSON.stringify(args),
+    body: JSON.stringify(body),
   });
   const previewData = await previewResp.json().catch(() => ({}));
   if (!previewResp.ok) {
@@ -121,7 +202,10 @@ export async function runDodoPlanChange(args: {
 
   const confirmResp = await authFetch('/api/dodo/change-plan', {
     method: 'POST',
-    body: JSON.stringify({ ...args, confirm: true }),
+    // The SAME body the quoted preview was calculated from, plus the confirm —
+    // the term included. Re-deriving it here would be a second answer to a
+    // settled question, and the preview's number would stop describing the call.
+    body: JSON.stringify({ ...body, confirm: true }),
   });
   const confirmData = await confirmResp.json().catch(() => ({}));
   if (!confirmResp.ok) {

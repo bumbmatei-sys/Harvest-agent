@@ -196,7 +196,25 @@ const PINNED: ReadonlyArray<readonly [string, string]> = [
   //     validate against `PRICED_PLAN_ORDER` and answer 400, which is asserted
   //     in dodo-checkout-quarterly-term.test.ts.
   ['src/app/api/dodo/addons/route.ts', '0a7f2bcae18c89f25f4eefa8fc6ccd263a0e45d46ad968ca934465d9ab659322'],
-  ['src/app/api/dodo/change-plan/route.ts', 'ce58d2d14de760b95608ba65797198b934b07423a1ac9437b5ff24a6e4c448f3'],
+  // 🔴 REPINNED FOR THE-226, AND WHAT DID NOT MOVE.
+  //
+  // The plan-change route gained a GET that REPORTS the term a tenant is billed
+  // on, and the existing term-switch refusal gained a `console.warn` plus two
+  // machine-readable fields (`requested`, `current`) beside its unchanged
+  // sentence. That is the whole diff.
+  //
+  // ⚠️ THE POST IS OTHERWISE UNTOUCHED. The THE-88 term guard still refuses a
+  // cross-term request — `the-226-plan-change-term.test.ts` proves it for both
+  // terms a monthly tenant could ask for, and proves Dodo is not called — and
+  // the ownership, failed-renewal, trial, same-plan and add-on carry-over guards
+  // are byte-identical. No price, no product id, no proration mode and no
+  // `plan` write changed; the webhook is still the single writer.
+  //
+  // The new GET charges nothing and writes nothing. It runs `requireOwner` and
+  // then the same `resolveDodoSubscriptionContext` the POST runs, so it is
+  // behind every guard the POST is behind and can only ever answer with a pair
+  // the POST would itself have resolved.
+  ['src/app/api/dodo/change-plan/route.ts', '5ec0e4ce1bd22586e148d78dfb87f690ff6000f4519d81c0c3db48c224d6e298'],
   ['src/app/api/dodo/checkout/route.ts', '0e992294895880a5148b61f864869326fd6092c31fe8169cb878a8eee4a08776'],
   ['src/app/api/dodo/webhook/route.ts', '0a30ca691739b717a65aa9dfe0f4c168ad2ec6ae12510b1a574847fd8ede9270'],
   ['src/lib/donation-webhook.ts', 'f835ce195029a246a06d00e4202f8149c54b3a37b4ad9e425a7c1081a317aeed'],
