@@ -209,7 +209,15 @@ describe('a paid Dodo tenant’s manage action reaches Dodo’s portal, not Stri
   });
 
   it('a paid tenant’s plan change still goes to the Dodo plan-change route', async () => {
-    mockAuthFetch.mockResolvedValue(jsonResponse({ preview: { amountDueNow: 0, currency: 'USD' } }));
+    // The term read answers first, then the preview — the real two-step the
+    // client performs since THE-226. Answering only the preview would leave the
+    // flow refusing before it ever routed, and this test would stop proving the
+    // thing it is named for.
+    mockAuthFetch.mockImplementation(async (url: string) =>
+      String(url).startsWith('/api/dodo/change-plan?')
+        ? jsonResponse({ plan: 'plus', billing: 'monthly' })
+        : jsonResponse({ preview: { amountDueNow: 0, currency: 'USD' } }),
+    );
     // happy-dom has no window.confirm; the owner declining the proration is
     // what keeps this test to the PREVIEW call, which is the routing assertion.
     window.confirm = vi.fn(() => false);
@@ -217,7 +225,21 @@ describe('a paid Dodo tenant’s manage action reaches Dodo’s portal, not Stri
 
     await clickAndSettle(planButton('max'));
 
-    expect(calledUrls()).toEqual(['/api/dodo/change-plan']);
-    expect(calledUrls()).not.toContain('/api/dodo/first-subscription');
+    // ⚠️ Matched on the PATH, not the whole URL (THE-226). The client now reads
+    // the tenant's real billing term from `GET /api/dodo/change-plan?tenantId=…`
+    // before it previews, because the plan surfaces were handing it this page's
+    // price toggle and the route correctly refused that as a term switch. The
+    // routing claim this test makes is unchanged — every call goes to the Dodo
+    // plan-change route, and none to first-subscription.
+    const paths = calledUrls().map((url: string) => url.split('?')[0]);
+    expect([...new Set(paths)]).toEqual(['/api/dodo/change-plan']);
+    expect(paths).not.toContain('/api/dodo/first-subscription');
+    // The term read AND the preview both happened — the owner declining the
+    // proration is what stops it there, so no confirm was ever sent.
+    expect(paths).toHaveLength(2);
+    const bodies = mockAuthFetch.mock.calls
+      .map((c: any[]) => (c[1]?.body ? JSON.parse(c[1].body) : undefined))
+      .filter(Boolean);
+    expect(bodies.every((b: any) => b.confirm === undefined)).toBe(true);
   });
 });

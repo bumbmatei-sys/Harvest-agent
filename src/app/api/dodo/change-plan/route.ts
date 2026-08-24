@@ -78,6 +78,78 @@ import { BILLING_TERMS } from '@/utils/plan-features';
 export const dynamic = 'force-dynamic';
 
 /**
+ * GET /api/dodo/change-plan — WHAT TERM IS THIS TENANT ON? (THE-226)
+ *
+ * ─── The defect this closes ──────────────────────────────────────────────────
+ *
+ * Both in-app plan surfaces own a `BillingTermToggle` whose state starts at
+ * `'monthly'` and moves whenever the owner looks at another term's PRICE. That
+ * state was passed straight to `runDodoPlanChange` as `billing`, so the term on
+ * the wire was the term being BROWSED, not the term being PAID. An Individual
+ * church on monthly that clicked "Yearly" to compare Small Team's price and then
+ * pressed Upgrade posted `billing: 'yearly'` against a monthly subscription, and
+ * the POST below correctly read that as a term switch and refused it with
+ * THE-88's message. The founder was changing plan; the client said otherwise.
+ *
+ * 🔴 THE GUARD BELOW IS NOT THE BUG AND IS NOT RELAXED. Each term is a separate
+ * Dodo product and switching between them is THE-88, an unbuilt decision. A
+ * caller that deliberately posts a term other than the one this GET reports is
+ * still refused, exactly as before. What changes is only that the client can now
+ * find out what to send instead of guessing from a display control.
+ *
+ * ─── Why the answer comes from HERE ──────────────────────────────────────────
+ *
+ * 🔴 THE SAME SOURCE THE POST RESOLVES, through the same
+ * `resolveDodoSubscriptionContext` call, in the same file. That identity is the
+ * whole point: an answer derived from anywhere else — Dodo's live subscription,
+ * a second catalogue lookup, a field cached on the client — can disagree with
+ * what the guard compares against, and a client that sends a term the route will
+ * reject is precisely the defect being fixed. One resolver, one answer.
+ *
+ * ⚠️ It is NOT sourced from `/api/billing/invoices`, which is where the client
+ * already reads `processor` and would have cost no extra round trip. That route
+ * is the FOURTH named exception to the no-Dodo-imports rule and
+ * `dodo-billing-flag.test.ts` pins its Dodo import list to exactly
+ * `['getDodoRenewalSummary']`; reaching the catalogue from there would have
+ * widened a money-path exception to save a request. The exception holds.
+ *
+ * ⚠️ READ-ONLY, and behind every guard the POST is behind. `requireOwner` first,
+ * then the shared context resolver — so a tenant whose renewal failed gets
+ * THE-128's card message here too, rather than learning about it one request
+ * later. Nothing is written and nothing is charged.
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const tenantId = new URL(request.url).searchParams.get('tenantId');
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Missing required field: tenantId' }, { status: 400 });
+    }
+
+    const ownerOrErr = await requireOwner(request, { tenantId });
+    if (ownerOrErr instanceof NextResponse) return ownerOrErr;
+
+    const context = await resolveDodoSubscriptionContext({
+      tenantId: ownerOrErr.tenantId,
+      action: 'reading your billing term',
+      step: 'dodo-change-plan-term-unknown-current-product',
+      blockedPhrase: 'your plan cannot be changed',
+      retryPhrase: 'change your plan',
+    });
+    if (context instanceof NextResponse) return context;
+
+    // The pair the POST will compare against, named rather than implied.
+    return NextResponse.json({ plan: context.plan, billing: context.period });
+  } catch (error: any) {
+    console.error('Dodo change-plan term read error:', error?.message || error);
+    captureMoneyPathError(error, { step: 'dodo-change-plan-term-read', level: 'error' });
+    return NextResponse.json(
+      { error: error?.message || 'Failed to read your billing term' },
+      { status: 500 },
+    );
+  }
+}
+
+/**
  * The plan the caller wants to move TO, refusing anything unsellable.
  *
  * 🔴 `PRICED_PLAN_ORDER`, not `PLAN_ORDER` — see the longer note on the
@@ -165,8 +237,29 @@ export async function POST(request: NextRequest) {
       // are three terms the message names neither pair: a quarterly church told
       // "monthly and annual" would reasonably think the refusal was not about
       // them.
+      //
+      // 🔴 BOTH VALUES ARE NAMED, IN THE LOG AND IN THE BODY (THE-226). They
+      // were named in NEITHER before, and that is not a cosmetic gap: this
+      // refusal is indistinguishable from the outside whether the tenant's
+      // RECORDED term is wrong or the CLIENT sent the wrong one, and three
+      // successive diagnoses of THE-226 were argued from code alone and were
+      // wrong. A money-path refusal that cannot say which of its two operands
+      // it objected to cannot be diagnosed from production, only guessed at.
+      //
+      // ⚠️ THE PROSE IS UNCHANGED. `requested`/`current` are machine-readable
+      // siblings of `error`, not part of the sentence a church reads — a church
+      // has no use for the word "quarterly" here, and the copy is pinned.
+      console.warn(
+        `[dodo] change-plan refused as a term switch: requested "${period}", ` +
+          `current "${current.period}" (tenant ${ownerOrErr.tenantId}, subscription ${subscriptionId})`,
+      );
       return NextResponse.json(
-        { error: 'Switching billing terms is not available yet. Please contact support.' },
+        {
+          error: 'Switching billing terms is not available yet. Please contact support.',
+          code: 'plan-change-term-switch-unsupported',
+          requested: period,
+          current: current.period,
+        },
         { status: 400 },
       );
     }
