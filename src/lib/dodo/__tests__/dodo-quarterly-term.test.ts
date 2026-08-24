@@ -60,7 +60,7 @@ describe('the three quarterly product ids resolve', () => {
   });
 
   it('publishes the quarterly price Dodo actually charges, in both units', () => {
-    const CENTS = { plus: 9900, pro: 19900, max: 39900 } as const;
+    const CENTS = { plus: 4900, pro: 9900, max: 19900 } as const;
     for (const plan of PRICED_PLAN_ORDER) {
       expect(DODO_LIVE_CATALOGUE[plan].quarterly.priceMinorUnits).toBe(CENTS[plan]);
       expect(DODO_LIVE_CATALOGUE[plan].quarterly.priceUsd).toBe(CENTS[plan] / 100);
@@ -170,18 +170,30 @@ describe('no price literal appears outside the single source', () => {
   /**
    * Prices THE-195 retired. None may survive in executable source.
    *
-   * ⚠️ `99` AND `199` ARE DELIBERATELY ABSENT, and their absence is the subtle
-   * part. Both were old MONTHLY prices, and both are now real QUARTERLY prices
-   * — Individual is $99 a quarter and Small Team is $199 a quarter — so banning
-   * the string would ban the current catalogue. They are distinguished by
-   * CONTEXT, not by string match: the `CURRENT` sweep above pins where each is
+   * ⚠️ THIS LIST IS WHERE THE-222 IS MOST DANGEROUS, because the reprice moved
+   * the whole table DOWN A TIER and four figures changed meaning rather than
+   * retiring:
+   *
+   *   $49    was Individual monthly (pre-THE-195), banned outright until now.
+   *          It is Individual QUARTERLY as of THE-222, so it has LEFT this list
+   *          — banning it would ban the live catalogue.
+   *   $99    was Individual quarterly, is now Small Team quarterly.
+   *   $199   was Small Team quarterly, is now Ministry quarterly.
+   *   $329   was Individual yearly, is now Small Team yearly.
+   *   $659   was Small Team yearly, is now Ministry yearly.
+   *
+   * None of those five may be banned: every one is a price some tier charges
+   * today, and only the TIER it belongs to changed. They are distinguished by
+   * CONTEXT, not by string match — the `CURRENT` sweep above pins where each is
    * allowed to appear, and the cross-repo contract pins what each means.
    *
-   * `49` has no such collision — it is not a price on any tier or any term any
-   * more — so it is banned outright. A mutation that put `$49/mo` back into the
-   * AdminTenants labels went undetected until this entry existed.
+   * 🔴 WHAT DID RETIRE. `39`, `79`, `159`, `399` and `1329` — the whole of the
+   * old monthly column plus the two top-tier figures nothing inherited — are no
+   * longer a price on any tier or any term, so they join the pre-THE-195
+   * figures and are banned outright. A mutation that put `$39/mo` back into the AdminTenants labels is
+   * the case this catches, and it is the same mutation `$49/mo` used to be.
    */
-  const RETIRED = ['49', '441', '891', '1791', '37', '74', '149'];
+  const RETIRED = ['441', '891', '1791', '37', '74', '149', '39', '79', '159', '399', '1329'];
 
   it('finds the modules to scan at all', () => {
     expect(modules.length).toBeGreaterThan(50);

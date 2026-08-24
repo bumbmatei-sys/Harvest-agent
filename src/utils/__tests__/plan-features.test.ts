@@ -609,11 +609,18 @@ describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
      catalogue. Written out rather than derived from the table under test: a
      test that reads its subject asserts only that the subject equals itself.
      These are the figures verified against the authenticated live Dodo API on
-     2026-08-20 — 3900 / 9900 / 32900 minor units on Individual, and so on. */
+     2026-08-24 — 2000 / 4900 / 16500 minor units on Individual, and so on.
+
+     🔴 THE-222 SHIFTED THE TABLE DOWN A TIER, which is what makes transcribing
+     it by hand rather than deriving it worth the keystrokes. Small Team's new
+     quarterly and yearly ($99 / $329) are Individual's OLD ones, and Ministry's
+     new pair ($199 / $659) are Small Team's old pair. A copy-paste that moved a
+     row instead of repricing it would still look plausible; only nine
+     independently written numbers catch it. */
   const DODO_CATALOGUE_USD = {
-    plus: { monthly: 39,  quarterly: 99,  yearly: 329  },
-    pro:  { monthly: 79,  quarterly: 199, yearly: 659  },
-    max:  { monthly: 159, quarterly: 399, yearly: 1329 },
+    plus: { monthly: 20, quarterly: 49,  yearly: 165 },
+    pro:  { monthly: 40, quarterly: 99,  yearly: 329 },
+    max:  { monthly: 80, quarterly: 199, yearly: 659 },
   } as const;
 
   it.each(
@@ -670,8 +677,9 @@ describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
     expect(ADVERTISED_DISCOUNT_PCT).toEqual({ quarterly: 15, yearly: 30 });
     // Quarterly proves a computed badge is impossible: the tiers round to
     // different whole percentages, and the toggle sits above all three at once.
-    expect(Math.round(actualSavingPct('plus', 'quarterly'))).toBe(15);
-    expect(Math.round(actualSavingPct('max', 'quarterly'))).toBe(16);
+    // Still true after THE-222 — 18 beside Individual, 17 beside Ministry.
+    expect(Math.round(actualSavingPct('plus', 'quarterly'))).toBe(18);
+    expect(Math.round(actualSavingPct('max', 'quarterly'))).toBe(17);
   });
 
   /* 🔴 TEST 4: no copy claims a saving larger than the smallest actual one. */
@@ -684,20 +692,33 @@ describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
     }
   });
 
-  it('quarterly is claimed flat — worst tier saves 15.38% against an advertised 15%', () => {
-    expect(actualSavingPct('plus', 'quarterly')).toBeCloseTo(15.3846, 3);
+  it('quarterly is claimed flat — worst tier saves 17.08% against an advertised 15%', () => {
+    // The worst quarterly tier is MINISTRY, not Individual: $199 against $240
+    // at the monthly rate. Naming the right tier matters — the margin is what
+    // the flat claim rests on, and it belongs to the tier that clears it least.
+    expect(actualSavingPct('max', 'quarterly')).toBeCloseTo(17.0833, 3);
     expect(discountClaimShape('quarterly')).toBe('flat');
     expect(discountClaim('quarterly')).toBe('Save 15%');
   });
 
-  it('🔴 yearly is claimed "up to" — worst tier saves 29.70% against an advertised 30%', () => {
-    // The brief that set these prices said 15% and 30% were both safe to claim
-    // flat. 30 is not: Individual is $329 against $468 at the monthly rate,
-    // which is 29.70% — three tenths short. "Up to" is true of every tier.
-    expect(actualSavingPct('plus', 'yearly')).toBeCloseTo(29.7008, 3);
-    expect(actualSavingPct('plus', 'yearly')).toBeLessThan(30);
-    expect(discountClaimShape('yearly')).toBe('upTo');
-    expect(discountClaim('yearly')).toBe('Save up to 30%');
+  it('🔴 yearly is now claimed FLAT — worst tier saves 31.25% against an advertised 30%', () => {
+    // 🔴 THE ASSERTION THIS TICKET FLIPPED, and the flip is the deliverable.
+    //
+    // Before THE-222 Individual's year was $329 against $468 bought monthly —
+    // 29.70%, three tenths short of the advertised 30 — so `discountClaimShape`
+    // returned 'upTo' and the badge read "Save up to 30%". At $20/mo the same
+    // tier's year is $165 against $240, which is 31.25%, and Individual is
+    // still the WORST yearly tier. Every tier now clears 30, so the identical
+    // derivation returns 'flat' and the qualifier drops off by itself.
+    //
+    // ⚠️ NOT A COPY EDIT. Nothing in `discountClaimShape` was touched; the
+    // prices moved underneath it. If this ever reads 'upTo' again it is because
+    // a tier fell back under 30, which is exactly what it should then say.
+    expect(actualSavingPct('plus', 'yearly')).toBeCloseTo(31.25, 3);
+    expect(actualSavingPct('plus', 'yearly')).toBeGreaterThan(30);
+    expect(Math.min(...PRICED_PLAN_ORDER.map((p) => actualSavingPct(p, 'yearly')))).toBeCloseTo(31.25, 3);
+    expect(discountClaimShape('yearly')).toBe('flat');
+    expect(discountClaim('yearly')).toBe('Save 30%');
   });
 
   it('never advertises more than even the BEST tier saves, under any wording', () => {
@@ -706,28 +727,28 @@ describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
       expect(ADVERTISED_DISCOUNT_PCT[term]).toBeLessThanOrEqual(best);
     }
     // The per-tier savings this change actually produces, pinned.
-    expect(PRICED_PLAN_ORDER.map((p) => Number(actualSavingPct(p, 'quarterly').toFixed(1)))).toEqual([15.4, 16.0, 16.4]);
-    expect(PRICED_PLAN_ORDER.map((p) => Number(actualSavingPct(p, 'yearly').toFixed(1)))).toEqual([29.7, 30.5, 30.3]);
+    expect(PRICED_PLAN_ORDER.map((p) => Number(actualSavingPct(p, 'quarterly').toFixed(1)))).toEqual([18.3, 17.5, 17.1]);
+    expect(PRICED_PLAN_ORDER.map((p) => Number(actualSavingPct(p, 'yearly').toFixed(1)))).toEqual([31.3, 31.5, 31.4]);
   });
 
   it('renders the charged figure and cycle through formatPlanPrice', () => {
     // 🔴 The suffix names the BILLING CYCLE, so the amount beside it is what
     // actually leaves the account. "$99/qtr" is never "$33/mo".
-    expect(formatPlanPrice('plus', 'monthly')).toBe('$39/mo');
-    expect(formatPlanPrice('plus', 'quarterly')).toBe('$99/qtr');
-    expect(formatPlanPrice('plus', 'yearly')).toBe('$329/yr');
-    expect(formatPlanPrice('pro', 'quarterly')).toBe('$199/qtr');
-    expect(formatPlanPrice('max', 'yearly')).toBe('$1,329/yr');
+    expect(formatPlanPrice('plus', 'monthly')).toBe('$20/mo');
+    expect(formatPlanPrice('plus', 'quarterly')).toBe('$49/qtr');
+    expect(formatPlanPrice('plus', 'yearly')).toBe('$165/yr');
+    expect(formatPlanPrice('pro', 'quarterly')).toBe('$99/qtr');
+    expect(formatPlanPrice('max', 'yearly')).toBe('$659/yr');
   });
 
   it('the headline is the per-month figure on every term and tier', () => {
     // Ceiled at the cent. An exact division keeps its whole-dollar form.
-    expect(formatPlanMonthlyHeadline('plus', 'yearly')).toBe('$27.42');
-    expect(formatPlanMonthlyHeadline('pro', 'yearly')).toBe('$54.92');
-    expect(formatPlanMonthlyHeadline('max', 'yearly')).toBe('$110.75');
-    expect(formatPlanMonthlyHeadline('plus', 'quarterly')).toBe('$33');
-    expect(formatPlanMonthlyHeadline('pro', 'quarterly')).toBe('$66.34');
-    expect(formatPlanMonthlyHeadline('max', 'quarterly')).toBe('$133');
+    expect(formatPlanMonthlyHeadline('plus', 'yearly')).toBe('$13.75');
+    expect(formatPlanMonthlyHeadline('pro', 'yearly')).toBe('$27.42');
+    expect(formatPlanMonthlyHeadline('max', 'yearly')).toBe('$54.92');
+    expect(formatPlanMonthlyHeadline('plus', 'quarterly')).toBe('$16.34');
+    expect(formatPlanMonthlyHeadline('pro', 'quarterly')).toBe('$33');
+    expect(formatPlanMonthlyHeadline('max', 'quarterly')).toBe('$66.34');
   });
 
   it('monthly renders as decided: the headline IS the charged price, no note', () => {
@@ -779,9 +800,15 @@ describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
     // regressing to what it was before THE-196. Checked against the shipped
     // ceiling the guard could never fail, so it takes the rule as its subject.
     expect(() => monthlyHeadlineContract()).not.toThrow();
-    // The old rule. $329/12 rounds to $27, which implies $324 against $329.
+    // The old rule, and THE-222 moved which cell it lies about FIRST. It used
+    // to be Individual's year ($329/12 rounds to $27, implying $324). At $165 a
+    // year that cell is now safe — $13.75 rounds UP to $14 — and the first
+    // understatement is Individual's QUARTER: $49/3 is $16.33, which rounds to
+    // $16 and implies $48 against a charged $49. Three cells still lie under
+    // the old rule (plus quarterly, pro yearly, max quarterly); the guard stops
+    // at the first and names it, which is the behaviour being pinned.
     expect(() => monthlyHeadlineContract(Math.round)).toThrow(/never promise less than the bill/);
-    expect(() => monthlyHeadlineContract(Math.round)).toThrow(/plus yearly/);
+    expect(() => monthlyHeadlineContract(Math.round)).toThrow(/plus quarterly/);
     // Ceiling to the DOLLAR does not understate, so the guard accepts it — it
     // is bounded by the reconciliation test above, not by this one.
     expect(() => monthlyHeadlineContract(Math.ceil)).not.toThrow();

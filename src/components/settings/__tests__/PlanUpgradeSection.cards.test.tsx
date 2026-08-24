@@ -277,9 +277,9 @@ describe('PlanUpgradeSection plan cards', () => {
   it('renders the repriced tiers on every term', () => {
     // The nine published numbers. There is no annual identity to derive any
     // more — the prices ARE the source, so each is asserted outright.
-    expect(PLAN_PRICING.plus.monthly).toBe(39);
-    expect(PLAN_PRICING.pro.monthly).toBe(79);
-    expect(PLAN_PRICING.max.monthly).toBe(159);
+    expect(PLAN_PRICING.plus.monthly).toBe(20);
+    expect(PLAN_PRICING.pro.monthly).toBe(40);
+    expect(PLAN_PRICING.max.monthly).toBe(80);
     for (const plan of PRICED_PLAN_ORDER) {
       for (const term of BILLING_TERMS) {
         expect(planPriceUsd(plan, term), `${PLAN_DISPLAY_NAMES[plan]} ${term}`)

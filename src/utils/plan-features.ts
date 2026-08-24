@@ -510,9 +510,9 @@ export const TERM_MONTHS: Readonly<Record<BillingTerm, number>> = Object.freeze(
  * round. The savings these nine numbers actually produce are:
  *
  *              Quarterly   Yearly
- *   Individual    15.4%     29.7%
- *   Small Team    16.0%     30.5%
- *   Ministry      16.4%     30.3%
+ *   Individual    18.3%     31.3%
+ *   Small Team    17.5%     31.5%
+ *   Ministry      17.1%     31.4%
  *
  * 🔴 DO NOT COMPUTE A BADGE FROM THIS TABLE. See `ADVERTISED_DISCOUNT_PCT`.
  *
@@ -525,9 +525,9 @@ export const TERM_MONTHS: Readonly<Record<BillingTerm, number>> = Object.freeze(
  */
 export const PLAN_PRICING: Readonly<Record<PricedPlan, Readonly<Record<BillingTerm, number>>>> =
   Object.freeze({
-    plus: Object.freeze({ monthly: 39,  quarterly: 99,  yearly: 329  }),
-    pro:  Object.freeze({ monthly: 79,  quarterly: 199, yearly: 659  }),
-    max:  Object.freeze({ monthly: 159, quarterly: 399, yearly: 1329 }),
+    plus: Object.freeze({ monthly: 20, quarterly: 49,  yearly: 165 }),
+    pro:  Object.freeze({ monthly: 40, quarterly: 99,  yearly: 329 }),
+    max:  Object.freeze({ monthly: 80, quarterly: 199, yearly: 659 }),
   });
 
 /**
@@ -742,16 +742,23 @@ export const ADVERTISED_DISCOUNT_PCT: Readonly<Record<DiscountedTerm, number>> =
  * actual one. A flat "save 30%" is a claim about every tier, so it is only true
  * when the WORST tier saves at least 30%.
  *
- *   quarterly  advertises 15, worst tier saves 15.4  → 'flat'  → "Save 15%"
- *   yearly     advertises 30, worst tier saves 29.7  → 'upTo'  → "Save up to 30%"
+ *   quarterly  advertises 15, worst tier saves 17.1  → 'flat'  → "Save 15%"
+ *   yearly     advertises 30, worst tier saves 31.3  → 'flat'  → "Save 30%"
  *
- * 🔴 Yearly is the case this derivation exists for. The brief that set these
- * prices asserted 15% and 30% were both safe; 30 is not — Individual saves
- * 29.70%, three tenths of a point short — so a flat "save 30%" overstates what
- * the cheapest tier actually saves. "Up to" is true of every tier (the best is
- * 30.5%) and keeps 30 on the badge, which is what was actually wanted. Nothing
- * here decides the NUMBER; it decides only whether the number can be stated
- * bare, and it decides that from the prices so the copy cannot outlive them.
+ * 🔴 YEARLY IS THE CASE THIS DERIVATION EXISTS FOR, AND IT HAS NOW FLIPPED.
+ * Under the pre-THE-222 prices Individual saved 29.70% against an advertised
+ * 30% — three tenths of a point short — so yearly resolved to 'upTo' and the
+ * badge read "Save up to 30%". THE-222 reprices to $20/$40/$80 and the worst
+ * yearly saving becomes 31.25% (Individual, $165 against $240), which clears
+ * 30 on every tier, so the SAME derivation now returns 'flat' and the "up to"
+ * disappears on its own.
+ *
+ * ⚠️ NOTHING IN THIS FUNCTION CHANGED to make that happen, and that is the
+ * point of deriving it: the wording followed the prices without an edit. Do not
+ * hardcode either answer — if a future reprice puts a tier back under the
+ * advertised figure, "up to" must come back by itself. Nothing here decides the
+ * NUMBER; it decides only whether the number can be stated bare, and it decides
+ * that from the prices so the copy cannot outlive them.
  */
 export type DiscountClaimShape = 'flat' | 'upTo';
 

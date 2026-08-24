@@ -225,16 +225,80 @@ describe('no plan price appears as a literal in the signup surfaces', () => {
     BILLING_TERMS.flatMap((term) => [termPriceUsd(plan, term), termPriceUsd(plan, term) * 100]),
   );
 
+  /**
+   * 🔴 A NUMBER IS ONLY A PRICE WHERE IT SITS IN A MONEY POSITION (THE-222).
+   *
+   * This scan used to fire on the bare digits. That worked while the cheapest
+   * plan was $39, and it broke the moment THE-222 made the tiers $20 / $40 /
+   * $80 — because those figures, and their minor-unit forms 2000 / 4000 /
+   * 8000, collide with things every React file is full of:
+   *
+   *   className="… sm:py-20"    Tailwind's spacing scale (ChurchOnboarding)
+   *   elapsed += 2000           a poll interval in milliseconds (OnboardingGate)
+   *
+   * Neither can bill a church. Both failed this test on the day of the reprice,
+   * and neither file so much as imports a pricing symbol. A rule that fails on
+   * a padding class is a rule that gets switched off rather than obeyed, and
+   * this repo has already settled the principle elsewhere: the sweep in
+   * dodo-quarterly-term.test.ts distinguishes $99-the-quarterly-price from
+   * other 99s by CONTEXT rather than by string match.
+   *
+   * So the question this asks is not "does the number appear" but "does it
+   * appear where money goes". There are exactly two such places:
+   *
+   *   $20            a figure rendered to a church
+   *   priceUsd: 20   a figure handed to a processor
+   *
+   * A typed plan price reaches a human or a card through one of those two; a
+   * grid gap, a z-index and a setTimeout delay reach neither.
+   */
+  const MONEY_KEY = String.raw`(?:price|amount|cents|total|subtotal|usd|minorunits?|minor_units?|unit_amount)`;
+
+  const moneyPositions = (literal: number) => [
+    // Rendered: `$20`, `$20/mo`, `` `$${…}` `` never matches — only a typed one.
+    new RegExp(String.raw`\$${literal}(?![\d.])`, 'i'),
+    // Handed over: `priceUsd: 20`, `amount = 2000`, `unit_amount: 2000`.
+    new RegExp(String.raw`${MONEY_KEY}\w*\s*[:=]\s*${literal}(?![\d.])`, 'i'),
+  ];
+
   it.each(touched)('%s derives every figure it needs and writes none', (rel) => {
     const codeOnly = readFileSync(join(SRC, rel), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^[ \t]*\/\/.*$/gm, '');
     for (const literal of forbidden) {
-      const asLiteral = new RegExp(`(?<![\\w.])${literal}(?![\\w.])`);
-      expect(
-        asLiteral.test(codeOnly),
-        `${rel} writes ${literal} as a literal — every plan price is read from PLAN_PRICING, always`,
-      ).toBe(false);
+      for (const position of moneyPositions(literal)) {
+        expect(
+          position.test(codeOnly),
+          `${rel} writes ${literal} in a money position (${position.source}) — ` +
+            'every plan price is read from PLAN_PRICING, always',
+        ).toBe(false);
+      }
     }
+  });
+
+  /**
+   * 🔴 THE SCAN ABOVE, PROVED TO HAVE TEETH — by mutation, since narrowing a
+   * rule is exactly the kind of change that can quietly neuter it.
+   *
+   * Both money positions are exercised against a real current price, and the
+   * two shapes that broke on the reprice are exercised too: they must NOT
+   * match, or the narrowing did not actually happen.
+   */
+  it('still catches a typed price, and still ignores a padding class and a timer', () => {
+    const price = termPriceUsd('plus', 'monthly');
+    const cents = price * 100;
+    const matches = (src: string, literal: number) =>
+      moneyPositions(literal).some((re) => re.test(src));
+
+    // Caught: rendered, and handed to a processor.
+    expect(matches(`<span>$${price}/mo</span>`, price)).toBe(true);
+    expect(matches(`const body = { priceUsd: ${price} };`, price)).toBe(true);
+    expect(matches(`const body = { unit_amount: ${cents} };`, cents)).toBe(true);
+    expect(matches(`let amount = ${cents}`, cents)).toBe(true);
+
+    // Ignored: the two real false positives THE-222 produced.
+    expect(matches('className="px-5 py-14 sm:py-20"', price)).toBe(false);
+    expect(matches(`elapsed += ${cents};`, cents)).toBe(false);
+    expect(matches(`setTimeout(poll, ${cents});`, cents)).toBe(false);
   });
 });

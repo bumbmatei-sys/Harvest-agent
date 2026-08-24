@@ -181,9 +181,9 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
          beneath    `billed as $${price} every ${TERM_MONTHS[term]} months`
          monthly    headline alone, no line beneath                            */
     const SITE_HEADLINES: Record<PricedPlan, Record<string, string>> = {
-      plus: { monthly: '$39',  quarterly: '$33',    yearly: '$27.42'  },
-      pro:  { monthly: '$79',  quarterly: '$66.34', yearly: '$54.92'  },
-      max:  { monthly: '$159', quarterly: '$133',   yearly: '$110.75' },
+      plus: { monthly: '$20', quarterly: '$16.34', yearly: '$13.75' },
+      pro:  { monthly: '$40', quarterly: '$33',    yearly: '$27.42' },
+      max:  { monthly: '$80', quarterly: '$66.34', yearly: '$54.92' },
     };
     mount();
     for (const term of BILLING_TERMS) {
@@ -198,9 +198,9 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
 
   it('the nine prices are unchanged and still match the Dodo catalogue', () => {
     // Presentation only. Nothing in THE-196 may move a price.
-    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'monthly'))).toEqual([39, 79, 159]);
-    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'quarterly'))).toEqual([99, 199, 399]);
-    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'yearly'))).toEqual([329, 659, 1329]);
+    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'monthly'))).toEqual([20, 40, 80]);
+    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'quarterly'))).toEqual([49, 99, 199]);
+    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'yearly'))).toEqual([165, 329, 659]);
     // …and the displayed figure is derived from them, never stored beside them.
     for (const plan of PRICED_PLAN_ORDER) {
       for (const term of BILLING_TERMS) {

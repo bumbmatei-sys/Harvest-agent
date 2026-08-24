@@ -65,44 +65,51 @@ describe('PlanUpgradeSection yearly pricing copy', () => {
     mount();
     clickButtonWithText('Yearly');
     // 🔴 THE-196 flipped the hierarchy. The PER-MONTH figure headlines the
-    // card and the charged total sits beneath it. $1329/12 is exactly $110.75,
-    // so this tier needs no ceiling — it is the one yearly cell that divides.
-    expect(container.textContent).toContain('$110.75');
-    expect(container.textContent).toContain('billed as $1,329 every 12 months');
+    // card and the charged total sits beneath it. $659/12 is $54.9167, which
+    // ceils to $54.92 — under THE-222 Ministry is no longer the tier that
+    // divides exactly; Individual is (see below).
+    expect(container.textContent).toContain('$54.92');
+    expect(container.textContent).toContain('billed as $659 every 12 months');
   });
 
   it('derives the yearly copy from PLAN_PRICING for Individual (plus)', () => {
     mount();
     clickButtonWithText('Yearly');
-    // $329/12 is $27.4167. The headline is $27.42, NOT the $27 this line used
-    // to read: $27 x 12 is $324 and the church is charged $329.
-    expect(container.textContent).toContain('$27.42');
-    expect(container.textContent).not.toContain('$27/mo');
-    expect(container.textContent).toContain('billed as $329 every 12 months');
+    // $165/12 is exactly $13.75, so Individual is now the one yearly cell that
+    // divides cleanly and shows no ceiling artefact. The charged total beneath
+    // it is $165 — NOT $329, which under THE-222 is Small Team's year.
+    expect(container.textContent).toContain('$13.75');
+    expect(container.textContent).toContain('billed as $165 every 12 months');
   });
 
   it('derives the quarterly copy, the term this change added', () => {
     mount();
     clickButtonWithText('Quarterly');
-    // $99/3 is exactly $33, so no cents are shown. $199/3 is $66.3333 and
-    // ceils to $66.34 — the second cell the old rounding understated.
+    // $99/3 is exactly $33, so no cents are shown — but $99 is SMALL TEAM's
+    // quarter now, not Individual's. $199/3 is $66.3333 and ceils to $66.34,
+    // and $199 is MINISTRY's quarter. Both figures survived the reprice
+    // attached to a different tier, which is why they are asserted beside the
+    // charged line that names the cycle rather than on their own.
     expect(container.textContent).toContain('$33');
     expect(container.textContent).toContain('billed as $99 every 3 months');
     expect(container.textContent).toContain('$66.34');
     expect(container.textContent).not.toContain('$66/mo');
-    expect(container.textContent).toContain('billed as $399 every 3 months');
+    expect(container.textContent).toContain('billed as $199 every 3 months');
+    // Individual's quarter: $49/3 is $16.3333, ceiled to $16.34.
+    expect(container.textContent).toContain('$16.34');
+    expect(container.textContent).toContain('billed as $49 every 3 months');
   });
 
   it('leaves the monthly view unchanged', () => {
     mount();
     // Monthly is the default tab; assert the monthly prices render and no
     // longer-term copy (old strikethrough or the equivalent line) leaks in.
-    expect(container.textContent).toContain('$39/mo');
-    expect(container.textContent).toContain('$159/mo');
+    expect(container.textContent).toContain('$20/mo');
+    expect(container.textContent).toContain('$80/mo');
     expect(container.textContent).not.toContain('equivalent');
     // 🔴 MONTHLY RENDERS AS DECIDED: headline alone, no note beneath. On
     // monthly the headline already IS the charged amount on the charged cycle,
-    // so "billed as $39 every 1 month" would be the same sentence twice.
+    // so "billed as $20 every 1 month" would be the same sentence twice.
     expect(container.textContent).not.toContain('billed as');
     expect(container.querySelectorAll('.line-through').length).toBe(0);
 
