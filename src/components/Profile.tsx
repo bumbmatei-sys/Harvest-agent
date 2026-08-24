@@ -17,7 +17,6 @@ import {
   X,
   CalendarCheck,
   Bookmark,
-  Map,
   Receipt
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
@@ -715,21 +714,17 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  label="Privacy & Terms"
  onClick={() => setIsPrivacyTermsOpen(true)}
  />
- {isAdmin && (
- <>
- <div className="h-px bg-surface-sunken mx-4"></div>
- {/* navy-500/600 are literal hexes in tailwind.config.ts (no --ink-navy-*
-     token exists), so this row was the one Profile icon that could not
-     theme — it rendered the same mid-navy on the dark ground. Field green,
-     matching FAQ: both are secondary "go read something" rows. */}
- <SettingItem
- icon={<Map size={16} className="text-field-600" />}
- iconBg="bg-field-100"
- label="Roadmap"
- onClick={() => window.open('https://trello.com/b/1Uz9u1Lb/harvest-roadmap', '_blank', 'noopener,noreferrer')}
- />
- </>
- )}
+ {/* THE-225 — the Roadmap row is GONE. It was admin-only, it opened a public
+     Trello board in a new tab, and it was the only row on this screen that
+     left the product for a surface nobody maintains as documentation. Removed
+     here and from the marketing site's top nav in the same change, so there is
+     no Roadmap link left in either repo.
+
+     The group survives it: Support & Info still holds Contact Us, FAQ and
+     Privacy & Terms on every tier and for every member, so nothing here
+     orphans a heading — which is the defect the member SIDEBAR had, and a
+     different surface from this one. `isAdmin` is still read by the Admin
+     Dashboard entry above and by PrivacyTermsModal below. */}
  </div>
  </div>
 

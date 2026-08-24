@@ -15,8 +15,10 @@ import {
 interface IntegrationsSectionProps {
   /** The tenant's tier. Each provider card is gated on the feature it serves —
    *  Gmail on `crm`, Instagram and Mailchimp on `newsletterAutomation` — so a
-   *  tenant is never offered a connection its plan cannot use. Absent means no
-   *  entitlement is known, and only a platform super admin sees the cards. */
+   *  tenant is never offered a connection its plan cannot use, AND (THE-225) on
+   *  whether the tier is one that is sold at all, for the providers that hand
+   *  over a live outbound send. Absent means no entitlement is known, and only a
+   *  platform super admin sees the cards. */
   currentPlan?: TenantPlan;
   /** Platform-context super admin: sees every provider regardless of plan.
    *  Defaults to the real check so the component is safe to render bare. */
@@ -29,7 +31,7 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ currentPlan, 
   /** One gate, applied per provider, keeping the `platformOverride || …` shape
    *  at every card. */
   const showProvider = (id: IntegrationProviderId): boolean =>
-    isPlatformOverride || isProviderAvailable(getIntegrationProvider(id), features);
+    isPlatformOverride || isProviderAvailable(getIntegrationProvider(id), features, currentPlan);
   const showInstagram = showProvider('instagram');
   const showMailchimp = showProvider('mailchimp');
   const showGmail = showProvider('gmail');

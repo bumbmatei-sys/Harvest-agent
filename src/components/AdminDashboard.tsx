@@ -49,6 +49,7 @@ import { useAppStore } from '../store/useAppStore';
 import { useCurrentUser } from '../hooks/queries/useUserQueries';
 import { useTenant as useTenantDoc } from '../hooks/queries/useTenantQueries';
 import { useTenant } from '../contexts/TenantContext';
+import { visibleNavGroups } from './layout/nav-groups';
 
 const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
 
@@ -702,6 +703,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     ...(canSettings ? [{ id: 'settings', label: 'Settings', icon: Settings }] : []),
   ].forEach((t) => desktopNavById.set(t.id, t));
 
+  // THE-225 — the emptiness rule, now read from layout/nav-groups.ts instead of
+  // restated inline. The behaviour is unchanged (this sidebar has omitted empty
+  // groups since it was built); what changes is that the MEMBER sidebar in
+  // MainApp, which did NOT have the rule and drew a "SUPPORT US" heading over
+  // nothing for a free member, now shares this one implementation rather than
+  // growing a second copy of it.
+  const desktopSidebarGroups = visibleNavGroups(
+    DESKTOP_NAV_GROUPS.map((group) => ({
+      label: group.label,
+      items: group.ids
+        .map((id) => desktopNavById.get(id))
+        .filter(Boolean) as { id: string; label: string; icon: any }[],
+    })),
+  );
+
   // If the active tab is not in the allowed tabs, switch to the first allowed tab
   const allTabIds = allTabs.map(t => t.id).join(',');
   useEffect(() => {
@@ -895,22 +911,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           <div className="hidden lg:flex lg:flex-col lg:items-stretch lg:gap-0.5 lg:w-full lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
             {desktopNavById.has('dashboard') && renderDesktopTab(desktopNavById.get('dashboard')!)}
 
-            {DESKTOP_NAV_GROUPS.map((group) => {
-              const items = group.ids
-                .map((id) => desktopNavById.get(id))
-                .filter(Boolean) as { id: string; label: string; icon: any }[];
-              if (items.length === 0) return null;
-              const collapsed = collapsedGroups.has(group.label);
+            {desktopSidebarGroups.map(({ label, items }) => {
+              const collapsed = collapsedGroups.has(label);
               return (
-                <div key={group.label} className="lg:mt-4">
+                <div key={label} data-nav-group={label} className="lg:mt-4">
                   {isSidebarCollapsed ? (
                     <div className="mx-2 mb-1 border-t border-line" />
                   ) : (
                     <button
-                      onClick={() => toggleGroup(group.label)}
+                      onClick={() => toggleGroup(label)}
                       className="w-full flex items-center justify-between px-3 mb-1 hover:opacity-80 transition-opacity"
                     >
-                      <span className="text-[10px] font-bold tracking-[0.14em] text-faint uppercase">{group.label}</span>
+                      <span className="text-[10px] font-bold tracking-[0.14em] text-faint uppercase">{label}</span>
                       <ChevronDown size={13} className={`text-faint transition-transform ${collapsed ? '' : 'rotate-180'}`} />
                     </button>
                   )}

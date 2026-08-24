@@ -414,7 +414,9 @@ describe('Profile — the desktop composition', () => {
       'Contact Us',
       'FAQ',
       'Privacy & Terms',
-      'Roadmap',
+      // THE-225 — the Roadmap row (admin-only, opened a public Trello board in a
+      // new tab) is gone from both this app and the marketing site's top nav.
+      // Support & Info keeps its other three rows, so the group still renders.
       'Log Out',
     ]);
   });
