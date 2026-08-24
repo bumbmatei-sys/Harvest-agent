@@ -6,7 +6,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { generateAccessCode } from '@/lib/ai-utils';
 import { PLAN_PRICES, getPlanFromPriceId } from '@/lib/billing';
 import { setCustomClaims } from '@/lib/set-custom-claims';
-import { PROVISIONED_TENANT_OWNER_ROLE } from '@/lib/roles';
+import { PROVISIONED_TENANT_OWNER_ROLE, ROLE_STANDALONE_AI_USER } from '@/lib/roles';
 // Donation bookkeeping — the CRM linkage, the `donation_receipt` tax line and the
 // campaign credit — moved to a shared module in THE-145. Donations are now DIRECT
 // charges on the church's connected account, so their events are delivered to the
@@ -456,7 +456,7 @@ export async function POST(request: NextRequest) {
             await userRef.set({
               email: standaloneEmail,
               hasAIAssistant: true,
-              role: 'standalone_ai_user',
+              role: ROLE_STANDALONE_AI_USER,
               tenantId: platformTenantId,
               aiAssistantConnected: false,
               telegramChatId: null,

@@ -51,6 +51,24 @@ export const ROLE_CHURCH_ADMIN = 'church_admin';
 export const ROLE_SUPER_ADMIN = 'super_admin';
 
 /**
+ * The buyer of a standalone AI assistant — NOT a church, and NOT a tenant admin.
+ *
+ * 🔴 FOUND BY THE THE-219 AUDIT, AND DELIBERATELY LEFT AS IT IS. This value is
+ * written by the Stripe webhook onto a user doc and is read, as a role, by
+ * NOTHING — which is the same shape the founder asked to be guarded against.
+ * Here it is harmless and intended: the account buys an assistant on the
+ * platform tenant, it was never meant to confer church-admin identity, and
+ * every tenant-admin reader correctly answers "no" for it.
+ *
+ * It is named here rather than corrected because correcting it would change
+ * what this account can do, which THE-219 may not. Naming it is what makes the
+ * guard total: `provisioning-roles.test.ts` demands that every role any
+ * provisioning path writes is a RECOGNISED value, so a genuinely invented one
+ * still fails while this deliberate one passes — on the record, with a reason.
+ */
+export const ROLE_STANDALONE_AI_USER = 'standalone_ai_user';
+
+/**
  * Every role value a tenant-admin reader accepts.
  *
  * 🔴 The set a provisioning path's write is checked AGAINST (see
@@ -70,7 +88,7 @@ export const TENANT_ADMIN_ROLES = [ROLE_ADMIN, ROLE_CHURCH_ADMIN, ROLE_SUPER_ADM
 export const PROVISIONED_TENANT_OWNER_ROLE = ROLE_ADMIN;
 
 /** Every role value the app recognises at all. */
-export const ALL_ROLES = [ROLE_MEMBER, ...TENANT_ADMIN_ROLES] as const;
+export const ALL_ROLES = [ROLE_MEMBER, ROLE_STANDALONE_AI_USER, ...TENANT_ADMIN_ROLES] as const;
 
 export type UserRole = (typeof ALL_ROLES)[number];
 
