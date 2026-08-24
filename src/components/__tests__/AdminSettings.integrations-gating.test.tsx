@@ -76,16 +76,26 @@ vi.mock('next/image', () => ({ default: () => null }));
  * rather than an edit to one it does: no shipped flag value is touched.
  */
 const NO_PROVIDER_PLAN = 'no-provider-tier';
+/**
+ * The provider list, reached WITHOUT importing integration-providers from
+ * inside this factory. THE-225 gave that module a runtime import of
+ * `isUnpricedTier` from plan-features — a plain one-way dependency in the app,
+ * but importing it from within plan-features' own mock factory would re-enter
+ * the module being mocked and deadlock the run. The list is still DERIVED (the
+ * file-level import below fills this holder), so a provider added tomorrow is
+ * still stripped here with nothing to remember; it is just read at call time
+ * rather than at factory time.
+ */
+const providers = vi.hoisted(() => ({ list: [] as { feature: string }[] }));
 vi.mock('../../utils/plan-features', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../utils/plan-features')>();
-  const { INTEGRATION_PROVIDERS } = await import('../settings/integration-providers');
   return {
     ...actual,
     getPlanFeatures: (plan: string) => {
       const base = actual.getPlanFeatures((plan === NO_PROVIDER_PLAN ? 'plus' : plan) as never);
       if (plan !== NO_PROVIDER_PLAN) return base;
-      const stripped = { ...base };
-      for (const provider of INTEGRATION_PROVIDERS) stripped[provider.feature] = false;
+      const stripped = { ...base } as Record<string, unknown>;
+      for (const provider of providers.list) stripped[provider.feature] = false;
       return stripped;
     },
   };
@@ -101,6 +111,9 @@ import {
   getIntegrationProvider,
 } from '../settings/integration-providers';
 import type { TenantPlan } from '../../types/tenant.types';
+
+// Fills the holder the plan-features mock reads — see the note on `providers`.
+providers.list = INTEGRATION_PROVIDERS as unknown as { feature: string }[];
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -231,7 +244,7 @@ describe('THE-193 — Integrations gating', () => {
     for (const provider of INTEGRATION_PROVIDERS) {
       expect(stripped[provider.feature], `${provider.label} is still entitled on the stripped tier`).toBe(false);
     }
-    expect(hasAnyIntegrationProvider(stripped)).toBe(false);
+    expect(hasAnyIntegrationProvider(stripped, NO_PROVIDER_PLAN)).toBe(false);
 
     const host = await mount(NO_PROVIDER_PLAN);
     expect(rowHeader(host, 'Integrations'), 'the section is shown with nothing inside it').toBeNull();
@@ -247,7 +260,7 @@ describe('THE-193 — Integrations gating', () => {
     const probe = new Proxy({} as PlanFeatures, {
       get(_t, key: string) { readKeys.add(key); return false; },
     });
-    expect(hasAnyIntegrationProvider(probe)).toBe(false);
+    expect(hasAnyIntegrationProvider(probe, INDIVIDUAL)).toBe(false);
     expect([...readKeys].sort()).toEqual([...new Set(INTEGRATION_PROVIDERS.map(p => p.feature))].sort());
 
     // (b) Adding a provider changes the answer with no gate edited. A tenant
@@ -256,9 +269,9 @@ describe('THE-193 — Integrations gating', () => {
     const nothing = Object.fromEntries(
       INTEGRATION_PROVIDERS.map(p => [p.feature, false]),
     ) as unknown as PlanFeatures;
-    expect(hasAnyIntegrationProvider(nothing)).toBe(false);
+    expect(hasAnyIntegrationProvider(nothing, INDIVIDUAL)).toBe(false);
     const withNewProvider = { ...nothing, blog: true } as PlanFeatures;
-    expect(hasAnyIntegrationProvider(withNewProvider), 'a flag no provider uses turned the section on').toBe(false);
+    expect(hasAnyIntegrationProvider(withNewProvider, INDIVIDUAL), 'a flag no provider uses turned the section on').toBe(false);
 
     // (c) The gate names no plan feature of its own — it delegates to the
     //     derivation. A restored `!currentFeatures?.newsletterAutomation`
@@ -290,8 +303,8 @@ describe('THE-193 — Integrations gating', () => {
     for (const plan of ALL_PLANS) {
       const features = getPlanFeatures(plan);
       if (!features.crm) continue;
-      expect(isProviderAvailable(gmail, features), `${PLAN_DISPLAY_NAMES[plan]} has the CRM but not Gmail`).toBe(true);
-      expect(hasAnyIntegrationProvider(features), `${PLAN_DISPLAY_NAMES[plan]} has the CRM but no Integrations section`).toBe(true);
+      expect(isProviderAvailable(gmail, features, plan), `${PLAN_DISPLAY_NAMES[plan]} has the CRM but not Gmail`).toBe(true);
+      expect(hasAnyIntegrationProvider(features, plan), `${PLAN_DISPLAY_NAMES[plan]} has the CRM but no Integrations section`).toBe(true);
 
       document.body.innerHTML = '';
       const host = await mount(plan);

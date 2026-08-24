@@ -207,6 +207,22 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       label: 'Payments (Connect Stripe)',
       icon: <CreditCard size={18} />,
       content: <PaymentSection />,
+      // 🔴 THE-225 — gated on `fundraising`, the cell this section EXISTS to
+      // serve. Stripe Connect is how a church is paid for donations; free
+      // carries `fundraising: false`, so it has no donate page (the member Give
+      // tab is gone, /campaign/[id] refuses and /api/stripe/donate 403s —
+      // THE-202/THE-213). Connecting an account here would have configured a
+      // payout destination for money that cannot arrive, and asked a church for
+      // its bank details to do it. The founder has reported this three times.
+      //
+      // The section's other stated purpose — affiliate payouts, per the header
+      // comment above — does not keep it alive on free: AFFILIATE_PROGRAM_ENABLED
+      // is false, so every affiliate surface in the app is hidden on every tier.
+      // If the programme comes back, this gate is the line that has to widen.
+      //
+      // Reads the FEATURE, not the tier, so nothing here has to be edited if a
+      // future tier is sold without giving.
+      hidden: !platformOverride && !currentFeatures?.fundraising,
     },
     {
       id: 'onboarding',
@@ -252,7 +268,16 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       // and found nothing. Each provider now declares the feature it serves
       // (integration-providers.ts) and the section shows when any of them is
       // available. No plan flag changed.
-      hidden: !platformOverride && !hasAnyIntegrationProvider(currentFeatures),
+      //
+      // 🔴 THE-225 — the same derivation, now asked with the PLAN as well. Gmail
+      // is entitled by `crm`, which free holds deliberately (its roster is half
+      // of what the free tier is), so the feature cell alone could not withhold
+      // it and this section rendered a Gmail card on a tier that pays nothing.
+      // A provider that hands over a live outbound send is refused to a tier
+      // that is not sold — see `outboundSend` in integration-providers.ts. Free
+      // therefore has no available provider at all and this section disappears
+      // on its own; the three priced tiers are unmoved, and no plan flag changed.
+      hidden: !platformOverride && !hasAnyIntegrationProvider(currentFeatures, currentPlan),
     },
     {
       // THE-183 — the Danger Zone. A destructive action was sitting in the same

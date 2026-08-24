@@ -29,6 +29,7 @@ import {
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { useTenant } from '@/contexts/TenantContext';
 import { getEffectiveFeatures, toTenantPlan } from '../utils/plan-features';
+import { getIntegrationProvider, isProviderAvailable } from './settings/integration-providers';
 import {
   resolveContactLimit, countContactAccounts, isAtContactLimit, contactLimitMessage,
 } from '../utils/contact-capacity';
@@ -401,6 +402,32 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
    */
   const crmFeatures = planFeatures ?? getEffectiveFeatures(toTenantPlan(tenantPlan), null);
   const showGiving = crmFeatures.fundraising;
+
+  /**
+   * 🔴 CAN THIS TENANT REACH GMAIL FROM SETTINGS AT ALL — THE-225, and the
+   * dead-end guard THE-193 exists to keep closed.
+   *
+   * THE-193's defect was a "Connect your email" button on this screen routing
+   * to a Settings page with no Integrations section on it: the workflow simply
+   * ended. THE-225 hides the Gmail card from the free tier, which would re-open
+   * that exact hole — free has `crm: true`, so free renders this screen, and
+   * the button would point at a section free no longer has.
+   *
+   * So it asks the SAME predicate the Settings gate asks, from the same module,
+   * rather than a second rule that can disagree: if `isProviderAvailable` says
+   * no, this screen offers no email affordance at all — not the send button,
+   * not the connect prompt, and not the `/api/composio/gmail/status` request
+   * that decides between them. Nothing points anywhere hidden.
+   *
+   * ⚠️ PRESENTATION ONLY, like `showGiving` above. No contact, activity or
+   * previously-connected mailbox is touched; a tenant that upgrades gets the
+   * button back with everything intact.
+   */
+  const canConnectGmail = isProviderAvailable(
+    getIntegrationProvider('gmail'),
+    crmFeatures,
+    tenantPlan,
+  );
   // The platform-wide super-admin view counts EVERY church's users (the reads are
   // unscoped there), so a tenant plan cap is meaningless against it — gating on
   // that number would lock the platform CRM at 150. On a tenant subdomain a super
@@ -878,6 +905,11 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   useEffect(() => {
     let cancelled = false;
     if (!isAuthReady) return;
+    // THE-225 — not asked at all on a tier that cannot reach the Gmail card.
+    // The answer could only choose between two controls this screen will not
+    // render, and a hidden control that still opens its request is the shape
+    // THE-193 and THE-213 were both written against.
+    if (!canConnectGmail) return;
     (async () => {
       try {
         const res = await authFetch('/api/composio/gmail/status');
@@ -888,7 +920,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
       }
     })();
     return () => { cancelled = true; };
-  }, [isAuthReady]);
+  }, [isAuthReady, canConnectGmail]);
 
   const openCompose = () => {
     setEmailForm({ subject: '', body: '' });
@@ -1300,8 +1332,12 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             {/* Email action. Three distinct states, and never a button that is
                 known to fail: no address on the contact → nothing at all;
                 Gmail not connected → a link to Settings; connected → send.
-                While `gmailConnected` is still null neither is rendered. */}
-            {selected.email && gmailConnected === true && (
+                While `gmailConnected` is still null neither is rendered.
+                A FOURTH state above all of them (THE-225): a tier that cannot
+                reach the Gmail card in Settings is offered neither control, so
+                the link to Settings can never point at a section that is not
+                there. See `canConnectGmail`. */}
+            {canConnectGmail && selected.email && gmailConnected === true && (
               <button
                 onClick={openCompose}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-line-hairline text-muted hover:bg-surface-sunken"
@@ -1309,7 +1345,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                 <Send size={12} /> Email
               </button>
             )}
-            {selected.email && gmailConnected === false && (
+            {canConnectGmail && selected.email && gmailConnected === false && (
               <button
                 onClick={() => navigate('/admin/settings')}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-line-hairline text-faint hover:bg-surface-sunken"

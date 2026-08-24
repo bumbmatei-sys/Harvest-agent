@@ -27,6 +27,7 @@ import { useTenant } from '../contexts/TenantContext';
 import LiveNowBanner from './LiveNowBanner';
 import LivestreamView from './LivestreamView';
 import { DesktopContainer } from './layout/DesktopLayout';
+import { visibleNavGroups } from './layout/nav-groups';
 
 const PLATFORM_TENANT_ID = process.env.NEXT_PUBLIC_PLATFORM_TENANT_ID || 'harvest';
 const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -47,6 +48,25 @@ const TOP_TAB_ICONS: Record<string, any> = {
   prayer: HandHeart,
   partner: HeartHandshake,
 };
+
+/**
+ * THE-225 — the desktop sidebar's groups, DECLARED: which top-tab and
+ * bottom-tab ids belong under each heading. Resolving them from one declaration
+ * (rather than each group hand-assembling its own item list) is what lets the
+ * "Home appears once" rule and the emptiness rule each be written a single
+ * time. See the note at the resolution site in the component.
+ */
+const DESKTOP_SIDEBAR_GROUPS: readonly {
+  label: string;
+  /** Renders the "Home" alias first. Exactly one group carries this. */
+  hostsHome?: true;
+  topTabIds: readonly string[];
+  bottomTabIds: readonly string[];
+}[] = [
+  { label: 'FEED', hostsHome: true, topTabIds: ['news', 'blog', 'courses'], bottomTabIds: ['bible'] },
+  { label: 'COMMUNITY', topTabIds: ['messages', 'prayer'], bottomTabIds: ['map'] },
+  { label: 'SUPPORT US', topTabIds: ['partner'], bottomTabIds: ['chat'] },
+];
 
 const ChurchMap = dynamic(() => import('./ChurchMap'), { ssr: false });
 
@@ -322,31 +342,45 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
 
   // "My Profile" is intentionally excluded here — on desktop it's reachable via
   // the top-right avatar (see the top bar below) instead of the grouped list.
-  const desktopNavGroups: { label: string; items: DesktopNavItem[] }[] = [
-    {
-      label: 'FEED',
-      // Home first, then the rest of the group MINUS whichever tab is Home —
-      // otherwise the tab that already renders as "Home" is listed a second
-      // time under its own name, with a duplicate React key. On a tier with the
-      // feed this resolves to exactly the old order: Home(News), Blog, Courses,
-      // Bible.
+  //
+  // ── THE-225 — the shape, and the two defects it closes ──────────────────────
+  //
+  // The groups are DECLARED (which top-tab and bottom-tab ids belong to each)
+  // and then resolved, rather than each group hand-assembling its own item list.
+  // That is what makes the Home rule expressible once instead of per group.
+  //
+  // 🔴 HOME IS HOISTED ONCE, AND EVERY GROUP EXCLUDES IT. The FEED group has
+  // always led with an entry aliased to "Home", and since THE-205 that alias is
+  // `homeTabId` — the first of feed → course → first surviving tab. The old
+  // code subtracted `homeTabId` from FEED's own id list ONLY, which was right
+  // while Home could only ever be one of FEED's own tabs. It stopped being right
+  // the moment the derivation could land on a tab belonging to another group: a
+  // free tenant that has adopted no course yet resolves Home to PRAYER, so the
+  // sidebar drew Home under FEED and then drew the very same entry again — with
+  // the same "Home" label, the same icon and the same `desktop-prayer` id —
+  // under COMMUNITY. That is the founder's "Community with Home button again".
+  // `homeTabId` is now subtracted from EVERY group, so whichever tab is Home
+  // appears exactly once, at the top, whichever group it came from.
+  //
+  // The declaration itself is at module scope (`DESKTOP_SIDEBAR_GROUPS`, above)
+  // — it closes over nothing.
+
+  // 🔴 AND THEN THE EMPTINESS RULE, from layout/nav-groups.ts — a group whose
+  // items are all plan-gated away draws no heading. On free that is SUPPORT US:
+  // `fundraising: false` takes Give and `aiChat: false` takes the assistant, so
+  // the group resolved to `[]` and the sidebar rendered a heading over nothing.
+  // Applied as the shared rule rather than as "hide SUPPORT US on free",
+  // because the next gated feature would otherwise orphan the next heading.
+  const desktopNavGroups: { label: string; items: DesktopNavItem[] }[] = visibleNavGroups(
+    DESKTOP_SIDEBAR_GROUPS.map((group) => ({
+      label: group.label,
       items: [
-        desktopTopTabItem(homeTabId),
-        ...['news', 'blog', 'courses']
-          .filter((id) => id !== homeTabId)
-          .map((id) => desktopTopTabItem(id)),
-        desktopBottomTabItem('bible'),
+        ...(group.hostsHome ? [desktopTopTabItem(homeTabId)] : []),
+        ...group.topTabIds.filter((id) => id !== homeTabId).map((id) => desktopTopTabItem(id)),
+        ...group.bottomTabIds.map((id) => desktopBottomTabItem(id)),
       ].filter(isDesktopNavItem),
-    },
-    {
-      label: 'COMMUNITY',
-      items: [desktopTopTabItem('messages'), desktopTopTabItem('prayer'), desktopBottomTabItem('map')].filter(isDesktopNavItem),
-    },
-    {
-      label: 'SUPPORT US',
-      items: [desktopTopTabItem('partner'), desktopBottomTabItem('chat')].filter(isDesktopNavItem),
-    },
-  ];
+    })),
+  );
 
   // Desktop top bar (Phase 1.6): page title + date for Home; view name elsewhere.
   const desktopTitle = activeBottomTab === 'home'
@@ -605,7 +639,13 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
 
           {/* Desktop sidebar — grouped under FEED / COMMUNITY / SUPPORT US (Phase 1.6) */}
           {desktopNavGroups.map((group, groupIndex) => (
-            <div key={group.label} className={`hidden lg:flex lg:flex-col lg:w-full ${groupIndex > 0 ? 'lg:mt-5' : ''}`}>
+            // `data-nav-group` lets a test enumerate the groups the sidebar
+            // actually DREW, by name, without reaching through class names —
+            // the same marker convention as `data-settings-region` on the
+            // Settings accordion. `groupIndex` is the index among the VISIBLE
+            // groups, so a suppressed first group cannot leave a leading
+            // separator behind.
+            <div key={group.label} data-nav-group={group.label} className={`hidden lg:flex lg:flex-col lg:w-full ${groupIndex > 0 ? 'lg:mt-5' : ''}`}>
               {isSidebarCollapsed ? (
                 groupIndex > 0 && <div className="lg:mx-3 lg:mb-2 lg:border-t lg:border-line-subtle" />
               ) : (

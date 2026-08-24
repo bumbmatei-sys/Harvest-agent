@@ -15,7 +15,8 @@ import tw from '../../tailwind.config';
  *     Personal Information, Donation History, Contact Us, Privacy & Terms,
  *     Admin Dashboard.
  *   • FIELD GREEN — things you do, prefer or go and read: My Home Church,
- *     My Events, Saved, Push Notifications, Appearance, FAQ, Roadmap.
+ *     My Events, Saved, Push Notifications, Appearance, FAQ. (Roadmap was in
+ *     this family too until THE-225 removed the row entirely.)
  *
  * RED IS RESERVED FOR DESTRUCTIVE ACTIONS. Log Out is the only red thing on
  * the screen, and the assertion below pins that rather than trusting review.
