@@ -47,6 +47,8 @@ const state = vi.hoisted(() => ({
   userDoc: null as null | { exists: boolean; data?: Record<string, unknown> },
   tenantDoc: null as null | { exists: boolean; data?: Record<string, unknown> },
   authListeners: [] as Array<(u: unknown) => void>,
+  /** Every tenant id the app looked up, in order. A super admin must look up none. */
+  tenantLookups: [] as unknown[],
 }));
 
 vi.mock('../firebase', () => ({ auth: { currentUser: null }, db: {} }));
@@ -71,7 +73,8 @@ vi.mock('firebase/auth', () => ({
  */
 vi.mock('firebase/firestore', () => ({
   doc: (_db: unknown, col: string, id: string) => ({ col, id, path: `${col}/${id}` }),
-  getDoc: async (ref: { col: string }) => {
+  getDoc: async (ref: { col: string; id: unknown }) => {
+    if (ref.col === 'tenants') state.tenantLookups.push(ref.id);
     const d = ref.col === 'users' ? state.userDoc : state.tenantDoc;
     return { exists: () => !!d?.exists, data: () => d?.data };
   },
@@ -216,6 +219,7 @@ beforeEach(() => {
   state.userDoc = null;
   state.tenantDoc = null;
   state.authListeners.length = 0;
+  state.tenantLookups.length = 0;
   tenantCtx.tenantId = null;
   tenantCtx.isAdminDomain = false;
   hops = [];
@@ -338,9 +342,15 @@ describe('5 — a super admin still operates on the apex with platformOverride i
     // tenants. "Fixing" the apex by handing them a tenant would scope the
     // platform owner to one church.
     state.userDoc = { exists: true, data: { role: 'super_admin', tenantId: null, onboardingCompleted: true } };
+    // A tenant doc that WOULD answer "yes" to any lookup. The guard under test
+    // is that no lookup is made at all — without it the hop resolves a tenant id
+    // of `null` and sends the platform owner to `https://null.theharvest.app`.
+    state.tenantDoc = freshFreeTenant();
 
     mount();
     await flush();
+
+    expect(state.tenantLookups, 'the apex asked about a tenant for a super admin').toEqual([]);
 
     expect(hops, 'the platform owner was hopped off the apex').toEqual([]);
     expect(window.location.pathname).toBe('/admin');

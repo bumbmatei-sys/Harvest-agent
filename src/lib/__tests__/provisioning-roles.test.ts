@@ -182,8 +182,15 @@ describe('3 — every provisioning path writes a role that every reader accepts'
     '$label writes the shared owner role rather than a literal of its own',
     ({ file }) => {
       const code = codeOf(read(file));
-      expect(code).toContain('PROVISIONED_TENANT_OWNER_ROLE');
       expect(code).toMatch(/from ['"]@\/lib\/roles['"]/);
+      // 🔴 Checked with the import lines REMOVED. Importing the constant and
+      // then writing a literal anyway is the exact regression this guards, and
+      // it satisfies a naive `toContain` on the whole file — the import alone
+      // mentions the name.
+      const body = code.replace(/^\s*import[\s\S]*?from\s+['"][^'"]+['"];?$/gm, '');
+      expect(body, 'the owner role is imported but not the value written').toMatch(
+        /\brole:\s*PROVISIONED_TENANT_OWNER_ROLE\b/,
+      );
     },
   );
 
