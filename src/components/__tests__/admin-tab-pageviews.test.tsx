@@ -81,9 +81,23 @@ const posthogMock = vi.hoisted(() => ({
 vi.mock('posthog-js', () => ({ default: posthogMock }));
 
 // Reaches Firestore through tenant-scope; the bridge dynamic-imports it.
+const identityGate = vi.hoisted(() => ({
+  /** When set, `resolveAnalyticsIdentity` blocks on this until it is released. */
+  pending: null as null | Promise<void>,
+  release: null as null | (() => void),
+  calls: 0,
+  hold() {
+    this.pending = new Promise<void>((r) => { this.release = () => r(); });
+  },
+}));
 vi.mock('../../lib/analytics/identity', () => ({
-  resolveAnalyticsIdentity: async (user: { uid: string } | null) =>
-    user ? { distinctId: user.uid, personProperties: { account_kind: 'tenant_admin' }, tenantGroupKey: 'grace', isPlatformAdmin: false } : null,
+  resolveAnalyticsIdentity: async (user: { uid: string } | null) => {
+    identityGate.calls += 1;
+    if (identityGate.pending) await identityGate.pending;
+    return user
+      ? { distinctId: user.uid, personProperties: { account_kind: 'tenant_admin' }, tenantGroupKey: 'grace', isPlatformAdmin: false }
+      : null;
+  },
 }));
 
 const TENANT_ID = 'grace';
@@ -251,6 +265,9 @@ beforeEach(() => {
   posthogMock.inits.length = 0;
   posthogMock.identified.length = 0;
   posthogMock.groups.length = 0;
+  identityGate.pending = null;
+  identityGate.release = null;
+  identityGate.calls = 0;
   __resetAnalyticsForTests();
   process.env.NEXT_PUBLIC_POSTHOG_KEY = 'phc_test_key';
   authState.callback = null;
@@ -379,6 +396,33 @@ describe('12 — one tab change emits exactly one pageview', () => {
     await signIn(); // token refresh: same uid, same email, new callback
     await signIn();
     expect(pageviews().length, 'a token refresh counted as a page view').toBe(1);
+  });
+
+  it('a token refresh mid-identify does not re-identify the same person', async () => {
+    // 🔴 THE OTHER HALF OF THE FIX, and the half a dedupe alone cannot cover.
+    // Resolving the tenant group reads Firestore, and `identify()` sends a $set;
+    // doing both twice for one sign-in is a second Firestore read and a second
+    // person write on every token refresh that lands in that window.
+    //
+    // Storing the user as a fresh object literal made every callback a new
+    // effect dependency, so the in-flight run was CANCELLED before it could
+    // record who it had identified — and the run that replaced it started the
+    // whole identify again. Returning `prev` unchanged is what stops the effect
+    // re-running at all.
+    identityGate.hold();
+    await mountAdmin('/admin');
+    await act(async () => { authState.callback?.({ uid: UID, email: 'admin@grace.test' }); });
+    await flush();
+    // A token refresh arrives while the first identify is still resolving.
+    await act(async () => { authState.callback?.({ uid: UID, email: 'admin@grace.test' }); });
+    await flush();
+    await act(async () => { identityGate.release?.(); });
+    await flush();
+
+    expect(identityGate.calls, 'the same person was identified twice').toBe(1);
+    expect(posthogMock.identified.map((i) => i.distinctId)).toEqual([UID]);
+    // And the pageview still landed — the fix must not turn a double into a zero.
+    expect(routes()).toEqual(['/admin']);
   });
 
   it('a re-render with no navigation emits nothing', async () => {
