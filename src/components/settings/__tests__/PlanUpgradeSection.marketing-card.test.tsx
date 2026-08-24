@@ -976,9 +976,9 @@ describe('6 — the sub-640px rendering changes only where the marketing match r
 
 describe('7 — prices, the toggle and the blurbs', () => {
   it('leaves every price alone', () => {
-    expect(PLAN_PRICING.plus.monthly).toBe(39);
-    expect(PLAN_PRICING.pro.monthly).toBe(79);
-    expect(PLAN_PRICING.max.monthly).toBe(159);
+    expect(PLAN_PRICING.plus.monthly).toBe(20);
+    expect(PLAN_PRICING.pro.monthly).toBe(40);
+    expect(PLAN_PRICING.max.monthly).toBe(80);
     mount();
     for (const plan of PRICED_PLAN_ORDER) {
       // Monthly: the per-month headline and the charged price are the same

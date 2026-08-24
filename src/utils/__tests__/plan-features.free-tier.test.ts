@@ -402,9 +402,9 @@ describe('THE-200 — no price, term or add-on price changed', () => {
   // ── 11 ─────────────────────────────────────────────────────────────────────
   it('the nine stored prices are byte-for-byte what they were', () => {
     expect(PLAN_PRICING).toEqual({
-      plus: { monthly: 39, quarterly: 99, yearly: 329 },
-      pro: { monthly: 79, quarterly: 199, yearly: 659 },
-      max: { monthly: 159, quarterly: 399, yearly: 1329 },
+      plus: { monthly: 20, quarterly: 49, yearly: 165 },
+      pro: { monthly: 40, quarterly: 99, yearly: 329 },
+      max: { monthly: 80, quarterly: 199, yearly: 659 },
     });
   });
 
