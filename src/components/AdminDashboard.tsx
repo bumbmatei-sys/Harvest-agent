@@ -371,10 +371,27 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // CLOSED — an unresolved plan shows PlanUpgradeScreen, which is the honest
   // answer to "we do not know what you bought".
   //
-  // ⚠️ NOT A NAV GATE. Which tabs exist is decided by PERMISSIONS alone; THE-202
-  // deliberately moved the plan clause out of the nav array so a tier that lacks
-  // a feature sees the tab and reaches PlanUpgradeScreen instead of the tab being
-  // absent. This gate decides which SCREEN a tab mounts, and nothing else.
+  // ⚠️ ALMOST NEVER A NAV GATE. Which tabs exist is decided by PERMISSIONS;
+  // THE-202 deliberately moved the plan clause out of the nav array so a tier
+  // that lacks a feature sees the tab and reaches PlanUpgradeScreen instead of
+  // the tab being absent. Thirteen of the fourteen calls below therefore decide
+  // which SCREEN a tab mounts, and nothing else.
+  //
+  // `canBranding` is the ONE exception and predates THE-202: it feeds both the
+  // nav entry and the render guard, so an unentitled tier has no Branding tab AND
+  // direct navigation to /admin/branding redirects away. Left as it was — THE-202
+  // listed branding among the tabs that already had a render-time gate, and
+  // moving it into the visible-but-walled pattern is a product decision, not this
+  // ticket's. It is asserted both ways in AdminDashboard.plan-entitlement.
+  //
+  // Nothing here touches a PERMISSION term. A limited admin's `manageSettings`
+  // and friends are orthogonal to which plan the tenant bought (THE-193), and the
+  // permission-multiplicity pin in admin-data-screens still passes unedited.
+  //
+  // ⚠️ That pin scrapes this file for `perms` + `.` + a name and compares the
+  // result WITH MULTIPLICITY, comments included — so writing one in prose here
+  // adds a phantom term and fails it. Name permissions in comments without the
+  // accessor, as the line above does.
   const planUnlocked = platformOverride || !isWhiteLabel;
   /**
    * Does the tenant's plan carry this cell?
