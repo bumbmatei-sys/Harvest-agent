@@ -387,13 +387,14 @@ describe('6 — AnalyticsRoutePattern is still a literal union, not string', () 
   });
 
   it('the generated section rows contribute literals, not a template of string', () => {
-    // 🔴 The slip `Narrow` alone would MISS. Section rows contributing
-    // `` `/admin/${string}` `` are still narrow, still compile, and would let any
-    // segment be assigned as a pattern. Two guards in the source catch it: the
-    // `as const` on the template expression, and a `@ts-expect-error` that stops
-    // compiling the moment an unregistered section becomes assignable.
+    // 🔴 The rows are GENERATED, so the `as const` that keeps a row's pattern a
+    // literal is written once and guards twenty-four of them. Drop it and the
+    // whole union collapses to `string` — `npm run typecheck` fails on the
+    // `Narrow` guard, and again on the `@ts-expect-error`, which stops having an
+    // error to expect. Neither is visible to vitest, which transpiles without
+    // typechecking, so this asserts both are still in the source.
     const routes = source('src/lib/analytics/routes.ts');
-    expect(routes).toMatch(/pattern: `\/admin\/\$\{slug\}` as const,/);
+    expect(routes).toMatch(/\}\) as const satisfies AnalyticsRoute,/);
     expect(routes).toMatch(/@ts-expect-error[\s\S]{0,120}?AnalyticsRoutePattern = '\/admin\/prayer-wall'/);
 
     // The same discipline one module down: the slug union is read from the
