@@ -1,5 +1,6 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { setCustomClaims } from '@/lib/set-custom-claims';
+import { PROVISIONED_TENANT_OWNER_ROLE } from '@/lib/roles';
 import { tenantPrivateRef } from '@/lib/tenant-private';
 import { generateUniqueSubdomain } from '@/lib/tenant-subdomain';
 import { TENANT_STATUS_ACTIVE } from '@/lib/tenant-lifecycle';
@@ -144,7 +145,7 @@ export async function provisionFreeTenant(params: {
   // asynchronous is coming to do it later.
   await adminDb.collection('users').doc(userId).update({
     tenantId: newTenantId,
-    role: 'admin',
+    role: PROVISIONED_TENANT_OWNER_ROLE,
     plan: FREE_PLAN,
     onboardingCompleted: true,
     signupInProgress: false,

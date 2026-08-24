@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { doc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { isTenantAdminRole } from '../../lib/roles';
 import type { Tenant } from '../../types/tenant.types';
 
 export type { Tenant };
@@ -38,7 +39,7 @@ export const useTenantAdmins = (tenantId: string | null | undefined) =>
       const snap = await getDocs(q);
       return snap.docs
         .map(d => ({ id: d.id, ...d.data() }) as TenantAdmin)
-        .filter(u => ['admin', 'church_admin', 'super_admin'].includes(u.role));
+        .filter(u => isTenantAdminRole(u.role));
     },
     enabled: !!tenantId,
     staleTime: 1000 * 60 * 5,
