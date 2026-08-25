@@ -93,6 +93,26 @@ const PREVIEW_DEBOUNCE_MS = 400;
  * cannot be added to the vocabulary without someone writing its line.
  */
 const GRANTS: Record<AddonMeaning, string> = {
+  /* 🔴 THIS LINE DESCRIBES A GRANT NOTHING ENFORCES — THE-224, REPORTED NOT
+     FIXED. Buying this raises `features.aiAssistant`, a COUNT of the RETIRED
+     Telegram assistant, and no code path compares any usage against it. The
+     member-facing assistant is `aiChat`, a plan capability included from Small
+     Team up, and an add-on never flips a feature flag — so this purchase
+     changes nothing for anyone on any tier.
+
+     The marketing site has withdrawn its $20 card (THE-224); this surface is
+     NOT the site's, and it cannot be fixed here. What renders is whatever the
+     tenant's own Dodo product carries, by design — THE-133 put add-on
+     availability in the processor precisely so a bug in this repo cannot sell
+     something. So this card disappears when the two `AI Assistant` add-on
+     products are detached from the nine plan products (or archived) in Dodo,
+     which is a processor change and the founder's call. Until then it renders,
+     and no honest wording exists for it: the fix is withdrawal, or building an
+     enforced limit — seats, or a top-up on `queryTokensPerMonth`.
+
+     ⚠️ Leave the mapping in place either way. It is exhaustive over
+     `AddonMeaning` by type, and a tenant who somehow holds one still needs its
+     card labelled rather than blank. */
   aiAssistant: 'Adds one AI assistant to your account.',
   adminSeat: 'One more admin account, beyond what your plan includes.',
   campus: 'One more campus on your account.',
