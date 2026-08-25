@@ -244,6 +244,13 @@ const PHONE = 380;
 // 1. mobile is unchanged (the load-bearing test)
 // ═════════════════════════════════════════════════════════════════════════
 
+/**
+ * ⚠️ The fixture moved once, in THE-188, and only by insertion: a "Download My
+ * Data" row was added to the Actions column beside Delete Account. It carries no
+ * layout token of its own (the sibling test below is what proves that), so the
+ * pin still says what it was written to say — nothing in the layout work reaches
+ * a phone. A fixture change for any other reason is a regression, not an edit.
+ */
 it('the sub-640px rendering is exactly what it was — every new rule is sm:-gated', () => {
   const host = mount(<PersonalInformationModal isOpen onClose={() => {}} />);
   expect(mobileLayer(host)).toEqual(MOBILE_FIXTURE);
