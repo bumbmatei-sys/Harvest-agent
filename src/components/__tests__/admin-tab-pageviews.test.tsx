@@ -198,7 +198,7 @@ import AnalyticsBridge from '../AnalyticsBridge';
 import { __resetAnalyticsForTests } from '../../lib/analytics/client';
 import { buildPostHogOptions, beforeSendEvent } from '../../lib/analytics/config';
 import { ALLOWED_EVENT_PROPERTY_KEYS, ANALYTICS_EVENTS } from '../../lib/analytics/events';
-import { ANALYTICS_ROUTES } from '../../lib/analytics/routes';
+import { ANALYTICS_ROUTES, normalizeAnalyticsPath } from '../../lib/analytics/routes';
 
 const ROOT = join(process.cwd());
 let container: HTMLDivElement;
@@ -295,8 +295,11 @@ describe('10 — changing an admin tab emits a pageview', () => {
     expect(routes(), 'the load itself did not count').toEqual(['/admin']);
 
     // 🔴 The reported gap: the founder walked these tabs and nothing fired.
+    // ⚠️ THE-227 — the second entry names the section. It read
+    // `'/admin/[section]'` until then, which is the bucket this whole ticket
+    // exists to break apart.
     await clickTab('CRM');
-    expect(routes(), 'a tab change emitted nothing').toEqual(['/admin', '/admin/[section]']);
+    expect(routes(), 'a tab change emitted nothing').toEqual(['/admin', '/admin/crm']);
   });
 
   it('every tab the founder walked emits, one after another', async () => {
@@ -308,7 +311,19 @@ describe('10 — changing an admin tab emits a pageview', () => {
     }
     // One for the load, then one per tab change. None of them silent.
     expect(pageviews().length).toBe(8);
-    expect(routes().slice(1)).toEqual(Array(7).fill('/admin/[section]'));
+    // 🔴 THE-227, and the whole point of it: seven tab changes are seven
+    // DISTINCT routes now, not seven copies of one bucket. This assertion was
+    // `Array(7).fill('/admin/[section]')` — a sequence that is identical whether
+    // the founder walked CRM or walked Accounting seven times.
+    expect(routes().slice(1)).toEqual([
+      '/admin/crm',
+      '/admin/churches',
+      '/admin/courses',
+      '/admin/newsletter',
+      '/admin/accounting',
+      '/admin/forms',
+      '/admin/livestream',
+    ]);
   });
 
   it('and the tab really did change — the URL is what stores it', async () => {
@@ -319,7 +334,7 @@ describe('10 — changing an admin tab emits a pageview', () => {
     await signIn();
     await clickTab('SMS');
     expect(container.textContent, 'the SMS screen did not become the active tab').toContain('SMS');
-    expect(routes().at(-1)).toBe('/admin/[section]');
+    expect(routes().at(-1)).toBe('/admin/sms');
   });
 });
 
@@ -329,11 +344,11 @@ describe('11 — the pageview carries a route pattern, never a resolved id', () 
     await mountAdmin('/admin');
     await signIn();
     await clickTab('Community');
-    // The section name is safe, but it is still sent as the PATTERN — the
-    // enumeration in routes.ts has no per-section rows, so `/admin/community`
-    // and `/admin/crm` are one row and one count.
-    expect(routes().at(-1)).toBe('/admin/[section]');
-    expect(routes(), 'a resolved section name reached a property').not.toContain('/admin/community');
+    // ⚠️ THE-227 — the section name is sent, because `community` is a feature
+    // name from the app's own nav and routes.ts now has a row for it. It is
+    // still MATCHED, not passed through: an unregistered section collapses, and
+    // `9 — an unknown section` below is where that is asserted.
+    expect(routes().at(-1)).toBe('/admin/community');
 
     // 🔴 An itemId is a Firestore document id. Reached the way the product
     // reaches it: an attachment link inside the Community screen.
@@ -458,7 +473,7 @@ describe('12 — one tab change emits exactly one pageview', () => {
     await clickTab('CRM');
     await clickTab('Dashboard');
     await clickTab('CRM');
-    expect(routes()).toEqual(['/admin', '/admin/[section]', '/admin', '/admin/[section]']);
+    expect(routes()).toEqual(['/admin', '/admin/crm', '/admin', '/admin/crm']);
   });
 });
 
@@ -473,7 +488,16 @@ describe('13 — the declared admin route patterns are actually reachable', () =
     const declared = ANALYTICS_ROUTES
       .filter((r) => r.surface === 'admin')
       .map((r) => r.pattern);
-    expect(declared).toEqual(['/admin', '/admin/[section]', '/admin/[section]/[itemId]']);
+    // ⚠️ THE-227 adds a row per named section. The three patterns below are the
+    // ones this test was written about and they all still exist — the parameter
+    // pair is not renamed, not removed, and still what an unregistered section
+    // and an itemId resolve to.
+    expect(declared).toContain('/admin');
+    expect(declared).toContain('/admin/[section]');
+    expect(declared).toContain('/admin/[section]/[itemId]');
+    // The rest are the sections, and nothing else crept in.
+    expect(declared.filter((p) => p.includes('[')).sort())
+      .toEqual(['/admin/[section]', '/admin/[section]/[itemId]']);
 
     await mountAdmin('/admin');
     await signIn();
@@ -481,9 +505,16 @@ describe('13 — the declared admin route patterns are actually reachable', () =
     await act(async () => { (container.querySelector('#open-doc') as HTMLButtonElement).click(); });
     await flush();
 
-    for (const pattern of declared) {
+    // 🔴 Reachability, for the three this test is about. A per-section row is a
+    // row for a nav entry the drift test in `admin-sections.test.ts` already
+    // holds against `AdminDashboard`, and walking twenty-four screens here would
+    // be asserting that suite's job a second time, more slowly.
+    for (const pattern of ['/admin', '/admin/community', '/admin/[section]/[itemId]']) {
       expect(routes(), `"${pattern}" is declared but was never reached`).toContain(pattern);
     }
+    // And the parameter row is genuinely still reachable — by a section that is
+    // not in the vocabulary, which is the only thing left that can produce it.
+    expect(normalizeAnalyticsPath('/admin/prayer-wall')).toBe('/admin/[section]');
   });
 
   it('a deep link opened cold reports the itemId pattern, not the id', async () => {

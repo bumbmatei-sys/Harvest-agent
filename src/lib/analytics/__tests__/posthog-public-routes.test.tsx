@@ -81,6 +81,7 @@ vi.mock('firebase/auth', () => ({
 
 import { SUPER_ADMIN_EMAILS } from '../../../utils/super-admins';
 import { PREAUTH_PATHS } from '../../preauth-theme';
+import { ADMIN_SECTION_SLUGS } from '../../admin-sections';
 import {
   ALLOWED_EVENT_NAMES,
   ALLOWED_EVENT_PROPERTY_KEYS,
@@ -141,8 +142,20 @@ const captured = (fields: Partial<CaptureResult> & { event: string }): CaptureRe
 const RESOLVED_PATH: Record<string, string> = {
   '/': '/',
   '/admin': '/admin',
-  '/admin/[section]': '/admin/crm',
+  // 🔴 THE-227 — the pattern's resolved path is now a section that is NOT in the
+  // vocabulary, because that is the only kind of path this row still catches. A
+  // registered section resolves to a row of its own (below), so using `/admin/crm`
+  // here would be asserting the opposite of what this PR built. `prayer-wall` is
+  // the plausible version of the failure: a section somebody adds to the nav
+  // tomorrow and forgets to register.
+  '/admin/[section]': '/admin/prayer-wall',
+  // 🔴 Still `/admin/docs/…`, and still expected to normalise BOTH segments. The
+  // section is known, but no row is generated for `/admin/<section>/[itemId]` —
+  // the second segment is a document id and naming the section beside it is not
+  // worth reopening the question.
   '/admin/[section]/[itemId]': '/admin/docs/kR91mVzQ7dLpAe30',
+  // Every named section: the path IS the pattern, which is the point of THE-227.
+  ...Object.fromEntries(ADMIN_SECTION_SLUGS.map((slug) => [`/admin/${slug}`, `/admin/${slug}`])),
   '/ai-assistant': '/ai-assistant',
   '/blog/[id]': '/blog/7bQxs2LmNfA4dR8v',
   '/calendar': '/calendar',
@@ -345,7 +358,19 @@ describe('1 — every route in the stated list emits a pageview', () => {
       .map(asPattern)
       .filter((p) => p !== '*' && !PRE_AUTH_PATTERNS.includes(p));
 
-    expect(instrumentable.sort()).toEqual(SPA_ROUTES.map((r) => r.pattern).sort());
+    // Every route App.tsx declares is registered.
+    const registered = SPA_ROUTES.map((r) => r.pattern);
+    expect(instrumentable.sort()).toEqual(
+      registered.filter((p) => instrumentable.includes(p)).sort(),
+    );
+
+    // ⚠️ THE-227 — and the registry is now allowed to hold MORE than App.tsx
+    // declares, in exactly one way: a named admin section. React Router serves
+    // all of them from the single `/admin/:section` declaration, so there is no
+    // `<Route>` to match them against; what there IS, is the closed vocabulary
+    // in `admin-sections.ts`. Anything else extra is drift and fails here.
+    const extra = registered.filter((p) => !instrumentable.includes(p));
+    expect(extra.sort()).toEqual(ADMIN_SECTION_SLUGS.map((s) => `/admin/${s}`).sort());
   });
 
   it.each(Object.entries(PAGE_FILE))(

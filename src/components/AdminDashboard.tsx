@@ -50,13 +50,18 @@ import { useCurrentUser } from '../hooks/queries/useUserQueries';
 import { useTenant as useTenantDoc } from '../hooks/queries/useTenantQueries';
 import { useTenant } from '../contexts/TenantContext';
 import { visibleNavGroups } from './layout/nav-groups';
+import { SLUG_TO_TAB, TAB_TO_SLUG } from '../lib/admin-sections';
 
 const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
 
-// URL slug ↔ internal tab id. Most ids map 1:1; only these two differ so the
-// URLs read nicely (/admin/ai-knowledge, /admin/roles).
-const SLUG_TO_TAB: Record<string, string> = { 'ai-knowledge': 'ai' };
-const TAB_TO_SLUG: Record<string, string> = { 'ai': 'ai-knowledge' };
+// URL slug ↔ internal tab id. Most ids map 1:1; only `ai` differs, so the URL
+// reads nicely (/admin/ai-knowledge).
+//
+// THE-227 — the two maps are no longer written here as a pair of literals that
+// had to be kept mirror images by hand. Both are derived from the one table in
+// `lib/admin-sections.ts`, which is also what tells PostHog that `crm` and
+// `accounting` are feature names rather than document ids. Same behaviour, one
+// source: a section renamed there cannot leave half of this mapping stale.
 
 // More-drawer groupings (Vercel-style). The section a tab appears in is keyed by
 // its tab id; order matters. Groups with no permitted tabs are omitted entirely.

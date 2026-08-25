@@ -234,8 +234,35 @@ describe('3 — no captured event carries an email, phone, donor name, prayer re
     // (`/form/aB3xQ…`, `/event/9f2c…`), and posthog-js builds `$current_url`
     // from `location.href` itself — so a `route` property alone would not have
     // stopped the live path being sent beside it.
-    expect(sent.properties!.$current_url).toBe('https://grace.theharvest.app/admin/[section]');
-    expect(sent.properties!.$pathname).toBe('/admin/[section]');
+    //
+    // ⚠️ THE-227 changed what this path normalises TO, not whether it is
+    // normalised. `crm` is an enumerated feature name, so it survives as itself
+    // — matched against the closed list in `admin-sections.ts`, never passed
+    // through. The id-bearing case below is the one that still collapses, and it
+    // is asserted here rather than only in the public-route suite so this test
+    // keeps proving the whole rule.
+    expect(sent.properties!.$current_url).toBe('https://grace.theharvest.app/admin/crm');
+    expect(sent.properties!.$pathname).toBe('/admin/crm');
+
+    const withId = beforeSendEvent(captured({
+      event: ANALYTICS_EVENTS.PAGEVIEW,
+      properties: {
+        $current_url: 'https://grace.theharvest.app/admin/crm/9f2c4471aa0e?email=jane%40example.org',
+        $pathname: '/admin/crm/9f2c4471aa0e',
+      },
+    }))!;
+    // 🔴 The contact's id, in the `[itemId]` position, is gone — and so is the
+    // section beside it, because that whole path matches one pattern.
+    expect(withId.properties!.$current_url)
+      .toBe('https://grace.theharvest.app/admin/[section]/[itemId]');
+    expect(withId.properties!.$pathname).toBe('/admin/[section]/[itemId]');
+
+    // 🔴 And a section nobody registered does NOT survive as itself.
+    const unknownSection = beforeSendEvent(captured({
+      event: ANALYTICS_EVENTS.PAGEVIEW,
+      properties: { $pathname: '/admin/prayer-wall' },
+    }))!;
+    expect(unknownSection.properties!.$pathname).toBe('/admin/[section]');
     // ⚠️ An external referrer keeps its HOST and loses its path. That is
     // over-redaction on purpose: this cannot tell our hosts from anyone else's
     // (churches provision custom domains), and posthog-js records the host
