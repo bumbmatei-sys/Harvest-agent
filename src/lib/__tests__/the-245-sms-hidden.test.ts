@@ -186,18 +186,43 @@ describe('3 — nothing reaches Twilio, and nothing else breaks', () => {
   });
 
   it('sendAutomatedSms returns before it sends AND before it logs', async () => {
-    const add = vi.fn();
+    // ⚠️ EVERY PRECONDITION FOR A REAL SEND IS SATISFIED HERE, deliberately.
+    // The tenant has valid BYO credentials, the trigger is enabled and has
+    // template text, and Twilio answers 201. Without the gate this call sends a
+    // message and writes an smsLogs row; with it, neither happens. A mock that
+    // fell short of a live send would pass whether the gate existed or not.
+    const add = vi.fn().mockResolvedValue(undefined);
+    const configured = {
+      exists: true,
+      data: () => ({
+        accountSid: 'AC1', authToken: 'tok', fromNumber: '+15550000000',
+        templates: { checkin_thankyou: { enabled: true, text: 'Thanks {name}!' } },
+      }),
+    };
     vi.doMock('@/lib/firebase-admin', () => ({
-      adminDb: { collection: () => ({ doc: () => ({ collection: () => ({ add, doc: () => ({ get: vi.fn() }) }) }) }) },
+      adminDb: {
+        collection: () => ({
+          doc: () => ({
+            collection: () => ({ add, doc: () => ({ get: async () => configured }) }),
+          }),
+        }),
+      },
     }));
     vi.doMock('@/lib/sms-usage', () => ({
-      reserveSmsSegment: vi.fn(), settleSmsSegments: vi.fn(),
-      refundSmsSegment: vi.fn(), recordByoSegments: vi.fn(),
+      reserveSmsSegment: vi.fn(async () => ({ allowed: true })),
+      settleSmsSegments: vi.fn(), refundSmsSegment: vi.fn(),
+      recordByoSegments: vi.fn(),
     }));
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ sid: 'SM1', num_segments: '1' }), { status: 201 }),
+    );
+
     const { sendAutomatedSms } = await import('../twilio');
     await expect(
       sendAutomatedSms('church', 'checkin_thankyou', '+15551234567', { name: 'Ada' }),
     ).resolves.toBeUndefined();
+
+    expect(fetchSpy, 'a check-in thank-you reached Twilio').not.toHaveBeenCalled();
     // A suppressed send is not history: no 'blocked' rows for messages nobody
     // asked for. Existing smsLogs rows are untouched either way.
     expect(add, 'a suppressed send wrote an smsLogs row').not.toHaveBeenCalled();
