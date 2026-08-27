@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { collection, query, where, onSnapshot, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
@@ -8,6 +8,9 @@ import { usePublicShareUrl } from '../utils/share-url';
 import ShareButton from './ShareButton';
 import { Heart, Clock, ChevronLeft, Loader2 } from 'lucide-react';
 import { HeroBand, Eyebrow } from './member/desktopKit';
+import { useTenant } from '@/contexts/TenantContext';
+import GivingLinks from './donations/GivingLinks';
+import { readGivingLinks } from './donations/giving-providers';
 
 interface Campaign {
   id: string;
@@ -30,6 +33,15 @@ interface CampaignWidgetProps {
 const AMOUNT_PRESETS = [25, 50, 100, 250];
 
 const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
+  // THE-251 — the church's own payment links, for the campaign detail below.
+  //
+  // 🔴 THE SAME TABLE AND THE SAME VALIDATOR AS THE GIVE PAGE. `readGivingLinks`
+  // re-derives every URL against its provider's host allow-list on READ, so a
+  // link that no longer passes stops being a link here exactly as it does in
+  // MainApp — one implementation, one answer, four surfaces.
+  const { branding } = useTenant();
+  const givingLinks = useMemo(() => readGivingLinks(branding), [branding]);
+
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
   const [showDetail, setShowDetail] = useState(false);
@@ -303,6 +315,14 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
                 ? 'Processing...'
                 : `Donate${selectedAmount ? ` $${selectedAmount}` : customAmount ? ` $${customAmount}` : ''}`}
             </button>
+
+            {/*
+              THE-251 — the church's own links, under the card form, rendered by
+              the Give page's own component rather than a second one written
+              here. `GivingLinks` returns null on an empty list, so a church that
+              publishes none sees this detail view exactly as it was.
+            */}
+            <GivingLinks links={givingLinks} heading="Other ways to give" />
           </div>
         </div>
       )}

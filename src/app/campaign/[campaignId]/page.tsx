@@ -5,6 +5,7 @@ import { getTenantFromHost } from '@/lib/server-tenant';
 import PublicCampaign from '@/components/PublicCampaign';
 import PublicRouteAnalytics from '@/components/PublicRouteAnalytics';
 import { tenantFeatures } from '@/lib/tenant-features';
+import { readGivingLinks } from '@/components/donations/giving-providers';
 
 export const dynamic = 'force-dynamic';
 
@@ -122,6 +123,26 @@ export default async function PublicCampaignPage({
   };
 
   const branding = (tenant as any).config || {};
+
+  // THE-251 — the church's OWN payment links, on the campaign a member is
+  // actually looking at. Someone who wants to support THIS appeal should be
+  // able to use the provider their church already told them about, without
+  // hunting for the Give page.
+  //
+  // 🔴 THE GATE IS UNTOUCHED. `loadCampaign` above already refused a free
+  // tenant, a foreign tenant, a pledge campaign and an inactive one, and this
+  // reads nothing it did not already read — `tenant.config` is the same object
+  // the logo and the brand colour come from, three lines up. No new document,
+  // no new query, and nothing here can make a page render that would not have
+  // rendered before: these links only ever ADD to a page already cleared.
+  //
+  // `readGivingLinks` re-derives every URL against its provider's host
+  // allow-list on READ (THE-246), so a link that no longer passes stops being a
+  // link rather than being trusted because it was accepted once. That matters
+  // more here than anywhere: this page is public and unauthenticated, so the
+  // reader is a stranger with no account and no way to judge a bad href.
+  const givingLinks = readGivingLinks(branding);
+
   return (
     <>
       <PublicRouteAnalytics route="/campaign/[campaignId]" />
@@ -131,6 +152,7 @@ export default async function PublicCampaignPage({
         logo={branding.logo || null}
         primaryColor={isValidHex(branding.primaryColor) ? branding.primaryColor : '#B8962E'}
         campaign={campaign}
+        links={givingLinks}
       />
     </>
   );

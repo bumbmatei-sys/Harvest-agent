@@ -1,6 +1,8 @@
 "use client";
 import React, { useState } from 'react';
 import { Heart, Clock, Loader2 } from 'lucide-react';
+import GivingLinks from './donations/GivingLinks';
+import type { PublishedGivingLink } from './donations/giving-providers';
 
 interface PublicCampaignProps {
   tenantId: string;
@@ -16,6 +18,19 @@ interface PublicCampaignProps {
     raised: number;
     endDate: string | null;
   };
+  /**
+   * THE-251 — the church's own payment links, already validated and in the
+   * provider table's order by `readGivingLinks` on the server.
+   *
+   * 🔴 NOT RE-DERIVED HERE, and not fetched here. The page that mounts this
+   * resolves them from the same `tenant.config` it takes the logo from, so the
+   * campaign page and the Give page cannot disagree about which links a church
+   * publishes — a second derivation is exactly how two surfaces drift.
+   *
+   * Optional, and defaulted to empty: every other caller of this component
+   * (tests, and any future mount) keeps rendering exactly as it did.
+   */
+  links?: readonly PublishedGivingLink[];
 }
 
 const AMOUNT_PRESETS = [25, 50, 100, 250];
@@ -41,7 +56,7 @@ const Shell: React.FC<{ logo: string | null; tenantName: string; primaryColor: s
   </div>
 );
 
-const PublicCampaign: React.FC<PublicCampaignProps> = ({ tenantId, tenantName, logo, primaryColor, campaign }) => {
+const PublicCampaign: React.FC<PublicCampaignProps> = ({ tenantId, tenantName, logo, primaryColor, campaign, links = [] }) => {
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState('');
   const [donorName, setDonorName] = useState('');
@@ -195,6 +210,24 @@ const PublicCampaign: React.FC<PublicCampaignProps> = ({ tenantId, tenantName, l
             </button>
             <p className="text-[11px] text-faint text-center mt-3">Secure payment powered by Stripe.</p>
           </div>
+
+          {/*
+            THE-251 — the church's OWN payment links, beneath the Stripe form.
+
+            🔴 THE SAME COMPONENT AND THE SAME TABLE AS THE GIVE PAGE. Logo,
+            name, handle, email, ordering, the external-link affordance and the
+            "not processed by Harvest" line are all `GivingLinks`' already, and
+            a second renderer here would drift from it the first time either
+            changed. Adding the fifth provider stays one row in
+            `GIVING_PROVIDERS` — this file does not know how many there are.
+
+            ⚠️ NO EMPTY BLOCK. `GivingLinks` returns null on an empty list, so a
+            campaign whose church publishes no links renders exactly what it
+            rendered before this change — no heading, no rule, no gap. That is
+            the Give page's fourth state reproduced here by the same mechanism
+            rather than by a second condition that could disagree with it.
+          */}
+          <GivingLinks links={links} heading="Other ways to give" />
         </div>
       </div>
     </Shell>
