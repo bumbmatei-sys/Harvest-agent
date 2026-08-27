@@ -3,11 +3,37 @@ import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { sendSms, resolveTwilioConfig, type ResolvedTwilioConfig } from '@/lib/twilio';
 import { captureHandledError } from '@/lib/money-path-sentry';
+import { SMS_FEATURE_ENABLED, SMS_HIDDEN_MESSAGE } from '@/lib/sms-feature';
 
 export const dynamic = 'force-dynamic';
 
 // Twilio sends application/x-www-form-urlencoded for inbound SMS webhooks.
 export async function POST(request: NextRequest) {
+  // ── THE-245 — 🔴 THE ONE GATE THAT IS NOT ABOUT THE UI ─────────────────────
+  //
+  // This route is PUBLIC and UNAUTHENTICATED. It is reached by Twilio POSTing an
+  // inbound message, so no nav entry, no permission and no plan gate stands in
+  // front of it: a church whose Twilio number still points here would keep
+  // driving Text-to-Give end to end while every screen in the app said the
+  // feature was gone. Hiding the nav entry alone would have left the feature
+  // fully live to anyone holding the number.
+  //
+  // FIRST STATEMENT IN THE HANDLER, before the body is even read and before any
+  // Firestore lookup, so a hidden feature costs nothing and touches nothing.
+  //
+  // 503 rather than an empty TwiML 200: this is a refusal, not a non-match. The
+  // route EXISTS and is coming back, which is what a Twilio retry and an
+  // operator reading the logs should both be told — an empty 200 would report a
+  // healthy endpoint that silently drops every message. No reply is sent either
+  // way, so no texter receives anything and no segment is billed.
+  //
+  // Nothing is deleted: the twilioNumbers index, the tenant's text2give keyword
+  // and every smsLogs row stay exactly where they are, and flipping
+  // SMS_FEATURE_ENABLED back to true restores this route unchanged.
+  if (!SMS_FEATURE_ENABLED) {
+    return NextResponse.json({ error: SMS_HIDDEN_MESSAGE }, { status: 503 });
+  }
+
   try {
     const text = await request.text();
     const params = new URLSearchParams(text);

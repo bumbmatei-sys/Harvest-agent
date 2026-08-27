@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { requireAdmin } from '@/lib/api-auth';
 import { getTwilioConfig, validateTwilio, sendSms } from '@/lib/twilio';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
+import { SMS_FEATURE_ENABLED, SMS_HIDDEN_MESSAGE } from '@/lib/sms-feature';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +12,12 @@ export const dynamic = 'force-dynamic';
  *   { mode: 'connection' }        → verify credentials only
  *   { mode: 'sms', to: '+1555…' } → send a test SMS to the given number
  */
+// THE-245 — refused while the SMS feature is hidden. A test send is a real
+// billed send, so it is gated like any other.
 export async function POST(request: NextRequest) {
+  if (!SMS_FEATURE_ENABLED) {
+    return NextResponse.json({ error: SMS_HIDDEN_MESSAGE }, { status: 503 });
+  }
   const authResult = await requireAdmin(request);
   if (authResult instanceof NextResponse) return authResult;
   const tenantId = authResult.tenantId || PLATFORM_TENANT_ID;

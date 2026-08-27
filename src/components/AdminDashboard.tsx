@@ -39,6 +39,7 @@ import BillingAndPayments from './BillingAndPayments';
 import GraceWindowBanner from './GraceWindowBanner';
 import { AdminScreenHeader, AdminHeaderContext, AdminHeaderOverride } from './AdminScreenHeader';
 import { getPlanFeatures, hasBrandingAccess, AFFILIATE_PROGRAM_ENABLED, FREE_PLAN } from '../utils/plan-features';
+import { SMS_FEATURE_ENABLED } from '../lib/sms-feature';
 import { db, auth } from '../firebase';
 import { checkRosterAdminStatus } from '../utils/tenant.utils';
 import { readCachedRosterAnswer } from '../utils/roster-cache';
@@ -667,7 +668,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       (hasFullAccess || perms.manageLivestream) &&
       { id: 'livestream', label: 'Livestream', icon: Radio },
     // SMS Automation (Twilio)
-    navAllows(features?.smsAutomation) &&
+    // Master switch first, exactly as the Affiliate entry below does it: while
+    // SMS is hidden NOBODY gets the entry, super admin included. The plan and
+    // permission clauses behind it are left untouched, so flipping
+    // SMS_FEATURE_ENABLED restores the identical entitlement. The 'sms' id
+    // stays listed in MORE_GROUPS / DESKTOP_NAV_GROUPS above — those groups are
+    // filtered against this array, so an absent tab drops out of its group on
+    // its own and the grouping survives for the flip back. The literal is also
+    // what `admin-sections.ts` and its drift test read, so it must stay written
+    // here whether or not it renders.
+    SMS_FEATURE_ENABLED &&
+      navAllows(features?.smsAutomation) &&
       (hasFullAccess || perms.manageSms) &&
       { id: 'sms', label: 'SMS', icon: MessageSquare },
     // Community (Rocket.Chat)
@@ -1166,9 +1177,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               ? <div className="p-4 lg:p-0"><AdminLivestream /></div>
               : <PlanUpgradeScreen featureName="Livestream" featureKey="livestream" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'sms' ? (
-            planAllows(features?.smsAutomation)
-              ? <div className="p-4 lg:p-0"><AdminSms /></div>
-              : <PlanUpgradeScreen featureName="SMS" featureKey="smsAutomation" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
+            // With SMS hidden the nav entry is gone, so this branch only catches
+            // a typed or bookmarked /admin/sms — and it must not render AdminSms
+            // (broadcast composer, automation templates, Text-to-Give setup).
+            //
+            // 🔴 NOT PlanUpgradeScreen. That screen sells the tier that includes
+            // the feature, which would advertise SMS on the very screen meant to
+            // hide it — and the tiers that own `smsAutomation` cannot use it
+            // either right now. Same "Page not found." treatment as the hidden
+            // affiliate section below. Flip SMS_FEATURE_ENABLED to bring the
+            // section, and its plan gate, back exactly as they were.
+            !SMS_FEATURE_ENABLED
+              ? <div className="flex flex-col items-center justify-center h-full text-faint">
+                  <p className="text-lg font-medium">Page not found.</p>
+                </div>
+              : planAllows(features?.smsAutomation)
+                ? <div className="p-4 lg:p-0"><AdminSms /></div>
+                : <PlanUpgradeScreen featureName="SMS" featureKey="smsAutomation" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'community' ? (
             planAllows(features?.communityGroups)
               ? <div className="p-4 pb-0 lg:p-0 h-full"><AdminCommunity onOpenAttachment={(type, id) => {

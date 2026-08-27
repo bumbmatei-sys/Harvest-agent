@@ -11,6 +11,7 @@ import { AdminSectionLabel, AdminBadge, statusTone } from './admin/AdminUI';
 // Rules 2 and 3 (form-layout.ts). Rule 1 is deliberately NOT applied here — see
 // the note on the page root below.
 import { FIELD_WIDTH, ACTION_BUTTON } from './layout/form-layout';
+import { SMS_FEATURE_ENABLED } from '../lib/sms-feature';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 
@@ -165,7 +166,7 @@ const SmsUsageMeter: React.FC<{ usage: SmsUsage; onUpgrade: () => void }> = ({ u
   );
 };
 
-const AdminSms: React.FC = () => {
+const AdminSmsScreen: React.FC = () => {
   const navigate = useNavigate();
   // Fall back to the platform tenant for a super admin if the store value is
   // briefly null so the history loader and send guard resolve. On a tenant
@@ -503,5 +504,28 @@ const AdminSms: React.FC = () => {
     </div>
   );
 };
+
+/**
+ * THE-245 — the whole SMS admin screen, behind the master switch.
+ *
+ * 🔴 THIS COMPONENT IS WHERE TEXT-TO-GIVE LIVES, so hiding it hides a GIVING
+ * capability as well as a messaging one. That is unavoidable rather than
+ * incidental: Text-to-Give is inbound SMS end to end — the keyword arrives on
+ * the public `/api/sms/incoming` webhook and the reply goes back out through
+ * `sendSms` — so there is no state in which SMS is hidden and Text-to-Give
+ * still works.
+ *
+ * A wrapper, not an early `return null`, so the screen's many hooks are never
+ * conditionally called: while SMS is hidden nothing mounts, so no
+ * `/api/sms/config`, `/api/sms-usage` or `smsBroadcasts` read is ever issued.
+ * `AdminDashboard` already refuses to route here, so this is the second layer —
+ * it also covers any future caller that mounts the screen directly.
+ *
+ * Nothing below is deleted. Flip SMS_FEATURE_ENABLED and the broadcast
+ * composer, the automation templates and the Text-to-Give card all return
+ * exactly as they were, reading the same saved configuration and the same
+ * `smsBroadcasts` history.
+ */
+const AdminSms: React.FC = () => (SMS_FEATURE_ENABLED ? <AdminSmsScreen /> : null);
 
 export default AdminSms;

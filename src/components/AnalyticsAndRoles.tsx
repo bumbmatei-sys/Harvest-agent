@@ -5,6 +5,7 @@ import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
 import { getTenantScope, SUPER_ADMIN_EMAIL } from '../utils/tenant-scope';
 import { AFFILIATE_PROGRAM_ENABLED } from '../utils/plan-features';
+import { SMS_FEATURE_ENABLED } from '../lib/sms-feature';
 import {
   resolveAdminLimit, countAdminSeats, isAtAdminLimit, adminLimitMessage,
   wouldSpendNewSeat, UNLIMITED,
@@ -171,7 +172,11 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
       { key: "manageAdmins", label: "Manage Admins", desc: "Create admins and edit their permissions", icon: Shield },
       { key: "manageBranding", label: "Branding", desc: "Change logo, colors, background and domain", icon: Palette },
       { key: "manageAffiliate", label: "Affiliate Program", desc: "View commission rates and referral payouts", icon: Link2 },
-      { key: "manageSettings", label: "Settings & Integrations", desc: "Configure SMS and third-party integrations", icon: Plug },
+      // THE-245 — the description names the integrations this row unlocks, and
+      // SMS is hidden, so the visible copy stops naming it. `desc` is display
+      // copy only: the `manageSettings` key, and everything it grants, are
+      // unchanged.
+      { key: "manageSettings", label: "Settings & Integrations", desc: SMS_FEATURE_ENABLED ? "Configure SMS and third-party integrations" : "Configure third-party integrations", icon: Plug },
     ],
   },
 ];
@@ -191,9 +196,14 @@ export const ALL_PERMISSION_DEFS: PermissionItem[] = PERMISSION_CATEGORIES.flatM
 // `manageAffiliate` keeps it, Full Access still grants it, and nothing in
 // Firestore is rewritten by hiding a row. Filtering the catalog itself would
 // silently strip the flag off every doc that round-trips through this screen.
-const HIDDEN_PERMISSION_KEYS = new Set<string>(
-  AFFILIATE_PROGRAM_ENABLED ? [] : ['manageAffiliate']
-);
+const HIDDEN_PERMISSION_KEYS = new Set<string>([
+  ...(AFFILIATE_PROGRAM_ENABLED ? [] : ['manageAffiliate']),
+  // THE-245 — the "SMS Broadcasts" row, while SMS is hidden. The same
+  // DISPLAY-ONLY treatment for the same reason: an admin who already holds
+  // `manageSms` keeps it, Full Access still grants it, nothing in Firestore is
+  // rewritten, and the row returns with the switch.
+  ...(SMS_FEATURE_ENABLED ? [] : ['manageSms']),
+]);
 export const VISIBLE_PERMISSION_CATEGORIES: PermissionCategory[] = PERMISSION_CATEGORIES
   .map((c) => ({ ...c, items: c.items.filter((i) => !HIDDEN_PERMISSION_KEYS.has(i.key)) }))
   .filter((c) => c.items.length > 0);

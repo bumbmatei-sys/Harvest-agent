@@ -2,6 +2,7 @@ import { adminDb } from './firebase-admin';
 import { checkDestination } from './sms-destination';
 import { reserveSmsSegment, settleSmsSegments, refundSmsSegment, recordByoSegments } from './sms-usage';
 import { getPlatformTwilioConfig } from './twilio-platform';
+import { SMS_FEATURE_ENABLED, SMS_HIDDEN_MESSAGE } from './sms-feature';
 
 /**
  * Twilio helpers. A tenant's OWN credentials are stored per-tenant (admin-only)
@@ -115,7 +116,13 @@ export type SendSmsCode =
   | 'invalid_destination'
   | 'sms_cap_reached'
   | 'twilio_error'
-  | 'send_failed';
+  | 'send_failed'
+  // THE-245 — the feature is hidden, so nothing was sent. Deliberately its own
+  // code rather than reusing `send_failed`: `statusForCode` files it as
+  // 'blocked', which is the truth ("we chose not to send") and reads correctly
+  // to an admin next to the two other policy stops. Nothing sends while
+  // SMS_FEATURE_ENABLED is false, so today this is returned and never logged.
+  | 'feature_hidden';
 
 export interface SendSmsResult {
   ok: boolean;
@@ -193,6 +200,20 @@ export async function sendSms(
   body: string,
   meter: SmsMeter,
 ): Promise<SendSmsResult> {
+  // 0. THE-245 MASTER SWITCH — before everything, including the cap reserve.
+  //    This is THE server-side gate: sendSms is the single outbound funnel, so
+  //    while the switch is off nothing in the app can reach Twilio, spend a
+  //    segment or arrive on a phone — not the broadcast route, not the test
+  //    send, not a Text-to-Give reply, not an automated trigger.
+  //
+  //    🔴 FIRST, AND DELIBERATELY BEFORE `reserveSmsSegment`. Gating after the
+  //    reserve would consume a tenant's allotment for a message that was never
+  //    sent. Nothing is metered, nothing is written, nothing is refunded,
+  //    because nothing was ever taken.
+  if (!SMS_FEATURE_ENABLED) {
+    return { ok: false, error: SMS_HIDDEN_MESSAGE, code: 'feature_hidden' };
+  }
+
   // 1. US-only destination gate — before the cap check and before Twilio.
   const dest = checkDestination(to);
   if (!dest.allowed) {
@@ -304,6 +325,22 @@ export async function sendAutomatedSms(
   vars: Record<string, string>,
 ): Promise<void> {
   try {
+    // THE-245 — return before the config read AND before the smsLogs write.
+    //
+    // 🔴 THE THREE CALLERS ARE CHECK-IN, EVENT REGISTRATION AND PLEDGE, and
+    // none of them is harmed by this. All three are best-effort, none blocks on
+    // the result, and every one of them ALREADY no-ops for any tenant with no
+    // Twilio credentials or the trigger switched off — which is most of them.
+    // A check-in is still recorded, a registration still confirms, a pledge is
+    // still written, and all three email confirmations still send. What stops
+    // is the text, which is the whole point: an untested path must not spend
+    // money or reach a phone from a check-in either.
+    //
+    // Ahead of the log write on purpose: a suppressed send is not history, and
+    // writing 'blocked' rows for messages nobody asked for would fill an
+    // admin's smsLogs with noise about a feature they cannot see. Existing rows
+    // are untouched.
+    if (!SMS_FEATURE_ENABLED) return;
     if (!to) return;
     const cfg = await getTwilioConfig(tenantId);
     if (!cfg) return;
@@ -332,5 +369,7 @@ export async function sendAutomatedSms(
  * (non-US destination, cap reached) so they read differently from a genuine
  * Twilio failure — an admin can tell "we chose not to send" from "it broke". */
 function statusForCode(code?: SendSmsCode): string {
-  return code === 'non_us_destination' || code === 'sms_cap_reached' ? 'blocked' : 'failed';
+  return code === 'non_us_destination' || code === 'sms_cap_reached' || code === 'feature_hidden'
+    ? 'blocked'
+    : 'failed';
 }
