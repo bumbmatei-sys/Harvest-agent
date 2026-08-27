@@ -53,6 +53,28 @@ import { CONTROL_DENSITY, FIELD_WIDTH, FORM_MEASURE, READING_MEASURE } from './l
  * liability, and cannot put it on any statement. A church that discovers that
  * distinction in January, from a member asking where their receipt is, has been
  * failed by this screen.
+ *
+ * ─── THE-249 — the third gap, and the one remedy that exists ────────────────
+ *
+ * THE-246 stated two of the three: no receipt, no statement. The third is the
+ * CRM, and it is the one a church hits first. `contacts.totalDonated`,
+ * `lastDonationAt` and the derived pipeline stage are written by exactly two
+ * things — the Stripe donation webhook (`src/lib/donation-webhook.ts`) and the
+ * CRM's own `donation` activity — so a member who gives by PayPal stays on $0
+ * and on the Member stage forever. A church that adds a link, watches gifts
+ * arrive and then opens the CRM concludes the CRM is broken.
+ *
+ * ⚠️ The remedy EXISTS and is named here rather than gestured at: AdminCRM's
+ * Add Activity → Donation increments `totalDonated` and stamps
+ * `lastDonationAt`. It is reachable from every tier that can reach this screen
+ * — both gate on `fundraising` (`showGiving` in AdminCRM), so there is no tier
+ * that can paste a link and cannot record the gift.
+ *
+ * 🔴 It fixes the CRM and NOTHING ELSE. Giving statements are built from
+ * `tenants/{id}/invoices` where `type === 'donation_receipt'`, and the only
+ * writer of those is the Stripe donation webhook. No admin surface writes one,
+ * so no manual entry can put a gift on a statement. The copy below says that
+ * out loud instead of letting "record it manually" read as a fix for all three.
  */
 
 /** The draft an admin is editing — strings, exactly as typed. */
@@ -309,6 +331,15 @@ const AdminDonations: React.FC = () => {
                 Harvest never sees them, so they are missing from donation history, from a
                 member&apos;s receipts, and from every year-end statement you generate. Only
                 gifts given through Stripe are recorded and receipted.
+              </p>
+              <p>
+                <b className="text-strong">Your CRM will not record them either.</b> A member
+                who gives this way keeps a total given of $0, no last-gift date and the Member
+                stage &mdash; the same as someone who has never given. To record one, open the
+                contact in your CRM, press Add Activity, choose Donation and enter the amount:
+                that adds to their total given and dates the gift. It does not put the gift on
+                a giving statement, and nothing else does either &mdash; statements are built
+                from Stripe gifts alone.
               </p>
             </div>
           </div>
