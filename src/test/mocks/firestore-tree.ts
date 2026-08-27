@@ -45,6 +45,16 @@ export interface ReadCall {
   after: string | null;
   /** How many documents came back. */
   returned: number;
+  /**
+   * The `where()` filters in force on this read.
+   *
+   * Recorded because a path alone cannot say WHICH sweep a read belongs to:
+   * `contacts` is paged twice by uid and twice by email, on two different code
+   * paths, and a test that has to prove each one pages separately needs to tell
+   * them apart. Also what lets the breach guard assert that every page fetch —
+   * not just the first — carried a concrete scope.
+   */
+  filters: Filter[];
 }
 
 /**
@@ -59,6 +69,9 @@ export interface ReadCall {
 export const recordedReads: ReadCall[] = [];
 
 type Data = Record<string, unknown>;
+
+/** One `where()` clause, as the fake resolves it. */
+interface Filter { field: string; op: string; value: unknown }
 
 /** path → { docId → data }. Path is the parent collection, e.g. `tenants/t1/invoices`. */
 const store = new Map<string, Map<string, Data>>();
@@ -135,8 +148,6 @@ function applyPatch(target: Data, patch: Data): void {
 
 // ── Query resolution ─────────────────────────────────────────────────────────
 
-interface Filter { field: string; op: string; value: unknown }
-
 function readField(data: Data, field: string): unknown {
   return field.split('.').reduce<unknown>(
     (acc, seg) => (typeof acc === 'object' && acc !== null ? (acc as Data)[seg] : undefined),
@@ -203,6 +214,7 @@ function makeQuery(path: string | null, group: string | null, filters: Filter[],
         limit: cap,
         after,
         returned: page.length,
+        filters: filters.map((f) => ({ ...f })),
       });
       return snapshotFor(page);
     },
