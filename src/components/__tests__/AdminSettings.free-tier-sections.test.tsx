@@ -77,6 +77,7 @@ import {
   isProviderAvailable,
 } from '../settings/integration-providers';
 import type { TenantPlan } from '../../types/tenant.types';
+import { SMS_FEATURE_ENABLED } from '../../lib/sms-feature';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -225,15 +226,24 @@ describe('a free tenant\'s Settings', () => {
 
 // ─── 2. 🔴 the three priced tiers are unchanged ──────────────────────────────
 describe("the three priced tiers' Settings sections are unchanged", () => {
-  // Pinned per tier, in render order. Giving Statements is Ministry-only,
-  // SMS (Twilio) is every paid tier, and the AI Assistant row is behind
-  // AI_TELEGRAM_ASSISTANT_ENABLED (false) on every tier including this list.
+  // Pinned per tier, in render order. Giving Statements is Ministry-only, and
+  // the AI Assistant row is behind AI_TELEGRAM_ASSISTANT_ENABLED (false) on
+  // every tier including this list.
+  //
+  // 🔴 THE-250 — SMS (Twilio) is every paid tier's row BEHIND the plan gate,
+  // but the master switch now sits in front of it, so it renders on none of
+  // them while SMS_FEATURE_ENABLED is false. Spread on the flag rather than
+  // deleted from these lists: this file's whole claim is that the priced tiers
+  // are UNCHANGED, and a hardcoded list would quietly restate that claim
+  // against the wrong baseline the moment the switch flips back. With the flag
+  // on, all three tiers expect the row again and this suite is the proof the
+  // hide took nothing with it.
   const EXPECTED: Record<string, string[]> = {
     plus: [
       'Appearance',
       GIVING_ROW,
       'Onboarding Questions',
-      'SMS (Twilio)',
+      ...(SMS_FEATURE_ENABLED ? ['SMS (Twilio)'] : []),
       'Integrations',
       'Cancel Subscription',
       'Customize Navigation',
@@ -242,7 +252,7 @@ describe("the three priced tiers' Settings sections are unchanged", () => {
       'Appearance',
       GIVING_ROW,
       'Onboarding Questions',
-      'SMS (Twilio)',
+      ...(SMS_FEATURE_ENABLED ? ['SMS (Twilio)'] : []),
       'Integrations',
       'Cancel Subscription',
       'Customize Navigation',
@@ -252,7 +262,7 @@ describe("the three priced tiers' Settings sections are unchanged", () => {
       GIVING_ROW,
       'Onboarding Questions',
       'Giving Statements',
-      'SMS (Twilio)',
+      ...(SMS_FEATURE_ENABLED ? ['SMS (Twilio)'] : []),
       'Integrations',
       'Cancel Subscription',
       'Customize Navigation',

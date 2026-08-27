@@ -4,6 +4,7 @@ import { Crown, Settings2, Bot, Plug, AlertTriangle, Check, FileText, MessageSqu
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures, AI_TELEGRAM_ASSISTANT_ENABLED, PLAN_DISPLAY_NAMES, PLAN_ORDER, formatPlanPrice, isUnpricedTier } from '../utils/plan-features';
 import { hasPlatformOverride } from '../utils/tenant-scope';
+import { SMS_FEATURE_ENABLED } from '../lib/sms-feature';
 import SettingsAccordion from './settings/SettingsAccordion';
 import OnboardingSection from './settings/OnboardingSection';
 import GivingStatementsSection from './settings/GivingStatementsSection';
@@ -298,7 +299,21 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       label: 'SMS (Twilio)',
       icon: <MessageSquare size={18} />,
       content: <SmsSection />,
-      hidden: !platformOverride && !currentFeatures?.smsAutomation,
+      // 🔴 THE-250 — the row THE-245 could not reach. `SmsSection` already
+      // renders `null` while SMS is hidden, so this label opened onto an empty
+      // panel: a Connected Service that connects nothing, on a screen whose
+      // whole job is to say what is connected.
+      //
+      // Master switch FIRST, exactly as the nav entry in AdminDashboard and the
+      // AI Assistant row below do it — one idiom on this screen, not two. The
+      // switch is absolute and ignores `platformOverride` (as
+      // AI_TELEGRAM_ASSISTANT_ENABLED does) because an override is a plan
+      // override, and no tier can use a feature the server refuses with 503.
+      //
+      // The plan clause behind it is UNTOUCHED and still reads the FEATURE, not
+      // the tier, so flipping SMS_FEATURE_ENABLED restores the identical
+      // entitlement — `smsAutomation` keeps its PLAN_FEATURES values throughout.
+      hidden: !SMS_FEATURE_ENABLED || (!platformOverride && !currentFeatures?.smsAutomation),
     },
     {
       id: 'ai-assistant',

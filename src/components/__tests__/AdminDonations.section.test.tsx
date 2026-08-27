@@ -9,6 +9,7 @@ import { getPlanFeatures, PLAN_ORDER, PLAN_DISPLAY_NAMES } from '../../utils/pla
 import { ADMIN_SECTION_TABS, SLUG_TO_TAB, TAB_TO_SLUG } from '../../lib/admin-sections';
 import { GIVING_PROVIDERS } from '../donations/giving-providers';
 import type { TenantPlan } from '../../types/tenant.types';
+import { SMS_FEATURE_ENABLED } from '../../lib/sms-feature';
 
 /**
  * ═════════════════════════════════════════════════════════════════════════════
@@ -411,9 +412,17 @@ describe('no path points at a hidden or removed Settings screen', () => {
 
   it('leaves every other Settings row reaching what it always did', async () => {
     // The move must not take the rest of the screen with it.
+    //
+    // 🔴 THE-250 — "SMS (Twilio)" is spread on the master switch, not dropped
+    // from this list. This assertion's job is that the DONATIONS move took no
+    // other row with it, so the row has to stay named here: with
+    // SMS_FEATURE_ENABLED off it is absent for a reason that is not this
+    // ticket's, and with it on this guard must catch the Donations move
+    // breaking it again. A hardcoded list would have to pick one of those.
     await open('max', 'settings');
     const labels = navLabels();
-    for (const row of ['Appearance', 'Onboarding Questions', 'Giving Statements', 'SMS (Twilio)', 'Integrations']) {
+    for (const row of ['Appearance', 'Onboarding Questions', 'Giving Statements',
+                       ...(SMS_FEATURE_ENABLED ? ['SMS (Twilio)'] : []), 'Integrations']) {
       expect(labels, `Settings lost its "${row}" row`).toContain(row);
     }
   });

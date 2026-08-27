@@ -123,12 +123,15 @@ const SmsCredentialsForm: React.FC = () => {
  * settings screen makes no `/api/sms/config` request. (That route refuses with
  * 503 anyway — this is the second layer, not the only one.)
  *
- * ⚠️ THE SIDEBAR ROW ABOVE THIS IS NOT MINE TO REMOVE. The "SMS (Twilio)" entry
- * is declared in `components/AdminSettings.tsx`, which another ticket owns
- * concurrently, so while SMS is hidden that row still lists and opens onto
- * nothing. The one-line fix belongs on its `hidden:` clause and is written out
- * in the THE-245 pull request; it is a label, not a reachable surface — no
- * credential can be entered here and no request leaves this component.
+ * ✅ THE SIDEBAR ROW ABOVE THIS IS NOW GATED TOO — THE-250. The "SMS (Twilio)"
+ * entry is declared in `components/AdminSettings.tsx`, which another ticket
+ * owned while THE-245 was in flight, so that row listed and opened onto this
+ * `null` until the concurrent work merged. Its `hidden:` clause now leads with
+ * `SMS_FEATURE_ENABLED`, ahead of the untouched plan clause, so the label goes
+ * with the panel and comes back with it.
+ *
+ * This wrapper stays regardless: the row is one of two callers' worth of
+ * defence, and the gate that matters is the one closest to the form.
  */
 export const SmsSection: React.FC = () =>
   SMS_FEATURE_ENABLED ? <SmsCredentialsForm /> : null;
