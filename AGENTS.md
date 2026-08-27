@@ -118,6 +118,13 @@ src/
 │   ├── AdminCourses.tsx      # Course management
 │   ├── AdminChurches.tsx     # Church management (Ministry)
 │   ├── AdminSettings.tsx     # Tenant settings
+│   ├── AdminDonations.tsx    # Donations — Stripe Connect + the church's own
+│   │                         #   payment links (PayPal/Cash App/Venmo/Zelle).
+│   │                         #   Links live on `tenants/{id}.config.givingLinks`
+│   │                         #   (world-readable doc — the emails on it are
+│   │                         #   PUBLIC), and every URL is re-validated on read
+│   │                         #   against a per-provider host allow-list in
+│   │                         #   components/donations/giving-providers.ts.
 │   ├── AdminTenants.tsx      # Super admin tenant management
 │   ├── AIChat.tsx            # AI chat interface
 │   ├── AuthPage.tsx          # Login/signup

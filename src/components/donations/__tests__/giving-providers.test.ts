@@ -188,11 +188,22 @@ describe('a non-https or javascript: URL is rejected', () => {
     // 🔴 THE TRAP IN THE CONVENIENCE. A church that types `paypal.me/grace` is
     // understood, which means the validator adds a scheme when one is missing.
     // If that rule ran on a string that ALREADY declares `javascript:`, the
-    // result would parse as an https URL and the attack would pass. It does not:
-    // a declared scheme is kept and judged.
-    const result = validateGivingUrl('javascript:alert(1)', paypal);
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.reason, 'a hostile scheme was silently prefixed').not.toBe('foreign-host');
+    // prefixed result would be judged as an https URL rather than as the hostile
+    // scheme it is. It does not: a declared scheme is KEPT, and the refusal
+    // therefore comes from the https rule.
+    //
+    // ⚠️ Asserted as the REASON, not merely as `ok === false`. Prefixing
+    // `javascript:alert(1)` happens to produce an unparseable URL (`alert(1)`
+    // is not a port), so a validator that got this wrong would still refuse
+    // THIS input — by accident, and for the wrong reason. Pinning the reason is
+    // what makes the rule itself the thing under test.
+    for (const hostile of ['javascript:alert(1)', 'data:text/html,<b>x</b>', 'vbscript:msgbox(1)']) {
+      const result = validateGivingUrl(hostile, paypal);
+      expect(result.ok, `"${hostile}" passed`).toBe(false);
+      if (!result.ok) {
+        expect(result.reason, `"${hostile}" was refused for the wrong reason`).toBe('not-https');
+      }
+    }
   });
 
   it('does add https:// to a bare host, so a church that omits it is understood', () => {
