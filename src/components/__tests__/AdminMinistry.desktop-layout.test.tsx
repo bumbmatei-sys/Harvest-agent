@@ -88,6 +88,18 @@ const lookup = (q: unknown): unknown[] => {
 /** Every write this suite would let through, so "nothing was written" is checkable. */
 const writes: string[] = [];
 
+// ── THE-245 ────────────────────────────────────────────────────────────────
+// Run with the SMS master switch ON. This suite pins the RENDERED LAYOUT of
+// screens that include SMS surfaces, and a gated-off screen renders nothing to
+// measure. Keeping the switch on here means every width, height and touch
+// target this file guards is still guarded — and is proof the layout survives
+// the hide intact, ready for the flip back. That the surfaces are ABSENT while
+// the switch is off is asserted in the-245-sms-hidden.test.tsx.
+vi.mock('../../lib/sms-feature', () => ({
+  SMS_FEATURE_ENABLED: true,
+  SMS_HIDDEN_MESSAGE: 'SMS is temporarily unavailable.',
+}));
+
 vi.mock('../../firebase', () => ({ db: {}, auth: { currentUser: { uid: 'u', email: 'a@t.com' } } }));
 vi.mock('firebase/firestore', () => ({
   collection: (_d: unknown, ...s: string[]) => ({ __path: s.join('/') }),
@@ -195,10 +207,55 @@ interface PrePr {
  * PR's import line, and comment-only and blank lines. What survives is the
  * behaviour — every query, write, handler and value.
  */
-const stripPresentation = (src: string): string => src
+const stripPresentation = (src: string): string => unwrapSmsGate(src)
   .replace(/className=(?:"[^"]*"|\{`[^`]*`\}|\{[A-Za-z_$][\w.$]*\})/g, 'className=X')
   .replace(/^import \{[^}]*\} from '\.\/layout\/form-layout';$/m, '')
   .replace(/^\s*(?:\/\/.*)?$\n?/gm, '');
+
+/**
+ * THE-245 — undo the SMS master-switch gate before hashing, and NOTHING else.
+ *
+ * AdminFundraising's "Send Reminder" POSTs to /api/sms/broadcast, so THE-245
+ * hid it with the rest of SMS. That is a real edit to a file this suite pins
+ * byte-for-byte, and the two honest ways to handle it are to re-record the
+ * baseline or to reverse the known edit exactly. Re-recording is the weaker one:
+ * it would bless every other byte that moved in the same breath, which is the
+ * one thing this guard exists to catch.
+ *
+ * So the gate is reversed HERE, by exact string, and the hash is still taken
+ * against the pre-PR revision. If any of these strings stops matching — because
+ * the gate was reshaped, or because something else in the file moved — the
+ * replacement silently no-ops and the hash goes red, which is the correct
+ * outcome in both cases. What this guard actually protects (ticket prices,
+ * donation amounts, fees, checkout calls) is untouched by the gate and stays
+ * fully pinned.
+ *
+ * Delete this function when the SMS switch is flipped back on and the gate comes
+ * out of AdminFundraising.
+ */
+const SMS_GATE_EDITS: [string, string][] = [
+  ["import { SMS_FEATURE_ENABLED } from '../lib/sms-feature';\n", ''],
+  [
+    `              {/* THE-245 — "Send Reminder" POSTs to /api/sms/broadcast, so it is an
+                  SMS surface living outside AdminSms and it goes with the rest.
+                  The route refuses with 503 while the switch is off, so leaving
+                  the button would offer a church an action that can only fail.
+                  Everything else on a pledge campaign — the pledge list, Add
+                  Pledge, Copy Pledge Link — is untouched. */}
+              {SMS_FEATURE_ENABLED && (
+                <button onClick={() => setReminderConfirm(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-line text-muted hover:bg-surface-sunken">
+                  <Send size={13} /> Send Reminder
+                </button>
+              )}`,
+    `              <button onClick={() => setReminderConfirm(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-line text-muted hover:bg-surface-sunken">
+                <Send size={13} /> Send Reminder
+              </button>`,
+  ],
+  ['{SMS_FEATURE_ENABLED && reminderConfirm && (', '{reminderConfirm && ('],
+];
+
+const unwrapSmsGate = (src: string): string =>
+  SMS_GATE_EDITS.reduce((acc, [after, before]) => acc.replace(after, before), src);
 
 const firestorePathsOf = (src: string): string[] =>
   [...src.matchAll(/(?:collection|doc)\(db,\s*([^)]*)\)/g)].map((m) => m[1].replace(/\s+/g, ' '));

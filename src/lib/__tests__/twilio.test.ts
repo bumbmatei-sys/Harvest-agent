@@ -16,6 +16,17 @@ const { mockReserve, mockSettle, mockRefund, mockRecordByo } = vi.hoisted(() => 
   mockRecordByo: vi.fn().mockResolvedValue(undefined),
 }));
 
+// ── THE-245 ────────────────────────────────────────────────────────────────
+// This suite pins what SMS DOES, so it runs with the master switch ON. That is
+// the hide-not-delete guarantee expressed as a test: every rule below — the
+// US-only gate, the cap, the reserve/settle/refund order, the smsLogs write —
+// still holds, unchanged, the moment SMS_FEATURE_ENABLED goes back to true.
+// The OFF behaviour is covered in the-245-sms-hidden.test.ts.
+vi.mock('@/lib/sms-feature', () => ({
+  SMS_FEATURE_ENABLED: true,
+  SMS_HIDDEN_MESSAGE: 'SMS is temporarily unavailable.',
+}));
+
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {
     collection: () => ({

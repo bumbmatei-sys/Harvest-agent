@@ -64,6 +64,19 @@ const ctx = vi.hoisted(() => ({
 const currentUser = vi.hoisted(() => ({ current: { uid: 'user-1' } as { uid: string } | null }));
 const userQuery = vi.hoisted(() => ({ current: { data: undefined as unknown, isLoading: false } }));
 
+// ── THE-245 ────────────────────────────────────────────────────────────────
+// Run with the SMS master switch ON. This suite is about PLAN ENTITLEMENT — who
+// bought what — and the SMS tab is one of the cells it checks. Gating it off
+// here would silently delete that column from the matrix; mocking it on keeps
+// every tier's entitlement asserted AND doubles as the restore proof: flip
+// SMS_FEATURE_ENABLED back to true and these are the surfaces that return.
+// That the tab is GONE while the switch is off is asserted in
+// the-245-sms-hidden.test.tsx instead.
+vi.mock('../../lib/sms-feature', () => ({
+  SMS_FEATURE_ENABLED: true,
+  SMS_HIDDEN_MESSAGE: 'SMS is temporarily unavailable.',
+}));
+
 vi.mock('react-router-dom', () => ({ useNavigate: () => navigate, useParams: () => params.current }));
 vi.mock('../../utils/tenant.utils', () => ({ checkRosterAdminStatus }));
 vi.mock('../../utils/tenant-scope', () => ({
