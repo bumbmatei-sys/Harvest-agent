@@ -250,7 +250,34 @@ const ragAdd = async () => { await seedStore(); return mount(React.createElement
 const ragSources = async () => { const c = await ragAdd(); await clickByText(c, 'Sources'); return c; };
 const tenants = async () => { await seedStore(); return mount(React.createElement((await import('../AdminTenants')).default)); };
 const sms = async () => { await seedStore(); return mount(React.createElement((await import('../AdminSms')).default)); };
-const statements = async () => { await seedStore(); return mount(React.createElement((await import('../AdminGivingStatements')).default)); };
+/**
+ * ⚠️ THE-249's disclosure block is lifted out before this screen is inventoried.
+ *
+ * This suite's fixture is the pre-PR rendering of the DESKTOP-LAYOUT batch, and
+ * every claim below is about those four files' LAYOUT: that no rule the batch
+ * spends reached a phone, that no control got shorter, that no colour literal
+ * was introduced. A later ticket adding a PARAGRAPH to one of the screens is not
+ * that claim — a new content block necessarily carries unprefixed tokens and
+ * shifts every index after it, which would read as a mobile layout change when
+ * nothing about the layout moved.
+ *
+ * So the one added subtree is removed by its testid rather than the fixture
+ * being re-recorded: a baseline quietly re-recorded is a baseline that proves
+ * nothing, and re-recording would also absorb any real regression sitting
+ * beside it. Everything else on the screen is still compared element for
+ * element, so a layout token reaching a phone through any other element still
+ * fails here. THE-249's own block is pinned by its own suite
+ * (`manual-payment-link-disclosures.test.tsx`) for colour and palette.
+ *
+ * Optional chaining, not an assertion: in RECORDING mode the pre-PR source is
+ * restored and the block does not exist.
+ */
+const statements = async () => {
+  await seedStore();
+  const container = await mount(React.createElement((await import('../AdminGivingStatements')).default));
+  container.querySelector('[data-testid="statements-manual-links"]')?.remove();
+  return container;
+};
 
 import React from 'react';
 

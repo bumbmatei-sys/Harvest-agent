@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
-import { Receipt, Loader2, RefreshCw, FileText, Settings, Save, Send, DollarSign } from 'lucide-react';
+import { AlertTriangle, Receipt, Loader2, RefreshCw, FileText, Settings, Save, Send, DollarSign } from 'lucide-react';
 import { db } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
@@ -182,6 +182,38 @@ const AdminGivingStatements: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/*
+        🔴 THE-249 — WHAT THIS DOCUMENT DOES NOT COVER, said before it is sent.
+
+        A statement is built from `tenants/{id}/invoices` where
+        `type === 'donation_receipt'`, and the only writer of those is the
+        Stripe donation webhook (`src/lib/donation-webhook.ts`). A church's own
+        payment links — PayPal, Cash App, Venmo, Zelle (THE-246) — never reach
+        Harvest at all, so a member who gave through one receives a charitable
+        contribution statement that UNDERSTATES what they gave, over their own
+        name, for their tax return. That is the highest-consequence of the three
+        gaps and it is stated here, above the button, rather than left for a
+        member to discover in April.
+
+        ⚠️ Unconditional, deliberately. Every other gate on this screen keys off
+        a plan feature; this one is about what the PDF contains, which is the
+        same on every tenant. It also does not depend on a link being saved
+        today: a church that adds one next week is generating the same document.
+      */}
+      <div data-testid="statements-manual-links" className="bg-surface-raised rounded-2xl border border-line p-5 mb-4">
+        <div className="flex items-start gap-2.5">
+          <AlertTriangle size={16} className="text-gold shrink-0 mt-0.5" aria-hidden="true" />
+          <p className="text-sm text-body leading-relaxed">
+            <b className="text-strong">These statements cover Stripe gifts only.</b> Harvest
+            builds them from the gifts it processed, so anything your members sent through your
+            own payment links &mdash; PayPal, Cash App, Venmo, Zelle &mdash; is not on them, and
+            a member who gave that way will see a total lower than what they actually gave you.
+            Recording a gift in your CRM does not add it here either. Check your own provider
+            records before you send.
+          </p>
+        </div>
+      </div>
 
       {/* Section B — Generate */}
       <div className="bg-surface-raised rounded-2xl border border-line p-5 mb-4 space-y-3">

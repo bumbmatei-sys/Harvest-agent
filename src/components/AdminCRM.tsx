@@ -30,6 +30,7 @@ import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { useTenant } from '@/contexts/TenantContext';
 import { getEffectiveFeatures, toTenantPlan } from '../utils/plan-features';
 import { getIntegrationProvider, isProviderAvailable } from './settings/integration-providers';
+import { readGivingLinks } from './donations/giving-providers';
 import {
   resolveContactLimit, countContactAccounts, isAtContactLimit, contactLimitMessage,
 } from '../utils/contact-capacity';
@@ -361,7 +362,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   //
   // No new query: `counts.memberAccounts` is #279's existing server-side
   // aggregate, so the cap adds zero reads and cannot miss an index.
-  const { tenantPlan, planFeatures } = useTenant();
+  const { tenantPlan, planFeatures, branding } = useTenant();
   const maxContacts = resolveContactLimit(tenantPlan);
 
   /**
@@ -402,6 +403,24 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
    */
   const crmFeatures = planFeatures ?? getEffectiveFeatures(toTenantPlan(tenantPlan), null);
   const showGiving = crmFeatures.fundraising;
+
+  /**
+   * 🔴 THE-249 — does this church publish payment links Harvest is not in?
+   *
+   * `config.givingLinks` off the tenant document, which `TenantContext` has
+   * already loaded and every admin screen shares. NO NEW QUERY, and no new
+   * failure mode: `readGivingLinks` is the same validator the member Give page
+   * reads through (`MainApp`), so a stale or malformed entry stops counting
+   * here exactly when it stops rendering there.
+   *
+   * ⚠️ WHY THIS IS A CONDITION AND NOT A CONSTANT. A church with no links has
+   * no gap — every gift it can receive is a Stripe gift, and the CRM is
+   * complete. Telling it otherwise on every CRM load is the banner nobody
+   * reads, which is how the churches that DO have the gap learn to skip it.
+   * Before `branding` resolves the note is absent rather than guessed at; it
+   * appears with the rest of the tenant's configuration.
+   */
+  const hasManualGivingLinks = useMemo(() => readGivingLinks(branding).length > 0, [branding]);
 
   /**
    * 🔴 CAN THIS TENANT REACH GMAIL FROM SETTINGS AT ALL — THE-225, and the
@@ -1634,6 +1653,45 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           </div>
         ))}
       </div>
+
+      {/*
+        🔴 THE-249 — why a member who HAS given can read $0 here.
+
+        Every giving figure on this screen is a function of
+        `contacts.totalDonated`, and exactly two things write it: the Stripe
+        donation webhook, and this screen's own Add Activity → Donation. A gift
+        sent through a church's own PayPal / Cash App / Venmo / Zelle link
+        reaches neither, so the giver sits at $0 given, no last gift and the
+        Member stage — indistinguishable from someone who has never given, and
+        the reading a church reaches on its own is that the CRM is broken.
+
+        ⚠️ SECTION-LEVEL AND CONDITIONAL, not per contact and not a constant.
+        Per-contact would repeat the same sentence on every contact opened, and
+        the fact is not about any one of them — it is about what the totals
+        above are made of, which is why it sits under the tiles that show them.
+        Conditional on the church actually publishing links (see
+        `hasManualGivingLinks`) so the churches with no gap never see it.
+
+        The remedy is named, not gestured at: Add Activity → Donation on the
+        contact is a real control on this screen, gated on the same
+        `showGiving`, so there is no tier that reads this and cannot act on it.
+      */}
+      {showGiving && hasManualGivingLinks && (
+        <div
+          data-testid="crm-manual-giving"
+          className="mb-6 flex items-start gap-2.5 rounded-brand-lg border border-line bg-surface-sunken px-4 py-3 text-[13px] text-body"
+        >
+          <AlertTriangle size={15} className="mt-0.5 shrink-0 text-gold" aria-hidden="true" />
+          <div>
+            <span className="font-semibold">
+              Gifts sent through your own payment links are not counted here.
+            </span>{' '}
+            Harvest never sees a PayPal, Cash App, Venmo or Zelle gift, so the member who sent
+            one stays at $0 total given, with no last gift and the Member stage. To record it,
+            open their contact, press Add Activity, choose Donation and enter the amount.
+          </div>
+        </div>
+      )}
 
       {/* Coverage line — how much of the church this list is showing.
           Renders only once the server-side counts arrive; a failed count costs
