@@ -131,6 +131,13 @@ const tenant = vi.hoisted(() => ({
   branding: null as any,
   tenantPlan: 'plus' as string | null,
   isLoading: false,
+  // THE-246 — a paying church still needs a PAYMENT RAIL for the Give tab to
+  // exist: `fundraising` says it may take gifts, a connected Stripe account or
+  // a payment link says it can. Set to a live account here because these
+  // assertions are about a different gate entirely, and a tenant with no rails
+  // would lose Give for a reason this file is not testing. The rails gate has
+  // its own suite: MainApp.giving-rails.test.tsx.
+  stripeConnectStatus: 'active' as string | undefined,
 }));
 vi.mock('../../contexts/TenantContext', () => ({ useTenant: () => tenant }));
 

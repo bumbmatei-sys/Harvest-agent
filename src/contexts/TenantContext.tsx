@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { TenantPlan, TenantAddons, TenantConfig, TenantStatus } from '../types/tenant.types';
+import { TenantPlan, TenantAddons, TenantConfig, TenantStatus, Tenant } from '../types/tenant.types';
 import {
   EffectiveFeatures,
   NO_ADDONS,
@@ -71,6 +71,24 @@ export interface TenantContextValue {
    * still live. Undefined until the tenant doc has loaded.
    */
   tenantStatus: TenantStatus | undefined;
+  /**
+   * Whether this church's OWN Stripe account can take a card (THE-246).
+   *
+   * Straight off `tenants/{id}.stripeConnectStatus` — the public half of the
+   * Connect record; the account id itself lives on the server-only
+   * `tenant_private/{id}` and never comes near a client.
+   *
+   * 🔴 READ IT AS "ONLY 'active' MEANS YES". 'pending' is an onboarding that
+   * was never finished and 'restricted' is an account Stripe has stopped, and
+   * neither can complete a checkout — a donate form drawn on top of either is
+   * a form that fails after the member has typed their card in, which is the
+   * THE-213 shape of defect rather than a lesser version of it.
+   *
+   * Undefined until the tenant doc has loaded, and for a tenant that has never
+   * connected. Same one read that already supplies the plan, the add-ons and
+   * the lifecycle state, so it costs nothing.
+   */
+  stripeConnectStatus: Tenant['stripeConnectStatus'];
   /**
    * What the lifecycle still permits — derived from `tenantStatus` alone.
    *
@@ -165,6 +183,8 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
   const [tenantPlan, setTenantPlanState] = useState<TenantPlan | undefined>(initialPlan);
   const [tenantAddons, setTenantAddonsState] = useState<TenantAddons>(NO_ADDONS);
   const [tenantStatus, setTenantStatus] = useState<TenantStatus | undefined>(undefined);
+  const [stripeConnectStatus, setStripeConnectStatus] =
+    useState<Tenant['stripeConnectStatus']>(undefined);
   const [branding, setBranding] = useState<TenantConfig>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -285,6 +305,10 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
         // `planInitialized` latch) because it is re-read on every validation
         // pass and a stale 'active' is the one value that must not stick.
         setTenantStatus(data.status as TenantStatus | undefined);
+        // Unconditional, exactly like the lifecycle state above and for the
+        // same reason: a church that disconnects Stripe must stop reading as
+        // connected, and a stale 'active' is the one value that must not stick.
+        setStripeConnectStatus(data.stripeConnectStatus as Tenant['stripeConnectStatus']);
         if (data.name) {
           setTenantName(data.name as string);
           // White-label: reflect the ministry name in the browser tab title.
@@ -392,6 +416,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
         error,
         planFeatures,
         tenantStatus,
+        stripeConnectStatus,
         capabilities,
         setTenantPlan,
         setTenantAddons,

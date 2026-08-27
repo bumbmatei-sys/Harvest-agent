@@ -1662,20 +1662,29 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
         </DesktopCard>
       )}
 
-      <DesktopCard elevation="sm" className="p-4 text-center">
-        <div className="w-11 h-11 mx-auto rounded-full flex items-center justify-center mb-3" style={{ backgroundColor: 'color-mix(in srgb, var(--brand-color) 12%, transparent)' }}>
-          <HeartHandshake size={20} className="text-gold" />
-        </div>
-        <h3 className="font-bold text-strong text-sm mb-1 font-display">Partner with Us</h3>
-        <p className="text-xs text-muted mb-3 leading-relaxed">Your generosity keeps this ministry moving forward.</p>
-        <button
-          onClick={onGoToPartner}
-          className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-          style={{ backgroundColor: 'var(--brand-color, #e6b325)' }}
-        >
-          Give Now
-        </button>
-      </DesktopCard>
+      {/* 🔴 THE-246 — NO CTA WITHOUT A DESTINATION. The card renders only when
+          the caller actually handed over a jump. MainApp withholds the prop
+          when the Give page is hidden — a church with no Stripe account and no
+          payment links has nowhere for "Give Now" to land, and a giving button
+          that visibly does nothing is the THE-193 dead end, not a smaller
+          version of one. The prop has always been optional; this is the first
+          caller that passes `undefined`, and the card now says so. */}
+      {onGoToPartner && (
+        <DesktopCard elevation="sm" className="p-4 text-center">
+          <div className="w-11 h-11 mx-auto rounded-full flex items-center justify-center mb-3" style={{ backgroundColor: 'color-mix(in srgb, var(--brand-color) 12%, transparent)' }}>
+            <HeartHandshake size={20} className="text-gold" />
+          </div>
+          <h3 className="font-bold text-strong text-sm mb-1 font-display">Partner with Us</h3>
+          <p className="text-xs text-muted mb-3 leading-relaxed">Your generosity keeps this ministry moving forward.</p>
+          <button
+            onClick={onGoToPartner}
+            className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            style={{ backgroundColor: 'var(--brand-color, #e6b325)' }}
+          >
+            Give Now
+          </button>
+        </DesktopCard>
+      )}
     </div>
   );
 

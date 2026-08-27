@@ -45,7 +45,21 @@ import { useAppStore } from '../store/useAppStore';
 
 interface ProfileProps {
   onNavigate: (page: string) => void;
-  onGoToPartner: () => void;
+  /**
+   * Jump to the member app's Give page — absent when there is none to jump to.
+   *
+   * 🔴 OPTIONAL SINCE THE-246, and the absence is the gate. `fundraising` says
+   * the church MAY take gifts; it does not say it CAN, and a church with no
+   * connected Stripe account and no payment links has a Give page that is
+   * hidden entirely. "Give again →" pointing at it would be a button that
+   * visibly does nothing — the THE-193 dead end. So the two CTAs below render
+   * only when a caller hands over a real destination.
+   *
+   * ⚠️ The admin area's "My Profile" overlay still always passes one: there it
+   * leaves the admin for the member app rather than opening the Give page, so
+   * it is not the same jump and cannot be the same dead end.
+   */
+  onGoToPartner?: () => void;
   onGoToMap: () => void;
   /** Open a saved blog article by id (from the "Saved" section). */
   onOpenSavedBlog?: (postId: string) => void;
@@ -656,23 +670,27 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  {/* totalDonated is stored in DOLLARS (BUG 2) — display it directly. */}
  <p className="text-xs text-muted">${totalDonated.toFixed(0)} given</p>
  </div>
+ {onGoToPartner && (
  <button
  onClick={onGoToPartner}
  className="text-sm font-bold text-gold"
  >
  Give again →
  </button>
+ )}
  </div>
  </div>
  ) : (
  <div className="text-center py-2">
  <p className="text-sm text-muted">You don&apos;t have an active partnership</p>
+ {onGoToPartner && (
  <button
  onClick={onGoToPartner}
  className="mt-2 text-sm font-bold text-gold"
  >
  Partner with Us →
  </button>
+ )}
  </div>
  )}
  </div>
