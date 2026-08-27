@@ -402,15 +402,15 @@ describe('THE-200 — no price, term or add-on price changed', () => {
   // ── 11 ─────────────────────────────────────────────────────────────────────
   it('the nine stored prices are byte-for-byte what they were', () => {
     expect(PLAN_PRICING).toEqual({
-      plus: { monthly: 20, quarterly: 49, yearly: 165 },
-      pro: { monthly: 40, quarterly: 99, yearly: 329 },
-      max: { monthly: 80, quarterly: 199, yearly: 659 },
+      plus: { monthly: 20, quarterly: 54, yearly: 190 },
+      pro: { monthly: 40, quarterly: 108, yearly: 380 },
+      max: { monthly: 80, quarterly: 216, yearly: 760 },
     });
   });
 
   it('the billing terms and advertised discounts are unchanged', () => {
     expect([...BILLING_TERMS]).toEqual(['monthly', 'quarterly', 'yearly']);
-    expect(ADVERTISED_DISCOUNT_PCT).toEqual({ quarterly: 15, yearly: 30 });
+    expect(ADVERTISED_DISCOUNT_PCT).toEqual({ quarterly: 10, yearly: 20 });
   });
 
   it('the add-on prices are unchanged', () => {

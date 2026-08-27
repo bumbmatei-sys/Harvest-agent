@@ -530,9 +530,9 @@ describe('no price or product id changed', () => {
 
   it('pins the nine prices, by tier and term', async () => {
     const { PLAN_PRICING } = await import('@/utils/plan-features');
-    expect(PLAN_PRICING.plus).toMatchObject({ monthly: 20, quarterly: 49, yearly: 165 });
-    expect(PLAN_PRICING.pro).toMatchObject({ monthly: 40, quarterly: 99, yearly: 329 });
-    expect(PLAN_PRICING.max).toMatchObject({ monthly: 80, quarterly: 199, yearly: 659 });
+    expect(PLAN_PRICING.plus).toMatchObject({ monthly: 20, quarterly: 54, yearly: 190 });
+    expect(PLAN_PRICING.pro).toMatchObject({ monthly: 40, quarterly: 108, yearly: 380 });
+    expect(PLAN_PRICING.max).toMatchObject({ monthly: 80, quarterly: 216, yearly: 760 });
   });
 
   it('leaves every resolver mapping intact', () => {

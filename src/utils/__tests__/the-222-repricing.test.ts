@@ -43,14 +43,37 @@ import type { PricedPlan } from '@/types/tenant.types';
  * used to carry, and Ministry's new pair ($199 / $659) is Small Team's old one.
  * Five figures therefore changed MEANING rather than retiring, so every
  * assertion below names a tier AND a term; not one of them is a bare digit.
+ *
+ * ⚠️ THE-248 SUPERSEDED THE PRICE HALF OF THIS TICKET. The monthly column is
+ * still THE-222's; the six discounted cells were RAISED to align the discounts
+ * on a flat 10% and 20%. So this file carries three tables — before THE-222,
+ * what THE-222 shipped, and what is live — and every assertion says which. The
+ * historical proofs are kept against THE-222's own table and its own advertised
+ * percentages, because a historical proof that silently re-points at today's
+ * constants stops proving anything. The live nine are pinned in
+ * the-248-discount-alignment.test.ts.
  * ───────────────────────────────────────────────────────────────────────────*/
 
-/** The nine, written out independently of the table under test. */
-const NEW_TABLE: Record<PricedPlan, Record<BillingTerm, number>> = {
+/** What THE-222 itself shipped. HISTORY — do not reprice. */
+const THE_222_TABLE: Record<PricedPlan, Record<BillingTerm, number>> = {
   plus: { monthly: 20, quarterly: 49, yearly: 165 },
   pro: { monthly: 40, quarterly: 99, yearly: 329 },
   max: { monthly: 80, quarterly: 199, yearly: 659 },
 };
+
+/** What is LIVE, as of THE-248 — written out independently of the table under
+ *  test, and verified against the authenticated live Dodo API on 2026-08-27
+ *  (2000 / 5400 / 19000 minor units on Individual, and so on). */
+const NEW_TABLE: Record<PricedPlan, Record<BillingTerm, number>> = {
+  plus: { monthly: 20, quarterly: 54, yearly: 190 },
+  pro: { monthly: 40, quarterly: 108, yearly: 380 },
+  max: { monthly: 80, quarterly: 216, yearly: 760 },
+};
+
+/** What THE-222 advertised. Stated here rather than read from the live constant
+ *  so the derivation proof below keeps testing the RULE now the percentages
+ *  have moved — which is exactly what THE-248 did to them. */
+const THE_222_ADVERTISED = { quarterly: 15, yearly: 30 } as const;
 
 /** The table THE-222 replaced. Kept for the derivation proof in test 4 — it is
  *  the only way to show the claim rule answers differently for two tables. */
@@ -83,68 +106,104 @@ describe('the nine plan prices match the new table exactly', () => {
   });
 
   it('🔴 did not merely shift the old rows down a tier', () => {
-    // The five figures that survived did so attached to a DIFFERENT tier. If a
-    // reprice had copied rows instead of repricing them, Individual would still
-    // hold $99/$329 and every one of these would still pass on the old table —
-    // so the monthly column, which nothing inherited, is asserted too.
-    expect(planPriceUsd('pro', 'quarterly')).toBe(OLD_TABLE.plus.quarterly);
-    expect(planPriceUsd('pro', 'yearly')).toBe(OLD_TABLE.plus.yearly);
-    expect(planPriceUsd('max', 'quarterly')).toBe(OLD_TABLE.pro.quarterly);
-    expect(planPriceUsd('max', 'yearly')).toBe(OLD_TABLE.pro.yearly);
-    // …and no tier kept its own old row.
+    // THE-222's own hazard, pinned against THE-222's table: five figures
+    // survived that reprice attached to a DIFFERENT tier. If it had copied rows
+    // instead of repricing them, Individual would still have held $99/$329.
+    expect(THE_222_TABLE.pro.quarterly).toBe(OLD_TABLE.plus.quarterly);
+    expect(THE_222_TABLE.pro.yearly).toBe(OLD_TABLE.plus.yearly);
+    expect(THE_222_TABLE.max.quarterly).toBe(OLD_TABLE.pro.quarterly);
+    expect(THE_222_TABLE.max.yearly).toBe(OLD_TABLE.pro.yearly);
+    // …and no tier kept its own old row, on either reprice.
     for (const plan of PRICED_PLAN_ORDER) {
       for (const term of BILLING_TERMS) {
         expect(planPriceUsd(plan, term), `${plan} ${term} never moved`)
           .not.toBe(OLD_TABLE[plan][term]);
       }
     }
+    // 🔴 THE-248 INHERITED NOTHING AT ALL. Its six new figures appear on no
+    // tier and no term of either earlier table, so — unlike THE-222 — no live
+    // discounted price can be confused with a figure some other tier used to
+    // carry. The monthly column is deliberately excluded: it did not move.
+    const historic = new Set(
+      [OLD_TABLE, THE_222_TABLE].flatMap((t) =>
+        PRICED_PLAN_ORDER.flatMap((plan) => BILLING_TERMS.map((term) => t[plan][term])),
+      ),
+    );
+    for (const plan of PRICED_PLAN_ORDER) {
+      for (const term of DISCOUNTED_TERMS) {
+        const price = planPriceUsd(plan, term);
+        expect(historic.has(price), `${plan} ${term} ($${price}) is an inherited figure`).toBe(false);
+      }
+    }
   });
 });
 
 /* ── 3 ─────────────────────────────────────────────────────────────────────── */
-describe('yearly claims a flat 30% and quarterly a flat 15%', () => {
-  it('both terms are flat, and yearly no longer hedges', () => {
+describe('quarterly claims a flat 10% and yearly a flat 20%', () => {
+  it('both terms are flat, and neither hedges', () => {
     expect(discountClaimShape('quarterly')).toBe('flat');
     expect(discountClaimShape('yearly')).toBe('flat');
-    expect(discountClaim('quarterly')).toBe('Save 15%');
-    expect(discountClaim('yearly')).toBe('Save 30%');
+    expect(discountClaim('quarterly')).toBe('Save 10%');
+    expect(discountClaim('yearly')).toBe('Save 20%');
     for (const term of DISCOUNTED_TERMS) {
       expect(discountClaim(term), `${term} still hedges`).not.toContain('up to');
     }
   });
 
-  it('the advertised percentages themselves are unchanged at 15 and 30', () => {
-    // THE-222 moves the PRICES, never the badge. The wording changed because
-    // the prices cleared the badge, not because the badge was lowered to fit.
-    expect(ADVERTISED_DISCOUNT_PCT).toEqual({ quarterly: 15, yearly: 30 });
+  it('the advertised percentages are 10 and 20, and BOTH moved with the prices', () => {
+    // ⚠️ THE OPPOSITE OF THE-222, WHICH MOVED PRICES AND NOT THE BADGE.
+    // THE-248 moves both, deliberately: the founder chose the percentages
+    // first — 10 on a quarter, 20 on a year — and the prices were set to
+    // deliver them. That is why every tier lands on the same saving.
+    expect(ADVERTISED_DISCOUNT_PCT).toEqual({ quarterly: 10, yearly: 20 });
   });
 });
 
 /* ── 4 ── 🔴 THE GUARD ─────────────────────────────────────────────────────── */
 describe('the claim shape is derived from the price table, not hardcoded', () => {
   /** The shipped rule, restated over an arbitrary table. */
-  const shapeOf = (table: Record<PricedPlan, Record<BillingTerm, number>>, term: 'quarterly' | 'yearly') => {
-    const saving = (plan: PricedPlan) =>
-      (1 - table[plan][term] / (table[plan].monthly * TERM_MONTHS[term])) * 100;
+  const shapeOf = (
+    table: Record<PricedPlan, Record<BillingTerm, number>>,
+    term: 'quarterly' | 'yearly',
+    advertised: number,
+  ) => {
+    const saving = (plan: PricedPlan) => {
+      const atMonthlyRate = table[plan].monthly * TERM_MONTHS[term];
+      return ((atMonthlyRate - table[plan][term]) * 100) / atMonthlyRate;
+    };
     const worst = Math.min(...(Object.keys(table) as PricedPlan[]).map(saving));
-    return ADVERTISED_DISCOUNT_PCT[term] <= worst ? 'flat' : 'upTo';
+    return advertised <= worst ? 'flat' : 'upTo';
   };
 
   it('🔴 the SAME rule answers differently for the old table and the new one', () => {
     // This is the proof that the shape is computed rather than stated. A
-    // hardcoded 'flat' would be right for the new table by luck; only a rule
+    // hardcoded 'flat' would be right for the live table by luck; only a rule
     // that is sensitive to prices returns 'upTo' for the table THE-222
     // replaced, where Individual's year saved 29.70% against an advertised 30%.
-    expect(shapeOf(OLD_TABLE, 'yearly')).toBe('upTo');
-    expect(shapeOf(NEW_TABLE, 'yearly')).toBe('flat');
+    //
+    // ⚠️ THE PERCENTAGE IS PASSED IN, and THE-248 is why. This read the live
+    // ADVERTISED_DISCOUNT_PCT, so when the advertised yearly figure dropped
+    // from 30 to 20 the "old" table started clearing it and the proof inverted
+    // — a historical comparison quietly re-pointed at a constant that had moved
+    // under it. Each table is judged against the percentage IT shipped with.
+    expect(shapeOf(OLD_TABLE, 'yearly', THE_222_ADVERTISED.yearly)).toBe('upTo');
+    expect(shapeOf(THE_222_TABLE, 'yearly', THE_222_ADVERTISED.yearly)).toBe('flat');
     // Quarterly was flat under both, so it cannot carry this proof on its own.
-    expect(shapeOf(OLD_TABLE, 'quarterly')).toBe('flat');
-    expect(shapeOf(NEW_TABLE, 'quarterly')).toBe('flat');
+    expect(shapeOf(OLD_TABLE, 'quarterly', THE_222_ADVERTISED.quarterly)).toBe('flat');
+    expect(shapeOf(THE_222_TABLE, 'quarterly', THE_222_ADVERTISED.quarterly)).toBe('flat');
+    // 🔴 AND IT STILL SAYS 'upTo' WHEN IT SHOULD, on the LIVE table. One point
+    // over the live quarterly saving — which is exactly 10 — is the smallest
+    // claim that must hedge, and it proves the rule is not pinned to 'flat'.
+    expect(shapeOf(NEW_TABLE, 'quarterly', ADVERTISED_DISCOUNT_PCT.quarterly)).toBe('flat');
+    expect(shapeOf(NEW_TABLE, 'quarterly', 11)).toBe('upTo');
+    expect(shapeOf(NEW_TABLE, 'yearly', ADVERTISED_DISCOUNT_PCT.yearly)).toBe('flat');
+    expect(shapeOf(NEW_TABLE, 'yearly', 21)).toBe('upTo');
   });
 
   it('and the shipped function agrees with that rule on the live table', () => {
     for (const term of DISCOUNTED_TERMS) {
-      expect(discountClaimShape(term), `${term}`).toBe(shapeOf(NEW_TABLE, term));
+      expect(discountClaimShape(term), `${term}`)
+        .toBe(shapeOf(NEW_TABLE, term, ADVERTISED_DISCOUNT_PCT[term]));
     }
   });
 
@@ -175,23 +234,27 @@ describe('no copy claims a saving larger than the smallest actual saving', () =>
     }
   });
 
-  it('the smallest actual savings are 17.08% quarterly and 31.25% yearly', () => {
-    // Named, with the tier each belongs to — the margin the flat claim rests on
-    // is the worst tier's, and quarterly's worst is Ministry while yearly's is
-    // Individual. They are not the same tier, which is why both are pinned.
-    expect(Math.min(...PRICED_PLAN_ORDER.map((p) => actualSavingPct(p, 'quarterly'))))
-      .toBeCloseTo(17.0833, 3);
-    expect(actualSavingPct('max', 'quarterly')).toBeCloseTo(17.0833, 3);
+  it('the smallest actual savings are exactly 10% quarterly and 20.83% yearly', () => {
+    // 🔴 NO TIER IS "THE WORST" ANY MORE. THE-222's worst quarterly tier was
+    // Ministry and its worst yearly tier was Individual — different tiers,
+    // which is why both were pinned. THE-248 makes both columns flat, so the
+    // minimum equals the maximum and every tier is pinned individually: a
+    // min/max pair alone would still pass if one tier had drifted.
+    for (const plan of PRICED_PLAN_ORDER) {
+      expect(actualSavingPct(plan, 'quarterly'), `${plan} quarterly`).toBe(10);
+      expect(actualSavingPct(plan, 'yearly'), `${plan} yearly`).toBeCloseTo(20.8333, 3);
+    }
+    expect(Math.min(...PRICED_PLAN_ORDER.map((p) => actualSavingPct(p, 'quarterly')))).toBe(10);
+    expect(Math.max(...PRICED_PLAN_ORDER.map((p) => actualSavingPct(p, 'quarterly')))).toBe(10);
     expect(Math.min(...PRICED_PLAN_ORDER.map((p) => actualSavingPct(p, 'yearly'))))
-      .toBeCloseTo(31.25, 3);
-    expect(actualSavingPct('plus', 'yearly')).toBeCloseTo(31.25, 3);
+      .toBeCloseTo(20.8333, 3);
   });
 
   it('the per-tier savings, to one decimal', () => {
     expect(PRICED_PLAN_ORDER.map((p) => Number(actualSavingPct(p, 'quarterly').toFixed(1))))
-      .toEqual([18.3, 17.5, 17.1]);
+      .toEqual([10.0, 10.0, 10.0]);
     expect(PRICED_PLAN_ORDER.map((p) => Number(actualSavingPct(p, 'yearly').toFixed(1))))
-      .toEqual([31.3, 31.5, 31.4]);
+      .toEqual([20.8, 20.8, 20.8]);
   });
 });
 
@@ -216,13 +279,20 @@ describe("no term's price is a whole number of months at the monthly rate", () =
 
   it('the arithmetic in full, for all six discounted cells', () => {
     // Written out so the numbers are readable in review rather than inferred:
-    // 49/20, 165/20, 99/40, 329/40, 199/80, 659/80.
-    expect(planPriceUsd('plus', 'quarterly') / planPriceUsd('plus', 'monthly')).toBe(2.45);
-    expect(planPriceUsd('plus', 'yearly') / planPriceUsd('plus', 'monthly')).toBe(8.25);
-    expect(planPriceUsd('pro', 'quarterly') / planPriceUsd('pro', 'monthly')).toBe(2.475);
-    expect(planPriceUsd('pro', 'yearly') / planPriceUsd('pro', 'monthly')).toBe(8.225);
-    expect(planPriceUsd('max', 'quarterly') / planPriceUsd('max', 'monthly')).toBe(2.4875);
-    expect(planPriceUsd('max', 'yearly') / planPriceUsd('max', 'monthly')).toBe(8.2375);
+    // 54/20, 190/20, 108/40, 380/40, 216/80, 760/80.
+    //
+    // 🔴 EVERY TIER LANDS ON THE SAME TWO MULTIPLES under THE-248 — 2.7 months
+    // on a quarter and 9.5 on a year — because the discount is now flat. That
+    // is a much closer call than the six distinct multiples THE-222 produced:
+    // 2.7 and 9.5 are each within a half-month of an integer, and a reprice
+    // that rounded a year to $200 (×10) or a quarter to $60 (×3) would resurrect
+    // the multiplier abstraction this guard exists to keep buried.
+    expect(planPriceUsd('plus', 'quarterly') / planPriceUsd('plus', 'monthly')).toBe(2.7);
+    expect(planPriceUsd('plus', 'yearly') / planPriceUsd('plus', 'monthly')).toBe(9.5);
+    expect(planPriceUsd('pro', 'quarterly') / planPriceUsd('pro', 'monthly')).toBe(2.7);
+    expect(planPriceUsd('pro', 'yearly') / planPriceUsd('pro', 'monthly')).toBe(9.5);
+    expect(planPriceUsd('max', 'quarterly') / planPriceUsd('max', 'monthly')).toBe(2.7);
+    expect(planPriceUsd('max', 'yearly') / planPriceUsd('max', 'monthly')).toBe(9.5);
   });
 });
 

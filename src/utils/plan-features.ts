@@ -501,8 +501,9 @@ export const TERM_MONTHS: Readonly<Record<BillingTerm, number>> = Object.freeze(
  * This used to be `ANNUAL_BILLED_MONTHS = 9` — "pay 9 months, get 12", which is
  * exactly 25% — with `yearlyUsd` derived from it. That abstraction is GONE and
  * must not come back, because the discounts it has to express no longer divide
- * into whole months: 30% off a year is ×8.4 months and 15% off a quarter is
- * ×2.55 months. There is no integer to name.
+ * into whole months: 20% off a year is ×9.6 months and 10% off a quarter is
+ * ×2.7 months. There is no integer to name. (The stored years are rounder still
+ * — $190 is ×9.5 months, not ×9.6 — which is the next paragraph's point.)
  *
  * The founder chose ROUNDED PRICES OVER EXACT PERCENTAGES, deliberately:
  * $405.45 on a pricing page reads like a spreadsheet error. So the prices are
@@ -510,11 +511,19 @@ export const TERM_MONTHS: Readonly<Record<BillingTerm, number>> = Object.freeze(
  * round. The savings these nine numbers actually produce are:
  *
  *              Quarterly   Yearly
- *   Individual    18.3%     31.3%
- *   Small Team    17.5%     31.5%
- *   Ministry      17.1%     31.4%
+ *   Individual    10.0%     20.8%
+ *   Small Team    10.0%     20.8%
+ *   Ministry      10.0%     20.8%
  *
- * 🔴 DO NOT COMPUTE A BADGE FROM THIS TABLE. See `ADVERTISED_DISCOUNT_PCT`.
+ * ⚠️ THE-248 MADE EVERY COLUMN FLAT, and that is a property of today's prices
+ * rather than a new rule. The quarters are exactly nine tenths of three months
+ * ($54/$60, $108/$120, $216/$240) and the years exactly 190/240ths of twelve,
+ * so all three tiers save the same on each term for the first time. Nothing
+ * here may start assuming that: the tiers were 18.3 / 17.5 / 17.1 apart one
+ * reprice ago and a rounder price on one tier alone would spread them again.
+ *
+ * 🔴 DO NOT COMPUTE A BADGE FROM THIS TABLE. See `ADVERTISED_DISCOUNT_PCT` —
+ * the yearly column is why that is still true even now the columns are flat.
  *
  * ⚠️ CROSS-REPO: the marketing site (harvest-presentation-site) carries its own
  * copy of these nine numbers in src/components/Pricing.tsx, and a module-scope
@@ -525,9 +534,9 @@ export const TERM_MONTHS: Readonly<Record<BillingTerm, number>> = Object.freeze(
  */
 export const PLAN_PRICING: Readonly<Record<PricedPlan, Readonly<Record<BillingTerm, number>>>> =
   Object.freeze({
-    plus: Object.freeze({ monthly: 20, quarterly: 49,  yearly: 165 }),
-    pro:  Object.freeze({ monthly: 40, quarterly: 99,  yearly: 329 }),
-    max:  Object.freeze({ monthly: 80, quarterly: 199, yearly: 659 }),
+    plus: Object.freeze({ monthly: 20, quarterly: 54,  yearly: 190 }),
+    pro:  Object.freeze({ monthly: 40, quarterly: 108, yearly: 380 }),
+    max:  Object.freeze({ monthly: 80, quarterly: 216, yearly: 760 }),
   });
 
 /**
@@ -611,25 +620,35 @@ export function planTermMonthlyExact(plan: PricedPlan, term: BillingTerm): numbe
  * rather than a rounding preference. (The brief named the Individual yearly
  * cell; Small Team quarterly understates too, by $1.)
  *
+ * ⚠️ THOSE TWO CELLS ARE HISTORY — THE RULE IS NOT. Under THE-248's prices the
+ * three quarters divide exactly ($54/3, $108/3, $216/3 are $18, $36, $72) and
+ * two of the three years round UP, so exactly one cell still understates under
+ * `Math.round`: Ministry yearly, $760/12 = $63.3333 → $63 → implies $756
+ * against a charged $760. One is all it takes, and the next reprice decides
+ * which — which is why what follows is stated as a rule and guarded as one,
+ * never as a list of the offending cells.
+ *
  * So the headline must never imply less than the charged total. Two roundings
  * satisfy that, and the choice between them is not aesthetic:
  *
- *   CEIL TO THE DOLLAR — $28, $55, $111 yearly. Clean, never understates, but
- *     $28 x 12 = $336 against a charged $329. The headline and the line
- *     directly beneath it would then disagree by $7, and a church that
+ *   CEIL TO THE DOLLAR — $16, $32, $64 yearly. Clean, never understates, but
+ *     $64 x 12 = $768 against a charged $760. The headline and the line
+ *     directly beneath it would then disagree by $8, and a church that
  *     multiplies the one to check the other finds they do not reconcile. The
  *     fix for a card whose two numbers contradict each other cannot be a card
  *     whose two numbers contradict each other by a different amount.
  *
- *   CEIL TO THE CENT — $27.42, $54.92, $110.75. Never understates (the ceiling
- *     guarantees it) and reconciles: x12 lands within four cents of the charged
- *     total, which is the rounding itself and nothing else.
+ *   CEIL TO THE CENT — $15.84, $31.67, $63.34 yearly. Never understates (the
+ *     ceiling guarantees it) and reconciles: x12 lands within eight cents of
+ *     the charged total, which is the rounding itself and nothing else.
  *
  * The cent it is. `$27.42` is two characters uglier than `$28` and it is the
  * only figure on the card that is actually true.
  *
- * ⚠️ An exact division keeps its whole-dollar form — $99/3 is $33.00 and prints
- * as `$33`, not `$33.00`. See `formatPlanMonthlyHeadline`.
+ * ⚠️ An exact division keeps its whole-dollar form — $108/3 is $36.00 and
+ * prints as `$36`, not `$36.00`. See `formatPlanMonthlyHeadline`. All three
+ * quarters divide exactly under THE-248, so this branch is now the common case
+ * rather than the rare one.
  *
  * The `toFixed(6)` before the ceiling is not decoration. `Math.ceil` on a
  * binary-float product turns an exact $33.00 into $33.01 the moment the
@@ -712,7 +731,13 @@ monthlyHeadlineContract();
 export function actualSavingPct(plan: PricedPlan, term: BillingTerm): number {
   const atMonthlyRate = planPriceUsd(plan, 'monthly') * TERM_MONTHS[term];
   if (atMonthlyRate === 0) return 0;
-  return (1 - planPriceUsd(plan, term) / atMonthlyRate) * 100;
+  // 🔴 SUBTRACT IN DOLLARS, MULTIPLY BEFORE DIVIDING. See the block comment
+  // above: `(1 - price / atMonthlyRate) * 100` is the same arithmetic on paper
+  // and computes an exact 10% as 9.999999999999998, which fails the guard below
+  // and degrades an honest flat claim to "up to". This form keeps the numerator
+  // a whole number — (60 - 54) * 100 / 60 is 600 / 60 — so an exact percentage
+  // lands exact.
+  return ((atMonthlyRate - planPriceUsd(plan, term)) * 100) / atMonthlyRate;
 }
 
 /** The two terms that carry a discount — every term except the monthly base. */
@@ -723,16 +748,30 @@ export type DiscountedTerm = Exclude<BillingTerm, 'monthly'>;
 /**
  * The percentages the product ADVERTISES. Stored, deliberately.
  *
- * 🔴 NOT COMPUTED FROM `PLAN_PRICING`, and this is the whole point. Rounded
- * prices produce a different real saving on every tier — 15.4 / 16.0 / 16.4 on
- * quarterly — so a computed badge would read "16%" beside the Ministry card and
- * "15%" beside the Individual one, on a toggle that sits above all three at
- * once. One number for the toggle is the only honest presentation, and one
- * number cannot be derived from three.
+ * 🔴 NOT COMPUTED FROM `PLAN_PRICING`, and this is the whole point.
+ *
+ * The original reason was SPREAD: rounded prices produced a different real
+ * saving on every tier — 15.4 / 16.0 / 16.4 on quarterly — so a computed badge
+ * would have read "16%" beside the Ministry card and "15%" beside the
+ * Individual one, on a toggle that sits above all three at once.
+ *
+ * ⚠️ THE-248 REMOVED THE SPREAD AND NOT THE REASON. All three tiers now save
+ * 10.0% on a quarter and 20.8% on a year, so "one number cannot be derived from
+ * three" no longer bites — but the YEARLY column still does, from the other
+ * side. The founder advertises a ROUND 20%; the prices deliver 20.8%. A
+ * computed badge would print "Save 20.8%" (or round to "21%") beside a page
+ * that says 20 everywhere else, and a percentage nobody chose is not more
+ * honest for being arithmetically derived — it is just a number the copy, the
+ * Terms and the FAQ would then all have to chase.
+ *
+ * 🔴 SO THE SPLIT HOLDS: the NUMBER is a founder's decision and is stored; the
+ * WORDING around it is derived (`discountClaimShape`), so the claim can never
+ * outlive the prices. Do not "simplify" this to a computation because today's
+ * quarterly happens to agree with one.
  */
 export const ADVERTISED_DISCOUNT_PCT: Readonly<Record<DiscountedTerm, number>> = Object.freeze({
-  quarterly: 15,
-  yearly: 30,
+  quarterly: 10,
+  yearly: 20,
 });
 
 /**
@@ -742,16 +781,21 @@ export const ADVERTISED_DISCOUNT_PCT: Readonly<Record<DiscountedTerm, number>> =
  * actual one. A flat "save 30%" is a claim about every tier, so it is only true
  * when the WORST tier saves at least 30%.
  *
- *   quarterly  advertises 15, worst tier saves 17.1  → 'flat'  → "Save 15%"
- *   yearly     advertises 30, worst tier saves 31.3  → 'flat'  → "Save 30%"
+ *   quarterly  advertises 10, worst tier saves 10.0  → 'flat'  → "Save 10%"
+ *   yearly     advertises 20, worst tier saves 20.8  → 'flat'  → "Save 20%"
  *
- * 🔴 YEARLY IS THE CASE THIS DERIVATION EXISTS FOR, AND IT HAS NOW FLIPPED.
- * Under the pre-THE-222 prices Individual saved 29.70% against an advertised
- * 30% — three tenths of a point short — so yearly resolved to 'upTo' and the
- * badge read "Save up to 30%". THE-222 reprices to $20/$40/$80 and the worst
- * yearly saving becomes 31.25% (Individual, $165 against $240), which clears
- * 30 on every tier, so the SAME derivation now returns 'flat' and the "up to"
- * disappears on its own.
+ * 🔴 QUARTERLY IS NOW THE CASE THIS DERIVATION TURNS ON, and it turns on
+ * EQUALITY rather than clearance. Every tier's quarter is exactly 10.0% off, so
+ * the claim does not clear the worst saving — it MEETS it, to the cent. `<=` is
+ * therefore load-bearing in a way it never was before: with `<`, a claim the
+ * prices honour exactly would print "up to 10%", hedging against nothing.
+ *
+ * ⚠️ AND EQUALITY IS WHERE BINARY FLOATING POINT BITES. `actualSavingPct` had
+ * to change for this comparison to see a true 10 rather than 9.999999999999998
+ * — see the block comment there. The operator is right; the arithmetic feeding
+ * it was not. Do not "fix" a future knife edge by loosening this to `<`.
+ *
+ * Yearly clears with room: 20 advertised against 20.83 delivered on all three.
  *
  * ⚠️ NOTHING IN THIS FUNCTION CHANGED to make that happen, and that is the
  * point of deriving it: the wording followed the prices without an edit. Do not

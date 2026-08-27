@@ -60,7 +60,7 @@ describe('the three quarterly product ids resolve', () => {
   });
 
   it('publishes the quarterly price Dodo actually charges, in both units', () => {
-    const CENTS = { plus: 4900, pro: 9900, max: 19900 } as const;
+    const CENTS = { plus: 5400, pro: 10800, max: 21600 } as const;
     for (const plan of PRICED_PLAN_ORDER) {
       expect(DODO_LIVE_CATALOGUE[plan].quarterly.priceMinorUnits).toBe(CENTS[plan]);
       expect(DODO_LIVE_CATALOGUE[plan].quarterly.priceUsd).toBe(CENTS[plan] / 100);
