@@ -593,8 +593,28 @@ describe('no Stripe Connect route, donation route, fee or receipt path changed',
       '48ad99a41cafd02a423493abf73308195108551c0da9d542f979f6cf8cc083b6',
     'src/components/settings/PaymentSection.tsx':
       '37e30a36e2c1db113eef6a31abb4810f456b84dd3047e9602de5a9f0ad4ee136',
+    /*
+     * ⚠️ RE-RECORDED BY THE-251, and by nothing else in this list.
+     *
+     * THE-246 pinned this file to prove it changed no money path. THE-251
+     * DELIBERATELY edits it: the campaign page now derives the church's own
+     * payment links from the `tenant.config` it already read for the logo, and
+     * hands them to PublicCampaign.
+     *
+     * What that edit is NOT is a change to a money path, and the two assertions
+     * that matter say so rather than asking a reader to take it on trust:
+     *
+     *   • `loadCampaign`'s gate is untouched — the free-tier `fundraising`
+     *     refusal, the cross-tenant check, the pledge-type refusal and the
+     *     `isActive` check are byte-identical, and
+     *     public-page-plan-gates.test.ts still pins them.
+     *   • every OTHER digest in this list is unchanged, `donation-webhook.ts`
+     *     among them — which is the file that increments `raised` on a Stripe
+     *     gift. Its digest below is the proof that THE-251 did not touch how
+     *     Stripe gifts update a campaign total.
+     */
     'src/app/campaign/[campaignId]/page.tsx':
-      '5360d5c29fde8fbb18862298e3727b8afca9e79f8fb422a9e78d1b2223d5c3cd',
+      '4f084a99ff88519e962c6aac909c8dcd13ba7dab48134b489afef72050b07374',
     'firestore.rules':
       'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499',
     'functions/src/index.ts':

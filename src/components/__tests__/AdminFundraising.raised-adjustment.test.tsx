@@ -20,7 +20,8 @@ import { GIVING_PROVIDERS } from '../donations/giving-providers';
 
 const { authFetch, notifyError, invalidateQueries, campaignsResult, tenant, appStore, updateDoc } =
   vi.hoisted(() => ({
-    authFetch: vi.fn(async () => ({ ok: true, json: async () => ({ success: true, raised: 1250 }) })),
+    authFetch: vi.fn(async (_url: string, _opts?: RequestInit) =>
+      ({ ok: true, json: async () => ({ success: true, raised: 1250 }) })),
     notifyError: vi.fn(),
     invalidateQueries: vi.fn(async () => {}),
     campaignsResult: { current: { data: [] as unknown[], isLoading: false } },
@@ -33,7 +34,7 @@ const { authFetch, notifyError, invalidateQueries, campaignsResult, tenant, appS
         tenantPlan: 'plus' as string | null,
       },
     },
-    updateDoc: vi.fn(async () => {}),
+    updateDoc: vi.fn(async (_ref: unknown, _data?: Record<string, unknown>) => {}),
   }));
 
 vi.mock('../../utils/auth-fetch', () => ({ authFetch }));
@@ -137,6 +138,12 @@ async function type(el: Element | null, value: string) {
 
 const byTestId = (id: string) => container.querySelector(`[data-testid="${id}"]`);
 
+/** The JSON body of the Nth authFetch call. */
+const sentBody = (call = 0): Record<string, unknown> => {
+  const opts = authFetch.mock.calls[call]?.[1];
+  return JSON.parse(String((opts as RequestInit).body));
+};
+
 /**
  * Open the campaign editor on the existing campaign, from the list.
  *
@@ -229,7 +236,7 @@ describe('an admin can add an offline gift to a campaign’s raised amount', () 
     await click([...container.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Record gift')!);
 
     expect(authFetch).toHaveBeenCalledWith('/api/campaigns/adjust-raised', expect.objectContaining({ method: 'POST' }));
-    const body = JSON.parse((authFetch.mock.calls[0][1] as { body: string }).body);
+    const body = sentBody();
     expect(body).toMatchObject({
       campaignId: 'camp1',
       tenantId: 't1',
@@ -245,7 +252,7 @@ describe('an admin can add an offline gift to a campaign’s raised amount', () 
     await click(byTestId('campaign-record-offline-gift'));
     await type(container.querySelector('#offline-gift-amount'), '250');
     await click([...container.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Record gift')!);
-    const body = JSON.parse((authFetch.mock.calls[0][1] as { body: string }).body);
+    const body = sentBody();
     // 🔴 The campaign already shows $1,000 raised. A control that SET the total
     // would send 250 as the answer; this sends 250 as the GIFT, and the server
     // increments. The distinction is the whole double-count guard.
@@ -293,7 +300,7 @@ describe('an admin can add an offline gift to a campaign’s raised amount', () 
     await click(byTestId('campaign-record-offline-gift'));
     await type(container.querySelector('#offline-gift-amount'), '-450');
     await click([...container.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Record gift')!);
-    const body = JSON.parse((authFetch.mock.calls[0][1] as { body: string }).body);
+    const body = sentBody();
     expect(body.amountDollars).toBe(-450);
   });
 
@@ -342,7 +349,7 @@ describe('the campaign editor never writes the raised total', () => {
     await click([...container.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Save changes')!);
 
     expect(updateDoc).toHaveBeenCalled();
-    const payload = updateDoc.mock.calls.at(-1)![1] as Record<string, unknown>;
+    const payload = updateDoc.mock.calls.at(-1)?.[1] as Record<string, unknown>;
     // 🔴 `openEdit` loads the whole campaign into form state. Spreading it back
     // wrote a SNAPSHOT of `raised` taken when the modal opened, silently undoing
     // any Stripe gift — or any manual adjustment — that landed while it was
