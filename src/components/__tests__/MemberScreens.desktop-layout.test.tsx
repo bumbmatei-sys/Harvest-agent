@@ -611,6 +611,23 @@ const EDITED_SINCE_MEASUREMENT: ReadonlyArray<{ file: string; ticket: string; wh
       'its mobileLayer, colours and heights pins from the measured revision, all ' +
       'asserted elsewhere in this file and all still passing.',
   },
+  {
+    file: 'NewsTab.tsx',
+    ticket: 'THE-246',
+    why:
+      'Gated the feed\'s "Partner with Us" CARD on having somewhere to send the ' +
+      'reader. THE-213 gated the Give tab and the Give route on the PLAN; THE-246 ' +
+      'adds the second question a giving surface has to answer — whether the ' +
+      'church has a payment RAIL at all (a live Stripe account, or a payment ' +
+      'link it pasted) — and a church with neither has a Give page that is ' +
+      'hidden entirely. MainApp therefore withholds `onGoToPartner` there, and ' +
+      'this card renders only when a caller hands one over: a "Give Now" button ' +
+      'that visibly does nothing is the THE-193 dead end, not a smaller version ' +
+      'of one. The prop was ALREADY optional; this is the first caller to pass ' +
+      'undefined. A BEHAVIOUR change and not a layout one — no element, class, ' +
+      'wrapper or ordering moved, the existing block simply gained a condition ' +
+      'in front of it, which is what the normalised comparison below folds out.',
+  },
 ];
 
 const EXEMPT_FILES = EDITED_SINCE_MEASUREMENT.map((e) => e.file);
@@ -631,6 +648,7 @@ describe('the byte-identity exemption list is exactly the edits that justify it'
       'THE-202 MainApp.tsx',
       'THE-205 MainApp.tsx',
       'THE-213 MainApp.tsx',
+      'THE-246 NewsTab.tsx',
     ]);
   });
 
@@ -683,8 +701,19 @@ describe('the Give tab is gated on fundraising, which is why MainApp is exempted
   });
 
   it('keeps the tab on the apex site, which is not a tenant and has no plan', () => {
+    // 🔴 `isMainSite ||` STILL LEADS, and that is the whole of this assertion.
+    // THE-246 added a third conjunct to the tenant arm — a church must also have
+    // a payment RAIL (a live Stripe account, or a payment link) for the tab to
+    // exist — and the apex has neither a tenant document nor a plan to answer
+    // either question with. The short-circuit is what keeps the platform's own
+    // Give page exactly as it was.
     expect(read('MainApp.tsx')).toMatch(
-      /const hasGiving = isMainSite \|\| \(isPlanReady && features\?\.fundraising === true\);/,
+      /const hasGiving =\s*isMainSite \|\| \(isPlanReady && features\?\.fundraising === true && hasGivingRails\);/,
+    );
+    // And the rails half itself short-circuits on the platform for the same
+    // reason, so `hasStripeGiving` is true there without a document.
+    expect(read('MainApp.tsx')).toMatch(
+      /const hasStripeGiving = isMainSite \|\| stripeConnectStatus === 'active';/,
     );
   });
 
@@ -851,10 +880,24 @@ describe('no behaviour changed on any screen in scope', () => {
     .replace(/^import \{ (?:READING_MEASURE|FORM_CONTAINER) \}.*$/gm, '')
     .replace(/\s+/g, ' ').trim();
 
-  it.each(['NewsTab', 'AllNews', 'BiblePage', 'UserMessages'] as const)(
+  it.each(['AllNews', 'BiblePage', 'UserMessages'] as const)(
     '%s differs from the pre-PR revision only in class strings', (n) => {
       expect(strip(read(`${n}.tsx`))).toBe(strip(at(`${n}.tsx`)));
     });
+
+  it('NewsTab differs only in class strings AND the one condition THE-246 added', () => {
+    // NewsTab is the second exception, and it is AIChat's treatment rather than
+    // a dropped assertion: the diff is pinned to EXACTLY the `onGoToPartner &&`
+    // guard now in front of the "Partner with Us" card, and everything else in
+    // the file must still normalise identically. A second edit hiding behind
+    // this one still fails.
+    const norm = (src: string) =>
+      strip(src).replace(
+        /\{onGoToPartner && \( (<DesktopCard[\s\S]*?<\/DesktopCard>) \)\}/,
+        '$1',
+      );
+    expect(norm(read('NewsTab.tsx'))).toBe(norm(at('NewsTab.tsx')));
+  });
 
   it('AIChat differs only in class strings AND the two inline properties it retired', () => {
     // AIChat is the exception by design: removing the inline width IS the fix.

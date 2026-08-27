@@ -95,6 +95,7 @@ async function mount(plan: string): Promise<HTMLElement> {
         email="admin@church.org"
         isPlanOwner
         onCustomizeNav={() => {}}
+        onOpenDonations={() => {}}
       />,
     );
   });
@@ -137,6 +138,21 @@ async function expand(host: HTMLElement, label: string): Promise<void> {
   await act(async () => { header!.click(); });
 }
 
+/**
+ * The Payments row's label.
+ *
+ * ⚠️ THE-246 RENAMED IT, and the rename is the point rather than churn: this
+ * row no longer holds the Stripe Connect panel. Stripe Connect moved to the
+ * Donations section (the founder: "Right now to connect to Stripe I have to go
+ * into the settings... what I want instead is... a donation section"), and what
+ * is left here is a POINTER at that section. "Payments (Connect Stripe)" would
+ * now name something the row does not contain.
+ *
+ * Every assertion below keeps its original meaning: free is offered no route to
+ * Stripe Connect at all, and each priced tier still has exactly one.
+ */
+const GIVING_ROW = 'Donations & payment links';
+
 const FREE: TenantPlan = 'free';
 const PRICED: TenantPlan[] = ['plus', 'pro', 'max'];
 
@@ -160,7 +176,7 @@ describe('a free tenant\'s Settings', () => {
   it('shows no Stripe Connect section', async () => {
     const host = await mount(FREE);
 
-    expect(sections(host), 'free was offered Stripe Connect').not.toContain('Payments (Connect Stripe)');
+    expect(sections(host), 'free was offered Stripe Connect').not.toContain(GIVING_ROW);
     // Named the way the founder does, in case the label is ever reworded.
     expect(host.textContent, 'a Stripe Connect control survived on free').not.toMatch(/Connect Stripe/);
   });
@@ -202,7 +218,7 @@ describe('a free tenant\'s Settings', () => {
     scope.platformOverride = true;
     const host = await mount(FREE);
 
-    expect(sections(host)).toContain('Payments (Connect Stripe)');
+    expect(sections(host)).toContain(GIVING_ROW);
     expect(sections(host)).toContain('Integrations');
   });
 });
@@ -215,7 +231,7 @@ describe("the three priced tiers' Settings sections are unchanged", () => {
   const EXPECTED: Record<string, string[]> = {
     plus: [
       'Appearance',
-      'Payments (Connect Stripe)',
+      GIVING_ROW,
       'Onboarding Questions',
       'SMS (Twilio)',
       'Integrations',
@@ -224,7 +240,7 @@ describe("the three priced tiers' Settings sections are unchanged", () => {
     ],
     pro: [
       'Appearance',
-      'Payments (Connect Stripe)',
+      GIVING_ROW,
       'Onboarding Questions',
       'SMS (Twilio)',
       'Integrations',
@@ -233,7 +249,7 @@ describe("the three priced tiers' Settings sections are unchanged", () => {
     ],
     max: [
       'Appearance',
-      'Payments (Connect Stripe)',
+      GIVING_ROW,
       'Onboarding Questions',
       'Giving Statements',
       'SMS (Twilio)',
@@ -251,7 +267,7 @@ describe("the three priced tiers' Settings sections are unchanged", () => {
 
     it(`${PLAN_DISPLAY_NAMES[plan]} can still reach Stripe Connect`, async () => {
       const host = await mount(plan);
-      expect(sections(host), `${plan} lost Stripe Connect`).toContain('Payments (Connect Stripe)');
+      expect(sections(host), `${plan} lost Stripe Connect`).toContain(GIVING_ROW);
       expect(getPlanFeatures(plan).fundraising, `${plan} lost fundraising`).toBe(true);
     });
 

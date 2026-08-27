@@ -45,6 +45,14 @@ import postcss from 'postcss';
 const ROOT = path.resolve(__dirname, '../../..');
 const SRC = path.join(ROOT, 'src');
 const GLOBALS = path.join(ROOT, 'src/app/globals.css');
+/**
+ * The Payments row's label. Renamed by THE-246 when Stripe Connect moved out of
+ * Settings and this row became a pointer at the Donations section — see the
+ * `rowOf('payments')` assertion below. The row keeps its id, its group and its
+ * position, so every layout claim in this file still means what it meant.
+ */
+const GIVING_ROW = 'Donations & payment links';
+
 const SETTINGS_SRC = path.join(SRC, 'components/AdminSettings.tsx');
 const ACCORDION_SRC = path.join(SRC, 'components/settings/SettingsAccordion.tsx');
 const HEADING_SRC = path.join(SRC, 'components/settings/SectionHeading.tsx');
@@ -108,6 +116,7 @@ async function mount(props: Partial<React.ComponentProps<typeof AdminSettings>> 
         email="admin@church.org"
         isPlanOwner
         onCustomizeNav={() => {}}
+        onOpenDonations={() => {}}
         {...props}
       />,
     );
@@ -704,7 +713,7 @@ describe('THE-183 — admin Settings', () => {
     // The accordion rows and the navigation row — the targets this PR lays
     // out — clear 44px comfortably at every mobile width.
     for (const viewport of [380, 480, 639]) {
-      for (const label of ['Appearance', 'Payments (Connect Stripe)', 'Cancel Subscription']) {
+      for (const label of ['Appearance', GIVING_ROW, 'Cancel Subscription']) {
         const row = targets.find((t) => t.label.startsWith(label))!;
         expect(heightAt(row.el, viewport), `"${label}" is short at ${viewport}px`).toBeGreaterThanOrEqual(MIN);
       }
@@ -836,7 +845,26 @@ describe('THE-183 — admin Settings', () => {
       const m = src.match(new RegExp(`id: '${id}',[\\s\\S]{0,400}?content: <(\\w+)`));
       return m ? m[1] : null;
     };
-    expect(rowOf('payments')).toBe('PaymentSection');
+    // 🔴 THE-246 — THE ONE ROW WHOSE CONTENT DELIBERATELY CHANGED, and the
+    // assertion changes with it rather than being deleted. Stripe Connect moved
+    // out of Settings into the Donations section, so this row no longer mounts
+    // `PaymentSection`; it renders a pointer that opens that section. What the
+    // original assertion was protecting — that a row cannot quietly stop
+    // rendering the component owning its path — is restated as the stronger
+    // claim the move actually makes: this screen no longer imports
+    // `PaymentSection` at all, so there is exactly ONE definition of the Stripe
+    // Connect panel and Settings is not a second copy of it.
+    expect(rowOf('payments'), 'the Payments row mounts a component again').toBeNull();
+    // Asserted as the IMPORT and the MOUNT, not as the word: the comment on the
+    // row names `PaymentSection` to say where it went, and a raw-text search
+    // would read that explanation as the defect (the precedent AdminDashboard's
+    // plan-entitlement suite already sets for comment-bearing claims).
+    expect(src, 'AdminSettings still imports the Stripe Connect panel')
+      .not.toMatch(/^import PaymentSection/m);
+    expect(src, 'AdminSettings kept a second copy of the Stripe Connect panel')
+      .not.toMatch(/<PaymentSection\b/);
+    expect(src, 'the Payments row no longer opens the Donations section')
+      .toMatch(/onClick=\{onOpenDonations\}/);
     expect(rowOf('onboarding')).toBe('OnboardingSection');
     expect(rowOf('sms')).toBe('SmsSection');
     expect(rowOf('integrations')).toBe('IntegrationsSection');
@@ -860,7 +888,7 @@ describe('THE-183 — admin Settings', () => {
 
     // (e) And every row still opens and closes, one at a time.
     const host = await mount();
-    await expandSection(host, 'Payments (Connect Stripe)');
+    await expandSection(host, GIVING_ROW);
     // A row holds its header button, plus a content panel while it is open.
     const open = () =>
       Array.from(host.querySelectorAll('[data-settings-row]'))

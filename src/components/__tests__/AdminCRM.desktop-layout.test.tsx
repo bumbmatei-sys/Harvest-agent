@@ -610,6 +610,11 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
       'src/components/AdminCourseEditor.tsx',
       'src/components/AdminCourses.tsx',
       'src/components/AdminDocs.tsx',
+      // THE-246 — the Donations screen (Stripe Connect + the church's own payment
+      // links). Opted in deliberately: it is an admin FORM, so it spends the form
+      // measure, the field widths and the control density rather than inventing
+      // a width of its own.
+      'src/components/AdminDonations.tsx',
       'src/components/AdminEvents.tsx',
       'src/components/AdminForms.tsx',
       'src/components/AdminFundraising.tsx',

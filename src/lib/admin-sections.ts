@@ -66,6 +66,7 @@ const ADMIN_SECTION_TABLE = [
   ['ai', 'ai-knowledge'],
   ['newsletter', 'newsletter'],
   ['fundraising', 'fundraising'],
+  ['donations', 'donations'],
   ['events', 'events'],
   ['docs', 'docs'],
   ['crm', 'crm'],

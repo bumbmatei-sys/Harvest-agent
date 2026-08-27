@@ -5,7 +5,6 @@ import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures, AI_TELEGRAM_ASSISTANT_ENABLED, PLAN_DISPLAY_NAMES, PLAN_ORDER, formatPlanPrice, isUnpricedTier } from '../utils/plan-features';
 import { hasPlatformOverride } from '../utils/tenant-scope';
 import SettingsAccordion from './settings/SettingsAccordion';
-import PaymentSection from './settings/PaymentSection';
 import OnboardingSection from './settings/OnboardingSection';
 import GivingStatementsSection from './settings/GivingStatementsSection';
 import SmsSection from './settings/SmsSection';
@@ -30,9 +29,23 @@ interface AdminSettingsProps {
   isPlanOwner?: boolean;
   /** Opens the bottom-bar / More-drawer customizer (lives in AdminDashboard). */
   onCustomizeNav?: () => void;
+  /**
+   * Opens the Donations section, where Stripe Connect now lives (THE-246).
+   *
+   * 🔴 REQUIRED, AND THAT IS THE DEAD-END GUARD. THE-193 is the precedent: a
+   * CRM button pointed at a Settings screen that was hidden for that tier, and
+   * the workflow simply ended. The fix there was to derive the gate; the fix
+   * here is stronger, because the link and its destination are now the same
+   * fact. AdminDashboard is the only caller, the callback it passes is
+   * `go('donations')`, and `/admin/donations` always renders something — the
+   * real screen when entitled, PlanUpgradeScreen when not. A caller that
+   * cannot navigate cannot compile, so the row below cannot be drawn without a
+   * destination.
+   */
+  onOpenDonations: () => void;
 }
 
-const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onChangePlan, onCancelPlan, tenantId, email, isPlanOwner, onCustomizeNav }) => {
+const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onChangePlan, onCancelPlan, tenantId, email, isPlanOwner, onCustomizeNav, onOpenDonations }) => {
   const [stripeStatus, setStripeStatus] = useState<string | null>(null);
   const [stripeAddon, setStripeAddon] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -204,16 +217,56 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     {
       id: 'payments',
       group: 'Payments',
-      label: 'Payments (Connect Stripe)',
+      // 🔴 THE-246 — STRIPE CONNECT MOVED OUT OF SETTINGS. The founder: "Right
+      // now to connect to Stripe I have to go into the settings. What I want
+      // instead is to create... a donation section where you are going to put
+      // Connect with Stripe."
+      //
+      // So this row is now a POINTER, not the panel. It keeps its id, its
+      // group, its position in the array and its gate — nothing reorders on a
+      // phone (THE-183's constraint) — and what changes is what is underneath
+      // it. The label moves with the content: "Payments (Connect Stripe)" would
+      // now name something this row no longer holds.
+      //
+      // ⚠️ ONE COMPONENT, NOT TWO. `PaymentSection` still has exactly one
+      // definition and is mounted by AdminDonations (its new home) and by
+      // AdminFundraising (unchanged, so the fundraising role keeps the path it
+      // had). This screen no longer mounts it at all — it sends the admin to
+      // the screen that does.
+      label: 'Donations & payment links',
       icon: <CreditCard size={18} />,
-      content: <PaymentSection />,
-      // 🔴 THE-225 — gated on `fundraising`, the cell this section EXISTS to
-      // serve. Stripe Connect is how a church is paid for donations; free
+      content: (
+        <div className="space-y-3">
+          <p className="text-sm text-body leading-relaxed">
+            Connecting Stripe, and adding your own PayPal, Cash App, Venmo or Zelle links,
+            now live together in <b className="text-strong">Donations</b>.
+          </p>
+          <button
+            type="button"
+            onClick={onOpenDonations}
+            className={`inline-flex items-center gap-1.5 px-4 rounded-brand text-[13px] font-semibold text-white transition-opacity hover:opacity-90 ${CONTROL_DENSITY.action} py-2.5`}
+            style={{ backgroundColor: 'var(--brand-color, #C9963A)' }}
+          >
+            Open Donations
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      ),
+      // 🔴 THE-225's gate, unchanged — `fundraising`, the cell this row EXISTS
+      // to serve. Stripe Connect is how a church is paid for donations; free
       // carries `fundraising: false`, so it has no donate page (the member Give
       // tab is gone, /campaign/[id] refuses and /api/stripe/donate 403s —
       // THE-202/THE-213). Connecting an account here would have configured a
       // payout destination for money that cannot arrive, and asked a church for
       // its bank details to do it. The founder has reported this three times.
+      //
+      // ⚠️ IT IS ALSO WHY THIS POINTER CANNOT DANGLE. AdminDashboard builds
+      // `canDonations` from `planAllows(features?.fundraising)` and the same
+      // manageSettings permission that lets this screen render at all — so
+      // whenever this row is visible, the section it opens is too. The
+      // dead-end proof is in `AdminSettings.donations-pointer.test.tsx`, which
+      // walks the tiers through the real shell rather than comparing the two
+      // expressions by eye.
       //
       // The section's other stated purpose — affiliate payouts, per the header
       // comment above — does not keep it alive on free: AFFILIATE_PROGRAM_ENABLED

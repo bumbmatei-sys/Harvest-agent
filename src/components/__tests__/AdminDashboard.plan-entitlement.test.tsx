@@ -225,7 +225,7 @@ const flush = async () => {
 
 const ALL_TAB_LABELS = [
   'Dashboard', 'Church', 'Church List', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
-  'Fundraising', 'Events', 'Notes', 'CRM', 'Accounting', 'Forms', 'Check-In', 'Livestream',
+  'Fundraising', 'Donations', 'Events', 'Notes', 'CRM', 'Accounting', 'Forms', 'Check-In', 'Livestream',
   'SMS', 'Community', 'Library', 'Tenants', 'Affiliate', 'Branding', 'Settings',
 ];
 function navLabels(): string[] {
@@ -561,6 +561,22 @@ describe("a limited admin's role gates still apply independently of plan", () =>
     expect(without.nav, 'no manageSettings on the top tier still has no Settings').not.toContain('Settings');
   });
 
+  it('needs BOTH the plan cell and the permission for Donations (THE-246)', async () => {
+    // 🔴 The permission half is `manageSettings`, NOT `manageFundraising`, and
+    // that is deliberate: the payment links are written to `tenants/{id}.config`
+    // and firestore.rules lets only manageBranding / manageSettings update that
+    // document. Gating on the fundraising role would hand the editor to admins
+    // whose Save can only ever be denied.
+    const noPerm = await openTab('max', UNGATED_TABS[0], { role: 'admin', permissions: { manageFundraising: true } });
+    const withPerm = await openTab('max', UNGATED_TABS[0], { role: 'admin', permissions: { manageSettings: true } });
+    // 🔴 And free — which has `fundraising: false` and no donate page — gets no
+    // entry even holding the permission. Not a walled tab: an absent one.
+    const freeTier = await openTab('free', UNGATED_TABS[0], { role: 'admin', permissions: { manageSettings: true } });
+    expect(noPerm.nav, 'the fundraising role alone opened the links editor').not.toContain('Donations');
+    expect(withPerm.nav).toContain('Donations');
+    expect(freeTier.nav, 'free was offered a Donations tab').not.toContain('Donations');
+  });
+
   it('needs BOTH the plan cell and the permission for Branding', async () => {
     const noPerm = await openTab('max', UNGATED_TABS[0], { role: 'admin', permissions: {} });
     const withPerm = await openTab('max', UNGATED_TABS[0], { role: 'admin', permissions: { manageBranding: true } });
@@ -599,12 +615,19 @@ describe('no nav item is shown by a bypass that skips its feature check', () => 
     // A tenth item cannot be added the same way: the bypass exists in exactly
     // one place, so there is no per-site term left to get wrong.
     const gateCount = (CODE.match(/planAllows\(/g) ?? []).length;
-    // The 13 gated tabs, plus canBranding, plus ONE more: THE-220's `navAllows`
-    // delegates to this helper rather than restating `planUnlocked || cell ===
-    // true`, so the nav layer and the render layer cannot drift on what "the
-    // plan allows" means. That delegation is the whole reason the count moved,
-    // and the next assertion pins its shape.
-    expect(gateCount).toBe(GATED_TABS.length + 1 + 1);
+    // The 13 gated tabs, plus canBranding, plus canDonations, plus ONE more:
+    // THE-220's `navAllows` delegates to this helper rather than restating
+    // `planUnlocked || cell === true`, so the nav layer and the render layer
+    // cannot drift on what "the plan allows" means. That delegation is the whole
+    // reason the count moved, and the next assertion pins its shape.
+    //
+    // ⚠️ `canDonations` (THE-246) is counted here rather than added to
+    // GATED_TABS because it is Branding's shape, not theirs: ONE expression
+    // feeding both the nav entry and the render guard, so an unentitled tier has
+    // no tab at all instead of a walled one. See section 7 for what that buys —
+    // free has no donate page by decision, and a wall in front of Stripe Connect
+    // would be the surface THE-225 deleted from Settings.
+    expect(gateCount).toBe(GATED_TABS.length + 1 + 1 + 1);
   });
 
   it('builds the NAV gate from the render gate plus exactly one term: the free tier', () => {

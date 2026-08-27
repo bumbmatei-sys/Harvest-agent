@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Home, BookOpen, MessageCircle, Map as MapIcon, User, Play, ChevronLeft, ChevronRight, Newspaper, FileText, GraduationCap, MessageSquare, HandHeart, HeartHandshake } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
@@ -8,6 +8,7 @@ import { db } from '../firebase';
 
 import Profile from './Profile';
 import PartnerWithUsTab from './PartnerWithUsTab';
+import { readGivingLinks } from './donations/giving-providers';
 import BlogTab from './BlogTab';
 import NewsTab from './NewsTab';
 import PrayerWall from './PrayerWall';
@@ -76,7 +77,7 @@ interface MainAppProps {
 
 const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   const { tenantPlan, currentUser } = useAppStore();
-  const { tenantId, tenantName, branding, tenantPlan: ctxTenantPlan, isLoading: tenantLoading } = useTenant();
+  const { tenantId, tenantName, branding, tenantPlan: ctxTenantPlan, isLoading: tenantLoading, stripeConnectStatus } = useTenant();
   // White-label tenants (any real tenant other than the platform) show their own
   // name + logo; the platform / super-admin view keeps the "Harvest" brand.
   const isWhiteLabel = !!tenantId && tenantId !== PLATFORM_TENANT_ID;
@@ -178,7 +179,38 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
    * Same `=== true` shape as the gates around it: `features` is null until the
    * tenant document resolves, so an unknown plan reads as "no", never "yes".
    */
-  const hasGiving = isMainSite || (isPlanReady && features?.fundraising === true);
+  /**
+   * 🔴 THE-246 — THE GIVE PAGE'S FOUR STATES, DERIVED ONCE.
+   *
+   * `fundraising` says the church is ALLOWED to take gifts. These two say
+   * whether it actually CAN, and the founder's table turns on both:
+   *
+   *   Stripe ✗ links ✗ → the Give page is hidden entirely
+   *   Stripe ✓ links ✗ → the donation form alone
+   *   Stripe ✗ links ✓ → the links alone, no form
+   *   Stripe ✓ links ✓ → the form, with the links beneath it
+   *
+   * ⚠️ ONLY 'active' COUNTS AS STRIPE. 'pending' is an onboarding nobody
+   * finished and 'restricted' is an account Stripe has stopped; neither can
+   * complete a checkout, so a form drawn on top of either fails AFTER a member
+   * has typed their card in. See `stripeConnectStatus` in TenantContext.
+   *
+   * ⚠️ `isMainSite` SHORT-CIRCUITS, and every gate in this file already reads
+   * that way. The platform's own Give page (apex / the `harvest` tenant / a
+   * super admin) has no tenant document to answer either question, so making it
+   * wait on one would delete a surface that works today. On a tenant subdomain
+   * a super admin is gated by that tenant, per tenant-scope's own contract.
+   *
+   * Validated on READ, not trusted from storage — `readGivingLinks` re-derives
+   * every URL against its provider's host allow-list, so a link that no longer
+   * passes stops counting as a rail rather than keeping the page alive.
+   */
+  const hasStripeGiving = isMainSite || stripeConnectStatus === 'active';
+  const givingLinks = useMemo(() => readGivingLinks(branding), [branding]);
+  const hasGivingRails = hasStripeGiving || givingLinks.length > 0;
+
+  const hasGiving =
+    isMainSite || (isPlanReady && features?.fundraising === true && hasGivingRails);
 
   // 'loading' means we haven't fetched yet — hide tab until we know.
   // 'empty' means 0 member-visible courses — hide tab.
@@ -771,7 +803,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                         onOpenAllNews={() => setFullScreenView({type: 'all-news'})}
                         onOpenArticle={(post) => setFullScreenView({type: 'article', data: post})}
                         onOpenLivestream={() => setFullScreenView({ type: 'livestream' })}
-                        onGoToPartner={() => setActiveTopTab('partner')}
+                        onGoToPartner={hasGiving ? () => setActiveTopTab('partner') : undefined}
                         onOpenMessages={() => setActiveTopTab('messages')}
                       />
                     </>
@@ -783,7 +815,12 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                       donate form on a tenant with no donate page is the thing
                       being refused. Exactly the pair NewsTab carries below. */}
                   {effectiveTopTab === 'partner' && hasGiving && (
-                    <PartnerWithUsTab />
+                    /* THE-246 — the two facts the four-state table turns on are
+                       derived ONCE, above, and handed down. PartnerWithUsTab is
+                       mounted from nowhere else, so passing them is what keeps
+                       the tab strip, the redirect and the page itself unable to
+                       disagree about whether this church can take a gift. */
+                    <PartnerWithUsTab showDonationForm={hasStripeGiving} links={givingLinks} />
                   )}
                   {effectiveTopTab === 'blog' && (
                     <BlogTab onOpenArticle={(post) => setFullScreenView({type: 'article', data: post})} />
@@ -827,7 +864,13 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
             <div className="w-full">
               <Profile
                 onNavigate={onNavigate}
-                onGoToPartner={() => { setActiveBottomTab('home'); setActiveTopTab('partner'); }}
+                /* 🔴 undefined, not a no-op, when there is no Give page to
+                   reach (THE-246). Profile's "Give again →" / "Partner with Us
+                   →" used to jump at a tab that `effectiveTopTab` then sent
+                   straight back Home — a button that visibly does nothing,
+                   which is the THE-193 dead end rather than a gate. Profile
+                   hides the CTA when this prop is absent. */
+                onGoToPartner={hasGiving ? () => { setActiveBottomTab('home'); setActiveTopTab('partner'); } : undefined}
                 onGoToMap={() => setActiveBottomTab('map')}
                 onOpenSavedBlog={openSavedBlog}
                 onOpenSavedLesson={openSavedLesson}

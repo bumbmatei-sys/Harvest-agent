@@ -5,11 +5,46 @@ import { useTenant } from '@/contexts/TenantContext';
 import { authFetch } from '../utils/auth-fetch';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { DesktopCard } from './layout/DesktopLayout';
+import GivingLinks from './donations/GivingLinks';
+import type { PublishedGivingLink } from './donations/giving-providers';
 
 type DonationType = 'one-time' | 'monthly';
 
-const PartnerWithUsTab: React.FC = () => {
-  const { tenantId, tenantName, tenantPlan } = useTenant();
+/**
+ * The Give page.
+ *
+ * 🔴 THE-246 — THREE OF THE FOUR STATES ARE DECIDED BY THE CALLER, AND ONLY BY
+ * THE CALLER. MainApp derives both facts once (`hasStripeGiving`,
+ * `givingLinks`) and uses them for the tab entry, the redirect and this mount,
+ * so the strip and the page cannot disagree about whether a church can take a
+ * gift. This component is mounted from nowhere else; the fourth state — neither
+ * rail, so no Give page at all — is therefore the absence of this mount, which
+ * is why there is no "nothing to show" branch below to get out of step with it.
+ *
+ *   Stripe ✗ links ✗ → never mounted (MainApp)
+ *   Stripe ✓ links ✗ → the donation form alone
+ *   Stripe ✗ links ✓ → the links alone, no form
+ *   Stripe ✓ links ✓ → the form, with the links beneath it
+ *
+ * ⚠️ Hiding the form is not what refuses the money. `/api/stripe/donate` is
+ * deliberately unauthenticated so anonymous donors can give, and it already
+ * refuses a plan without `fundraising`, a tenant past its grace window, and a
+ * tenant with no connected account — before any Stripe object exists. That
+ * route is the server gate; this is the surface.
+ */
+interface PartnerWithUsTabProps {
+  /**
+   * Does this ministry have a Stripe account that can actually take a card?
+   * `false` renders the page WITHOUT the amount picker and the Give button —
+   * a form whose submit is guaranteed to fail is worse than no form.
+   */
+  showDonationForm: boolean;
+  /** The church's own payment links, already validated and in table order. */
+  links: readonly PublishedGivingLink[];
+}
+
+const PartnerWithUsTab: React.FC<PartnerWithUsTabProps> = ({ showDonationForm, links }) => {
+  const { tenantId, tenantName } = useTenant();
   const [donationType, setDonationType] = useState<DonationType>('one-time');
   const [amount, setAmount] = useState<string>('50');
   const [isLoading, setIsLoading] = useState(false);
@@ -58,6 +93,13 @@ const PartnerWithUsTab: React.FC = () => {
 
   return (
     <div className="flex-1 px-4 lg:px-0 pb-32 max-w-md mx-auto w-full lg:max-w-[960px] lg:grid lg:grid-cols-[1fr_340px] lg:gap-6 lg:items-start">
+      {/* The left column. `contents` below `lg` means this wrapper draws NO BOX
+          at all on a phone — its children stay direct children of the flow they
+          were in before, so mobile is unmoved — and becomes a real column from
+          `lg` up, where it keeps the links under the form rather than letting
+          auto-placement drop them into the summary rail's column. The same
+          `contents` + `lg:` pairing form-layout's Rule 5 documents. */}
+      <div className="contents lg:block">
       {/* Desktop (lg:+) only: lift the whole donation form onto an elevated,
           padded card that reads as an intentional single surface on the page
           field. All classes are lg:-gated (DesktopCard's bg/border/shadow/radius
@@ -66,7 +108,7 @@ const PartnerWithUsTab: React.FC = () => {
       {/* Top Icon & Text.
           Desktop (lg:) shifts to the warm-neutral Harvest Member App look (serif
           "Give", surface-gold disc, warm copy); mobile classes are unchanged. */}
-      <div className="flex flex-col items-center text-center mb-8 mt-4">
+      <div className={`flex flex-col items-center text-center mt-4 ${showDonationForm ? 'mb-8' : 'mb-2'}`}>
         <div className="w-16 h-16 bg-[var(--surface-gold)] rounded-full flex items-center justify-center mb-4">
           <HeartHandshake size={32} className="text-gold" />
         </div>
@@ -75,10 +117,18 @@ const PartnerWithUsTab: React.FC = () => {
           <p className="text-gold font-semibold text-sm mb-2">{tenantName}</p>
         )}
         <p className="text-muted text-sm leading-relaxed">
-          Your partnership keeps this platform free for the new believer and scalable for the nations.
+          {showDonationForm
+            ? 'Your partnership keeps this platform free for the new believer and scalable for the nations.'
+            /* Links-only. The copy has to carry what the form's "Secure,
+               encrypted payment via Stripe" line carried — WHO is being paid —
+               because here it is not Harvest, and a member is entitled to know
+               that before they leave the app. */
+            : `Give directly to ${tenantName || 'this ministry'} through one of the accounts below.`}
         </p>
       </div>
 
+      {showDonationForm && (
+        <>
       {/* One-Time / Monthly Toggle */}
       <div className="bg-surface-sunken rounded-xl p-1 flex mb-8 border border-line">
         <button
@@ -167,12 +217,27 @@ const PartnerWithUsTab: React.FC = () => {
           </>
         )}
       </button>
+        </>
+      )}
       </DesktopCard>
+
+      {/* The church's own payment links. Beneath the form when there is one,
+          and the whole of the page when there is not — the heading changes with
+          it so "Other ways to give" never names the only way there is. */}
+      <GivingLinks
+        links={links}
+        heading={showDonationForm ? 'Other ways to give' : 'Ways to give'}
+      />
+      </div>
 
       {/* Desktop-only "Your gift" summary rail. Real values only — no impact,
           year-to-date, tax-statement, fund, or processing-fee lines (the app
           has no data/feature for those yet). hidden on mobile, so mobile is
-          byte-identical. */}
+          byte-identical.
+
+          Bound to the form: it summarises the amount and frequency the form
+          holds, so with no form there is no gift for it to total. */}
+      {showDonationForm && (
       <div className="hidden lg:block">
         <DesktopCard elevation="sm" className="lg:p-6 lg:sticky lg:top-4">
           <div className="text-[11px] font-bold text-faint tracking-[0.14em] uppercase mb-2">Your gift</div>
@@ -198,6 +263,7 @@ const PartnerWithUsTab: React.FC = () => {
           </div>
         </DesktopCard>
       </div>
+      )}
     </div>
   );
 };

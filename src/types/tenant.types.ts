@@ -124,6 +124,26 @@ export interface TenantConfig {
     required: boolean;
     order: number;
   }[];
+  /**
+   * THE-246 — the church's own payment links (PayPal, Cash App, Venmo, Zelle).
+   *
+   * Lives on `config` for the same reason `onboardingQuestions` does: it is a
+   * tenant SETTING edited by the Settings/Branding write path, and
+   * `firestore.rules` already governs `config` as one field on this doc
+   * (`manageSettings` or `manageBranding`, super admin unrestricted). No rule
+   * changed to add it.
+   *
+   * 🔴 PUBLIC BY CONSTRUCTION. `tenants/{id}` is `allow read: if true`, which
+   * is what lets a signed-out visitor resolve a subdomain. So the URLs, handles
+   * and EMAILS here are world-readable the moment they are saved — the admin
+   * copy says so before a church types one. Nothing secret may join them.
+   *
+   * ⚠️ Never rendered straight from this field. `readGivingLinks`
+   * (components/donations/giving-providers.ts) re-validates every value on READ
+   * and drops what no longer passes, so a document older than the rule that
+   * now governs it cannot put an unchecked `href` in front of a member.
+   */
+  givingLinks?: import('../components/donations/giving-providers').GivingLinkRecord;
 }
 
 /**

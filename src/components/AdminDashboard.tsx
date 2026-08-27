@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { LayoutDashboard, Church, FileText, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, ChevronDown, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, QrCode, Radio, ExternalLink, Link2, Palette, Bell, X, Library } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, ChevronDown, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, QrCode, Radio, ExternalLink, Link2, Palette, Bell, X, Library, HandCoins } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import PlatformInbox from './PlatformInbox';
 import AdminChurches from './AdminChurches';
@@ -22,6 +22,7 @@ import { Permission, normalizePermissions } from './AnalyticsAndRoles';
 import AdminNavCustomizer from './AdminNavCustomizer';
 import FocusScreen from './FocusScreen';
 import AdminFundraising from './AdminFundraising';
+import AdminDonations from './AdminDonations';
 import AdminCRM from './AdminCRM';
 import AdminDocs from './AdminDocs';
 import AdminCommunity from './AdminCommunity';
@@ -72,7 +73,7 @@ const MORE_GROUPS: { label: string; ids: string[] }[] = [
   // Analytics & Admin Roles live inside the CRM screen as internal tabs, not as
   // their own drawer entries.
   // Statements now live as a sub-tab inside Accounting (not a standalone entry).
-  { label: 'MINISTRY', ids: ['crm', 'churches', 'community', 'fundraising', 'forms', 'accounting'] },
+  { label: 'MINISTRY', ids: ['crm', 'churches', 'community', 'fundraising', 'donations', 'forms', 'accounting'] },
   // Broadcasting: outbound / live engagement channels.
   // QR Codes now live as a sub-tab inside Check-In (not a standalone entry).
   { label: 'BROADCASTING', ids: ['events', 'checkin', 'sms', 'livestream'] },
@@ -87,7 +88,7 @@ const GROUPED_MORE_IDS = new Set(MORE_GROUPS.flatMap((g) => g.ids));
 // for is dropped, and a group with no permitted tabs is omitted entirely.
 const DESKTOP_NAV_GROUPS: { label: string; ids: string[] }[] = [
   { label: 'CONTENT', ids: ['blog', 'courses', 'newsletter', 'ai', 'docs'] },
-  { label: 'MINISTRY', ids: ['crm', 'churches', 'community', 'fundraising', 'forms', 'accounting'] },
+  { label: 'MINISTRY', ids: ['crm', 'churches', 'community', 'fundraising', 'donations', 'forms', 'accounting'] },
   { label: 'BROADCASTING', ids: ['events', 'checkin', 'sms', 'livestream'] },
   { label: 'GROW', ids: ['affiliate', 'branding', 'tenants', 'inbox'] },
 ];
@@ -539,6 +540,32 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // tab (canBranding), so a branding-only admin reaches Branding, not Settings.
   const canSettings = hasFullAccess || !!perms.manageSettings;
 
+  /**
+   * Donations tab entitlement — Stripe Connect and the church's own payment
+   * links (THE-246). Like `canBranding` above, this feeds BOTH the nav entry
+   * and the render guard, and it is the SECOND of the two entries in this file
+   * to do so. Two reasons, and neither is a preference:
+   *
+   * 🔴 THE PLAN HALF USES `planAllows`, NOT `navAllows`. `navAllows` shows a
+   * gated tab to free behind PlanUpgradeScreen, which is right for a feature
+   * free could buy and browse. It is wrong for this one: free carries
+   * `fundraising: false` and has NO DONATE PAGE BY DECISION (THE-202/THE-213),
+   * so the screen behind the wall would be a Connect button asking a church for
+   * its bank details to receive money that cannot arrive — the exact surface
+   * THE-225 removed from Settings after the founder reported it three times.
+   * Reads the FEATURE, so a future tier sold without giving needs no edit here.
+   *
+   * 🔴 THE PERMISSION HALF IS `manageSettings`, WHICH IS WHAT THE WRITE NEEDS.
+   * The links live on `tenants/{id}.config`, and firestore.rules lets a
+   * non-super-admin update that document only with manageBranding or
+   * manageSettings. Gating this screen on the fundraising permission instead
+   * would hand its editor to admins whose save can only ever be denied — a
+   * form that cannot succeed is worse than a tab that is not there. Branding
+   * admins reach Branding; Stripe Connect stays reachable from Fundraising for
+   * the fundraising role, unchanged.
+   */
+  const canDonations = !!(planAllows(features?.fundraising) && canSettings);
+
   // My Account menu props (top-right avatar) — assembled after the entitlement
   // flags above so the menu can gate Settings the same way the drawer/sidebar do.
   const accountMenuProps = {
@@ -590,6 +617,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     navAllows(features?.fundraising) &&
       (hasFullAccess || perms.manageFundraising) &&
       { id: 'fundraising', label: 'Fundraising', icon: Heart },
+    // Donations — Stripe Connect + the church's own payment links (THE-246).
+    // Sits directly after Fundraising in the MINISTRY group: this is what a
+    // campaign spends. Gated by `canDonations` above, which is the one
+    // expression the render switch below also asks — see its note for why this
+    // entry does not take the visible-but-walled treatment.
+    canDonations && { id: 'donations', label: 'Donations', icon: HandCoins },
     // Event registration (Pretix)
     navAllows(features?.eventRegistration) &&
       (hasFullAccess || perms.manageEvents) &&
@@ -747,6 +780,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     settings: 'Settings',
     upgrade: 'Plan & Billing',
     branding: 'Branding',
+    donations: 'Donations',
     canvas: canvasName || 'Canvas',
   };
   const headerTitle = TITLE_OVERRIDES[activeTab]
@@ -1099,6 +1133,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             planAllows(features?.fundraising)
               ? <div className="p-4 lg:p-0"><AdminFundraising initialCampaignId={itemId} onItemConsumed={clearItemId} /></div>
               : <PlanUpgradeScreen featureName="Fundraising" featureKey="fundraising" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
+          ) : activeTab === 'donations' ? (
+            canDonations
+              ? <div className="p-4 lg:p-0"><AdminDonations /></div>
+              : <PlanUpgradeScreen featureName="Donations" featureKey="fundraising" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'docs' ? (
             planAllows(features?.docs)
               ? <div className="p-4 lg:p-0"><AdminDocs initialDocId={itemId} onItemConsumed={clearItemId} /></div>
@@ -1174,6 +1212,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               email={auth.currentUser?.email ?? undefined}
               isPlanOwner={isPlanOwner}
               onCustomizeNav={() => setShowNavCustomizer(true)}
+              /* THE-246 — the Payments row is now a pointer at the Donations
+                 section. Required rather than optional, so the link and the
+                 screen it opens cannot get out of step: `go('donations')`
+                 always renders the Donations branch of the switch below. */
+              onOpenDonations={() => go('donations')}
               onChangePlan={async (plan) => {
                 if (auth.currentUser) {
                   const { updateDoc, doc } = await import('firebase/firestore');

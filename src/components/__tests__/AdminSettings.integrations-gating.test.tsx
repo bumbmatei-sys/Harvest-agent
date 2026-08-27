@@ -134,6 +134,7 @@ async function mount(plan: string): Promise<HTMLElement> {
         email="admin@church.org"
         isPlanOwner
         onCustomizeNav={() => {}}
+        onOpenDonations={() => {}}
       />,
     );
   });

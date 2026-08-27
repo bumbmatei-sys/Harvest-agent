@@ -92,7 +92,15 @@ const stub = vi.hoisted(() => (name: string) => ({ default: () => <div data-test
 vi.mock('../Profile', () => ({
   default: (props: any) => (
     <div data-testid="profile">
-      <button data-testid="profile-give" onClick={() => props.onGoToPartner?.()}>Give again</button>
+      {/* 🔴 MIRRORS THE REAL COMPONENT'S CONTRACT SINCE THE-246: Profile draws
+          "Give again →" / "Partner with Us →" only when a caller hands it a
+          destination, and MainApp withholds `onGoToPartner` when the Give page
+          is hidden. A stub that rendered the button unconditionally would let
+          this file keep passing while the real screen offered a giving button
+          that does nothing. */}
+      {props.onGoToPartner && (
+        <button data-testid="profile-give" onClick={() => props.onGoToPartner()}>Give again</button>
+      )}
     </div>
   ),
 }));
@@ -166,6 +174,13 @@ const tenant = vi.hoisted(() => ({
   branding: null as any,
   tenantPlan: 'plus' as string | null,
   isLoading: false,
+  // 🔴 THE-246 — a church's plan says it MAY take gifts; these say it CAN.
+  // Defaulted to a live Stripe account because that is the ordinary paying
+  // church this file's section 3 is about: every assertion here is about the
+  // PLAN gate, and a tenant with no payment rails at all would fail them for a
+  // reason that has nothing to do with `fundraising`. The rails gate itself is
+  // covered in MainApp.giving-rails.test.tsx.
+  stripeConnectStatus: 'active' as string | undefined,
 }));
 vi.mock('../../contexts/TenantContext', () => ({ useTenant: () => tenant }));
 
@@ -174,11 +189,12 @@ let root: Root;
 
 async function mount(
   plan: string | null,
-  opts: { isLoading?: boolean; hasCourse?: boolean; giving?: boolean } = {},
+  opts: { isLoading?: boolean; hasCourse?: boolean; giving?: boolean; stripe?: boolean } = {},
 ) {
   store.tenantPlan = plan;
   tenant.tenantPlan = plan;
   tenant.isLoading = opts.isLoading ?? false;
+  tenant.stripeConnectStatus = (opts.stripe ?? true) ? 'active' : undefined;
   courses.present = opts.hasCourse ?? true;
   // The `?giving=1` deep link a printed QR / Text-to-Give reply carries. Set on
   // the real location so MainApp's own effect reads it, rather than reaching
@@ -279,17 +295,25 @@ describe('no member-app surface offers giving on a free tenant', () => {
   });
 
   it("🔴 refuses the jump Profile's own giving buttons make", async () => {
-    // Profile is mounted inside this shell and calls `onGoToPartner`, which is
-    // `setActiveBottomTab('home'); setActiveTopTab('partner')`. Driven through
-    // the real prop rather than by poking state, so the wiring is what is under
-    // test — and this is the path the founder's own report walked.
+    // Profile is mounted inside this shell and is handed `onGoToPartner`, which
+    // is `setActiveBottomTab('home'); setActiveTopTab('partner')`. Driven
+    // through the real prop rather than by poking state, so the wiring is what
+    // is under test — and this is the path the founder's own report walked.
+    //
+    // ⚠️ TIGHTENED BY THE-246, not weakened. The jump used to be OFFERED and
+    // then bounced back to Home by `effectiveTopTab`; MainApp now withholds the
+    // prop entirely on a tenant with no Give page, so there is no button to
+    // press. Both facts are asserted: the CTA is absent, and pressing what
+    // Profile does render still reaches no donate path.
     await mount('free');
     await click(profileEntry());
-    await click(container.querySelector('[data-testid="profile-give"]'));
 
+    expect(
+      container.querySelector('[data-testid="profile-give"]'),
+      'a free member was still offered a giving button',
+    ).toBeNull();
     expect(partnerTab(), 'the donate form mounted from the Profile jump').toBeNull();
     expect(touchedGiving()).toBe(false);
-    expect(coursesScreen(), 'the jump did not land on Home').not.toBeNull();
   });
 
   it('the same jump on a paying tier still reaches the donate form', async () => {
