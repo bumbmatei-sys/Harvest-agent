@@ -6,6 +6,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { getTwilioConfig, sendSms, SMS_CAP_MESSAGE } from '@/lib/twilio';
 import { getSmsUsageSnapshot } from '@/lib/sms-usage';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
+import { SMS_FEATURE_ENABLED, SMS_HIDDEN_MESSAGE } from '@/lib/sms-feature';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -27,7 +28,14 @@ async function resolveRecipients(tenantId: string, group: Group, tag?: string): 
   });
 }
 
+// THE-245 — refused while the SMS feature is hidden. Ahead of requireAdmin so
+// the route answers identically to every caller and never touches Firestore.
+// Nothing is deleted: this file, the recipient resolver and the smsBroadcasts
+// history it writes are all intact behind the switch.
 export async function POST(request: NextRequest) {
+  if (!SMS_FEATURE_ENABLED) {
+    return NextResponse.json({ error: SMS_HIDDEN_MESSAGE }, { status: 503 });
+  }
   const authResult = await requireAdmin(request);
   if (authResult instanceof NextResponse) return authResult;
   const { uid } = authResult;

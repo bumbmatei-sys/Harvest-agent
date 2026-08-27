@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { auth } from '../../firebase';
+import { SMS_FEATURE_ENABLED } from '../../lib/sms-feature';
 
 /**
  * Per-tenant consumption detail for the super-admin Tenants screen — RAG query
@@ -134,7 +135,17 @@ const TenantUsagePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
 
         {/* TWO SMS NUMBERS, NEVER ONE. `smsSegments` is what Harvest paid for;
             `smsSegmentsByo` is what the church paid Twilio for directly. Adding
-            them would produce a figure that means nothing. */}
+            them would produce a figure that means nothing.
+
+            THE-245 — both tiles are withheld while SMS is hidden. This panel is
+            super-admin-only and makes no promise to a church, so it is the
+            weakest of the hidden surfaces; it goes anyway because the numbers
+            can only be 0 and 'Not configured' while nothing can send, and two
+            tiles reporting a feature the platform is not offering are noise at
+            best and a contradiction at worst. The usage DOCUMENTS behind them
+            are untouched — nothing is deleted, and the tiles come back with the
+            switch reading the same history. */}
+        {SMS_FEATURE_ENABLED && (<>
         <Stat
           label="SMS · Harvest's Twilio"
           value={sms.platformAvailable ? sms.platformSegments.toLocaleString() : 'n/a'}
@@ -157,6 +168,7 @@ const TenantUsagePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                 : 'No own credentials on file'
           }
         />
+        </>)}
       </div>
     </div>
   );

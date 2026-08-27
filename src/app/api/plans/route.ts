@@ -9,6 +9,7 @@ import {
   AI_ASSISTANT_ADDON_PRICING,
   AI_TELEGRAM_ASSISTANT_ENABLED,
 } from '@/utils/plan-features';
+import { SMS_FEATURE_ENABLED } from '@/lib/sms-feature';
 
 export const dynamic = 'force-static';
 export const revalidate = 3600; // CDN cache: re-generate at most once per hour
@@ -75,7 +76,19 @@ export async function GET() {
         // uploader, so advertising it here would sell a capability that does not
         // exist. Removed from the plan matrix too — see plan-features.ts.
         newsletterAutomation: features.newsletterAutomation,
-        smsAutomation: features.smsAutomation,
+        // THE-245 — SMS is hidden while it is untested, so this catalogue stops
+        // publishing a per-tier value for it and no consumer can render a plan
+        // row from one. Same treatment as the AI Assistant below, and for the
+        // same reason: this endpoint is what theharvest.site builds its pricing
+        // copy from, so a value left here is a claim the marketing site would
+        // keep making on the app's authority.
+        //
+        // 🔴 `features.smsAutomation` IS UNCHANGED IN THE MATRIX — the key is
+        // omitted from the response, not set to false. A `false` would say "this
+        // tier does not include SMS", which is a different and untrue claim;
+        // absent says "this catalogue makes no claim about SMS". Flip
+        // SMS_FEATURE_ENABLED to publish the real per-tier values again.
+        ...(SMS_FEATURE_ENABLED ? { smsAutomation: features.smsAutomation } : {}),
         // The AI (Telegram) Assistant is the retired add-on (NOT the RAG aiChat/
         // aiKnowledge capabilities above, which stay). Omit its plan-comparison
         // value while hidden so no client renders the row. Flip

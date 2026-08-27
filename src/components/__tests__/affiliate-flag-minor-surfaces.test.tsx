@@ -47,7 +47,14 @@ vi.mock('../AdminScreenHeader', async () => {
   };
 });
 
-/** Load a module with AFFILIATE_PROGRAM_ENABLED forced to `enabled`. */
+/** Load a module with AFFILIATE_PROGRAM_ENABLED forced to `enabled`.
+ *
+ *  THE-245 — the SMS master switch is forced ON throughout, because this suite
+ *  is about the AFFILIATE flag and one of its assertions is that with that flag
+ *  on the visible permission catalog is the full catalog again, byte for byte.
+ *  A second hidden row would blunt exactly the claim being made. The SMS row's
+ *  own hiding is asserted in the-245-sms-hidden.test.tsx.
+ */
 async function withFlag<T>(enabled: boolean, load: () => Promise<T>): Promise<T> {
   vi.resetModules();
   vi.doMock('../../utils/plan-features', async () => {
@@ -56,6 +63,10 @@ async function withFlag<T>(enabled: boolean, load: () => Promise<T>): Promise<T>
     );
     return { ...actual, AFFILIATE_PROGRAM_ENABLED: enabled };
   });
+  vi.doMock('../../lib/sms-feature', () => ({
+    SMS_FEATURE_ENABLED: true,
+    SMS_HIDDEN_MESSAGE: 'SMS is temporarily unavailable.',
+  }));
   return load();
 }
 
@@ -75,6 +86,7 @@ afterEach(() => {
   root = null;
   container.remove();
   vi.doUnmock('../../utils/plan-features');
+  vi.doUnmock('../../lib/sms-feature');
 });
 
 describe('Admin Roles — the "Affiliate Program" permission row', () => {

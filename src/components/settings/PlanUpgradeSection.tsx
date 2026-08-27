@@ -20,6 +20,7 @@ import {
   PlanFeatures,
   PLAN_BLURBS,
 } from '../../utils/plan-features';
+import { SMS_FEATURE_ENABLED } from '../../lib/sms-feature';
 import { PLATFORM_FEE_MAP } from '../../lib/stripe-connect';
 import { authFetch } from '../../utils/auth-fetch';
 import { fetchBillingProcessor, needsFirstSubscription, runDodoPlanChange, startFirstSubscription, subscriptionProcessorAttribution, PlanChangeProcessor } from '../../utils/plan-change';
@@ -157,9 +158,17 @@ const CARD_FEATURES: CardFeature[] = [
 
 // While the AI Telegram Assistant is hidden, drop its line from every card.
 // Flip AI_TELEGRAM_ASSISTANT_ENABLED to bring it back.
-const VISIBLE_CARD_FEATURES = AI_TELEGRAM_ASSISTANT_ENABLED
-  ? CARD_FEATURES
-  : CARD_FEATURES.filter((f) => f.key !== 'aiAssistant');
+//
+// THE-245 does the same for 'SMS Automation'. These cards are in-app MARKETING:
+// they tell a church what a tier includes, so a line here is a promise on every
+// upgrade screen. 🔴 The `smsAutomation` cell in the plan matrix is untouched —
+// only this card's line is withheld, so the tiers that own SMS still own it and
+// get the line back with the switch.
+const VISIBLE_CARD_FEATURES = CARD_FEATURES.filter(
+  (f) =>
+    (AI_TELEGRAM_ASSISTANT_ENABLED || f.key !== 'aiAssistant') &&
+    (SMS_FEATURE_ENABLED || f.key !== 'smsAutomation'),
+);
 
 /**
  * The line this tier's card prints for one cell, or `null` when the tier does

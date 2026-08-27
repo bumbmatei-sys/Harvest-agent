@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../../utils/auth-fetch';
+import { SMS_FEATURE_ENABLED } from '../../lib/sms-feature';
 
 /** Whose account, whose bill — stated where the credentials are entered, not
  * discovered from an invoice. These are the church's OWN Twilio credentials, so
@@ -9,7 +10,8 @@ import { authFetch } from '../../utils/auth-fetch';
 export const BYO_CREDENTIALS_NOTE =
   "These are your own Twilio credentials: messages sent with them go out on your Twilio account, so Twilio bills you directly and your Harvest plan's monthly SMS allotment doesn't apply. SMS can only be sent to US numbers.";
 
-export const SmsSection: React.FC = () => {
+/** The form itself. Mounted only while SMS is visible — see the export below. */
+const SmsCredentialsForm: React.FC = () => {
   const [accountSid, setAccountSid] = useState('');
   const [authToken, setAuthToken] = useState('');
   const [fromNumber, setFromNumber] = useState('');
@@ -111,5 +113,24 @@ export const SmsSection: React.FC = () => {
     </div>
   );
 };
+
+/**
+ * THE-245 — the Twilio credential entry, behind the master switch.
+ *
+ * A WRAPPER rather than an early `return null` inside the form, so the form's
+ * hooks are never conditionally called: while SMS is hidden `SmsCredentialsForm`
+ * is not mounted at all, which means its `useEffect` never fires and the
+ * settings screen makes no `/api/sms/config` request. (That route refuses with
+ * 503 anyway — this is the second layer, not the only one.)
+ *
+ * ⚠️ THE SIDEBAR ROW ABOVE THIS IS NOT MINE TO REMOVE. The "SMS (Twilio)" entry
+ * is declared in `components/AdminSettings.tsx`, which another ticket owns
+ * concurrently, so while SMS is hidden that row still lists and opens onto
+ * nothing. The one-line fix belongs on its `hidden:` clause and is written out
+ * in the THE-245 pull request; it is a label, not a reachable surface — no
+ * credential can be entered here and no request leaves this component.
+ */
+export const SmsSection: React.FC = () =>
+  SMS_FEATURE_ENABLED ? <SmsCredentialsForm /> : null;
 
 export default SmsSection;

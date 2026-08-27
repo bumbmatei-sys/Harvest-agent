@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { requireAdmin } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
+import { SMS_FEATURE_ENABLED, SMS_HIDDEN_MESSAGE } from '@/lib/sms-feature';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +12,14 @@ const TWILIO_DOC = (tenantId: string) =>
 
 /** GET — return config status + templates (never the auth token). */
 export async function GET(request: NextRequest) {
+  // THE-245 — refused while the SMS feature is hidden. This is the read the
+  // Twilio credential form and the Text-to-Give card both open with, so closing
+  // it is what makes those two surfaces inert rather than merely unpainted.
+  // The stored document — credentials, templates and the text2give keyword — is
+  // left exactly as it is and comes back with the switch.
+  if (!SMS_FEATURE_ENABLED) {
+    return NextResponse.json({ error: SMS_HIDDEN_MESSAGE }, { status: 503 });
+  }
   const authResult = await requireAdmin(request);
   if (authResult instanceof NextResponse) return authResult;
   const tenantId = authResult.tenantId || PLATFORM_TENANT_ID;
@@ -28,6 +37,12 @@ export async function GET(request: NextRequest) {
 
 /** POST — save credentials and/or automation templates. */
 export async function POST(request: NextRequest) {
+  // THE-245 — refused while the SMS feature is hidden. 🔴 This is the write
+  // path for Twilio credentials AND the Text-to-Give keyword, so it is what
+  // stops a church configuring an untested feature it cannot see.
+  if (!SMS_FEATURE_ENABLED) {
+    return NextResponse.json({ error: SMS_HIDDEN_MESSAGE }, { status: 503 });
+  }
   const authResult = await requireAdmin(request);
   if (authResult instanceof NextResponse) return authResult;
   const tenantId = authResult.tenantId || PLATFORM_TENANT_ID;

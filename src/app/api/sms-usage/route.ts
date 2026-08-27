@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/api-auth';
 import { getSmsUsageSnapshot } from '@/lib/sms-usage';
 import { getSmsCredentialSource } from '@/lib/twilio';
+import { SMS_FEATURE_ENABLED, SMS_HIDDEN_MESSAGE } from '@/lib/sms-feature';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +28,12 @@ export const dynamic = 'force-dynamic';
  * The credential SOURCE is read server-side too and no credential ever leaves
  * this process. Super admins / non-tenant users are not metered.
  */
+// THE-245 — refused while the SMS feature is hidden. The usage DOCUMENTS are
+// untouched; only this read path is closed, and it reopens with the switch.
 export async function GET(request: NextRequest) {
+  if (!SMS_FEATURE_ENABLED) {
+    return NextResponse.json({ error: SMS_HIDDEN_MESSAGE }, { status: 503 });
+  }
   const userOrErr = await requireAuth(request);
   if (userOrErr instanceof Response) return userOrErr;
 

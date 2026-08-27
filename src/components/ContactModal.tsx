@@ -6,6 +6,7 @@ import { collection, addDoc } from 'firebase/firestore';
 import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { AFFILIATE_PROGRAM_ENABLED } from '../utils/plan-features';
+import { SMS_FEATURE_ENABLED } from '../lib/sms-feature';
 import ModalContentContainer from './ModalContentContainer';
 
 
@@ -21,7 +22,9 @@ interface ContactModalProps {
 // to list it again.
 const ADMIN_AREAS = [
  'Dashboard', 'Posts', 'Blog', 'Courses', 'Newsletter', 'AI Knowledge', 'CRM',
- 'Fundraising', 'Events', 'Check-In', 'Forms', 'SMS', 'Accounting',
+ 'Fundraising', 'Events', 'Check-In', 'Forms',
+ ...(SMS_FEATURE_ENABLED ? ['SMS'] : []),
+ 'Accounting',
  ...(AFFILIATE_PROGRAM_ENABLED ? ['Affiliate'] : []),
  'Livestream', 'Branding', 'Settings', 'Other',
 ];

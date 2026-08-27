@@ -21,6 +21,7 @@ import { PLATFORM_TENANT_ID, hasPlatformOverride } from '../utils/tenant-scope';
 import { getPlanFeatures } from '../utils/plan-features';
 import { useCampaigns, type Campaign } from '../hooks/queries/useCampaignQueries';
 import { FORM_CONTAINER, FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
+import { SMS_FEATURE_ENABLED } from '../lib/sms-feature';
 
 const empty: Omit<Campaign, 'id'> = {
   title: '',
@@ -334,9 +335,17 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
               <button onClick={copyPledgeLink} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-line text-muted hover:bg-surface-sunken">
                 {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? 'Copied' : 'Copy Pledge Link'}
               </button>
-              <button onClick={() => setReminderConfirm(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-line text-muted hover:bg-surface-sunken">
-                <Send size={13} /> Send Reminder
-              </button>
+              {/* THE-245 — "Send Reminder" POSTs to /api/sms/broadcast, so it is an
+                  SMS surface living outside AdminSms and it goes with the rest.
+                  The route refuses with 503 while the switch is off, so leaving
+                  the button would offer a church an action that can only fail.
+                  Everything else on a pledge campaign — the pledge list, Add
+                  Pledge, Copy Pledge Link — is untouched. */}
+              {SMS_FEATURE_ENABLED && (
+                <button onClick={() => setReminderConfirm(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-line text-muted hover:bg-surface-sunken">
+                  <Send size={13} /> Send Reminder
+                </button>
+              )}
             </div>
 
             {showPledgeForm && (
@@ -403,7 +412,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
         )}
 
         {/* Send-reminder confirm */}
-        {reminderConfirm && (
+        {SMS_FEATURE_ENABLED && reminderConfirm && (
           <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50 p-4">
             <div className="bg-surface-raised rounded-2xl p-6 w-full max-w-sm text-center">
               <p className="font-bold text-strong mb-2 font-display">Send pledge reminders?</p>

@@ -62,6 +62,18 @@ const { runDodoPlanChangeMock, fetchBillingProcessorMock, authFetchMock } = vi.h
   authFetchMock: vi.fn(async (_url: string, _init?: RequestInit) => ({ ok: true, json: async () => ({ url: 'https://example.test/x' }) })),
 }));
 
+// ── THE-245 ────────────────────────────────────────────────────────────────
+// Run with the SMS master switch ON. This suite pins the RENDERED LAYOUT of
+// screens that include SMS surfaces, and a gated-off screen renders nothing to
+// measure. Keeping the switch on here means every width, height and touch
+// target this file guards is still guarded — and is proof the layout survives
+// the hide intact, ready for the flip back. That the surfaces are ABSENT while
+// the switch is off is asserted in the-245-sms-hidden.test.tsx.
+vi.mock('../../../lib/sms-feature', () => ({
+  SMS_FEATURE_ENABLED: true,
+  SMS_HIDDEN_MESSAGE: 'SMS is temporarily unavailable.',
+}));
+
 vi.mock('../../../firebase', () => ({ auth: { currentUser: null }, db: {} }));
 vi.mock('../../../utils/auth-fetch', () => ({ authFetch: authFetchMock }));
 vi.mock('../../../utils/plan-change', async (importOriginal) => {
