@@ -65,39 +65,37 @@ describe('PlanUpgradeSection yearly pricing copy', () => {
     mount();
     clickButtonWithText('Yearly');
     // 🔴 THE-196 flipped the hierarchy. The PER-MONTH figure headlines the
-    // card and the charged total sits beneath it. $659/12 is $54.9167, which
-    // ceils to $54.92 — under THE-222 Ministry is no longer the tier that
-    // divides exactly; Individual is (see below).
-    expect(container.textContent).toContain('$54.92');
-    expect(container.textContent).toContain('billed as $659 every 12 months');
+    // card and the charged total sits beneath it. $760/12 is $63.3333, which
+    // ceils to $63.34. Under THE-248 no yearly cell divides exactly, so every
+    // one of the three shows cents.
+    expect(container.textContent).toContain('$63.34');
+    expect(container.textContent).toContain('billed as $760 every 12 months');
   });
 
   it('derives the yearly copy from PLAN_PRICING for Individual (plus)', () => {
     mount();
     clickButtonWithText('Yearly');
-    // $165/12 is exactly $13.75, so Individual is now the one yearly cell that
-    // divides cleanly and shows no ceiling artefact. The charged total beneath
-    // it is $165 — NOT $329, which under THE-222 is Small Team's year.
-    expect(container.textContent).toContain('$13.75');
-    expect(container.textContent).toContain('billed as $165 every 12 months');
+    // $190/12 is $15.8333, ceiled to $15.84. THE-222 left Individual as the one
+    // yearly cell that divided cleanly ($13.75); THE-248 removes that — all
+    // three years now carry a ceiling artefact, and all three quarters lost
+    // theirs instead.
+    expect(container.textContent).toContain('$15.84');
+    expect(container.textContent).toContain('billed as $190 every 12 months');
   });
 
   it('derives the quarterly copy, the term this change added', () => {
     mount();
     clickButtonWithText('Quarterly');
-    // $99/3 is exactly $33, so no cents are shown — but $99 is SMALL TEAM's
-    // quarter now, not Individual's. $199/3 is $66.3333 and ceils to $66.34,
-    // and $199 is MINISTRY's quarter. Both figures survived the reprice
-    // attached to a different tier, which is why they are asserted beside the
-    // charged line that names the cycle rather than on their own.
-    expect(container.textContent).toContain('$33');
-    expect(container.textContent).toContain('billed as $99 every 3 months');
-    expect(container.textContent).toContain('$66.34');
-    expect(container.textContent).not.toContain('$66/mo');
-    expect(container.textContent).toContain('billed as $199 every 3 months');
-    // Individual's quarter: $49/3 is $16.3333, ceiled to $16.34.
-    expect(container.textContent).toContain('$16.34');
-    expect(container.textContent).toContain('billed as $49 every 3 months');
+    // 🔴 ALL THREE QUARTERS DIVIDE EXACTLY under THE-248 — $54/3, $108/3 and
+    // $216/3 are $18, $36 and $72 — so none of them shows cents. Each headline
+    // is asserted beside the charged line that names its cycle rather than on
+    // its own, because a bare "$36" says nothing about which tier drew it.
+    expect(container.textContent).toContain('$18');
+    expect(container.textContent).toContain('billed as $54 every 3 months');
+    expect(container.textContent).toContain('$36');
+    expect(container.textContent).toContain('billed as $108 every 3 months');
+    expect(container.textContent).toContain('$72');
+    expect(container.textContent).toContain('billed as $216 every 3 months');
   });
 
   it('leaves the monthly view unchanged', () => {

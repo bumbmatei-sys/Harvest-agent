@@ -417,9 +417,9 @@ describe('the webhook is still the only writer of plan', () => {
 describe('no price changed and free is still absent from PLAN_PRICING', () => {
   it('holds the nine published prices', () => {
     expect(PLAN_PRICING).toEqual({
-      plus: { monthly: 20, quarterly: 49, yearly: 165 },
-      pro: { monthly: 40, quarterly: 99, yearly: 329 },
-      max: { monthly: 80, quarterly: 199, yearly: 659 },
+      plus: { monthly: 20, quarterly: 54, yearly: 190 },
+      pro: { monthly: 40, quarterly: 108, yearly: 380 },
+      max: { monthly: 80, quarterly: 216, yearly: 760 },
     });
   });
 

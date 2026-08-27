@@ -124,7 +124,12 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
           implied,
           `${PLAN_DISPLAY_NAMES[plan]} ${term}: $${headline}/mo implies $${implied.toFixed(2)}, charged $${charged}`,
         ).toBeGreaterThanOrEqual(charged);
-        expect(implied - charged).toBeLessThan(0.05);
+        // Derived bound: ceiling at the cent adds at most one cent per month,
+        // so `months × $0.01`. It was a flat 0.05 — the worst gap THE-222's
+        // prices happened to give — and THE-248's $760 year overshoots by
+        // $0.08 without breaking the rule at all.
+        expect(implied - charged, `${plan} ${term}`)
+          .toBeLessThan(TERM_MONTHS[term] * 0.01 + 1e-9);
       }
     }
   });
@@ -181,9 +186,9 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
          beneath    `billed as $${price} every ${TERM_MONTHS[term]} months`
          monthly    headline alone, no line beneath                            */
     const SITE_HEADLINES: Record<PricedPlan, Record<string, string>> = {
-      plus: { monthly: '$20', quarterly: '$16.34', yearly: '$13.75' },
-      pro:  { monthly: '$40', quarterly: '$33',    yearly: '$27.42' },
-      max:  { monthly: '$80', quarterly: '$66.34', yearly: '$54.92' },
+      plus: { monthly: '$20', quarterly: '$18', yearly: '$15.84' },
+      pro:  { monthly: '$40', quarterly: '$36', yearly: '$31.67' },
+      max:  { monthly: '$80', quarterly: '$72', yearly: '$63.34' },
     };
     mount();
     for (const term of BILLING_TERMS) {
@@ -199,8 +204,8 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
   it('the nine prices are unchanged and still match the Dodo catalogue', () => {
     // Presentation only. Nothing in THE-196 may move a price.
     expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'monthly'))).toEqual([20, 40, 80]);
-    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'quarterly'))).toEqual([49, 99, 199]);
-    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'yearly'))).toEqual([165, 329, 659]);
+    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'quarterly'))).toEqual([54, 108, 216]);
+    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'yearly'))).toEqual([190, 380, 760]);
     // …and the displayed figure is derived from them, never stored beside them.
     for (const plan of PRICED_PLAN_ORDER) {
       for (const term of BILLING_TERMS) {

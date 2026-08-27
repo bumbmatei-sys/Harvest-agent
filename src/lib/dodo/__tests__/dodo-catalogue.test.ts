@@ -85,7 +85,17 @@ const DODO_TEST_PRODUCTS_AS_VERIFIED = [
 
 /**
  * What Dodo's LIVE MODE has on these products. Transcribed from the
- * authenticated live API response of 2026-08-24, NOT from catalogue.ts.
+ * authenticated live API response of 2026-08-27, NOT from catalogue.ts.
+ *
+ * 🔴 THE-248 RAISED THE SIX DISCOUNTED AMOUNTS AND NOTHING ELSE. The quarters
+ * were 4900 / 9900 / 19900 and the years 16500 / 32900 / 65900. Every id, the
+ * three monthly amounts, the 14-day trials, the `saas` tax category and add-on
+ * attachment were confirmed unchanged in the same read.
+ *
+ * ⚠️ THE TEST-MODE LIST ABOVE IS DELIBERATELY NOT IN STEP and did not move:
+ * 4900 there is Individual MONTHLY on a stale test product, not Individual's
+ * quarter. Two different products, the same four digits — which is exactly why
+ * each row here is anchored to its product id.
  *
  * 🔴 A live id transposed or mistyped in the catalogue is a real card charged
  * at the wrong price. These nine lines are the independent record it is checked
@@ -93,14 +103,14 @@ const DODO_TEST_PRODUCTS_AS_VERIFIED = [
  */
 const DODO_LIVE_PRODUCTS_AS_VERIFIED = [
   { plan: 'plus', period: 'monthly', id: 'pdt_0NlJZKKU2AQSSH7E4ziKA', name: 'Harvest Individual - Monthly', cents: 2000, interval: 'Month' },
-  { plan: 'plus', period: 'quarterly', id: 'pdt_0NloCamoWgvgYDih2UETS', name: 'Harvest Individual - Quarterly', cents: 4900, interval: 'Month' },
-  { plan: 'plus', period: 'yearly', id: 'pdt_0NlJZMLLKZ5SVGEoSGDdk', name: 'Harvest Individual - Annual', cents: 16500, interval: 'Year' },
+  { plan: 'plus', period: 'quarterly', id: 'pdt_0NloCamoWgvgYDih2UETS', name: 'Harvest Individual - Quarterly', cents: 5400, interval: 'Month' },
+  { plan: 'plus', period: 'yearly', id: 'pdt_0NlJZMLLKZ5SVGEoSGDdk', name: 'Harvest Individual - Annual', cents: 19000, interval: 'Year' },
   { plan: 'pro', period: 'monthly', id: 'pdt_0NlJZMOMhmZWiG6UVDl8I', name: 'Harvest Small Team - Monthly', cents: 4000, interval: 'Month' },
-  { plan: 'pro', period: 'quarterly', id: 'pdt_0NloCaqg1QPMAlkfDnlOe', name: 'Harvest Small Team - Quarterly', cents: 9900, interval: 'Month' },
-  { plan: 'pro', period: 'yearly', id: 'pdt_0NlJZMRWL8tuAZseUIRTP', name: 'Harvest Small Team - Annual', cents: 32900, interval: 'Year' },
+  { plan: 'pro', period: 'quarterly', id: 'pdt_0NloCaqg1QPMAlkfDnlOe', name: 'Harvest Small Team - Quarterly', cents: 10800, interval: 'Month' },
+  { plan: 'pro', period: 'yearly', id: 'pdt_0NlJZMRWL8tuAZseUIRTP', name: 'Harvest Small Team - Annual', cents: 38000, interval: 'Year' },
   { plan: 'max', period: 'monthly', id: 'pdt_0NlJZMUUiT36FGMoiFXgl', name: 'Harvest Ministry - Monthly', cents: 8000, interval: 'Month' },
-  { plan: 'max', period: 'quarterly', id: 'pdt_0NloCatUWEkEUq1usWJ0n', name: 'Harvest Ministry - Quarterly', cents: 19900, interval: 'Month' },
-  { plan: 'max', period: 'yearly', id: 'pdt_0NlJZMXTnpRBAwTfBVpPs', name: 'Harvest Ministry - Annual', cents: 65900, interval: 'Year' },
+  { plan: 'max', period: 'quarterly', id: 'pdt_0NloCatUWEkEUq1usWJ0n', name: 'Harvest Ministry - Quarterly', cents: 21600, interval: 'Month' },
+  { plan: 'max', period: 'yearly', id: 'pdt_0NlJZMXTnpRBAwTfBVpPs', name: 'Harvest Ministry - Annual', cents: 76000, interval: 'Year' },
 ] as const satisfies readonly VerifiedProduct[];
 
 /**
@@ -220,9 +230,9 @@ describe('the two catalogues are disjoint and complete', () => {
 
 describe('prices resolve to the nine figures in the table', () => {
   it.each([
-    ['plus', 20, 49, 165],
-    ['pro', 40, 99, 329],
-    ['max', 80, 199, 659],
+    ['plus', 20, 54, 190],
+    ['pro', 40, 108, 380],
+    ['max', 80, 216, 760],
   ] as const)('%s is $%i monthly, $%i quarterly and $%i annually', (plan, monthly, quarterly, annual) => {
     expect(termPriceUsd(plan, 'monthly')).toBe(monthly);
     expect(termPriceUsd(plan, 'quarterly')).toBe(quarterly);
@@ -253,7 +263,7 @@ describe('prices resolve to the nine figures in the table', () => {
   );
 
   it('🔴 reads the price table rather than deriving from a multiplier', () => {
-    // ANNUAL_BILLED_MONTHS is gone: 30% off a year is x8.4 months and 15% off a
+    // ANNUAL_BILLED_MONTHS is gone: 20% off a year is x9.6 months and 10% off a
     // quarter is x2.55, so there is no integer to name. What replaced it is a
     // stored table, and this proves the catalogue READS it — no term's price is
     // a whole number of months at the monthly rate, so no multiplier could have

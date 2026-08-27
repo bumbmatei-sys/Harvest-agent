@@ -994,10 +994,15 @@ describe('7 — prices, the toggle and the blurbs', () => {
       Array.from(container.querySelectorAll('button')).find((b) => (b.textContent || '').trim().startsWith(label))!;
 
     // Three segments, and the pill is a PERCENTAGE now, not a months-free
-    // count: 30% of a year is 3.6 months, so "-3mo" stopped being true.
+    // count: 20% of a year is 2.4 months, so "-3mo" stopped being true.
     expect(toggle('Monthly')).toBeTruthy();
-    expect(toggle('Quarterly').textContent).toMatch(/−?-?15%/);
-    expect(toggle('Yearly').textContent).toMatch(/−?-?30%/);
+    expect(toggle('Quarterly').textContent).toMatch(/−?-?10%/);
+    expect(toggle('Yearly').textContent).toMatch(/−?-?20%/);
+    // 🔴 AND MONTHLY CARRIES NO PILL AT ALL — not an empty one, not a 0%.
+    // An empty pill is worse than no pill: it reads as a discount whose figure
+    // failed to render.
+    expect(toggle('Monthly').textContent).not.toMatch(/%/);
+    expect(toggle('Monthly').querySelector('[data-testid="billing-term-badge"]')).toBeNull();
     expect(container.querySelectorAll('[data-testid="billing-term-segment"]')).toHaveLength(3);
 
     for (const term of ['yearly', 'quarterly', 'monthly'] as const) {
