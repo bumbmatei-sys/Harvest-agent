@@ -6,6 +6,7 @@ import {
   anonymisedDonorEmail,
   deleteByQuery,
   deleteRefs,
+  emptyReport,
   record,
   retain,
   DELETED_DONOR_NAME,
@@ -65,6 +66,17 @@ import {
  *    member' and any last-message preview they wrote is cleared, so the surviving
  *    party keeps their history with an unresolvable counterpart.
  *
+ * 4. A SWEEP THAT COULD NOT FINISH IS NOT A SUCCESS (THE-229). Twelve sweeps
+ *    took a single `.limit(CHUNK_LIMIT)` page and iterated it with no outer
+ *    loop, so a member who liked more than one page of posts kept their uid on
+ *    the remainder — and the report said 'complete', because that word was a
+ *    hardcoded literal. Every sweep is now cursor-paged to a declared cap, and
+ *    'complete' has to survive the run: a sweep that stops at a cap is named in
+ *    `failures` and flips the status to 'partial', exactly as a throwing one
+ *    already was. The route maps 'partial' to a 500 and leaves the profile and
+ *    the sign-in alone, so the member keeps the credential that drives a retry —
+ *    and every sweep is idempotent, so the retry resumes rather than restarts.
+ *
  * ── Scoping ─────────────────────────────────────────────────────────────────
  * Every sweep is bounded by a value proven concrete through
  * {@link assertConcreteScope} — either the member's own tenant id or their own
@@ -117,6 +129,27 @@ export interface MemberContext {
   tenantId: string;
   /** CRM contact ids resolved for this member, used by the by-contact sweeps. */
   contactIds: string[];
+  /**
+   * Where a sweep stopped short, if it did. Supplied by {@link eraseMemberData}
+   * and read back by it after each sweep; a sweep never reads it. Optional so
+   * the route can go on building a context from the four values it knows.
+   */
+  scan?: ScanState;
+}
+
+/**
+ * The one thing a sweep has to be able to say other than a count: "there was
+ * more, and I did not reach it".
+ *
+ * 🔴 A COUNT CANNOT CARRY THIS. `clearPostLikes` returning 400 is indis-
+ * tinguishable from a member who liked exactly 400 posts and one who liked
+ * 40,000 — which is precisely how a sweep that stopped at a page boundary used
+ * to be reported as a success. The reason is recorded in words, in the first
+ * cap a sweep hits, and {@link eraseMemberData} turns it into a named failure.
+ */
+export interface ScanState {
+  /** Why the sweep could not finish, in the words the report will carry. */
+  stoppedAt: string | null;
 }
 
 /** The display name a deleted member leaves behind on other people's records. */
@@ -127,6 +160,130 @@ const lower = (v: unknown) => (typeof v === 'string' ? v.trim().toLowerCase() : 
 /** `tenants/{tenantId}` — built once from a scope that has been proven concrete. */
 function tenantRef(tenantId: string) {
   return adminDb.collection('tenants').doc(assertConcreteScope(tenantId, 'tenantId'));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────
+// Paging — THE-229
+// ─────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Documents a single sweep will visit before it stops and SAYS it stopped.
+ *
+ * 🔴 A RUNAWAY GUARD, NOT A POLICY. It is deliberately far above any real
+ * member's row count in any one collection — the largest realistic figure here
+ * is a decade of one person's giving — so in production a sweep finishes and
+ * this is never reached. What it buys is the guarantee that a sweep terminates
+ * even against a pathological collection, and that when it does stop early the
+ * run is reported `partial` rather than `complete`.
+ *
+ * Same number and same reasoning as `SECTION_ROW_CAP` in member-export.ts, which
+ * bounds the read half of the same 25 collections.
+ */
+export const SWEEP_SCAN_CAP = 5000;
+
+/**
+ * Parent documents a two-level sweep will walk before it stops and says so.
+ *
+ * `checkinSessions/{id}/attendees`, `forms/{id}/submissions` and
+ * `livestreamSessions/{id}/comments` have no member key of their own, so the
+ * only way to reach them is to walk their parents under the concrete tenant path
+ * and sub-query each one. That cost scales with how long the CHURCH has been
+ * running, not with how much the member did — which is why it gets a bound of
+ * its own, lower than {@link SWEEP_SCAN_CAP} because each parent costs a whole
+ * extra query rather than one document. Matches `PARENT_SCAN_CAP` in
+ * member-export.ts, which walks the same parents for the same reason.
+ */
+export const PARENT_SCAN_CAP = 2000;
+
+/** Documents collected by a paged scan, and whether there were more. */
+interface Scan {
+  docs: FirebaseFirestore.QueryDocumentSnapshot[];
+  truncated: boolean;
+}
+
+/**
+ * Page a query with a cursor and return every document it matches, to a cap.
+ *
+ * 🔴 THIS IS THE DEFECT THE TICKET NAMES. Twelve sweeps took a single
+ * `.limit(CHUNK_LIMIT).get()` and iterated it — no outer loop — so a member who
+ * liked more than one page of posts kept their uid on the remainder and was told
+ * the erasure was complete.
+ *
+ * ⚠️ THE PAGE SIZE IS {@link CHUNK_LIMIT} AND THAT IS NOT A READ BOUND.
+ * CHUNK_LIMIT is 400 because Firestore's WriteBatch hard-caps at 500 operations;
+ * it doubles as the page size so that one page maps to exactly one commit.
+ * Paging the read does not lift the write ceiling — it is what keeps the two
+ * aligned, so a sweep that now visits 2,000 documents still commits them 400 at
+ * a time. Every write below goes through {@link updateInBatches},
+ * `deleteRefs` or `deleteByQuery`, all of which chunk at the same bound.
+ *
+ * Cursor-paged rather than re-queried: the same shape as `anonymiseByQuery` in
+ * member-deletion.ts and `pageQuery` in member-export.ts. A re-query loop — the
+ * shape `deleteByQuery` and `clearCommunityPosts` use — only terminates because
+ * the write REMOVES each match from the result set, which is true of a delete and
+ * false of every sweep below that reads before it writes, or that skips documents
+ * behind an in-memory tenant guard. Firestore orders a filtered query by document
+ * key when nothing else is given, so `startAfter` needs no `orderBy` and no
+ * composite index — which matters here, because a missing one fails silently.
+ */
+async function pageAll(query: FirebaseFirestore.Query, cap: number): Promise<Scan> {
+  const docs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
+  let cursor: FirebaseFirestore.QueryDocumentSnapshot | undefined;
+  for (;;) {
+    const page = cursor ? query.startAfter(cursor).limit(CHUNK_LIMIT) : query.limit(CHUNK_LIMIT);
+    const snap = await page.get();
+    if (snap.empty) break;
+    for (const d of snap.docs) {
+      if (docs.length >= cap) return { docs, truncated: true };
+      docs.push(d as FirebaseFirestore.QueryDocumentSnapshot);
+    }
+    if (snap.size < CHUNK_LIMIT) break;
+    cursor = snap.docs[snap.docs.length - 1] as FirebaseFirestore.QueryDocumentSnapshot;
+  }
+  return { docs, truncated: false };
+}
+
+/**
+ * Run a paged scan and, if it hit its cap, record WHY on the run's scan state.
+ *
+ * The sweep goes on to act on the documents it did reach — clearing 5,000 of a
+ * member's likes and saying so beats clearing none — but the run can no longer
+ * report itself complete. Only the FIRST cap a sweep hits is kept: it is the one
+ * that explains the shortfall, and the ones after it are its consequence.
+ */
+async function scan(
+  ctx: MemberContext,
+  query: FirebaseFirestore.Query,
+  cap: number,
+  what: string,
+): Promise<FirebaseFirestore.QueryDocumentSnapshot[]> {
+  const result = await pageAll(query, cap);
+  if (result.truncated && ctx.scan && ctx.scan.stoppedAt === null) {
+    ctx.scan.stoppedAt =
+      `stopped after ${result.docs.length} ${what} — more matched than one run of this sweep will visit`;
+  }
+  return result.docs;
+}
+
+/**
+ * Overwrite fields on a known set of documents, chunked to stay under the cap.
+ *
+ * The write counterpart of {@link scan}, and the reason paging the reads does not
+ * blow the request budget: the sweeps below used to `await` one `update()` per
+ * document, so a member with 2,000 likes meant 2,000 sequential round trips.
+ * Batched at {@link CHUNK_LIMIT} that is five commits. Same bound, same reason,
+ * as `deleteRefs`.
+ */
+async function updateInBatches(
+  targets: Array<{ ref: FirebaseFirestore.DocumentReference; patch: Record<string, unknown> }>,
+): Promise<number> {
+  for (let i = 0; i < targets.length; i += CHUNK_LIMIT) {
+    const slice = targets.slice(i, i + CHUNK_LIMIT);
+    const batch = adminDb.batch();
+    slice.forEach((t) => batch.update(t.ref, t.patch));
+    await batch.commit();
+  }
+  return targets.length;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -206,41 +363,49 @@ async function anonymisePledges(ctx: MemberContext): Promise<number> {
  * deleted outright.
  */
 async function clearContacts(ctx: MemberContext): Promise<number> {
+  // BOTH scans complete before either writes. Anonymising a donor row clears its
+  // `userId` and `email`, so a row written during the walk would drop out of the
+  // very query still being paged — the reads are finished first so the cursor
+  // only ever advances over documents nothing has touched.
+  const byUid = await scan(
+    ctx,
+    adminDb.collection('contacts').where('userId', '==', assertConcreteScope(ctx.uid, 'uid')),
+    SWEEP_SCAN_CAP,
+    'contact rows keyed by uid',
+  );
+  const byEmail = ctx.email
+    ? await scan(
+        ctx,
+        adminDb.collection('contacts').where('email', '==', assertConcreteScope(ctx.email, 'email')),
+        SWEEP_SCAN_CAP,
+        'contact rows keyed by email',
+      )
+    : [];
+
   const seen = new Set<string>();
   const toDelete: FirebaseFirestore.DocumentReference[] = [];
-  let anonymised = 0;
+  const toAnonymise: Array<{ ref: FirebaseFirestore.DocumentReference; patch: Record<string, unknown> }> = [];
 
-  const consider = async (snap: FirebaseFirestore.QuerySnapshot) => {
-    for (const d of snap.docs) {
-      if (seen.has(d.id)) continue;
-      const data = d.data() ?? {};
-      // The queries below are single-field, so the tenant match is applied here —
-      // the same shape the donation webhook and check-in route use.
-      if ((data.tenantId ?? null) !== ctx.tenantId) continue;
-      seen.add(d.id);
-      if (Number(data.totalDonated) > 0) {
-        await d.ref.update({
+  for (const d of [...byUid, ...byEmail]) {
+    if (seen.has(d.id)) continue;
+    const data = d.data() ?? {};
+    // The queries above are single-field, so the tenant match is applied here —
+    // the same shape the donation webhook and check-in route use.
+    if ((data.tenantId ?? null) !== ctx.tenantId) continue;
+    seen.add(d.id);
+    if (Number(data.totalDonated) > 0) {
+      toAnonymise.push({
+        ref: d.ref,
+        patch: {
           firstName: DELETED_DONOR_NAME, lastName: '', email: '', phone: '',
           notes: '', tags: [], userId: '', donorDeleted: true,
-        });
-        anonymised += 1;
-      } else {
-        toDelete.push(d.ref);
-      }
+        },
+      });
+    } else {
+      toDelete.push(d.ref);
     }
-  };
-
-  await consider(
-    await adminDb.collection('contacts')
-      .where('userId', '==', assertConcreteScope(ctx.uid, 'uid')).limit(CHUNK_LIMIT).get(),
-  );
-  if (ctx.email) {
-    await consider(
-      await adminDb.collection('contacts')
-        .where('email', '==', assertConcreteScope(ctx.email, 'email')).limit(CHUNK_LIMIT).get(),
-    );
   }
-  return (await deleteRefs(toDelete)) + anonymised;
+  return (await deleteRefs(toDelete)) + (await updateInBatches(toAnonymise));
 }
 
 /**
@@ -300,6 +465,17 @@ async function clearCommunityPosts(ctx: MemberContext): Promise<number> {
  * every post in the tenant and sub-querying its comments, is thousands of reads
  * for the same result. Single-field collection-group indexes are automatic, so
  * firestore.indexes.json is untouched.
+ *
+ * ⚠️ THE GROUP ALSO MATCHES `livestreamSessions/{id}/comments`, which carries
+ * `authorId` too. On the EXPORT that was a real bug — livestream comments came
+ * back inside the feed-comments section. Here the consequence is confined to the
+ * report: both collections are 'delete', both are keyed on the same uid, and this
+ * entry runs first, so the rows are correctly gone either way — but their count
+ * lands under `community_posts/{id}/comments`, and the livestream entry that runs
+ * later finds nothing left and reports 0. The map keeps its own livestream sweep
+ * regardless: it is the entry that documents the collection, and dropping it
+ * would take the collection out of MEMBER_DATA_MAP — the sole enumeration, which
+ * the export's `assertExportCoversMap` checks itself against.
  */
 async function clearCommunityComments(ctx: MemberContext): Promise<number> {
   return deleteByQuery(
@@ -317,55 +493,59 @@ async function clearCommunityComments(ctx: MemberContext): Promise<number> {
  */
 async function clearPostParticipation(ctx: MemberContext): Promise<number> {
   const uid = assertConcreteScope(ctx.uid, 'uid');
-  let changed = 0;
-  const snap = await adminDb.collection('community_posts')
-    .where('eventDetails.attendees', 'array-contains', uid)
-    .limit(CHUNK_LIMIT)
-    .get();
-  for (const d of snap.docs) {
+  const docs = await scan(
+    ctx,
+    adminDb.collection('community_posts').where('eventDetails.attendees', 'array-contains', uid),
+    SWEEP_SCAN_CAP,
+    'posts the member RSVPd to',
+  );
+  const updates: Array<{ ref: FirebaseFirestore.DocumentReference; patch: Record<string, unknown> }> = [];
+  for (const d of docs) {
     const data = d.data() ?? {};
     if ((data.tenantId ?? null) !== ctx.tenantId) continue;
     const details = (data.eventDetails as { attendeeDetails?: { uid?: string }[] } | undefined)?.attendeeDetails;
     const mine = (details ?? []).filter((a) => a?.uid === uid);
-    await d.ref.update({
-      'eventDetails.attendees': FieldValue.arrayRemove(uid),
-      ...(mine.length > 0 ? { 'eventDetails.attendeeDetails': FieldValue.arrayRemove(...mine) } : {}),
+    updates.push({
+      ref: d.ref,
+      patch: {
+        'eventDetails.attendees': FieldValue.arrayRemove(uid),
+        ...(mine.length > 0 ? { 'eventDetails.attendeeDetails': FieldValue.arrayRemove(...mine) } : {}),
+      },
     });
-    changed += 1;
   }
-  return changed;
+  return updateInBatches(updates);
 }
 
 /** Likes are a bare uid array on other people's posts — the uid is removed. */
 async function clearPostLikes(ctx: MemberContext): Promise<number> {
   const uid = assertConcreteScope(ctx.uid, 'uid');
-  const snap = await adminDb.collection('community_posts')
-    .where('likes', 'array-contains', uid)
-    .limit(CHUNK_LIMIT)
-    .get();
-  let changed = 0;
-  for (const d of snap.docs) {
-    if (((d.data() ?? {}).tenantId ?? null) !== ctx.tenantId) continue;
-    await d.ref.update({ likes: FieldValue.arrayRemove(uid) });
-    changed += 1;
-  }
-  return changed;
+  const docs = await scan(
+    ctx,
+    adminDb.collection('community_posts').where('likes', 'array-contains', uid),
+    SWEEP_SCAN_CAP,
+    'posts the member liked',
+  );
+  return updateInBatches(
+    docs
+      .filter((d) => ((d.data() ?? {}).tenantId ?? null) === ctx.tenantId)
+      .map((d) => ({ ref: d.ref, patch: { likes: FieldValue.arrayRemove(uid) } })),
+  );
 }
 
 /** `prayedBy` on other members' prayer requests is the same shape as `likes`. */
 async function clearPrayedBy(ctx: MemberContext): Promise<number> {
   const uid = assertConcreteScope(ctx.uid, 'uid');
-  const snap = await adminDb.collection('prayer_requests')
-    .where('prayedBy', 'array-contains', uid)
-    .limit(CHUNK_LIMIT)
-    .get();
-  let changed = 0;
-  for (const d of snap.docs) {
-    if (((d.data() ?? {}).tenantId ?? null) !== ctx.tenantId) continue;
-    await d.ref.update({ prayedBy: FieldValue.arrayRemove(uid) });
-    changed += 1;
-  }
-  return changed;
+  const docs = await scan(
+    ctx,
+    adminDb.collection('prayer_requests').where('prayedBy', 'array-contains', uid),
+    SWEEP_SCAN_CAP,
+    'prayer requests the member prayed for',
+  );
+  return updateInBatches(
+    docs
+      .filter((d) => ((d.data() ?? {}).tenantId ?? null) === ctx.tenantId)
+      .map((d) => ({ ref: d.ref, patch: { prayedBy: FieldValue.arrayRemove(uid) } })),
+  );
 }
 
 /**
@@ -379,12 +559,14 @@ async function clearPrayedBy(ctx: MemberContext): Promise<number> {
  * the Firestore half, and the run reports what it cleared either way.
  */
 async function clearCertificates(ctx: MemberContext): Promise<number> {
-  const snap = await adminDb.collection('certificates')
-    .where('uid', '==', assertConcreteScope(ctx.uid, 'uid'))
-    .limit(CHUNK_LIMIT)
-    .get();
+  const docs = await scan(
+    ctx,
+    adminDb.collection('certificates').where('uid', '==', assertConcreteScope(ctx.uid, 'uid')),
+    SWEEP_SCAN_CAP,
+    'certificates',
+  );
   const refs: FirebaseFirestore.DocumentReference[] = [];
-  for (const d of snap.docs) {
+  for (const d of docs) {
     const data = d.data() ?? {};
     const pdfPath = typeof data.pdfPath === 'string' ? data.pdfPath : '';
     if (pdfPath) {
@@ -464,9 +646,14 @@ async function clearRegistrations(ctx: MemberContext): Promise<number> {
 async function clearCheckinAttendees(ctx: MemberContext): Promise<number> {
   if (!ctx.email) return 0;
   const email = assertConcreteScope(ctx.email, 'email');
-  const sessions = await tenantRef(ctx.tenantId).collection('checkinSessions').limit(CHUNK_LIMIT).get();
+  const sessions = await scan(
+    ctx,
+    tenantRef(ctx.tenantId).collection('checkinSessions'),
+    PARENT_SCAN_CAP,
+    'check-in sessions',
+  );
   let removed = 0;
-  for (const session of sessions.docs) {
+  for (const session of sessions) {
     removed += await deleteByQuery(session.ref.collection('attendees').where('email', '==', email));
   }
   return removed;
@@ -482,9 +669,9 @@ async function clearCheckinAttendees(ctx: MemberContext): Promise<number> {
  */
 async function clearFormSubmissions(ctx: MemberContext): Promise<number> {
   if (ctx.contactIds.length === 0) return 0;
-  const forms = await tenantRef(ctx.tenantId).collection('forms').limit(CHUNK_LIMIT).get();
+  const forms = await scan(ctx, tenantRef(ctx.tenantId).collection('forms'), PARENT_SCAN_CAP, 'forms');
   let removed = 0;
-  for (const form of forms.docs) {
+  for (const form of forms) {
     for (const contactId of ctx.contactIds) {
       removed += await deleteByQuery(
         form.ref.collection('submissions')
@@ -498,9 +685,14 @@ async function clearFormSubmissions(ctx: MemberContext): Promise<number> {
 /** Livestream comments carry `authorId` and the display name typed alongside. */
 async function clearLivestreamComments(ctx: MemberContext): Promise<number> {
   const uid = assertConcreteScope(ctx.uid, 'uid');
-  const sessions = await tenantRef(ctx.tenantId).collection('livestreamSessions').limit(CHUNK_LIMIT).get();
+  const sessions = await scan(
+    ctx,
+    tenantRef(ctx.tenantId).collection('livestreamSessions'),
+    PARENT_SCAN_CAP,
+    'livestream sessions',
+  );
   let removed = 0;
-  for (const session of sessions.docs) {
+  for (const session of sessions) {
     removed += await deleteByQuery(session.ref.collection('comments').where('authorId', '==', uid));
   }
   return removed;
@@ -546,16 +738,13 @@ async function anonymiseDmThreads(ctx: MemberContext): Promise<number> {
 /** Channel membership is a uid array — the member is removed from each. */
 async function clearChannelMembership(ctx: MemberContext): Promise<number> {
   const uid = assertConcreteScope(ctx.uid, 'uid');
-  const snap = await tenantRef(ctx.tenantId).collection('channels')
-    .where('members', 'array-contains', uid)
-    .limit(CHUNK_LIMIT)
-    .get();
-  let changed = 0;
-  for (const d of snap.docs) {
-    await d.ref.update({ members: FieldValue.arrayRemove(uid) });
-    changed += 1;
-  }
-  return changed;
+  const docs = await scan(
+    ctx,
+    tenantRef(ctx.tenantId).collection('channels').where('members', 'array-contains', uid),
+    SWEEP_SCAN_CAP,
+    'channels the member belongs to',
+  );
+  return updateInBatches(docs.map((d) => ({ ref: d.ref, patch: { members: FieldValue.arrayRemove(uid) } })));
 }
 
 /**
@@ -831,6 +1020,16 @@ export const MEMBER_DATA_MAP: MemberDataEntry[] = [
  * only through `crmContactId`, so this has to run FIRST — once the contact rows
  * are gone the link is gone with them and those submissions become permanently
  * unreachable.
+ *
+ * ⚠️ THIS ONE REFUSES RATHER THAN TRUNCATES. Every sweep below can stop early
+ * and report which collection it left behind, because the collection it stopped
+ * in is the collection that is still dirty. A short contact-id list is not like
+ * that: it makes the FORM and CHECK-IN sweeps quietly under-reach, and they would
+ * report a clean count for rows they never queried — the exact silent failure
+ * THE-229 exists to close. So hitting the cap here throws, before a single write,
+ * and the route reports that the deletion could not start. The cap is far above
+ * any real member: a person with 5,000 CRM rows in one church is a data problem,
+ * not an erasure.
  */
 export async function resolveContactIds(uid: string, email: string, tenantId: string): Promise<string[]> {
   assertConcreteScope(uid, 'uid');
@@ -840,15 +1039,29 @@ export async function resolveContactIds(uid: string, email: string, tenantId: st
   // under their own uid, and the donation webhook writes their activities under
   // that id — so the uid is itself a contact id.
   ids.add(uid);
-  const byUid = await adminDb.collection('contacts').where('userId', '==', uid).limit(CHUNK_LIMIT).get();
-  for (const d of byUid.docs) {
-    if ((d.data()?.tenantId ?? null) === tenantId) ids.add(d.id);
-  }
-  if (email) {
-    const byEmail = await adminDb.collection('contacts').where('email', '==', email).limit(CHUNK_LIMIT).get();
-    for (const d of byEmail.docs) {
+
+  const collect = async (result: Scan, keyedBy: string) => {
+    if (result.truncated) {
+      throw new Error(
+        `Refusing to erase: more than ${SWEEP_SCAN_CAP} CRM contact rows ${keyedBy} for this member. ` +
+          'The form and check-in sweeps are reachable only through these ids, so a partial list would ' +
+          'leave them silently unswept.',
+      );
+    }
+    for (const d of result.docs) {
       if ((d.data()?.tenantId ?? null) === tenantId) ids.add(d.id);
     }
+  };
+
+  await collect(
+    await pageAll(adminDb.collection('contacts').where('userId', '==', uid), SWEEP_SCAN_CAP),
+    'keyed by uid',
+  );
+  if (email) {
+    await collect(
+      await pageAll(adminDb.collection('contacts').where('email', '==', email), SWEEP_SCAN_CAP),
+      'keyed by email',
+    );
   }
   return [...ids];
 }
@@ -867,7 +1080,17 @@ export async function eraseMemberData(ctx: MemberContext): Promise<DeletionRepor
   assertConcreteScope(ctx.uid, 'uid');
   assertConcreteScope(ctx.tenantId, 'tenantId');
 
-  const report = { status: 'complete' as const, cleared: {}, anonymised: {}, retained: {}, failures: [] } as DeletionReport;
+  // 🔴 'complete' IS A STARTING VALUE, NOT A CLAIM. It used to be a hardcoded
+  // literal on the way out, which is why a sweep that stopped at a page boundary
+  // still reported success. It now has to SURVIVE the loop: a throw flips it
+  // through `record`, and a sweep that hit a scan cap flips it through
+  // `noteIncomplete` below. Nothing else can leave it where it started.
+  const report = emptyReport();
+
+  // Handed to every sweep and read back after each one. Reset per entry so a
+  // stop is attributed to the collection that actually stopped.
+  const scanState: ScanState = { stoppedAt: null };
+  const runCtx: MemberContext = { ...ctx, scan: scanState };
 
   for (const entry of MEMBER_DATA_MAP) {
     if (entry.disposition === 'retain') {
@@ -875,13 +1098,40 @@ export async function eraseMemberData(ctx: MemberContext): Promise<DeletionRepor
       continue;
     }
     if (!entry.sweep) continue; // `users` is deleted by the route itself, last.
+    scanState.stoppedAt = null;
     await record(
       report,
       entry.collection,
-      () => entry.sweep!(ctx),
+      () => entry.sweep!(runCtx),
       entry.disposition === 'anonymise' ? 'anonymised' : 'cleared',
     );
+    if (scanState.stoppedAt) noteIncomplete(report, entry.collection, scanState.stoppedAt);
   }
 
   return report;
+}
+
+/**
+ * Record a sweep that RAN but could not finish, in the same shape as one that threw.
+ *
+ * 🔴 THE HONESTY GUARD. `record` already turns a thrown sweep into a named
+ * failure and a `partial` status; a sweep that stopped at a cap did not throw, so
+ * it would otherwise land in the report as a plain count — indistinguishable from
+ * one that finished. This is the second door into the same room, and it is
+ * deliberately the same room: one `status`, one `failures` list, one `error`
+ * sentence, so the route's existing `status === 'partial'` check catches both
+ * without knowing there are two ways to get there.
+ *
+ * The count `record` already stored is KEPT. A run that cleared 5,000 likes and
+ * could not reach the rest reports both the 5,000 and the shortfall — a truthful
+ * partial, which is the whole point, rather than a zero that understates the work
+ * or a success that hides it.
+ */
+function noteIncomplete(report: DeletionReport, collection: string, why: string): void {
+  report.failures.push({
+    collection,
+    message: `Incomplete — ${why}. Re-run the deletion to continue; every sweep is idempotent.`,
+  });
+  report.status = 'partial';
+  report.error = `Deletion was incomplete — ${report.failures.length} collection(s) could not be cleared.`;
 }
