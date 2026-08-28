@@ -19,6 +19,7 @@ import {
   type GivingLinkRecord,
   type GivingProvider,
   type GivingProviderId,
+  GIVING_PROVIDER_NAMES_OR,
 } from './donations/giving-providers';
 import { CONTROL_DENSITY, FIELD_WIDTH, FORM_MEASURE, READING_MEASURE } from './layout/form-layout';
 
@@ -319,7 +320,7 @@ const AdminDonations: React.FC = () => {
             <div className="text-sm text-body leading-relaxed space-y-2">
               <p>
                 <b className="text-strong">Harvest does not process these gifts.</b> The money
-                goes straight from your member to your own PayPal, Cash App, Venmo or Zelle
+                goes straight from your member to your own {GIVING_PROVIDER_NAMES_OR}{' '}
                 account. There is no Harvest fee, no Harvest receipt, and nothing for Harvest
                 to refund or dispute — these accounts are yours, and so is everything that
                 happens in them.

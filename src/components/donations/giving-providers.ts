@@ -1,6 +1,7 @@
 /**
  * THE-246 — the church's OWN payment links: PayPal, Cash App, Venmo, Zelle,
- * and whatever else comes next.
+ * and whatever else comes next. THE-254 took the table up on that and added
+ * Revolut and Wise, which is where a European congregation already gives.
  *
  * ─── 🔴 These are not integrations, and they ARE a money surface ─────────────
  *
@@ -36,7 +37,13 @@
  */
 
 /** Every provider this build knows. Add a row; add nothing else. */
-export type GivingProviderId = 'paypal' | 'cashapp' | 'venmo' | 'zelle';
+export type GivingProviderId =
+  | 'paypal'
+  | 'cashapp'
+  | 'venmo'
+  | 'zelle'
+  | 'revolut'
+  | 'wise';
 
 export interface GivingProvider {
   id: GivingProviderId;
@@ -87,6 +94,16 @@ export interface GivingProvider {
  * Ordered by how likely a US congregation is to already have one, so the most
  * reached-for option is first and the order is a decision rather than an
  * accident. It is stable for every church and every render.
+ *
+ * 🔴 THE-254 APPENDED, IT DID NOT INSERT. Revolut and Wise are reached for far
+ * more often in Europe than any of the four above them, so by the rule in the
+ * paragraph above they have a claim to a higher place. They are last anyway,
+ * because moving PayPal, Cash App, Venmo or Zelle would re-teach the position
+ * of every tile a member has already learned — and this is the surface where
+ * "the third one down" is how a person finds the right one. A new row costs an
+ * existing member nothing; a moved row costs them the muscle memory they give
+ * by. The ordering rule ranks NEW entrants; it does not re-sort the published
+ * ones underneath a congregation.
  */
 export const GIVING_PROVIDERS: readonly GivingProvider[] = Object.freeze([
   {
@@ -137,12 +154,100 @@ export const GIVING_PROVIDERS: readonly GivingProvider[] = Object.freeze([
     handleExample: 'Grace Chapel',
     hasPersonalLink: false,
   },
+  /*
+    THE-254 — Revolut. The personal link is `revolut.me`, which Revolut
+    documents as a surface of its own ("Revolut.me link",
+    help.revolut.com/help/transfers/payment-links/revolut-me-link/), tied to the
+    account's REVTAG — Revolut's own word for the username, and the word this
+    field is therefore labelled with. A European member reads "handle" and
+    hesitates; they read "Revtag" and know exactly what to paste.
+
+    🔴 THE PERSONAL LINK ONLY, DELIBERATELY. Revolut Business raises money
+    through a hosted checkout page, which is a different product on a different
+    domain — and this allow-list could not confirm that domain from Revolut's
+    own documentation. An unverified host in an allow-list is the one thing this
+    module exists to refuse, so it is not here and the copy names what to paste
+    instead. A church on Revolut Business pastes its Revolut.me link, or nothing.
+  */
+  {
+    id: 'revolut',
+    label: 'Revolut',
+    monogram: 'R',
+    // Revolut's own mark is set on near-black, not on a blue — which is just as
+    // well, because Venmo already holds the blue tile two rows up and two blue
+    // tiles side by side on a giving surface is a mis-tap waiting to happen.
+    tint: '#191C1F',
+    ink: '#FFFFFF',
+    hosts: ['revolut.me'],
+    urlExample: 'https://revolut.me/gracechapel',
+    handleLabel: 'Revtag',
+    handleExample: '@gracechapel',
+    hasPersonalLink: true,
+  },
+  /*
+    THE-254 — Wise. The username is a WISETAG, written with a leading @, and the
+    pay-me link lives on `wise.com`.
+
+    ⚠️ WISE PUBLISHES TWO LINK SHAPES AND THIS ROW TAKES BOTH. Wise's help
+    centre spells out the business open link — `https://wise.com/pay/business/
+    yourbusiness`, optionally carrying `?amount=&currency=&description=` — and
+    separately gives a personal account a shareable Wisetag link. Both sit on
+    `wise.com`, so ONE host entry accepts both and no church is handed a
+    rejection it cannot act on for pasting the link its own account gave it.
+    That is the whole reason the allow-list is keyed on hosts and not on paths:
+    a provider is free to reshape its URLs, and a church is not required to know
+    which of its products it is on before it can be generous.
+  */
+  {
+    id: 'wise',
+    label: 'Wise',
+    monogram: 'W',
+    // The first row whose ink is not white. Wise's green is a bright one and
+    // white on it is unreadable, so the letter is set in Wise's own dark green
+    // — which is what the `ink` field is for, and why it was never a constant.
+    tint: '#9FE870',
+    ink: '#163300',
+    hosts: ['wise.com'],
+    urlExample: 'https://wise.com/pay/me/gracechapel',
+    handleLabel: 'Wisetag',
+    handleExample: '@gracechapel',
+    hasPersonalLink: true,
+  },
 ] as const satisfies readonly GivingProvider[]);
 
 /** Provider ids, in display order. */
 export const GIVING_PROVIDER_IDS: readonly GivingProviderId[] = Object.freeze(
   GIVING_PROVIDERS.map((p) => p.id),
 );
+
+/**
+ * 🔴 THE ONE PLACE THE PROVIDERS ARE NAMED IN PROSE — THE-254.
+ *
+ * THE-249 put the same fact on three admin screens and THE-251 added a fourth:
+ * Harvest does not see a gift sent through one of these links. All four stated
+ * it by TYPING the four names out, and so did the pointer on AdminSettings. Four
+ * — five — hand-written lists of one table's contents is a false claim with a
+ * commit date on it: the moment a row is added here, every one of them says the
+ * product does something narrower than it does, and a church reading "PayPal,
+ * Cash App, Venmo or Zelle" on the statements screen concludes the Revolut gift
+ * it just took IS covered. That is the opposite of what the sentence is for.
+ *
+ * So the names come from the table now, and the screens interpolate. Adding a
+ * seventh provider updates all five sentences with no edit — which is the same
+ * promise the array itself makes, extended to the words about it.
+ *
+ * ⚠️ TWO FORMS, because English needs two. `…_OR` closes a list the reader is
+ * choosing from ("a PayPal, Cash App … or Wise gift"); the plain one closes a
+ * list that is simply enumerated ("— PayPal, Cash App … Wise — is not on
+ * them"). Neither is Oxford-comma'd, matching the copy they replaced.
+ */
+export const GIVING_PROVIDER_NAMES: string = GIVING_PROVIDERS.map((p) => p.label).join(', ');
+
+export const GIVING_PROVIDER_NAMES_OR: string = ((): string => {
+  const labels = GIVING_PROVIDERS.map((p) => p.label);
+  if (labels.length < 2) return labels.join('');
+  return `${labels.slice(0, -1).join(', ')} or ${labels[labels.length - 1]}`;
+})();
 
 export function getGivingProvider(id: GivingProviderId): GivingProvider {
   const provider = GIVING_PROVIDERS.find((p) => p.id === id);
