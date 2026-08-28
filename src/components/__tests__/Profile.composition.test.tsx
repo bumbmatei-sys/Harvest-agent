@@ -383,6 +383,13 @@ describe('Profile — the desktop composition', () => {
       'Push Notifications',
       'My Events',
       'Saved',
+      // THE-255 — the Install app row. It opens the same screen the onboarding
+      // install step shows, so a member who skipped it during signup can still
+      // reach it. Placed with Saved and Appearance because it is a device/app
+      // setting, not an account one. It is HIDDEN inside the Capacitor shell
+      // (nothing to install there), which is why it appears here: happy-dom is
+      // an ordinary browser origin, with no `window.Capacitor`.
+      'Install app',
       'Harvest',
       'Classic',
       'Light',
@@ -404,6 +411,13 @@ describe('Profile — the desktop composition', () => {
       'Push Notifications',
       'My Events',
       'Saved',
+      // THE-255 — the Install app row. It opens the same screen the onboarding
+      // install step shows, so a member who skipped it during signup can still
+      // reach it. Placed with Saved and Appearance because it is a device/app
+      // setting, not an account one. It is HIDDEN inside the Capacitor shell
+      // (nothing to install there), which is why it appears here: happy-dom is
+      // an ordinary browser origin, with no `window.Capacitor`.
+      'Install app',
       'Harvest',
       'Classic',
       'Light',
