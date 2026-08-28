@@ -39,7 +39,29 @@ import type { TenantPlan } from '../../types/tenant.types';
  * withdrew the card in harvest-presentation-site).
  *
  * 🔴 NOTHING HERE CHANGES BEHAVIOUR. `aiChat` is untouched on every tier, the
- * Telegram flag stays false, and no price moves. */
+ * Telegram flag stays false, and no price moves.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ⚠️ SUPERSEDED IN PART BY THE-253 — READ THIS BEFORE TRUSTING THE PROSE ABOVE.
+ *
+ * THE-253 built the thing this file said had not been built. The AI Assistant
+ * add-on now lifts `aiChat` AND `aiKnowledge` in `getEffectiveFeatures`, so
+ * buying it grants the RAG capability instead of an unread count. Three
+ * assertions below are INVERTED from what THE-224 shipped, each marked at its
+ * own site, and that inversion is what the header above asked for: "if someone
+ * later makes the add-on mean something, these tests are what will fail and say
+ * so, and the add-on becomes real."
+ *
+ * WHAT STILL STANDS, unchanged and still pinned here:
+ *   · `aiChat` is false/false/true/true as a PLAN cell — no tier moved.
+ *   · Small Team gets the assistant having bought nothing. The founder's
+ *     original observation was correct and remains correct.
+ *   · There is still NO SEAT. Nothing meters per `aiAssistant` count; the
+ *     add-on is a capability, not an allowance.
+ *   · The Telegram flag is still false and no price moved.
+ *
+ * The new entitlement's own tests live in `the-253-ai-chat-addon.test.ts`.
+ * ═══════════════════════════════════════════════════════════════════════════ */
 
 const PLANS: TenantPlan[] = ['free', 'plus', 'pro', 'max'];
 
@@ -80,20 +102,40 @@ describe('the assistant is available from Small Team up without any add-on', () 
     expect(getEffectiveFeatures('max', NO_ADDONS).aiChat).toBe(true);
   });
 
-  it('and buying the add-on turns it on for nobody it was not already on for', () => {
-    /* 🔴 THE WHOLE CASE FOR WITHDRAWAL, IN ONE ASSERTION. On EVERY tier, holding
-       any quantity of the add-on leaves `aiChat` exactly where the tier put it.
-       On Small Team and Ministry the purchase is redundant; on free and
-       Individual it does not switch the assistant on, so it is not the "sell it
-       to the tiers that lack it" product either. That option is a BUILD — an
-       add-on that flips a feature flag — and THE-224 did not build it. */
+  it('🔴 SUPERSEDED BY THE-253 — buying the add-on now DOES turn it on', () => {
+    /* ⚠️ THIS ASSERTION IS INVERTED FROM WHAT THE-224 SHIPPED, and the header of
+       this file is what asked for that: "if someone later makes the add-on mean
+       something, these tests are what will fail and say so, and the add-on
+       becomes real". THE-253 built it. The add-on that raised an unread count
+       now lifts the capability itself.
+
+       What THE-224 asserted here, kept as the thing that CHANGED: on every
+       tier, holding any quantity left `aiChat` exactly where the tier put it —
+       so the purchase was redundant on Small Team and Ministry and inert on
+       free and Individual. Both halves are now false, and deliberately. */
     for (const plan of PLANS) {
-      const included = getPlanFeatures(plan).aiChat;
       for (const quantity of [1, 2, 25]) {
         const bought = getEffectiveFeatures(plan, { ...NO_ADDONS, aiAssistant: quantity });
-        expect(bought.aiChat, `${plan}: ${quantity} add-on(s) moved aiChat`).toBe(included);
+        expect(bought.aiChat, `${plan}: ${quantity} add-on(s) left aiChat off`).toBe(true);
+        // Both halves of the RAG capability, for the reason given at
+        // `getEffectiveFeatures`: a chat with no fillable knowledge base can
+        // only ever answer "I don't have that".
+        expect(bought.aiKnowledge, `${plan}: ${quantity} add-on(s) left aiKnowledge off`).toBe(true);
       }
     }
+  });
+
+  it('and owning NOTHING still leaves every tier exactly where it was', () => {
+    /* 🔴 THE HALF OF THE-224 THAT STANDS. The founder's observation was that
+       Small Team had the assistant having bought nothing, and that is still
+       correct and still pinned: THE-253 changed what OWNING the add-on does,
+       and changed no tier. */
+    for (const plan of PLANS) {
+      const base = getPlanFeatures(plan);
+      expect(getEffectiveFeatures(plan, NO_ADDONS).aiChat).toBe(base.aiChat);
+      expect(getEffectiveFeatures(plan, NO_ADDONS).aiKnowledge).toBe(base.aiKnowledge);
+    }
+    expect(PLANS.map((p) => getPlanFeatures(p).aiChat)).toEqual([false, false, true, true]);
   });
 
   it('what the add-on DOES move is a count nothing reads', () => {
@@ -107,11 +149,15 @@ describe('the assistant is available from Small Team up without any add-on', () 
     expect(PLANS.map((p) => getPlanFeatures(p).aiAssistant)).toEqual([0, 0, 0, 1]);
   });
 
-  it('an add-on raises a capacity and never a feature flag', () => {
-    /* The structural reason option C would be a build rather than a copy fix.
-       `getEffectiveFeatures` overrides exactly four caps plus `unlimitedContacts`;
-       every boolean comes through untouched from the tier. Asserted over the
-       whole feature object so a fifth override cannot be added silently. */
+  it('an add-on now moves two feature flags as well as four capacities', () => {
+    /* ⚠️ THE-224 ASSERTED THE OPPOSITE HERE — "an add-on raises a capacity and
+       never a feature flag" — and called that the structural reason the sale
+       could not be made real by a copy fix. It was correct, and it was the
+       defect: the rule is what made the $20/mo purchase inert. THE-253 moved
+       exactly two booleans and no others.
+
+       The guard survives its inversion: still asserted over the WHOLE feature
+       object, so a SEVENTH moved cell cannot appear silently. */
     for (const plan of PLANS) {
       const base = getPlanFeatures(plan);
       const loaded = getEffectiveFeatures(plan, {
@@ -120,9 +166,16 @@ describe('the assistant is available from Small Team up without any add-on', () 
       const cells = base as unknown as Record<string, unknown>;
       const after = loaded as unknown as Record<string, unknown>;
       const moved = Object.keys(cells).filter((k) => cells[k] !== after[k]);
-      expect(moved.sort()).toEqual(['aiAssistant', 'maxAdmins', 'maxChurches', 'maxContacts']);
+      // Only the cells the tier did not already carry show up as MOVED, so the
+      // expected set is per-plan: Small Team and Ministry already have both
+      // booleans on, and a lift that changes nothing is not a move.
+      const expected = ['aiAssistant', 'maxAdmins', 'maxChurches', 'maxContacts'];
+      if (!base.aiChat) expected.push('aiChat');
+      if (!base.aiKnowledge) expected.push('aiKnowledge');
+      expect(moved.sort()).toEqual(expected.sort());
       for (const key of moved) {
-        expect(typeof cells[key], `${key} is not a count`).toBe('number');
+        const kind = key === 'aiChat' || key === 'aiKnowledge' ? 'boolean' : 'number';
+        expect(typeof cells[key], `${key} is not a ${kind}`).toBe(kind);
       }
     }
   });
@@ -131,15 +184,33 @@ describe('the assistant is available from Small Team up without any add-on', () 
 /* ── 3 ─────────────────────────────────────────────────────────────────────── */
 describe('nothing enforces a per-seat AI limit', () => {
   it('no module compares usage against the `aiAssistant` count', () => {
-    /* 🔴 THE DELIVERABLE, ASSERTED RATHER THAN ASSERTED-ABOUT. The two modules
-       that meter AI use are the RAG usage ledger and the chat route. Neither
-       imports the feature matrix at all, so neither can be reading a seat — the
-       absence is structural, not a matter of which comparison was written. */
+    /* 🔴 THE DELIVERABLE, AND IT SURVIVES THE-253 INTACT. The two modules that
+       meter AI use are the RAG usage ledger and the chat route, and neither
+       reads the `aiAssistant` COUNT — so there is still no seat, and nothing
+       meters per seat. THE-253 made the add-on grant a CAPABILITY (a boolean,
+       checked once before the call) and not an allowance; "how many did you
+       buy" remains a question nothing asks.
+
+       ⚠️ THE SECOND HALF OF THIS ASSERTION HAD TO CHANGE. It used to require
+       that neither module touch the feature matrix AT ALL, which was true when
+       the chat was a plan capability nobody had to check at request time. The
+       chat is now an add-on, so the route MUST ask whether this tenant holds it
+       — see the entitlement gate in the route — and asking is the fix, not a
+       regression. What is still forbidden is the ledger learning about plans,
+       and the route reading the TIER instead of the TENANT. */
     for (const rel of ['../../lib/rag-usage.ts', '../../app/api/gemini/route.ts']) {
       const src = srcOf(rel);
       expect(src, `${rel} reads the aiAssistant cell`).not.toMatch(/\baiAssistant\b/);
-      expect(src, `${rel} reads the feature matrix`).not.toMatch(/getPlanFeatures|getEffectiveFeatures/);
     }
+    // The ledger still knows nothing about the matrix: the cap it enforces is
+    // the tier's, flat, and no add-on raises it.
+    expect(srcOf('../../lib/rag-usage.ts'), 'the usage ledger reads the feature matrix')
+      .not.toMatch(/getPlanFeatures|getEffectiveFeatures|tenantFeatures/);
+    // 🔴 And the route asks the TENANT question. `getPlanFeatures(` here would
+    // refuse exactly the churches that bought the add-on.
+    const route = srcOf('../../app/api/gemini/route.ts');
+    expect(route, 'the chat route does not check entitlement at all').toMatch(/tenantFeaturesById\(/);
+    expect(route, 'the chat route gates on the bare tier matrix').not.toMatch(/getPlanFeatures\s*\(/);
   });
 
   it('the budget that binds is per TENANT and per MONTH, not per seat', () => {

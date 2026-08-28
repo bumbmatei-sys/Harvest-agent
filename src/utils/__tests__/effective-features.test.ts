@@ -42,8 +42,20 @@ function owning(over: Partial<TenantAddons>): TenantAddons {
   return { ...NO_ADDONS, ...over };
 }
 
-/** The four cells add-ons may move, by name. Nothing else may change. */
+/** The four NUMERIC cells add-ons may raise, by name. */
 const CAPPED_CELLS = ['maxContacts', 'maxAdmins', 'maxChurches', 'aiAssistant'] as const;
+
+/**
+ * The two BOOLEAN cells an add-on may switch on (THE-253), by name.
+ *
+ * 🔴 SEPARATE FROM `CAPPED_CELLS` BECAUSE THEY OBEY A DIFFERENT LAW. A capped
+ * cell is raised by a quantity and the assertions below compare it with `>=`;
+ * these are lifted by OWNERSHIP — one add-on or ten is the same capability —
+ * and the only law that binds them is that a lift never turns a cell OFF that
+ * the tier had ON. Folding them into `CAPPED_CELLS` would run `>=` against a
+ * boolean, where `false >= false` passes and the assertion means nothing.
+ */
+const LIFTED_CELLS = ['aiChat', 'aiKnowledge'] as const;
 
 // ── Test 6 — 🔴 THE NO-REGRESSION TEST ───────────────────────────────────────
 
@@ -320,18 +332,43 @@ describe('no add-on lowers any cap', () => {
     }
   });
 
-  it('leaves every NON-capped cell exactly as the tier set it', () => {
-    // An add-on buys capacity, never a feature flag. Nothing else may move.
+  it('leaves every cell it does not name exactly as the tier set it', () => {
+    /* An add-on moves the six cells named above and NOTHING else. Six, not the
+       original four: THE-253 added `aiChat` and `aiKnowledge`, deliberately
+       breaking the old "an add-on buys capacity, never a feature flag" rule
+       because that rule was exactly why buying the AI Assistant add-on granted
+       nothing at all. The guard's job is unchanged — a SEVENTH cell must not
+       appear without a test saying so. */
     const everything = owning({
       aiAssistant: 3, adminSeats: 8, contactPacks: 4, unlimitedContacts: true, campuses: 2,
     });
-    const capped = new Set<string>(CAPPED_CELLS);
+    const moveable = new Set<string>([...CAPPED_CELLS, ...LIFTED_CELLS]);
     for (const plan of PLAN_ORDER) {
       const base = getPlanFeatures(plan);
       const effective = getEffectiveFeatures(plan, everything);
       for (const key of Object.keys(base) as Array<keyof PlanFeatures>) {
-        if (capped.has(key)) continue;
+        if (moveable.has(key)) continue;
         expect(effective[key], `${plan}.${key}`).toBe(base[key]);
+      }
+    }
+  });
+
+  it('a lifted cell is switched ON by ownership and never switched OFF', () => {
+    /* 🔴 THE LAW FOR THE TWO BOOLEANS. Owning the add-on turns them on for
+       every tier; owning nothing leaves each exactly where the tier put it. The
+       second half is what stops a lift from becoming a REPLACEMENT — writing
+       `aiChat: owned.aiAssistant > 0` instead of `base.aiChat || …` would take
+       the chat away from Small Team and Ministry, which include it. */
+    for (const plan of PLAN_ORDER) {
+      const base = getPlanFeatures(plan);
+      for (const cell of LIFTED_CELLS) {
+        expect(getEffectiveFeatures(plan, NO_ADDONS)[cell], `${plan}.${cell} without`).toBe(base[cell]);
+        for (const quantity of [1, 2, 25]) {
+          expect(
+            getEffectiveFeatures(plan, owning({ aiAssistant: quantity }))[cell],
+            `${plan}.${cell} owning ${quantity}`,
+          ).toBe(true);
+        }
       }
     }
   });

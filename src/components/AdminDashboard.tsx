@@ -38,7 +38,7 @@ import MyAccountMenu, { type BillingAccess } from './MyAccountMenu';
 import BillingAndPayments from './BillingAndPayments';
 import GraceWindowBanner from './GraceWindowBanner';
 import { AdminScreenHeader, AdminHeaderContext, AdminHeaderOverride } from './AdminScreenHeader';
-import { getPlanFeatures, hasBrandingAccess, AFFILIATE_PROGRAM_ENABLED, FREE_PLAN } from '../utils/plan-features';
+import { getEffectiveFeatures, hasBrandingAccess, AFFILIATE_PROGRAM_ENABLED, FREE_PLAN } from '../utils/plan-features';
 import { SMS_FEATURE_ENABLED } from '../lib/sms-feature';
 import { db, auth } from '../firebase';
 import { checkRosterAdminStatus } from '../utils/tenant.utils';
@@ -119,7 +119,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const tenantName = tenantData?.name ?? tenantData?.config?.name ?? 'Ministry';
   // Mirror MainApp: white-label tenants show their own logo; the platform /
   // super-admin view keeps the default Harvest mark.
-  const { branding, isLoading: tenantLoading, tenantPlan: ctxTenantPlan } = useTenant();
+  const { branding, isLoading: tenantLoading, tenantPlan: ctxTenantPlan, tenantAddons } = useTenant();
   const isWhiteLabel = !!tenantId && tenantId !== PLATFORM_TENANT_ID;
   const displayLogo = isWhiteLabel && branding?.logo ? branding.logo : DEFAULT_LOGO;
   const { data: userData, isLoading: userLoading } = useCurrentUser(auth.currentUser?.uid);
@@ -339,7 +339,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // back to the context plan so `features`/`isTenantAdmin` are correct on the first
   // render once the plan is known, rather than waiting on that lagging sync.
   const resolvedPlan = tenantPlan ?? ctxTenantPlan ?? null;
-  const features = resolvedPlan ? getPlanFeatures(resolvedPlan) : null;
+  // 🔴 `getEffectiveFeatures`, NEVER `getPlanFeatures` (THE-253). Every gate
+  // below asks what THIS CHURCH holds, not what its tier publishes. The AI
+  // Knowledge Base screen gates on `aiKnowledge`, which the AI Assistant add-on
+  // now lifts — read through the bare matrix it would refuse exactly the
+  // churches that paid, which is the defect THE-253 exists to fix. The capacity
+  // cells (contacts, admins, campuses) only ever read HIGHER through here, so
+  // no gate can tighten as a result.
+  const features = resolvedPlan ? getEffectiveFeatures(resolvedPlan, tenantAddons) : null;
   const isTenantAdmin = !!resolvedPlan;
   const hasFullAccess = isSuperAdmin || isChurchAdmin || perms.fullAccess;
 
