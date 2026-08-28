@@ -286,14 +286,26 @@ describe('every gate this PR adds or touches reads effective features', () => {
   });
 
   it('🔴 the gates that still read the BARE matrix are named, and the list may only shrink', () => {
-    // Honest inventory rather than a claim of completeness. These predate
-    // THE-213 and are behaviourally identical TODAY — no add-on lifts a boolean
-    // cell, and the four cells add-ons do move are read through their own
-    // capacity helpers. They are listed so the debt is visible and so a NEW
-    // base-matrix gate has to be added to this array in review.
+    /* Honest inventory rather than a claim of completeness. They are listed so
+       the debt is visible and so a NEW base-matrix gate has to be added to this
+       array in review.
+
+       🔴 THE OLD JUSTIFICATION FOR THIS LIST IS GONE. It used to read "these
+       are behaviourally identical TODAY — no add-on lifts a boolean cell".
+       THE-253 made that false: the AI Assistant add-on lifts `aiChat` and
+       `aiKnowledge`, so any gate on this list reading either cell refuses a
+       church that has paid for it. That is no longer visible debt; it is a live
+       defect, and the two surfaces that read those cells came OFF the list
+       rather than being documented on it:
+
+         · `components/MainApp.tsx`        — gated the Chat tab on `aiChat`
+         · `components/AdminDashboard.tsx` — gates the AI Knowledge Base screen
+                                             on `aiKnowledge`
+
+       ⚠️ THE ENTRIES THAT REMAIN read only cells no add-on lifts, so they are
+       still behaviourally identical. Anything added here in future must be
+       checked against the lifted cells, not just the capped ones. */
     const STILL_BARE = [
-      'components/MainApp.tsx',        // every member tab gate
-      'components/AdminDashboard.tsx', // every admin screen gate
       'hooks/usePlanGate.ts',          // the seven FeatureKey gates
       'components/AdminDocs.tsx',      // sermonNotes
       'components/AdminChurches.tsx',  // maxChurches

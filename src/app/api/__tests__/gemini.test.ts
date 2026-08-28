@@ -63,6 +63,26 @@ vi.mock('@/lib/rag-usage', () => ({
   incrementQueryTokens: mockIncrementQueryTokens,
 }));
 
+/**
+ * THE-253 — the chat's ENTITLEMENT gate, mocked so that the suites below keep
+ * testing what they are for.
+ *
+ * ⚠️ Every `purpose: 'chat'` test in this file is about RATE LIMITING and
+ * METERING, and each one now passes through an entitlement check first. Mocking
+ * it to "entitled" by default is what keeps those assertions about the thing
+ * they name; the gate's own behaviour is asserted in
+ * `gemini.ai-chat-addon-gate.test.ts`, against the real composition rather than
+ * this stub.
+ */
+const { mockTenantFeaturesById } = vi.hoisted(() => ({
+  mockTenantFeaturesById: vi.fn(),
+}));
+
+vi.mock('@/lib/tenant-features', () => ({
+  tenantFeaturesById: mockTenantFeaturesById,
+  tenantFeatures: vi.fn(),
+}));
+
 const { POST } = await import('../gemini/route');
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -88,6 +108,8 @@ beforeEach(() => {
   mockEmbedContent.mockResolvedValue({ embeddings: [{ values: [0.1, 0.2, 0.3] }] });
   mockCheckAndReserveIngest.mockResolvedValue({ allowed: true, used: 42, ceiling: 500_000 });
   mockCheckQueryBudget.mockResolvedValue({ allowed: true, used: 0, cap: 2_000_000 });
+  // Entitled by default — see the note on the mock above.
+  mockTenantFeaturesById.mockResolvedValue({ aiChat: true, aiKnowledge: true });
 });
 
 // ── Auth gate ──────────────────────────────────────────────────────────────
