@@ -1065,13 +1065,37 @@ function raiseCap(base: number, extra: number): number {
  * touches `PLAN_FEATURES`; `plan-features.test.ts` pins that every tier reads
  * identically before and after this is called.
  *
- * Four cells move, and only these four:
+ * Six cells move, and only these six:
  *   `maxContacts`  + `CONTACTS_PER_PACK` per pack (and see `unlimitedContacts`)
  *   `maxAdmins`    + one per admin seat
  *   `maxChurches`  + one per campus — the ONLY path past 1, which is the design
  *   `aiAssistant`  + one per AI Assistant add-on
- * Everything else is the tier's, untouched: an add-on buys capacity, never a
- * feature flag.
+ *   `aiChat`       ← true when the AI Assistant add-on is held (THE-253)
+ *   `aiKnowledge`  ← true when the AI Assistant add-on is held (THE-253)
+ *
+ * 🔴 THE LAST TWO BREAK THE OLD RULE ON PURPOSE — "an add-on buys capacity,
+ * never a feature flag" was true, and it was exactly the defect. The AI
+ * Assistant add-on is a LIVE Dodo product a church can buy today, and every
+ * cell it moved (`aiAssistant`, a count belonging to the retired Telegram
+ * product) was read by nothing. Buying it granted NOTHING — see THE-224, which
+ * withdrew the marketing card rather than ship a card that charged $20/mo for
+ * no change in behaviour. This is the build THE-224 declined to do.
+ *
+ * ⚠️ BOTH CELLS, NOT JUST `aiChat`, and that is not scope creep. The chat
+ * answers ONLY from the knowledge base; `aiKnowledge` is what lets an admin put
+ * anything in it. The add-on is sold on Individual, where `aiKnowledge` is
+ * false — so lifting `aiChat` alone sells a chat that can only ever answer
+ * "I don't have that". One purchase, one coherent capability.
+ *
+ * ⚠️ NEITHER PLAN CELL MOVES. `PLAN_FEATURES` is untouched: `aiKnowledge` stays
+ * false/false/true/true as a tier capability, and `getPlanFeatures` still
+ * answers the TIER question. A tenant that owns nothing reads exactly what its
+ * tier publishes — `NO_ADDONS` in, base matrix out — which is what keeps the
+ * plan-comparison surfaces honest.
+ *
+ * 🔴 A LIFT NEVER LOWERS. `||`, not assignment: a tier that already includes
+ * the capability keeps it whether or not the add-on is held, so dropping the
+ * add-on can never take away something the PLAN grants.
  */
 export function getEffectiveFeatures(
   plan: TenantPlan,
@@ -1085,6 +1109,12 @@ export function getEffectiveFeatures(
     maxAdmins: raiseCap(base.maxAdmins, owned.adminSeats),
     maxChurches: raiseCap(base.maxChurches, owned.campuses),
     aiAssistant: raiseCap(base.aiAssistant, owned.aiAssistant),
+    // 🔴 The RAG capability the AI Assistant add-on actually buys — see above.
+    // `owned.aiAssistant` is the COUNT the Dodo webhook wrote from the live
+    // product; owning one or ten is the same capability, so this is a
+    // threshold, never a cap. `raiseCap` is the wrong tool for a boolean.
+    aiChat: base.aiChat || owned.aiAssistant > 0,
+    aiKnowledge: base.aiKnowledge || owned.aiAssistant > 0,
     unlimitedContacts: owned.unlimitedContacts,
   });
 }

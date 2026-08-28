@@ -12,6 +12,7 @@ import {
   incrementQueryTokens,
 } from '@/lib/rag-usage';
 import { captureHandledError } from '@/lib/money-path-sentry';
+import { tenantFeaturesById } from '@/lib/tenant-features';
 
 export const dynamic = 'force-dynamic';
 
@@ -314,6 +315,47 @@ export async function POST(request: NextRequest) {
       // exempt. Enforcement is server-side and keyed on the authenticated uid,
       // so the client cannot bypass or reset it.
       if (purpose === 'chat' && !userOrErr.isSuperAdmin) {
+        // ── ENTITLEMENT, BEFORE ANYTHING SPENDS ─────────────────────────────
+        //
+        // 🔴 THE FIRST GATE, AND IT RUNS BEFORE THE BUDGET READ AND BEFORE
+        // MiMo. THE-253 made the RAG chat an ADD-ON rather than a plan feature,
+        // and an add-on that only the CLIENT enforces is not enforced: the Chat
+        // tab is hidden by `MainApp`, but this route is a plain authenticated
+        // POST and any member of any tenant can call it directly. Every answer
+        // costs real money, so the refusal has to be here, where the spend is.
+        //
+        // 🔴 `tenantFeaturesById` — the TENANT question, so it composes the
+        // tier with the tenant's owned add-ons. `getPlanFeatures` would answer
+        // the tier question and refuse exactly the churches that paid.
+        //
+        // ⚠️ A NULL TENANT IS NOT REFUSED, and that is deliberate rather than a
+        // hole. `tenantId` comes off the verified token (or the user doc), never
+        // the body, so a tenant member cannot present themselves as tenantless.
+        // Null is the apex/main-site user, who has no tenant, no plan and no
+        // add-on to own — `MainApp` shows them the chat unconditionally via
+        // `isMainSite`, and that demo surface is unchanged here. They remain
+        // metered by the per-uid allowance below, which is the only limit that
+        // was ever keyed on them.
+        //
+        // ⚠️ A READ FAILURE PROPAGATES to the outer catch and answers 500.
+        // `tenantFeaturesById` documents that it does not swallow, and that is
+        // the behaviour we want: a Firestore blip must not fail OPEN onto a
+        // metered Gemini call.
+        if (userOrErr.tenantId) {
+          const features = await tenantFeaturesById(userOrErr.tenantId);
+          // An unknown tenant owns nothing — refuse rather than invent a tier.
+          if (!features || !features.aiChat) {
+            return NextResponse.json(
+              {
+                error:
+                  'The AI chat is not part of your plan. It is available as an add-on — ask your ministry admin to add it in Settings.',
+                code: 'ai_chat_not_entitled',
+              },
+              { status: 403 },
+            );
+          }
+        }
+
         // Tenant monthly query-token cap — HARD pre-call gate. Block the NEXT
         // query once at/over cap (token cost is known only after the answer, so
         // one final over-shoot is acceptable). Only a real tenant is metered; a

@@ -20,7 +20,7 @@ import ErrorBoundary from './ErrorBoundary';
 import BiblePage from './BiblePage';
 import PlanUpgradeScreen from './PlanUpgradeScreen';
 import ReferralTracker from './ReferralTracker';
-import { getPlanFeatures } from '../utils/plan-features';
+import { getEffectiveFeatures } from '../utils/plan-features';
 import { hasMemberVisibleCourses } from '../utils/member-courses';
 import { hasPlatformOverride } from '../utils/tenant-scope';
 import { useAppStore } from '../store/useAppStore';
@@ -77,7 +77,7 @@ interface MainAppProps {
 
 const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   const { tenantPlan, currentUser } = useAppStore();
-  const { tenantId, tenantName, branding, tenantPlan: ctxTenantPlan, isLoading: tenantLoading, stripeConnectStatus } = useTenant();
+  const { tenantId, tenantName, branding, tenantPlan: ctxTenantPlan, tenantAddons, isLoading: tenantLoading, stripeConnectStatus } = useTenant();
   // White-label tenants (any real tenant other than the platform) show their own
   // name + logo; the platform / super-admin view keeps the "Harvest" brand.
   const isWhiteLabel = !!tenantId && tenantId !== PLATFORM_TENANT_ID;
@@ -127,7 +127,15 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   // sync — otherwise legit higher-tier features (Map, AI chat) flash hidden until
   // the store catches up. A resolved null/low plan stays correctly restricted.
   const resolvedPlan = tenantPlan ?? ctxTenantPlan ?? null;
-  const features = isMainSite ? null : (resolvedPlan ? getPlanFeatures(resolvedPlan) : null);
+  // 🔴 `getEffectiveFeatures`, NEVER `getPlanFeatures` (THE-253). Every gate in
+  // this file asks a question about THIS TENANT — "does this church have the
+  // Chat tab?" — not about its tier, and the two differ the moment an add-on is
+  // bought. This read was the tier's, so a church that bought the AI Assistant
+  // add-on still had the Chat tab hidden: the entitlement was granted in
+  // `getEffectiveFeatures` and this line never asked. TenantContext already
+  // composes the same two values into its own `planFeatures`; this is the
+  // second door onto that fact, and it now answers identically.
+  const features = isMainSite ? null : (resolvedPlan ? getEffectiveFeatures(resolvedPlan, tenantAddons) : null);
 
   // Community Groups — the private channels + DMs behind the Messages tab — is
   // Ministry (max) only, and the member app used to ship it to every tier: the
