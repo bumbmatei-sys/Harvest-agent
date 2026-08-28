@@ -149,7 +149,14 @@ vi.mock('../../store/useAppStore', () => ({
     return typeof sel === 'function' ? sel(state) : state;
   },
 }));
-vi.mock('../../contexts/TenantContext', () => ({ useTenantOptional: () => ({ planFeatures: { checkInSystem: true } }) }));
+// THE-251 — AdminFundraising now reads `branding` to decide whether to show the
+// manual-payment-links note, so this mock has to answer `useTenant` too. Empty
+// branding is the honest default here: these five screens are pinned for LAYOUT,
+// and a church with no links renders the same markup it always did.
+vi.mock('../../contexts/TenantContext', () => ({
+  useTenantOptional: () => ({ planFeatures: { checkInSystem: true } }),
+  useTenant: () => ({ branding: {} }),
+}));
 vi.mock('../../utils/plan-features', () => ({ getPlanFeatures: () => ({ checkInSystem: true, fundraising: true }) }));
 vi.mock('../../utils/super-admins', () => ({ isSuperAdminEmail: () => false }));
 
@@ -685,13 +692,65 @@ describe('no community query or write path changed', () => {
 // 6. Money.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('no ticket price, donation amount, fee or checkout call changed', () => {
-  for (const name of ['AdminEvents', 'AdminFundraising'] as const) {
-    it(`changes nothing in ${name} outside a className`, () => {
-      const now = stripPresentation(read(`${name}.tsx`));
-      expect(now.split('\n').length, DIFF_HINT(name)).toBe(PRE_PR[name].strippedLines);
-      expect(sha(now), DIFF_HINT(name)).toBe(PRE_PR[name].strippedSha);
-    });
-  }
+  it('changes nothing in AdminEvents outside a className', () => {
+    const now = stripPresentation(read('AdminEvents.tsx'));
+    expect(now.split('\n').length, DIFF_HINT('AdminEvents')).toBe(PRE_PR.AdminEvents.strippedLines);
+    expect(sha(now), DIFF_HINT('AdminEvents')).toBe(PRE_PR.AdminEvents.strippedSha);
+  });
+
+  /**
+   * 🔴 THE-251 — AdminFundraising HAS legitimately moved, and this is the record.
+   *
+   * This guard was written for a PRESENTATION-ONLY PR (Batch F): strip the
+   * classNames, hash what is left, and any behaviour change on these five
+   * screens goes red. THE-245 hit it with a three-string edit and reversed that
+   * edit exactly rather than re-recording, on the reasoning that re-recording
+   * "would bless every other byte that moved in the same breath".
+   *
+   * THE-251 is not a three-string edit and not a presentation PR. It adds, to
+   * this screen and deliberately: a disclosure beside the goal, a "Record an
+   * offline gift" control, its handler, and the removal of `raised` from the
+   * editor's update payload. That is ~215 stripped lines. Reversing it by exact
+   * string would put a 215-line blob of duplicated production source in this
+   * file, unreviewable and red on the next comment rewording — a worse guard
+   * than none.
+   *
+   * Re-recording `ministry-pre-pr.json` cannot help either: it is recorded from
+   * `git show 974ae1d`, so it would reproduce the same pre-PR hash.
+   *
+   * So the pin is KEPT and RE-AIMED, and nothing about it is loosened:
+   *
+   *   • the money-bearing guard below — `firestorePaths` — still compares
+   *     against the PRE-PR revision, byte for byte. THE-251 adds no client
+   *     write at all: the adjustment goes through /api/campaigns/adjust-raised
+   *     under the Admin SDK, so all nine paths are unchanged. That is the
+   *     assertion that actually protects the money, and it is untouched.
+   *   • the whole-file hash still runs, now against THE-251's own shape, so an
+   *     ACCIDENTAL edit to this screen still goes red tomorrow.
+   *   • the other four screens are untouched and still pinned to 974ae1d.
+   *
+   * Update `THE_251_FUNDRAISING` only for a deliberate, reviewed change to
+   * AdminFundraising, and say which ticket in the same breath.
+   */
+  const THE_251_FUNDRAISING = {
+    strippedSha: '9e734a0d5f998fe0ea31dd9da4e59a43dd4f102fc1d4238ac6c81e37568298be',
+    strippedLines: 850,
+  };
+
+  it('changes nothing in AdminFundraising outside a className and THE-251', () => {
+    const now = stripPresentation(read('AdminFundraising.tsx'));
+    expect(now.split('\n').length, DIFF_HINT('AdminFundraising')).toBe(THE_251_FUNDRAISING.strippedLines);
+    expect(sha(now), DIFF_HINT('AdminFundraising')).toBe(THE_251_FUNDRAISING.strippedSha);
+  });
+
+  it('adds no Firestore path to AdminFundraising — the adjustment is not a client write', () => {
+    // 🔴 Still compared against the PRE-PR revision. A manual adjustment writes
+    // `campaigns/{id}.raised` and an `adjustments` row, and BOTH happen on the
+    // server through the Admin SDK — `campaigns/{id}/adjustments` has no rule of
+    // its own and firestore.rules is not this ticket's to touch. If either ever
+    // became a client write, it would appear here.
+    expect(firestorePathsOf(read('AdminFundraising.tsx'))).toEqual(PRE_PR.AdminFundraising.firestorePaths);
+  });
 
   it('keeps every money-bearing field on the event editor, by its label', async () => {
     const { form } = await surfaces('AdminEvents');

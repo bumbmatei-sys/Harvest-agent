@@ -76,6 +76,18 @@ vi.mock('firebase/firestore', () => ({
   serverTimestamp: () => 'ts',
 }));
 
+// THE-251 — NewsTab mounts CampaignWidget, which now reads `branding` to draw
+// the church's own payment links on a campaign. In the app that context always
+// resolves (TenantProvider wraps everything in App.tsx); here it has to be
+// supplied. Empty branding: this suite is about WRITE SCOPING, and a church
+// with no links renders the widget exactly as it did before.
+// Everything else in the module keeps its real implementation — notably
+// `useTenantOptional`, which other components on this screen read and which is
+// deliberately safe outside a provider.
+vi.mock('@/contexts/TenantContext', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/contexts/TenantContext')>()),
+  useTenant: () => ({ branding: {} }) as never,
+}));
 vi.mock('../../lib/dm', () => ({
   getOrCreateDm: async (...args: unknown[]) => { fx.dmCalls.push(args); return { id: 'dm-1' }; },
 }));

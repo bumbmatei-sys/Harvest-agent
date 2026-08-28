@@ -1,8 +1,8 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Heart, DollarSign, ChevronDown,
-  Copy, Check, Send, X, ArrowLeft,
+  Copy, Check, Send, X, ArrowLeft, AlertTriangle,
 } from 'lucide-react';
 import {
   collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp,
@@ -22,6 +22,8 @@ import { getPlanFeatures } from '../utils/plan-features';
 import { useCampaigns, type Campaign } from '../hooks/queries/useCampaignQueries';
 import { FORM_CONTAINER, FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
 import { SMS_FEATURE_ENABLED } from '../lib/sms-feature';
+import { GIVING_PROVIDERS, readGivingLinks } from './donations/giving-providers';
+import { useTenant } from '@/contexts/TenantContext';
 
 const empty: Omit<Campaign, 'id'> = {
   title: '',
@@ -79,6 +81,24 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
   const { currentTenantId, isAuthReady, isSuperAdmin, tenantPlan } = useAppStore();
   const tenantId = currentTenantId || (isSuperAdmin ? PLATFORM_TENANT_ID : null);
 
+  /**
+   * 🔴 THE-251 — does this church publish payment links Harvest is not in?
+   *
+   * Identical derivation, identical reasoning and identical source to
+   * `hasManualGivingLinks` in AdminCRM (THE-249): `config.givingLinks` off the
+   * tenant document `TenantContext` has already loaded, validated through the
+   * same `readGivingLinks` the member Give page reads through. No new query.
+   *
+   * ⚠️ A CONDITION, NOT A CONSTANT, for the reason the CRM's copy of this gives:
+   * a church with no links has no link gap, and a warning shown to every church
+   * on every campaign edit is the banner that teaches the churches which DO have
+   * the gap to skip it. The REMEDY below is unconditional — an envelope of cash
+   * is worth recording whether or not a church publishes a PayPal link — but the
+   * sentence about payment links is shown only to the churches that have them.
+   */
+  const { branding } = useTenant();
+  const hasManualGivingLinks = useMemo(() => readGivingLinks(branding).length > 0, [branding]);
+
   const platformOverride = hasPlatformOverride();
   const features = tenantPlan ? getPlanFeatures(tenantPlan) : null;
   const canPledge = platformOverride || !!features?.pledgeCampaigns;
@@ -103,6 +123,13 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
   const [copied, setCopied] = useState(false);
   const [reminderConfirm, setReminderConfirm] = useState(false);
   const [sendingReminder, setSendingReminder] = useState(false);
+
+  // THE-251 — recording a gift that came through the church's own payment links.
+  // `amount` is the SIZE OF ONE GIFT, never a total; see `recordOfflineGift`.
+  const [showAdjust, setShowAdjust] = useState(false);
+  const [adjustForm, setAdjustForm] = useState({ amount: '', provider: '', note: '' });
+  const [savingAdjust, setSavingAdjust] = useState(false);
+  const [adjustError, setAdjustError] = useState<string | null>(null);
 
   const openCreate = () => { setEditing(null); setForm(empty); setShowForm(true); };
   const openEdit = (c: Campaign) => { setEditing(c); setForm({ ...empty, ...c }); setShowForm(true); };
@@ -154,7 +181,26 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
         pledgeDeadline: form.campaignType === 'pledge' ? (form.pledgeDeadline || null) : null,
       };
       if (editing) {
-        await updateDoc(doc(db, 'campaigns', editing.id), { ...payload, updatedAt: serverTimestamp() });
+        // 🔴 `raised` IS NOT THE EDITOR'S TO WRITE — THE-251.
+        //
+        // `openEdit` loads the whole campaign into `form`, `raised` included,
+        // and this update spread it straight back. So every save wrote a
+        // SNAPSHOT of the total taken when the modal opened: an admin who opened
+        // the editor, fixed a typo in the title and saved five minutes later
+        // silently reset `raised` to its five-minutes-ago value, destroying any
+        // Stripe gift that landed in between — a webhook credit that had been
+        // idempotently, atomically written was undone by a title edit.
+        //
+        // It never showed up as a bug because the two values usually agree. They
+        // stop agreeing the moment money moves, which is the only moment that
+        // matters, and adding the manual adjustment makes it worse: an
+        // adjustment recorded while the editor sat open would be erased on save.
+        //
+        // So the total is stripped from the payload here and the increment
+        // paths — the Stripe webhook and /api/campaigns/adjust-raised — are its
+        // only writers. The editor still owns every other field.
+        const { raised: _ignoredRaised, ...editable } = payload;
+        await updateDoc(doc(db, 'campaigns', editing.id), { ...editable, updatedAt: serverTimestamp() });
       } else {
         await addDoc(collection(db, 'campaigns'), {
           ...payload,
@@ -192,6 +238,68 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
       await queryClient.invalidateQueries({ queryKey: ['campaigns', tenantId] });
     } catch (e) { notifyError('Failed to delete campaign', e); }
     setDeleteId(null);
+  };
+
+  /**
+   * THE-251 — add an offline gift to this campaign's raised amount.
+   *
+   * 🔴 IT ADDS. The field below is "how much came in", not "what the total
+   * should now be", and the route it posts to only ever increments. That is
+   * deliberate and it is the whole design: `raised` is incremented per payment
+   * by the Stripe webhook, so a control that SET the total would double-count
+   * the moment the next Stripe gift landed on top of a figure an admin had
+   * already typed Stripe's share into. Same contract as the CRM's
+   * Add Activity → Donation, which adds to `totalDonated` rather than replacing it.
+   *
+   * A correction is a negative amount: an admin who recorded $500 and meant $50
+   * enters -450. Both entries survive in the campaign's adjustment trail, so the
+   * total stays explainable rather than quietly patched.
+   *
+   * Server-side, not a client write: the increment and its audit row have to
+   * land atomically, the free-tier refusal belongs on the server, and
+   * `campaigns/{id}/adjustments` has no rule of its own (firestore.rules is not
+   * this ticket's to touch).
+   */
+  const recordOfflineGift = async () => {
+    if (!detailCampaign || !tenantId) return;
+    const amount = Number(adjustForm.amount.trim());
+    if (!adjustForm.amount.trim() || !Number.isFinite(amount) || amount === 0) {
+      setAdjustError('Enter the amount of the gift. Use a negative amount to correct a mistake.');
+      return;
+    }
+    setAdjustError(null);
+    setSavingAdjust(true);
+    try {
+      const res = await authFetch('/api/campaigns/adjust-raised', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId: detailCampaign.id,
+          tenantId,
+          amountDollars: amount,
+          provider: adjustForm.provider || null,
+          note: adjustForm.note.trim(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAdjustError(data.error || 'Could not record that gift. Please try again.');
+        return;
+      }
+      // The server is the authority on the new total — it applied the increment
+      // and enforced the zero floor, so this reflects what actually landed
+      // rather than re-doing the arithmetic locally and hoping they agree.
+      const raised = typeof data.raised === 'number' ? data.raised : detailCampaign.raised;
+      setDetailCampaign({ ...detailCampaign, raised });
+      await queryClient.invalidateQueries({ queryKey: ['campaigns', tenantId] });
+      setAdjustForm({ amount: '', provider: '', note: '' });
+      setShowAdjust(false);
+    } catch (e) {
+      notifyError('Failed to record the gift', e);
+      setAdjustError('Could not record that gift. Please try again.');
+    } finally {
+      setSavingAdjust(false);
+    }
   };
 
   // ── Pledge operations ──
@@ -308,6 +416,109 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
               <button onClick={() => toggleActive(c)}>
                 {c.isActive ? <ToggleRight size={28} style={{ color: 'var(--brand-color, #d4a017)' }} /> : <ToggleLeft size={28} className="text-stone-300" />}
               </button>
+            </div>
+
+            {/*
+              🔴 THE-251 — THE REMEDY, beside the total it corrects.
+
+              This is the only way to move `raised` by hand. It sits here rather
+              than in the editor because the editor also creates campaigns, and a
+              campaign that does not exist yet has no total to add to; and
+              because the number it changes is on screen directly above it.
+            */}
+            <div className="mt-4 pt-4 border-t border-line">
+              {!showAdjust ? (
+                <button
+                  data-testid="campaign-record-offline-gift"
+                  onClick={() => { setShowAdjust(true); setAdjustError(null); }}
+                  className={`w-full sm:w-auto ${ACTION_BUTTON} inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-brand border border-line bg-surface-raised text-[13px] font-semibold text-strong hover:bg-surface-sunken transition-colors`}
+                >
+                  <DollarSign size={15} className="text-muted" /> Record an offline gift
+                </button>
+              ) : (
+                <div data-testid="campaign-adjust-form" className="space-y-3">
+                  <div>
+                    <label htmlFor="offline-gift-amount" className="text-xs font-semibold text-strong mb-1.5 block">
+                      Amount received ($)
+                    </label>
+                    <input
+                      id="offline-gift-amount"
+                      type="number"
+                      step="0.01"
+                      value={adjustForm.amount}
+                      onChange={(e) => setAdjustForm({ ...adjustForm, amount: e.target.value })}
+                      placeholder="250"
+                      className={`w-full ${FIELD_WIDTH.short} border border-line rounded-brand px-3.5 py-2.5 text-sm text-strong focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent`}
+                    />
+                    {/*
+                      🔴 SAYS "ADDS", NOT "SETS", where the number is typed. The
+                      one misreading that would corrupt a total is an admin
+                      entering the campaign's whole figure, so the field says
+                      what it does at the point of entry rather than in a
+                      paragraph above it.
+                    */}
+                    <p className="text-xs text-muted mt-1.5 leading-relaxed">
+                      This <b className="text-strong">adds to</b> the {fmt(c.raised)} already raised &mdash; enter
+                      the size of the gift, not the new total. To correct a gift you entered by
+                      mistake, enter a negative amount.
+                    </p>
+                  </div>
+                  <div>
+                    <label htmlFor="offline-gift-provider" className="text-xs font-semibold text-strong mb-1.5 block">
+                      Where it came from <span className="font-normal text-faint">(optional)</span>
+                    </label>
+                    <select
+                      id="offline-gift-provider"
+                      value={adjustForm.provider}
+                      onChange={(e) => setAdjustForm({ ...adjustForm, provider: e.target.value })}
+                      className={`w-full ${FIELD_WIDTH.medium} border border-line rounded-brand px-3.5 py-2.5 text-sm text-strong bg-surface-raised focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent ${CONTROL_DENSITY.control}`}
+                    >
+                      <option value="">Not specified</option>
+                      {/* The THE-246 table, walked — the fifth provider appears
+                          here with no edit to this file. */}
+                      {GIVING_PROVIDERS.map((prov) => (
+                        <option key={prov.id} value={prov.id}>{prov.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="offline-gift-note" className="text-xs font-semibold text-strong mb-1.5 block">
+                      Note <span className="font-normal text-faint">(optional)</span>
+                    </label>
+                    <input
+                      id="offline-gift-note"
+                      value={adjustForm.note}
+                      onChange={(e) => setAdjustForm({ ...adjustForm, note: e.target.value })}
+                      placeholder="Sunday envelope, Cash App from the Bakers"
+                      className={`w-full ${FIELD_WIDTH.long} border border-line rounded-brand px-3.5 py-2.5 text-sm text-strong focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent`}
+                    />
+                  </div>
+                  {adjustError && (
+                    <p data-testid="campaign-adjust-error" className="text-sm text-red-600">{adjustError}</p>
+                  )}
+                  <p className="text-xs text-faint leading-relaxed">
+                    Recorded with your name and the date so your campaign total can be reconciled.
+                    It does not create a receipt and will not appear on a giving statement.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={recordOfflineGift}
+                      disabled={savingAdjust}
+                      className={`${ACTION_BUTTON} flex-1 sm:flex-none px-4 py-2.5 rounded-brand text-[13px] font-semibold text-white disabled:opacity-50 transition-opacity`}
+                      style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
+                    >
+                      {savingAdjust ? 'Recording…' : 'Record gift'}
+                    </button>
+                    <button
+                      onClick={() => { setShowAdjust(false); setAdjustError(null); setAdjustForm({ amount: '', provider: '', note: '' }); }}
+                      disabled={savingAdjust}
+                      className={`${ACTION_BUTTON} flex-1 sm:flex-none px-4 py-2.5 rounded-brand border border-line text-[13px] font-semibold text-strong hover:bg-surface-sunken transition-colors`}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -638,6 +849,41 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
                     className="w-full border border-line rounded-brand px-3.5 py-2.5 text-sm text-strong focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
                 </div>
               </div>
+
+              {/*
+                🔴 THE-251 — WHAT THE GOAL WILL BE MEASURED AGAINST.
+
+                Beside the goal, because this is the moment an admin forms an
+                expectation about the number underneath it. The fourth statement
+                of one fact the church now meets in four places — AdminDonations
+                (before it pastes a link), AdminGivingStatements (before it sends
+                a tax document), AdminCRM (under the giving totals) and here
+                (where the campaign target is set). Same voice, same providers
+                named in the same order, same shape: what is missing, why Harvest
+                cannot see it, and the exact control that fixes it.
+
+                There is no Raised input beside the Goal one and there deliberately
+                never will be: `raised` is incremented per Stripe payment, so a
+                field that SET it would double-count. The remedy this names adds.
+              */}
+              {hasManualGivingLinks && (
+                <div
+                  data-testid="campaign-manual-giving"
+                  className="flex items-start gap-2.5 rounded-brand-lg border border-line bg-surface-sunken px-4 py-3 text-[13px] text-body"
+                >
+                  <AlertTriangle size={15} className="mt-0.5 shrink-0 text-gold" aria-hidden="true" />
+                  <div className="leading-relaxed">
+                    <span className="font-semibold">
+                      Gifts sent through your own payment links do not update the amount raised.
+                    </span>{' '}
+                    Harvest never sees a PayPal, Cash App, Venmo or Zelle gift, so this campaign
+                    counts Stripe gifts alone and its total will read lower than what you actually
+                    received. To add one, open the campaign and press Record an offline gift. That
+                    adds to the total; it does not create a receipt and will not appear on a giving
+                    statement.
+                  </div>
+                </div>
+              )}
               {form.campaignType === 'pledge' && (
                 <div>
                   <label className="text-xs font-semibold text-strong mb-1.5 block">Pledge deadline</label>
