@@ -197,6 +197,15 @@ export const GIVING_PROVIDERS: readonly GivingProvider[] = Object.freeze([
     That is the whole reason the allow-list is keyed on hosts and not on paths:
     a provider is free to reshape its URLs, and a church is not required to know
     which of its products it is on before it can be generous.
+
+    🔴 THE PLACEHOLDER IS THE BUSINESS SHAPE BECAUSE THAT IS THE ONE WISE
+    PUBLISHES VERBATIM. The personal Wisetag link is documented as existing and
+    as copyable from the app, but its path is nowhere spelled out in Wise's own
+    help centre — so it is ACCEPTED (same host) and not TAUGHT. A placeholder is
+    the field's claim about what a real link looks like; this one can be cited.
+    A church on a personal account pastes its Wisetag link and it is taken, and
+    the field's own hint says only "must be on wise.com", so nothing here tells
+    a small church it needs a business account before it can be given to.
   */
   {
     id: 'wise',
@@ -208,7 +217,7 @@ export const GIVING_PROVIDERS: readonly GivingProvider[] = Object.freeze([
     tint: '#9FE870',
     ink: '#163300',
     hosts: ['wise.com'],
-    urlExample: 'https://wise.com/pay/me/gracechapel',
+    urlExample: 'https://wise.com/pay/business/gracechapel',
     handleLabel: 'Wisetag',
     handleExample: '@gracechapel',
     hasPersonalLink: true,

@@ -731,13 +731,30 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
    *
    * Update `THE_251_FUNDRAISING` only for a deliberate, reviewed change to
    * AdminFundraising, and say which ticket in the same breath.
+   *
+   * ─── THE-254 — re-recorded, and here is the whole of what moved ────────────
+   *
+   * TWO LINES, both in place, and the line count below did not change — which
+   * is itself part of the record: a re-recording that also changed the shape of
+   * the file would be hiding something in the same breath.
+   *
+   *   1. the import gained `GIVING_PROVIDER_NAMES_OR`
+   *   2. the campaign disclosure's "Harvest never sees a PayPal, Cash App,
+   *      Venmo or Zelle gift" became "…a {GIVING_PROVIDER_NAMES_OR} gift"
+   *
+   * The provider names on this screen were one of five hand-written copies of
+   * the provider table; adding Revolut and Wise would have left this sentence
+   * promising a narrower product than the one shipping. Nothing else on the
+   * screen was touched: no control, no handler, no payload, no gate. The
+   * `firestorePaths` guard below still compares against the PRE-PR revision and
+   * still passes, which is the assertion that actually protects the money.
    */
   const THE_251_FUNDRAISING = {
-    strippedSha: '9e734a0d5f998fe0ea31dd9da4e59a43dd4f102fc1d4238ac6c81e37568298be',
+    strippedSha: '3fa68aac24d3431d4eb826d4adbcbf8e39ae31967c8dce92a330e780cf92786d',
     strippedLines: 850,
   };
 
-  it('changes nothing in AdminFundraising outside a className and THE-251', () => {
+  it('changes nothing in AdminFundraising outside a className, THE-251 and THE-254', () => {
     const now = stripPresentation(read('AdminFundraising.tsx'));
     expect(now.split('\n').length, DIFF_HINT('AdminFundraising')).toBe(THE_251_FUNDRAISING.strippedLines);
     expect(sha(now), DIFF_HINT('AdminFundraising')).toBe(THE_251_FUNDRAISING.strippedSha);

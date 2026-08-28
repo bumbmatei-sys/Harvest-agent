@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import AdminFundraising from '../AdminFundraising';
-import { GIVING_PROVIDERS } from '../donations/giving-providers';
+import { GIVING_PROVIDERS, GIVING_PROVIDER_NAMES_OR } from '../donations/giving-providers';
 
 /**
  * THE-251 — the campaign editor names the gap, and the campaign itself carries
@@ -183,7 +183,7 @@ describe('the campaign editor states that link gifts do not update the raised am
     expect(note).not.toBeNull();
     const text = note!.textContent || '';
     expect(text).toContain('Gifts sent through your own payment links do not update the amount raised.');
-    expect(text).toContain('Harvest never sees a PayPal, Cash App, Venmo or Zelle gift');
+    expect(text).toContain(`Harvest never sees a ${GIVING_PROVIDER_NAMES_OR} gift`);
   });
 
   it('names the control that fixes it, not just the problem', async () => {
