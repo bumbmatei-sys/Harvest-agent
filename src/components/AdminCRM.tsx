@@ -30,7 +30,7 @@ import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { useTenant } from '@/contexts/TenantContext';
 import { getEffectiveFeatures, toTenantPlan } from '../utils/plan-features';
 import { getIntegrationProvider, isProviderAvailable } from './settings/integration-providers';
-import { readGivingLinks } from './donations/giving-providers';
+import { GIVING_PROVIDER_NAMES_OR, readGivingLinks } from './donations/giving-providers';
 import {
   resolveContactLimit, countContactAccounts, isAtContactLimit, contactLimitMessage,
 } from '../utils/contact-capacity';
@@ -1660,7 +1660,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         Every giving figure on this screen is a function of
         `contacts.totalDonated`, and exactly two things write it: the Stripe
         donation webhook, and this screen's own Add Activity → Donation. A gift
-        sent through a church's own PayPal / Cash App / Venmo / Zelle link
+        sent through one of a church's own payment links (see `GIVING_PROVIDERS`)
         reaches neither, so the giver sits at $0 given, no last gift and the
         Member stage — indistinguishable from someone who has never given, and
         the reading a church reaches on its own is that the CRM is broken.
@@ -1686,7 +1686,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             <span className="font-semibold">
               Gifts sent through your own payment links are not counted here.
             </span>{' '}
-            Harvest never sees a PayPal, Cash App, Venmo or Zelle gift, so the member who sent
+            Harvest never sees a {GIVING_PROVIDER_NAMES_OR} gift, so the member who sent
             one stays at $0 total given, with no last gift and the Member stage. To record it,
             open their contact, press Add Activity, choose Donation and enter the amount.
           </div>

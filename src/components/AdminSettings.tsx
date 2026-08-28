@@ -12,6 +12,7 @@ import SmsSection from './settings/SmsSection';
 import AiAssistantSection from './settings/AiAssistantSection';
 import IntegrationsSection from './settings/IntegrationsSection';
 import { hasAnyIntegrationProvider } from './settings/integration-providers';
+import { GIVING_PROVIDER_NAMES_OR } from './donations/giving-providers';
 import ThemeToggle from './ThemeToggle';
 import PaletteFamilyToggle from './PaletteFamilyToggle';
 import SectionHeading from './settings/SectionHeading';
@@ -239,7 +240,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       content: (
         <div className="space-y-3">
           <p className="text-sm text-body leading-relaxed">
-            Connecting Stripe, and adding your own PayPal, Cash App, Venmo or Zelle links,
+            Connecting Stripe, and adding your own {GIVING_PROVIDER_NAMES_OR} links,
             now live together in <b className="text-strong">Donations</b>.
           </p>
           <button

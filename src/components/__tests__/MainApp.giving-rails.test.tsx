@@ -154,12 +154,32 @@ const tenant = vi.hoisted(() => ({
 vi.mock('../../contexts/TenantContext', () => ({ useTenant: () => tenant }));
 
 /** A church that pasted every one of the four providers. */
-const ALL_FOUR = {
-  paypal: { url: 'https://paypal.me/gracechapel', handle: 'gracechapel', email: 'giving@grace.org' },
-  cashapp: { url: 'https://cash.app/$gracechapel', handle: '$gracechapel', email: 'cash@grace.org' },
-  venmo: { url: 'https://venmo.com/u/gracechapel', handle: '@gracechapel', email: 'venmo@grace.org' },
-  zelle: { handle: 'Grace Chapel', email: 'zelle@grace.org' },
-};
+/**
+ * A church that publishes EVERY provider — built from the table, not typed out.
+ *
+ * 🔴 THE-254 found this fixture hand-written as four literal rows while the
+ * assertions below already ranged over `GIVING_PROVIDERS`. That combination
+ * fails silently in the direction that matters: the suite kept asserting over
+ * the table, but only ever fed it four providers, so a new row was "covered" by
+ * tests that had no data for it. Derived here instead, so the seventh provider
+ * is exercised by every assertion in this file the day it is added.
+ *
+ * Each provider's own `urlExample` and `handleExample` are the values a church
+ * is actually shown as placeholders, and a provider with no per-account page
+ * (Zelle) gets no URL — which is what keeps the "renders as a card, not a dead
+ * link" case below honest.
+ */
+const ALL_PROVIDERS: Record<string, { url?: string; handle: string; email: string }> =
+  Object.fromEntries(
+    GIVING_PROVIDERS.map((p) => [
+      p.id,
+      {
+        ...(p.hasPersonalLink ? { url: p.urlExample } : {}),
+        handle: p.handleExample,
+        email: `${p.id}@grace.org`,
+      },
+    ]),
+  );
 
 let container: HTMLDivElement;
 let root: Root;
@@ -345,26 +365,26 @@ describe('the Give page shows the form alone when only Stripe is connected', () 
 // ═════════════════════════════════════════════════════════════════════════════
 describe('the Give page shows links alone when only links exist', () => {
   it('shows the links and NO amount picker, NO Give button', async () => {
-    await mount({ stripe: false, links: ALL_FOUR });
+    await mount({ stripe: false, links: ALL_PROVIDERS });
 
     expect(topTab('partner'), 'a church with links but no Stripe lost its Give tab').not.toBeNull();
     await click(topTab('partner'));
     expect(linksSection(), 'the links block is missing').not.toBeNull();
-    expect(linkRows()).toHaveLength(4);
+    expect(linkRows()).toHaveLength(GIVING_PROVIDERS.length);
     // 🔴 A form with no Stripe account behind it is a form whose submit 400s.
     expect(donateButton(), 'a donate form was drawn with no Stripe account').toBeNull();
     expect(amountPresets(), 'an amount picker was drawn with no Stripe account').toHaveLength(0);
   });
 
   it('opens no donate path at all', async () => {
-    await mount({ stripe: false, links: ALL_FOUR }, { giving: true });
+    await mount({ stripe: false, links: ALL_PROVIDERS }, { giving: true });
     expect(posts.urls).toEqual([]);
   });
 
   it('names the ways to give rather than calling them "other" ways', async () => {
     // With no form above them these ARE the ways to give, and a heading that
     // says otherwise names a form that is not on the page.
-    await mount({ stripe: false, links: ALL_FOUR }, { giving: true });
+    await mount({ stripe: false, links: ALL_PROVIDERS }, { giving: true });
     expect(linksSection()!.textContent).toContain('Ways to give');
     expect(linksSection()!.textContent).not.toContain('Other ways to give');
   });
@@ -375,7 +395,7 @@ describe('the Give page shows links alone when only links exist', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 describe('the Give page shows the form with links beneath when both exist', () => {
   it('shows both, with the links after the form in document order', async () => {
-    await mount({ stripe: true, links: ALL_FOUR }, { giving: true });
+    await mount({ stripe: true, links: ALL_PROVIDERS }, { giving: true });
 
     const give = donateButton();
     const links = linksSection();
@@ -396,7 +416,7 @@ describe('the Give page shows the form with links beneath when both exist', () =
 // ═════════════════════════════════════════════════════════════════════════════
 describe('each link renders a logo, a provider name and a username, and opens its URL', () => {
   it('renders a mark, the provider name and the church\'s handle for each one', async () => {
-    await mount({ stripe: false, links: ALL_FOUR }, { giving: true });
+    await mount({ stripe: false, links: ALL_PROVIDERS }, { giving: true });
 
     for (const provider of GIVING_PROVIDERS) {
       const row = container.querySelector(`[data-provider="${provider.id}"]`)!;
@@ -407,7 +427,7 @@ describe('each link renders a logo, a provider name and a username, and opens it
       expect(mark?.textContent, `${provider.id} lost its mark`).toBe(provider.monogram);
       expect(row.textContent, `${provider.id} lost its name`).toContain(provider.label);
       expect(row.textContent, `${provider.id} lost the church's handle`)
-        .toContain((ALL_FOUR as any)[provider.id].handle);
+        .toContain(ALL_PROVIDERS[provider.id].handle);
     }
   });
 
@@ -416,16 +436,16 @@ describe('each link renders a logo, a provider name and a username, and opens it
     // username or the phone number". Rendered rather than hidden behind a tap —
     // `tenants/{id}` is world-readable by rule, so the address is public the
     // moment it is saved and tap-to-reveal would hide it only from the member.
-    await mount({ stripe: false, links: ALL_FOUR }, { giving: true });
+    await mount({ stripe: false, links: ALL_PROVIDERS }, { giving: true });
     for (const provider of GIVING_PROVIDERS) {
       const row = container.querySelector(`[data-provider="${provider.id}"]`)!;
       expect(row.textContent, `${provider.id} lost its email`)
-        .toContain((ALL_FOUR as any)[provider.id].email);
+        .toContain(ALL_PROVIDERS[provider.id].email);
     }
   });
 
   it('opens the church\'s URL, in a new tab, with the opener severed', async () => {
-    await mount({ stripe: false, links: ALL_FOUR }, { giving: true });
+    await mount({ stripe: false, links: ALL_PROVIDERS }, { giving: true });
 
     const paypal = container.querySelector('a[data-provider="paypal"]') as HTMLAnchorElement;
     expect(paypal, 'the PayPal row is not a link').not.toBeNull();
@@ -441,7 +461,7 @@ describe('each link renders a logo, a provider name and a username, and opens it
 
   it('renders a provider with no URL as a card, never as a link that does nothing', async () => {
     // Zelle. A row that looks tappable and is not is the THE-193 dead end.
-    await mount({ stripe: false, links: ALL_FOUR }, { giving: true });
+    await mount({ stripe: false, links: ALL_PROVIDERS }, { giving: true });
 
     const zelle = container.querySelector('[data-provider="zelle"]')!;
     expect(zelle.tagName.toLowerCase(), 'a link was drawn for a provider with no URL').toBe('div');
@@ -473,7 +493,7 @@ describe('each link renders a logo, a provider name and a username, and opens it
   });
 
   it('tells the member these gifts are not receipted or on a statement', async () => {
-    await mount({ stripe: true, links: ALL_FOUR }, { giving: true });
+    await mount({ stripe: true, links: ALL_PROVIDERS }, { giving: true });
     const copy = linksSection()!.textContent || '';
     expect(copy, 'the member is not told Harvest is not in this flow').toMatch(/not processed by Harvest/i);
     expect(copy, 'the member is not told statements will not cover these').toMatch(/giving statement/i);
@@ -485,27 +505,26 @@ describe('each link renders a logo, a provider name and a username, and opens it
 // ═════════════════════════════════════════════════════════════════════════════
 describe('link order is deterministic', () => {
   it('renders the table order however the document lists the providers', async () => {
-    const reversed = {
-      zelle: ALL_FOUR.zelle,
-      venmo: ALL_FOUR.venmo,
-      cashapp: ALL_FOUR.cashapp,
-      paypal: ALL_FOUR.paypal,
-    };
+    // Reversed FROM the table, so every provider is scrambled rather than the
+    // four this test was written against.
+    const reversed = Object.fromEntries(
+      [...GIVING_PROVIDERS].reverse().map((p) => [p.id, ALL_PROVIDERS[p.id]]),
+    );
     await mount({ stripe: false, links: reversed }, { giving: true });
 
     expect(linkRows().map((r) => r.getAttribute('data-provider')))
-      .toEqual(['paypal', 'cashapp', 'venmo', 'zelle']);
+      .toEqual(GIVING_PROVIDERS.map((p) => p.id));
   });
 
   it('renders the same order on every remount — a member finds it where it was', async () => {
     const seen: string[][] = [];
     for (let i = 0; i < 4; i += 1) {
       await act(async () => { root?.unmount(); });
-      await mount({ stripe: true, links: ALL_FOUR }, { giving: true });
+      await mount({ stripe: true, links: ALL_PROVIDERS }, { giving: true });
       seen.push(linkRows().map((r) => r.getAttribute('data-provider') as string));
     }
     for (const order of seen) expect(order, 'the giving options moved between visits').toEqual(seen[0]);
-    expect(seen[0]).toEqual(['paypal', 'cashapp', 'venmo', 'zelle']);
+    expect(seen[0]).toEqual(GIVING_PROVIDERS.map((p) => p.id));
   });
 });
 
@@ -516,9 +535,9 @@ describe('a free tenant reaches none of this, rails or no rails', () => {
   it('has no Give tab and no Give page even with Stripe connected and every link pasted', async () => {
     // 🔴 `fundraising: false` means NO DONATE PAGE BY DECISION. Rails are a
     // second question asked only of a tier that is allowed to ask it — a free
-    // tenant that somehow carried a Connect account and four links still has no
+    // tenant that somehow carried a Connect account and every link still has no
     // giving surface, and `/api/stripe/donate` refuses it server-side as well.
-    await mount({ stripe: true, links: ALL_FOUR }, { plan: 'free', giving: true });
+    await mount({ stripe: true, links: ALL_PROVIDERS }, { plan: 'free', giving: true });
 
     expect(topTab('partner'), 'free was offered a Give tab').toBeNull();
     expect(navControls('Give'), 'free was offered a desktop Give entry').toHaveLength(0);
@@ -529,17 +548,17 @@ describe('a free tenant reaches none of this, rails or no rails', () => {
   });
 
   it('offers a free member no giving button in Profile either', async () => {
-    await mount({ stripe: true, links: ALL_FOUR }, { plan: 'free' });
+    await mount({ stripe: true, links: ALL_PROVIDERS }, { plan: 'free' });
     await click(profileEntry());
     expect(container.querySelector('[data-testid="profile-give"]')).toBeNull();
   });
 
   it('gives a paying tenant with the same rails all of it — the gate, not a broken mount', async () => {
-    await mount({ stripe: true, links: ALL_FOUR }, { plan: 'pro', giving: true });
+    await mount({ stripe: true, links: ALL_PROVIDERS }, { plan: 'pro', giving: true });
 
     expect(topTab('partner')).not.toBeNull();
     expect(donateButton()).not.toBeNull();
-    expect(linkRows()).toHaveLength(4);
+    expect(linkRows()).toHaveLength(GIVING_PROVIDERS.length);
   });
 });
 
@@ -551,7 +570,7 @@ describe('an unresolved tenant offers no giving surface', () => {
     store.tenantPlan = null;
     tenant.tenantPlan = null;
     tenant.isLoading = true;
-    tenant.branding = { givingLinks: ALL_FOUR };
+    tenant.branding = { givingLinks: ALL_PROVIDERS };
     tenant.stripeConnectStatus = 'active';
     window.history.replaceState({}, '', '/?giving=1');
     await act(async () => {

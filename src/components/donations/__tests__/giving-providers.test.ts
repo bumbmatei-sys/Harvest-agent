@@ -39,6 +39,8 @@ const paypal = getGivingProvider('paypal');
 const cashapp = getGivingProvider('cashapp');
 const venmo = getGivingProvider('venmo');
 const zelle = getGivingProvider('zelle');
+const revolut = getGivingProvider('revolut');
+const wise = getGivingProvider('wise');
 
 /** A URL on the provider's own primary host — the shape that must always pass. */
 const goodUrlFor = (p: GivingProvider): string => `https://${p.hosts[0]}/gracechapel`;
@@ -53,9 +55,50 @@ const recordFor = (
 // 1. The table is the extension point
 // ═════════════════════════════════════════════════════════════════════════════
 describe('the provider list is a table, so a fifth provider is one row', () => {
-  it('carries the four the founder named', () => {
-    expect(GIVING_PROVIDER_IDS).toEqual(['paypal', 'cashapp', 'venmo', 'zelle']);
-    expect(GIVING_PROVIDERS.map((p) => p.label)).toEqual(['PayPal', 'Cash App', 'Venmo', 'Zelle']);
+  it('carries the six the founder named, in one stable order', () => {
+    expect(GIVING_PROVIDER_IDS).toEqual(['paypal', 'cashapp', 'venmo', 'zelle', 'revolut', 'wise']);
+    expect(GIVING_PROVIDERS.map((p) => p.label)).toEqual([
+      'PayPal', 'Cash App', 'Venmo', 'Zelle', 'Revolut', 'Wise',
+    ]);
+  });
+
+  it('🔴 leaves the original four exactly as they were, in their original places', () => {
+    // THE-254 APPENDED. A member gives by position — "the third one down" — so
+    // a row that moves is a mis-send waiting to happen, and a row whose hosts
+    // changed is a link that stops working on a Sunday. Pinned field by field
+    // rather than by count, because a count passes while a host is edited.
+    expect(GIVING_PROVIDER_IDS.slice(0, 4)).toEqual(['paypal', 'cashapp', 'venmo', 'zelle']);
+    const unchanged = {
+      paypal: { monogram: 'P', tint: '#003087', ink: '#FFFFFF', hosts: ['paypal.me', 'paypal.com'], handleLabel: 'PayPal.Me name', hasPersonalLink: true },
+      cashapp: { monogram: 'C', tint: '#00873A', ink: '#FFFFFF', hosts: ['cash.app'], handleLabel: 'Cashtag', hasPersonalLink: true },
+      venmo: { monogram: 'V', tint: '#0074DE', ink: '#FFFFFF', hosts: ['venmo.com'], handleLabel: 'Venmo username', hasPersonalLink: true },
+      zelle: { monogram: 'Z', tint: '#6D1ED4', ink: '#FFFFFF', hosts: ['zellepay.com', 'zellepay.org'], handleLabel: 'Name on Zelle', hasPersonalLink: false },
+    } as const;
+    for (const [id, expected] of Object.entries(unchanged)) {
+      const p = getGivingProvider(id as GivingProviderId);
+      expect({ monogram: p.monogram, tint: p.tint, ink: p.ink, hosts: [...p.hosts], handleLabel: p.handleLabel, hasPersonalLink: p.hasPersonalLink }, `${id} was altered`)
+        .toEqual({ ...expected, hosts: [...expected.hosts] });
+    }
+  });
+
+  it('🔴 added no provider that cannot be reached by a link', () => {
+    // The shape the founder considered and REJECTED: a row with no URL, reached
+    // by an account number instead. It would need a host allow-list it cannot
+    // have, a checksum where the phishing guard goes, and a changed row shape.
+    // Every row here is a link on a host, and that is the whole contract.
+    for (const p of GIVING_PROVIDERS) {
+      expect(p.hosts.length, `${p.id} has no host allow-list`).toBeGreaterThan(0);
+      expect(p.urlExample, `${p.id} offers no link at all`).toMatch(/^https:\/\//);
+      expect(
+        validateGivingUrl(p.urlExample, p).ok,
+        `${p.id}'s own example is not a link on its own allow-listed host`,
+      ).toBe(true);
+    }
+  });
+
+  it('gives every provider a monogram of its own, so no two tiles read alike', () => {
+    const monograms = GIVING_PROVIDERS.map((p) => p.monogram);
+    expect(new Set(monograms).size, `duplicate monogram in ${monograms.join('')}`).toBe(monograms.length);
   });
 
   it('gives every provider everything a screen needs, so no component special-cases one', () => {
@@ -310,6 +353,9 @@ describe('a link whose host does not match its provider is rejected', () => {
       [venmo, 'https://venmo.com/u/gracechapel'],
       [venmo, 'https://account.venmo.com/u/gracechapel'],
       [zelle, 'https://www.zellepay.com/'],
+      [revolut, 'https://revolut.me/gracechapel'],
+      [wise, 'https://wise.com/pay/me/gracechapel'],
+      [wise, 'https://wise.com/pay/business/gracechapel'],
     ] as const;
     for (const [provider, url] of accepted) {
       const result = validateGivingUrl(url, provider);
@@ -333,6 +379,136 @@ describe('a link whose host does not match its provider is rejected', () => {
       for (const reason of REASONS) {
         expect(givingUrlRejectionMessage(reason, p).length, `${p.id}/${reason} has no message`).toBeGreaterThan(10);
       }
+    }
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 4b. THE-254 — the two European rows, host by host
+// ══════════════════════════════════════════════════════════════════════════════
+/**
+ * The allow-list is only worth what its hosts are worth, and these two were
+ * added from the providers' own documentation:
+ *
+ *   revolut.me — Revolut's personal payment link, which Revolut's help centre
+ *                documents as a page of its own and ties to the account's
+ *                Revtag. Revolut Business collects through a hosted checkout on
+ *                a different domain, which this suite deliberately does NOT
+ *                accept: it could not be confirmed from Revolut's own docs, and
+ *                a host nobody verified is exactly what an allow-list is for.
+ *
+ *   wise.com   — Wise's pay-me link. Wise publishes TWO shapes on it, the
+ *                personal Wisetag link and the business open link
+ *                (`wise.com/pay/business/…`), and one host entry takes both.
+ */
+describe('THE-254 — Revolut and Wise are accepted on their own hosts and nowhere else', () => {
+  it('a Revolut link on the verified host — revolut.me — is accepted', () => {
+    expect(revolut.hosts).toEqual(['revolut.me']);
+    for (const url of [
+      'https://revolut.me/gracechapel',
+      'https://revolut.me/gracechapel/25',
+      'https://revolut.me/gracechapel?amount=25',
+      // A bare host is understood, the same as it is for the other five.
+      'revolut.me/gracechapel',
+    ]) {
+      expect(validateGivingUrl(url, revolut).ok, `revolut refused its own link "${url}"`).toBe(true);
+    }
+  });
+
+  it('a Wise link on the verified host — wise.com — is accepted, in BOTH shapes', () => {
+    expect(wise.hosts).toEqual(['wise.com']);
+    for (const url of [
+      // The personal Wisetag link…
+      'https://wise.com/pay/me/gracechapel',
+      // …and the business open link Wise documents, with its parameters. A
+      // church pasting the link its own account gave it is never rejected.
+      'https://wise.com/pay/business/gracechapel',
+      'https://wise.com/pay/business/gracechapel?amount=100&currency=GBP&description=offering',
+    ]) {
+      expect(validateGivingUrl(url, wise).ok, `wise refused its own link "${url}"`).toBe(true);
+    }
+  });
+
+  it('🔴 a look-alike host is rejected for both, homographs included', () => {
+    const lookalikes = [
+      // Suffix look-alikes — the shape `includes()` would wave through.
+      [revolut, 'https://revolut.me.collect.example/gracechapel'],
+      [revolut, 'https://www.revolut.me.evil.example/gracechapel'],
+      [revolut, 'https://revolut.me-collect.example/gracechapel'],
+      [revolut, 'https://notrevolut.me/gracechapel'],
+      [wise, 'https://wise.com.collect.example/pay/me/gracechapel'],
+      [wise, 'https://wise.com-collect.example/pay/me/gracechapel'],
+      [wise, 'https://notwise.com/pay/me/gracechapel'],
+      // The name in the PATH of somebody else's host.
+      [revolut, 'https://collect.example/revolut.me/gracechapel'],
+      [wise, 'https://collect.example/wise.com/pay/me/gracechapel'],
+      // The credentials trick — reads as the real host, resolves elsewhere.
+      [revolut, 'https://revolut.me@collect.example/gracechapel'],
+      [wise, 'https://wise.com@collect.example/pay/me/gracechapel'],
+      // 🔴 CYRILLIC HOMOGRAPHS. `revоlut.me` carries a Cyrillic о (U+043E) and
+      // `wisе.com` a Cyrillic е (U+0435). On a phone they are the real thing.
+      // `URL` punycodes them, and punycode matches no entry in any allow-list.
+      [revolut, 'https://revоlut.me/gracechapel'],
+      [wise, 'https://wisе.com/pay/me/gracechapel'],
+      // The same two typed straight in as punycode, in case a paste arrives
+      // already encoded.
+      [revolut, 'https://xn--revlut-yqf.me/gracechapel'],
+      [wise, 'https://xn--wis-tdd.com/pay/me/gracechapel'],
+      // Each other's hosts, and the original four's.
+      [revolut, 'https://wise.com/pay/me/gracechapel'],
+      [wise, 'https://revolut.me/gracechapel'],
+      [revolut, 'https://paypal.me/gracechapel'],
+      [wise, 'https://cash.app/$gracechapel'],
+      // The Revolut Business checkout domain this row does NOT claim. It is
+      // refused rather than guessed at — see the block comment above.
+      [revolut, 'https://checkout.revolut.com/payment/abc123'],
+    ] as const;
+    for (const [provider, url] of lookalikes) {
+      expect(
+        validateGivingUrl(url, provider).ok,
+        `🔴 "${url}" passed as ${provider.label}`,
+      ).toBe(false);
+    }
+  });
+
+  it('a non-https or javascript: URL is still rejected on both new rows', () => {
+    for (const provider of [revolut, wise]) {
+      const hostile = [
+        `javascript:alert(1)//${provider.hosts[0]}`,
+        `data:text/html,<script>alert(1)</script>`,
+        `http://${provider.hosts[0]}/gracechapel`,
+        `mailto:give@${provider.hosts[0]}`,
+        `tel:+15551234567`,
+        `file:///etc/passwd`,
+        `JavaScript:alert(1)`,
+      ];
+      for (const url of hostile) {
+        const result = validateGivingUrl(url, provider);
+        expect(result.ok, `${provider.label} accepted "${url}"`).toBe(false);
+        // 🔴 Refused ON ITS OWN SCHEME, never quietly prefixed into safety.
+        if (!result.ok && /^(javascript|data|mailto|tel|file):/i.test(url)) {
+          expect(result.reason, `"${url}" was rescued by an https:// prefix`).toBe('not-https');
+        }
+      }
+      // And a port, which no real consumer payment link carries.
+      expect(validateGivingUrl(`https://${provider.hosts[0]}:8443/grace`, provider).ok).toBe(false);
+    }
+  });
+
+  it('tells a European church what to paste, in the words its own provider uses', () => {
+    // ⚠️ "Handle" is not a word Revolut or Wise ever shows a customer. The
+    // field is labelled with what the provider itself calls the thing, or the
+    // church hunts for a value it has never been shown under that name.
+    expect(revolut.handleLabel).toBe('Revtag');
+    expect(wise.handleLabel).toBe('Wisetag');
+    // The rejection names the provider AND the host, so a church that pasted a
+    // business checkout link is told exactly which link the field wants.
+    const refused = validateGivingUrl('https://checkout.revolut.com/pay/abc', revolut);
+    expect(refused.ok).toBe(false);
+    if (!refused.ok) {
+      const message = givingUrlRejectionMessage(refused.reason, revolut);
+      expect(message).toContain('Revolut');
+      expect(message).toContain('revolut.me');
     }
   });
 });

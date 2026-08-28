@@ -22,7 +22,7 @@ import { getPlanFeatures } from '../utils/plan-features';
 import { useCampaigns, type Campaign } from '../hooks/queries/useCampaignQueries';
 import { FORM_CONTAINER, FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
 import { SMS_FEATURE_ENABLED } from '../lib/sms-feature';
-import { GIVING_PROVIDERS, readGivingLinks } from './donations/giving-providers';
+import { GIVING_PROVIDERS, GIVING_PROVIDER_NAMES_OR, readGivingLinks } from './donations/giving-providers';
 import { useTenant } from '@/contexts/TenantContext';
 
 const empty: Omit<Campaign, 'id'> = {
@@ -876,7 +876,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
                     <span className="font-semibold">
                       Gifts sent through your own payment links do not update the amount raised.
                     </span>{' '}
-                    Harvest never sees a PayPal, Cash App, Venmo or Zelle gift, so this campaign
+                    Harvest never sees a {GIVING_PROVIDER_NAMES_OR} gift, so this campaign
                     counts Stripe gifts alone and its total will read lower than what you actually
                     received. To add one, open the campaign and press Record an offline gift. That
                     adds to the total; it does not create a receipt and will not appear on a giving

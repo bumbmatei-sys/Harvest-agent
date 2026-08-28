@@ -125,7 +125,9 @@ export interface TenantConfig {
     order: number;
   }[];
   /**
-   * THE-246 — the church's own payment links (PayPal, Cash App, Venmo, Zelle).
+   * THE-246 — the church's own payment links. Which providers those are is
+   * `GIVING_PROVIDERS`' business, not this type's: THE-254 added Revolut and
+   * Wise without touching the shape stored here.
    *
    * Lives on `config` for the same reason `onboardingQuestions` does: it is a
    * tenant SETTING edited by the Settings/Branding write path, and

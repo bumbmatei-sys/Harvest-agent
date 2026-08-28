@@ -8,6 +8,7 @@ import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { authFetch } from '../utils/auth-fetch';
 import { openStatementPdf } from '../utils/open-statement-pdf';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
+import { GIVING_PROVIDER_NAMES } from './donations/giving-providers';
 // Rules 2 and 3 (form-layout.ts). Rule 1 is deliberately NOT applied — see the
 // note on the page root below. No figure on this screen is touched: the rules
 // below change the WIDTH a control is drawn at and nothing else.
@@ -189,7 +190,7 @@ const AdminGivingStatements: React.FC = () => {
         A statement is built from `tenants/{id}/invoices` where
         `type === 'donation_receipt'`, and the only writer of those is the
         Stripe donation webhook (`src/lib/donation-webhook.ts`). A church's own
-        payment links — PayPal, Cash App, Venmo, Zelle (THE-246) — never reach
+        payment links (THE-246, and Revolut and Wise since THE-254) — never reach
         Harvest at all, so a member who gave through one receives a charitable
         contribution statement that UNDERSTATES what they gave, over their own
         name, for their tax return. That is the highest-consequence of the three
@@ -207,7 +208,7 @@ const AdminGivingStatements: React.FC = () => {
           <p className="text-sm text-body leading-relaxed">
             <b className="text-strong">These statements cover Stripe gifts only.</b> Harvest
             builds them from the gifts it processed, so anything your members sent through your
-            own payment links &mdash; PayPal, Cash App, Venmo, Zelle &mdash; is not on them, and
+            own payment links &mdash; {GIVING_PROVIDER_NAMES} &mdash; is not on them, and
             a member who gave that way will see a total lower than what they actually gave you.
             Recording a gift in your CRM does not add it here either. Check your own provider
             records before you send.
