@@ -17,7 +17,8 @@ import {
   X,
   CalendarCheck,
   Bookmark,
-  Receipt
+  Receipt,
+  Download
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import PaletteFamilyToggle from './PaletteFamilyToggle';
@@ -32,6 +33,8 @@ import ContactModal from './ContactModal';
 import PrivacyTermsModal from './PrivacyTermsModal';
 import FAQModal from './FAQModal';
 import ChurchDetailsModal from './ChurchDetailsModal';
+import InstallAppModal from './install/InstallAppModal';
+import { isNativeShell } from '../lib/pwa-install';
 import UserEvents from './UserEvents';
 import SavedItems from './SavedItems';
 import DonationHistory from './DonationHistory';
@@ -108,6 +111,14 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  const [isFAQOpen, setIsFAQOpen] = useState(false);
  const [isChurchDetailsOpen, setIsChurchDetailsOpen] = useState(false);
  const [isNoHomeChurchModalOpen, setIsNoHomeChurchModalOpen] = useState(false);
+ const [isInstallAppOpen, setIsInstallAppOpen] = useState(false);
+ /**
+  * THE-255. Inside the Capacitor shell there is nothing to install — its
+  * WebView loads this very origin (`server.url`), so the same code runs and
+  * would otherwise offer to install the app to someone already holding it.
+  * Resolved once, at mount: it cannot change for the life of the document.
+  */
+ const [inNativeShell] = useState(() => isNativeShell());
  const [homeChurchId, setHomeChurchId] = useState<string | null>(null);
  const [hasChurches, setHasChurches] = useState(false);
 
@@ -539,6 +550,28 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  label="Saved"
  onClick={() => setShowSaved(true)}
  />
+ {/* Install app — THE-255. Opens the SAME screen the onboarding install step
+     shows (one source: `install/InstallInstructions` over `INSTALL_STEPS`), so
+     a member who skipped it during signup can still find it, and the steps can
+     never drift apart from the ones onboarding gave them.
+
+     🔴 Hidden entirely inside the Capacitor shell. `server.url` points at this
+     origin, so the shell runs this exact code on an ordinary HTTPS origin —
+     without this guard the app would offer to install itself to someone who is
+     already using the installed app, which reads as a bug. The modal handles
+     the remaining states (already installed, a real install prompt, and the
+     iOS / Android / desktop instruction sets). */}
+ {!inNativeShell && (
+ <>
+ <div className="h-px bg-surface-sunken mx-4"></div>
+ <SettingItem
+ icon={<Download size={16} className="text-field-600" />}
+ iconBg="bg-field-100"
+ label="Install app"
+ onClick={() => setIsInstallAppOpen(true)}
+ />
+ </>
+ )}
  {/* Appearance — the member-facing half of the theme control. Harvest is
      mobile-first and this Profile list is the mobile settings surface, so
      the toggle has to be reachable here and not only in admin settings
@@ -778,6 +811,10 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  <FAQModal
  isOpen={isFAQOpen}
  onClose={() => setIsFAQOpen(false)}
+ />
+ <InstallAppModal
+ isOpen={isInstallAppOpen}
+ onClose={() => setIsInstallAppOpen(false)}
  />
  <ChurchDetailsModal
  isOpen={isChurchDetailsOpen}
