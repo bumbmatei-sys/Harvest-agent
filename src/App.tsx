@@ -23,6 +23,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import AdminDashboard from './components/AdminDashboard';
 import OnboardingGate from './components/OnboardingGate';
 import PWAInstallManager from './components/PWAInstallManager';
+import PostOnboardingInstallStep from './components/install/PostOnboardingInstallStep';
 import AnalyticsBridge from './components/AnalyticsBridge';
 import PostPurchaseWizard from './components/PostPurchaseWizard';
 import { OperationType, handleFirestoreError } from './utils/firestore-errors';
@@ -569,6 +570,18 @@ const AppInner: React.FC = () => {
     <RequireAdmin isAdmin={isAdmin}>
       <ErrorBoundary>
         <AdminDashboard onNavigate={handleNavigate} />
+        {/* THE-255. The add-to-home-screen step, at the END of onboarding.
+            🔴 NOTHING ABOUT THE FUNNEL MOVES. This is a sibling INSIDE an
+            existing route's element — no route is added, none is reordered, and
+            `FUNNEL_PATHS`, `resolvePostAuthFunnelRoute`, the paid-arrival hold,
+            `signupInProgress`, `termsAccepted` and Turnstile's mount are all
+            untouched. Its placement IS its gate: `<OnboardingGate>` renders
+            these children only once it resolves to 'ready' (onboarding done)
+            and `RequireAdmin` has already established the role, so the step
+            cannot appear before the funnel completes. It self-gates the rest
+            (own subdomain, not already installed, not the native shell) and is
+            skippable — see the component. */}
+        <PostOnboardingInstallStep />
       </ErrorBoundary>
     </RequireAdmin>
   );

@@ -7,8 +7,10 @@ import { getToken } from 'firebase/messaging';
 import CountrySelect from './CountrySelect';
 import { useTenant } from '../contexts/TenantContext';
 import { getTenantScope } from '../utils/tenant-scope';
-import { CheckCircle2, ArrowRight, ArrowLeft, MapPin, Share, Download, Bell, User, Phone } from 'lucide-react';
+import { CheckCircle2, ArrowRight, ArrowLeft, MapPin, Bell, User, Phone } from 'lucide-react';
 import type { TenantPlan } from '../types/tenant.types';
+import { InstallHeading, InstallPanel, useInstallState } from './install/InstallInstructions';
+import { isInstallHandled, isInstalled, isNativeShell, markInstallHandled } from '../lib/pwa-install';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -111,142 +113,51 @@ const DEFAULT_QUESTION_STEPS: StepDef[] = [
 
 // ─── System Step: Install the App ─────────────────────────────────────────────
 
-const InstructionRow: React.FC<{ num: number; children: React.ReactNode }> = ({ num, children }) => (
-  <div className="flex items-center gap-3 rounded-lg px-3.5 py-3" style={{ background: 'var(--surface-sunken, #F3EEE7)' }}>
-    <span
-      className="flex h-6.5 w-6.5 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-      style={{ width: 26, height: 26, backgroundColor: GOLD }}
-    >
-      {num}
-    </span>
-    <span className="flex-1 pt-0.5 text-sm leading-snug" style={{ color: 'var(--text-body, #4A4038)' }}>{children}</span>
-  </div>
-);
-
+/**
+ * THE-255. The steps themselves, the platform fork and the "is it already
+ * installed?" question now live in `lib/pwa-install` + `install/InstallInstructions`,
+ * because this is no longer the only surface that shows them: the end of the
+ * paid onboarding flow and the Install app button in member settings render the
+ * SAME component over the SAME copy. What stays here is only what is particular
+ * to being a step in this funnel — the eyebrow, and Skip.
+ *
+ * ⚠️ One behaviour changed in the move, deliberately: the manual steps used to
+ * fork on `isMobile`, so an Android member with no `beforeinstallprompt` was
+ * shown the iOS Share-sheet instructions. iOS and Android are now separate
+ * lists. See `INSTALL_STEPS`.
+ */
 const PwaInstallStep: React.FC<{
   deferredPrompt: React.MutableRefObject<any>;
   onDone: () => void;
 }> = ({ deferredPrompt, onDone }) => {
-  const isIOS = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
-  const isMobile = isIOS || isAndroid;
-  const [installing, setInstalling] = useState(false);
-  // `beforeinstallprompt` fires on Chromium browsers — Android AND desktop
-  // Chrome/Edge — so a native one-tap install is offered on desktop too, not
-  // only on mobile. Mirror the parent-cached prompt into state (and keep our
-  // own listener) so we react whether it fired before or after this step mounts.
-  const [nativeReady, setNativeReady] = useState<boolean>(!!deferredPrompt.current);
+  const { state, promptInstall } = useInstallState(deferredPrompt);
 
   const finish = () => {
-    try { localStorage.setItem('pwa_installed', 'true'); } catch { /* ignore */ }
+    markInstallHandled();
     onDone();
   };
-
-  useEffect(() => {
-    if (deferredPrompt.current) setNativeReady(true);
-    const handler = (e: any) => { e.preventDefault(); deferredPrompt.current = e; setNativeReady(true); };
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleNativeInstall = async () => {
-    const dp = deferredPrompt.current;
-    if (!dp) return; // fallback instructions are rendered instead
-    setInstalling(true);
-    try {
-      dp.prompt();
-      await dp.userChoice;
-    } catch { /* ignore */ }
-    deferredPrompt.current = null;
-    setInstalling(false);
-    finish();
-  };
-
-  // A native install prompt is available (Android or desktop Chrome/Edge).
-  const showNativeInstall = nativeReady;
-
-  // Mobile (iOS / Android without a native prompt) → add-to-home-screen steps.
-  const manualInstructions = (
-    <div className="mb-6 space-y-2.5">
-      <InstructionRow num={1}>
-        Tap the <strong className="font-semibold" style={{ color: 'var(--text-heading, #2D2519)' }}>Share</strong> button at the bottom of
-        your browser <Share size={15} className="inline-block align-text-bottom" style={{ color: GOLD }} />
-      </InstructionRow>
-      <InstructionRow num={2}>
-        Scroll down and tap <strong className="font-semibold" style={{ color: 'var(--text-heading, #2D2519)' }}>Add to Home Screen</strong>
-      </InstructionRow>
-      <InstructionRow num={3}>
-        Tap <strong className="font-semibold" style={{ color: 'var(--text-heading, #2D2519)' }}>Add</strong> — you&apos;re done!
-      </InstructionRow>
-    </div>
-  );
-
-  // Desktop without a native prompt (e.g. Safari / Firefox) → point at the
-  // browser's own install affordance rather than mobile Share steps.
-  const desktopInstructions = (
-    <div className="mb-6 space-y-2.5">
-      <InstructionRow num={1}>
-        Open the <strong className="font-semibold" style={{ color: 'var(--text-heading, #2D2519)' }}>install icon</strong> in your browser&apos;s address bar (or the browser menu)
-      </InstructionRow>
-      <InstructionRow num={2}>
-        Choose <strong className="font-semibold" style={{ color: 'var(--text-heading, #2D2519)' }}>Install Harvest</strong> (or <strong className="font-semibold" style={{ color: 'var(--text-heading, #2D2519)' }}>Add to Dock</strong>)
-      </InstructionRow>
-      <InstructionRow num={3}>
-        Confirm — Harvest opens like a native app
-      </InstructionRow>
-    </div>
-  );
 
   return (
     <div className="py-1">
       <Eyebrow>Almost there</Eyebrow>
-      <div className="mt-4 mb-5 flex justify-center">
-        <div className="flex h-20 w-20 items-center justify-center rounded-brand-lg" style={goldDisc}>
-          {isIOS ? <Share size={32} /> : <Download size={32} />}
-        </div>
-      </div>
-      <h1 className="mb-1.5 text-center font-display" style={{ fontWeight: 300, fontSize: 26, letterSpacing: '-0.02em', color: 'var(--text-heading, #2D2519)' }}>Install the app</h1>
-      <p className="mb-6 text-center text-sm leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>
-        {showNativeInstall
-          ? 'Add Harvest to your device for one-tap access — it works like a native app, offline included.'
-          : isMobile
-            ? 'Add Harvest to your home screen for one-tap access — it works like a native app, offline included.'
-            : 'Install Harvest as a desktop app for one-tap access — it works like a native app, offline included.'}
-      </p>
-
-      {showNativeInstall ? (
-        <button
-          onClick={handleNativeInstall}
-          disabled={installing}
-          className="mb-3 flex h-12 w-full items-center justify-center gap-2 rounded-lg font-semibold text-white transition-all disabled:opacity-50"
-          style={{ backgroundColor: GOLD, boxShadow: `0 10px 30px -8px color-mix(in srgb, ${GOLD} 42%, transparent)` }}
-        >
-          <Download size={18} /> {installing ? 'Installing…' : 'Install app'}
-        </button>
-      ) : (
-        <>
-          {isMobile ? manualInstructions : desktopInstructions}
+      <InstallHeading state={state} />
+      <InstallPanel
+        state={state}
+        onInstall={async () => { await promptInstall(); finish(); }}
+        onAcknowledge={finish}
+        footer={
           <button
             onClick={finish}
-            className="mb-3 flex h-12 w-full items-center justify-center rounded-lg font-semibold text-white transition-all"
-            style={{ backgroundColor: GOLD, boxShadow: `0 10px 30px -8px color-mix(in srgb, ${GOLD} 42%, transparent)` }}
+            className="w-full py-1 text-center text-sm font-semibold text-body transition-colors hover:opacity-70"
           >
-            I&apos;ve added it
+            Skip for now
           </button>
-        </>
-      )}
-
-      <button
-        onClick={finish}
-        className="w-full py-1 text-center text-sm font-semibold transition-colors hover:opacity-70"
-        style={{ color: 'var(--text-body, #4A4038)' }}
-      >
-        Skip for now
-      </button>
+        }
+      />
     </div>
   );
 };
+
 
 // ─── System Step: Enable Notifications ────────────────────────────────────────
 
@@ -383,10 +294,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     // 2) Append the system steps (install + notifications) unless already handled.
     const result: StepDef[] = [...questionSteps];
     if (typeof window !== 'undefined') {
-      if (
-        !localStorage.getItem('pwa_installed') &&
-        !window.matchMedia('(display-mode: standalone)').matches
-      ) {
+      // THE-255: the same three questions the other install surfaces ask, and
+      // now the same answers. `isNativeShell()` is the new one — inside the
+      // Capacitor shell `server.url` points at this very origin, so the step
+      // used to render and tell someone holding the app to install the app.
+      // `isInstalled()` also consults `navigator.standalone`, which is the only
+      // signal iOS gives, so an iOS member who installed last week is no longer
+      // asked again.
+      if (!isInstallHandled() && !isInstalled() && !isNativeShell()) {
         result.push({ kind: 'pwaInstall' });
       }
       if (

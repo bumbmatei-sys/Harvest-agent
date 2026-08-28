@@ -494,6 +494,28 @@ describe('each funnel screen is constrained at desktop widths', () => {
         'the entries above, the proof is the pins — measurements at all five viewports ' +
         'and the rendering hash at every mobile viewport, still passing unedited.',
     },
+    {
+      file: 'Onboarding.tsx',
+      ticket: 'THE-255',
+      why:
+        'The add-to-home-screen step is no longer the only surface that shows those ' +
+        'instructions — the end of the paid onboarding flow and an Install app button ' +
+        'in member settings show the SAME ones — so the copy, the platform fork and ' +
+        'the icons moved out to lib/pwa-install.ts + install/InstallInstructions.tsx ' +
+        'and `PwaInstallStep` now renders them from there. Three hand-written copies ' +
+        'of one paragraph is the drift this ticket exists to prevent. Two behaviours ' +
+        'changed with the move, both narrowing: the manual steps used to fork only on ' +
+        '`isMobile`, handing an ANDROID member the iOS Share-sheet wording, and the ' +
+        'step is now skipped inside the Capacitor shell (whose WebView loads this very ' +
+        'origin, so it used to offer to install the app to someone already holding it) ' +
+        'and for an iOS member who has already installed (`navigator.standalone`, the ' +
+        'only signal iOS gives). NONE of it reaches a measured screen: `pwaInstall` is ' +
+        'a SYSTEM step, appended after every question step, and this batch measures the ' +
+        'question stepper at step 0. No element, class or inline style on that tree was ' +
+        'added, removed or reordered, and the funnel order is untouched — the proof is ' +
+        'the pins, which carry no exemption: the 452px cap, the measurements at all ' +
+        'five viewports and the rendering hash at every mobile viewport all still pass.',
+    },
   ];
 
   const EXEMPT_FILES = EDITED_SINCE_MEASUREMENT.map((e) => e.file);
@@ -517,6 +539,7 @@ describe('each funnel screen is constrained at desktop widths', () => {
       'THE-203 ChurchOnboarding.tsx',
       'THE-214 ChurchOnboarding.tsx',
       'THE-214 FirstRunSetup.tsx',
+      'THE-255 Onboarding.tsx',
     ]);
 
     for (const { file, why } of EDITED_SINCE_MEASUREMENT) {
