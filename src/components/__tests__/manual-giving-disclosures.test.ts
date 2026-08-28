@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import {
+  GIVING_PROVIDERS,
+  GIVING_PROVIDER_NAMES,
+  GIVING_PROVIDER_NAMES_OR,
+} from '../donations/giving-providers';
 
 /**
  * THE-251 — 🔴 THE FOUR DISCLOSURES MUST AGREE WITH ONE ANOTHER.
@@ -18,6 +23,20 @@ import path from 'node:path';
  * another says it does not, and the church cannot tell which to believe about
  * its own money. So this file extracts the REAL COPY from all four and asserts
  * the claims they share, rather than trusting four authors to have agreed.
+ *
+ * ─── 🔴 THE-254 — THE PROVIDER NAMES ARE NO LONGER FOUR COPIES ───────────────
+ *
+ * All four screens (and the pointer on AdminSettings, which this ticket found
+ * naming them too) used to TYPE the provider list out. That held exactly as
+ * long as the table did not change: the moment Revolut and Wise were added,
+ * five sentences would have gone on promising a narrower product than the one
+ * shipping, and a church reading "PayPal, Cash App, Venmo or Zelle" on the
+ * statements screen would conclude its Revolut gifts ARE covered. They are not.
+ *
+ * So the names now interpolate from `GIVING_PROVIDERS`. `proseOf` resolves that
+ * interpolation below, which is what lets every assertion here keep reading the
+ * sentence a person actually sees — and `no screen types the provider list out
+ * by hand` keeps it that way for the seventh provider.
  *
  * ⚠️ READ FROM SOURCE, DELIBERATELY, and this is the one place in this ticket
  * that does. The property under test is a relationship BETWEEN four screens,
@@ -37,6 +56,11 @@ function proseOf(file: string): string {
     // Block comments carry the REASONING, and they quote the copy — leaving
     // them in would let every assertion below pass on a comment alone.
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    // 🔴 Resolve the one source into the words it renders as. Done BEFORE the
+    // tag strip, and only for the two exported constants, so what the rest of
+    // this file measures is the sentence the church reads — not an identifier.
+    .replace(/\{GIVING_PROVIDER_NAMES_OR\}/g, GIVING_PROVIDER_NAMES_OR)
+    .replace(/\{GIVING_PROVIDER_NAMES\}/g, GIVING_PROVIDER_NAMES)
     // Whole-line `//` comments only: a trailing-comment strip would also eat
     // the `https://…` inside the provider examples.
     .replace(/^[ \t]*\/\/[^\n]*$/gm, ' ')
@@ -58,6 +82,23 @@ const DISCLOSURES = {
 type Screen = keyof typeof DISCLOSURES;
 const SCREENS = Object.keys(DISCLOSURES) as Screen[];
 
+/**
+ * Every file whose RENDERED copy names the providers.
+ *
+ * ⚠️ FIVE, NOT FOUR. THE-249 and THE-251 documented four disclosures; the
+ * pointer on AdminSettings ("adding your own … links, now live together in
+ * Donations") names them too and was missed by that count. It is not a
+ * disclosure — it makes no claim about what Harvest sees — but it is a place
+ * the list can go stale, so it is held to the same one source.
+ */
+const NAMING_FILES = [
+  'AdminDonations.tsx',
+  'AdminGivingStatements.tsx',
+  'AdminCRM.tsx',
+  'AdminFundraising.tsx',
+  'AdminSettings.tsx',
+] as const;
+
 /** The sentence that opens each screen's statement of the fact. */
 const LEAD: Record<Screen, string> = {
   'AdminDonations (before a link is pasted)':
@@ -77,12 +118,34 @@ describe('the four disclosures agree with one another', () => {
     }
   });
 
-  it('all four name the same four providers', () => {
+  it('🔴 all four name EVERY provider in the table, wherever they name any', () => {
+    // Ranged over the table, never over a written-out list: a suite that named
+    // four would pass while the product shipped six, which is the same failure
+    // as the copy itself drifting.
+    expect(GIVING_PROVIDERS.length, 'the table shrank — check this is deliberate').toBe(6);
     for (const screen of SCREENS) {
       const copy = DISCLOSURES[screen];
-      for (const provider of ['PayPal', 'Cash App', 'Venmo', 'Zelle']) {
-        expect(copy, `${screen} names ${provider}`).toContain(provider);
+      for (const provider of GIVING_PROVIDERS) {
+        expect(copy, `${screen} does not name ${provider.label}`).toContain(provider.label);
       }
+    }
+  });
+
+  it('🔴 no screen types the provider list out by hand — there is one source', () => {
+    // The drift guard. Naming the providers in prose is now a reference to
+    // `GIVING_PROVIDERS`, so the seventh row updates every sentence at once.
+    // Anything that spells the list out is a copy that will go stale, and this
+    // fails on the commit that writes it rather than on the ticket after.
+    const HAND_WRITTEN = /PayPal[,/ ]+\s*Cash App/i;
+    for (const file of [...NAMING_FILES]) {
+      const raw = readFileSync(path.join(SRC, file), 'utf8')
+        // Comments may still recount the history; only rendered copy is pinned.
+        .replace(/\/\*[\s\S]*?\*\//g, ' ')
+        .replace(/^[ \t]*\/\/[^\n]*$/gm, ' ');
+      expect(raw, `${file} writes the provider list out instead of reading the table`)
+        .not.toMatch(HAND_WRITTEN);
+      expect(raw, `${file} names providers without using the shared source`)
+        .toMatch(/GIVING_PROVIDER_NAMES(_OR)?/);
     }
   });
 

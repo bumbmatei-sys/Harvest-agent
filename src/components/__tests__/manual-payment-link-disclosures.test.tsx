@@ -6,7 +6,11 @@ import { act } from 'react';
 import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import postcss from 'postcss';
-import { GIVING_PROVIDERS } from '../donations/giving-providers';
+import {
+  GIVING_PROVIDERS,
+  GIVING_PROVIDER_NAMES,
+  GIVING_PROVIDER_NAMES_OR,
+} from '../donations/giving-providers';
 
 /**
  * ═════════════════════════════════════════════════════════════════════════════
@@ -14,7 +18,8 @@ import { GIVING_PROVIDERS } from '../donations/giving-providers';
  * ═════════════════════════════════════════════════════════════════════════════
  *
  * PR 387 (THE-246) shipped a church's own payment links — PayPal, Cash App,
- * Venmo, Zelle. 🔴 HARVEST IS NOT IN THAT FLOW AT ALL: a member taps the link
+ * Venmo, Zelle, and Revolut and Wise since THE-254. 🔴 HARVEST IS NOT IN THAT
+ * FLOW AT ALL: a member taps the link
  * and pays the church directly through the provider. Three things therefore
  * silently do not happen, and every one of them is verified from the code here
  * rather than taken from the ticket:
@@ -251,8 +256,12 @@ describe('the Donations section states that Harvest does not process these gifts
   it('says it in the church\'s own words, above the fields it is about', async () => {
     await donations();
     expect(text()).toMatch(/Harvest does not process these gifts/i);
+    // 🔴 Built from the table, not typed: this asserts the RENDERED sentence
+    // names every provider the product actually offers, and keeps doing so
+    // when the table grows. A written-out list here would pass while the
+    // screen told a church its Revolut gifts were covered.
     expect(text(), 'where the money actually goes is not said')
-      .toMatch(/straight from your member to your own PayPal, Cash App, Venmo or Zelle account/i);
+      .toContain(`straight from your member to your own ${GIVING_PROVIDER_NAMES_OR} account`);
 
     // Document order: a warning read after the paste is a warning that failed.
     const warning = Array.from(container.querySelectorAll('p'))
@@ -405,7 +414,7 @@ describe('the giving-statement surface carries the same limitation', () => {
   it('🔴 states it above the Generate button, in the terms a tax document needs', async () => {
     await statements();
     expect(text()).toMatch(/These statements cover Stripe gifts only/i);
-    expect(text(), 'the four providers are not named').toMatch(/PayPal, Cash App, Venmo, Zelle/i);
+    expect(text(), 'the providers are not named').toContain(GIVING_PROVIDER_NAMES);
     expect(text(), 'the consequence to the MEMBER is not stated')
       .toMatch(/will see a total lower than what they actually gave you/i);
     expect(text(), 'a church could still think the CRM entry fixes this')

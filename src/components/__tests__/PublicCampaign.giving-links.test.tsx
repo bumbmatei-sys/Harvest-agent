@@ -147,14 +147,17 @@ describe('the links use the same component and provider table as the Give page',
   });
 
   it('orders rows by the provider table, not by the document’s key order', async () => {
-    // Keys deliberately reversed relative to GIVING_PROVIDERS.
+    // Keys deliberately reversed relative to GIVING_PROVIDERS — and reversed
+    // FROM the table, so the scramble covers every provider rather than the
+    // four that existed when this was written. A hand-listed fixture here fed
+    // four rows to an assertion that compares against the whole table.
     const scrambled = {
-      givingLinks: {
-        zelle: { email: 'giving@gracechapel.example' },
-        venmo: { url: 'https://venmo.com/u/gracechapel' },
-        cashapp: { url: 'https://cash.app/$gracechapel' },
-        paypal: { url: 'https://paypal.me/gracechapel' },
-      },
+      givingLinks: Object.fromEntries(
+        [...GIVING_PROVIDERS].reverse().map((p) => [
+          p.id,
+          p.hasPersonalLink ? { url: p.urlExample } : { email: 'giving@gracechapel.example' },
+        ]),
+      ),
     };
     await mount(readGivingLinks(scrambled));
     expect(renderedProviders()).toEqual(GIVING_PROVIDERS.map((p) => p.id));
