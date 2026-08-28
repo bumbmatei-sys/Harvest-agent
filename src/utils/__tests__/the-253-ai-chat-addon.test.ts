@@ -22,6 +22,7 @@ import {
   getPlanFeatures,
 } from '../plan-features';
 import { DODO_ADDON_MEANINGS, DODO_LIVE_ADDONS } from '../../lib/dodo/catalogue';
+import { PLAN_LIMITS } from '../../lib/planLimits';
 import type { TenantAddons } from '../../types/tenant.types';
 import type { TenantPlan } from '../../types/tenant.types';
 
@@ -269,6 +270,30 @@ describe('no price and no other add-on moved', () => {
     expect(DODO_LIVE_ADDONS.aiAssistant).toEqual({
       monthly: 'adn_0NlKtuImtSn7PcdvjnSni', yearly: 'adn_0NlKtw3IOHfv1GGCevNol',
     });
+  });
+
+  it('🔴 the add-on buys the CAPABILITY and not the ALLOWANCE', () => {
+    /* ⚠️ WHERE THIS ADD-ON MAY BE SOLD, AND WHY THE ANSWER IS NOT "ANY TIER".
+       `getEffectiveFeatures` lifts `aiChat` on every tier, but the monthly
+       token ceiling is the TIER's and no add-on raises it. On `free` that
+       ceiling is ZERO, so a free tenant holding the add-on would pass the
+       entitlement gate and then be refused by `checkQueryBudget` on its first
+       question — the capability granted, the allowance absent.
+
+       Not reachable today: a Dodo add-on attaches to a SUBSCRIPTION and a free
+       tenant has none. But it is the reason the marketing card must stay sold
+       on plus/pro/max only, and it is pinned here so that "sell it on free too"
+       fails a test rather than a church. */
+    expect(PLAN_LIMITS.free.queryTokensPerMonth).toBe(0);
+    expect(PLAN_LIMITS.free.ingestTokensTotal).toBe(0);
+    // The capability is granted regardless — the refusal is the ledger's job,
+    // not the matrix's, and the two must not be confused for one another.
+    expect(getEffectiveFeatures('free', owning({ aiAssistant: 1 })).aiChat).toBe(true);
+    // And the tiers the card IS sold on can actually spend.
+    for (const plan of ['plus', 'pro', 'max'] as const) {
+      expect(PLAN_LIMITS[plan].queryTokensPerMonth, plan).toBeGreaterThan(0);
+      expect(PLAN_LIMITS[plan].ingestTokensTotal, plan).toBeGreaterThan(0);
+    }
   });
 
   it('owning the AI add-on moves no capacity cell', () => {
