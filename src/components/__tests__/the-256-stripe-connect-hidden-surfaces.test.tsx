@@ -362,7 +362,7 @@ describe('4 — no colour is hardcoded and all four palettes resolve', () => {
     const resolve = (vars: Record<string, string>, token: string): string | null => {
       let value: string | undefined = vars[token];
       for (let hops = 0; hops < 8 && value; hops++) {
-        const ref = value.match(/^var\(\s*(--[\w-]+)\s*(?:,[^)]*)?\)$/);
+        const ref: RegExpMatchArray | null = value.match(/^var\(\s*(--[\w-]+)\s*(?:,[^)]*)?\)$/);
         if (!ref) return value;
         value = vars[ref[1]];
       }

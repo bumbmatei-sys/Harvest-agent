@@ -322,27 +322,34 @@ describe('3 — each gated route answers exactly as before when the switch is on
     // The four routes are PURE INSERTIONS: an import line and one guard block
     // each, nothing removed, nothing edited. Stated here as the invariant a
     // reader can check by eye — every branch named below is still in the file.
-    const CONNECT = read('app/api/stripe/connect/route.ts');
+    //
+    // ⚠️ COMMENTS ARE STRIPPED FIRST, and they have to be. These files explain
+    // themselves at length and quote their own code while doing it — `type:
+    // 'standard'` appears in connect/route.ts's THE-145 note as well as in the
+    // call it documents — so a raw-text search would read the EXPLANATION as
+    // the code and pass on a file whose code had changed. (The precedent
+    // AdminSettings' regroup suite already sets for comment-bearing claims.)
+    const CONNECT = stripComments(read('app/api/stripe/connect/route.ts'));
     expect(CONNECT).toContain("type: 'standard'");                 // THE-145 PR 2
     expect(CONNECT).toContain('mirrorSafe');                       // the affiliate mirror
     expect(CONNECT).toContain('accountLinks.create');              // both call sites
     expect(CONNECT).toContain("stripeConnectStatus: 'pending'");
 
-    const CALLBACK = read('app/api/stripe/connect/callback/route.ts');
+    const CALLBACK = stripComments(read('app/api/stripe/connect/callback/route.ts'));
     for (const branch of ['missing_account', 'stripe_not_configured',
       'connect_tenant_not_found', 'connect_callback_failed']) {
       expect(CALLBACK, `the ${branch} redirect left the callback`).toContain(branch);
     }
     expect(CALLBACK).toContain('deriveConnectStatus(account)');
 
-    const LOGIN = read('app/api/stripe/connect/login-link/route.ts');
+    const LOGIN = stripComments(read('app/api/stripe/connect/login-link/route.ts'));
     expect(LOGIN).toContain('isMissingConnectAccountError');       // THE-148 signal 1
     expect(LOGIN).toContain('isRejectedConnectAccount');           // THE-148 signal 2
     expect(LOGIN).toContain('accounts.createLoginLink');           // the Express branch
     expect(LOGIN).toContain('https://dashboard.stripe.com');       // the Standard branch
     expect(LOGIN).toContain('requireOwner(request');
 
-    const DONATE = read('app/api/stripe/donate/route.ts');
+    const DONATE = stripComments(read('app/api/stripe/donate/route.ts'));
     expect(DONATE).toContain('application_fee_amount: applicationFeeAmount');
     expect(DONATE).toContain('application_fee_percent: feePercent * 100');
     expect(DONATE).toContain('const directCharge = { stripeAccount: connectAccountId }');
@@ -507,12 +514,15 @@ describe('6 — no Firestore read or write changed', () => {
     // The gate goes IN FRONT of these writes; it never edits them. That is what
     // makes "flip it back and every surface returns whole" true rather than a
     // hope — the same account id and status come back, not a re-derived guess.
-    const connect = read('app/api/stripe/connect/route.ts');
+    // Comments stripped, for the reason given on the branch check in section 3.
+    const connect = stripComments(read('app/api/stripe/connect/route.ts'));
     expect(connect).toContain("stripeConnectStatus: 'pending'");
     expect(connect).toContain('stripeConnectAccountId: account.id');
     expect(connect).toContain('affiliateStripeAccountId: account.id');
-    expect(read('app/api/stripe/connect/callback/route.ts')).toContain('stripeConnectStatus: status');
-    expect(read('app/api/stripe/donate/route.ts')).toContain('tenantPrivate.stripeConnectAccountId');
+    expect(stripComments(read('app/api/stripe/connect/callback/route.ts')))
+      .toContain('stripeConnectStatus: status');
+    expect(stripComments(read('app/api/stripe/donate/route.ts')))
+      .toContain('tenantPrivate.stripeConnectAccountId');
   });
 
   it('leaves firestore.rules and functions/ alone', () => {
