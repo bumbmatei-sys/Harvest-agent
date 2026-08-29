@@ -11,6 +11,7 @@ import {
   isRejectedConnectAccount,
 } from '@/lib/stripe-connect-gone';
 import { getTenantPrivate } from '@/lib/tenant-private';
+import { STRIPE_CONNECT_ENABLED, STRIPE_CONNECT_HIDDEN_MESSAGE } from '@/lib/stripe-connect-feature';
 
 export const dynamic = 'force-dynamic';
 
@@ -179,6 +180,22 @@ async function offerReonboarding(tenantId: string, cause: unknown): Promise<Next
  * moves where the money lands.
  */
 export async function POST(request: NextRequest) {
+  // THE-256 — refused while Stripe Connect is hidden.
+  //
+  // ⚠️ AHEAD OF `requireOwner`, which is the strictest gate in this file and
+  // the reason the ordering has to be stated: refusing first is not a
+  // relaxation. A 503 says nothing about who is asking and reads no tenant, so
+  // it cannot leak what `requireOwner` protects — the account id still never
+  // leaves the server, and nothing here reaches Stripe or Firestore.
+  //
+  // 🔴 NOT the `{ onboardingRequired: true }` shape. That answer sends the
+  // church straight into `/api/stripe/connect`, which is gated too, so it would
+  // bounce an admin between two refusals; and it would offer re-onboarding for
+  // an account that is fine. THE-148's two gone-account signals, the
+  // account-type dispatch and both dashboard branches are untouched below.
+  if (!STRIPE_CONNECT_ENABLED) {
+    return NextResponse.json({ error: STRIPE_CONNECT_HIDDEN_MESSAGE }, { status: 503 });
+  }
   try {
     // Parsed before the gate only because the gate needs the candidate tenant.
     // It is a CANDIDATE, never a grant: `requireOwner` re-proves it, and the

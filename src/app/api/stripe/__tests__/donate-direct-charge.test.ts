@@ -62,6 +62,17 @@ const GIFT_CENTS = 5000;
 
 // ── Hoisted mocks ────────────────────────────────────────────────────────────
 const { mockCaptureException } = vi.hoisted(() => ({ mockCaptureException: vi.fn() }));
+// ── THE-256 ────────────────────────────────────────────────────────────────
+// This suite pins what Stripe Connect DOES, so it runs with the master switch
+// ON. That is the hide-not-delete guarantee expressed as a test: every rule
+// below — the charge being created AS the connected account, on both branches — still holds, unchanged, the moment
+// STRIPE_CONNECT_ENABLED goes back to true. That the same route answers 503
+// while the switch is OFF is asserted in the-256-stripe-connect-hidden.test.ts.
+vi.mock('@/lib/stripe-connect-feature', () => ({
+  STRIPE_CONNECT_ENABLED: true,
+  STRIPE_CONNECT_HIDDEN_MESSAGE: 'Temporarily unavailable',
+}));
+
 vi.mock('@sentry/nextjs', () => ({ captureException: mockCaptureException }));
 
 const { mockVerifyAuth } = vi.hoisted(() => ({ mockVerifyAuth: vi.fn() }));

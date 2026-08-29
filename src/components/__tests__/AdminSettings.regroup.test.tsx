@@ -793,7 +793,11 @@ describe('THE-183 — admin Settings', () => {
   it('no Stripe, Twilio, onboarding or navigation path changed', async () => {
     // (a) The section components that own those paths are untouched.
     const OWNED = [
-      'src/components/settings/PaymentSection.tsx',
+      // PaymentSection is NOT diffed as a whole any more, for exactly the reason
+      // SmsSection stopped being: THE-256 gates it behind the Stripe Connect
+      // master switch, which is a deliberate edit to this file. What THE-183
+      // actually guards — that no Stripe PATH moved — is asserted on the file's
+      // contents in (a4) below instead, which is the stronger check anyway.
       // SmsSection is NOT diffed as a whole any more, for exactly the reason
       // IntegrationsSection stopped being: THE-245 gates it behind the SMS
       // master switch, which is a deliberate edit to this file. What THE-183
@@ -845,6 +849,25 @@ describe('THE-183 — admin Settings', () => {
     // The gate itself, so this guard fails if the switch is quietly removed.
     expect(smsSection, 'SmsSection no longer reads the SMS master switch')
       .toContain('SMS_FEATURE_ENABLED');
+
+    // (a4) THE-256 — the Stripe path PaymentSection owns, asserted on contents
+    //      for the same reason as (a3) above. The panel is gated, not rewired:
+    //      it still calls the two endpoints it always did, still renders all
+    //      four Connect status branches, and still names Stripe Connect as the
+    //      donation processor.
+    const paymentSection = readFileSync(path.join(SRC, 'components/settings/PaymentSection.tsx'), 'utf8');
+    for (const endpoint of ['/api/stripe/connect', '/api/stripe/connect/login-link']) {
+      expect(paymentSection, `${endpoint} is no longer called from PaymentSection`).toContain(endpoint);
+    }
+    for (const status of ['active', 'pending', 'restricted']) {
+      expect(paymentSection, `the '${status}' Connect branch left PaymentSection`)
+        .toContain(`stripeConnectStatus === '${status}'`);
+    }
+    expect(paymentSection, 'the Stripe Connect attribution left PaymentSection')
+      .toContain('Powered by Stripe Connect');
+    // The gate itself, so this guard fails if the switch is quietly removed.
+    expect(paymentSection, 'PaymentSection no longer reads the Stripe Connect master switch')
+      .toContain('STRIPE_CONNECT_ENABLED');
 
     // (b) AdminSettings' own wiring is intact, whether or not git is available:
     //     the billing portal call, the Stripe return handling that force-opens

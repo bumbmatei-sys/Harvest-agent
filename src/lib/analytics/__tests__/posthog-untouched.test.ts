@@ -110,9 +110,40 @@ const PINNED: ReadonlyArray<readonly [string, string]> = [
   // unedited; the refusal itself is asserted in
   // `src/app/api/dodo/__tests__/the-212-free-tenant-upgrade.test.ts`.
   ['src/app/api/stripe/checkout/route.ts', '255aa9c4cae626ac0f59afa369147fb206a971e471f6dedd9f1737902df73a5e'],
-  ['src/app/api/stripe/connect/callback/route.ts', '52f43a788bb1a5cd60a8ea71d5d97a82fd7347cf4725a61bc11b3e94d53aabc8'],
-  ['src/app/api/stripe/connect/login-link/route.ts', '560d9643926e72e66fc9300fccb0ba42bc827b8ead3211c090f662a7cb70e83e'],
-  ['src/app/api/stripe/connect/route.ts', 'c3f2e3f1d0780515ded1a81a143b4279ced52533c676b997996a8254049a6a03'],
+  // ─── THE-256 REGENERATED THESE THREE, deliberately and with reason ───────
+  //
+  // 🔴 ONE ADDED REFUSAL EACH, and nothing else. Stripe closed the platform
+  // account `acct_1U4MOhFzBnH2P7JZ` as `rejected.fraud` on 2026-08-27 (appeal
+  // pending, 2-10 days). No church is connected and no money is exposed — what
+  // was lost is access. But `/api/stripe/connect` called `accounts.create()`
+  // against that dead account with NO GATE AT ALL, so an admin pressing Connect
+  // Stripe got a raw Stripe API error, days before the app is shown to 8,000
+  // evangelists.
+  //
+  // Each route now answers 503 with `STRIPE_CONNECT_HIDDEN_MESSAGE` while
+  // `STRIPE_CONNECT_ENABLED` is false — the same one-value idiom `lib/
+  // sms-feature.ts` already established (THE-245), in its own importless module
+  // for the same reason.
+  //
+  // ⚠️ A GATE IN FRONT, NOT A REMOVAL, and the ordering is what makes that
+  // checkable: every added block is the FIRST statement in its handler, ahead of
+  // `requireAuth` / `requireOwner` and ahead of Firestore, so it reads and
+  // writes nothing — `stripeConnectStatus`, `stripeConnectAccountId` and the
+  // affiliate mirror are all untouched, and a connected church comes back whole.
+  // Below it not one line moved: the Standard-account creation, the
+  // existing-account branch, the affiliate mirror, THE-148's two gone-account
+  // signals, the Standard/Express dispatch and all four redirect branches are
+  // byte-identical, and every suite that pins them passes with only a
+  // `STRIPE_CONNECT_ENABLED: true` mock added — which is what proves the gate is
+  // additive. The refusals themselves are asserted in
+  // `src/lib/__tests__/the-256-stripe-connect-hidden.test.ts`.
+  ['src/app/api/stripe/connect/callback/route.ts', '09268d95196960479fd56a0c49e432b92bbc207db959edd06898bdca28e258dc'],
+  ['src/app/api/stripe/connect/login-link/route.ts', '01705197e9828011eb135bbc71e831265005dc039e493b00dd1257d1c259bd36'],
+  ['src/app/api/stripe/connect/route.ts', 'aad13355254fffa791ad049d45685d7b10ed0d114db0197b70d24d0acbaf1380'],
+  // 🔴 NOT REGENERATED, AND THAT IS THE POINT. THE-256 deliberately does not
+  // gate the Connect webhook: it confirms donations and paid event tickets, so
+  // it must stay live for anything already in flight, and it is harmless idle.
+  // This unchanged digest is the proof.
   ['src/app/api/stripe/connect/webhook/route.ts', 'febfc599c9ffedb31843bc7cb00e58ae50fb2db09998dfd455ad6b2d37054b1e'],
   // ─── THE-202 REGENERATED THIS ONE, deliberately and with reason ───────────
   //
@@ -136,7 +167,30 @@ const PINNED: ReadonlyArray<readonly [string, string]> = [
   // still passes unedited, which is what proves the money arithmetic did not
   // move. The refusal itself is asserted in
   // src/app/api/stripe/__tests__/donate-free-tier-refused.test.ts.
-  ['src/app/api/stripe/donate/route.ts', '8620ef3d28d12e2f6fec3c8f87fd7c778c26d38480720c98ac04eedd459900c2'],
+  //
+  // ─── AND THE-256 REGENERATED IT AGAIN, for the reason given on the three
+  //     Connect routes above ────────────────────────────────────────────────
+  //
+  // A donation is a Connect DIRECT charge on the church's own connected account,
+  // so it cannot happen while Connect is hidden. One added refusal, FIRST in the
+  // handler — ahead of `verifyAuth`, the tenant read, the lifecycle gate, the
+  // free-tier gate above and both checkout branches, because this route is
+  // deliberately unauthenticated and one-time and monthly both pass through it.
+  //
+  // ⚠️ AGAIN NO FEE, SPLIT, CURRENCY, CONNECT ACCOUNT OR WEBHOOK PATH MOVED:
+  // donate-platform-fee.test.ts, donate-direct-charge.test.ts,
+  // donate-free-tier-refused.test.ts and stripe-config-split.test.ts all pass
+  // with nothing added but a `STRIPE_CONNECT_ENABLED: true` mock.
+  //
+  // 🔴 AND IT BREAKS NO PATH THAT IS NOT STRIPE. The route's only callers are
+  // CampaignWidget, PublicCampaign and PartnerWithUsTab, all opening a Stripe
+  // Checkout Session. The churches' own PayPal / Venmo / Cash App / Zelle / Wise
+  // / Revolut links never reach it — Harvest is not in that flow at all — and
+  // `/api/event-registration/submit` does not call it either: free, waitlisted
+  // and $0 tickets bypass Stripe entirely (`requiresPayment = amount > 0 &&
+  // !waitlisted`) and a paid one already fails on its own `connectAccountId`
+  // check. Neither file is touched by THE-256.
+  ['src/app/api/stripe/donate/route.ts', '04c78731552a29297e41495af61e5202eae7461d954806a3792c0e763ccd26b9'],
   ['src/app/api/stripe/portal/route.ts', 'cbe0b50f7f96845444e6995ae94d61a17354309b4e2c4f56109b9ec703bd237f'],
   ['src/app/api/stripe/remove-church-billing/route.ts', '496d8343c2ae764ccddf1c7d23d710562709add397c8d5cbf6809e6d724bd7d3'],
   ['src/app/api/stripe/standalone-checkout/route.ts', 'bcd83e66f2b346718b7cf1289881a136f0027c8270f863cb2f59324a4c63cccc'],

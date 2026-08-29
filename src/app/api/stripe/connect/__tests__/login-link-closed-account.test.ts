@@ -59,6 +59,18 @@ const {
   mockAccountLinksCreate: vi.fn(),
 }));
 
+// ── THE-256 ────────────────────────────────────────────────────────────────
+// This suite pins what Stripe Connect DOES, so it runs with the master switch
+// ON. That is the hide-not-delete guarantee expressed as a test: every rule
+// below — THE-148's two gone-account signals and the generic catch that must not
+// widen — still holds, unchanged, the moment
+// STRIPE_CONNECT_ENABLED goes back to true. That the same route answers 503
+// while the switch is OFF is asserted in the-256-stripe-connect-hidden.test.ts.
+vi.mock('@/lib/stripe-connect-feature', () => ({
+  STRIPE_CONNECT_ENABLED: true,
+  STRIPE_CONNECT_HIDDEN_MESSAGE: 'Temporarily unavailable',
+}));
+
 vi.mock('stripe', () => ({
   default: class MockStripe {
     accounts = {

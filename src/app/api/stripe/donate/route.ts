@@ -13,6 +13,7 @@ import { convergeExpiredDodoGrace } from '@/lib/dodo/lifecycle';
 import { verifyAuth } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { getPlanFeatures } from '@/utils/plan-features';
+import { STRIPE_CONNECT_ENABLED, STRIPE_CONNECT_HIDDEN_MESSAGE } from '@/lib/stripe-connect-feature';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +21,31 @@ export const dynamic = 'force-dynamic';
 // the apex. Any other tenantId is a live subdomain (tenants/{id}.id == subdomain).
 const PLATFORM_TENANT_ID = process.env.NEXT_PUBLIC_PLATFORM_TENANT_ID || 'harvest';
 
+// 🔴 THE-256 — refused while Stripe Connect is hidden.
+//
+// A donation is a Connect DIRECT charge on the church's own connected account,
+// so it cannot happen while Connect is hidden: no account can be created, and
+// the platform account the session is minted through is closed.
+//
+// ⚠️ FIRST, ahead of everything — ahead of `verifyAuth`, the tenant read, the
+// lifecycle gate, the free-tier gate and both checkout branches. This route is
+// deliberately unauthenticated so an anonymous donor can give, so it has no nav
+// entry, permission or plan in front of it; and one-time and monthly both pass
+// through here, so a gate on only one of them is a gate on neither. Nothing
+// below is deleted: every existing refusal, the fee arithmetic and both Checkout
+// Session shapes return whole with the switch.
+//
+// ⚠️ THIS IS A STRIPE-ONLY PATH. Its three callers — CampaignWidget,
+// PublicCampaign and PartnerWithUsTab — all POST here to open a Stripe Checkout
+// Session and nothing else. The church's own PayPal / Venmo / Cash App / Zelle /
+// Wise / Revolut links never touch this route (Harvest is not in that flow at
+// all), so they keep working while it refuses. Event registration does not call
+// it either: free and waitlisted tickets bypass Stripe entirely, and a paid one
+// already fails on its own `connectAccountId` check.
 export async function POST(request: NextRequest) {
+  if (!STRIPE_CONNECT_ENABLED) {
+    return NextResponse.json({ error: STRIPE_CONNECT_HIDDEN_MESSAGE }, { status: 503 });
+  }
   try {
     // Public giving: donations must work for anonymous and cross-church donors.
     // The donor pays through Stripe Checkout, so an open endpoint has no abuse vector
