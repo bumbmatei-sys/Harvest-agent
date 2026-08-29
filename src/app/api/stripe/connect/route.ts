@@ -6,10 +6,24 @@ import { requireAuth } from '@/lib/api-auth';
 import { resolveReturnBaseUrl } from '@/lib/connect-return-url';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { tenantPrivateRef, getTenantPrivate } from '@/lib/tenant-private';
+import { STRIPE_CONNECT_ENABLED, STRIPE_CONNECT_HIDDEN_MESSAGE } from '@/lib/stripe-connect-feature';
 
 export const dynamic = 'force-dynamic';
 
+// 🔴 THE-256 — refused while Stripe Connect is hidden, and THE ROUTE THIS
+// TICKET EXISTS FOR. `stripe.accounts.create()` below runs against the platform
+// account Stripe closed as `rejected.fraud`, so without this an admin pressing
+// Connect Stripe got a raw Stripe API error through an `alert()`.
+//
+// ⚠️ AHEAD OF `requireAuth`, ahead of Firestore and ahead of the Stripe client,
+// so the route answers identically to every caller and touches no data at all.
+// Nothing below is deleted: the Standard-account creation, the existing-account
+// branch, the affiliate mirror and the account link are all intact behind the
+// switch, and a church already connected keeps its account id and its status.
 export async function POST(request: NextRequest) {
+  if (!STRIPE_CONNECT_ENABLED) {
+    return NextResponse.json({ error: STRIPE_CONNECT_HIDDEN_MESSAGE }, { status: 503 });
+  }
   try {
     const userOrErr = await requireAuth(request);
     if (userOrErr instanceof Response) return userOrErr;

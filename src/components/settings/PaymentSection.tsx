@@ -3,8 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { Check, AlertTriangle, ChevronRight } from 'lucide-react';
 import { authFetch } from '../../utils/auth-fetch';
 import { getTenantId } from './useTenantId';
+import { STRIPE_CONNECT_ENABLED, STRIPE_CONNECT_HIDDEN_MESSAGE } from '../../lib/stripe-connect-feature';
 
-const PaymentSection: React.FC = () => {
+/**
+ * The panel itself — every branch exactly as it shipped. Mounted only while
+ * Stripe Connect is visible; see the export at the foot of this file.
+ */
+const StripeConnectPanel: React.FC = () => {
   const [stripeConnectStatus, setStripeConnectStatus] = useState<string | null>(null);
   const [stripeConnectLoading, setStripeConnectLoading] = useState(false);
   const [dashboardLoading, setDashboardLoading] = useState(false);
@@ -211,5 +216,53 @@ const PaymentSection: React.FC = () => {
     </div>
   );
 };
+
+/**
+ * 🔴 THE-256 — Stripe Connect, behind the master switch.
+ *
+ * A WRAPPER rather than an early `return` inside the panel, so the panel's hooks
+ * are never conditionally called: while Connect is hidden `StripeConnectPanel`
+ * is not mounted at all, which means its `useEffect` never runs and no
+ * `tenants/{id}` read is issued to paint a status nobody is being shown. (The
+ * four routes refuse with 503 anyway — this is the second layer, not the only
+ * one.)
+ *
+ * 🔴 ONE COMPONENT STILL, AND ONE ANSWER TO "ARE WE CONNECTED". The four status
+ * branches above — active, pending, restricted, not connected — are untouched
+ * and come back whole with the switch. Nothing here forks the panel, copies its
+ * status badge or re-derives the state a second way; that second answer is the
+ * bug THE-225 already fixed once, and THE-246 pinned by mounting one component
+ * from two screens.
+ *
+ * ⚠️ GATED ONCE, FOR BOTH SCREENS. `AdminDonations` (THE-246's new home) and
+ * `AdminFundraising` are the only two mounts, so this one wrapper covers every
+ * surface. `AdminSettings` mounts it nowhere — its Payments row is a POINTER at
+ * Donations — and that pointer still leads somewhere: the church's own payment
+ * links live on the same screen and are untouched by this ticket.
+ *
+ * ⚠️ THE MESSAGE AND NOTHING ELSE. `STRIPE_CONNECT_HIDDEN_MESSAGE` is the
+ * founder's wording — no explanation, no apology, and deliberately no pointer to
+ * the manual links, which are already one card below this on the Donations
+ * screen. The "Connect your Stripe account to receive payments…" invitation
+ * above is NOT rendered here: it invites an action that cannot be taken, which
+ * is the half-working money surface this ticket exists to remove.
+ *
+ * ⚠️ COLOUR AND SIZE. It reuses the panel's own card chrome verbatim —
+ * `bg-surface-raised` / `border-line-subtle` / `text-muted` / `text-body`, every
+ * one a semantic token that all four palettes redefine, and not one literal
+ * colour. It invents no width: this file has never declared one (its measure
+ * comes from whichever screen mounts it, via `form-layout.ts`), and the hidden
+ * state adds none. It shrinks no touch target either — it renders no control at
+ * all, and the four branches' buttons are byte-for-byte as they were.
+ */
+const PaymentSection: React.FC = () =>
+  STRIPE_CONNECT_ENABLED ? <StripeConnectPanel /> : (
+    <div className="space-y-6" data-testid="stripe-connect-hidden">
+      <div className="bg-surface-raised rounded-2xl border border-line-subtle p-6">
+        <h3 className="text-sm font-semibold text-muted uppercase tracking-wide mb-4">Stripe Connect</h3>
+        <p className="text-sm text-body">{STRIPE_CONNECT_HIDDEN_MESSAGE}</p>
+      </div>
+    </div>
+  );
 
 export default PaymentSection;

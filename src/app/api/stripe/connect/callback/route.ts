@@ -5,10 +5,27 @@ import { adminDb } from '@/lib/firebase-admin';
 import { deriveConnectStatus } from '@/lib/stripe-connect-status';
 import { resolveReturnBaseUrl } from '@/lib/connect-return-url';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
+import { STRIPE_CONNECT_ENABLED, STRIPE_CONNECT_HIDDEN_MESSAGE } from '@/lib/stripe-connect-feature';
 
 export const dynamic = 'force-dynamic';
 
+// THE-256 — refused while Stripe Connect is hidden.
+//
+// This is the hop a browser lands on coming BACK from Stripe onboarding, and
+// `/api/stripe/connect` cannot mint an account link while the switch is off —
+// so nothing can legitimately arrive here. It refuses rather than retrieving an
+// account and writing a status.
+//
+// ⚠️ A 503 BODY, NOT A REDIRECT, and deliberately: every other exit from this
+// route redirects with an `?error=` param, and reusing that shape would send a
+// churchless admin to a page that reports a FAILED onboarding for an onboarding
+// that never started. 503 says the route exists and is coming back, which is
+// the true answer. The four redirect branches below are untouched and return
+// whole with the switch.
 export async function GET(request: NextRequest) {
+  if (!STRIPE_CONNECT_ENABLED) {
+    return NextResponse.json({ error: STRIPE_CONNECT_HIDDEN_MESSAGE }, { status: 503 });
+  }
   // Fallback for redirects that happen BEFORE the tenant is known (or in the
   // catch, where tenantId may be out of scope). Derived from the host the admin
   // came back on (allowlist-validated, so a spoofed Host falls back to the apex)
