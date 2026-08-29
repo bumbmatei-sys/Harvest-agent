@@ -58,6 +58,18 @@ const writes = vi.hoisted(() => ({ current: [] as Array<Record<string, unknown>>
 /** Every endpoint the screen POSTs to. */
 const posts = vi.hoisted(() => ({ current: [] as string[] }));
 
+// ── THE-256 ────────────────────────────────────────────────────────────────
+// This suite pins what Stripe Connect DOES, so it runs with the master switch
+// ON. That is the hide-not-delete guarantee expressed as a test: every rule
+// below — the Donations screen reaching the REAL Connect control, and mounting one
+// component rather than a second copy of it — still holds, unchanged, the moment
+// STRIPE_CONNECT_ENABLED goes back to true. That the same route answers 503
+// while the switch is OFF is asserted in the-256-stripe-connect-hidden.test.ts.
+vi.mock('../../lib/stripe-connect-feature', () => ({
+  STRIPE_CONNECT_ENABLED: true,
+  STRIPE_CONNECT_HIDDEN_MESSAGE: 'Temporarily unavailable',
+}));
+
 vi.mock('react-router-dom', () => ({ useNavigate: () => navigate, useParams: () => params.current }));
 vi.mock('../../utils/tenant.utils', () => ({ checkRosterAdminStatus: vi.fn(async () => 'not-admin') }));
 vi.mock('../../utils/tenant-scope', () => ({
@@ -576,16 +588,38 @@ describe('no Stripe Connect route, donation route, fee or receipt path changed',
    * give that Harvest is deliberately not part of.
    */
   const UNCHANGED: Readonly<Record<string, string>> = {
+    /*
+     * ─── THE-256 RE-RECORDED THESE FOUR, deliberately and with one reason ───
+     *
+     * 🔴 Stripe closed the platform account as `rejected.fraud` on 2026-08-27
+     * (appeal pending). Each of these four routes now answers 503 while
+     * `STRIPE_CONNECT_ENABLED` is false, and that is the WHOLE edit to each:
+     * one refusal, first in the handler, ahead of auth and ahead of Firestore.
+     *
+     * What THE-246 pinned here was that no money path MOVED, and that claim
+     * survives literally: nothing below the added block changed a byte, so the
+     * fee, the direct charge, the account type, the callback's redirects and
+     * THE-148's gone-account answers are all exactly as they were, and this
+     * suite's own behavioural sections above still pass — they now run with the
+     * switch mocked ON, which is what proves the gate is additive rather than a
+     * rewrite. The 503s are asserted in
+     * `src/lib/__tests__/the-256-stripe-connect-hidden.test.ts`.
+     */
     'src/app/api/stripe/connect/route.ts':
-      'c3f2e3f1d0780515ded1a81a143b4279ced52533c676b997996a8254049a6a03',
+      'aad13355254fffa791ad049d45685d7b10ed0d114db0197b70d24d0acbaf1380',
     'src/app/api/stripe/connect/callback/route.ts':
-      '52f43a788bb1a5cd60a8ea71d5d97a82fd7347cf4725a61bc11b3e94d53aabc8',
+      '09268d95196960479fd56a0c49e432b92bbc207db959edd06898bdca28e258dc',
     'src/app/api/stripe/connect/login-link/route.ts':
-      '560d9643926e72e66fc9300fccb0ba42bc827b8ead3211c090f662a7cb70e83e',
+      '01705197e9828011eb135bbc71e831265005dc039e493b00dd1257d1c259bd36',
+    /*
+     * 🔴 NOT re-recorded, and that is the point: THE-256 deliberately leaves the
+     * Connect webhook ungated. It confirms donations and paid event tickets, so
+     * it must stay live for anything in flight, and it is harmless idle.
+     */
     'src/app/api/stripe/connect/webhook/route.ts':
       'febfc599c9ffedb31843bc7cb00e58ae50fb2db09998dfd455ad6b2d37054b1e',
     'src/app/api/stripe/donate/route.ts':
-      '8620ef3d28d12e2f6fec3c8f87fd7c778c26d38480720c98ac04eedd459900c2',
+      '04c78731552a29297e41495af61e5202eae7461d954806a3792c0e763ccd26b9',
     'src/lib/stripe-connect.ts':
       '30d79c970bc3af7027dc9f8b2ee602d07fba718a7f35292315ba7b59720b01c5',
     'src/lib/donation-receipt.ts':
@@ -600,8 +634,23 @@ describe('no Stripe Connect route, donation route, fee or receipt path changed',
       '5e7778c1d12f8cd19143a6e6aad0a361dfc0925fb6eaf80355dc1eff2e3f1158',
     'src/app/api/giving-statements/config/route.ts':
       '48ad99a41cafd02a423493abf73308195108551c0da9d542f979f6cf8cc083b6',
+    /*
+     * ⚠️ RE-RECORDED BY THE-256, and for the same reason as the four routes.
+     *
+     * The Connect panel is now WRAPPED in `STRIPE_CONNECT_ENABLED` — a wrapper
+     * around the existing component, not an early return inside it, so its hooks
+     * are never conditionally called and no `tenants/{id}` read fires to paint a
+     * status nobody is being shown.
+     *
+     * 🔴 STILL ONE COMPONENT AND ONE ANSWER TO "ARE WE CONNECTED". All four
+     * status branches — active, pending, restricted, not connected — are
+     * byte-identical inside the wrapper, and the "mounts ONE component, not a
+     * second copy" test above still holds: nothing was forked, copied or
+     * deleted. That test, and every other behavioural one in this file, now runs
+     * with the switch mocked ON, which is the restore proof.
+     */
     'src/components/settings/PaymentSection.tsx':
-      '37e30a36e2c1db113eef6a31abb4810f456b84dd3047e9602de5a9f0ad4ee136',
+      '56eb0b539450eba0b072323f42c547f1d728ffdfc1107be55f3d3144fcfaf4f0',
     /*
      * ⚠️ RE-RECORDED BY THE-251, and by nothing else in this list.
      *

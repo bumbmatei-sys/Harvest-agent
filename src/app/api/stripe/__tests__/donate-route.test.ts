@@ -11,6 +11,17 @@ const { mockSessionsCreate } = vi.hoisted(() => ({
 }));
 const { mockTenantGet } = vi.hoisted(() => ({ mockTenantGet: vi.fn() }));
 
+// ── THE-256 ────────────────────────────────────────────────────────────────
+// This suite pins what Stripe Connect DOES, so it runs with the master switch
+// ON. That is the hide-not-delete guarantee expressed as a test: every rule
+// below — the amount bounds, the donationType check and the tenant lookup — still holds, unchanged, the moment
+// STRIPE_CONNECT_ENABLED goes back to true. That the same route answers 503
+// while the switch is OFF is asserted in the-256-stripe-connect-hidden.test.ts.
+vi.mock('@/lib/stripe-connect-feature', () => ({
+  STRIPE_CONNECT_ENABLED: true,
+  STRIPE_CONNECT_HIDDEN_MESSAGE: 'Temporarily unavailable',
+}));
+
 vi.mock('stripe', () => ({
   default: class MockStripe {
     checkout = { sessions: { create: mockSessionsCreate } };

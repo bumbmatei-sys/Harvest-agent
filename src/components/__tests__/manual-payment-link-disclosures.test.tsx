@@ -550,8 +550,24 @@ describe('no statement, receipt, CRM write or Stripe path changed', () => {
       '47e4c9edfe038efd2497df976254868faef08f8a6c208b4885203908ffda19db',
     'src/lib/stripe-connect.ts':
       '30d79c970bc3af7027dc9f8b2ee602d07fba718a7f35292315ba7b59720b01c5',
+    /*
+     * ⚠️ RE-RECORDED BY THE-256, and by nothing else in this list.
+     *
+     * Stripe closed the platform account as `rejected.fraud` on 2026-08-27, so
+     * the donate route now answers 503 while `STRIPE_CONNECT_ENABLED` is false —
+     * one refusal, first in the handler, and not another byte changed.
+     *
+     * 🔴 THAT IS THIS TICKET'S PREMISE, NOT A THREAT TO IT. THE-249 exists
+     * because the manual payment links are a path Harvest is NOT in: no receipt,
+     * no statement, no fee, no endpoint. Hiding the Stripe path is precisely
+     * what leaves the manual one standing — `GivingLinks.tsx` and
+     * `giving-providers.ts` are untouched by THE-256, every disclosure this
+     * suite pins is unchanged, and the links editor sits on the same screen as
+     * the hidden Stripe panel and keeps working. The unchanged digests around
+     * this one say so, `donation-webhook.ts` and the Connect webhook included.
+     */
     'src/app/api/stripe/donate/route.ts':
-      '8620ef3d28d12e2f6fec3c8f87fd7c778c26d38480720c98ac04eedd459900c2',
+      '04c78731552a29297e41495af61e5202eae7461d954806a3792c0e763ccd26b9',
     'src/app/api/stripe/connect/webhook/route.ts':
       'febfc599c9ffedb31843bc7cb00e58ae50fb2db09998dfd455ad6b2d37054b1e',
     'src/app/api/giving-statements/config/route.ts':
