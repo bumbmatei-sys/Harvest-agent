@@ -67,6 +67,7 @@ vi.mock('../CountrySelect', () => ({ default: () => null }));
 
 import PersonalInformationModal from '../PersonalInformationModal';
 import { MEMBER_FAQS } from '../../lib/member-faqs';
+import { DELETE_CONFIRM_COPY } from '../../lib/member-erasure-copy';
 
 /** What POST /api/account/delete returns, in the shape the handler reads. */
 function apiResponse(status: number, body: Record<string, unknown>) {
@@ -318,22 +319,41 @@ describe('Delete Account — every other outcome is visible too', () => {
 });
 
 /**
- * The confirm panel must not oversell it either.
+ * 🔴 THE-230 — THIS BLOCK USED TO PIN THE DEFECT.
  *
- * "Delete my account" reads as full erasure. It is not: the route removes
- * users/{uid} and the Auth account, and nothing else — the CRM row, giving
- * history, registrations, check-ins, prayers and posts all stay. Widening that
- * is a retention decision (a receipted donation is a financial record), so the
- * honest move is to say the boundary out loud.
+ * It asserted the panel said "stay in their records" about giving history,
+ * event registrations, check-ins, prayer requests and community posts, on the
+ * premise recorded above it: "the route removes users/{uid} and the Auth
+ * account, and nothing else". PR 354 made that false — the route runs
+ * eraseMemberData across MEMBER_DATA_MAP, which deletes four of those five —
+ * and the test went on passing, because it was pinned to the sentence rather
+ * than to the map.
+ *
+ * The panel now renders a list derived from the map; the exhaustive assertions
+ * live in PersonalInformationModal.delete-copy.test.tsx, which reads the real
+ * MEMBER_DATA_MAP. What is left here is the claim this file has always been
+ * about — that the member is told, before committing, in the three senses that
+ * are not interchangeable.
  */
 describe('the confirm panel states what deletion does and does not remove', () => {
   it('names what goes and what stays before the member commits', async () => {
     await render();
     await click('Delete Account');
 
-    expect(text()).toMatch(/deletes your profile and your sign-in/i);
-    expect(text()).toMatch(/giving history/i);
-    expect(text()).toMatch(/stay in their records/i);
+    // The three senses, each present and each distinguishable.
+    expect(text()).toMatch(/deleted/i);
+    expect(text()).toMatch(/kept, with your name taken off/i);
+    expect(text()).toMatch(/kept as they are/i);
+    // The four the old sentence promised would stay, now named as deleted.
+    const deleted = text().slice(text().indexOf('Deleted'), text().indexOf('Kept, with your name taken off'));
+    for (const subject of ['prayer requests', 'event registrations', 'check-ins', 'posts']) {
+      expect(deleted, `"${subject}" must be named as deleted, not as kept`).toMatch(new RegExp(subject, 'i'));
+    }
+    // Giving history is kept — but under the heading that says the name comes off.
+    const kept = text().slice(text().indexOf('Kept, with your name taken off'));
+    expect(kept).toMatch(/giving history/i);
+    // And the falsehood itself cannot come back.
+    expect(text()).not.toMatch(/stay in their records/i);
   });
 });
 
@@ -385,10 +405,37 @@ describe('the member FAQ matches what the delete flow now does', () => {
   it('says plainly which of the member’s data survives deletion', () => {
     // Half-untrue copy is the thing being fixed; an unqualified "removes your
     // profile" would be the same mistake in a smaller font.
-    expect(answer()).toMatch(/does not remove everything/i);
+    expect(answer()).toMatch(/does not remove absolutely everything/i);
     expect(answer()).toMatch(/giving history/i);
-    expect(answer()).toMatch(/event registrations/i);
     expect(answer()).toMatch(/financial record/i);
+  });
+
+  /**
+   * 🔴 THE-230 — the FAQ carried the SAME falsehood as the confirm panel, and
+   * named seven things as staying with the ministry. Six of them are deleted.
+   * It no longer enumerates: a second hand-written list beside a machine-read
+   * map is exactly what went stale, so the answer sends the member to the
+   * panel's derived list instead.
+   */
+  it('the FAQ no longer re-lists what survives — it points at the derived panel', () => {
+    for (const deleted of ['event registrations', 'check-ins', 'prayer requests', 'community posts']) {
+      expect(
+        answer().toLowerCase(),
+        `the FAQ names "${deleted}" again; the map deletes it, and a second list is how this broke`,
+      ).not.toContain(deleted);
+    }
+    expect(answer(), 'the FAQ must send the member to the list that is generated').toMatch(/confirm screen/i);
+  });
+
+  it('the one thing the FAQ still names as kept is a collection the map really keeps', () => {
+    // Read from the derived copy rather than from MEMBER_DATA_MAP directly:
+    // the map needs the firebase-admin mocks and this file has none, while
+    // DELETE_CONFIRM_COPY is pure and is proven equal to the map's derivation by
+    // 'the shipped copy is exactly what the map derives'. If giving ever stopped
+    // being anonymised, this fails and the FAQ's one particular moves with it.
+    const kept = DELETE_CONFIRM_COPY.groups.find((g) => g.disposition === 'anonymise')!.items.join(' ');
+    expect(kept, 'the FAQ says giving history is kept; the map no longer keeps it').toMatch(/giving history/i);
+    expect(answer()).toMatch(/giving history/i);
   });
 
   it('cites the files the new answer was verified against', () => {
