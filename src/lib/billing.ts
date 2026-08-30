@@ -31,11 +31,11 @@ export const PLAN_PRICES: Record<string, { monthly: string; yearly: string }> = 
   },
 };
 
-// AI Assistant price IDs
-// Active $200/mo recurring price for the AI Assistant.
-// If env var is not set, falls back to the known active price ID.
-export const AI_ASSISTANT_MONTHLY = process.env.STRIPE_PRICE_AI_MONTHLY ?? 'price_1TmgRP1YKkcSbTf3wjxEsdr';
-export const AI_ASSISTANT_SETUP = process.env.STRIPE_PRICE_AI_SETUP ?? 'price_1TjKTd1YKkcSbTf3tQVxQfC5';
+// `AI_ASSISTANT_MONTHLY` / `AI_ASSISTANT_SETUP` — the retired Telegram
+// assistant's $200/mo and setup Stripe prices — were REMOVED with it (THE-253).
+// Nothing creates a Stripe AI Assistant subscription any more. The AI chat is a
+// $20/mo DODO add-on; its ids live in lib/dodo/catalogue.ts, mapped to meanings
+// rather than prices, and no figure for it belongs in this file.
 
 // Reverse mapping: price ID → plan name (for webhook)
 export function getPlanFromPriceId(priceId: string): string | null {

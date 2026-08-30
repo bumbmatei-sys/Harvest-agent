@@ -6,8 +6,6 @@ import {
   TERM_MONTHS,
   PLAN_ORDER,
   isPricedPlan,
-  AI_ASSISTANT_ADDON_PRICING,
-  AI_TELEGRAM_ASSISTANT_ENABLED,
 } from '@/utils/plan-features';
 import { SMS_FEATURE_ENABLED } from '@/lib/sms-feature';
 
@@ -89,11 +87,12 @@ export async function GET() {
         // absent says "this catalogue makes no claim about SMS". Flip
         // SMS_FEATURE_ENABLED to publish the real per-tier values again.
         ...(SMS_FEATURE_ENABLED ? { smsAutomation: features.smsAutomation } : {}),
-        // The AI (Telegram) Assistant is the retired add-on (NOT the RAG aiChat/
-        // aiKnowledge capabilities above, which stay). Omit its plan-comparison
-        // value while hidden so no client renders the row. Flip
-        // AI_TELEGRAM_ASSISTANT_ENABLED to advertise it again.
-        ...(AI_TELEGRAM_ASSISTANT_ENABLED ? { aiAssistant: features.aiAssistant } : {}),
+        // The AI (Telegram) Assistant's `aiAssistant` count was DELETED with the
+        // assistant itself (THE-253), so there is no row to publish. The RAG
+        // `aiChat`/`aiKnowledge` capabilities above are a different thing and
+        // stay — but note they are now false on every tier and are reached only
+        // by holding the add-on, so this catalog answers the TIER question
+        // correctly by publishing false.
       },
     };
   });
@@ -101,22 +100,13 @@ export async function GET() {
   return NextResponse.json(
     {
       plans,
-      // The AI (Telegram) Assistant add-on is retired: omit it from the catalog
-      // entirely so no marketing/client surface can render a purchase option.
-      // Pricing (AI_ASSISTANT_ADDON_PRICING) and the plan flag are left intact —
-      // flip AI_TELEGRAM_ASSISTANT_ENABLED to list the add-on again.
-      addons: AI_TELEGRAM_ASSISTANT_ENABLED
-        ? {
-            aiAssistant: {
-              available: true,
-              monthlyUsd: AI_ASSISTANT_ADDON_PRICING.monthlyUsd,
-              description: 'Connects to 900+ apps, automates tasks, manages schedules.',
-              includedOn: PLAN_ORDER.filter(
-                (id) => getPlanFeatures(id).aiAssistant !== 0
-              ),
-            },
-          }
-        : {},
+      // 🔴 EMPTY, AND STILL PRESENT. The Telegram assistant's catalog entry is
+      // gone with the product (THE-253) and no add-on replaces it here: what a
+      // church can BUY is derived from the live Dodo add-on table by
+      // /api/dodo/addons, never from this static catalog, and quoting a price
+      // here is what let $200 outlive a $20 product. The key stays so a
+      // consumer reading `data.addons` gets `{}` rather than `undefined`.
+      addons: {},
     },
     {
       headers: {

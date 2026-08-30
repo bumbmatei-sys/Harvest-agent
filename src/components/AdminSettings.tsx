@@ -1,15 +1,14 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Crown, Settings2, Bot, Plug, AlertTriangle, Check, FileText, MessageSquare, SlidersHorizontal, ChevronRight, DollarSign, CreditCard, Palette } from 'lucide-react';
+import { Crown, Settings2, Plug, AlertTriangle, Check, FileText, MessageSquare, SlidersHorizontal, ChevronRight, DollarSign, CreditCard, Palette } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
-import { getPlanFeatures, AI_TELEGRAM_ASSISTANT_ENABLED, PLAN_DISPLAY_NAMES, PLAN_ORDER, formatPlanPrice, isUnpricedTier } from '../utils/plan-features';
+import { getPlanFeatures, PLAN_DISPLAY_NAMES, PLAN_ORDER, formatPlanPrice, isUnpricedTier } from '../utils/plan-features';
 import { hasPlatformOverride } from '../utils/tenant-scope';
 import { SMS_FEATURE_ENABLED } from '../lib/sms-feature';
 import SettingsAccordion from './settings/SettingsAccordion';
 import OnboardingSection from './settings/OnboardingSection';
 import GivingStatementsSection from './settings/GivingStatementsSection';
 import SmsSection from './settings/SmsSection';
-import AiAssistantSection from './settings/AiAssistantSection';
 import IntegrationsSection from './settings/IntegrationsSection';
 import { hasAnyIntegrationProvider } from './settings/integration-providers';
 import { GIVING_PROVIDER_NAMES_OR } from './donations/giving-providers';
@@ -49,7 +48,6 @@ interface AdminSettingsProps {
 
 const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onChangePlan, onCancelPlan, tenantId, email, isPlanOwner, onCustomizeNav, onOpenDonations }) => {
   const [stripeStatus, setStripeStatus] = useState<string | null>(null);
-  const [stripeAddon, setStripeAddon] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   // Platform-context super admins (apex) see every settings section. On a tenant
   // subdomain these plan-gated sections are gated by the tenant's plan, even for
@@ -84,13 +82,11 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     const params = new URLSearchParams(window.location.search);
     const stripe = params.get('stripe');
     const stripeConnect = params.get('stripe_connect');
-    const addon = params.get('addon');
     if (stripe === 'success') {
+      // The Telegram assistant's `?addon=ai-assistant` return is gone with the
+      // product (THE-253): the only Stripe success this screen can now see is a
+      // plan change, which is what the generic banner below says.
       setStripeStatus('success');
-      if (addon === 'ai-assistant' && AI_TELEGRAM_ASSISTANT_ENABLED) {
-        setStripeAddon('ai-assistant');
-        setForceOpen('ai-assistant');
-      }
       window.history.replaceState({}, '', window.location.pathname);
     } else if (stripe === 'cancel') {
       setStripeStatus('cancel');
@@ -149,7 +145,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   //   Appearance       palette family + light/dark
   //   Payments         Stripe Connect
   //   Church Setup     Onboarding Questions, Giving Statements
-  //   Connected Services  SMS (Twilio), AI Assistant (Telegram), Mailchimp
+  //   Connected Services  SMS (Twilio), Mailchimp
   //   Danger Zone      Cancel Subscription, alone and cordoned off
   //   Navigation       Customize Navigation (outside this array)
   //
@@ -305,24 +301,17 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       // panel: a Connected Service that connects nothing, on a screen whose
       // whole job is to say what is connected.
       //
-      // Master switch FIRST, exactly as the nav entry in AdminDashboard and the
-      // AI Assistant row below do it — one idiom on this screen, not two. The
-      // switch is absolute and ignores `platformOverride` (as
-      // AI_TELEGRAM_ASSISTANT_ENABLED does) because an override is a plan
-      // override, and no tier can use a feature the server refuses with 503.
+      // Master switch FIRST, exactly as the nav entry in AdminDashboard does
+      // it — one idiom on this screen, not two. The switch is absolute and
+      // ignores `platformOverride` because an override is a plan override, and
+      // no tier can use a feature the server refuses with 503. (The AI Assistant
+      // row that used to sit below this one, and set the same precedent, went
+      // with the Telegram assistant in THE-253.)
       //
       // The plan clause behind it is UNTOUCHED and still reads the FEATURE, not
       // the tier, so flipping SMS_FEATURE_ENABLED restores the identical
       // entitlement — `smsAutomation` keeps its PLAN_FEATURES values throughout.
       hidden: !SMS_FEATURE_ENABLED || (!platformOverride && !currentFeatures?.smsAutomation),
-    },
-    {
-      id: 'ai-assistant',
-      group: 'Connected Services',
-      label: 'AI Assistant',
-      icon: <Bot size={18} />,
-      content: <AiAssistantSection currentPlan={currentPlan} email={email} isPlanOwner={isPlanOwner} />,
-      hidden: !AI_TELEGRAM_ASSISTANT_ENABLED,
     },
     {
       id: 'integrations',
@@ -428,28 +417,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       </div>
 
       {/* Stripe status banners */}
-      {AI_TELEGRAM_ASSISTANT_ENABLED && stripeStatus === 'success' && stripeAddon === 'ai-assistant' && (
-        <div className="bg-field-100 border border-field-200 rounded-xl p-4 mb-4">
-          <div className="flex items-center gap-3 mb-3">
-            <Check size={20} className="text-field-600" />
-            <div>
-              <p className="text-sm font-semibold text-field-700">AI Assistant activated!</p>
-              <p className="text-xs text-field-600">Your access code is ready. Tap below to connect your Telegram bot.</p>
-            </div>
-            <button onClick={() => { setStripeStatus(null); setStripeAddon(null); }} className="ml-auto text-field-600 hover:text-field-700">✕</button>
-          </div>
-          <a
-            href="https://t.me/theharvestapp_bot"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full py-2.5 bg-[#0088cc] text-white text-sm font-semibold rounded-xl hover:bg-[#006da3] transition-colors"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
-            Open in Telegram
-          </a>
-        </div>
-      )}
-      {stripeStatus === 'success' && !stripeAddon && (
+      {stripeStatus === 'success' && (
         <div className="bg-field-100 border border-field-200 rounded-xl p-4 flex items-center gap-3 mb-4">
           <Check size={20} className="text-field-600" />
           <div>
