@@ -125,8 +125,15 @@ export interface PlanFeatures {
    * (unmetered); see src/lib/planLimits.ts.
    */
   smsAutomation: boolean;
-  /** Number of AI assistants (0 = none, 1 = one, -1 = unlimited) */
-  aiAssistant: number;
+  // `aiAssistant` (a COUNT, 0/0/0/1 across the tiers) was REMOVED with the
+  // Telegram assistant it belonged to (THE-253). It was never the RAG chat —
+  // that is `aiChat` above — and nothing ever metered against it.
+  //
+  // 🔴 DO NOT CONFUSE IT WITH `TenantAddons.aiAssistant`, WHICH IS STILL LIVE
+  // AND IS A DIFFERENT FIELD. That one is the quantity the Dodo webhook writes
+  // from the live $20 add-on, it is read by `getEffectiveFeatures` to lift
+  // `aiChat`/`aiKnowledge`, and deleting it would destroy the entitlement.
+  // Only the PLAN CELL is gone: a tier no longer publishes an assistant count.
   /** Fundraising campaigns feature */
   fundraising: boolean;
   /** Event registration integration */
@@ -276,7 +283,6 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     // card. Both stay at Individual as their minimum plan either way, so no
     // upgrade screen's copy moves.
     smsAutomation: false,
-    aiAssistant: 0,
     // 🔴 NO DONATE PAGE. `fundraising` was `true` on every tier before this
     // block, so free is the first tier to carry it false — the founder's
     // explicit call: "they get a public subdomain… but not a donate page."
@@ -333,7 +339,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     blog: true,
     // Unchanged by THE-205 — the feed is on every tier that pays.
     newsFeed: true,
-    // AI chat is available on Small Team (pro) and above; gated to match the pricing page.
+    // Was "available on Small Team (pro) and above" — no longer true of any
+    // tier. See the note on `pro` below: the chat is an add-on, not a plan cell.
     aiChat: false,
     aiKnowledge: false,
     map: false,
@@ -348,7 +355,6 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     // SMS is BYO-only on every tier — see the block comment above `smsAutomation`
     // in PlanFeatures. Platform SMS is not sold, so the plan no longer gates it.
     smsAutomation: true,
-    aiAssistant: 0,
     fundraising: true,
     eventRegistration: false,
     docs: false,
@@ -383,8 +389,21 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     blog: true,
     // Unchanged by THE-205 — the feed is on every tier that pays.
     newsFeed: true,
-    aiChat: true,
-    aiKnowledge: true,
+    // 🔴 FALSE ON EVERY TIER (THE-253). NO PLAN INCLUDES THE AI RAG CHAT —
+    // founder: "NO PLAN HAS ANY AI RAG CHAT. Of course there should be no AI
+    // RAG chat in any plan if we sell it as an add-on." The ONLY path to
+    // `aiChat: true` is holding the AI Assistant add-on, which
+    // `getEffectiveFeatures` lifts with `||`. Setting this cell true on any
+    // tier re-sells as included the one thing that is sold separately, and is
+    // exactly what this ticket removed.
+    //
+    // ⚠️ `aiKnowledge` MOVES WITH IT, always. The chat answers ONLY from the
+    // knowledge base, so a tier with the base and no chat has a screen feeding
+    // nothing, and a tier with the chat and no base has a chat that can only
+    // answer "I don't have that". One purchase, one coherent capability — the
+    // lift in `getEffectiveFeatures` raises both together for the same reason.
+    aiChat: false,
+    aiKnowledge: false,
     map: true,
     maxChurches: 1,
     maxContacts: 500,
@@ -395,7 +414,6 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     newsletterAutomation: true,
     automatedNewsletter: false,
     smsAutomation: true,
-    aiAssistant: 0,
     fundraising: true,
     eventRegistration: false,
     // Moved down from the top tier in an earlier repricing: Small Team carries
@@ -421,8 +439,9 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
   },
   // Ministry — $199/mo. The top tier.
   //
-  // Absorbed the deleted `ultra` tier: accountingTools and aiAssistant: 1
-  // folded in here. `maxChurches` deliberately did NOT inherit ultra's -1 —
+  // Absorbed the deleted `ultra` tier: accountingTools folded in here.
+  // (Ultra's `aiAssistant: 1` folded in too, and went with the Telegram
+  // assistant in THE-253 — see the note on its old declaration site.) `maxChurches` deliberately did NOT inherit ultra's -1 —
   // every tier is capped at 1 campus and additional campuses become a paid
   // add-on. Ultra's third folded-in cell, `churchDirectory`, was later removed
   // entirely — see the comment on its old declaration site above `maxChurches`
@@ -431,8 +450,21 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     blog: true,
     // Unchanged by THE-205 — the feed is on every tier that pays.
     newsFeed: true,
-    aiChat: true,
-    aiKnowledge: true,
+    // 🔴 FALSE ON EVERY TIER (THE-253). NO PLAN INCLUDES THE AI RAG CHAT —
+    // founder: "NO PLAN HAS ANY AI RAG CHAT. Of course there should be no AI
+    // RAG chat in any plan if we sell it as an add-on." The ONLY path to
+    // `aiChat: true` is holding the AI Assistant add-on, which
+    // `getEffectiveFeatures` lifts with `||`. Setting this cell true on any
+    // tier re-sells as included the one thing that is sold separately, and is
+    // exactly what this ticket removed.
+    //
+    // ⚠️ `aiKnowledge` MOVES WITH IT, always. The chat answers ONLY from the
+    // knowledge base, so a tier with the base and no chat has a screen feeding
+    // nothing, and a tier with the chat and no base has a chat that can only
+    // answer "I don't have that". One purchase, one coherent capability — the
+    // lift in `getEffectiveFeatures` raises both together for the same reason.
+    aiChat: false,
+    aiKnowledge: false,
     map: true,
     maxChurches: 1,
     maxContacts: 2_000,
@@ -443,7 +475,6 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     newsletterAutomation: true,
     automatedNewsletter: true,
     smsAutomation: true,
-    aiAssistant: 1,
     fundraising: true,
     eventRegistration: true,
     docs: true,
@@ -858,19 +889,17 @@ for (const term of DISCOUNTED_TERMS) {
 // Surfaces that used to render retention now render the FEE — "Donation fee —
 // 0%" — which is the number a customer actually cares about.
 
-/** AI Assistant add-on pricing (available on all plans; included on Ministry). */
-export const AI_ASSISTANT_ADDON_PRICING = {
-  monthlyUsd: 200,
-} as const;
-
-/**
- * Master switch for the AI (Telegram) Assistant feature across the whole app.
- * Set to `false` to hide every user-facing surface (settings tab, standalone
- * page, plan-comparison row, /api/plans availability). Backend routes, Stripe
- * wiring and the `aiAssistant` plan flag are intentionally left intact so the
- * feature can be re-enabled by flipping this one boolean back to `true`.
- */
-export const AI_TELEGRAM_ASSISTANT_ENABLED = false;
+// `AI_ASSISTANT_ADDON_PRICING` ($200/mo) and `AI_TELEGRAM_ASSISTANT_ENABLED`
+// (false) were REMOVED with the Telegram assistant (THE-253). The switch had
+// been false since THE-224 and every surface behind it was dead; the price was
+// worse than dead — $200 against a LIVE $20 product, a figure that could only
+// ever mis-sell if anything read it again. Nothing did.
+//
+// ⚠️ THE LIVE $20 PRICE IS NOT HERE AND MUST NOT BE COPIED HERE. Add-on prices
+// are settled in Dodo and quoted by the marketing site from
+// `DODO_ADD_ON_CATALOG`; this repo maps add-on IDS to MEANINGS
+// (`lib/dodo/catalogue.ts`) and never carries a figure. A second copy of $20 in
+// this file is exactly the drift that made $200 outlive its product.
 
 /**
  * Master switch for the affiliate programme across the whole app.
@@ -937,8 +966,8 @@ export const AFFILIATE_PROGRAM_ENABLED = false;
  * What degrades is billing MANAGEMENT for those tenants — see the pull request
  * body for the itemised list.
  *
- * Mirrors AI_TELEGRAM_ASSISTANT_ENABLED and AFFILIATE_PROGRAM_ENABLED above in
- * shape only: those two hide features, this one routes money. Donations are
+ * Mirrors AFFILIATE_PROGRAM_ENABLED above in shape only: that one hides a
+ * feature, this one routes money. Donations are
  * unaffected in either direction — giving stays on Stripe Connect at a 0%
  * platform fee (src/lib/stripe-connect.ts) and is not part of this migration.
  */
@@ -1065,21 +1094,26 @@ function raiseCap(base: number, extra: number): number {
  * touches `PLAN_FEATURES`; `plan-features.test.ts` pins that every tier reads
  * identically before and after this is called.
  *
- * Six cells move, and only these six:
+ * Five cells move, and only these five:
  *   `maxContacts`  + `CONTACTS_PER_PACK` per pack (and see `unlimitedContacts`)
  *   `maxAdmins`    + one per admin seat
  *   `maxChurches`  + one per campus — the ONLY path past 1, which is the design
- *   `aiAssistant`  + one per AI Assistant add-on
  *   `aiChat`       ← true when the AI Assistant add-on is held (THE-253)
  *   `aiKnowledge`  ← true when the AI Assistant add-on is held (THE-253)
  *
  * 🔴 THE LAST TWO BREAK THE OLD RULE ON PURPOSE — "an add-on buys capacity,
  * never a feature flag" was true, and it was exactly the defect. The AI
- * Assistant add-on is a LIVE Dodo product a church can buy today, and every
- * cell it moved (`aiAssistant`, a count belonging to the retired Telegram
- * product) was read by nothing. Buying it granted NOTHING — see THE-224, which
- * withdrew the marketing card rather than ship a card that charged $20/mo for
- * no change in behaviour. This is the build THE-224 declined to do.
+ * Assistant add-on is a LIVE Dodo product a church can buy today, and the one
+ * cell it used to move (`aiAssistant`, a count belonging to the retired
+ * Telegram assistant) was read by nothing. Buying it granted NOTHING — see
+ * THE-224, which withdrew the marketing card rather than ship a card that
+ * charged $20/mo for no change in behaviour. This is the build THE-224
+ * declined to do, and that dead count is now gone entirely.
+ *
+ * 🔴 THE CHAT IS NOW THE ONLY THING THIS ADD-ON BUYS, on EVERY tier. No plan
+ * carries `aiChat` any more, so these two lines are the sole path to `true`
+ * anywhere in the app — which is why they are `||` and why the plan cells are
+ * false. Setting either plan cell true would re-include what is sold.
  *
  * ⚠️ BOTH CELLS, NOT JUST `aiChat`, and that is not scope creep. The chat
  * answers ONLY from the knowledge base; `aiKnowledge` is what lets an admin put
@@ -1108,7 +1142,6 @@ export function getEffectiveFeatures(
     maxContacts: raiseCap(base.maxContacts, owned.contactPacks * CONTACTS_PER_PACK),
     maxAdmins: raiseCap(base.maxAdmins, owned.adminSeats),
     maxChurches: raiseCap(base.maxChurches, owned.campuses),
-    aiAssistant: raiseCap(base.aiAssistant, owned.aiAssistant),
     // 🔴 The RAG capability the AI Assistant add-on actually buys — see above.
     // `owned.aiAssistant` is the COUNT the Dodo webhook wrote from the live
     // product; owning one or ten is the same capability, so this is a
@@ -1196,11 +1229,11 @@ export function getPlanDisplayName(plan: TenantPlan): string {
 /**
  * Check if a specific feature is enabled for a plan.
  *
- * `aiAssistant` used to be an 'included' | 'addon' string; it is now a count
- * (0 = none, 1 = one, -1 = unlimited), so the number branch below covers it and
- * every other PlanFeatures member is a boolean. The old string branch was
- * unreachable — TypeScript narrowed its operand to `never` — and is gone.
- * Use `getPlanFeatures(plan).aiAssistant` directly for the count.
+ * The number branch below covers the CAP cells (`maxContacts`, `maxAdmins`,
+ * `maxChurches`, `maxCourses`), reading 0 as false; every other PlanFeatures
+ * member is a boolean. It also used to cover `aiAssistant`, which was removed
+ * with the Telegram assistant (THE-253) — the branch stays because the caps
+ * still need it.
  */
 export function hasFeature(plan: TenantPlan, feature: keyof PlanFeatures): boolean {
   const features = getPlanFeatures(plan);

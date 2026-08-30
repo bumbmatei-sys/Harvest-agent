@@ -17,7 +17,6 @@ import {
   planTermMonthlyDisplayed,
   monthlyHeadlineContract,
   PLAN_PRICING,
-  AI_ASSISTANT_ADDON_PRICING,
   formatPlanPrice,
   getFeatureMinPlan,
   getFeatureMinPlanName,
@@ -44,19 +43,18 @@ describe('getPlanFeatures', () => {
   it('returns correct features for plus plan', () => {
     const f = getPlanFeatures('plus');
     expect(f.blog).toBe(true);
-    // AI chat is available on Small Team (pro) and above; gated to match the pricing page.
+    // No tier includes the RAG chat — it is the AI Assistant add-on (THE-253).
     expect(f.aiChat).toBe(false);
     expect(f.maxChurches).toBe(1);
     expect(f.maxContacts).toBe(150);
     expect(f.maxCourses).toBe(2);
     expect(f.maxAdmins).toBe(2);
     expect(f.customDomain).toBe(false);
-    expect(f.aiAssistant).toBe(0);
   });
 
   it('returns correct features for pro plan', () => {
     const f = getPlanFeatures('pro');
-    expect(f.aiChat).toBe(true);
+    expect(f.aiChat).toBe(false);
     expect(f.maxContacts).toBe(500);
     expect(f.maxCourses).toBe(5);
     expect(f.maxAdmins).toBe(5);
@@ -65,7 +63,6 @@ describe('getPlanFeatures', () => {
 
   it('returns correct features for max plan (the top tier)', () => {
     const f = getPlanFeatures('max');
-    expect(f.aiAssistant).toBe(1);
     expect(f.customDomain).toBe(true);
     expect(f.maxContacts).toBe(2_000);
     expect(f.maxAdmins).toBe(15);
@@ -97,14 +94,19 @@ describe('getPlanDisplayName', () => {
 
 describe('hasFeature', () => {
   it('returns true for enabled boolean features', () => {
-    expect(hasFeature('pro', 'aiChat')).toBe(true);
+    expect(hasFeature('pro', 'blog')).toBe(true);
     expect(hasFeature('plus', 'blog')).toBe(true);
   });
 
-  it('AI chat is available on Small Team and above', () => {
+  /* WAS 'AI chat is available on Small Team and above' — pro and max true.
+     🔴 INVERTED BY THE-253: no tier includes the chat. `hasFeature` answers the
+     TIER question, so false on all four is the correct answer now; a tenant's
+     real entitlement is `getEffectiveFeatures`, which lifts it from the add-on. */
+  it('AI chat is on NO tier — it is the add-on', () => {
+    expect(hasFeature('free', 'aiChat')).toBe(false);
     expect(hasFeature('plus', 'aiChat')).toBe(false);
-    expect(hasFeature('pro', 'aiChat')).toBe(true);
-    expect(hasFeature('max', 'aiChat')).toBe(true);
+    expect(hasFeature('pro', 'aiChat')).toBe(false);
+    expect(hasFeature('max', 'aiChat')).toBe(false);
   });
 
   it('returns false for disabled boolean features', () => {
@@ -267,12 +269,15 @@ describe('Branding tab entitlement (hasBrandingAccess)', () => {
   });
 });
 
-describe('AI_ASSISTANT_ADDON_PRICING', () => {
-  it('AI Assistant add-on is $200/mo flat with no setup fee', () => {
-    expect(AI_ASSISTANT_ADDON_PRICING.monthlyUsd).toBe(200);
-    expect('setupFeeUsd' in AI_ASSISTANT_ADDON_PRICING).toBe(false);
-  });
-});
+/* WAS 'AI_ASSISTANT_ADDON_PRICING — $200/mo flat with no setup fee'.
+ *
+ * 🔴 THE CONSTANT IS DELETED (THE-253) AND ITS FIGURE WAS WRONG. $200 was the
+ * retired Telegram assistant's Stripe price; the AI Assistant product a church
+ * can actually buy is $20/mo in live Dodo. Pinning 200 kept a number that could
+ * only ever mis-sell. Nothing in this repo carries an add-on price now — the
+ * marketing site quotes them from `DODO_ADD_ON_CATALOG`, pinned against the
+ * live products there — so the replacement assertion is that the export is
+ * gone, in `the-224-ai-assistant-no-seat.test.ts`. */
 
 // ─── Tier deletion: `ultra` is gone ──────────────────────────────────────────
 //
@@ -308,13 +313,15 @@ describe('the ultra tier is deleted', () => {
     expect(TOP_PLAN).toBe(PLAN_ORDER[PLAN_ORDER.length - 1]);
   });
 
-  it('folds ultra capabilities into max: accounting, one AI assistant', () => {
+  it('folds ultra capabilities into max: accounting', () => {
     // `churchDirectory` was ultra's third folded-in cell; it was later removed
     // from the matrix entirely for having zero consumers — see the retired-cells
-    // describe block below, which is now its regression test.
+    // describe block below, which is now its regression test. Its SECOND,
+    // `aiAssistant: 1`, went the same way in THE-253 with the Telegram
+    // assistant that count belonged to, leaving accounting as the only one.
     const f = getPlanFeatures('max');
     expect(f.accountingTools).toBe(true);
-    expect(f.aiAssistant).toBe(1);
+    expect('aiAssistant' in f).toBe(false);
   });
 });
 
@@ -408,27 +415,33 @@ describe('capacity limits per tier', () => {
   });
 });
 
-// ─── AI stays exactly as it was ──────────────────────────────────────────────
+// ─── AI is on no tier ────────────────────────────────────────────────────────
 //
-// Test #11 of the repricing: proof this change left aiChat/aiKnowledge alone.
+// Was test #11 of the repricing, which pinned aiChat/aiKnowledge at
+// false/true/true as PROOF THE REPRICING LEFT THEM ALONE, and said in as many
+// words: "They become add-on-gated in a later PR." THE-253 is that PR, so the
+// two rows invert and the third assertion changes meaning entirely.
 
-describe('aiChat / aiKnowledge are untouched by the repricing', () => {
-  it('aiChat is false / true / true', () => {
-    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).aiChat)).toEqual([false, true, true]);
+describe('aiChat / aiKnowledge are on NO tier — the add-on is the only path', () => {
+  it('aiChat is false on all four', () => {
+    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).aiChat)).toEqual([false, false, false]);
     // Free has no AI at all — and PLAN_LIMITS.free budgets 0 tokens to match.
     expect(getPlanFeatures('free').aiChat).toBe(false);
   });
 
-  it('aiKnowledge is false / true / true', () => {
-    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).aiKnowledge)).toEqual([false, true, true]);
+  it('aiKnowledge is false on all four', () => {
+    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).aiKnowledge)).toEqual([false, false, false]);
     expect(getPlanFeatures('free').aiKnowledge).toBe(false);
   });
 
-  it('neither was moved to the top tier or given away on plus', () => {
-    // They become add-on-gated in a later PR. Changing them here would either
-    // kill RAG for existing pro/max tenants or hand it to plus for free.
-    expect(getMinPlanForFeatureCell('aiChat')).toBe('pro');
-    expect(getMinPlanForFeatureCell('aiKnowledge')).toBe('pro');
+  it('🔴 NEITHER HAS A MINIMUM PLAN, because no plan grants either', () => {
+    // Was `'pro'` for both. `getMinPlanForFeatureCell` walks PLAN_ORDER for the
+    // first tier with the cell and answers `null` when none has it — which is
+    // the honest answer for a capability sold separately, and is what stops any
+    // upgrade surface printing "Available on Small Team and above" for a thing
+    // upgrading does not buy.
+    expect(getMinPlanForFeatureCell('aiChat')).toBeNull();
+    expect(getMinPlanForFeatureCell('aiKnowledge')).toBeNull();
   });
 });
 
@@ -859,11 +872,15 @@ describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
     expect(Object.keys(TERM_BILLED_PHRASE).sort()).toEqual([...BILLING_TERMS].sort());
   });
 
-  it('leaves the retired AI Assistant add-on at $200 — not swept up in the repricing', () => {
-    // THE-13: dormant code, intact by design. It is an ADD-ON price, not a plan
-    // price, and shares the `monthlyUsd` field name PLAN_PRICING used to use —
-    // which is exactly how a bulk repricing would catch it by accident.
-    expect(AI_ASSISTANT_ADDON_PRICING.monthlyUsd).toBe(200);
+  it('no plan price is 200 — the retired $200 add-on price is gone, not folded in', () => {
+    // WAS 'leaves the retired AI Assistant add-on at $200 — not swept up in the
+    // repricing': it pinned `AI_ASSISTANT_ADDON_PRICING.monthlyUsd === 200` as
+    // dormant-but-intact, on the reasoning that an ADD-ON price sharing
+    // PLAN_PRICING's `monthlyUsd` field name is exactly what a bulk repricing
+    // catches by accident. THE-253 deleted the constant: $200 against a live
+    // $20 product was not worth preserving, and the live figure lives in Dodo.
+    // The half that still means something is kept — no PLAN was ever priced at
+    // 200, so nothing absorbed it on the way out.
     expect(Object.values(PLAN_PRICING).flatMap((p) => Object.values(p))).not.toContain(200);
   });
 });

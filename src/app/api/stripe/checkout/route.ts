@@ -4,11 +4,11 @@ import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth, requireOwner } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
-import { PLAN_PRICES, AI_ASSISTANT_MONTHLY } from '@/lib/billing';
+import { PLAN_PRICES } from '@/lib/billing';
 import { logReferralCapture, resolveAffiliateReferrer } from '@/lib/affiliate-referrer';
 import { tenantPrivateRef, getTenantPrivate } from '@/lib/tenant-private';
 import { billingActionUnavailable, blocksStripeAction, resolveBillingOwnership } from '@/lib/billing-processor';
-import { AI_TELEGRAM_ASSISTANT_ENABLED, DODO_BILLING_ENABLED, isUnpricedTier } from '@/utils/plan-features';
+import { DODO_BILLING_ENABLED, isUnpricedTier } from '@/utils/plan-features';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,64 +45,19 @@ export async function POST(request: NextRequest) {
     const stripe = new Stripe(stripeKey);
 
     const body = await request.json();
-    const { plan, billing, tenantId, tenantName, ministryName, email, addOn, referrerId } = body;
+    const { plan, billing, tenantId, tenantName, ministryName, email, referrerId } = body;
 
-    // Handle AI Assistant add-on checkout — always scoped to an existing tenant.
-    if (addOn === 'ai-assistant') {
-      // The AI (Telegram) Assistant add-on is retired: no new purchase can be
-      // initiated while it is hidden. This closes the money path even if a stale
-      // client (the now-dormant AiAssistantSection) still posts here. The Stripe
-      // wiring and provisioning code stay intact — flip AI_TELEGRAM_ASSISTANT_ENABLED
-      // to bring the add-on back.
-      if (!AI_TELEGRAM_ASSISTANT_ENABLED) {
-        return NextResponse.json({ error: 'The AI Assistant add-on is no longer available.' }, { status: 410 });
-      }
-      if (!tenantId) {
-        return NextResponse.json({ error: 'Missing required field: tenantId' }, { status: 400 });
-      }
-      if (!userOrErr.isSuperAdmin && userOrErr.tenantId !== tenantId) {
-        return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
-      }
-      if (!AI_ASSISTANT_MONTHLY) {
-        return NextResponse.json({ error: 'AI Assistant price not configured — set STRIPE_PRICE_AI_MONTHLY ($200/mo)' }, { status: 500 });
-      }
-      // The add-on is per-admin: it bills the buyer's OWN Stripe customer
-      // (users/{uid}.aiAssistantCustomerId), never the tenant's shared plan
-      // customer — so each admin can later view/cancel it in their own billing
-      // portal (/api/ai-assistant/portal) without reaching tenant billing.
-      const buyerRef = adminDb.collection('users').doc(userOrErr.uid);
-      const buyerSnap = await buyerRef.get();
-      const customerId = await getValidCustomerId(
-        stripe,
-        buyerSnap.data()?.aiAssistantCustomerId,
-        {
-          email: email || userOrErr.email || undefined,
-          name: userOrErr.email || userOrErr.uid,
-          metadata: { userId: userOrErr.uid, tenantId, app: 'harvest' },
-        },
-        async (id) => {
-          await buyerRef.set({
-            aiAssistantCustomerId: id,
-            updatedAt: new Date().toISOString(),
-          }, { merge: true });
-        },
-      );
-
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
-
-      const session = await stripe.checkout.sessions.create({
-        customer: customerId,
-        mode: 'subscription',
-        line_items: [{ price: AI_ASSISTANT_MONTHLY, quantity: 1 }],
-        success_url: `${baseUrl}/?stripe=success&session_id={CHECKOUT_SESSION_ID}&addon=ai-assistant`,
-        cancel_url: `${baseUrl}/?stripe=cancel`,
-        subscription_data: {
-          metadata: { tenantId, addOn: 'ai-assistant', userId: userOrErr.uid },
-        },
-      });
-
-      return NextResponse.json({ url: session.url });
-    }
+    // 🔴 THE `addOn === 'ai-assistant'` BRANCH IS GONE (THE-253), not merely
+    // refused. It opened a $200/mo Stripe subscription against the buyer's own
+    // customer for the retired Telegram assistant; THE-224 had already closed
+    // it with a 410 behind a flag, and the assistant, its flag, its settings
+    // section and its landing page are now deleted. A stale client posting
+    // `addOn: 'ai-assistant'` falls through to the plan path below and is
+    // refused there by the `plan`/`billing` check — no session, no charge.
+    //
+    // ⚠️ The AI chat is sold as a DODO add-on now (/api/dodo/addons), and it is
+    // a different product at a different price: $20/mo, entitlement granted by
+    // the Dodo webhook. Nothing about the chat belongs on this Stripe route.
 
     // Regular plan checkout (new-ministry signup OR existing-tenant plan change).
     if (!plan || !billing) {

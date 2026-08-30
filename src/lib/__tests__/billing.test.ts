@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PLAN_PRICES, getPlanFromPriceId, AI_ASSISTANT_MONTHLY, AI_ASSISTANT_SETUP } from '../billing';
+import { PLAN_PRICES, getPlanFromPriceId } from '../billing';
 
 describe('PLAN_PRICES', () => {
   it('has no ultra entry — the tier was deleted', () => {
@@ -38,8 +38,10 @@ describe('getPlanFromPriceId', () => {
   });
 });
 
-describe('AI price IDs', () => {
-  it('exports AI_ASSISTANT_SETUP (AI_ASSISTANT_MONTHLY requires STRIPE_PRICE_AI_MONTHLY env var)', () => {
-    expect(AI_ASSISTANT_SETUP).toBeTruthy();
-  });
-});
+/* WAS 'AI price IDs — exports AI_ASSISTANT_SETUP'. Both that constant and
+   AI_ASSISTANT_MONTHLY ($200/mo) were the retired Telegram assistant's Stripe
+   prices and were deleted with it (THE-253). Nothing creates a Stripe
+   AI Assistant subscription any more; the AI chat is a $20/mo Dodo add-on whose
+   ids live in lib/dodo/catalogue.ts. Their absence is asserted in
+   the-224-ai-assistant-no-seat.test.ts, where the rest of the deletion is
+   pinned, rather than by an import that would not compile here. */

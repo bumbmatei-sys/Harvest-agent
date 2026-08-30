@@ -781,7 +781,11 @@ describe('no link to theharvest.site was added to the member app', () => {
     expect(linking, 'a theharvest.site link was added').toEqual([
       'app/api/contact/route.ts',                  // CORS origin for the marketing site
       'app/api/plans/route.ts',                    // the plan catalog the site fetches
-      'app/api/stripe/standalone-checkout/route.ts', // return URLs for site checkouts
+      // `app/api/stripe/standalone-checkout/route.ts` was here — its CORS and
+      // return URLs pointed at the marketing site, because the route existed to
+      // sell the Telegram assistant to site visitors. Route deleted in THE-253,
+      // so the link count goes DOWN. This guard is against ADDING links, and a
+      // removal has to move the list too or it fails on the count alone.
       'components/AffiliateSection.tsx',           // the affiliate's own referral link
       'components/WorkspaceHandoff.tsx',           // the support contact link
       'lib/legal-links.ts',                        // privacy / terms / refunds (THE-188)

@@ -5,7 +5,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import AdminDashboard from '../AdminDashboard';
 import { getPlanFeatures, hasBrandingAccess, PLAN_ORDER, FREE_PLAN } from '../../utils/plan-features';
-import type { TenantPlan } from '../../types/tenant.types';
+import type { TenantPlan, TenantAddons } from '../../types/tenant.types';
 
 /**
  * ═════════════════════════════════════════════════════════════════════════════
@@ -63,7 +63,7 @@ const store = vi.hoisted(() => ({
   current: { tenantPlan: null as string | null, currentTenantId: 'grace' as string | null, isAuthReady: true },
 }));
 const ctx = vi.hoisted(() => ({
-  current: { branding: null as unknown, isLoading: false, tenantPlan: undefined as string | undefined },
+  current: { branding: null as unknown, isLoading: false, tenantPlan: undefined as string | undefined, tenantAddons: null as unknown },
 }));
 const currentUser = vi.hoisted(() => ({ current: { uid: 'user-1' } as { uid: string } | null }));
 const userQuery = vi.hoisted(() => ({ current: { data: undefined as unknown, isLoading: false } }));
@@ -299,10 +299,16 @@ async function unmount() {
   await act(async () => { root.unmount(); });
 }
 
-/** The nav a tier renders, for an admin with the given role/permissions. */
-async function navFor(plan: TenantPlan | null, who: Who = {}, section = '') {
+/** The nav a tier renders, for an admin with the given role/permissions.
+ *  `addons` defaults to owning nothing — see the AI Knowledge tests below. */
+async function navFor(
+  plan: TenantPlan | null,
+  who: Who = {},
+  section = '',
+  addons: TenantAddons | null = null,
+) {
   store.current = { ...store.current, tenantPlan: plan };
-  ctx.current = { ...ctx.current, tenantPlan: plan ?? undefined };
+  ctx.current = { ...ctx.current, tenantPlan: plan ?? undefined, tenantAddons: addons };
   await mount(who, section);
   const result = { nav: navLabels(), ...activeScreen() };
   await unmount();
@@ -312,7 +318,7 @@ async function navFor(plan: TenantPlan | null, who: Who = {}, section = '') {
 beforeEach(() => {
   vi.clearAllMocks();
   store.current = { tenantPlan: null, currentTenantId: TENANT_ID, isAuthReady: true };
-  ctx.current = { branding: null, isLoading: false, tenantPlan: undefined };
+  ctx.current = { branding: null, isLoading: false, tenantPlan: undefined, tenantAddons: null };
   currentUser.current = { uid: UID };
   isSuperAdminMock.mockReturnValue(false);
   hasPlatformOverrideMock.mockReturnValue(false);
@@ -410,12 +416,17 @@ describe('3 — a Small Team tenant sees exactly its expected set', () => {
   /**
    * Small Team (pro), read off the matrix and stated here by name so the
    * derivation has something to be checked against:
-   * Dashboard · Church · Courses · Blog · AI Knowledge · Newsletter ·
+   * Dashboard · Church · Courses · Blog · Newsletter ·
    * Fundraising · Notes · CRM · Check-In · Livestream · SMS.
    * Absent: Events, Accounting, Forms, Community, Branding.
    */
+  // ⚠️ 'AI Knowledge' WAS IN THIS LIST. THE-253 took `aiKnowledge` off every
+  // tier — the Knowledge Base is the RAG chat's other half and is sold with it
+  // as the AI Assistant add-on — so no PLAN grants the screen. A Small Team
+  // tenant HOLDING the add-on does see it: `AdminDashboard` gates on
+  // `getEffectiveFeatures`, and `navFor` here mounts with no add-ons.
   const EXPECTED = [
-    'Dashboard', 'Church', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
+    'Dashboard', 'Church', 'Courses', 'Blog', 'Newsletter',
     'Fundraising', 'Notes', 'CRM', 'Check-In', 'Livestream', 'SMS',
   ];
 
@@ -429,15 +440,73 @@ describe('3 — a Small Team tenant sees exactly its expected set', () => {
   });
 });
 
+/* ── 🔴 PR 394's CATCH, AS A BEHAVIOURAL NO-REGRESSION ──────────────────────
+ *
+ * The defect PR 394 nearly shipped, and the one THE-253 must never reintroduce:
+ * `getEffectiveFeatures` grants the capability, and then the SURFACE refuses it
+ * anyway because its gate reads `getPlanFeatures` — the TIER question. The
+ * church pays, the entitlement resolves, and the screen still says no.
+ *
+ * `the-253-ai-chat-addon.test.ts` pins that neither component calls
+ * `getPlanFeatures`, which is the structural half. This is the other half: mount
+ * the real AdminDashboard with the add-on held and watch the nav entry appear.
+ * A source guard can be satisfied by an unused import; this cannot. */
+describe('3b — an entitled admin is not refused at the surface', () => {
+  const OWNS_ADDON = {
+    aiAssistant: 1, adminSeats: 0, contactPacks: 0, unlimitedContacts: false, campuses: 0,
+  } as const;
+  const OWNS_NOTHING = {
+    aiAssistant: 0, adminSeats: 0, contactPacks: 0, unlimitedContacts: false, campuses: 0,
+  } as const;
+
+  /* ⚠️ THE THREE PRICED TIERS, NOT ALL FOUR. `free` is the permissive fallback
+     in this harness — test 1 above pins that a free tenant hides only Branding
+     — so it cannot show the add-on making a difference. It is also the tier
+     that cannot buy this add-on at all: no Dodo subscription to attach it to,
+     and `queryTokensPerMonth: 0` if one ever arrived. Both facts are pinned in
+     the-253-ai-chat-addon.test.ts. */
+  it.each(['plus', 'pro', 'max'] as const)(
+    '%s: the AI Knowledge entry appears when the add-on is held', async (plan) => {
+    const without = await navFor(plan, {}, '', { ...OWNS_NOTHING });
+    expect(without.nav, `${plan} shows AI Knowledge owning nothing`).not.toContain('AI Knowledge');
+
+    const withAddon = await navFor(plan, {}, '', { ...OWNS_ADDON });
+    expect(withAddon.nav, `${plan} BOUGHT the add-on and was still refused`).toContain('AI Knowledge');
+  });
+
+  it('🔴 the AI Knowledge SCREEN renders for an entitled admin, not an upgrade wall', async () => {
+    // The nav entry appearing is not enough: THE-213's defect was a tab hidden
+    // from the nav that still rendered by URL, and this is its mirror — a tab
+    // the church is entitled to that answers with a wall when reached.
+    const { screen, wall } = await navFor('plus', {}, 'ai-knowledge', { ...OWNS_ADDON });
+    expect(wall, 'an entitled admin got an upgrade wall').toBeNull();
+    expect(screen, 'the AI Knowledge screen did not render for an entitled admin').toBe('AdminRAG');
+  });
+
+  it('and an unentitled admin still gets the wall, so the gate is real', async () => {
+    const { screen, wall } = await navFor('max', {}, 'ai-knowledge', { ...OWNS_NOTHING });
+    expect(screen, 'Ministry reached AI Knowledge without the add-on').not.toBe('AdminRAG');
+    expect(wall, 'no upgrade wall for an unentitled admin').not.toBeNull();
+  });
+});
+
 describe('4 — a Ministry tenant sees exactly its expected set', () => {
-  /** Ministry (max) buys everything: the sixteen plus Branding. */
+  /** Ministry (max) buys everything a PLAN can buy: the fifteen plus Branding.
+   *  ⚠️ Was sixteen. 'AI Knowledge' is no longer among them — THE-253 made it
+   *  part of the AI Assistant add-on, so even Ministry does not get it by
+   *  paying for the tier. It returns for a Ministry tenant that holds the
+   *  add-on, through `getEffectiveFeatures`. */
   it('a Ministry tenant sees exactly its expected set', async () => {
     const { nav } = await navFor('max');
     for (const tab of TABS) {
+      if (tab.label === 'AI Knowledge') {
+        expect(nav, 'Ministry claims AI Knowledge without the add-on').not.toContain(tab.label);
+        continue;
+      }
       expect(nav, `Ministry lost "${tab.label}"`).toContain(tab.label);
     }
     expect(nav).toContain('Branding');
-    expect(nav.length, 'Ministry shows the sixteen plus Branding').toBe(17);
+    expect(nav.length, 'Ministry shows the fifteen plus Branding').toBe(16);
     expect(nav).toEqual(expectedNav('max'));
   });
 
@@ -551,7 +620,10 @@ describe('8 — no feature flag changed', () => {
     // moved", this says which. Every cell any nav clause in this ticket reads.
     const CELLS = [
       ['blog', [false, true, true, true]],
-      ['aiKnowledge', [false, false, true, true]],
+      // 🔴 MOVED BY THE-253, AND THE ONLY CELL IN THIS TABLE THAT DID. Was
+      // [false, false, true, true]. The Knowledge Base is the RAG chat's other
+      // half and is sold with it, so no tier includes it; the add-on lifts it.
+      ['aiKnowledge', [false, false, false, false]],
       ['newsletterAutomation', [false, false, true, true]],
       ['fundraising', [false, true, true, true]],
       ['eventRegistration', [false, false, false, true]],

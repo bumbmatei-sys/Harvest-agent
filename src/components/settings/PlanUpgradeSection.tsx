@@ -11,7 +11,6 @@ import {
   PRICED_PLAN_ORDER,
   PLAN_PRICING,
   isPricedPlan,
-  AI_TELEGRAM_ASSISTANT_ENABLED,
   UNLIMITED_CAP,
   formatPlanPrice,
   formatPlanMonthlyHeadline,
@@ -131,7 +130,6 @@ const CARD_FEATURES: CardFeature[] = [
   { key: 'maxAdmins', count: ['admin account', 'admin accounts'] },
   { key: 'maxCourses', count: ['course', 'courses'] },
   { key: 'maxChurches', count: ['church', 'churches'] },
-  { key: 'aiAssistant', count: ['AI Assistant', 'AI Assistants'] },
   { key: 'blog', label: 'Blog' },
   { key: 'pwaApp', label: 'Mobile App (PWA)' },
   { key: 'aiChat', label: 'AI Chat' },
@@ -156,18 +154,25 @@ const CARD_FEATURES: CardFeature[] = [
   { key: 'communityGroups', label: 'Community Groups' },
 ];
 
-// While the AI Telegram Assistant is hidden, drop its line from every card.
-// Flip AI_TELEGRAM_ASSISTANT_ENABLED to bring it back.
-//
-// THE-245 does the same for 'SMS Automation'. These cards are in-app MARKETING:
-// they tell a church what a tier includes, so a line here is a promise on every
+// THE-245 withholds 'SMS Automation'. These cards are in-app MARKETING: they
+// tell a church what a tier includes, so a line here is a promise on every
 // upgrade screen. 🔴 The `smsAutomation` cell in the plan matrix is untouched —
 // only this card's line is withheld, so the tiers that own SMS still own it and
 // get the line back with the switch.
+//
+// 🔴 `aiChat` AND `aiKnowledge` NEED NO FILTER AND MUST NOT GET ONE (THE-253).
+// They are false on every tier now, so `cardLine` already returns null for both
+// on every card — an upgrade screen cannot promise the RAG chat, because
+// upgrading does not grant it. Withholding them by flag would hide the line
+// while the CELL still said true; leaving them derived means the line is absent
+// for exactly as long as the matrix says no plan includes the chat. If a tier
+// ever carried it again the line would come back on its own, which is the
+// regression `the-253-ai-chat-addon.test.ts` fails on.
+//
+// The Telegram assistant's own 'AI Assistant' line is gone outright: its plan
+// cell no longer exists.
 const VISIBLE_CARD_FEATURES = CARD_FEATURES.filter(
-  (f) =>
-    (AI_TELEGRAM_ASSISTANT_ENABLED || f.key !== 'aiAssistant') &&
-    (SMS_FEATURE_ENABLED || f.key !== 'smsAutomation'),
+  (f) => SMS_FEATURE_ENABLED || f.key !== 'smsAutomation',
 );
 
 /**

@@ -1,8 +1,7 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
-  AI_TELEGRAM_ASSISTANT_ENABLED,
   NO_ADDONS,
   PLAN_ORDER,
   getEffectiveFeatures,
@@ -53,12 +52,20 @@ import type { TenantPlan } from '../../types/tenant.types';
  * so, and the add-on becomes real."
  *
  * WHAT STILL STANDS, unchanged and still pinned here:
- *   · `aiChat` is false/false/true/true as a PLAN cell — no tier moved.
- *   · Small Team gets the assistant having bought nothing. The founder's
- *     original observation was correct and remains correct.
- *   · There is still NO SEAT. Nothing meters per `aiAssistant` count; the
- *     add-on is a capability, not an allowance.
- *   · The Telegram flag is still false and no price moved.
+ *   · There is still NO SEAT. Nothing meters per add-on quantity; the add-on
+ *     is a capability, not an allowance. This is the file's real deliverable
+ *     and it is untouched.
+ *   · The two usage limits still bind, and neither is purchasable.
+ *
+ * ⚠️ AND THREE MORE INVERTED BY THE SECOND HALF OF THE-253, which deleted the
+ * Telegram assistant outright and took the chat off every plan:
+ *   · `aiChat` was false/false/true/true; it is false on all four now. The
+ *     founder's observation — Small Team had the assistant having bought
+ *     nothing — was TRUE WHEN MADE and is now false BY DESIGN: that inclusion
+ *     is exactly what was sold separately.
+ *   · The `aiAssistant` COUNT is gone from `PlanFeatures` entirely, so "what
+ *     the add-on moves is a count nothing reads" has no subject left.
+ *   · `AI_TELEGRAM_ASSISTANT_ENABLED` is gone: not false, absent.
  *
  * The new entitlement's own tests live in `the-253-ai-chat-addon.test.ts`.
  * ═══════════════════════════════════════════════════════════════════════════ */
@@ -69,11 +76,16 @@ const srcOf = (rel: string) =>
   readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
 
 /* ── 1 ─────────────────────────────────────────────────────────────────────── */
-describe('aiChat is unchanged on every tier', () => {
-  it('is false, false, true, true across free / Individual / Small Team / Ministry', () => {
-    // 🔴 THE NON-NEGOTIABLE OF THIS TICKET. The founder's report was about the
-    // add-on, not the capability, and the capability is correct as it stands.
-    expect(PLANS.map((p) => getPlanFeatures(p).aiChat)).toEqual([false, false, true, true]);
+describe('aiChat is on no tier at all', () => {
+  it('is false across free / Individual / Small Team / Ministry', () => {
+    /* WAS `[false, false, true, true]`, under the heading "aiChat is unchanged
+       on every tier" and called THE-224's non-negotiable: the founder's report
+       was about the add-on, not the capability, and the capability was correct
+       as it stood.
+       🔴 THE-253 INVERTS IT ON FOUNDER DIRECTION — "NO PLAN HAS ANY AI RAG
+       CHAT ... if we sell it as an add-on". The two `true`s were the reason the
+       $20 card charged Small Team and Ministry for what they already had. */
+    expect(PLANS.map((p) => getPlanFeatures(p).aiChat)).toEqual([false, false, false, false]);
     expect(PLAN_ORDER).toEqual(PLANS);
   });
 
@@ -91,15 +103,17 @@ describe('aiChat is unchanged on every tier', () => {
 });
 
 /* ── 2 ─────────────────────────────────────────────────────────────────────── */
-describe('the assistant is available from Small Team up without any add-on', () => {
-  it('the founder was right: Small Team gets it having bought nothing', () => {
-    /* 🔴 THE OBSERVATION THAT OPENED THE TICKET, PINNED AS CORRECT RATHER THAN
-       FIXED. `NO_ADDONS` is the empty add-on set — every count zero — and the
-       assistant is on regardless. Nothing was mis-sold to this founder; the
-       add-on was simply never what turned it on. */
+describe('the assistant is available to NO tier without the add-on', () => {
+  it('the founder\u2019s observation was true when made, and is now the thing that was fixed', () => {
+    /* WAS 'the founder was right: Small Team gets it having bought nothing',
+       pinning `aiChat` true on pro and max against the empty add-on set — the
+       observation that opened THE-224, pinned as CORRECT rather than fixed.
+       🔴 IT IS NOW THE DEFECT. Selling the chat as an add-on while two tiers
+       included it free is the false claim; THE-253 removed the inclusion, so
+       the same call with the same empty set answers false everywhere. */
     expect(NO_ADDONS.aiAssistant).toBe(0);
-    expect(getEffectiveFeatures('pro', NO_ADDONS).aiChat).toBe(true);
-    expect(getEffectiveFeatures('max', NO_ADDONS).aiChat).toBe(true);
+    expect(getEffectiveFeatures('pro', NO_ADDONS).aiChat).toBe(false);
+    expect(getEffectiveFeatures('max', NO_ADDONS).aiChat).toBe(false);
   });
 
   it('🔴 SUPERSEDED BY THE-253 — buying the add-on now DOES turn it on', () => {
@@ -135,21 +149,29 @@ describe('the assistant is available from Small Team up without any add-on', () 
       expect(getEffectiveFeatures(plan, NO_ADDONS).aiChat).toBe(base.aiChat);
       expect(getEffectiveFeatures(plan, NO_ADDONS).aiKnowledge).toBe(base.aiKnowledge);
     }
-    expect(PLANS.map((p) => getPlanFeatures(p).aiChat)).toEqual([false, false, true, true]);
+    expect(PLANS.map((p) => getPlanFeatures(p).aiChat)).toEqual([false, false, false, false]);
   });
 
-  it('what the add-on DOES move is a count nothing reads', () => {
-    // It is not inert — `raiseCap` really does raise it. It is unread, which is
-    // a different and worse thing: the money changes hands and no gate notices.
-    expect(getEffectiveFeatures('plus', { ...NO_ADDONS, aiAssistant: 3 }).aiAssistant).toBe(
-      getPlanFeatures('plus').aiAssistant + 3,
-    );
-    // And the count itself is the retired Telegram product's, behind a false flag.
-    expect(AI_TELEGRAM_ASSISTANT_ENABLED).toBe(false);
-    expect(PLANS.map((p) => getPlanFeatures(p).aiAssistant)).toEqual([0, 0, 0, 1]);
+  it('the count the add-on used to move does not exist any more', () => {
+    /* WAS 'what the add-on DOES move is a count nothing reads', which asserted
+       `raiseCap` really raised `features.aiAssistant` by the owned quantity and
+       pinned the per-tier counts at [0, 0, 0, 1] behind a false Telegram flag.
+       Its point was that the add-on was not inert but UNREAD — worse, because
+       money changed hands and no gate noticed.
+       🔴 THE-253 REMOVED THE CELL RATHER THAN THE COMPLAINT. There is no count
+       to raise and no flag to be false; what the purchase moves is asserted
+       directly above, as the capability. */
+    expect('aiAssistant' in getPlanFeatures('max')).toBe(false);
+    for (const plan of PLANS) {
+      expect('aiAssistant' in getEffectiveFeatures(plan, { ...NO_ADDONS, aiAssistant: 3 })).toBe(false);
+    }
+    // 🔴 THE ADD-ON QUANTITY IS A DIFFERENT FIELD AND IS STILL LIVE. It is what
+    // the Dodo webhook writes and what lifts the capability; only the PLAN cell
+    // that shared its name is gone.
+    expect(NO_ADDONS).toHaveProperty('aiAssistant');
   });
 
-  it('an add-on now moves two feature flags as well as four capacities', () => {
+  it('an add-on now moves two feature flags as well as three capacities', () => {
     /* ⚠️ THE-224 ASSERTED THE OPPOSITE HERE — "an add-on raises a capacity and
        never a feature flag" — and called that the structural reason the sale
        could not be made real by a copy fix. It was correct, and it was the
@@ -157,7 +179,9 @@ describe('the assistant is available from Small Team up without any add-on', () 
        exactly two booleans and no others.
 
        The guard survives its inversion: still asserted over the WHOLE feature
-       object, so a SEVENTH moved cell cannot appear silently. */
+       object, so an unexpected moved cell cannot appear silently. It was six
+       cells and is now five — `aiAssistant` was deleted with the Telegram
+       assistant, so no capacity cell corresponds to this add-on any more. */
     for (const plan of PLANS) {
       const base = getPlanFeatures(plan);
       const loaded = getEffectiveFeatures(plan, {
@@ -166,10 +190,12 @@ describe('the assistant is available from Small Team up without any add-on', () 
       const cells = base as unknown as Record<string, unknown>;
       const after = loaded as unknown as Record<string, unknown>;
       const moved = Object.keys(cells).filter((k) => cells[k] !== after[k]);
-      // Only the cells the tier did not already carry show up as MOVED, so the
-      // expected set is per-plan: Small Team and Ministry already have both
-      // booleans on, and a lift that changes nothing is not a move.
-      const expected = ['aiAssistant', 'maxAdmins', 'maxChurches', 'maxContacts'];
+      // Only the cells the tier did not already carry show up as MOVED. When
+      // THE-224 wrote this, Small Team and Ministry already had both booleans
+      // on and a lift that changed nothing was not a move; now no tier does.
+      // No tier carries either boolean now, so both always move — the `if`s
+      // are kept so this reads the matrix rather than assuming it.
+      const expected = ['maxAdmins', 'maxChurches', 'maxContacts'];
       if (!base.aiChat) expected.push('aiChat');
       if (!base.aiKnowledge) expected.push('aiKnowledge');
       expect(moved.sort()).toEqual(expected.sort());
@@ -248,12 +274,42 @@ describe('nothing enforces a per-seat AI limit', () => {
     expect(route).not.toMatch(/FREE_MESSAGES\s*=[^;]*(plan|features|addon)/i);
   });
 
-  it('the `aiAssistant` wiring is left intact for a retired product, and stays hidden', () => {
-    // The comment at the flag says the wiring is deliberately kept so the
-    // Telegram assistant can come back. That is fine — what is not fine is
-    // selling against it. The flag stays false; THE-224 did not flip it.
+  it('no Telegram assistant remains — flag, section, count and pricing constant', () => {
+    /* WAS 'the `aiAssistant` wiring is left intact for a retired product, and
+       stays hidden': it asserted the literal
+       `export const AI_TELEGRAM_ASSISTANT_ENABLED = false;` was present in the
+       source, on the reasoning that keeping the wiring was fine so long as
+       nothing sold against it.
+       🔴 THE-253 DELETED IT ON FOUNDER DIRECTION. "Hidden" outlived its use:
+       the flag had been false since THE-224, every surface behind it was dead,
+       and the $200 price it guarded was ten times the live product's. Absence,
+       not falsity, is now the assertion — and it is checked against the FILES
+       rather than by importing what no longer exports. */
+    // The DECLARATIONS, not any mention: the file explains at each old site
+    // what was removed and why, and a test that banned the words outright would
+    // force those notes out — the one direction this codebase must not move.
     const features = srcOf('../plan-features.ts');
-    expect(features).toMatch(/export const AI_TELEGRAM_ASSISTANT_ENABLED = false;/);
-    expect(AI_TELEGRAM_ASSISTANT_ENABLED).toBe(false);
+    expect(features).not.toMatch(/export\s+const\s+AI_TELEGRAM_ASSISTANT_ENABLED/);
+    expect(features).not.toMatch(/export\s+const\s+AI_ASSISTANT_ADDON_PRICING/);
+    // The plan CELL, gone from the interface and from all four tiers.
+    for (const plan of PLANS) {
+      expect('aiAssistant' in getPlanFeatures(plan), `${plan} still has the count`).toBe(false);
+    }
+    // The settings section, the standalone page and the Telegram-only routes.
+    for (const rel of [
+      '../../components/settings/AiAssistantSection.tsx',
+      '../../app/ai-assistant/page.tsx',
+      '../../app/api/ai-assistant/route.ts',
+      '../../app/api/stripe/standalone-checkout/route.ts',
+    ]) {
+      expect(
+        existsSync(fileURLToPath(new URL(rel, import.meta.url))),
+        `${rel} still exists`,
+      ).toBe(false);
+    }
+    // And the retired Stripe prices it billed on — the declarations, for the
+    // same reason as above: billing.ts records what it dropped and why.
+    expect(srcOf('../../lib/billing.ts'))
+      .not.toMatch(/export\s+const\s+AI_ASSISTANT_(MONTHLY|SETUP)/);
   });
 });

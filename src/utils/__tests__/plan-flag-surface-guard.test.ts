@@ -133,7 +133,6 @@ const FLAG_SURFACES: Registry = {
   automatedBlog: { gates: ['app/api/blog/generate/route.ts', 'app/api/blog/auto-generate/route.ts'] },
   customDomain:  { gates: ['components/settings/DomainSection.tsx', 'app/api/domains/provision/route.ts'] },
   customBranding: { gates: ['components/AdminDashboard.tsx'] },
-  aiAssistant:   { gates: ['components/settings/AiAssistantSection.tsx'] },
 
   // ─── check-in: THE-213's defect 1, client AND server ──────────────────────
   checkInSystem: { gates: [

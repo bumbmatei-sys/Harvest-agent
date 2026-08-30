@@ -263,24 +263,6 @@ describe('checkout.session.completed', () => {
     );
   });
 
-  it('auto-generates AI assistant code when upgrading to ultra', async () => {
-    const session = { subscription: 'sub_ultra', customer: 'cus_001', amount_total: 34900 };
-    mockConstructEvent.mockReturnValue(makeEvent('checkout.session.completed', session));
-    mockSubsRetrieve.mockResolvedValue({
-      id: 'sub_ultra',
-      metadata: { tenantId: 'tenant1', plan: 'ultra', billing: 'monthly' },
-      current_period_end: 1800000000,
-    });
-    mockDocGet.mockResolvedValueOnce({ exists: false }) // not duplicate
-              .mockResolvedValueOnce({ exists: true, data: () => ({ stripeSubscriptionId: null, addOnAiAssistantCode: null }) });
-
-    const res = await POST(makeRequest());
-    expect(res.status).toBe(200);
-    expect(mockBatchUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ __coll: 'tenants', id: 'tenant1' }),
-      expect.objectContaining({ plan: 'ultra', addOnAiAssistantCode: 'CODE-1234' })
-    );
-  });
 
   it('builds a new tenant when meta.newTenant is set (no existing tenantId)', async () => {
     const session = { id: 'cs_new', subscription: 'sub_new', customer: 'cus_new', amount_total: 11900 };
@@ -500,255 +482,72 @@ describe('customer.subscription.deleted', () => {
     expect(mockDocUpdate).not.toHaveBeenCalled();
   });
 
-  it('revokes AI assistant bindings when add-on is cancelled', async () => {
-    const subscription = {
-      id: 'sub_addon',
-      metadata: { tenantId: 'tenant1', addOn: 'ai-assistant' },
-    };
-    mockConstructEvent.mockReturnValue(makeEvent('customer.subscription.deleted', subscription));
-    // Dedup → new event; tenant doc → this sub IS the tenant's recorded add-on.
-    mockDocGet.mockResolvedValueOnce({ exists: false })
-              .mockResolvedValueOnce({ exists: true, data: () => ({ addOnAiAssistant: 'sub_addon' }) });
-    // Simulate 2 existing bindings
-    const fakeBindingRef = { ref: { delete: vi.fn() } };
-    mockCollGet.mockResolvedValue({
-      docs: [fakeBindingRef, fakeBindingRef],
-      size: 2,
-      forEach: vi.fn((cb: (d: typeof fakeBindingRef) => void) => {
-        cb(fakeBindingRef);
-        cb(fakeBindingRef);
-      }),
-    });
 
-    const res = await POST(makeRequest());
-    expect(res.status).toBe(200);
-    expect(mockDocUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ addOnAiAssistant: null, addOnAiAssistantCode: null })
-    );
-  });
-
-  it('does not clear tenant add-on state when a DIFFERENT admin\'s add-on is cancelled', async () => {
-    const subscription = {
-      id: 'sub_addon_b',
-      metadata: { tenantId: 'tenant1', addOn: 'ai-assistant', userId: 'adminB' },
-    };
-    mockConstructEvent.mockReturnValue(makeEvent('customer.subscription.deleted', subscription));
-    mockDocGet.mockResolvedValueOnce({ exists: false }) // dedup
-              .mockResolvedValueOnce({ exists: true, data: () => ({ hasAIAssistant: true, aiAssistantSubscriptionItemId: 'sub_addon_b' }) }) // buyer
-              .mockResolvedValueOnce({ exists: true, data: () => ({ addOnAiAssistant: 'sub_addon_a' }) }); // tenant records another sub
-
-    const res = await POST(makeRequest());
-    expect(res.status).toBe(200);
-    // The buyer's own entitlement is revoked (incl. Telegram unlink)…
-    expect(mockDocUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        hasAIAssistant: false,
-        aiAssistantConnected: false,
-        telegramUsername: null,
-        telegramChatId: null,
-        aiAssistantSubscriptionItemId: null,
-      })
-    );
-    // …but the tenant's add-on state (another admin's subscription) survives.
-    expect(mockDocUpdate).not.toHaveBeenCalledWith(
-      expect.objectContaining({ addOnAiAssistant: null })
-    );
-  });
 });
 
 // ── AI Assistant entitlement lifecycle (plan-included vs purchased) ─────────
 
-describe('plan-included AI Assistant (ultra owner)', () => {
-  it('grants the owner a plan-included assistant when checkout upgrades the tenant to ultra', async () => {
-    const session = { subscription: 'sub_ultra', customer: 'cus_001', amount_total: 47900 };
-    mockConstructEvent.mockReturnValue(makeEvent('checkout.session.completed', session));
-    mockSubsRetrieve.mockResolvedValue({
-      id: 'sub_ultra',
-      metadata: { tenantId: 'tenant1', plan: 'ultra', billing: 'monthly' },
-    });
-    mockDocGet.mockResolvedValueOnce({ exists: false }) // dedup
-              .mockResolvedValueOnce({ exists: true, data: () => ({ stripeSubscriptionId: null, addOnAiAssistantCode: null, ownerId: 'owner1' }) }) // tenant
-              .mockResolvedValueOnce({ exists: true, data: () => ({}) }); // owner user doc
 
-    const res = await POST(makeRequest());
-    expect(res.status).toBe(200);
-    expect(mockDocSet).toHaveBeenCalledWith(
-      expect.objectContaining({ hasAIAssistant: true, aiAssistantSource: 'plan' }),
-      { merge: true },
-    );
-    expect(mockSubsCancel).not.toHaveBeenCalled();
-  });
+/* ─── The AI Assistant webhook tests were REMOVED with the assistant (THE-253) ──
+ *
+ * These ten pinned the Telegram assistant's provisioning, and every one of them
+ * asserted against code this ticket deleted:
+ *
+ *   · 'auto-generates AI assistant code when upgrading to ultra'
+ *   · 'revokes AI assistant bindings when add-on is cancelled'
+ *   · "does not clear tenant add-on state when a DIFFERENT admin's add-on is
+ *      cancelled"
+ *   · the whole 'plan-included AI Assistant (ultra owner)' describe — six tests
+ *     covering grant on checkout, grant on new signup, cancelling a purchased
+ *     sub on upgrade, grant via subscription.updated, revoke on leaving ultra,
+ *     leaving a PURCHASED assistant alone, and revoke on plan cancellation
+ *   · the whole 'per-admin AI Assistant add-on cancellation' describe — revoking
+ *     the buyer's entitlement and unlinking Telegram, and not revoking a
+ *     plan-included one when the deliberately-cancelled purchased sub deletes
+ *
+ * ⚠️ ALL OF THEM WERE ALREADY PARTLY VACUOUS, and that is worth recording: every
+ * grant path was gated on `plan === 'ultra'`, a tier folded into `max` long
+ * before this ticket, so the grant arm could not run in production — only in a
+ * test that hand-wrote `plan: 'ultra'` into the metadata.
+ *
+ * 🔴 WHAT REPLACES THEM IS NOT NOTHING. The two guards that must survive the
+ * deletion — a live-in-Stripe AI Assistant subscription's `updated` and
+ * `deleted` events must never drive a tenant's plan — are still pinned, by
+ * 'ignores add-on subscription UPDATES for tenant plan/state' below and by
+ * 'a retired AI Assistant cancellation does not downgrade the tenant', which is
+ * new. Deleting code does not cancel a subscription, so those two events can
+ * still arrive. */
 
-  it('grants the owner a plan-included assistant on a new ultra ministry signup', async () => {
-    const session = { id: 'cs_new', subscription: 'sub_new', customer: 'cus_new', amount_total: 47900 };
-    mockConstructEvent.mockReturnValue(makeEvent('checkout.session.completed', session));
-    mockSubsRetrieve.mockResolvedValue({
-      id: 'sub_new',
-      metadata: { newTenant: 'true', userId: 'u1', plan: 'ultra', billing: 'monthly', ministryName: 'Grace Church' },
-    });
-    mockDocGet.mockResolvedValue({ exists: false });
-    mockGetUser.mockResolvedValue({ uid: 'u1', email: 'pastor@grace.org' });
+describe('retired AI Assistant subscriptions cannot touch a tenant', () => {
+  /* 🔴 THE TWO GUARDS THE DELETION HAD TO KEEP. THE-253 removed every path that
+     creates an AI Assistant subscription, but code deletion does not cancel a
+     subscription: any that is still live in Stripe keeps emitting events, and
+     those events carry `tenantId` metadata. Without the two early breaks these
+     assert, a retired add-on's cancellation falls through to the tenant
+     downgrade path and resets a paying church's plan to 'plus'. */
 
-    const res = await POST(makeRequest());
-    expect(res.status).toBe(200);
-    expect(mockDocSet).toHaveBeenCalledWith(
-      expect.objectContaining({ hasAIAssistant: true, aiAssistantSource: 'plan' }),
-      { merge: true },
-    );
-  });
-
-  it('cancels a previously PURCHASED add-on when the owner upgrades to ultra (no double charge)', async () => {
-    const session = { subscription: 'sub_ultra', customer: 'cus_001', amount_total: 47900 };
-    mockConstructEvent.mockReturnValue(makeEvent('checkout.session.completed', session));
-    mockSubsRetrieve.mockResolvedValue({
-      id: 'sub_ultra',
-      metadata: { tenantId: 'tenant1', plan: 'ultra', billing: 'monthly' },
-    });
-    mockDocGet.mockResolvedValueOnce({ exists: false }) // dedup
-              .mockResolvedValueOnce({ exists: true, data: () => ({ stripeSubscriptionId: null, addOnAiAssistantCode: null, ownerId: 'owner1' }) }) // tenant
-              .mockResolvedValueOnce({ exists: true, data: () => ({ hasAIAssistant: true, aiAssistantSubscriptionItemId: 'sub_ai_purchased' }) }); // owner bought the add-on
-
-    const res = await POST(makeRequest());
-    expect(res.status).toBe(200);
-    // Entitlement flips to plan-included BEFORE the cancel (so the resulting
-    // deletion event won't revoke it), then the purchased sub is cancelled and
-    // its pointer cleared.
-    expect(mockDocSet).toHaveBeenCalledWith(
-      expect.objectContaining({ hasAIAssistant: true, aiAssistantSource: 'plan' }),
-      { merge: true },
-    );
-    expect(mockSubsCancel).toHaveBeenCalledWith('sub_ai_purchased');
-    expect(mockDocSet).toHaveBeenCalledWith(
-      expect.objectContaining({ aiAssistantSubscriptionItemId: null }),
-      { merge: true },
-    );
-  });
-
-  it('grants via customer.subscription.updated when the plan becomes ultra', async () => {
+  it('a retired AI Assistant cancellation does not downgrade the tenant', async () => {
     const subscription = {
-      id: 'sub_001',
-      status: 'active',
-      metadata: { tenantId: 'tenant1', plan: 'ultra' },
-      items: { data: [{ price: { id: 'price_ultra_m' } }] },
-    };
-    mockConstructEvent.mockReturnValue(makeEvent('customer.subscription.updated', subscription));
-    mockDocGet.mockResolvedValueOnce({ exists: false }) // dedup
-              .mockResolvedValueOnce({ exists: true, data: () => ({ stripeSubscriptionId: 'sub_001', ownerId: 'owner1' }) }) // tenant
-              .mockResolvedValueOnce({ exists: true, data: () => ({}) }); // owner user doc
-
-    const res = await POST(makeRequest());
-    expect(res.status).toBe(200);
-    expect(mockDocSet).toHaveBeenCalledWith(
-      expect.objectContaining({ hasAIAssistant: true, aiAssistantSource: 'plan' }),
-      { merge: true },
-    );
-  });
-
-  it('revokes the plan-included assistant when the plan leaves ultra', async () => {
-    const subscription = {
-      id: 'sub_001',
-      status: 'active',
-      metadata: { tenantId: 'tenant1', plan: 'pro' },
-      items: { data: [{ price: { id: 'price_pro_m' } }] },
-    };
-    mockConstructEvent.mockReturnValue(makeEvent('customer.subscription.updated', subscription));
-    mockDocGet.mockResolvedValueOnce({ exists: false }) // dedup
-              .mockResolvedValueOnce({ exists: true, data: () => ({ stripeSubscriptionId: 'sub_001', ownerId: 'owner1' }) }) // tenant
-              .mockResolvedValueOnce({ exists: true, data: () => ({ hasAIAssistant: true, aiAssistantSource: 'plan', aiAssistantConnected: true }) }); // owner (plan-included)
-
-    const res = await POST(makeRequest());
-    expect(res.status).toBe(200);
-    expect(mockDocUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        hasAIAssistant: false,
-        aiAssistantConnected: false,
-        telegramUsername: null,
-        telegramChatId: null,
-        aiAssistantSource: null,
-      })
-    );
-  });
-
-  it('leaves a PURCHASED assistant untouched when the plan leaves ultra', async () => {
-    const subscription = {
-      id: 'sub_001',
-      status: 'active',
-      metadata: { tenantId: 'tenant1', plan: 'pro' },
-      items: { data: [{ price: { id: 'price_pro_m' } }] },
-    };
-    mockConstructEvent.mockReturnValue(makeEvent('customer.subscription.updated', subscription));
-    mockDocGet.mockResolvedValueOnce({ exists: false }) // dedup
-              .mockResolvedValueOnce({ exists: true, data: () => ({ stripeSubscriptionId: 'sub_001', ownerId: 'owner1' }) }) // tenant
-              .mockResolvedValueOnce({ exists: true, data: () => ({ hasAIAssistant: true, aiAssistantSubscriptionItemId: 'sub_ai_1' }) }); // owner purchased separately
-
-    const res = await POST(makeRequest());
-    expect(res.status).toBe(200);
-    expect(mockDocUpdate).not.toHaveBeenCalledWith(
-      expect.objectContaining({ hasAIAssistant: false })
-    );
-  });
-
-  it('revokes the plan-included assistant when the plan subscription is cancelled', async () => {
-    const subscription = {
-      id: 'sub_001',
-      metadata: { tenantId: 'tenant1' },
-    };
-    mockConstructEvent.mockReturnValue(makeEvent('customer.subscription.deleted', subscription));
-    mockDocGet.mockResolvedValueOnce({ exists: false }) // dedup
-              .mockResolvedValueOnce({ exists: true, data: () => ({ stripeSubscriptionId: 'sub_001', ownerId: 'owner1' }) }) // tenant
-              .mockResolvedValueOnce({ exists: true, data: () => ({ hasAIAssistant: true, aiAssistantSource: 'plan' }) }); // owner (plan-included)
-
-    const res = await POST(makeRequest());
-    expect(res.status).toBe(200);
-    expect(mockBatchUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ __coll: 'tenants', id: 'tenant1' }),
-      expect.objectContaining({ plan: 'plus', status: 'cancelled' })
-    );
-    expect(mockDocUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ hasAIAssistant: false, aiAssistantConnected: false })
-    );
-  });
-});
-
-describe('per-admin AI Assistant add-on cancellation', () => {
-  it('revokes the buyer\'s entitlement and unlinks Telegram when their add-on is cancelled', async () => {
-    const subscription = {
-      id: 'sub_ai_1',
+      id: 'sub_ai_2',
       metadata: { tenantId: 'tenant1', addOn: 'ai-assistant', userId: 'u42' },
     };
     mockConstructEvent.mockReturnValue(makeEvent('customer.subscription.deleted', subscription));
-    mockDocGet.mockResolvedValueOnce({ exists: false }) // dedup
-              .mockResolvedValueOnce({ exists: true, data: () => ({ hasAIAssistant: true, aiAssistantConnected: true, aiAssistantSubscriptionItemId: 'sub_ai_1' }) }) // buyer
-              .mockResolvedValueOnce({ exists: true, data: () => ({ addOnAiAssistant: null }) }); // tenant (no recorded add-on)
+    mockDocGet.mockResolvedValueOnce({ exists: false }); // dedup
 
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);
-    expect(mockDocUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        hasAIAssistant: false,
-        aiAssistantConnected: false,
-        telegramUsername: null,
-        telegramChatId: null,
-        aiAssistantSubscriptionItemId: null,
-      })
-    );
-    // Never falls through to the tenant-downgrade path.
-    expect(mockDocUpdate).not.toHaveBeenCalledWith(
-      expect.objectContaining({ plan: 'plus' })
-    );
+    // No plan write, and above all no downgrade to 'plus'.
+    expect(mockDocUpdate).not.toHaveBeenCalled();
+    expect(mockBatchCommit).not.toHaveBeenCalled();
   });
 
-  it('does NOT revoke a plan-included entitlement when the (deliberately cancelled) purchased sub deletes', async () => {
-    // 1c: owner bought the add-on, then upgraded to ultra — we cancelled the
-    // purchased sub ourselves and converted the entitlement to plan-included.
-    // The deletion event that follows must not claw the entitlement back.
+  it('a retired STANDALONE assistant cancellation does not downgrade the tenant', async () => {
     const subscription = {
-      id: 'sub_ai_purchased',
-      metadata: { tenantId: 'tenant1', addOn: 'ai-assistant', userId: 'owner1' },
+      id: 'sub_ai_3',
+      metadata: { tenantId: 'tenant1', type: 'standalone_ai_assistant', email: 'x@y.z' },
     };
     mockConstructEvent.mockReturnValue(makeEvent('customer.subscription.deleted', subscription));
-    mockDocGet.mockResolvedValueOnce({ exists: false }) // dedup
-              .mockResolvedValueOnce({ exists: true, data: () => ({ hasAIAssistant: true, aiAssistantSource: 'plan', aiAssistantConnected: true }) }); // owner is plan-included now
+    mockDocGet.mockResolvedValueOnce({ exists: false }); // dedup
 
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);

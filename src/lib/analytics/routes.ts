@@ -165,7 +165,10 @@ const ROUTE_TABLE = [
   ...ADMIN_SECTION_ROUTES,
 
   /* ── the dedicated Next routes (THE-206 adds these) ─────────────────────── */
-  { pattern: '/ai-assistant', entry: 'next-page', surface: 'public', public: true },
+  // `/ai-assistant` was here — the Telegram assistant's standalone landing
+  // page. The route was deleted with the assistant (THE-253), so the row goes
+  // with it: a pattern for a page that does not exist instruments nothing and
+  // would fail the enumeration guard that reads src/app back off disk.
   { pattern: '/blog/[id]', entry: 'next-page', surface: 'public', public: true },
   { pattern: '/calendar', entry: 'next-page', surface: 'public', public: true },
   { pattern: '/campaign/[campaignId]', entry: 'next-page', surface: 'public', public: true },

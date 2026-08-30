@@ -353,15 +353,14 @@ describe('no feature flag or price moved', () => {
     expect(getPlanFeatures('free').communityGroups).toBe(false);
     expect(getPlanFeatures('max').communityGroups).toBe(true);
 
-    // 🔴 REPORTED, NOT FIXED — THE-224 owns this. `aiAssistant` is 0 on every
-    // tier, Ministry included, while the member-facing assistant is gated by
-    // `aiChat`. Pinned here so the count cannot quietly move under this ticket.
-    expect(getPlanFeatures('free').aiAssistant).toBe(0);
-    expect(getPlanFeatures('plus').aiAssistant).toBe(0);
-    expect(getPlanFeatures('pro').aiAssistant).toBe(0);
-    expect(getPlanFeatures('max').aiAssistant).toBe(1);
-    expect(getPlanFeatures('pro').aiChat).toBe(true);
-    expect(getPlanFeatures('max').aiChat).toBe(true);
+    // WAS: `aiAssistant` pinned at 0/0/0/1 with a "🔴 REPORTED, NOT FIXED —
+    // THE-224 owns this" note, plus `aiChat` true on pro and max. THE-253 both
+    // fixed and deleted it: the count is gone with the Telegram assistant, and
+    // the chat is on no tier at all. Pinned in the same spirit — these cannot
+    // quietly move under this ticket either.
+    expect('aiAssistant' in getPlanFeatures('max')).toBe(false);
+    expect(getPlanFeatures('pro').aiChat).toBe(false);
+    expect(getPlanFeatures('max').aiChat).toBe(false);
   });
 
   it('the nine prices are untouched', () => {

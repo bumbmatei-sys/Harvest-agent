@@ -110,18 +110,25 @@ describe('POST /api/stripe/checkout — 7-day trial scoping', () => {
     expect(args.line_items[0].price).toBe('price_pro_m');
   });
 
-  // The AI Assistant add-on is retired (AI_TELEGRAM_ASSISTANT_ENABLED === false):
-  // the add-on branch is disabled before any Stripe call, so no checkout session —
-  // trialed or otherwise — can be created. This locks the money path closed.
-  it('rejects the AI-assistant add-on checkout as no longer available (no session created)', async () => {
+  /* WAS a 410 from a flag-guarded branch (THE-224): the add-on branch existed
+     and refused before any Stripe call. THE-253 DELETED THE BRANCH, so an
+     `addOn: 'ai-assistant'` post is no longer a recognised shape at all — it
+     falls through to the plan path and is refused there for having no
+     plan/billing, with a 400.
+   *
+   * 🔴 THE PROPERTY THIS TEST EXISTS FOR IS UNCHANGED AND IS STILL ASSERTED:
+   * NO CHECKOUT SESSION IS CREATED. The money path is closed either way; what
+   * moved is which refusal closes it, and a deleted branch is the stronger of
+   * the two because there is no flag left to flip back. */
+  it('creates no session for a stale AI-assistant add-on post (the branch is gone)', async () => {
     mockRequireAuth.mockResolvedValue({ uid: 'u1', email: 'admin@t.org', tenantId: 'tenant1', isSuperAdmin: false });
     mockDocGet.mockResolvedValue({ data: () => ({ aiAssistantCustomerId: 'cus_stored' }) });
 
     const res = await POST(makeRequest({ addOn: 'ai-assistant', tenantId: 'tenant1' }));
-    expect(res.status).toBe(410);
+    expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toMatch(/no longer available/i);
-    // No Stripe checkout session is ever created for the retired add-on.
+    expect(body.error).toMatch(/plan, billing/i);
+    // 🔴 THE NON-NEGOTIABLE: no Stripe checkout session, ever, for this shape.
     expect(mockSessionsCreate).not.toHaveBeenCalled();
   });
 

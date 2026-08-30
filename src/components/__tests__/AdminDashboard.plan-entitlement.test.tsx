@@ -681,6 +681,12 @@ describe('no feature flag changed', () => {
   it('holds every cell this ticket names, on every tier', () => {
     // Named by cell, per tier, rather than by a digest: a digest says "something
     // moved", this says which tier lost what.
+    //
+    // ⚠️ `aiKnowledge` MOVED IN THE-253, and it is the only cell in this table
+    // that did: true → false on pro and max. The Knowledge Base is the RAG
+    // chat's other half and is sold with it as the AI Assistant add-on, so no
+    // PLAN grants it. A tenant holding the add-on still reaches the screen —
+    // `AdminDashboard` gates on `getEffectiveFeatures`, not on this matrix.
     const CELLS = [
       'newsletterAutomation', 'aiKnowledge', 'docs', 'communityGroups',
       'customForms', 'accountingTools', 'eventRegistration', 'checkInSystem', 'livestream',
@@ -705,13 +711,13 @@ describe('no feature flag changed', () => {
         customBranding: false, customDomain: false,
       },
       pro: {
-        newsletterAutomation: true, aiKnowledge: true, docs: true, communityGroups: false,
+        newsletterAutomation: true, aiKnowledge: false, docs: true, communityGroups: false,
         customForms: false, accountingTools: false, eventRegistration: false, checkInSystem: true,
         livestream: true, blog: true, crm: true, fundraising: true, smsAutomation: true,
         customBranding: false, customDomain: false,
       },
       max: {
-        newsletterAutomation: true, aiKnowledge: true, docs: true, communityGroups: true,
+        newsletterAutomation: true, aiKnowledge: false, docs: true, communityGroups: true,
         customForms: true, accountingTools: true, eventRegistration: true, checkInSystem: true,
         livestream: true, blog: true, crm: true, fundraising: true, smsAutomation: true,
         customBranding: true, customDomain: true,

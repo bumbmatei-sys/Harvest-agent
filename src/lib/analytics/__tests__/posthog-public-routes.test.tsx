@@ -156,7 +156,6 @@ const RESOLVED_PATH: Record<string, string> = {
   '/admin/[section]/[itemId]': '/admin/docs/kR91mVzQ7dLpAe30',
   // Every named section: the path IS the pattern, which is the point of THE-227.
   ...Object.fromEntries(ADMIN_SECTION_SLUGS.map((slug) => [`/admin/${slug}`, `/admin/${slug}`])),
-  '/ai-assistant': '/ai-assistant',
   '/blog/[id]': '/blog/7bQxs2LmNfA4dR8v',
   '/calendar': '/calendar',
   '/campaign/[campaignId]': '/campaign/Xk4pL9wQ2mNv6sT1',
@@ -170,7 +169,6 @@ const RESOLVED_PATH: Record<string, string> = {
 
 /** The page file that must render `<PublicRouteAnalytics>` for each Next route. */
 const PAGE_FILE: Record<string, string> = {
-  '/ai-assistant': 'src/app/ai-assistant/page.tsx',
   '/blog/[id]': 'src/app/blog/[id]/page.tsx',
   '/calendar': 'src/app/calendar/page.tsx',
   '/campaign/[campaignId]': 'src/app/campaign/[campaignId]/page.tsx',
@@ -301,11 +299,16 @@ describe('1 — every route in the stated list emits a pageview', () => {
     },
   );
 
-  it('the ten dedicated Next routes are the ones THE-36 reported as uninstrumented', () => {
-    // 🔴 The gap this PR closes, named. THE-36's own scope note listed nine of
-    // these; `/ai-assistant` is a tenth it did not mention at all.
+  it('the nine dedicated Next routes are the ones THE-36 reported as uninstrumented', () => {
+    // 🔴 The gap this PR closes, named. THE-36's own scope note listed exactly
+    // these nine.
+    //
+    // ⚠️ WAS TEN. `/ai-assistant` — the Telegram assistant's standalone landing
+    // page, and the one route THE-36 had not mentioned at all — was DELETED
+    // with the assistant in THE-253. The route is gone, so there is no page to
+    // instrument; the enumeration below is still read back off the filesystem,
+    // so a route that reappeared uninstrumented would still fail here.
     expect(NEXT_ROUTES.map((r) => r.pattern)).toEqual([
-      '/ai-assistant',
       '/blog/[id]',
       '/calendar',
       '/campaign/[campaignId]',

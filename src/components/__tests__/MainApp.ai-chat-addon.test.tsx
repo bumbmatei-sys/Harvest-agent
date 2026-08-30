@@ -181,16 +181,27 @@ describe('a tenant that owns the add-on gets the AI chat', () => {
   });
 });
 
-describe('the tiers that already included the chat are untouched', () => {
-  it.each([['pro'], ['max']])('%s keeps the Chat button owning nothing', async (plan) => {
-    /* 🔴 THE NO-REGRESSION HALF. A lift written as a REPLACEMENT rather than an
-       `||` would take the chat away from the two tiers that pay for it. */
-    await mount(plan, NO_ADDONS);
-    expect(hasChatTab()).toBe(true);
-  });
-
-  it('free still has no Chat button owning nothing', async () => {
-    await mount('free', NO_ADDONS);
-    expect(hasChatTab()).toBe(false);
-  });
+describe('NO tier draws the Chat button owning nothing', () => {
+  /* WAS 'the tiers that already included the chat are untouched', which mounted
+     pro and max with `NO_ADDONS` and expected the Chat button — the
+     no-regression half of THE-253's first change, guarding against a lift
+     written as a REPLACEMENT rather than an `||` taking the chat away from the
+     two tiers that paid for it.
+   *
+   * 🔴 NEITHER TIER PAYS FOR IT ANY MORE. The founder's direction — "NO PLAN HAS
+   * ANY AI RAG CHAT ... if we sell it as an add-on" — makes the button's absence
+   * on every tier the correct rendering, and its presence on pro or max the
+   * regression. Inverted rather than deleted, because "which tiers draw it
+   * owning nothing" is still exactly the right question to ask of this screen.
+   *
+   * ⚠️ THE `||` PROPERTY IS NOT TESTABLE FROM BEHAVIOUR ANY MORE and is not
+   * silently dropped: with no tier carrying `aiChat: true`, `base.aiChat || X`
+   * and a bare `X` render identically here. It is pinned at the source instead —
+   * see 'an add-on never removes what a plan grants' in
+   * the-253-ai-chat-addon.test.ts. */
+  it.each([['free'], ['plus'], ['pro'], ['max']])(
+    '%s has no Chat button owning nothing', async (plan) => {
+      await mount(plan, NO_ADDONS);
+      expect(hasChatTab()).toBe(false);
+    });
 });

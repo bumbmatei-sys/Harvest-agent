@@ -219,12 +219,21 @@ describe('the Gemini endpoint serves a tenant that owns the add-on', () => {
     expect(mimo).toHaveBeenCalled();
   });
 
-  it('still serves a tenant whose PLAN includes the chat and owns no add-on', async () => {
-    // The lift never lowers: Small Team keeps what its tier grants.
+  it('REFUSES Small Team owning no add-on — no plan includes the chat', async () => {
+    /* WAS 'still serves a tenant whose PLAN includes the chat and owns no
+       add-on', expecting 200 on the reasoning that the lift never lowers and
+       Small Team keeps what its tier grants.
+       🔴 SMALL TEAM'S TIER NO LONGER GRANTS IT. `aiChat` is false on all four
+       tiers, so the only difference between this tenant and the entitled one
+       above is `addons.aiAssistant` — which is the whole point of selling it. */
     mockRequireAuth.mockResolvedValue(user());
     tenantDoc.value = { plan: 'pro', addons: OWNS_NOTHING };
 
-    expect((await POST(chatRequest())).status).toBe(200);
+    const res = await POST(chatRequest());
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe('ai_chat_not_entitled');
+    // 🔴 AND IT COST NOTHING — refused before the provider call.
+    expect(mimo).not.toHaveBeenCalled();
   });
 
   it('meters the entitled tenant exactly as before — both limits still run', async () => {
