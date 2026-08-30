@@ -42,8 +42,17 @@ function owning(over: Partial<TenantAddons>): TenantAddons {
   return { ...NO_ADDONS, ...over };
 }
 
-/** The four NUMERIC cells add-ons may raise, by name. */
-const CAPPED_CELLS = ['maxContacts', 'maxAdmins', 'maxChurches', 'aiAssistant'] as const;
+/**
+ * The three NUMERIC cells add-ons may raise, by name.
+ *
+ * Was four: `aiAssistant` — the retired Telegram assistant's per-tier COUNT —
+ * was removed from `PlanFeatures` with the assistant itself (THE-253), so
+ * `getEffectiveFeatures` no longer raises it and there is no fourth cap. The
+ * add-on QUANTITY it was raised from (`TenantAddons.aiAssistant`) is very much
+ * still here: it is what lifts `LIFTED_CELLS` below, and `owning({ aiAssistant:
+ * n })` all through this file still means "holds n of the live add-on".
+ */
+const CAPPED_CELLS = ['maxContacts', 'maxAdmins', 'maxChurches'] as const;
 
 /**
  * The two BOOLEAN cells an add-on may switch on (THE-253), by name.
@@ -266,32 +275,23 @@ describe('admin seats and campuses add to their caps', () => {
 
 // ── Test 10 ──────────────────────────────────────────────────────────────────
 
-describe('an AI add-on raises the assistant count', () => {
-  it.each(PLAN_ORDER)('%s: one AI add-on adds one assistant to the tier count', (plan) => {
-    expect(getEffectiveFeatures(plan, owning({ aiAssistant: 1 })).aiAssistant).toBe(
-      getPlanFeatures(plan).aiAssistant + 1,
-    );
-  });
-
-  it('takes a tier that includes none from zero to one', () => {
-    // Individual and Small Team include no assistant; the add-on is the only way
-    // they get one.
-    const plansWithoutOne = PLAN_ORDER.filter((plan) => getPlanFeatures(plan).aiAssistant === 0);
-    expect(plansWithoutOne.length).toBeGreaterThan(0);
-    for (const plan of plansWithoutOne) {
-      expect(getEffectiveFeatures(plan, owning({ aiAssistant: 1 })).aiAssistant).toBe(1);
-    }
-  });
-
-  it('stacks on a tier that already includes one', () => {
-    const plansWithOne = PLAN_ORDER.filter((plan) => getPlanFeatures(plan).aiAssistant > 0);
-    expect(plansWithOne.length).toBeGreaterThan(0);
-    for (const plan of plansWithOne) {
-      const base = getPlanFeatures(plan).aiAssistant;
-      expect(getEffectiveFeatures(plan, owning({ aiAssistant: 2 })).aiAssistant).toBe(base + 2);
-    }
-  });
-});
+/* WAS 'an AI add-on raises the assistant count' — three tests asserting that
+   `owning({ aiAssistant: n })` raised `features.aiAssistant` by n, took a tier
+   including none from 0 to 1, and stacked on Ministry's included 1.
+ *
+ * 🔴 THE CELL THEY ASSERTED ON NO LONGER EXISTS. `PlanFeatures.aiAssistant` was
+ * the RETIRED TELEGRAM assistant's count and went with it (THE-253); nothing
+ * ever metered against it, which is what THE-224 found and what made buying the
+ * add-on grant nothing at all. There is no count to raise, so there is nothing
+ * here to re-point at a different cell — the tests are deleted, not rewritten.
+ *
+ * ⚠️ WHAT THE ADD-ON NOW BUYS IS ASSERTED INSTEAD, and more strictly, by
+ * `LIFTED_CELLS` above and by the-253-ai-chat-addon.test.ts: the same purchase
+ * that used to raise an unread number now switches `aiChat` and `aiKnowledge`
+ * on, which is the only path to either on any tier. The stacking test's
+ * premise — a tier that already includes one — is gone too: no tier includes
+ * the chat, so `plansWithOne` would now be empty and its
+ * `toBeGreaterThan(0)` guard would fail, correctly. */
 
 // ── Test 11 — 🔴 THE INVARIANT ───────────────────────────────────────────────
 

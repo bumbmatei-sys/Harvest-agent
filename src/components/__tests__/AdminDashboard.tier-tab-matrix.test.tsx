@@ -452,11 +452,20 @@ describe('19 — no tab hidden from the nav renders fully when reached by URL', 
       }
     }
     // A guard on the guard: if the nav gate ever stopped hiding anything, the
-    // loop above would pass by never running. Fifteen cells, and the breakdown
-    // is the ticket's own arithmetic — Individual hides eight of the nine plus
-    // Branding (9), Small Team hides Events, Accounting, Forms, Community plus
-    // Branding (5), free hides Branding alone (1), Ministry hides nothing.
-    expect(checked, 'the count of hidden cells moved — check the matrix above').toBe(15);
+    // loop above would pass by never running. Seventeen cells, and the
+    // breakdown is the ticket's own arithmetic PLUS THE-253's two:
+    //   Individual  eight of the nine plus Branding                        (9)
+    //   Small Team  Events, Accounting, Forms, Community plus Branding     (5)
+    //   free        Branding alone                                         (1)
+    //   Ministry    AI Knowledge — it hid nothing before                   (1)
+    //   Small Team  AI Knowledge, which it used to have                    (1)
+    //
+    // ⚠️ MINISTRY NOW HIDES SOMETHING, which it never did before: THE-253 took
+    // `aiKnowledge` off every tier, so even the top plan reaches the AI
+    // Knowledge screen only by holding the AI Assistant add-on. That the screen
+    // answers with an upgrade WALL rather than rendering is the property this
+    // test is for, and it now covers the top tier too.
+    expect(checked, 'the count of hidden cells moved — check the matrix above').toBe(17);
   });
 
   it('and a third layer bounces the URL too, so the wall is not the only refusal', async () => {

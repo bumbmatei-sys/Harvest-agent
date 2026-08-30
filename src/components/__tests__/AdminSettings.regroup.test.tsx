@@ -810,7 +810,12 @@ describe('THE-183 — admin Settings', () => {
       // actually guards — that no integration PATH moved — is asserted on the
       // file's contents just below instead, which is the stronger check anyway.
       'src/components/settings/GivingStatementsSection.tsx',
-      'src/components/settings/AiAssistantSection.tsx',
+      // `AiAssistantSection.tsx` was in this list. It was DELETED with the
+      // Telegram assistant (THE-253), and a path that does not exist cannot be
+      // checked for modification — `git diff` on it reports the deletion
+      // itself, which is not what this guard asks about. The guard's real
+      // subject, that no integration PATH moved, is unaffected: the section
+      // owned /api/ai-assistant/*, which is gone too.
       'src/components/settings/useStripeReturn.ts',
       'src/components/settings/useTenantId.ts',
     ];
@@ -875,7 +880,14 @@ describe('THE-183 — admin Settings', () => {
     const src = readFileSync(SETTINGS_SRC, 'utf8');
     expect(src, 'the billing portal endpoint changed').toContain("authFetch('/api/stripe/portal'");
     expect(src, 'the Stripe Connect return no longer opens Payments').toContain("setForceOpen('payments')");
-    expect(src, 'the AI Assistant return no longer opens its row').toContain("setForceOpen('ai-assistant')");
+    // ⚠️ THE AI ASSISTANT RETURN IS GONE, NOT BROKEN (THE-253). This asserted
+    // `setForceOpen('ai-assistant')` — the `?stripe=success&addon=ai-assistant`
+    // handler that opened the assistant's settings row after purchase. There is
+    // no such purchase, no such row and no such section any more, so the
+    // assertion inverts: force-opening a row that does not exist would leave
+    // the accordion pointing at nothing.
+    expect(src, 'a removed AI Assistant row is still force-opened')
+      .not.toContain("setForceOpen('ai-assistant')");
     expect(src, 'the navigation customiser is no longer invoked').toMatch(/onClick=\{onCustomizeNav\}/);
 
     // (c) Every row still renders the component that owns its path, and the row
@@ -909,12 +921,17 @@ describe('THE-183 — admin Settings', () => {
     expect(rowOf('sms')).toBe('SmsSection');
     expect(rowOf('integrations')).toBe('IntegrationsSection');
     expect(rowOf('giving-statements')).toBe('GivingStatementsSection');
-    expect(rowOf('ai-assistant')).toBe('AiAssistantSection');
+    // The 'ai-assistant' row is gone with the Telegram assistant (THE-253), so
+    // `rowOf` finds nothing — asserted rather than dropped, because a row id
+    // that resolves to no component is what a half-finished removal looks like.
+    expect(rowOf('ai-assistant')).toBeNull();
 
     const ids = Array.from(src.matchAll(/^\s+id: '([\w-]+)',$/gm)).map((m) => m[1]);
+    // ⚠️ 'ai-assistant' is gone (THE-253); every other row keeps its position,
+    // which is what this guard is really asking.
     expect(ids, 'a row was added, removed or reordered').toEqual([
       'appearance', 'payments', 'onboarding', 'giving-statements',
-      'sms', 'ai-assistant', 'integrations', 'cancel-plan',
+      'sms', 'integrations', 'cancel-plan',
     ]);
 
     // (d) One accordion, so one open row at a time and one forceOpen target —

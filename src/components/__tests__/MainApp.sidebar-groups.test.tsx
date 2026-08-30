@@ -328,9 +328,16 @@ describe("a free member's sidebar", () => {
 
 // ─── 4. 🔴 the three priced tiers are unchanged ──────────────────────────────
 describe("the three priced tiers' member sidebars are unchanged", () => {
-  // The shape each paying tier has always had, pinned per tier. Chat is
-  // branded "Ask {first word of the ministry name}" on desktop, so the test
-  // tenant "Grace Chapel" reads "Ask Grace".
+  // The shape each paying tier has, pinned per tier. Chat is branded
+  // "Ask {first word of the ministry name}" on desktop, so the test tenant
+  // "Grace Chapel" would read "Ask Grace".
+  //
+  // ⚠️ 'Ask Grace' WAS ON pro AND max AND IS ON NEITHER NOW. THE-253 took
+  // `aiChat` off every tier — it is the AI Assistant add-on — and these mounts
+  // hold no add-ons, so no priced tier draws the entry. It comes back for any
+  // tier that holds one: `MainApp` gates on `getEffectiveFeatures`, which is
+  // covered by MainApp.ai-chat-addon.test.tsx. Nothing else in these three
+  // sidebars moved, which is what the rest of this block still proves.
   const EXPECTED: Record<(typeof PRICED)[number], { label: string; items: string[] }[]> = {
     // Individual — feed, blog, courses, bible; prayer; give. No AI chat, no map,
     // no Community Groups.
@@ -339,17 +346,17 @@ describe("the three priced tiers' member sidebars are unchanged", () => {
       { label: 'COMMUNITY', items: ['Prayer'] },
       { label: 'SUPPORT US', items: ['Give'] },
     ],
-    // Small Team — adds AI chat and the map.
+    // Small Team — adds the map. (No AI chat: that is the add-on.)
     pro: [
       { label: 'FEED', items: ['Home', 'Blog', 'Courses', 'Bible'] },
       { label: 'COMMUNITY', items: ['Prayer', 'Map'] },
-      { label: 'SUPPORT US', items: ['Give', 'Ask Grace'] },
+      { label: 'SUPPORT US', items: ['Give'] },
     ],
     // Ministry — adds Community Groups (Messages).
     max: [
       { label: 'FEED', items: ['Home', 'Blog', 'Courses', 'Bible'] },
       { label: 'COMMUNITY', items: ['Messages', 'Prayer', 'Map'] },
-      { label: 'SUPPORT US', items: ['Give', 'Ask Grace'] },
+      { label: 'SUPPORT US', items: ['Give'] },
     ],
   };
 
@@ -373,7 +380,7 @@ describe("the three priced tiers' member sidebars are unchanged", () => {
     expect(sidebarGroups()).toEqual([
       { label: 'FEED', items: ['Home', 'Blog', 'Bible'] },
       { label: 'COMMUNITY', items: ['Prayer', 'Map'] },
-      { label: 'SUPPORT US', items: ['Give', 'Ask Grace'] },
+      { label: 'SUPPORT US', items: ['Give'] },
     ]);
   });
 });

@@ -142,7 +142,23 @@ interface Baseline {
   before: { overlay: string; container: string; panel: string; track: string; card: string };
   /** The same chain today, recorded so a silent rewrite of it is visible. */
   after: { overlay: string; container: string; panel: string; track: string; card: string };
-  /** The sub-640px class layer of the whole section, per current plan. */
+  /**
+   * The sub-640px class layer of the whole section, per current plan.
+   *
+   * ⚠️ RE-RECORDED FROM THE CARD TRACK DOWN BY THE-253, and only from there.
+   * Each priced card lost two `<li>` rows — 'AI Chat' and 'AI Knowledge Base' —
+   * eight tree rows per plan (186→178, 186→178, 185→177). `cardLine` returns
+   * null for a cell the tier does not carry, and THE-253 took both off every
+   * tier: the chat is the AI Assistant add-on, so an UPGRADE card must not
+   * promise it. No class changed; two items stopped rendering.
+   *
+   * 🔴 THE CHROME ABOVE THE TRACK WAS DELIBERATELY NOT RE-RECORDED. This array
+   * is the layer as it stood BEFORE the three-segment billing toggle, and
+   * `TOGGLE_ROWS_ADDED` below is the 6-row delta that proves the toggle is the
+   * only thing that grew. Re-recording the whole layer from today's component
+   * would fold the toggle into the baseline and quietly make that delta zero —
+   * so only the slice `fromTrack` compares was replaced.
+   */
   mobileLayer: Record<string, string[]>;
   /** Element counts before/after, per current plan — the enumeration's arithmetic. */
   mobileElements: Record<string, { before: number; after: number }>;

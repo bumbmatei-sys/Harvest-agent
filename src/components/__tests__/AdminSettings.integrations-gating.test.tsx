@@ -380,14 +380,22 @@ describe('THE-193 — Integrations gating', () => {
   it('the accordion grouping and Danger Zone separation are unchanged', () => {
     const src = read(SETTINGS_SRC);
     const ids = Array.from(src.matchAll(/^\s+id: '([\w-]+)',$/gm)).map((m) => m[1]);
+    // ⚠️ 'ai-assistant' WAS BETWEEN 'sms' AND 'integrations'. That row rendered
+    // AiAssistantSection behind AI_TELEGRAM_ASSISTANT_ENABLED, and both went
+    // with the Telegram assistant in THE-253. The ORDER of everything else is
+    // unchanged, which is what this guard is for: a removal must not be cover
+    // for a reorder.
     expect(ids, 'a row was added, removed or reordered').toEqual([
       'appearance', 'payments', 'onboarding', 'giving-statements',
-      'sms', 'ai-assistant', 'integrations', 'cancel-plan',
+      'sms', 'integrations', 'cancel-plan',
     ]);
 
     const groups = Array.from(src.matchAll(/^\s+group: '([^']+)',$/gm)).map((m) => m[1]);
+    // Connected Services is TWO rows now, not three — the AI Assistant row
+    // went with the Telegram assistant (THE-253). No region label changed and
+    // none was emptied: SMS and Integrations still carry it.
     expect(groups, 'a region label changed').toEqual([
-      'Appearance', 'Payments', 'Church Setup', 'Church Setup', 'Connected Services',
+      'Appearance', 'Payments', 'Church Setup', 'Church Setup',
       'Connected Services', 'Connected Services', 'Danger Zone',
     ]);
     // Integrations is still the last Connected Services row, and Cancel is

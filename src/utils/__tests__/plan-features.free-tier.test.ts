@@ -15,7 +15,6 @@ import {
   PLAN_BLURBS,
   BILLING_TERMS,
   ADVERTISED_DISCOUNT_PCT,
-  AI_ASSISTANT_ADDON_PRICING,
   CONTACTS_PER_PACK,
   TOP_PLAN,
   FEATURE_MIN_PLAN,
@@ -202,9 +201,10 @@ describe('THE-200 — what a free tenant gets', () => {
 
     // Numeric cells, by name too. 0 = none; `hasFeature` reads 0 as false.
     expect(free.maxChurches).toBe(0);
-    expect(free.aiAssistant).toBe(0);
     expect(hasFeature('free', 'maxChurches')).toBe(false);
-    expect(hasFeature('free', 'aiAssistant')).toBe(false);
+    // `aiAssistant` was here too, pinned at 0 with `hasFeature` false. The cell
+    // is gone with the Telegram assistant (THE-253), so there is nothing left
+    // to read as 0 — `'aiAssistant' in free` is asserted false further down.
 
     // maxAdmins — the decision, pinned. ONE: one evangelist is one admin, and a
     // tier with no card is otherwise a free shared workspace for any number of
@@ -268,19 +268,27 @@ describe('THE-200 — FEATURE_MIN_PLAN still names the cheapest tier that HAS ea
       // cheapest tier that pays — the same answer `blog` gives, and for the
       // same reason. The feed was ungated entirely before this cell existed.
       newsFeed: 'plus',
-      aiChat: 'pro',
-      aiKnowledge: 'pro',
+      // 🔴 null, not 'pro' — MOVED by THE-253. `getMinPlanForFeatureCell` walks
+      // PLAN_ORDER for the first tier carrying the cell and answers null when
+      // none does. No plan includes the RAG chat or its knowledge base; they
+      // are the AI Assistant add-on. A tier name here would put "Available on
+      // Small Team and above" onto upgrade copy for a thing upgrading does not
+      // buy — which is exactly what this table exists to prevent.
+      aiChat: null,
+      aiKnowledge: null,
       map: 'pro',
       maxChurches: 'plus',      // free is 0 → falsy → unchanged
       maxContacts: 'free',      // ⬅️ MOVED from 'plus'
       maxCourses: 'free',       // ⬅️ MOVED from 'plus'
       maxAdmins: 'free',        // ⬅️ MOVED from 'plus'
+      // 🔴 `aiChat`/`aiKnowledge` are `null`, not 'pro' — no tier grants either
+      // as of THE-253, so there is no minimum plan to name. `aiAssistant` is
+      // absent entirely: the cell was deleted with the Telegram assistant.
       customDomain: 'max',
       customBranding: 'max',
       newsletterAutomation: 'pro',
       automatedNewsletter: 'max',
       smsAutomation: 'plus',    // free is false → unchanged, still Individual
-      aiAssistant: 'max',
       fundraising: 'plus',      // 🔴 UNCHANGED — free has no donate page
       eventRegistration: 'max',
       docs: 'pro',
@@ -339,7 +347,7 @@ describe('THE-200 — the three priced tiers are untouched', () => {
       maxChurches: 1, maxContacts: 150, maxCourses: 2, maxAdmins: 2,
       customDomain: false, customBranding: false,
       newsletterAutomation: false, automatedNewsletter: false,
-      smsAutomation: true, aiAssistant: 0, fundraising: true,
+      smsAutomation: true, fundraising: true,
       eventRegistration: false, docs: false, crm: true,
       accountingTools: false, taxReceipt: false, communityGroups: false,
       customForms: false, checkInSystem: false, livestream: false,
@@ -347,11 +355,11 @@ describe('THE-200 — the three priced tiers are untouched', () => {
       pledgeCampaigns: false, textToGive: true, pwaApp: true,
     },
     pro: {
-      newsFeed: true, blog: true, aiChat: true, aiKnowledge: true, map: true,
+      newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: true,
       maxChurches: 1, maxContacts: 500, maxCourses: 5, maxAdmins: 5,
       customDomain: false, customBranding: false,
       newsletterAutomation: true, automatedNewsletter: false,
-      smsAutomation: true, aiAssistant: 0, fundraising: true,
+      smsAutomation: true, fundraising: true,
       eventRegistration: false, docs: true, crm: true,
       accountingTools: false, taxReceipt: false, communityGroups: false,
       customForms: false, checkInSystem: true, livestream: true,
@@ -359,11 +367,11 @@ describe('THE-200 — the three priced tiers are untouched', () => {
       pledgeCampaigns: false, textToGive: true, pwaApp: true,
     },
     max: {
-      newsFeed: true, blog: true, aiChat: true, aiKnowledge: true, map: true,
+      newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: true,
       maxChurches: 1, maxContacts: 2_000, maxCourses: 15, maxAdmins: 15,
       customDomain: true, customBranding: true,
       newsletterAutomation: true, automatedNewsletter: true,
-      smsAutomation: true, aiAssistant: 1, fundraising: true,
+      smsAutomation: true, fundraising: true,
       eventRegistration: true, docs: true, crm: true,
       accountingTools: true, taxReceipt: true, communityGroups: true,
       customForms: true, checkInSystem: true, livestream: true,
@@ -413,8 +421,11 @@ describe('THE-200 — no price, term or add-on price changed', () => {
     expect(ADVERTISED_DISCOUNT_PCT).toEqual({ quarterly: 10, yearly: 20 });
   });
 
-  it('the add-on prices are unchanged', () => {
-    expect(AI_ASSISTANT_ADDON_PRICING.monthlyUsd).toBe(200);
+  it('the add-on pack size is unchanged', () => {
+    // WAS 'the add-on prices are unchanged', pinning
+    // `AI_ASSISTANT_ADDON_PRICING.monthlyUsd === 200` alongside the pack size.
+    // That constant is deleted (THE-253) and its figure was wrong anyway — $200
+    // against a live $20 product. `CONTACTS_PER_PACK` is not a price and stays.
     expect(CONTACTS_PER_PACK).toBe(500);
   });
 });
@@ -435,17 +446,32 @@ describe('THE-200 — add-ons layered on a free tenant (reported, not guarded)',
       campuses: 1,
     });
 
-    // Capacity moves — the four cells getEffectiveFeatures touches, and only
-    // those. Note this can lift a free tenant ABOVE Individual's 150 contacts;
-    // that is the existing add-on model, not something this PR introduces.
+    // Capacity moves — the three cap cells getEffectiveFeatures raises, and
+    // only those. Note this can lift a free tenant ABOVE Individual's 150
+    // contacts; that is the existing add-on model, not something this
+    // introduced. (Was four: the `aiAssistant` count went with the Telegram
+    // assistant in THE-253.)
     expect(withAddons.maxContacts).toBe(500 + CONTACTS_PER_PACK);
     expect(withAddons.maxAdmins).toBe(1 + 2);
     expect(withAddons.maxChurches).toBe(0 + 1);
-    expect(withAddons.aiAssistant).toBe(0 + 1);
 
-    // 🔴 NO FEATURE FLAG MOVES. An add-on buys capacity, never entitlement — so
-    // a free tenant holding add-ons still has no fundraising and no donate
-    // page, which is the one that would be a money surface if it were wrong.
+    // 🔴 ONE FEATURE FLAG NOW MOVES, AND EXACTLY ONE — INVERTED BY THE-253.
+    // This block used to read "NO FEATURE FLAG MOVES. An add-on buys capacity,
+    // never entitlement." That rule was true and it was the defect: the AI
+    // Assistant add-on is a live product that granted nothing. It now lifts
+    // `aiChat` and `aiKnowledge`, on every tier including this one.
+    expect(withAddons.aiChat).toBe(true);
+    expect(withAddons.aiKnowledge).toBe(true);
+
+    // ⚠️ AND THAT IS NOT A FREE AI CHAT. `PLAN_LIMITS.free.queryTokensPerMonth`
+    // is 0, so the budget gate refuses the first question. The scenario is
+    // hypothetical anyway — free has no Dodo subscription to attach an add-on
+    // to (see the note above this test) — and it is pinned in
+    // `the-253-ai-chat-addon.test.ts` rather than left to be discovered.
+
+    // 🔴 EVERY OTHER FLAG STILL HOLDS. A free tenant holding add-ons has no
+    // fundraising and no donate page, which is the one that would be a money
+    // surface if it were wrong.
     expect(withAddons.fundraising).toBe(false);
     expect(withAddons.blog).toBe(false);
     expect(withAddons.livestream).toBe(false);

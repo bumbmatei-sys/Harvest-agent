@@ -172,7 +172,11 @@ describe('effective caps include owned add-ons', () => {
 
     expect(features?.maxAdmins).toBe(tier.maxAdmins + 2);
     expect(features?.maxContacts).toBe(tier.maxContacts + 3 * CONTACTS_PER_PACK);
-    expect(features?.aiAssistant).toBe(tier.aiAssistant + 1);
+    // The AI add-on no longer raises a COUNT — `PlanFeatures.aiAssistant` went
+    // with the Telegram assistant (THE-253). The same owned quantity now lifts
+    // the two capability cells instead, which is what the church actually buys.
+    expect(features?.aiChat).toBe(true);
+    expect(features?.aiKnowledge).toBe(true);
     // 🔴 The Campus add-on is the ONLY path past `maxChurches: 1`, by design.
     expect(tier.maxChurches).toBe(1);
     expect(features?.maxChurches).toBe(2);
@@ -180,11 +184,19 @@ describe('effective caps include owned add-ons', () => {
     // number — never folded into `maxContacts` as a sentinel.
     expect(features?.unlimitedContacts).toBe(true);
 
-    // Everything else is the tier's, untouched: an add-on buys capacity, never a
-    // feature flag. Compared field-by-field against the tier rather than
-    // spot-checked, so a new cell cannot quietly start moving.
+    // Everything else is the tier's, untouched. Compared field-by-field against
+    // the tier rather than spot-checked, so a new cell cannot quietly start
+    // moving.
+    //
+    // ⚠️ THE EXEMPT LIST CHANGED SHAPE IN THE-253, not just membership. It was
+    // "an add-on buys capacity, never a feature flag", so all four exemptions
+    // were caps. `aiAssistant` (the Telegram count) is gone, and `aiChat` and
+    // `aiKnowledge` join as the first FLAGS an add-on may move — which is the
+    // whole of what the AI Assistant add-on now buys. Everything outside these
+    // five must still be the tier's, exactly.
+    const MOVES = ['maxAdmins', 'maxContacts', 'maxChurches', 'aiChat', 'aiKnowledge'];
     for (const key of Object.keys(tier) as (keyof typeof tier)[]) {
-      if (['maxAdmins', 'maxContacts', 'aiAssistant', 'maxChurches'].includes(key)) continue;
+      if (MOVES.includes(key)) continue;
       expect(features?.[key], `${key} moved`).toEqual(tier[key]);
     }
   });

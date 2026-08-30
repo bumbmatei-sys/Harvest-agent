@@ -77,6 +77,23 @@ describe('THE-205 moved no cell on any tier a church pays for', () => {
    *
    * Written out rather than read back from `getPlanFeatures`, which would
    * compare the subject with itself.
+   *
+   * ═══════════════════════════════════════════════════════════════════════
+   * ⚠️ AMENDED BY THE-253, AND ONLY ON THE THREE CELLS IT MOVED.
+   *
+   * What this block proved: THE-205 (free loses the news feed) moved NO cell on
+   * any tier a church pays for. That is still what it proves — the snapshot is
+   * the whole row, so any cell drifting for any reason fails here.
+   *
+   * THE-253 moved exactly three, and each is transcribed rather than relaxed:
+   *   · `aiChat`      true → false on pro and max
+   *   · `aiKnowledge` true → false on pro and max
+   *   · `aiAssistant` REMOVED — the retired Telegram assistant's count
+   *
+   * 🔴 THE KEY-SET TEST BELOW IS WHY THE THIRD IS A DELETION, NOT A ZERO.
+   * Writing `aiAssistant: 0` here would keep the snapshot compiling and quietly
+   * stop asserting that the cell is gone. Removing the key makes
+   * `Object.keys(...)` fail if it ever comes back.
    */
   const BEFORE: Record<PricedPlan, PlanFeatures> = {
     plus: {
@@ -84,7 +101,7 @@ describe('THE-205 moved no cell on any tier a church pays for', () => {
       maxChurches: 1, maxContacts: 150, maxCourses: 2, maxAdmins: 2,
       customDomain: false, customBranding: false,
       newsletterAutomation: false, automatedNewsletter: false,
-      smsAutomation: true, aiAssistant: 0, fundraising: true,
+      smsAutomation: true, fundraising: true,
       eventRegistration: false, docs: false, crm: true,
       accountingTools: false, taxReceipt: false, communityGroups: false,
       customForms: false, checkInSystem: false, livestream: false,
@@ -92,11 +109,11 @@ describe('THE-205 moved no cell on any tier a church pays for', () => {
       pledgeCampaigns: false, textToGive: true, pwaApp: true,
     },
     pro: {
-      newsFeed: true, blog: true, aiChat: true, aiKnowledge: true, map: true,
+      newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: true,
       maxChurches: 1, maxContacts: 500, maxCourses: 5, maxAdmins: 5,
       customDomain: false, customBranding: false,
       newsletterAutomation: true, automatedNewsletter: false,
-      smsAutomation: true, aiAssistant: 0, fundraising: true,
+      smsAutomation: true, fundraising: true,
       eventRegistration: false, docs: true, crm: true,
       accountingTools: false, taxReceipt: false, communityGroups: false,
       customForms: false, checkInSystem: true, livestream: true,
@@ -104,11 +121,11 @@ describe('THE-205 moved no cell on any tier a church pays for', () => {
       pledgeCampaigns: false, textToGive: true, pwaApp: true,
     },
     max: {
-      newsFeed: true, blog: true, aiChat: true, aiKnowledge: true, map: true,
+      newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: true,
       maxChurches: 1, maxContacts: 2_000, maxCourses: 15, maxAdmins: 15,
       customDomain: true, customBranding: true,
       newsletterAutomation: true, automatedNewsletter: true,
-      smsAutomation: true, aiAssistant: 1, fundraising: true,
+      smsAutomation: true, fundraising: true,
       eventRegistration: true, docs: true, crm: true,
       accountingTools: true, taxReceipt: true, communityGroups: true,
       customForms: true, checkInSystem: true, livestream: true,

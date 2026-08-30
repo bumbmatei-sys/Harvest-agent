@@ -19,9 +19,10 @@ import {
   PLAN_ORDER,
   PLAN_PRICING,
   getEffectiveFeatures,
+  getMinPlanForFeatureCell,
   getPlanFeatures,
 } from '../plan-features';
-import { DODO_ADDON_MEANINGS, DODO_LIVE_ADDONS } from '../../lib/dodo/catalogue';
+import { DODO_ADDON_MEANINGS, DODO_LIVE_ADDONS, DODO_LIVE_CATALOGUE } from '../../lib/dodo/catalogue';
 import { PLAN_LIMITS } from '../../lib/planLimits';
 import type { TenantAddons } from '../../types/tenant.types';
 import type { TenantPlan } from '../../types/tenant.types';
@@ -120,13 +121,90 @@ describe('a tenant WITHOUT the add-on does not have the AI chat', () => {
     }
   });
 
-  it('no PLAN cell moved — the tiers are exactly where THE-224 pinned them', () => {
-    /* 🔴 THIS TICKET IS ADDITIVE. `getPlanFeatures` is the TIER question and
-       still answers it; the site's plan-comparison surfaces read it and stay
-       true. `aiChat` false/false/true/true, `aiKnowledge` likewise. */
-    expect(PLANS.map((p) => getPlanFeatures(p).aiChat)).toEqual([false, false, true, true]);
-    expect(PLANS.map((p) => getPlanFeatures(p).aiKnowledge)).toEqual([false, false, true, true]);
+  it('🔴 aiChat is false on EVERY tier at base — free, Individual, Small Team, Ministry', () => {
+    /* WAS 'no PLAN cell moved — the tiers are exactly where THE-224 pinned
+       them', asserting false/false/true/true for both cells on the reasoning
+       that THE-253's first half was ADDITIVE: `getPlanFeatures` answered the
+       TIER question, the site's plan-comparison surfaces read it, and they
+       stayed true.
+     *
+     * 🔴 THE SECOND HALF IS NOT ADDITIVE, AND THIS IS ITS CENTRAL ASSERTION.
+     * "NO PLAN HAS ANY AI RAG CHAT. Of course there should be no AI RAG chat in
+     * any plan if we sell it as an add-on." Two tiers including what is sold
+     * separately is the false claim; both cells are false everywhere now, and
+     * the site surfaces that read them were corrected in the same batch.
+     *
+     * Every tier is named rather than mapped blind, so adding a fifth tier that
+     * grants the chat fails here rather than passing an array comparison. */
+    expect(getPlanFeatures('free').aiChat, 'free').toBe(false);
+    expect(getPlanFeatures('plus').aiChat, 'Individual').toBe(false);
+    expect(getPlanFeatures('pro').aiChat, 'Small Team').toBe(false);
+    expect(getPlanFeatures('max').aiChat, 'Ministry').toBe(false);
+    expect(PLANS.map((p) => getPlanFeatures(p).aiChat)).toEqual([false, false, false, false]);
+
+    // `aiKnowledge` moves with it, always — see the note at the lift.
+    expect(getPlanFeatures('free').aiKnowledge, 'free').toBe(false);
+    expect(getPlanFeatures('plus').aiKnowledge, 'Individual').toBe(false);
+    expect(getPlanFeatures('pro').aiKnowledge, 'Small Team').toBe(false);
+    expect(getPlanFeatures('max').aiKnowledge, 'Ministry').toBe(false);
+
+    // 🔴 AND NO TIER HAS A MINIMUM PLAN FOR EITHER — nothing may print
+    // "Available on Small Team and above" for a thing upgrading does not buy.
+    expect(getMinPlanForFeatureCell('aiChat')).toBeNull();
+    expect(getMinPlanForFeatureCell('aiKnowledge')).toBeNull();
     expect(PLAN_ORDER).toEqual(PLANS);
+  });
+
+  it('🔴 the ONLY path to aiChat is holding the add-on', () => {
+    /* The two halves stated together, per tier, so neither can drift from the
+       other: false at base, true with one add-on held, on every tier. */
+    for (const plan of PLANS) {
+      expect(getPlanFeatures(plan).aiChat, `${plan} base`).toBe(false);
+      expect(getEffectiveFeatures(plan, NO_ADDONS).aiChat, `${plan} owning nothing`).toBe(false);
+      expect(getEffectiveFeatures(plan, owning({ aiAssistant: 1 })).aiChat, `${plan} owning one`).toBe(true);
+      expect(getEffectiveFeatures(plan, owning({ aiAssistant: 1 })).aiKnowledge, `${plan} owning one`).toBe(true);
+    }
+  });
+
+  it('🔴 an add-on never removes what a plan grants — the lift is `||`, not assignment', () => {
+    /* ⚠️ READ WHY THIS IS A SOURCE ASSERTION AND NOT A BEHAVIOURAL ONE.
+     *
+     * This property used to be checkable by mounting Small Team with no add-on
+     * and seeing the chat: an assignment (`aiChat: owned.aiAssistant > 0`)
+     * would have taken it away, and several tests across this repo caught that.
+     * No tier carries `aiChat: true` any anymore, so `base.aiChat || X` and a
+     * bare `X` now produce IDENTICAL behaviour for every input — the mutation is
+     * invisible to any test that only calls the function.
+     *
+     * 🔴 THAT MAKES THE PROPERTY MORE FRAGILE, NOT LESS IMPORTANT. It is the
+     * rule that keeps a future tier able to include the chat without the add-on
+     * silently governing it, and it is exactly the kind of invariant that gets
+     * "simplified away" by someone who notices the left operand is always
+     * false. So it is pinned where it actually lives: in the source of the lift.
+     *
+     * ⚠️ Read with `readFileSync`, never `git show` — this asserts about the
+     * file on disk, which is what ships, and behaves the same in a shallow CI
+     * checkout. */
+    const src = srcOf('../plan-features.ts');
+    expect(src, 'the aiChat lift is not `base.aiChat || …`')
+      .toMatch(/aiChat:\s*base\.aiChat\s*\|\|\s*owned\.aiAssistant\s*>\s*0/);
+    expect(src, 'the aiKnowledge lift is not `base.aiKnowledge || …`')
+      .toMatch(/aiKnowledge:\s*base\.aiKnowledge\s*\|\|\s*owned\.aiAssistant\s*>\s*0/);
+    // Neither may be written as a bare assignment from ownership.
+    expect(src, 'the aiChat lift dropped its base operand')
+      .not.toMatch(/aiChat:\s*owned\.aiAssistant\s*>\s*0/);
+    expect(src, 'the aiKnowledge lift dropped its base operand')
+      .not.toMatch(/aiKnowledge:\s*owned\.aiAssistant\s*>\s*0/);
+
+    // And the behavioural half that still bites: a lift never turns a cell OFF.
+    for (const plan of PLANS) {
+      const base = getPlanFeatures(plan);
+      for (const q of [0, 1, 9]) {
+        const f = getEffectiveFeatures(plan, owning({ aiAssistant: q }));
+        if (base.aiChat) expect(f.aiChat, `${plan} lost aiChat at q=${q}`).toBe(true);
+        if (base.aiKnowledge) expect(f.aiKnowledge, `${plan} lost aiKnowledge at q=${q}`).toBe(true);
+      }
+    }
   });
 });
 
@@ -293,6 +371,39 @@ describe('no price and no other add-on moved', () => {
     for (const plan of ['plus', 'pro', 'max'] as const) {
       expect(PLAN_LIMITS[plan].queryTokensPerMonth, plan).toBeGreaterThan(0);
       expect(PLAN_LIMITS[plan].ingestTokensTotal, plan).toBeGreaterThan(0);
+    }
+  });
+
+  it('🔴 free CANNOT buy the add-on, and the enforcement is Dodo, not a flag here', () => {
+    /* HOW "sold on plus/pro/max only" IS ACTUALLY ENFORCED, pinned so that the
+       answer is not "we remembered to write it on the card".
+     *
+     * 🔴 A DODO ADD-ON ATTACHES TO A SUBSCRIPTION, AND FREE HAS NONE. The
+     * product catalogue is keyed on `PricedPlan` — plus | pro | max — and free
+     * is deliberately absent from it: a free tenant is provisioned with
+     * `plan: 'free'` and no Dodo subscription at all. There is nothing for the
+     * add-on to hang on, so the webhook can never write `addons.aiAssistant`
+     * for a free tenant. That is a structural refusal, in the payment
+     * processor, which is where THE-133 deliberately put add-on availability so
+     * that a bug in this repo cannot sell something.
+     *
+     * ⚠️ THE TOKEN CAP IS THE SECOND, INDEPENDENT REASON and the one that would
+     * bite if the first ever failed: free budgets ZERO query tokens, so an
+     * add-on that somehow arrived would grant the capability and buy no
+     * allowance — the church pays and gets refused on its first question.
+     *
+     * If free is ever given a Dodo product, this test fails and says which of
+     * the two guarantees moved. */
+    expect(Object.keys(DODO_LIVE_CATALOGUE).sort()).toEqual(['max', 'plus', 'pro']);
+    expect(DODO_LIVE_CATALOGUE, 'free gained a Dodo product — re-check the add-on ceiling')
+      .not.toHaveProperty('free');
+    expect(Object.keys(PLAN_PRICING).sort()).toEqual(['max', 'plus', 'pro']);
+    expect(PLAN_LIMITS.free.queryTokensPerMonth, 'free can now spend on AI').toBe(0);
+
+    // The three the card IS sold on each have a live product AND an allowance.
+    for (const plan of ['plus', 'pro', 'max'] as const) {
+      expect(DODO_LIVE_CATALOGUE, `${plan} lost its Dodo product`).toHaveProperty(plan);
+      expect(PLAN_LIMITS[plan].queryTokensPerMonth, plan).toBeGreaterThan(0);
     }
   });
 

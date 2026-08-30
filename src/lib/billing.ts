@@ -4,9 +4,10 @@
  * Falls back to test price IDs if env vars are not set.
  *
  * ⚠️ SCHEDULED FOR REPLACEMENT. Harvest's subscription billing is moving to
- * Dodo Payments. Everything in this module — the plan price IDs, the AI
- * Assistant price IDs, and the reverse price→plan lookup the subscription
- * webhook uses — is Stripe-specific plumbing that Dodo replaces wholesale.
+ * Dodo Payments. Everything in this module — the plan price IDs and the reverse
+ * price→plan lookup the subscription webhook uses — is Stripe-specific plumbing
+ * that Dodo replaces wholesale. (The AI Assistant price IDs were listed here
+ * too; they went with the Telegram assistant in THE-253 — see below.)
  * Do not invest in hardening it (typed env readers, required-env validation,
  * fallback removal); that work is thrown away at the cutover. Fix bugs, add
  * nothing.

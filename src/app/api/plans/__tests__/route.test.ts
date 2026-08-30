@@ -23,18 +23,28 @@ describe('GET /api/plans — retired AI Assistant add-on', () => {
     }
   });
 
-  it('still advertises the RAG capabilities (aiChat + aiKnowledge)', async () => {
+  it('still REPORTS the RAG capabilities, and reports them false on every plan', async () => {
+    /* WAS 'still advertises the RAG capabilities (aiChat + aiKnowledge)',
+       asserting Ministry carried both true — the flags THE-224 was careful not
+       to withdraw along with the Telegram add-on.
+     *
+     * 🔴 THE-253 TOOK THEM OFF EVERY PLAN. This catalog answers the TIER
+       question ("what does this plan include"), so false everywhere is now the
+       TRUE answer — the chat is an add-on. The flags are still PUBLISHED, and
+       that is the half worth keeping: a consumer reading `features.aiChat` gets
+       a boolean rather than `undefined`, so a stale marketing surface reads
+       "no" instead of crashing or defaulting to yes. */
     const res = await GET();
     const body = await res.json();
-    // Ministry (max) has RAG chat + knowledge base on; those flags must survive.
     const max = body.plans.find((p: any) => p.id === 'max');
     expect(max).toBeDefined();
-    expect(max.features.aiChat).toBe(true);
-    expect(max.features.aiKnowledge).toBe(true);
-    // And every plan still reports both RAG flags (as booleans).
+    expect(max.features.aiChat).toBe(false);
+    expect(max.features.aiKnowledge).toBe(false);
     for (const plan of body.plans) {
-      expect(typeof plan.features.aiChat).toBe('boolean');
-      expect(typeof plan.features.aiKnowledge).toBe('boolean');
+      expect(typeof plan.features.aiChat, plan.id).toBe('boolean');
+      expect(typeof plan.features.aiKnowledge, plan.id).toBe('boolean');
+      expect(plan.features.aiChat, `${plan.id} still claims the chat`).toBe(false);
+      expect(plan.features.aiKnowledge, `${plan.id} still claims the KB`).toBe(false);
     }
   });
 });

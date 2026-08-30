@@ -558,6 +558,16 @@ describe('the plan feature matrix and the Dodo product ids are unchanged', () =>
     // plan-features.test.ts, which owns the matrix; this is the narrower claim
     // that a PRICE change moved none of it. If a later ticket legitimately
     // changes a cell, both this digest and that contract move together.
+    //
+    // ⚠️ REPINNED FOR THE-253, WHICH IS THE "LATER TICKET" THE LINE ABOVE
+    // ANTICIPATED — and it is not a reprice, which is what keeps this guard
+    // meaningful. Three cells moved and no price did:
+    //   · `aiChat`      true → false on pro and max
+    //   · `aiKnowledge` true → false on pro and max
+    //   · `aiAssistant` removed — the retired Telegram assistant's count
+    // The per-cell contract in plan-features.test.ts moved in the same commit,
+    // as this comment requires. 🔴 THE NINE PLAN PRICES ARE UNTOUCHED, asserted
+    // separately in this same file and unchanged by that batch.
     const matrix = PLAN_ORDER.map((plan) => {
       const f = getPlanFeatures(plan) as unknown as Record<string, unknown>;
       return `${plan}:` + Object.keys(f).sort().map((k) => `${k}=${String(f[k])}`).join(',');
@@ -567,7 +577,7 @@ describe('the plan feature matrix and the Dodo product ids are unchanged', () =>
       'the plan feature matrix changed. THE-248 is a REPRICE and must move no '
       + 'feature cell — if a later ticket legitimately does, update this digest '
       + 'and the per-cell contract in plan-features.test.ts together.',
-    ).toBe('523ccac6dc04150a02c95d9b77f94531cb6660017f244f1cfe57cb4ddedb0a6b');
+    ).toBe('067433e42ea2270182e6b2a6d963c7788e9e60018edb0be69e867a218013d243');
   });
 
   it('and the tier ladder itself is untouched', () => {
