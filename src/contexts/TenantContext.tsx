@@ -17,6 +17,29 @@ import {
 } from '../lib/tenant-lifecycle';
 import { hasPlatformOverride } from '../utils/tenant-scope';
 import { isNonTenantSubdomain } from '../utils/non-tenant-subdomains';
+import { isReturningFromCheckout } from '../utils/signup-checkout';
+
+/**
+ * THE BOUND ON THE POST-CHECKOUT RE-READ (THE-217). Five extra reads of
+ * `tenants/{id}`, two seconds apart — a ten-second window, and it is opened
+ * ONLY by the hop back from a payment.
+ *
+ * 🔴 BOUNDED, AND THAT IS NOT A DETAIL. What is being waited for is one webhook
+ * landing seconds after a checkout, so the window is priced against that and
+ * nothing else. An unbounded poll would put a permanent per-dashboard-load
+ * Firestore cost on every admin in the platform to cover a race that is over in
+ * seconds — a rate-limit and billing problem traded for a display one.
+ *
+ * ⚠️ WHAT HAPPENS WHEN THE WEBHOOK IS SLOWER THAN THE WINDOW, stated plainly:
+ * the admin still sees the tier they were on until they reload. That is a
+ * strictly smaller version of the defect this fixes, not a new one, and it is
+ * the right trade against holding a socket open for every session.
+ *
+ * Exported so a test can assert the bound BY NAME. A test that wrote `5` would
+ * keep passing while the window drifted underneath it.
+ */
+export const PLAN_REFRESH_ATTEMPTS = 5;
+export const PLAN_REFRESH_INTERVAL_MS = 2000;
 
 /** What the context exposes to consumers */
 export interface TenantContextValue {
@@ -100,6 +123,31 @@ export interface TenantContextValue {
   capabilities: Readonly<Record<TenantCapability, boolean>>;
   /** Update the tenant plan locally (e.g. after a plan change) */
   setTenantPlan: (plan: TenantPlan) => void;
+  /**
+   * Re-read the tier from Firestore and apply it — `refreshTenantAddons`'s
+   * counterpart, and the half the plan side never had (THE-217).
+   *
+   * 🔴 THE LATCH HAD NO REFRESH. `planInitialized` closes on the first read that
+   * finds a `plan`, and nothing re-opened it. The return hop from a checkout is
+   * a full page load, so that read happens exactly once, racing the
+   * `subscription.active` webhook — and when the webhook loses, the latch closes
+   * on the tier the church was on BEFORE it paid. No error, no spinner, no
+   * retry: the product simply looks like the payment did not work, and the
+   * natural response to that is to pay again.
+   *
+   * 🔴 RE-READS RATHER THAN ASSUMING, for the reason `refreshTenantAddons` gives:
+   * the webhook is the single writer, and `on_payment_failure: 'prevent_change'`
+   * means Dodo decides whether a change took AFTER the payment. The purchase
+   * route cannot know what the church ended up owning, so a client that applied
+   * what it asked for would be claiming an entitlement nobody confirmed.
+   *
+   * ⚠️ NEVER DOWNGRADES. A failed read, a missing document and a document with
+   * no `plan` field all leave the last known tier exactly where it is — same
+   * posture as `refreshTenantAddons`, and for a sharper reason: this ticket is
+   * about UNDER-granting after a charge, so a refresh that could strip a tier on
+   * a dropped request would commit the very defect it exists to remove.
+   */
+  refreshTenantPlan: () => Promise<void>;
   /**
    * Update the add-on set locally — `setTenantPlan`'s counterpart (REP-5b).
    *
@@ -191,6 +239,19 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
   const [isAdminDomain, setIsAdminDomain] = useState(false);
   const planInitialized = useRef(false);
   /**
+   * The tier the LAST READ returned — not what is on screen.
+   *
+   * The bounded re-read below stops the moment the writer's answer MOVES, and
+   * "moves" has to be measured against the previous read rather than against
+   * rendered state: `setTenantPlan` is a local setter a surface may call for its
+   * own reasons, and treating that as the webhook having landed would end the
+   * window early on a value the writer never wrote.
+   *
+   * A failed read leaves this untouched, so a dropped request costs one attempt
+   * out of the bound rather than the whole window.
+   */
+  const lastReadPlan = useRef<TenantPlan | undefined>(initialPlan);
+  /**
    * The add-on set's one-shot latch — the same decision as `planInitialized`,
    * for the same reason, with one deliberate difference.
    *
@@ -209,6 +270,21 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
    * unlatched, so the latch would protect exactly the tenants who need it least.
    */
   const addonsInitialized = useRef(false);
+
+  /**
+   * Apply a tier that came from a READ of `tenants/{id}`, and close the latch on
+   * it. One place, so the first read and every later refresh leave the same two
+   * things true: what is on screen, and what the last read said.
+   *
+   * ⚠️ `setTenantPlan` deliberately does NOT come through here. It is the local
+   * setter, not a read; it has never latched, and nothing about this ticket
+   * makes it start.
+   */
+  const applyPlan = useCallback((plan: TenantPlan) => {
+    planInitialized.current = true;
+    lastReadPlan.current = plan;
+    setTenantPlanState(plan);
+  }, []);
 
   const applyBranding = useCallback((config: TenantConfig) => {
     setBranding(config);
@@ -288,9 +364,13 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
         }
 
         const data = tenantDoc.data();
+        // Unchanged: still one-shot, still guarded on `data.plan` being present
+        // (a tenant doc without a plan has nothing to say). What changed is that
+        // the latch now has a refresh counterpart — `refreshTenantPlan` — so a
+        // tier that lands after this read is no longer unreachable without a
+        // reload.
         if (!planInitialized.current && data.plan) {
-          planInitialized.current = true;
-          setTenantPlanState(data.plan as TenantPlan);
+          applyPlan(data.plan as TenantPlan);
         }
         // The add-on set, from THE SAME fetch that already supplies the plan —
         // `tenants/{id}` carries both, so this costs no additional read and no
@@ -335,7 +415,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
 
     validateTenant();
     return () => { cancelled = true; };
-  }, [tenantId, initialPlan, initialTenantId, applyBranding]);
+  }, [tenantId, initialPlan, initialTenantId, applyBranding, applyPlan]);
 
   const setTenantPlan = useCallback((plan: TenantPlan) => {
     setTenantPlanState(plan);
@@ -344,6 +424,96 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
   const setTenantAddons = useCallback((addons: TenantAddons) => {
     setTenantAddonsState(addons);
   }, []);
+
+  const refreshTenantPlan = useCallback(async () => {
+    // 🔴 NOT IN PLATFORM CONTEXT. `tenantId` is null for an apex-domain super
+    // admin by construction, and null is not "all tenants" — there is no tenant
+    // to re-read a tier against, so there is nothing here to do.
+    if (!tenantId) return;
+    try {
+      const tenantDoc = await getDoc(doc(db, 'tenants', tenantId));
+      if (!tenantDoc.exists()) return;
+      const plan = tenantDoc.data().plan;
+      // An absent `plan` is silence, not an answer — the same reading the latch
+      // takes. Coercing it to a tier here would be this refresh inventing the
+      // downgrade it exists to prevent.
+      if (!plan) return;
+      applyPlan(plan as TenantPlan);
+    } catch (e) {
+      // Same posture as `refreshTenantAddons` and `refreshBranding`: a failed
+      // refresh leaves the last known tier in place. Falling back to a default
+      // would strip a tier a church pays for on the strength of a dropped
+      // request, which is the direction this ticket exists to stop.
+      console.error('Failed to refresh tenant plan:', e);
+    }
+  }, [tenantId, applyPlan]);
+
+  /**
+   * Was THIS DOCUMENT LOAD the hop back from a payment?
+   *
+   * Read once, at mount, and kept — not read at use. The query string does not
+   * survive the app: react-router navigations drop it (the same drop
+   * `capturePaymentConfirmationHandoff` exists to survive), and `tenantId`
+   * resolves in an effect that can settle after the first of those. Asking later
+   * would ask a URL the answer has already been rubbed off.
+   *
+   * `isReturningFromCheckout` rather than a fourth inline parse, so this
+   * recognises the hop EXACTLY as `OnboardingGate` and `isPaidArrival` do —
+   * both spellings included, because a payer who was mid-checkout when the
+   * processor flag flipped comes back carrying the other one.
+   */
+  const [arrivedFromCheckout] = useState(
+    () => typeof window !== 'undefined' && isReturningFromCheckout(window.location.search),
+  );
+
+  /**
+   * 🔴 THE REFRESH THE LATCH NEVER HAD, on the one arrival that needs it.
+   *
+   * A bounded series of re-reads, armed only by the hop back from a checkout and
+   * only inside a tenant. It stops the moment the writer's answer moves, and
+   * after `PLAN_REFRESH_ATTEMPTS` reads regardless — see the constant for why the
+   * window is priced the way it is.
+   *
+   * ⚠️ A BOUNDED RE-READ, NOT A SNAPSHOT LISTENER, and the difference is not
+   * stylistic. A listener cannot be bounded (the SDK reconnects on its own,
+   * indefinitely); it would push a tier into state on EVERY write to
+   * `tenants/{id}` — a branding save, a rename — which is not a refresh of the
+   * latch but its deletion, and would stomp `setTenantPlan` in the process; and
+   * it delivers cached snapshots, so an offline tab could apply a stale or
+   * absent tier and downgrade a church that has just paid. A `getDoc` in a
+   * `try` cannot: when it throws, nothing is applied.
+   *
+   * ⚠️ COSTS NOTHING ON AN ORDINARY LOAD. An admin arriving at the dashboard
+   * without a payment behind them never arms this and never pays for a read.
+   */
+  useEffect(() => {
+    if (!arrivedFromCheckout) return;
+    // Platform context — null tenant, nothing tenant-scoped to ask about.
+    if (!tenantId) return;
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const attempt = async (remaining: number): Promise<void> => {
+      if (cancelled || remaining <= 0) return;
+      const before = lastReadPlan.current;
+      await refreshTenantPlan();
+      if (cancelled) return;
+      // The writer has spoken — the window has done its job and closes.
+      if (lastReadPlan.current !== before) return;
+      timer = setTimeout(() => { void attempt(remaining - 1); }, PLAN_REFRESH_INTERVAL_MS);
+    };
+
+    // The first attempt waits out an interval: the validation effect has only
+    // just read this document, and re-reading it in the same tick would spend an
+    // attempt to learn what it already said.
+    timer = setTimeout(() => { void attempt(PLAN_REFRESH_ATTEMPTS); }, PLAN_REFRESH_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [arrivedFromCheckout, tenantId, refreshTenantPlan]);
 
   const refreshTenantAddons = useCallback(async () => {
     if (!tenantId) return;
@@ -419,6 +589,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
         stripeConnectStatus,
         capabilities,
         setTenantPlan,
+        refreshTenantPlan,
         setTenantAddons,
         refreshTenantAddons,
         refreshBranding,
