@@ -136,9 +136,30 @@ export async function POST(request: NextRequest) {
     // account's type to change afterwards, so every already-connected Express
     // account stays Express until it is re-onboarded by hand.
     //
-    // ⚠️ AFFILIATE PAYOUT accounts are deliberately NOT changed
-    // (`/api/affiliate/onboard`). They receive transfers and take no charges, so
-    // none of the above applies to them and Standard would be the wrong shape.
+    // ⚠️ WHAT STAYS EXPRESS FOR AFFILIATES IS AN ACCOUNT TYPE, NOT THE
+    // AFFILIATE FIELDS — this route writes those. Two separate claims:
+    //
+    //   • THE STANDALONE, PAYOUT-ONLY AFFILIATE ACCOUNT STAYS EXPRESS. That is
+    //     the one `/api/affiliate/onboard` mints for a caller with NO tenant: it
+    //     is written only to `users/{uid}.affiliateStripeAccountId`, never to
+    //     `tenant_private.stripeConnectAccountId`, so no church's donations
+    //     resolve to it and it takes no charges at all. Money reaches it exactly
+    //     one way — the platform's `transfers.create({ destination })` — so none
+    //     of the direct-charge reasoning above applies and Standard would be the
+    //     wrong shape. ⚠️ THAT EXEMPTION IS THE TENANT-LESS BRANCH ONLY: the
+    //     tenant branch of the same route creates a 'standard' account (THE-147),
+    //     because that account IS the tenant donations account and must match
+    //     this one.
+    //
+    //   • THIS ROUTE DOES WRITE THE CONNECTING USER'S AFFILIATE FIELDS, in both
+    //     branches — `affiliateStripeAccountId` (plus `affiliateConnectStatus`,
+    //     mirrored from the tenant above and set to 'pending' below) — pointing
+    //     them at the tenant's Standard account. That is the unified-account
+    //     mirror documented at the top of this handler, not an exception to it.
+    //     The one thing never overwritten is a DIFFERENT affiliate account that
+    //     is already `active`, which `mirrorSafe` refuses; a user with no
+    //     account, one already on this account, or one that is not active IS
+    //     repointed.
     const account = await stripe.accounts.create({
       type: 'standard',
       metadata: {
