@@ -185,10 +185,30 @@ export default async function RootLayout({
             being forced to 'light' — see applyThemeForLocation's comment for
             why: a Classic pre-auth screen has never been built or reviewed,
             so a returning signed-out user with a stored 'classic' preference
-            must not be the first person to see one. */}
+            must not be the first person to see one.
+
+            ── THE-265: the DEFAULT family is Classic ─────────────────────────
+            🔴 `f==='harvest'?'harvest':'classic'` — a MISSING or garbage
+            stored value now resolves to Classic, where it used to resolve to
+            Harvest. A stored 'harvest' is still honoured, so nobody who has
+            chosen loses their choice; this is only what an absent value means.
+
+            ⚠️ This is the SECOND HOME of a value whose first home is
+            DEFAULT_PALETTE_FAMILY in @/lib/theme — and it is a literal here
+            because this script is a string that runs before any bundle and
+            cannot import, exactly as the two storage keys above cannot.
+            The two are not held together by anything the compiler can see, so
+            `the-265-classic-default.test.ts` parses this very expression back
+            out of this file and fails if it disagrees with the constant. That
+            test is the only thing standing between a future edit and a
+            first-paint flash: change one and not the other, and a cold load
+            paints one family and hydrates into the other.
+
+            The pre-auth branch above deliberately does NOT follow the default
+            — it is an override, and it stays 'harvest'. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var e=document.documentElement;var p=(location.pathname||'/').split(/[?#]/)[0].replace(/\\/+$/,'');p=(p===''?'/':p).toLowerCase();if(${JSON.stringify(PREAUTH_PATHS)}.indexOf(p)>-1){e.setAttribute('data-theme','light');e.classList.remove('dark');e.setAttribute('data-palette','harvest');return;}var s=localStorage.getItem('harvest-theme');var t=(s==='light'||s==='dark')?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');e.setAttribute('data-theme',t);e.classList.toggle('dark',t==='dark');var f=localStorage.getItem('harvest-theme-family');e.setAttribute('data-palette',f==='classic'?'classic':'harvest');}catch(_){}})();`,
+            __html: `(function(){try{var e=document.documentElement;var p=(location.pathname||'/').split(/[?#]/)[0].replace(/\\/+$/,'');p=(p===''?'/':p).toLowerCase();if(${JSON.stringify(PREAUTH_PATHS)}.indexOf(p)>-1){e.setAttribute('data-theme','light');e.classList.remove('dark');e.setAttribute('data-palette','harvest');return;}var s=localStorage.getItem('harvest-theme');var t=(s==='light'||s==='dark')?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');e.setAttribute('data-theme',t);e.classList.toggle('dark',t==='dark');var f=localStorage.getItem('harvest-theme-family');e.setAttribute('data-palette',f==='harvest'?'harvest':'classic');}catch(_){}})();`,
           }}
         />
 

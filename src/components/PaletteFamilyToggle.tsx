@@ -1,7 +1,7 @@
 "use client";
 import React, { useCallback, useEffect, useState } from 'react';
 import { Wheat, Square } from 'lucide-react';
-import { FAMILY_STORAGE_KEY, type PaletteFamily } from '@/lib/theme';
+import { FAMILY_STORAGE_KEY, DEFAULT_PALETTE_FAMILY, type PaletteFamily } from '@/lib/theme';
 import { applyTheme, readStoredChoice, readStoredFamily } from '@/lib/theme-runtime';
 
 /**
@@ -26,10 +26,15 @@ const OPTIONS: ReadonlyArray<{ value: PaletteFamily; label: string; Icon: typeof
 ];
 
 const PaletteFamilyToggle: React.FC = () => {
-  // Same SSR/first-paint story as ThemeToggle: default to 'harvest' so markup
-  // is stable, then correct from storage in an effect. <html> is already
+  // Same SSR/first-paint story as ThemeToggle: seed with the DEFAULT family so
+  // markup is stable, then correct from storage in an effect. <html> is already
   // correct either way — the pre-paint script did that.
-  const [family, setFamily] = useState<PaletteFamily>('harvest');
+  // THE-265: this is the shared constant, not a literal, so the pill that
+  // renders as selected before the effect runs matches what <html> was
+  // actually stamped with for the user this seed is for — someone with nothing
+  // stored. Spelling 'harvest' here would have shown a Harvest-selected
+  // control over a Classic-rendered page for one frame.
+  const [family, setFamily] = useState<PaletteFamily>(DEFAULT_PALETTE_FAMILY);
 
   useEffect(() => {
     setFamily(readStoredFamily());

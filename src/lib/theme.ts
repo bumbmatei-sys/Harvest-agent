@@ -24,7 +24,7 @@ export const isThemeChoice = (v: unknown): v is ThemeChoice =>
  * MODE) the surfaces render in. Orthogonal to ThemeChoice — every family
  * resolves to a light and a dark rendering, exactly like Harvest does today.
  * Stored under its own key so it can be missing independently of the mode
- * choice; a missing value means Harvest (see isPaletteFamily's caller).
+ * choice; a missing value means DEFAULT_PALETTE_FAMILY (below).
  */
 export const FAMILY_STORAGE_KEY = 'harvest-theme-family';
 
@@ -34,6 +34,37 @@ export const PALETTE_FAMILIES: readonly PaletteFamily[] = ['harvest', 'classic']
 
 export const isPaletteFamily = (v: unknown): v is PaletteFamily =>
   typeof v === 'string' && (PALETTE_FAMILIES as readonly string[]).includes(v);
+
+/**
+ * THE-265 — the family a user who has never chosen one renders in.
+ *
+ * 🔴 This is the whole ticket, and it is deliberately ONE VALUE. Flipping it
+ * back to 'harvest' is the entire revert: nothing was deleted to make Classic
+ * the default, both families' blocks are intact in globals.css, and
+ * PaletteFamilyToggle still offers both. A user who has ALREADY chosen keeps
+ * their choice — this changes only what a MISSING value means.
+ *
+ * Why Classic and not a new theme: Classic overrides 14 tokens (surfaces,
+ * borders, text) and everything else — ~120 tokens, fonts, radii, spacing,
+ * shadows, and every gold accent — falls through to Harvest. globals.css puts
+ * it plainly: "A second FAMILY, not a second theme… Classic is purely
+ * additive." So "remove Harvest" is not a thing that can be built; changing
+ * which family a missing preference resolves to is, and it puts the same
+ * neutral-grey dark surfaces on screen.
+ *
+ * ⚠️ DUPLICATED, UNAVOIDABLY, in the pre-paint script in layout.tsx — that
+ * script is a string that runs before any bundle, so it cannot import this
+ * (the same reason THEME_STORAGE_KEY and FAMILY_STORAGE_KEY are spelled there
+ * as literals). `the-265-classic-default.test.ts` reads the default back OUT
+ * of the real script and compares it to this constant, so the two cannot
+ * drift. If they ever did, a user would get one family before hydration and
+ * the other after — a visible flash on a cold load, and only on a cold load.
+ *
+ * ⚠️ NOT the pre-auth family. The funnel screens force 'harvest' explicitly
+ * (see applyThemeForLocation) — that is an override, not this default, and
+ * THE-85 owns it.
+ */
+export const DEFAULT_PALETTE_FAMILY: PaletteFamily = 'classic';
 
 /** The dark page ground for the Harvest family (warm brown). Kept here so
  *  contrast derivation and CSS agree. */

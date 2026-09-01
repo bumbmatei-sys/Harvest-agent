@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import postcss from 'postcss';
-import { contrastRatio, AA_CONTRAST, THEME_STORAGE_KEY, FAMILY_STORAGE_KEY } from '../lib/theme';
+import { contrastRatio, AA_CONTRAST, THEME_STORAGE_KEY, FAMILY_STORAGE_KEY, DEFAULT_PALETTE_FAMILY } from '../lib/theme';
 import { PREAUTH_PATHS, isPreAuthPath, normalizePath } from '../lib/preauth-theme';
 import { applyThemeForLocation, readStoredFamily } from '../lib/theme-runtime';
 
@@ -161,10 +161,15 @@ describe('a pre-auth screen renders light with prefers-color-scheme: dark and no
   it('still follows a dark OS behind auth — the override is scoped, not global', () => {
     matchesDark = true;
     runPrePaint('/');
+    // ⚠️ `/` is BEHIND auth, so no force applies and the family falls to the
+    // default — which THE-265 moved from 'harvest' to 'classic'. The MODE
+    // assertion (a dark OS is still followed here) is what this test is for
+    // and it is unchanged; the family is written against the constant so it
+    // tracks the default rather than re-pinning a literal.
     expect(stamped(), 'the OS preference stopped working everywhere').toEqual({
       attr: 'dark',
       dark: true,
-      palette: 'harvest',
+      palette: DEFAULT_PALETTE_FAMILY,
     });
   });
 });
@@ -276,29 +281,50 @@ describe('signing out and back in returns the user to dark and classic', () => {
 });
 
 /**
- * A user with no stored family gets Harvest — the default this PR must ship
- * so every existing user (who has never seen a family control before) is
- * unaffected. Mirrors how a missing/garbage THEME_STORAGE_KEY already
- * defaults to 'system' via isThemeChoice.
+ * A user with no stored family gets the DEFAULT family.
+ *
+ * ⚠️ THE-265 CHANGED THE ANSWER, not the shape. This block used to assert
+ * 'harvest' literally; it now asserts DEFAULT_PALETTE_FAMILY, which is
+ * 'classic'. The assertions are written against the constant rather than
+ * against a new literal so that the next change to the default moves this
+ * suite with it instead of breaking it — the property being pinned here is
+ * "a missing value resolves to THE default", which is what THE-85 cares
+ * about; WHICH family that is belongs to `the-265-classic-default.test.ts`.
+ *
+ * Mirrors how a missing/garbage THEME_STORAGE_KEY already defaults to
+ * 'system' via isThemeChoice. Nothing about the MODE axis changed.
  */
-describe('a user with no stored family gets Harvest', () => {
-  it('readStoredFamily defaults to harvest when the key is absent', () => {
+describe('a user with no stored family gets the default family', () => {
+  it('readStoredFamily defaults to DEFAULT_PALETTE_FAMILY when the key is absent', () => {
     expect(localStorage.getItem(FAMILY_STORAGE_KEY)).toBeNull();
-    expect(readStoredFamily()).toBe('harvest');
+    expect(readStoredFamily()).toBe(DEFAULT_PALETTE_FAMILY);
   });
 
-  it('defaults to harvest for a garbage stored value too', () => {
+  it('defaults to DEFAULT_PALETTE_FAMILY for a garbage stored value too', () => {
     localStorage.setItem(FAMILY_STORAGE_KEY, 'sepia');
-    expect(readStoredFamily()).toBe('harvest');
+    expect(readStoredFamily()).toBe(DEFAULT_PALETTE_FAMILY);
   });
 
-  it('the pre-paint script stamps harvest when nothing is stored', () => {
+  it('the pre-paint script stamps the default when nothing is stored', () => {
     runPrePaint('/');
-    expect(stamped().palette).toBe('harvest');
+    expect(stamped().palette).toBe(DEFAULT_PALETTE_FAMILY);
   });
 
-  it('applyThemeForLocation stamps harvest for a fresh signed-in session', () => {
+  it('applyThemeForLocation stamps the default for a fresh signed-in session', () => {
     applyThemeForLocation('/');
+    expect(stamped().palette).toBe(DEFAULT_PALETTE_FAMILY);
+  });
+
+  it('🔴 and that default is Classic (THE-265)', () => {
+    // Stated once, plainly, so this file records WHICH family it is even
+    // though every assertion above is written against the constant.
+    expect(DEFAULT_PALETTE_FAMILY).toBe('classic');
+  });
+
+  it('a stored harvest is still honoured — nobody lost a choice', () => {
+    localStorage.setItem(FAMILY_STORAGE_KEY, 'harvest');
+    expect(readStoredFamily()).toBe('harvest');
+    runPrePaint('/');
     expect(stamped().palette).toBe('harvest');
   });
 });

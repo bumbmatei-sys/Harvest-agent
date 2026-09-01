@@ -793,7 +793,7 @@ describe('11 — layout.tsx is unchanged', () => {
    * The digest is the one `posthog-untouched.test.ts` already records, repeated
    * here rather than imported so this suite fails on its own terms.
    */
-  const LAYOUT_SHA = '953b2963652207ac00572d082bb035eaa63161db7f0c049fe1bbc0b311fe6e4e';
+  const LAYOUT_SHA = 'c4bed4a633fd71326a3c9d979db12a559ad4e9de7144aa2d19929fa4952fb50a';
 
   it('layout.tsx is unchanged', () => {
     const actual = createHash('sha256')

@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect } from 'react';
 import {
   THEME_STORAGE_KEY,
   FAMILY_STORAGE_KEY,
+  DEFAULT_PALETTE_FAMILY,
   isThemeChoice,
   isPaletteFamily,
   resolveTheme,
@@ -40,14 +41,22 @@ const prefersDark = (): boolean =>
   typeof window.matchMedia === 'function' &&
   window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-/** Read the persisted family. Never writes — see the file header. */
+/**
+ * Read the persisted family. Never writes — see the file header.
+ *
+ * THE-265: both fall-throughs resolve to DEFAULT_PALETTE_FAMILY rather than
+ * spelling a literal, so "what a missing value means" has exactly one home in
+ * the bundled code. A stored 'harvest' or 'classic' is still returned as-is —
+ * a user who has chosen keeps their choice; only the ABSENT and the GARBAGE
+ * cases moved.
+ */
 export function readStoredFamily(): PaletteFamily {
   try {
     const raw = localStorage.getItem(FAMILY_STORAGE_KEY);
-    return isPaletteFamily(raw) ? raw : 'harvest';
+    return isPaletteFamily(raw) ? raw : DEFAULT_PALETTE_FAMILY;
   } catch {
     // localStorage can throw in private mode / sandboxed iframes.
-    return 'harvest';
+    return DEFAULT_PALETTE_FAMILY;
   }
 }
 
@@ -108,6 +117,18 @@ let forcedLightCount = 0;
  * was written to keep off screens where "reads as a broken product" is the
  * cost of getting it wrong. Harvest light is the one pre-auth presentation
  * that has actually been built and verified; every other combination is not.
+ *
+ * 🔴 THE-265 LEFT THIS LITERAL ALONE, ON PURPOSE. Classic is now the DEFAULT
+ * family (DEFAULT_PALETTE_FAMILY), but this is an OVERRIDE, not a restatement
+ * of the default — so it does not follow it, and it is spelled 'harvest' here
+ * rather than imported. The argument above did not change: Classic pre-auth
+ * still has no screenshots and no review, and THE-85's whole point is that the
+ * funnel renders the one presentation that has been verified. The visible
+ * consequence is that a signed-out visitor sees Harvest light on /auth and
+ * Classic once they are in the app — Classic light differs from Harvest light
+ * only in --surface (#F7F7F7 vs the cream #FAF8F5) and the 13 other tokens
+ * Classic overrides. Making the funnel Classic too is a one-word change here,
+ * and a design decision THE-265 was not asked to make.
  */
 export function applyThemeForLocation(pathname?: string): void {
   if (typeof document === 'undefined') return;

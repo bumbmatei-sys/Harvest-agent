@@ -658,7 +658,7 @@ function gitShow(commit: string, rel: string): string {
 describe('layout.tsx, firestore.rules and functions/ are byte-identical', () => {
   it.each([
     // layout.tsx carries the pre-paint theme script and is hash-pinned by THE-85.
-    ['src/app/layout.tsx', '953b2963652207ac00572d082bb035eaa63161db7f0c049fe1bbc0b311fe6e4e'],
+    ['src/app/layout.tsx', 'c4bed4a633fd71326a3c9d979db12a559ad4e9de7144aa2d19929fa4952fb50a'],
     // firestore.rules auto-deploys to production on merge to main.
     ['firestore.rules', 'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499'],
     ['functions/src/index.ts', '39ccade96ac3d4dd5a13047e9bc42b54ef5ac59ae72f932af042fc814bf23e0b'],

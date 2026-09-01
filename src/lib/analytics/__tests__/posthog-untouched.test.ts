@@ -42,15 +42,50 @@ const LAYOUT = 'src/app/layout.tsx';
  * getting the ordering right. PostHog initialises from `AnalyticsBridge`,
  * mounted inside `App.tsx`'s BrowserRouter, precisely so this file did not have
  * to move.
+ *
+ * ─── THE-265 REGENERATED THIS ONE, deliberately and with reason ────────────
+ *
+ * 🔴 ONE EXPRESSION, plus the comment that documents it. The pre-paint script's
+ * family ternary changed from
+ *
+ *     e.setAttribute('data-palette',f==='classic'?'classic':'harvest')
+ *   to
+ *     e.setAttribute('data-palette',f==='harvest'?'harvest':'classic')
+ *
+ * i.e. a MISSING or garbage stored family now resolves to Classic instead of
+ * Harvest. That is the whole of THE-265 in this file. The ternary is still a
+ * ternary, still reads the same key, still runs in the same slot, and a stored
+ * value on either side is still returned as itself — nobody who has chosen a
+ * family loses their choice.
+ *
+ * ⚠️ NOTHING ELSE IN THE LAYOUT MOVED. The THE-85 pre-auth branch is
+ * byte-identical and still forces `light` + `harvest` (that is an override,
+ * not the default, and THE-265 deliberately did not follow it there). The
+ * tenant brand-colour <style> is byte-identical: it already injected BOTH
+ * families' `--brand-color-on-dark` / `--brand-color-on-tint` derivations,
+ * each scoped to its own `[data-palette]` selector, so making Classic the
+ * default needed no change to it — the cascade picks the Classic rule the
+ * moment the script stamps the attribute. `PREAUTH_PATHS` is still
+ * interpolated rather than duplicated. No analytics, no import, no ordering.
+ *
+ * The pre-paint script's own digest below moved for the same one reason, which
+ * is the check that says the change was in the script and not elsewhere.
  */
-const LAYOUT_SHA = '953b2963652207ac00572d082bb035eaa63161db7f0c049fe1bbc0b311fe6e4e';
+const LAYOUT_SHA = 'c4bed4a633fd71326a3c9d979db12a559ad4e9de7144aa2d19929fa4952fb50a';
 
 /**
  * The pre-paint script on its own, extracted the same way `preauth-light.test.ts`
  * extracts it. Pinned separately from the file so a failure says WHICH half
  * moved: the script itself, or something else in the layout.
+ *
+ * ─── THE-265 REGENERATED THIS ONE, deliberately and with reason ────────────
+ * The family ternary's default arm, and nothing else — see LAYOUT_SHA above
+ * for the before/after. This digest moving while the surrounding layout digest
+ * moves too is the expected pairing; this one moving ALONE would be impossible,
+ * and the layout one moving alone would mean something outside the script
+ * changed.
  */
-const PREPAINT_SCRIPT_SHA = '55d266720cc3309499cbf5a869c912318fdae9ccfebea58efe4c5c1244615d88';
+const PREPAINT_SCRIPT_SHA = 'ae509f732ede76e6089f40c56ea64844a9e3fea151e386c8aff0c6db5b7c461d';
 
 function prePaintScript(): string {
   const layout = readFileSync(path.join(ROOT, LAYOUT), 'utf8');
@@ -65,8 +100,38 @@ function prePaintScript(): string {
  */
 const PINNED: ReadonlyArray<readonly [string, string]> = [
   ['src/lib/preauth-theme.ts', '1940796f21a9c5219ba6d35d15958eafb34aaada0e3a2670f5d858f65e840ad0'],
-  ['src/lib/theme-runtime.ts', 'f180368654a2be1d1213feb393a76f8c5b3f2b4c8a677cc957e7229a5fec5991'],
-  ['src/lib/theme.ts', 'a6a27940dd1f47d089af6b8018e86927a77e749fde16527c6bc2c2fb49d2446d'],
+  // ─── THE-265 REGENERATED THESE TWO, deliberately and with reason ─────────
+  //
+  // 🔴 THE DEFAULT PALETTE FAMILY MOVED FROM HARVEST TO CLASSIC. Nothing was
+  // deleted to do it: both families' blocks in globals.css are byte-identical
+  // (pinned in `the-265-classic-default.test.ts`), `PaletteFamilyToggle` still
+  // offers both, and a user with a stored family — either one — still gets it.
+  // Only what a MISSING value means changed.
+  //
+  //   theme.ts          gained `DEFAULT_PALETTE_FAMILY = 'classic'`, the single
+  //                     bundled home for that value. No existing export moved:
+  //                     both storage keys, `PaletteFamily`, `PALETTE_FAMILIES`,
+  //                     `isPaletteFamily`, all four surface constants, and
+  //                     every contrast function are byte-identical. In
+  //                     particular `deriveOnDarkAccent` and `deriveOnTintAccent`
+  //                     are untouched — they already took the ground as an
+  //                     argument and already handled both families.
+  //
+  //   theme-runtime.ts  `readStoredFamily`'s two fall-throughs now return that
+  //                     constant instead of spelling `'harvest'`. `applyTheme`
+  //                     is byte-identical. 🔴 The pre-auth force in
+  //                     `applyThemeForLocation` STILL SAYS `'harvest'` and is
+  //                     unchanged: it is an override, not the default, and
+  //                     THE-85 owns it.
+  //
+  // ⚠️ NEITHER FILE GAINED A WRITE. The "reads a preference, never writes one"
+  // property both THE-85 and this pin exist to protect is asserted directly in
+  // `the-265-classic-default.test.ts` — including the specific new way this
+  // ticket could have broken it, which is persisting the resolved default and
+  // thereby converting every existing user into someone who has *chosen*
+  // Classic, past the reach of the one-value revert.
+  ['src/lib/theme-runtime.ts', '08c87631d992e1922fc7ad996069b99997554bfcb38855f44569a83bc5c64a7f'],
+  ['src/lib/theme.ts', '4181afe5089af22fef4f371bf1d702cb273d1f8ecaba0d59b57b6e22708f467b'],
   ['src/components/layout/form-layout.ts', 'aa62c7e8c339b35222d9b305be5acf9c6e4c52543174030d8977457fa961ed48'],
   ['firestore.rules', 'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499'],
   ['storage.rules', 'a9b065824c9754007d920926d36081a286190e69c0ce3042242b2eb6da321414'],
