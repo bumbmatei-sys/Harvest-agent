@@ -671,19 +671,26 @@ const digest = (p: string): string =>
 
 describe('11 — globals.css, firestore.rules and functions/ are byte-identical', () => {
   /**
-   * ⚠️ THE-266 (shadcn Phase 7 Batch A) OWNS globals.css AND src/components/ui/**.
-   * THE-265 did not open either. If THE-266 lands first this line goes red —
-   * that is the pin doing its job, not a bug: regenerate this ONE value in the
-   * same PR that changes the file, and say why, exactly as
-   * `posthog-untouched.test.ts`'s header instructs. Do not delete the pin.
+   * ⚠️ THE-265 did not open globals.css; later shadcn phases do. If one lands
+   * this line goes red — that is the pin doing its job, not a bug: regenerate
+   * this ONE value in the same PR that changes the file, and say why, exactly
+   * as `posthog-untouched.test.ts`'s header instructs. Do not delete the pin.
    *
    *   node -e "console.log(require('crypto').createHash('sha256').update(require('fs').readFileSync('src/app/globals.css')).digest('hex'))"
+   *
+   * Regenerated once, by THE-267 (shadcn Phase 7), which added the eight
+   * --sidebar-* tokens and their eight matching @theme inline keys. That PR
+   * moved NO existing token value: it is purely additive, every addition is a
+   * var() alias of a token this file already pins, and the claim is asserted
+   * directly — see section 9 of src/__tests__/theming-sidebar-tokens.test.ts,
+   * which pins every THE-263/#410 token's resolved value in all four palettes,
+   * and the unchanged .dark and Classic counts in tailwind-v4-migration.test.ts.
    */
   it('🔴 globals.css is untouched — no token value moved', () => {
     expect(
       digest('src/app/globals.css'),
-      'globals.css changed — THE-265 must not move a token value, and THE-266 owns this file',
-    ).toBe('242b236fe4792fe5f200f586b9ccba7cfbea65470c3cf2531f0e4764a7efe749');
+      'globals.css changed — regenerate this digest only in the PR that changed the file, and say why',
+    ).toBe('772c79af681c2b97c496b91be4f2573415f2a65802dfac078dbc72e8a8fd3741');
   });
 
   it('firestore.rules is untouched', () => {

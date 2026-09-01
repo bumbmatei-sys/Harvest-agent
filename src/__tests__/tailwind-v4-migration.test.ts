@@ -133,9 +133,17 @@ describe('all four palettes resolve every token they declare', () => {
     // bridge aliases tokens Classic already overrides, so it reaches both
     // families through the cascade rather than by being restated. That the
     // Classic counts did not move is the load-bearing half of this assertion.
+    //
+    // THE-267 adds the sidebar family the same way and gets the same shape: 8
+    // declarations to :root, and NOTHING to .dark or to either Classic block.
+    // Five of the eight alias ramp tokens all four palettes already override,
+    // and the other three chain to --primary / --primary-foreground / --ring,
+    // which are deliberately family-independent (--ring carries its own .dark
+    // restatement, so chaining to it is what makes one here unnecessary). The
+    // three unmoved counts below are the proof of that claim.
     expect(Object.fromEntries(PALETTES.map((p) => [p.selector, Object.keys(declaredBy(css, p.selector)).length])))
       .toEqual({
-        ':root': 135 + 24,
+        ':root': 135 + 24 + 8,
         '.dark, [data-theme="dark"]': 83 + 6,
         '[data-palette="classic"][data-theme="light"]': 14,
         '[data-palette="classic"].dark, [data-palette="classic"][data-theme="dark"]': 14,
@@ -439,12 +447,18 @@ describe('the shadcn token bridge landed', () => {
    *   • --destructive-foreground — no primitive spells it. The thirteen files
    *     pair `text-destructive` with `bg-destructive/10`, never a solid fill,
    *     so a foreground for it would be a token with no consumer.
-   *   • --sidebar-* — this repo has no sidebar primitive, the family is absent
-   *     from the audit fixture, and the exact member list could not be
-   *     confirmed against the shadcn registry from this environment (egress to
-   *     ui.shadcn.com is blocked; the vendored `shadcn` CLI carries only the
-   *     legacy --sidebar / --sidebar-background alias pair). Defining eight
-   *     tokens from memory is what THE-263 explicitly forbade.
+   *
+   * --sidebar-* is no longer among them. THE-267 defined the family, so the
+   * assertion below is INVERTED rather than deleted: it used to prove the
+   * family was absent, and now proves that exactly the eight expected members
+   * are present and that no ninth has appeared. Egress to ui.shadcn.com is
+   * still refused (403 to CONNECT) and the vendored CLI still carries only the
+   * legacy --sidebar / --sidebar-background pair, so the member list was not
+   * taken from the registry and not written from memory — it was recovered
+   * from the consuming source, which is reachable: the eight names are exactly
+   * the set spelled by the real sidebar.tsx and the sidebar-07 block in
+   * shadcn-ui/ui. See src/__tests__/theming-sidebar-tokens.test.ts, which
+   * carries the mapping, the ratios and the mutation guard for this pin.
    */
   const STILL_ABSENT = ['--destructive-foreground'];
 
@@ -461,12 +475,42 @@ describe('the shadcn token bridge landed', () => {
     expect(PHASE_TWO.filter((t) => !declared.has(t)), 'a Phase 2 token went missing').toEqual([]);
   });
 
-  it('declares the chart family, and still no sidebar family', () => {
+  /**
+   * The eight members of the sidebar family, as THE-267 mapped them. Held here
+   * as a literal list so that adding a ninth, or dropping one, fails by NAME.
+   */
+  const SIDEBAR_FAMILY = [
+    '--sidebar',
+    '--sidebar-accent',
+    '--sidebar-accent-foreground',
+    '--sidebar-border',
+    '--sidebar-foreground',
+    '--sidebar-primary',
+    '--sidebar-primary-foreground',
+    '--sidebar-ring',
+  ];
+
+  it('declares the chart family, and the sidebar family THE-267 mapped', () => {
     const declared = [...declaredTokens()];
     expect(declared.filter((t) => /^--chart-/.test(t)).sort())
       .toEqual(['--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5']);
-    // By prefix, so a `--sidebar-foo` cannot slip past a list.
-    expect(declared.filter((t) => /^--sidebar/.test(t))).toEqual([]);
+    // Still by prefix, so a `--sidebar-foo` cannot slip past the list — but
+    // now the list is what it must EQUAL, not what it must be empty of. This
+    // is strictly stronger than the assertion it replaces: the old form
+    // caught an unexpected member and nothing else, this one catches an
+    // unexpected member AND a missing one AND a rename.
+    expect(declared.filter((t) => /^--sidebar/.test(t)).sort()).toEqual(SIDEBAR_FAMILY);
+  });
+
+  it('does not mistake the component’s two React constants for tokens', () => {
+    // --sidebar-width / --sidebar-width-icon are inline styles the component
+    // sets from SIDEBAR_WIDTH / SIDEBAR_WIDTH_ICON. Declaring either here
+    // would silently override the component. Covered by the prefix assertion
+    // above, and named separately so the reason survives.
+    const declared = declaredTokens();
+    for (const t of ['--sidebar-width', '--sidebar-width-icon', '--sidebar-background']) {
+      expect(declared.has(t), `${t} is not a palette token`).toBe(false);
+    }
   });
 
   it('leaves the named absences absent, so their reasons stay reviewable', () => {

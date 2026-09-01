@@ -348,8 +348,33 @@ describe('the phases change nothing they audit', () => {
     const recorded = readFileSync(path.join(FIXTURES, 'globals-tokens.txt'), 'utf8');
     // This fixture is the ledger: every phase that adds a token re-records it,
     // and the diff names exactly what was added. THE-263 added the bridge;
-    // THE-264 added --color-border and --font-heading and nothing else.
+    // THE-264 added --color-border and --font-heading and nothing else;
+    // THE-267 added the sidebar family and its eight matching theme keys, and
+    // nothing else — 16 lines, asserted by name in the test below so that
+    // re-recording this fixture can never quietly carry something with it.
     expect(`${globalsTokens().join('\n')}\n`).toBe(recorded);
+  });
+
+  it('and the only thing THE-267 added to that ledger is the sidebar family', () => {
+    // Re-recording a ledger fixture is the designed workflow, and it is also
+    // the one moment a stray token can ride along unnoticed. So the DELTA is
+    // pinned, not just the file: both halves of the bridge for eight tokens,
+    // and nothing else.
+    const expected = [
+      '--sidebar',
+      '--sidebar-accent',
+      '--sidebar-accent-foreground',
+      '--sidebar-border',
+      '--sidebar-foreground',
+      '--sidebar-primary',
+      '--sidebar-primary-foreground',
+      '--sidebar-ring',
+    ];
+    const tokens = globalsTokens();
+    expect(tokens.filter((t) => /^--sidebar/.test(t)).sort()).toEqual(expected);
+    // The @theme inline half. Without these `bg-sidebar` mints no rule.
+    expect(tokens.filter((t) => /^--color-sidebar/.test(t)).sort())
+      .toEqual(expected.map((t) => t.replace('--sidebar', '--color-sidebar')).sort());
   });
 
   it('tailwind.config.ts adds no colour, and no longer cites a file that is absent', () => {

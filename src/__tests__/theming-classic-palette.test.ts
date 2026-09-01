@@ -79,7 +79,29 @@ const PHASE_2_ROOT_TOKENS = [
 ];
 const PHASE_2_DARK_TOKENS = ['--ring', '--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5'];
 
-const ALLOWED_ROOT = [...ALLOWED_NEW_TOKENS, ...PHASE_2_ROOT_TOKENS];
+/**
+ * THE-267 (shadcn Phase 7) — the sidebar family, the third and last set
+ * allowed past the pins, and listed by name for exactly the same reason as
+ * the two above.
+ *
+ * ⚠️ There is deliberately NO dark counterpart, and that absence is the
+ * assertion. Five of the eight alias ramp tokens (--surface-raised,
+ * --text-body, --surface-chip, --text-strong, --border-default) that .dark
+ * and both Classic blocks already override, so late-bound var() resolves them
+ * per-scope from one declaration. The other three chain to --primary /
+ * --primary-foreground / --ring, which are family-independent by design — the
+ * accent must not grey out in Classic — and --ring carries its own .dark
+ * restatement, which is precisely why --sidebar-ring needs none. If a future
+ * change restates any of the eight on dark, ALLOWED_DARK stays as it is and
+ * this file fails, which is the intent.
+ */
+const PHASE_7_ROOT_TOKENS = [
+  '--sidebar', '--sidebar-foreground', '--sidebar-accent',
+  '--sidebar-accent-foreground', '--sidebar-primary',
+  '--sidebar-primary-foreground', '--sidebar-border', '--sidebar-ring',
+];
+
+const ALLOWED_ROOT = [...ALLOWED_NEW_TOKENS, ...PHASE_2_ROOT_TOKENS, ...PHASE_7_ROOT_TOKENS];
 const ALLOWED_DARK = [...ALLOWED_NEW_TOKENS, ...PHASE_2_DARK_TOKENS];
 
 const ROOT = path.resolve(__dirname, '../..');
@@ -282,12 +304,12 @@ describe('Harvest light is byte-identical to before this change', () => {
     expect(rootVars[token], `${token} is missing from :root`).toBe(expected);
   });
 
-  it('introduces no new :root custom property beyond the two named sets', () => {
+  it('introduces no new :root custom property beyond the three named sets', () => {
     const extra = Object.keys(rootVars).filter((k) => !(k in PINNED_ROOT));
     expect(extra, 'an UNEXPECTED new :root token appeared').toEqual(ALLOWED_ROOT);
   });
 
-  it(':root declares exactly the pinned count of custom properties, plus the two named sets', () => {
+  it(':root declares exactly the pinned count of custom properties, plus the three named sets', () => {
     expect(Object.keys(rootVars).length).toBe(Object.keys(PINNED_ROOT).length + ALLOWED_ROOT.length);
   });
 
