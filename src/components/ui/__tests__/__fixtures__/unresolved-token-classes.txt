@@ -1,283 +1,164 @@
-src/components/ui/avatar.tsx  —  10 unresolved
-  after:border-border                                                      no rule generated
-  bg-muted                                                                 no rule generated
-  text-muted-foreground                                                    no rule generated
-  text-primary-foreground                                                  no rule generated
-  ring-background                                                          no rule generated
-  *:data-[slot=avatar]:ring-background                                     no rule generated
-  group-has-data-[size=lg]/avatar-group:size-10                            no rule generated
-  group-has-data-[size=sm]/avatar-group:size-6                             no rule generated
-  group-has-data-[size=lg]/avatar-group:[&>svg]:size-5                     no rule generated
-  group-has-data-[size=sm]/avatar-group:[&>svg]:size-3                     no rule generated
+src/components/ui/avatar.tsx  —  6 unresolved
+  after:border-border                                                   no rule generated
+  bg-muted                                                              no rule generated
+  text-muted-foreground                                                 no rule generated
+  text-primary-foreground                                               no rule generated
+  ring-background                                                       no rule generated
+  *:data-[slot=avatar]:ring-background                                  no rule generated
 
-src/components/ui/badge.tsx  —  26 unresolved
-  rounded-4xl                                                              no rule generated
-  focus-visible:border-ring                                                no rule generated
-  focus-visible:ring-ring/50                                               no rule generated
-  has-data-[icon=inline-end]:pr-1.5                                        no rule generated
-  has-data-[icon=inline-start]:pl-1.5                                      no rule generated
-  aria-invalid:border-destructive                                          no rule generated
-  aria-invalid:ring-destructive/20                                         no rule generated
-  dark:aria-invalid:ring-destructive/40                                    no rule generated
-  [&>svg]:size-3!                                                          no rule generated
-  text-primary-foreground                                                  no rule generated
-  [a]:hover:bg-primary/80                                                  no rule generated
-  text-secondary-foreground                                                no rule generated
-  [a]:hover:bg-secondary/80                                                no rule generated
-  bg-destructive/10                                                        no rule generated
-  text-destructive                                                         no rule generated
-  focus-visible:ring-destructive/20                                        no rule generated
-  dark:bg-destructive/20                                                   no rule generated
-  dark:focus-visible:ring-destructive/40                                   no rule generated
-  [a]:hover:bg-destructive/20                                              no rule generated
-  border-border                                                            no rule generated
-  text-foreground                                                          no rule generated
-  [a]:hover:bg-muted                                                       no rule generated
-  [a]:hover:text-muted-foreground                                          no rule generated
-  hover:bg-muted                                                           no rule generated
-  hover:text-muted-foreground                                              no rule generated
-  dark:hover:bg-muted/50                                                   no rule generated
+src/components/ui/badge.tsx  —  20 unresolved
+  focus-visible:border-ring                                             no rule generated
+  focus-visible:ring-ring/50                                            no rule generated
+  aria-invalid:border-destructive                                       no rule generated
+  aria-invalid:ring-destructive/20                                      no rule generated
+  dark:aria-invalid:ring-destructive/40                                 no rule generated
+  text-primary-foreground                                               no rule generated
+  text-secondary-foreground                                             no rule generated
+  bg-destructive/10                                                     no rule generated
+  text-destructive                                                      no rule generated
+  focus-visible:ring-destructive/20                                     no rule generated
+  dark:bg-destructive/20                                                no rule generated
+  dark:focus-visible:ring-destructive/40                                no rule generated
+  [a]:hover:bg-destructive/20                                           no rule generated
+  border-border                                                         no rule generated
+  text-foreground                                                       no rule generated
+  [a]:hover:bg-muted                                                    no rule generated
+  [a]:hover:text-muted-foreground                                       no rule generated
+  hover:bg-muted                                                        no rule generated
+  hover:text-muted-foreground                                           no rule generated
+  dark:hover:bg-muted/50                                                no rule generated
 
-src/components/ui/button.tsx  —  39 unresolved
-  focus-visible:border-ring                                                no rule generated
-  focus-visible:ring-3                                                     no rule generated
-  focus-visible:ring-ring/50                                               no rule generated
-  active:not-aria-[haspopup]:translate-y-px                                no rule generated
-  aria-invalid:border-destructive                                          no rule generated
-  aria-invalid:ring-3                                                      no rule generated
-  aria-invalid:ring-destructive/20                                         no rule generated
-  dark:aria-invalid:border-destructive/50                                  no rule generated
-  dark:aria-invalid:ring-destructive/40                                    no rule generated
-  text-primary-foreground                                                  no rule generated
-  hover:bg-primary/80                                                      no rule generated
-  border-border                                                            no rule generated
-  bg-background                                                            no rule generated
-  hover:bg-muted                                                           no rule generated
-  hover:text-foreground                                                    no rule generated
-  aria-expanded:bg-muted                                                   no rule generated
-  aria-expanded:text-foreground                                            no rule generated
-  dark:border-input                                                        no rule generated
-  dark:bg-input/30                                                         no rule generated
-  dark:hover:bg-input/50                                                   no rule generated
-  text-secondary-foreground                                                no rule generated
-  hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)]     var(--secondary) is not defined
-  aria-expanded:text-secondary-foreground                                  no rule generated
-  dark:hover:bg-muted/50                                                   no rule generated
-  bg-destructive/10                                                        no rule generated
-  text-destructive                                                         no rule generated
-  hover:bg-destructive/20                                                  no rule generated
-  focus-visible:border-destructive/40                                      no rule generated
-  focus-visible:ring-destructive/20                                        no rule generated
-  dark:bg-destructive/20                                                   no rule generated
-  dark:hover:bg-destructive/30                                             no rule generated
-  dark:focus-visible:ring-destructive/40                                   no rule generated
-  has-data-[icon=inline-end]:pr-2                                          no rule generated
-  has-data-[icon=inline-start]:pl-2                                        no rule generated
-  rounded-[min(var(--radius-md),10px)]                                     var(--radius-md) is not defined
-  in-data-[slot=button-group]:rounded-lg                                   no rule generated
-  has-data-[icon=inline-end]:pr-1.5                                        no rule generated
-  has-data-[icon=inline-start]:pl-1.5                                      no rule generated
-  rounded-[min(var(--radius-md),12px)]                                     var(--radius-md) is not defined
+src/components/ui/button.tsx  —  28 unresolved
+  focus-visible:border-ring                                             no rule generated
+  focus-visible:ring-ring/50                                            no rule generated
+  aria-invalid:border-destructive                                       no rule generated
+  aria-invalid:ring-destructive/20                                      no rule generated
+  dark:aria-invalid:border-destructive/50                               no rule generated
+  dark:aria-invalid:ring-destructive/40                                 no rule generated
+  text-primary-foreground                                               no rule generated
+  border-border                                                         no rule generated
+  bg-background                                                         no rule generated
+  hover:bg-muted                                                        no rule generated
+  hover:text-foreground                                                 no rule generated
+  aria-expanded:bg-muted                                                no rule generated
+  aria-expanded:text-foreground                                         no rule generated
+  dark:border-input                                                     no rule generated
+  dark:bg-input/30                                                      no rule generated
+  dark:hover:bg-input/50                                                no rule generated
+  text-secondary-foreground                                             no rule generated
+  hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)]  var(--secondary) is not defined
+  aria-expanded:text-secondary-foreground                               no rule generated
+  dark:hover:bg-muted/50                                                no rule generated
+  bg-destructive/10                                                     no rule generated
+  text-destructive                                                      no rule generated
+  hover:bg-destructive/20                                               no rule generated
+  focus-visible:border-destructive/40                                   no rule generated
+  focus-visible:ring-destructive/20                                     no rule generated
+  dark:bg-destructive/20                                                no rule generated
+  dark:hover:bg-destructive/30                                          no rule generated
+  dark:focus-visible:ring-destructive/40                                no rule generated
 
-src/components/ui/card.tsx  —  20 unresolved
-  gap-(--card-spacing)                                                     no rule generated
-  bg-card                                                                  no rule generated
-  py-(--card-spacing)                                                      no rule generated
-  text-card-foreground                                                     no rule generated
-  ring-foreground/10                                                       no rule generated
-  [--card-spacing:--spacing(4)]                                            var(--spacing) is not defined
-  has-data-[slot=card-footer]:pb-0                                         no rule generated
-  data-[size=sm]:[--card-spacing:--spacing(3)]                             var(--spacing) is not defined
-  data-[size=sm]:has-data-[slot=card-footer]:pb-0                          no rule generated
-  *:[img:first-child]:rounded-t-xl                                         no rule generated
-  *:[img:last-child]:rounded-b-xl                                          no rule generated
-  @container/card-header                                                   no rule generated
-  px-(--card-spacing)                                                      no rule generated
-  has-data-[slot=card-action]:grid-cols-[1fr_auto]                         no rule generated
-  has-data-[slot=card-description]:grid-rows-[auto_auto]                   no rule generated
-  [.border-b]:pb-(--card-spacing)                                          no rule generated
-  font-heading                                                             no rule generated
-  text-muted-foreground                                                    no rule generated
-  bg-muted/50                                                              no rule generated
-  p-(--card-spacing)                                                       no rule generated
+src/components/ui/card.tsx  —  6 unresolved
+  bg-card                                                               no rule generated
+  text-card-foreground                                                  no rule generated
+  ring-foreground/10                                                    no rule generated
+  font-heading                                                          no rule generated
+  text-muted-foreground                                                 no rule generated
+  bg-muted/50                                                           no rule generated
 
-src/components/ui/dialog.tsx  —  16 unresolved
-  supports-backdrop-filter:backdrop-blur-xs                                no rule generated
-  data-open:animate-in                                                     no rule generated
-  data-open:fade-in-0                                                      no rule generated
-  data-closed:animate-out                                                  no rule generated
-  data-closed:fade-out-0                                                   no rule generated
-  bg-popover                                                               no rule generated
-  text-popover-foreground                                                  no rule generated
-  ring-foreground/10                                                       no rule generated
-  data-open:zoom-in-95                                                     no rule generated
-  data-closed:zoom-out-95                                                  no rule generated
-  bg-muted/50                                                              no rule generated
-  font-heading                                                             no rule generated
-  text-muted-foreground                                                    no rule generated
-  *:[a]:underline                                                          no rule generated
-  *:[a]:underline-offset-3                                                 no rule generated
-  *:[a]:hover:text-foreground                                              no rule generated
+src/components/ui/dialog.tsx  —  7 unresolved
+  bg-popover                                                            no rule generated
+  text-popover-foreground                                               no rule generated
+  ring-foreground/10                                                    no rule generated
+  bg-muted/50                                                           no rule generated
+  font-heading                                                          no rule generated
+  text-muted-foreground                                                 no rule generated
+  *:[a]:hover:text-foreground                                           no rule generated
 
-src/components/ui/dropdown-menu.tsx  —  39 unresolved
-  max-h-(--available-height)                                               no rule generated
-  w-(--anchor-width)                                                       no rule generated
-  origin-(--transform-origin)                                              no rule generated
-  bg-popover                                                               no rule generated
-  text-popover-foreground                                                  no rule generated
-  ring-foreground/10                                                       no rule generated
-  data-[side=bottom]:slide-in-from-top-2                                   no rule generated
-  data-[side=inline-end]:slide-in-from-left-2                              no rule generated
-  data-[side=inline-start]:slide-in-from-right-2                           no rule generated
-  data-[side=left]:slide-in-from-right-2                                   no rule generated
-  data-[side=right]:slide-in-from-left-2                                   no rule generated
-  data-[side=top]:slide-in-from-bottom-2                                   no rule generated
-  data-open:animate-in                                                     no rule generated
-  data-open:fade-in-0                                                      no rule generated
-  data-open:zoom-in-95                                                     no rule generated
-  data-closed:animate-out                                                  no rule generated
-  data-closed:overflow-hidden                                              no rule generated
-  data-closed:fade-out-0                                                   no rule generated
-  data-closed:zoom-out-95                                                  no rule generated
-  text-muted-foreground                                                    no rule generated
-  data-inset:pl-7                                                          no rule generated
-  outline-hidden                                                           no rule generated
-  focus:bg-accent                                                          no rule generated
-  focus:text-accent-foreground                                             no rule generated
-  not-data-[variant=destructive]:focus:**:text-accent-foreground           no rule generated
-  data-[variant=destructive]:text-destructive                              no rule generated
-  data-[variant=destructive]:focus:bg-destructive/10                       no rule generated
-  data-[variant=destructive]:focus:text-destructive                        no rule generated
-  dark:data-[variant=destructive]:focus:bg-destructive/20                  no rule generated
-  data-disabled:pointer-events-none                                        no rule generated
-  data-disabled:opacity-50                                                 no rule generated
-  data-[variant=destructive]:*:[svg]:text-destructive                      no rule generated
-  data-popup-open:bg-accent                                                no rule generated
-  data-popup-open:text-accent-foreground                                   no rule generated
-  data-open:bg-accent                                                      no rule generated
-  data-open:text-accent-foreground                                         no rule generated
-  focus:**:text-accent-foreground                                          no rule generated
-  bg-border                                                                no rule generated
-  group-focus/dropdown-menu-item:text-accent-foreground                    no rule generated
+src/components/ui/dropdown-menu.tsx  —  22 unresolved
+  max-h-(--available-height)                                            var(--available-height) is not defined
+  w-(--anchor-width)                                                    var(--anchor-width) is not defined
+  origin-(--transform-origin)                                           var(--transform-origin) is not defined
+  bg-popover                                                            no rule generated
+  text-popover-foreground                                               no rule generated
+  ring-foreground/10                                                    no rule generated
+  text-muted-foreground                                                 no rule generated
+  focus:bg-accent                                                       no rule generated
+  focus:text-accent-foreground                                          no rule generated
+  not-data-[variant=destructive]:focus:**:text-accent-foreground        no rule generated
+  data-[variant=destructive]:text-destructive                           no rule generated
+  data-[variant=destructive]:focus:bg-destructive/10                    no rule generated
+  data-[variant=destructive]:focus:text-destructive                     no rule generated
+  dark:data-[variant=destructive]:focus:bg-destructive/20               no rule generated
+  data-[variant=destructive]:*:[svg]:text-destructive                   no rule generated
+  data-popup-open:bg-accent                                             no rule generated
+  data-popup-open:text-accent-foreground                                no rule generated
+  data-open:bg-accent                                                   no rule generated
+  data-open:text-accent-foreground                                      no rule generated
+  focus:**:text-accent-foreground                                       no rule generated
+  bg-border                                                             no rule generated
+  group-focus/dropdown-menu-item:text-accent-foreground                 no rule generated
 
-src/components/ui/input.tsx  —  14 unresolved
-  border-input                                                             no rule generated
-  file:text-foreground                                                     no rule generated
-  placeholder:text-muted-foreground                                        no rule generated
-  focus-visible:border-ring                                                no rule generated
-  focus-visible:ring-3                                                     no rule generated
-  focus-visible:ring-ring/50                                               no rule generated
-  disabled:bg-input/50                                                     no rule generated
-  aria-invalid:border-destructive                                          no rule generated
-  aria-invalid:ring-3                                                      no rule generated
-  aria-invalid:ring-destructive/20                                         no rule generated
-  dark:bg-input/30                                                         no rule generated
-  dark:disabled:bg-input/80                                                no rule generated
-  dark:aria-invalid:border-destructive/50                                  no rule generated
-  dark:aria-invalid:ring-destructive/40                                    no rule generated
+src/components/ui/input.tsx  —  12 unresolved
+  border-input                                                          no rule generated
+  file:text-foreground                                                  no rule generated
+  placeholder:text-muted-foreground                                     no rule generated
+  focus-visible:border-ring                                             no rule generated
+  focus-visible:ring-ring/50                                            no rule generated
+  disabled:bg-input/50                                                  no rule generated
+  aria-invalid:border-destructive                                       no rule generated
+  aria-invalid:ring-destructive/20                                      no rule generated
+  dark:bg-input/30                                                      no rule generated
+  dark:disabled:bg-input/80                                             no rule generated
+  dark:aria-invalid:border-destructive/50                               no rule generated
+  dark:aria-invalid:ring-destructive/40                                 no rule generated
 
-src/components/ui/select.tsx  —  42 unresolved
-  border-input                                                             no rule generated
-  focus-visible:border-ring                                                no rule generated
-  focus-visible:ring-3                                                     no rule generated
-  focus-visible:ring-ring/50                                               no rule generated
-  aria-invalid:border-destructive                                          no rule generated
-  aria-invalid:ring-3                                                      no rule generated
-  aria-invalid:ring-destructive/20                                         no rule generated
-  data-placeholder:text-muted-foreground                                   no rule generated
-  data-[size=sm]:rounded-[min(var(--radius-md),10px)]                      var(--radius-md) is not defined
-  dark:bg-input/30                                                         no rule generated
-  dark:hover:bg-input/50                                                   no rule generated
-  dark:aria-invalid:border-destructive/50                                  no rule generated
-  dark:aria-invalid:ring-destructive/40                                    no rule generated
-  text-muted-foreground                                                    no rule generated
-  max-h-(--available-height)                                               no rule generated
-  w-(--anchor-width)                                                       no rule generated
-  origin-(--transform-origin)                                              no rule generated
-  bg-popover                                                               no rule generated
-  text-popover-foreground                                                  no rule generated
-  ring-foreground/10                                                       no rule generated
-  data-[side=bottom]:slide-in-from-top-2                                   no rule generated
-  data-[side=inline-end]:slide-in-from-left-2                              no rule generated
-  data-[side=inline-start]:slide-in-from-right-2                           no rule generated
-  data-[side=left]:slide-in-from-right-2                                   no rule generated
-  data-[side=right]:slide-in-from-left-2                                   no rule generated
-  data-[side=top]:slide-in-from-bottom-2                                   no rule generated
-  data-open:animate-in                                                     no rule generated
-  data-open:fade-in-0                                                      no rule generated
-  data-open:zoom-in-95                                                     no rule generated
-  data-closed:animate-out                                                  no rule generated
-  data-closed:fade-out-0                                                   no rule generated
-  data-closed:zoom-out-95                                                  no rule generated
-  outline-hidden                                                           no rule generated
-  focus:bg-accent                                                          no rule generated
-  focus:text-accent-foreground                                             no rule generated
-  not-data-[variant=destructive]:focus:**:text-accent-foreground           no rule generated
-  data-disabled:pointer-events-none                                        no rule generated
-  data-disabled:opacity-50                                                 no rule generated
-  *:[span]:last:flex                                                       no rule generated
-  *:[span]:last:items-center                                               no rule generated
-  *:[span]:last:gap-2                                                      no rule generated
-  bg-border                                                                no rule generated
+src/components/ui/select.tsx  —  21 unresolved
+  border-input                                                          no rule generated
+  focus-visible:border-ring                                             no rule generated
+  focus-visible:ring-ring/50                                            no rule generated
+  aria-invalid:border-destructive                                       no rule generated
+  aria-invalid:ring-destructive/20                                      no rule generated
+  data-placeholder:text-muted-foreground                                no rule generated
+  dark:bg-input/30                                                      no rule generated
+  dark:hover:bg-input/50                                                no rule generated
+  dark:aria-invalid:border-destructive/50                               no rule generated
+  dark:aria-invalid:ring-destructive/40                                 no rule generated
+  text-muted-foreground                                                 no rule generated
+  max-h-(--available-height)                                            var(--available-height) is not defined
+  w-(--anchor-width)                                                    var(--anchor-width) is not defined
+  origin-(--transform-origin)                                           var(--transform-origin) is not defined
+  bg-popover                                                            no rule generated
+  text-popover-foreground                                               no rule generated
+  ring-foreground/10                                                    no rule generated
+  focus:bg-accent                                                       no rule generated
+  focus:text-accent-foreground                                          no rule generated
+  not-data-[variant=destructive]:focus:**:text-accent-foreground        no rule generated
+  bg-border                                                             no rule generated
 
-src/components/ui/separator.tsx  —  5 unresolved
-  bg-border                                                                no rule generated
-  data-horizontal:h-px                                                     no rule generated
-  data-horizontal:w-full                                                   no rule generated
-  data-vertical:w-px                                                       no rule generated
-  data-vertical:self-stretch                                               no rule generated
+src/components/ui/separator.tsx  —  1 unresolved
+  bg-border                                                             no rule generated
 
-src/components/ui/sheet.tsx  —  16 unresolved
-  data-ending-style:opacity-0                                              no rule generated
-  data-starting-style:opacity-0                                            no rule generated
-  supports-backdrop-filter:backdrop-blur-xs                                no rule generated
-  bg-popover                                                               no rule generated
-  text-popover-foreground                                                  no rule generated
-  data-[side=bottom]:data-ending-style:translate-y-[2.5rem]                no rule generated
-  data-[side=bottom]:data-starting-style:translate-y-[2.5rem]              no rule generated
-  data-[side=left]:data-ending-style:translate-x-[-2.5rem]                 no rule generated
-  data-[side=left]:data-starting-style:translate-x-[-2.5rem]               no rule generated
-  data-[side=right]:data-ending-style:translate-x-[2.5rem]                 no rule generated
-  data-[side=right]:data-starting-style:translate-x-[2.5rem]               no rule generated
-  data-[side=top]:data-ending-style:translate-y-[-2.5rem]                  no rule generated
-  data-[side=top]:data-starting-style:translate-y-[-2.5rem]                no rule generated
-  font-heading                                                             no rule generated
-  text-foreground                                                          no rule generated
-  text-muted-foreground                                                    no rule generated
+src/components/ui/sheet.tsx  —  5 unresolved
+  bg-popover                                                            no rule generated
+  text-popover-foreground                                               no rule generated
+  font-heading                                                          no rule generated
+  text-foreground                                                       no rule generated
+  text-muted-foreground                                                 no rule generated
 
-src/components/ui/tabs.tsx  —  35 unresolved
-  data-horizontal:flex-col                                                 no rule generated
-  text-muted-foreground                                                    no rule generated
-  group-data-horizontal/tabs:h-8                                           no rule generated
-  group-data-vertical/tabs:h-fit                                           no rule generated
-  group-data-vertical/tabs:flex-col                                        no rule generated
-  bg-muted                                                                 no rule generated
-  text-foreground/60                                                       no rule generated
-  group-data-vertical/tabs:w-full                                          no rule generated
-  group-data-vertical/tabs:justify-start                                   no rule generated
-  hover:text-foreground                                                    no rule generated
-  focus-visible:border-ring                                                no rule generated
-  focus-visible:ring-ring/50                                               no rule generated
-  focus-visible:outline-ring                                               no rule generated
-  has-data-[icon=inline-end]:pr-1                                          no rule generated
-  has-data-[icon=inline-start]:pl-1                                        no rule generated
-  dark:text-muted-foreground                                               no rule generated
-  dark:hover:text-foreground                                               no rule generated
-  group-data-[variant=default]/tabs-list:data-active:shadow-sm             no rule generated
-  group-data-[variant=line]/tabs-list:data-active:shadow-none              no rule generated
-  group-data-[variant=line]/tabs-list:data-active:bg-transparent           no rule generated
-  dark:group-data-[variant=line]/tabs-list:data-active:border-transparent  no rule generated
-  dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent      no rule generated
-  data-active:bg-background                                                no rule generated
-  data-active:text-foreground                                              no rule generated
-  dark:data-active:border-input                                            no rule generated
-  dark:data-active:bg-input/30                                             no rule generated
-  dark:data-active:text-foreground                                         no rule generated
-  after:bg-foreground                                                      no rule generated
-  group-data-horizontal/tabs:after:inset-x-0                               no rule generated
-  group-data-horizontal/tabs:after:bottom-[-5px]                           no rule generated
-  group-data-horizontal/tabs:after:h-0.5                                   no rule generated
-  group-data-vertical/tabs:after:inset-y-0                                 no rule generated
-  group-data-vertical/tabs:after:-right-1                                  no rule generated
-  group-data-vertical/tabs:after:w-0.5                                     no rule generated
-  group-data-[variant=line]/tabs-list:data-active:after:opacity-100        no rule generated
+src/components/ui/tabs.tsx  —  15 unresolved
+  text-muted-foreground                                                 no rule generated
+  bg-muted                                                              no rule generated
+  text-foreground/60                                                    no rule generated
+  hover:text-foreground                                                 no rule generated
+  focus-visible:border-ring                                             no rule generated
+  focus-visible:ring-ring/50                                            no rule generated
+  focus-visible:outline-ring                                            no rule generated
+  dark:text-muted-foreground                                            no rule generated
+  dark:hover:text-foreground                                            no rule generated
+  data-active:bg-background                                             no rule generated
+  data-active:text-foreground                                           no rule generated
+  dark:data-active:border-input                                         no rule generated
+  dark:data-active:bg-input/30                                          no rule generated
+  dark:data-active:text-foreground                                      no rule generated
+  after:bg-foreground                                                   no rule generated

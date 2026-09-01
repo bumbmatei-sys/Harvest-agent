@@ -3,6 +3,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import postcss from 'postcss';
 import { contrastRatio, AA_CONTRAST } from '../lib/theme';
+import { buildAppCss } from '../test/support/tailwind-build';
 
 /**
  * Theming stage 4 — the hue scales.
@@ -186,17 +187,17 @@ describe('prose is driven by the ramp, not by Tailwind greys', () => {
   // ~1.5:1, and invisible to every class-based guard because no component
   // spells the colour. This asserts the config override is still wired up.
   it('every --tw-prose-* in the base .prose rule resolves to a token', async () => {
-    const postcssLib = (await import('postcss')).default;
-    const tw = (await import('tailwindcss')).default;
-    const base = (await import('../../tailwind.config')).default;
-    const out = await postcssLib([tw(base as never)]).process(readFileSync(GLOBALS, 'utf8'), {
-      from: GLOBALS,
-    });
+    // Compiled, not read off the config: `theme.extend.typography` is merged
+    // with the plugin's own defaults, so only the built stylesheet says which
+    // of the two won. v4 changed how Tailwind is invoked, not that — see
+    // src/test/support/tailwind-build.ts.
+    const out = await buildAppCss();
 
-    // The declarations land in their own `.prose{...}` rule, separate from the
-    // `.prose{color:var(--tw-prose-body)}` one, so find the rule that DECLARES.
+    // v3 split these across two `.prose` rules and v4 emits one, so find every
+    // rule whose selector is exactly `.prose` and take the declarations from
+    // whichever of them DECLARES (rather than merely consumes) the variables.
     let declaring: Record<string, string> | null = null;
-    postcss.parse(out.css).walkRules((rule) => {
+    postcss.parse(out).walkRules((rule) => {
       if (rule.selector !== '.prose') return;
       const decls: Record<string, string> = {};
       rule.walkDecls((d) => {

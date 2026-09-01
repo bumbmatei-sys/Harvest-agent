@@ -101,6 +101,7 @@ vi.mock('../SavedItems', () => ({ default: () => null }));
 vi.mock('../DonationHistory', () => ({ default: () => null }));
 
 import Profile from '../Profile';
+import { buildUtilityCss } from '../../test/support/tailwind-build';
 
 // ── rendering ──────────────────────────────────────────────────────────────
 
@@ -181,11 +182,10 @@ beforeAll(async () => {
     .join(' ');
   document.body.innerHTML = '';
 
-  const tailwind = (await import('tailwindcss')).default;
-  const base = (await import('../../../tailwind.config')).default;
-  const out = await postcss([
-    tailwind({ ...base, content: [{ raw, extension: 'html' }] } as never),
-  ]).process('@tailwind utilities;', { from: undefined });
+  // v4 emits the same utilities wrapped in `@layer utilities` and with theme
+  // values referenced rather than inlined; buildUtilityCss undoes exactly
+  // those two representational changes, so the walker below is unchanged.
+  const out = { css: await buildUtilityCss(raw) };
 
   // Tailwind escapes arbitrary values as CSS identifiers, so a comma arrives
   // as `\\2c ` rather than `\\,`. Decoding hex escapes first is what makes

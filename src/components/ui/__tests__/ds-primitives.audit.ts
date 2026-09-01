@@ -1,23 +1,25 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import postcss, { type Root as CssRoot } from 'postcss';
-import tailwindcss from 'tailwindcss';
 import ts from 'typescript';
 
-import twConfig from '../../../../tailwind.config';
+import { buildCssForFiles, GLOBALS_CSS, REPO_ROOT } from '../../../test/support/tailwind-build';
 
-export const REPO_ROOT = path.resolve(__dirname, '../../../..');
-export const GLOBALS_CSS = path.join(REPO_ROOT, 'src/app/globals.css');
+export { GLOBALS_CSS, REPO_ROOT };
 
 /**
  * THE-260 — resolving a Tailwind class without a browser and without a build.
  *
  * Tailwind itself is run, in process, over the real `tailwind.config.ts` with
  * the real `src/app/globals.css` as the stylesheet and the files under audit as
- * its `content`. That is the pipeline `next build` runs (postcss.config.mjs),
- * minus autoprefixer — which only adds vendor prefixes and cannot change
- * whether a rule exists. The result is the app's actual stylesheet, so "does
- * this class produce a rule" is answered by the engine that decides it.
+ * its `content`. That is the pipeline `next build` runs (postcss.config.mjs).
+ * Under Tailwind 3 this was "minus autoprefixer"; v4 does its own vendor
+ * prefixing through Lightning CSS and postcss.config.mjs carries nothing else,
+ * so the two are now the same chain. The result is the app's actual stylesheet,
+ * so "does this class produce a rule" is answered by the engine that decides it.
+ *
+ * How the content set is swapped moved with v4 — the plugin no longer takes a
+ * config object — but not why: see src/test/support/tailwind-build.ts.
  *
  * What was rejected:
  *
@@ -298,8 +300,6 @@ function readStylesheet(root: CssRoot): Stylesheet {
   return { valuesByClass, customProps };
 }
 
-let globalsCache: string | undefined;
-
 /**
  * Build the app's stylesheet with `files` as Tailwind's content, then report
  * every class those files spell that the stylesheet does not carry.
@@ -321,12 +321,7 @@ export async function auditPrimitives(files: string[]): Promise<AuditResult> {
   const classesByFile = new Map<string, string[]>();
   files.forEach((file, i) => classesByFile.set(file, extractClassNames(file, sources[i])));
 
-  globalsCache ??= readFileSync(GLOBALS_CSS, 'utf8');
-  const built = await postcss([
-    tailwindcss({ ...twConfig, content: sources.map((raw) => ({ raw, extension: 'tsx' })) }),
-  ]).process(globalsCache, { from: GLOBALS_CSS });
-
-  const sheet = readStylesheet(built.root as CssRoot);
+  const sheet = readStylesheet(postcss.parse(await buildCssForFiles(files)) as CssRoot);
 
   /** Follow `--a: var(--b)` so an indirection cannot hide an undefined name. */
   const firstUndefined = (values: string[]): string | undefined => {

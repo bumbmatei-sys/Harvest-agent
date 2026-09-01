@@ -2,9 +2,9 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import postcss from 'postcss';
-import tailwindcss from 'tailwindcss';
 import type { Config } from 'tailwindcss';
 import baseConfig from '../../tailwind.config';
+import { buildAppCss, buildCssForMarkup } from '../test/support/tailwind-build';
 
 /**
  * Theming stage 2 — the two prerequisites, and the safety property.
@@ -22,23 +22,19 @@ const ROOT = path.resolve(__dirname, '../..');
 const GLOBALS = path.join(ROOT, 'src/app/globals.css');
 const LAYOUT = path.join(ROOT, 'src/app/layout.tsx');
 
-/** Compile just the utilities Tailwind finds in `markup`. */
-async function compile(markup: string): Promise<string> {
-  const config = { ...(baseConfig as Config), content: [{ raw: markup, extension: 'html' }] };
-  const result = await postcss([tailwindcss(config)]).process('@tailwind utilities;', {
-    from: undefined,
-  });
-  return result.css;
-}
+/**
+ * Compile just the utilities Tailwind finds in `markup`.
+ *
+ * v3 did this by handing the PostCSS plugin `{ ...baseConfig, content: [{ raw
+ * }] }`. v4's plugin takes no config argument and rejects raw content entries,
+ * so the same substitution is expressed the way v4 expresses it — see
+ * src/test/support/tailwind-build.ts. The property under test is unchanged:
+ * these assertions read COMPILED declarations, not the config's shape.
+ */
+const compile = (markup: string): Promise<string> => buildCssForMarkup(markup);
 
 /** Compile the real globals.css against the real content globs. */
-async function compileGlobals(): Promise<string> {
-  const result = await postcss([tailwindcss(baseConfig as Config)]).process(
-    readFileSync(GLOBALS, 'utf8'),
-    { from: GLOBALS },
-  );
-  return result.css;
-}
+const compileGlobals = (): Promise<string> => buildAppCss();
 
 /** All `--custom: value` pairs declared in globals.css's :root. */
 function rootVars(): Record<string, string> {
@@ -71,6 +67,12 @@ function resolveColour(value: string, vars: Record<string, string>, depth = 0): 
     );
   }
   if (/^#[0-9a-f]{6}$/i.test(v)) return v.toUpperCase();
+  // v4 emits the short form for `bg-white` (`#fff`) where v3 emitted
+  // `rgb(255 255 255 / var(--tw-bg-opacity, 1))`. Same colour, so expand it
+  // rather than let a notation difference read as a colour difference.
+  if (/^#[0-9a-f]{3}$/i.test(v)) {
+    return ('#' + v.slice(1).split('').map((c) => c + c).join('')).toUpperCase();
+  }
   return v;
 }
 
@@ -87,12 +89,30 @@ function declOf(css: string, cls: string, prop: string): string | undefined {
   return found;
 }
 
+/**
+ * Every custom property the COMPILED stylesheet defines, globals.css's own
+ * included. Tailwind v4 emits its theme as real CSS variables — `bg-white` is
+ * `var(--color-white)`, not the literal v3 used to inline — so resolving a
+ * compiled colour needs them. globals.css's declarations are layered last and
+ * so win here exactly as they win in the browser: `@layer theme` is declared
+ * before `@layer base`, and globals.css's `:root` lives in `base`.
+ */
+function compiledVars(css: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  postcss.parse(css).walkDecls((decl) => {
+    if (decl.prop.startsWith('--')) out[decl.prop] = decl.value.trim();
+  });
+  return { ...out, ...rootVars() };
+}
+
 let globalsCss: string;
 let vars: Record<string, string>;
+let allVars: Record<string, string>;
 
 beforeAll(async () => {
   globalsCss = await compileGlobals();
   vars = rootVars();
+  allVars = compiledVars(globalsCss);
 }, 60_000);
 
 /**
@@ -161,7 +181,7 @@ describe('zero visual change in the light theme', () => {
     const tokenValue = declOf(css, token, prop);
     expect(legacyValue).toBeDefined();
     expect(tokenValue).toBeDefined();
-    expect(resolveColour(tokenValue!, vars)).toBe(resolveColour(legacyValue!, vars));
+    expect(resolveColour(tokenValue!, allVars)).toBe(resolveColour(legacyValue!, allVars));
   });
 
   it('the converted surface uses no opacity modifier on a variable-backed token', () => {

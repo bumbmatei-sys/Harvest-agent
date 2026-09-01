@@ -1,6 +1,66 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* ── Tailwind v4 ────────────────────────────────────────────────────────
+   One import replaces v3's three directives. `@import "tailwindcss"` pulls in
+   theme.css, preflight.css and utilities.css and declares the cascade layers
+   they live in — `@layer theme, base, components, utilities`, in that order.
+
+   Those are REAL cascade layers now, not v3's flattened injection points, and
+   two things in this file depend on that:
+     • the `@layer base { :root { … } }` block below out-ranks the theme layer,
+       so every token declared there wins over anything Tailwind derives from
+       tailwind.config.ts. Nothing here can be shadowed by a generated default.
+     • the desktop rem trim near the bottom of this file is UNLAYERED, and
+       unlayered rules beat every layer, so it still wins. Same for the
+       --brand-color that layout.tsx injects per request.
+
+   `@config` is v4's escape hatch for a JavaScript config: v4 no longer picks
+   tailwind.config.ts up by filename, so it is named here explicitly. The
+   config itself is unchanged — see its header for why it stays JS. */
+@import "tailwindcss";
+/* The v4 animation package. `tailwindcss-animate` was a v3 JavaScript plugin
+   and is not installed; `tw-animate-css` is its v4 successor and is CSS-only,
+   so it is imported rather than listed in `plugins`. It has been a dependency
+   since the shadcn primitives landed and was never wired up, which is why
+   `animate-in`, `fade-in-0`, `zoom-in-95` and `slide-in-from-*` — 30 of
+   THE-260's 262 unresolved classes — produced no rule. It declares animation
+   variables and keyframes only: no colour, and no shadcn token. */
+@import "tw-animate-css";
+@config "../../tailwind.config.ts";
+
+/* ── v4 preflight compatibility ─────────────────────────────────────────
+   Three v3 preflight defaults that v4 drops on purpose. Each is restored with
+   the snippet the upgrade guide gives for it, because this PR is a build
+   migration and a repaint of every bordered box is not a build change.
+
+   These are the whole of the visual delta v4's preflight would otherwise
+   introduce; nothing else in preflight moved. They are candidates for deletion
+   as deliberate design decisions later — but that is a design PR, not this one. */
+@layer base {
+  /* v3 defaulted every border to gray-200; v4 defaults to currentColor. Left
+     alone, every `border`/`border-t`/`divide-*` in src that does not name a
+     colour would repaint itself in the element's text colour. */
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+
+  /* v3 defaulted placeholders to gray-400; v4 uses the current text colour at
+     50%. Restored so inputs that do not spell `placeholder:*` are unchanged. */
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-gray-400);
+  }
+
+  /* v3 preflight put `cursor: pointer` on buttons; v4 matches the browser
+     default of `cursor: default`. Every button in this app is a pointer today. */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
 
 @layer base {
  :root {
