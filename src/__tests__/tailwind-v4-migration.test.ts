@@ -123,14 +123,20 @@ describe('all four palettes resolve every token they declare', () => {
     expect(dangling, `${palette.name} declares a token that resolves to nothing`).toEqual([]);
   });
 
-  it('each palette declares the number of tokens it declared before the migration', () => {
+  it('each palette declares the number of tokens it declared before the migration, plus Phase 2\'s', () => {
     // v4 changed how the stylesheet is BUILT, not what globals.css says. A
     // block that silently lost half its declarations would still pass the test
     // above on the half that remained.
+    //
+    // THE-263 (shadcn Phase 2) adds the shadcn token bridge: 24 declarations
+    // to :root and 6 to .dark. The Classic blocks are UNCHANGED at 14 — the
+    // bridge aliases tokens Classic already overrides, so it reaches both
+    // families through the cascade rather than by being restated. That the
+    // Classic counts did not move is the load-bearing half of this assertion.
     expect(Object.fromEntries(PALETTES.map((p) => [p.selector, Object.keys(declaredBy(css, p.selector)).length])))
       .toEqual({
-        ':root': 135,
-        '.dark, [data-theme="dark"]': 83,
+        ':root': 135 + 24,
+        '.dark, [data-theme="dark"]': 83 + 6,
         '[data-palette="classic"][data-theme="light"]': 14,
         '[data-palette="classic"].dark, [data-palette="classic"][data-theme="dark"]': 14,
       });
@@ -410,37 +416,75 @@ describe('prose-invert is still light in both themes', () => {
   });
 });
 
-/* ── 8. No shadcn token was defined ──────────────────────────────────────── */
+/* ── 8. The shadcn tokens — defined by Phase 2 (THE-263) ─────────────────── */
 
-describe('no shadcn token was defined', () => {
-  /** The names the primitives spell and Phase 2 will define. Not this ticket. */
+describe('the shadcn token bridge landed', () => {
+  /**
+   * The names the primitives spell. THE-261 asserted globals.css declared NONE
+   * of these and that the classes needing them still produced nothing; THE-263
+   * defines them, so both assertions invert here rather than being deleted —
+   * a Phase 2 that silently un-landed has to fail something.
+   */
   const PHASE_TWO = [
     '--primary', '--primary-foreground', '--secondary', '--secondary-foreground',
     '--foreground', '--background', '--muted', '--muted-foreground',
-    '--accent', '--accent-foreground', '--destructive', '--destructive-foreground',
+    '--accent', '--accent-foreground', '--destructive',
     '--border', '--input', '--ring', '--radius', '--card', '--card-foreground',
     '--popover', '--popover-foreground',
   ];
 
-  it('globals.css declares none of them', () => {
+  /**
+   * Deliberately still absent, and each for a stated reason:
+   *
+   *   • --destructive-foreground — no primitive spells it. The thirteen files
+   *     pair `text-destructive` with `bg-destructive/10`, never a solid fill,
+   *     so a foreground for it would be a token with no consumer.
+   *   • --sidebar-* — this repo has no sidebar primitive, the family is absent
+   *     from the audit fixture, and the exact member list could not be
+   *     confirmed against the shadcn registry from this environment (egress to
+   *     ui.shadcn.com is blocked; the vendored `shadcn` CLI carries only the
+   *     legacy --sidebar / --sidebar-background alias pair). Defining eight
+   *     tokens from memory is what THE-263 explicitly forbade.
+   */
+  const STILL_ABSENT = ['--destructive-foreground'];
+
+  const declaredTokens = (): Set<string> => {
     const declared = new Set<string>();
     postcss.parse(readFileSync(GLOBALS_CSS, 'utf8')).walkDecls((decl) => {
       if (decl.prop.startsWith('--')) declared.add(decl.prop);
     });
-    expect(PHASE_TWO.filter((t) => declared.has(t)), 'this ticket defined a Phase 2 token').toEqual([]);
-    // The chart/sidebar families by prefix, so a `--chart-6` cannot slip past a list.
-    expect([...declared].filter((t) => /^--(chart|sidebar)-/.test(t))).toEqual([]);
+    return declared;
+  };
+
+  it('globals.css declares every one of them', () => {
+    const declared = declaredTokens();
+    expect(PHASE_TWO.filter((t) => !declared.has(t)), 'a Phase 2 token went missing').toEqual([]);
   });
 
-  it('so the classes that need them still produce nothing, and the quarantine still has work', () => {
+  it('declares the chart family, and still no sidebar family', () => {
+    const declared = [...declaredTokens()];
+    expect(declared.filter((t) => /^--chart-/.test(t)).sort())
+      .toEqual(['--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5']);
+    // By prefix, so a `--sidebar-foo` cannot slip past a list.
+    expect(declared.filter((t) => /^--sidebar/.test(t))).toEqual([]);
+  });
+
+  it('leaves the named absences absent, so their reasons stay reviewable', () => {
+    const declared = declaredTokens();
+    expect(STILL_ABSENT.filter((t) => declared.has(t))).toEqual([]);
+  });
+
+  it('so the classes that needed them now resolve, and the list names what is left', () => {
     const recorded = readFileSync(
       path.join(SRC, 'components/ui/__tests__/__fixtures__/unresolved-token-classes.txt'),
       'utf8',
     );
-    expect(recorded, 'the unresolved list is empty — Phase 2 landed and the quarantine must go').not.toBe('');
     for (const cls of ['bg-muted', 'text-foreground', 'text-primary-foreground']) {
-      expect(recorded, `${cls} resolves now, which means a token was defined`).toContain(cls);
+      expect(recorded, `${cls} is still unresolved — Phase 2 did not reach it`).not.toContain(cls);
     }
+    // Not empty: `border` is Phase 3, `font-heading` is Phase 7, and the Base
+    // UI runtime variables are not tokens at all. The quarantine stays.
+    expect(recorded, 'the unresolved list is empty — the quarantine must go').not.toBe('');
   });
 });
 
@@ -625,10 +669,14 @@ describe('the ds-primitives quarantine still fails as designed', () => {
       'utf8',
     );
     const unresolved = recorded.split('\n').filter((l) => /^ {2}\S/.test(l)).length;
-    // 262 before the migration; 143 after. Removing the quarantine is Phase 2's
-    // job and `it.fails` turns red by itself when the list reaches zero.
-    expect(unresolved).toBe(143);
-    expect(unresolved).toBeLessThan(262);
+    // 262 before the migration; 143 after it; 15 after THE-263's token bridge.
+    // It does not reach zero here and must not: 6 of the 15 spell `border`
+    // (Phase 3), 3 spell `font-heading` (Phase 7) and 6 name Base UI RUNTIME
+    // variables, which no stylesheet can define. `it.fails` turns red by
+    // itself if the list ever does reach zero, which is what removes the
+    // quarantine — so this number shrinking further is a signal, not a chore.
+    expect(unresolved).toBe(15);
+    expect(unresolved).toBeLessThan(143);
   });
 });
 
