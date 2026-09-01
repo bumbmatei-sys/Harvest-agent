@@ -150,17 +150,17 @@ const AdminGivingStatements: React.FC = () => {
           <div>
             <label className="block text-xs font-semibold text-body mb-1">EIN / Registration Number</label>
             <input value={config.ein} onChange={e => setConfig({ ...config, ein: e.target.value })}
-              className={`w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.medium}`} />
+              className={`w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.medium}`} />
           </div>
           <div>
             <label className="block text-xs font-semibold text-body mb-1">Organization Address</label>
             <textarea value={config.address} onChange={e => setConfig({ ...config, address: e.target.value })} rows={2}
-              className="w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-none focus:border-gold resize-none" />
+              className="w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-hidden focus:border-gold resize-none" />
           </div>
           <div>
             <label className="block text-xs font-semibold text-body mb-1">Country</label>
             <select value={config.country} onChange={e => setConfig({ ...config, country: e.target.value })}
-              className={`w-full px-3 py-2 border border-line rounded-xl text-sm bg-surface-raised focus:outline-none focus:border-gold ${FIELD_WIDTH.medium}`}>
+              className={`w-full px-3 py-2 border border-line rounded-xl text-sm bg-surface-raised focus:outline-hidden focus:border-gold ${FIELD_WIDTH.medium}`}>
               <option value="US">United States</option>
               <option value="CA">Canada</option>
               <option value="AU">Australia</option>
@@ -172,7 +172,7 @@ const AdminGivingStatements: React.FC = () => {
             <label className="block text-xs font-semibold text-body mb-1">Custom Footer</label>
             <textarea value={config.footer} onChange={e => setConfig({ ...config, footer: e.target.value })} rows={2}
               placeholder="No goods or services were provided..."
-              className="w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-none focus:border-gold resize-none" />
+              className="w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-hidden focus:border-gold resize-none" />
           </div>
           <div className="flex items-center gap-3">
             <button onClick={saveConfig} disabled={savingConfig}
@@ -222,7 +222,7 @@ const AdminGivingStatements: React.FC = () => {
         <div>
           <label className="block text-xs font-semibold text-body mb-1">Tax Year</label>
           <select value={year} onChange={e => setYear(Number(e.target.value))}
-            className={`w-full px-3 py-2 border border-line rounded-xl text-sm bg-surface-raised focus:outline-none focus:border-gold ${FIELD_WIDTH.short}`}>
+            className={`w-full px-3 py-2 border border-line rounded-xl text-sm bg-surface-raised focus:outline-hidden focus:border-gold ${FIELD_WIDTH.short}`}>
             {years.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
@@ -235,7 +235,7 @@ const AdminGivingStatements: React.FC = () => {
         </div>
         {singleDonor && (
           <input value={donorEmail} onChange={e => setDonorEmail(e.target.value)} placeholder="donor@email.com" type="email"
-            className={`w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.long}`} />
+            className={`w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.long}`} />
         )}
         <button onClick={generate} disabled={generating || (singleDonor && !donorEmail.trim())}
           className={`w-full sm:w-auto flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50 ${ACTION_BUTTON}`} style={{ backgroundColor: GOLD }}>

@@ -9,6 +9,7 @@ import postcss from 'postcss';
 
 import GivingLinks from '../donations/GivingLinks';
 import { readGivingLinks } from '../donations/giving-providers';
+import { buildUtilityCss } from '../../test/support/tailwind-build';
 
 /**
  * THE-256 — the Stripe Connect panel is hidden, and the church's own payment
@@ -427,11 +428,10 @@ describe('5 — it invents no width and shrinks no touch target', () => {
     host.remove();
     vi.resetModules();
 
-    const tailwind = (await import('tailwindcss')).default;
-    const base = (await import('../../../tailwind.config')).default;
-    const out = await postcss([
-      tailwind({ ...base, content: [{ raw, extension: 'html' }] } as never),
-    ]).process('@tailwind utilities;', { from: undefined });
+    // v4 emits the same utilities wrapped in `@layer utilities` and with theme
+    // values referenced rather than inlined; buildUtilityCss undoes exactly
+    // those two representational changes, so the walker below is unchanged.
+    const out = { css: await buildUtilityCss(raw) };
 
     const unescape = (sel: string) => sel.replace(/^\./, '').replace(/\\/g, '');
     const collect = (node: postcss.Rule, minWidth: number) => {

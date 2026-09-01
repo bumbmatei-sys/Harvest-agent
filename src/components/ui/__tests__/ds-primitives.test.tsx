@@ -263,10 +263,22 @@ describe('THE-260 changes nothing it audits', () => {
 
   it('tailwind.config.ts adds no colour, and no longer cites a file that is absent', () => {
     const config = readFileSync(path.join(REPO_ROOT, 'tailwind.config.ts'), 'utf8');
-    // The comment correction is the only edit this PR makes outside its own
-    // test directory; the config's own shape is pinned by the token list above
-    // plus this digest of everything that is not a comment.
-    const code = config.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/[^\n]*/g, '$1');
+    // The config's own shape is pinned by the token list above plus this digest
+    // of everything that is not a comment.
+    //
+    // THE-261 widened the normaliser by one step — comments are stripped as
+    // before, and then whitespace is collapsed. It used to hash the code WITH
+    // the blank lines the stripped comments left behind, so adding or removing
+    // a comment line moved the digest even when not a character of code
+    // changed. That made the digest unable to express the one claim the v4
+    // migration most needed to make: that it rewrote this file's comments and
+    // nothing else. It now expresses exactly that, and it is strictly harder to
+    // satisfy by accident — reformatting no longer hides behind a re-record.
+    const code = config
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|\s)\/\/[^\n]*/g, '$1')
+      .replace(/\s+/g, ' ')
+      .trim();
     expect(sha256(code)).toBe(
       readFileSync(path.join(FIXTURES, 'tailwind-config-code.sha256'), 'utf8').trim(),
     );

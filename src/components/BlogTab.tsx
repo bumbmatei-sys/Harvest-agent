@@ -246,7 +246,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  }
  window.scrollTo(0, 0);
  }}
- className="flex gap-3 bg-surface-raised rounded-xl p-3 shadow-sm border border-line cursor-pointer hover:border-gold transition-colors"
+ className="flex gap-3 bg-surface-raised rounded-xl p-3 shadow-xs border border-line cursor-pointer hover:border-gold transition-colors"
  >
  {relatedPost.featuredImage && (
  <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-surface-sunken relative">
@@ -296,7 +296,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  value={searchQuery}
  onChange={(e) => setSearchQuery(e.target.value)}
  placeholder="Search articles by title, content, or tags..."
- className="w-full pl-9 lg:pl-11 pr-3 py-1.5 lg:py-2.5 bg-surface-raised border border-line rounded-lg lg:rounded-xl text-sm text-strong focus:ring-2 focus:ring-gold focus:border-transparent outline-none transition-all"
+ className="w-full pl-9 lg:pl-11 pr-3 py-1.5 lg:py-2.5 bg-surface-raised border border-line rounded-lg lg:rounded-xl text-sm text-strong focus:ring-2 focus:ring-gold focus:border-transparent outline-hidden transition-all"
  />
  </div>
 
@@ -331,7 +331,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  setSelectedPost(post);
  }
  }}
- className="bg-surface-raised rounded-xl shadow-sm border border-line overflow-hidden flex flex-row items-center gap-3 p-2.5 sm:p-3 transition-transform hover:scale-[1.02] duration-300 cursor-pointer"
+ className="bg-surface-raised rounded-xl shadow-xs border border-line overflow-hidden flex flex-row items-center gap-3 p-2.5 sm:p-3 transition-transform hover:scale-[1.02] duration-300 cursor-pointer"
  >
  {post.featuredImage ? (
  <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 overflow-hidden rounded-lg bg-surface-sunken relative">

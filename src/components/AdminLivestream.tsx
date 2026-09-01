@@ -388,11 +388,11 @@ const AdminLivestream: React.FC = () => {
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-strong mb-1.5">YouTube Live URL or Video ID</label>
-                <input value={urlInput} onChange={e => setUrlInput(e.target.value)} placeholder="https://youtube.com/watch?v=… or dQw4w9WgXcQ" className="w-full px-4 py-2.5 border border-line rounded-brand text-sm text-strong focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
+                <input value={urlInput} onChange={e => setUrlInput(e.target.value)} placeholder="https://youtube.com/watch?v=… or dQw4w9WgXcQ" className="w-full px-4 py-2.5 border border-line rounded-brand text-sm text-strong focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-strong mb-1.5">Title</label>
-                <input value={titleInput} onChange={e => setTitleInput(e.target.value)} placeholder="Sunday Service — June 29" className="w-full px-4 py-2.5 border border-line rounded-brand text-sm text-strong focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
+                <input value={titleInput} onChange={e => setTitleInput(e.target.value)} placeholder="Sunday Service — June 29" className="w-full px-4 py-2.5 border border-line rounded-brand text-sm text-strong focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
               </div>
               <button onClick={startStream} disabled={starting} className="w-full py-2.5 rounded-brand text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
                 {starting ? 'Starting…' : 'Start Stream'}

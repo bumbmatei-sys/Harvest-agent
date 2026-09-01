@@ -179,7 +179,7 @@ const PartnerWithUsTab: React.FC<PartnerWithUsTabProps> = ({ showDonationForm, l
             type="number"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="bg-transparent font-bold text-strong w-full focus:outline-none text-lg"
+            className="bg-transparent font-bold text-strong w-full focus:outline-hidden text-lg"
             placeholder="Other Amount"
           />
         </div>

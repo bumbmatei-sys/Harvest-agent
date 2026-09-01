@@ -230,7 +230,7 @@ const AttachmentCard: React.FC<{ attachment: MessageAttachment; onOpen?: () => v
   const icon = attachment.type === 'doc' ? '📄' : attachment.type === 'contact' ? '👤' : attachment.type === 'form' ? '📝' : '🎯';
   const label = attachment.type === 'doc' ? 'Open Doc' : attachment.type === 'contact' ? 'View Contact' : attachment.type === 'form' ? 'Open Form' : 'View Campaign';
   return (
-    <div className="mt-1.5 bg-surface-raised border border-line rounded-2xl overflow-hidden shadow-sm" style={{ maxWidth: 224 }}>
+    <div className="mt-1.5 bg-surface-raised border border-line rounded-2xl overflow-hidden shadow-xs" style={{ maxWidth: 224 }}>
       <div className="flex items-start gap-2 p-3 pb-2">
         <span className="text-lg leading-none flex-shrink-0">{icon}</span>
         <div className="flex-1 min-w-0">
@@ -371,7 +371,7 @@ const AttachPicker: React.FC<{
             <button
               key={id}
               onClick={() => { setTab(id as AttachTab); setSearch(''); }}
-              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors ${tab === id ? 'bg-surface-raised shadow-sm text-strong' : 'text-muted'}`}
+              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors ${tab === id ? 'bg-surface-raised shadow-xs text-strong' : 'text-muted'}`}
             >
               {lbl}
             </button>
@@ -383,7 +383,7 @@ const AttachPicker: React.FC<{
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search..."
-            className="w-full pl-8 pr-3 py-2 text-sm border border-line rounded-xl focus:outline-none focus:border-gold"
+            className="w-full pl-8 pr-3 py-2 text-sm border border-line rounded-xl focus:outline-hidden focus:border-gold"
           />
         </div>
         <div className="overflow-y-auto flex-1">
@@ -530,7 +530,7 @@ const ChannelMembersSheet: React.FC<{
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search by name or email..."
-              className="w-full pl-8 pr-3 py-2 text-sm border border-line rounded-xl focus:outline-none focus:border-gold"
+              className="w-full pl-8 pr-3 py-2 text-sm border border-line rounded-xl focus:outline-hidden focus:border-gold"
             />
           </div>
         </div>
@@ -657,7 +657,7 @@ const ChannelThread: React.FC<{
                   <div key={m.id} className="group flex items-end gap-2">
                     <div className="max-w-[78%]">
                       {m.content && (
-                        <p className="bg-surface-raised border border-line rounded-2xl rounded-tl-sm px-3 py-2 text-sm text-body shadow-sm break-words">
+                        <p className="bg-surface-raised border border-line rounded-2xl rounded-tl-sm px-3 py-2 text-sm text-body shadow-xs break-words">
                           {m.content}
                         </p>
                       )}
@@ -712,7 +712,7 @@ const ChannelThread: React.FC<{
             onChange={e => setText(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), send())}
             placeholder={`Post to #${channel.name}`}
-            className="flex-1 bg-transparent outline-none text-sm text-strong placeholder-[color:var(--text-faint)]"
+            className="flex-1 bg-transparent outline-hidden text-sm text-strong placeholder-[color:var(--text-faint)]"
           />
           <button
             onClick={send}
@@ -906,7 +906,7 @@ const DmThread: React.FC<{
             onChange={e => setText(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), send())}
             placeholder="Type a message..."
-            className="flex-1 bg-transparent outline-none text-sm text-strong placeholder-[color:var(--text-faint)]"
+            className="flex-1 bg-transparent outline-hidden text-sm text-strong placeholder-[color:var(--text-faint)]"
           />
           <button
             onClick={send}
@@ -1259,7 +1259,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
           <button
             key={id}
             onClick={() => setTab(id)}
-            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors ${tab === id ? 'bg-surface-raised shadow-sm text-strong' : 'text-muted'}`}
+            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors ${tab === id ? 'bg-surface-raised shadow-xs text-strong' : 'text-muted'}`}
           >
             {label}
           </button>
@@ -1314,7 +1314,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 <button
                   key={ch.id}
                   onClick={() => setOpenChannel(ch)}
-                  className={`w-full rounded-2xl lg:rounded-brand px-4 py-3 border flex items-center gap-3 transition-all text-left ${active ? 'bg-[color-mix(in_srgb,var(--brand-color)_9%,transparent)] border-[color-mix(in_srgb,var(--brand-color)_45%,transparent)]' : 'bg-surface-raised border-line hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm'}`}
+                  className={`w-full rounded-2xl lg:rounded-brand px-4 py-3 border flex items-center gap-3 transition-all text-left ${active ? 'bg-[color-mix(in_srgb,var(--brand-color)_9%,transparent)] border-[color-mix(in_srgb,var(--brand-color)_45%,transparent)]' : 'bg-surface-raised border-line hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-xs'}`}
                 >
                   <div className="relative flex-shrink-0">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--brand-color, #B8962E)1A' }}>
@@ -1382,7 +1382,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 <button
                   key={dm.id}
                   onClick={() => setOpenAdminDm(dm)}
-                  className="w-full bg-surface-raised rounded-2xl px-4 py-3.5 border border-line flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
+                  className="w-full bg-surface-raised rounded-2xl px-4 py-3.5 border border-line flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-xs transition-all text-left"
                 >
                   <div className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white"
                     style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
@@ -1445,7 +1445,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 <button
                   key={dm.id}
                   onClick={() => setOpenMemberDm(dm)}
-                  className="w-full bg-surface-raised rounded-2xl px-4 py-3.5 border border-line flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
+                  className="w-full bg-surface-raised rounded-2xl px-4 py-3.5 border border-line flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-xs transition-all text-left"
                 >
                   <div className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white bg-sky-500">
                     {getOtherName(dm).charAt(0).toUpperCase()}
@@ -1524,7 +1524,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 <input
                   value={newChannelName}
                   onChange={e => setNewChannelName(e.target.value)}
-                  className="w-full rounded-xl border border-line px-3 py-2.5 text-sm focus:border-gold focus:outline-none"
+                  className="w-full rounded-xl border border-line px-3 py-2.5 text-sm focus:border-gold focus:outline-hidden"
                   placeholder="e.g. announcements"
                 />
               </div>
@@ -1533,7 +1533,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 <input
                   value={newChannelDesc}
                   onChange={e => setNewChannelDesc(e.target.value)}
-                  className="w-full rounded-xl border border-line px-3 py-2.5 text-sm focus:border-gold focus:outline-none"
+                  className="w-full rounded-xl border border-line px-3 py-2.5 text-sm focus:border-gold focus:outline-hidden"
                   placeholder="What is this channel about?"
                 />
               </div>
@@ -1548,7 +1548,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                     value={channelMemberSearch}
                     onChange={e => setChannelMemberSearch(e.target.value)}
                     placeholder="Search users by name or email..."
-                    className="w-full pl-8 pr-3 py-2 text-sm rounded-xl border border-line focus:border-gold focus:outline-none"
+                    className="w-full pl-8 pr-3 py-2 text-sm rounded-xl border border-line focus:border-gold focus:outline-hidden"
                   />
                 </div>
                 <div className="max-h-44 overflow-y-auto border border-line rounded-xl divide-y divide-line">
@@ -1654,7 +1654,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                   value={memberSearch}
                   onChange={e => setMemberSearch(e.target.value)}
                   placeholder="Search by name or email..."
-                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-line rounded-xl focus:outline-none focus:border-gold"
+                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-line rounded-xl focus:outline-hidden focus:border-gold"
                 />
               </div>
             </div>

@@ -329,8 +329,8 @@ const AdminSmsScreen: React.FC = () => {
   return (
     <div className="max-w-2xl mx-auto" style={{ paddingBottom: 120 }}>
       <div className="flex gap-1 bg-surface-sunken rounded-xl p-1 mb-6 w-fit mx-auto">
-        <button onClick={() => setTab('broadcast')} className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${tab === 'broadcast' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'}`}>Broadcasts</button>
-        <button onClick={() => setTab('automated')} className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${tab === 'automated' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'}`}>Automated</button>
+        <button onClick={() => setTab('broadcast')} className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${tab === 'broadcast' ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'}`}>Broadcasts</button>
+        <button onClick={() => setTab('automated')} className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${tab === 'automated' ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'}`}>Automated</button>
       </div>
 
       {usage?.metered
@@ -342,21 +342,21 @@ const AdminSmsScreen: React.FC = () => {
           <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-5 space-y-3">
             <div>
               <label className="block text-sm font-medium text-body mb-1.5">Recipients</label>
-              <select value={group} onChange={e => setGroup(e.target.value as Group)} className={`w-full px-4 py-2.5 border border-line rounded-xl text-sm bg-surface-raised focus:outline-none focus:border-gold ${FIELD_WIDTH.medium}`}>
+              <select value={group} onChange={e => setGroup(e.target.value as Group)} className={`w-full px-4 py-2.5 border border-line rounded-xl text-sm bg-surface-raised focus:outline-hidden focus:border-gold ${FIELD_WIDTH.medium}`}>
                 <option value="all_members">All Members</option>
                 <option value="all_donors">All Donors</option>
                 <option value="tag">Custom Tag</option>
               </select>
             </div>
             {group === 'tag' && (
-              <input value={tag} onChange={e => setTag(e.target.value)} placeholder="Tag name" className={`w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.medium}`} />
+              <input value={tag} onChange={e => setTag(e.target.value)} placeholder="Tag name" className={`w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.medium}`} />
             )}
             <p className="text-xs text-muted">Will send to <strong>{recipientCount ?? '…'}</strong> contact(s) with a phone number.</p>
             {/* The US-only limit is stated up front, not discovered from a
                 skipped-recipient count after the fact. */}
             <p className="text-[11px] text-faint">SMS is currently available for US numbers only — contacts with a non-US number are skipped and reported.</p>
             <div>
-              <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Your message…" rows={4} className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold" />
+              <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Your message…" rows={4} className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-hidden focus:border-gold" />
               <div className="flex justify-between text-xs text-faint mt-1">
                 <span>{message.length} chars</span>
                 <span>
@@ -443,7 +443,7 @@ const AdminSmsScreen: React.FC = () => {
                   onChange={e => setTpl(t.key, { text: e.target.value })}
                   placeholder={t.placeholder}
                   rows={2}
-                  className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:border-gold"
+                  className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-hidden focus:border-gold"
                 />
               </div>
             );
@@ -469,14 +469,14 @@ const AdminSmsScreen: React.FC = () => {
                 <div>
                   <label className="block text-xs font-semibold text-body mb-1">Keyword</label>
                   <input value={t2g.keyword} onChange={e => setT2g({ ...t2g, keyword: e.target.value.toUpperCase() })}
-                    placeholder="GIVE" className={`w-full px-3 py-2 border border-line rounded-xl text-sm font-mono focus:outline-none focus:border-gold ${FIELD_WIDTH.short}`} />
+                    placeholder="GIVE" className={`w-full px-3 py-2 border border-line rounded-xl text-sm font-mono focus:outline-hidden focus:border-gold ${FIELD_WIDTH.short}`} />
                   <p className="text-[11px] text-faint mt-1">People text this word to receive a giving link.</p>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-body mb-1">Reply Message</label>
                   <textarea value={t2g.responseTemplate} onChange={e => setT2g({ ...t2g, responseTemplate: e.target.value })}
                     rows={2} placeholder="Thank you! Give here: {link}"
-                    className="w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-none focus:border-gold resize-none" />
+                    className="w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-hidden focus:border-gold resize-none" />
                   <p className="text-[11px] text-faint mt-1"><code className="bg-surface-sunken px-1 rounded">{'{link}'}</code> will be replaced with your giving page URL.</p>
                   <p className="text-[11px] text-faint mt-1">Preview link: <span className="font-mono">https://{tenantId || 'your-ministry'}.theharvest.app/?giving=1</span></p>
                 </div>

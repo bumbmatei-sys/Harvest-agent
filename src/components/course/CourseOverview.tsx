@@ -104,7 +104,7 @@ export function CourseOverview({ course: rawCourse, authors, onBack, onStartLess
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end px-5 pb-6">
           <button
             onClick={onBack}
-            className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/15 backdrop-blur-sm border-none flex items-center justify-center cursor-pointer"
+            className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/15 backdrop-blur-xs border-none flex items-center justify-center cursor-pointer"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><path d="m15 18-6-6 6-6" /></svg>
           </button>

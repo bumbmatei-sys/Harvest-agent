@@ -92,6 +92,7 @@ import {
   isNativeShell,
   resolveInstallState,
 } from '../../lib/pwa-install';
+import { buildUtilityCss } from '../../test/support/tailwind-build';
 
 /* ── Environment control ──────────────────────────────────────────────────── */
 
@@ -641,11 +642,10 @@ describe('the step fits every measured viewport, and shrinks no touch target', (
       .flatMap((el) => classesOf(el)).join(' ');
     document.body.innerHTML = '';
 
-    const tailwind = (await import('tailwindcss')).default;
-    const base = (await import('../../../tailwind.config')).default;
-    const out = await postcss([
-      tailwind({ ...base, content: [{ raw, extension: 'html' }] } as never),
-    ]).process('@tailwind utilities;', { from: undefined });
+    // v4 emits the same utilities wrapped in `@layer utilities` and with theme
+    // values referenced rather than inlined; buildUtilityCss undoes exactly
+    // those two representational changes, so the walker below is unchanged.
+    const out = { css: await buildUtilityCss(raw) };
 
     const unescape = (sel: string) => sel.replace(/^\./, '').replace(/\\/g, '');
     const collect = (node: postcss.Rule, minWidth: number) => {

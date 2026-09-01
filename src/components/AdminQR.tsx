@@ -152,7 +152,7 @@ const AdminQR: React.FC = () => {
               {qrType === 'event' ? 'Event' : qrType === 'checkin' ? 'Check-In Session' : 'Form'}
             </label>
             <select value={selectedId} onChange={e => changeSelected(e.target.value)}
-              className="w-full px-4 py-2.5 border border-line rounded-xl text-sm bg-surface-raised focus:outline-none focus:border-gold">
+              className="w-full px-4 py-2.5 border border-line rounded-xl text-sm bg-surface-raised focus:outline-hidden focus:border-gold">
               <option value="">Select…</option>
               {contextList.map(i => <option key={i.id} value={i.id}>{i.label}</option>)}
             </select>
@@ -167,7 +167,7 @@ const AdminQR: React.FC = () => {
             <label className="block text-sm font-medium text-body mb-1.5">Custom URL</label>
             <input value={customUrl} onChange={e => { setCustomUrl(e.target.value); setQrDataUrl(''); }}
               placeholder="https://example.com/page"
-              className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold" />
+              className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-hidden focus:border-gold" />
           </div>
         )}
 
@@ -179,7 +179,7 @@ const AdminQR: React.FC = () => {
         <div>
           <label className="block text-sm font-medium text-body mb-1.5">Label <span className="text-faint font-normal">(used for the filename)</span></label>
           <input value={label} onChange={e => setLabel(e.target.value)} placeholder="e.g. Sunday Service"
-            className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold" />
+            className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-hidden focus:border-gold" />
         </div>
 
         <button onClick={generate} disabled={!canGenerate || generating}

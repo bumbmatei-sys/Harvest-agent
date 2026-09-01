@@ -89,7 +89,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
     content: '',
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none focus:outline-none min-h-[400px] px-5 py-4 text-body',
+        class: 'prose prose-sm max-w-none focus:outline-hidden min-h-[400px] px-5 py-4 text-body',
       },
     },
   });
@@ -304,7 +304,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] focus:border-gold"
+                    className="w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] focus:border-gold"
                   />
                 </div>
                 <div className="flex-1">
@@ -314,7 +314,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                     max={new Date().toISOString().split('T')[0]}
-                    className="w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] focus:border-gold"
+                    className="w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] focus:border-gold"
                   />
                 </div>
               </div>
@@ -368,7 +368,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="Enter your newsletter subject..."
-                className="w-full text-lg font-semibold text-strong placeholder:text-faint border-0 focus:outline-none focus:ring-0 bg-transparent"
+                className="w-full text-lg font-semibold text-strong placeholder:text-faint border-0 focus:outline-hidden focus:ring-0 bg-transparent"
               />
               <div className="text-xs text-faint text-right mt-1">{subject.length}/150</div>
             </div>
@@ -409,7 +409,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
                     value={scheduleDate}
                     onChange={(e) => setScheduleDate(e.target.value)}
                     min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
-                    className="flex-1 px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] focus:border-gold"
+                    className="flex-1 px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] focus:border-gold"
                   />
                   <button
                     onClick={() => handleSend(scheduleDate)}

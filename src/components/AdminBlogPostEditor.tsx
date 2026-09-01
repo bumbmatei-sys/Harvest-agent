@@ -32,7 +32,7 @@ interface AdminBlogPostEditorProps {
 }
 
 const fieldLabel = 'block text-xs font-semibold text-body mb-1.5';
-const fieldInput = 'w-full px-3 py-2.5 bg-surface-raised border border-line rounded-brand text-sm text-strong outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent transition-all';
+const fieldInput = 'w-full px-3 py-2.5 bg-surface-raised border border-line rounded-brand text-sm text-strong outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent transition-all';
 
 const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose, categories }) => {
   const [title, setTitle] = useState(post?.title || '');
@@ -180,7 +180,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
             value={title}
             onChange={(e) => { setTitle(e.target.value); setError(''); }}
             placeholder="Post title"
-            className="w-full px-6 pt-6 pb-5 font-display text-[1.9rem] font-normal text-strong placeholder:text-stone-300 border-none outline-none bg-transparent leading-tight"
+            className="w-full px-6 pt-6 pb-5 font-display text-[1.9rem] font-normal text-strong placeholder:text-stone-300 border-none outline-hidden bg-transparent leading-tight"
             autoFocus
           />
           <div className="border-t border-line px-6 py-5">

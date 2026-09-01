@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
@@ -339,8 +340,8 @@ const ACCOUNT_SETTINGS_SCREENS: ScreenKey[] = ['personalInfo', 'saved'];
 // would otherwise pass on a stale assumption.
 const SOURCE_NEEDLES: Partial<Record<ScreenKey, string[]>> = {
   shell: ['bg-surface font-sans overflow-hidden', 'text-strong truncate'],
-  home: ['bg-surface-raised rounded-2xl shadow-sm border border-line p-4'],
-  blog: ['bg-surface-raised rounded-xl shadow-sm border border-line'],
+  home: ['bg-surface-raised rounded-2xl shadow-xs border border-line p-4'],
+  blog: ['bg-surface-raised rounded-xl shadow-xs border border-line'],
   prayer: ["className=\"bg-surface-raised rounded-2xl border border-line p-4\""],
   profile: ["text-wheat-800", "background: 'var(--surface-gold)'"],
   bible: ['color: hlColor ? "var(--earth)" : undefined', 'HIGHLIGHT_COLORS'],
@@ -771,7 +772,20 @@ describe('a value that is deliberately dark in both themes is unchanged', () => 
   });
 
   it('ChurchMap needed no edits at all — ChurchMap.tsx is byte-identical to main', () => {
-    const diff = execSync('git diff --stat -- src/components/ChurchMap.tsx', { cwd: ROOT }).toString().trim();
-    expect(diff, 'ChurchMap.tsx has uncommitted changes, but every one of its measured values was reviewed and left alone').toBe('');
+    // Was `git diff --stat -- ChurchMap.tsx` asserted empty, which only ever
+    // saw UNCOMMITTED changes: the moment the edit was committed the guard went
+    // quiet again. THE-261 made that matter — its v4 utility rename touched
+    // this file (outline-none -> outline-hidden, shadow-sm -> shadow-xs) and the
+    // stat would have gone green on the commit rather than reporting it.
+    //
+    // It is now a content digest, recorded here, which is the pattern
+    // src/components/ui/__tests__/ds-primitives.test.tsx states the case for:
+    // CI's checkout is the only history a test can rely on. It holds across
+    // commits, and every one of this file's measured values is still what it
+    // was — the rename changes no colour, no width and no measured value.
+    const digest = createHash('sha256').update(readFileSync(path.join(ROOT, 'src/components/ChurchMap.tsx'))).digest('hex');
+    expect(digest, 'ChurchMap.tsx changed — every one of its measured values was reviewed and left alone').toBe(
+      '842b22a62ebf54684f3457ff5b39116dedf474ab2aa943b6bd7f5aab7feec60f',
+    );
   });
 });

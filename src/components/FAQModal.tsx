@@ -21,7 +21,7 @@ const FAQItem: React.FC<{
  onToggle
 }) => {
  return (
- <div className="bg-surface-raised rounded-2xl shadow-sm border border-line overflow-hidden mb-4 transition-all duration-300">
+ <div className="bg-surface-raised rounded-2xl shadow-xs border border-line overflow-hidden mb-4 transition-all duration-300">
  <button
  onClick={onToggle}
  className="w-full flex items-center justify-between p-5 text-left hover:bg-surface-sunken transition-colors"

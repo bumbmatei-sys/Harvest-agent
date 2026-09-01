@@ -305,7 +305,7 @@ const AdminTenants: React.FC = () => {
       <button
         onClick={() => setSection('tenants')}
         className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-          section === 'tenants' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'
+          section === 'tenants' ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'
         }`}
       >
         Tenants
@@ -313,7 +313,7 @@ const AdminTenants: React.FC = () => {
       <button
         onClick={() => setSection('affiliates')}
         className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-          section === 'affiliates' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'
+          section === 'affiliates' ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'
         }`}
       >
         Affiliates
@@ -526,7 +526,7 @@ const AdminTenants: React.FC = () => {
 
       {/* Create/Edit Modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
           <div className="bg-surface-raised rounded-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] flex flex-col overflow-hidden">
             <div className="p-6 border-b border-line flex justify-between items-center">
               <h3 className="text-xl font-bold text-strong font-display">
@@ -550,7 +550,7 @@ const AdminTenants: React.FC = () => {
                   type="text"
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none"
+                  className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-hidden"
                   placeholder="Grace Community Church"
                 />
               </div>
@@ -563,7 +563,7 @@ const AdminTenants: React.FC = () => {
                     value={form.subdomain}
                     onChange={e => setForm({ ...form, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
                     disabled={!!editingId}
-                    className={`flex-1 px-4 py-2.5 border border-line rounded-l-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none font-mono ${editingId ? 'bg-surface-sunken text-faint' : ''}`}
+                    className={`flex-1 px-4 py-2.5 border border-line rounded-l-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-hidden font-mono ${editingId ? 'bg-surface-sunken text-faint' : ''}`}
                     placeholder="gracechurch"
                   />
                   <span className="px-3 py-2.5 bg-surface-sunken border border-l-0 border-line rounded-r-xl text-sm text-muted">
@@ -586,7 +586,7 @@ const AdminTenants: React.FC = () => {
                   <select
                     value={form.plan}
                     onChange={e => setForm({ ...form, plan: e.target.value as TenantPlan })}
-                    className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none bg-surface-raised"
+                    className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-hidden bg-surface-raised"
                   >
                     {/* The same derived labels the read-only view shows —
                         rendered from PLAN_DISPLAY rather than typed out again,
@@ -605,7 +605,7 @@ const AdminTenants: React.FC = () => {
                     type="text"
                     value={form.customDomain}
                     onChange={e => setForm({ ...form, customDomain: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none"
+                    className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-hidden"
                     placeholder="yourchurch.com"
                   />
                   <p className="text-xs text-faint mt-1">The church&apos;s own domain. DNS must point to Vercel.</p>
@@ -618,7 +618,7 @@ const AdminTenants: React.FC = () => {
                   type="email"
                   value={form.adminEmail}
                   onChange={e => setForm({ ...form, adminEmail: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none"
+                  className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-hidden"
                   placeholder="pastor@church.com"
                 />
               </div>
@@ -628,7 +628,7 @@ const AdminTenants: React.FC = () => {
                 <textarea
                   value={form.description}
                   onChange={e => setForm({ ...form, description: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none resize-none"
+                  className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-hidden resize-none"
                   rows={3}
                   placeholder="A brief description of the ministry..."
                 />
@@ -648,7 +648,7 @@ const AdminTenants: React.FC = () => {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-6 py-2.5 bg-gold text-white font-semibold rounded-xl hover:bg-yellow-600 transition-colors disabled:opacity-50 shadow-sm"
+                className="px-6 py-2.5 bg-gold text-white font-semibold rounded-xl hover:bg-yellow-600 transition-colors disabled:opacity-50 shadow-xs"
               >
                 {saving ? 'Saving...' : (editingId ? 'Save Changes' : 'Create Tenant')}
               </button>

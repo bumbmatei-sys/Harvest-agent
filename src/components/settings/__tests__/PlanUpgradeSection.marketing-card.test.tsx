@@ -102,6 +102,7 @@ import {
   mobileLayer, classInventory, allTokens, isFontSizeToken, fontSizePx, isResponsive, breakpointOf,
   REM_PX_DESKTOP, BREAKPOINT_MIN_PX,
 } from '../../../test/support/class-inventory';
+import { buildUtilityCss } from '../../../test/support/tailwind-build';
 
 const ROOT = path.resolve(__dirname, '../../../..');
 const GLOBALS = path.join(ROOT, 'src/app/globals.css');
@@ -227,11 +228,10 @@ beforeAll(async () => {
     ...Object.values(live),
   ].join(' ');
 
-  const tailwind = (await import('tailwindcss')).default;
-  const base = (await import('../../../../tailwind.config')).default;
-  const out = await postcss([
-    tailwind({ ...base, content: [{ raw, extension: 'html' }] } as never),
-  ]).process('@tailwind utilities;', { from: undefined });
+  // v4 emits the same utilities wrapped in `@layer utilities` and with theme
+  // values referenced rather than inlined; buildUtilityCss undoes exactly
+  // those two representational changes, so the walker below is unchanged.
+  const out = { css: await buildUtilityCss(raw) };
 
   const unescape = (sel: string) =>
     sel

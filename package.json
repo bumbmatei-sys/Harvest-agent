@@ -2,7 +2,9 @@
   "name": "harvest-site",
   "version": "0.1.0",
   "private": true,
-  "engines": { "node": "24.x" },
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
@@ -86,6 +88,7 @@
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.1",
+    "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -97,12 +100,11 @@
     "@types/react-dom": "^18",
     "@types/sanitize-html": "^2.16.1",
     "@vitejs/plugin-react": "^6.0.2",
-    "autoprefixer": "^10.4.27",
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.15",
     "happy-dom": "^20.10.6",
     "postcss": "^8",
-    "tailwindcss": "^3.4.1",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5",
     "vitest": "^4.1.9"
   }

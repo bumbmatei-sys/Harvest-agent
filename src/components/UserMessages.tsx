@@ -134,7 +134,7 @@ const AttachmentCard: React.FC<{ attachment: MessageAttachment; tenantId?: strin
     ? `https://${tenantId}.theharvest.app/form/${attachment.id}`
     : null;
   return (
-    <div className="mt-1.5 bg-surface-raised border border-line rounded-xl overflow-hidden shadow-sm" style={{ maxWidth: 210 }}>
+    <div className="mt-1.5 bg-surface-raised border border-line rounded-xl overflow-hidden shadow-xs" style={{ maxWidth: 210 }}>
       <div className={`flex items-start gap-2 p-3 ${formUrl ? 'pb-2' : ''}`}>
         <span className="text-lg leading-none flex-shrink-0">{icon}</span>
         <div className="flex-1 min-w-0">
@@ -213,7 +213,7 @@ const FormPicker: React.FC<{
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search forms..."
-            className="w-full pl-8 pr-3 py-2 text-sm border border-line rounded-xl focus:outline-none focus:border-gold"
+            className="w-full pl-8 pr-3 py-2 text-sm border border-line rounded-xl focus:outline-hidden focus:border-gold"
           />
         </div>
         <div className="overflow-y-auto flex-1">
@@ -447,7 +447,7 @@ const DmThread: React.FC<{
             onChange={e => setText(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), send())}
             placeholder="Type a message..."
-            className="flex-1 bg-transparent outline-none text-sm text-strong placeholder-[color:var(--text-faint)]"
+            className="flex-1 bg-transparent outline-hidden text-sm text-strong placeholder-[color:var(--text-faint)]"
           />
           <button
             onClick={send}
@@ -567,7 +567,7 @@ const ChannelView: React.FC<{
                     <div key={m.id} className="group flex items-end gap-2">
                       <div className="max-w-[78%]">
                         {m.content && (
-                          <p className="bg-surface-raised border border-line-hairline rounded-2xl rounded-tl-sm px-3 py-2 text-sm text-body shadow-sm break-words">
+                          <p className="bg-surface-raised border border-line-hairline rounded-2xl rounded-tl-sm px-3 py-2 text-sm text-body shadow-xs break-words">
                             {m.content}
                           </p>
                         )}
@@ -596,7 +596,7 @@ const ChannelView: React.FC<{
             onChange={e => setText(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), send())}
             placeholder={`Message #${channel.name}`}
-            className="flex-1 bg-transparent outline-none text-sm text-strong placeholder-[color:var(--text-faint)]"
+            className="flex-1 bg-transparent outline-hidden text-sm text-strong placeholder-[color:var(--text-faint)]"
           />
           <button
             onClick={send}
@@ -863,7 +863,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
                     <button
                       key={ch.id}
                       onClick={() => setOpenChannel(ch)}
-                      className="w-full bg-surface-raised rounded-2xl border border-line-hairline px-4 py-3.5 flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
+                      className="w-full bg-surface-raised rounded-2xl border border-line-hairline px-4 py-3.5 flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-xs transition-all text-left"
                     >
                       <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center lg:bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)]">
                         <Hash size={18} style={{ color: 'var(--brand-color, #B8962E)' }} />
@@ -886,7 +886,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
               <button
                 key={dm.id}
                 onClick={() => setOpenDm(dm)}
-                className="w-full bg-surface-raised rounded-2xl border border-line-hairline px-4 py-3.5 flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
+                className="w-full bg-surface-raised rounded-2xl border border-line-hairline px-4 py-3.5 flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-xs transition-all text-left"
               >
                 <div className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white"
                   style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
@@ -938,7 +938,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
                 value={adminSearch}
                 onChange={e => setAdminSearch(e.target.value)}
                 placeholder="Search admins..."
-                className="w-full pl-8 pr-3 py-2 text-sm border border-line rounded-xl focus:outline-none focus:border-gold"
+                className="w-full pl-8 pr-3 py-2 text-sm border border-line rounded-xl focus:outline-hidden focus:border-gold"
               />
             </div>
             <div className="overflow-y-auto flex-1">

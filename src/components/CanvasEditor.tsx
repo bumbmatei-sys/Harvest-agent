@@ -312,7 +312,7 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
         <div className="flex items-center gap-2">
           <button
             onClick={handleBack}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm border border-line hover:bg-surface-sunken transition-colors text-xs font-medium text-body cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-xs rounded-lg shadow-xs border border-line hover:bg-surface-sunken transition-colors text-xs font-medium text-body cursor-pointer"
           >
             <ArrowLeft size={16} />
             <span>Back</span>
@@ -321,7 +321,7 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
             {initialName}
           </span>
         </div>
-        <div className={`flex items-center gap-1 px-2 py-1 bg-white/90 backdrop-blur-sm rounded-md text-[10px] font-medium ${
+        <div className={`flex items-center gap-1 px-2 py-1 bg-white/90 backdrop-blur-xs rounded-md text-[10px] font-medium ${
           saveStatus === 'saved' ? 'text-green-600' :
           saveStatus === 'saving' ? 'text-blue-500' :
           saveStatus === 'error' ? 'text-red-500' :

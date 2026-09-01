@@ -41,7 +41,7 @@ const PublicPledge: React.FC<PublicPledgeProps> = ({ tenantId, tenantName, logo,
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
-  const inputCls = 'w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:border-transparent';
+  const inputCls = 'w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:border-transparent';
   const ring = { '--tw-ring-color': primaryColor } as React.CSSProperties;
 
   const pct = campaign.goal > 0 ? Math.min(100, Math.round((campaign.raised / campaign.goal) * 100)) : 0;
@@ -81,7 +81,7 @@ const PublicPledge: React.FC<PublicPledgeProps> = ({ tenantId, tenantName, logo,
   if (done) {
     return (
       <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
-        <div className="bg-surface-raised rounded-[14px] shadow-sm border border-line-subtle p-8 text-center">
+        <div className="bg-surface-raised rounded-[14px] shadow-xs border border-line-subtle p-8 text-center">
           <CheckCircle2 size={48} className="mx-auto mb-4" style={{ color: primaryColor }} />
           <h1 className="font-display text-xl font-bold text-strong mb-2">Thank you, {name}!</h1>
           <p className="text-sm text-muted">Your pledge of {fmt(Number(amount))} has been recorded. We&apos;ll be in touch.</p>
@@ -92,7 +92,7 @@ const PublicPledge: React.FC<PublicPledgeProps> = ({ tenantId, tenantName, logo,
 
   return (
     <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
-      <div className="bg-surface-raised rounded-[14px] shadow-sm border border-line-subtle p-6" style={{ paddingBottom: 24 }}>
+      <div className="bg-surface-raised rounded-[14px] shadow-xs border border-line-subtle p-6" style={{ paddingBottom: 24 }}>
         <h1 className="font-display text-2xl font-bold text-strong mb-2">{campaign.title}</h1>
         {campaign.description && <p className="text-sm text-muted mb-4 whitespace-pre-line">{campaign.description}</p>}
 

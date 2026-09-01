@@ -255,7 +255,7 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
                   value={customDomain}
                   onChange={(e) => setCustomDomain(e.target.value)}
                   placeholder="e.g. app.church.org"
-                  className="w-full px-4 py-2.5 border border-line rounded-brand text-sm text-strong focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent"
+                  className="w-full px-4 py-2.5 border border-line rounded-brand text-sm text-strong focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent"
                 />
                 <p className="text-xs text-faint mt-1.5">
                   Use your root domain (<span className="font-mono">church.org</span>) or a subdomain

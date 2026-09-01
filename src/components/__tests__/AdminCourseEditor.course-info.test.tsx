@@ -5,6 +5,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
 import postcss from 'postcss';
+import { buildUtilityCss } from '../../test/support/tailwind-build';
 
 /**
  * The course builder's COURSE INFO tab — smaller, and split into two columns
@@ -351,10 +352,10 @@ beforeAll(async () => {
   const raw = allTokens(container).join(' ');
   mounted!.unmount(); mounted = null;
 
-  const tailwind = (await import('tailwindcss')).default;
-  const out = await postcss([
-    tailwind({ config: path.join(ROOT, 'tailwind.config.ts'), content: [{ raw, extension: 'html' }] } as never),
-  ]).process('@tailwind utilities;', { from: undefined });
+  // v4 emits the same utilities wrapped in `@layer utilities` and with theme
+  // values referenced rather than inlined; buildUtilityCss undoes exactly
+  // those two representational changes, so the walker below is unchanged.
+  const out = { css: await buildUtilityCss(raw) };
 
   const unescape = (sel: string) =>
     sel.replace(/^\./, '')

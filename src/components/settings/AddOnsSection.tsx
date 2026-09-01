@@ -294,7 +294,7 @@ const AddOnsSection: React.FC<AddOnsSectionProps> = ({ tenantId, processor }) =>
 
   if (loading) {
     return (
-      <div className="bg-surface-raised rounded-2xl p-5 border border-line shadow-sm flex items-center gap-2">
+      <div className="bg-surface-raised rounded-2xl p-5 border border-line shadow-xs flex items-center gap-2">
         <Loader2 size={16} className="animate-spin text-gold" />
         <span className="text-sm text-muted">Loading add-ons…</span>
       </div>
@@ -318,7 +318,7 @@ const AddOnsSection: React.FC<AddOnsSectionProps> = ({ tenantId, processor }) =>
     : ADDON_MEANINGS.filter((meaning) => !catalogue.some((offered) => offered.addon === meaning));
 
   return (
-    <div className="bg-surface-raised rounded-2xl p-5 border border-line shadow-sm">
+    <div className="bg-surface-raised rounded-2xl p-5 border border-line shadow-xs">
       <div className="flex items-center gap-2 mb-1">
         <PackagePlus size={16} className="text-gold" />
         <h3 className="text-sm font-bold text-body font-display">Add-ons</h3>

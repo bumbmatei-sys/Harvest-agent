@@ -47,13 +47,13 @@
         }
       },
       "renderingHash": {
-        "380": "1683a52ddd869e0a929037be641b935a259ebed9830daea16363fe5744947d36",
-        "480": "1683a52ddd869e0a929037be641b935a259ebed9830daea16363fe5744947d36",
-        "639": "1683a52ddd869e0a929037be641b935a259ebed9830daea16363fe5744947d36",
-        "768": "e1856e551210ee9d823bc1bff1f295e7634af4286aaa5aa257bcca9e60be68a8",
-        "1024": "e1856e551210ee9d823bc1bff1f295e7634af4286aaa5aa257bcca9e60be68a8",
-        "1280": "e1856e551210ee9d823bc1bff1f295e7634af4286aaa5aa257bcca9e60be68a8",
-        "1440": "e1856e551210ee9d823bc1bff1f295e7634af4286aaa5aa257bcca9e60be68a8"
+        "380": "573d093c54c3e29ef289fc2a09c285b1e6826e1588270de18a2eb68f5be4700f",
+        "480": "573d093c54c3e29ef289fc2a09c285b1e6826e1588270de18a2eb68f5be4700f",
+        "639": "573d093c54c3e29ef289fc2a09c285b1e6826e1588270de18a2eb68f5be4700f",
+        "768": "deca2bf8bb5d35767a4dd623b9b6f3f79861d8aef74b64949df4613d85208696",
+        "1024": "deca2bf8bb5d35767a4dd623b9b6f3f79861d8aef74b64949df4613d85208696",
+        "1280": "deca2bf8bb5d35767a4dd623b9b6f3f79861d8aef74b64949df4613d85208696",
+        "1440": "deca2bf8bb5d35767a4dd623b9b6f3f79861d8aef74b64949df4613d85208696"
       },
       "mobileLayer": [
         "0\tdiv\tflex items-center justify-center min-h-screen overflow-hidden px-5 py-14 relative",
@@ -83,7 +83,7 @@
         "24\tsvg\tlucide lucide-user",
         "25\tpath\t",
         "26\tcircle\t",
-        "27\tinput\tbg-transparent flex-1 min-w-0 outline-none placeholder:text-faint",
+        "27\tinput\tbg-transparent flex-1 min-w-0 outline-hidden placeholder:text-faint",
         "28\tdiv\tflex items-center justify-between mt-7",
         "29\tdiv\t",
         "30\tbutton\tdisabled:opacity-50 flex font-semibold gap-2 items-center px-6 py-3 rounded-lg text-white transition-all",
@@ -129,7 +129,7 @@
         "mt-6",
         "mt-7",
         "object-contain",
-        "outline-none",
+        "outline-hidden",
         "overflow-hidden",
         "placeholder:text-faint",
         "pointer-events-none",
@@ -211,13 +211,13 @@
         }
       },
       "renderingHash": {
-        "380": "a44cec13b937cd18e224e5c3436c03016b74c4741b6b80b643062421ff5881b0",
-        "480": "a44cec13b937cd18e224e5c3436c03016b74c4741b6b80b643062421ff5881b0",
-        "639": "a44cec13b937cd18e224e5c3436c03016b74c4741b6b80b643062421ff5881b0",
-        "768": "5068c0b5e7b56a6065f961f0535814bb15f1693453ca7cb0a265d2cd3f8c43e9",
-        "1024": "5068c0b5e7b56a6065f961f0535814bb15f1693453ca7cb0a265d2cd3f8c43e9",
-        "1280": "5068c0b5e7b56a6065f961f0535814bb15f1693453ca7cb0a265d2cd3f8c43e9",
-        "1440": "5068c0b5e7b56a6065f961f0535814bb15f1693453ca7cb0a265d2cd3f8c43e9"
+        "380": "51170a67ec432f880ae3d71f15648896d415294aa6e4bc42b0205e9b7f8951f3",
+        "480": "51170a67ec432f880ae3d71f15648896d415294aa6e4bc42b0205e9b7f8951f3",
+        "639": "51170a67ec432f880ae3d71f15648896d415294aa6e4bc42b0205e9b7f8951f3",
+        "768": "d0055edca7213e183051e248ef6175b1370dcbba494dced8cb65240de8b8cad0",
+        "1024": "d0055edca7213e183051e248ef6175b1370dcbba494dced8cb65240de8b8cad0",
+        "1280": "d0055edca7213e183051e248ef6175b1370dcbba494dced8cb65240de8b8cad0",
+        "1440": "d0055edca7213e183051e248ef6175b1370dcbba494dced8cb65240de8b8cad0"
       },
       "mobileLayer": [
         "0\tdiv\tflex items-center justify-center min-h-screen overflow-hidden px-5 py-16 relative",
@@ -253,7 +253,7 @@
         "30\tsvg\tlucide lucide-mail",
         "31\trect\t",
         "32\tpath\t",
-        "33\tinput\tbg-transparent flex-1 min-w-0 outline-none placeholder:text-faint",
+        "33\tinput\tbg-transparent flex-1 min-w-0 outline-hidden placeholder:text-faint",
         "34\tdiv\t",
         "35\tdiv\tflex items-baseline justify-between mb-1.5",
         "36\tlabel\tfont-semibold text-xs",
@@ -262,7 +262,7 @@
         "39\tsvg\tlucide lucide-lock",
         "40\trect\t",
         "41\tpath\t",
-        "42\tinput\tbg-transparent flex-1 min-w-0 outline-none placeholder:text-faint",
+        "42\tinput\tbg-transparent flex-1 min-w-0 outline-hidden placeholder:text-faint",
         "43\tbutton\tflex shrink-0 transition-colors",
         "44\tsvg\tlucide lucide-eye",
         "45\tpath\t",
@@ -274,7 +274,7 @@
         "51\tsvg\tlucide lucide-lock",
         "52\trect\t",
         "53\tpath\t",
-        "54\tinput\tbg-transparent flex-1 min-w-0 outline-none placeholder:text-faint",
+        "54\tinput\tbg-transparent flex-1 min-w-0 outline-hidden placeholder:text-faint",
         "55\tp\t-mt-1 leading-relaxed text-xs",
         "56\tdiv\tflex gap-3 items-start",
         "57\tbutton\trelative rounded-full shrink-0 transition-colors",
@@ -340,7 +340,7 @@
         "mt-7",
         "my-4",
         "object-contain",
-        "outline-none",
+        "outline-hidden",
         "overflow-hidden",
         "placeholder:text-faint",
         "pointer-events-none",
@@ -462,13 +462,13 @@
         }
       },
       "renderingHash": {
-        "380": "22b70d36e32fcbdcc3843a1e757c24a111060089eb4bb6f711f7591dfffd3f06",
-        "480": "22b70d36e32fcbdcc3843a1e757c24a111060089eb4bb6f711f7591dfffd3f06",
-        "639": "22b70d36e32fcbdcc3843a1e757c24a111060089eb4bb6f711f7591dfffd3f06",
-        "768": "234d9ae773593024cd5c77b1c1b3ef8d583e7d6fe2366e156e51d4e783f2121d",
-        "1024": "234d9ae773593024cd5c77b1c1b3ef8d583e7d6fe2366e156e51d4e783f2121d",
-        "1280": "234d9ae773593024cd5c77b1c1b3ef8d583e7d6fe2366e156e51d4e783f2121d",
-        "1440": "234d9ae773593024cd5c77b1c1b3ef8d583e7d6fe2366e156e51d4e783f2121d"
+        "380": "13bef882b278ad39c208c4fbde08095dec45ad98cce0efa664a0d591eda00f85",
+        "480": "13bef882b278ad39c208c4fbde08095dec45ad98cce0efa664a0d591eda00f85",
+        "639": "13bef882b278ad39c208c4fbde08095dec45ad98cce0efa664a0d591eda00f85",
+        "768": "5f04c5c55135f80227727f0c9e1abeaca98d314fd2430fa375de2bab603bebb9",
+        "1024": "5f04c5c55135f80227727f0c9e1abeaca98d314fd2430fa375de2bab603bebb9",
+        "1280": "5f04c5c55135f80227727f0c9e1abeaca98d314fd2430fa375de2bab603bebb9",
+        "1440": "5f04c5c55135f80227727f0c9e1abeaca98d314fd2430fa375de2bab603bebb9"
       },
       "mobileLayer": [
         "0\tdiv\tflex items-center justify-center min-h-screen overflow-hidden px-5 py-14 relative",
@@ -510,7 +510,7 @@
         "36\tpath\t",
         "37\tpath\t",
         "38\tpath\t",
-        "39\tinput\tbg-transparent flex-1 min-w-0 outline-none placeholder:text-faint",
+        "39\tinput\tbg-transparent flex-1 min-w-0 outline-hidden placeholder:text-faint",
         "40\tdiv\tflex justify-end mt-7",
         "41\tbutton\tfont-semibold gap-2 inline-flex items-center px-6 py-3 rounded-lg text-white transition-all",
         "42\tsvg\tlucide lucide-arrow-right",
@@ -561,7 +561,7 @@
         "mt-7",
         "mx-auto",
         "object-contain",
-        "outline-none",
+        "outline-hidden",
         "overflow-hidden",
         "placeholder:text-faint",
         "pointer-events-none",
@@ -648,13 +648,13 @@
         }
       },
       "renderingHash": {
-        "380": "df1db1f2500a5f8ac589601daaa5d4f7153b12096afdc3307db6c133bd3600d8",
-        "480": "df1db1f2500a5f8ac589601daaa5d4f7153b12096afdc3307db6c133bd3600d8",
-        "639": "df1db1f2500a5f8ac589601daaa5d4f7153b12096afdc3307db6c133bd3600d8",
-        "768": "845883c451583c01405748389dd51115c9dc479a20efa352c70c7d2b71102094",
-        "1024": "845883c451583c01405748389dd51115c9dc479a20efa352c70c7d2b71102094",
-        "1280": "845883c451583c01405748389dd51115c9dc479a20efa352c70c7d2b71102094",
-        "1440": "845883c451583c01405748389dd51115c9dc479a20efa352c70c7d2b71102094"
+        "380": "5da3e8caa771bcdcd52655476fcbad4591c561d2b07e89a2cdc804c31450ac39",
+        "480": "5da3e8caa771bcdcd52655476fcbad4591c561d2b07e89a2cdc804c31450ac39",
+        "639": "5da3e8caa771bcdcd52655476fcbad4591c561d2b07e89a2cdc804c31450ac39",
+        "768": "52715039f3d0a290187545b95b75d165982ddff247414502ff7f687eb0805c06",
+        "1024": "52715039f3d0a290187545b95b75d165982ddff247414502ff7f687eb0805c06",
+        "1280": "52715039f3d0a290187545b95b75d165982ddff247414502ff7f687eb0805c06",
+        "1440": "52715039f3d0a290187545b95b75d165982ddff247414502ff7f687eb0805c06"
       },
       "mobileLayer": [
         "0\tdiv\tmin-h-screen overflow-hidden relative",
@@ -674,7 +674,7 @@
         "14\tdiv\tbg-surface-raised border border-line mt-8 p-5 rounded-brand-lg shadow-[var(--ds-sh-sm)]",
         "15\th3\tfont-semibold mb-3 text-[11px] tracking-[0.14em] uppercase",
         "16\tdiv\tflex items-stretch",
-        "17\tinput\tflex-1 font-mono min-w-0 outline-none px-4 rounded-l-lg text-sm transition-colors",
+        "17\tinput\tflex-1 font-mono min-w-0 outline-hidden px-4 rounded-l-lg text-sm transition-colors",
         "18\tspan\tflex items-center px-4 rounded-r-lg text-sm whitespace-nowrap",
         "19\tdiv\th-5 mt-2 text-xs",
         "20\tspan\tgap-1.5 inline-flex items-center",
@@ -727,7 +727,7 @@
         "mt-8",
         "mx-auto",
         "object-contain",
-        "outline-none",
+        "outline-hidden",
         "overflow-hidden",
         "p-5",
         "pb-12",

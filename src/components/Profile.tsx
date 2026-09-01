@@ -477,7 +477,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  {/* Account Settings */}
  <div>
  <h4 className="text-[10px] font-bold text-faint tracking-wider uppercase mb-3 ml-2">Account Settings</h4>
- <div className="bg-surface-raised rounded-3xl shadow-sm border border-line overflow-hidden transition-colors duration-300">
+ <div className="bg-surface-raised rounded-3xl shadow-xs border border-line overflow-hidden transition-colors duration-300">
  {isAdmin && (
  <>
  {/* Gold, not red. Red is reserved for destructive actions (Log Out, Cancel
@@ -644,7 +644,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  {hasGiving && (
  <div>
  <h4 className="text-[10px] font-bold text-faint tracking-wider uppercase mb-3 ml-2">Partnership</h4>
- <div className="bg-surface-raised rounded-3xl shadow-sm border border-line overflow-hidden p-4">
+ <div className="bg-surface-raised rounded-3xl shadow-xs border border-line overflow-hidden p-4">
  {donationSubscriptionId ? (
  <div>
  <div className="flex items-center gap-3 mb-3">
@@ -730,7 +730,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  {/* Donation History — the member's own receipts + giving totals, private to
      them. Placed under Partnership (per the founder), reusing SettingItem/card
      styling. Always shown; the view renders an empty state for non-donors. */}
- <div className="bg-surface-raised rounded-3xl shadow-sm border border-line overflow-hidden mt-3">
+ <div className="bg-surface-raised rounded-3xl shadow-xs border border-line overflow-hidden mt-3">
  <SettingItem
  icon={<Receipt size={16} className="text-wheat-600" />}
  iconBg="bg-wheat-100"
@@ -744,7 +744,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  {/* Support & Info */}
  <div>
  <h4 className="text-[10px] font-bold text-faint tracking-wider uppercase mb-3 ml-2">Support & Info</h4>
- <div className="bg-surface-raised rounded-3xl shadow-sm border border-line overflow-hidden transition-colors duration-300">
+ <div className="bg-surface-raised rounded-3xl shadow-xs border border-line overflow-hidden transition-colors duration-300">
  <SettingItem 
  icon={<HelpCircle size={16} className="text-wheat-600" />} 
  iconBg="bg-wheat-100" 

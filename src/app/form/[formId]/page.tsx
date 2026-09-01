@@ -44,7 +44,7 @@ export default async function PublicFormPage({
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-tint p-6">
         <PublicRouteAnalytics route="/form/[formId]" />
-        <div className="bg-surface-raised rounded-2xl shadow-sm border border-line-subtle p-8 max-w-md text-center">
+        <div className="bg-surface-raised rounded-2xl shadow-xs border border-line-subtle p-8 max-w-md text-center">
           <h1 className="font-display text-lg font-bold text-strong mb-2">{tenant.name}</h1>
           <p className="text-body">This form is no longer accepting responses.</p>
         </div>

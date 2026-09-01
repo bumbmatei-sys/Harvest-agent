@@ -105,7 +105,7 @@ const draftFromRecord = (record: GivingLinkRecord | undefined): Draft => {
 const FIELD_CLASS =
   `w-full px-3 py-2.5 rounded-brand border border-line bg-surface-raised text-sm text-strong ` +
   `placeholder:text-faint focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] ` +
-  `focus:border-transparent outline-none transition-all ${CONTROL_DENSITY.control}`;
+  `focus:border-transparent outline-hidden transition-all ${CONTROL_DENSITY.control}`;
 
 const LABEL_CLASS = `block text-xs font-semibold text-muted ${CONTROL_DENSITY.labelGap}`;
 

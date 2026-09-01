@@ -518,7 +518,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
           <div className="text-center py-12 text-muted">No news yet.</div>
         ) : (
           posts.map((post, index) => (
-            <div key={post.id} className="bg-surface-raised rounded-2xl p-4 shadow-sm border border-line ">
+            <div key={post.id} className="bg-surface-raised rounded-2xl p-4 shadow-xs border border-line ">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-surface-chip text-muted flex items-center justify-center font-bold overflow-hidden relative">
@@ -732,7 +732,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleComment(post.id); } }}
                         placeholder="Write a comment..."
                         maxLength={280}
-                        className="flex-1 px-3 py-1.5 bg-surface-sunken border border-line rounded-full text-xs text-strong focus:ring-1 focus:ring-gold outline-none"
+                        className="flex-1 px-3 py-1.5 bg-surface-sunken border border-line rounded-full text-xs text-strong focus:ring-1 focus:ring-gold outline-hidden"
                       />
                       <button
                         onClick={() => handleComment(post.id)}
@@ -752,7 +752,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
 
       {/* Delete Post Confirmation Modal */}
       {deletePostId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
           <div className="bg-surface-raised rounded-2xl shadow-xl max-w-sm w-full p-6 border border-line">
             <h3 className="text-xl font-bold text-strong mb-2 font-display">Delete Post</h3>
             <p className="text-muted mb-6">
@@ -778,7 +778,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
 
       {/* Event Attendance Modal */}
       {attendingPostId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
           <div className="bg-surface-raised rounded-2xl p-6 w-full max-w-md shadow-xl">
             <h3 className="text-xl font-bold text-strong mb-4 font-display">Join Event</h3>
             <p className="text-sm text-muted mb-4">
@@ -792,7 +792,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                   type="text"
                   value={attendeeName}
                   onChange={(e) => setAttendeeName(e.target.value)}
-                  className="w-full px-4 py-2 bg-surface-sunken border border-line rounded-xl text-strong focus:ring-2 focus:ring-gold outline-none"
+                  className="w-full px-4 py-2 bg-surface-sunken border border-line rounded-xl text-strong focus:ring-2 focus:ring-gold outline-hidden"
                   placeholder="John Doe"
                 />
               </div>
@@ -802,7 +802,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                   type="email"
                   value={attendeeEmail}
                   onChange={(e) => setAttendeeEmail(e.target.value)}
-                  className="w-full px-4 py-2 bg-surface-sunken border border-line rounded-xl text-strong focus:ring-2 focus:ring-gold outline-none"
+                  className="w-full px-4 py-2 bg-surface-sunken border border-line rounded-xl text-strong focus:ring-2 focus:ring-gold outline-hidden"
                   placeholder="john@example.com"
                 />
               </div>

@@ -192,7 +192,7 @@ export const FeedEmbedCard: React.FC<{ embed: PostEmbed; tenantId: string | null
   return (
     <a
       href={data.href}
-      className="group mb-3 flex overflow-hidden rounded-xl border border-line bg-surface-raised transition-colors hover:border-gold focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+      className="group mb-3 flex overflow-hidden rounded-xl border border-line bg-surface-raised transition-colors hover:border-gold focus:outline-hidden focus-visible:ring-2 focus-visible:ring-gold"
     >
       {data.image ? (
         <div className="relative w-24 sm:w-28 shrink-0 bg-surface-sunken">

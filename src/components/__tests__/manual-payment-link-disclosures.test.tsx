@@ -583,8 +583,14 @@ describe('no statement, receipt, CRM write or Stripe path changed', () => {
       '48ad99a41cafd02a423493abf73308195108551c0da9d542f979f6cf8cc083b6',
     'src/hooks/queries/useCRMQueries.ts':
       'e43a98c989191a4d92db5aa91768f7f29d149ba385fdb0af1c98bc602ffce842',
+    // Re-recorded by THE-261: its v4 migration renamed shadow-sm and
+    // outline-none across the app so those utilities keep painting what they
+    // painted under v3. AdminAccounting carries those spellings and nothing
+    // else moved in it — no statement, receipt, CRM write or Stripe path is a
+    // class name. The digest still asserts byte-for-byte identity; only the
+    // bytes it names moved, and the diff beside this commit is where from.
     'src/components/AdminAccounting.tsx':
-      '0e6e8ee74b1b2bd5468432b29a8e6d3f051a79d0a3aa7fc8f391d06d8ab6cc2a',
+      '048698cec7b740ca56b64a7ab8097cc3db61ee381dc5ca18c970615f84815300',
   };
 
   it.each(Object.keys(UNCHANGED))('%s is byte-for-byte unchanged', (file) => {

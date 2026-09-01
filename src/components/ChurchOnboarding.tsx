@@ -417,7 +417,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
                 onKeyDown={(e) => { if (e.key === 'Enter' && canSubmit && !submitting) handleContinue(); }}
                 onFocus={() => setFocus(true)}
                 onBlur={() => setFocus(false)}
-                className="min-w-0 flex-1 rounded-l-lg px-4 font-mono text-sm outline-none transition-colors"
+                className="min-w-0 flex-1 rounded-l-lg px-4 font-mono text-sm outline-hidden transition-colors"
                 style={{
                   height: 48,
                   border: `1px solid ${subStatus === 'taken' ? DANGER : subStatus === 'available' ? SUCCESS : (focus ? BRAND : 'var(--stone-200, #E8E2D9)')}`,
@@ -464,7 +464,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
               onKeyDown={(e) => { if (e.key === 'Enter' && canSubmit && !submitting) handleContinue(); }}
               onFocus={() => setFocus(true)}
               onBlur={() => setFocus(false)}
-              className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-faint"
+              className="min-w-0 flex-1 bg-transparent outline-hidden placeholder:text-faint"
               style={{ fontSize: 15, color: 'var(--text-heading, #2D2519)' }}
               placeholder="Grace Community Church"
               autoFocus

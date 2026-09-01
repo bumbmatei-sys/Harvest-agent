@@ -74,13 +74,13 @@ const PublicForm: React.FC<PublicFormProps> = ({
   };
 
   const inputCls =
-    'w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:border-transparent';
+    'w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:border-transparent';
   const ring = { '--tw-ring-color': primaryColor } as React.CSSProperties;
 
   if (submitted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-tint p-6">
-        <div className="bg-surface-raised rounded-[14px] shadow-sm border border-line-subtle p-8 max-w-md text-center">
+        <div className="bg-surface-raised rounded-[14px] shadow-xs border border-line-subtle p-8 max-w-md text-center">
           <CheckCircle2 size={48} className="mx-auto mb-4" style={{ color: primaryColor }} />
           <h1 className="font-display text-xl font-bold text-strong mb-2">{successMessage}</h1>
           <p className="text-sm text-faint mt-4">{tenantName}</p>
@@ -101,7 +101,7 @@ const PublicForm: React.FC<PublicFormProps> = ({
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-surface-raised rounded-[14px] shadow-sm border border-line-subtle p-6" style={{ paddingBottom: 120 }}>
+        <form onSubmit={handleSubmit} className="bg-surface-raised rounded-[14px] shadow-xs border border-line-subtle p-6" style={{ paddingBottom: 120 }}>
           <h1 className="font-display text-2xl font-bold text-strong mb-1">{title}</h1>
           {description && <p className="text-sm text-muted mb-6">{description}</p>}
 

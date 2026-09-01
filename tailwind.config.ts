@@ -1,8 +1,36 @@
+// ── THE-261: this file is still JavaScript, on purpose ──────────────────────
+//
+// Tailwind v4 prefers a CSS-first theme (`@theme` blocks in globals.css) and no
+// longer picks a config up by filename. It still reads one when a stylesheet
+// names it, which src/app/globals.css does: `@config "../../tailwind.config.ts"`.
+// That escape hatch is what this repo uses, and the reason is not inertia:
+//
+//   • The comments below ARE the specification. Why borders are named `line`
+//     and not `border`, why the text roles live under `textColor` and not
+//     `colors`, why the letterSpacing and easing values are literals — none of
+//     that survives a mechanical translation into `@theme`, and `@theme` has no
+//     `textColor` namespace to express the second one in at all.
+//   • Seventeen guard suites read this file, either as a module or by
+//     compiling it. Moving the theme into CSS would invalidate every one of
+//     them in the same PR that changes how the app is built.
+//
+// The migration therefore changed NOT ONE LINE of code in this file — only
+// comments, which src/components/ui/__tests__/ds-primitives.test.tsx pins by
+// hashing everything here that is not a comment.
+//
+// What v4 does differently with what it reads, where it matters below:
+//   • `colors` / `textColor` values are INLINED into the utilities rather than
+//     routed through `--color-*` theme variables, so `bg-primary` emits
+//     `background-color: var(--color-primary)` — globals.css's own token, read
+//     directly, with no generated variable of the same name in between.
+//   • `<alpha-value>` is substituted with `1`, and the opacity modifier is
+//     applied with `color-mix()` instead. `bg-red-50/40` still works, and so
+//     now does `bg-primary/80`, which under v3 emitted nothing.
 import type { Config } from "tailwindcss";
 
 const config: Config = {
   // ── Theming stage 2: the theme mechanism ────────────────────────────────
-  // Without this key Tailwind 3 defaults to `media`, so `dark:` utilities key
+  // Without this key Tailwind defaults to `media`, so `dark:` utilities key
   // off the OS setting only — which can never agree with a CSS-variable theme
   // switched by an attribute. Both selectors are accepted deliberately:
   //   • `.dark`               — what third-party/shadcn components look for.
@@ -11,6 +39,9 @@ const config: Config = {
   //                             hydration untouched (see src/app/layout.tsx).
   // `:where()` keeps specificity at 0 so a dark override never out-ranks a
   // more specific light rule by accident.
+  // v4 carries the `['variant', [...]]` array form through unchanged and
+  // registers BOTH selectors — `.dark\:bg-cream` compiles to one rule per
+  // selector, which src/__tests__/tailwind-v4-migration.test.ts pins.
   // NOTE: this is mechanism only. No dark palette is defined yet, so neither
   // selector changes a single pixel today — see the empty stage-3 block in
   // src/app/globals.css.
@@ -194,7 +225,9 @@ const config: Config = {
       // ── Theming stage 4: `prose` ────────────────────────────────────────
       // @tailwindcss/typography does `require('tailwindcss/colors')` directly,
       // so its --tw-prose-* defaults are Tailwind's cool greys and are immune to
-      // anything in `colors` here. That left every blog, course and lesson body
+      // anything in `colors` here. (Under v4 those greys are stated in oklch
+      // rather than hex — a different notation for the same unusable colours,
+      // so this block is needed exactly as much as it was.) That left every blog, course and lesson body
       // rendering gray-700 (#374151) on the dark ground at ~1.5:1 — the largest
       // remaining dark-mode gap, and invisible to the class-based guards because
       // no component spells the colour.
@@ -253,6 +286,11 @@ const config: Config = {
       },
     },
   },
+  // A v3-style JavaScript plugin, loaded through v4's compatibility layer with
+  // no change on either side; @tailwindcss/typography's peer range covers v4.
+  // The animation package is the one that had to move: `tailwindcss-animate`
+  // was a JS plugin and is not installed, and its v4 successor `tw-animate-css`
+  // is plain CSS, so it is imported by globals.css rather than listed here.
   plugins: [
     require('@tailwindcss/typography'),
   ],

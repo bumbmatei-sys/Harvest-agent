@@ -125,7 +125,7 @@ const RenameModal: React.FC<{
           value={value}
           onChange={e => setValue(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') onConfirm(value); if (e.key === 'Escape') onCancel(); }}
-          className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold mb-4"
+          className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-gold mb-4"
           placeholder="Name"
           autoFocus
         />
@@ -853,7 +853,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
             <h3 className="font-display font-bold text-strong mb-4">New Folder</h3>
             <input value={newFolderName} onChange={e => setNewFolderName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && createFolder()}
-              className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold mb-4"
+              className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-gold mb-4"
               placeholder="Folder name" autoFocus />
             <div className="flex gap-3">
               <button onClick={() => setShowNewFolder(false)} className="flex-1 py-2.5 rounded-xl border border-line text-sm font-semibold text-muted">Cancel</button>
@@ -921,7 +921,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
                   onKeyDown={e => e.key === 'Enter' && createFolderAndMove(moveDocId, moveFolderName)}
                   placeholder="New folder name"
                   autoFocus
-                  className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold mb-2"
+                  className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-gold mb-2"
                 />
                 <div className="flex gap-2">
                   <button onClick={() => { setMoveCreating(false); setMoveFolderName(''); }} className="flex-1 py-2 rounded-xl border border-line text-sm font-semibold text-muted">Back</button>
@@ -1141,7 +1141,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
                 // THE-136: placeholder-stone-300 was a fixed light beige — 1.55:1
                 // on the white card in light, and unthemed in dark. text-faint is
                 // the placeholder role and clears AA on both grounds.
-                className="w-full font-display text-4xl font-normal tracking-[-0.01em] text-strong bg-transparent border-none outline-none placeholder:text-faint mb-6 mt-6"
+                className="w-full font-display text-4xl font-normal tracking-[-0.01em] text-strong bg-transparent border-none outline-hidden placeholder:text-faint mb-6 mt-6"
                 placeholder="Untitled"
               />
               <RichTextEditor
@@ -1272,7 +1272,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
               <div
                 key={d.id}
                 onClick={() => openDocument(d)}
-                className="relative bg-surface-raised rounded-2xl p-4 border border-line shadow-sm cursor-pointer hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-md transition-all group"
+                className="relative bg-surface-raised rounded-2xl p-4 border border-line shadow-xs cursor-pointer hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-md transition-all group"
               >
                 <div className="flex items-start gap-2 mb-2">
                   <Share2 size={18} className="text-stone-300 flex-shrink-0 mt-0.5" />

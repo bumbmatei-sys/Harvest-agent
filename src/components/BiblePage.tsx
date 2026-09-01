@@ -244,7 +244,7 @@ function BookPicker({ currentBook, currentChapter, onSelect, onClose }: { curren
             <div className="px-4 pt-3 pb-1.5">
               <div className="relative">
                 <svg className="absolute left-3.5 top-1/2 -translate-y-1/2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search books…" className="w-full box-border border border-line-strong rounded-brand-lg py-2.5 pl-10 pr-3 text-[13.5px] outline-none bg-surface-raised text-body" />
+                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search books…" className="w-full box-border border border-line-strong rounded-brand-lg py-2.5 pl-10 pr-3 text-[13.5px] outline-hidden bg-surface-raised text-body" />
               </div>
             </div>
             {[
@@ -600,7 +600,7 @@ export default function BiblePage() {
         <div className="p-4 border-b border-line flex items-center gap-2">
           <div className="flex-1 flex items-center gap-2 bg-surface-sunken rounded-lg border border-line px-3 py-2">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-faint)" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-            <input value={deskSearch} onChange={(e) => setDeskSearch(e.target.value)} placeholder="Search books…" className="flex-1 border-none bg-transparent text-[13px] outline-none text-strong" />
+            <input value={deskSearch} onChange={(e) => setDeskSearch(e.target.value)} placeholder="Search books…" className="flex-1 border-none bg-transparent text-[13px] outline-hidden text-strong" />
           </div>
           <button onClick={() => setBookNavCollapsed(true)} title="Collapse books" className="w-8 h-8 rounded-lg flex items-center justify-center text-faint hover:bg-surface-sunken shrink-0">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
@@ -833,7 +833,7 @@ export default function BiblePage() {
           <div className={`px-4 py-3 flex-shrink-0 lg:w-full ${READING_MEASURE}`}>
             <div className="flex items-center gap-2 bg-surface-raised rounded-full border-[1.5px] border-line px-4 py-3">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-faint)" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-              <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder='Try "John 3:16" or "Romans 8:28"...' autoFocus className="flex-1 border-none bg-transparent text-sm outline-none text-strong" />
+              <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder='Try "John 3:16" or "Romans 8:28"...' autoFocus className="flex-1 border-none bg-transparent text-sm outline-hidden text-strong" />
               {searchQuery && <button onClick={() => { setSearchQuery(""); setSearchResults([]); }} className="bg-transparent border-none text-faint cursor-pointer text-sm">✕</button>}
             </div>
             <div className="text-[11px] text-faint text-center mt-1.5">

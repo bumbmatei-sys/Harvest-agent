@@ -98,6 +98,8 @@ vi.mock('next/image', () => ({ default: () => null }));
 // two components the member Profile renders.
 import AdminSettings from '../AdminSettings';
 import { FORM_MEASURE, DENSITY_PX, DESKTOP_CONTROL_MAX_PX } from '../layout/form-layout';
+import { buildUtilityCss } from '../../test/support/tailwind-build';
+import { toV4Spelling } from '../../test/support/class-inventory';
 
 // ── rendering ──────────────────────────────────────────────────────────────
 
@@ -187,22 +189,21 @@ beforeAll(async () => {
     .join(' ');
   document.body.innerHTML = '';
 
-  const tailwind = (await import('tailwindcss')).default;
-  const base = (await import('../../../tailwind.config')).default;
-  const out = await postcss([
-    tailwind({ ...base, content: [{ raw, extension: 'html' }] } as never),
-  ]).process('@tailwind utilities;', { from: undefined });
+  // v4 emits the same utilities wrapped in `@layer utilities` and with theme
+  // values referenced rather than inlined; buildUtilityCss undoes exactly
+  // those two representational changes, so the walker below is unchanged.
+  const out = { css: await buildUtilityCss(raw) };
 
   const unescape = (sel: string) =>
     sel
       .replace(/^\./, '')
       .replace(/\\([0-9a-fA-F]{1,6})\s?/g, (_m, hex: string) => String.fromCodePoint(parseInt(hex, 16)))
       .replace(/\\/g, '');
-  // `space-y-*` does not style the element it is written on — it emits
-  // `.space-y-6 > :not([hidden]) ~ :not([hidden])`, a rule about the gaps
-  // BETWEEN that element's children. Those are collected as `child: true` and
-  // read back through `childGap()`, because matching them against the parent's
-  // own class list would silently find nothing and report "no gap" as a pass.
+  // `space-y-*` does not style the element it is written on — it emits a rule
+  // about the gaps BETWEEN that element's children (`.space-y-6 > …`). Those
+  // are collected as `child: true` and read back through `childGap()`, because
+  // matching them against the parent's own class list would silently find
+  // nothing and report "no gap" as a pass.
   const collect = (node: postcss.Rule, minWidth: number) => {
     const decls: Record<string, string> = {};
     node.walkDecls((d) => { decls[d.prop] = d.value.trim(); });
@@ -246,16 +247,30 @@ function effective(classes: string[], viewport: number): Record<string, string> 
 }
 
 /** The gap `classes` put BETWEEN their element's children at `viewport` — what
- *  a `space-y-*` utility actually emits. Null when no such rule is in force. */
+ *  a `space-y-*` utility actually emits. Null when no such rule is in force.
+ *
+ *  Which margin carries the gap is a Tailwind version detail and is not
+ *  assumed: v3 put it on `margin-top` (of every child after the first), v4 on
+ *  `margin-bottom` (of every child but the last). What does NOT move is the
+ *  arithmetic — the gap is always the length multiplied by
+ *  `calc(1 - var(--tw-space-y-reverse))`, and the other margin is the same
+ *  length multiplied by the bare flag, i.e. zero unless `space-y-reverse` is
+ *  set. So the declaration is chosen by that factor rather than by its name.
+ *  Reading a fixed property name would have gone on "working" across the v4
+ *  migration while measuring the reverse margin, i.e. reporting every gap as
+ *  zero — which is a pass for a test asserting a gap did not grow. */
 function childGap(classes: string[], viewport: number): number | null {
   const wanted = new Set(classes);
   let value: string | undefined;
   for (const rule of emitted) {
     if (!rule.child || !wanted.has(rule.cls) || rule.minWidth > viewport) continue;
-    value = rule.decls['margin-top'] ?? value;
+    const gap = Object.entries(rule.decls).find(
+      ([prop, v]) => /^margin-(top|bottom)$/.test(prop) && v.includes('1 - var(--tw-space-y-reverse)'),
+    );
+    value = gap?.[1] ?? value;
   }
-  // Tailwind emits the gap as `calc(1.5rem * calc(1 - var(--tw-space-y-reverse)))`
-  // — the reverse flag is 0 here, so the leading length IS the gap.
+  // `calc(1.5rem * calc(1 - var(--tw-space-y-reverse)))` — the reverse flag is
+  // 0 here, so the leading length IS the gap.
   const length = value?.match(/(-?[\d.]+(?:rem|px))/);
   return length ? px(length[1], viewport) : null;
 }
@@ -821,8 +836,23 @@ describe('THE-183 — admin Settings', () => {
     ];
     const base = baseRef();
     if (base) {
-      const diff = execSync(`git diff --stat ${base} -- ${OWNED.join(' ')}`, { cwd: ROOT }).toString().trim();
-      expect(diff, 'a settings section that owns an integration path was modified').toBe('');
+      // Was `git diff --stat ${base} -- ${OWNED}` asserted empty. THE-261's v4
+      // migration renamed shadow-sm/outline-none/backdrop-blur-sm across the
+      // app and two of these files took that rename, so a stat is no longer the
+      // question — "did anything move" now has a known, uninteresting yes.
+      //
+      // The question this guard actually asks is whether an integration PATH
+      // moved, so it now compares CONTENT with the historical text put through
+      // the rename map first. That is strictly stronger than the stat it
+      // replaces: a stat says only that a file changed, this says what by, and
+      // any edit other than those three spellings still fails by name.
+      for (const rel of OWNED) {
+        const before = execSync(`git show ${base}:${rel}`, { cwd: ROOT, maxBuffer: 32 * 1024 * 1024 }).toString();
+        expect(
+          readFileSync(path.join(ROOT, rel), 'utf8'),
+          `${rel} changed by more than the v4 utility rename — it owns an integration path`,
+        ).toBe(toV4Spelling(before));
+      }
     }
 
     // (a2) Every integration endpoint IntegrationsSection owns is still called

@@ -197,7 +197,7 @@ const AdminAffiliates: React.FC = () => {
               key={w.key}
               onClick={() => setWindowKey(w.key)}
               className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                windowKey === w.key ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'
+                windowKey === w.key ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'
               }`}
             >
               {w.label}

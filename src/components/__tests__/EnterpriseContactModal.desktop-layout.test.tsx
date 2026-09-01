@@ -34,6 +34,7 @@ import postcss from 'postcss';
 vi.mock('../../firebase', () => ({ auth: { currentUser: { uid: 'u1', email: 'member@church.org' } } }));
 
 import EnterpriseContactModal from '../EnterpriseContactModal';
+import { buildUtilityCss } from '../../test/support/tailwind-build';
 const { mobileLayer, isResponsive, allTokens } = await import('../../test/support/class-inventory');
 const { FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY, FIELD_WIDTHS, CONTROL_DENSITY_TOKENS } = await import('../layout/form-layout');
 
@@ -82,11 +83,10 @@ beforeAll(async () => {
   const raw = Array.from(host.querySelectorAll('*')).map((el) => el.getAttribute('class') || '').join(' ');
   document.body.innerHTML = '';
 
-  const tailwind = (await import('tailwindcss')).default;
-  const base = (await import('../../../tailwind.config')).default;
-  const out = await postcss([
-    tailwind({ ...base, content: [{ raw, extension: 'html' }] } as never),
-  ]).process('@tailwind utilities;', { from: undefined });
+  // v4 emits the same utilities wrapped in `@layer utilities` and with theme
+  // values referenced rather than inlined; buildUtilityCss undoes exactly
+  // those two representational changes, so the walker below is unchanged.
+  const out = { css: await buildUtilityCss(raw) };
 
   const unescape = (sel: string) =>
     sel.replace(/^\./, '').replace(/\\([0-9a-fA-F]{1,6})\s?/g, (_m, hex: string) => String.fromCodePoint(parseInt(hex, 16))).replace(/\\/g, '');

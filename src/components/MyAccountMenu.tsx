@@ -101,7 +101,7 @@ const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
         aria-label="My account"
         aria-haspopup="menu"
         aria-expanded={open}
-        className="w-9 h-9 rounded-full overflow-hidden border border-line shadow-sm shrink-0 hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color,#B8962E)_35%,transparent)]"
+        className="w-9 h-9 rounded-full overflow-hidden border border-line shadow-xs shrink-0 hover:opacity-90 transition-opacity focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color,#B8962E)_35%,transparent)]"
       >
         <Avatar photoURL={photoURL} name={displayName} email={email} className="w-full h-full" />
       </button>

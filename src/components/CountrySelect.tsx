@@ -35,7 +35,7 @@ const CountrySelect: React.FC<CountrySelectProps> = ({ value, onChange, classNam
  <button
  type="button"
  onClick={() => setIsOpen(!isOpen)}
- className={`w-full flex items-center justify-between px-4 py-3 bg-surface-raised border border-line rounded-xl text-strong focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all ${buttonClassName}`}
+ className={`w-full flex items-center justify-between px-4 py-3 bg-surface-raised border border-line rounded-xl text-strong focus:outline-hidden focus:ring-2 focus:ring-primary focus:border-transparent transition-all ${buttonClassName}`}
  >
  <span className={value ? 'text-strong ' : 'text-faint'}>
  {value || 'Select Country'}
@@ -51,7 +51,7 @@ const CountrySelect: React.FC<CountrySelectProps> = ({ value, onChange, classNam
  placeholder="Search country..."
  value={search}
  onChange={(e) => setSearch(e.target.value)}
- className="w-full px-3 py-2 bg-surface-sunken border border-line rounded-lg text-strong placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+ className="w-full px-3 py-2 bg-surface-sunken border border-line rounded-lg text-strong placeholder:text-faint focus:outline-hidden focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
  onClick={(e) => e.stopPropagation()}
  />
  </div>

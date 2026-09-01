@@ -398,7 +398,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
         )}
 
         {(!isPledge || tab === 'overview') ? (
-          <div className="bg-surface-raised rounded-2xl p-5 border border-line shadow-sm">
+          <div className="bg-surface-raised rounded-2xl p-5 border border-line shadow-xs">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-bold text-strong font-display">{c.title}</h2>
               <button onClick={() => openEdit(c)} className="p-2 rounded-xl border border-line hover:bg-surface-sunken"><Edit2 size={15} className="text-muted" /></button>
@@ -448,7 +448,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
                       value={adjustForm.amount}
                       onChange={(e) => setAdjustForm({ ...adjustForm, amount: e.target.value })}
                       placeholder="250"
-                      className={`w-full ${FIELD_WIDTH.short} border border-line rounded-brand px-3.5 py-2.5 text-sm text-strong focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent`}
+                      className={`w-full ${FIELD_WIDTH.short} border border-line rounded-brand px-3.5 py-2.5 text-sm text-strong focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent`}
                     />
                     {/*
                       🔴 SAYS "ADDS", NOT "SETS", where the number is typed. The
@@ -471,7 +471,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
                       id="offline-gift-provider"
                       value={adjustForm.provider}
                       onChange={(e) => setAdjustForm({ ...adjustForm, provider: e.target.value })}
-                      className={`w-full ${FIELD_WIDTH.medium} border border-line rounded-brand px-3.5 py-2.5 text-sm text-strong bg-surface-raised focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent ${CONTROL_DENSITY.control}`}
+                      className={`w-full ${FIELD_WIDTH.medium} border border-line rounded-brand px-3.5 py-2.5 text-sm text-strong bg-surface-raised focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent ${CONTROL_DENSITY.control}`}
                     >
                       <option value="">Not specified</option>
                       {/* The THE-246 table, walked — the fifth provider appears
@@ -490,7 +490,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
                       value={adjustForm.note}
                       onChange={(e) => setAdjustForm({ ...adjustForm, note: e.target.value })}
                       placeholder="Sunday envelope, Cash App from the Bakers"
-                      className={`w-full ${FIELD_WIDTH.long} border border-line rounded-brand px-3.5 py-2.5 text-sm text-strong focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent`}
+                      className={`w-full ${FIELD_WIDTH.long} border border-line rounded-brand px-3.5 py-2.5 text-sm text-strong focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent`}
                     />
                   </div>
                   {adjustError && (
@@ -525,15 +525,15 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
           <div>
             {/* Totals */}
             <div className="grid grid-cols-3 gap-3 mb-4">
-              <div className="bg-surface-raised rounded-2xl p-4 border border-line text-center shadow-sm">
+              <div className="bg-surface-raised rounded-2xl p-4 border border-line text-center shadow-xs">
                 <div className="text-xl font-bold text-strong">{fmt(totalPledged)}</div>
                 <div className="text-xs text-faint mt-0.5">Pledged</div>
               </div>
-              <div className="bg-surface-raised rounded-2xl p-4 border border-line text-center shadow-sm">
+              <div className="bg-surface-raised rounded-2xl p-4 border border-line text-center shadow-xs">
                 <div className="text-xl font-bold text-field-600">{fmt(totalPaid)}</div>
                 <div className="text-xs text-faint mt-0.5">Paid</div>
               </div>
-              <div className="bg-surface-raised rounded-2xl p-4 border border-line text-center shadow-sm">
+              <div className="bg-surface-raised rounded-2xl p-4 border border-line text-center shadow-xs">
                 <div className="text-xl font-bold" style={{ color: 'var(--brand-color, #d4a017)' }}>{fulfillment}%</div>
                 <div className="text-xs text-faint mt-0.5">Fulfilled</div>
               </div>
@@ -562,15 +562,15 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
             {showPledgeForm && (
               <div className="bg-surface-sunken rounded-2xl p-4 mb-3 space-y-2.5">
                 <div className="grid grid-cols-2 gap-2">
-                  <input value={pledgeForm.donorName} onChange={e => setPledgeForm({ ...pledgeForm, donorName: e.target.value })} placeholder="Donor name *" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} />
-                  <input value={pledgeForm.donorEmail} onChange={e => setPledgeForm({ ...pledgeForm, donorEmail: e.target.value })} placeholder="Email *" type="email" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} />
+                  <input value={pledgeForm.donorName} onChange={e => setPledgeForm({ ...pledgeForm, donorName: e.target.value })} placeholder="Donor name *" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} />
+                  <input value={pledgeForm.donorEmail} onChange={e => setPledgeForm({ ...pledgeForm, donorEmail: e.target.value })} placeholder="Email *" type="email" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <input value={pledgeForm.donorPhone} onChange={e => setPledgeForm({ ...pledgeForm, donorPhone: e.target.value })} placeholder="Phone (optional)" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`} />
-                  <input value={pledgeForm.pledgeAmount} onChange={e => setPledgeForm({ ...pledgeForm, pledgeAmount: e.target.value })} placeholder="Pledge amount ($) *" type="number" min={0} className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.short} ${CONTROL_DENSITY.control}`} />
+                  <input value={pledgeForm.donorPhone} onChange={e => setPledgeForm({ ...pledgeForm, donorPhone: e.target.value })} placeholder="Phone (optional)" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`} />
+                  <input value={pledgeForm.pledgeAmount} onChange={e => setPledgeForm({ ...pledgeForm, pledgeAmount: e.target.value })} placeholder="Pledge amount ($) *" type="number" min={0} className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.short} ${CONTROL_DENSITY.control}`} />
                 </div>
-                <input value={pledgeForm.dueDate} onChange={e => setPledgeForm({ ...pledgeForm, dueDate: e.target.value })} type="date" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`} />
-                <textarea value={pledgeForm.notes} onChange={e => setPledgeForm({ ...pledgeForm, notes: e.target.value })} placeholder="Notes (optional)" rows={2} className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold resize-none ${FIELD_WIDTH.long}`} />
+                <input value={pledgeForm.dueDate} onChange={e => setPledgeForm({ ...pledgeForm, dueDate: e.target.value })} type="date" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`} />
+                <textarea value={pledgeForm.notes} onChange={e => setPledgeForm({ ...pledgeForm, notes: e.target.value })} placeholder="Notes (optional)" rows={2} className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-gold resize-none ${FIELD_WIDTH.long}`} />
                 <div className="flex gap-2">
                   <button onClick={() => { setShowPledgeForm(false); setPledgeForm(emptyPledge); }} className={`flex-1 py-2 rounded-lg border border-line text-xs font-semibold text-muted ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>Cancel</button>
                   <button onClick={savePledge} disabled={savingPledge} className={`flex-1 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`} style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>{savingPledge ? 'Saving…' : 'Add Pledge'}</button>
@@ -605,8 +605,8 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
                       </div>
                       {isEditing && (
                         <div className="flex items-center gap-2 mt-2">
-                          <input type="number" min={0} value={editPledge.paidAmount} onChange={e => setEditPledge({ ...editPledge, paidAmount: e.target.value })} placeholder="Paid ($)" className="flex-1 min-w-0 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
-                          <select value={editPledge.status} onChange={e => setEditPledge({ ...editPledge, status: e.target.value as Pledge['status'] })} className="border border-line rounded-lg px-2 py-2 text-sm bg-surface-raised focus:outline-none focus:border-gold">
+                          <input type="number" min={0} value={editPledge.paidAmount} onChange={e => setEditPledge({ ...editPledge, paidAmount: e.target.value })} placeholder="Paid ($)" className="flex-1 min-w-0 border border-line rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-gold" />
+                          <select value={editPledge.status} onChange={e => setEditPledge({ ...editPledge, status: e.target.value as Pledge['status'] })} className="border border-line rounded-lg px-2 py-2 text-sm bg-surface-raised focus:outline-hidden focus:border-gold">
                             <option value="active">active</option>
                             <option value="fulfilled">fulfilled</option>
                             <option value="lapsed">lapsed</option>
@@ -828,25 +828,25 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
               <div>
                 <label className="text-xs font-semibold text-strong mb-1.5 block">Title *</label>
                 <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="w-full border border-line rounded-brand px-3.5 py-2.5 text-sm text-strong focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent"
+                  className="w-full border border-line rounded-brand px-3.5 py-2.5 text-sm text-strong focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent"
                   placeholder="Campaign title" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-strong mb-1.5 block">Description</label>
                 <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="w-full border border-line rounded-brand px-3.5 py-2.5 text-sm text-strong focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent resize-none"
+                  className="w-full border border-line rounded-brand px-3.5 py-2.5 text-sm text-strong focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent resize-none"
                   rows={3} placeholder="What is this campaign for?" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-strong mb-1.5 block">Goal ($)</label>
                   <input type="number" min={0} value={form.goal} onChange={(e) => setForm({ ...form, goal: Number(e.target.value) })}
-                    className="w-full border border-line rounded-brand px-3.5 py-2.5 text-sm text-strong focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
+                    className="w-full border border-line rounded-brand px-3.5 py-2.5 text-sm text-strong focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-strong mb-1.5 block">End date</label>
                   <input type="date" value={form.endDate || ''} onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                    className="w-full border border-line rounded-brand px-3.5 py-2.5 text-sm text-strong focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
+                    className="w-full border border-line rounded-brand px-3.5 py-2.5 text-sm text-strong focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
                 </div>
               </div>
 
@@ -888,7 +888,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
                 <div>
                   <label className="text-xs font-semibold text-strong mb-1.5 block">Pledge deadline</label>
                   <input type="date" value={form.pledgeDeadline || ''} onChange={(e) => setForm({ ...form, pledgeDeadline: e.target.value })}
-                    className="w-full border border-line rounded-brand px-3.5 py-2.5 text-sm text-strong focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
+                    className="w-full border border-line rounded-brand px-3.5 py-2.5 text-sm text-strong focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
                   <p className="text-[11px] text-faint mt-1">Date by which pledges should be fulfilled</p>
                 </div>
               )}

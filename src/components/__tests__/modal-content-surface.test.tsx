@@ -62,6 +62,7 @@ import PrivacyTermsModal from '../PrivacyTermsModal';
 import EnterpriseContactModal from '../EnterpriseContactModal';
 import { MEMBER_FAQS } from '../../lib/member-faqs';
 import { LEGAL_LINKS, visibleLegalLinks } from '../../lib/legal-links';
+import { buildUtilityCss } from '../../test/support/tailwind-build';
 
 // ── rendering ──────────────────────────────────────────────────────────────
 // createRoot + act, as the rest of this suite does: @testing-library/react is
@@ -183,14 +184,13 @@ beforeAll(async () => {
   lightVars = varsIn(css, (s) => s === ':root');
   darkVars = varsIn(css, (s) => /\.dark|\[data-theme="dark"\]/.test(s));
 
-  const tailwind = (await import('tailwindcss')).default;
-  const base = (await import('../../../tailwind.config')).default;
   const raw = allContainerClasses().join(' ');
   document.body.innerHTML = '';
 
-  const out = await postcss([
-    tailwind({ ...base, content: [{ raw, extension: 'html' }] } as never),
-  ]).process('@tailwind utilities;', { from: undefined });
+  // v4 emits the same utilities wrapped in `@layer utilities` and with theme
+  // values referenced rather than inlined; buildUtilityCss undoes exactly
+  // those two representational changes, so the walker below is unchanged.
+  const out = { css: await buildUtilityCss(raw) };
 
   const unescape = (sel: string) => sel.replace(/^\./, '').replace(/\\/g, '');
   const collect = (node: postcss.Rule, minWidth: number) => {
@@ -540,7 +540,7 @@ it('no colour is hardcoded', () => {
   expect(neutrals, 'off-palette neutrals do not theme').toEqual([]);
 
   // Every colour the container emits comes from a token, not a value. box-shadow
-  // is excluded deliberately: `shadow-sm` is Tailwind's own black-at-5%, it is
+  // is excluded deliberately: `shadow-xs` is Tailwind's own black-at-5%, it is
   // the idiom every card in these three modals already uses, and a shadow that
   // does not show on a dark ground is the app-wide behaviour rather than a
   // regression this change introduces.

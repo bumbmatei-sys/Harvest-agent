@@ -2,14 +2,14 @@
   "before": {
     "overlay": "flex-1 overflow-y-auto p-4 lg:p-6",
     "container": "max-w-3xl mx-auto space-y-6",
-    "panel": "bg-surface-raised rounded-2xl p-5 border border-line shadow-sm",
+    "panel": "bg-surface-raised rounded-2xl p-5 border border-line shadow-xs",
     "track": "flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scrollbar-hide",
     "card": "relative bg-surface-raised rounded-2xl border-2 p-5 transition-all min-w-[280px] max-w-[320px] flex-shrink-0 snap-center flex flex-col  "
   },
   "after": {
     "overlay": "flex-1 overflow-y-auto p-4 lg:p-6",
     "container": "sm:max-w-[1120px] sm:mx-auto space-y-6",
-    "panel": "bg-surface-raised rounded-2xl p-5 border border-line shadow-sm",
+    "panel": "bg-surface-raised rounded-2xl p-5 border border-line shadow-xs",
     "track": "flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scrollbar-hide sm:grid sm:grid-cols-2 sm:overflow-x-visible sm:pb-0 lg:grid-cols-3",
     "card": "relative rounded-brand-xl p-[24px] transition-all min-w-[280px] max-w-[320px] flex-shrink-0 snap-center flex flex-col sm:min-w-0 sm:max-w-none  "
   },
@@ -19,7 +19,7 @@
       "1\th2\tfont-bold font-display text-2xl text-strong",
       "2\tp\ttext-muted",
       "3\tdiv\tbg-surface-tint flex gap-3 items-center justify-center max-w-xs mx-auto p-2 rounded-2xl",
-      "4\tbutton\tbg-surface-raised font-semibold px-5 py-2 rounded-xl shadow-sm text-sm text-strong transition-all",
+      "4\tbutton\tbg-surface-raised font-semibold px-5 py-2 rounded-xl shadow-xs text-sm text-strong transition-all",
       "5\tbutton\tfont-semibold hover:text-body px-5 py-2 relative rounded-xl text-muted text-sm transition-all",
       "6\tspan\t-right-2 -top-2 absolute bg-green-500 font-bold px-1.5 py-0.5 rounded-full text-[10px] text-white",
       "7\tstyle\t",
@@ -199,7 +199,7 @@
       "1\th2\tfont-bold font-display text-2xl text-strong",
       "2\tp\ttext-muted",
       "3\tdiv\tbg-surface-tint flex gap-3 items-center justify-center max-w-xs mx-auto p-2 rounded-2xl",
-      "4\tbutton\tbg-surface-raised font-semibold px-5 py-2 rounded-xl shadow-sm text-sm text-strong transition-all",
+      "4\tbutton\tbg-surface-raised font-semibold px-5 py-2 rounded-xl shadow-xs text-sm text-strong transition-all",
       "5\tbutton\tfont-semibold hover:text-body px-5 py-2 relative rounded-xl text-muted text-sm transition-all",
       "6\tspan\t-right-2 -top-2 absolute bg-green-500 font-bold px-1.5 py-0.5 rounded-full text-[10px] text-white",
       "7\tstyle\t",
@@ -379,7 +379,7 @@
       "1\th2\tfont-bold font-display text-2xl text-strong",
       "2\tp\ttext-muted",
       "3\tdiv\tbg-surface-tint flex gap-3 items-center justify-center max-w-xs mx-auto p-2 rounded-2xl",
-      "4\tbutton\tbg-surface-raised font-semibold px-5 py-2 rounded-xl shadow-sm text-sm text-strong transition-all",
+      "4\tbutton\tbg-surface-raised font-semibold px-5 py-2 rounded-xl shadow-xs text-sm text-strong transition-all",
       "5\tbutton\tfont-semibold hover:text-body px-5 py-2 relative rounded-xl text-muted text-sm transition-all",
       "6\tspan\t-right-2 -top-2 absolute bg-green-500 font-bold px-1.5 py-0.5 rounded-full text-[10px] text-white",
       "7\tstyle\t",

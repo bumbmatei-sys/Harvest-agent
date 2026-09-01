@@ -59,7 +59,7 @@ const ObInput: React.FC<{ icon?: React.ReactNode } & React.InputHTMLAttributes<H
         {...props}
         onFocus={(e) => { setFocus(true); props.onFocus?.(e); }}
         onBlur={(e) => { setFocus(false); props.onBlur?.(e); }}
-        className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-faint"
+        className="min-w-0 flex-1 bg-transparent outline-hidden placeholder:text-faint"
         style={{ fontSize: 15, color: 'var(--text-heading, #2D2519)' }}
       />
     </div>
@@ -261,7 +261,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   // Branded field styling for textarea / select (icon inputs use <ObInput/>).
   const brandFieldClass =
-    'w-full rounded-lg bg-surface-raised px-3.5 py-3 outline-none transition-all placeholder:text-faint';
+    'w-full rounded-lg bg-surface-raised px-3.5 py-3 outline-hidden transition-all placeholder:text-faint';
   const focusHandlers = {
     onFocus: (e: React.FocusEvent<HTMLElement>) => { e.currentTarget.style.borderColor = GOLD; e.currentTarget.style.boxShadow = `0 0 0 3px color-mix(in srgb, ${GOLD} 16%, transparent)`; },
     onBlur: (e: React.FocusEvent<HTMLElement>) => { e.currentTarget.style.borderColor = 'var(--stone-200, #E8E2D9)'; e.currentTarget.style.boxShadow = 'none'; },
