@@ -1,0 +1,45 @@
+# THE-268 — line-ending normalisation.
+#
+# Dozens of tests in this repo pin file contents by
+# `sha256(readFileSync(path, 'utf8'))`. Those digests were recorded from LF
+# content. Git's `core.autocrlf` defaults to `true` on Windows, so a Windows
+# clone gets CRLF in the WORKING TREE while the committed blobs stay LF —
+# every line then differs by one byte and every digest pin fails at once
+# (measured: 187 failures on a clean Windows checkout).
+#
+# The failure is loud and misleading: it presents as "the shadcn primitives
+# have all drifted". They have not. If a digest fails, fix the line endings —
+# never re-record the hash. A CRLF-derived digest committed here would break
+# Linux and CI for everyone, which is the outcome this file exists to prevent.
+#
+# `eol=lf` is the load-bearing half and is NOT stylistic. Plain `text=auto`
+# normalises the blob but leaves checkout to `core.eol`, which is `native` —
+# i.e. still CRLF on Windows, and the digests would still fail. `eol=lf`
+# forces LF in the working tree on every platform, which is what the pins read.
+
+# Every text file: normalise to LF on commit, check out LF everywhere.
+* text=auto eol=lf
+
+# Binaries — declared explicitly rather than left to `text=auto`'s heuristic.
+# The heuristic only inspects the first 8000 bytes for a NUL, and a corrupted
+# binary is a far worse outcome than a failing digest, so the 13 PNGs this
+# repo tracks (public/icons/*, mockups/*) are pinned by extension. The rest
+# are future-proofing: they match nothing today, but a font or image added
+# later is protected the moment it lands.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.avif binary
+*.ico  binary
+*.pdf  binary
+*.woff binary
+*.woff2 binary
+*.ttf  binary
+*.otf  binary
+*.eot  binary
+*.mp4  binary
+*.webm binary
+*.zip  binary
+*.gz   binary
