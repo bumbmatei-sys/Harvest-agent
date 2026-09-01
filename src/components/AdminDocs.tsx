@@ -372,9 +372,18 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
   // tenant's plan, even for a super admin.
   const canShareToLivestream = hasPlatformOverride() || (tenantPlan ? getPlanFeatures(tenantPlan).sermonNotes : false);
 
-  const { data: docs = [], isLoading: loading } = useDocs(tenantId, isAuthReady);
-  const { data: folders = [] } = useDocFolders(tenantId, isAuthReady);
-  const { data: sharedDocs = [] } = useSharedDocs(auth.currentUser?.uid);
+  // These hooks return `{ items, truncated }`, not a bare array: the list is read
+  // to completeness, and `truncated` is the only thing that can say so when the
+  // runaway-read ceiling stops it (THE-262 — the old `limit(300)` lost notes in
+  // silence). Unwrapped here so the rest of this component keeps working with
+  // plain arrays.
+  const { data: docsRead, isLoading: loading } = useDocs(tenantId, isAuthReady);
+  const { data: foldersRead } = useDocFolders(tenantId, isAuthReady);
+  const { data: sharedDocsRead } = useSharedDocs(auth.currentUser?.uid);
+  const docs = docsRead?.items ?? [];
+  const folders = foldersRead?.items ?? [];
+  const sharedDocs = sharedDocsRead?.items ?? [];
+  const docsTruncated = !!docsRead?.truncated || !!foldersRead?.truncated || !!sharedDocsRead?.truncated;
 
   const [openDoc, setOpenDoc] = useState<Doc | null>(null);
   const [editTitle, setEditTitle] = useState('');
@@ -964,6 +973,19 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
         </button>
       </div>
       <div className="flex-1 overflow-y-auto p-2">
+        {/* THE-262: the read stops at a ceiling, and a ceiling nobody can see is
+            the bug this replaced — a church over the old limit(300) got an
+            arbitrary 300 notes rendered as a tidy, complete-looking list. Reads
+            now run to completeness, so this only appears if the runaway-read
+            ceiling actually fired. It must never be silent when it does. */}
+        {docsTruncated && (
+          <div className="mx-1 mb-2 px-2.5 py-2 rounded-brand border border-line bg-surface-sunken">
+            <p className="text-[10px] font-bold text-faint uppercase tracking-wider mb-0.5">Partial list</p>
+            <p className="text-xs text-muted">
+              There are more notes than this view loads at once, so some are not shown.
+            </p>
+          </div>
+        )}
         {docs.filter(d => !d.folderId).map(d => {
           const isOpen = openDoc?.id === d.id;
           return (

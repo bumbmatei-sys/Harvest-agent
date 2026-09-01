@@ -78,10 +78,13 @@ vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQue
 vi.mock('../../store/useAppStore', () => ({
   useAppStore: () => ({ currentTenantId: 't1', isAuthReady: true, tenantPlan: 'seed', isSuperAdmin: false }),
 }));
+// The docs hooks return `{ items, truncated }`, not a bare array (THE-262):
+// the reads page to completeness, and `truncated` is how a surviving ceiling
+// tells the consumer the list is short instead of lying by omission.
 vi.mock('../../hooks/queries/useDocsQueries', () => ({
-  useDocs: () => ({ data: [OPEN_DOC], isLoading: false }),
-  useDocFolders: () => ({ data: [] }),
-  useSharedDocs: () => ({ data: [] }),
+  useDocs: () => ({ data: { items: [OPEN_DOC], truncated: false }, isLoading: false }),
+  useDocFolders: () => ({ data: { items: [], truncated: false } }),
+  useSharedDocs: () => ({ data: { items: [], truncated: false } }),
 }));
 
 /** Every write the component issued, in order. */

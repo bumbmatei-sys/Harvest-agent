@@ -811,6 +811,23 @@ const EDITED_SINCE_MEASUREMENT: ReadonlyArray<{ file: string; ticket: string; wh
       'padding, class or inline style changed, no feature flag moved, and every permission term is ' +
       'still byte-identical — which the assertion below still proves, unedited.',
   },
+  {
+    file: 'AdminDocs.tsx',
+    ticket: 'THE-262',
+    why:
+      'The three docs hooks stopped returning a bare array. `useDocs` read ' +
+      '`limit(300)` with no `orderBy`, so a church with more notes than that got 300 ' +
+      'ARBITRARY ones (Firestore answers an unordered query in `__name__` order and the ' +
+      'ids are random) and then sorted THAT by updatedAt — a tidy, newest-first list with ' +
+      'no way to tell notes were missing. The reads now page to completeness and return ' +
+      '`{ items, truncated }`, so this file unwraps `.items` into the same three local ' +
+      'arrays it already had (docs, folders, sharedDocs) and renders a "Partial list" ' +
+      'notice when the runaway-read ceiling actually fires — a ceiling nobody can see is ' +
+      'the defect being removed, so the flag had to reach the screen. Everything ' +
+      'downstream still consumes plain arrays and is untouched. No wrapper, container, ' +
+      'padding, measure or inline style changed, and the notice mints no responsive ' +
+      'width/height/gap of its own — it reuses classes already in this file.',
+  },
 ];
 
 const EXEMPT_FILES = EDITED_SINCE_MEASUREMENT.map((e) => e.file);
@@ -824,6 +841,7 @@ describe('the digest exemption list is exactly the edits that justify it', () =>
       'THE-202 AdminDashboard.tsx',
       'THE-216 AdminDashboard.tsx',
       'THE-220 AdminDashboard.tsx',
+      'THE-262 AdminDocs.tsx',
     ]);
   });
 
