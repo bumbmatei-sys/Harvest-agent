@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Affiliate attribution. ──────────────────────────────────────────────
-    // The referrer is resolved here, not at free signup: a commission is 15% of
+    // The referrer is resolved here, not at free signup: a commission is 30% of
     // what a church PAYS, and a Forever Free tenant pays nothing. The stored
     // referrer survives in the browser from the original visit, so an
     // evangelist who arrived through an affiliate link and upgraded months

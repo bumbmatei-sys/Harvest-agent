@@ -915,7 +915,7 @@ for (const term of DISCOUNTED_TERMS) {
  * Hidden because subscription billing is moving from Stripe to Dodo Payments (a
  * merchant of record), which changes the payout rail end to end — affiliate
  * transfers run through Stripe Connect today and that relationship does not
- * survive the move unchanged. A public programme promising 15% of subscription
+ * survive the move unchanged. A public programme promising 30% of subscription
  * revenue for 12 months, on a payout rail mid-migration, is how you end up owing
  * commission you cannot pay. Migrate billing first, then decide whether to bring
  * it back.

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
 /**
@@ -102,18 +102,44 @@ describe('2 — the affiliate surfaces claim 30%', () => {
     expect(read(file)).toContain(claim);
   });
 
-  it('no affiliate surface still claims 15%', () => {
-    // Scoped to the files that make a RATE CLAIM. The repo-wide sweep is
-    // deliberately not a bare "15%" grep — `color-mix(… 15%, transparent)`,
-    // `at 85% 15%` and the retired per-plan ladder all contain that string and
-    // none of them is a commission. See suite 5 for what is pinned untouched.
-    for (const file of [
-      'components/AffiliateSection.tsx',
-      'lib/affiliate-commission-window.ts',
-      'components/ChurchOnboarding.tsx',
-    ]) {
-      expect(read(file), `${file} still claims 15%`).not.toMatch(/\b15%/);
-    }
+  it('🔴 NO file in the repo still claims a 15% commission — repo-wide sweep', () => {
+    // A hand-listed sweep is only as good as the list, and the first version of
+    // this test had three files in it and missed four real claims (the Dodo
+    // first-subscription route, plan-change.ts, plan-features.ts and a stale
+    // cross-reference in webhook.test.ts). So this walks the whole tree.
+    //
+    // A bare "15%" grep is useless here — `color-mix(… 15%, transparent)`,
+    // `at 85% 15%` and `rgba(…,0.15)` are everywhere. What is swept for is a
+    // 15% that sits in a COMMISSION SENTENCE: the two within a few words of
+    // each other.
+    const COMMISSION_15 =
+      /(commission|affiliate|refer(?:ral|red|s)?|earns?|pays? you)[^.\n]{0,80}\b15%|\b15%[^.\n]{0,80}(commission|of what|of subscription|of revenue|recurring)/i;
+
+    // The allowed exceptions, each one justified in suite 5 below.
+    const ALLOWED = new Set([
+      // the retired per-plan ladder, named as history
+      'app/api/stripe/webhook/route.ts',
+      // Stripe's real stored history: rows genuinely banked at 15%
+      'app/api/admin/affiliates/__tests__/route.test.ts',
+      // this file, which quotes the old rate to describe the change
+      'lib/__tests__/the-269-affiliate-rate.test.ts',
+    ]);
+
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const abs = path.join(dir, entry.name);
+        if (entry.isDirectory()) { walk(abs); continue; }
+        if (!/\.(ts|tsx)$/.test(entry.name)) continue;
+        const rel = path.relative(SRC, abs);
+        if (ALLOWED.has(rel)) continue;
+        for (const line of readFileSync(abs, 'utf8').split('\n')) {
+          if (COMMISSION_15.test(line)) offenders.push(`${rel}: ${line.trim().slice(0, 100)}`);
+        }
+      }
+    };
+    walk(SRC);
+    expect(offenders, `these still claim a 15% commission:\n${offenders.join('\n')}`).toEqual([]);
   });
 
   it('the webhook prose carries no live 15% claim', () => {

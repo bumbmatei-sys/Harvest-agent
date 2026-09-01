@@ -263,7 +263,7 @@ export function needsFirstSubscription(currentPlan: TenantPlan | undefined): boo
 /**
  * The affiliate referrer stored in the browser at the ORIGINAL visit.
  *
- * Read here rather than at free signup on purpose: a commission is 15% of what
+ * Read here rather than at free signup on purpose: a commission is 30% of what
  * a church PAYS, and a Forever Free tenant pays nothing, so attribution belongs
  * to the moment it starts paying. An evangelist who arrived through an
  * affiliate link and upgraded months later still attributes.

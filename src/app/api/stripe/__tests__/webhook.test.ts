@@ -742,7 +742,7 @@ describe('flat 30% affiliate commission', () => {
 // (which the retry cron re-attempts forever) and bumped affiliateReferralCount —
 // even for a trial that is later abandoned and never pays. The guard early-returns
 // on a $0 event; the real charge is paid later by the recurring path (see the
-// 'recurring commission is 15% of invoice.amount_paid' test above, which covers
+// 'recurring commission is 30% of invoice.amount_paid' test above, which covers
 // the billing_reason 'subscription_cycle' conversion invoice).
 describe('initial affiliate commission — $0 trial guard', () => {
   it('builds the new tenant on a $0 trial signup but writes NO commission and does NOT bump referral count', async () => {
