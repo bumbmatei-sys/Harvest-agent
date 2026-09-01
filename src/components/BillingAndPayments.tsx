@@ -5,6 +5,7 @@ import { authFetch } from '../utils/auth-fetch';
 import { getPlanDisplayName, TOP_PLAN } from '../utils/plan-features';
 import type { TenantPlan } from '../types/tenant.types';
 import PlanUpgradeSection from './settings/PlanUpgradeSection';
+import { useTenantOptional } from '../contexts/TenantContext';
 import AddOnsSection from './settings/AddOnsSection';
 import { FORM_CONTAINER } from './layout/form-layout';
 
@@ -87,6 +88,27 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
    */
   const [processor, setProcessor] = useState<'stripe' | 'dodo' | null | undefined>(undefined);
 
+  /**
+   * THE-259 — the live tier, which the mount-time billing snapshot must not
+   * shadow.
+   *
+   * 🔴 WHY THIS PAGE HAD TO CHANGE WHEN THE RELOAD WENT. `subscription.plan` is
+   * not a second fact about the tier: `/api/billing/invoices` reads it straight
+   * off `tenants/{id}.plan`, the SAME field the context re-reads. The
+   * difference is age — this page fetches once, on mount (`[]`), so
+   * `subscription.plan` is a snapshot, and it sat AHEAD of the live value in
+   * the `planId` chain below. That is what the `window.location.reload()` in
+   * `PlanUpgradeSection` was really refreshing: drop the reload without this
+   * and the bounded re-read would move the context while the card kept
+   * rendering the pre-purchase tier off a stale snapshot — the ticket's own bug
+   * with an extra step.
+   *
+   * `useTenantOptional` keeps every suite that renders this page bare working
+   * unchanged: with no provider there is no context tier and the chain below is
+   * exactly what it was.
+   */
+  const tenant = useTenantOptional();
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -137,7 +159,21 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
     }
   };
 
-  const planId = (subscription?.plan as TenantPlan) || currentPlan;
+  /**
+   * The live tier wins over the snapshot — but only when it is THIS tenant's.
+   *
+   * The identity guard is not hypothetical bookkeeping: `tenantId` arrives as a
+   * prop while the context resolves its own tenant, and rendering one church's
+   * tier against another's billing page is the one failure worse than showing a
+   * stale one. When the context has no tier yet (still loading, or platform
+   * context where it is undefined) the chain falls through to exactly what it
+   * was before.
+   */
+  const contextPlan =
+    tenant && (!tenantId || !tenant.tenantId || tenant.tenantId === tenantId)
+      ? tenant.tenantPlan
+      : undefined;
+  const planId = contextPlan ?? ((subscription?.plan as TenantPlan) || currentPlan);
   const planLabel = planId ? getPlanDisplayName(planId) : '—';
   const status = subscription?.status || null;
   // Nothing to upgrade to on the top tier. Derived from PLAN_ORDER via TOP_PLAN
