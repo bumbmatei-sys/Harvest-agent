@@ -279,7 +279,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
       //
       // `selectedBilling` is deliberately NOT sent. Free has no billing term,
       // and passing one would put a term on a tier that is never billed.
-      // `referrerId` is not sent either: an affiliate commission is 15% of what
+      // `referrerId` is not sent either: an affiliate commission is 30% of what
       // a church pays, and this church pays nothing. The stored referrer is
       // left untouched in localStorage, so it still attaches if they upgrade.
       if (isFree) {

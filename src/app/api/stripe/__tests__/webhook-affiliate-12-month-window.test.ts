@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 /**
  * AFFILIATE COMMISSIONS END 12 MONTHS AFTER THE REFERRED CHURCH'S SIGNUP.
  *
- * Founder decision: 15% of what each referred church pays, for the first 12 months
+ * Founder decision: 30% of what each referred church pays, for the first 12 months
  * from their signup — not forever. Before this there was no time dimension in the
  * affiliate code at all, so a referral paid out for as long as Stripe kept charging.
  *
@@ -153,7 +153,7 @@ const { addMonthsUtc } = await import('@/lib/affiliate-commission-window');
 // ── Fixtures ───────────────────────────────────────────────────────────────────
 
 const AMOUNT = 11900;    // $119 pro plan renewal
-const COMMISSION = 1785; // flat 15%
+const COMMISSION = 3570; // flat 30%
 
 /** Signup: Jan 1 2025 midnight UTC. Window therefore closes Jan 1 2026 midnight UTC. */
 const SIGNUP_ISO = '2025-01-01T00:00:00.000Z';
@@ -644,7 +644,7 @@ describe('the window gates WHETHER a commission exists, never a stored amount', 
   it('the legacy 20% row still pays 20% — the stored value is read, never recomputed', async () => {
     seed();
     // A real legacy row, banked at the old 20% ultra rate, pending because Connect
-    // was not active when it was earned. 20% of $119 = $23.80, not the flat 15%.
+    // was not active when it was earned. 20% of $119 = $23.80, not the flat 30%.
     const legacyCommission = Math.round(AMOUNT * 0.2); // 2380
     expect(legacyCommission).not.toBe(COMMISSION);
     store.set('affiliate_commissions/legacy20', {
@@ -677,11 +677,11 @@ describe('the window gates WHETHER a commission exists, never a stored amount', 
     expect(store.get('affiliate_commissions/legacy20')!.status).toBe('paid');
   });
 
-  it('an in-window commission is still exactly 15% of amount_paid', async () => {
+  it('an in-window commission is still exactly 30% of amount_paid', async () => {
     seed();
     await WEBHOOK(renewalEvent({ eventId: 'evt_rate', month: 6, amountPaid: 29900 }));
 
-    expect(earningRows()[0].data).toMatchObject({ amount: 29900, commission: 4485 });
+    expect(earningRows()[0].data).toMatchObject({ amount: 29900, commission: 8970 });
   });
 });
 

@@ -8,7 +8,7 @@ import { createRoot, type Root } from 'react-dom/client';
  * affiliate.theharvest.app's sign-up screen is where the programme is actually
  * SOLD: "Affiliate program", "Welcome to Harvest affiliate", "Earn recurring
  * commission for every ministry you refer to Harvest". That is a public promise
- * of 15% of subscription revenue for 12 months, made while the payout rail is
+ * of 30% of subscription revenue for 12 months, made while the payout rail is
  * mid-migration to Dodo — it is the single most important thing this PR takes
  * down. Hidden, the host renders the ordinary Harvest auth copy.
  *

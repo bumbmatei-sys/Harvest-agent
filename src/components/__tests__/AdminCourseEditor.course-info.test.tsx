@@ -163,11 +163,39 @@ const WRITE_PATHS = [
   'const result = await ingestTextSource(',
 ] as const;
 
-/** The source of `name`'s definition, long enough to cover its whole body. */
+/**
+ * The source of `name`'s own statement — from the declaration to the `;` that
+ * closes it, with brackets balanced so a `;` nested inside the body does not
+ * end the slice early.
+ *
+ * RE-DERIVED (THE-186), deliberately and with the reason recorded here rather
+ * than regenerated silently: this was a fixed `slice(at, at + 1400)`, a window
+ * that neither reached the end of the longest path it guards (`handleSave` is
+ * 2102 chars, so ~700 of its body went unchecked) nor stopped at the end of the
+ * shortest (`updateLibraryAuthor` is 768, so its window ran ~630 chars into
+ * whatever happened to follow it in the file). THE-186 edits `addLevel` /
+ * `updateLevel` / `onLevelDragEnd`, which sit just past `removeLibraryAuthor`,
+ * and the overspill reported that as "updateLibraryAuthor changed" — a write
+ * path this ticket does not touch. Every one of the six paths is byte-identical
+ * to its source at PRE_PR_REVISION (a32665a) under this extractor; the fixture
+ * strings below were re-derived from that same revision, so the assertion still
+ * compares against a32665a and not against THE-186's own output.
+ *
+ * The supported re-record path cannot produce them: `beforeAll` refuses to
+ * record unless the file on disk is byte-identical to a32665a's, and HEAD's
+ * AdminCourseEditor.tsx diverged from it (1375 -> 1420 lines) several PRs ago.
+ */
 function writePathBody(src: string, name: string): string {
   const at = src.indexOf(name);
   if (at < 0) throw new Error(`${name} vanished from AdminCourseEditor.tsx`);
-  return src.slice(at, at + 1400);
+  let depth = 0;
+  for (let i = at; i < src.length; i++) {
+    const ch = src[i];
+    if (ch === '(' || ch === '{' || ch === '[') depth++;
+    else if (ch === ')' || ch === '}' || ch === ']') depth--;
+    else if (ch === ';' && depth === 0) return src.slice(at, i + 1);
+  }
+  throw new Error(`${name} has no statement end — AdminCourseEditor.tsx changed shape`);
 }
 
 let BASELINE!: Baseline;

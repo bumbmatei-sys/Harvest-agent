@@ -180,7 +180,7 @@ const { POST: WEBHOOK } = await import('../webhook/route');
 // ── Fixtures ───────────────────────────────────────────────────────────────────
 
 const AMOUNT = 11900;    // $119 pro plan renewal
-const COMMISSION = 1785; // flat 15%
+const COMMISSION = 3570; // flat 30%
 
 /** A transient Firestore fault: gRPC UNAVAILABLE. The retry has a real chance. */
 const transient = () => Object.assign(new Error('UNAVAILABLE: backend unavailable'), { code: 14 });

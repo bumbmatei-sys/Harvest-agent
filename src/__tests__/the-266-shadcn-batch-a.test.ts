@@ -252,13 +252,27 @@ describe('the CLI rewrote nothing it should not have', () => {
 /* ── 4-5. The bridge carried them, with no new token ─────────────────────── */
 
 describe('the token bridge held', () => {
-  it('globals.css defines no new token — the headline result of this PR', () => {
-    // The ledger THE-263/264 recorded. Byte-identical means zero tokens were
-    // added, which is the whole claim Phase 2 was making and which nothing it
-    // did not itself write had ever tested.
+  it('globals.css still defines no token THE-266’s four primitives needed', () => {
+    // The claim this PR was making — that four unedited registry components
+    // cross the Phase 2 bridge with ZERO new tokens — is unchanged and still
+    // asserted. What moved is only the ledger it is asserted against: THE-267
+    // re-recorded it to add the sidebar family, which none of these four
+    // components reads (the test in section 9 proves that separately). So the
+    // comparison stays byte-exact against the current ledger, and the delta
+    // that ledger is allowed to have gained is pinned by name right below.
     expect(`${allDeclaredTokens().join('\n')}\n`).toBe(
       readFileSync(path.join(FIXTURES, 'globals-tokens.txt'), 'utf8'),
     );
+  });
+
+  it('and the ledger’s only growth since THE-266 is THE-267’s sixteen lines', () => {
+    const tokens = allDeclaredTokens();
+    const sidebar = tokens.filter((t) => /^--(color-)?sidebar/.test(t));
+    expect(sidebar).toHaveLength(16);
+    // Every other name in the ledger predates this. Asserted as a count of the
+    // non-sidebar remainder, which is what THE-266 recorded: 181 lines, of
+    // which none was a sidebar token.
+    expect(tokens.length - sidebar.length).toBe(181);
   });
 
   /**
@@ -407,10 +421,39 @@ it('the runtime and next/font exclusions are still keyed by exact name, not a pa
   ]);
 });
 
-/* ── 9. The sidebar pin still holds ──────────────────────────────────────── */
+/* ── 9. The sidebar pin, now that its own ticket has landed ──────────────── */
 
-it('no --sidebar token was added — that gap is still its own ticket', () => {
-  expect(allDeclaredTokens().filter((t) => /^--sidebar/.test(t))).toEqual([]);
+/**
+ * This assertion used to read "no --sidebar token was added — that gap is
+ * still its own ticket". THE-267 is that ticket, so the pin is inverted here
+ * exactly as it is in tailwind-v4-migration.test.ts: still by prefix, so an
+ * unexpected member cannot slip past, but now naming the eight that must be
+ * present rather than requiring the set to be empty. Nothing THE-266 shipped
+ * depends on the family being absent — this file's own subject is the four
+ * primitives it installed, none of which spells a sidebar utility.
+ */
+it('the sidebar family is exactly the eight THE-267 mapped', () => {
+  expect(allDeclaredTokens().filter((t) => /^--sidebar/.test(t)).sort()).toEqual([
+    '--sidebar',
+    '--sidebar-accent',
+    '--sidebar-accent-foreground',
+    '--sidebar-border',
+    '--sidebar-foreground',
+    '--sidebar-primary',
+    '--sidebar-primary-foreground',
+    '--sidebar-ring',
+  ]);
+});
+
+it('and none of THE-266’s four primitives spells a sidebar utility', () => {
+  // The reason the inversion above is safe here: this file audits breadcrumb,
+  // collapsible, skeleton and tooltip, and the sidebar family is invisible to
+  // all four. Installing `sidebar` itself remains a later ticket.
+  for (const [file, classes] of audit.classesByFile) {
+    for (const cls of classes) {
+      expect(cls, `${path.basename(file)} spells ${cls}`).not.toMatch(/sidebar/);
+    }
+  }
 });
 
 /* ── 10. The guard actually read the new files ───────────────────────────── */

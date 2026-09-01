@@ -33,7 +33,7 @@ export const dynamic = 'force-dynamic';
  *
  * ── Three things that make these numbers lie if you get them wrong ──────────
  *
- * 1. THE STORED `commission` FIELD IS THE TRUTH. Never recompute it as 15% of
+ * 1. THE STORED `commission` FIELD IS THE TRUTH. Never recompute it as 30% of
  *    `amount`. A legacy row exists at 20% (commission 9580 on amount 47900), and
  *    recomputing would silently restate it as 7185 — history rewritten to match
  *    today's rate. Every figure below reads `commission` as written, and
@@ -205,7 +205,7 @@ export async function GET(request: NextRequest) {
         w.commission += commission;
         // What Harvest kept out of the money the affiliate brought in. Uses the
         // STORED commission, so the 20% legacy row correctly leaves less behind
-        // than a 15% row on the same amount.
+        // than a 30% row on the same amount.
         w.harvestKept += amount - commission;
         if (c.type === 'initial') w.plansSold += 1;
         if (c.type === 'recurring') w.recurringPayments += 1;
@@ -216,8 +216,8 @@ export async function GET(request: NextRequest) {
       bucket.count += 1;
       bucket.commission += commission;
 
-      // Distinct effective rates actually present in the data. A single 0.2
-      // entry alongside 0.15 is the legacy row making itself visible.
+      // Distinct effective rates actually present in the data. A 0.2 or 0.15
+      // entry alongside 0.3 is a legacy row making itself visible.
       if (amount > 0 && commission > 0) {
         const rate = Math.round((commission / amount) * 10_000) / 10_000;
         acc.rates.set(String(rate), (acc.rates.get(String(rate)) || 0) + 1);
