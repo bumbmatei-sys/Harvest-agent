@@ -165,7 +165,18 @@ const PINNED: ReadonlyArray<readonly [string, string]> = [
   // `src/lib/__tests__/the-256-stripe-connect-hidden.test.ts`.
   ['src/app/api/stripe/connect/callback/route.ts', '09268d95196960479fd56a0c49e432b92bbc207db959edd06898bdca28e258dc'],
   ['src/app/api/stripe/connect/login-link/route.ts', '01705197e9828011eb135bbc71e831265005dc039e493b00dd1257d1c259bd36'],
-  ['src/app/api/stripe/connect/route.ts', 'aad13355254fffa791ad049d45685d7b10ed0d114db0197b70d24d0acbaf1380'],
+  // ─── THE-155/THE-152 REGENERATED THIS ONE, deliberately and with reason ──
+  //
+  // 🔴 COMMENTS ONLY — and that claim is itself a test. THE-152 rewrote the
+  // affiliate note near the Standard-account creation, which said affiliate
+  // payout accounts "are deliberately NOT changed" while this same file writes
+  // `affiliateStripeAccountId` / `affiliateConnectStatus` in both branches. Not
+  // one statement, condition or field moved: the gate, the Standard creation,
+  // the existing-account branch, `mirrorSafe` and both account links are
+  // untouched. Pinned as a comment-stripped digest by
+  // `src/lib/__tests__/the-155-the-152-stale-money-path-comments.test.ts`,
+  // which is what makes "prose only" checkable rather than asserted.
+  ['src/app/api/stripe/connect/route.ts', '2c3cb84321cead669bc582e9d8c5cda90cbc5ab675d2d9eab4d1cd52d365b5e3'],
   // 🔴 NOT REGENERATED, AND THAT IS THE POINT. THE-256 deliberately does not
   // gate the Connect webhook: it confirms donations and paid event tickets, so
   // it must stay live for anything already in flight, and it is harmless idle.
@@ -309,7 +320,16 @@ const PINNED: ReadonlyArray<readonly [string, string]> = [
   ['src/lib/affiliate-payout.ts', '27897499fb3e768027c25b015ee6d30dd5ba4bf0763cd40776e4885c36657407'],
   ['src/lib/affiliate-commission-window.ts', 'eda8be967c8e5f15ce8f146e798190cfacdb5c54a238e31176b0517c0d496505'],
   ['src/lib/money-path-sentry.ts', '2469f323c39050c240570937e52d22bda75d6efdfcaf78152fa5768a95edcbc2'],
-  ['src/lib/stripe-connect.ts', '30d79c970bc3af7027dc9f8b2ee602d07fba718a7f35292315ba7b59720b01c5'],
+  // ─── THE-155 REGENERATED THIS ONE, deliberately and with reason ──────────
+  //
+  // 🔴 COMMENTS ONLY. Two docblocks still taught that paid event tickets are
+  // DESTINATION charges. THE-154 made them direct charges — they were the last
+  // destination charge in the codebase — so the prose was describing a topology
+  // that no longer exists, next to the fee map. `PLATFORM_FEE_MAP` is
+  // byte-identical and still 0 on plus/pro/max; the comment-stripped source is
+  // byte-identical too, pinned by
+  // `src/lib/__tests__/the-155-the-152-stale-money-path-comments.test.ts`.
+  ['src/lib/stripe-connect.ts', 'ca494d925deb1e6dde5a740cbef0c1d24fc48e8e8655222b53ba4cda19b4d6e1'],
   ['src/lib/event-registration-webhook.ts', 'bfc03590515a98f72ef87571c6e11146f78270b170bc04eb22d2fd3b2966d184'],
   ['src/lib/dodo/addon-purchase.ts', '8a71a8bdcf4640c4296a70197f079356545652e9b651e9672c3246bba022b488'],
   ['src/lib/dodo/addons.ts', '46b254f7dc59b9a3fbe5056f6600741c355e52ab43e19b8bd63716c52e584557'],

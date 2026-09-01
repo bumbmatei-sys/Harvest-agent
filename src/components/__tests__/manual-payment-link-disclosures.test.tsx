@@ -548,8 +548,17 @@ describe('no statement, receipt, CRM write or Stripe path changed', () => {
       'a7d4872a73e7eb3518d47c264373428d1663afd43032506e5402123cdab1723a',
     'src/lib/donation-history.ts':
       '47e4c9edfe038efd2497df976254868faef08f8a6c208b4885203908ffda19db',
+    /*
+     * ⚠️ RE-RECORDED BY THE-155, and by nothing else in this list.
+     *
+     * Two docblocks in that file still described paid event tickets as
+     * DESTINATION charges; THE-154 made them direct charges. Prose only — the
+     * comment-stripped source is byte-identical and `PLATFORM_FEE_MAP` is
+     * untouched, so nothing THE-249 depends on moved: Harvest is still not in
+     * the manual-link path, and the fee on the Stripe path is still 0.
+     */
     'src/lib/stripe-connect.ts':
-      '30d79c970bc3af7027dc9f8b2ee602d07fba718a7f35292315ba7b59720b01c5',
+      'ca494d925deb1e6dde5a740cbef0c1d24fc48e8e8655222b53ba4cda19b4d6e1',
     /*
      * ⚠️ RE-RECORDED BY THE-256, and by nothing else in this list.
      *
