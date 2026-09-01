@@ -35,7 +35,7 @@ import {
 export const dynamic = 'force-dynamic';
 
 /**
- * Flat affiliate/referral commission rate — 15% for every plan, every referrer,
+ * Flat affiliate/referral commission rate — 30% for every plan, every referrer,
  * always. Intentionally replaces the old per-plan ladder (ultra 20% / max 15% /
  * pro 10% / plus 10%): the rate no longer depends on the purchased plan, the
  * referrer's own plan, or whether the referrer is an affiliate vs a church admin.
@@ -48,7 +48,7 @@ export const dynamic = 'force-dynamic';
  * unaffected: the window gates whether a commission row is created at all, and
  * never touches a stored `commission` amount.
  */
-const AFFILIATE_RATE = 0.15;
+const AFFILIATE_RATE = 0.30;
 
 /**
  * Pay-out the one-time ("initial") affiliate commission for a paid signup/upgrade.
@@ -887,7 +887,7 @@ export async function POST(request: NextRequest) {
                   const plan = subscription.metadata?.plan || 'unknown';
 
                   // ── Step 0: is this referral still inside its 12-month window? ──
-                  // The founder rule is 15% for the first 12 months from the referred
+                  // The founder rule is 30% for the first 12 months from the referred
                   // church's SIGNUP, not forever. The whole rule — the anchor, the
                   // calendar-month arithmetic, the boundary, and the fail-safe — lives
                   // in ONE module so this is the only place it is applied and there is

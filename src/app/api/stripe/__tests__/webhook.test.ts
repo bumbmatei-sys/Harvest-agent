@@ -340,9 +340,9 @@ describe('checkout.session.completed', () => {
     // A retry of this event must not move money twice: Stripe dedups on the key,
     // and the key is derived from the commission doc id — the SAME scheme the sweep
     // and the hourly cron use, so no retry path can drift onto a second transfer.
-    // Flat 15% of the $119 charge = 1785 cents (was 10% = 1190 under the old ladder).
+    // Flat 30% of the $119 charge = 3570 cents (was 10% = 1190 under the old ladder).
     expect(mockTransfersCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ amount: 1785, destination: 'acct_ref' }),
+      expect.objectContaining({ amount: 3570, destination: 'acct_ref' }),
       expect.objectContaining({ idempotencyKey: affiliateSweepIdempotencyKey('auto-id') }),
     );
   });
@@ -625,19 +625,20 @@ describe('invoice.payment_succeeded', () => {
   });
 });
 
-// ── Flat 15% affiliate commission (replaces the per-plan ladder) ────────────
-describe('flat 15% affiliate commission', () => {
-  // [plan, amount_total (cents), expected 15% commission (cents)]. The old ladder
-  // would have paid 490 / 1190 / 2985 / 6980 — only 'max' coincided with 15%.
+// ── Flat 30% affiliate commission (replaces the per-plan ladder) ────────────
+describe('flat 30% affiliate commission', () => {
+  // [plan, amount_total (cents), expected 30% commission (cents)]. The retired
+  // ladder would have paid 490 / 1190 / 2985 / 6980; at a flat 30% no tier
+  // coincides with it any more, which is the point of dropping it.
   const PLANS: Array<[string, number, number]> = [
-    ['plus', 4900, 735],
-    ['pro', 11900, 1785],
-    ['max', 19900, 2985],
-    ['ultra', 34900, 5235],
+    ['plus', 4900, 1470],
+    ['pro', 11900, 3570],
+    ['max', 19900, 5970],
+    ['ultra', 34900, 10470],
   ];
 
   it.each(PLANS)(
-    'initial commission is 15%% of the charge for the %s plan (%d cents -> %d)',
+    'initial commission is 30%% of the charge for the %s plan (%d cents -> %d)',
     async (plan, amountTotal, expected) => {
       const session = { subscription: 'sub_x', customer: 'cus_x', amount_total: amountTotal };
       mockConstructEvent.mockReturnValue(makeEvent('checkout.session.completed', session));
@@ -653,7 +654,7 @@ describe('flat 15% affiliate commission', () => {
 
       const res = await POST(makeRequest());
       expect(res.status).toBe(200);
-      // Same 15% for every tier — the rate no longer depends on the plan.
+      // Same 30% for every tier — the rate no longer depends on the plan.
       expect(mockTransfersCreate).toHaveBeenCalledWith(
         expect.objectContaining({ amount: expected, destination: 'acct_ref' }),
         expect.objectContaining({ idempotencyKey: affiliateSweepIdempotencyKey('auto-id') }),
@@ -661,7 +662,7 @@ describe('flat 15% affiliate commission', () => {
     },
   );
 
-  it('recurring commission is 15% of invoice.amount_paid', async () => {
+  it('recurring commission is 30% of invoice.amount_paid', async () => {
     const invoice = { id: 'in_rec', subscription: 'sub_rec', amount_paid: 11900, billing_reason: 'subscription_cycle' };
     mockConstructEvent.mockReturnValue(makeEvent('invoice.payment_succeeded', invoice));
     mockSubsRetrieve.mockResolvedValue({ metadata: { tenantId: 'tenant1', plan: 'pro', referrerId: 'refUser' } });
@@ -674,7 +675,7 @@ describe('flat 15% affiliate commission', () => {
     expect(res.status).toBe(200);
     expect(mockTransfersCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        amount: 1785, // round(11900 * 0.15)
+        amount: 3570, // round(11900 * 0.30)
         destination: 'acct_ref',
         metadata: expect.objectContaining({ type: 'affiliate_commission_recurring' }),
       }),
@@ -686,7 +687,7 @@ describe('flat 15% affiliate commission', () => {
 
   it('recurring commission follows the charged amount after the referred tenant upgrades', async () => {
     // Tenant upgraded (Stripe now charges the higher price), so amount_paid rises
-    // and 15% is taken off the ACTUAL charge. A stale metadata.plan ('pro') does
+    // and 30% is taken off the ACTUAL charge. A stale metadata.plan ('pro') does
     // not change the money — the rate is flat and the amount is authoritative.
     const invoice = { id: 'in_up', subscription: 'sub_up', amount_paid: 34900, billing_reason: 'subscription_cycle' };
     mockConstructEvent.mockReturnValue(makeEvent('invoice.payment_succeeded', invoice));
@@ -699,7 +700,7 @@ describe('flat 15% affiliate commission', () => {
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);
     expect(mockTransfersCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ amount: 5235 }), // round(34900 * 0.15)
+      expect.objectContaining({ amount: 10470 }), // round(34900 * 0.30)
       expect.objectContaining({ idempotencyKey: affiliateSweepIdempotencyKey('auto-id') }),
     );
   });
@@ -827,15 +828,15 @@ describe('initial affiliate commission — $0 trial guard', () => {
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);
 
-    // Flat 15% of $119 = 1785 cents, paid via the shared per-commission key.
+    // Flat 30% of $119 = 3570 cents, paid via the shared per-commission key.
     expect(mockTransfersCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ amount: 1785, destination: 'acct_ref' }),
+      expect.objectContaining({ amount: 3570, destination: 'acct_ref' }),
       expect.objectContaining({ idempotencyKey: affiliateSweepIdempotencyKey('auto-id') }),
     );
     // Commission doc recorded — written `pending` BEFORE the transfer…
     expect(mockBatchSet).toHaveBeenCalledWith(
       expect.objectContaining({ __coll: 'affiliate_commissions' }),
-      expect.objectContaining({ type: 'initial', amount: 11900, commission: 1785, status: 'pending' }),
+      expect.objectContaining({ type: 'initial', amount: 11900, commission: 3570, status: 'pending' }),
     );
     // …then flipped to `paid` with the transfer id once the money moved.
     expect(mockBatchUpdate).toHaveBeenCalledWith(

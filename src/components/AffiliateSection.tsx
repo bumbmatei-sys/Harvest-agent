@@ -277,7 +277,7 @@ export default function AffiliateSection() {
         <p className="text-[11px] font-semibold text-gold uppercase tracking-[0.14em] pb-1">Commission Rate</p>
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted">All plans</span>
-          <span className="text-sm font-bold" style={{ color: GOLD }}>15% for {windowMonths} months</span>
+          <span className="text-sm font-bold" style={{ color: GOLD }}>30% for {windowMonths} months</span>
         </div>
         <p className="text-[10px] text-faint pt-1 border-t border-line">
           You earn commission every month for the first {windowMonths} months after a

@@ -158,7 +158,7 @@ const { sweepPendingAffiliateCommissions, affiliateSweepIdempotencyKey } = await
 // ── Fixtures ───────────────────────────────────────────────────────────────────
 
 const AMOUNT = 11900;   // $119 pro plan
-const COMMISSION = 1785; // flat 15%
+const COMMISSION = 3570; // flat 30%
 
 function seed(opts: { connectStatus?: string | null } = {}) {
   store.clear();

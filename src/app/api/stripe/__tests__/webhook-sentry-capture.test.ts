@@ -171,7 +171,7 @@ describe('recurring affiliate transfer failure', () => {
       expect.anything(),
       expect.objectContaining({
         referrerId: 'ref1', tenantId: 't1', status: 'pending', type: 'recurring',
-        stripeInvoiceId: 'in_1', commission: 1500,
+        stripeInvoiceId: 'in_1', commission: 3000,
       }),
     );
     // Unchanged behaviour: the idempotency marker is NOT undone on a 200.
