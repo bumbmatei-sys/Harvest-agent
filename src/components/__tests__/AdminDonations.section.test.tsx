@@ -605,8 +605,24 @@ describe('no Stripe Connect route, donation route, fee or receipt path changed',
      * rewrite. The 503s are asserted in
      * `src/lib/__tests__/the-256-stripe-connect-hidden.test.ts`.
      */
+    /*
+     * ─── RE-RECORDED BY THE-152, and by nothing else since THE-256 ──────────
+     *
+     * 🔴 A COMMENT, NOT A MONEY PATH. The affiliate note by the Standard-account
+     * creation claimed affiliate payout accounts "are deliberately NOT changed",
+     * while this very route writes `affiliateStripeAccountId` /
+     * `affiliateConnectStatus` onto the connecting user in both branches. It now
+     * says what the code does: the standalone payout-only account stays Express,
+     * and the affiliate mirror here only ever refuses a DIFFERENT, already-active
+     * account (`mirrorSafe`).
+     *
+     * What THE-246 pinned here still holds literally: no money path moved. The
+     * comment-stripped source is byte-identical to the previous digest's, which
+     * `src/lib/__tests__/the-155-the-152-stale-money-path-comments.test.ts`
+     * asserts rather than asks you to take on trust.
+     */
     'src/app/api/stripe/connect/route.ts':
-      'aad13355254fffa791ad049d45685d7b10ed0d114db0197b70d24d0acbaf1380',
+      '2c3cb84321cead669bc582e9d8c5cda90cbc5ab675d2d9eab4d1cd52d365b5e3',
     'src/app/api/stripe/connect/callback/route.ts':
       '09268d95196960479fd56a0c49e432b92bbc207db959edd06898bdca28e258dc',
     'src/app/api/stripe/connect/login-link/route.ts':
@@ -620,8 +636,17 @@ describe('no Stripe Connect route, donation route, fee or receipt path changed',
       'febfc599c9ffedb31843bc7cb00e58ae50fb2db09998dfd455ad6b2d37054b1e',
     'src/app/api/stripe/donate/route.ts':
       '04c78731552a29297e41495af61e5202eae7461d954806a3792c0e763ccd26b9',
+    /*
+     * ─── RE-RECORDED BY THE-155, for a stale docblock and nothing else ──────
+     *
+     * 🔴 Two comments still called paid event tickets DESTINATION charges.
+     * THE-154 converted them to direct charges — the last destination charge in
+     * the codebase — so the prose next to the fee map described a topology that
+     * had been removed. `PLATFORM_FEE_MAP` itself is byte-identical and still 0
+     * on every tier, which the suite below re-asserts.
+     */
     'src/lib/stripe-connect.ts':
-      '30d79c970bc3af7027dc9f8b2ee602d07fba718a7f35292315ba7b59720b01c5',
+      'ca494d925deb1e6dde5a740cbef0c1d24fc48e8e8655222b53ba4cda19b4d6e1',
     'src/lib/donation-receipt.ts':
       'a7d4872a73e7eb3518d47c264373428d1663afd43032506e5402123cdab1723a',
     'src/lib/donation-history.ts':

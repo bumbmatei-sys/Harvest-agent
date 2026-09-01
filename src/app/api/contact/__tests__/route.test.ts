@@ -2,21 +2,28 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
 // ── Hoisted mocks ────────────────────────────────────────────────────────────
-// adminDb.collection('platform_inbox').where('ip','==',ip).get()  → rate limit
+// adminDb.collection('platform_inbox')
+//   .where('rateLimitKey','>',…).where('rateLimitKey','<',…).limit(N).get()
+//                                                                 → rate limit
 // adminDb.collection('platform_inbox').add({...})                 → the write
+//
+// The query builder is chainable because THE-109 bounded that read: two range
+// filters and a `.limit()`. The rate-limit BEHAVIOUR is covered against a real
+// document store in the-109-rate-limit-bound.test.ts, which is where the window
+// tests moved to — a hand-rolled `{ docs: [...] }` can only assert what the
+// route does with a canned answer, and the window now lives in the query.
 const { mockAdd, mockGet } = vi.hoisted(() => ({
   mockAdd: vi.fn().mockResolvedValue({ id: 'contact_1' }),
-  mockGet: vi.fn().mockResolvedValue({ docs: [] }),
+  mockGet: vi.fn().mockResolvedValue({ docs: [], size: 0 }),
 }));
 
-vi.mock('@/lib/firebase-admin', () => ({
-  adminDb: {
-    collection: vi.fn(() => ({
-      where: vi.fn(() => ({ get: mockGet })),
-      add: mockAdd,
-    })),
-  },
-}));
+vi.mock('@/lib/firebase-admin', () => {
+  const query: Record<string, unknown> = {};
+  query.where = vi.fn(() => query);
+  query.limit = vi.fn(() => query);
+  query.get = mockGet;
+  return { adminDb: { collection: vi.fn(() => ({ ...query, add: mockAdd })) } };
+});
 
 const { POST, OPTIONS } = await import('../route');
 
@@ -30,21 +37,12 @@ function makeRequest(body: unknown, ip = '203.0.113.5'): NextRequest {
   });
 }
 
-// A platform_inbox doc from this IP whose createdAt is inside the 1h window.
-function recentDoc(ip = '203.0.113.5') {
-  return { data: () => ({ ip, createdAt: new Date().toISOString() }) };
-}
-// A doc older than the window — must NOT count toward the limit.
-function oldDoc(ip = '203.0.113.5') {
-  return { data: () => ({ ip, createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() }) };
-}
-
 const validBody = { name: 'Ada Lovelace', email: 'ada@example.com', message: 'Hello, I have a question.' };
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockAdd.mockResolvedValue({ id: 'contact_1' });
-  mockGet.mockResolvedValue({ docs: [] }); // under the limit by default
+  mockGet.mockResolvedValue({ docs: [], size: 0 }); // under the limit by default
 });
 
 describe('OPTIONS /api/contact (CORS preflight)', () => {
@@ -122,16 +120,19 @@ describe('POST /api/contact — length caps', () => {
 });
 
 describe('POST /api/contact — rate limit', () => {
-  it('returns 429 once 3 submissions from the IP already exist in the window, writing nothing', async () => {
-    mockGet.mockResolvedValue({ docs: [recentDoc(), recentDoc(), recentDoc()] });
+  // The window and the bound are exercised against a real document store in
+  // the-109-rate-limit-bound.test.ts. What stays here is the wiring: the route
+  // turns the query's verdict into the right status, and never blocks on error.
+  it('returns 429 when the window read comes back at the limit, writing nothing', async () => {
+    mockGet.mockResolvedValue({ docs: [{}, {}, {}], size: 3 });
     const res = await POST(makeRequest(validBody));
     expect(res.status).toBe(429);
     expect(mockAdd).not.toHaveBeenCalled();
     expect(res.headers.get('Access-Control-Allow-Origin')).toBe(ORIGIN);
   });
 
-  it('ignores submissions older than the 1h window (still allowed)', async () => {
-    mockGet.mockResolvedValue({ docs: [oldDoc(), oldDoc(), oldDoc(), recentDoc()] });
+  it('allows the write when the window read comes back under the limit', async () => {
+    mockGet.mockResolvedValue({ docs: [{}, {}], size: 2 });
     const res = await POST(makeRequest(validBody));
     expect(res.status).toBe(200);
     expect(mockAdd).toHaveBeenCalledTimes(1);
@@ -171,6 +172,9 @@ describe('POST /api/contact — success write', () => {
     expect(() => new Date(written.createdAt).toISOString()).not.toThrow();
     // ip is the first hop of x-forwarded-for, stored top-level for rate limiting.
     expect(written.ip).toBe('198.51.100.7');
+    // THE-109: the bounded window read keys off this, derived from the two
+    // fields above. Consumer-invisible exactly as `ip` is.
+    expect(written.rateLimitKey).toBe(`198.51.100.7|${written.createdAt}`);
   });
 
   it('defaults a missing subject to "General enquiry"', async () => {
