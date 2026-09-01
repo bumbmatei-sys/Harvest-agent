@@ -24,6 +24,7 @@ import { PLATFORM_FEE_MAP } from '../../lib/stripe-connect';
 import { authFetch } from '../../utils/auth-fetch';
 import { fetchBillingProcessor, needsFirstSubscription, runDodoPlanChange, startFirstSubscription, subscriptionProcessorAttribution, PlanChangeProcessor } from '../../utils/plan-change';
 import { getTenantId } from './useTenantId';
+import { useTenantOptional } from '../../contexts/TenantContext';
 import { BillingTermToggle } from './BillingTermToggle';
 
 interface PlanUpgradeSectionProps {
@@ -320,6 +321,14 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
   const [portalLoading, setPortalLoading] = useState(false);
   const [activePlanIndex, setActivePlanIndex] = useState(0);
   const planScrollRef = useRef<HTMLDivElement>(null);
+  /**
+   * THE-259 — how a completed plan change reaches the tier on screen.
+   *
+   * `useTenantOptional`, not `useTenant`: this section is rendered directly by
+   * several suites with no `TenantProvider` above it, and the degraded
+   * behaviour there is "no refresh", never a wrong tier.
+   */
+  const tenant = useTenantOptional();
 
   const handlePlanScroll = useCallback(() => {
     const container = planScrollRef.current;
@@ -373,7 +382,12 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
         const result = await runDodoPlanChange({ tenantId: tid, plan: planId, billing: billingPeriod });
         if (result.ok) {
           alert(result.message);
-          window.location.reload();
+          // 🔴 THE-259 — ARM THE RE-READ, DO NOT RELOAD. Same reasoning as
+          // `AdminUpgradePage`: `ok` means Dodo accepted the change, not that
+          // the `plan_changed` webhook has written it, and the reloaded URL
+          // carried no checkout marker so nothing armed the bounded window on
+          // the far side. The tier arrives from the writer or not at all.
+          tenant?.armPlanRefresh();
         } else if (result.message) {
           alert(result.message);
         }

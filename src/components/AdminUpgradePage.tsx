@@ -16,6 +16,7 @@ import {
 import { authFetch } from '../utils/auth-fetch';
 import { fetchBillingProcessor, needsFirstSubscription, runDodoPlanChange, startFirstSubscription, subscriptionProcessorAttribution, type PlanChangeProcessor } from '../utils/plan-change';
 import { getTenantId } from './settings/useTenantId';
+import { useTenantOptional } from '../contexts/TenantContext';
 import { BillingTermToggle } from './settings/BillingTermToggle';
 
 interface AdminUpgradePageProps {
@@ -51,6 +52,15 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
   // attribution below renders nothing rather than naming a processor on a
   // guess.
   const [processor, setProcessor] = useState<PlanChangeProcessor | undefined>(undefined);
+  /**
+   * THE-259 — how a completed plan change reaches the tier on screen.
+   *
+   * `useTenantOptional`, not `useTenant`: this page renders in tests and tools
+   * outside a `TenantProvider`, and the degraded behaviour there is "no
+   * refresh", never a wrong tier. Under the provider — every real admin — it is
+   * always present.
+   */
+  const tenant = useTenantOptional();
 
   useEffect(() => {
     let cancelled = false;
@@ -101,7 +111,14 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
         const result = await runDodoPlanChange({ tenantId: tid, plan: planId });
         if (result.ok) {
           alert(result.message);
-          window.location.reload();
+          // 🔴 THE-259 — ARM THE RE-READ, DO NOT RELOAD. This used to be
+          // `window.location.reload()`: a full page load to learn one field,
+          // and one that carried no checkout marker on the reloaded URL, so the
+          // bounded window did not arm on the other side either. `ok` means
+          // Dodo ACCEPTED the change, not that the webhook has written `plan`,
+          // so what is needed is the window that outlives that race — not a
+          // reload, and not a client-side write of the tier we asked for.
+          tenant?.armPlanRefresh();
         } else if (result.message) {
           alert(result.message);
         }

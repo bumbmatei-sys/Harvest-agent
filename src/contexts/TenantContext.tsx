@@ -149,6 +149,35 @@ export interface TenantContextValue {
    */
   refreshTenantPlan: () => Promise<void>;
   /**
+   * Arm the bounded post-purchase re-read from a caller (THE-259).
+   *
+   * 🔴 WHY A ONE-SHOT `refreshTenantPlan()` IS NOT ENOUGH HERE. An in-app plan
+   * change resolves when Dodo ACCEPTED the request, not when the
+   * `plan_changed` webhook has written `plan` — `on_payment_failure:
+   * 'prevent_change'` means Dodo decides after the payment. A single re-read
+   * fired the moment the call resolves lands BEFORE the writer and reads the
+   * tier the church was on, which is the same race THE-217 fixed, in a smaller
+   * window. What survives that race is the bounded series below, not one read.
+   *
+   * 🔴 IT ARMS THE EXISTING WINDOW — there is exactly one. The window was
+   * gated on `arrivedFromCheckout`, a `useState` initialiser read once at
+   * mount, so nothing on the context could open it afterwards; an in-app change
+   * never takes the checkout hop and so never armed it. This is that missing
+   * door, and it opens the SAME effect on the SAME `PLAN_REFRESH_ATTEMPTS` /
+   * `PLAN_REFRESH_INTERVAL_MS` budget. A second poller with its own budget is
+   * precisely what must not appear here.
+   *
+   * ⚠️ REPLACES A FULL PAGE RELOAD. Both in-app callers used to
+   * `window.location.reload()` to learn one field — and the reloaded URL
+   * carried no checkout marker, so the window did not arm on the other side
+   * either and the admin landed on the tier they were on before.
+   *
+   * Inherits every guarantee of the window it opens: nothing runs when
+   * `tenantId` is null, nothing is written, and a failed read leaves the last
+   * known tier exactly where it is.
+   */
+  armPlanRefresh: () => void;
+  /**
    * Update the add-on set locally — `setTenantPlan`'s counterpart (REP-5b).
    *
    * 🔴 NEEDED BECAUSE THE READ IS A ONE-SHOT LATCH. `addonsInitialized` mirrors
@@ -449,6 +478,20 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
   }, [tenantId, applyPlan]);
 
   /**
+   * The in-app arming signal for the window below (THE-259).
+   *
+   * A COUNTER, not a boolean, and that is what makes it re-armable: a second
+   * plan change in the same mounted tree has to reopen a window that has
+   * already closed, and flipping a flag that is already `true` re-runs no
+   * effect. Each increment is one fresh window; React's own state identity does
+   * the rest.
+   */
+  const [planRefreshArm, setPlanRefreshArm] = useState(0);
+  const armPlanRefresh = useCallback(() => {
+    setPlanRefreshArm((n) => n + 1);
+  }, []);
+
+  /**
    * Was THIS DOCUMENT LOAD the hop back from a payment?
    *
    * Read once, at mount, and kept — not read at use. The query string does not
@@ -487,8 +530,14 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
    * without a payment behind them never arms this and never pays for a read.
    */
   useEffect(() => {
-    if (!arrivedFromCheckout) return;
+    // TWO ARRIVALS, ONE WINDOW (THE-259): the hop back from a checkout, and an
+    // in-app plan change calling `armPlanRefresh`. Both open this same bounded
+    // series on this same budget — the alternative, a second poller for the
+    // in-app door, is two windows racing the same document.
+    if (!arrivedFromCheckout && planRefreshArm === 0) return;
     // Platform context — null tenant, nothing tenant-scoped to ask about.
+    // 🔴 Holds for BOTH doors: `tenantId` is null for an apex-domain super
+    // admin and null is not "all tenants".
     if (!tenantId) return;
 
     let cancelled = false;
@@ -513,7 +562,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [arrivedFromCheckout, tenantId, refreshTenantPlan]);
+  }, [arrivedFromCheckout, planRefreshArm, tenantId, refreshTenantPlan]);
 
   const refreshTenantAddons = useCallback(async () => {
     if (!tenantId) return;
@@ -590,6 +639,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
         capabilities,
         setTenantPlan,
         refreshTenantPlan,
+        armPlanRefresh,
         setTenantAddons,
         refreshTenantAddons,
         refreshBranding,
