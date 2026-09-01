@@ -29,7 +29,7 @@ const snap = (id: string, data: object) => ({ id, exists: true, data: () => data
  * is either still pending or a zero-commission cancellation marker.
  *
  * The 47900/9580 row is the real legacy 20% commission. It is written as stored;
- * recomputing it at 15% would restate it as 7185.
+ * recomputing it at today's 30% would restate it as 14370.
  */
 const COMMISSIONS = [
   // ── The two transfers that actually fired ────────────────────────────────
@@ -135,12 +135,12 @@ describe('GET /api/admin/affiliates — the numbers', () => {
     expect(paidTotal).toBe(6270);
   });
 
-  it('reads the STORED commission — the 20% legacy row is not restated at 15%', async () => {
+  it('reads the STORED commission — the 20% legacy row is not restated at 30%', async () => {
     const body = await (await GET(makeReq())).json();
     const stuck = byId(body, 'aff-stuck');
     const legacy = stuck.recentCommissions.find((c: any) => c.id === 'c3');
     expect(legacy.amount).toBe(47900);
-    expect(legacy.commission).toBe(9580);       // as stored — NOT 47900 * 0.15 = 7185
+    expect(legacy.commission).toBe(9580);       // as stored — NOT 47900 * 0.30 = 14370
     expect(stuck.commissionFromRows).toBe(9580 + 1785);
     // Harvest kept = amount − STORED commission, so the 20% row leaves less.
     expect(stuck.harvestKept).toBe((47900 - 9580) + (11900 - 1785));

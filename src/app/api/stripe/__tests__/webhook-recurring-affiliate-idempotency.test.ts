@@ -165,7 +165,7 @@ const { sweepPendingAffiliateCommissions, affiliateSweepIdempotencyKey } = await
 // ── Fixtures ───────────────────────────────────────────────────────────────────
 
 const AMOUNT = 11900;    // $119 pro plan renewal
-const COMMISSION = 1785; // flat 15%
+const COMMISSION = 3570; // flat 30%
 
 function seed(opts: { connectStatus?: string | null } = {}) {
   store.clear();
@@ -320,7 +320,7 @@ describe('BUG A — transfer succeeds, response times out', () => {
     expect(commissionRow()!.data.status).toBe('paid');
     expect(commissionRow()!.data.stripeTransferId).toBe('tr_original');
     expect(referrer().affiliateEarnings).toBe(COMMISSION); // counted once, at earn time
-    expect(referrer().affiliatePendingPayouts).toBe(0);    // +1785 then -1785
+    expect(referrer().affiliatePendingPayouts).toBe(0);    // +3570 then -3570
     expectCountersNeverNegative();
   });
 

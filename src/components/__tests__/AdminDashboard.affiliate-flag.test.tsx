@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'react-dom/client';
 /**
  * AFFILIATE_PROGRAM_ENABLED — the admin-side surfaces.
  *
- * The affiliate programme pays 15% of subscription revenue for 12 months, and
+ * The affiliate programme pays 30% of subscription revenue for 12 months, and
  * subscription billing is mid-migration from Stripe to Dodo Payments (a merchant
  * of record), which changes the payout rail end to end. Until that lands, no
  * user-facing surface may invite anyone to join the programme or show them a

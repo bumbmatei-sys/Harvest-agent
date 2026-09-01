@@ -1,7 +1,7 @@
 /**
  * The 12-month affiliate commission window.
  *
- * Founder decision: an affiliate earns 15% of what each referred church pays for
+ * Founder decision: an affiliate earns 30% of what each referred church pays for
  * the FIRST 12 MONTHS FROM THAT CHURCH'S SIGNUP — not forever. Before this module
  * the affiliate code had no time dimension at all: `affiliate-payout.ts` and both
  * commission paths in the Stripe webhook contained no date, month or duration

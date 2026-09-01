@@ -16,7 +16,7 @@ import { AdminSearchBar } from './admin/AdminUI';
  *
  * Three labelling rules this view exists to honour:
  *  • Commission figures come from the STORED `commission` field. One legacy row
- *    was written at 20%, so a "15% of revenue" figure would be a lie — the
+ *    was written at 20%, so a "30% of revenue" figure would be a lie — the
  *    per-affiliate rate chips make an off-rate row visible instead.
  *  • `convertedReferrals` is CONVERTED referrals, never "signups". A live trial
  *    is not counted, and the affiliate's own dashboard shows the same number.
@@ -243,7 +243,7 @@ const AdminAffiliates: React.FC = () => {
           {filtered.map(a => {
             const open = expanded === a.userId;
             const reason = a.pendingReason ? PENDING_REASON[a.pendingReason] : null;
-            const offRate = a.commissionRates.some(r => r.rate !== 0.15);
+            const offRate = a.commissionRates.some(r => r.rate !== 0.30);
             const w = win(a);
             const lifetimeView = windowKey === 'all';
             return (
