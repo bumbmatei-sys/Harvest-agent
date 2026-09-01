@@ -190,6 +190,22 @@ describe('2 — the pre-paint script and theme.ts agree on the default', () => {
     ).toBe(DEFAULT_PALETTE_FAMILY);
   });
 
+  it('🔴 the pre-auth FORCED family in the script is that same constant', () => {
+    // The script carries the default TWICE — once as the ternary's else arm
+    // (above) and once as the value the funnel branch forces. THE-265 coupled
+    // the funnel to the default, so both must equal DEFAULT_PALETTE_FAMILY. A
+    // test that checked only the ternary would let the sign-in screen drift
+    // away from the app it leads into, silently.
+    const m = SCRIPT.match(
+      /classList\.remove\('dark'\);e\.setAttribute\('data-palette','([a-z]+)'\);return;/,
+    );
+    expect(m, 'the pre-auth branch no longer stamps a literal family').toBeTruthy();
+    expect(
+      m![1],
+      'the funnel forces a different family than the app defaults to — the sign-in screen and the app disagree',
+    ).toBe(DEFAULT_PALETTE_FAMILY);
+  });
+
   it('and the value it tests for is the OTHER real family, not an invented one', () => {
     const m = SCRIPT.match(/f===('[a-z]+')/);
     const tested = m![1].replace(/'/g, '');
@@ -497,19 +513,41 @@ describe('8 — pre-auth is still light-mode only, in both families', () => {
   it('a dark-OS visitor still gets a light sign-in page', () => {
     matchesDark = true;
     runPrePaint('/auth');
-    expect(stamped()).toEqual({ attr: 'light', dark: false, palette: 'harvest' });
+    expect(stamped()).toEqual({ attr: 'light', dark: false, palette: DEFAULT_PALETTE_FAMILY });
   });
 
-  it('🔴 the pre-auth FAMILY force is still harvest — an override, not the default', () => {
-    // Deliberately NOT following DEFAULT_PALETTE_FAMILY. THE-85's argument is
-    // that the funnel renders the one presentation that has been built and
-    // reviewed, and Classic pre-auth has not been. Recorded as an assertion so
-    // that if a later ticket DOES move it, that is a decision someone made
-    // rather than a default quietly leaking into the funnel.
+  it('🔴 the pre-auth family FOLLOWS the default — the funnel matches the app', () => {
+    // THE-85 forces ONE presentation on the funnel; THE-265 made that
+    // presentation the default one, so the sign-in screen renders what a
+    // brand-new visitor gets the moment they are inside. Written against the
+    // constant rather than 'classic' so the funnel cannot drift from the app
+    // the next time the default moves.
     runPrePaint('/auth');
-    expect(stamped().palette).toBe('harvest');
+    expect(stamped().palette).toBe(DEFAULT_PALETTE_FAMILY);
+    document.documentElement.removeAttribute('data-palette');
     applyThemeForLocation('/auth');
+    expect(stamped().palette).toBe(DEFAULT_PALETTE_FAMILY);
+  });
+
+  it('🔴 and it is still a FORCE, not a fallback — a stored harvest is ignored here', () => {
+    // The distinction that matters: THE-265 did not stop forcing, it changed
+    // what is forced. A returning signed-out user with 'harvest' stored still
+    // gets the funnel's one presentation, not their own.
+    localStorage.setItem(FAMILY_STORAGE_KEY, 'harvest');
+    runPrePaint('/auth');
+    expect(stamped().palette).toBe(DEFAULT_PALETTE_FAMILY);
+    expect(stamped().palette).not.toBe('harvest');
+    // …and behind auth the same stored value still wins.
+    runPrePaint('/');
     expect(stamped().palette).toBe('harvest');
+  });
+
+  it('the runtime expresses the funnel family as the CONSTANT, not a second literal', () => {
+    const runtime = readFileSync(path.join(SRC, 'lib/theme-runtime.ts'), 'utf8');
+    expect(runtime).toContain("forced ? DEFAULT_PALETTE_FAMILY : readStoredFamily()");
+    expect(runtime, 'the funnel family was re-spelled as a literal').not.toMatch(
+      /forced \? '(harvest|classic)'/,
+    );
   });
 
   it('and the client applier agrees with the script on every funnel path', () => {

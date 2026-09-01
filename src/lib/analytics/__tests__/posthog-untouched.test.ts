@@ -58,9 +58,21 @@ const LAYOUT = 'src/app/layout.tsx';
  * value on either side is still returned as itself — nobody who has chosen a
  * family loses their choice.
  *
- * ⚠️ NOTHING ELSE IN THE LAYOUT MOVED. The THE-85 pre-auth branch is
- * byte-identical and still forces `light` + `harvest` (that is an override,
- * not the default, and THE-265 deliberately did not follow it there). The
+ * The THE-85 pre-auth branch changed in exactly one value alongside it: the
+ * family it FORCES, 'harvest' -> 'classic', so the sign-in screen renders what
+ * a brand-new visitor gets once they are inside rather than the family the app
+ * no longer opens in. It still forces (a stored 'harvest' is ignored there),
+ * and it still forces `light` — THE-85's mode rule is untouched, and the
+ * `classList.remove('dark')` beside it is byte-identical.
+ *
+ * ⚠️ VERIFIED, not assumed: THE-85's stated reason for pinning the funnel to
+ * Harvest was that only Harvest light had ever been checked. Every text token
+ * AuthPage paints now clears AA under Classic light, three of four better than
+ * Harvest, and the ground it paints on (`--cream`) is not one of the 14 tokens
+ * Classic overrides — so the flip changed the ink, not the paper. Asserted in
+ * `preauth-light.test.ts` against the real cascaded Classic-light scope.
+ *
+ * ⚠️ NOTHING ELSE IN THE LAYOUT MOVED. The
  * tenant brand-colour <style> is byte-identical: it already injected BOTH
  * families' `--brand-color-on-dark` / `--brand-color-on-tint` derivations,
  * each scoped to its own `[data-palette]` selector, so making Classic the
@@ -71,7 +83,7 @@ const LAYOUT = 'src/app/layout.tsx';
  * The pre-paint script's own digest below moved for the same one reason, which
  * is the check that says the change was in the script and not elsewhere.
  */
-const LAYOUT_SHA = 'c4bed4a633fd71326a3c9d979db12a559ad4e9de7144aa2d19929fa4952fb50a';
+const LAYOUT_SHA = 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5';
 
 /**
  * The pre-paint script on its own, extracted the same way `preauth-light.test.ts`
@@ -79,13 +91,15 @@ const LAYOUT_SHA = 'c4bed4a633fd71326a3c9d979db12a559ad4e9de7144aa2d19929fa4952f
  * moved: the script itself, or something else in the layout.
  *
  * ─── THE-265 REGENERATED THIS ONE, deliberately and with reason ────────────
- * The family ternary's default arm, and nothing else — see LAYOUT_SHA above
- * for the before/after. This digest moving while the surrounding layout digest
- * moves too is the expected pairing; this one moving ALONE would be impossible,
- * and the layout one moving alone would mean something outside the script
- * changed.
+ * Two values in the script, both the same constant for different reasons: the
+ * family ternary's default arm (what a MISSING preference means) and the
+ * pre-auth branch's forced family (what the funnel renders regardless of
+ * preference). See LAYOUT_SHA above for the before/after. This digest moving
+ * while the surrounding layout digest moves too is the expected pairing; this
+ * one moving ALONE would be impossible, and the layout one moving alone would
+ * mean something outside the script changed.
  */
-const PREPAINT_SCRIPT_SHA = 'ae509f732ede76e6089f40c56ea64844a9e3fea151e386c8aff0c6db5b7c461d';
+const PREPAINT_SCRIPT_SHA = 'fa77263023f750462f3fd1b31e28ca8ca342eee3482889de23903ce72052e65d';
 
 function prePaintScript(): string {
   const layout = readFileSync(path.join(ROOT, LAYOUT), 'utf8');
@@ -119,10 +133,14 @@ const PINNED: ReadonlyArray<readonly [string, string]> = [
   //
   //   theme-runtime.ts  `readStoredFamily`'s two fall-throughs now return that
   //                     constant instead of spelling `'harvest'`. `applyTheme`
-  //                     is byte-identical. 🔴 The pre-auth force in
-  //                     `applyThemeForLocation` STILL SAYS `'harvest'` and is
-  //                     unchanged: it is an override, not the default, and
-  //                     THE-85 owns it.
+  //                     is byte-identical. The pre-auth force in
+  //                     `applyThemeForLocation` now passes the same constant
+  //                     rather than `'harvest'`, so the funnel renders what a
+  //                     new visitor gets once inside — 🔴 still a FORCE (a
+  //                     stored 'harvest' is ignored there), and THE-85's mode
+  //                     rule, always light, is untouched. Written as the
+  //                     constant and not as `'classic'` so the funnel cannot
+  //                     drift from the default the next time it moves.
   //
   // ⚠️ NEITHER FILE GAINED A WRITE. The "reads a preference, never writes one"
   // property both THE-85 and this pin exist to protect is asserted directly in
@@ -130,8 +148,8 @@ const PINNED: ReadonlyArray<readonly [string, string]> = [
   // ticket could have broken it, which is persisting the resolved default and
   // thereby converting every existing user into someone who has *chosen*
   // Classic, past the reach of the one-value revert.
-  ['src/lib/theme-runtime.ts', '08c87631d992e1922fc7ad996069b99997554bfcb38855f44569a83bc5c64a7f'],
-  ['src/lib/theme.ts', '4181afe5089af22fef4f371bf1d702cb273d1f8ecaba0d59b57b6e22708f467b'],
+  ['src/lib/theme-runtime.ts', '499d75f3ee336303d247c02a38c7bcc2338206609066da420842795745d9dee3'],
+  ['src/lib/theme.ts', '97d2f057fa04f85f33a1faa0dc196324d51770c6032ca9b4d21e467dfd70d8de'],
   ['src/components/layout/form-layout.ts', 'aa62c7e8c339b35222d9b305be5acf9c6e4c52543174030d8977457fa961ed48'],
   ['firestore.rules', 'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499'],
   ['storage.rules', 'a9b065824c9754007d920926d36081a286190e69c0ce3042242b2eb6da321414'],

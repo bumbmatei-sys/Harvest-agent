@@ -60,9 +60,12 @@ export const isPaletteFamily = (v: unknown): v is PaletteFamily =>
  * drift. If they ever did, a user would get one family before hydration and
  * the other after — a visible flash on a cold load, and only on a cold load.
  *
- * ⚠️ NOT the pre-auth family. The funnel screens force 'harvest' explicitly
- * (see applyThemeForLocation) — that is an override, not this default, and
- * THE-85 owns it.
+ * ⚠️ THE PRE-AUTH FUNNEL FOLLOWS THIS TOO, but as a FORCE rather than as a
+ * fallback: `applyThemeForLocation` passes this constant explicitly on the
+ * funnel paths, so a returning signed-out user's stored family is ignored
+ * there and the sign-in screen always renders what a brand-new visitor gets
+ * once they are inside. THE-85 still owns the MODE force (always light); this
+ * is only which family that light rendering uses.
  */
 export const DEFAULT_PALETTE_FAMILY: PaletteFamily = 'classic';
 
