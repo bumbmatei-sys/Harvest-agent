@@ -12,8 +12,11 @@ import {
   rel,
   type AuditResult,
   GLOBALS_CSS,
+  EXEMPT,
   NOT_A_UTILITY,
   REPO_ROOT,
+  SET_AT_RUNTIME,
+  SET_BY_NEXT_FONT,
 } from './ds-primitives.audit';
 
 /**
@@ -34,10 +37,10 @@ import {
  * transparent, borderless, square-cornered toast. Someone shipped that, saw it,
  * and hand-patched that one file.
  *
- * ── The quarantine ─────────────────────────────────────────────────────
+ * ── The quarantine, and its removal ────────────────────────────────────
  *
- * The guard below FAILS TODAY, on purpose, and is quarantined with Vitest's
- * `it.fails` rather than `.skip`. The difference is the whole point:
+ * The guard below used to FAIL on purpose, quarantined with Vitest's
+ * `it.fails` rather than `.skip`. The difference was the whole point:
  *
  *   • `.skip` is silent forever. Nothing ever tells anyone to remove it.
  *   • `it.fails` asserts the test still fails. The moment the last unresolved
@@ -46,20 +49,25 @@ import {
  *     is deleted. The mechanism removes itself, and it cannot fire early:
  *     while anything is still unresolved the guard keeps failing as designed.
  *
- * REMOVING THE QUARANTINE is one edit: `it.fails(` → `it(`, plus re-recording
- * __fixtures__/unresolved-token-classes.txt, which by then is empty. Nothing
- * else here moves.
+ * It worked, and it is gone. THE-260 recorded 262 unresolved classes; the v4
+ * migration cleared 152 v3-only spellings (`ring-3`, `data-open:`,
+ * `outline-hidden`, `animate-in`), THE-263's token bridge cleared 110 missing
+ * tokens (`bg-muted`, `text-primary-foreground`), and THE-264 cleared the last
+ * two groups — `border-border`/`bg-border` (6 occurrences) and `font-heading`
+ * (3), both by adding a theme key in globals.css rather than by editing a
+ * component. `it.fails(` became `it(` in that PR, on the evidence of the guard
+ * going green, and __fixtures__/unresolved-token-classes.txt is now empty.
  *
- * That takes two PRs, because the 262 unresolved classes are two different
- * bugs. 110 are missing tokens (`bg-muted`, `text-primary-foreground`,
- * `ring-foreground/10`) and are Phase 2's. 152 are Tailwind v4 spellings this
- * app's Tailwind 3.4.1 has no rule for (`ring-3`, `data-open:`, `outline-hidden`,
- * `size-3!`, `animate-in`) and are Phase 1's — the v4 migration. The list below
- * does not sort them; it reports what does not resolve, which is the truth
- * either way. The split is in the PR description.
+ * What is NOT cleared, and never will be: three classes that name a custom
+ * property Base UI sets on the element at runtime. They are not tokens and no
+ * stylesheet can define them — see SET_AT_RUNTIME in ds-primitives.audit.ts,
+ * which holds them by exact name, and `every exemption is by name` below,
+ * which proves the exclusion is not a pattern that would swallow a real bug.
  *
- * This PR changes no component, defines no token and moves no dependency —
- * tests 5 and 6 pin exactly that.
+ * The fixture is kept, empty, rather than deleted: `matches the recorded
+ * fixture` is what turns a newly-unresolved class into a reviewable diff
+ * instead of a line of CI output, and that is worth more now than it was
+ * while the list was long.
  */
 
 const UI_DIR = path.join(REPO_ROOT, 'src/components/ui');
@@ -92,28 +100,110 @@ beforeAll(async () => {
 
 describe('the token guard', () => {
   /**
-   * ⚠️ QUARANTINED — see the header. This currently fails with 262 named
-   * classes across 11 of the 13 primitives; that list is the specification for
-   * Phase 2 and is recorded in __fixtures__/unresolved-token-classes.txt so it
-   * is reviewable in the diff rather than only in CI output.
+   * ✅ NO LONGER QUARANTINED — see the header. Every token class the thirteen
+   * primitives spell now resolves, and the recorded list is empty. It is kept
+   * as a fixture so the next class that stops resolving shows up as a diff.
    */
-  it.fails('every token class in src/components/ui resolves', () => {
+  it('every token class in src/components/ui resolves', () => {
     // One named line per unresolved class, naming its file. Not a count, and
-    // not a single "something is missing" — Phase 2 needs the names.
+    // not a single "something is missing" — a regression needs the names.
     expect(formatFindings(audit.findings)).toBe('');
   });
 
   it('holds back no stale exemption', () => {
-    // NOT_A_UTILITY is the guard's only hand-written list. Every entry that
-    // applies to these files must still be genuinely unresolved, so an
-    // exemption cannot outlive its reason and quietly hide a real token bug.
+    // EXEMPT is the guard's only hand-written list. Every entry that applies
+    // to these files must still be genuinely unresolved, so an exemption
+    // cannot outlive its reason and quietly hide a real token bug. This is
+    // the check that keeps SET_AT_RUNTIME honest now that it, and not a
+    // missing token, is the only thing standing between the guard and zero.
     const held = new Set(audit.exempted.map((f) => f.className));
     const spelled = new Set([...audit.classesByFile.values()].flat());
-    for (const cls of Object.keys(NOT_A_UTILITY)) {
+    for (const cls of Object.keys(EXEMPT)) {
       if (!spelled.has(cls)) continue;
-      expect(held, `${cls} resolves now — drop it from NOT_A_UTILITY`).toContain(cls);
+      expect(held, `${cls} resolves now — drop it from EXEMPT`).toContain(cls);
     }
   });
+
+  it('every exemption is held by name, and each name is still spelled', () => {
+    // The exclusion that lets the guard reach zero has to be exact. A pattern
+    // — "ignore any class naming an arbitrary property" — would also swallow
+    // the next `w-(--sidebar-width)` that genuinely IS a token this app forgot
+    // to define, which is the failure mode the guard exists to catch.
+    //
+    // Both halves are asserted: every key is a literal class name carrying no
+    // wildcard, and every key is actually spelled by a primitive, so a name
+    // cannot linger after the component that needed it is gone.
+    const spelled = new Set([...audit.classesByFile.values()].flat());
+    for (const [cls, reason] of Object.entries(EXEMPT)) {
+      expect(cls, `${cls} is a pattern, not a name`).not.toMatch(/[*?]|\.\+|\\/);
+      expect(spelled, `${cls} is exempted but no primitive spells it`).toContain(cls);
+      expect(reason.length, `${cls} is exempted without a reason`).toBeGreaterThan(40);
+    }
+
+    // And the runtime three are exactly the runtime three.
+    expect(Object.keys(SET_AT_RUNTIME).sort()).toEqual([
+      'max-h-(--available-height)',
+      'origin-(--transform-origin)',
+      'w-(--anchor-width)',
+    ]);
+  });
+
+  it('the next/font variables are really declared in layout.tsx', () => {
+    // SET_BY_NEXT_FONT lets `font-heading`/`font-display` past the
+    // undefined-var check. That is only sound while layout.tsx actually
+    // declares them, so this reads the file rather than trusting the list —
+    // and it reads it, it does not change it.
+    const layout = readFileSync(path.join(REPO_ROOT, 'src/app/layout.tsx'), 'utf8');
+    for (const [prop, reason] of Object.entries(SET_BY_NEXT_FONT)) {
+      expect(layout, `${prop} is exempted but layout.tsx no longer declares it`).toContain(
+        `variable: '${prop}'`,
+      );
+      expect(reason.length, `${prop} is exempted without a reason`).toBeGreaterThan(40);
+    }
+    // Exactly the three faces the app loads — a fourth has to be argued for.
+    expect(Object.keys(SET_BY_NEXT_FONT).sort()).toEqual([
+      '--font-display',
+      '--font-sans',
+      '--font-serif',
+    ]);
+  });
+
+  it('an undefined font property that next/font does NOT set still fails', async () => {
+    // The mutation: same shape as font-heading — a font-family naming a
+    // custom property no stylesheet defines — but a property layout.tsx never
+    // declares. If the exemption were `--font-*` this would pass silently.
+    const file = fixturePrimitive(
+      'export const F = () => <div className="font-[var(--font-nonexistent)]" />',
+    );
+    const { findings } = await auditPrimitives([file]);
+    expect(findings).toContainEqual({
+      file,
+      className: 'font-[var(--font-nonexistent)]',
+      reason: 'undefined-var',
+      property: '--font-nonexistent',
+    });
+  }, 120_000);
+
+  it('a class naming an undefined property that is NOT exempted still fails', async () => {
+    // The mutation the by-name rule is written against: same shape as the Base
+    // UI three — a utility taking an arbitrary custom property — but a name
+    // nobody excluded. If the exclusion were a pattern, this would pass and
+    // the guard would be blind to every future missing token of this shape.
+    const file = fixturePrimitive(
+      'export const F = () => <div className="w-(--anchor-width) w-(--sidebar-width)" />',
+    );
+    const { findings, exempted } = await auditPrimitives([file]);
+
+    expect(findings).toContainEqual({
+      file,
+      className: 'w-(--sidebar-width)',
+      reason: 'undefined-var',
+      property: '--sidebar-width',
+    });
+    // …while its exempted twin is held back, not reported.
+    expect(findings.map((f) => f.className)).not.toContain('w-(--anchor-width)');
+    expect(exempted.map((f) => f.className)).toContain('w-(--anchor-width)');
+  }, 120_000);
 
   it('resolved a non-trivial stylesheet, so the guard is not vacuous', () => {
     // A build that produced nothing would report every class as unresolved and
@@ -236,7 +326,7 @@ describe('the unresolved list', () => {
 
 /* ── 5-6. Pins: this PR moves no component and defines no token ────────── */
 
-describe('THE-260 changes nothing it audits', () => {
+describe('the phases change nothing they audit', () => {
   it('no file under src/components/ui changed', () => {
     // Recorded into a fixture rather than diffed against `git show` at
     // assertion time: CI's checkout is the only history a test can rely on.
@@ -256,8 +346,9 @@ describe('THE-260 changes nothing it audits', () => {
 
   it('globals.css defines no new token', () => {
     const recorded = readFileSync(path.join(FIXTURES, 'globals-tokens.txt'), 'utf8');
-    // Phase 2 is where this file grows. Until then any addition is out of scope
-    // for THE-260, and the diff of this fixture names exactly what was added.
+    // This fixture is the ledger: every phase that adds a token re-records it,
+    // and the diff names exactly what was added. THE-263 added the bridge;
+    // THE-264 added --color-border and --font-heading and nothing else.
     expect(`${globalsTokens().join('\n')}\n`).toBe(recorded);
   });
 

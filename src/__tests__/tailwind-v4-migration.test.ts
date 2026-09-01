@@ -482,15 +482,17 @@ describe('the shadcn token bridge landed', () => {
     for (const cls of ['bg-muted', 'text-foreground', 'text-primary-foreground']) {
       expect(recorded, `${cls} is still unresolved — Phase 2 did not reach it`).not.toContain(cls);
     }
-    // Not empty: `border` is Phase 3, `font-heading` is Phase 7, and the Base
-    // UI runtime variables are not tokens at all. The quarantine stays.
-    expect(recorded, 'the unresolved list is empty — the quarantine must go').not.toBe('');
+    // Empty since THE-264: `border` and `font-heading` both became theme keys
+    // in globals.css, and the three Base UI RUNTIME variables are held by name
+    // in ds-primitives.audit.ts (SET_AT_RUNTIME) because no stylesheet can
+    // define them. The quarantine went with it — see the guard's own header.
+    expect(recorded, 'the unresolved list grew — a primitive class stopped resolving').toBe('');
   });
 });
 
 /* ── 9. border / line ────────────────────────────────────────────────────── */
 
-describe('border is still absent and line is still the border name', () => {
+describe('border resolves now, and line is still the border NAME', () => {
   it('`border-line` and its scale resolve', async () => {
     const built = await buildCssForMarkup(
       '<div class="border-line border-line-subtle border-line-strong border-line-hairline"></div>',
@@ -500,10 +502,24 @@ describe('border is still absent and line is still the border name', () => {
     }
   }, 120_000);
 
-  it('`border` is not a colour name — border-border, bg-border and text-border produce nothing', async () => {
-    const built = await buildCssForMarkup('<div class="border-border bg-border text-border"></div>');
+  it('`border` is a colour name since THE-264, and `border-strong` still is not', async () => {
+    // THE-264 added --color-border to globals.css's @theme inline block. The
+    // config still has no `border` key and still must not: what the `line`
+    // naming protects is `border-strong`, which would resolve to --text-strong
+    // beside `border-line-strong`'s --border-strong. A sub-keyless theme key
+    // mints neither that nor any other second meaning.
+    //
+    // The full reasoning, and the assertions this one is a summary of, are in
+    // src/__tests__/theming-border-font-heading.test.ts.
+    const built = await buildCssForMarkup(
+      '<div class="border-border bg-border text-border border-strong border-faint"></div>',
+    );
     for (const cls of ['border-border', 'bg-border', 'text-border']) {
-      expect(built, `${cls} resolves — the border/line collision was resolved here, and it is Phase 3`)
+      expect(built, `${cls} produces no rule — THE-264 regressed`)
+        .toMatch(new RegExp(`\\.${cls}\\s*\\{`));
+    }
+    for (const cls of ['border-strong', 'border-faint']) {
+      expect(built, `${cls} resolves — it would shadow border-line-${cls.slice(7)}`)
         .not.toMatch(new RegExp(`\\.${cls}\\s*\\{`));
     }
   }, 120_000);
@@ -653,30 +669,48 @@ describe('layout.tsx, firestore.rules and functions/ are byte-identical', () => 
 
 /* ── 12. The quarantine ──────────────────────────────────────────────────── */
 
-describe('the ds-primitives quarantine still fails as designed', () => {
+describe('the ds-primitives quarantine came off, and did not come back', () => {
   const GUARD = path.join(SRC, 'components/ui/__tests__/ds-primitives.test.tsx');
 
-  it('is still `it.fails`, not `.skip` and not removed', () => {
+  it('is a plain `it`, and not a `.skip` either', () => {
     const guard = readFileSync(GUARD, 'utf8');
-    expect(guard, 'the quarantine was skipped, which is silent forever')
-      .toMatch(/it\.fails\('every token class in src\/components\/ui resolves'/);
-    expect(guard).not.toMatch(/it\.skip\('every token class/);
+    // THE-264 removed the quarantine on the evidence of the guard going green.
+    // Re-adding `it.fails` while it passes fails on its own ("expected test to
+    // fail"), so this assertion is the belt to that brace: it also catches the
+    // other way out, `.skip`, which is silent forever and would not.
+    expect(guard, 'the quarantine is back — the guard is no longer asserting')
+      .toMatch(/(?<!\.fails|\.skip)\bit\('every token class in src\/components\/ui resolves'/);
+    expect(guard).not.toMatch(/it\.(fails|skip)\('every token class/);
   });
 
-  it('its recorded list shrank, which is what this ticket was for, and is not empty', () => {
+  it('its recorded list reached zero, which is what the quarantine was waiting for', () => {
     const recorded = readFileSync(
       path.join(SRC, 'components/ui/__tests__/__fixtures__/unresolved-token-classes.txt'),
       'utf8',
     );
     const unresolved = recorded.split('\n').filter((l) => /^ {2}\S/.test(l)).length;
-    // 262 before the migration; 143 after it; 15 after THE-263's token bridge.
-    // It does not reach zero here and must not: 6 of the 15 spell `border`
-    // (Phase 3), 3 spell `font-heading` (Phase 7) and 6 name Base UI RUNTIME
-    // variables, which no stylesheet can define. `it.fails` turns red by
-    // itself if the list ever does reach zero, which is what removes the
-    // quarantine — so this number shrinking further is a signal, not a chore.
-    expect(unresolved).toBe(15);
-    expect(unresolved).toBeLessThan(143);
+    // 262 before the migration; 143 after it; 15 after THE-263's token bridge;
+    // 0 after THE-264 resolved `border` and `font-heading`. The three Base UI
+    // RUNTIME variables that no stylesheet can define are held by exact name
+    // in ds-primitives.audit.ts, which is why zero is reachable at all.
+    expect(unresolved).toBe(0);
+    expect(recorded).toBe('');
+  });
+
+  it('the runtime exclusion is by name, so it cannot hide a future token bug', () => {
+    const audit = readFileSync(
+      path.join(SRC, 'components/ui/__tests__/ds-primitives.audit.ts'),
+      'utf8',
+    );
+    // Three literal class names. A pattern here would swallow the next
+    // `w-(--sidebar-width)` that IS a token this app forgot to define.
+    for (const cls of [
+      'max-h-(--available-height)',
+      'w-(--anchor-width)',
+      'origin-(--transform-origin)',
+    ]) {
+      expect(audit, `${cls} is no longer excluded by name`).toContain(`'${cls}'`);
+    }
   });
 });
 

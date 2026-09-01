@@ -1,0 +1,7 @@
+{
+  "functions/.gcloudignore": "9c20b803e45cd91612bcc0113d5e925422cd5c90686feaa4487e0349ae0951b2",
+  "functions/package-lock.json": "bbe18ca8fb92c17d72a991069017be73116d885643dcf681599a958aa3e31681",
+  "functions/package.json": "33846d2de1bef5e32ab53a5fb37373aa725aab06a6dd12d2e81a1c69ac6034eb",
+  "functions/src/index.ts": "39ccade96ac3d4dd5a13047e9bc42b54ef5ac59ae72f932af042fc814bf23e0b",
+  "functions/tsconfig.json": "a707d5b587803ee0e9224d5943136bbb5be281f3522ce6640def17315a423a25"
+}
