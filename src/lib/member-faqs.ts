@@ -141,7 +141,7 @@ export const MEMBER_FAQS: readonly MemberFAQ[] = [
     question: 'How do I leave, or delete my account?',
     answer: [
       'Profile, then Personal Information, then Delete Account. That removes your profile — your name, contact details, course progress, notes and saved items — and your sign-in. It takes effect immediately and cannot be undone.',
-      'It does not remove everything your ministry holds about you. Records that live in their books rather than on your profile — giving history and receipts, event registrations, check-ins, prayer requests, community posts and messages, and your row in their contact list — stay with the ministry. Some of it they may be required to keep: a giving receipt is a financial record. Ask an admin if you want those removed too.',
+      'It does not remove absolutely everything, so the confirm screen lists what happens to each kind of record before you commit — what is deleted, what is kept with your name taken off, and what stays as it is. Read it there: that list is generated from what the deletion actually does, so it cannot fall out of date. The short version is that most of what you did here goes with the account, while your giving history and receipts are kept for the ministry’s books with your name and email replaced, because a receipt is a financial record.',
       'Deleting needs a recent sign-in, so if it has been a while you will be asked to confirm your password before it goes through. If you signed in with Google instead of a password, sign out, sign back in and delete within a few minutes. Either way the screen tells you what happened — it will not fail silently, and it will never tell you the account is gone unless both your profile and your sign-in were actually removed.',
       'There is no way to move an existing account to a different ministry, because that tie is fixed when the account is created. Joining another ministry means creating an account at that ministry’s address. If you would rather come off your ministry’s lists and keep your sign-in, ask an admin — removing a member’s record is something they can do.',
     ],
@@ -167,17 +167,27 @@ export const MEMBER_FAQS: readonly MemberFAQ[] = [
     // instruction, because re-authenticating them in place would need a second
     // popup flow.
     //
-    // Paragraph 2 is the retention boundary, and it is deliberate rather than a
-    // gap: the route deletes users/{uid} and the Auth account ONLY. Giving
-    // history (tenants/{t}/invoices), event registrations (…/registrations),
-    // check-ins (…/checkinSessions/{s}/attendees), prayer_requests, community_posts
-    // and their comments, tenants/{t}/dmMessages and channelMessages, and the CRM
-    // contacts row all key to the member and all survive. Widening that is a
-    // retention decision, not a bug fix — a receipted donation is a financial
-    // record — so the copy states the boundary instead of implying erasure.
+    // 🔴 PARAGRAPH 2 SAID THE OPPOSITE OF THE TRUTH UNTIL THE-230, and this
+    // comment argued for it: "the route deletes users/{uid} and the Auth account
+    // ONLY", so giving history, event registrations, check-ins, prayer requests,
+    // community posts, messages and the CRM contacts row "all survive". That was
+    // true when it was written and PR 354 made it false — the route now runs
+    // eraseMemberData across MEMBER_DATA_MAP, which DELETES six of those seven.
+    // Only giving history survives, and only anonymised.
+    //
+    // So paragraph 2 no longer enumerates. The confirm panel's list is derived
+    // from the map (src/lib/member-erasure-copy.ts) and cannot go stale; a second
+    // hand-written list here could, and did. The FAQ now states the shape — some
+    // deleted, some kept without your name, some left alone — and sends the member
+    // to the generated list for the specifics. The one particular it still names,
+    // giving history, is pinned to the map by 'the one thing the FAQ still names
+    // as kept is a collection the map really keeps'.
     sources: [
       'src/components/PersonalInformationModal.tsx',
       'src/app/api/account/delete/route.ts',
+      // What is and is not removed is the map's claim, not the route's.
+      'src/lib/member-erasure.ts',
+      'src/lib/member-erasure-copy.ts',
       'src/components/AuthPage.tsx',
       'src/components/AnalyticsAndRoles.tsx',
       'firestore.rules',

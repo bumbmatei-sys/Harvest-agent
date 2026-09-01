@@ -375,6 +375,14 @@ it('no rendered legal or FAQ text changed', () => {
   // edit to member-faqs.ts / legal-links.ts; asserting the same strings reach
   // the DOM catches a modal that stops rendering them. Either alone would miss
   // half the ways this copy can move.
+  //
+  // ⚠️ ONE PIN HAS MOVED SINCE, ON PURPOSE. THE-230 rewrote the delete/leave
+  // answer, whose paragraph 2 told members that giving history, event
+  // registrations, check-ins, prayer requests, community posts, messages and
+  // their CRM row all "stay with the ministry". Six of those seven are deleted
+  // by eraseMemberData. That is a copy CORRECTION, which is exactly what this
+  // pin is built to make deliberate rather than to forbid — every other entry
+  // is byte-identical to d5165be.
   const FAQ_PINS: Array<[string, string]> = [
     ['85ada654aed7f218', 'How do I get into my ministry on Harvest?'],
     ['27a12f93b632772e', 'Why can I not see something another member can?'],
@@ -382,7 +390,7 @@ it('no rendered legal or FAQ text changed', () => {
     ['82014533d25fab66', 'What is the Chat assistant, and where do its answers come from?'],
     ['cffc017ffa6db997', 'Where does my course progress go?'],
     ['c70b0a9774088127', 'Who can see my information?'],
-    ['9c19b602bfc6da0a', 'How do I leave, or delete my account?'],
+    ['b1a7b16aeb1d1f34', 'How do I leave, or delete my account?'], // THE-230, was 9c19b602bfc6da0a
   ];
   const LEGAL_PINS: Array<[string, string]> = [
     ['df4668d0dcdd863a', 'Privacy Policy'],

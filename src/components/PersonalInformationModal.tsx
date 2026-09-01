@@ -9,6 +9,7 @@ import CountrySelect from './CountrySelect';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { authFetch } from '../utils/auth-fetch';
 import { FIELD_WIDTH, CONTROL_DENSITY } from './layout/form-layout';
+import { DELETE_CONFIRM_COPY, UNREACHABLE_NOTE } from '../lib/member-erasure-copy';
 
 interface PersonalInformationModalProps {
  isOpen: boolean;
@@ -886,18 +887,41 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  <>
  <span className="text-sm font-bold text-red-600 text-center">Are you sure? This cannot be undone.</span>
 
- {/* Say what it actually does. "Delete my account" reads as full erasure,
-     and it is not: the route removes users/{uid} and the Auth account, and
-     nothing else. Data your ministry holds about you lives in their own
-     records (CRM, giving, registrations) and is theirs to remove — some of
-     it, giving history especially, they may be required to keep. Promising
-     erasure we do not perform would be a worse lie than the old copy. */}
- <span className="text-xs text-body text-center">
- This deletes your profile and your sign-in. Records your ministry
- holds — giving history, event registrations, check-ins, prayer
- requests and community posts — stay in their records; ask an admin to
- remove those.
+ {/* 🔴 THE-230 — DERIVED, NOT WRITTEN HERE. Every word below comes from
+     DELETE_CONFIRM_COPY, which is `deriveErasureCopy(MEMBER_DATA_MAP)` pinned
+     in-process by test. Nothing in this block may be hand-edited: change the
+     erasure and the copy follows it. See src/lib/member-erasure-copy.ts.
+
+     ⚠️ THE COMMENT THAT USED TO SIT HERE WAS PART OF THE DEFECT, so it went
+     with the sentence it defended rather than surviving it. It argued the copy
+     must not promise erasure "because the route removes users/{uid} and the
+     Auth account, and nothing else" — true when it was written, false since
+     PR 354 made the route run eraseMemberData across the whole map. The
+     sentence it justified told members that giving history, event
+     registrations, check-ins, prayer requests and community posts "stay in
+     their records"; four of those five are deleted. It promised RETENTION for
+     data that is DESTROYED, at an irreversible tap, which is the direction of
+     that lie that cannot be taken back: a member who wanted their posts to
+     remain for the church, and accepted deletion on that basis, lost them. */}
+ <div className="text-xs text-body flex flex-col gap-3 text-left">
+ {DELETE_CONFIRM_COPY.groups.map((group) => (
+ <div key={group.disposition} className="flex flex-col gap-1">
+ <span className="text-xs font-bold text-strong">{group.heading}</span>
+ <span>{group.blurb}</span>
+ <ul className="list-disc ps-4 flex flex-col gap-0.5">
+ {group.items.map((item) => (
+ <li key={item}>{item}</li>
+ ))}
+ </ul>
+ </div>
+ ))}
+ {DELETE_CONFIRM_COPY.unreachable.length > 0 && (
+ <span>
+ {UNREACHABLE_NOTE}{' '}
+ {DELETE_CONFIRM_COPY.unreachable.join('; ')}.
  </span>
+ )}
+ </div>
 
  {/* The failure the member could not see before. `role="alert"` so it
      is announced, not just drawn. */}
