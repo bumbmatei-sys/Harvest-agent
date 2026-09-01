@@ -91,9 +91,17 @@ const config: Config = {
           // vocabulary.
           //
           // ⚠️ Their absence was invisible: `bg-surface-gold` is a well-formed
-          // class name that simply produced no rule. ds-primitives.test.tsx now
-          // asserts every token class the primitives spell resolves in this
-          // config, which is what caught it.
+          // class name that simply produced no rule.
+          //
+          // This comment used to credit ds-primitives.test.tsx with catching
+          // that. It did not: no such file existed anywhere in the repo, so
+          // THE-61 found the missing utilities by eye and the guard was only
+          // ever described. THE-260 wrote it — src/components/ui/__tests__/
+          // ds-primitives.test.tsx — and it now asserts that every token class
+          // the primitives spell resolves against this config plus globals.css.
+          // It is quarantined and failing on purpose: the primitives spell
+          // shadcn's default tokens, which globals.css does not define, and
+          // defining them is Phase 2.
           gold: "var(--surface-gold)",
           night: "var(--surface-night)",
         },
