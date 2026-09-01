@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { captureHandledError } from '@/lib/money-path-sentry';
+import { rateLimitKey, rateLimitWindow, rateLimitWindowStart } from '@/lib/ip-rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,26 +31,10 @@ function isValidEmail(email: string): boolean {
 // without bound, and it was re-read in full on each new one.
 //
 // The window now lives IN the query, and still needs no composite index, because
-// one field carries both halves: `rateLimitKey` = `${ip}|${createdAt}`. An
-// equality on `ip` plus an inequality on `createdAt` would be two fields and so a
-// composite index; a range on a SINGLE field is served by the automatic
-// single-field index Firestore maintains for every field at no cost.
-//
-// That distinction is load-bearing here, not tidiness. `.github/workflows/
-// deploy-rules.yml` deploys `firestore:rules` and storage only — an entry added
-// to `firestore.indexes.json` does NOT ship on merge. A query needing one would
-// reject in production until somebody ran a manual deploy, and the catch below
-// fails open, so it would reject QUIETLY: an endpoint advertising a rate limit
-// and enforcing nothing.
-//
-// `.limit(RATE_LIMIT_MAX)` is the bound, and it is exact rather than a
-// heuristic. The only question asked is whether at least RATE_LIMIT_MAX keys
-// fall inside the window, so a RATE_LIMIT_MAX+1-th document could not change the
-// answer. Which documents come back does not matter either — which is why no
-// `orderBy` is needed, and why a naive `.limit()` on the old `ip` equality would
-// NOT have worked: with no ordering Firestore returns documents by `__name__`,
-// those ids are random, and four arbitrary submissions out of a lifetime say
-// nothing about the last hour.
+// one field carries both halves: `rateLimitKey` = `${ip}|${createdAt}`. The key
+// construction, the ordering invariants that make the range safe, and why a
+// composite index was the wrong trade all live in @/lib/ip-rate-limit — written
+// down once because /api/enterprise-lead carries the same limiter.
 //
 // Only documents written by THIS route carry a top-level `ip` — or a
 // `rateLimitKey` — so authenticated ContactModal submissions living in the same
@@ -59,35 +44,13 @@ function isValidEmail(email: string): boolean {
 const RATE_LIMIT_MAX = 3;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
-// Separates the two halves of the key. '|' (0x7C) sorts above every character an
-// address can contain — digits, '.', ':', lowercase hex, and the 'unknown'
-// fallback — so one address's range can never reach into another's: `1.2.3.4|…`
-// sorts below `1.2.3|…` because '.' < '|'.
-const KEY_SEP = '|';
-// Sorts above every character `toISOString()` emits (digits, '-', 'T', ':', '.',
-// and 'Z' at 0x5A), so `${ip}|~` is an exclusive upper bound on every key
-// belonging to this address and to no other.
-const KEY_MAX = '~';
-
-/**
- * The rate-limit key stored alongside — never instead of — `ip` and `createdAt`.
- * Both halves stay readable, so the field is still greppable by address.
- */
-function rateLimitKey(ip: string, createdAt: string): string {
-  return `${ip}${KEY_SEP}${createdAt}`;
-}
-
 async function checkRateLimit(ip: string): Promise<boolean> {
   try {
-    const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString();
+    const { from, to } = rateLimitWindow(ip, rateLimitWindowStart(RATE_LIMIT_WINDOW_MS));
     const snap = await adminDb
       .collection('platform_inbox')
-      // createdAt is a fixed-width ISO-8601 UTC string, so inside one address's
-      // prefix lexical order IS chronological — the same property the in-memory
-      // comparison this replaces relied on, moved into the index. '>' keeps the
-      // exact window boundary that comparison had.
-      .where('rateLimitKey', '>', rateLimitKey(ip, windowStart))
-      .where('rateLimitKey', '<', `${ip}${KEY_SEP}${KEY_MAX}`)
+      .where('rateLimitKey', '>', from)
+      .where('rateLimitKey', '<', to)
       .limit(RATE_LIMIT_MAX)
       .get();
     return snap.size < RATE_LIMIT_MAX;

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { captureHandledError } from '@/lib/money-path-sentry';
+import { rateLimitKey, rateLimitWindow, rateLimitWindowStart } from '@/lib/ip-rate-limit';
 
 async function getResend() {
   const { Resend } = await import('resend');
@@ -23,21 +24,44 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-// Simple IP-based rate limit: max 3 submissions per hour
+// IP-based rate limit: max 3 submissions per hour.
+//
+// THE READ IS BOUNDED AT `RATE_LIMIT_MAX` DOCUMENTS, FOREVER.
+//
+// This was `.where('ip', '==', ip).get()` with the time window applied in
+// memory: every lead that address had EVER submitted was read on every request,
+// to answer a question about the last hour. The `'unknown'` bucket — shared by
+// every visitor arriving without `x-forwarded-for` — is the one key guaranteed
+// to grow, and it was re-read in full on each new one. The same defect THE-109
+// fixed in /api/contact, on the route that comment pointed at as precedent.
+//
+// The window now lives IN the query and still needs no composite index, because
+// one field carries both halves: `rateLimitKey` = `${ip}|${createdAt}`. The key
+// construction, the ordering invariants that make the range safe, and why a
+// composite index was the wrong trade all live in @/lib/ip-rate-limit.
+//
+// Unlike platform_inbox, this route is the ONLY writer of enterprise_leads, so
+// there is no second submission path to exclude — every document here carries
+// both fields by construction.
 const RATE_LIMIT_MAX = 3;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 async function checkRateLimit(ip: string): Promise<boolean> {
   try {
-    const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString();
-    // Single-field filter only (ip); time window applied in-memory to avoid a composite index.
+    const { from, to } = rateLimitWindow(ip, rateLimitWindowStart(RATE_LIMIT_WINDOW_MS));
     const snap = await adminDb.collection('enterprise_leads')
-      .where('ip', '==', ip)
+      .where('rateLimitKey', '>', from)
+      .where('rateLimitKey', '<', to)
+      .limit(RATE_LIMIT_MAX)
       .get();
-    const recent = snap.docs.filter(d => String(d.data().createdAt || '') > windowStart);
-    return recent.length < RATE_LIMIT_MAX;
-  } catch {
-    return true; // fail open — don't block on rate limit errors
+    return snap.size < RATE_LIMIT_MAX;
+  } catch (error) {
+    // Fail open — a query error must not block a sales enquiry. But say so: an
+    // unreported fail-open is a limiter that has silently stopped limiting,
+    // which is exactly how the unbounded read this replaces would have surfaced
+    // when it finally got slow or expensive. It didn't.
+    captureHandledError(error, { step: 'enterprise-lead-rate-limit', level: 'warning' });
+    return true;
   }
 }
 
@@ -78,7 +102,12 @@ export async function POST(request: NextRequest) {
 
     const timestamp = new Date().toISOString();
 
-    // 1. Save lead to Firestore
+    // 1. Save lead to Firestore. `rateLimitKey` is an extra top-level field used
+    //    only by checkRateLimit above, derived from the `ip` and `createdAt`
+    //    written beside it — one timestamp for both, so the window is measured
+    //    against the value the record shows. Nothing renders this collection
+    //    in-app: the lead reaches a human through the Resend email built below,
+    //    and firestore.rules gates direct reads to super admins.
     await adminDb.collection('enterprise_leads').add({
       name: safeName,
       email: safeEmail,
@@ -89,6 +118,7 @@ export async function POST(request: NextRequest) {
       ip,
       status: 'new',
       createdAt: timestamp,
+      rateLimitKey: rateLimitKey(ip, timestamp),
     });
 
     // 2. Send email notification to admin

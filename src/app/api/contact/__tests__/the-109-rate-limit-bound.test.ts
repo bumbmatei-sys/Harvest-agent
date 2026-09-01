@@ -477,11 +477,15 @@ describe('THE-109 — the out-of-scope files are untouched', () => {
     expect(tree.digest('hex')).toBe(FUNCTIONS_SHA);
   });
 
+  const INDEXES_SHA = '8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0';
+
   it('no composite index was added for platform_inbox', () => {
     // The alternative fix, rejected: firestore.indexes.json does not deploy on
     // merge, so an index this query depended on would be missing in production
     // and the query would reject QUIETLY behind the fail-open catch.
     const indexes = readFileSync(path.join(process.cwd(), 'firestore.indexes.json'), 'utf-8');
     expect(indexes).not.toContain('platform_inbox');
+    // ...and nothing was added for any other collection either.
+    expect(sha(readFileSync(path.join(process.cwd(), 'firestore.indexes.json')))).toBe(INDEXES_SHA);
   });
 });
