@@ -77,6 +77,70 @@ export const NOT_A_UTILITY: Record<string, string> = {
 };
 
 /**
+ * Classes whose rule is real and whose var() is set BY THE COMPONENT LIBRARY
+ * AT RUNTIME, not by any stylesheet.
+ *
+ * Base UI measures the trigger and the available viewport space when a popup
+ * opens and writes the result onto the positioner element as inline custom
+ * properties. `--anchor-width` is the trigger's width, `--available-height` is
+ * the room left below it, `--transform-origin` is the corner the popup should
+ * scale out of. All three are per-instance, per-open measurements — there is
+ * no correct static value, and defining one in globals.css would not make the
+ * popup right, it would make the guard quiet while overriding nothing (Base
+ * UI's inline style wins) or, worse, painting a stale size for one frame.
+ *
+ * So these are excluded, and they are excluded BY EXACT CLASS NAME rather
+ * than by a pattern. A rule like "ignore anything spelling an arbitrary
+ * property" would also swallow the next `w-(--sidebar-width)` a component
+ * arrives with that genuinely IS a token this app forgot to define — which is
+ * the whole failure mode this guard exists to catch. Six names, six reasons;
+ * a seventh has to be argued for here.
+ *
+ * `holds back no stale exemption` audits this list exactly as it audits
+ * NOT_A_UTILITY: if Base UI ever stops setting one of these, or a component
+ * stops spelling it, the entry has to go.
+ */
+export const SET_AT_RUNTIME: Record<string, string> = {
+  'max-h-(--available-height)':
+    'Base UI writes --available-height on the positioner when the popup opens: the space left between the trigger and the viewport edge.',
+  'w-(--anchor-width)':
+    "Base UI writes --anchor-width on the positioner when the popup opens: the trigger's measured width, so the menu can match it.",
+  'origin-(--transform-origin)':
+    'Base UI writes --transform-origin on the positioner when the popup opens: the corner the open/close animation scales out of, which depends on the side it flipped to.',
+};
+
+/** Every hand-written exemption, and why each class is held back. */
+export const EXEMPT: Record<string, string> = { ...NOT_A_UTILITY, ...SET_AT_RUNTIME };
+
+/**
+ * Custom properties declared by `next/font`, not by any stylesheet.
+ *
+ * next/font/google hashes each face into a generated class — `.__variable_9a3f
+ * { --font-display: '__Fraunces_9a3f', … }` — and src/app/layout.tsx puts that
+ * class on <html>. So `--font-display` is defined for every element in the
+ * app, and defined nowhere postcss can see it: this guard compiles globals.css
+ * and reads the result, and the font declarations are not in it.
+ *
+ * That matters because `font-family: var(--font-display), Georgia, serif` does
+ * NOT survive an undefined --font-display. The trailing `, Georgia, serif` is
+ * not a var() fallback — a failed substitution poisons the whole declaration,
+ * which is the sonner failure this guard was written for. Reported naively,
+ * `font-display` (288 call sites) and `font-heading` would both look broken
+ * while both are correct in the browser.
+ *
+ * Held by exact property name for the same reason SET_AT_RUNTIME is: skipping
+ * every `--font-*` would swallow a genuinely missing font token. And the list
+ * cannot go stale — `the next/font variables are really declared in
+ * layout.tsx` reads that file and fails if any of these three stops being
+ * declared there.
+ */
+export const SET_BY_NEXT_FONT: Record<string, string> = {
+  '--font-sans': "Inter, via next/font/google in src/app/layout.tsx (variable: '--font-sans'), attached to <html>.",
+  '--font-display': "Fraunces, via next/font/google in src/app/layout.tsx (variable: '--font-display'), attached to <html>.",
+  '--font-serif': "Newsreader, via next/font/google in src/app/layout.tsx (variable: '--font-serif'), attached to <html>.",
+};
+
+/**
  * Every class a primitive spells, read out of the file's own syntax tree.
  *
  * String literals are taken from the positions that carry classes and nowhere
@@ -329,7 +393,7 @@ export async function auditPrimitives(files: string[]): Promise<AuditResult> {
     const seen = new Set<string>();
     while (queue.length) {
       const name = queue.shift()!;
-      if (seen.has(name) || isTailwindInternal(name)) continue;
+      if (seen.has(name) || isTailwindInternal(name) || name in SET_BY_NEXT_FONT) continue;
       seen.add(name);
       const definition = sheet.customProps.get(name);
       if (definition === undefined) return name;
@@ -341,7 +405,7 @@ export async function auditPrimitives(files: string[]): Promise<AuditResult> {
   const findings: Finding[] = [];
   const exempted: Finding[] = [];
   const record = (f: Finding): void => {
-    (f.className in NOT_A_UTILITY ? exempted : findings).push(f);
+    (f.className in EXEMPT ? exempted : findings).push(f);
   };
 
   for (const file of files) {

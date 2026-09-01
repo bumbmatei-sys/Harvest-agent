@@ -46,6 +46,7 @@
 --color-background-alt
 --color-background-dark
 --color-background-light
+--color-border
 --color-card
 --color-card-foreground
 --color-chart-1
@@ -83,6 +84,7 @@
 --field-500
 --field-600
 --field-700
+--font-heading
 --font-sans
 --foreground
 --glow-gold

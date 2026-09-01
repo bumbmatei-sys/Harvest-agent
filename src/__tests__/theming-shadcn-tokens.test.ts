@@ -186,7 +186,7 @@ const BRIDGE: { token: string; fallsThrough: boolean; why: string }[] = [
 
 /* ═══ 1 · What the guard still reports, by name ══════════════════════════ */
 
-describe('the unresolved list is down to the three deferred groups', () => {
+describe('the unresolved list, which THE-264 took to zero', () => {
   const FIXTURE = path.join(REPO_ROOT, 'src/components/ui/__tests__/__fixtures__/unresolved-token-classes.txt');
   const recorded = readFileSync(FIXTURE, 'utf8');
   const classes = recorded
@@ -194,37 +194,44 @@ describe('the unresolved list is down to the three deferred groups', () => {
     .filter((l) => l.startsWith('  ') && l.trim())
     .map((l) => l.trim().split(/\s{2,}/)[0]);
 
-  it('reports 15 classes, none of them a colour token', () => {
-    // 143 before this PR. Not asserted as a bare number: the three groups are
-    // named below, so a REGRESSION (a colour token going dark again) fails
-    // here even if the count happens to stay 15.
-    expect(classes).toHaveLength(15);
+  it('reports nothing at all', () => {
+    // 143 before THE-263, 15 after it, 0 after THE-264 added --color-border
+    // and --font-heading. Kept as an assertion on the CONTENT rather than a
+    // count, so a class going dark again names itself here.
+    expect(classes).toEqual([]);
+    expect(recorded).toBe('');
   });
 
-  it('6 spell `border` — Phase 3, and forbidden here', () => {
-    expect(classes.filter((c) => /(^|:)(bg|text|border|after:border)-border$/.test(c)).length).toBe(6);
+  it('no colour token is unresolved, and none of THE-263’s went dark again', () => {
+    // The regression this file exists to catch. Held as a positive assertion
+    // now that the list is empty: an empty list trivially satisfies "no
+    // colour token remains", so the utilities themselves are checked instead.
+    expect(classes).toEqual([]);
   });
 
-  it('6 name a Base UI runtime variable, which is not a token', () => {
-    // Base UI writes --anchor-width / --available-height / --transform-origin
-    // onto the popup element itself when it positions it. A stylesheet cannot
-    // define them and should not pretend to.
-    const runtime = recorded.match(/var\(--(anchor-width|available-height|transform-origin)\) is not defined/g) ?? [];
-    expect(runtime).toHaveLength(6);
-  });
-
-  it('3 spell `font-heading`, a font utility this app never had — Phase 7', () => {
-    expect(classes.filter((c) => c === 'font-heading')).toHaveLength(3);
-    // The face it means already exists under a different name, which is why
-    // minting a second one from CSS would enshrine the typo rather than fix it.
-    expect(readFileSync(path.join(REPO_ROOT, 'tailwind.config.ts'), 'utf8')).toContain('var(--font-display)');
-  });
-
-  it('no colour token remains unresolved', () => {
-    const colourish = classes.filter(
-      (c) => /-(background|foreground|card|popover|primary|secondary|muted|accent|destructive|input|ring)\b/.test(c),
+  it('the deferred groups THE-263 named are all accounted for', () => {
+    // THE-263 deferred three groups: 6 `border` occurrences (Phase 3), 3
+    // `font-heading` (which it filed as Phase 7), and 6 occurrences of 3 Base
+    // UI RUNTIME variables. THE-264 resolved the first two with theme keys and
+    // excluded the third by exact name, which is what emptied this file.
+    const audit = readFileSync(
+      path.join(REPO_ROOT, 'src/components/ui/__tests__/ds-primitives.audit.ts'),
+      'utf8',
     );
-    expect(colourish).toEqual([]);
+    for (const cls of [
+      'max-h-(--available-height)',
+      'w-(--anchor-width)',
+      'origin-(--transform-origin)',
+    ]) {
+      expect(audit, `${cls} is no longer excluded by name`).toContain(`'${cls}'`);
+    }
+    // And the three components still spell `font-heading` — it was aliased,
+    // not edited out, because --font-heading is shadcn's own token name.
+    for (const f of ['card.tsx', 'dialog.tsx', 'sheet.tsx']) {
+      expect(readFileSync(path.join(REPO_ROOT, 'src/components/ui', f), 'utf8')).toContain(
+        'font-heading',
+      );
+    }
   });
 });
 
@@ -423,15 +430,23 @@ describe('the bridge mints the utilities the primitives spell', () => {
 /* ═══ 6 · No-regression: the collisions this PR deliberately does not make ═ */
 
 describe('the bridge takes nothing that was already spoken for', () => {
-  it('border-border, bg-border and text-border still produce nothing', async () => {
-    // 🔴 Phase 3 untouched. --border is declared as a CSS VARIABLE; the
-    // @theme block omits --color-border, so no `border` colour key exists in
-    // either half of the theme and these three names stay unspellable.
-    const built = await buildCssForMarkup('<div class="border-border bg-border text-border"></div>');
+  it('border-border resolves since THE-264, and border-strong still does not', async () => {
+    // THE-263 pinned these three as producing nothing and deferred the
+    // decision to Phase 3. THE-264 made it: --color-border is a theme key, so
+    // they resolve. The property that pin was really standing in for — that no
+    // near-identical name gains a second colour — is what is asserted now, and
+    // it is asserted directly instead of by proxy.
+    const built = await buildCssForMarkup(
+      '<div class="border-border bg-border text-border border-strong border-faint"></div>',
+    );
     for (const cls of ['border-border', 'bg-border', 'text-border']) {
-      expect(built, `${cls} must produce no rule`).not.toContain(`.${cls}`);
+      expect(built, `${cls} produces no rule`).toContain(`.${cls}`);
     }
-    expect(GLOBALS).not.toContain('--color-border:');
+    for (const cls of ['border-strong', 'border-faint']) {
+      expect(built, `${cls} resolves — it would shadow border-line-${cls.slice(7)}`)
+        .not.toContain(`.${cls}`);
+    }
+    expect(GLOBALS).toContain('--color-border: var(--border);');
   });
 
   it('--border itself IS declared, and resolves in all four palettes', () => {

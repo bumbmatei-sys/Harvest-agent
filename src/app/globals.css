@@ -292,13 +292,11 @@
      through the real cascade with the same contrastRatio() the production
      code uses, never eyeballed.
 
-     ⚠️ --border is declared here as a CSS VARIABLE ONLY. tailwind.config.ts
-     deliberately has no `border` colour key — borders are named `line`,
-     because a `border` key would mint a confusing `border-border` utility —
-     and the @theme block below therefore omits --color-border. Resolving that
-     collision is Phase 3; `border-border`, `bg-border` and `text-border` must
-     keep producing nothing, which src/__tests__/tailwind-v4-migration.test.ts
-     pins. */
+     THE-264 resolved the --border collision. This variable is now ALSO a
+     theme key: the @theme block below carries --color-border, so
+     `border-border`, `bg-border` and `text-border` resolve. What the
+     `line` naming actually protects is untouched and still asserted —
+     see that block, and src/__tests__/theming-border-font-heading.test.ts. */
 
   /* Surfaces and the text that sits on them. */
   --background: var(--surface);
@@ -671,22 +669,56 @@
    produces for the JS config's own colours, and the shape that keeps a
    palette override on .dark reaching the utility.
 
-   Three deliberate omissions:
+   THE-264 added the last two names this block was missing, and the reasoning
+   for each is worth keeping because both reverse a decision recorded above.
 
-     • --color-border. tailwind.config.ts has no `border` colour key on
-       purpose (borders are named `line`), and adding one here would mint the
-       confusing `border-border` utility that naming exists to avoid.
-       `border-border`, `bg-border` and `text-border` therefore still produce
-       nothing, which tailwind-v4-migration.test.ts pins. Phase 3 decides it.
+     • --color-border. tailwind.config.ts still has no `border` colour key and
+       still must not have one. What that omission protects is stated in the
+       config's own textColor comment: putting strong/muted/faint in `colors`
+       would mint `border-strong`, which would resolve to --text-strong (earth
+       #2D2519) while `border-line-strong` resolves to --border-strong (stone
+       #D6CCBE) — two different colours behind near-identical names.
+
+       That objection is about SUB-KEYS, and it does not reach this line. A
+       single `border` theme key with no sub-keys mints `border-border`,
+       `bg-border` and `text-border` and nothing else. It mints no
+       `border-strong`, it mints no second meaning for any name that already
+       resolves, and every `border-line-*` keeps the value it had. The harm
+       the `line` naming exists to prevent is a NAME COLLISION, and there is
+       no collision here — `border-border` is merely redundant to read.
+
+       It is declared here rather than in the config for the same reason every
+       other name in this block is: the config is digest-pinned, and a CSS
+       theme key is how v4 adds one from the stylesheet. The alternative —
+       rewriting `border-border` to `border-line` in each component — buys the
+       same result and then charges it again on every shadcn component ever
+       installed, because upstream spells `border-border`.
+
+     • --font-heading. card/dialog/sheet spell `font-heading`, and this comment
+       used to call that a component typo. It is not one: `--font-heading` is a
+       first-class token in shadcn's own CLI, listed beside --font-sans,
+       --font-serif and --font-mono (node_modules/shadcn/dist/index.js), read
+       back when it resolves a heading face and written when it installs one.
+       Defining it is what a shadcn project is expected to do; editing it out
+       of three components would be undone by the next `shadcn add`.
+
+       It aliases the display face rather than introducing a fourth: Fraunces
+       is already what this app puts on card titles, dialog titles and panel
+       headers by hand — AdminAffiliates.tsx spells `font-display text-base
+       font-semibold` where CardTitle spells `font-heading text-base
+       font-medium`, and AdminRAG.tsx / AnalyticsAndRoles.tsx set
+       `var(--font-display), Georgia, serif` on their delete-confirmation
+       titles. The full stack is restated rather than `var(--font-display)`
+       alone so `font-heading` and `font-display` compile to the same
+       declaration, fallbacks included, not merely to the same first choice.
+
+   One deliberate omission remains:
+
      • --color-primary / --color-secondary. The JS config already maps
        `primary`/`secondary` onto these custom properties and v4 inlines
        them, so re-declaring them here would emit
        `--color-primary: var(--color-primary)` — self-referential, painting
        nothing.
-     • --color-heading. `font-heading`, which card/dialog/sheet spell, is a
-       FONT utility, and this app's heading face is `font-display`
-       (fontFamily.display -> Fraunces, ~20 call sites). Minting a second name
-       for it from CSS would enshrine a component typo as a token. Phase 7.
 
    ⚠️ `muted` is the one name that overlaps Harvest's own vocabulary:
    textColor.muted maps `text-muted` onto --text-muted. The JS config wins for
@@ -706,6 +738,7 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -714,6 +747,9 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+
+  /* Not a colour. See the --font-heading note above. */
+  --font-heading: var(--font-display), Georgia, serif;
 }
 
 /* ── Theming stage 3: tenant logos are images and do not invert ───────────
