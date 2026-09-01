@@ -516,25 +516,51 @@ describe('no component changed except the listed mechanical renames', () => {
     // History-dependent, so it states its own absence rather than passing
     // silently: a shallow clone has no base and the two assertions above still
     // stand on their own.
-    const base = mergeBase();
-    if (!base) {
+    const found = mergeBase();
+    if (!found) {
       expect(existsSync(path.join(REPO_ROOT, '.git')), 'no git at all — nothing to compare against').toBe(true);
       return;
     }
-    // --diff-filter=M keeps modified files only. A file ADDED since the base --
-    // by this branch, or by main once main is merged in -- was never touched by
-    // the sweep and has no `base:` blob to read, so `git show` would fail hard
-    // and take the whole test with it. Nothing is lost by skipping them: the
-    // v3-spelling scan above reads every source file in the tree, whenever it
-    // arrived, so an added file carrying a v3 spelling still fails there.
+    const { base, ref } = found;
+
+    // This assertion is about THIS ticket's sweep, so it can only speak while the
+    // base predates the sweep. Once the migration is on main, every later
+    // branch's base is already v4-spelled, `toV4Spelling(base:file)` hands back
+    // that base file unchanged, and the comparison below degrades into "no
+    // source file may ever differ from main again" — red CI on every future PR
+    // that edits a component, blaming this ticket for a change that has nothing
+    // to do with it. So it retires when its subject becomes history, and says so
+    // rather than passing silently.
+    const basePkg = gitShow(base, 'package.json');
+    if (!/"tailwindcss":\s*"[~^]?3\./.test(basePkg)) {
+      expect(basePkg, 'the base is already on v4 — this sweep is history and has nothing left to measure').toMatch(/"tailwindcss":\s*"[~^]?4\./);
+      return;
+    }
+
+    // Two exclusions, neither of which loses coverage — the v3-spelling scan
+    // above reads every source file in the tree however it got there:
+    //   --diff-filter=M drops files ADDED since the base. They were never
+    //   touched by the sweep and have no `base:` blob, so `git show` would fail
+    //   hard and take the whole test with it.
+    //   alsoOnMain drops files main MODIFIED since the base (reached whenever
+    //   main is merged into this branch). Those differ from the base by main's
+    //   work as well as the spelling, so the rename is no longer the whole
+    //   difference and this assertion cannot speak to them.
+    const alsoOnMain = new Set(
+      execSync(`git diff --name-only ${base} ${ref} -- src`, { cwd: REPO_ROOT, encoding: 'utf8' }).split('\n').filter(Boolean),
+    );
     const changed = execSync(`git diff --name-only --diff-filter=M ${base} -- src`, { cwd: REPO_ROOT, encoding: 'utf8' })
       .split('\n')
       .filter(Boolean)
-      .filter((p) => /\.tsx?$/.test(p) && !p.includes('__tests__') && !p.startsWith('src/test/'));
+      .filter((p) => /\.tsx?$/.test(p) && !p.includes('__tests__') && !p.startsWith('src/test/'))
+      .filter((p) => !alsoOnMain.has(p));
+
+    // ...and those exclusions must never quietly swallow the sweep itself.
+    expect(changed.length, 'the sweep\'s own files left the set — this is measuring nothing').toBeGreaterThan(0);
 
     const notARename: string[] = [];
     for (const rel of changed) {
-      const before = execSync(`git show ${base}:${rel}`, { cwd: REPO_ROOT, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+      const before = gitShow(base, rel);
       if (toV4Spelling(before) !== readFileSync(path.join(REPO_ROOT, rel), 'utf8')) notARename.push(rel);
     }
     expect(notARename, 'an application file changed by more than the v4 utility rename').toEqual([]);
@@ -549,17 +575,22 @@ describe('no component changed except the listed mechanical renames', () => {
   });
 });
 
-/** The commit this branch is measured against, or null in a shallow checkout. */
-function mergeBase(): string | null {
-  for (const candidate of ['origin/main', 'main']) {
+/** The commit this branch is measured against and the ref it came from, or null in a shallow checkout. */
+function mergeBase(): { base: string; ref: string } | null {
+  for (const ref of ['origin/main', 'main']) {
     try {
-      const merge = execSync(`git merge-base HEAD ${candidate}`, {
+      const base = execSync(`git merge-base HEAD ${ref}`, {
         cwd: REPO_ROOT, stdio: ['ignore', 'pipe', 'ignore'],
       }).toString().trim();
-      if (merge) return merge;
+      if (base) return { base, ref };
     } catch { /* not present in this checkout */ }
   }
   return null;
+}
+
+/** One file's contents at one commit. */
+function gitShow(commit: string, rel: string): string {
+  return execSync(`git show ${commit}:${rel}`, { cwd: REPO_ROOT, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
 }
 
 /* ── 11. The files this ticket must not touch ────────────────────────────── */
