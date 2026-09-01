@@ -177,6 +177,21 @@ async function press(label: RegExp) {
   await settle();
 }
 
+/**
+ * The tier `BillingAndPayments` is actually SHOWING, read off its "Current
+ * Plan" card.
+ *
+ * Not `container.textContent`: the upgrade cards below name every tier on the
+ * price list, so a substring search finds "Small Team" whatever the page thinks
+ * the church is on — a test that cannot fail.
+ */
+function currentPlanLabel(): string {
+  const heading = [...container.querySelectorAll('span')]
+    .find((el) => el.textContent?.trim() === 'Current Plan');
+  const card = heading?.closest('div.bg-surface-raised');
+  return card?.querySelector('.text-2xl')?.textContent?.trim() ?? '';
+}
+
 /** Let the whole bounded window elapse, and then some. */
 async function runOutTheWindow(multiplier = 3) {
   await act(async () => {
@@ -266,7 +281,7 @@ describe('an in-app plan change reflects the new tier without a manual reload', 
       );
     });
     await settle();
-    expect(container.textContent).toContain('Individual');
+    expect(currentPlanLabel()).toBe('Individual');
 
     // The webhook records the purchase and the window picks it up.
     tenantDoc({ plan: 'pro', status: 'active' });
@@ -276,7 +291,7 @@ describe('an in-app plan change reflects the new tier without a manual reload', 
     expect(seen?.tenantPlan).toBe('pro');
     // The snapshot still says 'plus'; the page must not.
     expect(wire.subscriptionPlan).toBe('plus');
-    expect(container.textContent).toContain('Small Team');
+    expect(currentPlanLabel()).toBe('Small Team');
   });
 
   it('the billing page falls back to the snapshot when the context has no tier', async () => {
@@ -296,7 +311,7 @@ describe('an in-app plan change reflects the new tier without a manual reload', 
     await settle();
 
     expect(seen?.tenantPlan).toBeUndefined();
-    expect(container.textContent).toContain('Ministry');
+    expect(currentPlanLabel()).toBe('Ministry');
   });
 
   it('the capability matrix moves with the tier, not just the label', async () => {
@@ -725,10 +740,20 @@ describe('nothing runs in platform context where tenantId is null', () => {
     expect(seen?.tenantId).toBeNull();
   });
 
-  it('the guard is on the window itself, not on its callers', () => {
-    // A caller that forgot the check must still read nothing.
+  it('the guard is on the window itself, not only on what it calls', () => {
+    // Counting `if (!tenantId) return` across the file proves nothing — four
+    // unrelated functions carry one. This reads the guard out of the WINDOW's
+    // own body: a caller that forgot the check must still read nothing, and the
+    // window must not lean on `refreshTenantPlan` to hold the line for it.
     const source = stripComments(readFileSync(path.join(REPO, CONTEXT_FILE), 'utf8'));
-    expect(source.match(/if\s*\(\s*!tenantId\s*\)\s*return\s*;/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    const spend = source.indexOf('attempt(PLAN_REFRESH_ATTEMPTS)');
+    expect(spend, 'the bounded window is gone').toBeGreaterThan(-1);
+    const effectStart = source.lastIndexOf('useEffect(() => {', spend);
+    expect(effectStart, 'the window is not in a useEffect').toBeGreaterThan(-1);
+    const windowBody = source.slice(effectStart, spend);
+    expect(windowBody, 'the window does not guard on a null tenant').toMatch(
+      /if\s*\(\s*!tenantId\s*\)\s*return\s*;/,
+    );
   });
 
   it('refreshTenantPlan in platform context still reads nothing', async () => {
