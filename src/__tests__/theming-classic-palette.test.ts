@@ -59,6 +59,29 @@ const NON_TEXT_CONTRAST = 3.0;
  */
 const ALLOWED_NEW_TOKENS = ['--ink-on-accent-tint'];
 
+/**
+ * THE-263 (shadcn Phase 2) — the second, and so far only other, set of tokens
+ * allowed past the pins above.
+ *
+ * Listed by name and in declaration order rather than loosening the pins to a
+ * prefix or a count: every one of the 134 :root and 82 .dark values THE-168
+ * pinned still has to hold exactly, and a token this PR did not intend still
+ * fails. The two lists differ because the bridge is declared ONCE, in :root,
+ * and only the two families whose source differs by mode are restated on dark
+ * — see the section at the end of :root in globals.css for why.
+ */
+const PHASE_2_ROOT_TOKENS = [
+  '--background', '--foreground', '--card', '--card-foreground', '--popover',
+  '--popover-foreground', '--primary', '--secondary', '--primary-foreground',
+  '--secondary-foreground', '--muted', '--muted-foreground', '--accent',
+  '--accent-foreground', '--destructive', '--border', '--input', '--ring',
+  '--radius', '--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5',
+];
+const PHASE_2_DARK_TOKENS = ['--ring', '--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5'];
+
+const ALLOWED_ROOT = [...ALLOWED_NEW_TOKENS, ...PHASE_2_ROOT_TOKENS];
+const ALLOWED_DARK = [...ALLOWED_NEW_TOKENS, ...PHASE_2_DARK_TOKENS];
+
 const ROOT = path.resolve(__dirname, '../..');
 const SRC = path.join(ROOT, 'src');
 const GLOBALS = path.join(ROOT, 'src/app/globals.css');
@@ -259,13 +282,13 @@ describe('Harvest light is byte-identical to before this change', () => {
     expect(rootVars[token], `${token} is missing from :root`).toBe(expected);
   });
 
-  it('introduces no new :root custom property beyond the one named accent-ink token', () => {
+  it('introduces no new :root custom property beyond the two named sets', () => {
     const extra = Object.keys(rootVars).filter((k) => !(k in PINNED_ROOT));
-    expect(extra, 'an UNEXPECTED new :root token appeared').toEqual(ALLOWED_NEW_TOKENS);
+    expect(extra, 'an UNEXPECTED new :root token appeared').toEqual(ALLOWED_ROOT);
   });
 
-  it(':root declares exactly the pinned count of custom properties, plus the accent-ink token', () => {
-    expect(Object.keys(rootVars).length).toBe(Object.keys(PINNED_ROOT).length + ALLOWED_NEW_TOKENS.length);
+  it(':root declares exactly the pinned count of custom properties, plus the two named sets', () => {
+    expect(Object.keys(rootVars).length).toBe(Object.keys(PINNED_ROOT).length + ALLOWED_ROOT.length);
   });
 
   it('the accent-ink token is the IDENTITY in light — it resolves to the raw accent, so light renders exactly as before', () => {
@@ -370,13 +393,13 @@ describe('Harvest dark is byte-identical to before this change', () => {
     expect(harvestDarkVars[token], `${token} is missing from .dark`).toBe(expected);
   });
 
-  it('introduces no new .dark custom property beyond the one named accent-ink token', () => {
+  it('introduces no new .dark custom property beyond the two named sets', () => {
     const extra = Object.keys(harvestDarkVars).filter((k) => !(k in PINNED_DARK));
-    expect(extra, 'an UNEXPECTED new .dark token appeared').toEqual(ALLOWED_NEW_TOKENS);
+    expect(extra, 'an UNEXPECTED new .dark token appeared').toEqual(ALLOWED_DARK);
   });
 
-  it('.dark declares exactly the pinned count of custom properties, plus the accent-ink token', () => {
-    expect(Object.keys(harvestDarkVars).length).toBe(Object.keys(PINNED_DARK).length + ALLOWED_NEW_TOKENS.length);
+  it('.dark declares exactly the pinned count of custom properties, plus the two named sets', () => {
+    expect(Object.keys(harvestDarkVars).length).toBe(Object.keys(PINNED_DARK).length + ALLOWED_DARK.length);
   });
 
   it('color-scheme: dark is still declared (a regular property, invisible to the custom-property pins above)', () => {

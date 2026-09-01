@@ -262,6 +262,147 @@
      --shadow-xs..xl ramp maps onto --ds-sh-sm/md/lg, which stops one short of
      what a dialog floating above every other surface needs. */
   --ds-sh-xl: 0 32px 80px rgba(12, 21, 38, 0.22);
+
+  /* ── THE-263: the shadcn token bridge (Phase 2) ────────────────────────
+     shadcn's primitives in src/components/ui spell a token vocabulary this
+     app never declared — --background, --foreground, --muted, --destructive,
+     --ring, --input, --card, --popover, --accent, --radius. A missing custom
+     property is invalid at computed-value time, which drops the declaration
+     that uses it to `unset`: no error, no warning, no failed build. See
+     src/components/ui/sonner.tsx, which documents the outcome in its own
+     words ("a transparent, borderless, square-cornered toast") and hand-
+     patched that one file. This section is the general fix.
+
+     Every value below is an ALIAS of a token Harvest already declares. That
+     is the whole design, and it is why there are no Classic blocks for any of
+     them: `var()` is late-bound, so --background: var(--surface) resolves
+     --surface in the scope of the element that reads it. Harvest dark,
+     Classic light and Classic dark each override --surface, so all four
+     palettes are already correct here with one declaration. Restating these
+     in .dark or in the Classic blocks would duplicate text without changing a
+     single computed value, and would add three more places to keep in sync.
+
+     Only the two token families whose SOURCE differs by mode are restated in
+     .dark below: --ring (which tracks the contrast-corrected accent, exactly
+     as --ring-gold does) and --chart-* (which the design ships as day/night
+     pairs). Everything else falls through on purpose.
+
+     Contrast for every foreground/background pair, in all four palettes, is
+     asserted in src/__tests__/theming-shadcn-tokens.test.ts — computed
+     through the real cascade with the same contrastRatio() the production
+     code uses, never eyeballed.
+
+     ⚠️ --border is declared here as a CSS VARIABLE ONLY. tailwind.config.ts
+     deliberately has no `border` colour key — borders are named `line`,
+     because a `border` key would mint a confusing `border-border` utility —
+     and the @theme block below therefore omits --color-border. Resolving that
+     collision is Phase 3; `border-border`, `bg-border` and `text-border` must
+     keep producing nothing, which src/__tests__/tailwind-v4-migration.test.ts
+     pins. */
+
+  /* Surfaces and the text that sits on them. */
+  --background: var(--surface);
+  --foreground: var(--text-body);
+  --card: var(--surface-raised);
+  --card-foreground: var(--text-body);
+  --popover: var(--surface-raised);
+  --popover-foreground: var(--text-body);
+
+  /* --foreground is --text-body, NOT --text-strong: shadcn uses `foreground`
+     as ordinary body copy (CardDescription, menu items, tab labels), while
+     Harvest's --text-strong is the emphasis role. --accent-foreground IS
+     --text-strong, because a hovered menu item is the emphasised state. */
+
+  /* Brand. --primary/--secondary alias the tokens tailwind.config.ts already
+     maps `primary`/`secondary` onto, so bg-primary keeps reading exactly the
+     same custom property it does today. They are NOT added to the @theme
+     block below: v4 inlines JS-config colours instead of minting --color-*
+     theme variables, and re-declaring --color-primary there would produce
+     `--color-primary: var(--color-primary)` — self-referential, painting
+     nothing. Declaring them here is what makes button.tsx's
+     `hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)]`
+     resolve; it is a raw var() reference, not a utility, and was dead. */
+  --primary: var(--color-primary);
+  --secondary: var(--color-secondary);
+  /* Earth, not white: white on Harvest gold is 2.51:1 and fails AA. --earth
+     clears it at 5.69:1 on --primary and 7.80:1 on --secondary, and both
+     grounds are fixed across all four palettes (--color-primary and
+     --color-secondary are declared here and overridden nowhere), so one
+     value is correct in every palette. */
+  --primary-foreground: var(--earth);
+  --secondary-foreground: var(--earth);
+
+  /* Muted = the sunken surface + the muted text role. */
+  --muted: var(--surface-sunken);
+  --muted-foreground: var(--text-muted);
+
+  /* shadcn's --accent is the hovered/active MENU SURFACE (focus:bg-accent,
+     data-open:bg-accent), not the brand accent. --surface-chip is Harvest's
+     raised interactive chip and is the same role; it lifts clearly off
+     --popover in all four palettes. --surface-gold and --surface-tint were
+     both rejected: --surface-tint equals --surface in dark, so a hovered menu
+     item would be *darker* than the popover it sits in (1.07:1, invisible),
+     and --surface-gold composites the tenant accent, which would make menu-
+     item legibility depend on a white-label colour. */
+  --accent: var(--surface-chip);
+  --accent-foreground: var(--text-strong);
+
+  /* Destructive is --ink-danger-STRONG, not --brand-danger or --ink-danger.
+     The primitives use it as TEXT (text-destructive) over a 10%/20% tint of
+     itself, and --brand-danger #C4553B is 4.46:1 on white and 3.86:1 on the
+     muted surface — under AA on the grounds it actually lands on.
+     --ink-danger-strong is the token Harvest already keeps for exactly this
+     (see theming-member-app.test.ts) and clears AA on every ground in all
+     four palettes, dark included, where it inverts to #F0BFB2. */
+  --destructive: rgb(var(--ink-danger-strong));
+
+  /* Edges. --input is --border-strong and --border is --border-default, so a
+     form control reads as an edge rather than as a card border.
+
+     ⚠️ This is a DESIGN call, not the majority convention, and the ticket's
+     stated evidence for it was backwards. Counted over every native
+     <input>/<textarea>/<select> outside src/components/ui (multi-line JSX
+     included), the repo spells `border-line` 140 times against
+     `border-line-strong` 20, across 41 files — the opposite ratio, and the
+     opposite winner. `border-input` is spelled only by input/select/tabs/
+     button in src/components/ui, so this changes none of those 140 call
+     sites; it decides what the SHADCN primitives use. If the count was the
+     reason for the decision rather than the "reads as an edge" argument, this
+     is the token to revisit, and it is one word. */
+  --border: var(--border-default);
+  --input: var(--border-strong);
+  /* The focus ring follows the tenant accent, for the same reason --ring-gold
+     does: a focus ring is an accessibility affordance and pinning it to
+     Harvest gold would leave a white-label tenant without one that reads. */
+  --ring: var(--brand-color);
+
+  /* shadcn inherits the brand corner. borderRadius.brand is already 12px and
+     sonner.tsx hard-codes the same 12px for the toast it had to hand-patch.
+
+     ⚠️ --radius-sm/md/lg/xl are NOT derived from this. Tailwind v4's default
+     theme already declares them (0.25/0.375/0.5/0.75rem) and every rounded-sm
+     /-md/-lg/-xl utility in the app reads them — `.rounded-md` compiles to
+     `border-radius: var(--radius-md)`. Re-pointing them at --radius would
+     silently restyle every corner in the app, not just the primitives, so
+     they are left alone. `var(--radius-md)` in button.tsx and select.tsx
+     already resolves for that reason, and both spell it inside a min(), which
+     bounds it either way. */
+  --radius: 12px;
+
+  /* Chart series — the design package's PAL, day variants. Sourced from the
+     ramps globals.css already declares rather than re-typed as hexes: the
+     design's day gold/sky/green/stone ARE --wheat-500 / --sky-500 /
+     --field-500 / --stone-300, value for value. Only --chart-5 ("cmp") has no
+     existing token. Deliberately NOT overridden in either Classic block — a
+     series colour is a categorical data encoding, not neutral surface chrome,
+     and re-hueing it per family would make the same data render differently
+     between families. Same fall-through, and the same reason, as
+     --surface-gold and --border-gold. */
+  --chart-1: var(--wheat-500);
+  --chart-2: var(--sky-500);
+  --chart-3: var(--field-500);
+  --chart-4: var(--stone-300);
+  --chart-5: #C8BCA9;
  }
 
  /* ── Theming stage 2: where stage 3's dark palette goes ──────────────────
@@ -415,6 +556,27 @@
    /* Same treatment as the other three: a warm drop shadow is not subtle on a
       dark ground, it is absent. Hairline top highlight + a deeper black. */
    --ds-sh-xl: 0 1px 0 0 rgba(250, 248, 245, 0.07) inset, 0 32px 80px rgba(0, 0, 0, 0.65);
+
+   /* ── THE-263: the only two shadcn token families that are mode-dependent.
+      Every other token in the bridge aliases a Harvest token that is already
+      overridden above, so it is correct here without being restated — see the
+      section at the end of :root for why that is deliberate. */
+
+   /* Tracks the contrast-corrected accent, exactly as --ring-gold does two
+      declarations up: an unlifted dark tenant colour would otherwise produce
+      a focus ring nobody can see. */
+   --ring: var(--brand-color-on-dark, var(--brand-color));
+
+   /* The design ships PAL as day/night pairs; these are the night variants,
+      and the first three are again the ramps globals.css already declares
+      (--wheat-glow / --sky-400 / --field-400 are the design's night gold, sky
+      and green value for value). stone and cmp go translucent-white on dark
+      in the design rather than moving to a named ramp step. */
+   --chart-1: var(--wheat-glow);
+   --chart-2: var(--sky-400);
+   --chart-3: var(--field-400);
+   --chart-4: rgba(255, 255, 255, 0.30);
+   --chart-5: rgba(255, 255, 255, 0.28);
  }
 
  /* ── Palette family: Classic ─────────────────────────────────────────────
@@ -493,6 +655,65 @@
    --text-muted:      #ABABAB;
    --text-faint:      #969696;
  }
+}
+
+/* ── THE-263: the utility half of the bridge ─────────────────────────────
+   Declaring a custom property does not mint a utility. `--muted: …` in :root
+   makes `var(--muted)` resolve; it does not make `bg-muted` produce a rule —
+   that needs a key in Tailwind's colour namespace, and tailwind.config.ts is
+   digest-pinned by src/components/ui/__tests__/ds-primitives.test.tsx. This
+   block is v4's own way to add those keys from CSS, which is what the shadcn
+   v4 template itself does (components.json already sets cssVariables: true).
+
+   `inline` is load-bearing. A plain @theme would EMIT --color-muted and route
+   utilities through it; `inline` substitutes the value instead, so `bg-muted`
+   compiles to `background-color: var(--muted)` — the same shape v4 already
+   produces for the JS config's own colours, and the shape that keeps a
+   palette override on .dark reaching the utility.
+
+   Three deliberate omissions:
+
+     • --color-border. tailwind.config.ts has no `border` colour key on
+       purpose (borders are named `line`), and adding one here would mint the
+       confusing `border-border` utility that naming exists to avoid.
+       `border-border`, `bg-border` and `text-border` therefore still produce
+       nothing, which tailwind-v4-migration.test.ts pins. Phase 3 decides it.
+     • --color-primary / --color-secondary. The JS config already maps
+       `primary`/`secondary` onto these custom properties and v4 inlines
+       them, so re-declaring them here would emit
+       `--color-primary: var(--color-primary)` — self-referential, painting
+       nothing.
+     • --color-heading. `font-heading`, which card/dialog/sheet spell, is a
+       FONT utility, and this app's heading face is `font-display`
+       (fontFamily.display -> Fraunces, ~20 call sites). Minting a second name
+       for it from CSS would enshrine a component typo as a token. Phase 7.
+
+   ⚠️ `muted` is the one name that overlaps Harvest's own vocabulary:
+   textColor.muted maps `text-muted` onto --text-muted. The JS config wins for
+   that utility, so `text-muted` still compiles to `color: var(--text-muted)`
+   and only `bg-muted`/`border-muted` are new. That is asserted, not assumed —
+   see theming-shadcn-tokens.test.ts. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
 }
 
 /* ── Theming stage 3: tenant logos are images and do not invert ───────────
