@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect } from 'react';
 import {
   THEME_STORAGE_KEY,
   FAMILY_STORAGE_KEY,
+  DEFAULT_PALETTE_FAMILY,
   isThemeChoice,
   isPaletteFamily,
   resolveTheme,
@@ -40,14 +41,22 @@ const prefersDark = (): boolean =>
   typeof window.matchMedia === 'function' &&
   window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-/** Read the persisted family. Never writes — see the file header. */
+/**
+ * Read the persisted family. Never writes — see the file header.
+ *
+ * THE-265: both fall-throughs resolve to DEFAULT_PALETTE_FAMILY rather than
+ * spelling a literal, so "what a missing value means" has exactly one home in
+ * the bundled code. A stored 'harvest' or 'classic' is still returned as-is —
+ * a user who has chosen keeps their choice; only the ABSENT and the GARBAGE
+ * cases moved.
+ */
 export function readStoredFamily(): PaletteFamily {
   try {
     const raw = localStorage.getItem(FAMILY_STORAGE_KEY);
-    return isPaletteFamily(raw) ? raw : 'harvest';
+    return isPaletteFamily(raw) ? raw : DEFAULT_PALETTE_FAMILY;
   } catch {
     // localStorage can throw in private mode / sandboxed iframes.
-    return 'harvest';
+    return DEFAULT_PALETTE_FAMILY;
   }
 }
 
@@ -98,22 +107,38 @@ let forcedLightCount = 0;
  * knows its own state but not its route — and inside the SPA, React Router has
  * already updated `window.location` by the time effects run.
  *
- * The same `forced` flag also pins the FAMILY to Harvest, not just the mode
- * to light. Reasoning: these are the screens a prospective customer sees
- * before they have an account at all, so nobody has ever chosen Classic here
- * — the only way family could differ from the default on a funnel screen is a
- * RETURNING signed-out user's stored 'classic' leaking through, which is
- * exactly the kind of half-configured, never-design-reviewed combination
- * (Classic pre-auth has no screenshots, no test coverage, nothing) that THE-85
- * was written to keep off screens where "reads as a broken product" is the
- * cost of getting it wrong. Harvest light is the one pre-auth presentation
- * that has actually been built and verified; every other combination is not.
+ * The same `forced` flag also pins the FAMILY, not just the mode to light.
+ * Reasoning: these are the screens a prospective customer sees before they
+ * have an account at all, so a RETURNING signed-out user's stored family must
+ * not leak through and put a combination nobody has design-reviewed in front
+ * of the one audience that has not paid yet. THE-85 exists to keep half-
+ * configured states off the screens where "reads as a broken product" is the
+ * cost of getting it wrong, so the funnel renders exactly ONE presentation.
+ *
+ * 🔴 THE-265 CHANGED WHICH ONE, and coupled it to the default rather than
+ * spelling a second literal. `DEFAULT_PALETTE_FAMILY`, not `'classic'`: the
+ * property the funnel actually wants is "render what a brand-new visitor gets
+ * once they are inside", and a literal would have to be found and changed
+ * again the next time the default moves. This cannot drift out of step with
+ * it. It is still a FORCE — a stored 'harvest' is ignored here exactly as a
+ * stored 'dark' is — so the funnel is still one deterministic presentation,
+ * and it is now the same one the app opens in.
+ *
+ * ⚠️ VERIFIED, not assumed, because THE-85's original argument was that only
+ * Harvest light had been checked. Every text token AuthPage actually paints
+ * clears AA on the ground it paints on, under Classic light, and three of the
+ * four improve on Harvest: --text-heading 14.25 -> 16.42:1, --text-faint
+ * 4.98 -> 5.18:1, --text-body 9.52 -> 9.78:1, --text-muted 6.62 -> 6.61:1.
+ * The `AuthShell` ground is `--cream`, which Classic does not override, so it
+ * is the identical colour in both families. Asserted in `preauth-light.test.ts`
+ * against the REAL Classic-light scope (`:root` with Classic's overrides
+ * cascaded on top), not against `:root` alone.
  */
 export function applyThemeForLocation(pathname?: string): void {
   if (typeof document === 'undefined') return;
   const path = pathname ?? window.location.pathname;
   const forced = forcedLightCount > 0 || isPreAuthPath(path);
-  applyTheme(forced ? 'light' : readStoredChoice(), forced ? 'harvest' : readStoredFamily());
+  applyTheme(forced ? 'light' : readStoredChoice(), forced ? DEFAULT_PALETTE_FAMILY : readStoredFamily());
 }
 
 /**

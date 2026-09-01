@@ -340,7 +340,7 @@ describe('the forbidden files are byte-identical', () => {
   // test can rely on, and shelling out to git makes the assertion depend on
   // how the runner cloned the repo.
   const PINNED: Record<string, string> = {
-    'src/app/layout.tsx': '953b2963652207ac00572d082bb035eaa63161db7f0c049fe1bbc0b311fe6e4e',
+    'src/app/layout.tsx': 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5',
     'firestore.rules': 'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499',
   };
 

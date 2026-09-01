@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import postcss from 'postcss';
-import { contrastRatio, AA_CONTRAST, THEME_STORAGE_KEY, FAMILY_STORAGE_KEY } from '../lib/theme';
+import { contrastRatio, AA_CONTRAST, THEME_STORAGE_KEY, FAMILY_STORAGE_KEY, DEFAULT_PALETTE_FAMILY } from '../lib/theme';
 import { PREAUTH_PATHS, isPreAuthPath, normalizePath } from '../lib/preauth-theme';
 import { applyThemeForLocation, readStoredFamily } from '../lib/theme-runtime';
 
@@ -108,7 +108,7 @@ describe('a pre-auth screen renders Harvest light with the stored preference set
     expect(stamped(), `${p} painted dark/classic on load — this is THE-85, extended to family`).toEqual({
       attr: 'light',
       dark: false,
-      palette: 'harvest',
+      palette: DEFAULT_PALETTE_FAMILY,
     });
 
     // Half 2: the client applier, i.e. signing out of dark mode navigates here
@@ -120,7 +120,7 @@ describe('a pre-auth screen renders Harvest light with the stored preference set
     expect(stamped(), `${p} stayed dark/classic after a client-side navigation`).toEqual({
       attr: 'light',
       dark: false,
-      palette: 'harvest',
+      palette: DEFAULT_PALETTE_FAMILY,
     });
   });
 
@@ -151,20 +151,25 @@ describe('a pre-auth screen renders light with prefers-color-scheme: dark and no
     expect(stamped(), `${p} followed the OS instead of forcing light`).toEqual({
       attr: 'light',
       dark: false,
-      palette: 'harvest',
+      palette: DEFAULT_PALETTE_FAMILY,
     });
 
     applyThemeForLocation(p);
-    expect(stamped()).toEqual({ attr: 'light', dark: false, palette: 'harvest' });
+    expect(stamped()).toEqual({ attr: 'light', dark: false, palette: DEFAULT_PALETTE_FAMILY });
   });
 
   it('still follows a dark OS behind auth — the override is scoped, not global', () => {
     matchesDark = true;
     runPrePaint('/');
+    // ⚠️ `/` is BEHIND auth, so no force applies and the family falls to the
+    // default — which THE-265 moved from 'harvest' to 'classic'. The MODE
+    // assertion (a dark OS is still followed here) is what this test is for
+    // and it is unchanged; the family is written against the constant so it
+    // tracks the default rather than re-pinning a literal.
     expect(stamped(), 'the OS preference stopped working everywhere').toEqual({
       attr: 'dark',
       dark: true,
-      palette: 'harvest',
+      palette: DEFAULT_PALETTE_FAMILY,
     });
   });
 });
@@ -236,7 +241,7 @@ describe('signing out and back in returns the user to dark and classic', () => {
 
     // Sign out: App.tsx navigates to /auth with no reload.
     applyThemeForLocation('/auth');
-    expect(stamped()).toEqual({ attr: 'light', dark: false, palette: 'harvest' });
+    expect(stamped()).toEqual({ attr: 'light', dark: false, palette: DEFAULT_PALETTE_FAMILY });
     expect(
       localStorage.getItem(THEME_STORAGE_KEY),
       'the pre-auth override overwrote the stored preference',
@@ -266,40 +271,92 @@ describe('signing out and back in returns the user to dark and classic', () => {
   });
 
   it('survives a hard reload of a pre-auth screen', () => {
+    // ⚠️ Stores 'classic' deliberately: the point is that the funnel FORCES a
+    // family rather than reading one, so the stored value is ignored on the
+    // way in and still intact on the way out. THE-265 made the forced value
+    // the default, so this now happens to agree with what is stored — the
+    // harvest case below is the one that proves the force is still a force.
     localStorage.setItem(THEME_STORAGE_KEY, 'dark');
     localStorage.setItem(FAMILY_STORAGE_KEY, 'classic');
     runPrePaint('/auth');
-    expect(stamped()).toEqual({ attr: 'light', dark: false, palette: 'harvest' });
+    expect(stamped()).toEqual({ attr: 'light', dark: false, palette: DEFAULT_PALETTE_FAMILY });
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark');
     expect(localStorage.getItem(FAMILY_STORAGE_KEY)).toBe('classic');
   });
 });
 
 /**
- * A user with no stored family gets Harvest — the default this PR must ship
- * so every existing user (who has never seen a family control before) is
- * unaffected. Mirrors how a missing/garbage THEME_STORAGE_KEY already
- * defaults to 'system' via isThemeChoice.
+ * A user with no stored family gets the DEFAULT family.
+ *
+ * ⚠️ THE-265 CHANGED THE ANSWER, not the shape. This block used to assert
+ * 'harvest' literally; it now asserts DEFAULT_PALETTE_FAMILY, which is
+ * 'classic'. The assertions are written against the constant rather than
+ * against a new literal so that the next change to the default moves this
+ * suite with it instead of breaking it — the property being pinned here is
+ * "a missing value resolves to THE default", which is what THE-85 cares
+ * about; WHICH family that is belongs to `the-265-classic-default.test.ts`.
+ *
+ * Mirrors how a missing/garbage THEME_STORAGE_KEY already defaults to
+ * 'system' via isThemeChoice. Nothing about the MODE axis changed.
  */
-describe('a user with no stored family gets Harvest', () => {
-  it('readStoredFamily defaults to harvest when the key is absent', () => {
+describe('a user with no stored family gets the default family', () => {
+  it('readStoredFamily defaults to DEFAULT_PALETTE_FAMILY when the key is absent', () => {
     expect(localStorage.getItem(FAMILY_STORAGE_KEY)).toBeNull();
-    expect(readStoredFamily()).toBe('harvest');
+    expect(readStoredFamily()).toBe(DEFAULT_PALETTE_FAMILY);
   });
 
-  it('defaults to harvest for a garbage stored value too', () => {
+  it('defaults to DEFAULT_PALETTE_FAMILY for a garbage stored value too', () => {
     localStorage.setItem(FAMILY_STORAGE_KEY, 'sepia');
-    expect(readStoredFamily()).toBe('harvest');
+    expect(readStoredFamily()).toBe(DEFAULT_PALETTE_FAMILY);
   });
 
-  it('the pre-paint script stamps harvest when nothing is stored', () => {
+  it('the pre-paint script stamps the default when nothing is stored', () => {
+    runPrePaint('/');
+    expect(stamped().palette).toBe(DEFAULT_PALETTE_FAMILY);
+  });
+
+  it('applyThemeForLocation stamps the default for a fresh signed-in session', () => {
+    applyThemeForLocation('/');
+    expect(stamped().palette).toBe(DEFAULT_PALETTE_FAMILY);
+  });
+
+  it('🔴 and that default is Classic (THE-265)', () => {
+    // Stated once, plainly, so this file records WHICH family it is even
+    // though every assertion above is written against the constant.
+    expect(DEFAULT_PALETTE_FAMILY).toBe('classic');
+  });
+
+  it('a stored harvest is still honoured — nobody lost a choice', () => {
+    // ⚠️ '/' is BEHIND auth, where the stored family wins. Asserted as the
+    // literal 'harvest' on purpose, NOT as DEFAULT_PALETTE_FAMILY: the claim
+    // is that a stored choice beats the default, so writing it against the
+    // constant would make it vacuous the moment the two coincide.
+    localStorage.setItem(FAMILY_STORAGE_KEY, 'harvest');
+    expect(readStoredFamily()).toBe('harvest');
     runPrePaint('/');
     expect(stamped().palette).toBe('harvest');
+    expect(stamped().palette, 'the stored choice collapsed into the default').not.toBe(
+      DEFAULT_PALETTE_FAMILY,
+    );
   });
 
-  it('applyThemeForLocation stamps harvest for a fresh signed-in session', () => {
-    applyThemeForLocation('/');
-    expect(stamped().palette).toBe('harvest');
+  it('🔴 but the funnel IGNORES it — the force is still a force (THE-85)', () => {
+    // The case that proves THE-265 coupled the funnel to the DEFAULT rather
+    // than merely stopping forcing: a stored 'harvest' is honoured at '/' and
+    // overridden on '/auth'.
+    localStorage.setItem(FAMILY_STORAGE_KEY, 'harvest');
+    for (const p of PREAUTH_PATHS) {
+      runPrePaint(p);
+      expect(stamped().palette, `${p} followed the stored family instead of forcing`).toBe(
+        DEFAULT_PALETTE_FAMILY,
+      );
+      document.documentElement.removeAttribute('data-palette');
+      applyThemeForLocation(p);
+      expect(stamped().palette, `${p}: the client applier disagreed with the script`).toBe(
+        DEFAULT_PALETTE_FAMILY,
+      );
+    }
+    expect(localStorage.getItem(FAMILY_STORAGE_KEY), 'the force wrote the preference').toBe('harvest');
   });
 });
 
@@ -317,13 +374,32 @@ describe('the consent line and the tagline clear AA against the pre-auth backgro
     rule.walkDecls((d) => { if (d.prop.startsWith('--')) lightVars[d.prop] = d.value.trim(); });
   });
 
-  /** Resolve a var chain inside the light theme down to a literal hex. */
-  function resolve(name: string, depth = 0): string {
-    const v = lightVars[name];
+  /**
+   * 🔴 THE-265 — the scope the funnel ACTUALLY renders in.
+   *
+   * This block used to resolve against `:root` alone, because the funnel was
+   * forced to Harvest and `:root` IS Harvest light. The funnel now renders the
+   * default family, so the real cascade is `:root` with Classic light's
+   * overrides on top — and resolving against `:root` alone would be checking
+   * contrast for a screen nobody sees. Built by cascading rather than by
+   * listing, so a token Classic starts or stops overriding is picked up.
+   */
+  const classicLightOverrides: Record<string, string> = {};
+  postcss.parse(css).walkRules((rule) => {
+    if (!(rule.selector.includes('data-palette="classic"') && rule.selector.includes('data-theme="light"'))) return;
+    rule.walkDecls((d) => { if (d.prop.startsWith('--')) classicLightOverrides[d.prop] = d.value.trim(); });
+  });
+  const funnelVars: Record<string, string> = { ...lightVars, ...classicLightOverrides };
+
+  /** Resolve a var chain inside a light scope down to a literal hex. */
+  function resolveIn(name: string, scope: Record<string, string>, depth = 0): string {
+    const v = scope[name];
     if (!v || depth > 10) return v ?? '';
     const m = v.match(/^var\((--[a-z0-9-]+)\)$/i);
-    return m ? resolve(m[1], depth + 1) : v;
+    return m ? resolveIn(m[1], scope, depth + 1) : v;
   }
+  /** Harvest light — what `:root` alone says. */
+  const resolve = (name: string): string => resolveIn(name, lightVars);
 
   /** The token a given line of copy actually paints with, read from the source. */
   function tokenFor(marker: string): string {
@@ -360,6 +436,53 @@ describe('the consent line and the tagline clear AA against the pre-auth backgro
       ratio,
       `${marker} is ${fg} on ${bg} = ${ratio.toFixed(2)}:1, needs ${AA_CONTRAST}:1`,
     ).toBeGreaterThanOrEqual(AA_CONTRAST);
+  });
+
+  it.each([
+    ['consent line', 'By continuing you accept'],
+    ['tagline', 'From conversion to devotion'],
+  ])('🔴 %s clears AA on the pre-auth ground IN THE FAMILY THAT RENDERS (THE-265)', (_label, marker) => {
+    // The check THE-85's original argument said had never been done: the funnel
+    // now renders Classic light, so the contrast that matters is the one in
+    // Classic's scope, not Harvest's.
+    const fg = resolveIn(tokenFor(marker), funnelVars);
+    const bg = resolveIn(groundToken, funnelVars);
+    expect(fg, 'foreground token did not resolve to a hex').toMatch(/^#[0-9A-Fa-f]{6}$/);
+    expect(bg, 'background token did not resolve to a hex').toMatch(/^#[0-9A-Fa-f]{6}$/);
+
+    const ratio = contrastRatio(fg, bg);
+    expect(
+      ratio,
+      `${marker} is ${fg} on ${bg} = ${ratio.toFixed(2)}:1 in Classic light, needs ${AA_CONTRAST}:1`,
+    ).toBeGreaterThanOrEqual(AA_CONTRAST);
+  });
+
+  it('🔴 EVERY text token AuthPage paints clears AA in the family that renders', () => {
+    // Not just the two lines the original issue named — the whole set the
+    // screen actually uses, because THE-265 changed the family under all of
+    // them at once. Enumerated from the source so a newly-added token is
+    // covered without anyone remembering to list it here.
+    const used = new Set<string>();
+    for (const m of authPage.matchAll(/var\((--text-[a-z-]+)\)/g)) used.add(m[1]);
+    for (const m of authPage.matchAll(/\btext-(strong|body|muted|faint|heading)\b/g)) used.add('--text-' + m[1]);
+    expect(used.size, 'AuthPage paints no text tokens — the enumeration broke').toBeGreaterThan(0);
+
+    const bg = resolveIn(groundToken, funnelVars);
+    for (const token of [...used].sort()) {
+      const fg = resolveIn(token, funnelVars);
+      if (!/^#[0-9A-Fa-f]{6}$/.test(fg)) continue;
+      const ratio = contrastRatio(fg, bg);
+      expect(
+        ratio,
+        `${token} is ${fg} on ${bg} = ${ratio.toFixed(2)}:1 in Classic light`,
+      ).toBeGreaterThanOrEqual(AA_CONTRAST);
+    }
+  });
+
+  it('the ground itself is the same colour in both families, so the flip moved no background', () => {
+    // --cream is not one of the 14 tokens Classic overrides. Worth pinning:
+    // it is why the funnel flip changes the INK and not the paper.
+    expect(resolveIn(groundToken, funnelVars)).toBe(resolve(groundToken));
   });
 
   it('is the light values that apply, because .dark is never stamped here', () => {

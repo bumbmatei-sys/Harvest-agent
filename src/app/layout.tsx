@@ -181,14 +181,44 @@ export default async function RootLayout({
             script cannot import. `theming-stage3.test.ts`'s existing pin is
             extended to cover this key too.
 
-            On a pre-auth path, family is forced to 'harvest' alongside mode
-            being forced to 'light' — see applyThemeForLocation's comment for
-            why: a Classic pre-auth screen has never been built or reviewed,
-            so a returning signed-out user with a stored 'classic' preference
-            must not be the first person to see one. */}
+            On a pre-auth path, family is forced alongside mode being forced
+            to 'light' — see applyThemeForLocation's comment for why: a
+            returning signed-out user's stored family must not put a
+            never-reviewed combination in front of the one audience that has
+            not paid yet. The funnel renders exactly ONE presentation.
+
+            🔴 THE-265 made that presentation Classic, matching what a new
+            visitor gets once they are inside. In the runtime this is written
+            as DEFAULT_PALETTE_FAMILY so it cannot drift from the default; here
+            it is a literal for the same reason everything else in this script
+            is, and the test below pins BOTH literals in this script to that
+            one constant.
+
+            ── THE-265: the DEFAULT family is Classic ─────────────────────────
+            🔴 `f==='harvest'?'harvest':'classic'` — a MISSING or garbage
+            stored value now resolves to Classic, where it used to resolve to
+            Harvest. A stored 'harvest' is still honoured, so nobody who has
+            chosen loses their choice; this is only what an absent value means.
+
+            ⚠️ This is the SECOND HOME of a value whose first home is
+            DEFAULT_PALETTE_FAMILY in @/lib/theme — and it is a literal here
+            because this script is a string that runs before any bundle and
+            cannot import, exactly as the two storage keys above cannot.
+            The two are not held together by anything the compiler can see, so
+            `the-265-classic-default.test.ts` parses this very expression back
+            out of this file and fails if it disagrees with the constant. That
+            test is the only thing standing between a future edit and a
+            first-paint flash: change one and not the other, and a cold load
+            paints one family and hydrates into the other.
+
+            ⚠️ BOTH occurrences are pinned — the ternary's default arm here and
+            the forced value in the pre-auth branch above. They are the same
+            constant for different reasons (one is the default, one is a force
+            that follows it), so a test that checked only one would let the
+            funnel drift away from the app it leads into. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var e=document.documentElement;var p=(location.pathname||'/').split(/[?#]/)[0].replace(/\\/+$/,'');p=(p===''?'/':p).toLowerCase();if(${JSON.stringify(PREAUTH_PATHS)}.indexOf(p)>-1){e.setAttribute('data-theme','light');e.classList.remove('dark');e.setAttribute('data-palette','harvest');return;}var s=localStorage.getItem('harvest-theme');var t=(s==='light'||s==='dark')?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');e.setAttribute('data-theme',t);e.classList.toggle('dark',t==='dark');var f=localStorage.getItem('harvest-theme-family');e.setAttribute('data-palette',f==='classic'?'classic':'harvest');}catch(_){}})();`,
+            __html: `(function(){try{var e=document.documentElement;var p=(location.pathname||'/').split(/[?#]/)[0].replace(/\\/+$/,'');p=(p===''?'/':p).toLowerCase();if(${JSON.stringify(PREAUTH_PATHS)}.indexOf(p)>-1){e.setAttribute('data-theme','light');e.classList.remove('dark');e.setAttribute('data-palette','classic');return;}var s=localStorage.getItem('harvest-theme');var t=(s==='light'||s==='dark')?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');e.setAttribute('data-theme',t);e.classList.toggle('dark',t==='dark');var f=localStorage.getItem('harvest-theme-family');e.setAttribute('data-palette',f==='harvest'?'harvest':'classic');}catch(_){}})();`,
           }}
         />
 

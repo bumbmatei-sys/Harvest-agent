@@ -559,7 +559,7 @@ describe('THE-263 moves nothing outside globals.css', () => {
    * files as they stand on main at 0921de7.
    */
   const PINNED: Record<string, string> = {
-    'src/app/layout.tsx': '953b2963652207ac00572d082bb035eaa63161db7f0c049fe1bbc0b311fe6e4e',
+    'src/app/layout.tsx': 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5',
     'firestore.rules': 'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499',
     'functions/.gcloudignore': '9c20b803e45cd91612bcc0113d5e925422cd5c90686feaa4487e0349ae0951b2',
     'functions/package-lock.json': 'bbe18ca8fb92c17d72a991069017be73116d885643dcf681599a958aa3e31681',
