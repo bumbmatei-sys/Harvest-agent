@@ -97,8 +97,7 @@ const PALETTES = [
   },
   {
     name: 'Classic dark ([data-palette="classic"].dark, [data-palette="classic"][data-theme="dark"])',
-    selector: '[data-palette="classic"++].dark, [data-palette="classic"][data-theme="dark"]'
-      .replace('++', ''),
+    selector: '[data-palette="classic"].dark, [data-palette="classic"][data-theme="dark"]',
     beneath: [':root', '.dark, [data-theme="dark"]'],
   },
 ] as const;
