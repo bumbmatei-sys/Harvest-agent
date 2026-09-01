@@ -331,29 +331,18 @@ describe('nesting depth is visually distinguishable at desktop widths', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // 6. Behaviour guard — the most important functional test.
 //
-// FINDING (pre-existing, not introduced by this PR): section- and lesson-level
-// drag-reorder do not actually commit their swap. Every draggable wrapper here
-// (level/section/lesson) listens for the SAME dragstart/dragenter/dragend event
-// types with no `stopPropagation()`, and those events bubble by spec — so
-// dragging a SECTION also fires the ANCESTOR LEVEL's own handlers, and dragging
-// a LESSON fires both its section's AND its level's. Neither `updateLevel` nor
-// `onLevelDragEnd`/`onDragEnd` build their reordered array through React's
-// functional-setState form — they read the outer `course`/`level` closure
-// directly — so the bubbled ancestor handler's `set("levels", ...)` (a stale,
-// pre-reorder array reference) lands SECOND in the same batched update and
-// silently overwrites the child's correct reorder.
+// The FINDING this block used to record — that section- and lesson-level
+// drag-reorder never committed their swap, because dragstart/dragenter/dragend
+// bubble and the ancestor level's handler overwrote the child's reorder with a
+// pre-reorder snapshot — was FIXED in THE-186. That PR was layout-only and
+// deliberately left the interaction bug alone, so these two tests pinned the
+// broken outcome as a no-regression guard; they now pin the correct one.
 //
-// Confirmed with `git show cf3d3ce:src/components/AdminCourseEditor.tsx` run
-// through this exact test: identical outcome on the file as it stood before any
-// diff in this PR. This PR touches zero draggable/onDrag* code — the container,
-// field-width and button className additions land on already-existing elements
-// without adding, removing or reordering any drag wrapper or handler — so the
-// tests below assert what the STOP-condition-3 guard actually requires: level
-// reorder keeps working, and section/lesson reorder is BYTE-FOR-BYTE the same
-// (still-broken) behaviour before and after, i.e. this PR did not regress it.
-// Left unfixed deliberately: fixing nested DnD propagation is an interaction/
-// logic change, out of scope for a layout-only PR (see STOP condition 3 and
-// "do not change ... the lesson editor's content handling — this is layout").
+// The behavioural depth of the fix lives in AdminCourseEditor.drag-reorder.
+// test.tsx (all three depths, cross-parent non-interference, the shared-ref
+// question, and the persisted order shape). What stays here is the narrower
+// thing this file exists for: the drag wrappers still work at all after the
+// layout rules landed on them.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('drag to reorder still works at level, section and lesson depth', () => {
   it('reorders levels by their drag wrapper', async () => {
@@ -371,7 +360,7 @@ describe('drag to reorder still works at level, section and lesson depth', () =>
     expect(titles().map((i) => i.value)).toEqual(['Level B', 'Level A']);
   });
 
-  it('leaves section-level drag-reorder exactly as broken (or working) as it already was — no regression', async () => {
+  it('reorders sections by their drag wrapper (THE-186)', async () => {
     const c = await builder();
     setValue(inputByPlaceholder(c, 'Section Title'), 'Section A');
     await act(async () => { buttonByText(c, '+ Add Section').dispatchEvent(new Event('click', { bubbles: true })); });
@@ -387,12 +376,12 @@ describe('drag to reorder still works at level, section and lesson depth', () =>
     const wrappers = Array.from(c.querySelectorAll('[draggable="true"]')).filter((el) =>
       titles().filter((i) => el.contains(i)).length === 1);
     await act(async () => { drag(wrappers[1] as HTMLElement, wrappers[0] as HTMLElement); });
-    // See the FINDING above: this stays ['Section A', 'Section B'] — the
-    // bubbled ancestor handler overwrites the swap — on BOTH sides of this PR.
-    expect(titles().map((i) => i.value)).toEqual(['Section A', 'Section B']);
+    // THE-186: the swap now commits. Before it, the bubbled ancestor level
+    // handler overwrote this with a pre-reorder snapshot of `course.levels`.
+    expect(titles().map((i) => i.value)).toEqual(['Section B', 'Section A']);
   });
 
-  it('leaves lesson-level drag-reorder exactly as broken (or working) as it already was — no regression', async () => {
+  it('reorders lessons by their drag wrapper (THE-186)', async () => {
     const c = await builder();
     const lessonTitleInputs = () => Array.from(c.querySelectorAll('input')).filter((i) =>
       (i.getAttribute('placeholder') ?? '') === 'e.g. The Power of Grace') as HTMLInputElement[];
@@ -417,8 +406,9 @@ describe('drag to reorder still works at level, section and lesson depth', () =>
     const wrappers = Array.from(c.querySelectorAll('[draggable="true"]')).filter((el) =>
       lessonTitleInputs().filter((i) => el.contains(i)).length === 1);
     await act(async () => { drag(wrappers[1] as HTMLElement, wrappers[0] as HTMLElement); });
-    // See the FINDING above: unchanged on both sides of this PR.
-    expect(lessonTitleInputs().map((i) => i.value)).toEqual(['Lesson A', 'Lesson B']);
+    // THE-186: the swap now commits — previously BOTH the ancestor section's
+    // and the ancestor level's handlers ran and reverted it.
+    expect(lessonTitleInputs().map((i) => i.value)).toEqual(['Lesson B', 'Lesson A']);
   });
 });
 
