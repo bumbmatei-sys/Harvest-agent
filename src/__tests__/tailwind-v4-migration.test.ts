@@ -521,7 +521,13 @@ describe('no component changed except the listed mechanical renames', () => {
       expect(existsSync(path.join(REPO_ROOT, '.git')), 'no git at all — nothing to compare against').toBe(true);
       return;
     }
-    const changed = execSync(`git diff --name-only ${base} -- src`, { cwd: REPO_ROOT, encoding: 'utf8' })
+    // --diff-filter=M keeps modified files only. A file ADDED since the base --
+    // by this branch, or by main once main is merged in -- was never touched by
+    // the sweep and has no `base:` blob to read, so `git show` would fail hard
+    // and take the whole test with it. Nothing is lost by skipping them: the
+    // v3-spelling scan above reads every source file in the tree, whenever it
+    // arrived, so an added file carrying a v3 spelling still fails there.
+    const changed = execSync(`git diff --name-only --diff-filter=M ${base} -- src`, { cwd: REPO_ROOT, encoding: 'utf8' })
       .split('\n')
       .filter(Boolean)
       .filter((p) => /\.tsx?$/.test(p) && !p.includes('__tests__') && !p.startsWith('src/test/'));
