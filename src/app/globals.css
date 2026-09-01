@@ -356,10 +356,19 @@
      four palettes, dark included, where it inverts to #F0BFB2. */
   --destructive: rgb(var(--ink-danger-strong));
 
-  /* Edges. --input is --border-strong, not --border-default: across every
-     native input/textarea/select outside src/components/ui the repo spells
-     border-line-strong 16 times against border-line 4, i.e. an input reads as
-     an edge, not as a card border. --border is the card border. */
+  /* Edges. --input is --border-strong and --border is --border-default, so a
+     form control reads as an edge rather than as a card border.
+
+     ⚠️ This is a DESIGN call, not the majority convention, and the ticket's
+     stated evidence for it was backwards. Counted over every native
+     <input>/<textarea>/<select> outside src/components/ui (multi-line JSX
+     included), the repo spells `border-line` 140 times against
+     `border-line-strong` 20, across 41 files — the opposite ratio, and the
+     opposite winner. `border-input` is spelled only by input/select/tabs/
+     button in src/components/ui, so this changes none of those 140 call
+     sites; it decides what the SHADCN primitives use. If the count was the
+     reason for the decision rather than the "reads as an edge" argument, this
+     is the token to revisit, and it is one word. */
   --border: var(--border-default);
   --input: var(--border-strong);
   /* The focus ring follows the tenant accent, for the same reason --ring-gold
