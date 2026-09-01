@@ -401,6 +401,103 @@
   --chart-3: var(--field-500);
   --chart-4: var(--stone-300);
   --chart-5: #C8BCA9;
+
+  /* ── THE-267: the sidebar family (Phase 7) ─────────────────────────────
+     Eight tokens, mapped the way THE-263 mapped --background -> --surface:
+     every one is an ALIAS of something this app already declares, so no new
+     colour is introduced and all four palettes are correct from one block.
+
+     ⚠️ The registry could NOT be read from this environment — egress to
+     ui.shadcn.com is still refused at the proxy (403 to CONNECT), exactly as
+     THE-263 recorded, and the vendored CLI still carries only the legacy
+     --sidebar / --sidebar-background pair. The member list below was instead
+     recovered from the CONSUMING SOURCE, which is reachable: the real
+     sidebar.tsx and the sidebar-07 block on raw.githubusercontent.com. Eight
+     names are spelled there and eight are declared here, so the list is
+     confirmed by what reads it rather than by what documents it.
+
+     --sidebar-width / --sidebar-width-icon are deliberately NOT here. They
+     are React constants (SIDEBAR_WIDTH = "16rem", SIDEBAR_WIDTH_MOBILE =
+     "18rem", SIDEBAR_WIDTH_ICON = "3rem") that the component sets as inline
+     styles on the wrapper; a palette has nothing to say about them, and
+     declaring them here would silently override the component's own values.
+
+     Every alias below falls through to all four palettes, and every one of
+     them does so for a REASON, not by omission:
+       • the five neutral aliases point at ramp tokens (--surface-raised,
+         --text-body, --surface-chip, --text-strong, --border-default) that
+         .dark and both Classic blocks already override, so late-bound var()
+         resolves them per-scope. Restating them would add three more places
+         to keep in sync and change no computed value.
+       • the three brand aliases chain to --primary / --primary-foreground /
+         --ring, which are themselves deliberately family-independent (the
+         accent must not grey out in Classic — see the Classic header) and,
+         for --ring, already carry their own .dark restatement. Chaining is
+         what makes a dark restatement here unnecessary: --sidebar-ring picks
+         up --ring's contrast-corrected accent automatically.
+
+     Ratios for every pair, in all four palettes, are asserted in
+     src/__tests__/theming-sidebar-tokens.test.ts. */
+
+  /* The sidebar's own ground. --surface-raised, NOT --surface-sunken: this
+     repo already ships three sidebars and all three are raised —
+     AdminDashboard.tsx:908 and MainApp.tsx:649 both open with
+     `bg-surface-raised border-line`, BiblePage.tsx:599's <aside> does the
+     same, and src/lib/theme.ts names "the admin sidebar" in the comment on
+     DARK_SURFACE_RAISED. Mapping this to --surface-sunken would repaint all
+     three the moment a shell migrates to the primitive, and --surface-sunken
+     is documented as a control fill ("toggles, inputs"), not an architectural
+     surface — in Harvest dark it is #120F0C, a near-black full-height panel.
+     The trade is a weaker hover lift in dark (1.15:1 raised vs 1.31:1 sunken);
+     that is accepted because it is EXACTLY the lift --accent already ships on
+     --popover, which is the same ground and the same role. */
+  --sidebar: var(--surface-raised);
+  --sidebar-foreground: var(--text-body);
+
+  /* The hovered / active item ground. Same choice, and the same trap, as
+     --accent: --surface-chip is the token that sits a step ABOVE the raised
+     surface in every palette, so the lift is 1.29/1.32 light and 1.15/1.14
+     dark. --surface-tint was rejected for the second time here — it equals
+     --surface in dark and lands at 1.08:1 against the sidebar, i.e. a hovered
+     row that is invisible, and on the wrong side of the ground. The lift is
+     deliberately not held to 3:1: WCAG 1.4.11 covers a control's boundary
+     when that boundary is the ONLY way to identify it, and here the label is
+     always present and clears AA on both grounds (7.84:1 worst). */
+  --sidebar-accent: var(--surface-chip);
+  --sidebar-accent-foreground: var(--text-strong);
+
+  /* Not unconsumed. The ticket had these two down as dead, on the grounds
+     that sidebar.tsx never spells them — which is true of the primitive and
+     false of the shell it exists for: sidebar-07's team-switcher.tsx renders
+     the header logo tile as `bg-sidebar-primary text-sidebar-primary-
+     foreground`, and sidebar-07 is the member shell this family is being
+     mapped for. A solid brand tile with an icon on it is exactly the
+     --primary / --primary-foreground role, so they chain there rather than
+     re-deriving: the pair stays locked at the 5.69:1 that made --earth the
+     right ink for Harvest gold, and cannot drift apart later. */
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+
+  /* The edge. --border-default, which is what `border-line` resolves to and
+     therefore what all three existing sidebars already draw. Like every other
+     container hairline in this app it is ~1.3:1 against its own ground and is
+     not held to 3:1: the sidebar is identified by its ground, which differs
+     from the page ground in all four palettes, not by this line. */
+  --sidebar-border: var(--border-default);
+
+  /* The focus ring. Chains to --ring rather than repeating its source, so it
+     inherits --ring's .dark restatement (the contrast-corrected accent) and
+     needs no restatement of its own, and so a tenant accent drives the
+     sidebar's ring exactly as it drives every other one.
+     ⚠️ Gold on a white sidebar is 2.66:1, under the 3:1 non-text bar. That is
+     --ring's pre-existing property, not one this ticket introduces, and the
+     sidebar renders it BETTER than the rest of the app does: the primitives
+     here spell `ring-ring/50`, which paints 1.58:1 in light and 2.51-2.60:1
+     in dark, while sidebar.tsx spells `focus-visible:ring-2` at full opacity
+     for 2.66/5.84/6.29. Closing it means moving --brand-color, which this
+     ticket forbids; the test asserts --sidebar-ring is IDENTICAL to --ring in
+     all four palettes so the two can only ever be fixed together. */
+  --sidebar-ring: var(--ring);
  }
 
  /* ── Theming stage 2: where stage 3's dark palette goes ──────────────────
@@ -747,6 +844,21 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+
+  /* THE-267. The other half of the bridge: without these eight keys the
+     declarations above resolve but `bg-sidebar` mints no rule and the sidebar
+     renders transparent — the failure mode THE-263 proved empirically.
+     `--color-sidebar` and `--color-sidebar-foreground` are separate keys, not
+     a parent with sub-keys, so they mint `bg-sidebar` and `bg-sidebar-
+     foreground` and nothing that collides with the `line` naming. */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 
   /* Not a colour. See the --font-heading note above. */
   --font-heading: var(--font-display), Georgia, serif;
