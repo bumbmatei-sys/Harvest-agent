@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, CSSProperties, KeyboardEvent, MouseEvent } from "react";
+import { useState, useRef, useEffect, CSSProperties, DragEvent, KeyboardEvent, MouseEvent } from "react";
 import Image from 'next/image';
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { collection, addDoc, doc, updateDoc, getDocs, deleteDoc, setDoc, getDoc, query, where } from "firebase/firestore";
@@ -187,6 +187,48 @@ const emptyLesson = (): Lesson => ({ id: uid(), title: "", summary: "", youtubeU
 const emptySection = (): Section => ({ id: uid(), title: "", lessons: [emptyLesson()] });
 const emptyLevel = (): Level => ({ id: uid(), title: "", sections: [emptySection()] });
 const emptyCourse = (): Course => ({ title: "", description: "", category: "", thumbnail: "", status: "draft", featured: false, issueCertificate: true, requireQuiz: false, authorIds: [], levels: [emptyLevel()] });
+
+// ─── THE-186: nested drag-to-reorder ────────────────────────────────────────
+// The Curriculum tab nests three `draggable` wrappers inside one another
+// (level > section > lesson) and every depth listens for the SAME
+// dragstart/dragenter/dragend types. Those events bubble by spec, so before
+// this fix a lesson drag also ran its section's AND its level's handlers, and
+// the ancestor's write — built from a closure snapshot taken before the
+// child's write in the same batched update — landed second and silently
+// reverted the child's reorder. Two collaborating pieces keep that from
+// happening, and both are needed for different reasons:
+//
+//   1. OWNERSHIP (the bubbling half). `onDragStart`/`onDragEnd` call
+//      `stopPropagation()`, so exactly one depth — the innermost draggable
+//      under the pointer — ever claims a drag. `onDragEnter` deliberately
+//      does NOT stop: an ancestor legitimately needs to see a dragenter fired
+//      deep inside itself (dragging a level over another level enters that
+//      level's lessons first), so instead each depth ignores a dragenter it
+//      did not start, via `dragging.current === null`. Stopping dragenter
+//      outright would break level reordering.
+//   2. CURRENT-STATE COMMITS (the closure half). Every reorder commits through
+//      an updater — `onChange(prev => ...)` — resolved against the live value
+//      at flush time rather than a captured one. See `Update<T>` below.
+//
+// See AdminCourseEditor.drag-reorder.test.tsx for what each half is worth on
+// its own; #1 is what makes the three depths work, #2 is defence in depth.
+
+/**
+ * A React-`setState`-shaped update: either the next value, or a function from
+ * the current value to it. Existing value call sites are unaffected; the drag
+ * handlers pass the function form so their commit never depends on a snapshot.
+ */
+type Update<T> = T | ((prev: T) => T);
+const applyUpdate = <T,>(update: Update<T>, prev: T): T =>
+  typeof update === "function" ? (update as (p: T) => T)(prev) : update;
+
+/** Move `from` to `to` in a copy of `list`, leaving `list` untouched. */
+const reordered = <T,>(list: readonly T[], from: number, to: number): T[] => {
+  const next = [...list];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
+};
 
 // Categories are keyed per-tenant (`${tenantId}__${name}`) so two tenants can
 // hold the same label without colliding on one shared doc. Courses reference a
@@ -675,7 +717,7 @@ function LessonCard({ lesson, onChange, onRemove, authorsLibrary = [] }: LessonC
 // ═══════════════════════════════════════════════
 interface SectionCardProps {
  section: Section;
- onChange: (section: Section) => void;
+ onChange: (section: Update<Section>) => void;
  onRemove: () => void;
  authorsLibrary?: Author[];
 }
@@ -685,15 +727,18 @@ function SectionCard({ section, onChange, onRemove, authorsLibrary = [] }: Secti
  const dragging = useRef<number | null>(null);
  const dragOver = useRef<number | null>(null);
 
- const setLesson = (i: number, l: Lesson): void => { const ls = [...section.lessons]; ls[i] = l; onChange({ ...section, lessons: ls }); };
- const removeLesson = (i: number): void => onChange({ ...section, lessons: section.lessons.filter((_, idx) => idx !== i) });
- const onDragEnd = (): void => {
+ const setLesson = (i: number, l: Lesson): void =>
+ onChange((prev) => ({ ...prev, lessons: prev.lessons.map((x, idx) => (idx === i ? l : x)) }));
+ const removeLesson = (i: number): void => onChange((prev) => ({ ...prev, lessons: prev.lessons.filter((_, idx) => idx !== i) }));
+ // THE-186: stopPropagation keeps a lesson drag from also running the
+ // ancestor section/level handlers; the updater form makes the commit read the
+ // lessons as they are at flush time, not as they were when this render ran.
+ const onDragEnd = (e: DragEvent<HTMLDivElement>): void => {
+ e.stopPropagation();
  if (dragging.current === null || dragOver.current === null) return;
- const ls = [...section.lessons];
- const [moved] = ls.splice(dragging.current, 1);
- ls.splice(dragOver.current, 0, moved);
- onChange({ ...section, lessons: ls });
+ const from = dragging.current, to = dragOver.current;
  dragging.current = null; dragOver.current = null;
+ onChange((prev) => ({ ...prev, lessons: reordered(prev.lessons, from, to) }));
  };
  // THE-136: the Section Title row. Was a fixed light-grey literal that stayed
  // light while the input's own `color: TEXT` inverted, i.e. cream text on a
@@ -721,8 +766,8 @@ function SectionCard({ section, onChange, onRemove, authorsLibrary = [] }: Secti
  <div style={{ paddingTop: 10, paddingBottom: 12 }} className="px-[12px] sm:pl-[24px]">
  {section.lessons.map((lesson, i) => (
  <div key={lesson.id} draggable
- onDragStart={() => { dragging.current = i; }}
- onDragEnter={() => { dragOver.current = i; }}
+ onDragStart={(e) => { e.stopPropagation(); dragging.current = i; }}
+ onDragEnter={() => { if (dragging.current === null) return; dragOver.current = i; }}
  onDragEnd={onDragEnd}>
  <LessonCard lesson={lesson} onChange={(l) => setLesson(i, l)} onRemove={() => removeLesson(i)} authorsLibrary={authorsLibrary} />
  </div>
@@ -732,7 +777,7 @@ function SectionCard({ section, onChange, onRemove, authorsLibrary = [] }: Secti
  up. `ACTION_BUTTON`'s own `sm:px-8`/`sm:flex-none` are inert here (this button
  already carries its own padding and isn't a flex-row child) but it is still
  the rule this button follows, so it stays in the class list. */}
- <button style={{ ...s.addLessonBtn, width: undefined }} className={`w-full sm:w-auto ${ACTION_BUTTON}`} onClick={() => onChange({ ...section, lessons: [...section.lessons, emptyLesson()] })}>+ Add Lesson</button>
+ <button style={{ ...s.addLessonBtn, width: undefined }} className={`w-full sm:w-auto ${ACTION_BUTTON}`} onClick={() => onChange((prev) => ({ ...prev, lessons: [...prev.lessons, emptyLesson()] }))}>+ Add Lesson</button>
  </div>
  )}
  </div>
@@ -744,7 +789,7 @@ function SectionCard({ section, onChange, onRemove, authorsLibrary = [] }: Secti
 // ═══════════════════════════════════════════════
 interface LevelCardProps {
  level: Level;
- onChange: (level: Level) => void;
+ onChange: (level: Update<Level>) => void;
  onRemove: () => void;
  authorsLibrary?: Author[];
 }
@@ -754,15 +799,18 @@ function LevelCard({ level, onChange, onRemove, authorsLibrary = [] }: LevelCard
  const dragging = useRef<number | null>(null);
  const dragOver = useRef<number | null>(null);
 
- const setSection = (i: number, sec: Section): void => { const ss = [...level.sections]; ss[i] = sec; onChange({ ...level, sections: ss }); };
- const removeSection = (i: number): void => onChange({ ...level, sections: level.sections.filter((_, idx) => idx !== i) });
- const onDragEnd = (): void => {
+ // THE-186: a child's updater is forwarded as an updater — resolving it here
+ // against the captured `level` prop would reintroduce exactly the snapshot
+ // this fix removes.
+ const setSection = (i: number, sec: Update<Section>): void =>
+ onChange((prev) => ({ ...prev, sections: prev.sections.map((s, idx) => (idx === i ? applyUpdate(sec, s) : s)) }));
+ const removeSection = (i: number): void => onChange((prev) => ({ ...prev, sections: prev.sections.filter((_, idx) => idx !== i) }));
+ const onDragEnd = (e: DragEvent<HTMLDivElement>): void => {
+ e.stopPropagation();
  if (dragging.current === null || dragOver.current === null) return;
- const ss = [...level.sections];
- const [moved] = ss.splice(dragging.current, 1);
- ss.splice(dragOver.current, 0, moved);
- onChange({ ...level, sections: ss });
+ const from = dragging.current, to = dragOver.current;
  dragging.current = null; dragOver.current = null;
+ onChange((prev) => ({ ...prev, sections: reordered(prev.sections, from, to) }));
  };
  return (
  <div style={{ ...s.card, marginBottom: 14, border: `2px solid ${BORDER}` }}>
@@ -788,13 +836,13 @@ function LevelCard({ level, onChange, onRemove, authorsLibrary = [] }: LevelCard
  <div style={{ paddingTop: 12, paddingBottom: 14 }} className="px-[14px] sm:pl-[28px]">
  {level.sections.map((sec, i) => (
  <div key={sec.id} draggable
- onDragStart={() => { dragging.current = i; }}
- onDragEnter={() => { dragOver.current = i; }}
+ onDragStart={(e) => { e.stopPropagation(); dragging.current = i; }}
+ onDragEnter={() => { if (dragging.current === null) return; dragOver.current = i; }}
  onDragEnd={onDragEnd}>
  <SectionCard section={sec} onChange={(updated) => setSection(i, updated)} onRemove={() => removeSection(i)} authorsLibrary={authorsLibrary} />
  </div>
  ))}
- <button style={{ ...s.addLessonBtn, borderColor: "var(--border-strong)", color: TEXT2, width: undefined }} className={`w-full sm:w-auto ${ACTION_BUTTON}`} onClick={() => onChange({ ...level, sections: [...level.sections, emptySection()] })}>+ Add Section</button>
+ <button style={{ ...s.addLessonBtn, borderColor: "var(--border-strong)", color: TEXT2, width: undefined }} className={`w-full sm:w-auto ${ACTION_BUTTON}`} onClick={() => onChange((prev) => ({ ...prev, sections: [...prev.sections, emptySection()] }))}>+ Add Section</button>
  </div>
  )}
  </div>
@@ -1072,17 +1120,23 @@ export default function CourseBuilder({ course: initialCourse, onClose, library 
  }
  };
 
- const addLevel = (): void => set("levels", [...course.levels, emptyLevel()]);
- const updateLevel = (i: number, lv: Level): void => { const ls = [...course.levels]; ls[i] = lv; set("levels", ls); };
- const removeLevel = (i: number): void => set("levels", course.levels.filter((_, idx) => idx !== i));
+ // THE-186: every levels write goes through the live array. `set("levels", v)`
+ // is functional in shape but `v` was already built from the `course` this
+ // render captured, so two writes landing in one batch dropped the first.
+ const setLevels = (next: (prev: Level[]) => Level[]): void =>
+ setCourse((c) => ({ ...c, levels: next(c.levels) }));
 
- const onLevelDragEnd = (): void => {
+ const addLevel = (): void => setLevels((prev) => [...prev, emptyLevel()]);
+ const updateLevel = (i: number, lv: Update<Level>): void =>
+ setLevels((prev) => prev.map((l, idx) => (idx === i ? applyUpdate(lv, l) : l)));
+ const removeLevel = (i: number): void => setLevels((prev) => prev.filter((_, idx) => idx !== i));
+
+ const onLevelDragEnd = (e: DragEvent<HTMLDivElement>): void => {
+ e.stopPropagation();
  if (dragLevel.current === null || dragOverLevel.current === null) return;
- const ls = [...course.levels];
- const [moved] = ls.splice(dragLevel.current, 1);
- ls.splice(dragOverLevel.current, 0, moved);
- set("levels", ls);
+ const from = dragLevel.current, to = dragOverLevel.current;
  dragLevel.current = null; dragOverLevel.current = null;
+ setLevels((prev) => reordered(prev, from, to));
  };
 
  const handleSave = async (status: CourseStatus): Promise<void> => {
@@ -1362,8 +1416,8 @@ export default function CourseBuilder({ course: initialCourse, onClose, library 
  )}
  {course.levels.map((level, i) => (
  <div key={level.id} draggable
- onDragStart={() => { dragLevel.current = i; }}
- onDragEnter={() => { dragOverLevel.current = i; }}
+ onDragStart={(e) => { e.stopPropagation(); dragLevel.current = i; }}
+ onDragEnter={() => { if (dragLevel.current === null) return; dragOverLevel.current = i; }}
  onDragEnd={onLevelDragEnd}>
  <LevelCard level={level} onChange={(lv) => updateLevel(i, lv)} onRemove={() => removeLevel(i)} authorsLibrary={selectedAuthors} />
  </div>
