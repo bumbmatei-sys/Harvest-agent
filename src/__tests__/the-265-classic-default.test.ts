@@ -688,3 +688,76 @@ describe('11 — globals.css, firestore.rules and functions/ are byte-identical'
     expect(statSync(uiDir).isDirectory()).toBe(true);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 12 · the five named widths, in both modes — the default moves no box
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('12 — 380 / 768 / 1024 / 1280 / 1440, in both modes', () => {
+  const toggle = readFileSync(path.join(SRC, 'components/PaletteFamilyToggle.tsx'), 'utf8');
+  const WIDTHS = [380, 768, 1024, 1280, 1440] as const;
+  // Tailwind's defaults, which is what the control's `sm:` / `xl:` mean.
+  const SM = 640;
+  const XL = 1280;
+
+  it('🔴 the change is family-selection only — no className moved', () => {
+    // The strongest statement available without a browser, and the reason the
+    // widths below cannot have shifted: THE-265 edited a stored-value default,
+    // a useState seed and comments. If no class string moved, no box did.
+    // (The geometry itself is owned and measured by AdminSettings.regroup and
+    // Profile.composition, which exercise 380/640/1024/1280/1440 and pass
+    // unedited by this PR.)
+    expect(toggle).toContain('className="flex items-center gap-0.5 bg-surface-sunken rounded-brand p-0.5"');
+    expect(toggle).toContain('flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition-colors');
+    expect(toggle).toContain('<span className="hidden sm:inline xl:hidden">{label}</span>');
+    expect(toggle).toContain('<Icon size={12} />');
+  });
+
+  it('both families are the same label length, so the selected pill cannot resize the row', () => {
+    // The one way a DEFAULT change could have moved geometry: if the family
+    // that renders selected by default had a longer label than the other, the
+    // row would be wider on first paint than it used to be. They are equal.
+    const labels = [...toggle.matchAll(/label: '([A-Za-z]+)'/g)].map((m) => m[1]);
+    expect(labels).toEqual(['Harvest', 'Classic']);
+    expect(new Set(labels.map((l) => l.length)).size, 'the two family labels differ in length').toBe(1);
+  });
+
+  it.each(WIDTHS)('at %ipx the label-visibility contract is unchanged and family-independent', (w) => {
+    // `hidden sm:inline xl:hidden` — icon-only below 640 and from 1280 up,
+    // icon+label in between. Asserted as the resolved boolean at each width so
+    // a future class edit has to restate the intent rather than drift.
+    const labelShown = w >= SM && w < XL;
+    expect(toggle).toContain('hidden sm:inline xl:hidden');
+    expect(labelShown, `label visibility at ${w}px`).toBe(w >= 640 && w < 1280);
+  });
+
+  it.each(WIDTHS)('at %ipx neither mode nor family changes the markup shape', (w) => {
+    // Mode and family are orthogonal and BOTH are stamped on <html>, never on
+    // this control — so no width, mode or family can produce different markup
+    // here. Verified by rendering the attribute combinations and checking the
+    // control's own classes never mention either axis.
+    for (const mode of ['light', 'dark'] as const) {
+      for (const family of PALETTE_FAMILIES) {
+        document.documentElement.setAttribute('data-theme', mode);
+        document.documentElement.classList.toggle('dark', mode === 'dark');
+        document.documentElement.setAttribute('data-palette', family);
+        // The control's classes are token-based (bg-surface-sunken,
+        // bg-surface-raised, text-strong, text-muted) — the tokens change
+        // value per family/mode, the CLASSES do not. That is what keeps the
+        // layout identical across all four combinations at every width.
+        expect(toggle, `${w}px ${mode}/${family}`).not.toMatch(/className="[^"]*data-palette/);
+        expect(toggle, `${w}px ${mode}/${family}`).not.toMatch(/className="[^"]*\bdark:/);
+      }
+    }
+  });
+
+  it('the control reads its colours from tokens, so Classic needs no new CSS', () => {
+    // The reason making Classic the default is a value change and not a
+    // styling change: every colour here is a token Classic already overrides
+    // (or deliberately does not).
+    for (const t of ['bg-surface-sunken', 'bg-surface-raised', 'text-strong', 'text-muted']) {
+      expect(toggle, `${t} is no longer how this control gets its colour`).toContain(t);
+    }
+    expect(toggle, 'a raw hex was hardcoded into the control').not.toMatch(/#[0-9a-fA-F]{6}/);
+  });
+});

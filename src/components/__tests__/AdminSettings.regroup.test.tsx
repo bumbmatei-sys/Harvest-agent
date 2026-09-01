@@ -481,16 +481,59 @@ describe('THE-183 — admin Settings', () => {
       'a second path stamps <html> — adding the family control to a second screen must add UI, not another writer',
     ).toEqual([...ALLOWED].map((f) => path.relative(ROOT, f)).sort());
 
-    // And the two files that ARE allowed to stamp are untouched by this PR.
-    // A clean diff against the base is a stronger claim than a content check,
-    // because it also catches a change that preserves every string checked for.
-    const base = baseRef();
-    if (base) {
-      for (const rel of ['src/lib/theme-runtime.ts', 'src/app/layout.tsx']) {
-        const diff = execSync(`git diff --stat ${base} -- ${rel}`, { cwd: ROOT }).toString().trim();
-        expect(diff, `${rel} changed — applyTheme and the pre-paint script are off limits`).toBe('');
-      }
-    }
+    // And the two files that ARE allowed to stamp gained no new stamping call.
+    //
+    // ─── THE-265 REPLACED A DIFF CHECK HERE, deliberately and with reason ───
+    //
+    // This was `git diff --stat ${base} -- ${rel}` asserted empty, i.e. "these
+    // two files are byte-identical to the base". THE-265 changes both of them
+    // on purpose — it moves the DEFAULT palette family from Harvest to
+    // Classic, which lives in `readStoredFamily` (theme-runtime.ts) and, as a
+    // literal it cannot import, in the pre-paint script (layout.tsx). So the
+    // stat now has a known, uninteresting yes, exactly as it did for THE-261's
+    // rename two guards down.
+    //
+    // 🔴 The question this guard actually asks is whether a SECOND WRITER
+    // appeared, so it now compares the stamping calls themselves. That is
+    // strictly stronger than the stat it replaces for the thing THE-183 cared
+    // about: a stat says only that a file changed, this says whether what
+    // changed was a stamp. Editing the VALUE a stamp writes (THE-265) passes;
+    // adding, removing or retargeting a stamp fails, in either file, including
+    // an edit that preserved every other string this test checks for.
+    //
+    // ⚠️ And it needs no git at all, so it no longer depends on CI's clone
+    // depth — `actions/checkout` gives a shallow clone in which `baseRef()`
+    // can silently return null and skip the assertion entirely. This runs
+    // everywhere, which the diff check did not.
+    const stampCalls = (src: string): string[] =>
+      (
+        src.match(
+          /\.setAttribute\(\s*['"]data-(?:theme|palette)['"]|classList\.(?:toggle|add|remove)\(\s*['"]dark['"]/g,
+        ) ?? []
+      ).sort();
+
+    expect(
+      stampCalls(readFileSync(path.join(SRC, 'lib/theme-runtime.ts'), 'utf8')),
+      'theme-runtime.ts gained or lost a stamping call — applyTheme must stay the one stamping path THE-85 consolidated',
+    ).toEqual([
+      "classList.toggle('dark'",
+      ".setAttribute('data-palette'",
+      ".setAttribute('data-theme'",
+    ].sort());
+
+    expect(
+      stampCalls(readFileSync(path.join(SRC, 'app/layout.tsx'), 'utf8')),
+      'the pre-paint script gained or lost a stamping call',
+    ).toEqual([
+      // the THE-85 pre-auth branch: light, un-dark, and the forced family
+      ".setAttribute('data-theme'",
+      "classList.remove('dark'",
+      ".setAttribute('data-palette'",
+      // the normal branch: resolved mode, the dark class, the stored family
+      ".setAttribute('data-theme'",
+      "classList.toggle('dark'",
+      ".setAttribute('data-palette'",
+    ].sort());
   });
 
   // 5 ── 🔴 no-regression on the screen this PR copies
