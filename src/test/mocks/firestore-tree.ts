@@ -155,10 +155,37 @@ function readField(data: Data, field: string): unknown {
   );
 }
 
+/**
+ * The inequality operators. Added for THE-109, whose rate-limit read is a RANGE
+ * on one field — the shape that bounds a query without needing a composite
+ * index. Nothing else in the suite uses them, so this is purely additive.
+ */
+const RANGE_OPS = new Set(['>', '>=', '<', '<=']);
+
+/** Order two scalars the way Firestore orders an index: strings lexically, numbers numerically. */
+function compare(a: unknown, b: unknown): number {
+  if (typeof a === 'number' && typeof b === 'number') return a - b;
+  const [x, y] = [String(a), String(b)];
+  return x < y ? -1 : x > y ? 1 : 0;
+}
+
 function matches(data: Data, filters: Filter[]): boolean {
   return filters.every((f) => {
     const actual = readField(data, f.field);
     if (f.op === 'array-contains') return Array.isArray(actual) && actual.includes(f.value);
+    if (RANGE_OPS.has(f.op)) {
+      // A range filter is an index scan, and a document that does not carry the
+      // field has no entry in that index — so Firestore never returns it. That
+      // is load-bearing for THE-109: platform_inbox rows written by
+      // ContactModal carry no rate-limit key and must not match the contact
+      // route's window, and a fake that matched them would hide a real breach.
+      if (actual === undefined || actual === null) return false;
+      const c = compare(actual, f.value);
+      if (f.op === '>') return c > 0;
+      if (f.op === '>=') return c >= 0;
+      if (f.op === '<') return c < 0;
+      return c <= 0;
+    }
     return actual === f.value;
   });
 }
@@ -203,6 +230,13 @@ function makeQuery(path: string | null, group: string | null, filters: Filter[],
     }),
     async get() {
       let rows = candidates(path, group).filter(([, , d]) => matches(d, filters));
+      // Firestore orders a range query by its inequality field before applying
+      // any limit. Modelled so a bounded range read returns the documents it
+      // really would, rather than whichever the store happened to hold first.
+      const rangeField = filters.find((f) => RANGE_OPS.has(f.op))?.field;
+      if (rangeField) {
+        rows = [...rows].sort((a, b) => compare(readField(a[2], rangeField), readField(b[2], rangeField)));
+      }
       if (after !== null) {
         const idx = rows.findIndex(([, id]) => id === after);
         rows = idx >= 0 ? rows.slice(idx + 1) : rows;

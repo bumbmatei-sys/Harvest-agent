@@ -19,26 +19,88 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-// IP-based rate limit: max 3 submissions per hour. Single-field Firestore query
-// (ip only) + in-memory time window, so no composite index is required — the same
-// property /api/enterprise-lead relies on. Only documents written by THIS route
-// carry a top-level `ip` field, so authenticated ContactModal submissions living
-// in the same platform_inbox collection never match the filter.
+// IP-based rate limit: max 3 submissions per hour.
+//
+// THE-109 — THE READ IS BOUNDED AT `RATE_LIMIT_MAX` DOCUMENTS, FOREVER.
+//
+// This was `.where('ip', '==', ip).get()` with the time window applied in memory:
+// every document that IP had EVER submitted was read on every request, to answer
+// a question about the last hour. The `'unknown'` bucket — shared by every
+// visitor arriving without `x-forwarded-for` — is the one key guaranteed to grow
+// without bound, and it was re-read in full on each new one.
+//
+// The window now lives IN the query, and still needs no composite index, because
+// one field carries both halves: `rateLimitKey` = `${ip}|${createdAt}`. An
+// equality on `ip` plus an inequality on `createdAt` would be two fields and so a
+// composite index; a range on a SINGLE field is served by the automatic
+// single-field index Firestore maintains for every field at no cost.
+//
+// That distinction is load-bearing here, not tidiness. `.github/workflows/
+// deploy-rules.yml` deploys `firestore:rules` and storage only — an entry added
+// to `firestore.indexes.json` does NOT ship on merge. A query needing one would
+// reject in production until somebody ran a manual deploy, and the catch below
+// fails open, so it would reject QUIETLY: an endpoint advertising a rate limit
+// and enforcing nothing.
+//
+// `.limit(RATE_LIMIT_MAX)` is the bound, and it is exact rather than a
+// heuristic. The only question asked is whether at least RATE_LIMIT_MAX keys
+// fall inside the window, so a RATE_LIMIT_MAX+1-th document could not change the
+// answer. Which documents come back does not matter either — which is why no
+// `orderBy` is needed, and why a naive `.limit()` on the old `ip` equality would
+// NOT have worked: with no ordering Firestore returns documents by `__name__`,
+// those ids are random, and four arbitrary submissions out of a lifetime say
+// nothing about the last hour.
+//
+// Only documents written by THIS route carry a top-level `ip` — or a
+// `rateLimitKey` — so authenticated ContactModal submissions living in the same
+// platform_inbox collection never match. The range makes that property stronger
+// than the old equality did: a document without the field has no entry in the
+// index the scan walks, so it cannot match at all.
 const RATE_LIMIT_MAX = 3;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+// Separates the two halves of the key. '|' (0x7C) sorts above every character an
+// address can contain — digits, '.', ':', lowercase hex, and the 'unknown'
+// fallback — so one address's range can never reach into another's: `1.2.3.4|…`
+// sorts below `1.2.3|…` because '.' < '|'.
+const KEY_SEP = '|';
+// Sorts above every character `toISOString()` emits (digits, '-', 'T', ':', '.',
+// and 'Z' at 0x5A), so `${ip}|~` is an exclusive upper bound on every key
+// belonging to this address and to no other.
+const KEY_MAX = '~';
+
+/**
+ * The rate-limit key stored alongside — never instead of — `ip` and `createdAt`.
+ * Both halves stay readable, so the field is still greppable by address.
+ */
+function rateLimitKey(ip: string, createdAt: string): string {
+  return `${ip}${KEY_SEP}${createdAt}`;
+}
 
 async function checkRateLimit(ip: string): Promise<boolean> {
   try {
     const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString();
     const snap = await adminDb
       .collection('platform_inbox')
-      .where('ip', '==', ip)
+      // createdAt is a fixed-width ISO-8601 UTC string, so inside one address's
+      // prefix lexical order IS chronological — the same property the in-memory
+      // comparison this replaces relied on, moved into the index. '>' keeps the
+      // exact window boundary that comparison had.
+      .where('rateLimitKey', '>', rateLimitKey(ip, windowStart))
+      .where('rateLimitKey', '<', `${ip}${KEY_SEP}${KEY_MAX}`)
+      .limit(RATE_LIMIT_MAX)
       .get();
-    // createdAt is an ISO-8601 UTC string, so lexical > compares chronologically.
-    const recent = snap.docs.filter((d) => String(d.data().createdAt || '') > windowStart);
-    return recent.length < RATE_LIMIT_MAX;
-  } catch {
-    return true; // fail open — don't block legitimate submissions on a query error
+    return snap.size < RATE_LIMIT_MAX;
+  } catch (error) {
+    // Fail open — a query error must not block a legitimate submission. But say
+    // so: an unreported fail-open is a limiter that has silently stopped
+    // limiting, and silence is exactly how the unbounded read this replaces
+    // would have surfaced when it finally got slow or expensive. It didn't.
+    // 'warning' because the enquiry itself is unaffected and a single blip needs
+    // nobody; a persistent fault (a rejected query, a missing index) fails every
+    // request, so volume makes it loud on its own.
+    captureHandledError(error, { step: 'contact-rate-limit', level: 'warning' });
+    return true;
   }
 }
 
@@ -104,12 +166,17 @@ export async function POST(request: NextRequest) {
     //    mirrors ContactModal.tsx's `type: 'contact'` write exactly, so
     //    PlatformInbox.tsx renders it and notifyPlatformInbox formats the email.
     //    This is an anonymous public visitor → userId / userEmail / fromTenantId
-    //    are all null. `ip` is an extra top-level field used only for rate
-    //    limiting; both PlatformInbox.tsx and notifyPlatformInbox ignore it.
+    //    are all null. `ip` and `rateLimitKey` are extra top-level fields used
+    //    only for rate limiting; both consumers read
+    //    type/status/createdAt/userEmail/fromTenantId/data.* and ignore the pair.
+    //
+    //    `createdAt` is computed once and used for both the field and the key, so
+    //    the value the window is measured against is the value the inbox shows.
+    const createdAt = new Date().toISOString();
     await adminDb.collection('platform_inbox').add({
       type: 'contact',
       status: 'pending',
-      createdAt: new Date().toISOString(),
+      createdAt,
       userId: null,
       userEmail: null,
       data: {
@@ -120,6 +187,7 @@ export async function POST(request: NextRequest) {
       },
       fromTenantId: null,
       ip,
+      rateLimitKey: rateLimitKey(ip, createdAt),
     });
 
     // 7. No email code here: the notifyPlatformInbox Cloud Function fires on every
