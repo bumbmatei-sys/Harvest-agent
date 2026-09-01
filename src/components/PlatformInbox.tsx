@@ -199,7 +199,7 @@ const PlatformInbox = () => {
  const isPending = r.status === 'pending';
 
  return (
- <div key={r.id} className={`bg-surface-raised rounded-2xl shadow-sm border ${isPending ? 'border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] ' : 'border-line '} overflow-hidden transition-all duration-300`}>
+ <div key={r.id} className={`bg-surface-raised rounded-2xl shadow-xs border ${isPending ? 'border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] ' : 'border-line '} overflow-hidden transition-all duration-300`}>
  <div
  onClick={() => toggleExpand(r.id)}
  className="p-4 flex items-start gap-4 cursor-pointer hover:bg-surface-sunken transition-colors"

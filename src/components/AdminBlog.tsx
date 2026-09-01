@@ -260,7 +260,7 @@ const AdminBlog: React.FC = () => {
  <select
  value={selectedCategory}
  onChange={(e) => setSelectedCategory(e.target.value)}
- className="w-full pl-4 pr-10 py-3 bg-surface-raised border border-line rounded-brand-lg text-sm text-strong appearance-none outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent transition-all"
+ className="w-full pl-4 pr-10 py-3 bg-surface-raised border border-line rounded-brand-lg text-sm text-strong appearance-none outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent transition-all"
  >
  {filterCategories.map(category => (
  <option key={category} value={category}>{category === 'All' ? 'All categories' : category}</option>
@@ -376,7 +376,7 @@ const AdminBlog: React.FC = () => {
 
  {/* Delete Confirmation Modal */}
  {deleteConfirmId && (
- <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+ <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
  <div className="bg-surface-raised rounded-2xl shadow-xl max-w-sm w-full p-6 border border-line ">
  <h3 className="text-xl font-bold text-strong mb-2 font-display">Delete Post</h3>
  <p className="text-muted mb-6">
@@ -513,7 +513,7 @@ const AdminBlog: React.FC = () => {
  <select
  value={automation.hour}
  onChange={e => setAutomation(a => ({ ...a, hour: Number(e.target.value) }))}
- className="w-full pl-4 pr-10 py-2.5 bg-surface-raised border border-line rounded-xl text-sm text-strong appearance-none outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent transition-all"
+ className="w-full pl-4 pr-10 py-2.5 bg-surface-raised border border-line rounded-xl text-sm text-strong appearance-none outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent transition-all"
  >
  {Array.from({ length: 24 }, (_, h) => (
  <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
@@ -535,7 +535,7 @@ const AdminBlog: React.FC = () => {
  value={automation.topicHint}
  onChange={e => setAutomation(a => ({ ...a, topicHint: e.target.value }))}
  placeholder="e.g. discipleship, faith, church growth"
- className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
+ className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-gold"
  />
  <p className="text-xs text-faint mt-1">
  Guides the AI when choosing what to write about from your Knowledge Base.

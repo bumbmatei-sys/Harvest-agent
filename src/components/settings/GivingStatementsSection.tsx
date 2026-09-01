@@ -87,7 +87,7 @@ export const GivingStatementsSection: React.FC = () => {
             value={ein}
             onChange={(e) => setEin(e.target.value)}
             placeholder="e.g. 12-3456789"
-            className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
+            className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-gold focus:border-transparent"
           />
         </div>
         <div>
@@ -97,7 +97,7 @@ export const GivingStatementsSection: React.FC = () => {
             onChange={(e) => setAddress(e.target.value)}
             placeholder="123 Faith St&#10;City, State ZIP"
             rows={3}
-            className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
+            className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-gold focus:border-transparent"
           />
         </div>
         <div>
@@ -106,7 +106,7 @@ export const GivingStatementsSection: React.FC = () => {
             value={footer}
             onChange={(e) => setFooter(e.target.value)}
             rows={2}
-            className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
+            className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-gold focus:border-transparent"
           />
           <p className="text-xs text-faint mt-1">Required IRS disclosure text. A sensible default is provided.</p>
         </div>

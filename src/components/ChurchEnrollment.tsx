@@ -249,7 +249,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
               options={{
                 types: ['establishment'],
               }}
-              className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`}
+              className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-hidden transition-colors ${CONTROL_DENSITY.control}`}
               placeholder="Start typing to auto-fill..."
             />
           </div>
@@ -263,7 +263,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  name="churchName"
  value={formData.churchName}
  onChange={handleChange}
- className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-hidden transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="e.g. Grace Community Church" 
  />
  </div>
@@ -274,7 +274,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  name="denomination"
  value={formData.denomination}
  onChange={handleChange}
- className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-hidden transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="e.g. Non-denominational" 
  />
  </div>
@@ -305,7 +305,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  name="street"
  value={formData.street}
  onChange={handleChange}
- className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-hidden transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="Street Name" 
  />
  </div>
@@ -317,7 +317,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  name="number"
  value={formData.number}
  onChange={handleChange}
- className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-hidden transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="Building/Apt" 
  />
  </div>
@@ -332,7 +332,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  name="city"
  value={formData.city}
  onChange={handleChange}
- className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-hidden transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="City" 
  />
  </div>
@@ -344,7 +344,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  name="state"
  value={formData.state}
  onChange={handleChange}
- className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-hidden transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="State or Province" 
  />
  </div>
@@ -356,7 +356,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  name="zipcode"
  value={formData.zipcode}
  onChange={handleChange}
- className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-hidden transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="Postal Code" 
  />
  </div>
@@ -368,7 +368,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  name="country"
  value={formData.country}
  onChange={handleChange}
- className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-hidden transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="Country" 
  />
  </div>
@@ -382,7 +382,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  name="lat"
  value={formData.lat}
  onChange={handleChange}
- className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-hidden transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="e.g. 40.7128" 
  />
  </div>
@@ -393,7 +393,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  name="lng"
  value={formData.lng}
  onChange={handleChange}
- className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-hidden transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="e.g. -74.0060" 
  />
  </div>
@@ -416,7 +416,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  <select 
  value={service.day}
  onChange={(e) => handleServiceChange(index, 'day', e.target.value)}
- className={`w-full px-3 py-2 rounded-lg border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`}
+ className={`w-full px-3 py-2 rounded-lg border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-hidden transition-colors ${CONTROL_DENSITY.control}`}
  >
  <option value="Sunday">Sunday</option>
  <option value="Monday">Monday</option>
@@ -433,7 +433,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  type="text" 
  value={service.time}
  onChange={(e) => handleServiceChange(index, 'time', e.target.value)}
- className={`w-full px-3 py-2 rounded-lg border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
+ className={`w-full px-3 py-2 rounded-lg border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-hidden transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="e.g. 10:00 AM" 
  />
  </div>
@@ -444,7 +444,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  type="text" 
  value={service.name}
  onChange={(e) => handleServiceChange(index, 'name', e.target.value)}
- className={`w-full px-3 py-2 rounded-lg border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
+ className={`w-full px-3 py-2 rounded-lg border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-hidden transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="e.g. Main Service, Youth Group" 
  />
  {formData.services.length > 1 && (
@@ -485,7 +485,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  name="contactName"
  value={formData.contactName}
  onChange={handleChange}
- className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-hidden transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="Lead Pastor or Administrator" 
  />
  </div>
@@ -498,7 +498,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  name="contactEmail"
  value={formData.contactEmail}
  onChange={handleChange}
- className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-hidden transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="contact@church.org" 
  />
  </div>
@@ -510,7 +510,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  name="contactPhone"
  value={formData.contactPhone}
  onChange={handleChange}
- className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-hidden transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="+1 (555) 000-0000" 
  />
  </div>
@@ -535,7 +535,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  name="website"
  value={formData.website}
  onChange={handleChange}
- className={`w-full pl-12 pr-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
+ className={`w-full pl-12 pr-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-hidden transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="https://www.yourchurch.com" 
  />
  </div>
@@ -549,7 +549,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  name="facebook"
  value={formData.facebook}
  onChange={handleChange}
- className={`w-full pl-12 pr-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
+ className={`w-full pl-12 pr-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-hidden transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="facebook.com/page" 
  />
  </div>
@@ -563,7 +563,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  name="instagram"
  value={formData.instagram}
  onChange={handleChange}
- className={`w-full pl-12 pr-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
+ className={`w-full pl-12 pr-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-hidden transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="username" 
  />
  </div>

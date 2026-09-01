@@ -60,7 +60,7 @@ const PrivacyTermsModal: React.FC<PrivacyTermsModalProps> = ({ isOpen, onClose, 
             always the version in force. Each link opens in your browser.
           </p>
 
-          <div className="bg-surface-raised rounded-3xl shadow-sm border border-line overflow-hidden">
+          <div className="bg-surface-raised rounded-3xl shadow-xs border border-line overflow-hidden">
             {links.map((link, i) => {
               const Icon = ICONS[link.key];
               return (

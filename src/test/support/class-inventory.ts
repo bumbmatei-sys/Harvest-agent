@@ -222,3 +222,61 @@ export function heightPx(token: string, remPx: number = REM_PX_MOBILE): number |
 export function heightTokens(el: Element): string[] {
   return (el.getAttribute('class') ?? '').split(/\s+/).filter((t) => /(?:^|:)h-/.test(t));
 }
+
+/* ── The Tailwind v4 spelling renames (THE-261) ──────────────────────────── */
+
+/**
+ * The three utilities whose v3 spelling means something else in v4, and the v4
+ * spelling that renders what the v3 one rendered.
+ *
+ *   shadow-sm        v3: 0 1px 2px 0 rgb(0 0 0/.05)   v4: v3's bare `shadow`
+ *   outline-none     v3: a transparent 2px outline    v4: outline-style: none
+ *   backdrop-blur-sm v3: blur(4px)                    v4: blur(8px)
+ *
+ * The v4 migration renamed 361 occurrences across 82 files so the app keeps
+ * painting what it painted. That is a spelling change and not a rendering
+ * change — which is exactly the distinction the "nothing moved" guards in this
+ * repo exist to make, and exactly the one they cannot make on their own: they
+ * compare a token string against a recorded one, and `shadow-sm` is not
+ * `shadow-xs`.
+ *
+ * So the guards that hold a pre-migration "before" put it through this map
+ * first. The comparison keeps its full strength — every other token still has
+ * to match exactly, and a later move from `shadow-xs` to v4's own `shadow-sm`
+ * (a genuinely larger shadow) still fails, because the map runs FORWARD onto
+ * the historical text and never collapses the two spellings together.
+ *
+ * Recorded fixtures took the same rename in the same commit rather than going
+ * through here, so their diffs name the tokens that moved, line by line.
+ */
+export const V4_SPELLING_RENAMES: ReadonlyArray<readonly [v3: string, v4: string]> = [
+  ['shadow-sm', 'shadow-xs'],
+  ['outline-none', 'outline-hidden'],
+  ['backdrop-blur-sm', 'backdrop-blur-xs'],
+] as const;
+
+/**
+ * `text` with every v3 utility spelling rewritten to its v4 equivalent.
+ *
+ * Matches a whole class token only: `drop-shadow-sm` and `shadow-smoke` are
+ * left alone, and a token that begins right after a JSON-escaped `\t` is not
+ * missed for the `t` in front of it.
+ */
+export function toV4Spelling(text: string): string {
+  let out = text;
+  for (const [v3, v4] of V4_SPELLING_RENAMES) {
+    const parts: string[] = [];
+    let pos = 0;
+    for (const m of out.matchAll(new RegExp(`${v3}(?![\\w-])`, 'g'))) {
+      const before = out.slice(0, m.index);
+      const isTokenStart =
+        before === '' || before.endsWith('\\t') || before.endsWith('\\n') || !/[\w-]$/.test(before);
+      if (!isTokenStart) continue;
+      parts.push(out.slice(pos, m.index), v4);
+      pos = m.index + v3.length;
+    }
+    parts.push(out.slice(pos));
+    out = parts.join('');
+  }
+  return out;
+}

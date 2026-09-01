@@ -231,7 +231,7 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
             <div className="relative h-52 bg-surface-sunken flex-shrink-0 lg:max-w-2xl lg:mx-auto w-full">
               <Image src={campaign.coverImage} alt={campaign.title} fill sizes="100vw" className="object-cover" referrerPolicy="no-referrer" />
               {daysLeft !== null && (
-                <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 text-white text-xs font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm">
+                <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 text-white text-xs font-semibold px-2.5 py-1 rounded-full backdrop-blur-xs">
                   <Clock size={12} />
                   {daysLeft === 0 ? 'Last day!' : `${daysLeft} days left`}
                 </div>
@@ -278,7 +278,7 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
                 value={customAmount}
                 onChange={e => { setCustomAmount(e.target.value); setSelectedAmount(null); }}
                 placeholder="Custom amount ($)"
-                className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
+                className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-gold"
               />
             </div>
 
@@ -289,14 +289,14 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
                 value={donorName}
                 onChange={e => setDonorName(e.target.value)}
                 placeholder="Your name"
-                className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
+                className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-gold"
               />
               <input
                 type="email"
                 value={donorEmail}
                 onChange={e => setDonorEmail(e.target.value)}
                 placeholder="Your email *"
-                className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
+                className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-gold"
               />
             </div>
 

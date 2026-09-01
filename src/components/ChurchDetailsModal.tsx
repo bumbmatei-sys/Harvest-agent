@@ -112,7 +112,7 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
  };
 
  return (
- <div className={`fixed inset-0 z-[9999] ${fullPage ? 'bg-surface ' : 'flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity'}`}>
+ <div className={`fixed inset-0 z-[9999] ${fullPage ? 'bg-surface ' : 'flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs transition-opacity'}`}>
  <div 
  className={fullPage ? 'w-full h-full overflow-y-auto flex flex-col relative animate-fade-in' : 'bg-surface w-full sm:w-[500px] h-[90vh] sm:h-auto sm:max-h-[90vh] rounded-t-3xl sm:rounded-3xl overflow-y-auto flex flex-col relative animate-slide-up sm:animate-fade-in'}
  >
@@ -157,7 +157,7 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
 
  <div className="px-4 -mt-8 relative z-10 space-y-4">
        {/* Service Details Card */}
-       <div className="bg-surface-raised rounded-3xl p-6 shadow-sm border border-line ">
+       <div className="bg-surface-raised rounded-3xl p-6 shadow-xs border border-line ">
          <h3 className="text-sm font-bold text-strong uppercase tracking-wider mb-6">Service Details</h3>
                 
          <div className="space-y-6">
@@ -184,7 +184,7 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
        </div>
 
        {/* Connect Card */}
-       <div className="bg-surface-raised rounded-3xl p-6 shadow-sm border border-line ">
+       <div className="bg-surface-raised rounded-3xl p-6 shadow-xs border border-line ">
          <h3 className="text-sm font-bold text-strong uppercase tracking-wider mb-6">Connect</h3>
                 
          <div className="space-y-4">
@@ -225,7 +225,7 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
        </div>
 
        {/* Action Buttons Card */}
-       <div className="bg-surface-raised rounded-3xl p-4 shadow-sm border border-line flex items-center justify-between">
+       <div className="bg-surface-raised rounded-3xl p-4 shadow-xs border border-line flex items-center justify-between">
          <div className="flex items-center gap-4">
            {church.facebook && (
              <a 
@@ -261,7 +261,7 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
 
          <button 
            onClick={openDirections}
-           className="px-6 h-12 rounded-full bg-[#1e3a8a] flex items-center justify-center text-white font-bold hover:bg-[#172554] transition-colors shadow-sm"
+           className="px-6 h-12 rounded-full bg-[#1e3a8a] flex items-center justify-center text-white font-bold hover:bg-[#172554] transition-colors shadow-xs"
            title="Directions"
          >
            Directions

@@ -59,7 +59,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({ tenantId, tenantName, l
         </div>
 
         {events.length === 0 ? (
-          <div className="bg-surface-raised rounded-[14px] shadow-sm border border-line-subtle p-12 text-center">
+          <div className="bg-surface-raised rounded-[14px] shadow-xs border border-line-subtle p-12 text-center">
             <CalendarOff size={40} className="mx-auto mb-3 text-line-strong" />
             <p className="text-muted font-medium">No upcoming events.</p>
             <p className="text-sm text-faint mt-1">Check back soon.</p>
@@ -69,7 +69,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({ tenantId, tenantName, l
             {events.map((ev) => {
               const when = fmtDateTime(ev.startDate);
               return (
-                <div key={ev.id} className="bg-surface-raised rounded-[14px] shadow-sm border border-line-subtle overflow-hidden">
+                <div key={ev.id} className="bg-surface-raised rounded-[14px] shadow-xs border border-line-subtle overflow-hidden">
                   {ev.coverImage && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={ev.coverImage} alt={ev.title} className="w-full h-40 object-cover" />

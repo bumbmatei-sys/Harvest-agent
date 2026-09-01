@@ -16,7 +16,7 @@ const LiveNowBanner: React.FC<LiveNowBannerProps> = ({ tenantId, onOpen }) => {
   return (
     <button
       onClick={onOpen}
-      className="w-full flex items-center gap-3 rounded-2xl px-4 py-3 mb-4 text-left text-white shadow-sm"
+      className="w-full flex items-center gap-3 rounded-2xl px-4 py-3 mb-4 text-left text-white shadow-xs"
       style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}
     >
       <span className="relative flex h-3 w-3 shrink-0">

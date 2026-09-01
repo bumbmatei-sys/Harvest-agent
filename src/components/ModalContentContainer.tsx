@@ -37,7 +37,7 @@ const ModalContentContainer = ({ children }: { children: React.ReactNode }) => (
   >
     <div
       data-modal-container="surface"
-      className="sm:rounded-brand-xl sm:border sm:border-line sm:bg-surface-raised sm:p-6 sm:shadow-sm"
+      className="sm:rounded-brand-xl sm:border sm:border-line sm:bg-surface-raised sm:p-6 sm:shadow-xs"
     >
       {children}
     </div>

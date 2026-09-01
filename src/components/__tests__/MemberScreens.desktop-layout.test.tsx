@@ -143,7 +143,7 @@ globalThis.fetch = (async (url: any) => {
 const {
   mobileLayer, colourTokens, allTokens, maxWidthTokens, maxWidthPx,
   isResponsive, breakpointOf, heightTokens, heightPx, arbitraryPx,
-  REM_PX_MOBILE, REM_PX_DESKTOP,
+  REM_PX_MOBILE, REM_PX_DESKTOP, toV4Spelling,
 } = await import('../../test/support/class-inventory');
 const {
   FORM_CONTAINER, FORM_MEASURE, CONTAINERS, READING_MEASURE, READING_MEASURE_PX,
@@ -461,9 +461,17 @@ describe('each surface is constrained at desktop widths', () => {
     expect(at('UserMessages.tsx'), 'it really had none before').not.toMatch(/lg:max-w-/);
   });
 
+  /**
+   * ⚠️ The `at()` side of every byte-identity assertion in this file goes
+   * through toV4Spelling first. THE-261 renamed shadow-sm/outline-none/
+   * backdrop-blur-sm across the app so v4 keeps painting what v3 painted;
+   * LivestreamView took that rename and nothing else. The claim is therefore
+   * unchanged in substance — "this file is what it was" — and unchanged in
+   * strength: any edit but those three spellings still fails.
+   */
   it('LivestreamView was already capped, and this PR leaves that cap alone', () => {
     expect(capsOf(SURFACES.LivestreamView)).toContain(1280);
-    expect(read('LivestreamView.tsx')).toBe(at('LivestreamView.tsx'));
+    expect(read('LivestreamView.tsx')).toBe(toV4Spelling(at('LivestreamView.tsx')));
   });
 
   it('no surface is left unbounded — every one of the seven now carries a maximum', () => {
@@ -821,7 +829,7 @@ describe("LivestreamView's deliberate dark values are unchanged", () => {
   });
 
   it('this PR did not touch the file at all', () => {
-    expect(read('LivestreamView.tsx')).toBe(at('LivestreamView.tsx'));
+    expect(read('LivestreamView.tsx')).toBe(toV4Spelling(at('LivestreamView.tsx')));
   });
 });
 
@@ -909,7 +917,7 @@ describe('no behaviour changed on any screen in scope', () => {
 
   it('MainApp and LivestreamView carry no LAYOUT change, so nothing measured could have moved', () => {
     // LivestreamView is still byte-identical and asserted as such.
-    expect(read('LivestreamView.tsx')).toBe(at('LivestreamView.tsx'));
+    expect(read('LivestreamView.tsx')).toBe(toV4Spelling(at('LivestreamView.tsx')));
 
     // MainApp is exempted from byte-identity twice now (THE-202, THE-205). This
     // test used to fold THE-202's one-line Give clause out of the whole file and

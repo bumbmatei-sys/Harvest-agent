@@ -531,7 +531,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  placeholder="Current Password"
  value={currentPassword}
  onChange={(e) => setCurrentPassword(e.target.value)}
- className="w-full bg-surface-sunken rounded-xl px-4 py-3 text-strong font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4"
+ className="w-full bg-surface-sunken rounded-xl px-4 py-3 text-strong font-medium focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4"
  />
  {passwordMessage && (
  <p className="text-sm mb-4 text-red-600">{passwordMessage}</p>
@@ -570,14 +570,14 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  placeholder="New Password"
  value={newPassword}
  onChange={(e) => setNewPassword(e.target.value)}
- className="w-full bg-surface-sunken rounded-xl px-4 py-3 text-strong font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-3"
+ className="w-full bg-surface-sunken rounded-xl px-4 py-3 text-strong font-medium focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-3"
  />
  <input
  type="password"
  placeholder="Confirm New Password"
  value={confirmNewPassword}
  onChange={(e) => setConfirmNewPassword(e.target.value)}
- className="w-full bg-surface-sunken rounded-xl px-4 py-3 text-strong font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4"
+ className="w-full bg-surface-sunken rounded-xl px-4 py-3 text-strong font-medium focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4"
  />
  {passwordMessage && (
  <p className={`text-sm mb-4 ${passwordMessage.includes('success') ? 'text-green-600' : 'text-red-600'}`}>
@@ -661,7 +661,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  {/* Profile Photo — left-column card on desktop */}
  <div className="flex flex-col items-center mt-2 mb-8 lg:mt-0 lg:mb-0 lg:bg-surface-raised lg:border lg:border-line lg:rounded-3xl lg:p-6 lg:sticky lg:top-4">
  <div className="relative">
- <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-surface-raised shadow-sm bg-surface-chip relative">
+ <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-surface-raised shadow-xs bg-surface-chip relative">
  {profilePic ? (
  <Image src={profilePic} alt="Profile" fill sizes="128px" className="object-cover" />
  ) : (
@@ -672,7 +672,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  </div>
  <button 
  onClick={handlePhotoClick}
- className="absolute bottom-0 right-0 w-10 h-10 bg-gold rounded-full flex items-center justify-center text-white border-4 border-surface-raised shadow-sm"
+ className="absolute bottom-0 right-0 w-10 h-10 bg-gold rounded-full flex items-center justify-center text-white border-4 border-surface-raised shadow-xs"
  >
  <Edit2 size={16} fill="currentColor" />
  </button>
@@ -690,7 +690,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  </div>
 
  {/* Form Card */}
- <div className="bg-surface-raised rounded-3xl p-2 shadow-sm border border-line">
+ <div className="bg-surface-raised rounded-3xl p-2 shadow-xs border border-line">
  {/* Full Name */}
  <div className={`p-4 pb-2 ${FIELD_WIDTH.long}`}>
  <label className="text-[10px] font-bold text-faint tracking-wider uppercase mb-2 block">
@@ -700,7 +700,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  type="text"
  value={name}
  onChange={(e) => setName(e.target.value)}
- className={`w-full bg-surface-sunken rounded-2xl px-4 py-4 text-strong font-bold focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] ${CONTROL_DENSITY.control}`}
+ className={`w-full bg-surface-sunken rounded-2xl px-4 py-4 text-strong font-bold focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] ${CONTROL_DENSITY.control}`}
  />
  </div>
 
@@ -726,7 +726,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  type="text"
  value={city}
  onChange={(e) => setCity(e.target.value)}
- className={`w-full bg-surface-sunken rounded-2xl px-4 py-4 text-strong font-bold focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] ${CONTROL_DENSITY.control}`}
+ className={`w-full bg-surface-sunken rounded-2xl px-4 py-4 text-strong font-bold focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] ${CONTROL_DENSITY.control}`}
  />
  </div>
 
@@ -739,7 +739,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  type="tel"
  value={phone}
  onChange={(e) => setPhone(e.target.value)}
- className={`w-full bg-surface-sunken rounded-2xl px-4 py-4 text-strong font-bold focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] ${CONTROL_DENSITY.control}`}
+ className={`w-full bg-surface-sunken rounded-2xl px-4 py-4 text-strong font-bold focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] ${CONTROL_DENSITY.control}`}
  />
  </div>
 
@@ -792,7 +792,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  type="email"
  value={email}
  readOnly
- className={`w-full bg-surface-sunken rounded-2xl px-4 py-4 text-muted font-medium focus:outline-none cursor-not-allowed ${CONTROL_DENSITY.control}`}
+ className={`w-full bg-surface-sunken rounded-2xl px-4 py-4 text-muted font-medium focus:outline-hidden cursor-not-allowed ${CONTROL_DENSITY.control}`}
  />
  </div>
 

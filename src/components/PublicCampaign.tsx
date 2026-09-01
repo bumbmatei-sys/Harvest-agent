@@ -64,7 +64,7 @@ const PublicCampaign: React.FC<PublicCampaignProps> = ({ tenantId, tenantName, l
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const inputCls = 'w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:border-transparent';
+  const inputCls = 'w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:border-transparent';
   const ring = { '--tw-ring-color': primaryColor } as React.CSSProperties;
 
   const pct = campaign.goal > 0 ? Math.min(100, Math.round((campaign.raised / campaign.goal) * 100)) : 0;
@@ -111,13 +111,13 @@ const PublicCampaign: React.FC<PublicCampaignProps> = ({ tenantId, tenantName, l
 
   return (
     <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
-      <div className="bg-surface-raised rounded-[14px] shadow-sm border border-line-subtle overflow-hidden">
+      <div className="bg-surface-raised rounded-[14px] shadow-xs border border-line-subtle overflow-hidden">
         {campaign.coverImage && (
           <div className="relative bg-surface-sunken">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={campaign.coverImage} alt={campaign.title} className="w-full max-h-64 object-cover" referrerPolicy="no-referrer" />
             {daysLeft !== null && (
-              <div className="absolute top-3 right-3 inline-flex items-center gap-1.5 bg-black/60 text-white text-xs font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm">
+              <div className="absolute top-3 right-3 inline-flex items-center gap-1.5 bg-black/60 text-white text-xs font-semibold px-2.5 py-1 rounded-full backdrop-blur-xs">
                 <Clock size={12} />
                 {daysLeft === 0 ? 'Last day!' : `${daysLeft} days left`}
               </div>

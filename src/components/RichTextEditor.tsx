@@ -485,7 +485,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none p-4 max-w-none',
+        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-hidden p-4 max-w-none',
         style: `word-break: normal; overflow-wrap: break-word; white-space: normal; min-height: ${minHeight};`,
       },
     },
@@ -544,7 +544,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
                   if (e.key === 'Escape') { setShowLinkInput(false); }
                 }}
                 placeholder="https://..."
-                className="w-40 sm:w-56 px-2.5 py-1.5 text-sm bg-surface-raised text-strong border-0 rounded-lg focus:ring-2 focus:ring-gold outline-none"
+                className="w-40 sm:w-56 px-2.5 py-1.5 text-sm bg-surface-raised text-strong border-0 rounded-lg focus:ring-2 focus:ring-gold outline-hidden"
               />
               <button
                 onMouseDown={(e) => { e.preventDefault(); applyLink(); }}

@@ -397,7 +397,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
       <button
         onClick={() => setSubTab('accounting')}
         className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-          activeSubTab === 'accounting' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'
+          activeSubTab === 'accounting' ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'
         }`}
       >
         Accounting
@@ -405,7 +405,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
       <button
         onClick={() => setSubTab('statements')}
         className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-          activeSubTab === 'statements' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'
+          activeSubTab === 'statements' ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'
         }`}
       >
         Statements
@@ -478,7 +478,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
         <div className="mb-6">
           <p className="lg:hidden text-[11px] font-bold uppercase tracking-[0.14em] text-gold mb-3">QuickBooks</p>
           <h3 className="hidden lg:block font-display text-xl font-normal text-strong mb-4">QuickBooks</h3>
-          <div className="bg-surface-raised rounded-2xl border border-line shadow-sm p-4">
+          <div className="bg-surface-raised rounded-2xl border border-line shadow-xs p-4">
             {qbLoading ? (
               <div className="flex items-center gap-2 text-sm text-faint"><Loader2 size={15} className="animate-spin" /> Checking connection…</div>
             ) : qbConnected ? (
@@ -551,7 +551,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
           )}
         </div>
         {isTaxReceiptsEnabled ? (
-          <div className="bg-surface-raised rounded-2xl border border-line shadow-sm p-4">
+          <div className="bg-surface-raised rounded-2xl border border-line shadow-xs p-4">
             <p className="text-sm text-muted mb-4">
               Generate year-end consolidated tax receipts for all donors. Each donor receives one PDF summarizing their total donations for the year.
             </p>
@@ -559,7 +559,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
               <select
                 value={yearFilter}
                 onChange={e => setYearFilter(e.target.value)}
-                className="border border-line rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gold bg-surface-raised"
+                className="border border-line rounded-xl px-3 py-2 text-sm focus:outline-hidden focus:border-gold bg-surface-raised"
               >
                 <option value="all">All Years</option>
                 {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
@@ -602,7 +602,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
         <div className="mb-6">
           <p className="lg:hidden text-[11px] font-bold uppercase tracking-[0.14em] text-gold mb-3">Giving Statements</p>
           <h3 className="hidden lg:block font-display text-xl font-normal text-strong mb-4">Giving Statements</h3>
-          <div className="bg-surface-raised rounded-2xl border border-line shadow-sm p-4">
+          <div className="bg-surface-raised rounded-2xl border border-line shadow-xs p-4">
             <p className="text-sm text-muted mb-4">
               Generate annual giving statements (charitable contribution receipts) for each donor, then email them as PDFs.
             </p>
@@ -610,7 +610,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
               <select
                 value={statementYear}
                 onChange={e => setStatementYear(Number(e.target.value))}
-                className="border border-line rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gold bg-surface-raised"
+                className="border border-line rounded-xl px-3 py-2 text-sm focus:outline-hidden focus:border-gold bg-surface-raised"
               >
                 {[...new Set([new Date().getFullYear(), ...availableYears.map(Number)])]
                   .sort((a, b) => b - a)
@@ -703,10 +703,10 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search by name, email or receipt #..."
-              className="w-full pl-9 pr-3 py-2.5 text-sm border border-line rounded-xl focus:outline-none focus:border-gold" />
+              className="w-full pl-9 pr-3 py-2.5 text-sm border border-line rounded-xl focus:outline-hidden focus:border-gold" />
           </div>
           <select value={typeFilter} onChange={e => setTypeFilter(e.target.value as any)}
-            className="border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold bg-surface-raised">
+            className="border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-gold bg-surface-raised">
             <option value="all">All Types</option>
             <option value="donation_receipt">Donation Receipts</option>
             <option value="event_ticket">Event Tickets</option>
@@ -766,7 +766,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
             </div>
 
             {/* Desktop table — existing approved layout, unchanged (now lg-only). */}
-            <div className="hidden lg:block bg-surface-raised rounded-2xl border border-line shadow-sm overflow-hidden">
+            <div className="hidden lg:block bg-surface-raised rounded-2xl border border-line shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>

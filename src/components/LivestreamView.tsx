@@ -258,7 +258,7 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
                   onKeyDown={(e) => { if (e.key === 'Enter' && !commentSubmitting) submitComment(); }}
                   maxLength={500}
                   placeholder="Say something…"
-                  className="flex-1 px-3 py-2 rounded-xl bg-white/10 text-white placeholder-white/40 text-sm focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="flex-1 px-3 py-2 rounded-xl bg-white/10 text-white placeholder-white/40 text-sm focus:outline-hidden focus:ring-2 focus:ring-gold"
                 />
                 <button
                   onClick={submitComment}
@@ -293,14 +293,14 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
                     value={prayerName}
                     onChange={(e) => setPrayerName(e.target.value)}
                     placeholder="Your name"
-                    className="w-full px-3 py-2 rounded-xl bg-white/10 text-white placeholder-white/40 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-gold"
+                    className="w-full px-3 py-2 rounded-xl bg-white/10 text-white placeholder-white/40 text-sm mb-2 focus:outline-hidden focus:ring-2 focus:ring-gold"
                   />
                   <textarea
                     value={prayerText}
                     onChange={(e) => setPrayerText(e.target.value)}
                     placeholder="How can we pray for you?"
                     rows={2}
-                    className="w-full px-3 py-2 rounded-xl bg-white/10 text-white placeholder-white/40 text-sm focus:outline-none focus:ring-2 focus:ring-gold resize-none"
+                    className="w-full px-3 py-2 rounded-xl bg-white/10 text-white placeholder-white/40 text-sm focus:outline-hidden focus:ring-2 focus:ring-gold resize-none"
                   />
                   <button
                     onClick={submitPrayer}
@@ -365,7 +365,7 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
                       onKeyDown={(e) => { if (e.key === 'Enter' && !commentSubmitting) submitComment(); }}
                       maxLength={500}
                       placeholder="Say something…"
-                      className="flex-1 px-3 py-2 rounded-xl bg-white/10 text-white placeholder-white/40 text-sm focus:outline-none focus:ring-2 focus:ring-gold"
+                      className="flex-1 px-3 py-2 rounded-xl bg-white/10 text-white placeholder-white/40 text-sm focus:outline-hidden focus:ring-2 focus:ring-gold"
                     />
                     <button
                       onClick={submitComment}
@@ -402,14 +402,14 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
                   value={prayerName}
                   onChange={(e) => setPrayerName(e.target.value)}
                   placeholder="Your name"
-                  className="w-full px-4 py-2.5 border border-line rounded-xl text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-4 py-2.5 border border-line rounded-xl text-sm mb-2 focus:outline-hidden focus:ring-2 focus:ring-gold"
                 />
                 <textarea
                   value={prayerText}
                   onChange={(e) => setPrayerText(e.target.value)}
                   placeholder="How can we pray for you?"
                   rows={3}
-                  className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-gold"
                 />
                 <button
                   onClick={submitPrayer}

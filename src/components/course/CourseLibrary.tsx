@@ -55,7 +55,7 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search courses..."
-          className="w-full pl-9 lg:pl-11 pr-3 py-1.5 lg:py-2.5 bg-surface-raised border border-line rounded-lg lg:rounded-xl text-sm text-strong focus:ring-2 focus:ring-gold focus:border-transparent outline-none transition-all"
+          className="w-full pl-9 lg:pl-11 pr-3 py-1.5 lg:py-2.5 bg-surface-raised border border-line rounded-lg lg:rounded-xl text-sm text-strong focus:ring-2 focus:ring-gold focus:border-transparent outline-hidden transition-all"
         />
       </div>
 

@@ -62,7 +62,7 @@ const EmbedPicker: React.FC<{
       // sheet to the bottom behind the mobile nav bar — the list opened off-screen).
       // p-4 keeps it off the edges and the max-height caps it so the search box +
       // first items are visible immediately without scrolling the page.
-      className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -88,7 +88,7 @@ const EmbedPicker: React.FC<{
               onChange={(e) => setQ(e.target.value)}
               autoFocus
               placeholder="Search…"
-              className="w-full pl-9 pr-3 py-2 bg-surface-sunken border border-line rounded-xl text-sm text-strong focus:ring-1 focus:ring-gold outline-none"
+              className="w-full pl-9 pr-3 py-2 bg-surface-sunken border border-line rounded-xl text-sm text-strong focus:ring-1 focus:ring-gold outline-hidden"
             />
           </div>
         </div>

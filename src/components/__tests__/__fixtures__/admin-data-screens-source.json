@@ -2,10 +2,10 @@
   "recordedFrom": "ef557af",
   "digests": {
     "AdminDashboard.tsx": "ddd48ae0c60221815867187b040457869cc9225096ff8613686bc98832bbb6ab",
-    "AdminDocs.tsx": "c560be13588f3213861668b2346a4f7b43902e6ff232402e398b5dabd9c9c967",
-    "AdminBlog.tsx": "be97533c6ac82452d17021e9911f391c8129381a7f3e1f0da44f7edc8e1e6656",
-    "AdminCourses.tsx": "bf5fbb36159e248be80d0a6dfc36a6bb5a3fb63c09f5b4f5572b0790b6d38ae3",
-    "NewsletterEditor.tsx": "81185164d5aca31c5155c5a17ff99f44b6cae7d87ec6657920baa22746f44006"
+    "AdminDocs.tsx": "e808042f89e06b27c86c7b81a61769bdacefd7e1bf2d59c42981d22a1ad02a71",
+    "AdminBlog.tsx": "2373b90340f70d4868293f21f6f2632e46d5f7b3e3550afc60f24539b3cb61c3",
+    "AdminCourses.tsx": "801cf896a953d3bdc774370e5ada0d319438498c66444fd4de2a65e58e4d3dbb",
+    "NewsletterEditor.tsx": "b4536c724ae16f07ba35c750b447ddf1a38b64d22b2cba33ab7caaab6bb51f48"
   },
   "retired": {
     "AdminRAG.tsx": {

@@ -198,7 +198,7 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
               return (
                 <div
                   key={r.id}
-                  className={`rounded-2xl p-4 shadow-sm transition-colors ${
+                  className={`rounded-2xl p-4 shadow-xs transition-colors ${
                     ticketed
                       ? 'bg-surface-raised ring-2'
                       : 'bg-surface-raised border border-line'

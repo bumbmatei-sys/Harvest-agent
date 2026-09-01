@@ -197,7 +197,7 @@ const PrayerWall: React.FC = () => {
  {/* Share bar (mockup): avatar + inline input + Post — mobile & desktop. */}
  <div className="flex items-center gap-3 bg-surface-raised rounded-2xl border border-line p-3">
  <div className="w-10 h-10 rounded-full bg-surface-sunken flex items-center justify-center text-sm font-bold text-muted shrink-0">{(name || 'A').charAt(0).toUpperCase()}</div>
- <input value={request} onChange={(e) => setRequest(e.target.value.slice(0, 200))} onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }} placeholder="Share a prayer request with the community…" className="flex-1 bg-transparent outline-none text-sm text-body placeholder:text-faint" />
+ <input value={request} onChange={(e) => setRequest(e.target.value.slice(0, 200))} onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }} placeholder="Share a prayer request with the community…" className="flex-1 bg-transparent outline-hidden text-sm text-body placeholder:text-faint" />
  <button onClick={handleSubmit} disabled={submitting || !request.trim()} className="px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50 shrink-0" style={{ backgroundColor: 'var(--brand-color, #C9963A)' }}>{submitting ? 'Posting…' : 'Post'}</button>
  </div>
 
@@ -207,7 +207,7 @@ const PrayerWall: React.FC = () => {
  <select
  value={filter}
  onChange={(e) => setFilter(e.target.value as RangeFilter)}
- className="appearance-none bg-surface-raised border border-line rounded-xl pl-4 pr-9 py-2 text-sm font-medium text-body cursor-pointer focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)]"
+ className="appearance-none bg-surface-raised border border-line rounded-xl pl-4 pr-9 py-2 text-sm font-medium text-body cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)]"
  >
  {FILTERS.map((f) => (
  <option key={f.id} value={f.id}>{f.label}</option>

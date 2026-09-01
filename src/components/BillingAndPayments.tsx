@@ -213,7 +213,7 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
 
       {/* 1 + 2: Current plan / status / next billing */}
       <div className="grid sm:grid-cols-2 gap-3">
-        <div className="bg-surface-raised rounded-2xl p-4 border border-line shadow-sm">
+        <div className="bg-surface-raised rounded-2xl p-4 border border-line shadow-xs">
           <div className="flex items-center gap-2 mb-2">
             <CreditCard size={16} style={{ color: GOLD }} />
             <span className="text-xs text-muted font-medium">Current Plan</span>
@@ -225,7 +225,7 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
             </span>
           )}
         </div>
-        <div className="bg-surface-raised rounded-2xl p-4 border border-line shadow-sm">
+        <div className="bg-surface-raised rounded-2xl p-4 border border-line shadow-xs">
           <div className="flex items-center gap-2 mb-2">
             <CalendarClock size={16} style={{ color: GOLD }} />
             <span className="text-xs text-muted font-medium">
@@ -249,7 +249,7 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
       </div>
 
       {/* 3: Upgrade / Cancel — reuses PlanUpgradeSection; upgrade UI hidden on Ministry */}
-      <div className="bg-surface-raised rounded-2xl p-5 border border-line shadow-sm">
+      <div className="bg-surface-raised rounded-2xl p-5 border border-line shadow-xs">
         <PlanUpgradeSection
           currentPlan={planId}
           tenantId={tenantId}
@@ -281,7 +281,7 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
             )}
           </div>
         ) : (
-          <div className="bg-surface-raised rounded-2xl border border-line shadow-sm overflow-hidden">
+          <div className="bg-surface-raised rounded-2xl border border-line shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -327,7 +327,7 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
       </div>
 
       {/* 6: Generate consolidated billing-summary PDF (pdf-lib, admin-facing) */}
-      <div className="bg-surface-raised rounded-2xl p-5 border border-line shadow-sm">
+      <div className="bg-surface-raised rounded-2xl p-5 border border-line shadow-xs">
         <h3 className="text-sm font-bold text-body mb-1 font-display">Billing Statement</h3>
         <p className="text-sm text-muted mb-4">
           {historyInPortal

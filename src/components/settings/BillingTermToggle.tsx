@@ -78,7 +78,7 @@ export function BillingTermToggle({
                  refuses to shrink below its content, which is exactly how a third
                  segment pushes a track wider than its container. */
               className={`min-w-0 px-2 py-2 rounded-xl text-[12px] font-semibold leading-tight transition-all ${
-                selected ? 'bg-surface-raised text-strong shadow-sm' : 'text-muted hover:text-body'
+                selected ? 'bg-surface-raised text-strong shadow-xs' : 'text-muted hover:text-body'
               }`}
             >
               <span className="block">{TERM_LABELS[term]}</span>

@@ -68,7 +68,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm" onClick={handleClose} onKeyDown={handleKeyDown}>
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs" onClick={handleClose} onKeyDown={handleKeyDown}>
       {/*
         Labelled, not restyled. Unlike Contact / FAQ / Privacy & Terms this is a
         real centered dialog — scrim plus panel — and its width constraint was
@@ -124,7 +124,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                   required
                   placeholder="Pastor John"
                   maxLength={100}
-                  className={`w-full px-4 py-3 rounded-xl border border-line bg-surface-raised text-sm focus:outline-none focus:border-gold text-strong ${CONTROL_DENSITY.control}`}
+                  className={`w-full px-4 py-3 rounded-xl border border-line bg-surface-raised text-sm focus:outline-hidden focus:border-gold text-strong ${CONTROL_DENSITY.control}`}
                 />
               </div>
 
@@ -137,7 +137,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                   required
                   placeholder="john@church.org"
                   maxLength={200}
-                  className={`w-full px-4 py-3 rounded-xl border border-line bg-surface-raised text-sm focus:outline-none focus:border-gold text-strong ${CONTROL_DENSITY.control}`}
+                  className={`w-full px-4 py-3 rounded-xl border border-line bg-surface-raised text-sm focus:outline-hidden focus:border-gold text-strong ${CONTROL_DENSITY.control}`}
                 />
               </div>
 
@@ -150,7 +150,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                   required
                   placeholder="Grace Community Church"
                   maxLength={200}
-                  className={`w-full px-4 py-3 rounded-xl border border-line bg-surface-raised text-sm focus:outline-none focus:border-gold text-strong ${CONTROL_DENSITY.control}`}
+                  className={`w-full px-4 py-3 rounded-xl border border-line bg-surface-raised text-sm focus:outline-hidden focus:border-gold text-strong ${CONTROL_DENSITY.control}`}
                 />
               </div>
 
@@ -163,7 +163,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                   min="1"
                   max="10000"
                   placeholder="e.g. 5"
-                  className={`w-full px-4 py-3 rounded-xl border border-line bg-surface-raised text-sm focus:outline-none focus:border-gold text-strong ${CONTROL_DENSITY.control}`}
+                  className={`w-full px-4 py-3 rounded-xl border border-line bg-surface-raised text-sm focus:outline-hidden focus:border-gold text-strong ${CONTROL_DENSITY.control}`}
                 />
               </div>
 
@@ -175,7 +175,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                   rows={3}
                   placeholder="Tell us about your needs..."
                   maxLength={2000}
-                  className="w-full px-4 py-3 rounded-xl border border-line bg-surface-raised text-sm focus:outline-none focus:border-gold text-strong resize-none"
+                  className="w-full px-4 py-3 rounded-xl border border-line bg-surface-raised text-sm focus:outline-hidden focus:border-gold text-strong resize-none"
                 />
               </div>
 

@@ -941,7 +941,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       {/* Admin announcement composer — text + up to 3 images + embed + poll + pin.
           Admin-only (posts are announcements); members read/like/comment only. */}
       {canCompose && auth.currentUser && (
-        <div className="bg-surface-raised rounded-2xl shadow-sm border border-line p-4 lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
+        <div className="bg-surface-raised rounded-2xl shadow-xs border border-line p-4 lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
           {/* Post / Poll switch (ported from AdminPosts). Hidden while editing so
               an existing post's type isn't accidentally flipped. */}
           {!editingPostId && (
@@ -949,7 +949,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
               <button
                 type="button"
                 onClick={() => setComposerMode('post')}
-                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${composerMode === 'post' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'}`}
+                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${composerMode === 'post' ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'}`}
               >
                 Post
               </button>
@@ -963,7 +963,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                   setComposerEmbed(null);
                   setAttachMenuOpen(false);
                 }}
-                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${composerMode === 'poll' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'}`}
+                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${composerMode === 'poll' ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'}`}
               >
                 Poll
               </button>
@@ -982,7 +982,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
               onChange={(e) => setComposerText(e.target.value)}
               placeholder={composerMode === 'poll' ? 'Ask a question…' : editingPostId ? 'Edit your post…' : 'Share an update with the community…'}
               rows={2}
-              className="flex-1 min-w-0 bg-transparent border-none focus:ring-0 resize-none text-strong placeholder-[color:var(--text-faint)] text-sm p-0 pt-1.5 outline-none"
+              className="flex-1 min-w-0 bg-transparent border-none focus:ring-0 resize-none text-strong placeholder-[color:var(--text-faint)] text-sm p-0 pt-1.5 outline-hidden"
             />
           </div>
 
@@ -996,7 +996,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                     value={option.text}
                     onChange={(e) => setPollOptions(prev => prev.map((o, i) => i === index ? { ...o, text: e.target.value } : o))}
                     placeholder={`Option ${index + 1}`}
-                    className="flex-1 px-3 py-2 bg-surface-sunken border border-line rounded-lg text-sm text-strong focus:ring-1 focus:ring-gold outline-none"
+                    className="flex-1 px-3 py-2 bg-surface-sunken border border-line rounded-lg text-sm text-strong focus:ring-1 focus:ring-gold outline-hidden"
                   />
                   {pollOptions.length > 2 && (
                     <button
@@ -1162,7 +1162,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
       {/* Pinned events from AdminEvents system */}
       {adminEvents.filter(e => e.pinned).map(event => (
-        <div key={event.id} className="bg-surface-raised rounded-2xl shadow-sm border border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] overflow-hidden lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--border-gold)] lg:shadow-[var(--ds-sh-sm)]">
+        <div key={event.id} className="bg-surface-raised rounded-2xl shadow-xs border border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] overflow-hidden lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--border-gold)] lg:shadow-[var(--ds-sh-sm)]">
           {/* Hero band — cover photo, else navy→gold gradient — with the Pinned Event chip overlaid (mobile + desktop) */}
           <div className="relative h-36 lg:h-[150px]">
             {event.coverImage ? (
@@ -1212,7 +1212,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
         <div className="text-center py-12 text-muted">No news yet.</div>
       ) : (
         posts.map((post, index) => (
-          <div key={post.id} className="bg-surface-raised rounded-2xl shadow-sm border border-line p-4 lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
+          <div key={post.id} className="bg-surface-raised rounded-2xl shadow-xs border border-line p-4 lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
             <div className="flex justify-between items-start mb-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-surface-chip overflow-hidden flex items-center justify-center font-bold text-muted relative">
@@ -1445,7 +1445,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                       onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleComment(post.id); } }}
                       placeholder="Write a comment..."
                       maxLength={280}
-                      className="flex-1 px-3 py-1.5 bg-surface-sunken border border-line rounded-full text-xs text-strong focus:ring-1 focus:ring-gold outline-none"
+                      className="flex-1 px-3 py-1.5 bg-surface-sunken border border-line rounded-full text-xs text-strong focus:ring-1 focus:ring-gold outline-hidden"
                     />
                     <button
                       onClick={() => handleComment(post.id)}
@@ -1471,7 +1471,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
           </h2>
           <div className="space-y-3">
             {adminEvents.filter(e => !e.pinned).map(event => (
-              <div key={event.id} className="bg-surface-raised rounded-2xl shadow-sm border border-line overflow-hidden lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
+              <div key={event.id} className="bg-surface-raised rounded-2xl shadow-xs border border-line overflow-hidden lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
                 {event.coverImage && (
                   <div className="relative h-32 bg-surface-sunken">
                     <Image src={event.coverImage} alt={event.title} fill sizes="(max-width:768px) 100vw, 800px" className="object-cover" referrerPolicy="no-referrer" />
@@ -1515,7 +1515,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
               <article 
                 key={post.id} 
                 onClick={() => onOpenArticle(post)}
-                className="bg-surface-raised rounded-xl shadow-sm border border-line overflow-hidden flex flex-row items-center gap-3 p-2.5 sm:p-3 transition-transform hover:scale-[1.02] duration-300 cursor-pointer lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]"
+                className="bg-surface-raised rounded-xl shadow-xs border border-line overflow-hidden flex flex-row items-center gap-3 p-2.5 sm:p-3 transition-transform hover:scale-[1.02] duration-300 cursor-pointer lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]"
               >
                 {post.featuredImage ? (
                   <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 overflow-hidden rounded-lg bg-surface-sunken relative">
@@ -1740,7 +1740,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
       {/* Delete Post Confirmation Modal */}
       {deletePostId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
           <div className="bg-surface-raised rounded-2xl shadow-xl max-w-sm w-full p-6 border border-line">
             <h3 className="text-xl font-bold text-strong mb-2 font-display">Delete Post</h3>
             <p className="text-muted mb-6">
@@ -1766,7 +1766,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
       {/* Event Attendance Modal */}
       {attendingPostId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
           <div className="bg-surface-raised rounded-2xl p-6 w-full max-w-md shadow-xl">
             <h3 className="text-xl font-bold text-strong mb-4 font-display">Join Event</h3>
             <p className="text-sm text-muted mb-4">
@@ -1780,7 +1780,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                   type="text"
                   value={attendeeName}
                   onChange={(e) => setAttendeeName(e.target.value)}
-                  className="w-full px-4 py-2 bg-surface-sunken border border-line rounded-xl text-strong focus:ring-2 focus:ring-gold outline-none"
+                  className="w-full px-4 py-2 bg-surface-sunken border border-line rounded-xl text-strong focus:ring-2 focus:ring-gold outline-hidden"
                   placeholder="John Doe"
                 />
               </div>
@@ -1790,7 +1790,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                   type="email"
                   value={attendeeEmail}
                   onChange={(e) => setAttendeeEmail(e.target.value)}
-                  className="w-full px-4 py-2 bg-surface-sunken border border-line rounded-xl text-strong focus:ring-2 focus:ring-gold outline-none"
+                  className="w-full px-4 py-2 bg-surface-sunken border border-line rounded-xl text-strong focus:ring-2 focus:ring-gold outline-hidden"
                   placeholder="john@example.com"
                 />
               </div>

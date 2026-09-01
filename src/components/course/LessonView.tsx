@@ -180,7 +180,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
               onChange={(e) => { setNoteDraft(e.target.value); setNoteSaved(false); }}
               placeholder="Write your notes for this lesson…"
               rows={8}
-              className="w-full min-h-[160px] rounded-lg border border-line p-3.5 text-sm leading-6 text-muted placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-wheat-500/40 resize-y"
+              className="w-full min-h-[160px] rounded-lg border border-line p-3.5 text-sm leading-6 text-muted placeholder:text-faint focus:outline-hidden focus:ring-2 focus:ring-wheat-500/40 resize-y"
             />
             <div className="flex items-center justify-between mt-2.5">
               <span className={`text-xs font-semibold text-field-600 transition-opacity ${noteSaved ? "opacity-100" : "opacity-0"}`}>

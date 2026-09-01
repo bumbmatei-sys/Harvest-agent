@@ -219,7 +219,7 @@ const OnboardingSection: React.FC = () => {
                 value={editingQuestion.label}
                 onChange={(e) => setEditingQuestion({ ...editingQuestion, label: e.target.value })}
                 placeholder="e.g. What is your favorite verse?"
-                className="w-full px-4 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold"
+                className="w-full px-4 py-2 border border-line rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-gold"
               />
             </div>
 
@@ -228,7 +228,7 @@ const OnboardingSection: React.FC = () => {
               <select
                 value={editingQuestion.type}
                 onChange={(e) => setEditingQuestion({ ...editingQuestion, type: e.target.value as any })}
-                className="w-full px-4 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold"
+                className="w-full px-4 py-2 border border-line rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-gold"
               >
                 {questionTypeOptions.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -244,7 +244,7 @@ const OnboardingSection: React.FC = () => {
                   value={(editingQuestion.options || []).join(', ')}
                   onChange={(e) => setEditingQuestion({ ...editingQuestion, options: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
                   placeholder="e.g. Option A, Option B, Option C"
-                  className="w-full px-4 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-4 py-2 border border-line rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-gold"
                 />
               </div>
             )}

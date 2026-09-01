@@ -99,6 +99,7 @@ vi.mock('next/image', () => ({ default: () => null }));
 import AdminSettings from '../AdminSettings';
 import { FORM_MEASURE, DENSITY_PX, DESKTOP_CONTROL_MAX_PX } from '../layout/form-layout';
 import { buildUtilityCss } from '../../test/support/tailwind-build';
+import { toV4Spelling } from '../../test/support/class-inventory';
 
 // ── rendering ──────────────────────────────────────────────────────────────
 
@@ -835,8 +836,23 @@ describe('THE-183 — admin Settings', () => {
     ];
     const base = baseRef();
     if (base) {
-      const diff = execSync(`git diff --stat ${base} -- ${OWNED.join(' ')}`, { cwd: ROOT }).toString().trim();
-      expect(diff, 'a settings section that owns an integration path was modified').toBe('');
+      // Was `git diff --stat ${base} -- ${OWNED}` asserted empty. THE-261's v4
+      // migration renamed shadow-sm/outline-none/backdrop-blur-sm across the
+      // app and two of these files took that rename, so a stat is no longer the
+      // question — "did anything move" now has a known, uninteresting yes.
+      //
+      // The question this guard actually asks is whether an integration PATH
+      // moved, so it now compares CONTENT with the historical text put through
+      // the rename map first. That is strictly stronger than the stat it
+      // replaces: a stat says only that a file changed, this says what by, and
+      // any edit other than those three spellings still fails by name.
+      for (const rel of OWNED) {
+        const before = execSync(`git show ${base}:${rel}`, { cwd: ROOT, maxBuffer: 32 * 1024 * 1024 }).toString();
+        expect(
+          readFileSync(path.join(ROOT, rel), 'utf8'),
+          `${rel} changed by more than the v4 utility rename — it owns an integration path`,
+        ).toBe(toV4Spelling(before));
+      }
     }
 
     // (a2) Every integration endpoint IntegrationsSection owns is still called

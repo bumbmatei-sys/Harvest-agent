@@ -75,7 +75,7 @@ export const AdminSearchBar: React.FC<{
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full pl-11 pr-4 py-3 bg-surface-raised border border-line rounded-brand-lg text-sm text-strong placeholder:text-faint focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent outline-none transition-all"
+      className="w-full pl-11 pr-4 py-3 bg-surface-raised border border-line rounded-brand-lg text-sm text-strong placeholder:text-faint focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent outline-hidden transition-all"
     />
   </div>
 );

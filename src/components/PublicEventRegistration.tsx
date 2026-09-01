@@ -131,7 +131,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
   const gross = selectedTicket ? selectedTicket.price * quantity : 0;
   const total = Math.max(0, gross - discountAmount);
 
-  const inputCls = 'w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:border-transparent';
+  const inputCls = 'w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:border-transparent';
   const ring = { '--tw-ring-color': primaryColor } as React.CSSProperties;
 
   const selectTicket = (id: string) => {
@@ -225,7 +225,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
   const startLabel = fmtDateTime(event.startDate);
 
   const EventHeader = (
-    <div className="bg-surface-raised rounded-[14px] shadow-sm border border-line overflow-hidden mb-4">
+    <div className="bg-surface-raised rounded-[14px] shadow-xs border border-line overflow-hidden mb-4">
       {event.coverImage && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={event.coverImage} alt={event.title} className="w-full h-44 object-cover" />
@@ -252,7 +252,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
     return (
       <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
         {EventHeader}
-        <div className="bg-surface-raised rounded-[14px] shadow-sm border border-line p-8 text-center">
+        <div className="bg-surface-raised rounded-[14px] shadow-xs border border-line p-8 text-center">
           <CheckCircle2 size={48} className="mx-auto mb-4" style={{ color: primaryColor }} />
           <h2 className="font-display text-xl font-bold text-strong mb-1">Payment received — you&apos;re registered!</h2>
           <p className="text-sm text-muted mb-2">Thanks for registering for {event.title}.</p>
@@ -265,7 +265,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
     return (
       <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
         {EventHeader}
-        <div className="bg-surface-raised rounded-[14px] shadow-sm border border-line p-8 text-center">
+        <div className="bg-surface-raised rounded-[14px] shadow-xs border border-line p-8 text-center">
           <h2 className="font-display text-xl font-bold text-strong mb-1">Registration not completed</h2>
           <p className="text-sm text-muted mb-5">Your payment was cancelled, so you haven&apos;t been charged and no ticket was issued.</p>
           <button onClick={dismissPostPayment}
@@ -283,7 +283,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
     return (
       <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
         {EventHeader}
-        <div className="bg-surface-raised rounded-[14px] shadow-sm border border-line p-8 text-center">
+        <div className="bg-surface-raised rounded-[14px] shadow-xs border border-line p-8 text-center">
           <CheckCircle2 size={48} className="mx-auto mb-4" style={{ color: primaryColor }} />
           <h2 className="font-display text-xl font-bold text-strong mb-1">
             {done.waitlisted ? "You're on the waitlist!" : "You're registered!"}
@@ -307,7 +307,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
     return (
       <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
         {EventHeader}
-        <div className="bg-surface-raised rounded-[14px] shadow-sm border border-line p-8 text-center">
+        <div className="bg-surface-raised rounded-[14px] shadow-xs border border-line p-8 text-center">
           <p className="text-body">This event has already taken place.</p>
         </div>
       </Shell>
@@ -319,7 +319,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
     return (
       <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
         {EventHeader}
-        <div className="bg-surface-raised rounded-[14px] shadow-sm border border-line p-8 text-center">
+        <div className="bg-surface-raised rounded-[14px] shadow-xs border border-line p-8 text-center">
           <p className="text-body">Registration is not available online. Contact {tenantName} to sign up.</p>
         </div>
       </Shell>
@@ -330,7 +330,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
   return (
     <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
       {EventHeader}
-      <div className="bg-surface-raised rounded-[14px] shadow-sm border border-line p-6" style={{ paddingBottom: 24 }}>
+      <div className="bg-surface-raised rounded-[14px] shadow-xs border border-line p-6" style={{ paddingBottom: 24 }}>
         {/* Ticket type selector */}
         {ticketTypes.length > 0 && (
           <div className="mb-5">

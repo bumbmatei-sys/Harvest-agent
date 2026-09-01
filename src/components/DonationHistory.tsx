@@ -131,7 +131,7 @@ const DonationHistory: React.FC<DonationHistoryProps> = ({ onBack }) => {
         ) : (
           <div className="space-y-4">
             {/* Lifetime + per-year totals summary. */}
-            <div className="bg-surface-raised rounded-3xl shadow-sm border border-line p-5">
+            <div className="bg-surface-raised rounded-3xl shadow-xs border border-line p-5">
               <p className="text-[10px] font-bold text-faint tracking-wider uppercase">
                 Total given
               </p>
@@ -157,7 +157,7 @@ const DonationHistory: React.FC<DonationHistoryProps> = ({ onBack }) => {
             )}
 
             {/* Receipt list. */}
-            <div className="bg-surface-raised rounded-3xl shadow-sm border border-line overflow-hidden">
+            <div className="bg-surface-raised rounded-3xl shadow-xs border border-line overflow-hidden">
               {receipts.map((r, i) => (
                 <div key={r.id}>
                   {i > 0 && <div className="h-px bg-surface-sunken mx-4" />}

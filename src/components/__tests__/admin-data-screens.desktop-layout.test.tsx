@@ -991,6 +991,16 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
     // Recorded digests rather than a git range: three other batches were in
     // flight, and "did this branch open AdminDocs?" is a question about content,
     // not about a revision the CI runner's shallow clone cannot resolve.
+    //
+    // Four of these digests were re-recorded by THE-261 (AdminDocs, AdminBlog,
+    // AdminCourses, NewsletterEditor). AdminDashboard's was deliberately NOT:
+    // it is an EXEMPT file, recorded as differing on purpose, and re-recording
+    // it would have quietly retired that exemption. Its v4 migration renamed shadow-sm,
+    // outline-none and backdrop-blur-sm app-wide so the utilities keep painting
+    // what they painted under v3, and these four carry those spellings — a
+    // rename does not put them in any batch's scope. The digests still say
+    // "this file is exactly this content"; the diff of the fixture beside this
+    // commit is where the four new values come from.
     const moved = Object.entries(SOURCE.digests)
       .filter(([f]) => existsSync(path.join(SRC, f)))
       .filter(([f]) => !EXEMPT_FILES.includes(f))

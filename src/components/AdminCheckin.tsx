@@ -233,7 +233,7 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
       <button
         onClick={() => setTab('checkin')}
         className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-          activeSubTab === 'checkin' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'
+          activeSubTab === 'checkin' ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'
         }`}
       >
         Check-In
@@ -241,7 +241,7 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
       <button
         onClick={() => setTab('qr')}
         className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-          activeSubTab === 'qr' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'
+          activeSubTab === 'qr' ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'
         }`}
       >
         QR Codes
@@ -287,19 +287,19 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
         <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-5 space-y-4">
           <div className={FIELD_WIDTH.long}>
             <label className="block text-sm font-medium text-body mb-1.5">Session Name</label>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="Sunday Service — June 29" className={`w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold ${CONTROL_DENSITY.control}`} />
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="Sunday Service — June 29" className={`w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-hidden focus:border-gold ${CONTROL_DENSITY.control}`} />
           </div>
           <div className={FIELD_WIDTH.medium}>
             <label className="block text-sm font-medium text-body mb-1.5">Date &amp; Time</label>
-            <input type="datetime-local" value={date} onChange={e => setDate(e.target.value)} className={`w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold ${CONTROL_DENSITY.control}`} />
+            <input type="datetime-local" value={date} onChange={e => setDate(e.target.value)} className={`w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-hidden focus:border-gold ${CONTROL_DENSITY.control}`} />
           </div>
           <div className={FIELD_WIDTH.long}>
             <label className="block text-sm font-medium text-body mb-1.5">Location <span className="text-faint font-normal">(optional)</span></label>
-            <input value={location} onChange={e => setLocation(e.target.value)} placeholder="Main Auditorium" className={`w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold ${CONTROL_DENSITY.control}`} />
+            <input value={location} onChange={e => setLocation(e.target.value)} placeholder="Main Auditorium" className={`w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-hidden focus:border-gold ${CONTROL_DENSITY.control}`} />
           </div>
           <div className={FIELD_WIDTH.long}>
             <label className="block text-sm font-medium text-body mb-1.5">Linked Event <span className="text-faint font-normal">(optional)</span></label>
-            <select value={linkedEventId} onChange={e => setLinkedEventId(e.target.value)} className={`w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold bg-surface-raised ${CONTROL_DENSITY.control}`}>
+            <select value={linkedEventId} onChange={e => setLinkedEventId(e.target.value)} className={`w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-hidden focus:border-gold bg-surface-raised ${CONTROL_DENSITY.control}`}>
               <option value="">No linked event</option>
               {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
             </select>
@@ -361,10 +361,10 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
               <div className="mt-4 space-y-2">
                 <p className="text-xs font-semibold text-muted uppercase tracking-wide">Manual Check-In</p>
                 <div className="flex gap-2">
-                  <input value={mFirst} onChange={e => setMFirst(e.target.value)} placeholder="First" className="flex-1 min-w-0 px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:border-gold" />
-                  <input value={mLast} onChange={e => setMLast(e.target.value)} placeholder="Last" className="flex-1 min-w-0 px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:border-gold" />
+                  <input value={mFirst} onChange={e => setMFirst(e.target.value)} placeholder="First" className="flex-1 min-w-0 px-3 py-2 border border-line rounded-lg text-sm focus:outline-hidden focus:border-gold" />
+                  <input value={mLast} onChange={e => setMLast(e.target.value)} placeholder="Last" className="flex-1 min-w-0 px-3 py-2 border border-line rounded-lg text-sm focus:outline-hidden focus:border-gold" />
                 </div>
-                <input value={mEmail} onChange={e => setMEmail(e.target.value)} placeholder="Email (optional)" className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:border-gold" />
+                <input value={mEmail} onChange={e => setMEmail(e.target.value)} placeholder="Email (optional)" className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-hidden focus:border-gold" />
                 <button onClick={manualCheckIn} disabled={mAdding || !mFirst.trim()} className="w-full py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
                   {mAdding ? 'Adding…' : 'Check In'}
                 </button>

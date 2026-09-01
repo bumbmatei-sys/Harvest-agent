@@ -188,7 +188,7 @@ const AdminChurches: React.FC = () => {
 
   if (isAdding || editingChurch) {
     return (
-      <div className={`bg-surface-raised rounded-2xl shadow-sm border border-line overflow-hidden ${FORM_MEASURE}`}>
+      <div className={`bg-surface-raised rounded-2xl shadow-xs border border-line overflow-hidden ${FORM_MEASURE}`}>
         <div className="p-4 border-b border-line flex justify-between items-center">
           <h2 className="text-xl font-bold text-strong font-display">
             {isAdding ? 'Add Church' : 'Edit Church'}
@@ -230,7 +230,7 @@ const AdminChurches: React.FC = () => {
 
       {/* Add Church Billing Confirmation Modal */}
       {showBillingConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
           <div className="bg-surface-raised rounded-2xl p-6 max-w-md w-full shadow-xl">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-wheat-100 flex items-center justify-center">
@@ -271,7 +271,7 @@ const AdminChurches: React.FC = () => {
             placeholder="Search churches…"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-surface-raised border border-line rounded-brand-lg text-sm text-strong placeholder:text-faint focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent outline-none transition-all"
+            className="w-full pl-11 pr-4 py-3 bg-surface-raised border border-line rounded-brand-lg text-sm text-strong placeholder:text-faint focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent outline-hidden transition-all"
           />
         </div>
         
@@ -348,7 +348,7 @@ const AdminChurches: React.FC = () => {
       </div>
 
       {/* Spreadsheet / Table */}
-      <div className="hidden lg:block bg-surface-raised rounded-2xl shadow-sm border border-line overflow-hidden">
+      <div className="hidden lg:block bg-surface-raised rounded-2xl shadow-xs border border-line overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -414,7 +414,7 @@ const AdminChurches: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
           <div className="bg-surface-raised rounded-2xl p-6 max-w-md w-full shadow-xl">
             <h3 className="text-xl font-bold text-strong mb-2 font-display">Delete Church</h3>
             <p className="text-muted mb-6">
@@ -459,7 +459,7 @@ const AdminChurches: React.FC = () => {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') applyFilter();
               }}
-              className="w-full px-4 py-2 rounded-lg border border-line bg-surface-sunken text-strong focus:outline-none focus:border-gold mb-6"
+              className="w-full px-4 py-2 rounded-lg border border-line bg-surface-sunken text-strong focus:outline-hidden focus:border-gold mb-6"
             />
             <div className="flex justify-end gap-3">
               <button

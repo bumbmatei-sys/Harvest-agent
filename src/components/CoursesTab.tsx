@@ -75,7 +75,7 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ onOpenCourse }) => {
  <div 
  key={course.id}
  onClick={() => onOpenCourse && onOpenCourse(course)}
- className="bg-surface-raised rounded-2xl overflow-hidden shadow-sm border border-line cursor-pointer hover:shadow-md transition-shadow group flex flex-col"
+ className="bg-surface-raised rounded-2xl overflow-hidden shadow-xs border border-line cursor-pointer hover:shadow-md transition-shadow group flex flex-col"
  >
  <div className="relative h-48 w-full bg-surface-chip overflow-hidden">
  <Image 

@@ -77,15 +77,15 @@ const SmsCredentialsForm: React.FC = () => {
       <div className="bg-surface-raised rounded-2xl border border-line-subtle p-6 space-y-4">
         <div>
           <label className="block text-sm font-medium text-body mb-1.5">Account SID</label>
-          <input value={accountSid} onChange={e => setAccountSid(e.target.value)} placeholder="AC…" className="w-full px-4 py-2.5 border border-line rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gold" />
+          <input value={accountSid} onChange={e => setAccountSid(e.target.value)} placeholder="AC…" className="w-full px-4 py-2.5 border border-line rounded-xl text-sm font-mono focus:outline-hidden focus:ring-2 focus:ring-gold" />
         </div>
         <div>
           <label className="block text-sm font-medium text-body mb-1.5">Auth Token {configured && <span className="text-faint font-normal">(leave blank to keep current)</span>}</label>
-          <input type="password" value={authToken} onChange={e => setAuthToken(e.target.value)} placeholder={configured ? '••••••••' : 'Your Twilio auth token'} className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold" />
+          <input type="password" value={authToken} onChange={e => setAuthToken(e.target.value)} placeholder={configured ? '••••••••' : 'Your Twilio auth token'} className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-gold" />
         </div>
         <div>
           <label className="block text-sm font-medium text-body mb-1.5">From Number</label>
-          <input value={fromNumber} onChange={e => setFromNumber(e.target.value)} placeholder="+15551234567" className="w-full px-4 py-2.5 border border-line rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gold" />
+          <input value={fromNumber} onChange={e => setFromNumber(e.target.value)} placeholder="+15551234567" className="w-full px-4 py-2.5 border border-line rounded-xl text-sm font-mono focus:outline-hidden focus:ring-2 focus:ring-gold" />
         </div>
         <button onClick={save} disabled={saving} className="px-6 py-2.5 bg-gold text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50">
           {saving ? 'Saving…' : 'Save Credentials'}
@@ -98,7 +98,7 @@ const SmsCredentialsForm: React.FC = () => {
           {busy === 'connection' ? 'Checking…' : 'Test Connection'}
         </button>
         <div className="flex gap-2 pt-1">
-          <input value={testPhone} onChange={e => setTestPhone(e.target.value)} placeholder="+1555… (your phone)" className="flex-1 px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold" />
+          <input value={testPhone} onChange={e => setTestPhone(e.target.value)} placeholder="+1555… (your phone)" className="flex-1 px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-gold" />
           <button onClick={() => test('sms')} disabled={busy === 'sms' || !testPhone.trim()} className="px-4 py-2.5 border border-line rounded-xl text-sm font-semibold text-body hover:bg-surface-tint disabled:opacity-50 whitespace-nowrap">
             {busy === 'sms' ? 'Sending…' : 'Test SMS'}
           </button>

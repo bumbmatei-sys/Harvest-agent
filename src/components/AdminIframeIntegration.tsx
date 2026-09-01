@@ -88,7 +88,7 @@ const AdminIframeIntegration: React.FC<AdminIframeIntegrationProps> = ({
   if (!url || configuring) {
     return (
       <div className="max-w-lg mx-auto">
-        <div className="bg-surface-raised rounded-2xl border border-line shadow-sm overflow-hidden">
+        <div className="bg-surface-raised rounded-2xl border border-line shadow-xs overflow-hidden">
           <div className="p-6 border-b border-line">
             <div className="flex items-center gap-4 mb-4">
               <div className="w-14 h-14 rounded-2xl bg-surface-sunken flex items-center justify-center text-2xl flex-shrink-0 border border-line">
@@ -107,7 +107,7 @@ const AdminIframeIntegration: React.FC<AdminIframeIntegrationProps> = ({
               onChange={(e) => setInputUrl(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSave()}
               placeholder={urlPlaceholder}
-              className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold mb-2"
+              className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-gold mb-2"
             />
             <p className="text-xs text-faint mb-5">{urlHelp}</p>
             <div className="flex gap-3">
@@ -154,7 +154,7 @@ const AdminIframeIntegration: React.FC<AdminIframeIntegrationProps> = ({
       </div>
 
       {/* iframe — fills remaining admin content area */}
-      <div className="flex-1 rounded-2xl overflow-hidden border border-line shadow-sm bg-surface-raised" style={{ minHeight: 500 }}>
+      <div className="flex-1 rounded-2xl overflow-hidden border border-line shadow-xs bg-surface-raised" style={{ minHeight: 500 }}>
         <iframe
           src={url}
           title={displayName}

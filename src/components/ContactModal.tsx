@@ -47,7 +47,7 @@ const InputField = ({ placeholder, type = "text", name, value, onChange, require
  onChange={onChange}
  required={required}
  placeholder={placeholder}
- className="w-full bg-surface-sunken rounded-xl px-4 py-3 text-sm text-strong font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4 placeholder:text-faint border border-transparent "
+ className="w-full bg-surface-sunken rounded-xl px-4 py-3 text-sm text-strong font-medium focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4 placeholder:text-faint border border-transparent "
  />
 );
 
@@ -59,7 +59,7 @@ const TextAreaField = ({ placeholder, name, value, onChange, required }: any) =>
  onChange={onChange}
  required={required}
  rows={4}
- className="w-full bg-surface-sunken rounded-xl px-4 py-3 text-sm text-strong font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4 placeholder:text-faint resize-none border border-transparent "
+ className="w-full bg-surface-sunken rounded-xl px-4 py-3 text-sm text-strong font-medium focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4 placeholder:text-faint resize-none border border-transparent "
  />
 );
 
@@ -67,7 +67,7 @@ const SubmitButton = ({ children, isSubmitting, disabled }: { children: React.Re
  <button
  type="submit"
  disabled={isSubmitting || disabled}
- className={`w-full bg-gold hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] text-white font-bold py-3.5 px-4 rounded-xl transition-colors shadow-sm mt-2 flex items-center justify-center gap-2 ${(isSubmitting || disabled) ? 'opacity-70 cursor-not-allowed' : ''}`}
+ className={`w-full bg-gold hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] text-white font-bold py-3.5 px-4 rounded-xl transition-colors shadow-xs mt-2 flex items-center justify-center gap-2 ${(isSubmitting || disabled) ? 'opacity-70 cursor-not-allowed' : ''}`}
  >
  {isSubmitting ? (
  <>
@@ -89,7 +89,7 @@ const AccordionItem = ({
  children
 }: any) => {
  return (
- <div className="bg-surface-raised rounded-2xl shadow-sm border border-line overflow-hidden mb-4 transition-all duration-300">
+ <div className="bg-surface-raised rounded-2xl shadow-xs border border-line overflow-hidden mb-4 transition-all duration-300">
  <button
  onClick={() => onToggle(id)}
  className="w-full flex items-center justify-between p-4 text-left hover:bg-surface-sunken transition-colors"
@@ -328,7 +328,7 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
  value={bugForm.area}
  onChange={(e) => setBugForm({ ...bugForm, area: e.target.value, areaOther: e.target.value === 'Other' ? bugForm.areaOther : '' })}
  required
- className="w-full bg-surface-sunken rounded-xl px-4 py-3 text-sm text-strong font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4 border border-transparent"
+ className="w-full bg-surface-sunken rounded-xl px-4 py-3 text-sm text-strong font-medium focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4 border border-transparent"
  >
  <option value="" disabled>Select an area…</option>
  {(bugForm.role === 'admin' ? ADMIN_AREAS : USER_AREAS).map((a) => (

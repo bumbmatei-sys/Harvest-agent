@@ -194,7 +194,7 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
               onChange={(e) => { setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')); }}
               onFocus={() => setSubFocus(true)}
               onBlur={() => setSubFocus(false)}
-              className="min-w-0 flex-1 rounded-l-lg px-4 font-mono text-sm outline-none transition-colors"
+              className="min-w-0 flex-1 rounded-l-lg px-4 font-mono text-sm outline-hidden transition-colors"
               style={{ height: 46, border: `1px solid ${subBorder}`, borderRight: 'none', color: 'var(--text-heading, #2D2519)', background: 'white' }}
               placeholder="gracechurch"
             />

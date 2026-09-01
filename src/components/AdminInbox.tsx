@@ -252,7 +252,7 @@ const AdminInbox = () => {
  </div>
 
  {/* Desktop card — existing approved layout, unchanged (now lg-only). */}
- <div className={`hidden lg:block bg-surface-raised rounded-2xl shadow-sm border ${isPending ? 'border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] ' : 'border-line '} overflow-hidden transition-all duration-300`}>
+ <div className={`hidden lg:block bg-surface-raised rounded-2xl shadow-xs border ${isPending ? 'border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] ' : 'border-line '} overflow-hidden transition-all duration-300`}>
  <div 
  onClick={() => toggleExpand(sub.id)}
  className="p-4 flex items-start gap-4 cursor-pointer hover:bg-surface-sunken transition-colors"

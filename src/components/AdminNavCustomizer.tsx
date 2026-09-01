@@ -62,7 +62,7 @@ const SortableNavItem: React.FC<SortableNavItemProps> = ({ item, isBeingDragged 
         transition,
         opacity: isBeingDragged ? 0.35 : 1,
       }}
-      className="flex items-center gap-3 bg-surface-raised rounded-[14px] p-3 border border-line shadow-sm select-none"
+      className="flex items-center gap-3 bg-surface-raised rounded-[14px] p-3 border border-line shadow-xs select-none"
     >
       {/* Drag handle */}
       <div
@@ -227,7 +227,7 @@ const AdminNavCustomizer: React.FC<AdminNavCustomizerProps> = ({
   return (
     <div className="fixed inset-0 z-[300] bg-surface-tint flex flex-col">
       {/* ─── Header ─────────────────────────────────────────────────── */}
-      <div className="bg-surface-raised px-4 py-3 flex items-center justify-between shadow-sm border-b border-line flex-shrink-0">
+      <div className="bg-surface-raised px-4 py-3 flex items-center justify-between shadow-xs border-b border-line flex-shrink-0">
         <button
           onClick={onCancel}
           className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-surface-sunken transition-colors"

@@ -224,7 +224,7 @@ const AdminLibraryCourses: React.FC = () => {
       </AdminCard>
 
       {deleteConfirmId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
           <div className="bg-surface-raised rounded-brand-lg shadow-xl max-w-sm w-full p-6 border border-line">
             <h3 className="font-display text-xl font-semibold text-strong mb-2">Delete library course</h3>
             <p className="text-muted mb-6 text-sm">

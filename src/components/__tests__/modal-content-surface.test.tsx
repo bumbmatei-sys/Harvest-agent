@@ -540,7 +540,7 @@ it('no colour is hardcoded', () => {
   expect(neutrals, 'off-palette neutrals do not theme').toEqual([]);
 
   // Every colour the container emits comes from a token, not a value. box-shadow
-  // is excluded deliberately: `shadow-sm` is Tailwind's own black-at-5%, it is
+  // is excluded deliberately: `shadow-xs` is Tailwind's own black-at-5%, it is
   // the idiom every card in these three modals already uses, and a shadow that
   // does not show on a dark ground is the app-wide behaviour rather than a
   // regression this change introduces.
