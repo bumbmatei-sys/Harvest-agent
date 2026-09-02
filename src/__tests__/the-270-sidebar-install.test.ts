@@ -153,7 +153,112 @@ const RULES_SHA = 'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265
 const GLOBALS_SHA = '772c79af681c2b97c496b91be4f2573415f2a65802dfac078dbc72e8a8fd3741';
 const COMPONENTS_JSON_SHA = '5102c25c44791f19be9a94380f85f6e78934feccbfce7fe9ec54c316e99a76b4';
 /** main's, as of 5b780e8 — proves this PR adds no dependency. */
-const PACKAGE_JSON_SHA = '3ff5d9de5841e907bc4462d1826dffd466b78db872b6ea3a24d804876fc552a7';
+/**
+ * ⚠️ WAS a sha256 of package.json, standing in for "this PR adds no dependency
+ * of ANY name". THE-273 has since REMOVED one (next-themes, once sonner.tsx
+ * stopped importing it), so a byte digest can no longer make that claim — it
+ * would only say "package.json is whatever it is today", and would move again
+ * on a reformat or a version bump that adds nothing.
+ *
+ * So the claim is asserted directly instead, and more sharply than the digest
+ * managed: the dependency NAMES as of main (bb514cd), across both fields. An
+ * added name fails; a removed name fails unless it is listed below; a version
+ * bump or a whitespace change does not, because neither was ever the point.
+ */
+const MAIN_DEPENDENCY_NAMES: readonly string[] = [
+    '@aws-sdk/client-s3',
+    '@aws-sdk/s3-request-presigner',
+    '@base-ui/react',
+    '@capacitor/cli',
+    '@capacitor/core',
+    '@capacitor/push-notifications',
+    '@composio/core',
+    '@dnd-kit/core',
+    '@dnd-kit/sortable',
+    '@dnd-kit/utilities',
+    '@excalidraw/excalidraw',
+    '@firebase/rules-unit-testing',
+    '@google/genai',
+    '@marsidev/react-turnstile',
+    '@sentry/nextjs',
+    '@tailwindcss/postcss',
+    '@tailwindcss/typography',
+    '@tanstack/react-query',
+    '@tanstack/react-query-devtools',
+    '@testing-library/jest-dom',
+    '@testing-library/react',
+    '@testing-library/user-event',
+    '@tiptap/extension-image',
+    '@tiptap/extension-link',
+    '@tiptap/extension-placeholder',
+    '@tiptap/extension-text-align',
+    '@tiptap/extension-underline',
+    '@tiptap/pm',
+    '@tiptap/react',
+    '@tiptap/starter-kit',
+    '@tiptap/suggestion',
+    '@types/dompurify',
+    '@types/leaflet',
+    '@types/node',
+    '@types/qrcode',
+    '@types/react',
+    '@types/react-dom',
+    '@types/sanitize-html',
+    '@upstash/ratelimit',
+    '@upstash/redis',
+    '@vercel/analytics',
+    '@vitejs/plugin-react',
+    'class-variance-authority',
+    'clsx',
+    'country-state-city',
+    'docx',
+    'dodopayments',
+    'dompurify',
+    'eslint',
+    'eslint-config-next',
+    'firebase',
+    'firebase-admin',
+    'geist',
+    'happy-dom',
+    'leaflet',
+    'libphonenumber-js',
+    'lucide-react',
+    'motion',
+    'next',
+    'next-pwa',
+    'next-themes',
+    'pdf-lib',
+    'postcss',
+    'posthog-js',
+    'qrcode',
+    'react',
+    'react-dom',
+    'react-google-autocomplete',
+    'react-leaflet',
+    'react-markdown',
+    'react-player',
+    'react-router-dom',
+    'recharts',
+    'resend',
+    'sanitize-html',
+    'shadcn',
+    'sonner',
+    'standardwebhooks',
+    'stripe',
+    'tailwind-merge',
+    'tailwindcss',
+    'tw-animate-css',
+    'typescript',
+    'unpdf',
+    'vitest',
+    'zustand',
+];
+
+/** The only names allowed to be missing from the list above, each with the
+ *  ticket that removed it. */
+const REMOVED_SINCE_MAIN: readonly string[] = [
+  'next-themes', // THE-273 — sonner.tsx was its last importer and no longer imports it
+];
 const TAILWIND_CODE_SHA = '491ebb5575d16eddfab00c6ed89900c725141b412e410e9e97342ff2108b2904';
 const FUNCTIONS_TREE_SHA = '0acf97d60a6d5066680d7e7fe24ef1ce900bac0a274332942d570c259e0dddb9';
 
@@ -343,15 +448,30 @@ it('the unresolved fixture is still empty', () => {
 
 /* ── 3. The CLI rewrote nothing it should not have ───────────────────────── */
 
+/**
+ * ⚠️ THE-273 CHANGED sonner.tsx, and it is the only pre-existing primitive any
+ * later ticket has moved. The map above is deliberately LEFT ALONE — it records
+ * the install-time state and that is the claim it makes — so this is the single,
+ * named exception layered over it. Every other entry is still compared against
+ * the digest recorded when this PR landed, and a second file moving still fails.
+ *
+ * (The change: sonner.tsx stopped hard-coding `theme: "light"` — a correct call
+ * when the app had no dark mode — and reads Harvest's own resolved theme
+ * instead. See src/__tests__/the-273-toast-dark-mode.test.tsx.)
+ */
+const MOVED_SINCE: Record<string, string> = {
+  'sonner.tsx': '2ebc0c9ba968858cead2fbf2523dfd9da217715339967025e8c8df94f2131ab9',
+};
+
 describe('all 21 pre-existing primitives are byte-identical', () => {
-  it('every one of the 21 still hashes to its recorded digest', () => {
+  it('every one of the 21 still hashes to its recorded digest, bar the one THE-273 fixed', () => {
     const actual = Object.fromEntries(
       Object.keys(PRE_EXISTING_DIGESTS).map((f) => [
         f,
         sha256(readFileSync(path.join(UI_DIR, f), 'utf8')),
       ]),
     );
-    expect(actual).toEqual(PRE_EXISTING_DIGESTS);
+    expect(actual).toEqual({ ...PRE_EXISTING_DIGESTS, ...MOVED_SINCE });
   });
 
   it('and the six that are sidebar’s own registry dependencies are named individually', () => {
@@ -442,9 +562,13 @@ describe('no new token was defined', () => {
     // sharpest way to say "this PR adds no dependency" while #416 was the only
     // PR that did. #416 has landed and recharts IS in main, so the assertion
     // would now be false for a reason that has nothing to do with sidebar.
-    // Replaced by the stronger claim it was standing in for: package.json is
-    // byte-identical to main, so this PR adds no dependency of ANY name.
-    expect(sha256(readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8'))).toBe(PACKAGE_JSON_SHA);
+    // Replaced by the stronger claim it was standing in for: no dependency of
+    // ANY name was added. See MAIN_DEPENDENCY_NAMES for why that is a list of
+    // names rather than a digest of the file.
+    expect(
+      Object.keys(deps).sort(),
+      'a dependency name was added or removed — sidebar adds none, and every removal since must be listed in REMOVED_SINCE_MAIN',
+    ).toEqual(MAIN_DEPENDENCY_NAMES.filter((n) => !REMOVED_SINCE_MAIN.includes(n)));
     expect(deps['recharts'], 'recharts arrived with #416, and is main’s').toBe('^3.8.0');
   });
 });

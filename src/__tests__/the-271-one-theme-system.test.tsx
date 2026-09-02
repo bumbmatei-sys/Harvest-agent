@@ -6,7 +6,6 @@ import React, { act, useEffect, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 import postcss from 'postcss';
-import { ThemeProvider, useTheme as useNextTheme } from 'next-themes';
 import {
   THEME_STORAGE_KEY,
   FAMILY_STORAGE_KEY,
@@ -50,6 +49,19 @@ import PaletteFamilyToggle from '../components/PaletteFamilyToggle';
  * and `src/components/ui/**` belongs to THE-270 / THE-272. Section 9 pins the
  * import census so the removal becomes a one-line follow-up the moment that
  * file's owner switches the specifier.
+ *
+ * ✅ THE-273 IS THAT FOLLOW-UP, and this file carries the consequences.
+ * `sonner.tsx` now reads the shim, the census went red exactly as designed,
+ * and `next-themes` is out of package.json. Two things changed here as a
+ * result, both recorded where they happened rather than only here:
+ *   • sections 1 and 2 lost the five tests that DROVE the installed library.
+ *     A test cannot exercise a package that is not installed, and keeping the
+ *     package solely to keep those tests would have preserved exactly the
+ *     installed-but-inert state the removal exists to end. Their argument
+ *     survives in prose in src/lib/use-theme.ts's docblock; the claims that
+ *     were about HARVEST rather than about the library survive as tests.
+ *   • section 9's census flipped from "exactly one importer" to "none, and
+ *     not in package.json either", and now walks the test trees too.
  *
  * ⚠️ NOTHING WAS CHANGED IN THE LOAD-BEARING PATH. `src/app/layout.tsx`,
  * `src/lib/theme.ts`, `src/lib/theme-runtime.ts`, `src/lib/preauth-theme.ts`
@@ -170,101 +182,28 @@ const mountToPaint = (node: React.ReactElement): HTMLDivElement => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 1 · 🔴 THE DECISION: next-themes cannot drive Harvest's two axes
+// 1 · 🔴 THE DECISION: Harvest's two axes, and why no one-value writer fits
 //
-//     Every claim here DRIVES THE INSTALLED LIBRARY. None of it is read off
-//     the README or inferred from the types — a version bump that changed
-//     any of it would turn these red, which is the point of testing the
-//     rejection rather than just writing it in a PR description.
+//     ⚠️ THE-273 REMOVED THE PACKAGE, and three tests went with it. They
+//     DROVE the installed library — a multi-attribute provider writing one
+//     value into every attribute, the `value` map failing to rescue it, and
+//     its single storage key — so they could only exist while next-themes was
+//     in node_modules. `sonner.tsx` was its last importer; once that switched
+//     to the first-party shim the dependency came out of package.json, and
+//     importing the package is now a module-resolution failure rather than a
+//     test. (This comment spells no import of it: the census below greps the
+//     test trees too.) The argument they measured is recorded in full in
+//     src/lib/use-theme.ts's docblock, which is where anyone weighing a
+//     re-adoption will land.
+//
+//     What survives is the half that was never about the library: the stamps
+//     Harvest's OWN code produces. No writer that puts ONE value on both
+//     attributes can reach any of them, whatever library is behind it — so
+//     this outlives the specific package it was written against. The census
+//     in section 9 is what now guards the removal.
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Probe that reports next-themes' own view of the world. */
-const NextThemesProbe: React.FC = () => {
-  const t = useNextTheme();
-  return <span data-theme-name={String(t.theme)} data-resolved={String(t.resolvedTheme)} />;
-};
-
-describe('1 — next-themes models ONE axis, and Harvest has two', () => {
-  it('🔴 a multi-attribute provider writes the SAME value to every attribute', async () => {
-    // The only shape in which next-themes could even appear to drive both
-    // axes: hand it both attribute names. It computes ONE string and writes
-    // THAT to each one, so `data-palette` gets the MODE.
-    localStorage.setItem(THEME_STORAGE_KEY, 'dark');
-    await mount(
-      <ThemeProvider
-        attribute={['class', 'data-theme', 'data-palette']}
-        storageKey={THEME_STORAGE_KEY}
-        themes={['light', 'dark']}
-      >
-        <NextThemesProbe />
-      </ThemeProvider>,
-    );
-
-    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
-    expect(
-      document.documentElement.getAttribute('data-palette'),
-      'next-themes wrote the MODE into data-palette — no rule in globals.css matches [data-palette="dark"]',
-    ).toBe('dark');
-    // And that is not a family, so the family axis has no value at all.
-    expect(isPaletteFamily(document.documentElement.getAttribute('data-palette'))).toBe(false);
-  });
-
-  it('🔴 the `value` map cannot rescue it — a four-way cross product collapses too', async () => {
-    // The documented escape hatch: name the four palettes and map each to an
-    // attribute value. The map yields one string PER THEME, not one per
-    // attribute, so both attributes still receive the same thing.
-    localStorage.setItem(THEME_STORAGE_KEY, 'classic-dark');
-    await mount(
-      <ThemeProvider
-        attribute={['data-theme', 'data-palette']}
-        storageKey={THEME_STORAGE_KEY}
-        themes={['harvest-light', 'harvest-dark', 'classic-light', 'classic-dark']}
-        value={{
-          'harvest-light': 'light',
-          'harvest-dark': 'dark',
-          'classic-light': 'light',
-          'classic-dark': 'dark',
-        }}
-        enableSystem={false}
-      >
-        <NextThemesProbe />
-      </ThemeProvider>,
-    );
-
-    const { attr, palette } = stamped();
-    expect(
-      palette,
-      'the cross product still cannot put a family on data-palette and a mode on data-theme',
-    ).toBe(attr);
-    expect(isPaletteFamily(palette)).toBe(false);
-  });
-
-  it('🔴 it holds ONE storage key, and Harvest stores two independent preferences', async () => {
-    let setTheme: ((v: string) => void) | null = null;
-    const Grab: React.FC = () => {
-      const t = useNextTheme();
-      setTheme = t.setTheme as unknown as (v: string) => void;
-      return null;
-    };
-    await mount(
-      <ThemeProvider storageKey={THEME_STORAGE_KEY}>
-        <Grab />
-      </ThemeProvider>,
-    );
-    await act(async () => { setTheme!('dark'); });
-
-    const keys: string[] = [];
-    for (let i = 0; i < localStorage.length; i += 1) keys.push(localStorage.key(i)!);
-    expect(keys, 'next-themes persisted more than the one key it is configured with').toEqual([
-      THEME_STORAGE_KEY,
-    ]);
-    // The family key is untouched — not because next-themes preserved it, but
-    // because it has no idea it exists. Harvest needs BOTH written and read
-    // independently: a family can be absent while a mode is chosen.
-    expect(localStorage.getItem(FAMILY_STORAGE_KEY)).toBeNull();
-    expect(THEME_STORAGE_KEY).not.toBe(FAMILY_STORAGE_KEY);
-  });
-
+describe('1 — Harvest has two axes, and a one-value writer reaches none of them', () => {
   it('🔴 so NONE of the four stamps the real system produces is reachable', () => {
     // The closing argument, and it is about Harvest rather than about the
     // library: a writer that puts ONE value on both attributes can only ever
@@ -293,67 +232,18 @@ describe('1 — next-themes models ONE axis, and Harvest has two', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 2 · 🔴 and its inline script would RACE the pre-paint script
+// 2 · 🔴 the app keeps exactly ONE inline theme script
+//
+//     ⚠️ THE-273: the two tests that rendered next-themes' own provider to
+//     capture its inline script — and showed it restamping data-theme over
+//     the THE-85 pre-auth force — went with the package, for the same reason
+//     as section 1. What they proved is now structural rather than argued:
+//     there is no second pre-paint script because there is no second theme
+//     library installed. The test below still pins that from this side.
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('2 — two inline scripts would race on first paint', () => {
-  /** next-themes' own pre-paint script, taken from a real rendered provider. */
-  const nextThemesScript = async (): Promise<string> => {
-    const c = await mount(
-      <ThemeProvider attribute={['class', 'data-theme']} storageKey={THEME_STORAGE_KEY}>
-        <span />
-      </ThemeProvider>,
-    );
-    const script = c.querySelector('script');
-    expect(script, 'next-themes stopped emitting an inline script').not.toBeNull();
-    return script!.textContent || '';
-  };
-
-  it('the provider emits a second inline script that stamps the same attributes', async () => {
-    const js = await nextThemesScript();
-    expect(js).toContain('document.documentElement');
-    expect(js).toContain('setAttribute');
-    expect(js).toContain('localStorage.getItem');
-    // It is unconditional: there is no prop that turns it off.
-    expect(js.length).toBeGreaterThan(100);
-  });
-
-  it('🔴 and it does NOT know about PREAUTH_PATHS, so it undoes the THE-85 force', async () => {
-    const js = await nextThemesScript();
-    for (const p of PREAUTH_PATHS) {
-      expect(js, `next-themes' script knows about ${p}`).not.toContain(p);
-    }
-
-    // Now run the sequence a real document would: head script first, then the
-    // one the provider renders into <body>.
-    localStorage.setItem(THEME_STORAGE_KEY, 'dark');
-    localStorage.setItem(FAMILY_STORAGE_KEY, 'harvest');
-    resetHtml();
-
-    runPrePaint('/auth');
-    const afterHarvest = stamped();
-    expect(afterHarvest, 'the pre-paint script no longer forces the funnel to light').toEqual({
-      attr: 'light',
-      dark: false,
-      palette: DEFAULT_PALETTE_FAMILY,
-    });
-
-    // eslint-disable-next-line no-new-func
-    new Function(js)();
-    const afterRace = stamped();
-
-    expect(
-      afterRace.attr,
-      'this is the flash: the second script read the stored dark and repainted the sign-in screen',
-    ).toBe('dark');
-    expect(afterRace.dark).toBe(true);
-    expect(
-      afterRace,
-      'two scripts writing data-theme cannot agree — THE-85 loses',
-    ).not.toEqual(afterHarvest);
-  });
-
-  it('🔴 so the app keeps exactly ONE inline theme script, and it is the head one', () => {
+describe('2 — the app keeps exactly one inline theme script', () => {
+  it('🔴 there is exactly one, it is the head one, and no provider is mounted', () => {
     const layout = readFileSync(LAYOUT, 'utf8');
     // Exactly one dangerouslySetInnerHTML script that touches documentElement.
     const scripts = layout.match(/__html: `\(function\(\)\{try\{[\s\S]*?`,/g) ?? [];
@@ -382,6 +272,21 @@ function walkSrc(dir: string = SRC, out: string[] = []): string[] {
     const p = path.join(dir, e);
     if (statSync(p).isDirectory()) {
       if (e !== '__tests__' && e !== 'node_modules') walkSrc(p, out);
+    } else if (/\.tsx?$/.test(e)) out.push(p);
+  }
+  return out;
+}
+
+/** Every .ts/.tsx file under src/, __tests__ INCLUDED. The census needs the
+ *  test trees too now that next-themes is not installed at all: an import
+ *  from a test file resolves to nothing just as surely as one from a
+ *  component, and this names the file rather than leaving a bare
+ *  module-not-found. */
+function walkAllSrc(dir: string = SRC, out: string[] = []): string[] {
+  for (const e of readdirSync(dir)) {
+    const p = path.join(dir, e);
+    if (statSync(p).isDirectory()) {
+      if (e !== 'node_modules') walkAllSrc(p, out);
     } else if (/\.tsx?$/.test(e)) out.push(p);
   }
   return out;
@@ -716,12 +621,36 @@ describe('5 — the pre-paint script and theme.ts still agree on the default', (
     'src/app/globals.css': '772c79af681c2b97c496b91be4f2573415f2a65802dfac078dbc72e8a8fd3741',
     'src/components/ThemeToggle.tsx': 'efd6790ae14ebb1e5238ce601828589724ffcd4931f6c90e631927d9e1522277',
     'src/components/PaletteFamilyToggle.tsx': '6a88e764af6b6d861d6e4df7bf01593d497d240a326ea6c94c03794349484233',
-    'src/components/ui/sonner.tsx': 'f76ee6fb6aa5892bdc1c92b8b282a59f34b63f3fa2ab01475df4a61988f0014b',
   };
 
   it.each(Object.keys(UNCHANGED))('%s is byte-for-byte unchanged', (file) => {
     expect(digestOf(file), `${file} changed — THE-271 changes no existing theme code`)
       .toBe(UNCHANGED[file]);
+  });
+
+  /**
+   * ⚠️ sonner.tsx WAS in the list above, and THE-273 moved it — on purpose,
+   * and it is the one file in the load-bearing path that any ticket has been
+   * allowed to move since. So it is not dropped from the pin and it is not
+   * quietly re-recorded into `UNCHANGED`: it gets its own assertion naming
+   * both digests, which keeps every claim the original list made.
+   *
+   *   • it still fails if sonner.tsx moves AGAIN, to any third value;
+   *   • it still fails if it somehow reverts to the THE-271 version, which
+   *     would mean the light default is back;
+   *   • and no other file gained the same licence, because the list above is
+   *     untouched.
+   */
+  it('src/components/ui/sonner.tsx moved exactly once, and THE-273 is why', () => {
+    const THE_271 = 'f76ee6fb6aa5892bdc1c92b8b282a59f34b63f3fa2ab01475df4a61988f0014b';
+    const THE_273 = '2ebc0c9ba968858cead2fbf2523dfd9da217715339967025e8c8df94f2131ab9';
+    const actual = digestOf('src/components/ui/sonner.tsx');
+    expect(
+      actual,
+      actual === THE_271
+        ? 'sonner.tsx is back to its THE-271 state — the hard-coded light default has returned'
+        : 'sonner.tsx changed again; if that is intended, re-record BOTH this digest and the-273-toast-dark-mode.test.tsx',
+    ).toBe(THE_273);
   });
 
   it('the two storage keys are still spelled identically in both homes', () => {
@@ -1087,32 +1016,51 @@ describe('9 — useTheme() returns the real theme to a shadcn component', () => 
   });
 
   /**
-   * ⚠️ THE CENSUS, and the reason the dependency is still in package.json.
+   * ⚠️ THE CENSUS — UPDATED by THE-273, deliberately not deleted.
    *
-   * The ticket's fourth option — "remove next-themes entirely if nothing will
-   * use it" — is the right end state and CANNOT BE REACHED FROM HERE:
-   * sonner.tsx imports `useTheme` from it, and that file belongs to THE-270 /
-   * THE-272. Dropping the package today is a `tsc` failure, not a cleanup.
-   *
-   * So this pins the census instead. It fails two ways, both useful:
+   * THE-271 wrote this pin to fail two ways, both useful:
    *   • a NEW file starts importing next-themes → the shim exists, use it;
    *   • sonner.tsx stops importing it → nothing is left, delete the package.
+   *
+   * The second is what happened. `sonner.tsx` was the last importer and it
+   * belonged to a parallel ticket at the time, which is the only reason the
+   * dependency outlived THE-271; THE-273 switched that import to
+   * `@/lib/use-theme`, this test went red exactly as designed, and the
+   * package came out of package.json in the same PR.
+   *
+   * 🔴 So the pin FLIPS rather than retires. An empty census is a fact that
+   * needs guarding just as much as a one-entry one did: without this, a
+   * future `shadcn add` pasting upstream's own `useTheme` import back into a
+   * new primitive would reinstate the dependency and nothing would object.
    */
-  it('🔴 exactly one file still imports next-themes, and it is not one this ticket owns', () => {
-    const importers = walkSrc()
+  it('🔴 nothing imports next-themes any more, and it is gone from package.json', () => {
+    // Every .ts/.tsx under src, TEST FILES INCLUDED — walkSrc skips __tests__,
+    // and with the package uninstalled a test importing it is just as broken
+    // as a component doing so. (This suite's own two sections that drove the
+    // real library were removed for that reason; see section 1.)
+    const importers = walkAllSrc()
       .filter((f) => /from ['"]next-themes['"]/.test(readFileSync(f, 'utf8')))
       .map((f) => path.relative(ROOT, f))
       .sort();
     expect(
       importers,
-      'the next-themes import census moved — if it is now empty, remove the dependency from package.json',
-    ).toEqual(['src/components/ui/sonner.tsx']);
+      'next-themes is imported again — src/lib/use-theme.ts is the shim to point at instead',
+    ).toEqual([]);
 
-    const pkg = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
-    expect(
-      pkg.dependencies['next-themes'],
-      'next-themes was removed while sonner.tsx still imports it — that is a build failure',
-    ).toBeTruthy();
+    // ⚠️ Every dependency field, not just `dependencies`: demoting it to
+    // devDependencies would leave it installed and importable again, which is
+    // the state this whole line of work exists to end.
+    const pkg = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8')) as Record<
+      string,
+      Record<string, string> | undefined
+    >;
+    const declaredIn = [
+      'dependencies',
+      'devDependencies',
+      'peerDependencies',
+      'optionalDependencies',
+    ].filter((field) => pkg[field]?.['next-themes'] !== undefined);
+    expect(declaredIn, 'next-themes came back into package.json').toEqual([]);
   });
 
   it('and no OTHER shadcn component under src/components/ui reaches for a theme hook', () => {
