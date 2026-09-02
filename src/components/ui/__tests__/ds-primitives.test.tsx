@@ -140,12 +140,16 @@ describe('the token guard', () => {
       expect(reason.length, `${cls} is exempted without a reason`).toBeGreaterThan(40);
     }
 
-    // And the runtime four are exactly the runtime four. THE-272 added
-    // `bg-(--color-bg)`: chart.tsx sets it inline per hovered datum, so it is
-    // the same kind of thing as the Base UI three — a var() supplied by
-    // JavaScript at render time, which no stylesheet can hold.
+    // And the runtime three are exactly the runtime three.
+    //
+    // ⚠️ THE-272 briefly made this four with `bg-(--color-bg)`, and THE-270
+    // took it back out — not by preference, but because the test directly
+    // above (`holds back no stale exemption`) named it. chart.tsx sets
+    // --color-bg in its own style={{ … }}, which THE-270's
+    // extractInlineCustomProperties reads, so the class resolves and the
+    // hand-written entry had nothing left to hold back. The class is still
+    // never reported; only the guard's grounds changed.
     expect(Object.keys(SET_AT_RUNTIME).sort()).toEqual([
-      'bg-(--color-bg)',
       'max-h-(--available-height)',
       'origin-(--transform-origin)',
       'w-(--anchor-width)',

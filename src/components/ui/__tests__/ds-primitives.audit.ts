@@ -116,6 +116,8 @@ const isComparison = (node: ts.Node): boolean =>
 export const NOT_A_UTILITY: Record<string, string> = {
   toaster:
     "sonner's own class. `<Sonner className=\"toaster group\">` in sonner.tsx targets the stylesheet the sonner package injects at runtime, not this app's.",
+  'no-scrollbar':
+    "ui.shadcn.com's own site utility, shipped inside sidebar.tsx by the registry. Unlike `toaster`, nothing injects it here — it is genuinely dead, and SidebarContent will paint a visible scrollbar until Phase 8 decides whether to define it or drop it.",
 };
 
 /**
@@ -133,10 +135,31 @@ export const NOT_A_UTILITY: Record<string, string> = {
  *
  * So these are excluded, and they are excluded BY EXACT CLASS NAME rather
  * than by a pattern. A rule like "ignore anything spelling an arbitrary
- * property" would also swallow the next `w-(--sidebar-width)` a component
- * arrives with that genuinely IS a token this app forgot to define — which is
- * the whole failure mode this guard exists to catch. Six names, six reasons;
- * a seventh has to be argued for here.
+ * property" would swallow a class that genuinely IS a token this app forgot to
+ * define — which is the whole failure mode this guard exists to catch. Three
+ * names, three reasons; a fourth has to be argued for here.
+ *
+ * ⚠️ THE-270 — this block used to name `w-(--sidebar-width)` as the example of
+ * the class a pattern would wrongly swallow. `sidebar` has now been installed
+ * and that turned out to be the wrong prediction: `--sidebar-width` is not a
+ * forgotten token, it is a React constant sidebar.tsx sets as an inline style
+ * on the element the class lands on (THE-267 pinned that it must not become a
+ * token). Seven such classes arrived at once, and NONE of them was added here.
+ * They are resolved by reading the component's own `style={{ … }}` instead —
+ * see extractInlineCustomProperties.
+ *
+ * ⚠️ That reader is also why this list is back to three. THE-272 (#416) added a
+ * fourth, `bg-(--color-bg)`, for chart.tsx's tooltip swatch — correctly, on the
+ * evidence available when it was written. chart.tsx sets `--color-bg` inline in
+ * its own `style={{ … }}` (chart.tsx:236) and spells the class at :225, which
+ * is exactly the shape the reader resolves, so once THE-270 landed the entry
+ * stopped doing any work and `holds back no stale exemption` said so by name.
+ * It was removed on that evidence, not by preference. Nothing about chart.tsx
+ * changed: the swatch still gets its colour from React, and the guard is still
+ * silent about the class — it is now silent for a reason it READ rather than a
+ * reason someone typed. What remains here is the case the reader cannot cover:
+ * a var() written by a third party inside node_modules, where the audited
+ * source proves nothing.
  *
  * `holds back no stale exemption` audits this list exactly as it audits
  * NOT_A_UTILITY: if Base UI ever stops setting one of these, or a component
@@ -149,30 +172,35 @@ export const SET_AT_RUNTIME: Record<string, string> = {
     "Base UI writes --anchor-width on the positioner when the popup opens: the trigger's measured width, so the menu can match it.",
   'origin-(--transform-origin)':
     'Base UI writes --transform-origin on the positioner when the popup opens: the corner the open/close animation scales out of, which depends on the side it flipped to.',
-  'bg-(--color-bg)':
-    'chart.tsx writes --color-bg inline on the tooltip swatch (style={{ "--color-bg": indicatorColor }}), where indicatorColor is the series colour of the datum being hovered — per-datum, so no stylesheet can hold it.',
 };
 
 /**
- * THE-272 — why the fourth entry above is a component, not Base UI.
+ * THE-272, amended by THE-270 — chart.tsx's two swatch properties, and why
+ * NEITHER is on the list above any more.
  *
- * The first three are written by Base UI onto a positioner it measures. The
- * fourth is written by chart.tsx onto its own element, and the distinction
- * does not matter to this list: what SET_AT_RUNTIME holds is classes whose
- * var() is supplied by JavaScript at render time rather than by any
- * stylesheet, and `--color-bg` is the series colour of the hovered datum. It
- * comes from the caller's ChartConfig, so there is no correct static value —
- * defining one in globals.css would not make the swatch right, it would paint
- * every swatch the same colour for one frame before React's inline style won.
+ * This block used to explain why `bg-(--color-bg)` was SET_AT_RUNTIME's fourth
+ * entry. The reasoning about the COMPONENT is unchanged and is kept here,
+ * because it is still the reason the guard must not report the class:
+ * `--color-bg` is the series colour of the hovered datum, it comes from the
+ * caller's ChartConfig, and there is no correct static value — defining one in
+ * globals.css would not make the swatch right, it would paint every swatch the
+ * same colour for one frame before React's inline style won.
  *
- * ⚠️ Its twin on the same element, `border-(--color-border)`, is NOT here, and
- * must not be. chart.tsx sets --color-border inline in the same style object,
- * but THE-264 also defined --color-border as a real theme token, so the class
- * resolves against the stylesheet and the guard never reports it. Adding it
- * would break `holds back no stale exemption`, which requires every entry that
- * applies to be genuinely unresolved — the list cannot hold a class that
- * already works. The behaviour is correct either way: the inline style wins at
- * runtime. Only the guard's reason for silence differs between the two.
+ * What changed is only HOW the guard knows. chart.tsx sets --color-bg in its
+ * own `style={{ … }}` at chart.tsx:236 and spells the class at :225, so
+ * extractInlineCustomProperties reads it directly and the class resolves. The
+ * hand-written entry then had nothing left to do, and `holds back no stale
+ * exemption` — which requires every entry that applies to be genuinely
+ * unresolved — named it. It was dropped on that evidence.
+ *
+ * ⚠️ Its twin on the same element, `border-(--color-border)`, was never on the
+ * list and must not be, for a THIRD reason: THE-264 defined --color-border as a
+ * real theme token, so it resolves against the stylesheet and would be quiet
+ * even without the reader. Three classes, three different reasons for silence
+ * — a stylesheet token, an inline style read from source, and a third-party
+ * var() that can only be excluded by name. The behaviour is identical in all
+ * three cases; only the guard's grounds differ, which is exactly what
+ * `holds back no stale exemption` exists to keep honest.
  */
 
 /** Every hand-written exemption, and why each class is held back. */
@@ -256,6 +284,9 @@ export function extractClassNames(file: string, source?: string): string[] {
       return;
     }
     // `indicator === "dot"` is a test, not a class. See COMPARISON_OPERATORS.
+    // THE-270 verified this also covers sidebar.tsx's `variant === "floating"`:
+    // a node cannot be both a string literal and a BinaryExpression, so the two
+    // branches are mutually exclusive and the order between them is immaterial.
     if (isComparison(node)) return;
     if (ts.isCallExpression(node)) {
       const name = calleeName(node);
@@ -333,6 +364,81 @@ export function extractClassNames(file: string, source?: string): string[] {
 
   visit(sf);
   return out;
+}
+
+/**
+ * THE-270 — every custom property THIS FILE sets as an inline style.
+ *
+ * `sidebar.tsx` reads three custom properties that no stylesheet defines, and
+ * sets all three itself, at four sites:
+ *
+ *   <div style={{ "--sidebar-width": "16rem",            // :135
+ *                 "--sidebar-width-icon": "3rem" }} …>   // :136   SidebarProvider
+ *   <SheetContent style={{ "--sidebar-width": "18rem" }} …>        // :193
+ *   <Skeleton style={{ "--skeleton-width": width }} …>             // :630
+ *
+ * and then spells `w-(--sidebar-width)`, `max-w-(--skeleton-width)` and five
+ * more against them. THE-267 pinned that the widths are NOT tokens: they are
+ * React constants the component owns, and a palette has nothing to say about
+ * them. So `undefined-var` is the WRONG answer here — the declaration is not
+ * dropped at computed-value time, because the property really is set on the
+ * element the class lands on.
+ *
+ * What was rejected: adding the seven class names to SET_AT_RUNTIME. That list
+ * holds classes whose var() is written by a THIRD PARTY — Base UI's positioner
+ * — where reading the source proves nothing because the source is in
+ * node_modules. Here the evidence is in the audited file itself, so a
+ * hand-written list would be a second enumeration of something already
+ * readable, and second enumerations in this repo drift. It would also have
+ * cost the guard its own mutation test: `a class naming an undefined property
+ * that is NOT exempted still fails` plants `w-(--sidebar-width)` in a
+ * throwaway fixture precisely because nothing exempts it. Reading the file
+ * keeps that test true as written — the fixture sets no style, so the class is
+ * still reported.
+ *
+ * ⚠️ The limit, stated rather than assumed: an inline style defines a property
+ * for the element and its subtree, not for the document. This returns one set
+ * per file and applies it only to that file's classes, so a property chart.tsx
+ * sets cannot silence a missing token in sidebar.tsx. Within a file it does not
+ * model which element is which — sidebar.tsx is safe because SidebarProvider
+ * wraps every consumer of the widths, and that is a fact about the component,
+ * not a guarantee of this reader. A primitive that set a property on one branch
+ * and read it from a sibling would be judged resolved here and be broken in the
+ * browser; nothing in src/components/ui does that today.
+ */
+export function extractInlineCustomProperties(file: string, source?: string): string[] {
+  const text = source ?? readFileSync(file, 'utf8');
+  const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const out = new Set<string>();
+
+  /**
+   * Every `"--x": …` key in any object literal under a `style` attribute.
+   * Walked rather than pattern-matched because the value arrives wrapped:
+   * `style={{ … } as React.CSSProperties}` is a JsxExpression around an
+   * AsExpression around the object, and `{ ...style }` spreads sit beside the
+   * keys. A walk reads all three shapes without enumerating them.
+   */
+  const collect = (node: ts.Node): void => {
+    if (ts.isObjectLiteralExpression(node)) {
+      for (const prop of node.properties) {
+        if (!ts.isPropertyAssignment(prop)) continue;
+        if (!ts.isStringLiteralLike(prop.name)) continue;
+        if (prop.name.text.startsWith('--')) out.add(prop.name.text);
+      }
+    }
+    node.forEachChild(collect);
+  };
+
+  const visit = (node: ts.Node): void => {
+    if (ts.isJsxAttribute(node) && node.name.getText(sf) === 'style' && node.initializer) {
+      collect(node.initializer);
+      return;
+    }
+    node.forEachChild(visit);
+  };
+
+  visit(sf);
+  return [...out].sort();
 }
 
 /* ── 2. Resolution — ask the built stylesheet ──────────────────────────── */
@@ -453,15 +559,24 @@ export async function auditPrimitives(files: string[]): Promise<AuditResult> {
   const classesByFile = new Map<string, string[]>();
   files.forEach((file, i) => classesByFile.set(file, extractClassNames(file, sources[i])));
 
+  /** Per file, never merged: see extractInlineCustomProperties for why. */
+  const inlineByFile = new Map<string, Set<string>>();
+  files.forEach((file, i) =>
+    inlineByFile.set(file, new Set(extractInlineCustomProperties(file, sources[i]))),
+  );
+
   const sheet = readStylesheet(postcss.parse(await buildCssForFiles(files)) as CssRoot);
 
   /** Follow `--a: var(--b)` so an indirection cannot hide an undefined name. */
-  const firstUndefined = (values: string[]): string | undefined => {
+  const firstUndefined = (values: string[], inline: Set<string>): string | undefined => {
     const queue = values.flatMap(requiredVars);
     const seen = new Set<string>();
     while (queue.length) {
       const name = queue.shift()!;
       if (seen.has(name) || isTailwindInternal(name) || name in SET_BY_NEXT_FONT) continue;
+      // The file under audit sets this one on the element itself, so the
+      // declaration survives computed-value time. THE-270.
+      if (inline.has(name)) continue;
       seen.add(name);
       const definition = sheet.customProps.get(name);
       if (definition === undefined) return name;
@@ -477,13 +592,14 @@ export async function auditPrimitives(files: string[]): Promise<AuditResult> {
   };
 
   for (const file of files) {
+    const inline = inlineByFile.get(file) ?? new Set<string>();
     for (const className of classesByFile.get(file) ?? []) {
       const values = sheet.valuesByClass.get(className);
       if (!values) {
         record({ file, className, reason: 'no-rule' });
         continue;
       }
-      const property = firstUndefined(values);
+      const property = firstUndefined(values, inline);
       if (property) record({ file, className, reason: 'undefined-var', property });
     }
   }

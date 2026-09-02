@@ -236,22 +236,35 @@ describe('the CLI rewrote nothing it should not have', () => {
     expect(actual).toEqual(PRE_EXISTING_DIGESTS);
   });
 
-  it('src/components/ui holds exactly the 13 plus the 4, plus THE-272’s 4', () => {
-    // THE-272 (Batch B) installed chart, pagination, progress and table. They
-    // are named here rather than the assertion being loosened to "contains",
-    // so a fifth arrival still has to come back and say so — which is the
-    // whole value of this test. THE-272's own suite pins its four; this one
-    // keeps proving that THE-266's four are still exactly what it installed.
+  it('src/components/ui holds exactly the 13 plus the 4, plus THE-272’s 4, plus THE-270’s sidebar', () => {
+    // THE-272 (Batch B) installed chart, pagination, progress and table.
+    // THE-270 then installed `sidebar` — the component THESE FOUR were the
+    // registry dependencies OF. Both are named here rather than the assertion
+    // being loosened to "contains", so a tenth arrival still has to come back
+    // and say so, which is the whole value of this test. Each ticket's own
+    // suite pins what it installed; this one keeps proving that THE-266's four
+    // are still exactly what it installed.
     const BATCH_B = ['chart.tsx', 'pagination.tsx', 'progress.tsx', 'table.tsx'];
     expect(
       readdirSync(UI_DIR)
         .filter((f) => f.endsWith('.tsx'))
         .sort(),
-    ).toEqual([...Object.keys(PRE_EXISTING_DIGESTS), ...NEW_PRIMITIVES, ...BATCH_B].sort());
+    ).toEqual(
+      [...Object.keys(PRE_EXISTING_DIGESTS), ...NEW_PRIMITIVES, ...BATCH_B, 'sidebar.tsx'].sort(),
+    );
   });
 
-  it('no sidebar primitive was pulled in as a transitive dependency', () => {
-    expect(existsSync(path.join(UI_DIR, 'sidebar.tsx'))).toBe(false);
+  it('sidebar arrived by its own ticket, not as a transitive dependency of these four', () => {
+    // The original pin read `expect(existsSync(…sidebar.tsx)).toBe(false)`, and
+    // it was load-bearing: while the eight --sidebar-* tokens were undefined,
+    // `sidebar` appearing here would have been the CLI dragging in a component
+    // whose tokens THE-266 had not mapped. THE-267 (#412) mapped them and
+    // THE-270 installed it deliberately, so the absence is no longer the thing
+    // to assert. Inverted rather than deleted, exactly as section 9 below
+    // inverts the token pin: the file must be present, and — the half that
+    // still catches the original failure — the audit must find it clean.
+    expect(existsSync(path.join(UI_DIR, 'sidebar.tsx'))).toBe(true);
+    expect(audit.findings.filter((f) => path.basename(f.file) === 'sidebar.tsx')).toEqual([]);
   });
 });
 
@@ -415,12 +428,14 @@ it('the runtime and next/font exclusions are still keyed by exact name, not a pa
   // Held at their recorded membership: widening either list to admit a new
   // class is the shortcut this PR must not take, and an exact list is the
   // cheapest tripwire for it.
-  // THE-272 added a fourth, `bg-(--color-bg)`, for chart.tsx's tooltip swatch.
-  // None of THE-266's four spells it — the membership is pinned here because
-  // widening this list is exactly the shortcut that must stay hard to take,
-  // and a fifth still has to be argued for in ds-primitives.audit.ts.
+  // THE-272 briefly added a fourth, `bg-(--color-bg)`, for chart.tsx's tooltip
+  // swatch; THE-270 removed it when `holds back no stale exemption` reported it
+  // as doing no work — chart.tsx sets --color-bg in its own style={{ … }}, and
+  // THE-270 taught the audit to read that. None of THE-266's four spells any of
+  // these either way. The membership stays pinned because widening this list is
+  // exactly the shortcut that must stay hard to take, and a fourth has to be
+  // argued for in ds-primitives.audit.ts.
   expect(Object.keys(SET_AT_RUNTIME).sort()).toEqual([
-    'bg-(--color-bg)',
     'max-h-(--available-height)',
     'origin-(--transform-origin)',
     'w-(--anchor-width)',
@@ -459,8 +474,20 @@ it('the sidebar family is exactly the eight THE-267 mapped', () => {
 it('and none of THE-266’s four primitives spells a sidebar utility', () => {
   // The reason the inversion above is safe here: this file audits breadcrumb,
   // collapsible, skeleton and tooltip, and the sidebar family is invisible to
-  // all four. Installing `sidebar` itself remains a later ticket.
+  // all four.
+  //
+  // ⚠️ THE-270 — this loop used to run over EVERY entry in classesByFile, which
+  // is every .tsx in src/components/ui and not the four this file is about. It
+  // read as a statement about THE-266 and was in fact a statement about the
+  // whole directory, so installing `sidebar` — whose entire job is to spell
+  // `bg-sidebar` — turned it red for a reason that had nothing to do with
+  // THE-266. Scoped to the four it names. The directory-wide claim it was
+  // accidentally making is not lost: the sidebar family is pinned by name in
+  // the test above this one, and every class in every primitive is resolved by
+  // the guard in ds-primitives.test.tsx.
+  const four = new Set<string>(NEW_PRIMITIVES);
   for (const [file, classes] of audit.classesByFile) {
+    if (!four.has(path.basename(file))) continue;
     for (const cls of classes) {
       expect(cls, `${path.basename(file)} spells ${cls}`).not.toMatch(/sidebar/);
     }
@@ -479,10 +506,11 @@ describe('the four new files exist and the guard actually read them', () => {
     });
   }
 
-  it('the audit read 21 files, not 13', () => {
-    // 13 + THE-266's 4 + THE-272's 4. The point of the assertion is unchanged:
-    // a guard that opened nothing would report nothing and look thorough.
-    expect(audit.classesByFile.size).toBe(21);
+  it('the audit read 22 files, not 13', () => {
+    // 13 + THE-266's 4 + THE-272's 4 + THE-270's sidebar. The point of the
+    // assertion is unchanged: a guard that opened nothing would report nothing
+    // and look thorough.
+    expect(audit.classesByFile.size).toBe(22);
   });
 
   it('and pulled real classes out of the three that carry any', () => {
