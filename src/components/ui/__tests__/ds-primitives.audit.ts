@@ -66,6 +66,48 @@ const CLASS_HELPERS = new Set(['cn', 'clsx', 'twMerge', 'cx']);
 const isMarkerClass = (cls: string): boolean => /^(group|peer)(\/.+)?$/.test(cls);
 
 /**
+ * THE-272 — the operands of a comparison are values, not classes.
+ *
+ * `cn()` takes conditions as well as classes, and a condition is very often a
+ * string compared against a prop:
+ *
+ *   cn("…", indicator === "dot" && "items-center")           // chart.tsx:212
+ *   cn("…", { "w-1": indicator === "line" })                 // chart.tsx:228
+ *   cn("…", verticalAlign === "top" ? "pb-3" : "pt-3")       // chart.tsx:295
+ *
+ * `"dot"`, `"line"`, `"dashed"` and `"top"` are the VALUES of the `indicator`
+ * and `verticalAlign` props. They sit inside a cn() call, so the harvester
+ * reached them, and each was reported as a class generating no rule — four
+ * findings naming classes that do not exist and never did.
+ *
+ * None of the seventeen primitives before this one compared a string inside a
+ * cn() call, so nothing had exercised it. The fix is not an exemption list:
+ * these are not classes belonging to somebody else's stylesheet, which is what
+ * NOT_A_UTILITY is for — they are not classes at all, and listing them by name
+ * would leave the next one to be found by eye.
+ *
+ * Skipping the WHOLE comparison is what is wanted: neither side of `a === b`
+ * is ever a class. Logical operators are deliberately NOT included — the right
+ * arm of `cond && "items-center"` is a class and must still be read, which is
+ * why this tests the operator rather than "is a binary expression".
+ */
+const COMPARISON_OPERATORS = new Set<ts.SyntaxKind>([
+  ts.SyntaxKind.EqualsEqualsToken,
+  ts.SyntaxKind.EqualsEqualsEqualsToken,
+  ts.SyntaxKind.ExclamationEqualsToken,
+  ts.SyntaxKind.ExclamationEqualsEqualsToken,
+  ts.SyntaxKind.LessThanToken,
+  ts.SyntaxKind.LessThanEqualsToken,
+  ts.SyntaxKind.GreaterThanToken,
+  ts.SyntaxKind.GreaterThanEqualsToken,
+  ts.SyntaxKind.InKeyword,
+  ts.SyntaxKind.InstanceOfKeyword,
+]);
+
+const isComparison = (node: ts.Node): boolean =>
+  ts.isBinaryExpression(node) && COMPARISON_OPERATORS.has(node.operatorToken.kind);
+
+/**
  * Classes in these files that are not Tailwind utilities and never were, with
  * the reason each is here. Deliberately tiny, and it cannot go stale: the
  * audit reports them separately and `every exemption is still needed` fails
@@ -107,7 +149,31 @@ export const SET_AT_RUNTIME: Record<string, string> = {
     "Base UI writes --anchor-width on the positioner when the popup opens: the trigger's measured width, so the menu can match it.",
   'origin-(--transform-origin)':
     'Base UI writes --transform-origin on the positioner when the popup opens: the corner the open/close animation scales out of, which depends on the side it flipped to.',
+  'bg-(--color-bg)':
+    'chart.tsx writes --color-bg inline on the tooltip swatch (style={{ "--color-bg": indicatorColor }}), where indicatorColor is the series colour of the datum being hovered — per-datum, so no stylesheet can hold it.',
 };
+
+/**
+ * THE-272 — why the fourth entry above is a component, not Base UI.
+ *
+ * The first three are written by Base UI onto a positioner it measures. The
+ * fourth is written by chart.tsx onto its own element, and the distinction
+ * does not matter to this list: what SET_AT_RUNTIME holds is classes whose
+ * var() is supplied by JavaScript at render time rather than by any
+ * stylesheet, and `--color-bg` is the series colour of the hovered datum. It
+ * comes from the caller's ChartConfig, so there is no correct static value —
+ * defining one in globals.css would not make the swatch right, it would paint
+ * every swatch the same colour for one frame before React's inline style won.
+ *
+ * ⚠️ Its twin on the same element, `border-(--color-border)`, is NOT here, and
+ * must not be. chart.tsx sets --color-border inline in the same style object,
+ * but THE-264 also defined --color-border as a real theme token, so the class
+ * resolves against the stylesheet and the guard never reports it. Adding it
+ * would break `holds back no stale exemption`, which requires every entry that
+ * applies to be genuinely unresolved — the list cannot hold a class that
+ * already works. The behaviour is correct either way: the inline style wins at
+ * runtime. Only the guard's reason for silence differs between the two.
+ */
 
 /** Every hand-written exemption, and why each class is held back. */
 export const EXEMPT: Record<string, string> = { ...NOT_A_UTILITY, ...SET_AT_RUNTIME };
@@ -189,6 +255,8 @@ export function extractClassNames(file: string, source?: string): string[] {
       push(node.text);
       return;
     }
+    // `indicator === "dot"` is a test, not a class. See COMPARISON_OPERATORS.
+    if (isComparison(node)) return;
     if (ts.isCallExpression(node)) {
       const name = calleeName(node);
       if (name === 'cva') visitCva(node);
