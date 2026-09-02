@@ -225,15 +225,30 @@ it('the unresolved fixture is still empty', () => {
 
 /* ── 3. No pre-existing primitive moved ──────────────────────────────────── */
 
+/**
+ * ⚠️ THE-273 CHANGED sonner.tsx, and it is the only pre-existing primitive any
+ * later ticket has moved. The map above is deliberately LEFT ALONE — it records
+ * the install-time state and that is the claim it makes — so this is the single,
+ * named exception layered over it. Every other entry is still compared against
+ * the digest recorded when this PR landed, and a second file moving still fails.
+ *
+ * (The change: sonner.tsx stopped hard-coding `theme: "light"` — a correct call
+ * when the app had no dark mode — and reads Harvest's own resolved theme
+ * instead. See src/__tests__/the-273-toast-dark-mode.test.tsx.)
+ */
+const MOVED_SINCE: Record<string, string> = {
+  'sonner.tsx': '2ebc0c9ba968858cead2fbf2523dfd9da217715339967025e8c8df94f2131ab9',
+};
+
 describe('the CLI rewrote nothing it should not have', () => {
-  it('all 13 pre-existing primitives are byte-identical to 6aceb0e', () => {
+  it('all 13 pre-existing primitives are byte-identical to 6aceb0e, bar the one THE-273 fixed', () => {
     const actual = Object.fromEntries(
       Object.keys(PRE_EXISTING_DIGESTS).map((f) => [
         f,
         sha256(readFileSync(path.join(UI_DIR, f), 'utf8')),
       ]),
     );
-    expect(actual).toEqual(PRE_EXISTING_DIGESTS);
+    expect(actual).toEqual({ ...PRE_EXISTING_DIGESTS, ...MOVED_SINCE });
   });
 
   it('src/components/ui holds exactly the 13 plus the 4, plus THE-272’s 4, plus THE-270’s sidebar', () => {
