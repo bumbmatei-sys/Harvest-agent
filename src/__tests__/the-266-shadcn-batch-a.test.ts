@@ -236,12 +236,18 @@ describe('the CLI rewrote nothing it should not have', () => {
     expect(actual).toEqual(PRE_EXISTING_DIGESTS);
   });
 
-  it('src/components/ui holds exactly the 13 plus the 4, and nothing else', () => {
+  it('src/components/ui holds exactly the 13 plus the 4, plus THE-272’s 4', () => {
+    // THE-272 (Batch B) installed chart, pagination, progress and table. They
+    // are named here rather than the assertion being loosened to "contains",
+    // so a fifth arrival still has to come back and say so — which is the
+    // whole value of this test. THE-272's own suite pins its four; this one
+    // keeps proving that THE-266's four are still exactly what it installed.
+    const BATCH_B = ['chart.tsx', 'pagination.tsx', 'progress.tsx', 'table.tsx'];
     expect(
       readdirSync(UI_DIR)
         .filter((f) => f.endsWith('.tsx'))
         .sort(),
-    ).toEqual([...Object.keys(PRE_EXISTING_DIGESTS), ...NEW_PRIMITIVES].sort());
+    ).toEqual([...Object.keys(PRE_EXISTING_DIGESTS), ...NEW_PRIMITIVES, ...BATCH_B].sort());
   });
 
   it('no sidebar primitive was pulled in as a transitive dependency', () => {
@@ -409,7 +415,12 @@ it('the runtime and next/font exclusions are still keyed by exact name, not a pa
   // Held at their recorded membership: widening either list to admit a new
   // class is the shortcut this PR must not take, and an exact list is the
   // cheapest tripwire for it.
+  // THE-272 added a fourth, `bg-(--color-bg)`, for chart.tsx's tooltip swatch.
+  // None of THE-266's four spells it — the membership is pinned here because
+  // widening this list is exactly the shortcut that must stay hard to take,
+  // and a fifth still has to be argued for in ds-primitives.audit.ts.
   expect(Object.keys(SET_AT_RUNTIME).sort()).toEqual([
+    'bg-(--color-bg)',
     'max-h-(--available-height)',
     'origin-(--transform-origin)',
     'w-(--anchor-width)',
@@ -468,8 +479,10 @@ describe('the four new files exist and the guard actually read them', () => {
     });
   }
 
-  it('the audit read 17 files, not 13', () => {
-    expect(audit.classesByFile.size).toBe(17);
+  it('the audit read 21 files, not 13', () => {
+    // 13 + THE-266's 4 + THE-272's 4. The point of the assertion is unchanged:
+    // a guard that opened nothing would report nothing and look thorough.
+    expect(audit.classesByFile.size).toBe(21);
   });
 
   it('and pulled real classes out of the three that carry any', () => {

@@ -140,8 +140,12 @@ describe('the token guard', () => {
       expect(reason.length, `${cls} is exempted without a reason`).toBeGreaterThan(40);
     }
 
-    // And the runtime three are exactly the runtime three.
+    // And the runtime four are exactly the runtime four. THE-272 added
+    // `bg-(--color-bg)`: chart.tsx sets it inline per hovered datum, so it is
+    // the same kind of thing as the Base UI three — a var() supplied by
+    // JavaScript at render time, which no stylesheet can hold.
     expect(Object.keys(SET_AT_RUNTIME).sort()).toEqual([
+      'bg-(--color-bg)',
       'max-h-(--available-height)',
       'origin-(--transform-origin)',
       'w-(--anchor-width)',
