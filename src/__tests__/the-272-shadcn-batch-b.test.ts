@@ -275,13 +275,18 @@ describe("each new primitive's token classes resolve", () => {
     expect(audit.findings).toEqual([]);
   });
 
-  it('the audit opened all 21 files and pulled real classes out of the new four', () => {
+  it('the audit opened all 22 files and pulled real classes out of the new four', () => {
     // A guard that read nothing would report nothing and look thorough. This
     // is the failure mode THE-266's section 10 was written against, kept here.
+    //
+    // ⚠️ THE-270 — 21 when this was written, 22 since `sidebar` landed. Only
+    // the total moved: the four counts below are THIS ticket's subject and are
+    // untouched, which is also the evidence that sidebar's arrival did not
+    // disturb what Batch B installed.
     const counts = Object.fromEntries(
       [...audit.classesByFile].map(([f, c]) => [path.basename(f), c.length]),
     );
-    expect(audit.classesByFile.size).toBe(21);
+    expect(audit.classesByFile.size).toBe(22);
     for (const file of NEW_PRIMITIVES) {
       expect(existsSync(path.join(UI_DIR, file)), `${file} was never written`).toBe(true);
       expect(counts[file], `the audit never opened ${file}`).toBeGreaterThan(0);
@@ -359,12 +364,16 @@ describe('the CLI rewrote nothing it should not have', () => {
     );
   });
 
-  it('src/components/ui holds exactly the 17 plus the 4, and nothing else', () => {
+  it('src/components/ui holds exactly the 17 plus the 4, plus THE-270’s sidebar', () => {
+    // ⚠️ THE-270 installed `sidebar` after this landed. Named explicitly rather
+    // than the assertion being loosened to "contains", so a twenty-third
+    // arrival still has to come back and say so — the same choice this test
+    // already made about Batch B's own four.
     expect(
       readdirSync(UI_DIR)
         .filter((f) => f.endsWith('.tsx'))
         .sort(),
-    ).toEqual([...Object.keys(PRE_EXISTING_DIGESTS), ...NEW_PRIMITIVES].sort());
+    ).toEqual([...Object.keys(PRE_EXISTING_DIGESTS), ...NEW_PRIMITIVES, 'sidebar.tsx'].sort());
   });
 
   it('no data-table primitive was written, because there is no such registry item', () => {
@@ -395,10 +404,20 @@ describe('the token bridge held, with zero new tokens', () => {
     );
   });
 
-  it('the runtime exclusion list grew by exactly one, and still holds names not patterns', () => {
-    // The one concession this PR makes, pinned so it cannot quietly grow again.
+  it('the runtime exclusion list is back to three, and still holds names not patterns', () => {
+    // ⚠️ THE-270 — this read "grew by exactly one" and pinned four names. The
+    // one concession this PR made, `bg-(--color-bg)`, has since been removed,
+    // and the removal is this ticket's claim vindicated rather than reversed:
+    // the entry existed because the guard could not see that chart.tsx supplies
+    // --color-bg itself (chart.tsx:236). THE-270 taught the audit to read
+    // `style={{ … }}` off the component, `holds back no stale exemption`
+    // immediately reported the entry as doing no work, and it went.
+    //
+    // Nothing about chart.tsx changed and the class is still never reported —
+    // section 4's `border-(--color-border) is NOT exempted` test still draws the
+    // same distinction, now between a stylesheet token and an inline style
+    // rather than between a token and a name on a list.
     expect(Object.keys(SET_AT_RUNTIME).sort()).toEqual([
-      'bg-(--color-bg)',
       'max-h-(--available-height)',
       'origin-(--transform-origin)',
       'w-(--anchor-width)',
@@ -408,7 +427,7 @@ describe('the token bridge held, with zero new tokens', () => {
       // in Tailwind's arbitrary-property spelling, not wildcards.
       expect(key, `${key} is a wildcard, not a literal`).not.toMatch(/[*?]|\.\+|\.\*/);
     }
-    expect(SET_AT_RUNTIME['bg-(--color-bg)'].length).toBeGreaterThan(40);
+    expect(SET_AT_RUNTIME['bg-(--color-bg)']).toBeUndefined();
   });
 
   it('border-(--color-border) is NOT exempted — it resolves against THE-264’s token', () => {
