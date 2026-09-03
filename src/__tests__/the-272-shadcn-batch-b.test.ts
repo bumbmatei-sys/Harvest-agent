@@ -839,7 +839,46 @@ const THE_283_TABLE_ADOPTERS = [
   'src/components/dashboard/LocationTable.tsx',
 ] as const;
 
-it('only THE-276 adopts chart, THE-283 adopts table, and pagination/progress are still adopted by nothing', () => {
+/**
+ * ⚠️ AMENDED AGAIN BY THE-290, and RECORDED here rather than relaxed.
+ *
+ * ─── `table` gains its SECOND adopter ────────────────────────────────────────
+ *
+ * The Giving tab's campaign-progress widget is a row per campaign with a name,
+ * a raised total, a goal and a bar — a plain tabular list of aggregates, which
+ * is the primitive's exact purpose and the same shape THE-283 adopted it for.
+ * 🔴 The claim is narrowed by exactly one file and STAYS CLOSED: a THIRD adopter
+ * of `table` still fails here. The decision is visible in this list rather than
+ * invisible in a deleted assertion.
+ *
+ * ─── `progress` is adopted for the FIRST time ────────────────────────────────
+ *
+ * THE-283's note said `progress` was "still adopted by nothing, and that is not
+ * an oversight" — because a country list has nothing to be a fraction of.
+ * `raised / goal` and `paid / pledged` are exactly that fraction, so this is the
+ * explicit decision that note deferred, and it is recorded the same way: the
+ * assertion now names these two files and fails on a third.
+ *
+ * ⚠️ `progress` paints `bg-primary` on `bg-muted` at 2.30:1 in light. That pair
+ * is KNOWN AND ACCEPTED and is recorded in both directions in section 7 of this
+ * file — it is NOT "fixed" by this adoption. Both widgets write every figure the
+ * bar depicts out as a number beside it, so nothing is conveyed by the bar alone.
+ *
+ * 🔴 `pagination` is STILL adopted by nothing. Both new widgets solve the
+ * long-list problem by scrolling inside the card, which needs no primitive, and
+ * paginating a money table would hide rows behind a control — the opposite of
+ * what a table whose whole point is a complete accounting wants.
+ */
+const THE_290_TABLE_ADOPTERS = [
+  'src/components/dashboard/CampaignProgress.tsx',
+] as const;
+
+const THE_290_PROGRESS_ADOPTERS = [
+  'src/components/dashboard/CampaignProgress.tsx',
+  'src/components/dashboard/PledgeFulfilment.tsx',
+] as const;
+
+it('only THE-276 adopts chart, THE-283/THE-290 adopt table, THE-290 adopts progress, and pagination is still adopted by nothing', () => {
   const walk = (dir: string): string[] =>
     readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
       const p = path.join(dir, e.name);
@@ -858,9 +897,13 @@ it('only THE-276 adopts chart, THE-283 adopts table, and pagination/progress are
   expect(chartImporters.map((f) => rel(f)).sort()).toEqual([...THE_276_CHART_ADOPTERS]);
 
   const tableImporters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), 'table'));
-  expect(tableImporters.map((f) => rel(f)).sort()).toEqual([...THE_283_TABLE_ADOPTERS]);
+  expect(tableImporters.map((f) => rel(f)).sort())
+    .toEqual([...THE_283_TABLE_ADOPTERS, ...THE_290_TABLE_ADOPTERS].sort());
 
-  for (const name of ['pagination', 'progress']) {
+  const progressImporters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), 'progress'));
+  expect(progressImporters.map((f) => rel(f)).sort()).toEqual([...THE_290_PROGRESS_ADOPTERS].sort());
+
+  for (const name of ['pagination']) {
     const adopters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), name));
     expect(adopters.map((f) => rel(f)), `${name} was adopted`).toEqual([]);
   }

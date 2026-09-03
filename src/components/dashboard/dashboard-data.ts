@@ -312,8 +312,29 @@ const asDate = (v: unknown): DateLike => (v ?? null) as DateLike;
 
 export const toDatedRow = (data: Record<string, unknown>): DatedRow => ({ createdAt: asDate(data.createdAt) });
 
+/**
+ * ⚠️ TIGHTENED BY THE-290: `Number.isFinite`, not `typeof === 'number'`.
+ *
+ * 🔴 `NaN` AND `Infinity` ARE BOTH `typeof 'number'`. A receipt carrying either
+ * one passed the old test, reached `bucketWeekly` as a weight and poisoned every
+ * bucket it touched into `NaN` — which renders as the literal string "NaN" on a
+ * money chart, and makes the eight-week total unusable rather than short. The
+ * `readableReceipts` refusal was already the right response and simply never
+ * fired for those two values.
+ *
+ * This is the same defect #421 caught one value over, not a new rule: a missing
+ * amount became `0` (a total quietly short), and a non-finite one became `NaN`
+ * (a total visibly broken). Both are a read that failed wearing a number, and
+ * both are now REFUSED AND COUNTED by `readableReceipts`.
+ *
+ * ⚠️ IT CHANGES NO FIGURE FOR ANY WELL-FORMED DOCUMENT. Every finite `amount`
+ * maps exactly as before, so the Overview tab's giving total and mix are
+ * unchanged for every ledger that could previously produce a usable number. What
+ * changes is only the ledger that previously produced `NaN`, which now says how
+ * many receipts are unreadable so a founder can go and look at them.
+ */
 export const toInvoiceRow = (data: Record<string, unknown>): InvoiceRow => ({
-  amountCents: typeof data.amount === 'number' ? data.amount : null,
+  amountCents: typeof data.amount === 'number' && Number.isFinite(data.amount) ? data.amount : null,
   issuedAt: asDate(data.issuedAt),
   type: typeof data.type === 'string' ? data.type : null,
 });

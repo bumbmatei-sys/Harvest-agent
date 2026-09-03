@@ -19,6 +19,11 @@
  * and this file keeps having no opinion about what a tab holds — which is also
  * what lets a test mount the strip without mounting a Firestore-backed tab.
  *
+ * ⚠️ THE-290 (slice 3) fills Giving in and is the proof that the shape holds:
+ * it added ONE optional prop and one entry in `built`, and this file learned
+ * nothing about campaigns, pledges or receipts. Three tabs remain unbuilt and
+ * still render their own placeholder.
+ *
  * 🔴 THE SHELL LIVES HERE, NOT IN `AdminDashboard.tsx`. The admin shell owns
  * the app's OUTER navigation (sidebar → section → URL segment, via
  * lib/admin-sections.ts) and is owned by THE-277; this is a tab strip WITHIN
@@ -54,7 +59,18 @@ export interface DashboardTabDef {
 export const DASHBOARD_TABS: readonly DashboardTabDef[] = Object.freeze([
   { id: 'overview', label: 'Overview', icon: LayoutGrid, upcoming: 'the tab you are on' },
   { id: 'growth', label: 'Growth', icon: TrendingUp, upcoming: 'attendance, retention cohorts and where your people are' },
-  { id: 'giving', label: 'Giving', icon: HandCoins, upcoming: 'campaign progress, donor tiers and recurring gift health' },
+  /*
+   * 🔴 `upcoming` no longer promises "recurring gift health". THE-285 and
+   * THE-290 established that nothing at the tenant level marks a gift
+   * recurring — Stripe Connect is off, `invoices.type` records no cadence, and
+   * `users.donationSubscriptionId` is the PLATFORM partnership rather than a
+   * church's donor — so this string was advertising a widget that cannot be
+   * built honestly. The tab is built now and this text is unreachable, but it
+   * is corrected rather than left standing: an accurate promise is what a
+   * later reader of this table needs, and #429 left the Growth row accurate
+   * for the same reason.
+   */
+  { id: 'giving', label: 'Giving', icon: HandCoins, upcoming: 'giving over time, campaign progress and pledge fulfilment' },
   { id: 'engagement', label: 'Engagement', icon: HeartHandshake, upcoming: 'check-ins, event attendance and community activity' },
   { id: 'content', label: 'Content', icon: BarChart3, upcoming: 'course completion, article reach and sermon views' },
   { id: 'platform', label: 'Platform', icon: Server, upcoming: 'tenant health, plan mix and platform-wide totals' },
@@ -82,17 +98,20 @@ function NotYetBuilt({ tab }: { tab: DashboardTabDef }) {
  * opinion about what a tab contains, and so a test can mount the strip without
  * mounting a Firestore-backed tab.
  *
- * ⚠️ `growth` is OPTIONAL. Omitting it renders the same placeholder the tab had
- * before THE-283, which is what keeps every existing caller and test valid and
- * makes "this tab is built" a property of the call site rather than of this file.
+ * ⚠️ `growth` and `giving` are OPTIONAL. Omitting either renders the same
+ * placeholder that tab had before its slice, which is what keeps every existing
+ * caller and test valid and makes "this tab is built" a property of the call
+ * site rather than of this file.
  */
-export function DashboardTabs({ overview, growth }: {
+export function DashboardTabs({ overview, growth, giving }: {
   overview: React.ReactNode;
   growth?: React.ReactNode;
+  giving?: React.ReactNode;
 }) {
   /** Tab id → the panel supplied for it. A tab absent here is not built yet. */
   const built: Record<string, React.ReactNode> = { overview };
   if (growth !== undefined) built.growth = growth;
+  if (giving !== undefined) built.giving = giving;
 
   return (
     <Tabs defaultValue={DEFAULT_DASHBOARD_TAB} className="w-full" data-dashboard-tabs>

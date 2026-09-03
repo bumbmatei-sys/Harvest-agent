@@ -97,9 +97,15 @@ const { DASHBOARD_TABS } = await import('../dashboard/DashboardTabs');
  *
  * ⚠️ Derived by EXCLUSION rather than listed, so a seventh tab appearing in
  * `DASHBOARD_TABS` is automatically required to carry a placeholder. `overview`
- * is THE-276's and `growth` is THE-283's; everything else is a later slice.
+ * is THE-276's, `growth` is THE-283's and `giving` is THE-290's; everything else
+ * is a later slice.
+ *
+ * ⚠️ AMENDED BY THE-290, and narrowed rather than relaxed — the same edit
+ * THE-283 made when it built Growth. The claim below is now about THREE unbuilt
+ * tabs instead of four, and a tab that quietly stopped saying it was unbuilt
+ * WITHOUT being built still fails here.
  */
-const BUILT_TABS = ['overview', 'growth'] as const;
+const BUILT_TABS = ['overview', 'growth', 'giving'] as const;
 const UNBUILT_TABS = DASHBOARD_TABS.filter(
   (t: { id: string }) => !(BUILT_TABS as readonly string[]).includes(t.id),
 );
@@ -197,7 +203,7 @@ describe('the tab shell renders all six tabs', () => {
     expect(DASHBOARD_TABS).toHaveLength(6);
   });
 
-  it('the four unbuilt tabs each say so by name, rather than rendering nothing', async () => {
+  it('the three unbuilt tabs each say so by name, rather than rendering nothing', async () => {
     grantAnalytics();
     healthyTenant();
     const c = await screen();
@@ -206,10 +212,11 @@ describe('the tab shell renders all six tabs', () => {
     // be asserted. Clicking is also the honest test: a placeholder that only
     // exists in the DOM of a tab nobody can reach is not a shipped tab.
     //
-    // ⚠️ AMENDED BY THE-283, which built Growth. The claim narrows from five
-    // tabs to four and is NOT dropped: a tab that quietly stopped saying it was
-    // unbuilt, without being built, still fails here. Growth's own assertion is
-    // the line below — it must no longer carry a placeholder at all.
+    // ⚠️ AMENDED BY THE-283, which built Growth, and again by THE-290, which
+    // built Giving. The claim narrows from five tabs to four to three and is
+    // NOT dropped: a tab that quietly stopped saying it was unbuilt, without
+    // being built, still fails here. Growth's and Giving's own assertions are
+    // the lines below — neither may carry a placeholder at all.
     for (const tab of UNBUILT_TABS) {
       await openTab(c, tab.label);
       const placeholder = c.querySelector(`[data-tab-placeholder="${tab.id}"]`);
@@ -220,6 +227,10 @@ describe('the tab shell renders all six tabs', () => {
     await openTab(c, 'Growth');
     expect(c.querySelector('[data-tab-placeholder="growth"]'), 'Growth is built now').toBeNull();
     expect(c.querySelector('[data-growth-tab]'), 'Growth panel did not render').toBeTruthy();
+
+    await openTab(c, 'Giving');
+    expect(c.querySelector('[data-tab-placeholder="giving"]'), 'Giving is built now').toBeNull();
+    expect(c.querySelector('[data-giving-tab]'), 'Giving panel did not render').toBeTruthy();
 
     await openTab(c, 'Overview');
     expect(c.querySelector('[data-tab-placeholder="overview"]')).toBeNull();
@@ -851,7 +862,7 @@ describe('THE-276-FIX moved layout only', () => {
     expect(text(funnel)).not.toMatch(/Champion|Giving tier|Member\b/);
   });
 
-  it('the four remaining tabs are still placeholders — slices 3 to 6 are unbuilt', async () => {
+  it('the three remaining tabs are still placeholders — slices 4 to 6 are unbuilt', async () => {
     grantAnalytics();
     healthyTenant();
     const c = await screen();

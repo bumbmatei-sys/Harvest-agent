@@ -40,9 +40,11 @@ import React, { useEffect, useState } from 'react';
 import { auth } from '../firebase';
 
 import { DashboardTabs } from './dashboard/DashboardTabs';
+import { GivingTab } from './dashboard/GivingTab';
 import { GrowthTab } from './dashboard/GrowthTab';
 import { OverviewTab } from './dashboard/OverviewTab';
 import { hasAnalyticsAccess, type AnalyticsAccess } from './dashboard/analytics-permission';
+import { useGivingData } from './dashboard/useGivingData';
 import { useGrowthData } from './dashboard/useGrowthData';
 import { useOverviewData, type OverviewData } from './dashboard/useOverviewData';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from './ui/empty';
@@ -153,18 +155,26 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({
  * `useOverviewData` is never mounted for an admin who may not see its output —
  * a denied admin issues no dashboard query at all.
  *
- * ─── THE-283: one hook for the trend, a second for the Growth tab alone ──────
+ * ─── THE-283 / THE-290: one shared hook, plus one hook per built tab ─────────
  *
- * ⚠️ `useOverviewData` is held HERE, above the tab strip, and its `memberSeries`
- * is handed to BOTH tabs. The Overview tab plots it against giving and the
- * Growth tab plots it alone, but it is one complete, count-gated read — so the
- * two tabs cannot show different numbers for the same eight weeks, and opening
- * Growth costs no second query for the trend.
+ * ⚠️ `useOverviewData` is held HERE, above the tab strip, and its series are
+ * handed to the tabs that plot them. `memberSeries` goes to BOTH Overview and
+ * Growth; `givingSeries` goes to BOTH Overview and Giving. Each is one
+ * complete, count-gated read, so no two tabs can show different numbers for the
+ * same eight weeks and opening a tab costs no second query for a series that
+ * has already been read.
  *
- * `useGrowthData` is the Growth tab's own, and it is mounted inside
- * {@link GrowthPanel} rather than here on purpose: Base UI mounts only the
- * ACTIVE tab panel, so the member-location read is issued when someone selects
- * Growth and never on a visit that only looks at Overview.
+ * 🔴 THAT IS WHAT MAKES THE GIVING RELOCATION EXACT rather than merely
+ * consistent. The Giving tab is not handed a copy of the giving figures, it is
+ * handed the SAME `Series` object the Overview tab plots — there is no second
+ * read, no second `readableReceipts` gate and no arithmetic in between, so
+ * there is nothing that could drift.
+ *
+ * `useGrowthData` and `useGivingData` are their tabs' own, and each is mounted
+ * inside its own panel component rather than here on purpose: Base UI mounts
+ * only the ACTIVE tab panel, so the member-location read fires when someone
+ * selects Growth and the campaign and pledge reads fire when someone selects
+ * Giving — never on a visit that only looks at Overview.
  */
 function AnalyticsDashboard({ tenantId, isSuperAdmin, unreadCount, showInbox }: {
   tenantId: string | null;
@@ -177,6 +187,7 @@ function AnalyticsDashboard({ tenantId, isSuperAdmin, unreadCount, showInbox }: 
     <DashboardTabs
       overview={<OverviewTab data={data} unreadCount={unreadCount} showInbox={showInbox} />}
       growth={<GrowthPanel data={data} tenantId={tenantId} isSuperAdmin={isSuperAdmin} />}
+      giving={<GivingPanel data={data} tenantId={tenantId} />}
     />
   );
 }
@@ -189,6 +200,26 @@ function GrowthPanel({ data, tenantId, isSuperAdmin }: {
 }) {
   const growth = useGrowthData(tenantId, isSuperAdmin);
   return <GrowthTab data={data} growth={growth} />;
+}
+
+/**
+ * The Giving tab's own reads, deferred the same way.
+ *
+ * ⚠️ `isSuperAdmin` is NOT passed, and the omission is deliberate rather than an
+ * oversight. `useGivingData` is TENANT-SCOPED ONLY: `tenants/{t}/pledges` is a
+ * subcollection with no apex-level counterpart to read at all, and summing
+ * every church's campaigns into one progress figure is a number this product
+ * does not define. So there is no platform-wide branch for the flag to select,
+ * and giving the hook a parameter it must ignore would suggest there is one.
+ * On the apex all three widgets report that no ministry is in scope — the same
+ * answer the Overview tab's giving widgets already give there.
+ */
+function GivingPanel({ data, tenantId }: {
+  data: OverviewData;
+  tenantId: string | null;
+}) {
+  const giving = useGivingData(tenantId);
+  return <GivingTab data={data} giving={giving} />;
 }
 
 export default AdminDashboardHome;
