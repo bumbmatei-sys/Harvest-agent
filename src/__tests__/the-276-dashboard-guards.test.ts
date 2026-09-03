@@ -38,6 +38,12 @@ const NEW_FILES = [
   'src/components/dashboard/GivingMix.tsx',
   'src/components/dashboard/FunnelChart.tsx',
   'src/components/dashboard/InsightFeed.tsx',
+  // ⚠️ Added by THE-276-FIX. `ui/tabs.tsx` is a vendored primitive, but this
+  // slice now MODIFIES it (twelve variant spellings — see its own header), so
+  // it comes under the same bars as everything else here: no inline style, no
+  // literal colour, no minted token. Its digest move is accounted for in the
+  // seven pins that carry it, each with the reason named.
+  'src/components/ui/tabs.tsx',
 ] as const;
 
 /** Source with block and line comments stripped — the code, not the prose. */

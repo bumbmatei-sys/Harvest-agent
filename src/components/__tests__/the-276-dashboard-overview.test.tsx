@@ -758,3 +758,85 @@ describe('no horizontal overflow at 380/768/1024/1280/1440', () => {
     }
   });
 });
+
+/* ═══ No-regression: THE-276-FIX moved layout only ═══════════════════════════ */
+
+/**
+ * THE-276-FIX changes twelve class names in `ui/tabs.tsx` and removes a
+ * negative margin from the tab strip. It must move NO figure and NO empty
+ * state — the data layer was the substance of THE-276 and a layout fix has no
+ * business touching it. These restate the load-bearing behaviours as explicit
+ * no-regression claims so a later layout change cannot quietly take one out.
+ */
+describe('THE-276-FIX moved layout only', () => {
+  it('every KPI figure is unchanged — exact counts, straight from the aggregation', async () => {
+    grantAnalytics();
+    healthyTenant();
+    const c = await screen();
+
+    const valueOf = (label: string) =>
+      text(c.querySelector(`[data-kpi="${label}"] [data-kpi-value]`)!);
+    expect(valueOf('Members')).toBe('3');
+    expect(valueOf('Contacts')).toBe('42');
+    expect(valueOf('Published courses')).toBe('2');
+    expect(valueOf('Community posts')).toBe('7');
+    expect(valueOf('Articles')).toBe('4');
+    expect(valueOf('Form submissions')).toBe('1');
+    expect(valueOf('Receipts')).toBe('2');
+  });
+
+  it('the strict money gate still refuses a missing amount', async () => {
+    grantAnalytics();
+    healthyTenant();
+    docsFor.set('tenants/grace/invoices', [
+      { amount: 25000, issuedAt: new Date(NOW - DAY).toISOString(), type: 'donation_receipt' },
+      { issuedAt: new Date(NOW - DAY).toISOString(), type: 'donation_receipt' },
+    ]);
+    const c = await screen();
+
+    // 🔴 This was silent money loss before THE-276 fixed it: a coerced 0 made
+    // the total quietly short. It must stay a refusal that names the count.
+    const mix = c.querySelector('[data-widget="Giving mix"]')!;
+    expect(mix.getAttribute('data-state')).toBe('unavailable');
+    expect(text(mix)).toContain('1 of 2 receipts');
+    expect(text(c)).not.toContain('$250');
+    expect(toInvoiceRow({ issuedAt: null }).amountCents).toBeNull();
+  });
+
+  it('Giving mix still renders its unavailable state rather than a zero', async () => {
+    grantAnalytics();
+    healthyTenant();
+    counts.set('tenants/grace/invoices', 0);
+    docsFor.set('tenants/grace/invoices', []);
+    const c = await screen();
+
+    const mix = c.querySelector('[data-widget="Giving mix"]')!;
+    expect(mix.getAttribute('data-state')).toBe('unavailable');
+    expect(text(mix.querySelector('[data-empty-reason]')!)).toContain('a gift or a ticket sale yet');
+    expect(text(mix)).not.toMatch(/\$0\b/);
+    expect(mix.querySelector('[data-mix-slice]')).toBeNull();
+  });
+
+  it('the devotion funnel is still empty, and still says why', async () => {
+    grantAnalytics();
+    healthyTenant();
+    const c = await screen();
+
+    const funnel = c.querySelector('[data-widget="Devotion funnel"]')!;
+    expect(funnel.getAttribute('data-state')).toBe('unavailable');
+    expect(text(funnel.querySelector('[data-empty-reason]')!))
+      .toContain('devotional reading, streaks or plan progress');
+    // 🔴 And it is not quietly the CRM giving pipeline wearing that label.
+    expect(text(funnel)).not.toMatch(/Champion|Giving tier|Member\b/);
+  });
+
+  it('the five other tabs are still placeholders — this is still slice 1 of 6', async () => {
+    grantAnalytics();
+    healthyTenant();
+    const c = await screen();
+    for (const tab of DASHBOARD_TABS.slice(1)) {
+      await openTab(c, tab.label);
+      expect(c.querySelector(`[data-tab-placeholder="${tab.id}"]`), tab.label).toBeTruthy();
+    }
+  });
+});

@@ -771,11 +771,29 @@ describe('9 — all 22 other primitives are byte-identical', () => {
     expect(present).toEqual([...Object.keys(UNCHANGED), 'sonner.tsx', ...BATCH_CDE].sort());
   });
 
-  it('🔴 every one of the 21 hashes to what main recorded', () => {
+  /**
+   * ⚠️ `tabs.tsx` MOVED SINCE, and why — THE-276-FIX.
+   *
+   * As vendored it styled itself with `data-horizontal:` / `data-vertical:`
+   * variants, which Tailwind compiles to `[data-horizontal]` / `[data-vertical]`.
+   * The installed @base-ui/react emits `data-orientation="horizontal"`, so none
+   * of those twelve rules matched: the tabs root kept `display:flex` in the
+   * default `row` direction and the panel, a `flex-1` sibling, rendered as a
+   * second COLUMN beside the tab strip. Twelve class names re-spelled
+   * `data-[orientation=…]`; no element, slot, variant or API changed.
+   *
+   * The same treatment this ticket's own sonner.tsx fix gets: named, so every
+   * other entry is still compared against what main recorded.
+   */
+  const MOVED_SINCE: Readonly<Record<string, string>> = {
+    'tabs.tsx': '096e3d4b2a99b1eff95d16959f97daaa1747fdb7de6226d6c54b9693e22b3410',
+  };
+
+  it('🔴 every one of the 21 hashes to what main recorded, bar the one THE-276-FIX fixed', () => {
     const actual = Object.fromEntries(
       Object.keys(UNCHANGED).map((f) => [f, digestOf(path.join('src/components/ui', f))]),
     );
-    expect(actual).toEqual(UNCHANGED);
+    expect(actual).toEqual({ ...UNCHANGED, ...MOVED_SINCE });
   });
 
   it("and ds-primitives' own ledger moved for sonner.tsx alone", () => {
@@ -794,10 +812,19 @@ describe('9 — all 22 other primitives are byte-identical', () => {
     const known = new Set([...Object.keys(UNCHANGED), 'sonner.tsx']);
     const moved = Object.entries(ledger)
       .filter(([rel]) => known.has(path.basename(rel)))
+      // 🔴 Compared against UNCHANGED alone, deliberately — NOT against the
+      // MOVED_SINCE overlay. This assertion's whole job is to enumerate what
+      // has moved away from what main recorded; folding the overlay in here
+      // would make each named mover disappear from its own census.
       .filter(([rel, digest]) => digest !== UNCHANGED[path.basename(rel)])
-      .map(([rel]) => rel);
-    expect(moved, 'the primitive ledger moved for something other than sonner.tsx').toEqual([
+      .map(([rel]) => rel)
+      .sort();
+    // ⚠️ Two movers now, not one: sonner.tsx (this ticket) and tabs.tsx
+    // (THE-276-FIX, see MOVED_SINCE above). Both are named, so the claim is
+    // still a DELTA — a third entry moving is still a failure.
+    expect(moved, 'the primitive ledger moved for something other than sonner.tsx and tabs.tsx').toEqual([
       'src/components/ui/sonner.tsx',
+      'src/components/ui/tabs.tsx',
     ]);
     expect(ledger['src/components/ui/sonner.tsx']).toBe(digestOf('src/components/ui/sonner.tsx'));
 

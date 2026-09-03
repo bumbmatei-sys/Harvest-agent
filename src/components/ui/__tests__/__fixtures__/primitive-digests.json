@@ -37,7 +37,7 @@
   "src/components/ui/spinner.tsx": "900f722c961fa6e1c28104809d56831c9056dc69599e49d364cc13a6f33966a3",
   "src/components/ui/switch.tsx": "cabbf7804a4d6768ef62f5c2256fbf39e214372318bb1b3b22d407f808c56249",
   "src/components/ui/table.tsx": "a13f55a7c1406197608f223006cf16f211a257b213362caaef0d2abf3a389c8f",
-  "src/components/ui/tabs.tsx": "8bf9ee3935ab86c268a2a71cb5b4b67d3d5587ca9f2e0bf25f37ffdb1980434c",
+  "src/components/ui/tabs.tsx": "096e3d4b2a99b1eff95d16959f97daaa1747fdb7de6226d6c54b9693e22b3410",
   "src/components/ui/textarea.tsx": "58b58d84fc54ba5f4ca46937870c619349fd9eccc4d494250ac7bc73a94e05e9",
   "src/components/ui/toggle-group.tsx": "f7776d68b06148d9742fe4f21df45f931b2a259592192d4bda16a7039f508d15",
   "src/components/ui/toggle.tsx": "290d2cd01c768d1e3c894bfebcf9c3d1532191ae7ec1e48da1e405dab0a95c4c",
