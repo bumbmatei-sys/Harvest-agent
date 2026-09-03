@@ -4,13 +4,20 @@
  *
  * ─── This is slice 1 of 6, and the shell says so ─────────────────────────────
  *
- * The full design is 28 widgets across these six tabs. This ticket ships the
- * shell and the Overview tab; the other five render an `empty` state naming
+ * The full design is 28 widgets across these six tabs. THE-276 shipped the
+ * shell and the Overview tab; the other five rendered an `empty` state naming
  * what will live there. That is deliberate over hiding them: the tab strip is
  * the design's own information architecture, and shipping it whole is what lets
  * the next five slices land one tab at a time without re-deciding it. A reader
- * who opens Growth sees that it exists and is not built yet — which is true —
- * rather than a tab that quietly is not there.
+ * who opens an unbuilt tab sees that it exists and is not built yet — which is
+ * true — rather than a tab that quietly is not there.
+ *
+ * ⚠️ THE-283 (slice 2) fills Growth in, and does it by passing a NODE rather
+ * than by teaching this file what a Growth tab contains. `built` below is a map
+ * from tab id to the panel someone has supplied; a tab with no entry still gets
+ * {@link NotYetBuilt}. So slices 3 through 6 land by adding a prop and a caller,
+ * and this file keeps having no opinion about what a tab holds — which is also
+ * what lets a test mount the strip without mounting a Firestore-backed tab.
  *
  * 🔴 THE SHELL LIVES HERE, NOT IN `AdminDashboard.tsx`. The admin shell owns
  * the app's OUTER navigation (sidebar → section → URL segment, via
@@ -71,11 +78,22 @@ function NotYetBuilt({ tab }: { tab: DashboardTabDef }) {
 }
 
 /**
- * The shell. `overview` is passed in rather than imported so this file has no
+ * The shell. Each panel is passed in rather than imported so this file has no
  * opinion about what a tab contains, and so a test can mount the strip without
  * mounting a Firestore-backed tab.
+ *
+ * ⚠️ `growth` is OPTIONAL. Omitting it renders the same placeholder the tab had
+ * before THE-283, which is what keeps every existing caller and test valid and
+ * makes "this tab is built" a property of the call site rather than of this file.
  */
-export function DashboardTabs({ overview }: { overview: React.ReactNode }) {
+export function DashboardTabs({ overview, growth }: {
+  overview: React.ReactNode;
+  growth?: React.ReactNode;
+}) {
+  /** Tab id → the panel supplied for it. A tab absent here is not built yet. */
+  const built: Record<string, React.ReactNode> = { overview };
+  if (growth !== undefined) built.growth = growth;
+
   return (
     <Tabs defaultValue={DEFAULT_DASHBOARD_TAB} className="w-full" data-dashboard-tabs>
       {/*
@@ -113,7 +131,7 @@ export function DashboardTabs({ overview }: { overview: React.ReactNode }) {
 
       {DASHBOARD_TABS.map((tab) => (
         <TabsContent key={tab.id} value={tab.id} className="pt-2">
-          {tab.id === DEFAULT_DASHBOARD_TAB ? overview : <NotYetBuilt tab={tab} />}
+          {tab.id in built ? built[tab.id] : <NotYetBuilt tab={tab} />}
         </TabsContent>
       ))}
     </Tabs>

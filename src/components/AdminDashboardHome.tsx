@@ -40,9 +40,11 @@ import React, { useEffect, useState } from 'react';
 import { auth } from '../firebase';
 
 import { DashboardTabs } from './dashboard/DashboardTabs';
+import { GrowthTab } from './dashboard/GrowthTab';
 import { OverviewTab } from './dashboard/OverviewTab';
 import { hasAnalyticsAccess, type AnalyticsAccess } from './dashboard/analytics-permission';
-import { useOverviewData } from './dashboard/useOverviewData';
+import { useGrowthData } from './dashboard/useGrowthData';
+import { useOverviewData, type OverviewData } from './dashboard/useOverviewData';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from './ui/empty';
 import { Skeleton } from './ui/skeleton';
 import { Lock } from 'lucide-react';
@@ -150,6 +152,19 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({
  * The reads live behind the gate, in a child component, so that
  * `useOverviewData` is never mounted for an admin who may not see its output —
  * a denied admin issues no dashboard query at all.
+ *
+ * ─── THE-283: one hook for the trend, a second for the Growth tab alone ──────
+ *
+ * ⚠️ `useOverviewData` is held HERE, above the tab strip, and its `memberSeries`
+ * is handed to BOTH tabs. The Overview tab plots it against giving and the
+ * Growth tab plots it alone, but it is one complete, count-gated read — so the
+ * two tabs cannot show different numbers for the same eight weeks, and opening
+ * Growth costs no second query for the trend.
+ *
+ * `useGrowthData` is the Growth tab's own, and it is mounted inside
+ * {@link GrowthPanel} rather than here on purpose: Base UI mounts only the
+ * ACTIVE tab panel, so the member-location read is issued when someone selects
+ * Growth and never on a visit that only looks at Overview.
  */
 function AnalyticsDashboard({ tenantId, isSuperAdmin, unreadCount, showInbox }: {
   tenantId: string | null;
@@ -158,7 +173,22 @@ function AnalyticsDashboard({ tenantId, isSuperAdmin, unreadCount, showInbox }: 
   showInbox: boolean;
 }) {
   const data = useOverviewData(tenantId, isSuperAdmin);
-  return <DashboardTabs overview={<OverviewTab data={data} unreadCount={unreadCount} showInbox={showInbox} />} />;
+  return (
+    <DashboardTabs
+      overview={<OverviewTab data={data} unreadCount={unreadCount} showInbox={showInbox} />}
+      growth={<GrowthPanel data={data} tenantId={tenantId} isSuperAdmin={isSuperAdmin} />}
+    />
+  );
+}
+
+/** The Growth tab's own read, deferred to the moment the tab is opened. */
+function GrowthPanel({ data, tenantId, isSuperAdmin }: {
+  data: OverviewData;
+  tenantId: string | null;
+  isSuperAdmin: boolean;
+}) {
+  const growth = useGrowthData(tenantId, isSuperAdmin);
+  return <GrowthTab data={data} growth={growth} />;
 }
 
 export default AdminDashboardHome;

@@ -34,7 +34,22 @@ function mergePoints(complete: { key: string; points: readonly SeriesPoint[] }[]
   });
 }
 
-export function TrendChart({ series }: { series: readonly TrendSeries[] }) {
+/**
+ * ⚠️ `title` and `description` DEFAULT to the Overview tab's wording rather than
+ * being required, so THE-276's call site is unchanged and this component keeps
+ * exactly one behaviour. THE-283 needs the same chart with one series and a
+ * different heading on the Growth tab, and a second chart component written for
+ * that would be two places for an axis, a tooltip and an empty state to drift.
+ */
+export function TrendChart({
+  series,
+  title = 'Giving & growth',
+  description = 'The last eight weeks, by week.',
+}: {
+  readonly series: readonly TrendSeries[];
+  readonly title?: string;
+  readonly description?: string;
+}) {
   const loading = series.some((s) => s.series === null);
   const complete = series
     .filter((s) => s.series?.kind === 'complete')
@@ -51,8 +66,8 @@ export function TrendChart({ series }: { series: readonly TrendSeries[] }) {
 
   return (
     <WidgetFrame
-      title="Giving & growth"
-      description="The last eight weeks, by week."
+      title={title}
+      description={description}
       icon={LineChartIcon}
       state={state}
       skeletonClassName="h-56 w-full"

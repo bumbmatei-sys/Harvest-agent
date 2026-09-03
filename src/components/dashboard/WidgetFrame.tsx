@@ -18,10 +18,23 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '..
 import { Skeleton } from '../ui/skeleton';
 import { Spinner } from '../ui/spinner';
 
-/** What a widget is waiting on, has been refused, or can draw. */
+/**
+ * What a widget is waiting on, has been refused, can draw — or has not been
+ * built yet.
+ *
+ * ⚠️ `deferred` was added by THE-283 and is NOT a synonym for `unavailable`.
+ * They are different claims about different things: `unavailable` says a read
+ * this app makes did not produce a trustworthy number, while `deferred` says no
+ * read was attempted because the widget is a later ticket. Collapsing the two
+ * would tell a founder their data could not be read when the truth is that
+ * nobody has built the thing yet — and it would make a shipped read failure
+ * indistinguishable from a roadmap item, which is the same category error as a
+ * `0` standing in for a failed count.
+ */
 export type WidgetState =
   | { readonly kind: 'loading' }
   | { readonly kind: 'unavailable'; readonly reason: string }
+  | { readonly kind: 'deferred'; readonly reason: string }
   | { readonly kind: 'ready' };
 
 interface WidgetFrameProps {
@@ -64,6 +77,9 @@ export function WidgetFrame({
       <CardContent>
         {state.kind === 'loading' && <Skeleton className={skeletonClassName} />}
         {state.kind === 'unavailable' && <WidgetEmpty icon={Icon} title={title} reason={state.reason} />}
+        {state.kind === 'deferred' && (
+          <WidgetEmpty icon={Icon} title={title} reason={state.reason} verdict="is not built yet" />
+        )}
         {state.kind === 'ready' && children}
       </CardContent>
     </Card>
@@ -78,14 +94,20 @@ export function WidgetFrame({
  * with 2,000 contacts and a ministry whose contacts could not be counted would
  * otherwise render identically, which is the defect in miniature.
  */
-export function WidgetEmpty({ icon: Icon, title, reason }: { icon: LucideIcon; title: string; reason: string }) {
+export function WidgetEmpty({ icon: Icon, title, reason, verdict = 'unavailable' }: {
+  icon: LucideIcon;
+  title: string;
+  reason: string;
+  /** What is wrong with this widget. `unavailable` for a read, per THE-283. */
+  verdict?: string;
+}) {
   return (
     <Empty className="p-4">
       <EmptyHeader>
         <EmptyMedia variant="icon">
           <Icon aria-hidden />
         </EmptyMedia>
-        <EmptyTitle className="text-sm">{title} unavailable</EmptyTitle>
+        <EmptyTitle className="text-sm">{`${title} ${verdict}`}</EmptyTitle>
         <EmptyDescription data-empty-reason>{reason}</EmptyDescription>
       </EmptyHeader>
     </Empty>

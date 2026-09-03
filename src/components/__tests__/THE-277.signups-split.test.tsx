@@ -936,19 +936,32 @@ describe('12 — AdminDocs.tsx, AdminDashboardHome.tsx, firestore.rules and func
    * entry is still compared against exactly one digest, and a value that is
    * neither — THIS branch editing one of them — still fails.
    */
-  const MOVED_SINCE: Record<string, string> = {
-    'src/components/AdminDashboardHome.tsx': '4d8917c0a31dac5a8a9526e3a1c7e05d786f947bcad72a14d73d488383c23621',
+  const MOVED_SINCE: Record<string, readonly string[]> = {
+    'src/components/AdminDashboardHome.tsx': [
+      // THE-276 (#421), as described above.
+      '4d8917c0a31dac5a8a9526e3a1c7e05d786f947bcad72a14d73d488383c23621',
+      /*
+       * ⚠️ THE-283 (slice 2 of 6) landed the Growth tab, and this records it —
+       * the same treatment, for the same reason, one slice on. That ticket
+       * mounts the new tab by passing a `growth` panel to `DashboardTabs` and
+       * holds the Growth tab's own read beside the Overview one, so
+       * `AdminDashboardHome.tsx` moves again. 🔴 THIS branch still did not
+       * author a byte of it, which is the claim the entry preserves: a value
+       * that is none of the three still fails.
+       */
+      '3fc6dad47ca367c0afef2b02e0f18c24b9c06bab109e59fb64ee4f3f96703567',
+    ],
     // THE-275, the same situation one ticket over. It owns AdminDocs.tsx and has
     // rewritten it: the notes screen was a drill-down (a folder-directory view,
     // then an editor that was the only place the tree existed) and is now two
     // panes with the tree always mounted. This branch still did not author a
     // byte of it — the entry records that the OTHER ticket landed, exactly as
     // the AdminDashboardHome one above does for THE-276.
-    'src/components/AdminDocs.tsx': '46c8403674c79dcacbb3a0c60f183b77a3e265d33b441b2ea05c1e00fe42b15f',
+    'src/components/AdminDocs.tsx': ['46c8403674c79dcacbb3a0c60f183b77a3e265d33b441b2ea05c1e00fe42b15f'],
   };
 
   it.each(Object.keys(UNTOUCHED))('%s carries no edit from this ticket', (file) => {
-    const accepted = [UNTOUCHED[file], ...(MOVED_SINCE[file] ? [MOVED_SINCE[file]] : [])];
+    const accepted = [UNTOUCHED[file], ...(MOVED_SINCE[file] ?? [])];
     expect(accepted, `${file} changed — it belongs to another ticket`).toContain(digest(file));
   });
 
