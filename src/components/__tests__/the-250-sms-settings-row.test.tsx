@@ -112,8 +112,6 @@ async function mount(plan: TenantPlan, enabled: boolean): Promise<HTMLElement> {
       <AdminSettings
         onBack={() => {}}
         currentPlan={plan}
-        onChangePlan={() => {}}
-        onCancelPlan={() => {}}
         tenantId="tenant-1"
         email="admin@church.org"
         isPlanOwner

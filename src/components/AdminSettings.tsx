@@ -20,8 +20,26 @@ import { FORM_MEASURE, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layo
 interface AdminSettingsProps {
   onBack: () => void;
   currentPlan?: TenantPlan;
-  onChangePlan: (plan: TenantPlan) => void;
-  onCancelPlan: () => void;
+  /*
+   * THE-291 — `onChangePlan` / `onCancelPlan` USED TO SIT HERE AND ARE GONE.
+   *
+   * Both were required props that this component accepted and never once
+   * called: the plan change lives in PlanUpgradeSection (runDodoPlanChange,
+   * then `armPlanRefresh()`), and "Cancel Subscription" goes through
+   * `setShowCancelConfirm(true)` into `handleManageSubscription()`. The
+   * implementations AdminDashboard passed for them wrote `plan` and
+   * `planStatus` onto `users/{uid}` straight from the browser SDK.
+   *
+   * 🔴 That is the one thing the money path forbids. The webhook is the single
+   * writer of the entitlement; the UI asks, and re-reads once the change is
+   * confirmed. It never applies what it asked for, because
+   * `on_payment_failure: 'prevent_change'` means Dodo decides AFTER the
+   * payment whether the change took effect at all.
+   *
+   * Do not re-add a callback of this shape. A prop nothing calls is a socket,
+   * and this one had a client-side entitlement write plugged into it for as
+   * long as it existed.
+   */
   tenantId?: string;
   email?: string;
   /** True only for the plan owner (tenant.ownerId) — gates plan-included AI Assistant.
@@ -46,7 +64,7 @@ interface AdminSettingsProps {
   onOpenDonations: () => void;
 }
 
-const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onChangePlan, onCancelPlan, tenantId, email, isPlanOwner, onCustomizeNav, onOpenDonations }) => {
+const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tenantId, email, isPlanOwner, onCustomizeNav, onOpenDonations }) => {
   const [stripeStatus, setStripeStatus] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   // Platform-context super admins (apex) see every settings section. On a tenant

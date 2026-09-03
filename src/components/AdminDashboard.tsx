@@ -1279,20 +1279,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                  screen it opens cannot get out of step: `go('donations')`
                  always renders the Donations branch of the switch below. */
               onOpenDonations={() => go('donations')}
-              onChangePlan={async (plan) => {
-                if (auth.currentUser) {
-                  const { updateDoc, doc } = await import('firebase/firestore');
-                  await updateDoc(doc(db, 'users', auth.currentUser.uid), { plan });
-                  window.location.reload();
-                }
-              }}
-              onCancelPlan={async () => {
-                if (auth.currentUser) {
-                  const { updateDoc, doc } = await import('firebase/firestore');
-                  await updateDoc(doc(db, 'users', auth.currentUser.uid), { planStatus: 'cancelled' });
-                  alert('Your subscription has been cancelled. It will remain active until the end of the billing period.');
-                }
-              }}
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-faint">

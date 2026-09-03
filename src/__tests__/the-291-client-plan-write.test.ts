@@ -1,0 +1,438 @@
+import { describe, it, expect } from 'vitest';
+import { createHash } from 'node:crypto';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import path from 'node:path';
+
+import { PLAN_PRICING, getPlanFeatures, PLAN_ORDER } from '../utils/plan-features';
+
+/**
+ * THE-291 — the client-side write to `plan`, and the sweep that could not see it.
+ *
+ * ─── WHAT WAS ACTUALLY THERE ────────────────────────────────────────────────
+ *
+ * `AdminDashboard.tsx`, in the props it handed `<AdminSettings>`:
+ *
+ *     onChangePlan={async (plan) => {
+ *       if (auth.currentUser) {
+ *         const { updateDoc, doc } = await import('firebase/firestore');
+ *         await updateDoc(doc(db, 'users', auth.currentUser.uid), { plan });
+ *         window.location.reload();
+ *       }
+ *     }}
+ *
+ * A real `updateDoc` — a persisted Firestore write, not a `setState` that
+ * merely reads like one — plus a sibling `onCancelPlan` writing
+ * `{ planStatus: 'cancelled' }` to the same document.
+ *
+ * 🔴 THE RULE IT BREAKS. The webhook is the single writer of `plan` and the
+ * add-on set. The UI asks, and re-reads once the change is confirmed; it never
+ * applies what it asked for. `on_payment_failure: 'prevent_change'` means Dodo
+ * decides AFTER the payment whether a plan change took effect, so a client that
+ * writes what it requested is claiming an entitlement nobody confirmed.
+ *
+ * ─── AND THE PART THE GREP DID NOT SAY ──────────────────────────────────────
+ *
+ * Neither prop was ever called. `AdminSettings` took `onChangePlan` and
+ * `onCancelPlan` as REQUIRED props, destructured them, and invoked neither —
+ * the live plan change is `PlanUpgradeSection`'s (`runDodoPlanChange`, then
+ * `armPlanRefresh()`), and Cancel Subscription goes through
+ * `setShowCancelConfirm(true)` into the billing portal. `firestore.rules`
+ * names `plan` on `users/{uid}` immutable for both self-edits and tenant
+ * admins, so the write would have been rejected for everyone but a platform
+ * super admin, and nothing in the codebase reads `users/{uid}.plan` or
+ * `planStatus` at all.
+ *
+ * ⚠️ None of that makes it safe to leave. It was a live, correctly-shaped
+ * entitlement write sitting in a required prop's implementation: one caller
+ * deciding to invoke the callback, or one rules edit, and it lands. So both
+ * props and both writes are gone rather than neutered.
+ *
+ * ⚠️ Nothing here shells out to `git show`. Every baseline is a literal pinned
+ * when this test was written — a guard that re-derives its own baseline from
+ * the repository at assertion time cannot fail, it only describes whatever it
+ * was handed.
+ */
+
+const REPO = path.resolve(__dirname, '../..');
+const SRC = path.join(REPO, 'src');
+const sha256 = (t: string | Buffer): string => createHash('sha256').update(t).digest('hex');
+const read = (rel: string) => readFileSync(path.join(REPO, rel), 'utf8');
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * The sweep
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+const CODE_EXT = new Set(['.ts', '.tsx', '.js', '.jsx']);
+
+function walk(dir: string, out: string[] = []): string[] {
+  for (const entry of readdirSync(dir)) {
+    if (entry === 'node_modules' || entry === '.git') continue;
+    const full = path.join(dir, entry);
+    if (statSync(full).isDirectory()) walk(full, out);
+    else if (CODE_EXT.has(path.extname(entry))) {
+      out.push(path.relative(REPO, full).split(path.sep).join('/'));
+    }
+  }
+  return out;
+}
+
+/** Comments stripped, so an explanation of the rule cannot trip the rule. */
+const stripComments = (source: string): string =>
+  source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^[ \t]*\/\/.*$/gm, ' ');
+
+/** Every argument list passed to `fn`, paren-balanced rather than regex-guessed. */
+function callArguments(source: string, fn: string): string[] {
+  const found: string[] = [];
+  const opener = new RegExp(`\\b${fn}\\s*\\(`, 'g');
+  let match: RegExpExecArray | null;
+  while ((match = opener.exec(source)) !== null) {
+    let depth = 1;
+    let i = match.index + match[0].length;
+    while (i < source.length && depth > 0) {
+      const c = source[i];
+      if (c === '(') depth++;
+      else if (c === ')') depth--;
+      i++;
+    }
+    found.push(source.slice(match.index + match[0].length, i - 1));
+  }
+  return found;
+}
+
+const CLIENT_WRITES = ['setDoc', 'updateDoc', 'addDoc', 'writeBatch'] as const;
+
+/**
+ * 🔴 THE THREE SPELLINGS OF THE SAME WRITE, and the ticket exists because a
+ * sweep that carried only two of them passed over a real violation.
+ *
+ * THE-259's browser-SDK detector had `KEYED` and `FIELD_PATH` but not
+ * `SHORTHAND`, and `{ plan }` — the spelling anyone writing a variable called
+ * `plan` reaches for — matched neither.
+ */
+const KEYED = /(^|[{,\s])(['"`]?)plan\2\s*:/;          //  { plan: 'pro' }
+const SHORTHAND = /[{,]\s*plan\s*[,}]/;                 //  { plan }
+const FIELD_PATH = /(^|[,(\s])(['"`])plan\2\s*,/;       //  updateDoc(ref, 'plan', 'pro')
+
+const writesPlan = (args: string) =>
+  KEYED.test(args) || SHORTHAND.test(args) || FIELD_PATH.test(args);
+
+/**
+ * 🔴 BOTH IMPORT STYLES, and that is the second gap this ticket closed. THE-259's
+ * browser-SDK detector gated on a STATIC `from 'firebase/firestore'`; the write
+ * it missed used `await import('firebase/firestore')`, which is how this
+ * codebase ordinarily reaches Firestore from a click handler.
+ */
+const STATIC_SDK = /from\s+['"]firebase\/firestore['"]/;
+const DYNAMIC_SDK = /import\s*\(\s*['"]firebase\/firestore['"]\s*\)/;
+
+/**
+ * Every client-SDK write of `plan` in this source. Empty = clean.
+ *
+ * 🔴 NOT SCOPED TO A COLLECTION. THE-259's entitlement detector required the
+ * argument list to mention `'tenants'`, and the write that shipped targeted
+ * `doc(db, 'users', uid)`. The rule is "the webhook is the single writer of
+ * `plan`" — it does not say "on tenant documents". Any document.
+ */
+export function planWritesIn(source: string): string[] {
+  const clean = stripComments(source);
+  if (!STATIC_SDK.test(clean) && !DYNAMIC_SDK.test(clean)) return [];
+  const offences: string[] = [];
+  for (const fn of CLIENT_WRITES) {
+    for (const args of callArguments(clean, fn)) {
+      if (writesPlan(args)) offences.push(`${fn}(${args.trim().replace(/\s+/g, ' ').slice(0, 90)}…)`);
+    }
+  }
+  return offences;
+}
+
+/** Every source file under `src/` that ships to a browser — tests excluded. */
+const CLIENT_FILES = walk(SRC).filter((f) => !f.includes('__tests__') && !f.includes('/test/'));
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 1 — the whole ticket
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+describe('1 · no client-side write to plan exists anywhere', () => {
+  it('🔴 no file under src/ writes plan through the client SDK, in any collection', () => {
+    const offenders = CLIENT_FILES.map((file) => ({
+      file,
+      offences: planWritesIn(read(file)),
+    })).filter((r) => r.offences.length > 0);
+
+    expect(
+      offenders.map((o) => `${o.file}: ${o.offences.join(', ')}`),
+      'the webhook is the single writer of `plan` — the UI asks and re-reads, it never applies what it asked for',
+    ).toEqual([]);
+  });
+
+  it('the specific write this ticket removed is gone, by shape and not by line number', () => {
+    const dash = read('src/components/AdminDashboard.tsx');
+    expect(dash, 'the plan write is back in AdminDashboard').not.toMatch(/updateDoc\([^)]*\)\s*,\s*\{\s*plan\s*\}/);
+    expect(dash, 'the dead onChangePlan prop is back').not.toContain('onChangePlan');
+    expect(dash, 'the dead onCancelPlan prop is back').not.toContain('onCancelPlan');
+    expect(dash, 'planStatus is written from the client again').not.toContain('planStatus');
+  });
+
+  it('AdminSettings no longer accepts a plan-mutating callback at all', () => {
+    // The socket is gone, not just what was plugged into it. A required prop
+    // nobody calls is exactly where the write lived for two tickets.
+    const settings = read('src/components/AdminSettings.tsx');
+    const declarations = stripComments(settings);
+    expect(declarations, 'onChangePlan is a prop again').not.toContain('onChangePlan');
+    expect(declarations, 'onCancelPlan is a prop again').not.toContain('onCancelPlan');
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 2 — teeth
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+describe('2 · the sweep catches a planted violation', () => {
+  it('every evasive spelling of the write is caught', () => {
+    // The exact shape that shipped: dynamic import, shorthand, non-tenant doc.
+    expect(planWritesIn(
+      `const { updateDoc, doc } = await import('firebase/firestore');
+       await updateDoc(doc(db, 'users', auth.currentUser.uid), { plan });`,
+    ), 'the shape that shipped on main is not caught').toHaveLength(1);
+
+    expect(planWritesIn(
+      `import { doc, updateDoc } from 'firebase/firestore';
+       await updateDoc(doc(db, 'tenants', id), { plan: 'pro', updatedAt: now });`,
+    )).toHaveLength(1);
+
+    expect(planWritesIn(
+      `import { updateDoc } from 'firebase/firestore';
+       await updateDoc(doc(db, 'tenants', id), 'plan', 'pro');`,
+    )).toHaveLength(1);
+
+    expect(planWritesIn(
+      `import { setDoc } from 'firebase/firestore';
+       await setDoc(doc(db, 'anythingElse', id), { plan: nextPlan }, { merge: true });`,
+    ), 'a collection other than tenants/users slips through').toHaveLength(1);
+  });
+
+  it('and does not fire on things that are not the violation', () => {
+    // A comment about the rule, the add-on set, and a field that merely starts
+    // with the word — `planStatus` is not `plan`, and a sweep that cannot tell
+    // them apart gets muted by the first false positive.
+    expect(planWritesIn(
+      `import { updateDoc } from 'firebase/firestore';
+       // never write { plan: 'pro' } from the client
+       await updateDoc(doc(db, 'tenants', id), { addons: owned });`,
+    )).toEqual([]);
+
+    expect(planWritesIn(
+      `import { updateDoc } from 'firebase/firestore';
+       await updateDoc(doc(db, 'tenants', id), { planLabel: shown, planned: true });`,
+    )).toEqual([]);
+
+    // A server route using the Admin SDK is the sanctioned writer, not a client.
+    expect(planWritesIn(
+      `import { getFirestore } from 'firebase-admin/firestore';
+       await ref.update({ plan: confirmed });`,
+    )).toEqual([]);
+  });
+
+  it('🔴 the sweep is repo-wide, so a violation planted in ANY file is seen', () => {
+    // A sweep scoped to the file that happened to be broken is not a sweep.
+    // Every shipping source file under src/ is in the corpus — so planting the
+    // write somewhere else fails test 1 by name, rather than passing quietly.
+    expect(CLIENT_FILES.length).toBeGreaterThan(400);
+    for (const required of [
+      'src/components/AdminDashboard.tsx',
+      'src/components/AdminSettings.tsx',
+      'src/components/settings/PlanUpgradeSection.tsx',
+      'src/components/AdminUpgradePage.tsx',
+      'src/contexts/TenantContext.tsx',
+    ]) {
+      expect(CLIENT_FILES, `${required} is outside the swept corpus`).toContain(required);
+    }
+
+    // And the corpus is derived, not listed: every .ts/.tsx under src/ that is
+    // not a test is in it, so a NEW file cannot be born outside the sweep.
+    const everyShippingFile = walk(SRC).filter(
+      (f) => !f.includes('__tests__') && !f.includes('/test/'),
+    );
+    expect(CLIENT_FILES.slice().sort()).toEqual(everyShippingFile.slice().sort());
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 3 — the surface re-reads instead
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+describe('3 · the plan surface asks and re-reads, it does not write', () => {
+  it('the live plan change runs through the Dodo route and then arms the refresh window', () => {
+    const plan = read('src/components/settings/PlanUpgradeSection.tsx');
+    expect(plan, 'the plan change no longer runs through runDodoPlanChange').toContain('runDodoPlanChange');
+    expect(plan, 'the THE-217 refresh window is no longer armed').toContain('armPlanRefresh()');
+    expect(planWritesIn(plan), 'the plan surface writes plan itself').toEqual([]);
+  });
+
+  it('there is still exactly one refresh mechanism, not a second one minted here', () => {
+    const ctx = read('src/contexts/TenantContext.tsx');
+    expect(ctx).toContain('armPlanRefresh');
+    expect(ctx).toContain('refreshTenantPlan');
+
+    // Every caller of the re-read uses the context's, so removing the write did
+    // not introduce a parallel path.
+    //
+    // ⚠️ A CALL, not a mention. Matching the bare name swept up this ticket's own
+    // comment in AdminSettings and the reason string in `settings/autosave.ts`,
+    // both of which name the function precisely because it is the right one.
+    // The two real callers reach it off the context: `tenant?.armPlanRefresh()`.
+    const armers = CLIENT_FILES.filter((f) =>
+      /\.\s*armPlanRefresh\s*\(\s*\)/.test(stripComments(read(f))),
+    );
+    expect(armers.slice().sort(), 'a new plan-refresh mechanism appeared').toEqual([
+      'src/components/AdminUpgradePage.tsx',
+      'src/components/settings/PlanUpgradeSection.tsx',
+    ]);
+  });
+
+  it('AdminDashboard reads the plan from context and passes it down, rather than setting it', () => {
+    const dash = read('src/components/AdminDashboard.tsx');
+    expect(dash, 'the dashboard stopped reading the plan from the tenant context').toMatch(
+      /tenantPlan/,
+    );
+    expect(planWritesIn(dash), 'the dashboard writes plan again').toEqual([]);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 4 — nothing is applied before it is confirmed
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+describe('4 · a failed or unconfirmed change never applies optimistically', () => {
+  it('no surface reloads the page to make a self-written plan look applied', () => {
+    // `window.location.reload()` straight after a write is the optimistic tell:
+    // it exists to re-render against what the client just claimed.
+    for (const file of CLIENT_FILES) {
+      const src = stripComments(read(file));
+      if (!/window\.location\.reload/.test(src)) continue;
+      expect(
+        planWritesIn(src),
+        `${file} writes plan and then reloads to show its own write as fact`,
+      ).toEqual([]);
+    }
+  });
+
+  it('the entitlement the UI shows comes from the tenant document, not from the request', () => {
+    // The requested plan is an argument to the Dodo call; what the UI shows is
+    // whatever the re-read found. If these were ever the same expression, a
+    // declined card would still look like an upgrade.
+    const ctx = read('src/contexts/TenantContext.tsx');
+    expect(ctx, 'the refresh no longer sources the plan from a snapshot read')
+      .toMatch(/refreshTenantPlan/);
+    expect(planWritesIn(ctx), 'the context writes the plan it was asked for').toEqual([]);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 5-8 — no-regression pins
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+describe('5 · the money path is byte-identical', () => {
+  /** Pinned from `origin/main` at 902763a, where this branch started. */
+  const UNTOUCHED: Readonly<Record<string, string>> = {
+    'src/utils/plan-change.ts': '71b2aa42dd1e97b36107197cca459c666ed9027c01c0e85e7af9d2b2e27a6fe7',
+    'src/lib/dodo/plan-change.ts': '7f583417d59d476ddc41c6530acbfe3cd9dcaaf9e8d15279842b9d3db984ce9f',
+    'src/app/api/dodo/webhook/route.ts': '0a30ca691739b717a65aa9dfe0f4c168ad2ec6ae12510b1a574847fd8ede9270',
+    'src/app/api/dodo/change-plan/route.ts': '5ec0e4ce1bd22586e148d78dfb87f690ff6000f4519d81c0c3db48c224d6e298',
+    'src/lib/dodo/webhook-dispatch.ts': '6d5d6e18824efa41eb2b00273c60d8a4724eb15a9f9559fe83913950e07d0e5e',
+    'src/components/settings/PlanUpgradeSection.tsx':
+      '47311df03e1ca76cb51e5094360c2ef868e14f1d9bb6c70509a48fdff174a553',
+  };
+
+  it.each(Object.entries(UNTOUCHED))('%s is untouched', (file, digest) => {
+    expect(
+      sha256(readFileSync(path.join(REPO, file))),
+      `${file} changed — removing a client write must not touch the billing path`,
+    ).toBe(digest);
+  });
+
+  it('no new API route was added to replace the write', () => {
+    const routes = walk(path.join(SRC, 'app/api'))
+      .filter((f) => path.basename(f) === 'route.ts')
+      .sort();
+    // A count, not a manifest: the claim is "this ticket added none", and the
+    // digests above already pin the plan routes themselves.
+    // 🔴 A LITERAL, not a count re-derived from the repo. A baseline the guard
+    // computes for itself at assertion time cannot fail; it only describes
+    // whatever it was handed. Pinned from `origin/main` at 902763a.
+    expect(routes.length, 'an API route was added or removed').toBe(113);
+  });
+});
+
+describe('6 · no plan cap or price changed', () => {
+  it('the nine plan prices are exactly what they were', () => {
+    expect(PLAN_PRICING).toEqual({
+      plus: { monthly: 20, quarterly: 54, yearly: 190 },
+      pro: { monthly: 40, quarterly: 108, yearly: 380 },
+      max: { monthly: 80, quarterly: 216, yearly: 760 },
+    });
+  });
+
+  it('every plan cap is exactly what it was', () => {
+    const caps = Object.fromEntries(
+      PLAN_ORDER.map((p) => {
+        const f = getPlanFeatures(p);
+        return [p, { maxCourses: f.maxCourses, maxAdmins: f.maxAdmins, maxContacts: f.maxContacts }];
+      }),
+    );
+    expect(caps).toEqual({
+      free: { maxCourses: 1, maxAdmins: 1, maxContacts: 500 },
+      plus: { maxCourses: 2, maxAdmins: 2, maxContacts: 150 },
+      pro: { maxCourses: 5, maxAdmins: 5, maxContacts: 500 },
+      max: { maxCourses: 15, maxAdmins: 15, maxContacts: 2_000 },
+    });
+  });
+
+  it('plan-features.ts itself is byte-identical', () => {
+    expect(sha256(readFileSync(path.join(REPO, 'src/utils/plan-features.ts')))).toBe(
+      'cd4fbdd58f6dbbcbd180aeab00a63f1c9be3189c9010ff7a844a0f8e817af403',
+    );
+  });
+});
+
+describe("7 · THE-286's settings autosave is undisturbed", () => {
+  it('AdminSettings is still on the autosave exclusion list, with Cancel behind its confirm panel', () => {
+    const autosave = read('src/components/settings/autosave.ts');
+    expect(autosave, 'the autosave exclusion list lost AdminSettings').toContain(
+      'src/components/AdminSettings.tsx',
+    );
+    const settings = read('src/components/AdminSettings.tsx');
+    expect(settings, 'Cancel Subscription no longer goes through its confirm panel').toContain(
+      'setShowCancelConfirm(true)',
+    );
+    expect(settings, 'AdminSettings picked up the autosave hook').not.toContain('useAutosaveField');
+  });
+});
+
+describe('8 · firestore.rules and functions/ are byte-identical', () => {
+  it('firestore.rules is untouched', () => {
+    expect(sha256(readFileSync(path.join(REPO, 'firestore.rules')))).toBe(
+      'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499',
+    );
+  });
+
+  it('functions/ is untouched', () => {
+    // A manifest of path + content, so a DELETED or ADDED file fails too.
+    const walkAll = (dir: string): string[] =>
+      readdirSync(dir).flatMap((name) => {
+        if (name === 'node_modules' || name === 'lib' || name === '.git') return [];
+        const full = path.join(dir, name);
+        return statSync(full).isDirectory() ? walkAll(full) : [full];
+      });
+    const root = path.join(REPO, 'functions');
+    const manifest = walkAll(root)
+      .sort()
+      .map((f) => `${path.relative(REPO, f)}:${sha256(readFileSync(f))}`)
+      .join('\n');
+    expect(sha256(manifest), 'functions/ changed').toBe(
+      // Pinned from `origin/main` at 902763a, where this branch started.
+      '1a3a1c7f27699263bcdf5bd0320c7cb0803a6f76644952f631000bc9bedef2d7',
+    );
+  });
+});
+
