@@ -27,6 +27,7 @@ import DocsTree from './docs/DocsTree';
 import DocsBreadcrumb from './docs/DocsBreadcrumb';
 import DocsQuickSwitcher, { useQuickSwitcherShortcut } from './docs/DocsQuickSwitcher';
 import { folderPathIds } from './docs/docs-tree-model';
+import { SHELL_SCREEN_HEIGHT } from './layout/shell-height';
 
 import type { Doc, DocFolder } from '../hooks/queries/useDocsQueries';
 
@@ -1027,7 +1028,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
         onChange={importMarkdownFile}
         className="hidden"
       />
-      <div className="flex w-full min-w-0 flex-col gap-0 lg:h-[calc(100dvh-140px)] lg:flex-row lg:gap-5">
+      <div className={`flex w-full min-w-0 flex-col gap-0 lg:flex-row lg:gap-5 ${SHELL_SCREEN_HEIGHT}`}>
         {/* The tree. Mounted once, for the life of the screen — clicking a note
             re-renders the pane beside it and leaves this element alone, which is
             what keeps folder collapse (and the scroll position) put.

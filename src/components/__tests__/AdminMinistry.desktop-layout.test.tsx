@@ -216,7 +216,14 @@ interface PrePr {
  */
 const stripPresentation = (src: string): string => unwrapSmsGate(src)
   .replace(/className=(?:"[^"]*"|\{`[^`]*`\}|\{[A-Za-z_$][\w.$]*\})/g, 'className=X')
-  .replace(/^import \{[^}]*\} from '\.\/layout\/form-layout';$/m, '')
+  // An import of a LAYOUT module is presentation, not behaviour — the same
+  // reasoning that already exempted form-layout, widened to the directory. A
+  // screen that stops inventing a number and starts spending a shared one has
+  // changed only how it renders, which is exactly what this hash is meant to
+  // let through. THE-275 moved the full-height screens' `calc(100dvh - 140px)`
+  // (a guess, ~37px too big) into layout/shell-height.ts, where it is derived
+  // from the shell's own classes and checked against them.
+  .replace(/^import \{[^}]*\} from '\.\/layout\/[\w-]+';$/gm, '')
   .replace(/^\s*(?:\/\/.*)?$\n?/gm, '');
 
 /**

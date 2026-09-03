@@ -14,6 +14,7 @@ import { isSuperAdminEmail } from '../utils/super-admins';
 import { notifyError } from '../utils/notify';
 import { sortByTime } from '../utils/query-helpers';
 import { useAdminHeader } from './AdminScreenHeader';
+import { SHELL_SCREEN_HEIGHT } from './layout/shell-height';
 
 /**
  * Fetch documents in a flat collection scoped by a `tenantId` field, using only
@@ -1255,7 +1256,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
   // reason, as the Notes tree (THE-275). Nothing is minted in its place: the
   // width is the shell's content box.
   return (
-    <div className="w-full h-full lg:h-[calc(100dvh-140px)]">
+    <div className={`w-full h-full ${SHELL_SCREEN_HEIGHT}`}>
       <div className="flex flex-col h-full lg:flex-row lg:gap-5">
 
       {/* ── Left rail: tabs + conversation list ── */}
