@@ -7,6 +7,7 @@ import { getTenantId } from './settings/useTenantId';
 import PaymentSection from './settings/PaymentSection';
 import { AdminCard, AdminPageHeader, AdminPrimaryButton, AdminSectionLabel } from './admin/AdminUI';
 import { ProviderMark } from './donations/GivingLinks';
+import GivingShareSheet from './donations/GivingShareSheet';
 import {
   GIVING_PROVIDERS,
   MAX_GIVING_EMAIL_LENGTH,
@@ -198,6 +199,12 @@ const AdminDonations: React.FC = () => {
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
+  /* 🔴 THE SHARE SURFACE SHARES WHAT IS SAVED, not what is typed. `draft` is
+     the form's working copy and can hold a half-finished paste; sharing that
+     would send members a link the church has not committed to. Set on load and
+     again on a successful save, so the two can never disagree. */
+  const [savedLinks, setSavedLinks] = useState<GivingLinkRecord>({});
+  const [churchName, setChurchName] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -212,7 +219,10 @@ const AdminDonations: React.FC = () => {
         const { doc, getDoc } = await import('firebase/firestore');
         const snap = await getDoc(doc(db, 'tenants', tid));
         if (cancelled) return;
-        setDraft(draftFromRecord(snap.exists() ? snap.data()?.config?.givingLinks : undefined));
+        const stored = snap.exists() ? snap.data()?.config?.givingLinks : undefined;
+        setDraft(draftFromRecord(stored));
+        setSavedLinks(buildGivingLinkRecord(draftFromRecord(stored)));
+        setChurchName(snap.exists() ? (snap.data()?.name as string | undefined) ?? null : null);
         setLoadState('ready');
       } catch (e) {
         // 🔴 The silent-failure rule. A read that fails must not resolve into an
@@ -263,6 +273,18 @@ const AdminDonations: React.FC = () => {
       await updateDoc(doc(db, 'tenants', tenantId), {
         'config.givingLinks': buildGivingLinkRecord(draft),
       });
+      /* Only after the write resolves — the share surface must never advertise
+         a link the document does not carry.
+
+         ⚠️ THE SAME PURE DERIVATION CALLED TWICE, deliberately, rather than
+         hoisted into a local. `buildGivingLinkRecord` is pure and walks six
+         providers, so the second call costs nothing — and the write expression
+         above is PINNED, character for character, by
+         manual-payment-link-disclosures ("AdminDonations keeps exactly its one
+         write, at the one dotted path"). Hoisting it would change the shape
+         that pin reads without changing what is written, which is precisely
+         the edit that guard exists to make visible. */
+      setSavedLinks(buildGivingLinkRecord(draft));
       setSaved(true);
     } catch (e) {
       // Never swallowed: a PERMISSION_DENIED here is the difference between
@@ -307,6 +329,25 @@ const AdminDonations: React.FC = () => {
             Paste the links your ministry already uses. They appear on your Give page with
             your username, and open in the app your members already have.
           </p>
+          {/*
+            THE-281 — the share button, on the card whose links it carries.
+
+            🔴 IT SHARES `savedLinks`, NOT `draft`. What a member opens is what
+            the document holds, so the button offers exactly that; a paste still
+            sitting in a field is not yet a way to give.
+
+            ⚠️ Rendered whatever `loadState` is doing. It disables itself when
+            there is no usable tenant id (see `GivingShareSheet`), and a church
+            with no links saved yet still has a giving page worth sharing — the
+            Stripe line and the page itself are on it either way.
+          */}
+          <div className="mt-3.5">
+            <GivingShareSheet
+              tenantId={tenantId}
+              config={{ givingLinks: savedLinks }}
+              churchName={churchName}
+            />
+          </div>
         </div>
 
         {/*
