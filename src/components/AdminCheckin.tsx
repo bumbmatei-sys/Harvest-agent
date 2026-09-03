@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  collection, query, orderBy, onSnapshot, doc, addDoc, updateDoc, deleteDoc,
+  collection, query, orderBy, onSnapshot, doc, addDoc, updateDoc,
   getDocs, serverTimestamp, Timestamp, limit,
 } from 'firebase/firestore';
 import QRCode from 'qrcode';
@@ -17,6 +17,9 @@ import {
 } from './admin/AdminUI';
 import AdminQR from './AdminQR';
 import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
+import {
+  deleteSessionConfirmation, partialDeleteMessage, type SessionDeleteResult,
+} from '../lib/checkin-session-delete';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 
@@ -184,10 +187,44 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
     setSelected({ ...s, status: 'closed' });
   };
 
+  /**
+   * Delete a session AND the attendee records under it — THE-288.
+   *
+   * 🔴 THIS WAS A BARE `deleteDoc` ON THE SESSION. Firestore does not cascade,
+   * so `checkinSessions/{id}/attendees` survived its deleted parent — a first
+   * name, last name, email and `crmContactId` per person, unreachable from this
+   * screen and invisible to the church that is holding it. The confirmation
+   * said the delete could not be undone and the admin read that as "gone".
+   *
+   * The cascade runs server-side at /api/checkin/delete-session, which reuses
+   * member-erasure's paged sweep rather than opening a new loop here (#390),
+   * and which deletes the session LAST, only once the attendee collection is
+   * proven empty. A short run comes back `partial` and keeps the session, so
+   * the remaining records stay reachable from this screen — `onSnapshot` above
+   * simply leaves the row in place, which is the truthful outcome.
+   */
   const deleteSession = async (s: CheckinSession) => {
     if (!tenantId) return;
-    if (!confirm(`Delete "${s.name}"? This cannot be undone.`)) return;
-    await deleteDoc(doc(db, 'tenants', tenantId, 'checkinSessions', s.id));
+    if (!confirm(deleteSessionConfirmation(s.name))) return;
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const resp = await fetch('/api/checkin/delete-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ tenantId, sessionId: s.id }),
+      });
+      const result = await resp.json().catch(() => null) as SessionDeleteResult | null;
+      if (result?.status === 'partial') {
+        // Never silently "complete" — #390's exact bug. Say what remains.
+        alert(partialDeleteMessage(result));
+        return;
+      }
+      if (!resp.ok) { alert('Failed to delete the session. Please try again.'); return; }
+      if (selected?.id === s.id) { setSelected(null); setView('list'); }
+    } catch (e) {
+      console.error('Failed to delete session:', e);
+      alert('Failed to delete the session. Please try again.');
+    }
   };
 
   const manualCheckIn = async () => {
