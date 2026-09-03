@@ -84,6 +84,24 @@ export async function GET(request: NextRequest) {
   try {
     // Same single-field query the client ran, same limit — only the credential
     // and the place the tenant comes from have changed.
+    // ⚠️ `createdAt` IN THIS COLLECTION HOLDS TWO TYPES — THE-288.
+    // Five writers store a Firestore Timestamp (`serverTimestamp()`):
+    // /api/checkin/submit, /api/forms/submit, /api/event-registration/submit,
+    // the event-registration webhook and AdminCRM. Two store an ISO STRING
+    // (`new Date().toISOString()`): lib/donation-webhook.ts and
+    // /api/crm/send-email. `serializeCreatedAt` above exists precisely because
+    // of that split.
+    //
+    // 🔴 DO NOT ADD AN `orderBy('createdAt')` TO THIS QUERY. Firestore orders
+    // by TYPE before value, so every string row would come back ahead of every
+    // Timestamp row — a stable order that is not a chronological one, and one
+    // that looks correct on any church whose activities happen to be all of one
+    // kind. The sort below is in memory over both types and is deliberate, not
+    // an oversight waiting to be optimised into the query.
+    //
+    // Latent, not live: nothing orders this collection today. Reported by
+    // THE-288 and left latent on purpose — normalising the stored values is a
+    // migration, and this ticket changes no stored value's type or shape.
     const snap = await adminDb
       .collection('contactActivities')
       .where('contactId', '==', contactId)

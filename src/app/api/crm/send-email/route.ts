@@ -166,6 +166,18 @@ export async function POST(request: NextRequest) {
         type: 'email',
         description: `Sent email: ${subject}`,
         amount: null,
+        // ⚠️ `createdAt` HERE IS AN ISO STRING, NOT A TIMESTAMP — THE-288.
+        // `contactActivities` is written by seven call sites and they disagree:
+        // checkin/submit, forms/submit, event-registration/submit, the
+        // event-registration webhook and AdminCRM all write
+        // `serverTimestamp()`; this route and lib/donation-webhook.ts write
+        // `new Date().toISOString()`. 🔴 DO NOT ADD AN `orderBy('createdAt')`
+        // TO THIS COLLECTION. Firestore orders by type before value, so every
+        // string row would sort ahead of every Timestamp row — stable, and not
+        // chronological. Nothing orders it today (/api/crm/contact-activities
+        // reads then sorts in memory via `sortByTime`), which is the only reason
+        // this is latent rather than live. The stored values are deliberately
+        // left alone: rewriting history here is a migration, not a comment.
         createdAt: new Date().toISOString(),
         createdBy: user.uid,
       });
