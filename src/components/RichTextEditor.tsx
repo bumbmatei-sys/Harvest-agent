@@ -14,9 +14,11 @@ import {
   Heading1, Heading2, List, ListOrdered, Quote, Code,
   Minus, Bold, Italic, Link as LinkIcon, Image as ImageIcon,
   Type, Strikethrough, Underline as UnderlineIcon,
+  AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Upload, X, Loader2
 } from 'lucide-react';
 import { auth } from '../firebase';
+import RichTextToolbar, { type ToolbarItem } from './editor/RichTextToolbar';
 
 /**
  * The prose ramp every editor in the app has had, unchanged.
@@ -164,7 +166,16 @@ const ImageUploadModal = ({
 
 // ─── Command definitions ──────────────────────────────────────────
 
-const commands: CommandItem[] = [
+/**
+ * The command vocabulary, shared by BOTH menus.
+ *
+ * 🔴 `export` is the ONLY thing THE-279 changed about this array — every entry
+ * below is byte-identical, so the slash menu filters exactly what it filtered
+ * before. The persistent toolbar (THE-279) renders THIS array rather than a
+ * parallel list of its own, which is what makes "the toolbar can never do less
+ * than `/`" a structural fact instead of a promise two lists have to keep.
+ */
+export const commands: CommandItem[] = [
   {
     title: 'Heading 1',
     description: 'Large heading',
@@ -257,6 +268,128 @@ const commands: CommandItem[] = [
     },
   },
 ];
+
+/**
+ * ─── Alignment: the one command the toolbar adds ───────────────────────────
+ *
+ * 🔴 REPORTED AS REQUIRED (STOP condition 2): alignment is the ONLY toolbar
+ * command with no pre-existing `chain()` call. `@tiptap/extension-text-align`
+ * has been a dependency all along and is configured in THREE files —
+ * RichTextEditor, NewsletterEditor and TipTapReadOnly — while `setTextAlign`
+ * appeared ZERO times in `src/`. So the app has shipped a paid-for extension
+ * that can RENDER alignment and had no way to produce it.
+ *
+ * ⚠️ The read-only renderer is the deciding evidence, not the dependency.
+ * TipTapReadOnly.tsx's own doc comment promises that "formatting (headings,
+ * lists, links, images, alignment, underline) renders faithfully" on the member
+ * side. That sentence was already true of the renderer and unreachable in
+ * practice, because no authoring surface could emit a `text-align` style.
+ * Removing the extension — the `next-themes` treatment from #418 — would have
+ * meant deleting it from the read-only renderer too and making that promise
+ * false for any content that already carries alignment (imported HTML, a
+ * paste from Word or Docs, anything round-tripped through NewsletterEditor).
+ * Wiring it gives the capability a producer and makes the promise true. That is
+ * the opposite call from #418 and for the opposite reason: `next-themes` was a
+ * second theme system competing with the app's own, whereas TextAlign is a
+ * capability with no competitor and no UI.
+ *
+ * Shape, order and idiom are the `commands` entries' — `chain().focus().…
+ * .run()` — so the toolbar treats these exactly like the other fourteen.
+ * `alignments` is not narrowed at the configure site, so all four of TextAlign's
+ * defaults are enabled; offering three of them would leave a configured
+ * capability unreachable, which is the same small lie being removed here.
+ */
+export const ALIGN_COMMANDS: CommandItem[] = [
+  {
+    title: 'Align Left',
+    description: 'Align text left',
+    icon: <AlignLeft size={18} />,
+    action: (editor) => editor.chain().focus().setTextAlign('left').run(),
+  },
+  {
+    title: 'Align Center',
+    description: 'Centre text',
+    icon: <AlignCenter size={18} />,
+    action: (editor) => editor.chain().focus().setTextAlign('center').run(),
+  },
+  {
+    title: 'Align Right',
+    description: 'Align text right',
+    icon: <AlignRight size={18} />,
+    action: (editor) => editor.chain().focus().setTextAlign('right').run(),
+  },
+  {
+    title: 'Justify',
+    description: 'Justify text',
+    icon: <AlignJustify size={18} />,
+    action: (editor) => editor.chain().focus().setTextAlign('justify').run(),
+  },
+];
+
+/**
+ * Whether a command CAN apply to the current selection, by title.
+ *
+ * 🔴 One entry, and it removes a silent failure rather than adding a feature.
+ * `applyLink` chains `extendMarkRange('link').setLink(...)`, which needs either
+ * a non-empty selection or a caret already inside a link — with neither, the
+ * mark is applied to a zero-width range and the click does nothing at all.
+ *
+ * ⚠️ That precondition was invisible before this ticket because the only way to
+ * reach the link editor was the `BubbleMenu`, which renders ONLY on a non-empty
+ * selection, so it was always satisfied. The persistent toolbar can be pressed
+ * with no selection, which is the normal state while typing — so the constraint
+ * has to be shown. The button dims and its hint says why, instead of looking
+ * live and swallowing the tap.
+ *
+ * ⚠️ NOT a new command and NOT a change to `applyLink`: this is a state query,
+ * the same kind as COMMAND_ACTIVE, and the link path it guards is byte-identical.
+ * (The slash menu's own `Link` entry has the same underlying constraint and no
+ * such guard — `/link` at a collapsed caret prompts for a URL and then applies
+ * nothing. That is pre-existing, is not reachable from the toolbar, and is not
+ * this ticket's to change; it is reported instead.)
+ */
+export const COMMAND_ENABLED: Record<string, (editor: any) => boolean> = {
+  Link: (e) => !e.state.selection.empty || e.isActive('link'),
+};
+
+/** Shown in place of the hint when COMMAND_ENABLED says no. */
+export const DISABLED_REASON: Record<string, string> = {
+  Link: 'select the text you want to link first',
+};
+
+/**
+ * Whether the caret already sits inside what a command applies, by title.
+ *
+ * These are STATE QUERIES, not commands — `isActive` reads the document and
+ * mutates nothing, which is why they live here beside the commands rather than
+ * in the toolbar: RichTextToolbar.tsx is kept free of every TipTap name so it
+ * is structurally incapable of holding a second implementation of one. The
+ * bubble menu has queried `editor.isActive('bold')` inline since it was
+ * written; this is the same call, named once per command instead of five times.
+ *
+ * A title with no entry has no active state — correct for the six commands that
+ * INSERT rather than toggle (Paragraph is a set, Divider and Image are inserts,
+ * and an alignment default is not a mark). Paragraph is included because
+ * "plain text" is a real, checkable block type a writer switches back TO.
+ */
+export const COMMAND_ACTIVE: Record<string, (editor: any) => boolean> = {
+  'Heading 1': (e) => e.isActive('heading', { level: 1 }),
+  'Heading 2': (e) => e.isActive('heading', { level: 2 }),
+  Paragraph: (e) => e.isActive('paragraph'),
+  Bold: (e) => e.isActive('bold'),
+  Italic: (e) => e.isActive('italic'),
+  Underline: (e) => e.isActive('underline'),
+  Strikethrough: (e) => e.isActive('strike'),
+  'Bullet List': (e) => e.isActive('bulletList'),
+  'Numbered List': (e) => e.isActive('orderedList'),
+  Quote: (e) => e.isActive('blockquote'),
+  'Code Block': (e) => e.isActive('codeBlock'),
+  Link: (e) => e.isActive('link'),
+  'Align Left': (e) => e.isActive({ textAlign: 'left' }),
+  'Align Center': (e) => e.isActive({ textAlign: 'center' }),
+  'Align Right': (e) => e.isActive({ textAlign: 'right' }),
+  Justify: (e) => e.isActive({ textAlign: 'justify' }),
+};
 
 // ─── Slash command extension ──────────────────────────────────────
 
@@ -456,6 +589,97 @@ const renderSlashCommands = () => {
   };
 };
 
+// ─── Link editor row (one implementation, two surfaces) ───────────
+
+/**
+ * The inline link editor, extracted so the bubble menu and the persistent
+ * toolbar mount the SAME control rather than each growing one.
+ *
+ * 🔴 THIS IS THE SECURITY-RELEVANT PATH and the reason the extraction is a
+ * component rather than a copy. `applyLink` — passed in, never reimplemented —
+ * runs `isSafeUrl()` before `setLink`, so a `javascript:` href is dropped. A
+ * toolbar that had grown its own input would have grown its own apply handler
+ * with it, and that handler is exactly where the check goes missing. There is
+ * one `setLink` call reachable from either surface.
+ *
+ * ⚠️ Why the two ground-dependent classes are PROPS rather than a lookup keyed
+ * by tone: the bubble floats on `bg-warm-dark` and the toolbar sits on
+ * `bg-surface-raised`, so the same control needs different ink on each ground.
+ * The first version of this expressed that as an upper-case constant mapping
+ * "dark"/"light" to class strings — and `theming-colour-maps.test.ts` correctly
+ * refused it, because a constant mapping a key to a FIXED class string is the
+ * exact SHAPE that guard exists to catch (THE-136: a pill whose fill stayed
+ * light while its ink inverted, 1.01:1, shipped under a passing test).
+ *
+ * 🔴 Registering it in that file's `SURFACES` list would have been the cheap
+ * remedy rather than the right one. Every surface listed there is a semantic
+ * BADGE, and the file computes each branch's contrast against its `BACKSTOP` —
+ * the card, `--surface-raised`. The dark branch here does not sit on a card; it
+ * sits on the bubble's `bg-warm-dark` chip. Registering it would have run real
+ * contrast maths against the wrong ground and called the result a guarantee.
+ *
+ * So the lookup is gone instead, and each call site spells the classes for the
+ * ground it actually knows it is on — which is where that knowledge belongs.
+ * The BEHAVIOUR stays shared: one input, one apply handler, one `isSafeUrl`.
+ */
+const LinkEditorRow = ({
+  inputClass,
+  removeClass,
+  inputRef,
+  linkUrl,
+  setLinkUrl,
+  applyLink,
+  removeLink,
+  onCancel,
+  showRemove,
+}: {
+  /** Fill and ink for the URL field, chosen by the ground this row sits on. */
+  inputClass: string;
+  /** Ink for the destructive "remove link" control, likewise. */
+  removeClass: string;
+  inputRef: React.RefObject<HTMLInputElement>;
+  linkUrl: string;
+  setLinkUrl: (v: string) => void;
+  applyLink: () => void;
+  removeLink: () => void;
+  onCancel: () => void;
+  showRemove: boolean;
+}) => (
+  <div className="flex items-center gap-1.5 p-1.5">
+    <input
+      ref={inputRef}
+      type="url"
+      value={linkUrl}
+      onChange={(e) => setLinkUrl(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') { e.preventDefault(); applyLink(); }
+        if (e.key === 'Escape') { onCancel(); }
+      }}
+      placeholder="https://..."
+      aria-label="Link URL"
+      className={`w-40 sm:w-56 px-2.5 py-1.5 text-sm border-0 rounded-lg focus:ring-2 focus:ring-gold outline-hidden ${inputClass}`}
+    />
+    <button
+      type="button"
+      aria-label="Apply link"
+      onMouseDown={(e) => { e.preventDefault(); applyLink(); }}
+      className="px-2.5 py-1.5 bg-gold text-white text-sm font-medium rounded-lg hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)]"
+    >
+      ✓
+    </button>
+    {showRemove && (
+      <button
+        type="button"
+        aria-label="Remove link"
+        onMouseDown={(e) => { e.preventDefault(); removeLink(); }}
+        className={`px-2 py-1.5 rounded-lg ${removeClass}`}
+      >
+        <X size={14} />
+      </button>
+    )}
+  </div>
+);
+
 // ─── Main Editor Component ────────────────────────────────────────
 
 const RichTextEditor: React.FC<RichTextEditorProps> = ({
@@ -466,7 +690,18 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   proseClass = DEFAULT_PROSE_CLASS,
 }) => {
   const [showImageModal, setShowImageModal] = useState(false);
-  const [showLinkInput, setShowLinkInput] = useState(false);
+  /**
+   * WHICH surface opened the link editor, or null when it is closed.
+   *
+   * This was a boolean while the bubble menu was the only place the editor
+   * could be opened from. The toolbar's link button needs it too — and the
+   * bubble only renders on a NON-EMPTY selection, so a boolean would have made
+   * the toolbar's link input unreachable exactly when a writer has no text
+   * selected, which is the normal case for "add a link as I type". Tagging the
+   * source lets each surface render the control it opened and only that one, so
+   * the two cannot both appear at once.
+   */
+  const [linkEditor, setLinkEditor] = useState<'bubble' | 'toolbar' | null>(null);
   const [linkUrl, setLinkUrl] = useState('');
   const linkInputRef = useRef<HTMLInputElement>(null);
   // Ref so the Image command can open the modal without prop threading
@@ -527,11 +762,11 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     setShowImageModal(false);
   }, [editor]);
 
-  const openLinkEditor = useCallback(() => {
+  const openLinkEditor = useCallback((source: 'bubble' | 'toolbar') => {
     if (!editor) return;
     const existingHref = editor.getAttributes('link').href || '';
     setLinkUrl(existingHref);
-    setShowLinkInput(true);
+    setLinkEditor(source);
     setTimeout(() => linkInputRef.current?.focus(), 50);
   }, [editor]);
 
@@ -542,13 +777,65 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     } else if (isSafeUrl(linkUrl.trim())) {
       editor.chain().focus().extendMarkRange('link').setLink({ href: linkUrl.trim() }).run();
     }
-    setShowLinkInput(false);
+    setLinkEditor(null);
   }, [editor, linkUrl]);
+
+  /**
+   * The persistent toolbar's buttons, built from `commands` + `ALIGN_COMMANDS`.
+   *
+   * 🔴 THE PARITY IS STRUCTURAL, NOT CLERICAL. This maps the shared arrays; it
+   * does not re-list them. So the toolbar cannot offer less than `/` — a
+   * command removed from `commands` disappears from both menus at once, and one
+   * added appears in both — and every button runs the SAME `action` closure the
+   * slash menu runs, which is the existing `chain()` call and nothing else.
+   *
+   * Two entries are overridden at this mount point, which is the idiom the
+   * slash menu's own `items({ query })` already established for Image:
+   *
+   *   · Image — routed to the upload modal, exactly as `/` routes it. The
+   *     array's own action is a no-op that expects a modal opener.
+   *   · Link  — routed to the INLINE editor (`openLinkEditor` → `applyLink`)
+   *     rather than the array's `window.prompt`. Both run `isSafeUrl` before
+   *     `setLink`, so this is a better input affordance for the same command,
+   *     not a second implementation: `window.prompt` is a poor control on a
+   *     phone (and suppressible in Safari), and `applyLink` additionally
+   *     pre-fills the current href, can unset, and uses `extendMarkRange` so
+   *     it edits the whole link rather than the selection.
+   */
+  /*
+   * ⚠️ NOT memoised, deliberately. `active` is a read of the CURRENT document,
+   * so the correct dependency is the editor state, which changes on every
+   * transaction — and a `useMemo` over it is both a lie to the linter (which
+   * cannot see `editor.state` through `COMMAND_ACTIVE`, and says the dependency
+   * is unnecessary) and a stale-highlight bug waiting for someone to trim the
+   * dependency array. `useEditor` already re-renders this component on every
+   * transaction, which is exactly when these eighteen values must be recomputed.
+   * Eighteen small objects per render is nothing beside what TipTap does per
+   * keystroke, and it is the same "re-read isActive on render" the bubble menu
+   * has always done.
+   */
+  const toolbarItems: ToolbarItem[] = editor
+    ? [...commands, ...ALIGN_COMMANDS].map((cmd) => ({
+        title: cmd.title,
+        description: cmd.description,
+        icon: cmd.icon,
+        active: COMMAND_ACTIVE[cmd.title]?.(editor) ?? false,
+        disabled: !(COMMAND_ENABLED[cmd.title]?.(editor) ?? true),
+        disabledReason: DISABLED_REASON[cmd.title],
+        expanded: cmd.title === 'Link' ? linkEditor === 'toolbar' : undefined,
+        run:
+          cmd.title === 'Image'
+            ? () => openImageModalRef.current()
+            : cmd.title === 'Link'
+              ? () => openLinkEditor('toolbar')
+              : () => cmd.action(editor),
+      }))
+    : [];
 
   const removeLink = useCallback(() => {
     if (!editor) return;
     editor.chain().focus().extendMarkRange('link').unsetLink().run();
-    setShowLinkInput(false);
+    setLinkEditor(null);
   }, [editor]);
 
   return (
@@ -560,36 +847,24 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           tippyOptions={{ duration: 100, placement: 'top' }}
           className="bg-warm-dark rounded-xl shadow-xl"
         >
-          {showLinkInput ? (
-            /* ── Inline link editor ── */
-            <div className="flex items-center gap-1.5 p-1.5">
-              <input
-                ref={linkInputRef}
-                type="url"
-                value={linkUrl}
-                onChange={(e) => setLinkUrl(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') { e.preventDefault(); applyLink(); }
-                  if (e.key === 'Escape') { setShowLinkInput(false); }
-                }}
-                placeholder="https://..."
-                className="w-40 sm:w-56 px-2.5 py-1.5 text-sm bg-surface-raised text-strong border-0 rounded-lg focus:ring-2 focus:ring-gold outline-hidden"
-              />
-              <button
-                onMouseDown={(e) => { e.preventDefault(); applyLink(); }}
-                className="px-2.5 py-1.5 bg-gold text-white text-sm font-medium rounded-lg hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)]"
-              >
-                ✓
-              </button>
-              {editor.isActive('link') && (
-                <button
-                  onMouseDown={(e) => { e.preventDefault(); removeLink(); }}
-                  className="px-2 py-1.5 text-red-400 hover:text-red-300 rounded-lg"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
+          {linkEditor === 'bubble' ? (
+            /* ── Inline link editor — now the shared row, same markup ── */
+            <LinkEditorRow
+              /* On the bubble's dark chip. Byte-identical to what the bubble
+                 already spelled before this ticket — `text-red-400` included, a
+                 raw Tailwind shade this PR deliberately does NOT restyle: it is
+                 pre-existing on a working control, and repainting it is not this
+                 ticket's change. */
+              inputClass="bg-surface-raised text-strong"
+              removeClass="text-red-400 hover:text-red-300"
+              inputRef={linkInputRef}
+              linkUrl={linkUrl}
+              setLinkUrl={setLinkUrl}
+              applyLink={applyLink}
+              removeLink={removeLink}
+              onCancel={() => setLinkEditor(null)}
+              showRemove={editor.isActive('link')}
+            />
           ) : (
             /* ── Formatting toolbar ── */
             <div className="flex items-center gap-0.5 p-1">
@@ -627,7 +902,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               </button>
               <div className="w-px h-5 bg-white/20 mx-0.5" />
               <button
-                onMouseDown={(e) => { e.preventDefault(); openLinkEditor(); }}
+                onMouseDown={(e) => { e.preventDefault(); openLinkEditor('bubble'); }}
                 className={`p-2 rounded-lg transition-colors ${
                   editor.isActive('link') ? 'bg-white/20 text-white' : 'text-stone-300 hover:text-white hover:bg-white/10'
                 }`}
@@ -637,6 +912,41 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             </div>
           )}
         </BubbleMenu>
+      )}
+
+      {/*
+        ─── The persistent toolbar (THE-279) ─────────────────────────────────
+        🔴 A SIBLING of <EditorContent>, above it, so it is OUTSIDE the prose
+        container: `editorProps.attributes.class` puts the prose ramp on the
+        editable area that <EditorContent> renders, and @tailwindcss/typography
+        styles descendants by tag — a button inside it would inherit margins and
+        a font size meant for body copy.
+
+        One component, three surfaces: AdminDocs (Notes), AdminCourseEditor
+        (Course Builder) and AdminBlogPostEditor (Blog) all render this editor,
+        so the bar reaches all three at once and is forked into none of them.
+      */}
+      {editor && (
+        <RichTextToolbar items={toolbarItems}>
+          {linkEditor === 'toolbar' && (
+            <div className="border-t border-line">
+              <LinkEditorRow
+                /* On the toolbar's raised card. Every token themed, so all four
+                   palettes resolve — `text-danger` rather than the bubble's raw
+                   shade, since this row is new and has no history to preserve. */
+                inputClass="bg-surface-tint text-strong border border-line"
+                removeClass="text-danger hover:bg-surface-tint"
+                inputRef={linkInputRef}
+                linkUrl={linkUrl}
+                setLinkUrl={setLinkUrl}
+                applyLink={applyLink}
+                removeLink={removeLink}
+                onCancel={() => setLinkEditor(null)}
+                showRemove={editor.isActive('link')}
+              />
+            </div>
+          )}
+        </RichTextToolbar>
       )}
 
       <EditorContent editor={editor} />
