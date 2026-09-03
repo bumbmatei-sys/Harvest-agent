@@ -24,6 +24,18 @@ const { mockRequireAdmin, mockCapture, tenantDocs, domainDocs, setCalls } = vi.h
 
 vi.mock('@/lib/api-auth', () => ({ requireAdmin: mockRequireAdmin }));
 vi.mock('@/lib/money-path-sentry', () => ({ captureHandledError: mockCapture }));
+// ── THE-280 ────────────────────────────────────────────────────────────────
+// This suite pins what custom-domain provisioning DOES, so it runs with the
+// master switch ON. That is the hide-not-delete guarantee expressed as a test:
+// every rule below — the server-side plan gate, the ownership guard, and
+// normalizeDomain keeping every label of a subdomain — still holds, unchanged,
+// the moment CUSTOM_DOMAIN_ENABLED goes back to true. That the same route
+// answers 503 while the switch is OFF is asserted in
+// lib/__tests__/the-280-custom-domain-hidden.test.ts.
+vi.mock('@/lib/custom-domain-feature', () => ({
+  CUSTOM_DOMAIN_ENABLED: true,
+  CUSTOM_DOMAIN_HIDDEN_MESSAGE: 'Custom domains are temporarily unavailable.',
+}));
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {
     collection: (name: string) => ({

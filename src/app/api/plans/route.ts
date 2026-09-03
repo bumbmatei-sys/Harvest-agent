@@ -8,6 +8,7 @@ import {
   isPricedPlan,
 } from '@/utils/plan-features';
 import { SMS_FEATURE_ENABLED } from '@/lib/sms-feature';
+import { CUSTOM_DOMAIN_ENABLED } from '@/lib/custom-domain-feature';
 
 export const dynamic = 'force-static';
 export const revalidate = 3600; // CDN cache: re-generate at most once per hour
@@ -69,7 +70,24 @@ export async function GET() {
         maxContacts: features.maxContacts,
         maxCourses: features.maxCourses,
         maxAdmins: features.maxAdmins,
-        customDomain: features.customDomain,
+        // 🔴 THE-280 — custom domains are hidden while the feature cannot work,
+        // so this catalogue stops publishing a per-tier value and no consumer
+        // can render a plan row from one. Identical treatment to SMS below, and
+        // for the reason that comment gives: this endpoint is what
+        // theharvest.site builds its pricing copy from, so a value left here is
+        // a claim the marketing site would keep making ON THE APP'S AUTHORITY —
+        // which is exactly the "app hides it while the site sells it" split
+        // THE-280 exists to close.
+        //
+        // 🔴 `features.customDomain` IS UNCHANGED IN THE MATRIX — the key is
+        // omitted, not set to false. `false` would say "this tier does not
+        // include a custom domain", a different and untrue claim; absent says
+        // "this catalogue makes no claim about custom domains". Flip
+        // CUSTOM_DOMAIN_ENABLED to publish the real per-tier values again.
+        //
+        // ⚠️ `customBranding` is NOT affected and must not be: separate cell,
+        // and it ships.
+        ...(CUSTOM_DOMAIN_ENABLED ? { customDomain: features.customDomain } : {}),
         // `customBackground` is intentionally absent: the app has no background
         // uploader, so advertising it here would sell a capability that does not
         // exist. Removed from the plan matrix too — see plan-features.ts.
