@@ -82,7 +82,7 @@ function TypingIndicator({ logoSrc, logoAlt }: TypingIndicatorProps) {
  </div>
  <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: "18px 18px 18px 4px", padding: "12px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", display: "flex", gap: 5, alignItems: "center" }}>
  {[0, 1, 2].map((i) => (
- <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: GOLD, opacity: 0.7, animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }} />
+ <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: GOLD, opacity: 0.7, animation: `aiChatBounce 1.2s ease-in-out ${i * 0.2}s infinite` }} />
  ))}
  </div>
  </div>
@@ -487,7 +487,25 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  // child (the chat column) — visually identical to the previous single-column
  // layout. The old maxWidth:1024 / margin:auto only had any effect at >=1024px
  // (i.e. lg), where we now redesign, so dropping them leaves mobile untouched.
- <div style={{ fontFamily: "var(--font-sans), system-ui, sans-serif", background: BG, height: "100%", width: "100%", display: "flex", position: "relative", overflow: "hidden" }}>
+ <div data-ai-chat-root style={{ fontFamily: "var(--font-sans), system-ui, sans-serif", background: BG, height: "100%", width: "100%", display: "flex", position: "relative", overflow: "hidden" }}>
+ {/* ── This block is UNLAYERED, so every selector in it beats every Tailwind
+      utility in the app — not just this screen's. Tailwind v4 puts utilities in
+      `@layer utilities`, and an unlayered rule outranks any layer whatever its
+      specificity. Three rules here reached the whole app for as long as Ask
+      Harvest was mounted:
+
+        * { margin: 0; padding: 0 }   stripped the padding off the member-app
+                                      nav rail — the reported "sidebar looks
+                                      different". Also redundant: Tailwind's
+                                      preflight already does box-sizing and
+                                      zeroes margins.
+        ::-webkit-scrollbar {width:0} hid EVERY scrollbar in the app.
+        textarea { outline: none }    reached every textarea on every screen.
+
+      The `:root` block below is the deliberate exception and stays unscoped:
+      it declares nothing but custom properties, which is how it reaches past
+      globals.css's `@layer base` on purpose (see its own note). Everything
+      else is scoped to this screen's own root. Keep it that way. */}
  <style>{`
  :root {
  /* Pointed at the semantic ramp rather than fixed hexes. Every value below is
@@ -509,10 +527,9 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  --chat-gold-light: color-mix(in srgb, var(--brand-color, #C9963A) 12%, var(--surface-raised));
  --chat-gold-btn: linear-gradient(135deg, var(--brand-color, #C9963A), color-mix(in srgb, var(--brand-color, #C9963A) 82%, var(--surface-raised)));
  }
- * { box-sizing: border-box; margin: 0; padding: 0; }
- ::-webkit-scrollbar { width: 0; }
- textarea { outline: none; resize: none; }
- @keyframes bounce {
+ [data-ai-chat-root] ::-webkit-scrollbar { width: 0; }
+ [data-ai-chat-root] textarea { outline: none; resize: none; }
+ @keyframes aiChatBounce {
  0%, 60%, 100% { transform: translateY(0); }
  30% { transform: translateY(-6px); }
  }

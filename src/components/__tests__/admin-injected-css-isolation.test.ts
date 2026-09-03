@@ -6,7 +6,7 @@ import path from 'node:path';
  * A `<style>` block a component injects is GLOBAL, and it is UNLAYERED.
  *
  * ── The defect this exists to stop ───────────────────────────────────────────
- * Three admin screens opened with the same six lines:
+ * Four screens opened with the same line:
  *
  *     * { box-sizing: border-box; margin: 0; padding: 0; }
  *
@@ -62,6 +62,7 @@ const topLevelSelectors = (css: string): string[] => {
   const out: string[] = [];
   let buf = '';
   let depth = 0;
+  let paren = 0;
   for (let i = 0; i < clean.length; i += 1) {
     const ch = clean[i];
     if (ch === '{') {
@@ -74,10 +75,24 @@ const topLevelSelectors = (css: string): string[] => {
     } else if (ch === '}') {
       depth = Math.max(0, depth - 1);
       if (depth === 0) buf = '';
+    } else if (ch === '(' && depth === 0) {
+      paren += 1;
+      buf += ch;
+    } else if (ch === ')' && depth === 0) {
+      paren = Math.max(0, paren - 1);
+      buf += ch;
     } else if (depth === 0) {
       buf += ch;
-      // A statement at-rule (`@import url(…);`) never opens a brace.
-      if (ch === ';') {
+      // A statement at-rule (`@import url(…);`) never opens a brace, so `;` is
+      // where it ends — EXCEPT inside its parentheses.
+      //
+      // ⚠️ This guard's first version split on every `;`, and a Google Fonts
+      // URL is full of them: `family=Crimson+Pro:ital,wght@0,400;0,600;1,400`
+      // came apart into three fragments, two of which do not start with `@`.
+      // BiblePage.tsx was reported as injecting three unscoped selectors when
+      // its whole block is one `@import`. A guard that invents a violation is
+      // worse than no guard, because the exemption it earns is permanent.
+      if (ch === ';' && paren === 0) {
         const sel = buf.trim();
         if (sel) out.push(sel);
         buf = '';
@@ -104,57 +119,61 @@ const rootBody = (css: string): string | null => {
   return null;
 };
 
+/**
+ * Split on `sep`, but not inside parentheses.
+ *
+ * ⚠️ BOTH callers need this and the first version of neither had it. A selector
+ * list is comma-separated and a statement at-rule ends at a `;`, so the naive
+ * split looks right — until the thing being split is
+ * `@import url('…family=Crimson+Pro:ital,wght@0,400;0,600;1,400…')`, which is
+ * one at-rule containing four commas and two semicolons. It came apart into
+ * fragments that read as bare element selectors, and BiblePage.tsx was reported
+ * as injecting three global selectors when its whole block is that one import.
+ *
+ * A guard that invents a violation is worse than no guard: the exemption it
+ * earns outlives the mistake and quietly covers the next real offender.
+ */
+const splitTop = (text: string, sep: ',' | ';'): string[] => {
+  const out: string[] = [];
+  let buf = '';
+  let paren = 0;
+  for (const ch of text) {
+    if (ch === '(') paren += 1;
+    else if (ch === ')') paren = Math.max(0, paren - 1);
+    if (ch === sep && paren === 0) { out.push(buf); buf = ''; continue; }
+    buf += ch;
+  }
+  out.push(buf);
+  return out;
+};
+
 const isScoped = (selector: string): boolean =>
-  selector
-    .split(',')
+  splitTop(selector, ',')
     .map((s) => s.trim())
     .filter(Boolean)
     .every((s) => s.startsWith('@') || s.includes('[data-') || /(^|\s)\./.test(s) || s.startsWith(':root'));
 
 /**
- * ⚠️ THE FILES THAT STILL DO THIS — named, with why each was not fixed here.
+ * ⚠️ EMPTY, AND THAT IS THE POINT.
  *
- * The pattern was copied into five files. Two are fixed (AdminRAG,
- * AdminCourseEditor: the screens behind the reported "opening AI Knowledge
- * moves the sidebar"). Three are not, and a list is the honest way to carry
- * that: it keeps the rule live for every other file, it keeps these three
- * visible instead of forgotten, and — because each entry is asserted to still
- * be true below — it cannot outlive the defect it describes.
+ * The pattern was copied into five files. Four carried a real `*` reset —
+ * AdminRAG, AdminCourseEditor, AdminRoles and AIChat — and all four are fixed:
+ * the reset deleted (Tailwind's preflight already sets box-sizing and zeroes
+ * margins, so nothing depended on it) and every remaining selector prefixed
+ * with the screen's own `[data-…]` root.
  *
- * The fix in each case is the same two steps applied to the two that are done:
- * delete the `*` reset (Tailwind's preflight already sets box-sizing and zeroes
- * margins, so nothing depends on it) and prefix the rest with a `[data-…]` root
- * on the component's own outermost element.
+ * The fifth, BiblePage.tsx, never had the defect at all. It was reported by an
+ * earlier version of `topLevelSelectors` that split on every `;` — and a Google
+ * Fonts URL is full of them, so its single `@import` came apart into three
+ * fragments that read as unscoped selectors. The parser is paren-aware now and
+ * BiblePage leaves this list because it was never supposed to be on it.
+ *
+ * The list stays as a MECHANISM rather than being deleted with its last entry:
+ * the assertion below pins it to exactly the set still unscoped, in both
+ * directions, so an empty list is now a claim the suite makes out loud — and a
+ * new offender fails rather than quietly joining a list nobody reads.
  */
-const KNOWN_UNSCOPED: ReadonlyArray<{ file: string; why: string }> = [
-  {
-    // THE-277 renamed this from AnalyticsAndRoles.tsx when it split Signups out.
-    // The rename carried the defect across unchanged.
-    file: 'AdminRoles.tsx',
-    why:
-      'Identical `*` reset and identical unscoped input::placeholder / ' +
-      '::-webkit-scrollbar / button:disabled rules — a third admin tab with the ' +
-      'same user-visible bug. THE-277 owns this file and has just landed it; ' +
-      'reported rather than fixed here so a notes ticket does not reopen a file ' +
-      'whose own suite pins it, on the same day it merged.',
-  },
-  {
-    file: 'AIChat.tsx',
-    why:
-      'Carries the `*` reset too, plus unscoped ::-webkit-scrollbar rules. It is ' +
-      'a MEMBER-app surface rather than an admin tab, so it is not behind the ' +
-      'reported defect and was left alone rather than changed on a notes ticket. ' +
-      'Its unlayered `:root` block is separate and deliberate — see the assertion ' +
-      'below that keeps it to custom properties.',
-  },
-  {
-    file: 'BiblePage.tsx',
-    why:
-      'Unscoped selectors in its injected block, including a Google Fonts ' +
-      '@import. Member-app surface, same reasoning as AIChat: out of the path of ' +
-      'the reported defect, and not worth changing blind on this ticket.',
-  },
-];
+const KNOWN_UNSCOPED: ReadonlyArray<{ file: string; why: string }> = [];
 
 const OWNED_ELSEWHERE = KNOWN_UNSCOPED.map((e) => e.file);
 
@@ -203,8 +222,10 @@ describe('a component may not inject CSS that reaches past itself', () => {
     expect(offenders.map((f) => path.relative(COMPONENTS, f)), 'a `*` reset is back').toEqual([]);
   });
 
-  it('the two screens behind the reported defect no longer carry it', () => {
-    for (const f of ['AdminRAG.tsx', 'AdminCourseEditor.tsx']) {
+  it('none of the four screens behind the reported defect carries it', () => {
+    // AI Knowledge and the course builder were the first pair; CRM → Roles and
+    // Ask Harvest were reported after, with the identical symptom.
+    for (const f of ['AdminRAG.tsx', 'AdminCourseEditor.tsx', 'AdminRoles.tsx', 'AIChat.tsx']) {
       const src = readFileSync(path.join(COMPONENTS, f), 'utf8');
       expect(
         styleBlocks(src).some((b) => /(^|[\s,{}])\*\s*\{/.test(b)),
@@ -228,30 +249,55 @@ describe('a component may not inject CSS that reaches past itself', () => {
     }
   });
 
-  it('the two screens that were fixed still scope to their own root', () => {
-    // Names the fix, so deleting the `[data-…]` prefix fails here with a reason
-    // rather than only as a generic "unscoped selector" somewhere.
+  it('each fixed screen still scopes to its own root', () => {
+    // Names the fix per screen, so deleting one `[data-…]` prefix fails here
+    // with the file and the attribute rather than only as a generic "unscoped
+    // selector" somewhere in the sweep above.
     for (const [file, attr] of [
       ['AdminRAG.tsx', 'data-rag-root'],
       ['AdminCourseEditor.tsx', 'data-course-editor-root'],
+      ['AdminRoles.tsx', 'data-roles-root'],
+      ['AIChat.tsx', 'data-ai-chat-root'],
     ] as const) {
       const src = readFileSync(path.join(COMPONENTS, file), 'utf8');
       expect(src, `${file} lost its scope root`).toContain(`<div ${attr} `);
       for (const block of styleBlocks(src)) {
         for (const sel of topLevelSelectors(block)) {
-          if (sel.startsWith('@')) continue;
+          // An at-rule names no element; `:root` is the documented exception
+          // and is checked for custom-properties-only just above.
+          if (sel.startsWith('@') || sel.trim().startsWith(':root')) continue;
+          // `.ai-markdown-content …` is already class-scoped to content this
+          // screen renders, which is the other way of not reaching past
+          // yourself and is what the rule actually asks for.
+          if (/(^|\s)\./.test(sel)) continue;
           expect(sel, `${file} injects ${sel} unscoped`).toContain(`[${attr}]`);
         }
       }
     }
   });
 
-  it('the animations AdminRAG defines are its own, not Tailwind\'s', () => {
-    // `@keyframes` is global whatever else is scoped, and this block used to
-    // define `spin` and `pulse` — the exact names `animate-spin` and
-    // `animate-pulse` resolve to, so every spinner in the app changed timing
-    // while this tab was open.
-    const src = readFileSync(path.join(COMPONENTS, 'AdminRAG.tsx'), 'utf8');
+  it('Ask Harvest no longer hides every scrollbar in the app', () => {
+    // `::-webkit-scrollbar { width: 0 }` was unscoped, so mounting this screen
+    // removed the scrollbar from the nav rail and every other scroll container.
+    // Named because it is the one rule here whose damage is invisible in a
+    // screenshot until you try to scroll something else.
+    const src = readFileSync(path.join(COMPONENTS, 'AIChat.tsx'), 'utf8');
+    for (const block of styleBlocks(src)) {
+      for (const sel of topLevelSelectors(block)) {
+        if (!sel.includes('::-webkit-scrollbar')) continue;
+        expect(sel, 'the scrollbar rule reaches the whole app again')
+          .toContain('[data-ai-chat-root]');
+      }
+    }
+  });
+
+  it.each(['AdminRAG.tsx', 'AIChat.tsx'])('the animations %s defines are its own, not Tailwind\'s', (f) => {
+    // `@keyframes` is global whatever else is scoped. AdminRAG used to define
+    // `spin` and `pulse`, and AIChat `bounce` — the exact names `animate-spin`,
+    // `animate-pulse` and `animate-bounce` resolve to — so every spinner and
+    // every bouncing element in the app took this screen's timing while it was
+    // mounted.
+    const src = readFileSync(path.join(COMPONENTS, f), 'utf8');
     const names = [...src.matchAll(/@keyframes\s+([\w-]+)/g)].map((m) => m[1]);
     expect(names.length).toBeGreaterThan(0);
     for (const n of names) {

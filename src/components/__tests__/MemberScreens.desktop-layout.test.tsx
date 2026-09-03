@@ -907,12 +907,55 @@ describe('no behaviour changed on any screen in scope', () => {
     expect(norm(read('NewsTab.tsx'))).toBe(norm(at('NewsTab.tsx')));
   });
 
-  it('AIChat differs only in class strings AND the two inline properties it retired', () => {
+  it('AIChat differs only in class strings, the two inline properties it retired, and the CSS it stopped leaking', () => {
     // AIChat is the exception by design: removing the inline width IS the fix.
     // Everything else must still normalise identically, so the diff is pinned
     // to exactly `maxWidth: "48rem"` and the `margin` shorthand it sat in.
-    const norm = (s: string) => strip(s).replace(/textAlign: "center", fontSize: 11, color: TEXT2, margin(?:Top)?: (?:"8px auto 0"|8), (?:maxWidth: "48rem", )?lineHeight: 1\.5/g, 'DISCLAIMER');
+    //
+    // ── The second exception, added when the leak was fixed ──────────────────
+    // This screen's injected <style> is UNLAYERED, so every selector in it beat
+    // every Tailwind utility in the app regardless of specificity. Three rules
+    // reached the whole application for as long as Ask Harvest was mounted: a
+    // `*` reset that stripped the padding off the member-app nav rail (the
+    // reported "the sidebar becomes different"), `::-webkit-scrollbar{width:0}`
+    // which hid EVERY scrollbar, and a bare `textarea` rule. `@keyframes
+    // bounce` was a fourth: it is the exact name `animate-bounce` resolves to.
+    //
+    // 🔴 Folded away as FOUR EXACT STRINGS rather than by relaxing the
+    // comparison — the treatment the NewsTab case above describes. Each is the
+    // literal before/after of one step of that fix, so the two sides normalise
+    // to the same text and ANY other edit to this file still fails here.
+    const scoping = (s: string) => s
+      // the attribute that gives the block something to scope to
+      .replace(/ data-ai-chat-root/g, '')
+      // the prefix that stops each rule reaching past this screen
+      .replace(/\[data-ai-chat-root\] /g, '')
+      // the keyframe renamed off Tailwind's `bounce`
+      .replace(/aiChatBounce/g, 'bounce')
+      // and the reset itself, removed from the side that still has it
+      .replace(/\* \{ box-sizing: border-box; margin: 0; padding: 0; \} /g, '');
+    const norm = (s: string) => scoping(strip(s)).replace(/textAlign: "center", fontSize: 11, color: TEXT2, margin(?:Top)?: (?:"8px auto 0"|8), (?:maxWidth: "48rem", )?lineHeight: 1\.5/g, 'DISCLAIMER');
     expect(norm(read('AIChat.tsx'))).toBe(norm(at('AIChat.tsx')));
+  });
+
+  it('the AIChat normalisation folds away only that fix — a second edit still fails', () => {
+    // Guards the guard. The normaliser above is four string replacements, and a
+    // normaliser is the one place a real change can hide. This proves it cannot
+    // absorb one: an unrelated edit to the file must still be visible through it.
+    const strip2 = (s: string) => stripComments(s)
+      .replace(/className=\{`[^`]*`\}/g, 'className=X')
+      .replace(/className="[^"]*"/g, 'className=X')
+      .replace(/\s+/g, ' ').trim();
+    const scoping = (s: string) => s
+      .replace(/ data-ai-chat-root/g, '')
+      .replace(/\[data-ai-chat-root\] /g, '')
+      .replace(/aiChatBounce/g, 'bounce')
+      .replace(/\* \{ box-sizing: border-box; margin: 0; padding: 0; \} /g, '');
+    const tampered = read('AIChat.tsx').replace('position: "relative"', 'position: "static"');
+    expect(tampered, 'the tamper target moved — rewrite this guard')
+      .not.toBe(read('AIChat.tsx'));
+    expect(scoping(strip2(tampered)), 'the normaliser absorbed an unrelated edit')
+      .not.toBe(scoping(strip2(at('AIChat.tsx'))));
   });
 
   it('MainApp and LivestreamView carry no LAYOUT change, so nothing measured could have moved', () => {
