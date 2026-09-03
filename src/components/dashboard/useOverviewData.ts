@@ -114,13 +114,13 @@ export function useOverviewData(
      * A weekly series over a collection's `createdAt`, or the reason there is
      * none. The count gate lives in `completeRead`; this only shapes the result.
      */
-    const seriesIn = async (name: string, weigh?: (row: { createdAt: unknown }) => number): Promise<Series> => {
+    const seriesIn = async (name: string): Promise<Series> => {
       const q = scope(name);
       const bounded = boundedScope(name);
       if (!q || !bounded) return refused(REASON.noTenant);
       const read = await completeRead(q, bounded, toDatedRow);
       if (read.kind !== 'complete') return refused(read.reason);
-      return { kind: 'complete', points: bucketWeekly(read.rows, readAt, (r) => r.createdAt, weigh).points };
+      return { kind: 'complete', points: bucketWeekly(read.rows, readAt, (r) => r.createdAt).points };
     };
 
     (async () => {
