@@ -227,27 +227,20 @@ export class MeasuringBrowser {
   }
 
   /**
-   * Lay the page out at `viewport`, then evaluate `expression` and return its
-   * value.
+   * Lay the page out at `viewport`, then evaluate `expression` and return it.
    *
-   * {@link measure} answers a fixed set of questions — named boxes plus the
-   * document's scrollWidth — which is the right shape for the dashboard's
-   * "where did this column land". THE-279 needs answers `measure` has no field
-   * for: the boxes of EVERY button in a row (to count rows and check a touch
-   * floor), a scroller's `scrollWidth`/`clientWidth`/`scrollLeft`, a computed
-   * `touch-action`, and the state of the same scroller AFTER being scrolled. A
-   * new field per question would grow `Measurement` without bound, so the
-   * generic escape hatch is here once and the questions live with the test that
-   * asks them.
+   * {@link measure} answers a fixed set of questions, which is right for "where
+   * did this column land". THE-279 asks ones it has no field for — every
+   * button's box in a row, a scroller's scroll metrics, a computed
+   * `touch-action`, the same scroller after being scrolled — and a new field
+   * per question would grow `Measurement` without bound. So the escape hatch is
+   * here once and the questions live with the test that asks them.
    *
    * ⚠️ Same `setDeviceMetricsOverride` as `measure`, for the same reason: it is
-   * what makes a media query change, so the 14.5px desktop rem base above
-   * 1024px really is in effect at 1024 and above.
-   *
-   * `height` defaults to `measure`'s 1200 and is a parameter because a question
-   * about a `fixed bottom-0` element is a question about the viewport's BOTTOM:
-   * 1200px is no phone, and "does this clear the bottom nav" has to be asked at
-   * a height a phone actually has.
+   * what makes a media query change, so the 14.5px desktop rem base really is
+   * in effect at 1024 and above. `height` is a parameter because a question
+   * about a `fixed bottom-0` element is about the viewport's BOTTOM, and 1200px
+   * is no phone.
    */
   async evaluateAt<T>(viewport: number, expression: string, height = 1200): Promise<T> {
     await this.send('Emulation.setDeviceMetricsOverride',
