@@ -185,15 +185,30 @@ describe('the tab shell renders all six tabs', () => {
     expect(DASHBOARD_TABS).toHaveLength(6);
   });
 
-  it('the five unbuilt tabs each say so by name, rather than rendering nothing', async () => {
+  /**
+   * ⚠️ AMENDED BY THE-287, which builds Growth and Giving.
+   *
+   * THE-276 asserted that the five tabs after Overview were all placeholders,
+   * because they all were. THE-287 mounts two of them, so the claim is NARROWED
+   * to the three that remain — Engagement, Content and Platform — and gains its
+   * complement: the built tabs must NOT render a placeholder. Dropping the
+   * assertion would have left "a tab renders nothing at all" undetected; this
+   * still catches it on every tab, built or not.
+   */
+  const BUILT_TABS = ['overview', 'growth', 'giving'] as const;
+  const UNBUILT_TABS = DASHBOARD_TABS.filter((t) => !BUILT_TABS.includes(t.id as typeof BUILT_TABS[number]));
+
+  it('the three unbuilt tabs each say so by name, rather than rendering nothing', async () => {
     grantAnalytics();
     healthyTenant();
     const c = await screen();
 
+    expect(UNBUILT_TABS.map((t) => t.id)).toEqual(['engagement', 'content', 'platform']);
+
     // ⚠️ Base UI mounts only the ACTIVE panel, so each tab has to be opened to
     // be asserted. Clicking is also the honest test: a placeholder that only
     // exists in the DOM of a tab nobody can reach is not a shipped tab.
-    for (const tab of DASHBOARD_TABS.slice(1)) {
+    for (const tab of UNBUILT_TABS) {
       await openTab(c, tab.label);
       const placeholder = c.querySelector(`[data-tab-placeholder="${tab.id}"]`);
       expect(placeholder, `${tab.label} has no placeholder`).toBeTruthy();
@@ -203,6 +218,23 @@ describe('the tab shell renders all six tabs', () => {
     await openTab(c, 'Overview');
     expect(c.querySelector('[data-tab-placeholder="overview"]')).toBeNull();
     expect(c.querySelector('[data-kpi-grid]')).toBeTruthy();
+  });
+
+  it('and the three built tabs render a body instead of a placeholder', async () => {
+    grantAnalytics();
+    healthyTenant();
+    const c = await screen();
+
+    for (const id of BUILT_TABS) {
+      const tab = DASHBOARD_TABS.find((t) => t.id === id)!;
+      await openTab(c, tab.label);
+      expect(c.querySelector(`[data-tab-placeholder="${id}"]`), `${tab.label} is still a placeholder`).toBeNull();
+    }
+    // And each one drew something of its own.
+    await openTab(c, 'Growth');
+    expect(c.querySelector('[data-growth-tab]')).toBeTruthy();
+    await openTab(c, 'Giving');
+    expect(c.querySelector('[data-giving-tab]')).toBeTruthy();
   });
 });
 
@@ -830,11 +862,13 @@ describe('THE-276-FIX moved layout only', () => {
     expect(text(funnel)).not.toMatch(/Champion|Giving tier|Member\b/);
   });
 
-  it('the five other tabs are still placeholders — this is still slice 1 of 6', async () => {
+  it('the three unbuilt tabs are still placeholders — Engagement, Content and Platform', async () => {
+    // ⚠️ THE-287 built Growth and Giving, so the list is narrowed by exactly
+    // those two. The remaining three are asserted the same way they were.
     grantAnalytics();
     healthyTenant();
     const c = await screen();
-    for (const tab of DASHBOARD_TABS.slice(1)) {
+    for (const tab of DASHBOARD_TABS.filter((t) => ['engagement', 'content', 'platform'].includes(t.id))) {
       await openTab(c, tab.label);
       expect(c.querySelector(`[data-tab-placeholder="${tab.id}"]`), tab.label).toBeTruthy();
     }

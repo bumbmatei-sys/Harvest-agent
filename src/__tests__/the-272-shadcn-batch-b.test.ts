@@ -811,6 +811,24 @@ describe('the new dependencies are declared, pinned and resolvable', () => {
  * `progress` are STILL adopted by nothing, and `chart` is adopted by exactly
  * these four files and no others. A fifth adopter, or any adopter of the other
  * three, still fails here.
+ *
+ * ─── ⚠️ AMENDED AGAIN BY THE-287, which is `table`'s adoption ────────────────
+ *
+ * THE-272's own header named the moment: "adopting TanStack Table is a Phase 8
+ * BUILD decision made when the countries table is actually written". THE-287
+ * writes it — the Growth tab's countries-and-cities counts and the Giving tab's
+ * top-givers leaderboard — so `table` is now adopted by exactly those two
+ * widgets and the assertion records them.
+ *
+ * 🔴 NARROWED, NOT WEAKENED, and the same three ways as before:
+ *   • `pagination` and `progress` are still adopted by NOTHING, asserted by the
+ *     same loop over a list that is now one name shorter rather than absent.
+ *   • `table`'s adopter list is CLOSED at two. A third file importing it fails
+ *     here, exactly as a fifth `chart` adopter does.
+ *   • `@tanstack/react-table` is still absent from `package.json` and the lock
+ *     file, asserted unchanged in section 7 — THE-287 sorts a COMPLETE
+ *     in-memory set with `Array.sort`, so the server-side sorting, filtering
+ *     and pagination that package buys is what it does not need.
  */
 const THE_276_CHART_ADOPTERS = [
   'src/components/dashboard/FunnelChart.tsx',
@@ -819,7 +837,13 @@ const THE_276_CHART_ADOPTERS = [
   'src/components/dashboard/TrendChart.tsx',
 ] as const;
 
-it('only THE-276 adopts chart, and table/pagination/progress are still adopted by nothing', () => {
+/** THE-287's two tables. Closed, for the same reason the chart list is. */
+const THE_287_TABLE_ADOPTERS = [
+  'src/components/dashboard/CountriesTable.tsx',
+  'src/components/dashboard/TopGivers.tsx',
+] as const;
+
+it('only THE-276 adopts chart, only THE-287 adopts table, and pagination/progress are still adopted by nothing', () => {
   const walk = (dir: string): string[] =>
     readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
       const p = path.join(dir, e.name);
@@ -837,7 +861,13 @@ it('only THE-276 adopts chart, and table/pagination/progress are still adopted b
   const chartImporters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), 'chart'));
   expect(chartImporters.map((f) => rel(f)).sort()).toEqual([...THE_276_CHART_ADOPTERS]);
 
-  for (const name of ['table', 'pagination', 'progress']) {
+  const tableImporters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), 'table'));
+  expect(tableImporters.map((f) => rel(f)).sort()).toEqual([...THE_287_TABLE_ADOPTERS]);
+
+  // 🔴 The unadopted set, still asserted empty. THE-287 took `table` out of
+  // this loop by adopting it and by naming its adopters above — not by
+  // loosening what the loop asserts about the two that remain.
+  for (const name of ['pagination', 'progress']) {
     const adopters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), name));
     expect(adopters.map((f) => rel(f)), `${name} was adopted`).toEqual([]);
   }

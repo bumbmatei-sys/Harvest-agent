@@ -4,13 +4,14 @@
  *
  * ─── This is slice 1 of 6, and the shell says so ─────────────────────────────
  *
- * The full design is 28 widgets across these six tabs. This ticket ships the
- * shell and the Overview tab; the other five render an `empty` state naming
- * what will live there. That is deliberate over hiding them: the tab strip is
- * the design's own information architecture, and shipping it whole is what lets
- * the next five slices land one tab at a time without re-deciding it. A reader
- * who opens Growth sees that it exists and is not built yet — which is true —
- * rather than a tab that quietly is not there.
+ * The full design is 28 widgets across these six tabs. THE-276 shipped the
+ * shell and the Overview tab; THE-287 added Growth and Giving. Every tab that
+ * is still unbuilt renders an `empty` state naming what will live there. That
+ * is deliberate over hiding them: the tab strip is the design's own information
+ * architecture, and shipping it whole is what lets the remaining slices land
+ * one tab at a time without re-deciding it. A reader who opens Engagement sees
+ * that it exists and is not built yet — which is true — rather than a tab that
+ * quietly is not there.
  *
  * 🔴 THE SHELL LIVES HERE, NOT IN `AdminDashboard.tsx`. The admin shell owns
  * the app's OUTER navigation (sidebar → section → URL segment, via
@@ -32,7 +33,15 @@ export interface DashboardTabDef {
   readonly id: string;
   readonly label: string;
   readonly icon: LucideIcon;
-  /** What this tab will hold. Shown in its placeholder until it is built. */
+  /**
+   * What this tab will hold that it does not hold yet.
+   *
+   * ⚠️ Rendered ONLY by {@link NotYetBuilt}, i.e. only for a tab with no body
+   * mounted. Growth's and Giving's strings are therefore unreachable today and
+   * are kept accurate anyway: they name what is still missing from those tabs,
+   * so that removing a body would restore a true placeholder rather than a
+   * stale one promising what already shipped.
+   */
   readonly upcoming: string;
 }
 
@@ -46,8 +55,8 @@ export interface DashboardTabDef {
  */
 export const DASHBOARD_TABS: readonly DashboardTabDef[] = Object.freeze([
   { id: 'overview', label: 'Overview', icon: LayoutGrid, upcoming: 'the tab you are on' },
-  { id: 'growth', label: 'Growth', icon: TrendingUp, upcoming: 'attendance, retention cohorts and where your people are' },
-  { id: 'giving', label: 'Giving', icon: HandCoins, upcoming: 'campaign progress, donor tiers and recurring gift health' },
+  { id: 'growth', label: 'Growth', icon: TrendingUp, upcoming: 'attendance and retention cohorts, beside the member trend and country counts it already shows' },
+  { id: 'giving', label: 'Giving', icon: HandCoins, upcoming: 'campaign progress and recurring gift health, beside the top givers it already shows' },
   { id: 'engagement', label: 'Engagement', icon: HeartHandshake, upcoming: 'check-ins, event attendance and community activity' },
   { id: 'content', label: 'Content', icon: BarChart3, upcoming: 'course completion, article reach and sermon views' },
   { id: 'platform', label: 'Platform', icon: Server, upcoming: 'tenant health, plan mix and platform-wide totals' },
@@ -71,11 +80,25 @@ function NotYetBuilt({ tab }: { tab: DashboardTabDef }) {
 }
 
 /**
- * The shell. `overview` is passed in rather than imported so this file has no
+ * The shell. Tab BODIES are passed in rather than imported so this file has no
  * opinion about what a tab contains, and so a test can mount the strip without
  * mounting a Firestore-backed tab.
+ *
+ * ─── THE-287 amends this from one slot to a map, and narrows nothing ─────────
+ *
+ * ⚠️ It arrived taking a single `overview` node because Overview was the only
+ * built tab. THE-287 builds Growth and Giving, so the parameter is now keyed by
+ * tab id — `{ overview, growth, giving }` — and every id WITHOUT an entry still
+ * renders {@link NotYetBuilt}, by the same lookup that used to be an equality
+ * check against `DEFAULT_DASHBOARD_TAB`.
+ *
+ * 🔴 The placeholder is not weakened, it is narrowed. A tab that is not built
+ * still says so by name; the set of tabs that ARE built is now three rather
+ * than one, and Engagement, Content and Platform are unchanged. Passing no
+ * bodies at all still yields six placeholders, which is what lets a test mount
+ * the strip alone.
  */
-export function DashboardTabs({ overview }: { overview: React.ReactNode }) {
+export function DashboardTabs({ bodies = {} }: { bodies?: Readonly<Record<string, React.ReactNode>> }) {
   return (
     <Tabs defaultValue={DEFAULT_DASHBOARD_TAB} className="w-full" data-dashboard-tabs>
       {/*
@@ -113,7 +136,7 @@ export function DashboardTabs({ overview }: { overview: React.ReactNode }) {
 
       {DASHBOARD_TABS.map((tab) => (
         <TabsContent key={tab.id} value={tab.id} className="pt-2">
-          {tab.id === DEFAULT_DASHBOARD_TAB ? overview : <NotYetBuilt tab={tab} />}
+          {bodies[tab.id] ?? <NotYetBuilt tab={tab} />}
         </TabsContent>
       ))}
     </Tabs>

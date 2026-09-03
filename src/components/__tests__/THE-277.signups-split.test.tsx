@@ -936,19 +936,34 @@ describe('12 — AdminDocs.tsx, AdminDashboardHome.tsx, firestore.rules and func
    * entry is still compared against exactly one digest, and a value that is
    * neither — THIS branch editing one of them — still fails.
    */
-  const MOVED_SINCE: Record<string, string> = {
-    'src/components/AdminDashboardHome.tsx': '4d8917c0a31dac5a8a9526e3a1c7e05d786f947bcad72a14d73d488383c23621',
+  const MOVED_SINCE: Record<string, ReadonlyArray<string>> = {
+    'src/components/AdminDashboardHome.tsx': [
+      '4d8917c0a31dac5a8a9526e3a1c7e05d786f947bcad72a14d73d488383c23621',
+      /**
+       * ⚠️ AND AGAIN, ONE TICKET LATER. THE-287 built the Growth and Giving
+       * tabs, so `DashboardTabs`' single `overview` slot became a `bodies` map
+       * and this file mounts three tabs instead of one. Its five props are
+       * unchanged, so `AdminDashboard.tsx` — which THIS branch does edit — is
+       * unaffected either way.
+       *
+       * 🔴 Recorded rather than the assertion being relaxed, exactly as the
+       * THE-276 value above was. The list is a closed set of values each named
+       * with the ticket that produced it; a value that is none of them — THIS
+       * branch editing the file — still fails, which is the whole threat.
+       */
+      'cd7b82f2bd1552f389dcf3383579ea56665465e9fa07b06f77540b4acc91681c',
+    ],
     // THE-275, the same situation one ticket over. It owns AdminDocs.tsx and has
     // rewritten it: the notes screen was a drill-down (a folder-directory view,
     // then an editor that was the only place the tree existed) and is now two
     // panes with the tree always mounted. This branch still did not author a
     // byte of it — the entry records that the OTHER ticket landed, exactly as
     // the AdminDashboardHome one above does for THE-276.
-    'src/components/AdminDocs.tsx': '46c8403674c79dcacbb3a0c60f183b77a3e265d33b441b2ea05c1e00fe42b15f',
+    'src/components/AdminDocs.tsx': ['46c8403674c79dcacbb3a0c60f183b77a3e265d33b441b2ea05c1e00fe42b15f'],
   };
 
   it.each(Object.keys(UNTOUCHED))('%s carries no edit from this ticket', (file) => {
-    const accepted = [UNTOUCHED[file], ...(MOVED_SINCE[file] ? [MOVED_SINCE[file]] : [])];
+    const accepted = [UNTOUCHED[file], ...(MOVED_SINCE[file] ?? [])];
     expect(accepted, `${file} changed — it belongs to another ticket`).toContain(digest(file));
   });
 

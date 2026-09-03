@@ -108,7 +108,11 @@ beforeAll(async () => {
         {/* AdminDashboardHome's own wrapper, class for class. */}
         <div data-dashboard-measure className="w-full max-w-6xl mx-auto space-y-6 p-4 lg:p-0">
           <div>Good morning.</div>
-          <DashboardTabs overview={<OverviewTab data={READY} unreadCount={0} showInbox={false} />} />
+          {/* ⚠️ THE-287 turned `overview` into a `bodies` map so Growth and
+              Giving could mount. This fixture still passes ONLY Overview: what
+              this file measures is where the Overview tab's boxes land, and
+              adding tabs it does not open would change nothing it asserts. */}
+          <DashboardTabs bodies={{ overview: <OverviewTab data={READY} unreadCount={0} showInbox={false} /> }} />
         </div>
       </div>
     </div>,

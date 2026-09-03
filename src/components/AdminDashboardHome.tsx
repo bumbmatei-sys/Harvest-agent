@@ -40,6 +40,8 @@ import React, { useEffect, useState } from 'react';
 import { auth } from '../firebase';
 
 import { DashboardTabs } from './dashboard/DashboardTabs';
+import { GivingTab } from './dashboard/GivingTab';
+import { GrowthTab } from './dashboard/GrowthTab';
 import { OverviewTab } from './dashboard/OverviewTab';
 import { hasAnalyticsAccess, type AnalyticsAccess } from './dashboard/analytics-permission';
 import { useOverviewData } from './dashboard/useOverviewData';
@@ -158,7 +160,27 @@ function AnalyticsDashboard({ tenantId, isSuperAdmin, unreadCount, showInbox }: 
   showInbox: boolean;
 }) {
   const data = useOverviewData(tenantId, isSuperAdmin);
-  return <DashboardTabs overview={<OverviewTab data={data} unreadCount={unreadCount} showInbox={showInbox} />} />;
+  /**
+   * THE-287 — three built tabs, ONE hook, and still five props on this file.
+   *
+   * 🔴 Growth and Giving read nothing of their own. `useOverviewData` already
+   * held a complete set of `users` for the member trend, so the countries table
+   * is a client-side grouping of it; the funnel and the leaderboard share the
+   * one complete read of `contacts` that ticket added. Mounting three tabs
+   * therefore costs one Firestore query more than mounting one did.
+   *
+   * ⚠️ `AdminDashboardHome`'s own props are unchanged, so `AdminDashboard.tsx`
+   * — which this ticket may not open — needs no edit and stays byte-identical.
+   */
+  return (
+    <DashboardTabs
+      bodies={{
+        overview: <OverviewTab data={data} unreadCount={unreadCount} showInbox={showInbox} />,
+        growth: <GrowthTab data={data} />,
+        giving: <GivingTab data={data} />,
+      }}
+    />
+  );
 }
 
 export default AdminDashboardHome;

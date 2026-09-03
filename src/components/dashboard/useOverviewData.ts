@@ -41,6 +41,51 @@ import {
   type ReadableReceipt,
   type Series,
 } from './dashboard-data';
+import {
+  ROSTER_REASON,
+  countryTally,
+  givingFunnel,
+  toContactRow,
+  toMemberRow,
+  topGivers,
+  type CountryTally,
+  type StageCount,
+  type TopGiver,
+} from './roster-data';
+
+/**
+ * THE-287 — what the Growth and Giving tabs render from.
+ *
+ * 🔴 EVERY FIELD IS `T | null` WITH A REASON BESIDE IT, exactly like `Figure`
+ * and `Series`. `null` with a `null` reason is "still reading"; `null` with a
+ * reason is "this could not be read completely, and here is why". There is no
+ * third state and no empty array standing in for a refusal — an empty table and
+ * an unreadable one look identical on screen, which is the defect THE-276's
+ * whole read layer exists to make unspellable.
+ */
+export interface RosterData {
+  /** Country and city COUNTS, with the coverage that qualifies them. */
+  readonly countries: CountryTally | null;
+  readonly countriesReason: string | null;
+  /** Member / Giving / Champion tier sizes. A giving funnel, not a devotion one. */
+  readonly funnel: readonly StageCount[] | null;
+  readonly funnelReason: string | null;
+  /** The largest givers, ranked client-side over the complete contact set. */
+  readonly givers: readonly TopGiver[] | null;
+  readonly giversReason: string | null;
+}
+
+const ROSTER_PENDING: RosterData = {
+  countries: null, countriesReason: null,
+  funnel: null, funnelReason: null,
+  givers: null, giversReason: null,
+};
+
+const rosterRefused = (reason: string): RosterData => ({
+  countries: null, countriesReason: reason,
+  funnel: null, funnelReason: reason,
+  givers: null, giversReason: reason,
+});
 
 /** Everything the Overview tab renders from. `null` means "still reading". */
 export interface OverviewData {
@@ -60,6 +105,18 @@ export interface OverviewData {
   readonly invoiceRows: readonly ReadableReceipt[] | null;
   readonly invoiceReason: string | null;
   readonly liveNow: LiveNow | null;
+  /**
+   * THE-287 — the Growth and Giving tabs, from the SAME two reads.
+   *
+   * ⚠️ Additive, and deliberately a sub-object rather than six more top-level
+   * fields: nothing above it changes value, shape or provenance, so Overview's
+   * figures are the same figures. The countries tally is grouped from the
+   * `users` documents this hook ALREADY loads for `memberSeries` — zero extra
+   * Firestore cost — and the two giving widgets share one new complete read of
+   * `contacts`, which is the read `fetchCRMContacts` already makes in
+   * production.
+   */
+  readonly roster: RosterData;
 }
 
 const PENDING: OverviewData = {
@@ -68,6 +125,7 @@ const PENDING: OverviewData = {
   seventh: { label: 'Receipts', figure: null },
   memberSeries: null, givingSeries: null, submissionSeries: null,
   invoiceRows: null, invoiceReason: null, liveNow: null,
+  roster: ROSTER_PENDING,
 };
 
 const refused = (reason: string) => ({ kind: 'unavailable', reason }) as const;
@@ -140,10 +198,90 @@ export function useOverviewData(
             figure: platformWide ? await exactCount(query(collection(db, 'tenants'))) : refused(REASON.noTenant),
           };
 
-      const [memberSeries, submissionSeries] = await Promise.all([
-        seriesIn('users'),
-        seriesIn('submissions'),
-      ]);
+      /**
+       * THE-287 — ONE complete read of `users`, serving two tabs.
+       *
+       * 🔴 The member trend is RELOCATED to Growth, not rebuilt there. This is
+       * the same `completeRead` THE-276 made, over the same query, bucketed by
+       * the same `bucketWeekly` call against the same frozen `readAt` — the
+       * only change is that the mapper now also carries `country` and `city`
+       * off documents it was already loading. `toMemberRow.createdAt` and
+       * `toDatedRow.createdAt` are the same expression, so `memberSeries` is
+       * point-for-point what Overview showed before this ticket, and the SAME
+       * object is handed to both tabs rather than a second one computed to
+       * match.
+       *
+       * ⚠️ The countries table therefore costs ZERO additional Firestore
+       * reads. It is a client-side grouping of a set already in memory.
+       */
+      const membersRead = await (async () => {
+        const q = scope('users');
+        const bounded = boundedScope('users');
+        if (!q || !bounded) return { kind: 'unavailable', reason: REASON.noTenant } as const;
+        return completeRead(q, bounded, toMemberRow);
+      })();
+
+      const memberSeries: Series = membersRead.kind === 'complete'
+        ? { kind: 'complete', points: bucketWeekly(membersRead.rows, readAt, (r) => r.createdAt).points }
+        : refused(membersRead.reason);
+
+      const submissionSeries = await seriesIn('submissions');
+
+      /**
+       * THE-287 — the ONE read this ticket adds: every `contacts` document.
+       *
+       * It feeds both giving widgets, so the collection is counted once and
+       * loaded once. Same gate as everything else here: `completeRead` takes
+       * the exact count FIRST and refuses above the ceiling rather than
+       * handing back a truncated set that a `sort()` would make look ordered.
+       *
+       * 🔴 No `orderBy`. `contacts` has no (tenantId, totalDonated) composite
+       * index, `firestore.indexes.json` does not deploy on merge, and a
+       * complete set in memory sorts exactly. See `roster-data.ts`.
+       */
+      const contactsRead = await (async () => {
+        const q = scope('contacts');
+        const bounded = boundedScope('contacts');
+        if (!q || !bounded) return { kind: 'unavailable', reason: REASON.noTenant } as const;
+        return completeRead(q, bounded, toContactRow);
+      })();
+
+      const roster: RosterData = (() => {
+        // Each half refuses on its own read. A ministry whose members are
+        // readable and whose contacts are not gets the countries table and an
+        // explicit reason where the funnel would be, not a blank tab.
+        const countries = membersRead.kind === 'complete'
+          ? (() => {
+              const tally = countryTally(membersRead.rows);
+              // 🔴 Not one member carries a country, so there is no table to
+              // draw. That is "nothing records this", not "we could not read
+              // it", and the two say different things to a founder.
+              return tally.covered === 0
+                ? { tally: null, reason: ROSTER_REASON.noCountries }
+                : { tally, reason: null };
+            })()
+          : { tally: null, reason: membersRead.reason };
+
+        if (contactsRead.kind !== 'complete') {
+          return {
+            ...rosterRefused(contactsRead.reason),
+            countries: countries.tally,
+            countriesReason: countries.reason,
+          };
+        }
+
+        const givers = topGivers(contactsRead.rows);
+        return {
+          countries: countries.tally,
+          countriesReason: countries.reason,
+          funnel: givingFunnel(contactsRead.rows),
+          funnelReason: null,
+          givers,
+          // An empty leaderboard is not an unreadable one: it means no contact
+          // has a recorded donation, which the empty state says in those words.
+          giversReason: givers.length === 0 ? ROSTER_REASON.noGivers : null,
+        };
+      })();
 
       // Receipts: one complete read serves BOTH the trend and the mix, so the
       // ledger is counted once and loaded once.
@@ -177,6 +315,7 @@ export function useOverviewData(
         members, contacts, courses, posts, articles, submissions, seventh,
         memberSeries, givingSeries, submissionSeries,
         invoiceRows, invoiceReason, liveNow,
+        roster,
       });
     })();
 
