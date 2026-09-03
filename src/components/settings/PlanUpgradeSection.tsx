@@ -20,6 +20,7 @@ import {
   PLAN_BLURBS,
 } from '../../utils/plan-features';
 import { SMS_FEATURE_ENABLED } from '../../lib/sms-feature';
+import { CUSTOM_DOMAIN_ENABLED } from '../../lib/custom-domain-feature';
 import { PLATFORM_FEE_MAP } from '../../lib/stripe-connect';
 import { authFetch } from '../../utils/auth-fetch';
 import { fetchBillingProcessor, needsFirstSubscription, runDodoPlanChange, startFirstSubscription, subscriptionProcessorAttribution, PlanChangeProcessor } from '../../utils/plan-change';
@@ -172,8 +173,21 @@ const CARD_FEATURES: CardFeature[] = [
 //
 // The Telegram assistant's own 'AI Assistant' line is gone outright: its plan
 // cell no longer exists.
+// 🔴 THE-280 withholds 'Custom Domain' on exactly the same terms as SMS above,
+// and for the same reason: these cards are in-app MARKETING, so a line here is a
+// promise on every upgrade screen — and this is the one promise the app now
+// answers with 503. The feature was never activated (the Vercel subscription
+// behind it was never bought), so a church upgrading for this line would get a
+// panel that refuses and DNS records that point nowhere.
+//
+// 🔴 THE `customDomain` CELL IN THE PLAN MATRIX IS UNTOUCHED — only this card's
+// line is withheld, so the tier that owns custom domains still owns it and gets
+// the line back with the switch. `customBranding` keeps ITS line above and must:
+// it is a separate cell, it ships, and withdrawing it to hide a dead capability
+// is the overreach THE-280 exists to avoid.
 const VISIBLE_CARD_FEATURES = CARD_FEATURES.filter(
-  (f) => SMS_FEATURE_ENABLED || f.key !== 'smsAutomation',
+  (f) => (SMS_FEATURE_ENABLED || f.key !== 'smsAutomation')
+    && (CUSTOM_DOMAIN_ENABLED || f.key !== 'customDomain'),
 );
 
 /**

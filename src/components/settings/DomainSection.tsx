@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Globe, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { authFetch } from '../../utils/auth-fetch';
 import { getMinPlanForFeatureCell, PLAN_DISPLAY_NAMES, TOP_PLAN } from '../../utils/plan-features';
+import { CUSTOM_DOMAIN_ENABLED, CUSTOM_DOMAIN_HIDDEN_MESSAGE } from '../../lib/custom-domain-feature';
 
 interface DomainSectionProps {
   hasCustomDomain: boolean;
@@ -30,8 +31,21 @@ interface VerificationRecord {
 const CUSTOM_DOMAIN_MIN_PLAN =
   PLAN_DISPLAY_NAMES[getMinPlanForFeatureCell('customDomain') ?? TOP_PLAN];
 
-export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, onUpgrade }) => {
-  const [subdomain, setSubdomain] = useState('');
+/**
+ * THE-280 — the custom-domain half, in its own component so it can be left
+ * UNMOUNTED while `CUSTOM_DOMAIN_ENABLED` is false.
+ *
+ * 🔴 THAT IS THE POINT OF THE SPLIT, not tidiness. A gate written as an early
+ * return inside one component would have conditionally called its hooks and
+ * still fired the effect below — which READS `config.customDomain` off the
+ * tenant document. Not mounting it is what makes "no stored domain is read"
+ * true. The subdomain half stays in the parent, because every tenant is served
+ * on `*.theharvest.app` and that address is not gated by anything.
+ *
+ * `tenantId` arrives as a prop rather than being looked up again here, so the
+ * users document is still read exactly ONCE per mount, as it always was.
+ */
+const CustomDomainPanel: React.FC<{ tenantId: string | null }> = ({ tenantId }) => {
   const [customDomain, setCustomDomain] = useState('');
   const [status, setStatus] = useState<DomainStatus>(null);
   const [verification, setVerification] = useState<VerificationRecord[]>([]);
@@ -40,41 +54,29 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
   const [checking, setChecking] = useState(false);
   const [domainLoaded, setDomainLoaded] = useState(false);
 
-  // Load current domain settings from tenant doc
-  const loadDomain = async () => {
-    if (domainLoaded) return;
-    try {
-      const { auth, db } = await import('../../firebase');
-      const { doc, getDoc } = await import('firebase/firestore');
-      if (auth.currentUser) {
-        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
-        if (userDoc.exists()) {
-          const tenantId = userDoc.data().tenantId;
-          if (tenantId) {
-            setSubdomain(tenantId);
-            const tenantDoc = await getDoc(doc(db, 'tenants', tenantId));
-            if (tenantDoc.exists()) {
-              const config = tenantDoc.data().config || {};
-              if (config.customDomain) setCustomDomain(config.customDomain);
-              if (config.customDomainStatus) {
-                setStatus(config.customDomainStatus as DomainStatus);
-              } else if (config.customDomainVerified != null) {
-                setStatus(config.customDomainVerified ? 'verified' : 'pending');
-              }
-            }
+  // Load the tenant's saved custom domain + verification status.
+  useEffect(() => {
+    if (!tenantId || domainLoaded) return;
+    (async () => {
+      try {
+        const { db } = await import('../../firebase');
+        const { doc, getDoc } = await import('firebase/firestore');
+        const tenantDoc = await getDoc(doc(db, 'tenants', tenantId));
+        if (tenantDoc.exists()) {
+          const config = tenantDoc.data().config || {};
+          if (config.customDomain) setCustomDomain(config.customDomain);
+          if (config.customDomainStatus) {
+            setStatus(config.customDomainStatus as DomainStatus);
+          } else if (config.customDomainVerified != null) {
+            setStatus(config.customDomainVerified ? 'verified' : 'pending');
           }
         }
+      } catch (e) {
+        console.error('Failed to load domain settings:', e);
       }
-    } catch (e) {
-      console.error('Failed to load domain settings:', e);
-    }
-    setDomainLoaded(true);
-  };
-
-  // Lazy-load on mount
-  useEffect(() => {
-    loadDomain();
-  }, []);
+      setDomainLoaded(true);
+    })();
+  }, [tenantId, domainLoaded]);
 
   const normalize = (d: string) =>
     d.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/^www\./, '');
@@ -119,12 +121,12 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
         if (auth.currentUser) {
           const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
           if (userDoc.exists()) {
-            const tenantId = userDoc.data().tenantId;
-            if (tenantId) {
-              const tenantDoc = await getDoc(doc(db, 'tenants', tenantId));
+            const tid = userDoc.data().tenantId;
+            if (tid) {
+              const tenantDoc = await getDoc(doc(db, 'tenants', tid));
               const oldDomain = tenantDoc.exists() ? tenantDoc.data().config?.customDomain : null;
 
-              await updateDoc(doc(db, 'tenants', tenantId), {
+              await updateDoc(doc(db, 'tenants', tid), {
                 'config.customDomain': normalizedDomain || null,
                 'config.customDomainStatus': normalizedDomain ? 'pending' : null,
                 'config.customDomainVerified': normalizedDomain ? false : null,
@@ -132,7 +134,7 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
               });
 
               if (normalizedDomain) {
-                await setDoc(doc(db, 'domains', normalizedDomain), { tenantId });
+                await setDoc(doc(db, 'domains', normalizedDomain), { tenantId: tid });
                 setStatus('pending');
               } else {
                 setStatus(null);
@@ -204,6 +206,139 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
   };
 
   return (
+    <div className="mt-5 pt-5 border-t border-line">
+      <div className="flex items-center justify-between mb-2">
+        <label className="block text-sm font-medium text-strong">Custom domain</label>
+        {statusBadge()}
+      </div>
+      <div className="flex items-center gap-3">
+        <Globe size={18} className="text-faint shrink-0" />
+        <div className="flex-1">
+          <input
+            type="text"
+            value={customDomain}
+            onChange={(e) => setCustomDomain(e.target.value)}
+            placeholder="e.g. app.church.org"
+            className="w-full px-4 py-2.5 border border-line rounded-brand text-sm text-strong focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent"
+          />
+          <p className="text-xs text-faint mt-1.5">
+            Use your root domain (<span className="font-mono">church.org</span>) or a subdomain
+            of it (<span className="font-mono">app.church.org</span>,{' '}
+            <span className="font-mono">give.church.org</span>). Connecting a subdomain leaves
+            your existing website on <span className="font-mono">church.org</span> exactly where
+            it is — nothing about it changes.
+          </p>
+        </div>
+      </div>
+
+      {/* DNS Instructions — rendered from the records the API returns, never
+          hardcoded. The correct record depends on what was entered: a
+          subdomain (app.church.org) verifies with a CNAME, a root domain
+          (church.org) with an A record. This block used to print one fixed
+          CNAME for everyone, so anyone on the other shape followed the wrong
+          instruction and verification then silently never completed. */}
+      <div className="mt-4 pt-4 border-t border-line">
+        <p className="text-sm font-medium text-strong mb-3">DNS Configuration</p>
+        <div className="bg-surface-sunken rounded-brand p-4">
+          {verification.length > 0 ? (
+            <>
+              <p className="text-xs text-muted mb-2">
+                Add {verification.length === 1 ? 'this record' : 'these records'} at your DNS provider:
+              </p>
+              <div className="space-y-2">
+                {verification.map((record, i) => (
+                  <div
+                    key={`${record.type ?? ''}-${record.domain ?? ''}-${i}`}
+                    className="font-mono text-sm bg-surface-raised rounded-lg p-3 border border-line"
+                  >
+                    <div className="flex justify-between gap-3">
+                      <span className="text-faint shrink-0">Type:</span>
+                      <span className="text-strong break-all text-right">{(record.type || '').toUpperCase()}</span>
+                    </div>
+                    <div className="flex justify-between gap-3 mt-1">
+                      <span className="text-faint shrink-0">Name:</span>
+                      <span className="text-strong break-all text-right">{record.domain}</span>
+                    </div>
+                    <div className="flex justify-between gap-3 mt-1">
+                      <span className="text-faint shrink-0">Value:</span>
+                      <span className="text-strong break-all text-right">{record.value}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="text-xs text-muted">
+              Save your domain to get the exact DNS records for your provider. They depend on
+              what you connect: a subdomain such as <span className="font-mono">app.church.org</span>{' '}
+              uses a CNAME, while a root domain such as <span className="font-mono">church.org</span>{' '}
+              uses an A record.
+            </p>
+          )}
+          <p className="text-xs text-faint mt-2">
+            DNS changes can take up to 48 hours to propagate. Use &quot;Check Status&quot; to refresh verification.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 flex-wrap mt-4">
+        <button
+          onClick={handleSave}
+          disabled={domainSaving}
+          className="px-5 py-2.5 bg-gold text-white rounded-brand text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+        >
+          {domainSaving ? 'Saving...' : 'Save Domain'}
+        </button>
+        <button
+          onClick={handleCheckStatus}
+          disabled={checking || !customDomain.trim()}
+          className="px-5 py-2.5 border border-line text-strong rounded-brand text-sm font-semibold hover:bg-surface-sunken transition-colors disabled:opacity-50"
+        >
+          {checking ? 'Checking...' : 'Check Status'}
+        </button>
+        {domainSaved && (
+          <span className="text-sm text-green-600 font-medium">✓ Domain settings saved</span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, onUpgrade }) => {
+  const [subdomain, setSubdomain] = useState('');
+  const [tenantId, setTenantId] = useState<string | null>(null);
+  const [subdomainLoaded, setSubdomainLoaded] = useState(false);
+
+  /**
+   * The tenant's own subdomain — the address every church is served on, gated by
+   * nothing. Reads the users document only; the tenant document is opened by
+   * `CustomDomainPanel`, which is why no stored domain is read while the
+   * THE-280 switch is off.
+   */
+  useEffect(() => {
+    if (subdomainLoaded) return;
+    (async () => {
+      try {
+        const { auth, db } = await import('../../firebase');
+        const { doc, getDoc } = await import('firebase/firestore');
+        if (auth.currentUser) {
+          const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+          if (userDoc.exists()) {
+            const tid = userDoc.data().tenantId;
+            if (tid) {
+              setSubdomain(tid);
+              setTenantId(tid);
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load domain settings:', e);
+      }
+      setSubdomainLoaded(true);
+    })();
+  }, [subdomainLoaded]);
+
+  return (
     // ── Theming stage 2: first converted surface (the template for the rest) ──
     // Every neutral surface/border/body-text utility below is a semantic token,
     // so this section inverts with the theme. Each swap is colour-identical to
@@ -241,102 +376,20 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
         </p>
 
         {/* Custom Domain (Community / max+) */}
-        {hasCustomDomain ? (
-          <div className="mt-5 pt-5 border-t border-line">
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-strong">Custom domain</label>
-              {statusBadge()}
-            </div>
-            <div className="flex items-center gap-3">
-              <Globe size={18} className="text-faint shrink-0" />
-              <div className="flex-1">
-                <input
-                  type="text"
-                  value={customDomain}
-                  onChange={(e) => setCustomDomain(e.target.value)}
-                  placeholder="e.g. app.church.org"
-                  className="w-full px-4 py-2.5 border border-line rounded-brand text-sm text-strong focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent"
-                />
-                <p className="text-xs text-faint mt-1.5">
-                  Use your root domain (<span className="font-mono">church.org</span>) or a subdomain
-                  of it (<span className="font-mono">app.church.org</span>,{' '}
-                  <span className="font-mono">give.church.org</span>). Connecting a subdomain leaves
-                  your existing website on <span className="font-mono">church.org</span> exactly where
-                  it is — nothing about it changes.
-                </p>
-              </div>
-            </div>
-
-            {/* DNS Instructions — rendered from the records the API returns, never
-                hardcoded. The correct record depends on what was entered: a
-                subdomain (app.church.org) verifies with a CNAME, a root domain
-                (church.org) with an A record. This block used to print one fixed
-                CNAME for everyone, so anyone on the other shape followed the wrong
-                instruction and verification then silently never completed. */}
-            <div className="mt-4 pt-4 border-t border-line">
-              <p className="text-sm font-medium text-strong mb-3">DNS Configuration</p>
-              <div className="bg-surface-sunken rounded-brand p-4">
-                {verification.length > 0 ? (
-                  <>
-                    <p className="text-xs text-muted mb-2">
-                      Add {verification.length === 1 ? 'this record' : 'these records'} at your DNS provider:
-                    </p>
-                    <div className="space-y-2">
-                      {verification.map((record, i) => (
-                        <div
-                          key={`${record.type ?? ''}-${record.domain ?? ''}-${i}`}
-                          className="font-mono text-sm bg-surface-raised rounded-lg p-3 border border-line"
-                        >
-                          <div className="flex justify-between gap-3">
-                            <span className="text-faint shrink-0">Type:</span>
-                            <span className="text-strong break-all text-right">{(record.type || '').toUpperCase()}</span>
-                          </div>
-                          <div className="flex justify-between gap-3 mt-1">
-                            <span className="text-faint shrink-0">Name:</span>
-                            <span className="text-strong break-all text-right">{record.domain}</span>
-                          </div>
-                          <div className="flex justify-between gap-3 mt-1">
-                            <span className="text-faint shrink-0">Value:</span>
-                            <span className="text-strong break-all text-right">{record.value}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-xs text-muted">
-                    Save your domain to get the exact DNS records for your provider. They depend on
-                    what you connect: a subdomain such as <span className="font-mono">app.church.org</span>{' '}
-                    uses a CNAME, while a root domain such as <span className="font-mono">church.org</span>{' '}
-                    uses an A record.
-                  </p>
-                )}
-                <p className="text-xs text-faint mt-2">
-                  DNS changes can take up to 48 hours to propagate. Use &quot;Check Status&quot; to refresh verification.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 flex-wrap mt-4">
-              <button
-                onClick={handleSave}
-                disabled={domainSaving}
-                className="px-5 py-2.5 bg-gold text-white rounded-brand text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
-              >
-                {domainSaving ? 'Saving...' : 'Save Domain'}
-              </button>
-              <button
-                onClick={handleCheckStatus}
-                disabled={checking || !customDomain.trim()}
-                className="px-5 py-2.5 border border-line text-strong rounded-brand text-sm font-semibold hover:bg-surface-sunken transition-colors disabled:opacity-50"
-              >
-                {checking ? 'Checking...' : 'Check Status'}
-              </button>
-              {domainSaved && (
-                <span className="text-sm text-green-600 font-medium">✓ Domain settings saved</span>
-              )}
-            </div>
+        {!CUSTOM_DOMAIN_ENABLED ? (
+          /* 🔴 THE-280 — the switch is read BEFORE the plan, deliberately. Both
+             branches below offer a custom domain: one collects it, and the
+             other advertises it as the reason to upgrade. Neither may stand
+             while the feature cannot work, so the entitlement question is not
+             asked at all — the panel keeps its own heading, so a church still
+             knows WHICH part is unavailable, and shows the message and nothing
+             else. No control, so there is nothing to press. */
+          <div className="mt-5 pt-5 border-t border-line" data-testid="custom-domain-hidden">
+            <label className="block text-sm font-medium text-strong mb-2">Custom domain</label>
+            <p className="text-sm text-muted">{CUSTOM_DOMAIN_HIDDEN_MESSAGE}</p>
           </div>
+        ) : hasCustomDomain ? (
+          <CustomDomainPanel tenantId={tenantId} />
         ) : (
           <div className="mt-5 pt-5 border-t border-line">
             <label className="block text-sm font-medium text-strong mb-2">Custom domain</label>

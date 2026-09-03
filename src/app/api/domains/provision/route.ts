@@ -5,6 +5,7 @@ import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
 import { hasFeature } from '@/utils/plan-features';
 import type { TenantPlan } from '@/types/tenant.types';
 import { captureHandledError } from '@/lib/money-path-sentry';
+import { CUSTOM_DOMAIN_ENABLED, CUSTOM_DOMAIN_HIDDEN_MESSAGE } from '@/lib/custom-domain-feature';
 
 /**
  * Custom domain provisioning via the Vercel API.
@@ -88,6 +89,12 @@ async function requireCustomDomainPlan(
 }
 
 export async function POST(request: NextRequest) {
+  if (!CUSTOM_DOMAIN_ENABLED) {
+    // THE-280 — refuses FIRST: before authenticating, before resolving a tenant
+    // and before any Vercel or Firestore call, so no stored domain is touched.
+    return NextResponse.json({ error: CUSTOM_DOMAIN_HIDDEN_MESSAGE }, { status: 503 });
+  }
+
   const authResult = await requireAdmin(request);
   if (authResult instanceof NextResponse) return authResult;
 
@@ -191,6 +198,12 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  if (!CUSTOM_DOMAIN_ENABLED) {
+    // Gated too, and not for symmetry: this handler also WRITES, mirroring
+    // customDomainVerified / customDomainStatus onto the tenant doc below.
+    return NextResponse.json({ error: CUSTOM_DOMAIN_HIDDEN_MESSAGE }, { status: 503 });
+  }
+
   const authResult = await requireAdmin(request);
   if (authResult instanceof NextResponse) return authResult;
 

@@ -74,6 +74,23 @@ vi.mock('../../../lib/sms-feature', () => ({
   SMS_HIDDEN_MESSAGE: 'SMS is temporarily unavailable.',
 }));
 
+// ── THE-280 ────────────────────────────────────────────────────────────────
+// Run with the custom-domain master switch ON, for exactly the reason THE-245
+// gives above and on exactly the same terms. THE-280 withholds the "Custom
+// Domain" line from these upgrade cards — the cards are in-app marketing, and a
+// line there is a promise about what paying more buys, on a feature the app now
+// answers with 503. That removes a row from every card, which would silently
+// re-baseline the layout this file exists to pin.
+//
+// Keeping the switch ON here means the enumerated card layer still measures the
+// full roster, and is proof the layout survives the hide intact and comes back
+// whole on the flip. That the line is ABSENT while the switch is off is
+// asserted in lib/__tests__/the-280-custom-domain-hidden.test.ts §8.
+vi.mock('../../../lib/custom-domain-feature', () => ({
+  CUSTOM_DOMAIN_ENABLED: true,
+  CUSTOM_DOMAIN_HIDDEN_MESSAGE: 'Custom domains are temporarily unavailable.',
+}));
+
 vi.mock('../../../firebase', () => ({ auth: { currentUser: null }, db: {} }));
 vi.mock('../../../utils/auth-fetch', () => ({ authFetch: authFetchMock }));
 vi.mock('../../../utils/plan-change', async (importOriginal) => {
