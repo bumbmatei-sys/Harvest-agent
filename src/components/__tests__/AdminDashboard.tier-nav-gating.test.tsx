@@ -107,7 +107,7 @@ vi.mock('firebase/firestore', () => ({
 vi.mock('../../utils/firestore-errors', () => ({
   OperationType: { GET: 'get' }, handleFirestoreError: () => {},
 }));
-vi.mock('../AnalyticsAndRoles', () => ({ normalizePermissions: (raw: unknown) => raw }));
+vi.mock('../AdminRoles', () => ({ normalizePermissions: (raw: unknown) => raw }));
 vi.mock('../AdminScreenHeader', async () => {
   const React = await import('react');
   return {
@@ -202,6 +202,9 @@ const TABS: Tab[] = [
   { label: 'Events', section: 'events', cell: (f) => f.eventRegistration },
   { label: 'Notes', section: 'docs', cell: (f) => f.docs },
   { label: 'CRM', section: 'crm', cell: (f) => f.crm },
+  // THE-277 — the Analytics sub-tab, promoted to its own page on the same
+  // `crm` cell it was already gated by.
+  { label: 'Signups', section: 'signups', cell: (f) => f.crm },
   { label: 'Accounting', section: 'accounting', cell: (f) => f.accountingTools || f.givingStatements },
   { label: 'Forms', section: 'forms', cell: (f) => f.customForms },
   { label: 'Check-In', section: 'checkin', cell: null },
@@ -253,7 +256,7 @@ const flush = async () => {
 
 const ALL_TAB_LABELS = [
   'Dashboard', 'Church', 'Church List', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
-  'Fundraising', 'Events', 'Notes', 'CRM', 'Accounting', 'Forms', 'Check-In', 'Livestream',
+  'Fundraising', 'Events', 'Notes', 'CRM', 'Signups', 'Accounting', 'Forms', 'Check-In', 'Livestream',
   'SMS', 'Community', 'Library', 'Tenants', 'Affiliate', 'Branding',
 ];
 function navLabels(): string[] {
@@ -333,8 +336,8 @@ afterEach(async () => {
 });
 
 // ── 1 ────────────────────────────────────────────────────────────────────────
-describe('1 — a free tenant sees all sixteen nav items', () => {
-  it('a free tenant sees all sixteen nav items', async () => {
+describe('1 — a free tenant sees all seventeen nav items', () => {
+  it('a free tenant sees all seventeen nav items', async () => {
     const { nav } = await navFor('free');
 
     // 🔴 THE POINT OF THE TIER. Named individually, not counted, so a nav that
@@ -343,16 +346,22 @@ describe('1 — a free tenant sees all sixteen nav items', () => {
       const label = tab.label === 'Church' ? 'Church List' : tab.label;
       expect(nav, `a free admin lost "${label}" — free must see every feature`).toContain(label);
     }
-    expect(nav.length, 'the free nav is exactly the sixteen').toBe(16);
+    // ⚠️ Seventeen since THE-277: Signups split out of the CRM screen, taking
+    // the same `crm` cell with it, so every tier that had CRM gained a row.
+    expect(nav.length, 'the free nav is exactly the seventeen').toBe(17);
     expect(nav).toEqual(expectedNav('free'));
 
     // And it is genuinely the see-everything case: free's own cells unlock only
-    // two of these, so the other eleven gated tabs are there in spite of the
+    // three of these, so the other eleven gated tabs are there in spite of the
     // matrix rather than because of it.
+    //
+    // ⚠️ Signups is the third BECAUSE IT SHARES CRM'S CELL, not because free
+    // gained anything: THE-277 split one `crm`-gated screen into two, so the
+    // same one cell now unlocks two rows. No cell in the matrix moved.
     const f = getPlanFeatures('free');
     const unlockedByCells = TABS.filter((t) => t.cell !== null && t.cell(f)).map((t) => t.label);
-    expect(unlockedByCells, "free's cells now unlock more than Courses and CRM — check the matrix")
-      .toEqual(['Courses', 'CRM']);
+    expect(unlockedByCells, "free's cells now unlock more than Courses, CRM and Signups — check the matrix")
+      .toEqual(['Courses', 'CRM', 'Signups']);
   });
 
   it('Branding is NOT one of the sixteen, on free or on any tier below Ministry', async () => {
@@ -389,7 +398,7 @@ describe('2 — an Individual tenant sees exactly its seven', () => {
     // Eight, not seven: Check-In is the ticket's own known exception and the
     // reason is recorded above. STOP CONDITION 3, reported not silently applied.
     expect(nav, CHECKIN_NOTE).toContain('Check-In');
-    expect(nav.length, 'Individual shows its seven plus Check-In and nothing else').toBe(8);
+    expect(nav.length, 'Individual shows its eight plus Check-In and nothing else').toBe(9);
     expect(nav).toEqual(expectedNav('plus'));
   });
 
@@ -417,7 +426,7 @@ describe('3 — a Small Team tenant sees exactly its expected set', () => {
    * Small Team (pro), read off the matrix and stated here by name so the
    * derivation has something to be checked against:
    * Dashboard · Church · Courses · Blog · Newsletter ·
-   * Fundraising · Notes · CRM · Check-In · Livestream · SMS.
+   * Fundraising · Notes · CRM · Signups · Check-In · Livestream · SMS.
    * Absent: Events, Accounting, Forms, Community, Branding.
    */
   // ⚠️ 'AI Knowledge' WAS IN THIS LIST. THE-253 took `aiKnowledge` off every
@@ -427,7 +436,7 @@ describe('3 — a Small Team tenant sees exactly its expected set', () => {
   // `getEffectiveFeatures`, and `navFor` here mounts with no add-ons.
   const EXPECTED = [
     'Dashboard', 'Church', 'Courses', 'Blog', 'Newsletter',
-    'Fundraising', 'Notes', 'CRM', 'Check-In', 'Livestream', 'SMS',
+    'Fundraising', 'Notes', 'CRM', 'Signups', 'Check-In', 'Livestream', 'SMS',
   ];
 
   it('a Small Team tenant sees exactly its expected set', async () => {
@@ -506,7 +515,7 @@ describe('4 — a Ministry tenant sees exactly its expected set', () => {
       expect(nav, `Ministry lost "${tab.label}"`).toContain(tab.label);
     }
     expect(nav).toContain('Branding');
-    expect(nav.length, 'Ministry shows the fifteen plus Branding').toBe(16);
+    expect(nav.length, 'Ministry shows the sixteen plus Branding').toBe(17);
     expect(nav).toEqual(expectedNav('max'));
   });
 
@@ -680,12 +689,12 @@ describe('9 — the nav is derived from one tab array, not two', () => {
   });
 
   it('every gated entry states its plan clause through the one helper', () => {
-    // 13 nav clauses — one per gated tab. Check-In, Church and Dashboard carry
+    // 14 nav clauses — one per gated tab. Check-In, Church and Dashboard carry
     // none, deliberately, and `canBranding` predates this family.
     const navGates = (CODE.match(/navAllows\(/g) ?? []).length;
     const gatedTabs = TABS.filter((t) => t.cell !== null).length;
     expect(navGates, 'a nav entry gained or lost its plan clause').toBe(gatedTabs);
-    expect(gatedTabs).toBe(13);
+    expect(gatedTabs).toBe(14);
   });
 
   it('leaves Check-In and Church without a plan clause, which is the recorded decision', () => {

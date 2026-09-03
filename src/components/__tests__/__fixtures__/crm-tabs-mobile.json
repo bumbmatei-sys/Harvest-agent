@@ -68,14 +68,12 @@
       "lucide-search",
       "lucide-upload",
       "lucide-users",
-      "max-w-6xl",
       "mb-5",
       "mb-6",
       "min-w-0",
       "min-w-[220px]",
       "min-w-[720px]",
       "mt-2",
-      "mx-auto",
       "overflow-hidden",
       "overflow-x-auto",
       "p-1",
@@ -137,29 +135,6 @@
       "whitespace-nowrap"
     ]
   },
-  "Analytics": {
-    "mobileTokens": [
-      "bg-surface-raised",
-      "bg-surface-sunken",
-      "flex",
-      "font-semibold",
-      "gap-1",
-      "max-w-3xl",
-      "mb-5",
-      "mx-auto",
-      "p-1",
-      "px-4",
-      "py-1.5",
-      "rounded-lg",
-      "rounded-xl",
-      "shadow-xs",
-      "text-faint",
-      "text-strong",
-      "text-xs",
-      "transition-colors",
-      "w-fit"
-    ]
-  },
   "Roles": {
     "mobileTokens": [
       "active:opacity-80",
@@ -169,8 +144,11 @@
       "disabled:hover:opacity-40",
       "disabled:opacity-40",
       "flex",
+      "flex-col",
       "font-semibold",
       "gap-1",
+      "gap-[14px]",
+      "hidden",
       "hover:opacity-90",
       "items-center",
       "leading-none",
@@ -197,10 +175,9 @@
       "lucide-rss",
       "lucide-shield",
       "lucide-sticky-note",
+      "lucide-user",
       "lucide-users",
-      "max-w-3xl",
       "mb-5",
-      "mx-auto",
       "p-1",
       "px-3",
       "px-4",
@@ -216,6 +193,7 @@
       "transition-colors",
       "transition-opacity",
       "w-fit",
+      "w-full",
       "whitespace-nowrap"
     ]
   }

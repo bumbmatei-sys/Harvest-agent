@@ -62,7 +62,7 @@ vi.mock('../AdminScreenHeader', () => ({
   useAdminHeader: () => ({ setHeaderAction: () => {}, setHeaderOverride: () => {} }),
   HeaderActionButton: () => null,
 }));
-vi.mock('../AnalyticsAndRoles', () => ({ default: () => null }));
+vi.mock('../AdminRoles', () => ({ default: () => null }));
 // Only the data hooks are stubbed. CRM_FETCH_LIMIT stays REAL, so the number the
 // UI prints as its ceiling is the number the queries actually use — a
 // hand-written constant here would let the two drift apart silently.

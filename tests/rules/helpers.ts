@@ -39,7 +39,7 @@ export const ADMIN_B_UID = 'admin-b-uid';
 export const SUPER_ADMIN_UID = 'super-admin-uid';
 
 // The 23 catalog keys — keep in sync with PERMISSION_CATEGORIES in
-// src/components/AnalyticsAndRoles.tsx.
+// src/components/AdminRoles.tsx.
 export const ALL_PERMISSION_KEYS = [
   'writeArticles', 'createPosts', 'createCourses', 'uploadRag', 'manageNewsletter', 'manageDocs',
   'modifyChurches', 'manageCRM', 'manageCommunity', 'manageForms', 'manageFundraising',

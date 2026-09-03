@@ -70,6 +70,7 @@ const ADMIN_SECTION_TABLE = [
   ['events', 'events'],
   ['docs', 'docs'],
   ['crm', 'crm'],
+  ['signups', 'signups'],
   ['accounting', 'accounting'],
   ['forms', 'forms'],
   ['checkin', 'checkin'],

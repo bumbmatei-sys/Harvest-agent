@@ -74,7 +74,7 @@ vi.mock('../AdminScreenHeader', () => ({
   useAdminHeader: () => ({ setHeaderAction: () => {}, setHeaderOverride: () => {} }),
   HeaderActionButton: () => null,
 }));
-vi.mock('../AnalyticsAndRoles', () => ({ default: () => null }));
+vi.mock('../AdminRoles', () => ({ default: () => null }));
 // Only the DATA hooks are stubbed. `resolvePipelineStage` is the real one — the
 // whole claim is that the stage is a function of giving, so stubbing it would
 // make "the stage column is a giving column" vacuous.

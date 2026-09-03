@@ -78,7 +78,7 @@ vi.mock('../AdminScreenHeader', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../AdminScreenHeader')>()),
   useAdminHeader: () => ({ setHeaderAction: () => {}, setHeaderOverride: () => {} }),
 }));
-vi.mock('../AnalyticsAndRoles', () => ({ default: () => null }));
+vi.mock('../AdminRoles', () => ({ default: () => null }));
 vi.mock('@/contexts/TenantContext', () => ({ useTenant: () => tenantCtx }));
 // Only the data hooks are stubbed. csv-import.ts, contact-capacity.ts and
 // PLAN_FEATURES all stay REAL — the numbers and the parsing this screen

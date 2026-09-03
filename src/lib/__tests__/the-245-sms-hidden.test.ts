@@ -66,7 +66,7 @@ describe('1 — the switch is one value, in one place', () => {
       'components/AdminDashboard.tsx',
       'components/AdminSms.tsx',
       'components/AdminFundraising.tsx',
-      'components/AnalyticsAndRoles.tsx',
+      'components/AdminRoles.tsx',
       'components/ContactModal.tsx',
       'components/admin/TenantUsagePanel.tsx',
       'components/settings/SmsSection.tsx',

@@ -51,7 +51,7 @@
  *     Text-to-Give).
  *   · The Twilio credential form (settings/SmsSection).
  *   · The "Send Reminder" SMS blast on a pledge campaign (AdminFundraising).
- *   · The "SMS Broadcasts" permission row (AnalyticsAndRoles) — display only;
+ *   · The "SMS Broadcasts" permission row (AdminRoles) — display only;
  *     stored `manageSms` grants are untouched and come back with the flag.
  *   · The "SMS Automation" line on the in-app plan cards (PlanUpgradeSection).
  *   · The "SMS" area in the support contact form (ContactModal).

@@ -650,7 +650,7 @@ describe('every export still works for a cancelled tenant', () => {
 
   it('leaves the client-side CSV exporters ungated too', () => {
     for (const file of [
-      'components/AnalyticsAndRoles.tsx',
+      'components/AdminRoles.tsx',
       'components/AdminEvents.tsx',
       'components/AdminCheckin.tsx',
       'components/AdminForms.tsx',
