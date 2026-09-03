@@ -480,11 +480,13 @@ describe("3 — the toolbar's command vocabulary matches the slash menu's", () =
     }
   });
 
-  it('every command reaches the bar exactly once, and an unplaced one throws', () => {
-    // `groupItems` is what lays the bar out. It is the single place a command
-    // could be silently dropped, so it refuses to drop one — a missing button
-    // looks exactly like a deliberate design in a screenshot, which is the
-    // silent failure this repo has a rule about.
+  it('🔴 the LAYOUT covers exactly the vocabulary — this is where a mismatch is loud', () => {
+    // `groupItems` lays the bar out, and a command with no home in
+    // TOOLBAR_GROUPS is a developer mistake. THIS is the assertion that catches
+    // it: `groupItems` itself degrades gracefully at run time (see its own note
+    // — it runs during render, and there is no error boundary above the admin
+    // editor, so throwing would blank a screen someone is writing a sermon note
+    // in). Loud here, graceful there.
     expect(TOOLBAR_GROUPS.flat().slice().sort())
       .toEqual([...commands.map((c) => c.title), ...TOOLBAR_ONLY].sort());
 
@@ -492,12 +494,30 @@ describe("3 — the toolbar's command vocabulary matches the slash menu's", () =
       ({ title, description: '', icon: null, run: () => {}, active: false });
     const all = [...commands.map((c) => c.title), ...TOOLBAR_ONLY].map(item);
     expect(groupItems(all).flat().map((i) => i.title)).toEqual(TOOLBAR_GROUPS.flat());
-    // Drop one → it throws rather than rendering 17 of 18.
-    expect(() => groupItems(all.filter((i) => i.title !== 'Quote')))
-      .toThrow(/no command named "Quote"/);
-    // Add one nothing places → it throws rather than rendering it nowhere.
-    expect(() => groupItems([...all, item('Sparkles')]))
-      .toThrow(/Sparkles would not be rendered/);
+  });
+
+  it('🔴 an unplaced command is still RENDERED, never dropped and never fatal', () => {
+    const item = (title: string): ToolbarItem =>
+      ({ title, description: '', icon: null, run: () => {}, active: false });
+    const all = [...commands.map((c) => c.title), ...TOOLBAR_ONLY].map(item);
+
+    // A command the layout does not place lands in a trailing group. The
+    // property that matters — every command reachable at every width — holds,
+    // and the mismatch is reported by the assertion above rather than by a
+    // crash in front of a user.
+    const withStray = groupItems([...all, item('Sparkles')]);
+    expect(withStray.flat().map((i) => i.title)).toContain('Sparkles');
+    expect(withStray.at(-1)!.map((i) => i.title)).toEqual(['Sparkles']);
+    expect(withStray.flat()).toHaveLength(all.length + 1);
+
+    // And a title the caller did not supply is skipped, not fatal — so a
+    // partial item list renders what it has.
+    const missing = groupItems(all.filter((i) => i.title !== 'Quote'));
+    expect(missing.flat().map((i) => i.title)).not.toContain('Quote');
+    expect(missing.flat()).toHaveLength(all.length - 1);
+    // Empty in, empty out, still no throw: the component is exported and a
+    // future caller may hand it nothing.
+    expect(groupItems([])).toEqual([]);
   });
 
   it('every button carries an accessible name and the description as its hint', async () => {

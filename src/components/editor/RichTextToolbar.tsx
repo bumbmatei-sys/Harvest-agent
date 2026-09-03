@@ -172,27 +172,42 @@ export interface ToolbarItem {
 /**
  * Partition items into {@link TOOLBAR_GROUPS}, in that order.
  *
- * Throws on an unplaced or unknown title. A toolbar that quietly renders 17 of
- * 18 commands is the "silent failure" this repo has a rule about — a missing
- * button looks exactly like a deliberate design in a screenshot.
+ * ─── Loud in the suite, graceful on the screen ─────────────────────────────
+ *
+ * A command that reaches this function without a home in `TOOLBAR_GROUPS` is a
+ * developer mistake — adding to `commands` without adding to the layout — and
+ * the first version of this THREW on it, on the reasoning that a bar quietly
+ * rendering 17 of 18 buttons is the silent failure this repo has a rule about.
+ *
+ * 🔴 That was the wrong place to be loud. This runs during React's render, and
+ * there is NO error boundary above the admin editor (`ErrorBoundary` is mounted
+ * in `MainApp`, the member app; `AdminDashboard` and `AdminDocs` do not use
+ * it). So the throw would blank the screen a church admin is writing a sermon
+ * note in — losing whatever the auto-save had not yet written — to report a
+ * mistake that cannot reach production anyway, because
+ * `THE-279.editor-toolbar.test.tsx` pins `TOOLBAR_GROUPS.flat()` against
+ * `commands` + `ALIGN_COMMANDS` and goes red first.
+ *
+ * So: an unplaced command is APPENDED in its own trailing group rather than
+ * dropped, which keeps it reachable at every width — the property that actually
+ * mattered — and a title with no matching item is skipped rather than fatal.
+ * Nothing is ever silently lost, nothing ever crashes an editor, and the strict
+ * correspondence is asserted where an assertion belongs.
  */
 export function groupItems(items: readonly ToolbarItem[]): ToolbarItem[][] {
   const byTitle = new Map(items.map((i) => [i.title, i]));
-  const groups = TOOLBAR_GROUPS.map((group) =>
-    group.map((title) => {
-      const item = byTitle.get(title);
-      if (!item) throw new Error(`RichTextToolbar: no command named "${title}"`);
-      byTitle.delete(title);
-      return item;
-    }),
-  );
-  if (byTitle.size > 0) {
-    throw new Error(
-      `RichTextToolbar: ${[...byTitle.keys()].join(', ')} would not be rendered — ` +
-      'every command must appear in TOOLBAR_GROUPS at every width.',
-    );
-  }
-  return groups;
+  const groups = TOOLBAR_GROUPS
+    .map((group) =>
+      group
+        .map((title) => {
+          const item = byTitle.get(title);
+          if (item) byTitle.delete(title);
+          return item;
+        })
+        .filter((item): item is ToolbarItem => item !== undefined))
+    .filter((group) => group.length > 0);
+  // Anything the layout does not place still gets rendered, at the end.
+  return byTitle.size > 0 ? [...groups, [...byTitle.values()]] : groups;
 }
 
 /** How close to an end counts as being at it, in px. Sub-pixel scroll offsets. */
@@ -273,7 +288,11 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ items, children }) =>
         }
       >
         {groups.map((group, groupIndex) => (
-          <React.Fragment key={TOOLBAR_GROUPS[groupIndex].join('|')}>
+          // Keyed by the group's OWN titles, not by TOOLBAR_GROUPS[groupIndex]:
+          // an unplaced command lands in a trailing group that has no entry
+          // there, and indexing past the end would throw the very crash the
+          // graceful fallback in `groupItems` exists to avoid.
+          <React.Fragment key={group.map((i) => i.title).join('|')}>
             {groupIndex > 0 && (
               <Separator
                 orientation="vertical"
