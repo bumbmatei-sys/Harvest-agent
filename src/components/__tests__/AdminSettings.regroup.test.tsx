@@ -867,7 +867,12 @@ describe('THE-183 — admin Settings', () => {
       // newsletter one), which is a deliberate edit to this file. What THE-183
       // actually guards — that no integration PATH moved — is asserted on the
       // file's contents just below instead, which is the stronger check anyway.
-      'src/components/settings/GivingStatementsSection.tsx',
+      // GivingStatementsSection is NOT diffed as a whole any more, for exactly
+      // the reason PaymentSection and SmsSection stopped being: THE-286 converts
+      // it to the shared chrome and to autosave, which is a deliberate edit to
+      // this file. What THE-183 actually guards — that no giving-statement PATH
+      // moved — is asserted on the file's contents in (a5) below instead, which
+      // is the stronger check anyway.
       // `AiAssistantSection.tsx` was in this list. It was DELETED with the
       // Telegram assistant (THE-253), and a path that does not exist cannot be
       // checked for modification — `git diff` on it reports the deletion
@@ -946,6 +951,28 @@ describe('THE-183 — admin Settings', () => {
     // The gate itself, so this guard fails if the switch is quietly removed.
     expect(paymentSection, 'PaymentSection no longer reads the Stripe Connect master switch')
       .toContain('STRIPE_CONNECT_ENABLED');
+
+    // (a5) THE-286 — the giving-statement path GivingStatementsSection owns,
+    //      asserted on contents for the same reason as (a4) above. The section
+    //      is re-chromed and put behind autosave, not rewired: it still reads
+    //      and writes the same tenant config map, on the same two collections,
+    //      and it still carries the IRS disclosure default that a statement is
+    //      not lawful without.
+    const givingSection = readFileSync(path.join(SRC, 'components/settings/GivingStatementsSection.tsx'), 'utf8');
+    for (const path_ of ['config.givingStatements', "doc(db, 'tenants', tenantId)", "doc(db, 'users', auth.currentUser.uid)"]) {
+      expect(givingSection, `${path_} is no longer used by GivingStatementsSection`).toContain(path_);
+    }
+    expect(givingSection, 'the IRS disclosure default left GivingStatementsSection')
+      .toContain('No goods or services were provided in exchange for these contributions.');
+    for (const key of ['ein', 'address', 'footer']) {
+      expect(givingSection, `the '${key}' field left GivingStatementsSection`)
+        .toContain(`writeField('${key}'`);
+    }
+    // 🔴 The Save button is GONE, not hidden — that is the conversion. If a
+    // later change puts a manual save back, this guard says so rather than
+    // leaving two ways to save one field.
+    expect(givingSection, 'GivingStatementsSection no longer autosaves')
+      .toContain('useAutosaveField');
 
     // (b) AdminSettings' own wiring is intact, whether or not git is available:
     //     the billing portal call, the Stripe return handling that force-opens

@@ -1,0 +1,34 @@
+{
+  "chrome": {
+    "src/components/settings/SectionHeading.tsx": "7b2cd2e4c88014b6e9dc4cf329e41188c0786a9d8b438974af305853364ea8a9",
+    "src/components/settings/SettingsAccordion.tsx": "2286cd2824e65b49f76bf646a4ad838b8ccc6d30f9775e613852029632cb909b"
+  },
+  "note": "THE-286. sha256 of every file this slice must leave alone, recorded at PR time from origin/main. Read from this fixture rather than re-derived with `git show` at assertion time: a depth-1 clone has no base revision to show, and a test that shells out to git is a test that fails for reasons that are not about the code.",
+  "otherSettingsSections": {
+    "src/components/settings/AddOnsSection.tsx": "1aaf93dbd3da0e313cf66230561581db36a3b32acfd04139ddeabcbb8966940d",
+    "src/components/settings/BillingTermToggle.tsx": "970ffa4463952c41b08aaecb9c48bb6ff653859e24870e2de56fdd533637453b",
+    "src/components/settings/BrandingSection.tsx": "b66be76cd00690df7b30cfa0719327c3fa0ece7e5bff4e667702d4902eb3e3a3",
+    "src/components/settings/DomainSection.tsx": "40793ed606c8315de2414130ac84f69c65b4294e80c56a3ca739769b92bcc3f2",
+    "src/components/settings/IntegrationsSection.tsx": "ac058fb0e998e15bf2cb20be3f33f4f27cbef5f6c96074dec9eb4c77d2922921",
+    "src/components/settings/OnboardingSection.tsx": "02db7a40137a5b27395152d07a22a5a6cde676d5f42448d70d28e148c524d93e",
+    "src/components/settings/PaymentSection.tsx": "56eb0b539450eba0b072323f42c547f1d728ffdfc1107be55f3d3144fcfaf4f0",
+    "src/components/settings/PlanUpgradeSection.tsx": "47311df03e1ca76cb51e5094360c2ef868e14f1d9bb6c70509a48fdff174a553",
+    "src/components/settings/SmsSection.tsx": "32bd4796af022b4285e56e9a6e4721ea4f5f7ffb77ad165cf5b25a8060eb9f39",
+    "src/components/settings/integration-providers.ts": "62d8b949da2880e3555feae62558adbed369d023f97a188031e4b73980a07eb5",
+    "src/components/settings/useStripeReturn.ts": "eaf89c0b2c22379d78e3a68ed20d07e91efe02f44755ed29068c706816fd5697",
+    "src/components/settings/useTenantId.ts": "d8fc59888c6c297ea2b29332c2cdc84d24a5e1ad5ac452d52f0effac9112d849"
+  },
+  "protectedFlows": {
+    "src/components/PersonalInformationModal.tsx": "c62dd16e810bd1d75bd3bc6e3cae1ee698fdcf4d9ec67d870dc833d76b1b1975",
+    "src/lib/member-erasure-copy.ts": "e8a5a2413e76e1a471286186603ed0e587c644823db276879f2b7f646ef14f4c"
+  },
+  "recordedFrom": "625e3ebbacdabf8bba0be9565aaa90d14c755e36",
+  "rulesAndFunctions": {
+    "firestore.rules": "a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499",
+    "functions/.gcloudignore": "9c20b803e45cd91612bcc0113d5e925422cd5c90686feaa4487e0349ae0951b2",
+    "functions/package-lock.json": "bbe18ca8fb92c17d72a991069017be73116d885643dcf681599a958aa3e31681",
+    "functions/package.json": "33846d2de1bef5e32ab53a5fb37373aa725aab06a6dd12d2e81a1c69ac6034eb",
+    "functions/src/index.ts": "39ccade96ac3d4dd5a13047e9bc42b54ef5ac59ae72f932af042fc814bf23e0b",
+    "functions/tsconfig.json": "a707d5b587803ee0e9224d5943136bbb5be281f3522ce6640def17315a423a25"
+  }
+}

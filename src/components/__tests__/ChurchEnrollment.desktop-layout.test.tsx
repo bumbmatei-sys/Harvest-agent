@@ -817,6 +817,14 @@ describe('the layout rules live in one shared place and have a caller', () => {
       'src/components/NewsletterEditor.tsx',
       'src/components/PersonalInformationModal.tsx',
       'src/components/UserMessages.tsx',
+      // THE-286 — the first adopter from settings/ rather than from a screen.
+      // The converted GivingStatementsSection takes CONTROL_DENSITY only: its
+      // controls need the 38px desktop density and the 28px section gap, and it
+      // takes NO measure (Rule 1) because it renders inside AdminSettings, which
+      // already spends FORM_MEASURE — taking one here would cap a column inside
+      // a column. It is the proof section for the settings chrome; the other
+      // twelve sections are untouched and are not on this list.
+      'src/components/settings/GivingStatementsSection.tsx',
     ]);
   });
 });

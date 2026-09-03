@@ -861,7 +861,35 @@ it('border-strong, border-faint, border-subtle and border-hairline still produce
 
 /* ── 8. Imported by nothing ──────────────────────────────────────────────── */
 
-it('nothing imports the new components — installing is this ticket, not adopting', () => {
+/**
+ * ⚠️ THE-274 INSTALLED THESE AND ADOPTED NONE OF THEM. This assertion was
+ * `toEqual([])` and said so: "installing is this ticket, not adopting".
+ *
+ * THE-286 is the first adopter, so the claim narrows rather than disappears —
+ * from "nobody imports these" to "exactly these files do, each named with the
+ * ticket that adopted them". That is strictly the stronger guard: an
+ * unrecorded adoption still fails here, and now so does an adopter that
+ * quietly stops adopting, which `toEqual([])` could never have caught.
+ *
+ * 🔴 The list is pinned WHOLE. Widening it is an edit to this line, visible in
+ * review — which is the property that made the original assertion worth having.
+ */
+const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: string }> = [
+  {
+    file: 'src/components/settings/GivingStatementsSection.tsx',
+    ticket: 'THE-286',
+    why:
+      'The proof section for the settings chrome. It takes `field` (Field, FieldLabel, ' +
+      'FieldDescription, FieldError) and `textarea`, plus the pre-existing `input`, so that the ' +
+      'section spells no field chrome of its own — it used to draw a card inside the accordion ' +
+      "row's card and re-spell `px-4 py-2.5 border rounded-xl focus:ring-gold` three times. " +
+      'FieldError is load-bearing rather than cosmetic: it carries role="alert", which is what ' +
+      'makes a failed autosave reach a screen reader and not only an eye. No primitive was ' +
+      'edited — their digests are pinned by ds-primitives.test.tsx and still match.',
+  },
+];
+
+it('only the recorded adopters import the new components, and each names its ticket', () => {
   const names = NEW_PRIMITIVES.map((f) => f.replace(/\.tsx$/, '')).join('|');
   const re = new RegExp(`@/components/ui/(${names})\\b`);
   const importers = walkFiles(path.join(REPO_ROOT, 'src'), (d) => d === 'node_modules')
@@ -871,7 +899,16 @@ it('nothing imports the new components — installing is this ticket, not adopti
       if (f.includes(`${path.sep}__tests__${path.sep}`)) return false;
       return re.test(readFileSync(f, 'utf8'));
     });
-  expect(importers.map((f) => rel(f))).toEqual([]);
+  expect(importers.map((f) => rel(f)).sort())
+    .toEqual(RECORDED_ADOPTERS.map((a) => a.file).sort());
+
+  // An entry that no longer adopts has to come out, so the list cannot outlive
+  // what it records — the same shape as EDITED_SINCE_MEASUREMENT elsewhere.
+  for (const { file, why } of RECORDED_ADOPTERS) {
+    expect(re.test(readFileSync(path.join(REPO_ROOT, file), 'utf8')),
+      `${file} is recorded as an adopter but imports none of the new primitives`).toBe(true);
+    expect(why.length, `${file} is recorded without a stated reason`).toBeGreaterThan(80);
+  }
 });
 
 it('and nothing outside the three primitives imports the three new runtime packages', () => {
