@@ -101,6 +101,7 @@ const hookState = vi.hoisted(() => ({
   folders: null as null | unknown[],
   shared: null as null | unknown[],
   truncated: false,
+  loading: false,
 }));
 
 vi.mock('../RichTextEditor', () => ({ default: () => null }));
@@ -131,7 +132,10 @@ vi.mock('../../store/useAppStore', () => ({
   useAppStore: () => ({ currentTenantId: 't1', isAuthReady: true, tenantPlan: 'seed', isSuperAdmin: false }),
 }));
 vi.mock('../../hooks/queries/useDocsQueries', () => ({
-  useDocs: () => ({ data: { items: hookState.docs ?? DOCS, truncated: hookState.truncated }, isLoading: false }),
+  useDocs: () => ({
+    data: { items: hookState.docs ?? DOCS, truncated: hookState.truncated },
+    isLoading: hookState.loading,
+  }),
   useDocFolders: () => ({ data: { items: hookState.folders ?? FOLDERS, truncated: false } }),
   useSharedDocs: () => ({ data: { items: hookState.shared ?? SHARED, truncated: false } }),
 }));
@@ -174,7 +178,8 @@ async function clickLeaf(docId: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  hookState.docs = null; hookState.folders = null; hookState.shared = null; hookState.truncated = false;
+  hookState.docs = null; hookState.folders = null; hookState.shared = null;
+  hookState.truncated = false; hookState.loading = false;
   container = document.createElement('div');
   document.body.appendChild(container);
 });
@@ -333,6 +338,28 @@ describe('arbitrary folder nesting renders', () => {
     expect(q('[data-empty-folder="f-empty"]')).not.toBeNull();
     expect(q('[data-empty-folder="f-ministry"]'), 'a folder with contents claimed to be empty')
       .toBeNull();
+  });
+});
+
+describe('a read in flight is not an empty church', () => {
+  it('shows skeleton rows, not "No notes yet", while the first read is running', async () => {
+    hookState.loading = true;
+    hookState.docs = [];
+    hookState.folders = [];
+    await mountDocs();
+    expect(q('[data-testid="docs-loading"]'), 'nothing marks the tree as loading').not.toBeNull();
+    expect(q('[data-testid="docs-empty"]'), 'told the user they have no notes mid-read').toBeNull();
+    // The old screen replaced the WHOLE list view with a spinner. The tree
+    // keeps its shape, so the rows land in it instead of the layout jumping.
+    expect(q('[data-testid="docs-tree"]')).not.toBeNull();
+  });
+
+  it('says the church is empty once the read has finished and it is', async () => {
+    hookState.docs = [];
+    hookState.folders = [];
+    await mountDocs();
+    expect(q('[data-testid="docs-loading"]')).toBeNull();
+    expect(q('[data-testid="docs-empty"]')).not.toBeNull();
   });
 });
 

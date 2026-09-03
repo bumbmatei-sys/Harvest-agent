@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import {
   SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarHeader, SidebarMenu,
-  SidebarMenuItem, SidebarMenuSub, SidebarMenuSubItem,
+  SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubItem,
 } from '../ui/sidebar';
 import {
   ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger,
@@ -54,6 +54,8 @@ export interface DocsTreeProps {
   sharedDocs: Doc[];
   /** True when a list read hit the runaway-read ceiling (THE-262, PR 405). */
   truncated: boolean;
+  /** The first read is still in flight. Distinct from "this church has none". */
+  loading?: boolean;
   openDocId: string | null;
   onOpenDoc: (d: Doc) => void;
   onNewDoc: (folderId?: string | null) => void;
@@ -249,7 +251,7 @@ const FolderBranch: React.FC<{
 
 const DocsTree: React.FC<DocsTreeProps> = (props) => {
   const {
-    docs, folders, sharedDocs, truncated, openDocId, onOpenDoc,
+    docs, folders, sharedDocs, truncated, loading, openDocId, onOpenDoc,
     onNewDoc, onNewFolder, onImport, onOpenSwitcher,
   } = props;
 
@@ -388,7 +390,17 @@ const DocsTree: React.FC<DocsTreeProps> = (props) => {
                 </DocContextMenu>
               </SidebarMenuItem>
             ))}
-            {roots.length === 0 && rootNotes.length === 0 && (
+            {/* A read in flight is not an empty church. The old screen showed a
+                spinner over the whole list view; here the tree keeps its shape
+                and the rows arrive into it, so nothing jumps and nobody is told
+                they have no notes while their notes are loading. */}
+            {loading && roots.length === 0 && rootNotes.length === 0 &&
+              [0, 1, 2].map(i => (
+                <SidebarMenuItem key={`skeleton-${i}`} data-testid="docs-loading">
+                  <SidebarMenuSkeleton showIcon />
+                </SidebarMenuItem>
+              ))}
+            {!loading && roots.length === 0 && rootNotes.length === 0 && (
               <SidebarMenuItem>
                 <Empty data-testid="docs-empty" className="gap-1 p-4">
                   <EmptyHeader className="gap-0.5">

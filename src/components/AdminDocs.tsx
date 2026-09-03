@@ -1,12 +1,12 @@
 "use client";
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
-  Plus, FileText, Trash2, FolderOpen, Folder, Maximize2, Minimize2,
+  Plus, FileText, Trash2, Folder, Maximize2, Minimize2,
   X, ArrowLeft, Edit2, Pin, MoreHorizontal, Share2, Check, Download, Radio
 } from 'lucide-react';
 import {
   collection, query, where, addDoc, updateDoc, deleteDoc,
-  doc, getDoc, serverTimestamp, Timestamp, getDocs, arrayUnion, arrayRemove
+  doc, getDoc, serverTimestamp, getDocs, arrayUnion, arrayRemove
 } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { db, auth } from '../firebase';
@@ -1034,6 +1034,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
             folders={folders}
             sharedDocs={sharedDocs}
             truncated={docsTruncated}
+            loading={loading}
             openDocId={openDoc?.id ?? null}
             onOpenDoc={openDocument}
             onNewDoc={createDoc}
