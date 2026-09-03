@@ -1,0 +1,1094 @@
+import { describe, it, expect, beforeAll } from 'vitest';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import path from 'node:path';
+import postcss from 'postcss';
+
+import { GLOBALS_CSS, REPO_ROOT, TAILWIND_CONFIG } from '../test/support/tailwind-build';
+import {
+  auditPrimitives,
+  extractClassNames,
+  SET_AT_RUNTIME,
+  SET_BY_NEXT_FONT,
+  rel,
+} from '../components/ui/__tests__/ds-primitives.audit';
+import { contrastRatio, AA_CONTRAST, DEFAULT_PALETTE_FAMILY } from '../lib/theme';
+
+/**
+ * THE-274 — shadcn Phase 7, Batches C, D and E, installed in one pass.
+ *
+ * Twenty-one primitives, one CLI call, one PR. They carry the Obsidian notes
+ * tree (command, context-menu, resizable, item, empty), the profile/settings
+ * cascade (field, input-group, textarea), the dashboard's customise drawer
+ * (switch, checkbox, toggle-group) and the insight feeds (alert, spinner,
+ * hover-card, scroll-area). As with THE-266, THE-270 and THE-272, every one is
+ * wired into NOTHING — imported by nothing is the correct end state, and
+ * section 9 asserts it.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * ⚠️ TWO OF THE TICKET'S PREMISES NEEDED CORRECTING, AND ONE WAS CONFIRMED.
+ *
+ * 1. THE LIST WAS 19; THE CLI WROTE 21. Two arrived that the ticket did not
+ *    name, and both are correct:
+ *      • `popover` — the ticket asked for it explicitly ("install popover if it
+ *        is missing"). It was missing. It is a registry item (200) and is now
+ *        installed, which is also what makes a date-picker COMPOSABLE later.
+ *      • `toggle` — a registry dependency of `toggle-group`, which nothing in
+ *        the ticket mentions and which was not installed. The CLI pulled it in
+ *        on its own. Section 3 pins the file set at exactly 43 so that neither
+ *        an unexpected arrival nor a disappearance is silent.
+ *
+ * 2. `date-picker` IS NOT A REGISTRY ITEM — CONFIRMED, exactly as the ticket
+ *    predicted and exactly the shape THE-272 found for `data-table`.
+ *    `https://ui.shadcn.com/r/styles/base-nova/date-picker.json` is a 404
+ *    while `popover.json` and the other nineteen are 200. In shadcn it is a
+ *    COMPOSITION of `calendar` + `popover`, written where it is used. Nothing
+ *    was hand-written to stand in for it; section 12 asserts its absence.
+ *
+ * 3. "EXPECT ZERO NEW TOKENS" — HELD. globals.css is byte-identical (section
+ *    4). The bridge has now survived THE-266's four, THE-272's four, THE-270's
+ *    sidebar and these twenty-one without a single token being added.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * ⚠️ THE TWO UNRESOLVED CLASSES, AND WHY NEITHER WAS A MISSING TOKEN.
+ *
+ * The guard reported two findings against calendar.tsx on first run:
+ *
+ *     rtl:**:[.rdp-button_next>svg]:rotate-180        no rule generated
+ *     rtl:**:[.rdp-button_previous>svg]:rotate-180    no rule generated
+ *
+ * Neither was fixed by defining a token — the ticket forbids that, and it
+ * would have been wrong: these name no custom property at all. calendar.tsx
+ * spells them inside `String.raw` with an ESCAPED underscore
+ * (`rdp-button\_next`), because in a Tailwind arbitrary variant `_` means a
+ * space. The extractor read TypeScript's COOKED text, where `\_` has already
+ * collapsed to `_`, and so asked Tailwind about a class that appears in no
+ * file. Tailwind — which scans the source — had generated a rule for the
+ * backslash spelling all along.
+ *
+ * Same shape as THE-272's `dot`/`line`/`dashed`/`top` comparands, and the same
+ * remedy: a reader that agrees with the runtime, not an exemption. See
+ * isStringRawTag in ds-primitives.audit.ts, and section 1's mutation, which
+ * pins that an UNTAGGED template with the same escape still fails.
+ */
+
+const sha256 = (t: string): string => createHash('sha256').update(t, 'utf8').digest('hex');
+
+const UI_DIR = path.join(REPO_ROOT, 'src/components/ui');
+const FIXTURES = path.join(UI_DIR, '__tests__/__fixtures__');
+const LAYOUT = path.join(REPO_ROOT, 'src/app/layout.tsx');
+
+/**
+ * The twenty-one this PR installs, as a LITERAL list.
+ *
+ * ⚠️ This list is the reason the guard cannot be satisfied by an empty
+ * directory. `auditPrimitives` is pointed at whatever `readdirSync` finds, so
+ * DELETING a newly written file would remove it from the audit and every
+ * token assertion would pass while auditing nothing — the exact failure mode
+ * THE-266's first attempt shipped. Section 1 walks this literal list and
+ * requires each name both to exist on disk and to appear in the audit's own
+ * `classesByFile`, so a deletion fails BY NAME.
+ */
+const NEW_PRIMITIVES = [
+  'alert.tsx',
+  'button-group.tsx',
+  'calendar.tsx',
+  'checkbox.tsx',
+  'command.tsx',
+  'context-menu.tsx',
+  'empty.tsx',
+  'field.tsx',
+  'hover-card.tsx',
+  'input-group.tsx',
+  'item.tsx',
+  'popover.tsx',
+  'radio-group.tsx',
+  'resizable.tsx',
+  'scroll-area.tsx',
+  'slider.tsx',
+  'spinner.tsx',
+  'switch.tsx',
+  'textarea.tsx',
+  'toggle-group.tsx',
+  'toggle.tsx',
+] as const;
+
+/**
+ * The 22 that existed at 788a589, with the digests recorded there.
+ *
+ * ⚠️ Spelled as LITERALS rather than read from primitive-digests.json. This PR
+ * RE-RECORDS that fixture — it must, it gains twenty-one entries — so a test
+ * comparing the fixture against itself would pass no matter what the CLI had
+ * done to button.tsx or dialog.tsx. FIVE of these are registry dependencies of
+ * what this PR installs — `command` → dialog + input-group, `field` → label +
+ * separator, `input-group` → button + input + textarea, `item`/`button-group`
+ * → separator — so five were live candidates for exactly that rewrite. The CLI
+ * reported them "skipped (identical)"; this is the assertion that does not
+ * take its word for it.
+ */
+const PRE_EXISTING_DIGESTS: Record<string, string> = {
+  'avatar.tsx': '357b2f9aac0192c071cb2ed65cb6e4c8ec01fa02fc15cf50d889b85731b75666',
+  'badge.tsx': '968b0403af74a785c9408ca69a677235e49d0c80b2c27fb9858ad421a8778c7d',
+  'breadcrumb.tsx': '26f83fc8ed302d710851a71b705f5f8f28c805561c1fb6945370617267c5a4a9',
+  'button.tsx': 'd14549ab3ba7a9d5d1f424c2599233bffa0b317121abf3b6efa2fb902d5e2781',
+  'card.tsx': 'd8113cbf964f8d1aadf2649d2944d8bbc6e3cfd49d36746f76868cbc4dde3cfe',
+  'chart.tsx': '0060b7708d85a5fffc914dcd1ee4753b5acfe83db7ba634b4cea280bd9f19c8f',
+  'collapsible.tsx': 'ead4349ff7b01d696ef89294a81d18ee1d3f732321398896462c834ab9b9e065',
+  'dialog.tsx': 'ccabf6cc674a68b09d9168904bb46b7c1075a67312cf6f51f3e38b8eeacd2fdb',
+  'dropdown-menu.tsx': '1c1ae4ec02de9778286f84e0d15a1b74cc610c13c5b6a13c1ada2e6770eeb4e1',
+  'input.tsx': 'f7d6ecff9a4d631feeaf401c02bb87e26ddb38131c55d15a43b9290747390847',
+  'label.tsx': '7f19b8476658d25ff197c84030e58cd7395059d876a54630e025951e474ebdae',
+  'pagination.tsx': '0aba86a91ba0a8d99e92846f10b395d0ddc1a8901a4f54418e8802c12fad57c1',
+  'progress.tsx': '45e33890b5a82744fc27d0928f927c5942c1166e5e27de8f776b29112967d317',
+  'select.tsx': 'ca3bd1b370ea67b84632d435c22d8270752fa6013c06c365162af265e4a0e87e',
+  'separator.tsx': '75085bd84ff6965e4a356c53a4689799cabf65caa93c0bba064d5a0c6fa78f13',
+  'sheet.tsx': 'a8ff25079c1167230fc3a9ddce881a8fb24f8ebb1eecbc8189c7f1cf242018df',
+  'sidebar.tsx': '29e33400cfdd00cb499da3615ed2258d75192d2b2a5a5117a84d2db4242ed0bf',
+  'skeleton.tsx': '8110bba70d0cb9fe968c0b7bd092ad12258caef40b028b4a87f402bdab907faf',
+  'sonner.tsx': '2ebc0c9ba968858cead2fbf2523dfd9da217715339967025e8c8df94f2131ab9',
+  'table.tsx': 'a13f55a7c1406197608f223006cf16f211a257b213362caaef0d2abf3a389c8f',
+  'tabs.tsx': '8bf9ee3935ab86c268a2a71cb5b4b67d3d5587ca9f2e0bf25f37ffdb1980434c',
+  'tooltip.tsx': '2cea2294d4947b88d815860f64e0b5e0eb47a59bde47cfd194aac2230c923865',
+};
+
+/**
+ * The class counts of those 22, recorded BEFORE this PR touched the extractor.
+ * Pinned as literals for the same reason the digests are: this PR re-records
+ * primitive-class-counts.json, and the claim under test is that the
+ * `String.raw` fix moved none of these numbers — no pre-existing primitive
+ * spells a raw-tagged template, so none of them can have shifted.
+ */
+const PRE_EXISTING_COUNTS: Record<string, number> = {
+  'avatar.tsx': 48,
+  'badge.tsx': 49,
+  'breadcrumb.tsx': 18,
+  'button.tsx': 80,
+  'card.tsx': 44,
+  'chart.tsx': 63,
+  'collapsible.tsx': 0,
+  'dialog.tsx': 53,
+  'dropdown-menu.tsx': 79,
+  'input.tsx': 35,
+  'label.tsx': 11,
+  'pagination.tsx': 13,
+  'progress.tsx': 18,
+  'select.tsx': 104,
+  'separator.tsx': 6,
+  'sheet.tsx': 61,
+  'sidebar.tsx': 167,
+  'skeleton.tsx': 3,
+  'sonner.tsx': 3,
+  'table.tsx': 26,
+  'tabs.tsx': 73,
+  'tooltip.tsx': 53,
+};
+
+/** The out-of-scope files, pinned at 788a589. */
+const LAYOUT_SHA = 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5';
+const RULES_SHA = 'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499';
+const TAILWIND_CODE_SHA = '491ebb5575d16eddfab00c6ed89900c725141b412e410e9e97342ff2108b2904';
+const GLOBALS_SHA = '772c79af681c2b97c496b91be4f2573415f2a65802dfac078dbc72e8a8fd3741';
+
+const FUNCTIONS_DIGESTS: Record<string, string> = {
+  'functions/.gcloudignore': '9c20b803e45cd916',
+  'functions/package-lock.json': 'bbe18ca8fb92c17d',
+  'functions/package.json': '33846d2de1bef5e3',
+  'functions/src/index.ts': '39ccade96ac3d4dd',
+  'functions/tsconfig.json': 'a707d5b587803ee0',
+};
+
+/** The four npm dependencies this PR accepts, and the versions it accepts. */
+const NEW_DEPENDENCIES: Record<string, { range: string; version: string }> = {
+  cmdk: { range: '^1.1.1', version: '1.1.1' },
+  'date-fns': { range: '^4.4.0', version: '4.4.0' },
+  // ⚠️ EXACT, not a caret. The registry declares `react-day-picker@latest`,
+  // which is a moving target by construction; the founder's decision was to
+  // pin it so the CLI's `@latest` cannot drift this tree on a later install.
+  'react-day-picker': { range: '10.0.1', version: '10.0.1' },
+  'react-resizable-panels': { range: '^4.12.3', version: '4.12.3' },
+};
+
+/* ── palette resolution — the same four chains THE-266/272 pinned ────────── */
+
+const PALETTES = {
+  // Classic first: it has been the default family since #409.
+  'classic light': ['[data-palette="classic"][data-theme="light"]', ':root'],
+  'classic dark': [
+    '[data-palette="classic"].dark, [data-palette="classic"][data-theme="dark"]',
+    '.dark, [data-theme="dark"]',
+    ':root',
+  ],
+  'harvest light': [':root'],
+  'harvest dark': ['.dark, [data-theme="dark"]', ':root'],
+} as const;
+
+type Palette = keyof typeof PALETTES;
+type Decls = Map<string, Map<string, string>>;
+
+const declarationsBySelector = (css: string): Decls => {
+  const out: Decls = new Map();
+  postcss.parse(css).walkRules((r) => {
+    const key = r.selector.replace(/\s+/g, ' ').trim();
+    const map = out.get(key) ?? new Map<string, string>();
+    r.walkDecls((d) => {
+      if (d.prop.startsWith('--')) map.set(d.prop, d.value.trim());
+    });
+    out.set(key, map);
+  });
+  return out;
+};
+
+/**
+ * Resolve one custom property in one palette, following var() indirection.
+ *
+ * ⚠️ Extended over THE-272's copy by one case: `rgb(var(--x))`. THE-274 is the
+ * first batch to put `--destructive` on a ground, and globals.css defines it as
+ * `rgb(var(--ink-danger-strong))` over Harvest's own space-separated triple.
+ * THE-272's resolver only unwrapped a bare leading `var(`, so it returned the
+ * literal string and contrastRatio produced NaN — which `toBeGreaterThanOrEqual`
+ * silently fails rather than reports. Handled here rather than in lib/theme so
+ * no production code moves for a test.
+ */
+const resolve = (decls: Decls, chain: readonly string[], token: string): string => {
+  const lookup = (name: string): string | undefined => {
+    for (const sel of chain) {
+      const v = decls.get(sel)?.get(name);
+      if (v !== undefined) return v;
+    }
+    return undefined;
+  };
+  let value = lookup(token);
+  const seen = new Set<string>();
+  for (let i = 0; i < 10 && value; i++) {
+    const wrapped = value.match(/^rgba?\(\s*var\(\s*(--[A-Za-z0-9-]+)\s*\)\s*\)$/);
+    const direct = value.match(/^var\(\s*(--[A-Za-z0-9-]+)\s*(?:,([\s\S]*))?\)$/);
+    const name = wrapped?.[1] ?? direct?.[1];
+    if (!name || seen.has(name)) break;
+    seen.add(name);
+    const got = lookup(name);
+    if (wrapped) {
+      if (got === undefined) break;
+      value = `rgb(${got})`;
+      break;
+    }
+    value = got !== undefined ? got : direct?.[2]?.trim();
+  }
+  return (value ?? '').trim();
+};
+
+/** `#RRGGBB` straight through; `rgb(r g b)` / `rgb(r, g, b)` folded to hex. */
+const toHexColour = (value: string): string => {
+  if (/^#[0-9a-fA-F]{6}$/.test(value)) return value;
+  const m = value.match(/^rgba?\(\s*([0-9.]+)[\s,]+([0-9.]+)[\s,]+([0-9.]+)/);
+  if (!m) return value;
+  return (
+    '#' +
+    [1, 2, 3]
+      .map((i) => Math.round(Number(m[i])).toString(16).padStart(2, '0'))
+      .join('')
+      .toUpperCase()
+  );
+};
+
+const ratio = (decls: Decls, palette: Palette, fg: string, bg: string): number =>
+  contrastRatio(
+    toHexColour(resolve(decls, PALETTES[palette], fg)),
+    toHexColour(resolve(decls, PALETTES[palette], bg)),
+  );
+
+const allDeclaredTokens = (): string[] => {
+  const names = new Set<string>();
+  postcss.parse(readFileSync(GLOBALS_CSS, 'utf8')).walkDecls((d) => {
+    if (d.prop.startsWith('--')) names.add(d.prop);
+  });
+  return [...names].sort();
+};
+
+const pkg = (): { dependencies: Record<string, string>; devDependencies: Record<string, string> } =>
+  JSON.parse(readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8'));
+
+const lock = (): { packages: Record<string, { version?: string; dev?: boolean }> } =>
+  JSON.parse(readFileSync(path.join(REPO_ROOT, 'package-lock.json'), 'utf8'));
+
+const walkFiles = (dir: string, skip: (name: string) => boolean = () => false): string[] =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) return skip(e.name) ? [] : walkFiles(p, skip);
+    return [p];
+  });
+
+let decls: Decls;
+let audit: Awaited<ReturnType<typeof auditPrimitives>>;
+
+beforeAll(async () => {
+  decls = declarationsBySelector(readFileSync(GLOBALS_CSS, 'utf8'));
+  audit = await auditPrimitives(
+    readdirSync(UI_DIR)
+      .filter((f) => f.endsWith('.tsx'))
+      .sort()
+      .map((f) => path.join(UI_DIR, f)),
+  );
+}, 180_000);
+
+/* ── 0. The resolver is pointed at real blocks ───────────────────────────── */
+
+it('every palette selector this file names actually exists in globals.css', () => {
+  // A mistyped selector does not throw — `resolve` falls through to the next
+  // link and returns :root's value, so "classic dark" would silently report the
+  // LIGHT palette and every ratio below would pass while measuring the wrong
+  // thing. THE-266 caught exactly that during development.
+  for (const [palette, chain] of Object.entries(PALETTES)) {
+    for (const sel of chain) {
+      expect(decls.has(sel), `${palette} names a selector not in globals.css: ${sel}`).toBe(true);
+    }
+  }
+});
+
+/* ── 1. The guard, named per component ───────────────────────────────────── */
+
+describe("each new primitive's token classes resolve", () => {
+  // One `it` per component, so a regression names the file rather than
+  // reporting "something under src/components/ui is broken".
+  for (const file of NEW_PRIMITIVES) {
+    it(`${file} spells no class that produces nothing`, () => {
+      const abs = path.join(UI_DIR, file);
+
+      // ⚠️ THE MUTATION THAT PROVES THE GUARD READ THE FILE. The audit is
+      // pointed at readdirSync's output, so a DELETED file simply leaves the
+      // set and every token assertion below would pass vacuously. Both halves
+      // are required: the file is on disk, AND the audit actually opened it.
+      expect(existsSync(abs), `${file} is missing — the CLI did not write it, or it was deleted`)
+        .toBe(true);
+      expect(
+        [...audit.classesByFile.keys()].map((f) => path.basename(f)),
+        `${file} was never audited`,
+      ).toContain(file);
+
+      // …and it yielded real classes, so an emptied file cannot pass either.
+      const classes = audit.classesByFile.get(abs) ?? [];
+      expect(classes.length, `${file} yielded no classes at all`).toBeGreaterThan(0);
+
+      const mine = audit.findings.filter((f) => path.basename(f.file) === file);
+      expect(
+        mine.map((f) => `${f.className} — ${f.reason}`),
+        `${file} spells a class that resolves to nothing`,
+      ).toEqual([]);
+    });
+  }
+
+  it('and the audit as a whole is clean, across all 43 primitives', () => {
+    expect(audit.findings).toEqual([]);
+    expect(audit.classesByFile.size).toBe(43);
+  });
+
+  it('the audit opened all 43 files and pulled real classes out of the new 21', () => {
+    // A build that produced nothing would report every class unresolved and
+    // look like a very thorough guard; a reader that stopped reading would
+    // report nothing and look like a very clean one. Both are excluded.
+    expect(audit.generatedCount).toBeGreaterThan(200);
+    for (const file of NEW_PRIMITIVES) {
+      const classes = audit.classesByFile.get(path.join(UI_DIR, file)) ?? [];
+      // spinner.tsx is the floor at 2 — it is one <svg> with two classes.
+      expect(classes.length, `${file} yielded ${classes.length} classes`).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it('the String.raw fix moved no pre-existing count', () => {
+    // The extractor changed in this PR. The claim is that it changed the
+    // reading of exactly the raw-tagged templates and nothing else — no file
+    // that predates this PR spells one, so not one of these may move.
+    const counts = Object.fromEntries(
+      [...audit.classesByFile].map(([f, c]) => [path.basename(f), c.length]),
+    );
+    for (const [file, expected] of Object.entries(PRE_EXISTING_COUNTS)) {
+      expect(counts[file], `${file} changed class count under the String.raw fix`).toBe(expected);
+    }
+  });
+
+  it("calendar's two rtl classes are read with their backslash, and resolve", () => {
+    // The bug, pinned from the other side: the class the extractor now reports
+    // is the SOURCE spelling (with `\_`), which is what lands in the DOM and
+    // what Tailwind generated a rule for. If the reader regressed to the cooked
+    // text these two names would change and the guard would report them again.
+    const classes = audit.classesByFile.get(path.join(UI_DIR, 'calendar.tsx')) ?? [];
+    expect(classes).toContain(String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`);
+    expect(classes).toContain(String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`);
+    // And the cooked spelling — the one that produced the false positive — is
+    // not what is read.
+    expect(classes).not.toContain('rtl:**:[.rdp-button_next>svg]:rotate-180');
+  });
+
+  it('an untagged template literal with the same escape still fails', async () => {
+    // ⚠️ The mutation the by-tag rule is written against. Reading raw text for
+    // EVERY template literal would hide a real bug: an untagged `\_` really
+    // does collapse to `_` at runtime, so the class in the DOM would not match
+    // the rule Tailwind generated from the source. Only String.raw is exempt.
+    const { mkdtempSync, writeFileSync } = await import('node:fs');
+    const os = await import('node:os');
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'the-274-'));
+    const file = path.join(dir, 'fixture.tsx');
+    writeFileSync(
+      file,
+      'export const F = () => <div className={`rtl:**:[.rdp-button\\_next>svg]:rotate-180`} />',
+      'utf8',
+    );
+    const { findings } = await auditPrimitives([file]);
+    expect(findings.map((f) => f.className)).toContain(
+      'rtl:**:[.rdp-button_next>svg]:rotate-180',
+    );
+  }, 180_000);
+});
+
+/* ── 2. The unresolved fixture ───────────────────────────────────────────── */
+
+it('the unresolved fixture is still empty, at zero bytes', () => {
+  // Twenty-one components arrived and the recorded failure list did not grow.
+  const recorded = readFileSync(path.join(FIXTURES, 'unresolved-token-classes.txt'), 'utf8');
+  expect(recorded).toBe('');
+});
+
+/* ── 3. The CLI rewrote nothing it should not have ───────────────────────── */
+
+describe('the CLI rewrote nothing it should not have', () => {
+  it('all 22 pre-existing primitives are byte-identical to 788a589', () => {
+    const actual = Object.fromEntries(
+      Object.keys(PRE_EXISTING_DIGESTS).map((f) => [
+        f,
+        sha256(readFileSync(path.join(UI_DIR, f), 'utf8')),
+      ]),
+    );
+    expect(actual).toEqual(PRE_EXISTING_DIGESTS);
+  });
+
+  it('the five the CLI could have rewritten in particular', () => {
+    // Each of these is a registry dependency of something installed here, so
+    // each was a live candidate for an overwrite: dialog and input-group via
+    // `command`, label and separator via `field`, button/input/textarea via
+    // `input-group`. `--overwrite` defaults to false and the CLI content-
+    // compares before it would prompt; this does not take its word for it.
+    for (const f of ['button.tsx', 'dialog.tsx', 'input.tsx', 'label.tsx', 'separator.tsx']) {
+      expect(sha256(readFileSync(path.join(UI_DIR, f), 'utf8')), `${f} was rewritten`).toBe(
+        PRE_EXISTING_DIGESTS[f],
+      );
+    }
+  });
+
+  it('src/components/ui holds exactly the 22 plus the 21, and nothing else', () => {
+    const onDisk = readdirSync(UI_DIR)
+      .filter((f) => f.endsWith('.tsx'))
+      .sort();
+    expect(onDisk).toEqual(
+      [...Object.keys(PRE_EXISTING_DIGESTS), ...NEW_PRIMITIVES].sort(),
+    );
+    expect(onDisk).toHaveLength(43);
+  });
+
+  it('the re-recorded digest fixture carries the 22 unchanged', () => {
+    // The fixture had to be re-recorded — it gains 21 entries. This asserts
+    // the re-record carried nothing with it: every pre-existing entry in the
+    // regenerated file still holds the value recorded at 788a589.
+    const fixture: Record<string, string> = JSON.parse(
+      readFileSync(path.join(FIXTURES, 'primitive-digests.json'), 'utf8'),
+    );
+    for (const [file, digest] of Object.entries(PRE_EXISTING_DIGESTS)) {
+      expect(fixture[`src/components/ui/${file}`], `${file} moved in the fixture`).toBe(digest);
+    }
+    expect(Object.keys(fixture)).toHaveLength(43);
+  });
+});
+
+/* ── 4. Zero new tokens ──────────────────────────────────────────────────── */
+
+describe('the token bridge held, with zero new tokens', () => {
+  it('globals.css is byte-identical — this PR defines no token at all', () => {
+    expect(sha256(readFileSync(GLOBALS_CSS, 'utf8'))).toBe(GLOBALS_SHA);
+  });
+
+  it('and the token ledger is unchanged, name for name', () => {
+    const recorded = readFileSync(path.join(FIXTURES, 'globals-tokens.txt'), 'utf8');
+    expect(`${allDeclaredTokens().join('\n')}\n`).toBe(recorded);
+  });
+
+  it('the runtime exclusion list is still three, and still holds names not patterns', () => {
+    // ⚠️ Twenty-one components arrived, several of them Base UI popups
+    // (popover, hover-card, context-menu, command) — exactly the shape that
+    // produced the three runtime entries in the first place. None needed a
+    // fourth: the positioner classes they spell are the SAME three names.
+    expect(Object.keys(SET_AT_RUNTIME).sort()).toEqual([
+      'max-h-(--available-height)',
+      'origin-(--transform-origin)',
+      'w-(--anchor-width)',
+    ]);
+    for (const [cls, reason] of Object.entries(SET_AT_RUNTIME)) {
+      expect(cls, `${cls} is a pattern, not a name`).not.toMatch(/[*?]|\.\+|\\/);
+      expect(reason.length, `${cls} is exempted without a reason`).toBeGreaterThan(40);
+    }
+  });
+
+  it('SET_BY_NEXT_FONT is still keyed by exact name, not a pattern', () => {
+    expect(Object.keys(SET_BY_NEXT_FONT).sort()).toEqual([
+      '--font-display',
+      '--font-sans',
+      '--font-serif',
+    ]);
+    for (const [prop, reason] of Object.entries(SET_BY_NEXT_FONT)) {
+      expect(prop, `${prop} is a pattern, not a name`).not.toMatch(/[*?]|\.\+|\\/);
+      expect(prop.startsWith('--'), `${prop} is not a property name`).toBe(true);
+      expect(reason.length, `${prop} is exempted without a reason`).toBeGreaterThan(40);
+    }
+    // And the list is still grounded in the file that actually declares them.
+    const layout = readFileSync(LAYOUT, 'utf8');
+    for (const prop of Object.keys(SET_BY_NEXT_FONT)) {
+      expect(layout).toContain(`variable: '${prop}'`);
+    }
+  });
+});
+
+/* ── 5. No existing token moved ──────────────────────────────────────────── */
+
+describe('every token the earlier phases shipped still resolves to the same value', () => {
+  /** THE-263/264's bridge, --chart-*, and THE-267/412's sidebar family. */
+  const PINNED: Record<Palette, Record<string, string>> = {
+    'classic light': {
+      '--background': '#F7F7F7',
+      '--foreground': '#404040',
+      '--card': '#FFFFFF',
+      '--muted': '#EFEFEF',
+      '--muted-foreground': '#595959',
+      '--primary': '#C9963A',
+      '--primary-foreground': '#2D2519',
+      '--accent': '#E0E0E0',
+      '--accent-foreground': '#1A1A1A',
+      '--popover': '#FFFFFF',
+      '--popover-foreground': '#404040',
+      '--sidebar': '#FFFFFF',
+      '--sidebar-foreground': '#404040',
+    },
+    'classic dark': {
+      '--background': '#1C1C1C',
+      '--foreground': '#CCCCCC',
+      '--card': '#242424',
+      '--muted': '#131313',
+      '--muted-foreground': '#ABABAB',
+      '--primary': '#C9963A',
+      '--primary-foreground': '#2D2519',
+      '--accent': '#2E2E2E',
+      '--accent-foreground': '#F2F2F2',
+      '--popover': '#242424',
+      '--popover-foreground': '#CCCCCC',
+      '--sidebar': '#242424',
+      '--sidebar-foreground': '#CCCCCC',
+    },
+    'harvest light': {
+      '--background': '#FAF8F5',
+      '--foreground': '#4A4038',
+      '--card': '#FFFFFF',
+      '--muted': '#F3EEE7',
+      '--muted-foreground': '#68563F',
+      '--primary': '#C9963A',
+      '--primary-foreground': '#2D2519',
+      '--accent': '#E8E2D9',
+      '--accent-foreground': '#2D2519',
+      '--popover': '#FFFFFF',
+      '--popover-foreground': '#4A4038',
+      '--sidebar': '#FFFFFF',
+      '--sidebar-foreground': '#4A4038',
+    },
+    'harvest dark': {
+      '--background': '#1A1612',
+      '--foreground': '#D1C7BA',
+      '--card': '#221D18',
+      '--muted': '#120F0C',
+      '--muted-foreground': '#B5A692',
+      '--primary': '#C9963A',
+      '--primary-foreground': '#2D2519',
+      '--accent': '#2E2822',
+      '--accent-foreground': '#FAF8F5',
+      '--popover': '#221D18',
+      '--popover-foreground': '#D1C7BA',
+      '--sidebar': '#221D18',
+      '--sidebar-foreground': '#D1C7BA',
+    },
+  };
+
+  for (const palette of Object.keys(PALETTES) as Palette[]) {
+    it(`${palette} — every pinned token still resolves to its recorded value`, () => {
+      for (const [token, expected] of Object.entries(PINNED[palette])) {
+        expect(
+          toHexColour(resolve(decls, PALETTES[palette], token)),
+          `${token} moved in ${palette}`,
+        ).toBe(expected);
+      }
+    });
+  }
+
+  it('the eight --sidebar-* tokens and their @theme halves are all still declared', () => {
+    const tokens = allDeclaredTokens();
+    const family = [
+      '--sidebar',
+      '--sidebar-accent',
+      '--sidebar-accent-foreground',
+      '--sidebar-border',
+      '--sidebar-foreground',
+      '--sidebar-primary',
+      '--sidebar-primary-foreground',
+      '--sidebar-ring',
+    ];
+    expect(tokens.filter((t) => /^--sidebar/.test(t)).sort()).toEqual(family);
+    expect(tokens.filter((t) => /^--color-sidebar/.test(t)).sort()).toEqual(
+      family.map((t) => t.replace('--sidebar', '--color-sidebar')).sort(),
+    );
+  });
+
+  it('--chart-1..5 are still declared, and --chart-4/5 are still the muted series', () => {
+    const tokens = allDeclaredTokens();
+    for (const n of [1, 2, 3, 4, 5]) expect(tokens).toContain(`--chart-${n}`);
+    // Recorded by THE-272 and deliberately NOT fixed: the design's own muted
+    // series, measured on the light ground.
+    const four = ratio(decls, 'classic light', '--chart-4', '--background');
+    const five = ratio(decls, 'classic light', '--chart-5', '--background');
+    expect(four).toBeLessThan(3);
+    expect(five).toBeLessThan(3);
+    expect(four).toBeCloseTo(1.5, 1);
+    expect(five).toBeCloseTo(1.77, 1);
+  });
+});
+
+/* ── 6. Contrast ─────────────────────────────────────────────────────────── */
+
+describe('every foreground/background pair the 21 components introduce clears AA', () => {
+  /**
+   * The pairs, read off the installed files:
+   *
+   *   alert.tsx:12         `bg-card text-card-foreground`      (default)
+   *   alert.tsx:14         `bg-card` + `text-destructive`      (destructive)
+   *   popover.tsx:40       `bg-popover text-popover-foreground`
+   *   popover.tsx:77       PopoverDescription `text-muted-foreground`, inside it
+   *   context-menu.tsx:104 `focus:bg-accent focus:text-accent-foreground`
+   *   context-menu.tsx:104 `data-[variant=destructive]:text-destructive` on bg-popover
+   *   checkbox.tsx:13      `data-checked:bg-primary data-checked:text-primary-foreground`
+   *   field.tsx            FieldError `text-destructive` on the page ground
+   *   calendar.tsx:212     `data-[range-middle=true]:bg-muted …:text-foreground`
+   *   item.tsx:146         ItemDescription `text-muted-foreground` on bg-muted
+   *
+   * ⚠️ The `/30`, `/50`, `/80` blends are bounded, not skipped: each composites
+   * its token over the ground beneath it, so the result lies between the two,
+   * and asserting the text colour on BOTH endpoints brackets every blend of
+   * them. resizable, scroll-area, spinner and toggle-group spell no
+   * foreground/background pair of their own — they carry `bg-border`,
+   * `ring-ring` and layout only.
+   */
+  const PAIRS = [
+    ['alert text-card-foreground on bg-card', '--card-foreground', '--card'],
+    ['alert destructive text-destructive on bg-card', '--destructive', '--card'],
+    ['popover text-popover-foreground on bg-popover', '--popover-foreground', '--popover'],
+    ['popover text-muted-foreground on bg-popover', '--muted-foreground', '--popover'],
+    ['context-menu text-accent-foreground on bg-accent', '--accent-foreground', '--accent'],
+    ['context-menu text-destructive on bg-popover', '--destructive', '--popover'],
+    ['checkbox text-primary-foreground on bg-primary', '--primary-foreground', '--primary'],
+    ['field text-destructive on bg-background', '--destructive', '--background'],
+    ['calendar text-foreground on bg-muted', '--foreground', '--muted'],
+    ['item text-muted-foreground on bg-muted', '--muted-foreground', '--muted'],
+  ] as const;
+
+  /** The measured ratios, Classic first. Pinned, not merely bounded. */
+  const RATIOS: Record<Palette, number[]> = {
+    'classic light': [10.37, 6.54, 10.37, 7.0, 13.18, 6.54, 5.69, 6.1, 9.02, 6.09],
+    'classic dark': [9.67, 9.46, 9.67, 6.76, 12.13, 9.46, 5.69, 10.39, 11.57, 8.09],
+    'harvest light': [10.09, 6.54, 10.09, 7.02, 11.73, 6.54, 5.69, 6.17, 8.74, 6.08],
+    'harvest dark': [10.02, 10.18, 10.02, 7.03, 13.73, 10.18, 5.69, 10.96, 11.45, 8.04],
+  };
+
+  for (const palette of Object.keys(PALETTES) as Palette[]) {
+    PAIRS.forEach(([label, fg, bg], i) => {
+      it(`${label} — ${palette}`, () => {
+        const r = ratio(decls, palette, fg, bg);
+        expect(Number.isFinite(r), `${label} did not resolve to a colour in ${palette}`).toBe(true);
+        expect(r, `${label} is ${r.toFixed(2)}:1 in ${palette}`).toBeGreaterThanOrEqual(
+          AA_CONTRAST,
+        );
+        // And it is the ratio recorded, so a token moving underneath these
+        // components fails here by name and palette rather than drifting
+        // silently down towards the floor.
+        expect(r).toBeCloseTo(RATIOS[palette][i], 1);
+      });
+    });
+  }
+
+  /**
+   * ⚠️ THE 5.69 FLOOR IS THIS PAIR, ROUNDED — it is not a bar above it.
+   *
+   * The worst pair here is `text-primary-foreground` on `bg-primary`, identical
+   * in all four palettes because both tokens are family-invariant, and it
+   * measures 5.6876:1. #412's recorded floor of "5.69" is that same gold pair —
+   * `--sidebar-primary-foreground` on `--sidebar-primary` resolves to the very
+   * same two hexes — quoted to two decimals. So this batch does not clear that
+   * floor by a margin; it MEETS it, because it is the same colour pair.
+   *
+   * Asserting `>= 5.69` would therefore fail by 0.0024 on a PR that moved
+   * nothing, which is why the claim is written as "equals the recorded floor"
+   * plus the one real threshold: AA at 4.5. THE-272 asserted `>= 5.69` and got
+   * away with it only because its own worst pair was 6.08 and never reached
+   * the boundary.
+   */
+  it('the worst of them is the recorded 5.69 floor itself, and clears AA', () => {
+    const worst = Math.min(
+      ...PAIRS.flatMap(([, fg, bg]) =>
+        (Object.keys(PALETTES) as Palette[]).map((p) => ratio(decls, p, fg, bg)),
+      ),
+    );
+    expect(worst).toBeGreaterThanOrEqual(AA_CONTRAST);
+    expect(worst).toBeGreaterThanOrEqual(5.66); // THE-263's floor, cleared.
+    expect(worst).toBeCloseTo(5.69, 2); // #412's floor, met — same pair.
+    // And it really is the gold pair, not something else that happens to land
+    // near it: the same two hexes #412 measured.
+    expect(toHexColour(resolve(decls, PALETTES['classic light'], '--primary-foreground'))).toBe(
+      '#2D2519',
+    );
+    expect(toHexColour(resolve(decls, PALETTES['classic light'], '--primary'))).toBe('#C9963A');
+    expect(
+      ratio(decls, 'classic light', '--sidebar-primary-foreground', '--sidebar-primary'),
+    ).toBeCloseTo(worst, 4);
+  });
+
+  /**
+   * ⚠️ THE PAIR THAT DOES NOT CLEAR AA, AND WHY IT IS NOT THIS PR'S TO FIX.
+   *
+   * item.tsx:146, field.tsx:138 and empty.tsx:76 each style a link inside a
+   * description as `[&>a]:underline [&>a:hover]:text-primary`. On the two LIGHT
+   * palettes the gold on the page ground is ~2.5:1, well under 4.5.
+   *
+   * It is recorded rather than fixed because it is NOT NEW. `button.tsx`'s
+   * `link` variant has been exactly `text-primary underline-offset-4
+   * hover:underline` since THE-260, and badge.tsx carries the same; the three
+   * new files reuse the established link convention rather than inventing a
+   * pair. Fixing it means moving `--primary` — the brand gold, load-bearing
+   * across the whole app — which this ticket forbids outright. Same treatment
+   * THE-266 gave skeleton's invisible `bg-muted` and THE-272 gave progress's
+   * 2.30:1 track: measured, recorded, asserted in BOTH directions so a later
+   * token move in either one is caught, and left for Phase 8 to decide in
+   * daylight.
+   */
+  it('the link-hover text-primary pair is pre-existing, and recorded at its real ratio', () => {
+    const measured = Object.fromEntries(
+      (Object.keys(PALETTES) as Palette[]).map((p) => [
+        p,
+        Number(ratio(decls, p, '--primary', '--background').toFixed(2)),
+      ]),
+    );
+    expect(measured).toEqual({
+      'classic light': 2.48,
+      'classic dark': 6.42,
+      'harvest light': 2.51,
+      'harvest dark': 6.77,
+    });
+    // Asserted both ways, so a move in either direction fails here.
+    expect(measured['classic light']).toBeLessThan(AA_CONTRAST);
+    expect(measured['harvest light']).toBeLessThan(AA_CONTRAST);
+    expect(measured['classic dark']).toBeGreaterThanOrEqual(AA_CONTRAST);
+    expect(measured['harvest dark']).toBeGreaterThanOrEqual(AA_CONTRAST);
+
+    // And the evidence that it predates this PR: button.tsx, untouched here,
+    // already ships the identical treatment.
+    const button = readFileSync(path.join(UI_DIR, 'button.tsx'), 'utf8');
+    expect(button).toContain('text-primary underline-offset-4');
+  });
+
+  it('progress bg-primary on bg-muted is still recorded at its real ratio', () => {
+    // Carried forward from THE-272 unchanged: a graphical object under 1.4.11's
+    // 3:1, not text under 1.4.3. Re-asserted here because this PR must not have
+    // moved --primary or --muted, and this is the number that would show it.
+    const measured = Object.fromEntries(
+      (Object.keys(PALETTES) as Palette[]).map((p) => [
+        p,
+        Number(ratio(decls, p, '--primary', '--muted').toFixed(2)),
+      ]),
+    );
+    expect(measured).toEqual({
+      'classic light': 2.31,
+      'classic dark': 7.0,
+      'harvest light': 2.3,
+      'harvest dark': 7.19,
+    });
+  });
+});
+
+/* ── 7. The border names still produce nothing ───────────────────────────── */
+
+it('border-strong, border-faint, border-subtle and border-hairline still produce nothing', async () => {
+  // Carried forward from THE-266/272. This batch spells more border utilities
+  // than any before it — `border-input`, `border-ring`, `border-destructive`,
+  // `border-primary`, `border-border` across ten files — so it is worth
+  // re-asserting rather than trusting the earlier run.
+  const { buildCssForMarkup } = await import('../test/support/tailwind-build');
+  const css = await buildCssForMarkup(
+    '<div class="border-strong border-faint border-subtle border-hairline"></div>',
+  );
+  for (const cls of ['border-strong', 'border-faint', 'border-subtle', 'border-hairline']) {
+    const esc = cls.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    expect(css.match(new RegExp(`\\.${esc}\\s*\\{[^}]*\\}`)), `${cls} now mints a rule`).toBeNull();
+  }
+}, 180_000);
+
+/* ── 8. Imported by nothing ──────────────────────────────────────────────── */
+
+it('nothing imports the new components — installing is this ticket, not adopting', () => {
+  const names = NEW_PRIMITIVES.map((f) => f.replace(/\.tsx$/, '')).join('|');
+  const re = new RegExp(`@/components/ui/(${names})\\b`);
+  const importers = walkFiles(path.join(REPO_ROOT, 'src'), (d) => d === 'node_modules')
+    .filter((f) => /\.(ts|tsx)$/.test(f))
+    .filter((f) => {
+      if (f.startsWith(UI_DIR)) return false;
+      if (f.includes(`${path.sep}__tests__${path.sep}`)) return false;
+      return re.test(readFileSync(f, 'utf8'));
+    });
+  expect(importers.map((f) => rel(f))).toEqual([]);
+});
+
+it('and nothing outside the three primitives imports the three new runtime packages', () => {
+  // The bundle consequence of this PR is zero precisely because of this: a file
+  // no route reaches is in no chunk. Phase 8 is where cmdk, react-day-picker
+  // and react-resizable-panels start costing anything.
+  const owners: Record<string, string> = {
+    cmdk: 'src/components/ui/command.tsx',
+    'react-day-picker': 'src/components/ui/calendar.tsx',
+    'react-resizable-panels': 'src/components/ui/resizable.tsx',
+  };
+  for (const [packageName, owner] of Object.entries(owners)) {
+    const importers = walkFiles(path.join(REPO_ROOT, 'src'), (d) => d === 'node_modules')
+      .filter((f) => /\.(ts|tsx)$/.test(f))
+      .filter((f) => {
+        if (f.includes(`${path.sep}__tests__${path.sep}`)) return false;
+        return new RegExp(`from ["']${packageName}["']`).test(readFileSync(f, 'utf8'));
+      });
+    expect(importers.map((f) => rel(f)), `${packageName} is imported outside ${owner}`).toEqual([
+      owner,
+    ]);
+  }
+});
+
+/* ── 9. The dependencies ─────────────────────────────────────────────────── */
+
+describe('the new dependencies are declared, pinned and resolvable', () => {
+  for (const [name, { range, version }] of Object.entries(NEW_DEPENDENCIES)) {
+    it(`${name} is declared as ${range} and locked at ${version}`, () => {
+      expect(pkg().dependencies[name], `${name} is not a production dependency`).toBe(range);
+      expect(lock().packages[`node_modules/${name}`]?.version, `${name} is not locked`).toBe(
+        version,
+      );
+    });
+
+    it(`${name} actually resolves at ${version}`, () => {
+      const manifest = path.join(REPO_ROOT, 'node_modules', name, 'package.json');
+      expect(existsSync(manifest), `${name} is not installed`).toBe(true);
+      expect(JSON.parse(readFileSync(manifest, 'utf8')).version).toBe(version);
+    });
+  }
+
+  it('react-day-picker is pinned EXACTLY, because the registry declares it @latest', () => {
+    // The registry entry for `calendar` asks for `react-day-picker@latest`.
+    // A caret would have left this tree following a moving target on the next
+    // install; the founder's decision was to pin it.
+    expect(pkg().dependencies['react-day-picker']).toBe('10.0.1');
+    expect(pkg().dependencies['react-day-picker']).not.toMatch(/^[\^~]/);
+  });
+
+  it('all four are production dependencies, not dev', () => {
+    for (const name of Object.keys(NEW_DEPENDENCIES)) {
+      expect(pkg().devDependencies?.[name], `${name} landed in devDependencies`).toBeUndefined();
+      expect(lock().packages[`node_modules/${name}`]?.dev).not.toBe(true);
+    }
+  });
+
+  it('every one of them supports React 18 — the version this app is on', () => {
+    expect(pkg().dependencies.react).toBe('^18.3.1');
+    for (const name of Object.keys(NEW_DEPENDENCIES)) {
+      const manifest = JSON.parse(
+        readFileSync(path.join(REPO_ROOT, 'node_modules', name, 'package.json'), 'utf8'),
+      );
+      const peer: string | undefined = manifest.peerDependencies?.react;
+      if (!peer) continue;
+      expect(
+        /18/.test(peer) || /">=1[0-8]/.test(peer) || peer.includes('>=16'),
+        `${name} peer-requires react ${peer}, which does not admit 18`,
+      ).toBe(true);
+    }
+  });
+
+  /**
+   * The tree this PR started from, as one digest.
+   *
+   * ⚠️ A digest rather than a checked-in copy of the lockfile: the before-tree
+   * is 1803 entries and 126 KB, and none of it is interesting except that it
+   * did not move. Removing the 22 known additions from the CURRENT lockfile
+   * must reproduce it exactly — which is a strictly stronger claim than
+   * THE-272's `toContain` list, because it also fails on an addition nobody
+   * expected, on a removal, and on any version of any other package moving.
+   */
+  const LOCK_BEFORE_COUNT = 1803;
+  const LOCK_BEFORE_SHA = '972a91d30109a8ab87882e3c9b46fcbb51f5ef36425e36203d93e2daa4ce9f2c';
+
+  /**
+   * ⚠️ Seventeen of these are the Radix subtree cmdk reaches through
+   * @radix-ui/react-dialog — NESTED under it rather than hoisted, because
+   * @excalidraw/excalidraw already holds different versions at the top level.
+   * Radix was ALREADY in this tree (48 entries before this PR): cmdk does not
+   * introduce a second headless-UI library, it deepens one that was there.
+   */
+  const LOCK_ADDED = [
+    '@date-fns/tz',
+    '@radix-ui/react-dialog',
+    '@radix-ui/react-dialog/node_modules/@radix-ui/primitive',
+    '@radix-ui/react-dialog/node_modules/@radix-ui/react-compose-refs',
+    '@radix-ui/react-dialog/node_modules/@radix-ui/react-context',
+    '@radix-ui/react-dialog/node_modules/@radix-ui/react-dismissable-layer',
+    '@radix-ui/react-dialog/node_modules/@radix-ui/react-focus-guards',
+    '@radix-ui/react-dialog/node_modules/@radix-ui/react-focus-scope',
+    '@radix-ui/react-dialog/node_modules/@radix-ui/react-id',
+    '@radix-ui/react-dialog/node_modules/@radix-ui/react-portal',
+    '@radix-ui/react-dialog/node_modules/@radix-ui/react-presence',
+    '@radix-ui/react-dialog/node_modules/@radix-ui/react-primitive',
+    '@radix-ui/react-dialog/node_modules/@radix-ui/react-slot',
+    '@radix-ui/react-dialog/node_modules/@radix-ui/react-use-callback-ref',
+    '@radix-ui/react-dialog/node_modules/@radix-ui/react-use-controllable-state',
+    '@radix-ui/react-dialog/node_modules/@radix-ui/react-use-layout-effect',
+    '@radix-ui/react-use-effect-event',
+    '@radix-ui/react-use-effect-event/node_modules/@radix-ui/react-use-layout-effect',
+    'cmdk',
+    'date-fns',
+    'react-day-picker',
+    'react-resizable-panels',
+  ].map((k) => `node_modules/${k}`);
+
+  it('the lockfile gained exactly these 22 entries', () => {
+    const after = Object.keys(lock().packages).filter(Boolean);
+    for (const key of LOCK_ADDED) {
+      expect(after, `${key} is missing from the lockfile`).toContain(key);
+    }
+    expect(after).toHaveLength(LOCK_BEFORE_COUNT + LOCK_ADDED.length);
+  });
+
+  it('and nothing else moved — the rest of the tree digests to what it was', () => {
+    // Removing the 22 above from the current lockfile must reproduce the
+    // before-tree exactly: same keys, same versions, nothing removed. "Do not
+    // move any existing token's value" has a dependency analogue, and this is
+    // it.
+    const packages = lock().packages;
+    const added = new Set(LOCK_ADDED);
+    const rest = Object.entries(packages)
+      .filter(([k]) => k && !added.has(k))
+      .map(([k, v]) => `${k}@${v.version ?? ''}`)
+      .sort();
+    expect(rest).toHaveLength(LOCK_BEFORE_COUNT);
+    expect(sha256(rest.join('\n'))).toBe(LOCK_BEFORE_SHA);
+  });
+});
+
+/* ── 10. Out-of-scope files ──────────────────────────────────────────────── */
+
+describe('the out-of-scope files are untouched', () => {
+  it('tailwind.config.ts keeps its pinned code digest', () => {
+    const config = readFileSync(TAILWIND_CONFIG, 'utf8');
+    const code = config
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|\s)\/\/[^\n]*/g, '$1')
+      .replace(/\s+/g, ' ')
+      .trim();
+    expect(sha256(code)).toBe(TAILWIND_CODE_SHA);
+  });
+
+  it('layout.tsx is byte-identical — the CLI’s provider advice was ignored again', () => {
+    expect(sha256(readFileSync(LAYOUT, 'utf8'))).toBe(LAYOUT_SHA);
+  });
+
+  it('firestore.rules is byte-identical', () => {
+    expect(sha256(readFileSync(path.join(REPO_ROOT, 'firestore.rules'), 'utf8'))).toBe(RULES_SHA);
+  });
+
+  it('functions/ carries no change from this PR', () => {
+    // ⚠️ Keys are built with POSIX separators explicitly rather than taking
+    // path.relative's output as-is: on Windows that yields backslashes and the
+    // comparison fails for a reason that has nothing to do with the code.
+    const actual = Object.fromEntries(
+      walkFiles(path.join(REPO_ROOT, 'functions'), (d) => d === 'node_modules' || d === 'lib')
+        .sort()
+        .map((f) => [
+          path.relative(REPO_ROOT, f).split(path.sep).join('/'),
+          sha256(readFileSync(f, 'utf8')).slice(0, 16),
+        ]),
+    );
+    expect(actual).toEqual(FUNCTIONS_DIGESTS);
+  });
+
+  it('components.json is untouched — the CLI wanted nothing from it', () => {
+    const cfg = JSON.parse(readFileSync(path.join(REPO_ROOT, 'components.json'), 'utf8'));
+    expect(cfg.style).toBe('base-nova');
+    expect(cfg.iconLibrary).toBe('lucide');
+    expect(cfg.tailwind.css).toBe('src/app/globals.css');
+    expect(cfg.registries).toEqual({});
+  });
+});
+
+/* ── 11. What the CLI wrote, and what it did not ─────────────────────────── */
+
+describe('the twenty-one files are the registry’s, transformed for this repo', () => {
+  it('no file kept the registry’s own import paths', () => {
+    // The CLI rewrites `@/registry/base-nova/ui/x` → `@/components/ui/x` and
+    // `@/registry/base-nova/lib/utils` → `@/lib/utils`. A survivor would not
+    // resolve and typecheck would fail, but it fails here first, by name.
+    for (const file of NEW_PRIMITIVES) {
+      const src = readFileSync(path.join(UI_DIR, file), 'utf8');
+      expect(src, `${file} kept a @/registry path`).not.toContain('@/registry/');
+    }
+  });
+
+  it('the five that shipped an icon placeholder had it resolved to lucide', () => {
+    // calendar, checkbox, command, context-menu and spinner each import
+    // `IconPlaceholder` from `@/app/(create)/components/icon-placeholder` in the
+    // registry payload — a path that does not exist in this repo. components.json
+    // sets iconLibrary: "lucide", and the CLI substitutes the real icon.
+    for (const file of ['calendar.tsx', 'checkbox.tsx', 'command.tsx', 'context-menu.tsx', 'spinner.tsx']) {
+      const src = readFileSync(path.join(UI_DIR, file), 'utf8');
+      expect(src, `${file} kept the icon placeholder`).not.toContain('IconPlaceholder');
+      expect(src, `${file} kept the (create) path`).not.toContain('(create)');
+      expect(src, `${file} did not gain a lucide import`).toContain('lucide-react');
+    }
+  });
+});
+
+/* ── 12. date-picker ─────────────────────────────────────────────────────── */
+
+describe('date-picker is a composition, not a registry item', () => {
+  it('no date-picker primitive was written, because there is no such registry item', () => {
+    // `https://ui.shadcn.com/r/styles/base-nova/date-picker.json` is a 404 —
+    // the same shape THE-272 found for `data-table`. It is composed from
+    // `calendar` + `popover` where it is used, and nothing was hand-written
+    // here to stand in for it.
+    expect(existsSync(path.join(UI_DIR, 'date-picker.tsx'))).toBe(false);
+    expect(readdirSync(UI_DIR).filter((f) => /date-?picker/i.test(f))).toEqual([]);
+  });
+
+  it('but both halves it composes from are installed', () => {
+    expect(existsSync(path.join(UI_DIR, 'calendar.tsx'))).toBe(true);
+    expect(existsSync(path.join(UI_DIR, 'popover.tsx'))).toBe(true);
+  });
+});
+
+/* ── 13. #409 is not disturbed ───────────────────────────────────────────── */
+
+it('Classic is still the default palette family', () => {
+  expect(DEFAULT_PALETTE_FAMILY).toBe('classic');
+});
+
+/* ── 14. The extractor still reads what it always read ───────────────────── */
+
+it('the extractor still reads cva variants and still ignores comparands', () => {
+  // THE-272's fix and THE-270's reader are both load-bearing for the 21 files
+  // above; this PR changed the same function, so both are re-asserted here.
+  const alert = extractClassNames(path.join(UI_DIR, 'alert.tsx'));
+  expect(alert).toContain('bg-card');
+  expect(alert).toContain('text-destructive');
+  // cva variant KEYS are not classes.
+  expect(alert).not.toContain('default');
+  expect(alert).not.toContain('destructive');
+});

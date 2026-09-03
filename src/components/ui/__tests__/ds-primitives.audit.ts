@@ -108,6 +108,44 @@ const isComparison = (node: ts.Node): boolean =>
   ts.isBinaryExpression(node) && COMPARISON_OPERATORS.has(node.operatorToken.kind);
 
 /**
+ * THE-274 — `String.raw` is the one place the cooked text is the wrong text.
+ *
+ * calendar.tsx spells two classes that carry a literal backslash:
+ *
+ *   String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`      // calendar.tsx:35
+ *
+ * In a Tailwind arbitrary variant `_` means a SPACE, so `\_` is how you write
+ * an underscore — and react-day-picker's real class is `.rdp-button_next`. The
+ * backslash therefore has to survive into the DOM, which is exactly what
+ * `String.raw` is doing there.
+ *
+ * TypeScript's `.text` on a template literal is the COOKED value, where `\_`
+ * has already collapsed to `_`. Reading it harvested
+ * `rtl:**:[.rdp-button_next>svg]:rotate-180` — a class that appears in no file
+ * and that Tailwind, which scans the SOURCE, never generates a rule for. Two
+ * findings naming classes that do not exist, on a component that is correct:
+ * the built stylesheet carries
+ * `:is(.rtl\:\*\*\:\[\.rdp-button\\_next\>svg\]…)`, backslash and all.
+ *
+ * Same shape as THE-272's comparands, and the same fix: not an exemption —
+ * these are not somebody else's classes, they are OUR classes read wrongly —
+ * but a reader that agrees with the runtime.
+ *
+ * ⚠️ Only `String.raw` gets this treatment, and the tag is matched by name.
+ * An UNTAGGED `` `…\_next…` `` really does put `_next` in the DOM while
+ * Tailwind still generates the backslash rule, so it is genuinely broken and
+ * must keep being reported. Reading raw text for every template literal would
+ * hide that — see `an untagged template literal with the same escape still
+ * fails` in src/__tests__/the-274-shadcn-batches-cde.test.ts, which is the
+ * mutation that pins it.
+ */
+const isStringRawTag = (tag: ts.Node): boolean =>
+  ts.isPropertyAccessExpression(tag) &&
+  ts.isIdentifier(tag.expression) &&
+  tag.expression.text === 'String' &&
+  tag.name.text === 'raw';
+
+/**
  * Classes in these files that are not Tailwind utilities and never were, with
  * the reason each is here. Deliberately tiny, and it cannot go stale: the
  * audit reports them separately and `every exemption is still needed` fails
@@ -279,6 +317,14 @@ export function extractClassNames(file: string, source?: string): string[] {
    * the call's own arguments would mint a class called `outline`.
    */
   const harvest = (node: ts.Node): void => {
+    // String.raw`…` lands a DIFFERENT string in the DOM than its cooked text.
+    // See isStringRawTag: read the source spelling, not the escaped one.
+    if (ts.isTaggedTemplateExpression(node) && isStringRawTag(node.tag)) {
+      if (ts.isNoSubstitutionTemplateLiteral(node.template)) {
+        push(node.template.getText(sf).slice(1, -1));
+        return;
+      }
+    }
     if (ts.isStringLiteralLike(node)) {
       push(node.text);
       return;

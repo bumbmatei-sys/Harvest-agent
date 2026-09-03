@@ -279,14 +279,15 @@ describe("each new primitive's token classes resolve", () => {
     // A guard that read nothing would report nothing and look thorough. This
     // is the failure mode THE-266's section 10 was written against, kept here.
     //
-    // ⚠️ THE-270 — 21 when this was written, 22 since `sidebar` landed. Only
-    // the total moved: the four counts below are THIS ticket's subject and are
-    // untouched, which is also the evidence that sidebar's arrival did not
-    // disturb what Batch B installed.
+    // ⚠️ THE-270 — 21 when this was written, 22 since `sidebar` landed, and 43
+    // since THE-274 installed Batches C, D and E. Only the total moved: the
+    // four counts below are THIS ticket's subject and are untouched, which is
+    // also the evidence that neither sidebar's arrival nor THE-274's twenty-one
+    // disturbed what Batch B installed.
     const counts = Object.fromEntries(
       [...audit.classesByFile].map(([f, c]) => [path.basename(f), c.length]),
     );
-    expect(audit.classesByFile.size).toBe(22);
+    expect(audit.classesByFile.size).toBe(43);
     for (const file of NEW_PRIMITIVES) {
       expect(existsSync(path.join(UI_DIR, file)), `${file} was never written`).toBe(true);
       expect(counts[file], `the audit never opened ${file}`).toBeGreaterThan(0);
@@ -379,16 +380,26 @@ describe('the CLI rewrote nothing it should not have', () => {
     );
   });
 
-  it('src/components/ui holds exactly the 17 plus the 4, plus THE-270’s sidebar', () => {
-    // ⚠️ THE-270 installed `sidebar` after this landed. Named explicitly rather
-    // than the assertion being loosened to "contains", so a twenty-third
-    // arrival still has to come back and say so — the same choice this test
-    // already made about Batch B's own four.
+  it('src/components/ui holds exactly the 17 plus the 4, plus sidebar and THE-274’s 21', () => {
+    // ⚠️ THE-270 installed `sidebar` after this landed, and THE-274 then
+    // installed Batches C, D and E in one pass — nineteen it named, plus
+    // `popover` and `toggle`. Named explicitly rather than the assertion being
+    // loosened to "contains", so the next arrival still has to come back and
+    // say so — the same choice this test already made about Batch B's own four.
+    const BATCH_CDE = [
+      'alert.tsx', 'button-group.tsx', 'calendar.tsx', 'checkbox.tsx', 'command.tsx',
+      'context-menu.tsx', 'empty.tsx', 'field.tsx', 'hover-card.tsx', 'input-group.tsx',
+      'item.tsx', 'popover.tsx', 'radio-group.tsx', 'resizable.tsx', 'scroll-area.tsx',
+      'slider.tsx', 'spinner.tsx', 'switch.tsx', 'textarea.tsx', 'toggle-group.tsx',
+      'toggle.tsx',
+    ];
     expect(
       readdirSync(UI_DIR)
         .filter((f) => f.endsWith('.tsx'))
         .sort(),
-    ).toEqual([...Object.keys(PRE_EXISTING_DIGESTS), ...NEW_PRIMITIVES, 'sidebar.tsx'].sort());
+    ).toEqual(
+      [...Object.keys(PRE_EXISTING_DIGESTS), ...NEW_PRIMITIVES, 'sidebar.tsx', ...BATCH_CDE].sort(),
+    );
   });
 
   it('no data-table primitive was written, because there is no such registry item', () => {
