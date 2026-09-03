@@ -18,9 +18,8 @@ import { useAppStore } from '../store/useAppStore';
 import { useDocs, useDocFolders, useSharedDocs } from '../hooks/queries/useDocsQueries';
 import { exportToPDF, exportToDOCX, exportToMarkdown } from '../utils/doc-export';
 import { markdownToHtml, titleFromMarkdown } from '../utils/markdown-import';
-import RichTextEditor from './RichTextEditor';
+import RichTextEditor, { COMPACT_PROSE_CLASS } from './RichTextEditor';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
-import { FORM_CONTAINER } from './layout/form-layout';
 import { Sidebar, SidebarProvider } from './ui/sidebar';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from './ui/empty';
 import { Item, ItemMedia, ItemTitle } from './ui/item';
@@ -957,6 +956,11 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
               onChange={handleContentChange}
               minHeight="calc(100vh - 320px)"
               placeholder="Start writing... Type / for commands"
+              // The shared default ends at `xl:prose-2xl` — a 1.5rem base — so
+              // on a monitor a note, and the placeholder that inherits from it,
+              // rendered at 24px. A note is not a blog post being read at arm's
+              // length; this is the flat, compact measure.
+              proseClass={COMPACT_PROSE_CLASS}
             />
           </div>
         </>
@@ -1004,7 +1008,18 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
     // `min-h-0` undoes SidebarProvider's `min-h-svh`: this screen is mounted
     // INSIDE the admin shell's tab wrapper, and a full-viewport minimum there
     // would push the page taller than the shell it sits in.
-    <SidebarProvider className={`w-full min-h-0 ${FORM_CONTAINER}`}>
+    //
+    // ── No page measure here, deliberately ──────────────────────────────────
+    // This screen carried FORM_CONTAINER, whose job is to stop a DOCUMENT from
+    // stretching to whatever width the monitor happens to be. Notes is not a
+    // document — it is a rail and a pane — and capping the pair at 1120px and
+    // centring them left a band of dead space between the admin nav and the
+    // tree on every screen wider than that. The rail is a fixed
+    // --sidebar-width either way, so the whole cap fell on the editor, which is
+    // the one thing here that WANTS the room.
+    //
+    // Nothing is minted in its place: the width is the shell's content box.
+    <SidebarProvider className="w-full min-h-0">
       <input
         ref={importInputRef}
         type="file"

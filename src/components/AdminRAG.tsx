@@ -511,16 +511,28 @@ export default function AdminRAG() {
  const totalChunks = sources.reduce((a, s) => a + (s.chunks || 0), 0);
 
  return (
- <div style={s.root}>
+ <div data-rag-root style={s.root}>
+ {/* ── This block is UNLAYERED, so every selector in it beats every Tailwind
+     utility in the app — not just this screen's. Tailwind v4 puts utilities in
+     `@layer utilities`, and an unlayered rule outranks any layer whatever its
+     specificity, so the `* { margin: 0; padding: 0 }` that used to head this
+     block silently stripped the padding and margin off the ENTIRE admin shell,
+     the nav rail included, for as long as this tab was mounted. That is why
+     opening this screen moved the sidebar.
+
+     It was also redundant: Tailwind's preflight already sets box-sizing and
+     zeroes margins, so removing it changes nothing about how this screen
+     renders and gives the rest of the app its padding back.
+
+     Everything left is scoped to this screen's own root. Keep it that way. */}
  <style>{`
- *{box-sizing:border-box;margin:0;padding:0;}
- textarea::placeholder,input::placeholder{color:#BBBBBB;}
- textarea,input,select{outline:none;}
- ::-webkit-scrollbar{width:5px;}
- ::-webkit-scrollbar-thumb{background:#DDD;border-radius:4px;}
- button:disabled{opacity:0.5;cursor:not-allowed;}
- @keyframes spin{to{transform:rotate(360deg)}}
- @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+ [data-rag-root] textarea::placeholder,[data-rag-root] input::placeholder{color:#BBBBBB;}
+ [data-rag-root] textarea,[data-rag-root] input,[data-rag-root] select{outline:none;}
+ [data-rag-root] ::-webkit-scrollbar{width:5px;}
+ [data-rag-root] ::-webkit-scrollbar-thumb{background:#DDD;border-radius:4px;}
+ [data-rag-root] button:disabled{opacity:0.5;cursor:not-allowed;}
+ @keyframes ragSpin{to{transform:rotate(360deg)}}
+ @keyframes ragPulse{0%,100%{opacity:1}50%{opacity:0.4}}
  `}</style>
 
  {deleteTarget && <DeleteModal source={deleteTarget} onConfirm={confirmDelete} onClose={()=>setDeleteTarget(null)} />}
@@ -883,7 +895,7 @@ export default function AdminRAG() {
  <div>
  {source.status === "processing" && (
  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
- <div style={{ width:8, height:8, borderRadius:"50%", background:GOLD, animation:"pulse 1.2s infinite" }} />
+ <div style={{ width:8, height:8, borderRadius:"50%", background:GOLD, animation:"ragPulse 1.2s infinite" }} />
  <span style={{ fontSize:12, color:GOLD, fontWeight:600 }}>Processing...</span>
  </div>
  )}

@@ -104,7 +104,11 @@ const hookState = vi.hoisted(() => ({
   loading: false,
 }));
 
-vi.mock('../RichTextEditor', () => ({ default: () => null }));
+const editorProps = vi.hoisted(() => ({ last: null as null | Record<string, unknown> }));
+vi.mock('../RichTextEditor', () => ({
+  default: (props: Record<string, unknown>) => { editorProps.last = props; return null; },
+  COMPACT_PROSE_CLASS: 'prose prose-sm',
+}));
 
 const updateDoc = vi.hoisted(() => vi.fn(async () => undefined as unknown));
 const deleteDocFn = vi.hoisted(() => vi.fn(async () => undefined as unknown));
@@ -699,6 +703,35 @@ describe('no colour is hardcoded and all four palettes resolve', () => {
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
+// 9b · the editor's own measure
+// ═════════════════════════════════════════════════════════════════════════════
+describe('a note is not rendered at reading size', () => {
+  it('hands the editor a flat prose measure, not the shared responsive ramp', async () => {
+    await mountDocs();
+    await clickLeaf('d-mid');
+    // RichTextEditor's default is `prose prose-sm sm:prose lg:prose-lg
+    // xl:prose-2xl`, and prose-2xl is a 1.5rem base — so above 1280px a note,
+    // and the placeholder that inherits from it, rendered at 24px. Notes opts
+    // out; the other editors (blog, newsletter, courses) keep the ramp.
+    expect(editorProps.last?.proseClass, 'the notes editor is back on the shared ramp')
+      .toBe('prose prose-sm');
+  });
+
+  it('leaves every other editor on the shared default', () => {
+    const rte = readFileSync(path.join(SRC, 'components/RichTextEditor.tsx'), 'utf8');
+    // The prop is optional and defaults to the exact string every caller had,
+    // so opting one screen out cannot move any of the others.
+    expect(rte).toMatch(/proseClass = DEFAULT_PROSE_CLASS/);
+    expect(rte).toContain("'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl'");
+    for (const f of ['components/AdminBlog.tsx', 'components/NewsletterEditor.tsx']) {
+      const src = readFileSync(path.join(SRC, f), 'utf8');
+      if (!src.includes('<RichTextEditor')) continue;
+      expect(src, `${f} started passing a prose measure`).not.toContain('proseClass');
+    }
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
 // 10 · width
 // ═════════════════════════════════════════════════════════════════════════════
 describe('no horizontal overflow at 380/768/1024/1280/1440', () => {
@@ -835,9 +868,17 @@ describe('no horizontal overflow at 380/768/1024/1280/1440', () => {
     expect(effective(classesOf(pane), 1024).display).toBe('flex');
   });
 
-  it('the container is the shared page measure, not a width invented here', () => {
+  it('mints no width of its own, and spends no page measure either', () => {
     const src = readFileSync(path.join(SRC, 'components/AdminDocs.tsx'), 'utf8');
-    expect(src, 'the page measure left the screen').toContain('FORM_CONTAINER');
+    // This screen is a rail and a pane, not a document, so it takes the shell's
+    // content box whole — FORM_CONTAINER's 1120px cap centred the pair and put a
+    // band of dead space between the admin nav and the tree. Removing a measure
+    // is not the same as inventing one, and the assertions below are what keep
+    // the second thing from happening.
+    expect(
+      src.replace(/^\s*\/\/.*$/gm, ''),
+      'a page measure is back on a screen that is not a document',
+    ).not.toContain('FORM_CONTAINER');
     // The rail's width is the sidebar primitive's own custom property.
     expect(src).toContain('lg:w-(--sidebar-width)');
     // No new px width anywhere in the tree or the screen.
