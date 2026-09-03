@@ -657,14 +657,27 @@ export default function AdminRoles({ currentUserRole, currentUserPermissions, mo
   }, [setHeaderAction, mode, atAdminLimit, adminLimitNotice]);
 
   return (
-    <div style={pageStyle}>
+    <div data-roles-root style={pageStyle}>
+      {/* ── This block is UNLAYERED, so every selector in it beats every Tailwind
+           utility in the app — not just this screen's. Tailwind v4 puts
+           utilities in `@layer utilities`, and an unlayered rule outranks any
+           layer whatever its specificity, so the `* { margin: 0; padding: 0 }`
+           that used to head this block silently stripped the padding and margin
+           off the ENTIRE admin shell, the nav rail included, for as long as this
+           tab was mounted. That is why opening Roles moved the sidebar.
+
+           It was also redundant: Tailwind's preflight already sets box-sizing
+           and zeroes margins, so removing it changes nothing about how this
+           screen renders and gives the rest of the app its padding back.
+
+           Everything left is scoped to this screen's own root. Keep it that
+           way. */}
       <style>{`
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        input::placeholder { color: #BBB; }
-        input, select { outline: none; }
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-thumb { background: #DDD; border-radius: 4px; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        [data-roles-root] input::placeholder { color: #BBB; }
+        [data-roles-root] input, [data-roles-root] select { outline: none; }
+        [data-roles-root] ::-webkit-scrollbar { width: 5px; }
+        [data-roles-root] ::-webkit-scrollbar-thumb { background: #DDD; border-radius: 4px; }
+        [data-roles-root] button:disabled { opacity: 0.5; cursor: not-allowed; }
         @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
       `}</style>
 
