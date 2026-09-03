@@ -828,6 +828,27 @@ const EDITED_SINCE_MEASUREMENT: ReadonlyArray<{ file: string; ticket: string; wh
       'padding, measure or inline style changed, and the notice mints no responsive ' +
       'width/height/gap of its own — it reuses classes already in this file.',
   },
+  {
+    file: 'AdminDocs.tsx',
+    ticket: 'THE-275',
+    why:
+      'The folder tree stopped being reachable only from inside an open note. This ' +
+      'screen had TWO returns: a landing view of root-folder chips and doc cards, and ' +
+      'a separate editor view that was the only place the tree existed — so you browsed ' +
+      'folders, opened a note, and only THEN saw a tree, and a nested folder was ' +
+      'unreachable from the landing view at all (it rendered `folders.filter(f => ' +
+      '!f.parentId)` and nothing below it). There is one return now: the tree is mounted ' +
+      'unconditionally on the left and the MAIN pane is the only thing that swaps. The ' +
+      'tree, its rows and its right-click menus moved to src/components/docs/. Container ' +
+      'and measure are unchanged — FORM_CONTAINER still wraps the screen and the pane ' +
+      'height is the `lg:h-[calc(100dvh-140px)]` this file already spent; the rail takes ' +
+      "the sidebar primitive's own --sidebar-width and mints no width of its own. The " +
+      'Partial list notice (THE-262) moved with the rows and still renders on `truncated`. ' +
+      'isPrivate and sharedWith behaviour is byte-for-byte: the same two hooks, the same ' +
+      'two sets, and the viewer-scoped sharedDocs stay in their own group rather than ' +
+      'being filed into this tenant\'s folders. Two rgba() literals left with the mobile ' +
+      'drawer they belonged to; no colour was added.',
+  },
 ];
 
 const EXEMPT_FILES = EDITED_SINCE_MEASUREMENT.map((e) => e.file);
@@ -842,6 +863,7 @@ describe('the digest exemption list is exactly the edits that justify it', () =>
       'THE-216 AdminDashboard.tsx',
       'THE-220 AdminDashboard.tsx',
       'THE-262 AdminDocs.tsx',
+      'THE-275 AdminDocs.tsx',
     ]);
   });
 

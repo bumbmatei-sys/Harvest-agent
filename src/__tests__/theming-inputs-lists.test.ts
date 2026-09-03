@@ -35,10 +35,24 @@ const GLOBALS = path.join(ROOT, 'src/app/globals.css');
 
 const EDITOR_FILE = 'components/AdminCourseEditor.tsx';
 const DOCS_FILE = 'components/AdminDocs.tsx';
+/**
+ * THE-275 moved the notes list and folder tree out of AdminDocs and into a
+ * component of their own — the tree is now mounted unconditionally beside the
+ * editor instead of existing only inside it. The ROWS this file measures moved
+ * with it, so the Notes surface is these two files together and every scan
+ * below reads both. The row's colours themselves did not move: the selected
+ * fill is still the accent mixed over `transparent`, and the two inks are still
+ * text-strong / text-body, which is what keeps the ratios below comparable to
+ * the ones THE-136 recorded.
+ */
+const TREE_FILE = 'components/docs/DocsTree.tsx';
 
 const read = (rel: string) => readFileSync(path.join(SRC, rel), 'utf8');
 const EDITOR = read(EDITOR_FILE);
 const DOCS = read(DOCS_FILE);
+const TREE = read(TREE_FILE);
+/** The Notes surface, for the scans that are about the screen and not a file. */
+const NOTES_SRC = `${DOCS}\n${TREE}`;
 
 /** The ground each theme composites a translucent fill over, for the rare
  *  expression that cannot be reduced without one. */
@@ -301,20 +315,23 @@ const editorPairs: Pair[] = EDITOR_TARGETS.flatMap(({ target, card, label }) => 
 
 /* — Notes — */
 
-/** The notes list + folder tree, shared by the desktop rail and mobile drawer. */
-const NOTES_SIDEBAR = (() => {
-  const start = DOCS.indexOf('const renderNotesSidebar');
-  const end = DOCS.indexOf('// ── Focus mode');
-  expect(start, 'renderNotesSidebar is gone').toBeGreaterThan(-1);
-  expect(end, 'the focus-mode marker is gone').toBeGreaterThan(start);
-  return DOCS.slice(start, end);
-})();
+/** The notes list + folder tree — its own component since THE-275. */
+const NOTES_SIDEBAR = TREE;
 
-/** The surface the notes list is mounted on. */
+/**
+ * The surface the notes tree is mounted on.
+ *
+ * Read off the rail that mounts it rather than assumed: the rail is the
+ * `Sidebar` carrying `data-testid="docs-sidebar"`, and the ground is the last
+ * `bg-surface*` class in its own className. A rail that stopped painting a
+ * surface would fail here rather than silently measuring every row against
+ * whatever this file happened to believe.
+ */
 const NOTES_GROUND = (() => {
-  const at = DOCS.indexOf('{renderNotesSidebar()}');
-  expect(at, 'the desktop notes rail no longer renders the sidebar').toBeGreaterThan(-1);
-  const cls = [...DOCS.slice(0, at).matchAll(/\bbg-surface(?:-[a-z]+)?\b/g)].pop();
+  const at = DOCS.indexOf('data-testid="docs-sidebar"');
+  expect(at, 'the notes rail is gone — nothing mounts the tree').toBeGreaterThan(-1);
+  const end = DOCS.indexOf('>', DOCS.indexOf('<DocsTree', at));
+  const cls = [...DOCS.slice(at, end).matchAll(/\bbg-surface(?:-[a-z]+)?\b/g)].pop();
   expect(cls, 'the notes rail declares no surface').not.toBeUndefined();
   const expr = classToExpr(cls![0]);
   expect(expr, `${cls![0]} resolves to nothing in the Tailwind config`).not.toBeNull();
@@ -330,14 +347,14 @@ function pick(re: RegExp, src: string, what: string): RegExpExecArray {
 const docListPairs: Pair[] = (() => {
   // The row and its label, read together so a class swap on either is caught.
   const row = pick(
-    /cursor-pointer group transition-colors \$\{isOpen \? '([^']+)' : '([^']+)'\}/,
+    /className=\{`text-left \$\{active \? '([^']+)' : '([^']+)'\}`\}/,
     NOTES_SIDEBAR,
-    'the notes list item row',
+    'the notes tree leaf row',
   );
   const label = pick(
-    /text-xs flex-1 truncate \$\{isOpen \? '([^']+)' : '([^']+)'\}/,
+    /<ItemTitle className=\{`truncate \$\{active \? '([^']+)' : '([^']+)'\}`\}>/,
     NOTES_SIDEBAR,
-    'the notes list item title',
+    'the notes tree leaf title',
   );
 
   const selectedBg = classToExpr(soleColorClass(row[1], 'bg'))!;
@@ -353,23 +370,33 @@ const docListPairs: Pair[] = (() => {
   ];
 })();
 
+/**
+ * The folder row IN THE TREE.
+ *
+ * THE-275 deleted the flat row of folder chips this used to read. Those chips
+ * were the landing screen, and the landing screen is what the ticket removed —
+ * a folder is a row in the tree now, at any depth. Same job for this file: the
+ * folder name and its resting/hover fills, measured on the rail's ground rather
+ * than on the page's.
+ */
 const docFolderPairs: Pair[] = (() => {
-  const chip = pick(
-    /rounded-brand-lg border transition-all text-left \$\{active \? '([^']+)' : '([^']+)'\}/,
-    DOCS,
-    'the Notes folder chip',
+  const row = pick(
+    /className="text-left (hover:bg-[a-z-]+)"/,
+    NOTES_SIDEBAR,
+    'the Notes folder row',
   );
-  const bg = classToExpr(soleColorClass(chip[1], 'bg'))!;
-  const target = 'the Notes folder chip';
-  // Its two inks: the folder name and the document count beside it.
-  return ['text-strong', 'text-faint'].map((cls) => ({
-    target,
-    state: cls === 'text-strong' ? 'name' : 'count',
-    ink: classToExpr(cls)!,
-    bg,
-    // The folder row sits on the page ground, not inside the white rail.
-    ground: classToExpr('bg-surface')!,
-  }));
+  const name = pick(
+    /<ItemTitle className="truncate (text-[a-z-]+)">\{folder\.name\}<\/ItemTitle>/,
+    NOTES_SIDEBAR,
+    'the Notes folder name',
+  );
+  const hoverBg = classToExpr(row[1])!;
+  const ink = classToExpr(name[1])!;
+  const target = 'the Notes folder row';
+  return [
+    { target, state: 'name', ink, bg: NOTES_GROUND, ground: NOTES_GROUND },
+    { target, state: 'hover', ink, bg: hoverBg, ground: NOTES_GROUND },
+  ];
 })();
 
 /** The Notes title field, whose placeholder reads "Untitled". */
@@ -493,7 +520,7 @@ describe('the Notes document list item is readable in dark mode', () => {
   });
 
   it('no Notes surface mixes an accent over a hardcoded light colour', () => {
-    const offenders = [...DOCS.matchAll(/color-mix\([^)]*?,\s*(white|#[0-9a-fA-F]{3,6})\s*\)/g)]
+    const offenders = [...NOTES_SRC.matchAll(/color-mix\([^)]*?,\s*(white|#[0-9a-fA-F]{3,6})\s*\)/g)]
       .map((m) => m[0]);
     expect(offenders, 'this fill stays light on a dark ground').toEqual([]);
   });
@@ -574,7 +601,7 @@ describe('every colour class used resolves to a property defined in the dark blo
     // `bg-surface-gold` once produced no rule at all — a well-formed class name
     // with nothing behind it, which no type error and no failing render catches.
     const classes = new Set<string>();
-    for (const src of [EDITOR, DOCS]) {
+    for (const src of [EDITOR, DOCS, TREE]) {
       // Strip var() references first: `var(--border-strong)` contains the
       // character sequence of a utility class without being one.
       for (const m of src.replace(/var\(--[a-z0-9-]+\)/g, 'var(--x)').matchAll(
@@ -615,7 +642,14 @@ describe('no hex, rgb() or inline colour is introduced', () => {
       'rgba(201,150,58,0.3)', 'rgba(201,150,58,0.35)',
       'rgba(45,37,25,0.05)', 'rgba(45,37,25,0.06)',
     ],
-    [DOCS_FILE]: ['rgba(0,0,0,0.28)', 'rgba(15,13,11,0.42)'],
+    // THE-275 removed both of AdminDocs' surviving rgba()s with the mobile
+    // slide-in drawer they belonged to (its scrim and its 12px side shadow).
+    // The two-pane layout has no drawer: below `lg` the tree IS the screen
+    // until a note is opened, so nothing overlays anything. Neither literal was
+    // replaced — the file spells no bare colour at all now, and neither does
+    // the tree that took its rows.
+    [DOCS_FILE]: [],
+    [TREE_FILE]: [],
   };
 
   const literals = (rel: string): string[] =>
@@ -636,9 +670,9 @@ describe('no hex, rgb() or inline colour is introduced', () => {
 
   it('neither surface re-declares a ramp colour under a local name', () => {
     // `const CARD = "#FFFFFF"` is the shape that left three admin screens fully
-    // light; both files must keep expressing the ramp as var().
+    // light; every file must keep expressing the ramp as var().
     const RAMP = ['#FAF8F5', '#FFFFFF', '#F3EEE7', '#2D2519', '#8B7355', '#E8E2D9'];
-    for (const [file, src] of [[EDITOR_FILE, EDITOR], [DOCS_FILE, DOCS]] as const) {
+    for (const [file, src] of [[EDITOR_FILE, EDITOR], [DOCS_FILE, DOCS], [TREE_FILE, TREE]] as const) {
       for (const m of src.matchAll(/^const\s+([A-Z_0-9]+)\s*=\s*"(#[0-9A-Fa-f]{6})";/gm)) {
         expect(RAMP, `${file}: ${m[1]} hardcodes a ramp colour`).not.toContain(m[2].toUpperCase());
       }
@@ -667,7 +701,7 @@ describe('the tenant accent is still not inverted', () => {
     // that would silently un-white-label the screen.
     expect(EDITOR, 'the editor no longer reads the tenant accent').toContain('var(--brand-color');
     // Arbitrary Tailwind values spell their spaces as underscores.
-    const accentFills = [...DOCS.matchAll(/color-mix\(in[\s_]srgb,[\s_]*var\(--brand-color\)/g)];
+    const accentFills = [...NOTES_SRC.matchAll(/color-mix\(in[\s_]srgb,[\s_]*var\(--brand-color\)/g)];
     expect(accentFills.length, 'the Notes accent fills stopped reading the accent')
       .toBeGreaterThan(0);
   });
@@ -675,7 +709,7 @@ describe('the tenant accent is still not inverted', () => {
   it('no accent-derived fill in either file was given a fixed dark counterpart', () => {
     // A `dark:` class here would be a second theming mechanism competing with
     // the variable blocks — and the one place a tenant colour could get frozen.
-    for (const [file, src] of [[EDITOR_FILE, EDITOR], [DOCS_FILE, DOCS]] as const) {
+    for (const [file, src] of [[EDITOR_FILE, EDITOR], [DOCS_FILE, DOCS], [TREE_FILE, TREE]] as const) {
       expect([...src.matchAll(/\bdark:[a-z-]+/g)].map((m) => m[0]), `${file} added a dark: variant`)
         .toEqual([]);
     }

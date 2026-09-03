@@ -119,10 +119,21 @@ async function unmountDocs() {
   await act(async () => { root.unmount(); });
 }
 
-/** Click the doc card in the list view to enter the full editor. */
+/**
+ * Click the note in the tree to load it into the editor pane.
+ *
+ * THE-275 replaced the list view this used to click — a grid of doc cards that
+ * only existed until a note was open — with a tree that is always on screen, so
+ * the leaf is addressed by `data-doc-id` rather than by finding a `<p>` with the
+ * title in it. Nothing else in this file changes: every assertion below is about
+ * saving, and saving is untouched.
+ *
+ * The same note appears twice (once under Recents, once in the tree), which is
+ * the point of Recents; either leaf opens it, so this takes the first.
+ */
 async function openEditor() {
-  const card = [...container.querySelectorAll('p')].find(p => p.textContent === OPEN_DOC.title)!;
-  await act(async () => { card.click(); });
+  const leaf = container.querySelector(`[data-doc-id="${OPEN_DOC.id}"]`) as HTMLElement;
+  await act(async () => { leaf.click(); });
   await flush();
 }
 
