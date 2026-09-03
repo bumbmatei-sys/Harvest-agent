@@ -226,6 +226,42 @@ export class MeasuringBrowser {
     return (res.result as { result: { value: Measurement } }).result.value;
   }
 
+  /**
+   * Lay the page out at `viewport`, then evaluate `expression` and return its
+   * value.
+   *
+   * {@link measure} answers a fixed set of questions — named boxes plus the
+   * document's scrollWidth — which is the right shape for the dashboard's
+   * "where did this column land". THE-279 needs answers `measure` has no field
+   * for: the boxes of EVERY button in a row (to count rows and check a touch
+   * floor), a scroller's `scrollWidth`/`clientWidth`/`scrollLeft`, a computed
+   * `touch-action`, and the state of the same scroller AFTER being scrolled. A
+   * new field per question would grow `Measurement` without bound, so the
+   * generic escape hatch is here once and the questions live with the test that
+   * asks them.
+   *
+   * ⚠️ Same `setDeviceMetricsOverride` as `measure`, for the same reason: it is
+   * what makes a media query change, so the 14.5px desktop rem base above
+   * 1024px really is in effect at 1024 and above.
+   *
+   * `height` defaults to `measure`'s 1200 and is a parameter because a question
+   * about a `fixed bottom-0` element is a question about the viewport's BOTTOM:
+   * 1200px is no phone, and "does this clear the bottom nav" has to be asked at
+   * a height a phone actually has.
+   */
+  async evaluateAt<T>(viewport: number, expression: string, height = 1200): Promise<T> {
+    await this.send('Emulation.setDeviceMetricsOverride',
+      { width: viewport, height, deviceScaleFactor: 1, mobile: false }, this.sessionId);
+    await this.settle();
+    const res = await this.send('Runtime.evaluate',
+      { expression, returnByValue: true, awaitPromise: true }, this.sessionId);
+    const result = res.result as { result?: { value?: T }; exceptionDetails?: { text?: string } };
+    if (result.exceptionDetails) {
+      throw new Error(`evaluateAt(${viewport}) threw: ${result.exceptionDetails.text ?? 'unknown'}`);
+    }
+    return result.result?.value as T;
+  }
+
   async close(): Promise<void> {
     try { this.ws?.close(); } catch { /* already gone */ }
     this.proc?.kill();
