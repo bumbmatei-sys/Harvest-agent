@@ -1282,7 +1282,7 @@ describe('no surface composites an accent over hardcoded white outside the light
       'components/AdminBlog.tsx', 'components/AdminCommunity.tsx', 'components/AdminCourses.tsx',
       'components/AdminFundraising.tsx', 'components/AdminLibraryCourses.tsx', 'components/AdminLivestream.tsx',
       'components/AdminRAG.tsx', 'components/AdminSettings.tsx', 'components/AffiliateSection.tsx',
-      'components/AnalyticsAndRoles.tsx', 'components/CanvasList.tsx', 'components/NewsletterCampaigns.tsx',
+      'components/AdminRoles.tsx', 'components/CanvasList.tsx', 'components/NewsletterCampaigns.tsx',
       'components/PlanUpgradeScreen.tsx', 'components/SaveButton.tsx', 'components/ShareButton.tsx',
       'components/UserEvents.tsx', 'components/course/AuthorProfile.tsx',
     ];

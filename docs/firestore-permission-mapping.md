@@ -2,7 +2,7 @@
 
 This documents how `firestore.rules` enforces the per-admin permission flags
 (`users/{uid}.permissions`, the 23-key catalog in `PERMISSION_CATEGORIES`,
-`src/components/AnalyticsAndRoles.tsx`) on **writes** to admin-feature
+`src/components/AdminRoles.tsx`) on **writes** to admin-feature
 collections. Built from the real writers in the code, not from the nav labels.
 
 ## Who always passes

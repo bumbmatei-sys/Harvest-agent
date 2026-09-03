@@ -90,7 +90,7 @@ vi.mock('../../utils/firestore-errors', () => ({
   OperationType: { GET: 'get' },
   handleFirestoreError: () => {},
 }));
-vi.mock('../AnalyticsAndRoles', () => ({ normalizePermissions: (raw: unknown) => raw }));
+vi.mock('../AdminRoles', () => ({ normalizePermissions: (raw: unknown) => raw }));
 // The mobile header also mounts a MyAccountMenu; stubbing it leaves exactly one
 // account menu in the tree so "the Billing item" is unambiguous.
 vi.mock('../AdminScreenHeader', async () => {

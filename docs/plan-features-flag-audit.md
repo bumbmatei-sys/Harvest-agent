@@ -128,7 +128,7 @@ plan does not supply gates nothing."* No action — it is already labelled.
 | `maxChurches` | `AdminChurches.tsx:40,54` |
 | `maxContacts` | `AdminCRM.tsx:251` via `utils/contact-capacity.ts` |
 | `maxCourses` | `AdminCourses.tsx:100`, **server** `api/courses/adopt/route.ts:114` |
-| `maxAdmins` | `AnalyticsAndRoles.tsx:613` via `utils/admin-seats.ts` |
+| `maxAdmins` | `AdminRoles.tsx` via `utils/admin-seats.ts` |
 | `customDomain` | **server** `api/domains/provision/route.ts:81`, `settings/DomainSection.tsx` |
 | `customBranding` | `hasBrandingAccess()` → `AdminDashboard.tsx` |
 | `newsletterAutomation` | **server** `api/newsletter/send/route.ts:96` |

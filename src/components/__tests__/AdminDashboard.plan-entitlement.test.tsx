@@ -103,7 +103,7 @@ vi.mock('firebase/firestore', () => ({
 vi.mock('../../utils/firestore-errors', () => ({
   OperationType: { GET: 'get' }, handleFirestoreError: () => {},
 }));
-vi.mock('../AnalyticsAndRoles', () => ({ normalizePermissions: (raw: unknown) => raw }));
+vi.mock('../AdminRoles', () => ({ normalizePermissions: (raw: unknown) => raw }));
 vi.mock('../AdminScreenHeader', async () => {
   const React = await import('react');
   return {
@@ -188,6 +188,12 @@ const GATED_TABS: Row[] = [
   { label: 'Notes', section: 'docs', screen: 'AdminDocs', entitled: (f) => f.docs },
   { label: 'Events', section: 'events', screen: 'AdminEvents', entitled: (f) => f.eventRegistration },
   { label: 'CRM', section: 'crm', screen: 'AdminCRM', entitled: (f) => f.crm },
+  // THE-277 — Signups was the CRM screen's Analytics sub-tab and is now its
+  // own page. It takes the SAME plan cell, `crm`: there is no `analytics`
+  // cell in the matrix (plan-features.ts says so in as many words), so `crm`
+  // is the only expression of who gets this screen, exactly as it was while
+  // the screen was a sub-tab of that one.
+  { label: 'Signups', section: 'signups', screen: 'AdminSignups', entitled: (f) => f.crm },
   { label: 'Accounting', section: 'accounting', screen: 'AdminAccounting', entitled: (f) => f.accountingTools || f.givingStatements },
   { label: 'Forms', section: 'forms', screen: 'AdminForms', entitled: (f) => f.customForms },
   { label: 'Livestream', section: 'livestream', screen: 'AdminLivestream', entitled: (f) => f.livestream },
@@ -212,11 +218,20 @@ const UNGATED_TABS: Row[] = [
   { label: 'Check-In', section: 'checkin', screen: 'AdminCheckin', entitled: () => true },
 ];
 
-/** The seven surfaces an Individual tenant may actually use. From the ticket. */
-const INDIVIDUAL_ENTITLED = ['Dashboard', 'Blog', 'Church', 'Courses', 'CRM', 'Fundraising', 'SMS'];
+/**
+ * The surfaces an Individual tenant may actually use. From the ticket, which
+ * listed seven.
+ *
+ * ⚠️ EIGHT SINCE THE-277, and the tier bought nothing new to get the eighth.
+ * Signups was the CRM screen's Analytics sub-tab and is now its own page on the
+ * SAME `crm` cell, so one entitlement that used to open one row now opens two.
+ * An Individual tenant reached this exact screen before the split, by clicking
+ * "Analytics" inside the CRM tab it is listed as owning here.
+ */
+const INDIVIDUAL_ENTITLED = ['Dashboard', 'Blog', 'Church', 'Courses', 'CRM', 'Signups', 'Fundraising', 'SMS'];
 
 /**
- * The seven, plus the one tab that mounts on every tier: Check-In.
+ * The eight, plus the one tab that mounts on every tier: Check-In.
  *
  * ⚠️ THE TICKET COUNTS CHECK-IN AMONG THE NINE THAT SHOULD NOT BE THERE, and
  * this is the deliberate deviation from that list. The tab hosts QR Codes — on
@@ -238,7 +253,7 @@ const flush = async () => {
 
 const ALL_TAB_LABELS = [
   'Dashboard', 'Church', 'Church List', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
-  'Fundraising', 'Donations', 'Events', 'Notes', 'CRM', 'Accounting', 'Forms', 'Check-In', 'Livestream',
+  'Fundraising', 'Donations', 'Events', 'Notes', 'CRM', 'Signups', 'Accounting', 'Forms', 'Check-In', 'Livestream',
   'SMS', 'Community', 'Library', 'Tenants', 'Affiliate', 'Branding', 'Settings',
 ];
 function navLabels(): string[] {
@@ -325,13 +340,13 @@ afterEach(async () => {
 });
 
 // ── 1. The regression ────────────────────────────────────────────────────────
-describe("an Individual tenant's admin nav is exactly the seven correct items", () => {
-  it('reaches exactly the seven entitled surfaces, and an upgrade wall on every other', async () => {
+describe("an Individual tenant's admin nav is exactly the eight correct items", () => {
+  it('reaches exactly the eight entitled surfaces, and an upgrade wall on every other', async () => {
     expect(await entitledLabels('plus')).toEqual([...INDIVIDUAL_REACHABLE].sort());
-    // Said again as the ticket says it, so the seven are pinned by name and the
+    // Said again as the ticket says it, so the eight are pinned by name and the
     // one deviation cannot hide inside a derived list.
     for (const label of INDIVIDUAL_ENTITLED) {
-      expect(await entitledLabels('plus'), `"${label}" is one of the seven`).toContain(label);
+      expect(await entitledLabels('plus'), `"${label}" is one of the eight`).toContain(label);
     }
   });
 

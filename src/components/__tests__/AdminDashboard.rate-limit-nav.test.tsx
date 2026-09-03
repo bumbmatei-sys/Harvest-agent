@@ -83,7 +83,7 @@ vi.mock('../../utils/firestore-errors', () => ({
   OperationType: { GET: 'get' },
   handleFirestoreError: () => {},
 }));
-vi.mock('../AnalyticsAndRoles', () => ({ normalizePermissions: (raw: unknown) => raw }));
+vi.mock('../AdminRoles', () => ({ normalizePermissions: (raw: unknown) => raw }));
 vi.mock('../AdminScreenHeader', async () => {
   const React = await import('react');
   return {
@@ -184,7 +184,7 @@ const flush = async () => {
 /** Every tab label currently reachable in the nav (mobile bar ∪ desktop sidebar). */
 const ALL_TAB_LABELS = [
   'Dashboard', 'Church', 'Church List', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
-  'Fundraising', 'Events', 'Notes', 'CRM', 'Accounting', 'Forms', 'Check-In', 'Livestream',
+  'Fundraising', 'Events', 'Notes', 'CRM', 'Signups', 'Accounting', 'Forms', 'Check-In', 'Livestream',
   'SMS', 'Community', 'Library', 'Tenants', 'Affiliate', 'Branding', 'Settings', 'More',
 ];
 function navLabels(): Set<string> {

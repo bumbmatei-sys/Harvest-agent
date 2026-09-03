@@ -66,7 +66,7 @@ vi.mock('firebase/firestore', () => ({
 vi.mock('../../utils/firestore-errors', () => ({
   OperationType: { GET: 'get' }, handleFirestoreError: () => {},
 }));
-vi.mock('../AnalyticsAndRoles', () => ({ normalizePermissions: (raw: unknown) => raw }));
+vi.mock('../AdminRoles', () => ({ normalizePermissions: (raw: unknown) => raw }));
 vi.mock('../AdminScreenHeader', async () => {
   const React = await import('react');
   return {

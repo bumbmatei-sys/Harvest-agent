@@ -74,7 +74,7 @@ vi.mock('../AdminScreenHeader', () => ({
   useAdminHeader: () => ({ setHeaderAction: () => {}, setHeaderOverride: () => {} }),
   HeaderActionButton: () => null,
 }));
-vi.mock('../AnalyticsAndRoles', () => ({ default: () => null }));
+vi.mock('../AdminRoles', () => ({ default: () => null }));
 vi.mock('../../hooks/queries/useCRMQueries', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../hooks/queries/useCRMQueries')>()),
   useContactsWithUsers: () => ({ data: [CONTACT], isLoading: false }),

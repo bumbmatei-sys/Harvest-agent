@@ -133,7 +133,7 @@ export interface CapacityCandidate {
  * The tenant's contact allowance, INCLUDING any Contacts +500 packs it owns.
  *
  * Fails closed to 'plus' (150) when the plan is unknown or still loading — the
- * same fallback AdminCourses uses for maxCourses, AnalyticsAndRoles for
+ * same fallback AdminCourses uses for maxCourses, AdminRoles for
  * maxAdmins and AdminChurches for maxChurches. A super admin browsing a tenant
  * subdomain is gated by that tenant's real plan, matching TenantContext's rule
  * that on a tenant subdomain EVERYONE is gated by the tenant's plan.

@@ -96,7 +96,7 @@ describe('2 — the Twilio credential form renders nothing', () => {
 /* ── 3 ───────────────────────────────────────────────────────────────────── */
 describe('3 — the permission row is hidden, and the grant behind it is not', () => {
   it('no rendered permission list offers "SMS Broadcasts"', async () => {
-    const roles = await import('../AnalyticsAndRoles');
+    const roles = await import('../AdminRoles');
     expect(roles.VISIBLE_PERMISSION_DEFS.map((d) => d.key)).not.toContain('manageSms');
     expect(roles.VISIBLE_PERMISSION_CATEGORIES.flatMap((c) => c.items.map((i) => i.key)))
       .not.toContain('manageSms');
@@ -111,7 +111,7 @@ describe('3 — the permission row is hidden, and the grant behind it is not', (
   it('🔴 the DATA model keeps manageSms either way', async () => {
     // Display only. Filtering the catalog itself would silently strip the flag
     // off every admin doc that round-trips through the Roles screen.
-    const roles = await import('../AnalyticsAndRoles');
+    const roles = await import('../AdminRoles');
     expect(roles.ALL_PERMISSION_DEFS.map((d) => d.key)).toContain('manageSms');
     expect(roles.normalizePermissions({ manageSms: true }).manageSms).toBe(true);
     expect(roles.normalizePermissions({}).manageSms).toBe(false);

@@ -68,7 +68,7 @@ vi.mock('../AdminScreenHeader', async (importOriginal) => ({
     setHeaderOverride: () => {},
   }),
 }));
-vi.mock('../AnalyticsAndRoles', () => ({ default: () => null }));
+vi.mock('../AdminRoles', () => ({ default: () => null }));
 vi.mock('@/contexts/TenantContext', () => ({ useTenant: () => tenantCtx }));
 // Only the data hooks are stubbed. contact-capacity.ts and PLAN_FEATURES stay
 // REAL, so the numbers this screen enforces are the numbers the plan matrix

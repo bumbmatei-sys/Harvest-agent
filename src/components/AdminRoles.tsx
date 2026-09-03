@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, CSSProperties } from "react";
-import { collection, query, getDocs, getDoc, doc, updateDoc, where, deleteDoc } from "firebase/firestore";
+import React, { useState, useEffect, CSSProperties } from "react";
+import { collection, query, getDocs, getDoc, doc, updateDoc, where } from "firebase/firestore";
 import { db, auth } from "../firebase";
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
@@ -17,9 +17,9 @@ import {
   Church, Users, MessageCircle, ClipboardList, Heart, Receipt, FileSpreadsheet,
   CalendarCheck, ClipboardCheck, QrCode, Radio, MessageSquare,
   BarChart3, Shield, Palette, Link2, Plug, Crown,
-  Search, X, ChevronDown, Globe, TrendingUp, User, type LucideIcon,
+  Search, X, ChevronDown, User, AlertTriangle, type LucideIcon,
 } from "lucide-react";
-import { FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
+import { CONTROL_DENSITY } from './layout/form-layout';
 
 
 
@@ -69,20 +69,14 @@ const PURPLE_BG = "rgb(var(--c-purple-100))";
 
 const uid = (): string => Math.random().toString(36).slice(2, 9);
 
-type MainTab = "analytics" | "roles";
-type TimePeriod = 1 | 3 | 7 | 30;
-
-interface UserRecord {
-  id: string;
-  name: string;
-  email: string;
-  city: string;
-  country: string;
-  phone: string;
-  acceptedJesus?: boolean;
-  registeredAt: string;
-  onboardingAnswers?: Record<string, string>;
-}
+/**
+ * The users-collection row, as the admin picker in the Add/Edit sheet reads it.
+ *
+ * THE-277 — one definition, imported rather than restated. The Signups screen
+ * reads the same rows and exports them to CSV, so a field added or renamed in
+ * one place cannot silently disagree with the other.
+ */
+import type { UserRecord } from '../lib/signups-export';
 
 export interface Permission {
   analytics: boolean;
@@ -243,134 +237,6 @@ export const normalizePermissions = (raw: unknown): Permission => {
   return out as unknown as Permission;
 };
 
-const filterByPeriod = (users: UserRecord[], days: TimePeriod): UserRecord[] => {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - days);
-  return users.filter((u) => new Date(u.registeredAt) >= cutoff);
-};
-
-const filterByLocation = (users: UserRecord[], q: string): UserRecord[] => {
-  if (!q.trim()) return users;
-  const lower = q.toLowerCase();
-  return users.filter((u) =>
-    (u.city && u.city.toLowerCase().includes(lower)) || (u.country && u.country.toLowerCase().includes(lower))
-  );
-};
-
-const escapeCsvValue = (val: string): string => {
-  // Prefix formula chars to prevent CSV injection in spreadsheet apps
-  const str = String(val);
-  const safe = /^[=+@\-]/.test(str) ? "'" + str : str;
-  return `"${safe.replace(/"/g, '""')}"`;
-};
-
-const downloadUsersCSV = (users: UserRecord[], filename: string): void => {
-  const headers = ["Name", "Phone Number", "Email", "Registration Date", "Country", "City", "Accepted Jesus"];
-  const rows = users.map((u) => [
-    u.name, u.phone || "Unknown", u.email,
-    new Date(u.registeredAt).toLocaleDateString("en-US"),
-    u.country || "Unknown", u.city || "Unknown", u.acceptedJesus !== undefined ? (u.acceptedJesus ? "Yes" : "No") : "Unknown",
-  ]);
-  const csv = [headers, ...rows].map((r) => r.map(escapeCsvValue).join(",")).join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-};
-
-const downloadCSV = (users: UserRecord[], period: TimePeriod, location: string): void => {
-  downloadUsersCSV(users, `harvest-users-${location || "all"}-${period}days.csv`);
-};
-
-const downloadOnboardingCSV = async (users: UserRecord[], filename: string): Promise<void> => {
-  try {
-    const { db } = await import('../firebase');
-    const { doc, getDoc } = await import('firebase/firestore');
-    const { getTenantScope } = await import('../utils/tenant-scope');
-
-    // Fetch tenant onboarding questions config for column headers
-    let questionLabels: { id: string; label: string }[] = [];
-    const tenantId = await getTenantScope();
-    if (tenantId) {
-      const tenantDoc = await getDoc(doc(db, 'tenants', tenantId));
-      if (tenantDoc.exists()) {
-        const config = tenantDoc.data().config || {};
-        if (config.onboardingQuestions && Array.isArray(config.onboardingQuestions)) {
-          questionLabels = config.onboardingQuestions
-            .filter((q: any) => q.id && !q.id.startsWith('default_'))
-            .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
-            .map((q: any) => ({ id: q.id, label: q.label }));
-        }
-      }
-    }
-
-    const headers = [
-      "Name", "Phone Number", "Email", "Registration Date", "Country", "City", "Accepted Jesus",
-      ...questionLabels.map(q => q.label),
-    ];
-
-    const rows = users.map((u) => [
-      u.name, u.phone || "Unknown", u.email,
-      new Date(u.registeredAt).toLocaleDateString("en-US"),
-      u.country || "Unknown", u.city || "Unknown",
-      u.acceptedJesus !== undefined ? (u.acceptedJesus ? "Yes" : "No") : "Unknown",
-      ...questionLabels.map(q => (u.onboardingAnswers && u.onboardingAnswers[q.id]) || ""),
-    ]);
-
-    const csv = [headers, ...rows].map((r) => r.map(escapeCsvValue).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-  } catch (e) {
-    console.error("Failed to download onboarding CSV:", e);
-  }
-};
-
-/**
- * A stat tile.
- *
- * ── The icon is a component, not a character ────────────────────────────────
- * These three tiles carried literal emoji ("\u{1F465}", "\u{1F30D}", "\u{1F4C8}") where every other surface
- * in the app draws `lucide-react`. An emoji is a glyph from the platform font,
- * so it cannot be themed at all: it does not take `color`, it does not darken
- * with the dark palette, and it renders as a different picture on Android, iOS
- * and Windows. `color` on the wrapper below now actually reaches the icon,
- * which is the whole reason a tile has an accent.
- *
- * ── The LIVE badge is gone ──────────────────────────────────────────────────
- * It claimed real-time data these tiles have never had: the numbers come from
- * one `getDocs` at mount (line ~654) and never update again until the screen is
- * remounted. There is no `onSnapshot` in this file. A badge that says LIVE on a
- * snapshot is not decoration, it is wrong — and on a tenant with a single user
- * it is wrong three times on one row.
- */
-interface StatCardProps { label: string; value: string | number; sub?: string; color?: string; icon: LucideIcon; onClick?: () => void; }
-function StatCard({ label, value, sub, color = GOLD, icon: Icon, onClick }: StatCardProps) {
-  return (
-    <div onClick={onClick} style={{ background: CARD, borderRadius: 14, padding: "14px 16px", boxShadow: "0 1px 6px rgba(0,0,0,0.07)", flex: 1, minWidth: 0, cursor: onClick ? "pointer" : "default", transition: "transform 0.1s" }}
-         onMouseDown={e => onClick && (e.currentTarget.style.transform = "scale(0.98)")}
-         onMouseUp={e => onClick && (e.currentTarget.style.transform = "scale(1)")}
-         onMouseLeave={e => onClick && (e.currentTarget.style.transform = "scale(1)")}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div style={{ width: 34, height: 34, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", background: `color-mix(in srgb, ${color} 12%, transparent)`, color }}>
-          <Icon size={18} />
-        </div>
-      </div>
-      <div style={{ fontSize: 26, fontWeight: 800, color: TEXT, marginTop: 8, lineHeight: 1 }}>{value}</div>
-      <div style={{ fontSize: 12, color: TEXT2, marginTop: 4 }}>{label}</div>
-      {sub && <div style={{ fontSize: 11, color: color, fontWeight: 600, marginTop: 2 }}>{sub}</div>}
-    </div>
-  );
-}
-
 function Toggle({ on, color }: { on: boolean; color: string }) {
   return (
     <div style={{ width: 42, height: 24, borderRadius: 99, background: on ? color : BORDER, position: "relative", flexShrink: 0, transition: "background 0.2s" }}>
@@ -378,41 +244,6 @@ function Toggle({ on, color }: { on: boolean; color: string }) {
     </div>
   );
 }
-
-// Single brand-coloured "⬇ Download ▾" control that replaces the old paired
-// export buttons. Opens to two choices (contact details / onboarding data);
-// closes on outside-click, Esc, or selection. Pure React — no libraries.
-const DownloadMenu: React.FC<{ onContacts: () => void; onOnboarding: () => void; style?: React.CSSProperties; }>
-  = ({ onContacts, onOnboarding, style }) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('mousedown', onDoc);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey); };
-  }, [open]);
-  const pick = (fn: () => void) => { fn(); setOpen(false); };
-  const BRAND = 'var(--brand-color, #C9963A)';
-  const item: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, color: TEXT };
-  const iconSlot: React.CSSProperties = { display: 'inline-flex', width: 18, justifyContent: 'center', flexShrink: 0 };
-  return (
-    <div ref={ref} style={{ position: 'relative', ...style }}>
-      <button onClick={() => setOpen(o => !o)}
-        style={{ background: 'color-mix(in srgb, var(--brand-color, #C9963A) 10%, var(--surface-raised))', border: '1px solid color-mix(in srgb, var(--brand-color, #C9963A) 35%, var(--surface-raised))', color: BRAND, padding: '6px 12px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-        ⬇ Download <ChevronDown size={13} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
-      </button>
-      {open && (
-        <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'var(--surface-raised)', border: `1px solid ${BORDER}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 20, overflow: 'hidden', minWidth: 190 }}>
-          <button onClick={() => pick(onContacts)} style={item}><span style={iconSlot}>⬇</span> Contact details</button>
-          <button onClick={() => pick(onOnboarding)} style={{ ...item, borderTop: `1px solid ${BORDER}` }}><span style={iconSlot}>📋</span> Onboarding data</button>
-        </div>
-      )}
-    </div>
-  );
-};
 
 interface PermissionEditorProps {
   admin: AdminUser | null;
@@ -639,22 +470,13 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
   );
 }
 
-export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissions, mode = "full" }: { currentUserRole: string, currentUserPermissions?: Permission | null, mode?: "full" | "analytics" | "roles" }) {
-  const [tab, setTab] = useState<MainTab>(mode === "roles" ? "roles" : "analytics");
-  const [subView, setSubView] = useState<"main" | "all_users" | "countries" | "country_users">("main");
-  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
-  const [listSearchQuery, setListSearchQuery] = useState("");
+export default function AdminRoles({ currentUserRole, currentUserPermissions, mode = "roles" }: { currentUserRole: string, currentUserPermissions?: Permission | null, mode?: "full" | "roles" }) {
   
   const [allUsers, setAllUsers] = useState<UserRecord[]>([]);
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   // tenants/{id}.ownerId — the buyer. Their card gets an Owner badge instead of
   // Edit/Remove (firestore.rules is the real guard; this avoids a dead-end UI).
   const [tenantOwnerId, setTenantOwnerId] = useState<string | null>(null);
-
-  const [locationQuery, setLocationQuery] = useState("");
-  const [period, setPeriod] = useState<TimePeriod>(7);
-  const [hasSearched, setHasSearched] = useState(false);
-  const [filteredUsers, setFilteredUsers] = useState<UserRecord[]>([]);
 
   // maxAdmins — CLIENT-SIDE ONLY, and it blocks NEW promotions only. A tenant
   // already over its cap keeps every admin it has; see src/utils/admin-seats.ts
@@ -673,21 +495,6 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
   const [isNewAdmin, setIsNewAdmin] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState<string | null>(null);
-  const [userToDelete, setUserToDelete] = useState<string | null>(null);
-
-  // Follow the `mode` prop. AdminCRM renders this component with mode="analytics"
-  // and mode="roles" for its two sub-tabs; switching between them reuses the same
-  // instance (only the prop changes), so the internal `tab` view must be re-synced
-  // to the prop or it goes stale and the shown view stops matching the sub-tab.
-  useEffect(() => {
-    if (mode === "roles") setTab("roles");
-    else if (mode === "analytics") setTab("analytics");
-  }, [mode]);
-
-  useEffect(() => {
-    setListSearchQuery("");
-  }, [subView]);
-
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -744,221 +551,6 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
     };
     fetchUsers();
   }, []);
-
-  const handleSearch = (): void => {
-    const byPeriod = filterByPeriod(allUsers, period);
-    const byLocation = filterByLocation(byPeriod, locationQuery);
-    setFilteredUsers(byLocation);
-    setHasSearched(true);
-  };
-
-  const confirmDeleteUser = async () => {
-    if (!userToDelete) return;
-    try {
-      await deleteDoc(doc(db, "users", userToDelete));
-      setAllUsers(prev => prev.filter(u => u.id !== userToDelete));
-      setFilteredUsers(prev => prev.filter(u => u.id !== userToDelete));
-      setUserToDelete(null);
-    } catch (error) {
-      try { handleFirestoreError(error, OperationType.DELETE, `users/${userToDelete}`); } catch (e) { console.error(e); }
-    }
-  };
-
-  const renderAllUsers = () => {
-    const filtered = allUsers.filter(u => 
-      u.name.toLowerCase().includes(listSearchQuery.toLowerCase()) || 
-      u.email.toLowerCase().includes(listSearchQuery.toLowerCase())
-    );
-
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 16, animation: "fadeUp 0.3s ease" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={() => setSubView("main")} style={s.backBtn}>← Back</button>
-          <h2 style={{ fontSize: 20, fontWeight: 800, color: TEXT, fontFamily: "var(--font-display), Georgia, serif" }}>All Users ({filtered.length})</h2>
-          <div style={{ flex: 1 }} />
-          <DownloadMenu onContacts={() => downloadUsersCSV(filtered, "all_users.csv")} onOnboarding={() => downloadOnboardingCSV(filtered, "all_users_onboarding.csv")} />
-        </div>
-        
-        <input 
-          style={s.input} 
-          placeholder="Search users by name or email..." 
-          value={listSearchQuery} 
-          onChange={e => setListSearchQuery(e.target.value)} 
-        />
-
-        <div style={{ ...s.card, overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-            <thead>
-              <tr style={{ borderBottom: `1px solid ${BORDER}`, background: "var(--surface)" }}>
-                <th style={s.th}>Name</th>
-                <th style={s.th}>Phone Number</th>
-                <th style={s.th}>Email</th>
-                <th style={s.th}>Registered</th>
-                <th style={s.th}>Country</th>
-                <th style={s.th}>City</th>
-                <th style={s.th}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(u => (
-                <tr key={u.id} style={{ borderBottom: `1px solid ${BORDER}` }}>
-                  <td style={s.td}>{u.name}</td>
-                  <td style={s.td}>{u.phone || "Unknown"}</td>
-                  <td style={s.td}>{u.email}</td>
-                  <td style={s.td}>{new Date(u.registeredAt).toLocaleDateString()}</td>
-                  <td style={s.td}>{u.country || "Unknown"}</td>
-                  <td style={s.td}>{u.city || "Unknown"}</td>
-                  <td style={s.td}>
-                    <button 
-                      onClick={() => setUserToDelete(u.id)}
-                      style={{ background: "none", border: "none", color: "red", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr><td colSpan={7} style={{ padding: 20, textAlign: "center", color: TEXT2 }}>No users found.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
-
-  const renderCountries = () => {
-    const countryMap = new Map<string, number>();
-    allUsers.forEach(u => {
-      const c = u.country || "Unknown";
-      countryMap.set(c, (countryMap.get(c) || 0) + 1);
-    });
-
-    const countryList = Array.from(countryMap.entries()).map(([country, count]) => ({ country, count }));
-    
-    const filtered = countryList.filter(c => c.country.toLowerCase().includes(listSearchQuery.toLowerCase()));
-    filtered.sort((a, b) => b.count - a.count);
-
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 16, animation: "fadeUp 0.3s ease" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={() => setSubView("main")} style={s.backBtn}>← Back</button>
-          <h2 style={{ fontSize: 20, fontWeight: 800, color: TEXT, fontFamily: "var(--font-display), Georgia, serif" }}>Countries ({filtered.length})</h2>
-        </div>
-        
-        <input 
-          style={s.input} 
-          placeholder="Search countries..." 
-          value={listSearchQuery} 
-          onChange={e => setListSearchQuery(e.target.value)} 
-        />
-
-        <div style={{ ...s.card, overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-            <thead>
-              <tr style={{ borderBottom: `1px solid ${BORDER}`, background: "var(--surface)" }}>
-                <th style={s.th}>Country</th>
-                <th style={s.th}>Users</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(c => (
-                <tr 
-                  key={c.country} 
-                  onClick={() => { setSelectedCountry(c.country); setSubView("country_users"); }}
-                  style={{ borderBottom: `1px solid ${BORDER}`, cursor: "pointer", transition: "background 0.2s" }}
-                  onMouseEnter={e => e.currentTarget.style.background = "#FAF8F5"}
-                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                >
-                  <td style={s.td}>{c.country}</td>
-                  <td style={s.td}>{c.count}</td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr><td colSpan={2} style={{ padding: 20, textAlign: "center", color: TEXT2 }}>No countries found.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
-
-  const renderCountryUsers = () => {
-    const countryUsers = allUsers.filter(u => (u.country || "Unknown") === selectedCountry);
-    const filtered = countryUsers.filter(u => 
-      u.name.toLowerCase().includes(listSearchQuery.toLowerCase()) || 
-      u.email.toLowerCase().includes(listSearchQuery.toLowerCase())
-    );
-
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 16, animation: "fadeUp 0.3s ease" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={() => setSubView("countries")} style={s.backBtn}>← Back</button>
-          <h2 style={{ fontSize: 20, fontWeight: 800, color: TEXT, fontFamily: "var(--font-display), Georgia, serif" }}>Users in {selectedCountry} ({filtered.length})</h2>
-          <div style={{ flex: 1 }} />
-          <DownloadMenu onContacts={() => downloadUsersCSV(filtered, `users_${selectedCountry}.csv`)} onOnboarding={() => downloadOnboardingCSV(filtered, `onboarding_${selectedCountry}.csv`)} />
-        </div>
-        
-        <input 
-          style={s.input} 
-          placeholder="Search users by name or email..." 
-          value={listSearchQuery} 
-          onChange={e => setListSearchQuery(e.target.value)} 
-        />
-
-        <div style={{ ...s.card, overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-            <thead>
-              <tr style={{ borderBottom: `1px solid ${BORDER}`, background: "var(--surface)" }}>
-                <th style={s.th}>Name</th>
-                <th style={s.th}>Phone Number</th>
-                <th style={s.th}>Email</th>
-                <th style={s.th}>Registered</th>
-                <th style={s.th}>Country</th>
-                <th style={s.th}>City</th>
-                <th style={s.th}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(u => (
-                <tr key={u.id} style={{ borderBottom: `1px solid ${BORDER}` }}>
-                  <td style={s.td}>{u.name}</td>
-                  <td style={s.td}>{u.phone || "Unknown"}</td>
-                  <td style={s.td}>{u.email}</td>
-                  <td style={s.td}>{new Date(u.registeredAt).toLocaleDateString()}</td>
-                  <td style={s.td}>{u.country || "Unknown"}</td>
-                  <td style={s.td}>{u.city || "Unknown"}</td>
-                  <td style={s.td}>
-                    <button 
-                      onClick={() => setUserToDelete(u.id)}
-                      style={{ background: "none", border: "none", color: "red", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr><td colSpan={7} style={{ padding: 20, textAlign: "center", color: TEXT2 }}>No users found.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
-
-  const handleReset = (): void => {
-    setLocationQuery("");
-    setFilteredUsers([]);
-    setHasSearched(false);
-  };
-
-  const totalAll = allUsers.length;
-  const periodAll = filterByPeriod(allUsers, period);
-  const countries = new Set(allUsers.map((u) => u.country).filter(Boolean)).size;
 
   const handleSaveAdmin = async (admin: AdminUser): Promise<void> => {
     if (!admin.id) {
@@ -1089,7 +681,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
       {showRemoveConfirm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 99, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: CARD, borderRadius: 20, width: "100%", maxWidth: 360, padding: 28, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", textAlign: "center" }}>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>⚠️</div>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 12, color: RED }}><AlertTriangle size={36} /></div>
             <div style={{ fontWeight: 800, fontSize: 17, color: TEXT, marginBottom: 8, fontFamily: "var(--font-display), Georgia, serif" }}>Remove Admin?</div>
             <div style={{ fontSize: 14, color: TEXT2, lineHeight: 1.6, marginBottom: 24 }}>
               This will revoke all their permissions. They will no longer have admin access.
@@ -1102,140 +694,13 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
         </div>
       )}
 
-      {mode === "full" && (currentUserRole === "super_admin" || currentUserPermissions?.manageAdmins || currentUserPermissions?.fullAccess) && (
-        <div style={s.tabBar}>
-          {([["analytics", "Analytics", BarChart3], ["roles", "Admin Roles", Users]] as [MainTab, string, LucideIcon][]).map(([id, label, Icon]) => (
-            <button key={id} onClick={() => setTab(id)}
-              style={{ ...s.tab, ...(tab === id ? s.tabActive : {}), display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
-              <Icon size={15} /> {label}
-            </button>
-          ))}
-        </div>
-      )}
-
       <div style={{ overflowY: "auto", flex: 1 }}>
         {/* No container here: AdminCRM wraps this component, and the sub-tab bar
               above it, in the page measure already. A second one would be a
               second definition of the same number. */}
           <div className="w-full" style={{ padding: "20px 16px 60px" }}>
 
-          {tab === "analytics" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {subView === "main" && (
-                <>
-                  <div style={{ display: "flex", gap: 12 }}>
-                    <StatCard icon={Users} label="Total Users" value={totalAll} sub="All time" onClick={() => setSubView("all_users")} />
-                    <StatCard icon={Globe} label="Countries" value={countries} sub="Represented" color={BLUE} onClick={() => setSubView("countries")} />
-                    <StatCard icon={TrendingUp} label={`Last ${period}d`} value={periodAll.length} sub="New signups" color={GREEN} />
-                  </div>
-
-                  {/* Rule 1b (form-layout.ts): this card is a FORM, so it takes the
-                      form measure rather than the page measure the tab carries. */}
-                  <div data-search-registrations="" style={s.card}>
-                    <div style={s.sectionHeading}>Search Registrations</div>
-                    <div style={s.cardBody}>
-                      <div>
-                        <label style={s.label}>Time Period</label>
-                        {/* Rule 2: four period buttons are a `medium` field, not a row
-                            that should stretch to whatever the card has spare. */}
-                        <div className={FIELD_WIDTH.medium} style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 6 }}>
-                          {([1, 3, 7, 30] as TimePeriod[]).map((d) => (
-                            <button key={d} onClick={() => setPeriod(d)}
-                              style={{ padding: "10px 4px", border: `1.5px solid ${period === d ? GOLD : BORDER}`, background: period === d ? GOLD_BTN : CARD, color: period === d ? "var(--surface-raised)" : TEXT2, fontWeight: 700, fontSize: 13, borderRadius: 10, cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}>
-                              {d === 1 ? "Today" : `${d}d`}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label style={s.label}>Location Filter</label>
-                        <div className={FIELD_WIDTH.long} style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--surface)", borderRadius: 10, border: `1.5px solid ${BORDER}`, padding: "0 12px", marginTop: 6 }}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={TEXT2} strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-                          <input value={locationQuery} onChange={(e) => setLocationQuery(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                            placeholder="Search by city or country..."
-                            style={{ flex: 1, border: "none", background: "transparent", fontSize: 14, fontFamily: "inherit", color: TEXT, padding: "11px 0" }} />
-                          {locationQuery && <button onClick={() => setLocationQuery("")} style={{ background: "none", border: "none", color: TEXT2, cursor: "pointer", fontSize: 14 }}>✕</button>}
-                        </div>
-                      </div>
-
-                      {/* Rule 3 + Rule 4: both buttons are content width from `sm:` up
-                          and share the 40px action box. Below `sm:` the flex weights
-                          still decide, so the phone keeps the 2:1 split it has today.
-                          The 11px padding moves from an inline `style` to the class
-                          layer unchanged: an inline shorthand out-ranks any class, so
-                          `sm:p-0` could never have cleared it from there. `p-[11px]`
-                          is unprefixed, so the phone still gets exactly 11px. */}
-                      <div style={{ display: "flex", gap: 10 }}>
-                        <button onClick={handleReset} data-analytics-reset="" className={`flex-[1] p-[11px] sm:p-0 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`} style={{ background: "transparent", border: `1.5px solid ${BORDER}`, color: TEXT2, borderRadius: 10, cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13 }}>Reset</button>
-                        <button onClick={handleSearch} data-analytics-search="" className={`flex-[2] p-[11px] sm:p-0 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`} style={{ background: GOLD_BTN, border: "none", color: "var(--surface-raised)", fontWeight: 800, borderRadius: 10, cursor: "pointer", fontFamily: "inherit", fontSize: 14, boxShadow: "0 2px 8px color-mix(in srgb, var(--brand-color, #C9963A) 30%, transparent)" }}>
-                          Search
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {hasSearched && (
-                    <div style={{ animation: "fadeUp 0.3s ease" }}>
-                      <div style={s.card}>
-                        <div style={{ ...s.sectionHeading, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span>
-                            {filteredUsers.length} result{filteredUsers.length !== 1 ? "s" : ""}
-                            {locationQuery ? ` in "${locationQuery}"` : ""} — last {period} day{period !== 1 ? "s" : ""}
-                          </span>
-                          {filteredUsers.length > 0 && (
-                            <DownloadMenu
-                              onContacts={() => downloadCSV(filteredUsers, period, locationQuery)}
-                              onOnboarding={() => downloadOnboardingCSV(filteredUsers, `onboarding-${locationQuery || "all"}-${period}days.csv`)}
-                            />
-                          )}
-                        </div>
-
-                        {filteredUsers.length === 0 ? (
-                          <div style={{ padding: "32px 16px", textAlign: "center", color: TEXT2 }}>
-                            <div style={{ fontSize: 32, marginBottom: 8 }}>🔍</div>
-                            <div style={{ fontSize: 14, fontWeight: 600 }}>No users found</div>
-                            <div style={{ fontSize: 13, marginTop: 4 }}>Try a different location or time period</div>
-                          </div>
-                        ) : (
-                          filteredUsers.map((user, i) => (
-                            <div key={user.id} style={{ padding: "13px 16px", borderBottom: i < filteredUsers.length - 1 ? `1px solid ${BORDER}` : "none", display: "flex", alignItems: "center", gap: 12 }}>
-                              <div style={{ width: 36, height: 36, borderRadius: "50%", background: GOLD_LIGHT, border: `1.5px solid ${GOLD}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0, fontWeight: 700, color: GOLD }}>
-                                {user.name.charAt(0)}
-                              </div>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontWeight: 700, fontSize: 14, color: TEXT }}>{user.name}</div>
-                                <div style={{ fontSize: 12, color: TEXT2, marginTop: 1 }}>{user.email}</div>
-                                {user.phone && <div style={{ fontSize: 12, color: TEXT2, marginTop: 1 }}>📞 {user.phone}</div>}
-                              </div>
-                              <div style={{ textAlign: "right", flexShrink: 0 }}>
-                                <div style={{ fontSize: 12, fontWeight: 600, color: TEXT }}>📍 {user.city || "Unknown"}, {user.country || "Unknown"}</div>
-                                <div style={{ fontSize: 11, color: TEXT2, marginTop: 1 }}>
-                                  {new Date(user.registeredAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                                </div>
-                                <button 
-                                  onClick={() => setUserToDelete(user.id)}
-                                  style={{ background: "none", border: "none", color: "red", cursor: "pointer", fontSize: 11, fontWeight: 600, marginTop: 4, padding: 0 }}
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-              {subView === "all_users" && renderAllUsers()}
-              {subView === "countries" && renderCountries()}
-              {subView === "country_users" && renderCountryUsers()}
-            </div>
-          )}
-
-          {tab === "roles" && (currentUserRole === "super_admin" || currentUserPermissions?.manageAdmins || currentUserPermissions?.fullAccess) && (
+          {(currentUserRole === "super_admin" || currentUserPermissions?.manageAdmins || currentUserPermissions?.fullAccess) && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {/* THE-181 — this banner was #F5F3FF/#7C3AED. Nothing else in the app
                   is violet: it is not in the Harvest ramp, not in Classic, and not
@@ -1494,26 +959,6 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
           )}
         </div>
       </div>
-
-      {userToDelete && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, animation: "fadeIn 0.2s ease" }}>
-          <div style={{ background: CARD, borderRadius: 16, width: "100%", maxWidth: 360, overflow: "hidden", animation: "scaleUp 0.2s ease" }}>
-            <div style={{ padding: "20px 20px 16px", textAlign: "center" }}>
-              <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#FEF2F2", color: "#DC2626", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, margin: "0 auto 16px" }}>
-                ⚠️
-              </div>
-              <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 800, color: TEXT, fontFamily: "var(--font-display), Georgia, serif" }}>Delete User?</h3>
-              <p style={{ margin: 0, fontSize: 14, color: TEXT2, lineHeight: 1.5 }}>
-                Are you sure you want to delete this user from the database? This action cannot be undone.
-              </p>
-            </div>
-            <div style={{ padding: "16px 20px 20px", display: "flex", gap: 10 }}>
-              <button onClick={() => setUserToDelete(null)} style={{ flex: 1, background: "transparent", border: `1.5px solid ${BORDER}`, color: TEXT2, padding: "12px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14 }}>Cancel</button>
-              <button onClick={confirmDeleteUser} style={{ flex: 1, background: "#DC2626", border: "none", color: "var(--surface-raised)", fontWeight: 800, padding: "12px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit", fontSize: 14, boxShadow: "0 2px 10px rgba(220,38,38,0.3)" }}>Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

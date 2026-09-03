@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import AnalyticsAndRoles from '../AnalyticsAndRoles';
+import AdminRoles from '../AdminRoles';
 import { AdminHeaderContext } from '../AdminScreenHeader';
 import { PLAN_ORDER,
   PRICED_PLAN_ORDER, getPlanFeatures, PLAN_PRICING } from '../../utils/plan-features';
@@ -87,7 +87,7 @@ function Harness() {
   return (
     <AdminHeaderContext.Provider value={api}>
       <div data-testid="header">{action}</div>
-      <AnalyticsAndRoles
+      <AdminRoles
         currentUserRole="admin"
         currentUserPermissions={{ manageAdmins: true } as any}
         mode="roles"
@@ -123,7 +123,7 @@ function seatUsageText(): string {
 const bodyText = () => container.textContent || '';
 const editorIsOpen = () => !!container.querySelector('button[aria-label="Close"]');
 
-describe('AnalyticsAndRoles — maxAdmins enforcement', () => {
+describe('AdminRoles — maxAdmins enforcement', () => {
   beforeEach(() => {
     container = document.createElement('div');
     document.body.appendChild(container);
