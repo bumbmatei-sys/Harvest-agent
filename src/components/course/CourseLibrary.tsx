@@ -1,10 +1,11 @@
 "use client";
 import React, { useState } from "react";
 import { Search } from "lucide-react";
-import { Course, Author } from "../../types/course.types";
+import { Course, Author, QuizAttempt } from "../../types/course.types";
 import { getAllLessons } from "../../utils/course.utils";
 import { CourseCard } from "./CourseCard";
 import { GOLD } from "../../utils/course.constants";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../ui/empty";
 
 interface CourseLibraryProps {
   courses: Course[];
@@ -12,9 +13,11 @@ interface CourseLibraryProps {
   categories: string[];
   onSelectCourse: (course: Course) => void;
   completed?: Set<string>;
+  /** Forwarded to each card for the `requireQuiz` half of completeness. */
+  quizAttempts?: Record<string, QuizAttempt | undefined>;
 }
 
-export function CourseLibrary({ courses, authors, categories, onSelectCourse, completed }: CourseLibraryProps) {
+export function CourseLibrary({ courses, authors, categories, onSelectCourse, completed, quizAttempts }: CourseLibraryProps) {
   const [activeCategory, setActiveCategory] = useState("All");
   const [search, setSearch] = useState("");
 
@@ -55,7 +58,7 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search courses..."
-          className="w-full pl-9 lg:pl-11 pr-3 py-1.5 lg:py-2.5 bg-surface-raised border border-line rounded-lg lg:rounded-xl text-sm text-strong focus:ring-2 focus:ring-gold focus:border-transparent outline-hidden transition-all"
+          className="w-full h-[44px] pl-9 lg:pl-11 pr-3 py-0 bg-surface-raised border border-line rounded-lg lg:rounded-xl text-sm text-strong focus:ring-2 focus:ring-gold focus:border-transparent outline-hidden transition-all"
         />
       </div>
 
@@ -65,7 +68,9 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}
-            className={`px-3 py-1 lg:px-[15px] lg:py-[7px] rounded-full text-xs lg:text-[12.5px] font-medium lg:font-semibold whitespace-nowrap transition-colors ${
+            data-category-pill={cat}
+            aria-pressed={activeCategory === cat}
+            className={`h-[44px] min-w-[44px] shrink-0 inline-flex items-center justify-center px-4 lg:px-[15px] py-0 rounded-full text-xs lg:text-[12.5px] font-medium lg:font-semibold whitespace-nowrap transition-colors ${
               activeCategory === cat
                 ? "bg-gold text-white"
                 : "bg-surface-raised text-muted lg:text-body border border-line lg:border-line-strong hover:border-gold"
@@ -151,27 +156,48 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
               authors={authors}
               onClick={() => onSelectCourse(course)}
               completed={completed}
+              quizAttempts={quizAttempts}
             />
           ))}
           </div>
         </div>
       )}
 
-      {/* All courses */}
-      <span className="lg:hidden block text-[11px] font-bold uppercase tracking-[0.14em] text-faint mb-4">
-        {continueLearning.length > 0 ? "All Courses" : "Courses"}
-      </span>
-      <h2 className="hidden lg:block text-lg font-bold tracking-tight mb-4 font-display">
-        {continueLearning.length > 0 ? "All Courses" : "Courses"}
-      </h2>
-      {allCourses.length === 0 ? (
-        <div className="text-center py-16 text-faint">
-          <svg className="mx-auto mb-3 text-stone-300" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
-          </svg>
-          <p className="text-sm font-medium">No courses found</p>
-        </div>
-      ) : (
+      {/* All courses — the heading belongs to the list, so it goes when the
+          list does rather than captioning nothing. */}
+      {allCourses.length > 0 && (
+        <>
+          <span className="lg:hidden block text-[11px] font-bold uppercase tracking-[0.14em] text-faint mb-4">
+            {continueLearning.length > 0 ? "All Courses" : "Courses"}
+          </span>
+          <h2 className="hidden lg:block text-lg font-bold tracking-tight mb-4 font-display">
+            {continueLearning.length > 0 ? "All Courses" : "Courses"}
+          </h2>
+        </>
+      )}
+      {/*
+        ⚠️ The empty state keys off `filtered`, not `allCourses`.
+
+        `allCourses` is what is LEFT after Continue Learning takes its share, so
+        a category holding only part-finished courses emptied it and printed
+        "No courses found" directly beneath a populated list. Nothing matched is
+        a question about the filter, and `filtered` is the filter's answer.
+      */}
+      {filtered.length === 0 ? (
+        <Empty data-courses-empty className="py-16">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
+              </svg>
+            </EmptyMedia>
+            <EmptyTitle>No courses found</EmptyTitle>
+            <EmptyDescription>
+              Nothing in {activeCategory === "All" ? "the library" : activeCategory} matches yet. Try another category.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : allCourses.length === 0 ? null : (
         <div className="lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-5">
         {allCourses.map((course) => (
           <CourseCard
@@ -180,6 +206,7 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
             authors={authors}
             onClick={() => onSelectCourse(course)}
             completed={completed}
+            quizAttempts={quizAttempts}
           />
         ))}
         </div>
