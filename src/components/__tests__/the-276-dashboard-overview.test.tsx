@@ -91,6 +91,18 @@ vi.mock('firebase/firestore', () => ({
 
 const AdminDashboardHome = (await import('../AdminDashboardHome')).default;
 const { DASHBOARD_TABS } = await import('../dashboard/DashboardTabs');
+
+/**
+ * The tabs that are still `NotYetBuilt`, by id.
+ *
+ * ⚠️ Derived by EXCLUSION rather than listed, so a seventh tab appearing in
+ * `DASHBOARD_TABS` is automatically required to carry a placeholder. `overview`
+ * is THE-276's and `growth` is THE-283's; everything else is a later slice.
+ */
+const BUILT_TABS = ['overview', 'growth'] as const;
+const UNBUILT_TABS = DASHBOARD_TABS.filter(
+  (t: { id: string }) => !(BUILT_TABS as readonly string[]).includes(t.id),
+);
 const { bucketWeekly, deltaOf, weekBuckets, DASHBOARD_FETCH_LIMIT } = await import('../dashboard/dashboard-data');
 const { givingMix } = await import('../dashboard/GivingMix');
 const { readableReceipts, toInvoiceRow } = await import('../dashboard/dashboard-data');
@@ -185,7 +197,7 @@ describe('the tab shell renders all six tabs', () => {
     expect(DASHBOARD_TABS).toHaveLength(6);
   });
 
-  it('the five unbuilt tabs each say so by name, rather than rendering nothing', async () => {
+  it('the four unbuilt tabs each say so by name, rather than rendering nothing', async () => {
     grantAnalytics();
     healthyTenant();
     const c = await screen();
@@ -193,12 +205,21 @@ describe('the tab shell renders all six tabs', () => {
     // ⚠️ Base UI mounts only the ACTIVE panel, so each tab has to be opened to
     // be asserted. Clicking is also the honest test: a placeholder that only
     // exists in the DOM of a tab nobody can reach is not a shipped tab.
-    for (const tab of DASHBOARD_TABS.slice(1)) {
+    //
+    // ⚠️ AMENDED BY THE-283, which built Growth. The claim narrows from five
+    // tabs to four and is NOT dropped: a tab that quietly stopped saying it was
+    // unbuilt, without being built, still fails here. Growth's own assertion is
+    // the line below — it must no longer carry a placeholder at all.
+    for (const tab of UNBUILT_TABS) {
       await openTab(c, tab.label);
       const placeholder = c.querySelector(`[data-tab-placeholder="${tab.id}"]`);
       expect(placeholder, `${tab.label} has no placeholder`).toBeTruthy();
       expect(text(placeholder!)).toContain(`${tab.label} is not built yet`);
     }
+
+    await openTab(c, 'Growth');
+    expect(c.querySelector('[data-tab-placeholder="growth"]'), 'Growth is built now').toBeNull();
+    expect(c.querySelector('[data-growth-tab]'), 'Growth panel did not render').toBeTruthy();
 
     await openTab(c, 'Overview');
     expect(c.querySelector('[data-tab-placeholder="overview"]')).toBeNull();
@@ -830,11 +851,11 @@ describe('THE-276-FIX moved layout only', () => {
     expect(text(funnel)).not.toMatch(/Champion|Giving tier|Member\b/);
   });
 
-  it('the five other tabs are still placeholders — this is still slice 1 of 6', async () => {
+  it('the four remaining tabs are still placeholders — slices 3 to 6 are unbuilt', async () => {
     grantAnalytics();
     healthyTenant();
     const c = await screen();
-    for (const tab of DASHBOARD_TABS.slice(1)) {
+    for (const tab of UNBUILT_TABS) {
       await openTab(c, tab.label);
       expect(c.querySelector(`[data-tab-placeholder="${tab.id}"]`), tab.label).toBeTruthy();
     }

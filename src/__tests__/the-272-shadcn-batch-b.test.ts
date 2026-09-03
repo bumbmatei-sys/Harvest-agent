@@ -819,7 +819,27 @@ const THE_276_CHART_ADOPTERS = [
   'src/components/dashboard/TrendChart.tsx',
 ] as const;
 
-it('only THE-276 adopts chart, and table/pagination/progress are still adopted by nothing', () => {
+/**
+ * ⚠️ AMENDED AGAIN BY THE-283, and RECORDED here rather than relaxed.
+ *
+ * This guard's own note says adoption is "an explicit decision" for a later
+ * ticket, and THE-283 is that decision for `table`: the Growth tab's countries
+ * & cities widget is a plain tabular list of aggregate counts, which is the
+ * primitive's exact purpose. So the claim is narrowed by exactly one file and
+ * stays closed — a SECOND adopter of `table` still fails here, and the decision
+ * is visible in this list rather than being invisible in a deleted assertion.
+ *
+ * 🔴 `pagination` and `progress` are STILL adopted by nothing, and that is not
+ * an oversight this ticket overlooked. The long-list problem in that widget is
+ * solved by scrolling inside the card, which needs no primitive, and paginating
+ * a country list would hide rows behind a control — the opposite of what a
+ * table whose whole point is a complete accounting wants.
+ */
+const THE_283_TABLE_ADOPTERS = [
+  'src/components/dashboard/LocationTable.tsx',
+] as const;
+
+it('only THE-276 adopts chart, THE-283 adopts table, and pagination/progress are still adopted by nothing', () => {
   const walk = (dir: string): string[] =>
     readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
       const p = path.join(dir, e.name);
@@ -837,7 +857,10 @@ it('only THE-276 adopts chart, and table/pagination/progress are still adopted b
   const chartImporters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), 'chart'));
   expect(chartImporters.map((f) => rel(f)).sort()).toEqual([...THE_276_CHART_ADOPTERS]);
 
-  for (const name of ['table', 'pagination', 'progress']) {
+  const tableImporters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), 'table'));
+  expect(tableImporters.map((f) => rel(f)).sort()).toEqual([...THE_283_TABLE_ADOPTERS]);
+
+  for (const name of ['pagination', 'progress']) {
     const adopters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), name));
     expect(adopters.map((f) => rel(f)), `${name} was adopted`).toEqual([]);
   }
