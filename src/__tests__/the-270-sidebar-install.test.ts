@@ -259,6 +259,17 @@ const MAIN_DEPENDENCY_NAMES: readonly string[] = [
 const REMOVED_SINCE_MAIN: readonly string[] = [
   'next-themes', // THE-273 — sonner.tsx was its last importer and no longer imports it
 ];
+
+/** Its mirror: the only names allowed to be ADDED to it, each with its ticket.
+ *  THE-274 installed Batches C/D/E; three of its twenty-one components import a
+ *  package this app did not have. Named here rather than the assertion below
+ *  being loosened, so the next addition still has to come back and say so. */
+const ADDED_SINCE_MAIN: readonly string[] = [
+  'cmdk', // THE-274 — command.tsx
+  'date-fns', // THE-274 — react-day-picker's peer, reached by calendar.tsx
+  'react-day-picker', // THE-274 — calendar.tsx
+  'react-resizable-panels', // THE-274 — resizable.tsx
+];
 const TAILWIND_CODE_SHA = '491ebb5575d16eddfab00c6ed89900c725141b412e410e9e97342ff2108b2904';
 const FUNCTIONS_TREE_SHA = '0acf97d60a6d5066680d7e7fe24ef1ce900bac0a274332942d570c259e0dddb9';
 
@@ -400,9 +411,10 @@ describe("sidebar's token classes all resolve", () => {
 
   it('the guard really opened sidebar.tsx, and pulled real classes out of it', () => {
     // The failure mode THE-266's section 10 names: a suite that goes green
-    // because it looked at nothing. 22 files after the rebase onto #416, and
-    // sidebar.tsx is the largest primitive in the directory by class count.
-    expect(audit.classesByFile.size).toBe(22);
+    // because it looked at nothing. 43 files after THE-274 installed Batches
+    // C, D and E, and sidebar.tsx is still the largest primitive in the
+    // directory by class count.
+    expect(audit.classesByFile.size).toBe(43);
     const basenames = [...audit.classesByFile.keys()].map((f) => path.basename(f));
     expect(basenames).toContain('sidebar.tsx');
     const counts = Object.fromEntries(
@@ -486,12 +498,23 @@ describe('all 21 pre-existing primitives are byte-identical', () => {
     }
   });
 
-  it('src/components/ui holds exactly those 21 plus sidebar.tsx', () => {
+  it('src/components/ui holds exactly those 21 plus sidebar.tsx, plus THE-274’s 21', () => {
+    // THE-274 installed Batches C, D and E in one pass: nineteen named by that
+    // ticket, plus `popover` (which it asked for) and `toggle` (a registry
+    // dependency of `toggle-group`). Named rather than loosened to "contains",
+    // so the next arrival has to come back and say so.
+    const BATCH_CDE = [
+      'alert.tsx', 'button-group.tsx', 'calendar.tsx', 'checkbox.tsx', 'command.tsx',
+      'context-menu.tsx', 'empty.tsx', 'field.tsx', 'hover-card.tsx', 'input-group.tsx',
+      'item.tsx', 'popover.tsx', 'radio-group.tsx', 'resizable.tsx', 'scroll-area.tsx',
+      'slider.tsx', 'spinner.tsx', 'switch.tsx', 'textarea.tsx', 'toggle-group.tsx',
+      'toggle.tsx',
+    ];
     expect(
       readdirSync(UI_DIR)
         .filter((f) => f.endsWith('.tsx'))
         .sort(),
-    ).toEqual([...Object.keys(PRE_EXISTING_DIGESTS), 'sidebar.tsx'].sort());
+    ).toEqual([...Object.keys(PRE_EXISTING_DIGESTS), 'sidebar.tsx', ...BATCH_CDE].sort());
   });
 
   it('sidebar.tsx exists and is the CLI’s output, not a hand-written copy', () => {
@@ -567,8 +590,10 @@ describe('no new token was defined', () => {
     // names rather than a digest of the file.
     expect(
       Object.keys(deps).sort(),
-      'a dependency name was added or removed — sidebar adds none, and every removal since must be listed in REMOVED_SINCE_MAIN',
-    ).toEqual(MAIN_DEPENDENCY_NAMES.filter((n) => !REMOVED_SINCE_MAIN.includes(n)));
+      'a dependency name was added or removed — sidebar adds none, and every change since must be listed in REMOVED_SINCE_MAIN or ADDED_SINCE_MAIN',
+    ).toEqual(
+      [...MAIN_DEPENDENCY_NAMES.filter((n) => !REMOVED_SINCE_MAIN.includes(n)), ...ADDED_SINCE_MAIN].sort(),
+    );
     expect(deps['recharts'], 'recharts arrived with #416, and is main’s').toBe('^3.8.0');
   });
 });

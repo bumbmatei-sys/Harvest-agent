@@ -753,11 +753,22 @@ describe('9 — all 22 other primitives are byte-identical', () => {
     'tooltip.tsx': '2cea2294d4947b88d815860f64e0b5e0eb47a59bde47cfd194aac2230c923865',
   };
 
-  it('🔴 21 untouched + sonner.tsx = the 22 primitives, and no 23rd appeared', () => {
+  /** THE-274 installed Batches C, D and E after this landed: nineteen it named
+   *  plus `popover` and `toggle`. Named rather than the assertion below being
+   *  loosened, so the next arrival still has to come back and say so. */
+  const BATCH_CDE = [
+    'alert.tsx', 'button-group.tsx', 'calendar.tsx', 'checkbox.tsx', 'command.tsx',
+    'context-menu.tsx', 'empty.tsx', 'field.tsx', 'hover-card.tsx', 'input-group.tsx',
+    'item.tsx', 'popover.tsx', 'radio-group.tsx', 'resizable.tsx', 'scroll-area.tsx',
+    'slider.tsx', 'spinner.tsx', 'switch.tsx', 'textarea.tsx', 'toggle-group.tsx',
+    'toggle.tsx',
+  ];
+
+  it('🔴 21 untouched + sonner.tsx + THE-274’s 21 = the 43 primitives', () => {
     const present = readdirSync(path.join(SRC, 'components/ui'))
       .filter((e) => /\.tsx$/.test(e))
       .sort();
-    expect(present).toEqual([...Object.keys(UNCHANGED), 'sonner.tsx'].sort());
+    expect(present).toEqual([...Object.keys(UNCHANGED), 'sonner.tsx', ...BATCH_CDE].sort());
   });
 
   it('🔴 every one of the 21 hashes to what main recorded', () => {
@@ -774,13 +785,29 @@ describe('9 — all 22 other primitives are byte-identical', () => {
     const ledger: Record<string, string> = JSON.parse(
       readFileSync(path.join(SRC, 'components/ui/__tests__/__fixtures__/primitive-digests.json'), 'utf8'),
     );
+    //
+    // ⚠️ THE-274 added twenty-one entries to this ledger. The claim here is
+    // unchanged and is deliberately still scoped to the twenty-two THIS ticket
+    // knew about: of those, sonner.tsx alone may differ. The new arrivals are
+    // asserted separately, by name, so they cannot be the cover for a
+    // pre-existing entry quietly moving.
+    const known = new Set([...Object.keys(UNCHANGED), 'sonner.tsx']);
     const moved = Object.entries(ledger)
+      .filter(([rel]) => known.has(path.basename(rel)))
       .filter(([rel, digest]) => digest !== UNCHANGED[path.basename(rel)])
       .map(([rel]) => rel);
     expect(moved, 'the primitive ledger moved for something other than sonner.tsx').toEqual([
       'src/components/ui/sonner.tsx',
     ]);
     expect(ledger['src/components/ui/sonner.tsx']).toBe(digestOf('src/components/ui/sonner.tsx'));
+
+    // And everything the ledger holds beyond those twenty-two is exactly
+    // THE-274's twenty-one — no unexplained entry rode along with it.
+    const arrivals = Object.keys(ledger)
+      .map((rel) => path.basename(rel))
+      .filter((base) => !known.has(base))
+      .sort();
+    expect(arrivals).toEqual([...BATCH_CDE].sort());
   });
 });
 

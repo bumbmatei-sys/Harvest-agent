@@ -251,21 +251,36 @@ describe('the CLI rewrote nothing it should not have', () => {
     expect(actual).toEqual({ ...PRE_EXISTING_DIGESTS, ...MOVED_SINCE });
   });
 
-  it('src/components/ui holds exactly the 13 plus the 4, plus THE-272’s 4, plus THE-270’s sidebar', () => {
+  it('src/components/ui holds exactly the 13 plus the 4, plus B, sidebar, and THE-274’s 21', () => {
     // THE-272 (Batch B) installed chart, pagination, progress and table.
     // THE-270 then installed `sidebar` — the component THESE FOUR were the
-    // registry dependencies OF. Both are named here rather than the assertion
-    // being loosened to "contains", so a tenth arrival still has to come back
-    // and say so, which is the whole value of this test. Each ticket's own
-    // suite pins what it installed; this one keeps proving that THE-266's four
-    // are still exactly what it installed.
+    // registry dependencies OF. THE-274 then installed Batches C, D and E in
+    // one pass: nineteen named plus `popover` (asked for by that ticket) and
+    // `toggle` (pulled in as a registry dependency of `toggle-group`). All are
+    // named here rather than the assertion being loosened to "contains", so
+    // the next arrival still has to come back and say so, which is the whole
+    // value of this test. Each ticket's own suite pins what it installed; this
+    // one keeps proving that THE-266's four are still exactly what it installed.
     const BATCH_B = ['chart.tsx', 'pagination.tsx', 'progress.tsx', 'table.tsx'];
+    const BATCH_CDE = [
+      'alert.tsx', 'button-group.tsx', 'calendar.tsx', 'checkbox.tsx', 'command.tsx',
+      'context-menu.tsx', 'empty.tsx', 'field.tsx', 'hover-card.tsx', 'input-group.tsx',
+      'item.tsx', 'popover.tsx', 'radio-group.tsx', 'resizable.tsx', 'scroll-area.tsx',
+      'slider.tsx', 'spinner.tsx', 'switch.tsx', 'textarea.tsx', 'toggle-group.tsx',
+      'toggle.tsx',
+    ];
     expect(
       readdirSync(UI_DIR)
         .filter((f) => f.endsWith('.tsx'))
         .sort(),
     ).toEqual(
-      [...Object.keys(PRE_EXISTING_DIGESTS), ...NEW_PRIMITIVES, ...BATCH_B, 'sidebar.tsx'].sort(),
+      [
+        ...Object.keys(PRE_EXISTING_DIGESTS),
+        ...NEW_PRIMITIVES,
+        ...BATCH_B,
+        'sidebar.tsx',
+        ...BATCH_CDE,
+      ].sort(),
     );
   });
 
@@ -521,11 +536,11 @@ describe('the four new files exist and the guard actually read them', () => {
     });
   }
 
-  it('the audit read 22 files, not 13', () => {
-    // 13 + THE-266's 4 + THE-272's 4 + THE-270's sidebar. The point of the
-    // assertion is unchanged: a guard that opened nothing would report nothing
-    // and look thorough.
-    expect(audit.classesByFile.size).toBe(22);
+  it('the audit read 43 files, not 13', () => {
+    // 13 + THE-266's 4 + THE-272's 4 + THE-270's sidebar + THE-274's 21. The
+    // point of the assertion is unchanged: a guard that opened nothing would
+    // report nothing and look thorough.
+    expect(audit.classesByFile.size).toBe(43);
   });
 
   it('and pulled real classes out of the three that carry any', () => {
