@@ -71,7 +71,7 @@ vi.mock('../AdminScreenHeader', () => ({
   useAdminHeader: () => ({ setHeaderAction: () => {}, setHeaderOverride: () => {} }),
   HeaderActionButton: () => null,
 }));
-vi.mock('../AnalyticsAndRoles', () => ({ default: () => null }));
+vi.mock('../AdminRoles', () => ({ default: () => null }));
 // Only the DATA hooks are stubbed. `resolvePipelineStage` — which the giving
 // badge now derives through — is the real one; stubbing it would make the
 // agreement between the badge and the stage vacuous.

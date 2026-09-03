@@ -449,15 +449,40 @@ it('the unresolved fixture is still empty, at zero bytes', () => {
 
 /* ── 3. The CLI rewrote nothing it should not have ───────────────────────── */
 
+/**
+ * ⚠️ `tabs.tsx` MOVED SINCE, and why — THE-276-FIX.
+ *
+ * As vendored by this PR it styled itself with `data-horizontal:` and
+ * `data-vertical:` variants, which Tailwind compiles to the attribute selectors
+ * `[data-horizontal]` and `[data-vertical]`. The installed @base-ui/react
+ * (^1.5.0) emits `data-orientation="horizontal"` instead, so none of those
+ * twelve rules ever matched. It shipped: the tabs root kept `display:flex` with
+ * the default `row` direction, and the panel — a `flex-1` sibling — rendered as
+ * a second COLUMN beside the tab strip, putting every dashboard widget in a
+ * 420px band on the right of a 1044px container. The active tab's underline,
+ * whose geometry comes from the same variants, was never drawn either.
+ *
+ * Twelve class names re-spelled `data-[orientation=…]`. No element, slot,
+ * variant or API changed — which is why the class COUNT below is untouched.
+ *
+ * Named rather than the assertion being loosened, the same treatment THE-273's
+ * sonner.tsx fix gets in the sibling suites: every other entry is still
+ * compared against the digest this PR recorded, and a second file moving still
+ * fails.
+ */
+const MOVED_SINCE: Record<string, string> = {
+  'tabs.tsx': '096e3d4b2a99b1eff95d16959f97daaa1747fdb7de6226d6c54b9693e22b3410',
+};
+
 describe('the CLI rewrote nothing it should not have', () => {
-  it('all 22 pre-existing primitives are byte-identical to 788a589', () => {
+  it('all 22 pre-existing primitives are byte-identical to 788a589, bar the one THE-276-FIX fixed', () => {
     const actual = Object.fromEntries(
       Object.keys(PRE_EXISTING_DIGESTS).map((f) => [
         f,
         sha256(readFileSync(path.join(UI_DIR, f), 'utf8')),
       ]),
     );
-    expect(actual).toEqual(PRE_EXISTING_DIGESTS);
+    expect(actual).toEqual({ ...PRE_EXISTING_DIGESTS, ...MOVED_SINCE });
   });
 
   it('the five the CLI could have rewritten in particular', () => {
@@ -490,7 +515,11 @@ describe('the CLI rewrote nothing it should not have', () => {
     const fixture: Record<string, string> = JSON.parse(
       readFileSync(path.join(FIXTURES, 'primitive-digests.json'), 'utf8'),
     );
-    for (const [file, digest] of Object.entries(PRE_EXISTING_DIGESTS)) {
+    // ⚠️ The overlay applies here too: the fixture is the live ledger, so a
+    // file named in MOVED_SINCE holds its NEW digest there. Everything else
+    // still has to hold the value recorded at 788a589.
+    const expected = { ...PRE_EXISTING_DIGESTS, ...MOVED_SINCE };
+    for (const [file, digest] of Object.entries(expected)) {
       expect(fixture[`src/components/ui/${file}`], `${file} moved in the fixture`).toBe(digest);
     }
     expect(Object.keys(fixture)).toHaveLength(43);

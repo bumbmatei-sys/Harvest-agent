@@ -148,7 +148,12 @@ function Harness() {
   );
 }
 
-const TABS: CrmTab[] = ['Contacts', 'Analytics', 'Roles'];
+// THE-277 — 'Analytics' left this screen. It is now the `signups` page, and
+// every assertion this file made about it moved WITH it, to
+// `THE-277.signups-split.test.tsx`, rather than being dropped: the emoji sweep,
+// the Rule 3 action widths, the `medium` period field, the literal-colour scan
+// and the mobile-layer baseline are all re-asserted there against AdminSignups.
+const TABS: CrmTab[] = ['Contacts', 'Roles'];
 
 /** Every distinct token on a screen that is NOT behind a breakpoint. */
 const mobileTokensOf = (root: ParentNode) =>
@@ -197,7 +202,7 @@ beforeAll(async () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Mobile. The most important test in this file.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('the sub-640px rendering of all three CRM tabs is unchanged', () => {
+describe('the sub-640px rendering of both CRM tabs is unchanged', () => {
   /**
    * Tokens this PR puts on the mobile layer. Each either renders nothing new,
    * or reproduces — to the number — a value that was previously set inline.
@@ -210,9 +215,6 @@ describe('the sub-640px rendering of all three CRM tabs is unchanged', () => {
     flex: 'from an inline display:flex, which out-ranked the sm: switch that hides the card stack on desktop',
     'flex-col': 'moved with it, same value',
     'gap-[14px]': 'from an inline gap:14 on the permission list — same 14px',
-    'p-[11px]': 'from an inline padding:"11px" on the Analytics actions — same 11px',
-    'flex-[1]': 'from an inline flex:1 on Reset — same weight',
-    'flex-[2]': 'from an inline flex:2 on Search — same weight',
     hidden: 'display:none on the desktop roster table — this is WHY the phone still renders the card stack and only the card stack',
   };
 
@@ -299,18 +301,6 @@ describe('the sub-640px rendering of all three CRM tabs is unchanged', () => {
     }
   });
 
-  it('carries the relocated inline values at exactly the number they replaced', async () => {
-    const c = await tab('Analytics');
-    for (const label of ['Reset', 'Search']) {
-      const btn = buttonByLabel(c, label);
-      expect(tokensOf(btn), `${label} lost its phone padding`).toContain('p-[11px]');
-      expect(btn.getAttribute('style') ?? '', `${label} still sets padding inline`).not.toMatch(/(^|;)\s*padding:/);
-      expect(btn.getAttribute('style') ?? '', `${label} still sets flex inline`).not.toMatch(/(^|;)\s*flex:/);
-    }
-    expect(arbitraryPx('p-[11px]', REM_PX_MOBILE)).toBe(11);
-    expect(tokensOf(buttonByLabel(c, 'Reset'))).toContain('flex-[1]');
-    expect(tokensOf(buttonByLabel(c, 'Search'))).toContain('flex-[2]');
-  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -371,7 +361,6 @@ describe("each tab's content is constrained at desktop widths", () => {
    */
   const CONTENT_ANCHOR: Record<CrmTab, (c: HTMLElement) => Element> = {
     Contacts: (c) => inputByPlaceholder(c, 'Search by name or email'),
-    Analytics: (c) => region(c, 'data-search-registrations'),
     Roles: (c) => region(c, 'data-permission-reference'),
   };
 
@@ -425,73 +414,21 @@ describe("each tab's content is constrained at desktop widths", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4. The Analytics actions.
+// 4-5. The Analytics actions, and the emoji sweep over its stat tiles.
+//
+// 🔴 BOTH SECTIONS MOVED, THEY WERE NOT DELETED. THE-277 made Analytics its own
+// screen, so their subject is no longer reachable from this file's Harness.
+// Every assertion they made is re-stated against AdminSignups in
+// `THE-277.signups-split.test.tsx`:
+//
+//   · Rule 3 on Search and on Reset, by their labels
+//   · no inline flex weight that would out-rank the rule
+//   · both actions on the one density height
+//   · the location filter sized to what a city name needs
+//   · no emoji character anywhere on the screen
+//   · each tile icon drawn with lucide, taking the tile accent
+//   · no LIVE badge, and one getDocs with no onSnapshot behind it
 // ─────────────────────────────────────────────────────────────────────────────
-describe('the Analytics search button is content width from sm up', () => {
-  it('puts Rule 3 on Search and on Reset, by their labels', async () => {
-    const c = await tab('Analytics');
-    for (const label of ['Search', 'Reset']) {
-      expect(carries(buttonByLabel(c, label), ACTION_BUTTON), `${label} is still a stretched flex child`).toBe(true);
-    }
-  });
-
-  it('sets no inline flex weight that would out-rank the rule', async () => {
-    const c = await tab('Analytics');
-    for (const label of ['Search', 'Reset']) {
-      const style = buttonByLabel(c, label).getAttribute('style') ?? '';
-      expect(style, `${label} still sets flex inline, which beats sm:flex-none`).not.toMatch(/(^|;)\s*flex:/);
-    }
-  });
-
-  it('gives both the action height, not a third one', async () => {
-    const c = await tab('Analytics');
-    for (const label of ['Search', 'Reset']) {
-      expect(carries(buttonByLabel(c, label), CONTROL_DENSITY.action)).toBe(true);
-    }
-    expect(DENSITY_PX.action).toBeLessThanOrEqual(DESKTOP_CONTROL_MAX_PX);
-  });
-
-  it('sizes the location filter to what a city name needs', async () => {
-    const c = await tab('Analytics');
-    const input = inputByPlaceholder(c, 'Search by city or country');
-    expect(carries(input.parentElement!, FIELD_WIDTH.long)).toBe(true);
-  });
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. Emoji.
-// ─────────────────────────────────────────────────────────────────────────────
-describe('no literal emoji renders in the Analytics stat tiles', () => {
-  const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}]/u;
-
-  it.each(TABS)('renders no emoji character anywhere on %s', async (name) => {
-    const text = (await tab(name)).textContent ?? '';
-    const found = [...text].filter((ch) => EMOJI.test(ch));
-    expect(found, 'an emoji cannot take a colour, so it is the one glyph no palette can theme').toEqual([]);
-  });
-
-  it('draws each tile icon with lucide, which takes the tile accent', async () => {
-    const c = await tab('Analytics');
-    // The tiles are named by their labels, never by position.
-    for (const label of ['Total Users', 'Countries']) {
-      const labelEl = Array.from(c.querySelectorAll('div')).find((d) => (d.textContent ?? '').trim() === label);
-      expect(labelEl, `the "${label}" tile is gone`).toBeTruthy();
-      const tile = labelEl!.parentElement!;
-      expect(tile.querySelector('svg'), `the "${label}" tile draws no icon`).toBeTruthy();
-    }
-  });
-
-  it('drops the LIVE badge, because these tiles are a snapshot and not a subscription', async () => {
-    const c = await tab('Analytics');
-    const live = Array.from(c.querySelectorAll('*')).filter((e) => (e.textContent ?? '').trim() === 'LIVE');
-    expect(live).toEqual([]);
-    // The claim is checkable at the source: one getDocs, no onSnapshot.
-    const src = read('AnalyticsAndRoles.tsx');
-    // A CALL, not the word — this file's own comment explains the absence.
-    expect(src.match(/\bonSnapshot\s*\(/g), 'the tiles now subscribe, so LIVE may be true again').toBeNull();
-    expect(src).toMatch(/\bgetDocs\s*\(/);
-  });
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 6. The permission reference.
@@ -523,7 +460,7 @@ describe('the permission reference does not render as a single full-width column
 
   it('still lists every permission — columns are a layout, not a filter', async () => {
     const ref = region(await tab('Roles'), 'data-permission-reference');
-    const { VISIBLE_PERMISSION_CATEGORIES } = await import('../AnalyticsAndRoles');
+    const { VISIBLE_PERMISSION_CATEGORIES } = await import('../AdminRoles');
     const items = VISIBLE_PERMISSION_CATEGORIES.flatMap((c) => c.items.map((i) => i.label));
     const text = ref.textContent ?? '';
     for (const label of items) expect(text, `"${label}" fell out of the reference`).toContain(label);
@@ -537,14 +474,14 @@ describe('the permission reference does not render as a single full-width column
 describe('widths, heights and gaps come from form-layout, not new per-screen values', () => {
   it('imports the rules in both files that render a tab', () => {
     expect(read('AdminCRM.tsx')).toContain("from './layout/form-layout'");
-    expect(read('AnalyticsAndRoles.tsx')).toContain("from './layout/form-layout'");
+    expect(read('AdminRoles.tsx')).toContain("from './layout/form-layout'");
   });
 
   it('spells no sm:-gated width, height or gap outside the module', () => {
     // A `sm:`-gated size appearing inline in a consumer is a second, competing
     // definition — which is the per-screen table this series exists to remove.
     const OWNED = new Set(ALL_RULES.flatMap((r) => r.split(/\s+/)));
-    for (const file of ['AdminCRM.tsx', 'AnalyticsAndRoles.tsx']) {
+    for (const file of ['AdminCRM.tsx', 'AdminRoles.tsx']) {
       const literal = read(file).match(/sm:(?:max-w|h|py|mb|space-y|gap-y|gap-x|w)-\[[^\]]+\]/g) ?? [];
       const stray = literal.filter((t) => !OWNED.has(t));
       expect(stray, `${file} defines a size of its own`).toEqual([]);
@@ -645,11 +582,12 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
       'src/components/AdminFundraising.tsx',
       'src/components/AdminGivingStatements.tsx',
       'src/components/AdminRAG.tsx',
+      'src/components/AdminRoles.tsx',
       'src/components/AdminSettings.tsx',
+      'src/components/AdminSignups.tsx',
       'src/components/AdminSms.tsx',
       'src/components/AdminTenants.tsx',
       'src/components/AllNews.tsx',
-      'src/components/AnalyticsAndRoles.tsx',
       'src/components/BiblePage.tsx',
       // THE-192: the billing screen takes Rule 1a's page measure. It is a page —
       // an invoice table and a three-up plan comparison — and it adopted the
@@ -697,8 +635,11 @@ describe('no colour is hardcoded, and all four palettes resolve', () => {
     }
   });
 
-  it('renders no literal colour at all on the two tabs this PR restyled', async () => {
-    for (const name of ['Analytics', 'Roles'] as CrmTab[]) {
+  it('renders no literal colour at all on the Roles tab this PR restyled', async () => {
+    // THE-183 restyled Analytics AND Roles. Analytics is now its own screen, so
+    // the same scan runs over it in THE-277.signups-split; this keeps the half
+    // that is still a CRM tab.
+    for (const name of ['Roles'] as CrmTab[]) {
       const literals = inlineStyles(await tab(name))
         .filter((d) => HEX.test(d))
         .filter((d) => !/var\(--[a-z-]+,\s*#[0-9a-fA-F]{3,8}\s*\)/.test(d.replace(/\s+/g, ' ')));
@@ -715,7 +656,7 @@ describe('no colour is hardcoded, and all four palettes resolve', () => {
   });
 
   it('names a real token for every colour constant the screen shares', () => {
-    const src = read('AnalyticsAndRoles.tsx');
+    const src = read('AdminRoles.tsx');
     const globals = readFileSync(path.resolve(__dirname, '../../app/globals.css'), 'utf8');
     const consts = ['TEXT', 'TEXT2', 'GREEN', 'GREEN_BG', 'RED', 'RED_BG', 'BLUE'];
     for (const name of consts) {
@@ -770,7 +711,7 @@ describe('no column, filter, sort or write path changed', () => {
     expect(c.querySelector('[data-testid="crm-import-contacts"]')).toBeTruthy();
   });
 
-  it('writes nothing while the three tabs are merely rendered', async () => {
+  it('writes nothing while both tabs are merely rendered', async () => {
     writes.adds.length = 0; writes.sets.length = 0; writes.deletes.length = 0; writes.updates.length = 0;
     writes.batches = 0;
     for (const name of TABS) await tab(name);

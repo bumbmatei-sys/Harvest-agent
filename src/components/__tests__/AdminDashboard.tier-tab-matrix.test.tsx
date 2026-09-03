@@ -87,7 +87,7 @@ vi.mock('firebase/firestore', () => ({
   collection: () => ({}), query: () => ({}), where: () => ({}), limit: () => ({}), onSnapshot: () => () => {},
 }));
 vi.mock('../../utils/firestore-errors', () => ({ OperationType: { GET: 'get' }, handleFirestoreError: () => {} }));
-vi.mock('../AnalyticsAndRoles', () => ({ normalizePermissions: (raw: unknown) => raw }));
+vi.mock('../AdminRoles', () => ({ normalizePermissions: (raw: unknown) => raw }));
 vi.mock('../AdminScreenHeader', async () => {
   const React = await import('react');
   return {
@@ -108,6 +108,7 @@ vi.mock('../AdminFundraising', screenStub('AdminFundraising'));
 vi.mock('../AdminDocs', screenStub('AdminDocs'));
 vi.mock('../AdminEvents', screenStub('AdminEvents'));
 vi.mock('../AdminCRM', screenStub('AdminCRM'));
+vi.mock('../AdminSignups', screenStub('AdminSignups'));
 vi.mock('../AdminAccounting', screenStub('AdminAccounting'));
 vi.mock('../AdminForms', screenStub('AdminForms'));
 vi.mock('../AdminCheckin', screenStub('AdminCheckin'));
@@ -171,6 +172,7 @@ const TABS: Row[] = [
   { label: 'Events', section: 'events', screen: 'AdminEvents', feature: (f) => f.eventRegistration },
   { label: 'Notes', section: 'docs', screen: 'AdminDocs', feature: (f) => f.docs },
   { label: 'CRM', section: 'crm', screen: 'AdminCRM', feature: (f) => f.crm },
+  { label: 'Signups', section: 'signups', screen: 'AdminSignups', feature: (f) => f.crm },
   { label: 'Accounting', section: 'accounting', screen: 'AdminAccounting', feature: (f) => f.accountingTools || f.givingStatements },
   { label: 'Forms', section: 'forms', screen: 'AdminForms', feature: (f) => f.customForms },
   { label: 'Check-In', section: 'checkin', screen: 'AdminCheckin', feature: (f) => f.checkInSystem, note: 'hosts TWO products — see KNOWN_TWO_LAYER_EXCEPTIONS' },
@@ -214,7 +216,7 @@ const flush = async () => {
 
 const ALL_TAB_LABELS = [
   'Dashboard', 'Church', 'Church List', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
-  'Fundraising', 'Events', 'Notes', 'CRM', 'Accounting', 'Forms', 'Check-In', 'Livestream',
+  'Fundraising', 'Events', 'Notes', 'CRM', 'Signups', 'Accounting', 'Forms', 'Check-In', 'Livestream',
   'SMS', 'Community', 'Library', 'Tenants', 'Affiliate', 'Branding',
 ];
 function navLabels(): string[] {
@@ -345,20 +347,23 @@ describe('17 — the tier/tab matrix is generated from the real nav array and th
     expect(matrix.size).toBe(TABS.length);
   });
 
-  it('resolves the free column to sixteen visible tabs, and Branding hidden', async () => {
+  it('resolves the free column to seventeen visible tabs, and Branding hidden', async () => {
     const matrix = await buildMatrix();
     const visible = TABS.filter((r) => matrix.get(r.label)!.get('free')!.cell !== 'hidden');
-    expect(visible.length, 'free must see all sixteen').toBe(16);
+    // ⚠️ Seventeen since THE-277, and free bought nothing to get the extra row:
+    // Signups split out of the CRM screen carrying the same `crm` cell, so one
+    // entitlement now opens two tabs.
+    expect(visible.length, 'free must see all seventeen').toBe(17);
     expect(matrix.get('Branding')!.get('free')!.cell).toBe('hidden');
   });
 
-  it('resolves the Individual column to the seven plus Check-In', async () => {
+  it('resolves the Individual column to the eight plus Check-In', async () => {
     const matrix = await buildMatrix();
     const visible = TABS
       .filter((r) => matrix.get(r.label)!.get('plus')!.cell !== 'hidden')
       .map((r) => r.label);
     expect(visible.sort()).toEqual(
-      ['Blog', 'CRM', 'Check-In', 'Church', 'Courses', 'Dashboard', 'Fundraising', 'SMS'],
+      ['Blog', 'CRM', 'Check-In', 'Church', 'Courses', 'Dashboard', 'Fundraising', 'SMS', 'Signups'].sort(),
     );
     // And every one of them is FULL — an Individual tenant meets no wall on a
     // tab it can see. That is the product promise the nav gate now keeps.

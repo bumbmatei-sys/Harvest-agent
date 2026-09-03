@@ -154,7 +154,7 @@ vi.mock('../AdminScreenHeader', async (o) => ({
   ...(await o<typeof import('../AdminScreenHeader')>()),
   useAdminHeader: () => ({ setHeaderAction: () => {}, setHeaderOverride: () => {}, setHeaderHidden: () => {} }),
 }));
-vi.mock('../AnalyticsAndRoles', () => ({ default: () => null }));
+vi.mock('../AdminRoles', () => ({ default: () => null }));
 vi.mock('@/contexts/TenantContext', () => ({ useTenant: () => h.ctx.current }));
 vi.mock('../../hooks/queries/useCRMQueries', async (o) => ({
   ...(await o<typeof import('../../hooks/queries/useCRMQueries')>()),

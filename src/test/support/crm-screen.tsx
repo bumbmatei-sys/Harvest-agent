@@ -1,10 +1,14 @@
 /**
- * Mounting the three CRM tabs — Contacts, Analytics and Roles.
+ * Mounting the two CRM tabs — Contacts and Roles.
+ *
+ * THE-277 — there were three. Analytics became the `signups` screen, which is
+ * mounted directly (it has no sub-tab to click) by
+ * `THE-277.signups-split.test.tsx`.
  *
  * Every lookup a test does goes through a visible LABEL (a button's text, a
  * field's placeholder, a section heading) or through a `data-` handle that
  * NAMES the thing. Never through a class pattern: a test that found the
- * Analytics search button by matching `sm:px-8` would pass no matter which
+ * search button by matching `sm:px-8` would pass no matter which
  * button it landed on, and would still pass if the rule were applied to the
  * wrong control.
  *
@@ -15,7 +19,7 @@ import React from 'react';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
-export type CrmTab = 'Contacts' | 'Analytics' | 'Roles';
+export type CrmTab = 'Contacts' | 'Roles';
 
 export interface MountedScreen {
   container: HTMLDivElement;
@@ -91,7 +95,7 @@ export const carries = (el: Element, rule: string) =>
 /**
  * Every INLINE style declaration in a subtree, as `prop:value` strings.
  *
- * AnalyticsAndRoles styles itself with `style={{…}}` objects rather than
+ * AdminRoles styles itself with `style={{…}}` objects rather than
  * classes, so the class inventory alone cannot see what it renders. A colour
  * check that only read class tokens would report that screen as clean.
  */
