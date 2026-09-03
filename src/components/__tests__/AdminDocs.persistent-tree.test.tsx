@@ -903,7 +903,19 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ are byte-identical'
    * name" — the failure mode admin-data-screens.desktop-layout.test.tsx
    * documents at length. Same discipline, no shelling out.
    */
-  const ADMIN_DASHBOARD = '0d84be6d9b8a73fdfcddb4d1178b6a62ad8e74a1461553645fdd2558e2d7c4e7';
+  /**
+   * ⚠️ RE-RECORDED, because THE-276 and THE-277 landed on main between this
+   * branch opening and merging — not because this branch edited the shell.
+   *
+   * The original value was taken from `origin/main` at 5e06c67. THE-277 added a
+   * Signups nav entry and THE-276 put the dashboard behind a tab shell, and both
+   * had to touch AdminDashboard.tsx, which is exactly why THIS ticket was told
+   * not to. The claim the pin makes is about THIS branch's authorship, and that
+   * claim is unchanged: `git diff origin/main -- AdminDashboard.tsx` is empty.
+   * A digest that stayed stale would fail for their work rather than for a
+   * regression, which is the one thing a guard must not do.
+   */
+  const ADMIN_DASHBOARD = '722c5e4478be0a8508e7dff1232dd4c1f88cacdd502604f946f3134eb730d98c';
   const FIRESTORE_RULES = 'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499';
 
   it('AdminDashboard.tsx is untouched — THE-277 owns it', () => {
@@ -913,15 +925,23 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ are byte-identical'
     ).toBe(ADMIN_DASHBOARD);
   });
 
-  it("AdminDocs is still mounted exactly where it was, with the props it had", () => {
-    // The digest above already proves this, but the mount is the specific thing
-    // the brief names, so it is asserted by content too — a digest failure says
-    // "something moved", this says what.
+  it("AdminDocs is still mounted with the wrapper and the props it had", () => {
+    // The digest above already proves the shell is untouched by this branch;
+    // this says WHAT must be true of the mount, so a failure names the thing
+    // rather than just "something moved".
+    //
+    // ⚠️ By CONTENT, not by line number. The brief said the mount was on line
+    // 1160 and must not move, and pinning the line was the literal reading —
+    // but a line number is a fact about every line ABOVE it, so THE-277 adding
+    // one nav entry pushed it to 1186 and failed this for someone else's work.
+    // The mount itself — its wrapper, its props — is what the brief was
+    // protecting, and that is byte-identical.
     const shell = readFileSync(path.join(SRC, 'components/AdminDashboard.tsx'), 'utf8');
-    const line = shell.split('\n').findIndex(l => l.includes('<AdminDocs'));
-    expect(line + 1, 'the AdminDocs mount moved off line 1160').toBe(1160);
-    expect(shell.split('\n')[line].trim())
+    const line = shell.split('\n').find(l => l.includes('<AdminDocs'));
+    expect(line, 'the AdminDocs mount is gone from the shell').toBeDefined();
+    expect(line!.trim())
       .toBe('? <div className="p-4 lg:p-0"><AdminDocs initialDocId={itemId} onItemConsumed={clearItemId} /></div>');
+    expect(shell, 'the import moved').toContain("import AdminDocs from './AdminDocs';");
   });
 
   it('firestore.rules is untouched', () => {

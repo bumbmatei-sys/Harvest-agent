@@ -128,12 +128,15 @@ const isScoped = (selector: string): boolean =>
  */
 const KNOWN_UNSCOPED: ReadonlyArray<{ file: string; why: string }> = [
   {
-    file: 'AnalyticsAndRoles.tsx',
+    // THE-277 renamed this from AnalyticsAndRoles.tsx when it split Signups out.
+    // The rename carried the defect across unchanged.
+    file: 'AdminRoles.tsx',
     why:
       'Identical `*` reset and identical unscoped input::placeholder / ' +
-      '::-webkit-scrollbar / button:disabled rules. THE-277 owns this file — ' +
-      'touching it here would collide with a ticket in flight, so it is reported ' +
-      'rather than fixed.',
+      '::-webkit-scrollbar / button:disabled rules — a third admin tab with the ' +
+      'same user-visible bug. THE-277 owns this file and has just landed it; ' +
+      'reported rather than fixed here so a notes ticket does not reopen a file ' +
+      'whose own suite pins it, on the same day it merged.',
   },
   {
     file: 'AIChat.tsx',
