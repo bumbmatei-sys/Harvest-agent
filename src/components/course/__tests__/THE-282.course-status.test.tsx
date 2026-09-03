@@ -65,6 +65,50 @@ import {
 const ROOT = path.resolve(__dirname, '../../../..');
 const src = (rel: string) => readFileSync(path.join(ROOT, rel), 'utf8');
 
+
+/**
+ * The base commit this branch's changes are measured against.
+ *
+ * ⚠️ NOT hardcoded to `origin/main`, and that is a CI concern rather than a
+ * stylistic one. Locally the remote-tracking ref is always there; on a
+ * `pull_request` run the tree checked out is `refs/pull/N/merge` and the
+ * available refs depend on what `actions/checkout` fetched. A test that
+ * resolves `origin/main` on the machine that wrote it and dies with
+ * `fatal: bad revision` on CI is the exact failure mode `.github/workflows/
+ * test.yml` calls "the worst version of this bug".
+ *
+ * So: try the remote-tracking ref, then a local `main`, then — for a merge-ref
+ * checkout — the merge commit's FIRST PARENT, which is the base branch as it
+ * stood when the run started. 🔴 If none resolve this throws rather than
+ * skipping: a pinned-file check that quietly measures nothing is worse than no
+ * check at all.
+ */
+function baseRef(): string {
+  const git = (args: string[]) =>
+    execFileSync('git', args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+
+  for (const ref of ['origin/main', 'refs/remotes/origin/main', 'main']) {
+    try { return git(['rev-parse', '--verify', `${ref}^{commit}`]); } catch { /* try the next */ }
+  }
+  try {
+    // `a b c` — the commit and its two parents — means HEAD is the PR merge.
+    const parents = git(['rev-list', '--parents', '-n', '1', 'HEAD']).split(/\s+/);
+    if (parents.length === 3) return parents[1];
+  } catch { /* fall through to the throw */ }
+
+  throw new Error(
+    'the base commit could not be resolved, so "byte-identical to main" would be ' +
+    'measuring nothing. Tried origin/main, refs/remotes/origin/main, main, and ' +
+    "HEAD's first parent.",
+  );
+}
+
+/** Which of `paths` differ from the base. Empty means untouched. */
+function changedSince(...paths: string[]): string[] {
+  return execFileSync('git', ['diff', '--name-only', baseRef(), '--', ...paths],
+    { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
+}
+
 const CARD = 'src/components/course/CourseCard.tsx';
 const LIBRARY = 'src/components/course/CourseLibrary.tsx';
 
@@ -649,11 +693,8 @@ describe('6 — no colour is hardcoded and all four palettes resolve', () => {
         .toContain(token);
     }
     // And globals.css itself is untouched by this ticket.
-    const changed = execFileSync(
-      'git', ['diff', '--name-only', 'origin/main', '--', 'src/app/globals.css', 'tailwind.config.ts'],
-      { cwd: ROOT, encoding: 'utf8' },
-    ).split('\n').filter(Boolean);
-    expect(changed, 'a token was defined for this ticket').toEqual([]);
+    expect(changedSince('src/app/globals.css', 'tailwind.config.ts'),
+      'a token was defined for this ticket').toEqual([]);
   });
 });
 
@@ -668,14 +709,10 @@ describe('7 — the progress model, the editor and the adoption gate are untouch
     'firestore.rules',
   ];
 
-  it('🔴 every pinned file is byte-identical to origin/main', () => {
+  it('🔴 every pinned file is byte-identical to the base branch', () => {
     // ⚠️ One `git diff` over the set, at collection time — not a `git show` per
     // assertion. A name printed here is a file this ticket had no business in.
-    const changed = execFileSync(
-      'git', ['diff', '--name-only', 'origin/main', '--', ...PINNED, 'functions/'],
-      { cwd: ROOT, encoding: 'utf8' },
-    ).split('\n').filter(Boolean);
-    expect(changed, 'these pinned files were modified').toEqual([]);
+    expect(changedSince(...PINNED, 'functions/'), 'these pinned files were modified').toEqual([]);
   });
 
   it('🔴 the completedLessons read and write are exactly where they were', () => {
@@ -689,18 +726,10 @@ describe('7 — the progress model, the editor and the adoption gate are untouch
   });
 
   it('no new dependency was added', () => {
-    const changed = execFileSync(
-      'git', ['diff', '--name-only', 'origin/main', '--', 'package.json', 'package-lock.json'],
-      { cwd: ROOT, encoding: 'utf8' },
-    ).split('\n').filter(Boolean);
-    expect(changed, 'a dependency was added').toEqual([]);
+    expect(changedSince('package.json', 'package-lock.json'), 'a dependency was added').toEqual([]);
   });
 
   it('no new ui component was installed — all of them predate this ticket', () => {
-    const changed = execFileSync(
-      'git', ['diff', '--name-only', 'origin/main', '--', 'src/components/ui/'],
-      { cwd: ROOT, encoding: 'utf8' },
-    ).split('\n').filter(Boolean);
-    expect(changed, 'a ui primitive was added or edited').toEqual([]);
+    expect(changedSince('src/components/ui/'), 'a ui primitive was added or edited').toEqual([]);
   });
 });
