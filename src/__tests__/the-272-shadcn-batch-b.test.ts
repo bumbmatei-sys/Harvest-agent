@@ -776,25 +776,57 @@ describe('the new dependencies are declared, pinned and resolvable', () => {
 
 /* ── 8. Imported by nothing ──────────────────────────────────────────────── */
 
-it('nothing imports the new components — installing is this ticket, not adopting', () => {
+/**
+ * ⚠️ AMENDED BY THE-276, which is the adoption this assertion was waiting for.
+ *
+ * THE-272 installed `chart` without wiring it in, so its bundle cost was zero,
+ * and both assertions below said so. THE-276 builds the analytics dashboard and
+ * mounts `chart` in four widgets — the explicit decision the note on the second
+ * assertion defers to ("Phase 8 is where recharts starts costing anything").
+ *
+ * The claim is therefore narrowed, not dropped: `table`, `pagination` and
+ * `progress` are STILL adopted by nothing, and `chart` is adopted by exactly
+ * these four files and no others. A fifth adopter, or any adopter of the other
+ * three, still fails here.
+ */
+const THE_276_CHART_ADOPTERS = [
+  'src/components/dashboard/FunnelChart.tsx',
+  'src/components/dashboard/GivingMix.tsx',
+  'src/components/dashboard/KpiCard.tsx',
+  'src/components/dashboard/TrendChart.tsx',
+] as const;
+
+it('only THE-276 adopts chart, and table/pagination/progress are still adopted by nothing', () => {
   const walk = (dir: string): string[] =>
     readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
       const p = path.join(dir, e.name);
       if (e.isDirectory()) return e.name === 'node_modules' ? [] : walk(p);
       return /\.(ts|tsx)$/.test(e.name) ? [p] : [];
     });
-  const importers = walk(path.join(REPO_ROOT, 'src')).filter((f) => {
-    if (f.startsWith(UI_DIR)) return false;
-    if (f.includes(`${path.sep}__tests__${path.sep}`)) return false;
-    return /@\/components\/ui\/(chart|table|pagination|progress)/.test(readFileSync(f, 'utf8'));
-  });
-  expect(importers.map((f) => rel(f))).toEqual([]);
+  const files = walk(path.join(REPO_ROOT, 'src')).filter(
+    (f) => !f.startsWith(UI_DIR) && !f.includes(`${path.sep}__tests__${path.sep}`),
+  );
+  /** ⚠️ Relative spellings too. The original regex matched only the `@/` alias,
+   *  so a `../ui/chart` import would have slipped past it unrecorded. */
+  const importsUi = (src: string, name: string) =>
+    new RegExp(`from ['"](?:@/components|\\.{1,2}(?:/[\\w.-]+)*)/ui/${name}['"]`).test(src);
+
+  const chartImporters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), 'chart'));
+  expect(chartImporters.map((f) => rel(f)).sort()).toEqual([...THE_276_CHART_ADOPTERS]);
+
+  for (const name of ['table', 'pagination', 'progress']) {
+    const adopters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), name));
+    expect(adopters.map((f) => rel(f)), `${name} was adopted`).toEqual([]);
+  }
 });
 
-it('and nothing outside the chart primitive imports recharts', () => {
-  // The bundle consequence of this PR is zero precisely because of this: a
-  // file no route reaches is in no chunk. Phase 8 is where recharts starts
-  // costing anything, and it should be an explicit decision there.
+it('and recharts is imported by the chart primitive and THE-276\'s widgets, and nothing else', () => {
+  // THE-272's own note: "The bundle consequence of this PR is zero precisely
+  // because of this: a file no route reaches is in no chunk. Phase 8 is where
+  // recharts starts costing anything, and it should be an explicit decision
+  // there." THE-276 is that decision — the analytics dashboard draws real
+  // charts — so the list is extended by exactly the four widgets that draw
+  // them, and stays closed against a fifth.
   const walk = (dir: string): string[] =>
     readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
       const p = path.join(dir, e.name);
@@ -806,7 +838,9 @@ it('and nothing outside the chart primitive imports recharts', () => {
     if (f.includes(`${path.sep}__tests__${path.sep}`)) return false;
     return /from "recharts"|from 'recharts'/.test(readFileSync(f, 'utf8'));
   });
-  expect(importers.map((f) => rel(f))).toEqual(['src/components/ui/chart.tsx']);
+  expect(importers.map((f) => rel(f)).sort()).toEqual(
+    [...THE_276_CHART_ADOPTERS, 'src/components/ui/chart.tsx'].sort(),
+  );
 });
 
 /* ── 9. Out-of-scope files ───────────────────────────────────────────────── */
