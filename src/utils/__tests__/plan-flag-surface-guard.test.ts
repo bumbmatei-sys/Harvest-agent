@@ -146,7 +146,7 @@ const FLAG_SURFACES: Registry = {
   maxChurches:   { gates: ['components/AdminChurches.tsx'] },
   maxContacts:   { gates: ['utils/contact-capacity.ts'] },
   maxCourses:    { gates: ['utils/course-adoption.ts', 'components/AdminDashboard.tsx'] },
-  maxAdmins:     { gates: ['utils/admin-seats.ts', 'components/AnalyticsAndRoles.tsx'] },
+  maxAdmins:     { gates: ['utils/admin-seats.ts', 'components/AdminRoles.tsx'] },
 
   // ─── cells that gate nothing, ON PURPOSE ──────────────────────────────────
   textToGive: {

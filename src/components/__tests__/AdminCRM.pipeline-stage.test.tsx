@@ -59,7 +59,7 @@ vi.mock('../AdminScreenHeader', () => ({
   useAdminHeader: () => ({ setHeaderAction: () => {}, setHeaderOverride: () => {} }),
   HeaderActionButton: () => null,
 }));
-vi.mock('../AnalyticsAndRoles', () => ({ default: () => null }));
+vi.mock('../AdminRoles', () => ({ default: () => null }));
 // Only the data hooks are stubbed — resolvePipelineStage, the helper under test,
 // is the REAL one. Stubbing it here would make every assertion below vacuous.
 vi.mock('../../hooks/queries/useCRMQueries', async (importOriginal) => ({

@@ -150,7 +150,7 @@ vi.mock('firebase/firestore', () => ({
   collection: () => ({}), query: () => ({}), where: () => ({}), limit: () => ({}), onSnapshot: () => () => {},
 }));
 vi.mock('../../utils/firestore-errors', () => ({ OperationType: { GET: 'get' }, handleFirestoreError: () => {} }));
-vi.mock('../AnalyticsAndRoles', () => ({ normalizePermissions: (raw: unknown) => raw }));
+vi.mock('../AdminRoles', () => ({ normalizePermissions: (raw: unknown) => raw }));
 vi.mock('../AdminScreenHeader', async () => {
   const R = await import('react');
   return {

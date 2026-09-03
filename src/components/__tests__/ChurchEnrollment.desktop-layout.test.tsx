@@ -724,7 +724,7 @@ describe('the layout rules live in one shared place and have a caller', () => {
     // by explicit instruction, and again reusing the rules rather than minting
     // widths: between them they retired THREE rem container measures
     // (max-w-2xl / -3xl / -6xl, each a different number either side of the
-    // 1024px rem trim). AnalyticsAndRoles.tsx is listed separately from
+    // 1024px rem trim). AdminRoles.tsx is listed separately from
     // AdminCRM.tsx because it renders two of the three tabs itself.
     // AdminCRM.desktop-layout.test.tsx holds the same list, so this gate keeps
     // failing loudly for adopter five.
@@ -786,11 +786,12 @@ describe('the layout rules live in one shared place and have a caller', () => {
       'src/components/AdminFundraising.tsx',
       'src/components/AdminGivingStatements.tsx',
       'src/components/AdminRAG.tsx',
+      'src/components/AdminRoles.tsx',
       'src/components/AdminSettings.tsx',
+      'src/components/AdminSignups.tsx',
       'src/components/AdminSms.tsx',
       'src/components/AdminTenants.tsx',
       'src/components/AllNews.tsx',
-      'src/components/AnalyticsAndRoles.tsx',
       'src/components/BiblePage.tsx',
       // THE-192: the billing screen takes Rule 1a's page measure. It is a page —
       // an invoice table and a three-up plan comparison — and it adopted the

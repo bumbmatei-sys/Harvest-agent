@@ -16,7 +16,7 @@ import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { sortByTime, sortByString } from '../utils/query-helpers';
 import { notifyError } from '../utils/notify';
 import { authFetch } from '../utils/auth-fetch';
-import AnalyticsAndRoles, { Permission } from './AnalyticsAndRoles';
+import AdminRoles, { Permission } from './AdminRoles';
 import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, CONTROL_DENSITY } from './layout/form-layout';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { useQueryClient } from '@tanstack/react-query';
@@ -486,10 +486,9 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   // manageAdmins (full access / super admin see all three). The CRM drawer entry
   // shows when the admin has ANY of these, so default to one they can actually view.
   const canViewContacts = currentUserRole === 'super_admin' || !!currentUserPermissions?.fullAccess || !!currentUserPermissions?.manageCRM;
-  const canViewAnalytics = currentUserRole === 'super_admin' || !!currentUserPermissions?.fullAccess || !!currentUserPermissions?.analytics;
   const canManageRoles = currentUserRole === 'super_admin' || !!currentUserPermissions?.fullAccess || !!currentUserPermissions?.manageAdmins;
-  const [crmSubView, setCrmSubView] = useState<'contacts' | 'analytics' | 'roles'>(
-    canViewContacts ? 'contacts' : canViewAnalytics ? 'analytics' : canManageRoles ? 'roles' : 'contacts'
+  const [crmSubView, setCrmSubView] = useState<'contacts' | 'roles'>(
+    canViewContacts ? 'contacts' : canManageRoles ? 'roles' : 'contacts'
   );
   const [listMode, setListMode] = useState<'list' | 'kanban'>('list');
 
@@ -737,12 +736,12 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   };
 
   // Publish the "Add Contact" action into the shared header — but only on the
-  // Contacts sub-view (the Analytics sub-view renders AnalyticsAndRoles, which
-  // manages its own header action). Re-asserts when the sub-view changes back.
+  // Contacts sub-view (the Roles sub-view renders AdminRoles, which manages its
+  // own header action). Re-asserts when the sub-view changes back.
   useEffect(() => {
-    // Only the Contacts sub-view owns the shared header action. Analytics/Roles
-    // render AnalyticsAndRoles, which publishes its own action (e.g. "Add Admin"),
-    // so do NOT clear the slot here on those sub-views or we'd clobber theirs.
+    // Only the Contacts sub-view owns the shared header action. Roles renders
+    // AdminRoles, which publishes its own action ("Add Admin"), so do NOT clear
+    // the slot here on that sub-view or we'd clobber theirs.
     if (crmSubView !== 'contacts') return;
     setHeaderAction(
       <HeaderActionButton
@@ -992,9 +991,14 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     }
   };
 
-  // Pill segmented control for the Contacts / Analytics / Roles sub-views. Each
-  // pill is shown only to admins entitled to that sub-view (Roles lives here
-  // rather than as its own top-level tab).
+  // Pill segmented control for the Contacts / Roles sub-views. Each pill is
+  // shown only to admins entitled to that sub-view (Roles lives here rather
+  // than as its own top-level tab).
+  //
+  // THE-277 — Analytics was a third pill here. It is now the `signups` screen,
+  // its own nav entry, because it counts MEMBERS (people with accounts) where
+  // this screen counts CONTACTS (people the church is working). The `analytics`
+  // permission that gated the pill now gates that nav entry in AdminDashboard.
   const subTabBar = (
     <div className="flex gap-1 bg-surface-sunken rounded-xl p-1 mb-5 w-fit">
       {canViewContacts && (
@@ -1005,16 +1009,6 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           }`}
         >
           Contacts
-        </button>
-      )}
-      {canViewAnalytics && (
-        <button
-          onClick={() => { setCrmSubView('analytics'); setView('list'); setSelected(null); }}
-          className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-            crmSubView === 'analytics' ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'
-          }`}
-        >
-          Analytics
         </button>
       )}
       {canManageRoles && (
@@ -1030,31 +1024,12 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     </div>
   );
 
-  if (crmSubView === 'analytics') {
-    return (
-      <div ref={scrollRef} className={`w-full ${FORM_CONTAINER}`}>
-        {subTabBar}
-        {canViewAnalytics && currentUserRole ? (
-          <AnalyticsAndRoles
-            currentUserRole={currentUserRole}
-            currentUserPermissions={currentUserPermissions}
-            mode="analytics"
-          />
-        ) : (
-          <div className="text-center py-16 text-faint">
-            <p className="text-sm">Analytics unavailable.</p>
-          </div>
-        )}
-      </div>
-    );
-  }
-
   if (crmSubView === 'roles') {
     return (
       <div ref={scrollRef} className={`w-full ${FORM_CONTAINER}`}>
         {subTabBar}
         {canManageRoles && currentUserRole ? (
-          <AnalyticsAndRoles
+          <AdminRoles
             currentUserRole={currentUserRole}
             currentUserPermissions={currentUserPermissions}
             mode="roles"
@@ -1439,7 +1414,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             a tenant has CUSTOM questions — deliberately, so the map isn't
             polluted with blanks. For every tenant without custom questions the
             field is absent, so this was a guaranteed empty box. The data still
-            ships in the users CSV (AnalyticsAndRoles). Nothing lost. */}
+            ships in the users CSV (AdminRoles). Nothing lost. */}
 
         {showAddActivity && (
           <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 p-4">

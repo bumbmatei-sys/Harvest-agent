@@ -90,7 +90,7 @@ vi.mock('../../utils/firestore-errors', () => ({
 }));
 // normalizePermissions is a pure shape-normaliser; the tests already pass
 // normalised permission objects, so a passthrough is faithful here.
-vi.mock('../AnalyticsAndRoles', () => ({ normalizePermissions: (raw: unknown) => raw }));
+vi.mock('../AdminRoles', () => ({ normalizePermissions: (raw: unknown) => raw }));
 vi.mock('../AdminScreenHeader', async () => {
   const React = await import('react');
   return {
@@ -157,7 +157,7 @@ function deferred<T>() {
 /** Every tab label currently reachable in the nav (mobile bar ∪ desktop sidebar). */
 const ALL_TAB_LABELS = [
   'Dashboard', 'Church', 'Church List', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
-  'Fundraising', 'Events', 'Notes', 'CRM', 'Accounting', 'Forms', 'Check-In', 'Livestream',
+  'Fundraising', 'Events', 'Notes', 'CRM', 'Signups', 'Accounting', 'Forms', 'Check-In', 'Livestream',
   'SMS', 'Community', 'Library', 'Tenants', 'Affiliate', 'Branding', 'Settings', 'More',
 ];
 function navLabels(): Set<string> {

@@ -220,7 +220,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
   //
   // ⚠️ THERE IS NO `analytics` CELL IN THIS MATRIX, on free or on any tier.
   // Analytics is not a plan flag today — it is a PERMISSION (`analytics` in
-  // AnalyticsAndRoles) on a sub-tab of the CRM screen. "Free gets analytics"
+  // AdminRoles) on a sub-tab of the CRM screen. "Free gets analytics"
   // is therefore expressed by `crm: true` and nothing else; inventing an
   // `analytics` cell here would add a flag that nothing reads, which is the
   // exact defect that removed `churchDirectory`, `customBackground` and

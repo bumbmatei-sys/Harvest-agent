@@ -65,7 +65,7 @@ vi.mock('../AdminScreenHeader', () => ({
   useAdminHeader: () => ({ setHeaderAction: () => {}, setHeaderOverride: () => {} }),
   HeaderActionButton: () => null,
 }));
-vi.mock('../AnalyticsAndRoles', () => ({ default: () => null }));
+vi.mock('../AdminRoles', () => ({ default: () => null }));
 // Spread the real module so the pure helpers it exports (resolvePipelineStage,
 // which every stage badge in AdminCRM calls) stay REAL — only the two data hooks
 // are stubbed. A hand-written object here would silently drop new exports.

@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { LayoutDashboard, Church, FileText, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, ChevronDown, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, QrCode, Radio, ExternalLink, Link2, Palette, Bell, X, Library, HandCoins } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, ChevronDown, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, QrCode, Radio, ExternalLink, Link2, Palette, Bell, X, Library, HandCoins, UserPlus } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import PlatformInbox from './PlatformInbox';
 import AdminChurches from './AdminChurches';
@@ -18,12 +18,13 @@ import NewsletterEditor from './NewsletterEditor';
 import NewsletterCampaigns from './NewsletterCampaigns';
 import CanvasList from './CanvasList';
 import CanvasEditor from './CanvasEditor';
-import { Permission, normalizePermissions } from './AnalyticsAndRoles';
+import { Permission, normalizePermissions } from './AdminRoles';
 import AdminNavCustomizer from './AdminNavCustomizer';
 import FocusScreen from './FocusScreen';
 import AdminFundraising from './AdminFundraising';
 import AdminDonations from './AdminDonations';
 import AdminCRM from './AdminCRM';
+import AdminSignups from './AdminSignups';
 import AdminDocs from './AdminDocs';
 import AdminCommunity from './AdminCommunity';
 import AdminAccounting from './AdminAccounting';
@@ -71,10 +72,12 @@ const MORE_GROUPS: { label: string; ids: string[] }[] = [
   { label: 'CONTENT', ids: ['blog', 'courses', 'newsletter', 'ai', 'docs'] },
   // Ministry: the "who" + giving. CRM leads the group AND is surfaced on the
   // Dashboard home (Members card / "View Members") — both are valid entry points.
-  // Analytics & Admin Roles live inside the CRM screen as internal tabs, not as
-  // their own drawer entries.
+  // Admin Roles lives inside the CRM screen as an internal tab, not as its own
+  // drawer entry. Signups (THE-277) does NOT: it counts members where CRM counts
+  // contacts, so it is its own entry, placed next to CRM because that is where a
+  // reader looking for "who joined" will look for it.
   // Statements now live as a sub-tab inside Accounting (not a standalone entry).
-  { label: 'MINISTRY', ids: ['crm', 'churches', 'community', 'fundraising', 'donations', 'forms', 'accounting'] },
+  { label: 'MINISTRY', ids: ['crm', 'signups', 'churches', 'community', 'fundraising', 'donations', 'forms', 'accounting'] },
   // Broadcasting: outbound / live engagement channels.
   // QR Codes now live as a sub-tab inside Check-In (not a standalone entry).
   { label: 'BROADCASTING', ids: ['events', 'checkin', 'sms', 'livestream'] },
@@ -89,7 +92,7 @@ const GROUPED_MORE_IDS = new Set(MORE_GROUPS.flatMap((g) => g.ids));
 // for is dropped, and a group with no permitted tabs is omitted entirely.
 const DESKTOP_NAV_GROUPS: { label: string; ids: string[] }[] = [
   { label: 'CONTENT', ids: ['blog', 'courses', 'newsletter', 'ai', 'docs'] },
-  { label: 'MINISTRY', ids: ['crm', 'churches', 'community', 'fundraising', 'donations', 'forms', 'accounting'] },
+  { label: 'MINISTRY', ids: ['crm', 'signups', 'churches', 'community', 'fundraising', 'donations', 'forms', 'accounting'] },
   { label: 'BROADCASTING', ids: ['events', 'checkin', 'sms', 'livestream'] },
   { label: 'GROW', ids: ['affiliate', 'branding', 'tenants', 'inbox'] },
 ];
@@ -639,12 +642,35 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     navAllows(features?.docs) &&
       (hasFullAccess || perms.manageDocs) &&
       { id: 'docs', label: 'Notes', icon: FileText },
-    // CRM (Contacts · Analytics · Roles sub-tabs). Shown to anyone who can use ANY
-    // sub-tab: manageCRM (Contacts), analytics (Analytics) or manageAdmins (Roles),
-    // since those screens only live inside the CRM page.
+    // CRM (Contacts · Roles sub-tabs). Shown to anyone who can use EITHER
+    // sub-tab: manageCRM (Contacts) or manageAdmins (Roles), since the Roles
+    // screen only lives inside the CRM page.
+    //
+    // ⚠️ THE `analytics` PERMISSION USED TO BE A THIRD TERM HERE and is
+    // deliberately gone. It was here for the Analytics sub-tab, which THE-277
+    // moved out to `signups` below. Leaving it would hand an analytics-only
+    // admin a CRM page with no sub-tab they may open — the dead-end this clause
+    // exists to avoid. (Spelled in prose rather than in code: the permission
+    // census in admin-data-screens.desktop-layout counts every permission term
+    // in this file WITH MULTIPLICITY and reads comments too, so writing one in
+    // a comment would register as a second real gate.)
     navAllows(features?.crm) &&
-      (hasFullAccess || perms.manageCRM || perms.analytics || perms.manageAdmins) &&
+      (hasFullAccess || perms.manageCRM || perms.manageAdmins) &&
       { id: 'crm', label: 'CRM', icon: Users },
+    // Signups (THE-277) — members who created an account: city search, the
+    // 1/3/7/30-day windows, and the two CSV exports. Previously the CRM
+    // screen's Analytics sub-tab.
+    //
+    // 🔴 THE ENTITLEMENT IS CARRIED OVER, NOT INVENTED. Both halves are the
+    // same pair that gated the sub-tab: `features.crm` on the plan side —
+    // there is NO `analytics` cell in the plan matrix and adding one would be a
+    // flag nothing else reads (see the note in utils/plan-features.ts, which
+    // says "free gets analytics" is expressed by `crm: true` and nothing else)
+    // — and the `analytics` permission on the admin side, which is where
+    // `AdminCRM.canViewAnalytics` used to ask it.
+    navAllows(features?.crm) &&
+      (hasFullAccess || perms.analytics) &&
+      { id: 'signups', label: 'Signups', icon: UserPlus },
     // Accounting (Crater) — Statements is now a sub-tab inside this screen, so the
     // entry is shown when EITHER the accounting or giving-statements feature is on,
     // and the admin holds either permission.
@@ -1167,6 +1193,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             planAllows(features?.crm)
               ? <div className="p-4 lg:p-0"><AdminCRM currentUserRole={isSuperAdmin ? 'super_admin' : userRole} currentUserPermissions={isChurchAdmin ? { fullAccess: true } as any : userPermissions} initialContactId={itemId} onItemConsumed={clearItemId} /></div>
               : <PlanUpgradeScreen featureName="CRM" featureKey="crm" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
+          ) : activeTab === 'signups' ? (
+            planAllows(features?.crm)
+              ? <div className="p-4 lg:p-0"><AdminSignups /></div>
+              : <PlanUpgradeScreen featureName="Signups" featureKey="crm" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'accounting' ? (
             planAllows(features && (features.accountingTools || features.givingStatements))
               ? <div className="p-4 lg:p-0"><AdminAccounting canManageAccounting={hasFullAccess || !!perms.manageAccounting} canManageStatements={hasFullAccess || !!perms.manageGivingStatements} /></div>

@@ -189,7 +189,7 @@ export const MEMBER_FAQS: readonly MemberFAQ[] = [
       'src/lib/member-erasure.ts',
       'src/lib/member-erasure-copy.ts',
       'src/components/AuthPage.tsx',
-      'src/components/AnalyticsAndRoles.tsx',
+      'src/components/AdminRoles.tsx',
       'firestore.rules',
     ],
   },

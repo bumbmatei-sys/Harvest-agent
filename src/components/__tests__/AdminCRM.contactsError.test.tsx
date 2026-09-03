@@ -60,7 +60,7 @@ vi.mock('../AdminScreenHeader', () => ({
   useAdminHeader: () => ({ setHeaderAction: () => {}, setHeaderOverride: () => {} }),
   HeaderActionButton: () => null,
 }));
-vi.mock('../AnalyticsAndRoles', () => ({
+vi.mock('../AdminRoles', () => ({
   default: ({ mode }: { mode: string }) => <div data-testid="analytics-and-roles">{mode}</div>,
 }));
 // Spread the real module so the pure helpers it exports (resolvePipelineStage,
@@ -196,7 +196,7 @@ describe('AdminCRM contacts error state', () => {
  * would need to fix the very permissions problem that broke the contacts read.
  */
 describe('AdminCRM sub-view tabs stay reachable during contacts loading/error (THE-47)', () => {
-  it('contacts query fails: the error card renders AND the Analytics and Roles pills are present and clickable', async () => {
+  it('contacts query fails: the error card renders AND the Roles pill is present and clickable', async () => {
     store.currentTenantId = 'nations';
     contactsResult.current = {
       data: undefined as unknown as unknown[],
@@ -207,15 +207,17 @@ describe('AdminCRM sub-view tabs stay reachable during contacts loading/error (T
     const text = container.textContent || '';
     expect(text).toContain("Couldn't load contacts");
 
-    const analyticsPill = pillNamed('Analytics');
+    // THE-277 — there were two other pills here; Analytics left this screen for
+    // its own `signups` page, so Roles is the one that remains. The property
+    // under test is unchanged: a failed CONTACTS query must not take the other
+    // sub-views down with it.
     const rolesPill = pillNamed('Roles');
-    expect(analyticsPill).toBeTruthy();
     expect(rolesPill).toBeTruthy();
-    expect(analyticsPill!.hasAttribute('disabled')).toBe(false);
     expect(rolesPill!.hasAttribute('disabled')).toBe(false);
+    expect(pillNamed('Analytics'), 'Analytics is a page now, not a CRM pill').toBeUndefined();
   });
 
-  it('contacts query fails: clicking Roles renders AnalyticsAndRoles in roles mode, not the error card', async () => {
+  it('contacts query fails: clicking Roles renders AdminRoles in roles mode, not the error card', async () => {
     store.currentTenantId = 'nations';
     contactsResult.current = {
       data: undefined as unknown as unknown[],
@@ -232,7 +234,7 @@ describe('AdminCRM sub-view tabs stay reachable during contacts loading/error (T
     expect(container.textContent || '').not.toContain("Couldn't load contacts");
   });
 
-  it('contacts query loading: spinner shows and the pills remain', async () => {
+  it('contacts query loading: spinner shows and the Roles pill remains', async () => {
     store.currentTenantId = 'nations';
     contactsResult.current = {
       data: undefined as unknown as unknown[],
@@ -241,18 +243,21 @@ describe('AdminCRM sub-view tabs stay reachable during contacts loading/error (T
     await mountCRM();
 
     expect(container.querySelector('.animate-spin')).toBeTruthy();
-    expect(pillNamed('Analytics')).toBeTruthy();
     expect(pillNamed('Roles')).toBeTruthy();
   });
 
-  it('an admin without canViewAnalytics still does not see that pill while the contacts query is failing', async () => {
+  it('an admin holding `analytics` gets no CRM pill for it — that screen left (THE-277)', async () => {
     store.currentTenantId = 'nations';
     contactsResult.current = {
       data: undefined as unknown as unknown[],
       isLoading: false, isError: true, error: new Error('nope'), refetch: vi.fn(),
     };
-    // manageCRM (contacts) + manageAdmins (roles), but no analytics and no fullAccess.
-    await mountCRM({ manageCRM: true, manageAdmins: true });
+    // 🔴 `analytics` is granted here ON PURPOSE. Before THE-277 that permission
+    // put an "Analytics" pill on this bar; now it entitles the `signups` NAV
+    // ENTRY instead, and this screen must offer nothing for it — otherwise the
+    // permission would open two surfaces and the split would be a duplication.
+    // Where it does open the new page is asserted in THE-277.signups-split.
+    await mountCRM({ manageCRM: true, manageAdmins: true, analytics: true });
 
     expect(pillNamed('Analytics')).toBeUndefined();
     expect(pillNamed('Roles')).toBeTruthy();

@@ -71,7 +71,7 @@ async function withFlag<T>(enabled: boolean, load: () => Promise<T>): Promise<T>
 }
 
 const loadRoles = (enabled: boolean) =>
-  withFlag(enabled, () => import('../AnalyticsAndRoles'));
+  withFlag(enabled, () => import('../AdminRoles'));
 
 let container: HTMLDivElement;
 let root: Root | null = null;
