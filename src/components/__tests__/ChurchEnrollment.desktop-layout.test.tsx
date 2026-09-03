@@ -772,10 +772,23 @@ describe('the layout rules live in one shared place and have a caller', () => {
       'src/components/AdminCRM.tsx',
       'src/components/AdminCheckin.tsx',
       'src/components/AdminChurches.tsx',
-      'src/components/AdminCommunity.tsx',
       'src/components/AdminCourseEditor.tsx',
       'src/components/AdminCourses.tsx',
-      'src/components/AdminDocs.tsx',
+      // ⚠️ AdminCommunity.tsx and AdminDocs.tsx LEFT this registry.
+      //
+      // Both took Rule 1a's page measure on the reading that a rail beside a
+      // pane is as data-dense as the shell allows. That reading was right and
+      // the conclusion was wrong: a measure exists to stop a LINE OF PROSE from
+      // running the width of a monitor, and neither screen renders prose at its
+      // root — they render a fixed-width rail beside a pane. The cap could only
+      // fall on the pane, which is the one part that wants the room, and what it
+      // actually produced was a band of dead space between the admin nav and the
+      // rail on every screen wider than 1120px.
+      //
+      // They mint nothing in its place: both now take the shell's content box,
+      // which is why they import form-layout no longer rather than importing it
+      // for a width of their own. A departure is as much a scoped decision as an
+      // adoption, so it is recorded here in the same place.
       // THE-246 — the Donations screen (Stripe Connect + the church's own payment
       // links). Opted in deliberately: it is an admin FORM, so it spends the form
       // measure, the field widths and the control density rather than inventing

@@ -1193,15 +1193,27 @@ export default function CourseBuilder({ course: initialCourse, onClose, library 
  ];
 
  return (
- <div style={s.root}>
+ <div data-course-editor-root style={s.root}>
+ {/* ── This block is UNLAYERED, so every selector in it beats every Tailwind
+     utility in the app — not just this screen's. Tailwind v4 puts utilities in
+     `@layer utilities`, and an unlayered rule outranks any layer whatever its
+     specificity, so the `* { margin: 0; padding: 0 }` that used to head this
+     block silently stripped the padding and margin off the ENTIRE admin shell,
+     the nav rail included, for as long as this tab was mounted. That is why
+     opening this screen moved the sidebar.
+
+     It was also redundant: Tailwind's preflight already sets box-sizing and
+     zeroes margins, so removing it changes nothing about how this screen
+     renders and gives the rest of the app its padding back.
+
+     Everything left is scoped to this screen's own root. Keep it that way. */}
  <style>{`
- *{box-sizing:border-box;margin:0;padding:0;}
- [contenteditable]:empty:before{content:attr(data-placeholder);color:var(--text-faint);pointer-events:none;}
- textarea::placeholder,input::placeholder{color:var(--text-faint);}
- textarea,input,select{outline:none;}
- ::-webkit-scrollbar{width:5px;}
- ::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:4px;}
- button:disabled{opacity:0.6;cursor:not-allowed;}
+ [data-course-editor-root] [contenteditable]:empty:before{content:attr(data-placeholder);color:var(--text-faint);pointer-events:none;}
+ [data-course-editor-root] textarea::placeholder,[data-course-editor-root] input::placeholder{color:var(--text-faint);}
+ [data-course-editor-root] textarea,[data-course-editor-root] input,[data-course-editor-root] select{outline:none;}
+ [data-course-editor-root] ::-webkit-scrollbar{width:5px;}
+ [data-course-editor-root] ::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:4px;}
+ [data-course-editor-root] button:disabled{opacity:0.6;cursor:not-allowed;}
  `}</style>
 
  {showAuthorPicker && (

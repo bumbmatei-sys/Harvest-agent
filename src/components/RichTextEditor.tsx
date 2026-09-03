@@ -18,11 +18,39 @@ import {
 } from 'lucide-react';
 import { auth } from '../firebase';
 
+/**
+ * The prose ramp every editor in the app has had, unchanged.
+ *
+ * `xl:prose-2xl` is a 1.5rem base above 1280px, which is a deliberate reading
+ * size for long-form writing and the wrong one for a dense screen. Named so the
+ * default is a value with a reason rather than a string nobody can question.
+ */
+export const DEFAULT_PROSE_CLASS = 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl';
+
+/**
+ * A document-sized body, for screens that are not documents.
+ *
+ * Flat — no responsive step — because the reason the ramp exists (a line of
+ * prose growing with the window) does not apply to a pane beside a tree. 13px
+ * at `prose-sm`'s 0.875rem against the 14.5px desktop rem base.
+ */
+export const COMPACT_PROSE_CLASS = 'prose prose-sm';
+
 interface RichTextEditorProps {
   content: string;
   onChange: (content: string) => void;
   minHeight?: string;
   placeholder?: string;
+  /**
+   * The prose classes on the editor body.
+   *
+   * Defaults to the responsive ramp every caller has always had. That ramp ends
+   * at `xl:prose-2xl`, whose base is 1.5rem — fine for a blog post being written
+   * at reading size, far too big for a notes app, where it rendered the body and
+   * its placeholder at 24px on any monitor. A caller whose measure is not a
+   * document's passes its own instead of every screen inheriting one screen's.
+   */
+  proseClass?: string;
 }
 
 interface CommandItem {
@@ -435,6 +463,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   onChange,
   minHeight = '300px',
   placeholder = 'Write something...',
+  proseClass = DEFAULT_PROSE_CLASS,
 }) => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [showLinkInput, setShowLinkInput] = useState(false);
@@ -485,7 +514,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-hidden p-4 max-w-none',
+        class: `${proseClass} mx-auto focus:outline-hidden p-4 max-w-none`,
         style: `word-break: normal; overflow-wrap: break-word; white-space: normal; min-height: ${minHeight};`,
       },
     },

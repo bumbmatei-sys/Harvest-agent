@@ -14,7 +14,7 @@ import { isSuperAdminEmail } from '../utils/super-admins';
 import { notifyError } from '../utils/notify';
 import { sortByTime } from '../utils/query-helpers';
 import { useAdminHeader } from './AdminScreenHeader';
-import { FORM_CONTAINER } from './layout/form-layout';
+import { SHELL_SCREEN_HEIGHT } from './layout/shell-height';
 
 /**
  * Fetch documents in a flat collection scoped by a `tenantId` field, using only
@@ -1242,13 +1242,21 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
     m.email?.toLowerCase().includes(memberSearch.toLowerCase())
   );
 
-  // Rule 1a — the PAGE measure. This screen is a rail of conversations beside
-  // an open thread, i.e. as data-dense as the shell allows, so it takes
-  // FORM_CONTAINER and not the form measure. `max-w-6xl` was 1152px at the 16px
-  // rem base and 1044px at the 14.5px desktop one, so it bound only at 1440px
-  // and left the page uncapped at 1024px and at 1280px.
+  // ── No page measure, deliberately ──────────────────────────────────────────
+  // This screen used to take Rule 1a's PAGE measure (FORM_CONTAINER, 1120px
+  // centred) on the reasoning that a rail of conversations beside an open
+  // thread is as data-dense as the shell allows. The reasoning was right and
+  // the conclusion was wrong: a measure caps a DOCUMENT so a line of prose does
+  // not run the width of a monitor, and there is no prose here. What the cap
+  // actually did was centre the pair and leave a band of dead space between the
+  // admin nav and the conversation list, on every screen wider than 1120px.
+  //
+  // The rail is a fixed 340px either way, so the whole cap fell on the message
+  // pane — the one part of this screen that wants the room. Same call, same
+  // reason, as the Notes tree (THE-275). Nothing is minted in its place: the
+  // width is the shell's content box.
   return (
-    <div className={`${FORM_CONTAINER} h-full lg:h-[calc(100dvh-140px)]`}>
+    <div className={`w-full h-full ${SHELL_SCREEN_HEIGHT}`}>
       <div className="flex flex-col h-full lg:flex-row lg:gap-5">
 
       {/* ── Left rail: tabs + conversation list ── */}

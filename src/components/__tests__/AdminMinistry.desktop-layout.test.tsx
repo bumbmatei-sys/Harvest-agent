@@ -216,7 +216,14 @@ interface PrePr {
  */
 const stripPresentation = (src: string): string => unwrapSmsGate(src)
   .replace(/className=(?:"[^"]*"|\{`[^`]*`\}|\{[A-Za-z_$][\w.$]*\})/g, 'className=X')
-  .replace(/^import \{[^}]*\} from '\.\/layout\/form-layout';$/m, '')
+  // An import of a LAYOUT module is presentation, not behaviour — the same
+  // reasoning that already exempted form-layout, widened to the directory. A
+  // screen that stops inventing a number and starts spending a shared one has
+  // changed only how it renders, which is exactly what this hash is meant to
+  // let through. THE-275 moved the full-height screens' `calc(100dvh - 140px)`
+  // (a guess, ~37px too big) into layout/shell-height.ts, where it is derived
+  // from the shell's own classes and checked against them.
+  .replace(/^import \{[^}]*\} from '\.\/layout\/[\w-]+';$/gm, '')
   .replace(/^\s*(?:\/\/.*)?$\n?/gm, '');
 
 /**
@@ -558,10 +565,26 @@ describe('no touch target got smaller', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // 3. The container rule — one per file.
 // ─────────────────────────────────────────────────────────────────────────────
+/**
+ * The one surface in this batch that deliberately carries NO measure.
+ *
+ * AdminCommunity is a fixed 340px rail beside a message pane. A measure exists
+ * to stop a LINE OF PROSE from running the width of a monitor, and this screen
+ * renders none at its root — so the 1120px cap could only ever fall on the
+ * pane, which is the one part that wants the room, and what it produced was a
+ * band of dead space between the admin nav and the conversation list on every
+ * screen wider than 1120px. It takes the shell's content box instead.
+ *
+ * Named here rather than dropped from SCREENS, so the other ten assertions this
+ * file makes about it stay live, and so "uncapped" is a claim this file states
+ * out loud rather than a gap in a loop.
+ */
+const UNCAPPED: ReadonlyArray<Screen> = ['AdminCommunity'];
+
 describe('each surface is constrained at desktop widths', () => {
   const capOf = (c: ParentNode) => maxWidthTokens(c.firstElementChild as Element);
 
-  for (const name of SCREENS) {
+  for (const name of SCREENS.filter((n) => !UNCAPPED.includes(n))) {
     it(`caps every surface of ${name} with a shared measure and nothing else`, async () => {
       for (const [view, c] of Object.entries(await surfaces(name))) {
         const caps = capOf(c);
@@ -576,14 +599,32 @@ describe('each surface is constrained at desktop widths', () => {
     });
   }
 
+  for (const name of UNCAPPED) {
+    it(`leaves every surface of ${name} uncapped, and mints nothing in place of the measure`, async () => {
+      // The exemption is asserted, not assumed: an uncapped screen must carry
+      // NO max-width at all, so "we removed the measure" cannot quietly become
+      // "we replaced it with one of our own".
+      for (const [view, c] of Object.entries(await surfaces(name))) {
+        expect(capOf(c), `${name}/${view} put a cap back on an uncapped surface`).toEqual([]);
+      }
+    });
+  }
+
   it('gives the data-dense pages the PAGE measure and the forms the FORM measure', () => {
     expect(FORM_CONTAINER).toContain('1120px');
     expect(FORM_MEASURE).toContain('940px');
     // The three form surfaces name the form measure; every other surface is a page.
     for (const f of ['AdminEvents.tsx', 'AdminForms.tsx', 'AdminCheckin.tsx']) expect(read(f)).toContain('FORM_MEASURE');
-    for (const f of ['AdminCommunity.tsx', 'AdminFundraising.tsx']) {
+    for (const f of ['AdminFundraising.tsx']) {
       expect(read(f)).toContain('FORM_CONTAINER');
       expect(read(f)).not.toContain('FORM_MEASURE');
+    }
+    // AdminCommunity took the page measure and gave it back — see UNCAPPED
+    // above. It must spend neither, or it has quietly re-adopted one.
+    for (const f of ['AdminCommunity.tsx']) {
+      const code = read(f).replace(/^\s*\/\/.*$/gm, '');
+      expect(code).not.toContain('FORM_CONTAINER');
+      expect(code).not.toContain('FORM_MEASURE');
     }
   });
 
@@ -607,8 +648,17 @@ describe('each surface is constrained at desktop widths', () => {
 // 4. Where the numbers come from.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('widths, heights and gaps come from form-layout, not new per-screen values', () => {
-  it('imports the rules in every file that spells one', () => {
-    for (const name of SCREENS) expect(read(`${name}.tsx`)).toContain("from './layout/form-layout'");
+  it('imports the rules in every file that spells one, and only those', () => {
+    for (const name of SCREENS.filter((n) => !UNCAPPED.includes(n))) {
+      expect(read(`${name}.tsx`)).toContain("from './layout/form-layout'");
+    }
+    // The converse for the uncapped screen: it spends no rule, so it must not
+    // carry the import either — an unused import here is how a measure creeps
+    // back one line at a time.
+    for (const name of UNCAPPED) {
+      expect(read(`${name}.tsx`), `${name} imports rules it no longer spends`)
+        .not.toContain("from './layout/form-layout'");
+    }
   });
 
   it('spells no sm:-gated width, height or gap literal outside the module', () => {

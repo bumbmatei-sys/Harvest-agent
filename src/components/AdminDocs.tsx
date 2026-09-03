@@ -1,12 +1,12 @@
 "use client";
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
-  Plus, FileText, Trash2, Clock, FolderOpen, Folder, ChevronRight, ChevronDown,
-  PanelLeft, X, ArrowLeft, MoreVertical, Edit2, Move, Pin, MoreHorizontal, Share2, Check, Download, Upload, Radio
+  Plus, FileText, Trash2, Folder, Maximize2, Minimize2,
+  X, ArrowLeft, Edit2, Pin, MoreHorizontal, Share2, Check, Download, Radio
 } from 'lucide-react';
 import {
   collection, query, where, addDoc, updateDoc, deleteDoc,
-  doc, getDoc, serverTimestamp, Timestamp, getDocs, arrayUnion, arrayRemove
+  doc, getDoc, serverTimestamp, getDocs, arrayUnion, arrayRemove
 } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { db, auth } from '../firebase';
@@ -18,10 +18,16 @@ import { useAppStore } from '../store/useAppStore';
 import { useDocs, useDocFolders, useSharedDocs } from '../hooks/queries/useDocsQueries';
 import { exportToPDF, exportToDOCX, exportToMarkdown } from '../utils/doc-export';
 import { markdownToHtml, titleFromMarkdown } from '../utils/markdown-import';
-import RichTextEditor from './RichTextEditor';
+import RichTextEditor, { COMPACT_PROSE_CLASS } from './RichTextEditor';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
-import { AdminPageHeader, AdminPrimaryButton, AdminSecondaryButton, AdminBadge } from './admin/AdminUI';
-import { FORM_CONTAINER } from './layout/form-layout';
+import { Sidebar, SidebarProvider } from './ui/sidebar';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from './ui/empty';
+import { Item, ItemMedia, ItemTitle } from './ui/item';
+import DocsTree from './docs/DocsTree';
+import DocsBreadcrumb from './docs/DocsBreadcrumb';
+import DocsQuickSwitcher, { useQuickSwitcherShortcut } from './docs/DocsQuickSwitcher';
+import { folderPathIds } from './docs/docs-tree-model';
+import { SHELL_SCREEN_HEIGHT } from './layout/shell-height';
 
 import type { Doc, DocFolder } from '../hooks/queries/useDocsQueries';
 
@@ -30,78 +36,6 @@ interface AdminUser {
   name: string;
   email: string;
 }
-
-const fmtDate = (ts: Timestamp | null | undefined) => {
-  if (!ts) return '';
-  return ts.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-};
-
-// ─── Three-Dot Menu ──────────────────────────────────────────────
-
-const ThreeDotMenu: React.FC<{
-  onRename: () => void;
-  onDelete: () => void;
-  onMove?: () => void;
-  onPin?: () => void;
-  isPinned?: boolean;
-}> = ({ onRename, onDelete, onMove, onPin, isPinned }) => {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [menuOpen]);
-
-  return (
-    <div className="relative" ref={menuRef}>
-      <button
-        onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
-        className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-surface-sunken transition-all"
-      >
-        <MoreVertical size={14} className="text-faint hover:text-muted" />
-      </button>
-      {menuOpen && (
-        <div className="absolute right-0 top-full mt-1 w-36 bg-surface-raised rounded-lg shadow-lg border border-line z-50 py-1">
-          {onMove && (
-            <button
-              onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onMove(); }}
-              className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-body hover:bg-surface-sunken rounded-lg"
-            >
-              <Move size={12} /> Move to Folder
-            </button>
-          )}
-          {onPin && (
-            <button
-              onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onPin(); }}
-              className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-body hover:bg-surface-sunken rounded-lg"
-            >
-              <Pin size={12} /> {isPinned ? 'Unpin' : 'Pin to Top'}
-            </button>
-          )}
-          <button
-            onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onRename(); }}
-            className="w-full flex items-center gap-2 text-left px-3 py-2 text-xs text-body hover:bg-surface-sunken"
-          >
-            <Edit2 size={12} /> Rename
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDelete(); }}
-            className="w-full flex items-center gap-2 text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50"
-          >
-            <Trash2 size={12} /> Delete
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
 
 // ─── Rename Modal ──────────────────────────────────────────────
 
@@ -266,88 +200,9 @@ const EditorMenu: React.FC<{
   );
 };
 
-// ─── Folder Tree Node ────────────────────────────────────────────────
-
-const FolderNode: React.FC<{
-  folder: DocFolder;
-  folders: DocFolder[];
-  docs: Doc[];
-  activeFolderId: string | null;
-  activeDocId: string | null;
-  onSelectFolder: (id: string | null) => void;
-  onSelectDoc: (d: Doc) => void;
-  onDeleteFolder: (id: string) => void;
-  onDeleteDoc: (id: string) => void;
-  onRenameFolder: (folder: DocFolder) => void;
-  onRenameDoc: (doc: Doc) => void;
-  onMoveDoc?: (docId: string) => void;
-  onPinDoc?: (docId: string, pinned: boolean) => void;
-  depth?: number;
-}> = ({ folder, folders, docs, activeFolderId, activeDocId, onSelectFolder, onSelectDoc, onDeleteFolder, onDeleteDoc, onRenameFolder, onRenameDoc, onMoveDoc, onPinDoc, depth = 0 }) => {
-  const [open, setOpen] = useState(true);
-  const childFolders = folders.filter(f => f.parentId === folder.id);
-  const folderDocs = docs.filter(d => d.folderId === folder.id);
-  const isActive = activeFolderId === folder.id;
-
-  return (
-    <div>
-      <div
-        className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors ${isActive ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)]' : 'hover:bg-surface-sunken'}`}
-        style={{ paddingLeft: `${8 + depth * 16}px` }}
-        onClick={() => { setOpen(!open); onSelectFolder(folder.id); }}
-      >
-        {open ? <ChevronDown size={13} className="text-faint flex-shrink-0" /> : <ChevronRight size={13} className="text-faint flex-shrink-0" />}
-        {open ? <FolderOpen size={14} style={{ color: 'var(--brand-color, #d4a017)' }} className="flex-shrink-0" /> : <Folder size={14} className="text-faint flex-shrink-0" />}
-        <span className="text-xs font-medium text-body flex-1 truncate">{folder.name}</span>
-        <ThreeDotMenu
-          onRename={() => onRenameFolder(folder)}
-          onDelete={() => onDeleteFolder(folder.id)}
-        />
-      </div>
-      {open && (
-        <div>
-          {childFolders.map(cf => (
-            <FolderNode
-              key={cf.id}
-              folder={cf}
-              folders={folders}
-              docs={docs}
-              activeFolderId={activeFolderId}
-              activeDocId={activeDocId}
-              onSelectFolder={onSelectFolder}
-              onSelectDoc={onSelectDoc}
-              onDeleteFolder={onDeleteFolder}
-              onDeleteDoc={onDeleteDoc}
-              onRenameFolder={onRenameFolder}
-              onRenameDoc={onRenameDoc}
-              onMoveDoc={onMoveDoc}
-              onPinDoc={onPinDoc}
-              depth={depth + 1}
-            />
-          ))}
-          {folderDocs.map(d => (
-            <div
-              key={d.id}
-              onClick={() => onSelectDoc(d)}
-              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors ${activeDocId === d.id ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)]' : 'hover:bg-surface-sunken'}`}
-              style={{ paddingLeft: `${24 + depth * 16}px` }}
-            >
-              <FileText size={13} className="text-faint flex-shrink-0" />
-              <span className="text-xs text-body flex-1 truncate">{d.title || 'Untitled'}</span>
-              <ThreeDotMenu
-                onRename={() => onRenameDoc(d)}
-                onDelete={() => onDeleteDoc(d.id)}
-                onMove={onMoveDoc ? () => onMoveDoc(d.id) : undefined}
-                onPin={onPinDoc ? () => onPinDoc(d.id, !!d.pinned) : undefined}
-                isPinned={!!d.pinned}
-              />
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
+/** Stable empty results, so a pending read does not remount the tree. */
+const NO_DOCS: Doc[] = [];
+const NO_FOLDERS: DocFolder[] = [];
 
 // ─── Main AdminDocs ──────────────────────────────────────────────
 
@@ -380,9 +235,13 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
   const { data: docsRead, isLoading: loading } = useDocs(tenantId, isAuthReady);
   const { data: foldersRead } = useDocFolders(tenantId, isAuthReady);
   const { data: sharedDocsRead } = useSharedDocs(auth.currentUser?.uid);
-  const docs = docsRead?.items ?? [];
-  const folders = foldersRead?.items ?? [];
-  const sharedDocs = sharedDocsRead?.items ?? [];
+  // The `?? []` fallbacks resolve to SHARED constants rather than to a fresh
+  // array each render. The tree and the quick switcher both derive from these,
+  // and a new `[]` on every render would rebuild every branch of the tree on
+  // every keystroke in the editor beside it.
+  const docs = docsRead?.items ?? NO_DOCS;
+  const folders = foldersRead?.items ?? NO_FOLDERS;
+  const sharedDocs = sharedDocsRead?.items ?? NO_DOCS;
   const docsTruncated = !!docsRead?.truncated || !!foldersRead?.truncated || !!sharedDocsRead?.truncated;
 
   const [openDoc, setOpenDoc] = useState<Doc | null>(null);
@@ -401,17 +260,17 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
   const [loadingAdmins, setLoadingAdmins] = useState(false);
   const [renameFolderData, setRenameFolderData] = useState<{ id: string; name: string } | null>(null);
   const [renameDocData, setRenameDocData] = useState<{ id: string; name: string } | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  // Mobile-only presentational UI state: whether the slide-in notes/folders
-  // drawer is open. On desktop the same content lives in the always-visible
-  // left rail, so this is never used there.
-  const [mobileNotesOpen, setMobileNotesOpen] = useState(false);
-  const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
+  // ⌘K. The screen had no search at all before THE-275.
+  const [switcherOpen, setSwitcherOpen] = useState(false);
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   // Inline "create folder while moving a doc" (used in the Move-to-Folder modal).
   const [moveCreating, setMoveCreating] = useState(false);
   const [moveFolderName, setMoveFolderName] = useState('');
+  // Distraction-free writing: hides the tree on a wide screen and the app
+  // header everywhere. Kept from before THE-275 — what changed is that opening
+  // a note no longer switches it on for you, which is what used to make the
+  // tree vanish the instant you picked something to read.
   const [focusMode, setFocusMode] = useState(false);
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
@@ -433,13 +292,25 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
   // an alarm the user cannot act on.
   const saveSeq = useRef(0);
 
-  const openDocument = (d: Doc) => {
+  const openDocument = useCallback((d: Doc) => {
     setOpenDoc(d);
     setEditTitle(d.title || '');
     setEditContent(d.content || '');
     setSaveStatus('idle');
-    setFocusMode(true);
-  };
+    // Deliberately does NOT set focus mode. That single line was the drill-down:
+    // every route into a note switched the screen to the editor-only view, and
+    // the tree only existed there.
+  }, []);
+
+  // Hold the open note's folder chain open so the tree shows where the note in
+  // the editor lives — including when it was reached from ⌘K rather than by
+  // walking the folders.
+  const revealFolderIds = useMemo(
+    () => folderPathIds(openDoc?.folderId, folders),
+    [openDoc?.folderId, folders],
+  );
+
+  useQuickSwitcherShortcut(useCallback(() => setSwitcherOpen(true), []));
 
   // Deep-link: open a specific doc when navigated to /admin/docs/:id
   // (e.g. tapping "Open Doc" on a chat attachment card).
@@ -557,12 +428,37 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
     void saveDoc(openDoc.id, editTitle, editContent);
   };
 
+  /**
+   * Close the open note.
+   *
+   * Save what is on screen — not just what the debounce happened to queue — and
+   * do NOT leave until it lands. Closing over a failed write dropped the user on
+   * a screen where the error was no longer visible, while the only copy of the
+   * text lived in the editor they had just left. Staying put keeps the work on
+   * screen and makes "Notes" a retry button.
+   *
+   * The `editTitle.trim()` guard is gone: a note with content and a blank title
+   * was previously never written on close, so everything typed since the last
+   * debounce was silently discarded.
+   *
+   * Hoisted out of the old editor-only return by THE-275 — the behaviour, and
+   * the tests that pin it, are unchanged.
+   */
+  const closeEditor = async () => {
+    if (!openDoc) return;
+    cancelPendingSave();
+    const ok = await saveDoc(openDoc.id, editTitle, editContent);
+    if (!ok) return;
+    setOpenDoc(null);
+    setFocusMode(false);
+  };
+
   const createDoc = async (folderId?: string | null) => {
     try {
       const ref = await addDoc(collection(db, 'docs'), {
         title: 'Untitled',
         content: '',
-        folderId: folderId ?? activeFolderId ?? null,
+        folderId: folderId ?? null,
         tenantId: tenantId || null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -580,7 +476,6 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
       setEditTitle('Untitled');
       setEditContent('');
       setSaveStatus('idle');
-      setFocusMode(true);
       setTimeout(() => { titleRef.current?.select(); }, 100);
       await queryClient.invalidateQueries({ queryKey: ['docs', tenantId] });
     } catch (e) { notifyError('Failed to create document', e); }
@@ -617,7 +512,6 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
       setEditTitle(title);
       setEditContent(html);
       setSaveStatus('idle');
-      setFocusMode(true);
       await queryClient.invalidateQueries({ queryKey: ['docs', tenantId] });
       toast.success('Note imported successfully');
     } catch (err) {
@@ -795,13 +689,10 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
     }
   };
 
-  const rootFolders = folders.filter(f => !f.parentId);
-  const rootDocs = docs.filter(d => !d.folderId).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
-  const folderDocs = activeFolderId
-    ? docs.filter(d => d.folderId === activeFolderId).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
-    : rootDocs;
+  // The root/child split and the pinned-first order live in docs-tree-model.ts
+  // now, so the tree and the quick switcher read the same helpers.
 
-  // Share modal (used in both focus and list views)
+  // Share modal
   const shareModal = shareDocId ? (
     <div className="fixed inset-0 z-[320] flex items-end sm:items-center justify-center bg-black/50" onClick={() => setShareDocId(null)}>
       <div className="bg-surface-raised rounded-t-2xl sm:rounded-2xl w-full max-w-sm max-h-[65vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -950,257 +841,186 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
     </>
   );
 
-  // Notes list + folder tree shared by the desktop left rail and the mobile
-  // slide-in drawer. Same content, same handlers — the optional `onNavigate`
-  // (passed only by the drawer) additionally closes the drawer after a note or
-  // folder is chosen. On desktop it is undefined, so behaviour is unchanged.
-  const renderNotesSidebar = (onNavigate?: () => void) => (
-    <>
-      <div className="p-3 border-b border-line flex gap-2">
-        <button
-          onClick={() => { createDoc(); onNavigate?.(); }}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-brand text-xs font-semibold text-white"
-          style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
-        >
-          <Plus size={13} /> New doc
-        </button>
-        <button
-          onClick={() => setShowNewFolder(true)}
-          className="px-3 py-2 rounded-brand border border-line text-muted hover:bg-surface-sunken"
-          title="New folder"
-        >
-          <FolderOpen size={14} />
-        </button>
-      </div>
-      <div className="flex-1 overflow-y-auto p-2">
-        {/* THE-262: the read stops at a ceiling, and a ceiling nobody can see is
-            the bug this replaced — a church over the old limit(300) got an
-            arbitrary 300 notes rendered as a tidy, complete-looking list. Reads
-            now run to completeness, so this only appears if the runaway-read
-            ceiling actually fired. It must never be silent when it does. */}
-        {docsTruncated && (
-          <div className="mx-1 mb-2 px-2.5 py-2 rounded-brand border border-line bg-surface-sunken">
-            <p className="text-[10px] font-bold text-faint uppercase tracking-wider mb-0.5">Partial list</p>
-            <p className="text-xs text-muted">
-              There are more notes than this view loads at once, so some are not shown.
-            </p>
-          </div>
-        )}
-        {docs.filter(d => !d.folderId).map(d => {
-          const isOpen = openDoc?.id === d.id;
-          return (
-            <div
-              key={d.id}
-              onClick={() => { openDocument(d); onNavigate?.(); }}
-              className={`flex items-center gap-1.5 px-2.5 py-2 rounded-brand cursor-pointer group transition-colors ${isOpen ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)]' : 'hover:bg-surface-sunken'}`}
+  // ── The one view ──
+  //
+  // No drill-down. The tree is mounted unconditionally on the left and the MAIN
+  // pane is the only thing that swaps — that is the whole of THE-275. What was
+  // here before were TWO returns: a landing screen of root-folder chips and doc
+  // cards, and a separate editor screen that was the only place the tree existed.
+  //
+  // ── The layout, and what it does at 380px ───────────────────────────────────
+  // One DOM structure at every width; the panes are shown and hidden with
+  // classes, never mounted conditionally, so the tree element survives every
+  // navigation and every resize.
+  //
+  //            no note open              note open
+  //   < lg     tree, full width          editor, full width (tree `hidden`)
+  //   ≥ lg     tree + "pick a note"      tree + editor
+  //
+  // A phone gets ONE pane because two do not fit: at 380px a 232px rail leaves
+  // 148px of editor, which is not a writing surface. It is still not a
+  // drill-down — the tree is what you LAND on at every width, with no note open
+  // and no folder screen in front of it, which is exactly what the founder asked
+  // for. `focusMode` is what hides the rail on a wide screen.
+  const editorPane = (
+    <div
+      data-testid="docs-main-pane"
+      className={`min-w-0 flex-1 flex-col overflow-hidden rounded-brand-lg border border-line bg-surface-raised shadow-[var(--ds-sh-sm)] ${openDoc ? 'flex' : 'hidden lg:flex'}`}
+    >
+      {openDoc ? (
+        <>
+          {/* Editor header — back · where this note lives · saved · focus · livestream · Export */}
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <button
+                onClick={closeEditor}
+                className="flex shrink-0 items-center gap-1.5 text-[13px] font-semibold text-gold transition-opacity hover:opacity-80"
+              >
+                <ArrowLeft size={15} /> Notes
+              </button>
+              <div className="hidden min-w-0 sm:block">
+                <DocsBreadcrumb folderId={openDoc.folderId} folders={folders} title={editTitle} />
+              </div>
+            </div>
+            {/* A failure stays on screen as "Not saved" rather than reverting to
+                the empty idle string, and — unlike the quiet Saving…/Saved chip —
+                shows on mobile too, where `hidden sm:block` would otherwise make
+                the only in-page signal of a lost save invisible. */}
+            <span
+              className={`text-xs ${saveStatus === 'error' ? 'block font-semibold text-[color:var(--brand-danger)]' : 'hidden sm:block text-faint'}`}
+              role={saveStatus === 'error' ? 'alert' : undefined}
             >
-              <FileText size={13} className={`flex-shrink-0 ${isOpen ? 'text-gold' : 'text-faint'}`} />
-              <span className={`text-xs flex-1 truncate ${isOpen ? 'text-strong font-semibold' : 'text-body'}`}>{d.title || 'Untitled'}</span>
-              {d.pinned && <Pin size={11} className="text-gold flex-shrink-0" />}
-              <ThreeDotMenu
-                onRename={() => handleRenameDoc(d)}
-                onDelete={() => setDeleteDocId(d.id)}
-                onMove={() => setMoveDocId(d.id)}
-                onPin={() => togglePinDoc(d.id, !!d.pinned)}
-                isPinned={!!d.pinned}
+              {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : saveStatus === 'error' ? 'Not saved' : ''}
+            </span>
+            <div className="flex shrink-0 items-center gap-2">
+              {/* focusMode survives THE-275 with the job it always did — a
+                  fullscreen editor — but as a TOGGLE rather than as something
+                  opening a note did to you. Auto-entering it is what made the
+                  tree disappear the moment you picked a note. */}
+              <button
+                onClick={() => setFocusMode(v => !v)}
+                aria-pressed={focusMode}
+                title={focusMode ? 'Exit focus mode' : 'Focus mode'}
+                aria-label={focusMode ? 'Exit focus mode' : 'Focus mode'}
+                className="rounded-lg p-1.5 text-faint transition-colors hover:bg-surface-sunken"
+              >
+                {focusMode ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+              </button>
+              {canShareToLivestream && (
+                <button
+                  onClick={() => handleShareToLivestream(openDoc.id, editTitle, editContent)}
+                  className="flex items-center gap-1.5 rounded-brand border border-line px-3 py-2 text-[13px] font-semibold text-strong transition-colors hover:bg-surface-sunken"
+                >
+                  <Radio size={15} /> <span className="hidden sm:inline">Share to livestream</span>
+                </button>
+              )}
+              <EditorMenu
+                triggerLabel="Export"
+                title={editTitle}
+                content={editContent}
+                createdBy={openDoc.createdBy}
+                currentUid={auth.currentUser?.uid || ''}
+                isPinned={!!openDoc.pinned}
+                onPin={() => togglePinDoc(openDoc.id, !!openDoc.pinned)}
+                onRename={() => setRenameDocData({ id: openDoc.id, name: editTitle })}
+                onDelete={() => setDeleteDocId(openDoc.id)}
+                onShare={() => openShareModal(openDoc.id)}
+                canShareToLivestream={false}
+                onShareToLivestream={() => handleShareToLivestream(openDoc.id, editTitle, editContent)}
               />
             </div>
-          );
-        })}
-        {rootFolders.map(f => (
-          <FolderNode
-            key={f.id}
-            folder={f}
-            folders={folders}
-            docs={docs}
-            activeFolderId={activeFolderId}
-            activeDocId={openDoc?.id || null}
-            onSelectFolder={(id) => { setActiveFolderId(id); onNavigate?.(); }}
-            onSelectDoc={(d) => { openDocument(d); onNavigate?.(); }}
-            onDeleteFolder={setDeleteFolderId}
-            onDeleteDoc={setDeleteDocId}
-            onRenameFolder={handleRenameFolder}
-            onRenameDoc={handleRenameDoc}
-            onMoveDoc={setMoveDocId}
-            onPinDoc={togglePinDoc}
-          />
-        ))}
-        {sharedDocs.length > 0 && (
-          <div className="mt-3">
-            <p className="text-[10px] font-bold text-faint uppercase tracking-wider px-2 mb-1">Shared with Me</p>
-            {sharedDocs.map(d => (
-              <div
-                key={d.id}
-                onClick={() => { openDocument(d); onNavigate?.(); }}
-                className={`flex items-center gap-1.5 px-2.5 py-2 rounded-brand cursor-pointer group transition-colors ${openDoc?.id === d.id ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)]' : 'hover:bg-surface-sunken'}`}
-              >
-                <Share2 size={13} className="text-faint flex-shrink-0" />
-                <span className="text-xs text-body flex-1 truncate">{d.title || 'Untitled'}</span>
-              </div>
-            ))}
           </div>
-        )}
-      </div>
-    </>
+          {/* Editor body */}
+          <div className="docs-editor flex-1 px-5 pb-12 lg:overflow-y-auto lg:px-12">
+            <input
+              ref={titleRef}
+              value={editTitle}
+              onChange={e => {
+                setEditTitle(e.target.value);
+                // Keep an already-queued auto-save pointed at the title the
+                // user has NOW, so the debounce can't write back the one that
+                // was on screen when the content keystroke scheduled it. Guarded
+                // by id so a payload queued for another document is left alone.
+                if (pendingSave.current && pendingSave.current.id === openDoc?.id) {
+                  pendingSave.current.title = e.target.value;
+                }
+              }}
+              onBlur={handleTitleBlur}
+              // THE-136: placeholder-stone-300 was a fixed light beige — 1.55:1
+              // on the white card in light, and unthemed in dark. text-faint is
+              // the placeholder role and clears AA on both grounds.
+              className="mt-6 mb-6 w-full border-none bg-transparent font-display text-4xl font-normal tracking-[-0.01em] text-strong outline-hidden placeholder:text-faint"
+              placeholder="Untitled"
+            />
+            <RichTextEditor
+              content={editContent}
+              onChange={handleContentChange}
+              minHeight="calc(100vh - 320px)"
+              placeholder="Start writing... Type / for commands"
+              // The shared default ends at `xl:prose-2xl` — a 1.5rem base — so
+              // on a monitor a note, and the placeholder that inherits from it,
+              // rendered at 24px. A note is not a blog post being read at arm's
+              // length; this is the flat, compact measure.
+              proseClass={COMPACT_PROSE_CLASS}
+            />
+          </div>
+        </>
+      ) : (
+        // Nothing open. On a wide screen this is the right-hand pane beside the
+        // tree; below `lg` it never shows, because there the tree IS the screen.
+        <Empty data-testid="docs-no-selection" className="h-full">
+          <EmptyHeader>
+            <EmptyMedia variant="icon"><FileText /></EmptyMedia>
+            <EmptyTitle>Pick a note</EmptyTitle>
+            <EmptyDescription>
+              Choose one from the tree, or start a new one.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Item
+                render={<button type="button" />}
+                size="xs"
+                variant="outline"
+                onClick={() => createDoc()}
+                className="w-auto border-transparent text-white"
+                style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
+              >
+                <ItemMedia variant="icon"><Plus /></ItemMedia>
+                <ItemTitle>New doc</ItemTitle>
+              </Item>
+              <Item
+                render={<button type="button" />}
+                size="xs"
+                variant="outline"
+                onClick={() => setSwitcherOpen(true)}
+                className="w-auto"
+              >
+                <ItemTitle className="font-normal text-muted">Search notes…</ItemTitle>
+              </Item>
+            </div>
+          </EmptyContent>
+        </Empty>
+      )}
+    </div>
   );
 
-  // ── Focus mode (full editor) ──
-  if (focusMode && openDoc) {
-    const closeEditor = async () => {
-      // Save what is on screen — not just what the debounce happened to queue —
-      // and do NOT leave until it lands. Closing over a failed write dropped the
-      // user on a list where the error was no longer visible, while the only copy
-      // of the text lived in the editor they had just left. Staying put keeps the
-      // work on screen and makes "Notes" a retry button.
-      //
-      // The `editTitle.trim()` guard is gone: a note with content and a blank
-      // title was previously never written on close, so everything typed since
-      // the last debounce was silently discarded.
-      cancelPendingSave();
-      const ok = await saveDoc(openDoc.id, editTitle, editContent);
-      if (!ok) return;
-      setOpenDoc(null);
-      setFocusMode(false);
-    };
-    return (
-      <div className="lg:h-[calc(100dvh-140px)]">
-        <div className="lg:flex lg:gap-5 lg:h-full">
-
-          {/* Left rail: New doc + doc list (desktop; hidden on mobile) */}
-          <div className={`hidden ${sidebarOpen ? 'lg:flex' : 'lg:hidden'} flex-col lg:w-[300px] lg:shrink-0 lg:min-h-0 bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] overflow-hidden`}>
-            {renderNotesSidebar()}
-          </div>
-
-          {/* Right: editor pane */}
-          <div className="flex-1 min-w-0 flex flex-col lg:min-h-0 bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] overflow-hidden">
-            {/* Editor header — back · saved · Share to livestream · Export */}
-            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-line shrink-0">
-              <div className="flex items-center gap-1.5 min-w-0">
-                {/* Mobile-only: open the slide-in notes/folders drawer (desktop shows the left rail instead). */}
-                <button onClick={() => setMobileNotesOpen(true)} className="lg:hidden flex items-center gap-1 p-1.5 rounded-lg hover:bg-surface-sunken text-faint" title="All notes & folders" aria-label="Open notes and folders">
-                  <PanelLeft size={16} />
-                </button>
-                <button onClick={() => setSidebarOpen(v => !v)} className="hidden lg:flex p-1.5 rounded-lg hover:bg-surface-sunken text-faint" title="Toggle document list">
-                  <PanelLeft size={16} />
-                </button>
-                <button onClick={closeEditor} className="flex items-center gap-1.5 text-[13px] font-semibold text-gold hover:opacity-80 transition-opacity">
-                  <ArrowLeft size={15} /> Notes
-                </button>
-              </div>
-              {/* A failure stays on screen as "Not saved" rather than reverting to
-                  the empty idle string, and — unlike the quiet Saving…/Saved chip —
-                  shows on mobile too, where `hidden sm:block` would otherwise make
-                  the only in-page signal of a lost save invisible. */}
-              <span
-                className={`text-xs ${saveStatus === 'error' ? 'block text-[color:var(--brand-danger)] font-semibold' : 'hidden sm:block text-faint'}`}
-                role={saveStatus === 'error' ? 'alert' : undefined}
-              >
-                {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : saveStatus === 'error' ? 'Not saved' : ''}
-              </span>
-              <div className="flex items-center gap-2 shrink-0">
-                {canShareToLivestream && (
-                  <button
-                    onClick={() => handleShareToLivestream(openDoc.id, editTitle, editContent)}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-brand border border-line text-[13px] font-semibold text-strong hover:bg-surface-sunken transition-colors"
-                  >
-                    <Radio size={15} /> <span className="hidden sm:inline">Share to livestream</span>
-                  </button>
-                )}
-                <EditorMenu
-                  triggerLabel="Export"
-                  title={editTitle}
-                  content={editContent}
-                  createdBy={openDoc.createdBy}
-                  currentUid={auth.currentUser?.uid || ''}
-                  isPinned={!!openDoc.pinned}
-                  onPin={() => togglePinDoc(openDoc.id, !!openDoc.pinned)}
-                  onRename={() => setRenameDocData({ id: openDoc.id, name: editTitle })}
-                  onDelete={() => setDeleteDocId(openDoc.id)}
-                  onShare={() => openShareModal(openDoc.id)}
-                  canShareToLivestream={false}
-                  onShareToLivestream={() => handleShareToLivestream(openDoc.id, editTitle, editContent)}
-                />
-              </div>
-            </div>
-            {/* Editor body */}
-            <div className="flex-1 lg:overflow-y-auto px-5 lg:px-12 pb-12 docs-editor">
-              <input
-                ref={titleRef}
-                value={editTitle}
-                onChange={e => {
-                  setEditTitle(e.target.value);
-                  // Keep an already-queued auto-save pointed at the title the
-                  // user has NOW, so the debounce can't write back the one that
-                  // was on screen when the content keystroke scheduled it. Guarded
-                  // by id so a payload queued for another document is left alone.
-                  if (pendingSave.current && pendingSave.current.id === openDoc?.id) {
-                    pendingSave.current.title = e.target.value;
-                  }
-                }}
-                onBlur={handleTitleBlur}
-                // THE-136: placeholder-stone-300 was a fixed light beige — 1.55:1
-                // on the white card in light, and unthemed in dark. text-faint is
-                // the placeholder role and clears AA on both grounds.
-                className="w-full font-display text-4xl font-normal tracking-[-0.01em] text-strong bg-transparent border-none outline-hidden placeholder:text-faint mb-6 mt-6"
-                placeholder="Untitled"
-              />
-              <RichTextEditor
-                content={editContent}
-                onChange={handleContentChange}
-                minHeight="calc(100vh - 320px)"
-                placeholder="Start writing... Type / for commands"
-              />
-            </div>
-          </div>
-
-        </div>
-
-        {/* Mobile-only slide-in LEFT drawer: the full notes list + folder tree,
-            the same content the desktop left rail shows. Selecting a note or
-            folder reuses the existing handlers and then closes the drawer. */}
-        {mobileNotesOpen && (
-          <div className="fixed inset-0 z-[200] lg:hidden">
-            <style>{`@keyframes docsDrawerIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }`}</style>
-            {/* Dim backdrop — tap to close */}
-            <div
-              className="absolute inset-0"
-              style={{ backgroundColor: 'rgba(15,13,11,0.42)' }}
-              onClick={() => setMobileNotesOpen(false)}
-            />
-            {/* Sliding cream panel */}
-            <div
-              className="absolute left-0 top-0 h-full w-[300px] max-w-[85%] bg-surface shadow-[12px_0_44px_rgba(0,0,0,0.28)] flex flex-col"
-              style={{ animation: 'docsDrawerIn 0.25s ease-out' }}
-            >
-              <div className="flex items-center justify-between px-4 py-3 shrink-0">
-                <h3 className="font-display font-bold text-strong">All Notes</h3>
-                <button
-                  onClick={() => setMobileNotesOpen(false)}
-                  className="p-1.5 rounded-lg hover:bg-surface-sunken text-faint"
-                  aria-label="Close notes list"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              {/* White card mirrors the desktop rail's look */}
-              <div className="flex-1 min-h-0 mx-3 mb-3 flex flex-col bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] overflow-hidden">
-                {renderNotesSidebar(() => setMobileNotesOpen(false))}
-              </div>
-            </div>
-          </div>
-        )}
-        {commonModals}
-      </div>
-    );
-  }
-
-  // ── List view ──
-  if (loading) {
-    return <div className="flex items-center justify-center h-40"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }} /></div>;
-  }
-
   return (
-    <div className={`w-full ${FORM_CONTAINER}`}>
+    // `min-h-0` undoes SidebarProvider's `min-h-svh`: this screen is mounted
+    // INSIDE the admin shell's tab wrapper, and a full-viewport minimum there
+    // would push the page taller than the shell it sits in.
+    //
+    // ── No page measure here, deliberately ──────────────────────────────────
+    // This screen carried FORM_CONTAINER, whose job is to stop a DOCUMENT from
+    // stretching to whatever width the monitor happens to be. Notes is not a
+    // document — it is a rail and a pane — and capping the pair at 1120px and
+    // centring them left a band of dead space between the admin nav and the
+    // tree on every screen wider than that. The rail is a fixed
+    // --sidebar-width either way, so the whole cap fell on the editor, which is
+    // the one thing here that WANTS the room.
+    //
+    // Nothing is minted in its place: the width is the shell's content box.
+    <SidebarProvider className="w-full min-h-0">
       <input
         ref={importInputRef}
         type="file"
@@ -1208,150 +1028,58 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
         onChange={importMarkdownFile}
         className="hidden"
       />
-      <AdminPageHeader
-        className="mb-6"
-        eyebrow="Content"
-        title="Notes & Docs"
-        action={<div className="flex items-center gap-2.5">
-          <AdminSecondaryButton onClick={() => importInputRef.current?.click()} title="Import a .md file">
-            <Upload size={15} /> Import
-          </AdminSecondaryButton>
-          <AdminPrimaryButton onClick={() => createDoc()} icon={<Plus size={16} />}>New doc</AdminPrimaryButton>
-        </div>}
+      <div className={`flex w-full min-w-0 flex-col gap-0 lg:flex-row lg:gap-5 ${SHELL_SCREEN_HEIGHT}`}>
+        {/* The tree. Mounted once, for the life of the screen — clicking a note
+            re-renders the pane beside it and leaves this element alone, which is
+            what keeps folder collapse (and the scroll position) put.
+
+            `collapsible="none"` on purpose: the primitive's other modes render a
+            `fixed inset-y-0 h-svh` panel meant for a whole-page shell, which
+            inside the admin tab wrapper would sit on top of the admin nav. This
+            mode is the plain in-flow rail, and it is the one that composes. Its
+            width is the primitive's own `--sidebar-width` (16rem, set by
+            SidebarProvider as a React constant, not a token) — no width is
+            minted here. */}
+        <Sidebar
+          collapsible="none"
+          data-testid="docs-sidebar"
+          className={`w-full min-h-0 shrink-0 overflow-hidden rounded-brand-lg border border-line bg-surface-raised shadow-[var(--ds-sh-sm)] lg:w-(--sidebar-width) ${openDoc ? 'hidden lg:flex' : 'flex'} ${focusMode ? 'lg:hidden' : ''}`}
+        >
+          <DocsTree
+            docs={docs}
+            folders={folders}
+            sharedDocs={sharedDocs}
+            truncated={docsTruncated}
+            loading={loading}
+            openDocId={openDoc?.id ?? null}
+            onOpenDoc={openDocument}
+            onNewDoc={createDoc}
+            onNewFolder={() => setShowNewFolder(true)}
+            onImport={() => importInputRef.current?.click()}
+            onOpenSwitcher={() => setSwitcherOpen(true)}
+            onRenameDoc={handleRenameDoc}
+            onDeleteDoc={setDeleteDocId}
+            onMoveDoc={setMoveDocId}
+            onPinDoc={togglePinDoc}
+            onRenameFolder={handleRenameFolder}
+            onDeleteFolder={setDeleteFolderId}
+            revealFolderIds={revealFolderIds}
+          />
+        </Sidebar>
+
+        {editorPane}
+      </div>
+
+      <DocsQuickSwitcher
+        open={switcherOpen}
+        onOpenChange={setSwitcherOpen}
+        docs={docs}
+        folders={folders}
+        sharedDocs={sharedDocs}
+        onOpenDoc={openDocument}
       />
-
-      {folders.length > 0 && (
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-2.5">
-            <p className="text-[11px] font-semibold text-gold uppercase tracking-[0.14em]">Folders</p>
-            <button onClick={() => setShowNewFolder(true)} className="flex items-center gap-1 text-xs font-semibold text-muted hover:text-gold transition-colors">
-              <Plus size={13} /> New folder
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2.5">
-            {rootFolders.map(f => {
-              const count = docs.filter(d => d.folderId === f.id).length;
-              const active = activeFolderId === f.id;
-              return (
-                <div
-                  key={f.id}
-                  className={`relative group flex items-center gap-2 pl-3.5 pr-2.5 py-2.5 rounded-brand-lg border transition-all text-left ${active ? 'border-[color-mix(in_srgb,var(--brand-color)_45%,transparent)] bg-[color-mix(in_srgb,var(--brand-color)_7%,transparent)]' : 'border-line bg-surface-raised hover:border-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] shadow-[var(--ds-sh-sm)]'}`}
-                >
-                  <button
-                    onClick={() => setActiveFolderId(active ? null : f.id)}
-                    className="flex items-center gap-2 flex-1 min-w-0"
-                  >
-                    <Folder size={15} style={{ color: 'var(--brand-color, #d4a017)' }} />
-                    <span className="text-sm font-semibold text-strong truncate">{f.name}</span>
-                    <span className="text-xs text-faint tabular-nums">{count}</span>
-                  </button>
-                  <ThreeDotMenu
-                    onRename={() => handleRenameFolder(f)}
-                    onDelete={() => setDeleteFolderId(f.id)}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {folders.length === 0 && (
-        <div className="mb-6">
-          <button onClick={() => setShowNewFolder(true)} className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-gold transition-colors">
-            <FolderOpen size={14} /> New folder
-          </button>
-        </div>
-      )}
-
-      {sharedDocs.length > 0 && !activeFolderId && (
-        <div className="mb-5">
-          <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Shared with Me</p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {sharedDocs.map(d => (
-              <div
-                key={d.id}
-                onClick={() => openDocument(d)}
-                className="relative bg-surface-raised rounded-2xl p-4 border border-line shadow-xs cursor-pointer hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-md transition-all group"
-              >
-                <div className="flex items-start gap-2 mb-2">
-                  <Share2 size={18} className="text-stone-300 flex-shrink-0 mt-0.5" />
-                </div>
-                <p className="font-semibold text-strong text-sm truncate">{d.title || 'Untitled'}</p>
-                {d.updatedAt && (
-                  <div className="flex items-center gap-1 mt-3 text-[10px] text-faint">
-                    <Clock size={10} />
-                    {fmtDate(d.updatedAt)}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {folderDocs.length === 0 && docs.length === 0 ? (
-        <div className="text-center py-16 text-faint">
-          <FileText size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="font-display font-medium">No documents yet</p>
-          <p className="text-sm mt-1">Create your first document</p>
-        </div>
-      ) : (
-        <>
-          {activeFolderId && (
-            <div className="flex items-center gap-2 mb-3">
-              <button onClick={() => setActiveFolderId(null)} className="text-xs text-faint hover:text-muted flex items-center gap-1">
-                <ArrowLeft size={12} /> All docs
-              </button>
-              <span className="text-xs text-faint">/</span>
-              <span className="text-xs font-semibold text-body">{folders.find(f => f.id === activeFolderId)?.name}</span>
-            </div>
-          )}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {folderDocs.map(d => {
-              const sharedCount = d.sharedWith?.length || 0;
-              return (
-                <div
-                  key={d.id}
-                  onClick={() => openDocument(d)}
-                  className="relative bg-surface-raised rounded-brand-lg p-5 border border-line shadow-[var(--ds-sh-sm)] cursor-pointer hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-[var(--ds-sh-md)] transition-all group"
-                >
-                  <div className="flex items-start justify-between gap-2 mb-2.5">
-                    <FileText size={18} className="text-stone-300 flex-shrink-0 mt-0.5" />
-                    <div className="flex items-center gap-1">
-                      {d.pinned && <Pin size={13} className="text-gold" />}
-                      <ThreeDotMenu
-                        onRename={() => handleRenameDoc(d)}
-                        onDelete={() => setDeleteDocId(d.id)}
-                        onMove={() => setMoveDocId(d.id)}
-                        onPin={() => togglePinDoc(d.id, !!d.pinned)}
-                        isPinned={!!d.pinned}
-                      />
-                    </div>
-                  </div>
-                  <p className="font-semibold text-strong text-[15px] truncate group-hover:text-gold transition-colors">{d.title || 'Untitled'}</p>
-                  {d.content && (
-                    <p className="text-xs text-muted mt-1.5 line-clamp-2 leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: d.content.replace(/<[^>]*>/g, ' ').trim() }} />
-                  )}
-                  <div className="flex items-center gap-2 mt-4">
-                    {d.updatedAt && (
-                      <div className="flex items-center gap-1 text-[11px] text-faint">
-                        <Clock size={11} />
-                        {fmtDate(d.updatedAt)}
-                      </div>
-                    )}
-                    {sharedCount > 0 && <AdminBadge tone="sky">Shared · {sharedCount}</AdminBadge>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
-
       {commonModals}
-    </div>
+    </SidebarProvider>
   );
 };
 

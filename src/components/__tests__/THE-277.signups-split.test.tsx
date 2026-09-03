@@ -938,6 +938,13 @@ describe('12 — AdminDocs.tsx, AdminDashboardHome.tsx, firestore.rules and func
    */
   const MOVED_SINCE: Record<string, string> = {
     'src/components/AdminDashboardHome.tsx': '4d8917c0a31dac5a8a9526e3a1c7e05d786f947bcad72a14d73d488383c23621',
+    // THE-275, the same situation one ticket over. It owns AdminDocs.tsx and has
+    // rewritten it: the notes screen was a drill-down (a folder-directory view,
+    // then an editor that was the only place the tree existed) and is now two
+    // panes with the tree always mounted. This branch still did not author a
+    // byte of it — the entry records that the OTHER ticket landed, exactly as
+    // the AdminDashboardHome one above does for THE-276.
+    'src/components/AdminDocs.tsx': '46c8403674c79dcacbb3a0c60f183b77a3e265d33b441b2ea05c1e00fe42b15f',
   };
 
   it.each(Object.keys(UNTOUCHED))('%s carries no edit from this ticket', (file) => {
