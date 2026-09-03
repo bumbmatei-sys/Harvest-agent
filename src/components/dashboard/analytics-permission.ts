@@ -3,19 +3,27 @@
  *
  * ─── Where this permission is already enforced, and why that is the rule ─────
  *
- * ⚠️ `analytics` is a UI-LEVEL permission. It is one of ~25 rows in
- * `AnalyticsAndRoles.tsx`'s catalog — `{ key: "analytics", label: "Analytics",
- * desc: "View registration analytics" }` — and it appears NOWHERE in
+ * ⚠️ `analytics` is a UI-LEVEL permission. It is one of ~25 rows in the
+ * permission catalog — `{ key: "analytics", label: "Analytics", desc: "View
+ * registration analytics" }`, in `AdminRoles.tsx` — and it appears NOWHERE in
  * firestore.rules: grep the rules for "analytics" and there are no hits. So
  * there is no server-side rule to mirror, and the app's own definition of the
- * permission is the one place that already enforces it:
+ * permission is what already enforces it:
  *
- *     AdminCRM.tsx:489
  *     const canViewAnalytics = currentUserRole === 'super_admin'
  *       || !!currentUserPermissions?.fullAccess
  *       || !!currentUserPermissions?.analytics;
  *
- * 🔴 That expression is reproduced below, term for term, and NOT the generic
+ * ⚠️ THAT EXPRESSION HAS MOVED, and the citation is kept current deliberately.
+ * It was `AdminCRM.tsx:489` when this was written; THE-277 (#422) split the
+ * Analytics sub-view out of the CRM, and the only surviving enforcement of this
+ * permission is now the `hasFullAccess || perms.analytics` clause on the
+ * dashboard shell's own nav gate. 🔴 That file is THE-277's and this ticket may
+ * not open it — its location was established by grep, not by reading it — which
+ * is precisely why the rule is reproduced here as a pure function rather than
+ * imported: this module cannot depend on a file it is not allowed to read.
+ *
+ * 🔴 The expression is reproduced below, term for term, and NOT the generic
  * `hasPermission(perm, tenantId)` from firestore.rules. The two differ, and the
  * difference decides real people: the rules helper grants unconditionally to
  * the tenant owner and to every address on `tenant_private.adminEmails`, so
@@ -32,9 +40,10 @@
  *
  * ─── Why this reads its own answer instead of taking a prop ──────────────────
  *
- * AdminCRM takes `currentUserRole` and `currentUserPermissions` as props from
- * the admin shell. The shell is `AdminDashboard.tsx`, which THE-277 owns and
- * this ticket may not open, so the same two props cannot be threaded here —
+ * Screens that gate on a permission take `currentUserRole` and
+ * `currentUserPermissions` as props from the admin shell. The shell is
+ * `AdminDashboard.tsx`, which THE-277 owns and this ticket may not open, so the
+ * same two props cannot be threaded here —
  * `AdminDashboardHome`'s five existing props carry no permission and no user.
  *
  * That is not a blocker: the shell reads those values off `users/{uid}`, and a
@@ -49,7 +58,7 @@ import { auth, db } from '../../firebase';
 import { ROLE_SUPER_ADMIN } from '../../lib/roles';
 import { isSuperAdminEmail } from '../../utils/super-admins';
 
-/** The catalog key, spelled once. Must match AnalyticsAndRoles' `analytics` row. */
+/** The catalog key, spelled once. Must match the catalog's `analytics` row. */
 export const ANALYTICS_PERMISSION_KEY = 'analytics';
 
 /** Resolved gate state. `pending` is not `denied` — the screen waits, not refuses. */

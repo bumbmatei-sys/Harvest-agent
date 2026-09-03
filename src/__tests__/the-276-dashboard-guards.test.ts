@@ -300,10 +300,29 @@ describe('no new token was defined', () => {
  * unchanged, so the call site at AdminDashboard.tsx:1099 is byte-identical.
  * `firestore.rules` and `functions/` are out of scope by instruction.
  */
-const UNTOUCHED = {
-  'src/components/AdminDashboard.tsx': '0d84be6d9b8a73fdfcddb4d1178b6a62ad8e74a1461553645fdd2558e2d7c4e7',
-  'firestore.rules': 'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499',
-} as const;
+/**
+ * ⚠️ A SET per file, not a single digest, and #422 is why.
+ *
+ * The claim being made is "THIS TICKET does not edit these files" — but
+ * `AdminDashboard.tsx` belongs to THE-277, which is actively editing it, and CI
+ * runs against `refs/pull/N/merge`: the branch merged into `main` AS IT STANDS
+ * WHEN THE RUN STARTS. So the file legitimately holds a different value on this
+ * branch than on the merge ref, and a single pinned digest would fail for the
+ * one reason it is not meant to detect — somebody else's landed work.
+ *
+ * Each accepted value is named with the commit that produced it. 🔴 A value
+ * that is neither — i.e. this ticket editing the file — still fails, which is
+ * the entire threat this guard exists for.
+ */
+const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: string]>> = {
+  'src/components/AdminDashboard.tsx': [
+    ['0d84be6d9b8a73fdfcddb4d1178b6a62ad8e74a1461553645fdd2558e2d7c4e7', 'main at 5e06c67, where this branch started'],
+    ['722c5e4478be0a8508e7dff1232dd4c1f88cacdd502604f946f3134eb730d98c', 'main at d13c7d4 — THE-277 (#422) added the Signups nav entry'],
+  ],
+  'firestore.rules': [
+    ['a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499', 'unchanged since 5e06c67'],
+  ],
+};
 
 /** Every file under `functions/`, excluding build output and dependencies. */
 function functionsTree(): string[] {
@@ -321,8 +340,14 @@ function functionsTree(): string[] {
 }
 
 describe('AdminDashboard.tsx, firestore.rules and functions/ byte-identical', () => {
-  it.each(Object.entries(UNTOUCHED))('%s is unchanged', (file, digest) => {
-    expect(sha256(readFileSync(path.join(REPO_ROOT, file)))).toBe(digest);
+  it.each(Object.entries(UNTOUCHED))('%s carries no edit from this ticket', (file, accepted) => {
+    const actual = sha256(readFileSync(path.join(REPO_ROOT, file)));
+    const match = accepted.find(([digest]) => digest === actual);
+    expect(
+      match,
+      `${file} is at ${actual}, which is none of:\n  ` +
+        accepted.map(([d, why]) => `${d} (${why})`).join('\n  '),
+    ).toBeTruthy();
   });
 
   it('functions/ is unchanged, file for file', () => {
@@ -335,8 +360,14 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ byte-identical', ()
   it('nothing in this slice imports the shell it may not open', () => {
     for (const file of NEW_FILES) {
       expect(codeOf(file), file).not.toMatch(/from\s+['"][^'"]*AdminDashboard['"]/);
-      // THE-275 and THE-277's other files, for the same reason.
-      expect(codeOf(file), file).not.toMatch(/from\s+['"][^'"]*(?:AdminDocs|AnalyticsAndRoles)['"]/);
+      // THE-275's and THE-277's other files, for the same reason.
+      // ⚠️ The pre-#422 spelling of `AdminRoles` is deliberately NOT listed
+      // here. THE-277 sweeps the tree for anything that still RESOLVES to the
+      // renamed module and counts a regex literal as a pointer — correctly, since
+      // a stale path in a guard test fails silently rather than failing to
+      // compile. The current names are what this ban is for.
+      expect(codeOf(file), file)
+        .not.toMatch(/from\s+['"][^'"]*(?:AdminDocs|AdminRoles|AdminSignups)['"]/);
     }
   });
 });
