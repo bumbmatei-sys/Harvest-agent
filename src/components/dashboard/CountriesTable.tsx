@@ -19,16 +19,30 @@
  * ─── ⚠️ Coverage is the headline, not a footnote ─────────────────────────────
  *
  * `users.country` comes from `CountrySelect`'s fixed 195-name list and
- * `users.city` is a free-text input — but NEITHER is written for every member.
- * Onboarding requires a country before it will advance, and the three
- * provisioning paths that mint a tenant owner (`free-provisioning.ts`, and the
- * Stripe and Dodo webhooks) all write `onboardingCompleted: true` DIRECTLY, so
- * an owner never sees that form and carries no country at all. A "top countries"
- * table built from a partially-populated field is a wrong number wearing a
- * table: twelve rows summing to forty, on a roster of eight hundred, reads as
- * "we are in twelve countries" and means "forty of our members told us where
- * they are". So the covered count is stated ABOVE the table, in the widget's
- * own description, every time — not as a caveat and not behind a threshold
+ * `users.city` is a free-text input, but NEITHER is written at signup:
+ * `AuthPage` creates the document with uid, email, displayName, createdAt,
+ * role, tenantId, newsletter and termsAccepted, and nothing else. Both fields
+ * arrive only from Onboarding's location step or from a later edit in
+ * `PersonalInformationModal`. So:
+ *
+ *   • `country` is present exactly when a member has been through one of those
+ *     two screens. Onboarding will not advance past the step without it
+ *     (`validate`'s `default_location` arm), so a COMPLETED onboarding always
+ *     has one — and an abandoned one has none.
+ *   • ⚠️ A TENANT OWNER TYPICALLY HAS NEITHER. All three provisioning paths —
+ *     `free-provisioning.ts` and the Stripe and Dodo handlers — write
+ *     `onboardingCompleted: true` directly, so the owner never sees the form
+ *     and carries no country until they edit their profile.
+ *   • `city` is validated nowhere, so it can be blank even on a completed
+ *     onboarding. `cityCovered` is reported separately for that reason.
+ *
+ * 🔴 The live fraction cannot be known from here — it depends on how many of a
+ * ministry's members finished onboarding — which is exactly why it is MEASURED
+ * at read time and stated ABOVE the table, in the widget's own description,
+ * every time. A "top countries" table built from a partially-populated field is
+ * a wrong number wearing a table: twelve rows summing to forty, on a roster of
+ * eight hundred, reads as "we are in twelve countries" and means "forty of our
+ * members told us where they are". Not a caveat, and not behind a threshold
  * somebody has to pick.
  */
 import React from 'react';
