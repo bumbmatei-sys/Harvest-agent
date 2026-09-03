@@ -236,12 +236,35 @@ it('the unresolved fixture is still empty', () => {
  * when the app had no dark mode — and reads Harvest's own resolved theme
  * instead. See src/__tests__/the-273-toast-dark-mode.test.tsx.)
  */
+/**
+ * ⚠️ `tabs.tsx` MOVED, and why — THE-276-FIX.
+ *
+ * As vendored, this primitive styled itself with `data-horizontal:` and
+ * `data-vertical:` variants, which Tailwind compiles to the attribute selectors
+ * `[data-horizontal]` and `[data-vertical]`. The installed @base-ui/react
+ * (^1.5.0) emits `data-orientation="horizontal"` instead, so none of those
+ * twelve rules ever matched. The consequence shipped: the tabs root kept
+ * `display:flex` with the default `row` direction, and the panel — a sibling
+ * carrying `flex-1` — rendered as a second COLUMN beside the tab strip instead
+ * of below it, putting every dashboard widget in a 420px band on the right of a
+ * 1044px container. The active tab's underline, whose geometry comes from the
+ * same variants, was never drawn either.
+ *
+ * Twelve class names re-spelled `data-[orientation=…]`. No element, slot,
+ * variant or API changed.
+ *
+ * Named here rather than the assertion being loosened — the same treatment
+ * THE-273's sonner.tsx fix got, and for the same reason: every other entry is
+ * still compared against the digest this PR recorded, and a second file moving
+ * still fails.
+ */
 const MOVED_SINCE: Record<string, string> = {
   'sonner.tsx': '2ebc0c9ba968858cead2fbf2523dfd9da217715339967025e8c8df94f2131ab9',
+  'tabs.tsx': '096e3d4b2a99b1eff95d16959f97daaa1747fdb7de6226d6c54b9693e22b3410',
 };
 
 describe('the CLI rewrote nothing it should not have', () => {
-  it('all 13 pre-existing primitives are byte-identical to 6aceb0e, bar the one THE-273 fixed', () => {
+  it('all 13 pre-existing primitives are byte-identical to 6aceb0e, bar the two THE-273 and THE-276-FIX fixed', () => {
     const actual = Object.fromEntries(
       Object.keys(PRE_EXISTING_DIGESTS).map((f) => [
         f,
