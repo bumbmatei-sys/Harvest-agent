@@ -74,9 +74,21 @@ function baseRef(): string {
   throw new Error('the base commit could not be resolved, so "byte-identical" would measure nothing.');
 }
 
-/** ⚠️ ONE `git diff` at module load, never per assertion. */
-const CHANGED: string[] = execFileSync('git', ['diff', '--name-only', baseRef()], { cwd: ROOT, encoding: 'utf8' })
-  .split('\n').filter(Boolean);
+/**
+ * Every path this branch adds or changes, computed ONCE at module load — never
+ * a `git diff` per assertion.
+ *
+ * 🔴 UNTRACKED FILES ARE INCLUDED, and that is not a nicety. `git diff` lists
+ * only TRACKED changes, so before this branch was committed every new file here
+ * was invisible to it: the emoji scan below measured eight files locally and
+ * ten on CI, and passed locally for that reason alone while failing on the
+ * runner. A guard whose reach depends on whether you have committed yet is a
+ * guard that lies to the person writing it. `ls-files --others` closes it.
+ */
+const CHANGED: string[] = [
+  ...execFileSync('git', ['diff', '--name-only', baseRef()], { cwd: ROOT, encoding: 'utf8' }).split('\n'),
+  ...execFileSync('git', ['ls-files', '--others', '--exclude-standard'], { cwd: ROOT, encoding: 'utf8' }).split('\n'),
+].filter(Boolean).sort();
 const changed = (...prefixes: string[]) => CHANGED.filter((f) => prefixes.some((p) => f.startsWith(p)));
 
 /* ── The four palettes, resolved through the real cascade ─────────────────── */
@@ -568,15 +580,61 @@ describe('11 — a tenant with a custom brand colour gets it in GOLD_BTN', () =>
    ═════════════════════════════════════════════════════════════════════════ */
 
 describe('12 — no emoji anywhere in what THE-311 touched', () => {
-  it.each(CHANGED.filter((f) => /\.(ts|tsx|css)$/.test(f)))('%s', (file) => {
-    const body = src(file);
-    // The ticket bans EMOJI, not the 🔴/⚠️/✅ annotation glyphs this repo's
-    // comments are written in — those are pictographs used as severity marks
-    // and predate this ticket in every file here. The ban is on emoji in what
-    // RENDERS, so the scan is over JSX text and string literals only.
-    const rendered = body.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
-    const emoji = rendered.match(/[\u{1F300}-\u{1FAFF}\u{1F000}-\u{1F2FF}]/gu) ?? [];
-    expect(emoji, `${file} renders an emoji — lucide-react is already imported`).toEqual([]);
+  /**
+   * ⚠️ SCOPED TO WHAT RENDERS, and the scope was WRONG the first time.
+   *
+   * A first draft scanned every changed file and banned the whole emoji range
+   * outright. It went red on CI naming this file's own `it('🔴 …')` test
+   * titles — and it was RIGHT to fail, because the rule as written did cover
+   * them. The rule was the mistake, not the finding:
+   *
+   *  • 🔴 / ⚠️ / ✅ / 🔵 are this repo's SEVERITY MARKS, not decoration.
+   *    `THE-282.course-status.test.tsx` ships `it('🔴 a course with no progress
+   *    does NOT show Paused', …)` on `main` today, and there are 35 of them in
+   *    that one file. Stripping them out of THE-311's tests would make this
+   *    branch the only one in the repo written in a different dialect.
+   *  • The ticket pairs "No emoji" with "lucide-react is already imported",
+   *    i.e. it is about ICONS IN THE PRODUCT — THE-305 (#445) replaced nine
+   *    emoji with lucide icons for exactly that reason. A vitest title renders
+   *    in a terminal, not to a member.
+   *
+   * So: PRODUCT files get the full ban, over code with comments stripped.
+   * TEST files get a narrower but still real one — the four severity marks and
+   * nothing else, so a 🎉 in a test title still fails here.
+   */
+  /**
+   * ⚠️ THE RANGE IS THE PICTOGRAPH BLOCKS ONLY, deliberately not the Dingbats
+   * block (U+2600-27BF). A first attempt included it and flagged `✓` and `✕`
+   * in `QuizPanel.tsx` — which are (a) not emoji, they are the repo's existing
+   * check and cross marks, and (b) PRE-EXISTING: THE-311 changed one class in
+   * that file and added no glyph. Banning them here would have been this guard
+   * inventing a finding rather than reporting one.
+   *
+   * U+FE0F (the variation selector that makes `⚠` render as `⚠️`) is STRIPPED
+   * rather than matched — matched, it splits every `⚠️` into two "glyphs" and
+   * the allowlist can never contain the orphan half.
+   */
+  const SEVERITY = ['🔴', '⚠', '✅', '🔵'];
+  const EMOJI = /[\u{1F300}-\u{1FAFF}\u{1F000}-\u{1F2FF}]/gu;
+  /** Comments are prose in both scans: nothing in a comment renders anywhere. */
+  const code = (f: string) => src(f)
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '').replace(/\uFE0F/g, '');
+  const TOUCHED = CHANGED.filter((f) => /\.(ts|tsx|css)$/.test(f));
+  const isTest = (f: string) => f.includes('__tests__');
+
+  it('there is something to scan — an empty file list would prove nothing', () => {
+    expect(TOUCHED.length, 'no changed source file was found').toBeGreaterThan(5);
+    expect(TOUCHED.some((f) => !isTest(f)), 'no PRODUCT file was found to scan').toBe(true);
+  });
+
+  it.each(TOUCHED.filter((f) => !isTest(f)))('%s (product) carries no emoji at all', (file) => {
+    expect(code(file).match(EMOJI) ?? [], `${file} renders an emoji — lucide-react is already imported`)
+      .toEqual([]);
+  });
+
+  it.each(TOUCHED.filter(isTest))('%s (guard) uses only the repo\'s severity marks', (file) => {
+    const stray = [...new Set(code(file).match(EMOJI) ?? [])].filter((g) => !SEVERITY.includes(g));
+    expect(stray, `${file} uses a glyph that is not one of ${SEVERITY.join(' ')}`).toEqual([]);
   });
 });
 
