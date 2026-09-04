@@ -318,6 +318,13 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
   'src/components/AdminDashboard.tsx': [
     ['0d84be6d9b8a73fdfcddb4d1178b6a62ad8e74a1461553645fdd2558e2d7c4e7', 'main at 5e06c67, where this branch started'],
     ['722c5e4478be0a8508e7dff1232dd4c1f88cacdd502604f946f3134eb730d98c', 'main at d13c7d4 — THE-277 (#422) added the Signups nav entry'],
+    // THE-291 removed the dead `onChangePlan` / `onCancelPlan` props from the
+    // `<AdminSettings>` mount. Their implementations wrote `plan` and
+    // `planStatus` onto `users/{uid}` from the browser SDK — the one thing the
+    // money path forbids — and neither prop was ever called. Appended rather
+    // than substituted: a value that is NEITHER still fails, which is the
+    // threat this guard exists for.
+    ['446f0bcb8ffa6accf4f80467b75a50023c1441937605b11e18aa01b53d8e53f8', 'main + THE-291 — the client-side plan write removed'],
   ],
   'firestore.rules': [
     ['a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499', 'unchanged since 5e06c67'],

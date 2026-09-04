@@ -243,6 +243,10 @@ describe('no new token was defined', () => {
 const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: string]>> = {
   'src/components/AdminDashboard.tsx': [
     ['722c5e4478be0a8508e7dff1232dd4c1f88cacdd502604f946f3134eb730d98c', 'main at 625e3eb, where this branch started'],
+    // THE-291 removed the dead `onChangePlan` / `onCancelPlan` props from the
+    // `<AdminSettings>` mount — a client-side `plan` write that no caller ever
+    // reached. This slice's own claim is unchanged: it does not edit the file.
+    ['446f0bcb8ffa6accf4f80467b75a50023c1441937605b11e18aa01b53d8e53f8', 'main + THE-291 — the client-side plan write removed'],
   ],
   'firestore.rules': [
     ['a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499', 'unchanged since 5e06c67'],

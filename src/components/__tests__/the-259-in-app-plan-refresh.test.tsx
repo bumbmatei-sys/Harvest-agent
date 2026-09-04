@@ -598,14 +598,35 @@ const PLAN_FIELD_PATH = /(^|[,(\s])(['"`])plan\2\s*,/;
 const IMPORTS_CLIENT_SDK = /from\s+['"]firebase\/firestore['"]/;
 const IMPORTS_CLIENT_SDK_DYNAMIC = /import\s*\(\s*['"]firebase\/firestore['"]\s*\)/;
 
-/** Which browser-SDK writes in this source carry a `plan` field. Empty = clean. */
+/**
+ * Which browser-SDK writes in this source carry a `plan` field. Empty = clean.
+ *
+ * ⚠️ WIDENED BY THE-291, which found the write this detector was built to catch
+ * and could not see. `AdminDashboard.tsx` held
+ * `updateDoc(doc(db, 'users', uid), { plan })`, and it slipped BOTH detectors
+ * here for two different reasons:
+ *
+ *   1. This one omitted `PLAN_SHORTHAND`. `WRITES_PLAN` needs a colon and
+ *      `PLAN_FIELD_PATH` needs a quoted `'plan',` — so the ES2015 shorthand
+ *      `{ plan }`, which is how anyone writing a variable named `plan` spells
+ *      it, matched neither. `tenantPlanWritesIn` below already carried
+ *      `PLAN_SHORTHAND`; this one simply never got it.
+ *   2. Its gate demanded a STATIC `from 'firebase/firestore'`. The write used
+ *      `await import('firebase/firestore')`, which is the ordinary way this
+ *      codebase reaches Firestore from a click handler.
+ *
+ * Both are fixed here. 🔴 Do not narrow either one back: the sweep's value is
+ * entirely in the shapes it refuses to let through, and each of these two gaps
+ * was on its own sufficient to hide a real client-side entitlement write for
+ * two tickets running.
+ */
 function planWritesIn(source: string): string[] {
   const clean = stripComments(source);
-  if (!IMPORTS_CLIENT_SDK.test(clean)) return [];
+  if (!IMPORTS_CLIENT_SDK.test(clean) && !IMPORTS_CLIENT_SDK_DYNAMIC.test(clean)) return [];
   const offences: string[] = [];
   for (const fn of CLIENT_WRITES) {
     for (const args of callArguments(clean, fn)) {
-      if (WRITES_PLAN.test(args) || PLAN_FIELD_PATH.test(args)) {
+      if (WRITES_PLAN.test(args) || PLAN_SHORTHAND.test(args) || PLAN_FIELD_PATH.test(args)) {
         offences.push(`${fn}(${args.trim().slice(0, 80)}…)`);
       }
     }
@@ -673,6 +694,29 @@ describe('no client-side write to plan exists', () => {
       await updateDoc(doc(db, 'tenants', id), { addons: owned });`;
     expect(planWritesIn(innocent)).toEqual([]);
     expect(tenantPlanWritesIn(innocent)).toEqual([]);
+  });
+
+  /**
+   * 🔴 THE-291. The exact shape that lived on `main` for two tickets. It is
+   * pinned as its own case because BOTH of the gaps it went through were in
+   * `planWritesIn` alone — `tenantPlanWritesIn` never had a chance at it, since
+   * the document is `users/{uid}` and not a tenant doc at all.
+   */
+  it('the browser-SDK detector catches a dynamically-imported shorthand write to a non-tenant doc', () => {
+    const asItShipped = `const { updateDoc, doc } = await import('firebase/firestore');
+      await updateDoc(doc(db, 'users', auth.currentUser.uid), { plan });`;
+
+    expect(
+      planWritesIn(asItShipped),
+      'the shorthand-through-a-dynamic-import gap is open again',
+    ).toHaveLength(1);
+
+    // And the reason it needed widening: the tenant-scoped detector cannot see
+    // this one, because it is not a tenant document.
+    expect(
+      tenantPlanWritesIn(asItShipped),
+      'the tenant detector is not the one that guards this shape',
+    ).toEqual([]);
   });
 
   it('🔴 no file under src/ writes plan through the browser SDK', () => {

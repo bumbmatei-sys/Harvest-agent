@@ -112,8 +112,6 @@ async function mount(props: Partial<React.ComponentProps<typeof AdminSettings>> 
       <AdminSettings
         onBack={() => {}}
         currentPlan={'pro' as never}
-        onChangePlan={() => {}}
-        onCancelPlan={() => {}}
         tenantId="tenant-1"
         email="admin@church.org"
         isPlanOwner

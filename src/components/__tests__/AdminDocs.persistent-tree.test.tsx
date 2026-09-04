@@ -915,7 +915,22 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ are byte-identical'
    * A digest that stayed stale would fail for their work rather than for a
    * regression, which is the one thing a guard must not do.
    */
-  const ADMIN_DASHBOARD = '722c5e4478be0a8508e7dff1232dd4c1f88cacdd502604f946f3134eb730d98c';
+  /**
+   * ⚠️ RE-RECORDED AGAIN by THE-291, and for the same reason as last time: work
+   * that is not this branch's landed on the file.
+   *
+   * THE-291 removed the dead `onChangePlan` / `onCancelPlan` props from the
+   * `<AdminSettings>` mount. Their implementations wrote `plan` and
+   * `planStatus` onto `users/{uid}` straight from the browser SDK — the write
+   * the money path forbids — and neither prop was ever called by AdminSettings.
+   *
+   * 🔴 The assertion is NOT weakened: it is still one value, still strict, and
+   * the AdminDocs mount assertion below is untouched and is the guard that
+   * actually says what must stay true of this shell. A digest left stale would
+   * fail for someone else's work rather than for a regression, which is the one
+   * thing a guard must not do.
+   */
+  const ADMIN_DASHBOARD = '446f0bcb8ffa6accf4f80467b75a50023c1441937605b11e18aa01b53d8e53f8';
   const FIRESTORE_RULES = 'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499';
 
   it('AdminDashboard.tsx is untouched — THE-277 owns it', () => {
