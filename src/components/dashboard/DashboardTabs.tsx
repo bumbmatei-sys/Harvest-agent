@@ -2,11 +2,12 @@
 /**
  * THE-276 — the dashboard tab shell.
  *
- * ─── This is slice 1 of 6, and the shell says so ─────────────────────────────
+ * ─── This was slice 1 of 6, and the shell said so ────────────────────────────
  *
- * The full design is 28 widgets across these six tabs. THE-276 shipped the
- * shell and the Overview tab; the other five rendered an `empty` state naming
- * what will live there.
+ * The full design was 28 widgets across six tabs. THE-276 shipped the shell and
+ * the Overview tab; the other five rendered an `empty` state naming what will
+ * live there. ⚠️ Five tabs remain and all five are built — see THE-299 below,
+ * which removes the sixth rather than filling it.
  *
  * 🔴 THE DESIGN'S 28 IS NOT A TARGET. THE-294 DELETED THREE OF THEM — reach and
  * impressions, blog view counts, and course completions over time — because
@@ -24,9 +25,15 @@
  * ⚠️ THE-283 (slice 2) fills Growth in, and does it by passing a NODE rather
  * than by teaching this file what a Growth tab contains. `built` below is a map
  * from tab id to the panel someone has supplied; a tab with no entry still gets
- * {@link NotYetBuilt}. So slices 3 through 6 land by adding a prop and a caller,
+ * {@link NotYetBuilt}. So each later slice lands by adding a prop and a caller,
  * and this file keeps having no opinion about what a tab holds — which is also
  * what lets a test mount the strip without mounting a Firestore-backed tab.
+ *
+ * 🔴 {@link NotYetBuilt} STAYS, and is not dead code to be tidied away. It is
+ * the mechanism that makes the map above safe: a sixth tab added later without
+ * a panel renders a placeholder naming itself rather than an empty panel, and
+ * THE-276's guard derives its claim from `DASHBOARD_TABS` by EXCLUSION so that
+ * such a tab is automatically required to carry one.
  *
  * ⚠️ THE-290 (slice 3) fills Giving in and is the proof that the shape holds:
  * it added ONE optional prop and one entry in `built`, and this file learned
@@ -35,8 +42,38 @@
  * ⚠️ THE-294 (slice 4) fills BOTH Engagement and Content in, which is the shape
  * holding twice over: two more optional props, two more entries in `built`, and
  * this file still knows nothing about check-ins, CRM activity, the prayer wall
- * or course completion. ONE tab remains unbuilt — Platform — and it still
- * renders its own placeholder.
+ * or course completion. ONE tab remained unbuilt — Platform — and it rendered
+ * its own placeholder.
+ *
+ * ─── 🔴 THE-299 REMOVES THAT TAB. Five tabs, and every one of them is built ──
+ *
+ * The founder's decision, 2026-09-04: "Remove platform tab. We don't call
+ * dodo." The tab's two headline widgets were MRR and plan distribution, and
+ * THE-285's audit established that MRR is unknowable from this database: a
+ * tenant document stores the PLAN but not the billing interval, so
+ * monthly-versus-yearly cannot be derived from anything Firestore holds. The
+ * only way to it is a Dodo API call, and that call is ruled out.
+ *
+ * 🔴 SO THE TAB IS DELETED RATHER THAN LEFT EMPTY. A placeholder is a promise —
+ * every other one on this strip was kept, in slices 2 through 5 — and this is
+ * the one that cannot be. "Platform is not built yet" told a founder to wait
+ * for a number that is not coming. Removing the row is the honest form of the
+ * same information, and it is the whole change: the id, the label, the icon and
+ * the `upcoming` string go together, because a tab id with no row is exactly
+ * the sort of orphan this table's closed-literal shape exists to prevent.
+ *
+ * ⚠️ `'platform'` AS A TAB ID EXISTED NOWHERE ELSE. The word occurs 40-odd
+ * times in `src/`, and every other occurrence is a different concept: an SMS
+ * credential source (`source: 'platform'`), the reserved-subdomain lists,
+ * `PLATFORM_TENANT_ID`, and prose about the platform tenant. No route, no
+ * permission, no `analytics-permission.ts` entry and no test referred to a tab
+ * by that id. Nothing outside this file needed changing for the tab to go.
+ *
+ * 🔴 NOTHING ABOUT THE SUPER-ADMIN CONCEPT MOVES. `analytics-permission.ts` is
+ * untouched, `assertConcreteScope` is untouched, and a super admin on the apex
+ * still sees "No ministry is in scope" on the tenant-scoped widgets. That is a
+ * statement about SCOPE, which is unrelated to whether a tab named Platform
+ * exists.
  *
  * 🔴 THE SHELL LIVES HERE, NOT IN `AdminDashboard.tsx`. The admin shell owns
  * the app's OUTER navigation (sidebar → section → URL segment, via
@@ -48,7 +85,7 @@
  */
 import React from 'react';
 import {
-  BarChart3, HandCoins, HeartHandshake, LayoutGrid, Server, TrendingUp, type LucideIcon,
+  BarChart3, HandCoins, HeartHandshake, LayoutGrid, TrendingUp, type LucideIcon,
 } from 'lucide-react';
 
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '../ui/empty';
@@ -63,7 +100,7 @@ export interface DashboardTabDef {
 }
 
 /**
- * The six tabs, in the design's order.
+ * The five tabs, in the design's order.
  *
  * ⚠️ Ids are lowercase feature words and nothing else — no tenant name, no
  * document id, no user-supplied string — for the same reason the admin section
@@ -103,7 +140,12 @@ export const DASHBOARD_TABS: readonly DashboardTabDef[] = Object.freeze([
    */
   { id: 'engagement', label: 'Engagement', icon: HeartHandshake, upcoming: 'check-ins, CRM activity and the prayer wall' },
   { id: 'content', label: 'Content', icon: BarChart3, upcoming: 'course completion' },
-  { id: 'platform', label: 'Platform', icon: Server, upcoming: 'tenant health, plan mix and platform-wide totals' },
+  /*
+   * 🔴 THERE IS NO SIXTH ROW. THE-299 removed `platform`; see this file's
+   * header for the founder's decision and THE-285's finding behind it. It is
+   * deleted rather than commented out, because a commented-out row is a tab
+   * somebody restores without re-reading why it went.
+   */
 ]);
 
 /** The tab a fresh mount lands on. */
@@ -150,9 +192,11 @@ export function DashboardTabs({ overview, growth, giving, engagement, content }:
   return (
     <Tabs defaultValue={DEFAULT_DASHBOARD_TAB} className="w-full" data-dashboard-tabs>
       {/*
-        The strip scrolls rather than wrapping or squeezing: six labels do not
-        fit across a 380px phone, and `overflow-x-auto` keeps that overflow
-        inside the strip instead of on the page.
+        The strip scrolls rather than wrapping or squeezing: five labels still
+        do not fit across a 380px phone, and `overflow-x-auto` keeps that
+        overflow inside the strip instead of on the page. ⚠️ Dropping to five
+        did NOT make this unnecessary and the measurement test re-asserts it:
+        the strip still overflows at 380px, and the page body still does not.
 
         ⚠️ NO NEGATIVE MARGIN. This carried `-mx-1 … px-1` to give the first and
         last tab's focus ring room, and that bled 4px past the wrapper on each

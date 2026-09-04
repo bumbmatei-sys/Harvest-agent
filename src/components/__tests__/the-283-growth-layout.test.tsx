@@ -81,6 +81,16 @@ const READY = {
 const GROWTH = {
   loading: false,
   locationReason: null,
+  /*
+   * ⚠️ ADDED BY THE-299, which put a retention heatmap on this tab. Explicitly
+   * REFUSED rather than left off the object: an omitted field arrives as
+   * `undefined`, and a fixture that quietly renders a widget's loading skeleton
+   * forever would be measuring a spinner. The heatmap's own layout is measured
+   * in `the-299-retention-layout.test.tsx`; what matters here is only that this
+   * tab's other widgets still land where they landed.
+   */
+  retention: null,
+  retentionReason: 'Not measured on this page.',
   locations: {
     total: 240,
     withCountry: 208,
@@ -280,13 +290,20 @@ describe('positions and widths at all five viewports', () => {
     }
   });
 
-  it('the deferred three stack on a phone and sit in one row from lg', () => {
-    // All three render at every width — a deferred widget is never hidden.
-    for (const viewport of VIEWPORTS) expect(at(viewport).deferredCards, `${viewport}px`).toBe(3);
+  /**
+   * ⚠️ THREE became TWO because THE-299 BUILT the retention heatmap, and the
+   * track narrowed with them: `lg:grid-cols-3` became `lg:grid-cols-2`, because
+   * a three-column track holding two cards leaves a third of the row empty at
+   * every width above `lg`. The claim is otherwise unchanged and is still made
+   * at all five viewports — a deferred widget is never hidden, and the two
+   * still stack on a phone and share a row from `lg`.
+   */
+  it('the deferred two stack on a phone and sit in one row from lg', () => {
+    for (const viewport of VIEWPORTS) expect(at(viewport).deferredCards, `${viewport}px`).toBe(2);
 
-    // Below `lg` they stack: three distinct tops.
+    // Below `lg` they stack: two distinct tops.
     for (const viewport of [380, 768] as const) {
-      expect(new Set(at(viewport).deferredTop).size, `${viewport}px`).toBe(3);
+      expect(new Set(at(viewport).deferredTop).size, `${viewport}px`).toBe(2);
     }
     // At `lg` and above they share a row: one top.
     for (const viewport of [1024, 1280, 1440] as const) {

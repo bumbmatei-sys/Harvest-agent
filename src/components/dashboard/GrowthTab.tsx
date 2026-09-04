@@ -2,18 +2,24 @@
 /**
  * THE-283 — the Growth tab: slice 2 of 6.
  *
- * ─── 🔴 TWO widgets, not five, and the tab says which three are missing ──────
+ * ─── 🔴 THREE widgets, not five, and the tab says which two are missing ──────
  *
  * The design wants five here: the member growth trend, the countries & cities
- * table, a retention cohort heatmap, stage conversion, and a geo map. This slice
- * BUILDS TWO and DEFERS THREE, each with its own reason on screen.
+ * table, a retention cohort heatmap, stage conversion, and a geo map. THE-283
+ * built two and deferred three; ⚠️ THE-299 BUILDS THE THIRD, so this tab now
+ * BUILDS THREE and DEFERS TWO, each with its own reason on screen.
  *
- * That is not a shortfall dressed up. Two of the three cannot be built honestly
- * from what this app records, and the third is a dependency decision:
+ * That is not a shortfall dressed up. Neither of the remaining two can be built
+ * honestly from what this app records, or is a dependency decision:
  *
- *   · The retention heatmap has no component to build it from anywhere in this
- *     repo, and a cohort grid with computed cell shading is a real piece of
- *     work rather than a variant of something already here.
+ *   · ⚠️ The retention heatmap WAS deferred because "no heatmap component
+ *     exists anywhere in this app to build it from". That was true of this repo
+ *     and false of the world — spectrum's registry publishes `cohort-chart`,
+ *     which declares no npm dependency and no registry dependency — and it said
+ *     nothing about the DATA, which THE-285 established was present in
+ *     `users.createdAt` and `contactActivities`. Both halves are resolved, the
+ *     widget is mounted below, and its deferral string is DELETED from
+ *     `GROWTH_REASON` rather than left standing beside the thing it describes.
  *   · Stage conversion is blocked twice over — recharts ships no funnel series
  *     type, AND `devotion` is not a concept this product records. There is no
  *     collection, no field and no event; the only matches for the word in
@@ -36,22 +42,25 @@
  * reading "we could not read your retention data" would go looking for a
  * problem that does not exist.
  *
- * ─── Where the two real widgets get their numbers ────────────────────────────
+ * ─── Where the three real widgets get their numbers ──────────────────────────
  *
  * The trend REUSES the Overview tab's `memberSeries` — the same complete,
  * count-gated weekly series over `users.createdAt`, read once by the one
  * `useOverviewData` instance that serves the whole tab strip. Nothing is read
  * twice and the two tabs cannot disagree.
  *
- * The table comes from `useGrowthData`, which is the only read this tab adds.
- * Its coverage caveat is rendered as a figure inside the widget, not hidden —
- * see `LocationTable`.
+ * The table and the heatmap both come from `useGrowthData`, and they come from
+ * ONE read of `users` mapped once — so they cannot disagree about how many
+ * members this ministry has either. Each renders its own coverage caveat as a
+ * figure inside the widget rather than hiding it; see `LocationTable` and
+ * `RetentionHeatmap`.
  */
 import React from 'react';
-import { Grid3x3, Globe2, Filter } from 'lucide-react';
+import { Globe2, Filter } from 'lucide-react';
 
 import { CHART_VARS } from './GivingMix';
 import { LocationTable } from './LocationTable';
+import { RetentionHeatmap } from './RetentionHeatmap';
 import { TrendChart } from './TrendChart';
 import { WidgetFrame } from './WidgetFrame';
 import { GROWTH_REASON } from './growth-data';
@@ -59,19 +68,17 @@ import type { GrowthData } from './useGrowthData';
 import type { OverviewData } from './useOverviewData';
 
 /**
- * The three widgets this slice does not build.
+ * The widgets this tab does not build.
  *
  * ⚠️ A closed literal table, in the design's order, so the tab cannot grow a
- * fourth deferral by accident and a test can assert all three by iterating it.
+ * deferral by accident and a test can assert all of them by iterating it.
+ *
+ * ⚠️ NARROWED BY THE-299 FROM THREE TO TWO, and narrowed rather than relaxed:
+ * `retention` is gone because the widget is built, not because the claim was
+ * inconvenient. A tab that quietly stopped deferring a widget WITHOUT building
+ * it still fails the assertions that iterate this table.
  */
 export const DEFERRED_GROWTH_WIDGETS = Object.freeze([
-  {
-    id: 'retention',
-    title: 'Retention cohorts',
-    description: 'How long the people who joined each month stay.',
-    icon: Grid3x3,
-    reason: GROWTH_REASON.retentionDeferred,
-  },
   {
     id: 'conversion',
     title: 'Stage conversion',
@@ -114,12 +121,28 @@ export function GrowthTab({ data, growth }: {
       />
 
       {/*
-        🔴 Deferred, not broken, and never a zero. Turning one of these into a
-        `0` — "0 cohorts", "0 stages" — would state that this ministry has none
-        of the thing, which is a claim about their data made by a widget that
-        read none of it.
+        🔴 Full width, and beneath the table rather than beside it. Twelve
+        periods plus two gutters is 644px, so a two-up row would put the grid in
+        a column narrower than the grid at every viewport this app measures —
+        which is the THE-276 defect exactly, one widget along. It scrolls inside
+        its own card instead; the page body never moves.
       */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3" data-deferred-grid>
+      <RetentionHeatmap
+        grid={growth.retention}
+        reason={growth.loading ? null : growth.retentionReason}
+      />
+
+      {/*
+        🔴 Deferred, not broken, and never a zero. Turning one of these into a
+        `0` — "0 stages", "0 countries mapped" — would state that this ministry
+        has none of the thing, which is a claim about their data made by a
+        widget that read none of it.
+
+        ⚠️ `lg:grid-cols-2`, down from three, because THE-299 removed one. A
+        three-column track with two cards in it leaves a third of the row empty
+        at every width above `lg`.
+      */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2" data-deferred-grid>
         {DEFERRED_GROWTH_WIDGETS.map((widget) => (
           <WidgetFrame
             key={widget.id}
