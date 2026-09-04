@@ -468,6 +468,23 @@ describe('2 · every use of pb-safe is accounted for', () => {
       'src/components/__tests__/the-281-giving-share.test.tsx',
       'src/components/__tests__/the-290-giving-layout.test.tsx',
       'src/components/__tests__/the-294-engagement-layout.test.tsx',
+      // ⚠️ THE-299's layout suite is a SEVENTH ticket naming the class without
+      // applying it, and it is a COMMENT — one JSDoc block on one assertion,
+      // not a className, not a nav replica and not a fixture. The Growth tab's
+      // retention heatmap needed a clearance decision like every other screen
+      // in this register, and the decision it records is that it needs no
+      // clearance AT ALL: the widget introduces no fixed, sticky or absolute
+      // positioning and no stacking context, so it is ordinary flow content
+      // inside the page's own padding and can never be the element that lands
+      // under the nav. The comment says so, names `pb-safe` to explain why it
+      // is not being leaned on, and the assertion beneath it MEASURES the claim
+      // in Chromium at all five viewports rather than asserting the prose.
+      //
+      // 🔴 Nothing under src/components/dashboard/ that THE-299 adds spells the
+      // class — not RetentionHeatmap.tsx, not retention-data.ts, not
+      // useGrowthData.ts, not GrowthTab.tsx, not DashboardTabs.tsx. So the one
+      // live entry above is still the one live entry, and this is paper trail.
+      'src/components/__tests__/the-299-retention-layout.test.tsx',
       // ⚠️ CountryPrompt.tsx NAMES the class in its header and applies it
       // nowhere — it spends `pb-[calc(40px+env(safe-area-inset-bottom))]` on its
       // own overlay instead, precisely so it is correct on the admin shell too.

@@ -396,15 +396,26 @@ describe('no figure is fabricated', () => {
   });
 });
 
-/* ═══ 4 · The three deferred widgets ═════════════════════════════════════════ */
+/* ═══ 4 · The deferred widgets ══════════════════════════════════════════════ */
 
-describe('the three deferred widgets render an empty state naming the reason', () => {
-  it('all three are present, deferred, and say why in a sentence', async () => {
+/**
+ * ⚠️ AMENDED BY THE-299, and NARROWED rather than relaxed — the same edit
+ * THE-290 and THE-294 made to THE-276's unbuilt-tab claim.
+ *
+ * THE-283 deferred three widgets here. THE-299 BUILT one of them, so the claim
+ * is now about TWO and every assertion below still iterates
+ * `DEFERRED_GROWTH_WIDGETS` rather than a list written here — a widget that
+ * quietly stopped deferring WITHOUT being built still fails, because it would
+ * have to be removed from that table to disappear from these loops, and section
+ * 4b then requires the thing it was replaced by to actually render.
+ */
+describe('the deferred widgets render an empty state naming the reason', () => {
+  it('both are present, deferred, and say why in a sentence', async () => {
     grantAnalytics();
     healthyTenant();
     const c = await growthScreen();
 
-    expect(DEFERRED_GROWTH_WIDGETS).toHaveLength(3);
+    expect(DEFERRED_GROWTH_WIDGETS).toHaveLength(2);
     for (const widget of DEFERRED_GROWTH_WIDGETS) {
       const el = c.querySelector(`[data-widget="${widget.title}"]`);
       expect(el, `${widget.title} did not render at all`).toBeTruthy();
@@ -429,7 +440,6 @@ describe('the three deferred widgets render an empty state naming the reason', (
     const reasonFor = (title: string) =>
       text(c.querySelector(`[data-widget="${title}"] [data-empty-reason]`));
 
-    expect(reasonFor('Retention cohorts')).toContain('no heatmap component exists');
     expect(reasonFor('Stage conversion')).toContain('recharts ships no funnel series type');
     expect(reasonFor('Where your people are')).toContain('react-simple-maps');
     for (const widget of DEFERRED_GROWTH_WIDGETS) {
@@ -449,6 +459,30 @@ describe('the three deferred widgets render an empty state naming the reason', (
       expect(text(el)).toContain(`${widget.title} is not built yet`);
       expect(text(el)).not.toContain(`${widget.title} unavailable`);
     }
+  });
+});
+
+/* ═══ 4b · 🔴 Retention is BUILT, not merely un-deferred ══════════════════ */
+
+describe('the widget THE-299 removed from that table was replaced, not dropped', () => {
+  it('Retention cohorts renders, and is not deferred', async () => {
+    grantAnalytics();
+    healthyTenant();
+    const c = await growthScreen();
+
+    const el = c.querySelector('[data-widget="Retention cohorts"]');
+    expect(el, 'the retention widget vanished with its deferral').toBeTruthy();
+    // 🔴 Shrinking DEFERRED_GROWTH_WIDGETS is not on its own permission to stop
+    // showing the widget. Whatever state this read lands in, `deferred` — "no
+    // ministry is in scope" wearing "nobody built it" — is not one of them.
+    expect(el!.getAttribute('data-state')).not.toBe('deferred');
+    expect(text(el!)).not.toContain('is not built yet');
+  });
+
+  it('and the reason string that said no component exists is gone from the source', async () => {
+    const { GROWTH_REASON } = await import('../dashboard/growth-data');
+    expect(Object.keys(GROWTH_REASON)).not.toContain('retentionDeferred');
+    expect(JSON.stringify(GROWTH_REASON)).not.toContain('no heatmap component exists');
   });
 });
 

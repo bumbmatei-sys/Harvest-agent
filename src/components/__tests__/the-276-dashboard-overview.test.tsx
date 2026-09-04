@@ -106,10 +106,21 @@ const { DASHBOARD_TABS } = await import('../dashboard/DashboardTabs');
  * WITHOUT being built still fails here.
  *
  * ⚠️ AMENDED AGAIN BY THE-294, which built Engagement and Content, and narrowed
- * the same way. ONE unbuilt tab remains — Platform — and the claim is still that
- * every tab not on this list carries a placeholder naming itself. A tab added to
- * this list without a panel actually being supplied fails the two assertions
- * below it, so the list cannot be used to silence the guard.
+ * the same way. ONE unbuilt tab remained — Platform — and the claim was still
+ * that every tab not on this list carries a placeholder naming itself. A tab
+ * added to this list without a panel actually being supplied fails the two
+ * assertions below it, so the list cannot be used to silence the guard.
+ *
+ * 🔴 AMENDED AGAIN BY THE-299, and this time by REMOVING the tab rather than
+ * building it. Platform's headline widgets were MRR and plan distribution, and
+ * THE-285 established MRR is unknowable here — the tenant document stores the
+ * plan but not the billing interval, so the cadence needs a Dodo call the
+ * founder has ruled out. So `DASHBOARD_TABS` is five rows, `UNBUILT_TABS` is
+ * EMPTY, and the derivation is deliberately left in place: it is still by
+ * EXCLUSION, so a sixth tab appearing tomorrow is still automatically required
+ * to carry a placeholder. `no tab is unbuilt any more` asserts the list is
+ * empty BY NAME, so emptying it by deleting a built tab fails there and in the
+ * label assertion too.
  */
 const BUILT_TABS = ['overview', 'growth', 'giving', 'engagement', 'content'] as const;
 const UNBUILT_TABS = DASHBOARD_TABS.filter(
@@ -205,8 +216,41 @@ describe('the tab shell renders all six tabs', () => {
     const c = await screen();
 
     const labels = [...c.querySelectorAll('[data-slot="tabs-trigger"]')].map((t) => text(t).trim());
-    expect(labels).toEqual(['Overview', 'Growth', 'Giving', 'Engagement', 'Content', 'Platform']);
-    expect(DASHBOARD_TABS).toHaveLength(6);
+    expect(labels).toEqual(['Overview', 'Growth', 'Giving', 'Engagement', 'Content']);
+    expect(DASHBOARD_TABS).toHaveLength(5);
+  });
+
+  /* ═══ THE-299 · 🔴 the Platform tab is gone ═══════════════════════════ */
+
+  it('🔴 no tab has the id, the label, or the placeholder', async () => {
+    grantAnalytics();
+    healthyTenant();
+    const c = await screen();
+
+    // The id, from the table itself — the source of every other assertion here.
+    expect(DASHBOARD_TABS.map((t: { id: string }) => t.id))
+      .toEqual(['overview', 'growth', 'giving', 'engagement', 'content']);
+    expect(DASHBOARD_TABS.some((t: { id: string }) => t.id === 'platform')).toBe(false);
+
+    // The trigger, in the DOM. A row removed from the table but left in the
+    // strip by some other route would still be reachable.
+    expect(c.querySelector('[data-slot="tabs-trigger"][value="platform"]')).toBeNull();
+    expect([...c.querySelectorAll('[data-slot="tabs-trigger"]')]
+      .map((t) => text(t).trim())).not.toContain('Platform');
+
+    // The placeholder, which is the thing a founder actually read.
+    expect(c.querySelector('[data-tab-placeholder="platform"]')).toBeNull();
+    expect(text(c)).not.toMatch(/Platform is not built yet/);
+    expect(text(c)).not.toMatch(/tenant health, plan mix and platform-wide totals/);
+  });
+
+  it('🔴 and the bookkeeping about it is gone too — no tab is unbuilt any more', async () => {
+    // THE-276's `upcoming` table promised what each tab would hold. Platform's
+    // entry promised a plan mix that cannot be derived from this database at
+    // all, so it is deleted with the row rather than left describing nothing.
+    expect(DASHBOARD_TABS.map((t: { upcoming: string }) => t.upcoming).join(' '))
+      .not.toMatch(/plan mix|tenant health|platform-wide/i);
+    expect(UNBUILT_TABS.map((t: { id: string }) => t.id)).toEqual([]);
   });
 
   it('the remaining unbuilt tab says so by name, rather than rendering nothing', async () => {
@@ -223,6 +267,11 @@ describe('the tab shell renders all six tabs', () => {
     // NOT dropped: a tab that quietly stopped saying it was unbuilt, without
     // being built, still fails here. Growth's and Giving's own assertions are
     // the lines below — neither may carry a placeholder at all.
+    //
+    // ⚠️ THE-299 empties the list by REMOVING Platform. This loop is a no-op
+    // now and is KEPT: it is what makes a sixth tab added tomorrow without a
+    // panel fail immediately, and `no tab is unbuilt any more` asserts the
+    // emptiness itself so this can never pass vacuously unnoticed.
     for (const tab of UNBUILT_TABS) {
       await openTab(c, tab.label);
       const placeholder = c.querySelector(`[data-tab-placeholder="${tab.id}"]`);
@@ -878,13 +927,34 @@ describe('THE-276-FIX moved layout only', () => {
     expect(text(funnel)).not.toMatch(/Champion|Giving tier|Member\b/);
   });
 
-  it('the remaining tab is still a placeholder — the Platform slice is unbuilt', async () => {
+  /**
+   * ⚠️ REWRITTEN BY THE-299. This said "the remaining tab is still a
+   * placeholder", looped `UNBUILT_TABS` and would now pass over an empty list
+   * while asserting nothing — the vacuous shape this suite has been bitten by
+   * before. The claim it was actually making is the one below: EVERY tab in the
+   * strip is reachable and renders a real panel, and NONE of them renders a
+   * placeholder. That is a stronger statement than the one it replaces and it
+   * cannot be satisfied by an empty table.
+   */
+  it('🔴 every tab renders a real panel, and not one of them is a placeholder', async () => {
     grantAnalytics();
     healthyTenant();
     const c = await screen();
-    for (const tab of UNBUILT_TABS) {
+
+    expect(UNBUILT_TABS).toHaveLength(0);
+    expect(DASHBOARD_TABS.length).toBeGreaterThan(0);
+
+    for (const tab of DASHBOARD_TABS) {
       await openTab(c, tab.label);
-      expect(c.querySelector(`[data-tab-placeholder="${tab.id}"]`), tab.label).toBeTruthy();
+      expect(
+        c.querySelector(`[data-tab-placeholder="${tab.id}"]`),
+        `${tab.label} still renders a placeholder`,
+      ).toBeNull();
+      // Base UI mounts only the ACTIVE panel, so the open one is the only one
+      // there is — and it has to contain something.
+      const panel = c.querySelector('[data-slot="tabs-content"]');
+      expect(panel, `${tab.label} has no panel`).toBeTruthy();
+      expect(text(panel!).trim().length, `${tab.label} rendered an empty panel`).toBeGreaterThan(0);
     }
   });
 });
