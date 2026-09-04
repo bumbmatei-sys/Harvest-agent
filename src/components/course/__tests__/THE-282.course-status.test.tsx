@@ -730,6 +730,27 @@ describe('7 — the progress model, the editor and the adoption gate are untouch
   });
 
   it('no new ui component was installed — all of them predate this ticket', () => {
-    expect(changedSince('src/components/ui/'), 'a ui primitive was added or edited').toEqual([]);
+    // ⚠️ THE-295 raised the z-index of dialog.tsx and sheet.tsx, which were
+    // shipping at the shadcn default `z-50` — under the bottom nav's `z-[100]`
+    // — so a dialog mounted on a phone would have painted below the navigation
+    // bar. Named here rather than the assertion being loosened to "contains":
+    // this ticket's claim is that IT installed and edited no primitive, and
+    // that claim is unchanged. A third file appearing still fails.
+    // The two primitives, plus the three bookkeeping files that record them:
+    // ds-primitives' digest and class-count ledgers and the test that pins
+    // their delta. None of those is a component; they are the guard THAT the
+    // primitives are pinned by, and re-recording them is how a deliberate
+    // primitive edit is declared in this repo.
+    const THE_295 = [
+      'src/components/ui/dialog.tsx',
+      'src/components/ui/sheet.tsx',
+      'src/components/ui/__tests__/ds-primitives.test.tsx',
+      'src/components/ui/__tests__/__fixtures__/primitive-digests.json',
+      'src/components/ui/__tests__/__fixtures__/primitive-class-counts.json',
+    ];
+    expect(
+      changedSince('src/components/ui/').filter((f) => !THE_295.includes(f)),
+      'a ui primitive was added or edited',
+    ).toEqual([]);
   });
 });

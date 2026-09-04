@@ -342,9 +342,37 @@ describe('the revision this suite diffs against is reachable', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 // 1. The one that matters most — one test per file.
 // ═════════════════════════════════════════════════════════════════════════════
+/**
+ * THE-295 replaced ONE inert class on the member bottom nav — `pb-safe`, which
+ * compiled to no CSS at all, for `pb-[calc(8px+env(safe-area-inset-bottom))]`,
+ * which compiles. The recorded layer holds the old spelling because the fixture
+ * IS the pre-PR revision's render.
+ *
+ * 🔴 The fixture is deliberately NOT re-recorded. Re-recording would move all
+ * 236 rows of MainApp's layer at once and pin whatever the file renders today,
+ * which is exactly the silent re-baselining this suite exists to prevent. So
+ * the one substitution is undone in the COMPARISON instead, for that one class
+ * on that one element: every other row, every other surface and every other
+ * class still has to match the measured revision character for character, and
+ * a second class edit hiding behind this one still fails.
+ */
+const undoTHE295 = (rows: string[]): string[] =>
+  rows.map((r) => r.replace('pb-[calc(8px+env(safe-area-inset-bottom))]', 'pb-safe'));
+
 describe('the sub-640px rendering of each file is unchanged', () => {
   it.each(ALL_SURFACES)('%s renders the same class layer below 640px as it did before', (name) => {
-    expect(mobileLayer(SURFACES[name])).toEqual(BASELINE[name].mobileLayer);
+    expect(undoTHE295(mobileLayer(SURFACES[name]))).toEqual(BASELINE[name].mobileLayer);
+  });
+
+  it('and that normalisation touches exactly one class on exactly one row', () => {
+    // The escape hatch above is only safe while it stays this small. If a later
+    // edit spreads the class, or the nav row stops carrying it, this fails
+    // rather than letting the normaliser quietly cover more ground.
+    const rows = mobileLayer(SURFACES.MainApp);
+    const touched = rows.filter((r) => r.includes('pb-[calc(8px+env(safe-area-inset-bottom))]'));
+    expect(touched, 'the safe-area class is no longer on exactly one row').toHaveLength(1);
+    expect(touched[0], 'the row it is on is not the fixed bottom nav').toContain('z-[100]');
+    expect(rows.filter((r) => r.includes('pb-safe')), 'an inert pb-safe came back').toHaveLength(0);
   });
 
   it('gates every rule this PR applies above the phone range — nothing is unprefixed', () => {
@@ -620,6 +648,28 @@ const EDITED_SINCE_MEASUREMENT: ReadonlyArray<{ file: string; ticket: string; wh
       'asserted elsewhere in this file and all still passing.',
   },
   {
+    file: 'MainApp.tsx',
+    ticket: 'THE-295',
+    why:
+      'Made the bottom nav actually RESERVE the home-indicator inset. The nav ' +
+      "carried `pb-safe`, and THE-286 measured that class against this repo's " +
+      'real Tailwind config and found it emits NO CSS AT ALL — it is not a ' +
+      'utility defined in tailwind.config.ts or in globals.css, so the class ' +
+      'was inert and the nav was exactly as tall as its content. On a notched ' +
+      'phone the bottom row of nav icons therefore sat in the gesture area. ' +
+      'It is now `pb-[calc(8px+env(safe-area-inset-bottom))]`, the arbitrary ' +
+      "form that does compile, carrying the 8px `py-2` already painted plus " +
+      'the inset — the same base-plus-inset idiom AdminBlog, AdminTenants and ' +
+      "GivingStatementsSection already use. ONE class literal changed and " +
+      'nothing else: no JSX element was added, removed or reordered, no ' +
+      'wrapper moved, no inline style and no token. The nav is TALLER below ' +
+      '`lg` on a notched device by exactly the inset, which is the fix and not ' +
+      'a side effect; `lg:pb-0` is untouched so desktop is unmoved. The proof ' +
+      'is not this paragraph — the element-tree and class-literal inventories ' +
+      'directly below pin the diff to exactly that one substitution, and ' +
+      'MainApp keeps its mobileLayer, colours and heights pins.',
+  },
+  {
     file: 'NewsTab.tsx',
     ticket: 'THE-246',
     why:
@@ -656,6 +706,7 @@ describe('the byte-identity exemption list is exactly the edits that justify it'
       'THE-202 MainApp.tsx',
       'THE-205 MainApp.tsx',
       'THE-213 MainApp.tsx',
+      'THE-295 MainApp.tsx',
       'THE-246 NewsTab.tsx',
     ]);
   });
@@ -936,15 +987,27 @@ describe('no behaviour changed on any screen in scope', () => {
       [...stripComments(src).matchAll(/<([A-Za-z][A-Za-z0-9.]*)/g)].map((m) => m[1]);
     expect(tags(read('MainApp.tsx')), 'MainApp changed its element tree').toEqual(tags(at('MainApp.tsx')));
 
-    //   • EVERY CLASS LITERAL, in order. Two className expressions differ, and
-    //     only because `activeTopTab` was renamed `effectiveTopTab` INSIDE the
-    //     interpolation that chooses between them — the classes chosen FROM are
-    //     character-for-character what they were. Undoing a rename is the whole
-    //     of the normalisation below; it folds away no class, no width and no
-    //     token. Any real class edit fails here.
+    //   • EVERY CLASS LITERAL, in order. Three className expressions differ.
+    //     Two do so only because `activeTopTab` was renamed `effectiveTopTab`
+    //     INSIDE the interpolation that chooses between them — the classes
+    //     chosen FROM are character-for-character what they were.
+    //
+    //     The third is THE-295's, on the bottom nav, and it is pinned to
+    //     exactly one substitution the way AIChat's and NewsTab's diffs are
+    //     above: `pb-safe` → `pb-[calc(8px+env(safe-area-inset-bottom))]`.
+    //     🔴 That is not a restyle. `pb-safe` compiled to NO CSS against this
+    //     repo's real config — THE-286 measured it and reported it — so the
+    //     nav reserved no home-indicator inset and the class was inert. The
+    //     replacement is the arbitrary form that does compile, carrying the
+    //     8px `py-2` already painted plus the inset. Undoing exactly that,
+    //     and the rename, is the whole of the normalisation below; it folds
+    //     away no other class, no width and no token. Any second class edit
+    //     — including one hiding behind this one — still fails here.
     const classes = (src: string) =>
       [...stripComments(src).matchAll(/className=\{`([^`]*)`\}|className="([^"]*)"/g)]
-        .map((m) => (m[1] ?? m[2]).replace(/\beffectiveTopTab\b/g, 'activeTopTab'));
+        .map((m) => (m[1] ?? m[2])
+          .replace(/\beffectiveTopTab\b/g, 'activeTopTab')
+          .replace('pb-[calc(8px+env(safe-area-inset-bottom))]', 'pb-safe'));
     expect(classes(read('MainApp.tsx')), 'MainApp changed a class literal').toEqual(classes(at('MainApp.tsx')));
   });
 });

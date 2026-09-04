@@ -330,6 +330,30 @@ describe('the unresolved list', () => {
       JSON.parse(readFileSync(path.join(FIXTURES, 'primitive-class-counts.json'), 'utf8')),
     );
   });
+
+  it('and THE-295 moved exactly two of those counts, by exactly one each', () => {
+    // Re-recording a ledger is the designed workflow and also the one moment a
+    // stray change rides along unnoticed, so the DELTA is pinned as well as the
+    // file — the same treatment the globals.css token ledger gets above.
+    //
+    // dialog.tsx and sheet.tsx each spelled `z-50` TWICE, once on the scrim and
+    // once on the panel, so the extractor read ONE distinct class where it now
+    // reads two: `z-[101]` and `z-[102]`. That is why each count rose by one.
+    // Nothing else about either file's class set changed, and no other
+    // primitive moved at all.
+    const recorded: Record<string, number> = JSON.parse(
+      readFileSync(path.join(FIXTURES, 'primitive-class-counts.json'), 'utf8'),
+    );
+    expect(recorded['dialog.tsx']).toBe(54);
+    expect(recorded['sheet.tsx']).toBe(62);
+    for (const file of ['dialog.tsx', 'sheet.tsx']) {
+      const classes = [...audit.classesByFile]
+        .find(([f]) => path.basename(f) === file)?.[1] ?? [];
+      expect(classes, `${file} lost its scrim layer`).toContain('z-[101]');
+      expect(classes, `${file} lost its panel layer`).toContain('z-[102]');
+      expect(classes, `${file} fell back to the shadcn z-50 default`).not.toContain('z-50');
+    }
+  });
 });
 
 /* ── 5-6. Pins: this PR moves no component and defines no token ────────── */
