@@ -795,7 +795,46 @@ describe('the super-admin apex behaviour is unchanged', () => {
   });
 });
 
-/* ═══ 8 · The band function, at its boundaries ══════════════════════════════ */
+/* ═══ 8 · 🔴 No-regression: the strict money gate ═══════════════════════════ */
+
+describe('the strict money gate still refuses a missing amount', () => {
+  /**
+   * 🔴 #421 caught `toInvoiceRow` coercing a missing `amount` to `0` — silent
+   * money loss, in its own code. It refuses and NAMES THE COUNT now, and this
+   * slice must not have loosened it while reading three collections next door.
+   *
+   * ⚠️ Asserted through the real functions rather than by grepping the source:
+   * a comment can survive a behaviour change, and the guard file's source
+   * checks are the second line, not the first.
+   */
+  it('🔴 a receipt with no readable amount refuses the whole total, and says how many', async () => {
+    const { readableReceipts, toInvoiceRow } = await import('../dashboard/dashboard-data');
+
+    const good = toInvoiceRow({ amount: 25000, type: 'donation_receipt', issuedAt: null });
+    const missing = toInvoiceRow({ type: 'donation_receipt', issuedAt: null });
+    expect(good.amountCents).toBe(25000);
+    // 🔴 NOT `0`. There is no branch in which a missing amount becomes a number.
+    expect(missing.amountCents).toBeNull();
+
+    const refused = readableReceipts([good, missing]);
+    expect(refused.kind).toBe('unavailable');
+    expect(refused.kind === 'unavailable' && refused.reason).toContain('1 of 2');
+
+    expect(readableReceipts([good]).kind).toBe('complete');
+  });
+
+  it('and the Giving figures on the other tabs are untouched by this slice', async () => {
+    grantAnalytics();
+    healthyTenant();
+    const c = await screen();
+    await openTab(c, 'Giving');
+    // The tab renders; nothing here reports a zero it did not read.
+    expect(c.querySelector('[data-giving-tab]')).toBeTruthy();
+    expect(text(c.querySelector('[data-giving-tab]'))).not.toMatch(/NaN|undefined/);
+  });
+});
+
+/* ═══ 9 · The band function, at its boundaries ══════════════════════════════ */
 
 describe('the colour band is a function of the share, and zero has its own', () => {
   it('none, and the four twenty-point steps', () => {
