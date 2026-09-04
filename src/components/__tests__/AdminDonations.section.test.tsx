@@ -696,8 +696,42 @@ describe('no Stripe Connect route, donation route, fee or receipt path changed',
      *     gift. Its digest below is the proof that THE-251 did not touch how
      *     Stripe gifts update a campaign total.
      */
+    /*
+     * ─── ⚠️ RE-RECORDED AGAIN BY THE-303, and here is the whole of what moved ──
+     *
+     * The founder: "If stripe is not connected, the fundraising page shall only
+     * show the donation links. Wise etc." This page drew the amount picker, the
+     * donor fields, the Donate button and "Secure payment powered by Stripe"
+     * for EVERY tenant — so with `STRIPE_CONNECT_ENABLED` false (THE-256) and
+     * no church connected, a public appeal led with an action that posts to
+     * `/api/stripe/donate` and comes back 503.
+     *
+     * TWO ADDITIONS, and nothing else in the file moved:
+     *
+     *   1. an import of `STRIPE_CONNECT_ENABLED`, and
+     *   2. one derived boolean — `STRIPE_CONNECT_ENABLED && tenant
+     *      .stripeConnectStatus === 'active'` — handed to PublicCampaign as
+     *      `showDonationForm`.
+     *
+     * 🔴 STILL NOT A MONEY-PATH CHANGE, and the same two assertions THE-251
+     * leaned on say so:
+     *
+     *   • `loadCampaign`'s gate is byte-identical — the free-tier `fundraising`
+     *     refusal, the cross-tenant check, the pledge-type refusal and the
+     *     `isActive` check are untouched, and public-page-plan-gates.test.ts
+     *     still pins them. The new flag is read AFTER that gate and can only
+     *     ever draw LESS, never admit a page that would have been refused.
+     *   • every other digest in this list is unchanged — the donate route,
+     *     `PLATFORM_FEE_MAP`, `donation-webhook.ts` and the receipt paths
+     *     among them. What a gift does once it exists did not move; what moved
+     *     is whether a form that cannot create one is drawn at all.
+     *
+     * ⚠️ `lib/stripe-connect-feature.ts` IS UNTOUCHED. Reading the switch is not
+     * restoring Connect UI: flip that one value and this page's form returns
+     * exactly as it was.
+     */
     'src/app/campaign/[campaignId]/page.tsx':
-      '4f084a99ff88519e962c6aac909c8dcd13ba7dab48134b489afef72050b07374',
+      '4e7181866e9487913ef7e458229c950e0f1b94572e2b4cdf5619cc6c26ffdcf8',
     'firestore.rules':
       'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499',
     'functions/src/index.ts':

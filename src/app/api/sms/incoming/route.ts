@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { sendSms, resolveTwilioConfig, type ResolvedTwilioConfig } from '@/lib/twilio';
 import { captureHandledError } from '@/lib/money-path-sentry';
 import { SMS_FEATURE_ENABLED, SMS_HIDDEN_MESSAGE } from '@/lib/sms-feature';
+import { GIVING_PATH } from '@/components/donations/giving-share';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,7 +88,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Build giving link
-    const givingLink = `https://${tenantId}.theharvest.app/?giving=1`;
+    // THE-303 — the PUBLIC giving route. A Text-to-Give reply goes to a phone
+    // that may have no Harvest session at all, and `/?giving=1` was the SPA
+    // root: the texter asked how to give and was shown a sign-in form.
+    const givingLink = `https://${tenantId}.theharvest.app${GIVING_PATH}`;
 
     // Render response template
     const template = t2gConfig.responseTemplate || 'Thank you! Give here: {link}';

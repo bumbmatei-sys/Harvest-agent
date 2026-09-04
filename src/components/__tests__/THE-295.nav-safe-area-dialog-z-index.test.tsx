@@ -485,6 +485,12 @@ describe('2 · every use of pb-safe is accounted for', () => {
       // useGrowthData.ts, not GrowthTab.tsx, not DashboardTabs.tsx. So the one
       // live entry above is still the one live entry, and this is paper trail.
       'src/components/__tests__/the-299-retention-layout.test.tsx',
+      // ⚠️ THE-303's measured suite, for the same reason as the other layout
+      // fixtures above it: it replicates the ADMIN shell's bottom nav class for
+      // class in order to measure clearance over it, and `pb-safe` is part of
+      // that string. It reserves nothing there either — which is the whole
+      // reason that suite measures the shell's `pb-24` instead of trusting it.
+      'src/components/__tests__/the-303-giving-cluster.layout.test.tsx',
       // ⚠️ CountryPrompt.tsx NAMES the class in its header and applies it
       // nowhere — it spends `pb-[calc(40px+env(safe-area-inset-bottom))]` on its
       // own overlay instead, precisely so it is correct on the admin shell too.

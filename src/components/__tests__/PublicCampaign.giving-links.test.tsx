@@ -49,7 +49,18 @@ const flush = async () => {
   await act(async () => { await Promise.resolve(); await Promise.resolve(); });
 };
 
-async function mount(links: readonly PublishedGivingLink[]) {
+/**
+ * ⚠️ THE-303 ADDED `showDonationForm`, and it defaults to TRUE here.
+ *
+ * Every assertion in this file is about THE-251's property — that the links ADD
+ * to the campaign page and derive from the one provider table — and that
+ * property was written against a page that always drew the Stripe form. So the
+ * form stays on for these, and the case THE-303 introduced (Stripe off, so the
+ * links ARE the page) is asserted in `the-303-giving-cluster.test.tsx` where it
+ * belongs. The parameter is explicit rather than defaulted in the component,
+ * because a default there is exactly how the dead form would come back.
+ */
+async function mount(links: readonly PublishedGivingLink[], showDonationForm = true) {
   await act(async () => {
     root = createRoot(container);
     root.render(
@@ -60,6 +71,7 @@ async function mount(links: readonly PublishedGivingLink[]) {
         primaryColor="#B8962E"
         campaign={CAMPAIGN}
         links={links}
+        showDonationForm={showDonationForm}
       />,
     );
   });

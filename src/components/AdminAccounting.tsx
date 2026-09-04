@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Receipt, TrendingUp, Download, Search, DollarSign, FileText, Lock, Loader2, CheckCircle, AlertCircle, RefreshCw, ExternalLink, Link2 } from 'lucide-react';
+import { Receipt, TrendingUp, Download, Search, DollarSign, FileText, Lock, Loader2, CheckCircle, AlertCircle, RefreshCw, ExternalLink, Link2, ChevronDown } from 'lucide-react';
 import {
   collection, query, orderBy, onSnapshot, limit
 } from 'firebase/firestore';
@@ -14,6 +14,8 @@ import { authFetch } from '../utils/auth-fetch';
 import { openStatementPdf } from '../utils/open-statement-pdf';
 import { FEATURE_MIN_PLAN } from '../utils/plan-features';
 import AdminGivingStatements from './AdminGivingStatements';
+import { GIVING_PROVIDER_NAMES_OR } from './donations/giving-providers';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 
 // Derived from the feature matrix, not written out. Both strings below used to
 // hard-code "Ministry" while `taxReceipt` has been true on Community (max) —
@@ -472,6 +474,90 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
           </div>
         ))}
       </div>
+
+      {/*
+        ═══════════════════════════════════════════════════════════════════════
+        🔴 THE-303 — WHY A GIFT THE CHURCH DEFINITELY RECEIVED READS AS $0 HERE.
+        ═══════════════════════════════════════════════════════════════════════
+
+        The founder: "I added an activity from a user in CRM that donated cash
+        and works perfectly in CRM and the whole funnel of moving to donor
+        works, but in accounting it shows 0 dollars given. Is it because I
+        didn't donate through stripe?"
+
+        Yes — and that is the design, not a fault. What was missing is that
+        NOTHING SAID SO. Every total on this screen is summed from
+        `tenants/{id}/invoices`, and the only writer of that collection is the
+        Stripe donation webhook. A CRM Donation activity writes two other things
+        entirely — it increments `contacts.totalDonated` and adds a
+        `contactActivities` row — so it can never reach a figure computed from
+        invoices. AdminDonations already states this for links; the books did
+        not, and an unexplained $0 on a page headed "This Year" reads as a bug
+        in the church's accounting.
+
+        ─── 🔴 WHY THIS IS COPY AND NOT A SECOND SUM ──────────────────────────
+
+        Adding CRM activities into these totals would DOUBLE-COUNT every gift
+        recorded both ways — a Stripe gift already writes an invoice AND
+        increments `totalDonated`, so a member who gave by card would be counted
+        twice the moment the two were added together. These are the church's
+        books. They stay the receipted record, and the CRM stays the pastoral
+        one.
+
+        ⚠️ AND THE UNITS DO NOT MEET. `invoices.amount` is CENTS (divided by 100
+        on read, above); `contacts.totalDonated` and `contactActivities.amount`
+        are DOLLARS. Summing them without noticing is the 100× error AGENTS.md
+        records as already shipped once.
+
+        ─── The shape ─────────────────────────────────────────────────────────
+
+        Collapsible, like the disclosure on Donations and for the same reason:
+        it is a paragraph an admin needs ONCE, and the summary line alone
+        answers the question that brought them here. The trigger clears 44px
+        below `sm` and takes Rule 4's control height above it.
+      */}
+      <Collapsible>
+        <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] mb-6">
+          <CollapsibleTrigger
+            data-testid="accounting-cash-note-toggle"
+            className="group w-full flex items-center justify-between gap-3 px-4 py-3 text-left min-h-[44px] sm:min-h-0 sm:h-[38px] sm:py-0"
+          >
+            <span className="text-sm font-semibold text-strong">
+              Why a cash or payment-link gift shows as $0 here
+            </span>
+            <ChevronDown
+              size={16}
+              className="text-faint shrink-0 transition-transform group-data-[panel-open]:rotate-180"
+              aria-hidden="true"
+            />
+          </CollapsibleTrigger>
+          <CollapsibleContent keepMounted data-testid="accounting-cash-note">
+            <div className="px-4 pb-4 pt-1 text-sm text-body leading-relaxed space-y-2 border-t border-line">
+              <p>
+                <b className="text-strong">These totals count Stripe gifts only.</b> Every
+                figure on this screen is built from the receipts Harvest issued, and Harvest
+                only issues one for a gift it processed. Cash, a cheque, a bank transfer and
+                anything sent through your own {GIVING_PROVIDER_NAMES_OR} links never passes
+                through Harvest, so there is no receipt to count and no amount to add.
+              </p>
+              <p>
+                <b className="text-strong">Recording one in your CRM does not change these
+                numbers.</b> Add Activity → Donation adds to that contact&apos;s total given,
+                dates their last gift and moves them along the pipeline — which is why the CRM
+                looks right while this screen still reads $0. The two are deliberately separate
+                records: adding them together would count a Stripe gift twice, because a card
+                gift already writes both.
+              </p>
+              <p>
+                So a church that takes gifts both ways should expect this page to read lower
+                than what it actually received. Your own bank and provider statements are the
+                record for everything Harvest did not process, and a giving statement generated
+                here will not include it either.
+              </p>
+            </div>
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
 
       {/* QuickBooks Section */}
       {isQbEnabled && (

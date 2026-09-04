@@ -31,6 +31,35 @@ interface PublicCampaignProps {
    * (tests, and any future mount) keeps rendering exactly as it did.
    */
   links?: readonly PublishedGivingLink[];
+  /**
+   * 🔴 THE-303 — CAN THIS CHURCH ACTUALLY TAKE A CARD?
+   *
+   * The founder: "If stripe is not connected, the fundraising page shall only
+   * show the donation links. Wise etc." This page drew the amount picker, the
+   * donor fields, the Donate button and "Secure payment powered by Stripe."
+   * UNCONDITIONALLY — for every tenant, connected or not, and with
+   * `STRIPE_CONNECT_ENABLED` false platform-wide (THE-256) that meant a public
+   * appeal whose primary action posts to `/api/stripe/donate` and comes back
+   * 503. A form whose submit is guaranteed to fail is worse than no form; the
+   * member Give page has read exactly this way since THE-246, and this is that
+   * rule reaching the page a stranger actually lands on.
+   *
+   * ⚠️ FALSE DRAWS NO APOLOGY AND NO PLACEHOLDER. There is no "card payments
+   * unavailable" line, no disabled button and no coming-soon note — the church's
+   * own accounts become the page, which is what the founder asked for. A
+   * visitor is not owed an explanation of a payment method this church does not
+   * offer.
+   *
+   * 🔴 DECIDED BY THE ROUTE, and only by the route, exactly as `MainApp`
+   * decides it for the member Give page: the master switch and the tenant's
+   * connect status are both server-side facts, and a component that re-derived
+   * either would be a second answer to "are we connected".
+   *
+   * Required, deliberately: an optional flag defaulting to `true` would let a
+   * future mount ship the dead form back by saying nothing, which is precisely
+   * the silent default this ticket exists to remove.
+   */
+  showDonationForm: boolean;
 }
 
 const AMOUNT_PRESETS = [25, 50, 100, 250];
@@ -56,7 +85,7 @@ const Shell: React.FC<{ logo: string | null; tenantName: string; primaryColor: s
   </div>
 );
 
-const PublicCampaign: React.FC<PublicCampaignProps> = ({ tenantId, tenantName, logo, primaryColor, campaign, links = [] }) => {
+const PublicCampaign: React.FC<PublicCampaignProps> = ({ tenantId, tenantName, logo, primaryColor, campaign, links = [], showDonationForm }) => {
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState('');
   const [donorName, setDonorName] = useState('');
@@ -149,7 +178,12 @@ const PublicCampaign: React.FC<PublicCampaignProps> = ({ tenantId, tenantName, l
             </div>
           )}
 
-          {/* Donate — routes to Stripe Checkout (its own auth/payment). */}
+          {/* Donate — routes to Stripe Checkout (its own auth/payment).
+              🔴 GATED BY `showDonationForm` (THE-303). With Stripe off there is
+              no picker, no donor field, no button and no "powered by Stripe"
+              line — see the prop's own note for why there is no apology in
+              their place either. */}
+          {showDonationForm && (
           <div>
             <p className="text-sm font-semibold text-body mb-2.5">Select an amount</p>
             <div className="grid grid-cols-4 gap-2 mb-3">
@@ -210,6 +244,7 @@ const PublicCampaign: React.FC<PublicCampaignProps> = ({ tenantId, tenantName, l
             </button>
             <p className="text-[11px] text-faint text-center mt-3">Secure payment powered by Stripe.</p>
           </div>
+          )}
 
           {/*
             THE-251 — the church's OWN payment links, beneath the Stripe form.
@@ -227,7 +262,15 @@ const PublicCampaign: React.FC<PublicCampaignProps> = ({ tenantId, tenantName, l
             the Give page's fourth state reproduced here by the same mechanism
             rather than by a second condition that could disagree with it.
           */}
-          <GivingLinks links={links} heading="Other ways to give" />
+          {/* 🔴 THE HEADING FOLLOWS THE FORM (THE-303). With no form above them
+              these are not "other" ways to give — they are the ways — and a
+              heading naming a way that is not on the page sends a member
+              looking for it. The member Give page makes the same swap for the
+              same reason. */}
+          <GivingLinks
+            links={links}
+            heading={showDonationForm ? 'Other ways to give' : 'Ways to give'}
+          />
         </div>
       </div>
     </Shell>

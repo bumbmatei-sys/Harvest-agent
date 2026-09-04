@@ -6,6 +6,7 @@ import PublicCampaign from '@/components/PublicCampaign';
 import PublicRouteAnalytics from '@/components/PublicRouteAnalytics';
 import { tenantFeatures } from '@/lib/tenant-features';
 import { readGivingLinks } from '@/components/donations/giving-providers';
+import { STRIPE_CONNECT_ENABLED } from '@/lib/stripe-connect-feature';
 
 export const dynamic = 'force-dynamic';
 
@@ -143,6 +144,37 @@ export default async function PublicCampaignPage({
   // reader is a stranger with no account and no way to judge a bad href.
   const givingLinks = readGivingLinks(branding);
 
+  // 🔴 THE-303 — CAN A CARD ACTUALLY BE TAKEN ON THIS PAGE?
+  //
+  // The founder: "If stripe is not connected, the fundraising page shall only
+  // show the donation links." This page drew the amount picker, the donor
+  // fields, the Donate button and "Secure payment powered by Stripe" for EVERY
+  // tenant, so a church with no connected account published an appeal whose
+  // primary action posts to `/api/stripe/donate` and comes back refused.
+  //
+  // Two facts, both server-side, both read and neither re-stated:
+  //
+  //   · `STRIPE_CONNECT_ENABLED` — the master switch (THE-256). It is `false`
+  //     while the platform account is closed, so today no tenant can take a
+  //     card at all and `/api/stripe/donate` answers 503 before it opens
+  //     Firestore. READING the switch is not restoring Connect UI: nothing here
+  //     brings a control back, and `lib/stripe-connect-feature.ts` is untouched.
+  //     Flip that one value and this page's form returns exactly as it was.
+  //
+  //   · `stripeConnectStatus === 'active'` — the tenant's own state, and ONLY
+  //     'active'. 'pending' is an onboarding nobody finished and 'restricted' is
+  //     an account Stripe has stopped; neither can complete a checkout, so a
+  //     form drawn on either fails AFTER a stranger has typed their card in.
+  //     The same reading, in the same words, `MainApp` has used for the member
+  //     Give page since THE-246 — the two surfaces cannot disagree about
+  //     whether this church can take a gift.
+  //
+  // ⚠️ THE GATE IS NOT WHAT REFUSES THE MONEY. `/api/stripe/donate` already
+  // does, before any Stripe object exists. This is the surface catching up with
+  // the server, which is the order THE-256 argued for.
+  const showDonationForm =
+    STRIPE_CONNECT_ENABLED && (tenant as { stripeConnectStatus?: string }).stripeConnectStatus === 'active';
+
   return (
     <>
       <PublicRouteAnalytics route="/campaign/[campaignId]" />
@@ -153,6 +185,7 @@ export default async function PublicCampaignPage({
         primaryColor={isValidHex(branding.primaryColor) ? branding.primaryColor : '#B8962E'}
         campaign={campaign}
         links={givingLinks}
+        showDonationForm={showDonationForm}
       />
     </>
   );
