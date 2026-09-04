@@ -960,6 +960,17 @@ describe('12 — AdminDocs.tsx, AdminDashboardHome.tsx, firestore.rules and func
        * preserves: a value that is none of the four still fails.
        */
       'd0d4c9d4e3b09ee6d4985ab893c23982c0a10ce5a505220e266cd31dfcc2f71e',
+      /*
+       * ⚠️ THE-294 (slices 4 and 5 of 6) landed the Engagement and Content tabs,
+       * and this records it — the same treatment, for the same reason, two
+       * slices further on. That ticket mounts both new tabs by passing
+       * `engagement` and `content` panels to `DashboardTabs` and holds each
+       * tab's own read beside the Giving one, so `AdminDashboardHome.tsx` moves
+       * a fourth time. 🔴 THIS branch still did not author a byte of it, which
+       * is the claim the entry preserves: a value that is none of the five
+       * still fails.
+       */
+      '4ca12eef2f6409cb08601f5947011935387d58bbfbbaa3a12710d125905b17bf',
     ],
     // THE-275, the same situation one ticket over. It owns AdminDocs.tsx and has
     // rewritten it: the notes screen was a drill-down (a folder-directory view,

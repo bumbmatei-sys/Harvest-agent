@@ -878,7 +878,35 @@ const THE_290_PROGRESS_ADOPTERS = [
   'src/components/dashboard/PledgeFulfilment.tsx',
 ] as const;
 
-it('only THE-276 adopts chart, THE-283/THE-290 adopt table, THE-290 adopts progress, and pagination is still adopted by nothing', () => {
+/**
+ * ⚠️ AMENDED AGAIN BY THE-294, and RECORDED here rather than relaxed.
+ *
+ * ─── `table` gains its THIRD adopter, and only its third ────────────────────
+ *
+ * The Engagement tab's activity-type widget is a row per CRM activity type with
+ * two origin counts and a total — a plain tabular list of aggregates, the same
+ * shape THE-283 and THE-290 adopted the primitive for and the primitive's exact
+ * purpose. 🔴 The claim is narrowed by exactly ONE file and STAYS CLOSED: a
+ * FOURTH adopter of `table` still fails here.
+ *
+ * 🔴 `progress` GAINS NO ADOPTER. THE-294's four other widgets are counts and
+ * two trends; the engagement-spread widget could have drawn its bands as bars
+ * and deliberately does not — `progress` paints `bg-primary` on `bg-muted` at
+ * 2.30:1 in light, which is known and accepted where a figure is written beside
+ * the bar, and this widget IS the figure. Nothing is conveyed by length.
+ *
+ * 🔴 `chart` gains no adopter either. Both new trends are `TrendChart`, which is
+ * already on the list — the shared component, not a second one — so no new file
+ * imports the primitive.
+ *
+ * 🔴 `pagination` is STILL adopted by nothing. The activity-type table has at
+ * most five rows, one per type; there is nothing to paginate.
+ */
+const THE_294_TABLE_ADOPTERS = [
+  'src/components/dashboard/ActivityTypes.tsx',
+] as const;
+
+it('only THE-276 adopts chart, THE-283/THE-290/THE-294 adopt table, THE-290 adopts progress, and pagination is still adopted by nothing', () => {
   const walk = (dir: string): string[] =>
     readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
       const p = path.join(dir, e.name);
@@ -898,7 +926,7 @@ it('only THE-276 adopts chart, THE-283/THE-290 adopt table, THE-290 adopts progr
 
   const tableImporters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), 'table'));
   expect(tableImporters.map((f) => rel(f)).sort())
-    .toEqual([...THE_283_TABLE_ADOPTERS, ...THE_290_TABLE_ADOPTERS].sort());
+    .toEqual([...THE_283_TABLE_ADOPTERS, ...THE_290_TABLE_ADOPTERS, ...THE_294_TABLE_ADOPTERS].sort());
 
   const progressImporters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), 'progress'));
   expect(progressImporters.map((f) => rel(f)).sort()).toEqual([...THE_290_PROGRESS_ADOPTERS].sort());

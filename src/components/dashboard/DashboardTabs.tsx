@@ -6,11 +6,20 @@
  *
  * The full design is 28 widgets across these six tabs. THE-276 shipped the
  * shell and the Overview tab; the other five rendered an `empty` state naming
- * what will live there. That is deliberate over hiding them: the tab strip is
- * the design's own information architecture, and shipping it whole is what lets
- * the next five slices land one tab at a time without re-deciding it. A reader
- * who opens an unbuilt tab sees that it exists and is not built yet — which is
- * true — rather than a tab that quietly is not there.
+ * what will live there.
+ *
+ * 🔴 THE DESIGN'S 28 IS NOT A TARGET. THE-294 DELETED THREE OF THEM — reach and
+ * impressions, blog view counts, and course completions over time — because
+ * nothing in this database records the fields they would need and nothing
+ * later will make them readable without a tracking system that does not exist.
+ * They are removed from this table's `upcoming` bookkeeping too; the full
+ * decision is in `ContentTab`'s `DELETED_CONTENT_WIDGETS`.
+ *
+ * Showing an unbuilt tab is deliberate over hiding it: the tab strip is the
+ * design's own information architecture, and shipping it whole is what lets the
+ * later slices land one tab at a time without re-deciding it. A reader who opens
+ * an unbuilt tab sees that it exists and is not built yet — which is true —
+ * rather than a tab that quietly is not there.
  *
  * ⚠️ THE-283 (slice 2) fills Growth in, and does it by passing a NODE rather
  * than by teaching this file what a Growth tab contains. `built` below is a map
@@ -21,8 +30,13 @@
  *
  * ⚠️ THE-290 (slice 3) fills Giving in and is the proof that the shape holds:
  * it added ONE optional prop and one entry in `built`, and this file learned
- * nothing about campaigns, pledges or receipts. Three tabs remain unbuilt and
- * still render their own placeholder.
+ * nothing about campaigns, pledges or receipts.
+ *
+ * ⚠️ THE-294 (slice 4) fills BOTH Engagement and Content in, which is the shape
+ * holding twice over: two more optional props, two more entries in `built`, and
+ * this file still knows nothing about check-ins, CRM activity, the prayer wall
+ * or course completion. ONE tab remains unbuilt — Platform — and it still
+ * renders its own placeholder.
  *
  * 🔴 THE SHELL LIVES HERE, NOT IN `AdminDashboard.tsx`. The admin shell owns
  * the app's OUTER navigation (sidebar → section → URL segment, via
@@ -71,8 +85,24 @@ export const DASHBOARD_TABS: readonly DashboardTabDef[] = Object.freeze([
    * for the same reason.
    */
   { id: 'giving', label: 'Giving', icon: HandCoins, upcoming: 'giving over time, campaign progress and pledge fulfilment' },
-  { id: 'engagement', label: 'Engagement', icon: HeartHandshake, upcoming: 'check-ins, event attendance and community activity' },
-  { id: 'content', label: 'Content', icon: BarChart3, upcoming: 'course completion, article reach and sermon views' },
+  /*
+   * ⚠️ THE-294 corrects both strings below, for the reason the Giving row was
+   * corrected above: they are unreachable now that both tabs are built, and an
+   * accurate promise is what a later reader of this table needs.
+   *
+   * 🔴 `content` NO LONGER PROMISES "article reach and sermon views". THIS IS
+   * THE-276 BOOKKEEPING BEING REMOVED, not a wording tidy. Nothing in Firestore
+   * records an impression, a view or a reach figure for an article or a sermon,
+   * and the product analytics record route PATTERNS rather than which article
+   * was opened — so they cannot attribute a view to a piece of content either.
+   * This row was advertising two widgets that CANNOT BE BUILT, and a founder
+   * who read it would wait for a number that will never arrive. The full
+   * decision, with the third deletion, is recorded in `ContentTab`'s
+   * `DELETED_CONTENT_WIDGETS`; this is the same removal at the one other place
+   * the design's widget list had leaked into the code.
+   */
+  { id: 'engagement', label: 'Engagement', icon: HeartHandshake, upcoming: 'check-ins, CRM activity and the prayer wall' },
+  { id: 'content', label: 'Content', icon: BarChart3, upcoming: 'course completion' },
   { id: 'platform', label: 'Platform', icon: Server, upcoming: 'tenant health, plan mix and platform-wide totals' },
 ]);
 
@@ -98,20 +128,24 @@ function NotYetBuilt({ tab }: { tab: DashboardTabDef }) {
  * opinion about what a tab contains, and so a test can mount the strip without
  * mounting a Firestore-backed tab.
  *
- * ⚠️ `growth` and `giving` are OPTIONAL. Omitting either renders the same
- * placeholder that tab had before its slice, which is what keeps every existing
- * caller and test valid and makes "this tab is built" a property of the call
- * site rather than of this file.
+ * ⚠️ `growth`, `giving`, `engagement` and `content` are ALL OPTIONAL. Omitting
+ * any of them renders the same placeholder that tab had before its slice, which
+ * is what keeps every existing caller and test valid and makes "this tab is
+ * built" a property of the call site rather than of this file.
  */
-export function DashboardTabs({ overview, growth, giving }: {
+export function DashboardTabs({ overview, growth, giving, engagement, content }: {
   overview: React.ReactNode;
   growth?: React.ReactNode;
   giving?: React.ReactNode;
+  engagement?: React.ReactNode;
+  content?: React.ReactNode;
 }) {
   /** Tab id → the panel supplied for it. A tab absent here is not built yet. */
   const built: Record<string, React.ReactNode> = { overview };
   if (growth !== undefined) built.growth = growth;
   if (giving !== undefined) built.giving = giving;
+  if (engagement !== undefined) built.engagement = engagement;
+  if (content !== undefined) built.content = content;
 
   return (
     <Tabs defaultValue={DEFAULT_DASHBOARD_TAB} className="w-full" data-dashboard-tabs>
