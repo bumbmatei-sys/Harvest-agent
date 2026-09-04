@@ -204,19 +204,28 @@ export function aggregateLocations(rows: readonly MemberLocation[]): LocationBre
  * Written once, here, for the same reason {@link REASON} is: a widget that
  * invents its own wording can invent a reassuring one.
  *
- * 🔴 The three DEFERRED reasons are not failures and do not pretend to be. They
- * say what is missing and whose ticket it is, because "this tab has four
- * widgets" and "this tab has seven widgets and three of them could not be read"
- * are different claims and only the first is true.
+ * 🔴 The DEFERRED reasons are not failures and do not pretend to be. They say
+ * what is missing and whose ticket it is, because "this tab has three widgets"
+ * and "this tab has seven widgets and two of them could not be read" are
+ * different claims and only the first is true.
+ *
+ * ⚠️ THERE ARE TWO NOW, NOT THREE — THE-299 built the retention heatmap and
+ * DELETED its string rather than leaving it beside the widget it describes.
  */
 export const GROWTH_REASON = {
   /** Read completed, but not one member has recorded a country. */
   noLocationRecorded: (total: number) =>
     `None of this ministry's ${total.toLocaleString()} members has recorded a country yet, so there is nowhere to place them. Members supply their city and country during onboarding.`,
 
-  /** Deferred: the retention cohort heatmap. */
-  retentionDeferred:
-    'A cohort heatmap is a table of computed cell shading, and no heatmap component exists anywhere in this app to build it from. It is deferred to its own ticket rather than approximated here.',
+  /*
+   * ⚠️ `retentionDeferred` IS GONE, REMOVED BY THE-299 RATHER THAN LEFT
+   * STANDING. It said "no heatmap component exists anywhere in this app to
+   * build it from", which was a true statement about this app and a false one
+   * about the world: spectrum's registry publishes `cohort-chart`, it declares
+   * no dependency, and THE-299 installed it. THE-285 had already established
+   * that the data exists. A deferral string beside a built widget is worse than
+   * no string at all — the two reasons below are the ones that still hold.
+   */
 
   /** Deferred: stage conversion. Two independent reasons, both stated. */
   conversionDeferred:

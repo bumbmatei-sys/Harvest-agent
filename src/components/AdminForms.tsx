@@ -65,6 +65,53 @@ const FIELD_TYPES: { type: FieldType; label: string; hasOptions?: boolean }[] = 
 
 const newId = () => `f_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e6).toString(36)}`;
 
+/**
+ * The three field types that carry an option list, derived from FIELD_TYPES so
+ * there is ONE declaration of "has options" rather than the `f.type === 'dropdown'
+ * || f.type === 'radio' || f.type === 'checkbox'` triple this file previously
+ * spelled twice. A fourth choice type added to FIELD_TYPES with `hasOptions`
+ * reaches the option editor automatically instead of silently rendering none.
+ */
+export const OPTION_TYPES: ReadonlyArray<FieldType> =
+  FIELD_TYPES.filter((t) => t.hasOptions).map((t) => t.type);
+
+export const fieldHasOptions = (type: FieldType): boolean => OPTION_TYPES.includes(type);
+
+/**
+ * 🔴 The cap on one field's option list, and it is STATED, never silent.
+ *
+ * A form document is a single Firestore document and Firestore's hard limit is
+ * 1 MiB for the whole of it — every field, every label, every placeholder, and
+ * every option of every field together. An unbounded option list therefore has
+ * a real failure mode: the save stops working, at a size nobody was told about,
+ * on a form that already exists. 100 options per field is far past any question
+ * a church actually asks and leaves the document limit an order of magnitude
+ * away even on a form with many choice fields.
+ *
+ * ⚠️ The number is only half of it. The editor renders "N of 100 options" at
+ * all times — not on approach, not at the ceiling — so the limit is a fact the
+ * admin can see before it binds, and the Add option control states why it is
+ * disabled when it is. A cap that only announces itself by a control that stops
+ * responding is the same class of defect as the one this ticket is fixing.
+ */
+export const MAX_FIELD_OPTIONS = 100;
+
+/**
+ * A default label for a newly added option that is not already in the list.
+ *
+ * Duplicate option TEXT is not cosmetic here: a submission stores the option's
+ * text as its answer (see /api/forms/submit, which this ticket does not touch),
+ * so two options reading "Option 3" are one answer key wearing two rows in the
+ * per-question answers view. Adding, removing and adding again is the ordinary
+ * way to produce that pair, so the default label skips any name already taken.
+ */
+export const nextOptionLabel = (existing: ReadonlyArray<string>): string => {
+  for (let n = existing.length + 1; ; n++) {
+    const candidate = `Option ${n}`;
+    if (!existing.includes(candidate)) return candidate;
+  }
+};
+
 interface AdminFormsProps {
   initialFormId?: string;
   onItemConsumed?: () => void;
@@ -133,7 +180,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
   const addField = (type: FieldType) => {
     setFields(f => [...f, {
       id: newId(), type, label: '', placeholder: '', required: false,
-      options: FIELD_TYPES.find(t => t.type === type)?.hasOptions ? ['Option 1'] : undefined,
+      options: fieldHasOptions(type) ? ['Option 1'] : undefined,
       order: f.length,
     }]);
   };
@@ -152,6 +199,54 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
     });
   };
 
+  // ── Builder OPTION ops ───────────────────────────────────────────
+  /**
+   * 🔴 The four operations this ticket exists for.
+   *
+   * What was here before was a single `<textarea>` holding
+   * `(f.options || []).join('\n')`, whose onChange did
+   * `e.target.value.split('\n').filter(Boolean)`. It reads as an editor that
+   * can do all four, and it can do NONE of them by typing: the control is
+   * CONTROLLED, and `filter(Boolean)` deletes the empty string that a freshly
+   * typed newline produces. So pressing Enter set state back to the list it
+   * already held, React restored the DOM value, and the newline vanished under
+   * the cursor. There was no cap and no error — the keystroke was simply
+   * reverted, which is exactly the founder's "I cannot add more option in any
+   * of the fields". The same erasure blocked splitting a line in the middle,
+   * so options could not be inserted between two others either.
+   *
+   * Each option is now its own row with its own controls, so an option is
+   * added, renamed, reordered and removed by an act that cannot be undone by
+   * the next render. `options` stays a `string[]` in the stored `fields` — the
+   * shape is not touched, and a form saved before this change loads, edits and
+   * saves identically.
+   */
+  const setOptions = (id: string, next: string[]) => updateField(id, { options: next });
+
+  const addOption = (f: FormField) => {
+    const cur = f.options || [];
+    // The cap is enforced here as well as on the disabled control, so it holds
+    // however the call is reached, and it is the SAME constant the editor
+    // prints — there is no second number and no unstated one.
+    if (cur.length >= MAX_FIELD_OPTIONS) return;
+    setOptions(f.id, [...cur, nextOptionLabel(cur)]);
+  };
+
+  const renameOption = (f: FormField, index: number, text: string) =>
+    setOptions(f.id, (f.options || []).map((o, i) => (i === index ? text : o)));
+
+  const moveOption = (f: FormField, index: number, dir: -1 | 1) => {
+    const cur = f.options || [];
+    const swap = index + dir;
+    if (index < 0 || swap < 0 || swap >= cur.length) return;
+    const copy = [...cur];
+    [copy[index], copy[swap]] = [copy[swap], copy[index]];
+    setOptions(f.id, copy);
+  };
+
+  const removeOption = (f: FormField, index: number) =>
+    setOptions(f.id, (f.options || []).filter((_, i) => i !== index));
+
   const handleSave = async () => {
     if (!tenantId) { alert('Could not determine your workspace. Please refresh and try again.'); return; }
     if (!title.trim()) { alert('Please give your form a title.'); return; }
@@ -165,6 +260,15 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
             ...f,
             label: f.label.trim() || `Field ${i + 1}`,
             order: i,
+            // Options are trimmed and blanks dropped ON SAVE rather than on
+            // every keystroke. Doing it on keystroke is what the old textarea
+            // did, and it is what made a new option impossible to type: the
+            // in-progress empty value IS a legitimate editing state and must
+            // survive until the admin is done. `undefined` is preserved for a
+            // field type that has no options, so the delete pass below still
+            // strips the key rather than storing an empty array on a
+            // short_text field.
+            options: f.options ? f.options.map((o) => o.trim()).filter(Boolean) : undefined,
           };
           // Firestore rejects undefined values — drop any key whose value is undefined
           // (e.g. `options` on non-choice field types, `placeholder` if ever unset).
@@ -285,6 +389,15 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
   const fmtDate = (ts: Timestamp | null) =>
     ts?.toDate ? ts.toDate().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—';
 
+  /**
+   * How many responses the form being edited already has, from the list
+   * subscription's own `submissionCount` — no extra read. 0 for a new form, and
+   * 0 for an existing one with no responses, which is exactly when the note
+   * about renaming an option has nothing to warn about and is not rendered.
+   */
+  const editingSubmissionCount =
+    (editingId ? forms.find(f => f.id === editingId)?.submissionCount : 0) || 0;
+
   // ════════════════════════════════════════════════════════════════
   if (view === 'builder') {
     return (
@@ -337,17 +450,90 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
                       <input value={f.label} onChange={e => updateField(f.id, { label: e.target.value })} placeholder="Field label" className={`flex-1 px-3 py-2 border border-line rounded-lg text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} />
                       <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-surface-sunken text-muted whitespace-nowrap">{FIELD_TYPES.find(t => t.type === f.type)?.label}</span>
                     </div>
-                    {(f.type !== 'dropdown' && f.type !== 'radio' && f.type !== 'checkbox') && (
+                    {!fieldHasOptions(f.type) && (
                       <input value={f.placeholder || ''} onChange={e => updateField(f.id, { placeholder: e.target.value })} placeholder="Placeholder (optional)" className={`w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} />
                     )}
-                    {(f.type === 'dropdown' || f.type === 'radio' || f.type === 'checkbox') && (
-                      <textarea
-                        value={(f.options || []).join('\n')}
-                        onChange={e => updateField(f.id, { options: e.target.value.split('\n').filter(Boolean) })}
-                        placeholder="One option per line"
-                        rows={3}
-                        className={`w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.long}`}
-                      />
+                    {fieldHasOptions(f.type) && (
+                      /* ⚠️ A repeating row of small controls is the hard case at 380px, so
+                         the row is `flex-wrap` with a `min-w-0 basis-full` text input: the
+                         input takes the whole first line and the three icon controls wrap
+                         under it rather than squeezing it to nothing or pushing the card
+                         wider than the viewport. Above `sm` the basis is released and the
+                         row is a single line again.
+                         The 44px floor is put on THESE controls rather than on any shared
+                         primitive, exactly as THE-298 did with AdminSecondaryButton —
+                         resizing a primitive is a redesign of the whole admin app and is
+                         not this ticket's. Above `sm` the floor is reset to 0 so Rule 4's
+                         deliberate 38px control height decides, unchanged. */
+                      <div className="space-y-1.5">
+                        {(f.options || []).map((opt, oi) => (
+                          <div key={oi} className="flex flex-wrap items-center gap-1.5">
+                            <input
+                              value={opt}
+                              onChange={e => renameOption(f, oi, e.target.value)}
+                              placeholder={`Option ${oi + 1}`}
+                              aria-label={`Option ${oi + 1}`}
+                              className={`basis-full min-w-0 sm:basis-auto sm:flex-1 px-3 py-2 border border-line rounded-lg text-sm focus:outline-hidden focus:border-gold min-h-[44px] sm:min-h-0 ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => moveOption(f, oi, -1)}
+                              disabled={oi === 0}
+                              aria-label={`Move option ${oi + 1} up`}
+                              className="shrink-0 inline-flex items-center justify-center min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 p-1 text-faint hover:text-body disabled:opacity-30"
+                            ><ChevronUp size={16} /></button>
+                            <button
+                              type="button"
+                              onClick={() => moveOption(f, oi, 1)}
+                              disabled={oi === (f.options || []).length - 1}
+                              aria-label={`Move option ${oi + 1} down`}
+                              className="shrink-0 inline-flex items-center justify-center min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 p-1 text-faint hover:text-body disabled:opacity-30"
+                            ><ChevronDown size={16} /></button>
+                            <button
+                              type="button"
+                              onClick={() => removeOption(f, oi)}
+                              aria-label={`Remove option ${oi + 1}`}
+                              className="shrink-0 inline-flex items-center justify-center min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 p-1 text-faint hover:text-red-600"
+                            ><Trash2 size={15} /></button>
+                          </div>
+                        ))}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => addOption(f)}
+                            disabled={(f.options || []).length >= MAX_FIELD_OPTIONS}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border border-line text-body hover:bg-surface-sunken min-h-[44px] sm:min-h-0 disabled:opacity-30"
+                          ><Plus size={12} /> Add option</button>
+                          {/* Stated at every size, not only at the ceiling. */}
+                          <span className="text-[10px] text-muted">
+                            {(f.options || []).length} of {MAX_FIELD_OPTIONS} options
+                          </span>
+                        </div>
+                        {(f.options || []).length >= MAX_FIELD_OPTIONS && (
+                          <p className="text-[10px] text-muted">
+                            This field is at the {MAX_FIELD_OPTIONS}-option limit. Remove an option to add another.
+                          </p>
+                        )}
+                        {editingSubmissionCount > 0 && (
+                          /* 🔴 What renaming or removing an option does to answers already
+                             given, said out loud on the screen where it is done. A
+                             submission stores the option's TEXT (api/forms/submit is the
+                             only writer and is untouched), so a rename cannot reach back
+                             into it — the past answer keeps the wording it was submitted
+                             with. Nothing is lost or altered: THE-298's per-question view
+                             already groups an answer that is not among the declared
+                             options as `unlisted` rather than dropping it, so the counts
+                             stay complete and the old wording stays visible. What the
+                             admin needs to know is that the two rows are the same
+                             question asked twice, and that is what this says. */
+                          <p className="text-[10px] text-muted">
+                            {editingSubmissionCount} response{editingSubmissionCount === 1 ? '' : 's'} already
+                            {' '}reference this form. Renaming or removing an option never changes an answer
+                            {' '}someone already gave — past answers keep their original wording and stay
+                            {' '}counted, listed separately in the answers view.
+                          </p>
+                        )}
+                      </div>
                     )}
                     <label className="flex items-center gap-2 text-xs text-muted">
                       <input type="checkbox" checked={!!f.required} onChange={e => updateField(f.id, { required: e.target.checked })} /> Required

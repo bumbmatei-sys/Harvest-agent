@@ -127,6 +127,8 @@ const AdminDashboardHome = (await import('../AdminDashboardHome')).default;
 const { EngagementTab } = await import('../dashboard/EngagementTab');
 const { ContentTab, DELETED_CONTENT_WIDGETS } = await import('../dashboard/ContentTab');
 const { DEFERRED_GROWTH_WIDGETS } = await import('../dashboard/GrowthTab');
+/** Every tab in the strip, so a sweep cannot miss one that was added later. */
+const { DASHBOARD_TABS: ALL_TABS } = await import('../dashboard/DashboardTabs');
 const {
   ACTIVITY_TYPES,
   APP_RECORDED_WRITERS,
@@ -894,11 +896,19 @@ const IMPOSSIBLE_WORDS = [
   /page views/i,
 ] as const;
 
+/**
+ * ⚠️ THE-299 removed the Platform tab, so the list this walked is DERIVED from
+ * `DASHBOARD_TABS` rather than written out again. That is strictly stronger:
+ * the sweep now covers whatever tabs exist, so a tab added later is swept for
+ * the deleted words automatically instead of being silently skipped by a
+ * hardcoded list nobody remembered to extend.
+ */
 async function everyTabText(): Promise<string> {
   const c = await screen();
   let all = '';
-  for (const label of ['Overview', 'Growth', 'Giving', 'Engagement', 'Content', 'Platform']) {
-    await openTab(c, label);
+  expect(ALL_TABS.length).toBeGreaterThan(0);
+  for (const tab of ALL_TABS) {
+    await openTab(c, tab.label);
     all += `\n${text(c)}`;
   }
   return all;
@@ -967,20 +977,31 @@ describe('reach, impressions, blog views and completions-over-time are ABSENT', 
 
   /* ── 7c · The deferrable ones DO still render deferred ───────────────────── */
 
-  it('🔴 the retention heatmap and the geo map still render a DEFERRED state on Growth', async () => {
+  /**
+   * ⚠️ AMENDED BY THE-299, which BUILT the retention heatmap. The claim
+   * narrows from three deferrals to two and is not dropped: the geo map and
+   * stage conversion are still deferred, and `DEFERRED_GROWTH_WIDGETS` is still
+   * iterated whole, so a widget that stops deferring without being built still
+   * fails here. Retention's own assertion is the line that now requires it NOT
+   * to be deferred — the same shape THE-283's Growth and THE-290's Giving
+   * assertions took when their tabs were built.
+   */
+  it('🔴 the geo map still renders a DEFERRED state on Growth, and retention no longer does', async () => {
     grantAnalytics();
     healthyTenant();
     const c = await screen();
     await openTab(c, 'Growth');
 
-    // The distinction this ticket turns on: deferrable is not impossible. Both
-    // have data in Firestore already and only need a component or a dependency.
-    expect(stateOf(c, 'Retention cohorts')).toBe('deferred');
+    // The distinction THE-294 turned on: deferrable is not impossible. The geo
+    // map has its data already and needs only a dependency decision.
     expect(stateOf(c, 'Where your people are')).toBe('deferred');
-    expect(text(widget(c, 'Retention cohorts'))).toContain('is not built yet');
     expect(text(widget(c, 'Where your people are'))).toContain('is not built yet');
-    // And all three of THE-283's deferrals are untouched by this slice.
-    expect(DEFERRED_GROWTH_WIDGETS).toHaveLength(3);
+
+    // 🔴 And the one that WAS deferrable has been delivered rather than deleted.
+    expect(stateOf(c, 'Retention cohorts')).not.toBe('deferred');
+    expect(text(widget(c, 'Retention cohorts'))).not.toContain('is not built yet');
+
+    expect(DEFERRED_GROWTH_WIDGETS).toHaveLength(2);
     for (const w of DEFERRED_GROWTH_WIDGETS) expect(stateOf(c, w.title)).toBe('deferred');
   });
 
@@ -1186,14 +1207,20 @@ describe('Overview, Growth and Giving figures are unchanged', () => {
     expect(value('Receipts')).toBe('3');
   });
 
-  it('the Growth tab still renders its trend, its table and its three deferrals', async () => {
+  it('the Growth tab still renders its trend, its table and its two deferrals', async () => {
     grantAnalytics();
     healthyTenant();
     const c = await screen();
     await openTab(c, 'Growth');
     expect(c.querySelector('[data-growth-tab]')).toBeTruthy();
     expect(stateOf(c, 'Member growth')).toBe('ready');
-    expect(c.querySelectorAll('[data-deferred-grid] [data-state="deferred"]')).toHaveLength(3);
+    // ⚠️ THREE became TWO because THE-299 BUILT the retention heatmap. The
+    // count is not merely lowered: the widget it accounted for is required to
+    // be present and un-deferred on the lines below, so a deferral that
+    // vanished without being replaced still fails here.
+    expect(c.querySelectorAll('[data-deferred-grid] [data-state="deferred"]')).toHaveLength(2);
+    expect(c.querySelector('[data-widget="Retention cohorts"]')).toBeTruthy();
+    expect(stateOf(c, 'Retention cohorts')).not.toBe('deferred');
   });
 
   it('the Giving tab still renders its three widgets and its relocated series', async () => {
