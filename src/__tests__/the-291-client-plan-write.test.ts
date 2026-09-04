@@ -333,22 +333,62 @@ describe('4 · a failed or unconfirmed change never applies optimistically', () 
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 describe('5 · the money path is byte-identical', () => {
-  /** Pinned from `origin/main` at 902763a, where this branch started. */
-  const UNTOUCHED: Readonly<Record<string, string>> = {
-    'src/utils/plan-change.ts': '71b2aa42dd1e97b36107197cca459c666ed9027c01c0e85e7af9d2b2e27a6fe7',
-    'src/lib/dodo/plan-change.ts': '7f583417d59d476ddc41c6530acbfe3cd9dcaaf9e8d15279842b9d3db984ce9f',
-    'src/app/api/dodo/webhook/route.ts': '0a30ca691739b717a65aa9dfe0f4c168ad2ec6ae12510b1a574847fd8ede9270',
-    'src/app/api/dodo/change-plan/route.ts': '5ec0e4ce1bd22586e148d78dfb87f690ff6000f4519d81c0c3db48c224d6e298',
-    'src/lib/dodo/webhook-dispatch.ts': '6d5d6e18824efa41eb2b00273c60d8a4724eb15a9f9559fe83913950e07d0e5e',
-    'src/components/settings/PlanUpgradeSection.tsx':
-      '47311df03e1ca76cb51e5094360c2ef868e14f1d9bb6c70509a48fdff174a553',
+  /**
+   * Pinned from `origin/main` at 902763a, where this branch started.
+   *
+   * ⚠️ A SET per file, not one digest, since THE-302. Two of these files
+   * legitimately move — the webhook route and its dispatcher were where THE-302
+   * fixed a silent write loss — and this guard's claim is "THE-291's client-write
+   * removal did not touch the billing path", not "the billing path is frozen".
+   *
+   * 🔴 APPENDED, NEVER SUBSTITUTED, and each value names the change that
+   * produced it. A value that is NEITHER still fails, which is the threat this
+   * guard exists for. `main` was red for everyone last week because #434
+   * substituted instead of appending; that is the mistake this shape prevents.
+   */
+  const UNTOUCHED: Readonly<Record<string, ReadonlyArray<readonly [digest: string, source: string]>>> = {
+    'src/utils/plan-change.ts': [
+      ['71b2aa42dd1e97b36107197cca459c666ed9027c01c0e85e7af9d2b2e27a6fe7', 'main at 902763a'],
+    ],
+    'src/lib/dodo/plan-change.ts': [
+      ['7f583417d59d476ddc41c6530acbfe3cd9dcaaf9e8d15279842b9d3db984ce9f', 'main at 902763a'],
+    ],
+    'src/app/api/dodo/webhook/route.ts': [
+      ['0a30ca691739b717a65aa9dfe0f4c168ad2ec6ae12510b1a574847fd8ede9270', 'main at 902763a'],
+      ['3159d251fa9dfa7070a768ecaa3ad1b6f00f03b9b1eeb6f0b46f46d0319be596', 'THE-302 — a failed reservation is answered 5xx instead of 200'],
+    ],
+    'src/app/api/dodo/change-plan/route.ts': [
+      ['5ec0e4ce1bd22586e148d78dfb87f690ff6000f4519d81c0c3db48c224d6e298', 'main at 902763a'],
+    ],
+    'src/lib/dodo/webhook-dispatch.ts': [
+      ['6d5d6e18824efa41eb2b00273c60d8a4724eb15a9f9559fe83913950e07d0e5e', 'main at 902763a'],
+      ['a54e6e033ba8c9aae59189b8e1ae85ef0cf80c8602caf3ffda4fb028928dafab', 'THE-302 — `unreserved` outcome and a bounded store timeout'],
+    ],
+    'src/components/settings/PlanUpgradeSection.tsx': [
+      ['47311df03e1ca76cb51e5094360c2ef868e14f1d9bb6c70509a48fdff174a553', 'main at 902763a'],
+    ],
   };
 
-  it.each(Object.entries(UNTOUCHED))('%s is untouched', (file, digest) => {
+  it.each(Object.entries(UNTOUCHED))('%s is untouched', (file, accepted) => {
+    const actual = sha256(readFileSync(path.join(REPO, file)));
+    const match = accepted.find(([digest]) => digest === actual);
     expect(
-      sha256(readFileSync(path.join(REPO, file))),
-      `${file} changed — removing a client write must not touch the billing path`,
-    ).toBe(digest);
+      match,
+      `${file} is at ${actual}, which is none of:\n  ` +
+        accepted.map(([d, why]) => `${d} (${why})`).join('\n  '),
+    ).toBeTruthy();
+  });
+
+  it('and THE-291\'s own claim still holds — neither file grew a plan write', () => {
+    // 🔴 The reason the set above is safe. THE-291 removed a client-side write
+    // to `plan`; loosening its digest pin to a set would be worthless if it did
+    // not keep asserting the thing the digest was standing in for. So the claim
+    // is restated directly against the two files that moved.
+    for (const file of ['src/app/api/dodo/webhook/route.ts', 'src/lib/dodo/webhook-dispatch.ts']) {
+      const code = read(file);
+      expect(code, `${file} started writing plan`).not.toMatch(/\bplan\s*:/);
+      expect(code, `${file} started writing to Firestore directly`).not.toMatch(/adminDb\.collection\(['"]tenants['"]\)/);
+    }
   });
 
   it('no new API route was added to replace the write', () => {

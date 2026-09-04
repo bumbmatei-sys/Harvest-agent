@@ -111,8 +111,18 @@ function prePaintScript(): string {
 /**
  * Everything else this PR was forbidden to touch, path by path so a failure
  * names the file rather than the group.
+ *
+ * ⚠️ EACH ROW MAY CARRY MORE THAN ONE ACCEPTED DIGEST, since THE-302. CI runs
+ * against `refs/pull/N/merge`, so a file another ticket legitimately changed
+ * holds a different value there than it did when this list was written — and a
+ * single pin would fail for the one reason it is not meant to detect. The claim
+ * is "THIS PR did not touch these", not "these never change".
+ *
+ * 🔴 A LATER VALUE IS APPENDED TO ITS ROW, NEVER SUBSTITUTED FOR THE OLD ONE. A
+ * digest that is on no row still fails, which is the entire threat. `main` was
+ * red for everyone last week because #434 substituted instead of appending.
  */
-const PINNED: ReadonlyArray<readonly [string, string]> = [
+const PINNED: ReadonlyArray<readonly [string, ...string[]]> = [
   ['src/lib/preauth-theme.ts', '1940796f21a9c5219ba6d35d15958eafb34aaada0e3a2670f5d858f65e840ad0'],
   // ─── THE-265 REGENERATED THESE TWO, deliberately and with reason ─────────
   //
@@ -394,7 +404,13 @@ const PINNED: ReadonlyArray<readonly [string, string]> = [
   // the POST would itself have resolved.
   ['src/app/api/dodo/change-plan/route.ts', '5ec0e4ce1bd22586e148d78dfb87f690ff6000f4519d81c0c3db48c224d6e298'],
   ['src/app/api/dodo/checkout/route.ts', '0e992294895880a5148b61f864869326fd6092c31fe8169cb878a8eee4a08776'],
-  ['src/app/api/dodo/webhook/route.ts', '0a30ca691739b717a65aa9dfe0f4c168ad2ec6ae12510b1a574847fd8ede9270'],
+  // THE-302 appended: a failed idempotency reservation is answered 5xx so Dodo
+  // redelivers, instead of being reported as an already-handled duplicate.
+  [
+    'src/app/api/dodo/webhook/route.ts',
+    '0a30ca691739b717a65aa9dfe0f4c168ad2ec6ae12510b1a574847fd8ede9270',
+    '3159d251fa9dfa7070a768ecaa3ad1b6f00f03b9b1eeb6f0b46f46d0319be596',
+  ],
   ['src/lib/donation-webhook.ts', 'f835ce195029a246a06d00e4202f8149c54b3a37b4ad9e425a7c1081a317aeed'],
   ['src/lib/donation-receipt.ts', 'a7d4872a73e7eb3518d47c264373428d1663afd43032506e5402123cdab1723a'],
   ['src/lib/donation-history.ts', '47e4c9edfe038efd2497df976254868faef08f8a6c208b4885203908ffda19db'],
@@ -475,7 +491,12 @@ const PINNED: ReadonlyArray<readonly [string, string]> = [
   ['src/lib/dodo/provisioning.ts', '348c6ffafc5d9c79fb0b7e03060e89f902dbc8af5b87936e4534d8a6b520eec5'],
   ['src/lib/dodo/renewal.ts', 'fe7fb940ac15edfafd53bca346526e3a43266ad57c29a791a049ef8c512fc6a9'],
   ['src/lib/dodo/subscription-convergence.ts', 'b047d54e588b939ffe5f35e138cf02771033fffb2644a202726098061c3376b4'],
-  ['src/lib/dodo/webhook-dispatch.ts', '6d5d6e18824efa41eb2b00273c60d8a4724eb15a9f9559fe83913950e07d0e5e'],
+  // THE-302 appended: the `unreserved` outcome and a bounded store timeout.
+  [
+    'src/lib/dodo/webhook-dispatch.ts',
+    '6d5d6e18824efa41eb2b00273c60d8a4724eb15a9f9559fe83913950e07d0e5e',
+    'a54e6e033ba8c9aae59189b8e1ae85ef0cf80c8602caf3ffda4fb028928dafab',
+  ],
   ['src/lib/dodo/webhook-verify.ts', '4cd5a7aca61e3c3c7ffecbebe9d6f589a96bea49da031c1f73019a2f1488838b'],
 ];
 
@@ -507,8 +528,12 @@ describe('8 — the pre-paint theme script and layout.tsx are unchanged', () => 
 });
 
 describe('10 — no money path, rule or function changed', () => {
-  it.each(PINNED)('%s is unchanged', (relativePath, expected) => {
-    expect(digest(relativePath), `${relativePath} changed`).toBe(expected);
+  it.each(PINNED)('%s is unchanged', (relativePath, ...accepted) => {
+    const actual = digest(relativePath);
+    expect(
+      accepted.includes(actual),
+      `${relativePath} is at ${actual}, which is none of: ${accepted.join(', ')}`,
+    ).toBe(true);
   });
 
   it('the pinned set actually covers the rules, the functions and the money routes', () => {
