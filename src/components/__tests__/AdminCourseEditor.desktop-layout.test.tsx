@@ -93,6 +93,89 @@ const readFixture = <T,>(name: string): T =>
 
 let BASELINE!: Baseline;
 
+/**
+ * THE-305 — the deliberate, RECORDED delta between the measured baseline and
+ * what this screen renders now.
+ *
+ * APPEND-ONLY, AND THE FIXTURE IS NEVER REWRITTEN. Re-recording is the wrong
+ * tool here twice over: the recorder mounts `PRE_PR_REVISION`'s source, so it
+ * would reproduce the identical baseline and accept nothing; and substituting a
+ * baseline is how a guard silently stops guarding. So the fixture stays exactly
+ * as it was measured and the edit is spelled out below, row for row. Every row
+ * this ticket did not touch is still compared byte-for-byte.
+ *
+ * `remove` is asserted to MATCH the baseline at `at` before it is dropped, so a
+ * stale or wrong entry fails loudly instead of masking a real change, and the
+ * list cannot outlive the edit that justifies it.
+ */
+const EDITED_SINCE_MEASUREMENT: ReadonlyArray<{
+  ticket: string;
+  why: string;
+  /** Offset into the ORIGINAL baseline (edits are applied highest-first). */
+  at: number;
+  remove: readonly string[];
+  insert: readonly string[];
+}> = [
+  {
+    ticket: 'THE-305',
+    at: 4,
+    remove: ['button\t', 'svg\tlucide lucide-arrow-left', 'path\t', 'path\t', 'div\t', 'h1\t'],
+    insert: [],
+    why:
+      'Deleted the editor\'s SECOND back arrow and its in-body <h1>. The screen ' +
+      'drew two stacked headers: the shell\'s (back chevron, the title "Courses", ' +
+      'the avatar) and, directly below it, this one — another back arrow over a ' +
+      '"New Course" heading that wrapped onto three lines. AdminScreenHeader\'s own ' +
+      'contract already forbade it ("Rendered once per screen — screens must NOT ' +
+      'repeat their own title below it"). The title and the back handler now go up ' +
+      'to the shared header through setHeaderOverride, the mechanism AdminEvents, ' +
+      'AdminCRM and AdminCommunity already use, so AdminDashboard.tsx is untouched. ' +
+      'The six rows are exactly that arrow (button + its lucide-arrow-left svg and ' +
+      'two paths) and the heading (its wrapper div + the h1). The row immediately ' +
+      'after them — the "1 level / 1 section / 1 lesson" <p> — is deliberately NOT ' +
+      'in this list: the subtitle stays, in the same slot, at the same size and ' +
+      'colour, which is what keeps its information from being lost with the heading.',
+  },
+];
+
+/**
+ * The recorded baseline with `EDITED_SINCE_MEASUREMENT` applied and re-indexed.
+ *
+ * Edits are applied highest-offset-first so every `at` stays an offset into the
+ * ORIGINAL baseline and no entry has to account for another entry's shift.
+ */
+function editedRows(baseline: readonly string[], indexed: boolean): string[] {
+  const rows = baseline.map((r) => (indexed ? r.replace(/^\d+\t/, '') : r));
+  for (const e of [...EDITED_SINCE_MEASUREMENT].sort((a, b) => b.at - a.at)) {
+    expect(
+      rows.slice(e.at, e.at + e.remove.length),
+      `${e.ticket}: the baseline no longer says what this entry removes — drop or fix the entry`,
+    ).toEqual([...e.remove]);
+    rows.splice(e.at, e.remove.length, ...e.insert);
+  }
+  return indexed ? rows.map((r, i) => `${i}\t${r}`) : rows;
+}
+
+describe('the recorded edit is exactly the edit that justifies it', () => {
+  it('names its ticket, states a reason, and actually changes something', () => {
+    expect(EDITED_SINCE_MEASUREMENT.map((e) => e.ticket)).toEqual(['THE-305']);
+    for (const e of EDITED_SINCE_MEASUREMENT) {
+      expect(e.remove.length + e.insert.length, `${e.ticket} removes and inserts nothing`).toBeGreaterThan(0);
+      expect(e.why.length, `${e.ticket} is recorded without a stated reason`).toBeGreaterThan(80);
+    }
+  });
+
+  it('leaves the subtitle standing — its information is not lost with the heading', async () => {
+    // The heading went; the line under it did not. Asserted on the render, not
+    // on the delta list, so removing the <p> later fails here even if someone
+    // also edits the list above to match.
+    const text = ((await builder()).textContent ?? '').replace(/\s+/g, ' ');
+    expect(text).toContain('1 level');
+    expect(text).toContain('1 section');
+    expect(text).toContain('1 lesson');
+  });
+});
+
 beforeAll(async () => {
   if (RECORDING) {
     const backup = readFileSync(TARGET_FILE, 'utf8');
@@ -182,7 +265,7 @@ afterEach(() => { mounted?.unmount(); mounted = null; });
 // ─────────────────────────────────────────────────────────────────────────────
 describe('the sub-640px rendering of the course builder is unchanged', () => {
   it('renders the same class layer below 640px as it did before the rules existed', async () => {
-    expect(mobileLayer(await builder())).toEqual(BASELINE.mobileLayer);
+    expect(mobileLayer(await builder())).toEqual(editedRows(BASELINE.mobileLayer, true));
   });
 
   it('gates every shared-module rule at sm: — the first breakpoint above the phone range', () => {

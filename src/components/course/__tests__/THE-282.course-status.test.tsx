@@ -709,10 +709,39 @@ describe('7 — the progress model, the editor and the adoption gate are untouch
     'firestore.rules',
   ];
 
+  /**
+   * ⚠️ THE-305 EDITS AdminCourseEditor.tsx, so blanket byte-identity over the
+   * whole set no longer states something true. Named here — the same way THE_295
+   * is named below — rather than the file being dropped from PINNED or the
+   * assertion loosened to "contains": THE-282's claim is that IT did not touch
+   * the editor, and that claim is unchanged. A fourth name appearing still fails.
+   *
+   * What THE-305 did to it: deleted the duplicated in-body header (a second back
+   * arrow and a large <h1>, which the shell already draws) and replaced nine
+   * emoji with lucide icons. It went nowhere near the progress model — the
+   * `completedLessons` read/write pinned directly below, `course.utils.ts`'s
+   * definition of complete, or `course-adoption.ts`'s `maxCourses` gate — and it
+   * reads no `course.constants.ts` hex. Those three files and firestore.rules
+   * keep the hard pin.
+   */
+  const THE_305 = ['src/components/AdminCourseEditor.tsx'];
+
   it('🔴 every pinned file is byte-identical to the base branch', () => {
     // ⚠️ One `git diff` over the set, at collection time — not a `git show` per
     // assertion. A name printed here is a file this ticket had no business in.
-    expect(changedSince(...PINNED, 'functions/'), 'these pinned files were modified').toEqual([]);
+    expect(
+      changedSince(...PINNED, 'functions/').filter((f) => !THE_305.includes(f)),
+      'these pinned files were modified',
+    ).toEqual([]);
+  });
+
+  it('🔴 the editor is the ONLY pinned file THE-305 touched', () => {
+    // The exemption is one file wide and must stay that way. Stated as its own
+    // assertion so widening it is an edit to this line, visible in review.
+    expect(THE_305).toEqual(['src/components/AdminCourseEditor.tsx']);
+    for (const f of ['src/components/CoursePage.tsx', 'src/utils/course-adoption.ts', 'firestore.rules']) {
+      expect(changedSince(f), `${f} was modified`).toEqual([]);
+    }
   });
 
   it('🔴 the completedLessons read and write are exactly where they were', () => {

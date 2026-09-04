@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, CSSProperties, DragEvent, KeyboardEvent, MouseEvent } from "react";
 import Image from 'next/image';
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { BookOpen, Clock, Play, Sparkles, Star, User } from "lucide-react";
 import { collection, addDoc, doc, updateDoc, getDocs, deleteDoc, setDoc, getDoc, query, where } from "firebase/firestore";
 import { db, auth } from "../firebase";
 import { ImageUpload } from './ImageUpload';
@@ -32,6 +32,17 @@ import { notifyError } from '../utils/notify';
 // Rule 5 — the two-column split. The Curriculum tab is untouched by all of it;
 // the two tabs share only `s.content`, whose FORM_CONTAINER cap is unchanged.
 import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, ACTION_BUTTON, COLUMN_SPLIT, COLUMN_GROUP } from './layout/form-layout';
+// THE-305 - the editor publishes its own title and back control INTO the shared
+// admin header instead of drawing a second one below it. `AdminScreenHeader`'s
+// own contract already said so ("Rendered once per screen - screens must NOT
+// repeat their own title below it"); this screen was the one that did, which is
+// why the page showed two back arrows and a nav that read "Courses" while the
+// body read "New Course". `setHeaderOverride` is the established mechanism
+// (AdminEvents, AdminCRM and AdminCommunity all drive the header the same way),
+// so NOTHING in AdminDashboard.tsx is touched - the shell already renders
+// `headerOverride?.title ?? headerTitle` on both the desktop bar and the mobile
+// header, and `headerOverride.onBack` as the single back chevron.
+import { useAdminHeader } from './AdminScreenHeader';
 
 
 
@@ -420,7 +431,7 @@ function AuthorCard({ author, onChange, onRemove, selectable = false, selected =
  <div onClick={() => setOpen((o) => !o)} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
  {author.picture
  ? <div style={{ position: 'relative', width: 40, height: 40, borderRadius: '50%', overflow: 'hidden' }}><Image src={author.picture} alt="" fill sizes="40px" style={{ objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} /></div>
- : <div style={s.avatarEmpty}>👤</div>}
+ : <div style={s.avatarEmpty}><User size={18} color={GOLD} /></div>}
  <div>
  <div style={{ fontWeight: 700, fontSize: 15, color: TEXT }}>{author.name || "New Author"}</div>
  {author.title && <div style={{ fontSize: 12, color: TEXT2, marginTop: 1 }}>{author.title}</div>}
@@ -640,9 +651,9 @@ function LessonCard({ lesson, onChange, onRemove, authorsLibrary = [] }: LessonC
  <div style={{ flex: 1 }}>
  <div style={{ fontSize: 14, fontWeight: 600, color: TEXT }}>{lesson.title || "Untitled Lesson"}</div>
  <div style={{ display: "flex", gap: 10, marginTop: 2 }}>
- {lesson.youtubeUrl && <span style={{ fontSize: 11, color: GOLD }}>▶ YouTube linked</span>}
- {lesson.duration && <span style={{ fontSize: 11, color: TEXT2 }}>⏱ {lesson.duration}</span>}
- {lessonAuthor && <span style={{ fontSize: 11, color: TEXT2 }}>👤 {lessonAuthor.name}</span>}
+ {lesson.youtubeUrl && <span style={{ fontSize: 11, color: GOLD, display: "inline-flex", alignItems: "center", gap: 4 }}><Play size={11} aria-hidden />YouTube linked</span>}
+ {lesson.duration && <span style={{ fontSize: 11, color: TEXT2, display: "inline-flex", alignItems: "center", gap: 4 }}><Clock size={11} aria-hidden />{lesson.duration}</span>}
+ {lessonAuthor && <span style={{ fontSize: 11, color: TEXT2, display: "inline-flex", alignItems: "center", gap: 4 }}><User size={11} aria-hidden />{lessonAuthor.name}</span>}
  </div>
  </div>
  <span style={{ fontSize: 11, color: TEXT2 }}>{open ? "▲" : "▼"}</span>
@@ -696,7 +707,7 @@ function LessonCard({ lesson, onChange, onRemove, authorsLibrary = [] }: LessonC
  </div>
  <div>
  <label style={s.label}>Sources & References</label>
- <RichTextEditor content={lesson.sources} onChange={(v) => set("sources", v)} minHeight="60px" placeholder="Books, articles, Bible verses — add links with 🔗" />
+ <RichTextEditor content={lesson.sources} onChange={(v) => set("sources", v)} minHeight="60px" placeholder="Books, articles, Bible verses — add links with the link button" />
  </div>
  <Field label="Teacher Notes" value={lesson.teacherNote} onChange={(v) => set("teacherNote", v)} textarea placeholder="Private notes for this session..." />
  </div>
@@ -920,7 +931,7 @@ function AuthorPickerModal({ authorsLibrary, selectedIds, onConfirm, onClose }: 
  </div>
  {author.picture
  ? <div style={{ position: 'relative', width: 40, height: 40, borderRadius: '50%', overflow: 'hidden' }}><Image src={author.picture} alt="" fill sizes="40px" style={{ objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} /></div>
- : <div style={s.avatarEmpty}>👤</div>}
+ : <div style={s.avatarEmpty}><User size={18} color={GOLD} /></div>}
  <div>
  <div style={{ fontWeight: 700, fontSize: 14 }}>{author.name || "Unnamed"}</div>
  {author.title && <div style={{ fontSize: 12, color: TEXT2 }}>{author.title}</div>}
@@ -1001,6 +1012,7 @@ export default function CourseBuilder({ course: initialCourse, onClose, library 
  const [categories, setCategories] = useState<string[]>([]);
  const [showCatManager, setShowCatManager] = useState<boolean>(false);
  const [showCertPreview, setShowCertPreview] = useState<boolean>(false);
+ const { setHeaderOverride } = useAdminHeader();
 
  useEffect(() => {
  const fetchData = async () => {
@@ -1187,6 +1199,32 @@ export default function CourseBuilder({ course: initialCourse, onClose, library 
  const totalSections = course.levels.reduce((a, lv) => a + lv.sections.length, 0);
  const totalLessons = course.levels.reduce((a, lv) => a + lv.sections.reduce((b, sec) => b + sec.lessons.length, 0), 0);
 
+ /**
+  * THE-305 - publish this screen's title and back control into the shared admin
+  * header, and clear them on unmount.
+  *
+  * The founder's screenshot showed TWO stacked headers: the shell's (a back
+  * chevron, the title "Courses", the avatar) and, directly below it, the
+  * editor's own second back arrow over a large "New Course" heading that wrapped
+  * onto three lines. So the page carried two back controls and its real title
+  * sat in the body while the nav named the LIST the editor was opened from.
+  *
+  * The title tracks `course.title` the way the in-body heading did, so a saved
+  * course reads by its own name and an unsaved one reads "New Course" - the
+  * heading's exact expression, moved rather than rewritten.
+  *
+  * `onBack` is `onClose`, the same handler the removed in-body arrow called, so
+  * the one surviving chevron does what both used to do.
+  *
+  * NOTE: outside AdminDashboard (the unit tests mount this component directly)
+  * the context falls back to its no-op default, so this is safe when there is no
+  * shell to publish into.
+  */
+ useEffect(() => {
+ setHeaderOverride({ title: course.title || "New Course", onBack: onClose });
+ return () => setHeaderOverride(null);
+ }, [course.title, onClose, setHeaderOverride]);
+
  const tabs: { id: "info" | "curriculum"; label: string }[] = [
  { id: "info", label: "Course Info" },
  { id: "curriculum", label: `Curriculum (${course.levels.length})` },
@@ -1225,18 +1263,26 @@ export default function CourseBuilder({ course: initialCourse, onClose, library 
  />
  )}
 
- {/* Top bar: back + title on one line (left) · status + actions (right) */}
+ {/* Top bar: the curriculum count (left) · status + actions (right).
+     THE-305 removed the back arrow and the <h1> that used to head this row.
+     Both were duplicates of chrome the shell already draws: the arrow of the
+     header's own back chevron, the heading of the header's own title - which
+     now reads "New Course" because the effect above publishes it there.
+
+     THE SUBTITLE IS NOT A DUPLICATE and deliberately stays. "1 level · 1
+     section · 1 lesson" is derived state (`totalSections` / `totalLessons`
+     recomputed from `course.levels` on every keystroke), it is the only place
+     the curriculum's size is stated on the Info tab, and the shared header has
+     no slot for a subtitle - `AdminHeaderOverride` carries a title, a back
+     handler, an action and an icon, and inventing a fifth field would be a
+     shell change for one screen. So it stays exactly where it rendered before,
+     in this row's left slot, at the same 12px/`TEXT2`; it is simply no longer
+     underneath a heading. Nothing about it moved on screen. */}
  <div style={{ ...s.topBar, alignItems: "center", padding: "10px 20px", gap: 12 }}>
  <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
- <button style={s.backBtn} onClick={onClose}>
- <ArrowLeft size={20} color={TEXT} />
- </button>
- <div style={{ minWidth: 0 }}>
- <h1 style={s.pageTitle}>{course.title || "New Course"}</h1>
- <p style={{ fontSize: 12, color: TEXT2, marginTop: 1 }}>
+ <p style={{ fontSize: 12, color: TEXT2 }}>
  {course.levels.length} level{course.levels.length !== 1 ? "s" : ""} · {totalSections} section{totalSections !== 1 ? "s" : ""} · {totalLessons} lesson{totalLessons !== 1 ? "s" : ""}
  </p>
- </div>
  </div>
  <div style={{ display: "flex", gap: 10, alignItems: "center", flexShrink: 0 }}>
  <div style={{ fontSize: 11, padding: "4px 10px", borderRadius: 99, fontWeight: 600, background: course.status === "published" ? GREEN_BG : GOLD_LIGHT, color: course.status === "published" ? GREEN : GOLD }}>
@@ -1312,7 +1358,7 @@ export default function CourseBuilder({ course: initialCourse, onClose, library 
  <div onClick={() => set("featured", !course.featured)} className={FIELD_WIDTH.long}
  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 12, border: `1.5px solid ${course.featured ? GOLD : BORDER}`, background: course.featured ? GOLD_LIGHT : CARD, cursor: "pointer", transition: "all 0.2s" }}>
  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
- <span style={{ fontSize: 22 }}>⭐</span>
+ <Star size={22} color={course.featured ? GOLD : TEXT2} fill={course.featured ? GOLD : "none"} strokeWidth={2} />
  <div>
  <div style={{ fontWeight: 700, fontSize: 14, color: TEXT }}>Featured Course</div>
  <div style={{ fontSize: 12, color: TEXT2, marginTop: 2 }}>Pinned at the top of the course library for all users</div>
@@ -1332,7 +1378,7 @@ export default function CourseBuilder({ course: initialCourse, onClose, library 
  ? <div style={{ color: TEXT2, fontSize: 13 }}>No authors selected. Pick from the library or create a new one.</div>
  : selectedAuthors.map((a) => (
  <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: GOLD_LIGHT, borderRadius: 12, border: `1.5px solid ${GOLD}`, marginBottom: 8 }}>
- {a.picture ? <div style={{ position: 'relative', width: 40, height: 40, borderRadius: '50%', overflow: 'hidden' }}><Image src={a.picture} alt="" fill sizes="40px" style={{ objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} /></div> : <div style={s.avatarEmpty}>👤</div>}
+ {a.picture ? <div style={{ position: 'relative', width: 40, height: 40, borderRadius: '50%', overflow: 'hidden' }}><Image src={a.picture} alt="" fill sizes="40px" style={{ objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} /></div> : <div style={s.avatarEmpty}><User size={18} color={GOLD} /></div>}
  <div style={{ flex: 1 }}>
  <div style={{ fontWeight: 700, fontSize: 14 }}>{a.name}</div>
  {a.title && <div style={{ fontSize: 12, color: TEXT2 }}>{a.title}</div>}
@@ -1421,7 +1467,7 @@ export default function CourseBuilder({ course: initialCourse, onClose, library 
  <button style={s.newBtn} className={`w-full sm:w-auto sm:self-start ${ACTION_BUTTON}`} onClick={addLevel}>+ Add Level</button>
  {course.levels.length === 0 && (
  <div style={{ ...s.card, padding: "40px 20px", textAlign: "center" }}>
- <div style={{ fontSize: 32, marginBottom: 8 }}>📚</div>
+ <div style={{ marginBottom: 8, display: "flex", justifyContent: "center" }}><BookOpen size={32} color={TEXT2} aria-hidden /></div>
  <div style={{ fontWeight: 700, color: TEXT, marginBottom: 4 }}>No levels yet</div>
  <div style={{ color: TEXT2, fontSize: 13 }}>Add your first level to get started.</div>
  </div>
