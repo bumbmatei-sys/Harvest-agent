@@ -30,6 +30,7 @@ import {
 } from '../../utils/plan-features';
 import { CONTROL_DENSITY, DENSITY_PX, DESKTOP_CONTROL_MAX_PX } from '../layout/form-layout';
 import UNTOUCHED from './__fixtures__/the-286-untouched.json';
+import { freezeFailure } from './__fixtures__/settings-freeze-register';
 
 /**
  * ═════════════════════════════════════════════════════════════════════════════
@@ -190,10 +191,10 @@ describe('1 · each converted section renders through the shared chrome without 
     expect(code(rel), `${rel} depends on a class this repo does not define`).not.toContain('pb-safe');
   });
 
+  /** ⚠️ THE-312 gave this pin an APPEND PATH — see settings-freeze-register.ts. */
   it('the chrome the billing surface inherits from is itself untouched', () => {
     for (const [rel, digest] of Object.entries(UNTOUCHED.chrome)) {
-      expect(sha256(readFileSync(path.join(ROOT, rel))), `${rel} changed — this slice reuses the chrome`)
-        .toBe(digest);
+      expect(freezeFailure(rel, digest), `${rel} changed — this slice reuses the chrome`).toBeNull();
     }
   });
 
@@ -814,12 +815,30 @@ describe("13 · AdminSettings.regroup.test.tsx's structural assertions still hol
     //
     // 🔴 Pinned against LITERALS recorded from origin/main at 77da58d, not
     // against each other: a digest compared to itself asserts nothing.
-    expect(sha256(readFileSync(path.join(ROOT, 'src/components/AdminSettings.tsx'))),
-      'AdminSettings changed — re-read what #434 did before touching its suite')
-      .toBe('fa75caa9825fd36b1d12ae3472405e005469abe282bd2e26b1177ae6bd7885d9');
-    expect(sha256(readFileSync(path.join(ROOT, 'src/components/__tests__/AdminSettings.regroup.test.tsx'))),
-      'AdminSettings.regroup.test.tsx changed — this slice must not weaken it')
-      .toBe('21c298f212d32cb93f66d41fb5a5d3804712c2a571c5ad482acd11b2edda9784');
+    //
+    // ⚠️ THE-312 gave BOTH pins an APPEND PATH. The literals below are still the
+    // baselines recorded from origin/main at 77da58d and are not replaced; a
+    // later ticket appends its own digest with its ticket and reason.
+    //
+    // 🔴 The SECOND pin is why this mattered most: pinning the suite's own bytes
+    // with "this slice must not weaken it" meant tests could not even be ADDED
+    // to it. They can now — the addition is recorded rather than forbidden — and
+    // the thing the pin actually protects (regroup's 10-class allowlist and its
+    // structural assertions) is asserted by content in THE-312's suite.
+    expect(
+      freezeFailure(
+        'src/components/AdminSettings.tsx',
+        'fa75caa9825fd36b1d12ae3472405e005469abe282bd2e26b1177ae6bd7885d9',
+      ),
+      'AdminSettings changed — re-read what #434 did before touching its suite',
+    ).toBeNull();
+    expect(
+      freezeFailure(
+        'src/components/__tests__/AdminSettings.regroup.test.tsx',
+        '21c298f212d32cb93f66d41fb5a5d3804712c2a571c5ad482acd11b2edda9784',
+      ),
+      'AdminSettings.regroup.test.tsx changed — this slice must not weaken it',
+    ).toBeNull();
     // AdminSettings still imports the accordion and none of the billing sections.
     const src = readSrc('src/components/AdminSettings.tsx');
     expect(src, 'AdminSettings stopped mounting the accordion').toContain('SettingsAccordion');

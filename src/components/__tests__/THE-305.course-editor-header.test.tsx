@@ -615,6 +615,25 @@ describe('the files this ticket must not open are byte-identical', () => {
     expect(changedSince('src/utils/course.utils.ts')).toEqual([]);
   });
 
+  /**
+   * ── 🔴 THE-312 NARROWED THIS FREEZE TO THE FILES IT IS ACTUALLY ABOUT ───────
+   *
+   * The list used to include `Profile.tsx` and `PersonalInformationModal.tsx`.
+   * This suite is about the COURSE EDITOR HEADER. Neither settings surface is a
+   * parallel ticket's file any more, and neither has anything to do with the
+   * editor — but a `git diff --name-only origin/main` freeze fails on any edit
+   * at any value, so those two entries alone made the settings/My-Profile
+   * redesign impossible from a suite that never had an opinion about it.
+   *
+   * The property this assertion is FOR is diff hygiene: the course-editor work
+   * must not reach sideways into unrelated screens. For the two settings
+   * surfaces that is now stated as what it means — the editor does not import
+   * them, and spells neither — which holds no matter how those screens are
+   * later redesigned and still catches the editor reaching into them.
+   *
+   * ⚠️ The other five stay frozen. They are outside THE-312's scope and
+   * unlocking them would be unlocking more than this ticket was asked to.
+   */
   it('leaves the parallel tickets\' files alone', () => {
     expect(changedSince(
       'src/components/AdminForms.tsx',
@@ -622,9 +641,17 @@ describe('the files this ticket must not open are byte-identical', () => {
       'src/components/AdminDonations.tsx',
       'src/components/AdminAccounting.tsx',
       'src/components/PublicPledge.tsx',
-      'src/components/Profile.tsx',
-      'src/components/PersonalInformationModal.tsx',
     )).toEqual([]);
+  });
+
+  it('and reaches into neither settings surface — asserted by what the editor imports', () => {
+    const editor = readSrc('AdminCourseEditor.tsx');
+    for (const surface of ['Profile', 'PersonalInformationModal']) {
+      expect(editor, `the course editor started importing ${surface}`)
+        .not.toMatch(new RegExp(`from\\s+['"][^'"]*${surface}['"]`));
+      expect(editor, `the course editor started mounting <${surface}>`)
+        .not.toMatch(new RegExp(`<${surface}\\b`));
+    }
   });
 
   it('adds no component, token or dependency', () => {

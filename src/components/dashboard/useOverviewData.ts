@@ -31,6 +31,7 @@ import {
   exactCount,
   invoicesQuery,
   publishedCoursesQuery,
+  readFormSubmissions,
   readLiveNow,
   scopedQuery,
   readableReceipts,
@@ -123,15 +124,39 @@ export function useOverviewData(
       return { kind: 'complete', points: bucketWeekly(read.rows, readAt, (r) => r.createdAt).points };
     };
 
+    /**
+     * THE-309 — the "Form submissions" card, figure and trend together.
+     *
+     * 🔴 ONE call produces both, and that is the fix to the `+0% vs last week`
+     * chip as much as to the figure. It used to be `countIn('submissions')` and
+     * `seriesIn('submissions')`, two independent reads of a TOP-LEVEL
+     * `submissions` collection that the form endpoint has never written to —
+     * so the card showed a zero and a chip derived from the same empty read,
+     * and both were wrong in the same direction, which is what made it look
+     * consistent. See {@link readFormSubmissions}.
+     *
+     * ⚠️ NO PLATFORM-WIDE FORM, and it is refused rather than approximated.
+     * Responses hang off `tenants/{id}/forms/{formId}` — there is no apex-level
+     * set to aggregate, and enumerating every ministry's forms to sum them is
+     * both unbounded and a number this product does not define. The same
+     * decision the giving widgets record at the top of this file.
+     */
+    const submissionsRead = async () =>
+      tenantId
+        ? await readFormSubmissions(tenantId, readAt)
+        : { figure: refused(REASON.perMinistryOnly), series: refused(REASON.perMinistryOnly), formsRead: 0 };
+
     (async () => {
-      const [members, contacts, courses, posts, articles, submissions] = await Promise.all([
+      const [members, contacts, courses, posts, articles, forms] = await Promise.all([
         countIn('users'),
         countIn('contacts'),
         tenantId ? exactCount(publishedCoursesQuery(tenantId)) : countIn('courses'),
         countIn('community_posts'),
         countIn('blog_posts'),
-        countIn('submissions'),
+        submissionsRead(),
       ]);
+      const submissions = forms.figure;
+      const submissionSeries = forms.series;
 
       const seventh = tenantId
         ? { label: 'Receipts', figure: await exactCount(invoicesQuery(tenantId)) }
@@ -140,10 +165,7 @@ export function useOverviewData(
             figure: platformWide ? await exactCount(query(collection(db, 'tenants'))) : refused(REASON.noTenant),
           };
 
-      const [memberSeries, submissionSeries] = await Promise.all([
-        seriesIn('users'),
-        seriesIn('submissions'),
-      ]);
+      const memberSeries = await seriesIn('users');
 
       // Receipts: one complete read serves BOTH the trend and the mix, so the
       // ledger is counted once and loaded once.

@@ -92,7 +92,7 @@ export function buildInsights({ memberSeries, givingSeries, contacts, submission
     out.push({
       key: 'submissions',
       headline: `${plural(newForms, 'form submission', 'form submissions')} arrived in the last seven days.`,
-      source: 'submissions, counted by createdAt over a complete read',
+      source: 'tenants/{id}/forms/{id}/submissions, counted by submittedAt over a complete read',
       direction: 'up',
     });
   }

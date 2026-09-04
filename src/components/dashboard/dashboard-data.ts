@@ -121,6 +121,20 @@ export const REASON = {
   /** A receipt on the ledger has no readable amount, so no total is honest. */
   unreadableReceipts: (bad: number, total: number) =>
     `${bad.toLocaleString()} of ${total.toLocaleString()} receipts carry no readable amount or type, so no giving total here would be complete.`,
+  /**
+   * THE-309 — form responses live under the ministry that owns the form, so
+   * there is no apex-level set to read. Same shape as the giving widgets'
+   * refusal on the apex and for the same reason: summing every church's
+   * responses is a number this product does not define.
+   */
+  perMinistryOnly: 'Form responses are recorded per ministry, so there is no platform-wide total.',
+  /**
+   * THE-309 — the responses are counted one form at a time, so every form has
+   * to be enumerated first. Above the ceiling that enumeration is itself a
+   * truncated sample, and a total summed over a sample of the forms is short by
+   * exactly the forms it never opened. Refused rather than shortened.
+   */
+  tooManyForms: `More than ${DASHBOARD_FETCH_LIMIT.toLocaleString()} forms exist, so every one's responses cannot be counted from here.`,
 } as const;
 
 const unavailable = (reason: string) => ({ kind: 'unavailable', reason }) as const;
@@ -154,15 +168,55 @@ export async function completeRead<T>(
   q: Query,
   bounded: Query,
   map: (data: Record<string, unknown>, id: string) => T,
-): Promise<{ kind: 'complete'; rows: T[] } | { kind: 'unavailable'; reason: string }> {
+): Promise<CompleteRows<T>> {
+  return (await countedRead(q, bounded, map)).rows;
+}
+
+/** Every matching document, or the reason there are none to be had. */
+export type CompleteRows<T> =
+  | { readonly kind: 'complete'; readonly rows: T[] }
+  | { readonly kind: 'unavailable'; readonly reason: string };
+
+/**
+ * The count AND the documents, from ONE traversal.
+ *
+ * 🔴 {@link completeRead} already computes both and then throws the count away,
+ * which is fine when a caller wants only a series. THE-309 wants both from the
+ * same read and this is the whole reason why: the "Form submissions" card shows
+ * a figure and a `% vs last week` chip, and if the chip came from a SECOND read
+ * the two could disagree — the card would report a total taken at one instant
+ * and a trend taken at another, over a collection a public form is writing to
+ * while the dashboard loads. One aggregation and one page per form, feeding
+ * both, makes that disagreement unspellable rather than unlikely.
+ *
+ * The two halves keep their SEPARATE guarantees, exactly as KpiCard already
+ * assumes: `count` is EXACT whenever the aggregation answered, even when the
+ * collection is too large for its documents to be held, so a card can show a
+ * trustworthy figure beside a refused trend. That is not a fallback — the
+ * aggregation is unclamped and correct at any size; it is the documents that
+ * have a ceiling.
+ */
+export interface CountedRead<T> {
+  readonly count: Figure;
+  readonly rows: CompleteRows<T>;
+}
+
+export async function countedRead<T>(
+  q: Query,
+  bounded: Query,
+  map: (data: Record<string, unknown>, id: string) => T,
+): Promise<CountedRead<T>> {
   const count = await exactCount(q);
-  if (count.kind !== 'exact') return unavailable(count.reason);
-  if (count.value > DASHBOARD_FETCH_LIMIT) return unavailable(REASON.tooManyToChart);
+  if (count.kind !== 'exact') return { count, rows: unavailable(count.reason) };
+  if (count.value > DASHBOARD_FETCH_LIMIT) return { count, rows: unavailable(REASON.tooManyToChart) };
   try {
     const snap = await getDocs(bounded);
-    return { kind: 'complete', rows: snap.docs.map((d) => map(d.data() as Record<string, unknown>, d.id)) };
+    return {
+      count,
+      rows: { kind: 'complete', rows: snap.docs.map((d) => map(d.data() as Record<string, unknown>, d.id)) },
+    };
   } catch {
-    return unavailable(REASON.readFailed);
+    return { count, rows: unavailable(REASON.readFailed) };
   }
 }
 
@@ -282,6 +336,48 @@ export const boundedInvoicesQuery = (tenantId: string) =>
   query(collection(db, 'tenants', tenantId, 'invoices'), limit(DASHBOARD_FETCH_LIMIT));
 
 /**
+ * THE-309 — the tenant's custom forms.
+ *
+ * A subcollection under the tenant, so like the invoice ledger it needs no
+ * `where` at all: the path IS the scope. No ordering, so no index.
+ */
+export const formsQuery = (tenantId: string) =>
+  query(collection(db, 'tenants', tenantId, 'forms'));
+
+export const boundedFormsQuery = (tenantId: string) =>
+  query(collection(db, 'tenants', tenantId, 'forms'), limit(DASHBOARD_FETCH_LIMIT));
+
+/**
+ * THE-309 — ONE form's responses.
+ *
+ * ─── Why this is a path and not a `collectionGroup('submissions')` ───────────
+ *
+ * 🔴 A collection-group query would read every form's responses in one go and
+ * would be the obvious answer. It is not available here. `firestore.rules`
+ * contains no `match /{path=**}/...` rule anywhere, and a collection-group read
+ * is evaluated against those recursive matches ALONE — the
+ * `tenants/{tenantId}/forms/{formId}/submissions` rule that grants the read
+ * below does not apply to it. So the query is denied outright rather than
+ * merely unindexed, and no index would fix it. THE-285 established exactly this
+ * for `attendees`; the same rules file, the same absence, the same answer.
+ *
+ * ⚠️ Nor could it be granted from here. `firestore.rules` auto-deploys to
+ * production on merge and CI runs no emulator tests against it, so a recursive
+ * match added for a KPI would reach real tenants unverified.
+ *
+ * ⚠️ `firestore.indexes.json` DOES carry a `submissions` entry, and it is not
+ * this one: its `queryScope` is `COLLECTION`, which serves the legacy top-level
+ * inbox (see {@link readFormSubmissions}). There is no COLLECTION_GROUP index
+ * for `submissions`, and adding one would be inert — `deploy-rules.yml` deploys
+ * `firestore:rules,storage` only.
+ */
+export const formSubmissionsQuery = (tenantId: string, formId: string) =>
+  query(collection(db, 'tenants', tenantId, 'forms', formId, 'submissions'));
+
+export const boundedFormSubmissionsQuery = (tenantId: string, formId: string) =>
+  query(collection(db, 'tenants', tenantId, 'forms', formId, 'submissions'), limit(DASHBOARD_FETCH_LIMIT));
+
+/**
  * Published courses.
  *
  * Two equalities, which the (tenantId, status, createdAt) composite index in
@@ -324,6 +420,30 @@ export interface InvoiceRow {
 const asDate = (v: unknown): DateLike => (v ?? null) as DateLike;
 
 export const toDatedRow = (data: Record<string, unknown>): DatedRow => ({ createdAt: asDate(data.createdAt) });
+
+/**
+ * THE-309 — a form response, dated by the field the write path actually writes.
+ *
+ * 🔴 `submittedAt`, NOT `createdAt`. `/api/forms/submit` writes
+ * `submittedAt: FieldValue.serverTimestamp()` and THE-298 pinned it as the ONLY
+ * writer of this collection, so `createdAt` is a field these documents do not
+ * carry. Mapping it would hand every row a `null` date, and `bucketWeekly`
+ * would then file all of them under `undatedRows` — a COMPLETE read whose trend
+ * is eight empty buckets, and a `+0%` chip drawn over a form that is being
+ * filled in. That is the same defect as reading the wrong collection, one field
+ * down, and it would look identical on screen.
+ *
+ * ⚠️ There is deliberately no `?? data.createdAt` fallback. A fallback to a
+ * field nothing writes cannot rescue a row; it can only hide the day the write
+ * path changes its mind, which is precisely when this wants to fail loudly.
+ *
+ * ⚠️ It is single-typed — a server Timestamp on every row, never an ISO string
+ * — which `form-answers.ts` records for the same collection and the same
+ * reason. `bucketWeekly` reads it through `toSafeDate` regardless.
+ */
+export const toSubmissionRow = (data: Record<string, unknown>): DatedRow => ({
+  createdAt: asDate(data.submittedAt),
+});
 
 /**
  * ⚠️ TIGHTENED BY THE-290: `Number.isFinite`, not `typeof === 'number'`.
@@ -373,6 +493,155 @@ export function readableReceipts(
   const bad = rows.filter((r) => r.amountCents === null || r.type === null).length;
   if (bad > 0) return unavailable(REASON.unreadableReceipts(bad, rows.length));
   return { kind: 'complete', rows: rows as ReadableReceipt[] };
+}
+
+/* ── Form submissions ─────────────────────────────────────────────────────── */
+
+/** The figure and the trend for the "Form submissions" card, plus what it cost. */
+export interface FormSubmissionsRead {
+  readonly figure: Figure;
+  readonly series: Series;
+  /** How many forms were opened to produce them. Reported, never rendered. */
+  readonly formsRead: number;
+}
+
+/**
+ * THE-309 — the responses a ministry has actually received.
+ *
+ * ─── The defect ──────────────────────────────────────────────────────────────
+ *
+ * 🔴 This card used to read a TOP-LEVEL `submissions` collection filtered by
+ * `tenantId`, and nothing has written a document there for a long time. The
+ * form endpoint writes to `tenants/{tenantId}/forms/{formId}/submissions`, a
+ * SUBCOLLECTION per form — `/api/forms/submit` says so in its own docblock and
+ * THE-298 pinned it as the only writer. So the count was a correct aggregation
+ * over the wrong path: exact, unclamped, honestly computed, and always zero.
+ * A founder filed a response and the dashboard told them they had none.
+ *
+ * ⚠️ The top-level collection is NOT dead and is not being redirected away
+ * from. `firestore.rules` still carries a `match /submissions/{subId}` rule
+ * calling it the "legacy top-level form-submission inbox", `AdminInbox` still
+ * lists, triages and deletes it, and the tenant-delete route still sweeps it.
+ * Nothing in this repository CREATES a document there any more, which is why
+ * the KPI reads zero, but the rows that exist are real history and AdminInbox
+ * is untouched by this ticket. This card simply stops being the thing that
+ * reports on them: it names itself "Form submissions" and the live form
+ * pipeline is the subcollection.
+ *
+ * ─── How the count is taken, and what it is worth ────────────────────────────
+ *
+ * 🔴 The figure is EXACT, not merely complete. Every form's responses are
+ * counted by their own `getCountFromServer()` aggregation and those exact
+ * counts are SUMMED; a sum of exact counts over a set of forms that is itself
+ * completely enumerated is exact. It loads no documents to reach the number and
+ * is not clamped by the fetch ceiling, so a form with 40,000 responses counts
+ * for 40,000.
+ *
+ * 🔴 IF ANY PART REFUSES, THE WHOLE FIGURE REFUSES. A sum missing one form's
+ * aggregation is not a smaller true number, it is a wrong one, and it would
+ * render as a confident total — the #421 rule, in the one place a partial
+ * result is most tempting. The same holds one level up: the forms themselves
+ * must be enumerated COMPLETELY before any of this means anything, because a
+ * truncated list of forms yields a total short by whatever it never opened.
+ *
+ * The trend comes from the SAME traversal, never a second one — see
+ * {@link countedRead}. It keeps the weaker guarantee the ceiling imposes: if
+ * one form holds more responses than may be loaded at once, the figure is still
+ * exact and the trend is refused, and KpiCard shows the count with the reason
+ * underneath it.
+ *
+ * ─── What this costs ─────────────────────────────────────────────────────────
+ *
+ * ⚠️ One aggregation for the forms, one page of form documents, then one
+ * aggregation AND one page per form: `2 + 2F` round trips for `F` forms,
+ * billed as roughly `1 + F` (the forms) + `F` (the aggregations) + `S` (the
+ * responses themselves) reads. A church with 20 forms and 150 responses pays
+ * about 191. The `S` half is not new — the old code already loaded every
+ * matching document to draw the trend — so the increase this ticket introduces
+ * is the `1 + 2F` the per-form fan-out costs, and it buys a number that was
+ * previously always zero. The aggregations run concurrently.
+ *
+ * ⚠️ A DENORMALISED `submissionCount` ON THE FORM DOCUMENT WOULD BE ONE READ
+ * PER FORM AND IS NOT USED. It already exists — `/api/forms/submit` increments
+ * it and AdminForms renders it — and it cannot carry a KPI, for two independent
+ * reasons this ticket did not introduce and does not fix:
+ *
+ *   • It drifts SHORT. The response `add()` and the `increment()` are two
+ *     sequential awaits with no transaction, so a failure between them leaves a
+ *     response that no counter counts. THE-288 found exactly this on
+ *     `attendeeCount` and its warning is the reason this was checked.
+ *   • It drifts LONG. `member-erasure` deletes response documents out of these
+ *     subcollections and never decrements the counter, so an erasure leaves the
+ *     figure permanently above the truth.
+ *
+ * A drifting counter is neither exact nor provably complete, so #421 forbids it
+ * on screen. Making it trustworthy means a transaction in
+ * `/api/forms/submit` — the write path, which is out of scope here — and it is
+ * reported rather than built.
+ */
+export async function readFormSubmissions(
+  tenantId: string,
+  now: number,
+  weeks: number = TREND_WEEKS,
+): Promise<FormSubmissionsRead> {
+  const refuse = (reason: string): FormSubmissionsRead => ({
+    figure: unavailable(reason),
+    series: unavailable(reason),
+    formsRead: 0,
+  });
+
+  // The forms, completely or not at all — see the header. `id` is all that is
+  // wanted; a form's title and fields are AdminForms' business, not this card's.
+  const forms = await countedRead(formsQuery(tenantId), boundedFormsQuery(tenantId), (_data, id) => id);
+  if (forms.count.kind !== 'exact') return refuse(forms.count.reason);
+  if (forms.rows.kind !== 'complete') {
+    // The aggregation answered, so the refusal is the ceiling rather than the
+    // read: say which, because "too many forms" and "the read failed" send a
+    // founder to different places.
+    return refuse(forms.count.value > DASHBOARD_FETCH_LIMIT ? REASON.tooManyForms : forms.rows.reason);
+  }
+
+  // 🔴 No forms is an EXACT zero, not a refusal, and the distinction is the
+  // whole point of this card: a ministry that has built no form has received no
+  // response, and the aggregation above proves it. This is the one zero on this
+  // card that is allowed, because it was read rather than defaulted to.
+  if (forms.rows.rows.length === 0) {
+    return {
+      figure: { kind: 'exact', value: 0 },
+      series: { kind: 'complete', points: weekBuckets(now, weeks).map((b) => ({ label: b.label, value: 0 })) },
+      formsRead: 0,
+    };
+  }
+
+  const reads = await Promise.all(
+    forms.rows.rows.map((formId) =>
+      countedRead(
+        formSubmissionsQuery(tenantId, formId),
+        boundedFormSubmissionsQuery(tenantId, formId),
+        toSubmissionRow,
+      ),
+    ),
+  );
+
+  const refused = reads.find((r) => r.count.kind !== 'exact');
+  if (refused && refused.count.kind === 'unavailable') return refuse(refused.count.reason);
+
+  const value = reads.reduce((sum, r) => sum + (r.count.kind === 'exact' ? r.count.value : 0), 0);
+  const figure: Figure = { kind: 'exact', value };
+
+  // The trend, from the documents that same traversal already fetched. Gated
+  // separately: one oversized form costs the shape, never the number.
+  const partial = reads.find((r) => r.rows.kind !== 'complete');
+  if (partial && partial.rows.kind === 'unavailable') {
+    return { figure, series: unavailable(partial.rows.reason), formsRead: forms.rows.rows.length };
+  }
+
+  const rows = reads.flatMap((r) => (r.rows.kind === 'complete' ? r.rows.rows : []));
+  return {
+    figure,
+    series: { kind: 'complete', points: bucketWeekly(rows, now, (r) => r.createdAt, undefined, weeks).points },
+    formsRead: forms.rows.rows.length,
+  };
 }
 
 /* ── Live now ─────────────────────────────────────────────────────────────── */

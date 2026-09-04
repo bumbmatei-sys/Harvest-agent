@@ -7,6 +7,7 @@ import path from 'node:path';
 
 import { AUTOSAVE_ERROR_TOAST_ID, AUTOSAVE_SAVED_TOAST_ID, AUTOSAVE_EXCLUDED } from '../settings/autosave';
 import UNTOUCHED from './__fixtures__/the-286-untouched.json';
+import { freezeFailure } from './__fixtures__/settings-freeze-register';
 
 /**
  * ═════════════════════════════════════════════════════════════════════════════
@@ -209,11 +210,17 @@ describe('1 · each converted section renders through the shared chrome without 
       .not.toContain('pb-safe');
   });
 
-  it('the accordion row it inherits from is itself untouched', async () => {
-    const { createHash } = await import('node:crypto');
+  /**
+   * ⚠️ THE-312 gave this pin an APPEND PATH. The baseline is still
+   * `UNTOUCHED.chrome`, untouched and unreplaced; a deliberate edit to the
+   * chrome is recorded in `RECORDED_EDITS` with its ticket, its reason and its
+   * digest, and `freezeFailure` accepts that value and nothing else. An edit
+   * nobody recorded fails exactly as it did before.
+   */
+  it('the accordion row it inherits from is itself untouched', () => {
     for (const [rel, digest] of Object.entries(UNTOUCHED.chrome)) {
-      const now = createHash('sha256').update(readFileSync(path.join(ROOT, rel))).digest('hex');
-      expect(now, `${rel} changed — the chrome shipped in THE-183 and this slice reuses it`).toBe(digest);
+      expect(freezeFailure(rel, digest),
+        `${rel} changed — the chrome shipped in THE-183 and this slice reuses it`).toBeNull();
     }
   });
 
@@ -811,11 +818,20 @@ describe('14 · AdminSettings.regroup.test.tsx\'s structural assertions still ho
     expect(rowOf('integrations')).toBe('IntegrationsSection');
   });
 
-  it('🔴 AdminSettings.tsx itself is untouched — the rows and their gates did not move', async () => {
-    const { createHash } = await import('node:crypto');
-    expect(createHash('sha256').update(readFileSync(path.join(ROOT, 'src/components/AdminSettings.tsx'))).digest('hex'),
-      'AdminSettings.tsx changed — this slice converts sections, not the screen')
-      .toBe('fa75caa9825fd36b1d12ae3472405e005469abe282bd2e26b1177ae6bd7885d9');
+  /**
+   * ⚠️ THE-312 gave this pin an APPEND PATH. The literal below is still the
+   * baseline recorded from origin/main at 133d557 and is NOT replaced when a
+   * later ticket edits the screen — that ticket appends its own digest, ticket
+   * and reason to `RECORDED_EDITS`. An unrecorded edit still fails.
+   */
+  it('🔴 AdminSettings.tsx itself is untouched — the rows and their gates did not move', () => {
+    expect(
+      freezeFailure(
+        'src/components/AdminSettings.tsx',
+        'fa75caa9825fd36b1d12ae3472405e005469abe282bd2e26b1177ae6bd7885d9',
+      ),
+      'AdminSettings.tsx changed — this slice converts sections, not the screen',
+    ).toBeNull();
   });
 
   it('every Composio endpoint IntegrationsSection owns is still called from it', () => {
@@ -847,11 +863,18 @@ describe('15 · layout.tsx, firestore.rules and functions/ are byte-identical', 
       'layout.tsx changed — the brief forbids opening it').toBe('bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5');
   });
 
-  it('and the protected delete flow is unchanged', async () => {
-    const { createHash } = await import('node:crypto');
+  /**
+   * ⚠️ THE-312 gave this pin an APPEND PATH, and note what it does NOT touch:
+   * the account-deletion flow is asserted BEHAVIOURALLY elsewhere — the
+   * `deleteState` machine, all eight outcome messages, the silent-failure fix,
+   * the re-auth path and `DELETE_CONFIRM_COPY` deep-equal to the live
+   * `MEMBER_DATA_MAP` derivation. Those assertions are what protect the flow;
+   * this digest only records that it did not move unannounced.
+   */
+  it('and the protected delete flow is unchanged', () => {
     for (const [rel, digest] of Object.entries(UNTOUCHED.protectedFlows)) {
-      expect(createHash('sha256').update(readFileSync(path.join(ROOT, rel))).digest('hex'),
-        `${rel} changed — the member erasure flow is out of bounds`).toBe(digest);
+      expect(freezeFailure(rel, digest),
+        `${rel} changed — the member erasure flow is out of bounds`).toBeNull();
     }
   });
 });
