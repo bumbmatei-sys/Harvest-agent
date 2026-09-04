@@ -49,6 +49,38 @@ import {
 export const HARVEST_APEX = 'theharvest.app';
 
 /**
+ * 🔴 THE PUBLIC GIVING PAGE'S PATH — THE-303.
+ *
+ * ─── What this used to be, and why it was a bug ─────────────────────────────
+ *
+ * It was `/?giving=1`: the APP ROOT carrying a query parameter, read by
+ * `MainApp` to jump a SIGNED-IN member to the Give tab. So the one URL this
+ * module exists to hand a stranger — printed on a flyer, pasted into a WhatsApp
+ * group, opened from a QR on a noticeboard — landed on the SPA shell, which has
+ * no session for a visitor and bounces them to the auth page. The founder:
+ * "I shared the giving page but its not public. It's bringing me to the auth
+ * page." A printed QR that demands a login is not a share surface.
+ *
+ * `/giving` is a REAL route (`src/app/giving/page.tsx`), resolved server-side
+ * from the Host header exactly as `/pledge/[campaignId]`, `/campaign/
+ * [campaignId]`, `/event/[eventId]`, `/checkin/[sessionId]` and `/form/[formId]`
+ * already are — every other destination `AdminQR` prints. It reads the tenant
+ * document through the Admin SDK, so no client Firestore call, no session and no
+ * `firestore.rules` change is involved.
+ *
+ * ⚠️ `?giving=1` IS NOT REMOVED and nothing here touches it. It is still the
+ * in-app deep link a signed-in member follows to the Give tab, and `MainApp`
+ * still honours it — a member already inside the app should stay inside it.
+ * What changed is only where a link meant for someone OUTSIDE the app points.
+ *
+ * 🔴 SPELLED ONCE, so the four producers cannot drift: this module, `AdminQR`'s
+ * "Giving Page" QR, `/api/sms/incoming`'s Text-to-Give reply, and the route
+ * itself. Three of them used to inline `/?giving=1` separately, which is how one
+ * of them would have been fixed and the others left pointing at the auth wall.
+ */
+export const GIVING_PATH = '/giving';
+
+/**
  * A DNS label: what a tenant id has to be to sit in front of the apex.
  *
  * No dots — a tenant id carrying one would reach a host the church does not
@@ -60,8 +92,14 @@ const DNS_LABEL = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
  * 🔴 The giving page's URL, or null.
  *
  * The SAME shape `AdminQR` already generates for its "Giving Page" QR type
- * (`https://<tenant>.theharvest.app/?giving=1`), so a church that prints the QR
+ * (`https://<tenant>.theharvest.app/giving`), so a church that prints the QR
  * from one screen and shares the link from the other sends people to one page.
+ *
+ * 🔴 THE SIX RULES BELOW ARE UNCHANGED BY THE-303. Only `GIVING_PATH` moved;
+ * every check is still asked of the PARSED url — https, no credentials, no
+ * port, and a single-label subdomain of `theharvest.app` — because this is a
+ * share surface where a wrong host is a member's money. A public destination
+ * is not a reason to accept a wider one.
  *
  * Returns the URL `URL` parsed, never the template that was typed.
  */
@@ -72,7 +110,7 @@ export function buildGivingPageUrl(tenantId: unknown): string | null {
 
   let parsed: URL;
   try {
-    parsed = new URL(`https://${label}.${HARVEST_APEX}/?giving=1`);
+    parsed = new URL(`https://${label}.${HARVEST_APEX}${GIVING_PATH}`);
   } catch {
     return null;
   }

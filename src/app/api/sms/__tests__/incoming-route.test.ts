@@ -84,7 +84,9 @@ describe('POST /api/sms/incoming — the reply is metered, not TwiML', () => {
     const [cfg, to, body, meter] = mockSendSms.mock.calls[0];
     expect(cfg).toMatchObject({ accountSid: 'AC1', fromNumber: TENANT_NUMBER });
     expect(to).toBe(TEXTER);
-    expect(body).toBe('Give here: https://t1.theharvest.app/?giving=1');
+    // THE-303 — the PUBLIC giving route. The reply used to carry `/?giving=1`,
+    // which is the SPA root and bounces a signed-out texter to auth.
+    expect(body).toBe('Give here: https://t1.theharvest.app/giving');
     // Tenant resolved SERVER-SIDE from the To-number index, not from the texter.
     // The tenant has its own credentials, so the reply is a BYO send: billed by
     // Twilio to the church, and not against Harvest's allotment.

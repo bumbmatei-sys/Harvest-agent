@@ -6,6 +6,7 @@ import { QrCode, Download, Loader2, CalendarCheck, ClipboardList, Heart, Link2 }
 import { db } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
+import { GIVING_PATH } from './donations/giving-share';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 
@@ -90,7 +91,11 @@ const AdminQR: React.FC = () => {
     switch (qrType) {
       case 'event': return `${base}/event/${selectedId}`;
       case 'checkin': return `${base}/checkin/${selectedId}`;
-      case 'giving': return `${base}/?giving=1`;
+      // THE-303 — the PUBLIC giving route, not the app root. This QR is printed
+      // and pinned to a noticeboard; `/?giving=1` was the SPA, which bounced
+      // anyone without a session to the auth page. `GIVING_PATH` is spelled in
+      // giving-share.ts so this QR and the shared link cannot drift apart.
+      case 'giving': return `${base}${GIVING_PATH}`;
       case 'form': return `${base}/form/${selectedId}`;
       case 'custom': return customUrl.trim();
     }

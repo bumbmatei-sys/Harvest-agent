@@ -163,6 +163,7 @@ const RESOLVED_PATH: Record<string, string> = {
   '/courses/[id]': '/courses/Mn2Vb7Kd4Sx9Lp0R',
   '/event/[eventId]': '/event/Qw8eR3tY6uI9oP2a',
   '/form/[formId]': '/form/aB3xQ7nJ5kL2mZ8w',
+  '/giving': '/giving',
   '/pledge/[campaignId]': '/pledge/Hj6Nb2Vc9Xz4Kq7M',
   '/post/[postId]': '/post/Tg5Yh8Uj3Ik6Ol1P',
 };
@@ -176,6 +177,7 @@ const PAGE_FILE: Record<string, string> = {
   '/courses/[id]': 'src/app/courses/[id]/page.tsx',
   '/event/[eventId]': 'src/app/event/[eventId]/page.tsx',
   '/form/[formId]': 'src/app/form/[formId]/page.tsx',
+  '/giving': 'src/app/giving/page.tsx',
   '/pledge/[campaignId]': 'src/app/pledge/[campaignId]/page.tsx',
   '/post/[postId]': 'src/app/post/[postId]/page.tsx',
 };
@@ -316,6 +318,7 @@ describe('1 — every route in the stated list emits a pageview', () => {
       '/courses/[id]',
       '/event/[eventId]',
       '/form/[formId]',
+      '/giving',
       '/pledge/[campaignId]',
       '/post/[postId]',
     ]);

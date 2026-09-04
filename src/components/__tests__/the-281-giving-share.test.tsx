@@ -16,6 +16,7 @@ import {
 } from '../donations/giving-providers';
 import {
   HARVEST_APEX,
+  GIVING_PATH,
   GIVING_SHARE_STRIPE_SOON,
   buildGivingPageUrl,
   buildGivingSharePayload,
@@ -182,7 +183,7 @@ describe('2 — 🔴 sharing emits only allow-listed URLs', () => {
     const payload = buildGivingSharePayload(TENANT, hostile, 'Grace Chapel');
     const urls = givingShareUrls(payload);
     // The giving page survives; not one hostile URL does.
-    expect(urls).toEqual([`https://${TENANT}.${HARVEST_APEX}/?giving=1`]);
+    expect(urls).toEqual([`https://${TENANT}.${HARVEST_APEX}${GIVING_PATH}`]);
     for (const bad of ['pаypal', 'givenow.example', 'collect.example', 'javascript:', 'http://']) {
       expect(payload.text, `${bad} reached the share text`).not.toContain(bad);
     }
@@ -196,7 +197,7 @@ describe('2 — 🔴 sharing emits only allow-listed URLs', () => {
       expect(buildGivingPageUrl(bad), `${JSON.stringify(bad)} produced a URL`).toBeNull();
     }
     // And the one that should work, does — so the check above is not vacuous.
-    expect(buildGivingPageUrl('grace')).toBe(`https://grace.${HARVEST_APEX}/?giving=1`);
+    expect(buildGivingPageUrl('grace')).toBe(`https://grace.${HARVEST_APEX}${GIVING_PATH}`);
   });
 
   it('🔴 there is no seam that takes a pre-built link — the raw config is the only way in', () => {

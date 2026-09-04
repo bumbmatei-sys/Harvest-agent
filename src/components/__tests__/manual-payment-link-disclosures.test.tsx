@@ -589,8 +589,35 @@ describe('no statement, receipt, CRM write or Stripe path changed', () => {
     // else moved in it — no statement, receipt, CRM write or Stripe path is a
     // class name. The digest still asserts byte-for-byte identity; only the
     // bytes it names moved, and the diff beside this commit is where from.
+    /*
+     * ⚠️ RE-RECORDED BY THE-303, and here is the whole of what moved.
+     *
+     * THE-249 pinned this file to prove its ticket was copy and placement only.
+     * THE-303 DELIBERATELY edits it, because the founder asked accounting for
+     * the one thing it had never said: "I added an activity from a user in CRM
+     * that donated cash … but in accounting it shows 0 dollars given."
+     *
+     * ONE ADDITION, and nothing else in the file moved: a collapsible note
+     * between the summary cards and the QuickBooks section, saying that these
+     * totals are built from Stripe receipts alone and that a CRM Donation
+     * activity is a separate record.
+     *
+     * 🔴 IT IS COPY, AND ONLY COPY. It reads nothing, writes nothing and gates
+     * nothing:
+     *
+     *   • no collection was added — `the-303-admin-explainers.test.tsx` asserts
+     *     the screen still opens `invoices` and `givingStatements` and NO CRM
+     *     collection, by watching the paths it actually subscribes to.
+     *   • no total changed — the same suite feeds two invoices in cents and
+     *     asserts the screen reads $75, and that `/ 100` still appears exactly
+     *     twice, on two different fields.
+     *   • `totalDonated`, `lastDonationAt` and `contactActivities` appear
+     *     nowhere in this file, asserted by name. Summing CRM activities into
+     *     the church's books would double-count every gift recorded both ways,
+     *     which is why the answer is a sentence and not a sum.
+     */
     'src/components/AdminAccounting.tsx':
-      '048698cec7b740ca56b64a7ab8097cc3db61ee381dc5ca18c970615f84815300',
+      '24164421aa931030041d9d7d7f1bb4e87f03382f26acce7e7fbfac298beb2f50',
   };
 
   it.each(Object.keys(UNCHANGED))('%s is byte-for-byte unchanged', (file) => {

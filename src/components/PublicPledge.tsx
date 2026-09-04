@@ -1,6 +1,8 @@
 "use client";
 import React, { useState } from 'react';
 import { CheckCircle2, CalendarClock } from 'lucide-react';
+import GivingLinks from './donations/GivingLinks';
+import type { PublishedGivingLink } from './donations/giving-providers';
 
 interface PublicPledgeProps {
   tenantId: string;
@@ -8,6 +10,23 @@ interface PublicPledgeProps {
   logo: string | null;
   primaryColor: string;
   campaign: any;
+  /**
+   * THE-303 — the church's OWN payment links, already validated and in the
+   * provider table's order by `readGivingLinks` on the route.
+   *
+   * The founder: "When creating a fundraising, I cannot choose to display the
+   * links from wise, paypal, etc. And these don't appear on the fundraising
+   * page." A pledge page asks a member to PROMISE an amount and then leaves
+   * them with no way to actually send it — the promise is recorded, the gift
+   * has nowhere to go. `/campaign/[campaignId]` has carried these since
+   * THE-251; this page was the one fundraising surface that did not.
+   *
+   * 🔴 RESOLVED ON THE ROUTE, NEVER HERE. Same boundary, same reasoning and
+   * same shape as `PublicCampaign`: validation happens once, server-side, and
+   * a renderer that re-derived links would be a second chance to skip the
+   * allow-list.
+   */
+  links?: readonly PublishedGivingLink[];
 }
 
 const fmt = (n: number) =>
@@ -31,7 +50,7 @@ const Shell: React.FC<{ logo: string | null; tenantName: string; primaryColor: s
   </div>
 );
 
-const PublicPledge: React.FC<PublicPledgeProps> = ({ tenantId, tenantName, logo, primaryColor, campaign }) => {
+const PublicPledge: React.FC<PublicPledgeProps> = ({ tenantId, tenantName, logo, primaryColor, campaign, links = [] }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -85,6 +104,17 @@ const PublicPledge: React.FC<PublicPledgeProps> = ({ tenantId, tenantName, logo,
           <CheckCircle2 size={48} className="mx-auto mb-4" style={{ color: primaryColor }} />
           <h1 className="font-display text-xl font-bold text-strong mb-2">Thank you, {name}!</h1>
           <p className="text-sm text-muted">Your pledge of {fmt(Number(amount))} has been recorded. We&apos;ll be in touch.</p>
+          {/*
+            🔴 THE MOMENT THE PROMISE IS MADE IS THE MOMENT IT CAN BE KEPT. A
+            person who has just pledged is the likeliest person in the app to
+            send the money now; sending them back to hunt for a Give page is
+            how a pledge becomes an intention. `GivingLinks` returns null on an
+            empty list, so a church with none renders exactly what it rendered
+            before.
+          */}
+          <div className="text-left">
+            <GivingLinks links={links} heading="Ways to give now" />
+          </div>
         </div>
       </Shell>
     );
@@ -147,6 +177,22 @@ const PublicPledge: React.FC<PublicPledgeProps> = ({ tenantId, tenantName, logo,
           style={{ backgroundColor: primaryColor }}>
           {submitting ? 'Submitting…' : 'Make My Pledge'}
         </button>
+
+        {/*
+          THE-303 — the church's own payment links, beneath the pledge form.
+
+          🔴 THE SAME COMPONENT AND THE SAME TABLE AS THE GIVE PAGE AND THE
+          CAMPAIGN PAGE. Row, monogram, `rel` tokens and the member's half of
+          the "not processed by Harvest" disclosure all live in `GivingLinks`;
+          a second renderer here would drift from the other three the first
+          time any of them changed.
+
+          ⚠️ NO EMPTY BLOCK, and no Stripe control. `GivingLinks` returns null
+          on an empty list, so a church that publishes none renders exactly what
+          it rendered before — and a pledge is a promise, not a payment, so
+          there was never a card form on this page to hide.
+        */}
+        <GivingLinks links={links} heading="Ways to give" />
       </div>
     </Shell>
   );

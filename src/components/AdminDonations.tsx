@@ -1,6 +1,6 @@
 "use client";
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Info, Loader2 } from 'lucide-react';
+import { AlertTriangle, ChevronDown, Info, Loader2 } from 'lucide-react';
 import { db } from '../firebase';
 import { notifyError } from '../utils/notify';
 import { getTenantId } from './settings/useTenantId';
@@ -23,6 +23,7 @@ import {
   GIVING_PROVIDER_NAMES_OR,
 } from './donations/giving-providers';
 import { CONTROL_DENSITY, FIELD_WIDTH, FORM_MEASURE, READING_MEASURE } from './layout/form-layout';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 
 /**
  * THE-246 — Donations. The one admin screen about money coming IN.
@@ -354,7 +355,51 @@ const AdminDonations: React.FC = () => {
           🔴 THE TWO THINGS A CHURCH MUST BE TOLD BEFORE IT PASTES A LINK.
           Above the fields, not under them: a warning a person reads after they
           have finished is a warning that did not work.
+
+          ─── THE-303 — FOLDED, NOT SHORTENED ──────────────────────────────────
+
+          The founder: "Put the whole text in donations as collapsible. Is too
+          long." Four paragraphs stood between the heading and the first field,
+          and an admin who has read them once reads them on every visit.
+
+          🔴 NOT ONE WORD IS CUT, SOFTENED OR MOVED. Every sentence here is
+          load-bearing — that Harvest does not process these gifts, that they
+          reach no giving statement, that the CRM stays at $0 with the remedy
+          spelled out, and that everything typed below is published including
+          the emails. A church that discovers any of those in January, from a
+          member asking where their receipt is, has been failed by this screen.
+          So the copy is IDENTICAL and only its default visibility changed.
+
+          ⚠️ `keepMounted` IS DELIBERATE. The panel stays in the document and
+          carries `hidden` when closed, so the text is one control away rather
+          than one fetch away, `Ctrl+F` still finds it, and — the reason it is
+          not merely a nicety — the disclosure suite asserts these exact
+          sentences by mounting this screen. A fold that removed them from the
+          DOM would turn "the words are still here" into a claim no test could
+          make.
+
+          The trigger clears 44px below `sm` and takes Rule 4's control height
+          above it, like every other control on this screen.
         */}
+        <Collapsible>
+          <CollapsibleTrigger
+            data-testid="donations-disclosure-toggle"
+            className={`group w-full flex items-center justify-between gap-3 px-5 py-3 border-b border-line text-left min-h-[44px] sm:min-h-0 ${CONTROL_DENSITY.control}`}
+          >
+            {/* 🔴 WHAT STAYS VISIBLE WHEN IT IS SHUT. One line, and it is the
+                sentence the other four exist to support: Harvest is not in this
+                flow. An admin who never opens the fold has still been told the
+                thing that changes what they do next. */}
+            <span className="text-sm font-semibold text-strong">
+              Harvest does not process these gifts — what that means
+            </span>
+            <ChevronDown
+              size={16}
+              className="text-faint shrink-0 transition-transform group-data-[panel-open]:rotate-180"
+              aria-hidden="true"
+            />
+          </CollapsibleTrigger>
+          <CollapsibleContent keepMounted data-testid="donations-disclosure">
         <div className={`px-5 py-4 border-b border-line ${READING_MEASURE} lg:mx-0`}>
           <div className="flex items-start gap-2.5">
             <AlertTriangle size={16} className="text-gold shrink-0 mt-0.5" aria-hidden="true" />
@@ -397,6 +442,8 @@ const AdminDonations: React.FC = () => {
             </p>
           </div>
         </div>
+          </CollapsibleContent>
+        </Collapsible>
 
         {loadState === 'loading' ? (
           <div className="px-5 py-8 flex items-center gap-2 text-sm text-muted">

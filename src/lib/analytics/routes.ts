@@ -176,6 +176,11 @@ const ROUTE_TABLE = [
   { pattern: '/courses/[id]', entry: 'next-page', surface: 'public', public: true },
   { pattern: '/event/[eventId]', entry: 'next-page', surface: 'public', public: true },
   { pattern: '/form/[formId]', entry: 'next-page', surface: 'public', public: true },
+  // THE-303 — the church's own giving page, public by construction. The URL
+  // `buildGivingPageUrl` emits, the "Giving Page" QR AdminQR prints and the
+  // Text-to-Give reply all land here; before it existed they landed on the SPA
+  // root, which bounced a signed-out visitor to auth.
+  { pattern: '/giving', entry: 'next-page', surface: 'public', public: true },
   { pattern: '/pledge/[campaignId]', entry: 'next-page', surface: 'public', public: true },
   { pattern: '/post/[postId]', entry: 'next-page', surface: 'public', public: true },
 ] as const satisfies readonly AnalyticsRoute[];
