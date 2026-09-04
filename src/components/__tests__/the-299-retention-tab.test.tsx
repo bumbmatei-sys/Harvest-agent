@@ -288,14 +288,20 @@ function healthyTenant(activityRows: Array<Record<string, unknown>> = activityTr
   counts.set('courses', 2);
   counts.set('community_posts', 7);
   counts.set('blog_posts', 4);
-  counts.set('submissions', 1);
+  // THE-309 — a real form response, written where /api/forms/submit writes it:
+  // the `tenants/{id}/forms/{formId}/submissions` SUBCOLLECTION, dated by
+  // `submittedAt`. It used to be seeded into a top-level `submissions`
+  // collection, which is what let the KPI's zero look like a healthy read.
+  counts.set('tenants/grace/forms', 1);
+  counts.set('tenants/grace/forms/form-volunteer/submissions', 1);
   counts.set('prayer_requests', 0);
   counts.set('tenants/grace/invoices', 1);
 
   docsFor.set('users', MEMBERS);
   docsFor.set('contacts', CONTACTS);
   docsFor.set('contactActivities', activityRows);
-  docsFor.set('submissions', [{ createdAt: monthsAgo(0).toISOString() }]);
+  docsFor.set('tenants/grace/forms', [{ __id: 'form-volunteer', title: 'Volunteer Sign-Up' }]);
+  docsFor.set('tenants/grace/forms/form-volunteer/submissions', [{ submittedAt: monthsAgo(0).toISOString() }]);
   docsFor.set('tenants/grace/invoices', [
     { amount: 25000, type: 'donation_receipt', issuedAt: monthsAgo(1).toISOString() },
   ]);
