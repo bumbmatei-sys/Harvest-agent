@@ -5,7 +5,7 @@
 // question that needs a layout engine — "did a pixel move" — lives in
 // `THE-311.course-palette.layout.test.tsx`, in real Chromium.
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import postcss from 'postcss';
@@ -579,62 +579,76 @@ describe('11 — a tenant with a custom brand colour gets it in GOLD_BTN', () =>
    12-13 · Hygiene and the out-of-scope files
    ═════════════════════════════════════════════════════════════════════════ */
 
-describe('12 — no emoji anywhere in what THE-311 touched', () => {
+describe('12 — no emoji in the course source', () => {
   /**
-   * ⚠️ SCOPED TO WHAT RENDERS, and the scope was WRONG the first time.
+   * 🔴 SCOPED TO THE SOURCE THIS TICKET IS ABOUT: `course.constants.ts` and
+   * `src/components/course/**`, with `__tests__` excluded. Not "every changed
+   * file".
    *
-   * A first draft scanned every changed file and banned the whole emoji range
-   * outright. It went red on CI naming this file's own `it('🔴 …')` test
-   * titles — and it was RIGHT to fail, because the rule as written did cover
-   * them. The rule was the mistake, not the finding:
+   * ⚠️ THE FIRST VERSION SWEPT EVERY CHANGED FILE AND WENT RED ON CI NAMING
+   * ITSELF — this file's own `it('🔴 …')` titles and the layout suite's
+   * docblock. That was a real failure of the RULE, not a flake: 🔴 / ⚠️ / ✅ /
+   * 🔵 are this repo's severity marks (THE-282's status suite ships 35 of them
+   * and spells `it('🔴 a course with no progress does NOT show Paused', …)` on
+   * `main` today), they came from the ticket text, and they mean nothing at
+   * runtime. The ban is on emoji in what RENDERS — the ticket pairs it with
+   * "lucide-react is already imported", and THE-305 (#445) replaced nine emoji
+   * with lucide icons for exactly that reason. A vitest title renders in a
+   * terminal, not to a member.
    *
-   *  • 🔴 / ⚠️ / ✅ / 🔵 are this repo's SEVERITY MARKS, not decoration.
-   *    `THE-282.course-status.test.tsx` ships `it('🔴 a course with no progress
-   *    does NOT show Paused', …)` on `main` today, and there are 35 of them in
-   *    that one file. Stripping them out of THE-311's tests would make this
-   *    branch the only one in the repo written in a different dialect.
-   *  • The ticket pairs "No emoji" with "lucide-react is already imported",
-   *    i.e. it is about ICONS IN THE PRODUCT — THE-305 (#445) replaced nine
-   *    emoji with lucide icons for exactly that reason. A vitest title renders
-   *    in a terminal, not to a member.
+   * 🔴 THE BANNED SET IS NOT NARROWED. The full pictograph range still fails
+   * anywhere in course source. Two things changed and neither is a weakening:
+   * the SCOPE (product source, not test files) and the fact that comments are
+   * stripped first — the repo's own idiom for this shape, see
+   * `the-303-giving-cluster.test.tsx:55`, `THE-298.form-answers.test.tsx:150`
+   * and `ds-primitives.test.tsx:426`, all of which strip block and line
+   * comments before asserting over source. Deleting the markers instead was
+   * rejected on the ticket's own grounds: the next agent reads the same ticket
+   * and writes them again.
    *
-   * So: PRODUCT files get the full ban, over code with comments stripped.
-   * TEST files get a narrower but still real one — the four severity marks and
-   * nothing else, so a 🎉 in a test title still fails here.
+   * ⚠️ The Dingbats block (U+2600-27BF) is deliberately NOT in the range. A
+   * draft included it and flagged `✓` and `✕` in `QuizPanel.tsx` — not emoji,
+   * they are the repo's existing check and cross marks, and PRE-EXISTING:
+   * THE-311 changed one class in that file and added no glyph. That would have
+   * been this guard inventing a finding rather than reporting one.
    */
-  /**
-   * ⚠️ THE RANGE IS THE PICTOGRAPH BLOCKS ONLY, deliberately not the Dingbats
-   * block (U+2600-27BF). A first attempt included it and flagged `✓` and `✕`
-   * in `QuizPanel.tsx` — which are (a) not emoji, they are the repo's existing
-   * check and cross marks, and (b) PRE-EXISTING: THE-311 changed one class in
-   * that file and added no glyph. Banning them here would have been this guard
-   * inventing a finding rather than reporting one.
-   *
-   * U+FE0F (the variation selector that makes `⚠` render as `⚠️`) is STRIPPED
-   * rather than matched — matched, it splits every `⚠️` into two "glyphs" and
-   * the allowlist can never contain the orphan half.
-   */
-  const SEVERITY = ['🔴', '⚠', '✅', '🔵'];
-  const EMOJI = /[\u{1F300}-\u{1FAFF}\u{1F000}-\u{1F2FF}]/gu;
-  /** Comments are prose in both scans: nothing in a comment renders anywhere. */
-  const code = (f: string) => src(f)
-    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '').replace(/\uFE0F/g, '');
-  const TOUCHED = CHANGED.filter((f) => /\.(ts|tsx|css)$/.test(f));
-  const isTest = (f: string) => f.includes('__tests__');
+  const SWEPT = [
+    CONSTANTS,
+    ...readdirSync(path.join(ROOT, 'src/components/course'), { withFileTypes: true })
+      .filter((e) => e.isFile() && /\.(ts|tsx)$/.test(e.name))
+      .map((e) => `src/components/course/${e.name}`),
+  ].sort();
 
-  it('there is something to scan — an empty file list would prove nothing', () => {
-    expect(TOUCHED.length, 'no changed source file was found').toBeGreaterThan(5);
-    expect(TOUCHED.some((f) => !isTest(f)), 'no PRODUCT file was found to scan').toBe(true);
+  /** U+FE0F (the selector that makes `⚠` render as `⚠️`) is stripped, not
+   *  matched: matched, it splits every `⚠️` into two and no allowlist can hold
+   *  the orphan half. */
+  const EMOJI = /[\u{1F300}-\u{1FAFF}\u{1F000}-\u{1F2FF}]/gu;
+  const code = (f: string) => src(f)
+    .replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^[ \t]*\/\/[^\n]*$/gm, ' ').replace(/\uFE0F/g, '');
+
+  it('sweeps the whole course source area, and no test file', () => {
+    // 🔴 An empty or shrunken list would make every assertion below vacuous.
+    expect(SWEPT, 'course.constants.ts fell out of the sweep').toContain(CONSTANTS);
+    expect(SWEPT.length, 'the course source area shrank').toBeGreaterThanOrEqual(10);
+    expect(SWEPT.filter((f) => f.includes('__tests__')), 'a test file is being swept').toEqual([]);
+    // Every course source file THIS branch changed is in the swept set, so the
+    // scoping cannot silently miss the diff it exists for.
+    const touched = CHANGED.filter((f) =>
+      (f === CONSTANTS || f.startsWith('src/components/course/')) && !f.includes('__tests__'));
+    expect(touched.filter((f) => !SWEPT.includes(f)), 'a changed course source file is not swept').toEqual([]);
+    expect(touched.length, 'no course source file was changed — the sweep would prove nothing').toBeGreaterThan(0);
   });
 
-  it.each(TOUCHED.filter((f) => !isTest(f)))('%s (product) carries no emoji at all', (file) => {
+  it.each(SWEPT)('%s carries no emoji', (file) => {
     expect(code(file).match(EMOJI) ?? [], `${file} renders an emoji — lucide-react is already imported`)
       .toEqual([]);
   });
 
-  it.each(TOUCHED.filter(isTest))('%s (guard) uses only the repo\'s severity marks', (file) => {
-    const stray = [...new Set(code(file).match(EMOJI) ?? [])].filter((g) => !SEVERITY.includes(g));
-    expect(stray, `${file} uses a glyph that is not one of ${SEVERITY.join(' ')}`).toEqual([]);
+  it('🔴 and a comment is the ONLY place a marker is tolerated', () => {
+    // The stripping is what makes the markers legal, so prove it is doing work
+    // rather than the range being empty: the same glyph fails outside a comment.
+    const withMarker = code(CONSTANTS) + '\nexport const X = "\u{1F534}";';
+    expect(withMarker.match(EMOJI) ?? [], 'the sweep does not fire on a rendered glyph').toHaveLength(1);
   });
 });
 
