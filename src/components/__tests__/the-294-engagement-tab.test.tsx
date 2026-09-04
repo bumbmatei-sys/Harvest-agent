@@ -352,13 +352,19 @@ function healthyOverview() {
   counts.set('courses', COURSES.length);
   counts.set('community_posts', 7);
   counts.set('blog_posts', 4);
-  counts.set('submissions', 1);
+  // THE-309 — a real form response, written where /api/forms/submit writes it:
+  // the `tenants/{id}/forms/{formId}/submissions` SUBCOLLECTION, dated by
+  // `submittedAt`. It used to be seeded into a top-level `submissions`
+  // collection, which is what let the KPI's zero look like a healthy read.
+  counts.set('tenants/grace/forms', 1);
+  counts.set('tenants/grace/forms/form-volunteer/submissions', 1);
   counts.set('tenants/grace/invoices', RECEIPTS.length);
   counts.set('campaigns', 0);
   counts.set('tenants/grace/pledges', 0);
 
   docsFor.set('users', LEARNERS);
-  docsFor.set('submissions', [{ createdAt: stamp(DAY) }]);
+  docsFor.set('tenants/grace/forms', [{ __id: 'form-volunteer', title: 'Volunteer Sign-Up' }]);
+  docsFor.set('tenants/grace/forms/form-volunteer/submissions', [{ submittedAt: stamp(DAY) }]);
   docsFor.set('tenants/grace/invoices', RECEIPTS);
   docsFor.set('campaigns', []);
   docsFor.set('tenants/grace/pledges', []);
