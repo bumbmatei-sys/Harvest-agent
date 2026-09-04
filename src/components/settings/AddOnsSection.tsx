@@ -1,7 +1,8 @@
 'use client';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Loader2, Minus, Plus, AlertCircle, PackagePlus } from 'lucide-react';
+import { Loader2, Minus, Plus, AlertCircle, CheckCircle2, PackagePlus } from 'lucide-react';
 import { useTenantOptional } from '../../contexts/TenantContext';
+import { ACTION_HEIGHT, ICON_BUTTON } from './OnboardingSection';
 import { CONTACTS_PER_PACK, NO_ADDONS } from '../../utils/plan-features';
 import {
   ADDON_MEANINGS,
@@ -16,6 +17,43 @@ import {
   type OfferableAddon,
 } from '../../utils/addon-change';
 
+/**
+ * THE-300 — this section on the shared chrome, and the one piece of chrome it
+ * keeps drawing itself.
+ *
+ * ─── 🔴 WHY THE PANEL CARD STAYS HERE ────────────────────────────────────────
+ *
+ * THE-286's rule is "stop drawing your own card inside a container that already
+ * draws one". On the accordion that is unambiguous: the row draws the card, so
+ * the section must not. On `BillingAndPayments` — the billing mount site — the
+ * page wraps `PlanUpgradeSection` in a card and mounts THIS section bare, so the
+ * card below is the only one this section has and deleting it would leave the
+ * add-on list floating on an unstyled page.
+ *
+ * It cannot simply move up into the mount site either: this component returns
+ * `null` on a Stripe tenant and again when the environment can sell no add-ons,
+ * so a card drawn by the parent would render as an EMPTY card on exactly the
+ * tenants that have nothing to buy. Visibility and chrome have to be owned by
+ * the same component, and that component is this one.
+ *
+ * So the invariant this slice actually enforces on the billing surface is the
+ * one THE-286 was really claiming: A SECTION DRAWS AT MOST ONE CARD, AND NEVER A
+ * SECOND INSIDE ONE THE MOUNT SITE ALREADY DRAWS. `PlanUpgradeSection` takes its
+ * card from the page and draws none; this one draws its own and the page wraps
+ * it in nothing. Neither surface has two.
+ *
+ * ─── What it DID take from the chrome ────────────────────────────────────────
+ *
+ * The touch floor (`ACTION_HEIGHT`, `ICON_BUTTON`), imported from the sections
+ * THE-296 converted rather than re-spelled — the quantity steppers measured
+ * ~26px and the buy button ~32px, and every one of these controls charges a
+ * card. And the numbered palette classes are gone: an add-on's "held" state was
+ * carried by hue alone in a fixed green that Classic was never checked against.
+ *
+ * 🔴 NO AUTOSAVE, and none may be added: buying an add-on is a charge and
+ * removing one is a downgrade. The file is in `AUTOSAVE_EXCLUDED` and a source
+ * sweep enforces it.
+ */
 interface AddOnsSectionProps {
   tenantId?: string;
   /**
@@ -329,8 +367,8 @@ const AddOnsSection: React.FC<AddOnsSectionProps> = ({ tenantId, processor }) =>
       </p>
 
       {error && (
-        <div className="mb-3 p-3 rounded-xl text-sm flex items-center gap-2 bg-amber-50 text-amber-700 border border-amber-100">
-          <AlertCircle size={14} /> {error}
+        <div className="mb-3 p-3 rounded-xl text-sm flex items-center gap-2 bg-danger-tint text-danger-strong border border-danger-tint">
+          <AlertCircle size={14} aria-hidden="true" /> {error}
         </div>
       )}
 
@@ -366,7 +404,12 @@ const AddOnsSection: React.FC<AddOnsSectionProps> = ({ tenantId, processor }) =>
                   <p className="text-sm font-semibold text-strong truncate">{addon.name}</p>
                 </div>
                 {held > 0 && (
-                  <span className="shrink-0 rounded-full border border-green-100 bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+                  /* THE-300 — the held state was carried by a NUMBERED palette
+                     class, i.e. by hue alone and in one fixed hue across all
+                     four palettes. Tokens plus a glyph, exactly as THE-296 did
+                     for IntegrationsSection's connection state. */
+                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full border border-line bg-surface-chip px-2 py-0.5 text-xs font-medium text-body">
+                    <CheckCircle2 size={11} aria-hidden="true" className="shrink-0 text-gold" />
                     {isToggle
                       ? 'Active'
                       : addon.addon === 'contactPack' && planFeatures
@@ -397,7 +440,9 @@ const AddOnsSection: React.FC<AddOnsSectionProps> = ({ tenantId, processor }) =>
               ) : isToggle ? (
                 <button
                   onClick={() => change(addon, held > 0 ? 0 : 1)}
-                  className={`mt-3 w-full px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
+                  /* THE-300 — the touch floor. `px-3 py-2` at `text-xs` is a
+                     ~32px target on a phone, and this button BUYS something. */
+                  className={`mt-3 w-full px-3 rounded-xl text-xs font-semibold transition-colors ${ACTION_HEIGHT} ${
                     held > 0
                       ? 'border border-line text-body hover:bg-surface-sunken'
                       : 'bg-gold text-white'
@@ -416,7 +461,12 @@ const AddOnsSection: React.FC<AddOnsSectionProps> = ({ tenantId, processor }) =>
                       onClick={() => setQuantity(addon.addon, target - 1)}
                       disabled={target === 0}
                       aria-label={`Remove one ${addon.name}`}
-                      className="p-1.5 rounded-lg border border-line text-body disabled:opacity-30 hover:bg-surface-sunken transition-colors"
+                      /* THE-300 — `p-1.5` around a 14px glyph measured ~26px,
+                         the smallest target on the billing surface and one that
+                         sets a quantity a church is then charged for.
+                         `ICON_BUTTON` is the 44px square OnboardingSection
+                         already publishes; it releases to Rule 4 above `sm`. */
+                      className={`${ICON_BUTTON} border border-line text-body disabled:opacity-30 hover:bg-surface-sunken transition-colors`}
                     >
                       <Minus size={14} />
                     </button>
@@ -424,7 +474,7 @@ const AddOnsSection: React.FC<AddOnsSectionProps> = ({ tenantId, processor }) =>
                     <button
                       onClick={() => setQuantity(addon.addon, target + 1)}
                       aria-label={`Add one ${addon.name}`}
-                      className="p-1.5 rounded-lg bg-gold text-white transition-colors"
+                      className={`${ICON_BUTTON} bg-gold text-white transition-colors`}
                     >
                       <Plus size={14} />
                     </button>
@@ -435,7 +485,7 @@ const AddOnsSection: React.FC<AddOnsSectionProps> = ({ tenantId, processor }) =>
                       <button
                         onClick={() => change(addon, target)}
                         disabled={current?.status !== 'ready'}
-                        className="mt-2 w-full px-3 py-2 rounded-xl text-xs font-semibold bg-gold text-white disabled:opacity-40 transition-colors"
+                        className={`mt-2 w-full px-3 rounded-xl text-xs font-semibold bg-gold text-white disabled:opacity-40 transition-colors ${ACTION_HEIGHT}`}
                       >
                         {commitCopy({
                           delta,
@@ -454,7 +504,7 @@ const AddOnsSection: React.FC<AddOnsSectionProps> = ({ tenantId, processor }) =>
                           {current.message}{' '}
                           <button
                             onClick={() => void requestPreview(addon.addon, target)}
-                            className="underline font-semibold"
+                            className={`underline font-semibold inline-flex items-center ${ACTION_HEIGHT}`}
                           >
                             Try again
                           </button>

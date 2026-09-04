@@ -9,6 +9,7 @@ import {
   type DiscountedTerm,
 } from '../../utils/plan-features';
 
+
 /** The label each term wears. Written once; both plan surfaces render these. */
 const TERM_LABELS: Readonly<Record<BillingTerm, string>> = Object.freeze({
   monthly: 'Monthly',
@@ -77,7 +78,31 @@ export function BillingTermToggle({
               /* `min-w-0` is load-bearing: a grid item's default `min-width:auto`
                  refuses to shrink below its content, which is exactly how a third
                  segment pushes a track wider than its container. */
-              className={`min-w-0 px-2 py-2 rounded-xl text-[12px] font-semibold leading-tight transition-all ${
+              /* THE-300 — ⚠️ NO TOUCH FLOOR IS SPELLED HERE, AND THAT IS A
+                 MEASURED RESULT, NOT AN OVERSIGHT.
+
+                 A draft of this ticket added `min-h-[44px]` to this segment on
+                 the reasoning that Monthly carries no discount badge and is
+                 therefore the shortest of the three. Measured in Chromium at
+                 380px, that is simply not true: the track is `grid-cols-3` and
+                 a grid item's default `align-items: stretch` already sizes all
+                 three to the tallest row content, so every segment renders
+                 44.75px WITH the floor and 44.75px WITHOUT it. The floor was a
+                 no-op, and the mutation that removed it changed nothing —
+                 which is how it was caught.
+
+                 So it is gone rather than kept as decoration. The property is
+                 real and is asserted where it can actually be observed: the
+                 layout suite measures all three segments at 380px. A class that
+                 changes no pixel is a claim a reader will trust and a later
+                 ticket will preserve for no reason.
+
+                 ⚠️ `transition-colors`, not `transition-all`, IS a real change:
+                 only the fill and the ink move on selection, and a transition
+                 over `all` animates height and width too — which is what makes
+                 an immediate post-resize measurement a lie (THE-295 read
+                 1018px against a real 224px on exactly that). */
+              className={`min-w-0 px-2 py-2 rounded-xl text-[12px] font-semibold leading-tight transition-colors ${
                 selected ? 'bg-surface-raised text-strong shadow-xs' : 'text-muted hover:text-body'
               }`}
             >
@@ -86,7 +111,23 @@ export function BillingTermToggle({
                 <span
                   data-testid="billing-term-badge"
                   data-term={term}
-                  className={`block text-[11px] font-bold ${selected ? 'text-green-600' : 'text-green-600/80'}`}
+                  /* THE-300 — this badge and the claim line below it used a
+                     NUMBERED Tailwind palette class: one fixed hue across all
+                     four palettes, and Classic (the default since #409) is the
+                     one it was never checked against. `text-gold` is the tenant
+                     accent the rest of this control already speaks, and it is
+                     what THE-296 reached for when it took the same numbered
+                     class out of IntegrationsSection. */
+                  /* ⚠️ The dimming is `opacity-80`, NOT an opacity modifier on
+                     the colour itself. `--brand-color` is a plain custom
+                     property rather than rgb channels, so a Tailwind slash
+                     suffix on a variable-backed token produces an invalid
+                     colour — `theming-gaps.test.ts` bans it everywhere for
+                     exactly that reason, and it reads RAW source, so this note
+                     must not spell the form it forbids either. Element opacity
+                     dims the same span by the same amount and is not a colour
+                     utility at all. */
+                  className={`block text-[11px] font-bold text-gold ${selected ? '' : 'opacity-80'}`}
                 >
                   {`−${ADVERTISED_DISCOUNT_PCT[term]}%`}
                 </span>
@@ -100,7 +141,7 @@ export function BillingTermToggle({
           whether it may be stated flat or has to say "up to" — from the prices,
           so the sentence cannot outlive them. Monthly claims nothing. */}
       {isDiscounted(value) && (
-        <p data-testid="billing-term-claim" className="text-center text-[12px] text-green-600 font-medium">
+        <p data-testid="billing-term-claim" className="text-center text-[12px] text-gold font-medium">
           {`${discountClaim(value)} against paying monthly.`}
         </p>
       )}

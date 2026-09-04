@@ -872,6 +872,43 @@ describe('15 · the other 12 sections are byte-identical', () => {
         'control here is an explicit action, and the section is in AUTOSAVE_EXCLUDED. All ten ' +
         'Composio endpoints, both Primary writes and the send-only Gmail copy are unchanged.',
     },
+    {
+      file: 'src/components/settings/AddOnsSection.tsx',
+      ticket: 'THE-300',
+      why:
+        'Converted onto the same chrome as part of the BILLING mount site slice. It keeps its '
+        + 'own panel card — deliberately, and this is the one place the accordion rule does not '
+        + 'transfer: BillingAndPayments mounts this section BARE and the section returns null on '
+        + 'a Stripe tenant and again when the environment can sell no add-ons, so a card drawn by '
+        + 'the parent would render empty on exactly the tenants with nothing to buy. What changed '
+        + 'is the chrome it was spelling wrong: the held-state badge and the error banner used '
+        + 'NUMBERED palette classes (one fixed hue across all four palettes, Classic never checked), '
+        + 'and every money control was under the touch floor — the quantity steppers measured ~26px '
+        + 'and the buy/commit buttons ~32px, on controls that place a real charge. They now take '
+        + "ICON_BUTTON and ACTION_HEIGHT, imported from OnboardingSection rather than re-spelled. "
+        + 'NO autosave was added and none may be: this file is in AUTOSAVE_EXCLUDED. The Dodo '
+        + 'endpoints, the preview/commit flow and the entitlement lift are untouched.',
+    },
+    {
+      file: 'src/components/settings/BillingTermToggle.tsx',
+      ticket: 'THE-300',
+      why:
+        'Same slice, and it changes what a church PAYS. TWO changes, both real. The discount '
+        + 'badge and the claim line carried a NUMBERED palette class, so the saving was signalled '
+        + 'by one fixed hue in every palette and Classic was never checked against it; both now '
+        + 'take the tenant accent the rest of the control already speaks, dimmed by element '
+        + 'opacity rather than a slash suffix, which is invalid on a variable-backed token. And '
+        + 'the segment transition narrowed from `all` to `colors`: only the fill and the ink move '
+        + 'on selection, while a transition over `all` animates height and width too, which is '
+        + 'what makes an immediate post-resize measurement a lie (THE-295 read 1018px against a '
+        + 'real 224px). ⚠️ NO TOUCH FLOOR WAS ADDED, and a draft of this ticket wrongly added '
+        + 'one: measured in Chromium at 380px the segments are 44.75px with a floor and 44.75px '
+        + 'without, because the grid-cols-3 track already stretches all three to the tallest. The '
+        + 'floor moved no pixel and was removed; the height is asserted by measurement instead. '
+        + 'No term, no price, no percentage and no element moved: the toggle sits inside '
+        + "PlanUpgradeSection's tree, whose element count is pinned at a delta of exactly 6 by "
+        + 'the marketing-card baseline.',
+    },
   ];
 
   it('the digest exemption list is exactly the edits that justify it', async () => {
@@ -880,6 +917,8 @@ describe('15 · the other 12 sections are byte-identical', () => {
     expect(EDITED_SINCE_MEASUREMENT.map((e) => `${e.ticket} ${e.file}`)).toEqual([
       'THE-296 src/components/settings/OnboardingSection.tsx',
       'THE-296 src/components/settings/IntegrationsSection.tsx',
+      'THE-300 src/components/settings/AddOnsSection.tsx',
+      'THE-300 src/components/settings/BillingTermToggle.tsx',
     ]);
     for (const { file, why } of EDITED_SINCE_MEASUREMENT) {
       expect(UNTOUCHED.otherSettingsSections, `${file} is exempted but was never recorded`)
