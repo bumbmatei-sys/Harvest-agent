@@ -115,6 +115,16 @@ vi.mock('firebase/firestore', () => ({
     const docs = lookup(q);
     return { docs, forEach: (f: never) => docs.forEach(f), size: docs.length };
   },
+  // THE-298 — AdminForms' submissions read pages to completeness by
+  // `documentId()` after taking an exact `getCountFromServer` count, instead of
+  // the `orderBy('submittedAt') + limit(1000)` it had. This module factory
+  // replaces firebase/firestore WHOLE, so the three names that read adds have to
+  // exist here or the screen dies on an undefined import rather than rendering.
+  // They answer from the same `SNAP` table as `getDocs`, so every surface this
+  // file pins renders exactly the data it did before.
+  getCountFromServer: async (q: unknown) => ({ data: () => ({ count: lookup(q).length }) }),
+  documentId: () => '__name__',
+  startAfter: (...a: unknown[]) => a,
   getDoc: async () => ({ exists: () => true, data: () => ({}) }),
   addDoc: async (r: { __path?: string }) => { writes.push(`add:${r?.__path}`); return { id: 'x' }; },
   updateDoc: async (r: { __path?: string }) => { writes.push(`update:${r?.__path}`); },
@@ -472,8 +482,33 @@ describe('the sub-640px rendering of each file is unchanged', () => {
     'mx-auto': 'auto side margins on a block whose width is auto resolve to 0 — it centred nothing until a cap gave it something to centre, and the cap is now sm:-gated with it',
   };
 
-  /** This PR adds no unprefixed token at all: every rule it spells is sm:-gated. */
-  const ALLOWED_ADDITIONS: Record<string, string> = {};
+  /**
+   * This PR adds no unprefixed token at all: every rule it spells is sm:-gated.
+   *
+   * ⚠️ AMENDED BY THE-298, and RECORDED here rather than re-recorded.
+   *
+   * The founder's answers button ("see straight from that form all answers")
+   * goes on the form card in both its mobile and desktop forms, and it reuses
+   * the EXACT class string of the sibling buttons already in each action row —
+   * so the only token either surface gains is the lucide icon's own name.
+   *
+   * 🔴 That token carries no size, no colour, no spacing and no layout: lucide
+   * emits `class="lucide lucide-<icon>"` on its `<svg>` as an identifier, and
+   * `lucide` itself was already on this layer. Tailwind defines no rule for it,
+   * so it cannot move a phone, which is what this assertion is protecting.
+   * `ministry-AdminForms.json` is NOT regenerated — the baseline still describes
+   * the pre-PR rendering and the one addition is named here instead.
+   *
+   * The list is still CLOSED: a second addition, or any token that is a real
+   * utility, still fails.
+   */
+  const ALLOWED_ADDITIONS: Record<string, string> = {
+    'lucide-chart-column':
+      "THE-298 — the answers button's icon identifier. lucide names every icon " +
+      'in its own class; Tailwind defines no rule for it, so it sets nothing on ' +
+      'a phone. The button itself reuses the action row\'s existing class string ' +
+      'verbatim, so no utility token was added with it.',
+  };
 
   const toTokens = (layer: string[]) =>
     [...new Set(layer.flatMap((l) => (l.split('\t')[2] ?? '').split(' ').filter(Boolean)))];
