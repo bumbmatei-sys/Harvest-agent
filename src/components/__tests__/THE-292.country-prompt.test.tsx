@@ -543,14 +543,37 @@ describe('the account-deletion flow and DELETE_CONFIRM_COPY are unchanged', () =
 
 describe('AdminDashboard.tsx, firestore.rules and functions/ byte-identical', () => {
   /**
-   * ⚠️ AdminDashboard.tsx is owned by THE-291 in parallel. This digest is the
-   * merge base's, which is what this branch carries; if THE-291 lands first and
-   * this branch takes main, THIS ASSERTION IS THE SIGNAL to re-check that the
-   * change came from that ticket and not from here, and to re-pin.
+   * ⚠️ A SET of accepted digests, not one — and this file is why the repo needs
+   * that shape.
+   *
+   * `AdminDashboard.tsx` was owned by THE-291 in parallel with this ticket, and
+   * THE-291 landed first (#434). CI runs against `refs/pull/N/merge`, so the
+   * tree under test is this branch merged into whatever `main` is at the time:
+   * a single digest here asserted "nobody has touched this file since I
+   * branched", which is a claim about OTHER people's tickets and not one this
+   * suite has any business making. It went red on THE-291's legitimate change,
+   * exactly as the first draft's comment predicted it would.
+   *
+   * 🔴 What this ticket must prove is narrower and is unchanged: THE-292 did
+   * not edit this file. A digest that is NEITHER accepted value still fails —
+   * so an edit from here is caught precisely as before, while an edit from a
+   * ticket that legitimately owns the file is not miscounted as one.
+   *
+   * The same shape, for the same reason, as `the-290-giving-guards.test.ts`.
    */
+  const ADMIN_DASHBOARD_DIGESTS = [
+    // main at 902763a, where this branch started.
+    '722c5e4478be0a8508e7dff1232dd4c1f88cacdd502604f946f3134eb730d98c',
+    // main at 133d557 — THE-291 (#434) removed the client-side write to plan.
+    '446f0bcb8ffa6accf4f80467b75a50023c1441937605b11e18aa01b53d8e53f8',
+  ];
+
   it('🔴 AdminDashboard.tsx — not opened by this ticket', () => {
-    expect(sha('src/components/AdminDashboard.tsx'))
-      .toBe('722c5e4478be0a8508e7dff1232dd4c1f88cacdd502604f946f3134eb730d98c');
+    const actual = sha('src/components/AdminDashboard.tsx');
+    expect(
+      ADMIN_DASHBOARD_DIGESTS,
+      `AdminDashboard.tsx is at ${actual}, which is neither the branch point nor THE-291's value — so THIS ticket edited it`,
+    ).toContain(actual);
   });
 
   it('🔴 firestore.rules', () => {
