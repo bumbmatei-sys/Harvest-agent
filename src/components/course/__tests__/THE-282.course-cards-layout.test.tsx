@@ -110,7 +110,14 @@ function navClass(): string {
     .replace(/\$\{isSidebarCollapsed \? '[^']*' : '([^']*)'\}/g, '$1')
     .replace(/\$\{[^}]*\}/g, 'max-lg:translate-y-0');
   // 🔴 The four properties every assertion here depends on.
-  for (const required of ['fixed', 'bottom-0', 'z-[100]', 'pb-safe']) {
+  //
+  // The fourth used to be spelled `pb-safe`. THE-295 established that class
+  // emitted NO CSS against this repo's real config — it is not a utility
+  // defined in tailwind.config.ts or globals.css — so the nav reserved no
+  // safe-area inset at all, and a sentinel spelled `pb-safe` was pinning an
+  // inert string. It is now the arbitrary form that actually compiles, so this
+  // sentinel fails if the nav loses the inset rather than passing on a no-op.
+  for (const required of ['fixed', 'bottom-0', 'z-[100]', 'env(safe-area-inset-bottom)']) {
     expect(cls, `the member bottom nav no longer carries ${required}`).toContain(required);
   }
   return cls;

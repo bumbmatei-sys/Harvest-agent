@@ -787,6 +787,14 @@ describe('9 — all 22 other primitives are byte-identical', () => {
    */
   const MOVED_SINCE: Readonly<Record<string, string>> = {
     'tabs.tsx': '096e3d4b2a99b1eff95d16959f97daaa1747fdb7de6226d6c54b9693e22b3410',
+    // ⚠️ THE-295. Both shipped at the shadcn default `z-50` for scrim AND
+    // panel, under the mobile bottom nav's `z-[100]` — so any dialog or sheet
+    // mounted on a phone would have painted BELOW the navigation bar. THE-286
+    // found it and reported rather than fixed it; THE-295 raised each scrim to
+    // `z-[101]` and each panel to `z-[102]`, #427's existing layering. Four
+    // class names in two files; no element, slot, variant, prop or API moved.
+    'dialog.tsx': 'bfd230cea544d2de7650182341e082de92141174da80f6193843e8d71b622e41',
+    'sheet.tsx': '68d13d9826a9b5b28e3d78a0ba632b347ca91b67a3333a38acb6310ade8846d4',
   };
 
   it('🔴 every one of the 21 hashes to what main recorded, bar the one THE-276-FIX fixed', () => {
@@ -822,7 +830,13 @@ describe('9 — all 22 other primitives are byte-identical', () => {
     // ⚠️ Two movers now, not one: sonner.tsx (this ticket) and tabs.tsx
     // (THE-276-FIX, see MOVED_SINCE above). Both are named, so the claim is
     // still a DELTA — a third entry moving is still a failure.
-    expect(moved, 'the primitive ledger moved for something other than sonner.tsx and tabs.tsx').toEqual([
+    // ⚠️ Four movers now, not two: sonner.tsx (this ticket), tabs.tsx
+    // (THE-276-FIX) and dialog.tsx + sheet.tsx (THE-295), all named in
+    // MOVED_SINCE above with their reason. Still a DELTA — a fifth entry
+    // moving is still a failure.
+    expect(moved, 'the primitive ledger moved for something other than the four named movers').toEqual([
+      'src/components/ui/dialog.tsx',
+      'src/components/ui/sheet.tsx',
       'src/components/ui/sonner.tsx',
       'src/components/ui/tabs.tsx',
     ]);

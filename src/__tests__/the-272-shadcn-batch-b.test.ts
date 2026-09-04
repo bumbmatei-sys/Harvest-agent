@@ -298,6 +298,19 @@ describe("each new primitive's token classes resolve", () => {
     expect(counts['table.tsx']).toBe(26);
   });
 
+/**
+ * ⚠️ `dialog.tsx` and `sheet.tsx` each read ONE class MORE since THE-295, and
+ * why. Both spelled `z-50` TWICE — once on the scrim, once on the panel — so
+ * the extractor read one distinct class where it now reads two, `z-[101]` and
+ * `z-[102]`. The count moved by exactly +1 in each file because a duplicate
+ * became two names, NOT because the extractor's reading of anything changed,
+ * which is the claim these counts are pinned for. See MOVED_SINCE below.
+ */
+const COUNT_MOVED_SINCE: Readonly<Record<string, number>> = {
+  'dialog.tsx': 54,
+  'sheet.tsx': 62,
+};
+
   it('the comparison-operand fix moved no pre-existing count', () => {
     // The extractor changed in this PR. The claim is that it is a strict no-op
     // for every file that predates it — none of the seventeen compares a
@@ -308,7 +321,7 @@ describe("each new primitive's token classes resolve", () => {
     const preExisting = Object.fromEntries(
       Object.keys(PRE_EXISTING_COUNTS).map((f) => [f, counts[f]]),
     );
-    expect(preExisting).toEqual(PRE_EXISTING_COUNTS);
+    expect(preExisting).toEqual({ ...PRE_EXISTING_COUNTS, ...COUNT_MOVED_SINCE });
   });
 
   it('and `dot`, `line`, `dashed`, `top` are no longer read as classes at all', () => {
@@ -374,7 +387,28 @@ it('the unresolved fixture is still empty', () => {
  * still compared against the digest this PR recorded, and a second file moving
  * still fails.
  */
+/**
+ * ⚠️ `dialog.tsx` and `sheet.tsx` MOVED SINCE, and why — THE-295.
+ *
+ * Both shipped at the shadcn default `z-50`, for scrim AND panel. The app's
+ * mobile bottom nav is `fixed bottom-0 … z-[100]`, so any dialog or sheet
+ * mounted on a phone would have rendered UNDER the navigation bar. THE-286
+ * found this and reported it rather than fixing it, because raising a pinned
+ * primitive from a settings slice would have widened that diff into the app
+ * shell; THE-295 is that follow-up.
+ *
+ * Each file's scrim is now `z-[101]` and its panel `z-[102]` — #427's existing
+ * layering, matching AdminDashboard's own More Sheet. FOUR class names, in two
+ * files. No element, slot, variant, prop or API changed.
+ *
+ * Named here rather than the assertion being loosened — the same treatment
+ * THE-273's sonner.tsx and THE-276-FIX's tabs.tsx got, and for the same
+ * reason: every other entry is still compared against the digest this PR
+ * recorded, and a further file moving still fails.
+ */
 const MOVED_SINCE: Record<string, string> = {
+  'dialog.tsx': 'bfd230cea544d2de7650182341e082de92141174da80f6193843e8d71b622e41',
+  'sheet.tsx': '68d13d9826a9b5b28e3d78a0ba632b347ca91b67a3333a38acb6310ade8846d4',
   'sonner.tsx': '2ebc0c9ba968858cead2fbf2523dfd9da217715339967025e8c8df94f2131ab9',
   'tabs.tsx': '096e3d4b2a99b1eff95d16959f97daaa1747fdb7de6226d6c54b9693e22b3410',
 };

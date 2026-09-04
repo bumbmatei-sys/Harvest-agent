@@ -356,18 +356,32 @@ describe('12 · dialogs open above z-100', () => {
   });
 
   it('⚠️ …and it does NOT depend on THE-295 raising the primitives, because it mounts none', () => {
-    // 🔴 The installed `dialog`/`sheet` primitives still ship at shadcn's z-50,
-    // UNDER the nav's z-[100]. THE-295 may raise them; this slice must not
-    // depend on that landing first, so the editor is hand-rolled at z-[200] —
-    // the layer THE-286's settings dialog already uses — and mounts no primitive.
+    // 🔴 THIS SLICE'S INDEPENDENCE IS THE CLAIM, and it is unchanged. The editor
+    // is hand-rolled at z-[200] — the layer THE-286's settings dialog already
+    // uses — and mounts no primitive, so it never inherited the primitives'
+    // z-index whatever that was. The two assertions below ARE that claim, and
+    // both still hold verbatim.
     const section = src('src/components/settings/OnboardingSection.tsx');
     for (const primitive of ['Dialog', 'Sheet', 'Popover', 'DropdownMenu']) {
-      expect(section, `the section mounts a ${primitive} and would then inherit its z-50`)
+      expect(section, `the section mounts a ${primitive} and would then inherit its z-index`)
         .not.toMatch(new RegExp(`<${primitive}\\b`));
     }
     expect(section, 'the question editor left z-[200]').toContain('z-[200]');
+
+    // ✅ What HAS changed is the state of the world this test used to record.
+    // When THE-296 was written the primitives still shipped at shadcn's z-50,
+    // under the nav's z-[100], and this loop pinned that finding so it could not
+    // be forgotten. THE-295 has since raised them — scrim z-[101], panel
+    // z-[102], #427's layering — so the finding is CLOSED and what is pinned
+    // here is the fix. Asserting `z-50` again would now assert the bug.
+    //
+    // Note this makes the section's independence a belt-and-braces property
+    // rather than a necessity: it would be correct either way.
     for (const rel of ['src/components/ui/dialog.tsx', 'src/components/ui/sheet.tsx']) {
-      expect(src(rel), `${rel} no longer ships at z-50 — re-check this finding`).toContain('z-50');
+      expect(src(rel), `${rel} fell back to the shadcn z-50 default, under the nav`)
+        .not.toContain('z-50');
+      expect(src(rel), `${rel} lost its scrim layer`).toContain('z-[101]');
+      expect(src(rel), `${rel} lost its panel layer`).toContain('z-[102]');
     }
   });
 });

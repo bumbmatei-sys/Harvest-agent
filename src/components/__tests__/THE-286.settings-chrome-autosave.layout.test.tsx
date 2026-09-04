@@ -307,21 +307,24 @@ describe('13 · dialogs open above z-100', () => {
     expect(m.covers, 'the dialog does not span the nav it is supposed to sit over').toBe(true);
   });
 
-  it('⚠️ records that the installed dialog/sheet primitives ship BELOW the nav', () => {
-    // 🔴 REPORTED, NOT CHANGED. `ui/dialog.tsx` and `ui/sheet.tsx` are shadcn
-    // defaults at `z-50`, which is under the nav's `z-[100]` — so a settings
-    // section that reaches for them unguarded gets a dialog with a navigation
-    // bar painted through it. Nothing in this slice mounts one (the converted
-    // section opens no dialog at all, and the screen's own cancel-confirm is
-    // hand-rolled at z-[200]), so this is a finding for whoever converts a
-    // section that does, and NOT a change to a primitive whose digests are
-    // pinned by ds-primitives.test.tsx.
+  it('✅ THE-295 RESOLVED the finding: the primitives now ship ABOVE the nav', () => {
+    // This assertion used to read the other way. THE-286 RECORDED, rather than
+    // fixed, that `ui/dialog.tsx` and `ui/sheet.tsx` shipped at the shadcn
+    // default `z-50` — under the nav's `z-[100]` — because raising a primitive
+    // from a settings slice would have widened that diff into the app shell.
+    // THE-295 was that follow-up and did raise them, so the finding is closed
+    // and what is pinned here is now the FIX.
     //
-    // The established layering is #427's: scrim z-[101] / sheet z-[102],
+    // The layering is #427's, unchanged: scrim z-[101] / panel z-[102],
     // matching AdminDashboard's own More Sheet.
     for (const rel of ['src/components/ui/dialog.tsx', 'src/components/ui/sheet.tsx']) {
-      expect(src(rel), `${rel} no longer ships at z-50 — re-check this finding`).toContain('z-50');
+      const text = src(rel);
+      expect(text, `${rel} fell back to the shadcn z-50 default, under the nav`)
+        .not.toContain('z-50');
+      expect(text, `${rel} lost its scrim layer`).toContain('z-[101]');
+      expect(text, `${rel} lost its panel layer`).toContain('z-[102]');
     }
+    // #427's own surface is untouched by that change and still layers the same.
     const shell = src('src/components/AdminDashboard.tsx');
     expect(shell, "the More Sheet's scrim layer moved").toContain('z-[101]');
     expect(shell, 'the More Sheet layer moved').toContain('z-[102]');

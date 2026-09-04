@@ -393,6 +393,19 @@ describe("each new primitive's token classes resolve", () => {
     }
   });
 
+/**
+ * ⚠️ `dialog.tsx` and `sheet.tsx` each read ONE class MORE since THE-295, and
+ * why. Both spelled `z-50` TWICE — once on the scrim, once on the panel — so
+ * the extractor read one distinct class where it now reads two, `z-[101]` and
+ * `z-[102]`. The count moved by exactly +1 in each file because a duplicate
+ * became two names, NOT because the extractor's reading of anything changed,
+ * which is the claim these counts are pinned for. See MOVED_SINCE below.
+ */
+const COUNT_MOVED_SINCE: Readonly<Record<string, number>> = {
+  'dialog.tsx': 54,
+  'sheet.tsx': 62,
+};
+
   it('the String.raw fix moved no pre-existing count', () => {
     // The extractor changed in this PR. The claim is that it changed the
     // reading of exactly the raw-tagged templates and nothing else — no file
@@ -400,7 +413,8 @@ describe("each new primitive's token classes resolve", () => {
     const counts = Object.fromEntries(
       [...audit.classesByFile].map(([f, c]) => [path.basename(f), c.length]),
     );
-    for (const [file, expected] of Object.entries(PRE_EXISTING_COUNTS)) {
+    const expectedCounts = { ...PRE_EXISTING_COUNTS, ...COUNT_MOVED_SINCE };
+    for (const [file, expected] of Object.entries(expectedCounts)) {
       expect(counts[file], `${file} changed class count under the String.raw fix`).toBe(expected);
     }
   });
@@ -470,7 +484,28 @@ it('the unresolved fixture is still empty, at zero bytes', () => {
  * compared against the digest this PR recorded, and a second file moving still
  * fails.
  */
+/**
+ * ⚠️ `dialog.tsx` and `sheet.tsx` MOVED SINCE, and why — THE-295.
+ *
+ * Both shipped at the shadcn default `z-50`, for scrim AND panel. The app's
+ * mobile bottom nav is `fixed bottom-0 … z-[100]`, so any dialog or sheet
+ * mounted on a phone would have rendered UNDER the navigation bar. THE-286
+ * found this and reported it rather than fixing it, because raising a pinned
+ * primitive from a settings slice would have widened that diff into the app
+ * shell; THE-295 is that follow-up.
+ *
+ * Each file's scrim is now `z-[101]` and its panel `z-[102]` — #427's existing
+ * layering, matching AdminDashboard's own More Sheet. FOUR class names, in two
+ * files. No element, slot, variant, prop or API changed.
+ *
+ * Named here rather than the assertion being loosened — the same treatment
+ * THE-273's sonner.tsx and THE-276-FIX's tabs.tsx got, and for the same
+ * reason: every other entry is still compared against the digest this PR
+ * recorded, and a further file moving still fails.
+ */
 const MOVED_SINCE: Record<string, string> = {
+  'dialog.tsx': 'bfd230cea544d2de7650182341e082de92141174da80f6193843e8d71b622e41',
+  'sheet.tsx': '68d13d9826a9b5b28e3d78a0ba632b347ca91b67a3333a38acb6310ade8846d4',
   'tabs.tsx': '096e3d4b2a99b1eff95d16959f97daaa1747fdb7de6226d6c54b9693e22b3410',
 };
 
@@ -491,9 +526,15 @@ describe('the CLI rewrote nothing it should not have', () => {
     // `command`, label and separator via `field`, button/input/textarea via
     // `input-group`. `--overwrite` defaults to false and the CLI content-
     // compares before it would prompt; this does not take its word for it.
+    // dialog.tsx is compared against the MOVED_SINCE overlay, as the assertion
+    // above is: THE-295 raised its z-index deliberately, long after this
+    // install. The claim here is about the CLI and is unweakened — the file
+    // still has to match a digest named in this repo with a ticket and a
+    // reason, not whatever it happens to hold today.
+    const expected = { ...PRE_EXISTING_DIGESTS, ...MOVED_SINCE };
     for (const f of ['button.tsx', 'dialog.tsx', 'input.tsx', 'label.tsx', 'separator.tsx']) {
       expect(sha256(readFileSync(path.join(UI_DIR, f), 'utf8')), `${f} was rewritten`).toBe(
-        PRE_EXISTING_DIGESTS[f],
+        expected[f],
       );
     }
   });
