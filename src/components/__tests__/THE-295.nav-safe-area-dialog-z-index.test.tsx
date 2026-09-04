@@ -410,12 +410,23 @@ describe('2 · every use of pb-safe is accounted for', () => {
       //   class. THE-281 owns it and its guard asserts the string directly.
       'src/components/AdminDashboard.tsx',
       // ── Guards, fixtures and prose that NAME it: the paper trail, not a use ──
+      // ⚠️ None of these applies the class to anything. They describe it —
+      // several of them describing it as broken, which is the point: THE-286,
+      // THE-294, THE-296 and THE-298 each rediscovered independently that
+      // `pb-safe` compiles to nothing, and each worked around it locally rather
+      // than fixing the shell. THE-296's guard even asserts its own sections do
+      // NOT depend on the class. That is four tickets paying the same tax, and
+      // it is the argument for fixing the nav itself rather than once more per
+      // screen.
       // ⚠️ dashboard/GivingTab and dashboard/PledgeFulfilment only mention it in
       // a comment describing the admin nav they sit under. THE-294 owns those
       // two files and this ticket does not open them.
       'src/components/__tests__/MemberScreens.desktop-layout.test.tsx',
       'src/components/__tests__/THE-279.toolbar-layout.test.tsx',
       'src/components/__tests__/THE-286.settings-chrome-autosave.layout.test.tsx',
+      'src/components/__tests__/THE-296.settings-sections.layout.test.tsx',
+      'src/components/__tests__/THE-296.settings-sections.test.tsx',
+      'src/components/__tests__/THE-298.form-answers-layout.test.tsx',
       'src/components/__tests__/__fixtures__/member-screens-mobile.json',
       'src/components/__tests__/the-281-giving-share.test.tsx',
       'src/components/__tests__/the-290-giving-layout.test.tsx',
