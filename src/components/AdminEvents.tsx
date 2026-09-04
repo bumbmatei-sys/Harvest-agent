@@ -22,6 +22,7 @@ import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { useEvents } from '../hooks/queries/useEventQueries';
 import { HeroBand } from './member/desktopKit';
 import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
+import ServicePlanPanel from './events/ServicePlanPanel';
 
 import type { Event, Registration, TicketType, DiscountCode } from '../hooks/queries/useEventQueries';
 
@@ -678,6 +679,18 @@ const AdminEvents: React.FC = () => {
             <div className="text-xs text-faint mt-0.5">Attended</div>
           </div>
         </div>
+
+        {/* THE-313 — the order of service. Its own component and its own
+            collection (`tenants/{t}/servicePlans`); this screen hands it the
+            event's id and START TIME and reads nothing back. A plan carries no
+            start of its own, so every clock time on the run sheet derives from
+            this one value plus the durations above it. */}
+        <ServicePlanPanel
+          tenantId={tenantId}
+          eventId={selected.id}
+          eventTitle={selected.title}
+          startsAt={selected.startDate ? selected.startDate.toDate() : null}
+        />
 
         {/* Registration panel — only for registration-enabled events */}
         {selected.registrationEnabled && (

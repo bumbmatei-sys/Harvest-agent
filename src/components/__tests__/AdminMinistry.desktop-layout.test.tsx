@@ -145,6 +145,23 @@ vi.mock('../AdminScreenHeader', () => ({
 vi.mock('../member/desktopKit', () => ({ HeroBand: (p: { children?: React.ReactNode }) => <div data-hero-band="">{p.children}</div> }));
 vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries: () => {} }) }));
 vi.mock('../../hooks/queries/useEventQueries', () => ({ useEvents: () => ({ data: EVENTS, isLoading: false }) }));
+/**
+ * THE-313 — the order of service panel mounts on the event DETAIL view (the
+ * `attendees` surface below), so this suite now reaches its data layer. Mocked
+ * at the HOOK boundary, exactly as `useEventQueries` is: an event with no plan
+ * yet, which is the state a fresh event genuinely renders and therefore the
+ * right one to pin. Mocking here rather than widening the `@tanstack/react-query`
+ * mock keeps that mock saying what it has always said.
+ */
+vi.mock('../../hooks/queries/useServicePlanQueries', () => ({
+  useServicePlan: () => ({ data: null, isLoading: false, error: null }),
+  useServicePlanTemplates: () => ({ data: [] }),
+  useServicePeople: () => ({ data: [] }),
+  useInvalidateServicePlans: () => async () => {},
+  createServicePlan: async () => 'p1',
+  saveServicePlanItems: async () => {},
+  deleteServicePlan: async () => {},
+}));
 vi.mock('../../hooks/queries/useCampaignQueries', () => ({ useCampaigns: () => ({ data: CAMPAIGNS, isLoading: false }) }));
 vi.mock('../../utils/auth-fetch', () => ({ authFetch: async () => ({ ok: true, json: async () => ({}) }) }));
 vi.mock('../../utils/notify', () => ({ notifyError: () => {}, notifySuccess: () => {} }));
@@ -224,7 +241,7 @@ interface PrePr {
  * PR's import line, and comment-only and blank lines. What survives is the
  * behaviour — every query, write, handler and value.
  */
-const stripPresentation = (src: string): string => unwrapSmsGate(src)
+const stripPresentation = (src: string): string => unwrapServicePlan(unwrapSmsGate(src))
   .replace(/className=(?:"[^"]*"|\{`[^`]*`\}|\{[A-Za-z_$][\w.$]*\})/g, 'className=X')
   // An import of a LAYOUT module is presentation, not behaviour — the same
   // reasoning that already exempted form-layout, widened to the directory. A
@@ -280,6 +297,57 @@ const SMS_GATE_EDITS: [string, string][] = [
 
 const unwrapSmsGate = (src: string): string =>
   SMS_GATE_EDITS.reduce((acc, [after, before]) => acc.replace(after, before), src);
+
+/**
+ * THE-313 — reverse the order-of-service panel before hashing, and NOTHING else.
+ *
+ * ⚠️ THE-251's note above sets out the two honest options for a real edit to a
+ * screen this suite pins byte-for-byte: RE-RECORD the baseline, or REVERSE the
+ * known edit exactly — and it says plainly which is weaker. "Re-recording is
+ * the weaker one: it would bless every other byte that moved in the same
+ * breath, which is the one thing this guard exists to catch." THE-251 re-recorded
+ * only because its edit was ~215 stripped lines and reversing it would have put
+ * an unreviewable blob of duplicated production source in this file.
+ *
+ * 🔴 THE-313's edit to `AdminEvents.tsx` is TWO STRINGS — an import and one JSX
+ * element — so the stronger option is available and is what is taken. The hash
+ * below still compares against the PRE-PR revision, byte for byte, and anything
+ * else that moves in this screen still goes red tomorrow.
+ *
+ * The panel itself lives in `events/ServicePlanPanel.tsx` and
+ * `events/ServicePlanRow.tsx` and is guarded by `the-313-guards.test.ts`, which
+ * pins this screen's className-to-inline-style ratio (205 to 7, both unmoved by
+ * this edit), `handleSave` and `confirmDelete` byte for byte, and the absence of
+ * any Stripe gate on paid-event creation.
+ *
+ * ⚠️ If either string stops matching — because the panel was reshaped, or
+ * because something else in the file moved — the replacement silently no-ops
+ * and the hash goes red, which is the correct outcome in both cases.
+ *
+ * Delete this when the baseline is next legitimately re-recorded.
+ */
+const SERVICE_PLAN_EDITS: [string, string][] = [
+  ["import ServicePlanPanel from './events/ServicePlanPanel';\n", ''],
+  [
+    `        {/* THE-313 — the order of service. Its own component and its own
+            collection (\`tenants/{t}/servicePlans\`); this screen hands it the
+            event's id and START TIME and reads nothing back. A plan carries no
+            start of its own, so every clock time on the run sheet derives from
+            this one value plus the durations above it. */}
+        <ServicePlanPanel
+          tenantId={tenantId}
+          eventId={selected.id}
+          eventTitle={selected.title}
+          startsAt={selected.startDate ? selected.startDate.toDate() : null}
+        />
+
+`,
+    '',
+  ],
+];
+
+const unwrapServicePlan = (src: string): string =>
+  SERVICE_PLAN_EDITS.reduce((acc, [after, before]) => acc.replace(after, before), src);
 
 const firestorePathsOf = (src: string): string[] =>
   [...src.matchAll(/(?:collection|doc)\(db,\s*([^)]*)\)/g)].map((m) => m[1].replace(/\s+/g, ' '));
@@ -548,6 +616,55 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       'space-y-1.5 is a spacing token this file already carries on the phone layer ' +
       '(the preview\'s radio/checkbox stack spells it), so it is not a new length ' +
       'either — and Rule 4 owns sm:-gated gaps, which this is not.',
+
+    /* ── THE-313 — the order of service panel, on the event DETAIL view ──────
+     *
+     * ⚠️ This ticket is NOT a presentation PR, unlike the Batch F work this
+     * file was written for. It adds a SURFACE to `AdminEvents/attendees`: an
+     * order of service attached to the event, in its own component
+     * (`events/ServicePlanPanel.tsx` and `events/ServicePlanRow.tsx`). The
+     * seven tokens below are what that surface puts on the phone layer in its
+     * EMPTY state — the state a fresh event renders and the one this suite
+     * mounts. Every one is structural or a tap-target floor; not one carries
+     * colour, and section 8's exact colour pin is UNCHANGED and still passes,
+     * which is the assertion that would have caught a palette decision.
+     */
+    'pb-[120px]':
+      'THE-313 — the bottom-nav clearance, spelled explicitly because the ADMIN ' +
+      'shell\'s safe-area padding class COMPILES TO NOTHING (#437 fixed that for ' +
+      'the member shell only) and its nav is `fixed bottom-0` at z-[100]. 120px ' +
+      'is the same ' +
+      'number AdminForms.tsx already uses for the same nav, and it is VERTICAL ' +
+      'PADDING rather than a width — form-layout.ts owns widths and control ' +
+      'density and has nothing to say about it. It ADDS space below the last ' +
+      'item; it cannot shrink a tap target, which is what section 2 forbids.',
+    'inline-flex':
+      'THE-313 — structural. Lays the panel\'s text buttons (Start, Add item, ' +
+      'Copy run sheet, Share) as a row of icon-plus-label so the lucide glyph ' +
+      'sits on the text baseline. Display only; no colour, size or spacing.',
+    'rounded-lg':
+      'THE-313 — structural. The 8px corner on the panel\'s own controls, one ' +
+      'step tighter than the rounded-xl this screen already spells on its cards ' +
+      'so a control reads as nested inside one. A radius carries no colour and ' +
+      'no size.',
+    'space-y-3':
+      'THE-313 — structural. The vertical rhythm between the panel\'s blocks ' +
+      '(name, item list, actions). An unprefixed spacing token this screen ' +
+      'already carries on the phone layer elsewhere; Rule 4 owns sm:-gated gaps, ' +
+      'which this is not.',
+    'disabled:opacity-40':
+      'THE-313 — structural, and a STATE rather than a colour: opacity is not a ' +
+      'palette token and resolves identically in all four. It marks the Start / ' +
+      'Save / Remove buttons while a write is in flight. `isColourToken` agrees ' +
+      'it carries no colour, which is why section 8 stays green.',
+    'lucide-list-ordered':
+      'THE-313 — a lucide GLYPH CLASS, emitted by the icon component rather than ' +
+      'spelled by this ticket. `ListOrdered` heads the panel. This screen already ' +
+      'carries a dozen lucide-* classes on its phone layer for the same reason.',
+    'lucide-plus':
+      'THE-313 — the same, for the `Plus` icon on the Start and Add item ' +
+      'buttons. `AdminEvents` already renders `Plus` elsewhere; this is the same ' +
+      'glyph reaching a surface the baseline was recorded without.',
   };
 
   const toTokens = (layer: string[]) =>
