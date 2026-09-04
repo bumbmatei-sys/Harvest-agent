@@ -817,6 +817,14 @@ describe('the layout rules live in one shared place and have a caller', () => {
       'src/components/NewsletterEditor.tsx',
       'src/components/PersonalInformationModal.tsx',
       'src/components/UserMessages.tsx',
+      // THE-292 — the post-sign-in country prompt. It renders ONE field and two
+      // actions, and it takes exactly what that needs: FIELD_WIDTH.long as the
+      // card's cap, and CONTROL_DENSITY for the 38px/40px desktop band under a
+      // 44px touch floor. A deliberate adoption rather than a leak — the
+      // alternative was minting a card width, which is the thing Rule 2 exists
+      // to stop. It mints none: the component carries no `max-w-[…px]` at all,
+      // asserted in THE-292.country-prompt.layout.test.tsx.
+      'src/components/country/CountryPrompt.tsx',
       // THE-286 — the first adopter from settings/ rather than from a screen.
       // The converted GivingStatementsSection takes CONTROL_DENSITY only: its
       // controls need the 38px desktop density and the 28px section gap, and it

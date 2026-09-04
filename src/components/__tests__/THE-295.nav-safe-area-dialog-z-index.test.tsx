@@ -424,6 +424,15 @@ describe('2 · every use of pb-safe is accounted for', () => {
       'src/components/__tests__/MemberScreens.desktop-layout.test.tsx',
       'src/components/__tests__/THE-279.toolbar-layout.test.tsx',
       'src/components/__tests__/THE-286.settings-chrome-autosave.layout.test.tsx',
+      // ⚠️ THE-292's two suites are a FIFTH ticket naming the class without
+      // applying it, and the reason theirs is worth reading: its prompt mounts
+      // on BOTH shells, so the admin nav's still-inert `pb-safe` is not a
+      // finding it can leave to someone else. Its overlay adds
+      // `env(safe-area-inset-bottom)` itself and both suites assert it never
+      // spells `pb-safe` in a className — the mention here is that assertion
+      // and the prose explaining it.
+      'src/components/__tests__/THE-292.country-prompt.layout.test.tsx',
+      'src/components/__tests__/THE-292.country-prompt.test.tsx',
       'src/components/__tests__/THE-296.settings-sections.layout.test.tsx',
       'src/components/__tests__/THE-296.settings-sections.test.tsx',
       'src/components/__tests__/THE-298.form-answers-layout.test.tsx',
@@ -431,6 +440,12 @@ describe('2 · every use of pb-safe is accounted for', () => {
       'src/components/__tests__/the-281-giving-share.test.tsx',
       'src/components/__tests__/the-290-giving-layout.test.tsx',
       'src/components/__tests__/the-294-engagement-layout.test.tsx',
+      // ⚠️ CountryPrompt.tsx NAMES the class in its header and applies it
+      // nowhere — it spends `pb-[calc(40px+env(safe-area-inset-bottom))]` on its
+      // own overlay instead, precisely so it is correct on the admin shell too.
+      // Its own layout suite asserts the component carries no `pb-safe`
+      // className, so this entry cannot quietly become a use.
+      'src/components/country/CountryPrompt.tsx',
       'src/components/course/__tests__/THE-282.course-cards-layout.test.tsx',
       'src/components/dashboard/GivingTab.tsx',
       'src/components/dashboard/PledgeFulfilment.tsx',

@@ -429,8 +429,27 @@ describe('5 — onboarding is still completable and no funnel marker moved', () 
   });
 
   it('🔴 no funnel marker moved — App.tsx and post-auth-route are unchanged', () => {
+    /**
+     * ⚠️ THE App.tsx DIGEST MOVED ONCE, DELIBERATELY, FOR THE-292 — and this
+     * note is the decision it was designed to force.
+     *
+     * THE-292 mounts `<CountryPrompt/>` twice as a SIBLING inside two existing
+     * route elements (beside `<AdminDashboard/>` in `adminElement`, and beside
+     * `<MainApp/>` in the '/' element), plus its import. That is the whole
+     * diff: three additions and two comments. It is the same shape, in the same
+     * two places, that THE-255 used for `<PostOnboardingInstallStep/>`.
+     *
+     * 🔴 Nothing this digest exists to protect moved with it. No route was
+     * added, none reordered, and no funnel marker touched — which is asserted
+     * SPECIFICALLY, not by digest, in the very next test here, and again over
+     * route ORDER, every marker by name and Turnstile's mount in
+     * THE-292.country-prompt.test.tsx. A whole-file digest cannot tell a
+     * sibling mount from a reordered funnel; those assertions can, and they are
+     * what actually guards the invariant. This line guards that the change was
+     * looked at.
+     */
     expect(digest('src/App.tsx'))
-      .toBe('28e683200a1ce0b03de50dbd3df3f5c857883cf0cbb03cef10e390bea77e2a12');
+      .toBe('360e4c640c90364d0633edb03dd89fa74ec50eb446ed334e841d77da66ec7ee6');
     expect(digest('src/utils/post-auth-route.ts'))
       .toBe('9571ded38eeb30eb428345abcaceff0512f8028404354fcf4da18f8adaf21718');
   });
