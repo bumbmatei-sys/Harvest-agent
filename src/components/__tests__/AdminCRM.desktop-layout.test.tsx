@@ -608,6 +608,17 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
       // a column. It is the proof section for the settings chrome; the other
       // twelve sections are untouched and are not on this list.
       'src/components/settings/GivingStatementsSection.tsx',
+      // THE-296 — the two remaining sections AdminSettings mounts, onto the same
+      // chrome and for the same reason. Both take CONTROL_DENSITY only and no
+      // measure (Rule 1), because both render inside AdminSettings, which
+      // already spends FORM_MEASURE. The other sections in settings/ are NOT on
+      // this list and are not converted: six of them are mounted by other
+      // screens entirely (AdminBranding, BillingAndPayments, AdminDonations,
+      // AdminUpgradePage, FirstRunSetup), where there is no accordion row to
+      // inherit a card from, so "inherit the shared chrome" states nothing
+      // about them.
+      'src/components/settings/IntegrationsSection.tsx',
+      'src/components/settings/OnboardingSection.tsx',
     ]);
   });
 });

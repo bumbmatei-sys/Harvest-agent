@@ -299,15 +299,22 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // fails, which is the whole threat this guard exists for. THE-294 does not
     // open `AdminDashboard.tsx` either.
     //
-    // ⚠️ THE-298 REACHED THE SAME VALUE INDEPENDENTLY, and this note records
-    // that rather than a second entry doing so. Both branches were cut from a
-    // main on which this assertion was already red, both diagnosed THE-291 as
-    // the cause, and both appended THIS digest — so the two sides of that
-    // rebase conflict differed only in their prose, never in what they accept.
-    // The resolution is therefore the UNION and it is unchanged in size: the two
-    // values below are every value either side carried. THE-298 does not open
-    // `AdminDashboard.tsx` either.
-    ['446f0bcb8ffa6accf4f80467b75a50023c1441937605b11e18aa01b53d8e53f8', 'main + THE-291 — the client-side plan write removed (appended by THE-294; THE-298 arrived at the same value)'],
+    // ⚠️ THREE TICKETS REACHED THIS VALUE INDEPENDENTLY — THE-294, THE-296 and
+    // THE-298 — and this note records that rather than three entries doing so.
+    // All three were cut from a main on which this assertion was already red,
+    // all three diagnosed THE-291 (#434) as the cause, and all three appended
+    // THIS digest. So each rebase conflict between them differed only in its
+    // PROSE, never in what the set accepts, and every resolution has been the
+    // UNION at unchanged size: the two values below are every value any side
+    // has ever carried. None of the three opens `AdminDashboard.tsx`.
+    //
+    // 🔴 THE ENTRY ABOVE IS THE ONE AT RISK, and it is the reason this note is
+    // this long. Only ONE value can match at a time, so `722c5e44…` matches
+    // nothing today and deleting it passes every test on every branch cut after
+    // #434 — while turning main red for any branch cut before it. It is dormant,
+    // not dead. Appended, never substituted: a digest that is NEITHER — a ticket
+    // actually editing the file — still fails, which is the whole threat.
+    ['446f0bcb8ffa6accf4f80467b75a50023c1441937605b11e18aa01b53d8e53f8', 'main + THE-291 — the client-side plan write removed (appended by THE-294, THE-296 and THE-298 independently)'],
   ],
   'firestore.rules': [
     ['a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499', 'unchanged since 5e06c67'],
