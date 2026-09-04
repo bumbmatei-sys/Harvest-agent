@@ -43,11 +43,11 @@ export interface PlanLimits {
    * `reserveSmsSegment` returns `{ allowed: true }` and writes nothing, and the
    * admin snapshot reports `smsSegmentsCap: null`.
    *
-   * EVERY tier is null today, and that is the intended end state. Harvest does
-   * not sell platform SMS at all — sending requires the tenant's OWN Twilio
-   * credentials, which Twilio bills them for directly. There is no Harvest
-   * allotment to ration, so there is nothing to cap. BYO volume was already
-   * unmetered: it counts into `smsSegmentsByo`, which no gate ever reads.
+   * 🔴 NOT NULL ANY MORE — THE-314. Harvest RESELLS: one vendor account, and
+   * Harvest pays for every segment before billing the church. So there is a
+   * Harvest allotment to ration again, and this is the control that rations it.
+   * `null` (unmetered) on a tier that can send would now mean an unbounded bill
+   * on Harvest's card.
    */
   smsSegmentsPerMonth: number | null;
 }
@@ -63,12 +63,27 @@ export interface PlanLimits {
 // marketing value at the higher number, and max sells at $199, not the $299
 // ultra carried.
 //
-// SMS segments — ALL NULL, i.e. not metered. Harvest does not sell platform
-// SMS; a tenant sends on their own Twilio credentials and Twilio bills them
-// directly, so there is no Harvest allotment to ration. The previous
-// 250/500/2,000 budgets on plus/pro/max were metering tiers whose
-// `smsAutomation` plan flag was `false` — a budget for a feature those tiers
-// could not reach. See `smsSegmentsPerMonth` above and sms-usage.ts.
+// SMS segments — 0 EVERYWHERE EXCEPT MINISTRY (THE-314), which carries 2,000.
+//
+// 🔴 The two numbers say the same thing from opposite ends: only Ministry can
+// send, and Ministry's sending is bounded. `smsAutomation` is true on `max`
+// alone, so the send funnel refuses the other three tiers before the cap is
+// ever consulted — and the 0 here is the SECOND lock on the same door. Belt and
+// braces on a money path is deliberate: if a future call site ever reached the
+// funnel with the plan gate bypassed, the cap still refuses rather than
+// spending. `null` would have let it spend without limit.
+//
+// 2,000 is the figure `max` carried before the budgets were retired, restored
+// rather than reinvented. At the vendor's rates (~$0.008 per US segment) a full
+// month costs Harvest roughly $16 against a $199 tier, alongside ~$3/month for
+// the number itself and the one brand-level carrier campaign fee Harvest pays
+// once for every church. It bounds a runaway, it does not ration normal use: a
+// 400-member congregation can be texted five times a month inside it.
+//
+// ⚠️ IT BOUNDS VOLUME, NOT SPEND — the per-segment price varies ~10x by
+// destination country. That is survivable only because the US-only destination
+// gate in sms-destination.ts holds; if international sending is ever opened,
+// this cap stops being a spend control and must be revisited.
 //
 // (A segment cap would bound VOLUME, not SPEND — the price per segment varies
 // ~10× by country, US ~$0.0109 vs UK ~$0.04 vs Brazil ~$0.075. Sends are
@@ -86,10 +101,10 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
   // fields carry no such sentinel, and 0 is the honest cap for a tier with no
   // AI. If the free tier is ever given a taste of AI chat, this is the one line
   // that changes.
-  free: { queryTokensPerMonth: 0,          ingestTokensTotal: 0,          smsSegmentsPerMonth: null },
-  plus: { queryTokensPerMonth: 2_000_000,  ingestTokensTotal: 500_000,    smsSegmentsPerMonth: null },
-  pro:  { queryTokensPerMonth: 10_000_000, ingestTokensTotal: 2_000_000,  smsSegmentsPerMonth: null },
-  max:  { queryTokensPerMonth: 50_000_000, ingestTokensTotal: 10_000_000, smsSegmentsPerMonth: null },
+  free: { queryTokensPerMonth: 0,          ingestTokensTotal: 0,          smsSegmentsPerMonth: 0 },
+  plus: { queryTokensPerMonth: 2_000_000,  ingestTokensTotal: 500_000,    smsSegmentsPerMonth: 0 },
+  pro:  { queryTokensPerMonth: 10_000_000, ingestTokensTotal: 2_000_000,  smsSegmentsPerMonth: 0 },
+  max:  { queryTokensPerMonth: 50_000_000, ingestTokensTotal: 10_000_000, smsSegmentsPerMonth: 2_000 },
 };
 
 /** Fallback tier when a tenant's plan is missing/unknown — the most restrictive,

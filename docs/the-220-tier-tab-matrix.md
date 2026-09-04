@@ -19,6 +19,6 @@
 | Forms | visible · upgrade screen | hidden | hidden | visible · full |
 | Check-In | visible · full | visible · full | visible · full | visible · full |
 | Livestream | visible · upgrade screen | hidden | visible · full | visible · full |
-| SMS | visible · upgrade screen | visible · full | visible · full | visible · full |
+| SMS | visible · upgrade screen | hidden | hidden | visible · full |
 | Community | visible · upgrade screen | hidden | hidden | visible · full |
 | Branding | hidden | hidden | hidden | visible · full |

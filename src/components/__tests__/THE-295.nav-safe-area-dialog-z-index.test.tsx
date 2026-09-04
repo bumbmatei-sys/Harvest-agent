@@ -502,6 +502,15 @@ describe('2 · every use of pb-safe is accounted for', () => {
       'src/components/dashboard/PledgeFulfilment.tsx',
       'src/components/donations/GivingShareSheet.tsx',
       'src/components/settings/GivingStatementsSection.tsx',
+      // ⚠️ THE-314's SmsSection is a SEVENTH ticket naming the class without
+      // applying it. It was rewritten from a credential form into the number
+      // purchase panel, and it sets its bottom clearance as an explicit number
+      // — the comment above that number is what puts the file here. It says why
+      // it does not lean on the class: the ADMIN shell still carries the inert
+      // one, so a settings panel that trusted it would sit under the nav on a
+      // phone. That is the same finding this register exists to hand forward,
+      // recorded at the seventh screen to pay the tax rather than fixing it.
+      'src/components/settings/SmsSection.tsx',
     ]);
   });
 

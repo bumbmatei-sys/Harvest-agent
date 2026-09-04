@@ -113,16 +113,34 @@ export interface PlanFeatures {
    * triggers (see AdminSms TRIGGERS; scheduled broadcasts and other triggers
    * are not promised).
    *
-   * `true` on EVERY tier, deliberately. SMS is no longer sold by plan: Harvest
-   * does not offer platform SMS at all, so the only thing deciding whether a
-   * tenant can send is whether they have connected their OWN Twilio
-   * credentials. A plan cell gating a capability the plan does not supply
-   * gates nothing.
+   * 🔴 `true` ON MINISTRY (`max`) ONLY — THE-314. Founder's call.
    *
-   * This also retires a live bug: plus/pro/max each carried a monthly Twilio
-   * segment budget in PLAN_LIMITS while this cell was `false` — three tiers
-   * metered for a feature they could not reach. Those budgets are now `null`
-   * (unmetered); see src/lib/planLimits.ts.
+   * ⚠️ THIS REPLACES THE "TRUE ON EVERY TIER, BYO-ONLY" REASONING THAT USED TO
+   * STAND HERE, and it replaces it because its PREMISE IS GONE, not because the
+   * argument was wrong. That reasoning said: a plan cell gating a capability the
+   * plan does not supply gates nothing — which was true while a church brought
+   * its OWN Twilio credentials and Twilio billed the church directly. Harvest
+   * supplied nothing, so Harvest had nothing to ration.
+   *
+   * THE-314 ended bring-your-own. Harvest now RESELLS: one vendor account,
+   * Harvest pays for every number and every segment, and bills the church. The
+   * plan DOES supply the capability now, every send spends Harvest's money, and
+   * the cell is read for the first time by a real SERVER-SIDE gate — inside the
+   * single send funnel in `lib/sms-send.ts` — rather than by nav alone.
+   *
+   * 🔴 TWO PAID TIERS LOSE A CAPABILITY THEY WERE PROMISED. Individual (`plus`)
+   * and Small Team (`pro`) both carried `true` and now carry `false`. That is a
+   * downgrade, not a tidy-up, and it is recorded as one so nobody later reads
+   * these cells as having always been Ministry-only.
+   *
+   * ⚠️ DO NOT GATE ON THIS CELL DIRECTLY. Read it through
+   * `getEffectiveFeatures`, which lifts capabilities with `||` and never
+   * assignment (THE-253) — so the day SMS is sold as an add-on to a lower tier,
+   * one line there changes and every gate already honours it.
+   *
+   * The segment budgets in PLAN_LIMITS move with this: `max` carries a real
+   * monthly allotment again, because there is Harvest money to ration again.
+   * See src/lib/planLimits.ts.
    */
   smsAutomation: boolean;
   // `aiAssistant` (a COUNT, 0/0/0/1 across the tiers) was REMOVED with the
@@ -166,15 +184,15 @@ export interface PlanFeatures {
    * Text-to-Give via inbound SMS keyword (`AdminSms.tsx`'s Text-to-Give panel,
    * served by `app/api/sms/incoming/route.ts`).
    *
-   * `true` on EVERY tier, deliberately, and read by nothing — same shape and
-   * same reasoning as `smsAutomation` above. The feature is fully built and
-   * live, but access is decided per-tenant by whether they connected their OWN
-   * Twilio credentials (see `src/lib/twilio.ts`), not by plan. Kept (not
-   * deleted, unlike the removed `churchDirectory`) because it documents a real,
-   * shipped capability rather than one that was never built — deleting it would
-   * make the matrix a worse description of the product, not a more accurate
-   * one. Don't gate anything on this cell; gate on the tenant's Twilio
-   * connection instead.
+   * 🔴 `true` ON MINISTRY (`max`) ONLY — THE-314, and it MOVES WITH
+   * `smsAutomation` above for the reason THE-245 already wrote down: Text-to-
+   * Give is inbound SMS end to end. The keyword arrives on the public webhook
+   * and the reply goes back out through the same send funnel, so there is no
+   * configuration in which one works and the other does not. A tier holding one
+   * and not the other would be a matrix that cannot be true.
+   *
+   * The old reasoning here — true everywhere, decided per-tenant by the church's
+   * own Twilio credentials — went with bring-your-own. See `smsAutomation`.
    */
   textToGive: boolean;
   /** Installable Progressive Web App (mobile app) — all plans */
@@ -272,16 +290,16 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     customBranding: false,
     newsletterAutomation: false,
     automatedNewsletter: false,
-    // 🔴 FALSE, and this is the ONE cell where free departs from the "true on
-    // every tier, BYO-only" reasoning written on `smsAutomation` and
-    // `textToGive` in the interface above. That reasoning is about not selling
-    // SMS as a differentiator BETWEEN PAID TIERS — a plan cell gating a
-    // capability the plan does not supply gates nothing. Free is not buying
-    // anything, so there is no differentiator to distort, and the cells are read
-    // by real nav gates (`AdminDashboard` line ~500 for SMS). Leaving them true
-    // would put a working send surface on a tier that pays nothing and holds no
-    // card. Both stay at Individual as their minimum plan either way, so no
-    // upgrade screen's copy moves.
+    // FALSE — as it already was before THE-314, and for a reason that has now
+    // become the general rule rather than this tier's exception: a working send
+    // surface spends Harvest's money on Harvest's vendor account, and free pays
+    // nothing and holds no card.
+    //
+    // ⚠️ Free used to be the ONE tier departing from "true on every tier,
+    // BYO-only". That reasoning is gone (see `smsAutomation` in the interface
+    // above), so free now AGREES with plus and pro instead of standing apart
+    // from them. The cell's value does not move; only what it means alongside
+    // its neighbours does.
     smsAutomation: false,
     // 🔴 NO DONATE PAGE. `fundraising` was `true` on every tier before this
     // block, so free is the first tier to carry it false — the founder's
@@ -352,9 +370,12 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     customBranding: false,
     newsletterAutomation: false,
     automatedNewsletter: false,
-    // SMS is BYO-only on every tier — see the block comment above `smsAutomation`
-    // in PlanFeatures. Platform SMS is not sold, so the plan no longer gates it.
-    smsAutomation: true,
+    // 🔴 FALSE — THE-314. Individual LOSES SMS. It carried `true` under
+    // bring-your-own, where the cell gated nothing because the church supplied
+    // its own Twilio account and paid Twilio directly. Harvest now resells and
+    // pays for every segment, and the founder's call is Ministry only.
+    // See the block comment above `smsAutomation` in PlanFeatures.
+    smsAutomation: false,
     fundraising: true,
     eventRegistration: false,
     docs: false,
@@ -381,7 +402,9 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     automatedBlog: false,
     givingStatements: false,
     pledgeCampaigns: false,
-    textToGive: true,
+    // 🔴 FALSE — THE-314, moving with `smsAutomation` directly above. Inbound
+    // and outbound SMS are one capability; see the interface comment.
+    textToGive: false,
     pwaApp: true,
   },
   // Small Team — $99/mo
@@ -413,7 +436,9 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     customBranding: false,
     newsletterAutomation: true,
     automatedNewsletter: false,
-    smsAutomation: true,
+    // 🔴 FALSE — THE-314. Small Team LOSES SMS, for the same reason and by the
+    // same decision as Individual above. See `smsAutomation` in PlanFeatures.
+    smsAutomation: false,
     fundraising: true,
     eventRegistration: false,
     // Moved down from the top tier in an earlier repricing: Small Team carries
@@ -434,7 +459,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     automatedBlog: false,
     givingStatements: false,
     pledgeCampaigns: false,
-    textToGive: true,
+    // 🔴 FALSE — THE-314, moving with `smsAutomation` above.
+    textToGive: false,
     pwaApp: true,
   },
   // Ministry — $199/mo. The top tier.
@@ -474,6 +500,9 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     customBranding: true,
     newsletterAutomation: true,
     automatedNewsletter: true,
+    // 🔴 THE ONLY TIER WITH SMS — THE-314. Unchanged in value, changed in
+    // meaning: this cell now decides who can send, and Harvest pays for what
+    // goes out. See `smsAutomation` in PlanFeatures.
     smsAutomation: true,
     fundraising: true,
     eventRegistration: true,

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
-import { sendAutomatedSms } from '@/lib/twilio';
+import { sendAutomatedSms } from '@/lib/sms-send';
 import { captureHandledError } from '@/lib/money-path-sentry';
 import { tenantFeaturesById } from '@/lib/tenant-features';
 

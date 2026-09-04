@@ -357,13 +357,15 @@ describe('17 — the tier/tab matrix is generated from the real nav array and th
     expect(matrix.get('Branding')!.get('free')!.cell).toBe('hidden');
   });
 
-  it('resolves the Individual column to the eight plus Check-In', async () => {
+  it('resolves the Individual column to the seven plus Check-In', async () => {
     const matrix = await buildMatrix();
     const visible = TABS
       .filter((r) => matrix.get(r.label)!.get('plus')!.cell !== 'hidden')
       .map((r) => r.label);
     expect(visible.sort()).toEqual(
-      ['Blog', 'CRM', 'Check-In', 'Church', 'Courses', 'Dashboard', 'Fundraising', 'SMS', 'Signups'].sort(),
+      // ⚠️ 'SMS' LEFT THIS COLUMN — THE-314 made SMS Ministry-only, so an
+      // Individual tenant no longer sees the tab at all.
+      ['Blog', 'CRM', 'Check-In', 'Church', 'Courses', 'Dashboard', 'Fundraising', 'Signups'].sort(),
     );
     // And every one of them is FULL — an Individual tenant meets no wall on a
     // tab it can see. That is the product promise the nav gate now keeps.
@@ -457,20 +459,29 @@ describe('19 — no tab hidden from the nav renders fully when reached by URL', 
       }
     }
     // A guard on the guard: if the nav gate ever stopped hiding anything, the
-    // loop above would pass by never running. Seventeen cells, and the
-    // breakdown is the ticket's own arithmetic PLUS THE-253's two:
+    // loop above would pass by never running. Nineteen cells, and the breakdown
+    // is the ticket's own arithmetic PLUS THE-253's two and THE-314's two:
     //   Individual  eight of the nine plus Branding                        (9)
     //   Small Team  Events, Accounting, Forms, Community plus Branding     (5)
     //   free        Branding alone                                         (1)
     //   Ministry    AI Knowledge — it hid nothing before                   (1)
     //   Small Team  AI Knowledge, which it used to have                    (1)
+    //   Individual  SMS, which it used to have                             (1)
+    //   Small Team  SMS, which it used to have                             (1)
     //
     // ⚠️ MINISTRY NOW HIDES SOMETHING, which it never did before: THE-253 took
     // `aiKnowledge` off every tier, so even the top plan reaches the AI
     // Knowledge screen only by holding the AI Assistant add-on. That the screen
     // answers with an upgrade WALL rather than rendering is the property this
     // test is for, and it now covers the top tier too.
-    expect(checked, 'the count of hidden cells moved — check the matrix above').toBe(17);
+    //
+    // ⚠️ AND THE-314 MOVED IT AGAIN, in the opposite direction: SMS went from
+    // every paid tier to Ministry alone, so Individual and Small Team each hide
+    // one more. That is the WALL half of a downgrade — two paying tiers now meet
+    // an upgrade screen where they used to reach a feature — and it is asserted
+    // rather than merely allowed, because a downgrade that silently rendered a
+    // broken screen would be worse than one that says what happened.
+    expect(checked, 'the count of hidden cells moved — check the matrix above').toBe(19);
   });
 
   it('and a third layer bounces the URL too, so the wall is not the only refusal', async () => {

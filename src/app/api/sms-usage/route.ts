@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/api-auth';
 import { getSmsUsageSnapshot } from '@/lib/sms-usage';
-import { getSmsCredentialSource } from '@/lib/twilio';
+import { getSmsCredentialSource } from '@/lib/sms-send';
 import { SMS_FEATURE_ENABLED, SMS_HIDDEN_MESSAGE } from '@/lib/sms-feature';
 
 export const dynamic = 'force-dynamic';

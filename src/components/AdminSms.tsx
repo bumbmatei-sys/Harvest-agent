@@ -69,22 +69,23 @@ export const TRIGGERS: TriggerDef[] = [
 // subcollection is default-deny to clients). Renders nothing for a super admin
 // or an unmetered tier, so no empty card shows. Mirrors the RAG usage meter.
 //
-// The unit is SEGMENTS, and the copy says so explicitly. Twilio bills per
+// The unit is SEGMENTS, and the copy says so explicitly. The provider bills per
 // segment and a body over 160 characters is more than one, so an admin reading
-// "4,000" must not walk away believing it means 4,000 messages of any length.
+// "2,000" must not walk away believing it means 2,000 messages of any length.
 //
-// THE METER MUST MATCH WHO IS ACTUALLY CAPPED. The allotment applies only to
-// sends on Harvest's own Twilio account (`source: 'platform'`, `metered: true`).
-// A church sending on its OWN credentials is billed by Twilio directly and is
-// subject to no limit, so it gets the volume card below instead — its own count
-// and no number that looks like a ceiling. Showing a "1,234 / 4,000" bar to a
-// tenant nothing would ever stop is exactly the advertised-vs-delivered gap
-// THE-20 closed.
+// THE METER MUST MATCH WHO IS ACTUALLY CAPPED. ⚠️ SINCE THE-314 THAT IS
+// EVERYONE WHO CAN SEND. Harvest resells on one vendor account and pays for
+// every segment, so every tenant reports `source: 'platform'` and
+// `metered: true`, and the meter below is the one an admin sees.
+//
+// The volume-only card that follows is now UNREACHABLE and kept for the months
+// recorded before the swap — see the note on it.
 // ─────────────────────────────────────────────────────────────────────────────
 interface SmsUsage {
   metered: boolean;
-  /** Which Twilio account this tenant's sends go out on. 'byo' = their own
-   * credentials (no cap applies); null = none configured, nothing to show. */
+  /** Which account this tenant's sends go out on. Always 'platform' since
+   * THE-314 — Harvest owns every number; null = no number yet, nothing to
+   * show. 'byo' is retained only so historical data keeps reading. */
   source?: 'platform' | 'byo' | null;
   smsSegmentsUsed?: number;
   smsSegmentsCap?: number;
@@ -95,24 +96,33 @@ export function segmentUnitNote(cap: number): string {
   return `${cap.toLocaleString('en-US')} SMS segments per month — a message over 160 characters counts as more than one.`;
 }
 
-/** The one place the BYO billing reality is stated, so the wording can't drift
- * between the usage card and the Twilio settings screen. */
-export const BYO_BILLING_NOTE =
-  "These messages go out on your own Twilio account, so Twilio bills you directly and your Harvest plan's monthly SMS allotment doesn't apply. A message over 160 characters counts as more than one segment.";
+/** ⚠️ HISTORICAL ONLY, since THE-314. This described bring-your-own: a church
+ * on its own Twilio credentials, billed by Twilio directly and subject to no
+ * Harvest allotment. That arrangement no longer exists — Harvest resells and
+ * pays for every segment — so the wording no longer claims Twilio bills anyone.
+ * Saying otherwise on a billing surface would be a false claim, which is the
+ * one thing this note has always existed to avoid. */
+export const LEGACY_BYO_BILLING_NOTE =
+  "These messages were sent before Harvest provided numbers, on an account of your own, so no Harvest plan allotment applied to them. A message over 160 characters counts as more than one segment.";
 
-/** Volume-only card for a tenant on their own Twilio credentials: what they
- * sent, no cap, no upgrade CTA, and why. */
+/** Volume-only card for the months recorded under bring-your-own: what was
+ * sent, no cap, no upgrade CTA, and why.
+ *
+ * 🔴 NOTHING RENDERS THIS TODAY — `getSmsCredentialSource` never returns 'byo'
+ * any more. It is kept rather than deleted so a tenant whose usage documents
+ * still carry `smsSegmentsByo` reads correctly if that data is ever surfaced
+ * here again. */
 const ByoSmsVolume: React.FC<{ usage: SmsUsage }> = ({ usage }) => {
   const used = usage.smsSegmentsUsed ?? 0;
   return (
     <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-4 mb-4">
       <div className="flex items-baseline justify-between gap-3 mb-1.5">
-        <span className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: GOLD }}>Your Twilio account</span>
+        <span className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: GOLD }}>Before Harvest numbers</span>
         <span className="text-xs font-bold text-strong">
           {used.toLocaleString('en-US')} segment{used === 1 ? '' : 's'} this month
         </span>
       </div>
-      <p className="text-[11px] text-faint">{BYO_BILLING_NOTE}</p>
+      <p className="text-[11px] text-faint">{LEGACY_BYO_BILLING_NOTE}</p>
     </div>
   );
 };
@@ -207,9 +217,9 @@ const AdminSmsScreen: React.FC = () => {
     return () => { cancelled = true; };
   }, [usageRefresh]);
 
-  // Only a metered (platform-account) tenant can hit a wall. A BYO tenant
-  // reports metered:false, so the send button is never disabled for them —
-  // there is no allotment of Harvest's for them to exhaust.
+  // 🔴 Every tenant that can send is metered since THE-314, so this wall is now
+  // reachable by all of them. A tenant with no number at all reports
+  // metered:false and simply has nothing to send with.
   const capReached =
     !!usage?.metered && (usage.smsSegmentsUsed ?? 0) >= (usage.smsSegmentsCap ?? Infinity);
 
@@ -238,7 +248,7 @@ const AdminSmsScreen: React.FC = () => {
   }, [group, tag]);
 
   // Compose-box ESTIMATE only — it is never what the counter is billed by. The
-  // meter is incremented by Twilio's own `num_segments` after each send. Shown
+  // meter is incremented by the provider's own segment count after each send. Shown
   // per recipient, because a broadcast costs this many segments times the
   // recipient count. Any emoji or non-Latin character forces UCS-2 encoding,
   // which fits 70 characters per segment instead of 160.
@@ -462,7 +472,7 @@ const AdminSmsScreen: React.FC = () => {
                 <div className="w-10 h-6 bg-surface-chip peer-checked:bg-gold rounded-full peer transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-surface-raised after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4" />
               </label>
             </div>
-            <p className="text-xs text-faint mb-3">People text a keyword to your Twilio number and instantly receive a link to your giving page.</p>
+            <p className="text-xs text-faint mb-3">People text a keyword to your ministry&apos;s number and instantly receive a link to your giving page.</p>
 
             {t2g.enabled && (
               <div className="space-y-3">
@@ -481,9 +491,12 @@ const AdminSmsScreen: React.FC = () => {
                   <p className="text-[11px] text-faint mt-1">Preview link: <span className="font-mono">https://{tenantId || 'your-ministry'}.theharvest.app/?giving=1</span></p>
                 </div>
                 <div className="bg-surface-sunken border border-line rounded-xl p-3">
-                  <p className="text-[11px] text-muted mb-1">Add this URL to your Twilio phone number as the inbound SMS webhook:</p>
-                  <p className="text-xs font-mono text-body break-all">https://theharvest.app/api/sms/incoming</p>
-                  <p className="text-[11px] text-faint mt-1">(Method: HTTP POST)</p>
+                  {/* 🔴 There is nothing for an admin to configure any more.
+                      Harvest holds the vendor account and points every number
+                      it buys at this endpoint centrally, so a church that once
+                      had to paste a webhook URL into a Twilio console now has
+                      no console and no step to miss. */}
+                  <p className="text-[11px] text-muted">Your number is already connected — incoming texts reach Harvest automatically, with nothing for you to set up.</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <button onClick={saveT2g} disabled={savingT2g} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>

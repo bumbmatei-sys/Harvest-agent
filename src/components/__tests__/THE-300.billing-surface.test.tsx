@@ -746,18 +746,33 @@ describe('8 · PaymentSection still renders unavailable; DomainSection is still 
     expect(readSrc('src/lib/custom-domain-feature.ts')).toMatch(/CUSTOM_DOMAIN_ENABLED\s*=\s*false/);
   });
 
-  it('🔴 SMS stays off (Twilio is dropped)', () => {
+  it('🔴 SMS is ON now (THE-314), and still behind the one switch', () => {
+    // ⚠️ THIS ASSERTION WAS REVERSED, NOT LOOSENED. THE-300 pinned SMS as OFF
+    // because it was one of three switched-off sections it must not convert.
+    // THE-314 flipped the switch and rewrote the panel from a Twilio credential
+    // form into the number purchase panel. What THE-300 actually cares about is
+    // unchanged and still asserted: the section reads the ONE master switch and
+    // renders through it, so the flip stays a single value.
     const src = readSrc('src/components/settings/SmsSection.tsx');
     expect(src, 'SmsSection no longer reads the master switch').toContain('SMS_FEATURE_ENABLED');
-    expect(src, 'SmsSection renders its form while the switch is off')
-      .toMatch(/SMS_FEATURE_ENABLED\s*\?\s*<SmsCredentialsForm\s*\/>\s*:\s*null/);
-    expect(readSrc('src/lib/sms-feature.ts')).toMatch(/SMS_FEATURE_ENABLED\s*=\s*false/);
+    expect(src, 'SmsSection stopped rendering through the switch')
+      .toMatch(/SMS_FEATURE_ENABLED\s*\?\s*<SmsNumberPanel\s*\/>\s*:\s*null/);
+    expect(readSrc('src/lib/sms-feature.ts')).toMatch(/SMS_FEATURE_ENABLED\s*=\s*true/);
+    // 🔴 And the OTHER two switches this file guards are still off, which is the
+    // half that had nothing to do with SMS and must not have moved with it.
+    expect(readSrc('src/lib/stripe-connect-feature.ts')).toMatch(/STRIPE_CONNECT_ENABLED\s*=\s*false/);
+    expect(readSrc('src/lib/custom-domain-feature.ts')).toMatch(/CUSTOM_DOMAIN_ENABLED\s*=\s*false/);
   });
 
-  it('🔴 all three files are byte-identical — this slice converted none of them', () => {
+  it('🔴 the two STILL-OFF sections are byte-identical — this slice converted none of them', () => {
+    // ⚠️ SmsSection LEFT THIS LIST — THE-314 rewrote it, deliberately and for a
+    // reason recorded in that ticket. The list is narrowed rather than repinned:
+    // the claim "a switched-off section is not convertible" is still exactly
+    // true of the two sections that are still switched off, and quietly
+    // re-recording SmsSection's digest would have substituted the value this
+    // guard measures instead of removing a file that no longer qualifies.
     for (const file of ['src/components/settings/PaymentSection.tsx',
-                        'src/components/settings/DomainSection.tsx',
-                        'src/components/settings/SmsSection.tsx']) {
+                        'src/components/settings/DomainSection.tsx']) {
       expect(sha256(readFileSync(path.join(ROOT, file))), `${file} changed — a switched-off section is not convertible`)
         .toBe(UNTOUCHED.otherSettingsSections[file as keyof typeof UNTOUCHED.otherSettingsSections]);
     }
@@ -814,12 +829,26 @@ describe("13 · AdminSettings.regroup.test.tsx's structural assertions still hol
     //
     // 🔴 Pinned against LITERALS recorded from origin/main at 77da58d, not
     // against each other: a digest compared to itself asserts nothing.
+    //
+    // ⚠️ REPINNED ONCE, FOR THE-314, WITH THE PRIOR VALUES KEPT BELOW rather
+    // than overwritten. Both files moved for the same one-line reason: the SMS
+    // settings row's LABEL lost its vendor. It read "SMS (Twilio)" when a church
+    // connected its own Twilio account; Harvest now resells on one account, so
+    // there is no vendor a church has ever heard of and naming one would send an
+    // admin looking for a login it does not have. No row was added, none was
+    // removed, no gate clause changed, and the suite's assertions were followed
+    // rather than weakened — it asserts the row's endpoints, and those moved
+    // from `/api/sms/config` to `/api/sms/numbers` with the panel behind them.
+    //
+    // Previous pins (pre-THE-314):
+    //   AdminSettings.tsx            fa75caa9825fd36b1d12ae3472405e005469abe282bd2e26b1177ae6bd7885d9
+    //   AdminSettings.regroup.test   21c298f212d32cb93f66d41fb5a5d3804712c2a571c5ad482acd11b2edda9784
     expect(sha256(readFileSync(path.join(ROOT, 'src/components/AdminSettings.tsx'))),
       'AdminSettings changed — re-read what #434 did before touching its suite')
-      .toBe('fa75caa9825fd36b1d12ae3472405e005469abe282bd2e26b1177ae6bd7885d9');
+      .toBe('a66900fd4b53dd109e97f733e7b7f6bfe18b530d7da666b5165def09546df476');
     expect(sha256(readFileSync(path.join(ROOT, 'src/components/__tests__/AdminSettings.regroup.test.tsx'))),
       'AdminSettings.regroup.test.tsx changed — this slice must not weaken it')
-      .toBe('21c298f212d32cb93f66d41fb5a5d3804712c2a571c5ad482acd11b2edda9784');
+      .toBe('a0afe604b79bf19a5c8ce538992db49601319b258606e99f07709ce5358f5d41');
     // AdminSettings still imports the accordion and none of the billing sections.
     const src = readSrc('src/components/AdminSettings.tsx');
     expect(src, 'AdminSettings stopped mounting the accordion').toContain('SettingsAccordion');
@@ -922,6 +951,11 @@ describe('15 · layout.tsx, firestore.rules and functions/ are byte-identical', 
     // already recorded in that ticket's own exemption list.
     edited.add('src/components/settings/OnboardingSection.tsx');
     edited.add('src/components/settings/IntegrationsSection.tsx');
+    // SmsSection was rewritten by THE-314 — the Twilio credential form became
+    // the number purchase panel — and is recorded in that ticket's entry on
+    // THE-286's exemption list, which is where a settings-section rewrite is
+    // registered.
+    edited.add('src/components/settings/SmsSection.tsx');
     for (const [rel, digest] of Object.entries(UNTOUCHED.otherSettingsSections)) {
       if (edited.has(rel)) continue;
       expect(sha256(readFileSync(path.join(ROOT, rel))), `${rel} changed`).toBe(digest);

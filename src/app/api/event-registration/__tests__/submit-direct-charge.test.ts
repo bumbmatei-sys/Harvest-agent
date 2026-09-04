@@ -82,7 +82,7 @@ vi.mock('stripe', () => ({
 vi.mock('@/lib/firebase-admin', () => ({ adminDb: { collection: vi.fn(() => makeCollRef()) } }));
 vi.mock('@/lib/tenant-private', () => ({ getTenantPrivate: mockGetTenantPrivate }));
 vi.mock('@/lib/api-auth', () => ({ verifyAuth: mockVerifyAuth }));
-vi.mock('@/lib/twilio', () => ({ sendAutomatedSms: mockSendAutomatedSms }));
+vi.mock('@/lib/sms-send', () => ({ sendAutomatedSms: mockSendAutomatedSms }));
 vi.mock('firebase-admin/firestore', () => ({
   FieldValue: {
     serverTimestamp: vi.fn(() => 'SERVER_TS'),

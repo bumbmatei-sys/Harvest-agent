@@ -81,7 +81,16 @@ const ROOT = path.resolve(__dirname, '../../..');
 const readSrc = (rel: string) => fs.readFileSync(path.join(ROOT, 'src', rel), 'utf8');
 
 const PRICED: TenantPlan[] = ['plus', 'pro', 'max'];
-const SMS_ROW = 'SMS (Twilio)';
+/** ⚠️ THE LABEL LOST ITS VENDOR — THE-314. It read "SMS (Twilio)" when a church
+ *  connected its own Twilio account and the parenthetical told it whose
+ *  credentials the panel wanted. Harvest now RESELLS on one account, so there
+ *  is no vendor for a church to have heard of. */
+const SMS_ROW = 'SMS';
+
+/** The tiers that own `smsAutomation` after THE-314 made SMS Ministry-only.
+ *  Individual and Small Team both lost it. */
+const SMS_TIERS: TenantPlan[] = ['max'];
+const NON_SMS_TIERS: TenantPlan[] = ['free', 'plus', 'pro'];
 
 /**
  * Load AdminSettings with `SMS_FEATURE_ENABLED` forced to `enabled`.
@@ -155,7 +164,7 @@ afterEach(() => {
    🔴 The row does not render while the switch is off.                        */
 describe('1 — the SMS settings row does not render while the switch is off', () => {
   for (const plan of PRICED) {
-    it(`${plan}: no "SMS (Twilio)" row, and no Twilio label anywhere on the screen`, async () => {
+    it(`${plan}: no "SMS" row, and no Twilio label anywhere on the screen`, async () => {
       const host = await mount(plan, false);
       expect(rows(host), `${plan} still lists the SMS row`).not.toContain(SMS_ROW);
       // Read as a visitor reads it, in case the label is ever reworded: no
@@ -183,11 +192,22 @@ describe('1 — the SMS settings row does not render while the switch is off', (
 
 /* ── 2 ─────────────────────────────────────────────────────────────────────
    🔴 THE HIDE-NOT-DELETE GUARANTEE. One value, and the row is back.          */
-describe('2 — flipping the switch on restores it', () => {
-  for (const plan of PRICED) {
+describe('2 — flipping the switch on restores it, on the tier that owns it', () => {
+  // ⚠️ THE-245 RESTORED IT TO ALL THREE PRICED TIERS. THE-314 narrowed the plan
+  // clause behind the switch, so the row now returns on Ministry alone — the
+  // two halves are independent and both are asserted, which is the point of
+  // mounting under both settings of the boolean rather than trusting either.
+  for (const plan of SMS_TIERS) {
     it(`${plan}: the row returns, in its own place, with its panel`, async () => {
       const host = await mount(plan, true);
       expect(rows(host), `${plan} did not get the SMS row back`).toContain(SMS_ROW);
+    });
+  }
+
+  for (const plan of NON_SMS_TIERS) {
+    it(`🔴 ${plan}: the row stays away even with the switch ON — the plan gate holds`, async () => {
+      const host = await mount(plan, true);
+      expect(rows(host), `${plan} got a row for a capability it does not own`).not.toContain(SMS_ROW);
     });
   }
 
@@ -202,9 +222,10 @@ describe('2 — flipping the switch on restores it', () => {
     expect(regions(host)).toContain('Connected Services');
   });
 
-  it('🔴 comes back on exactly the tiers that own `smsAutomation`, unchanged', async () => {
-    // The plan clause behind the switch was not edited, so this is the
-    // entitlement as it always was — not an approximation restored by hand.
+  it('🔴 comes back on exactly the tiers that own `smsAutomation`', async () => {
+    // Derived from the matrix rather than restated, so the row and the cell
+    // cannot drift: THE-314 moved the cell and this assertion followed it
+    // without being edited.
     const { getPlanFeatures } = await import('../../utils/plan-features');
     for (const plan of ['free', ...PRICED] as TenantPlan[]) {
       const host = await mount(plan, true);
@@ -216,14 +237,18 @@ describe('2 — flipping the switch on restores it', () => {
     }
   });
 
-  it('and the panel behind it is the real credential form, not a stub', async () => {
+  it('and the panel behind it is the real number panel, not a stub', async () => {
     const host = await mount('max', true);
     const header = Array.from(host.querySelectorAll('button')).find(
       (b) => (b.textContent || '').trim().startsWith(SMS_ROW),
     );
     expect(header, 'the restored row has no accordion header').toBeTruthy();
     await act(async () => { header!.click(); });
-    expect(host.textContent || '', 'the restored panel is empty').toMatch(/twilio/i);
+    // 🔴 The panel's own words, and NOT the vendor's name: THE-314 replaced the
+    // credential form with the number purchase panel, so what proves the panel
+    // is real is the buy control, not a Twilio label.
+    expect(host.textContent || '', 'the restored panel is empty').toMatch(/buy a number/i);
+    expect(host.textContent || '', 'the panel names a vendor a church never sees').not.toMatch(/twilio/i);
   });
 });
 
@@ -272,18 +297,24 @@ describe('4 — one switch, and nothing else moved', () => {
     expect([...new Set(smsFlags)]).toEqual(['SMS_FEATURE_ENABLED']);
   });
 
-  it('🔴 the switch itself is still false, and still the only declaration', async () => {
+  it('🔴 the switch itself is TRUE now, and still the only declaration', async () => {
+    // ⚠️ THE-314 FLIPPED IT. The "only declaration" half is what this assertion
+    // has always really been for and it is unchanged: one boolean, one place.
     const src = readSrc('lib/sms-feature.ts');
-    expect(src).toMatch(/^export const SMS_FEATURE_ENABLED = false;$/m);
+    expect(src).toMatch(/^export const SMS_FEATURE_ENABLED = true;$/m);
     expect(src.match(/SMS_FEATURE_ENABLED\s*=/g)).toHaveLength(1);
   });
 
-  it('🔴 no plan-matrix value changed — smsAutomation and textToGive stand', async () => {
+  it('🔴 the plan matrix is Ministry-only — smsAutomation and textToGive together', async () => {
+    // ⚠️ REVERSED. THE-245 pinned these true on all three priced tiers, because
+    // the gate sat IN FRONT of the matrix and never edited it. THE-314 edited
+    // the matrix itself: Harvest resells and pays for every segment, so the cell
+    // decides who may spend Harvest's money and the founder's call is Ministry.
+    // The two cells move together — Text-to-Give is inbound SMS end to end.
     const { getPlanFeatures } = await import('../../utils/plan-features');
-    // The values THE-245 pinned, unmoved. The gate sits IN FRONT of these.
-    expect(PRICED.map((p) => !!getPlanFeatures(p)?.smsAutomation)).toEqual([true, true, true]);
+    expect(PRICED.map((p) => !!getPlanFeatures(p)?.smsAutomation)).toEqual([false, false, true]);
     expect(getPlanFeatures('free')?.smsAutomation).toBeFalsy();
-    expect(PRICED.map((p) => !!getPlanFeatures(p)?.textToGive)).toEqual([true, true, true]);
+    expect(PRICED.map((p) => !!getPlanFeatures(p)?.textToGive)).toEqual([false, false, true]);
     expect(getPlanFeatures('free')?.textToGive).toBeFalsy();
   });
 

@@ -844,6 +844,11 @@ describe('the layout rules live in one shared place and have a caller', () => {
       // about them.
       'src/components/settings/IntegrationsSection.tsx',
       'src/components/settings/OnboardingSection.tsx',
+      // ⚠️ THE-314 adds SmsSection.tsx. It was rewritten from a Twilio
+      // credential form into the number purchase panel, and it takes
+      // FIELD_WIDTH, ACTION_BUTTON and CONTROL_DENSITY — not Rule 1, because it
+      // already renders inside the settings shell's measure.
+      'src/components/settings/SmsSection.tsx',
     ]);
   });
 });

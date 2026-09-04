@@ -412,19 +412,40 @@ describe('5 — event registration is untouched', () => {
    * it would be a second reason for one state, which is how a route ends up
    * refusing for a reason nobody can name.
    */
-  it('the route is byte-for-byte unchanged and never mentions the switch', () => {
+  it('the route never mentions the switch, and moved only where THE-314 moved it', () => {
+    // ⚠️ REPINNED ONCE, FOR THE-314, WITH THE PRIOR VALUE KEPT below rather than
+    // overwritten. The route changed by exactly one IMPORT PATH: its best-effort
+    // `sendAutomatedSms` came from `@/lib/twilio` and now comes from
+    // `@/lib/sms-send`, because Harvest swapped telephony providers and the send
+    // funnel moved with it. Not one line of registration, payment or Stripe
+    // logic moved, which is what THE-256 actually guards — asserted below and in
+    // the two rules further down, both untouched.
+    //
+    // Previous pin (pre-THE-314):
+    //   0324b34c80861ea7e2ee61e40bba7b6ff6f8be72dbef43827e75837e08a5530e
     expect(digest('src/app/api/event-registration/submit/route.ts'))
-      .toBe('0324b34c80861ea7e2ee61e40bba7b6ff6f8be72dbef43827e75837e08a5530e');
+      .toBe('b0e55c91adcc9b342e4d16fc5cabfff1426842056e1f5bb9e0f47546fc41ed98');
+    expect(read('app/api/event-registration/submit/route.ts'), 'the SMS call site moved off the retired module')
+      .toContain("from '@/lib/sms-send'");
     expect(read('app/api/event-registration/submit/route.ts'), 'event registration was gated')
       .not.toMatch(/STRIPE_CONNECT_ENABLED|stripe-connect-feature/);
   });
 
-  it('🔴 its existing suite passes with ZERO edits to that file', () => {
-    // The claim the ticket makes in as many words. If the no-regression suite
-    // for event registration had to be touched to keep it green, the change
-    // reached event registration after all.
+  it('🔴 its existing suite still asserts what it always did', () => {
+    // The claim THE-256 makes in as many words: if the no-regression suite for
+    // event registration had to be touched to keep it green, the change reached
+    // event registration after all.
+    //
+    // ⚠️ REPINNED ONCE, FOR THE-314, and the edit is the mirror of the route's:
+    // one `vi.mock` path, `@/lib/twilio` → `@/lib/sms-send`, because the module
+    // the route imports moved. Not one assertion changed — the suite is the same
+    // suite, pointed at the same function under a new home. That is the narrow
+    // case this pin exists to distinguish from a suite being weakened.
+    //
+    // Previous pin (pre-THE-314):
+    //   4e8b6ed25913eca78828ebdcf0abf726c48f7b5f182dbbc8b2a2877f77be8797
     expect(digest('src/app/api/event-registration/__tests__/submit-route.test.ts'))
-      .toBe('4e8b6ed25913eca78828ebdcf0abf726c48f7b5f182dbbc8b2a2877f77be8797');
+      .toBe('d7adee5eb35cc9975a046004b650f126275e551ceb648feccbedd8ef377ed6ec');
   });
 
   it('the two rules that make it independent of Connect are still there', () => {

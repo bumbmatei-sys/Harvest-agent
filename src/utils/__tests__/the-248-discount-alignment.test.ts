@@ -568,6 +568,18 @@ describe('the plan feature matrix and the Dodo product ids are unchanged', () =>
     // The per-cell contract in plan-features.test.ts moved in the same commit,
     // as this comment requires. 🔴 THE NINE PLAN PRICES ARE UNTOUCHED, asserted
     // separately in this same file and unchanged by that batch.
+    //
+    // ⚠️ REPINNED AGAIN FOR THE-314 — also not a reprice, which is again what
+    // keeps this guard meaningful. Four cells moved and no price did:
+    //   · `smsAutomation` true → false on plus and pro
+    //   · `textToGive`    true → false on plus and pro
+    // SMS became a Ministry-only capability when Harvest stopped asking churches
+    // to bring their own Twilio account and started RESELLING on its own vendor
+    // account — every send now spends Harvest's money, so the plan cell gates
+    // something real for the first time. The per-cell contract in
+    // plan-features.test.ts moved in the same commit. 🔴 THE NINE PLAN PRICES
+    // ARE AGAIN UNTOUCHED — the cross-repo price contract would throw at module
+    // scope during the marketing site's prerender if any of them had moved.
     const matrix = PLAN_ORDER.map((plan) => {
       const f = getPlanFeatures(plan) as unknown as Record<string, unknown>;
       return `${plan}:` + Object.keys(f).sort().map((k) => `${k}=${String(f[k])}`).join(',');
@@ -577,7 +589,7 @@ describe('the plan feature matrix and the Dodo product ids are unchanged', () =>
       'the plan feature matrix changed. THE-248 is a REPRICE and must move no '
       + 'feature cell — if a later ticket legitimately does, update this digest '
       + 'and the per-cell contract in plan-features.test.ts together.',
-    ).toBe('067433e42ea2270182e6b2a6d963c7788e9e60018edb0be69e867a218013d243');
+    ).toBe('1e07d3aeb9024cdd1841144560d66bd7fa292b39c978f665881a83c90933ce23');
   });
 
   it('and the tier ladder itself is untouched', () => {
