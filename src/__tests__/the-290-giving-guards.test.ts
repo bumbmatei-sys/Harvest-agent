@@ -286,6 +286,19 @@ describe('no new token was defined', () => {
 const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: string]>> = {
   'src/components/AdminDashboard.tsx': [
     ['722c5e4478be0a8508e7dff1232dd4c1f88cacdd502604f946f3134eb730d98c', 'main at 7fd4672, where this branch started — the value THE-276 and THE-283 both accepted'],
+    // ⚠️ APPENDED BY THE-294, and it is a REPAIR of a red main rather than a
+    // change to this ticket's claim. THE-291 (#434) removed the dead
+    // `onChangePlan` / `onCancelPlan` props from the `<AdminSettings>` mount — a
+    // client-side `plan` write no caller ever reached — and extended the
+    // accepted SET in `the-276-dashboard-guards` and `the-283-growth-guards`
+    // while missing this one, so this assertion has failed on `main` ever since.
+    // The value is the same one those two already accept.
+    //
+    // 🔴 The guard is NOT weakened by this. Appended, never substituted: a
+    // digest that is NEITHER — i.e. a ticket actually editing the file — still
+    // fails, which is the whole threat this guard exists for. THE-294 does not
+    // open `AdminDashboard.tsx` either.
+    ['446f0bcb8ffa6accf4f80467b75a50023c1441937605b11e18aa01b53d8e53f8', 'main + THE-291 — the client-side plan write removed'],
   ],
   'firestore.rules': [
     ['a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499', 'unchanged since 5e06c67'],

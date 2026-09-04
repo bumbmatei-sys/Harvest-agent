@@ -207,14 +207,27 @@ export function weekBuckets(now: number, weeks: number = TREND_WEEKS): { start: 
  *
  * `outsideWindow` is INFORMATIONAL, not a fault: most of a mature ledger is
  * older than eight weeks, and that is what a bounded window means.
+ *
+ * ⚠️ `weeks` WAS ADDED BY THE-294 and DEFAULTS to {@link TREND_WEEKS}, so every
+ * existing caller is unchanged — the Overview, Growth and Giving series are
+ * still eight buckets wide and still computed by exactly this arithmetic.
+ *
+ * 🔴 It exists because one collection may not be charted over eight weeks at
+ * all. `prayer_requests` rows are DELETED by a nightly cron thirty days after
+ * they are written (`/api/prayer-requests/cleanup`, `vercel.json`), so buckets
+ * older than the retention window can only ever fall towards zero — an eight-
+ * week prayer-wall trend would draw a collapse that is a deletion policy rather
+ * than a fact about the church. A window is the honest response; a shorter
+ * chart is not a smaller claim, it is the only true one.
  */
 export function bucketWeekly<T>(
   rows: readonly T[],
   now: number,
   dateOf: (row: T) => DateLike,
   weigh: (row: T) => number = () => 1,
+  weeks: number = TREND_WEEKS,
 ): { points: SeriesPoint[]; undatedRows: number; outsideWindow: number } {
-  const buckets = weekBuckets(now);
+  const buckets = weekBuckets(now, weeks);
   const values = new Array<number>(buckets.length).fill(0);
   let undatedRows = 0;
   let outsideWindow = 0;

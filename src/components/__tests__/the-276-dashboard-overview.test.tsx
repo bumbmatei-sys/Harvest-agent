@@ -104,8 +104,14 @@ const { DASHBOARD_TABS } = await import('../dashboard/DashboardTabs');
  * THE-283 made when it built Growth. The claim below is now about THREE unbuilt
  * tabs instead of four, and a tab that quietly stopped saying it was unbuilt
  * WITHOUT being built still fails here.
+ *
+ * ⚠️ AMENDED AGAIN BY THE-294, which built Engagement and Content, and narrowed
+ * the same way. ONE unbuilt tab remains — Platform — and the claim is still that
+ * every tab not on this list carries a placeholder naming itself. A tab added to
+ * this list without a panel actually being supplied fails the two assertions
+ * below it, so the list cannot be used to silence the guard.
  */
-const BUILT_TABS = ['overview', 'growth', 'giving'] as const;
+const BUILT_TABS = ['overview', 'growth', 'giving', 'engagement', 'content'] as const;
 const UNBUILT_TABS = DASHBOARD_TABS.filter(
   (t: { id: string }) => !(BUILT_TABS as readonly string[]).includes(t.id),
 );
@@ -203,7 +209,7 @@ describe('the tab shell renders all six tabs', () => {
     expect(DASHBOARD_TABS).toHaveLength(6);
   });
 
-  it('the three unbuilt tabs each say so by name, rather than rendering nothing', async () => {
+  it('the remaining unbuilt tab says so by name, rather than rendering nothing', async () => {
     grantAnalytics();
     healthyTenant();
     const c = await screen();
@@ -231,6 +237,16 @@ describe('the tab shell renders all six tabs', () => {
     await openTab(c, 'Giving');
     expect(c.querySelector('[data-tab-placeholder="giving"]'), 'Giving is built now').toBeNull();
     expect(c.querySelector('[data-giving-tab]'), 'Giving panel did not render').toBeTruthy();
+
+    // ⚠️ THE-294's two, asserted the same way: neither may carry a placeholder,
+    // and each must actually render its own panel.
+    await openTab(c, 'Engagement');
+    expect(c.querySelector('[data-tab-placeholder="engagement"]'), 'Engagement is built now').toBeNull();
+    expect(c.querySelector('[data-engagement-tab]'), 'Engagement panel did not render').toBeTruthy();
+
+    await openTab(c, 'Content');
+    expect(c.querySelector('[data-tab-placeholder="content"]'), 'Content is built now').toBeNull();
+    expect(c.querySelector('[data-content-tab]'), 'Content panel did not render').toBeTruthy();
 
     await openTab(c, 'Overview');
     expect(c.querySelector('[data-tab-placeholder="overview"]')).toBeNull();
@@ -862,7 +878,7 @@ describe('THE-276-FIX moved layout only', () => {
     expect(text(funnel)).not.toMatch(/Champion|Giving tier|Member\b/);
   });
 
-  it('the three remaining tabs are still placeholders — slices 4 to 6 are unbuilt', async () => {
+  it('the remaining tab is still a placeholder — the Platform slice is unbuilt', async () => {
     grantAnalytics();
     healthyTenant();
     const c = await screen();

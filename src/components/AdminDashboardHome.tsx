@@ -39,11 +39,15 @@
 import React, { useEffect, useState } from 'react';
 import { auth } from '../firebase';
 
+import { ContentTab } from './dashboard/ContentTab';
 import { DashboardTabs } from './dashboard/DashboardTabs';
+import { EngagementTab } from './dashboard/EngagementTab';
 import { GivingTab } from './dashboard/GivingTab';
 import { GrowthTab } from './dashboard/GrowthTab';
 import { OverviewTab } from './dashboard/OverviewTab';
 import { hasAnalyticsAccess, type AnalyticsAccess } from './dashboard/analytics-permission';
+import { useContentData } from './dashboard/useContentData';
+import { useEngagementData } from './dashboard/useEngagementData';
 import { useGivingData } from './dashboard/useGivingData';
 import { useGrowthData } from './dashboard/useGrowthData';
 import { useOverviewData, type OverviewData } from './dashboard/useOverviewData';
@@ -175,6 +179,24 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({
  * only the ACTIVE tab panel, so the member-location read fires when someone
  * selects Growth and the campaign and pledge reads fire when someone selects
  * Giving — never on a visit that only looks at Overview.
+ *
+ * ─── THE-294: two more panels, and the same rule twice more ─────────────────
+ *
+ * ⚠️ `useEngagementData` and `useContentData` follow the identical shape, and
+ * the deferral matters MORE for them than for any earlier tab.
+ * `contactActivities` is the largest collection this dashboard touches — it
+ * grows without bound and is never pruned — and the Content tab's figure needs
+ * FOUR complete reads, one of them over every member document. Neither is
+ * anywhere near the landing tab's critical path: both fire only when their tab
+ * is selected.
+ *
+ * 🔴 NEITHER IS HANDED AN `OverviewData`, and the omission is the point. The
+ * Growth and Giving tabs are handed one because they REPLOT a series the
+ * Overview tab has already read, so the two tabs cannot disagree. Nothing on
+ * Engagement or Content replots anything: every figure on them comes from a
+ * collection the Overview tab does not read, so there is no shared number to
+ * keep consistent and passing the object would only invite one to be derived
+ * from it later.
  */
 function AnalyticsDashboard({ tenantId, isSuperAdmin, unreadCount, showInbox }: {
   tenantId: string | null;
@@ -188,6 +210,8 @@ function AnalyticsDashboard({ tenantId, isSuperAdmin, unreadCount, showInbox }: 
       overview={<OverviewTab data={data} unreadCount={unreadCount} showInbox={showInbox} />}
       growth={<GrowthPanel data={data} tenantId={tenantId} isSuperAdmin={isSuperAdmin} />}
       giving={<GivingPanel data={data} tenantId={tenantId} />}
+      engagement={<EngagementPanel tenantId={tenantId} />}
+      content={<ContentPanel tenantId={tenantId} />}
     />
   );
 }
@@ -220,6 +244,25 @@ function GivingPanel({ data, tenantId }: {
 }) {
   const giving = useGivingData(tenantId);
   return <GivingTab data={data} giving={giving} />;
+}
+
+/**
+ * The Engagement tab's three reads, deferred to the moment the tab is opened.
+ *
+ * ⚠️ `isSuperAdmin` is NOT passed, for the reason `GivingPanel` does not take it
+ * either: `useEngagementData` is TENANT-SCOPED ONLY. `tenants/{t}/checkinSessions`
+ * is a subcollection with no apex-level counterpart to read, and summing every
+ * church's CRM activity and prayer requests into one figure is a number this
+ * product does not define. There is no platform-wide branch for the flag to
+ * select, and giving the hook a parameter it must ignore would suggest there is.
+ */
+function EngagementPanel({ tenantId }: { tenantId: string | null }) {
+  return <EngagementTab engagement={useEngagementData(tenantId)} />;
+}
+
+/** The Content tab's four reads, deferred the same way and scoped the same way. */
+function ContentPanel({ tenantId }: { tenantId: string | null }) {
+  return <ContentTab content={useContentData(tenantId)} />;
 }
 
 export default AdminDashboardHome;
