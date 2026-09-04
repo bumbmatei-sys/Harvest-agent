@@ -419,6 +419,7 @@ describe('2 · every use of pb-safe is accounted for', () => {
       'src/components/__tests__/__fixtures__/member-screens-mobile.json',
       'src/components/__tests__/the-281-giving-share.test.tsx',
       'src/components/__tests__/the-290-giving-layout.test.tsx',
+      'src/components/__tests__/the-294-engagement-layout.test.tsx',
       'src/components/course/__tests__/THE-282.course-cards-layout.test.tsx',
       'src/components/dashboard/GivingTab.tsx',
       'src/components/dashboard/PledgeFulfilment.tsx',
