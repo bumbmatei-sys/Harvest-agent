@@ -859,7 +859,12 @@ describe('THE-183 — admin Settings', () => {
       // master switch, which is a deliberate edit to this file. What THE-183
       // actually guards — that no Twilio PATH moved — is asserted on the file's
       // contents just below instead, which is the stronger check anyway.
-      'src/components/settings/OnboardingSection.tsx',
+      // OnboardingSection is NOT diffed as a whole any more, for exactly the
+      // reason GivingStatementsSection stopped being: THE-296 converts it to the
+      // shared chrome and to autosave, which is a deliberate edit to this file.
+      // What THE-183 actually guards — that no onboarding PATH moved — is
+      // asserted on the file's contents in (a6) below instead, which is the
+      // stronger check anyway.
       // IntegrationsSection is NOT diffed as a whole any more. THE-193 gates its
       // three provider cards individually (Gmail is a CRM provider, not a
       // newsletter one), which is a deliberate edit to this file. What THE-183
@@ -971,6 +976,46 @@ describe('THE-183 — admin Settings', () => {
     // leaving two ways to save one field.
     expect(givingSection, 'GivingStatementsSection no longer autosaves')
       .toContain('useAutosaveField');
+
+    // (a6) THE-296 — the onboarding path OnboardingSection owns, asserted on
+    //      contents for the same reason as (a5) above. The section is re-chromed
+    //      and put behind autosave, not rewired: it still reads and writes the
+    //      same two tenant config keys, on the same two collections, and it
+    //      still seeds the same five default questions a church starts with.
+    const onboardingSection = readFileSync(path.join(SRC, 'components/settings/OnboardingSection.tsx'), 'utf8');
+    for (const path_ of [
+      'config.onboardingQuestions',
+      'config.onboardingInitialized',
+      "doc(db, 'tenants', tenantId)",
+      "doc(db, 'users', auth.currentUser.uid)",
+    ]) {
+      expect(onboardingSection, `${path_} is no longer used by OnboardingSection`).toContain(path_);
+    }
+    for (const q of ['default_name', 'default_country', 'default_city', 'default_phone', 'default_accepted_jesus']) {
+      expect(onboardingSection, `the '${q}' default question left OnboardingSection`).toContain(q);
+    }
+    // 🔴 The Save button is GONE, not hidden — that is the conversion, and the
+    // same assertion (a5) makes for the section THE-286 converted.
+    expect(onboardingSection, 'OnboardingSection no longer autosaves')
+      .toContain('useAutosaveField');
+    // 🔴 …and the failure is no longer an `alert()`. A dismissed browser alert
+    // leaves no record at all, which is precisely the silent discard autosave
+    // was extracted to prevent; this is the no-regression on that.
+    // Comments stripped before asking, for the reason THE-286's own `code()`
+    // helper exists: this file's header QUOTES the alert() it removed in order
+    // to explain why, and a raw-text search reads that explanation as the
+    // defect.
+    const onboardingCode = onboardingSection
+      .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, ' ')
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')
+      .replace(/^[ \t]*\/\/.*$/gm, ' ');
+    expect(onboardingCode, 'OnboardingSection reports a failed save through alert() again')
+      .not.toMatch(/\balert\(/);
+    // 🔴 DELETE stays an explicit, confirmed action. The Save button used to be
+    // the accident-brake on it; removing the button without this would have
+    // made the conversion a regression in safety.
+    expect(onboardingSection, 'deleting a question is no longer confirmed')
+      .toContain('confirmingDelete');
 
     // (b) AdminSettings' own wiring is intact, whether or not git is available:
     //     the billing portal call, the Stripe return handling that force-opens

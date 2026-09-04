@@ -173,6 +173,22 @@ export const AUTOSAVE_EXCLUDED: ReadonlyArray<{ file: string; field: string; why
     field: 'add-on purchase and removal',
     why: 'Buying an add-on is a charge. Removing one is a downgrade. Both are the money path.',
   },
+  {
+    // 🔴 THE-296 — added when the section was converted onto this chrome. It is
+    // the one converted section that autosaves NOTHING, and that is the point:
+    // every control on it is an explicit act with an external consequence.
+    file: 'src/components/settings/IntegrationsSection.tsx',
+    field: 'the Gmail / Instagram / Mailchimp connection, and the Gmail sending address',
+    why:
+      'Not money, but the same rule for the same reason: none of these is a preference. Connect ' +
+      'opens a real OAuth grant in a new window and Disconnect revokes one — neither is something ' +
+      'a person may commit by walking away from a field. The sending address is the identity a ' +
+      "church's mail goes out AS, so a half-typed value autosaved mid-keystroke would send from an " +
+      'address nobody chose. And this is the path where Harvest holds gmail.send and must never ' +
+      'hold a scope that can read an inbox (assertSendOnlyGmailScopes fails closed, server-side): ' +
+      'a surface that grants access is the last place to make committing accidental. THE-194 — ' +
+      "Google's OAuth app still unverified and capped at 100 users — is open on this path too.",
+  },
 ];
 
 /**

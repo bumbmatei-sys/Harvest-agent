@@ -825,7 +825,78 @@ describe('15 · the other 12 sections are byte-identical', () => {
     expect(Object.keys(UNTOUCHED.otherSettingsSections)).toHaveLength(12);
   });
 
+  /**
+   * ⚠️ A LATER TICKET HAS CONVERTED TWO MORE SECTIONS, so blanket byte-identity
+   * across all twelve no longer states something true.
+   *
+   * Each is named here with the ticket that edited it and why, exactly as
+   * `EDITED_SINCE_MEASUREMENT` does in admin-data-screens.desktop-layout.test.tsx
+   * and preauth-funnel.desktop-layout.test.tsx (established by THE-195/THE-201).
+   * The files stay IN `otherSettingsSections` rather than being dropped from it,
+   * and they are exempted from ONE assertion — the digest — and nothing else.
+   *
+   * 🔴 This does not weaken the guard, for three reasons the list below enforces:
+   * the exemption is per file and pinned WHOLE (widening it is an edit to the
+   * literal on the next line, visible in review); an exempted file MUST actually
+   * differ, so the entry cannot outlive the edit that justified it; and the ten
+   * files nobody has touched are still hard-pinned by digest. What THE-286 was
+   * really claiming about these two — that its own slice did not rewire them —
+   * is now the stronger per-path claim in AdminSettings.regroup.test.tsx (a6)
+   * and in THE-296's own suite.
+   */
+  const EDITED_SINCE_MEASUREMENT: ReadonlyArray<{ file: string; ticket: string; why: string }> = [
+    {
+      file: 'src/components/settings/OnboardingSection.tsx',
+      ticket: 'THE-296',
+      why:
+        'Converted onto this slice\'s own chrome and autosave — it was the last section ' +
+        'AdminSettings mounts that still carried a SAVE BUTTON, which is the control ' +
+        'useAutosaveField was extracted to replace, and it reported a failed save through ' +
+        'alert(): a blocking modal that leaves NO record once dismissed, which is the silent ' +
+        'discard this mechanism exists to prevent. Add, edit and reorder now autosave via ' +
+        'onCommit; DELETE became a two-tap confirmed action, because the Save button had been ' +
+        'the accident-brake on it and removing the button without replacing that brake would ' +
+        'have made the conversion a regression in safety. The tenant config keys, the two ' +
+        'collections and the five default questions are unchanged and asserted by path.',
+    },
+    {
+      file: 'src/components/settings/IntegrationsSection.tsx',
+      ticket: 'THE-296',
+      why:
+        'Restyled onto the same chrome: the numbered palette classes this slice forbids ' +
+        '(text-green-600, text-yellow-600, border-red-200, bg-red-50, hover:bg-yellow-50) became ' +
+        'semantic tokens plus a lucide icon, so a connection state is no longer carried by hue ' +
+        'alone, and every px-4 py-2 control — 36px, under the touch floor on the buttons that ' +
+        'START AND END AN OAUTH GRANT — took the 44px floor below sm and Rule 4 above it. It ' +
+        'gained the explicit nav clearance too. NO autosave was added and none may be: every ' +
+        'control here is an explicit action, and the section is in AUTOSAVE_EXCLUDED. All ten ' +
+        'Composio endpoints, both Primary writes and the send-only Gmail copy are unchanged.',
+    },
+  ];
+
+  it('the digest exemption list is exactly the edits that justify it', async () => {
+    const { createHash } = await import('node:crypto');
+    // Pinned whole — file AND ticket — so widening it is an edit to this line.
+    expect(EDITED_SINCE_MEASUREMENT.map((e) => `${e.ticket} ${e.file}`)).toEqual([
+      'THE-296 src/components/settings/OnboardingSection.tsx',
+      'THE-296 src/components/settings/IntegrationsSection.tsx',
+    ]);
+    for (const { file, why } of EDITED_SINCE_MEASUREMENT) {
+      expect(UNTOUCHED.otherSettingsSections, `${file} is exempted but was never recorded`)
+        .toHaveProperty(file);
+      // The digest MUST actually differ. If a later change reverts the edit this
+      // fails and the entry has to come out, so the list cannot outlive it.
+      const now = createHash('sha256').update(readFileSync(path.join(ROOT, file))).digest('hex');
+      expect(now, `${file} is exempted but unchanged — drop it from the list`)
+        .not.toBe(UNTOUCHED.otherSettingsSections[file as keyof typeof UNTOUCHED.otherSettingsSections]);
+      expect(why.length, `${file} is exempted without a stated reason`).toBeGreaterThan(80);
+    }
+  });
+
+  const EXEMPT = EDITED_SINCE_MEASUREMENT.map((e) => e.file);
+
   it.each(Object.entries(UNTOUCHED.otherSettingsSections))('%s is unchanged', async (rel, digest) => {
+    if (EXEMPT.includes(rel)) return;
     const { createHash } = await import('node:crypto');
     const now = createHash('sha256').update(readFileSync(path.join(ROOT, rel))).digest('hex');
     expect(now, `${rel} changed — this slice converts ONE section`).toBe(digest);

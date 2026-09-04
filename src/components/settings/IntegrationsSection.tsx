@@ -1,16 +1,32 @@
 "use client";
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Instagram, Mail, Star, Send } from 'lucide-react';
+import { CheckCircle2, Instagram, Loader2, Mail, Star, Send } from 'lucide-react';
 import { authFetch } from '../../utils/auth-fetch';
 import { TenantPlan } from '../../types/tenant.types';
 import { getPlanFeatures } from '../../utils/plan-features';
 import { hasPlatformOverride } from '../../utils/tenant-scope';
+import { CONTROL_DENSITY } from '../layout/form-layout';
+import { NAV_CLEARANCE } from './GivingStatementsSection';
 import {
   INTEGRATION_PROVIDERS,
   IntegrationProviderId,
   getIntegrationProvider,
   isProviderAvailable,
 } from './integration-providers';
+
+/**
+ * THE-296 — the touch floor below `sm`, Rule 4's density band above it.
+ *
+ * Identical to `GivingStatementsSection`'s and `OnboardingSection`'s, and for
+ * the identical reason: 44px is a THUMB's floor and `DENSITY_PX.control` is 38
+ * on purpose, capped by `DESKTOP_CONTROL_MAX_PX`. `min-h-` rather than `h-` so
+ * the floor cannot lose a specificity race with a primitive's own height.
+ *
+ * 🔴 This card row had `px-4 py-2` buttons — 36px, under the floor on every
+ * phone, on the controls that start and END an OAuth grant.
+ */
+export const ACTION_HEIGHT = `min-h-[44px] sm:min-h-[40px] ${CONTROL_DENSITY.action}`;
+export const CONTROL_HEIGHT = `min-h-[44px] sm:min-h-[38px] ${CONTROL_DENSITY.control}`;
 
 interface IntegrationsSectionProps {
   /** The tenant's tier. Each provider card is gated on the feature it serves —
@@ -351,7 +367,7 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ currentPlan, 
   };
 
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${NAV_CLEARANCE}`}>
       {/* The intro describes the cards that are actually on screen. Derived
           from the visible providers' own concern, so a tenant with only the
           CRM provider is not told about newsletter distribution. */}
@@ -363,8 +379,8 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ currentPlan, 
 
       {/* Instagram Card */}
       {showInstagram && (
-      <div className="bg-surface-tint rounded-xl p-4">
-        <div className="flex items-center gap-4">
+      <div className="bg-surface-tint rounded-brand p-4">
+        <div className="flex flex-wrap sm:flex-nowrap items-start gap-3 sm:gap-4">
           <Instagram size={20} className="text-faint" />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
@@ -376,30 +392,30 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ currentPlan, 
               )}
             </div>
             {instagramStatus === 'connected' ? (
-              <p className="text-xs text-green-600">Connected{instagramAccount ? ` — @${instagramAccount}` : ''}</p>
+              <p className="text-xs text-body flex items-center gap-1"><CheckCircle2 size={12} aria-hidden="true" className="shrink-0 text-gold" />Connected{instagramAccount ? ` — @${instagramAccount}` : ''}</p>
             ) : instagramStatus === 'connecting' ? (
-              <p className="text-xs text-yellow-600">Waiting for authorization...</p>
+              <p className="text-xs text-muted flex items-center gap-1"><Loader2 size={12} aria-hidden="true" className="shrink-0 animate-spin" />Waiting for authorization...</p>
             ) : (
               <p className="text-xs text-muted">Auto-generate newsletters from your Instagram posts</p>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             {instagramStatus === 'connected' && !isPrimaryInstagram && (
               <button
                 onClick={handleMakePrimaryInstagram}
-                className="px-4 py-2 border border-gold text-gold rounded-lg text-sm font-medium hover:bg-yellow-50 transition-colors"
+                className={`px-4 border border-gold text-gold rounded-brand text-sm font-medium hover:bg-surface-chip transition-colors ${ACTION_HEIGHT}`}
               >
                 Make Primary
               </button>
             )}
             {instagramStatus === 'connected' ? (
               <button onClick={handleInstagramDisconnect} disabled={instagramLoading}
-                className="px-4 py-2 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50">
+                className={`px-4 border border-danger text-danger-strong rounded-brand text-sm font-medium hover:bg-danger-tint transition-colors disabled:opacity-50 ${ACTION_HEIGHT}`}>
                 {instagramLoading ? 'Disconnecting...' : 'Disconnect'}
               </button>
             ) : (
               <button onClick={handleInstagramConnect} disabled={instagramLoading || instagramStatus === 'connecting'}
-                className="px-4 py-2 bg-gold text-white rounded-lg text-sm font-medium hover:bg-gold transition-colors disabled:opacity-50">
+                className={`px-4 bg-gold text-white rounded-brand text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 ${ACTION_HEIGHT}`}>
                 {instagramLoading ? (
                   <span className="flex items-center gap-2">
                     <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -415,8 +431,8 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ currentPlan, 
 
       {/* Mailchimp Card */}
       {showMailchimp && (
-      <div className="bg-surface-tint rounded-xl p-4">
-        <div className="flex items-center gap-4">
+      <div className="bg-surface-tint rounded-brand p-4">
+        <div className="flex flex-wrap sm:flex-nowrap items-start gap-3 sm:gap-4">
           <Mail size={20} className="text-faint" />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
@@ -428,30 +444,30 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ currentPlan, 
               )}
             </div>
             {mailchimpStatus === 'connected' ? (
-              <p className="text-xs text-green-600">Connected{mailchimpAccount ? ` — ${mailchimpAccount}` : ''}</p>
+              <p className="text-xs text-body flex items-center gap-1"><CheckCircle2 size={12} aria-hidden="true" className="shrink-0 text-gold" />Connected{mailchimpAccount ? ` — ${mailchimpAccount}` : ''}</p>
             ) : mailchimpStatus === 'connecting' ? (
-              <p className="text-xs text-yellow-600">Waiting for authorization...</p>
+              <p className="text-xs text-muted flex items-center gap-1"><Loader2 size={12} aria-hidden="true" className="shrink-0 animate-spin" />Waiting for authorization...</p>
             ) : (
               <p className="text-xs text-muted">Sync subscribers and send campaigns via Mailchimp</p>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             {mailchimpStatus === 'connected' && !isPrimaryMailchimp && (
               <button
                 onClick={handleMakePrimaryMailchimp}
-                className="px-4 py-2 border border-gold text-gold rounded-lg text-sm font-medium hover:bg-yellow-50 transition-colors"
+                className={`px-4 border border-gold text-gold rounded-brand text-sm font-medium hover:bg-surface-chip transition-colors ${ACTION_HEIGHT}`}
               >
                 Make Primary
               </button>
             )}
             {mailchimpStatus === 'connected' ? (
               <button onClick={handleMailchimpDisconnect} disabled={mailchimpLoading}
-                className="px-4 py-2 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50">
+                className={`px-4 border border-danger text-danger-strong rounded-brand text-sm font-medium hover:bg-danger-tint transition-colors disabled:opacity-50 ${ACTION_HEIGHT}`}>
                 {mailchimpLoading ? 'Disconnecting...' : 'Disconnect'}
               </button>
             ) : (
               <button onClick={handleMailchimpConnect} disabled={mailchimpLoading || mailchimpStatus === 'connecting'}
-                className="px-4 py-2 bg-gold text-white rounded-lg text-sm font-medium hover:bg-gold transition-colors disabled:opacity-50">
+                className={`px-4 bg-gold text-white rounded-brand text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 ${ACTION_HEIGHT}`}>
                 {mailchimpLoading ? (
                   <span className="flex items-center gap-2">
                     <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -467,19 +483,19 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ currentPlan, 
 
       {/* Gmail Card */}
       {showGmail && (
-      <div className="bg-surface-tint rounded-xl p-4">
-        <div className="flex items-center gap-4">
+      <div className="bg-surface-tint rounded-brand p-4">
+        <div className="flex flex-wrap sm:flex-nowrap items-start gap-3 sm:gap-4">
           <Send size={20} className="text-faint" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-strong">Gmail</p>
             {gmailStatus === 'connected' ? (
-              <p className="text-xs text-green-600">
-                {gmailSender
+              <p className="text-xs text-body flex items-center gap-1">
+                <CheckCircle2 size={12} aria-hidden="true" className="shrink-0 text-gold" />{gmailSender
                   ? `Connected — sending as ${gmailSender}`
                   : 'Connected — confirm your sending address below before emailing'}
               </p>
             ) : gmailStatus === 'connecting' ? (
-              <p className="text-xs text-yellow-600">Waiting for authorization...</p>
+              <p className="text-xs text-muted flex items-center gap-1"><Loader2 size={12} aria-hidden="true" className="shrink-0 animate-spin" />Waiting for authorization...</p>
             ) : (
               <p className="text-xs text-muted">Email a CRM contact from your own Gmail account</p>
             )}
@@ -497,7 +513,7 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ currentPlan, 
               <button
                 type="button"
                 onClick={() => { setGmailSenderDraft(gmailSender || gmailSenderDraft); setEditingGmailSender(true); }}
-                className="text-[11px] text-gold underline mt-1"
+                className={`text-[11px] text-gold underline mt-1 inline-flex items-center ${ACTION_HEIGHT}`}
               >
                 {gmailSender ? 'Change sending address' : 'Set sending address'}
               </button>
@@ -506,30 +522,30 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ currentPlan, 
                 <label htmlFor="gmail-sender" className="block text-[11px] text-muted mb-1">
                   Send from this Gmail address
                 </label>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <input
                     id="gmail-sender"
                     type="email"
                     value={gmailSenderDraft}
                     onChange={(e) => setGmailSenderDraft(e.target.value)}
                     placeholder="you@yourchurch.org"
-                    className="flex-1 min-w-0 px-2 py-1 border border-line rounded-lg text-xs"
+                    className={`flex-1 min-w-0 px-2 border border-line rounded-brand text-xs ${CONTROL_HEIGHT}`}
                   />
                   {gmailStatus === 'connected' && (
                     <>
                       <button type="button" onClick={handleGmailSenderSave}
-                        className="px-3 py-1 bg-gold text-white rounded-lg text-xs font-medium">
+                        className={`px-3 bg-gold text-white rounded-brand text-xs font-medium ${ACTION_HEIGHT}`}>
                         Save
                       </button>
                       <button type="button" onClick={() => { setEditingGmailSender(false); setGmailSenderError(null); }}
-                        className="px-3 py-1 border border-line text-body rounded-lg text-xs">
+                        className={`px-3 border border-line text-body rounded-brand text-xs ${ACTION_HEIGHT}`}>
                         Cancel
                       </button>
                     </>
                   )}
                 </div>
                 {gmailSenderError && (
-                  <p className="text-[11px] text-red-600 mt-1">{gmailSenderError}</p>
+                  <p role="alert" className="text-[11px] text-danger-strong mt-1">{gmailSenderError}</p>
                 )}
                 {gmailStatus !== 'connected' && (
                   <p className="text-[11px] text-faint mt-1">
@@ -539,15 +555,15 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ currentPlan, 
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             {gmailStatus === 'connected' ? (
               <button onClick={handleGmailDisconnect} disabled={gmailLoading}
-                className="px-4 py-2 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50">
+                className={`px-4 border border-danger text-danger-strong rounded-brand text-sm font-medium hover:bg-danger-tint transition-colors disabled:opacity-50 ${ACTION_HEIGHT}`}>
                 {gmailLoading ? 'Disconnecting...' : 'Disconnect'}
               </button>
             ) : (
               <button onClick={handleGmailConnect} disabled={gmailLoading || gmailStatus === 'connecting'}
-                className="px-4 py-2 bg-gold text-white rounded-lg text-sm font-medium hover:bg-gold transition-colors disabled:opacity-50">
+                className={`px-4 bg-gold text-white rounded-brand text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 ${ACTION_HEIGHT}`}>
                 {gmailLoading ? (
                   <span className="flex items-center gap-2">
                     <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />

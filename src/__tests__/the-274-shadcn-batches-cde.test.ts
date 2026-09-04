@@ -887,6 +887,19 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       'makes a failed autosave reach a screen reader and not only an eye. No primitive was ' +
       'edited — their digests are pinned by ds-primitives.test.tsx and still match.',
   },
+  {
+    file: 'src/components/settings/OnboardingSection.tsx',
+    ticket: 'THE-296',
+    why:
+      "The second section onto THE-286's chrome, and the one that still carried a SAVE BUTTON — " +
+      'the control autosave was extracted to replace. It takes `field` (Field, FieldDescription, ' +
+      'FieldError, FieldGroup, FieldLabel) plus the pre-existing `input`, so the question-editor ' +
+      'dialog spells no field chrome of its own; it used to re-spell ' +
+      '`px-4 py-2 border border-line rounded-lg focus:ring-2 focus:ring-gold` three times. ' +
+      'FieldError is load-bearing for the same reason it is in GivingStatementsSection: its ' +
+      'role="alert" is what carries a failed autosave to a screen reader, and here it replaces an ' +
+      '`alert()` that left no record at all once dismissed. No primitive was edited.',
+  },
 ];
 
 it('only the recorded adopters import the new components, and each names its ticket', () => {
