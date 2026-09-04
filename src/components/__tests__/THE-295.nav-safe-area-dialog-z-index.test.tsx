@@ -453,6 +453,17 @@ describe('2 · every use of pb-safe is accounted for', () => {
       'src/components/__tests__/THE-298.form-answers-layout.test.tsx',
       'src/components/__tests__/THE-300.billing-surface.layout.test.tsx',
       'src/components/__tests__/THE-300.billing-surface.test.tsx',
+      // ⚠️ THE-304's layout suite is a SEVENTH ticket naming the class without
+      // applying it, and it names it for THE-298's and THE-300's reason: it
+      // REPLICATES the shell's bottom nav character for character — `pb-safe`
+      // included — so the fixture is the nav it is measuring the option
+      // editor's clearance against, and then measures that clearance in pixels
+      // rather than trusting the class. Its own header records, in as many
+      // words, that `pb-safe` compiles to nothing here and that the clearance
+      // it measures comes from `pb-24` and the builder's `paddingBottom: 120`
+      // instead. It applies the class to no live surface: THE-304's diff is
+      // AdminForms' option editor, which spells no bottom padding at all.
+      'src/components/__tests__/THE-304.form-options-layout.test.tsx',
       'src/components/__tests__/__fixtures__/member-screens-mobile.json',
       'src/components/__tests__/the-281-giving-share.test.tsx',
       'src/components/__tests__/the-290-giving-layout.test.tsx',

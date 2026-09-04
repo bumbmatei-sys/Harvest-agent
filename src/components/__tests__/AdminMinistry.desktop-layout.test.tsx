@@ -508,6 +508,46 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       'in its own class; Tailwind defines no rule for it, so it sets nothing on ' +
       'a phone. The button itself reuses the action row\'s existing class string ' +
       'verbatim, so no utility token was added with it.',
+
+    /* ─── THE-304 — the option editor, APPENDED to the list above ─────────────
+       The five entries below are the builder's option editor becoming a list of
+       per-option rows instead of one `<textarea>` of newline-joined text. Two of
+       them DO move a phone, deliberately and upward; three are structural. They
+       are added here rather than by re-recording ministry-AdminForms.json, so the
+       baseline still describes the pre-THE-298 rendering and every addition since
+       is named in this list with its ticket — appending is what keeps the record
+       readable, and substituting a baseline is what turned main red last week. */
+    'min-h-[44px]':
+      'THE-304 — the phone tap-target floor on the option editor\'s own controls ' +
+      '(the option text input and the Add option button). This one DOES bind below ' +
+      'sm: and that is its entire purpose — it RAISES a target, and no assertion in ' +
+      'this file forbids that: section 2 forbids a target getting SMALLER. It is ' +
+      'paired with sm:min-h-0 so Rule 4\'s deliberate 38px control height still ' +
+      'decides above sm:, and it is spelled on these controls rather than on a ' +
+      'shared primitive, exactly as THE-298 did with AdminSecondaryButton.',
+    'min-w-[44px]':
+      'THE-304 — the same floor on the other axis, for the three icon-only controls ' +
+      'of an option row (move up, move down, remove). An icon button is the one ' +
+      'shape where height alone does not make a 44px target. Paired with ' +
+      'sm:min-w-0 for the same reason as min-h-[44px] above, and raising a target, ' +
+      'never shrinking one.',
+    'basis-full':
+      'THE-304 — structural, and the 380px answer. An option row is a text input ' +
+      'plus three icon controls, which at 380px either squeezes the input to ' +
+      'nothing or pushes the card past the viewport. basis-full on the input makes ' +
+      'it take the whole first line of a flex-wrap row so the icons wrap beneath ' +
+      'it; sm:basis-auto releases it to one line again. Flex basis carries no ' +
+      'colour, height or spacing.',
+    'justify-center':
+      'THE-304 — structural. Centres the lucide glyph inside the 44px box that ' +
+      'min-w-[44px]/min-h-[44px] give the three icon controls, which without it ' +
+      'sits at the left of a box wider than itself. Alignment only; no size.',
+    'space-y-1.5':
+      'THE-304 — structural. The 6px vertical rhythm BETWEEN option rows, which ' +
+      'did not exist before because the options were one textarea and had no rows. ' +
+      'space-y-1.5 is a spacing token this file already carries on the phone layer ' +
+      '(the preview\'s radio/checkbox stack spells it), so it is not a new length ' +
+      'either — and Rule 4 owns sm:-gated gaps, which this is not.',
   };
 
   const toTokens = (layer: string[]) =>
