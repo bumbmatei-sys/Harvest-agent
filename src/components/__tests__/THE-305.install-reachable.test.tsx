@@ -379,26 +379,103 @@ const changedSince = (...paths: string[]): string[] =>
   execFileSync('git', ['diff', '--name-only', baseRef(), '--', ...paths],
     { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
 
-describe('the account-deletion flow is byte-identical', () => {
-  it('leaves PersonalInformationModal.tsx untouched', () => {
-    // It carries the deleteState machine, all eight outcome messages, the
-    // silent-failure fix, and DELETE_CONFIRM_COPY asserted deep-equal to the
-    // live MEMBER_DATA_MAP derivation. Mounting the install control needed none
-    // of it — the control was already in Profile.tsx, one file up.
-    expect(changedSince('src/components/PersonalInformationModal.tsx'),
-      'the account-deletion flow was modified').toEqual([]);
+/**
+ * ── 🔴 THE-312 REPLACED TWO FILE-LEVEL FREEZES WITH THE PROPERTY THEY WERE FOR ─
+ *
+ * This block used to assert `git diff --name-only origin/main -- <file>` is
+ * empty for `PersonalInformationModal.tsx` and for `Profile.tsx`. That is not a
+ * digest and no register can help it: it fails on ANY edit, at any value, so
+ * the settings/My-Profile redesign could not begin.
+ *
+ * What each was actually FOR, read off its own comment:
+ *
+ *   · `PersonalInformationModal.tsx` — "it carries the deleteState machine, all
+ *     eight outcome messages, the silent-failure fix, and DELETE_CONFIRM_COPY
+ *     deep-equal to the live MEMBER_DATA_MAP derivation". That is a list of
+ *     PROPERTIES, every one of which is assertable directly. It is asserted
+ *     directly below.
+ *
+ *   · `Profile.tsx` — "THE-305 verified this file rather than editing it: the
+ *     control the ticket asked for was already here". The property is that the
+ *     install control stays reachable and does not wait on
+ *     `beforeinstallprompt` — which sections 1 through 4 of this very file
+ *     already assert by MOUNTING Profile and finding the control, on a skipped
+ *     onboarding, with no prompt ever fired, on iOS and on Brave/Android. The
+ *     freeze added nothing to that and blocked every legitimate edit.
+ *
+ * ⚠️ THE-292 reported a guard that initially failed only its source check and
+ * not its behavioural pair, and stubbed `fetch` rather than accept a half-guard.
+ * The same standard applies here: the old "still spells all eight outcome
+ * messages and the confirm copy" test asserted neither the eight messages nor
+ * the copy — it grepped for two identifiers. Removing the freeze without fixing
+ * that would have been a real loss, so it is fixed here: the messages are
+ * asserted verbatim, the branch count is pinned, and `DELETE_CONFIRM_COPY` is
+ * compared deep-equal to the live derivation rather than merely mentioned.
+ *
+ * A behavioural assertion is the stronger guard: it survives a legitimate edit
+ * and still catches a real regression.
+ */
+describe('the account-deletion flow is still fully asserted', () => {
+  const MODAL = 'components/PersonalInformationModal.tsx';
+
+  it('spells all eight outcome messages, verbatim', () => {
+    const src = read(MODAL);
+    // Every outcome ENDS IN SOMETHING RENDERED. That is the whole point of the
+    // machine: the member tapped Delete and the screen did not move.
+    for (const message of [
+      'You are not signed in. Sign in again and retry.',
+      'Could not reach the server. Check your connection and try again.',
+      'Your account and sign-in have been deleted. Signing you out now.',
+      'For your security, confirm your password to finish deleting your account.',
+      'Enter your password to continue.',
+      'Incorrect password. Try again.',
+    ]) {
+      expect(src, `the outcome message "${message}" is gone`).toContain(message);
+    }
+    // The two multi-line ones (the federated-account instruction and the
+    // server-step failure) are set through the same setter; count the setter
+    // calls so a removed branch fails even though its copy is interpolated.
+    const setterCalls = [...src.matchAll(/setDeleteMessage\(/g)].length;
+    expect(setterCalls, 'a deleteMessage branch was added or removed').toBe(10); // 8 outcomes + 2 clears
   });
 
-  it('leaves the settings surface itself untouched', () => {
-    // THE-305 verified this file rather than editing it: the control the ticket
-    // asked for was already here.
-    expect(changedSince('src/components/Profile.tsx')).toEqual([]);
+  it('keeps the state machine, the silent-failure fix and the re-auth path', () => {
+    const src = read(MODAL);
+    expect(src).toContain("type DeleteFlowState = 'idle' | 'deleting' | 'reauth' | 'error' | 'done'");
+    // The re-auth happens IN PLACE, with the same call the change-password flow
+    // makes — not turned into "sign out and sign back in".
+    expect(src, 'the re-auth path left the delete flow').toContain('reauthenticateWithCredential');
+    expect(src).toContain('handleReauthAndDelete');
+    // 🔴 The silent-failure fix: BOTH deletions happen on the server, in order.
+    // The client-side deleteDoc was the bug that destroyed a sign-in and left
+    // the profile behind, and a bare console.error is what made it silent.
+    expect(src, 'the delete stopped going through the server route').toContain('/api/account/delete');
+    expect(src, 'the client-side deleteDoc on the member document is back')
+      .not.toMatch(/deleteDoc\s*\(\s*(?:userRef|doc\s*\(\s*db\s*,\s*['"]users['"])/);
   });
 
-  it('still spells all eight outcome messages and the confirm copy', () => {
-    const modal = read('components/PersonalInformationModal.tsx');
-    expect(modal).toContain('DELETE_CONFIRM_COPY');
-    expect(modal).toContain('deleteState');
+  it('keeps DELETE_CONFIRM_COPY deep-equal to the live MEMBER_DATA_MAP derivation', async () => {
+    const { DELETE_CONFIRM_COPY } = await import('../../lib/member-erasure-copy');
+    const { MEMBER_DATA_MAP } = await import('@/lib/member-erasure');
+    const { deriveErasureCopy, assertCopyCoversMap } = await import('../../lib/member-erasure-copy');
+    // The map covers the copy, and the copy IS the derivation — so the delete
+    // panel can never describe a set of collections the erasure does not touch.
+    assertCopyCoversMap(MEMBER_DATA_MAP);
+    expect(
+      DELETE_CONFIRM_COPY,
+      'DELETE_CONFIRM_COPY has drifted from the live MEMBER_DATA_MAP derivation',
+    ).toEqual(deriveErasureCopy(MEMBER_DATA_MAP));
+  });
+
+  it('and the install control Profile.tsx carries is still reachable — asserted by mounting, not by freezing the file', async () => {
+    // 🔴 This is what the `Profile.tsx` freeze was standing in for. Sections 1-4
+    // above mount Profile on the founder's own configuration and find the row;
+    // this restates the two load-bearing halves at the point the freeze used to
+    // sit, so deleting the freeze cannot quietly delete the claim.
+    expect(installControl(await settings()), 'the install control left member account settings').not.toBeNull();
+    const profile = read('components/Profile.tsx');
+    expect(profile, 'the install control started waiting on beforeinstallprompt')
+      .not.toMatch(/beforeinstallprompt/);
   });
 
   it('leaves every install module untouched too', () => {
