@@ -299,6 +299,48 @@ describe('a super admin still can', () => {
     expect(canViewAnalytics('super_admin', null, false)).toBe(true);
   });
 
+  /**
+   * 🔴 THE-299's GUARD, ASSERTED AS BEHAVIOUR RATHER THAN AS A HASH.
+   *
+   * `the-299-retention-guards` pins this module's digest to prove the Platform
+   * tab's removal left the super-admin concept alone. THE-302 legitimately moves
+   * that digest — it adds the owner term — so the fingerprint alone would go
+   * from "the concept is intact" to "the file is whatever THE-302 left". These
+   * three cases restate the claim in a form a hash cannot make: the super-admin
+   * path is exercised, not merely unchanged.
+   */
+  it('the super admin resolves granted with NO documents and ownership false', async () => {
+    const { SUPER_ADMIN_EMAILS } = await import('../../utils/super-admins');
+    authState.currentUser = { uid: 'sa1', email: SUPER_ADMIN_EMAILS[0] };
+    // Nothing in the store: no `users/sa1`, and a tenant owned by someone else.
+    docReads.set('tenants/grace', { plan: 'max', ownerId: 'someone-else' });
+
+    const c = await screen();
+    expect(granted(c), 'the super admin lost the dashboard').toBe(true);
+    expect(denied(c)).toBe(false);
+    // The email arm answers before the read, so the owner term never runs — the
+    // new code path cannot be what is carrying them.
+    expect(rosterCalls).toEqual([]);
+  });
+
+  it('the super_admin ROLE grants on a tenant it does not own', async () => {
+    authState.currentUser = { uid: 'sa2', email: 'staff@grace.org' };
+    docReads.set('users/sa2', { tenantId: 'grace', role: 'super_admin', permissions: {} });
+    docReads.set('tenants/grace', { plan: 'max', ownerId: 'owner1' });
+
+    expect(granted(await screen()), 'the super_admin role arm stopped granting').toBe(true);
+    // Stated as the property, not just the outcome: the role decides on its own,
+    // with ownership false.
+    expect(canViewAnalytics('super_admin', {}, false)).toBe(true);
+  });
+
+  it('and the apex answer THE-299 pins is still the apex answer', async () => {
+    // The other half of that guard's claim, from the module that owns the
+    // string rather than from a grep of it.
+    const { REASON } = await import('../dashboard/dashboard-data');
+    expect(REASON.noTenant).toBe('No ministry is in scope, so this cannot be read.');
+  });
+
   it('a signed-out visitor is still refused, and reads nothing', async () => {
     const c = await screen();
     expect(denied(c)).toBe(true);

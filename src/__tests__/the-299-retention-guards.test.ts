@@ -123,9 +123,48 @@ describe('the Platform tab is gone', () => {
   });
 });
 
-/** `analytics-permission.ts` at 915d818 — this ticket may not open it. */
+/**
+ * `analytics-permission.ts` — the file THE-299 may not open.
+ *
+ * ⚠️ MOVED BY THE-302, and the value is REPLACED rather than appended because
+ * this pin has always held exactly one — the same treatment THE-293 and THE-301
+ * gave theirs. The previous value is recorded here so the move is on the record
+ * and a future reader can see what it was:
+ *
+ *   a8749371e01c50184d02d5253100fbbe40c0e48be429805a3ab330b2d15a8439
+ *     — `analytics-permission.ts` at 915d818, where THE-299 branched.
+ *
+ * 🔴 WHY IT MOVED, AND WHY THAT IS NOT WHAT THIS GUARD WATCHES FOR. A tenant
+ * owner on a paid plan could not see any dashboard: no provisioning path — free,
+ * Dodo or Stripe — writes a `permissions` key onto the buyer's `users/{uid}`, so
+ * the gate's `fullAccess`/`analytics` terms were both `undefined` and the person
+ * who bought the church was told to ask an admin. THE-302 adds ONE term,
+ * `tenants/{id}.ownerId === the signed-in uid`, and the whole diff to this file
+ * is that term: a fourth argument on `canViewAnalytics` defaulting to false, the
+ * `|| isTenantOwner` clause, and a helper that reads `ownerId` off the
+ * world-readable tenant document.
+ *
+ * ⚠️ NOTHING ON THE SUPER-ADMIN PATH IS IN THAT DIFF. `isSuperAdminEmail`, the
+ * `role === ROLE_SUPER_ADMIN` term and the order they are evaluated in are
+ * byte-identical; the new term is additive and can only ever grant.
+ *
+ * 🔴 A HASH PROVES A FILE DID NOT CHANGE, NOT THAT A CONCEPT STILL WORKS — so
+ * all three legs of this guard's claim are now asserted behaviourally too, and
+ * the assertion below is kept rather than relaxed:
+ *
+ *   super_admin   `the-302-analytics-owner.test.tsx` — the email arm resolves
+ *                 `granted` with NO user document and a tenant owned by someone
+ *                 else, and the ROLE arm grants on a tenant it does not own,
+ *                 with ownership false in both.
+ *   apex answer   the same file, reading `REASON.noTenant` from the module that
+ *                 owns the string rather than grepping for it.
+ *   concrete scope  `api/account/__tests__/member-erasure.test.ts` and
+ *                 `member-export.test.ts` already call `assertConcreteScope`
+ *                 directly — it throws on every non-concrete value and returns
+ *                 a concrete one. Not duplicated here.
+ */
 const ANALYTICS_PERMISSION_SHA =
-  'a8749371e01c50184d02d5253100fbbe40c0e48be429805a3ab330b2d15a8439';
+  '720fd2b4dc662e9580353864d865e8c717aa4c9419126814bd742ff150fdeaea';
 
 function walkSrc(): string[] {
   const out: string[] = [];
