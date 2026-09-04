@@ -67,11 +67,25 @@ const TOUCH_TARGET_MIN_PX = 44;
 /**
  * The safe-area inset a notched phone takes at the bottom.
  *
- * 🔴 The nav's `pb-safe` DOES NOT RESERVE THIS — compiled against the real
- * config it emits no rule at all. `env(safe-area-inset-bottom)` also resolves
- * to 0 in headless Chromium, so the measurements below are the WORST CASE:
- * whatever clearance is asserted has to hold with the inset contributing
- * nothing, which is exactly the phone this would fail on.
+ * ⚠️ WHAT THE-295 (#437) CHANGED, AND WHAT IT DID NOT. The MEMBER nav measured
+ * here now carries `pb-[calc(8px+env(safe-area-inset-bottom))]` in place of the
+ * inert `pb-safe`, so it does reserve the inset. Two things it did NOT change,
+ * both of which keep this prompt's own clearance load-bearing:
+ *
+ *   🔴 `pb-safe` IS STILL NOT A UTILITY THIS REPO DEFINES — zero matches in
+ *      tailwind.config.ts and globals.css. THE-295 fixed the two call sites it
+ *      owned rather than defining it, deliberately, so as not to change the
+ *      height of surfaces it could not re-measure.
+ *   🔴 THE ADMIN NAV STILL CARRIES THE INERT CLASS. `AdminDashboard.tsx`'s nav
+ *      is still `… pb-safe lg:pb-0 … z-[100]`, and this prompt mounts on BOTH
+ *      shells. So on the owner's surface the nav reserves nothing, exactly as
+ *      before, and an overlay that budgeted for the nav alone would still sit
+ *      under the home indicator there.
+ *
+ * `env(safe-area-inset-bottom)` also resolves to 0 in headless Chromium, so the
+ * measurements below are the WORST CASE: whatever clearance is asserted has to
+ * hold with the inset contributing nothing, which is exactly the phone this
+ * would fail on.
  */
 const SAFE_INSET_PX = 34;
 
@@ -158,12 +172,26 @@ beforeAll(async () => {
     </div>,
   );
 
-  // ⚠️ The two z-primitives this prompt deliberately does NOT use. If either
-  // ever ships above the nav, the explicit layering here stops being necessary
-  // — and if this assertion fails, it is because one of them MOVED, which is
-  // worth knowing either way.
-  expect(src('src/components/ui/dialog.tsx'), 'ui/dialog no longer ships at z-50').toContain('z-50');
-  expect(src('src/components/ui/sheet.tsx'), 'ui/sheet no longer ships at z-50').toContain('z-50');
+  // ⚠️ THE TWO z-PRIMITIVES MOVED, AND THIS ASSERTION IS WHY WE KNOW.
+  //
+  // It used to read `.toContain('z-50')` — the two primitives this prompt
+  // deliberately does not use, pinned because "if either ever ships above the
+  // nav, the explicit layering here stops being necessary, and if this
+  // assertion fails it is because one of them MOVED". THE-295 (#437) moved
+  // them: `ui/dialog` and `ui/sheet` now ship their scrim at `z-[101]` and
+  // their panel at `z-[102]`, above the nav's `z-[100]`.
+  //
+  // 🔴 Those are the SAME two layers this prompt spells, and that is a
+  // convergence rather than a coincidence — both reached for the pairing #427
+  // established for the giving share sheet. So the layering here is no longer
+  // compensating for a primitive that sits too low; it now AGREES with the
+  // primitives. Re-pinned rather than deleted: the question "are these still
+  // above the nav?" is exactly as worth asking as before, and a future move
+  // back under `z-[100]` must still be loud.
+  for (const [file, path] of [['ui/dialog', 'src/components/ui/dialog.tsx'], ['ui/sheet', 'src/components/ui/sheet.tsx']] as const) {
+    expect(src(path), `${file}'s scrim left z-[101]`).toContain('z-[101]');
+    expect(src(path), `${file}'s panel left z-[102]`).toContain('z-[102]');
+  }
 
   const dir = mkdtempSync(path.join(os.tmpdir(), 'the292-'));
   const file = path.join(dir, 'country-prompt.html');

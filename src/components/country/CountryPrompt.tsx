@@ -51,16 +51,27 @@ import {
  * ═══ Layering and clearance ══════════════════════════════════════════════════
  *
  * 🔴 The bottom nav is `fixed bottom-0 … z-[100]` in BOTH shells
- * (MainApp.tsx:649, and the admin shell's equivalent). `ui/dialog.tsx` and
- * `ui/sheet.tsx` ship at `z-50` — UNDER it — so this layers explicitly instead:
- * scrim `z-[101]`, panel `z-[102]`, the pairing #427 established for the giving
- * share sheet.
+ * (MainApp.tsx:649, and the admin shell's equivalent), so this layers
+ * explicitly: scrim `z-[101]`, panel `z-[102]` — the pairing #427 established
+ * for the giving share sheet.
  *
- * ⚠️ `pb-safe` IS NOT CLEARANCE. THE-286 measured it against the real config and
- * it compiles to NOTHING — this repo defines no such utility, so the nav
- * reserves no home-indicator inset. Nothing here depends on it: the overlay adds
- * `env(safe-area-inset-bottom)` itself, so the card is clear of the indicator
- * whether or not `pb-safe` ever starts resolving.
+ * ⚠️ `ui/dialog.tsx` and `ui/sheet.tsx` shipped at `z-50` — UNDER the nav — when
+ * this was written, which is why it was built on neither. THE-295 (#437) has
+ * since raised both to exactly `z-[101]` / `z-[102]`, the same two layers spelled
+ * here. That is a convergence, not a coincidence: both reached for #427's
+ * pairing. The layering below is therefore no longer compensating for a
+ * primitive that sits too low — it now agrees with the primitives, and is
+ * pinned in the layout suite so a move back under `z-[100]` stays loud.
+ *
+ * ⚠️ THE SAFE-AREA INSET IS STILL THIS OVERLAY'S OWN JOB, and THE-295 narrowed
+ * that rather than ending it. The MEMBER nav now carries
+ * `pb-[calc(8px+env(safe-area-inset-bottom))]` in place of the inert `pb-safe`.
+ * But `pb-safe` is STILL not a utility this repo defines — THE-295 fixed the
+ * call sites it owned rather than defining it — and 🔴 the ADMIN nav still
+ * carries the inert class. This prompt mounts on BOTH shells, so on the owner's
+ * surface the nav reserves nothing at all. The overlay therefore adds
+ * `env(safe-area-inset-bottom)` itself, and is correct on either shell whether
+ * or not `pb-safe` ever starts resolving.
  *
  * ═══ 🔵 The copy is optional and reads as optional ═══════════════════════════
  *
