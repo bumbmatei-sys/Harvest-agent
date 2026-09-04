@@ -2,11 +2,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   collection, query, orderBy, onSnapshot, doc, addDoc, updateDoc, deleteDoc,
-  getDocs, serverTimestamp, Timestamp, limit,
+  serverTimestamp, Timestamp, limit,
 } from 'firebase/firestore';
 import {
   Plus, Trash2, ChevronUp, ChevronDown, Eye, EyeOff, Link2, Code, FileText,
-  Download, ExternalLink, GripVertical, Edit2,
+  Download, ExternalLink, GripVertical, Edit2, ChartColumn,
 } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
@@ -16,6 +16,8 @@ import {
   AdminCard, AdminBadge,
 } from './admin/AdminUI';
 import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, CONTROL_DENSITY } from './layout/form-layout';
+import { readAllSubmissions, summariseForm, type AnswerField } from './forms/form-answers';
+import FormAnswersView from './forms/FormAnswersView';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 
@@ -75,7 +77,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
   const { currentTenantId, isAuthReady, isSuperAdmin } = useAppStore();
   const tenantId = currentTenantId || (isSuperAdmin ? PLATFORM_TENANT_ID : null);
 
-  const [view, setView] = useState<'list' | 'builder' | 'submissions'>('list');
+  const [view, setView] = useState<'list' | 'builder' | 'submissions' | 'answers'>('list');
   const [forms, setForms] = useState<CustomForm[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -88,9 +90,16 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState('');
 
-  // Submissions state
+  // Submissions state — shared by the responses TABLE and the per-question
+  // ANSWERS summary, because both are readings of the same set and a figure on
+  // one that disagrees with the other is a defect either way.
   const [selectedForm, setSelectedForm] = useState<CustomForm | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  /** The EXACT count, from getCountFromServer — correct even when truncated. */
+  const [total, setTotal] = useState(0);
+  /** True when the read hit its ceiling and `submissions` is short of `total`. */
+  const [truncated, setTruncated] = useState(false);
+  const [answersLoading, setAnswersLoading] = useState(false);
 
   // ── Load forms list ──────────────────────────────────────────────
   useEffect(() => {
@@ -207,21 +216,48 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
   };
 
   // ── Submissions ──────────────────────────────────────────────────
-  const openSubmissions = async (form: CustomForm) => {
+  /**
+   * Load one form's responses COMPLETELY, for either surface.
+   *
+   * 🔴 This replaces a `getDocs(orderBy('submittedAt','desc'), limit(1000))`.
+   * That read was not "the newest 1000" — Firestore caps AFTER ordering, so a
+   * form past 1000 responses returned 1000 of them and the screen then printed
+   * `submissions.length` as its response count and exported those rows as its
+   * CSV. A truncation nobody can see is the defect; see readAllSubmissions for
+   * why the replacement counts first and pages by `documentId()`, and why no
+   * composite index is involved.
+   *
+   * ⚠️ The rows are still sorted newest-first HERE rather than by the query,
+   * so the table and the CSV keep exactly the order they had. That sort is now
+   * correct because the set is complete — sorting a truncated set is what made
+   * the old bug invisible. `tsMillis` semantics inline: a null or pending
+   * `submittedAt` sorts last rather than becoming NaN.
+   */
+  const openFor = async (form: CustomForm, next: 'submissions' | 'answers') => {
     if (!tenantId) return;
     setSelectedForm(form);
-    setView('submissions');
+    setView(next);
+    setAnswersLoading(true);
     try {
-      const snap = await getDocs(query(
-        collection(db, 'tenants', tenantId, 'forms', form.id, 'submissions'),
-        orderBy('submittedAt', 'desc'), limit(1000),
-      ));
-      setSubmissions(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Submission));
+      const read = await readAllSubmissions(db, tenantId, form.id);
+      const rows = (read.rows as unknown as Submission[]).slice().sort(
+        (a, b) => (b.submittedAt?.toMillis?.() ?? -Infinity) - (a.submittedAt?.toMillis?.() ?? -Infinity),
+      );
+      setSubmissions(rows);
+      setTotal(read.total);
+      setTruncated(read.truncated);
     } catch (e) {
       console.error('Failed to load submissions:', e);
       setSubmissions([]);
+      setTotal(0);
+      setTruncated(false);
+    } finally {
+      setAnswersLoading(false);
     }
   };
+
+  const openSubmissions = (form: CustomForm) => openFor(form, 'submissions');
+  const openAnswers = (form: CustomForm) => openFor(form, 'answers');
 
   const exportCsv = () => {
     if (!selectedForm) return;
@@ -356,6 +392,55 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
     );
   }
 
+  /**
+   * The ANSWERS view — the per-question summary, which is what the founder
+   * asked for: "see straight from that form all answers in the style of Google
+   * Forms answers". Google Forms' answers view is per QUESTION, so this is a
+   * card per question with its own aggregate, not another table.
+   *
+   * The responses TABLE below is untouched and is one tap away from here — it
+   * is the per-row half and it already worked, so nothing about it is rebuilt.
+   */
+  if (view === 'answers' && selectedForm) {
+    const summaries = summariseForm(
+      (selectedForm.fields || []) as unknown as AnswerField[],
+      submissions as unknown as Parameters<typeof summariseForm>[1],
+    );
+    return (
+      <div className={FORM_CONTAINER} style={{ paddingBottom: 120 }}>
+        <AdminEditorHeader
+          onBack={() => setView('list')}
+          backLabel="All forms"
+          title={selectedForm.title}
+          subtitle={`${total} response${total === 1 ? '' : 's'}`}
+          actions={
+            /* ⚠️ `min-h-[44px] sm:min-h-0` MEASURED, not assumed: AdminSecondaryButton
+               renders 41.5px in Chromium at 380px, 2.5px under the phone floor.
+               The floor is put on THIS button rather than on the primitive —
+               changing AdminUI would resize every secondary button in the admin
+               app, which is a redesign and not this ticket's. Above `sm` the
+               reset hands the box back to Rule 4, which fixes a control at 38px
+               deliberately. */
+            <AdminSecondaryButton
+              onClick={() => setView('submissions')}
+              disabled={total === 0}
+              className="min-h-[44px] sm:min-h-0"
+            >
+              <FileText size={14} /> All responses
+            </AdminSecondaryButton>
+          }
+        />
+        <FormAnswersView
+          summaries={summaries}
+          total={total}
+          counted={submissions.length}
+          truncated={truncated}
+          loading={answersLoading}
+        />
+      </div>
+    );
+  }
+
   if (view === 'submissions' && selectedForm) {
     const cols = [...selectedForm.fields].sort((a, b) => a.order - b.order);
     return (
@@ -364,13 +449,24 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
           onBack={() => setView('list')}
           backLabel="All forms"
           title={selectedForm.title}
-          subtitle={`${submissions.length} submission${submissions.length === 1 ? '' : 's'}`}
+          subtitle={`${total} submission${total === 1 ? '' : 's'}`}
           actions={
             <AdminSecondaryButton onClick={exportCsv} disabled={submissions.length === 0}>
               <Download size={14} /> Export CSV
             </AdminSecondaryButton>
           }
         />
+        {/* 🔴 The same ceiling, said on this surface too. The table and the
+            summary read the same set, so a truncation the summary declares and
+            the table hides would be the silent one all over again. Rendered
+            only when it actually fires. */}
+        {truncated && (
+          <p data-table-truncation-notice className="text-[13px] text-body bg-surface-sunken border border-line rounded-brand-xl p-3.5 mb-4">
+            Partial list. This form has {total.toLocaleString()} submissions and the
+            table below shows the {submissions.length.toLocaleString()} that could be read
+            in one go.
+          </p>
+        )}
         {submissions.length === 0 ? (
           <div className="text-center py-16 text-faint">
             <FileText size={40} className="mx-auto mb-3 opacity-30" />
@@ -458,6 +554,11 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
                   </button>
                 </div>
                 <div className="flex items-center gap-1 mt-3 pt-3 border-t border-line">
+                  {/* THE-298 — the founder's button: the per-question answers
+                      summary, straight from the form. Reuses this row's exact
+                      class string so the phone rendering gains no token but the
+                      icon's own name. */}
+                  <button onClick={() => openAnswers(form)} className="p-1.5 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors" title="Answers"><ChartColumn size={15} /></button>
                   <button onClick={() => openBuilder(form)} className="p-1.5 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors" title="Edit"><Edit2 size={15} /></button>
                   <button onClick={() => copy(formUrl(form.id), `link_${form.id}`)} className="p-1.5 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors" title={copied === `link_${form.id}` ? 'Copied!' : 'Copy link'}><Link2 size={15} /></button>
                   <a href={formUrl(form.id)} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors" title="Open"><ExternalLink size={15} /></a>
@@ -485,6 +586,11 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
                 </button>
               </div>
               <div className="flex items-center gap-4 mt-4 pt-4 border-t border-line flex-wrap">
+                {/* THE-298 — the same button on the desktop card, same row, same
+                    class string. */}
+                <button onClick={() => openAnswers(form)} className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-gold transition-colors">
+                  <ChartColumn size={13} /> Answers
+                </button>
                 <button onClick={() => openBuilder(form)} className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-gold transition-colors">
                   <Edit2 size={13} /> Edit
                 </button>
