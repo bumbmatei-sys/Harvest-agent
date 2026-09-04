@@ -38,13 +38,29 @@ import path from 'node:path';
 
 type BuiltQuery = { path: string[]; where: Array<[string, string, unknown]>; limit: number | null };
 
-const { built, counts, docsFor, docReads, authState } = vi.hoisted(() => ({
+const { built, counts, docsFor, docReads, authState, rosterCalls } = vi.hoisted(() => ({
   built: [] as BuiltQuery[],
   counts: new Map<string, number | Error>(),
   docsFor: new Map<string, Array<Record<string, unknown>>>(),
   docReads: new Map<string, Record<string, unknown> | null>(),
   authState: { currentUser: null as { uid: string; email: string; displayName?: string } | null },
+  /** Every URL the gate fetches. Expected to stay empty — see below. */
+  rosterCalls: [] as string[],
 }));
+
+/**
+ * 🔴 A ROSTER THAT ANSWERS YES TO EVERYONE.
+ *
+ * GET /api/tenants/roster-status is the ONLY way a browser can learn whether an
+ * address is on `tenant_private.adminEmails` — the doc itself is
+ * `allow read, write: if false`. So this stub is the mutation "grant every
+ * invited admin" made available: if the gate ever reaches for the roster, it
+ * gets a grant, and the invited admin below is let in. It must never be called.
+ */
+vi.stubGlobal('fetch', async (input: RequestInfo | URL) => {
+  rosterCalls.push(String(input));
+  return { ok: true, status: 200, json: async () => ({ isRosterAdmin: true }) } as Response;
+});
 
 vi.mock('../../firebase', () => ({
   db: {},
@@ -135,6 +151,7 @@ beforeEach(() => {
   counts.clear();
   docsFor.clear();
   docReads.clear();
+  rosterCalls.length = 0;
   authState.currentUser = null;
 });
 
@@ -215,6 +232,9 @@ describe('an invited admin with Analytics unchecked still cannot', () => {
     const c = await screen();
     expect(granted(c), 'an invited admin was granted analytics they were never given').toBe(false);
     expect(denied(c)).toBe(true);
+    // And they were refused without the roster being consulted at all — the
+    // stub above would have said yes.
+    expect(rosterCalls, `the gate called ${rosterCalls.join(', ')}`).toEqual([]);
   });
 
   it('the refusal survives the invited admin holding every OTHER permission', async () => {
@@ -237,6 +257,8 @@ describe('an invited admin with Analytics unchecked still cannot', () => {
    * in the source, the way THE-276's own guards pin what this slice may not do.
    */
   it('the gate never asks the roster, in any spelling', () => {
+    // Belt to the stub's braces: the stub catches a roster lookup at runtime,
+    // this catches one written in a shape no test happens to reach.
     expect(GATE_SRC.replace(/\/\*[\s\S]*?\*\//g, '')).not.toMatch(/adminEmails|roster|fetch\(/i);
     // `ownerId` is the discriminator, and it is read off the world-readable
     // tenant doc — one uid, never a list.
