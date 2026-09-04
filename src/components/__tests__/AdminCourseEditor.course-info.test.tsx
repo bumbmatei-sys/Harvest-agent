@@ -200,6 +200,117 @@ function writePathBody(src: string, name: string): string {
 
 let BASELINE!: Baseline;
 
+/**
+ * THE-305 — the deliberate, RECORDED deltas between the measured baseline and
+ * what Course Info renders now.
+ *
+ * APPEND-ONLY, AND THE FIXTURE IS NEVER REWRITTEN. The supported re-record path
+ * cannot express this change anyway (`beforeAll` refuses to record unless the
+ * file on disk is byte-identical to a32665a's), and substituting a baseline is
+ * how a guard silently stops guarding. So the fixture stays exactly as it was
+ * measured and each edit is spelled out row for row; every row this ticket did
+ * not touch is still compared byte-for-byte.
+ *
+ * `remove` is asserted to MATCH the baseline at `at` before it is dropped, so a
+ * stale or wrong entry fails loudly rather than masking a real change.
+ */
+interface RecordedEdit {
+  ticket: string;
+  why: string;
+  /** Offset into the ORIGINAL baseline (edits are applied highest-first). */
+  at: number;
+  remove: readonly string[];
+  insert: readonly string[];
+}
+
+/** The duplicated header, deleted from BOTH tabs — they share the top bar. */
+const DROPPED_SECOND_HEADER: RecordedEdit = {
+  ticket: 'THE-305',
+  at: 4,
+  remove: ['button\t', 'svg\tlucide lucide-arrow-left', 'path\t', 'path\t', 'div\t', 'h1\t'],
+  insert: [],
+  why:
+    'Deleted the editor\'s SECOND back arrow and its in-body <h1>. The screen drew ' +
+    'two stacked headers: the shell\'s (back chevron, the title "Courses", the ' +
+    'avatar) and, directly below it, this one — another back arrow over a "New ' +
+    'Course" heading that wrapped onto three lines. AdminScreenHeader\'s own ' +
+    'contract already forbade it ("Rendered once per screen — screens must NOT ' +
+    'repeat their own title below it"). The title and back handler now go up to the ' +
+    'shared header via setHeaderOverride — the mechanism AdminEvents, AdminCRM and ' +
+    'AdminCommunity already use — so AdminDashboard.tsx is untouched. The six rows ' +
+    'are exactly that arrow (button + its lucide-arrow-left svg and two paths) and ' +
+    'the heading (wrapper div + h1). The row straight after them, the "1 level / 1 ' +
+    'section / 1 lesson" <p>, is deliberately NOT listed: the subtitle stays put, ' +
+    'which is what keeps its information from being lost with the heading.',
+};
+
+const EDITED_SINCE_MEASUREMENT: Readonly<Record<'infoMobileBoxes' | 'curriculumMobile' | 'infoOrder', readonly RecordedEdit[]>> = {
+  infoMobileBoxes: [
+    DROPPED_SECOND_HEADER,
+    {
+      ticket: 'THE-305',
+      at: 43,
+      remove: ['span\t'],
+      insert: ['svg\tlucide lucide-star', 'polygon\t'],
+      why:
+        'Replaced the Featured Course star. It was a bare emoji in a <span> — the ' +
+        'founder\'s "that star for featured course is ai slop. Replace it with an ' +
+        'icon" — and lucide-react was already imported throughout this repo, so the ' +
+        'emoji was a leftover rather than a missing dependency. A lucide <Star> is ' +
+        'an svg with one <polygon>, which is why one row becomes two. It renders at ' +
+        'the same 22px the span\'s fontSize set, and it carries no class of its own ' +
+        'beyond lucide\'s, so nothing in the mobile CLASS layer changed — only the ' +
+        'element that draws the glyph.',
+    },
+  ],
+  curriculumMobile: [DROPPED_SECOND_HEADER],
+  infoOrder: [
+    {
+      ticket: 'THE-305',
+      at: 0,
+      remove: ['button:button'],
+      insert: [],
+      why:
+        'The same deleted back arrow, seen through documentOrder rather than the ' +
+        'class inventory. It reported as "button:button" — a button with no text and ' +
+        'no placeholder, i.e. the unlabelled icon-only arrow — and it was the FIRST ' +
+        'control on the page, which is precisely the duplication the founder ' +
+        'screenshotted: two back controls, one above the other. The shell\'s chevron ' +
+        'is the survivor. Every other control keeps its exact position in the ' +
+        'sequence, which is what the rest of this array still proves.',
+    },
+  ],
+};
+
+/**
+ * The recorded baseline with its edits applied, re-indexed where the rows carry
+ * an index. Edits are applied highest-offset-first so every `at` stays an offset
+ * into the ORIGINAL baseline.
+ */
+function editedRows(baseline: readonly string[], key: keyof typeof EDITED_SINCE_MEASUREMENT, indexed: boolean): string[] {
+  const rows = baseline.map((r) => (indexed ? r.replace(/^\d+\t/, '') : r));
+  for (const e of [...EDITED_SINCE_MEASUREMENT[key]].sort((a, b) => b.at - a.at)) {
+    expect(
+      rows.slice(e.at, e.at + e.remove.length),
+      `${e.ticket}: ${key} no longer says what this entry removes — drop or fix the entry`,
+    ).toEqual([...e.remove]);
+    rows.splice(e.at, e.remove.length, ...e.insert);
+  }
+  return indexed ? rows.map((r, i) => `${i}\t${r}`) : rows;
+}
+
+describe('the recorded edits are exactly the edits that justify them', () => {
+  it('names one ticket per edit, states a reason, and changes something', () => {
+    const all = Object.values(EDITED_SINCE_MEASUREMENT).flat();
+    expect(all.length, 'the list is empty — drop the mechanism instead').toBeGreaterThan(0);
+    for (const e of all) {
+      expect(e.ticket).toMatch(/^THE-\d+$/);
+      expect(e.remove.length + e.insert.length, `${e.ticket} removes and inserts nothing`).toBeGreaterThan(0);
+      expect(e.why.length, `${e.ticket} is recorded without a stated reason`).toBeGreaterThan(80);
+    }
+  });
+});
+
 interface Mounted { container: HTMLDivElement; unmount: () => void }
 let mounted: Mounted | null = null;
 afterEach(() => { mounted?.unmount(); mounted = null; });
@@ -423,13 +534,14 @@ function effective(el: Element, viewport: number): Record<string, string> {
 describe('the sub-640px rendering of Course Info is unchanged', () => {
   it('draws the same boxes below 640px as it did before the split existed', async () => {
     const now = mobileBoxLayer(await info());
-    expect(now.length, 'a box appeared or vanished on the phone').toBe(BASELINE.infoMobileBoxes.length);
+    const baseline = editedRows(BASELINE.infoMobileBoxes, 'infoMobileBoxes', true);
+    expect(now.length, 'a box appeared or vanished on the phone').toBe(baseline.length);
 
     // Exactly ONE line may differ, and only the panel's: its inline
     // display/flexDirection/gap moved to classes so that `lg:grid` is not
     // shadowed. 1(b) proves the replacement is the same three declarations.
     const moved = now
-      .map((row, i) => ({ i, before: BASELINE.infoMobileBoxes[i], after: row }))
+      .map((row, i) => ({ i, before: baseline[i], after: row }))
       .filter(({ before, after }) => before !== after);
     expect(moved.map((m) => m.after.split('\t').slice(1).join('\t')))
       .toEqual(['div\tflex flex-col gap-[16px]']);
@@ -669,7 +781,7 @@ describe('the two columns align at the top', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 describe('document order is unchanged', () => {
   it('renders every label, control and button in exactly the sequence it did before', async () => {
-    expect(documentOrder(await info())).toEqual(BASELINE.infoOrder);
+    expect(documentOrder(await info())).toEqual(editedRows(BASELINE.infoOrder, 'infoOrder', false));
   });
 
   it('renders the same field labels, in the same order', async () => {
@@ -816,7 +928,7 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
 // ═════════════════════════════════════════════════════════════════════════════
 describe('the Curriculum tab is untouched', () => {
   it('renders the same class layer below 640px as it did before this PR', async () => {
-    expect(mobileLayer(await curriculum())).toEqual(BASELINE.curriculumMobile);
+    expect(mobileLayer(await curriculum())).toEqual(editedRows(BASELINE.curriculumMobile, 'curriculumMobile', true));
   });
 
   it('still caps the shared tab wrapper at the 1120px PAGE measure, not the form measure', async () => {
