@@ -551,12 +551,47 @@ describe('no colour is hardcoded, and all four palettes resolve', () => {
     }
   });
 
-  it('reads nothing out of course.constants.ts', () => {
+  /**
+   * ⚠️ AMENDED BY THE-311, and RECORDED here rather than deleted or relaxed.
+   *
+   * THE-305's claim was TWO claims in one assertion: that the editor does not
+   * import `course.constants.ts`, and that THE-305 did not edit that file. The
+   * first is THE-305's own and is untouched below. The second was only ever a
+   * statement about THE-305's diff — and THE-311 is the ticket that DOES fix
+   * that file, mapping all seventeen exports onto existing palette tokens,
+   * which is exactly what THE-282 and this comment said someone would have to
+   * do eventually.
+   *
+   * 🔴 THE PIN IS NOT DROPPED, IT IS REPLACED BY A STRONGER ONE. Naming
+   * THE-311 in a list and moving on would let any future edit to that file
+   * ride in unnoticed. Instead the byte-identity claim becomes a claim about
+   * the CONTENT of the diff: whatever anyone does to `course.constants.ts`, it
+   * may not ADD a colour literal. That is the property this assertion existed
+   * to protect ("that file's hardcoded hexes"), it holds for THE-311's diff,
+   * and it keeps holding against a change nobody has thought of yet.
+   *
+   * The two hexes THE-311's diff does add are both `var(--token, #fallback)`
+   * fallbacks and one `color-mix` lighten target, all three unreachable while
+   * the token resolves — stripped here exactly as
+   * `theming-member-app.test.ts` strips them, and for the same reason.
+   */
+  it('reads nothing out of course.constants.ts, and nothing hardcodes a colour into it', () => {
     // THE-282 reported that file's hardcoded hexes and deliberately did not fix
     // them. This ticket must not pull them in either — that is what would make
-    // the diff unreviewable.
+    // the diff unreviewable. 🔴 STILL TRUE, and still THE-305's own claim.
     expect(readSrc('AdminCourseEditor.tsx')).not.toContain('course.constants');
-    expect(changedSince('src/utils/course.constants.ts'), 'course.constants.ts was edited').toEqual([]);
+
+    const diff = execFileSync('git', ['diff', baseRef(), '--', 'src/utils/course.constants.ts'],
+      { cwd: ROOT, encoding: 'utf8' });
+    const added = diff.split('\n')
+      .filter((l) => /^\+[^+]/.test(l))
+      // Comment lines are prose; they quote the old hexes on purpose.
+      .filter((l) => !/^\+\s*(\/\/|\*|\/\*)/.test(l))
+      .map((l) => l
+        .replace(/var\(\s*--[a-z0-9-]+\s*,\s*#[0-9A-Fa-f]{3,8}\s*\)/gi, 'VAR')
+        .replace(/color-mix\(in srgb, VAR \d+%, #ffffff\)/gi, 'MIX'));
+    const hexes = added.flatMap((l) => l.match(/#[0-9a-fA-F]{3,8}\b/g) ?? []);
+    expect(hexes, 'a colour literal was added to course.constants.ts').toEqual([]);
   });
 });
 

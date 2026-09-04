@@ -161,11 +161,19 @@ export function CourseCard({ course, authors, onClick, completed, quizAttempts }
           {/*
             The card's own bar, kept.
 
-            🔴 NOT `course/ProgressBar.tsx`: that component paints `BORDER`
-            (#e5e7eb) and `GOLD_BTN` (a two-hex gradient) straight from
-            `course.constants.ts`, so it cannot follow a palette and stays light
-            grey on the dark themes. The bar here is `bg-surface-sunken` under
-            `--brand-color` and resolves in all four.
+            🔴 STILL NOT `course/ProgressBar.tsx`, but no longer for THE-282's
+            reason. THE-282 refused it because it painted `BORDER` (#e5e7eb) and
+            `GOLD_BTN` (a two-hex gradient) straight from `course.constants.ts`,
+            so it could not follow a palette and stayed light grey on the dark
+            themes. THE-311 fixed exactly that — those two now resolve to
+            `--border-default` and a `--brand-color` gradient, in all four
+            palettes.
+
+            What still rules it out is GEOMETRY, not colour: this bar is 3px and
+            `ProgressBar`'s height defaults to 5, and THE-282's measured layout
+            suite pins this card's boxes. Swapping it is a layout change and
+            belongs to a layout ticket. The bar here is `bg-surface-sunken`
+            under `--brand-color` and resolves in all four.
           */}
           <div className="h-[3px] bg-surface-sunken rounded-full overflow-hidden">
             <div
