@@ -24,6 +24,7 @@ import AdminDashboard from './components/AdminDashboard';
 import OnboardingGate from './components/OnboardingGate';
 import PWAInstallManager from './components/PWAInstallManager';
 import PostOnboardingInstallStep from './components/install/PostOnboardingInstallStep';
+import CountryPrompt from './components/country/CountryPrompt';
 import AnalyticsBridge from './components/AnalyticsBridge';
 import PostPurchaseWizard from './components/PostPurchaseWizard';
 import { OperationType, handleFirestoreError } from './utils/firestore-errors';
@@ -582,6 +583,20 @@ const AppInner: React.FC = () => {
             (own subdomain, not already installed, not the native shell) and is
             skippable — see the component. */}
         <PostOnboardingInstallStep />
+        {/* THE-292 — the optional country prompt, on the SAME terms as the
+            install step above and for the same structural reason. 🔴 NOTHING
+            IN THE FUNNEL MOVES: a sibling inside an existing route's element,
+            no route added and none reordered, with `FUNNEL_PATHS`,
+            `resolvePostAuthFunnelRoute`, `signupInProgress`, `termsAccepted`,
+            the paid-arrival hold and Turnstile's mount all untouched.
+
+            This is the OWNER's surface, and the owner is the structural gap:
+            all three provisioning paths lead to `ChurchOnboarding`, so a
+            plan-purchaser is never shown the personal form and has no country
+            at all. It self-gates on being past the origin hop
+            (`getTenantIdFromHost()`), on the field actually being absent, and
+            on the member not having dismissed it — see CountryPrompt. */}
+        <CountryPrompt />
       </ErrorBoundary>
     </RequireAdmin>
   );
@@ -623,6 +638,14 @@ const AppInner: React.FC = () => {
               {AFFILIATE_PROGRAM_ENABLED && isAffiliateSignup && userTenantId === null
                 ? <AffiliateDashboard />
                 : <MainApp onNavigate={handleNavigate} />}
+              {/* THE-292 — the same prompt on the member surface. Coverage is a
+                  TENANT SETTING, not a funnel property: `Onboarding` pushes its
+                  location step only when `default_country`/`default_city` is in
+                  `customQuestions`, so a congregant of a tenant that removed the
+                  question has the identical empty field. Same component, same
+                  condition; a congregant who is still mid-onboarding is on
+                  '/onboarding', which does not mount this. */}
+              <CountryPrompt />
             </ErrorBoundary>
           }
         />
