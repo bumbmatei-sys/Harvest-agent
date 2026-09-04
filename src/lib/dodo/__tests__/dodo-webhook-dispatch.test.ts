@@ -187,6 +187,10 @@ describe('a repeated webhook-id is a no-op', () => {
     // If we cannot tell whether this event was already processed, running the
     // handler is the dangerous choice. Skipping loses at most one event; running
     // duplicates a tenant.
+    //
+    // 🔴 AMENDED BY THE-302: still fails closed, but no longer calls the failure
+    // a duplicate. See `a failed reservation is reported as itself` below for
+    // what that word cost in production.
     const { handlers, calls } = recordingHandlers();
     const brokenStore: SeenEventStore = {
       async reserve() {
@@ -200,7 +204,7 @@ describe('a repeated webhook-id is a no-op', () => {
       handlers,
     });
 
-    expect(result.outcome).toBe('duplicate');
+    expect(result.outcome).toBe('unreserved');
     expect(calls).toEqual([]);
   });
 });

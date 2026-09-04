@@ -5,19 +5,28 @@ import { Webhook } from 'standardwebhooks';
 /**
  * The route's two response shapes.
  *
- * ⚠️ BEST-EFFORT events keep #290's shape: acknowledge 2xx BEFORE doing any work.
- * That is the opposite of the Stripe webhook, which does everything it is going
- * to do and then responds. Dodo's documentation is explicit that a handler
- * should acknowledge immediately; copying the Stripe handler wholesale would
- * produce an endpoint that works in testing and generates duplicate retries
- * under any real load.
+ * ⚠️ BEST-EFFORT events keep #290's shape: acknowledge 2xx BEFORE THE HANDLER
+ * DOES ANY WORK. That is the opposite of the Stripe webhook, which does
+ * everything it is going to do and then responds. Dodo's documentation is
+ * explicit that a handler should acknowledge immediately; copying the Stripe
+ * handler wholesale would produce an endpoint that works in testing and
+ * generates duplicate retries under any real load.
  *
- * "Before doing any work" is asserted as a property, not as call ordering:
- * dispatch is invoked from inside the handler, so merely observing that it was
- * called proves nothing. What must be true is that THE RESPONSE DOES NOT WAIT FOR
- * IT. So the dispatcher below is made to hang forever, and the route still has to
- * answer 200. Replacing `void receive(...)` with `await receive(...)` makes that
- * test hang and fail, which is exactly the regression worth catching.
+ * ⚠️ AMENDED BY THE-302, and narrowed rather than dropped. The claim used to be
+ * "before doing any work" full stop, and the route proved it by never awaiting
+ * the dispatcher at all. One step now happens first: the idempotency
+ * RESERVATION. The reason is in the route's own docblock — a reservation that
+ * fails is the difference between "already handled" and "not handled at all",
+ * and a route that cannot tell them apart answers 200 to an event Dodo will
+ * never send again. That was 24 dropped events in production.
+ *
+ * 🔴 So the fast-ack property MOVED, it did not disappear. It is now the
+ * dispatcher's, pinned in `dodo-webhook-dispatch.test.ts` under `deferHandler`:
+ * a handler that hangs forever must not delay the outcome. What is pinned HERE
+ * is that this route asks for that deferral on every best-effort event and never
+ * on the durable one, and that it turns each outcome into the right status code.
+ * Replacing `{ deferHandler: true }` with `{}` would make the route wait on a
+ * handler again, and the first test below is what catches it.
  *
  * 🔴 The DURABLE event is the deliberate exception, added by REP-4 PR 2. #290's
  * own module note said provisioning must not sit behind a fire-and-forget
@@ -90,59 +99,70 @@ beforeEach(() => {
 
 // ── Test 5 ───────────────────────────────────────────────────────────────────
 
-describe('a best-effort event is acknowledged before any work is done', () => {
-  it('answers 200 while the dispatcher is still running', async () => {
-    // A dispatcher that never settles. If the route awaited it, this test would
-    // never finish.
-    let release!: () => void;
-    mockReceive.mockReturnValue(new Promise<void>((resolve) => { release = resolve; }));
-
-    const res = await POST(signedRequest());
-
-    expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual({ received: true });
-
-    release();
-  });
-
-  it('answers 200 before a slow dispatcher completes', async () => {
-    const order: string[] = [];
-    mockReceive.mockImplementation(
-      () => new Promise((resolve) => setTimeout(() => { order.push('work'); resolve(undefined); }, 50)),
-    );
-
-    const res = await POST(signedRequest());
-    order.push('responded');
-
-    expect(res.status).toBe(200);
-    // The response is recorded first. On the Stripe handler's shape it would be
-    // second, every time.
-    expect(order).toEqual(['responded']);
-
-    await new Promise((r) => setTimeout(r, 80));
-    expect(order).toEqual(['responded', 'work']);
-  });
-
-  it('still answers 200 when the dispatcher rejects', async () => {
-    // A non-2xx would make Dodo retry an event we already accepted. Failure on
-    // our side must not become a redelivery loop.
-    mockReceive.mockRejectedValue(new Error('dispatch blew up'));
-    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-    const res = await POST(signedRequest());
-
-    expect(res.status).toBe(200);
-    await new Promise((r) => setTimeout(r, 0));
-    err.mockRestore();
-  });
-
-  it('hands the dispatcher the webhook-id from the header, for idempotency', async () => {
+describe('a best-effort event is acknowledged before the handler does any work', () => {
+  it('asks the dispatcher to DEFER the handler — the fast ack, as a request', async () => {
+    // 🔴 The whole fast-ack property in one assertion. `deferHandler` is what
+    // makes the dispatcher return the moment the reservation settles, leaving
+    // the handler running; dropping it puts the response back behind a handler
+    // that can take as long as it likes.
     await POST(signedRequest(BODY, OUR_SECRET, 'whk_specific_id'));
 
     expect(mockReceive).toHaveBeenCalledWith(
       'whk_specific_id',
       expect.objectContaining({ type: 'payment.succeeded' }),
+      { deferHandler: true },
     );
+  });
+
+  it('and does NOT defer it for the durable event', async () => {
+    mockReceive.mockResolvedValue({ outcome: 'routed', type: 'subscription.active', webhookId: 'whk_d' });
+
+    await POST(signedRequest(DURABLE_BODY, OUR_SECRET, 'whk_d'));
+
+    // Provisioning is the one event the connection is held open for.
+    expect(mockReceive).toHaveBeenCalledWith(
+      'whk_d',
+      expect.objectContaining({ type: 'subscription.active' }),
+      {},
+    );
+  });
+
+  it('answers 200 as soon as the reservation is settled, handler still running', async () => {
+    const order: string[] = [];
+    // What the real dispatcher does under `deferHandler`: settle on the
+    // reservation, leave the handler to finish later.
+    mockReceive.mockImplementation(() => {
+      setTimeout(() => order.push('handler'), 50);
+      return Promise.resolve({ outcome: 'routed', type: 'payment.succeeded', webhookId: 'whk_route_1' });
+    });
+
+    const res = await POST(signedRequest());
+    order.push('responded');
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ received: true });
+    expect(order).toEqual(['responded']);
+
+    await new Promise((r) => setTimeout(r, 80));
+    expect(order).toEqual(['responded', 'handler']);
+  });
+
+  it('answers 500 when the dispatcher rejects, which it is documented not to do', async () => {
+    // ⚠️ REVERSED BY THE-302, deliberately. This used to answer 200 on the
+    // reasoning that "a non-2xx would make Dodo retry an event we already
+    // accepted" — but a rejected dispatch is precisely the case where we do NOT
+    // know whether it was accepted, and the reservation makes guessing
+    // unnecessary: if the claim WAS recorded, Dodo's redelivery is discarded as
+    // a duplicate and costs one wasted request; if it was not, the redelivery is
+    // the only thing that saves the event. Answering 200 to an unknown outcome
+    // is the quiet lie the Silent-Failure Rule names.
+    mockReceive.mockRejectedValue(new Error('dispatch blew up'));
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const res = await POST(signedRequest());
+
+    expect(res.status).toBe(500);
+    err.mockRestore();
   });
 });
 
@@ -277,6 +297,7 @@ describe('the route reads the RAW body', () => {
     expect(mockReceive).toHaveBeenCalledWith(
       'whk_raw',
       expect.objectContaining({ type: 'payment.succeeded' }),
+      { deferHandler: true },
     );
   });
 });

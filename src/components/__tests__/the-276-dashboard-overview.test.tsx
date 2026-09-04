@@ -549,7 +549,17 @@ describe('the Analytics permission gates the dashboard', () => {
     expect(canViewAnalytics('super_admin', {})).toBe(true);
   });
 
-  it('refuses an admin whose Analytics row is unchecked — including the tenant owner', () => {
+  it('refuses an INVITED admin whose Analytics row is unchecked', () => {
+    // ⚠️ RETITLED BY THE-302, and the assertions are unchanged. This case used
+    // to say "including the tenant owner", which was true of the three-term
+    // expression and is the production lockout THE-302 fixes: the owner's
+    // `users/{uid}` carries no `permissions` key at all, so they landed on the
+    // `canViewAnalytics('admin', null)` line below and were refused their own
+    // analytics. Ownership is now a FOURTH argument, defaulting to false — so
+    // every call here is still an admin who is NOT the owner, which is exactly
+    // who this case is about. The owner's grant is pinned in
+    // `the-302-analytics-owner.test.tsx`, alongside the proof that it reaches
+    // one uid per tenant and not the admin roster.
     expect(canViewAnalytics('admin', { manageCRM: true })).toBe(false);
     expect(canViewAnalytics('admin', {})).toBe(false);
     expect(canViewAnalytics('admin', null)).toBe(false);

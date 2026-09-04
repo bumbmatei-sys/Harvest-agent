@@ -92,6 +92,60 @@ export interface SeenEventStore {
   release(webhookId: string): Promise<void>;
 }
 
+/**
+ * THE-302 — how long a reservation write may take before it is UNREACHABLE.
+ *
+ * ⚠️ Sized against the FUNCTION, not against Firestore. Sentry
+ * `JAVASCRIPT-NEXTJS-B` recorded `4 DEADLINE_EXCEEDED: Deadline exceeded after
+ * 627.959s, name resolution: 627.944s, Waiting for LB pick` out of
+ * `WriteBatch.commit()` — a `DocumentReference.create()` commits through one, so
+ * that stack is this module's `reserve`. 627 seconds is a gRPC name-resolution
+ * failure, not slow application code, and it is longer than any Vercel function
+ * lifetime: the invocation was killed long before the promise settled, so the
+ * `catch` below could not even run. There was no timeout to hit because the
+ * client library has no default one.
+ *
+ * 🔴 The number has to leave room for the RESPONSE inside the same invocation.
+ * A bound that expires after the platform has already killed the function
+ * changes nothing; the point is to fail fast, answer non-2xx, and let the
+ * redelivery happen. Five seconds is ~100x the healthy latency of a single
+ * document create and still leaves the smallest default function budget with
+ * time to serialise a 500.
+ *
+ * ⚠️ It bounds the STORE operations only, never a handler. Provisioning is a
+ * sequence of dependent writes and cutting it off part-way would leave a
+ * half-built tenant, which is worse than the wait; a durable handler that
+ * overruns is already answered by the invocation dying, which Dodo reads as a
+ * failure and retries. The reservation is the one call where a bound converts a
+ * silent loss into a retry.
+ */
+export const DODO_STORE_TIMEOUT_MS = 5_000;
+
+/**
+ * Reject if `op` has not settled within `ms`.
+ *
+ * ⚠️ Does NOT cancel the underlying gRPC call — nothing can, the Firestore
+ * client exposes no cancellation. What it bounds is how long THIS function
+ * waits, which is the thing that decides whether a redelivery is asked for
+ * inside the invocation's own lifetime.
+ */
+async function withTimeout<T>(op: Promise<T>, ms: number, what: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      op,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`[dodo] ${what} did not answer within ${ms}ms`)),
+          ms,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 /** Firestore-backed store. The default in production. */
 export const firestoreSeenEventStore: SeenEventStore = {
   async reserve(webhookId, meta) {
@@ -119,6 +173,17 @@ export const firestoreSeenEventStore: SeenEventStore = {
 export type DodoDispatchOutcome =
   /** A `webhook-id` already seen. Nothing ran. */
   | { readonly outcome: 'duplicate'; readonly type: string; readonly webhookId: string }
+  /**
+   * THE-302 — the reservation write itself failed or timed out. Nothing ran, and
+   * NO claim was recorded, so the caller must answer non-2xx and let Dodo
+   * redeliver.
+   *
+   * 🔴 DISTINCT FROM `duplicate` ON PURPOSE, and the distinction is the whole
+   * fix. This case used to be reported AS `duplicate` — "already handled" — so
+   * the route answered 200 to an event that had not been handled at all and Dodo
+   * never sent it again.
+   */
+  | { readonly outcome: 'unreserved'; readonly type: string; readonly webhookId: string; readonly error: unknown }
   /** Recognised and routed to its handler. */
   | { readonly outcome: 'routed'; readonly type: DodoEventType; readonly webhookId: string }
   /** A DURABLE handler threw. The reservation was released; the caller must 5xx. */
@@ -185,16 +250,53 @@ DODO_EVENT_HANDLERS['subscription.plan_changed'] = handleDodoSubscriptionPlanCha
 export interface ReceiveOptions {
   readonly store?: SeenEventStore;
   readonly handlers?: Record<DodoEventType, DodoEventHandler>;
+  /**
+   * Return as soon as the RESERVATION is settled, leaving the handler running.
+   *
+   * THE-302. The route passes this for every BEST-EFFORT event, so it still
+   * acknowledges before the handler does any work — but it now waits for the one
+   * write that decides whether the event was accepted at all, and can answer
+   * non-2xx when that write fails. Defaults to false, so every existing caller
+   * (and every existing test) keeps the await-the-handler behaviour it was
+   * written against.
+   */
+  readonly deferHandler?: boolean;
+  /** Bound on each store call. Defaults to {@link DODO_STORE_TIMEOUT_MS}. */
+  readonly timeoutMs?: number;
 }
 
 /**
  * Process one verified event, exactly once.
  *
  * Never rejects. For a BEST-EFFORT event the route has already answered 2xx by
- * the time this runs, so a rejected promise would be an unhandled rejection in
- * the serverless runtime rather than an error anyone sees. For a DURABLE event
- * the route is still waiting, and the failure is reported through the return
- * value (`outcome: 'failed'`) so the caller can answer 5xx deliberately.
+ * the time the HANDLER runs, so a rejected promise would be an unhandled
+ * rejection in the serverless runtime rather than an error anyone sees. For a
+ * DURABLE event the route is still waiting, and the failure is reported through
+ * the return value (`outcome: 'failed'`) so the caller can answer 5xx
+ * deliberately.
+ *
+ * ─── THE-302: a failed RESERVATION is not a duplicate ────────────────────────
+ *
+ * 🔴 The reservation failure below used to return `outcome: 'duplicate'`, and
+ * that one word lost events in production for three weeks. `duplicate` means
+ * "already handled, nothing to do", and the route answers 200 to it — correctly,
+ * for a real redelivery. When Firestore was unreachable the same 200 went back
+ * for an event that had not been handled at all, and because Dodo only retries a
+ * non-2xx, the event was never sent again. The reservation write was the FIRST
+ * Firestore call in the request, so under a Firestore outage EVERY event type
+ * took this path, provisioning included: a church could pay, have its
+ * `subscription.active` acknowledged, and end up with no account and no retry.
+ *
+ * ⚠️ THE SILENT-FAILURE RULE ASKS FOR THIS, it does not forbid it. Its own
+ * wording names `catch { console.error }` as one of the shapes that "converts a
+ * loud failure into a quiet lie", and it closes: "keep the distinction between
+ * 'empty' and 'could not load', and let the write throw rather than resolve into
+ * a default nobody will question." `duplicate` was that default. `unreserved` is
+ * that distinction.
+ *
+ * The fail-CLOSED half is unchanged and still right: no handler runs. Nothing
+ * was claimed, so the redelivery is a clean first delivery rather than a second
+ * run — which is what makes answering non-2xx safe rather than merely loud.
  */
 export async function receiveDodoWebhookEvent(
   webhookId: string,
@@ -203,22 +305,30 @@ export async function receiveDodoWebhookEvent(
 ): Promise<DodoDispatchOutcome> {
   const store = options.store ?? firestoreSeenEventStore;
   const handlers = options.handlers ?? DODO_EVENT_HANDLERS;
+  const timeoutMs = options.timeoutMs ?? DODO_STORE_TIMEOUT_MS;
   const type = event.type;
 
   let claimed: boolean;
   try {
-    claimed = await store.reserve(webhookId, { type });
+    claimed = await withTimeout(store.reserve(webhookId, { type }), timeoutMs, `reserving ${webhookId}`);
   } catch (err) {
     // The reservation itself failed. Fail CLOSED — do not run the handler. A
     // handler that runs without a reservation is a handler that can run twice,
     // and for provisioning that is a duplicate tenant.
-    console.error(`[dodo] Could not reserve webhook ${webhookId} (${type}); skipping:`, err);
+    //
+    // 🔴 But say WHICH failure this was. See the note above the function.
+    console.error(`[dodo] Could not reserve webhook ${webhookId} (${type}); asking Dodo to retry:`, err);
     captureMoneyPathError(err, {
       step: 'dodo-webhook-reserve',
+      // Deliberately still `error` and not `warning`, even though the route now
+      // makes Dodo redeliver. `warning` is for a retry we have watched work; the
+      // 24 events behind THE-302 are the first evidence this path fails at all,
+      // and a human should keep seeing them until a redelivery is observed
+      // landing.
       level: 'error',
       ids: { webhookId, eventType: type },
     });
-    return { outcome: 'duplicate', type, webhookId };
+    return { outcome: 'unreserved', type, webhookId, error: err };
   }
 
   if (!claimed) {
@@ -235,6 +345,38 @@ export async function receiveDodoWebhookEvent(
     return { outcome: 'unrecognised', type, webhookId };
   }
 
+  // The claim is recorded. From here the route may acknowledge: whatever the
+  // handler does or fails to do, a redelivery would be discarded as a duplicate,
+  // so holding the connection open buys nothing except on the durable path.
+  if (options.deferHandler) {
+    // `runDodoHandler` is documented never to reject; the `.catch` is the same
+    // belt-and-braces guard the route used to carry, kept where the handoff now
+    // happens so a future change breaking that promise cannot produce an
+    // unhandled rejection in the serverless runtime.
+    void runDodoHandler(webhookId, event, handlers, store, timeoutMs).catch((err) => {
+      console.error(`[dodo] Deferred handler for ${type} (${webhookId}) rejected:`, err);
+    });
+    return { outcome: 'routed', type, webhookId };
+  }
+
+  return runDodoHandler(webhookId, event, handlers, store, timeoutMs);
+}
+
+/**
+ * Run one reserved event's handler and classify the result.
+ *
+ * Split out of {@link receiveDodoWebhookEvent} by THE-302 so the same body
+ * serves both the awaited (durable) call and the deferred (best-effort) one.
+ * Never rejects, on either.
+ */
+async function runDodoHandler(
+  webhookId: string,
+  event: DodoWebhookEvent,
+  handlers: Record<DodoEventType, DodoEventHandler>,
+  store: SeenEventStore,
+  timeoutMs: number,
+): Promise<DodoDispatchOutcome> {
+  const type = event.type as DodoEventType;
   try {
     await handlers[type](event);
   } catch (err) {
@@ -252,7 +394,7 @@ export async function receiveDodoWebhookEvent(
       // is no worse than no retry at all, and the alternative — reporting
       // success — loses the event outright.
       try {
-        await store.release(webhookId);
+        await withTimeout(store.release(webhookId), timeoutMs, `releasing ${webhookId}`);
       } catch (releaseErr) {
         console.error(`[dodo] Could not release reservation ${webhookId} for retry:`, releaseErr);
         captureMoneyPathError(releaseErr, {
