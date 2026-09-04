@@ -7,6 +7,7 @@ import type { TenantPlan } from '../types/tenant.types';
 import PlanUpgradeSection from './settings/PlanUpgradeSection';
 import { useTenantOptional } from '../contexts/TenantContext';
 import AddOnsSection from './settings/AddOnsSection';
+import { NAV_CLEARANCE } from './settings/GivingStatementsSection';
 import { FORM_CONTAINER } from './layout/form-layout';
 
 const GOLD = 'var(--brand-color, #B8962E)';
@@ -202,9 +203,27 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
      than minting a fourth width. Below `sm:` the rule applies nothing, and the
      classes it replaces were already inert there (`max-w-3xl` is wider than any
      phone, `mx-auto` on a full-width block does nothing), so the phone
-     rendering is untouched. */
+     rendering is untouched.
+
+     ── THE-300: the clearance, made explicit ──────────────────────────────────
+     🔴 This screen scrolls inside `flex-1 overflow-y-auto` and the admin bottom
+     nav is `fixed bottom-0 … z-[100]` over it below `lg`. The nav reaches for a
+     safe-area padding utility THIS REPO DOES NOT DEFINE, so it compiles to
+     nothing and reserves nothing. #437 (THE-295) fixed that for the MEMBER
+     shell — MainApp now spells the calc directly — while the admin shell still
+     carries the inert class, which THE-295's own register enumerates as a known
+     outstanding surface. A billing screen relying on it would be relying on a
+     no-op, so this page does not.
+
+     `NAV_CLEARANCE` is the settled 120px + safe-area inset THE-286 published
+     and THE-296 reused — imported, not re-derived, and not a new token. It goes
+     HERE rather than on each section because the mount site is the scrolling
+     surface: a section carrying it mid-page would open a 120px hole above
+     Payment History instead of clearing the nav at the end of the page. The
+     last control on this screen is Generate Statement, which is what sat under
+     the bar at 380px. */
   return (
-    <div className={`${FORM_CONTAINER} space-y-6`}>
+    <div className={`${FORM_CONTAINER} space-y-6 ${NAV_CLEARANCE}`}>
       {error && (
         <div className="p-3 rounded-xl text-sm flex items-center gap-2 bg-amber-50 text-amber-700 border border-amber-100">
           <AlertCircle size={14} /> {error}

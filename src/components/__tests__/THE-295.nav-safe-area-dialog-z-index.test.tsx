@@ -435,7 +435,24 @@ describe('2 · every use of pb-safe is accounted for', () => {
       'src/components/__tests__/THE-292.country-prompt.test.tsx',
       'src/components/__tests__/THE-296.settings-sections.layout.test.tsx',
       'src/components/__tests__/THE-296.settings-sections.test.tsx',
+      // ⚠️ THE-300's two suites are a SIXTH ticket naming the class without
+      // applying it, and they are the billing half of THE-296's settings work.
+      // The layout suite REPLICATES the admin shell's bottom nav character for
+      // character — `pb-safe` included — precisely so the fixture matches the
+      // shell it is measuring against, and then measures the clearance in
+      // pixels rather than trusting the class; its own comment records that the
+      // class contributes nothing. The source suite asserts the billing page
+      // does NOT depend on it, the same shape of assertion THE-296 made one
+      // level down. Neither file applies it to a live surface.
+      //
+      // 🔴 And the mention is now the WHOLE finding for this ticket: the earlier
+      // draft of `BillingAndPayments.tsx` quoted the class in its own prose,
+      // which would have put a LIVE component into this register for what was
+      // only a comment. It says the same thing without the literal instead, so
+      // the one live entry above stays the one live entry.
       'src/components/__tests__/THE-298.form-answers-layout.test.tsx',
+      'src/components/__tests__/THE-300.billing-surface.layout.test.tsx',
+      'src/components/__tests__/THE-300.billing-surface.test.tsx',
       'src/components/__tests__/__fixtures__/member-screens-mobile.json',
       'src/components/__tests__/the-281-giving-share.test.tsx',
       'src/components/__tests__/the-290-giving-layout.test.tsx',

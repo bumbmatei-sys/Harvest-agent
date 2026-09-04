@@ -364,11 +364,49 @@ describe('4 · money-path fields do NOT autosave', () => {
     expect(src, `${file} calls useAutosaveField`).not.toContain('useAutosaveField');
   });
 
+  /**
+   * 🔴 THE-300 CONVERTED TWO OF THESE THREE, so blanket byte-identity across the
+   * money path no longer states something true — and the honest fix is the one
+   * THE-286's own suite already uses for exactly this situation, not a quieter
+   * assertion.
+   *
+   * ⚠️ THE DIGESTS IN THE FIXTURE ARE NOT REGENERATED AND NOT SUBSTITUTED. The
+   * two files THE-300 edited are exempted from ONE assertion — this digest — and
+   * from nothing else; PlanUpgradeSection stays hard-pinned against the value
+   * recorded at THE-286's PR time. An exempted file MUST actually differ (below),
+   * so an entry cannot outlive the edit that justified it, and the list is
+   * compared WHOLE so widening it is an edit to a literal a reviewer sees.
+   *
+   * What THE-296 was really claiming here — that ITS slice did not rewire the
+   * money path — is unchanged and is now carried by the sweep above (no file
+   * imports the autosave hook) plus THE-300's own suite, both of which are
+   * stronger than a digest because they survive a legitimate edit.
+   */
+  const MONEY_PATH_EDITED_SINCE: ReadonlyArray<{ file: string; ticket: string }> = [
+    { file: 'src/components/settings/AddOnsSection.tsx', ticket: 'THE-300' },
+    { file: 'src/components/settings/BillingTermToggle.tsx', ticket: 'THE-300' },
+  ];
+
+  it('the digest exemption list is exactly the edits that justify it', async () => {
+    const { createHash } = await import('node:crypto');
+    expect(MONEY_PATH_EDITED_SINCE.map((e) => `${e.ticket} ${e.file}`)).toEqual([
+      'THE-300 src/components/settings/AddOnsSection.tsx',
+      'THE-300 src/components/settings/BillingTermToggle.tsx',
+    ]);
+    for (const { file } of MONEY_PATH_EDITED_SINCE) {
+      const now = createHash('sha256').update(readFileSync(path.join(ROOT, file))).digest('hex');
+      expect(now, `${file} is exempted but unchanged — drop it from the list`)
+        .not.toBe(UNTOUCHED.otherSettingsSections[file as keyof typeof UNTOUCHED.otherSettingsSections]);
+    }
+  });
+
   it('the money-path files are byte-identical — this slice did not touch them', async () => {
     const { createHash } = await import('node:crypto');
+    const exempt = MONEY_PATH_EDITED_SINCE.map((e) => e.file);
     for (const file of ['src/components/settings/PlanUpgradeSection.tsx',
                         'src/components/settings/AddOnsSection.tsx',
                         'src/components/settings/BillingTermToggle.tsx']) {
+      if (exempt.includes(file)) continue;
       const now = createHash('sha256').update(readFileSync(path.join(ROOT, file))).digest('hex');
       expect(now, `${file} changed — the money path is out of scope for this slice`)
         .toBe(UNTOUCHED.otherSettingsSections[file as keyof typeof UNTOUCHED.otherSettingsSections]);
