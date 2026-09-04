@@ -12,6 +12,7 @@ import {
 } from '../settings/autosave';
 import { DELETE_CONFIRM_COPY } from '../../lib/member-erasure-copy';
 import UNTOUCHED from './__fixtures__/the-286-untouched.json';
+import { freezeFailure } from './__fixtures__/settings-freeze-register';
 
 /**
  * ═════════════════════════════════════════════════════════════════════════════
@@ -592,11 +593,18 @@ describe('6 · money-path and destructive fields do NOT autosave', () => {
 describe('7 · the account-deletion flow is byte-identical', () => {
   const MODAL = 'src/components/PersonalInformationModal.tsx';
 
-  it('the file is untouched, to the byte', async () => {
-    const { createHash } = await import('node:crypto');
-    const now = createHash('sha256').update(readFileSync(path.join(ROOT, MODAL))).digest('hex');
-    expect(now, 'PersonalInformationModal.tsx changed — it carries the account-deletion flow')
-      .toBe(UNTOUCHED.protectedFlows[MODAL as keyof typeof UNTOUCHED.protectedFlows]);
+  /**
+   * ⚠️ THE-312 gave this pin an APPEND PATH. Read the next two tests before
+   * worrying about it: the eight outcome messages, the state machine, the
+   * silent-failure fix and the re-auth path are asserted BY CONTENT, and
+   * `DELETE_CONFIRM_COPY` is asserted deep-equal to the live derivation. Those
+   * survive a recorded edit. This digest only catches an unannounced one.
+   */
+  it('the file is untouched, to the byte', () => {
+    expect(
+      freezeFailure(MODAL, UNTOUCHED.protectedFlows[MODAL as keyof typeof UNTOUCHED.protectedFlows]),
+      'PersonalInformationModal.tsx changed — it carries the account-deletion flow',
+    ).toBeNull();
   });
 
   it('all eight outcome messages are present, verbatim', () => {
@@ -648,6 +656,9 @@ describe('8 · DELETE_CONFIRM_COPY still equals the live MEMBER_DATA_MAP derivat
   });
 
   it('and the module it derives from is untouched', async () => {
+    // ⚠️ NOT given an append path, deliberately: `member-erasure-copy.ts` is not
+    // one of the four settings surfaces and the redesign has no reason to open
+    // it. Unlocking it would be unlocking more than THE-312 was asked to.
     const { createHash } = await import('node:crypto');
     const rel = 'src/lib/member-erasure-copy.ts';
     const now = createHash('sha256').update(readFileSync(path.join(ROOT, rel))).digest('hex');
@@ -941,11 +952,11 @@ describe('15 · the other 12 sections are byte-identical', () => {
     expect(now, `${rel} changed — this slice converts ONE section`).toBe(digest);
   });
 
-  it('and the chrome itself is unchanged — it was already built', async () => {
-    const { createHash } = await import('node:crypto');
+  /** ⚠️ THE-312 gave this pin an APPEND PATH — see settings-freeze-register.ts. */
+  it('and the chrome itself is unchanged — it was already built', () => {
     for (const [rel, digest] of Object.entries(UNTOUCHED.chrome)) {
-      const now = createHash('sha256').update(readFileSync(path.join(ROOT, rel))).digest('hex');
-      expect(now, `${rel} changed — the chrome shipped in THE-183 and this slice reuses it`).toBe(digest);
+      expect(freezeFailure(rel, digest),
+        `${rel} changed — the chrome shipped in THE-183 and this slice reuses it`).toBeNull();
     }
   });
 });
