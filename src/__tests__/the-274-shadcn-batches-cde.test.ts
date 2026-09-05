@@ -981,6 +981,24 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       'banner (alert), no grouped buttons (button-group) and no indeterminate wait (spinner — the ' +
       'wait here is a known shape, so it is skeleton).',
   },
+  {
+    file: 'src/components/Profile.tsx',
+    ticket: 'THE-321',
+    why:
+      "The member Profile's visual pass, and the first adopter from a MEMBER-FACING screen — " +
+      'THE-286, THE-296 and THE-316 were all admin surfaces. It takes `item` (Item, ItemActions, ' +
+      'ItemContent, ItemMedia, ItemTitle), `switch` and `empty` (Empty, EmptyContent, ' +
+      'EmptyDescription, EmptyHeader), alongside the already-adopted `avatar`, `badge`, `button`, ' +
+      '`card`, `dialog` and `separator`. This screen previously imported NOTHING from ui/ and ' +
+      'hand-rolled four card shells, both row types, nine hairlines, two avatars, two chips and a ' +
+      'modal out of raw divs — the same hand-rolled-UI failure AdminSettings, RetentionHeatmap, ' +
+      'ServicePlanPanel, FormAnswersView and AdminSms shipped. `switch` is load-bearing rather ' +
+      'than cosmetic: the hand-rolled toggle it replaces painted its track from a literal hex ' +
+      'fallback and moved its thumb by a magic 21px offset, so it was both the worst inline style ' +
+      'in the file and its only palette-blind control. `empty` STATES the no-partnership case ' +
+      'that a bare centred div only drew. No primitive was edited — their digests are pinned by ' +
+      'ds-primitives.test.tsx and still match.',
+  },
 ];
 
 it('only the recorded adopters import the new components, and each names its ticket', () => {

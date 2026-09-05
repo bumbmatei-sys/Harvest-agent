@@ -343,7 +343,17 @@ const SOURCE_NEEDLES: Partial<Record<ScreenKey, string[]>> = {
   home: ['bg-surface-raised rounded-2xl shadow-xs border border-line p-4'],
   blog: ['bg-surface-raised rounded-xl shadow-xs border border-line'],
   prayer: ["className=\"bg-surface-raised rounded-2xl border border-line p-4\""],
-  profile: ["text-wheat-800", "background: 'var(--surface-gold)'"],
+  /*
+   * ⚠️ THE-321 — the second needle follows the composition it anchors. Profile
+   * spelled this token as an INLINE STYLE, `background: 'var(--surface-gold)'`,
+   * on the two avatar discs and the rail's chip; the visual pass replaced them
+   * with `avatar` and `badge` carrying the MAPPED UTILITY for the same token,
+   * `bg-surface-gold` (tailwind.config.ts). The pair this anchors is about
+   * --surface-gold resolving in every palette, which is exactly as true of the
+   * utility as it was of the inline style — only the spelling moved, so the
+   * needle moves with it rather than the claim being dropped.
+   */
+  profile: ["text-wheat-800", 'bg-surface-gold'],
   bible: ['color: hlColor ? "var(--earth)" : undefined', 'HIGHLIGHT_COLORS'],
   aiChat: ['style.color = "rgb(var(--ink-danger-strong))"', 'style.background = "rgb(var(--c-danger-tint))"'],
   messages: ["'text-muted bg-surface-chip'"],

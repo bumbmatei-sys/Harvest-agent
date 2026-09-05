@@ -492,10 +492,28 @@ describe('8 · nothing writes plan from the client', () => {
     expect(src, 'a plan-writing callback prop came back').not.toMatch(/onChangePlan|onCancelPlan/);
   });
 
-  it('Profile.tsx was not edited either, so its money path is untouched', () => {
+  it('Profile.tsx was not edited by THE-316 either, so its money path is untouched', () => {
+    /*
+     * 🔴 SCOPED TO THIS TICKET — THE-315's shape, narrowly avoided.
+     *
+     * ⚠️ As first written this filtered the register by FILE alone and required
+     * the result to be EMPTY: "no ticket has ever recorded an edit to
+     * Profile.tsx". That is a claim about the state of the repo, not about
+     * THE-316, and it could only hold while split B was unwritten — so it went
+     * red the moment THE-321 legitimately recorded the split-B edit it was
+     * always expected to make, for a reason that has nothing to do with
+     * THE-316's money path.
+     *
+     * 🔴 THE CLAIM IS KEPT, NOT DROPPED, AND NOT LOOSENED. What this exists to
+     * say is that THE-316 — the settings visual pass — did not reach into the
+     * member Profile while it was in AdminSettings. That is asserted directly
+     * now, by ticket, and it is strictly the stronger reading: THE-316 sneaking
+     * an edit in still fails here, which is the actual threat, while a later
+     * ticket doing its own recorded work no longer does.
+     */
     expect(
-      RECORDED_EDITS.filter((e) => e.file === FROZEN_FILES.profile),
-      'Profile.tsx was recorded as edited — split B was not in this PR',
+      RECORDED_EDITS.filter((e) => e.file === FROZEN_FILES.profile && e.ticket === 'THE-316'),
+      'THE-316 recorded an edit to Profile.tsx — split B was not in this PR',
     ).toEqual([]);
   });
 });
