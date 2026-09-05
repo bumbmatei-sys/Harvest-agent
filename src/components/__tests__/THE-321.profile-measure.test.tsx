@@ -189,14 +189,13 @@ const PROBE = `(async () => {
   };
 })()`;
 
-let browser: MeasuringBrowser;
+let browser: MeasuringBrowser | null = null;
 const shown = new Map<number, Reading>();
 const hidden = new Map<number, Reading>();
 
 beforeAll(async () => {
   const css = await buildAppCss();
   const dir = mkdtempSync(path.join(os.tmpdir(), 'the321-'));
-  browser = new MeasuringBrowser();
 
   for (const [navShown, into] of [[true, shown], [false, hidden]] as const) {
     const file = path.join(dir, `profile-${navShown ? 'shown' : 'hidden'}.html`);
@@ -205,7 +204,25 @@ beforeAll(async () => {
       `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head>` +
       `<body>${shell(navShown)}</body></html>`,
     );
-    // ⚠️ One browser, re-navigated — never a second instance in this process.
+    /*
+     * 🔴 CLOSED BEFORE THE NEXT ONE OPENS — never two browsers alive at once.
+     *
+     * ⚠️ THIS FILE LEAKED A CHROMIUM ON ITS FIRST WRITING, and the comment
+     * sitting here claimed the opposite ("one browser, re-navigated"). It was
+     * not: `open()` spawns a process and overwrites `this.proc` unconditionally,
+     * so calling it twice on ONE instance starts two browsers and leaves only
+     * the second reachable — `close()` in afterAll then kills that one and the
+     * first survives for the life of the vitest worker. On a CI runner that is
+     * a leaked headless Chromium per run of this file.
+     *
+     * SEQUENTIAL INSTANCES ARE THE SUPPORTED SHAPE: the port is the kernel's to
+     * choose and `close()` awaits the process's exit, so what the module warns
+     * against — two MeasuringBrowsers colliding and silently comparing a page
+     * with itself — is CONCURRENCY, which this loop never has. One is fully
+     * dead before the next is constructed.
+     */
+    if (browser) await browser.close();
+    browser = new MeasuringBrowser();
     await browser.open(`file://${file}`);
     for (const v of VIEWPORTS) into.set(v, await browser.evaluateAt<Reading>(v, PROBE, 720));
   }
