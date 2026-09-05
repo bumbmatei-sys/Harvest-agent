@@ -716,11 +716,46 @@ describe('13 — firestore.rules, functions/ and layout.tsx are byte-identical',
    The `progress` adoption decision
    ═════════════════════════════════════════════════════════════════════════ */
 
-describe('ui/progress was NOT adopted, and THE-272\'s closed adopter list is unchanged', () => {
+/**
+ * ⚠️ AMENDED BY THE-319, and the CLAIM IS KEPT while its MECHANISM is replaced.
+ *
+ * 🔴 What THE-311 meant is intact: `course/ProgressBar.tsx` does not adopt
+ * `ui/progress`, THE-290's two dashboard widgets are still named, and this
+ * ticket's decision is still recorded in the component. Every one of those is
+ * still asserted below, against file CONTENT.
+ *
+ * What is replaced is `changed(the-272 guard) === []`. That was a claim about
+ * the current branch's DIFF, and it is the shape THE-315 (#454) exists to
+ * catch: it says "no branch may ever amend THE-272's adopter list", which
+ * contradicts THE-272's own design. That guard's every entry says the list is
+ * "narrowed, not dropped" and "RECORDED here rather than relaxed" — amending it
+ * with a ticket and a reason is how a legitimate adoption is meant to be
+ * declared, and THE-290, THE-283 and THE-294 each did exactly that. THE-319
+ * adopts `progress` for the answers view's proportion bar and `table` for the
+ * retention heatmap's screen-reader table, and records both there.
+ *
+ * 🔴 So the claim below is the one THE-311 actually needs and can outlive its
+ * own merge: THE-290's two adopters are STILL ON THE LIST, and no file under
+ * `src/components/course` is on it. A course file adopting the primitive still
+ * fails here, which is the whole of this section's intent.
+ */
+describe('ui/progress was NOT adopted by course/, and THE-290\'s adopters are still named', () => {
   it('the adopter list still names exactly THE-290\'s two dashboard widgets', () => {
     const guard = src('src/__tests__/the-272-shadcn-batch-b.test.ts');
     expect(guard).toContain('const THE_290_PROGRESS_ADOPTERS = [');
-    expect(changed('src/__tests__/the-272-shadcn-batch-b.test.ts'), 'the adopter list was amended').toEqual([]);
+    const list = guard.slice(guard.indexOf('const THE_290_PROGRESS_ADOPTERS = ['));
+    const named = list.slice(0, list.indexOf('] as const')).match(/'([^']+)'/g) ?? [];
+    expect(named.map((n) => n.slice(1, -1))).toEqual([
+      'src/components/dashboard/CampaignProgress.tsx',
+      'src/components/dashboard/PledgeFulfilment.tsx',
+    ]);
+  });
+
+  it('🔴 and no course file appears on any adopter list in that guard', () => {
+    const guard = src('src/__tests__/the-272-shadcn-batch-b.test.ts');
+    const adopters = (guard.match(/'src\/[^']+\.tsx?'/g) ?? []).map((n) => n.slice(1, -1));
+    expect(adopters.filter((f) => f.startsWith('src/components/course/')),
+      'a course file was added to an adopter list').toEqual([]);
   });
   it('and course/ProgressBar.tsx does not import the primitive', () => {
     const bar = src('src/components/course/ProgressBar.tsx');

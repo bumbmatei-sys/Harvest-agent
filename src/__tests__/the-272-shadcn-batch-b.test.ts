@@ -940,7 +940,74 @@ const THE_294_TABLE_ADOPTERS = [
   'src/components/dashboard/ActivityTypes.tsx',
 ] as const;
 
-it('only THE-276 adopts chart, THE-283/THE-290/THE-294 adopt table, THE-290 adopts progress, and pagination is still adopted by nothing', () => {
+/**
+ * ⚠️ AMENDED AGAIN BY THE-319, and RECORDED here rather than relaxed.
+ *
+ * THE-319 is not a feature: it is the composition sweep for the two files that
+ * shipped ~700 lines of hand-written markup because every ticket said "no new
+ * component — all 29 primitives are installed" and the agents read that as "do
+ * not install anything". Nothing was broken and the token guard could not have
+ * caught it, because hand-written Tailwind resolves perfectly well. So both
+ * adoptions below replace markup that already existed and neither changes a
+ * figure, a word of copy or a measured value.
+ *
+ * ─── `table` gains its FOURTH adopter ───────────────────────────────────────
+ *
+ * `RetentionHeatmap` carries THE-299's screen-reader data table — every count
+ * and share the grid draws, repeated as text for a reader who will never see a
+ * colour. That is a grid of data and therefore `table`, the same shape THE-283,
+ * THE-290 and THE-294 adopted the primitive for. 🔴 The claim is narrowed by
+ * exactly ONE file and STAYS CLOSED: a FIFTH adopter of `table` still fails.
+ *
+ * 🔴 The heatmap's VISIBLE grid is NOT a `table` and is not counted here. It is
+ * a matrix of coloured cells whose colour is a scale, not a value in a column;
+ * `table` is the wrong semantics for it and `chart` is recharts, which has no
+ * heatmap and renders nothing under happy-dom. That grid legitimately stays an
+ * SVG, exactly as THE-299 built it.
+ *
+ * 🔴 `sr-only` STAYS ON THE WRAPPER DIV, and adopting the primitive does not
+ * move it. `Table` renders its own container `div` inside that wrapper, so the
+ * `display: table` element is no longer the wrapper's direct child at all —
+ * which is strictly safer than what THE-299 measured, not a relaxation of it.
+ * See the note in `RetentionHeatmap.tsx` for the 1,474px page-scroll defect
+ * this protects.
+ *
+ * ─── `progress` gains its THIRD adopter ─────────────────────────────────────
+ *
+ * `FormAnswersView` draws one proportion bar per option of a choice question —
+ * a track, a fill and the share written beside it, which is `raised / goal` in
+ * a different costume and the exact fraction THE-290 adopted `progress` for.
+ * Before this it was a hand-rolled track `div` and fill `div` carrying the
+ * file's ONLY `style={{ … }}`; the primitive owns the width now and the file's
+ * inline-style count is zero. 🔴 A FOURTH adopter of `progress` still fails.
+ *
+ * ⚠️ `progress` paints `bg-primary` on `bg-muted` at 2.30:1 in light. That pair
+ * is KNOWN AND ACCEPTED, recorded in both directions in section 7, and is NOT
+ * "fixed" here. It is also not the pair this adopter ships: the call site
+ * repaints the track and indicator in the screen's own surface tokens, which is
+ * the only seam `ui/progress` offers. Either way the count and the share are
+ * written out beside every bar, so nothing is conveyed by length alone.
+ *
+ * 🔴 `chart` GAINS NO ADOPTER, and THE-319 re-examined the decision rather than
+ * inheriting it. THE-298's reason 3 still decides it: recharts renders NOTHING
+ * under happy-dom, and the per-question counts are the whole point of that
+ * screen, so they have to be assertable in the DOM the suite actually renders.
+ * The list below is unchanged on that line.
+ *
+ * 🔴 `pagination` is STILL adopted by nothing. The heatmap refuses entirely
+ * rather than paginating when a collection is over its ceiling, and the answers
+ * view caps what it RENDERS at 200 while saying so and keeping every count
+ * complete — both are deliberate alternatives to hiding rows behind a control.
+ */
+const THE_319_TABLE_ADOPTERS = [
+  'src/components/dashboard/RetentionHeatmap.tsx',
+] as const;
+
+const THE_319_PROGRESS_ADOPTERS = [
+  'src/components/forms/FormAnswersView.tsx',
+] as const;
+
+it('only THE-276 adopts chart, THE-283/THE-290/THE-294/THE-319 adopt table, THE-290/THE-319 adopt progress, and pagination is still adopted by nothing', () => {
   const walk = (dir: string): string[] =>
     readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
       const p = path.join(dir, e.name);
@@ -960,10 +1027,16 @@ it('only THE-276 adopts chart, THE-283/THE-290/THE-294 adopt table, THE-290 adop
 
   const tableImporters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), 'table'));
   expect(tableImporters.map((f) => rel(f)).sort())
-    .toEqual([...THE_283_TABLE_ADOPTERS, ...THE_290_TABLE_ADOPTERS, ...THE_294_TABLE_ADOPTERS].sort());
+    .toEqual([
+      ...THE_283_TABLE_ADOPTERS,
+      ...THE_290_TABLE_ADOPTERS,
+      ...THE_294_TABLE_ADOPTERS,
+      ...THE_319_TABLE_ADOPTERS,
+    ].sort());
 
   const progressImporters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), 'progress'));
-  expect(progressImporters.map((f) => rel(f)).sort()).toEqual([...THE_290_PROGRESS_ADOPTERS].sort());
+  expect(progressImporters.map((f) => rel(f)).sort())
+    .toEqual([...THE_290_PROGRESS_ADOPTERS, ...THE_319_PROGRESS_ADOPTERS].sort());
 
   for (const name of ['pagination']) {
     const adopters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), name));

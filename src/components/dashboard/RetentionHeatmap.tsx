@@ -122,6 +122,15 @@
 import React from 'react';
 import { Grid3x3 } from 'lucide-react';
 
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../ui/table';
 import { WidgetFrame, type WidgetState } from './WidgetFrame';
 import { REASON } from './growth-data';
 import { RETENTION_MONTHS, type RetentionGrid } from './retention-data';
@@ -416,34 +425,44 @@ export function RetentionHeatmap({ grid, reason }: {
             at 380px and 1,663 at 1,440px — horizontal page scroll at EVERY
             viewport, from an element nobody could see. The layout test caught
             it; nothing else would have.
+
+            🔴 THE-319 composed this table from the `table` PRIMITIVE and the
+            wrapper is untouched by that — it is why the adoption is safe rather
+            than a risk to it. `Table` renders its own container `div` around the
+            `<table>`, so the `display: table` element is no longer this
+            wrapper's direct child at all and the clipping above never depends
+            on the exception that broke it. The visible grid below is NOT a
+            table and did not move: it is a matrix of coloured cells whose
+            colour is a scale rather than a value in a column, and `chart` is
+            recharts, which has no heatmap and renders nothing under happy-dom.
           */}
-          <table data-retention-table>
-            <caption>Retention by join month, as counts and shares.</caption>
-            <thead>
-              <tr>
-                <th scope="col">Joined</th>
-                <th scope="col">Members</th>
+          <Table data-retention-table>
+            <TableCaption>Retention by join month, as counts and shares.</TableCaption>
+            <TableHeader>
+              <TableRow>
+                <TableHead scope="col">Joined</TableHead>
+                <TableHead scope="col">Members</TableHead>
                 {Array.from({ length: grid.periods }, (_, col) => (
-                  <th key={col} scope="col">{`Month ${col}`}</th>
+                  <TableHead key={col} scope="col">{`Month ${col}`}</TableHead>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {rows.map((row) => (
-                <tr key={row.key}>
-                  <th scope="row">{row.label}</th>
-                  <td>{count(row.members)}</td>
+                <TableRow key={row.key}>
+                  <TableHead scope="row">{row.label}</TableHead>
+                  <TableCell>{count(row.members)}</TableCell>
                   {row.retained.map((share, col) => (
-                    <td key={col}>
+                    <TableCell key={col}>
                       {share === null
                         ? 'not yet observed'
                         : `${count(row.active[col] ?? 0)} of ${count(row.members)}, ${pct(share)}`}
-                    </td>
+                    </TableCell>
                   ))}
-                </tr>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
           </div>
         )}
       </div>
