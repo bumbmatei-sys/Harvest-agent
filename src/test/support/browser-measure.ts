@@ -118,10 +118,41 @@ export class MeasuringBrowser {
 
   async open(fileUrl: string): Promise<void> {
     const bin = findBrowser();
-    // A high, deterministic-enough port: the suite runs this file once.
-    const port = 9222 + (process.pid % 900);
+    /**
+     * 🔴 THE OS ASSIGNS THE PORT, AND THE PROFILE IS THIS INSTANCE'S OWN.
+     *
+     * ⚠️ This used to be `9222 + (process.pid % 900)`, above the comment "a
+     * high, deterministic-enough port: the suite runs this file once". That was
+     * true when ONE file measured; seventeen do now, and the number is derived
+     * from the PROCESS, so it is the SAME port for every browser a worker ever
+     * opens. Vitest reuses a worker across files, and `close()` did not wait for
+     * the browser to die — so the next file's Chrome raced the previous one's
+     * shutdown for the same socket and lost:
+     *
+     *     bind() failed: Address already in use (98)
+     *     Error: the browser never opened its debugging port.
+     *
+     * That is the collision this module's own callers were warned about. It is
+     * not a flake and re-running does not fix it — it fires whenever two
+     * measuring suites land in one worker, which gets likelier with every suite
+     * added.
+     *
+     * `--remote-debugging-port=0` makes the kernel pick a free port, so two
+     * browsers cannot want the same one however they are scheduled, and the URL
+     * it actually bound is read off STDERR — Chrome announces it there as
+     * `DevTools listening on ws://…` the moment it is ready, and this class
+     * already captures stderr for its failure reports.
+     *
+     * ⚠️ A first attempt read the port from `DevToolsActivePort` instead, which
+     * meant giving each instance its own `--user-data-dir`. That REGRESSED in
+     * CI: building a fresh profile is slow enough on a loaded runner that
+     * nothing was written inside the 20s budget, and the failure arrived with
+     * an empty stderr — less diagnosable than the collision it replaced. The
+     * announcement needs no profile, no file and no second HTTP round trip, so
+     * it is both simpler and faster than either.
+     */
     this.proc = spawn(bin, [
-      '--headless=new', `--remote-debugging-port=${port}`, '--no-sandbox',
+      '--headless=new', '--remote-debugging-port=0', '--no-sandbox',
       '--disable-gpu', '--disable-dev-shm-usage', '--hide-scrollbars',
       '--force-device-scale-factor=1', 'about:blank',
     ], { stdio: ['ignore', 'ignore', 'pipe'] });
@@ -135,7 +166,7 @@ export class MeasuringBrowser {
     });
     this.proc.on('exit', (code) => { this.exited = `browser exited with code ${code}`; });
 
-    const wsUrl = await this.debuggerUrl(port);
+    const wsUrl = await this.announcedUrl();
     this.ws = new WebSocket(wsUrl);
     await new Promise<void>((resolve, reject) => {
       this.ws!.onopen = () => resolve();
@@ -158,6 +189,32 @@ export class MeasuringBrowser {
     await this.send('Runtime.enable', {}, this.sessionId);
     await this.send('Page.navigate', { url: fileUrl }, this.sessionId);
     await this.settle();
+  }
+
+  /**
+   * The debugger URL Chrome announced on stderr, e.g.
+   * `DevTools listening on ws://127.0.0.1:41234/devtools/browser/<uuid>`.
+   *
+   * Used verbatim as the WebSocket URL, so there is no HTTP round trip at all —
+   * which also sidesteps the cross-origin trap {@link debuggerUrl} documents.
+   * That method is kept for callers that hold a known port.
+   *
+   * ⚠️ 60s rather than 20s: a loaded CI runner starting a dozen Chromes at once
+   * is slower than a laptop starting one, and a budget tuned to the laptop is
+   * how a green suite becomes an intermittently red one. It still reports the
+   * same way on failure — a browser that refuses to start says why on stderr,
+   * and a bare timeout is the least diagnosable failure a test can have.
+   */
+  private async announcedUrl(): Promise<string> {
+    for (let i = 0; i < 600; i++) {
+      if (this.exited) break;
+      const m = /DevTools listening on (ws:\/\/\S+)/.exec(this.stderr);
+      if (m) return m[1];
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    throw new Error(
+      `the browser never announced its debugging port. ${this.exited}\n${this.stderr.slice(0, 2000)}`,
+    );
   }
 
   private async debuggerUrl(port: number): Promise<string> {
@@ -255,8 +312,33 @@ export class MeasuringBrowser {
     return result.result?.value as T;
   }
 
+  /**
+   * 🔴 AWAITS THE BROWSER'S EXIT, rather than signalling and returning.
+   *
+   * ⚠️ This used to be `this.proc?.kill()` and nothing else, which returns
+   * while Chrome is still tearing down and still holding its socket. With a
+   * per-process port that was the second half of the collision described in
+   * `open()`. The port is now the kernel's to choose, so a lingering browser
+   * can no longer block the next one — but waiting is still right: it stops a
+   * finished suite leaking a live Chrome into the ones after it.
+   *
+   * SIGKILL after five seconds so a wedged browser cannot hang the run, and
+   * every cleanup step is best-effort: `close()` runs in `afterAll`, where a
+   * throw would replace a real test failure with a teardown one.
+   */
   async close(): Promise<void> {
     try { this.ws?.close(); } catch { /* already gone */ }
-    this.proc?.kill();
+    const proc = this.proc;
+    if (proc && proc.exitCode === null && proc.signalCode === null) {
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          try { proc.kill('SIGKILL'); } catch { /* already gone */ }
+          resolve();
+        }, 5000);
+        proc.once('exit', () => { clearTimeout(timer); resolve(); });
+        try { proc.kill(); } catch { clearTimeout(timer); resolve(); }
+      });
+    }
+    this.proc = null;
   }
 }

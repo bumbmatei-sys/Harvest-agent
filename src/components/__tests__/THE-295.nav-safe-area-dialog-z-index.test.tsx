@@ -464,6 +464,23 @@ describe('2 · every use of pb-safe is accounted for', () => {
       // instead. It applies the class to no live surface: THE-304's diff is
       // AdminForms' option editor, which spells no bottom padding at all.
       'src/components/__tests__/THE-304.form-options-layout.test.tsx',
+      // ⚠️ THE-313's layout suite is an EIGHTH ticket naming the class without
+      // applying it, and it names it for THE-303's, THE-304's, THE-300's and
+      // THE-298's reason: it REPLICATES the admin shell's bottom nav character
+      // for character — the inert class included — so the fixture is the nav it
+      // measures the order of service's clearance against, and then it measures
+      // that clearance in Chromium rather than trusting the class. One of its
+      // assertions builds the real stylesheet and asserts the class emits NO
+      // RULE, which is the finding stated as a test rather than as prose.
+      //
+      // 🔴 It applies the class to no live surface, and THE-313's two new
+      // components deliberately do not SPELL it either: they reserve
+      // `pb-[120px] lg:pb-0` of their own and their headers say why without
+      // quoting the literal — exactly the move THE-300 made when it found that
+      // quoting it in a live component's prose would put that component into
+      // this register for what was only a comment. So the one live entry above
+      // is still the one live entry.
+      'src/components/__tests__/THE-313.service-plan.layout.test.tsx',
       'src/components/__tests__/__fixtures__/member-screens-mobile.json',
       'src/components/__tests__/the-281-giving-share.test.tsx',
       'src/components/__tests__/the-290-giving-layout.test.tsx',

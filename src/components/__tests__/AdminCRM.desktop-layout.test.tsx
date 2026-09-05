@@ -608,6 +608,23 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
       // to stop. It mints none: the component carries no `max-w-[…px]` at all,
       // asserted in THE-292.country-prompt.layout.test.tsx.
       'src/components/country/CountryPrompt.tsx',
+      // THE-313 — the order of service, mounted on the event detail view. Two
+      // files, and only ONE of them spends a rule: `events/ServicePlanRow.tsx`
+      // takes FIELD_WIDTH (short / medium / long, one per control) and
+      // CONTROL_DENSITY (the 38px desktop band under a 44px touch floor), and
+      // `events/ServicePlanPanel.tsx` takes FIELD_WIDTH for its two remaining
+      // controls plus CONTROL_DENSITY.action for its buttons. Neither takes a
+      // MEASURE (Rule 1): the panel renders inside AdminEvents' detail view,
+      // which already spends FORM_CONTAINER, so a measure here would cap a
+      // column inside a column — THE-286's reasoning, one screen over.
+      //
+      // A deliberate adoption rather than a leak: a run sheet is a repeating row
+      // of a text field, a duration, a person and two icon controls, and the
+      // alternative was minting widths for four of them. It mints none — the
+      // guards in the-313-guards.test.ts assert the two files carry no
+      // `max-w-[…]` and no arbitrary width but the 44px tap-target minimum.
+      'src/components/events/ServicePlanPanel.tsx',
+      'src/components/events/ServicePlanRow.tsx',
       // THE-286 — the first adopter from settings/ rather than from a screen.
       // The converted GivingStatementsSection takes CONTROL_DENSITY only: its
       // controls need the 38px desktop density and the 28px section gap, and it
