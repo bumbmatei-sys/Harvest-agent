@@ -632,6 +632,24 @@ const NOT_OURS: Record<string, ReadonlyArray<readonly [digest: string, source: s
   ],
   'src/components/settings/SmsSection.tsx': [
     ['5bb4042ee2d57f562a7a2b33897fe6bf169a9f7e82bd1bb8bddeb9b83cf6c6b0', 'main at 0de1e2e — THE-316 owns it and has not landed'],
+    // 🔴 APPENDED, and this is the case the SET exists for.
+    //
+    // ⚠️ THE-316 HAS NOW LANDED. #457 edited this file, and #456 (THE-318)
+    // edited it after — so from `acc0d66` the single accepted digest above was
+    // false for EVERY branch cut from main, and this assertion has been red on
+    // main itself since #455 merged. Reproduced on a clean tree with none of
+    // THE-320's code, which is what makes it not this PR's to root-cause.
+    // THE-317 (#458) appends the identical entry; this is that same change
+    // ported so a green head does not wait on it, and it no-ops once either
+    // lands.
+    //
+    // 🔴 APPENDED, NEVER SUBSTITUTED — the file's own note above says why the
+    // shape is a SET: "A value that is NEITHER — i.e. THIS ticket editing it —
+    // still fails, which is the whole threat." That is untouched. THE-319 still
+    // cannot edit this file, and neither can THE-320: this branch touches no
+    // source file at all, which is the only reason this value is accepted
+    // rather than investigated.
+    ['75c90bc448dc52eceb47e8866a06a32cd53a64bb1b0455c2b7585053800bdf03', 'main at acc0d66 — THE-316 (#457) landed, then THE-318 (#456)'],
   ],
   'src/components/events/ServicePlanPanel.tsx': [
     ['81f99a23ff53cb1488935b7adf37cf043ff577399324e377785176d9f1e8c891', 'main at 0de1e2e — THE-317 owns it and has not landed'],
