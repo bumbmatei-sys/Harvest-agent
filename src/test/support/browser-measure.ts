@@ -1,7 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import http from 'node:http';
-import os from 'node:os';
 import path from 'node:path';
 
 /**
@@ -116,8 +115,6 @@ export class MeasuringBrowser {
   private pending = new Map<number, (msg: Record<string, unknown>) => void>();
   private stderr = '';
   private exited = '';
-  /** This instance's own Chrome profile. Removed by {@link close}. */
-  private userDataDir: string | null = null;
 
   async open(fileUrl: string): Promise<void> {
     const bin = findBrowser();
@@ -141,16 +138,21 @@ export class MeasuringBrowser {
      * added.
      *
      * `--remote-debugging-port=0` makes the kernel pick a free port, so two
-     * browsers cannot want the same one however they are scheduled; the real
-     * number is read back from `DevToolsActivePort`, which Chrome writes into
-     * its profile directory once it is listening. That file is also why the
-     * profile has to be this instance's own — and a private profile is worth
-     * having anyway, since two Chromes sharing a default one is its own race.
+     * browsers cannot want the same one however they are scheduled, and the URL
+     * it actually bound is read off STDERR — Chrome announces it there as
+     * `DevTools listening on ws://…` the moment it is ready, and this class
+     * already captures stderr for its failure reports.
+     *
+     * ⚠️ A first attempt read the port from `DevToolsActivePort` instead, which
+     * meant giving each instance its own `--user-data-dir`. That REGRESSED in
+     * CI: building a fresh profile is slow enough on a loaded runner that
+     * nothing was written inside the 20s budget, and the failure arrived with
+     * an empty stderr — less diagnosable than the collision it replaced. The
+     * announcement needs no profile, no file and no second HTTP round trip, so
+     * it is both simpler and faster than either.
      */
-    this.userDataDir = mkdtempSync(path.join(os.tmpdir(), 'measuring-browser-'));
     this.proc = spawn(bin, [
-      '--headless=new', '--remote-debugging-port=0',
-      `--user-data-dir=${this.userDataDir}`, '--no-sandbox',
+      '--headless=new', '--remote-debugging-port=0', '--no-sandbox',
       '--disable-gpu', '--disable-dev-shm-usage', '--hide-scrollbars',
       '--force-device-scale-factor=1', 'about:blank',
     ], { stdio: ['ignore', 'ignore', 'pipe'] });
@@ -164,7 +166,7 @@ export class MeasuringBrowser {
     });
     this.proc.on('exit', (code) => { this.exited = `browser exited with code ${code}`; });
 
-    const wsUrl = await this.debuggerUrl(await this.assignedPort());
+    const wsUrl = await this.announcedUrl();
     this.ws = new WebSocket(wsUrl);
     await new Promise<void>((resolve, reject) => {
       this.ws!.onopen = () => resolve();
@@ -190,26 +192,28 @@ export class MeasuringBrowser {
   }
 
   /**
-   * The port Chrome actually bound, read from `DevToolsActivePort`.
+   * The debugger URL Chrome announced on stderr, e.g.
+   * `DevTools listening on ws://127.0.0.1:41234/devtools/browser/<uuid>`.
    *
-   * Chrome writes that file into its profile directory the moment it is
-   * listening: first line the port, second the browser's WebSocket path. Polled
-   * on the same 100ms × 200 budget as {@link debuggerUrl}, and it reports the
+   * Used verbatim as the WebSocket URL, so there is no HTTP round trip at all —
+   * which also sidesteps the cross-origin trap {@link debuggerUrl} documents.
+   * That method is kept for callers that hold a known port.
+   *
+   * ⚠️ 60s rather than 20s: a loaded CI runner starting a dozen Chromes at once
+   * is slower than a laptop starting one, and a budget tuned to the laptop is
+   * how a green suite becomes an intermittently red one. It still reports the
    * same way on failure — a browser that refuses to start says why on stderr,
-   * and a timeout with no reason is the least diagnosable failure a test has.
+   * and a bare timeout is the least diagnosable failure a test can have.
    */
-  private async assignedPort(): Promise<number> {
-    const file = path.join(this.userDataDir as string, 'DevToolsActivePort');
-    for (let i = 0; i < 200; i++) {
+  private async announcedUrl(): Promise<string> {
+    for (let i = 0; i < 600; i++) {
       if (this.exited) break;
-      try {
-        const port = Number(readFileSync(file, 'utf8').split('\n')[0].trim());
-        if (Number.isInteger(port) && port > 0) return port;
-      } catch { /* not written yet */ }
+      const m = /DevTools listening on (ws:\/\/\S+)/.exec(this.stderr);
+      if (m) return m[1];
       await new Promise((r) => setTimeout(r, 100));
     }
     throw new Error(
-      `the browser never reported its debugging port. ${this.exited}\n${this.stderr.slice(0, 2000)}`,
+      `the browser never announced its debugging port. ${this.exited}\n${this.stderr.slice(0, 2000)}`,
     );
   }
 
@@ -316,8 +320,7 @@ export class MeasuringBrowser {
    * per-process port that was the second half of the collision described in
    * `open()`. The port is now the kernel's to choose, so a lingering browser
    * can no longer block the next one — but waiting is still right: it stops a
-   * finished suite leaking a live Chrome into the ones after it, and it is
-   * what lets the profile directory be removed rather than left in /tmp.
+   * finished suite leaking a live Chrome into the ones after it.
    *
    * SIGKILL after five seconds so a wedged browser cannot hang the run, and
    * every cleanup step is best-effort: `close()` runs in `afterAll`, where a
@@ -337,9 +340,5 @@ export class MeasuringBrowser {
       });
     }
     this.proc = null;
-    if (this.userDataDir) {
-      try { rmSync(this.userDataDir, { recursive: true, force: true }); } catch { /* best effort */ }
-      this.userDataDir = null;
-    }
   }
 }
