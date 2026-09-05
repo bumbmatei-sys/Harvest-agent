@@ -563,21 +563,53 @@ describe('the other readers of the same subcollection are untouched', () => {
    * nothing they depend on. Their own suites assert their behaviour; these
    * digests assert this ticket did not reach into it.
    */
-  const PINNED: Record<string, string> = {
+  /**
+   * ⚠️ A SET PER FILE, APPENDED TO BY THE-319 rather than substituted — the
+   * shape THE-276 established, and for its reason: CI runs against
+   * `refs/pull/N/merge`, so a file another ticket legitimately lands on `main`
+   * holds a different value there than on that ticket's own branch. A value
+   * that is NEITHER still fails, which is the whole threat this guard is about.
+   *
+   * 🔴 `FormAnswersView.tsx` moved in THE-319 and the ORIGINAL DIGEST IS STILL
+   * HERE, first, unchanged. THE-319 is the composition sweep: the per-option
+   * proportion bar is now `ui/progress` instead of a hand-rolled track and fill,
+   * which is why the file's bytes moved. It is not a change THE-309 has any
+   * stake in — every figure, every string and every measured box on that screen
+   * is identical, verified in Chromium at all five viewports, and the assertion
+   * two below (that the view still keys responses by the same path and field)
+   * is the claim THE-309 actually cares about and is untouched.
+   */
+  const PINNED: Record<string, ReadonlyArray<readonly [digest: string, source: string]>> = {
     // THE-298 — the answers view and its complete, paged read.
-    'src/components/forms/form-answers.ts': 'b84d40bcd9f47910e9f7afaad3e38ef7eaa68500bb90b4b7fbd9990744ebd0eb',
-    'src/components/forms/FormAnswersView.tsx': 'edf8fccd4ad2759c09b5b6114d1109d9237a580c021b620e98224b97a8ad1df1',
+    'src/components/forms/form-answers.ts': [
+      ['b84d40bcd9f47910e9f7afaad3e38ef7eaa68500bb90b4b7fbd9990744ebd0eb', 'THE-298\'s value — untouched by THE-319, which reads it and does not edit it'],
+    ],
+    'src/components/forms/FormAnswersView.tsx': [
+      ['edf8fccd4ad2759c09b5b6114d1109d9237a580c021b620e98224b97a8ad1df1', 'THE-298\'s value — main before THE-319'],
+      ['db6c05f4d6e3ed101d3c3c22f9104bb38793f91aecda89243cfa17b886304027', 'THE-319 (composition sweep) — the option bar is `ui/progress`; no figure, copy or measured value moved'],
+    ],
     // THE-304 — the option editor, and the form list that mounts both views.
-    'src/components/AdminForms.tsx': '8777a80b5e75c7c3a913f91b113faf98b9508a03445d2cba64370f1f270e48b1',
-    'src/app/api/forms/get/route.ts': '8e8ad1d36349725c7219f1c45c7e2f4e103e07e05bcfe70e3c6a2c5de98de2cc',
+    'src/components/AdminForms.tsx': [
+      ['8777a80b5e75c7c3a913f91b113faf98b9508a03445d2cba64370f1f270e48b1', "THE-304's option editor — untouched by THE-319"],
+    ],
+    'src/app/api/forms/get/route.ts': [
+      ['8e8ad1d36349725c7219f1c45c7e2f4e103e07e05bcfe70e3c6a2c5de98de2cc', 'unchanged since THE-298'],
+    ],
     // ⚠️ The LEGACY top-level inbox. It is not migrated, redirected or
     // deleted by this ticket — rules still grant it, rows still exist, and
     // AdminInbox is still the surface for them.
-    'src/components/AdminInbox.tsx': '001d256d75ea4a02d908005827d51468af52a269dc88e18070407f8dac76f371',
+    'src/components/AdminInbox.tsx': [
+      ['001d256d75ea4a02d908005827d51468af52a269dc88e18070407f8dac76f371', 'the legacy top-level inbox, not migrated'],
+    ],
   };
 
-  it.each(Object.entries(PINNED))('%s carries no edit from this ticket', (file, digest) => {
-    expect(sha256(readRepo(file))).toBe(digest);
+  it.each(Object.entries(PINNED))('%s carries no edit from this ticket', (file, accepted) => {
+    const actual = sha256(readRepo(file));
+    expect(
+      accepted.find(([digest]) => digest === actual),
+      `${file} is at ${actual}, which is none of:\n  ` +
+        accepted.map(([d, why]) => `${d} (${why})`).join('\n  '),
+    ).toBeTruthy();
   });
 
   it('THE-298’s answers view still keys responses by the same path and field', () => {

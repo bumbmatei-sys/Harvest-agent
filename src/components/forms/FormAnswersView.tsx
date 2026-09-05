@@ -1,6 +1,8 @@
 "use client";
 import React from 'react';
 import { ChartColumn, AlignLeft, Lock, TriangleAlert, FileText } from 'lucide-react';
+
+import { Progress } from '../ui/progress';
 import type { QuestionSummary } from './form-answers';
 
 /**
@@ -24,8 +26,16 @@ import type { QuestionSummary } from './form-answers';
  *      appears is not.
  *
  * So the guard is untouched, `chart` keeps exactly the four adopters it had,
- * and the bars below are `div`s. Every figure a bar depicts is also written out
- * as text next to it, so nothing here is conveyed by the bar alone.
+ * and every figure a bar depicts is also written out as text next to it, so
+ * nothing here is conveyed by the bar alone.
+ *
+ * ⚠️ THE-319 RE-EXAMINED THIS AND KEPT IT. Reason 3 is unchanged and decides it
+ * again: recharts renders nothing under happy-dom, and the counts on this screen
+ * are the whole ticket. The bar itself is no longer a hand-rolled `div` pair
+ * though — it is `progress`, which is the primitive for a proportion of a whole
+ * and which THE-290 already adopted for exactly this shape. `chart` gains no
+ * adopter here and THE-272's list is untouched on that line; `progress` gains
+ * one and that IS recorded there.
  *
  * ── Colour and size ──────────────────────────────────────────────────────────
  * No colour is spelled: every class is a palette token that already resolves in
@@ -34,8 +44,17 @@ import type { QuestionSummary } from './form-answers';
  * scroll height, which is a content clamp and not a layout measure.
  */
 
-/** A percentage as a bar width. The ONLY inline length here, and it is data. */
-const barWidth = (percent: number) => `${Math.max(0, Math.min(100, percent))}%`;
+/**
+ * THE-319 — the proportion bar is `progress`, the installed primitive, and this
+ * is the only clamp left of what used to be an inline width.
+ *
+ * ⚠️ The clamp is still this file's job. `progress` maps `value` onto `min`/`max`
+ * itself, but a share computed from a CHECKBOX question can legitimately exceed
+ * its own denominator (see {@link ChoiceBody}), and a bar drawn past its track
+ * would be a second, wrong reading of a number the text beside it states
+ * correctly. Clamping here keeps the bar honest and leaves the figure alone.
+ */
+const barValue = (percent: number) => Math.max(0, Math.min(100, percent));
 
 /**
  * How many free-text answers a list RENDERS.
@@ -112,13 +131,25 @@ const ChoiceBody: React.FC<{ summary: Extract<QuestionSummary, { kind: 'choice' 
               {option.count} · {Math.round(option.percent)}%
             </span>
           </div>
-          <div className="mt-1.5 h-2 rounded-full bg-surface-sunken overflow-hidden">
-            <div
-              data-option-bar
-              className="h-full rounded-full bg-gold"
-              style={{ width: barWidth(option.percent) }}
-            />
-          </div>
+          {/*
+            🔴 THE-319 — `progress`, not a hand-rolled track and fill. The
+            primitive owns the geometry and the width, so this file spells no
+            `style={{ … }}` at all any more; the two classes below repaint its
+            track and indicator in this screen's own surface tokens, which is
+            the only seam `ui/progress` offers (it renders its own track and
+            indicator and takes no className for either).
+            ⚠️ `aria-hidden`, deliberately. The primitive's root is a
+            `progressbar`, and this file's whole argument is that nothing is
+            conveyed by a bar alone — the count and the share are written out
+            in `data-option-count` immediately above it. Naming the bar as well
+            would announce the same figure twice.
+          */}
+          <Progress
+            aria-hidden
+            data-option-bar
+            value={barValue(option.percent)}
+            className="mt-1.5 block [&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-track]]:bg-surface-sunken [&_[data-slot=progress-indicator]]:rounded-full [&_[data-slot=progress-indicator]]:bg-gold"
+          />
         </div>
       ))}
     </div>

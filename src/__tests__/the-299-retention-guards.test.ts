@@ -584,11 +584,26 @@ describe('the component was installed from a registry, not invented', () => {
     }
   });
 
-  it('and the widget imports nothing new — react, lucide and this repo only', () => {
+  /**
+   * ⚠️ AMENDED BY THE-319, and the list is APPENDED TO rather than replaced.
+   *
+   * The original claim — "nothing new" — was about the REGISTRY: this widget was
+   * installed from spectrum and the point was that it dragged in no npm package
+   * and no chart library. That claim is intact and the assertions around it are
+   * untouched. What THE-319 adds is `../ui/table`, which is not "new" in that
+   * sense at all: it is a primitive this repo already had installed and already
+   * had three adopters of, and it replaces the plain `<table>` THE-299 wrote by
+   * hand for the screen-reader data table. Nothing else moved.
+   *
+   * 🔴 A SIXTH entry still fails, so the list stays closed. In particular
+   * `../ui/chart` would still fail here, which is the point: recharts has no
+   * heatmap, and the visible grid is deliberately still an SVG.
+   */
+  it('and the widget imports nothing new — react, lucide, this repo and ui/table only', () => {
     const imports = [...read('src/components/dashboard/RetentionHeatmap.tsx')
       .matchAll(/^import[\s\S]*?from '([^']+)';$/gm)].map((m) => m[1]);
     expect(imports.sort()).toEqual([
-      './WidgetFrame', './growth-data', './retention-data', 'lucide-react', 'react',
+      '../ui/table', './WidgetFrame', './growth-data', './retention-data', 'lucide-react', 'react',
     ]);
     // No Radix-flavoured API arrived with it either. Against the CODE: the
     // header discusses `asChild` at length, and prose is not an API.
@@ -714,18 +729,41 @@ describe('AdminDashboard.tsx, firestore.rules, firestore.indexes.json and functi
 
   /**
    * ⚠️ THE-272's adopter list is a CLOSED table and a second adopter of any
-   * primitive on it still fails there. This slice adopts NOTHING new: the
-   * heatmap is an SVG grid and its accessible table is a plain `<table>`, not
-   * `ui/table` — which would have been a FOURTH adopter and a failure.
+   * primitive on it still fails there. THE-299 adopted NOTHING: its accessible
+   * table was a plain `<table>` rather than `ui/table`, which would have been a
+   * fourth adopter it had not recorded.
+   *
+   * ⚠️ AMENDED BY THE-319, and NARROWED BY EXACTLY ONE PAIR rather than dropped.
+   *
+   * THE-319 is the composition sweep, and "a grid of data is `table`" is the
+   * whole of its mapping. So `RetentionHeatmap` adopts `ui/table` for that
+   * screen-reader table, DELIBERATELY, and it is recorded as THE-272's fourth
+   * adopter in `the-272-shadcn-batch-b.test.ts` — where a fifth still fails.
+   * The assertion below is the same assertion with that one pair excepted, so
+   * every other combination this ticket could have reached for still fails:
+   *
+   *   🔴 `ui/chart` in the heatmap still fails, and that is the important one.
+   *      recharts has no heatmap and renders nothing under happy-dom; the
+   *      visible grid stays an SVG and this guard is what keeps it one.
+   *   🔴 `ui/progress` and `ui/pagination` in the heatmap still fail. The bands
+   *      are a colour scale and not a fraction of anything, and the widget
+   *      REFUSES over its ceiling rather than paginating.
+   *   🔴 Any of the four in `retention-data.ts` or `GrowthTab.tsx` still fails.
    */
-  it('🔴 this slice adopts no ui primitive, so THE-272\'s closed list is untouched', () => {
+  const THE_319_ADOPTED = new Set(['src/components/dashboard/RetentionHeatmap.tsx:table']);
+
+  it('🔴 this slice adopts no ui primitive beyond THE-319\'s table, so THE-272\'s closed list holds', () => {
     for (const file of NEW_FILES) {
       const code = codeOf(file);
       for (const primitive of ['table', 'chart', 'progress', 'pagination']) {
+        if (THE_319_ADOPTED.has(`${file}:${primitive}`)) continue;
         expect(code, `${file} adopts ui/${primitive}`)
           .not.toMatch(new RegExp(`from ['"](?:@/components|\\.{1,2}(?:/[\\w.-]+)*)/ui/${primitive}['"]`));
       }
     }
+    // 🔴 And the one exception is not vacuous: the adoption it excepts is real.
+    expect(codeOf('src/components/dashboard/RetentionHeatmap.tsx'))
+      .toMatch(/from '\.\.\/ui\/table'/);
   });
 });
 
