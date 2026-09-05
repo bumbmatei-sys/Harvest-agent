@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Crown, Settings2, Plug, AlertTriangle, Check, FileText, MessageSquare, SlidersHorizontal, ChevronRight, DollarSign, CreditCard, Palette } from 'lucide-react';
+import { Crown, Settings2, Plug, AlertTriangle, Check, FileText, MessageSquare, SlidersHorizontal, ChevronRight, DollarSign, CreditCard, Palette, X } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures, PLAN_DISPLAY_NAMES, PLAN_ORDER, formatPlanPrice, isUnpricedTier } from '../utils/plan-features';
 import { hasPlatformOverride } from '../utils/tenant-scope';
@@ -16,6 +16,63 @@ import ThemeToggle from './ThemeToggle';
 import PaletteFamilyToggle from './PaletteFamilyToggle';
 import SectionHeading from './settings/SectionHeading';
 import { FORM_MEASURE, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
+/*
+ * THE-316 — the visual pass composes from the installed primitives.
+ *
+ * 🔴 Every element below that HAS a primitive now uses it. This screen
+ * previously imported nothing from `@/components/ui/` and hand-rolled a card, a
+ * row, two banners, five buttons and a modal out of raw `<div>`s — which looks
+ * right and behaves worse, because the focus rings, the ARIA roles, the
+ * keyboard handling and the four-palette treatment all live in the primitives
+ * and none of them survive being retyped as Tailwind. The token guard cannot
+ * catch that: hand-written Tailwind resolves perfectly well.
+ *
+ *   Item      the plan card, the Super Admin card, the Customize Navigation row
+ *             and the Appearance row — each is "a row of things".
+ *   Card      the row-card shell, in SettingsAccordion.
+ *   Button    every action: Manage, Open Donations, Cancel Subscription, the
+ *             two banner dismissals and the modal's two answers.
+ *   Badge     the plan pill on the Account card.
+ *   Alert     the two Stripe return banners (they are status messages).
+ *   Dialog    the cancel-confirmation modal.
+ *   Separator the rule inside the Danger Zone row.
+ *
+ * Nothing was rejected on this screen: every element that needed one found one.
+ */
+import { Alert, AlertTitle, AlertDescription, AlertAction } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from '@/components/ui/item';
+import { Separator } from '@/components/ui/separator';
+/**
+ * The touch floor, below `sm` only.
+ *
+ * ⚠️ Rule 4 fixes a control at 38px and an action at 40px from `sm:` up, and
+ * `DENSITY_PX.control < 44` is asserted deliberately — 44px is a TOUCH floor,
+ * not a desktop height, and raising Rule 4 to meet it would break a settled,
+ * tested rule to satisfy a phone. So the floor is spelled unprefixed and Rule 4
+ * takes over above it: `min-h-11` is 44px, and `sm:min-h-0` hands the height
+ * back so `sm:h-[40px]` is what paints on a desktop.
+ */
+const TOUCH_FLOOR = 'min-h-11 sm:min-h-0';
 
 interface AdminSettingsProps {
   onBack: () => void;
@@ -192,13 +249,16 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
       icon: <Palette size={18} />,
       group: 'Appearance',
       content: (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-strong">Colour theme</p>
-            <p className="text-sm text-muted mt-0.5">
+        /* THE-316 — label, description and controls IS an `Item`. The
+           hand-written `flex flex-wrap items-center justify-between` wrapper
+           and its two bare `<p>`s were this primitive retyped. */
+        <Item className="flex-wrap justify-between gap-3 p-0">
+          <ItemContent className="flex-none">
+            <ItemTitle className="text-sm font-semibold text-strong">Colour theme</ItemTitle>
+            <ItemDescription className="text-sm text-muted">
               Palette and light/dark, for your account on this device. System follows your device setting.
-            </p>
-          </div>
+            </ItemDescription>
+          </ItemContent>
           {/* THE-183 — the palette family (Harvest / Classic) was reachable only
               from the member Profile, so an admin who never opens the member app
               could not select Classic at all. Same two components as the
@@ -223,11 +283,16 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
               for the labels there; it takes the fallback anyway because
               "match the member Profile exactly" is the requirement, and a
               per-caller breakpoint would be a second answer to one question. */}
-          <div className="flex items-center gap-2">
+          {/* ⚠️ `ItemActions` IS `flex items-center gap-2` — the exact class
+              string this wrapper already carried, which is why the two theme
+              controls keep sharing one parent that is a flex row at every
+              viewport, never a column and never wrapping. The primitive
+              replaces the div without moving a pixel. */}
+          <ItemActions>
             <PaletteFamilyToggle />
             <ThemeToggle variant="row" />
-          </div>
-        </div>
+          </ItemActions>
+        </Item>
       ),
     },
     {
@@ -257,15 +322,23 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
             Connecting Stripe, and adding your own {GIVING_PROVIDER_NAMES_OR} links,
             now live together in <b className="text-strong">Donations</b>.
           </p>
-          <button
+          {/* 🔴 THE-316 removed the ONLY inline style on this screen, and the
+              hardcoded `#C9963A` inside it. `style={{ backgroundColor:
+              'var(--brand-color, #C9963A)' }}` was a hand-rolled primary
+              button: the fallback hex is a literal colour that paints the same
+              in all four palettes, which is exactly what "hardcode no colour"
+              forbids, and it was reachable whenever `--brand-color` was
+              undefined. `Button`'s default variant is `bg-primary`, which is
+              tokenised and resolves per palette. The file now holds zero
+              inline styles. */}
+          <Button
             type="button"
             onClick={onOpenDonations}
-            className={`inline-flex items-center gap-1.5 px-4 rounded-brand text-[13px] font-semibold text-white transition-opacity hover:opacity-90 ${CONTROL_DENSITY.action} py-2.5`}
-            style={{ backgroundColor: 'var(--brand-color, #C9963A)' }}
+            className={`rounded-brand text-[13px] font-semibold ${TOUCH_FLOOR} ${CONTROL_DENSITY.action}`}
           >
             Open Donations
             <ChevronRight size={16} />
-          </button>
+          </Button>
         </div>
       ),
       // 🔴 THE-225's gate, unchanged — `fundraising`, the cell this row EXISTS
@@ -384,19 +457,34 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
       icon: <AlertTriangle size={18} />,
       content: (
         <div>
-          <p className="text-muted text-sm mb-4">Cancel your subscription. Your ministry will remain active until the end of the current billing period.</p>
+          <p className="text-muted text-sm">Cancel your subscription. Your ministry will remain active until the end of the current billing period.</p>
+          {/* THE-316 — `separator` is the primitive for a rule. The 16px gap
+              this replaces (`mb-4`) said nothing; the rule says "what follows
+              is destructive", which is the whole reason this row is cordoned
+              into its own region. */}
+          <Separator className="my-4" />
           {/* Rules 3 and 4 on the action. The red-* classes are pre-existing and
               deliberately untouched: they are literal palette colours rather
               than the `text-danger` token the row header already uses, but
               changing them repaints this button in every palette — a mobile
               change, and a theming fix rather than a layout one. Reported, not
               bundled. */}
-          <button
+          {/* 🔴 THE-316 retired the three LITERAL palette colours THE-183
+              reported and deliberately did not bundle: `border-red-200`,
+              `text-red-600` and `hover:bg-red-50` are fixed reds that paint
+              identically in all four palettes, on the one control where the
+              danger tone most has to read. `Button`'s `destructive` variant is
+              `bg-destructive/10 text-destructive`, tokenised and defined for
+              every palette — the same token `text-danger` the row header
+              beside it already uses. This is a repaint, and a repaint is what
+              a visual pass is for. */}
+          <Button
+            variant="destructive"
             onClick={() => setShowCancelConfirm(true)}
-            className={`px-4 py-2 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}
+            className={`text-sm font-medium ${TOUCH_FLOOR} ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}
           >
             Cancel Subscription
-          </button>
+          </Button>
         </div>
       ),
       // 🔴 Hidden for a tier with no subscription as well as for a super admin:
@@ -444,25 +532,47 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
       </div>
 
       {/* Stripe status banners */}
+      {/* THE-316 — `alert` is the primitive for a status message, and this is
+          two of them. The dismiss was a bare `<button>` holding a ✕ GLYPH with
+          no accessible name; it is now a `Button` with an `aria-label` and the
+          real X icon, so a screen reader announces it and it takes the same
+          focus ring as every other action on the screen. The copy is
+          unchanged. */}
       {stripeStatus === 'success' && (
-        <div className="bg-field-100 border border-field-200 rounded-xl p-4 flex items-center gap-3 mb-4">
-          <Check size={20} className="text-field-600" />
-          <div>
-            <p className="text-sm font-semibold text-field-700">Payment successful!</p>
-            <p className="text-xs text-field-600">Your plan has been updated. It may take a moment to reflect.</p>
-          </div>
-          <button onClick={() => setStripeStatus(null)} className="ml-auto text-field-600 hover:text-field-700">✕</button>
-        </div>
+        <Alert>
+          <Check size={20} />
+          <AlertTitle>Payment successful!</AlertTitle>
+          <AlertDescription>Your plan has been updated. It may take a moment to reflect.</AlertDescription>
+          <AlertAction>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Dismiss"
+              onClick={() => setStripeStatus(null)}
+              className={TOUCH_FLOOR}
+            >
+              <X size={16} />
+            </Button>
+          </AlertAction>
+        </Alert>
       )}
       {stripeStatus === 'cancel' && (
-        <div className="bg-wheat-50 border border-wheat-200 rounded-xl p-4 flex items-center gap-3 mb-4">
-          <AlertTriangle size={20} className="text-wheat-600" />
-          <div>
-            <p className="text-sm font-semibold text-wheat-700">Checkout cancelled</p>
-            <p className="text-xs text-wheat-600">No charges were made. You can try again anytime.</p>
-          </div>
-          <button onClick={() => setStripeStatus(null)} className="ml-auto text-wheat-600 hover:text-wheat-700">✕</button>
-        </div>
+        <Alert>
+          <AlertTriangle size={20} />
+          <AlertTitle>Checkout cancelled</AlertTitle>
+          <AlertDescription>No charges were made. You can try again anytime.</AlertDescription>
+          <AlertAction>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Dismiss"
+              onClick={() => setStripeStatus(null)}
+              className={TOUCH_FLOOR}
+            >
+              <X size={16} />
+            </Button>
+          </AlertAction>
+        </Alert>
       )}
 
       {/* Account — the plan and the billing portal behind "Manage". The one
@@ -472,39 +582,68 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
       <div>
         <SectionHeading className="sm:mb-2.5">Account</SectionHeading>
       {currentPlan ? (
-        <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-4 flex items-center gap-4">
-          <span className="w-11 h-11 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)] flex items-center justify-center shrink-0">
+        /* THE-316 — the plan card is a row of things, so it is an `Item`:
+           media, content, actions. It was a hand-written
+           `rounded-lg border bg-card p-4 flex` — i.e. a reimplementation of
+           this primitive — and the tier now reads as a `Badge` beside the name
+           rather than as more grey body copy, which is the founder's "I cannot
+           see what plan I am on at a glance". */
+        <Item variant="outline" className="gap-4 px-4 py-4">
+          <ItemMedia variant="icon" className="w-11 h-11 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)]">
             <DollarSign size={20} className="text-gold" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-strong">{currentPlanData?.name || 'Current'} plan</p>
-            <p className="text-xs text-muted">{planSummary}</p>
-          </div>
+          </ItemMedia>
+          <ItemContent className="min-w-0">
+            <ItemTitle className="text-sm font-semibold text-strong">
+              {currentPlanData?.name || 'Current'} plan
+              {/* 🔴 DERIVED, NEVER TYPED. `monthlyPrice` is
+                  `formatPlanPrice(id, 'monthly')` from the row built at the
+                  foot of this file — the same cross-repo contract that throws
+                  at the site's prerender if a literal is introduced. `$49` /
+                  `$99` / `$199` were written down here once and went stale at
+                  the reprice, quoting churches a price they were not paying.
+                  Withheld for a tier with no subscription, which has no price
+                  to state — see `hasSubscription` / `isUnpricedTier`. */}
+              {hasSubscription && currentPlanData && (
+                <Badge variant="secondary">{currentPlanData.monthlyPrice}</Badge>
+              )}
+            </ItemTitle>
+            <ItemDescription className="text-xs text-muted">{planSummary}</ItemDescription>
+          </ItemContent>
           {/* Absent for a tier with no subscription — see `hasSubscription`.
               No upgrade action is minted here in its place: this screen has no
               route to the plan cards, and the two surfaces that DO (Billing and
               the upgrade page) each offer one. Inventing a third navigation
               here would be a new flow, not a fix. */}
           {hasSubscription && (
-            <button
-              data-testid="settings-manage-action"
-              onClick={handleManageSubscription}
-              className={`shrink-0 px-4 py-2 rounded-brand border border-line bg-surface-raised text-[13px] font-semibold text-strong hover:bg-surface-sunken transition-colors ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}
-            >
-              Manage
-            </button>
+            <ItemActions>
+              {/* 🔴 THE-316 RAISED THIS TO THE TOUCH FLOOR. It was the one
+                  action on the screen that did not clear 44px on a phone —
+                  37.5px from a pre-existing `px-4 py-2` — and THE-183 recorded
+                  it as short rather than fixing it because THE-183 was not
+                  allowed to change the plan card on a phone. This ticket IS
+                  that change, so the exemption goes and the button takes the
+                  floor below `sm` and Rule 4's 40px above it. */}
+              <Button
+                data-testid="settings-manage-action"
+                variant="outline"
+                onClick={handleManageSubscription}
+                className={`shrink-0 rounded-brand text-[13px] font-semibold ${TOUCH_FLOOR} ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}
+              >
+                Manage
+              </Button>
+            </ItemActions>
           )}
-        </div>
+        </Item>
       ) : (
-        <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-4 flex items-center gap-4">
-          <span className="w-11 h-11 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)] flex items-center justify-center shrink-0">
+        <Item variant="outline" className="gap-4 px-4 py-4">
+          <ItemMedia variant="icon" className="w-11 h-11 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)]">
             <Crown size={20} className="text-gold" />
-          </span>
-          <div>
-            <p className="text-sm font-semibold text-strong">Super Admin</p>
-            <p className="text-xs text-muted">Platform-wide access — manage all tenants</p>
-          </div>
-        </div>
+          </ItemMedia>
+          <ItemContent className="min-w-0">
+            <ItemTitle className="text-sm font-semibold text-strong">Super Admin</ItemTitle>
+            <ItemDescription className="text-xs text-muted">Platform-wide access — manage all tenants</ItemDescription>
+          </ItemContent>
+        </Item>
       )}
       </div>
 
@@ -519,44 +658,82 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
       {onCustomizeNav && (
         <div>
         <SectionHeading className="sm:mb-2.5">Navigation</SectionHeading>
-        <button
-          onClick={onCustomizeNav}
-          className="w-full flex items-center gap-3 px-5 py-4 bg-surface-raised rounded-brand border border-line shadow-[var(--ds-sh-sm)] hover:bg-[color-mix(in_srgb,var(--surface-sunken)_60%,transparent)] transition-colors text-left"
+        {/* THE-316 — a row of things, so an `Item`, rendered AS the button it
+            has to be (`render={<button …/>}`) rather than a hand-written
+            `flex` row inside one. That keeps the single tap target and the
+            `text-left` the row already had, and picks up the primitive's
+            focus-visible ring, which the bare `<button>` did not have. */}
+        <Item
+          variant="outline"
+          render={<button type="button" onClick={onCustomizeNav} />}
+          className={`w-full gap-3 px-5 py-4 text-left bg-surface-raised rounded-brand border-line shadow-[var(--ds-sh-sm)] hover:bg-[color-mix(in_srgb,var(--surface-sunken)_60%,transparent)] ${TOUCH_FLOOR}`}
         >
-          <SlidersHorizontal size={18} className="text-gold shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-strong">Customize Navigation</p>
-            <p className="text-xs text-faint">Rearrange your bottom bar &amp; More drawer</p>
-          </div>
-          <ChevronRight size={16} className="text-faint" />
-        </button>
+          <ItemMedia variant="icon">
+            <SlidersHorizontal size={18} className="text-gold shrink-0" />
+          </ItemMedia>
+          <ItemContent className="min-w-0">
+            <ItemTitle className="text-sm font-semibold text-strong">Customize Navigation</ItemTitle>
+            <ItemDescription className="text-xs text-faint">Rearrange your bottom bar &amp; More drawer</ItemDescription>
+          </ItemContent>
+          <ChevronRight size={16} className="text-faint shrink-0" />
+        </Item>
         </div>
       )}
 
       {/* Cancel Confirmation Modal */}
-      {showCancelConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] p-4">
-          <div className="bg-surface-raised rounded-xl p-6 max-w-md w-full">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
-                <AlertTriangle size={20} className="text-red-500" />
+      {/* THE-316 — `dialog` is the primitive for a modal, and this was one
+          hand-rolled: a fixed scrim div, a panel div, and an `<h3>` that was a
+          heading by tag but was wired to nothing. It now carries a real
+          `role="dialog"`, `aria-labelledby`/`aria-describedby` from
+          DialogTitle/DialogDescription, a focus trap, a restore-focus on close
+          and Escape-to-dismiss — none of which the hand-written version had,
+          on the one modal in the app that ends a paying subscription.
+
+          🔴 THE LAYER IS UNCHANGED, and deliberately overridden rather than
+          inherited. #437 raised the primitives to scrim `z-[101]` / panel
+          `z-[102]`, but THE-286 put THIS dialog at `z-[200]` and THE-295 pins
+          that by reading `z-[200]` out of this file's source. Both values
+          clear the nav (`z-100`); passing the higher one keeps the settled
+          stacking exactly where it was tested rather than quietly lowering a
+          modal by 98 layers as a side effect of adopting a primitive.
+
+          The copy is verbatim. Both answers keep their exact labels and both
+          keep their exact handlers — "Yes, Cancel" still calls
+          `handleManageSubscription()` and then closes. */}
+      <Dialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+        <DialogPortal>
+          <DialogOverlay className="z-[200] bg-black/50" />
+          <DialogContent className="z-[200] max-w-md" showCloseButton={false}>
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <span className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+                  <AlertTriangle size={20} className="text-destructive" />
+                </span>
+                <DialogTitle className="text-lg font-bold text-strong font-display">Cancel Subscription?</DialogTitle>
               </div>
-              <h3 className="text-lg font-bold text-strong font-display">Cancel Subscription?</h3>
-            </div>
-            <p className="text-muted text-sm mb-6">
+            </DialogHeader>
+            <DialogDescription className="text-muted text-sm">
               Your ministry will remain active until the end of the current billing period. After that, all data will be preserved but your ministry will be suspended.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setShowCancelConfirm(false)} className="px-4 py-2 text-muted rounded-xl text-sm font-medium hover:bg-surface-sunken transition-colors">
+            </DialogDescription>
+            <DialogFooter>
+              <DialogClose
+                render={
+                  <Button variant="ghost" className={`text-sm font-medium ${TOUCH_FLOOR} ${CONTROL_DENSITY.action}`} />
+                }
+              >
                 Keep Plan
-              </button>
-              <button onClick={() => { handleManageSubscription(); setShowCancelConfirm(false); }} className="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors">
+              </DialogClose>
+              <Button
+                variant="destructive"
+                onClick={() => { handleManageSubscription(); setShowCancelConfirm(false); }}
+                className={`text-sm font-semibold ${TOUCH_FLOOR} ${CONTROL_DENSITY.action}`}
+              >
                 Yes, Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </DialogPortal>
+      </Dialog>
 
     </div>
   );

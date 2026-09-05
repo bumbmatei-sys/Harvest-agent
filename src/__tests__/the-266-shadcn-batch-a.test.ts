@@ -632,23 +632,85 @@ describe('the out-of-scope files are untouched', () => {
     expect(sha256(readFileSync(path.join(REPO_ROOT, 'firestore.rules'), 'utf8'))).toBe(RULES_SHA);
   });
 
-  it('none of the four components is imported by any screen yet', () => {
-    // Installing is this ticket; adoption is Phase 8. A component imported by
-    // nothing is the correct end state here, so this asserts the absence.
+  /**
+   * ── THE-316 · the adopter list, and 🔴 A HOLE THIS TICKET FOUND IN IT ──────
+   *
+   * THE-266 installed these four and asserted that nothing imported them:
+   * "Installing is this ticket; adoption is Phase 8." That assertion matched
+   * only `@/components/ui/…`, the ALIAS spelling.
+   *
+   * 🔴 IT WAS THEREFORE VACUOUS FOR THREE OF THE FOUR. Every real adopter in
+   * this repo reached for the RELATIVE spelling — `./ui/skeleton`,
+   * `../ui/breadcrumb`, `./ui/collapsible` — and six files had been importing
+   * these primitives, past a guard that reported zero, for as long as they had
+   * existed. The guard was not wrong about its claim; it simply never looked
+   * where the imports were. THE-272 closed exactly this hole in its own adopter
+   * gate ("the original regex matched only the `@/` alias, so a `../ui/chart`
+   * import would have slipped past it unrecorded") and this one was never
+   * followed up.
+   *
+   * So the matcher below reads BOTH spellings, and the list records what is
+   * actually true today rather than what was assumed. That is a strictly
+   * stronger claim than the one it replaces: `tooltip` is still asserted to
+   * have no adopter at all, and every other name is now closed against an
+   * adopter nobody wrote down — which the old assertion could not have caught.
+   *
+   * ⚠️ The six pre-existing entries are recorded, NOT exempted. They are named
+   * one by one so a seventh still fails, and so a reader can see which were
+   * inherited and which this ticket added.
+   */
+  const RECORDED_UI_ADOPTERS: Readonly<Record<string, readonly string[]>> = {
+    // 🔴 Adopted by nothing, still — the one name THE-266's claim held for.
+    tooltip: [],
+    collapsible: [
+      // Pre-existing, and invisible to the alias-only matcher until now.
+      'src/components/AdminAccounting.tsx',
+      'src/components/AdminDonations.tsx',
+      // THE-316 — the settings row card's disclosure. It was a bare <button>
+      // toggling a conditionally-rendered div: a Collapsible written longhand,
+      // without the aria-expanded / aria-controls pairing the primitive gives.
+      'src/components/settings/SettingsAccordion.tsx',
+    ],
+    // All pre-existing; recorded here so the set is closed against a fourth.
+    skeleton: [
+      'src/components/AdminDashboardHome.tsx',
+      'src/components/dashboard/KpiCard.tsx',
+      'src/components/dashboard/WidgetFrame.tsx',
+    ],
+    breadcrumb: ['src/components/docs/DocsBreadcrumb.tsx'],
+  };
+
+  it('only the recorded adopters import the four, by either import spelling', () => {
     const walk = (dir: string): string[] =>
       readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
         const p = path.join(dir, e.name);
         if (e.isDirectory()) return e.name === 'node_modules' ? [] : walk(p);
         return /\.(ts|tsx)$/.test(e.name) ? [p] : [];
       });
-    const importers = walk(path.join(REPO_ROOT, 'src')).filter((f) => {
-      if (f.startsWith(UI_DIR)) return false;
-      if (f.includes(`${path.sep}__tests__${path.sep}`)) return false;
-      return /@\/components\/ui\/(tooltip|skeleton|collapsible|breadcrumb)/.test(
-        readFileSync(f, 'utf8'),
-      );
-    });
-    expect(importers.map((f) => rel(f))).toEqual([]);
+    const files = walk(path.join(REPO_ROOT, 'src')).filter(
+      (f) => !f.startsWith(UI_DIR) && !f.includes(`${path.sep}__tests__${path.sep}`),
+    );
+    /** ⚠️ Alias AND relative — see the note above for why the difference is the
+     *  whole point of this assertion. */
+    const importsUi = (src: string, name: string) =>
+      new RegExp(`from ['"](?:@/components|\\.{1,2}(?:/[\\w.-]+)*)/ui/${name}['"]`).test(src);
+
+    for (const [name, recorded] of Object.entries(RECORDED_UI_ADOPTERS)) {
+      const importers = files
+        .filter((f) => importsUi(readFileSync(f, 'utf8'), name))
+        .map((f) => rel(f))
+        .sort();
+      expect(importers, `${name} gained an adopter nobody recorded`).toEqual([...recorded].sort());
+
+      // A recorded adopter that no longer adopts has to come out, so the list
+      // cannot outlive what it records.
+      for (const file of recorded) {
+        expect(
+          importsUi(readFileSync(path.join(REPO_ROOT, file), 'utf8'), name),
+          `${file} is recorded as a ${name} adopter but does not import it`,
+        ).toBe(true);
+      }
+    }
   });
 });
 

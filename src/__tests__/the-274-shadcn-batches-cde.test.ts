@@ -941,6 +941,22 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       'role="alert" is what carries a failed autosave to a screen reader, and here it replaces an ' +
       '`alert()` that left no record at all once dismissed. No primitive was edited.',
   },
+  {
+    file: 'src/components/AdminSettings.tsx',
+    ticket: 'THE-316',
+    why:
+      'The settings visual pass, and the first adopter from a SCREEN rather than a section. It ' +
+      'takes `item` (Item, ItemMedia, ItemContent, ItemTitle, ItemDescription, ItemActions) and ' +
+      '`alert` (Alert, AlertTitle, AlertDescription, AlertAction), alongside the already-adopted ' +
+      '`badge`, `button`, `dialog` and `separator`. This screen previously imported NOTHING from ' +
+      'ui/ and hand-rolled a plan card, a Super Admin card, a navigation row, two Stripe status ' +
+      'banners and a modal out of raw divs — the same ~2,000-line hand-rolled-UI failure that ' +
+      'RetentionHeatmap, ServicePlanPanel, FormAnswersView and AdminSms shipped. `alert` is ' +
+      'load-bearing rather than cosmetic: the two banner dismissals were bare buttons holding a ' +
+      'bald glyph with no accessible name, and AlertAction gives them a labelled Button with the ' +
+      "screen's focus ring. `item` is what removes the three hand-written flex rows. No primitive " +
+      'was edited — their digests are pinned by ds-primitives.test.tsx and still match.',
+  },
 ];
 
 it('only the recorded adopters import the new components, and each names its ticket', () => {

@@ -115,7 +115,13 @@ function sections(host: HTMLElement): string[] {
   const rows = Array.from(host.querySelectorAll('[data-settings-row]')).map(
     (row) => (row.querySelector('button > span:nth-child(2)')?.textContent || '').trim(),
   );
-  const customize = Array.from(host.querySelectorAll('p')).some(
+  // THE-316 — the row is an `Item` now, and `ItemTitle` renders a <div> rather
+  // than the <p> this hand-written row used to spell. The CLAIM is unchanged
+  // and is still exactly what the founder named — "Customize Navigation is one
+  // of the three things a free tenant is offered" — so the label is looked for
+  // by its title element as well as by a paragraph, rather than by the tag a
+  // particular markup once happened to use.
+  const customize = Array.from(host.querySelectorAll('p, [data-slot="item-title"]')).some(
     (p) => (p.textContent || '').trim() === 'Customize Navigation',
   );
   return customize ? [...rows, 'Customize Navigation'] : rows;

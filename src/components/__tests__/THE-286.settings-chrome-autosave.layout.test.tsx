@@ -97,9 +97,37 @@ function navClass(): string {
 /** The settings cancel-confirm overlay's classes, read from AdminSettings. */
 function dialogClass(): string {
   const settings = src('src/components/AdminSettings.tsx');
-  const match = /\{showCancelConfirm && \(\s*<div className="([^"]+)"/.exec(settings);
+  /*
+   * THE-316 — the cancel-confirm is a `Dialog` now, not a hand-rolled
+   * `{showCancelConfirm && <div className="fixed inset-0 …">}` scrim. What this
+   * function is FOR is unchanged: hand back the overlay's classes so the
+   * measurement below can prove the scrim clears the bottom nav. So it reads
+   * the layer off `DialogOverlay`, which is the element that now paints it.
+   *
+   * ⚠️ The primitive's own default is `z-[101]`; AdminSettings overrides it to
+   * the `z-[200]` THE-286 established, and the override is what is read here —
+   * deliberately, because a silent drop back to the primitive's default is
+   * exactly the regression this measurement exists to catch.
+   */
+  const match = /<DialogOverlay className="([^"]+)"/.exec(settings);
   if (!match) throw new Error('the cancel-confirm dialog could not be located in AdminSettings.tsx');
-  return match[1];
+
+  /*
+   * 🔴 THE OVERLAY IS THE PRIMITIVE'S CLASSES PLUS THE OVERRIDE, and both
+   * halves have to be measured or the measurement is a lie. `fixed inset-0` —
+   * what makes the scrim cover anything at all — comes from DialogOverlay
+   * itself; only the `z-[200]` layer is spelled at the call site. Reading the
+   * override alone reported a `static` element and failed a test about
+   * geometry for a reason that had nothing to do with geometry.
+   *
+   * So the base is read out of the primitive rather than copied here: a change
+   * to DialogOverlay's own positioning reaches this measurement instead of
+   * being masked by a stale duplicate.
+   */
+  const dialogSrc = src('src/components/ui/dialog.tsx');
+  const base = /data-slot="dialog-overlay"[\s\S]*?cn\(\s*"([^"]+)"/.exec(dialogSrc);
+  if (!base) throw new Error('DialogOverlay\'s base classes could not be read from ui/dialog.tsx');
+  return `${base[1]} ${match[1]}`;
 }
 
 interface Box { x: number; y: number; width: number; height: number; top: number; bottom: number }
@@ -120,7 +148,12 @@ beforeAll(async () => {
               below, so this cannot drift into measuring a stale shell. */}
           <div className="px-4 lg:px-0 sm:max-w-[940px] sm:mx-auto">
             <div className="bg-surface-raised rounded-brand border border-line shadow-[var(--ds-sh-sm)] overflow-hidden">
-              <div data-panel className="px-5 py-4 border-t border-line">
+              {/* THE-316 — the hairline moved out of the panel and became a
+                  `Separator` between the header and the panel. Replicated as
+                  the rule it compiles to, so the measured box matches the
+                  screen's. */}
+              <div className="border-t border-line" />
+              <div data-panel className="px-5 py-4">
                 <GivingStatementsSection />
               </div>
             </div>
@@ -144,7 +177,9 @@ beforeAll(async () => {
   const accordion = src('src/components/settings/SettingsAccordion.tsx');
   expect(accordion, 'the accordion row restyled — this fixture is measuring a stale shell')
     .toContain('bg-surface-raised rounded-brand border border-line shadow-[var(--ds-sh-sm)] overflow-hidden');
-  expect(accordion, 'the accordion panel padding moved').toContain('px-5 py-4 border-t border-line');
+  // THE-316 — padding and hairline are two elements now; both still asserted.
+  expect(accordion, 'the accordion panel padding moved').toContain('px-5 py-4');
+  expect(accordion, 'the accordion panel lost its hairline').toContain('<Separator />');
 
   const dir = mkdtempSync(path.join(os.tmpdir(), 'the286-'));
   const file = path.join(dir, 'settings.html');

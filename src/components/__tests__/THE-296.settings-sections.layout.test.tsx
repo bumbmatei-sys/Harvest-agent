@@ -113,7 +113,12 @@ beforeAll(async () => {
   const panel = (id: string, children: React.ReactNode) => (
     <div className="px-4 lg:px-0 sm:max-w-[940px] sm:mx-auto">
       <div className="bg-surface-raised rounded-brand border border-line shadow-[var(--ds-sh-sm)] overflow-hidden">
-        <div data-panel={id} className="px-5 py-4 border-t border-line">{children}</div>
+        {/* THE-316 — the hairline is a `Separator` between the header and
+            the panel, not a `border-t` on the panel itself. Replicated here as
+            the bare rule it compiles to, so the measured box below is the same
+            box the screen paints. */}
+        <div className="border-t border-line" />
+        <div data-panel={id} className="px-5 py-4">{children}</div>
       </div>
     </div>
   );
@@ -144,7 +149,11 @@ beforeAll(async () => {
   const accordion = src('src/components/settings/SettingsAccordion.tsx');
   expect(accordion, 'the accordion row restyled — this fixture is measuring a stale shell')
     .toContain('bg-surface-raised rounded-brand border border-line shadow-[var(--ds-sh-sm)] overflow-hidden');
-  expect(accordion, 'the accordion panel padding moved').toContain('px-5 py-4 border-t border-line');
+  // THE-316 — the padding and the hairline are now two elements: the panel
+  // keeps `px-5 py-4`, and the rule between it and the header is a Separator.
+  // Both halves are still asserted, so a change to either still fails here.
+  expect(accordion, 'the accordion panel padding moved').toContain('px-5 py-4');
+  expect(accordion, 'the accordion panel lost its hairline').toContain('<Separator />');
 
   const dir = mkdtempSync(path.join(os.tmpdir(), 'the296-'));
   const file = path.join(dir, 'sections.html');
