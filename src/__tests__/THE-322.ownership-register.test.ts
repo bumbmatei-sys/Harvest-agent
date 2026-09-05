@@ -410,6 +410,24 @@ const RULES_PINNERS_NOW = RULES_PINNERS_BEFORE_THE_322 + 1;
  */
 const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: string]> = [
   ['THE-323', 'src/components/__tests__/THE-323.personal-information-unlock.test.tsx'],
+  // 🔴 THE-324 — invite, accept and remind. APPENDED beside THE-323's entry,
+  // never over it, and this ticket's own `RULES_PINNERS_NOW = 46 + 1` was
+  // RETIRED into this register rather than kept beside it: two mechanisms
+  // counting the same population is how one of them comes to be wrong, and
+  // THE-323's is the better of the two because it names the ticket as well as
+  // the file. The CLAIM is unweakened and in fact strengthened — the loop below
+  // asserts this suite really does carry the digest, which a bare `+ 1` did not.
+  //
+  // ⚠️ WHAT IT ASSERTS: `the-324-guards.test.ts` pins `firestore.rules`
+  // byte-for-byte AND asserts the file carries NO `rotaInvitations` rule,
+  // because invite/accept/remind needs none — that collection has no rule and
+  // therefore no client access, and every read plus the unauthenticated accept
+  // write go through the Admin SDK inside `src/app/api/rota/*`, the posture
+  // `smsOptOuts` and `integrations/*` already have. The rule that WOULD be
+  // needed if a later ticket read it from a browser is reported in prose in
+  // `src/lib/rota-invite.ts` and deliberately unwritten; that suite asserts it
+  // is still only reported.
+  ['THE-324', 'src/__tests__/the-324-guards.test.ts'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {

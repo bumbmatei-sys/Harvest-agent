@@ -688,6 +688,15 @@ describe('the out-of-scope files are untouched', () => {
       // SHAPE — a card of stacked rows — so a skeleton says what is coming,
       // where a spinner would only say "wait". 🔴 A FIFTH adopter still fails.
       'src/components/events/VolunteerRotaView.tsx',
+      // THE-324 — the invite panel's wait, for the same reason and by the same
+      // judgement: the shape arriving is KNOWN (a warning banner over a list of
+      // slot rows), so a skeleton says what is coming where a spinner would only
+      // say "wait". APPENDED beside the four above, never over one of them.
+      // 🔴 The screen's OTHER states are deliberately NOT this: an incomplete
+      // read renders an `empty` naming the reason, because a skeleton that
+      // never resolved would read as a slow load rather than as a failure.
+      // 🔴 A SIXTH adopter still fails.
+      'src/components/events/RotaInviteView.tsx',
     ],
     breadcrumb: ['src/components/docs/DocsBreadcrumb.tsx'],
   };

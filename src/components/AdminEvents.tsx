@@ -24,6 +24,7 @@ import { HeroBand } from './member/desktopKit';
 import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
 import ServicePlanPanel from './events/ServicePlanPanel';
 import VolunteerRotaPanel from './events/VolunteerRotaPanel';
+import RotaInvitePanel from './events/RotaInvitePanel';
 
 import type { Event, Registration, TicketType, DiscountCode } from '../hooks/queries/useEventQueries';
 
@@ -815,6 +816,12 @@ const AdminEvents: React.FC = () => {
   if (view === 'rota') {
     return (
       <div className={`w-full ${FORM_CONTAINER} space-y-6`}>
+        {/* THE-324 — invite, accept, remind. On the SAME screen as the rota
+            rather than in a nav entry of its own: an unfilled slot and the
+            invitation that would fill it are one question, and the tier/tab
+            matrix is generated from the real nav array, so a new entry would be
+            a plan-matrix change this ticket has no business making. */}
+        <RotaInvitePanel tenantId={tenantId} />
         <VolunteerRotaPanel tenantId={tenantId} />
       </div>
     );

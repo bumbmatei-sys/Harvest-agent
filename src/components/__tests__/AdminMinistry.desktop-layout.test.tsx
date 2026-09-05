@@ -241,7 +241,8 @@ interface PrePr {
  * PR's import line, and comment-only and blank lines. What survives is the
  * behaviour — every query, write, handler and value.
  */
-const stripPresentation = (src: string): string => unwrapRota(unwrapServicePlan(unwrapSmsGate(src)))
+const stripPresentation = (src: string): string =>
+  unwrapRota(unwrapServicePlan(unwrapSmsGate(unwrapRotaInvite(src))))
   .replace(/className=(?:"[^"]*"|\{`[^`]*`\}|\{[A-Za-z_$][\w.$]*\})/g, 'className=X')
   // An import of a LAYOUT module is presentation, not behaviour — the same
   // reasoning that already exempted form-layout, widened to the directory. A
@@ -423,6 +424,51 @@ const ROTA_EDITS: [string, string][] = [
 
 const unwrapRota = (src: string): string =>
   ROTA_EDITS.reduce((acc, [after, before]) => acc.replace(after, before), src);
+
+/**
+ * THE-324 — the SAME choice for the SAME reason, one ticket further on.
+ *
+ * ⚠️ THE-251's note sets out the two honest ways to handle a real edit to a
+ * screen this suite pins byte-for-byte — RE-RECORD the baseline, or REVERSE the
+ * known edit exactly — and says which is weaker: "Re-recording is the weaker
+ * one: it would bless every other byte that moved in the same breath, which is
+ * the one thing this guard exists to catch."
+ *
+ * 🔴 THE-324's edit to `AdminEvents.tsx` is TWO EXACT STRINGS — an import, and a
+ * panel mounted above part 2's inside the rota branch that already exists — so
+ * the stronger option is available and is what is taken. The hash still compares
+ * against the PRE-PR revision, byte for byte.
+ *
+ * ⚠️ APPENDED, NEVER SUBSTITUTED, and it runs FIRST — see `stripPresentation`.
+ * `ROTA_EDITS` matches the rota branch as THE-317 left it, and this ticket
+ * writes inside that branch, so reversing THIS edit first is what lets THE-317's
+ * reversal still match. Neither list is weakened: both must match, in order, or
+ * the hash goes red.
+ *
+ * 🔴 THE FEATURE ITSELF IS NOT REVERSED HERE BECAUSE IT IS NOT IN THIS FILE. It
+ * lives in `events/rota-invitations.ts`, `events/RotaInvitePanel.tsx`,
+ * `events/RotaInviteView.tsx`, `events/RotaRespondPanel.tsx`,
+ * `events/RotaRespondView.tsx`, `lib/rota-invite.ts` and two API routes, guarded
+ * by `the-324-guards.test.ts`.
+ *
+ * Delete this when the baseline is next legitimately re-recorded.
+ */
+const ROTA_INVITE_EDITS: [string, string][] = [
+  ["import RotaInvitePanel from './events/RotaInvitePanel';\n", ''],
+  [
+    `        {/* THE-324 — invite, accept, remind. On the SAME screen as the rota
+            rather than in a nav entry of its own: an unfilled slot and the
+            invitation that would fill it are one question, and the tier/tab
+            matrix is generated from the real nav array, so a new entry would be
+            a plan-matrix change this ticket has no business making. */}
+        <RotaInvitePanel tenantId={tenantId} />
+`,
+    '',
+  ],
+];
+
+const unwrapRotaInvite = (src: string): string =>
+  ROTA_INVITE_EDITS.reduce((acc, [after, before]) => acc.replace(after, before), src);
 
 const firestorePathsOf = (src: string): string[] =>
   [...src.matchAll(/(?:collection|doc)\(db,\s*([^)]*)\)/g)].map((m) => m[1].replace(/\s+/g, ' '));

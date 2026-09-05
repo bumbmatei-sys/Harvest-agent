@@ -675,10 +675,27 @@ describe('a rota spanning several weeks costs three reads, and does not grow wit
   });
 
   it('the whole feature is mounted by exactly the files that should mount it', () => {
+    /**
+     * ⚠️ THE NEEDLE NAMES THE TWO COMPONENTS, NOT THE PREFIX — AMENDED BY
+     * THE-324, AND NOT A LOOSENING.
+     *
+     * It was `/VolunteerRota/`, which also matched the QUERY MODULE's name.
+     * That was fine while nothing else read it; THE-324 reads part 2's own
+     * `useRotaPlans` and `EVENTS_READ_LIMIT` from `useVolunteerRotaQueries` —
+     * which is the point of that module, and the alternative is a second plan
+     * read, which is exactly the shape part 2's own header refuses.
+     *
+     * 🔴 IMPORTING A SHARED QUERY IS NOT MOUNTING A FEATURE, and this assertion
+     * is about mounting. Naming `VolunteerRotaPanel` and `VolunteerRotaView`
+     * directly still catches every real mount — a file that renders either one
+     * must spell it — so the claim is unchanged and only the false positive is
+     * gone. A file that mounted the panel and dodged this by aliasing the import
+     * would still have to write the identifier somewhere.
+     */
     const mounts = walk(path.join(REPO_ROOT, 'src')).filter((f) => {
       if (f.includes(`${path.sep}__tests__${path.sep}`)) return false;
       if (rel(f).startsWith('src/components/events/VolunteerRota')) return false;
-      return /VolunteerRota/.test(readFileSync(f, 'utf8'));
+      return /VolunteerRotaPanel|VolunteerRotaView/.test(readFileSync(f, 'utf8'));
     });
     expect(mounts.map(rel)).toEqual([EDITED]);
   });
