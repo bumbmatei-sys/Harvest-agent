@@ -23,10 +23,11 @@ import { useEvents } from '../hooks/queries/useEventQueries';
 import { HeroBand } from './member/desktopKit';
 import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
 import ServicePlanPanel from './events/ServicePlanPanel';
+import VolunteerRotaPanel from './events/VolunteerRotaPanel';
 
 import type { Event, Registration, TicketType, DiscountCode } from '../hooks/queries/useEventQueries';
 
-type ViewMode = 'list' | 'create' | 'edit' | 'detail';
+type ViewMode = 'list' | 'create' | 'edit' | 'detail' | 'rota';
 
 /** Client-side id generator (uuid is not a dependency). */
 const genId = () => Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
@@ -140,6 +141,11 @@ const AdminEvents: React.FC = () => {
     } else if (view === 'detail' && selected) {
       setHeaderOverride({
         title: selected.title || 'Event',
+        onBack: () => { setView('list'); setSelected(null); },
+      });
+    } else if (view === 'rota') {
+      setHeaderOverride({
+        title: 'Volunteer rota',
         onBack: () => { setView('list'); setSelected(null); },
       });
     } else {
@@ -803,6 +809,17 @@ const AdminEvents: React.FC = () => {
     );
   }
 
+  // THE-317 — the volunteer rota. Its own screen inside this tab rather than a
+  // new nav entry: the rota is the events' own assignments seen across dates,
+  // and the tier/tab matrix is generated from the real nav array.
+  if (view === 'rota') {
+    return (
+      <div className={`w-full ${FORM_CONTAINER} space-y-6`}>
+        <VolunteerRotaPanel tenantId={tenantId} />
+      </div>
+    );
+  }
+
   // ── List View ──
   const calendarUrl = `https://${tenantId}.theharvest.app/calendar`;
   const copyCalendarUrl = async () => {
@@ -815,6 +832,9 @@ const AdminEvents: React.FC = () => {
         title={`${events.length} event${events.length === 1 ? '' : 's'}`}
         action={<AdminPrimaryButton onClick={() => { setSelected(null); setForm(emptyForm); setView('create'); }} icon={<span className="text-[15px] leading-none">+</span>}>Create event</AdminPrimaryButton>}
       />
+      <button onClick={() => setView('rota')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-line text-muted hover:bg-surface-sunken min-h-[44px] sm:min-h-0">
+        <CalendarCheck size={13} /> Volunteer rota
+      </button>
       {events.length > 0 && tenantId && (
         <div className="flex items-center gap-2 bg-surface-sunken border border-line rounded-brand-lg px-3 py-2.5 text-xs">
           <span className="text-faint shrink-0">Public calendar:</span>

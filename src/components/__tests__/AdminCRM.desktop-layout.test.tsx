@@ -625,6 +625,15 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
       // `max-w-[…]` and no arbitrary width but the 44px tap-target minimum.
       'src/components/events/ServicePlanPanel.tsx',
       'src/components/events/ServicePlanRow.tsx',
+      // THE-317 — the volunteer rota's view. Opted in deliberately, and for ONE
+      // token: `CONTROL_DENSITY.control`, which is Rule 4's control height. The
+      // rota's person picker and date picker are form controls inside an admin
+      // screen, so they take the shared density rather than inventing a height.
+      // ⚠️ It takes NO width from this module — Rule 1's measures are spent by
+      // `AdminEvents.tsx`, which already appears above and which mounts the rota
+      // inside its own `FORM_CONTAINER`. A component that took a second measure
+      // inside a measured page would cap the same content twice.
+      'src/components/events/VolunteerRotaView.tsx',
       // THE-286 — the first adopter from settings/ rather than from a screen.
       // The converted GivingStatementsSection takes CONTROL_DENSITY only: its
       // controls need the 38px desktop density and the 28px section gap, and it

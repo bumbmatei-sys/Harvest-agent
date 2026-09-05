@@ -481,6 +481,20 @@ describe('2 · every use of pb-safe is accounted for', () => {
       // this register for what was only a comment. So the one live entry above
       // is still the one live entry.
       'src/components/__tests__/THE-313.service-plan.layout.test.tsx',
+      // THE-317 — the volunteer rota's Chromium suite, and it is here for the
+      // SAME reason THE-313's is: it replicates the admin shell's bottom nav in
+      // order to measure the rota's clearance against it, so it spells the
+      // shell's class list verbatim — the inert one included — rather than a
+      // tidied version that would measure a nav the app does not render.
+      //
+      // 🔴 It applies the class to no live surface, and the rota's three new
+      // components deliberately do not SPELL it either: the card reserves
+      // part 1's own `NAV_CLEARANCE` export, and `VolunteerRotaView.tsx`'s
+      // header says so WITHOUT quoting the literal — exactly the move THE-300
+      // made when it found that quoting it in a live component's prose would put
+      // that component into this register for what was only a comment. So the
+      // one live entry above is still the one live entry.
+      'src/components/__tests__/THE-317.volunteer-rota.layout.test.tsx',
       'src/components/__tests__/__fixtures__/member-screens-mobile.json',
       'src/components/__tests__/the-281-giving-share.test.tsx',
       'src/components/__tests__/the-290-giving-layout.test.tsx',

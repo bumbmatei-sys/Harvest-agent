@@ -519,13 +519,24 @@ describe('the existing events list, its write paths and paid-event creation are 
 
   /**
    * ⚠️ "AdminEvents.tsx is 955 lines with 205 className and only 7 inline
-   * styles — keep that ratio." The panel is its own component, so the two
-   * counts are UNCHANGED: the edit adds an import and one JSX element with no
-   * className and no style of its own.
+   * styles — keep that ratio." The panel is its own component, so THE-313's
+   * two counts were UNCHANGED: its edit adds an import and one JSX element with
+   * no className and no style of its own.
+   *
+   * 🔴 AMENDED BY THE-317, AND ONLY ON THE HALF THAT MOVED. That ticket mounts
+   * the volunteer rota in this screen and adds exactly TWO classNames: the
+   * rota screen's own `FORM_CONTAINER` wrapper, and the button in the events
+   * list that opens it. 205 → 207, named here rather than relaxed to a range —
+   * a THIRD would still fail.
+   *
+   * ⚠️ THE INLINE-STYLE COUNT IS UNTOUCHED AT 7, and that is the half this
+   * guard is really about. The rota's own files hold ZERO inline styles
+   * (`the-317-guards.test.ts` asserts it across all four), so the ratio moved
+   * in the right direction.
    */
   it('keeps its className-to-inline-style ratio exactly', () => {
     const src = EVENTS();
-    expect((src.match(/className/g) || []).length, 'className count moved').toBe(205);
+    expect((src.match(/className/g) || []).length, 'className count moved').toBe(207);
     expect((src.match(/style=\{\{/g) || []).length, 'an inline style was added').toBe(7);
   });
 
