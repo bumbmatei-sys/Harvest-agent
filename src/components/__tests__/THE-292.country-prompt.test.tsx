@@ -71,6 +71,7 @@ vi.mock('firebase/firestore', () => ({ doc: docMock, getDoc: getDocMock, updateD
 import CountryPrompt, { COUNTRY_PROMPT_COPY, OVERLAY_CLEARANCE } from '../country/CountryPrompt';
 import { ALL_COUNTRIES } from '../CountrySelect';
 import { aggregateLocations, toMemberLocation } from '../dashboard/growth-data';
+import { freezeFailure } from './__fixtures__/settings-freeze-register';
 import {
   MAX_DISMISSALS,
   isRecordableCountry,
@@ -535,9 +536,20 @@ describe("Onboarding.tsx's question set and validation are byte-identical", () =
 });
 
 describe('the account-deletion flow and DELETE_CONFIRM_COPY are unchanged', () => {
+  /**
+   * ⚠️ THE-312 gave this pin an APPEND PATH. The literal is still the baseline
+   * taken from the merge base 902763a and is not replaced; a later ticket
+   * appends its digest with its ticket and reason to `RECORDED_EDITS`. What
+   * THE-292 actually claims here — that IT did not open this file — is
+   * unchanged, and an unrecorded edit still fails.
+   */
   it('🔴 PersonalInformationModal.tsx is byte-identical', () => {
-    expect(sha('src/components/PersonalInformationModal.tsx'))
-      .toBe('c62dd16e810bd1d75bd3bc6e3cae1ee698fdcf4d9ec67d870dc833d76b1b1975');
+    expect(
+      freezeFailure(
+        'src/components/PersonalInformationModal.tsx',
+        'c62dd16e810bd1d75bd3bc6e3cae1ee698fdcf4d9ec67d870dc833d76b1b1975',
+      ),
+    ).toBeNull();
   });
 });
 

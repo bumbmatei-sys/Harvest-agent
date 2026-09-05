@@ -94,7 +94,17 @@ vi.mock('firebase/firestore', () => ({
   },
   getDocs: async (q: BuiltQuery) => {
     const rows = docsFor.get(keyOf(q)) ?? [];
-    return { docs: rows.map((data, i) => ({ id: `${keyOf(q)}-${i}`, data: () => data })) };
+    return {
+      docs: rows.map((row, i) => {
+        // ⚠️ THE-309 — `__id` lets a fixture pin a document id, the same escape
+        // hatch THE-294 and THE-299 already added to their own recorders. The
+        // "Form submissions" KPI reads `tenants/{id}/forms/{formId}/submissions`,
+        // so a test has to be able to WRITE DOWN the form id it seeds responses
+        // under; an auto-generated one could never be named in a second fixture.
+        const { __id: pinned, ...data } = row as Record<string, unknown> & { __id?: string };
+        return { id: typeof pinned === 'string' ? pinned : `${keyOf(q)}-${i}`, data: () => data };
+      }),
+    };
   },
   getDoc: async (ref: { __doc: string }) => {
     const data = docReads.get(ref.__doc) ?? null;
@@ -226,13 +236,19 @@ function healthyTenant() {
   counts.set('courses', 2);
   counts.set('community_posts', 7);
   counts.set('blog_posts', 4);
-  counts.set('submissions', 1);
+  // THE-309 — a real form response, written where /api/forms/submit writes it:
+  // the `tenants/{id}/forms/{formId}/submissions` SUBCOLLECTION, dated by
+  // `submittedAt`. It used to be seeded into a top-level `submissions`
+  // collection, which is what let the KPI's zero look like a healthy read.
+  counts.set('tenants/grace/forms', 1);
+  counts.set('tenants/grace/forms/form-volunteer/submissions', 1);
   counts.set('tenants/grace/invoices', RECEIPTS.length);
   counts.set('campaigns', CAMPAIGNS.length);
   counts.set('tenants/grace/pledges', PLEDGES.length);
 
   docsFor.set('users', [{ createdAt: NOW - 2 * DAY, country: 'Kenya', city: 'Nairobi' }]);
-  docsFor.set('submissions', [{ createdAt: NOW - DAY }]);
+  docsFor.set('tenants/grace/forms', [{ __id: 'form-volunteer', title: 'Volunteer Sign-Up' }]);
+  docsFor.set('tenants/grace/forms/form-volunteer/submissions', [{ submittedAt: NOW - DAY }]);
   docsFor.set('tenants/grace/invoices', RECEIPTS);
   docsFor.set('campaigns', CAMPAIGNS);
   docsFor.set('tenants/grace/pledges', PLEDGES);
