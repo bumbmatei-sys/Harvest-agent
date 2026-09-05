@@ -91,6 +91,45 @@ const CHANGED: string[] = [
 ].filter(Boolean).sort();
 const changed = (...prefixes: string[]) => CHANGED.filter((f) => prefixes.some((p) => f.startsWith(p)));
 
+/** This suite's own path, for the expiry check below. */
+const SELF = 'src/components/course/__tests__/THE-311.course-palette.test.ts';
+
+/**
+ * Has THE-311 LANDED? i.e. does the base ref already carry this suite?
+ *
+ * 🔴 THE STAND-DOWN SIGNAL, AND IT IS DELIBERATELY NOT `CHANGED`.
+ *
+ * Exactly one assertion in this file could only ever hold while THE-311 was
+ * UNMERGED — "no course source file was changed" — because only THE-311's own
+ * branch changes a course source file. THE-311 landed in #447, and from that
+ * commit every later branch changes none, so the assertion was false for EVERY
+ * pull request opened from `main` and CI went red repo-wide for a premise that
+ * had simply expired. That is the THIRD guard of this shape in two days
+ * (THE-312's sweep self-check was the second, amended on `main` in #450), which
+ * is why the sweep in section 16 below now looks for the pattern across the
+ * whole suite rather than waiting for a fourth.
+ *
+ * ⚠️ The signal cannot be `CHANGED` itself. `if (nothing changed) return;
+ * expect(something changed)` asserts nothing at all — vacuous by construction,
+ * and a guard that cannot fail is worse than the failure it replaces because it
+ * looks green while what it polices rots. THE-312's amendment records the same
+ * reasoning and reaches for the same answer: ask the BASE REF whether it already
+ * carries this file. That is independent of the diff, so the claim keeps its
+ * full force for the whole window it can have any — while THE-311 is unmerged, a
+ * branch that swept no course file still fails.
+ */
+const landedOnBase = (): boolean => {
+  try {
+    execFileSync('git', ['cat-file', '-e', `${baseRef()}:${SELF}`], {
+      cwd: ROOT,
+      stdio: ['ignore', 'ignore', 'ignore'],
+    });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 /* ── The four palettes, resolved through the real cascade ─────────────────── */
 
 function varsIn(css: string, selectorTest: (sel: string) => boolean): Record<string, string> {
@@ -636,7 +675,22 @@ describe('12 — no emoji in the course source', () => {
     const touched = CHANGED.filter((f) =>
       (f === CONSTANTS || f.startsWith('src/components/course/')) && !f.includes('__tests__'));
     expect(touched.filter((f) => !SWEPT.includes(f)), 'a changed course source file is not swept').toEqual([]);
-    expect(touched.length, 'no course source file was changed — the sweep would prove nothing').toBeGreaterThan(0);
+    // 🔴 RETIRED ONCE THE-311 HAS LANDED — see `landedOnBase()`. Only THE-311's
+    // own branch changes a course source file, so after #447 this was false for
+    // every PR and took CI down repo-wide. The claim has not been found wrong;
+    // its window has closed.
+    //
+    // ⚠️ THE SWEEP IS NOT WEAKENED BY THIS. What stops the scoping degrading
+    // into a no-op is the three assertions ABOVE, and none of them looks at the
+    // diff: `SWEPT` must still contain course.constants.ts, must still hold at
+    // least ten files, and must still contain no test file. The `touched`
+    // containment check on the line above is untouched too and still runs
+    // unconditionally — a later branch that DOES change a course source file
+    // must still have it swept. Only the "this branch changed one" premise
+    // expires, because only that one was ever about THE-311's own diff.
+    if (!landedOnBase()) {
+      expect(touched.length, 'no course source file was changed — the sweep would prove nothing').toBeGreaterThan(0);
+    }
   });
 
   it.each(SWEPT)('%s carries no emoji', (file) => {
