@@ -90,6 +90,7 @@ const {
   mobileLayer, isResponsive, allTokens,
 } = await import('../../test/support/class-inventory');
 const { FIELD_WIDTH, FIELD_WIDTHS, CONTROL_DENSITY, CONTROL_DENSITY_TOKENS } = await import('../layout/form-layout');
+import { layerFailureFor } from './__fixtures__/mobile-layer-register';
 
 const SRC = path.resolve(__dirname, '..');
 const ROOT = path.resolve(__dirname, '../../..');
@@ -97,6 +98,15 @@ const GLOBALS = path.join(ROOT, 'src/app/globals.css');
 const MOBILE_FIXTURE = JSON.parse(
   readFileSync(path.join(__dirname, '__fixtures__/PersonalInformationModal.mobile-layer.json'), 'utf8'),
 ) as string[];
+/**
+ * THE-323 — the fixture above is still the BASELINE and is still compared in
+ * full. What changed is that it is no longer the only layer this guard can
+ * accept: `layerFailure` also accepts a layer some ticket RECORDED under
+ * `__fixtures__/mobile-layer/`, with its ticket, its reason and its digest. A
+ * layer that is neither still fails. See the register's docblock for why the
+ * `toEqual` this replaces had no third option but overwriting the pin.
+ */
+const MODAL = 'src/components/PersonalInformationModal.tsx';
 
 function mount(el: React.ReactElement): HTMLElement {
   const container = document.createElement('div');
@@ -253,7 +263,14 @@ const PHONE = 380;
  */
 it('the sub-640px rendering is exactly what it was — every new rule is sm:-gated', () => {
   const host = mount(<PersonalInformationModal isOpen onClose={() => {}} />);
-  expect(mobileLayer(host)).toEqual(MOBILE_FIXTURE);
+  const actual = mobileLayer(host);
+  const failure = layerFailureFor(MODAL, MOBILE_FIXTURE, actual);
+  // 🔴 Reported as the register's message when it is unrecorded — it names the
+  // digest, every accepted layer and how to record this one — and still
+  // compared line by line against the baseline when it is the baseline, so a
+  // reader of a failing run sees the classes and not only a hash.
+  if (failure !== null) expect(actual, failure).toEqual(MOBILE_FIXTURE);
+  expect(failure).toBeNull();
 });
 
 it('the layout rules never appear unprefixed — nothing here can reach a phone', () => {

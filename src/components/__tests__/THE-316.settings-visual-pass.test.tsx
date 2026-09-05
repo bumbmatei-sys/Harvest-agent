@@ -452,11 +452,26 @@ describe('5 · the account-deletion flow is byte-identical', () => {
    * The baseline is `origin/main`'s value, and it is spelled here rather than
    * recomputed, so a change to the file fails HERE as well as in THE-286.
    */
-  it('PersonalInformationModal.tsx has no register entry, because it was not edited', () => {
+  it('THE-316 recorded no edit to PersonalInformationModal.tsx, because it edited none', () => {
+    /*
+     * ⚠️ SCOPED TO THIS TICKET, which is what it always meant. Written as "the
+     * register holds NO entry for this file", it also said "and no ticket may
+     * ever record one" — so it went red on THE-323, which fixed `handleSave`'s
+     * silent failure and recorded exactly that, with a ticket, a reason and a
+     * digest. That is the register doing its job, and an assertion that expires
+     * on the next unrelated PR is the shape THE-315 (#454) sweeps for.
+     *
+     * 🔴 THE-316's OWN CLAIM IS UNTOUCHED AND STILL EXACT: split B was not in
+     * this PR, so THE-316 recorded nothing here. The file's current state is
+     * still pinned — by `freezeFailure` in THE-312's guards, which accepts the
+     * baseline and each RECORDED value and refuses anything else — and its
+     * eight outcome messages are still asserted, individually, below and in
+     * THE-286.
+     */
     const modal = FROZEN_FILES.personalInformationModal;
     expect(
-      RECORDED_EDITS.filter((e) => e.file === modal),
-      'the delete-flow file was recorded as edited — split B was not in this PR',
+      RECORDED_EDITS.filter((e) => e.file === modal && e.ticket === 'THE-316'),
+      'the delete-flow file was recorded as edited by THE-316 — split B was not in this PR',
     ).toEqual([]);
   });
 

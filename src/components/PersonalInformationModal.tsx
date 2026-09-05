@@ -10,6 +10,7 @@ import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { authFetch } from '../utils/auth-fetch';
 import { FIELD_WIDTH, CONTROL_DENSITY } from './layout/form-layout';
 import { DELETE_CONFIRM_COPY, UNREACHABLE_NOTE } from '../lib/member-erasure-copy';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface PersonalInformationModalProps {
  isOpen: boolean;
@@ -30,6 +31,26 @@ type PasswordFlowState = 'idle' | 'current' | 'new' | 'forgot';
  */
 type DeleteFlowState = 'idle' | 'deleting' | 'reauth' | 'error' | 'done';
 
+/**
+ * Where the Save-my-details flow is.
+ *
+ * 🔴 THIS IS THE SAME DEFECT THE DELETE FLOW WAS FIXED FOR, on the button
+ * beside it. `handleSave` had one boolean — `isSaving` — and no way to say
+ * "it failed". Both of its failure branches ended in `console.error` (the
+ * outer one) or a bare `return` after `handleFirestoreError` (the inner,
+ * Firestore one), so a member edited their name, city, phone or country,
+ * tapped Save, the write was refused, and the screen did not move: the modal
+ * stayed open with the typed values still in it and nothing said why. That
+ * reads as "still editing", which is indistinguishable from "saved and the
+ * modal is slow" and from "nothing happened". `AGENTS.md:6` names the class:
+ * a default that hides an error converts a loud failure into a quiet lie.
+ *
+ *  'saving' — in flight, both Save buttons disabled
+ *  'error'  — it failed, the edit is STILL IN THE FORM, and the member is told
+ *  'idle'   — resting, or saved (the modal closes on success)
+ */
+type SaveFlowState = 'idle' | 'saving' | 'error';
+
 const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isOpen, onClose }) => {
  const [name, setName] = useState(auth.currentUser?.displayName || '');
  const [email, setEmail] = useState(auth.currentUser?.email || '');
@@ -38,7 +59,12 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  const [phone, setPhone] = useState('');
   const [acceptedJesus, setAcceptedJesus] = useState('');
  const [profilePic, setProfilePic] = useState<string | null>(auth.currentUser?.photoURL || null);
- const [isSaving, setIsSaving] = useState(false);
+ // Save outcome. Every branch of handleSave lands on one of these; 'error'
+ // renders `saveMessage` and KEEPS THE TYPED VALUES, so a failed save never
+ // discards the edit it failed to write.
+ const [saveState, setSaveState] = useState<SaveFlowState>('idle');
+ const [saveMessage, setSaveMessage] = useState('');
+ const isSaving = saveState === 'saving';
  
  // Password Flow State
  const [passwordFlowState, setPasswordFlowState] = useState<PasswordFlowState>('idle');
@@ -138,14 +164,63 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
 
  if (!isOpen) return null;
 
+ /**
+  * Save the member's details, and SAY WHAT HAPPENED.
+  *
+  * 🔴 THIS USED TO BE THE SILENT FAILURE, and it was the same one the delete
+  * flow below was fixed for — on the button immediately beside it. There were
+  * two failure branches and neither reached the screen:
+  *
+  *   · the Firestore write — `handleFirestoreError(...)` then a bare `return`.
+  *     `handleFirestoreError` logs and does not throw, so the handler simply
+  *     stopped: no close, no message, no change of any kind.
+  *   · everything else — `catch { console.error('Error updating profile:');
+  *     console.error('Failed to update profile.'); }`, with the second line
+  *     commented "we use a custom modal or just console error since alert is
+  *     blocked in iframe". There was no custom modal. There was only console.
+  *
+  * Both now land in `saveState: 'error'` and render `saveMessage`, exactly as
+  * every branch of `handleDeleteAccount` lands on a rendered `deleteMessage`.
+  *
+  * 🔴 THE EDIT IS NEVER DISCARDED. `name`, `country`, `city`, `phone` and
+  * `acceptedJesus` are left exactly as typed and the modal stays open, so the
+  * member can retry without re-entering anything. Closing on failure, or
+  * clearing the form, would lose work the app failed to write.
+  *
+  * ⚠️ THE TWO WRITES ARE SEPARATED because they fail for different reasons and
+  * only one of them is the profile document. `updateProfile` writes the Auth
+  * display name; `updateDoc` writes the user document. If the Auth write fails
+  * the document write is not attempted — reporting "saved" for half of it is
+  * the failure mode the delete route's own docblock exists to prevent.
+  *
+  * ⚠️ `country` is written THROUGH, untouched, and is not defaulted. This file
+  * is one of the two writers of that field and PR 429's invariant —
+  * `withCountry + countryUnrecorded === total` — depends on there being no
+  * third state: no `''` substituted for a missing value, no `'Unknown'`, no
+  * sentinel. An unset country stays the empty string the state already holds
+  * and is counted as unrecorded, which is what the invariant reads.
+  */
  const handleSave = async () => {
- if (!auth.currentUser) return;
- setIsSaving(true);
+ if (!auth.currentUser) {
+ setSaveState('error');
+ setSaveMessage('You are not signed in. Sign in again and retry.');
+ return;
+ }
+
+ setSaveState('saving');
+ setSaveMessage('');
+
  try {
  await updateProfile(auth.currentUser, {
  displayName: name
  });
- 
+ } catch (error) {
+ console.error('Error updating profile:', error);
+ setSaveState('error');
+ setSaveMessage('Your name could not be saved to your sign-in. Nothing was changed — please try again.');
+ return;
+ }
+
  const userRef = doc(db, 'users', auth.currentUser.uid);
  try {
  await updateDoc(userRef, {
@@ -157,17 +232,13 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
       });
  } catch (err) {
  handleFirestoreError(err, OperationType.UPDATE, `users/${auth.currentUser.uid}`);
+ setSaveState('error');
+ setSaveMessage('Your details could not be saved. Your changes are still here — check your connection and try again.');
  return;
  }
 
+ setSaveState('idle');
  onClose();
- } catch (error) {
- console.error('Error updating profile:', error);
- // We use a custom modal or just console error since alert is blocked in iframe
- console.error('Failed to update profile.');
- } finally {
- setIsSaving(false);
- }
  };
 
  const handlePhotoClick = () => {
@@ -691,6 +762,37 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
 
  {/* Form Card */}
  <div className="bg-surface-raised rounded-3xl p-2 shadow-xs border border-line">
+ {/*
+   🔴 THE SAVE FAILURE, RENDERED. This is the half `handleSave` was missing:
+   the state machine above has nowhere to be seen without it, and a state
+   nobody renders is the console.error it replaced.
+
+   `alert` is the primitive for exactly this — a banner reporting an outcome —
+   and it is load-bearing rather than cosmetic: role="alert" is what carries a
+   refused write to a screen reader, which is the reader who has the least
+   chance of noticing that a modal simply did not close. It sits at the TOP OF
+   THE FORM the member just edited and above the first field, so the message
+   and the values it failed to write are on screen together.
+
+   ⚠️ It is not a tap target and carries no height of its own, so it takes no
+   44px floor. It does not lift the two Save buttons either — the mobile one
+   measures 20px today and is one of four controls on this screen recorded as
+   under the floor in THE-323.personal-information-measure. Lifting them is a
+   class change BELOW sm, which is the sub-640px layer this ticket has just
+   built the append path for, and it belongs to the pass that composes this
+   file rather than to the fix that makes its failures visible.
+ */}
+ {saveState === 'error' && (
+ <Alert
+ variant="destructive"
+ aria-live="assertive"
+ data-save-error
+ className="mx-2 mt-2"
+ >
+ <AlertTitle>Your changes were not saved</AlertTitle>
+ <AlertDescription>{saveMessage}</AlertDescription>
+ </Alert>
+ )}
  {/* Full Name */}
  <div className={`p-4 pb-2 ${FIELD_WIDTH.long}`}>
  <label className="text-[10px] font-bold text-faint tracking-wider uppercase mb-2 block">

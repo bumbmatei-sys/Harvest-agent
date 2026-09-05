@@ -391,17 +391,44 @@ const RULES_PINNERS_BEFORE_THE_322 = 45;
 /** THE-322 spells the digest too, in section 3b, so it is the 46th. */
 const RULES_PINNERS_NOW = RULES_PINNERS_BEFORE_THE_322 + 1;
 
+/**
+ * Suites added SINCE THE-322 that also pin the rules digest, one line per
+ * ticket.
+ *
+ * ⚠️ APPENDED RATHER THAN RECOUNTED, and this list is why the count above is
+ * still exact. Written as a bare `toHaveLength(46)`, section 5 said two things
+ * at once: "no suite stopped pinning" — which is the claim, and which gets more
+ * true over time — and "no suite ever starts", which is false the moment any
+ * ticket writes a guard that freezes the file. THE-323 did, and this section
+ * went red on a PR that consolidated nothing. That is the expiring shape
+ * THE-315 (#454) sweeps for, so the fix is the same one this repo reaches for
+ * everywhere else: name the addition, keep the floor exact.
+ *
+ * 🔴 THE CLAIM IS UNWEAKENED. The population may not SHRINK below the 46, and a
+ * suite that appears here has to be named with its ticket — so a consolidation
+ * still fails, and so does an unrecorded new pinner.
+ */
+const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: string]> = [
+  ['THE-323', 'src/components/__tests__/THE-323.personal-information-unlock.test.tsx'],
+];
+
 describe('5 · every suite that pinned firestore.rules still pins it', () => {
-  it('the population is unchanged — nothing was consolidated away', () => {
+  it('the population never shrank — nothing was consolidated away', () => {
     const pinners = suitesPinning(RULES_DIGEST_ON_DISK);
-    expect(pinners,
+    expect(pinners.length,
       'a suite stopped pinning firestore.rules. THE-322 consolidates none of them; if a later '
       + 'ticket does, it updates this count and says what each one still asserts.')
-      .toHaveLength(RULES_PINNERS_NOW);
+      .toBe(RULES_PINNERS_NOW + RULES_PINNERS_ADDED_SINCE.length);
     expect(pinners, 'THE-322 no longer pins firestore.rules itself').toContain(SELF);
-    expect(pinners.filter((p) => p !== SELF),
+    expect(pinners.filter((p) => p !== SELF && !RULES_PINNERS_ADDED_SINCE.some(([, f]) => f === p)),
       'the 45 that pinned it before THE-322 are not 45 any more')
       .toHaveLength(RULES_PINNERS_BEFORE_THE_322);
+    // Each recorded addition really is a pinner, so the list cannot pad the
+    // count with a suite that does not carry the digest.
+    for (const [ticket, suite] of RULES_PINNERS_ADDED_SINCE) {
+      expect(pinners, `${ticket} is recorded as a pinner but ${suite} does not pin the digest`)
+        .toContain(suite);
+    }
   });
 
   it('THE-319 still defers to the-299\'s pin rather than spelling a second copy', () => {

@@ -229,6 +229,34 @@ export const RECORDED_EDITS: ReadonlyArray<RecordedEdit> = [
       + 'never on beforeinstallprompt. No token and no dependency was added.',
     digest: 'd7473af6fe6a3518e0494c74694b7689bf094603f7ff83cdc52e359820b080b6',
   },
+  {
+    file: 'src/components/PersonalInformationModal.tsx',
+    ticket: 'THE-323',
+    why:
+      'THE SILENT-FAILURE FIX ON `handleSave`, and NOTHING ELSE — no visual pass, no composition, '
+      + 'no field moved. `handleSave` had one boolean and no way to say it had failed: the '
+      + 'Firestore branch called handleFirestoreError (which logs and does not throw) and then '
+      + 'returned bare, and the outer branch wrote two console.error lines under a comment '
+      + 'claiming "we use a custom modal" when there was no custom modal. So a member edited their '
+      + 'name, city, phone or country, tapped Save, the write was refused, and the screen did not '
+      + 'move — the documented Silent-Failure class in AGENTS.md:6, on the button immediately '
+      + 'beside the delete flow that was fixed for exactly this in the same file. It now carries a '
+      + '`saveState` machine of the same shape as `DeleteFlowState`, every branch lands on a '
+      + 'rendered `saveMessage`, and the message is an `alert` primitive whose role="alert" is '
+      + 'what carries the refusal to a screen reader. THE EDIT IS NEVER DISCARDED: the modal stays '
+      + 'open with the typed values still in it, so a failed write loses no work. The two writes '
+      + 'are separated because they fail for different reasons and a half-write must not read as '
+      + 'success. 🔴 THE DELETION FLOW IS UNTOUCHED, to the byte — the deleteState machine, all '
+      + 'eight outcome messages, the re-auth path, DELETE_CONFIRM_COPY and the silent-failure fix '
+      + 'that is the model for this one are byte-identical, and THE-323 asserts each of the eight '
+      + 'messages individually rather than by grep. `country` is written through untouched, so '
+      + "PR 429's `withCountry + countryUnrecorded === total` gains no third state — no '', no "
+      + "'Unknown', no sentinel. ui/input.tsx is not touched and Profile.tsx's props to this modal "
+      + 'are unchanged. The sub-640px class layer is UNCHANGED, and that is asserted rather than '
+      + 'assumed: the alert renders only in the error state, so the phone rendering at rest is the '
+      + 'baseline fixture it always was.',
+    digest: '00f4252576e342fd64fb034ff9244aa57369399ceb278f62611e2ede4fb1cf01',
+  },
 ];
 
 /** A ticket reference the register will accept. */
