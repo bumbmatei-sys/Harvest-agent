@@ -8,7 +8,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { getTenantPrivate } from '@/lib/tenant-private';
 import { verifyAuth } from '@/lib/api-auth';
 import { PLATFORM_FEE_MAP } from '@/lib/stripe-connect';
-import { sendAutomatedSms } from '@/lib/twilio';
+import { sendAutomatedSms } from '@/lib/sms-send';
 import { captureHandledError, captureMoneyPathError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';

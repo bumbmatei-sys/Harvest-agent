@@ -434,7 +434,7 @@ describe('no path points at a hidden or removed Settings screen', () => {
     await open('max', 'settings');
     const labels = navLabels();
     for (const row of ['Appearance', 'Onboarding Questions', 'Giving Statements',
-                       ...(SMS_FEATURE_ENABLED ? ['SMS (Twilio)'] : []), 'Integrations']) {
+                       ...(SMS_FEATURE_ENABLED ? ['SMS'] : []), 'Integrations']) {
       expect(labels, `Settings lost its "${row}" row`).toContain(row);
     }
   });

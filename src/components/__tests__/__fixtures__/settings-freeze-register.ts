@@ -105,7 +105,38 @@ export const FROZEN_FILES = {
  * does not match some real state of the file buys nothing and is dead weight
  * a later reader has to disprove.
  */
-export const RECORDED_EDITS: ReadonlyArray<RecordedEdit> = [];
+export const RECORDED_EDITS: ReadonlyArray<RecordedEdit> = [
+  {
+    file: 'src/components/AdminSettings.tsx',
+    ticket: 'THE-314',
+    why:
+      'The SMS settings row lost its vendor from the LABEL, "SMS (Twilio)" to "SMS", and its '
+      + 'explanatory comment moved from inside the row object to above it. Harvest stopped asking '
+      + 'churches to bring their own carrier account and started RESELLING on one of its own, so '
+      + 'there is no vendor a church has ever heard of and naming one on this row would send an '
+      + 'admin looking for a login that does not exist. NO ROW WAS ADDED OR REMOVED, no `group` '
+      + 'changed, and no `hidden:` clause changed — the row still reads the master switch and then '
+      + "the FEATURE cell, which is exactly why SMS could be made Ministry-only without touching "
+      + 'that line: `smsAutomation` went false on plus and pro and the row followed the matrix. '
+      + 'The comment moved because THE-296 reads the id → content mapping with a 400-character '
+      + 'window between them, and a comment inside the object pushed `content:` out of range.',
+    digest: 'a66900fd4b53dd109e97f733e7b7f6bfe18b530d7da666b5165def09546df476',
+  },
+  {
+    file: 'src/components/__tests__/AdminSettings.regroup.test.tsx',
+    ticket: 'THE-314',
+    why:
+      "Section (a3) followed the row it guards. It asserted the SMS section still calls "
+      + "'/api/sms/config' and '/api/sms/test' and still exports BYO_CREDENTIALS_NOTE; the panel is "
+      + 'no longer a Twilio credential form but the number purchase panel, so it calls '
+      + "'/api/sms/numbers' and exports RESOLD_NUMBER_NOTE and RELEASE_WARNING. The CLAIM is "
+      + 'unchanged and still asserted: the section owns its endpoints, states whose money is being '
+      + 'spent, and reads the master switch rather than declaring its own. Nothing was removed — '
+      + 'the release warning is an assertion this file did not have before, and it exists because '
+      + 'the vendor documents no port-out, so releasing a number is irreversible.',
+    digest: 'a0afe604b79bf19a5c8ce538992db49601319b258606e99f07709ce5358f5d41',
+  },
+];
 
 /** A ticket reference the register will accept. */
 const TICKET_RE = /^(?:THE-\d+|#\d+)$/;

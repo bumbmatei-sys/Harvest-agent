@@ -64,7 +64,7 @@ const h = vi.hoisted(() => {
 });
 
 vi.mock('@/lib/firebase-admin', () => ({ adminDb: { collection: h.collection } }));
-vi.mock('@/lib/twilio', () => ({ sendAutomatedSms: h.sendAutomatedSms }));
+vi.mock('@/lib/sms-send', () => ({ sendAutomatedSms: h.sendAutomatedSms }));
 vi.mock('@/lib/money-path-sentry', () => ({ captureHandledError: h.capture }));
 
 const { GET } = await import('../get/route');

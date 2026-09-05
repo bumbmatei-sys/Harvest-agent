@@ -163,7 +163,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
   //   Appearance       palette family + light/dark
   //   Payments         Stripe Connect
   //   Church Setup     Onboarding Questions, Giving Statements
-  //   Connected Services  SMS (Twilio), Mailchimp
+  //   Connected Services  SMS, Mailchimp
   //   Danger Zone      Cancel Subscription, alone and cordoned off
   //   Navigation       Customize Navigation (outside this array)
   //
@@ -308,10 +308,17 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
       content: <GivingStatementsSection />,
       hidden: !platformOverride && !currentFeatures?.givingStatements,
     },
+    // 🔴 THE-314 DROPPED THE VENDOR FROM THE LABEL BELOW. It read "SMS
+    // (Twilio)" when a church connected its own Twilio account and the
+    // parenthetical told it whose credentials the panel wanted. Harvest now
+    // RESELLS on one account: there is no vendor for a church to have heard of,
+    // and naming one on this row would send an admin looking for a login it
+    // does not have. Kept ABOVE the row rather than inside it so the row's own
+    // id → content mapping stays adjacent, which is what THE-296's guard reads.
     {
       id: 'sms',
       group: 'Connected Services',
-      label: 'SMS (Twilio)',
+      label: 'SMS',
       icon: <MessageSquare size={18} />,
       content: <SmsSection />,
       // 🔴 THE-250 — the row THE-245 could not reach. `SmsSection` already
@@ -326,9 +333,11 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
       // row that used to sit below this one, and set the same precedent, went
       // with the Telegram assistant in THE-253.)
       //
-      // The plan clause behind it is UNTOUCHED and still reads the FEATURE, not
-      // the tier, so flipping SMS_FEATURE_ENABLED restores the identical
-      // entitlement — `smsAutomation` keeps its PLAN_FEATURES values throughout.
+      // The plan clause behind it still reads the FEATURE, not the tier, which
+      // is what let THE-314 make SMS Ministry-only without touching this line:
+      // `smsAutomation` went false on plus and pro, and the row followed the
+      // matrix. Reading the tier here instead would have needed a second edit,
+      // and a second place for the two to disagree.
       hidden: !SMS_FEATURE_ENABLED || (!platformOverride && !currentFeatures?.smsAutomation),
     },
     {

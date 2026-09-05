@@ -228,20 +228,27 @@ describe("the three priced tiers' Settings sections are unchanged", () => {
   // the AI Assistant row is behind AI_TELEGRAM_ASSISTANT_ENABLED (false) on
   // every tier including this list.
   //
-  // 🔴 THE-250 — SMS (Twilio) is every paid tier's row BEHIND the plan gate,
-  // but the master switch now sits in front of it, so it renders on none of
-  // them while SMS_FEATURE_ENABLED is false. Spread on the flag rather than
-  // deleted from these lists: this file's whole claim is that the priced tiers
-  // are UNCHANGED, and a hardcoded list would quietly restate that claim
-  // against the wrong baseline the moment the switch flips back. With the flag
-  // on, all three tiers expect the row again and this suite is the proof the
-  // hide took nothing with it.
+  // 🔴 THE-250 / THE-314 — SMS sits behind BOTH the master switch and the plan
+  // gate, and both halves moved.
+  //
+  // THE-250 put the master switch in front of the row, so it rendered on no tier
+  // while SMS_FEATURE_ENABLED was false. It is spread on that flag rather than
+  // deleted from these lists, because this file's whole claim is that the priced
+  // tiers are UNCHANGED and a hardcoded list would restate that claim against
+  // the wrong baseline the moment the switch flipped back.
+  //
+  // ⚠️ THE-314 THEN FLIPPED THE SWITCH ON AND NARROWED THE PLAN GATE. SMS is
+  // Ministry-only now that Harvest resells and pays for every segment, so the
+  // row comes back on `max` ALONE — Individual and Small Team lose it, which is
+  // the downgrade this suite is the settings-screen half of. The spread is kept
+  // on max so the flag still governs, and the two lower tiers say in as many
+  // words why the row is absent rather than silently omitting it.
   const EXPECTED: Record<string, string[]> = {
     plus: [
       'Appearance',
       GIVING_ROW,
       'Onboarding Questions',
-      ...(SMS_FEATURE_ENABLED ? ['SMS (Twilio)'] : []),
+      // No 'SMS' row — THE-314 made the capability Ministry-only.
       'Integrations',
       'Cancel Subscription',
       'Customize Navigation',
@@ -250,7 +257,7 @@ describe("the three priced tiers' Settings sections are unchanged", () => {
       'Appearance',
       GIVING_ROW,
       'Onboarding Questions',
-      ...(SMS_FEATURE_ENABLED ? ['SMS (Twilio)'] : []),
+      // No 'SMS' row — THE-314 made the capability Ministry-only.
       'Integrations',
       'Cancel Subscription',
       'Customize Navigation',
@@ -260,7 +267,7 @@ describe("the three priced tiers' Settings sections are unchanged", () => {
       GIVING_ROW,
       'Onboarding Questions',
       'Giving Statements',
-      ...(SMS_FEATURE_ENABLED ? ['SMS (Twilio)'] : []),
+      ...(SMS_FEATURE_ENABLED ? ['SMS'] : []),
       'Integrations',
       'Cancel Subscription',
       'Customize Navigation',

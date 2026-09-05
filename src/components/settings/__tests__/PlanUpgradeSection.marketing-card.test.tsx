@@ -892,18 +892,83 @@ describe('6 — the sub-640px rendering changes only where the marketing match r
    */
   const TOGGLE_ROWS_ADDED = 6;
 
+  /**
+   * 🔴 THE-314 — SMS moved to Ministry, and the CARDS followed it.
+   *
+   * `smsAutomation` went false on Individual and Small Team and stayed true on
+   * Ministry, and the three cards moved differently because they are built
+   * differently:
+   *   · Individual lists its features one by one, so it LOST its "SMS
+   *     Automation" line.
+   *   · Small Team replaced most of its list with the rollup line ("everything
+   *     in Individual, plus…"), so it never named SMS individually and does not
+   *     move at all — the rollup's own wording is what changes there.
+   *   · Ministry lists what it ADDS over Small Team, so SMS became one of those
+   *     additions and it GAINED a line.
+   *
+   * ⚠️ NET ZERO ROWS ACROSS THE THREE, which is exactly why a length check alone
+   * would have missed this entirely.
+   *
+   * ⚠️ THE BASELINE FIXTURE IS DELIBERATELY NOT RE-RECORDED. This file's own
+   * comments say why: re-recording substitutes the value the guard measures,
+   * which turns a guard into a description of whatever it was last handed. So
+   * the change is stated as a QUANTITY and proved to be the only one — every
+   * difference between the recorded layer and the current one is a feature LINE
+   * appearing or disappearing, the per-card counts moved by exactly the figures
+   * below, and nothing else in either layer differs by a single class.
+   *
+   * Four rows is one rendered feature line: `li`, its `svg`, the `path` inside
+   * it, and the label `span`.
+   */
+  const FEATURE_LINE_ROWS = 4;
+  /** Per card, in render order: Individual, Small Team, Ministry. */
+  const FEATURE_LINE_DELTA = [-1, 0, +1];
+
+  /** Strip every contiguous feature-line group, and report how many each card
+   *  held. Cards are delimited by the row carrying `snap-center`. */
+  function stripFeatureLines(layer: string[]): { rest: string[]; perCard: number[] } {
+    const rest: string[] = [];
+    const perCard: number[] = [];
+    for (let i = 0; i < layer.length; i++) {
+      if (/^div\t/.test(layer[i]) && /\bsnap-center\b/.test(layer[i])) perCard.push(0);
+      const group = layer.slice(i, i + FEATURE_LINE_ROWS);
+      const isFeatureLine =
+        group.length === FEATURE_LINE_ROWS
+        && /^li\t/.test(group[0])
+        && /^svg\t.*lucide-check/.test(group[1])
+        && group[2] === 'path\t'
+        && /^span\t/.test(group[3]);
+      if (isFeatureLine) {
+        if (perCard.length) perCard[perCard.length - 1] += 1;
+        i += FEATURE_LINE_ROWS - 1;
+        continue;
+      }
+      rest.push(layer[i]);
+    }
+    return { rest, perCard };
+  }
+
   it('changes the phone rendering by exactly the enumerated amount', () => {
     for (const plan of PRICED_PLAN_ORDER) {
       mount({ currentPlan: plan });
       const layer = mobileLayer(container);
       const recorded = baseline.mobileLayer[plan];
       expect(recorded, `no recorded mobile layer for currentPlan=${plan}`).toBeTruthy();
-      // 🔴 The cards themselves: byte-for-byte identical in class terms.
-      expect(fromTrack(layer), `the sub-640px card layer moved for currentPlan=${plan}`)
-        .toEqual(fromTrack(recorded));
+      // 🔴 The cards themselves: identical in class terms once the feature
+      // lines THE-314 moved are set aside — stated as a quantity above and
+      // proved here to be the ONLY difference.
+      const was = stripFeatureLines(fromTrack(recorded));
+      const now = stripFeatureLines(fromTrack(layer));
+      expect(now.rest, `the sub-640px card layer moved for currentPlan=${plan} outside its feature lists`)
+        .toEqual(was.rest);
+      expect(now.perCard.map((n, i) => n - was.perCard[i]),
+        `currentPlan=${plan}: the per-card feature-line counts moved by something other than SMS`)
+        .toEqual(FEATURE_LINE_DELTA);
+
       const counts = baseline.mobileElements[plan];
-      // The card subtree's element count is unchanged; the whole-tree count
-      // grew by exactly the toggle's extra rows.
+      // Net zero rows across the three cards: two lines left the lower cards and
+      // two joined Ministry's. The whole-tree count therefore still grew by
+      // exactly the toggle's extra rows and nothing else.
       expect(fromTrack(layer).length, `card element count for currentPlan=${plan}`)
         .toBe(fromTrack(recorded).length);
       expect(layer.length - recorded.length, `currentPlan=${plan}: only the toggle should have grown`)

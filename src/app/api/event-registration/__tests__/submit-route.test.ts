@@ -68,7 +68,7 @@ vi.mock('@/lib/tenant-private', () => ({ getTenantPrivate: mockGetTenantPrivate 
 // Identity link is resolved from the verified token, never the request body.
 vi.mock('@/lib/api-auth', () => ({ verifyAuth: mockVerifyAuth }));
 
-vi.mock('@/lib/twilio', () => ({ sendAutomatedSms: mockSendAutomatedSms }));
+vi.mock('@/lib/sms-send', () => ({ sendAutomatedSms: mockSendAutomatedSms }));
 
 vi.mock('firebase-admin/firestore', () => ({
   FieldValue: {

@@ -592,23 +592,35 @@ describe('7 · PaymentSection still renders unavailable, DomainSection is still 
       .toContain('.theharvest.app');
   });
 
-  it('🔴 SMS stays off (Twilio is dropped)', () => {
+  it('🔴 SMS is ON now (THE-314), and still behind the one switch', () => {
+    // ⚠️ REVERSED, NOT LOOSENED. THE-296 pinned SMS as OFF because it was one of
+    // three switched-off sections it must not convert. THE-314 flipped the
+    // switch and rewrote the panel from a Twilio credential form into the number
+    // purchase panel. What THE-296 actually cares about is unchanged and still
+    // asserted: the section reads the ONE master switch and renders through it,
+    // and the settings ROW goes with the panel rather than opening onto nothing.
     const src = readSrc('src/components/settings/SmsSection.tsx');
     expect(src, 'SmsSection no longer reads the SMS master switch').toContain('SMS_FEATURE_ENABLED');
-    expect(src, 'SmsSection renders its form while the switch is off')
-      .toMatch(/SMS_FEATURE_ENABLED\s*\?\s*<SmsCredentialsForm\s*\/>\s*:\s*null/);
-    expect(readSrc('src/lib/sms-feature.ts')).toMatch(/SMS_FEATURE_ENABLED\s*=\s*false/);
+    expect(src, 'SmsSection stopped rendering through the switch')
+      .toMatch(/SMS_FEATURE_ENABLED\s*\?\s*<SmsNumberPanel\s*\/>\s*:\s*null/);
+    expect(readSrc('src/lib/sms-feature.ts')).toMatch(/SMS_FEATURE_ENABLED\s*=\s*true/);
     // And the settings row stays hidden with it, so the label does not open
     // onto an empty panel (THE-250).
     expect(readSrc('src/components/AdminSettings.tsx'))
       .toMatch(/hidden:\s*!SMS_FEATURE_ENABLED/);
   });
 
-  it('all three files are byte-identical — this slice converted none of them', async () => {
+  it('the two STILL-OFF files are byte-identical — this slice converted none of them', async () => {
+    // ⚠️ SmsSection LEFT THIS LIST — THE-314 rewrote it, and its entry is
+    // recorded on THE-286's exemption list, which is where a settings-section
+    // rewrite is registered. The list is NARROWED rather than repinned: the
+    // claim "a switched-off section is not convertible" stays exactly true of
+    // the two sections that are still switched off, and re-recording
+    // SmsSection's digest here would have substituted the value this guard
+    // measures instead of removing a file that no longer qualifies.
     const { createHash } = await import('node:crypto');
     for (const file of ['src/components/settings/PaymentSection.tsx',
-                        'src/components/settings/DomainSection.tsx',
-                        'src/components/settings/SmsSection.tsx']) {
+                        'src/components/settings/DomainSection.tsx']) {
       const now = createHash('sha256').update(readFileSync(path.join(ROOT, file))).digest('hex');
       expect(now, `${file} changed — a switched-off section is not convertible`)
         .toBe(UNTOUCHED.otherSettingsSections[file as keyof typeof UNTOUCHED.otherSettingsSections]);

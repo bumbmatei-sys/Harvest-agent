@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { Resend } from 'resend';
 import { adminDb } from '@/lib/firebase-admin';
-import { sendAutomatedSms } from '@/lib/twilio';
+import { sendAutomatedSms } from '@/lib/sms-send';
 import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';

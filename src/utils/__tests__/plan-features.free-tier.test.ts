@@ -288,7 +288,9 @@ describe('THE-200 — FEATURE_MIN_PLAN still names the cheapest tier that HAS ea
       customBranding: 'max',
       newsletterAutomation: 'pro',
       automatedNewsletter: 'max',
-      smsAutomation: 'plus',    // free is false → unchanged, still Individual
+      // 🔴 THE-314 — MOVED from 'plus' to 'max'. SMS is Ministry-only, so the
+      // upgrade screens that read this now name Ministry rather than Individual.
+      smsAutomation: 'max',
       fundraising: 'plus',      // 🔴 UNCHANGED — free has no donate page
       eventRegistration: 'max',
       docs: 'pro',
@@ -303,7 +305,7 @@ describe('THE-200 — FEATURE_MIN_PLAN still names the cheapest tier that HAS ea
       automatedBlog: 'max',
       givingStatements: 'max',
       pledgeCampaigns: 'max',
-      textToGive: 'plus',       // free is false → unchanged, still Individual
+      textToGive: 'max',        // 🔴 THE-314 — moves with smsAutomation above
       pwaApp: 'free',           // ⬅️ MOVED from 'plus' by THE-205
     };
     for (const [cell, expected] of Object.entries(EXPECTED) as [keyof PlanFeatures, TenantPlan | null][]) {
@@ -347,24 +349,26 @@ describe('THE-200 — the three priced tiers are untouched', () => {
       maxChurches: 1, maxContacts: 150, maxCourses: 2, maxAdmins: 2,
       customDomain: false, customBranding: false,
       newsletterAutomation: false, automatedNewsletter: false,
-      smsAutomation: true, fundraising: true,
+      // 🔴 THE-314 — SMS is Ministry-only. plus and pro LOST these two cells.
+      smsAutomation: false, fundraising: true,
       eventRegistration: false, docs: false, crm: true,
       accountingTools: false, taxReceipt: false, communityGroups: false,
       customForms: false, checkInSystem: false, livestream: false,
       sermonNotes: false, automatedBlog: false, givingStatements: false,
-      pledgeCampaigns: false, textToGive: true, pwaApp: true,
+      pledgeCampaigns: false, textToGive: false, pwaApp: true,
     },
     pro: {
       newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: true,
       maxChurches: 1, maxContacts: 500, maxCourses: 5, maxAdmins: 5,
       customDomain: false, customBranding: false,
       newsletterAutomation: true, automatedNewsletter: false,
-      smsAutomation: true, fundraising: true,
+      // 🔴 THE-314 — SMS is Ministry-only. plus and pro LOST these two cells.
+      smsAutomation: false, fundraising: true,
       eventRegistration: false, docs: true, crm: true,
       accountingTools: false, taxReceipt: false, communityGroups: false,
       customForms: false, checkInSystem: true, livestream: true,
       sermonNotes: true, automatedBlog: false, givingStatements: false,
-      pledgeCampaigns: false, textToGive: true, pwaApp: true,
+      pledgeCampaigns: false, textToGive: false, pwaApp: true,
     },
     max: {
       newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: true,

@@ -202,25 +202,42 @@ describe('hasFeature', () => {
   });
 });
 
-// ─── SMS is BYO-only ─────────────────────────────────────────────────────────
+// ─── SMS is MINISTRY-ONLY ────────────────────────────────────────────────────
 //
-// Test #7 of the repricing. `smsAutomation` and `textToGive` are no longer sold
-// by plan: Harvest offers no platform SMS, so the only thing that decides
-// whether a tenant can send is whether they have connected their own Twilio.
+// 🔴 THE-314 REVERSED THE BYO-ONLY GUARD THAT STOOD HERE. It asserted these two
+// cells were `true` on every tier, because SMS was not sold by plan: a church
+// brought its own Twilio account, Twilio billed the church, and the cell gated
+// nothing.
+//
+// Harvest now RESELLS on one vendor account and pays for every segment, so the
+// cell decides who may spend Harvest's money. The founder's call is Ministry
+// (`max`) only. The guard is UPDATED rather than deleted — it is still the thing
+// that catches SMS drifting onto a tier the app does not sell it on.
 
-describe('SMS is BYO-only — not gated by plan', () => {
+describe('SMS is Ministry-only — gated by plan (THE-314)', () => {
   it.each(['smsAutomation', 'textToGive'] as const)(
-    '%s is true on every tier',
+    '%s is FALSE on free, plus and pro, and TRUE on max alone',
     (cell) => {
-      expect(getPlanFeatures('plus')[cell]).toBe(true);
-      expect(getPlanFeatures('pro')[cell]).toBe(true);
-      expect(getPlanFeatures('max')[cell]).toBe(true);
+      expect(getPlanFeatures('free')[cell], `free must not carry ${cell}`).toBe(false);
+      expect(getPlanFeatures('plus')[cell], `Individual (plus) must not carry ${cell}`).toBe(false);
+      expect(getPlanFeatures('pro')[cell], `Small Team (pro) must not carry ${cell}`).toBe(false);
+      expect(getPlanFeatures('max')[cell], `Ministry (max) must carry ${cell}`).toBe(true);
     }
   );
 
-  it('unlocks at the cheapest tier, so no upgrade screen can sell SMS', () => {
-    expect(getMinPlanForFeatureCell('smsAutomation')).toBe('plus');
-    expect(getMinPlanForFeatureCell('textToGive')).toBe('plus');
+  it('unlocks at Ministry, so every upgrade screen names the right tier', () => {
+    expect(getMinPlanForFeatureCell('smsAutomation')).toBe('max');
+    expect(getMinPlanForFeatureCell('textToGive')).toBe('max');
+  });
+
+  it('🔴 names the two paid tiers that LOST it, so the downgrade stays recorded', () => {
+    // Individual and Small Team both carried `true` before THE-314. This is not
+    // a restatement of the cell values above: it is the record that they moved,
+    // and that two paying tiers lost a capability they were promised.
+    for (const lost of ['plus', 'pro'] as const) {
+      expect(getPlanFeatures(lost).smsAutomation, `${lost} lost smsAutomation`).toBe(false);
+      expect(getPlanFeatures(lost).textToGive, `${lost} lost textToGive`).toBe(false);
+    }
   });
 });
 
@@ -457,16 +474,17 @@ describe('communityGroups tier', () => {
 
   it('pins what max exclusively carries after the ultra fold', () => {
     // This guard used to assert accountingTools/smsAutomation/textToGive were
-    // FALSE on max — they were ultra-only. Two of those moved deliberately in
-    // this change (accounting folded into max; SMS went BYO-only on every
-    // tier), so the guard now pins the new shape rather than the old one. It
-    // still catches a feature drifting onto max by accident. (`churchDirectory`,
-    // ultra's third folded-in cell, was later removed from the matrix entirely
-    // — see 'retired matrix cells stay retired' above.)
+    // FALSE on max — they were ultra-only. All three have moved deliberately
+    // since: accounting folded into max, SMS went BYO-only on every tier, and
+    // THE-314 then brought SMS BACK to max alone as a sold capability. The guard
+    // pins the current shape and still catches a feature drifting onto max by
+    // accident. (`churchDirectory`, ultra's third folded-in cell, was later
+    // removed from the matrix entirely — see 'retired matrix cells stay
+    // retired' above.)
     const f = getPlanFeatures('max');
     expect(f.accountingTools).toBe(true);   // folded in from ultra
-    expect(f.smsAutomation).toBe(true);     // BYO-only, all tiers
-    expect(f.textToGive).toBe(true);        // BYO-only, all tiers
+    expect(f.smsAutomation).toBe(true);     // THE-314 — max ONLY
+    expect(f.textToGive).toBe(true);        // THE-314 — max ONLY
     expect(f.customDomain).toBe(true);
   });
 });

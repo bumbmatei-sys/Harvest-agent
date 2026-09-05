@@ -395,13 +395,50 @@ describe('7 · no source file appears in this diff', () => {
     ])].sort();
   };
 
-  it('every path in the diff is a test file', () => {
-    const paths = changed();
-    if (!paths.includes(SELF)) {
-      // THE-312 has landed. Nothing to sweep; the surfaces are guarded by the
-      // register, asserted in the next case.
-      return;
+  /**
+   * Has THE-312 LANDED? i.e. does the base ref already carry this suite?
+   *
+   * 🔴 THE STAND-DOWN SIGNAL, AND IT IS DELIBERATELY NOT `changed()`.
+   *
+   * The block header above sets out this sweep's lifecycle: "Once THE-312
+   * lands, the suite is in the base ref, the sweep has no PR left to police,
+   * and it stands down." Asking the DIFF whether this file is in it looked like
+   * the same question and is not: it re-arms the sweep for any LATER branch
+   * that edits this suite, and freezes that branch's whole tree to test files.
+   *
+   * ⚠️ THAT IS NOT HYPOTHETICAL — IT IS THE FIRST TICKET TO USE THE REGISTER.
+   * The append path this module exists to provide can only be used by editing
+   * `RECORDED_EDITS`, and the case below asserts what the register may contain,
+   * so a ticket that records an edit MUST touch this suite. Under the old
+   * signal that ticket inherited "every path in the diff is a test file" and
+   * could not also change a source file — which is every real ticket. THE-314
+   * is the first to hit it.
+   *
+   * The base ref is independent of the diff, so the guard keeps its FULL force
+   * for the whole window it can have any: while THE-312 is unmerged the base
+   * ref does not carry this file, this returns false, and the sweep runs.
+   */
+  const landedOnBase = (): boolean => {
+    try {
+      execFileSync('git', ['cat-file', '-e', `${baseRef()}:${SELF}`], {
+        cwd: ROOT,
+        stdio: ['ignore', 'ignore', 'ignore'],
+      });
+      return true;
+    } catch {
+      return false;
     }
+  };
+
+  it('every path in the diff is a test file', () => {
+    // 🔴 STOOD DOWN ON THE BASE REF, not on the diff — see `landedOnBase()`.
+    // THE-312 has landed, so there is no PR left to police and the surfaces are
+    // guarded by the register, asserted in the next case. The diff-based signal
+    // this replaces re-armed the sweep for any later branch that edited this
+    // suite, which is exactly what using the register requires.
+    if (landedOnBase()) return;
+    const paths = changed();
+    if (!paths.includes(SELF)) return;
     const offenders = paths.filter((p) => !isTestFile(p));
     expect(offenders, `THE-312 changes only test files, but these are not:\n  ${offenders.join('\n  ')}`)
       .toEqual([]);
@@ -449,19 +486,51 @@ describe('7 · no source file appears in this diff', () => {
      * touches source AND fixes this would have had to loosen that rule too.
      * This branch touches nothing but this suite, so the rule holds unchanged.
      */
-    const paths = changed();
-    if (paths.includes(SELF)) {
-      expect(paths, 'the diff does not contain this suite, so the sweep skipped itself').toContain(SELF);
+    // 🔴 RETIRED ONCE THE-312 HAS LANDED, and #448 is when that happened —
+    // the same conclusion #451 reaches, by the same signal and under the same
+    // name, so the two reconcile mechanically if both land.
+    if (landedOnBase()) {
+      // The window has closed. The MACHINERY is proven directly instead, so a
+      // classifier rotted into answering `true` to everything — the actual way
+      // this could become a no-op — still fails here.
+      expect(Array.isArray(changed()), 'changed() no longer answers, so the sweep cannot run').toBe(true);
+      expect(isTestFile('src/components/AdminSettings.tsx'),
+        'isTestFile calls a source file a test — the sweep would pass over anything').toBe(false);
+      expect(isTestFile(SELF), 'isTestFile no longer recognises a suite under __tests__').toBe(true);
       return;
     }
+    const paths = changed();
+    expect(paths, 'the diff does not contain this suite, so the sweep skipped itself').toContain(SELF);
     expect(Array.isArray(paths), 'changed() no longer answers, so the sweep cannot run').toBe(true);
     expect(isTestFile('src/components/AdminSettings.tsx'),
       'isTestFile calls a source file a test — the sweep would pass over anything').toBe(false);
     expect(isTestFile(SELF), 'isTestFile no longer recognises a suite under __tests__').toBe(true);
   });
 
-  it('the register itself carries no source-file edit', () => {
-    expect(RECORDED_EDITS, 'THE-312 edits no source file, so it records none').toEqual([]);
+  it('the register itself carries no THE-312 edit', () => {
+    /* ⚠️ THE SAME LIFECYCLE THE SIBLING ASSERTION ABOVE HAD, and the same
+       treatment — kept, not dropped. This read `toEqual([])`, which was true for
+       exactly as long as THE-312 was the newest ticket, and which FORBIDS THE
+       MECHANISM THIS WHOLE MODULE EXISTS TO PROVIDE: the register's own docblock
+       says "the next ticket to move one of these files appends here", so the
+       first ticket to use the append path would have failed here for using it.
+       THE-314 is that ticket.
+
+       🔴 THE CLAIM IS UNCHANGED AND STILL CHECKABLE FOREVER. What THE-312
+       asserts about itself is that it edits no source file and therefore records
+       no edit of its own — and that stays true however many later tickets
+       append. It also keeps real force: it is exactly the assertion that catches
+       an edit smuggled in under a merged ticket's name, which is the one way a
+       recorded edit could pretend to have been reviewed when it was not.
+
+       The register's own validation — a mandatory digest, a ticket matching
+       TICKET_RE and a reason over MIN_REASON_LENGTH on every entry — is
+       asserted separately above and is what keeps the LATER entries honest. */
+    expect(RECORDED_EDITS.filter((e) => e.ticket === 'THE-312'),
+      'THE-312 edits no source file, so it records none').toEqual([]);
+    // And the register is still validated as a whole, entry by entry, so a
+    // later append cannot be a bare hash with no story.
+    expect(() => validateRegister(RECORDED_EDITS)).not.toThrow();
   });
 });
 
