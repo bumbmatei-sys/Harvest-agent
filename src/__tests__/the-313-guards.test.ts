@@ -88,6 +88,15 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
    */
   'src/app/api/event-registration/submit/route.ts': [
     ['0324b34c80861ea7e2ee61e40bba7b6ff6f8be72dbef43827e75837e08a5530e', 'main at 5f431e3, unchanged since c792d22'],
+    // ⚠️ APPENDED, NOT SUBSTITUTED — the header's rule, and the one #434 broke.
+    // THE-314 (#452) swapped this route's SMS import from `@/lib/twilio` to
+    // `@/lib/sms-send` when it changed provider. ONE line, and it is an import:
+    // `git diff` over the whole file for that commit is 1 insertion, 1 deletion,
+    // and the `contactActivities` write this guard exists to protect is present
+    // and unchanged either side. Verified byte-identical between this branch and
+    // `origin/main`, so THE-313 did not touch it — this is exactly the merge-ref
+    // drift the header describes, and appending is how it is absorbed.
+    ['b0e55c91adcc9b342e4d16fc5cabfff1426842056e1f5bb9e0f47546fc41ed98', 'main at 8a4a909 — THE-314 (#452) swapped the SMS import to @/lib/sms-send'],
   ],
   'src/app/api/event-registration/apply-discount/route.ts': [
     ['47622ed746e6e3a652cd7ffab4bd5f434ff4f52fea94a14c5d3eb588ff3924e0', 'main at 5f431e3'],
