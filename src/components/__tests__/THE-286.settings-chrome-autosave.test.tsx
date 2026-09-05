@@ -47,6 +47,78 @@ const ROOT = path.resolve(__dirname, '../../..');
 const readSrc = (rel: string) => readFileSync(path.join(ROOT, rel), 'utf8');
 const SECTION = 'src/components/settings/GivingStatementsSection.tsx';
 
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 🔴 THE AUTOSAVE IMPORT MATCHER — resolution, not spelling
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ THIS REPLACES A GUARD THAT DID NOT HOLD. Section 6 used to ask whether a
+ * file's source matched `/from ['"][^'"]*settings\/autosave['"]/` — it required
+ * the import to SPELL `settings/autosave`. Every excluded money file already
+ * lives in `settings/`, so the natural way to reach the hook from one of them
+ * is `from './autosave'`, which contains no such segment and slipped straight
+ * through. THE-316 (#457) proved it: it planted the module into
+ * PlanUpgradeSection and section 6 stayed green — the only thing that went red
+ * was an unrelated byte-freeze, and that freeze is released the moment any
+ * ticket records an edit to the file (two of the three money files,
+ * AddOnsSection and BillingTermToggle, had already been released by THE-300,
+ * so for those two the exclusion had no enforcement left at all).
+ *
+ * The fix is to stop reading the path as text. A specifier is RESOLVED against
+ * the importing file — `@/` to `src/`, `./` and `../` against its own directory,
+ * extensions and a trailing `/index` dropped — and compared to the module it
+ * actually names. `./autosave`, `../autosave`, `../settings/autosave` and
+ * `@/components/settings/autosave` are then one and the same claim, because
+ * they are one and the same import.
+ */
+const AUTOSAVE_MODULE = 'src/components/settings/autosave';
+
+/** Every module specifier a file brings in, by any syntax that can bring one. */
+function importSpecifiers(src: string): string[] {
+  const patterns = [
+    /\bimport\s[^;'"]*?\bfrom\s*['"]([^'"]+)['"]/g,  // import x from '…'
+    /\bimport\s*['"]([^'"]+)['"]/g,                  // import '…' (side effect)
+    /\bexport\s[^;'"]*?\bfrom\s*['"]([^'"]+)['"]/g,  // export … from '…'
+    /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g,        // await import('…')
+    /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g,       // require('…')
+  ];
+  return patterns.flatMap((re) => [...src.matchAll(re)].map((m) => m[1]));
+}
+
+/**
+ * What a specifier resolves to, as a repo-relative path with no extension —
+ * or `null` for a bare package name, which cannot be this module.
+ */
+function resolveImport(fromFile: string, spec: string): string | null {
+  let resolved: string;
+  if (spec.startsWith('@/')) resolved = path.posix.join('src', spec.slice(2));
+  else if (spec.startsWith('.')) resolved = path.posix.join(path.posix.dirname(fromFile), spec);
+  else return null;
+  return path.posix
+    .normalize(resolved)
+    .replace(/\.(?:tsx?|jsx?|mjs|cjs)$/, '')
+    .replace(/\/index$/, '');
+}
+
+/**
+ * The specifiers in `src` that reach the autosave module — by resolution, and
+ * additionally by name.
+ *
+ * ⚠️ The second half is deliberate, not a relapse into spelling. `../autosave`
+ * from a file inside `settings/` resolves to `src/components/autosave`, which
+ * is not this module and does not exist; a guard that only compared resolved
+ * paths would call that import harmless and say nothing. Any local module whose
+ * own name is `autosave` is reported instead, so a near-miss path and a
+ * re-export shim parked beside the real one are both caught rather than
+ * silently allowed.
+ */
+function autosaveImportsIn(file: string, src: string): string[] {
+  return importSpecifiers(src).filter((spec) => {
+    const resolved = resolveImport(file, spec);
+    if (resolved === null) return false;
+    return resolved === AUTOSAVE_MODULE || path.posix.basename(resolved) === 'autosave';
+  });
+}
+
 /**
  * Source with every comment removed — block, line and JSX.
  *
@@ -549,13 +621,88 @@ describe('6 · money-path and destructive fields do NOT autosave', () => {
     'never autosaves %s (%s)',
     (_fieldName, file, why) => {
       const src = readSrc(file);
-      expect(src, `${file} imports the autosave hook — it is on the exclusion list`)
-        .not.toMatch(/from ['"][^'"]*settings\/autosave['"]/);
+      // 🔴 By what the import RESOLVES to. The spelling-based matcher this
+      // replaces passed on `from './autosave'` — see the matcher's own note.
+      const reached = autosaveImportsIn(file, src);
+      expect(reached, `${file} imports the autosave module as ${reached.join(', ')} — it is on the exclusion list`)
+        .toEqual([]);
       expect(src, `${file} calls useAutosaveField`).not.toContain('useAutosaveField');
+      // Any hook out of that module, not only today's one name: a second
+      // autosave hook added later must not arrive on a money path unnoticed.
+      expect(src, `${file} calls an autosave hook`).not.toMatch(/\buseAutosave\w*\s*\(/);
       // A stated reason, so the list cannot grow entries nobody justified.
       expect(why.length, `${file} is excluded without a stated reason`).toBeGreaterThan(60);
     },
   );
+
+  /**
+   * 🔴 THE PROOF THAT THE SWEEP ABOVE ACTUALLY HOLDS.
+   *
+   * A guard that only ever runs against a clean tree cannot tell "nothing is
+   * wrong" from "I cannot see anything". So the plant is done here, in memory:
+   * each money file's REAL bytes get the autosave import spliced in, by each of
+   * the three spellings, and the matcher has to report every one. Nothing is
+   * written to disk and nothing is read out of a diff — the mechanism is pure,
+   * so the proof runs identically in CI and on any branch.
+   *
+   * ⚠️ The middle spelling is the one that used to slip through: `./autosave`
+   * from a file that already lives in `settings/`.
+   */
+  const MONEY_FIELDS = [
+    ['plan', 'src/components/settings/PlanUpgradeSection.tsx'],
+    ['add-ons', 'src/components/settings/AddOnsSection.tsx'],
+    ['the billing term', 'src/components/settings/BillingTermToggle.tsx'],
+  ] as const;
+
+  const SPELLINGS = [
+    './autosave',
+    '../autosave',
+    '../settings/autosave',
+    './autosave.ts',
+    '@/components/settings/autosave',
+  ] as const;
+
+  it.each(
+    MONEY_FIELDS.flatMap(([field, file]) =>
+      SPELLINGS.map((spec) => [field, file, spec] as const)),
+  )('🔴 a planted autosave on %s (%s) via "%s" is caught', (_field, file, spec) => {
+    const planted = `import { useAutosaveField } from '${spec}';\n${readSrc(file)}`;
+    expect(
+      autosaveImportsIn(file, planted),
+      `a planted autosave imported as ${spec} was invisible to the sweep`,
+    ).toContain(spec);
+  });
+
+  it('and the matcher does not fire on imports that are not this module', () => {
+    const file = 'src/components/settings/PlanUpgradeSection.tsx';
+    for (const spec of [
+      './autosave-banner',            // a neighbour whose name merely starts the same
+      '../../lib/autosave-copy',      // ditto, elsewhere
+      'lucide-react',                 // a package
+      '../../types/tenant.types',     // an ordinary local import
+    ]) {
+      expect(
+        autosaveImportsIn(file, `import x from '${spec}';`),
+        `${spec} was reported as an autosave import`,
+      ).toEqual([]);
+    }
+  });
+
+  it('and every spelling of the real module resolves to the one module', () => {
+    const settingsFile = 'src/components/settings/AddOnsSection.tsx';
+    expect(resolveImport(settingsFile, './autosave')).toBe(AUTOSAVE_MODULE);
+    expect(resolveImport(settingsFile, '../settings/autosave')).toBe(AUTOSAVE_MODULE);
+    expect(resolveImport(settingsFile, './autosave.ts')).toBe(AUTOSAVE_MODULE);
+    expect(resolveImport('src/components/AdminSettings.tsx', './settings/autosave')).toBe(AUTOSAVE_MODULE);
+    expect(resolveImport(settingsFile, '@/components/settings/autosave')).toBe(AUTOSAVE_MODULE);
+    // ⚠️ `../autosave` from settings/ resolves ELSEWHERE — it is caught by the
+    // matcher's by-name half, not by this equality, and that is why that half
+    // exists.
+    expect(resolveImport(settingsFile, '../autosave')).toBe('src/components/autosave');
+    expect(autosaveImportsIn(settingsFile, "import x from '../autosave';")).toEqual(['../autosave']);
+    // A bare package name is not a path and cannot be this module.
+    expect(resolveImport(settingsFile, 'sonner')).toBeNull();
+  });
 
   it('covers the money path and every destructive action by name', () => {
     const files = new Set(AUTOSAVE_EXCLUDED.map((e) => e.file));
