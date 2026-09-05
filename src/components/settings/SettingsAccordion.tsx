@@ -2,6 +2,35 @@
 import React, { useState, useCallback, ReactNode, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 import SectionHeading from './SectionHeading';
+/*
+ * THE-316 — the row card, composed rather than retyped.
+ *
+ *   Card         the row shell. It was `bg-surface-raised rounded-brand border
+ *                border-line shadow-[…] overflow-hidden` written by hand —
+ *                which is `card` reimplemented, down to the ring and the
+ *                clipped corners.
+ *   Collapsible  the disclosure. The row already WAS one: a button that
+ *                toggles a panel. What it was missing is everything the
+ *                primitive carries — `aria-expanded` on the trigger,
+ *                `aria-controls` pointing at the panel, and the panel's own
+ *                id — so a screen reader announced seven identical unlabelled
+ *                buttons and never said whether one was open.
+ *   Separator    the hairline between a row's header and its panel, in place
+ *                of a `border-t` on the panel div.
+ *
+ * ⚠️ The open-state is STILL this component's, not the primitive's. Each row is
+ * a controlled Collapsible reading one shared `expanded` id, so exactly one row
+ * is open at a time across the whole screen and `forceOpen` can still reach any
+ * row by id. Seven uncontrolled Collapsibles would have been seven independent
+ * open-states — a behaviour change, and this is a visual pass.
+ */
+import { Card } from '@/components/ui/card';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { Separator } from '@/components/ui/separator';
 
 interface SettingsSection {
   id: string;
@@ -81,30 +110,59 @@ const SettingsAccordion: React.FC<SettingsAccordionProps> = ({ sections, default
   }
 
   const row = (section: SettingsSection) => (
-    <div
+    /*
+     * ⚠️ Collapsible OUTSIDE, Card IS THE ROW — and neither is rendered THROUGH
+     * the other. Two earlier shapes were wrong for two different reasons:
+     *
+     *   `<Collapsible render={<Card/>}>` collapses both onto one element, and
+     *   the last `data-slot` written wins — the row came out stamped
+     *   `collapsible` with the card slot silently gone.
+     *
+     *   `<Card><Collapsible>…</Collapsible></Card>` keeps both slots, but puts
+     *   an element BETWEEN the row and its panel, so the row has exactly one
+     *   child whether it is open or shut. THE-183 reads "is this row expanded"
+     *   as "does the row have more than one child", and that reading — a row
+     *   holds its header, plus a panel while open — is the honest one. Nesting
+     *   the disclosure inside would have made every row look permanently shut.
+     *
+     * So the disclosure wraps the row and the row holds the two things it has
+     * always held. `data-settings-row` and the child-count contract are
+     * unchanged, and both primitives keep their own addressable slot.
+     */
+    <Collapsible
       key={section.id}
-      // Lets a test find a ROW by its id and see whether it is expanded,
-      // without reaching through the section content's own markup.
-      data-settings-row={section.id}
-      className="bg-surface-raised rounded-brand border border-line shadow-[var(--ds-sh-sm)] overflow-hidden"
+      open={expanded === section.id}
+      onOpenChange={() => toggle(section.id)}
     >
-      <button
-        onClick={() => toggle(section.id)}
-        className="w-full flex items-center gap-3 px-5 py-4 hover:bg-[color-mix(in_srgb,var(--surface-sunken)_60%,transparent)] transition-colors text-left"
+      <Card
+        // Lets a test find a ROW by its id and see whether it is expanded,
+        // without reaching through the section content's own markup.
+        data-settings-row={section.id}
+        // `gap-0` / `py-0` neutralise the primitive's own card padding: this
+        // card's padding belongs to the header and the panel individually,
+        // because the hairline between them has to run the full width.
+        className="gap-0 py-0 bg-surface-raised rounded-brand border border-line shadow-[var(--ds-sh-sm)] overflow-hidden"
       >
-        <span className={`flex items-center shrink-0 ${section.danger ? 'text-danger' : 'text-gold'}`}>{section.icon}</span>
-        <span className={`flex-1 text-sm font-semibold ${section.danger ? 'text-danger' : 'text-strong'}`}>{section.label}</span>
-        <ChevronDown
-          size={16}
-          className={`text-faint transition-transform ${expanded === section.id ? 'rotate-180' : ''}`}
-        />
-      </button>
-      {expanded === section.id && (
-        <div className="px-5 py-4 border-t border-line">
-          {section.content}
-        </div>
-      )}
-    </div>
+        <CollapsibleTrigger
+          className="w-full flex items-center gap-3 px-5 py-4 hover:bg-[color-mix(in_srgb,var(--surface-sunken)_60%,transparent)] transition-colors text-left"
+        >
+          <span className={`flex items-center shrink-0 ${section.danger ? 'text-danger' : 'text-gold'}`}>{section.icon}</span>
+          <span className={`flex-1 text-sm font-semibold ${section.danger ? 'text-danger' : 'text-strong'}`}>{section.label}</span>
+          <ChevronDown
+            size={16}
+            className={`text-faint transition-transform ${expanded === section.id ? 'rotate-180' : ''}`}
+          />
+        </CollapsibleTrigger>
+        {expanded === section.id && (
+          <CollapsibleContent>
+            <Separator />
+            <div className="px-5 py-4">
+              {section.content}
+            </div>
+          </CollapsibleContent>
+        )}
+      </Card>
+    </Collapsible>
   );
 
   return (

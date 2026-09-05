@@ -136,6 +136,62 @@ export const RECORDED_EDITS: ReadonlyArray<RecordedEdit> = [
       + 'the vendor documents no port-out, so releasing a number is irreversible.',
     digest: 'a0afe604b79bf19a5c8ce538992db49601319b258606e99f07709ce5358f5d41',
   },
+  {
+    file: 'src/components/AdminSettings.tsx',
+    ticket: 'THE-316',
+    why:
+      'THE VISUAL PASS, COMPOSED FROM THE INSTALLED PRIMITIVES. This screen imported nothing from '
+      + '@/components/ui/ and hand-rolled a card, two status banners, five buttons, three rows and a '
+      + 'modal out of raw divs; each is now the primitive that covers it — Item for the plan, Super '
+      + 'Admin and Customize Navigation rows, Alert for the two Stripe return banners, Button for '
+      + 'every action, Badge for the plan price, Separator for the danger rule, Dialog for the '
+      + 'cancel confirmation. NO ROW WAS ADDED, REMOVED OR REORDERED, no `group` changed and no '
+      + '`hidden:` clause changed, so the region grouping and every plan gate are exactly as they '
+      + 'were — which is what keeps the frozen sub-640px page skeleton intact: the pass lives inside '
+      + 'the row cards, never in the page frame. Three defects went with it. The Open Donations '
+      + "button carried the file's only inline style, `backgroundColor: 'var(--brand-color, "
+      + "#C9963A)'`, whose fallback is a literal colour that paints identically in all four "
+      + 'palettes; it is now Button\'s tokenised default variant and the file holds zero inline '
+      + 'styles. Cancel Subscription carried border-red-200 / text-red-600 / hover:bg-red-50, the '
+      + 'literal reds THE-183 reported and declined to bundle, and is now the destructive variant on '
+      + 'the same --destructive token the row header beside it already uses. The two banner '
+      + 'dismissals were bare buttons holding a bald ✕ glyph with no accessible name and now carry '
+      + 'aria-label="Dismiss" and a real icon. The plan price is DERIVED through formatPlanPrice via '
+      + 'PLANS_DISPLAY and is withheld from a tier with no subscription; no price literal was '
+      + 'introduced. The cancel-confirm modal keeps its z-[200] layer explicitly rather than '
+      + "inheriting the primitives' z-[101]/z-[102], so THE-286's tested stacking does not silently "
+      + 'drop 98 layers, and both answers keep their exact labels and exact handlers. Every action '
+      + 'takes a 44px touch floor below sm and hands back to Rule 4 above it.',
+    digest: 'e06f0882932827646e1effa6df01a93c9830e894d81dc318f584f76d8f0f21b6',
+  },
+  {
+    file: 'src/components/settings/SettingsAccordion.tsx',
+    ticket: 'THE-316',
+    why:
+      'THE ROW CARD, COMPOSED RATHER THAN RETYPED. The row shell was `bg-surface-raised '
+      + 'rounded-brand border border-line shadow-[…] overflow-hidden` written by hand, which is the '
+      + '`card` primitive reimplemented down to the clipped corners; it is now Card. The disclosure '
+      + 'was a bare button toggling a conditionally-rendered div — a Collapsible written out '
+      + 'longhand, and missing everything the primitive carries: the trigger now has aria-expanded '
+      + 'and aria-controls and the panel has the id they point at, so a screen reader no longer '
+      + 'meets seven identical unlabelled buttons with no stated open state. The border-t hairline '
+      + 'between header and panel is now Separator. 🔴 THE OPEN-STATE IS UNCHANGED AND STILL THIS '
+      + "COMPONENT'S: each row is a CONTROLLED Collapsible reading the one shared `expanded` id, so "
+      + 'exactly one row is open at a time across the whole screen and `forceOpen` still reaches any '
+      + 'row by id on the Stripe Connect return. Seven uncontrolled Collapsibles would have been '
+      + 'seven independent open-states, which is a behaviour change and this is a visual pass. Card '
+      + 'The disclosure WRAPS the row rather than nesting inside it: rendering Collapsible through '
+      + 'Card collapses both onto one node and the last data-slot written wins, so the card slot '
+      + 'vanished; nesting Collapsible inside Card instead put an element between the row and its '
+      + 'panel, so the row had one child open or shut and THE-183\'s "expanded means more than one '
+      + 'child" reading saw every row as permanently closed. Collapsible outside, Card as the row, '
+      + 'keeps both slots addressable AND the child-count contract intact. The '
+      + 'region nesting is untouched — heading OUTSIDE the row list, so the two space-y-2.5 levels '
+      + 'still compose to the uniform 10px the flat list had on a phone and no heading is counted as '
+      + 'a space-y sibling. data-settings-row and data-settings-region are still spelled on the same '
+      + 'elements, so every structural guard reads what it always read.',
+    digest: 'd9817387d1a498520525948319f2af38090f8cc1f81dbf78fb702ae491f84cd6',
+  },
 ];
 
 /** A ticket reference the register will accept. */
