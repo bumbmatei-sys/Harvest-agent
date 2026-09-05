@@ -106,7 +106,7 @@ export function QuizPanel({ quiz, attempt, onSubmit }: QuizPanelProps) {
                     optionClass = "border-line opacity-60";
                   }
                 } else if (isSelected) {
-                  optionClass = "border-gold bg-[#FBF3E4]";
+                  optionClass = "border-gold bg-[var(--surface-gold)]";
                 }
                 return (
                   <button
