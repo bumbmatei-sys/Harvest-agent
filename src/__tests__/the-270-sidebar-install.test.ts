@@ -149,7 +149,13 @@ const PRE_EXISTING_HOOKS = [
 
 /** As of 767ca9b. None is this PR's business; all are asserted in section 9. */
 const LAYOUT_SHA = 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5';
-const RULES_SHA = 'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499';
+// ⚠️ REGENERATED ONCE, by THE-313 (#462), which added the `servicePlans` rule
+// inside `match /tenants/{tenantId}` beside `events`: `allow read: if
+// belongsToTenant(tenantId)` and `allow write: if hasPermission('manageEvents',
+// tenantId)`. Purely additive — no existing rule's text moved and it names no new
+// helper, so every other claim this pin carries is unchanged.
+// Was: a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499
+const RULES_SHA = '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075';
 const GLOBALS_SHA = '772c79af681c2b97c496b91be4f2573415f2a65802dfac078dbc72e8a8fd3741';
 const COMPONENTS_JSON_SHA = '5102c25c44791f19be9a94380f85f6e78934feccbfce7fe9ec54c316e99a76b4';
 /** main's, as of 5b780e8 — proves this PR adds no dependency. */

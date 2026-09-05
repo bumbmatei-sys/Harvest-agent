@@ -1338,7 +1338,13 @@ describe('10 — firestore.rules and functions/ are untouched', () => {
     // push to main touching it — and CI runs no emulator rules tests, so
     // nothing else in the pipeline would catch an edit.
     expect(sha256(src('firestore.rules')))
-      .toBe('a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499');
+      // ⚠️ REGENERATED ONCE, by THE-313 (#462), which added the `servicePlans` rule
+      // inside `match /tenants/{tenantId}` beside `events`: `allow read: if
+      // belongsToTenant(tenantId)` and `allow write: if hasPermission('manageEvents',
+      // tenantId)`. Purely additive — no existing rule's text moved and it names no new
+      // helper, so every other claim this pin carries is unchanged.
+      // Was: a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499
+      .toBe('4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075');
   });
 
   it('🔴 nothing under functions/ moved — every file, not just the entry point', () => {

@@ -733,7 +733,13 @@ describe('no Stripe Connect route, donation route, fee or receipt path changed',
     'src/app/campaign/[campaignId]/page.tsx':
       '4e7181866e9487913ef7e458229c950e0f1b94572e2b4cdf5619cc6c26ffdcf8',
     'firestore.rules':
-      'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499',
+      // ⚠️ REGENERATED ONCE, by THE-313 (#462), which added the `servicePlans` rule
+      // inside `match /tenants/{tenantId}` beside `events`: `allow read: if
+      // belongsToTenant(tenantId)` and `allow write: if hasPermission('manageEvents',
+      // tenantId)`. Purely additive — no existing rule's text moved and it names no new
+      // helper, so every other claim this pin carries is unchanged.
+      // Was: a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499
+      '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075',
     'functions/src/index.ts':
       '39ccade96ac3d4dd5a13047e9bc42b54ef5ac59ae72f932af042fc814bf23e0b',
   };

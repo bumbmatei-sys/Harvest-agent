@@ -161,7 +161,13 @@ const PINNED: ReadonlyArray<readonly [string, ...string[]]> = [
   ['src/lib/theme-runtime.ts', '499d75f3ee336303d247c02a38c7bcc2338206609066da420842795745d9dee3'],
   ['src/lib/theme.ts', '97d2f057fa04f85f33a1faa0dc196324d51770c6032ca9b4d21e467dfd70d8de'],
   ['src/components/layout/form-layout.ts', 'aa62c7e8c339b35222d9b305be5acf9c6e4c52543174030d8977457fa961ed48'],
-  ['firestore.rules', 'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499'],
+  // ⚠️ REGENERATED ONCE, by THE-313 (#462), which added the `servicePlans` rule
+  // inside `match /tenants/{tenantId}` beside `events`: `allow read: if
+  // belongsToTenant(tenantId)` and `allow write: if hasPermission('manageEvents',
+  // tenantId)`. Purely additive — no existing rule's text moved and it names no new
+  // helper, so every other claim this pin carries is unchanged.
+  // Was: a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499
+  ['firestore.rules', '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075'],
   ['storage.rules', 'a9b065824c9754007d920926d36081a286190e69c0ce3042242b2eb6da321414'],
   ['firebase.json', 'd87b1c34f95a561f17a3f7b53bf958af404e0beec28b9b4c1f9b9cf19887265c'],
   ['functions/.gcloudignore', '9c20b803e45cd91612bcc0113d5e925422cd5c90686feaa4487e0349ae0951b2'],

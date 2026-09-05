@@ -23,8 +23,9 @@
     "src/lib/member-erasure-copy.ts": "e8a5a2413e76e1a471286186603ed0e587c644823db276879f2b7f646ef14f4c"
   },
   "recordedFrom": "625e3ebbacdabf8bba0be9565aaa90d14c755e36",
+  "rulesAndFunctionsNote": "firestore.rules was a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499 until THE-313 (#462) added the servicePlans rule inside match /tenants/{tenantId} beside events — allow read: if belongsToTenant(tenantId), allow write: if hasPermission('manageEvents', tenantId). Purely additive: no existing rule text moved and it names no new helper, so every other digest here is unchanged. JSON carries no comments, so the old value and the reason are recorded in this key rather than above the line.",
   "rulesAndFunctions": {
-    "firestore.rules": "a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499",
+    "firestore.rules": "4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075",
     "functions/.gcloudignore": "9c20b803e45cd91612bcc0113d5e925422cd5c90686feaa4487e0349ae0951b2",
     "functions/package-lock.json": "bbe18ca8fb92c17d72a991069017be73116d885643dcf681599a958aa3e31681",
     "functions/package.json": "33846d2de1bef5e32ab53a5fb37373aa725aab06a6dd12d2e81a1c69ac6034eb",

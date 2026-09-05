@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 
 /**
  * 🔴 THE RIG THAT PROVES THERE IS ONE DEFINITION OF COMPLETE.
@@ -726,11 +727,40 @@ describe('7 — the progress model, the editor and the adoption gate are untouch
    */
   const THE_305 = ['src/components/AdminCourseEditor.tsx'];
 
+  /**
+   * ⚠️ THE-313 EDITS firestore.rules, for the same reason and by the same
+   * treatment. #462 added the `servicePlans` rule — `allow read: if
+   * belongsToTenant(tenantId)` / `allow write: if hasPermission('manageEvents',
+   * tenantId)`, inside `match /tenants/{tenantId}` beside `events` — and that
+   * file AUTO-DEPLOYS TO PRODUCTION ON MERGE, so it is already live.
+   *
+   * 🔴 NAMED, NOT DROPPED, AND NOT LOOSENED. `firestore.rules` stays in `PINNED`
+   * and THE-282's claim about it is unchanged: this ticket did not touch it. A
+   * FIFTH name appearing in the diff still fails. And because "not in the diff"
+   * is the one thing that can no longer be said of it, the file is pinned the
+   * way the other 41 guards in this repo pin it instead — to the SET of accepted
+   * digests, which is strictly a statement about content rather than about which
+   * branch you are on. Both values are accepted because CI runs against
+   * `refs/pull/N/merge`: a merge ref cut before #462 landed legitimately carries
+   * the older one. A digest that is neither still fails.
+   */
+  const THE_313 = ['firestore.rules'];
+  const RULES_ACCEPTED = [
+    // main before #462
+    'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499',
+    // main + THE-313 (#462) — the servicePlans rule
+    '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075',
+  ];
+  const rulesDigest = () =>
+    createHash('sha256').update(readFileSync(path.join(ROOT, 'firestore.rules'))).digest('hex');
+
   it('🔴 every pinned file is byte-identical to the base branch', () => {
     // ⚠️ One `git diff` over the set, at collection time — not a `git show` per
     // assertion. A name printed here is a file this ticket had no business in.
     expect(
-      changedSince(...PINNED, 'functions/').filter((f) => !THE_305.includes(f)),
+      changedSince(...PINNED, 'functions/').filter(
+        (f) => !THE_305.includes(f) && !THE_313.includes(f),
+      ),
       'these pinned files were modified',
     ).toEqual([]);
   });
@@ -739,9 +769,18 @@ describe('7 — the progress model, the editor and the adoption gate are untouch
     // The exemption is one file wide and must stay that way. Stated as its own
     // assertion so widening it is an edit to this line, visible in review.
     expect(THE_305).toEqual(['src/components/AdminCourseEditor.tsx']);
-    for (const f of ['src/components/CoursePage.tsx', 'src/utils/course-adoption.ts', 'firestore.rules']) {
+    for (const f of ['src/components/CoursePage.tsx', 'src/utils/course-adoption.ts']) {
       expect(changedSince(f), `${f} was modified`).toEqual([]);
     }
+  });
+
+  it('🔴 and firestore.rules is the ONLY one THE-313 touched, at an accepted digest', () => {
+    // Same shape as the case above: one file wide, widening it is an edit to
+    // this line. The digest is what replaces the diff check for this file, so
+    // an edit that is NOT #462's rule fails here rather than passing unseen.
+    expect(THE_313).toEqual(['firestore.rules']);
+    expect(RULES_ACCEPTED, `firestore.rules is at ${rulesDigest()}, which is neither accepted value`)
+      .toContain(rulesDigest());
   });
 
   it('🔴 the completedLessons read and write are exactly where they were', () => {

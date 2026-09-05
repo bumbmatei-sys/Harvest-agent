@@ -916,7 +916,13 @@ describe('12 — AdminDocs.tsx, AdminDashboardHome.tsx, firestore.rules and func
   const UNTOUCHED: Record<string, string> = {
     'src/components/AdminDocs.tsx': '5fcb116153258c951936094edf64a5a4abc7be6222f1d5a9fbc25760d99e1368',
     'src/components/AdminDashboardHome.tsx': 'b256a71dcf562c27945e8b586b6e46cf8426bef0a6ea71280102af1df2c9becc',
-    'firestore.rules': 'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499',
+    // ⚠️ REGENERATED ONCE, by THE-313 (#462), which added the `servicePlans` rule
+    // inside `match /tenants/{tenantId}` beside `events`: `allow read: if
+    // belongsToTenant(tenantId)` and `allow write: if hasPermission('manageEvents',
+    // tenantId)`. Purely additive — no existing rule's text moved and it names no new
+    // helper, so every other claim this pin carries is unchanged.
+    // Was: a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499
+    'firestore.rules': '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075',
     'functions/src/index.ts': '39ccade96ac3d4dd5a13047e9bc42b54ef5ac59ae72f932af042fc814bf23e0b',
   };
 

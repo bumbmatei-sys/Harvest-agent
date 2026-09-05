@@ -250,6 +250,16 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
   ],
   'firestore.rules': [
     ['a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499', 'unchanged since 5e06c67'],
+    // THE-313 (#462) wrote the `servicePlans` rule: `allow read: if
+    // belongsToTenant(tenantId)` / `allow write: if hasPermission('manageEvents',
+    // tenantId)`, inside `match /tenants/{tenantId}` beside `events`. It is
+    // deployed — `firestore.rules` auto-deploys on merge.
+    //
+    // 🔴 APPENDED, NEVER SUBSTITUTED. The value above is still accepted, because
+    // CI runs against `refs/pull/N/merge` and a merge ref cut before #462 landed
+    // legitimately carries it. A digest that is NEITHER — this ticket editing the
+    // file — still fails, which is the entire threat this guard exists for.
+    ['4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075', 'main + THE-313 (#462) — the servicePlans rule'],
   ],
   'firestore.indexes.json': [
     ['8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0', 'main at 625e3eb'],

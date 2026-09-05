@@ -508,6 +508,17 @@ service cloud.firestore {
         allow write: if hasPermission('manageEvents', tenantId);
       }
 
+      // THE-313 — the order of service. Write is manageEvents verbatim:
+      // planning a service is the same authority as running the event it
+      // belongs to. Read is NARROWER than events (isAuthenticated) because a
+      // run sheet names volunteers, so it is tenant-member material — the
+      // same reasoning forms uses. Neither half reads resource.data, so an
+      // unfiltered LIST is accepted and the where(eventId) query needs nothing.
+      match /servicePlans/{planId} {
+        allow read:  if belongsToTenant(tenantId);
+        allow write: if hasPermission('manageEvents', tenantId);
+      }
+
       match /registrations/{regId} {
         allow read: if isAuthenticated() && (isTenantAdmin(tenantId) || resource.data.userId == request.auth.uid);
         allow create: if isAuthenticated() && belongsToTenant(tenantId) &&
