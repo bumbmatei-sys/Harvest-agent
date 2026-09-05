@@ -67,6 +67,16 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
    */
   'firestore.rules': [
     ['a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499', 'main at 5f431e3, unchanged since 6c9425d'],
+    // THE-313 (#462) wrote the `servicePlans` rule: `allow read: if
+    // belongsToTenant(tenantId)` / `allow write: if hasPermission('manageEvents',
+    // tenantId)`, inside `match /tenants/{tenantId}` beside `events`. It is
+    // deployed — `firestore.rules` auto-deploys on merge.
+    //
+    // 🔴 APPENDED, NEVER SUBSTITUTED. The value above is still accepted, because
+    // CI runs against `refs/pull/N/merge` and a merge ref cut before #462 landed
+    // legitimately carries it. A digest that is NEITHER — this ticket editing the
+    // file — still fails, which is the entire threat this guard exists for.
+    ['4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075', 'main + THE-313 (#462) — the servicePlans rule'],
   ],
   /**
    * 🔴 `firestore.indexes.json` DOES NOT DEPLOY. `deploy-rules.yml` runs
@@ -168,37 +178,75 @@ describe('firestore.rules, the indexes file and the event write paths are byte-i
   });
 });
 
-/* ═══ The rule this ticket needs, and does not write ═════════════════════════ */
+/* ═══ The rule this ticket reported, and #462 wrote ═════════════════════════ */
 
 /**
- * 🔴 STOP CONDITION 2, DISCHARGED IN CODE AS WELL AS IN THE REPORT.
+ * 🔴 STOP CONDITION 2, AND THE HANDOVER IT PROMISED, TAKEN.
  *
- * `tenants/{t}/servicePlans` is governed by NOTHING today, so every read and
- * write this feature makes is `permission-denied` until a rule deploys. That is
- * default deny, which is the safe failure — but it is a failure, so the exact
- * rule is pinned here rather than left in prose that a later ticket has to find.
+ * As first written this block pinned two things: the TEXT of the rule this
+ * ticket asked for, and the fact that `firestore.rules` DID NOT YET CONTAIN IT
+ * — "when the rule lands, this assertion flips and the ticket that lands it
+ * updates this block". #462 landed it, so the negative half is RETIRED here.
  *
- * ⚠️ The pin is on the TEXT of the rule this ticket asks for, and on the fact
- * that `firestore.rules` DOES NOT YET CONTAIN IT. When the rule lands, this
- * assertion flips and the ticket that lands it updates this block — which is
- * the visible handover, rather than a silent one.
+ * ⚠️ RETIRED, NOT DELETED, AND NOT REPLACED BY AN ESCAPE HATCH.
+ * `THE-312.settings-freeze-registers.test.tsx` records the trap around line
+ * 461: copying the neighbouring hatch — `if (state changed) return;` in front
+ * of `expect(state)` — is vacuous BY CONSTRUCTION, and a guard that cannot fail
+ * is worse than the failure it replaces, because it looks green while what it
+ * polices rots. So both states below assert, and neither returns.
+ *
+ * 🔴 THE STAND-DOWN SIGNAL IS THE ACCEPTED-DIGEST SET, NOT THIS BRANCH'S DIFF.
+ * CI runs against `refs/pull/N/merge`, so a merge ref cut before #462 landed
+ * legitimately carries the pre-#462 file and the rule is legitimately absent
+ * there. `RULES_BEFORE_462` asks WHICH accepted value the file is at — the same
+ * base-ref question THE-312 asks with `cat-file`, answered from the set this
+ * file already pins, because §18 forbids this suite shelling out at assertion
+ * time and that guard is not weakened to make room for this one. A digest that
+ * is neither has already failed above.
  */
 const REQUIRED_RULE = `      match /servicePlans/{planId} {
         allow read: if belongsToTenant(tenantId);
         allow write: if hasPermission('manageEvents', tenantId);
       }`;
 
-describe('the firestore.rules rule this ticket needs is reported, not written', () => {
-  it('firestore.rules does not yet govern servicePlans — the feature is denied until it does', () => {
+/**
+ * The pre-#462 value of `firestore.rules`, from `UNTOUCHED` above — the state in
+ * which the rule is legitimately not there yet.
+ */
+const RULES_BEFORE_462 = 'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499';
+
+/**
+ * Runs of spaces and tabs collapsed. #462 aligns the two `if`s a column apart
+ * (`allow read:  if`), which is the ONLY difference from the text reported
+ * above — compared this way rather than by a second literal that would drift
+ * from the first.
+ */
+const collapseSpaces = (s: string): string => s.replace(/[ \t]+/g, ' ');
+
+describe('the firestore.rules rule this ticket reported is written', () => {
+  it('firestore.rules governs servicePlans, by the rule THE-313 reported', () => {
     const rules = read('firestore.rules');
-    expect(rules).not.toContain('servicePlans');
-    expect(rules).not.toContain(REQUIRED_RULE);
+    if (sha256(rules) === RULES_BEFORE_462) {
+      // The pre-#462 merge ref. The original claim, byte for byte: the feature
+      // is `permission-denied` until the rule deploys, which is default deny —
+      // the safe failure, but a failure.
+      expect(rules, 'the rule was written after all').not.toContain('servicePlans');
+      expect(rules).not.toContain(REQUIRED_RULE);
+      return;
+    }
+    // #462 is in. The rule is there, and reads what this ticket reported —
+    // which is what stops a later edit loosening `belongsToTenant` to
+    // `isAuthenticated`, or the write half to something wider than events'.
+    expect(rules, 'the servicePlans rule is gone — every read and write is denied again')
+      .toContain('match /servicePlans/{planId} {');
+    expect(collapseSpaces(rules), 'the servicePlans rule no longer reads what THE-313 reported')
+      .toContain(collapseSpaces(REQUIRED_RULE));
   });
 
-  it('the rule it needs is spelled from helpers firestore.rules already defines', () => {
+  it('the rule is spelled from helpers firestore.rules already defines', () => {
     const rules = read('firestore.rules');
-    // 🔴 No new helper. Both of these already exist and are used by sibling
-    // collections, so the rule below adds no vocabulary to that file.
+    // 🔴 No new helper. Both of these already existed and are used by sibling
+    // collections, so the rule adds no vocabulary to that file.
     expect(rules).toMatch(/function belongsToTenant\(/);
     expect(rules).toMatch(/function hasPermission\(/);
     // The write half is `events`' own permission, verbatim — planning a service
@@ -210,14 +258,14 @@ describe('the firestore.rules rule this ticket needs is reported, not written', 
     expect(rules).toContain('allow read: if belongsToTenant(tenantId);');
   });
 
-  it('and it belongs inside match /tenants/{tenantId}, beside events', () => {
+  it('and it sits inside match /tenants/{tenantId}, beside events', () => {
     const rules = read('firestore.rules');
     const tenants = rules.indexOf('match /tenants/{tenantId} {');
     const events = rules.indexOf('match /events/{eventId} {', tenants);
     expect(tenants).toBeGreaterThan(-1);
     expect(events).toBeGreaterThan(tenants);
-    // The rule text is a literal in this file so the ticket that deploys it can
-    // paste it rather than reconstruct it.
+    // The rule text stays a literal in this file: it is what the two assertions
+    // above compare against, so it is checked rather than assumed intact.
     expect(REQUIRED_RULE.split('\n')).toHaveLength(4);
   });
 });

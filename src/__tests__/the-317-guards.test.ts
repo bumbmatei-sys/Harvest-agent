@@ -547,23 +547,29 @@ describe('firestore.rules and functions/ are untouched', () => {
    * emulator tests, so a rule written here reaches every church the moment this
    * lands with nothing having exercised it. This ticket does not touch it.
    */
-  const RULES_SHA = 'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499';
+  // ⚠️ REGENERATED ONCE, by THE-313 (#462), which added the `servicePlans` rule
+  // inside `match /tenants/{tenantId}` beside `events`: `allow read: if
+  // belongsToTenant(tenantId)` and `allow write: if hasPermission('manageEvents',
+  // tenantId)`. Purely additive — no existing rule's text moved and it names no new
+  // helper, so every other claim this pin carries is unchanged.
+  // Was: a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499
+  const RULES_SHA = '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075';
 
   it('firestore.rules is byte-identical', () => {
     expect(sha256(read('firestore.rules'))).toBe(RULES_SHA);
   });
 
-  it('🔴 and the rule this feature NEEDS is pinned here, unwritten, for part 3 to deploy', () => {
+  it('🔴 and the rule this feature NEEDS is written, reading exactly as reported', () => {
     /**
-     * ⚠️ IT IS THE SAME RULE #449 ALREADY REPORTED, UNCHANGED — this ticket
-     * needs nothing added to it, which is worth saying rather than assuming.
-     * The rota's read is an unfiltered LIST of the same collection
+     * ⚠️ IT IS THE SAME RULE #449 REPORTED, AND #462 WROTE IT UNCHANGED. This
+     * ticket needed nothing added to it, which is worth saying rather than
+     * assuming. The rota's read is an unfiltered LIST of the same collection
      * (`where('isTemplate','==',false)`) and neither half reads
      * `resource.data`, so a list is accepted as written; the write is part 1's
      * own `saveServicePlanItems` under `manageEvents`, which the admin doing
      * the rota already holds.
      *
-     * It goes INSIDE `match /tenants/{tenantId}`, beside the existing `events`
+     * It sits INSIDE `match /tenants/{tenantId}`, beside the existing `events`
      * block:
      *
      *     match /servicePlans/{planId} {
@@ -571,14 +577,29 @@ describe('firestore.rules and functions/ are untouched', () => {
      *       allow write: if hasPermission('manageEvents', tenantId);
      *     }
      *
-     * 🔴 UNTIL IT DEPLOYS, EVERY READ IS `permission-denied` — and the rota
-     * SAYS SO rather than rendering an empty week grid. That is section 4 of
-     * the behaviour suite.
+     * 🔴 RETIRED, NOT DELETED. What this case asserted was the rule's ABSENCE
+     * — true until #462 and false the moment it landed, so it is flipped to the
+     * claim that survives: the rule is there and reads what was reported. That
+     * is the half worth policing now, because a later edit loosening
+     * `belongsToTenant` to `isAuthenticated` would put a run sheet naming
+     * volunteers in front of any signed-in user.
+     *
+     * ⚠️ NO STAND-DOWN GATE HERE, and deliberately. Section 16 forbids this
+     * suite asking the repository's history anything at all, and `RULES_SHA`
+     * above already pins WHICH `firestore.rules` this run is looking at — so
+     * there is one state, not two, and a gate would be the vacuous hatch
+     * `THE-312.settings-freeze-registers.test.tsx` records around line 461
+     * rather than a signal. Section 4 of the behaviour suite still covers the
+     * rota SAYING it is denied rather than rendering an empty week grid.
      */
     const rules = read('firestore.rules');
-    expect(rules, 'the rule was written after all').not.toContain('servicePlans');
-    // The two helpers it names must still exist, or the rule as reported is
-    // wrong the day somebody pastes it in.
+    expect(rules, 'the servicePlans rule is gone — every rota read is denied again')
+      .toContain('match /servicePlans/{planId} {');
+    // Both halves, verbatim. The read is NARROWER than `events`' own
+    // `isAuthenticated()`, which is the whole point of it.
+    expect(rules).toContain('allow read:  if belongsToTenant(tenantId);');
+    expect(rules).toContain("allow write: if hasPermission('manageEvents', tenantId);");
+    // The two helpers it names must still exist, or the rule is wrong.
     expect(rules).toContain('function belongsToTenant(');
     expect(rules).toContain('function hasPermission(');
     // And the `events` block it sits beside is still there to sit beside.

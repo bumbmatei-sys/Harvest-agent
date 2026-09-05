@@ -1227,7 +1227,13 @@ describe('12 — firestore.rules and functions/ are byte-identical', () => {
   // firestore.rules auto-deploys to production on merge to main; functions/
   // is a separate Cloud Functions build. A theme decision touches neither.
   const UNTOUCHED: Record<string, string> = {
-    'firestore.rules': 'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499',
+    // ⚠️ REGENERATED ONCE, by THE-313 (#462), which added the `servicePlans` rule
+    // inside `match /tenants/{tenantId}` beside `events`: `allow read: if
+    // belongsToTenant(tenantId)` and `allow write: if hasPermission('manageEvents',
+    // tenantId)`. Purely additive — no existing rule's text moved and it names no new
+    // helper, so every other claim this pin carries is unchanged.
+    // Was: a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499
+    'firestore.rules': '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075',
     'functions/.gcloudignore': '9c20b803e45cd91612bcc0113d5e925422cd5c90686feaa4487e0349ae0951b2',
     'functions/package-lock.json': 'bbe18ca8fb92c17d72a991069017be73116d885643dcf681599a958aa3e31681',
     'functions/package.json': '33846d2de1bef5e32ab53a5fb37373aa725aab06a6dd12d2e81a1c69ac6034eb',

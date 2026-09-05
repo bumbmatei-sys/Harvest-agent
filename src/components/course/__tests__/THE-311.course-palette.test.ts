@@ -6,6 +6,7 @@
 // `THE-311.course-palette.layout.test.tsx`, in real Chromium.
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import postcss from 'postcss';
@@ -706,9 +707,36 @@ describe('12 — no emoji in the course source', () => {
   });
 });
 
+/**
+ * `firestore.rules` AUTO-DEPLOYS TO PRODUCTION ON MERGE, and #462 (THE-313)
+ * added the `servicePlans` rule to it — `allow read: if
+ * belongsToTenant(tenantId)` / `allow write: if hasPermission('manageEvents',
+ * tenantId)`, inside `match /tenants/{tenantId}` beside `events`.
+ *
+ * 🔴 SO THE FILE IS PINNED BY CONTENT, NOT BY DIFF — the way the other 41
+ * guards in this repo pin it. "Not in the diff against main" is a statement
+ * about which branch you are on, and it stopped being true of this file the
+ * moment another ticket legitimately landed on it; the accepted-digest SET says
+ * the same thing about CONTENT and is true on any branch. BOTH values are
+ * accepted because CI runs against `refs/pull/N/merge`, so a merge ref cut
+ * before #462 landed carries the older one. A digest that is NEITHER — this
+ * ticket editing the file — still fails, which is the entire threat.
+ */
+const RULES_ACCEPTED = [
+  'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499', // main before #462
+  '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075', // main + THE-313 (#462)
+];
+const rulesDigest = (): string =>
+  createHash('sha256').update(readFileSync(path.join(ROOT, 'firestore.rules'))).digest('hex');
+
 describe('13 — firestore.rules, functions/ and layout.tsx are byte-identical', () => {
-  it.each(['firestore.rules', 'functions/', 'src/app/layout.tsx'])('%s', (p) => {
+  it.each(['functions/', 'src/app/layout.tsx'])('%s', (p) => {
     expect(changed(p), `${p} was modified`).toEqual([]);
+  });
+
+  it('firestore.rules', () => {
+    expect(RULES_ACCEPTED, `firestore.rules is at ${rulesDigest()}, which is neither accepted value`)
+      .toContain(rulesDigest());
   });
 });
 

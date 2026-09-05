@@ -704,7 +704,13 @@ describe('layout.tsx, firestore.rules and functions/ are byte-identical', () => 
     // layout.tsx carries the pre-paint theme script and is hash-pinned by THE-85.
     ['src/app/layout.tsx', 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5'],
     // firestore.rules auto-deploys to production on merge to main.
-    ['firestore.rules', 'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499'],
+    // ⚠️ REGENERATED ONCE, by THE-313 (#462), which added the `servicePlans` rule
+    // inside `match /tenants/{tenantId}` beside `events`: `allow read: if
+    // belongsToTenant(tenantId)` and `allow write: if hasPermission('manageEvents',
+    // tenantId)`. Purely additive — no existing rule's text moved and it names no new
+    // helper, so every other claim this pin carries is unchanged.
+    // Was: a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499
+    ['firestore.rules', '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075'],
     ['functions/src/index.ts', '39ccade96ac3d4dd5a13047e9bc42b54ef5ac59ae72f932af042fc814bf23e0b'],
   ])('%s', (rel, digest) => {
     expect(sha256(readFileSync(path.join(REPO_ROOT, rel))), `${rel} changed`).toBe(digest);

@@ -810,7 +810,13 @@ describe('firestore.rules, firestore.indexes.json and functions/ byte-identical'
   // subcollection with no `where`, ordered by documentId(), which the automatic
   // single-field index already answers.
   const UNTOUCHED: Record<string, string> = {
-    'firestore.rules': 'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499',
+    // ⚠️ REGENERATED ONCE, by THE-313 (#462), which added the `servicePlans` rule
+    // inside `match /tenants/{tenantId}` beside `events`: `allow read: if
+    // belongsToTenant(tenantId)` and `allow write: if hasPermission('manageEvents',
+    // tenantId)`. Purely additive — no existing rule's text moved and it names no new
+    // helper, so every other claim this pin carries is unchanged.
+    // Was: a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499
+    'firestore.rules': '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075',
     'firestore.indexes.json': '8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0',
   };
 
