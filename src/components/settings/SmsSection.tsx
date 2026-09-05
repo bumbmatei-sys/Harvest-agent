@@ -3,6 +3,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { authFetch } from '../../utils/auth-fetch';
 import { SMS_FEATURE_ENABLED } from '../../lib/sms-feature';
 import { CONTROL_DENSITY, FIELD_WIDTH, ACTION_BUTTON } from '../layout/form-layout';
+// THE-318 — the installed primitive for an action-styled link. Used rather than
+// a hand-rolled anchor so the KYC destination carries the same focus ring and
+// palette treatment as every other action on this screen.
+import { Button } from '@/components/ui/button';
 
 /**
  * THE-314 — the ministry's phone number: search, buy, see, release.
@@ -68,6 +72,11 @@ const SmsNumberPanel: React.FC = () => {
   const [busy, setBusy] = useState('');
   const [confirmRelease, setConfirmRelease] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  /** 🔴 THE-318 — the identity-check address a regulated country answers with.
+   * Held separately from `msg` because it is an ACTION, not a sentence: an
+   * admin told "an identity check is needed" with no way to reach it cannot
+   * finish, and the number is never ordered until they do. */
+  const [kycUrl, setKycUrl] = useState<string | null>(null);
 
   /** The single re-read. Every mutation below ends by calling this rather than
    * setting state from its own response, so what the screen shows is always
@@ -105,16 +114,29 @@ const SmsNumberPanel: React.FC = () => {
   const buy = async () => {
     setBusy('buy');
     setMsg(null);
+    setKycUrl(null);
     try {
       const r = await authFetch('/api/sms/numbers', {
         method: 'POST',
         body: JSON.stringify({ country, areaCode: areaCode.trim() || undefined }),
       });
       const d = await r.json().catch(() => ({}));
+      // 🔴 THE-318 — a 202 is NOT a purchase. The provider answers
+      // `kyc_required` before ordering anything, so saying "ordered" there
+      // would be a false claim on a screen about money: nothing exists and
+      // nothing is being billed until the check is done.
+      if (d.kycUrl) setKycUrl(typeof d.kycUrl === 'string' ? d.kycUrl : null);
       setMsg(
-        r.ok
-          ? { ok: true, text: d.kycUrl ? 'Ordered. An identity check is needed before it activates.' : 'Number bought.' }
-          : { ok: false, text: d.error || 'Could not buy a number.' },
+        d.kycUrl
+          ? {
+              ok: false,
+              text:
+                d.error ||
+                'This country needs an identity check before the number can be ordered. Nothing has been charged yet.',
+            }
+          : r.ok
+            ? { ok: true, text: 'Number bought.' }
+            : { ok: false, text: d.error || 'Could not buy a number.' },
       );
     } finally {
       setBusy('');
@@ -266,7 +288,18 @@ const SmsNumberPanel: React.FC = () => {
 
       {msg && (
         <div className={`p-3 rounded-xl text-sm ${msg.ok ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}`}>
-          {msg.text}
+          <p>{msg.text}</p>
+          {kycUrl && (
+            // ≥44px below `sm`; the primitive's own 32px height is the settled
+            // desktop band from `sm:` up, so the minimum is released there.
+            <Button
+              variant="link"
+              className="mt-2 min-h-[44px] sm:min-h-0"
+              render={<a href={kycUrl} target="_blank" rel="noopener noreferrer" />}
+            >
+              Complete the identity check
+            </Button>
+          )}
         </div>
       )}
     </div>

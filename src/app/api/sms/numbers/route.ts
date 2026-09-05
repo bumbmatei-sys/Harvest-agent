@@ -10,6 +10,7 @@ import {
   zernioReleaseNumber,
   zernioEnableSms,
   zernioReuseRegistration,
+  zernioSmsNumberType,
 } from '@/lib/zernio';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
 import { SMS_FEATURE_ENABLED, SMS_HIDDEN_MESSAGE } from '@/lib/sms-feature';
@@ -142,20 +143,136 @@ export async function POST(request: NextRequest) {
   // another number and starts another monthly charge.
   const purchaseIntentId = `harvest-${tenantId}`;
 
+  const country = body.country || 'US';
+
+  /**
+   * 🔴 THE-318 — WHICH TYPE CAN TEXT, asked BEFORE the money is spent.
+   *
+   * `wantsSms: true` requires an SMS-capable number type, and the type that is
+   * SMS-capable is per country. The vendor's availability endpoint answers both
+   * questions at once for the SMS pool specifically.
+   *
+   * ⚠️ A LOOKUP FAILURE DOES NOT BLOCK THE PURCHASE — see `zernioSmsNumberType`.
+   * `wantsSms: true` is sent either way, so the worst case is the vendor
+   * refusing loudly, never a silent voice-only number. But a definite
+   * `available: false` DOES block it: that is the vendor saying it has no
+   * SMS-capable stock for this country, and buying anyway would charge a church
+   * for a number that cannot text — precisely this ticket's defect.
+   */
+  const pool = await zernioSmsNumberType(country);
+  if (pool.available === false) {
+    return NextResponse.json(
+      {
+        error: `There are no SMS-capable numbers available in ${country} right now. Please try another country, or try again later.`,
+        code: 'SMS_POOL_UNAVAILABLE',
+      },
+      { status: 409 },
+    );
+  }
+
   const bought = await zernioPurchaseNumber({
     profileId: tenantId,
-    country: body.country || 'US',
+    country,
     areaCode: (body.areaCode || '').replace(/\D/g, '') || undefined,
     purchaseIntentId,
+    ...(pool.numberType ? { numberType: pool.numberType } : {}),
+    /**
+     * 🔴 HARVEST IS THE RESELLER: ONE VENDOR ACCOUNT, EVERY CHURCH.
+     *
+     * The vendor rejects any second purchase within 10 minutes of a previous
+     * one with 409 PURCHASE_VELOCITY, as duplicate protection for a single
+     * buyer. Under the reseller model that window spans DIFFERENT CUSTOMERS:
+     * two churches signing up ten minutes apart is an ordinary Tuesday, and the
+     * second one would be told its purchase failed.
+     *
+     * ⚠️ Harvest does not lose the protection by confirming here, because it
+     * never relied on the vendor's window for it. Duplicate protection is
+     * enforced ABOVE this call and more precisely: the one-number-per-ministry
+     * check a few lines up refuses a second purchase for the same tenant
+     * outright, and `purchaseIntentId` is derived from the tenant so a retry
+     * replays the original order rather than buying again. What the vendor's
+     * window would actually catch here is one church's double-click, which
+     * those two already catch — and what it would block is another church.
+     */
+    allowMultiple: true,
   });
 
   if (!bought.ok || !bought.data) {
-    // A regulated country answers with an identity-check URL rather than a
-    // number. Passed through so the admin can complete it; Harvest neither
-    // collects nor stores the documents.
-    return NextResponse.json({ error: bought.error || 'Could not buy a number.' }, { status: 502 });
+    // 🔴 THE-318 — the vendor's 409s mean opposite things and are answered
+    // separately. Collapsed into one "Provider error 409" they told an admin
+    // nothing they could act on, and one of them is not even a fault.
+    if (bought.code === 'PURCHASE_VELOCITY') {
+      return NextResponse.json(
+        {
+          error:
+            'Another number was bought on the platform in the last few minutes, so the provider is holding this order back. Nothing was charged — please try again in about ten minutes.',
+          code: 'PURCHASE_VELOCITY',
+        },
+        { status: 409 },
+      );
+    }
+    if (bought.code === 'AREA_CODE_UNAVAILABLE') {
+      // The vendor FAILS rather than assigning a number from another area, so
+      // the request is answerable: the area is empty, choose another. Saying so
+      // is the difference between an admin retrying usefully and giving up.
+      return NextResponse.json(
+        {
+          error: `There are no numbers available in area code ${(body.areaCode || '').replace(/\D/g, '')}. Nothing was charged — please choose a different area code, or leave it blank for any area.`,
+          code: 'AREA_CODE_UNAVAILABLE',
+        },
+        { status: 409 },
+      );
+    }
+    return NextResponse.json(
+      { error: bought.error || 'Could not buy a number.', ...(bought.code ? { code: bought.code } : {}) },
+      { status: bought.status === 409 ? 409 : 502 },
+    );
   }
   const number = bought.data;
+
+  /**
+   * 🔴 THE-318 — a regulated country answers 202 `kyc_required`: NOTHING was
+   * ordered and nothing is billed, but there IS an address the church must
+   * visit. It carries no number, so nothing is recorded — writing a number
+   * record here would claim a purchase that did not happen.
+   *
+   * ⚠️ Before this ticket the whole answer was discarded and the admin was told
+   * "could not buy a number", losing the only thing that would have let them
+   * finish.
+   */
+  if (number.kycRequired) {
+    return NextResponse.json(
+      {
+        number: null,
+        status: 'kyc_required',
+        ...(number.kycUrl ? { kycUrl: number.kycUrl } : {}),
+        error:
+          'This country needs an identity check before the number can be ordered. Nothing has been charged yet.',
+      },
+      { status: 202 },
+    );
+  }
+
+  /**
+   * 🔴 THE-318 — THE PROFILE IS THE VENDOR'S ASSIGNMENT, NOT HARVEST'S REQUEST.
+   *
+   * One number = one profile. `tenantId` above is a PREFERENCE: when that
+   * profile already holds a number the vendor assigns the next free profile
+   * instead, or creates one, and reports what it actually did here. So the
+   * per-church profile is established by RECORDING THE ANSWER, not by assuming
+   * the question — which is what the code did before, storing `tenantId`
+   * unconditionally.
+   *
+   * ⚠️ A response with no profile on it is not recorded as `tenantId` "for now".
+   * The profile is how the vendor scopes every number and every message, and a
+   * binding Harvest invented would attribute one church's traffic to another.
+   * Null is stored as null, and the admin screen can show the number without
+   * Harvest asserting a profile it was never told.
+   */
+  //  `?? null` rather than a bare read: Firestore REJECTS an undefined field
+  // value outright, so a response shape that carried no profile at all would
+  // throw here — after the number was already bought and is already billing.
+  const assignedProfileId = number.profileId ?? null;
 
   // Enable SMS and attach Harvest's existing approved carrier registration.
   // 🔴 THE REGISTRATION IS PER BRAND, NOT PER CHURCH: reusing it is what makes
@@ -170,9 +287,9 @@ export async function POST(request: NextRequest) {
     {
       numberId: number.numberId,
       phoneNumber: number.phoneNumber,
-      profileId: tenantId,
+      profileId: assignedProfileId,
       status,
-      country: body.country || 'US',
+      country,
       monthlyCostUsd: number.monthlyCostUsd,
       purchasedAt: new Date().toISOString(),
     },
@@ -193,7 +310,7 @@ export async function POST(request: NextRequest) {
       phoneNumber: number.phoneNumber,
       status,
       monthlyCostUsd: number.monthlyCostUsd,
-      country: body.country || 'US',
+      country,
     },
     ...(number.kycUrl ? { kycUrl: number.kycUrl } : {}),
   });

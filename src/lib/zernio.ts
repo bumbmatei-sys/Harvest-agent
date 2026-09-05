@@ -58,6 +58,17 @@ export interface ZernioResponse<T> {
   status: number;
   data: T | null;
   error?: string;
+  /**
+   * THE-318 — the vendor's OWN error code, carried through verbatim.
+   *
+   * 🔴 Needed because two different 409s mean opposite things to an admin.
+   * `PURCHASE_VELOCITY` is "try again shortly, nothing is wrong";
+   * `AREA_CODE_UNAVAILABLE` is "that area has no stock, pick another" and is
+   * NEVER a silent substitution — the vendor documents that it fails rather
+   * than assigning a number from somewhere else. Collapsing both into
+   * "Provider error 409" tells the admin nothing they can act on.
+   */
+  code?: string;
 }
 
 async function call<T>(
@@ -74,11 +85,15 @@ async function call<T>(
     });
     const data = (await resp.json().catch(() => null)) as T | null;
     if (!resp.ok) {
-      const message =
-        (data as { error?: string; message?: string } | null)?.error ||
-        (data as { error?: string; message?: string } | null)?.message ||
-        `Provider error ${resp.status}`;
-      return { ok: false, status: resp.status, data, error: message };
+      const body = data as { error?: string; message?: string; code?: string } | null;
+      const message = body?.error || body?.message || `Provider error ${resp.status}`;
+      return {
+        ok: false,
+        status: resp.status,
+        data,
+        error: message,
+        ...(typeof body?.code === 'string' && body.code ? { code: body.code } : {}),
+      };
     }
     return { ok: true, status: resp.status, data };
   } catch (e) {
@@ -180,6 +195,21 @@ export interface ZernioPurchasedNumber {
   numberId: string;
   phoneNumber: string;
   status: string;
+  /**
+   * THE-318 — the profile the vendor ACTUALLY assigned, read off the response.
+   *
+   * 🔴 NOT the one Harvest asked for. The vendor documents one number = one
+   * profile: when the requested profile already holds a number it assigns the
+   * next free profile instead (or creates one) and reports the real assignment
+   * here. Storing the REQUESTED id would record a binding that does not exist
+   * at the vendor — and the profile is how the vendor scopes everything, so two
+   * churches recorded against the wrong profiles is two churches whose numbers
+   * and messages are attributed to each other.
+   *
+   * `null` only when the vendor's response carried no profile at all, which the
+   * caller must treat as a purchase it cannot safely record.
+   */
+  profileId: string | null;
   /** The vendor's own monthly price, when it reports one. NEVER defaulted to a
    * made-up figure: the admin screen shows "—" rather than a number Harvest
    * invented, because a wrong price on a billing screen is a false claim. */
@@ -188,10 +218,53 @@ export interface ZernioPurchasedNumber {
    * order completes. The admin is sent here; Harvest does not collect the
    * documents itself. */
   kycUrl?: string;
+  /**
+   * THE-318 — the vendor answered 202 `kyc_required`: NOTHING WAS ORDERED and
+   * nothing is being billed yet. Distinct from a purchase that succeeded, and
+   * distinct from a failure: the admin has an action to take at `kycUrl`.
+   */
+  kycRequired?: boolean;
+  /**
+   * THE-318 — the vendor replayed an earlier purchase under the same
+   * `purchaseIntentId` instead of provisioning a second number. The retry cost
+   * nothing, which is the entire point of the key.
+   */
+  alreadyPurchased?: boolean;
 }
 
+/**
+ * Read a purchase response.
+ *
+ * 🔴 THE-318 — THREE SHAPES, NOT ONE. Before this ticket only the first was
+ * understood and the other two were read as "no number", which turned a
+ * recoverable answer into a dead end:
+ *
+ *   · a purchase — numberId + phoneNumber + the assigned `profileId`;
+ *   · 202 `{ status: 'kyc_required', kycUrl }` — NOTHING ordered, nothing
+ *     billed, and an address the admin must visit. It carries no numberId, so
+ *     the old shape-check discarded it and the route answered "could not buy a
+ *     number", losing the one thing that would have let the church proceed;
+ *   · `{ status: 'already_purchased', numberId, phoneNumber, profileId }` — the
+ *     idempotent replay of a retry, which is a SUCCESS and must not start a
+ *     second monthly charge.
+ */
 function readPurchased(data: unknown): ZernioPurchasedNumber | null {
   const d = (data || {}) as Record<string, any>;
+
+  // KYC first: it is the one shape with no number on it at all, so testing for
+  // a number before testing for this is what discarded it.
+  if (d.status === 'kyc_required' || (d.kycUrl && !d.numberId && !d.phoneNumber)) {
+    return {
+      numberId: '',
+      phoneNumber: '',
+      status: 'kyc_required',
+      profileId: typeof d.profileId === 'string' && d.profileId ? d.profileId : null,
+      monthlyCostUsd: null,
+      kycRequired: true,
+      ...(d.kycUrl ? { kycUrl: d.kycUrl } : {}),
+    };
+  }
+
   const phoneNumber = d.phoneNumber || d.number || '';
   const numberId = d.numberId || d._id || d.id || '';
   if (!phoneNumber || !numberId) return null;
@@ -200,8 +273,11 @@ function readPurchased(data: unknown): ZernioPurchasedNumber | null {
   return {
     numberId,
     phoneNumber,
-    status: d.status || 'active',
+    status: d.status === 'already_purchased' ? 'active' : d.status || 'active',
+    // 🔴 Read back, never assumed. See the field's own note.
+    profileId: typeof d.profileId === 'string' && d.profileId ? d.profileId : null,
     monthlyCostUsd: Number.isFinite(n) && n > 0 ? n : null,
+    ...(d.status === 'already_purchased' ? { alreadyPurchased: true } : {}),
     ...(d.kycUrl ? { kycUrl: d.kycUrl } : {}),
   };
 }
@@ -225,6 +301,8 @@ export async function zernioPurchaseNumber(args: {
   country?: string;
   areaCode?: string;
   purchaseIntentId: string;
+  numberType?: string;
+  allowMultiple?: boolean;
 }): Promise<ZernioResponse<ZernioPurchasedNumber>> {
   const r = await call<unknown>('/phone-numbers/purchase', {
     method: 'POST',
@@ -232,15 +310,71 @@ export async function zernioPurchaseNumber(args: {
       profileId: args.profileId,
       country: args.country || 'US',
       ...(args.areaCode ? { areaCode: args.areaCode } : {}),
-      // A standalone Calls/SMS number: skipping the WhatsApp provisioning path
-      // activates it immediately instead of waiting on a Meta pre-verify Harvest
-      // has no use for here.
+      ...(args.numberType ? { numberType: args.numberType } : {}),
+      // ── 🔴 THE-318 — THE FLAG THIS TICKET EXISTS FOR ────────────────────────
+      //
+      // SMS capability is PER NUMBER, not per country, and the vendor defaults
+      // this to FALSE. Without it the purchase is filled from the wider
+      // voice-only pool and the number CANNOT TEXT — while every screen, the
+      // availability preview (which already asks `sms=true`) and the invoice all
+      // say it can. That is a church charged monthly for a number that does not
+      // do the one thing it was bought for.
+      //
+      // ⚠️ NOT OPTIONAL AND NOT A PARAMETER. Harvest sells exactly one thing
+      // here — the ministry's texting number — so there is no caller for whom
+      // false is the right answer. A `wantsSms` argument would be a way to
+      // reintroduce the bug.
+      wantsSms: true,
+      // Standalone Calls/SMS. The vendor defaults this to TRUE, so it is set
+      // EXPLICITLY rather than left off: WhatsApp bills per template message
+      // through Meta and is not offered, and skipping that provisioning path
+      // also activates the number immediately instead of waiting on a Meta
+      // pre-verify and OTP.
       connectWhatsapp: false,
+      // The companion default. `wantsWhatsapp` only means anything on a
+      // standalone purchase, and declaring intent Harvest does not have would
+      // let the vendor swap the assigned number for a WhatsApp-eligible one —
+      // narrowing the pool for a feature that is not sold.
+      wantsWhatsapp: false,
       purchaseIntentId: args.purchaseIntentId,
+      ...(args.allowMultiple ? { allowMultiple: true } : {}),
     },
   });
-  if (!r.ok) return { ok: false, status: r.status, data: null, error: r.error };
+  if (!r.ok) return { ok: false, status: r.status, data: null, error: r.error, ...(r.code ? { code: r.code } : {}) };
   return { ok: true, status: r.status, data: readPurchased(r.data) };
+}
+
+/**
+ * THE-318 — which of a country's number types can actually text.
+ *
+ * 🔴 `wantsSms: true` REQUIRES AN SMS-CAPABLE TYPE. Omitting the type gets the
+ * country's default, which the vendor documents as "the WhatsApp-safe choice" —
+ * a property about WhatsApp, not about SMS, and so not a guarantee this ticket
+ * can rest on for every country the admin screen offers.
+ *
+ * Asking the availability endpoint with `sms=true` answers it from the vendor's
+ * live inventory: the `numberType` it reports IS the SMS-capable pool's type
+ * for that country. (For US both the default and the SMS-capable type are
+ * `local`, which is why today's US purchases still return a number at all
+ * rather than failing outright — they simply come from the wrong pool.)
+ *
+ * ⚠️ Returns `null` for the type when the vendor cannot be asked. The caller
+ * then purchases with no type and `wantsSms: true` still set, which the vendor
+ * either fills from the SMS pool or rejects — it can never quietly hand back a
+ * number that cannot text. Failing the whole purchase on a flaky read of an
+ * endpoint that only refines the request would trade this ticket's bug for an
+ * outage.
+ */
+export async function zernioSmsNumberType(
+  country: string,
+): Promise<{ numberType: string | null; available: boolean | null }> {
+  const q = new URLSearchParams({ country: country || 'US', sms: 'true' });
+  const r = await call<{ numberType?: string; available?: boolean }>(`/phone-numbers/availability?${q.toString()}`);
+  if (!r.ok || !r.data) return { numberType: null, available: null };
+  return {
+    numberType: typeof r.data.numberType === 'string' && r.data.numberType ? r.data.numberType : null,
+    available: typeof r.data.available === 'boolean' ? r.data.available : null,
+  };
 }
 
 /** Turn SMS on for a purchased number. Its response reports whether an already
