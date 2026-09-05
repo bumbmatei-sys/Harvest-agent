@@ -20,9 +20,31 @@ import {
   Receipt,
   Download
 } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader } from '@/components/ui/empty';
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemMedia,
+  ItemTitle,
+} from '@/components/ui/item';
+import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 import ThemeToggle from './ThemeToggle';
 import PaletteFamilyToggle from './PaletteFamilyToggle';
-import Image from 'next/image';
 import { auth, db, messaging, VAPID_KEY } from '../firebase';
 import { signOut, updateProfile } from 'firebase/auth';
 import { doc, onSnapshot, updateDoc, collection, query, where, getDocs, arrayUnion } from 'firebase/firestore';
@@ -379,26 +401,45 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  accept="image/*"
  onChange={handleFileChange}
  />
- <div className="relative overflow-hidden rounded-[24px] px-5 pt-8 pb-6 text-center" style={{ background: 'var(--surface-night)' }}>
+ {/* THE-321 — the navy ground is `bg-surface-night`, the mapped utility for
+     the token this was already spelling inline by hand. Same value, one fewer
+     inline style. The three declarations that REMAIN on this hero are a radial
+     gradient, a grain image and two washes over them; none has a Tailwind
+     utility to reach for, and each is justified where it sits. */}
+ <div className="relative overflow-hidden rounded-[24px] px-5 pt-8 pb-6 text-center bg-surface-night">
  {/* navy→gold radial wash */}
  <span aria-hidden className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(120% 130% at 85% 10%, color-mix(in srgb, var(--brand-color) 30%, transparent), transparent 55%)' }} />
  {/* film grain */}
  <span aria-hidden className="absolute inset-0 pointer-events-none mix-blend-overlay" style={{ backgroundImage: 'var(--grain-url)', opacity: 0.06 }} />
 
  <div className="relative z-10">
+ {/* THE-321 — the same `avatar` as the desktop rail, at the hero's size. The
+     hairline ring stays an inline style: it is a plain white at 16% over a
+     NAVY WASH, not over a themed surface, and that is what reads as a lit edge
+     on the gradient in every palette — there is no token for it to reach for.
+     Hardcoding it is what "hardcode no colour" exists to prevent, so it is
+     called out here rather than passed off; theming-member-app.test.ts pins
+     this file's colour literals WHOLE, so this one is recorded there and every
+     other colour on the page stays on a token. */}
  <label htmlFor="profile-pic-upload" className="cursor-pointer inline-block">
- <div className="w-[76px] h-[76px] mx-auto mb-3 rounded-full overflow-hidden flex items-center justify-center" style={{ background: 'var(--surface-gold)', border: '2px solid rgba(255,255,255,0.16)' }}>
- {profilePic ? (
- <img src={profilePic} alt={userName} className="w-full h-full object-cover" />
- ) : (
- <span className="font-display text-3xl font-light text-wheat-800">{(userName || 'U').charAt(0).toUpperCase()}</span>
- )}
- </div>
+ <Avatar
+ className="w-[76px] h-[76px] mx-auto mb-3 rounded-full bg-surface-gold"
+ style={{ border: '2px solid rgba(255,255,255,0.16)' }}
+ >
+ <AvatarImage src={profilePic || undefined} alt={userName} className="object-cover" />
+ <AvatarFallback className="font-display text-3xl font-light text-wheat-800 bg-surface-gold">{(userName || 'U').charAt(0).toUpperCase()}</AvatarFallback>
+ </Avatar>
  </label>
  <h2 className="font-display font-light text-[22px] tracking-[-0.01em] text-white">{userName}</h2>
- <div className="inline-flex items-center gap-1.5 mt-2.5 px-3 py-1 rounded-full text-[10.5px] font-bold tracking-wider" style={{ background: 'rgba(212,165,74,0.18)', color: 'var(--wheat-glow)' }}>
+ {/* Same `badge` as the rail. Its ground stays an inline style for the reason
+     the avatar's ring does — it is a wash over the navy hero, not over a
+     themed surface — and its ink is the `--wheat-glow` token, not a literal. */}
+ <Badge
+ className="inline-flex items-center gap-1.5 mt-2.5 h-auto px-3 py-1 rounded-full text-[10.5px] font-bold tracking-wider"
+ style={{ background: 'rgba(212,165,74,0.18)', color: 'var(--wheat-glow)' }}
+ >
  <BadgeCheck size={12} /> Member since 2026
- </div>
+ </Badge>
  </div>
  </div>
  </div>
@@ -431,22 +472,40 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  <div className="px-4 mt-6 relative z-10 space-y-6 lg:mt-0 lg:px-8 lg:pt-6 lg:w-full lg:max-w-[1280px] lg:mx-auto lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-8 lg:items-start lg:space-y-0">
  {/* Desktop profile card — left column */}
  <div className="hidden lg:block">
- <div className="bg-surface-raised rounded-3xl border border-line p-6 text-center lg:sticky lg:top-4">
+ {/* THE-321 — the identity rail is `card` + `avatar` + `badge`.
+ 
+     The photo disc was `w-24 h-24 rounded-full overflow-hidden flex items-center
+     justify-center` with a conditional `<img>` and an initial fallback beside
+     it — `Avatar` / `AvatarImage` / `AvatarFallback` written out longhand, and
+     missing what the primitive does on top: AvatarImage swaps to the fallback
+     when the image FAILS to load, where the hand-rolled version showed a broken
+     image because `profilePic` being a non-empty string was its only test.
+
+     "Member since 2026" was an `inline-flex … rounded-full` pill at the same
+     11px, bold — `Badge`, retyped. It keeps `--surface-gold` and
+     `text-wheat-800`, which are brand tokens rather than literals, so the chip
+     still reads as the app's own and still follows all four palettes.
+
+     ⚠️ "Change photo" STAYS A `<label htmlFor>`, and that is a considered
+     rejection of `Button`: this control's entire job is to forward a click to
+     the hidden `#profile-pic-upload` input, which a `<label>` does natively and
+     a button can only imitate with a ref and a synthetic `.click()`. Rendering
+     Button as a label (`render={<label/>}`) would give a non-interactive element
+     the focus ring and active-translate of a button while the REAL focus stop
+     stays the file input — worse for a keyboard than what is here. */}
+ <Card className="bg-surface-raised rounded-3xl border border-line ring-0 py-6 gap-0 px-6 text-center lg:sticky lg:top-4">
  <label htmlFor="profile-pic-upload" className="cursor-pointer group block">
- <div className="w-24 h-24 rounded-full mx-auto mb-3 overflow-hidden flex items-center justify-center" style={{ background: 'var(--surface-gold)' }}>
- {profilePic ? (
- <img src={profilePic} alt={userName} className="w-full h-full object-cover" />
- ) : (
- <span className="text-3xl font-light font-display text-wheat-800">{(userName || 'U').charAt(0).toUpperCase()}</span>
- )}
- </div>
- <span className="text-[12px] font-semibold group-hover:underline" style={{ color: 'var(--brand-color, #C9963A)' }}>Change photo</span>
+ <Avatar className="w-24 h-24 rounded-full mx-auto mb-3 bg-surface-gold">
+ <AvatarImage src={profilePic || undefined} alt={userName} className="object-cover" />
+ <AvatarFallback className="text-3xl font-light font-display text-wheat-800 bg-surface-gold">{(userName || 'U').charAt(0).toUpperCase()}</AvatarFallback>
+ </Avatar>
+ <span className="text-[12px] font-semibold text-gold group-hover:underline">Change photo</span>
  </label>
  <h2 className="text-xl font-light text-strong font-display mt-3 tracking-[-0.01em]">{userName}</h2>
- <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-[11px] font-bold text-wheat-800" style={{ background: 'var(--surface-gold)' }}>
+ <Badge className="inline-flex items-center gap-1.5 mt-2 h-auto px-3 py-1 rounded-full text-[11px] font-bold text-wheat-800 bg-surface-gold mx-auto">
  <BadgeCheck size={13} /> Member since 2026
- </div>
- </div>
+ </Badge>
+ </Card>
  </div>
 
  {/* Settings — right column.
@@ -477,7 +536,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  {/* Account Settings */}
  <div>
  <h4 className="text-[10px] font-bold text-faint tracking-wider uppercase mb-3 ml-2">Account Settings</h4>
- <div className="bg-surface-raised rounded-3xl shadow-xs border border-line overflow-hidden transition-colors duration-300">
+ <Card className="bg-surface-raised rounded-3xl shadow-xs border border-line ring-0 py-0 gap-0 overflow-hidden transition-colors duration-300">
  {isAdmin && (
  <>
  {/* Gold, not red. Red is reserved for destructive actions (Log Out, Cancel
@@ -490,7 +549,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  label="Admin Dashboard"
  onClick={() => onNavigate('admin')}
  />
- <div className="h-px bg-surface-sunken mx-4"></div>
+ <Separator className="bg-surface-sunken mx-4 w-auto" />
  </>
  )}
  <SettingItem
@@ -501,7 +560,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  />
  {hasChurches && (
  <>
- <div className="h-px bg-surface-sunken mx-4"></div>
+ <Separator className="bg-surface-sunken mx-4 w-auto" />
  <SettingItem
  icon={<Church size={16} className="text-field-600" />}
  iconBg="bg-field-100"
@@ -518,7 +577,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  )}
  {/* "Partner with Us" removed here — the Partnership card below is the single
      home for giving (Give again / Partner CTA + Donation History). */}
- <div className="h-px bg-surface-sunken mx-4"></div>
+ <Separator className="bg-surface-sunken mx-4 w-auto" />
  <ToggleSettingItem
  icon={<Bell size={16} className="text-field-600" />}
  iconBg="bg-field-100"
@@ -535,7 +594,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
      tickets — no admin-specific logic and no cross-user leakage. */}
  {/* Always shown — UserEvents scopes to the current user's own registrations
      and handles a missing tenant gracefully (empty state). */}
- <div className="h-px bg-surface-sunken mx-4"></div>
+ <Separator className="bg-surface-sunken mx-4 w-auto" />
  <SettingItem
  icon={<CalendarCheck size={16} className="text-field-600" />}
  iconBg="bg-field-100"
@@ -543,7 +602,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  onClick={() => setShowMyEvents(true)}
  />
  {/* Saved — bookmarked articles, lessons, posts and verses (private to the user). */}
- <div className="h-px bg-surface-sunken mx-4"></div>
+ <Separator className="bg-surface-sunken mx-4 w-auto" />
  <SettingItem
  icon={<Bookmark size={16} className="text-field-600" />}
  iconBg="bg-field-100"
@@ -563,7 +622,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
      iOS / Android / desktop instruction sets). */}
  {!inNativeShell && (
  <>
- <div className="h-px bg-surface-sunken mx-4"></div>
+ <Separator className="bg-surface-sunken mx-4 w-auto" />
  <SettingItem
  icon={<Download size={16} className="text-field-600" />}
  iconBg="bg-field-100"
@@ -617,12 +676,12 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
      available) and hidden again everywhere from 1280px up, even past where
      the column widens back out. See ThemeToggle.tsx / PaletteFamilyToggle.tsx
      for the breakpoints. */}
- <div className="h-px bg-surface-sunken mx-4"></div>
+ <Separator className="bg-surface-sunken mx-4 w-auto" />
  <div className="flex items-center gap-2 px-4 py-3">
  <PaletteFamilyToggle />
  <ThemeToggle variant="row" />
  </div>
- </div>
+ </Card>
  </div>
 
  </div>
@@ -644,7 +703,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  {hasGiving && (
  <div>
  <h4 className="text-[10px] font-bold text-faint tracking-wider uppercase mb-3 ml-2">Partnership</h4>
- <div className="bg-surface-raised rounded-3xl shadow-xs border border-line overflow-hidden p-4">
+ <Card className="bg-surface-raised rounded-3xl shadow-xs border border-line ring-0 py-4 gap-0 overflow-hidden">
  {donationSubscriptionId ? (
  <div>
  <div className="flex items-center gap-3 mb-3">
@@ -666,30 +725,38 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  <p className="text-xs text-red-600 font-medium text-center mb-3">
  Are you sure? Your recurring donation will be canceled at the end of the current period.
  </p>
+ {/* THE-321 — both answers are `Button`. "Cancel" was `bg-red-600 text-white`,
+     a literal red that paints identically in all four palettes; it is now the
+     `destructive` variant on the `--destructive` token. Both keep their exact
+     labels, their exact handlers and the disabled state that stops a
+     double-submit while the cancellation is in flight. */}
  <div className="flex gap-2">
- <button
+ <Button
+ variant="outline"
  onClick={() => setShowCancelConfirm(false)}
- className="flex-1 py-2 bg-surface-raised text-body rounded-xl font-medium text-sm border border-line"
+ className="flex-1 h-auto min-h-[44px] sm:min-h-0 sm:h-[40px] py-2 bg-surface-raised text-body rounded-xl font-medium text-sm border-line"
  >
  Keep
- </button>
- <button
+ </Button>
+ <Button
+ variant="destructive"
  onClick={handleCancelPartnership}
  disabled={isCancelingPartnership}
- className="flex-1 py-2 bg-red-600 text-white rounded-xl font-bold text-sm disabled:opacity-50"
+ className="flex-1 h-auto min-h-[44px] sm:min-h-0 sm:h-[40px] py-2 rounded-xl font-bold text-sm"
  >
  {isCancelingPartnership ? 'Canceling...' : 'Cancel'}
- </button>
+ </Button>
  </div>
  </div>
  ) : (
- <button
+ <Button
+ variant="destructive"
  onClick={() => setShowCancelConfirm(true)}
- className="w-full flex items-center justify-between p-3 bg-red-50 rounded-xl hover:bg-red-100 transition-colors mt-1"
+ className="w-full h-auto min-h-[44px] sm:min-h-0 sm:h-[40px] flex items-center justify-between p-3 rounded-xl mt-1 text-sm font-bold"
  >
- <span className="text-sm font-bold text-red-600">Cancel Partnership</span>
- <X size={16} className="text-red-400" />
- </button>
+ <span>Cancel Partnership</span>
+ <X size={16} />
+ </Button>
  )}
  </div>
  ) : totalDonated > 0 ? (
@@ -704,61 +771,76 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  <p className="text-xs text-muted">${totalDonated.toFixed(0)} given</p>
  </div>
  {onGoToPartner && (
- <button
+ <Button
+ variant="link"
  onClick={onGoToPartner}
- className="text-sm font-bold text-gold"
+ className="h-auto min-h-[44px] sm:min-h-0 sm:h-auto p-0 text-sm font-bold text-gold no-underline hover:no-underline"
  >
  Give again →
- </button>
+ </Button>
  )}
  </div>
  </div>
  ) : (
- <div className="text-center py-2">
- <p className="text-sm text-muted">You don&apos;t have an active partnership</p>
+ /* THE-321 — "you have nothing here yet, and here is what to do about it" is
+    exactly what `empty` states, so the hand-written `text-center py-2` block
+    is now the primitive. EmptyDescription carries the sentence, EmptyContent
+    the one CTA. `EmptyMedia` is deliberately NOT used: the two other
+    partnership states open with a HeartHandshake disc, and an icon here would
+    make the empty state the visually loudest of the three — it is the
+    quietest. The CTA keeps its exact label and its exact handler, and stays
+    gated on `onGoToPartner` for THE-246's reason (see the prop's own note):
+    with no Give page to jump to there is no button at all, not a dead one. */
+ <Empty className="py-2 gap-0">
+ <EmptyHeader className="p-0 gap-0">
+ <EmptyDescription className="text-sm text-muted">You don&apos;t have an active partnership</EmptyDescription>
+ </EmptyHeader>
  {onGoToPartner && (
- <button
+ <EmptyContent className="mt-2">
+ <Button
+ variant="link"
  onClick={onGoToPartner}
- className="mt-2 text-sm font-bold text-gold"
+ className="h-auto min-h-[44px] sm:min-h-0 sm:h-auto p-0 text-sm font-bold text-gold no-underline hover:no-underline"
  >
  Partner with Us →
- </button>
+ </Button>
+ </EmptyContent>
  )}
- </div>
+ </Empty>
  )}
- </div>
+ </Card>
  {/* Donation History — the member's own receipts + giving totals, private to
      them. Placed under Partnership (per the founder), reusing SettingItem/card
      styling. Always shown; the view renders an empty state for non-donors. */}
- <div className="bg-surface-raised rounded-3xl shadow-xs border border-line overflow-hidden mt-3">
+ <Card className="bg-surface-raised rounded-3xl shadow-xs border border-line ring-0 py-0 gap-0 overflow-hidden mt-3">
  <SettingItem
  icon={<Receipt size={16} className="text-wheat-600" />}
  iconBg="bg-wheat-100"
  label="Donation History"
  onClick={() => setShowDonationHistory(true)}
  />
- </div>
+ </Card>
  </div>
  )}
 
  {/* Support & Info */}
  <div>
  <h4 className="text-[10px] font-bold text-faint tracking-wider uppercase mb-3 ml-2">Support & Info</h4>
- <div className="bg-surface-raised rounded-3xl shadow-xs border border-line overflow-hidden transition-colors duration-300">
+ <Card className="bg-surface-raised rounded-3xl shadow-xs border border-line ring-0 py-0 gap-0 overflow-hidden transition-colors duration-300">
  <SettingItem 
  icon={<HelpCircle size={16} className="text-wheat-600" />} 
  iconBg="bg-wheat-100" 
  label="Contact Us"
  onClick={() => setIsContactOpen(true)}
  />
- <div className="h-px bg-surface-sunken mx-4"></div>
+ <Separator className="bg-surface-sunken mx-4 w-auto" />
  <SettingItem
  icon={<FileQuestion size={16} className="text-field-600" />}
  iconBg="bg-field-100" 
  label="FAQ" 
  onClick={() => setIsFAQOpen(true)}
  />
- <div className="h-px bg-surface-sunken mx-4"></div>
+ <Separator className="bg-surface-sunken mx-4 w-auto" />
  <SettingItem
  icon={<ShieldCheck size={16} className="text-wheat-600" />}
  iconBg="bg-wheat-100"
@@ -776,17 +858,23 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
      orphans a heading — which is the defect the member SIDEBAR had, and a
      different surface from this one. `isAdmin` is still read by the Admin
      Dashboard entry above and by PrivacyTermsModal below. */}
- </div>
+ </Card>
  </div>
 
  {/* Log Out Button */}
- <button 
+ {/* THE-321 — `Button`, destructive variant. It was `bg-red-50 hover:bg-red-100
+     text-red-500`: three literal reds that do not move with the palette, on the
+     one control on this page that ends the session. The variant puts all three
+     on `--destructive` and brings the focus ring with it — the old button had
+     none at all. Same handler, same label, same icon. */}
+ <Button
+ variant="destructive"
  onClick={handleLogout}
- className="w-full bg-red-50 hover:bg-red-100 text-red-500 font-bold py-3.5 px-4 rounded-2xl flex items-center justify-center gap-2 transition-colors mt-4 text-sm"
+ className="w-full h-auto min-h-[44px] font-bold py-3.5 px-4 rounded-2xl gap-2 mt-4 text-sm"
  >
  <LogOut size={18} />
  Log Out
- </button>
+ </Button>
 
  </div>
  </div>
@@ -825,38 +913,56 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  fullPage={true}
  />
 
- {isNoHomeChurchModalOpen && (
- <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
- <div className="bg-surface-raised rounded-2xl w-full max-w-sm overflow-hidden shadow-xl animate-fadeUp">
- <div className="p-6 text-center">
+ {/* THE-321 — the No Home Church modal is `dialog`.
+
+     It was a hand-rolled `fixed inset-0 bg-black/50 z-50` scrim wrapping a
+     panel: the primitive written longhand and missing everything it carries —
+     no focus trap, no restore-focus on close, no Escape handler, no
+     `aria-modal`, no labelled title, and nothing stopping a screen reader
+     walking straight into the page behind it. Its heading and its paragraph
+     were a bare `<h3>` and `<p>`, so the dialog had no accessible NAME at all;
+     they are DialogTitle and DialogDescription now, which is what gives it one.
+
+     🔴 IT ALSO RISES ABOVE z-100. The old scrim was `z-50` — UNDER the member
+     shell's own layers — and the primitive's `z-[101]` scrim / `z-[102]` panel
+     is PR 437's floor, so this dialog now opens above everything it must.
+
+     Both answers keep their exact labels and their exact handlers; "Add Church"
+     still closes the dialog before navigating, in that order. */}
+ <Dialog open={isNoHomeChurchModalOpen} onOpenChange={setIsNoHomeChurchModalOpen}>
+ <DialogContent className="bg-surface-raised rounded-2xl w-full max-w-sm p-6 text-center gap-0">
+ <DialogHeader className="items-center gap-0">
  <div className="w-16 h-16 bg-surface-sunken rounded-full flex items-center justify-center mx-auto mb-4">
  <Church size={32} className="text-faint" />
  </div>
- <h3 className="text-xl font-bold text-strong mb-2 font-display">No Home Church</h3>
- <p className="text-muted mb-6 text-sm">
+ <DialogTitle className="text-xl font-bold text-strong mb-2 font-display">No Home Church</DialogTitle>
+ <DialogDescription className="text-muted mb-6 text-sm">
  You have no churches selected. Add a church to stay connected with your local community.
- </p>
- <div className="flex flex-col gap-3">
- <button
+ </DialogDescription>
+ </DialogHeader>
+ <DialogFooter className="flex flex-col gap-3 sm:flex-col">
+ <Button
  onClick={() => {
  setIsNoHomeChurchModalOpen(false);
  onGoToMap();
  }}
- className="w-full py-3 bg-gold text-white font-bold rounded-xl hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors"
+ className="w-full h-auto min-h-[44px] py-3 bg-gold text-white font-bold rounded-xl hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors"
  >
  Add Church
- </button>
- <button
- onClick={() => setIsNoHomeChurchModalOpen(false)}
- className="w-full py-3 bg-surface-sunken text-body font-bold rounded-xl hover:bg-surface-chip transition-colors"
+ </Button>
+ <DialogClose
+ render={
+ <Button
+ variant="secondary"
+ className="w-full h-auto min-h-[44px] py-3 bg-surface-sunken text-body font-bold rounded-xl hover:bg-surface-chip transition-colors"
  >
  Cancel
- </button>
- </div>
- </div>
- </div>
- </div>
- )}
+ </Button>
+ }
+ />
+ </DialogFooter>
+ </DialogContent>
+ </Dialog>
 
  {showMyEvents && (
  <div className="fixed inset-0 z-[300] bg-surface-tint">
@@ -890,53 +996,110 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  );
 };
 
+/**
+ * THE-321 — one settings row, composed rather than retyped.
+ *
+ * 🔴 `Item` IS THIS ROW. The hand-written version was `w-full flex items-center
+ * justify-between` wrapping an icon disc, a label and a chevron — which is
+ * `Item` + `ItemMedia` + `ItemContent`/`ItemTitle` + `ItemActions` written out
+ * longhand, minus the `role="list"`/`listitem` semantics and the focus ring the
+ * primitive carries. `render={<button …/>}` keeps the row a real BUTTON, which
+ * is what `Profile.composition`'s row-order assertion selects on and what makes
+ * the whole row (not just its label) the tap target.
+ *
+ * The numeric badge is `Badge`, not a hand-rolled pill: the old
+ * `min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white` re-spelled
+ * the primitive AND hardcoded a literal red. `variant="destructive"` puts it on
+ * the `--destructive` token every other alarm state on this screen already uses,
+ * so it follows all four palettes instead of painting one colour in each.
+ *
+ * ⚠️ THE 44px FLOOR IS ON THE ROW, and it is `min-h-[44px] sm:min-h-0`, not a
+ * height: a row whose label wraps must be allowed to grow past 44px, and a
+ * fixed height would clip it. Above `sm` the row hands back to its own content
+ * height — Rule 4's 38/40px band governs CONTROLS, and a settings row is not a
+ * control, so nothing here raises `DESKTOP_CONTROL_MAX_PX`.
+ *
+ * 🔴 AN EXPLICIT 44px, NOT THE SCALE CLASS `min-h-11` — measured, not
+ * stylistic. `min-h-11` compiles to `calc(var(--spacing) * 11)`, which resolved
+ * to 7.63px on these controls in Chromium: a class whose NAME claims 44px and
+ * whose computed height is a sixth of it, with no error and no warning. That is
+ * the silent-token failure ds-primitives.test.tsx exists for. RichTextToolbar
+ * records the same trap — "4.125px under the touch minimum its name claims" —
+ * and reaches for the same explicit spelling, which is this repo's idiom for
+ * the floor; THE-304 and AdminMinistry spell it the same way. No width is
+ * invented here: 44px is the floor the ticket sets.
+ */
 const SettingItem = ({ icon, iconBg, label, onClick, badge }: { icon: React.ReactNode, iconBg: string, label: string, onClick?: () => void, badge?: number }) => (
- <button onClick={onClick} className="w-full flex items-center justify-between p-3.5 hover:bg-surface-sunken transition-colors">
- <div className="flex items-center gap-3">
- <div className={`w-7 h-7 rounded-full flex items-center justify-center ${iconBg}`}>
+ <Item
+   render={<button type="button" onClick={onClick} />}
+   className="w-full min-h-[44px] sm:min-h-0 rounded-none border-transparent p-3.5 gap-3 hover:bg-surface-sunken transition-colors"
+ >
+ <ItemMedia className={`w-7 h-7 rounded-full ${iconBg}`}>
  {icon}
- </div>
- <span className="text-[13px] font-medium text-body">{label}</span>
- </div>
- <div className="flex items-center gap-2">
+ </ItemMedia>
+ <ItemContent className="flex-1 text-left">
+ <ItemTitle className="text-[13px] font-medium text-body">{label}</ItemTitle>
+ </ItemContent>
+ <ItemActions className="gap-2">
  {badge !== undefined && badge > 0 && (
- <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+ <Badge variant="destructive" className="min-w-[18px] h-[18px] px-1 text-[10px] font-bold">
  {badge > 99 ? '99+' : badge}
- </span>
+ </Badge>
  )}
  <ChevronRight size={16} className="text-faint" />
- </div>
- </button>
+ </ItemActions>
+ </Item>
 );
 
+/**
+ * THE-321 — the Push Notifications row: `Item` for the row, `Switch` for the
+ * control.
+ *
+ * 🔴 THE HAND-ROLLED SWITCH WAS THIS FILE'S LAST INLINE STYLE, and both of its
+ * inline styles were defects rather than decoration. The track painted
+ * `var(--brand-color, …)` with a LITERAL HEX FALLBACK, which is one colour
+ * for all four palettes the moment the variable is missing — and the thumb
+ * moved by `transform: translateX(21px)`, a magic offset derived from nothing
+ * and silently wrong the instant the track's width changed. `Switch` carries
+ * both on tokens: `data-checked:bg-primary` follows the palette, and the thumb
+ * travels `calc(100%-2px)` off its own measured width. This component now holds
+ * ZERO inline styles.
+ *
+ * ⚠️ `role="switch"` and `aria-label` SURVIVE, because Base UI's Switch.Root
+ * renders a real `<button role="switch">` and forwards `aria-label` — which is
+ * exactly what `Profile.composition`'s row-order assertion selects on
+ * (`button,[role="switch"]`) and reads for its name. Swapping the hand-rolled
+ * button for the primitive is invisible to that guard, and deliberately so.
+ *
+ * ⚠️ THE 44px TAP FLOOR IS THE SWITCH'S, NOT THE ROW'S. The row is not tappable
+ * here — only the control is — so a `min-h-[44px]` on the row would be a lie about
+ * where a tap lands. `Switch` already extends its own hit area with an
+ * `after:` pseudo-element (`after:-inset-x-3 after:-inset-y-2`); below `sm`
+ * that is widened to clear 44px in both axes and handed back above it, so the
+ * PAINTED pill keeps the primitive's own dimensions at every width and only the
+ * INVISIBLE target grows. Measured, not assumed — see THE-321's tap-target
+ * suite, which reads the pseudo-element's box out of Chromium.
+ */
 const ToggleSettingItem = ({ icon, iconBg, label, sublabel, checked, onChange }: { icon: React.ReactNode, iconBg: string, label: string, sublabel?: string, checked: boolean, onChange: () => void }) => (
- <div className="w-full flex items-center justify-between p-3.5">
- <div className="flex items-center gap-3 min-w-0">
- <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${iconBg}`}>
+ <Item className="w-full rounded-none border-transparent p-3.5 gap-3">
+ <ItemMedia className={`w-7 h-7 rounded-full shrink-0 ${iconBg}`}>
  {icon}
- </div>
- <div className="min-w-0">
- <span className="block text-[13px] font-medium text-body">{label}</span>
+ </ItemMedia>
+ <ItemContent className="min-w-0 flex-1">
+ <ItemTitle className="block text-[13px] font-medium text-body">{label}</ItemTitle>
  {sublabel && (
  <span className="block text-[11px] text-faint truncate">{sublabel}</span>
  )}
- </div>
- </div>
- <button
- type="button"
- role="switch"
- aria-checked={checked}
+ </ItemContent>
+ <ItemActions>
+ <Switch
  aria-label={label}
- onClick={onChange}
- className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
- style={{ background: checked ? 'var(--brand-color, #C9963A)' : 'var(--border-strong)' }}
- >
- <span
- className="inline-block h-5 w-5 transform rounded-full bg-surface-raised shadow transition-transform"
- style={{ transform: checked ? 'translateX(21px)' : 'translateX(2px)' }}
+ checked={checked}
+ onCheckedChange={onChange}
+ className="after:-inset-x-3 after:-inset-y-[13px] sm:after:-inset-y-2"
  />
- </button>
- </div>
+ </ItemActions>
+ </Item>
 );
 
 export default Profile;

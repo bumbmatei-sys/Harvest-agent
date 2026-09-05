@@ -192,6 +192,43 @@ export const RECORDED_EDITS: ReadonlyArray<RecordedEdit> = [
       + 'elements, so every structural guard reads what it always read.',
     digest: 'd9817387d1a498520525948319f2af38090f8cc1f81dbf78fb702ae491f84cd6',
   },
+  {
+    file: 'src/components/Profile.tsx',
+    ticket: 'THE-321',
+    why:
+      'THE MEMBER PROFILE\'S VISUAL PASS, COMPOSED FROM THE INSTALLED PRIMITIVES — the second '
+      + 'screen after THE-316 and the first on the MEMBER side. This file imported NOTHING from '
+      + 'ui/ and hand-rolled four card shells, two row types, nine hairline rules, two avatars, '
+      + 'two chips, five buttons, an empty state and a modal out of raw divs; each is now the '
+      + 'primitive that covers it — Card for the four shells and the identity rail, Item for both '
+      + 'the navigation rows and the Push Notifications row, Separator for the nine rules, Avatar '
+      + 'for the hero and rail photos, Badge for the two "Member since" chips and the unread '
+      + 'count, Switch for push notifications, Empty for the no-partnership state, Button for '
+      + 'every action including Log Out, and Dialog for the No Home Church modal. NO ROW WAS '
+      + 'ADDED, REMOVED OR REORDERED and no gate changed, so `hasGiving`, `isAdmin`, '
+      + '`hasChurches` and `inNativeShell` still decide exactly what they decided — which is what '
+      + "keeps Profile.composition's frozen sub-640px PAGE FRAME intact: the pass lives inside "
+      + 'the cards and rows, never in the container, the rail or the two column groups, whose '
+      + 'unprefixed class lists are byte-identical. Five defects went with it. The hand-rolled '
+      + 'switch carried both of the file\'s worst inline styles — a track painted from a literal '
+      + 'hex FALLBACK, which is one colour in all four palettes the moment the variable is '
+      + 'missing, and a thumb moved by a magic 21px offset derived from nothing — and is now '
+      + 'Switch, on tokens, travelling off its own measured width. Log Out, Cancel Partnership '
+      + 'and its confirm button carried literal reds that do not move with the palette and are '
+      + 'now the destructive variant on --destructive. The unread badge was a literal bg-red-500 '
+      + 'and is now Badge. The No Home Church modal was a hand-rolled z-50 scrim with no focus '
+      + 'trap, no Escape handler, no aria-modal and no accessible name at all; as Dialog it has '
+      + 'all four and rises above z-100 to PR 437\'s floor, where its old z-50 sat UNDER the '
+      + 'member shell. Both photo discs tested only that `profilePic` was a non-empty string, so '
+      + 'an image that failed to load rendered broken; AvatarFallback covers that case. Inline '
+      + 'styles went from ten to five, and each survivor is a gradient, a grain image or a wash '
+      + 'over the navy hero that has no utility to reach for, justified where it sits. Every '
+      + 'tappable target takes a 44px MINIMUM below sm — a minimum, not a height, so a wrapped '
+      + 'label still grows — and hands back to Rule 4 above it; DESKTOP_CONTROL_MAX_PX is not '
+      + 'raised. The install-app row is untouched and still gated only on the Capacitor shell, '
+      + 'never on beforeinstallprompt. No token and no dependency was added.',
+    digest: 'd7473af6fe6a3518e0494c74694b7689bf094603f7ff83cdc52e359820b080b6',
+  },
 ];
 
 /** A ticket reference the register will accept. */
