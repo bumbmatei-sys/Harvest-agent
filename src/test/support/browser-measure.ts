@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import http from 'node:http';
+import os from 'node:os';
 import path from 'node:path';
 
 /**
@@ -115,13 +116,41 @@ export class MeasuringBrowser {
   private pending = new Map<number, (msg: Record<string, unknown>) => void>();
   private stderr = '';
   private exited = '';
+  /** This instance's own Chrome profile. Removed by {@link close}. */
+  private userDataDir: string | null = null;
 
   async open(fileUrl: string): Promise<void> {
     const bin = findBrowser();
-    // A high, deterministic-enough port: the suite runs this file once.
-    const port = 9222 + (process.pid % 900);
+    /**
+     * 🔴 THE OS ASSIGNS THE PORT, AND THE PROFILE IS THIS INSTANCE'S OWN.
+     *
+     * ⚠️ This used to be `9222 + (process.pid % 900)`, above the comment "a
+     * high, deterministic-enough port: the suite runs this file once". That was
+     * true when ONE file measured; seventeen do now, and the number is derived
+     * from the PROCESS, so it is the SAME port for every browser a worker ever
+     * opens. Vitest reuses a worker across files, and `close()` did not wait for
+     * the browser to die — so the next file's Chrome raced the previous one's
+     * shutdown for the same socket and lost:
+     *
+     *     bind() failed: Address already in use (98)
+     *     Error: the browser never opened its debugging port.
+     *
+     * That is the collision this module's own callers were warned about. It is
+     * not a flake and re-running does not fix it — it fires whenever two
+     * measuring suites land in one worker, which gets likelier with every suite
+     * added.
+     *
+     * `--remote-debugging-port=0` makes the kernel pick a free port, so two
+     * browsers cannot want the same one however they are scheduled; the real
+     * number is read back from `DevToolsActivePort`, which Chrome writes into
+     * its profile directory once it is listening. That file is also why the
+     * profile has to be this instance's own — and a private profile is worth
+     * having anyway, since two Chromes sharing a default one is its own race.
+     */
+    this.userDataDir = mkdtempSync(path.join(os.tmpdir(), 'measuring-browser-'));
     this.proc = spawn(bin, [
-      '--headless=new', `--remote-debugging-port=${port}`, '--no-sandbox',
+      '--headless=new', '--remote-debugging-port=0',
+      `--user-data-dir=${this.userDataDir}`, '--no-sandbox',
       '--disable-gpu', '--disable-dev-shm-usage', '--hide-scrollbars',
       '--force-device-scale-factor=1', 'about:blank',
     ], { stdio: ['ignore', 'ignore', 'pipe'] });
@@ -135,7 +164,7 @@ export class MeasuringBrowser {
     });
     this.proc.on('exit', (code) => { this.exited = `browser exited with code ${code}`; });
 
-    const wsUrl = await this.debuggerUrl(port);
+    const wsUrl = await this.debuggerUrl(await this.assignedPort());
     this.ws = new WebSocket(wsUrl);
     await new Promise<void>((resolve, reject) => {
       this.ws!.onopen = () => resolve();
@@ -158,6 +187,30 @@ export class MeasuringBrowser {
     await this.send('Runtime.enable', {}, this.sessionId);
     await this.send('Page.navigate', { url: fileUrl }, this.sessionId);
     await this.settle();
+  }
+
+  /**
+   * The port Chrome actually bound, read from `DevToolsActivePort`.
+   *
+   * Chrome writes that file into its profile directory the moment it is
+   * listening: first line the port, second the browser's WebSocket path. Polled
+   * on the same 100ms × 200 budget as {@link debuggerUrl}, and it reports the
+   * same way on failure — a browser that refuses to start says why on stderr,
+   * and a timeout with no reason is the least diagnosable failure a test has.
+   */
+  private async assignedPort(): Promise<number> {
+    const file = path.join(this.userDataDir as string, 'DevToolsActivePort');
+    for (let i = 0; i < 200; i++) {
+      if (this.exited) break;
+      try {
+        const port = Number(readFileSync(file, 'utf8').split('\n')[0].trim());
+        if (Number.isInteger(port) && port > 0) return port;
+      } catch { /* not written yet */ }
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    throw new Error(
+      `the browser never reported its debugging port. ${this.exited}\n${this.stderr.slice(0, 2000)}`,
+    );
   }
 
   private async debuggerUrl(port: number): Promise<string> {
@@ -255,8 +308,38 @@ export class MeasuringBrowser {
     return result.result?.value as T;
   }
 
+  /**
+   * 🔴 AWAITS THE BROWSER'S EXIT, rather than signalling and returning.
+   *
+   * ⚠️ This used to be `this.proc?.kill()` and nothing else, which returns
+   * while Chrome is still tearing down and still holding its socket. With a
+   * per-process port that was the second half of the collision described in
+   * `open()`. The port is now the kernel's to choose, so a lingering browser
+   * can no longer block the next one — but waiting is still right: it stops a
+   * finished suite leaking a live Chrome into the ones after it, and it is
+   * what lets the profile directory be removed rather than left in /tmp.
+   *
+   * SIGKILL after five seconds so a wedged browser cannot hang the run, and
+   * every cleanup step is best-effort: `close()` runs in `afterAll`, where a
+   * throw would replace a real test failure with a teardown one.
+   */
   async close(): Promise<void> {
     try { this.ws?.close(); } catch { /* already gone */ }
-    this.proc?.kill();
+    const proc = this.proc;
+    if (proc && proc.exitCode === null && proc.signalCode === null) {
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          try { proc.kill('SIGKILL'); } catch { /* already gone */ }
+          resolve();
+        }, 5000);
+        proc.once('exit', () => { clearTimeout(timer); resolve(); });
+        try { proc.kill(); } catch { clearTimeout(timer); resolve(); }
+      });
+    }
+    this.proc = null;
+    if (this.userDataDir) {
+      try { rmSync(this.userDataDir, { recursive: true, force: true }); } catch { /* best effort */ }
+      this.userDataDir = null;
+    }
   }
 }
