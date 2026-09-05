@@ -395,6 +395,41 @@ describe('7 · no source file appears in this diff', () => {
     ])].sort();
   };
 
+  /**
+   * Has THE-312 LANDED? i.e. does the base ref already carry this suite?
+   *
+   * 🔴 THE STAND-DOWN SIGNAL, AND IT IS DELIBERATELY NOT `changed()`.
+   *
+   * The block header above sets out this sweep's lifecycle: "Once THE-312
+   * lands, the suite is in the base ref, the sweep has no PR left to police,
+   * and it stands down." Two cases below need to know when that has happened.
+   * `every path in the diff is a test file` asks the DIFF — which is right
+   * there, because the sweep it guards IS the diff, so "this file is not in it"
+   * is the same fact as "there is nothing to sweep".
+   *
+   * ⚠️ `the sweep is live on this branch` cannot ask the same question, because
+   * the diff is the very thing it is checking. `if (!in diff) return; expect(in
+   * diff)` asserts nothing at all — it would be vacuous BY CONSTRUCTION, which
+   * is a worse outcome than the failure it replaces: a guard that cannot fail
+   * looks green while the escape hatch it exists to police rots.
+   *
+   * So it asks the BASE REF instead. That is independent of the diff, so the
+   * guard keeps its FULL force for the whole window it can have any: while
+   * THE-312 is unmerged the base ref does not carry this file, the branch below
+   * returns false, and a sweep that skipped itself still fails.
+   */
+  const landedOnBase = (): boolean => {
+    try {
+      execFileSync('git', ['cat-file', '-e', `${baseRef()}:${SELF}`], {
+        cwd: ROOT,
+        stdio: ['ignore', 'ignore', 'ignore'],
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   it('every path in the diff is a test file', () => {
     const paths = changed();
     if (!paths.includes(SELF)) {
@@ -424,6 +459,20 @@ describe('7 · no source file appears in this diff', () => {
   it('the sweep is live on this branch — it has not quietly become a no-op', () => {
     // ⚠️ Guards the escape hatch above: while THE-312 is unmerged, this suite
     // MUST be in the diff, so the sweep MUST have run.
+    //
+    // 🔴 RETIRED ONCE THE-312 HAS LANDED, and #448 is when that happened.
+    // `every path in the diff is a test file` was given the stand-down this
+    // block's header describes; THIS case was missed. From the moment #448
+    // merged, the suite sat on the base ref and therefore in nobody's diff but
+    // its own — so the assertion was false for EVERY pull request opened from
+    // `main`, and CI went red repo-wide for a premise that had simply expired.
+    //
+    // ⚠️ The assertion is RETIRED, not deleted, and not weakened. Its window
+    // has closed; it has not been found wrong. While it was open it was doing
+    // real work, and `landedOnBase()` is chosen precisely so it goes on doing
+    // that work for any future branch where the window reopens — see its note
+    // for why the signal cannot be the diff.
+    if (landedOnBase()) return;
     expect(changed(), 'the diff does not contain this suite, so the sweep skipped itself')
       .toContain(SELF);
   });
