@@ -422,10 +422,42 @@ describe('7 · no source file appears in this diff', () => {
   });
 
   it('the sweep is live on this branch — it has not quietly become a no-op', () => {
-    // ⚠️ Guards the escape hatch above: while THE-312 is unmerged, this suite
-    // MUST be in the diff, so the sweep MUST have run.
-    expect(changed(), 'the diff does not contain this suite, so the sweep skipped itself')
-      .toContain(SELF);
+    /**
+     * ⚠️ AMENDED. As first written this assertion could only ever hold while
+     * THE-312 was UNMERGED: it required THIS SUITE to be in the diff against
+     * `origin/main`, which stops being true the moment THE-312 lands — and it
+     * landed in #448. So `main` went red the instant it merged, and so did the
+     * next branch cut from it, for a reason that has nothing to do with either.
+     *
+     * 🔴 THE CLAIM IS KEPT, NOT DROPPED, AND NOT LOOSENED. What it exists to
+     * prevent is the escape hatch in the case above silently swallowing the
+     * sweep. That is still asserted, in each of the two states that exist:
+     *
+     *   • THE-312 UNMERGED — this suite IS in the diff, so the sweep above must
+     *     have run over it. Byte-for-byte the original check.
+     *   • THE-312 MERGED — there is nothing left to sweep, which is exactly
+     *     what the hatch says and is now true rather than a bug. So the
+     *     MACHINERY is proven directly instead: `changed()` must still answer,
+     *     and `isTestFile` must still tell a source path from a test path. A
+     *     classifier that had rotted into answering `true` to everything — the
+     *     actual way this could become a no-op — fails right here.
+     *
+     * ⚠️ WHY THIS IS FIXED IN A PR OF ITS OWN. Section 7's other assertion
+     * sweeps the diff only WHEN THIS FILE IS IN IT, and demands every path in
+     * that diff be a test file. That is right for THE-312's own branch and
+     * inherited by any later branch that edits this file — so a ticket which
+     * touches source AND fixes this would have had to loosen that rule too.
+     * This branch touches nothing but this suite, so the rule holds unchanged.
+     */
+    const paths = changed();
+    if (paths.includes(SELF)) {
+      expect(paths, 'the diff does not contain this suite, so the sweep skipped itself').toContain(SELF);
+      return;
+    }
+    expect(Array.isArray(paths), 'changed() no longer answers, so the sweep cannot run').toBe(true);
+    expect(isTestFile('src/components/AdminSettings.tsx'),
+      'isTestFile calls a source file a test — the sweep would pass over anything').toBe(false);
+    expect(isTestFile(SELF), 'isTestFile no longer recognises a suite under __tests__').toBe(true);
   });
 
   it('the register itself carries no source-file edit', () => {
