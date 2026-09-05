@@ -12,8 +12,37 @@ import { AdminSectionLabel, AdminBadge, statusTone } from './admin/AdminUI';
 // the note on the page root below.
 import { FIELD_WIDTH, ACTION_BUTTON } from './layout/form-layout';
 import { SMS_FEATURE_ENABLED } from '../lib/sms-feature';
+// ── The installed primitives this screen composes from ──────────────────────
+//
+// 🔴 `ui/card` IS ADOPTED ONLY WHERE THE CORNER SURVIVES THE MERGE, and the
+// two places it is not are named on the shells themselves. `ui/card` hard-codes
+// `rounded-xl`, and `cn()` is `twMerge`: a `rounded-2xl` passed after it WINS
+// outright (both are Tailwind scale steps, so twMerge drops the loser), while a
+// `rounded-brand-lg`/`-xl` does NOT — twMerge does not know those keys, keeps
+// BOTH classes, and the corner is then decided by stylesheet order rather than
+// by this file. Measured: `twMerge('rounded-xl','rounded-2xl')` → `rounded-2xl`;
+// `twMerge('rounded-xl','rounded-brand-lg')` → both survive.
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Item, ItemMedia, ItemContent, ItemTitle, ItemDescription, ItemActions } from '@/components/ui/item';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-const GOLD = 'var(--brand-color, #B8962E)';
+/**
+ * The gold the brand token resolves to, and NOTHING ELSE.
+ *
+ * ⚠️ This used to be `var(--brand-color, #B8962E)` spelled into ten inline
+ * `style` objects. The literal was not a safety net but a defect: it paints the
+ * SAME hex in all four palettes whenever the token is briefly undefined, which
+ * is the one moment a palette-aware surface must not fall back to Classic. The
+ * screen now spells `bg-gold`/`text-gold`, the utilities that already resolve
+ * `--brand-color`, so there is no second source for the brand colour here.
+ */
 
 type Group = 'all_members' | 'all_donors' | 'tag';
 
@@ -115,9 +144,14 @@ export const LEGACY_BYO_BILLING_NOTE =
 const ByoSmsVolume: React.FC<{ usage: SmsUsage }> = ({ usage }) => {
   const used = usage.smsSegmentsUsed ?? 0;
   return (
+    /* ⚠️ `ui/card` REJECTED ON THIS SHELL — the one primitive that covers a card,
+       and it cannot cover this one. It hard-codes `rounded-xl` (12px) and this
+       shell is `rounded-brand-lg` (16px); twMerge does not know the `brand-*`
+       keys, so it keeps BOTH and the corner is settled by stylesheet order.
+       Composing here would ship two competing radii to move nothing. */
     <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-4 mb-4">
       <div className="flex items-baseline justify-between gap-3 mb-1.5">
-        <span className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: GOLD }}>Before Harvest numbers</span>
+        <span className="text-xs font-semibold uppercase tracking-[0.14em] text-gold">Before Harvest numbers</span>
         <span className="text-xs font-bold text-strong">
           {used.toLocaleString('en-US')} segment{used === 1 ? '' : 's'} this month
         </span>
@@ -135,25 +169,39 @@ const SmsUsageMeter: React.FC<{ usage: SmsUsage; onUpgrade: () => void }> = ({ u
   const warn = pct >= 80 && !over;
 
   return (
+    /* ⚠️ `ui/card` REJECTED ON THIS SHELL, for the reason given on ByoSmsVolume:
+       `rounded-brand-lg` (16px) and the primitive's own `rounded-xl` (12px) both
+       survive twMerge, so the composed card would carry two corners. */
     <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-4 mb-4">
       <div className="flex items-baseline justify-between gap-3 mb-1.5">
-        <span className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: GOLD }}>Plan usage</span>
+        <span className="text-xs font-semibold uppercase tracking-[0.14em] text-gold">Plan usage</span>
         <span className={`text-xs font-bold ${over ? 'text-red-600' : 'text-strong'}`}>
           {used.toLocaleString('en-US')} / {cap.toLocaleString('en-US')} segments
         </span>
       </div>
-      <div className="h-1.5 rounded-full bg-surface-sunken overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all"
-          style={{ width: `${pct}%`, background: over ? '#DC2626' : warn ? '#E67E22' : GOLD }}
-        />
-      </div>
+      {/* `ui/progress` — the installed bar, driven by the SAME `pct`. The track
+          keeps its 1.5 (6px) height and sunken ground, and the fill keeps the
+          three states, through the primitive's own data-slots rather than a
+          hand-rolled track and an inline width. */}
+      <Progress
+        aria-hidden
+        data-usage-bar
+        value={pct}
+        className={`block [&_[data-slot=progress-track]]:h-1.5 [&_[data-slot=progress-track]]:bg-surface-sunken [&_[data-slot=progress-indicator]]:rounded-full ${
+          /* ⚠️ WRITTEN OUT IN FULL, never interpolated into the variant. Tailwind
+             scans this file as TEXT: a class assembled at runtime is a class it
+             never emits, and the fill would silently have no colour at all. */
+          over ? '[&_[data-slot=progress-indicator]]:bg-red-600'
+            : warn ? '[&_[data-slot=progress-indicator]]:bg-amber-600'
+              : '[&_[data-slot=progress-indicator]]:bg-gold'
+        }`}
+      />
       {/* SEGMENTS, not messages — stated wherever the number is shown. */}
       <p className="text-[11px] text-faint mt-1.5">
         {segmentUnitNote(cap)}
       </p>
       {warn && (
-        <p className="text-[11px] font-semibold mt-1.5" style={{ color: '#B9770E' }}>
+        <p className="text-[11px] font-semibold mt-1.5 text-amber-700">
           {pct}% used — nearing your monthly SMS limit.
         </p>
       )}
@@ -163,13 +211,20 @@ const SmsUsageMeter: React.FC<{ usage: SmsUsage; onUpgrade: () => void }> = ({ u
             <AlertTriangle size={13} className="shrink-0 mt-px" />
             <span>Monthly SMS limit reached — sending is paused until the 1st.</span>
           </p>
-          <button
+          {/* ⚠️ `rounded-[12px]`, NOT `rounded-brand`. Measured against the
+              compiled stylesheet: the utilities are emitted alphabetically, so
+              `.rounded-lg` (the primitive's own, 4698) lands AFTER
+              `.rounded-brand` (4548) at equal specificity and WINS. twMerge
+              cannot drop `rounded-lg` for a key it does not know, so a Button
+              given `rounded-brand` silently renders 8px. `rounded-[12px]` is
+              `borderRadius.brand`'s own literal, and twMerge DOES drop
+              `rounded-lg` for it — so the corner stays exactly 12px. */}
+          <Button
             onClick={onUpgrade}
-            className="shrink-0 px-3.5 py-1.5 rounded-brand text-white text-xs font-semibold"
-            style={{ backgroundColor: GOLD }}
+            className="shrink-0 h-11 sm:h-auto border-0 px-3.5 py-1.5 rounded-[12px] bg-gold text-white text-xs font-semibold hover:bg-gold"
           >
             Upgrade plan
-          </button>
+          </Button>
         </div>
       )}
     </div>
@@ -337,11 +392,30 @@ const AdminSmsScreen: React.FC = () => {
   // Fixing that needs a measure form-layout.ts does not have, and minting a
   // third one is a change to the shared module — reported instead.
   return (
-    <div className="max-w-2xl mx-auto" style={{ paddingBottom: 120 }}>
-      <div className="flex gap-1 bg-surface-sunken rounded-xl p-1 mb-6 w-fit mx-auto">
-        <button onClick={() => setTab('broadcast')} className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${tab === 'broadcast' ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'}`}>Broadcasts</button>
-        <button onClick={() => setTab('automated')} className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${tab === 'automated' ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'}`}>Automated</button>
-      </div>
+    /* The 120px bottom clearance is now a class, not an inline style — the same
+       120px, moved out of a `style` object.
+       🔴 IT IS STATED HERE RATHER THAN INHERITED. The admin shell's bottom nav is
+       `fixed bottom-0` at `z-[100]`, and the clearance class that shell reaches
+       for compiles to nothing in this app; the member shell was fixed and the
+       admin shell was not. So this screen carries its own clearance and does not
+       depend on the shell's.
+       ⚠️ Two things are deliberately NOT spelled in this comment: the shell's
+       inert class name, which THE-295's sweep enumerates every mention of, and a
+       PR number, because the colour-literal guard in
+       admin-data-screens.desktop-layout.test.tsx reads `#` followed by hex
+       digits as a raw colour and a PR number is not a colour. */
+    <div className="max-w-2xl mx-auto pb-[120px]">
+      {/* `ui/tabs` — the switcher is a real tablist with roving focus and
+          `aria-selected`, which two plain buttons never were. The pill shell,
+          its 1px inset and the 4/1.5 trigger padding are unchanged; the
+          primitive's own `h-[calc(100%-1px)] flex-1 text-sm rounded-md px-1.5`
+          are each dropped by twMerge for the value already here. */}
+      <Tabs value={tab} onValueChange={(v) => setTab(v as 'broadcast' | 'automated')} className="w-fit mx-auto mb-6 gap-0">
+        <TabsList className="flex gap-1 bg-surface-sunken rounded-xl p-1 h-auto w-fit">
+          <TabsTrigger value="broadcast" className="h-auto flex-none border-0 px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors min-h-[44px] sm:min-h-0 text-faint data-active:bg-surface-raised data-active:shadow-xs data-active:text-strong">Broadcasts</TabsTrigger>
+          <TabsTrigger value="automated" className="h-auto flex-none border-0 px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors min-h-[44px] sm:min-h-0 text-faint data-active:bg-surface-raised data-active:shadow-xs data-active:text-strong">Automated</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {usage?.metered
         ? <SmsUsageMeter usage={usage} onUpgrade={() => navigate('/admin/upgrade')} />
@@ -349,24 +423,41 @@ const AdminSmsScreen: React.FC = () => {
 
       {tab === 'broadcast' ? (
         <>
+          {/* ⚠️ `ui/card` REJECTED — `rounded-brand-lg` again. Measured against the
+              compiled stylesheet: `.rounded-xl` is emitted AFTER `.rounded-brand-lg`
+              at equal specificity, so a composed Card would not merely carry two
+              corners, it would render the primitive's 12px and DROP this shell's
+              16px. That is a measured change this ticket may not make. */}
           <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-5 space-y-3">
             <div>
-              <label className="block text-sm font-medium text-body mb-1.5">Recipients</label>
-              <select value={group} onChange={e => setGroup(e.target.value as Group)} className={`w-full px-4 py-2.5 border border-line rounded-xl text-sm bg-surface-raised focus:outline-hidden focus:border-gold ${FIELD_WIDTH.medium}`}>
+              <Label htmlFor="sms-recipients" className="block leading-5 text-sm font-medium text-body mb-1.5">Recipients</Label>
+              {/* ⚠️ `ui/select` REJECTED, and this is the one control where the
+                  rejection is not about a corner. Two independent reasons:
+                    · it is not a `<select>`. base-ui renders a button + popup
+                      listbox, and the width guard in
+                      admin-data-screens.desktop-layout.test.tsx finds this field
+                      by `label → parent → input,select,textarea` to assert its
+                      FIELD_WIDTH.medium cap. A listbox button is none of those,
+                      so composing here would blind an existing measured guard.
+                    · it pins its own height at `data-[size=default]:h-8` — an
+                      attribute selector that outranks Rule 4 exactly as THE-317
+                      measured, and 32px is under the 44px touch floor.
+                  The native control keeps both properties for free. */}
+              <select id="sms-recipients" value={group} onChange={e => setGroup(e.target.value as Group)} className={`w-full px-4 py-2.5 border border-line rounded-xl text-sm bg-surface-raised focus:outline-hidden focus:border-gold min-h-[44px] sm:min-h-0 ${FIELD_WIDTH.medium}`}>
                 <option value="all_members">All Members</option>
                 <option value="all_donors">All Donors</option>
                 <option value="tag">Custom Tag</option>
               </select>
             </div>
             {group === 'tag' && (
-              <input value={tag} onChange={e => setTag(e.target.value)} placeholder="Tag name" className={`w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.medium}`} />
+              <Input value={tag} onChange={e => setTag(e.target.value)} placeholder="Tag name" className={`h-auto w-full px-4 py-2.5 border-line rounded-xl text-sm bg-transparent focus-visible:ring-0 focus-visible:border-gold min-h-[44px] sm:min-h-0 ${FIELD_WIDTH.medium}`} />
             )}
             <p className="text-xs text-muted">Will send to <strong>{recipientCount ?? '…'}</strong> contact(s) with a phone number.</p>
             {/* The US-only limit is stated up front, not discovered from a
                 skipped-recipient count after the fact. */}
             <p className="text-[11px] text-faint">SMS is currently available for US numbers only — contacts with a non-US number are skipped and reported.</p>
             <div>
-              <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Your message…" rows={4} className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-hidden focus:border-gold" />
+              <Textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Your message…" rows={4} className="field-sizing-fixed min-h-0 w-full px-4 py-2.5 border-line rounded-xl text-sm bg-transparent focus-visible:ring-0 focus-visible:border-gold" />
               <div className="flex justify-between text-xs text-faint mt-1">
                 <span>{message.length} chars</span>
                 <span>
@@ -381,54 +472,91 @@ const AdminSmsScreen: React.FC = () => {
                 refuses the request (403 from the broadcast route), so this is a
                 courtesy, not the enforcement. The upgrade CTA lives in the
                 usage meter above. */}
-            <button onClick={send} disabled={sending || capReached} className={`w-full sm:w-auto flex items-center justify-center gap-2 py-2.5 rounded-brand text-white text-sm font-semibold disabled:opacity-50 ${ACTION_BUTTON}`} style={{ backgroundColor: GOLD }}>
+            {/* `rounded-[12px]` rather than `rounded-brand`, for the reason set
+                out on the upgrade Button above. */}
+            <Button onClick={send} disabled={sending || capReached} className={`h-11 sm:h-auto w-full sm:w-auto border-0 flex items-center justify-center gap-2 py-2.5 px-2.5 rounded-[12px] bg-gold hover:bg-gold text-white text-sm font-semibold disabled:opacity-50 min-h-[44px] sm:min-h-0 ${ACTION_BUTTON}`}>
               {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
               {capReached ? 'Monthly SMS limit reached' : 'Send now'}
-            </button>
-            {sendMsg && <div className={`p-3 rounded-xl text-sm ${sendMsg.ok ? 'bg-field-100 text-field-700' : 'bg-wheat-50 text-wheat-700'}`}>{sendMsg.text}</div>}
+            </Button>
+            {/* `ui/alert` — the send outcome is a status message, and it now says
+                so to a screen reader (`role="alert"`) instead of being a bare
+                div. Both tones keep the exact tokens they had. */}
+            {sendMsg && (
+              <Alert className={`p-3 rounded-xl text-sm ${sendMsg.ok ? 'bg-field-100 text-field-700' : 'bg-wheat-50 text-wheat-700'}`}>
+                <AlertDescription className="text-inherit">{sendMsg.text}</AlertDescription>
+              </Alert>
+            )}
           </div>
 
           <AdminSectionLabel className="mt-8 mb-3 block">Sent History</AdminSectionLabel>
           {history.length === 0 ? (
-            <div className="text-center py-10 text-faint"><MessageSquare size={36} className="mx-auto mb-2 opacity-30" /><p className="text-sm">No broadcasts yet</p></div>
+            /* `ui/empty` — the installed empty state. The primitive's own
+               `gap-4 p-6 rounded-xl border-dashed flex-1` are each dropped for
+               the values already here, so the glyph, its 36px size, the 30%
+               opacity and the 10-unit vertical rhythm are unchanged. */
+            <Empty className="flex-none gap-0 rounded-none border-none p-0 py-10 text-center text-faint">
+              <EmptyHeader className="gap-0">
+                <EmptyMedia className="bg-transparent size-auto mb-2 opacity-30 [&_svg]:size-9">
+                  <MessageSquare size={36} />
+                </EmptyMedia>
+                <EmptyTitle className="text-sm font-normal text-faint">No broadcasts yet</EmptyTitle>
+              </EmptyHeader>
+            </Empty>
           ) : (
             <>
               {/* Mobile history — mockup list card: gold SMS disc, message + meta
                   sub, status pill. Same `history` data, fmtDate, statusTone/AdminBadge
                   as the desktop list below — no wiring changed. */}
+              {/* ⚠️ `ui/card` REJECTED on this shell — `rounded-brand-xl` is 24px
+                  and the primitive's `rounded-xl` is emitted after it, so a
+                  composed Card would render 12px and lose the 24px corner
+                  outright. The ROWS inside are `ui/item`, which is the primitive
+                  a row of things actually maps to. */}
               <div className="lg:hidden bg-surface-raised rounded-brand-xl border border-line shadow-[var(--ds-sh-sm)] overflow-hidden">
                 {history.map((b, i) => (
-                  <div key={b.id} className={`flex items-start gap-3 px-3.5 py-3 ${i ? 'border-t border-line' : ''}`}>
-                    <div className="w-[38px] h-[38px] rounded-[10px] bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0">
+                  <Item
+                    key={b.id}
+                    className={`flex-nowrap items-start gap-3 rounded-none border-0 px-3.5 py-3 ${i ? 'border-t border-line' : ''}`}
+                  >
+                    <ItemMedia
+                      variant="icon"
+                      className="w-[38px] h-[38px] rounded-[10px] bg-[var(--surface-gold)] text-gold shrink-0 group-has-data-[slot=item-description]/item:translate-y-0 [&_svg]:size-4"
+                    >
                       <MessageSquare size={16} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[13.5px] font-semibold text-strong leading-snug line-clamp-2">{b.message}</div>
-                      <div className="text-[11.5px] text-faint mt-1">
+                    </ItemMedia>
+                    <ItemContent className="flex-1 min-w-0 gap-0">
+                      <ItemTitle className="w-auto line-clamp-2 block text-[13.5px] font-semibold text-strong leading-snug">{b.message}</ItemTitle>
+                      <ItemDescription className="line-clamp-none text-[11.5px] text-faint mt-1 leading-normal">
                         {fmtDate(b.createdAt)} · {b.recipientCount} recipients
                         {b.status === 'sent' && ` · ${b.delivered || 0} delivered, ${b.failed || 0} failed`}
                         {b.status === 'scheduled' && ` · for ${fmtDate(b.scheduledAt || undefined)}`}
-                      </div>
-                    </div>
-                    <AdminBadge tone={statusTone(b.status)} className="shrink-0">{b.status}</AdminBadge>
-                  </div>
+                      </ItemDescription>
+                    </ItemContent>
+                    <ItemActions className="gap-0">
+                      <AdminBadge tone={statusTone(b.status)} className="shrink-0">{b.status}</AdminBadge>
+                    </ItemActions>
+                  </Item>
                 ))}
               </div>
 
               {/* Desktop history — existing approved layout, unchanged (now lg-only). */}
+            {/* ⚠️ `ui/card` REJECTED here too — `rounded-brand-lg`, same measured
+                reason. The rows are `ui/item`. */}
             <div className="hidden lg:block bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] divide-y divide-stone-200">
               {history.map(b => (
-                <div key={b.id} className="px-5 py-4">
+                <Item key={b.id} className="flex-col items-stretch gap-0 rounded-none border-0 px-5 py-4">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm text-strong flex-1">{b.message}</span>
-                    <AdminBadge tone={statusTone(b.status)}>{b.status}</AdminBadge>
+                    <ItemTitle className="w-auto line-clamp-none block text-sm font-normal text-strong leading-5 flex-1">{b.message}</ItemTitle>
+                    <ItemActions className="gap-0">
+                      <AdminBadge tone={statusTone(b.status)}>{b.status}</AdminBadge>
+                    </ItemActions>
                   </div>
-                  <div className="text-xs text-faint mt-1.5">
+                  <ItemDescription className="line-clamp-none text-xs text-faint mt-1.5 leading-normal">
                     {fmtDate(b.createdAt)} · {b.recipientCount} recipients
                     {b.status === 'sent' && ` · ${b.delivered || 0} delivered, ${b.failed || 0} failed`}
                     {b.status === 'scheduled' && ` · for ${fmtDate(b.scheduledAt || undefined)}`}
-                  </div>
-                </div>
+                  </ItemDescription>
+                </Item>
               ))}
             </div>
             </>
@@ -440,34 +568,54 @@ const AdminSmsScreen: React.FC = () => {
           {TRIGGERS.map(t => {
             const tpl = templates[t.key] || { enabled: false, text: '' };
             return (
-              <div key={t.key} className="bg-surface-raised rounded-2xl border border-line p-4">
+              /* ✅ `ui/card` IS ADOPTED HERE. This shell is `rounded-2xl`, which
+                 twMerge DOES resolve against the primitive's `rounded-xl` —
+                 measured: `twMerge('rounded-xl','rounded-2xl')` → `rounded-2xl`.
+                 One corner reaches the DOM, and it is this shell's own. */
+              <Card key={t.key} size="sm" className="gap-0 py-0 overflow-visible ring-0 bg-surface-raised rounded-2xl border border-line p-4 text-body">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-semibold text-body">{t.label}</span>
-                  <label className="relative inline-flex items-center cursor-pointer">
+                  {/* ⚠️ `ui/switch` REJECTED, and the reason is reachability, not
+                      taste. Its Thumb carries a HARD-CODED className inside
+                      `ui/switch.tsx` — `group-data-[size=default]/switch:size-4`
+                      and `translate-x-[calc(100%-2px)]` — that no caller prop can
+                      reach. The Root's track can be pinned back to this 40×24
+                      from outside; the 20px thumb at its 2px inset cannot. So
+                      composing would move the thumb to 16px, and this ticket may
+                      not move a measured value. Editing the shared primitive to
+                      suit one screen is not this ticket's to do either.
+                      ✅ The 44px touch floor below `sm` IS applied, on the label
+                      that is the actual tappable target. */}
+                  <label className="relative inline-flex items-center cursor-pointer min-h-[44px] sm:min-h-0">
                     <input type="checkbox" className="sr-only peer" checked={!!tpl.enabled} onChange={e => setTpl(t.key, { enabled: e.target.checked })} />
                     <div className="w-10 h-6 bg-surface-chip peer-checked:bg-gold rounded-full peer transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-surface-raised after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4" />
                   </label>
                 </div>
-                <textarea
+                <Textarea
                   value={tpl.text}
                   onChange={e => setTpl(t.key, { text: e.target.value })}
                   placeholder={t.placeholder}
                   rows={2}
-                  className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-hidden focus:border-gold"
+                  className="field-sizing-fixed min-h-0 w-full px-3 py-2 border-line rounded-lg text-sm bg-transparent focus-visible:ring-0 focus-visible:border-gold"
                 />
-              </div>
+              </Card>
             );
           })}
-          <button onClick={saveTemplates} disabled={savingTpl} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
+          {/* `rounded-xl` here, not `rounded-brand` — this button already spelled
+              `rounded-xl`, which twMerge resolves cleanly against the
+              primitive's `rounded-lg`, so no override literal is needed. */}
+          <Button onClick={saveTemplates} disabled={savingTpl} className="h-11 sm:h-auto border-0 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gold hover:bg-gold text-white text-sm font-semibold disabled:opacity-50">
             <Save size={15} /> {savingTpl ? 'Saving…' : 'Save Templates'}
-          </button>
+          </Button>
           {tplSaved && <span className="text-sm text-field-600 font-medium ml-2">✓ Saved</span>}
 
           {/* ── Text-to-Give ── */}
-          <div className="bg-surface-raised rounded-2xl border border-line p-4 mt-6">
+          {/* ✅ `ui/card` ADOPTED — `rounded-2xl` again, so the corner resolves. */}
+          <Card size="sm" className="gap-0 py-0 overflow-visible ring-0 bg-surface-raised rounded-2xl border border-line p-4 mt-6 text-body">
             <div className="flex items-center justify-between mb-1">
-              <span className="font-display text-sm font-bold text-body flex items-center gap-1.5"><Gift size={15} style={{ color: GOLD }} /> Text-to-Give</span>
-              <label className="relative inline-flex items-center cursor-pointer">
+              <span className="font-display text-sm font-bold text-body flex items-center gap-1.5"><Gift size={15} className="text-gold" /> Text-to-Give</span>
+              {/* `ui/switch` rejected for the reason given on the trigger rows. */}
+              <label className="relative inline-flex items-center cursor-pointer min-h-[44px] sm:min-h-0">
                 <input type="checkbox" className="sr-only peer" checked={t2g.enabled} onChange={e => setT2g({ ...t2g, enabled: e.target.checked })} />
                 <div className="w-10 h-6 bg-surface-chip peer-checked:bg-gold rounded-full peer transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-surface-raised after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4" />
               </label>
@@ -477,41 +625,45 @@ const AdminSmsScreen: React.FC = () => {
             {t2g.enabled && (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-semibold text-body mb-1">Keyword</label>
-                  <input value={t2g.keyword} onChange={e => setT2g({ ...t2g, keyword: e.target.value.toUpperCase() })}
-                    placeholder="GIVE" className={`w-full px-3 py-2 border border-line rounded-xl text-sm font-mono focus:outline-hidden focus:border-gold ${FIELD_WIDTH.short}`} />
+                  <Label htmlFor="sms-t2g-keyword" className="block leading-4 text-xs font-semibold text-body mb-1">Keyword</Label>
+                  <Input id="sms-t2g-keyword" value={t2g.keyword} onChange={e => setT2g({ ...t2g, keyword: e.target.value.toUpperCase() })}
+                    placeholder="GIVE" className={`h-auto w-full px-3 py-2 border-line rounded-xl text-sm font-mono bg-transparent focus-visible:ring-0 focus-visible:border-gold min-h-[44px] sm:min-h-0 ${FIELD_WIDTH.short}`} />
                   <p className="text-[11px] text-faint mt-1">People text this word to receive a giving link.</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-body mb-1">Reply Message</label>
-                  <textarea value={t2g.responseTemplate} onChange={e => setT2g({ ...t2g, responseTemplate: e.target.value })}
+                  <Label htmlFor="sms-t2g-reply" className="block leading-4 text-xs font-semibold text-body mb-1">Reply Message</Label>
+                  <Textarea id="sms-t2g-reply" value={t2g.responseTemplate} onChange={e => setT2g({ ...t2g, responseTemplate: e.target.value })}
                     rows={2} placeholder="Thank you! Give here: {link}"
-                    className="w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-hidden focus:border-gold resize-none" />
+                    className="field-sizing-fixed min-h-0 w-full px-3 py-2 border-line rounded-xl text-sm bg-transparent focus-visible:ring-0 focus-visible:border-gold resize-none" />
                   <p className="text-[11px] text-faint mt-1"><code className="bg-surface-sunken px-1 rounded">{'{link}'}</code> will be replaced with your giving page URL.</p>
                   <p className="text-[11px] text-faint mt-1">Preview link: <span className="font-mono">https://{tenantId || 'your-ministry'}.theharvest.app/?giving=1</span></p>
                 </div>
-                <div className="bg-surface-sunken border border-line rounded-xl p-3">
+                {/* `ui/alert` — a standing note about the number's wiring. It is
+                    informational, so it keeps its sunken ground and its tokens;
+                    the primitive supplies the `role="alert"` semantics and the
+                    title/description slots the bare div never had. */}
+                <Alert className="bg-surface-sunken border border-line rounded-xl p-3 gap-0">
                   {/* 🔴 There is nothing for an admin to configure any more.
                       Harvest holds the vendor account and points every number
                       it buys at this endpoint centrally, so a church that once
                       had to paste a webhook URL into a Twilio console now has
                       no console and no step to miss. */}
-                  <p className="text-[11px] text-muted">Your number is already connected — incoming texts reach Harvest automatically, with nothing for you to set up.</p>
-                </div>
+                  <AlertDescription className="text-[11px] text-muted">Your number is already connected — incoming texts reach Harvest automatically, with nothing for you to set up.</AlertDescription>
+                </Alert>
                 <div className="flex items-center gap-3">
-                  <button onClick={saveT2g} disabled={savingT2g} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
+                  <Button onClick={saveT2g} disabled={savingT2g} className="h-11 sm:h-auto border-0 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gold hover:bg-gold text-white text-sm font-semibold disabled:opacity-50">
                     <Save size={15} /> {savingT2g ? 'Saving…' : 'Save Text-to-Give'}
-                  </button>
+                  </Button>
                   {t2gSaved && <span className="text-sm text-field-600 font-medium">✓ Saved</span>}
                 </div>
               </div>
             )}
             {!t2g.enabled && (
-              <button onClick={saveT2g} disabled={savingT2g} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-line text-muted disabled:opacity-50">
+              <Button variant="outline" onClick={saveT2g} disabled={savingT2g} className="h-11 sm:h-auto flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-line bg-transparent hover:bg-transparent text-muted hover:text-muted disabled:opacity-50">
                 <Save size={14} /> {savingT2g ? 'Saving…' : 'Save'}
-              </button>
+              </Button>
             )}
-          </div>
+          </Card>
         </div>
       )}
     </div>
