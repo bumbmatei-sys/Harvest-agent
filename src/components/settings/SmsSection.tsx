@@ -7,6 +7,19 @@ import { CONTROL_DENSITY, FIELD_WIDTH, ACTION_BUTTON } from '../layout/form-layo
 // a hand-rolled anchor so the KYC destination carries the same focus ring and
 // palette treatment as every other action on this screen.
 import { Button } from '@/components/ui/button';
+// ── THE-320 — the rest of the installed primitives this panel composes from.
+//
+// ✅ `ui/card` IS SAFE HERE, and that was checked rather than assumed. Both
+// shells below are `rounded-2xl`; `cn()` is twMerge, and twMerge resolves
+// `rounded-2xl` against the primitive's own `rounded-xl` (both are Tailwind
+// scale steps) so exactly ONE corner reaches the DOM. The sibling SMS screen has
+// shells spelled `rounded-brand-lg`/`-xl`, which twMerge does NOT know and
+// therefore keeps alongside `rounded-xl` — `ui/card` is rejected there and the
+// rejection is recorded on each shell.
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 /**
  * THE-314 — the ministry's phone number: search, buy, see, release.
@@ -62,6 +75,25 @@ function statusLabel(status: string): string {
  * `sm:` up, where 38/40px is the settled desktop band. */
 const CONTROL = `w-full min-h-[44px] px-4 border border-line rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-gold ${CONTROL_DENSITY.control}`;
 const BUTTON = `min-h-[44px] px-6 rounded-xl text-sm font-semibold ${CONTROL_DENSITY.action} ${ACTION_BUTTON}`;
+
+/**
+ * The two recipes above, exported so they can be MEASURED rather than retyped.
+ *
+ * ⚠️ THE-320's layout suite renders these exact strings through the same
+ * primitives this panel uses. The panel's own controls only exist after its
+ * `/api/sms/numbers` effect has run, which server rendering never does — so a
+ * measuring suite that cannot mount the panel would otherwise have to hand-copy
+ * the class strings, and a hand-copied recipe drifts silently from the one that
+ * ships. Exporting them means the thing measured IS the thing rendered.
+ */
+export const SMS_PANEL_CONTROL_CLASSES = { control: CONTROL, action: BUTTON } as const;
+
+/** How the panel spells each control, for the same reason. */
+export const SMS_PANEL_CONTROL_EXTRA = {
+  input: 'h-auto border-line bg-transparent focus-visible:ring-2 focus-visible:ring-gold focus-visible:border-input',
+  primaryAction: 'h-auto bg-gold hover:bg-gold text-white hover:opacity-90 disabled:opacity-50',
+  secondaryAction: 'h-auto border border-line bg-transparent text-body hover:bg-surface-tint hover:text-body',
+} as const;
 
 const SmsNumberPanel: React.FC = () => {
   const [number, setNumber] = useState<NumberRecord | null>(null);
@@ -172,13 +204,30 @@ const SmsNumberPanel: React.FC = () => {
       <p className="text-sm text-muted">{RESOLD_NUMBER_NOTE}</p>
 
       {!loaded ? (
+        /* ⚠️ `ui/skeleton` REJECTED — it is the primitive for a loading state and
+           it cannot be used here, because adopting it DELETES the word
+           "Loading…". This ticket may not change a word of copy, and a shimmer
+           is not the same statement to a screen reader as a sentence. */
         <p className="text-sm text-muted">Loading…</p>
       ) : number ? (
-        <div className="bg-surface-raised rounded-2xl border border-line-subtle p-6 space-y-4">
+        /* ✅ `ui/card` — `rounded-2xl` resolves against the primitive's
+           `rounded-xl`, so the 16px corner this shell already had is the only
+           one emitted. */
+        <Card className="gap-0 py-0 overflow-visible ring-0 bg-surface-raised rounded-2xl border border-line-subtle p-6 space-y-4 text-body">
           <div>
+            {/* ⚠️ `CardTitle` REJECTED on this heading. It renders a `<div>` with
+                no `render` escape, so adopting it would demote an `<h3>` inside
+                the settings accordion to a non-heading — an accessibility
+                regression traded for a class name. */}
             <h3 className="text-sm font-semibold text-muted uppercase tracking-wide">Your number</h3>
             <p className="text-body font-mono text-lg mt-1">{number.phoneNumber}</p>
           </div>
+          {/* ⚠️ `ui/item` REJECTED for these three rows. They are a description
+              list: each `<dt>` NAMES its `<dd>`, and that association is what a
+              screen reader reads out on a billing surface. `Item` renders a div
+              tree with no `dt`/`dd`, so composing here would trade a real
+              semantic for a visual one. `ui/item` IS adopted for the broadcast
+              rows on the sibling screen, where the rows are genuinely just rows. */}
           <dl className={CONTROL_DENSITY.fieldGap + ' space-y-2 text-sm'}>
             <div className="flex flex-wrap gap-x-2">
               <dt className="text-muted">Status</dt>
@@ -201,75 +250,90 @@ const SmsNumberPanel: React.FC = () => {
 
           {confirmRelease ? (
             <div className="space-y-3">
-              <p className="text-sm text-body">{RELEASE_WARNING}</p>
+              {/* `ui/alert` — this is the warning banner before an irreversible,
+                  unrecoverable action, and it now carries `role="alert"` so it
+                  is announced rather than merely printed. The copy, its tokens
+                  and its 3-unit rhythm are unchanged. */}
+              <Alert className="p-0 gap-0 rounded-none border-0 bg-transparent text-body">
+                <AlertDescription className="text-sm text-body">{RELEASE_WARNING}</AlertDescription>
+              </Alert>
               <div className="flex flex-wrap gap-2">
-                <button
+                <Button
                   onClick={release}
                   disabled={busy === 'release'}
-                  className={`${BUTTON} bg-gold text-white hover:opacity-90 disabled:opacity-50`}
+                  className={`h-auto ${BUTTON} bg-gold hover:bg-gold text-white hover:opacity-90 disabled:opacity-50`}
                 >
                   {busy === 'release' ? 'Releasing…' : 'Yes, release it'}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="outline"
                   onClick={() => setConfirmRelease(false)}
-                  className={`${BUTTON} border border-line text-body hover:bg-surface-tint`}
+                  className={`h-auto ${BUTTON} border border-line bg-transparent text-body hover:bg-surface-tint hover:text-body`}
                 >
                   Keep it
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
-            <button
+            <Button
+              variant="outline"
               onClick={() => setConfirmRelease(true)}
-              className={`${BUTTON} border border-line text-body hover:bg-surface-tint`}
+              className={`h-auto ${BUTTON} border border-line bg-transparent text-body hover:bg-surface-tint hover:text-body`}
             >
               Release this number
-            </button>
+            </Button>
           )}
-        </div>
+        </Card>
       ) : (
-        <div className="bg-surface-raised rounded-2xl border border-line-subtle p-6 space-y-4">
+        /* ✅ `ui/card` — `rounded-2xl`, resolves cleanly. */
+        <Card className="gap-0 py-0 overflow-visible ring-0 bg-surface-raised rounded-2xl border border-line-subtle p-6 space-y-4 text-body">
+          {/* `CardTitle` rejected for the reason given on the sibling heading. */}
           <h3 className="text-sm font-semibold text-muted uppercase tracking-wide">Get a number</h3>
           <div className={FIELD_WIDTH.medium}>
-            <label htmlFor="sms-country" className={`block text-sm font-medium text-body ${CONTROL_DENSITY.labelGap} mb-1.5`}>
+            <Label htmlFor="sms-country" className={`block leading-5 text-sm font-medium text-body ${CONTROL_DENSITY.labelGap} mb-1.5`}>
               Country
-            </label>
-            <input
+            </Label>
+            <Input
               id="sms-country"
               value={country}
               onChange={(e) => setCountry(e.target.value.toUpperCase().slice(0, 2))}
               placeholder="US"
-              className={`${CONTROL} font-mono`}
+              className={`h-auto border-line bg-transparent focus-visible:ring-2 focus-visible:ring-gold focus-visible:border-input ${CONTROL} font-mono`}
             />
           </div>
           <div className={FIELD_WIDTH.short}>
-            <label htmlFor="sms-area" className={`block text-sm font-medium text-body ${CONTROL_DENSITY.labelGap} mb-1.5`}>
+            <Label htmlFor="sms-area" className={`block leading-5 text-sm font-medium text-body ${CONTROL_DENSITY.labelGap} mb-1.5`}>
               Area code <span className="text-faint font-normal">(optional)</span>
-            </label>
-            <input
+            </Label>
+            <Input
               id="sms-area"
               value={areaCode}
               onChange={(e) => setAreaCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
               placeholder="615"
-              className={`${CONTROL} font-mono`}
+              className={`h-auto border-line bg-transparent focus-visible:ring-2 focus-visible:ring-gold focus-visible:border-input ${CONTROL} font-mono`}
             />
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <button
+            <Button
+              variant="outline"
               onClick={search}
               disabled={busy === 'search'}
-              className={`${BUTTON} border border-line text-body hover:bg-surface-tint disabled:opacity-50`}
+              className={`h-auto ${BUTTON} border border-line bg-transparent text-body hover:bg-surface-tint hover:text-body disabled:opacity-50`}
             >
               {busy === 'search' ? 'Checking…' : 'Check availability'}
-            </button>
-            <button
+            </Button>
+            {/* 🔴 THE-318's purchase path is untouched by this composition: this
+                is the same `buy` handler, and `buy` still POSTs the same body,
+                still reads the RETURNED profile, still passes `allowMultiple`
+                and still surfaces a KYC 202 through `kycUrl` below. */}
+            <Button
               onClick={buy}
               disabled={busy === 'buy'}
-              className={`${BUTTON} bg-gold text-white hover:opacity-90 disabled:opacity-50`}
+              className={`h-auto ${BUTTON} bg-gold hover:bg-gold text-white hover:opacity-90 disabled:opacity-50`}
             >
               {busy === 'buy' ? 'Buying…' : 'Buy a number'}
-            </button>
+            </Button>
           </div>
 
           {available !== null && (
@@ -283,12 +347,15 @@ const SmsNumberPanel: React.FC = () => {
                 : `No numbers are available in ${country}${areaCode ? ` (${areaCode})` : ''} right now. Try another area code.`}
             </p>
           )}
-        </div>
+        </Card>
       )}
 
       {msg && (
-        <div className={`p-3 rounded-xl text-sm ${msg.ok ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}`}>
-          <p>{msg.text}</p>
+        /* `ui/alert` — the outcome banner. Both tones keep the exact tokens they
+           had; what the primitive adds is `role="alert"`, so a purchase result
+           an admin cannot see is still announced. */
+        <Alert className={`p-3 gap-0 rounded-xl text-sm ${msg.ok ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}`}>
+          <AlertDescription className="text-inherit">{msg.text}</AlertDescription>
           {kycUrl && (
             // ≥44px below `sm`; the primitive's own 32px height is the settled
             // desktop band from `sm:` up, so the minimum is released there.
@@ -300,7 +367,7 @@ const SmsNumberPanel: React.FC = () => {
               Complete the identity check
             </Button>
           )}
-        </div>
+        </Alert>
       )}
     </div>
   );

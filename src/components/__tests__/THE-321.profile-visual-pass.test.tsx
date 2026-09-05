@@ -453,10 +453,18 @@ describe('14 · the files THE-321 does not own are byte-identical', () => {
   const NOT_OURS: Record<string, ReadonlyArray<readonly [digest: string, source: string]>> = {
     'src/components/AdminSms.tsx': [
       ['5cf8ed7aba7720fd4ef892ca0f294219ae1f6fe5d5121afc54481ff83a5f2eaf', 'main at acc0d66 — THE-320 owns it'],
+      // 🔴 APPENDED BY THE-320, NEVER SUBSTITUTED — the value above still stands.
+      // This is precisely the case the header calls for: THE-320 is the ticket
+      // this map already names as the owner, and it has now composed the file
+      // from the installed primitives. THE-321 still cannot edit it, because a
+      // value that is NEITHER of these two continues to fail.
+      ['ed2f8906fb0b9f4faf26e62f44418fe85143762dbaae66761b3487b5a4f4eff9', 'main + THE-320 — the ticket that owns it, composed from the primitives'],
     ],
     'src/components/settings/SmsSection.tsx': [
       ['75c90bc448dc52eceb47e8866a06a32cd53a64bb1b0455c2b7585053800bdf03', 'main at acc0d66 — THE-320 owns it'],
       ['5bb4042ee2d57f562a7a2b33897fe6bf169a9f7e82bd1bb8bddeb9b83cf6c6b0', "THE-319's recorded value, from before it moved on main"],
+      // 🔴 APPENDED BY THE-320. Both values above stand unedited.
+      ['6e619cd3a1b2e4356ebbee1a1b1788b0692ab1b736258481d18888b0455aa33d', 'main + THE-320 — the ticket that owns it, composed from the primitives'],
     ],
     'src/components/events/ServicePlanPanel.tsx': [
       ['81f99a23ff53cb1488935b7adf37cf043ff577399324e377785176d9f1e8c891', 'main at acc0d66 — THE-317 (#458) owns it'],

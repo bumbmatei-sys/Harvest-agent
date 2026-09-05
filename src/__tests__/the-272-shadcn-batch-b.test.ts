@@ -1044,7 +1044,54 @@ const THE_317_TABLE_ADOPTERS = [
   'src/components/events/VolunteerRotaView.tsx',
 ] as const;
 
-it('only THE-276 adopts chart, THE-283/THE-290/THE-294/THE-319/THE-317 adopt table, THE-290/THE-319 adopt progress, and pagination is still adopted by nothing', () => {
+/**
+ * ⚠️ AMENDED AGAIN BY THE-320, BESIDE THE-317's ENTRY ABOVE — not instead of it.
+ *
+ * 🔴 The two tickets append to DIFFERENT primitives: THE-317 takes `table`'s
+ * fifth adopter, THE-320 takes `progress`'s fourth. So the resolution is the
+ * UNION of both lists, and each claim stays independently closed — a sixth
+ * `table` adopter and a fifth `progress` adopter each still fail here.
+ *
+ * ─── `progress` gains its FOURTH adopter ────────────────────────────────────
+ *
+ * 🔴 APPENDED BY THE-320, NEVER SUBSTITUTED. Every list above is untouched;
+ * this one is added beside them and the claim STAYS CLOSED — a FIFTH adopter of
+ * `progress` still fails here.
+ *
+ * `AdminSms` draws the plan's SMS segment meter: segments used against the
+ * monthly cap, as a track and a fill. That is `used / cap`, the same fraction
+ * THE-290 adopted `progress` for and the same shape as THE-319's option bars.
+ * Before this it was a hand-rolled track `div` and a fill `div` whose width AND
+ * colour were an inline `style` — one of the ten this ticket removes, and the
+ * only one carrying a raw hex pair (#DC2626 / #E67E22). The primitive owns the
+ * width now; the three states are repainted through its own data-slots, which is
+ * the seam `ui/progress` offers and the same one FormAnswersView uses.
+ *
+ * ⚠️ The `bg-primary` on `bg-muted` contrast note recorded for THE-319 applies
+ * here in the same way and for the same reason: this call site repaints both the
+ * track and the indicator in the screen's own surface tokens, so the accepted
+ * default pair is not what ships. And nothing is conveyed by length alone — the
+ * used/cap figures are written above the bar and the percentage is written below
+ * it, which is why the bar itself is `aria-hidden`.
+ *
+ * 🔴 `chart`, `table` and `pagination` GAIN NO ADOPTER from THE-320, and each
+ * was re-examined rather than inherited:
+ *   · `table` — the broadcast history is a LIST of messages, not a grid of
+ *     columns. It renders as stacked rows on a phone and as stacked rows on a
+ *     monitor; there is no column a reader could scan down. It is `item`, which
+ *     is what THE-320 adopts for it.
+ *   · `chart` — the segment meter is one fraction, not a series. recharts also
+ *     renders nothing under happy-dom, and the figures on this screen are about
+ *     money being spent, so they must stay assertable in the DOM.
+ *   · `pagination` — the history query is already `limit(100)` and shows what it
+ *     has. Hiding a broadcast behind a page control is not something this ticket
+ *     may add: it would be new behaviour, not composition.
+ */
+const THE_320_PROGRESS_ADOPTERS = [
+  'src/components/AdminSms.tsx',
+] as const;
+
+it('only THE-276 adopts chart, THE-283/THE-290/THE-294/THE-319/THE-317 adopt table, THE-290/THE-319/THE-320 adopt progress, and pagination is still adopted by nothing', () => {
   const walk = (dir: string): string[] =>
     readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
       const p = path.join(dir, e.name);
@@ -1074,7 +1121,7 @@ it('only THE-276 adopts chart, THE-283/THE-290/THE-294/THE-319/THE-317 adopt tab
 
   const progressImporters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), 'progress'));
   expect(progressImporters.map((f) => rel(f)).sort())
-    .toEqual([...THE_290_PROGRESS_ADOPTERS, ...THE_319_PROGRESS_ADOPTERS].sort());
+    .toEqual([...THE_290_PROGRESS_ADOPTERS, ...THE_319_PROGRESS_ADOPTERS, ...THE_320_PROGRESS_ADOPTERS].sort());
 
   for (const name of ['pagination']) {
     const adopters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), name));

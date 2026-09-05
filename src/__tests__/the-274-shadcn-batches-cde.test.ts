@@ -999,6 +999,43 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       'that a bare centred div only drew. No primitive was edited — their digests are pinned by ' +
       'ds-primitives.test.tsx and still match.',
   },
+  // 🔴 APPENDED BY THE-320, BESIDE THE-317's AND THE-321's ENTRIES ABOVE — none
+  // of them replaces another. THE-317 records VolunteerRotaView, THE-321 records
+  // Profile, THE-320 records the two SMS surfaces; the resolution is the union of
+  // all four and every earlier entry stands unedited.
+  {
+    file: 'src/components/AdminSms.tsx',
+    ticket: 'THE-320',
+    why:
+      'The two SMS surfaces, and the last of the six screens that shipped ~2,000 lines of ' +
+      'hand-rolled UI because every ticket read "no new component" as "install nothing". This ' +
+      'screen imported NOTHING from ui/ and hand-rolled a tab switcher, a segment meter, four ' +
+      'card shells, a broadcast composer, an empty state, two history lists, three template ' +
+      'cards and the Text-to-Give panel out of raw divs. It takes `item` (Item, ItemMedia, ' +
+      'ItemContent, ItemTitle, ItemDescription, ItemActions), `alert` (Alert, AlertDescription) ' +
+      'and `empty` (Empty, EmptyHeader, EmptyMedia, EmptyTitle), alongside `card`, `button`, ' +
+      '`input`, `textarea`, `label`, `tabs` and `progress`. `empty` is load-bearing rather than ' +
+      'cosmetic: the no-broadcasts state was a bare div whose only content was a decorative ' +
+      'glyph and a sentence, with nothing tying them together for a screen reader. `alert` ' +
+      'carries the send outcome — including a partial send, a non-US skip and a cap block — ' +
+      'which was previously a silent div a reader was never told about. The ten inline styles ' +
+      'are gone and the file spells zero. No primitive was edited.',
+  },
+  {
+    file: 'src/components/settings/SmsSection.tsx',
+    ticket: 'THE-320',
+    why:
+      'The number panel, composed in the same pass and inside the accordion THE-316 composed. ' +
+      'It already held ONE primitive — the `button` THE-318 added for the KYC identity-check ' +
+      'link — and this ticket EXTENDS that pattern rather than replacing it: that Button, its ' +
+      'variant="link" and its base-ui render={<a/>} are untouched. It adds `alert` (Alert, ' +
+      'AlertDescription), `card`, `input` and `label`. `alert` is load-bearing: the purchase ' +
+      'outcome banner reports money being spent — a KYC 202 that charged nothing, a release ' +
+      'that cannot be undone — and it was a plain div no screen reader announced. `card` is ' +
+      'adopted here and REJECTED on the sibling screen, and the difference is measured rather ' +
+      'than stylistic: both shells here are rounded-2xl, which twMerge resolves against the ' +
+      "primitive's rounded-xl, while the sibling's rounded-brand-lg/-xl do not resolve at all.",
+  },
 ];
 
 it('only the recorded adopters import the new components, and each names its ticket', () => {
