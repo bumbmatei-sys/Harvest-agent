@@ -1007,7 +1007,44 @@ const THE_319_PROGRESS_ADOPTERS = [
   'src/components/forms/FormAnswersView.tsx',
 ] as const;
 
-it('only THE-276 adopts chart, THE-283/THE-290/THE-294/THE-319 adopt table, THE-290/THE-319 adopt progress, and pagination is still adopted by nothing', () => {
+/**
+ * ⚠️ AMENDED AGAIN BY THE-317, and RECORDED here rather than relaxed.
+ *
+ * ─── `table` gains its FIFTH adopter, and only its fifth ────────────────────
+ *
+ * The volunteer rota is a row per service-plan ITEM with a clock time, a title
+ * and the person holding it, and the same primitive renders "who is on" for one
+ * date. That is a plain tabular grid of records — the shape THE-283, THE-290,
+ * THE-294 and THE-319 each adopted it for — and it is the one place in this repo
+ * where the primitive's `<th scope>` semantics genuinely matter, because a rota
+ * is read column-wise ("who is on the sound desk") as often as row-wise.
+ *
+ * 🔴 The claim is narrowed by exactly ONE file and STAYS CLOSED: a SIXTH adopter
+ * of `table` still fails here. The decision is visible in this list rather than
+ * invisible in a deleted assertion.
+ *
+ * 🔴 `progress` GAINS NO ADOPTER, and the decision was re-examined rather than
+ * inherited. A "3 of 7 assigned" bar was the obvious widget: `progress` paints
+ * `bg-primary` on `bg-muted` at 2.30:1 in light, which THE-290 recorded as
+ * known-and-accepted ONLY where every figure the bar depicts is written beside
+ * it, and THE-319 shipped its adopter by repainting the track in the screen's
+ * own tokens. Neither escape applies here, because on a rota the figure IS the
+ * content — a week's row already names who holds each item — so length would
+ * convey nothing the text does not already say.
+ *
+ * 🔴 `chart` gains no adopter. A rota is a schedule, not a series.
+ *
+ * 🔴 `pagination` is STILL adopted by nothing. THE-283's reasoning holds
+ * unchanged, and THE-319's alternative is the one taken here too: the long-list
+ * problem is solved by scrolling inside the card (#422's pattern, measured by
+ * this ticket's Chromium suite), and paginating a rota would hide the very week
+ * an admin opened the screen to find.
+ */
+const THE_317_TABLE_ADOPTERS = [
+  'src/components/events/VolunteerRotaView.tsx',
+] as const;
+
+it('only THE-276 adopts chart, THE-283/THE-290/THE-294/THE-319/THE-317 adopt table, THE-290/THE-319 adopt progress, and pagination is still adopted by nothing', () => {
   const walk = (dir: string): string[] =>
     readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
       const p = path.join(dir, e.name);
@@ -1032,6 +1069,7 @@ it('only THE-276 adopts chart, THE-283/THE-290/THE-294/THE-319 adopt table, THE-
       ...THE_290_TABLE_ADOPTERS,
       ...THE_294_TABLE_ADOPTERS,
       ...THE_319_TABLE_ADOPTERS,
+      ...THE_317_TABLE_ADOPTERS,
     ].sort());
 
   const progressImporters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), 'progress'));

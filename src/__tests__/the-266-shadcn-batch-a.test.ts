@@ -671,11 +671,17 @@ describe('the out-of-scope files are untouched', () => {
       // without the aria-expanded / aria-controls pairing the primitive gives.
       'src/components/settings/SettingsAccordion.tsx',
     ],
-    // All pre-existing; recorded here so the set is closed against a fourth.
+    // The first three are pre-existing and were invisible to the alias-only
+    // matcher until THE-316 closed it; recorded here so the set stays closed.
     skeleton: [
       'src/components/AdminDashboardHome.tsx',
       'src/components/dashboard/KpiCard.tsx',
       'src/components/dashboard/WidgetFrame.tsx',
+      // THE-317 — the volunteer rota's loading state, and the first entry on
+      // this list that was ADDED rather than uncovered. A rota's wait is a KNOWN
+      // SHAPE — a card of stacked rows — so a skeleton says what is coming,
+      // where a spinner would only say "wait". 🔴 A FIFTH adopter still fails.
+      'src/components/events/VolunteerRotaView.tsx',
     ],
     breadcrumb: ['src/components/docs/DocsBreadcrumb.tsx'],
   };

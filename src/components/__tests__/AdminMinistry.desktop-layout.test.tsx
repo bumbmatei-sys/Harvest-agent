@@ -241,7 +241,7 @@ interface PrePr {
  * PR's import line, and comment-only and blank lines. What survives is the
  * behaviour — every query, write, handler and value.
  */
-const stripPresentation = (src: string): string => unwrapServicePlan(unwrapSmsGate(src))
+const stripPresentation = (src: string): string => unwrapRota(unwrapServicePlan(unwrapSmsGate(src)))
   .replace(/className=(?:"[^"]*"|\{`[^`]*`\}|\{[A-Za-z_$][\w.$]*\})/g, 'className=X')
   // An import of a LAYOUT module is presentation, not behaviour — the same
   // reasoning that already exempted form-layout, widened to the directory. A
@@ -348,6 +348,81 @@ const SERVICE_PLAN_EDITS: [string, string][] = [
 
 const unwrapServicePlan = (src: string): string =>
   SERVICE_PLAN_EDITS.reduce((acc, [after, before]) => acc.replace(after, before), src);
+
+/**
+ * THE-317 — reverse the volunteer rota's edits before hashing, and NOTHING else.
+ *
+ * ⚠️ THE SAME CHOICE THE-313 MADE ONE TICKET AGO, FOR THE SAME REASON. THE-251's
+ * note above sets out the two honest options for a real edit to a screen this
+ * suite pins byte-for-byte — RE-RECORD the baseline, or REVERSE the known edit
+ * exactly — and says plainly which is weaker: "Re-recording is the weaker one:
+ * it would bless every other byte that moved in the same breath, which is the
+ * one thing this guard exists to catch."
+ *
+ * 🔴 THE-317's edit to `AdminEvents.tsx` is FIVE EXACT STRINGS — an import, one
+ * union member, one `else if` branch on the header override, one early-return
+ * screen and one button that reaches it — so the stronger option is available
+ * and is what is taken. The hash below still compares against the PRE-PR
+ * revision, byte for byte, and anything else that moves in this screen still
+ * goes red tomorrow.
+ *
+ * ⚠️ APPENDED, NEVER SUBSTITUTED. `SERVICE_PLAN_EDITS` is untouched: THE-313's
+ * reversal still has to match, so this ticket cannot mask a change to part 1's
+ * mount by replacing the list that guards it. Both run, in order.
+ *
+ * 🔴 THE ROTA ITSELF IS NOT REVERSED HERE BECAUSE IT IS NOT IN THIS FILE. It
+ * lives in `events/VolunteerRotaPanel.tsx`, `events/VolunteerRotaView.tsx` and
+ * `events/volunteer-rota.ts`, guarded by `the-317-guards.test.ts` — which pins
+ * this screen's className-to-inline-style ratio, part 1's `service-plan.ts` and
+ * `useServicePlanQueries.ts` by digest, and `firestore.rules` byte for byte.
+ *
+ * ⚠️ If any string stops matching — because the mount was reshaped, or because
+ * something else in the file moved — the replacement silently no-ops and the
+ * hash goes red, which is the correct outcome in both cases.
+ *
+ * Delete this when the baseline is next legitimately re-recorded.
+ */
+const ROTA_EDITS: [string, string][] = [
+  ["import VolunteerRotaPanel from './events/VolunteerRotaPanel';\n", ''],
+  [
+    "type ViewMode = 'list' | 'create' | 'edit' | 'detail' | 'rota';",
+    "type ViewMode = 'list' | 'create' | 'edit' | 'detail';",
+  ],
+  [
+    `    } else if (view === 'rota') {
+      setHeaderOverride({
+        title: 'Volunteer rota',
+        onBack: () => { setView('list'); setSelected(null); },
+      });
+`,
+    '',
+  ],
+  [
+    `  // THE-317 — the volunteer rota. Its own screen inside this tab rather than a
+  // new nav entry: the rota is the events' own assignments seen across dates,
+  // and the tier/tab matrix is generated from the real nav array.
+  if (view === 'rota') {
+    return (
+      <div className={\`w-full \${FORM_CONTAINER} space-y-6\`}>
+        <VolunteerRotaPanel tenantId={tenantId} />
+      </div>
+    );
+  }
+
+`,
+    '',
+  ],
+  [
+    `      <button onClick={() => setView('rota')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-line text-muted hover:bg-surface-sunken min-h-[44px] sm:min-h-0">
+        <CalendarCheck size={13} /> Volunteer rota
+      </button>
+`,
+    '',
+  ],
+];
+
+const unwrapRota = (src: string): string =>
+  ROTA_EDITS.reduce((acc, [after, before]) => acc.replace(after, before), src);
 
 const firestorePathsOf = (src: string): string[] =>
   [...src.matchAll(/(?:collection|doc)\(db,\s*([^)]*)\)/g)].map((m) => m[1].replace(/\s+/g, ' '));
@@ -665,6 +740,33 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       'THE-313 — the same, for the `Plus` icon on the Start and Add item ' +
       'buttons. `AdminEvents` already renders `Plus` elsewhere; this is the same ' +
       'glyph reaching a surface the baseline was recorded without.',
+
+    /* ── THE-317 — the volunteer rota's entry point, on the event LIST view ──
+     *
+     * ⚠️ APPENDED, NOT SUBSTITUTED, which is this list's own stated rule and the
+     * one #434 broke when it made main red for everyone. Two tokens, both on one
+     * control: the button that opens the rota screen from the events list. The
+     * rota SCREEN itself puts nothing on this layer, because `surfaces()` never
+     * renders it — it is reached by `setView('rota')` and is measured instead in
+     * `THE-317.volunteer-rota.layout.test.tsx`, in real Chromium, at five widths.
+     *
+     * 🔴 Its 44px floor is `min-h-[44px]` / `sm:min-h-0`, which THE-304 already
+     * documents above, verbatim and for the identical reason — a token this list
+     * already carries is not a new one, and re-documenting it would be a second
+     * entry for one fact. */
+    'py-2':
+      'THE-317 — structural. The vertical padding on the "Volunteer rota" button ' +
+      'in the events list header. An unprefixed spacing token this screen already ' +
+      'spells on the phone layer elsewhere (the attendee search input carries it), ' +
+      'so it is not a new length; it reaches the LIST view here, which the ' +
+      'baseline was recorded without. Padding carries no colour. The button pairs ' +
+      'it with min-h-[44px], so the tap target is the floor and not the padding.',
+    'lucide-calendar-check':
+      'THE-317 — a lucide GLYPH CLASS, emitted by the icon component rather than ' +
+      'spelled by this ticket. `CalendarCheck` heads the rota button, and it is ' +
+      'ALREADY IMPORTED by this screen (it renders on an event card) — so this is ' +
+      'the same glyph reaching a surface the baseline was recorded without, which ' +
+      'is exactly what THE-313 documented for lucide-plus one entry above.',
   };
 
   const toTokens = (layer: string[]) =>

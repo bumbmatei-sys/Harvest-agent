@@ -957,6 +957,30 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       "screen's focus ring. `item` is what removes the three hand-written flex rows. No primitive " +
       'was edited — their digests are pinned by ds-primitives.test.tsx and still match.',
   },
+  {
+    file: 'src/components/events/VolunteerRotaView.tsx',
+    ticket: 'THE-317',
+    why:
+      'The volunteer rota, and the first adopter of `empty` in this repo. `empty` (Empty, ' +
+      'EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription) is LOAD-BEARING rather than ' +
+      "cosmetic, and it is the whole point of the ticket's exactness rule: when the plan or event " +
+      'read cannot be PROVEN complete — it rejected, or it came back at its ceiling without ' +
+      'reaching past the window — the rota refuses to list anybody and renders an Empty NAMING ' +
+      'THE REASON instead. A zero or a bare empty list there is the class of bug that shipped as ' +
+      '`Form submissions 0`, because it is indistinguishable from an answer. `item` (Item, ' +
+      'ItemGroup, ItemMedia, ItemContent, ItemTitle, ItemDescription) renders the "has not served ' +
+      "recently\' rows — a person, an avatar and two lines about them, which is the primitive's " +
+      'exact shape; THE-316 adopted it one ticket earlier for the same reason and this is its ' +
+      'second adopter. No primitive was edited — their digests are pinned by ' +
+      'ds-primitives.test.tsx and still match. The other nineteen in NEW_PRIMITIVES gain no ' +
+      'adopter here: this view has no boolean (checkbox, switch, toggle, toggle-group), no free ' +
+      'text or form field (textarea, field, input-group), no menu or overlay (command, ' +
+      'context-menu, hover-card, popover), no date entry (calendar — the rota READS event dates, ' +
+      'it does not set them), no split pane (resizable), no second scroll context (scroll-area — ' +
+      'the overflow is one overflow-x-auto inside the card, per #422), no range (slider), no ' +
+      'banner (alert), no grouped buttons (button-group) and no indeterminate wait (spinner — the ' +
+      'wait here is a known shape, so it is skeleton).',
+  },
 ];
 
 it('only the recorded adopters import the new components, and each names its ticket', () => {
