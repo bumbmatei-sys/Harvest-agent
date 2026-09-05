@@ -1,0 +1,22 @@
+{
+  "ticket": "THE-320",
+  "recordedIn": "#459, #461",
+  "note": "The three entries THE-320 appended to THE-319's NOT_OURS map, in #459 and #461. Migrated verbatim; every digest below is byte-for-byte the value that map carried. APPENDED, NEVER SUBSTITUTED — none of THE-319's baselines was removed to make room for these.",
+  "entries": [
+    {
+      "file": "src/components/AdminSms.tsx",
+      "digest": "ed2f8906fb0b9f4faf26e62f44418fe85143762dbaae66761b3487b5a4f4eff9",
+      "why": "main + THE-320 — the ticket that owns it, composed from the primitives. Appended by #461 beside THE-319's baseline, never over it: composed from the installed primitives (Tabs, Progress, Card, Button, Input, Textarea, Label, Alert, Empty, Item) with the ten inline styles removed. No figure, copy, send path, save path or metered write moved."
+    },
+    {
+      "file": "src/components/settings/SmsSection.tsx",
+      "digest": "75c90bc448dc52eceb47e8866a06a32cd53a64bb1b0455c2b7585053800bdf03",
+      "why": "main at acc0d66 — THE-316 (#457) landed, then THE-318 (#456). Appended by #459 because from acc0d66 THE-319's single baseline was false for EVERY branch cut from main and the assertion had been red on main itself since #455 merged; reproduced on a clean tree, which is what made it not that PR's to root-cause. THE-317 (#458) appends the identical entry, so the two reconcile mechanically if both land."
+    },
+    {
+      "file": "src/components/settings/SmsSection.tsx",
+      "digest": "6e619cd3a1b2e4356ebbee1a1b1788b0692ab1b736258481d18888b0455aa33d",
+      "why": "main + THE-320 — the ticket that now owns it, composed from the primitives. Appended by #461. A UNION, not a choice: #459's entry above is kept verbatim because it is the member that closes the red this file carried since #455. This value is accepted because the ticket that owns the file put it there, which is the other half of what the SET is for."
+    }
+  ]
+}

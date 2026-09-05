@@ -1,0 +1,27 @@
+{
+  "ticket": "THE-319",
+  "recordedIn": "#455",
+  "note": "The four files THE-319 does not own. Migrated verbatim from the NOT_OURS map that used to live inline in src/__tests__/THE-319.composition-guards.test.ts; every digest below is byte-for-byte the value that map carried.",
+  "entries": [
+    {
+      "file": "src/components/AdminSms.tsx",
+      "digest": "5cf8ed7aba7720fd4ef892ca0f294219ae1f6fe5d5121afc54481ff83a5f2eaf",
+      "why": "main at 0de1e2e — THE-318 owns it and has not landed. One of four files carrying the same defect as THE-319's own two, belonging to THE-316, THE-317 and THE-318; pinned byte-identical so that 'helpfully' fixing one fails in THE-319's PR rather than in theirs."
+    },
+    {
+      "file": "src/components/settings/SmsSection.tsx",
+      "digest": "5bb4042ee2d57f562a7a2b33897fe6bf169a9f7e82bd1bb8bddeb9b83cf6c6b0",
+      "why": "main at 0de1e2e — THE-316 owns it and has not landed. Recorded by THE-319 as the baseline for this file; kept here unchanged when THE-316 (#457) and THE-318 (#456) later moved the file, because the SET is a union and a baseline is never replaced, only joined."
+    },
+    {
+      "file": "src/components/events/ServicePlanPanel.tsx",
+      "digest": "81f99a23ff53cb1488935b7adf37cf043ff577399324e377785176d9f1e8c891",
+      "why": "main at 0de1e2e — THE-317 owns it and has not landed. THE-319 composes RetentionHeatmap and FormAnswersView and reaches no service-plan file, so any movement here is THE-317's to make and this pin is what makes THE-319 editing it fail in THE-319's own PR."
+    },
+    {
+      "file": "src/components/events/ServicePlanRow.tsx",
+      "digest": "ffafaf4228bbefe95d7b9bf439d5a36df9c9160f5c086cbae25a236ec0adca37",
+      "why": "main at 0de1e2e — THE-317 owns it and has not landed. The sibling of ServicePlanPanel.tsx and pinned for the identical reason: THE-319 owns neither file, and a digest that is NEITHER the baseline nor a recorded edit still fails, which is the whole threat."
+    }
+  ]
+}

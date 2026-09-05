@@ -44,6 +44,11 @@ import { describe, it, expect } from 'vitest';
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
+import {
+  loadOwnership,
+  ownershipFailure,
+  recordedFiles,
+} from './__fixtures__/ownership-register';
 
 const REPO_ROOT = path.resolve(__dirname, '../..');
 const read = (rel: string): string => readFileSync(path.join(REPO_ROOT, rel), 'utf8');
@@ -626,76 +631,49 @@ describe('the tap-target rule is intact and this ticket added no control', () =>
  * holds a different value there than on this branch. A value that is NEITHER —
  * i.e. THIS ticket editing it — still fails, which is the whole threat.
  */
-const NOT_OURS: Record<string, ReadonlyArray<readonly [digest: string, source: string]>> = {
-  'src/components/AdminSms.tsx': [
-    ['5cf8ed7aba7720fd4ef892ca0f294219ae1f6fe5d5121afc54481ff83a5f2eaf', 'main at 0de1e2e — THE-318 owns it and has not landed'],
-    // 🔴 APPENDED by THE-320, never substituted — the value above still stands.
-    // THE-320 is the ticket that owns this file, and the SET is exactly the
-    // mechanism the header describes for "a file a parallel ticket legitimately
-    // lands on main": composed from the installed primitives (Tabs, Progress,
-    // Card, Button, Input, Textarea, Label, Alert, Empty, Item) with the ten
-    // inline styles removed. No figure, copy, send path, save path or metered
-    // write moved.
-    ['ed2f8906fb0b9f4faf26e62f44418fe85143762dbaae66761b3487b5a4f4eff9', 'main + THE-320 — the ticket that owns it, composed from the primitives'],
-  ],
-  'src/components/settings/SmsSection.tsx': [
-    ['5bb4042ee2d57f562a7a2b33897fe6bf169a9f7e82bd1bb8bddeb9b83cf6c6b0', 'main at 0de1e2e — THE-316 owns it and has not landed'],
-    // 🔴 APPENDED, and this is the case the SET exists for.
-    //
-    // ⚠️ THE-316 HAS NOW LANDED. #457 edited this file, and #456 (THE-318)
-    // edited it after — so from `acc0d66` the single accepted digest above was
-    // false for EVERY branch cut from main, and this assertion has been red on
-    // main itself since #455 merged. Reproduced on a clean tree with none of
-    // THE-320's code, which is what makes it not this PR's to root-cause.
-    // THE-317 (#458) appends the identical entry; this is that same change
-    // ported so a green head does not wait on it, and it no-ops once either
-    // lands.
-    //
-    // 🔴 APPENDED, NEVER SUBSTITUTED — the file's own note above says why the
-    // shape is a SET: "A value that is NEITHER — i.e. THIS ticket editing it —
-    // still fails, which is the whole threat." That is untouched. THE-319 still
-    // cannot edit this file, and neither can THE-320: this branch touches no
-    // source file at all, which is the only reason this value is accepted
-    // rather than investigated.
-    ['75c90bc448dc52eceb47e8866a06a32cd53a64bb1b0455c2b7585053800bdf03', 'main at acc0d66 — THE-316 (#457) landed, then THE-318 (#456)'],
-    //
-    // ─── THE-320 appends its own value beside that one ──────────────────────
-    //
-    // 🔴 UNION, NOT A CHOICE. #459's entry directly above is kept verbatim: it
-    // is the same digest THE-317 (#458) appends, it is on `main`, and it is the
-    // member that closes the red this file carried since #455. THE-320 removes
-    // none of it and adds one member of its own.
-    //
-    // ⚠️ AND THE OWNERSHIP HAS MOVED ON. #459's note says "this branch touches
-    // no source file at all, which is the only reason this value is accepted
-    // rather than investigated" — true of #459, NOT of THE-320. THE-320 is the
-    // ticket that owns this file and has composed it from the installed
-    // primitives, so its value is accepted because the ticket that owns the file
-    // put it there, which is the other half of what the SET is for.
-    ['6e619cd3a1b2e4356ebbee1a1b1788b0692ab1b736258481d18888b0455aa33d', 'main + THE-320 — the ticket that now owns it, composed from the primitives'],
-  ],
-  'src/components/events/ServicePlanPanel.tsx': [
-    ['81f99a23ff53cb1488935b7adf37cf043ff577399324e377785176d9f1e8c891', 'main at 0de1e2e — THE-317 owns it and has not landed'],
-  ],
-  'src/components/events/ServicePlanRow.tsx': [
-    ['ffafaf4228bbefe95d7b9bf439d5a36df9c9160f5c086cbae25a236ec0adca37', 'main at 0de1e2e — THE-317 owns it and has not landed'],
-  ],
-};
+/**
+ * 🔴 THE ENTRIES MOVED, NOT THE CLAIM. THE-322 lifted this map out of this file
+ * and into one JSON record PER TICKET under
+ * `src/__tests__/__fixtures__/ownership/`, unioned at run time by
+ * `ownership-register.ts`. Every digest that was written out here is there,
+ * byte for byte, carrying the ticket that recorded it and the reason it gives.
+ *
+ * ⚠️ WHY. This literal was SHARED: every PR that composed a component appended
+ * to it, so THE-317, THE-320 and THE-321 conflicted on this one file in
+ * sequence and each rebase created the next — four rebases for four PRs that
+ * touched entirely different source files. A ticket now adds its own file and
+ * conflicts with nobody.
+ *
+ * 🔴 THE PROTECTION IS UNCHANGED. A SET per file, for THE-276's reason: CI runs
+ * against `refs/pull/N/merge`, so a file a parallel ticket legitimately lands on
+ * `main` holds a different value there than on this branch. A value that is
+ * NEITHER — i.e. THIS ticket editing it — still fails, which is the whole
+ * threat. A file no ticket has recorded at all fails too, so a deleted record
+ * cannot pass as an exemption.
+ *
+ * ⚠️ Recorded by CONTENT, never by asking git what this branch changed.
+ */
+const NOT_OURS = recordedFiles();
 
 describe('the four files this ticket does not own are byte-identical', () => {
-  it.each(Object.keys(NOT_OURS))('%s carries no edit from THE-319', (file) => {
-    const accepted = NOT_OURS[file];
-    const actual = sha256(readFileSync(path.join(REPO_ROOT, file)));
-    const match = accepted.find(([digest]) => digest === actual);
-    expect(
-      match,
-      `${file} is at ${actual}, which is none of:\n  ` +
-        accepted.map(([d, why]) => `${d} (${why})`).join('\n  '),
-    ).toBeTruthy();
+  /** 🔴 The set did not shrink in the move. THE-319 recorded four files and
+   *  they are still the four the union names. */
+  it('the register still names the four files, and still holds every entry', () => {
+    expect(NOT_OURS).toEqual([
+      'src/components/AdminSms.tsx',
+      'src/components/events/ServicePlanPanel.tsx',
+      'src/components/events/ServicePlanRow.tsx',
+      'src/components/settings/SmsSection.tsx',
+    ]);
+    expect(loadOwnership()).toHaveLength(7);
+  });
+
+  it.each(NOT_OURS)('%s carries no edit from THE-319', (file) => {
+    expect(ownershipFailure(file)).toBeNull();
   });
 
   /** 🔴 And this ticket left no trace in any of them. */
-  it.each(Object.keys(NOT_OURS))('%s does not mention THE-319', (file) => {
+  it.each(NOT_OURS)('%s does not mention THE-319', (file) => {
     expect(read(file)).not.toContain('THE-319');
   });
 });
