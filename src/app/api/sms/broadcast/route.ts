@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { requireAdmin } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
-import { getTwilioConfig, sendSms, SMS_CAP_MESSAGE } from '@/lib/twilio';
+import { getTenantSmsNumber, sendSms, SMS_CAP_MESSAGE } from '@/lib/sms-send';
 import { getSmsUsageSnapshot } from '@/lib/sms-usage';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
 import { SMS_FEATURE_ENABLED, SMS_HIDDEN_MESSAGE } from '@/lib/sms-feature';
@@ -82,9 +82,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const cfg = await getTwilioConfig(tenantId);
-  if (!cfg) {
-    return NextResponse.json({ error: 'Twilio is not configured.' }, { status: 400 });
+  const number = await getTenantSmsNumber(tenantId);
+  if (!number) {
+    return NextResponse.json({ error: 'This ministry has no SMS number yet.' }, { status: 400 });
   }
 
   // A broadcast to 500 recipients is 500+ SEGMENTS, not one send, so it is
@@ -98,10 +98,11 @@ export async function POST(request: NextRequest) {
   // Firestore hiccup reading the snapshot must not 500 the whole request: fail
   // OPEN here and let the per-send gate do the real work.
   //
-  // It runs for PLATFORM sends only, matching sendSms exactly. Refusing a
-  // broadcast a BYO tenant is not subject to would be the same lie the meter
-  // would be telling if it showed them a limit.
-  if (meterTenantId && cfg.source === 'platform') {
+  // THE-314 — it now runs for EVERY tenant send, matching sendSms exactly.
+  // Harvest resells: there is no bring-your-own account left that the cap would
+  // not apply to, so the old `source === 'platform'` condition had no false
+  // branch and its removal changes no tenant's outcome.
+  if (meterTenantId) {
     try {
       const usage = await getSmsUsageSnapshot(meterTenantId);
       if (usage.smsSegmentsCap !== null && usage.smsSegmentsUsed >= usage.smsSegmentsCap) {
@@ -140,13 +141,18 @@ export async function POST(request: NextRequest) {
   let delivered = 0;
   let failed = 0;
   let skippedNonUs = 0;
+  // 🔴 Members who replied STOP. Counted apart from `failed` on purpose: an
+  // admin looking at "3 failed" would go hunting for a fault, when what
+  // happened is that three people asked not to be texted and Harvest honoured
+  // it. Reported, never silently dropped.
+  let skippedOptedOut = 0;
   let capReached = false;
   let capUsed: number | undefined;
   let capLimit: number | null | undefined;
   let attempted = 0;
 
   for (const c of recipients) {
-    const result = await sendSms(cfg, c.phone!, message, { tenantId: meterTenantId, source: cfg.source });
+    const result = await sendSms(number, c.phone!, message, { tenantId: meterTenantId, source: 'platform' });
 
     if (result.code === 'sms_cap_reached') {
       // Nothing was sent for this recipient and no allotment was consumed.
@@ -163,6 +169,9 @@ export async function POST(request: NextRequest) {
       status = 'delivered';
     } else if (result.code === 'non_us_destination' || result.code === 'invalid_destination') {
       skippedNonUs++;
+      status = 'blocked';
+    } else if (result.code === 'recipient_opted_out') {
+      skippedOptedOut++;
       status = 'blocked';
     } else {
       failed++;
@@ -188,7 +197,7 @@ export async function POST(request: NextRequest) {
     message, recipientGroup: group, tag: body.tag || null,
     recipientCount: recipients.length,
     sentAt: FieldValue.serverTimestamp(), scheduledAt: null,
-    delivered, failed, skipped, skippedNonUs,
+    delivered, failed, skipped, skippedNonUs, skippedOptedOut,
     status: capReached ? 'partial' : 'sent',
     capReached,
     createdBy: uid, createdAt: new Date().toISOString(),
@@ -200,6 +209,7 @@ export async function POST(request: NextRequest) {
     failed,
     skipped,
     skippedNonUs,
+    skippedOptedOut,
     recipientCount: recipients.length,
     ...(capReached ? { capReached: true, error: SMS_CAP_MESSAGE, used: capUsed, cap: capLimit } : {}),
   });

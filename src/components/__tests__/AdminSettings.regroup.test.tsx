@@ -923,15 +923,22 @@ describe('THE-183 — admin Settings', () => {
     expect(integrations).toContain('primaryMailchimpAdmin');
     expect(integrations, 'Gmail grew a tenant-wide primary').not.toMatch(/primaryGmail/i);
 
-    // (a3) THE-245 — the Twilio path SmsSection owns, asserted on contents for
-    //      the same reason as (a2) above. The section is gated, not rewired: it
-    //      still reads and writes the one endpoint it always did, and it still
-    //      states whose Twilio account is billed.
+    // (a3) THE-245 / THE-314 — the SMS path SmsSection owns, asserted on
+    //      contents for the same reason as (a2) above.
+    //
+    // ⚠️ THE-314 REWIRED IT, and that is why the endpoint list moved. The panel
+    // was a Twilio credential form calling `/api/sms/config` and `/api/sms/test`;
+    // Harvest now RESELLS, so a church holds no credentials and the panel buys,
+    // shows and releases a NUMBER through `/api/sms/numbers` instead. What
+    // THE-183 actually guards is unchanged and still asserted: the section owns
+    // its endpoints, states whose money is being spent, and reads the master
+    // switch rather than declaring its own.
     const smsSection = readFileSync(path.join(SRC, 'components/settings/SmsSection.tsx'), 'utf8');
-    for (const endpoint of ['/api/sms/config', '/api/sms/test']) {
+    for (const endpoint of ['/api/sms/numbers']) {
       expect(smsSection, `${endpoint} is no longer called from SmsSection`).toContain(endpoint);
     }
-    expect(smsSection, 'the BYO billing note left SmsSection').toContain('BYO_CREDENTIALS_NOTE');
+    expect(smsSection, 'the resold-number billing note left SmsSection').toContain('RESOLD_NUMBER_NOTE');
+    expect(smsSection, 'the release warning left SmsSection').toContain('RELEASE_WARNING');
     // The gate itself, so this guard fails if the switch is quietly removed.
     expect(smsSection, 'SmsSection no longer reads the SMS master switch')
       .toContain('SMS_FEATURE_ENABLED');

@@ -20,7 +20,9 @@ vi.mock('@/lib/sms-feature', () => ({
 
 vi.mock('@/lib/api-auth', () => ({ requireAuth: mockRequireAuth }));
 vi.mock('@/lib/sms-usage', () => ({ getSmsUsageSnapshot: mockGetSmsUsageSnapshot }));
-vi.mock('@/lib/twilio', () => ({ getSmsCredentialSource: mockGetSource }));
+// THE-314 — the credential source now comes from the new send funnel; the
+// Twilio module is retired in place and imported by nothing.
+vi.mock('@/lib/sms-send', () => ({ getSmsCredentialSource: mockGetSource }));
 
 const { GET } = await import('../route');
 

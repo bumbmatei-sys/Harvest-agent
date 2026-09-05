@@ -1,142 +1,172 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { sendSms, resolveTwilioConfig, type ResolvedTwilioConfig } from '@/lib/twilio';
+import { sendSms, getTenantSmsNumber, type TenantSmsNumber } from '@/lib/sms-send';
+import { verifyZernioSignature, webhookSecret } from '@/lib/zernio';
+import { isStopKeyword, isStartKeyword, recordOptOut, recordOptIn } from '@/lib/sms-optout';
 import { captureHandledError } from '@/lib/money-path-sentry';
 import { SMS_FEATURE_ENABLED, SMS_HIDDEN_MESSAGE } from '@/lib/sms-feature';
 import { GIVING_PATH } from '@/components/donations/giving-share';
 
 export const dynamic = 'force-dynamic';
 
-// Twilio sends application/x-www-form-urlencoded for inbound SMS webhooks.
+/**
+ * THE PUBLIC, UNAUTHENTICATED INBOUND WEBHOOK.
+ *
+ * The provider POSTs a JSON event here whenever one of Harvest's numbers
+ * receives a message. Two things happen on this route and nothing else does:
+ * STOP is honoured, and a Text-to-Give keyword gets its giving link back.
+ *
+ * ─── 🔴 IT IS NOW SIGNED, AND IT WAS NOT BEFORE ──────────────────────────────
+ *
+ * ⚠️ THE TWILIO PATH VERIFIED NOTHING. There was no `X-Twilio-Signature` check
+ * on this route — or anywhere in the repository — before THE-314. Anyone who
+ * learned a tenant's keyword and this URL could forge an inbound message and
+ * make Harvest send a real, billed reply to any number they chose. That was
+ * survivable only because SMS_FEATURE_ENABLED was false and this route answered
+ * 503 to everyone.
+ *
+ * Turning SMS on WITHOUT a signature check would have opened that door on a
+ * RESELLER account, where the billed reply is Harvest's money and the carrier
+ * complaint lands on Harvest's brand registration. So the check is new work,
+ * not a port, and it is the first thing that happens after the master switch.
+ *
+ * It FAILS CLOSED: no secret configured, no header, a malformed header or a
+ * mismatch all answer 401 and touch nothing. "We could not check" and "it is
+ * genuine" are not the same answer.
+ *
+ * ─── Why STOP is handled here even though the vendor already does ────────────
+ *
+ * The vendor opts the sender out at the CARRIER and refuses later sends with a
+ * 409. Harvest mirrors it anyway — see sms-optout.ts for the three reasons.
+ * This route is where the mirror is written, because this is where the word
+ * STOP actually arrives.
+ */
 export async function POST(request: NextRequest) {
-  // ── THE-245 — 🔴 THE ONE GATE THAT IS NOT ABOUT THE UI ─────────────────────
+  // ── THE-245 — the gate that is not about the UI ────────────────────────────
   //
-  // This route is PUBLIC and UNAUTHENTICATED. It is reached by Twilio POSTing an
-  // inbound message, so no nav entry, no permission and no plan gate stands in
-  // front of it: a church whose Twilio number still points here would keep
-  // driving Text-to-Give end to end while every screen in the app said the
-  // feature was gone. Hiding the nav entry alone would have left the feature
-  // fully live to anyone holding the number.
-  //
-  // FIRST STATEMENT IN THE HANDLER, before the body is even read and before any
-  // Firestore lookup, so a hidden feature costs nothing and touches nothing.
-  //
-  // 503 rather than an empty TwiML 200: this is a refusal, not a non-match. The
-  // route EXISTS and is coming back, which is what a Twilio retry and an
-  // operator reading the logs should both be told — an empty 200 would report a
-  // healthy endpoint that silently drops every message. No reply is sent either
-  // way, so no texter receives anything and no segment is billed.
-  //
-  // Nothing is deleted: the twilioNumbers index, the tenant's text2give keyword
-  // and every smsLogs row stay exactly where they are, and flipping
-  // SMS_FEATURE_ENABLED back to true restores this route unchanged.
+  // FIRST STATEMENT IN THE HANDLER, before the body is even read. 503 rather
+  // than an empty 200: the route EXISTS and is coming back, which is what a
+  // provider retry and an operator reading the logs should both be told.
   if (!SMS_FEATURE_ENABLED) {
     return NextResponse.json({ error: SMS_HIDDEN_MESSAGE }, { status: 503 });
   }
 
+  // ── 🔴 SIGNATURE — before parsing, before any Firestore read ───────────────
+  //
+  // The RAW body is what was signed, so it is read as text and verified before
+  // anything interprets it. Re-serialising the parsed JSON would change the
+  // bytes and reject every genuine delivery.
+  const raw = await request.text();
+  const signature =
+    request.headers.get('x-zernio-signature') ?? request.headers.get('x-late-signature');
+  if (!verifyZernioSignature(raw, signature, webhookSecret())) {
+    return NextResponse.json({ error: 'Invalid signature.' }, { status: 401 });
+  }
+
   try {
-    const text = await request.text();
-    const params = new URLSearchParams(text);
-    const body = (params.get('Body') || '').trim().toUpperCase();
-    const from = params.get('From') || '';
-    const to = params.get('To') || ''; // The Twilio number that received the message
+    const event = JSON.parse(raw) as {
+      type?: string;
+      event?: string;
+      data?: Record<string, any>;
+      message?: Record<string, any>;
+    };
 
-    if (!body || !from || !to) {
-      return twimlResponse(''); // Empty response — don't reply to malformed requests
-    }
+    // The provider sends one shape for every platform, so an SMS event is
+    // identified rather than assumed: anything that is not an inbound SMS is
+    // acknowledged and ignored. A 200 here means "received", not "acted on" —
+    // answering anything else would make the provider retry an event Harvest
+    // has no use for, and disable the webhook after ten failures.
+    const kind = event.type || event.event || '';
+    const msg = (event.message || event.data?.message || event.data || {}) as Record<string, any>;
+    const platform = String(msg.platform || event.data?.platform || '').toLowerCase();
+    if (kind && kind !== 'message.received') return ack();
+    if (platform && platform !== 'sms') return ack();
 
-    // Find the tenant whose Twilio number matches the `to` number via the
-    // top-level twilioNumbers/{sanitizedNumber} → { tenantId } index doc.
+    const from = String(msg.from || msg.sender || '').trim();
+    const to = String(msg.to || msg.recipient || '').trim();
+    const text = String(msg.text || msg.body || '').trim();
+    if (!from || !to) return ack();
+
+    // Resolve the tenant from the number that RECEIVED the message, via the
+    // top-level smsNumbers/{digits} index. Never from anything the texter
+    // controls — the billing tenant is not a field in the payload.
     const sanitized = to.replace(/\D/g, '');
-    const indexSnap = await adminDb.collection('twilioNumbers').doc(sanitized).get();
+    const indexSnap = await adminDb.collection('smsNumbers').doc(sanitized).get();
+    const tenantId: string | null = indexSnap.exists ? indexSnap.data()?.tenantId || null : null;
+    if (!tenantId) return ack();
 
-    let tenantId: string | null = null;
-    let t2gConfig: any = null;
-    let twilioCfg: ResolvedTwilioConfig | null = null;
-
-    if (indexSnap.exists) {
-      tenantId = indexSnap.data()?.tenantId || null;
+    // ── 🔴 STOP, BEFORE ANYTHING ELSE ────────────────────────────────────────
+    //
+    // Ahead of the Text-to-Give branch deliberately. A member who texts STOP
+    // has asked to stop hearing from this church, and that must be recorded
+    // whether or not the church has Text-to-Give configured, whether or not the
+    // word matches a keyword, and whether or not anything else on this route
+    // works. It is also recorded BEFORE any reply is composed, so no reply can
+    // be sent to someone who just opted out.
+    //
+    // No confirmation text is sent back. The carrier sends its own STOP
+    // acknowledgement, and a second one from Harvest would be a message to
+    // somebody who just asked for no more messages — billed, and on a number
+    // whose reputation this control exists to protect.
+    if (isStopKeyword(text)) {
+      await recordOptOut(tenantId, from, text);
+      await logInbound(tenantId, from, 'opted_out', null);
+      return ack();
     }
 
-    if (tenantId) {
-      const cfgSnap = await adminDb
-        .collection('tenants').doc(tenantId)
-        .collection('integrations').doc('twilio')
-        .get();
-
-      if (cfgSnap.exists) {
-        const d = cfgSnap.data() || {};
-        t2gConfig = d.text2give || null;
-        // This route already has the integrations doc in hand, so it resolves
-        // through the SHARED resolver rather than re-implementing the check —
-        // that is what guarantees the credentials it sends with and the source
-        // it declares below are the same decision, and it will pick up the
-        // platform fallback for free the day that account exists.
-        twilioCfg = resolveTwilioConfig(d);
-      }
+    // The matching opt-IN. A member who stopped must be able to come back
+    // without asking an admin — the carriers require this half too.
+    if (isStartKeyword(text)) {
+      await recordOptIn(tenantId, from);
+      await logInbound(tenantId, from, 'opted_in', null);
+      return ack();
     }
 
-    if (!t2gConfig || !t2gConfig.keyword || !t2gConfig.enabled) {
-      return twimlResponse(''); // Not configured — no reply
-    }
+    // ── Text-to-Give ─────────────────────────────────────────────────────────
+    const number: TenantSmsNumber | null = await getTenantSmsNumber(tenantId);
+    const t2g = number?.text2give;
+    if (!number || !t2g?.keyword || !t2g.enabled) return ack();
 
-    const keyword = (t2gConfig.keyword || '').toUpperCase().trim();
+    if (text.toUpperCase() !== String(t2g.keyword).toUpperCase().trim()) return ack();
 
-    if (body !== keyword) {
-      return twimlResponse(''); // Not our keyword — no reply
-    }
-
-    // Build giving link
     // THE-303 — the PUBLIC giving route. A Text-to-Give reply goes to a phone
     // that may have no Harvest session at all, and `/?giving=1` was the SPA
     // root: the texter asked how to give and was shown a sign-in form.
     const givingLink = `https://${tenantId}.theharvest.app${GIVING_PATH}`;
-
-    // Render response template
-    const template = t2gConfig.responseTemplate || 'Thank you! Give here: {link}';
+    const template = t2g.responseTemplate || 'Thank you! Give here: {link}';
     const reply = template.replace('{link}', givingLink);
 
-    // The reply used to be returned as a TwiML <Message>, which makes Twilio
-    // send a BILLED outbound SMS that never touched sendSms — so it bypassed
-    // both the US-only destination gate and the tenant's segment cap. Anyone who
-    // knew a tenant's keyword could run their bill up from outside the app.
-    // It now goes through sendSms like every other send path (the one funnel),
-    // and the webhook answers with EMPTY TwiML so Twilio doesn't send it twice.
-    // The message the sender receives is identical.
-    //
-    // The billing tenant is resolved server-side from the twilioNumbers index on
-    // the `To` number, never from anything the texter controls.
-    if (!twilioCfg) {
-      // Text-to-Give is configured but the credentials are not — nothing to send
-      // with. Log it rather than dropping it silently.
-      await logInbound(tenantId!, from, 'failed', 'Twilio credentials are not configured.');
-      return twimlResponse('');
-    }
-
-    const result = await sendSms(twilioCfg, from, reply, { tenantId, source: twilioCfg.source });
+    // The reply goes through the ONE funnel like every other send, so it is
+    // plan-gated, STOP-checked, destination-gated and METERED. A reply that
+    // reached the provider directly would be an unmetered send billed to
+    // Harvest and triggerable by anyone holding the number.
+    const result = await sendSms(number, from, reply, { tenantId, source: 'platform' });
     await logInbound(
-      tenantId!,
+      tenantId,
       from,
-      result.ok ? 'replied' : (result.code === 'non_us_destination' || result.code === 'sms_cap_reached' ? 'blocked' : 'failed'),
+      result.ok ? 'replied' : result.code === 'provider_error' || result.code === 'send_failed' ? 'failed' : 'blocked',
       result.error || null,
       result.ok ? result.segments ?? null : null,
     );
-
-    return twimlResponse('');
+    return ack();
   } catch (e) {
     console.error('Inbound SMS error:', e);
-    // Text-to-Give is silent by construction — the answer is empty TwiML either
-    // way, so a texter who asked for a giving link and got nothing looks identical
-    // to a texter who was never meant to get one. Nothing else reports this.
-    // No tenantId: it is resolved inside the try, so the catch cannot see it.
-    captureHandledError(e, { step: 'text2give-inbound' });
-    return twimlResponse('');
+    captureHandledError(e, { step: 'sms-inbound' });
+    return ack();
   }
 }
 
-/** Record a Text-to-Give interaction on the tenant's smsLogs — the surface an
- * admin uses to see why a reply did or didn't go out. Best-effort. */
+/** Acknowledge the delivery. Any 2xx tells the provider the event was received;
+ * it retries otherwise and disables the webhook after ten consecutive
+ * failures. */
+function ack(): NextResponse {
+  return NextResponse.json({ received: true });
+}
+
+/** Record an inbound interaction on the tenant's smsLogs — the surface an admin
+ * uses to see why a reply did or didn't go out, and now also the surface where
+ * an opt-out becomes visible. Best-effort. */
 async function logInbound(
   tenantId: string,
   phone: string,
@@ -145,31 +175,11 @@ async function logInbound(
   segments: number | null = null,
 ): Promise<void> {
   await adminDb.collection('tenants').doc(tenantId).collection('smsLogs').add({
-    trigger: 'text2give_inbound',
+    trigger: 'sms_inbound',
     phone,
     status,
     errorCode,
     segments,
     sentAt: new Date().toISOString(),
-  }).catch((e) => console.warn('Text-to-Give log failed:', e));
-}
-
-function twimlResponse(message: string): NextResponse {
-  const xml = message
-    ? `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(message)}</Message></Response>`
-    : `<?xml version="1.0" encoding="UTF-8"?><Response></Response>`;
-  return new NextResponse(xml, {
-    status: 200,
-    headers: { 'Content-Type': 'text/xml' },
-  });
-}
-
-/** Escape XML special characters so the TwiML body stays well-formed. */
-function escapeXml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+  }).catch((e) => console.warn('Inbound SMS log failed:', e));
 }

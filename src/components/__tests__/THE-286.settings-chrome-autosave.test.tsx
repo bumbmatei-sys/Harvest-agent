@@ -920,6 +920,23 @@ describe('15 · the other 12 sections are byte-identical', () => {
         + "PlanUpgradeSection's tree, whose element count is pinned at a delta of exactly 6 by "
         + 'the marketing-card baseline.',
     },
+    {
+      file: 'src/components/settings/SmsSection.tsx',
+      ticket: 'THE-314',
+      why:
+        'Rewritten from a Twilio CREDENTIAL FORM into the number purchase panel, because Harvest '
+        + 'stopped asking churches to bring their own carrier account and started RESELLING on its '
+        + 'own. There are no credentials left for this section to collect: the account SID, auth '
+        + 'token and from-number fields are gone, and in their place the panel searches for an '
+        + 'available number, buys one, shows the number with its status and its monthly cost, and '
+        + 'releases it behind a two-step confirm. The confirm is not decoration — the vendor '
+        + 'documents no port-out, so releasing is irreversible and the church loses a number it '
+        + 'may have published. Every control takes the 44px floor below sm and Rule 4 above it, on '
+        + 'buttons that now place a real recurring charge. NO autosave was added and none may be: '
+        + 'buying and releasing a phone number are explicit actions, and this file is in '
+        + 'AUTOSAVE_EXCLUDED. It never writes entitlement — it asks /api/sms/numbers and re-reads '
+        + 'what that route recorded, rather than rendering the outcome it requested.',
+    },
   ];
 
   it('the digest exemption list is exactly the edits that justify it', async () => {
@@ -930,6 +947,10 @@ describe('15 · the other 12 sections are byte-identical', () => {
       'THE-296 src/components/settings/IntegrationsSection.tsx',
       'THE-300 src/components/settings/AddOnsSection.tsx',
       'THE-300 src/components/settings/BillingTermToggle.tsx',
+      // ⚠️ APPENDED, never substituted: the four entries above stay exactly as
+      // they were, so this list keeps reading as the history of every edit since
+      // the measurement rather than as a snapshot of the latest one.
+      'THE-314 src/components/settings/SmsSection.tsx',
     ]);
     for (const { file, why } of EDITED_SINCE_MEASUREMENT) {
       expect(UNTOUCHED.otherSettingsSections, `${file} is exempted but was never recorded`)

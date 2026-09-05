@@ -400,7 +400,36 @@ describe('5 · the money path is byte-identical', () => {
     // 🔴 A LITERAL, not a count re-derived from the repo. A baseline the guard
     // computes for itself at assertion time cannot fail; it only describes
     // whatever it was handed. Pinned from `origin/main` at 902763a.
-    expect(routes.length, 'an API route was added or removed').toBe(113);
+    //
+    // ⚠️ 114 SINCE THE-314, and the one it added is named rather than absorbed
+    // into a moved number: `app/api/sms/numbers/route.ts`, which buys, shows and
+    // releases a ministry's phone number. It is a MONEY path, so it is exactly
+    // the kind of route this guard exists to notice — and it passes THE-291's
+    // own claim, asserted directly below: it writes no `plan`, no feature flag
+    // and no add-on count. Buying a number is not granting a capability; the
+    // capability is the Ministry plan, and the Dodo webhook remains its only
+    // writer.
+    expect(routes.length, 'an API route was added or removed').toBe(114);
+    expect(
+      routes.some((f) => f.endsWith(path.join('app/api/sms/numbers/route.ts'))),
+      'the route THE-314 added is missing — the count moved for some other reason',
+    ).toBe(true);
+    // And it applies no entitlement, which is the property #434 removed and
+    // THE-259's sweep catches.
+    //
+    // ⚠️ ASSERTED ON THE WRITE, NOT ON THE WORD. The route READS `plan` — it
+    // has to, because it refuses a purchase from a tier that does not carry
+    // SMS — so a bare `/plan\s*:/` sweep would flag the ternary that reads it
+    // and say nothing about entitlement at all. What must not exist is a WRITE
+    // to the tenant document, which is where `plan` and `addons` live and which
+    // only the Dodo webhook may touch.
+    const numbers = read('src/app/api/sms/numbers/route.ts');
+    expect(numbers, 'the number purchase route writes to the tenant document')
+      .not.toMatch(/collection\(['"]tenants['"]\)\s*\.doc\([^)]*\)\s*\.(set|update|delete)\(/);
+    // It reads the tenant doc, and only reads it.
+    expect(numbers, 'the number purchase route stopped checking entitlement')
+      .toMatch(/collection\(['"]tenants['"]\)\.doc\([^)]*\)\.get\(\)/);
+    expect(numbers, 'the number purchase route writes an add-on count').not.toMatch(/addons\s*:/);
   });
 });
 
@@ -428,9 +457,23 @@ describe('6 · no plan cap or price changed', () => {
     });
   });
 
-  it('plan-features.ts itself is byte-identical', () => {
+  it('plan-features.ts is byte-identical to its THE-314 pin', () => {
+    // ⚠️ REPINNED ONCE, FOR THE-314, AND THE REASON IS RECORDED RATHER THAN THE
+    // OLD DIGEST BEING SILENTLY SWAPPED. THE-291's claim is that no CLIENT-SIDE
+    // PLAN WRITE exists, and that claim is unaffected: what moved in this file
+    // is four feature cells — `smsAutomation` and `textToGive`, true → false on
+    // plus and pro — because SMS became Ministry-only when Harvest started
+    // reselling. The per-cell contract in plan-features.test.ts and the matrix
+    // digest in the-248-discount-alignment.test.ts moved in the same commit.
+    //
+    // 🔴 NO PRICE MOVED, asserted directly above this and separately by the
+    // cross-repo price contract, which throws at module scope during the
+    // marketing site's prerender if the two repos disagree on any of the nine.
+    //
+    // Previous pin (pre-THE-314):
+    //   cd4fbdd58f6dbbcbd180aeab00a63f1c9be3189c9010ff7a844a0f8e817af403
     expect(sha256(readFileSync(path.join(REPO, 'src/utils/plan-features.ts')))).toBe(
-      'cd4fbdd58f6dbbcbd180aeab00a63f1c9be3189c9010ff7a844a0f8e817af403',
+      'f43327552f7c774586dabc040ac8da0d31bf4f84023d70af3b2f428024f7f570',
     );
   });
 });

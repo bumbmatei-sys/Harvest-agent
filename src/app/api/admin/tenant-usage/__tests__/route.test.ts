@@ -16,8 +16,11 @@ const {
 vi.mock('@/lib/api-auth', () => ({ requireSuperAdmin: mockRequireSuperAdmin }));
 vi.mock('@/lib/rag-usage', () => ({ getUsageSnapshot: mockGetUsageSnapshot }));
 vi.mock('@/lib/sms-usage', () => ({ getSmsUsageSnapshot: mockGetSmsUsageSnapshot }));
-vi.mock('@/lib/twilio', () => ({ getSmsCredentialSource: mockGetSmsCredentialSource }));
-vi.mock('@/lib/twilio-platform', () => ({ getPlatformTwilioConfig: mockGetPlatformTwilioConfig }));
+// THE-314 — both move off the retired Twilio modules: the credential source
+// comes from the new send funnel, and "is there a platform account at all" is
+// now a question about Harvest's vendor configuration.
+vi.mock('@/lib/sms-send', () => ({ getSmsCredentialSource: mockGetSmsCredentialSource }));
+vi.mock('@/lib/zernio', () => ({ smsPlatformAvailable: mockGetPlatformTwilioConfig }));
 vi.mock('@/lib/firebase-admin', () => ({ adminDb: { collection: mockCollection } }));
 
 const { GET } = await import('../route');
@@ -61,7 +64,7 @@ beforeEach(() => {
   mockGetSmsUsageSnapshot.mockResolvedValue(BASE_SMS);
   mockGetSmsCredentialSource.mockResolvedValue('byo');
   // Today there is no platform Twilio account (THE-32) — this is the real state.
-  mockGetPlatformTwilioConfig.mockReturnValue(null);
+  mockGetPlatformTwilioConfig.mockReturnValue(false);
   wireDb();
 });
 
@@ -131,15 +134,21 @@ describe('GET /api/admin/tenant-usage — payload', () => {
     expect(Object.keys(body.sms)).not.toContain('smsSegmentsTotal');
   });
 
-  it('BYO tenant: byoSegments carries the volume, platform is 0 and flagged unavailable', async () => {
+  it('HISTORICAL byo volume still reads back after the provider swap', async () => {
+    // ⚠️ Nothing writes `smsSegmentsByo` any more: THE-314 ended bring-your-own,
+    // so every send is a platform send. Months recorded BEFORE the swap still
+    // hold the field, and the panel must keep rendering them rather than
+    // silently reporting a church's old volume as zero.
     mockGetSmsUsageSnapshot.mockResolvedValue({ ...BASE_SMS, smsSegmentsUsed: 0, smsSegmentsByoUsed: 128 });
     mockGetSmsCredentialSource.mockResolvedValue('byo');
+    mockGetPlatformTwilioConfig.mockReturnValue(false);
     const res = await GET(makeReq('tenant1'));
     const body = await res.json();
     expect(body.sms.credentialSource).toBe('byo');
     expect(body.sms.byoSegments).toBe(128);
     expect(body.sms.platformSegments).toBe(0);
-    // No platform Twilio account exists yet, so the UI must not draw a meter.
+    // No vendor account configured on this deployment, so the UI must not draw
+    // a meter against a cap nobody can consume.
     expect(body.sms.platformAvailable).toBe(false);
   });
 
@@ -149,8 +158,10 @@ describe('GET /api/admin/tenant-usage — payload', () => {
     expect((await res.json()).sms.credentialSource).toBeNull();
   });
 
-  it('reports platformAvailable once Harvest has its own Twilio account', async () => {
-    mockGetPlatformTwilioConfig.mockReturnValue({ accountSid: 'AC', authToken: 't', fromNumber: '+1' });
+  it('reports platformAvailable once Harvest\'s vendor account is configured', async () => {
+    // THE-314 — Harvest resells on ONE account, so this is a deployment-level
+    // fact (is the vendor key present?) rather than a per-tenant credential.
+    mockGetPlatformTwilioConfig.mockReturnValue(true);
     const res = await GET(makeReq('tenant1'));
     expect((await res.json()).sms.platformAvailable).toBe(true);
   });

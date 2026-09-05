@@ -4,8 +4,8 @@ import { requireSuperAdmin } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import { getUsageSnapshot } from '@/lib/rag-usage';
 import { getSmsUsageSnapshot } from '@/lib/sms-usage';
-import { getSmsCredentialSource } from '@/lib/twilio';
-import { getPlatformTwilioConfig } from '@/lib/twilio-platform';
+import { getSmsCredentialSource } from '@/lib/sms-send';
+import { smsPlatformAvailable } from '@/lib/zernio';
 
 export const dynamic = 'force-dynamic';
 
@@ -100,16 +100,20 @@ export async function GET(request: NextRequest) {
       // TWO SMS COUNTERS, TWO MEANINGS — never add them together.
       //   platformSegments: segments HARVEST paid for (Harvest's Twilio account).
       //                     This is the only field the plan cap is checked against.
-      //   byoSegments:      segments on the TENANT'S OWN Twilio account. Twilio
-      //                     bills the church directly; no cap applies, ever.
-      // `platformAvailable` is false while Harvest has no Twilio account at all
-      // (twilio-platform.ts returns null), which is the situation today: every
-      // tenant is BYO and platformSegments is 0 for everyone. The UI must say
-      // that rather than draw an empty meter against a cap nobody can consume.
+      //   byoSegments:      HISTORICAL segments a tenant sent on its OWN Twilio
+      //                     account, back when SMS was bring-your-own. THE-314
+      //                     ended that model: Harvest now resells, so nothing
+      //                     writes this field any more and it only ever shows
+      //                     volume from before the swap. Kept so those months
+      //                     keep reading correctly.
+      // `platformAvailable` is false while this deployment has no vendor account
+      // configured at all, in which case nothing can be sent or bought and the
+      // UI must say so rather than draw an empty meter against a cap nobody can
+      // consume.
       sms: {
         platformSegments: sms.smsSegmentsUsed,
         platformCap: sms.smsSegmentsCap,
-        platformAvailable: getPlatformTwilioConfig() !== null,
+        platformAvailable: smsPlatformAvailable(),
         byoSegments: sms.smsSegmentsByoUsed,
         // 'byo' = own credentials on file; 'platform' = falling back to Harvest's
         // account; null = neither, so this tenant cannot send at all.

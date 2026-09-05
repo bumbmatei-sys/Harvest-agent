@@ -1,3 +1,42 @@
+/**
+ * 🔴 RETIRED IN PLACE — THE-314. NOTHING IMPORTS THIS MODULE ANY MORE.
+ *
+ * Harvest's SMS moved off Twilio onto the scheduler vendor's telephony API. The
+ * live path is now:
+ *   · `lib/zernio.ts`    — transport (send, numbers, opt-outs, signature)
+ *   · `lib/sms-send.ts`  — the single funnel (plan gate, STOP, destination, cap)
+ *   · `lib/sms-optout.ts`— the STOP mirror
+ *
+ * ⚠️ IT IS KEPT ON DISK DELIBERATELY, and deleting it is not a tidy-up. This is
+ * the path that is PROVEN to send; the new one is not, until it has run in
+ * production. A dead module costs a few kilobytes of bundle that tree-shaking
+ * removes anyway; a broken send path costs a church its members' messages and
+ * Harvest its carrier standing. The asymmetry is the whole argument.
+ *
+ * ─── THE PLAN FOR RETIRING IT ────────────────────────────────────────────────
+ *
+ * Delete this file, `lib/twilio-platform.ts` and their tests in ONE follow-up
+ * change, when ALL of the following are true:
+ *   1. A real church has sent and received on the new provider in production.
+ *   2. `/api/sms/incoming` has accepted at least one genuine signed delivery and
+ *      rejected at least one unsigned one, both visible in logs.
+ *   3. A STOP from a real handset has produced an `smsOptOuts` document.
+ *   4. `tenants/{t}/usage/{YYYY-MM}.smsSegments` has moved for that church, so
+ *      the meter is known to be recording what the vendor invoices.
+ *
+ * ⚠️ WHAT THE DELETION MUST NOT TAKE WITH IT: the `integrations/twilio`
+ * documents in Firestore. `getTenantSmsNumber` still reads `templates` and
+ * `text2give` from them for churches that configured Text-to-Give before the
+ * swap. Migrate those two fields onto `integrations/sms` FIRST, then delete the
+ * code, then the documents — in that order, or a church's keyword disappears.
+ *
+ * 🔴 UNTIL THEN, DO NOT CALL ANYTHING BELOW. `sendSms` here still points at
+ * Twilio's REST API and reads credentials a church no longer has. A caller that
+ * found its way back to it would send nothing, or send on an account Harvest no
+ * longer maintains, and would escape the Ministry gate and the STOP check that
+ * only exist in the new funnel.
+ */
+
 import { adminDb } from './firebase-admin';
 import { checkDestination } from './sms-destination';
 import { reserveSmsSegment, settleSmsSegments, refundSmsSegment, recordByoSegments } from './sms-usage';

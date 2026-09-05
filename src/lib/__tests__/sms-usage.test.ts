@@ -118,24 +118,31 @@ beforeEach(() => {
 
 // ── Plan caps ───────────────────────────────────────────────────────────────
 
-describe('SMS is unmetered on every tier', () => {
-  it('pins every tier to null so a cap cannot reappear silently', async () => {
-    // Was 250 / 500 / 2,000 / 4,000. Those budgets metered plus/pro/max for a
-    // feature whose `smsAutomation` plan flag was FALSE — three tiers billed
-    // against an allotment they could not spend. SMS is now BYO-only: the
-    // tenant's own Twilio bills them directly, so Harvest has nothing to cap.
-    // Reintroducing a number here starts charging against an allotment nobody
-    // is buying, so it must be a deliberate act, not a passing edit.
+describe('SMS is metered again — and only Ministry can spend (THE-314)', () => {
+  it('🔴 pins Ministry to a real allotment and every other tier to zero', async () => {
+    // The budgets were 250 / 500 / 2,000 / 4,000, then all `null`, and are now
+    // 0 / 0 / 0 / 2,000. The `null` era was correct while SMS was BYO: the
+    // tenant's own Twilio billed them directly, so Harvest had nothing to
+    // ration. THE-314 made Harvest the RESELLER — it pays for every segment
+    // before billing the church — so an unmetered tier is now an unbounded bill
+    // on Harvest's card.
+    //
+    // 🔴 THE ZEROES ARE THE SECOND LOCK. `smsAutomation` is true on `max`
+    // alone, so the send funnel already refuses the other three tiers before
+    // the cap is consulted. A 0 here refuses them again if a future call site
+    // ever reaches the funnel with the plan gate bypassed. `null` would have
+    // let that path spend without limit.
     const { PLAN_LIMITS } = await import('../planLimits');
-    expect(PLAN_LIMITS.plus.smsSegmentsPerMonth).toBeNull();
-    expect(PLAN_LIMITS.pro.smsSegmentsPerMonth).toBeNull();
-    expect(PLAN_LIMITS.max.smsSegmentsPerMonth).toBeNull();
+    expect(PLAN_LIMITS.free.smsSegmentsPerMonth).toBe(0);
+    expect(PLAN_LIMITS.plus.smsSegmentsPerMonth).toBe(0);
+    expect(PLAN_LIMITS.pro.smsSegmentsPerMonth).toBe(0);
+    expect(PLAN_LIMITS.max.smsSegmentsPerMonth).toBe(2_000);
   });
 
-  it('leaves no tier metered', async () => {
+  it('leaves no tier UNMETERED — null anywhere would be an unbounded bill', async () => {
     const { PLAN_LIMITS } = await import('../planLimits');
-    for (const tier of Object.values(PLAN_LIMITS)) {
-      expect(tier.smsSegmentsPerMonth).toBeNull();
+    for (const [id, tier] of Object.entries(PLAN_LIMITS)) {
+      expect(tier.smsSegmentsPerMonth, `${id} must not be unmetered`).not.toBeNull();
     }
   });
 
@@ -157,7 +164,9 @@ describe('SMS is unmetered on every tier', () => {
     const { PLAN_LIMITS } = await import('../planLimits');
     expect(PLAN_LIMITS.free.queryTokensPerMonth).toBe(0);
     expect(PLAN_LIMITS.free.ingestTokensTotal).toBe(0);
-    expect(PLAN_LIMITS.free.smsSegmentsPerMonth).toBeNull();
+    // 🔴 0, not null, since THE-314 — free cannot send, and 0 says so in the
+    // one field the cap actually reads.
+    expect(PLAN_LIMITS.free.smsSegmentsPerMonth).toBe(0);
   });
 
   it('keeps max on its own token numbers — it did not inherit ultra 150M/30M', async () => {
@@ -168,9 +177,19 @@ describe('SMS is unmetered on every tier', () => {
 });
 
 // An unmetered tier takes the `cap === null` short-circuit: always allowed, and
-// it must never write a counter. This is the path EVERY tenant is on now.
+// it must never write a counter.
+//
+// ⚠️ NO REAL TIER IS ON THIS PATH ANY MORE (THE-314) — every row in PLAN_LIMITS
+// now carries a number. The short-circuit is still live code and still has to be
+// correct for the day an unmetered tier exists again, so these run against an
+// INJECTED null cap rather than being deleted. That is the same treatment the
+// reserve/refund machinery already gets above.
 describe('the unmetered path (cap === null)', () => {
-  it('reports a null cap for every tier', async () => {
+  beforeEach(() => {
+    capOverride = null;
+  });
+
+  it('reports a null cap when the tier is unmetered', async () => {
     for (const plan of ['plus', 'pro', 'max']) {
       store.set(`tenants/t-${plan}`, { plan });
       expect(await getSmsSegmentCap(`t-${plan}`)).toBeNull();
@@ -204,9 +223,13 @@ describe('getSmsSegmentCap', () => {
     expect(await getSmsSegmentCap('t-pro')).toBe(2_000);
   });
 
-  it('reads null straight through for a real (unmetered) tier', async () => {
+  it('reads the REAL limits through: 2,000 on Ministry, 0 on a tier that cannot send', async () => {
+    // No override — this is the live PLAN_LIMITS, and it is the assertion that
+    // catches a cap silently going back to null on the tier that spends money.
     store.set('tenants/t-max', { plan: 'max' });
-    expect(await getSmsSegmentCap('t-max')).toBeNull();
+    expect(await getSmsSegmentCap('t-max')).toBe(2_000);
+    store.set('tenants/t-pro', { plan: 'pro' });
+    expect(await getSmsSegmentCap('t-pro')).toBe(0);
   });
 
   it('falls back to plus for a missing tenant or unknown plan', async () => {
@@ -371,7 +394,10 @@ describe('getSmsUsageSnapshot', () => {
     });
   });
 
-  it('reports a null cap on a real (unmetered) tier, counters still readable', async () => {
+  it('reports an unmetered tier as null, counters still readable', async () => {
+    // Injected: no real tier is unmetered since THE-314. See the note on the
+    // unmetered-path describe above.
+    capOverride = null;
     store.set('tenants/t1', { plan: 'max' });
     store.set(JULY_DOC, { smsSegments: 1_234, smsSegmentsByo: 56 });
     const snap = await getSmsUsageSnapshot('t1', JULY);

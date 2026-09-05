@@ -368,7 +368,7 @@ describe('1 — a free tenant sees all seventeen nav items', () => {
     // ⚠️ `canBranding` gates the nav entry AND the render guard together, and it
     // predates THE-202 — it was never in the family of clauses 49b2a0c removed,
     // so THE-220 has nothing to restore there. Giving it the free clause would
-    // make the free nav SEVENTEEN, contradicting the founder's own count, and
+    // make the free nav SIXTEEN, contradicting the founder's own count, and
     // would put a tab in the nav whose render guard still refuses it.
     for (const plan of ['free', 'plus', 'pro'] as const) {
       expect(hasBrandingAccess(getPlanFeatures(plan))).toBe(false);
@@ -380,25 +380,31 @@ describe('1 — a free tenant sees all seventeen nav items', () => {
 });
 
 // ── 2–4 ──────────────────────────────────────────────────────────────────────
-describe('2 — an Individual tenant sees exactly its seven', () => {
-  /** The founder's report, named individually rather than derived. */
-  const SEVEN = ['Dashboard', 'Blog', 'Church', 'Courses', 'CRM', 'Fundraising', 'SMS'];
+describe('2 — an Individual tenant sees exactly its six', () => {
+  /** The founder's report, named individually rather than derived.
+   *
+   * ⚠️ SIX UNTIL THE-314, WHICH TOOK SMS AWAY. Individual carried
+   * `smsAutomation: true` while SMS was bring-your-own and the cell gated
+   * nothing. Harvest now resells and pays for every segment, so the founder made
+   * SMS Ministry-only and this tier lost the tab with the capability. */
+  const SIX = ['Dashboard', 'Blog', 'Church', 'Courses', 'CRM', 'Fundraising'];
 
-  /** 🔴 The nine the ticket says must go, by label. */
+  /** 🔴 The nine the ticket says must go, by label — plus SMS, which THE-314
+   *  added to this set by making the capability Ministry-only. */
   const NINE_HIDDEN = [
     'Newsletter', 'AI Knowledge', 'Notes', 'Community', 'Forms',
-    'Accounting', 'Events', 'Livestream',
+    'Accounting', 'Events', 'Livestream', 'SMS',
   ];
 
-  it('an Individual tenant sees exactly its seven', async () => {
+  it('an Individual tenant sees exactly its six', async () => {
     const { nav } = await navFor('plus');
-    for (const label of SEVEN) {
-      expect(nav, `Individual lost "${label}", one of its seven`).toContain(label);
+    for (const label of SIX) {
+      expect(nav, `Individual lost "${label}", one of its six`).toContain(label);
     }
-    // Eight, not seven: Check-In is the ticket's own known exception and the
+    // Seven, not six: Check-In is the ticket's own known exception and the
     // reason is recorded above. STOP CONDITION 3, reported not silently applied.
     expect(nav, CHECKIN_NOTE).toContain('Check-In');
-    expect(nav.length, 'Individual shows its eight plus Check-In and nothing else').toBe(9);
+    expect(nav.length, 'Individual shows its six plus Check-In and nothing else').toBe(8);
     expect(nav).toEqual(expectedNav('plus'));
   });
 
@@ -413,6 +419,8 @@ describe('2 — an Individual tenant sees exactly its seven', () => {
     for (const cell of [
       'newsletterAutomation', 'aiKnowledge', 'docs', 'communityGroups', 'customForms',
       'accountingTools', 'eventRegistration', 'checkInSystem', 'livestream',
+      // THE-314 — the tenth cell, and the one this ticket moved.
+      'smsAutomation',
     ] as const) {
       expect(f[cell], `${cell} is not false on plus`).toBe(false);
     }
@@ -436,7 +444,10 @@ describe('3 — a Small Team tenant sees exactly its expected set', () => {
   // `getEffectiveFeatures`, and `navFor` here mounts with no add-ons.
   const EXPECTED = [
     'Dashboard', 'Church', 'Courses', 'Blog', 'Newsletter',
-    'Fundraising', 'Notes', 'CRM', 'Signups', 'Check-In', 'Livestream', 'SMS',
+    // ⚠️ 'SMS' LEFT THIS SET — THE-314. Small Team lost the capability with
+    // Individual, for the same reason: SMS is Ministry-only now that Harvest
+    // pays for every segment rather than the church's own carrier account.
+    'Fundraising', 'Notes', 'CRM', 'Signups', 'Check-In', 'Livestream',
   ];
 
   it('a Small Team tenant sees exactly its expected set', async () => {
@@ -604,7 +615,8 @@ describe('7 — a hidden tab still refuses when reached by URL', () => {
     // when `/admin/<section>` is opened directly.
     const f = getPlanFeatures('plus');
     const hidden = TABS.filter((t) => t.cell !== null && !t.cell(f));
-    expect(hidden.length, 'nothing is hidden from Individual — the gate did not apply').toBe(8);
+    // 🔴 NINE SINCE THE-314, not eight: `smsAutomation` went false on plus.
+    expect(hidden.length, 'nothing is hidden from Individual — the gate did not apply').toBe(9);
 
     for (const tab of hidden) {
       const { screen, wall } = await navFor('plus', {}, tab.section);
@@ -629,7 +641,7 @@ describe('8 — no feature flag changed', () => {
     // moved", this says which. Every cell any nav clause in this ticket reads.
     const CELLS = [
       ['blog', [false, true, true, true]],
-      // 🔴 MOVED BY THE-253, AND THE ONLY CELL IN THIS TABLE THAT DID. Was
+      // 🔴 MOVED BY THE-253. Was
       // [false, false, true, true]. The Knowledge Base is the RAG chat's other
       // half and is sold with it, so no tier includes it; the add-on lifts it.
       ['aiKnowledge', [false, false, false, false]],
@@ -643,7 +655,12 @@ describe('8 — no feature flag changed', () => {
       ['customForms', [false, false, false, true]],
       ['checkInSystem', [false, false, true, true]],
       ['livestream', [false, false, true, true]],
-      ['smsAutomation', [false, true, true, true]],
+      // 🔴 MOVED BY THE-314, the second cell in this table to move. Was
+      // [false, true, true, true]. SMS was true on every paid tier while it was
+      // bring-your-own and the cell gated nothing; Harvest now resells and pays
+      // for every segment, so the founder made it Ministry-only and Individual
+      // and Small Team both lost it.
+      ['smsAutomation', [false, false, false, true]],
       ['communityGroups', [false, false, false, true]],
       ['customBranding', [false, false, false, true]],
       ['customDomain', [false, false, false, true]],

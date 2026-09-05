@@ -32,7 +32,7 @@ vi.mock('firebase-admin/firestore', () => ({
 
 // The route delegates all SMS behaviour to sendAutomatedSms — the single source
 // of truth for the enabled-check and honest logging (tested in lib/twilio.test).
-vi.mock('@/lib/twilio', () => ({ sendAutomatedSms: mockSendAutomatedSms }));
+vi.mock('@/lib/sms-send', () => ({ sendAutomatedSms: mockSendAutomatedSms }));
 
 // Resend is imported at module top; email is skipped when RESEND_API_KEY is unset.
 vi.mock('resend', () => ({ Resend: class { emails = { send: vi.fn() }; } }));

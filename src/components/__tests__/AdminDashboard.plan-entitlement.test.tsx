@@ -228,7 +228,11 @@ const UNGATED_TABS: Row[] = [
  * An Individual tenant reached this exact screen before the split, by clicking
  * "Analytics" inside the CRM tab it is listed as owning here.
  */
-const INDIVIDUAL_ENTITLED = ['Dashboard', 'Blog', 'Church', 'Courses', 'CRM', 'Signups', 'Fundraising', 'SMS'];
+// ⚠️ SEVEN SINCE THE-314, not eight: 'SMS' left this set. Individual carried
+// `smsAutomation: true` while SMS was bring-your-own and the plan cell gated
+// nothing. Harvest now resells and pays for every segment, so SMS is Ministry-
+// only and this tier no longer reaches the screen.
+const INDIVIDUAL_ENTITLED = ['Dashboard', 'Blog', 'Church', 'Courses', 'CRM', 'Signups', 'Fundraising'];
 
 /**
  * The eight, plus the one tab that mounts on every tier: Check-In.
@@ -340,17 +344,17 @@ afterEach(async () => {
 });
 
 // ── 1. The regression ────────────────────────────────────────────────────────
-describe("an Individual tenant's admin nav is exactly the eight correct items", () => {
-  it('reaches exactly the eight entitled surfaces, and an upgrade wall on every other', async () => {
+describe("an Individual tenant's admin nav is exactly the seven correct items", () => {
+  it('reaches exactly the seven entitled surfaces, and an upgrade wall on every other', async () => {
     expect(await entitledLabels('plus')).toEqual([...INDIVIDUAL_REACHABLE].sort());
     // Said again as the ticket says it, so the eight are pinned by name and the
     // one deviation cannot hide inside a derived list.
     for (const label of INDIVIDUAL_ENTITLED) {
-      expect(await entitledLabels('plus'), `"${label}" is one of the eight`).toContain(label);
+      expect(await entitledLabels('plus'), `"${label}" is one of the seven`).toContain(label);
     }
   });
 
-  it('shows the upgrade wall — naming the feature — on each of the eight it did not buy', async () => {
+  it('shows the upgrade wall — naming the feature — on each of the nine it did not buy', async () => {
     const walled: string[] = [];
     for (const row of GATED_TABS) {
       const { screen, wall } = await openTab('plus', row);
@@ -360,8 +364,10 @@ describe("an Individual tenant's admin nav is exactly the eight correct items", 
       }
     }
     // Check-In is absent from this list by design — see UNGATED_TABS above.
+    // 🔴 'SMS' JOINED THIS LIST — THE-314. Individual used to reach the SMS
+    // screen; it now meets the upgrade wall there, naming Ministry.
     expect(walled.sort()).toEqual(
-      ['AI Knowledge', 'Accounting', 'Community', 'Events', 'Forms', 'Livestream', 'Newsletter', 'Notes'],
+      ['AI Knowledge', 'Accounting', 'Community', 'Events', 'Forms', 'Livestream', 'Newsletter', 'Notes', 'SMS'],
     );
   });
 
@@ -697,11 +703,18 @@ describe('no feature flag changed', () => {
     // Named by cell, per tier, rather than by a digest: a digest says "something
     // moved", this says which tier lost what.
     //
-    // ⚠️ `aiKnowledge` MOVED IN THE-253, and it is the only cell in this table
-    // that did: true → false on pro and max. The Knowledge Base is the RAG
-    // chat's other half and is sold with it as the AI Assistant add-on, so no
-    // PLAN grants it. A tenant holding the add-on still reaches the screen —
-    // `AdminDashboard` gates on `getEffectiveFeatures`, not on this matrix.
+    // ⚠️ `aiKnowledge` MOVED IN THE-253: true → false on pro and max. The
+    // Knowledge Base is the RAG chat's other half and is sold with it as the AI
+    // Assistant add-on, so no PLAN grants it. A tenant holding the add-on still
+    // reaches the screen — `AdminDashboard` gates on `getEffectiveFeatures`, not
+    // on this matrix.
+    //
+    // ⚠️ `smsAutomation` MOVED IN THE-314: true → false on plus and pro. SMS was
+    // true on every paid tier while a church brought its own Twilio account and
+    // the cell gated nothing. Harvest now RESELLS and pays for every segment, so
+    // the founder made it Ministry-only — and the same `getEffectiveFeatures`
+    // note applies, deliberately: if SMS is ever sold as an add-on it lifts with
+    // `||` and this matrix does not move again.
     const CELLS = [
       'newsletterAutomation', 'aiKnowledge', 'docs', 'communityGroups',
       'customForms', 'accountingTools', 'eventRegistration', 'checkInSystem', 'livestream',
@@ -722,13 +735,13 @@ describe('no feature flag changed', () => {
       plus: {
         newsletterAutomation: false, aiKnowledge: false, docs: false, communityGroups: false,
         customForms: false, accountingTools: false, eventRegistration: false, checkInSystem: false,
-        livestream: false, blog: true, crm: true, fundraising: true, smsAutomation: true,
+        livestream: false, blog: true, crm: true, fundraising: true, smsAutomation: false,
         customBranding: false, customDomain: false,
       },
       pro: {
         newsletterAutomation: true, aiKnowledge: false, docs: true, communityGroups: false,
         customForms: false, accountingTools: false, eventRegistration: false, checkInSystem: true,
-        livestream: true, blog: true, crm: true, fundraising: true, smsAutomation: true,
+        livestream: true, blog: true, crm: true, fundraising: true, smsAutomation: false,
         customBranding: false, customDomain: false,
       },
       max: {
