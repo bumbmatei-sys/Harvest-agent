@@ -2,7 +2,7 @@
 import React from "react";
 import { Youtube, Instagram, Facebook, Linkedin, Podcast, Globe } from "lucide-react";
 import { Author, Course } from "../../types/course.types";
-import { GOLD, GOLD_LIGHT } from "../../utils/course.constants";
+import { GOLD_LIGHT, GOLD_ON_TINT } from "../../utils/course.constants";
 import { sanitizeHtml } from "../../utils/sanitize";
 
 // Real brand glyphs lucide-react (v0.453) does not ship: the X wordmark and
@@ -74,7 +74,7 @@ export function AuthorProfile({ author, onBack, courses, onSelectCourse }: Autho
         ) : (
           <div
             className="w-24 h-24 rounded-full border-[3px] border-white shadow-lg mx-auto mb-4 flex items-center justify-center text-2xl font-bold"
-            style={{ background: GOLD_LIGHT, color: GOLD }}
+            style={{ background: GOLD_LIGHT, color: GOLD_ON_TINT }}
           >
             {author.name?.charAt(0) || "?"}
           </div>

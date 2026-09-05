@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import ReactPlayer from "react-player/youtube";
 import { Course, Lesson, Author, QuizAttempt } from "../../types/course.types";
 import { getAllLessons } from "../../utils/course.utils";
-import { GOLD, GREEN, GREEN_BG } from "../../utils/course.constants";
+import { GOLD, GOLD_HOVER, GREEN, GREEN_BG } from "../../utils/course.constants";
 import { sanitizeHtml } from "../../utils/sanitize";
 import { QuizPanel } from "./QuizPanel";
 import SaveButton from "../SaveButton";
@@ -235,7 +235,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
               <div className="text-sm font-bold">{author.name}</div>
               <div className="text-xs text-faint">{author.title || "Instructor"}</div>
             </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A89A87" strokeWidth="2"><path d="m9 18 6-6-6-6" /></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-faint" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6" /></svg>
           </div>
         )}
 
@@ -275,7 +275,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
                 ? { background: GREEN_BG, color: GREEN, borderColor: GREEN }
                 : { background: GOLD }
             }
-            onMouseEnter={(e) => { if (!completionBlocked && !isCompleted) e.currentTarget.style.background = "color-mix(in srgb, var(--brand-color, #C9963A) 85%, black)"; }}
+            onMouseEnter={(e) => { if (!completionBlocked && !isCompleted) e.currentTarget.style.background = GOLD_HOVER; }}
             onMouseLeave={(e) => { if (!completionBlocked && !isCompleted) e.currentTarget.style.background = GOLD; }}
           >
             {isCompleted ? "Completed" : "Mark as Completed"}
@@ -313,7 +313,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
                     : "text-white cursor-pointer"
                 }`}
                 style={nextBlocked ? undefined : { background: GOLD }}
-                onMouseEnter={(e) => { if (!nextBlocked) e.currentTarget.style.background = "color-mix(in srgb, var(--brand-color, #C9963A) 85%, black)"; }}
+                onMouseEnter={(e) => { if (!nextBlocked) e.currentTarget.style.background = GOLD_HOVER; }}
                 onMouseLeave={(e) => { if (!nextBlocked) e.currentTarget.style.background = GOLD; }}
               >
                 Next
@@ -329,7 +329,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
                     : "text-white cursor-pointer"
                 }`}
                 style={nextBlocked ? undefined : { background: GOLD }}
-                onMouseEnter={(e) => { if (!nextBlocked) e.currentTarget.style.background = "color-mix(in srgb, var(--brand-color, #C9963A) 85%, black)"; }}
+                onMouseEnter={(e) => { if (!nextBlocked) e.currentTarget.style.background = GOLD_HOVER; }}
                 onMouseLeave={(e) => { if (!nextBlocked) e.currentTarget.style.background = GOLD; }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m5 13 4 4L19 7" /></svg>

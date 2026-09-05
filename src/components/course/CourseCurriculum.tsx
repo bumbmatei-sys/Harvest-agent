@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { Lesson, Level } from "../../types/course.types";
-import { GOLD, GOLD_LIGHT } from "../../utils/course.constants";
+import { GOLD_LIGHT, GOLD_ON_TINT } from "../../utils/course.constants";
 
 /**
  * The level → section → lesson tree, with its expand/collapse behaviour.
@@ -59,7 +59,7 @@ export function CourseCurriculum({ levels, renderLesson, initiallyExpanded = tru
               <div className="flex items-center gap-2.5">
                 <span
                   className="px-2.5 py-0.5 rounded-full text-[11px] font-bold"
-                  style={{ background: GOLD_LIGHT, color: GOLD }}
+                  style={{ background: GOLD_LIGHT, color: GOLD_ON_TINT }}
                 >
                   {level.title}
                 </span>
@@ -67,7 +67,7 @@ export function CourseCurriculum({ levels, renderLesson, initiallyExpanded = tru
               <div className="flex items-center gap-2">
                 <span className="text-[13px] text-[color:var(--text-faint)] font-medium">{levelLessons.length} lessons</span>
                 <svg
-                  width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A89A87" strokeWidth="2" strokeLinecap="round"
+                  width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-faint" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
                   style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}
                 >
                   <path d="m6 9 6 6 6-6" />
