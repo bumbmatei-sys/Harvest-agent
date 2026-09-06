@@ -43,6 +43,7 @@ import {
   COURSE_STATUS_CTA,
   type CourseStatus,
 } from '../../../utils/course.utils';
+import { rulesDigestFailure } from '../../../__tests__/__fixtures__/firestore-rules-pin';
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -745,14 +746,6 @@ describe('7 — the progress model, the editor and the adoption gate are untouch
    * the older one. A digest that is neither still fails.
    */
   const THE_313 = ['firestore.rules'];
-  const RULES_ACCEPTED = [
-    // main before #462
-    'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499',
-    // main + THE-313 (#462) — the servicePlans rule
-    '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075',
-  ];
-  const rulesDigest = () =>
-    createHash('sha256').update(readFileSync(path.join(ROOT, 'firestore.rules'))).digest('hex');
 
   it('🔴 every pinned file is byte-identical to the base branch', () => {
     // ⚠️ One `git diff` over the set, at collection time — not a `git show` per
@@ -779,8 +772,8 @@ describe('7 — the progress model, the editor and the adoption gate are untouch
     // this line. The digest is what replaces the diff check for this file, so
     // an edit that is NOT #462's rule fails here rather than passing unseen.
     expect(THE_313).toEqual(['firestore.rules']);
-    expect(RULES_ACCEPTED, `firestore.rules is at ${rulesDigest()}, which is neither accepted value`)
-      .toContain(rulesDigest());
+    expect(rulesDigestFailure(),
+      'firestore.rules is at a digest no ticket recorded — it auto-deploys to production').toBeNull();
   });
 
   it('🔴 the completedLessons read and write are exactly where they were', () => {

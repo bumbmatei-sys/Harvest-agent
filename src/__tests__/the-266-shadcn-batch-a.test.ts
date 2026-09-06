@@ -17,6 +17,7 @@ import {
   rel,
 } from '../components/ui/__tests__/ds-primitives.audit';
 import { contrastRatio, AA_CONTRAST, DEFAULT_PALETTE_FAMILY } from '../lib/theme';
+import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
 
 /**
  * THE-266 — shadcn Phase 7, Batch A: tooltip, skeleton, collapsible, breadcrumb.
@@ -79,13 +80,6 @@ const PRE_EXISTING_DIGESTS: Record<string, string> = {
 
 /** As of 6aceb0e. Neither file is this PR's business; both are asserted below. */
 const LAYOUT_SHA = 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5';
-// ⚠️ REGENERATED ONCE, by THE-313 (#462), which added the `servicePlans` rule
-// inside `match /tenants/{tenantId}` beside `events`: `allow read: if
-// belongsToTenant(tenantId)` and `allow write: if hasPermission('manageEvents',
-// tenantId)`. Purely additive — no existing rule's text moved and it names no new
-// helper, so every other claim this pin carries is unchanged.
-// Was: a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499
-const RULES_SHA = '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075';
 const TAILWIND_CODE_SHA = '491ebb5575d16eddfab00c6ed89900c725141b412e410e9e97342ff2108b2904';
 
 /* ── palette resolution ──────────────────────────────────────────────────────
@@ -635,7 +629,8 @@ describe('the out-of-scope files are untouched', () => {
   });
 
   it('firestore.rules is byte-identical', () => {
-    expect(sha256(readFileSync(path.join(REPO_ROOT, 'firestore.rules'), 'utf8'))).toBe(RULES_SHA);
+    expect(rulesDigestFailure(),
+      'firestore.rules is at a digest no ticket recorded — it auto-deploys to production').toBeNull();
   });
 
   /**

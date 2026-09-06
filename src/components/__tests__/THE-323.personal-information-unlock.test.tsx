@@ -117,6 +117,7 @@ import {
   validateRegister,
   type RecordedLayer,
 } from './__fixtures__/mobile-layer-register';
+import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
 const { mobileLayer } = await import('../../test/support/class-inventory');
 
 function mount(el: React.ReactElement): HTMLElement {
@@ -767,8 +768,8 @@ describe('10 / 13 · the files this ticket must not touch are byte-identical', (
   });
 
   it('firestore.rules is byte-identical', () => {
-    expect(sha256File('firestore.rules'))
-      .toBe('4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075');
+    expect(rulesDigestFailure(),
+      'firestore.rules is at a digest no ticket recorded — it auto-deploys to production').toBeNull();
   });
 
   it('src/app/layout.tsx is byte-identical', () => {

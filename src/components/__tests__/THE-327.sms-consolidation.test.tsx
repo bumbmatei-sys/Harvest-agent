@@ -3,6 +3,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
 
 /**
  * THE-327 — SMS lives in ONE place, and the Library screen is reachable.
@@ -989,11 +990,23 @@ describe('22 · the untouchable files are byte-identical', () => {
   };
 
   const UNTOUCHED: Record<string, string> = {
-    'firestore.rules': '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075',
     'firestore.indexes.json': '8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0',
     'src/lib/sms-optout.ts': 'a92f960897d644ba7832b68c0a8e866c146babbe0c0a800b78cc9d71b49a527c',
     'src/app/layout.tsx': 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5',
   };
+
+  /**
+   * 🔴 THE-325 · the accepted SET moved to `__fixtures__/ownership/`, the
+   * ASSERTION stayed here. This suite still says what it always said: the
+   * `firestore.rules` on disk is at a digest some ticket recorded, and so
+   * THIS ticket did not touch a file that auto-deploys to production with no
+   * emulator test in CI. Only the list of accepted values is now shared, so
+   * a legitimate rules change is one new record rather than 50 edits.
+   */
+  it('firestore.rules is unchanged', () => {
+    expect(rulesDigestFailure(),
+      'firestore.rules is at a digest no ticket recorded — it auto-deploys to production').toBeNull();
+  });
 
   it.each(Object.entries(UNTOUCHED))('%s is unchanged', (rel, expected) => {
     expect(digest(rel), `${rel} was edited — this ticket must not open it`).toBe(expected);

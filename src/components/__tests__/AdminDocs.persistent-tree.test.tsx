@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import postcss from 'postcss';
 import AdminDocs from '../AdminDocs';
+import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
 
 /**
  * THE-275 — the notes screen is two panes, not a drill-down.
@@ -977,13 +978,6 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ are byte-identical'
     // permission, gate, tab id, render arm or import changed.
     'decfdddbdab91094c936b503f931b663eeb6ba3048ee087c541fe1580f20e31e',
   ];
-  // ⚠️ REGENERATED ONCE, by THE-313 (#462), which added the `servicePlans` rule
-  // inside `match /tenants/{tenantId}` beside `events`: `allow read: if
-  // belongsToTenant(tenantId)` and `allow write: if hasPermission('manageEvents',
-  // tenantId)`. Purely additive — no existing rule's text moved and it names no new
-  // helper, so every other claim this pin carries is unchanged.
-  // Was: a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499
-  const FIRESTORE_RULES = '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075';
 
   it('AdminDashboard.tsx is untouched by THIS ticket — others legitimately own it', () => {
     const actual = sha256(readFileSync(path.join(SRC, 'components/AdminDashboard.tsx')));
@@ -1013,7 +1007,8 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ are byte-identical'
   });
 
   it('firestore.rules is untouched', () => {
-    expect(sha256(readFileSync(path.join(REPO, 'firestore.rules')))).toBe(FIRESTORE_RULES);
+    expect(rulesDigestFailure(),
+      'firestore.rules is at a digest no ticket recorded — it auto-deploys to production').toBeNull();
   });
 
   it('functions/ is untouched', () => {

@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server';
 import { createHash } from 'crypto';
 import { readFileSync, readdirSync } from 'fs';
 import path from 'path';
+import { rulesDigestFailure } from '../../../../__tests__/__fixtures__/firestore-rules-pin';
 
 /**
  * 🔴 /api/enterprise-lead READ EVERY LEAD AN IP HAD EVER SUBMITTED.
@@ -413,13 +414,6 @@ describe('/api/enterprise-lead — the out-of-scope files are untouched', () => 
    * bypasses rules, and the existing block already denies client create.
    * `functions/` does not deploy on merge — the mirror-image trap.
    */
-  // ⚠️ REGENERATED ONCE, by THE-313 (#462), which added the `servicePlans` rule
-  // inside `match /tenants/{tenantId}` beside `events`: `allow read: if
-  // belongsToTenant(tenantId)` and `allow write: if hasPermission('manageEvents',
-  // tenantId)`. Purely additive — no existing rule's text moved and it names no new
-  // helper, so every other claim this pin carries is unchanged.
-  // Was: a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499
-  const RULES_SHA = '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075';
   const FUNCTIONS_SHA = '98132e824b2082a4ac3b6ddf8d99551c7bdc7f5398af73b6696ae0116d865d30';
 
   const sha = (buf: Buffer | string) => createHash('sha256').update(buf).digest('hex');
@@ -435,7 +429,8 @@ describe('/api/enterprise-lead — the out-of-scope files are untouched', () => 
   }
 
   it('firestore.rules and functions/ are byte-identical', () => {
-    expect(sha(readFileSync(path.join(process.cwd(), 'firestore.rules')))).toBe(RULES_SHA);
+    expect(rulesDigestFailure(),
+      'firestore.rules is at a digest no ticket recorded — it auto-deploys to production').toBeNull();
 
     const files = functionsFiles(path.join(process.cwd(), 'functions'));
     expect(files).toHaveLength(5);

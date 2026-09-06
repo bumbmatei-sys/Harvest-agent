@@ -13,6 +13,7 @@ import {
 import { DELETE_CONFIRM_COPY } from '../../lib/member-erasure-copy';
 import UNTOUCHED from './__fixtures__/the-286-untouched.json';
 import { freezeFailure } from './__fixtures__/settings-freeze-register';
+import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
 
 /**
  * ═════════════════════════════════════════════════════════════════════════════
@@ -1130,6 +1131,19 @@ describe('15 · the other 12 sections are byte-identical', () => {
 });
 
 describe('16 · firestore.rules and functions/ are byte-identical', () => {
+  /**
+   * 🔴 THE-325 · the accepted SET moved to `__fixtures__/ownership/`, the
+   * ASSERTION stayed here. This suite still says what it always said: the
+   * `firestore.rules` on disk is at a digest some ticket recorded, and so
+   * THIS ticket did not touch a file that auto-deploys to production with no
+   * emulator test in CI. Only the list of accepted values is now shared, so
+   * a legitimate rules change is one new record rather than 53 edits.
+   */
+  it('firestore.rules is unchanged', () => {
+    expect(rulesDigestFailure(),
+      'firestore.rules is at a digest no ticket recorded — it auto-deploys to production').toBeNull();
+  });
+
   it.each(Object.entries(UNTOUCHED.rulesAndFunctions))('%s is unchanged', async (rel, digest) => {
     const { createHash } = await import('node:crypto');
     const now = createHash('sha256').update(readFileSync(path.join(ROOT, rel))).digest('hex');

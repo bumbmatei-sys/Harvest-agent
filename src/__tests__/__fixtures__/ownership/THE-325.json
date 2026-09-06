@@ -1,0 +1,17 @@
+{
+  "ticket": "THE-325",
+  "recordedIn": "#471",
+  "note": "THE-325. The accepted digests of firestore.rules, migrated out of the 49 suites that spelled one inline, THE-286's JSON fixture and THE-319's indirection through the-299-retention-guards.test.ts. BOTH values below were already accepted somewhere in the tree before this ticket and neither is new: a1fb6148 was accepted by the seven tuple-table guards (the-276, the-283, the-290, the-294, the-299, the-302, the-313) and the four RULES_ACCEPTED arrays (the-326, THE-282, THE-305, THE-311); 4973c3c9 was accepted by all 49. Appended, never substituted. THE FILE ITSELF IS NOT COPIED IN HERE: firestore.rules is in the repo at the live digest and in git history at the superseded one, so both states are already diffable against a real artifact, and a 30 KB second copy of production security rules would be a thing that can drift from the rules that actually deploy. What a class list needed a full copy for, a tracked file does not.",
+  "entries": [
+    {
+      "file": "firestore.rules",
+      "digest": "a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499",
+      "why": "main before #462, unchanged since 5e06c67 — the state every ticket from THE-276 to THE-313 recorded as its baseline. Kept because the SET is a union and a baseline is never replaced, only joined: a branch cut before THE-313 landed still hashes to this and is still right."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075",
+      "why": "main + THE-313 (#462), which added the servicePlans rule inside match /tenants/{tenantId} beside events — allow read: if belongsToTenant(tenantId), allow write: if hasPermission('manageEvents', tenantId). Purely additive: no existing rule's text moved and it names no new helper, which is why every other claim these pins carry is unchanged."
+    }
+  ]
+}

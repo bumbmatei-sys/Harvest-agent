@@ -5,6 +5,7 @@ import path from 'node:path';
 import postcss from 'postcss';
 
 import { GLOBALS_CSS, REPO_ROOT } from '../test/support/tailwind-build';
+import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
 
 /**
  * THE-290 — the static guards: what this slice was not allowed to add.
@@ -349,19 +350,6 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // `isSuperAdmin && { id: 'library' }`.
     ['decfdddbdab91094c936b503f931b663eeb6ba3048ee087c541fe1580f20e31e', 'main + THE-327 — the Library nav entry added to both group arrays'],
   ],
-  'firestore.rules': [
-    ['a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499', 'unchanged since 5e06c67'],
-    // THE-313 (#462) wrote the `servicePlans` rule: `allow read: if
-    // belongsToTenant(tenantId)` / `allow write: if hasPermission('manageEvents',
-    // tenantId)`, inside `match /tenants/{tenantId}` beside `events`. It is
-    // deployed — `firestore.rules` auto-deploys on merge.
-    //
-    // 🔴 APPENDED, NEVER SUBSTITUTED. The value above is still accepted, because
-    // CI runs against `refs/pull/N/merge` and a merge ref cut before #462 landed
-    // legitimately carries it. A digest that is NEITHER — this ticket editing the
-    // file — still fails, which is the entire threat this guard exists for.
-    ['4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075', 'main + THE-313 (#462) — the servicePlans rule'],
-  ],
   'firestore.indexes.json': [
     ['8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0', 'main at 7fd4672'],
   ],
@@ -382,6 +370,19 @@ function functionsTree(): string[] {
 }
 
 describe('AdminDashboard.tsx, firestore.rules, firestore.indexes.json and functions/ byte-identical', () => {
+  /**
+   * 🔴 THE-325 · the accepted SET moved to `__fixtures__/ownership/`, the
+   * ASSERTION stayed here. This suite still says what it always said: the
+   * `firestore.rules` on disk is at a digest some ticket recorded, and so
+   * THIS ticket did not touch a file that auto-deploys to production with no
+   * emulator test in CI. Only the list of accepted values is now shared, so a
+   * legitimate rules change is one new per-ticket record rather than 50 edits.
+   */
+  it('firestore.rules carries no edit from this ticket', () => {
+    expect(rulesDigestFailure(),
+      'firestore.rules is at a digest no ticket recorded — it auto-deploys to production').toBeNull();
+  });
+
   it.each(Object.entries(UNTOUCHED))('%s carries no edit from this ticket', (file, accepted) => {
     const actual = sha256(readFileSync(path.join(REPO_ROOT, file)));
     const match = accepted.find(([digest]) => digest === actual);

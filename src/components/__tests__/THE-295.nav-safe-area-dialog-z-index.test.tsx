@@ -16,6 +16,7 @@ import path from 'node:path';
 import { buildAppCss, buildCssForMarkup } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
 import { DENSITY_PX, DESKTOP_CONTROL_MAX_PX } from '../layout/form-layout';
+import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
 
 /**
  * ═════════════════════════════════════════════════════════════════════════════
@@ -912,14 +913,20 @@ describe('11 · layout.tsx, firestore.rules and functions/ byte-identical', () =
   // has already been bitten by a shallow clone.
   const PINNED: Readonly<Record<string, string>> = {
     'src/app/layout.tsx': 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5',
-    // ⚠️ REGENERATED ONCE, by THE-313 (#462), which added the `servicePlans` rule
-    // inside `match /tenants/{tenantId}` beside `events`: `allow read: if
-    // belongsToTenant(tenantId)` and `allow write: if hasPermission('manageEvents',
-    // tenantId)`. Purely additive — no existing rule's text moved and it names no new
-    // helper, so every other claim this pin carries is unchanged.
-    // Was: a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499
-    'firestore.rules': '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075',
   };
+
+  /**
+   * 🔴 THE-325 · the accepted SET moved to `__fixtures__/ownership/`, the
+   * ASSERTION stayed here. This suite still says what it always said: the
+   * `firestore.rules` on disk is at a digest some ticket recorded, and so
+   * THIS ticket did not touch a file that auto-deploys to production with no
+   * emulator test in CI. Only the list of accepted values is now shared, so
+   * a legitimate rules change is one new record rather than 50 edits.
+   */
+  it('firestore.rules is byte-identical', () => {
+    expect(rulesDigestFailure(),
+      'firestore.rules is at a digest no ticket recorded — it auto-deploys to production').toBeNull();
+  });
 
   it.each(Object.entries(PINNED))('%s is byte-identical', (file, digest) => {
     expect(sha256(src(file)), `${file} was edited — this ticket must not touch it`).toBe(digest);

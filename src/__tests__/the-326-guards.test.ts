@@ -29,6 +29,7 @@ import {
   ownershipFailure,
   validateOwnership,
 } from './__fixtures__/ownership-register';
+import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
 
 const read = (rel: string): string => readFileSync(path.join(REPO_ROOT, rel), 'utf8');
 
@@ -549,17 +550,10 @@ describe('18 · firestore.rules, firestore.indexes.json, functions/ and layout.t
    * runs against `refs/pull/N/merge`, so a merge ref cut before #462 landed
    * legitimately carries the older value. A digest that is NEITHER still fails.
    */
-  const RULES_ACCEPTED = [
-    'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499', // main before #462
-    '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075', // main + THE-313 (#462)
-  ];
 
   it('🔴 firestore.rules is at an accepted digest — this ticket wrote no rule', () => {
-    const { createHash } = require('node:crypto') as typeof import('node:crypto');
-    const actual = createHash('sha256')
-      .update(readFileSync(path.join(REPO_ROOT, 'firestore.rules'))).digest('hex');
-    expect(RULES_ACCEPTED, `firestore.rules is at ${actual}, which is neither accepted value`)
-      .toContain(actual);
+    expect(rulesDigestFailure(),
+      'firestore.rules is at a digest no ticket recorded — it auto-deploys to production').toBeNull();
   });
 
   it('and the servicePlans rule still says exactly what it said', () => {

@@ -49,6 +49,7 @@ import {
   ownershipFailure,
   recordedFiles,
 } from './__fixtures__/ownership-register';
+import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
 
 const REPO_ROOT = path.resolve(__dirname, '../..');
 const read = (rel: string): string => readFileSync(path.join(REPO_ROOT, rel), 'utf8');
@@ -740,11 +741,25 @@ describe('no guard in this PR asserts anything about the current branch\'s diff'
 /* ═══ 16 · The files this ticket may not open ═════════════════════════════ */
 
 describe('AdminDashboard.tsx, layout.tsx, firestore and functions/ are byte-identical', () => {
+  /**
+   * 🔴 THE-325 · firestore.rules LEFT THIS DEFERRAL, and the claim is unchanged.
+   * THE-319 pinned it by asserting the-299's guard file spelled the live digest;
+   * that guard no longer spells one, because THE-325 moved the accepted SET into
+   * `__fixtures__/ownership/` so a legitimate rule change is one edit. What
+   * THE-319 asserts is what it always asserted: the rules file on disk is at a
+   * digest some ticket recorded, so THIS ticket did not open a file that
+   * auto-deploys to production with no emulator test in CI.
+   */
+  it('firestore.rules is at a digest some ticket recorded', () => {
+    expect(rulesDigestFailure(),
+      'firestore.rules is at a digest no ticket recorded — it auto-deploys to production').toBeNull();
+  });
+
   /** Deferred to the guards that already pin them, so there is one copy of each
    *  digest in the repo rather than two that can drift apart. */
   it('the pins that already exist still hold', () => {
     const guard = read('src/__tests__/the-299-retention-guards.test.ts');
-    for (const file of ['src/components/AdminDashboard.tsx', 'firestore.rules', 'firestore.indexes.json']) {
+    for (const file of ['src/components/AdminDashboard.tsx', 'firestore.indexes.json']) {
       const actual = sha256(readFileSync(path.join(REPO_ROOT, file)));
       expect(guard, `${file} moved and no accepted digest covers it`).toContain(actual);
     }
