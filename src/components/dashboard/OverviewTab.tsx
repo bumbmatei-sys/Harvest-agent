@@ -90,7 +90,6 @@ export function OverviewTab({ data, unreadCount, showInbox }: {
           inputs={{
             memberSeries: data.memberSeries,
             givingSeries: data.givingSeries,
-            contacts: data.contacts,
             submissionsSeries: data.submissionSeries,
           }}
         />

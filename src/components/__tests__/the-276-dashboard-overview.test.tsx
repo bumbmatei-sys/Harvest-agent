@@ -533,25 +533,51 @@ describe('no widget fabricates a number', () => {
     expect(weekBuckets(NOW)).toHaveLength(8);
   });
 
-  it('buildInsights emits nothing for an input it did not receive', () => {
-    expect(buildInsights({
+  /**
+   * ⚠️ REWRITTEN BY THE-328, and the behaviour it asserted is the reason.
+   *
+   * This test used to assert `toEqual([])` for three refused reads — which is
+   * exactly the silent failure THE-328 removes. With nothing emitted, the feed
+   * fell to `REASON.noSource(...)`: "Nothing in this ministry's data records
+   * anything that changed this week", a claim about the DATA made when the
+   * truth was that the READ FAILED. The property is therefore STRENGTHENED
+   * rather than dropped: a refused input still emits NO FIGURE, and now it must
+   * also leave a visible failure line. `contacts` is gone from the inputs
+   * because THE-328 drops that insight — see the file header.
+   */
+  it('buildInsights emits no figure for a refused read, but never stays silent', () => {
+    const insights = buildInsights({
       memberSeries: { kind: 'unavailable', reason: 'no' },
       givingSeries: { kind: 'unavailable', reason: 'no' },
-      contacts: { kind: 'unavailable', reason: 'no' },
       submissionsSeries: null,
-    })).toEqual([]);
+    });
+    // Two reads were attempted and refused; the third was never supplied.
+    expect(insights.map((i) => i.key)).toEqual(['members-unread', 'giving-unread']);
+    for (const insight of insights) {
+      expect(insight.tone).toBe('failure');
+      // 🔴 A failure line carries the reason, and carries no digit at all.
+      expect(insight.detail).toBe('no');
+      expect(insight.headline).not.toMatch(/[0-9]/);
+    }
+    // An input that was never supplied produces nothing — it is not a failure.
+    expect(buildInsights({ memberSeries: null, givingSeries: null, submissionsSeries: null }))
+      .toEqual([]);
   });
 
   it('every insight it does emit names the read it came from', () => {
     const insights = buildInsights({
-      memberSeries: { kind: 'complete', points: [{ label: 'a', value: 1 }, { label: 'b', value: 3 }] },
+      memberSeries: {
+        kind: 'complete',
+        points: [{ label: 'a', value: 1 }, { label: 'b', value: 2 }, { label: 'c', value: 3 }],
+      },
       givingSeries: { kind: 'unavailable', reason: 'no' },
-      contacts: { kind: 'exact', value: 12 },
       submissionsSeries: null,
     });
     expect(insights.length).toBeGreaterThan(0);
     for (const insight of insights) expect(insight.source.length).toBeGreaterThan(10);
+    // No insight is derived FROM the refused read — only a line saying it failed.
     expect(insights.map((i) => i.key)).not.toContain('giving');
+    expect(insights.map((i) => i.key)).toContain('giving-unread');
   });
 
   it('givingMix groups by the document\'s own type field and never invents a slice', () => {
