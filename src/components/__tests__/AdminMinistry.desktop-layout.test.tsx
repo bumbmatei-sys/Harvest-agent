@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest';
 import React from 'react';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -41,6 +41,70 @@ import path from 'node:path';
  * which is the first and most important thing this file pins.
  */
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+/**
+ * THE-325 — THIS SUITE RUNS ON A FROZEN CLOCK.
+ *
+ * 🔴 Without it this file is a time bomb, and on 2026-09-06 at 10:00 it went
+ * off: five assertions on `AdminCheckin` went red on `main` for everyone, with
+ * no code change of any kind.
+ *
+ * The `SESSIONS` fixture below pins `date: '2026-09-06T10:00'` — no timezone,
+ * so `new Date(...)` parses it as LOCAL time — and `AdminCheckin.tsx`'s
+ * `sessionStatus` answers 'Upcoming' only while that instant is still in the
+ * future. The moment it passed, the session became 'Active', the status pill
+ * swapped `bg-wheat-100 text-wheat-700` for `bg-field-100 text-field-700`, and
+ * the `status === 'Active' &&` branch mounted a QR box carrying `w-16 h-16`.
+ * That single flip is the whole of the "undocumented token", "dropped token",
+ * "unprefixed h-16", "colours moved" and "colour-bearing class" failures.
+ *
+ * ⚠️ NEITHER THE BASELINE NOR THE SCREEN IS WRONG. The baseline captured the
+ * 'Upcoming' rendering and is correct; `AdminCheckin.tsx` is correct too — a
+ * session whose start time has passed IS active. What was wrong is that a
+ * suite pinning a rendering byte-for-byte was reading the wall clock.
+ *
+ * 🔴 AND THE FIX IS NOT TO BUMP THE YEAR. A later date re-arms the identical
+ * failure on its own anniversary; this repo already carries enough guards that
+ * expire on a calendar. The clock is pinned instead, so the fixture's date is
+ * fixed relative to "now" forever and the rendering under test can never
+ * depend on when the suite is run.
+ *
+ * ── Where the freeze has to go, and why it is shaped like this ───────────────
+ *
+ * • MODULE SCOPE, not `beforeAll`. `beforeAll` below mounts all five screens
+ *   itself under `UPDATE_LAYOUT_BASELINE=1`, so a freeze installed inside it
+ *   would have to be its first statement to cover the recording path too.
+ *   Module scope covers the recording path, every hook and every test with one
+ *   statement that cannot be reordered out of position. (Both placements pass a
+ *   normal run; only this one also covers a re-record.)
+ *
+ * • `toFake: ['Date']` AND NOTHING ELSE. A full `vi.useFakeTimers()` also
+ *   replaces `setTimeout`, and `mountScreen`/`settle` in
+ *   `src/test/support/ministry-screens.tsx` settle React's effects by awaiting
+ *   `new Promise((r) => setTimeout(r, 0))` inside `act`. With timers faked and
+ *   nothing advancing them that promise never resolves and every mount hangs
+ *   until the suite times out. Only `Date` is faked, so the renders — which is
+ *   where `sessionStatus` is called — see the pinned clock while the harness
+ *   keeps real timers.
+ *
+ * • It reaches the render because THE RENDER IS IN THIS PROCESS. These
+ *   assertions read `className` inventories off a React tree mounted into
+ *   happy-dom here; the out-of-process Chromium measurement in
+ *   `src/test/support/browser-measure.ts` — which a fake timer could NOT have
+ *   reached — is not used by this file, and the pixel numbers in the header
+ *   above are recorded evidence, not live measurements.
+ *
+ * • The instant is `2026-09-05T00:00:00Z`, deliberately more than a day before
+ *   the fixture's date. Because that fixture has no timezone it lands anywhere
+ *   from 2026-09-05T20:00Z (at UTC+14) to 2026-09-06T22:00Z (at UTC-12), so a
+ *   freeze at UTC midnight the day before is still in the past of the fixture
+ *   in EVERY timezone a runner could be in — the 'Upcoming' rendering the
+ *   baseline recorded, on CI in UTC and on a laptop in Auckland alike.
+ */
+const FROZEN_NOW = new Date('2026-09-05T00:00:00Z');
+vi.useFakeTimers({ toFake: ['Date'] });
+vi.setSystemTime(FROZEN_NOW);
+afterAll(() => { vi.useRealTimers(); });
 
 const ts = (iso: string) => ({ toDate: () => new Date(iso), seconds: Math.floor(Date.parse(iso) / 1000) });
 const snapDoc = (id: string, data: Record<string, unknown>) => ({ id, data: () => data });
