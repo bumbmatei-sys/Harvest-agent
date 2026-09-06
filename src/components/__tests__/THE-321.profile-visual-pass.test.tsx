@@ -7,6 +7,7 @@ import {
   RECORDED_EDITS,
   FROZEN_FILES,
   MIN_REASON_LENGTH,
+  freezeFailure,
   sha256File,
   validateRegister,
 } from './__fixtures__/settings-freeze-register';
@@ -249,15 +250,29 @@ describe('3 · Profile.tsx has a valid register entry', () => {
     // 🔴 Every entry that was there before THE-321 is still there — appended,
     // never substituted. Spelled as tickets+files so a replaced digest on an
     // existing entry is not what this checks (its own suite does that).
-    const before = RECORDED_EDITS
-      .filter((e) => e.ticket !== 'THE-321')
-      .map((e) => `${e.ticket} ${e.file}`);
-    expect(before).toEqual([
+    //
+    // ⚠️ A PREFIX, NOT AN EQUALITY. This was `toEqual` on the four, which reads
+    // as "nothing was substituted" and ALSO says "and nobody may ever append
+    // again" — so it went red on THE-323, a ticket that did exactly what the
+    // register exists for. That is the expiring shape THE-315 (#454) sweeps
+    // for, reached from the other direction: an assertion that is true only
+    // until the next unrelated PR. The claim this test actually makes is that
+    // the four are still there, in order, ahead of everything later; entries
+    // after them are the append path working.
+    const entries = RECORDED_EDITS.map((e) => `${e.ticket} ${e.file}`);
+    const BEFORE_THE_321 = [
       'THE-314 src/components/AdminSettings.tsx',
       'THE-314 src/components/__tests__/AdminSettings.regroup.test.tsx',
       'THE-316 src/components/AdminSettings.tsx',
       'THE-316 src/components/settings/SettingsAccordion.tsx',
-    ]);
+    ];
+    expect(entries.slice(0, BEFORE_THE_321.length),
+      'an entry that predates THE-321 was removed or reordered')
+      .toEqual(BEFORE_THE_321);
+    // And THE-321's own entry still follows them rather than replacing one.
+    expect(entries).toContain(`THE-321 ${PROFILE}`);
+    expect(entries.indexOf(`THE-321 ${PROFILE}`))
+      .toBeGreaterThanOrEqual(BEFORE_THE_321.length);
   });
 });
 
@@ -489,10 +504,28 @@ describe('14 · the files THE-321 does not own are byte-identical', () => {
       .toBe('bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5');
   });
 
-  it('🔴 PersonalInformationModal.tsx is byte-identical — the modal half is BLOCKED, see the header', () => {
-    expect(sha256File(MODAL),
-      'PersonalInformationModal.tsx changed — THE-321 stopped on it (STOP 6) and must not edit it')
-      .toBe('c62dd16e810bd1d75bd3bc6e3cae1ee698fdcf4d9ec67d870dc833d76b1b1975');
+  it('🔴 PersonalInformationModal.tsx is at a REGISTER-ACCEPTED digest — THE-321 still edits it not at all', () => {
+    /*
+     * ⚠️ FOLLOWED THE-323, RATHER THAN BEING DELETED OR REPLACED. This
+     * assertion recorded that THE-321 stopped on the modal (its STOP 6) and
+     * pinned the digest it left it at. THE-323 is the ticket that unblocked it:
+     * it gave the class-layer fixture the append path this file's header says
+     * it lacked, and fixed `handleSave`'s silent failure — a real edit, and a
+     * RECORDED one, in `settings-freeze-register.ts`.
+     *
+     * 🔴 THE CLAIM IS UNCHANGED AND STILL EXACTLY AS STRONG. It was never
+     * "this file may never move"; it was "THE-321 does not move it, and a move
+     * nobody recorded fails". Routing through `freezeFailure` says precisely
+     * that: the baseline THE-321 pinned is still accepted, THE-323's digest is
+     * accepted because THE-323 wrote down what it changed and why, and a third
+     * value — an edit nobody recorded — still fails. Substituting the literal
+     * would have been the weakening; `main` was red for a week the time #434
+     * did that.
+     */
+    const failure = freezeFailure(
+      MODAL, 'c62dd16e810bd1d75bd3bc6e3cae1ee698fdcf4d9ec67d870dc833d76b1b1975',
+    );
+    expect(failure, failure ?? '').toBeNull();
   });
 });
 

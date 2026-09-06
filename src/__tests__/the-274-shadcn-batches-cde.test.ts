@@ -1042,6 +1042,26 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       'than stylistic: both shells here are rounded-2xl, which twMerge resolves against the ' +
       "primitive's rounded-xl, while the sibling's rounded-brand-lg/-xl do not resolve at all.",
   },
+  // 🔴 APPENDED BY THE-323, BESIDE EVERY ENTRY ABOVE — none of them replaces
+  // another. THE-323 records PersonalInformationModal and nothing else.
+  {
+    file: 'src/components/PersonalInformationModal.tsx',
+    ticket: 'THE-323',
+    why:
+      'The member profile modal, adopting exactly ONE primitive for exactly one reason. It takes ' +
+      '`alert` (Alert, AlertTitle, AlertDescription) and nothing else, because THE-323 is not the ' +
+      "visual pass for this file — that is split out, and THE-321 stopped on it. `alert` is here " +
+      'because the ticket THE-323 does land is the silent failure in `handleSave`: both of its ' +
+      'failure branches ended in console (one after handleFirestoreError, which logs and does not ' +
+      'throw), so a refused write left the modal open with the typed values still in it and ' +
+      'nothing on screen changed. It is LOAD-BEARING rather than cosmetic, and in the strictest ' +
+      'sense: the state machine that replaces those console lines has nowhere to be seen without ' +
+      'it, and role="alert" is what carries a refused write to a screen reader — the reader with ' +
+      'the least chance of noticing that a modal simply did not close. The delete flow beside it ' +
+      'renders its own eight outcomes and is UNTOUCHED to the byte, so it gains no primitive ' +
+      'here; substituting one for that markup would be the visual pass, not this fix. No ' +
+      'primitive was edited — their digests are pinned by ds-primitives.test.tsx and still match.',
+  },
 ];
 
 it('only the recorded adopters import the new components, and each names its ticket', () => {
