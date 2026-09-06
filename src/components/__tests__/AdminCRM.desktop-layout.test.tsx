@@ -623,6 +623,13 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
       // alternative was minting widths for four of them. It mints none — the
       // guards in the-313-guards.test.ts assert the two files carry no
       // `max-w-[…]` and no arbitrary width but the 44px tap-target minimum.
+      // THE-308 — the events month view. Opted in for ONE thing:
+      // `CONTROL_DENSITY.control`, so the "Today" button carries Rule 4's 38px
+      // above `sm` like every other admin control. Measured, `size="sm"` put it
+      // at 25.38px — released from the phone floor but off-density. It mints no
+      // width: the guards in the-308-guards.test.ts assert the file defines no
+      // token, and its only custom property is `calendar`'s own `--cell-size`.
+      'src/components/events/EventMonthView.tsx',
       'src/components/events/RotaInviteView.tsx',
       'src/components/events/RotaRespondView.tsx',
       'src/components/events/ServicePlanPanel.tsx',

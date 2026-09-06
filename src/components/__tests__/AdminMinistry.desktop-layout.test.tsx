@@ -210,6 +210,33 @@ vi.mock('../member/desktopKit', () => ({ HeroBand: (p: { children?: React.ReactN
 vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries: () => {} }) }));
 vi.mock('../../hooks/queries/useEventQueries', () => ({ useEvents: () => ({ data: EVENTS, isLoading: false }) }));
 /**
+ * THE-308 — the month grid mounts BESIDE the list on this screen, so this suite
+ * now reaches its read too. Mocked at the HOOK boundary for the reason the
+ * note below gives about `useServicePlanQueries`: widening the
+ * `@tanstack/react-query` mock to carry `useQuery` would make that mock say
+ * something it has never said, and every other screen in this file would
+ * inherit it.
+ *
+ * The read is returned COMPLETE and carrying the same single event the list
+ * renders, because that is the state worth pinning: a month whose grid is drawn
+ * over real data. An `unavailable` read would render an `empty` instead and the
+ * token sets below would pin the failure state rather than the screen.
+ */
+vi.mock('../../hooks/queries/useMonthEvents', () => ({
+  useMonthEvents: () => ({
+    data: {
+      kind: 'complete',
+      undated: 0,
+      events: [{
+        id: 'ev1', title: 'Sunday Worship Gathering', start: new Date('2026-09-06T10:00:00Z'),
+        status: 'published', location: '1200 Harvest Way, Springfield', isOnline: false,
+        registrationEnabled: true,
+      }],
+    },
+    isLoading: false,
+  }),
+}));
+/**
  * THE-313 — the order of service panel mounts on the event DETAIL view (the
  * `attendees` surface below), so this suite now reaches its data layer. Mocked
  * at the HOOK boundary, exactly as `useEventQueries` is: an event with no plan
@@ -658,6 +685,164 @@ async function surfaces(name: Screen): Promise<Record<string, HTMLDivElement>> {
   return out;
 }
 
+/**
+ * THE-308 — every class `tabs` emits, and the one reason they share.
+ *
+ * Declared beside the list rather than inside it so the sixty names read as the
+ * one fact they are. See the block in ALLOWED_ADDITIONS for why they are
+ * grouped, and `the-308-guards.test.ts` for the digest proving `tabs.tsx` is
+ * byte-identical to `main`.
+ */
+const TABS_PRIMITIVE_REASON =
+  'THE-308 - emitted by the `tabs` primitive (Tabs/TabsList/TabsTrigger/TabsContent), ' +
+  'not spelled by this ticket, in the same category as the lucide-* glyph classes ' +
+  'THE-313 and THE-317 documented above. The month grid mounts BESIDE the events ' +
+  'list as a tab pair, so the tab bar reaches the phone layer the baseline was ' +
+  'recorded without. tabs.tsx is unchanged - its digest is pinned in ' +
+  'the-308-guards.test.ts - and none of these classes hardcodes a colour: each ' +
+  'colour-bearing one resolves through a theme token, so all four palettes hold.';
+
+const TABS_PRIMITIVE_CLASSES: readonly string[] = [
+  "data-[orientation=horizontal]:flex-col",
+  "group/tabs",
+  "bg-muted",
+  "data-[variant=line]:rounded-none",
+  "group-data-[orientation=horizontal]/tabs:h-8",
+  "group-data-[orientation=vertical]/tabs:flex-col",
+  "group-data-[orientation=vertical]/tabs:h-fit",
+  "group/tabs-list",
+  "p-[3px]",
+  "text-muted-foreground",
+  "w-fit",
+  "[&_svg:not([class*='size-'])]:size-4",
+  "[&_svg]:pointer-events-none",
+  "[&_svg]:shrink-0",
+  "after:absolute",
+  "after:bg-foreground",
+  "after:opacity-0",
+  "after:transition-opacity",
+  "aria-disabled:opacity-50",
+  "aria-disabled:pointer-events-none",
+  "border-transparent",
+  "dark:data-active:bg-input/30",
+  "dark:data-active:border-input",
+  "dark:data-active:text-foreground",
+  "dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent",
+  "dark:group-data-[variant=line]/tabs-list:data-active:border-transparent",
+  "dark:hover:text-foreground",
+  "dark:text-muted-foreground",
+  "data-active:bg-background",
+  "data-active:text-foreground",
+  "disabled:opacity-50",
+  "disabled:pointer-events-none",
+  "focus-visible:border-ring",
+  "focus-visible:outline-1",
+  "focus-visible:outline-ring",
+  "focus-visible:ring-[3px]",
+  "focus-visible:ring-ring/50",
+  "group-data-[orientation=horizontal]/tabs:after:bottom-[-5px]",
+  "group-data-[orientation=horizontal]/tabs:after:h-0.5",
+  "group-data-[orientation=horizontal]/tabs:after:inset-x-0",
+  "group-data-[orientation=vertical]/tabs:after:-right-1",
+  "group-data-[orientation=vertical]/tabs:after:inset-y-0",
+  "group-data-[orientation=vertical]/tabs:after:w-0.5",
+  "group-data-[orientation=vertical]/tabs:justify-start",
+  "group-data-[orientation=vertical]/tabs:w-full",
+  "group-data-[variant=default]/tabs-list:data-active:shadow-sm",
+  "group-data-[variant=line]/tabs-list:bg-transparent",
+  "group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
+  "group-data-[variant=line]/tabs-list:data-active:bg-transparent",
+  "group-data-[variant=line]/tabs-list:data-active:shadow-none",
+  "h-[calc(100%-1px)]",
+  "has-data-[icon=inline-end]:pr-1",
+  "has-data-[icon=inline-start]:pl-1",
+  "hover:text-foreground",
+  "px-1.5",
+  "rounded-md",
+  "text-foreground/60",
+  "text-sm",
+  "whitespace-nowrap",
+  "outline-none",
+];
+
+/**
+ * THE-308 — the FOUR unprefixed heights `tabs` emits, and the ONE reason.
+ *
+ * 🔴 CI CAUGHT THESE; A LOCAL RUN COULD NOT. Both sweeps that read this list
+ * were ALREADY RED on this machine for AdminCheckin reasons — part of the ~51
+ * Windows-only failures — so an addition of mine landing in the same assertion
+ * changed nothing visible locally. CI on ubuntu starts green, so it saw them.
+ *
+ * ⚠️ THESE ARE A DIFFERENT GUARD FROM `ALLOWED_ADDITIONS`, which is why
+ * appending there did not help: that list is consulted by the mobile-layer
+ * sweeps only. These two sweeps are cross-screen, read `allTokens` and
+ * `colourTokens`, and had no allowlist at all — no ticket before this one had
+ * added a height or a colour to these five screens.
+ *
+ * 🔴 NOT ONE OF THEM IS WRITTEN BY THIS TICKET, and that is asserted rather
+ * than claimed: every entry is checked to appear verbatim in `ui/tabs.tsx`.
+ * The classNames this ticket actually spells on the tab bar are
+ * `min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0` and `mt-4` — none is a bare
+ * `h-`, so none appears here.
+ *
+ * ⚠️ AND NONE OF THEM CAN SHRINK A TAP TARGET, which is what this sweep exists
+ * to prevent. `h-8` and `h-fit` size the tab LIST; `h-[calc(100%-1px)]` sizes a
+ * trigger to its list; `after:h-0.5` is the 2px underline on a pseudo-element
+ * that receives no pointer events. The triggers carry their own
+ * `min-h-[44px]`, and `THE-308.month-view.layout.test.tsx` MEASURES them in
+ * real Chromium at 380px — 50.3 x 44.0 — so the floor is proven, not assumed.
+ */
+const TABS_UNPREFIXED_HEIGHTS: readonly string[] = [
+  'group-data-[orientation=horizontal]/tabs:h-8',
+  'group-data-[orientation=vertical]/tabs:h-fit',
+  'group-data-[orientation=horizontal]/tabs:after:h-0.5',
+  'h-[calc(100%-1px)]',
+];
+
+/**
+ * THE-308 — the TWENTY-FIVE colour-bearing classes `tabs` emits.
+ *
+ * Same provenance and the same proof as the heights above: every one appears
+ * verbatim in `ui/tabs.tsx`, whose digest is pinned byte-identical to `main` in
+ * `the-308-guards.test.ts`, and none is spelled by this ticket.
+ *
+ * 🔴 EVERY ONE RESOLVES THROUGH A THEME TOKEN — `bg-muted`, `text-foreground`,
+ * `ring-ring/50`, `bg-input/30` — so all four palettes still resolve and
+ * Classic still decides first. Not one names a hex or a numbered shade, and the
+ * test below asserts that rather than trusting this sentence.
+ *
+ * ⚠️ Scoped to AdminEvents, the screen that adopts `tabs`. A second screen
+ * adopting it would fail here and have to say so, which is the property that
+ * makes this a record rather than a hole.
+ */
+const TABS_COLOUR_CLASSES: readonly string[] = [
+  'bg-muted',
+  'text-muted-foreground',
+  'after:bg-foreground',
+  'border-transparent',
+  'dark:data-active:bg-input/30',
+  'dark:data-active:border-input',
+  'dark:data-active:text-foreground',
+  'dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent',
+  'dark:group-data-[variant=line]/tabs-list:data-active:border-transparent',
+  'dark:hover:text-foreground',
+  'dark:text-muted-foreground',
+  'data-active:bg-background',
+  'data-active:text-foreground',
+  'focus-visible:border-ring',
+  'focus-visible:outline-1',
+  'focus-visible:outline-ring',
+  'focus-visible:ring-[3px]',
+  'focus-visible:ring-ring/50',
+  'group-data-[variant=default]/tabs-list:data-active:shadow-sm',
+  'group-data-[variant=line]/tabs-list:bg-transparent',
+  'group-data-[variant=line]/tabs-list:data-active:bg-transparent',
+  'group-data-[variant=line]/tabs-list:data-active:shadow-none',
+  'hover:text-foreground',
+  'outline-none',
+  'text-foreground/60',
+];
+
 interface ViewBaseline { mobileLayer: string[]; colours: string[] }
 type Baseline = Record<string, ViewBaseline>;
 
@@ -877,6 +1062,41 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       'ALREADY IMPORTED by this screen (it renders on an event card) — so this is ' +
       'the same glyph reaching a surface the baseline was recorded without, which ' +
       'is exactly what THE-313 documented for lucide-plus one entry above.',
+
+    /* ── THE-308 — the month grid's tab pair, on the event LIST view ─────────
+     *
+     * ⚠️ APPENDED, NOT SUBSTITUTED — this list's own stated rule, and the one
+     * #434 broke when it made main red for everyone. The baseline below is
+     * untouched; every entry here is additive.
+     *
+     * 🔴 SIXTY OF THESE ARE NOT SPELLED BY THIS TICKET. They are the class set
+     * `tabs` EMITS — `Tabs`, `TabsList`, `TabsTrigger` and `TabsContent` in
+     * `src/components/ui/tabs.tsx`, whose digest is pinned byte-identical in
+     * `the-308-guards.test.ts` and unchanged by this PR. That is precisely the
+     * category THE-313 and THE-317 already documented for `lucide-*`: a class
+     * emitted by a component rather than written by the ticket that mounts it.
+     *
+     * ⚠️ THE DIFFERENCE FROM A GLYPH CLASS IS THE COUNT, NOT THE KIND. A lucide
+     * icon emits one; a primitive with four parts, two orientations and two
+     * variants emits sixty. Enumerating them one by one with sixty near-identical
+     * sentences would bury this list rather than document it, so they share ONE
+     * reason and are listed by name — which keeps the property that matters: the
+     * keys are EXACT, so a SIXTY-FIRST token still fails here, and any token
+     * `tabs` stops emitting has to come out.
+     *
+     * 🔴 None of them carries a hardcoded colour. Every colour-bearing entry in
+     * the set resolves through a theme token (`bg-muted`, `text-foreground`,
+     * `after:bg-foreground`, `ring-ring/50`), which is why the four palettes
+     * still resolve and why the colour sweep passes unchanged.
+     */
+    'mt-4':
+      'THE-308 — structural, and the only token of this group the ticket itself ' +
+      'spells. The gap between the tab bar and the panel below it, on both ' +
+      'TabsContent. An unprefixed spacing token this screen already carries on its ' +
+      'phone layer elsewhere, so it is not a new length; it reaches the LIST view ' +
+      'here, which the baseline was recorded without. Margin carries no colour, and ' +
+      'no tap target is sized by it.',
+    ...Object.fromEntries(TABS_PRIMITIVE_CLASSES.map((t) => [t, TABS_PRIMITIVE_REASON])),
   };
 
   const toTokens = (layer: string[]) =>
@@ -937,10 +1157,16 @@ describe('the sub-640px rendering of each file is unchanged', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('no touch target got smaller', () => {
   it('adds no unprefixed height anywhere, so no tap target can shrink', async () => {
+    // 🔴 THE-308 — the ONLY exemption is `tabs`' own four, on the ONE screen
+    // that adopts it, recorded and provenance-checked above. Every other
+    // screen, and every other token, is asserted exactly as before: a FIFTH
+    // unprefixed height from `tabs`, or ANY from anywhere else, still fails.
+    const recorded = new Set(TABS_UNPREFIXED_HEIGHTS);
     for (const name of SCREENS) {
       for (const [view, c] of Object.entries(await surfaces(name))) {
         const base = new Set(BASELINE[name]![view].mobileLayer.flatMap((l) => l.split('\t')[2]?.split(' ') ?? []));
         for (const t of allTokens(c).filter((t) => /(?:^|:)h-/.test(t) && !isResponsive(t))) {
+          if (name === 'AdminEvents' && recorded.has(t)) continue;
           expect(base.has(t), `${name}/${view} gained unprefixed ${t}`).toBe(true);
         }
       }
@@ -1146,10 +1372,59 @@ describe('no community query or write path changed', () => {
 // 6. Money.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('no ticket price, donation amount, fee or checkout call changed', () => {
-  it('changes nothing in AdminEvents outside a className', () => {
+  /**
+   * 🔴 THE-308 — AdminEvents HAS legitimately moved, and this is the record.
+   *
+   * Recorded in the shape THE-251 established for AdminFundraising and THE-254
+   * kept: the pin is KEPT and RE-AIMED, never loosened and never deleted.
+   *
+   * ⚠️ WHAT MOVED, WHOLE — 867 → 919 stripped lines, and none of it is a
+   * behaviour change to an existing path:
+   *
+   *   1. two imports — `tabs` and `useMonthEvents` — plus a LAZY one for
+   *      `EventMonthView`, whose header says why: a static import would put
+   *      react-day-picker in the chunk this screen loads for its LIST
+   *   2. two lines of state — `listTab` (defaulting to `'list'`) and the
+   *      `useMonthEvents` read
+   *   3. the list body wrapped in `<Tabs>` with a `TabsList` of two triggers,
+   *      the month grid in one `TabsContent`, and the EXISTING list — unchanged
+   *      and un-reindented — in the other
+   *
+   * The month grid is its own component, so its markup is not in this count:
+   * the same property that held THE-313's ServicePlanPanel edit to two lines.
+   *
+   * 🔴 NOTHING THE MONEY DEPENDS ON MOVED, asserted rather than claimed, twice:
+   *
+   *   • `firestorePaths` below — NEW in this ticket, pinned against the PRE-PR
+   *     revision, which is the assertion THE-251 names as the one that actually
+   *     protects the money. The month view is READ-ONLY: it adds no client
+   *     write, and it reads a path this screen already read.
+   *   • `handleSave` and `confirmDelete` are pinned BY REGION DIGEST in
+   *     `the-308-guards.test.ts`, at the same literals THE-313 recorded — a
+   *     stronger statement than a whole-file hash can make about a file that
+   *     legitimately changed.
+   *
+   * Update `THE_308_EVENTS` only for a deliberate, reviewed change to
+   * AdminEvents, and say which ticket in the same breath.
+   */
+  const THE_308_EVENTS = {
+    strippedSha: '4d0fdf8224232f191ad29049306d567bf0e2292e0478f3838142a1486cc80d6f',
+    strippedLines: 919,
+  };
+
+  it('changes nothing in AdminEvents outside a className, THE-308', () => {
     const now = stripPresentation(read('AdminEvents.tsx'));
-    expect(now.split('\n').length, DIFF_HINT('AdminEvents')).toBe(PRE_PR.AdminEvents.strippedLines);
-    expect(sha(now), DIFF_HINT('AdminEvents')).toBe(PRE_PR.AdminEvents.strippedSha);
+    expect(now.split('\n').length, DIFF_HINT('AdminEvents')).toBe(THE_308_EVENTS.strippedLines);
+    expect(sha(now), DIFF_HINT('AdminEvents')).toBe(THE_308_EVENTS.strippedSha);
+  });
+
+  it('🔴 adds no Firestore WRITE to AdminEvents — the month view only reads', () => {
+    // Pinned against the PRE-PR revision. The month grid reads
+    // `tenants/{id}/events`, a path this screen ALREADY reads for the list, so
+    // the set is unchanged — and a new collection, or a write, would appear
+    // here. THE-251 names this as the guard that protects the money;
+    // AdminEvents had none until this ticket.
+    expect(firestorePathsOf(read('AdminEvents.tsx'))).toEqual(PRE_PR.AdminEvents.firestorePaths);
   });
 
   /**
@@ -1272,23 +1547,81 @@ describe('the check-in CSV export still works', () => {
 // 8. Colour.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('no colour is hardcoded, and all four palettes resolve', () => {
+  /**
+   * THE-308 — the documented-additions escape this assertion did not have.
+   *
+   * ⚠️ Its sibling on the mobile layer has carried ALLOWED_ADDITIONS since
+   * THE-304, because a ticket that deliberately changes the sub-640px rendering
+   * has to be able to SAY SO. This one never needed the equivalent: no ticket
+   * before this had added a colour-bearing class to these five screens.
+   *
+   * 🔴 Re-recording the fixture is NOT the amendment. `ministry-<screen>.json`
+   * is extracted from the PRE-PR revision, so re-recording reproduces the same
+   * bytes — the fixture is the "before", and moving it would delete the claim
+   * rather than update it. That is also what this list's own rule forbids:
+   * APPEND, never substitute.
+   *
+   * 🔴 So the exclusion is NAMED and NARROW: exactly the classes `tabs` emits,
+   * the same set ALLOWED_ADDITIONS documents above, and nothing else. A colour
+   * token from anywhere else still fails, on every screen, unchanged.
+   */
+  it('🔴 and every excluded token resolves through a theme token, hardcoding nothing', () => {
+    // The exclusion below is only sound if these carry no palette shade and no
+    // literal colour — otherwise it would be a hole, not a document.
+    for (const t of TABS_PRIMITIVE_CLASSES.filter((x) => isColourToken(x))) {
+      expect(t, `${t} hardcodes a hex colour`).not.toMatch(/#[0-9a-fA-F]{3,8}/);
+      expect(t, `${t} names a numbered palette shade`)
+        .not.toMatch(/-(?:red|blue|green|sky|amber|gold|wheat|slate|zinc|gray|grey|emerald|rose|violet|indigo)-\d{2,3}/);
+    }
+  });
+
   for (const name of SCREENS) {
     it(`renders exactly the baseline colour tokens in ${name}`, async () => {
+      const excluded = new Set(TABS_PRIMITIVE_CLASSES);
       for (const [view, c] of Object.entries(await surfaces(name))) {
-        expect(colourTokens(c), `${name}/${view} colours moved`).toEqual(BASELINE[name]![view].colours);
+        expect(colourTokens(c).filter((t) => !excluded.has(t)), `${name}/${view} colours moved`)
+          .toEqual(BASELINE[name]![view].colours);
       }
     });
   }
 
   it('adds no colour-bearing class — every token this PR adds is structural', async () => {
+    // 🔴 THE-308 — same shape as the height sweep above. The exemption is the
+    // twenty-five `tabs` emits, on AdminEvents alone. A TWENTY-SIXTH still
+    // fails here, on this screen or any other, and the list stays element-wise
+    // — it is never relaxed to a count.
+    const recorded = new Set(TABS_COLOUR_CLASSES);
     const added = new Set<string>();
     for (const name of SCREENS) {
       for (const [view, c] of Object.entries(await surfaces(name))) {
         const base = new Set(BASELINE[name]![view].colours);
-        for (const t of colourTokens(c)) if (!base.has(t)) added.add(`${name}/${view}:${t}`);
+        for (const t of colourTokens(c)) {
+          if (base.has(t)) continue;
+          if (name === 'AdminEvents' && recorded.has(t)) continue;
+          added.add(`${name}/${view}:${t}`);
+        }
       }
     }
     expect([...added]).toEqual([]);
+  });
+
+  /**
+   * 🔴 THE EXEMPTIONS ARE ONLY SOUND IF THEY REALLY COME FROM THE PRIMITIVE.
+   * This turns "these are shadcn's classes, not ours" from a sentence in a
+   * comment into an assertion. A hand-written class added to either list to
+   * silence a failure is not in `tabs.tsx`, and this goes red naming it.
+   */
+  it('🔴 every recorded tabs class is verbatim in ui/tabs.tsx, and hardcodes no colour', () => {
+    const tabsSrc = readFileSync(path.join(SRC, 'ui/tabs.tsx'), 'utf8');
+    for (const t of [...TABS_UNPREFIXED_HEIGHTS, ...TABS_COLOUR_CLASSES]) {
+      expect(tabsSrc.includes(t), `${t} is recorded as a tabs class but is not in ui/tabs.tsx`)
+        .toBe(true);
+    }
+    for (const t of TABS_COLOUR_CLASSES) {
+      expect(t, `${t} hardcodes a hex colour`).not.toMatch(/#[0-9a-fA-F]{3,8}/);
+      expect(t, `${t} names a numbered palette shade`)
+        .not.toMatch(/-(?:red|blue|green|sky|amber|gold|wheat|slate|zinc|gray|grey|emerald|rose|violet|indigo)-[0-9]{2,3}/);
+    }
   });
 
   it('defines no colour in the shared rules module', () => {
@@ -1306,3 +1639,4 @@ describe('no colour is hardcoded, and all four palettes resolve', () => {
     expect(css).toMatch(/\[data-palette="classic"\]\[data-theme="dark"\]\s*\{/);
   });
 });
+

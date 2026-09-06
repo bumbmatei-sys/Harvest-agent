@@ -1094,6 +1094,26 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       'rejected in the file for the decline confirmation: the action is one tap and fully ' +
       'reversible, and a modal would add a dismissal step to the only thing the page exists for.',
   },
+  {
+    file: 'src/components/events/EventMonthView.tsx',
+    ticket: 'THE-308',
+    why:
+      'The events month grid — the gap card 86bbr7n9c recorded as "Calendar → it is Events, no ' +
+      'month grid". APPENDED, never substituted. It adopts `calendar` (Calendar, ' +
+      'CalendarDayButton) and `empty`, beside `badge`, `button`, `card`, `item` and `skeleton`. ' +
+      '`calendar` is the load-bearing one and the reason this ticket needed no registry block at ' +
+      'all: it IS react-day-picker, so the primitive already emits the <table role="grid"> with ' +
+      'column headers, roving focus and arrow-key navigation that a hand-built seven-column grid ' +
+      'would have had to reimplement and would not have carried. The day cell EXTENDS ' +
+      'CalendarDayButton rather than replacing it — the primitive is already laid out flex-col ' +
+      'with [&>span]:text-xs, so an event count is a second line it was built to take. ' +
+      '`popover` is rejected in the file with its reason: the anchor would be a 44px cell a ' +
+      'thumb covers, it would overlay the neighbouring days a reader is comparing, and it ' +
+      'evaporates on the next tap. The persistent day panel below the grid is used instead. ' +
+      'The block this ticket was written around, shadcnspace calendar-application-01, is ' +
+      'paywalled (403 "License required") and was never installed — so no primitive was ' +
+      'rewritten, and all 18 the block depended on are pinned byte-identical in the-308-guards.',
+  },
 ];
 
 it('only the recorded adopters import the new components, and each names its ticket', () => {

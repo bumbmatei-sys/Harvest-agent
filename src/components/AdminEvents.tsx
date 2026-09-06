@@ -22,6 +22,23 @@ import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { useEvents } from '../hooks/queries/useEventQueries';
 import { HeroBand } from './member/desktopKit';
 import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+/**
+ * THE-308 — the month grid is LAZY, and that is not an optimisation detail.
+ *
+ * `EventMonthView` imports `calendar`, which IS react-day-picker. A static
+ * import would pull that package into the chunk this screen loads for its LIST
+ * — the default tab, and the one a church opens every time — to render a grid
+ * behind a tab it has not clicked. THE-274 installed react-day-picker with the
+ * explicit note that "a file no route reaches is in no chunk", and a static
+ * import here is what would end that.
+ *
+ * ⚠️ It is also measurable in the suite: mounting this screen with the calendar
+ * in its module graph made `AdminMinistry.desktop-layout` fail on screens this
+ * ticket does not touch, under full-suite load and not in isolation.
+ */
+const EventMonthView = React.lazy(() => import('./events/EventMonthView'));
+import { useMonthEvents } from '../hooks/queries/useMonthEvents';
 import ServicePlanPanel from './events/ServicePlanPanel';
 import VolunteerRotaPanel from './events/VolunteerRotaPanel';
 import RotaInvitePanel from './events/RotaInvitePanel';
@@ -109,6 +126,9 @@ const AdminEvents: React.FC = () => {
   const { data: events = [], isLoading: loading } = useEvents(tenantId, isAuthReady);
 
   const [view, setView] = useState<ViewMode>('list');
+  // THE-308 — which tab the list screen is showing. `list` is the default.
+  const [listTab, setListTab] = useState<'list' | 'month'>('list');
+  const { data: monthRead, isLoading: monthLoading } = useMonthEvents(tenantId, isAuthReady);
   const [selected, setSelected] = useState<Event | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -854,6 +874,39 @@ const AdminEvents: React.FC = () => {
           </a>
         </div>
       )}
+      {/*
+        THE-308 — the month grid sits BESIDE the list, not over it.
+
+        🔴 The list is the better answer to "what is next": it is ordered, it is
+        dense, and it reads top-down on a phone. A grid answers a different
+        question — "what does September look like" — and replacing one with the
+        other would trade a good answer to the common question for a good answer
+        to the rarer one. So both, and the list stays the default tab.
+
+        ⚠️ The two tabs also read DIFFERENTLY on purpose, and that is not an
+        oversight: the list takes `useEvents` (ordered, capped at 100) because
+        the top of an order is what it shows, and the grid takes a count-gated
+        COMPLETE read because a month must contain everything in it or say that
+        it does not. See `events/month-view.ts`.
+      */}
+      <Tabs value={listTab} onValueChange={(v) => setListTab(v as 'list' | 'month')}>
+        <TabsList>
+          <TabsTrigger value="list" className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0">List</TabsTrigger>
+          <TabsTrigger value="month" className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0">Month</TabsTrigger>
+        </TabsList>
+        <TabsContent value="month" className="mt-4">
+          <React.Suspense fallback={null}>
+          <EventMonthView
+            read={monthRead}
+            loading={monthLoading}
+            onOpenEvent={(id) => {
+              const ev = events.find(e => e.id === id);
+              if (ev) openDetail(ev);
+            }}
+          />
+          </React.Suspense>
+        </TabsContent>
+        <TabsContent value="list" className="mt-4 space-y-6">
       {events.length === 0 ? (
         <div className="text-center py-16 text-faint">
           <CalendarCheck size={40} className="mx-auto mb-3 opacity-30" />
@@ -974,6 +1027,8 @@ const AdminEvents: React.FC = () => {
           ))}
         </div>
       )}
+        </TabsContent>
+      </Tabs>
 
       {deleteId && (
         <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50 p-4">

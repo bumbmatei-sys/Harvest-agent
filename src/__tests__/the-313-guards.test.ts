@@ -331,8 +331,31 @@ describe('no new token, component or dependency was added', () => {
       expect(codeOf(file), `${file} adopts a ui/ primitive`)
         .not.toMatch(/from ['"](?:@\/components|\.{1,2}(?:\/[\w.-]+)*)\/ui\/[\w-]+['"]/);
     }
-    // And the edited screen did not start adopting one either.
-    expect(codeOf(EDITED)).not.toMatch(/from ['"][^'"]*\/ui\/[\w-]+['"]/);
+  });
+
+  /**
+   * 🔴 NARROWED BY THE-308, for the reason THE-317's header gives about guards
+   * that assert their own diff.
+   *
+   * This half used to be `expect(codeOf(EDITED)).not.toMatch(…/ui/…)` — "and
+   * the edited screen did not start adopting one either". That was TRUE OF
+   * THE-313 and is a claim about THE-313's diff, so it held only while no later
+   * ticket touched this screen. THE-308 mounts the month grid here as a `tabs`
+   * pair, which is an adoption the ticket explicitly asked for, and the closed
+   * list it belongs on is THE-274's RECORDED_ADOPTERS — where THE-308's entry
+   * now sits, with its reason.
+   *
+   * So the claim narrows rather than disappears, exactly as THE-286 narrowed
+   * THE-274's `toEqual([])`: from "this screen imports no primitive" to "it
+   * imports EXACTLY the ones recorded, by name". A fifth import still fails
+   * here, and an unrecorded one still fails in THE-274's guard — which is
+   * strictly stronger than the absence it replaces.
+   */
+  it('and the events screen imports exactly the primitives recorded for it', () => {
+    const imports = [...codeOf(EDITED).matchAll(/from ['"][^'"]*\/ui\/([\w-]+)['"]/g)]
+      .map((m) => m[1])
+      .sort();
+    expect(imports, 'the events screen adopted an unrecorded primitive').toEqual(['tabs']);
   });
 
   it('the four new files import only modules that already existed', () => {
@@ -581,10 +604,20 @@ describe('the existing events list, its write paths and paid-event creation are 
    * guard is really about. The rota's own files hold ZERO inline styles
    * (`the-317-guards.test.ts` asserts it across all four), so the ratio moved
    * in the right direction.
+   *
+   * 🔴 AMENDED AGAIN BY THE-308, AND AGAIN ONLY ON THE HALF THAT MOVED. That
+   * ticket puts the month grid BESIDE the list as a `tabs` pair, and adds
+   * exactly FOUR classNames: two `TabsTrigger` (each carrying the 44px phone
+   * floor and its `sm:` release) and two `TabsContent`. 207 → 211, named here
+   * rather than relaxed to a range — a FIFTH would still fail.
+   *
+   * ⚠️ THE INLINE-STYLE COUNT IS STILL 7. `EventMonthView.tsx` holds ZERO
+   * (`the-308-guards.test.ts` asserts it), so the ratio moved the right way a
+   * second time — which is the only direction this guard was ever about.
    */
   it('keeps its className-to-inline-style ratio exactly', () => {
     const src = EVENTS();
-    expect((src.match(/className/g) || []).length, 'className count moved').toBe(207);
+    expect((src.match(/className/g) || []).length, 'className count moved').toBe(211);
     expect((src.match(/style=\{\{/g) || []).length, 'an inline style was added').toBe(7);
   });
 
