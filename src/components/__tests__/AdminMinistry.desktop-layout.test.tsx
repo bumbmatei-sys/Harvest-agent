@@ -701,6 +701,84 @@ const TABS_PRIMITIVE_CLASSES: readonly string[] = [
   "outline-none",
 ];
 
+/**
+ * THE-308 — the FOUR unprefixed heights `tabs` emits, and the ONE reason.
+ *
+ * 🔴 CI CAUGHT THESE; A LOCAL RUN COULD NOT. Both sweeps that read this list
+ * were ALREADY RED on this machine for AdminCheckin reasons — part of the ~51
+ * Windows-only failures — so an addition of mine landing in the same assertion
+ * changed nothing visible locally. CI on ubuntu starts green, so it saw them.
+ *
+ * ⚠️ THESE ARE A DIFFERENT GUARD FROM `ALLOWED_ADDITIONS`, which is why
+ * appending there did not help: that list is consulted by the mobile-layer
+ * sweeps only. These two sweeps are cross-screen, read `allTokens` and
+ * `colourTokens`, and had no allowlist at all — no ticket before this one had
+ * added a height or a colour to these five screens.
+ *
+ * 🔴 NOT ONE OF THEM IS WRITTEN BY THIS TICKET, and that is asserted rather
+ * than claimed: every entry is checked to appear verbatim in `ui/tabs.tsx`.
+ * The classNames this ticket actually spells on the tab bar are
+ * `min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0` and `mt-4` — none is a bare
+ * `h-`, so none appears here.
+ *
+ * ⚠️ AND NONE OF THEM CAN SHRINK A TAP TARGET, which is what this sweep exists
+ * to prevent. `h-8` and `h-fit` size the tab LIST; `h-[calc(100%-1px)]` sizes a
+ * trigger to its list; `after:h-0.5` is the 2px underline on a pseudo-element
+ * that receives no pointer events. The triggers carry their own
+ * `min-h-[44px]`, and `THE-308.month-view.layout.test.tsx` MEASURES them in
+ * real Chromium at 380px — 50.3 x 44.0 — so the floor is proven, not assumed.
+ */
+const TABS_UNPREFIXED_HEIGHTS: readonly string[] = [
+  'group-data-[orientation=horizontal]/tabs:h-8',
+  'group-data-[orientation=vertical]/tabs:h-fit',
+  'group-data-[orientation=horizontal]/tabs:after:h-0.5',
+  'h-[calc(100%-1px)]',
+];
+
+/**
+ * THE-308 — the TWENTY-FIVE colour-bearing classes `tabs` emits.
+ *
+ * Same provenance and the same proof as the heights above: every one appears
+ * verbatim in `ui/tabs.tsx`, whose digest is pinned byte-identical to `main` in
+ * `the-308-guards.test.ts`, and none is spelled by this ticket.
+ *
+ * 🔴 EVERY ONE RESOLVES THROUGH A THEME TOKEN — `bg-muted`, `text-foreground`,
+ * `ring-ring/50`, `bg-input/30` — so all four palettes still resolve and
+ * Classic still decides first. Not one names a hex or a numbered shade, and the
+ * test below asserts that rather than trusting this sentence.
+ *
+ * ⚠️ Scoped to AdminEvents, the screen that adopts `tabs`. A second screen
+ * adopting it would fail here and have to say so, which is the property that
+ * makes this a record rather than a hole.
+ */
+const TABS_COLOUR_CLASSES: readonly string[] = [
+  'bg-muted',
+  'text-muted-foreground',
+  'after:bg-foreground',
+  'border-transparent',
+  'dark:data-active:bg-input/30',
+  'dark:data-active:border-input',
+  'dark:data-active:text-foreground',
+  'dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent',
+  'dark:group-data-[variant=line]/tabs-list:data-active:border-transparent',
+  'dark:hover:text-foreground',
+  'dark:text-muted-foreground',
+  'data-active:bg-background',
+  'data-active:text-foreground',
+  'focus-visible:border-ring',
+  'focus-visible:outline-1',
+  'focus-visible:outline-ring',
+  'focus-visible:ring-[3px]',
+  'focus-visible:ring-ring/50',
+  'group-data-[variant=default]/tabs-list:data-active:shadow-sm',
+  'group-data-[variant=line]/tabs-list:bg-transparent',
+  'group-data-[variant=line]/tabs-list:data-active:bg-transparent',
+  'group-data-[variant=line]/tabs-list:data-active:shadow-none',
+  'hover:text-foreground',
+  'outline-none',
+  'text-foreground/60',
+];
+
 interface ViewBaseline { mobileLayer: string[]; colours: string[] }
 type Baseline = Record<string, ViewBaseline>;
 
@@ -1015,10 +1093,16 @@ describe('the sub-640px rendering of each file is unchanged', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('no touch target got smaller', () => {
   it('adds no unprefixed height anywhere, so no tap target can shrink', async () => {
+    // 🔴 THE-308 — the ONLY exemption is `tabs`' own four, on the ONE screen
+    // that adopts it, recorded and provenance-checked above. Every other
+    // screen, and every other token, is asserted exactly as before: a FIFTH
+    // unprefixed height from `tabs`, or ANY from anywhere else, still fails.
+    const recorded = new Set(TABS_UNPREFIXED_HEIGHTS);
     for (const name of SCREENS) {
       for (const [view, c] of Object.entries(await surfaces(name))) {
         const base = new Set(BASELINE[name]![view].mobileLayer.flatMap((l) => l.split('\t')[2]?.split(' ') ?? []));
         for (const t of allTokens(c).filter((t) => /(?:^|:)h-/.test(t) && !isResponsive(t))) {
+          if (name === 'AdminEvents' && recorded.has(t)) continue;
           expect(base.has(t), `${name}/${view} gained unprefixed ${t}`).toBe(true);
         }
       }
@@ -1438,14 +1522,42 @@ describe('no colour is hardcoded, and all four palettes resolve', () => {
   }
 
   it('adds no colour-bearing class — every token this PR adds is structural', async () => {
+    // 🔴 THE-308 — same shape as the height sweep above. The exemption is the
+    // twenty-five `tabs` emits, on AdminEvents alone. A TWENTY-SIXTH still
+    // fails here, on this screen or any other, and the list stays element-wise
+    // — it is never relaxed to a count.
+    const recorded = new Set(TABS_COLOUR_CLASSES);
     const added = new Set<string>();
     for (const name of SCREENS) {
       for (const [view, c] of Object.entries(await surfaces(name))) {
         const base = new Set(BASELINE[name]![view].colours);
-        for (const t of colourTokens(c)) if (!base.has(t)) added.add(`${name}/${view}:${t}`);
+        for (const t of colourTokens(c)) {
+          if (base.has(t)) continue;
+          if (name === 'AdminEvents' && recorded.has(t)) continue;
+          added.add(`${name}/${view}:${t}`);
+        }
       }
     }
     expect([...added]).toEqual([]);
+  });
+
+  /**
+   * 🔴 THE EXEMPTIONS ARE ONLY SOUND IF THEY REALLY COME FROM THE PRIMITIVE.
+   * This turns "these are shadcn's classes, not ours" from a sentence in a
+   * comment into an assertion. A hand-written class added to either list to
+   * silence a failure is not in `tabs.tsx`, and this goes red naming it.
+   */
+  it('🔴 every recorded tabs class is verbatim in ui/tabs.tsx, and hardcodes no colour', () => {
+    const tabsSrc = readFileSync(path.join(SRC, 'ui/tabs.tsx'), 'utf8');
+    for (const t of [...TABS_UNPREFIXED_HEIGHTS, ...TABS_COLOUR_CLASSES]) {
+      expect(tabsSrc.includes(t), `${t} is recorded as a tabs class but is not in ui/tabs.tsx`)
+        .toBe(true);
+    }
+    for (const t of TABS_COLOUR_CLASSES) {
+      expect(t, `${t} hardcodes a hex colour`).not.toMatch(/#[0-9a-fA-F]{3,8}/);
+      expect(t, `${t} names a numbered palette shade`)
+        .not.toMatch(/-(?:red|blue|green|sky|amber|gold|wheat|slate|zinc|gray|grey|emerald|rose|violet|indigo)-[0-9]{2,3}/);
+    }
   });
 
   it('defines no colour in the shared rules module', () => {
@@ -1463,3 +1575,4 @@ describe('no colour is hardcoded, and all four palettes resolve', () => {
     expect(css).toMatch(/\[data-palette="classic"\]\[data-theme="dark"\]\s*\{/);
   });
 });
+
