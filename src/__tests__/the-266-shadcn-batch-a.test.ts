@@ -697,6 +697,17 @@ describe('the out-of-scope files are untouched', () => {
       // never resolved would read as a slow load rather than as a failure.
       // 🔴 A SIXTH adopter still fails.
       'src/components/events/RotaInviteView.tsx',
+      // THE-308 — the events month view's wait. Same judgement as the two
+      // above, and the shape arriving is the most KNOWN on this list: a month
+      // grid is a fixed rectangle of 28–31 cells whose size is decided before
+      // any data returns, so a skeleton draws the actual thing that is coming.
+      // APPENDED beside the five above, never over one of them.
+      // 🔴 The view's OTHER two states are deliberately NOT a skeleton: an
+      // incomplete read renders an `empty` NAMING the reason, and a month with
+      // no events renders the real grid with an `empty` day panel. A skeleton
+      // for either would read as a slow load rather than as an answer.
+      // 🔴 A SEVENTH adopter still fails.
+      'src/components/events/EventMonthView.tsx',
     ],
     breadcrumb: ['src/components/docs/DocsBreadcrumb.tsx'],
   };
