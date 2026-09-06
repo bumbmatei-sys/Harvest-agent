@@ -409,11 +409,28 @@ describe('5 · the money path is byte-identical', () => {
     // and no add-on count. Buying a number is not granting a capability; the
     // capability is the Ministry plan, and the Dodo webhook remains its only
     // writer.
-    expect(routes.length, 'an API route was added or removed').toBe(114);
+    //
+    // ⚠️ 116 SINCE THE-324, and both are NAMED rather than absorbed into a moved
+    // number: `app/api/rota/invitations/route.ts` (an admin lists invitations
+    // and sends them) and `app/api/rota/respond/route.ts` (a signed-out
+    // volunteer accepts or declines with a token). Both exist precisely so
+    // `firestore.rules` needs no change — the collection they own has no rule
+    // and therefore no client access — and BOTH pass THE-291's own claim,
+    // asserted below: neither writes `plan`, a feature flag or an add-on count.
+    // The invitations route READS entitlement (SMS is Ministry-only) to decide
+    // what the panel SAYS; the real gate is inside THE-314's send funnel. The
+    // Dodo webhook remains the only writer of a capability.
+    expect(routes.length, 'an API route was added or removed').toBe(116);
     expect(
       routes.some((f) => f.endsWith(path.join('app/api/sms/numbers/route.ts'))),
       'the route THE-314 added is missing — the count moved for some other reason',
     ).toBe(true);
+    for (const added of ['app/api/rota/invitations/route.ts', 'app/api/rota/respond/route.ts']) {
+      expect(
+        routes.some((f) => f.endsWith(path.join(added))),
+        `${added} is missing — the count moved for some other reason`,
+      ).toBe(true);
+    }
     // And it applies no entitlement, which is the property #434 removed and
     // THE-259's sweep catches.
     //

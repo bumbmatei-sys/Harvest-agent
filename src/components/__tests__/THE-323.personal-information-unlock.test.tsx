@@ -567,12 +567,42 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       .filter((f) => /\bmin-h-11\b/.test(readFileSync(f, 'utf8')))
       .map((f) => path.relative(ROOT, f))
       .sort();
-    // Two files, and they are different kinds of mention — pinned so a THIRD
-    // is visible in review and so the prose above cannot rot silently.
+    // Files, and they are different KINDS of mention — pinned so a new one is
+    // visible in review and so the prose above cannot rot silently.
+    //
+    // 🔴 APPENDED BY THE-324, NEITHER OF THE TWO ABOVE REMOVED OR REWRITTEN.
+    // This list did exactly what it is for: THE-324 shipped with the 7.63px
+    // premise written into two file headers as fact, and the sweep surfaced it.
+    // The prose there is now CORRECTED to what THE-323 measured — it records
+    // that `min-h-11` is a working 44px floor below `sm`, that the 7.63px figure
+    // belongs to `transition-all` timing, and that the explicit form still ships
+    // only because it is absolute where `min-h-11` is rem-relative and diverges
+    // above `lg`. So both new entries are COMMENT-ONLY mentions of the class,
+    // the same kind as Profile.tsx: neither view spells it in a className, which
+    // `the-324-guards.test.ts` asserts on the stripped source.
     expect(users).toEqual([
       'src/components/AdminSettings.tsx',   // uses it: THE-316's TOUCH_FLOOR
       'src/components/Profile.tsx',         // names it in a comment, does not use it
+      'src/components/events/RotaInviteView.tsx',   // THE-324: names it in a comment, does not use it
+      'src/components/events/RotaRespondView.tsx',  // THE-324: names it in a comment, does not use it
     ]);
+  });
+
+  it('🔴 and the two THE-324 entries really are comment-only — the class reaches no className', () => {
+    // ⚠️ What makes appending to the list above honest rather than a way past
+    // it: a file that only NAMES the class is a different fact from one that
+    // USES it, and the distinction is asserted rather than asserted-in-a-comment.
+    for (const file of [
+      'src/components/events/RotaInviteView.tsx',
+      'src/components/events/RotaRespondView.tsx',
+    ]) {
+      const src = read(file);
+      expect(src, `${file} is recorded as a comment-only mention but does not mention it`)
+        .toMatch(/min-h-11/);
+      for (const [, value] of src.matchAll(/className=\{?[`"']([^`"']*)[`"']/g)) {
+        expect(value, `${file} SPELLS min-h-11 in a className`).not.toMatch(/\bmin-h-11\b/);
+      }
+    }
   });
 
   it("AdminSettings' floor uses it, and is a phone-only floor — which is where it is 44px", () => {

@@ -1062,6 +1062,38 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       'here; substituting one for that markup would be the visual pass, not this fix. No ' +
       'primitive was edited — their digests are pinned by ds-primitives.test.tsx and still match.',
   },
+  {
+    file: 'src/components/events/RotaInviteView.tsx',
+    ticket: 'THE-324',
+    why:
+      'The admin half of invite/accept/remind — the unfilled-slot warning and the two send ' +
+      'actions. APPENDED, never substituted: no entry above was removed or rewritten to make ' +
+      'room. It adds `empty` (Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription) and ' +
+      '`item` (ItemGroup, Item, ItemMedia, ItemContent, ItemTitle, ItemDescription, ItemActions), ' +
+      'beside `alert`, `badge`, `button`, `button-group`, `card`, `separator` and `skeleton`. ' +
+      '`empty` is load-bearing rather than decorative: this screen must render the REASON a read ' +
+      'could not be proved complete instead of the figure, because "no unfilled slots" when the ' +
+      'read failed is the Form-submissions-0 bug and is indistinguishable from an answer. `item` ' +
+      'is adopted where part 2 adopted `table` and the difference is the shape of the row: a rota ' +
+      'grid compares the same columns across weeks, whereas each row here is one slot with one ' +
+      'problem and one action, which on a 380px phone a four-column table could only scroll ' +
+      'sideways to say. `table` and `progress` are both rejected in the file, with reasons.',
+  },
+  {
+    file: 'src/components/events/RotaRespondView.tsx',
+    ticket: 'THE-324',
+    why:
+      'The volunteer half — the public accept page a signed-out person lands on from a text ' +
+      'message, and the answer to what part 2 deferred about a volunteer-facing view. APPENDED, ' +
+      'never substituted. It adds `empty` (Empty, EmptyHeader, EmptyMedia, EmptyTitle, ' +
+      'EmptyDescription) and `item` (ItemGroup, Item, ItemMedia, ItemContent, ItemTitle, ' +
+      'ItemDescription, ItemActions) beside `alert`, `badge`, `button`, `button-group`, `card` ' +
+      'and `separator`. `item` carries this person OWN other upcoming slots — never another ' +
+      "member's, because a bearer token must reveal no more than its holder already knows — and " +
+      '`empty` is what says "nothing else booked" rather than rendering a bare zero. `dialog` is ' +
+      'rejected in the file for the decline confirmation: the action is one tap and fully ' +
+      'reversible, and a modal would add a dismissal step to the only thing the page exists for.',
+  },
 ];
 
 it('only the recorded adopters import the new components, and each names its ticket', () => {

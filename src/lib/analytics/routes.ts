@@ -183,6 +183,15 @@ const ROUTE_TABLE = [
   { pattern: '/giving', entry: 'next-page', surface: 'public', public: true },
   { pattern: '/pledge/[campaignId]', entry: 'next-page', surface: 'public', public: true },
   { pattern: '/post/[postId]', entry: 'next-page', surface: 'public', public: true },
+  // THE-324 — the rota accept page. 🔴 THE SEGMENT IS A CAPABILITY, NOT AN ID:
+  // `/rota/{token}` carries 256 bits of `randomBytes` that authorise answering
+  // one invitation, so it is exactly the case the header's rule exists for —
+  // the resolved path never becomes a property, only the PATTERN does. Leaking
+  // one into an analytics event would put a live accept link in a third party's
+  // store. Public and signed-out by construction: the link arrives in a text
+  // message, and requiring a sign-in would put it behind the origin hop THE-289
+  // measured members never finishing.
+  { pattern: '/rota/[token]', entry: 'next-page', surface: 'public', public: true },
 ] as const satisfies readonly AnalyticsRoute[];
 
 export const ANALYTICS_ROUTES: readonly AnalyticsRoute[] = Object.freeze(ROUTE_TABLE);

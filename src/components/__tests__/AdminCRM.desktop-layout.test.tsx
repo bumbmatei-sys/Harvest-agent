@@ -623,6 +623,8 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
       // alternative was minting widths for four of them. It mints none — the
       // guards in the-313-guards.test.ts assert the two files carry no
       // `max-w-[…]` and no arbitrary width but the 44px tap-target minimum.
+      'src/components/events/RotaInviteView.tsx',
+      'src/components/events/RotaRespondView.tsx',
       'src/components/events/ServicePlanPanel.tsx',
       'src/components/events/ServicePlanRow.tsx',
       // THE-317 — the volunteer rota's view. Opted in deliberately, and for ONE
@@ -634,6 +636,32 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
       // inside its own `FORM_CONTAINER`. A component that took a second measure
       // inside a measured page would cap the same content twice.
       'src/components/events/VolunteerRotaView.tsx',
+      // THE-324 — invite, accept and remind, part 3 of 3. TWO files spend a
+      // rule, and each spends exactly one thing:
+      //
+      //   · `events/RotaInviteView.tsx` — the admin's warning list and its two
+      //     send actions. It takes CONTROL_DENSITY.action for the buttons: the
+      //     40px desktop band under an explicit `min-h-[44px]` touch floor,
+      //     released at `sm:min-h-0` so Rule 4 can take over. It takes NO
+      //     measure, because it renders inside the rota screen's own
+      //     FORM_CONTAINER — a measure here would cap a column inside a column,
+      //     which is THE-286's reasoning and part 2's, one file over.
+      //
+      //   · `events/RotaRespondView.tsx` — the PUBLIC accept page a signed-out
+      //     volunteer lands on from a text message. It takes FORM_MEASURE
+      //     (Rule 1b) and CONTROL_DENSITY.action. 🔴 The measure is deliberate
+      //     and is the one place in this ticket a rule is spent on a container:
+      //     this page renders on its OWN route with no admin shell around it, so
+      //     nothing above it has spent a measure and, unbounded, one card of
+      //     text would run the width of a monitor. Rule 1b rather than 1a
+      //     because the surface is one question with two answers — a form, not a
+      //     data-dense page — which is exactly the distinction Rule 1 exists to
+      //     draw.
+      //
+      // A deliberate adoption rather than a leak, and it mints NOTHING: neither
+      // file carries a `max-w-[…px]` of its own, and the only arbitrary lengths
+      // either spells are the 44px tap-target minimums. `the-324-guards.test.ts`
+      // asserts both by reading the source.
       // THE-286 — the first adopter from settings/ rather than from a screen.
       // The converted GivingStatementsSection takes CONTROL_DENSITY only: its
       // controls need the 38px desktop density and the 28px section gap, and it

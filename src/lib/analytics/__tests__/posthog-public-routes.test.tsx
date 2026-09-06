@@ -166,6 +166,11 @@ const RESOLVED_PATH: Record<string, string> = {
   '/giving': '/giving',
   '/pledge/[campaignId]': '/pledge/Hj6Nb2Vc9Xz4Kq7M',
   '/post/[postId]': '/post/Tg5Yh8Uj3Ik6Ol1P',
+  // THE-324 — 43 characters of base64url, the shape `TOKEN_RE` accepts. It is a
+  // CAPABILITY rather than a document id, which is why section 9's assertion
+  // that the resolved path never leaves as a property matters more here than
+  // anywhere else in this table.
+  '/rota/[token]': '/rota/Zk3Nq7Xb2Wd9Rt5Yu8Ip4Ol1Mc6Hv0Ge3Ja7Sf2Q',
 };
 
 /** The page file that must render `<PublicRouteAnalytics>` for each Next route. */
@@ -180,6 +185,7 @@ const PAGE_FILE: Record<string, string> = {
   '/giving': 'src/app/giving/page.tsx',
   '/pledge/[campaignId]': 'src/app/pledge/[campaignId]/page.tsx',
   '/post/[postId]': 'src/app/post/[postId]/page.tsx',
+  '/rota/[token]': 'src/app/rota/[token]/page.tsx',
 };
 
 const NEXT_ROUTES = ANALYTICS_ROUTES.filter((r) => r.entry === 'next-page');
@@ -321,6 +327,13 @@ describe('1 — every route in the stated list emits a pageview', () => {
       '/giving',
       '/pledge/[campaignId]',
       '/post/[postId]',
+      // THE-324 — the rota accept page. APPENDED, never substituted: the ten
+      // above are still exactly the routes THE-36 reported, and this is an
+      // ELEVENTH public Next route that did not exist when it was written. It
+      // is here rather than exempted for the reason the case below spells out —
+      // the enumeration is read back off the filesystem, so a new page that was
+      // not registered fails, and registering it means naming it here.
+      '/rota/[token]',
     ]);
   });
 
