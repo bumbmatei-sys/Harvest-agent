@@ -5,6 +5,7 @@ import path from 'node:path';
 import postcss from 'postcss';
 
 import { buildAppCss } from '../test/support/tailwind-build';
+import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
 
 /**
  * THE-313 — the static guards: what part 1 of the order of service was not
@@ -65,19 +66,6 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
    * ticket needs" below pins the exact text so the ticket that deploys it does
    * not have to reconstruct it from prose.
    */
-  'firestore.rules': [
-    ['a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499', 'main at 5f431e3, unchanged since 6c9425d'],
-    // THE-313 (#462) wrote the `servicePlans` rule: `allow read: if
-    // belongsToTenant(tenantId)` / `allow write: if hasPermission('manageEvents',
-    // tenantId)`, inside `match /tenants/{tenantId}` beside `events`. It is
-    // deployed — `firestore.rules` auto-deploys on merge.
-    //
-    // 🔴 APPENDED, NEVER SUBSTITUTED. The value above is still accepted, because
-    // CI runs against `refs/pull/N/merge` and a merge ref cut before #462 landed
-    // legitimately carries it. A digest that is NEITHER — this ticket editing the
-    // file — still fails, which is the entire threat this guard exists for.
-    ['4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075', 'main + THE-313 (#462) — the servicePlans rule'],
-  ],
   /**
    * 🔴 `firestore.indexes.json` DOES NOT DEPLOY. `deploy-rules.yml` runs
    * `firestore:rules,storage` only and the workflow's `paths:` filter excludes
@@ -140,6 +128,19 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
 };
 
 describe('firestore.rules, the indexes file and the event write paths are byte-identical', () => {
+  /**
+   * 🔴 THE-325 · the accepted SET moved to `__fixtures__/ownership/`, the
+   * ASSERTION stayed here. This suite still says what it always said: the
+   * `firestore.rules` on disk is at a digest some ticket recorded, and so
+   * THIS ticket did not touch a file that auto-deploys to production with no
+   * emulator test in CI. Only the list of accepted values is now shared, so a
+   * legitimate rules change is one new per-ticket record rather than 50 edits.
+   */
+  it('firestore.rules carries no edit from this ticket', () => {
+    expect(rulesDigestFailure(),
+      'firestore.rules is at a digest no ticket recorded — it auto-deploys to production').toBeNull();
+  });
+
   it.each(Object.entries(UNTOUCHED))(
     '%s carries no edit from this ticket',
     (file, accepted) => {
@@ -210,8 +211,16 @@ const REQUIRED_RULE = `      match /servicePlans/{planId} {
       }`;
 
 /**
- * The pre-#462 value of `firestore.rules`, from `UNTOUCHED` above — the state in
- * which the rule is legitimately not there yet.
+ * The pre-#462 value of `firestore.rules` — the state in which the rule is
+ * legitimately not there yet.
+ *
+ * ⚠️ NOT A PIN, AND NOT A COPY OF THE ACCEPTED SET. THE-325 moved the accepted
+ * values into `__fixtures__/ownership/THE-325.json`, where this same digest is
+ * recorded with its ticket and its reason; the guard above asks the register
+ * whether the file is at a value somebody recorded. What this constant does is
+ * different and stays here: it asks WHICH of the two states the merge ref is
+ * at, so the readable half below knows whether the rule should be present yet.
+ * A later ticket adding a third accepted value does not touch this line.
  */
 const RULES_BEFORE_462 = 'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499';
 

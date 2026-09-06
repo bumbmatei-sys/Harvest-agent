@@ -20,6 +20,7 @@ import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
 
 const REPO_ROOT = path.resolve(__dirname, '../..');
 const read = (rel: string): string => readFileSync(path.join(REPO_ROOT, rel), 'utf8');
@@ -830,9 +831,8 @@ describe('19 — firestore.rules, firestore.indexes.json, functions/ and sms-opt
    * The case below asserts it is still only reported.
    */
   it('🔴 firestore.rules is byte-identical', () => {
-    expect(sha256(read('firestore.rules')),
-      'a rule was added — it auto-deploys to production and CI runs no emulator tests')
-      .toBe('4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075');
+    expect(rulesDigestFailure(),
+      'firestore.rules is at a digest no ticket recorded — it auto-deploys to production').toBeNull();
   });
 
   it('🔴 and it carries NO rotaInvitations rule — the one this ticket reports, unwritten', () => {

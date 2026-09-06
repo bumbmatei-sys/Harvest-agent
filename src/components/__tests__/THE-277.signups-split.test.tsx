@@ -48,6 +48,7 @@ import {
   allTokens, maxWidthPx, arbitraryPx, breakpointOf,
   isResponsive, REM_PX_MOBILE,
 } from '../../test/support/class-inventory';
+import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -916,13 +917,6 @@ describe('12 — AdminDocs.tsx, AdminDashboardHome.tsx, firestore.rules and func
   const UNTOUCHED: Record<string, string> = {
     'src/components/AdminDocs.tsx': '5fcb116153258c951936094edf64a5a4abc7be6222f1d5a9fbc25760d99e1368',
     'src/components/AdminDashboardHome.tsx': 'b256a71dcf562c27945e8b586b6e46cf8426bef0a6ea71280102af1df2c9becc',
-    // ⚠️ REGENERATED ONCE, by THE-313 (#462), which added the `servicePlans` rule
-    // inside `match /tenants/{tenantId}` beside `events`: `allow read: if
-    // belongsToTenant(tenantId)` and `allow write: if hasPermission('manageEvents',
-    // tenantId)`. Purely additive — no existing rule's text moved and it names no new
-    // helper, so every other claim this pin carries is unchanged.
-    // Was: a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499
-    'firestore.rules': '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075',
     'functions/src/index.ts': '39ccade96ac3d4dd5a13047e9bc42b54ef5ac59ae72f932af042fc814bf23e0b',
   };
 
@@ -986,6 +980,19 @@ describe('12 — AdminDocs.tsx, AdminDashboardHome.tsx, firestore.rules and func
     // the AdminDashboardHome one above does for THE-276.
     'src/components/AdminDocs.tsx': ['46c8403674c79dcacbb3a0c60f183b77a3e265d33b441b2ea05c1e00fe42b15f'],
   };
+
+  /**
+   * 🔴 THE-325 · the accepted SET moved to `__fixtures__/ownership/`, the
+   * ASSERTION stayed here. This suite still says what it always said: the
+   * `firestore.rules` on disk is at a digest some ticket recorded, and so
+   * THIS ticket did not touch a file that auto-deploys to production with no
+   * emulator test in CI. Only the list of accepted values is now shared, so
+   * a legitimate rules change is one new record rather than 50 edits.
+   */
+  it('firestore.rules carries no edit from this ticket', () => {
+    expect(rulesDigestFailure(),
+      'firestore.rules is at a digest no ticket recorded — it auto-deploys to production').toBeNull();
+  });
 
   it.each(Object.keys(UNTOUCHED))('%s carries no edit from this ticket', (file) => {
     const accepted = [UNTOUCHED[file], ...(MOVED_SINCE[file] ?? [])];

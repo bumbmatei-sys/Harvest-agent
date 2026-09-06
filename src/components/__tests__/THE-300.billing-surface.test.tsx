@@ -31,6 +31,7 @@ import {
 import { CONTROL_DENSITY, DENSITY_PX, DESKTOP_CONTROL_MAX_PX } from '../layout/form-layout';
 import UNTOUCHED from './__fixtures__/the-286-untouched.json';
 import { freezeFailure } from './__fixtures__/settings-freeze-register';
+import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
 
 /**
  * ═════════════════════════════════════════════════════════════════════════════
@@ -943,6 +944,19 @@ describe('14 · no colour hardcoded, no emoji; all four palettes resolve — Cla
  * 15 — the blast radius
  * ═══════════════════════════════════════════════════════════════════════════ */
 describe('15 · layout.tsx, firestore.rules and functions/ are byte-identical', () => {
+  /**
+   * 🔴 THE-325 · the accepted SET moved to `__fixtures__/ownership/`, the
+   * ASSERTION stayed here. This suite still says what it always said: the
+   * `firestore.rules` on disk is at a digest some ticket recorded, and so
+   * THIS ticket did not touch a file that auto-deploys to production with no
+   * emulator test in CI. Only the list of accepted values is now shared, so
+   * a legitimate rules change is one new record rather than 53 edits.
+   */
+  it('firestore.rules is untouched', () => {
+    expect(rulesDigestFailure(),
+      'firestore.rules is at a digest no ticket recorded — it auto-deploys to production').toBeNull();
+  });
+
   it.each(Object.entries(UNTOUCHED.rulesAndFunctions))('%s is untouched', (rel, digest) => {
     expect(sha256(readFileSync(path.join(ROOT, rel))), `${rel} changed — it is out of bounds for this slice`)
       .toBe(digest);

@@ -13,6 +13,7 @@ import postcss from 'postcss';
 
 import { contrastRatio, deriveOnDarkAccent, AA_CONTRAST, DARK_SURFACE, CLASSIC_DARK_SURFACE } from '../../../lib/theme';
 import * as C from '../../../utils/course.constants';
+import { rulesDigestFailure } from '../../../__tests__/__fixtures__/firestore-rules-pin';
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -722,12 +723,6 @@ describe('12 — no emoji in the course source', () => {
  * before #462 landed carries the older one. A digest that is NEITHER — this
  * ticket editing the file — still fails, which is the entire threat.
  */
-const RULES_ACCEPTED = [
-  'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499', // main before #462
-  '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075', // main + THE-313 (#462)
-];
-const rulesDigest = (): string =>
-  createHash('sha256').update(readFileSync(path.join(ROOT, 'firestore.rules'))).digest('hex');
 
 describe('13 — firestore.rules, functions/ and layout.tsx are byte-identical', () => {
   it.each(['functions/', 'src/app/layout.tsx'])('%s', (p) => {
@@ -735,8 +730,8 @@ describe('13 — firestore.rules, functions/ and layout.tsx are byte-identical',
   });
 
   it('firestore.rules', () => {
-    expect(RULES_ACCEPTED, `firestore.rules is at ${rulesDigest()}, which is neither accepted value`)
-      .toContain(rulesDigest());
+    expect(rulesDigestFailure(),
+      'firestore.rules is at a digest no ticket recorded — it auto-deploys to production').toBeNull();
   });
 });
 

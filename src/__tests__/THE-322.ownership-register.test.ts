@@ -47,6 +47,7 @@ import {
   validateOwnership,
   type OwnershipEntry,
 } from './__fixtures__/ownership-register';
+import { rulesDigestFailure, rulesDigestFailureFor, acceptedRulesDigests } from './__fixtures__/firestore-rules-pin';
 
 const ROOT = path.resolve(__dirname, '../..');
 const SELF = 'src/__tests__/THE-322.ownership-register.test.ts';
@@ -320,17 +321,25 @@ describe('3 · an unrecorded digest still fails', () => {
 
 /**
  * 🔴 `firestore.rules` AUTO-DEPLOYS TO PRODUCTION ON MERGE and CI runs no
- * emulator tests. That is why so many suites pin it, and it is why this ticket
- * left those pins exactly where they are. What is asserted here is the property
- * itself: the digest on disk is the one the suites pin, and a value NOBODY
- * pinned appears in no suite — so a change nobody recorded turns every one of
- * them red.
+ * emulator tests. That is why so many suites pin it. What is asserted here is
+ * the property itself: the digest on disk is one some ticket RECORDED, and a
+ * value nobody recorded is accepted by nobody — so a change nobody recorded
+ * turns every one of those suites red.
+ *
+ * ⚠️ AMENDED BY THE-325, WHICH MOVED THE ACCEPTED SET AND NOT THE PROPERTY.
+ * THE-322 measured the population by grepping the tree for the live digest,
+ * because each suite spelled its own copy. THE-325 consolidated those copies
+ * into `__fixtures__/ownership/`, so a pinner is no longer a file that SPELLS
+ * the digest — it is a file that ROUTES to the shared register. Both markers
+ * are kept below and both still assert: `filesSpelling` is what proves an
+ * unrecorded value appears nowhere, and `suitesPinningRules` is what proves the
+ * population did not shrink when the copies went away.
  */
 const RULES = 'firestore.rules';
 const RULES_DIGEST_ON_DISK = sha256(readFileSync(path.join(ROOT, RULES)));
 
-/** Every suite that pins `firestore.rules` by digest, measured from the tree. */
-function suitesPinning(digest: string): string[] {
+/** Every test file and fixture under `src/`, sorted, repo-relative. */
+function suiteFiles(): string[] {
   const walk = (dir: string): string[] =>
     readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
       if (e.name === 'node_modules' || e.name === '.next') return [];
@@ -339,31 +348,60 @@ function suitesPinning(digest: string): string[] {
       return /\.test\.[cm]?[jt]sx?$/.test(e.name) || e.name.endsWith('.json') ? [p] : [];
     });
   return walk(path.join(ROOT, 'src'))
-    .filter((p) => readFileSync(p, 'utf8').includes(digest))
     .map((p) => path.relative(ROOT, p).split(path.sep).join('/'))
     .sort();
 }
 
+/** Every file under `src/` that carries `digest` verbatim. */
+function filesSpelling(digest: string): string[] {
+  return suiteFiles().filter((p) => read(p).includes(digest));
+}
+
+/**
+ * Every SUITE that pins `firestore.rules`, measured from the tree: the ones
+ * that route to THE-325's shared accepted set.
+ */
+function suitesPinningRules(): string[] {
+  return suiteFiles().filter((p) => /\.test\.[cm]?[jt]sx?$/.test(p) && read(p).includes(RULES_PIN_MODULE));
+}
+
+/** The module every pinning suite imports. Spelled once, and greppable. */
+const RULES_PIN_MODULE = 'firestore-rules-pin';
+
 describe('3b · an unrecorded change to firestore.rules still fails', () => {
-  it('the digest on disk is the one the suites pin', () => {
-    expect(RULES_DIGEST_ON_DISK)
-      .toBe('4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075');
+  it('the digest on disk is one a ticket recorded', () => {
+    // 🔴 Through the register, so there is ONE accepted set in the repo rather
+    // than 54 copies of it. The claim is the same claim: the file on disk is at
+    // a state some ticket wrote down, with its ticket and its reason.
+    expect(rulesDigestFailure(),
+      'firestore.rules is at a digest no ticket recorded — it auto-deploys to production')
+      .toBeNull();
+    expect(acceptedRulesDigests().map(([digest]) => digest),
+      'the register no longer accepts the file that is actually on disk')
+      .toContain(RULES_DIGEST_ON_DISK);
   });
 
-  it('🔴 and a digest no suite pinned is accepted by NONE of them', () => {
+  it('🔴 and a digest no ticket recorded is accepted by NOBODY', () => {
     /**
      * This is the whole protection, stated directly. Change `firestore.rules`
-     * without recording it and its digest becomes a value that appears in no
-     * suite — so every suite that pins it goes red, which is exactly what
+     * without recording it and its digest is a value the register refuses — so
+     * every suite that asks the register goes red, which is exactly what
      * happened to 45 of them when THE-313 legitimately changed the file.
+     *
+     * 🔴 Asserted on the PURE entry point, so the property is proved without
+     * touching the rules file: a hole here would be a hole for every suite at
+     * once, which is precisely the risk consolidation carries.
      */
-    expect(suitesPinning(UNRECORDED),
-      'a digest nobody recorded is already pinned somewhere — the pins are not what they look like')
+    expect(rulesDigestFailureFor(UNRECORDED),
+      'the register accepts a digest no ticket recorded — the consolidation is a hole')
+      .not.toBeNull();
+    expect(filesSpelling(UNRECORDED),
+      'a digest nobody recorded is already written somewhere — the pins are not what they look like')
       .toEqual([]);
   });
 
-  it('the pins are real and plural — at least forty suites carry the live digest', () => {
-    expect(suitesPinning(RULES_DIGEST_ON_DISK).length).toBeGreaterThan(40);
+  it('the pins are real and plural — at least forty suites route to the register', () => {
+    expect(suitesPinningRules().length).toBeGreaterThan(40);
   });
 });
 
@@ -421,21 +459,40 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 /**
- * 🔴 THIS TICKET DID NOT CONSOLIDATE THEM, and this section is the measured
- * baseline for the PR that will. The count was read from the tree, not from a
- * CI log: 45 files in `src/` carry the live digest — 44 suites plus THE-286's
- * JSON fixture — and THE-319 makes 46 by asserting the digest appears in
- * `the-299-retention-guards.test.ts` rather than spelling it itself.
+ * 🔴 THE-325 CONSOLIDATED THEM, AND THIS SECTION IS WHERE THE POPULATION IS
+ * RE-COUNTED RATHER THAN DROPPED. THE-322's own baseline, kept verbatim so the
+ * two numbers reconcile: 45 files in `src/` carried the live digest — 44 suites
+ * plus THE-286's JSON fixture — THE-319 made 46 by deferring to
+ * `the-299-retention-guards.test.ts`, and THE-322 spelled it too, which with
+ * THE-323, THE-324, THE-326 and THE-327 came to 50 files carrying the digest.
  *
- * ⚠️ WHAT EACH ONE STILL ASSERTS: that `firestore.rules` on disk hashes to a
- * digest it accepts, and therefore that its own ticket did not touch a file
- * which auto-deploys to production with no emulator tests in CI. Not one of
- * them was edited, loosened or dropped by THE-322.
+ * ⚠️ THE UNIT CHANGED WITH THE MECHANISM, AND THE CLAIM DID NOT. A pinner used
+ * to be a file that SPELLED the digest, which counted THE-286's fixture as one
+ * pinner and its four consuming SUITES as none. Since THE-325 the accepted set
+ * lives in `__fixtures__/ownership/` and a pinner is a SUITE that routes to it,
+ * so those four are now counted where the assertions actually are. Measured
+ * from the tree, not from a CI log:
+ *
+ *   49 suites that spelled the digest inline (THE-322 among them)
+ *  + 4 suites that read it from THE-286's fixture (THE-286, THE-296,
+ *      THE-300, THE-312) and now assert it in their own case
+ *  + 1 THE-319, which deferred to the-299's copy and now asks the register
+ *  ──
+ *  + 1 THE-325's own suite, which asks the register the same question
+ *  ──
+ *   55 suites, every one of them still asserting exactly what it asserted.
+ *
+ * ⚠️ WHAT EACH ONE STILL ASSERTS, UNCHANGED: that `firestore.rules` on disk
+ * hashes to a digest it accepts, and therefore that its own ticket did not
+ * touch a file which auto-deploys to production with no emulator tests in CI.
+ * Not one of them was loosened or dropped — THE-325 deleted 49 copies of the
+ * accepted VALUES and no assertion at all.
+ *
+ * 🔴 THE FLOOR IS EXACT AND MAY NOT SHRINK. A later ticket that consolidates or
+ * retires a pinner updates this count and says what that suite still asserts;
+ * a suite that quietly stops pinning fails here.
  */
-const RULES_PINNERS_BEFORE_THE_322 = 45;
-
-/** THE-322 spells the digest too, in section 3b, so it is the 46th. */
-const RULES_PINNERS_NOW = RULES_PINNERS_BEFORE_THE_322 + 1;
+const RULES_PINNERS_NOW = 55;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per
@@ -506,36 +563,51 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {
   it('the population never shrank — nothing was consolidated away', () => {
-    const pinners = suitesPinning(RULES_DIGEST_ON_DISK);
+    const pinners = suitesPinningRules();
     expect(pinners.length,
-      'a suite stopped pinning firestore.rules. THE-322 consolidates none of them; if a later '
-      + 'ticket does, it updates this count and says what each one still asserts.')
-      .toBe(RULES_PINNERS_NOW + RULES_PINNERS_ADDED_SINCE.length);
+      'a suite stopped pinning firestore.rules. THE-325 consolidated the accepted VALUES and '
+      + 'no assertion; if a later ticket retires a pinner, it updates this count and says what '
+      + `that suite still asserts. Currently pinning:\n  ${pinners.join('\n  ')}`)
+      .toBe(RULES_PINNERS_NOW);
     expect(pinners, 'THE-322 no longer pins firestore.rules itself').toContain(SELF);
-    expect(pinners.filter((p) => p !== SELF && !RULES_PINNERS_ADDED_SINCE.some(([, f]) => f === p)),
-      'the 45 that pinned it before THE-322 are not 45 any more')
-      .toHaveLength(RULES_PINNERS_BEFORE_THE_322);
     // Each recorded addition really is a pinner, so the list cannot pad the
-    // count with a suite that does not carry the digest.
+    // count with a suite that does not pin.
     for (const [ticket, suite] of RULES_PINNERS_ADDED_SINCE) {
-      expect(pinners, `${ticket} is recorded as a pinner but ${suite} does not pin the digest`)
+      expect(pinners, `${ticket} is recorded as a pinner but ${suite} does not pin the rules`)
         .toContain(suite);
     }
   });
 
-  it('THE-319 still defers to the-299\'s pin rather than spelling a second copy', () => {
-    const guard = read('src/__tests__/the-299-retention-guards.test.ts');
-    expect(guard, 'the-299 no longer carries the digest THE-319 defers to')
-      .toContain(RULES_DIGEST_ON_DISK);
-    expect(read('src/__tests__/THE-319.composition-guards.test.ts'))
-      .toContain('the pins that already exist still hold');
+  it('🔴 the four THE-286-fixture readers assert it in their own case now', () => {
+    /* They pinned it through `UNTOUCHED.rulesAndFunctions`, which THE-325 no
+       longer carries. The assertion did not go with the value — each of the
+       four asks the register directly, so all four still fail on a rules change
+       nobody recorded. */
+    for (const suite of [
+      'src/components/__tests__/THE-286.settings-chrome-autosave.test.tsx',
+      'src/components/__tests__/THE-296.settings-sections.test.tsx',
+      'src/components/__tests__/THE-300.billing-surface.test.tsx',
+      'src/components/__tests__/THE-312.settings-freeze-registers.test.tsx',
+    ]) {
+      expect(read(suite), `${suite} stopped pinning firestore.rules`).toContain(RULES_PIN_MODULE);
+    }
+    expect(read('src/components/__tests__/__fixtures__/the-286-untouched.json'),
+      "THE-286's fixture carries a second copy of the accepted set again")
+      .not.toContain(RULES_DIGEST_ON_DISK);
   });
 
-  it('and THE-322 edited none of them', () => {
-    /* The only suite this ticket touched is THE-319's, and it touched section
-       14 alone. Its firestore.rules deferral in section 16 is byte-for-byte
-       what it was, asserted above by content. */
-    for (const suite of suitesPinning(RULES_DIGEST_ON_DISK)) {
+  it('THE-319 asks the register rather than spelling a second copy', () => {
+    /* Its deferral to the-299's literal is what THE-325 replaced; what it
+       deferred FOR — that THE-319 did not open the rules file — is asserted in
+       its own case now, and the-299 is still the suite that pins the other two
+       files THE-319 defers on. */
+    const the319 = read('src/__tests__/THE-319.composition-guards.test.ts');
+    expect(the319, 'THE-319 no longer pins firestore.rules at all').toContain(RULES_PIN_MODULE);
+    expect(the319).toContain('the pins that already exist still hold');
+  });
+
+  it('and every pinner is still where it was', () => {
+    for (const suite of suitesPinningRules()) {
       expect(suite.startsWith('src/'), `${suite} is not where it was`).toBe(true);
     }
   });

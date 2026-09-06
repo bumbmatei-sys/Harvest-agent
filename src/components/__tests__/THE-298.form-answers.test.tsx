@@ -4,6 +4,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import type { AnswerField, AnswerSubmission } from '../forms/form-answers';
+import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
 
 /**
  * THE-298 — "Of a form I created, I should have a button to see straight from
@@ -810,15 +811,21 @@ describe('firestore.rules, firestore.indexes.json and functions/ byte-identical'
   // subcollection with no `where`, ordered by documentId(), which the automatic
   // single-field index already answers.
   const UNTOUCHED: Record<string, string> = {
-    // ⚠️ REGENERATED ONCE, by THE-313 (#462), which added the `servicePlans` rule
-    // inside `match /tenants/{tenantId}` beside `events`: `allow read: if
-    // belongsToTenant(tenantId)` and `allow write: if hasPermission('manageEvents',
-    // tenantId)`. Purely additive — no existing rule's text moved and it names no new
-    // helper, so every other claim this pin carries is unchanged.
-    // Was: a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499
-    'firestore.rules': '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075',
     'firestore.indexes.json': '8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0',
   };
+
+  /**
+   * 🔴 THE-325 · the accepted SET moved to `__fixtures__/ownership/`, the
+   * ASSERTION stayed here. This suite still says what it always said: the
+   * `firestore.rules` on disk is at a digest some ticket recorded, and so
+   * THIS ticket did not touch a file that auto-deploys to production with no
+   * emulator test in CI. Only the list of accepted values is now shared, so
+   * a legitimate rules change is one new record rather than 50 edits.
+   */
+  it('firestore.rules carries no edit from this ticket', () => {
+    expect(rulesDigestFailure(),
+      'firestore.rules is at a digest no ticket recorded — it auto-deploys to production').toBeNull();
+  });
 
   it.each(Object.entries(UNTOUCHED))('%s carries no edit from this ticket', (file, digest) => {
     expect(sha256(readRepo(file))).toBe(digest);

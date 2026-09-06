@@ -70,6 +70,7 @@ vi.mock('../ImageUpload', () => ({ ImageUpload: () => <div data-image-upload="" 
 
 import AdminCourseEditor, { type Course } from '../AdminCourseEditor';
 import { AdminHeaderContext, type AdminHeaderOverride } from '../AdminScreenHeader';
+import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
 
 const ROOT = path.resolve(__dirname, '../../..');
 const SRC = path.resolve(__dirname, '..');
@@ -611,12 +612,6 @@ describe('no colour is hardcoded, and all four palettes resolve', () => {
  * before #462 landed carries the older one. A digest that is NEITHER — this
  * ticket editing the file — still fails, which is the entire threat.
  */
-const RULES_ACCEPTED = [
-  'a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499', // main before #462
-  '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075', // main + THE-313 (#462)
-];
-const rulesDigest = (): string =>
-  createHash('sha256').update(readFileSync(path.join(ROOT, 'firestore.rules'))).digest('hex');
 
 /**
  * ⚠️ AMENDED BY THE-326 — AdminDashboard.tsx IS PINNED BY DIGEST HERE, NOT BY
@@ -683,8 +678,8 @@ describe('the files this ticket must not open are byte-identical', () => {
   });
 
   it('and leaves firestore.rules at an accepted digest', () => {
-    expect(RULES_ACCEPTED, `firestore.rules is at ${rulesDigest()}, which is neither accepted value`)
-      .toContain(rulesDigest());
+    expect(rulesDigestFailure(),
+      'firestore.rules is at a digest no ticket recorded — it auto-deploys to production').toBeNull();
   });
 
   it('leaves the adoption gate and the definition of complete alone', () => {

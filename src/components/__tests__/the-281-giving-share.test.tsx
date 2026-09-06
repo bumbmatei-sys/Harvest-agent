@@ -23,6 +23,7 @@ import {
   givingShareUrls,
 } from '../donations/giving-share';
 import { buildUtilityCss } from '../../test/support/tailwind-build';
+import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
 
 /**
  * THE-281 — the share button on the Donations screen.
@@ -555,15 +556,8 @@ describe('9 — firestore.rules and functions/ byte-identical', () => {
   const digestOf = (abs: string) => createHash('sha256').update(readFileSync(abs)).digest('hex');
 
   it('🔴 firestore.rules is untouched', () => {
-    expect(digestOf(path.join(REPO, 'firestore.rules')),
-      '🔴 firestore.rules was modified — THE-281 must not reach it')
-      // ⚠️ REGENERATED ONCE, by THE-313 (#462), which added the `servicePlans` rule
-      // inside `match /tenants/{tenantId}` beside `events`: `allow read: if
-      // belongsToTenant(tenantId)` and `allow write: if hasPermission('manageEvents',
-      // tenantId)`. Purely additive — no existing rule's text moved and it names no new
-      // helper, so every other claim this pin carries is unchanged.
-      // Was: a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499
-      .toBe('4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075');
+    expect(rulesDigestFailure(),
+      'firestore.rules is at a digest no ticket recorded — it auto-deploys to production').toBeNull();
   });
 
   it('🔴 functions/ is untouched, file for file', () => {

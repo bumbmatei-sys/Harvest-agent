@@ -21,6 +21,7 @@ import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
 
 const REPO_ROOT = path.resolve(__dirname, '../..');
 const read = (rel: string): string => readFileSync(path.join(REPO_ROOT, rel), 'utf8');
@@ -558,16 +559,10 @@ describe('firestore.rules and functions/ are untouched', () => {
    * emulator tests, so a rule written here reaches every church the moment this
    * lands with nothing having exercised it. This ticket does not touch it.
    */
-  // ⚠️ REGENERATED ONCE, by THE-313 (#462), which added the `servicePlans` rule
-  // inside `match /tenants/{tenantId}` beside `events`: `allow read: if
-  // belongsToTenant(tenantId)` and `allow write: if hasPermission('manageEvents',
-  // tenantId)`. Purely additive — no existing rule's text moved and it names no new
-  // helper, so every other claim this pin carries is unchanged.
-  // Was: a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499
-  const RULES_SHA = '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075';
 
   it('firestore.rules is byte-identical', () => {
-    expect(sha256(read('firestore.rules'))).toBe(RULES_SHA);
+    expect(rulesDigestFailure(),
+      'firestore.rules is at a digest no ticket recorded — it auto-deploys to production').toBeNull();
   });
 
   it('🔴 and the rule this feature NEEDS is written, reading exactly as reported', () => {

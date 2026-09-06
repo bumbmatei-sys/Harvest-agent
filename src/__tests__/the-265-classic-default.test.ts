@@ -23,6 +23,7 @@ import {
 } from '../lib/theme';
 import { PREAUTH_PATHS } from '../lib/preauth-theme';
 import { applyThemeForLocation, readStoredFamily } from '../lib/theme-runtime';
+import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
 
 /**
  * THE-265 — Classic is the default palette family.
@@ -696,15 +697,8 @@ describe('11 — globals.css, firestore.rules and functions/ are byte-identical'
   it('firestore.rules is untouched', () => {
     // Same value posthog-untouched.test.ts pins; restated here so THIS PR's
     // claim is self-contained. It auto-deploys to production on merge.
-    expect(digest('firestore.rules')).toBe(
-      // ⚠️ REGENERATED ONCE, by THE-313 (#462), which added the `servicePlans` rule
-      // inside `match /tenants/{tenantId}` beside `events`: `allow read: if
-      // belongsToTenant(tenantId)` and `allow write: if hasPermission('manageEvents',
-      // tenantId)`. Purely additive — no existing rule's text moved and it names no new
-      // helper, so every other claim this pin carries is unchanged.
-      // Was: a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499
-      '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075',
-    );
+    expect(rulesDigestFailure(),
+      'firestore.rules is at a digest no ticket recorded — it auto-deploys to production').toBeNull();
   });
 
   it('functions/ carries no change from this PR', () => {
