@@ -1095,6 +1095,26 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       'reversible, and a modal would add a dismissal step to the only thing the page exists for.',
   },
   {
+    file: 'src/components/AdminServices.tsx',
+    ticket: 'THE-326',
+    why:
+      'The Service planning section — the dedicated home the founder asked for, holding the run ' +
+      'sheet, the volunteer rota and the invitations, which used to be buried inside Events. ' +
+      'APPENDED, never substituted. It adopts `empty` (Empty, EmptyHeader, EmptyMedia, ' +
+      'EmptyTitle, EmptyDescription) beside `card`, `select` and `tabs`. `tabs` names the three ' +
+      'parts and is the one primitive the screen is built around; `select` picks which dated ' +
+      'service the run sheet is for, and its trigger formats the value through `fmtDay` rather ' +
+      'than printing the raw id — the same defect THE-326 fixes on the rota. `empty` is what ' +
+      'says "no dated services yet" instead of an empty picker that reads as a broken screen. ' +
+      'REJECTED, per element and with the reason: `table` (the three panels bring their own, ' +
+      'and a sixth `table` adopter would need THE-272\'s closed list opened for markup this ' +
+      'file does not draw); `dialog` and `sheet` (nothing here is modal — the picker is a ' +
+      'control on the page); `separator` (the tab strip and the cards already divide the ' +
+      'screen, so a rule would be a second divider over the first); `skeleton` (the panels own ' +
+      'their own loading states and this screen renders nothing of its own while events load); ' +
+      '`button` (the screen has no action of its own — every control belongs to a panel).',
+  },
+  {
     file: 'src/components/events/EventMonthView.tsx',
     ticket: 'THE-308',
     why:

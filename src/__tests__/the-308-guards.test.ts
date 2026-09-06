@@ -399,9 +399,24 @@ describe('8 · the existing list view is intact', () => {
     expect(SRC, 'the empty-list copy went missing').toContain('No events yet');
   });
 
-  it('the public-calendar link bar and the rota entry are still there', () => {
+  /**
+   * ⚠️ AMENDED BY THE-326 — THE ROTA ENTRY IS GONE FROM THIS SCREEN, ON PURPOSE.
+   *
+   * THE-308 asserted a "Volunteer rota" button on the events list because that
+   * is where the rota lived when this guard was written. THE-326 moved service
+   * planning — the run sheet, the rota and the invitations — into its own
+   * `services` section, which is the whole of that ticket. So the claim here is
+   * INVERTED rather than deleted: the events list must still carry its public
+   * calendar bar, and must NOT carry a rota entry, because a rota entry back on
+   * this screen is the defect returning.
+   *
+   * 🔴 The month view — what THE-308 actually owns — is untouched, and the
+   * assertion above and below this one still pin it.
+   */
+  it('the public-calendar link bar is still there, and the rota entry has moved out (THE-326)', () => {
     expect(SRC).toContain('Public calendar:');
-    expect(SRC).toContain('Volunteer rota');
+    expect(SRC, 'the events list grew a service-planning entry again — THE-326 moved it out')
+      .not.toContain('Volunteer rota');
   });
 
   it('🔴 and `list` is the DEFAULT tab — the grid is beside the list, not over it', () => {

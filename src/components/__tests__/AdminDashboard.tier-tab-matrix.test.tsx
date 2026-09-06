@@ -107,6 +107,7 @@ vi.mock('../NewsletterCampaigns', screenStub('NewsletterCampaigns'));
 vi.mock('../AdminFundraising', screenStub('AdminFundraising'));
 vi.mock('../AdminDocs', screenStub('AdminDocs'));
 vi.mock('../AdminEvents', screenStub('AdminEvents'));
+vi.mock('../AdminServices', screenStub('AdminServices'));
 vi.mock('../AdminCRM', screenStub('AdminCRM'));
 vi.mock('../AdminSignups', screenStub('AdminSignups'));
 vi.mock('../AdminAccounting', screenStub('AdminAccounting'));
@@ -170,6 +171,11 @@ const TABS: Row[] = [
   { label: 'Newsletter', section: 'newsletter', screen: 'NewsletterCampaigns', feature: (f) => f.newsletterAutomation },
   { label: 'Fundraising', section: 'fundraising', screen: 'AdminFundraising', feature: (f) => f.fundraising },
   { label: 'Events', section: 'events', screen: 'AdminEvents', feature: (f) => f.eventRegistration },
+  // THE-326 — service planning, split out of Events into its own section. The
+  // SAME cell on purpose: the run sheet, the rota and the invitations were
+  // reachable through Events and nothing else, so repeating `eventRegistration`
+  // keeps every tier's reach exactly what it was before the split.
+  { label: 'Services', section: 'services', screen: 'AdminServices', feature: (f) => f.eventRegistration },
   { label: 'Notes', section: 'docs', screen: 'AdminDocs', feature: (f) => f.docs },
   { label: 'CRM', section: 'crm', screen: 'AdminCRM', feature: (f) => f.crm },
   { label: 'Signups', section: 'signups', screen: 'AdminSignups', feature: (f) => f.crm },
@@ -216,7 +222,7 @@ const flush = async () => {
 
 const ALL_TAB_LABELS = [
   'Dashboard', 'Church', 'Church List', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
-  'Fundraising', 'Events', 'Notes', 'CRM', 'Signups', 'Accounting', 'Forms', 'Check-In', 'Livestream',
+  'Fundraising', 'Events', 'Services', 'Notes', 'CRM', 'Signups', 'Accounting', 'Forms', 'Check-In', 'Livestream',
   'SMS', 'Community', 'Library', 'Tenants', 'Affiliate', 'Branding',
 ];
 function navLabels(): string[] {
@@ -347,13 +353,16 @@ describe('17 — the tier/tab matrix is generated from the real nav array and th
     expect(matrix.size).toBe(TABS.length);
   });
 
-  it('resolves the free column to seventeen visible tabs, and Branding hidden', async () => {
+  it('resolves the free column to eighteen visible tabs, and Branding hidden', async () => {
     const matrix = await buildMatrix();
     const visible = TABS.filter((r) => matrix.get(r.label)!.get('free')!.cell !== 'hidden');
     // ⚠️ Seventeen since THE-277, and free bought nothing to get the extra row:
     // Signups split out of the CRM screen carrying the same `crm` cell, so one
     // entitlement now opens two tabs.
-    expect(visible.length, 'free must see all seventeen').toBe(17);
+    // ⚠️ EIGHTEEN since THE-326, by exactly that mechanism again: Services split
+    // out of the Events screen carrying the same `eventRegistration` cell, so
+    // one entitlement now opens two tabs there too.
+    expect(visible.length, 'free must see all eighteen').toBe(18);
     expect(matrix.get('Branding')!.get('free')!.cell).toBe('hidden');
   });
 
@@ -481,7 +490,13 @@ describe('19 — no tab hidden from the nav renders fully when reached by URL', 
     // an upgrade screen where they used to reach a feature — and it is asserted
     // rather than merely allowed, because a downgrade that silently rendered a
     // broken screen would be worse than one that says what happened.
-    expect(checked, 'the count of hidden cells moved — check the matrix above').toBe(19);
+    //
+    // ⚠️ AND THE-326 MOVED IT TO 21. Services carries Events' own
+    // `eventRegistration` cell, so it is hidden on exactly the tiers Events is
+    // hidden on — two of them — and the count rises by two with no tier losing
+    // reach it had. A rise of anything other than two here would mean the split
+    // changed an entitlement, which is the thing it must not do.
+    expect(checked, 'the count of hidden cells moved — check the matrix above').toBe(21);
   });
 
   it('and a third layer bounces the URL too, so the wall is not the only refusal', async () => {

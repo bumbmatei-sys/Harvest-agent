@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { LayoutDashboard, Church, FileText, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, ChevronDown, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, QrCode, Radio, ExternalLink, Link2, Palette, Bell, X, Library, HandCoins, UserPlus } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, ChevronDown, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, ListChecks, QrCode, Radio, ExternalLink, Link2, Palette, Bell, X, Library, HandCoins, UserPlus } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import PlatformInbox from './PlatformInbox';
 import AdminChurches from './AdminChurches';
@@ -33,6 +33,7 @@ import AdminCheckin from './AdminCheckin';
 import AdminLivestream from './AdminLivestream';
 import AdminSms from './AdminSms';
 import AdminEvents from './AdminEvents';
+import AdminServices from './AdminServices';
 import PlanUpgradeScreen from './PlanUpgradeScreen';
 import Profile from './Profile';
 import MyAccountMenu, { type BillingAccess } from './MyAccountMenu';
@@ -77,7 +78,16 @@ const MORE_GROUPS: { label: string; ids: string[] }[] = [
   // contacts, so it is its own entry, placed next to CRM because that is where a
   // reader looking for "who joined" will look for it.
   // Statements now live as a sub-tab inside Accounting (not a standalone entry).
-  { label: 'MINISTRY', ids: ['crm', 'signups', 'churches', 'community', 'fundraising', 'donations', 'forms', 'accounting'] },
+  // 🔴 THE-326 — `services` IS MINISTRY, NOT BROADCASTING, and that is the
+  // whole placement decision. BROADCASTING is the outbound/live cluster:
+  // `events`, `checkin`, `sms`, `livestream` — surfaces that push something to
+  // an audience. Planning a Sunday service pushes nothing: it is a run sheet,
+  // a rota and the volunteers on it, which is the same category of work as
+  // `crm` (who is here) and `community` (what they belong to). It sits after
+  // `community` — closing the people-and-gatherings half of the group, before
+  // the giving half — because the rota is a question about PEOPLE and the
+  // reader looking for it is looking where the people are.
+  { label: 'MINISTRY', ids: ['crm', 'signups', 'churches', 'community', 'services', 'fundraising', 'donations', 'forms', 'accounting'] },
   // Broadcasting: outbound / live engagement channels.
   // QR Codes now live as a sub-tab inside Check-In (not a standalone entry).
   { label: 'BROADCASTING', ids: ['events', 'checkin', 'sms', 'livestream'] },
@@ -92,7 +102,10 @@ const GROUPED_MORE_IDS = new Set(MORE_GROUPS.flatMap((g) => g.ids));
 // for is dropped, and a group with no permitted tabs is omitted entirely.
 const DESKTOP_NAV_GROUPS: { label: string; ids: string[] }[] = [
   { label: 'CONTENT', ids: ['blog', 'courses', 'newsletter', 'ai', 'docs'] },
-  { label: 'MINISTRY', ids: ['crm', 'signups', 'churches', 'community', 'fundraising', 'donations', 'forms', 'accounting'] },
+  // 🔴 THE-326 — `services` in MINISTRY here too, in the SAME position. The two
+  // arrays are the mobile drawer and the desktop sidebar; a section in one and
+  // not the other is a section half the product cannot reach.
+  { label: 'MINISTRY', ids: ['crm', 'signups', 'churches', 'community', 'services', 'fundraising', 'donations', 'forms', 'accounting'] },
   { label: 'BROADCASTING', ids: ['events', 'checkin', 'sms', 'livestream'] },
   { label: 'GROW', ids: ['affiliate', 'branding', 'tenants', 'inbox'] },
 ];
@@ -638,6 +651,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     navAllows(features?.eventRegistration) &&
       (hasFullAccess || perms.manageEvents) &&
       { id: 'events', label: 'Events', icon: CalendarCheck },
+    // 🔴 THE-326 — Service planning, on the SAME gate as Events and deliberately
+    // so. The run sheet, the rota and the invitations were reachable through the
+    // Events screen and through nothing else, so repeating its cell and its
+    // permission means exactly the people who could plan a service yesterday can
+    // plan one today, and nobody new can. ⚠️ NO NEW PERMISSION: `servicePlans`,
+    // `rotaInvitations` and the invite API all check `manageEvents` server-side,
+    // and a `managePlanning` here would be a roles-matrix row that no rule
+    // enforces.
+    navAllows(features?.eventRegistration) &&
+      (hasFullAccess || perms.manageEvents) &&
+      { id: 'services', label: 'Services', icon: ListChecks },
     // Docs (TipTap)
     navAllows(features?.docs) &&
       (hasFullAccess || perms.manageDocs) &&
@@ -1189,6 +1213,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             planAllows(features?.eventRegistration)
               ? <div className="p-4 lg:p-0"><AdminEvents /></div>
               : <PlanUpgradeScreen featureName="Events" featureKey="event_registration" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
+          ) : activeTab === 'services' ? (
+            planAllows(features?.eventRegistration)
+              ? <div className="p-4 lg:p-0"><AdminServices /></div>
+              : <PlanUpgradeScreen featureName="Services" featureKey="event_registration" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'crm' ? (
             planAllows(features?.crm)
               ? <div className="p-4 lg:p-0"><AdminCRM currentUserRole={isSuperAdmin ? 'super_admin' : userRole} currentUserPermissions={isChurchAdmin ? { fullAccess: true } as any : userPermissions} initialContactId={itemId} onItemConsumed={clearItemId} /></div>

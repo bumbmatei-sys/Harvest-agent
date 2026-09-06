@@ -307,7 +307,29 @@ function PersonPicker({
         className={`w-[168px] ${CONTROL}`}
         aria-label={`Assign ${item.title.trim() || 'this item'}`}
       >
-        <SelectValue placeholder="Unassigned" />
+        {/* 🔴 THE-326 — THE SAME DEFECT AS THE DATE SELECTOR, ON THE CONTROL
+            NEXT TO IT, AND FOUND BY THIS TICKET'S OWN GUARD RATHER THAN BY THE
+            SCREENSHOT.
+
+            ⚠️ `Select.Value` with no children renders the VALUE, and this
+            select's value is `personId` — a `users/{uid}` document id. So an
+            assigned row's closed picker read `u-ada` where it should read
+            "Ada Pastor": a raw Firebase auth uid on screen, in the same shape
+            and for the same reason as the `1788513540000` the founder
+            photographed. The OPTIONS were right all along, exactly as they were
+            on the date selector.
+
+            The value is resolved back through `people`, which is the same list
+            the options are built from, so the closed control reads back the
+            line that was picked. An id with no match falls back to the
+            placeholder rather than printing itself. */}
+        <SelectValue placeholder="Unassigned">
+          {(value: unknown) => {
+            const id = String(value ?? '');
+            if (id === UNASSIGNED || id === '') return 'Unassigned';
+            return people.find((p) => p.id === id)?.name ?? 'Unassigned';
+          }}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
         <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
@@ -476,10 +498,39 @@ const VolunteerRotaView: React.FC<VolunteerRotaViewProps> = ({
               The triggers carry the floor on both axes too, so a change to the
               primitive's padding cannot silently drop them under it.
               `sm:min-h-0` releases all of it, per the 44/38 split. */}
-          <TabsList className="min-h-[51px] sm:min-h-0">
-            <TabsTrigger value="rota" className="min-h-[44px] min-w-[44px] sm:min-h-0">Rota</TabsTrigger>
-            <TabsTrigger value="who" className="min-h-[44px] min-w-[44px] sm:min-h-0">Who is on</TabsTrigger>
-            <TabsTrigger value="recent" className="min-h-[44px] min-w-[44px] sm:min-h-0">Not served recently</TabsTrigger>
+          {/* 🔴 THE-326 — `w-full` HERE AND NO `min-w-` ON THE TRIGGERS. BOTH, AND
+              MEASURED: either one alone still overlaps at 380px.
+
+              ⚠️ The labels used to PRINT ON TOP OF EACH OTHER, and the cause was
+              not the `h-8` it looked like. Chromium, at all five widths:
+              "Not served recently" needed `scrollWidth` 115px inside a
+              `clientWidth` of 91px, with `white-space: nowrap` and
+              `overflow: visible` — so the 24px that did not fit was PAINTED
+              OVER the neighbouring trigger rather than clipped or wrapped.
+
+              It fitted in 91px because of two things this ticket undoes:
+
+                1. `min-w-[44px]`, added for the tap-target floor, OVERRODE the
+                   flex default `min-width: auto` — which is exactly the rule
+                   that stops a `flex-1` item shrinking below its own
+                   nowrap text. With the floor at 44px the three triggers were
+                   free to divide the strip into equal thirds regardless of
+                   what was written on them. Removing it restores the content
+                   floor, and the tap target is then carried by the CONTENT:
+                   measured 94.1px × 44px at 380px, the narrowest of the three.
+                2. `w-fit` on the list (the primitive's own), which sized the
+                   strip to 286.34px rather than the container. `w-full` gives
+                   the thirds enough room to hold the longest label.
+
+              Measured after the fix — no trigger's `scrollWidth` exceeds its
+              `clientWidth` at 380 / 768 / 1024 / 1280 / 1440, and the document
+              still does not scroll sideways at any of them. `min-h-[51px]` and
+              the per-trigger `min-h-[44px]` are THE-317's and stay exactly as
+              they were; the note below is its. */}
+          <TabsList className="w-full min-h-[51px] sm:min-h-0">
+            <TabsTrigger value="rota" className="min-h-[44px] sm:min-h-0">Rota</TabsTrigger>
+            <TabsTrigger value="who" className="min-h-[44px] sm:min-h-0">Who is on</TabsTrigger>
+            <TabsTrigger value="recent" className="min-h-[44px] sm:min-h-0">Not served recently</TabsTrigger>
           </TabsList>
 
           {/* ── The rota across weeks ─────────────────────────────────────── */}
@@ -576,7 +627,34 @@ const VolunteerRotaView: React.FC<VolunteerRotaViewProps> = ({
                   onValueChange={(value: unknown) => setDayKey(String(value))}
                 >
                   <SelectTrigger className={`w-[184px] ${CONTROL}`} aria-label="Service date">
-                    <SelectValue placeholder="Pick a date" />
+                    {/* 🔴 THE-326 — THE TRIGGER FORMATS THE VALUE. It used to
+                        render `1788513540000` at a church: `Select.Value` with
+                        no children prints the VALUE, and the value here is
+                        `String(date.getTime())` because a select's value must
+                        be a string and the date is the identity of the row.
+                        The options were never wrong — each `SelectItem` has
+                        always been labelled with `fmtDay` — so only the closed
+                        trigger showed the epoch.
+
+                        ⚠️ The render function is `Select.Value`'s own
+                        documented API for exactly this ("Accepts a function
+                        that returns a `ReactNode` to format the selected
+                        value"), not a workaround around the primitive.
+
+                        The format is `fmtDay`'s — "Sun 6 Sep" — deliberately
+                        the SAME function the options use, so the trigger reads
+                        back exactly the line that was picked. A second spelling
+                        here (e.g. "Sunday 6 September") would make the closed
+                        control disagree with the list it was chosen from, and
+                        `fmtDay` is also what the week headings and the run-sheet
+                        rows say. */}
+                    <SelectValue placeholder="Pick a date">
+                      {(value: unknown) => {
+                        const key = String(value ?? '');
+                        const day = serviceDays.find((d) => String(d.getTime()) === key);
+                        return day ? fmtDay(day) : 'Pick a date';
+                      }}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {serviceDays.map((d) => (

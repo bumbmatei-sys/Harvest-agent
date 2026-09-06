@@ -995,7 +995,15 @@ describe("the admin shell's container is unchanged", () => {
       'analytics', 'createCourses', 'fullAccess', 'fullAccess',
       'manageAccounting', 'manageAccounting', 'manageAdmins', 'manageAffiliate',
       'manageBranding', 'manageCRM', 'manageCheckin', 'manageCheckin',
-      'manageCommunity', 'manageDocs', 'manageEvents', 'manageForms',
+      // 🔴 `manageEvents` TWICE SINCE THE-326, and that is the assertion, not a
+      // relaxation of it. Service planning became its own nav entry and it
+      // REPEATS Events' existing permission rather than introducing one: the run
+      // sheet, the rota and the invitations were reachable through Events and
+      // nothing else, and `servicePlans`, `rotaInvitations` and the invite API
+      // all check `manageEvents` server-side. A NEW name appearing in this list
+      // would be a roles-matrix row no rule enforces — which is exactly what
+      // this multiset exists to catch.
+      'manageCommunity', 'manageDocs', 'manageEvents', 'manageEvents', 'manageForms',
       'manageFundraising', 'manageGivingStatements', 'manageGivingStatements',
       'manageLivestream', 'manageNewsletter', 'manageQR', 'manageQR',
       'manageSettings', 'manageSms', 'modifyChurches', 'uploadRag',

@@ -578,6 +578,12 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ byte-identical', ()
     '722c5e4478be0a8508e7dff1232dd4c1f88cacdd502604f946f3134eb730d98c',
     // main at 133d557 — THE-291 (#434) removed the client-side write to plan.
     '446f0bcb8ffa6accf4f80467b75a50023c1441937605b11e18aa01b53d8e53f8',
+    // 🔴 main + THE-326 — service planning split out of Events into its own
+    // `services` section, which adds the nav entry, the render-switch arm and
+    // two imports to this file. APPENDED, never substituted: both values above
+    // stay accepted, and a digest that is none of the three still fails, so an
+    // edit FROM THIS TICKET is caught exactly as before.
+    '69f7efceccd7b8381e5ceb114642f8b4634e73df1278bb082e678a1a0cb634f9',
   ];
 
   it('🔴 AdminDashboard.tsx — not opened by this ticket', () => {

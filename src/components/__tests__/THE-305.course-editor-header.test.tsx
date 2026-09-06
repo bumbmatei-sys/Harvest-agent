@@ -618,14 +618,51 @@ const RULES_ACCEPTED = [
 const rulesDigest = (): string =>
   createHash('sha256').update(readFileSync(path.join(ROOT, 'firestore.rules'))).digest('hex');
 
+/**
+ * ⚠️ AMENDED BY THE-326 — AdminDashboard.tsx IS PINNED BY DIGEST HERE, NOT BY
+ * `changedSince`, AND THAT IS A STRENGTHENING RATHER THAN A RELAXATION.
+ *
+ * 🔴 `changedSince` ASKS WHAT THE CURRENT BRANCH CHANGED. That is the guard
+ * shape this repo has been removing on sight — `THE-315.branch-diff-guards`
+ * sweeps for it and #454 is the standing pass — because it is true only while
+ * its own ticket is unmerged, and it goes red on the NEXT PR for a reason that
+ * has nothing to do with that PR. `AdminDashboard.tsx` is the file it fails on
+ * most, because it is the nav: THE-277, THE-291 and now THE-326 have all had
+ * legitimate business there, and each one turned this assertion red for work it
+ * was never written to detect.
+ *
+ * So the shell moves to the SAME accepted-digest set the rest of the repo
+ * already pins it with (`the-276`, `the-283`, `the-290`, `the-294`, `the-299`,
+ * `the-302`, `THE-292.country-prompt`, `AdminDocs.persistent-tree`). 🔴 The
+ * claim THE-305 makes is unchanged and still strict: a digest that is neither
+ * accepted value still fails, so an edit FROM THIS TICKET is caught exactly as
+ * before — and it no longer depends on a base revision a depth-1 clone may not
+ * have.
+ *
+ * ⚠️ `layout.tsx` and `functions/` stay on `changedSince`: no ticket in flight
+ * touches either, so neither has the drift problem the shell has, and this
+ * ticket is not the place to rewrite guards that are not failing.
+ */
+const ADMIN_DASHBOARD_ACCEPTED = [
+  // main at 133d557 — THE-291 (#434) removed the client-side plan write.
+  '446f0bcb8ffa6accf4f80467b75a50023c1441937605b11e18aa01b53d8e53f8',
+  // main + THE-326 — service planning split out of Events into its own section.
+  '69f7efceccd7b8381e5ceb114642f8b4634e73df1278bb082e678a1a0cb634f9',
+];
+
 describe('the files this ticket must not open are byte-identical', () => {
-  it('leaves the shell, the layout and the functions alone', () => {
+  it('leaves the shell alone — pinned by digest, not by this branch\'s diff', () => {
+    const actual = createHash('sha256')
+      .update(readFileSync(path.join(ROOT, 'src/components/AdminDashboard.tsx'))).digest('hex');
     expect(
-      changedSince(
-        'src/components/AdminDashboard.tsx',
-        'src/app/layout.tsx',
-        'functions/',
-      ),
+      ADMIN_DASHBOARD_ACCEPTED,
+      `AdminDashboard.tsx is at ${actual}, which is neither accepted value — so THIS ticket edited it`,
+    ).toContain(actual);
+  });
+
+  it('leaves the layout and the functions alone', () => {
+    expect(
+      changedSince('src/app/layout.tsx', 'functions/'),
       'a file outside this ticket was modified',
     ).toEqual([]);
   });

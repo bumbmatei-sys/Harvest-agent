@@ -131,6 +131,7 @@ vi.mock('../NewsletterCampaigns', screenStub('NewsletterCampaigns'));
 vi.mock('../AdminFundraising', screenStub('AdminFundraising'));
 vi.mock('../AdminDocs', screenStub('AdminDocs'));
 vi.mock('../AdminEvents', screenStub('AdminEvents'));
+vi.mock('../AdminServices', screenStub('AdminServices'));
 vi.mock('../AdminCRM', screenStub('AdminCRM'));
 vi.mock('../AdminAccounting', screenStub('AdminAccounting'));
 vi.mock('../AdminForms', screenStub('AdminForms'));
@@ -187,6 +188,13 @@ const GATED_TABS: Row[] = [
   { label: 'Fundraising', section: 'fundraising', screen: 'AdminFundraising', entitled: (f) => f.fundraising },
   { label: 'Notes', section: 'docs', screen: 'AdminDocs', entitled: (f) => f.docs },
   { label: 'Events', section: 'events', screen: 'AdminEvents', entitled: (f) => f.eventRegistration },
+  // THE-326 — service planning, split out of Events into its own section. It
+  // takes the SAME plan cell, `eventRegistration`, for the same reason Signups
+  // takes `crm`: the run sheet, the rota and the invitations were reachable
+  // through the Events screen and through nothing else, so that cell is already
+  // the only expression of who gets this feature. Repeating it means the split
+  // changes WHERE the work is done and not WHO may do it.
+  { label: 'Services', section: 'services', screen: 'AdminServices', entitled: (f) => f.eventRegistration },
   { label: 'CRM', section: 'crm', screen: 'AdminCRM', entitled: (f) => f.crm },
   // THE-277 — Signups was the CRM screen's Analytics sub-tab and is now its
   // own page. It takes the SAME plan cell, `crm`: there is no `analytics`
@@ -257,7 +265,7 @@ const flush = async () => {
 
 const ALL_TAB_LABELS = [
   'Dashboard', 'Church', 'Church List', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
-  'Fundraising', 'Donations', 'Events', 'Notes', 'CRM', 'Signups', 'Accounting', 'Forms', 'Check-In', 'Livestream',
+  'Fundraising', 'Donations', 'Events', 'Services', 'Notes', 'CRM', 'Signups', 'Accounting', 'Forms', 'Check-In', 'Livestream',
   'SMS', 'Community', 'Library', 'Tenants', 'Affiliate', 'Branding', 'Settings',
 ];
 function navLabels(): string[] {
@@ -366,8 +374,13 @@ describe("an Individual tenant's admin nav is exactly the seven correct items", 
     // Check-In is absent from this list by design — see UNGATED_TABS above.
     // 🔴 'SMS' JOINED THIS LIST — THE-314. Individual used to reach the SMS
     // screen; it now meets the upgrade wall there, naming Ministry.
+    // 🔴 'Services' JOINED IT — THE-326, and it is the SAME wall 'Events'
+    // already had. Service planning was split out of the Events screen onto the
+    // same `eventRegistration` cell, so a tier that met the wall on Events now
+    // meets it on Services too. ⚠️ Nothing Individual could reach before became
+    // unreachable: the run sheet was behind Events, which was already walled.
     expect(walled.sort()).toEqual(
-      ['AI Knowledge', 'Accounting', 'Community', 'Events', 'Forms', 'Livestream', 'Newsletter', 'Notes', 'SMS'],
+      ['AI Knowledge', 'Accounting', 'Community', 'Events', 'Forms', 'Livestream', 'Newsletter', 'Notes', 'SMS', 'Services'].sort(),
     );
   });
 

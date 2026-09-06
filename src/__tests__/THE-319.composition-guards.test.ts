@@ -653,19 +653,46 @@ describe('the tap-target rule is intact and this ticket added no control', () =>
  *
  * ⚠️ Recorded by CONTENT, never by asking git what this branch changed.
  */
-const NOT_OURS = recordedFiles();
+/**
+ * 🔴 THE FOUR FILES THIS TICKET DOES NOT OWN, NAMED — not "whatever the register
+ * currently contains".
+ *
+ * ⚠️ AMENDED BY THE-326, AND THIS IS A BUG FIX IN THE GUARD RATHER THAN A
+ * RELAXATION. This was `recordedFiles()`, the whole union, asserted to EQUAL
+ * THE-319's four and the union to hold exactly seven entries. That was true for
+ * exactly one PR — the migration's — and from the next ticket onward it says the
+ * opposite of what `ownership-register.ts` was built for: "A new ticket adds
+ * `__fixtures__/ownership/THE-nnn.json` and edits nothing that already exists."
+ * As written it failed on any ticket recording any file, which is a guard that
+ * blocks every unrelated PR — the shape #454 sweeps for.
+ *
+ * 🔴 THE CLAIM IS NOT WEAKENED, IT IS AIMED. What THE-319 must prove is that
+ * ITS four files are still recorded and still unedited by it. Both halves are
+ * below, and both are stricter for being named: a file dropped from the register
+ * now fails on the name rather than on a count, and `ownershipFailure` still
+ * fails on any digest the union does not accept — including a deleted record,
+ * which cannot pass as an exemption.
+ */
+const NOT_OURS = [
+  'src/components/AdminSms.tsx',
+  'src/components/events/ServicePlanPanel.tsx',
+  'src/components/events/ServicePlanRow.tsx',
+  'src/components/settings/SmsSection.tsx',
+];
 
 describe('the four files this ticket does not own are byte-identical', () => {
-  /** 🔴 The set did not shrink in the move. THE-319 recorded four files and
-   *  they are still the four the union names. */
-  it('the register still names the four files, and still holds every entry', () => {
-    expect(NOT_OURS).toEqual([
-      'src/components/AdminSms.tsx',
-      'src/components/events/ServicePlanPanel.tsx',
-      'src/components/events/ServicePlanRow.tsx',
-      'src/components/settings/SmsSection.tsx',
-    ]);
-    expect(loadOwnership()).toHaveLength(7);
+  /** 🔴 The set did not shrink in the move, nor since: THE-319 recorded four
+   *  files and the union still names every one of them. */
+  it('the register still names all four of THE-319\'s files', () => {
+    const recorded = recordedFiles();
+    for (const file of NOT_OURS) {
+      expect(recorded, `${file} is recorded by no ticket — a deleted record is not an exemption`)
+        .toContain(file);
+    }
+    // And THE-319's own seven migrated entries are all still in the union.
+    const mine = loadOwnership().filter((e) => NOT_OURS.includes(e.file));
+    expect(mine.length, 'an accepted digest for one of THE-319\'s files was dropped')
+      .toBeGreaterThanOrEqual(7);
   });
 
   it.each(NOT_OURS)('%s carries no edit from THE-319', (file) => {

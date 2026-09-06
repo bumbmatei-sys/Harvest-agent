@@ -615,19 +615,47 @@ describe('the existing events list, its write paths and paid-event creation are 
    * (`the-308-guards.test.ts` asserts it), so the ratio moved the right way a
    * second time — which is the only direction this guard was ever about.
    */
+  /**
+   * 🔴 AMENDED BY THE-326: 211 → 209, AND THE TWO THAT WENT ARE NAMED.
+   *
+   * That ticket moves service planning out of this screen into its own section.
+   * Two classNames leave `AdminEvents.tsx` with it:
+   *
+   *   1. the `'rota'` view's `FORM_CONTAINER` wrapper, and
+   *   2. the "Volunteer rota" button on the list screen that reached it.
+   *
+   * ⚠️ THE INLINE-STYLE COUNT IS STILL 7 — THE-326 removes no inline style and
+   * adds none, so the ratio moved in the direction this guard has always been
+   * about. A count that is not exactly 209 means something else moved too.
+   */
   it('keeps its className-to-inline-style ratio exactly', () => {
     const src = EVENTS();
-    expect((src.match(/className/g) || []).length, 'className count moved').toBe(211);
+    expect((src.match(/className/g) || []).length, 'className count moved').toBe(209);
     expect((src.match(/style=\{\{/g) || []).length, 'an inline style was added').toBe(7);
   });
 
-  it('and the edit is the import plus the one element, nothing else', () => {
+  /**
+   * 🔴 INVERTED BY THE-326, NOT DELETED — AND THIS IS THE POINT OF THAT TICKET.
+   *
+   * THE-313 mounted `ServicePlanPanel` inside the event DETAIL screen, which is
+   * the defect the founder reported: "you put church service planning under the
+   * events INSTEAD OF CREATING A DEDICATED SECTION". The run sheet now lives in
+   * `AdminServices.tsx`, so this file must no longer mount it at all.
+   *
+   * ⚠️ What THE-313 actually owns is UNCHANGED and still asserted, one describe
+   * up: the plan's shape, its arithmetic and its collection. This assertion was
+   * only ever about WHERE the panel hangs, and the answer moved.
+   *
+   * ✅ The two negative claims below are THE-313's own and survive verbatim: the
+   * events screen still does not import the plan's data layer and still does not
+   * name its collection. That was true when the panel hung here and is more true
+   * now that it does not.
+   */
+  it('no longer mounts the run sheet — THE-326 moved it to its own section', () => {
     const code = codeOf(EDITED);
-    expect(code).toContain("import ServicePlanPanel from './events/ServicePlanPanel';");
-    expect((code.match(/<ServicePlanPanel/g) || []).length).toBe(1);
-    // It is handed the event's id and start, and reads nothing back.
-    expect(code).toContain('eventId={selected.id}');
-    expect(code).toContain('startsAt={selected.startDate ? selected.startDate.toDate() : null}');
+    expect(code, 'the run sheet is back inside the event detail screen')
+      .not.toContain("import ServicePlanPanel from './events/ServicePlanPanel';");
+    expect((code.match(/<ServicePlanPanel/g) || []).length).toBe(0);
     // 🔴 It does not import the plan's data layer — the panel owns that.
     expect(code).not.toContain('useServicePlanQueries');
     expect(code).not.toContain('servicePlans');

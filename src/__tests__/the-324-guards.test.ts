@@ -274,8 +274,36 @@ describe('11 — parts 1 and 2\'s persisted data are unchanged', () => {
   const PART_TWO = {
     'src/components/events/volunteer-rota.ts':
       'cdfd2f0f0ef83ccc9d565bcf0afb7c3c86f48bfcb3492c62d82e27ee5c0d495a',
-    'src/components/events/VolunteerRotaView.tsx':
+    /**
+     * ⚠️ A SET FOR THIS ONE FILE — APPENDED BY THE-326, NEVER SUBSTITUTED. The
+     * value #458 recorded is still accepted and still first; THE-326's is an
+     * ADDITIONAL accepted value, and a digest that is neither still fails.
+     *
+     * 🔴 WHAT THIS PIN IS ABOUT IS UNTOUCHED. These digests exist so a part-3
+     * PR cannot migrate a shipped PERSISTED SHAPE while nobody is looking.
+     * `VolunteerRotaView.tsx` PERSISTS NOTHING — it takes plain props and calls
+     * `onAssign`; the shapes are `service-plan.ts`, `volunteer-rota.ts` and the
+     * two query modules, and all four are byte-identical at the digests beside
+     * this one. THE-326 changes this file in exactly two presentational ways,
+     * both of them defects a church could see:
+     *
+     *   1. THE TAB LABELS OVERLAPPED. "Not served recently" needed 115px of
+     *      `scrollWidth` inside a 91px `clientWidth`, `nowrap` and
+     *      `overflow: visible`, so it painted over its neighbour at all five
+     *      widths. `min-w-[44px]` on the triggers had overridden the flex
+     *      `min-width: auto` content floor; it is gone and the list is `w-full`.
+     *   2. THE DATE SELECTOR PRINTED A RAW EPOCH — `1788513540000` — because
+     *      `Select.Value` with no children renders the VALUE. It now formats
+     *      through `fmtDay`, the same function its options already used.
+     *
+     * ✅ No prop, no call, no write and no query moved. The behaviour suite
+     * `THE-317.volunteer-rota.test.tsx` passes unchanged, which is the readable
+     * half of this claim.
+     */
+    'src/components/events/VolunteerRotaView.tsx': [
       'f9c09f29838dab990414d1bdeae090e6d0ccf03a2cd7641d5a1b570cb4c4a71c',
+      '48878102c7387d15fa930220751588c5c36ddc4ee6918607c005bc8ea05a6258',
+    ],
     'src/components/events/VolunteerRotaPanel.tsx':
       '1430250c9653eccd7227f8340413e1312f60014eb8d67c617bcdb2a9ba6d7dff',
     'src/hooks/queries/useVolunteerRotaQueries.ts':
@@ -287,7 +315,14 @@ describe('11 — parts 1 and 2\'s persisted data are unchanged', () => {
   });
 
   it.each(Object.entries(PART_TWO))('%s is byte-identical (part 2, #458)', (file, digest) => {
-    expect(sha256(read(file)), `${file} moved — part 2's shape is pinned`).toBe(digest);
+    // ⚠️ One entry is a SET (see VolunteerRotaView above); the rest are single
+    // literals. Both are strict — an unrecorded digest fails either way.
+    const accepted = Array.isArray(digest) ? digest : [digest as string];
+    const actual = sha256(read(file));
+    expect(
+      accepted,
+      `${file} is at ${actual} — part 2's shape is pinned and this is no accepted value`,
+    ).toContain(actual);
   });
 
   it('🔴 the item shape STILL has exactly the seven fields, and part 3 adds none', () => {

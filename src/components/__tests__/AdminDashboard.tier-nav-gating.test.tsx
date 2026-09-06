@@ -130,6 +130,7 @@ vi.mock('../NewsletterCampaigns', screenStub('NewsletterCampaigns'));
 vi.mock('../AdminFundraising', screenStub('AdminFundraising'));
 vi.mock('../AdminDocs', screenStub('AdminDocs'));
 vi.mock('../AdminEvents', screenStub('AdminEvents'));
+vi.mock('../AdminServices', screenStub('AdminServices'));
 vi.mock('../AdminCRM', screenStub('AdminCRM'));
 vi.mock('../AdminAccounting', screenStub('AdminAccounting'));
 vi.mock('../AdminForms', screenStub('AdminForms'));
@@ -200,6 +201,10 @@ const TABS: Tab[] = [
   { label: 'Newsletter', section: 'newsletter', cell: (f) => f.newsletterAutomation },
   { label: 'Fundraising', section: 'fundraising', cell: (f) => f.fundraising },
   { label: 'Events', section: 'events', cell: (f) => f.eventRegistration },
+  // THE-326 — service planning as its own section, on Events' own cell: it was
+  // reachable through Events and nothing else, so repeating `eventRegistration`
+  // keeps every tier's reach exactly as it was.
+  { label: 'Services', section: 'services', cell: (f) => f.eventRegistration },
   { label: 'Notes', section: 'docs', cell: (f) => f.docs },
   { label: 'CRM', section: 'crm', cell: (f) => f.crm },
   // THE-277 — the Analytics sub-tab, promoted to its own page on the same
@@ -256,7 +261,7 @@ const flush = async () => {
 
 const ALL_TAB_LABELS = [
   'Dashboard', 'Church', 'Church List', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
-  'Fundraising', 'Events', 'Notes', 'CRM', 'Signups', 'Accounting', 'Forms', 'Check-In', 'Livestream',
+  'Fundraising', 'Events', 'Services', 'Notes', 'CRM', 'Signups', 'Accounting', 'Forms', 'Check-In', 'Livestream',
   'SMS', 'Community', 'Library', 'Tenants', 'Affiliate', 'Branding',
 ];
 function navLabels(): string[] {
@@ -336,8 +341,8 @@ afterEach(async () => {
 });
 
 // ── 1 ────────────────────────────────────────────────────────────────────────
-describe('1 — a free tenant sees all seventeen nav items', () => {
-  it('a free tenant sees all seventeen nav items', async () => {
+describe('1 — a free tenant sees all eighteen nav items', () => {
+  it('a free tenant sees all eighteen nav items', async () => {
     const { nav } = await navFor('free');
 
     // 🔴 THE POINT OF THE TIER. Named individually, not counted, so a nav that
@@ -348,7 +353,10 @@ describe('1 — a free tenant sees all seventeen nav items', () => {
     }
     // ⚠️ Seventeen since THE-277: Signups split out of the CRM screen, taking
     // the same `crm` cell with it, so every tier that had CRM gained a row.
-    expect(nav.length, 'the free nav is exactly the seventeen').toBe(17);
+    // ⚠️ EIGHTEEN since THE-326, and by the SAME mechanism: Services split out
+    // of the Events screen, taking the same `eventRegistration` cell with it, so
+    // every tier that had Events gained a row and no tier's reach changed.
+    expect(nav.length, 'the free nav is exactly the eighteen').toBe(18);
     expect(nav).toEqual(expectedNav('free'));
 
     // And it is genuinely the see-everything case: free's own cells unlock only
@@ -526,7 +534,10 @@ describe('4 — a Ministry tenant sees exactly its expected set', () => {
       expect(nav, `Ministry lost "${tab.label}"`).toContain(tab.label);
     }
     expect(nav).toContain('Branding');
-    expect(nav.length, 'Ministry shows the sixteen plus Branding').toBe(17);
+    // ⚠️ SEVENTEEN PLUS BRANDING SINCE THE-326 — Services joined the set on the
+    // `eventRegistration` cell Ministry already holds, so the tier gained the
+    // row it was always entitled to and lost nothing.
+    expect(nav.length, 'Ministry shows the seventeen plus Branding').toBe(18);
     expect(nav).toEqual(expectedNav('max'));
   });
 
@@ -616,7 +627,10 @@ describe('7 — a hidden tab still refuses when reached by URL', () => {
     const f = getPlanFeatures('plus');
     const hidden = TABS.filter((t) => t.cell !== null && !t.cell(f));
     // 🔴 NINE SINCE THE-314, not eight: `smsAutomation` went false on plus.
-    expect(hidden.length, 'nothing is hidden from Individual — the gate did not apply').toBe(9);
+    // 🔴 TEN SINCE THE-326: Services carries Events' own `eventRegistration`
+    // cell, which is already false on plus, so the split added one more hidden
+    // tab and changed nothing about what plus can reach.
+    expect(hidden.length, 'nothing is hidden from Individual — the gate did not apply').toBe(10);
 
     for (const tab of hidden) {
       const { screen, wall } = await navFor('plus', {}, tab.section);
@@ -706,12 +720,19 @@ describe('9 — the nav is derived from one tab array, not two', () => {
   });
 
   it('every gated entry states its plan clause through the one helper', () => {
-    // 14 nav clauses — one per gated tab. Check-In, Church and Dashboard carry
+    // 15 nav clauses — one per gated tab. Check-In, Church and Dashboard carry
     // none, deliberately, and `canBranding` predates this family.
+    //
+    // ⚠️ 14 → 15 IS THE-326's SERVICES ENTRY AND NOTHING ELSE. Service planning
+    // was split out of Events into its own section, and its nav clause repeats
+    // Events' own — `navAllows(features?.eventRegistration) && (hasFullAccess ||
+    // perms.manageEvents)` — so the count moves by exactly one gated tab while
+    // no tier's reach changes. The equality above is the real assertion; this
+    // literal is the tripwire that makes an UNEXPLAINED fifteenth fail here.
     const navGates = (CODE.match(/navAllows\(/g) ?? []).length;
     const gatedTabs = TABS.filter((t) => t.cell !== null).length;
     expect(navGates, 'a nav entry gained or lost its plan clause').toBe(gatedTabs);
-    expect(gatedTabs).toBe(14);
+    expect(gatedTabs).toBe(15);
   });
 
   it('leaves Check-In and Church without a plan clause, which is the recorded decision', () => {
