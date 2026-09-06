@@ -39,13 +39,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
  */
 const EventMonthView = React.lazy(() => import('./events/EventMonthView'));
 import { useMonthEvents } from '../hooks/queries/useMonthEvents';
-import ServicePlanPanel from './events/ServicePlanPanel';
-import VolunteerRotaPanel from './events/VolunteerRotaPanel';
-import RotaInvitePanel from './events/RotaInvitePanel';
 
 import type { Event, Registration, TicketType, DiscountCode } from '../hooks/queries/useEventQueries';
 
-type ViewMode = 'list' | 'create' | 'edit' | 'detail' | 'rota';
+/**
+ * 🔴 THE-326 — NO `'rota'`. Service planning is its own section now
+ * (`AdminServices`), and this union is what the ticket's second test reads: a
+ * `'rota'` back in here is a service-planning screen back inside Events.
+ * Events is the list, the month view, create/edit/detail and registrations —
+ * the public-facing event product, and nothing else.
+ */
+type ViewMode = 'list' | 'create' | 'edit' | 'detail';
 
 /** Client-side id generator (uuid is not a dependency). */
 const genId = () => Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
@@ -162,11 +166,6 @@ const AdminEvents: React.FC = () => {
     } else if (view === 'detail' && selected) {
       setHeaderOverride({
         title: selected.title || 'Event',
-        onBack: () => { setView('list'); setSelected(null); },
-      });
-    } else if (view === 'rota') {
-      setHeaderOverride({
-        title: 'Volunteer rota',
         onBack: () => { setView('list'); setSelected(null); },
       });
     } else {
@@ -707,17 +706,15 @@ const AdminEvents: React.FC = () => {
           </div>
         </div>
 
-        {/* THE-313 — the order of service. Its own component and its own
-            collection (`tenants/{t}/servicePlans`); this screen hands it the
-            event's id and START TIME and reads nothing back. A plan carries no
-            start of its own, so every clock time on the run sheet derives from
-            this one value plus the durations above it. */}
-        <ServicePlanPanel
-          tenantId={tenantId}
-          eventId={selected.id}
-          eventTitle={selected.title}
-          startsAt={selected.startDate ? selected.startDate.toDate() : null}
-        />
+        {/* 🔴 THE-326 — THE RUN SHEET IS NOT MOUNTED HERE ANY MORE.
+            It was `ServicePlanPanel`, two clicks deep behind an event, which is
+            the defect this ticket fixes: planning a Sunday service is a weekly
+            rhythm with a rota and volunteers hanging off it, not a panel on an
+            event's detail page. It lives in the Service planning section
+            (`AdminServices`), which reads the same `servicePlans` documents
+            against the same `eventId` — the data did not move, only the door.
+            ⚠️ The plan is still keyed to THIS event; see `AdminServices`'s
+            header for why that is a contract and not a convenience. */}
 
         {/* Registration panel — only for registration-enabled events */}
         {selected.registrationEnabled && (
@@ -833,20 +830,6 @@ const AdminEvents: React.FC = () => {
   // THE-317 — the volunteer rota. Its own screen inside this tab rather than a
   // new nav entry: the rota is the events' own assignments seen across dates,
   // and the tier/tab matrix is generated from the real nav array.
-  if (view === 'rota') {
-    return (
-      <div className={`w-full ${FORM_CONTAINER} space-y-6`}>
-        {/* THE-324 — invite, accept, remind. On the SAME screen as the rota
-            rather than in a nav entry of its own: an unfilled slot and the
-            invitation that would fill it are one question, and the tier/tab
-            matrix is generated from the real nav array, so a new entry would be
-            a plan-matrix change this ticket has no business making. */}
-        <RotaInvitePanel tenantId={tenantId} />
-        <VolunteerRotaPanel tenantId={tenantId} />
-      </div>
-    );
-  }
-
   // ── List View ──
   const calendarUrl = `https://${tenantId}.theharvest.app/calendar`;
   const copyCalendarUrl = async () => {
@@ -859,9 +842,6 @@ const AdminEvents: React.FC = () => {
         title={`${events.length} event${events.length === 1 ? '' : 's'}`}
         action={<AdminPrimaryButton onClick={() => { setSelected(null); setForm(emptyForm); setView('create'); }} icon={<span className="text-[15px] leading-none">+</span>}>Create event</AdminPrimaryButton>}
       />
-      <button onClick={() => setView('rota')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-line text-muted hover:bg-surface-sunken min-h-[44px] sm:min-h-0">
-        <CalendarCheck size={13} /> Volunteer rota
-      </button>
       {events.length > 0 && tenantId && (
         <div className="flex items-center gap-2 bg-surface-sunken border border-line rounded-brand-lg px-3 py-2.5 text-xs">
           <span className="text-faint shrink-0">Public calendar:</span>

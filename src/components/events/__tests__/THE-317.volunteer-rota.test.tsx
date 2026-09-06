@@ -684,7 +684,15 @@ describe('the volunteer side is read-only', () => {
     }
   });
 
-  it('the rota is mounted by exactly one screen, and it is the admin events screen', () => {
+  /**
+   * ⚠️ AMENDED BY THE-326 — ONE SCREEN STILL, AND IT IS NOW THE SERVICES SCREEN.
+   *
+   * Service planning was split out of Events into its own section, so the panel
+   * hangs off `AdminServices.tsx`. 🔴 THE CLAIM IS NOT WEAKENED: "exactly one
+   * screen" is the whole assertion and it still holds — a second mount, on the
+   * events screen or anywhere else, still fails here.
+   */
+  it('the rota is mounted by exactly one screen, and it is the services screen (THE-326)', () => {
     const walkFrom = path.join(REPO_ROOT, 'src');
     const walk = (dir: string): string[] =>
       readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -698,7 +706,7 @@ describe('the volunteer side is read-only', () => {
       return /VolunteerRotaPanel/.test(readFileSync(f, 'utf8'));
     });
     expect(mounts.map((f) => path.relative(REPO_ROOT, f).split(path.sep).join('/')))
-      .toEqual(['src/components/AdminEvents.tsx']);
+      .toEqual(['src/components/AdminServices.tsx']);
   });
 
   it('and the view has no accept, decline, invite or swap control — part 3 owns those', () => {

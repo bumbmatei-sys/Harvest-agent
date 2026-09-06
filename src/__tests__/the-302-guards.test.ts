@@ -64,6 +64,21 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     ['0d84be6d9b8a73fdfcddb4d1178b6a62ad8e74a1461553645fdd2558e2d7c4e7', 'main at 5e06c67'],
     ['722c5e4478be0a8508e7dff1232dd4c1f88cacdd502604f946f3134eb730d98c', 'main at d13c7d4 — THE-277 (#422) added the Signups nav entry'],
     ['446f0bcb8ffa6accf4f80467b75a50023c1441937605b11e18aa01b53d8e53f8', 'main at 915d818 — THE-291 (#434) removed the client-side plan write'],
+    // 🔴 THE-326 — the Services nav entry. APPENDED, NEVER SUBSTITUTED: every
+    // value above is still accepted, because CI runs against `refs/pull/N/merge`
+    // and a merge ref cut before this ticket landed legitimately carries one of
+    // them. A digest that is NEITHER — i.e. THIS slice editing the file — still
+    // fails, which is the whole threat this guard exists for.
+    //
+    // ⚠️ THIS SLICE'S OWN CLAIM IS UNCHANGED: it does not edit AdminDashboard.
+    // THE-326 does, and it must — the nav lives there and the ticket is "service
+    // planning is buried inside Events, split it out". What it adds is the
+    // `services` entry in `allTabs`, the same id in the MINISTRY group of BOTH
+    // nav arrays, one arm on the render switch, and two imports. It introduces
+    // no permission: the entry repeats Events' own
+    // `navAllows(features?.eventRegistration) && (hasFullAccess ||
+    // perms.manageEvents)`, so no tier's and no role's reach changes.
+    ['69f7efceccd7b8381e5ceb114642f8b4634e73df1278bb082e678a1a0cb634f9', 'main + THE-326 — service planning split out of Events into its own section'],
   ],
   // 🔴 A NAMED STOP CONDITION on this ticket: "do not touch `runDodoPlanChange`
   // or `plan-change.ts` unless the fix genuinely requires it". It did not — part

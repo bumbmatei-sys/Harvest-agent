@@ -800,6 +800,12 @@ describe('the layout rules live in one shared place and have a caller', () => {
       'src/components/AdminGivingStatements.tsx',
       'src/components/AdminRAG.tsx',
       'src/components/AdminRoles.tsx',
+      // THE-326 — the Service planning screen, split out of Events into its own
+      // section. Opted in deliberately and for Events' own reason: it is an
+      // admin screen made of a page header, a picker and three panels, so it
+      // spends Rule 1a's container and the shared control density rather than
+      // inventing a width or a height of its own.
+      'src/components/AdminServices.tsx',
       'src/components/AdminSettings.tsx',
       'src/components/AdminSignups.tsx',
       'src/components/AdminSms.tsx',

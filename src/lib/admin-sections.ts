@@ -68,6 +68,10 @@ const ADMIN_SECTION_TABLE = [
   ['fundraising', 'fundraising'],
   ['donations', 'donations'],
   ['events', 'events'],
+  // THE-326 — service planning as its own section: the order of service, the
+  // volunteer rota and the invitations, which used to be reachable only from
+  // inside an event. A FEATURE NAME, like every other row here.
+  ['services', 'services'],
   ['docs', 'docs'],
   ['crm', 'crm'],
   ['signups', 'signups'],

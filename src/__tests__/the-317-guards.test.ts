@@ -41,6 +41,17 @@ const ADDED = [
 /** The one screen it edits. */
 const EDITED = 'src/components/AdminEvents.tsx';
 
+/**
+ * 🔴 THE-326 — THE SCREEN THAT MOUNTS THE ROTA IS NO LONGER THE EVENTS SCREEN.
+ *
+ * Service planning became its own section, so `VolunteerRotaPanel` now hangs off
+ * `AdminServices.tsx`. ⚠️ THE-317's CLAIM IS UNCHANGED AND IS NOT WEAKENED: the
+ * rota must still be mounted by EXACTLY ONE screen, and this constant is which
+ * one. A second mount anywhere still fails, which is the whole of what the
+ * assertion below was ever protecting.
+ */
+const MOUNTED_BY = 'src/components/AdminServices.tsx';
+
 const walk = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
     const p = path.join(dir, e.name);
@@ -697,6 +708,6 @@ describe('a rota spanning several weeks costs three reads, and does not grow wit
       if (rel(f).startsWith('src/components/events/VolunteerRota')) return false;
       return /VolunteerRotaPanel|VolunteerRotaView/.test(readFileSync(f, 'utf8'));
     });
-    expect(mounts.map(rel)).toEqual([EDITED]);
+    expect(mounts.map(rel)).toEqual([MOUNTED_BY]);
   });
 });

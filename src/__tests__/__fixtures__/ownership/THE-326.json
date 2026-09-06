@@ -1,0 +1,22 @@
+{
+  "ticket": "THE-326",
+  "recordedIn": "THE-326",
+  "note": "Service planning split out of Events into its own section. THE-326 OWNS the three files below and this is the state it leaves them in; every other file it touches is pinned by an accepted-digest SET in the guard that already pinned it, appended and never substituted.",
+  "entries": [
+    {
+      "file": "src/components/AdminServices.tsx",
+      "digest": "b510d3ae2f266736491bec3a97a6f86d104283ee4d3601ed974ed85508e1dffc",
+      "why": "NEW IN THIS TICKET — the dedicated Service planning section the founder asked for, holding the order of service, the volunteer rota and the invitations. Recorded so a later ticket that edits it fails in ITS OWN PR rather than silently inheriting THE-326's shape. It mounts ServicePlanPanel, VolunteerRotaPanel and RotaInvitePanel and adds one thing of its own: the picker that says WHICH dated service the run sheet is for, which the event detail screen used to supply implicitly."
+    },
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "edf9088a9c7aff6b3f5d672207cab0f50c1e1428490b1bee61685f55313dc508",
+      "why": "THE-326 REMOVES service planning from this screen and adds nothing to it: the ServicePlanPanel mount, the whole 'rota' view with both its panels, the 'Volunteer rota' button, the 'rota' arm of the header-override effect, three imports and 'rota' from the ViewMode union. Events keeps the list, the month view, create/edit/detail and registrations — the public-facing event product. Recorded here as the state this ticket leaves the file in; THE-308's month view and THE-313's write paths are unchanged and are pinned separately by region digest in the-308-guards.test.ts."
+    },
+    {
+      "file": "src/components/events/VolunteerRotaView.tsx",
+      "digest": "48878102c7387d15fa930220751588c5c36ddc4ee6918607c005bc8ea05a6258",
+      "why": "Two visible defects fixed, both measured in Chromium and neither of them a shape change. First, the tab labels overlapped: 'Not served recently' needed 115px of scrollWidth inside a 91px clientWidth with nowrap and overflow visible, because min-w-[44px] on the triggers overrode the flex min-width:auto content floor; the class is gone and the list is w-full. Second, the date selector rendered the raw epoch 1788513540000, because Select.Value with no children prints the VALUE; it now formats through fmtDay, the same function its own options already used. No prop, call, write or query moved."
+    }
+  ]
+}

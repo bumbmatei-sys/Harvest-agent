@@ -930,7 +930,38 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ are byte-identical'
    * fail for someone else's work rather than for a regression, which is the one
    * thing a guard must not do.
    */
-  const ADMIN_DASHBOARD = '446f0bcb8ffa6accf4f80467b75a50023c1441937605b11e18aa01b53d8e53f8';
+  /**
+   * ⚠️ AMENDED BY THE-326 — A SET, AND THE OLD VALUE IS STILL IN IT.
+   *
+   * 🔴 APPENDED, NEVER SUBSTITUTED. THE-291's digest below is exactly where it
+   * was; THE-326's is an ADDITIONAL accepted value. `main` went red for everyone
+   * once because a PR replaced a pinned digest, so replacing this one was not an
+   * option — and stopping was not either, because the entry a set already solves
+   * is the entry this ticket needs.
+   *
+   * ⚠️ THIS IS THE SHAPE THE REST OF THE REPO ALREADY USES for a file another
+   * ticket legitimately owns — `the-276`, `the-283`, `the-290`, `the-294`,
+   * `the-299`, `the-302` and `THE-292.country-prompt` all pin AdminDashboard as
+   * a set of accepted values, for the reason `the-276` states in full: CI runs
+   * against `refs/pull/N/merge`, so the file legitimately holds different values
+   * on different merge refs.
+   *
+   * 🔴 AND IT IS NOT A LOOSENING. The claim this suite makes is "AdminDocs did
+   * not edit the shell", and it still fails on any digest that is neither of
+   * these two. What changed is only that somebody else's landed work no longer
+   * counts as this ticket's edit. The AdminDocs mount assertion below — the one
+   * that says WHAT must stay true of the shell — is untouched.
+   *
+   * THE-326 adds the `services` nav entry, its render-switch arm and two
+   * imports: service planning is its own section now. It touches nothing about
+   * Notes, and the mount assertion below proves that independently.
+   */
+  const ADMIN_DASHBOARD_DIGESTS = [
+    // main at 133d557 — THE-291 (#434) removed the client-side plan write.
+    '446f0bcb8ffa6accf4f80467b75a50023c1441937605b11e18aa01b53d8e53f8',
+    // main + THE-326 — service planning split out of Events into its own section.
+    '69f7efceccd7b8381e5ceb114642f8b4634e73df1278bb082e678a1a0cb634f9',
+  ];
   // ⚠️ REGENERATED ONCE, by THE-313 (#462), which added the `servicePlans` rule
   // inside `match /tenants/{tenantId}` beside `events`: `allow read: if
   // belongsToTenant(tenantId)` and `allow write: if hasPermission('manageEvents',
@@ -939,11 +970,12 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ are byte-identical'
   // Was: a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499
   const FIRESTORE_RULES = '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075';
 
-  it('AdminDashboard.tsx is untouched — THE-277 owns it', () => {
+  it('AdminDashboard.tsx is untouched by THIS ticket — others legitimately own it', () => {
+    const actual = sha256(readFileSync(path.join(SRC, 'components/AdminDashboard.tsx')));
     expect(
-      sha256(readFileSync(path.join(SRC, 'components/AdminDashboard.tsx'))),
-      'AdminDashboard.tsx changed; THE-277 owns that file',
-    ).toBe(ADMIN_DASHBOARD);
+      ADMIN_DASHBOARD_DIGESTS,
+      `AdminDashboard.tsx is at ${actual}, which is none of the accepted values — so THIS ticket edited it`,
+    ).toContain(actual);
   });
 
   it("AdminDocs is still mounted with the wrapper and the props it had", () => {

@@ -1407,9 +1407,42 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
    * Update `THE_308_EVENTS` only for a deliberate, reviewed change to
    * AdminEvents, and say which ticket in the same breath.
    */
+  /**
+   * 🔴 RE-AIMED AGAIN BY THE-326 — 919 → 935 STRIPPED LINES, AND WHAT MOVED IS
+   * NAMED. Previous pin, kept here so nothing is lost:
+   *
+   *     strippedSha:   4d0fdf8224232f191ad29049306d567bf0e2292e0478f3838142a1486cc80d6f
+   *     strippedLines: 919      (THE-308, the month view)
+   *
+   * ⚠️ THIS TICKET REMOVES BEHAVIOUR FROM THIS SCREEN AND ADDS NONE. It deletes
+   * the `ServicePlanPanel` mount, the whole `'rota'` view (both panels), the
+   * "Volunteer rota" button, the `'rota'` arm of the header-override effect, the
+   * three imports, and `'rota'` from `ViewMode`. Service planning is its own
+   * section now — `AdminServices.tsx` — which is the entire ticket.
+   *
+   * 🔴 SO WHY DID THE COUNT GO UP? `stripPresentation` strips `//` comments and
+   * blank lines; it does NOT strip the `{/* … *\/}` JSX comment blocks this repo
+   * writes its reasons in. THE-326 leaves one such note where the run sheet used
+   * to mount, so a reader of the event detail screen is told where it went
+   * instead of finding a silent gap. That note is longer than the six lines of
+   * JSX it replaces, and the whole of the +16 is prose.
+   *
+   * ⚠️ The two helpers this hash runs through first — `unwrapServicePlan` and
+   * `unwrapRota` — were written to undo THE-313's and THE-317's edits before
+   * hashing. They now match nothing, BECAUSE THE CODE THEY UNWRAPPED IS GONE
+   * FOR REAL. They are deliberately left in place: they are the record of what
+   * those tickets added, and a future revert would need them again.
+   *
+   * ✅ NOTHING ABOUT THE MONEY MOVED, and the two assertions that actually say
+   * so are untouched and still pass: `firestorePathsOf` below is unchanged
+   * (this ticket adds no read and no write), and `handleSave`/`confirmDelete`
+   * stay pinned BY REGION DIGEST in `the-308-guards.test.ts` at the literals
+   * THE-313 recorded — a stronger statement about a file that legitimately
+   * changed than any whole-file hash can make.
+   */
   const THE_308_EVENTS = {
-    strippedSha: '4d0fdf8224232f191ad29049306d567bf0e2292e0478f3838142a1486cc80d6f',
-    strippedLines: 919,
+    strippedSha: '78b5eee8c919f1ae379ab35a8a6443af169cae028420f5a0511cffec699e1f6d',
+    strippedLines: 935,
   };
 
   it('changes nothing in AdminEvents outside a className, THE-308', () => {

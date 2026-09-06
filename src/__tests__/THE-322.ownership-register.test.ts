@@ -80,12 +80,39 @@ const BEFORE: ReadonlyArray<readonly [file: string, digest: string]> = [
   ['src/components/events/ServicePlanRow.tsx', 'ffafaf4228bbefe95d7b9bf439d5a36df9c9160f5c086cbae25a236ec0adca37'],
 ];
 
+/**
+ * 🔴 THE TICKETS THE MIGRATION ITSELF PRODUCED, AND WHY THIS LIST EXISTS.
+ *
+ * ⚠️ AMENDED BY THE-326, AND THIS IS A BUG FIX IN THE GUARD, NOT A RELAXATION.
+ *
+ * Sections 1's "nothing was invented" and "the counts are unchanged" were
+ * written against the WHOLE register, which was right for exactly one PR — the
+ * one that did the migration and in which the register contained nothing else.
+ * From the next ticket onward they say something THE-322's own header
+ * contradicts in as many words: "A new ticket adds
+ * `__fixtures__/ownership/THE-nnn.json` and edits nothing that already exists."
+ * A guard that fails on the very thing its module was built to allow is the
+ * shape this repo keeps removing on sight — it blocks every unrelated PR, and
+ * the only way past it is to weaken it, which is how a real claim gets lost.
+ *
+ * 🔴 SO THE CLAIM IS SCOPED, NOT WEAKENED. The migration's fidelity is a
+ * statement about the entries the migration MOVED, and those live in the two
+ * files it wrote. Every one of them must still be present, unchanged, and no
+ * digest may have appeared inside them that no `NOT_OURS` row carried — which is
+ * the whole of what section 1 ever proved. A later ticket's own file is a
+ * DIFFERENT record about a DIFFERENT file, and section 2 below already holds it
+ * to the rule that matters: it may not touch another ticket's.
+ */
+const MIGRATED_SOURCES = ['THE-319.json', 'THE-320.json'];
+
 describe('1 · every entry that existed before exists after', () => {
   const after = loadOwnership();
+  /** The entries THE-322 actually moved — the population section 1 is about. */
+  const migrated = after.filter((e) => MIGRATED_SOURCES.includes(e.source));
 
   it('the count matches — seven before, seven after', () => {
     expect(BEFORE).toHaveLength(7);
-    expect(after, 'an entry was lost or invented in the move').toHaveLength(BEFORE.length);
+    expect(migrated, 'an entry was lost or invented in the move').toHaveLength(BEFORE.length);
   });
 
   it.each(BEFORE.map((r) => [`${r[0]} @ ${r[1].slice(0, 12)}`, r] as const))(
@@ -100,24 +127,43 @@ describe('1 · every entry that existed before exists after', () => {
     },
   );
 
-  it('and nothing was invented — every entry after was an entry before', () => {
+  it('and nothing was invented — every MIGRATED entry was an entry before', () => {
+    // ⚠️ Scoped to the migrated records; see MIGRATED_SOURCES above. A digest
+    // appearing inside THE-319's or THE-320's file that `NOT_OURS` never carried
+    // is still exactly the forgery this was written to catch.
     const before = new Set(BEFORE.map(([f, d]) => `${f}@${d}`));
-    const strays = after.filter((e) => !before.has(`${e.file}@${e.digest}`))
+    const strays = migrated.filter((e) => !before.has(`${e.file}@${e.digest}`))
       .map((e) => `${e.source}: ${e.file} @ ${e.digest}`);
     expect(strays, 'an accepted digest appeared that no pre-migration entry carried:\n  '
       + strays.join('\n  ')).toEqual([]);
   });
 
-  it('named per file — the four files and their entry counts are unchanged', () => {
+  it('named per file — the four migrated files and their entry counts are unchanged', () => {
     const perFile: Record<string, number> = {};
-    for (const e of after) perFile[e.file] = (perFile[e.file] ?? 0) + 1;
+    for (const e of migrated) perFile[e.file] = (perFile[e.file] ?? 0) + 1;
     expect(perFile).toEqual({
       'src/components/AdminSms.tsx': 2,
       'src/components/settings/SmsSection.tsx': 3,
       'src/components/events/ServicePlanPanel.tsx': 1,
       'src/components/events/ServicePlanRow.tsx': 1,
     });
-    expect(recordedFiles()).toHaveLength(4);
+  });
+
+  /**
+   * 🔴 AND THE UNION STILL GROWS ONLY BY WHOLE TICKETS. The register is a union
+   * of per-ticket files, so the honest global claim is not "nothing was added"
+   * but "everything that was added came in a file of its own, named for its own
+   * ticket". Section 2 asserts the naming; this asserts that every file the
+   * loader sees is one of them, so an entry cannot arrive from nowhere.
+   */
+  it('and every record in the union belongs to a named ticket file', () => {
+    const sources = new Set(after.map((e) => e.source));
+    for (const source of sources) {
+      expect(ownershipFiles(), `${source} is not a file in the ownership directory`)
+        .toContain(source);
+    }
+    expect(recordedFiles().length, 'the register records fewer files than the migration left')
+      .toBeGreaterThanOrEqual(4);
   });
 });
 
@@ -428,6 +474,20 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
   // `src/lib/rota-invite.ts` and deliberately unwritten; that suite asserts it
   // is still only reported.
   ['THE-324', 'src/__tests__/the-324-guards.test.ts'],
+  //
+  // ⚠️ WHAT IT ASSERTS: `the-326-guards.test.ts` pins `firestore.rules` against
+  // an accepted SET (`main` before #462, and `main` + THE-313's `servicePlans`
+  // rule) and, beside the digest, asserts the deployed rule still reads
+  // `allow write: if hasPermission('manageEvents', tenantId)` in as many words.
+  //
+  // 🔴 THAT PAIR IS THE POINT OF THE TICKET. THE-326 splits service planning out
+  // of Events into its own section and deliberately writes NO rule: the plan
+  // stays keyed to an event, in the same collection, under the same permission,
+  // so shape A needs no migration and no rules change. `firestore.rules`
+  // auto-deploys to production and CI runs no emulator test, so the readable
+  // assertion sits beside the digest to say WHAT must still be true rather than
+  // only that something moved.
+  ['THE-326', 'src/__tests__/the-326-guards.test.ts'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {
