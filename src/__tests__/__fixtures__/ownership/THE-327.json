@@ -1,0 +1,22 @@
+{
+  "ticket": "THE-327",
+  "recordedIn": "THE-327",
+  "note": "SMS consolidated into one section, and the orphaned Library screen given a way in. THE-327 OWNS the two SMS files below and this is the state it leaves them in. AdminDashboard.tsx is NOT owned here — it is pinned by an accepted-digest SET in each guard that already pinned it, appended and never substituted, and the entry below records only the state this ticket leaves it in so a later ticket editing it fails in its own PR. AdminSettings.tsx is untouched: the SMS row keeps its id, its label and its <SmsSection /> mount, and only what that component RENDERS changed.",
+  "entries": [
+    {
+      "file": "src/components/AdminSms.tsx",
+      "digest": "9978dad36c777903a0e95cabfc307d8b9fdf053e6b36f2e0eabe58f5c11a5557",
+      "why": "THE SMS SECTION BECOMES THE ONE PLACE SMS LIVES. It mounts SmsNumberPanel — imported from settings/SmsSection, never copied, because a second copy of a screen that spends money is how the two drift — behind a third tab, Number, spelled identically to the two triggers already here. It reads /api/sms/numbers once as the initial gate and takes every later answer from the panel's onState, so a purchase or release updates the gate without polling; both sides normalise through the one hasUsableNumber predicate. Setup is a STATE, not a tab to find: once the gate has answered and there is no number, the view collapses to Number and the other two triggers are DISABLED rather than hidden, with NO_NUMBER_YET saying why. Hidden triggers were rejected — they would leave a static render with no controls at all and blind THE-320's Chromium ladder. No send path, meter, template, Text-to-Give wiring or historical copy changed; the 'Before Harvest numbers' note is byte-identical and pinned by identity in THE-320's suite."
+    },
+    {
+      "file": "src/components/settings/SmsSection.tsx",
+      "digest": "71cf6c2bde5043afb7a6364c98a9bf55a5c10b940f2299d2343818caf6fa4484",
+      "why": "THE LIFECYCLE MOVED OUT OF SETTINGS WITHOUT LEAVING THIS FILE. SmsNumberPanel is now an exported component the SMS section mounts, and the DEFAULT export — what the Settings accordion renders — is a signpost: one sentence and a ui/button link to /admin/sms. The row is KEPT deliberately (removing it would break AdminSettings.regroup.test.tsx's pinned structure, STOP condition 7) and it no longer opens onto nothing, which was THE-250's complaint. Two warnings added, both ui/alert: REGISTRATION_WARNING before the Buy button, because US carriers only deliver from a registered sender and account-level registration status is NOT readable before a ministry owns a number; and CANNOT_DELIVER_YET on any number whose status is not active. No registration FLOW was built — the provider's answer on multi-tenant scope is outstanding. THE-318's four purchase fixes, the KYC Button/render escape and the single justified inline style are untouched; the embedded prop suppresses only the standalone 120px clearance, since the SMS section's page root already carries pb-[120px]."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "decfdddbdab91094c936b503f931b663eeb6ba3048ee087c541fe1580f20e31e",
+      "why": "TWO ARRAY ENTRIES AND THEIR REASONS, NOTHING ELSE. 'library' added to the PLATFORM group of MORE_GROUPS and to the GROW group of DESKTOP_NAV_GROUPS — beside 'tenants' in both, because that is its co-gated sibling, so the two appear and disappear together and a group holding only super-admin ids still resolves to [] and is omitted whole for a church admin. The founder reported the Library screen deleted; nothing was. The screen renders, the nav entry exists and admin-sections.ts maps the slug, so /admin/library has always resolved — what was missing was any way to CLICK to it, totally on the desktop sidebar (no catch-all) and cosmetically on mobile (the drawer filed it under a bare OTHER heading). No permission, gate, tab id, render arm or import changed: the entry is still isSuperAdmin && { id: 'library' }."
+    }
+  ]
+}

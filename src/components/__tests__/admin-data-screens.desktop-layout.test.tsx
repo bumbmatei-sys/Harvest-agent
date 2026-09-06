@@ -78,9 +78,23 @@ vi.mock('firebase/firestore', () => ({
   Timestamp: { now: () => ({ toDate: () => new Date(0) }) },
 }));
 vi.mock('react-router-dom', () => ({ useNavigate: () => () => {} }));
+/**
+ * ⚠️ THE-327 — `/api/sms/numbers` MUST ANSWER WITH A NUMBER for the SMS
+ * assertions below to reach their subject. The SMS section shows number setup
+ * rather than the composer while the ministry has no number (a church with
+ * none cannot broadcast at all), so a bare `{}` leaves the recipient picker
+ * and the send action off the screen and the two width guards below fail with
+ * "markup changed" when nothing about the markup changed. The no-number state
+ * is asserted directly in THE-327's own suite.
+ */
 const authFetch = async (url: string) => ({
   ok: true,
-  json: async () => (url.includes('sms-usage') ? { metered: true, used: 1840, limit: 4000, source: 'harvest' } : {}),
+  json: async () =>
+    url.includes('sms-usage')
+      ? { metered: true, used: 1840, limit: 4000, source: 'harvest' }
+      : url.includes('/api/sms/numbers')
+        ? { number: { phoneNumber: '+16155550123', status: 'active', monthlyCostUsd: 3, country: 'US' } }
+        : {},
 });
 vi.mock('../../utils/auth-fetch', () => ({ authFetch }));
 vi.mock('../../utils/tenant-scope', async (o) => ({ ...(await o() as any), getTenantScope: async () => 't1', getWriteTenantScope: async () => 't1' }));

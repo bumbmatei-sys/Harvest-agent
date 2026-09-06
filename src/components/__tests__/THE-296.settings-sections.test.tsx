@@ -602,7 +602,12 @@ describe('7 · PaymentSection still renders unavailable, DomainSection is still 
     const src = readSrc('src/components/settings/SmsSection.tsx');
     expect(src, 'SmsSection no longer reads the SMS master switch').toContain('SMS_FEATURE_ENABLED');
     expect(src, 'SmsSection stopped rendering through the switch')
-      .toMatch(/SMS_FEATURE_ENABLED\s*\?\s*<SmsNumberPanel\s*\/>\s*:\s*null/);
+      // ⚠️ THE-327 — the component behind the switch is now the settings
+      // SIGNPOST: the number lifecycle moved into the SMS section, and
+      // `SmsNumberPanel` is mounted there. What this guard is actually
+      // about — that the section renders through the ONE master switch and
+      // renders `null` when it is off — is unchanged and still asserted.
+      .toMatch(/SMS_FEATURE_ENABLED\s*\?\s*<SmsSettingsPointer\s*\/>\s*:\s*null/);
     expect(readSrc('src/lib/sms-feature.ts')).toMatch(/SMS_FEATURE_ENABLED\s*=\s*true/);
     // And the settings row stays hidden with it, so the label does not open
     // onto an empty panel (THE-250).

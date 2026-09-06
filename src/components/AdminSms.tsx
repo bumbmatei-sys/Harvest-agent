@@ -32,6 +32,14 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Item, ItemMedia, ItemContent, ItemTitle, ItemDescription, ItemActions } from '@/components/ui/item';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+/**
+ * 🔴 THE-327 — THE NUMBER LIFECYCLE, MOUNTED HERE. It used to live in
+ * Settings → Connected Services → SMS, three levels deep behind an accordion,
+ * so a church that wanted to text had to buy its number on one screen and send
+ * from another. It is the SAME component, imported rather than copied: a
+ * second copy of a screen that spends money is how the two drift.
+ */
+import { SmsNumberPanel, hasUsableNumber, type NumberRecord } from './settings/SmsSection';
 
 /**
  * The gold the brand token resolves to, and NOTHING ELSE.
@@ -120,6 +128,12 @@ interface SmsUsage {
   smsSegmentsCap?: number;
   month?: string;
 }
+
+/** 🔴 THE-327 — why Broadcasts and Automated are not available yet. Stated as
+ * a fact about the ministry's setup, not as an error: nothing has gone wrong,
+ * the number simply has not been bought. */
+export const NO_NUMBER_YET =
+  'Broadcasts and automated messages need a number of your own. Buy one below and they turn on here — there is nowhere else to go.';
 
 export function segmentUnitNote(cap: number): string {
   return `${cap.toLocaleString('en-US')} SMS segments per month — a message over 160 characters counts as more than one.`;
@@ -238,7 +252,71 @@ const AdminSmsScreen: React.FC = () => {
   // subdomain currentTenantId is set and takes precedence.
   const { currentTenantId, isAuthReady, isSuperAdmin } = useAppStore();
   const tenantId = currentTenantId || (isSuperAdmin ? PLATFORM_TENANT_ID : null);
-  const [tab, setTab] = useState<'broadcast' | 'automated'>('broadcast');
+  /**
+   * 🔴 THE-327 — SETUP IS A STATE, NOT A THIRD TAB YOU HAVE TO FIND.
+   *
+   * A church with NO number cannot broadcast at all: there is no from-number,
+   * so the composer below is a form that can only fail. Making setup a third
+   * tab would leave that church looking at an inert broadcast form and hunting
+   * for the tab that unblocks it — the same "go to another place for one job"
+   * the founder objected to, moved one screen closer.
+   *
+   * So: while there is no number the screen IS the setup panel — `view` below
+   * collapses to 'number' and the sending tabs are DISABLED, with
+   * `NO_NUMBER_YET` saying why. They are disabled rather than removed on
+   * purpose: a church that cannot broadcast yet still needs to see that
+   * broadcasting is what this screen is for, and a strip that appeared only
+   * later would leave a static render with no controls at all for THE-320's
+   * Chromium ladder to measure.
+   *
+   * The THIRD tab — Number — is what keeps the lifecycle reachable after the
+   * purchase. It does not stop there: status, the identity check and release
+   * all have to stay one click away, and burying them again is the defect.
+   */
+  const [tab, setTab] = useState<'broadcast' | 'automated' | 'number'>('broadcast');
+  const [numberState, setNumberState] = useState<{ loaded: boolean; number: NumberRecord | null }>(
+    { loaded: false, number: null },
+  );
+  // Identity, not a fresh object per render: the panel takes this as a prop and
+  // lists it in a `useCallback` dependency, so a new function each render would
+  // re-run its effect forever.
+  const onNumberState = React.useCallback(
+    (s: { loaded: boolean; number: NumberRecord | null }) => setNumberState(s),
+    [],
+  );
+  /** 🔴 The SAME predicate the panel normalises with — imported, not restated.
+   * A released number is not a number, and a screen that disagreed with the
+   * panel about that would offer a Send button for a number given up. */
+  const hasNumber = hasUsableNumber(numberState.number);
+  /**
+   * 🔴 THE GATE IS READ HERE, NOT INFERRED FROM THE PANEL'S MOUNT.
+   *
+   * The panel is only mounted on the number view, so a screen that waited for
+   * the panel to report before deciding which view to show could never leave
+   * the number view — and, more quietly, would render NOTHING measurable on a
+   * server render, where no effect runs at all. THE-320's Chromium ladder
+   * measures this screen's composer, its native `<select>` and its send action
+   * from a static render, so the settled default has to be the composer.
+   *
+   * ⚠️ ONE READ EACH, NOT TWO OWNERS. This is the gate's initial answer; every
+   * answer AFTER it arrives through the panel's `onState`, so a purchase or a
+   * release updates the gate immediately without this screen polling. Both
+   * sides normalise through `hasUsableNumber`, so they cannot disagree.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    authFetch('/api/sms/numbers')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (!cancelled) setNumberState({ loaded: true, number: (d?.number ?? null) as NumberRecord | null }); })
+      .catch(() => { if (!cancelled) setNumberState({ loaded: true, number: null }); });
+    return () => { cancelled = true; };
+  }, []);
+
+  /** Setup takes over only once the gate has ANSWERED and the answer is "no
+   * number". Before that the screen is what it has always been, so a static
+   * render and the first paint both show the composer rather than a flash of
+   * setup that a church with a number never needed to see. */
+  const view = numberState.loaded && !hasNumber ? 'number' : tab;
 
   // Broadcast
   const [group, setGroup] = useState<Group>('all_members');
@@ -410,18 +488,45 @@ const AdminSmsScreen: React.FC = () => {
           its 1px inset and the 4/1.5 trigger padding are unchanged; the
           primitive's own `h-[calc(100%-1px)] flex-1 text-sm rounded-md px-1.5`
           are each dropped by twMerge for the value already here. */}
-      <Tabs value={tab} onValueChange={(v) => setTab(v as 'broadcast' | 'automated')} className="w-fit mx-auto mb-6 gap-0">
+      {/* 🔴 THE-327 — THREE TABS, AND THE SWITCHER IS ALWAYS DRAWN.
+          `Number` joins Broadcasts and Automated so the whole of SMS is on one
+          screen, spelled identically to the two triggers that were already
+          here. What the no-number state changes is not whether the switcher
+          exists but where it can GO: sending is DISABLED rather than hidden,
+          because a church that cannot broadcast yet still needs to see that
+          broadcasting is what this screen is for. Hiding the triggers would
+          also make the setup state unmeasurable — server rendering runs no
+          effect, so `hasNumber` is false there and a conditional strip would
+          leave this screen with no controls at all for THE-320's Chromium
+          ladder to read. */}
+      <Tabs value={view} onValueChange={(v) => setTab(v as 'broadcast' | 'automated' | 'number')} className="w-fit mx-auto mb-6 gap-0">
         <TabsList className="flex gap-1 bg-surface-sunken rounded-xl p-1 h-auto w-fit">
-          <TabsTrigger value="broadcast" className="h-auto flex-none border-0 px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors min-h-[44px] sm:min-h-0 text-faint data-active:bg-surface-raised data-active:shadow-xs data-active:text-strong">Broadcasts</TabsTrigger>
-          <TabsTrigger value="automated" className="h-auto flex-none border-0 px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors min-h-[44px] sm:min-h-0 text-faint data-active:bg-surface-raised data-active:shadow-xs data-active:text-strong">Automated</TabsTrigger>
+          <TabsTrigger disabled={!hasNumber} value="broadcast" className="h-auto flex-none border-0 px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors min-h-[44px] sm:min-h-0 text-faint data-active:bg-surface-raised data-active:shadow-xs data-active:text-strong disabled:opacity-50">Broadcasts</TabsTrigger>
+          <TabsTrigger disabled={!hasNumber} value="automated" className="h-auto flex-none border-0 px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors min-h-[44px] sm:min-h-0 text-faint data-active:bg-surface-raised data-active:shadow-xs data-active:text-strong disabled:opacity-50">Automated</TabsTrigger>
+          <TabsTrigger value="number" className="h-auto flex-none border-0 px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors min-h-[44px] sm:min-h-0 text-faint data-active:bg-surface-raised data-active:shadow-xs data-active:text-strong">Number</TabsTrigger>
         </TabsList>
       </Tabs>
+
+      {/* Said once, where the disabled triggers are, rather than left for an
+          admin to infer from a control that does not respond. */}
+      {numberState.loaded && !hasNumber && (
+        <Alert className="p-3 gap-0 rounded-xl text-sm mb-4 bg-surface-sunken border border-line">
+          <AlertDescription className="text-[11.5px] text-muted">{NO_NUMBER_YET}</AlertDescription>
+        </Alert>
+      )}
 
       {usage?.metered
         ? <SmsUsageMeter usage={usage} onUpgrade={() => navigate('/admin/upgrade')} />
         : usage?.source === 'byo' && <ByoSmsVolume usage={usage} />}
 
-      {tab === 'broadcast' ? (
+      {/* 🔴 THE-327 — the number view. Also the whole screen while there is no
+          number: `view` collapses to 'number' until one exists, so a church
+          that cannot send is shown how to start rather than a composer that
+          can only fail. `embedded` suppresses the panel's own 120px clearance,
+          because this page root already carries `pb-[120px]` above. */}
+      {view === 'number' ? (
+        <SmsNumberPanel embedded onState={onNumberState} />
+      ) : view === 'broadcast' ? (
         <>
           {/* ⚠️ `ui/card` REJECTED — `rounded-brand-lg` again. Measured against the
               compiled stylesheet: `.rounded-xl` is emitted AFTER `.rounded-brand-lg`

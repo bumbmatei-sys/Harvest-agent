@@ -91,8 +91,23 @@ const MORE_GROUPS: { label: string; ids: string[] }[] = [
   // Broadcasting: outbound / live engagement channels.
   // QR Codes now live as a sub-tab inside Check-In (not a standalone entry).
   { label: 'BROADCASTING', ids: ['events', 'checkin', 'sms', 'livestream'] },
-  // Platform: super-admin-only surfaces (Tenants + the platform Inbox).
-  { label: 'PLATFORM', ids: ['tenants', 'inbox'] },
+  // Platform: super-admin-only surfaces (the Library catalogue, Tenants and the
+  // platform Inbox).
+  //
+  // 🔴 THE-327 — `library` WAS IN NEITHER NAV ARRAY, which is why the founder
+  // reported it deleted. It was not: the screen renders, the nav ENTRY exists
+  // below (`isSuperAdmin && { id: 'library' … }`) and `admin-sections.ts` maps
+  // the slug, so `/admin/library` has always resolved. What was missing was any
+  // way to CLICK to it. On this array the miss was cosmetic — the drawer's
+  // leftover catch-all below files an ungrouped tab under a bare "OTHER"
+  // heading — and on the desktop array it was total, because that sidebar has
+  // no catch-all. It is placed beside `tenants` because that is its co-gated
+  // sibling: both are `isSuperAdmin`-only, so the two appear and disappear
+  // together and this group still resolves to `[]` (and is omitted whole) for a
+  // church admin. It is NOT filed under CONTENT, which is the tenant's OWN
+  // content and is the one group every church admin sees — a super-admin-only
+  // surface there would be a permission smell even though the entry is gated.
+  { label: 'PLATFORM', ids: ['library', 'tenants', 'inbox'] },
   { label: 'MORE', ids: ['affiliate', 'branding'] },
 ];
 const GROUPED_MORE_IDS = new Set(MORE_GROUPS.flatMap((g) => g.ids));
@@ -107,7 +122,16 @@ const DESKTOP_NAV_GROUPS: { label: string; ids: string[] }[] = [
   // not the other is a section half the product cannot reach.
   { label: 'MINISTRY', ids: ['crm', 'signups', 'churches', 'community', 'services', 'fundraising', 'donations', 'forms', 'accounting'] },
   { label: 'BROADCASTING', ids: ['events', 'checkin', 'sms', 'livestream'] },
-  { label: 'GROW', ids: ['affiliate', 'branding', 'tenants', 'inbox'] },
+  // 🔴 THE-327 — `library` here too, and in the SAME relative position: next to
+  // `tenants`, its co-gated sibling. It goes in GROW rather than a new PLATFORM
+  // group because this array has never had one — it already files `tenants` and
+  // `inbox` under GROW — and minting a PLATFORM group here to hold one item
+  // would move `tenants` and `inbox` for every super admin, which is a nav
+  // change this ticket was not asked to make. The two arrays disagreeing about
+  // where platform surfaces live is real and pre-existing; Library follows the
+  // sibling it is gated with in each, so it is reachable in both halves of the
+  // product, which is the defect being fixed.
+  { label: 'GROW', ids: ['affiliate', 'branding', 'library', 'tenants', 'inbox'] },
 ];
 
 // How long the nav will wait on the admin-roster lookup before giving up and

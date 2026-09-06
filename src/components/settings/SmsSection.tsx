@@ -51,13 +51,55 @@ export const RESOLD_NUMBER_NOTE =
 export const RELEASE_WARNING =
   'Releasing gives the number up for good. It cannot be recovered, and it cannot be moved to another provider — anyone texting it afterwards reaches nobody.';
 
-interface NumberRecord {
+/**
+ * 🔴 THE-327 — SAID BEFORE THE BUY BUTTON, NOT AFTER THE CHARGE.
+ *
+ * US carriers only deliver messages from a REGISTERED sender (10DLC). Harvest
+ * attaches its own registration to every number it buys — that reuse is the
+ * whole economics of the reseller model — but whether the carriers have
+ * accepted it for a given number is the provider's answer, not Harvest's
+ * claim, and the route records `pending_registration` whenever the reuse call
+ * does not come back ok.
+ *
+ * ⚠️ THIS IS A WARNING, NOT A FLOW. The provider exposes
+ * `sms_start_sms_registration` / `sms_reuse_sms_registration_for_number` /
+ * `sms_share_sms_registration`, and Harvest's client wraps only the REUSE one.
+ * Whether one registration may cover many unrelated churches or each needs its
+ * own share link is still outstanding with the provider, so this ticket
+ * SURFACES the status and deliberately builds no registration flow on a guess.
+ */
+export const REGISTRATION_WARNING =
+  'US carriers only deliver texts from a registered sender. Harvest applies its own carrier registration to your number when you buy it, but the number cannot send until the carriers accept it, and its status will read "Waiting on carrier registration" until they do. Do not print or announce a number before its status reads active.';
+
+/** 🔴 Shown ON the number once it exists, whenever the status is anything but
+ * `active`. A church that has paid for a number and believes it works is the
+ * exact failure THE-327 exists to prevent: an unregistered number looks fine
+ * and the carriers drop the messages silently. */
+export const CANNOT_DELIVER_YET =
+  'This number is not able to deliver messages yet. Carrier registration is still outstanding, so anything sent from it may be dropped without a failure being reported.';
+
+export interface NumberRecord {
   phoneNumber: string;
   status: string;
   monthlyCostUsd: number | null;
   country: string;
   purchasedAt?: string;
 }
+
+/**
+ * 🔴 THE-327 — "does this ministry have a number" asked in ONE place.
+ *
+ * The panel decides whether to render the summary or the get-a-number form,
+ * and the SMS section decides whether broadcasting is available at all. Those
+ * two answers must never differ, and they would the moment each spelled its
+ * own test: `/api/sms/numbers` answers `null` for a released number today
+ * (`getTenantSmsNumber` refuses a record with no `phoneNumber`), but the
+ * DELETE route also writes `status: 'released'` onto the document, so a record
+ * that survives both shapes is exactly the one to be explicit about. A screen
+ * offering a Send button for a number that has been given up is money leaking.
+ */
+export const hasUsableNumber = (n: Pick<NumberRecord, 'phoneNumber' | 'status'> | null | undefined): boolean =>
+  !!n?.phoneNumber && n.status !== 'released';
 
 /** Human copy for each status the provider can report. `pending_registration`
  * is the one that matters: the number EXISTS and is being billed, but US
@@ -95,7 +137,33 @@ export const SMS_PANEL_CONTROL_EXTRA = {
   secondaryAction: 'h-auto border border-line bg-transparent text-body hover:bg-surface-tint hover:text-body',
 } as const;
 
-const SmsNumberPanel: React.FC = () => {
+/**
+ * 🔴 THE-327 — the panel is now MOUNTED BY THE SMS SECTION, not by Settings.
+ *
+ * `embedded` says which mount this is, and it decides exactly one thing: the
+ * bottom clearance below. `onState` lets the SMS section decide its own shape
+ * from what this panel already read — a church with no number is shown setup
+ * instead of a broadcast form it cannot use — WITHOUT a second request for the
+ * same document.
+ */
+export interface SmsNumberPanelProps {
+  /** True when the SMS section renders it; that page root already carries the
+   * 120px nav clearance, so the panel must not add a second one. */
+  embedded?: boolean;
+  /**
+   * Reports every settled read of `/api/sms/numbers`. `loaded:false` is the
+   * "still asking" state and is deliberately distinct from "no number": the
+   * two must not render the same thing.
+   *
+   * ⚠️ PASS A STABLE REFERENCE. It is a dependency of the panel's `reload`
+   * callback, which its effect depends on, so a function created inline on
+   * every render re-runs the read forever. `AdminSms` wraps its handler in
+   * `useCallback` for exactly this reason.
+   */
+  onState?: (state: { loaded: boolean; number: NumberRecord | null }) => void;
+}
+
+export const SmsNumberPanel: React.FC<SmsNumberPanelProps> = ({ embedded = false, onState }) => {
   const [number, setNumber] = useState<NumberRecord | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [country, setCountry] = useState('US');
@@ -114,16 +182,25 @@ const SmsNumberPanel: React.FC = () => {
    * setting state from its own response, so what the screen shows is always
    * what the server recorded. */
   const reload = useCallback(async () => {
+    let next: NumberRecord | null = null;
     try {
       const r = await authFetch('/api/sms/numbers');
       const d = await r.json().catch(() => ({}));
-      setNumber(r.ok ? d.number ?? null : null);
+      const answered = (r.ok ? d.number ?? null : null) as NumberRecord | null;
+      // Normalised through the ONE predicate, so the panel and the SMS section
+      // can never disagree about whether a number exists.
+      next = hasUsableNumber(answered) ? answered : null;
     } catch {
-      setNumber(null);
+      next = null;
     } finally {
+      setNumber(next);
       setLoaded(true);
+      // 🔴 Reported from the SAME settled value the panel renders, so the SMS
+      // section's shape and this panel's contents can never disagree about
+      // whether a number exists.
+      onState?.({ loaded: true, number: next });
     }
-  }, []);
+  }, [onState]);
 
   useEffect(() => { void reload(); }, [reload]);
 
@@ -193,11 +270,8 @@ const SmsNumberPanel: React.FC = () => {
     }
   };
 
-  return (
-    // Explicit bottom clearance: the admin shell still carries the inert
-    // `pb-safe` class (#437 fixed only the member shell), so a panel that relied
-    // on it would sit under the fixed bottom nav on a phone.
-    <div className={CONTROL_DENSITY.sectionGap + ' space-y-6'} style={{ paddingBottom: 120 }}>
+  const body = (
+    <div className={CONTROL_DENSITY.sectionGap + ' space-y-6'}>
       <p className="text-body">
         Send SMS broadcasts and automated messages to your congregation from a number of your own.
       </p>
@@ -247,6 +321,17 @@ const SmsNumberPanel: React.FC = () => {
               <dd className="text-body">{number.country}</dd>
             </div>
           </dl>
+
+          {/* 🔴 THE-327 — the status is not merely LABELLED, it is ACTED ON. A
+              number that is not active cannot deliver, and saying so in a
+              `ui/alert` (which carries `role="alert"`) is the difference
+              between an admin who waits and an admin who prints the number on
+              a noticeboard and wonders why nobody replies. */}
+          {number.status !== 'active' && (
+            <Alert className="p-3 gap-0 rounded-xl text-sm bg-amber-50 text-amber-700 border border-amber-100">
+              <AlertDescription className="text-inherit">{CANNOT_DELIVER_YET}</AlertDescription>
+            </Alert>
+          )}
 
           {confirmRelease ? (
             <div className="space-y-3">
@@ -314,6 +399,17 @@ const SmsNumberPanel: React.FC = () => {
             />
           </div>
 
+          {/* 🔴 THE-327 — BEFORE the money, not after. Test 10's whole point: a
+              church must not buy a number that cannot deliver. Registration
+              status is not readable for an account that owns no number yet
+              (the provider exposes it per NUMBER, and Harvest's client wraps
+              only the reuse call), so what can honestly be shown here is the
+              requirement itself — and where to read the answer once there is a
+              number to read it on. */}
+          <Alert className="p-3 gap-0 rounded-xl text-sm bg-amber-50 text-amber-700 border border-amber-100">
+            <AlertDescription className="text-inherit">{REGISTRATION_WARNING}</AlertDescription>
+          </Alert>
+
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
@@ -371,20 +467,61 @@ const SmsNumberPanel: React.FC = () => {
       )}
     </div>
   );
+
+  // 🔴 THE-327 — the clearance is now a MOUNT question, and both answers are
+  // spelled here rather than one being assumed. Embedded in the SMS section,
+  // that page root already carries `pb-[120px]` and a second 120 would be dead
+  // space under the last card. Standalone, the admin shell still carries the
+  // inert `pb-safe` class (#437 fixed only the member shell), so a panel that
+  // relied on it would sit under the fixed bottom nav on a phone.
+  return embedded ? body : <div style={{ paddingBottom: 120 }}>{body}</div>;
 };
 
 /**
- * THE-245 — the panel, behind the master switch.
+ * 🔴 THE-327 — WHAT REMAINS IN SETTINGS: A SIGNPOST, NOT THE LIFECYCLE.
  *
- * A WRAPPER rather than an early `return null` inside the panel, so its hooks
- * are never conditionally called: while SMS is hidden `SmsNumberPanel` is not
- * mounted at all, which means its `useEffect` never fires and the settings
- * screen makes no `/api/sms/numbers` request. (That route refuses with 503
- * anyway — this is the second layer, not the only one.)
+ * The founder's complaint was exact — "put all the features of sms in the sms
+ * section. not here" — and it described a real split: buying a number lived
+ * three levels deep in Settings → Connected Services → SMS, while sending
+ * lived on a different screen entirely. The whole number lifecycle (summary,
+ * get-a-number, release, identity check) now mounts in the SMS section, from
+ * `SmsNumberPanel` above.
  *
- * The wrapper stays now that the switch is on: it is what makes turning SMS
- * back off one value rather than a second edit here.
+ * ⚠️ THE ROW IS KEPT, AND KEPT DELIBERATELY. `AdminSettings.regroup.test.tsx`
+ * pins the accordion's structure and its row → component mapping, and an
+ * admin who has learned to look under Connected Services for SMS is better
+ * served by one line telling them where it went than by a row that vanished.
+ * What is NOT kept is an accordion row that opens onto nothing: this renders a
+ * sentence and a link, so the row still says something when it is expanded.
+ *
+ * A plain `<a>` rather than react-router's `Link`: this panel is mounted by a
+ * settings accordion and by several suites that render it bare, and a
+ * component that throws outside a Router would make the row's reachability
+ * depend on its test harness. `ui/button`'s `render` escape gives it the
+ * primitive's focus ring and palette treatment either way.
+ *
+ * The master-switch wrapper stays for the reason THE-245 gave: turning SMS
+ * back off is one value, not a second edit here.
  */
-export const SmsSection: React.FC = () => (SMS_FEATURE_ENABLED ? <SmsNumberPanel /> : null);
+export const SMS_MOVED_NOTE =
+  'Your number, broadcasts and automated messages are all managed in the SMS section.';
+
+const SmsSettingsPointer: React.FC = () => (
+  <div className={CONTROL_DENSITY.sectionGap + ' space-y-3'}>
+    <p className="text-sm text-muted">{SMS_MOVED_NOTE}</p>
+    {/* ≥44px below `sm`; from `sm:` up the primitive's own height is the
+        settled desktop band, so the floor is released there exactly as it is
+        on the identity-check action above. */}
+    <Button
+      variant="outline"
+      className={`h-auto ${BUTTON} border border-line bg-transparent text-body hover:bg-surface-tint hover:text-body`}
+      render={<a href="/admin/sms" />}
+    >
+      Go to the SMS section
+    </Button>
+  </div>
+);
+
+export const SmsSection: React.FC = () => (SMS_FEATURE_ENABLED ? <SmsSettingsPointer /> : null);
 
 export default SmsSection;

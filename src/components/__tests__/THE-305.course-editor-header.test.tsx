@@ -648,6 +648,21 @@ const ADMIN_DASHBOARD_ACCEPTED = [
   '446f0bcb8ffa6accf4f80467b75a50023c1441937605b11e18aa01b53d8e53f8',
   // main + THE-326 — service planning split out of Events into its own section.
   '69f7efceccd7b8381e5ceb114642f8b4634e73df1278bb082e678a1a0cb634f9',
+  // 🔴 THE-327 — `'library'` added to the PLATFORM group of MORE_GROUPS and
+  // the GROW group of DESKTOP_NAV_GROUPS. APPENDED, NEVER SUBSTITUTED: every
+  // value above stays accepted, because CI runs against `refs/pull/N/merge`
+  // and a merge ref cut before this ticket landed legitimately carries one of
+  // them. A digest that is NONE of them — i.e. an edit FROM THIS TICKET —
+  // still fails, exactly as before.
+  //
+  // ⚠️ THIS TICKET'S OWN CLAIM IS UNCHANGED: it does not open AdminDashboard.
+  // THE-327 does, and only for two array entries: the founder reported the
+  // Library screen deleted and it was not — the screen renders, the nav entry
+  // exists and `admin-sections.ts` maps the slug, so `/admin/library` already
+  // resolved. What was missing was any way to CLICK to it, because `'library'`
+  // was in NEITHER group array and the desktop sidebar has no catch-all. No
+  // permission, gate, tab id, render arm or import changed.
+  'decfdddbdab91094c936b503f931b663eeb6ba3048ee087c541fe1580f20e31e',
 ];
 
 describe('the files this ticket must not open are byte-identical', () => {

@@ -474,12 +474,25 @@ describe('14 · the files THE-321 does not own are byte-identical', () => {
       // from the installed primitives. THE-321 still cannot edit it, because a
       // value that is NEITHER of these two continues to fail.
       ['ed2f8906fb0b9f4faf26e62f44418fe85143762dbaae66761b3487b5a4f4eff9', 'main + THE-320 — the ticket that owns it, composed from the primitives'],
+      // 🔴 APPENDED BY THE-327, NEVER SUBSTITUTED — both values above still
+      // stand. THE-327 consolidates SMS into one section: this screen now
+      // mounts the number lifecycle (imported from settings/SmsSection, never
+      // copied) behind a third `Number` tab, and shows setup instead of a
+      // composer while the ministry has no number. THE-321 still cannot edit
+      // this file, because a value that is none of the three continues to fail.
+      ['9978dad36c777903a0e95cabfc307d8b9fdf053e6b36f2e0eabe58f5c11a5557', 'main + THE-327 — the number lifecycle mounted in the SMS section'],
     ],
     'src/components/settings/SmsSection.tsx': [
       ['75c90bc448dc52eceb47e8866a06a32cd53a64bb1b0455c2b7585053800bdf03', 'main at acc0d66 — THE-320 owns it'],
       ['5bb4042ee2d57f562a7a2b33897fe6bf169a9f7e82bd1bb8bddeb9b83cf6c6b0', "THE-319's recorded value, from before it moved on main"],
       // 🔴 APPENDED BY THE-320. Both values above stand unedited.
       ['6e619cd3a1b2e4356ebbee1a1b1788b0692ab1b736258481d18888b0455aa33d', 'main + THE-320 — the ticket that owns it, composed from the primitives'],
+      // 🔴 APPENDED BY THE-327. All three values above stand unedited. The
+      // number panel became an exported component the SMS section mounts, and
+      // this module's DEFAULT export — what the Settings accordion renders —
+      // became the signpost pointing at it. Two `ui/alert` warnings were added
+      // about carrier registration; nothing about the purchase path moved.
+      ['71cf6c2bde5043afb7a6364c98a9bf55a5c10b940f2299d2343818caf6fa4484', 'main + THE-327 — the lifecycle moved to the SMS section, a signpost left behind'],
     ],
     'src/components/events/ServicePlanPanel.tsx': [
       ['81f99a23ff53cb1488935b7adf37cf043ff577399324e377785176d9f1e8c891', 'main at acc0d66 — THE-317 (#458) owns it'],

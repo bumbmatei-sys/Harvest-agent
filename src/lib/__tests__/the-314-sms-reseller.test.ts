@@ -344,8 +344,30 @@ describe('4 — a number can be searched, bought, shown and released', () => {
     // Both mutations — buy and release — end in one.
     expect(src.match(/await reload\(\);/g)?.length, 'a mutation skipped the re-read')
       .toBeGreaterThanOrEqual(2);
-    expect(src, 'the panel set the number from its own purchase response')
-      .not.toMatch(/setNumber\((?!null)(?!r\.ok)/);
+    /**
+     * ⚠️ THE-327 refactored `reload` to assign through a local (it normalises
+     * the answer through `hasUsableNumber` before storing it), so the old
+     * spelling `setNumber(r.ok ? … : null)` no longer appears and a regex
+     * written against it would pass vacuously.
+     *
+     * 🔴 THE PROPERTY IS UNCHANGED AND IS NOW ASSERTED DIRECTLY, which is
+     * stronger: `setNumber` is reached ONLY from the re-read. Neither mutation
+     * sets the number from its own response — that is the whole claim, and a
+     * handler that started to would fail here whatever the spelling.
+     */
+    const between = (from: string, to: string) => {
+      const a = src.indexOf(from);
+      const b = src.indexOf(to, a + 1);
+      expect(a, `could not find ${from}`).toBeGreaterThan(-1);
+      expect(b, `could not find ${to}`).toBeGreaterThan(a);
+      return src.slice(a, b);
+    };
+    expect(between('const buy = async', 'const release = async'),
+      'the buy handler sets the number from its own purchase response').not.toContain('setNumber(');
+    expect(between('const release = async', 'const body ='),
+      'the release handler sets the number from its own response').not.toContain('setNumber(');
+    expect(between('const reload = useCallback', 'const search = async'),
+      'the re-read stopped being what sets the number').toContain('setNumber(');
   });
 
   it('🔴 the number and the inbound index are written SERVER-SIDE only', () => {
