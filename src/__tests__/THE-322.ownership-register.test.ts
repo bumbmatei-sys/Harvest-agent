@@ -488,6 +488,20 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
   // assertion sits beside the digest to say WHAT must still be true rather than
   // only that something moved.
   ['THE-326', 'src/__tests__/the-326-guards.test.ts'],
+  // ⚠️ THE-327 pins it for the reason this list exists: `firestore.rules`
+  // auto-deploys to production and CI runs no emulator test, so a ticket that
+  // must not touch it says so by digest rather than by promise.
+  //
+  // 🔴 THE-327 WRITES NO RULE, and needed none. It consolidates SMS into one
+  // section and gives the orphaned Library screen a way into the sidebar —
+  // both purely client-side. Nothing about who may read or write a number, a
+  // broadcast or a usage document changed: the purchase route still gates on
+  // `getEffectiveFeatures(...).smsAutomation`, the usage subcollection is
+  // still default-deny to clients and read only through the Admin SDK, and
+  // `smsNumbers/{number}` is still written server-side only. Beside the
+  // digest, THE-327's suite also pins `firestore.indexes.json`, `functions/`,
+  // `sms-optout.ts` and `layout.tsx`, which are out of scope by instruction.
+  ['THE-327', 'src/components/__tests__/THE-327.sms-consolidation.test.tsx'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {

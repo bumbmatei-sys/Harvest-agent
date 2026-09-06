@@ -156,7 +156,12 @@ describe('2 — the switch being TRUE brings every surface back', () => {
     expect(read('components/AdminSms.tsx'))
       .toMatch(/SMS_FEATURE_ENABLED \? <AdminSmsScreen \/> : null/);
     expect(read('components/settings/SmsSection.tsx'))
-      .toMatch(/SMS_FEATURE_ENABLED \? <SmsNumberPanel \/> : null/);
+      // ⚠️ THE-327 — the component behind the switch is the settings SIGNPOST
+      // now: the number lifecycle moved into the SMS section, which mounts
+      // `SmsNumberPanel` itself. What this guard is about — that the section
+      // renders through the ONE master switch and renders `null` when it is
+      // off — is unchanged and still asserted here.
+      .toMatch(/SMS_FEATURE_ENABLED \? <SmsSettingsPointer \/> : null/);
   });
 
   it('🔴 /api/plans publishes the real per-tier SMS claim again', async () => {

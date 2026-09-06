@@ -23,7 +23,31 @@ const json = (body: unknown) => Promise.resolve({
   ok: true, status: 200, json: () => Promise.resolve(body), text: () => Promise.resolve(''),
 });
 
-vi.mock('../../utils/auth-fetch', () => ({ authFetch: vi.fn(() => json({})) }));
+/**
+ * ⚠️ THE-327 — `/api/sms/numbers` NOW ANSWERS WITH A LIVE NUMBER, and it has to.
+ *
+ * The SMS screen shows setup instead of a composer while the ministry has no
+ * number (a church with none cannot broadcast at all), so a bare `{}` would
+ * leave the Broadcasts/Automated switcher off the screen and the Text-to-Give
+ * assertion below would fail by never reaching it. Answering with a number is
+ * what puts this suite back on the surface it is actually about. The
+ * no-number state is asserted directly in THE-327's own suite.
+ */
+const numbersAnswer = vi.hoisted(() => ({
+  value: null as null | { phoneNumber: string; status: string; monthlyCostUsd: number; country: string },
+}));
+
+vi.mock('../../utils/auth-fetch', () => ({
+  authFetch: vi.fn((url: string) =>
+    String(url).startsWith('/api/sms/numbers') ? json({ number: numbersAnswer.value }) : json({})),
+}));
+
+/** The SMS SCREEN needs a number (without one it shows setup, not the
+ *  switcher); the number PANEL needs none (with one it shows the summary, not
+ *  country/area/buy). Each test says which state it is asserting. */
+const withNumber = () => {
+  numbersAnswer.value = { phoneNumber: '+16155550123', status: 'active', monthlyCostUsd: 3, country: 'US' };
+};
 vi.mock('../../firebase', () => ({ db: {}, auth: { currentUser: null } }));
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn(), query: vi.fn(), orderBy: vi.fn(), limit: vi.fn(),
@@ -38,6 +62,7 @@ let host: HTMLDivElement;
 let root: Root | null = null;
 
 beforeEach(() => {
+  numbersAnswer.value = null;
   host = document.createElement('div');
   document.body.appendChild(host);
 });
@@ -76,6 +101,11 @@ describe('1 — the SMS admin screen is back, and asks for its config again', ()
   });
 
   it('🔴 renders the Text-to-Give setup — the giving half comes back with it', async () => {
+    // ⚠️ THE-327 — the switcher is only drawn once a number exists, because a
+    // ministry with none cannot broadcast and is shown setup instead. Without
+    // this the Automated tab is genuinely absent and the assertion below would
+    // report a deleted panel when nothing was deleted.
+    withNumber();
     const { default: AdminSms } = await import('../AdminSms');
     await render(<AdminSms />);
 
@@ -125,8 +155,12 @@ describe('2 — the number panel replaced the credential form', () => {
   });
 
   it('offers the purchase controls instead — country, area code, buy', async () => {
-    const { default: SmsSection } = await import('../settings/SmsSection');
-    await render(<SmsSection />);
+    // ⚠️ THE-327 — mounted as `SmsNumberPanel`, which is where the lifecycle
+    // now lives. The default export is the Settings SIGNPOST since the panel
+    // moved into the SMS section; the controls themselves are unchanged, and
+    // asserting them on the component that renders them is the point.
+    const { SmsNumberPanel } = await import('../settings/SmsSection');
+    await render(<SmsNumberPanel />);
 
     expect(host.textContent).toMatch(/country/i);
     expect(host.textContent).toMatch(/area code/i);

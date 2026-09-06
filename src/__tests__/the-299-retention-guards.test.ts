@@ -667,6 +667,24 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // `navAllows(features?.eventRegistration) && (hasFullAccess ||
     // perms.manageEvents)`, so no tier's and no role's reach changes.
     ['69f7efceccd7b8381e5ceb114642f8b4634e73df1278bb082e678a1a0cb634f9', 'main + THE-326 — service planning split out of Events into its own section'],
+    // 🔴 THE-327 — `'library'` added to the PLATFORM group of MORE_GROUPS and
+    // the GROW group of DESKTOP_NAV_GROUPS. APPENDED, NEVER SUBSTITUTED: every
+    // value above is still accepted, because CI runs against
+    // `refs/pull/N/merge` and a merge ref cut before this ticket landed
+    // legitimately carries one of them. A digest that is NEITHER — i.e. THIS
+    // slice editing the file — still fails, which is the whole threat this
+    // guard exists for.
+    //
+    // ⚠️ THIS SLICE'S OWN CLAIM IS UNCHANGED: it does not edit AdminDashboard.
+    // THE-327 does, and it must — the founder reported the Library screen
+    // deleted and it was not: the screen renders, the nav entry exists and
+    // `admin-sections.ts` maps the slug, so `/admin/library` already resolved.
+    // What was missing was any way to CLICK to it, because `'library'` was in
+    // NEITHER group array and the desktop sidebar has no catch-all. It adds two
+    // array entries and their reasons and nothing else — no permission, gate,
+    // tab id, render arm or import changes, and the entry is still
+    // `isSuperAdmin && { id: 'library' }`.
+    ['decfdddbdab91094c936b503f931b663eeb6ba3048ee087c541fe1580f20e31e', 'main + THE-327 — the Library nav entry added to both group arrays'],
   ],
   'firestore.rules': [
     ['a1fb6148d58727e06a38c8a1cbb9828346255dea06254029839a65bf6b265499', 'unchanged since 5e06c67'],

@@ -237,18 +237,30 @@ describe('2 — flipping the switch on restores it, on the tier that owns it', (
     }
   });
 
-  it('and the panel behind it is the real number panel, not a stub', async () => {
+  it('and the row behind it opens onto real content, not an empty panel', async () => {
     const host = await mount('max', true);
     const header = Array.from(host.querySelectorAll('button')).find(
       (b) => (b.textContent || '').trim().startsWith(SMS_ROW),
     );
     expect(header, 'the restored row has no accordion header').toBeTruthy();
     await act(async () => { header!.click(); });
-    // 🔴 The panel's own words, and NOT the vendor's name: THE-314 replaced the
-    // credential form with the number purchase panel, so what proves the panel
-    // is real is the buy control, not a Twilio label.
-    expect(host.textContent || '', 'the restored panel is empty').toMatch(/buy a number/i);
-    expect(host.textContent || '', 'the panel names a vendor a church never sees').not.toMatch(/twilio/i);
+    /**
+     * 🔴 THIS SUITE'S CLAIM IS "THE ROW DOES NOT OPEN ONTO NOTHING", and that
+     * is exactly what is still asserted — only the content changed.
+     *
+     * ⚠️ THE-314 replaced a credential form with the number purchase panel, so
+     * "buy a number" was the proof then. THE-327 moved that whole lifecycle
+     * into the SMS section, because a church had to buy its number three
+     * levels deep in Settings and then go somewhere else to send. What is here
+     * now is the signpost that says so — one sentence and a link — which is
+     * still real content and is still not an empty panel. The purchase
+     * controls are asserted where they now live, in THE-327's own suite.
+     */
+    const text = host.textContent || '';
+    expect(text, 'the restored row is empty — the defect THE-250 exists for')
+      .toMatch(/managed in the SMS section/i);
+    expect(host.querySelector('a[href="/admin/sms"]'), 'the signpost points nowhere').toBeTruthy();
+    expect(text, 'the panel names a vendor a church never sees').not.toMatch(/twilio/i);
   });
 });
 

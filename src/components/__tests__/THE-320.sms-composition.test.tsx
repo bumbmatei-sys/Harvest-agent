@@ -80,12 +80,21 @@ const openSms = async (): Promise<HTMLDivElement> => {
   const { MemoryRouter } = await import('react-router-dom');
   /* The screen calls useNavigate for the upgrade CTA, so it needs a router
      around it. Nothing else about the mount is special. */
+  numbersAnswer.value = { phoneNumber: '+16155550123', status: 'active', monthlyCostUsd: 3, country: 'US' };
   return mount(React.createElement(MemoryRouter, null, React.createElement((await import('../AdminSms')).default)));
 };
 
+/**
+ * ⚠️ THE-327 — the number panel is mounted as `SmsNumberPanel`, not as the
+ * module's default. The lifecycle moved into the SMS section and the default
+ * export is now the Settings signpost, so the default would render a sentence
+ * and a link. The composition being asserted is the panel's own and is
+ * unchanged; only the name it is reached by moved.
+ */
 const openSection = async (): Promise<HTMLDivElement> => {
   await seedStore();
-  return mount(React.createElement((await import('../settings/SmsSection')).default));
+  numbersAnswer.value = null;
+  return mount(React.createElement((await import('../settings/SmsSection')).SmsNumberPanel));
 };
 
 const slots = (root: ParentNode, slot: string) => root.querySelectorAll(`[data-slot="${slot}"]`);
@@ -97,6 +106,13 @@ const slots = (root: ParentNode, slot: string) => root.querySelectorAll(`[data-s
  * screen and section 2's `progress` assertion would pass vacuously by never
  * reaching it.
  */
+/** Mutable so a single test can choose which side of the no-number state it
+ *  is asserting. `vi.hoisted` because the mock factory below is hoisted above
+ *  every ordinary declaration in this file. */
+const numbersAnswer = vi.hoisted(() => ({
+  value: null as null | { phoneNumber: string; status: string; monthlyCostUsd: number; country: string },
+}));
+
 vi.mock('../../utils/auth-fetch', () => ({
   authFetch: vi.fn(async (url: string) => {
     const body =
@@ -104,8 +120,17 @@ vi.mock('../../utils/auth-fetch', () => ({
         ? { metered: true, source: 'platform', smsSegmentsUsed: 1700, smsSegmentsCap: 2000, month: '2026-09' }
         : url.startsWith('/api/sms/config')
           ? { templates: {}, text2give: { keyword: 'GIVE', responseTemplate: 'Give here: {link}', enabled: true } }
+          /* ⚠️ THE-327 — THE NUMBER ANSWER IS NOW A VARIABLE, and it has to be,
+             because the two surfaces this suite mounts need OPPOSITE answers.
+             The SMS screen shows setup rather than a composer while the
+             ministry has no number, so a null here would leave the switcher,
+             the meter, the recipients label and the send action off the screen
+             and section 2 would pass vacuously by never reaching any of them.
+             The number PANEL, conversely, only renders country/area/buy while
+             there is no number — with one it renders the summary instead. So
+             `openSms` asks with a number and `openSection` asks without. */
           : url.startsWith('/api/sms/numbers')
-            ? { number: null }
+            ? { number: numbersAnswer.value }
             : {};
     return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
   }),
