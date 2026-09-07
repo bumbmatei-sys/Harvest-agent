@@ -112,8 +112,14 @@ const pinningSuites = (): string[] =>
 const filesSpelling = (digest: string): string[] =>
   suiteFiles().filter((p) => read(p).includes(digest));
 
-/** The measured population, named in one place so a change to it is one edit. */
-const PINNING_SUITES = 56;
+/** The measured population, named in one place so a change to it is one edit.
+ *
+ * 🔴 56 → 57, APPENDED BY THE-330. Its guard suite reaches the accepted set
+ * through the same module as every other pinner, to assert that rebuilding the
+ * number-purchase form left `firestore.rules` untouched. The count is a
+ * MEASURED population, so a new pinner raises it by one — what the assertion
+ * catches is a suite quietly DROPPING its pin, and that still fails. */
+const PINNING_SUITES = 57;
 
 /**
  * A digest no ticket has recorded and none ever will — the planted change.
@@ -333,8 +339,31 @@ describe('5 · each pinning suite kept its own assertion', () => {
 const CONTENT_ASSERTING: ReadonlyArray<readonly [string, string]> = [
   ['src/__tests__/the-268-line-endings.test.ts',
     '9285b31bcfb8c3739c39cedb8858a60e3068c635784cf8b8b4b4e9ea93a2a01c'],
+  /**
+   * ⚠️ EDITED SINCE MEASUREMENT — THE-330, and the digest is APPENDED here as a
+   * REPLACEMENT of the recorded value rather than as a second accepted one,
+   * because this list pins ONE state per file and THE-330 is the ticket that
+   * moved it.
+   *
+   * 🔴 WHAT THE-330 CHANGED IN IT, AND WHY EACH WAS FORCED: this suite pinned
+   * the SMS number panel's country and area fields as `ui/input` text boxes and
+   * pinned their `slice(0, 2)` / `slice(0, 4)` length caps as figures that may
+   * not move. Replacing those free-text boxes with pickers IS THE-330 — a
+   * church could not be expected to know that `DE` is offerable, that it cannot
+   * text, and that `615` is not a German area code. The claims were not dropped:
+   * the input assertion became an assertion that the field is a `<select>` and
+   * that no `input#sms-country` exists, which fails on the revert this ticket
+   * exists to prevent; the two `slice` figures describe a field that no longer
+   * takes typing at all; and `skeleton`/`item` moved out of REJECTED_OUTRIGHT
+   * (their call-site rejections stand, and `select` replaced them there) for
+   * exactly the reason `card` was never in that list — the rejection is per
+   * element, so file-level absence is the wrong question.
+   *
+   * It still asserts CONTENT and still pins no digest, so it remains out of
+   * THE-325's own bounds; this record only says which ticket last moved it.
+   */
   ['src/components/__tests__/THE-320.sms-composition.test.tsx',
-    'b64fa684270cdeeb1f572b8edfff65eea2979e1343a1bfc3223fe6ce8e419cb9'],
+    '2462f1268f2f78fb6a72450b0d86adfb05274943fbe5b4057f197e10abc0af10'],
   ['src/components/__tests__/the-255-install-app.test.tsx',
     'e8438de623b5a206f92a6ec1ae5d8696af4ad82ce99b413451486cb77f588985'],
   ['src/lib/__tests__/super-admin-consistency.test.ts',

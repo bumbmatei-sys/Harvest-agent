@@ -90,6 +90,43 @@ const numbersAnswer = vi.hoisted(() => ({
 vi.mock('../../utils/auth-fetch', () => ({
   authFetch: vi.fn((url: string) => {
     const u = String(url);
+    /**
+     * ⚠️ ADDED BY THE-330. The get-a-number form now reads the provider's
+     * country catalogue before it can draw a picker. This harness answered every
+     * `/api/sms/numbers` URL with `{ number: … }`, which the panel correctly
+     * reads as a FAILED catalogue fetch and renders as a failure alert instead
+     * of the form — so section 1's "the lifecycle is on the SMS screen" claim
+     * would have been asserted against an error state.
+     *
+     * 🔴 THE FIXTURE IS THE PROVIDER'S SHAPE AND THE TICKET'S HARD CASE: GB,
+     * whose country-level `smsAvailable` is FALSE (it mirrors the default type)
+     * while its `mobile` type texts, alongside US whose `local` texts and whose
+     * `toll_free` does not.
+     */
+    if (u.includes('countries=1')) {
+      return json({
+        countries: [
+          {
+            code: 'US', tier: 1, monthlyCents: 300, needsKyc: false,
+            callsAvailable: true, whatsappAvailable: true, smsAvailable: true, inStock: true,
+            types: [
+              { numberType: 'local', smsAvailable: true, whatsappAvailable: true, callsAvailable: true, monthlyCents: 300, needsKyc: false, fulfilment: 'instant', inStock: true },
+              { numberType: 'toll_free', smsAvailable: false, whatsappAvailable: false, callsAvailable: true, monthlyCents: 300, needsKyc: false, fulfilment: 'instant', inStock: true },
+            ],
+          },
+          {
+            code: 'GB', tier: 2, monthlyCents: 300, needsKyc: true,
+            callsAvailable: true, whatsappAvailable: true, smsAvailable: false, inStock: true,
+            types: [
+              { numberType: 'local', smsAvailable: false, whatsappAvailable: true, callsAvailable: true, monthlyCents: 300, needsKyc: true, fulfilment: 'instant', inStock: true },
+              { numberType: 'mobile', smsAvailable: true, whatsappAvailable: true, callsAvailable: true, monthlyCents: 300, needsKyc: true, fulfilment: 'instant', inStock: true },
+            ],
+          },
+        ],
+        fetchedAt: null,
+      });
+    }
+    if (u.includes('areas=1')) return json({ areaOptions: [{ ndc: '615', name: 'Nashville, TN', count: 42 }] });
     if (u.startsWith('/api/sms/numbers')) return json({ number: numbersAnswer.value });
     if (u.startsWith('/api/sms-usage')) {
       return json({ metered: true, source: 'platform', smsSegmentsUsed: 10, smsSegmentsCap: 2000, month: '2026-01' });
@@ -738,9 +775,26 @@ describe('16 · every element that has a primitive uses it', () => {
   const MOVED: { what: string; slot: string; least: number }[] = [
     { what: 'the number-panel shell', slot: 'card', least: 1 },
     { what: 'the country and area-code labels', slot: 'label', least: 2 },
-    { what: 'the country and area-code fields', slot: 'input', least: 2 },
+    /**
+     * ⚠️ EDITED SINCE MEASUREMENT — THE-330. This row read
+     * `{ 'the country and area-code fields', slot: 'input', least: 2 }`, because
+     * both were FREE-TEXT BOXES composed from `ui/input`. THE-330 replaced them
+     * with pickers — that replacement IS the ticket — so there is no `input` on
+     * this form to count any more.
+     *
+     * 🔴 THE CLAIM IS NOT DROPPED. `ui/select` is rejected for these controls
+     * (base-ui renders a listbox button, not a `<select>`, which would blind the
+     * width guard; and it pins its own 32px height above Rule 4, under the 44px
+     * touch floor), so the pickers are native `<select>`s and carry no
+     * `data-slot`. Counting them is therefore section 16's wrong tool, and the
+     * assertion below counts them DIRECTLY instead — a stronger pin than the
+     * old one, because it fails if either field reverts to a text box.
+     */
     { what: 'the registration warning', slot: 'alert', least: 1 },
     { what: 'the check-availability and buy actions', slot: 'button', least: 2 },
+    /** THE-330's new primitive adoptions on this same form. */
+    { what: 'the per-type capability matrix', slot: 'table', least: 1 },
+    { what: 'the capability and price markers', slot: 'badge', least: 1 },
   ];
 
   it('the moved lifecycle renders each element as its primitive, inside the SMS section', async () => {
@@ -750,6 +804,17 @@ describe('16 · every element that has a primitive uses it', () => {
         host.querySelectorAll(`[data-slot="${slot}"]`).length,
         `${what} is not \`${slot}\` — moved markup regressed to hand-rolled`,
       ).toBeGreaterThanOrEqual(least);
+    }
+
+    /**
+     * 🔴 THE-330 — the two fields the row above used to count, counted as what
+     * they now are. A revert to `ui/input` (or to any text box) fails here.
+     */
+    for (const id of ['sms-country', 'sms-area']) {
+      const field = host.querySelector(`#${id}`);
+      expect(field, `#${id} left the SMS section`).toBeTruthy();
+      expect(field!.tagName, `#${id} is not a picker`).toBe('SELECT');
+      expect(host.querySelector(`input#${id}`), `#${id} went back to a free-text box`).toBeNull();
     }
   });
 

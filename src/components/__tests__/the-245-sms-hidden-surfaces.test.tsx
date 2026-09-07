@@ -37,9 +37,35 @@ const numbersAnswer = vi.hoisted(() => ({
   value: null as null | { phoneNumber: string; status: string; monthlyCostUsd: number; country: string },
 }));
 
+/**
+ * ⚠️ THE CATALOGUE BRANCH ADDED BY THE-330. The panel now reads the provider's
+ * country catalogue before it can draw a picker, and this mock answered every
+ * `/api/sms/numbers` URL — `?countries=1` included — with `{ number: … }`, which
+ * the panel correctly reads as a FAILED fetch and renders as a failure alert
+ * rather than the purchase controls. Section 2 would then have asserted against
+ * an error state.
+ */
 vi.mock('../../utils/auth-fetch', () => ({
-  authFetch: vi.fn((url: string) =>
-    String(url).startsWith('/api/sms/numbers') ? json({ number: numbersAnswer.value }) : json({})),
+  authFetch: vi.fn((url: string) => {
+    const u = String(url);
+    if (u.includes('countries=1')) {
+      return json({
+        countries: [
+          {
+            code: 'US', tier: 1, monthlyCents: 300, needsKyc: false,
+            callsAvailable: true, whatsappAvailable: true, smsAvailable: true, inStock: true,
+            types: [{
+              numberType: 'local', smsAvailable: true, whatsappAvailable: true, callsAvailable: true,
+              monthlyCents: 300, needsKyc: false, fulfilment: 'instant', inStock: true,
+            }],
+          },
+        ],
+        fetchedAt: null,
+      });
+    }
+    if (u.includes('areas=1')) return json({ areaOptions: [] });
+    return u.startsWith('/api/sms/numbers') ? json({ number: numbersAnswer.value }) : json({});
+  }),
 }));
 
 /** The SMS SCREEN needs a number (without one it shows setup, not the
@@ -165,7 +191,22 @@ describe('2 — the number panel replaced the credential form', () => {
     expect(host.textContent).toMatch(/country/i);
     expect(host.textContent).toMatch(/area code/i);
     expect(host.textContent).toMatch(/buy a number/i);
-    expect(host.querySelectorAll('input').length).toBeGreaterThan(0);
+    /**
+     * ⚠️ EDITED SINCE MEASUREMENT — THE-330. This asserted
+     * `querySelectorAll('input').length > 0`, because the country and area code
+     * were free-text boxes. THE-330 replaced both with pickers — that is the
+     * ticket — so the panel offers controls, not text inputs.
+     *
+     * 🔴 THE CLAIM ("it offers CONTROLS, not a credential form") IS KEPT AND
+     * SHARPENED: the two fields are asserted to exist AND to be pickers, so a
+     * revert to a free-text country box fails here rather than passing.
+     */
+    expect(host.querySelectorAll('select').length).toBeGreaterThan(0);
+    for (const id of ['sms-country', 'sms-area']) {
+      const field = host.querySelector(`#${id}`);
+      expect(field, `#${id} is missing from the purchase controls`).toBeTruthy();
+      expect(field!.tagName, `#${id} is not a picker`).toBe('SELECT');
+    }
   });
 
   it('still renders nothing with the switch mocked off, and asks for nothing', async () => {

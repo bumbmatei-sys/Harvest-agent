@@ -129,9 +129,36 @@ vi.mock('../../utils/auth-fetch', () => ({
              The number PANEL, conversely, only renders country/area/buy while
              there is no number — with one it renders the summary instead. So
              `openSms` asks with a number and `openSection` asks without. */
-          : url.startsWith('/api/sms/numbers')
-            ? { number: numbersAnswer.value }
-            : {};
+          /**
+           * ⚠️ ADDED BY THE-330. The panel now reads the provider's country
+           * catalogue before it can draw a picker, and this harness answered
+           * every `/api/sms/numbers` URL with `{ number: … }` — including
+           * `?countries=1`, which the panel correctly reads as a FAILED fetch
+           * and renders as a failure alert rather than an empty picker. Without
+           * this branch section 2 would assert against the failure state.
+           *
+           * 🔴 The shape is the provider's, not an invention: one SMS-capable
+           * country whose capability lives on a NON-default type, which is the
+           * case the whole ticket turns on.
+           */
+          : url.includes('countries=1')
+            ? {
+                countries: [
+                  {
+                    code: 'US', tier: 1, monthlyCents: 300, needsKyc: false,
+                    callsAvailable: true, whatsappAvailable: true, smsAvailable: true, inStock: true,
+                    types: [
+                      { numberType: 'local', smsAvailable: true, whatsappAvailable: true, callsAvailable: true, monthlyCents: 300, needsKyc: false, fulfilment: 'instant', inStock: true },
+                    ],
+                  },
+                ],
+                fetchedAt: null,
+              }
+            : url.includes('areas=1')
+              ? { areaOptions: [] }
+              : url.startsWith('/api/sms/numbers')
+                ? { number: numbersAnswer.value }
+                : {};
     return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
   }),
 }));
@@ -207,8 +234,28 @@ describe('2 · every element that has a primitive uses it', () => {
     const c = await openSection();
     expect(slots(c, 'card').length, 'the number panel shell is not `card`').toBeGreaterThanOrEqual(1);
     expect(slots(c, 'label').length, 'the country/area labels are not `label`').toBeGreaterThanOrEqual(1);
-    expect(c.querySelectorAll('input[data-slot="input"]').length, 'the country/area fields are not `input`')
-      .toBeGreaterThanOrEqual(1);
+    /**
+     * ⚠️ EDITED SINCE MEASUREMENT — THE-330.
+     *
+     * This asserted `input[data-slot="input"] >= 1`, because the country and the
+     * area code were FREE-TEXT BOXES composed from `ui/input`. THE-330 exists
+     * precisely because they were: a church had to already know that `DE` is
+     * offerable, that it cannot text, and that `615` is not a German area code —
+     * and the form told it none of that until the purchase failed.
+     *
+     * 🔴 THE CLAIM IS NOT DROPPED, IT IS INVERTED. The fields are still fields
+     * and still `label`led; what changed is that they are now PICKERS. Asserting
+     * the absence of a text input where the country goes is a STRONGER pin than
+     * asserting its presence was: it fails the moment anyone puts the free-text
+     * box back, which is the mutation this whole ticket is about.
+     */
+    const country = c.querySelector('#sms-country');
+    expect(country, 'the country field is missing from the number panel').toBeTruthy();
+    expect(country!.tagName, 'the country field is not a picker').toBe('SELECT');
+    expect(
+      c.querySelector('input#sms-country'),
+      'the country went back to being a free-text box',
+    ).toBeNull();
   });
 
   /**
@@ -243,6 +290,25 @@ describe('2 · every element that has a primitive uses it', () => {
       file: SMS_SECTION, element: 'the two section headings', primitive: 'CardTitle',
       because: /`CardTitle` REJECTED/,
     },
+    /**
+     * APPENDED BY THE-330 — the country and type pickers.
+     *
+     * `ui/select` is rejected here for the SAME two measured reasons the sibling
+     * screen's recipients control records, re-checked rather than inherited
+     * because this ticket adds TWO selects:
+     *   · it is NOT a `<select>` — base-ui renders a button plus a popup
+     *     listbox, and the width guard in
+     *     admin-data-screens.desktop-layout.test.tsx finds a field by
+     *     `label → parent → input,select,textarea`, so composing it would BLIND
+     *     an existing measured guard rather than satisfy it;
+     *   · it pins its own height at `data-[size=default]:h-8`, an attribute
+     *     selector that OUTRANKS Rule 4 (THE-317 measured this) and sticks at
+     *     32px — under the 44px touch floor, and `min-h-11` does not beat it.
+     */
+    {
+      file: SMS_SECTION, element: 'the country, type and area pickers', primitive: 'select',
+      because: /`ui\/select` REJECTED/,
+    },
   ];
 
   for (const { file, element, primitive, because } of REJECTED) {
@@ -262,8 +328,30 @@ describe('2 · every element that has a primitive uses it', () => {
   const REJECTED_OUTRIGHT: { file: string; primitive: string }[] = [
     { file: ADMIN_SMS, primitive: 'select' },
     { file: ADMIN_SMS, primitive: 'switch' },
-    { file: SMS_SECTION, primitive: 'skeleton' },
-    { file: SMS_SECTION, primitive: 'item' },
+    /**
+     * ⚠️ EDITED SINCE MEASUREMENT — THE-330. `skeleton` and `item` were listed
+     * here for SMS_SECTION and have been MOVED OUT, for exactly the reason
+     * `card` was never in this list (see the note above): the rejection is PER
+     * ELEMENT, so file-level absence became the wrong question for them.
+     *
+     * 🔴 NEITHER REJECTION IS WITHDRAWN, and both are still asserted at their
+     * call sites by the REJECTED list above, which is the assertion that
+     * actually holds them:
+     *   · `skeleton` is still rejected for the panel's top-level "Loading…"
+     *     line, because adopting it there would DELETE that word and a shimmer
+     *     is not the same statement to a screen reader as a sentence. THE-330
+     *     adopts it for the country catalogue, a NEW surface that never had copy
+     *     to lose.
+     *   · `item` is still rejected for the number-facts `<dl>`, where each `<dt>`
+     *     NAMES its `<dd>` and `Item` would trade that semantic for a visual
+     *     one. THE-330 adopts it for the available-number rows, which are
+     *     genuinely rows with no such association to lose.
+     *
+     * `select` REPLACES them here: SMS_SECTION rejects it at every one of its
+     * three pickers and imports it nowhere, so file-level absence IS the right
+     * question for it.
+     */
+    { file: SMS_SECTION, primitive: 'select' },
   ];
 
   it('and each outright-rejected primitive is genuinely absent, so no rejection is stale', () => {
@@ -325,8 +413,27 @@ describe('4 · no figure, no copy and no measured value changed', () => {
     { file: ADMIN_SMS, needle: 'pct >= 80', what: 'the near-cap warning threshold' },
     { file: ADMIN_SMS, needle: 'pb-[120px]', what: 'the bottom-nav clearance' },
     { file: SMS_SECTION, needle: 'paddingBottom: 120', what: 'the bottom-nav clearance' },
-    { file: SMS_SECTION, needle: 'slice(0, 2)', what: 'the country-code length' },
-    { file: SMS_SECTION, needle: 'slice(0, 4)', what: 'the area-code length' },
+    /**
+     * ⚠️ EDITED SINCE MEASUREMENT — THE-330. Two entries were REMOVED here, and
+     * removing them is the point of the ticket rather than an accommodation:
+     *
+     *   · `slice(0, 2)` pinned "the country-code length" — the two characters a
+     *     church typed into a free-text country box.
+     *   · `slice(0, 4)` pinned "the area-code length" — the digits it typed into
+     *     a free-text area box.
+     *
+     * 🔴 NEITHER FIGURE EXISTS ANY MORE BECAUSE NEITHER FIELD IS TYPED INTO. The
+     * country is chosen from the provider's live catalogue and the area code
+     * from the areas that actually hold stock, so there is no length to cap and
+     * no truncation to pin. Keeping the needles would pin the defect.
+     *
+     * The claim they made is now carried, and carried more strongly, by section
+     * 2's picker assertions above and by THE-330's own suite: a country field
+     * that goes back to being a text input fails there.
+     *
+     * `toFixed(2)` STAYS. It is the monthly-cost precision on the summary of a
+     * number a church already owns, which this ticket did not touch.
+     */
     { file: SMS_SECTION, needle: 'toFixed(2)', what: 'the monthly-cost precision' },
   ];
 

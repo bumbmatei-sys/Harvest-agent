@@ -1,0 +1,27 @@
+{
+  "ticket": "THE-330",
+  "recordedIn": "THE-330",
+  "note": "THE NUMBER PURCHASE FORM STOPS ASKING A CHURCH TO GUESS. The founder typed DE into a free-text country box and 615 — a Nashville area code — into a free-text area box, and was told only AFTER pressing a button that 'local numbers in DE can't send or receive SMS. Pick another type', advice about a field the form did not have. THE-330 OWNS the four files below and this is the state it leaves them in. It changes NO send path, NO meter, NO STOP handling and NONE of THE-318's four purchase fixes; sms-optout.ts, firestore.rules, firestore.indexes.json, functions/ and layout.tsx are byte-identical and pinned as such in this ticket's own guard suite.",
+  "entries": [
+    {
+      "file": "src/components/settings/SmsSection.tsx",
+      "digest": "bf66547987b88b735a23b18c20a2151e3a5cd83992a33f6cde6d53aae512e60d",
+      "why": "THE FORM BECOMES A SET OF PICKERS DRAWN FROM THE PROVIDER'S LIVE CATALOGUE. Country, number type and area code are all chosen, never typed: every offerable country is listed as 'Germany (DE)' — never a bare code, and the name comes from Intl.DisplayNames because the provider sends only the code — with the ones that cannot text visibly marked and rendering NO Buy button. Every field the provider reports is on screen before the money: per country (name, code, smsAvailable, inStock, monthlyCents, needsKyc, and tier TRANSLATED rather than printed raw), per type in a ui/table matrix (numberType, smsAvailable, whatsappAvailable, callsAvailable, monthlyCents, needsKyc, fulfilment, inStock), and per number as its own features list. Capability is decided by the PER-TYPE flag, never the country-level one that mirrors only the default type — GB mobile texts while GB local does not, and that is the subtle failure this exists to prevent. A failed catalogue fetch renders a FAILURE alert and no picker at all, never an empty list. Primitives: badge, table, item, skeleton and empty adopted; ui/select REJECTED at all three pickers, with both measured reasons named at the call site (it is a listbox button, not a <select>, which would blind the existing width guard; and it pins 32px through an attribute selector that outranks Rule 4). THE-318's purchase path, the KYC 202 handling, the carrier-registration warning above the Buy button and the single justified inline style are untouched."
+    },
+    {
+      "file": "src/lib/sms-countries.ts",
+      "digest": "92f447a1008f7b11605edba7116edd43cb9b61c0600afcae8b0e76fd5dd441fb",
+      "why": "NEW, AND DELIBERATELY PURE. It holds the provider's response SHAPES and the predicates that decide what a church may buy — smsCapableTypes, countryCanSms, typeIsInstantlyBuyable, purchasableSmsTypes — plus the country name, type label, tier translation and price formatting. It makes no network call, reads no environment, holds no credential and imports NOTHING from zernio.ts; the arrow points the other way, so THE-314's 'there is exactly ONE module that talks to the provider' guard keeps the list it had and the admin screen reads these shapes without pulling the transport into a client bundle. It hardcodes no country, price, tier or capability: every value is read off the fetched catalogue. Prices are the PROVIDER's and are deliberately not routed through formatPlanPrice, and a missing price renders as an em dash rather than as free."
+    },
+    {
+      "file": "src/lib/zernio.ts",
+      "digest": "405ba3307e9004e7de9b46c2ee443821c287db50296dc64ffe7da8967e780e5f",
+      "why": "TWO ENDPOINTS THE PROVIDER ALREADY ANSWERED AND NOTHING USED. zernioListCountries reads GET /v1/phone-numbers/countries — which the provider's own documentation describes as driving the country picker — and zernioAreaOptions reads the areaOptions of GET /v1/phone-numbers/availability, so an area code is chosen from live stock instead of guessed against a hard 409. zernioSearchNumbers gains `type` and `contains`, so the preview draws from the pool the purchase will draw from rather than from the country's WhatsApp-safe default. A malformed catalogue answers as a FAILURE, never as zero countries. THE-318's purchase body is untouched, field for field: wantsSms true and not a parameter, connectWhatsapp explicitly false, wantsWhatsapp false, the RETURNED profileId read back, allowMultiple forwarded, and the three purchase response shapes still read distinctly. The webhook signature verifier is unchanged."
+    },
+    {
+      "file": "src/app/api/sms/numbers/route.ts",
+      "digest": "4496c9c27c547e97ae197dc9848018fbb4badb5de9f8ae9c83bf7a8d1b9d30a8",
+      "why": "TWO NEW READ BRANCHES AND ONE NEW GATE. ?countries=1 serves the catalogue behind the SAME Ministry entitlement as the purchase, memoised in-process for ten minutes and NEVER served past that TTL — a failed refresh answers 502 rather than handing a church a stale rate card it is about to commit to, and fetchedAt rides on the response so the screen can say when it was read. ?areas=1 serves the area options. ?available=1 now carries the chosen type through. The POST accepts a numberType and GATES it server-side against the SMS pool zernioSmsNumberType already resolves, answering 409 TYPE_NOT_SMS_CAPABLE before any money moves — so a client naming a mute type cannot spend a church's money even though the picker would not have offered it. THE-318's own resolution is still what is SENT, an unverifiable lookup still does not block the purchase, and no entitlement is written anywhere."
+    }
+  ]
+}
