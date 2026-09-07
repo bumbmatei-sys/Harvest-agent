@@ -584,6 +584,24 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
     expect(users).toEqual([
       'src/components/AdminSettings.tsx',   // uses it: THE-316's TOUCH_FLOOR
       'src/components/Profile.tsx',         // names it in a comment, does not use it
+      // 🔴 APPENDED BY THE-331, NOTHING ABOVE OR BELOW REMOVED OR REWRITTEN.
+      // ⚠️ NOT a comment-only mention — this one USES the class, which makes it
+      // the same KIND as AdminSettings.tsx and only the second such entry in
+      // this list. The attach picker replaced a hand-rolled sheet with a
+      // dropdown, and a menu row and a cascader row are both TAP TARGETS, so
+      // both take a 44px floor below `sm`: `min-h-11 sm:min-h-0` on the menu
+      // rows, and the same rule reached through the list as
+      // `[&_[role=option]]:min-h-11` on the cascader rows, because CascaderItems
+      // takes no className and hand-rendering rows would mean owning the
+      // explicit `index` Base UI needs once windowing engages.
+      // 🔴 `sm:min-h-0` is load-bearing and is why this is not a flat
+      // `min-h-11`: Rule 4 fixes controls at 38px from `sm` up and a test
+      // asserts DENSITY_PX.control < 44 deliberately, so an ungated floor would
+      // fight it at every desktop width. The rem-relative/absolute divergence
+      // the prose above records is exactly why that gating is safe here — the
+      // class is only ever allowed to bind below `sm`, the one band where the
+      // root is 16px and `min-h-11` and `min-h-[44px]` are identical.
+      'src/components/attach/AttachMenu.tsx',        // THE-331: USES it, as a phone-only 44px tap floor
       'src/components/events/RotaInviteView.tsx',   // THE-324: names it in a comment, does not use it
       'src/components/events/RotaRespondView.tsx',  // THE-324: names it in a comment, does not use it
       // 🔴 APPENDED BY THE-330, NOTHING ABOVE REMOVED OR REWRITTEN. Another
