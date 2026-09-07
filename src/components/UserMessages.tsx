@@ -200,9 +200,9 @@ const FormPicker: React.FC<{
   const isSelected = (id: string) => selected.some(s => s.id === id);
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-end">
+    <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center sm:p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full bg-surface-raised rounded-t-2xl max-h-[70vh] flex flex-col">
+      <div className="relative w-full sm:max-w-lg bg-surface-raised rounded-t-2xl sm:rounded-2xl max-h-[70vh] flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-line flex-shrink-0">
           <h3 className="font-bold text-strong text-sm font-display">Attach a Form</h3>
           <button onClick={onClose}><X size={18} className="text-faint" /></button>
@@ -925,9 +925,9 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
       </div>
 
       {showNewMessage && (
-        <div className="fixed inset-0 z-[300] flex items-end">
+        <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center sm:p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowNewMessage(false)} />
-          <div className="relative w-full bg-surface-raised rounded-t-2xl max-h-[70vh] flex flex-col">
+          <div className="relative w-full sm:max-w-lg bg-surface-raised rounded-t-2xl sm:rounded-2xl max-h-[70vh] flex flex-col">
             <div className="flex items-center justify-between px-5 py-4 border-b border-line flex-shrink-0">
               <h3 className="font-bold text-strong text-sm font-display">New Message</h3>
               <button onClick={() => setShowNewMessage(false)}><X size={18} className="text-faint" /></button>

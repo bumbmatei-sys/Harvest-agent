@@ -9,6 +9,7 @@ import {
   type QueryDocumentSnapshot
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
+import { AttachMenu, AttachTypeIcon } from './attach/AttachMenu';
 import { getTenantId, getTenantIdFromHost, isPlatformContext, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { notifyError } from '../utils/notify';
@@ -227,12 +228,11 @@ const RoleBadge: React.FC<{ role?: string }> = ({ role }) => {
 // ─── Attachment Card ─────────────────────────────────────────────────────────
 
 const AttachmentCard: React.FC<{ attachment: MessageAttachment; onOpen?: () => void }> = ({ attachment, onOpen }) => {
-  const icon = attachment.type === 'doc' ? '📄' : attachment.type === 'contact' ? '👤' : attachment.type === 'form' ? '📝' : '🎯';
   const label = attachment.type === 'doc' ? 'Open Doc' : attachment.type === 'contact' ? 'View Contact' : attachment.type === 'form' ? 'Open Form' : 'View Campaign';
   return (
     <div className="mt-1.5 bg-surface-raised border border-line rounded-2xl overflow-hidden shadow-xs" style={{ maxWidth: 224 }}>
       <div className="flex items-start gap-2 p-3 pb-2">
-        <span className="text-lg leading-none flex-shrink-0">{icon}</span>
+        <span className="leading-none flex-shrink-0 text-faint"><AttachTypeIcon type={attachment.type} /></span>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-semibold text-strong truncate leading-tight">{attachment.title}</p>
           <p className="text-[10px] text-faint truncate mt-0.5">{attachment.subtitle}</p>
@@ -248,187 +248,6 @@ const AttachmentCard: React.FC<{ attachment: MessageAttachment; onOpen?: () => v
         >
           {label}
         </button>
-      </div>
-    </div>
-  );
-};
-
-// ─── Attach Picker ───────────────────────────────────────────────────────────
-
-const AttachPicker: React.FC<{
-  tenantId: string;
-  includeNull: boolean;
-  selected: MessageAttachment[];
-  onToggle: (a: MessageAttachment) => void;
-  onClose: () => void;
-}> = ({ tenantId, includeNull, selected, onToggle, onClose }) => {
-  const [tab, setTab] = useState<AttachTab>('docs');
-  const [search, setSearch] = useState('');
-  const [items, setItems] = useState<MessageAttachment[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!tenantId) return;
-    setLoading(true);
-    setItems([]);
-    let cancelled = false;
-    // Records live in flat collections scoped by a `tenantId` field (matching
-    // AdminDocs / AdminCRM / AdminFundraising) — NOT tenant subcollections.
-    // Query by equality only so no composite index is required. For the platform
-    // tenant under a super admin, legacy null-tenant records are merged in too.
-    console.log('[AttachPicker] currentTenantId:', tenantId, 'includeNull:', includeNull, 'tab:', tab);
-    const run = async () => {
-      try {
-        if (tab === 'docs') {
-          const [docsDocs, foldersDocs] = await Promise.all([
-            dualTenantDocs('docs', tenantId, includeNull, 50),
-            dualTenantDocs('docFolders', tenantId, includeNull, 100),
-          ]);
-          if (cancelled) return;
-          const folderNames = new Map<string, string>();
-          foldersDocs.forEach(f => folderNames.set(f.id, (f.data().name as string) || 'Folder'));
-          const rows = docsDocs.map(d => {
-            const data = d.data();
-            const folder = data.folderId ? folderNames.get(data.folderId) : null;
-            const updated = (data.updatedAt as Timestamp | undefined)?.toDate?.();
-            const subtitle = folder || (updated ? updated.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Doc');
-            return { type: 'doc' as const, id: d.id, title: (data.title as string) || 'Untitled', subtitle, _sort: (data.updatedAt as Timestamp | undefined)?.toMillis?.() || 0 };
-          });
-          rows.sort((a, b) => b._sort - a._sort);
-          setItems(rows.map(({ _sort, ...r }) => r));
-        } else if (tab === 'contacts') {
-          const contactDocs = await dualTenantDocs('contacts', tenantId, includeNull, 100);
-          if (cancelled) return;
-          const typeLabel: Record<string, string> = { donor: 'Donor', member: 'Member', both: 'Donor & Member' };
-          setItems(contactDocs.map(d => {
-            const data = d.data();
-            const name = `${data.firstName || ''} ${data.lastName || ''}`.trim() || 'Unknown';
-            const badge = typeLabel[data.type as string] || 'Contact';
-            const subtitle = data.email ? `${badge} · ${data.email}` : badge;
-            return { type: 'contact' as const, id: d.id, title: name, subtitle };
-          }));
-        } else if (tab === 'campaigns') {
-          const campaignDocs = await dualTenantDocs('campaigns', tenantId, includeNull, 50);
-          if (cancelled) return;
-          setItems(campaignDocs.map(d => {
-            const data = d.data();
-            const raised = (data.raised as number) || 0;
-            const goal = (data.goal as number) || 0;
-            const status = data.isActive ? 'Active' : 'Inactive';
-            const money = goal > 0
-              ? `$${raised.toLocaleString()} of $${goal.toLocaleString()}`
-              : `$${raised.toLocaleString()} raised`;
-            return { type: 'campaign' as const, id: d.id, title: (data.title as string) || 'Campaign', subtitle: `${money} · ${status}` };
-          }));
-        } else {
-          // Forms live in the tenant SUBCOLLECTION (tenants/{tenantId}/forms), not a
-          // flat tenantId-scoped collection — so dualTenantDocs does not apply here.
-          // Only list forms that are publicly openable (active !== false).
-          const snap = await getDocs(query(collection(db, 'tenants', tenantId, 'forms'), orderBy('createdAt', 'desc'), limit(50)));
-          if (cancelled) return;
-          setItems(snap.docs
-            .filter(d => d.data().active !== false)
-            .map(d => {
-              const data = d.data();
-              const count = (data.submissionCount as number) || 0;
-              return { type: 'form' as const, id: d.id, title: (data.title as string) || 'Untitled Form', subtitle: `${count} ${count === 1 ? 'submission' : 'submissions'}` };
-            }));
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setItems([]);
-          notifyError('Failed to load records', e);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    run();
-    return () => { cancelled = true; };
-  }, [tab, tenantId, includeNull]);
-
-  const emptyLabel = tab === 'docs' ? 'No docs yet' : tab === 'contacts' ? 'No contacts yet' : tab === 'forms' ? 'No active forms yet' : 'No campaigns yet';
-
-  const filtered = search
-    ? items.filter(i =>
-        i.title.toLowerCase().includes(search.toLowerCase()) ||
-        i.subtitle.toLowerCase().includes(search.toLowerCase())
-      )
-    : items;
-
-  const isSelected = (id: string) => selected.some(s => s.id === id);
-
-  return (
-    <div className="fixed inset-0 z-[300] flex items-end">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full bg-surface-raised rounded-t-2xl max-h-[70vh] flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-line flex-shrink-0">
-          <h3 className="font-display font-bold text-strong text-sm">Attach Record</h3>
-          <button onClick={onClose}><X size={18} className="text-faint" /></button>
-        </div>
-        <div className="flex gap-1 bg-surface-sunken rounded-xl p-1 mx-4 mt-3 mb-2 flex-shrink-0">
-          {([['docs', 'Notes & Docs'], ['contacts', 'Contacts'], ['campaigns', 'Fundraising'], ['forms', 'Forms']] as [AttachTab, string][]).map(([id, lbl]) => (
-            <button
-              key={id}
-              onClick={() => { setTab(id as AttachTab); setSearch(''); }}
-              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors ${tab === id ? 'bg-surface-raised shadow-xs text-strong' : 'text-muted'}`}
-            >
-              {lbl}
-            </button>
-          ))}
-        </div>
-        <div className="relative mx-4 mb-2 flex-shrink-0">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search..."
-            className="w-full pl-8 pr-3 py-2 text-sm border border-line rounded-xl focus:outline-hidden focus:border-gold"
-          />
-        </div>
-        <div className="overflow-y-auto flex-1">
-          {loading ? (
-            <div className="flex items-center justify-center py-10">
-              <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }} />
-            </div>
-          ) : filtered.length === 0 ? (
-            <p className="text-center py-10 text-sm text-faint">{search ? 'Nothing found' : emptyLabel}</p>
-          ) : filtered.map(item => {
-            const sel = isSelected(item.id);
-            const icon = item.type === 'doc' ? '📄' : item.type === 'contact' ? '👤' : item.type === 'form' ? '📝' : '🎯';
-            return (
-              <button
-                key={item.id}
-                onClick={() => onToggle(item)}
-                className={`w-full flex items-center gap-3 px-5 py-3 text-left transition-colors ${sel ? 'bg-wheat-50' : 'hover:bg-surface-sunken'}`}
-              >
-                <span className="text-xl flex-shrink-0">{icon}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-strong truncate">{item.title}</p>
-                  <p className="text-xs text-faint truncate">{item.subtitle}</p>
-                </div>
-                {sel && (
-                  <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
-                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                      <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
-        {selected.length > 0 && (
-          <div className="p-4 border-t border-line flex-shrink-0">
-            <button
-              onClick={onClose}
-              className="w-full py-2.5 rounded-xl text-sm font-semibold text-white"
-              style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
-            >
-              Done · {selected.length} attached
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -488,9 +307,9 @@ const ChannelMembersSheet: React.FC<{
       u.email?.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-end">
+    <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center sm:p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full bg-surface-raised rounded-t-3xl max-h-[75vh] flex flex-col">
+      <div className="relative w-full sm:max-w-lg bg-surface-raised rounded-t-3xl sm:rounded-3xl max-h-[75vh] flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-line flex-shrink-0">
           <h3 className="font-display font-bold text-strong text-sm">Channel Members</h3>
           <button onClick={onClose}><X size={18} className="text-faint" /></button>
@@ -581,7 +400,6 @@ const ChannelThread: React.FC<{
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
-  const [showPicker, setShowPicker] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -691,7 +509,7 @@ const ChannelThread: React.FC<{
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
               <div key={i} className="flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)] border border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] rounded-lg px-2.5 py-1 text-xs font-medium text-gold">
-                <span className="text-sm">{a.type === 'doc' ? '📄' : a.type === 'contact' ? '👤' : a.type === 'form' ? '📝' : '🎯'}</span>
+                <AttachTypeIcon type={a.type} />
                 <span className="max-w-[90px] truncate">{a.title}</span>
                 <button onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>
                   <X size={11} className="text-[color-mix(in_srgb,var(--brand-color)_60%,transparent)]" />
@@ -701,12 +519,11 @@ const ChannelThread: React.FC<{
           </div>
         )}
         <div className="flex gap-2 items-center bg-surface-tint rounded-2xl px-3 py-2.5 border border-line focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors">
-          <button
-            onClick={() => setShowPicker(true)}
-            className="flex-shrink-0 p-1 rounded-lg hover:bg-surface-chip transition-colors"
-          >
-            <Paperclip size={16} className="text-faint" />
-          </button>
+          <AttachMenu
+            tenantId={tenantId}
+            includeNull={includeNull}
+            onAttach={toggleAttachment}
+          />
           <input
             value={text}
             onChange={e => setText(e.target.value)}
@@ -725,15 +542,6 @@ const ChannelThread: React.FC<{
         </div>
       </div>
 
-      {showPicker && (
-        <AttachPicker
-          tenantId={tenantId}
-          includeNull={includeNull}
-          selected={attachments}
-          onToggle={toggleAttachment}
-          onClose={() => setShowPicker(false)}
-        />
-      )}
     </div>
   );
 };
@@ -752,7 +560,6 @@ const DmThread: React.FC<{
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
-  const [showPicker, setShowPicker] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -885,7 +692,7 @@ const DmThread: React.FC<{
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
               <div key={i} className="flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)] border border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] rounded-lg px-2.5 py-1 text-xs font-medium text-gold">
-                <span className="text-sm">{a.type === 'doc' ? '📄' : a.type === 'contact' ? '👤' : a.type === 'form' ? '📝' : '🎯'}</span>
+                <AttachTypeIcon type={a.type} />
                 <span className="max-w-[90px] truncate">{a.title}</span>
                 <button onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>
                   <X size={11} className="text-[color-mix(in_srgb,var(--brand-color)_60%,transparent)]" />
@@ -895,12 +702,11 @@ const DmThread: React.FC<{
           </div>
         )}
         <div className="flex gap-2 items-center bg-surface-tint rounded-2xl px-3 py-2.5 border border-line focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors">
-          <button
-            onClick={() => setShowPicker(true)}
-            className="flex-shrink-0 p-1 rounded-lg hover:bg-surface-chip transition-colors"
-          >
-            <Paperclip size={16} className="text-faint" />
-          </button>
+          <AttachMenu
+            tenantId={tenantId}
+            includeNull={includeNull}
+            onAttach={toggleAttachment}
+          />
           <input
             value={text}
             onChange={e => setText(e.target.value)}
@@ -919,15 +725,6 @@ const DmThread: React.FC<{
         </div>
       </div>
 
-      {showPicker && (
-        <AttachPicker
-          tenantId={tenantId}
-          includeNull={includeNull}
-          selected={attachments}
-          onToggle={toggleAttachment}
-          onClose={() => setShowPicker(false)}
-        />
-      )}
     </div>
   );
 };

@@ -573,6 +573,24 @@ const exportCsvOf = (src: string): string | null => {
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 
+/**
+ * THE-331 — the pre-PR community paths with the one that MOVED removed.
+ * Derived from the fixture rather than retyped, so the list cannot silently
+ * disagree with the recorded baseline it is built from.
+ */
+const PRE_PR_COMMUNITY_PATHS_MINUS_FORMS_OF = (paths: string[]) => {
+  const moved = "'tenants', tenantId, 'forms'";
+  const at = paths.indexOf(moved);
+  if (at < 0) {
+    throw new Error(
+      `the pre-PR baseline no longer contains ${moved}; THE-331's re-aim is ` +
+        `describing a move that did not happen`,
+    );
+  }
+  return [...paths.slice(0, at), ...paths.slice(at + 1)];
+};
+
+
 const prePrOf = (src: string): PrePr => {
   const stripped = stripPresentation(src);
   return {
@@ -1350,16 +1368,84 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
 describe('no community query or write path changed', () => {
   const COLLECTIONS = ['channels', 'channelMessages', 'directMessages', 'dmMessages'];
 
+  /**
+   * 🔴 THE-331 — AdminCommunity HAS legitimately moved, and this is the record.
+   *
+   * Recorded in the shape THE-251 established for AdminFundraising and THE-308
+   * kept for AdminEvents: the pin is KEPT and RE-AIMED, never loosened and
+   * never deleted. Previous pin, kept here so nothing is lost:
+   *
+   *     strippedSha:   3d54f2eb01122a18900f911b2077f84ff9b69df10278988470018724c1bbf61c
+   *     strippedLines: 1529     (the pre-PR revision, 974ae1d)
+   *
+   * ⚠️ WHAT MOVED, WHOLE — 1529 → 1341 stripped lines, and every one of the
+   * 188 is a DELETION or a call-site swap. Nothing was added to this screen:
+   *
+   *   1. `AttachPicker` is GONE, 182 lines of it. It was a hand-rolled `sheet`
+   *      (`fixed inset-0 z-[300] flex items-end`, no `sm:` override — the
+   *      founder's bug), a hand-rolled tab strip, a hand-rolled search input, a
+   *      hand-spun border-spinner with a hardcoded #d4a017, a hand-rolled empty
+   *      state, and four EMOJI standing in for icons.
+   *   2. Both composer sites now render `<AttachMenu />` in place of a
+   *      paperclip `<button>` plus a `{showPicker && …}` block; the two
+   *      `showPicker` useStates go with them.
+   *   3. The three remaining emoji — in `AttachmentCard` and the two
+   *      attachment chips — become a shared `AttachTypeIcon`.
+   *
+   * 🔴 NOTHING THE MESSAGING DEPENDS ON MOVED, asserted rather than claimed.
+   * `firestorePathsOf` below is RE-AIMED for exactly one removal and no
+   * addition: `'tenants', tenantId, 'forms'` left this file when the attach
+   * loaders moved to `src/lib/attach-records.ts`, which is the whole point of
+   * extracting them — two screens attach records and were about to duplicate
+   * the four collection spellings. Every other path is byte-identical and in
+   * the same order, and all four community collections are still asserted
+   * present by `COLLECTIONS` below, unchanged.
+   *
+   * ⚠️ The six live Firestore listeners, the channel and DM queries, the send
+   * path and the attachment schema are untouched. The known unrelated Firestore
+   * 400 on the `orderBy('createdAt','desc')` channels Listen stream is NOT this
+   * ticket's and was not investigated here.
+   *
+   * Update `THE_331_COMMUNITY` only for a deliberate, reviewed change to
+   * AdminCommunity, and say which ticket in the same breath.
+   */
+  const THE_331_COMMUNITY = {
+    strippedSha: '830df7a4fc28c8d4e468270e7dae171ecb2e8691e76e842d4a6cfa61a88bbe0c',
+    strippedLines: 1341,
+    /**
+     * The pre-PR list minus the one path that moved to attach-records.ts.
+     * ⚠️ A FUNCTION, not a value: `PRE_PR` is loaded in `beforeAll`, so a
+     * const evaluated at collection time would read `undefined`.
+     */
+    firestorePaths: () =>
+      PRE_PR_COMMUNITY_PATHS_MINUS_FORMS_OF(PRE_PR.AdminCommunity.firestorePaths),
+  };
+
   it('reads and writes the same four collections, spelled the same way', () => {
     const after = read('AdminCommunity.tsx');
-    expect(firestorePathsOf(after)).toEqual(PRE_PR.AdminCommunity.firestorePaths);
+    expect(firestorePathsOf(after)).toEqual(THE_331_COMMUNITY.firestorePaths());
     for (const c of COLLECTIONS) expect(after.includes(c), `${c} disappeared`).toBe(true);
+  });
+
+  it('🔴 the only path that left did so by moving, not by disappearing', () => {
+    // A read that vanished from the tree entirely would be a behaviour change
+    // wearing an extraction's clothes. It is asserted to exist in its new home.
+    const moved = "'tenants', tenantId, 'forms'";
+    expect(PRE_PR.AdminCommunity.firestorePaths).toContain(moved);
+    expect(firestorePathsOf(read('AdminCommunity.tsx'))).not.toContain(moved);
+    const lib = readFileSync(path.join(REPO, 'src/lib/attach-records.ts'), 'utf8');
+    expect(
+      firestorePathsOf(lib),
+      'the forms read must still exist, in the module it moved to',
+    ).toContain(moved);
   });
 
   it('changes nothing in AdminCommunity outside a className', () => {
     const now = stripPresentation(read('AdminCommunity.tsx'));
-    expect(now.split('\n').length, DIFF_HINT('AdminCommunity')).toBe(PRE_PR.AdminCommunity.strippedLines);
-    expect(sha(now), DIFF_HINT('AdminCommunity')).toBe(PRE_PR.AdminCommunity.strippedSha);
+    expect(now.split('\n').length, DIFF_HINT('AdminCommunity')).toBe(
+      THE_331_COMMUNITY.strippedLines,
+    );
+    expect(sha(now), DIFF_HINT('AdminCommunity')).toBe(THE_331_COMMUNITY.strippedSha);
   });
 
   it('writes nothing while the screen is merely rendered', async () => {
