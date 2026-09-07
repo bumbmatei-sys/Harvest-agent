@@ -496,6 +496,15 @@ describe('14 · the files THE-321 does not own are byte-identical', () => {
     ],
     'src/components/events/ServicePlanPanel.tsx': [
       ['81f99a23ff53cb1488935b7adf37cf043ff577399324e377785176d9f1e8c891', 'main at acc0d66 — THE-317 (#458) owns it'],
+      // 🔴 APPENDED BY THE-329. The value above stands unedited, and THE-321
+      // still cannot edit this file because a digest that is neither continues
+      // to fail. THE-329 makes a service plannable without an event: the panel
+      // takes `eventId: string | null` alongside a new `planId`, and reads a
+      // standalone service by its own document id instead of by an event that
+      // does not exist. Nothing visual moved — no class, no primitive, no
+      // colour token — and this file still imports nothing from
+      // `@/components/ui/`, so it adopts nothing THE-321's pass is about.
+      ['29f35a933400e820ec96505c53326cbe32db192fffb7a984112f708cfa8e007f', 'main + THE-329 — a service can be planned with no event, so the panel takes either anchor'],
     ],
     'src/components/events/ServicePlanRow.tsx': [
       ['ffafaf4228bbefe95d7b9bf439d5a36df9c9160f5c086cbae25a236ec0adca37', 'main at acc0d66 — THE-317 (#458) owns it'],

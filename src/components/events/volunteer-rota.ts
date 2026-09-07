@@ -109,9 +109,25 @@ export interface RotaEvent {
   startsAt: Date | null;
 }
 
-/** One service on the rota: an event, and the plan (if any) that runs it. */
+/**
+ * One service on the rota.
+ *
+ * 🔴 THE-329 MADE `eventId` NULLABLE, AND THAT IS THE WHOLE OF THIS TICKET'S
+ * CHANGE TO PART 2. A service is an event with a plan against it, OR a
+ * standalone service that is a plan with a date of its own. Both are dated
+ * things a church puts volunteers on, so both belong on a rota, and nothing
+ * below this line cares which it is looking at — every function here reads
+ * `startsAt`, `planId` and `items`, none of which moved.
+ *
+ * ⚠️ NOTHING PERSISTED CHANGED TO MAKE THIS TRUE. `rotaServices` is a pure
+ * function over two reads that already return standalone plans: the rota's
+ * query is `where('isTemplate','==',false)`, and a standalone service writes
+ * `isTemplate: false`, so it was already in the result and was being dropped by
+ * this function for having no event to join to.
+ */
 export interface RotaService {
-  eventId: string;
+  /** The event this service runs, or null for a standalone service. */
+  eventId: string | null;
   eventTitle: string;
   startsAt: Date | null;
   /** Null when the event has no order of service yet — a real and common state. */
@@ -190,16 +206,53 @@ export const rotaEvent = (
 });
 
 /**
- * Events joined to their plans, newest LAST, undated events dropped.
+ * A plan as the rota needs it: the fields it reads and NOT the ones it does not.
+ *
+ * ⚠️ `startAt` is a `Date | null`, not a `Timestamp`. This module is pure and
+ * mounts nothing; a Firestore type here would drag the SDK into every test that
+ * calls these functions. The caller narrows, exactly as `rotaEvent` narrows an
+ * event.
+ */
+export interface RotaPlan {
+  id: string;
+  eventId: string | null;
+  /** THE-329: a standalone service's own start. Null for every other plan. */
+  startAt: Date | null;
+  name: string;
+  items: ServicePlanItem[];
+}
+
+/**
+ * A plan narrowed to what the rota reads. {@link rotaEvent}'s counterpart.
+ *
+ * 🔴 A NARROWING FUNCTION RATHER THAN AN OBJECT LITERAL AT EACH CALL SITE, and
+ * THE-329 is why it exists: `startAt` was added to {@link RotaPlan} as a
+ * REQUIRED field, so a caller that had not heard of standalone services would
+ * silently drop every one of them. Required plus one narrowing function means
+ * the compiler names the caller instead.
+ */
+export const rotaPlan = (
+  plan: { id: string; eventId: string | null; startAt: { toDate: () => Date } | null; name: string; items: ServicePlanItem[] },
+): RotaPlan => ({
+  id: plan.id,
+  eventId: plan.eventId,
+  startAt: plan.startAt ? plan.startAt.toDate() : null,
+  name: plan.name,
+  items: plan.items,
+});
+
+/**
+ * Events joined to their plans, plus THE-329's standalone services, in time
+ * order with undated events and templates dropped.
  *
  * ⚠️ The join is in memory over two reads, not one query per event. See the
  * queries module for why that is the only affordable shape — and what it costs.
  */
 export function rotaServices(
   events: readonly RotaEvent[],
-  plans: readonly { id: string; eventId: string | null; name: string; items: ServicePlanItem[] }[],
+  plans: readonly RotaPlan[],
 ): RotaService[] {
-  const byEvent = new Map<string, (typeof plans)[number]>();
+  const byEvent = new Map<string, RotaPlan>();
   for (const plan of plans) {
     // ⚠️ FIRST WINS, deterministically. Part 1 ships one plan per event and its
     // panel never creates a second; a church that has somehow produced two would
@@ -207,7 +260,8 @@ export function rotaServices(
     // changed. `useServicePlan` resolves the same collision the same way.
     if (plan.eventId && !byEvent.has(plan.eventId)) byEvent.set(plan.eventId, plan);
   }
-  return events
+
+  const fromEvents: RotaService[] = events
     .filter((e): e is RotaEvent & { startsAt: Date } => e.startsAt !== null)
     .map((e) => {
       const plan = byEvent.get(e.id) ?? null;
@@ -219,7 +273,27 @@ export function rotaServices(
         planName: plan?.name ?? '',
         items: plan ? orderedItems(plan.items) : [],
       };
-    })
+    });
+
+  /**
+   * 🔴 THE-329's STANDALONE SERVICES — a plan with NO event and a date of its
+   * own. A plan with neither is a template and is dropped here exactly as an
+   * undated event is dropped above; a plan WITH an event was already joined
+   * through `byEvent` and must not be added a second time, which the `eventId`
+   * test below guarantees without needing to consult that map.
+   */
+  const standalone: RotaService[] = plans
+    .filter((p): p is RotaPlan & { startAt: Date } => p.eventId === null && p.startAt != null)
+    .map((p) => ({
+      eventId: null,
+      eventTitle: p.name,
+      startsAt: p.startAt,
+      planId: p.id,
+      planName: p.name,
+      items: orderedItems(p.items),
+    }));
+
+  return [...fromEvents, ...standalone]
     .sort((a, b) => (a.startsAt as Date).getTime() - (b.startsAt as Date).getTime());
 }
 
@@ -253,7 +327,8 @@ export function rotaWeeks(
 
 /** One line of "who is on": an item, its clock time, and whoever holds it. */
 export interface OnDutyRow {
-  eventId: string;
+  /** Null for a standalone service — see {@link RotaService.eventId}. */
+  eventId: string | null;
   eventTitle: string;
   planId: string | null;
   item: ServicePlanItem;

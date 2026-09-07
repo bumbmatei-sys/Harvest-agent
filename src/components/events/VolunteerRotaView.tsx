@@ -578,8 +578,16 @@ const VolunteerRotaView: React.FC<VolunteerRotaViewProps> = ({
                       description="Nothing is in the diary for these seven days."
                     />
                   ) : (
+                    /* ⚠️ THE-329: a standalone service has NO event, so the
+                       event id is not a key on its own. The plan id is the
+                       identity of a standalone service and the event id is the
+                       identity of an event-anchored one; both are in the pair,
+                       so two rows can never collide. */
                     week.services.map((service) => (
-                      <div key={service.eventId} className="min-w-0 space-y-1">
+                      <div
+                        key={`${service.eventId ?? ''}:${service.planId ?? ''}`}
+                        className="min-w-0 space-y-1"
+                      >
                         <p className="text-xs text-muted">
                           {fmtDay(service.startsAt)} · {service.eventTitle}
                         </p>

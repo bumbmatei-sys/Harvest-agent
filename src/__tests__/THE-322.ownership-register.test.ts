@@ -492,7 +492,7 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * retires a pinner updates this count and says what that suite still asserts;
  * a suite that quietly stops pinning fails here.
  */
-const RULES_PINNERS_NOW = 55;
+const RULES_PINNERS_NOW = 56;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per
@@ -559,6 +559,28 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
   // digest, THE-327's suite also pins `firestore.indexes.json`, `functions/`,
   // `sms-optout.ts` and `layout.tsx`, which are out of scope by instruction.
   ['THE-327', 'src/components/__tests__/THE-327.sms-consolidation.test.tsx'],
+  // ⚠️ THE-329 pins it for this list's reason: `firestore.rules` auto-deploys to
+  // production and CI runs no emulator test, so a ticket that must not touch it
+  // says so by digest rather than by promise. APPENDED beside THE-327's entry,
+  // never over it.
+  //
+  // 🔴 THE-329 WRITES NO RULE, AND ESTABLISHED THAT IT NEEDS NONE. It lets a
+  // church create a service WITHOUT first creating an event — the founder's
+  // "If I have no event created, I cannot create any service, which is stupid."
+  // That is one new FIELD (`startAt`) on documents in the SAME
+  // `tenants/{t}/servicePlans` collection, and it adds no query shape at all
+  // (the services list reuses the rota's existing
+  // `where('isTemplate','==',false)` read). Neither half of the deployed rule
+  // reads `resource.data`, so there is nothing for a rule to newly permit.
+  //
+  // ⚠️ WHAT ITS SUITE ASSERTS BESIDE THE DIGEST: that the block still reads
+  // `allow read: if belongsToTenant(tenantId)` and
+  // `allow write: if hasPermission('manageEvents', tenantId)` in as many words,
+  // and that NO `manageServices` or `managePlanning` permission was invented —
+  // a new claim would add a row to the roles matrix that no rule, no API route
+  // and no other screen knows about, and every one of them would still be
+  // checking `manageEvents`.
+  ['THE-329', 'src/__tests__/the-329-guards.test.ts'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {

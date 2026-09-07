@@ -577,7 +577,8 @@ export type SlotProblem =
 export interface SlotWarning {
   key: string;
   problem: SlotProblem;
-  eventId: string;
+  /** THE-329: null for a standalone service, which has no event. */
+  eventId: string | null;
   eventTitle: string;
   planId: string;
   itemId: string;
