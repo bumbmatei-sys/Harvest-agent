@@ -76,6 +76,16 @@ import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
 const sha256 = (t: string): string => createHash('sha256').update(t, 'utf8').digest('hex');
 
 const UI_DIR = path.join(REPO_ROOT, 'src/components/ui');
+/**
+ * THE-331. Vendored registry INTERNALS, excluded for the same reason `UI_DIR`
+ * is: this guard asks which APPLICATION files adopt a primitive, and a
+ * primitive reaching for another primitive is not an adoption to record. The
+ * reui cascader's own modules import `scroll-area` and `spinner` exactly as
+ * `ui/*` files import each other. 🔴 This does NOT widen what the guard
+ * accepts from app code — a screen under `src/components` that adopts a new
+ * primitive without a recorded entry still fails, which is the whole threat.
+ */
+const REUI_DIR = path.join(REPO_ROOT, 'src/components/reui');
 const FIXTURES = path.join(UI_DIR, '__tests__/__fixtures__');
 const LAYOUT = path.join(REPO_ROOT, 'src/app/layout.tsx');
 
@@ -1151,6 +1161,26 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       'paywalled (403 "License required") and was never installed — so no primitive was ' +
       'rewritten, and all 18 the block depended on are pinned byte-identical in the-308-guards.',
   },
+  {
+    file: 'src/components/attach/AttachMenu.tsx',
+    ticket: 'THE-331',
+    why:
+      'The attach picker. The paperclip used to open a hand-rolled sheet — `fixed inset-0 ' +
+      'z-[300] flex items-end` with NO `sm:` override, so a phone sheet spanned a 1920px ' +
+      'desktop edge to edge (measured: 1920px wide, bottom-pinned; now 464px and centred). ' +
+      'It is a menu now, so `dropdown-menu` carries the four category submenus and their ' +
+      'flyouts, and there is no full-width surface left to mis-place. `alert` is load-bearing ' +
+      'rather than cosmetic: a rejected Firestore read used to answer `setItems([])` and then ' +
+      'print "No docs yet", so a church that could not READ its contacts was told it HAD none ' +
+      '— the loader now returns a discriminated union and this renders the failure branch. ' +
+      '`empty` draws the genuinely-empty case, which is a different state and now looks like ' +
+      'one. `spinner` replaces a hand-spun div with a hardcoded #d4a017 border, `dialog` ' +
+      'carries the Browse… surface and `button` the trigger. `sheet` is REJECTED: the whole ' +
+      'point is that this stopped being a sheet above `sm`. `command` is REJECTED with its ' +
+      'reason at the call site — it is a flat searchable list with no hierarchy, and the ' +
+      'founder chose c-cascader-3 for deep search that crosses all four collections and ' +
+      'annotates each hit with the category it came from, which a flat list cannot express.',
+  },
 ];
 
 it('only the recorded adopters import the new components, and each names its ticket', () => {
@@ -1159,7 +1189,7 @@ it('only the recorded adopters import the new components, and each names its tic
   const importers = walkFiles(path.join(REPO_ROOT, 'src'), (d) => d === 'node_modules')
     .filter((f) => /\.(ts|tsx)$/.test(f))
     .filter((f) => {
-      if (f.startsWith(UI_DIR)) return false;
+      if (f.startsWith(UI_DIR) || f.startsWith(REUI_DIR)) return false;
       if (f.includes(`${path.sep}__tests__${path.sep}`)) return false;
       return re.test(readFileSync(f, 'utf8'));
     });

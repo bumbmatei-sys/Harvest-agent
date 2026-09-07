@@ -953,6 +953,23 @@ const EDITED_SINCE_MEASUREMENT: ReadonlyArray<{ file: string; ticket: string; wh
       'being filed into this tenant\'s folders. Two rgba() literals left with the mobile ' +
       'drawer they belonged to; no colour was added.',
   },
+  {
+    file: 'AdminBlog.tsx',
+    ticket: 'THE-331',
+    why:
+      'ONE CLASS, AND IT IS THE BUG THE FOUNDER REPORTED. This screen carried a fifth copy of the '
+      + 'defect THE-331 was opened for and which its brief did not name: `fixed inset-0 '
+      + 'z-[200] bg-black/50 flex items-end` with NO `sm:` override, so a panel designed as '
+      + 'a phone sheet spanned a 1920px desktop edge to edge, pinned to the bottom. It was '
+      + 'found by sweeping for the pattern rather than by reading the four sites the brief '
+      + 'listed, and leaving it would have shipped a known-identical bug two files from its '
+      + 'fix. It gains `sm:items-center justify-center sm:p-4` on the overlay and '
+      + '`sm:rounded-3xl` on a panel that already had `max-w-lg mx-auto` — the same override '
+      + 'proven three times in AdminCommunity.tsx at :1523, :1617 and :1652. Below `sm` '
+      + 'NOTHING changes, measured rather than assumed: 380px wide and `flex-end` before and '
+      + 'after, because the phone sheet was already correct. No blog query, draft state, '
+      + 'publish path, container, measure or colour moved; the diff is two className strings.',
+  },
 ];
 
 const EXEMPT_FILES = EDITED_SINCE_MEASUREMENT.map((e) => e.file);
@@ -968,6 +985,7 @@ describe('the digest exemption list is exactly the edits that justify it', () =>
       'THE-220 AdminDashboard.tsx',
       'THE-262 AdminDocs.tsx',
       'THE-275 AdminDocs.tsx',
+      'THE-331 AdminBlog.tsx',
     ]);
   });
 

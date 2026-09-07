@@ -402,8 +402,8 @@ const AdminBlog: React.FC = () => {
 
  {/* Automated Blog Settings */}
  {showAutomation && (
- <div className="fixed inset-0 z-[200] bg-black/50 flex items-end">
- <div className="bg-surface-raised rounded-t-3xl w-full max-w-lg mx-auto p-6 space-y-5"
+ <div className="fixed inset-0 z-[200] bg-black/50 flex items-end sm:items-center justify-center sm:p-4">
+ <div className="bg-surface-raised rounded-t-3xl sm:rounded-3xl w-full max-w-lg mx-auto p-6 space-y-5"
  style={{ paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }}>
 
  {/* Header */}
