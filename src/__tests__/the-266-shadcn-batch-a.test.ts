@@ -703,6 +703,23 @@ describe('the out-of-scope files are untouched', () => {
       // for either would read as a slow load rather than as an answer.
       // 🔴 A SEVENTH adopter still fails.
       'src/components/events/EventMonthView.tsx',
+      // THE-330 — the SMS number panel's COUNTRY CATALOGUE wait. Same judgement
+      // as the three above and APPENDED beside them, never over one: the shape
+      // arriving is KNOWN (a country picker, a type picker, then the capability
+      // matrix), so a skeleton draws the thing that is coming where a spinner
+      // would only say "wait".
+      // 🔴 THE PANEL'S OTHER STATES ARE DELIBERATELY NOT THIS, and that is the
+      // whole point of the ticket: a catalogue that could not be fetched renders
+      // an `alert` SAYING SO, never a skeleton and never an empty picker. An
+      // empty picker states "no countries are available", which is a lie about
+      // the provider's inventory when the truth is that Harvest could not ask.
+      // ⚠️ It does NOT replace the panel's top-level "Loading…" line, which
+      // still rejects `skeleton` at its call site (THE-320's reason: adopting it
+      // there would DELETE that word, and a shimmer is not the same statement to
+      // a screen reader as a sentence). This is a new surface with no copy to
+      // lose — so the file both adopts and rejects `skeleton`, per element.
+      // 🔴 AN EIGHTH adopter still fails.
+      'src/components/settings/SmsSection.tsx',
     ],
     breadcrumb: ['src/components/docs/DocsBreadcrumb.tsx'],
   };

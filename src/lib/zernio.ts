@@ -1,4 +1,22 @@
 import crypto from 'crypto';
+/**
+ * ⚠️ THE PROVIDER'S RESPONSE SHAPES, IMPORTED RATHER THAN DECLARED HERE.
+ *
+ * 🔴 `sms-countries.ts` is a PURE module — no network, no environment, no
+ * credential — and it imports NOTHING from this file. The arrow points that way
+ * so THE-314's "there is exactly ONE module that talks to the provider" stays
+ * literally true: the admin screen reads those shapes and their predicates
+ * without importing this transport at all. Re-exported so every existing
+ * consumer of `@/lib/zernio` keeps reading the same names.
+ */
+import type {
+  ZernioCountry,
+  ZernioCountryType,
+  ZernioAreaOption,
+  ZernioAvailableNumber,
+} from './sms-countries';
+
+export type { ZernioCountry, ZernioCountryType, ZernioAreaOption, ZernioAvailableNumber };
 
 /**
  * THE-314 — the telephony provider. Harvest's SMS now runs on the SAME vendor
@@ -170,9 +188,127 @@ export async function zernioListOptOuts(): Promise<string[]> {
 
 // ── Numbers ──────────────────────────────────────────────────────────────────
 
-export interface ZernioAvailableNumber {
-  phoneNumber: string;
-  features: string[];
+/**
+ * THE-330 — THE COUNTRY CATALOGUE.
+ *
+ * 🔴 THE PER-TYPE FLAG IS THE ONE THAT DECIDES, and the shapes below say so in
+ * their own doc comments — they live in `sms-countries.ts`, imported at the top
+ * of this file. The catalogue reports `smsAvailable` at BOTH levels and they are
+ * not the same claim: the country-level fields "mirror the first (default)
+ * entry" of `types[]`, so a country whose default type cannot text reads
+ * `smsAvailable: false` at the top while a NON-default type of the same country
+ * texts perfectly well — and the reverse. GB is the live case in both
+ * directions: its `mobile` type texts and its `local`, `national` and
+ * `toll_free` types do not. Deciding from the country flag would offer GB
+ * `local` and hand a church a mute number.
+ */
+function readCountryType(raw: unknown): ZernioCountryType | null {
+  const t = (raw || {}) as Record<string, unknown>;
+  const numberType = typeof t.numberType === 'string' ? t.numberType : '';
+  if (!numberType) return null;
+  const cents = Number(t.monthlyCents);
+  return {
+    numberType,
+    smsAvailable: t.smsAvailable === true,
+    whatsappAvailable: t.whatsappAvailable === true,
+    callsAvailable: t.callsAvailable === true,
+    monthlyCents: Number.isFinite(cents) && cents >= 0 ? Math.floor(cents) : null,
+    needsKyc: t.needsKyc === true,
+    fulfilment: typeof t.fulfilment === 'string' && t.fulfilment ? t.fulfilment : null,
+    inStock: t.inStock === true,
+  };
+}
+
+/**
+ * The offerable-country catalogue — what the country picker is built from.
+ *
+ * 🔴 FETCHED, NEVER HARDCODED. Inventory, prices, stock and KYC tiers all move,
+ * and a frozen list in the bundle would keep selling a country the provider has
+ * withdrawn and keep hiding one it has added. THE-330 exists because a church
+ * had to GUESS this list from a two-letter box.
+ *
+ * ⚠️ A FAILURE IS RETURNED AS A FAILURE. This never falls back to a partial or
+ * empty catalogue: an empty picker reads as "no countries are available", which
+ * is a lie about the provider's inventory and precisely the Silent-Failure Rule
+ * this repo keeps ("a default value that hides an error is a bug… each converts
+ * a loud failure into a quiet lie"). The caller surfaces the error instead.
+ *
+ * A booleans-are-`=== true` read throughout: the catalogue's absent field means
+ * "not offered", and coercing an absent field to a truthy value is how a country
+ * that cannot text would be offered as one that can.
+ */
+export async function zernioListCountries(): Promise<ZernioResponse<{ countries: ZernioCountry[] }>> {
+  const r = await call<{ countries?: unknown[] }>('/phone-numbers/countries');
+  if (!r.ok) return { ok: false, status: r.status, data: null, error: r.error, ...(r.code ? { code: r.code } : {}) };
+  const raw = Array.isArray(r.data?.countries) ? r.data!.countries! : null;
+  // 🔴 A 200 whose body is not a catalogue is a FAILURE, not an empty one. An
+  // unparseable answer rendered as zero countries is the same quiet lie as a
+  // swallowed network error.
+  if (!raw) {
+    return { ok: false, status: r.status, data: null, error: 'The provider did not return a country list.' };
+  }
+  const countries: ZernioCountry[] = [];
+  for (const item of raw) {
+    const c = (item || {}) as Record<string, unknown>;
+    const code = typeof c.code === 'string' ? c.code.toUpperCase() : '';
+    if (!code) continue;
+    const cents = Number(c.monthlyCents);
+    const tier = Number(c.tier);
+    countries.push({
+      code,
+      tier: Number.isFinite(tier) && tier > 0 ? Math.floor(tier) : null,
+      monthlyCents: Number.isFinite(cents) && cents >= 0 ? Math.floor(cents) : null,
+      needsKyc: c.needsKyc === true,
+      callsAvailable: c.callsAvailable === true,
+      whatsappAvailable: c.whatsappAvailable === true,
+      smsAvailable: c.smsAvailable === true,
+      inStock: c.inStock === true,
+      types: (Array.isArray(c.types) ? c.types : []).map(readCountryType).filter((t): t is ZernioCountryType => t !== null),
+    });
+  }
+  return { ok: true, status: r.status, data: { countries } };
+}
+
+/**
+ * THE-330 — the AREA OPTIONS for a country and type, so an area code is CHOSEN
+ * rather than typed.
+ *
+ * 🔴 A TYPED AREA CODE IS A GUESS THAT COSTS THE CHURCH AN ERROR. The provider
+ * documents `areaCode` as a hard constraint: when the area has no deliverable
+ * inventory the purchase fails with 409 `AREA_CODE_UNAVAILABLE` and does NOT
+ * assign a number from another area. The founder typed `615` — a Nashville code
+ * — against Germany. This is the endpoint that would have told him.
+ *
+ * It is the same `/phone-numbers/availability` call `zernioSmsNumberType` makes,
+ * widened to carry the type through and to read `areaOptions` off the answer;
+ * that function is left exactly as it was so THE-318's purchase path reads the
+ * same thing it always did.
+ */
+export async function zernioAreaOptions(args: {
+  country: string;
+  numberType?: string;
+}): Promise<ZernioResponse<{ areaOptions: ZernioAreaOption[] }>> {
+  const q = new URLSearchParams({ country: args.country || 'US', sms: 'true' });
+  if (args.numberType) q.set('numberType', args.numberType);
+  const r = await call<{ areaOptions?: unknown[] }>(`/phone-numbers/availability?${q.toString()}`);
+  if (!r.ok) return { ok: false, status: r.status, data: null, error: r.error, ...(r.code ? { code: r.code } : {}) };
+  // ⚠️ An ABSENT `areaOptions` is legitimately empty here and is not an error:
+  // the provider documents it as empty when the country is out of stock or the
+  // area lookup failed. The UI says "any area" rather than claiming a list.
+  const raw = Array.isArray(r.data?.areaOptions) ? r.data!.areaOptions! : [];
+  const areaOptions: ZernioAreaOption[] = [];
+  for (const item of raw) {
+    const a = (item || {}) as Record<string, unknown>;
+    const ndc = typeof a.ndc === 'string' ? a.ndc : '';
+    if (!ndc) continue;
+    const count = Number(a.count);
+    areaOptions.push({
+      ndc,
+      name: typeof a.name === 'string' && a.name ? a.name : '',
+      count: Number.isFinite(count) && count > 0 ? Math.floor(count) : 0,
+    });
+  }
+  return { ok: true, status: r.status, data: { areaOptions } };
 }
 
 /** Search the vendor's inventory. `sms=true` narrows to numbers that can text —
@@ -180,13 +316,31 @@ export interface ZernioAvailableNumber {
  * number found without this filter may not be able to send at all. */
 export async function zernioSearchNumbers(args: {
   country?: string;
+  /**
+   * THE-330 — WHICH of the country's types to draw from.
+   *
+   * 🔴 WITHOUT IT THE SEARCH IS THE WRONG POOL. The provider defaults this to
+   * "the country's WhatsApp-safe type", which is a property about WhatsApp and
+   * not about SMS — so in GB, whose default is not `mobile`, a search that
+   * omits the type previews a pool the church is not going to be sold from.
+   * The type picker resolves it and passes it here, and the SAME type goes to
+   * the purchase, so the preview and the order agree about the pool.
+   *
+   * ⚠️ `sms: 'true'` below is UNCHANGED and stays unconditional — THE-318
+   * established it, and it is what keeps a voice-only number out of the preview
+   * whatever type is asked for.
+   */
+  type?: string;
   prefix?: string;
   locality?: string;
+  contains?: string;
   limit?: number;
 }): Promise<ZernioResponse<{ numbers?: ZernioAvailableNumber[] }>> {
   const q = new URLSearchParams({ country: args.country || 'US', sms: 'true' });
+  if (args.type) q.set('type', args.type);
   if (args.prefix) q.set('prefix', args.prefix);
   if (args.locality) q.set('locality', args.locality);
+  if (args.contains) q.set('contains', args.contains);
   q.set('limit', String(Math.min(Math.max(args.limit || 20, 1), 100)));
   return call<{ numbers?: ZernioAvailableNumber[] }>(`/phone-numbers/available?${q.toString()}`);
 }

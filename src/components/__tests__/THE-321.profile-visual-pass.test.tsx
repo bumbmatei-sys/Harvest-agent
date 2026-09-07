@@ -493,6 +493,26 @@ describe('14 · the files THE-321 does not own are byte-identical', () => {
       // became the signpost pointing at it. Two `ui/alert` warnings were added
       // about carrier registration; nothing about the purchase path moved.
       ['71cf6c2bde5043afb7a6364c98a9bf55a5c10b940f2299d2343818caf6fa4484', 'main + THE-327 — the lifecycle moved to the SMS section, a signpost left behind'],
+      // 🔴 APPENDED BY THE-330. All four values above stand unedited, and
+      // THE-321 still cannot edit this file because a digest that is none of the
+      // five continues to fail.
+      //
+      // The get-a-number form's free-text country and area boxes became pickers
+      // drawn from the provider's live catalogue, with a type picker added
+      // beside them — a church typed `DE` and a Nashville area code into a form
+      // that told it neither was possible until after it pressed a button.
+      //
+      // ⚠️ WHAT THIS MEANS FOR THE-321's OWN PASS: the new controls are native
+      // `<select>`s, not `ui/select`. That is not a shortcut — it is the same
+      // rejection this repo already records on the sibling SMS screen, for two
+      // MEASURED reasons: base-ui renders a listbox button rather than a
+      // `<select>`, which would blind the existing `label → input,select,
+      // textarea` width guard; and it pins 32px through
+      // `data-[size=default]:h-8`, an attribute selector that outranks Rule 4
+      // and sits under the 44px touch floor. All three pickers are measured in
+      // Chromium at 380/768/1024/1280/1440 in THE-330's own layout suite. No
+      // colour literal, no invented width and no inline style was added.
+      ['bf66547987b88b735a23b18c20a2151e3a5cd83992a33f6cde6d53aae512e60d', 'main + THE-330 — the country, type and area code are chosen from the provider, not typed'],
     ],
     'src/components/events/ServicePlanPanel.tsx': [
       ['81f99a23ff53cb1488935b7adf37cf043ff577399324e377785176d9f1e8c891', 'main at acc0d66 — THE-317 (#458) owns it'],

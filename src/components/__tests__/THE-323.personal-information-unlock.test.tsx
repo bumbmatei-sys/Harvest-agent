@@ -586,6 +586,15 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/Profile.tsx',         // names it in a comment, does not use it
       'src/components/events/RotaInviteView.tsx',   // THE-324: names it in a comment, does not use it
       'src/components/events/RotaRespondView.tsx',  // THE-324: names it in a comment, does not use it
+      // 🔴 APPENDED BY THE-330, NOTHING ABOVE REMOVED OR REWRITTEN. Another
+      // COMMENT-ONLY mention, the same kind as the two THE-324 entries: the
+      // ticket adds two native `<select>` pickers and records, at their call
+      // site, why `ui/select` was rejected for them — it pins its own height
+      // through `data-[size=default]:h-8`, an attribute selector that outranks
+      // Rule 4, and `min-h-11` does not win against it. The panel's own floor is
+      // spelled `min-h-[44px]`, this repo's absolute idiom, so the class reaches
+      // no className here; the test below asserts exactly that.
+      'src/components/settings/SmsSection.tsx',      // THE-330: names it in a comment, does not use it
     ]);
   });
 
@@ -596,6 +605,9 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
     for (const file of [
       'src/components/events/RotaInviteView.tsx',
       'src/components/events/RotaRespondView.tsx',
+      // 🔴 APPENDED BY THE-330 — its entry above is held to the same standard,
+      // so "it is only a comment" is asserted rather than claimed.
+      'src/components/settings/SmsSection.tsx',
     ]) {
       const src = read(file);
       expect(src, `${file} is recorded as a comment-only mention but does not mention it`)

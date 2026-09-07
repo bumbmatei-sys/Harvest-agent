@@ -1091,6 +1091,28 @@ const THE_320_PROGRESS_ADOPTERS = [
   'src/components/AdminSms.tsx',
 ] as const;
 
+/**
+ * ─── `table` gains its SIXTH adopter — APPENDED BY THE-330 ──────────────────
+ *
+ * 🔴 APPENDED, NOT SUBSTITUTED. Every list above is untouched; this is a new
+ * one, unioned in below, so each earlier claim stays independently closed and a
+ * SEVENTH `table` adopter still fails here.
+ *
+ * THE-330 gives the SMS number panel a per-TYPE capability matrix. That is the
+ * ticket's centre: a country row is not enough, because SMS capability is per
+ * (country, type) — in GB only `mobile` texts, in the US only `local` — so the
+ * screen must show every one of a country's types with all eight of the fields
+ * the provider reports for it (`numberType`, `smsAvailable`,
+ * `whatsappAvailable`, `callsAvailable`, `monthlyCents`, `needsKyc`,
+ * `fulfilment`, `inStock`).
+ *
+ * Eight fields across N types IS a table, and `ui/table` is the primitive for
+ * one. It also brings its own `overflow-x-auto` container, which is what keeps
+ * the matrix scrolling INSIDE its card at 380px instead of widening the page
+ * body — a property THE-330's own measured suite asserts rather than assumes.
+ */
+const THE_330_TABLE_ADOPTERS = ['src/components/settings/SmsSection.tsx'] as const;
+
 it('only THE-276 adopts chart, THE-283/THE-290/THE-294/THE-319/THE-317 adopt table, THE-290/THE-319/THE-320 adopt progress, and pagination is still adopted by nothing', () => {
   const walk = (dir: string): string[] =>
     readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -1117,6 +1139,7 @@ it('only THE-276 adopts chart, THE-283/THE-290/THE-294/THE-319/THE-317 adopt tab
       ...THE_294_TABLE_ADOPTERS,
       ...THE_319_TABLE_ADOPTERS,
       ...THE_317_TABLE_ADOPTERS,
+      ...THE_330_TABLE_ADOPTERS,
     ].sort());
 
   const progressImporters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), 'progress'));

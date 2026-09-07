@@ -11,6 +11,8 @@ import {
   zernioEnableSms,
   zernioReuseRegistration,
   zernioSmsNumberType,
+  zernioListCountries,
+  zernioAreaOptions,
 } from '@/lib/zernio';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
 import { SMS_FEATURE_ENABLED, SMS_HIDDEN_MESSAGE } from '@/lib/sms-feature';
@@ -59,6 +61,55 @@ function hidden(): NextResponse | null {
 }
 
 /**
+ * THE-330 — THE COUNTRY CATALOGUE CACHE.
+ *
+ * ─── The strategy, stated because it is a trade about money ──────────────────
+ *
+ * A short-lived in-process memo, {@link COUNTRY_CACHE_TTL_MS} long, keyed by
+ * nothing: the catalogue is Harvest's account-wide rate card and is identical
+ * for every tenant, so one entry serves them all. It exists because the picker
+ * re-reads the catalogue on every mount of the SMS screen and the answer only
+ * moves when the provider's rate card does.
+ *
+ * 🔴 IT NEVER OUTLIVES ITS TTL, AND IT NEVER COVERS A FAILURE. Two rules, and
+ * both are the same rule:
+ *   · Past the TTL the entry is DROPPED and the provider is asked again. If
+ *     that ask fails the route answers 502 — the church is told the list could
+ *     not be loaded. It is never handed an old rate card dressed as a current
+ *     one, because it is about to agree to a recurring charge at those prices
+ *     and to stock and KYC terms that may have moved.
+ *   · Only a SUCCESS is ever written, so a failed fetch cannot poison it.
+ *
+ * ⚠️ IN-PROCESS, so it is per serverless instance and empties on redeploy. That
+ * is a property, not a gap: the worst case is an extra call to the provider,
+ * and the alternative — a shared, durable copy of a live rate card — is a
+ * second source of truth for prices that would need its own invalidation.
+ *
+ * How a stale cache surfaces: it cannot become stale. `fetchedAt` rides on the
+ * response so the screen can say when the list was read, and `cached` says
+ * whether this answer came from the memo.
+ */
+const COUNTRY_CACHE_TTL_MS = 10 * 60 * 1000;
+
+let countryCache: { countries: unknown[]; fetchedAt: string; at: number } | null = null;
+
+function readCountryCache(): { countries: unknown[]; fetchedAt: string } | null {
+  if (!countryCache) return null;
+  if (Date.now() - countryCache.at > COUNTRY_CACHE_TTL_MS) {
+    // Dropped rather than served. See the note above.
+    countryCache = null;
+    return null;
+  }
+  return { countries: countryCache.countries, fetchedAt: countryCache.fetchedAt };
+}
+
+function writeCountryCache(countries: unknown[]): string {
+  const fetchedAt = new Date().toISOString();
+  countryCache = { countries, fetchedAt, at: Date.now() };
+  return fetchedAt;
+}
+
+/**
  * GET — the ministry's number, or (with `?available=1`) an AVAILABILITY
  * PREVIEW for a country and area code.
  *
@@ -77,16 +128,81 @@ export async function GET(request: NextRequest) {
   const tenantId = authResult.tenantId || PLATFORM_TENANT_ID;
 
   const url = new URL(request.url);
+
+  /**
+   * THE-330 — `?countries=1`: THE CATALOGUE THE COUNTRY PICKER IS BUILT FROM.
+   *
+   * 🔴 FETCHED FROM THE PROVIDER, NEVER A LIST IN THE BUNDLE. This is the whole
+   * ticket: the country was a free-text box, so a church had to already know
+   * which two letters were offerable AND which of them could text. Both answers
+   * are in this one response, per country and per type.
+   *
+   * ⚠️ A FAILURE ANSWERS 502, NOT AN EMPTY LIST. An empty picker reads as "no
+   * countries are available", which is a lie about the provider's inventory —
+   * the Silent-Failure Rule, on the screen where it costs the most.
+   */
+  if (url.searchParams.get('countries')) {
+    if (!(await entitled(tenantId))) {
+      return NextResponse.json({ error: 'SMS is available on the Ministry plan.' }, { status: 403 });
+    }
+    const cached = readCountryCache();
+    if (cached) {
+      return NextResponse.json({ countries: cached.countries, fetchedAt: cached.fetchedAt, cached: true });
+    }
+    const r = await zernioListCountries();
+    if (!r.ok || !r.data) {
+      // 🔴 NO STALE FALLBACK. A cache older than its TTL is not served to paper
+      // over a failed refresh: the church would be shown prices and stock that
+      // may have moved, on the screen where it commits to a monthly charge.
+      return NextResponse.json(
+        { error: r.error || 'Could not load the list of countries from the provider.' },
+        { status: 502 },
+      );
+    }
+    const fetchedAt = writeCountryCache(r.data.countries);
+    return NextResponse.json({ countries: r.data.countries, fetchedAt, cached: false });
+  }
+
+  /**
+   * THE-330 — `?areas=1`: THE AREA CODES THAT ACTUALLY HAVE STOCK.
+   *
+   * 🔴 SO AN AREA CODE IS CHOSEN, NOT TYPED. `areaCode` is a hard constraint on
+   * the purchase: an area with no inventory fails with 409
+   * `AREA_CODE_UNAVAILABLE` and the provider does NOT substitute another area.
+   * The founder typed `615` against Germany. This endpoint is what would have
+   * told him, before the money.
+   */
+  if (url.searchParams.get('areas')) {
+    if (!(await entitled(tenantId))) {
+      return NextResponse.json({ error: 'SMS is available on the Ministry plan.' }, { status: 403 });
+    }
+    const r = await zernioAreaOptions({
+      country: url.searchParams.get('country') || 'US',
+      numberType: url.searchParams.get('type') || undefined,
+    });
+    if (!r.ok || !r.data) {
+      return NextResponse.json({ error: r.error || 'Could not load area codes.' }, { status: 502 });
+    }
+    return NextResponse.json({ areaOptions: r.data.areaOptions });
+  }
+
   if (url.searchParams.get('available')) {
     if (!(await entitled(tenantId))) {
       return NextResponse.json({ error: 'SMS is available on the Ministry plan.' }, { status: 403 });
     }
     const r = await zernioSearchNumbers({
       country: url.searchParams.get('country') || 'US',
+      // 🔴 THE-330 — the TYPE the church chose, carried into the preview so the
+      // pool previewed is the pool bought from. Omitting it previews the
+      // country's WhatsApp-safe default, which is a different pool in every
+      // country whose default is not the SMS-capable one.
+      type: url.searchParams.get('type') || undefined,
       prefix: url.searchParams.get('prefix') || undefined,
       locality: url.searchParams.get('locality') || undefined,
     });
     if (!r.ok) return NextResponse.json({ error: r.error || 'Could not search numbers.' }, { status: 502 });
+    // `numbers` now carries each number's own `features`, which the UI badges
+    // per row: two numbers of the same country and type can differ.
     return NextResponse.json({ available: r.data?.numbers?.length ?? 0, numbers: r.data?.numbers ?? [] });
   }
 
@@ -131,7 +247,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let body: { country?: string; areaCode?: string };
+  let body: { country?: string; areaCode?: string; numberType?: string };
   try {
     body = await request.json();
   } catch {
@@ -160,6 +276,39 @@ export async function POST(request: NextRequest) {
    * for a number that cannot text — precisely this ticket's defect.
    */
   const pool = await zernioSmsNumberType(country);
+
+  /**
+   * 🔴 THE-330 — THE CHOSEN TYPE IS GATED SERVER-SIDE, not merely narrowed in
+   * the picker.
+   *
+   * The screen now offers a TYPE, and the type is what decides whether a number
+   * can text: in GB only `mobile` texts, in the US only `local`. A client that
+   * names a type — an old tab, a crafted request, a future caller — must not be
+   * able to spend a church's money on a mute number just because the picker
+   * would not have offered it. So the server re-asks the question it already
+   * trusts for this: `zernioSmsNumberType` IS the SMS pool's type for the
+   * country, resolved from the provider's live inventory.
+   *
+   * ⚠️ THE-318'S RESOLUTION IS UNCHANGED AND STILL THE FALLBACK. This adds a
+   * comparison, not a second source: when the client names nothing, the pool's
+   * own type is used exactly as before. And when the lookup could not be made
+   * (`numberType: null`) NOTHING IS REFUSED — the request goes through with
+   * `wantsSms: true` still set, which the provider either fills from the SMS
+   * pool or rejects outright. Failing a purchase on a flaky read of a
+   * refinement endpoint would trade this ticket's bug for an outage, which is
+   * the same reasoning THE-318 recorded on `zernioSmsNumberType` itself.
+   */
+  const requestedType = typeof body.numberType === 'string' ? body.numberType.trim() : '';
+  if (requestedType && pool.numberType && requestedType !== pool.numberType) {
+    return NextResponse.json(
+      {
+        error: `A ${requestedType} number in ${country} cannot send or receive SMS. In ${country} the texting type is ${pool.numberType}. Nothing has been charged.`,
+        code: 'TYPE_NOT_SMS_CAPABLE',
+      },
+      { status: 409 },
+    );
+  }
+
   if (pool.available === false) {
     return NextResponse.json(
       {
@@ -175,6 +324,16 @@ export async function POST(request: NextRequest) {
     country,
     areaCode: (body.areaCode || '').replace(/\D/g, '') || undefined,
     purchaseIntentId,
+    /**
+     * 🔴 THE-318'S TYPE, UNCHANGED. `pool.numberType` is still what is sent and
+     * it is still omitted when the lookup could not be made, so `wantsSms: true`
+     * is never paired with a type Harvest guessed.
+     *
+     * ⚠️ THE CLIENT'S CHOICE DOES NOT WIDEN THIS. The gate above has already
+     * established that a named type either MATCHES the SMS pool or was
+     * unverifiable; there is no path on which a client-named type reaches the
+     * provider in place of the pool's own answer.
+     */
     ...(pool.numberType ? { numberType: pool.numberType } : {}),
     /**
      * 🔴 HARVEST IS THE RESELLER: ONE VENDOR ACCOUNT, EVERY CHURCH.

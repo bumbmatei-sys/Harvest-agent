@@ -492,7 +492,7 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * retires a pinner updates this count and says what that suite still asserts;
  * a suite that quietly stops pinning fails here.
  */
-const RULES_PINNERS_NOW = 56;
+const RULES_PINNERS_NOW = 57;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per
@@ -581,6 +581,11 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
   // and no other screen knows about, and every one of them would still be
   // checking `manageEvents`.
   ['THE-329', 'src/__tests__/the-329-guards.test.ts'],
+  // 🔴 APPENDED BY THE-330, nothing above removed. Its guard suite asserts that
+  // the number-purchase rebuild left `firestore.rules` — and `sms-optout.ts`,
+  // `firestore.indexes.json`, `layout.tsx` and every file under `functions/` —
+  // byte-identical, because none of them was in scope and none was needed.
+  ['THE-330', 'src/__tests__/THE-330.purchase-guards.test.ts'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {
