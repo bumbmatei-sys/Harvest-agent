@@ -280,8 +280,11 @@ describe('people can be assigned to plan items across several weeks in one view'
       { id: 'undated', title: 'No date', startDate: null },
     ].map(rotaEvent);
     const joined = rotaServices(events, [
-      { id: 'p6', eventId: 'e6', name: 'n', items: [item('a', 'Welcome', 3, 0)] },
-      { id: 'porphan', eventId: 'gone', name: 'n', items: [] },
+      // ⚠️ `startAt: null` is THE-329's field, and null is what makes these two
+      // EVENT-ANCHORED plans rather than standalone services. The join asserted
+      // below is unchanged by that ticket.
+      { id: 'p6', eventId: 'e6', startAt: null, name: 'n', items: [item('a', 'Welcome', 3, 0)] },
+      { id: 'porphan', eventId: 'gone', startAt: null, name: 'n', items: [] },
     ]);
     expect(joined.map((s) => s.eventId)).toEqual(['e6', 'e20']);
     expect(joined[0].planId).toBe('p6');

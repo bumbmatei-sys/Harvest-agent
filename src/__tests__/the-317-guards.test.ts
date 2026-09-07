@@ -240,16 +240,48 @@ describe("#449's item shape and persisted data are unchanged", () => {
    * migration on a shipped feature is its own decision, and this guard's job is
    * to make it one rather than letting it ride along inside a rota PR.
    */
-  const PART_ONE = {
-    'src/components/events/service-plan.ts':
-      '7fa6435c635c8e374ab829659a944861c1daf7921b6c4cdf84e54c6333c2408d',
-    'src/hooks/queries/useServicePlanQueries.ts':
-      '37f36970629a5a7fb06e89abfcab907dcd7d7cf976adcd5fb399650b5f677b37',
-  } as const;
+  /**
+   * ⚠️ AN ACCEPTED-DIGEST SET PER FILE FROM THE-329 ONWARD, APPENDED AND NEVER
+   * SUBSTITUTED — the shape `the-324-guards.test.ts` already uses for
+   * `VolunteerRotaView.tsx`, and #422/#434's lesson: CI runs against the merge
+   * ref, so two in-flight tickets can each be correct at a different digest,
+   * and a PR that REPLACES a value turns `main` red for everybody.
+   *
+   * 🔴 #449's VALUE IS STILL FIRST AND STILL ACCEPTED. Nothing is relaxed: a
+   * digest that is in neither set still fails, which is the whole threat.
+   */
+  const PART_ONE: Record<string, readonly (readonly [digest: string, why: string])[]> = {
+    'src/components/events/service-plan.ts': [
+      ['7fa6435c635c8e374ab829659a944861c1daf7921b6c4cdf84e54c6333c2408d', '#449 — as this ticket measured it'],
+      ['f3043a822081677099ae67ae4a2778d478d3642069e8671d393018c07961dc9b',
+       'THE-329 — a plan gains ONE field, `startAt`, so a service can exist without an event. '
+       + 'The two-way invariant `isTemplate === (eventId === null)` becomes the three-way '
+       + '`isTemplate === (planKind(plan) === "template")` over event-anchored · standalone · template. '
+       + '🔴 NOTHING THE ROTA READS MOVED: `ServicePlanItem` is untouched field for field (the assertion '
+       + 'below still names its seven), `itemClockTimes`, `orderedItems`, `renumber`, `reorderItems`, '
+       + '`moveItem`, `planTotalMinutes`, `planEndsAt` and `findDoubleBookings` are byte-identical, and '
+       + 'every existing document reads as the kind it already was because `startAt` is absent on all of '
+       + 'them. No migration.'],
+    ],
+    'src/hooks/queries/useServicePlanQueries.ts': [
+      ['37f36970629a5a7fb06e89abfcab907dcd7d7cf976adcd5fb399650b5f677b37', '#449 — as this ticket measured it'],
+      ['44439b5d47bededcf8f16f5bd08720245d1f6d2db2a51f6d4e433407a0964e60',
+       'THE-329 — `readPlan` reads the new `startAt` (rejecting anything but a Timestamp, so the '
+       + 'mixed-representation defect `invoices.issuedAt` has cannot start here), `createServicePlan` '
+       + 'writes it and derives `isTemplate` from `planKind`, and `useServicePlanById` is added so a '
+       + 'standalone service — which has no `eventId` to filter on — can be read by its own document id. '
+       + '🔴 STILL NO `orderBy` AND STILL ONE `where` PER QUERY: section 3 below asserts both, and this '
+       + 'ticket adds no Firestore query at all for its list (it reuses the rota\'s existing read).'],
+    ],
+  };
 
-  it.each(Object.entries(PART_ONE))('%s is byte-identical', (file, digest) => {
-    expect(sha256(read(file)),
-      `${file} moved since f2837ca (#449) — compare it against that commit to see what`).toBe(digest);
+  it.each(Object.entries(PART_ONE))('%s is byte-identical', (file, accepted) => {
+    const actual = sha256(read(file));
+    expect(
+      accepted.map(([digest]) => digest),
+      `${file} is at ${actual}, which no ticket recorded — part 1's persisted shape is pinned. `
+      + 'APPEND your digest with a reason; do NOT replace one that is here.',
+    ).toContain(actual);
   });
 
   it('the item shape still has exactly the seven fields a rota keys on', () => {

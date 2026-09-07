@@ -41,7 +41,7 @@ import {
   sendRotaInvitations,
   useRotaInvitations,
 } from '../../hooks/queries/useRotaInviteQueries';
-import { rotaEvent, rotaServices } from './volunteer-rota';
+import { rotaEvent, rotaPlan, rotaServices } from './volunteer-rota';
 import { itemClockTimes } from './service-plan';
 import RotaInviteView from './RotaInviteView';
 import {
@@ -87,10 +87,7 @@ const RotaInvitePanel: React.FC<RotaInvitePanelProps> = ({ tenantId, churchName,
 
   const services = useMemo(
     () =>
-      rotaServices(
-        events,
-        plans.map((p) => ({ id: p.id, eventId: p.eventId, name: p.name, items: p.items })),
-      ),
+      rotaServices(events, plans.map(rotaPlan)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [events, plansQuery.data],
   );

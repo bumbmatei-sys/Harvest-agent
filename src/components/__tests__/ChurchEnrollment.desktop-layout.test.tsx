@@ -855,6 +855,9 @@ describe('the layout rules live in one shared place and have a caller', () => {
       'src/components/events/EventMonthView.tsx',
       'src/components/events/RotaInviteView.tsx',
       'src/components/events/RotaRespondView.tsx',
+      // THE-329 — the create-a-service form, which spells FIELD_WIDTH and
+      // CONTROL_DENSITY rather than inventing a width or a height of its own.
+      'src/components/events/ServiceCreateForm.tsx',
       'src/components/events/ServicePlanPanel.tsx',
       'src/components/events/ServicePlanRow.tsx',
       // THE-317 — the volunteer rota's view. Opted in deliberately, and for ONE

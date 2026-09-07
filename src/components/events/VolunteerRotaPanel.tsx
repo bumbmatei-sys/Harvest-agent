@@ -51,6 +51,7 @@ import VolunteerRotaView, { type RotaPerson } from './VolunteerRotaView';
 import {
   assignPerson,
   rotaEvent,
+  rotaPlan,
   rotaServices,
   type RotaReadState,
 } from './volunteer-rota';
@@ -73,7 +74,7 @@ const VolunteerRotaPanel: React.FC<VolunteerRotaPanelProps> = ({ tenantId, now }
   const plans = plansQuery.data?.plans ?? [];
 
   const services = useMemo(
-    () => rotaServices(events, plans.map((p) => ({ id: p.id, eventId: p.eventId, name: p.name, items: p.items }))),
+    () => rotaServices(events, plans.map(rotaPlan)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [events, plansQuery.data],
   );

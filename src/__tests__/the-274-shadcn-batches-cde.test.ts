@@ -1057,6 +1057,29 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       'primitive was edited — their digests are pinned by ds-primitives.test.tsx and still match.',
   },
   {
+    file: 'src/components/events/ServiceCreateForm.tsx',
+    ticket: 'THE-329',
+    why:
+      'The form a church creates a service with, and the whole of THE-329: a name and a date, no ' +
+      'event required. APPENDED, never substituted — no entry above was removed or rewritten to ' +
+      'make room. Of this batch it adopts ONE primitive, `field` (Field, FieldLabel, ' +
+      'FieldDescription), beside `button`, `card`, `input` and `select`, which are not this ' +
+      "batch's. `field` is adopted rather than the bare `label` + `input` pair the rest of " +
+      '`AdminEvents` spells, because this is a NEW form rather than an edit to an old one and ' +
+      '`field` exists precisely to stop that pair being re-spelled — it carries the label to ' +
+      'control association and the description slot without a hand-written `htmlFor` or a ' +
+      "hand-rolled help line. 🔴 `calendar` IS REJECTED HERE, DELIBERATELY, and it is this " +
+      "file's one interesting rejection: it is installed and THE-308 composed it, but it picks a " +
+      'DAY and a service needs a day AND a clock time, because every time on the run sheet is ' +
+      '`itemClockTimes(items, start)` — so it would need a second control beside it and the two ' +
+      'reconciled into one value, where `input type="datetime-local"` is one control for one ' +
+      'fact and is exactly how `AdminEvents.tsx` already spells the start of a dated thing. ' +
+      '`dialog`, `sheet` and `collapsible` are rejected in the file with reasons (creating a ' +
+      'service is this screen\'s PRIMARY act and must not be behind a layer or a disclosure), as ' +
+      'are `textarea`, `checkbox`/`switch`, `dropdown-menu`, `button-group` and `tooltip`. No ' +
+      'primitive was edited and no new one is installed.',
+  },
+  {
     file: 'src/components/events/RotaInviteView.tsx',
     ticket: 'THE-324',
     why:

@@ -109,6 +109,7 @@ import {
   renumber,
   planFromTemplate,
   reorderItems,
+  servicePlanFields,
   templateFromPlan,
   type ServicePlanItem,
 } from './service-plan';
@@ -119,21 +120,51 @@ import {
   useInvalidateServicePlans,
   useServicePeople,
   useServicePlan,
+  useServicePlanById,
   useServicePlanTemplates,
 } from '../../hooks/queries/useServicePlanQueries';
 
+/**
+ * 🔴 THE-329 — THE PANEL PLANS A SERVICE, WHICH MAY OR MAY NOT BE AN EVENT.
+ *
+ * ⚠️ `eventId` IS NOW NULLABLE AND `planId` JOINED IT, and the pair is not a
+ * choice the caller gets to get wrong: an event-anchored service passes its
+ * `eventId` and the plan is FOUND by it (THE-313's `where('eventId','==',…)`,
+ * unchanged, because such a plan may not exist yet and there is no id to hold);
+ * a standalone service passes its `planId`, because a standalone service IS a
+ * plan document — it cannot exist without one, so its id is always in hand and
+ * a direct `getDoc` is both cheaper and the only read that can find it.
+ *
+ * ⚠️ `startsAt` still comes from OUTSIDE this panel in both cases, which is what
+ * keeps THE-313's rule ("a plan carries no start of its own") true for an
+ * event-anchored plan: the caller reads the start from the event, or from the
+ * standalone plan's own `startAt`, and this file never asks which.
+ */
 export interface ServicePlanPanelProps {
   tenantId: string | null;
-  eventId: string;
+  /** The event this service runs, or null for a standalone service. */
+  eventId: string | null;
+  /** A standalone service's own plan document id, or null when an event anchors it. */
+  planId: string | null;
+  /** What to call the service — the event's title, or the standalone service's name. */
   eventTitle: string;
-  /** The EVENT's start. A plan carries no start of its own — see `service-plan.ts`. */
+  /** The service's start, whichever anchor supplied it. */
   startsAt: Date | null;
 }
 
 const ServicePlanPanel: React.FC<ServicePlanPanelProps> = ({
-  tenantId, eventId, eventTitle, startsAt,
+  tenantId, eventId, planId, eventTitle, startsAt,
 }) => {
-  const { data: plan = null, isLoading, error } = useServicePlan(tenantId, eventId);
+  /**
+   * 🔴 BOTH READS ARE MOUNTED, AND EXACTLY ONE OF THEM IS ENABLED. Each hook's
+   * own `enabled` is false when its id is null, so a standalone service makes no
+   * event query and an event-anchored one makes no document read — the call is
+   * unconditional (a hook must be) and the NETWORK cost is not.
+   */
+  const byEvent = useServicePlan(tenantId, eventId);
+  const byId = useServicePlanById(tenantId, planId);
+  const source = eventId !== null ? byEvent : byId;
+  const { data: plan = null, isLoading, error } = source;
   const { data: templates = [] } = useServicePlanTemplates(tenantId);
   const { data: people = [] } = useServicePeople(tenantId);
   const invalidate = useInvalidateServicePlans();
@@ -200,18 +231,25 @@ const ServicePlanPanel: React.FC<ServicePlanPanelProps> = ({
     if (!tenantId) { notifyError('Unable to determine your tenant. Please refresh.', null); return; }
     setBusy(true);
     try {
+      /**
+       * ⚠️ ONLY AN EVENT-ANCHORED SERVICE CAN REACH HERE, and the guard is a
+       * fact rather than a caution: a standalone service is CREATED as a plan
+       * document by the Services section, so `plan` is never null for one and
+       * the button this calls is never rendered. The check is here so the
+       * `eventId` below is a string without an assertion.
+       */
+      if (eventId === null) return;
       const template = templates.find((t) => t.id === fromTemplateId);
       const fields = template
         ? planFromTemplate(template, eventId, tenantId)
-        : {
+        : servicePlanFields(
             tenantId,
-            eventId,
-            name: eventTitle || 'Order of service',
-            isTemplate: false,
-            items: [emptyItem(0)],
-          };
+            eventTitle || 'Order of service',
+            [emptyItem(0)],
+            { kind: 'event', eventId },
+          );
       await createServicePlan(tenantId, fields);
-      await invalidate(tenantId, eventId);
+      await invalidate(tenantId, eventId, planId);
     } catch (e) { notifyError('Failed to start the order of service', e); }
     finally { setBusy(false); }
   };
@@ -221,7 +259,7 @@ const ServicePlanPanel: React.FC<ServicePlanPanelProps> = ({
     setBusy(true);
     try {
       await saveServicePlanItems(tenantId, plan.id, name || eventTitle, items);
-      await invalidate(tenantId, eventId);
+      await invalidate(tenantId, eventId, plan.id);
       setDirty(false);
     } catch (e) { notifyError('Failed to save the order of service', e); }
     finally { setBusy(false); }
@@ -233,7 +271,7 @@ const ServicePlanPanel: React.FC<ServicePlanPanelProps> = ({
     try {
       // 🔴 `templateFromPlan` strips every person and sets `eventId: null`.
       await createServicePlan(tenantId, templateFromPlan({ items }, name || eventTitle, tenantId));
-      await invalidate(tenantId, eventId);
+      await invalidate(tenantId, eventId, plan.id);
     } catch (e) { notifyError('Failed to save the template', e); }
     finally { setBusy(false); }
   };
@@ -243,7 +281,7 @@ const ServicePlanPanel: React.FC<ServicePlanPanelProps> = ({
     setBusy(true);
     try {
       await deleteServicePlan(tenantId, plan.id);
-      await invalidate(tenantId, eventId);
+      await invalidate(tenantId, eventId, plan.id);
     } catch (e) { notifyError('Failed to remove the order of service', e); }
     finally { setBusy(false); }
   };

@@ -113,6 +113,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   limit,
   query,
@@ -126,6 +127,7 @@ import {
   MAX_PLAN_ITEMS,
   clampMinutes,
   orderedItems,
+  planKind,
   renumber,
   type ServicePlan,
   type ServicePlanItem,
@@ -170,17 +172,36 @@ export function readPlan(id: string, data: Record<string, unknown>): ServicePlan
     ),
   );
   const eventId = typeof data.eventId === 'string' && data.eventId ? data.eventId : null;
+  /**
+   * 🔴 THE-329's ONE NEW FIELD, READ DEFENSIVELY AND ABSENT ON EVERY DOCUMENT
+   * WRITTEN BEFORE IT. A plan saved by THE-313 or THE-326 has no `startAt` at
+   * all, so this is `null` and {@link planKind} calls the document exactly what
+   * it was called yesterday — an event-anchored plan or a template. That is the
+   * whole of why this ticket needs no migration.
+   *
+   * ⚠️ The `toDate` duck-type is the check, not `instanceof Timestamp`: the SDK
+   * hands back its own class and the tests hand back a stand-in, and a document
+   * carrying an ISO string or an epoch number in this field — the mixed-type
+   * defect `invoices.issuedAt` already has — is rejected here rather than
+   * flowing on as a date this feature would then sort against a `Timestamp`.
+   */
+  const rawStart = data.startAt;
+  const startAt =
+    rawStart && typeof (rawStart as { toDate?: unknown }).toDate === 'function'
+      ? (rawStart as ServicePlan['startAt'])
+      : null;
   return {
     id,
     tenantId: typeof data.tenantId === 'string' ? data.tenantId : '',
     eventId,
+    startAt,
     name: typeof data.name === 'string' ? data.name : '',
-    // 🔴 Derived from `eventId`, never trusted from the document: the ONE-model
+    // 🔴 Derived from the ANCHORS, never trusted from the document: the ONE-model
     // invariant (`isTemplateShape`) is what keeps a template from being a second
-    // data model, and a stored boolean that disagreed with the field would break
-    // it silently. The field is still WRITTEN, so the templates query can filter
-    // on it server-side without a composite index.
-    isTemplate: eventId === null,
+    // data model, and a stored boolean that disagreed with the fields would break
+    // it silently. The field is still WRITTEN, so the templates query and the
+    // rota's query can filter on it server-side without a composite index.
+    isTemplate: planKind({ eventId, startAt }) === 'template',
     items,
     createdAt: (data.createdAt as ServicePlan['createdAt']) ?? null,
     updatedAt: (data.updatedAt as ServicePlan['updatedAt']) ?? null,
@@ -210,6 +231,38 @@ export const useServicePlan = (
       return first ? readPlan(first.id, first.data()) : null;
     },
     enabled: !!tenantId && !!eventId,
+    staleTime: 1000 * 60 * 5,
+  });
+
+/**
+ * ONE plan, BY ITS OWN DOCUMENT ID — how a standalone service is read.
+ *
+ * 🔴 A `getDoc`, NOT A QUERY, AND THAT IS THE CHEAPEST POSSIBLE READ. A
+ * standalone service has no `eventId` to filter on, so {@link useServicePlan}
+ * cannot find it; and it does not need to, because the screen that opens one
+ * already holds its document id. A direct document read adds no `where`, no
+ * `orderBy` and no index of any kind — the "no composite index" section of this
+ * header is untouched by it.
+ *
+ * ⚠️ NOT SWALLOWED ON FAILURE, and not defaulted to `null` on a rejection
+ * either — a `permission-denied` here must surface as a failure rather than as
+ * "this service has no order of service yet", which is the Silent-Failure Rule's
+ * quiet lie and the exact class of `Form submissions 0`. `null` is returned ONLY
+ * for a document that genuinely does not exist; every other outcome throws and
+ * react-query hands the panel an `error`.
+ */
+export const useServicePlanById = (
+  tenantId: string | null | undefined,
+  planId: string | null | undefined,
+) =>
+  useQuery({
+    queryKey: ['servicePlanById', tenantId, planId],
+    queryFn: async (): Promise<ServicePlan | null> => {
+      if (!tenantId || !planId) return null;
+      const snap = await getDoc(doc(db, 'tenants', tenantId, 'servicePlans', planId));
+      return snap.exists() ? readPlan(snap.id, snap.data() as Record<string, unknown>) : null;
+    },
+    enabled: !!tenantId && !!planId,
     staleTime: 1000 * 60 * 5,
   });
 
@@ -293,8 +346,17 @@ const writableItems = (items: readonly ServicePlanItem[]) =>
     }));
 
 /**
- * Create a plan or a template. `eventId: null` is what makes it a template —
- * ONE model, see `service-plan.ts`.
+ * Create an event-anchored service, a standalone service, or a template.
+ *
+ * 🔴 NEITHER ANCHOR IS WHAT MAKES A TEMPLATE — see `planKind` in
+ * `service-plan.ts`. `isTemplate` is DERIVED here rather than taken from the
+ * caller's field, so a caller that passed a flag disagreeing with its own
+ * anchors cannot write a document that breaks `isTemplateShape`.
+ *
+ * ⚠️ `startAt` is written as `null` for both other kinds rather than omitted.
+ * Firestore rejects `undefined` outright, and a field that is sometimes absent
+ * and sometimes null is two representations of one fact — the defect the
+ * timestamp note above exists to prevent.
  */
 export async function createServicePlan(
   tenantId: string,
@@ -303,8 +365,9 @@ export async function createServicePlan(
   const ref = await addDoc(servicePlansRef(tenantId), {
     tenantId,
     eventId: fields.eventId,
+    startAt: fields.startAt ?? null,
     name: fields.name.trim(),
-    isTemplate: fields.eventId === null,
+    isTemplate: planKind(fields) === 'template',
     items: writableItems(fields.items),
     createdAt: serverTimestamp(),
     ...stamped({}),
@@ -334,14 +397,37 @@ export async function deleteServicePlan(tenantId: string, planId: string): Promi
 export const servicePlanKeys = {
   plan: (tenantId: string | null, eventId: string | null) =>
     ['servicePlan', tenantId, eventId] as const,
+  byId: (tenantId: string | null, planId: string | null) =>
+    ['servicePlanById', tenantId, planId] as const,
   templates: (tenantId: string | null) => ['servicePlanTemplates', tenantId] as const,
+  /**
+   * 🔴 THE ROTA'S OWN KEY, SPELLED HERE SO A WRITE CANNOT FORGET IT.
+   *
+   * ⚠️ `useVolunteerRotaQueries.ts` owns `rotaKeys.plans` and this must agree
+   * with it; `the-329-guards.test.ts` reads both files and asserts they do. It
+   * is repeated rather than imported because part 2 importing part 1's writes,
+   * or part 1 importing part 2's queries, is the coupling those tickets were
+   * careful not to create.
+   */
+  rotaPlans: (tenantId: string | null) => ['rotaPlans', tenantId] as const,
 };
 
-/** Invalidate both, after any write. */
+/**
+ * Invalidate every list a plan write can change.
+ *
+ * 🔴 THE ROTA'S LIST IS INVALIDATED TOO, AND IT HAS TO BE FROM THE-329 ONWARD.
+ * Before this ticket a plan could only be created from inside an event's own
+ * screen, and the rota re-read on its own five-minute staleness. Now the
+ * Services section CREATES services, and a church that made one and switched to
+ * the Volunteer rota tab would look at a cached list that does not contain it —
+ * a service that exists and is not shown, which reads as "nothing scheduled".
+ */
 export const useInvalidateServicePlans = () => {
   const queryClient = useQueryClient();
-  return async (tenantId: string | null, eventId: string | null) => {
+  return async (tenantId: string | null, eventId: string | null, planId: string | null = null) => {
     await queryClient.invalidateQueries({ queryKey: servicePlanKeys.plan(tenantId, eventId) });
+    await queryClient.invalidateQueries({ queryKey: servicePlanKeys.byId(tenantId, planId) });
     await queryClient.invalidateQueries({ queryKey: servicePlanKeys.templates(tenantId) });
+    await queryClient.invalidateQueries({ queryKey: servicePlanKeys.rotaPlans(tenantId) });
   };
 };

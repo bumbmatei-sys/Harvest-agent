@@ -157,6 +157,32 @@ function assignmentsOf(
   return out;
 }
 
+/**
+ * THE-329's standalone service, narrowed to the SAME three fields `eventFor`
+ * returns — the id, the title and the start, and nothing else.
+ *
+ * ⚠️ SYNCHRONOUS AND READ-FREE. A standalone service IS the plan document, so
+ * every field is already in hand; there is no second read, and this route's
+ * cost per invite is unchanged for an event-anchored service and one read
+ * cheaper for a standalone one.
+ *
+ * The id is `''` because there is no event. A `Timestamp` is REQUIRED — an ISO
+ * string or an epoch number in `startAt` yields null and the caller answers
+ * "that service has no date yet" rather than parsing a second representation of
+ * a date this feature keeps in exactly one.
+ */
+function standaloneServiceFor(
+  planData: Record<string, unknown>,
+): { id: string; title: string; startsAt: Date } | null {
+  const start = planData.startAt;
+  if (!(start instanceof Timestamp)) return null;
+  return {
+    id: '',
+    title: typeof planData.name === 'string' && planData.name ? planData.name : 'Service',
+    startsAt: start.toDate(),
+  };
+}
+
 async function eventFor(
   tenantId: string,
   eventId: string,
@@ -286,14 +312,32 @@ export async function POST(request: NextRequest) {
         .collection('tenants').doc(tenantId).collection('servicePlans').doc(planId).get();
       if (!planSnap.exists) return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
       const planData = planSnap.data() as Record<string, unknown>;
+      /**
+       * 🔴 THE-329 — THE SERVICE IS THE EVENT, OR THE PLAN'S OWN DATE.
+       *
+       * A plan now carries two possible anchors (see `service-plan.ts`), and
+       * this is the server's half of reading them. The ORDER matches
+       * `planKind`'s: an event wins when there is one, so every invitation a
+       * church has ever sent is derived from exactly the document it was
+       * derived from before. A standalone service falls through to its own
+       * `startAt`, and a plan with NEITHER is a template — nobody can be on for
+       * it, which is the message that was already here.
+       *
+       * ⚠️ NOTHING ABOUT AN INVITATION'S PERSISTED SHAPE CHANGED. Both branches
+       * produce the same `{ id, title, startsAt }` descriptor `assignmentsOf`
+       * has always taken, so every field written to `rotaInvitations` keeps its
+       * name and its type. A standalone service's `eventId` is the empty string
+       * because there is no event — it is a label this feature echoes back and
+       * never resolves.
+       */
       const eventId = typeof planData.eventId === 'string' ? planData.eventId : '';
-      if (!eventId) {
-        // A template has no event and so no date. Nobody can be on for it.
-        return NextResponse.json({ error: 'That plan has no service date.' }, { status: 400 });
+      const service = eventId
+        ? await eventFor(tenantId, eventId)
+        : standaloneServiceFor(planData);
+      if (!service) {
+        return NextResponse.json({ error: 'That service has no date yet.' }, { status: 400 });
       }
-      const event = await eventFor(tenantId, eventId);
-      if (!event) return NextResponse.json({ error: 'That service has no date yet.' }, { status: 400 });
-      for (const a of assignmentsOf(planId, planData, event)) {
+      for (const a of assignmentsOf(planId, planData, service)) {
         // 🔴 Never invite somebody to something that has already happened.
         if (a.startsAt.getTime() <= now.getTime()) continue;
         targets.push(a);

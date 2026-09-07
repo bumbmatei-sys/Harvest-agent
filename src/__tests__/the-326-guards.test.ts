@@ -20,6 +20,7 @@
  * below is made against the files on disk, which needs nothing but `fs`.
  */
 import { describe, expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
@@ -200,20 +201,46 @@ describe('3 · the new section reaches the run sheet, the rota and invitations',
     }
   });
 
-  it('🔴 the run sheet is still keyed to an EVENT — shape A, not a migration', () => {
-    /**
-     * ⚠️ THE ANSWER TO THE TICKET'S HARD QUESTION, ASSERTED. A service still
-     * belongs to an event: `ServicePlan.eventId` is the anchor and
-     * `isTemplateShape` pins `isTemplate === (eventId === null)`, so a service
-     * with no event would be indistinguishable from a TEMPLATE. A plan carries
-     * no start of its own either — every clock time is the EVENT's start plus
-     * the durations. So the section reads events and plans against them.
-     */
+  /**
+   * 🔴 SUPERSEDED BY THE-329, AND REPLACED RATHER THAN DELETED OR DODGED.
+   *
+   * ⚠️ WHAT THIS ASSERTION USED TO SAY, VERBATIM, SO THE CHANGE IS LEGIBLE:
+   *
+   *     it('🔴 the run sheet is still keyed to an EVENT — shape A, not a
+   *        migration', …)
+   *       · codeOf(SERVICES) contains 'eventId={'
+   *       · codeOf(SERVICES) does NOT match /serviceDate|planDate|startsAt:\s*new Date\(\)/
+   *       · codeOf(SERVICES) does NOT match /(setDoc|addDoc|…)\(/
+   *
+   * Its FIRST and THIRD claims are still true and are still asserted below. Its
+   * SECOND claim — "the section invented a date of its own for a service" — was
+   * THE-326's decision that a service must belong to an event, and THE-329 is
+   * the ticket that reverses it on the founder's own words: "If I have no event
+   * created, I cannot create any service, which is stupid."
+   *
+   * 🔴 IT IS REWRITTEN HERE RATHER THAN LEFT TO PASS ON A TECHNICALITY. THE-329
+   * could have satisfied the old regex by never spelling `serviceDate` or
+   * `planDate` — the identifiers it happens to use are `startsAtLocal` and
+   * `startAt` — and the guard would have gone green while the sentence it makes
+   * ("a service still belongs to an event") became false. That is the failure
+   * mode this repo has been bitten by nine times: a guard satisfied by the
+   * spelling rather than by the claim. A superseded guard is re-aimed in the PR
+   * that supersedes it, in the open.
+   */
+  it('🔴 the run sheet is keyed to an EVENT OR to a date of its own — THE-329', () => {
     const code = codeOf(SERVICES);
-    expect(code, 'the section does not plan against an event').toContain('eventId={');
-    expect(code, 'the section invented a date of its own for a service')
-      .not.toMatch(/serviceDate|planDate|startsAt:\s*new Date\(\)/);
-    // The persisted shape is untouched: the section writes nothing itself.
+    // STILL TRUE: an event-anchored service is planned by handing the panel the
+    // event, exactly as THE-326 shipped it. The event link was demoted, not
+    // deleted, and this is the line that proves it survived.
+    expect(code, 'the section can no longer plan against an event at all')
+      .toContain('eventId={');
+    // NEW: and a service with NO event is planned by handing the panel the plan
+    // document's own id, which is the whole of the ticket.
+    expect(code, 'the section cannot plan a service that has no event')
+      .toContain('planId={');
+    // STILL TRUE, AND UNWEAKENED: the screen makes no raw Firestore write. The
+    // one write it now causes goes through part 1's own `createServicePlan`,
+    // which is where `isTemplate` is derived and the shape is enforced.
     expect(code, 'the services screen writes to Firestore directly')
       .not.toMatch(/\b(setDoc|addDoc|updateDoc|deleteDoc|writeBatch)\s*\(/);
   });
@@ -341,20 +368,57 @@ describe('8–11 · parts 1–3\'s data, findDoubleBookings, the accept link and
     }
   });
 
-  it('🔴 parts 1–3\'s PERSISTED modules are not touched by this ticket at all', () => {
-    // ⚠️ The re-parenting needed no field the plan lacks, which was a named stop
-    // condition: a plan is still `eventId` + items, and the section reads events
-    // and hands one id down. So the four modules that define what is written are
-    // untouched, and none of them names this ticket.
+  /**
+   * 🔴 RE-AIMED BY THE-329, AND THE CLAIM IS STRONGER FOR IT, NOT WEAKER.
+   *
+   * ⚠️ WHAT THIS USED TO BE: one loop over six files asserting
+   * `not.toContain('THE-326')` — "none of them names this ticket", used as a
+   * cheap proxy for "none of them was edited by it".
+   *
+   * THE-329 legitimately edits three of the six (it gives a plan a `startAt` of
+   * its own, so a service no longer needs an event) and NAMES THE-326 in their
+   * docblocks, because THE-326 is the ticket whose decision it reverses and a
+   * reader of `service-plan.ts` needs to know that. A grep for a string cannot
+   * tell an edit apart from a citation, so it fired on the citation.
+   *
+   * 🔴 THE PROXY IS REPLACED BY THE THING IT WAS STANDING IN FOR, PER FILE:
+   *
+   *   · the three THE-329 does NOT edit keep the exact assertion, unchanged.
+   *   · the three it DOES edit are asserted to be at a digest recorded in
+   *     `the-324-guards.test.ts` — the file that actually pins part 1's and part
+   *     2's persisted shapes. A digest cannot be satisfied by prose, so an
+   *     unrecorded edit to any of them still fails, and it now fails on the
+   *     BYTES rather than on whether somebody happened to type a ticket number.
+   *
+   * ⚠️ This does NOT let THE-326 edit them retroactively: THE-326 is merged, and
+   * a digest for these files that THE-324's map does not accept fails in the PR
+   * that produced it, whichever ticket that is.
+   */
+  it('🔴 parts 1–3\'s PERSISTED modules are pinned, and unedited where nothing needed them', () => {
+    // The three no ticket since THE-326 has had cause to touch. The original
+    // assertion, verbatim.
     for (const file of [
-      'src/components/events/service-plan.ts',
-      'src/components/events/volunteer-rota.ts',
-      'src/hooks/queries/useServicePlanQueries.ts',
       'src/hooks/queries/useVolunteerRotaQueries.ts',
       'src/lib/rota-invite.ts',
       'src/app/rota/[token]/page.tsx',
     ]) {
       expect(read(file), `${file} was edited by THE-326`).not.toContain('THE-326');
+    }
+
+    // The three THE-329 re-pinned. Their bytes must be a value part 1's and part
+    // 2's own guard file accepts — an edit that skipped that record fails here.
+    const partGuards = read('src/__tests__/the-324-guards.test.ts');
+    for (const file of [
+      'src/components/events/service-plan.ts',
+      'src/components/events/volunteer-rota.ts',
+      'src/hooks/queries/useServicePlanQueries.ts',
+    ]) {
+      const digest = createHash('sha256').update(read(file)).digest('hex');
+      expect(
+        partGuards,
+        `${file} is at ${digest}, which the-324-guards.test.ts records for no ticket — `
+        + 'a persisted shape moved without being pinned',
+      ).toContain(digest);
     }
   });
 

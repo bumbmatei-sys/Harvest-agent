@@ -113,7 +113,7 @@ const filesSpelling = (digest: string): string[] =>
   suiteFiles().filter((p) => read(p).includes(digest));
 
 /** The measured population, named in one place so a change to it is one edit. */
-const PINNING_SUITES = 55;
+const PINNING_SUITES = 56;
 
 /**
  * A digest no ticket has recorded and none ever will — the planted change.

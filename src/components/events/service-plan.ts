@@ -116,25 +116,77 @@ export interface ServicePlanItem {
 }
 
 /**
- * A plan, or a template. ONE model, and section 7 of the guards asserts it.
+ * A plan, a standalone service, or a template. ONE model, THREE inhabitants.
  *
- * 🔴 A TEMPLATE IS NOT A SECOND DATA MODEL — it is this one with `eventId:
- * null`, `isTemplate: true` and no person on any item. That was a named stop
- * condition on this ticket ("Templates would need a second data model. Report
- * before building one"), and the answer is that they do not: a template is
- * exactly "the item list without the people or the date", which is a plan with
- * those three things absent. One collection, one rule, one set of pure
- * functions, and {@link planFromTemplate} / {@link templateFromPlan} are total
- * functions between two inhabitants of the same type.
+ * ═════════════════════════════════════════════════════════════════════════════
+ * 🔴 THE-329 REPLACED THE TWO-WAY INVARIANT WITH A THREE-WAY ONE. HERE IS WHY.
+ *
+ * THE-313 shipped `isTemplate === (eventId === null)` and THE-326 kept it. The
+ * founder's complaint is what that costs: "If I have no event created, I cannot
+ * create any service, which is stupid." He is right. A Sunday service is the
+ * week's rhythm, not something a church advertises, and requiring a public
+ * event record before one can be planned is backwards.
+ *
+ * The field that would carry a standalone service already existed — `eventId`
+ * was already `string | null` — and the INVARIANT was the whole of what stood
+ * in the way: a plan with no event was, by that rule, a template. So the
+ * invariant moved rather than the data.
+ *
+ * ⚠️ A PLAN NOW HAS TWO NULLABLE ANCHORS, AND THE PAIR IS THE KIND:
+ *
+ *     eventId ≠ null                  → an EVENT-ANCHORED service  (unchanged)
+ *     eventId = null, startAt ≠ null  → a STANDALONE service       (new)
+ *     eventId = null, startAt = null  → a TEMPLATE                 (unchanged)
+ *
+ * {@link planKind} is that table, spelled once. {@link isTemplateShape} keeps
+ * its name and its job — it now asks whether the stored flag agrees with the
+ * three-way kind instead of the two-way one.
+ *
+ * 🔴 AND THAT IS WHY NO MIGRATION IS NEEDED, WHICH IS THE POINT OF SHAPING IT
+ * THIS WAY. Every document already in a church's database has NO `startAt`
+ * field at all, so it reads as `null`:
+ *
+ *   · an existing template   — `eventId: null`, `startAt` absent → TEMPLATE.
+ *   · an existing plan       — `eventId: 'evt-1'`               → EVENT-ANCHORED.
+ *
+ * Both land in exactly the state they already occupied. The third state is
+ * reachable only by a write this ticket adds, so a half-migrated tenant — the
+ * failure mode a migration would risk — cannot exist: there is nothing to
+ * migrate and no window in which some documents are converted and others are
+ * not.
+ *
+ * ⚠️ THE EVENT LINK IS NOT DELETED, IT IS DEMOTED. A church running a Christmas
+ * carol service genuinely wants it both planned AND advertised, so `eventId`
+ * still anchors a plan and still wins when it is present. What stopped being
+ * true is that it is REQUIRED.
  */
 export interface ServicePlan {
   id: string;
   tenantId: string;
-  /** The event this plan runs. 🔴 `null` — and only null — means a template. */
+  /**
+   * The event this plan runs, or null.
+   *
+   * 🔴 NO LONGER "null means template" — see {@link planKind}. Null now means
+   * "not anchored to an event", which a standalone service and a template both
+   * are; {@link ServicePlan.startAt} is what tells those two apart.
+   */
   eventId: string | null;
+  /**
+   * 🔴 THE SERVICE'S OWN START — the field THE-329 adds, and the only one.
+   *
+   * Non-null EXACTLY for a standalone service. An event-anchored plan leaves it
+   * null and takes its clock from the event, unchanged, because two copies of
+   * one start are two things to keep true and they would disagree the first
+   * time somebody moved the service by half an hour. A template leaves it null
+   * because a template has no date by definition.
+   *
+   * ⚠️ A `Timestamp`, never an ISO string and never an epoch number. This
+   * feature has ONE date representation — see {@link ServicePlan.createdAt}.
+   */
+  startAt: Timestamp | null;
   /** What the plan is called. A template's name is the church's own ("Sunday Morning"). */
   name: string;
-  /** True exactly when `eventId` is null. {@link isTemplateShape} is the invariant. */
+  /** True exactly when the plan is a template. {@link isTemplateShape} is the invariant. */
   isTemplate: boolean;
   items: ServicePlanItem[];
   /**
@@ -401,9 +453,57 @@ export function findDoubleBookings(plans: readonly ScheduledPlan[]): DoubleBooki
   return out;
 }
 
-/** The invariant that keeps ONE model from becoming two: template ⇔ no event. */
-export const isTemplateShape = (plan: Pick<ServicePlan, 'eventId' | 'isTemplate'>): boolean =>
-  plan.isTemplate === (plan.eventId === null);
+/**
+ * 🔴 WHAT A PLAN IS, AS ONE WORD. THE-329's replacement for the two-way rule.
+ *
+ * ⚠️ THE ORDER OF THE TWO TESTS IS THE DECISION, NOT AN IMPLEMENTATION DETAIL.
+ * `eventId` is asked FIRST, so a plan that somehow carried both an event and a
+ * start of its own is an EVENT-ANCHORED service and takes the event's clock.
+ * That keeps THE-313's rule intact — "a plan carries no start of its own; every
+ * clock time is the event's start plus the durations above it" — for every plan
+ * that has an event, which is every plan a church has today. A church that
+ * attaches a standalone service to an event afterwards gets the event's date
+ * from that moment, and there is never a second copy of the start to disagree
+ * with the first.
+ *
+ * ⚠️ DERIVED, NEVER STORED. There is no `kind` field on the document, for the
+ * reason `readPlan` already derives `isTemplate` rather than trusting it: a
+ * stored discriminator that disagreed with the fields it discriminates is a
+ * silent lie, and a stored enum would need a migration to introduce. Two
+ * nullable anchors carry the same information and every document already in a
+ * church's database answers this function correctly without being touched.
+ */
+export type ServicePlanKind = 'event' | 'standalone' | 'template';
+
+export const planKind = (
+  plan: Pick<ServicePlan, 'eventId' | 'startAt'>,
+): ServicePlanKind => {
+  if (plan.eventId !== null) return 'event';
+  return plan.startAt !== null ? 'standalone' : 'template';
+};
+
+/** True for the two kinds a church can actually put people on a rota for. */
+export const isScheduledService = (plan: Pick<ServicePlan, 'eventId' | 'startAt'>): boolean =>
+  planKind(plan) !== 'template';
+
+/**
+ * The invariant that keeps ONE model from becoming three: template ⇔ no anchor.
+ *
+ * 🔴 WHAT IT USED TO SAY, AND WHAT IT SAYS NOW. THE-313 wrote
+ * `isTemplate === (eventId === null)`, and THE-326 recorded that as the reason a
+ * service could not exist without an event. It now reads
+ * `isTemplate === (planKind(plan) === 'template')` — the same job against a
+ * three-way kind, so a standalone service (`eventId: null`, `startAt` set) is no
+ * longer indistinguishable from a template.
+ *
+ * ⚠️ It is still the ONE rule that tells a template apart, and it still fails
+ * loudly for a document whose stored flag disagrees with its anchors. What
+ * changed is which documents it calls templates, and no document that exists
+ * today changes side: a template has neither anchor and still answers `true`.
+ */
+export const isTemplateShape = (
+  plan: Pick<ServicePlan, 'eventId' | 'isTemplate' | 'startAt'>,
+): boolean => plan.isTemplate === (planKind(plan) === 'template');
 
 /**
  * 🔴 A TEMPLATE'S ITEMS, MADE INTO A PLAN'S — WITHOUT THE PEOPLE OR THE DATE.
@@ -437,19 +537,62 @@ export function itemsFromTemplate(items: readonly ServicePlanItem[]): ServicePla
   );
 }
 
-/** The fields a plan started from `template` is created with. */
+/**
+ * 🔴 THE ANCHOR A SERVICE HANGS ON — an event, or a date of its own.
+ *
+ * ⚠️ A DISCRIMINATED UNION RATHER THAN TWO NULLABLE ARGUMENTS, so "a service
+ * with neither" and "a service with both" are not expressible at the call site
+ * at all. The two-anchor shape on the document is what the STORAGE needs
+ * (nothing migrates, and Firestore has no unions); this is what a CALLER needs,
+ * and the two are bridged in exactly one place — {@link servicePlanFields}.
+ */
+export type ServiceAnchor =
+  | { kind: 'event'; eventId: string }
+  | { kind: 'standalone'; startAt: Timestamp };
+
+/**
+ * The fields any non-template plan is created with, whatever it is anchored to.
+ *
+ * The ONE bridge between {@link ServiceAnchor} and the two nullable fields the
+ * document carries, so no other caller ever spells `eventId: null, startAt: x`
+ * by hand and gets the pair wrong.
+ */
+export function servicePlanFields(
+  tenantId: string,
+  name: string,
+  items: readonly ServicePlanItem[],
+  anchor: ServiceAnchor,
+): Omit<ServicePlan, 'id' | 'createdAt' | 'updatedAt'> {
+  return {
+    tenantId,
+    eventId: anchor.kind === 'event' ? anchor.eventId : null,
+    startAt: anchor.kind === 'standalone' ? anchor.startAt : null,
+    name,
+    isTemplate: false,
+    items: renumber(orderedItems(items)),
+  };
+}
+
+/**
+ * The fields a plan started from `template` is created with.
+ *
+ * ⚠️ THE SIGNATURE IS UNCHANGED — an event id, positionally, exactly as THE-313
+ * wrote it — because an event-anchored plan started from a template is what it
+ * always was and THE-313's own suite calls this by that shape. A standalone
+ * service reaches the same place through {@link servicePlanFields} with a
+ * standalone anchor, which is the union's whole point.
+ */
 export function planFromTemplate(
   template: Pick<ServicePlan, 'name' | 'items'>,
   eventId: string,
   tenantId: string,
 ): Omit<ServicePlan, 'id' | 'createdAt' | 'updatedAt'> {
-  return {
+  return servicePlanFields(
     tenantId,
-    eventId,
-    name: template.name,
-    isTemplate: false,
-    items: itemsFromTemplate(template.items),
-  };
+    template.name,
+    itemsFromTemplate(template.items),
+    { kind: 'event', eventId },
+  );
 }
 
 /** The fields a template saved FROM a plan is created with. People stripped, both ways. */
@@ -461,6 +604,9 @@ export function templateFromPlan(
   return {
     tenantId,
     eventId: null,
+    // 🔴 NEITHER ANCHOR. That is what makes it a template under `planKind`, and
+    // it is the same document THE-313 wrote — a template gains no field here.
+    startAt: null,
     name: name.trim(),
     isTemplate: true,
     items: itemsFromTemplate(plan.items),
