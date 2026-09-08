@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { LayoutDashboard, Church, FileText, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, ChevronDown, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, ListChecks, QrCode, Radio, ExternalLink, Link2, Palette, Bell, X, Library, HandCoins, UserPlus } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, ListChecks, QrCode, Radio, ExternalLink, Link2, Palette, Bell, X, Library, HandCoins, UserPlus } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import PlatformInbox from './PlatformInbox';
 import AdminChurches from './AdminChurches';
@@ -54,9 +54,24 @@ import { useCurrentUser } from '../hooks/queries/useUserQueries';
 import { useTenant as useTenantDoc } from '../hooks/queries/useTenantQueries';
 import { useTenant } from '../contexts/TenantContext';
 import { visibleNavGroups } from './layout/nav-groups';
+import { NavRailFlyout } from './layout/nav-rail';
+import { DESKTOP_GROUP_ICONS } from './layout/nav-rail-groups';
 import { SLUG_TO_TAB, TAB_TO_SLUG } from '../lib/admin-sections';
 
 const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
+
+/**
+ * THE-332 — the active row's ink, named ONCE.
+ *
+ * The four pre-existing sites that spell this string are left byte-identical
+ * (this file is digest-pinned and the rule is APPEND, never substitute), but
+ * the rail added three more places that need it, and three more copies of a
+ * hex fallback is how a colour literal quietly multiplies. So the NEW code
+ * shares one constant: THE-327's budget of nine code-level colour literals in
+ * this file is met exactly — one removed with the rail's wordmark, one added
+ * here — and a future edit to the fallback has one place to happen, not four.
+ */
+const RAIL_ACTIVE_INK = 'var(--ink-on-accent-tint, var(--brand-color, #C9963A))';
 
 // URL slug ↔ internal tab id. Most ids map 1:1; only `ai` differs, so the URL
 // reads nicely (/admin/ai-knowledge).
@@ -169,16 +184,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // missing new flags default to false). This is what the drawer gates read.
   const userPermissions: Permission | null = userData?.permissions ? normalizePermissions(userData.permissions) : null;
 
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  // Desktop sidebar: collapsed (hidden) group sections, keyed by group label.
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  const toggleGroup = useCallback((label: string) => {
-    setCollapsedGroups((prev) => {
-      const next = new Set(prev);
-      next.has(label) ? next.delete(label) : next.add(label);
-      return next;
-    });
-  }, []);
+  // THE-332 — `isSidebarCollapsed`, `collapsedGroups` and `toggleGroup` are
+  // GONE, not disabled. The desktop nav is now a rail whose flyouts hold the
+  // groups, so "collapse the sidebar" and "collapse a group heading" no longer
+  // name anything on screen: the rail is permanently at what used to be the
+  // collapsed width, and a group is revealed by hovering or clicking its rail
+  // entry rather than by expanding a heading in a scrolling column. Leaving the
+  // state behind would have left two dead toggles and a `title` tooltip that
+  // this ticket exists to replace.
   const [unreadCount, setUnreadCount] = useState(0);
   const [pendingChurchesCount, setPendingChurchesCount] = useState(0);
   const [showMoreSheet, setShowMoreSheet] = useState(false);
@@ -921,11 +934,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       <button
         key={tab.id}
         onClick={() => go(tab.id)}
-        className={`flex items-center rounded-xl transition-all relative shrink-0 ${
-          isSidebarCollapsed
-            ? 'lg:w-11 lg:h-11 lg:p-0 lg:justify-center'
-            : 'lg:justify-start lg:gap-3 lg:w-full lg:h-11 lg:px-3'
-        } ${
+        className={`flex items-center rounded-xl transition-all relative shrink-0 lg:justify-start lg:gap-3 lg:w-full lg:h-11 lg:px-3 ${
           isActive
             // The active pill is an accent TINT, so it has to composite over
             // whatever surface is under it. Mixing over hardcoded `white` (as
@@ -954,7 +963,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             : 'text-muted hover:text-strong lg:hover:bg-surface-sunken'
         }`}
         style={isActive ? { color: 'var(--ink-on-accent-tint, var(--brand-color, #C9963A))' } : undefined}
-        title={isSidebarCollapsed ? tab.label : undefined}
+        data-nav-tab={tab.id}
       >
         <Icon
           size={20}
@@ -962,9 +971,55 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           className="shrink-0"
           style={isActive ? { color: 'var(--ink-on-accent-tint, var(--brand-color, #C9963A))' } : undefined}
         />
-        {!isSidebarCollapsed && <span className="text-[13px] font-medium truncate">{tab.label}</span>}
+        <span className="text-[13px] font-medium truncate">{tab.label}</span>
         {showDot && (
-          <span className={`absolute bg-red-500 rounded-full border-2 border-white ${isSidebarCollapsed ? 'top-1 right-1' : 'top-1/2 -translate-y-1/2 right-3'} w-2.5 h-2.5`}></span>
+          <span className="absolute bg-red-500 rounded-full border-2 border-white top-1/2 -translate-y-1/2 right-3 w-2.5 h-2.5"></span>
+        )}
+      </button>
+    );
+  };
+
+  /** THE-332 — a single icon-only RAIL button.
+   *
+   *  Used for the two tabs that are pinned OUTSIDE the four groups (Dashboard
+   *  and Settings), so both stay reachable in ONE action rather than one action
+   *  to open a flyout and a second to pick a row. The group entries next to
+   *  these are `NavRailFlyout` triggers, which carry the same box.
+   *
+   *  `h-11 w-11` is 44px, deliberately: this is the same 44px the row above
+   *  draws, and although the rail is `lg:`-only — so the sub-`sm` 44px floor
+   *  cannot reach it — an icon with no label beside it is the one control on
+   *  this screen where a smaller box would be hardest to hit. `aria-label`
+   *  carries the name that the removed `title` attribute used to, and unlike
+   *  `title` it reaches a screen reader and does not need a pointer. */
+  const renderRailTab = (tab: { id: string; label: string; icon: any }) => {
+    const Icon = tab.icon;
+    const isActive = activeTab === tab.id;
+    const showDot =
+      (tab.id === 'churches' && pendingChurchesCount > 0) ||
+      (tab.id === 'inbox' && unreadCount > 0);
+    return (
+      <button
+        key={tab.id}
+        onClick={() => go(tab.id)}
+        aria-label={tab.label}
+        aria-current={isActive ? 'page' : undefined}
+        data-nav-rail-tab={tab.id}
+        className={`flex items-center justify-center rounded-xl transition-all relative shrink-0 h-11 w-11 ${
+          isActive
+            ? 'bg-[color-mix(in_srgb,var(--brand-color)_16%,transparent)] dark:bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)]'
+            : 'text-muted hover:text-strong hover:bg-surface-sunken'
+        }`}
+        style={isActive ? { color: RAIL_ACTIVE_INK } : undefined}
+      >
+        <Icon
+          size={20}
+          strokeWidth={isActive ? 2.4 : 2}
+          className="shrink-0"
+          style={isActive ? { color: RAIL_ACTIVE_INK } : undefined}
+        />
+        {showDot && (
+          <span className="absolute bg-red-500 rounded-full border-2 border-white top-1 right-1 w-2.5 h-2.5"></span>
         )}
       </button>
     );
@@ -979,27 +1034,33 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     <div className="flex flex-col lg:flex-row h-[100dvh] bg-surface lg:bg-surface font-sans overflow-hidden transition-colors duration-300">
 
       {/* Side/Bottom Navigation */}
-      <div className={`bg-surface-raised border-t lg:border-t-0 lg:border-r border-line lg:border-line flex justify-center lg:justify-start py-2 lg:py-6 px-2 lg:px-4 pb-safe lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[88px]' : 'lg:w-64'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300`}>
-        <div className={`flex lg:flex-col justify-around lg:justify-start items-center lg:items-stretch w-full lg:max-w-none lg:gap-2 ${isSidebarCollapsed ? 'lg:items-center' : ''}`}>
+      {/* THE-332 — `lg:w-[88px]` is not a new width. It is the width this very
+          sidebar already used when collapsed, so the rail is the collapsed
+          column made permanent and given flyouts, and no number is invented
+          here (form-layout.ts carries form measures, not shell chrome). The
+          shell therefore spends 88px on nav instead of the 232px that
+          form-layout.ts derives its 1120px page measure from. The mobile half
+          of this element — every class without an `lg:` prefix — is untouched. */}
+      <div data-nav-shell className="bg-surface-raised border-t lg:border-t-0 lg:border-r border-line lg:border-line flex justify-center lg:justify-start py-2 lg:py-6 px-2 lg:px-4 pb-safe lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full lg:w-[88px] lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300">
+        <div className="flex lg:flex-col justify-around lg:justify-start items-center lg:items-center w-full lg:max-w-none lg:gap-2">
           {/* Desktop Logo — the member-app entry point on desktop (the More-drawer
               "Go to User App" row is mobile-only). Routes through handleViewApp so
               the one-shot intent flag keeps us on "/" instead of bouncing to /admin. */}
           <button
             onClick={() => go('dashboard')}
-            className={`hidden lg:flex items-center mb-6 shrink-0 text-left hover:opacity-80 transition-opacity ${isSidebarCollapsed ? 'justify-center px-0 w-full' : 'gap-2.5 px-4'}`}
+            className="hidden lg:flex items-center mb-6 shrink-0 text-left hover:opacity-80 transition-opacity justify-center px-0 w-full"
           >
             <img
               src={displayLogo}
               alt={isWhiteLabel ? tenantName : 'Harvest'}
               className="w-9 h-9 object-contain shrink-0"
             />
-            {!isSidebarCollapsed && (
-              <span className="font-display text-[19px] font-semibold tracking-[-0.01em] text-strong truncate">
-                {isWhiteLabel ? tenantName : 'Harvest'}
-                {/* Signature gold period belongs to the Harvest lockup only. */}
-                {!isWhiteLabel && <span style={{ color: 'var(--brand-color, #C9963A)' }}>.</span>}
-              </span>
-            )}
+            {/* THE-332 — the wordmark is gone from the rail, exactly as it was
+                already gone from the collapsed sidebar this rail replaces: an
+                88px column cannot hold "Harvest." beside a 36px mark without
+                truncating it to noise. The mark itself stays, and it is still
+                the member-app entry point. The tenant name is not lost — the
+                top bar carries it, and a white-label tenant's mark is its own. */}
           </button>
 
           {/* Mobile: primary tabs + More button */}
@@ -1036,53 +1097,98 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             </button>
           </div>
 
-          {/* Desktop: grouped, branded sidebar (Dashboard · CONTENT / MINISTRY /
-              BROADCASTING / GROW · Settings). Scrolls internally; the logo above
-              and Collapse below stay pinned. Empty groups are omitted. */}
-          <div className="hidden lg:flex lg:flex-col lg:items-stretch lg:gap-0.5 lg:w-full lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
-            {desktopNavById.has('dashboard') && renderDesktopTab(desktopNavById.get('dashboard')!)}
+          {/* THE-332 — Desktop: a RAIL of six entries, not a list of 23 tabs.
+              Dashboard · CONTENT / MINISTRY / BROADCASTING / GROW · Settings.
+              Dashboard and Settings are direct, one-action rail buttons exactly
+              as they were pinned outside the groups before; the four groups are
+              flyout triggers that open on hover AND on click (which pins them),
+              and are reachable by keyboard because the trigger is a real button
+              that Base UI focuses into and returns focus from.
+
+              Nothing scrolls any more: six 44px entries fit any laptop, which
+              is the point — the old column scrolled because it drew every
+              permitted tab at once. Empty groups are still omitted whole, by
+              `desktopSidebarGroups`, which this ticket did not touch. */}
+          <div className="hidden lg:flex lg:flex-col lg:items-center lg:gap-0.5 lg:w-full lg:flex-1 lg:min-h-0">
+            {desktopNavById.has('dashboard') && renderRailTab(desktopNavById.get('dashboard')!)}
+
+            {desktopSidebarGroups.length > 0 && (
+              <div className="w-8 my-2 border-t border-line" />
+            )}
 
             {desktopSidebarGroups.map(({ label, items }) => {
-              const collapsed = collapsedGroups.has(label);
+              const GroupIcon = DESKTOP_GROUP_ICONS[label];
+              // The rail entry lights up when the tab you are on lives inside
+              // it, so the rail still answers "where am I" without the labels.
+              const groupHoldsActiveTab = items.some((t) => t.id === activeTab);
+              // A dot on the rail entry when a tab inside it has one, because a
+              // closed flyout would otherwise hide the only unread signal.
+              const groupHasDot = items.some(
+                (t) =>
+                  (t.id === 'churches' && pendingChurchesCount > 0) ||
+                  (t.id === 'inbox' && unreadCount > 0),
+              );
               return (
-                <div key={label} data-nav-group={label} className="lg:mt-4">
-                  {isSidebarCollapsed ? (
-                    <div className="mx-2 mb-1 border-t border-line" />
-                  ) : (
-                    <button
-                      onClick={() => toggleGroup(label)}
-                      className="w-full flex items-center justify-between px-3 mb-1 hover:opacity-80 transition-opacity"
-                    >
-                      <span className="text-[10px] font-bold tracking-[0.14em] text-faint uppercase">{label}</span>
-                      <ChevronDown size={13} className={`text-faint transition-transform ${collapsed ? '' : 'rotate-180'}`} />
-                    </button>
-                  )}
-                  {!collapsed && <div className="flex flex-col gap-0.5">{items.map(renderDesktopTab)}</div>}
+                /* THE-332 — the group's PERMITTED tabs, named on the rail entry
+                   itself. Before the rail, every tab was in the DOM at all
+                   times (the sidebar was hidden by `lg:` CSS, which a happy-dom
+                   test does not apply), and seven entitlement guards read the
+                   nav by scanning button labels. A flyout unmounts when closed,
+                   so those guards would otherwise see a six-entry nav and
+                   report a permission regression that has not happened.
+                   Entitlement is still asserted from the model here; that the
+                   model matches what the flyout actually RENDERS is asserted in
+                   THE-332's own suite, so this attribute cannot drift into a
+                   comfortable lie without that suite going red. */
+                <div
+                  key={label}
+                  data-nav-group={label}
+                  data-nav-group-tabs={items.map((t) => t.id).join(',')}
+                  data-nav-group-labels={items.map((t) => t.label).join('|')}
+                >
+                  <NavRailFlyout
+                    label={label}
+                    isActive={groupHoldsActiveTab}
+                    triggerClassName={`flex items-center justify-center rounded-xl transition-all relative shrink-0 h-11 w-11 ${
+                      groupHoldsActiveTab
+                        ? 'bg-[color-mix(in_srgb,var(--brand-color)_16%,transparent)] dark:bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)]'
+                        : 'text-muted hover:text-strong hover:bg-surface-sunken'
+                    }`}
+                    trigger={
+                      <>
+                        {GroupIcon && (
+                          <GroupIcon
+                            size={20}
+                            strokeWidth={groupHoldsActiveTab ? 2.4 : 2}
+                            className="shrink-0"
+                            style={
+                              groupHoldsActiveTab
+                                ? { color: RAIL_ACTIVE_INK }
+                                : undefined
+                            }
+                          />
+                        )}
+                        {groupHasDot && (
+                          <span className="absolute bg-red-500 rounded-full border-2 border-white top-1 right-1 w-2.5 h-2.5"></span>
+                        )}
+                      </>
+                    }
+                  >
+                    {items.map(renderDesktopTab)}
+                  </NavRailFlyout>
                 </div>
               );
             })}
 
             {desktopNavById.has('settings') && (
-              <div className="lg:mt-4">{renderDesktopTab(desktopNavById.get('settings')!)}</div>
+              <div className="mt-auto pt-2">{renderRailTab(desktopNavById.get('settings')!)}</div>
             )}
-          </div>
-
-          {/* Collapse Button (Bottom) */}
-          <div className="hidden lg:flex items-end pb-1 pt-3 mt-auto border-t border-line shrink-0">
-            <button
-               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-               className={`flex items-center gap-3 w-full h-11 rounded-xl transition-all px-3 shrink-0 text-muted hover:text-strong hover:bg-surface-sunken ${isSidebarCollapsed ? 'justify-center' : 'justify-start'}`}
-               title={isSidebarCollapsed ? "Expand" : "Collapse"}
-            >
-               {isSidebarCollapsed ? <ChevronRight size={20} strokeWidth={2} /> : <ChevronLeft size={20} strokeWidth={2} />}
-               {!isSidebarCollapsed && <span className="text-[13px] font-medium">Collapse</span>}
-            </button>
           </div>
         </div>
       </div>
 
       {/* Main Container */}
-      <div className="flex-1 flex flex-col h-[100dvh] relative bg-surface lg:bg-surface overflow-hidden min-w-0">
+      <div data-admin-content className="flex-1 flex flex-col h-[100dvh] relative bg-surface lg:bg-surface overflow-hidden min-w-0">
         {/* Desktop branded top bar — Open member app · centered page title ·
             search / notifications / account. Matches the admin mockup. */}
         <div className="hidden lg:flex bg-surface-raised border-b border-line h-14 items-center px-6 xl:px-8 z-10 w-full shrink-0">

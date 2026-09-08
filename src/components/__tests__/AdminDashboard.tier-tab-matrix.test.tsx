@@ -231,6 +231,27 @@ function navLabels(): string[] {
     const text = b.textContent?.trim() ?? '';
     if (ALL_TAB_LABELS.includes(text)) found.add(text);
   });
+  /* THE-332 — the desktop nav is a RAIL. A group's tabs live in a flyout that
+     unmounts while it is closed, so they are read from the rail entry's own
+     model rather than from buttons that are not mounted yet. This reports
+     ENTITLEMENT, which is what this file is about and which THE-332 did not
+     change; that the model equals what the flyout actually renders is asserted
+     in THE-332.nav-rail.test.tsx, so this cannot report a tab no user can
+     reach. */
+  container.querySelectorAll('[data-nav-group-labels]').forEach((g) => {
+    (g.getAttribute('data-nav-group-labels') ?? '').split('|').forEach((l) => {
+      if (ALL_TAB_LABELS.includes(l)) found.add(l);
+    });
+  });
+  /* The two PINNED rail entries (Dashboard, Settings) are icon-only, so their
+     name is the accessible one rather than text content. `aria-label` is not a
+     weaker signal here than `textContent` was — it is the name a screen reader
+     announces, and the old collapsed sidebar carried the same name in a `title`
+     attribute that no assistive technology could reach. */
+  container.querySelectorAll('[data-nav-rail-tab]').forEach((b) => {
+    const name = b.getAttribute('aria-label') ?? '';
+    if (ALL_TAB_LABELS.includes(name)) found.add(name);
+  });
   return [...found];
 }
 

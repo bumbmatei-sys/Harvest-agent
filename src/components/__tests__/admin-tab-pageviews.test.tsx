@@ -261,9 +261,41 @@ async function unmount() {
 }
 
 /** Click a nav button by the LABEL a founder reads in the product. */
+/** The rail entry that OWNS a tab label, if the tab lives inside a flyout. */
+function owningRailGroup(label: string): HTMLButtonElement | null {
+  const group = [...container.querySelectorAll('[data-nav-group-labels]')].find((g) =>
+    (g.getAttribute('data-nav-group-labels') ?? '').split('|').includes(label),
+  );
+  if (!group) return null;
+  return group.querySelector<HTMLButtonElement>('[data-nav-rail-group]');
+}
+
+/**
+ * Click a nav destination by name.
+ *
+ * THE-332 — the desktop nav is a rail, so a tab is one of three things: a
+ * button with that text (the mobile bar), an icon-only pinned rail button whose
+ * name is its `aria-label`, or a row inside a flyout that is not mounted until
+ * its rail entry is opened. This walks the REAL path a user walks — it opens
+ * the flyout and clicks the row — rather than reaching past the interaction, so
+ * a tab that could not actually be opened still fails here.
+ */
 async function clickTab(label: string) {
-  const button = [...container.querySelectorAll('button')]
-    .find((b) => b.textContent?.trim() === label);
+  const byText = () =>
+    [...container.querySelectorAll('button'), ...document.querySelectorAll('button')]
+      .find((b) => b.textContent?.trim() === label);
+  const byAria = () =>
+    [...container.querySelectorAll<HTMLButtonElement>('[data-nav-rail-tab]')]
+      .find((b) => b.getAttribute('aria-label') === label);
+
+  let button: Element | undefined = byText() ?? byAria();
+  if (!button) {
+    const group = owningRailGroup(label);
+    expect(group, `no nav entry named "${label}", and no rail group advertises it`).toBeTruthy();
+    await act(async () => { group!.click(); });
+    await flush();
+    button = byText();
+  }
   expect(button, `no nav button labelled "${label}"`).toBeTruthy();
   await act(async () => { (button as HTMLButtonElement).click(); });
   await flush();
@@ -460,7 +492,10 @@ describe('12 — one tab change emits exactly one pageview', () => {
     const after = pageviews().length;
 
     // A state change inside the shell: open and close the desktop nav group.
-    const group = [...container.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'MINISTRY');
+    // THE-332 — the group heading is now a rail entry whose name is its
+    // `aria-label`, so it is found by the attribute the rail marks it with
+    // rather than by text content it no longer renders.
+    const group = container.querySelector<HTMLButtonElement>('[data-nav-rail-group="MINISTRY"]');
     await act(async () => { (group as HTMLButtonElement).click(); });
     await flush();
     await act(async () => { (group as HTMLButtonElement).click(); });

@@ -69,7 +69,22 @@ const SAFE_INSET_PX = 34;
 /** The admin shell's bottom nav classes, READ FROM THE SHELL. */
 function navClass(): string {
   const shell = src('src/components/AdminDashboard.tsx');
-  const match = /<div className=\{`(bg-surface-raised border-t lg:border-t-0[^`]*)`\}>/.exec(shell);
+  /* ⚠️ THE-332 — WIDENED, NOT LOOSENED. This looked for `className={`…`}`
+     exactly: a template literal, with nothing between `<div` and `className`.
+     Both of those were implementation details of a nav that has since changed
+     shape — the desktop half became a rail, so the collapsed/expanded width
+     interpolation that MADE it a template literal is gone and the class list is
+     now a plain string, and the element carries a `data-nav-shell` marker. The
+     pattern matched neither, so `navClass()` threw and this whole suite was
+     SKIPPED rather than failed, which says nothing about its assertions and is
+     the worst way for a guard to go quiet.
+     What it still refuses to do is measure a stale hand-typed copy: the
+     `bg-surface-raised border-t lg:border-t-0` anchor and the four required
+     tokens asserted below are unchanged, so a nav that stops being
+     bottom-anchored still fails here. It also still matches the template-literal
+     form, because CI runs `refs/pull/N/merge` and a merge ref cut before
+     THE-332 landed legitimately carries it. */
+  const match = /<div[^>]*?className=\{?[`"](bg-surface-raised border-t lg:border-t-0[^`"]*)[`"]\}?>/.exec(shell);
   if (!match) throw new Error('the bottom nav could not be located in AdminDashboard.tsx');
   const cls = match[1].replace(/\$\{[^}]*\}/g, 'lg:w-64');
   for (const required of ['fixed', 'bottom-0', 'z-[100]', 'pb-safe']) {

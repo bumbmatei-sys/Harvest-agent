@@ -1181,6 +1181,28 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       'founder chose c-cascader-3 for deep search that crosses all four collections and ' +
       'annotates each hit with the category it came from, which a flat list cannot express.',
   },
+  {
+    file: 'src/components/layout/nav-rail.tsx',
+    ticket: 'THE-332',
+    why:
+      'The desktop admin nav rail\'s flyout. The sidebar rendered all 23 permitted tabs at ' +
+      'once in a 232px scrolling column; it is now a 88px rail of six entries whose four ' +
+      'group entries open a flyout. `popover` carries that flyout, and it is load-bearing ' +
+      'rather than decorative: this repo\'s primitives are BASE UI, whose Popover already ' +
+      'ships every part the founder asked for — `openOnHover` on the trigger gives hover, ' +
+      'the trigger is a real <button> so Enter/Space open it and focus moves into the popup ' +
+      'and returns on Escape, and `onOpenChange` reports WHY it opened ("trigger-press" vs ' +
+      '"trigger-hover"), which is what lets a CLICK pin a flyout that a hover would close. ' +
+      'The founder asked for both, and "both" is otherwise a pile of hand-rolled pointer ' +
+      'listeners. `hover-card` is REJECTED with its reason at the call site: it has no press ' +
+      'semantics and therefore nothing to pin, and it is documented for non-interactive ' +
+      'preview content while these flyouts are the ONLY way to reach 21 of the 23 tabs. ' +
+      '`dropdown-menu` is REJECTED because its items are `menuitem`s with roving focus and ' +
+      'typeahead, which would swallow single-letter keys and give nav destinations menu ' +
+      'semantics they do not have, and it closes on pointer-leave with no pin. `tooltip` is ' +
+      'REJECTED because it is non-interactive by role — which is precisely the defect being ' +
+      'fixed, since "collapsed" used to mean a `title` attribute no keyboard could open.',
+  },
 ];
 
 it('only the recorded adopters import the new components, and each names its ticket', () => {

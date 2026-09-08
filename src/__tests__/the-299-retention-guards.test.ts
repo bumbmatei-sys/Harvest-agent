@@ -686,6 +686,22 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // tab id, render arm or import changes, and the entry is still
     // `isSuperAdmin && { id: 'library' }`.
     ['decfdddbdab91094c936b503f931b663eeb6ba3048ee087c541fe1580f20e31e', 'main + THE-327 — the Library nav entry added to both group arrays'],
+    // 🔴 THE-332 — the desktop nav became a RAIL. APPENDED, NEVER
+    // SUBSTITUTED: every value above stays accepted, because CI runs against
+    // `refs/pull/N/merge` and a merge ref cut before this ticket landed
+    // legitimately carries one of them. A digest that is NEITHER — i.e. THIS
+    // slice editing the file — still fails, which is the whole threat this
+    // guard exists for.
+    //
+    // ⚠️ THIS SLICE'S OWN CLAIM IS UNCHANGED: it does not edit
+    // AdminDashboard. THE-332 does, and it must — the nav lives there and the
+    // ticket is "the sidebar shows all 24 tabs at once, make it a rail with
+    // flyouts". What it changes is the DESKTOP column only: the four groups
+    // became flyout triggers, Dashboard and Settings stayed pinned, and
+    // `isSidebarCollapsed` / `collapsedGroups` went with the column they
+    // collapsed. MORE_GROUPS and the mobile More sheet are byte-identical, and
+    // no permission gate moved.
+    ['508747ccbc7b2fef051d449626ef2f81f3655b214be0494c6c21a8c7df88b9bb', 'main + THE-332 — the desktop nav becomes a rail with flyouts'],
   ],
   'firestore.indexes.json': [
     ['8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0', 'main at 133d557'],

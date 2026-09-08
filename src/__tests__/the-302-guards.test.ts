@@ -85,6 +85,12 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // tab id, render arm or import changes, and the entry is still
     // `isSuperAdmin && { id: 'library' }`.
     ['decfdddbdab91094c936b503f931b663eeb6ba3048ee087c541fe1580f20e31e', 'main + THE-327 — the Library nav entry added to both group arrays'],
+    // 🔴 THE-332 — the desktop nav became a RAIL with flyouts. APPENDED,
+    // NEVER SUBSTITUTED: a merge ref cut before this ticket landed still carries
+    // a value above, and a digest that is NEITHER — i.e. THIS slice editing the
+    // file — still fails. This slice's own claim is unchanged; it does not edit
+    // AdminDashboard, and MORE_GROUPS and every permission gate are untouched.
+    ['508747ccbc7b2fef051d449626ef2f81f3655b214be0494c6c21a8c7df88b9bb', 'main + THE-332 — the desktop nav becomes a rail with flyouts'],
   ],
   // 🔴 A NAMED STOP CONDITION on this ticket: "do not touch `runDodoPlanChange`
   // or `plan-change.ts` unless the fix genuinely requires it". It did not — part

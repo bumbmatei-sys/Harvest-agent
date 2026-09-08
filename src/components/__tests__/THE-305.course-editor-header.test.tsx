@@ -658,6 +658,10 @@ const ADMIN_DASHBOARD_ACCEPTED = [
   // was in NEITHER group array and the desktop sidebar has no catch-all. No
   // permission, gate, tab id, render arm or import changed.
   'decfdddbdab91094c936b503f931b663eeb6ba3048ee087c541fe1580f20e31e',
+// 🔴 THE-332 — the desktop nav became a rail with flyouts. APPENDED,
+// never substituted: a merge ref cut before this ticket landed still
+// carries a value above, and a digest that is NEITHER still fails.
+'508747ccbc7b2fef051d449626ef2f81f3655b214be0494c6c21a8c7df88b9bb',
 ];
 
 describe('the files this ticket must not open are byte-identical', () => {
