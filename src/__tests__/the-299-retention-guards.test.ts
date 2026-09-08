@@ -703,7 +703,7 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // no permission gate moved.
     ['508747ccbc7b2fef051d449626ef2f81f3655b214be0494c6c21a8c7df88b9bb', 'main + THE-332 — the desktop nav becomes a rail with flyouts'],
     // 🔴 APPENDED BY THE-334, nothing above removed or rewritten.
-    ['0c38f6458a857e2cf6f5455d947453775ebca94ab4023ae5963f2ed62ca778e2', 'main + THE-334 — one flyout at a time; the panel takes ClickUp’s shape and Settings moves to the account menu'],
+    ['e9618615d801de3170869abf041d2260edaa5360db0eb25e6d7c95c247ec7fa4', 'main + THE-334 — one flyout at a time; the panel takes ClickUp’s shape and Settings moves to the account menu'],
   ],
   'firestore.indexes.json': [
     ['8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0', 'main at 133d557'],
