@@ -168,6 +168,19 @@ function navNames(): string[] {
     const t = b.textContent?.trim() ?? '';
     if (t) found.add(t);
   });
+  /* 🔴 THE-334 — Settings LEFT the rail for the account menu pinned at the
+     rail's floor, on the founder's instruction ("remove the settings from the
+     sidebar"). Its ENTITLEMENT did not move: the menu row and this attribute are
+     gated on the same `canSettings`. A closed menu has no rows in the DOM, so
+     — exactly as THE-332 did for the flyouts — the entry advertises what it can
+     reach and this reads that model. THE-334's own suite holds the attribute
+     equal to what the menu actually renders AND walks the row to the router, so
+     a tab cannot be advertised here and be unreachable in fact. */
+  container.querySelectorAll('[data-nav-account-labels]').forEach((g) => {
+    (g.getAttribute('data-nav-account-labels') ?? '').split('|').forEach((l) => {
+      if (l) found.add(l);
+    });
+  });
   container.querySelectorAll('[data-nav-group-labels]').forEach((g) => {
     (g.getAttribute('data-nav-group-labels') ?? '').split('|').forEach((l) => {
       if (l) found.add(l);

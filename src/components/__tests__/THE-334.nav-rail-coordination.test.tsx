@@ -665,6 +665,44 @@ describe('THE-334 · the shape the founder asked for', () => {
 });
 
 describe('THE-334 · what it may not disturb', () => {
+  it('🔴 the panel STAYS OPEN when you pick a section — the founder chose this', async () => {
+    /* Asked whether picking a section should close the panel or leave it up, the
+       founder chose "stays open (ClickUp-like)", so you can hop between sections
+       in a category without reopening it. The row is INSIDE the popup, so it is
+       not an outside press, and the shared open state is held above the route. */
+    await mount({ superAdmin: true });
+    const [first] = parsedDesktopGroups().map((g) => g.label);
+    await press(first);
+    const row = panel(first)!.querySelector<HTMLElement>('[data-nav-tab]')!;
+    navigate.mockClear();
+    await act(async () => { row.click(); });
+    await flush();
+    expect(navigate, 'the row navigated nowhere').toHaveBeenCalled();
+    expect(openFlyouts(), 'the panel closed when a section was picked').toEqual([first]);
+  });
+
+  it('🔴 10b · the account entry ADVERTISES exactly what its menu renders', async () => {
+    /* 🔴 The attribute the entitlement guards read is only safe because this
+       holds it equal to the menu's actual rows. Advertising a tab the menu does
+       not render — or gating the two differently — fails here, which is what
+       stops the attribute becoming a comfortable lie. */
+    for (const perms of [FULL_TENANT_PERMS, { ...FULL_TENANT_PERMS, manageSettings: false }]) {
+      if (mounted) { await act(async () => { root.unmount(); }); mounted = false; }
+      await mount({ superAdmin: false, perms, role: 'staff' });
+      const entry = container.querySelector<HTMLElement>('[data-nav-rail-account]')!;
+      const advertised = (entry.getAttribute('data-nav-account-labels') ?? '')
+        .split('|').filter(Boolean);
+      const avatar = entry.querySelector<HTMLElement>('button[aria-label="My account"]')!;
+      await act(async () => { avatar.click(); });
+      await flush();
+      const rendered = [...container.querySelectorAll('[role="menuitem"]')]
+        .map((b) => b.textContent?.trim() ?? '')
+        .filter((t) => advertised.includes(t) || t === 'Settings');
+      expect(rendered, `advertised ${advertised.join('|') || '(none)'} but the menu renders ${rendered.join('|') || '(none)'}`)
+        .toEqual(advertised);
+    }
+  });
+
   it('🔴 10 · every permission gate is unchanged — library stays super-admin-only', async () => {
     await mount({ superAdmin: false, perms: FULL_TENANT_PERMS });
     const advertised = Array.from(container.querySelectorAll('[data-nav-group-tabs]'))
@@ -694,10 +732,14 @@ describe('THE-334 · what it may not disturb', () => {
     const src = read('src/components/AdminDashboard.tsx');
     /* The rail column and every rail entry are `lg:`-gated. */
     expect(src).toContain('hidden lg:flex lg:flex-col lg:items-center');
-    /* MORE_GROUPS — the mobile drawer's model — is untouched by this ticket. */
+    /* 🔴 MORE_GROUPS — the mobile drawer's model — is untouched, and that is
+       pinned to a LITERAL digest of the block as `main` carries it. Comparing
+       the block to itself would have been a tautology that passes whatever the
+       mobile nav becomes; this repo has already shipped one guard that compared
+       a file to itself, and it is the reason this line is spelled out. */
     const more = src.split('const MORE_GROUPS')[1].split('\n];')[0];
     expect(sha256(more), 'MORE_GROUPS changed — mobile was supposed to be untouched')
-      .toBe(sha256(more));
+      .toBe('f253eb5723736dea118117e66705f81d8606d767324e4e5f3bcbe4ef8081c49a');
     expect(src).toContain('flex lg:hidden justify-around items-center w-full');
   });
 

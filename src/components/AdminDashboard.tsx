@@ -1260,7 +1260,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                 `variant="rail"` opens the menu UPWARD — at the bottom of a
                 full-height column a downward menu would open off-screen — and
                 sizes the avatar as a nav target rather than a bar accessory. */}
-            <div data-nav-rail-account className="mt-auto pt-2">
+            <div
+              data-nav-rail-account
+              /* 🔴 THE-334 — the account entry ADVERTISES what it can reach, for
+                 the same reason THE-332 made each rail group advertise its tabs:
+                 a menu that is closed has no rows in the DOM, and several
+                 pre-existing entitlement guards read this nav by scanning it.
+                 Without this they would see Settings vanish and report a
+                 permission regression that has not happened — the entitlement is
+                 unchanged, only the entry point moved. It is gated on the SAME
+                 `canSettings` the menu row itself is gated on (they are one
+                 expression, `accountMenuProps.onOpenSettings`), and THE-334's
+                 suite holds this attribute equal to what the menu actually
+                 renders, so it cannot drift into a comfortable lie. */
+              data-nav-account-tabs={accountMenuProps.onOpenSettings ? 'settings' : ''}
+              data-nav-account-labels={accountMenuProps.onOpenSettings ? 'Settings' : ''}
+              className="mt-auto pt-2"
+            >
               <MyAccountMenu {...accountMenuProps} variant="rail" />
             </div>
           </div>
