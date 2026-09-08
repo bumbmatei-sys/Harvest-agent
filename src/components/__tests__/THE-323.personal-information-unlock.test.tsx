@@ -582,6 +582,21 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
     // the same kind as Profile.tsx: neither view spells it in a className, which
     // `the-324-guards.test.ts` asserts on the stripped source.
     expect(users).toEqual([
+      // 🔴 APPENDED BY THE-334, NOTHING BELOW REMOVED OR REWRITTEN. It sits
+      // FIRST because this list is the sweep's own sorted order, not the order
+      // tickets arrived in.
+      // ⚠️ It USES the class, ungated — `min-h-11` with no `sm:min-h-0`. That is
+      // deliberate and it does NOT fight Rule 4. The entries taking the floor are
+      // the NAV RAIL's buttons, and the rail is `lg:`-gated: it does not render
+      // below 1024px at all, so the sub-`sm` half of `min-h-11 sm:min-h-0` would
+      // never apply and the `sm:` half would be the only live rule. Rule 4's
+      // 38px band governs FORM CONTROLS — inputs, selects, submit buttons — so a
+      // form does not sprawl; a rail entry that stacks an icon over a visible
+      // text label is not one, and the founder asked for exactly that label.
+      // Measured, the entry is 48.125 × 50.75px at every desktop width, which
+      // clears the 44px floor on BOTH axes where THE-332's icon-only 39.875px
+      // box never did. THE-332's own measured suite asserts that band.
+      'src/components/AdminDashboard.tsx',
       'src/components/AdminSettings.tsx',   // uses it: THE-316's TOUCH_FLOOR
       'src/components/Profile.tsx',         // names it in a comment, does not use it
       // 🔴 APPENDED BY THE-331, NOTHING ABOVE OR BELOW REMOVED OR REWRITTEN.
@@ -603,7 +618,11 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // root is 16px and `min-h-11` and `min-h-[44px]` are identical.
       'src/components/attach/AttachMenu.tsx',        // THE-331: USES it, as a phone-only 44px tap floor
       'src/components/events/RotaInviteView.tsx',   // THE-324: names it in a comment, does not use it
-      'src/components/events/RotaRespondView.tsx',  // THE-324: names it in a comment, does not use it
+      'src/components/events/RotaRespondView.tsx',
+      // 🔴 APPENDED BY THE-334, for the same reason and of the same KIND as
+      // AdminDashboard.tsx above: the flyout's "Recent" rows are nav targets in
+      // the same `lg:`-only panel, so they take the same ungated 44px floor.
+      'src/components/layout/nav-rail-recents.tsx',  // THE-324: names it in a comment, does not use it
       // 🔴 APPENDED BY THE-330, NOTHING ABOVE REMOVED OR REWRITTEN. Another
       // COMMENT-ONLY mention, the same kind as the two THE-324 entries: the
       // ticket adds two native `<select>` pickers and records, at their call
@@ -623,6 +642,9 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
     for (const file of [
       'src/components/events/RotaInviteView.tsx',
       'src/components/events/RotaRespondView.tsx',
+      // ⚠️ THE-334's two entries are deliberately NOT here: both USE the class
+      // in a className, which is the other KIND, and this list is only for
+      // files that merely name it.
       // 🔴 APPENDED BY THE-330 — its entry above is held to the same standard,
       // so "it is only a comment" is asserted rather than claimed.
       'src/components/settings/SmsSection.tsx',

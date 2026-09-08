@@ -222,7 +222,7 @@ const GATED_TABS: Row[] = [
  */
 const UNGATED_TABS: Row[] = [
   { label: 'Dashboard', section: '', screen: 'AdminDashboardHome', entitled: () => true },
-  { label: 'Church', section: 'churches', screen: 'AdminChurches', entitled: () => true },
+  { label: 'Campus', section: 'churches', screen: 'AdminChurches', entitled: () => true },
   { label: 'Check-In', section: 'checkin', screen: 'AdminCheckin', entitled: () => true },
 ];
 
@@ -240,7 +240,7 @@ const UNGATED_TABS: Row[] = [
 // `smsAutomation: true` while SMS was bring-your-own and the plan cell gated
 // nothing. Harvest now resells and pays for every segment, so SMS is Ministry-
 // only and this tier no longer reaches the screen.
-const INDIVIDUAL_ENTITLED = ['Dashboard', 'Blog', 'Church', 'Courses', 'CRM', 'Signups', 'Fundraising'];
+const INDIVIDUAL_ENTITLED = ['Dashboard', 'Blog', 'Campus', 'Courses', 'CRM', 'Signups', 'Fundraising'];
 
 /**
  * The eight, plus the one tab that mounts on every tier: Check-In.
@@ -264,7 +264,7 @@ const flush = async () => {
 };
 
 const ALL_TAB_LABELS = [
-  'Dashboard', 'Church', 'Church List', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
+  'Dashboard', 'Campus', 'Campuses', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
   'Fundraising', 'Donations', 'Events', 'Services', 'Notes', 'CRM', 'Signups', 'Accounting', 'Forms', 'Check-In', 'Livestream',
   'SMS', 'Community', 'Library', 'Tenants', 'Affiliate', 'Branding', 'Settings',
 ];
@@ -281,6 +281,19 @@ function navLabels(): string[] {
      change; that the model equals what the flyout actually renders is asserted
      in THE-332.nav-rail.test.tsx, so this cannot report a tab no user can
      reach. */
+  /* 🔴 THE-334 — Settings LEFT the rail for the account menu pinned at the
+     rail's floor, on the founder's instruction ("remove the settings from the
+     sidebar"). Its ENTITLEMENT did not move: the menu row and this attribute are
+     gated on the same `canSettings`. A closed menu has no rows in the DOM, so
+     — exactly as THE-332 did for the flyouts — the entry advertises what it can
+     reach and this reads that model. THE-334's own suite holds the attribute
+     equal to what the menu actually renders AND walks the row to the router, so
+     a tab cannot be advertised here and be unreachable in fact. */
+  container.querySelectorAll('[data-nav-account-labels]').forEach((g) => {
+    (g.getAttribute('data-nav-account-labels') ?? '').split('|').forEach((l) => {
+      if (ALL_TAB_LABELS.includes(l)) found.add(l);
+    });
+  });
   container.querySelectorAll('[data-nav-group-labels]').forEach((g) => {
     (g.getAttribute('data-nav-group-labels') ?? '').split('|').forEach((l) => {
       if (ALL_TAB_LABELS.includes(l)) found.add(l);
@@ -459,8 +472,8 @@ describe('only the free tier shows every tab; a priced tier shows what it bought
       navs.set(plan, (await openTab(plan, UNGATED_TABS[0])).nav);
     }
     // The churches label is the one intentional per-tier difference: a tier
-    // capped at one campus says 'Church', an uncapped/unknown one 'Church List'.
-    const withoutChurch = (l: string[]) => l.filter((x) => x !== 'Church' && x !== 'Church List');
+    // capped at one campus says 'Campus', an uncapped/unknown one 'Campuses'.
+    const withoutChurch = (l: string[]) => l.filter((x) => x !== 'Campus' && x !== 'Campuses');
 
     // Free carries every gated tab, none of which its own cells unlock.
     for (const row of GATED_TABS) {
