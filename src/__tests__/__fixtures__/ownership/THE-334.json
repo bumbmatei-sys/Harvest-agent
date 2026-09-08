@@ -20,7 +20,7 @@
     },
     {
       "file": "src/components/AdminDashboard.tsx",
-      "digest": "8989451f8bbb49ceb7aec6043d88f109d1705ef4ec7eaefbc26124769bf9b013",
+      "digest": "8e4911fd3cc9755e4780f94ccd074908537477ad77267c78357131aa94885c6e",
       "why": "THE RAIL IS FIVE ENTRIES AND AN AVATAR. The four flyouts are wrapped in NavRailProvider so they share one open group; each rail entry now draws its icon over a VISIBLE short label; and SETTINGS LEFT THE RAIL for the account menu pinned at the column's floor, at the founder's explicit instruction ('at the bottom of sidebar put the profile picture with its settings… remove the settings from the sidebar'). Nothing was lost and no gate moved: accountMenuProps.onOpenSettings already carried the SAME canSettings entitlement and already called go('settings'), so an admin without it still sees no Settings row anywhere, and THE-334's guard WALKS that path — it opens the avatar, finds the row, clicks it and requires the router to be sent to the settings URL — rather than excusing the id. `goItem` was added beside `go` so a recent note or person opens ON the thing picked, using the `:itemId` segment three screens already consume. `desktopSidebarGroups` and `visibleNavGroups` are untouched, so a group with no permitted tabs is still omitted whole and `library` is still isSuperAdmin-only. The rail column stays `lg:w-[88px]` and the content box still gets 144px back — no width is invented. Every mobile class, MORE_GROUPS, the More sheet, the top bar and every screen mount are unchanged. THE-327's colour-literal budget is unchanged: the new code reuses the existing RAIL_ACTIVE_INK constant and adds no literal."
     },
     {
