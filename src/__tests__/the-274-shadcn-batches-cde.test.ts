@@ -1203,6 +1203,28 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       'REJECTED because it is non-interactive by role — which is precisely the defect being ' +
       'fixed, since "collapsed" used to mean a `title` attribute no keyboard could open.',
   },
+  {
+    file: 'src/components/Onboarding.tsx',
+    ticket: 'THE-336',
+    why:
+      'The member onboarding funnel. Its last step rejected with `No document to update: ' +
+      '…/users/<uid>` — an account could not be finished at all — and that message reached ' +
+      'the member through hand-written markup: a div carrying three bare hex literals and NO ' +
+      '`role`, so a refused write was announced to nobody. `alert` is load-bearing rather ' +
+      'than cosmetic and is the same adoption THE-321 made one screen over in ' +
+      '`PersonalInformationModal`: its `role="alert"` is what carries a refused write to a ' +
+      'screen reader, who is the reader least likely to notice that a Finish button simply ' +
+      'did nothing, and it paints from `bg-card`/`text-destructive` so all four palettes ' +
+      'resolve it. It renders the save-failure state of a saveState machine, above the first ' +
+      'field, so the message and the answers it failed to write are on screen together. ' +
+      '`empty` is REJECTED: it announces an absent list, and this is a write that was ' +
+      'refused, not a collection that is empty. `sonner` is REJECTED: a toast leaves the ' +
+      'screen while the thing it described is still broken, and this message has to stay ' +
+      'beside the answers the member must retry from. `dialog` is REJECTED: a second modal ' +
+      'over a full-screen funnel step would cover the very fields the retry needs. ' +
+      '`ui/card` was NOT adopted — the funnel already has its own cream shell, and swapping ' +
+      'it would be a visual pass this fix has no business making.',
+  },
 ];
 
 it('only the recorded adopters import the new components, and each names its ticket', () => {

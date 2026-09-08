@@ -1,0 +1,15 @@
+{
+  "ticket": "THE-336",
+  "entries": [
+    {
+      "file": "src/components/Onboarding.tsx",
+      "digest": "bad621cb5041c596a1b74861695388385e438e892a79dac36eff1836ad2c2642",
+      "why": "THE-336 owns this file. Both Firestore writes moved off updateDoc, which requires the document to exist and rejected 'not-found' on a member whose users doc was never created, and onto writeUserDoc, which updates an existing document and creates a COMPLETE one when it is missing. The hand-written error banner was replaced with ui/alert behind a saveState machine, which removed the file's three bare hex literals and gave a refused write a role=\"alert\" it never had."
+    },
+    {
+      "file": "src/components/AuthPage.tsx",
+      "digest": "03c676b0e63a88a690ed7300fb94b3dd6da170fb66736423a2d733b843fada2a",
+      "why": "THE-336 owns this file. It carried the root cause: five Firestore call sites ending in handleFirestoreError(...) followed by a bare return, and handleFirestoreError logs and returns rather than throwing. A refused create was therefore swallowed, leaving an Auth user with no users document and nothing on screen. Both creating writes now surface the failure; the two consent refreshes no longer abort the set-claims call after them."
+    }
+  ]
+}

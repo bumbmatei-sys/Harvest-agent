@@ -54,12 +54,22 @@
  * ═══ The write path is the EXISTING one ══════════════════════════════════════
  *
  * `country` is a top-level field on a `users` document, written today by
- * `Onboarding.saveToFirestore` (Onboarding.tsx:437) and
- * `PersonalInformationModal.handleSave` (PersonalInformationModal.tsx:151-157),
- * both as `updateDoc(doc(db, 'users', uid), { …, country, … })`. This is the
- * same collection, the same document, the same field and the same operation —
- * one more call site, not a second way of writing a member's country. Neither
- * existing writer is refactored to route through here: `PersonalInformationModal`
+ * `Onboarding.saveToFirestore` and `PersonalInformationModal.handleSave`. This
+ * is the same collection, the same document, the same field and the same
+ * operation — one more call site, not a second way of writing a member's
+ * country.
+ *
+ * ⚠️ THE-336 moved onboarding's write behind `writeUserDoc`, which updates the
+ * document when it exists and CREATES a complete one when it does not: a member
+ * whose document had never been created was rejected with `not-found` on the
+ * last step and could not finish signing up at all. The collection, the
+ * document and the field are unchanged, and `country` is still written through
+ * untouched on both of its branches, so nothing above changes. ⚠️ The two
+ * writers are named rather than located: THE-331 pinned a subject by
+ * file-and-line and a deletion moved it two hundred lines, leaving the
+ * reference pointing at whatever landed there.
+ *
+ * Neither existing writer is refactored to route through here: `PersonalInformationModal`
  * carries the account-deletion flow whose copy is asserted deep-equal to a live
  * derivation, and `Onboarding`'s question set and validation are pinned
  * byte-identical by this ticket. A shared helper bought at the price of editing

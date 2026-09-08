@@ -5,6 +5,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
+import { ownershipFailureWithBaseline } from '../../__tests__/__fixtures__/ownership-register';
 
 /**
  * THE-280 — the custom-domain panel is hidden, and the SUBDOMAIN is not.
@@ -422,8 +423,20 @@ describe('5 — onboarding is still completable and no funnel marker moved', () 
   it('🔴 all three signup components are byte-for-byte unchanged', () => {
     expect(digest('src/components/ChurchOnboarding.tsx'))
       .toBe('39a73c9c55bf71cd217b502da7721f1feeccf5f69b55b4694663ec0d65eb9d17');
-    expect(digest('src/components/Onboarding.tsx'))
-      .toBe('e0d3d0a6d10e0254bb9be0dc7df8cc2d81e1a65c7f65069e900f79142952f057');
+    /**
+     * ⚠️ THE-336 gave THIS ONE an append path; the other two stay bare literals
+     * because nothing has opened them. The baseline is not replaced — it is
+     * unioned with the per-ticket ownership register, so THE-280's claim (that
+     * IT did not open this file) survives while the ticket that fixed
+     * onboarding's `not-found` can record what it left behind. A digest that is
+     * neither still fails.
+     */
+    expect(
+      ownershipFailureWithBaseline(
+        'src/components/Onboarding.tsx',
+        'e0d3d0a6d10e0254bb9be0dc7df8cc2d81e1a65c7f65069e900f79142952f057',
+      ),
+    ).toBeNull();
     expect(digest('src/components/FirstRunSetup.tsx'))
       .toBe('684e614319ac4ccf0e94b68ee9ead3438f0096ab8164cdcef437e9f2208de0cb');
   });
