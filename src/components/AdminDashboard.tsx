@@ -1293,12 +1293,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         </div>
       </div>
 
-      {/* 🔴 THE-334 — the gap a PINNED panel occupies, so the content is pushed
-          right instead of covered. It renders nothing while a panel is merely
-          hovered: reflowing the page under the pointer every time it crosses the
-          rail would be unusable, and the founder asked for the push on CLICK. */}
-      <NavRailContentGap />
-
       {/* Main Container */}
       <div data-admin-content className="flex-1 flex flex-col h-[100dvh] relative bg-surface lg:bg-surface overflow-hidden min-w-0">
         {/* Desktop branded top bar — Open member app · centered page title ·
@@ -1382,7 +1376,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         </div>
 
         {/* Main Content Area */}
-        <div className={`flex-1 ${activeTab === 'community' ? 'overflow-hidden lg:overflow-y-auto pb-[65px] lg:pb-8' : 'overflow-y-auto pb-24 lg:pb-8'} p-0 lg:p-6 ${showMoreSheet ? 'overflow-hidden' : ''}`}>
+        {/* 🔴 THE-334 — the pinned panel's column sits BELOW the top bar, not
+            beside it.
+            ⚠️ It was first written as a sibling of the WHOLE content column,
+            which pushed the top bar right along with the page: the header
+            stopped short of the panel and left a dead strip above it, which the
+            founder screenshotted. The bar now runs the full width, as it does in
+            his ClickUp reference, and only the body below it is pushed aside. */}
+        <div className="flex-1 flex min-h-0 min-w-0">
+          <NavRailContentGap />
+        <div className={`flex-1 min-w-0 ${activeTab === 'community' ? 'overflow-hidden lg:overflow-y-auto pb-[65px] lg:pb-8' : 'overflow-y-auto pb-24 lg:pb-8'} p-0 lg:p-6 ${showMoreSheet ? 'overflow-hidden' : ''}`}>
           {/* Billing grace window. Mounted in the SHELL rather than on one tab so a
               failed renewal is visible from whichever screen the admin happens to
               open — the point of the banner is that nobody currently finds out at
@@ -1561,6 +1564,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               <p className="text-lg font-medium">{allTabs.find(t => t.id === activeTab)?.label || 'Inbox'} coming soon.</p>
             </div>
           )}
+        </div>
         </div>
 
         {/* More Sheet (mobile only) */}

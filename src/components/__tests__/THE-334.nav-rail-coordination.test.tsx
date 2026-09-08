@@ -628,6 +628,18 @@ describe('THE-334 · the shape the founder asked for', () => {
        installed `@base-ui/react/popover` directly. */
     expect(arrow, 'the panel has no arrow pointing at its rail entry').toBeTruthy();
     expect(panel(first)!.contains(arrow), 'the arrow is not part of the panel').toBe(true);
+
+    /* 🔴 A TRIANGLE, not a rotated square. The square carried a ring on all four
+       sides, so its two inner edges drew a line across the panel and it read as
+       a diamond with a seam — the founder's "the arrow looks weird". Going back
+       to a `rotate-45` box fails here. */
+    const svg = arrow!.querySelector('svg');
+    expect(svg, 'the arrow is not drawn as a shape').toBeTruthy();
+    const paths = svg!.querySelectorAll('path');
+    expect(paths.length, 'the arrow has no triangle path').toBeGreaterThanOrEqual(1);
+    expect(paths[0].getAttribute('class') ?? '').toContain('fill-popover');
+    expect(arrow!.getAttribute('class') ?? '', 'the arrow is a rotated square again')
+      .not.toContain('rotate-45');
   });
 
   it('🔴 13d · the panel has a TITLE row naming the category, and it reads as a title', async () => {
@@ -763,6 +775,24 @@ describe('THE-334 · what it may not disturb', () => {
     const cls = (g!.getAttribute('class') ?? '').split(/\s+/);
     expect(cls).toContain('w-64');
     expect(cls).toContain('mx-3');
+
+    /* 🔴 AND IT SITS BELOW THE TOP BAR, NOT BESIDE IT.
+       ⚠️ The gap was first written as a sibling of the whole content column,
+       which pushed the TOP BAR right along with the page — the header stopped
+       short of the panel and left a dead strip above it, which the founder
+       screenshotted. The bar must run the full width and only the body below it
+       may be pushed, so the gap has to live INSIDE the content column and AFTER
+       the bar. Moving it back out fails here. */
+    const content = container.querySelector('[data-admin-content]')!;
+    expect(content.contains(g!), 'the gap is outside the content column, so it pushes the top bar')
+      .toBe(true);
+    const topBar = content.querySelector('.h-14')!;
+    expect(topBar, 'the desktop top bar is gone').toBeTruthy();
+    expect(
+      topBar.compareDocumentPosition(g!) & Node.DOCUMENT_POSITION_FOLLOWING,
+      'the gap comes before the top bar, so the bar is pushed too',
+    ).toBeTruthy();
+    expect(topBar.contains(g!), 'the gap is inside the top bar').toBe(false);
 
     /* And it goes away again when the panel is closed. */
     const close = document.querySelector<HTMLElement>(`[data-nav-rail-close="${first}"]`)!;

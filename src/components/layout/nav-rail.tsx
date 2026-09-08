@@ -369,11 +369,29 @@ export function NavRailFlyout({
             className="w-64 h-[calc(100dvh-80px)] flex flex-col rounded-xl bg-popover text-popover-foreground shadow-lg ring-1 ring-foreground/10 outline-hidden"
           >
             {/* 🔴 Base UI's OWN arrow part, anchored to the trigger, so it
-                points out of the rail entry this panel belongs to. */}
+                points out of the rail entry this panel belongs to.
+                ⚠️ It draws an SVG TRIANGLE, not a rotated square. The square
+                carried `ring-1` on all four sides, so its two inner edges drew a
+                line straight across the panel and it read as a diamond with a
+                seam through it — "the arrow looks weird". The triangle fills
+                with the panel's own surface and strokes only its two SLANTED
+                edges, so the panel's ring runs into the point and stops. It
+                overlaps the panel's edge by 1px (`-left-[9px]` against a 10px
+                box) so no seam shows where the two meet. */}
             <PopoverPrimitive.Arrow
               data-nav-rail-arrow={label}
-              className="z-[1] size-3 rotate-45 rounded-[2px] bg-popover ring-1 ring-foreground/10 data-[side=right]:-left-[6px]"
-            />
+              className="z-[1] data-[side=right]:-left-[9px]"
+            >
+              <svg width="10" height="20" viewBox="0 0 10 20" fill="none" aria-hidden="true">
+                <path d="M10 0 L0 10 L10 20 Z" className="fill-popover" />
+                <path
+                  d="M10 0 L0 10 L10 20"
+                  className="stroke-foreground/10"
+                  strokeWidth="1"
+                  fill="none"
+                />
+              </svg>
+            </PopoverPrimitive.Arrow>
 
             {/* 🔴 THE TITLE ROW, with the CLOSE BUTTON the founder asked for —
                 "it should stick there until i press on the close button". */}
