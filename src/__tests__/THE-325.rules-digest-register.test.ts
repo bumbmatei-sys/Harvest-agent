@@ -118,8 +118,16 @@ const filesSpelling = (digest: string): string[] =>
  * through the same module as every other pinner, to assert that rebuilding the
  * number-purchase form left `firestore.rules` untouched. The count is a
  * MEASURED population, so a new pinner raises it by one — what the assertion
- * catches is a suite quietly DROPPING its pin, and that still fails. */
-const PINNING_SUITES = 57;
+ * catches is a suite quietly DROPPING its pin, and that still fails.
+ *
+ * 🔴 57 → 58, APPENDED BY THE-336, through the same module and for the same
+ * reason. Its suite asserts that fixing a member onboarding funnel which could
+ * not create an account — both writes used `updateDoc` on a document a
+ * swallowed `AuthPage` failure had left uncreated — needed NO rule change: the
+ * deployed `users/{userId}` block already permits a self-create whose `role` is
+ * absent or 'user', and a write to a missing document is evaluated as a create.
+ * Nothing above is removed and no accepted value is widened. */
+const PINNING_SUITES = 58;
 
 /**
  * A digest no ticket has recorded and none ever will — the planted change.

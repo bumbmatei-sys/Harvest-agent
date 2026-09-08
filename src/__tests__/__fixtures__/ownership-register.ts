@@ -239,6 +239,43 @@ export function ownershipFailureFor(
 }
 
 /**
+ * THE-336 — the same union, for a guard that carries its OWN baseline literal.
+ *
+ * ⚠️ Two of this repo's no-regression guards pin a file with a bare
+ * `expect(sha(file)).toBe('<literal>')` and say in prose that the literal is
+ * not to be replaced: the claim they make is "MY ticket did not open this
+ * file", and the literal is the merge base they made it from. When a later
+ * ticket legitimately owns the file, that literal has to stay AND the guard has
+ * to keep failing on an edit nobody recorded.
+ *
+ * 🔴 THIS IS NOT A LOOSENING, for the same reason {@link acceptedFor} is not.
+ * The baseline is added to the accepted set, not swapped for it, and a digest
+ * that is neither the baseline nor any per-ticket record still fails. It is the
+ * shape THE-312 gave `settings-freeze-register`'s `freezeFailureFor`, reached
+ * through the per-ticket directory instead of a shared literal so two tickets
+ * recording different files never touch a common file.
+ */
+export function ownershipFailureWithBaseline(
+  file: string,
+  baseline: string,
+  register: ReadonlyArray<OwnershipEntry> = loadOwnership(),
+): string | null {
+  const actual = sha256File(file);
+  if (actual === baseline) return null;
+  const accepted = acceptedFor(file, register);
+  if (accepted.some(([digest]) => digest === actual)) return null;
+  return (
+    `${file} is at ${actual}, which is neither the guard's own baseline\n  `
+    + `${baseline} (the state that guard's ticket left it in)\n`
+    + 'nor any recorded state:\n  '
+    + (accepted.length ? accepted.map(([d, why]) => `${d} (${why})`).join('\n  ') : '(nothing recorded)')
+    + '\n\n🔴 If this change was deliberate, RECORD it: create or append to '
+    + 'src/__tests__/__fixtures__/ownership/THE-nnn.json for YOUR ticket with { file, digest, why }. '
+    + "Do not delete this assertion and do not replace the baseline literal."
+  );
+}
+
+/**
  * `null` when the file on disk is at an accepted digest, otherwise the failure
  * message. This is what the guards call.
  */

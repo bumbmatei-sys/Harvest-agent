@@ -492,7 +492,7 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * retires a pinner updates this count and says what that suite still asserts;
  * a suite that quietly stops pinning fails here.
  */
-const RULES_PINNERS_NOW = 57;
+const RULES_PINNERS_NOW = 58;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per
@@ -586,6 +586,28 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
   // `firestore.indexes.json`, `layout.tsx` and every file under `functions/` —
   // byte-identical, because none of them was in scope and none was needed.
   ['THE-330', 'src/__tests__/THE-330.purchase-guards.test.ts'],
+  // 🔴 APPENDED BY THE-336, nothing above removed, and the count above raised by
+  // exactly one. Its suite pins the rules digest through the same module every
+  // entry here does.
+  //
+  // 🔴 THE-336 WRITES NO RULE, AND ESTABLISHING THAT IS PART OF ITS RESULT. It
+  // fixes a member onboarding funnel whose last step rejected with `No document
+  // to update: …/users/<uid>`, because both of its writes used `updateDoc` on a
+  // document that a swallowed failure in `AuthPage` had left uncreated. The
+  // deployed rule ALREADY allowed the fix: `users/{userId}` carries `allow
+  // create: if isAuthenticated() && request.auth.uid == userId && (!…hasAny(
+  // ['role']) || …role == 'user')`, and a write to a MISSING document is
+  // evaluated as a create. So the writer branches on existence — `setDoc` with
+  // the identity block when the document is absent, `updateDoc` when it is
+  // present — and each half lands under the rule that already permitted it.
+  //
+  // ⚠️ WHAT ITS SUITE ASSERTS BESIDE THE DIGEST: that a document created from
+  // onboarding is COMPLETE rather than a fragment (uid, email, displayName,
+  // createdAt, role, tenantId), that it invents no consent record and writes no
+  // `plan` and no theme preference, that #429's country invariant gains no third
+  // state, and that `firestore.indexes.json`, `functions/` and `layout.tsx` are
+  // byte-identical too.
+  ['THE-336', 'src/components/__tests__/THE-336.onboarding-user-doc.test.tsx'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {

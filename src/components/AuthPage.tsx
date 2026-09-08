@@ -364,7 +364,13 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
       try {
         userSnap = await getDoc(userRef);
       } catch (err) {
+        // 🔴 THE-336. `handleFirestoreError` LOGS AND RETURNS — it does not
+        // throw (src/utils/firestore-errors.ts) — so this `catch` was the whole
+        // handling and this `return` put nothing on screen. See the create
+        // below for what that cost.
         try { handleFirestoreError(err, OperationType.GET, `users/${result.user.uid}`); } catch (e) { console.error(e); }
+        setSuccess('');
+        setError('We could not read your account. Check your connection and try again.');
         return;
       }
 
@@ -384,7 +390,28 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
 
           await setDoc(userRef, userData);
         } catch (err) {
+          /**
+           * 🔴 THE-336 — THIS IS THE ROOT CAUSE, and it is the Silent-Failure
+           * Rule verbatim (AGENTS.md:6: "`catch { console.error }` … converts a
+           * loud failure into a quiet lie").
+           *
+           * `handleFirestoreError` logs a structured record and RETURNS; it
+           * does not throw. So a refused create was swallowed here and this
+           * `return` left the screen exactly as it was: a Firebase Auth user
+           * with no `users` document, no `set-claims` call and therefore no
+           * `tenantId` claim, and not one word to the person who had just
+           * signed up. `App.tsx` then reads `userDoc.exists() === false` and
+           * routes them to `/onboarding`, where the last step used to reject
+           * with `No document to update: …/users/<uid>` and the account could
+           * not be created at all.
+           *
+           * ⚠️ The `return` STAYS. The account genuinely was not created, and
+           * carrying on to `set-claims` would claim otherwise. What changes is
+           * that the failure is now on the screen.
+           */
           try { handleFirestoreError(err, OperationType.WRITE, `users/${result.user.uid}`); } catch (e) { console.error(e); }
+          setSuccess('');
+          setError('Your account could not be created. Nothing was saved, so nothing is half-done — please try again.');
           return;
         }
       } else {
@@ -395,8 +422,24 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
             newsletter: newsletter,
           });
         } catch (err) {
+          /**
+           * 🔴 THE-336 — THE `return` IS GONE, and removing it is the fix.
+           *
+           * This is a housekeeping refresh of two consent fields on a document
+           * that already exists, on a SIGN-IN that has already succeeded.
+           * Aborting the rest of the handler over it withheld the `set-claims`
+           * call below, so a member whose consent write was refused for any
+           * reason at all was signed in with no `tenantId` claim and therefore
+           * no access to their ministry — a far larger failure than the one
+           * being handled, caused by the handling.
+           *
+           * ⚠️ Not a silent failure: the operation the person asked for — sign
+           * in — succeeded and is reported truthfully, the refused write is
+           * recorded in full by `handleFirestoreError`, and it is retried on
+           * every subsequent sign-in. Raising a red banner on a successful
+           * sign-in would be the inverse lie.
+           */
           try { handleFirestoreError(err, OperationType.UPDATE, `users/${result.user.uid}`); } catch (e) { console.error(e); }
-          return;
         }
       }
 
@@ -474,8 +517,14 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
             newsletter: newsletter,
           });
         } catch (err) {
+          // 🔴 THE-336 — the `return` is gone here for the same reason as the
+          // Google path above: a refused consent refresh must not withhold the
+          // `set-claims` call that follows it. 🔴 THIS IS THE PATH THE REPORTED
+          // ACCOUNT TOOK. `updateDoc` on a `users` document that does not exist
+          // rejects with `not-found`, so an Auth user without one could not
+          // even sign in far enough to be given a claim, and was then routed to
+          // `/onboarding` — where the last step rejected the same way.
           try { handleFirestoreError(err, OperationType.UPDATE, `users/${userCredential.user.uid}`); } catch (e) { console.error(e); }
-          return;
         }
 
         // Set custom claims on server, then force-refresh token
@@ -531,7 +580,16 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
             termsAccepted: true,
           });
         } catch (err) {
+          // 🔴 THE-336 — the second half of the root cause, identical in shape
+          // to the Google create above and swallowed identically. The `return`
+          // stays (the account really was not created); what is new is that the
+          // person is told so instead of being sent onward into a funnel that
+          // could not complete. `setSuccess` below is never reached from here,
+          // so no "Account created successfully!" has ever been shown on this
+          // path — the screen simply said nothing at all.
           try { handleFirestoreError(err, OperationType.WRITE, `users/${result.user.uid}`); } catch (e) { console.error(e); }
+          setSuccess('');
+          setError('Your account could not be created. Nothing was saved, so nothing is half-done — please try again.');
           return;
         }
 

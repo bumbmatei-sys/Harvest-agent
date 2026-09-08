@@ -82,6 +82,7 @@ import {
   shouldPromptForCountry,
 } from '../../lib/member-country';
 import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
+import { ownershipFailureWithBaseline } from '../../__tests__/__fixtures__/ownership-register';
 
 /* ── Harness ──────────────────────────────────────────────────────────────── */
 
@@ -210,8 +211,27 @@ describe('submitting writes only country, on the existing write path', () => {
   it('🔴 uses the same collection, document, field and operation as the existing writers', () => {
     const write = /updateDoc\(doc\(db, 'users', ([A-Za-z.]+)\), \{ country \}\)/;
     expect(src('src/lib/member-country.ts')).toMatch(write);
-    // The two writers it matches, unchanged and still shaped the same way.
-    expect(src('src/components/Onboarding.tsx')).toContain("updateDoc(doc(db, 'users', user.uid), updateData)");
+    /**
+     * ⚠️ THE-336 MOVED ONBOARDING'S WRITE, and this assertion moved with it
+     * rather than being deleted. The claim is unchanged — same collection, same
+     * document, same field, same operation on a document that exists — but the
+     * call now goes through `writeUserDoc`, which updates an existing document
+     * and CREATES a missing one. While it was a bare `updateDoc` a member whose
+     * document had never been created was rejected with `not-found` on the last
+     * step of onboarding and could not create an account at all.
+     *
+     * 🔴 ASSERTED AGAINST THE CODE, comments stripped, and that is the point.
+     * THE-336's docblock quotes the old call verbatim to say what it replaced,
+     * so the raw-text `toContain` that stood here KEPT PASSING against the
+     * quotation after the behaviour underneath it had changed — a guard
+     * satisfied by prose is not a guard. The `not.toContain` below is what
+     * makes the difference visible either way.
+     */
+    const ob = code('src/components/Onboarding.tsx');
+    expect(ob).toContain('await writeUserDoc(user, updateData);');
+    expect(ob).toContain("const ref = doc(db, 'users', user.uid);");
+    expect(ob).toContain('await updateDoc(ref, fields);');
+    expect(ob).not.toContain("updateDoc(doc(db, 'users', user.uid), updateData)");
     expect(src('src/components/PersonalInformationModal.tsx')).toContain('await updateDoc(userRef, {');
   });
 
@@ -524,9 +544,31 @@ describe('no funnel marker, route order or Turnstile mount changed', () => {
  * ═════════════════════════════════════════════════════════════════════════════ */
 
 describe("Onboarding.tsx's question set and validation are byte-identical", () => {
-  it('🔴 the whole file is unchanged', () => {
-    expect(sha('src/components/Onboarding.tsx'))
-      .toBe('e0d3d0a6d10e0254bb9be0dc7df8cc2d81e1a65c7f65069e900f79142952f057');
+  /**
+   * ⚠️ THE-336 GAVE THIS PIN AN APPEND PATH, exactly as THE-312 gave one to the
+   * account-deletion pin below. The literal is still the baseline taken from
+   * the merge base and is NOT replaced; a later ticket that legitimately owns
+   * the file records its digest in its own
+   * `__fixtures__/ownership/THE-nnn.json` and the two are unioned.
+   *
+   * 🔴 Nothing is weakened. What THE-292 actually claims here — that IT did not
+   * open this file — is unchanged, and a digest that is neither the baseline
+   * nor any recorded state still fails. THE-336 opened it to stop
+   * `saveToFirestore` rejecting `not-found` on a member whose `users` document
+   * had never been created, which made an account impossible to finish.
+   *
+   * ⚠️ The two content assertions below are the narrower claim and are
+   * deliberately NOT routed through the register: they read the question set
+   * and the validation line themselves, so they still fail if a later ticket
+   * changes what this describe block is named for.
+   */
+  it('🔴 the whole file is unchanged, or a later ticket recorded its edit', () => {
+    expect(
+      ownershipFailureWithBaseline(
+        'src/components/Onboarding.tsx',
+        'e0d3d0a6d10e0254bb9be0dc7df8cc2d81e1a65c7f65069e900f79142952f057',
+      ),
+    ).toBeNull();
   });
 
   it('the location step is still tenant-configurable and still accepts an empty city', () => {

@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, db, messaging, VAPID_KEY } from '../firebase';
-import { doc, updateDoc, getDoc, arrayUnion } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, getDoc, arrayUnion } from 'firebase/firestore';
 import { getToken } from 'firebase/messaging';
 import CountrySelect from './CountrySelect';
 import { useTenant } from '../contexts/TenantContext';
@@ -11,9 +11,132 @@ import { CheckCircle2, ArrowRight, ArrowLeft, MapPin, Bell, User, Phone } from '
 import type { TenantPlan } from '../types/tenant.types';
 import { InstallHeading, InstallPanel, useInstallState } from './install/InstallInstructions';
 import { isInstallHandled, isInstalled, isNativeShell, markInstallHandled } from '../lib/pwa-install';
+import { handleFirestoreError, OperationType } from '../utils/firestore-errors';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
+
+/* ── The member's own `users` document ──────────────────────────────────────── */
+
+/**
+ * 🔴 THE-336 — write onto the signed-in member's `users` document, CREATING it
+ * when it is not there.
+ *
+ * ── The bug this exists for ─────────────────────────────────────────────────
+ *
+ * Both writes in this file used `updateDoc`, which REQUIRES the document to
+ * exist and rejects with `not-found` when it does not. A member who reached
+ * onboarding without one — see below for how — pressed Finish and got
+ *
+ *   No document to update: projects/…/databases/(default)/documents/users/<uid>
+ *
+ * rendered inside the card, with no way past it. The account could not be
+ * created at all.
+ *
+ * ⚠️ THE MISSING DOCUMENT IS NOT THIS FILE'S DOING and papering over it here is
+ * only the safety net. `AuthPage` is the creating writer, and every one of its
+ * Firestore call sites ended in `handleFirestoreError(...)` followed by a bare
+ * `return` — and `handleFirestoreError` LOGS AND RETURNS, it does not throw
+ * (`src/utils/firestore-errors.ts`). A refused create therefore left a Firebase
+ * Auth user with no `users` document, nothing on screen, and `set-claims` never
+ * called. `App.tsx` then reads `userDoc.exists() === false` and routes to this
+ * funnel. That silent `catch` is fixed in `AuthPage` by the same ticket; this
+ * function is what stops the member being stranded when a write is refused for
+ * some reason nobody has thought of yet.
+ *
+ * ── Why the created document carries more than the caller's fields ──────────
+ *
+ * 🔴 A HALF-CREATED ACCOUNT IS WORSE THAN A CLEAR FAILURE. A bare
+ * `setDoc(ref, fields, { merge: true })` would create a document holding only
+ * what onboarding writes — no `uid`, no `email`, no `createdAt`, no `role` and,
+ * worst of all, no `tenantId`, which is the field that decides which ministry
+ * the member belongs to. So the create carries the identity block `AuthPage`
+ * writes on the same document, and the caller's fields land on top of it.
+ *
+ * ⚠️ `tenantId` comes from `getTenantScope()`, which reads the HOST first — the
+ * same authority `AuthPage` derives it from, and not spoofable by the client.
+ * Off a tenant host it resolves to null, exactly as `AuthPage` does when the
+ * middleware cookie is absent.
+ *
+ * ⚠️ This note deliberately avoids one word: THE-280 counts it to zero in this
+ * file to prove the MEMBER funnel asks no such question, and prose has no
+ * business spending that budget.
+ *
+ * 🔴 NO `termsAccepted` AND NO `newsletter`, for the reason THE-73 already
+ * recorded one screen over in `ChurchOnboarding`: this flow displays no terms,
+ * no link and no checkbox, so it has no evidence of consent and could only
+ * assume it. A consent record asserted by a screen that presented nothing is a
+ * claim that did not happen. `AuthPage` is the consent point and stays the only
+ * writer of both fields.
+ *
+ * 🔴 NO `plan`. The billing webhook is its single writer (#434) and nothing on
+ * the client may write it. NO theme preference either — pre-auth is light-mode
+ * only (THE-85).
+ *
+ * ⚠️ `country` is never defaulted here or anywhere on this path. It is passed
+ * through in `fields` exactly as the caller holds it, because #429's invariant
+ * `withCountry + countryUnrecorded === total` depends on there being no third
+ * state: no `''` substituted for a missing value, no `'Unknown'`, no sentinel.
+ *
+ * ── Why the branch, rather than one merge ───────────────────────────────────
+ *
+ * The same shape `ChurchOnboarding` uses (THE-73), and for a second reason
+ * here: `firestore.rules` evaluates a write to a MISSING document under `allow
+ * create` and a write to an existing one under `allow update`, and the update
+ * rule refuses a self-edit that touches `role` or `tenantId`. Sending the
+ * identity block only on the create keeps the update a plain self-edit of the
+ * member's own answers, which is what it has always been. No rule changes.
+ *
+ * ⚠️ `arrayUnion` is valid in both branches — it is a field transform, not an
+ * update-only operator — so the notification-token write keeps working either
+ * way.
+ */
+export async function writeUserDoc(
+  user: { uid: string; email: string | null; displayName: string | null },
+  fields: Record<string, unknown>,
+): Promise<void> {
+  const ref = doc(db, 'users', user.uid);
+  const snap = await getDoc(ref);
+  if (snap.exists()) {
+    await updateDoc(ref, fields);
+    return;
+  }
+  const tenantId = await getTenantScope();
+  await setDoc(ref, {
+    uid: user.uid,
+    email: user.email,
+    displayName: user.displayName || (user.email ? user.email.split('@')[0] : ''),
+    createdAt: new Date().toISOString(),
+    role: 'user',
+    tenantId: tenantId || null,
+    ...fields,
+  });
+}
+
+/**
+ * 🔴 THE-336 — what to tell a member whose answers could not be saved.
+ *
+ * Every branch names a NEXT STEP. The screen this replaces rendered the raw
+ * Firestore rejection, which named a Google Cloud project and a document path
+ * and left the member with a Finish button that did the same thing again — an
+ * error with nothing on the other side of it.
+ *
+ * ⚠️ Written copy, not the exception's own words, for the reason `AuthPage`
+ * already maps its Firebase codes: no raw provider wording reaches the screen.
+ * The rejection itself is logged by the caller through `handleFirestoreError`,
+ * so nothing is lost to whoever debugs it.
+ */
+export function saveFailureMessage(e: unknown): string {
+  const code = typeof e === 'object' && e !== null && 'code' in e ? String((e as { code: unknown }).code) : '';
+  if (code === 'unavailable' || code === 'deadline-exceeded') {
+    return 'We could not reach the server. Check your connection and press Finish again — your answers are still here.';
+  }
+  if (code === 'permission-denied' || code === 'unauthenticated') {
+    return 'Your session is no longer valid, so we could not save your answers. Sign in again and you will be brought straight back here.';
+  }
+  return 'Something went wrong saving your answers. They are still here, so press Finish to try again. If it keeps failing, sign out and sign in again.';
+}
 
 /* ── Shared brand chrome (cream editorial ground, Fraunces display) ─────────── */
 
@@ -185,9 +308,16 @@ const NotificationsStep: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                 // fcmTokens only — users.tenantId is locked to self-edits by
                 // firestore.rules (server-authority; bundling it here used to
                 // make the whole write fail whenever the scope differed).
-                await updateDoc(doc(db, 'users', user.uid), {
-                  fcmTokens: arrayUnion(token),
-                });
+                //
+                // 🔴 THE-336 — this was the SECOND `updateDoc` on a document
+                // that may not exist. In the flow as written it is reached only
+                // after `saveToFirestore` has already created or updated the
+                // document, so the create branch is unreachable today; it goes
+                // through the same writer anyway so that neither write site in
+                // this file can strand a member on a `not-found`, and so that a
+                // document created from here is a WHOLE one rather than a
+                // fragment holding a push token and nothing else.
+                await writeUserDoc(user, { fcmTokens: arrayUnion(token) });
               }
             }
           } catch (e) {
@@ -243,9 +373,26 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const [city, setCity] = useState('');
   const [phone, setPhone] = useState('');
   const [acceptedJesus, setAcceptedJesus] = useState('');
-  const [loading, setLoading] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [error, setError] = useState('');
+  /**
+   * 🔴 THE-336 — the save, as a state machine, modelled on THE-321's fix to
+   * `PersonalInformationModal.handleSave`.
+   *
+   * `error` above is the VALIDATION message ("Please enter your name.") and is
+   * unchanged. This is the separate question of whether the write to Firestore
+   * succeeded, and it is separate because the two need different copy and
+   * because a failed write — unlike a blank field — is not the member's doing
+   * and needs to tell them what to do next.
+   *
+   * ⚠️ `saveState` never clears the answers. `name`, `country`, `city`,
+   * `phone`, `acceptedJesus` and `customAnswers` are left exactly as typed and
+   * the step does not advance, so pressing Finish again retries with everything
+   * still in the fields.
+   */
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'error'>('idle');
+  const [saveMessage, setSaveMessage] = useState('');
+  const isSaving = saveState === 'saving';
   const [customQuestions, setCustomQuestions] = useState<OnboardingQuestion[]>([]);
   const [customAnswers, setCustomAnswers] = useState<Record<string, string>>({});
   const [questionsLoaded, setQuestionsLoaded] = useState(false);
@@ -434,7 +581,12 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     if (Object.keys(customOnly).length > 0) {
       updateData.onboardingAnswers = customOnly;
     }
-    await updateDoc(doc(db, 'users', user.uid), updateData);
+    // 🔴 THE-336. Was `updateDoc(doc(db, 'users', user.uid), updateData)`,
+    // which rejects with `not-found` when the document was never created — the
+    // whole ticket. `writeUserDoc` updates it when it is there and creates a
+    // COMPLETE one when it is not; see its docblock for why the created
+    // document carries an identity block and why it carries no consent record.
+    await writeUserDoc(user, updateData);
   };
 
   // Advance handler used by the self-managed system steps.
@@ -460,15 +612,33 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     // first system step (pwaInstall / notifications / done). This means the user
     // can close the browser mid-install without losing their answers.
     if (nextStep && isSystemKind(nextStep.kind)) {
-      setLoading(true);
+      setSaveState('saving');
+      setSaveMessage('');
       try {
         await saveToFirestore();
-      } catch (e: any) {
-        setError(e.message || 'Failed to save. Please try again.');
-        setLoading(false);
+      } catch (e: unknown) {
+        /**
+         * 🔴 THE-336 — THE FAILURE IS SHOWN, AND IT IS NOT A DEAD END.
+         *
+         * ⚠️ The raw rejection is LOGGED, structurally, and does not reach the
+         * screen. `No document to update: projects/harvest-agent-233a1/…` is
+         * what a member was shown, and it told them nothing they could act on
+         * — the same reason `AuthPage` maps its Firebase codes to written
+         * copy. `handleFirestoreError` keeps the uid, the path, the operation
+         * and the provider list in the console for whoever debugs the next
+         * one.
+         *
+         * 🔴 Making this silent would be the OPPOSITE defect and just as bad:
+         * a Finish button that appears to work while nothing is written is the
+         * quiet lie the Silent-Failure Rule is about. It stays loud; what
+         * changes is that it is legible and that it says what to do next.
+         */
+        handleFirestoreError(e, OperationType.WRITE, `users/${auth.currentUser?.uid ?? '<none>'}`);
+        setSaveState('error');
+        setSaveMessage(saveFailureMessage(e));
         return;
       }
-      setLoading(false);
+      setSaveState('idle');
     }
 
     setDir(1);
@@ -500,7 +670,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           <ObInput
             type="text" value={name}
             onChange={e => setName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && !loading && goNext()}
+            onKeyDown={e => e.key === 'Enter' && !isSaving && goNext()}
             placeholder="Your full name" autoFocus
             icon={<User size={16} />}
           />
@@ -521,7 +691,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
             <div>
               <label className={fieldLabel} style={{ color: 'var(--text-heading, #2D2519)' }}>City</label>
               <ObInput type="text" value={city} onChange={e => setCity(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && !loading && goNext()}
+                onKeyDown={e => e.key === 'Enter' && !isSaving && goNext()}
                 placeholder="Your city" icon={<MapPin size={16} />} />
             </div>
           </div>
@@ -530,7 +700,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         return (
           <ObInput type="tel" value={phone}
             onChange={e => setPhone(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && !loading && goNext()}
+            onKeyDown={e => e.key === 'Enter' && !isSaving && goNext()}
             placeholder="+1 234 567 8900" autoFocus
             icon={<Phone size={16} />}
           />
@@ -563,7 +733,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         return (
           <ObInput type="text" value={value}
             onChange={e => setCustomAnswers(p => ({ ...p, [question.id]: e.target.value }))}
-            onKeyDown={e => e.key === 'Enter' && !loading && goNext()}
+            onKeyDown={e => e.key === 'Enter' && !isSaving && goNext()}
             placeholder={question.label} autoFocus />
         );
       case 'textarea':
@@ -685,10 +855,38 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                     <h1 className="font-display" style={{ fontWeight: 300, fontSize: 28, letterSpacing: '-0.02em', lineHeight: 1.12, color: 'var(--text-heading, #2D2519)' }}>{heading.title}</h1>
                   </div>
                   {heading.sub && <p className="text-sm leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>{heading.sub}</p>}
+                  {/*
+                    🔴 THE-336 — `ui/alert`, the installed primitive for exactly
+                    this: a banner reporting an outcome. What stood here was
+                    hand-written markup carrying three bare hex literals — a
+                    tint, a border and a text colour, none of them behind a
+                    token — and no `role`, so a refused write reached
+                    no screen reader at all — the reader least likely to notice
+                    that a Finish button simply did nothing. `Alert` carries
+                    `role="alert"` itself and paints from `bg-card` /
+                    `text-destructive`, so all four palettes resolve and nothing
+                    here names a colour.
+
+                    ⚠️ Rejected: `ui/empty` (it announces an absent list, not a
+                    failed write), `sonner` (a toast leaves the screen while the
+                    thing it described is still broken, and this message has to
+                    stay next to the answers it failed to save) and `ui/dialog`
+                    (a second modal over a full-screen funnel step, which would
+                    hide the very fields the member needs to retry from).
+
+                    ⚠️ It is not a tap target and has no height of its own, so
+                    it takes no 44px floor.
+                  */}
+                  {saveState === 'error' && (
+                    <Alert variant="destructive" aria-live="assertive" data-save-error className="mt-4">
+                      <AlertTitle>We could not save your answers</AlertTitle>
+                      <AlertDescription>{saveMessage}</AlertDescription>
+                    </Alert>
+                  )}
                   {error && (
-                    <div className="mt-4 rounded-lg border px-3.5 py-3 text-sm" style={{ background: '#FBEEEA', borderColor: '#EBD0C7', color: '#B0432B' }}>
-                      {error}
-                    </div>
+                    <Alert variant="destructive" aria-live="assertive" data-validation-error className="mt-4">
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
                   )}
                   <div className="mt-6">{renderField(currentStep)}</div>
                 </>
@@ -705,10 +903,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                 <ArrowLeft size={16} /> Back
               </button>
             ) : <div />}
-            <button onClick={goNext} disabled={loading || !questionsLoaded}
+            <button onClick={goNext} disabled={isSaving || !questionsLoaded}
               className="flex items-center gap-2 rounded-lg px-6 py-3 font-semibold text-white transition-all disabled:opacity-50"
               style={{ backgroundColor: GOLD, boxShadow: `0 10px 30px -8px color-mix(in srgb, ${GOLD} 42%, transparent)` }}>
-              {loading ? 'Saving…' : stepIndex === questionStepCount - 1 ? 'Finish' : 'Continue'}
+              {isSaving ? 'Saving…' : stepIndex === questionStepCount - 1 ? 'Finish' : 'Continue'}
               <ArrowRight size={16} />
             </button>
           </div>
