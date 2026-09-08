@@ -200,7 +200,7 @@ describe('THE-332 · measured', () => {
     }
   });
 
-  it('🔴 1 · the rail is narrow — 88px, the width the sidebar used when collapsed', () => {
+  it('🔴 1 · the rail is narrow — 64px, the width the founder asked for', () => {
     /* Below `lg` the rail does not exist; the mobile bottom bar is what draws,
        and this ticket did not touch it. So the rail is asserted only where it
        renders. */
@@ -208,7 +208,10 @@ describe('THE-332 · measured', () => {
       const dash = shots[v].boxes.rail;
       expect(dash, `no rail at ${v}px`).toBeTruthy();
       /* The whole nav column, measured through the entry that sits in it. */
-      expect(dash!.right, `the rail is wider than 88px at ${v}px`).toBeLessThanOrEqual(88);
+      /* 🔴 THE-334 — 64px, down from THE-332's 88px. The founder asked twice
+         ("our sidebar is too wide", then "the sidebar is still too wide" against
+         a build measured at 88px) and named the size himself. */
+      expect(dash!.right, `the rail is wider than 64px at ${v}px`).toBeLessThanOrEqual(64);
     }
   });
 
@@ -268,7 +271,7 @@ describe('THE-332 · measured', () => {
     }
   });
 
-  it('🔴 the rail gives the content box 144px back at every desktop width', () => {
+  it('🔴 the rail gives the content box 168px back at every desktop width', () => {
     /* form-layout.ts derives its 1120px page measure from a 232px sidebar. The
        rail is 88px, so the shell hands 144px back — the number is asserted
        rather than described, because #429 showed this arithmetic is where a
@@ -276,7 +279,10 @@ describe('THE-332 · measured', () => {
     for (const v of VIEWPORTS.filter((x) => x >= 1024)) {
       const content = shots[v].boxes.content;
       expect(content, `no content box at ${v}px`).toBeTruthy();
-      expect(content!.width, `content box at ${v}px`).toBe(v - 88);
+      /* form-layout.ts derives its 1120px page measure from a 232px sidebar.
+         The rail is 64px, so the shell hands 168px back — 24px more than
+         THE-332's 88px rail did. */
+      expect(content!.width, `content box at ${v}px`).toBe(v - 64);
     }
   });
 });

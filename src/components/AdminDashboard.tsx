@@ -54,7 +54,7 @@ import { useCurrentUser } from '../hooks/queries/useUserQueries';
 import { useTenant as useTenantDoc } from '../hooks/queries/useTenantQueries';
 import { useTenant } from '../contexts/TenantContext';
 import { visibleNavGroups } from './layout/nav-groups';
-import { NavRailFlyout, NavRailProvider } from './layout/nav-rail';
+import { NavRailFlyout, NavRailProvider, NavRailContentGap } from './layout/nav-rail';
 import { DESKTOP_GROUP_ICONS, DESKTOP_GROUP_LABELS } from './layout/nav-rail-groups';
 import { NavRailRecents, RAIL_RECENT_GROUPS } from './layout/nav-rail-recents';
 import { SLUG_TO_TAB, TAB_TO_SLUG } from '../lib/admin-sections';
@@ -1039,7 +1039,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         aria-label={RAIL_TAB_LABELS[tab.id] ?? tab.label}
         aria-current={isActive ? 'page' : undefined}
         data-nav-rail-tab={tab.id}
-        className={`flex flex-col items-center justify-center gap-1 rounded-xl transition-all relative shrink-0 min-h-11 w-14 py-2 ${
+        className={`flex flex-col items-center justify-center gap-1 rounded-xl transition-all relative shrink-0 min-h-11 w-full py-2 ${
           isActive
             ? 'bg-[color-mix(in_srgb,var(--brand-color)_16%,transparent)] dark:bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)]'
             : 'text-muted hover:text-strong hover:bg-surface-sunken'
@@ -1068,17 +1068,27 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
 
   return (
     <AdminHeaderContext.Provider value={headerApi}>
+    {/* 🔴 THE-334 — the provider wraps the WHOLE shell, not just the rail: the
+        content column has to know when a panel is PINNED so it can be pushed
+        aside rather than covered ("if i click on it, it should push the content
+        to the right, not overlap it"). */}
+    <NavRailProvider>
     <div className="flex flex-col lg:flex-row h-[100dvh] bg-surface lg:bg-surface font-sans overflow-hidden transition-colors duration-300">
 
       {/* Side/Bottom Navigation */}
-      {/* THE-332 — `lg:w-[88px]` is not a new width. It is the width this very
-          sidebar already used when collapsed, so the rail is the collapsed
-          column made permanent and given flyouts, and no number is invented
-          here (form-layout.ts carries form measures, not shell chrome). The
-          shell therefore spends 88px on nav instead of the 232px that
-          form-layout.ts derives its 1120px page measure from. The mobile half
-          of this element — every class without an `lg:` prefix — is untouched. */}
-      <div data-nav-shell className="bg-surface-raised border-t lg:border-t-0 lg:border-r border-line lg:border-line flex justify-center lg:justify-start py-2 lg:py-6 px-2 lg:px-4 pb-safe lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full lg:w-[88px] lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300">
+      {/* 🔴 THE-334 — `lg:w-[64px]`, down from THE-332's 88px.
+          ⚠️ THE-332 took 88px BECAUSE it was not a new number: it was the width
+          this sidebar already used when collapsed, and the rule is "invent no
+          width". 64px IS a new number, and it is here because the founder asked
+          for it twice — "our sidebar is too wide", then "the sidebar is still
+          too wide" against a build measured at 88px — and named the size himself
+          when shown the trade. It is recorded as a deliberate override of that
+          rule rather than smuggled in: the rail now costs 64px of shell instead
+          of 88px, so the content box gains 24px at every desktop width, and the
+          entries inside it stay above the 44px floor on both axes, which the
+          measured guard asserts. The mobile half of this element — every class
+          without an `lg:` prefix — is untouched. */}
+      <div data-nav-shell className="bg-surface-raised border-t lg:border-t-0 lg:border-r border-line lg:border-line flex justify-center lg:justify-start py-2 lg:py-6 px-2 lg:px-2 pb-safe lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full lg:w-[64px] lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300">
         <div className="flex lg:flex-col justify-around lg:justify-start items-center lg:items-center w-full lg:max-w-none lg:gap-2">
           {/* Desktop Logo — the member-app entry point on desktop (the More-drawer
               "Go to User App" row is mobile-only). Routes through handleViewApp so
@@ -1156,7 +1166,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
 
               Nothing scrolls: five entries fit any laptop. Empty groups are
               still omitted whole by `desktopSidebarGroups`, untouched. */}
-          <NavRailProvider>
           <div className="hidden lg:flex lg:flex-col lg:items-center lg:gap-0.5 lg:w-full lg:flex-1 lg:min-h-0">
             {desktopNavById.has('dashboard') && renderRailTab(desktopNavById.get('dashboard')!)}
 
@@ -1191,6 +1200,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                    drift into a comfortable lie without them going red. */
                 <div
                   key={label}
+                  className="w-full"
                   data-nav-group={label}
                   data-nav-group-tabs={items.map((t) => t.id).join(',')}
                   data-nav-group-labels={items.map((t) => t.label).join('|')}
@@ -1202,7 +1212,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                     /* 🔴 The ACTIVE entry is filled, so it is obvious which rail
                        entry the open panel belongs to — and Base UI's own arrow
                        points out of this button into that panel. */
-                    triggerClassName={`flex flex-col items-center justify-center gap-1 rounded-xl transition-all relative shrink-0 min-h-11 w-14 py-2 ${
+                    triggerClassName={`flex flex-col items-center justify-center gap-1 rounded-xl transition-all relative shrink-0 min-h-11 w-full py-2 ${
                       groupHoldsActiveTab
                         ? 'bg-[color-mix(in_srgb,var(--brand-color)_16%,transparent)] dark:bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)]'
                         : 'text-muted hover:text-strong hover:bg-surface-sunken'
@@ -1280,9 +1290,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               <MyAccountMenu {...accountMenuProps} variant="rail" />
             </div>
           </div>
-          </NavRailProvider>
         </div>
       </div>
+
+      {/* 🔴 THE-334 — the gap a PINNED panel occupies, so the content is pushed
+          right instead of covered. It renders nothing while a panel is merely
+          hovered: reflowing the page under the pointer every time it crosses the
+          rail would be unusable, and the founder asked for the push on CLICK. */}
+      <NavRailContentGap />
 
       {/* Main Container */}
       <div data-admin-content className="flex-1 flex flex-col h-[100dvh] relative bg-surface lg:bg-surface overflow-hidden min-w-0">
@@ -1341,8 +1356,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                 )}
               </button>
             )}
-            {/* My Account menu (desktop) — avatar → Profile / Billing / Log out */}
-            <div className="pl-1"><MyAccountMenu {...accountMenuProps} /></div>
+            {/* 🔴 THE-334 — the desktop account avatar is GONE from the top bar:
+                "remove the profile image from top right since you put it in the
+                bottom sidebar". It is the same menu with the same entitlements,
+                now pinned at the rail's floor where the founder's ClickUp
+                reference pins Invite and Upgrade — one entry point, not two.
+                ⚠️ The MOBILE instance, on AdminScreenHeader below, STAYS: the
+                rail is `lg:`-only, so removing that one would leave a phone with
+                no way to reach Profile, Billing, Settings or Log out. */}
           </div>
         </div>
 
@@ -1688,6 +1709,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         </div>
       )}
     </div>
+    </NavRailProvider>
     </AdminHeaderContext.Provider>
   );
 };

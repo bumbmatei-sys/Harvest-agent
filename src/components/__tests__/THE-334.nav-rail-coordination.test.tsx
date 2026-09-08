@@ -5,7 +5,7 @@ import AdminDashboard from '../AdminDashboard';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { RAIL_HOVER_QUERY } from '../layout/nav-rail';
+import { RAIL_HOVER_QUERY, RAIL_PANEL_INSET_TOP_PX, RAIL_PANEL_INSET_EDGE_PX } from '../layout/nav-rail';
 import { DESKTOP_GROUP_LABELS } from '../layout/nav-rail-groups';
 import { RAIL_RECENT_GROUPS } from '../layout/nav-rail-recents';
 
@@ -322,6 +322,21 @@ const hover = async (label: string) => {
   await flush();
 };
 
+/** Take the pointer OFF a rail trigger, and wait past the close delay. */
+const unhover = async (label: string) => {
+  const t = groupTrigger(label)!;
+  await act(async () => {
+    const PE: any = (globalThis as any).PointerEvent ?? MouseEvent;
+    for (const type of ['pointerout', 'pointerleave', 'mouseout', 'mouseleave']) {
+      t.dispatchEvent(new PE(type, {
+        bubbles: !type.endsWith('leave'), cancelable: true, pointerType: 'mouse', pointerId: 1,
+      }));
+    }
+  });
+  await act(async () => { await new Promise((r) => setTimeout(r, HOVER_DELAY_MS)); });
+  await flush();
+};
+
 /** Comfortably past the trigger's own `delay` and `closeDelay`. */
 const HOVER_DELAY_MS = 400;
 
@@ -346,7 +361,7 @@ describe('THE-334 · at most one flyout, ever', () => {
     }
   });
 
-  it('🔴 2 · opening a second group closes a PINNED first one — the exact case that broke', async () => {
+  it('🔴 2 · a second group opening never leaves the first one on screen', async () => {
     enableHover();
     await mount({ superAdmin: true });
     const [first, second] = parsedDesktopGroups().map((g) => g.label);
@@ -356,14 +371,32 @@ describe('THE-334 · at most one flyout, ever', () => {
     expect(groupTrigger(first)!.getAttribute('data-pinned'), 'the press did not pin').toBe('true');
     expect(openFlyouts()).toEqual([first]);
 
-    /* 🔴 Now HOVER the next group. On `main` the pinned panel survived this,
-       because its close arrived as 'trigger-hover' and the pin swallowed it —
-       and BOTH panels were then on screen. */
+    /* 🔴 Now HOVER the next group. On `main` the pinned panel SURVIVED this —
+       its close arrived as 'trigger-hover' and the pin swallowed it — and BOTH
+       panels were on screen at once. That is the founder's screenshot. */
     await hover(second);
     const open = openFlyouts();
-    expect(open, `${first} survived ${second} opening — both panels are up`).not.toContain(first);
-    expect(open.length, `open panels: ${open.join(' + ')}`).toBeLessThanOrEqual(1);
-    expect(groupTrigger(first)!.getAttribute('data-pinned'), `${first} is still pinned`).toBeNull();
+    expect(open, `${first} is still on screen beside ${second}`).not.toContain(first);
+    expect(open, `open panels: ${open.join(' + ')}`).toEqual([second]);
+
+    /* ⚠️ The PIN itself is deliberately untouched — "hover previews, click
+       commits" is the founder's own answer to #7 and #8 pulling against each
+       other. What may never happen is both being VISIBLE, which is asserted
+       above; that the pin comes BACK is asserted next. */
+    expect(groupTrigger(first)!.getAttribute('data-pinned'), 'the hover destroyed the pin').toBe('true');
+  });
+
+  it('🔴 2a · and the PINNED panel comes back when the pointer leaves the preview', async () => {
+    enableHover();
+    await mount({ superAdmin: true });
+    const [first, second] = parsedDesktopGroups().map((g) => g.label);
+    await press(first);
+    await hover(second);
+    expect(openFlyouts()).toEqual([second]);
+    await unhover(second);
+    /* "if one tab is opened, i can hover over others" — and what you return to
+       is the one you committed to. */
+    expect(openFlyouts(), 'the pinned panel did not come back').toEqual([first]);
   });
 
   it('🔴 2b · and a PRESS on a second group closes a pinned first one too', async () => {
@@ -416,19 +449,54 @@ describe('THE-334 · at most one flyout, ever', () => {
     expect(t.getAttribute('data-pinned')).toBe('true');
   });
 
-  it('🔴 5 · Escape closes AND unpins', async () => {
+  it('🔴 5 · the CLOSE BUTTON closes a pinned panel, and unpins it', async () => {
     await mount({ superAdmin: true });
     const [first] = parsedDesktopGroups().map((g) => g.label);
     await press(first);
     expect(openFlyouts()).toEqual([first]);
 
+    const close = document.querySelector<HTMLElement>(`[data-nav-rail-close="${first}"]`);
+    expect(close, 'the panel has no close button').toBeTruthy();
+    /* 🔴 A real button with an accessible name. With Escape no longer closing a
+       pinned panel this is the keyboard path OUT, so a nameless icon would
+       leave a keyboard user with none. */
+    expect(close!.tagName).toBe('BUTTON');
+    expect(close!.getAttribute('aria-label')).toBeTruthy();
+
+    await act(async () => { close!.click(); });
+    await flush();
+    expect(openFlyouts(), 'the close button did not close it').toEqual([]);
+    expect(groupTrigger(first)!.getAttribute('data-pinned'), 'it closed but stayed pinned').toBeNull();
+  });
+
+  it('🔴 5a · Escape and an outside press do NOT close a pinned panel', async () => {
+    /* 🔴 THIS INVERTS A RULE THE TICKET CALLED NON-NEGOTIABLE, DELIBERATELY.
+       The ticket required "Escape, an outside press and focus-out all close AND
+       unpin". The founder asked for the opposite — "it should stick there until
+       i press on the close button or click on another one" — was shown that this
+       drops a standard popup behaviour, and chose "close button only", because
+       the panel kept vanishing while he clicked into the page.
+       ⚠️ The accessibility cost is mitigated, not ignored: the popover is
+       NON-MODAL so focus is never trapped and Tab still leaves, and the close
+       button above is a named, focusable control. */
+    await mount({ superAdmin: true });
+    const [first] = parsedDesktopGroups().map((g) => g.label);
+    await press(first);
+
     await act(async () => {
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     });
     await flush();
-    expect(openFlyouts(), 'Escape was swallowed').toEqual([]);
-    expect(groupTrigger(first)!.getAttribute('data-pinned'), 'Escape closed but left it PINNED')
-      .toBeNull();
+    expect(openFlyouts(), 'Escape closed a pinned panel').toEqual([first]);
+
+    await act(async () => {
+      document.body.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
+      document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flush();
+    expect(openFlyouts(), 'an outside press closed a pinned panel').toEqual([first]);
+    expect(groupTrigger(first)!.getAttribute('data-pinned')).toBe('true');
   });
 
   it('🔴 5b · a second press on the same trigger closes AND unpins', async () => {
@@ -442,14 +510,15 @@ describe('THE-334 · at most one flyout, ever', () => {
 });
 
 describe('THE-334 · the keyboard path, re-proved after coordination', () => {
-  it('🔴 6 · Enter and Space open a flyout, focus moves into it, Escape returns focus', async () => {
+  it('🔴 6 · Enter and Space open a flyout, focus moves in, and the close button returns it', async () => {
     await mount({ superAdmin: true });
     const [first] = parsedDesktopGroups().map((g) => g.label);
     const trigger = groupTrigger(first)!;
 
     /* 🔴 A REAL <button>. That is what makes Enter and Space a PRESS without a
        single key handler of our own — the whole reason Popover was chosen over
-       hover-card, and coordination did not touch it. */
+       hover-card, and neither coordination nor the new close contract touched
+       it. */
     expect(trigger.tagName).toBe('BUTTON');
 
     for (const key of ['Enter', ' ']) {
@@ -470,12 +539,16 @@ describe('THE-334 · the keyboard path, re-proved after coordination', () => {
       expect(focusables.length, 'the panel has nothing focusable in it').toBeGreaterThan(0);
       expect(p.contains(document.activeElement), 'focus did not move into the panel').toBe(true);
 
-      await act(async () => {
-        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-      });
+      /* ⚠️ Escape no longer closes a PINNED panel — the founder chose "close
+         button only" — so the keyboard's way out is the close button, and it
+         has to give focus back like Escape did. If it did not, a keyboard user
+         would be dropped at the top of the document every time. */
+      const close = p.querySelector<HTMLElement>(`[data-nav-rail-close="${first}"]`)!;
+      await act(async () => { close.click(); });
       await flush();
       expect(openFlyouts()).toEqual([]);
-      expect(document.activeElement, 'Escape did not return focus to the trigger').toBe(trigger);
+      expect(document.activeElement, 'the close button did not return focus to the trigger')
+        .toBe(trigger);
     }
   });
 
@@ -665,6 +738,108 @@ describe('THE-334 · the shape the founder asked for', () => {
 });
 
 describe('THE-334 · what it may not disturb', () => {
+  it('🔴 a PINNED panel PUSHES the content; a hovered one only floats over it', async () => {
+    /* "if i click on it, it should push the content to the right, not overlap
+       it" — and only on a CLICK: reflowing the page under the pointer every
+       time it crosses the rail would be unusable. */
+    enableHover();
+    await mount({ superAdmin: true });
+    const [first, second] = parsedDesktopGroups().map((g) => g.label);
+    const gap = () => container.querySelector('[data-nav-rail-gap]');
+
+    expect(gap(), 'the content is pushed with nothing open').toBeNull();
+
+    await hover(second);
+    expect(openFlyouts()).toEqual([second]);
+    expect(gap(), 'a mere hover reflowed the page').toBeNull();
+    await unhover(second);
+
+    await press(first);
+    const g = gap();
+    expect(g, 'a pinned panel did not push the content').toBeTruthy();
+    expect(g!.getAttribute('data-nav-rail-gap')).toBe(first);
+    /* The gap is the panel's own width plus the float gap on each side, so the
+       content starts exactly one gap past it rather than under it. */
+    const cls = (g!.getAttribute('class') ?? '').split(/\s+/);
+    expect(cls).toContain('w-64');
+    expect(cls).toContain('mx-3');
+
+    /* And it goes away again when the panel is closed. */
+    const close = document.querySelector<HTMLElement>(`[data-nav-rail-close="${first}"]`)!;
+    await act(async () => { close.click(); });
+    await flush();
+    expect(gap(), 'the content stayed pushed after the panel closed').toBeNull();
+  });
+
+  it('🔴 the desktop top bar no longer carries an account avatar, and mobile still does', async () => {
+    /* "remove the profile image from top right since you put it in the bottom
+       sidebar" — one entry point, not two. */
+    await mount({ superAdmin: true });
+    const avatars = Array.from(
+      container.querySelectorAll<HTMLElement>('button[aria-label="My account"]'),
+    );
+    /* ⚠️ `AdminScreenHeader` is STUBBED in this suite, so the mobile instance is
+       not in this DOM at all and counting it here would prove nothing. What the
+       DOM can settle is that the ONLY avatar rendered by the shell itself is the
+       rail's — a second one anywhere fails. */
+    expect(avatars, 'the shell draws an account avatar outside the rail').toHaveLength(1);
+    expect(avatars[0].closest('[data-nav-rail-account]'), 'the one avatar is not the rail\'s')
+      .toBeTruthy();
+
+    /* 🔴 And MOBILE keeps its own, asserted from the source because the stub
+       hides it: the rail is `lg:`-only, so dropping the header's accessory
+       would leave a phone with no way to reach Profile, Billing, Settings or
+       Log out. Removing that line fails here. */
+    const src = read('src/components/AdminDashboard.tsx');
+    expect(src, 'the mobile header lost its account menu')
+      .toContain('rightAccessory={<MyAccountMenu {...accountMenuProps} />}');
+    /* The desktop top bar's own instance is GONE — the wrapper that held it. */
+    expect(src, 'the desktop top bar still renders an account avatar')
+      .not.toContain('<div className="pl-1"><MyAccountMenu');
+  });
+
+  it('🔴 the panel is inset so it clears the top bar and floats off every edge', async () => {
+    /* "it should not go over the header" · "there is no space between the
+       sidebar and the opened one" · "it looks like the open sidebar is coming
+       from under the first one" · "clickup sidebar has a side space in the left
+       because its actually floating".
+
+       ⚠️ The composed panel's on-screen box is NOT measured here and this is
+       the honest limit of this suite: the popup lives in a PORTAL, portals do
+       not exist in `renderToStaticMarkup`, and the measured harness has no React
+       runtime to click one open. What IS asserted is the rule that places it —
+       the inset that reserves the header and the gap that separates it from the
+       rail — plus, in the measured suite, the height that rule implies. */
+    const code = codeOf(read('src/components/layout/nav-rail.tsx'));
+
+    /* The top inset clears the desktop top bar, which is `h-14` — 56px at the
+       16px base, less on the trimmed desktop base — and leaves a gap above. */
+    expect(RAIL_PANEL_INSET_TOP_PX, 'the panel would overlap the h-14 top bar')
+      .toBeGreaterThan(56);
+    expect(RAIL_PANEL_INSET_TOP_PX).toBeGreaterThan(RAIL_PANEL_INSET_EDGE_PX);
+    expect(RAIL_PANEL_INSET_EDGE_PX, 'there is no float gap at all').toBeGreaterThan(0);
+
+    /* 🔴 The gap between the RAIL and the panel — the one whose absence made the
+       panel look like it slid out from under the rail. */
+    expect(code).toContain('sideOffset={RAIL_PANEL_INSET_EDGE_PX}');
+    expect(code).toContain('collisionPadding={{');
+    expect(code).toContain('top: RAIL_PANEL_INSET_TOP_PX');
+    for (const side of ['bottom', 'left', 'right']) {
+      expect(code, `${side} has no float gap`).toContain(`${side}: RAIL_PANEL_INSET_EDGE_PX`);
+    }
+
+    /* The popup's height is exactly the region that inset leaves, which is what
+       makes the fitting placement the one that clears the header. */
+    expect(code).toContain(`h-[calc(100dvh-${RAIL_PANEL_INSET_TOP_PX + RAIL_PANEL_INSET_EDGE_PX}px)]`);
+
+    /* 🔴 NOT `overflow-hidden` on the popup: that clipped Base UI's arrow
+       against the panel's own edge, which is why the founder could not see it. */
+    const popupAt = code.indexOf('data-slot="popover-content"');
+    const popupClass = code.slice(popupAt).match(/className="([^"]+)"/)![1];
+    expect(popupClass, 'overflow-hidden is back and it clips the arrow')
+      .not.toContain('overflow-hidden');
+  });
+
   it('🔴 the panel STAYS OPEN when you pick a section — the founder chose this', async () => {
     /* Asked whether picking a section should close the panel or leave it up, the
        founder chose "stays open (ClickUp-like)", so you can hop between sections

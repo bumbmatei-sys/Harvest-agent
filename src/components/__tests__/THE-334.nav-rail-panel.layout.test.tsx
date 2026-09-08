@@ -11,6 +11,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
+import { RAIL_PANEL_INSET_TOP_PX, RAIL_PANEL_INSET_EDGE_PX } from '../layout/nav-rail';
+
+/** What the panel's insets leave it: the viewport less the header clearance
+ *  above and the float gap below. Derived from the SAME constants the component
+ *  positions with, so a changed inset moves this with it instead of going
+ *  stale. */
+const PANEL_INSET_TOTAL = RAIL_PANEL_INSET_TOP_PX + RAIL_PANEL_INSET_EDGE_PX;
 
 /**
  * THE-334 — the flyout panel, MEASURED. "Full height" is a number or it is a
@@ -86,7 +93,7 @@ beforeAll(async () => {
 
   const body = `
     <div class="flex h-[100dvh]">
-      <div data-rail class="w-[88px] shrink-0"></div>
+      <div data-rail class="w-[64px] shrink-0"></div>
       <div data-panel class="${panelClass}">
         <div class="flex items-center justify-between gap-2 px-3 pt-3 pb-2 shrink-0">
           <h2 data-title class="text-base font-semibold text-strong truncate">People</h2>
@@ -145,17 +152,20 @@ const probe = (v: number, height: number) =>
   })()`, height);
 
 describe('THE-334 · the panel, measured', () => {
-  it('🔴 13b · the flyout is FULL HEIGHT — floor to ceiling at every width', async () => {
+  it('🔴 13b · the flyout is FULL HEIGHT between its insets, at every width', async () => {
     for (const v of VIEWPORTS) {
       const m = await probe(v, 1200);
       /* 🔴 THE MUTATION THIS CATCHES: size the panel to its contents. A
          content-sized popover holding a title, nine rows and a footer measures a
-         few hundred px; this requires it to span the viewport bar the collision
-         padding at each end. */
+         few hundred px; this requires it to span the whole viewport bar its
+         insets — the header clearance above and the float gap below, which are
+         the founder's "it should not go over the header" and "it's actually
+         floating". Asserted to the pixel against the component's own
+         constants, not a remembered number. */
       expect(m.panelH, `panel is ${m.panelH}px in a ${m.viewportH}px viewport at ${v}px`)
-        .toBeGreaterThanOrEqual(m.viewportH - 48);
+        .toBeCloseTo(m.viewportH - PANEL_INSET_TOTAL, 0);
       expect(m.panelH, `panel overflows the viewport at ${v}px`)
-        .toBeLessThanOrEqual(m.viewportH);
+        .toBeLessThan(m.viewportH);
     }
   });
 
@@ -173,8 +183,8 @@ describe('THE-334 · the panel, measured', () => {
 
   it('🔴 12 · a nine-tab group SCROLLS on a short viewport instead of clipping', async () => {
     const m = await probe(1280, SHORT_HEIGHT);
-    /* The panel still spans the short viewport… */
-    expect(m.panelH).toBeGreaterThanOrEqual(m.viewportH - 48);
+    /* The panel still spans the short viewport, less its insets… */
+    expect(m.panelH).toBeCloseTo(m.viewportH - PANEL_INSET_TOTAL, 0);
     /* …and the LAST of the nine rows sits inside it, not cut off below the
        fold. `scrollHeight > clientHeight` is only meaningful if the scroller is
        the thing that overflows, which is what makes this the scroll-area's job
