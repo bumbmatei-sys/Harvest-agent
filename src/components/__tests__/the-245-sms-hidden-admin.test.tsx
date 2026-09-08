@@ -157,7 +157,7 @@ type Tab = {
 
 const TABS: Tab[] = [
   { label: 'Dashboard', section: '', cell: null },
-  { label: 'Church', section: 'churches', cell: null },
+  { label: 'Campus', section: 'churches', cell: null },
   { label: 'Courses', section: 'courses', cell: (f) => f.maxCourses !== 0 },
   { label: 'Blog', section: 'blog', cell: (f) => f.blog },
   { label: 'AI Knowledge', section: 'ai-knowledge', cell: (f) => f.aiKnowledge },
@@ -201,8 +201,8 @@ function expectedNav(plan: TenantPlan): string[] {
   const f = getPlanFeatures(plan);
   const labels = TABS
     .filter((t) => plan === FREE_PLAN || t.cell === null || t.cell(f))
-    // The churches label is per-tier: a tier capped at one campus says 'Church'.
-    .map((t) => (t.label === 'Church' && f.maxChurches !== 1 ? 'Church List' : t.label));
+    // The churches label is per-tier: a tier capped at one campus says 'Campus'.
+    .map((t) => (t.label === 'Campus' && f.maxChurches !== 1 ? 'Campuses' : t.label));
   if (hasBrandingAccess(f)) labels.push('Branding');
   return labels.sort();
 }
@@ -216,7 +216,7 @@ const flush = async () => {
 };
 
 const ALL_TAB_LABELS = [
-  'Dashboard', 'Church', 'Church List', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
+  'Dashboard', 'Campus', 'Campuses', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
   'Fundraising', 'Events', 'Notes', 'CRM', 'Accounting', 'Forms', 'Check-In', 'Livestream',
   'SMS', 'Community', 'Library', 'Tenants', 'Affiliate', 'Branding',
 ];

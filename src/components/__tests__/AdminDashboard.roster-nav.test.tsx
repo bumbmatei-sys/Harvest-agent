@@ -140,7 +140,7 @@ function deferred<T>() {
 
 /** Every tab label currently reachable in the nav (mobile bar ∪ desktop sidebar). */
 const ALL_TAB_LABELS = [
-  'Dashboard', 'Church', 'Church List', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
+  'Dashboard', 'Campus', 'Campuses', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
   'Fundraising', 'Events', 'Notes', 'CRM', 'Signups', 'Accounting', 'Forms', 'Check-In', 'Livestream',
   'SMS', 'Community', 'Library', 'Tenants', 'Affiliate', 'Branding', 'Settings', 'More',
 ];

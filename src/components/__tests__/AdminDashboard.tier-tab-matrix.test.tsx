@@ -164,7 +164,7 @@ type Row = {
 
 const TABS: Row[] = [
   { label: 'Dashboard', section: '', screen: 'AdminDashboardHome', feature: null, note: 'the welcome screen — nothing to buy' },
-  { label: 'Church', section: 'churches', screen: 'AdminChurches', feature: null, note: '`maxChurches` is a create-path cap, not a surface gate; ungated on BOTH layers' },
+  { label: 'Campus', section: 'churches', screen: 'AdminChurches', feature: null, note: '`maxChurches` is a create-path cap, not a surface gate; ungated on BOTH layers' },
   { label: 'Courses', section: 'courses', screen: 'AdminCourses', feature: (f) => f.maxCourses !== 0 },
   { label: 'Blog', section: 'blog', screen: 'AdminBlog', feature: (f) => f.blog },
   { label: 'AI Knowledge', section: 'ai-knowledge', screen: 'AdminRAG', feature: (f) => f.aiKnowledge },
@@ -221,7 +221,7 @@ const flush = async () => {
 };
 
 const ALL_TAB_LABELS = [
-  'Dashboard', 'Church', 'Church List', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
+  'Dashboard', 'Campus', 'Campuses', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
   'Fundraising', 'Events', 'Services', 'Notes', 'CRM', 'Signups', 'Accounting', 'Forms', 'Check-In', 'Livestream',
   'SMS', 'Community', 'Library', 'Tenants', 'Affiliate', 'Branding',
 ];
@@ -294,7 +294,7 @@ type Resolved = {
 async function resolveCell(plan: TenantPlan, row: Row): Promise<Resolved> {
   await mountAt(plan, '');
   const nav = navLabels();
-  const inNav = nav.includes(row.label) || (row.label === 'Church' && nav.includes('Church List'));
+  const inNav = nav.includes(row.label) || (row.label === 'Campus' && nav.includes('Campuses'));
   await unmount();
 
   navigate.mockClear();
@@ -395,7 +395,7 @@ describe('17 — the tier/tab matrix is generated from the real nav array and th
     expect(visible.sort()).toEqual(
       // ⚠️ 'SMS' LEFT THIS COLUMN — THE-314 made SMS Ministry-only, so an
       // Individual tenant no longer sees the tab at all.
-      ['Blog', 'CRM', 'Check-In', 'Church', 'Courses', 'Dashboard', 'Fundraising', 'Signups'].sort(),
+      ['Blog', 'CRM', 'Check-In', 'Campus', 'Courses', 'Dashboard', 'Fundraising', 'Signups'].sort(),
     );
     // And every one of them is FULL — an Individual tenant meets no wall on a
     // tab it can see. That is the product promise the nav gate now keeps.

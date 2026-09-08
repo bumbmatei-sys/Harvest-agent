@@ -364,7 +364,7 @@ describe('10 — changing an admin tab emits a pageview', () => {
     await mountAdmin('/admin');
     await signIn();
     // Named by the label a founder reads, in the order the report lists them.
-    for (const label of ['CRM', 'Church', 'Courses', 'Newsletter', 'Accounting', 'Forms', 'Livestream']) {
+    for (const label of ['CRM', 'Campus', 'Courses', 'Newsletter', 'Accounting', 'Forms', 'Livestream']) {
       await clickTab(label);
     }
     // One for the load, then one per tab change. None of them silent.

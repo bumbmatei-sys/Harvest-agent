@@ -5,7 +5,7 @@
 | Tab | Free (`free`) | Individual (`plus`) | Small Team (`pro`) | Ministry (`max`) |
 | --- | --- | --- | --- | --- |
 | Dashboard | visible · full | visible · full | visible · full | visible · full |
-| Church | visible · full | visible · full | visible · full | visible · full |
+| Campus | visible · full | visible · full | visible · full | visible · full |
 | Courses | visible · full | visible · full | visible · full | visible · full |
 | Blog | visible · upgrade screen | visible · full | visible · full | visible · full |
 | AI Knowledge | visible · upgrade screen | hidden | hidden | hidden |
