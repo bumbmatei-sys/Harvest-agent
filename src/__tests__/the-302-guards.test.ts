@@ -92,7 +92,7 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // AdminDashboard, and MORE_GROUPS and every permission gate are untouched.
     ['508747ccbc7b2fef051d449626ef2f81f3655b214be0494c6c21a8c7df88b9bb', 'main + THE-332 — the desktop nav becomes a rail with flyouts'],
     // 🔴 APPENDED BY THE-334, nothing above removed or rewritten.
-    ['8e4911fd3cc9755e4780f94ccd074908537477ad77267c78357131aa94885c6e', 'main + THE-334 — one flyout at a time; the panel takes ClickUp’s shape and Settings moves to the account menu'],
+    ['0c38f6458a857e2cf6f5455d947453775ebca94ab4023ae5963f2ed62ca778e2', 'main + THE-334 — one flyout at a time; the panel takes ClickUp’s shape and Settings moves to the account menu'],
   ],
   // 🔴 A NAMED STOP CONDITION on this ticket: "do not touch `runDodoPlanChange`
   // or `plan-change.ts` unless the fix genuinely requires it". It did not — part

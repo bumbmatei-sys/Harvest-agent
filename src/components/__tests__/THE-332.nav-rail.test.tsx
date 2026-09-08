@@ -268,8 +268,13 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
       expect(everyTabId.has(id), `${id} is a GROUP tab and may not sit in the rail`).toBe(false);
     }
 
-    /* And the column really is narrow: the shell spends the collapsed width. */
-    const shell = container.querySelector('[class*="lg:w-[88px]"]');
+    /* And the column really is narrow. 🔴 THE-334 took it from THE-332's 88px
+       — the width the sidebar used when collapsed — down to 64px, because the
+       founder asked twice ("our sidebar is too wide", then "the sidebar is
+       still too wide" against a build measured at 88px) and named the size
+       himself. That is a deliberate override of "invent no width", recorded in
+       THE-334's ownership entry rather than slipped in. */
+    const shell = container.querySelector('[class*="lg:w-[64px]"]');
     expect(shell, 'the nav column is not at the rail width').toBeTruthy();
     expect(DASHBOARD_SRC).not.toContain('lg:w-64');
   });

@@ -605,7 +605,7 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ byte-identical', ()
   // carries a value above, and a digest that is NEITHER still fails.
   '508747ccbc7b2fef051d449626ef2f81f3655b214be0494c6c21a8c7df88b9bb',
   // 🔴 APPENDED BY THE-334 — main + THE-334 — one flyout at a time; the panel takes ClickUp’s shape and Settings moves to the account menu
-  '8e4911fd3cc9755e4780f94ccd074908537477ad77267c78357131aa94885c6e',
+  '0c38f6458a857e2cf6f5455d947453775ebca94ab4023ae5963f2ed62ca778e2',
   ];
 
   it('🔴 AdminDashboard.tsx — not opened by this ticket', () => {
