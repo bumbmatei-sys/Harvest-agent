@@ -284,28 +284,57 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  </div>
  </div>
 
+ {/* Dark basemap without a second tile URL. OSM ships one style, so the tile
+     container — and ONLY the tile container — is inverted. Leaflet renders
+     markers, popups and controls in sibling panes, so the gold divIcons and
+     the attribution credit are untouched by this and stay legible.
+     hue-rotate puts the inverted blues back to blue rather than orange. */}
+ <style>{`
+   .harvest-tiles-dark {
+     filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9);
+   }
+ `}</style>
+
  {/* Map is always mounted (never display:none) so leaflet keeps its size */}
  <MapContainer
  center={[20, 0]}
  zoom={2} 
  style={{ height: '100%', width: '100%', zIndex: 0 }}
  zoomControl={false}
- attributionControl={false}
  >
- {/* CARTO publishes dark_all alongside light_all on the same CDN — same
-     terms, no API key, no paid tier and no extra request, so the dark map
-     costs nothing beyond this URL.
+ {/* OpenStreetMap's own tiles: no API key, no account, no paid tier — and,
+     unlike every keyed alternative, nothing to renew or lose.
+
+     Why not CARTO any more: CARTO began serving an "API KEY REQUIRED"
+     watermark over unauthenticated raster tiles in Aug 2026. Nothing errored
+     and nothing logged, which is why this went unnoticed in production. A free
+     CARTO key would fix the watermark, but CARTO has said raster basemaps are
+     being RETIRED, so a key buys time rather than a home. MapTiler's free tier
+     is explicitly non-commercial and so cannot serve Harvest at all.
+
+     What OSM's tile policy requires of us, and where each is honoured:
+       · visible attribution — attributionControl is no longer false, and the
+         credit below is what it renders. This is the one VISIBLE change.
+       · one host — the a/b/c subdomains are deprecated in favour of
+         tile.openstreetmap.org, so there is no {s} here and no {r}, since OSM
+         serves no @2x tile.
+       · no bulk pre-fetch and no offline seeding — this map only ever requests
+         the tiles the user is actively viewing, so it already complies.
+
+     OSM publishes ONE style, so dark is produced by inverting the tile pane
+     rather than by a second URL. The filter is scoped to the tile pane, so the
+     gold divIcon markers — which leaflet puts in the MARKER pane — keep their
+     --brand-color and stay legible on both themes.
 
      `key` is what makes it follow a theme TOGGLE rather than only the initial
      load: react-leaflet creates the underlying L.TileLayer once on mount and
-     does not re-issue tiles when the url prop changes, so the layer has to be
-     remounted. Without this the map stays light until a full reload.
-
-     Markers are unaffected — they are gold divIcons drawn from --brand-color,
-     which reads correctly on both basemaps. */}
+     does not re-issue tiles when its props change, so the layer has to be
+     remounted. Without this the map stays light until a full reload. */}
  <TileLayer
  key={mapTheme}
- url={`https://{s}.basemaps.cartocdn.com/${mapTheme === 'dark' ? 'dark_all' : 'light_all'}/{z}/{x}/{y}{r}.png`}
+ url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+ attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+ className={mapTheme === 'dark' ? 'harvest-tiles-dark' : undefined}
  />
  <MapReady onReady={setMapRef} />
  <MapEvents onInteraction={onMapInteraction} />

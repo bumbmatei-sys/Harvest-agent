@@ -105,10 +105,17 @@ describe('the map basemap follows a theme change, not only initial load', () => 
   const map = readFileSync(path.join(SRC, 'components/ChurchMap.tsx'), 'utf8');
   const hook = readFileSync(path.join(SRC, 'lib/use-resolved-theme.ts'), 'utf8');
 
-  it('swaps CARTO light_all / dark_all off the resolved theme', () => {
+  it('drives the basemap off the resolved theme', () => {
+    // ⚠️ THE-333 changed the MECHANISM, not this claim. It used to swap CARTO's
+    // `light_all` / `dark_all` URLs, but CARTO now watermarks unauthenticated
+    // raster tiles and is retiring them, so the basemap is OpenStreetMap —
+    // which publishes ONE style. Dark is therefore a class on the tile
+    // container, still chosen from the same resolved theme.
     expect(map).toContain('useResolvedTheme');
-    expect(map).toContain('dark_all');
-    expect(map).toContain('light_all');
+    expect(map).toMatch(/mapTheme\s*===\s*'dark'\s*\?\s*'harvest-tiles-dark'/);
+    expect(map).toContain('.harvest-tiles-dark');
+    // And the rule that class names must actually darken something.
+    expect(map.slice(map.indexOf('.harvest-tiles-dark'))).toContain('invert(1)');
   });
 
   it('remounts the TileLayer so a toggle re-issues tiles', () => {

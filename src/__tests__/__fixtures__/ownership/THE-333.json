@@ -1,0 +1,37 @@
+{
+  "ticket": "THE-333",
+  "recordedIn": "THE-333",
+  "note": "The files THE-333 does not own. This ticket changes exactly two files — src/components/ChurchMap.tsx (the basemap provider) and src/components/AIChat.tsx (the desktop history rail) — and nothing else. Every digest below is the value on main at 7a7053e, taken from the working tree, and is recorded so that 'helpfully' touching one of these fails inside THE-333's own PR rather than inside the PR that owns it.",
+  "entries": [
+    {
+      "file": "src/components/AdminCommunity.tsx",
+      "digest": "10333c22ed0c6f98d233b9f057f8da260a76f17682451c38c52f694e77fddc7a",
+      "why": "main at 7a7053e — THE-331 owns this file. THE-333 changes the basemap provider and the AI chat history rail and reaches no community surface at all, so any movement here would be someone else's edit landing in this ticket's diff, which is exactly what this pin is here to catch."
+    },
+    {
+      "file": "src/components/UserMessages.tsx",
+      "digest": "e6998c91739caf2605538a9f12f14eee034c93cb6668713cd619e925addb8e61",
+      "why": "main at 7a7053e — THE-331 owns this file, the second of its pair. THE-333 touches the AI RAG chat, which is a different screen from user messaging despite both rendering conversations; pinned so the resemblance never becomes an excuse to edit it here."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "decfdddbdab91094c936b503f931b663eeb6ba3048ee087c541fe1580f20e31e",
+      "why": "main at 7a7053e — THE-332 owns this file. THE-332 has no commit on any branch yet, so this baseline is the value it will start from; recording it now means THE-333 cannot quietly move the ground under a ticket that has not been written."
+    },
+    {
+      "file": "src/app/layout.tsx",
+      "digest": "bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5",
+      "why": "Named in THE-333's non-negotiables as untouchable. It is the plausible place to put the dark-tile CSS rule this ticket adds, which is precisely why it is pinned: that rule lives in a scoped style block beside the map instead, and this digest is what proves the shortcut was not taken."
+    },
+    {
+      "file": "src/components/ChurchMap.tsx",
+      "digest": "842b22a62ebf54684f3457ff5b39116dedf474ab2aa943b6bd7f5aab7feec60f",
+      "why": "main at 7a7053e — the state theming-member-app.test.ts pinned inline before THE-333, recorded here so migrating that suite to the shared register JOINS the baseline rather than replacing it. main went red for everyone once when a PR substituted a pinned digest instead of appending, and this entry is what keeps that from being what this ticket does."
+    },
+    {
+      "file": "src/components/ChurchMap.tsx",
+      "digest": "fff61eb1ebc775b4d2812f210367b90c27889f82b023f8542b44084188e36ed8",
+      "why": "THE-333 owns this file and this is the state it leaves it at: the basemap moved from CARTO's watermarked keyless raster tiles to OpenStreetMap, attributionControl stopped being false because OSM's policy requires visible credit, and dark became a scoped tile-pane filter since OSM publishes a single style."
+    }
+  ]
+}
