@@ -6,6 +6,7 @@ import path from 'node:path';
 import postcss from 'postcss';
 import { contrastRatio, AA_CONTRAST } from '../lib/theme';
 import { PREAUTH_PATHS, isPreAuthPath } from '../lib/preauth-theme';
+import { ownershipFailure } from './__fixtures__/ownership-register';
 import tw from '../../tailwind.config';
 
 /**
@@ -781,7 +782,7 @@ describe('a value that is deliberately dark in both themes is unchanged', () => 
     }
   });
 
-  it('ChurchMap needed no edits at all — ChurchMap.tsx is byte-identical to main', () => {
+  it('ChurchMap.tsx is at a digest a ticket recorded, so its measured values were reviewed', () => {
     // Was `git diff --stat -- ChurchMap.tsx` asserted empty, which only ever
     // saw UNCOMMITTED changes: the moment the edit was committed the guard went
     // quiet again. THE-261 made that matter — its v4 utility rename touched
@@ -793,9 +794,19 @@ describe('a value that is deliberately dark in both themes is unchanged', () => 
     // CI's checkout is the only history a test can rely on. It holds across
     // commits, and every one of this file's measured values is still what it
     // was — the rename changes no colour, no width and no measured value.
-    const digest = createHash('sha256').update(readFileSync(path.join(ROOT, 'src/components/ChurchMap.tsx'))).digest('hex');
-    expect(digest, 'ChurchMap.tsx changed — every one of its measured values was reviewed and left alone').toBe(
-      '842b22a62ebf54684f3457ff5b39116dedf474ab2aa943b6bd7f5aab7feec60f',
-    );
+    // ⚠️ THE-333 EDITED THIS FILE, LEGITIMATELY: CARTO began watermarking its
+    // keyless raster tiles and is retiring them, so the basemap moved to
+    // OpenStreetMap. The claim below is therefore no longer "byte-identical to
+    // main" but "at a digest some ticket recorded and gave a reason for" —
+    // which is the same guarantee this test was written to give, expressed
+    // through the shared register so a later legitimate change is ONE edit.
+    //
+    // 🔴 The 842b22a… baseline this suite used to spell inline is NOT gone: it
+    // is recorded in THE-333.json alongside the new state, because the accepted
+    // set is a UNION and `main` went red for everyone the once a PR substituted
+    // a pinned digest instead of appending to it.
+    expect(ownershipFailure('src/components/ChurchMap.tsx'),
+      'ChurchMap.tsx is at a digest no ticket recorded — every one of its measured values must be reviewed')
+      .toBeNull();
   });
 });

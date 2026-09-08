@@ -936,7 +936,10 @@ describe('no behaviour changed on any screen in scope', () => {
   const strip = (s: string) => stripComments(s)
     .replace(/className=\{`[^`]*`\}/g, 'className=X')
     .replace(/className="[^"]*"/g, 'className=X')
-    .replace(/^import \{ (?:READING_MEASURE|FORM_CONTAINER) \}.*$/gm, '')
+    // ⚠️ `[^}]*` rather than a bare name: THE-333 added DENSITY_PX alongside
+    // READING_MEASURE on this import, and a normaliser pinned to the exact
+    // one-name form would report a token import as a behaviour change.
+    .replace(/^import \{ (?:READING_MEASURE|FORM_CONTAINER)[^}]*\}.*$/gm, '')
     .replace(/\s+/g, ' ').trim();
 
   it.each(['AllNews', 'BiblePage', 'UserMessages'] as const)(
@@ -958,11 +961,23 @@ describe('no behaviour changed on any screen in scope', () => {
     expect(norm(read('NewsTab.tsx'))).toBe(norm(at('NewsTab.tsx')));
   });
 
-  it('AIChat differs only in class strings AND the two inline properties it retired', () => {
+  it('AIChat differs only in class strings, the two inline properties it retired, and THE-333\'s two rail controls', () => {
     // AIChat is the exception by design: removing the inline width IS the fix.
     // Everything else must still normalise identically, so the diff is pinned
     // to exactly `maxWidth: "48rem"` and the `margin` shorthand it sat in.
-    const norm = (s: string) => strip(s).replace(/textAlign: "center", fontSize: 11, color: TEXT2, margin(?:Top)?: (?:"8px auto 0"|8), (?:maxWidth: "48rem", )?lineHeight: 1\.5/g, 'DISCLAIMER');
+    //
+    // 🔴 THE-333 ADDED A SECOND PINNED DIFF, and it is pinned the same way
+    // rather than folded into a looser normaliser. Both rail controls were
+    // sized by padding around their glyph — the collapse control measured 26px
+    // and the reopen control 30px, under the 38px Rule 4 fixes above sm — so
+    // each now takes DENSITY_PX.control and carries the aria-label its bare
+    // icon never had. The two opening tags below are collapsed in BOTH
+    // revisions; every other byte of this file must still match, so a third
+    // edit hiding behind these two still fails.
+    const norm = (s: string) => strip(s)
+      .replace(/textAlign: "center", fontSize: 11, color: TEXT2, margin(?:Top)?: (?:"8px auto 0"|8), (?:maxWidth: "48rem", )?lineHeight: 1\.5/g, 'DISCLAIMER')
+      .replace(/<button onClick=\{\(\) => setRailCollapsed\(true\)\}.*?\}\}>/g, 'COLLAPSE_CONTROL')
+      .replace(/<button onClick=\{\(\) => setRailCollapsed\(false\)\}.*?\}\}>/g, 'REOPEN_CONTROL');
     expect(norm(read('AIChat.tsx'))).toBe(norm(at('AIChat.tsx')));
   });
 
