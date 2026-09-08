@@ -241,8 +241,16 @@ export function NavRailProvider({ children }: NavRailProviderProps) {
  *
  * 🔴 Only a PIN pushes. A hover preview floats ABOVE the content, because
  * reflowing the page under the pointer every time it crosses the rail would be
- * unusable. `w-64` + `mx-3` is the panel's own width plus the same float gap it
- * is inset by on each side, so the content starts exactly one gap past it.
+ * unusable.
+ *
+ * ⚠️ `ml-3` and NOT `mx-3`. The left margin is the rail-to-panel gap; there is
+ * deliberately NO right margin, because the content area already carries the
+ * page's own `lg:p-6`. With a right margin too the panel sat ~36px from the
+ * content while the Notes list sits ~22px from the note beside it, and the
+ * founder asked for those two to match: "the distance between the sidebar and
+ * content should be as big as the gap between notes sidebar and the note
+ * itself". Letting the page's own padding be the whole gap makes it the SAME
+ * measure by construction rather than by a number chosen to look similar.
  */
 export function NavRailContentGap() {
   const pinned = useNavRailPinned();
@@ -251,7 +259,7 @@ export function NavRailContentGap() {
     <div
       data-nav-rail-gap={pinned}
       aria-hidden
-      className="hidden lg:block shrink-0 w-64 mx-3"
+      className="hidden lg:block shrink-0 w-64 ml-3"
     />
   );
 }

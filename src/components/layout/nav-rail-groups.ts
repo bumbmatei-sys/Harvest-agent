@@ -67,7 +67,40 @@ export const DESKTOP_GROUP_ICONS: Record<string, LucideIcon> = {
  */
 export const DESKTOP_GROUP_LABELS: Record<string, string> = {
   CONTENT: 'Content',
-  MINISTRY: 'People',
-  BROADCASTING: 'Live',
+  // ⚠️ 'People' first, then back to 'Ministry' at the founder's call — "call
+  // Ministry instead of people. you were right." It is the product's own word
+  // for this group and it is what the ids array has always been labelled.
+  MINISTRY: 'Ministry',
+  // BROADCASTING held Events, Check-In, SMS and Livestream under 'Live', which
+  // named only the livestream. 'Reach' is the founder's pick from the
+  // candidates: the group is how a church reaches people, in the room or out.
+  BROADCASTING: 'Reach',
   GROW: 'Grow',
+};
+
+/**
+ * THE-334 — how a group's rows are BLOCKED inside its panel.
+ *
+ * ClickUp's reference panel is sectioned — a first block, a separator, a headed
+ * group, another separator — and the founder gave MINISTRY's blocks explicitly:
+ * Campus · CRM · Signups, then Services · Community · Forms, then Fundraising ·
+ * Donations · Accounting. Three things a church actually does, in three blocks,
+ * instead of nine rows in one undifferentiated list.
+ *
+ * 🔴 PRESENTATION ONLY. This decides ORDER and where the separators fall; it
+ * decides NOTHING about membership or permission. Membership stays
+ * `DESKTOP_NAV_GROUPS.ids`, which is what `visibleNavGroups` filters and what
+ * seven entitlement guards read — so a mistake here cannot hide a tab from
+ * anyone. The renderer proves that: any permitted id NOT named below still
+ * renders, in a trailing block of its own, so forgetting to list a new tab
+ * costs it its place in the order and nothing else.
+ *
+ * A group with no entry here renders as one block, exactly as before.
+ */
+export const DESKTOP_GROUP_SECTIONS: Record<string, string[][]> = {
+  MINISTRY: [
+    ['churches', 'crm', 'signups'],
+    ['services', 'community', 'forms'],
+    ['fundraising', 'donations', 'accounting'],
+  ],
 };

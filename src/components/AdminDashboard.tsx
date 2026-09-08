@@ -55,7 +55,8 @@ import { useTenant as useTenantDoc } from '../hooks/queries/useTenantQueries';
 import { useTenant } from '../contexts/TenantContext';
 import { visibleNavGroups } from './layout/nav-groups';
 import { NavRailFlyout, NavRailProvider, NavRailContentGap } from './layout/nav-rail';
-import { DESKTOP_GROUP_ICONS, DESKTOP_GROUP_LABELS } from './layout/nav-rail-groups';
+import { DESKTOP_GROUP_ICONS, DESKTOP_GROUP_LABELS, DESKTOP_GROUP_SECTIONS } from './layout/nav-rail-groups';
+import { Separator } from '@/components/ui/separator';
 import { NavRailRecents, RAIL_RECENT_GROUPS } from './layout/nav-rail-recents';
 import { SLUG_TO_TAB, TAB_TO_SLUG } from '../lib/admin-sections';
 
@@ -149,7 +150,12 @@ const DESKTOP_NAV_GROUPS: { label: string; ids: string[] }[] = [
   // 🔴 THE-326 — `services` in MINISTRY here too, in the SAME position. The two
   // arrays are the mobile drawer and the desktop sidebar; a section in one and
   // not the other is a section half the product cannot reach.
-  { label: 'MINISTRY', ids: ['crm', 'signups', 'churches', 'community', 'services', 'fundraising', 'donations', 'forms', 'accounting'] },
+  // 🔴 THE-334 — the founder's order, in three blocks: Campus · CRM · Signups,
+  // then Services · Community · Forms, then Fundraising · Donations ·
+  // Accounting. `DESKTOP_GROUP_SECTIONS` draws the separators between them; the
+  // order lives HERE so what the group advertises on `data-nav-group-tabs` is
+  // the order its flyout actually renders, and the two cannot drift.
+  { label: 'MINISTRY', ids: ['churches', 'crm', 'signups', 'services', 'community', 'forms', 'fundraising', 'donations', 'accounting'] },
   { label: 'BROADCASTING', ids: ['events', 'checkin', 'sms', 'livestream'] },
   // 🔴 THE-327 — `library` here too, and in the SAME relative position: next to
   // `tenants`, its co-gated sibling. It goes in GROW rather than a new PLATFORM
@@ -687,7 +693,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const allTabs = [
     // Dashboard is always visible — placeholder/welcome screen (analytics moved to CRM)
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    (hasFullAccess || perms.modifyChurches) && { id: 'churches', label: isTenantAdmin && features && features.maxChurches === 1 ? 'Church' : 'Church List', icon: Church },
+    (hasFullAccess || perms.modifyChurches) && { id: 'churches', label: isTenantAdmin && features && features.maxChurches === 1 ? 'Campus' : 'Campuses', icon: Church },
     // Courses — the cell is `maxCourses !== 0`, matching the render switch below.
     // ⚠️ NOT `blog`, which is what THE-202 removed from this entry: the nav read
     // `features.blog` while the screen read `maxCourses`, so the two layers were
@@ -1009,6 +1015,50 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     );
   };
 
+  /** THE-334 — a group's rows, BLOCKED into sections with separators between.
+   *
+   *  ClickUp's reference panel is sectioned rather than one long list, and the
+   *  founder gave MINISTRY's blocks explicitly: Campus · CRM · Signups, then
+   *  Services · Community · Forms, then Fundraising · Donations · Accounting.
+   *
+   *  🔴 NOTHING CAN GO MISSING HERE. The blocks are read from
+   *  `DESKTOP_GROUP_SECTIONS`, which is PRESENTATION ONLY — membership and
+   *  permission stay with `DESKTOP_NAV_GROUPS.ids` and `visibleNavGroups`. Any
+   *  permitted tab this map forgets to name still renders, in a trailing block
+   *  of its own, so a new tab added to a group without being listed loses its
+   *  place in the order and nothing else. A group with no entry renders as one
+   *  block, exactly as it did before. */
+  const renderGroupRows = (label: string, items: { id: string; label: string; icon: any }[]) => {
+    const blocks = DESKTOP_GROUP_SECTIONS[label];
+    if (!blocks) return items.map(renderDesktopTab);
+
+    const byId = new Map(items.map((t) => [t.id, t]));
+    const placed = new Set<string>();
+    const sections = blocks
+      .map((ids) => {
+        const rows = ids.map((id) => byId.get(id)).filter(Boolean) as typeof items;
+        rows.forEach((t) => placed.add(t.id));
+        return rows;
+      })
+      .filter((rows) => rows.length > 0);
+
+    // Whatever the map did not name — the safety net described above.
+    const leftover = items.filter((t) => !placed.has(t.id));
+    if (leftover.length) sections.push(leftover);
+
+    return sections.map((rows, i) => (
+      <React.Fragment key={rows[0].id}>
+        {i > 0 && (
+          <Separator
+            data-nav-rail-section-break={label}
+            className="my-1.5"
+          />
+        )}
+        {rows.map(renderDesktopTab)}
+      </React.Fragment>
+    ));
+  };
+
   /** THE-334 — a RAIL button: icon with a VISIBLE TEXT LABEL under it.
    *
    *  THE-332 drew these icon-only, with the name reaching a screen reader
@@ -1257,7 +1307,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                       </>
                     }
                   >
-                    {items.map(renderDesktopTab)}
+                    {renderGroupRows(label, items)}
                   </NavRailFlyout>
                 </div>
               );

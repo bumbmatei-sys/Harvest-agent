@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { RAIL_HOVER_QUERY, RAIL_PANEL_INSET_TOP_PX, RAIL_PANEL_INSET_EDGE_PX } from '../layout/nav-rail';
-import { DESKTOP_GROUP_LABELS } from '../layout/nav-rail-groups';
+import { DESKTOP_GROUP_LABELS, DESKTOP_GROUP_SECTIONS } from '../layout/nav-rail-groups';
 import { RAIL_RECENT_GROUPS } from '../layout/nav-rail-recents';
 
 /**
@@ -750,6 +750,81 @@ describe('THE-334 · the shape the founder asked for', () => {
 });
 
 describe('THE-334 · what it may not disturb', () => {
+  it("🔴 a group's panel is BLOCKED into the founder's sections, in his order", async () => {
+    /* "1. Campus (instead of church list) 2. CRM 3. Signups — a small separation
+       bar representing another section — 4. services 5. community 6. forms —
+       another separation bar — 7. Fundraising 8. donations 9. accounting" */
+    await mount({ superAdmin: true });
+    const label = 'MINISTRY';
+    const blocks = DESKTOP_GROUP_SECTIONS[label];
+    expect(blocks, 'MINISTRY has no sections').toBeTruthy();
+    expect(blocks.length, 'the founder asked for three blocks').toBe(3);
+    expect(blocks).toEqual([
+      ['churches', 'crm', 'signups'],
+      ['services', 'community', 'forms'],
+      ['fundraising', 'donations', 'accounting'],
+    ]);
+
+    await press(label);
+    const p = panel(label)!;
+
+    /* The rows come out in exactly that order… */
+    const rendered = Array.from(p.querySelectorAll('[data-nav-tab]'))
+      .map((el) => el.getAttribute('data-nav-tab')!);
+    expect(rendered, 'the panel does not render the founder\'s order')
+      .toEqual(blocks.flat());
+
+    /* …and a separator falls BETWEEN each pair of blocks — two of them for
+       three blocks, no more. 🔴 Removing one fails here. */
+    const breaks = Array.from(p.querySelectorAll(`[data-nav-rail-section-break="${label}"]`));
+    expect(breaks.length, 'the sections are not separated').toBe(blocks.length - 1);
+
+    /* Each break sits after the last row of its block and before the first row
+       of the next — asserted by position, not by counting siblings. */
+    const rowEl = (id: string) => p.querySelector(`[data-nav-tab="${id}"]`)!;
+    for (let i = 0; i < breaks.length; i += 1) {
+      const before = rowEl(blocks[i][blocks[i].length - 1]);
+      const after = rowEl(blocks[i + 1][0]);
+      expect(
+        before.compareDocumentPosition(breaks[i]) & Node.DOCUMENT_POSITION_FOLLOWING,
+        `break ${i} is not after ${blocks[i][blocks[i].length - 1]}`,
+      ).toBeTruthy();
+      expect(
+        after.compareDocumentPosition(breaks[i]) & Node.DOCUMENT_POSITION_PRECEDING,
+        `break ${i} is not before ${blocks[i + 1][0]}`,
+      ).toBeTruthy();
+    }
+  });
+
+  it('🔴 a tab the sections map forgets still renders — nothing can go missing', async () => {
+    /* 🔴 The safety net that makes a PRESENTATION map safe to get wrong. Every
+       id in the group's own `ids` — which is what permission filters — must come
+       out of the panel, whether or not the sections map names it. */
+    await mount({ superAdmin: true });
+    for (const label of railGroups()) {
+      /* ⚠️ The PERMITTED set, not the declared one. `affiliate` is listed in
+         GROW's ids but `AFFILIATE_PROGRAM_ENABLED` is false, so it is filtered
+         before it ever reaches the panel — a pre-existing kill switch, not
+         something the sections map did. What must hold is that everything the
+         group ADVERTISES comes out, named or not. */
+      const permitted = (container
+        .querySelector(`[data-nav-group="${label}"]`)!
+        .getAttribute('data-nav-group-tabs') ?? '').split(',').filter(Boolean);
+      await press(label);
+      const p = panel(label);
+      if (!p) continue;
+      const rendered = Array.from(p.querySelectorAll('[data-nav-tab]'))
+        .map((el) => el.getAttribute('data-nav-tab')!);
+      const named = new Set((DESKTOP_GROUP_SECTIONS[label] ?? []).flat());
+      for (const id of permitted.filter((x) => !named.has(x))) {
+        expect(rendered, `${id} is permitted in ${label} but the sections map drops it`)
+          .toContain(id);
+      }
+      expect(rendered.slice().sort(), `${label} renders a different set than it advertises`)
+        .toEqual(permitted.slice().sort());
+    }
+  });
+
   it('🔴 a PINNED panel PUSHES the content; a hovered one only floats over it', async () => {
     /* "if i click on it, it should push the content to the right, not overlap
        it" — and only on a CLICK: reflowing the page under the pointer every
@@ -774,7 +849,15 @@ describe('THE-334 · what it may not disturb', () => {
        content starts exactly one gap past it rather than under it. */
     const cls = (g!.getAttribute('class') ?? '').split(/\s+/);
     expect(cls).toContain('w-64');
-    expect(cls).toContain('mx-3');
+    expect(cls).toContain('ml-3');
+    /* 🔴 And NO right margin. The content area's own `lg:p-6` is what separates
+       the panel from the page, which is the SAME measure the Notes list sits
+       from the note beside it — the founder asked for those two to match. A
+       right margin back here makes the panel sit ~36px from content where the
+       page's own gap is ~22px. */
+    expect(cls, 'a right margin is back, so the gap no longer matches the page')
+      .not.toContain('mx-3');
+    expect(cls.some((c) => c.startsWith('mr-')), 'a right margin is back').toBe(false);
 
     /* 🔴 AND IT SITS BELOW THE TOP BAR, NOT BESIDE IT.
        ⚠️ The gap was first written as a sibling of the whole content column,
