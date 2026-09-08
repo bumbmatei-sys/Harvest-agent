@@ -226,6 +226,20 @@ function navLabels(): string[] {
     const text = b.textContent?.trim() ?? '';
     if (ALL_TAB_LABELS.includes(text)) found.add(text);
   });
+  /* THE-332 — the desktop nav is a RAIL: a group's tabs live in a flyout that
+     unmounts while closed, and the two pinned entries are icon-only. Both are
+     read from the model the rail advertises, which THE-332.nav-rail.test.tsx
+     holds equal to what the flyout actually renders. Entitlement, which is what
+     this file asserts, is unchanged. */
+  container.querySelectorAll('[data-nav-group-labels]').forEach((g) => {
+    (g.getAttribute('data-nav-group-labels') ?? '').split('|').forEach((l) => {
+      if (ALL_TAB_LABELS.includes(l)) found.add(l);
+    });
+  });
+  container.querySelectorAll('[data-nav-rail-tab]').forEach((b) => {
+    const n = b.getAttribute('aria-label') ?? '';
+    if (ALL_TAB_LABELS.includes(n)) found.add(n);
+  });
   return [...found].sort();
 }
 

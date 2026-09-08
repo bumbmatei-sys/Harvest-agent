@@ -152,11 +152,37 @@ async function loadDashboard(enabled: boolean) {
   return (await import('../AdminDashboard')).default;
 }
 
-/** Is there a nav button labelled exactly "Affiliate"? */
+/**
+ * Every nav entry's NAME, however the rail spells it.
+ *
+ * THE-332 — the desktop nav became a rail. Three shapes now carry a name:
+ * a plain button's text (the mobile bar), a group's advertised tab list (its
+ * flyout unmounts while closed), and an icon-only pinned rail button's
+ * `aria-label`. All three are the accessible name of a reachable entry, and
+ * THE-332.nav-rail.test.tsx asserts the middle one matches what the flyout
+ * actually renders, so none of them can report an entry no user can reach.
+ */
+function navNames(): string[] {
+  const found = new Set<string>();
+  container.querySelectorAll('button').forEach((b) => {
+    const t = b.textContent?.trim() ?? '';
+    if (t) found.add(t);
+  });
+  container.querySelectorAll('[data-nav-group-labels]').forEach((g) => {
+    (g.getAttribute('data-nav-group-labels') ?? '').split('|').forEach((l) => {
+      if (l) found.add(l);
+    });
+  });
+  container.querySelectorAll('[data-nav-rail-tab]').forEach((b) => {
+    const n = b.getAttribute('aria-label') ?? '';
+    if (n) found.add(n);
+  });
+  return [...found];
+}
+
+/** Is there a nav entry named exactly "Affiliate"? */
 function hasAffiliateNavEntry(): boolean {
-  return Array.from(container.querySelectorAll('button')).some(
-    (b) => (b.textContent?.trim() ?? '') === 'Affiliate'
-  );
+  return navNames().includes('Affiliate');
 }
 
 const hasAffiliateSection = () => !!container.querySelector('[data-testid="affiliate-section"]');
@@ -222,7 +248,7 @@ describe('AFFILIATE_PROGRAM_ENABLED === false — nothing invites anyone into th
 
   it('still renders the rest of the nav — this hides one entry, not the dashboard', async () => {
     await mount(false, { role: 'user', permissions: { fullAccess: true } });
-    const labels = Array.from(container.querySelectorAll('button')).map((b) => b.textContent?.trim());
+    const labels = navNames();
     expect(labels).toContain('Dashboard');
     expect(labels).toContain('Settings');
   });
@@ -248,7 +274,7 @@ describe('AFFILIATE_PROGRAM_ENABLED === true — every hidden surface comes back
     await mount(true, { role: 'user', permissions: { writeArticles: true } });
     expect(hasAffiliateNavEntry()).toBe(false);
     // Sanity: this admin IS entitled to something, so the nav really rendered.
-    const labels = Array.from(container.querySelectorAll('button')).map((b) => b.textContent?.trim());
+    const labels = navNames();
     expect(labels).toContain('Blog');
   });
 });

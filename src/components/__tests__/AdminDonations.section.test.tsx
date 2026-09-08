@@ -213,8 +213,20 @@ async function open(plan: TenantPlan | null, section: string, who: Who = {}) {
 }
 
 /** Every nav control's label. */
-const navLabels = (): string[] =>
-  Array.from(container.querySelectorAll('button')).map((b) => (b.textContent || '').trim());
+const navLabels = (): string[] => [
+  ...Array.from(container.querySelectorAll('button')).map((b) => (b.textContent || '').trim()),
+  /* THE-332 — the desktop nav is a RAIL. A group's tabs are advertised on its
+     rail entry because the flyout that draws them unmounts while it is closed,
+     and the two pinned entries are icon-only so their name is the accessible
+     one. THE-332.nav-rail.test.tsx holds the advertised model equal to what the
+     flyout renders, so nothing unreachable can be reported here. */
+  ...Array.from(container.querySelectorAll('[data-nav-group-labels]')).flatMap((g) =>
+    (g.getAttribute('data-nav-group-labels') || '').split('|').filter(Boolean),
+  ),
+  ...Array.from(container.querySelectorAll('[data-nav-rail-tab]')).map(
+    (b) => b.getAttribute('aria-label') || '',
+  ),
+];
 
 const byText = (needle: string): HTMLElement | null =>
   (Array.from(container.querySelectorAll('button, a')) as HTMLElement[]).find(
