@@ -26,6 +26,60 @@
  * first. Nothing is raised to the old `z-[300]`: clearing the nav is what was
  * needed, and 300 sat above the settings dialog for no reason anyone recorded.
  *
+ * ── 🔴 THE-337 · why the paperclip opened nothing, and what fixed it ────────
+ *
+ * The founder, on `AdminCommunity` desktop: *"im clicking on the paperclip and
+ * nothing appears."* The menu DID open — it was in the DOM, focusable, and its
+ * items answered a hit test. It was painted at `opacity: 0` in the document's
+ * top-left corner, which is what "nothing appears" looks like.
+ *
+ * 🔴 THE TRIGGER NEVER GAVE BASE UI AN ANCHOR. This file shipped the trigger as
+ * `render={<Button …/>}`, and `ui/button.tsx` exports a PLAIN FUNCTION
+ * COMPONENT. Under the React 18 this repo pins, a function component cannot
+ * receive a ref — React says so out loud, "Function components cannot be given
+ * refs", and hands the trigger `null`. `Menu.Positioner` anchors to the
+ * trigger's DOM node, so with no node it never runs a measurement: it stays at
+ * its pre-measurement state, `opacity: 0; transform: translate(0px, 0px)`, with
+ * `--anchor-width` unset. Measured in Chromium, not reasoned about — see
+ * `THE-337.attach-menu-visibility.layout.test.tsx`, which reads that inline
+ * style off the shipped component.
+ *
+ * ✅ `DropdownMenuTrigger` renders its OWN element now and wears
+ * `buttonVariants(…)`, so Base UI holds the ref it needs and the paperclip
+ * keeps the exact ghost/icon costume `<Button variant="ghost" size="icon">`
+ * gave it. A control proved the diagnosis both ways: a bare trigger anchors at
+ * `translate(69px, 713px)`; the same trigger behind `<Button>` does not move at
+ * all.
+ *
+ * ⚠️ REJECTED, and why. Wrapping `Button` in a local `forwardRef` was tried and
+ * MEASURED TO FAIL — the ref then reaches `Button`, which still drops it, so
+ * the positioner stayed at `opacity: 0`. The one true fix is `React.forwardRef`
+ * inside `ui/button.tsx`; that file is byte-frozen by nine other tickets'
+ * digest guards with no append point, so it is reported rather than amended.
+ * `popover` was rejected as the trigger's primitive too: it has no submenu, and
+ * the four category flyouts are the surface.
+ *
+ * ── ⚠️ THE-337 · the `z-[110]` above is INERT, and is left in place ─────────
+ *
+ * 🔴 `DropdownMenuContent`'s `className` styles the Base UI POPUP. Above the
+ * popup sits the POSITIONER, and `ui/dropdown-menu.tsx` hardcodes it as
+ * `isolate z-50`. `isolation: isolate` opens a stacking context, so every
+ * `z-*` inside it — the popup's 110 included — is painted at the POSITIONER's
+ * 50. A hit test against a layer at the nav's own `z-[100]` found the open menu
+ * covered at every sampled pixel, at all six widths.
+ *
+ * ⚠️ It does not bite TODAY, and that was measured too: the composer sits above
+ * the nav, Base UI collision-flips the menu upward, and the two never intersect
+ * — zero occluded pixels at 380/768/1024/1280/1440/1920. The class is kept
+ * because 110 is the RIGHT NUMBER (it clears the nav's 100 and the shared
+ * dialog primitives' 101/102, and stays under the settings dialog's 200 and the
+ * modals' 300); only the element it lands on is wrong. Fixing it needs one line
+ * in the frozen `ui/dropdown-menu.tsx`: the positioner's hardcoded class string
+ * has to become a `cn(...)` a caller can extend, so the layer can be raised on
+ * the positioner as well as on the popup. PR 437 already established that shape
+ * here, having had to raise a scrim and its panel SEPARATELY for the same
+ * reason — raising one of two nested layers raises nothing.
+ *
  * ── Why a cascader for "Browse…" ────────────────────────────────────────────
  *
  * 🔴 `searchScope="deep"` is set EXPLICITLY. The prop defaults to `"level"`,
@@ -108,7 +162,7 @@ import {
   DialogPortal,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Spinner } from '@/components/ui/spinner';
@@ -136,6 +190,7 @@ import {
   type AttachLoadsByCategory,
   type AttachRecord,
 } from '@/lib/attach-records';
+import { cn } from '@/lib/utils';
 
 /**
  * One icon per category. Lucide, never emoji: an emoji is a font-dependent
@@ -285,16 +340,9 @@ export function AttachMenu({
     <>
       <DropdownMenu onOpenChange={onOpenChange}>
         <DropdownMenuTrigger
-          render={
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={triggerLabel}
-              disabled={disabled}
-              className={TAP_TARGET}
-            />
-          }
+          className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), TAP_TARGET)}
+          aria-label={triggerLabel}
+          disabled={disabled}
         >
           <PaperclipIcon aria-hidden="true" />
         </DropdownMenuTrigger>

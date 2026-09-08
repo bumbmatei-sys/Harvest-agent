@@ -126,8 +126,18 @@ const filesSpelling = (digest: string): string[] =>
  * swallowed `AuthPage` failure had left uncreated — needed NO rule change: the
  * deployed `users/{userId}` block already permits a self-create whose `role` is
  * absent or 'user', and a write to a missing document is evaluated as a create.
- * Nothing above is removed and no accepted value is widened. */
-const PINNING_SUITES = 58;
+ * Nothing above is removed and no accepted value is widened.
+ *
+ * 🔴 58 → 59, APPENDED BY THE-337, through the same module and for the same
+ * reason. Its measured suite asserts that fixing the composer's paperclip —
+ * which opened a menu nobody could see, because `render={<Button …/>}` on a
+ * React 18 function component handed `Menu.Positioner` a null ref and the
+ * positioner never left `opacity: 0` — needed NO rule change: the fix is one
+ * trigger element in one component and reads nothing new from Firestore. The
+ * suite reaches the accepted set through this module rather than spelling the
+ * digest, so a real rules change still costs exactly one edit. Nothing above is
+ * removed and no accepted value is widened. */
+const PINNING_SUITES = 59;
 
 /**
  * A digest no ticket has recorded and none ever will — the planted change.

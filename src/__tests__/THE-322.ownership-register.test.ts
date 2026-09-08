@@ -492,7 +492,7 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * retires a pinner updates this count and says what that suite still asserts;
  * a suite that quietly stops pinning fails here.
  */
-const RULES_PINNERS_NOW = 58;
+const RULES_PINNERS_NOW = 59;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per
@@ -608,6 +608,28 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
   // state, and that `firestore.indexes.json`, `functions/` and `layout.tsx` are
   // byte-identical too.
   ['THE-336', 'src/components/__tests__/THE-336.onboarding-user-doc.test.tsx'],
+  // ⚠️ APPENDED BY THE-337, beside THE-336's entry and not instead of it. Its
+  // suite is a MEASURED one — it drives the shipped `AttachMenu` in a real
+  // Chromium — and it reaches the accepted set through the shared module, so a
+  // legitimate rules change still costs exactly one edit.
+  //
+  // 🔴 THE-337 WRITES NO RULE, and needed none. The composer's paperclip opened
+  // a menu nobody could see: `render={<Button …/>}` on a React 18 function
+  // component handed `Menu.Positioner` a null ref, so the positioner never
+  // measured and never left `opacity: 0`. The fix is one trigger element in one
+  // component. Nothing about who may read a doc, a contact, a campaign or a
+  // form changed — the four loaders issue exactly the queries they issued
+  // before, from the same screen, under the same permissions, and this ticket
+  // adds no read and no write.
+  //
+  // ⚠️ WHAT ITS SUITE ASSERTS BESIDE THE DIGEST: that clicking the paperclip
+  // produces a menu with real area and opacity at six widths and at BOTH
+  // composer sites, that the positioner actually anchored, that no sampled
+  // pixel of the open menu belongs to anything else, that all four category
+  // flyouts open and end in Browse…, that Browse… opens the cascader and a
+  // record can be picked, and that `firestore.indexes.json`, `functions/` and
+  // `layout.tsx` are byte-identical too.
+  ['THE-337', 'src/components/__tests__/THE-337.attach-menu-visibility.layout.test.tsx'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {
