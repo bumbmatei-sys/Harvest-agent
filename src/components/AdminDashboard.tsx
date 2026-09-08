@@ -54,8 +54,9 @@ import { useCurrentUser } from '../hooks/queries/useUserQueries';
 import { useTenant as useTenantDoc } from '../hooks/queries/useTenantQueries';
 import { useTenant } from '../contexts/TenantContext';
 import { visibleNavGroups } from './layout/nav-groups';
-import { NavRailFlyout } from './layout/nav-rail';
-import { DESKTOP_GROUP_ICONS } from './layout/nav-rail-groups';
+import { NavRailFlyout, NavRailProvider } from './layout/nav-rail';
+import { DESKTOP_GROUP_ICONS, DESKTOP_GROUP_LABELS } from './layout/nav-rail-groups';
+import { NavRailRecents, RAIL_RECENT_GROUPS } from './layout/nav-rail-recents';
 import { SLUG_TO_TAB, TAB_TO_SLUG } from '../lib/admin-sections';
 
 const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -72,6 +73,19 @@ const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/m
  * here — and a future edit to the fallback has one place to happen, not four.
  */
 const RAIL_ACTIVE_INK = 'var(--ink-on-accent-tint, var(--brand-color, #C9963A))';
+
+/**
+ * THE-334 — the short word a DIRECT rail entry wears under its icon.
+ *
+ * The rail's four group entries take theirs from `DESKTOP_GROUP_LABELS`; this
+ * map is for the entries that are a tab rather than a group. Only `dashboard`
+ * is one now — `settings` left the rail entirely, into the account menu the
+ * founder asked for at the rail's floor — and it reads `Home`, which is both
+ * ClickUp's word for the same entry and short enough for the rail's measure,
+ * where `Dashboard` at nine characters was not. Absence falls back to the tab's
+ * own label, so a future direct entry is legible before it is listed here.
+ */
+const RAIL_TAB_LABELS: Record<string, string> = { dashboard: 'Home' };
 
 // URL slug ↔ internal tab id. Most ids map 1:1; only `ai` differs, so the URL
 // reads nicely (/admin/ai-knowledge).
@@ -235,6 +249,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     setShowMoreSheet(false);
     setNewsletterView('list');
     navigate(id === 'dashboard' ? '/admin' : `/admin/${TAB_TO_SLUG[id] || id}`);
+  }, [navigate]);
+
+  /** THE-334 — open a tab AND deep-link to one item inside it.
+   *
+   *  The nav rail's "Recent" footer needs to land ON the note or the person you
+   *  picked, not merely on the screen that lists them. The `:itemId` route
+   *  segment already exists and three screens already consume it (AdminDocs via
+   *  `initialDocId`, AdminCRM via `initialContactId`, AdminFundraising via
+   *  `initialCampaignId`), each clearing it through `clearItemId`. This is the
+   *  same navigation `go` does, with that segment appended when the caller has
+   *  one — callers pass no id for a screen that does not read it. */
+  const goItem = useCallback((id: string, itemId?: string) => {
+    setShowMoreSheet(false);
+    setNewsletterView('list');
+    const slug = id === 'dashboard' ? '' : (TAB_TO_SLUG[id] || id);
+    navigate(itemId && slug ? `/admin/${slug}/${itemId}` : (slug ? `/admin/${slug}` : '/admin'));
   }, [navigate]);
 
   /** Back arrow: go where the user came from, or fall back to the dashboard. */
@@ -979,19 +1009,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     );
   };
 
-  /** THE-332 — a single icon-only RAIL button.
+  /** THE-334 — a RAIL button: icon with a VISIBLE TEXT LABEL under it.
    *
-   *  Used for the two tabs that are pinned OUTSIDE the four groups (Dashboard
-   *  and Settings), so both stay reachable in ONE action rather than one action
-   *  to open a flyout and a second to pick a row. The group entries next to
-   *  these are `NavRailFlyout` triggers, which carry the same box.
+   *  THE-332 drew these icon-only, with the name reaching a screen reader
+   *  through `aria-label` and nobody else. 🔴 The founder's complaint is exactly
+   *  that — "there's no title under to know what category is it" — and ClickUp's
+   *  rail, his reference, labels every entry in visible text. So the label is
+   *  real text now, not `sr-only` and not a tooltip.
    *
-   *  `h-11 w-11` is 44px, deliberately: this is the same 44px the row above
-   *  draws, and although the rail is `lg:`-only — so the sub-`sm` 44px floor
-   *  cannot reach it — an icon with no label beside it is the one control on
-   *  this screen where a smaller box would be hardest to hit. `aria-label`
-   *  carries the name that the removed `title` attribute used to, and unlike
-   *  `title` it reaches a screen reader and does not need a pointer. */
+   *  ⚠️ IT COSTS NO WIDTH. The words were shortened rather than the rail
+   *  widened (the founder picked the set: Home · Content · People · Live ·
+   *  Grow), because he ALSO asked for the nav to be less wide. The longest is
+   *  seven characters, which fits the 56px of measure inside the rail's
+   *  existing `lg:w-[88px]` — so no width is invented and none changes.
+   *
+   *  The target GREW: an icon over a label is ~52px tall against the old 44px
+   *  box, so the 44px floor is cleared more comfortably than before, on both
+   *  axes, and `min-h-11` states the floor rather than leaving it to line-height. */
   const renderRailTab = (tab: { id: string; label: string; icon: any }) => {
     const Icon = tab.icon;
     const isActive = activeTab === tab.id;
@@ -1002,10 +1036,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       <button
         key={tab.id}
         onClick={() => go(tab.id)}
-        aria-label={tab.label}
+        aria-label={RAIL_TAB_LABELS[tab.id] ?? tab.label}
         aria-current={isActive ? 'page' : undefined}
         data-nav-rail-tab={tab.id}
-        className={`flex items-center justify-center rounded-xl transition-all relative shrink-0 h-11 w-11 ${
+        className={`flex flex-col items-center justify-center gap-1 rounded-xl transition-all relative shrink-0 min-h-11 w-14 py-2 ${
           isActive
             ? 'bg-[color-mix(in_srgb,var(--brand-color)_16%,transparent)] dark:bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)]'
             : 'text-muted hover:text-strong hover:bg-surface-sunken'
@@ -1018,6 +1052,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           className="shrink-0"
           style={isActive ? { color: RAIL_ACTIVE_INK } : undefined}
         />
+        <span data-nav-rail-label={tab.id} className="text-[10px] font-medium leading-none">
+          {RAIL_TAB_LABELS[tab.id] ?? tab.label}
+        </span>
         {showDot && (
           <span className="absolute bg-red-500 rounded-full border-2 border-white top-1 right-1 w-2.5 h-2.5"></span>
         )}
@@ -1097,18 +1134,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             </button>
           </div>
 
-          {/* THE-332 — Desktop: a RAIL of six entries, not a list of 23 tabs.
-              Dashboard · CONTENT / MINISTRY / BROADCASTING / GROW · Settings.
-              Dashboard and Settings are direct, one-action rail buttons exactly
-              as they were pinned outside the groups before; the four groups are
-              flyout triggers that open on hover AND on click (which pins them),
-              and are reachable by keyboard because the trigger is a real button
-              that Base UI focuses into and returns focus from.
+          {/* THE-334 — Desktop: a RAIL of five entries and an account avatar.
+              Home · Content / People / Live / Grow · (avatar, at the floor).
 
-              Nothing scrolls any more: six 44px entries fit any laptop, which
-              is the point — the old column scrolled because it drew every
-              permitted tab at once. Empty groups are still omitted whole, by
-              `desktopSidebarGroups`, which this ticket did not touch. */}
+              🔴 EVERY FLYOUT SHARES ONE OPEN GROUP. `NavRailProvider` holds it,
+              so opening one closes the others BY CONSTRUCTION rather than four
+              components racing — which is the whole defect: a PINNED CONTENT
+              used to survive MINISTRY opening on hover, and the founder
+              screenshotted both panels overlapping.
+
+              🔴 SETTINGS IS NO LONGER A RAIL ENTRY. The founder: "at the bottom
+              of sidebar put the profile picture with its settings… clicking on
+              the profile picture it opens a list that has the settings, remove
+              the settings from the sidebar." It is not lost and no gate moved:
+              `accountMenuProps.onOpenSettings` already carried the SAME
+              `canSettings` entitlement and already called `go('settings')`, so
+              the tab is reachable in two actions from the rail's own avatar and
+              in two from the top bar's, and an admin without the entitlement
+              still sees no Settings row anywhere. THE-334's guard enumerates all
+              23 tabs through these paths.
+
+              Nothing scrolls: five entries fit any laptop. Empty groups are
+              still omitted whole by `desktopSidebarGroups`, untouched. */}
+          <NavRailProvider>
           <div className="hidden lg:flex lg:flex-col lg:items-center lg:gap-0.5 lg:w-full lg:flex-1 lg:min-h-0">
             {desktopNavById.has('dashboard') && renderRailTab(desktopNavById.get('dashboard')!)}
 
@@ -1118,8 +1166,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
 
             {desktopSidebarGroups.map(({ label, items }) => {
               const GroupIcon = DESKTOP_GROUP_ICONS[label];
+              const groupTitle = DESKTOP_GROUP_LABELS[label] ?? label;
               // The rail entry lights up when the tab you are on lives inside
-              // it, so the rail still answers "where am I" without the labels.
+              // it, so the rail still answers "where am I" at a glance.
               const groupHoldsActiveTab = items.some((t) => t.id === activeTab);
               // A dot on the rail entry when a tab inside it has one, because a
               // closed flyout would otherwise hide the only unread signal.
@@ -1134,12 +1183,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                    times (the sidebar was hidden by `lg:` CSS, which a happy-dom
                    test does not apply), and seven entitlement guards read the
                    nav by scanning button labels. A flyout unmounts when closed,
-                   so those guards would otherwise see a six-entry nav and
+                   so those guards would otherwise see a five-entry nav and
                    report a permission regression that has not happened.
                    Entitlement is still asserted from the model here; that the
                    model matches what the flyout actually RENDERS is asserted in
-                   THE-332's own suite, so this attribute cannot drift into a
-                   comfortable lie without that suite going red. */
+                   THE-332's and THE-334's suites, so this attribute cannot
+                   drift into a comfortable lie without them going red. */
                 <div
                   key={label}
                   data-nav-group={label}
@@ -1148,12 +1197,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                 >
                   <NavRailFlyout
                     label={label}
+                    title={groupTitle}
                     isActive={groupHoldsActiveTab}
-                    triggerClassName={`flex items-center justify-center rounded-xl transition-all relative shrink-0 h-11 w-11 ${
+                    /* 🔴 The ACTIVE entry is filled, so it is obvious which rail
+                       entry the open panel belongs to — and Base UI's own arrow
+                       points out of this button into that panel. */
+                    triggerClassName={`flex flex-col items-center justify-center gap-1 rounded-xl transition-all relative shrink-0 min-h-11 w-14 py-2 ${
                       groupHoldsActiveTab
                         ? 'bg-[color-mix(in_srgb,var(--brand-color)_16%,transparent)] dark:bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)]'
                         : 'text-muted hover:text-strong hover:bg-surface-sunken'
                     }`}
+                    /* 🔴 Mounted INSIDE the popup, so its read only runs while
+                       the panel is actually open. GROW has no recency source and
+                       deliberately gets no footer rather than an invented one. */
+                    footer={
+                      RAIL_RECENT_GROUPS.includes(label) ? (
+                        <NavRailRecents
+                          group={label}
+                          tenantId={tenantId}
+                          isAuthReady={isAuthReady}
+                          onOpenItem={goItem}
+                        />
+                      ) : undefined
+                    }
                     trigger={
                       <>
                         {GroupIcon && (
@@ -1168,6 +1234,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                             }
                           />
                         )}
+                        <span
+                          data-nav-rail-label={label}
+                          className="text-[10px] font-medium leading-none"
+                          style={groupHoldsActiveTab ? { color: RAIL_ACTIVE_INK } : undefined}
+                        >
+                          {groupTitle}
+                        </span>
                         {groupHasDot && (
                           <span className="absolute bg-red-500 rounded-full border-2 border-white top-1 right-1 w-2.5 h-2.5"></span>
                         )}
@@ -1180,10 +1253,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               );
             })}
 
-            {desktopNavById.has('settings') && (
-              <div className="mt-auto pt-2">{renderRailTab(desktopNavById.get('settings')!)}</div>
-            )}
+            {/* 🔴 The account avatar, pinned to the rail's FLOOR — where the
+                founder's ClickUp reference pins Invite and Upgrade, and where he
+                asked for "the profile picture with its settings". `mt-auto` is
+                what keeps it at the floor rather than under the last group.
+                `variant="rail"` opens the menu UPWARD — at the bottom of a
+                full-height column a downward menu would open off-screen — and
+                sizes the avatar as a nav target rather than a bar accessory. */}
+            <div data-nav-rail-account className="mt-auto pt-2">
+              <MyAccountMenu {...accountMenuProps} variant="rail" />
+            </div>
           </div>
+          </NavRailProvider>
         </div>
       </div>
 

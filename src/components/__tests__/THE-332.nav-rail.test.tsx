@@ -64,6 +64,19 @@ vi.mock('../../utils/tenant-scope', () => ({
 }));
 vi.mock('../../store/useAppStore', () => ({ useAppStore: () => store.current }));
 vi.mock('../../hooks/queries/useUserQueries', () => ({ useCurrentUser: () => userQuery.current }));
+/* THE-334 — the flyout's pinned footer reads the group's recent items, and it
+   mounts INSIDE the popup, so opening a flyout now touches React Query. These
+   three stubs keep this suite about the NAV: it asserts reachability and
+   entitlement, not what the recents list contains. */
+vi.mock('../../hooks/queries/useDocsQueries', () => ({
+  useDocs: () => ({ data: { items: [], truncated: false }, isLoading: false }),
+}));
+vi.mock('../../hooks/queries/useCRMQueries', () => ({
+  useContacts: () => ({ data: [], isLoading: false }),
+}));
+vi.mock('../../hooks/queries/useEventQueries', () => ({
+  useEvents: () => ({ data: [], isLoading: false }),
+}));
 vi.mock('../../hooks/queries/useTenantQueries', () => ({
   useTenant: () => ({ data: { name: 'Bumb Ministry', ownerId: 'someone-else' } }),
 }));
@@ -125,7 +138,9 @@ vi.mock('../AdminEvents', stub);
 vi.mock('../AdminServices', stub);
 vi.mock('../PlanUpgradeScreen', stub);
 vi.mock('../Profile', stub);
-vi.mock('../MyAccountMenu', stub);
+/* THE-334 — NOT stubbed. Settings left the rail for this menu, so it is now a
+   NAV PATH and test 5 walks it for real: a stub would let "settings is
+   reachable" pass without anything being reachable. */
 vi.mock('../BillingAndPayments', stub);
 vi.mock('../GraceWindowBanner', stub);
 
@@ -228,15 +243,22 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
   it('🔴 1 · the desktop sidebar is a narrow rail, not a list of 23 items', async () => {
     await mount({ superAdmin: true });
 
-    /* The rail's own entries: two pinned tabs plus one trigger per group.
-       The DEFECT this replaces rendered every permitted tab at once. */
+    /* The rail's own entries: ONE pinned tab plus one trigger per group.
+       The DEFECT this replaces rendered every permitted tab at once.
+
+       🔴 THE-334 — one pinned tab, not two. Settings left the rail for the
+       account menu pinned at the column's floor, on the founder's instruction
+       ("at the bottom of sidebar put the profile picture with its settings…
+       remove the settings from the sidebar"). Dashboard is the only direct tab
+       left. That Settings is still REACHABLE, and still behind the same
+       entitlement, is proved by walking the menu in test 5 — not assumed here. */
     const entries = railTabs().length + railGroups().length;
     const groups = parsedDesktopGroups();
     expect(railGroups().sort()).toEqual(groups.map((g) => g.label).sort());
     expect(
       entries,
-      `the rail draws ${entries} entries; it must be the 2 pinned tabs plus ${groups.length} groups`,
-    ).toBe(2 + groups.length);
+      `the rail draws ${entries} entries; it must be the 1 pinned tab plus ${groups.length} groups`,
+    ).toBe(1 + groups.length);
 
     /* 🔴 THE MUTATION THIS CATCHES: render all 23 tabs in the rail and this
        fails, because the rail would then carry a `data-nav-tab` per tab where
@@ -266,6 +288,29 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
       await flush();
     }
 
+    /* 🔴 THE-334 — SETTINGS IS WALKED, NOT ASSUMED. It left the rail for the
+       account menu pinned at the column's floor, so "still reachable" is only
+       true if that menu really opens and really navigates. This opens the
+       avatar, finds the Settings row, clicks it, and requires the router to be
+       sent to the settings URL before `settings` is counted as reached. A stub
+       menu, a missing row, or a row wired to nothing all fail here — which is
+       the point, because 21 of the 23 tabs are reachable through this nav and
+       nothing else. */
+    const avatar = container.querySelector<HTMLElement>(
+      '[data-nav-rail-account] button[aria-label="My account"]',
+    );
+    expect(avatar, 'no account avatar is pinned at the rail floor').toBeTruthy();
+    await act(async () => { avatar!.click(); });
+    await flush();
+    const settingsRow = [...container.querySelectorAll<HTMLElement>('[role="menuitem"]')]
+      .find((b) => b.textContent?.trim() === 'Settings');
+    expect(settingsRow, 'the account menu has no Settings row').toBeTruthy();
+    navigate.mockClear();
+    await act(async () => { settingsRow!.click(); });
+    await flush();
+    expect(navigate, 'the Settings row navigated nowhere').toHaveBeenCalledWith('/admin/settings');
+    reached.add('settings');
+
     const named = new Set<string>([...groups.flatMap((g) => g.ids), 'dashboard', 'settings']);
     const missing = [...named].filter((id) => !reached.has(id));
 
@@ -285,8 +330,8 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
       .toContain('export const AFFILIATE_PROGRAM_ENABLED = false');
 
     /* The ticket's "23 tabs" is exactly DESKTOP_NAV_GROUPS' id count; Dashboard
-       and Settings sit OUTSIDE the groups and are pinned, so the rail reaches
-       25 destinations in all. 24 of them are reachable today — `affiliate` is
+       is pinned OUTSIDE the groups on the rail and Settings sits in the account
+       menu at the rail's floor, so the nav reaches 25 destinations in all. 24 of them are reachable today — `affiliate` is
        the kill-switched one. Every reachable id is enumerated below, so hiding
        any of them from every path fails this test and names it. */
     expect(groups.flatMap((g) => g.ids).length, 'DESKTOP_NAV_GROUPS no longer holds 23 tabs').toBe(23);
@@ -317,12 +362,16 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
     }
   });
 
-  it('🔴 6 · Dashboard and Settings stay pinned and reachable in ONE action', async () => {
+  it('🔴 6 · Dashboard stays pinned and reachable in ONE action', async () => {
     await mount({ superAdmin: true });
     /* One action = the rail button itself navigates. Not "open a flyout, then
-       pick a row", which is two. */
-    expect(railTabs().sort()).toEqual(['dashboard', 'settings']);
-    for (const id of ['dashboard', 'settings']) {
+       pick a row", which is two.
+
+       🔴 THE-334 — Settings is no longer one of these. It moved into the account
+       menu at the rail's floor, which is TWO actions (open the menu, pick the
+       row), and that is what the founder asked for. Dashboard is still one. */
+    expect(railTabs().sort()).toEqual(['dashboard']);
+    for (const id of ['dashboard']) {
       const btn = container.querySelector<HTMLElement>(`[data-nav-rail-tab="${id}"]`)!;
       expect(btn.tagName).toBe('BUTTON');
       expect(btn.getAttribute('aria-label')).toBeTruthy();
@@ -519,7 +568,24 @@ describe('THE-332 · what this ticket may not disturb', () => {
     const code = codeOf(read('src/components/layout/nav-rail.tsx'));
     expect(code).toMatch(/from ['"]@\/components\/ui\/popover['"]/);
     expect(code).toContain('<PopoverTrigger');
-    expect(code).toContain('<PopoverContent');
+    /* 🔴 THE-334 — `<PopoverContent` is gone, and NOT because the markup was
+       hand-rolled. It hardcodes its own Positioner (`className="isolate z-50"`,
+       no `anchor`, no arrow slot), and `src/components/ui/popover.tsx` is pinned
+       BYTE-FOR-BYTE by THE-308's guard, so it cannot be extended to expose them.
+       A full-height panel with a real pointer therefore composes the SAME Base
+       UI popover one level down. The parts below are the primitive's own — this
+       assertion is what keeps that honest, and it is STRICTER than the old one,
+       because it names each part rather than trusting one wrapper. */
+    for (const part of [
+      '<PopoverPrimitive.Portal',
+      '<PopoverPrimitive.Positioner',
+      '<PopoverPrimitive.Popup',
+      '<PopoverPrimitive.Arrow',
+      '<PopoverPrimitive.Title',
+    ]) {
+      expect(code, `${part} is not composed from the installed Base UI popover`).toContain(part);
+    }
+    expect(code).toMatch(/from ['"]@base-ui\/react\/popover['"]/);
     /* 🔴 A hand-rolled floating div would be the defect. Nothing here may
         position itself. */
     expect(code).not.toMatch(/position:\s*['"]?(?:absolute|fixed)/);

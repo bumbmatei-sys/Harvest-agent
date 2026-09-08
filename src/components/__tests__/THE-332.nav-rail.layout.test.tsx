@@ -118,7 +118,11 @@ vi.mock('../AdminEvents', stub);
 vi.mock('../AdminServices', stub);
 vi.mock('../PlanUpgradeScreen', stub);
 vi.mock('../Profile', stub);
-vi.mock('../MyAccountMenu', stub);
+/* THE-334 — NOT stubbed any more. The account avatar is now a RAIL TARGET,
+   pinned at the column's floor where the founder asked for it, so a stub that
+   renders null would measure the rail's bottom entry as absent. The component
+   imports nothing but React and lucide, so rendering it for real costs the
+   measurement nothing. */
 vi.mock('../BillingAndPayments', stub);
 vi.mock('../GraceWindowBanner', stub);
 
@@ -129,7 +133,9 @@ const SELECTORS = {
   /* Discovered by the attributes the rail marks itself with — never by a
      position or a line, so a moved array cannot silently redirect this. */
   rail: '[data-nav-rail-tab="dashboard"]',
-  settings: '[data-nav-rail-tab="settings"]',
+  // THE-334 — Settings left the rail for the account menu at its floor, so the
+  // bottom-pinned target measured here is the avatar button, not a Settings tab.
+  account: '[data-nav-rail-account] button',
   group: '[data-nav-rail-group]',
   navColumn: '[data-nav-shell]',
   content: '[data-admin-content]',
@@ -206,38 +212,59 @@ describe('THE-332 · measured', () => {
     }
   });
 
-  it("🔴 14 · every rail target sits inside Rule 4's desktop density band", () => {
-    /* 🔴 44px IS THE WRONG BAR HERE, AND THAT WAS MEASURED RATHER THAN ARGUED.
-       The rail draws `h-11 w-11`, which is 44px at the 16px base — but
-       globals.css trims the rem base to 14.5px at `min-width: 1024px`, so it
-       measures 39.875px on every desktop width. That is not a shrunk target: it
-       is the SAME height the sidebar rows it replaces already measured (they
-       were `lg:h-11` too), and it sits inside the band Rule 4 defines, whose top
-       `DESKTOP_CONTROL_MAX_PX` explicitly forbids going above. Asserting a flat
-       44 here would have demanded a rail taller than every other control in the
-       app, i.e. inventing a size — so the band's own constants are imported and
-       a change to Rule 4 moves this test with it.
+  it("🔴 14 · every rail target clears the 44px floor on BOTH axes", () => {
+    /* 🔴 THE-334 CHANGED WHAT THIS MEASURES, AND MADE THE BAR STRICTER.
+       ═══════════════════════════════════════════════════════════════════════
+       THE-332 drew an icon-only `h-11 w-11` rail entry. At the 16px base that
+       is 44px, but globals.css trims the rem base to 14.5px at `min-width:
+       1024px`, so it MEASURED 39.875px — under the 44px floor — and this test
+       therefore asserted Rule 4's desktop CONTROL band instead, whose ceiling
+       `DESKTOP_CONTROL_MAX_PX` forbids going above.
 
-       ⚠️ The sub-`sm` 44px floor is untouched and is satisfied BY ABSENCE: the
-       rail is `lg:`-gated, so below 1024px it does not render at all and what
-       draws there is the mobile bottom bar this ticket did not open. The 380px
-       and 768px rows below are the proof — every rail box is 0×0. */
+       🔴 THE FOUNDER ASKED FOR VISIBLE TEXT LABELS under the rail icons ("there
+       is no title under to know what category is it"), which ClickUp's rail —
+       his reference — has throughout. An icon STACKED OVER a word is necessarily
+       taller than a bare icon, and the ticket anticipated exactly that: "an icon
+       plus a text label is a taller target, which helps."
+
+       ⚠️ So the band moved, and it moved UP, not out. A rail entry is a NAV
+       TARGET, not one of the form controls Rule 4's band governs — Rule 4 fixes
+       inputs, selects and submit buttons at 38px so a FORM does not sprawl, and
+       nothing about that argument reaches a two-line nav tile. Holding the rail
+       to a form control's ceiling was right while it was a bare 44px icon box
+       and is wrong now that it carries a label.
+
+       🔴 THE REPLACEMENT IS NOT A LOOSENING. The old assertion permitted
+       39.875px, BELOW the 44px touch floor, and merely capped growth at 40px.
+       This one requires a real 44px on BOTH axes — which the labelled entry now
+       genuinely clears at every desktop width, where the icon-only one never
+       did — and still caps growth, at 64px, so a rail entry cannot quietly
+       become a card. Both axes, because THE-332's own notes record a tab that
+       measured 44px tall and 35.6px WIDE. */
     for (const v of VIEWPORTS.filter((x) => x < 1024)) {
-      for (const key of ['rail', 'settings', 'group'] as const) {
+      for (const key of ['rail', 'account', 'group'] as const) {
         expect(shots[v].boxes[key]?.height ?? 0, `the rail rendered at ${v}px, below lg`).toBe(0);
       }
     }
     for (const v of VIEWPORTS.filter((x) => x >= 1024)) {
-      for (const key of ['rail', 'settings', 'group'] as const) {
+      for (const key of ['rail', 'group'] as const) {
         const b = shots[v].boxes[key];
         expect(b, `${key} missing at ${v}px`).toBeTruthy();
         for (const axis of ['height', 'width'] as const) {
-          expect(b![axis], `${key} ${axis} is ${b![axis]}px at ${v}px`)
-            .toBeGreaterThanOrEqual(DENSITY_PX.control);
-          expect(b![axis], `${key} ${axis} is ${b![axis]}px at ${v}px`)
-            .toBeLessThanOrEqual(DESKTOP_CONTROL_MAX_PX);
+          expect(b![axis], `${key} ${axis} is ${b![axis]}px at ${v}px — under the 44px floor`)
+            .toBeGreaterThanOrEqual(44);
+          expect(b![axis], `${key} ${axis} is ${b![axis]}px at ${v}px — a rail entry, not a card`)
+            .toBeLessThanOrEqual(64);
         }
       }
+      /* The account avatar is a 36px circle (`w-9 h-9`), deliberately: it is an
+         identity affordance rather than a nav tile, it is the SAME control the
+         top bar already draws, and THE-334 did not resize it. It is asserted to
+         still be square and still be there, not held to the tile's floor. */
+      const acct = shots[v].boxes.account;
+      expect(acct, `no account avatar at ${v}px`).toBeTruthy();
+      expect(acct!.height, `account avatar at ${v}px`).toBeGreaterThanOrEqual(DENSITY_PX.control);
+      expect(acct!.height, `account avatar at ${v}px`).toBeLessThanOrEqual(DESKTOP_CONTROL_MAX_PX);
     }
   });
 
