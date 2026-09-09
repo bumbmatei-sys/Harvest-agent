@@ -582,8 +582,40 @@ describe('no statement, receipt, CRM write or Stripe path changed', () => {
       'febfc599c9ffedb31843bc7cb00e58ae50fb2db09998dfd455ad6b2d37054b1e',
     'src/app/api/giving-statements/config/route.ts':
       '48ad99a41cafd02a423493abf73308195108551c0da9d542f979f6cf8cc083b6',
+    /*
+     * RE-RECORDED BY THE-342, and here is the whole of what moved: FOUR
+     * `orderBy(documentId())` clauses and one docblock.
+     *
+     * THE-249 pinned this file to prove its ticket was copy and placement only.
+     * THE-342 deliberately edits it, because all four CRM reads carried an
+     * UNORDERED `limit(CRM_FETCH_LIMIT)`. Firestore has no default order — an
+     * unordered limit is served in `__name__` order over random document ids —
+     * so the thousand rows were an arbitrary and unstable thousand, and the
+     * same admin refreshing the CRM could be shown a different thousand people.
+     * "Showing 1,000 of 1,240" was true about the number while saying nothing
+     * about WHICH.
+     *
+     * IT IS A READ SHAPE, AND ONLY A READ SHAPE. This file's claim — that no
+     * statement, receipt, CRM WRITE or Stripe path changed — is unchanged and
+     * still true:
+     *
+     *   • no write moved. There is no setDoc, updateDoc or addDoc in the file
+     *     and none was added; the four edits are query constraints on reads.
+     *   • no ceiling moved. `CRM_FETCH_LIMIT` is still 1000 for both
+     *     collections and both scoping paths, so the card's 500/1000 split
+     *     still does not exist and nothing about the counts changed.
+     *   • no scoping moved. The super-admin gate, the platform-tenant filter,
+     *     the `NO_TENANT_SCOPE_MESSAGE` throw and `mergeContactsWithUsers` are
+     *     byte-identical.
+     *   • no index is needed. Every automatic single-field index is keyed
+     *     (field, __name__), so `where('tenantId','==',x)` plus this ordering
+     *     is a prefix scan of an index that already exists.
+     *
+     * The digest still asserts byte-for-byte identity; only the bytes it names
+     * moved.
+     */
     'src/hooks/queries/useCRMQueries.ts':
-      'e43a98c989191a4d92db5aa91768f7f29d149ba385fdb0af1c98bc602ffce842',
+      '64f015cfdc045ac9e9fcffa7f8bd13a56ad838d136be3e5ae5787f01531232d7',
     // Re-recorded by THE-261: its v4 migration renamed shadow-sm and
     // outline-none across the app so those utilities keep painting what they
     // painted under v3. AdminAccounting carries those spellings and nothing

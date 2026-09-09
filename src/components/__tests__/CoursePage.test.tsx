@@ -53,17 +53,28 @@ function rowsFor(path: string): any[] {
   return [];
 }
 
+// THE-342 added orderBy(documentId()) + getCountFromServer to every read here,
+// and made the adopted-course resolution a by-id read. The mock grows the same
+// members, and serves the count from the SAME rows the list is served from so
+// the two can never disagree inside a test.
 vi.mock('firebase/firestore', () => ({
   collection: (_db: unknown, ...seg: string[]) => ({ __path: seg.join('/') }),
-  query: (col: any, ...args: unknown[]) => ({ __path: col?.__path, args }),
-  where: (field: string) => { calls.wheres.push(field); return {}; },
+  query: (col: any, ...args: unknown[]) => ({ __path: col?.__path, args: [...(col?.args ?? []), ...args] }),
+  where: (field: string, op?: string, value?: unknown) => { calls.wheres.push(field); return { __where: { field, op, value } }; },
+  limit: (n: number) => ({ __limit: n }),
+  orderBy: (field: unknown) => ({ __orderBy: field }),
+  documentId: () => '__name__',
+  getCountFromServer: async (q: any) => ({ data: () => ({ count: rowsFor(q?.__path ?? '').length }) }),
   doc: (_db: unknown, ...seg: string[]) => ({ __path: seg.join('/') }),
   updateDoc: async () => {},
   getDoc: async () => ({ exists: () => false, data: () => ({}) }),
   getDocs: async (ref: any) => {
     const path = ref?.__path ?? '';
     calls.paths.push(path);
-    const rows = rowsFor(path);
+    // A by-id read carries where('__name__','in',[…]); serve exactly those.
+    const inClause = (ref?.args ?? []).find((a: any) => a?.__where?.field === '__name__');
+    const ids: string[] | null = inClause ? inClause.__where.value : null;
+    const rows = rowsFor(path).filter((r) => (ids ? ids.includes(r.id) : true));
     const docs = rows.map((r) => ({ id: r.id, data: () => r }));
     return { docs, forEach: (fn: (d: any) => void) => docs.forEach(fn) };
   },
@@ -299,15 +310,29 @@ describe('CoursePage — author and category resolution for an adopted course', 
   it('keeps the authors and categories reads FIELD-filtered on a subdomain', async () => {
     // Two where('tenantId') clauses — authors and categories — plus the one on
     // /courses. The library reads add none, by design.
+    //
+    // THE-342: the adopted catalogue courses are now fetched BY ID, which adds
+    // a where(documentId(),'in',…). That is a different clause answering a
+    // different question, so the tenant-scoping assertion filters it out and
+    // the next assertion covers it explicitly — neither read hides the other.
     seedAdopted();
     await mount();
-    expect(calls.wheres).toEqual(['tenantId', 'tenantId', 'tenantId']);
+    expect(calls.wheres.filter((w) => w !== '__name__')).toEqual(['tenantId', 'tenantId', 'tenantId']);
+  });
+
+  it('resolves the adopted catalogue courses BY ID, not by scanning the library', async () => {
+    // 🔴 THE-342. Scanning libraryCourses and keeping the adopted few meant any
+    // ceiling on that scan could drop an adopted course silently. A by-id read
+    // is complete by construction, so no ceiling can apply to it.
+    seedAdopted();
+    await mount();
+    expect(calls.wheres).toContain('__name__');
   });
 
   it('drops the tenantId filters entirely on the apex, on all three reads', async () => {
     apexSuperAdmin();
     seedAdopted();
     await mount();
-    expect(calls.wheres).toEqual([]);
+    expect(calls.wheres.filter((w) => w !== '__name__')).toEqual([]);
   });
 });

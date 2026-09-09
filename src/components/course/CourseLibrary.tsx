@@ -6,6 +6,7 @@ import { getAllLessons } from "../../utils/course.utils";
 import { CourseCard } from "./CourseCard";
 import { GOLD } from "../../utils/course.constants";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../ui/empty";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 
 interface CourseLibraryProps {
   courses: Course[];
@@ -15,9 +16,25 @@ interface CourseLibraryProps {
   completed?: Set<string>;
   /** Forwarded to each card for the `requireQuiz` half of completeness. */
   quizAttempts?: Record<string, QuizAttempt | undefined>;
+  /**
+   * THE-342 — the course read was REJECTED, which is not the same fact as "this
+   * church has published nothing".
+   *
+   * When this is true the screen must NOT render its empty state. A member
+   * whose tenant scope resolved to null runs an unfiltered /courses query that
+   * Firestore rejects wholesale (rules are not filters), and for weeks that
+   * rejection was shown to them as "No courses found" — a confident lie about
+   * their church. The two states now render differently, always.
+   */
+  readFailed?: boolean;
+  /**
+   * "Showing N of M …" lines for whichever reads hit their ceiling, plus any
+   * pool that failed to load. Empty in the normal case and renders nothing.
+   */
+  notices?: string[];
 }
 
-export function CourseLibrary({ courses, authors, categories, onSelectCourse, completed, quizAttempts }: CourseLibraryProps) {
+export function CourseLibrary({ courses, authors, categories, onSelectCourse, completed, quizAttempts, readFailed = false, notices = [] }: CourseLibraryProps) {
   const [activeCategory, setActiveCategory] = useState("All");
   const [search, setSearch] = useState("");
 
@@ -47,6 +64,27 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
       {/* Header — desktop only; the mobile screen opens straight into search
           to match the member mockup (the tab bar supplies the section label). */}
       <h1 className="hidden lg:block text-[28px] font-light tracking-[-0.02em] text-strong mb-5 font-display">Courses</h1>
+
+      {/*
+        THE-342 — a truncated or partial read SAYS SO, above the list it
+        describes. "Showing 200 of 250 courses" is honest; showing 200 silently
+        is the quiet lie this ticket exists to remove.
+
+        The `alert` primitive carries the role="alert" and the token-based
+        surface. Rejected here: `badge` (a chip cannot hold a sentence and is
+        not announced), and a hand-rolled div (the primitive exists, so a
+        substitute would be a defect).
+      */}
+      {notices.length > 0 && (
+        <Alert data-courses-truncated className="mb-5">
+          <AlertTitle>Some of this list is missing</AlertTitle>
+          <AlertDescription>
+            {notices.map((n) => (
+              <p key={n}>{n}</p>
+            ))}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Search */}
       <div className="relative mb-5">
@@ -176,14 +214,35 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
         </>
       )}
       {/*
-        ⚠️ The empty state keys off `filtered`, not `allCourses`.
+        The empty state keys off `filtered`, not `allCourses`.
 
         `allCourses` is what is LEFT after Continue Learning takes its share, so
         a category holding only part-finished courses emptied it and printed
         "No courses found" directly beneath a populated list. Nothing matched is
         a question about the filter, and `filtered` is the filter's answer.
       */}
-      {filtered.length === 0 ? (
+      {readFailed ? (
+        /*
+          THE-342 — the FAILURE state, and it is checked FIRST so it can
+          never be out-competed by the empty state below.
+
+          `courses` is [] in both cases and that is precisely the trap: an empty
+          list and an unreadable one are indistinguishable in the data, so the
+          distinction has to be carried separately and rendered separately.
+          AGENTS.md: "keep the distinction between 'empty' and 'could not
+          load'".
+
+          `alert` with variant="destructive" rather than `empty`: this is not an
+          empty collection, and dressing a fault as an empty state is the bug.
+        */
+        <Alert data-courses-read-failed variant="destructive" className="my-16">
+          <AlertTitle>We could not load this church&apos;s courses</AlertTitle>
+          <AlertDescription>
+            Something went wrong reading the course library, so this list is not
+            showing what is actually here. Please try again in a moment.
+          </AlertDescription>
+        </Alert>
+      ) : filtered.length === 0 ? (
         <Empty data-courses-empty className="py-16">
           <EmptyHeader>
             <EmptyMedia variant="icon">

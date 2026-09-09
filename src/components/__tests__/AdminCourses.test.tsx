@@ -55,11 +55,36 @@ vi.mock('../../utils/auth-fetch', () => ({
   },
 }));
 
+// THE-342 added orderBy(documentId()) + getCountFromServer to every read on
+// this screen, and a by-id read of the adoption pointers. The mock grows the
+// same members; `rowsFor` is shared so the count and the list can never
+// disagree with each other inside a test.
+function rowsFor(path: string): any[] {
+  if (path === 'courses') return mockCourses;
+  if (path === 'libraryCourses') return mockLibrary;
+  if (path === 'libraryAuthors') return mockLibraryAuthors;
+  if (path.includes('adoptedCourses')) return mockAdopted;
+  return [];
+}
+
 vi.mock('firebase/firestore', () => ({
   collection: (_db: unknown, ...seg: string[]) => ({ __path: seg.join('/') }),
-  query: (col: any, ...args: unknown[]) => ({ __path: col?.__path, args }),
-  where: (field: string) => { calls.wheres.push(field); return {}; },
-  limit: () => ({}),
+  query: (col: any, ...args: unknown[]) => ({ __path: col?.__path, args: [...(col?.args ?? []), ...args] }),
+  where: (field: string, op?: string, value?: unknown) => { calls.wheres.push(field); return { __where: { field, op, value } }; },
+  limit: (n: number) => ({ __limit: n }),
+  orderBy: (field: unknown) => ({ __orderBy: field }),
+  documentId: () => '__name__',
+  getCountFromServer: async (q: any) => ({ data: () => ({ count: rowsFor(q?.__path ?? '').length }) }),
+  getDocs: async (q: any) => {
+    const path = q?.__path ?? '';
+    calls.paths.push(path);
+    // A by-id read carries where('__name__','in',[…]); serve exactly those.
+    const inClause = (q?.args ?? []).find((a: any) => a?.__where?.field === '__name__');
+    const ids: string[] | null = inClause ? inClause.__where.value : null;
+    const rows = rowsFor(path).filter((r) => (ids ? ids.includes(r.id) : true));
+    const docs = rows.map((r) => ({ id: r.id, data: () => r }));
+    return { docs, forEach: (fn: (d: any) => void) => docs.forEach(fn) };
+  },
   doc: (_db: unknown, ...seg: string[]) => ({ __path: seg.join('/') }),
   deleteDoc: async (ref: any) => { calls.writes.push({ op: 'delete', path: ref?.__path }); },
   setDoc: async (ref: any, data: unknown) => { calls.writes.push({ op: 'set', path: ref?.__path, data }); },
@@ -67,11 +92,7 @@ vi.mock('firebase/firestore', () => ({
   onSnapshot: (q: any, onNext: (snap: unknown) => void) => {
     const path = q?.__path ?? '';
     calls.paths.push(path);
-    let rows: any[] = [];
-    if (path === 'courses') rows = mockCourses;
-    else if (path === 'libraryCourses') rows = mockLibrary;
-    else if (path === 'libraryAuthors') rows = mockLibraryAuthors;
-    else if (path.includes('adoptedCourses')) rows = mockAdopted;
+    const rows = rowsFor(path);
     onNext({ docs: rows.map((c) => ({ id: c.id, data: () => c })) });
     return () => {};
   },

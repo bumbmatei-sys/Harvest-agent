@@ -772,12 +772,35 @@ describe('7 — the progress model, the editor and the adoption gate are untouch
    */
   const THE_313 = ['firestore.rules'];
 
+  /**
+   * ⚠️ THE-342 EDITS CoursePage.tsx, named here by the same treatment THE-305
+   * and THE-313 established. APPENDED, never substituted: `PINNED` is unchanged,
+   * neither existing exemption is widened, and a SIXTH name in the diff still
+   * fails.
+   *
+   * What THE-342 did to it: every `getDocs` in the screen was unbounded, and
+   * three of them were the `else` branch of a tenant ternary. Each is now a
+   * counted, ordered, bounded read (`readBoundedList`), the adopted catalogue
+   * courses are fetched BY ID instead of by scanning `libraryCourses`, and a
+   * rejected read sets a failure flag instead of resolving into an empty list.
+   *
+   * 🔴 It went nowhere near what THE-282 pinned this file FOR. The
+   * `completedLessons` read/write below is untouched, `course.utils.ts`'s
+   * definition of complete is untouched, `course-adoption.ts`'s `maxCourses`
+   * gate is untouched — `applyCourseOverrides`, `adoptableCourses`,
+   * `mergeCoursesForMembers`, `mergeAuthors` and `mergeCategories` are all
+   * still called at the same points with the same arguments — and it reads no
+   * `course.constants.ts` hex. THE-342 added no `firestore.rules` digest to any
+   * register: THE-333 and THE-341 both did that and both turned THE-325 red.
+   */
+  const THE_342 = ['src/components/CoursePage.tsx'];
+
   it('🔴 every pinned file is byte-identical to the base branch', () => {
     // ⚠️ One `git diff` over the set, at collection time — not a `git show` per
     // assertion. A name printed here is a file this ticket had no business in.
     expect(
       changedSince(...PINNED, 'functions/').filter(
-        (f) => !THE_305.includes(f) && !THE_313.includes(f),
+        (f) => !THE_305.includes(f) && !THE_313.includes(f) && !THE_342.includes(f),
       ),
       'these pinned files were modified',
     ).toEqual([]);
@@ -787,8 +810,38 @@ describe('7 — the progress model, the editor and the adoption gate are untouch
     // The exemption is one file wide and must stay that way. Stated as its own
     // assertion so widening it is an edit to this line, visible in review.
     expect(THE_305).toEqual(['src/components/AdminCourseEditor.tsx']);
-    for (const f of ['src/components/CoursePage.tsx', 'src/utils/course-adoption.ts']) {
+    // ⚠️ CoursePage.tsx moved OUT of this loop and into THE_342's own
+    // assertion below, because "not in the diff" is the one thing that can no
+    // longer be said of it — exactly the situation THE-313 met with
+    // firestore.rules. It is not dropped and not loosened: the adoption gate
+    // keeps the hard pin here, and the file THE-342 does touch is pinned
+    // BEHAVIOURALLY below, which is a statement about content rather than
+    // about which branch you are on.
+    for (const f of ['src/utils/course-adoption.ts']) {
       expect(changedSince(f), `${f} was modified`).toEqual([]);
+    }
+  });
+
+  it('🔴 and CoursePage is the ONLY pinned file THE-342 touched, with the adoption model intact', () => {
+    // One file wide, like the two exemptions above; widening it is an edit to
+    // this line, visible in review.
+    expect(THE_342).toEqual(['src/components/CoursePage.tsx']);
+    // What the pin was FOR, asserted directly against the file's contents
+    // rather than against the branch: THE-282 pinned this screen so its
+    // progress and adoption model could not drift. Every one of those calls is
+    // still made, so a rewrite that quietly dropped the override resolution or
+    // the draft filter fails here rather than passing unseen.
+    const page = src('src/components/CoursePage.tsx');
+    for (const call of [
+      'applyCourseOverrides',
+      'adoptableCourses',
+      'mergeCoursesForMembers',
+      'mergeAuthors',
+      'mergeCategories',
+      'completedLessons',
+      'quizAttempts',
+    ]) {
+      expect(page, `${call} disappeared from CoursePage`).toContain(call);
     }
   });
 
