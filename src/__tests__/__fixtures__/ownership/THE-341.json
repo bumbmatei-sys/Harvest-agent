@@ -1,0 +1,32 @@
+{
+  "ticket": "THE-341",
+  "recordedIn": "THE-341",
+  "note": "THE-341 renames the nav group BROADCASTING to REACH and moves `forms` into it, on both the mobile More drawer and the desktop sidebar. THE-338 was asked for this and correctly refused to guess whether 'reach section' meant a rename or a new group; the founder answered 'renames', so this ticket builds exactly that and nothing else. The group LABEL is an identity, not a caption — it keys the rail's icon map, its readable-label map and its recents list — so the rename reaches four source files rather than one, and each is recorded below. Digests are the state THE-341 LEAVES each file at, APPENDED to the accepted set rather than substituted for anyone else's entry: THE-334's entries for the three rail files and THE-338's for AdminDashboard.tsx stay valid and untouched, and `acceptedFor` unions them. Substituting is how main went red for everyone once. AdminDonations.tsx is deliberately ABSENT: its header docblock still enumerates the old group name, and THE-305 freezes that file by git diff for a parallel ticket, so a comment-only edit there would have cost another ticket's guard for no functional gain. It is reported rather than changed. No firestore.rules digest is recorded here, deliberately — this ticket does not touch it, and THE-333 recording one is what turned THE-322 and THE-325 red.",
+  "entries": [
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "a7dc96513ad4003892f3bc81d5faaed2f616bd04c496a4b3ec977777baf067b7",
+      "why": "THE-341 owns this change, and it is two array elements in each of two array literals. In MORE_GROUPS and DESKTOP_NAV_GROUPS alike the group labelled BROADCASTING is now labelled REACH, and `forms` left MINISTRY's ids for REACH's. The two literals still mirror each other exactly, which is THE-338's guarantee and is re-asserted rather than assumed; all 23 tab ids are still present on both shells, each in exactly one group; and no gate moved, because every gate lives on the TAB entry in `allTabs` and no tab entry was touched. `sms` stays LISTED in REACH though the feature is hidden, for the reason the SMS entry's own comment gives. The surrounding comments were updated to say what the group is now called and why `forms` belongs in it. The desktop rail regions THE-332 and THE-334 own were not restructured; only the stale readable-label enumeration in one of their comments was corrected."
+    },
+    {
+      "file": "src/components/layout/nav-rail-groups.ts",
+      "digest": "778be42391f66126a62c0de97bc3fd4a70018578a58b0e4137c95ba5f223d3a8",
+      "why": "THE-341 owns this change. Both maps here are keyed by the group label in DESKTOP_NAV_GROUPS, so the rename had to reach them or the nav would still work and be quietly poorer: a missing DESKTOP_GROUP_ICONS key renders an ICONLESS rail button, and a missing DESKTOP_GROUP_LABELS key makes the rail print the raw shouting identity instead of the founder's word. Both keys moved from BROADCASTING to REACH; the readable word is unchanged at 'Reach', which THE-334 had already set at the founder's pick, so the rail's printed text is byte-identical and no width changes. DESKTOP_GROUP_SECTIONS also dropped `forms` from MINISTRY's middle block, because that map is presentation-only and a map naming an id its group no longer holds is a map that lies to the next reader."
+    },
+    {
+      "file": "src/components/layout/nav-rail-recents.tsx",
+      "digest": "3f9fa6121e35c73d52fb267994f1b70398d9750a6ab5f39aca9a78bb7775f717",
+      "why": "THE-341 owns this change, and it is the coupling a rename is most likely to lose silently. RAIL_RECENT_GROUPS, the SOURCE map and the `group === ...` comparison that enables the events query are all keyed by the group label; left at BROADCASTING the REACH panel would still open and still list its tabs while its pinned 'Recent events' footer simply stopped rendering, with nothing red. All three moved to REACH together. No query shape, limit or hook ordering changed."
+    },
+    {
+      "file": "src/components/layout/nav-rail.tsx",
+      "digest": "5e8359f06be3e3533fb2ac4fc128315069af1848fabbd58600da6148c4387a91",
+      "why": "Comment only, and recorded rather than waved through because the file is digest-pinned. The NavRailFlyoutProps `label` docblock enumerated the four group identities and named BROADCASTING among them; it now names REACH. No behaviour in this file changed: the provider's one-open-at-a-time state machine, the pin semantics, the close-reason handling, the three-condition hover gate and every data attribute are untouched, and THE-334's coordination suite plus THE-341's own behavioural suite both exercise them against the renamed group."
+    },
+    {
+      "file": "src/__tests__/THE-322.ownership-register.test.ts",
+      "digest": "961fbbe9b210d36460cfa906df13dbf2128d0ba766e64f8a00ab5ec6f44cf028",
+      "why": "THE-341 owns this append and nothing else in the file, exactly as THE-340 owned the one before it. RULES_PINNERS_NOW goes 60 -> 61 and this ticket's guard suite is added to RULES_PINNERS_ADDED_SINCE beside THE-340's entry, never over it — the documented cost of adding a suite that pins firestore.rules through the shared register. THE-341's suite asks `rulesDigestFailure()` rather than writing the digest down, which is what keeps a real rules change to one edit and is the mistake THE-333 made. No accepted value is widened, no pinner is retired, and the exact floor still may not shrink."
+    }
+  ]
+}

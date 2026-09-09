@@ -982,6 +982,10 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ are byte-identical'
   '00db3fa2b16a506d0a23dc1d582e6581c49e03350b966fb30d82d9434b09f450',
   // 🔴 APPENDED BY THE-335 — SMS hidden again, the Newsletter nav entry gated by a new switch in the identical shape, and Signups moved onto its own plan cell
   'd81a5b117569424515bf8c8ebca8654e8b6f57f3c7447f2419968adcebdf8bbe',
+  // 🔴 APPENDED BY THE-341 — main + THE-341 — BROADCASTING renamed to REACH and `forms` moved into it, on both shells. APPENDED, NEVER SUBSTITUTED: every
+  // value above stays accepted, so a merge ref cut before this ticket landed
+  // still passes and a digest that is NONE of them still fails.
+  'a7dc96513ad4003892f3bc81d5faaed2f616bd04c496a4b3ec977777baf067b7',
   ];
 
   it('AdminDashboard.tsx is untouched by THIS ticket — others legitimately own it', () => {

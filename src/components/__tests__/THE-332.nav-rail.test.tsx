@@ -544,19 +544,41 @@ describe('THE-332 · what this ticket may not disturb', () => {
        the ARRAY, read out of the source, so a reordering or a renamed section
        fails here rather than surfacing as a founder bug report.
 
-       🔴 THE-338 MOVED THE DIGEST — and it did so through a founder bug
-       report, which is exactly the path this guard was written to intercept.
-       He asked for the drawer's group names and order to match desktop, so
-       mobile's `PLATFORM` and `MORE` groups became desktop's single `GROW`
-       and MINISTRY adopted desktop's order. The guard did its job: the
-       reorder could not land silently. No id moved between shells. */
+       🔴 AN ACCEPTED SET, APPENDED TO, NOT ONE VALUE SUBSTITUTED. THE-338
+       REPLACED the single literal this held. That works locally and is the
+       shape that turned `main` red for everyone once: CI runs against
+       `refs/pull/N/merge`, and a merge ref cut before a ticket landed
+       legitimately carries the older value. THE-341 converts it to the
+       accepted-SET shape the rest of this repo's digest pins use and APPENDS,
+       so every earlier value stays accepted and a digest that is NONE of them
+       still fails — which is the whole job of this guard.
+
+       🔴 EVERY ENTRY IS A DELIBERATE DRAWER CHANGE, each arriving through a
+       founder request, which is exactly the path this guard exists to
+       intercept — and it did intercept both:
+        • THE-338 — the founder asked the drawer's group names and order to
+          match desktop, so mobile's `PLATFORM` and `MORE` groups became
+          desktop's single `GROW` and MINISTRY adopted desktop's order.
+        • THE-341 — the founder answered THE-338's open question with
+          "renames", so `BROADCASTING` became `REACH` and `forms` moved into
+          it, on both shells.
+       No id moved BETWEEN shells in either. */
+    const MORE_GROUPS_ACCEPTED = [
+      // THE-338 — the drawer re-cut to mirror desktop's names and order.
+      '33f0aaa0e0caef51e1a19f14e526ee0afa919d61f944760afc438bb52cb0651b',
+      // 🔴 APPENDED BY THE-341 — BROADCASTING renamed to REACH, `forms` moved in.
+      '8b0789543891a489d0de9001ecd2326d248809111c4f1f1baf61b3ebddd4f0bd',
+    ];
     const before = readFileSync(join(ROOT, 'src/components/AdminDashboard.tsx'), 'utf8');
     const slice = (src: string) => {
       const i = src.indexOf('const MORE_GROUPS');
       return src.slice(i, src.indexOf('\n];', i));
     };
-    expect(sha256(slice(before)))
-      .toBe('33f0aaa0e0caef51e1a19f14e526ee0afa919d61f944760afc438bb52cb0651b');
+    const actual = sha256(slice(before));
+    expect(
+      MORE_GROUPS_ACCEPTED,
+      `MORE_GROUPS is at ${actual}, which is none of the accepted values — so an unrecorded change reached the mobile drawer`,
+    ).toContain(actual);
   });
 
   it('🔴 9 · all eight sidebar theme variables map onto Harvest tokens, with no new token', () => {

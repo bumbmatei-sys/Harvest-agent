@@ -236,10 +236,13 @@ describe('3 — the mobile drawer and the desktop sidebar are identical', () => 
     expect(desktop).toEqual([
       { label: 'CONTENT', ids: ['blog', 'courses', 'newsletter', 'ai', 'docs'] },
       {
+        // ⚠️ THE-341 moved `forms` out of here and into REACH. Everything else
+        // in this block is THE-338's own order, unchanged.
         label: 'MINISTRY',
-        ids: ['churches', 'crm', 'signups', 'services', 'community', 'forms', 'fundraising', 'donations', 'accounting'],
+        ids: ['churches', 'crm', 'signups', 'services', 'community', 'fundraising', 'donations', 'accounting'],
       },
-      { label: 'BROADCASTING', ids: ['events', 'checkin', 'sms', 'livestream'] },
+      // ⚠️ THE-341 renamed BROADCASTING to REACH and gave it `forms`.
+      { label: 'REACH', ids: ['events', 'checkin', 'forms', 'sms', 'livestream'] },
       { label: 'GROW', ids: ['affiliate', 'branding', 'library', 'tenants', 'inbox'] },
     ]);
   });
@@ -295,35 +298,45 @@ describe('3 — the mobile drawer and the desktop sidebar are identical', () => 
 // 4 · 🔴 REACH — reported, not guessed
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('4 — the REACH move is NOT built, and that is deliberate', () => {
+describe('4 — the REACH question THE-338 held open was ANSWERED in THE-341', () => {
   /**
-   * 🔴 THE FOUNDER ASKED FOR "forms should go into reach section" AND THERE IS
-   * NO REACH SECTION.
+   * 🔴 THIS SECTION IS INVERTED ON PURPOSE, AND THAT IS THE ONLY HONEST MOVE.
    *
-   * The groups are CONTENT · MINISTRY · BROADCASTING · GROW. "Reach" is not
-   * one of them, and the request does not say whether it renames an existing
-   * group — BROADCASTING is the outbound cluster and the closest fit — or
-   * creates a new one, nor which other tabs would join Forms in it. Those are
-   * different nav changes with different blast radii: renaming BROADCASTING
-   * moves nothing but a heading, while a new group takes tabs out of the ones
-   * they are in today.
+   * THE-338 was asked for "forms should go into reach section" and reported
+   * that no REACH group existed and that the request did not say whether it
+   * meant a RENAME of an existing group or a NEW one — two nav changes with
+   * very different blast radii. Rather than guess, it PINNED the status quo:
+   * `forms` in MINISTRY, and no REACH group on either shell.
    *
-   * `forms` therefore stays where THE-326 put it, in MINISTRY, on BOTH shells —
-   * which this asserts, so the id cannot drift while the question is open.
+   * The founder then answered the question in one word — "renames" — and
+   * THE-341 built it. A guard whose whole subject was "the question is still
+   * open" cannot stay green once the question is closed, and silently deleting
+   * it would erase the record of why the wait happened. So it is REVERSED, with
+   * its own history above it: the two assertions below are the exact negations
+   * of the two THE-338 wrote, and they now fail if anyone puts `forms` back or
+   * un-renames the group.
+   *
+   * ⚠️ This is NOT a weakening. THE-338's claim was "nothing moved while we did
+   * not know"; the claim now is "exactly what the founder specified moved, and
+   * nothing else" — which section 3 above pins whole, both shells, enumerated.
    */
-  it('forms is still in MINISTRY, on both shells', () => {
+  it('forms is in REACH, not MINISTRY, on both shells', () => {
     for (const name of ['MORE_GROUPS', 'DESKTOP_NAV_GROUPS']) {
-      const ministry = navGroups(name).find((g) => g.label === 'MINISTRY');
+      const groups = navGroups(name);
+      const ministry = groups.find((g) => g.label === 'MINISTRY');
+      const reach = groups.find((g) => g.label === 'REACH');
       expect(ministry, `${name} has no MINISTRY group`).toBeDefined();
-      expect(ministry!.ids, `${name}: forms left MINISTRY without the question being settled`)
-        .toContain('forms');
+      expect(reach, `${name} has no REACH group — the rename did not land here`).toBeDefined();
+      expect(reach!.ids, `${name}: forms is not in REACH`).toContain('forms');
+      expect(ministry!.ids, `${name}: forms is still in MINISTRY`).not.toContain('forms');
     }
   });
 
-  it('no REACH group was invented on either shell', () => {
+  it('the group is named REACH and no BROADCASTING group is left on either shell', () => {
     for (const name of ['MORE_GROUPS', 'DESKTOP_NAV_GROUPS']) {
-      expect(navGroups(name).map((g) => g.label), `${name} grew a guessed REACH group`)
-        .not.toContain('REACH');
+      const labels = navGroups(name).map((g) => g.label);
+      expect(labels, `${name} still carries a BROADCASTING group`).not.toContain('BROADCASTING');
+      expect(labels, `${name} has no REACH group`).toContain('REACH');
     }
   });
 });

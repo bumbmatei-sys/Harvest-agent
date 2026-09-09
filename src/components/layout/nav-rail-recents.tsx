@@ -45,7 +45,7 @@ import { sortByTime } from '@/utils/query-helpers';
  * load to populate three panels they may never open.
  *
  * ── Which groups get one, and why not all four ──────────────────────────────
- * ⚠️ CONTENT, MINISTRY and BROADCASTING have a real recency source. GROW —
+ * ⚠️ CONTENT, MINISTRY and REACH have a real recency source. GROW —
  * affiliate, branding, library, tenants, inbox — has NO per-item recency to
  * show, and inventing one (or listing its tabs again under a "Recent" heading)
  * would be a footer that lies. It gets no footer, which is why the block is
@@ -57,17 +57,22 @@ import { sortByTime } from '@/utils/query-helpers';
 export const RAIL_RECENTS_LIMIT = 4;
 
 /** The groups with a genuine recency source. GROW is absent on purpose. */
-export const RAIL_RECENT_GROUPS: readonly string[] = ['CONTENT', 'MINISTRY', 'BROADCASTING'];
+// 🔴 THE-341 renamed BROADCASTING to REACH. This list is matched against the
+// label in `DESKTOP_NAV_GROUPS`, so leaving the old name here would have
+// silently dropped the group's pinned "Recent events" footer — the panel would
+// still open and still list its tabs, which is exactly the kind of quiet loss a
+// rename is supposed to be checked for.
+export const RAIL_RECENT_GROUPS: readonly string[] = ['CONTENT', 'MINISTRY', 'REACH'];
 
 /** What each group's block is called, and which tab a row opens. */
 const SOURCE: Record<string, { heading: string; tab: string }> = {
   CONTENT: { heading: 'Recent notes', tab: 'docs' },
   MINISTRY: { heading: 'Recent people', tab: 'crm' },
-  BROADCASTING: { heading: 'Recent events', tab: 'events' },
+  REACH: { heading: 'Recent events', tab: 'events' },
 };
 
 export type NavRailRecentsProps = {
-  /** The group whose panel this is — `CONTENT`, `MINISTRY`, `BROADCASTING`. */
+  /** The group whose panel this is — `CONTENT`, `MINISTRY`, `REACH`. */
   group: string;
   tenantId: string | null | undefined;
   isAuthReady: boolean;
@@ -89,7 +94,7 @@ export function NavRailRecents({ group, tenantId, isAuthReady, onOpenItem }: Nav
      already takes as its `enabled`. No new query shape is introduced. */
   const wantsDocs = group === 'CONTENT';
   const wantsContacts = group === 'MINISTRY';
-  const wantsEvents = group === 'BROADCASTING';
+  const wantsEvents = group === 'REACH';
 
   const docs = useDocs(tenantId, isAuthReady && wantsDocs);
   const contacts = useContacts(tenantId, isAuthReady && wantsContacts);

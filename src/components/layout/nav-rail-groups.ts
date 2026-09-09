@@ -28,9 +28,13 @@ export const DESKTOP_GROUP_ICONS: Record<string, LucideIcon> = {
   // congregation (AdminChurches uses it), so the rail borrows the vocabulary
   // the product already has rather than minting a second one.
   MINISTRY: Church,
-  // Events, check-in, SMS, livestream — the outbound/live cluster. `Radio` is
-  // what AdminLivestream already uses, for the same reason.
-  BROADCASTING: Radio,
+  // Events, check-in, forms, SMS, livestream — the outward-facing cluster.
+  // `Radio` is what AdminLivestream already uses, for the same reason.
+  // 🔴 THE-341 renamed the key with the group. The rail reads this map by the
+  // label in `DESKTOP_NAV_GROUPS`, so a key left at `BROADCASTING` would have
+  // rendered an ICONLESS rail button — which is exactly what THE-332's guard
+  // that every label has an icon exists to catch.
+  REACH: Radio,
   // Affiliate, branding, library, tenants, inbox — the surfaces that grow the
   // platform rather than run a Sunday.
   GROW: TrendingUp,
@@ -46,8 +50,12 @@ export const DESKTOP_GROUP_ICONS: Record<string, LucideIcon> = {
  * names. Renaming `MINISTRY` to `People` in that array to make it fit the rail
  * would have been a permission-shaped edit made for a typographic reason, and
  * the kind that turns a guard green for the wrong cause. So the identity stays
- * `CONTENT` / `MINISTRY` / `BROADCASTING` / `GROW` and the READABLE word lives
- * here, keyed by it.
+ * `CONTENT` / `MINISTRY` / `REACH` / `GROW` and the READABLE word lives here,
+ * keyed by it. ⚠️ THE-341 DID rename one of those identities, BROADCASTING to
+ * REACH — but at the founder's explicit instruction and as the ticket's whole
+ * point, with every guard that scans the nav by name updated in the same
+ * change. That is the opposite of a typographic edit, and it is why the other
+ * three identities are still untouched.
  *
  * ── Why these words ─────────────────────────────────────────────────────────
  * The labels are now VISIBLE TEXT under the icon rather than `sr-only`, which
@@ -55,12 +63,12 @@ export const DESKTOP_GROUP_ICONS: Record<string, LucideIcon> = {
  * and which ClickUp's rail does throughout — Home, Spaces, Chat, Planner, AI,
  * Teams, Docs. ⚠️ Every one of ClickUp's is ONE SHORT WORD, and that is not
  * incidental: an 88px rail minus its `px-4` padding leaves 56px of measure, and
- * `BROADCASTING` needs about 80px even at 10px type. The choice was therefore
+ * `BROADCASTING` needed about 80px even at 10px type. The choice was therefore
  * to shorten the words or to widen the rail, and the founder — who had ALSO
  * asked for the nav to be less wide — chose to shorten them.
  *
  * `People` for MINISTRY (contacts, signups, churches, community, giving) and
- * `Live` for BROADCASTING (events, check-in, SMS, livestream) are the founder's
+ * `Live` for REACH (events, check-in, SMS, livestream) are the founder's
  * own picks, not a guess: he was shown the three candidate sets and named this
  * one. No word here is longer than seven characters, so every label sits on ONE
  * line at the rail's existing width and no entry is taller than its siblings.
@@ -71,10 +79,14 @@ export const DESKTOP_GROUP_LABELS: Record<string, string> = {
   // Ministry instead of people. you were right." It is the product's own word
   // for this group and it is what the ids array has always been labelled.
   MINISTRY: 'Ministry',
-  // BROADCASTING held Events, Check-In, SMS and Livestream under 'Live', which
+  // The group held Events, Check-In, SMS and Livestream under 'Live', which
   // named only the livestream. 'Reach' is the founder's pick from the
   // candidates: the group is how a church reaches people, in the room or out.
-  BROADCASTING: 'Reach',
+  // 🔴 THE-341 — the founder then renamed the GROUP ITSELF to REACH, so the key
+  // and the readable word finally agree. THE-334's reasoning below for keeping
+  // a second map still holds for CONTENT / MINISTRY / GROW, whose identities
+  // are still not what the rail prints.
+  REACH: 'Reach',
   GROW: 'Grow',
 };
 
@@ -83,9 +95,10 @@ export const DESKTOP_GROUP_LABELS: Record<string, string> = {
  *
  * ClickUp's reference panel is sectioned — a first block, a separator, a headed
  * group, another separator — and the founder gave MINISTRY's blocks explicitly:
- * Campus · CRM · Signups, then Services · Community · Forms, then Fundraising ·
+ * Campus · CRM · Signups, then Services · Community, then Fundraising ·
  * Donations · Accounting. Three things a church actually does, in three blocks,
- * instead of nine rows in one undifferentiated list.
+ * instead of one undifferentiated list. (Forms was in the second block until
+ * THE-341 moved it to REACH.)
  *
  * 🔴 PRESENTATION ONLY. This decides ORDER and where the separators fall; it
  * decides NOTHING about membership or permission. Membership stays
@@ -98,9 +111,15 @@ export const DESKTOP_GROUP_LABELS: Record<string, string> = {
  * A group with no entry here renders as one block, exactly as before.
  */
 export const DESKTOP_GROUP_SECTIONS: Record<string, string[][]> = {
+  // 🔴 THE-341 — `forms` was in the middle block and is not in MINISTRY any
+  // more. It is REMOVED here rather than left behind: the renderer looks each
+  // id up in the group's own permitted rows, so a stale id would resolve to
+  // nothing and cost nothing at run time — but a presentation map that names an
+  // id the group does not hold is a map that lies to the next reader. REACH
+  // gets no entry, so it renders as one block, exactly as it did before.
   MINISTRY: [
     ['churches', 'crm', 'signups'],
-    ['services', 'community', 'forms'],
+    ['services', 'community'],
     ['fundraising', 'donations', 'accounting'],
   ],
 };
