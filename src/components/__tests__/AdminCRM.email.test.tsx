@@ -82,6 +82,24 @@ vi.mock('../../hooks/queries/useCRMQueries', async (importOriginal) => ({
   useCRMCounts: () => ({ data: undefined }),
 }));
 
+/* 🔴 THE-339 — `GMAIL_FEATURE_ENABLED` is false on disk, and the switch sits
+   AHEAD of every other gate by design, so without this mock the Gmail surface
+   this file exists to measure would simply be absent and the assertions below
+   would be about nothing.
+
+   ⚠️ MOCKED RATHER THAN THE ASSERTIONS LOWERED, exactly as THE-335's newsletter
+   switch is mocked where a suite has to keep measuring a hidden composition.
+   The behaviour here is what must come back UNCHANGED when Gmail returns with an
+   inbox, so it stays fully asserted; that the surface is GONE while the switch
+   is off is asserted in `THE-339.gmail-hidden.test.ts`. */
+vi.mock('../../lib/gmail-feature', () => ({
+  GMAIL_FEATURE_ENABLED: true,
+  GMAIL_HIDDEN_MESSAGE: 'Gmail sending is temporarily unavailable.',
+  GMAIL_PAUSED_NOTICE:
+    'Email sending from your own Gmail account is paused until the Harvest scheduler ships with an inbox.',
+}));
+
+
 let container: HTMLDivElement;
 let root: Root;
 let mounted = false;

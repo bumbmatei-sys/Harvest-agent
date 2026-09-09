@@ -1,0 +1,107 @@
+{
+  "ticket": "THE-339",
+  "recordedIn": "THE-339",
+  "note": "THE-339 hides the Gmail connection behind a master switch until the Harvest scheduler ships with an inbox, in the shape sms-feature.ts established and newsletter-feature.ts followed. Digests are the state THE-339 leaves each file at, APPENDED to the accepted set rather than substituted for anyone else's entry - main went red once when a PR replaced a pinned digest instead of appending. No firestore.rules digest is recorded here, deliberately: this ticket does not touch that file, and THE-333 turned THE-322 and THE-325 red by recording one it did not own. firestore.indexes.json, functions/ and src/app/layout.tsx are likewise untouched and unrecorded. THE BLOCKING QUESTION THE BRIEF ASKED, ANSWERED BEFORE ANYTHING WAS WRITTEN: rota-invite.ts sends over RESEND, not the church's Gmail. THE-340 moved it, and the thirteen Gmail references left in that file are every one of them prose. So hiding Gmail costs a volunteer nothing, #481's promise that 'people can receive the serving notif from church service planner through resend mail' still holds with BOTH switches off, and THE-339.rota-reaches-volunteer proves it by SENDING on every paid tier with nothing connected rather than by grepping. TWO ROUTES ARE DELIBERATELY LEFT UNGATED and that is a decision rather than an omission: /api/composio/gmail/status and /api/composio/gmail/disconnect. A tenant that connected Gmail before the switch went off still holds a live OAuth grant on its own Google account, and 503-ing the revoke path would leave it in place with nothing in Harvest that can see or withdraw it - worse than a visible connection, and worse again for a grant made through an app Google has not verified (THE-194). Neither route can create a grant or send a message. FILES THIS TICKET CHANGED THAT ARE DELIBERATELY NOT PINNED ABOVE, for the structural reason THE-340 recorded: THE-322's index guard reads any other ticket's name in an entries[].file field as a record listing another record, and it is right to. That excludes THE-296.settings-sections.test.tsx, where the byte-identical pin on gmail-scopes.ts and the connect route gained an APPENDED edit record for the connect route alone - gmail-scopes.ts is asserted to be ineligible for such a record in its own case, and a new case asserts the route still imports and calls assertSendOnlyGmailScopes and reaches it only AFTER the switch, so the guard is unreached while Gmail is hidden rather than relaxed. It also excludes THE-296.settings-sections.layout.test.tsx, which gained the same GMAIL_FEATURE_ENABLED: true mock THE-335's newsletter switch already carries there, so the composition stays measured for the flip back. A FINDING WORTH RECORDING FOR A LATER TICKET, not fixed here because it is another ticket's guard: the code() comment-stripping helper in THE-286's and THE-296's suites runs a JSX-comment pass whose regex anchors on any brace followed by a doc comment and then runs to the first comment-close-then-brace below it. Against IntegrationsSection.tsx it deletes about 150 lines including the provider gate, so every assertion over its result there passes vacuously. THE-339's own suites carry a corrected copy with the reason written down; correcting the originals belongs to whoever owns those files.",
+  "entries": [
+    {
+      "file": "src/lib/gmail-feature.ts",
+      "digest": "1c70782db103a3d2ac86cb78d08790c5d41e9baaf731128a1c7a60ee09c41ec7",
+      "why": "THE-339 adds this file and it is the ticket. ONE VALUE, and it imports NOTHING - the same discipline sms-feature.ts and newsletter-feature.ts keep, and for the same reason: the flag is read from the client bundle and from four route handlers, and pulling the pricing matrix into any of them is the cost sms-feature.ts refuses to pay. It carries three exports: the switch, the 503 message every gated route answers with, and the notice the Integrations section shows in place of the card. Its header records why the switch is off - no inbox for a reply to land in, and THE-194's unverified OAuth app meaning a church reaches the feature only by clicking past a Google security warning - and why status and disconnect stay reachable."
+    },
+    {
+      "file": "src/components/AdminCRM.tsx",
+      "digest": "a1b76895d3bc769d4213bad38f3e34c6a513bdff91b8a84f504e1217b33c82fc",
+      "why": "THE-339 owns this change and it is one term plus one import. canConnectGmail now reads GMAIL_FEATURE_ENABLED AHEAD of isProviderAvailable, in the shape the newsletter rows use in IntegrationsSection: the switch is first, so while Gmail is hidden nobody on any tier is offered the Email button, the Connect-your-email link, or the /api/composio/gmail/status request that chooses between them. THE PLAN PREDICATE IS UNTOUCHED AND STILL CALLED, which is what makes the flip back a restoration of THE-193's and THE-225's behaviour rather than a re-derivation of it. THE-338 owns the collapsible payment-links disclaimer in this file and it is not touched; the file is still 2,234 lines with zero ui/ primitive imports, and composing it is still its own ticket."
+    },
+    {
+      "file": "src/components/settings/IntegrationsSection.tsx",
+      "digest": "9d79c65960351e1bc76313ceb40dacfb082824aa761e0870a526082b05e16462",
+      "why": "THE-339 owns this change, and it is three things. First, showProvider gains a Gmail clause beside THE-335's newsletter one - keyed on the provider id rather than on concern, because concern: 'crm' is a product grouping and not every future CRM provider is this one - placed ahead of the platform override, so a hidden feature is hidden from the super admin too. Second, a REPLACEMENT STATE: with newsletter and Gmail both hidden a paid tenant would otherwise open Integrations onto an empty region under an intro paragraph still telling them to connect Gmail, so the intro is now conditional and an Alert says what happened. Third, and this is the part that is not merely hiding: the section still asks the ungated status route and still offers Disconnect when a grant is live, so an admin who connected before the switch went off can revoke it. handleGmailDisconnect now checks resp.ok, because authFetch resolves on a 5xx and this is the only revoke control left - a swallowed failure would tell an admin a live grant was withdrawn when it was not."
+    },
+    {
+      "file": "src/app/api/composio/gmail/callback/route.ts",
+      "digest": "a2f927eab9aa43033c81550b224f24be58a216cfcb210499386858b44c5d37a4",
+      "why": "THE-339 owns this change: the master switch as the first statement in the handler, above everything, returning 503 with GMAIL_HIDDEN_MESSAGE. Six lines and one import; the signed-state verification, the tenant-subdomain redirect and the connection write below it are byte-identical. Gating the callback and not only connect is what stops a stale tab holding a valid signed state from completing a grant after the switch went off."
+    },
+    {
+      "file": "src/app/api/composio/gmail/address/route.ts",
+      "digest": "aeb372b9954096ae3df3e377e3decfe357c98919ca1b75849be91952e47c9d26",
+      "why": "THE-339 owns this change: the same six-line switch, first in the handler. The sending address is a send-time value - it exists so a church's mail goes out AS the right account - and nothing sends while Gmail is hidden, so the route refuses rather than accepting a value nothing will use. The per-admin write scope, which takes both ids from the verified token so one admin can never set another's address, is untouched below it."
+    },
+    {
+      "file": "src/app/api/crm/send-email/route.ts",
+      "digest": "7d6c008b0118b755c74acb05df3be460286e2138427b75ae4d3c08a4a3bb25ee",
+      "why": "THE-339 owns this change, and of the four gated routes this is the one that matters most: hiding the Email button on a CRM contact while leaving this route live would not be hiding a feature, because anyone holding a session can still POST to it. The switch is the first statement in the handler, so the refusal happens before authentication and before any Firestore read. Every server-side resolution below it - recipient from the contact document, sender from the admin's own integration doc, tenant and uid from the verified token, none of them from the body - is byte-identical."
+    },
+    {
+      "file": "src/lib/newsletter-feature.ts",
+      "digest": "9a8ab91e290cf760e63529aef1b47cd49dd37e5600fe03e337928038e050e01e",
+      "why": "THE-339 owns this comment-only change; no value in this file moved and NEWSLETTER_FEATURE_ENABLED is still false. Its header said Gmail was untouched by the newsletter switch 'and it is what sends a rota invitation, so hiding it here would break the founder's stated replacement for SMS'. The first half is still true and is kept. The second half stopped being true when THE-340 moved rota mail to Resend, and a docblock that states a stale reason for a live decision is worse than none - the next reader would have taken it as the reason not to touch Gmail. It is corrected in place, saying what it used to say and why that changed, rather than quietly rewritten."
+    },
+    {
+      "file": "src/__tests__/THE-339.gmail-hidden.test.ts",
+      "digest": "93f3a7c650222ff9b828395051d5a987134a380e0c9fbaeaa6a69925db28ae8d",
+      "why": "THE-339 adds this suite: the claims that belong to no single surface. The switch is one declared literal that every reader imports; the flag module imports nothing; all 23 files that mention Gmail still exist AND the enumerated list is checked against what is actually on disk, so it cannot rot in either direction; assertSendOnlyGmailScopes is RUN against four mailbox-reading scope sets and two unreadable configs rather than grepped, because a guard asserted by its own source text would pass with the function deleted; both GDPR paths still name gmail in their provider sweep and neither reads the switch; six other switches are still where they were. Its detectors for the shapes this repo has been bitten by - a pinned line number, a fixture dated near today, a guard about the branch's own diff - are built from patterns that cannot match their own spelling, because the first drafts of two of them failed on themselves."
+    },
+    {
+      "file": "src/__tests__/THE-339.gmail-routes.test.ts",
+      "digest": "9babeb0eff50dcc5d1efa230c1f31caa350b2c49fbd605d76acec1fb7f3e0ff7",
+      "why": "THE-339 adds this suite, and it is the only place the routes are exercised with the switch at its REAL value - the three behavioural route suites mock it true so the behaviour that must come back stays asserted. requireAdmin, adminDb and every composio-client export are mocked to THROW on contact, so 'the route refused before it authenticated or read anything' is proven by the absence of an explosion rather than by reading the source. The same harness proves the other half: status and disconnect DO reach authentication, so the revoke path is demonstrably still live rather than merely undocumented as gated."
+    },
+    {
+      "file": "src/__tests__/THE-339.rota-reaches-volunteer.test.ts",
+      "digest": "b0b69f1996240d8ea703fd5cb50764e1b6639ef2caca3129e791c9c5f93be72d",
+      "why": "THE-339 adds this suite and it answers the brief's blocking question by running it. NEITHER switch is mocked: SMS_FEATURE_ENABLED and GMAIL_FEATURE_ENABLED are read at their real on-disk values, because the question is not whether the email half works in principle but whether a volunteer hears about a service in the product as it ships with both hidden at once. rota-invite.ts, transactional-email.ts, sms-send.ts and plan-features.ts are all real and in the path; only firebase-admin, the resend package and the SMS provider are stubbed. composio-client is stubbed to THROW, so a rota path that still reached Gmail would fail loudly instead of sending twice. Every paid tier is exercised, the sender is asserted to be a Harvest-controlled address, and the accept link is proven answerable rather than merely well-shaped. The service date is years out and the clock is frozen with toFake: ['Date'] (#468)."
+    },
+    {
+      "file": "src/components/__tests__/THE-339.gmail-surfaces.test.tsx",
+      "digest": "f50234821dbf7335c0cbb7e16ffe8f6d9000482a0bb84d53b04b02119bf2644c",
+      "why": "THE-339 adds this suite: the rendered half, on a PAID tier so the plan entitles the tenant to Gmail and only the switch is doing the hiding. It carries the already-connected case the brief singles out - the section asks the status route, says the account is still connected, and offers a Disconnect that reaches the revoke route - alongside the proof that a connected admin is still offered no Connect, no sending address and no way to send. The authFetch double records every URL, so 'it never calls connect, address or send while hidden' is a positive check on what was called rather than an absence nobody looked for. happy-dom has no layout engine, so the touch floor is asserted as the ACTION_HEIGHT contract imported from the section rather than re-measured; that constant's real box is measured at five widths by THE-296's browser suite."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "d1c3ba193bde39a73aff64652249a3bcf62746c000d5ad7b7ae50db91ed55c84",
+      "why": "THE-339 owns this append and nothing else in the file. IntegrationsSection.tsx is added to RECORDED_ADOPTERS for ui/alert, beside the existing entries and never over them, with the ticket and the reason the guard requires - including which primitives were considered and REJECTED (empty announces an absent collection, not a capability withdrawn with a live grant behind it; dialog interrupts nothing that needs interrupting; sonner leaves the screen while the connection it described is still granted). No adopter was removed and no primitive was edited."
+    },
+    {
+      "file": "src/components/__tests__/AdminSettings.integrations-gating.test.tsx",
+      "digest": "a9ec7fcea39d5988dad7ac41b4929f2b085cba7ca427d528dc66843d19dfa078",
+      "why": "THE-339 owns this change, and it is DERIVATION rather than restatement. EXPECTED_PROVIDERS gains a second filter on GMAIL_FEATURE_ENABLED beside THE-335's newsletter one, so the tier cases follow the switches automatically and cannot silently agree with a component that hides the wrong provider. Test 2 becomes a relationship - the card is present exactly while the switch allows it, and the PLAN gate is asserted to still say yes either way - rather than a copy of the flag's own value. THE-193's dead-end case keeps its whole source-level round trip and gains the other side of it: with the switch off no button is rendered, so there is no journey to strand, and the section is asserted to explain itself rather than render an empty region. The per-admin case keeps its unconditional source claim and, while hidden, asserts the stronger thing - that there is no Gmail card at all - so it can never pass by finding nothing."
+    },
+    {
+      "file": "src/components/__tests__/AdminCRM.email.test.tsx",
+      "digest": "9fa18f56451c9e03f13c9c55f6ed76be18e980fc2f0a5012ef8f5b254b15279d",
+      "why": "THE-339 owns this change: a GMAIL_FEATURE_ENABLED: true mock and the note explaining it. Nothing was deleted, no assertion was lowered, and no case was skipped. The eight cases here describe the compose modal, its error states and its timeline write - all behaviour that must come back UNCHANGED when Gmail returns with an inbox - so they are kept fully asserted against the switch mocked on, exactly as THE-296's layout suite already keeps the newsletter cards measured with THE-335's switch mocked on. That the surface is GONE while the switch is off is asserted in this ticket's own suites instead."
+    },
+    {
+      "file": "src/components/__tests__/AdminCRM.gmail-dead-end.test.tsx",
+      "digest": "ac889a1c6a67be171a6bdce896169265a2bd0764a3ebc61cefc7c1030329b3ee",
+      "why": "THE-339 owns this change: the same GMAIL_FEATURE_ENABLED: true mock and note. THE-225's claim is that the three priced tiers keep CRM email and that an unresolved plan is not treated as free, and every one of those cases is kept and still asserted - they are the entitlement the flip back has to restore. Hiding Gmail must not be allowed to erase the record of what un-hiding is supposed to bring back, which is the whole reason for mocking rather than inverting here."
+    },
+    {
+      "file": "src/components/__tests__/AdminSettings.free-tier-sections.test.tsx",
+      "digest": "d9940f8dbc8f1c26766f786a06d9b411c98a0dc431a43337de2c7e62e9190e9f",
+      "why": "THE-339 owns this change: the same mock and note. The three 'X can still reach Gmail from Settings' cases are about the PLAN, not the switch - they exist because THE-225 took the Gmail card away from the free tier and had to prove it took it from nobody else - so they stay asserted with the switch mocked on. Inverting them would delete the record of an entitlement that has not changed."
+    },
+    {
+      "file": "src/app/api/composio/gmail/__tests__/connect-route.test.ts",
+      "digest": "44b3643f2812bc1c9be9efb0a68ad479436bd2c3b68ecd78e817599ca4175d94",
+      "why": "THE-339 owns this change: the same mock and note, and nothing else. Seventeen cases here hold the scope guard's refusals, the pending-connection reaper, the ten-minute window and the per-admin key, and every one of them is behaviour the flip back must restore intact - most of all the two that assert the route REFUSES to start OAuth on a config that can read a mailbox. Those are the cases it would be worst to lose, so they run against the switch mocked on rather than being skipped."
+    },
+    {
+      "file": "src/app/api/composio/gmail/__tests__/address-route.test.ts",
+      "digest": "37fd9421a3dd9677c01f871d80ccac577c0c90b1732803e9b335db928ed6373e",
+      "why": "THE-339 owns this change: the same mock and note. The seven cases hold the route's write scope - that both ids come from the verified token, so an admin cannot name another admin's document - which is a security property rather than a feature, and one the flip back must restore exactly. Kept asserted with the switch mocked on."
+    },
+    {
+      "file": "src/app/api/crm/__tests__/send-email-route.test.ts",
+      "digest": "d01ad3a0d202620f9af46e64b3a5d826f2fe1057c25fda9b5151aa94b683ae9b",
+      "why": "THE-339 owns this change: the same mock and note. The twenty cases here are almost entirely security properties - the recipient comes from the contact and never the body, the sender from the admin's own integration doc, admin B cannot send through admin A's connection, a request-supplied tenantId is ignored - and a route that is temporarily unreachable is exactly the wrong moment to stop asserting them. Kept whole, against the switch mocked on."
+    },
+    {
+      "file": "src/app/api/composio/gmail/connect/route.ts",
+      "digest": "9723768e27e467dbdc592886a5df39d7ef7c172f419f0f62907c64da1b067582",
+      "why": "THE-339 owns this change: the master switch as the first statement in the handler, above the try. Six lines and one import, and NOTHING ELSE MOVED - assertSendOnlyGmailScopes is called on the same object with the same arguments in the same place, and the sending-address capture, the pending-connection reaper, the ten-minute window and the per-admin key are byte-identical. The switch returns BEFORE the scope guard, so while Gmail is hidden that guard is UNREACHED rather than relaxed, and every scope it refuses today it refuses again the moment the flag flips. This file's own byte-identical pin gained an appended edit record carrying the same reasoning."
+    }
+  ]
+}

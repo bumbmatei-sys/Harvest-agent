@@ -5,9 +5,11 @@ import { authFetch } from '../../utils/auth-fetch';
 import { TenantPlan } from '../../types/tenant.types';
 import { getPlanFeatures } from '../../utils/plan-features';
 import { hasPlatformOverride } from '../../utils/tenant-scope';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CONTROL_DENSITY } from '../layout/form-layout';
 import { NAV_CLEARANCE } from './GivingStatementsSection';
 import { NEWSLETTER_FEATURE_ENABLED } from '../../lib/newsletter-feature';
+import { GMAIL_FEATURE_ENABLED, GMAIL_PAUSED_NOTICE } from '../../lib/gmail-feature';
 import {
   INTEGRATION_PROVIDERS,
   IntegrationProviderId,
@@ -60,12 +62,42 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ currentPlan, 
     // goes out on — the founder's stated replacement for SMS. Hiding it here to
     // hide the newsletter would break the thing this ticket exists to protect.
     if (!NEWSLETTER_FEATURE_ENABLED && provider.concern === 'newsletter') return false;
+    // 🔴 THE-339 — the Gmail switch, in the same position and for the same
+    // reason: while Gmail is hidden NOBODY is offered the connection, super
+    // admin included. `id` is what decides here rather than `concern`, because
+    // `concern: 'crm'` is a product grouping and not every future CRM provider
+    // is this one. THE COMMENT ABOVE THIS ONE WAS TRUE WHEN IT WAS WRITTEN AND
+    // IS NOT ANY MORE: a rota invitation no longer goes out on the church's
+    // Gmail. THE-340 moved it to Resend, from a Harvest-controlled sender, so
+    // hiding Gmail costs a volunteer nothing.
+    if (!GMAIL_FEATURE_ENABLED && provider.id === 'gmail') return false;
     return isPlatformOverride || isProviderAvailable(provider, features, currentPlan);
   };
   const showInstagram = showProvider('instagram');
   const showMailchimp = showProvider('mailchimp');
   const showGmail = showProvider('gmail');
+  /**
+   * 🔴 THE-339 — IS THERE A GRANT HERE THAT STILL HAS TO BE REVOCABLE?
+   *
+   * The same question `showGmail` asks, WITHOUT the master switch. A tenant that
+   * connected Gmail before the switch went off still holds a live OAuth grant on
+   * its own Google account, and hiding the card outright would leave that grant
+   * in place with nothing in Harvest that can see or withdraw it. A connection
+   * nobody can see or revoke is worse than a visible one — more so for a grant
+   * made through an app Google has not verified (THE-194).
+   *
+   * So the section still ASKS `/api/composio/gmail/status` for anyone the plan
+   * entitles, and offers Disconnect when the answer is yes. Neither of those two
+   * routes is gated, and neither can create a grant or send a message. What is
+   * gone is Connect, the sending address, and every path that sends.
+   */
+  const gmailRevocable = isPlatformOverride
+    || isProviderAvailable(getIntegrationProvider('gmail'), features, currentPlan);
   const visibleProviders = INTEGRATION_PROVIDERS.filter(p => showProvider(p.id));
+  /** The paused notice stands in for the card, so the region is never a heading
+   *  over nothing. Shown to exactly the audience that would otherwise have seen
+   *  a Gmail card. */
+  const showGmailPaused = !GMAIL_FEATURE_ENABLED && gmailRevocable;
 
   const [instagramStatus, setInstagramStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [instagramAccount, setInstagramAccount] = useState<string | null>(null);
@@ -117,7 +149,7 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ currentPlan, 
       const [igResp, mcResp, gmResp] = await Promise.all([
         showInstagram ? authFetch('/api/composio/instagram/status') : null,
         showMailchimp ? authFetch('/api/composio/mailchimp/status') : null,
-        showGmail ? authFetch('/api/composio/gmail/status') : null,
+        gmailRevocable ? authFetch('/api/composio/gmail/status') : null,
       ]);
 
       if (igResp?.ok) {
@@ -158,7 +190,7 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ currentPlan, 
       console.error('Failed to load integrations:', e);
     }
     setLoaded(true);
-  }, [loaded, showInstagram, showMailchimp, showGmail]);
+  }, [loaded, showInstagram, showMailchimp, showGmail, gmailRevocable]);
 
   useEffect(() => { loadIntegrations(); }, [loadIntegrations]);
 
@@ -336,7 +368,12 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ currentPlan, 
   const handleGmailDisconnect = async () => {
     setGmailLoading(true);
     try {
-      await authFetch('/api/composio/gmail/disconnect', { method: 'POST' });
+      // 🔴 THE-339 — the Silent-Failure Rule. This is now the ONLY revoke
+      // control in the product, so a refused disconnect must not look like a
+      // successful one: `authFetch` resolves on a 4xx/5xx, and swallowing that
+      // would leave an admin believing a live OAuth grant was withdrawn.
+      const resp = await authFetch('/api/composio/gmail/disconnect', { method: 'POST' });
+      if (!resp.ok) throw new Error(`Gmail disconnect failed: ${resp.status}`);
       setGmailStatus('disconnected');
       // Disconnect clears the stored address server-side; drop it here too so
       // the card cannot keep naming an account that is no longer linked.
@@ -384,12 +421,18 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ currentPlan, 
     <div className={`space-y-4 ${NAV_CLEARANCE}`}>
       {/* The intro describes the cards that are actually on screen. Derived
           from the visible providers' own concern, so a tenant with only the
-          CRM provider is not told about newsletter distribution. */}
-      <p className="text-sm text-body">
-        {visibleProviders.some(p => p.concern === 'newsletter')
-          ? 'Connect your social media and email marketing platforms to automate newsletter distribution.'
-          : 'Connect your own Gmail account so you can email a CRM contact from Harvest.'}
-      </p>
+          CRM provider is not told about newsletter distribution.
+          🔴 THE-339 — and a tenant with NO visible provider is not told to
+          connect something that is not there. The two-branch version fell
+          through to the Gmail sentence when the list was empty, which is a
+          heading over nothing plus an instruction that cannot be followed. */}
+      {visibleProviders.length > 0 && (
+        <p className="text-sm text-body">
+          {visibleProviders.some(p => p.concern === 'newsletter')
+            ? 'Connect your social media and email marketing platforms to automate newsletter distribution.'
+            : 'Connect your own Gmail account so you can email a CRM contact from Harvest.'}
+        </p>
+      )}
 
       {/* Instagram Card */}
       {showInstagram && (
@@ -591,9 +634,42 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ currentPlan, 
       </div>
       )}
 
-      <p className="text-xs text-faint">
-        Powered by Composio — secure OAuth connections. Your credentials are never stored on our servers.
-      </p>
+      {/* 🔴 THE-339 — the replacement state, composed from the installed
+          `alert` rather than hand-rolled. Two things have to be true at once
+          while Gmail is hidden: nobody is offered a connection, AND an admin
+          who already made one can still see and withdraw it. So this says what
+          happened and why, and grows a Disconnect the moment the status route
+          reports a live grant. `role="alert"` comes from the primitive. */}
+      {showGmailPaused && (
+        <Alert data-gmail-paused>
+          <Send size={20} aria-hidden="true" />
+          <AlertTitle>Gmail</AlertTitle>
+          <AlertDescription>
+            <p>{GMAIL_PAUSED_NOTICE}</p>
+            {gmailStatus === 'connected' && (
+              <>
+                <p className="mt-1">
+                  Your Google account is still connected. Disconnecting revokes Harvest&apos;s access to it.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleGmailDisconnect}
+                  disabled={gmailLoading}
+                  className={`mt-2 px-4 border border-danger text-danger-strong rounded-brand text-sm font-medium hover:bg-danger-tint transition-colors disabled:opacity-50 inline-flex items-center ${ACTION_HEIGHT}`}
+                >
+                  {gmailLoading ? 'Disconnecting...' : 'Disconnect'}
+                </button>
+              </>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {(visibleProviders.length > 0 || showGmailPaused) && (
+        <p className="text-xs text-faint">
+          Powered by Composio — secure OAuth connections. Your credentials are never stored on our servers.
+        </p>
+      )}
     </div>
   );
 };

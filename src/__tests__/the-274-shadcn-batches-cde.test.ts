@@ -894,6 +894,25 @@ it('border-strong, border-faint, border-subtle and border-hairline still produce
  */
 const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: string }> = [
   {
+    file: 'src/components/settings/IntegrationsSection.tsx',
+    ticket: 'THE-339',
+    why:
+      'APPENDED, never substituted. THE-339 hides the Gmail card behind a master switch, and the '
+      + 'section it leaves behind needs a REPLACEMENT STATE rather than a heading over nothing: an '
+      + 'admin whose only provider was Gmail would otherwise open Integrations onto an empty region '
+      + 'and an intro paragraph still telling them to connect the thing that is gone. It takes '
+      + '`alert` (Alert, AlertTitle, AlertDescription) for that state. Load-bearing rather than '
+      + 'cosmetic, for the same reason FieldError is above: the primitive carries role="alert", '
+      + 'which is what makes "sending is paused, and your account is still connected" reach a screen '
+      + 'reader, and it paints from bg-card/text-card-foreground so both palettes resolve it with no '
+      + 'colour of this ticket\'s own. It is also where the ONLY remaining Disconnect control lives, '
+      + 'so an admin who connected Gmail before the switch went off can still revoke a live OAuth '
+      + 'grant. `empty` is REJECTED: it announces an absent collection, and this is a capability '
+      + 'withdrawn on purpose with a live connection possibly still behind it. `dialog` is REJECTED: '
+      + 'nothing here is a decision that must interrupt. `sonner` is REJECTED: a toast leaves the '
+      + 'screen while the connection it described is still granted. No primitive was edited.',
+  },
+  {
     file: 'src/components/settings/GivingStatementsSection.tsx',
     ticket: 'THE-286',
     why:

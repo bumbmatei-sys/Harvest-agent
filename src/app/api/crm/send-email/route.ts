@@ -5,6 +5,7 @@ import { executeComposioAction } from '@/lib/composio-client';
 import { adminDb } from '@/lib/firebase-admin';
 import { captureHandledError } from '@/lib/money-path-sentry';
 import { NO_SENDER_ADDRESS_MESSAGE } from '@/lib/gmail-sender';
+import { GMAIL_FEATURE_ENABLED, GMAIL_HIDDEN_MESSAGE } from '@/lib/gmail-feature';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,6 +44,13 @@ const MAX_BODY = 50_000;
  * non-2xx with a real message so the client can keep the composed text.
  */
 export async function POST(request: NextRequest) {
+  // 🔴 THE-339 — the master switch, before anything else in this handler.
+  // The route is not deleted and every gate below it is untouched; flipping
+  // GMAIL_FEATURE_ENABLED brings it back exactly as it was.
+  if (!GMAIL_FEATURE_ENABLED) {
+    return NextResponse.json({ error: GMAIL_HIDDEN_MESSAGE }, { status: 503 });
+  }
+
   const userOrErr = await requireAdmin(request);
   if (userOrErr instanceof NextResponse) return userOrErr;
   const user = userOrErr;

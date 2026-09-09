@@ -11,10 +11,18 @@ import { assertSendOnlyGmailScopes, GmailScopeError } from '@/lib/gmail-scopes';
 import { normalizeSenderEmail } from '@/lib/gmail-sender';
 import { adminDb } from '@/lib/firebase-admin';
 import { captureHandledError } from '@/lib/money-path-sentry';
+import { GMAIL_FEATURE_ENABLED, GMAIL_HIDDEN_MESSAGE } from '@/lib/gmail-feature';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  // 🔴 THE-339 — the master switch, before anything else in this handler.
+  // The route is not deleted and every gate below it is untouched; flipping
+  // GMAIL_FEATURE_ENABLED brings it back exactly as it was.
+  if (!GMAIL_FEATURE_ENABLED) {
+    return NextResponse.json({ error: GMAIL_HIDDEN_MESSAGE }, { status: 503 });
+  }
+
   try {
     const userOrResponse = await requireAdmin(request);
     if (userOrResponse instanceof NextResponse) return userOrResponse;
