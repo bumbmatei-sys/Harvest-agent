@@ -7,8 +7,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
  * 🔴 WHAT IS STUBBED, AND WHAT IS DELIBERATELY NOT.
  *
  * STUBBED: `firebase-admin` (an in-memory document store), `zernio` (the
- * provider's HTTP call) and `composio-client` (Gmail's). Those three are the
- * outside world.
+ * provider's HTTP call) and `resend` (the email provider's SDK). Those three
+ * are the outside world.
+ *
+ * 🔴 THE-340 REPLACED THE GMAIL STUB WITH A RESEND ONE, and moved the stub one
+ * layer OUT. `composio-client` was Gmail's transport; the thing stubbed now is
+ * the `resend` PACKAGE, which means `transactional-email.ts` — the funnel this
+ * ticket added — is REAL in every test below, exactly as `sms-send.ts` is. A
+ * stub of the funnel would guard nothing: the question "is a missing API key
+ * reported as a failure" is only answerable with the real one in the path.
  *
  * 🔴 REAL, AND THIS IS THE WHOLE POINT: `sms-send.ts`, `sms-optout.ts`,
  * `sms-usage.ts`, `plan-features.ts` and `rota-invite.ts`. A stub of any of them
@@ -30,16 +37,31 @@ const ADMIN_UID = 'admin-1';
 const PERSON = 'user-ben';
 const PHONE = '+12125551234';
 const EMAIL = 'ben@example.org';
-const SERVICE_AT = new Date('2026-09-13T10:00:00.000Z');
+/**
+ * 🔴 A SUNDAY FIVE YEARS OUT. THE-340 MOVED THIS, AND IT WAS A LIVE BUG.
+ *
+ * ⚠️ This fixture used to be pinned FOUR DAYS after the day THE-340 was
+ * written. #468 records what that costs: a fixture pinned near today turns
+ * `main` red for everyone the moment the date rolls past it. And the failure
+ * here would not have been a loud one — `recordResponse` refuses a service that
+ * has already started, so once the date passed, the accept and decline cases
+ * would have begun asserting against a past service and this suite would have
+ * quietly changed what it measured rather than simply breaking.
+ *
+ * The three dates in this file keep their ORIGINAL OFFSETS — three days before
+ * the service, and one day after it — so every case still asks its own
+ * question. The service is on a Sunday, as it was before.
+ */
+const SERVICE_AT = new Date('2032-09-12T10:00:00.000Z');
 
 /* ── An in-memory Firestore, enough for the funnel and the meter ─────────── */
 
 const {
-  docData, mockZernioSend, mockComposio, writes, transactions,
+  docData, mockZernioSend, mockResendSend, writes, transactions,
 } = vi.hoisted(() => ({
   docData: new Map<string, any>(),
   mockZernioSend: vi.fn(),
-  mockComposio: vi.fn(),
+  mockResendSend: vi.fn(),
   writes: [] as { path: string; value: any }[],
   transactions: [] as string[],
 }));
@@ -131,7 +153,7 @@ vi.mock('@/lib/sms-feature', () => ({
 }));
 
 vi.mock('@/lib/zernio', () => ({ zernioSendSms: mockZernioSend }));
-vi.mock('@/lib/composio-client', () => ({ executeComposioAction: mockComposio }));
+vi.mock('resend', () => ({ Resend: class { emails = { send: mockResendSend }; } }));
 
 const { sendInvitation, listInvitations, recordResponse, findByToken } =
   await import('../rota-invite');
@@ -149,19 +171,23 @@ const ASSIGNMENT = {
   startsAt: SERVICE_AT,
 };
 
-/** A church on the plan the argument is about. `max` is Ministry. */
-function seed(plan: 'plus' | 'pro' | 'max', opts: { optedOut?: boolean; gmail?: boolean } = {}) {
+/**
+ * A church on the plan the argument is about. `max` is Ministry.
+ *
+ * 🔴 THE-340: `sms` IS THE ONLY INTEGRATION SEEDED, AND THAT IS THE POINT. The
+ * Gmail connection this helper used to write is gone, because email no longer
+ * reads one. `{ integrations: false }` takes the SMS number away too, leaving a
+ * tenant with NOTHING connected — the state the ticket exists for.
+ */
+function seed(plan: 'plus' | 'pro' | 'max', opts: { optedOut?: boolean; integrations?: boolean } = {}) {
   docData.clear();
   writes.length = 0;
   transactions.length = 0;
   docData.set(`tenants/${TENANT}`, { name: 'Grace Chapel', plan });
-  docData.set(`tenants/${TENANT}/integrations/sms`, {
-    numberId: 'n1', phoneNumber: '+12125550000', profileId: 'p1', status: 'active',
-    country: 'US', purchasedAt: '2026-01-01',
-  });
-  if (opts.gmail !== false) {
-    docData.set(`tenants/${TENANT}/integrations/${ADMIN_UID}_gmail`, {
-      status: 'active', connectedAccountId: 'ca-1', senderEmail: 'office@gracechapel.org',
+  if (opts.integrations !== false) {
+    docData.set(`tenants/${TENANT}/integrations/sms`, {
+      numberId: 'n1', phoneNumber: '+12125550000', profileId: 'p1', status: 'active',
+      country: 'US', purchasedAt: '2026-01-01',
     });
   }
   if (opts.optedOut) {
@@ -174,7 +200,8 @@ function seed(plan: 'plus' | 'pro' | 'max', opts: { optedOut?: boolean; gmail?: 
 beforeEach(() => {
   vi.clearAllMocks();
   mockZernioSend.mockResolvedValue({ ok: true, id: 'sm_1', segments: 1 });
-  mockComposio.mockResolvedValue({ successful: true });
+  mockResendSend.mockResolvedValue({ data: { id: 're_1' }, error: null });
+  process.env.RESEND_API_KEY = 're-test-key';
 });
 
 /* ═══ 1 · An assignment produces an invitation, NAMED PER CHANNEL ══════════ */
@@ -183,7 +210,7 @@ describe('an assignment produces an invitation', () => {
   it('🔴 the invitation exists, carries a token and an accept link, and both channels are named', async () => {
     seed('max');
     const report = await sendInvitation(
-      TENANT, ADMIN_UID, ASSIGNMENT,
+      TENANT, ASSIGNMENT,
       { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
     );
 
@@ -198,7 +225,7 @@ describe('an assignment produces an invitation', () => {
     expect(report.delivered).toBe(true);
 
     // Both transports actually saw a message.
-    expect(mockComposio).toHaveBeenCalledTimes(1);
+    expect(mockResendSend).toHaveBeenCalledTimes(1);
     expect(mockZernioSend).toHaveBeenCalledTimes(1);
 
     // And the message says the three things the ticket asks for: the day, the
@@ -215,10 +242,10 @@ describe('an assignment produces an invitation', () => {
   it('re-inviting the same slot rewrites ONE document and keeps the link working', async () => {
     seed('max');
     const first = await sendInvitation(
-      TENANT, ADMIN_UID, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
+      TENANT, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
     );
     const second = await sendInvitation(
-      TENANT, ADMIN_UID, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
+      TENANT, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
     );
     // 🔴 One invitation, one token — a second `addDoc` would have made two
     // accept links for one slot and charged twice for the same message.
@@ -231,10 +258,10 @@ describe('an assignment produces an invitation', () => {
   it('and reassigning the slot to somebody else REGENERATES the token', async () => {
     seed('max');
     const first = await sendInvitation(
-      TENANT, ADMIN_UID, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
+      TENANT, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
     );
     const moved = await sendInvitation(
-      TENANT, ADMIN_UID, { ...ASSIGNMENT, personId: 'user-ada', personName: 'Adaeze Okonkwo' },
+      TENANT, { ...ASSIGNMENT, personId: 'user-ada', personName: 'Adaeze Okonkwo' },
       { email: 'ada@example.org', phone: null }, 'Grace Chapel', 'invite',
     );
     // 🔴 The previous holder's link must stop answering for the new person.
@@ -249,14 +276,14 @@ describe('accept and decline both record', () => {
   it('an accept and a decline each land on the invitation, and only three fields move', async () => {
     seed('max');
     const report = await sendInvitation(
-      TENANT, ADMIN_UID, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
+      TENANT, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
     );
     const before = { ...docData.get(`tenants/${TENANT}/rotaInvitations/plan-1__item-a`) };
 
-    const accepted = await recordResponse(TENANT, report.token, 'accepted', new Date('2026-09-10T00:00:00Z'));
+    const accepted = await recordResponse(TENANT, report.token, 'accepted', new Date('2032-09-09T00:00:00Z'));
     expect(accepted?.status).toBe('accepted');
 
-    const declined = await recordResponse(TENANT, report.token, 'declined', new Date('2026-09-10T00:00:00Z'));
+    const declined = await recordResponse(TENANT, report.token, 'declined', new Date('2032-09-09T00:00:00Z'));
     expect(declined?.status).toBe('declined');
 
     // 🔴 THE BOUND ON THE BEARER TOKEN, ASSERTED: everything except `status` and
@@ -272,17 +299,17 @@ describe('accept and decline both record', () => {
   it('a token for a service that has already started answers nothing', async () => {
     seed('max');
     const report = await sendInvitation(
-      TENANT, ADMIN_UID, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
+      TENANT, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
     );
     // The service is on the 13th; this is the 14th.
-    expect(await recordResponse(TENANT, report.token, 'accepted', new Date('2026-09-14T00:00:00Z')))
+    expect(await recordResponse(TENANT, report.token, 'accepted', new Date('2032-09-13T00:00:00Z')))
       .toBeNull();
     expect(docData.get(`tenants/${TENANT}/rotaInvitations/plan-1__item-a`).status).toBe('invited');
   });
 
   it('a malformed or unknown token answers nothing and spends no read', async () => {
     seed('max');
-    await sendInvitation(TENANT, ADMIN_UID, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite');
+    await sendInvitation(TENANT, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite');
     expect(await findByToken(TENANT, '../../etc/passwd')).toBeNull();
     expect(await findByToken(TENANT, 'A'.repeat(43))).toBeNull();
     expect(await findByToken(TENANT, null)).toBeNull();
@@ -302,13 +329,13 @@ describe('a volunteer who texted STOP receives no reminder', () => {
     seed('max', { optedOut: true });
 
     const invited = await sendInvitation(
-      TENANT, ADMIN_UID, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
+      TENANT, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
     );
     expect(mockZernioSend, 'an opted-out number reached the provider').not.toHaveBeenCalled();
     expect(invited.channels.sms).toBe('opted_out');
 
     const reminded = await sendInvitation(
-      TENANT, ADMIN_UID, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'reminder',
+      TENANT, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'reminder',
     );
     expect(mockZernioSend, 'an opted-out number reached the provider on a reminder')
       .not.toHaveBeenCalled();
@@ -318,7 +345,7 @@ describe('a volunteer who texted STOP receives no reminder', () => {
   it('🔴 and NOTHING IS METERED for them — STOP is refused before a segment is reserved', async () => {
     seed('max', { optedOut: true });
     await sendInvitation(
-      TENANT, ADMIN_UID, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'reminder',
+      TENANT, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'reminder',
     );
     // The usage document was never even created: the refusal happens before the
     // reservation, so a refused send costs nothing.
@@ -330,14 +357,14 @@ describe('a volunteer who texted STOP receives no reminder', () => {
   it('the EMAIL still goes — STOP is an SMS consent, not a withdrawal from the rota', async () => {
     seed('max', { optedOut: true });
     const report = await sendInvitation(
-      TENANT, ADMIN_UID, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
+      TENANT, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
     );
     expect(report.channels.email).toBe('sent');
     expect(report.delivered).toBe(true);
   });
 
   it('and `reminderDue` will not retry a channel that never delivered', () => {
-    const now = new Date('2026-09-10T00:00:00Z');
+    const now = new Date('2032-09-09T00:00:00Z');
     const base = { status: 'invited' as const, startsAt: SERVICE_AT, reminderCount: 0 };
     expect(reminderDue({ ...base, channels: { email: 'sent', sms: 'opted_out' } }, now)).toBe(true);
     // 🔴 Nothing reached them at all, so there is nothing to remind ABOUT and a
@@ -356,7 +383,7 @@ describe('every send is metered into tenants/{id}/usage/{YYYY-MM}', () => {
   it('🔴 a delivered SMS increments `smsSegments` on the month document', async () => {
     seed('max');
     await sendInvitation(
-      TENANT, ADMIN_UID, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
+      TENANT, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
     );
     const doc = monthDoc();
     expect(doc, 'no usage document was written — the send was unmetered').toBeTruthy();
@@ -368,7 +395,7 @@ describe('every send is metered into tenants/{id}/usage/{YYYY-MM}', () => {
   it('🔴 the reservation is ATOMIC — it happens inside a transaction, before the provider', async () => {
     seed('max');
     await sendInvitation(
-      TENANT, ADMIN_UID, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
+      TENANT, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
     );
     // Two concurrent near-limit sends must not both pass a naive read-then-write.
     expect(transactions.length).toBe(1);
@@ -378,7 +405,7 @@ describe('every send is metered into tenants/{id}/usage/{YYYY-MM}', () => {
     seed('max');
     mockZernioSend.mockResolvedValue({ ok: true, id: 'sm_2', segments: 3 });
     await sendInvitation(
-      TENANT, ADMIN_UID, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
+      TENANT, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
     );
     // 1 reserved + 2 settled. Harvest is billed for three and counts three.
     expect((monthDoc() as [string, any])[1].smsSegments).toBe(3);
@@ -388,7 +415,7 @@ describe('every send is metered into tenants/{id}/usage/{YYYY-MM}', () => {
     seed('max');
     mockZernioSend.mockResolvedValue({ ok: false, error: 'carrier rejected' });
     const report = await sendInvitation(
-      TENANT, ADMIN_UID, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
+      TENANT, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
     );
     expect(report.channels.sms).toBe('failed');
     expect((monthDoc() as [string, any])[1].smsSegments).toBe(0);
@@ -397,7 +424,7 @@ describe('every send is metered into tenants/{id}/usage/{YYYY-MM}', () => {
   it('and a person with no phone number is metered nothing at all', async () => {
     seed('max');
     const report = await sendInvitation(
-      TENANT, ADMIN_UID, ASSIGNMENT, { email: EMAIL, phone: null }, 'Grace Chapel', 'invite',
+      TENANT, ASSIGNMENT, { email: EMAIL, phone: null }, 'Grace Chapel', 'invite',
     );
     expect(report.channels.sms).toBe('unavailable');
     expect(monthDoc()).toBeUndefined();
@@ -416,21 +443,21 @@ describe('a tenant without SMS still gets working invitations', () => {
   it.each(['plus', 'pro'] as const)('%s: the invitation, its token and its link all exist', async (plan) => {
     seed(plan);
     const report = await sendInvitation(
-      TENANT, ADMIN_UID, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
+      TENANT, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
     );
 
     // 🔴 The invitation is REAL and answerable.
     expect(isRotaToken(report.token)).toBe(true);
     expect(report.url).toBeTruthy();
     const answered = await recordResponse(
-      TENANT, report.token, 'accepted', new Date('2026-09-10T00:00:00Z'),
+      TENANT, report.token, 'accepted', new Date('2032-09-09T00:00:00Z'),
     );
     expect(answered?.status).toBe('accepted');
 
     // 🔴 The EMAIL carried it, and the email carries the LINK.
     expect(report.channels.email).toBe('sent');
     expect(report.delivered).toBe(true);
-    const body = mockComposio.mock.calls[0][1].body as string;
+    const body = mockResendSend.mock.calls[0][0].text as string;
     expect(body).toContain(report.url as string);
 
     // 🔴 And SMS is `unavailable` — a plan fact, not an error the admin clears.
@@ -440,16 +467,45 @@ describe('a tenant without SMS still gets working invitations', () => {
     expect([...docData.keys()].some((k) => k.includes('/usage/'))).toBe(false);
   });
 
-  it('and with no Gmail connection either, the invitation still exists to be shared by hand', async () => {
-    seed('plus', { gmail: false });
+  /**
+   * 🔴 THE-340 INVERTED THIS TEST, AND THE INVERSION IS THE TICKET.
+   *
+   * ⚠️ IT USED TO ASSERT `{ email: 'unavailable', sms: 'unavailable' }` AND
+   * `delivered: false` — "the invitation still exists to be shared by hand".
+   * That was an accurate description of a broken product. With SMS hidden by
+   * THE-335, email was the only channel left, and email required an OAuth grant
+   * a church could only complete by clicking past Google's "this app isn't
+   * verified" warning. A church that had not done so could not tell one
+   * volunteer they were on, and the fix on offer was a security warning.
+   *
+   * 🔴 SO THE ASSERTION IS NOW THE OPPOSITE ONE, and it is test 1 of the brief:
+   * with NOTHING connected the volunteer RECEIVES the invitation.
+   */
+  it('🔴 a volunteer receives an invitation with NOTHING connected', async () => {
+    seed('plus', { integrations: false });
+    // Nothing is connected: no SMS number, and no Gmail — the collection is
+    // empty but for the tenant document itself.
+    expect([...docData.keys()].filter((k) => k.includes('/integrations/'))).toEqual([]);
+
     const report = await sendInvitation(
-      TENANT, ADMIN_UID, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
+      TENANT, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
     );
-    // 🔴 THE-194 is open: Google's OAuth app is unverified and capped at 100
-    // users, so this is a live state and not a hypothetical.
-    expect(report.channels).toEqual({ email: 'unavailable', sms: 'unavailable' });
-    expect(report.delivered).toBe(false);
-    // The record and its link survive the loss of every transport.
+
+    // 🔴 DELIVERED. Not "exists to be shared by hand".
+    expect(report.channels.email, 'the volunteer got no email with nothing connected').toBe('sent');
+    expect(report.delivered).toBe(true);
+
+    // 🔴 It went out over Resend, to that volunteer, carrying the accept link.
+    expect(mockResendSend).toHaveBeenCalledTimes(1);
+    const sent = mockResendSend.mock.calls[0][0];
+    expect(sent.to).toBe(EMAIL);
+    expect(sent.text).toContain(report.url as string);
+
+    // SMS is `unavailable` — hidden and unentitled both, and neither is an error.
+    expect(report.channels.sms).toBe('unavailable');
+    expect(mockZernioSend).not.toHaveBeenCalled();
+
+    // The record and its link are unchanged by any of this.
     expect(report.url).toBeTruthy();
     expect(await findByToken(TENANT, report.token)).not.toBeNull();
   });
@@ -467,10 +523,10 @@ describe('no member is listed alongside a location', () => {
       onlineLink: null,
     });
     await sendInvitation(
-      TENANT, ADMIN_UID, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
+      TENANT, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
     );
     const sms = mockZernioSend.mock.calls[0][0].text as string;
-    const email = mockComposio.mock.calls[0][1].body as string;
+    const email = mockResendSend.mock.calls[0][0].text as string;
 
     // ⚠️ THE EMAIL GREETS THE PERSON; THE SMS DOES NOT, AND THAT IS DELIBERATE
     // RATHER THAN AN OMISSION. A text arrives on the recipient's own phone, so a
@@ -502,7 +558,7 @@ describe('only one timestamp representation is ever written', () => {
   it('🔴 every date on the document is a Timestamp — no ISO string, no epoch number', async () => {
     seed('max');
     await sendInvitation(
-      TENANT, ADMIN_UID, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
+      TENANT, ASSIGNMENT, { email: EMAIL, phone: PHONE }, 'Grace Chapel', 'invite',
     );
     const stored = docData.get(`tenants/${TENANT}/rotaInvitations/plan-1__item-a`);
     for (const field of ['startsAt', 'invitedAt']) {

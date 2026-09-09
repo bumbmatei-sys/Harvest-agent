@@ -137,7 +137,14 @@ const filesSpelling = (digest: string): string[] =>
  * suite reaches the accepted set through this module rather than spelling the
  * digest, so a real rules change still costs exactly one edit. Nothing above is
  * removed and no accepted value is widened. */
-const PINNING_SUITES = 59;
+/* ⚠️ APPENDED BY THE-340. It moves rota invitations off the church's own Gmail
+ * onto Resend so a church that has connected nothing can still reach its
+ * volunteers — a transport change that needed NO rule, because every access to
+ * `tenants/{t}/rotaInvitations` goes through the Admin SDK, which bypasses
+ * rules entirely. Its suite reaches the accepted set through this module rather
+ * than spelling the digest, so a real rules change still costs exactly one
+ * edit. Nothing above is removed and no accepted value is widened. */
+const PINNING_SUITES = 60;
 
 /**
  * A digest no ticket has recorded and none ever will — the planted change.

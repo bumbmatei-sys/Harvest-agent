@@ -406,7 +406,7 @@ export async function POST(request: NextRequest) {
         continue;
       }
       const report = await sendInvitation(
-        tenantId, user.uid, assignment, contact, churchName,
+        tenantId, assignment, contact, churchName,
         action === 'remind' ? 'reminder' : 'invite',
       );
       results.push({

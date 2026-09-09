@@ -24,14 +24,28 @@ import { SMS_FEATURE_ENABLED } from '@/lib/sms-feature';
  * it does not hold, hiding SMS takes a working notification away and puts
  * nothing in its place.
  *
- * 🔴 ONE THING IN THAT SENTENCE IS WRONG, AND IT IS WORTH BEING PRECISE ABOUT.
- * Rota mail does NOT go through Resend. It goes through the CHURCH'S OWN GMAIL,
- * via Composio's `GMAIL_SEND_EMAIL`, under the church's own connection — see
- * `sendOneEmail` in `lib/rota-invite.ts`. Resend is Harvest's TRANSACTIONAL
- * sender (sign-in links, receipts) and is named as such in the privacy notice.
- * The two are different paths with different failure modes, and the difference
- * matters here: a church with no Gmail connected gets `'unavailable'` rather
- * than a delivered message, which section 4 covers.
+ * 🔴 THAT SENTENCE WAS RIGHT, AND THIS SUITE USED TO SAY IT WAS WRONG.
+ *
+ * ⚠️ WHAT THIS FILE ASSERTED BEFORE THE-340, VERBATIM: "Rota mail does NOT go
+ * through Resend. It goes through the CHURCH'S OWN GMAIL." It recorded that as
+ * a correction to the founder — he was "describing the outcome, not the path" —
+ * and then PINNED it, with a test named "rota mail goes through the CHURCH'S
+ * Gmail, not through Resend" that asserted `GMAIL_SEND_EMAIL` was present and
+ * `/resend/i` was absent.
+ *
+ * 🔴 IT WAS NOT A CORRECTION. IT WAS THE DEFECT, WRITTEN DOWN AND GUARDED.
+ * THE-335 hid SMS in the same breath, which left the church's Gmail as the ONLY
+ * channel a volunteer could be reached on — and connecting it means clicking
+ * past Google's "this app isn't verified" interstitial, because the OAuth app
+ * is unverified and capped at 100 users. So a church that had connected nothing
+ * could not notify one volunteer, and the remedy Harvest offered was a security
+ * warning. The guard's own words — "a Resend send would not depend on the
+ * church at all" — are the argument FOR the change it was preventing.
+ *
+ * 🔴 THE-340 MOVES ROTA MAIL ONTO RESEND, from a Harvest-controlled sender on a
+ * verified domain, and this suite now asserts that. Section 4 is inverted
+ * accordingly; the Gmail SCOPE guard it also held was rewritten rather than
+ * deleted, because it was measuring a comment (see the note there).
  *
  * ⚠️ WHAT THIS FILE DOES NOT RE-TEST. THE-324 owns the invitation's own
  * behaviour — the token, the record, the accept semantics. This asserts the one
@@ -45,20 +59,27 @@ const read = (rel: string) => readFileSync(path.join(ROOT, 'src', rel), 'utf8');
    🔴 An invitation reaches the volunteer by email, on EVERY tier.             */
 describe('1 — an invitation reaches a volunteer by email with SMS off, on every tier', () => {
   const armed = () => {
-    // ⚠️ Typed with its real parameter list, so `mock.calls[0][0]` is the ACTION
-    // NAME rather than an element of an empty tuple.
-    const executeComposioAction = vi.fn(async (..._args: unknown[]) => ({ ok: true }));
+    // ⚠️ THE-340: the stub is the `resend` PACKAGE, not Harvest's own funnel, so
+    // `transactional-email.ts` is REAL in every case below. `mock.calls[0][0]`
+    // is therefore the send PAYLOAD — from, to, subject, text.
+    const resendSend = vi.fn(async (..._args: unknown[]) => ({ data: { id: 're_1' }, error: null }));
     const zernioSendSms = vi.fn(async () => ({ ok: true, id: 'sm_1', segments: 1 }));
     const reserveSmsSegment = vi.fn(async () => ({ allowed: true, used: 1, cap: 2000 }));
     const settleSmsSegments = vi.fn(async () => {});
-    return { executeComposioAction, zernioSendSms, reserveSmsSegment, settleSmsSegments };
+    return { resendSend, zernioSendSms, reserveSmsSegment, settleSmsSegments };
   };
 
-  /** One tenant, one connected Gmail, one person with BOTH an email and a phone. */
+  /**
+   * One tenant, one person with BOTH an email and a phone.
+   *
+   * 🔴 NO GMAIL CONNECTION IS MOUNTED, and that is THE-340's whole point: the
+   * send below has nothing from the church to depend on.
+   */
   const mount = async (plan: TenantPlan) => {
     vi.resetModules();
+    process.env.RESEND_API_KEY = 're-test-key';
     const spies = armed();
-    vi.doMock('@/lib/composio-client', () => ({ executeComposioAction: spies.executeComposioAction }));
+    vi.doMock('resend', () => ({ Resend: class { emails = { send: spies.resendSend }; } }));
     vi.doMock('@/lib/zernio', () => ({ zernioSendSms: spies.zernioSendSms }));
     vi.doMock('@/lib/sms-usage', () => ({
       reserveSmsSegment: spies.reserveSmsSegment,
@@ -69,14 +90,13 @@ describe('1 — an invitation reaches a volunteer by email with SMS off, on ever
 
     const written: Record<string, unknown>[] = [];
     /* A Firestore stand-in that answers every read this path makes: the tenant
-       (for its plan), the admin's Gmail integration, and the invitation doc. */
+       (for its plan) and the invitation doc.
+       🔴 THE GMAIL BRANCH IS GONE, not stubbed to absent — nothing reads it. */
     const docNode = (id: string): Record<string, unknown> => ({
       id,
       get: async () => ({
         exists: true,
-        data: () => (id.endsWith('_gmail')
-          ? { status: 'active', connectedAccountId: 'ca_1', senderEmail: 'office@grace.org' }
-          : { plan, name: 'Grace' }),
+        data: () => ({ plan, name: 'Grace' }),
       }),
       set: async (data: Record<string, unknown>) => { written.push(data); },
       collection: (name: string) => collNode(name),
@@ -103,11 +123,11 @@ describe('1 — an invitation reaches a volunteer by email with SMS off, on ever
        send through. THE-324 asserted this for `plus` and `pro`; THE-335 re-proves
        it for every tier including `max`, which is where the master switch — and
        not the plan — is what refuses. */
-    const { zernioSendSms, reserveSmsSegment, settleSmsSegments, executeComposioAction, mod } =
+    const { zernioSendSms, reserveSmsSegment, settleSmsSegments, resendSend, mod } =
       await mount(plan);
 
     const report = await mod.sendInvitation(
-      'grace', 'admin-1',
+      'grace',
       {
         planId: 'p1', itemId: 'i1', eventId: 'e1', personId: 'u1',
         personName: 'Ada', eventTitle: 'Sunday Gathering', itemTitle: 'Welcome team',
@@ -119,10 +139,20 @@ describe('1 — an invitation reaches a volunteer by email with SMS off, on ever
       'Grace Church', 'invite',
     );
 
-    // 🔴 THE EMAIL WENT, through the church's own Gmail.
-    expect(executeComposioAction, 'the invitation did not send by email').toHaveBeenCalled();
-    expect(executeComposioAction.mock.calls[0][0]).toBe('GMAIL_SEND_EMAIL');
+    // 🔴 THE EMAIL WENT, THROUGH RESEND, WITH NOTHING CONNECTED (THE-340).
+    expect(resendSend, `${plan}: the invitation did not send by email`).toHaveBeenCalled();
     expect(report.channels.email).toBe('sent');
+
+    // 🔴 FROM A HARVEST-CONTROLLED SENDER on the verified domain — the property
+    // that makes this independent of the church. The church's NAME rides in the
+    // display name, so the volunteer still reads who it is from; the ADDRESS is
+    // one Harvest can sign for.
+    const sent = resendSend.mock.calls[0][0] as { from: string; to: string; text: string };
+    expect(sent.from, `${plan}: the sender left the verified Harvest domain`)
+      .toMatch(/<noreply@theharvest\.app>$/);
+    expect(sent.from, `${plan}: the church's name is not in the sender`).toContain('Grace Church');
+    expect(sent.to).toBe('ada@example.org');
+    expect(sent.text, `${plan}: the email carries no accept link`).toContain(report.url as string);
 
     // 🔴 AND NOTHING TEXTED. Not "failed" — `unavailable`, which is what tells
     // the panel this church simply does not have SMS rather than that a send
@@ -149,9 +179,10 @@ describe('1 — an invitation reaches a volunteer by email with SMS off, on ever
     expect(route, 'the invitations route no longer reads the master switch')
       .toContain('SMS_FEATURE_ENABLED');
     /* 🔴 AHEAD OF THE PLAN CELL, read as an ORDER rather than as a line number:
-       THE-331 pinned `AdminCommunity.tsx:491`, a deletion shifted it to `:311`,
-       and the suite would have measured whatever landed there. Both offsets are
-       taken inside the one function, so a guard added somewhere else in the file
+       THE-331 pinned a component at a numbered offset, a deletion elsewhere
+       shifted the thing it named further up the file, and the suite would have
+       measured whatever landed at that offset. Both offsets here are taken
+       inside the one function, so a guard added somewhere else in the file
        cannot satisfy this. */
     const fn = /async function smsAvailableFor\([\s\S]*?\n\}/.exec(route);
     expect(fn, 'smsAvailableFor could not be read back').not.toBeNull();
@@ -259,35 +290,122 @@ describe('3 — reminders and unfilled-slot warnings still fire by email', () =>
 });
 
 /* ── 4 ─────────────────────────────────────────────────────────────────────
-   🔴 Gmail's scopes, and a church with no email at all.                       */
-describe('4 — the church\'s own Gmail, send-only, and what happens with none', () => {
-  it('🔴 assertSendOnlyGmailScopes still fails closed', () => {
-    /* NO-REGRESSION. Harvest must NEVER hold a scope that can read a church's
-       inbox, and the check must refuse an UNKNOWN scope set rather than allow
-       it — failing closed is the whole property. */
-    const src = read('lib/rota-invite.ts');
-    expect(src, 'the rota send no longer asserts its Gmail scopes')
-      .toContain('assertSendOnlyGmailScopes');
+   🔴 Resend carries the mail; Gmail's scope guard is untouched.               */
+describe('4 — Resend carries rota mail, and the Gmail scope guard is untouched', () => {
+  it('🔴 assertSendOnlyGmailScopes still fails closed', async () => {
+    /* ═══════════════════════════════════════════════════════════════════════
+       🔴 THIS GUARD WAS NOT GUARDING, AND THE-340 IS WHY THAT SURFACED.
+
+       ⚠️ WHAT IT USED TO BE, IN FULL:
+
+           const src = read('lib/rota-invite.ts');
+           expect(src).toContain('assertSendOnlyGmailScopes');
+
+       `rota-invite.ts` NEVER CALLED `assertSendOnlyGmailScopes`. It never
+       imported it. The only occurrence of that string in the file was inside a
+       PROSE COMMENT — "`assertSendOnlyGmailScopes` fails closed on the CONNECT
+       route and is not touched, called or weakened by this file" — so the guard
+       was satisfied by a sentence SAYING the check existed, and would have gone
+       on passing with the real function deleted from the repo entirely. It is
+       the failure mode the series has hit repeatedly: a grep answered by the
+       word rather than by the behaviour.
+
+       🔴 SO IT IS REPLACED BY THE BEHAVIOUR. The function is CALLED, with the
+       scope sets that must be refused, and it must throw on each. That is what
+       "fails closed" means, and none of it can be satisfied by prose.
+       ═══════════════════════════════════════════════════════════════════════ */
+    const { assertSendOnlyGmailScopes, GmailScopeError, GMAIL_SEND_SCOPE } =
+      await import('@/lib/gmail-scopes');
+
+    const base = { toolkitSlug: 'gmail', isComposioManaged: true };
+
+    // 🔴 NO DECLARED SCOPES → Composio would request its defaults, which READ
+    // MAIL. Refusing the empty set is the fail-closed property itself.
+    expect(() => assertSendOnlyGmailScopes({ ...base, scopes: null }),
+      'an auth config with no scopes was allowed').toThrow(GmailScopeError);
+    expect(() => assertSendOnlyGmailScopes({ ...base, scopes: [] }),
+      'an auth config with an empty scope list was allowed').toThrow(GmailScopeError);
+
+    // 🔴 ANY READ SCOPE → refused. These are the ones that would let Harvest
+    // read a church's inbox.
+    for (const scope of [
+      'https://www.googleapis.com/auth/gmail.readonly',
+      'https://www.googleapis.com/auth/gmail.modify',
+      'https://mail.google.com/',
+    ]) {
+      expect(
+        () => assertSendOnlyGmailScopes({ ...base, scopes: [GMAIL_SEND_SCOPE, scope] }),
+        `Harvest may hold ${scope}, which can read a church mailbox`,
+      ).toThrow(GmailScopeError);
+    }
+
+    // And the send scope alone is still ACCEPTED — a guard that refused
+    // everything would pass the tests above while breaking the CRM.
+    expect(assertSendOnlyGmailScopes({ ...base, scopes: [GMAIL_SEND_SCOPE] }))
+      .toContain(GMAIL_SEND_SCOPE);
   });
 
-  it('🔴 rota mail goes through the CHURCH\'S Gmail, not through Resend', () => {
-    /* The founder said "resend mail". He is describing the outcome, not the
-       path: Resend is Harvest's TRANSACTIONAL sender and rota mail does not use
-       it. Recorded here because the two have different failure modes — a church
-       that has connected no Gmail gets nothing, where a Resend send would not
-       depend on the church at all. */
-    const src = read('lib/rota-invite.ts');
-    expect(src, 'the rota email path stopped using the church\'s own Gmail')
-      .toContain('GMAIL_SEND_EMAIL');
-    expect(src, 'rota mail quietly moved onto Resend').not.toMatch(/resend/i);
+  it('🔴 the connect route is still the caller, and rota is still not', () => {
+    /* The guard binds where a connection is MADE, which is the only place it
+       can bind. THE-340 removed a CONSUMER of Gmail connections; that must not
+       change what may be asked for when one is created. */
+    const connect = read('app/api/composio/gmail/connect/route.ts');
+    expect(connect, 'the connect route stopped asserting its scopes')
+      .toContain('assertSendOnlyGmailScopes(');
   });
 
-  it('🔴 with NO email connected, the invitation and the link still exist', () => {
-    /* THE-324 reported this and THE-335 re-proves it, because it is now the ONLY
-       channel: if the record were written only on a successful send, a church
-       with no Gmail would have no invitation to share by any other means.
-       The record is written BEFORE either channel is attempted — read off the
-       source, since that ORDER is the property. */
+  it('🔴 rota mail goes through RESEND, not through the church\'s Gmail', () => {
+    /* ⚠️ THIS TEST IS THE PREVIOUS ONE'S EXACT INVERSE, and the inversion is the
+       ticket. It used to read:
+
+           expect(src).toContain('GMAIL_SEND_EMAIL');
+           expect(src, 'rota mail quietly moved onto Resend').not.toMatch(/resend/i);
+
+       The founder asked for Resend; the suite pinned Gmail and called the
+       founder imprecise. With SMS hidden that pin was the difference between a
+       church being able to notify its volunteers and not. */
+    const src = read('lib/rota-invite.ts');
+    expect(src, 'rota mail is back on the church\'s own Gmail')
+      .not.toContain('GMAIL_SEND_EMAIL');
+    expect(src, 'the rota email half no longer goes through the Resend funnel')
+      .toContain('sendTransactionalEmail');
+
+    // 🔴 AND IT SENDS FROM A DOMAIN HARVEST HAS VERIFIED. `theharvest.app` is
+    // verified in Resend with sending enabled, which is what makes this need
+    // nothing from the church — no OAuth, no consent screen, no warning.
+    const funnel = read('lib/transactional-email.ts');
+    expect(funnel, 'the sender left the verified domain')
+      .toContain("'noreply@theharvest.app'");
+  });
+
+  it('🔴 a FAILED send is reported as a failure, not as "no invitation"', () => {
+    /* ⚠️ THE SILENT-FAILURE RULE, read off the two places it is decided. An
+       absent ADDRESS is `unavailable` — a fact about the church's records that
+       no admin can fix by pressing send again. Everything else is `failed`. */
+    const src = read('lib/rota-invite.ts');
+    const fn = /async function sendOneEmail\(([\s\S]*?)\n\}/.exec(src);
+    expect(fn, 'sendOneEmail could not be read back').not.toBeNull();
+    // The ONLY `unavailable` in the email half is the missing-address branch.
+    expect((fn![1].match(/'unavailable'/g) ?? []).length,
+      'the email half has grown a second way to report a send as unavailable').toBe(1);
+    expect(fn![1], 'a missing address is no longer reported as unavailable')
+      .toMatch(/if \(!to \|\| !to\.trim\(\)\) return 'unavailable';/);
+    expect(fn![1], 'a failed Resend send no longer reports as failed')
+      .toContain("return 'failed';");
+
+    // 🔴 AND AN UNSET API KEY IS A FAILURE, NOT A SILENT SKIP. The other nine
+    // Resend call sites in this repo treat a missing key as "do nothing"; for
+    // the only channel a volunteer has, that is the quiet lie exactly.
+    const funnel = read('lib/transactional-email.ts');
+    expect(funnel, 'a missing RESEND_API_KEY is no longer reported')
+      .toContain("code: 'not_configured'");
+  });
+
+  it('🔴 with NO email address for the person, the invitation and the link still exist', () => {
+    /* THE-324 reported this and it still holds: the record is written BEFORE
+       either channel is attempted, so a person with no address on file still
+       has an invitation the admin can share by hand. Read off the source,
+       since that ORDER is the property. */
     const src = read('lib/rota-invite.ts');
     const recordAt = src.indexOf('// 🔴 The record first.');
     const emailAt = src.indexOf('const email = await sendOneEmail(');
@@ -295,9 +413,5 @@ describe('4 — the church\'s own Gmail, send-only, and what happens with none',
     expect(recordAt, 'the invitation record is no longer written first').toBeGreaterThan(-1);
     expect(recordAt).toBeLessThan(emailAt);
     expect(recordAt).toBeLessThan(smsAt);
-
-    // …and an absent Gmail is reported as `unavailable`, not as a failure — so
-    // the panel can tell the admin to share the link rather than retry a send.
-    expect(src).toMatch(/if \(!integration \|\| integration\.status !== 'active'[^)]*\) return 'unavailable';/);
   });
 });

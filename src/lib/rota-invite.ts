@@ -2,9 +2,8 @@ import { randomBytes } from 'node:crypto';
 
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
-import { executeComposioAction } from '@/lib/composio-client';
-import { NO_SENDER_ADDRESS_MESSAGE } from '@/lib/gmail-sender';
 import { sendTenantSms } from '@/lib/sms-send';
+import { sendTransactionalEmail } from '@/lib/transactional-email';
 import {
   INVITATION_STATUSES,
   MAX_REMINDERS,
@@ -126,15 +125,25 @@ import {
  *     has to clear. The rota does not tell a $49 church that its rota is broken
  *     because it declined to buy a $199 plan.
  *
- * ⚠️ Email goes through the CHURCH's own Gmail (Composio, send-only). Harvest
- * must NEVER hold a scope that can read a church's inbox —
+ * 🔴 EMAIL GOES THROUGH RESEND, FROM A HARVEST-CONTROLLED SENDER (THE-340), AND
+ * NEEDS NOTHING FROM THE CHURCH. No OAuth, no consent screen, no configuration:
+ * `theharvest.app` is verified in Resend with sending enabled, so a church that
+ * has connected NOTHING AT ALL still reaches its volunteers. That is the whole
+ * of this ticket, and it is why the sentence that used to sit here — "a church
+ * whose admin has not connected Gmail gets `unavailable` on that channel too" —
+ * no longer describes anything. With SMS hidden by THE-335 that sentence had
+ * become the description of a broken feature rather than a degraded one.
+ *
+ * ⚠️ HARVEST STILL MUST NEVER HOLD A SCOPE THAT CAN READ A CHURCH'S INBOX.
  * `assertSendOnlyGmailScopes` fails closed on the CONNECT route and is not
- * touched, called or weakened by this file. And THE-194 is still open there:
- * Google's OAuth app is unverified and capped at 100 users, so a church whose
- * admin has not connected Gmail gets `unavailable` on that channel too — which
- * is why the accept link is also rendered in the admin panel, to be copied by
- * hand into whatever the church already uses. 🔴 The invitation is never lost
- * because a transport was.
+ * touched, called or weakened by this file — removing a caller of a Gmail
+ * connection does not relax what may be asked for when one is made.
+ *
+ * ⚠️ THE ACCEPT LINK IS STILL RENDERED IN THE ADMIN PANEL to be copied by hand.
+ * It was there because a transport could be missing; it stays because a person
+ * can be missing — a volunteer with no email address on file is `unavailable`
+ * on both channels, and the link is how the admin reaches them anyway.
+ * 🔴 The invitation is never lost because a transport was.
  */
 
 /** The collection. Spelled once; every access below goes through it. */
@@ -326,59 +335,63 @@ async function sendOneSms(
 }
 
 /**
- * 🔴 THE EMAIL HALF — THE CHURCH'S OWN GMAIL, THROUGH THE ONE COMPOSIO CLIENT.
+ * 🔴 THE EMAIL HALF — RESEND, THROUGH THE ONE TRANSACTIONAL FUNNEL (THE-340).
  *
- * ⚠️ NOT A SECOND TRANSPORT. `executeComposioAction` is the same function
- * `/api/crm/send-email` calls with the same action and the same connection
- * document (`tenants/{t}/integrations/{uid}_gmail`), so there is one Composio
- * client, one Gmail action and one place a Gmail send can be made from. What is
- * NOT copied is that route's CRM half — no `contacts` document is read, no
- * `contactActivities` row is written (that collection's `createdAt` holds mixed
- * types and this feature will not add a third writer to it), and no recipient
- * comes from a request body.
+ * ⚠️ THIS REPLACED THE CHURCH'S OWN GMAIL, AND THE REPLACEMENT IS THE TICKET.
+ * The note at the head of this file used to end "a church whose admin has not
+ * connected Gmail gets `unavailable` on that channel too". With SMS hidden by
+ * THE-335 that sentence had stopped describing a degraded feature and started
+ * describing a BROKEN one: email was the only channel left, so a church that
+ * had not completed an OAuth grant could not tell a single volunteer they were
+ * on. And the grant Harvest was asking them to complete goes through Google's
+ * "this app isn't verified" interstitial, because the OAuth app is unverified
+ * and capped at 100 users. The fix on offer was a security warning.
  *
- * 🔴 `from_email` IS PASSED EXPLICITLY, ALWAYS. `gmail-sender.ts` records why:
- * Composio resolves the sender itself only when `from_email` is absent, that
- * resolution is a Gmail PROFILE read, and Google gates every profile read behind
- * a MAILBOX scope Harvest deliberately does not hold. A send without it 403s.
- * So a connection with no recorded sender address is `unavailable`, with the
- * same fixable instruction the CRM route gives, rather than an opaque failure.
+ * 🔴 SO THE DEPENDENCY IS GONE RATHER THAN DEMOTED. Resend does not REPLACE
+ * Gmail as the default with Gmail kept behind a check — it is the only email
+ * path this feature has. Keeping the Composio branch as an option when
+ * connected would have preserved one real benefit (mail from the church's own
+ * address reads as more trustworthy to a volunteer deciding whether to click)
+ * at the price of keeping the unverified OAuth app on the critical path, and
+ * of two send paths where every failure has to be understood twice. Most of
+ * that benefit is recovered without the grant: `senderFor` puts the church's
+ * name in the display name, so the volunteer still reads their church's name
+ * in the inbox, over an address Harvest has verified and can sign for.
+ *
+ * ⚠️ `from_email` AND ITS REASON ARE GONE WITH THE BRANCH, NOT WORKED AROUND.
+ * That parameter existed because Composio resolves a sender by READING the
+ * Gmail profile, and Google gates a profile read behind a mailbox scope Harvest
+ * deliberately does not hold — so a connection with no recorded address 403'd.
+ * Resend sends from a domain Harvest owns, so there is no profile to read, no
+ * scope to want, and no `unavailable` for a missing sender address.
+ *
+ * 🔴 `assertSendOnlyGmailScopes` IS UNTOUCHED AND STILL FAILS CLOSED. It never
+ * lived here — it guards the CONNECT route in `api/composio/gmail/connect`,
+ * over `lib/gmail-scopes.ts` — and removing a CALLER of a connection does not
+ * relax what may be asked for when one is made. Gmail remains connectable for
+ * the CRM, under exactly the send-only scopes it was always held to.
+ *
+ * ⚠️ AN ABSENT ADDRESS IS `unavailable`; EVERYTHING ELSE IS `failed`. That split
+ * is the Silent-Failure Rule applied to a transport that is now load-bearing.
+ * "This person has no email address on file" is a fact about the church's
+ * records, is not an error, and is not something an admin can fix by pressing
+ * send again. A rejected send, a network failure, and an unset `RESEND_API_KEY`
+ * are all Harvest failing to deliver a message it accepted — and the last of
+ * those is exactly the case the other nine Resend call sites treat as a silent
+ * skip. An invitation that could not be delivered must not read as an
+ * invitation that was never made.
  */
 async function sendOneEmail(
-  tenantId: string,
-  adminUid: string,
   to: string | null,
   subject: string,
   body: string,
+  churchName: string,
 ): Promise<ChannelOutcome> {
   if (!to || !to.trim()) return 'unavailable';
-  try {
-    const snap = await adminDb
-      .collection('tenants').doc(tenantId)
-      .collection('integrations').doc(`${adminUid}_gmail`)
-      .get();
-    const integration = snap.exists ? (snap.data() as Record<string, unknown>) : null;
-    const connectedAccountId =
-      typeof integration?.connectedAccountId === 'string' ? integration.connectedAccountId : '';
-    if (!integration || integration.status !== 'active' || !connectedAccountId) return 'unavailable';
-    const senderEmail =
-      typeof integration.senderEmail === 'string' ? integration.senderEmail.trim() : '';
-    if (!senderEmail) {
-      console.warn(`rota invite: ${NO_SENDER_ADDRESS_MESSAGE}`);
-      return 'unavailable';
-    }
-    await executeComposioAction(
-      'GMAIL_SEND_EMAIL',
-      { recipient_email: to.trim(), subject, body, is_html: false, from_email: senderEmail },
-      connectedAccountId,
-      tenantId,
-      adminUid,
-    );
-    return 'sent';
-  } catch (e) {
-    console.error('rota invite: Gmail send failed:', e);
-    return 'failed';
-  }
+  const result = await sendTransactionalEmail({ to, subject, text: body, churchName });
+  if (result.ok) return 'sent';
+  console.error('rota invite: Resend send failed:', result.code, result.error);
+  return 'failed';
 }
 
 /**
@@ -400,7 +413,6 @@ async function sendOneEmail(
  */
 export async function sendInvitation(
   tenantId: string,
-  adminUid: string,
   assignment: AssignmentToInvite,
   contact: PersonContact,
   churchName: string,
@@ -462,11 +474,10 @@ export async function sendInvitation(
   );
 
   const email = await sendOneEmail(
-    tenantId,
-    adminUid,
     contact.email,
     message.emailSubject,
     message.emailBody,
+    churchName,
   );
   const sms = await sendOneSms(tenantId, contact.phone, message.smsText);
   const channels: InvitationChannels = { email, sms: sms.outcome };
