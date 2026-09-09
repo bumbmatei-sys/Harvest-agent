@@ -63,12 +63,12 @@ const THE_222_TABLE: Record<PricedPlan, Record<BillingTerm, number>> = {
 
 /** What this repo PUBLISHES, written out independently of the table under test.
  *
- *  ⚠️ WAS "what is live". THE-248's nine were verified against the
- *  authenticated live Dodo API on 2026-08-27 and the two agreed, so the two
- *  readings were the same sentence. THE-343 separated them: Ministry is
- *  repriced HERE and not yet in Dodo, so this table is the app's side only.
- *  What Dodo still charges, and the assertion that fails when the founder
- *  changes it, live in `dodo-catalogue.test.ts`'s `PENDING_DODO_REPRICE`. */
+ *  ⚠️ WAS "what is live", then briefly was not. THE-248's nine were verified
+ *  against the authenticated live Dodo API on 2026-08-27 and the two agreed.
+ *  THE-343 separated them by repricing Ministry HERE ahead of Dodo, and
+ *  THE-344 brought them back together by repricing the three live products and
+ *  reading them back. The two readings are the same sentence again; what Dodo
+ *  charges is pinned per product id in `dodo-catalogue.test.ts`, which owns it. */
 const NEW_TABLE: Record<PricedPlan, Record<BillingTerm, number>> = {
   plus: { monthly: 20, quarterly: 54, yearly: 190 },
   pro: { monthly: 40, quarterly: 108, yearly: 380 },

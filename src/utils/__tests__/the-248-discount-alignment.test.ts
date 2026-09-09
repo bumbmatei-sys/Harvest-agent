@@ -62,30 +62,13 @@ import type { PricedPlan } from '@/types/tenant.types';
 const LIVE_DODO_USD: Record<PricedPlan, Record<BillingTerm, number>> = {
   plus: { monthly: 20, quarterly: 54, yearly: 190 },
   pro: { monthly: 40, quarterly: 108, yearly: 380 },
-  // 🔴 STILL 80 / 216 / 760, AND THAT IS THE TRUTH ON PURPOSE. THE-343 repriced
-  // Ministry in this repo; the three live Dodo products are updated by hand by
-  // the founder, and until that happens Dodo genuinely still charges these.
-  // Writing 60 / 162 / 564 here would record an agreement that does not exist
-  // and turn an independent transcription into a restatement of the code.
-  max: { monthly: 80, quarterly: 216, yearly: 760 },
-};
-
-/** 🔴 THE THREE PRODUCTS THE-343 REPRICED IN CODE AND NOT YET IN DODO.
- *
- *  The app now publishes these amounts; the live products above still hold the
- *  old ones. The window is deliberate and it is recorded rather than hidden —
- *  the same idiom `dodo-catalogue.test.ts` already uses for the stale test-mode
- *  products. It is safe only because there are NO PAYING CUSTOMERS on `max`, so
- *  no card is charged at either figure while it stands.
- *
- *  ⚠️ ASSERTED FROM BOTH SIDES, so it cannot become folklore: the live figure
- *  must still be the OLD one and the app figure must be the NEW one. The day
- *  the founder updates Dodo, the live half fails and names the fixture to
- *  re-verify — which is the only way this record can be retired. */
-const PENDING_DODO_REPRICE: Record<BillingTerm, { live: number; app: number }> = {
-  monthly: { live: 80, app: 60 },
-  quarterly: { live: 216, app: 162 },
-  yearly: { live: 760, app: 564 },
+  // ✅ 60 / 162 / 564, RE-READ FROM THE LIVE API BY THE-344. This row carried
+  // the superseded amounts for as long as Dodo did: THE-343 repriced Ministry
+  // in this repo and could not touch Dodo, so the transcription and the table
+  // genuinely disagreed. The three live products have since been repriced and
+  // read back (`products.retrieve` on each id, trial and billing interval
+  // intact), so this is a transcription of the live API again, not a gap.
+  max: { monthly: 60, quarterly: 162, yearly: 564 },
 };
 
 /** What the marketing site transcribes as EXPECTED_PLAN_PRICES. Written out
@@ -114,25 +97,24 @@ describe('the nine plan prices match the new table exactly', () => {
   it.each(
     PRICED_PLAN_ORDER.flatMap((plan) => BILLING_TERMS.map((term) => [plan, term] as const)),
   )('%s on %s', (plan, term) => {
-    // 🔴 `max` is the tier THE-343 repriced ahead of Dodo, so it is checked
-    // against the pending record's APP side; the other two are still checked
-    // against live Dodo directly, at full strength.
-    const expected = plan === 'max' ? PENDING_DODO_REPRICE[term].app : LIVE_DODO_USD[plan][term];
+    // 🔴 ALL THREE TIERS ARE CHECKED AGAINST LIVE DODO DIRECTLY, at full
+    // strength. `max` carried an exception while THE-343 was ahead of Dodo;
+    // THE-344 retired it when the live products caught up, so there is no
+    // per-tier branch left here to weaken.
+    const expected = LIVE_DODO_USD[plan][term];
     expect(planPriceUsd(plan, term)).toBe(expected);
     expect(PLAN_PRICING[plan][term]).toBe(expected);
   });
 
-  it('🔴 records the Dodo reprice that has NOT happened yet, from both sides', () => {
+  it('🔴 the app and live Dodo agree on Ministry, from both sides', () => {
     for (const term of BILLING_TERMS) {
-      const { live, app } = PENDING_DODO_REPRICE[term];
-      // The app moved.
-      expect(PLAN_PRICING.max[term], `${term} app side`).toBe(app);
-      // Dodo has not. When the founder updates the three products, THIS is the
-      // assertion that fails and sends someone back to re-read the live API.
-      expect(LIVE_DODO_USD.max[term], `${term} live side`).toBe(live);
-      expect(app, `${term} is meant to be a REDUCTION`).toBeLessThan(live);
+      // 🔴 THE GAP THE-343 OPENED IS CLOSED, and this is where that is proved.
+      // The two halves are written independently — `PLAN_PRICING` is the table
+      // the app publishes, `LIVE_DODO_USD` is a transcription of the live API —
+      // so asserting them EQUAL is a real check and not a restatement.
+      expect(PLAN_PRICING.max[term], `${term} app side`).toBe(LIVE_DODO_USD.max[term]);
     }
-    // 🔴 The cents the founder must set, derived rather than retyped, so this
+    // 🔴 The minor units Dodo now holds, derived rather than retyped, so this
     // cannot drift from the table it is meant to describe.
     expect(BILLING_TERMS.map((t) => PLAN_PRICING.max[t] * 100)).toEqual([6000, 16200, 56400]);
   });
@@ -140,9 +122,9 @@ describe('the nine plan prices match the new table exactly', () => {
   it('and the live Dodo catalogue publishes the same nine, per tier and per term', () => {
     for (const plan of PRICED_PLAN_ORDER) {
       for (const term of BILLING_TERMS) {
-        // The catalogue derives every price from PLAN_PRICING, so on `max` it
-        // publishes the NEW figure while Dodo still holds the old one.
-        const expected = plan === 'max' ? PENDING_DODO_REPRICE[term].app : LIVE_DODO_USD[plan][term];
+        // The catalogue derives every price from PLAN_PRICING, and on all three
+        // tiers that is now the figure Dodo holds too.
+        const expected = LIVE_DODO_USD[plan][term];
         expect(DODO_LIVE_CATALOGUE[plan][term].priceUsd, `${plan}/${term}`)
           .toBe(expected);
         expect(DODO_LIVE_CATALOGUE[plan][term].priceMinorUnits, `${plan}/${term}`)
