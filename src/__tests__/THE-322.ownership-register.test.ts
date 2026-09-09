@@ -492,7 +492,7 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * retires a pinner updates this count and says what that suite still asserts;
  * a suite that quietly stops pinning fails here.
  */
-const RULES_PINNERS_NOW = 61;
+const RULES_PINNERS_NOW = 62;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per
@@ -659,6 +659,27 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
   // and THE-325 red, is the reason this ticket asks instead of writing. The
   // rename is a nav change: it reads nothing from Firestore and needed no rule.
   ['THE-341', 'src/__tests__/THE-341.reach-group.test.ts'],
+  // 🔴 THE-342 — the three reads that lie about being complete. APPENDED beside
+  // the entries above, never over one, and `RULES_PINNERS_NOW` goes 61 -> 62.
+  //
+  // ⚠️ ITS FIRST DRAFT MADE THE MISTAKE THIS REGISTER EXISTS TO CATCH: it wrote
+  // the rules digest as a literal in its own baseline, which is exactly what
+  // THE-333 and THE-341 each did and what turned THE-325 red both times. THE-325
+  // caught it here, before review. The suite now asks `rulesDigestFailure()`
+  // like every other pinner, so a legitimate rules change still costs ONE edit,
+  // and this ticket records NO rules digest in its ownership entry either.
+  //
+  // ⚠️ WHAT IT ASSERTS: every bounded read in CoursePage, AdminCourses,
+  // ChurchMap and useCRMQueries is ORDERED (an unordered `limit(N)` returns
+  // arbitrary rows), that no read needs a composite index — every one is a
+  // single equality `where` plus `orderBy(documentId())`, a prefix scan of an
+  // automatic (field, __name__) index — and that `firestore.indexes.json`,
+  // `functions/` and `layout.tsx` are byte-identical. It needed no rule change:
+  // the unfiltered /courses read it investigated is already REJECTED wholesale
+  // for a non-super-admin by the existing `belongsToTenant(resource.data...)`
+  // rule, so the fix was to stop swallowing that rejection, not to change what
+  // the rule allows.
+  ['THE-342', 'src/__tests__/THE-342.read-honesty-guards.test.ts'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {

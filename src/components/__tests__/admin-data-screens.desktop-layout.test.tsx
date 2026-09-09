@@ -1220,6 +1220,17 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
     // rename does not put them in any batch's scope. The digests still say
     // "this file is exactly this content"; the diff of the fixture beside this
     // commit is where the four new values come from.
+    //
+    // AdminCourses.tsx was RE-RECORDED AGAIN by THE-342, by the same treatment
+    // and for a reason equally outside this batch's subject. THE-342 replaced
+    // the screen's unordered `limit(100)`/`limit(200)` reads with counted,
+    // ordered, ceiling-shared ones, took the headline figure and the plan cap
+    // from a getCountFromServer aggregation instead of from the capped list,
+    // and resolved adopted courses by id. NO WIDTH, HEIGHT OR GAP MOVED: the
+    // screen still renders through FORM_CONTAINER, gained no container class
+    // and no per-screen measure, and its two new notices render through the
+    // installed ui/alert primitive rather than a hand-rolled box. AdminDashboard
+    // stays EXEMPT and un-re-recorded, exactly as the note above requires.
     const moved = Object.entries(SOURCE.digests)
       .filter(([f]) => existsSync(path.join(SRC, f)))
       .filter(([f]) => !EXEMPT_FILES.includes(f))

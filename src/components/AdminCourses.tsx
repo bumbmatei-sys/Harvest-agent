@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, GraduationCap, Library, Check, Eye } from 'lucide-react';
-import { collection, onSnapshot, query, where, deleteDoc, doc, getDoc, limit } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, deleteDoc, doc, getDoc, limit, orderBy, documentId, getCountFromServer } from 'firebase/firestore';
 import { db } from '../firebase';
 import { authFetch } from '../utils/auth-fetch';
 import AdminCourseEditor, { Course } from './AdminCourseEditor';
@@ -9,7 +9,13 @@ import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
 import { sortByTime } from '../utils/query-helpers';
 import { useTenant } from '@/contexts/TenantContext';
-import { LIBRARY_COURSE_COLLECTIONS } from '../utils/library-authoring';
+import {
+  LIBRARY_COURSE_COLLECTIONS,
+  LIBRARY_COURSE_FETCH_LIMIT,
+  TENANT_COURSE_FETCH_LIMIT,
+  COURSE_LOOKUP_FETCH_LIMIT,
+} from '../utils/library-authoring';
+import { readDocsByIds, truncationNotice } from '../utils/bounded-list-read';
 // Course descriptions are HTML from the rich-text editor. This card is a
 // two-line clamped summary, so formatting is worthless here — and rendering
 // catalogue HTML with dangerouslySetInnerHTML would be a needless XSS surface
@@ -22,6 +28,7 @@ import {
 import { CoursePreview } from './course/CoursePreview';
 import type { AdoptedCourse, Author, LibraryCourse } from '../types/course.types';
 import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar, AdminCard, AdminBadge, statusTone } from './admin/AdminUI';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { FORM_CONTAINER } from './layout/form-layout';
 
 /**
@@ -88,6 +95,39 @@ const AdminCourses: React.FC = () => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  /**
+   * THE-342 — the EXACT totals behind every figure this screen prints, and the
+   * failure flags that stop a rejected read from rendering as "none".
+   *
+   * `courses.length` was the "N courses used" figure AND the plan-cap input,
+   * taken from an unordered `limit(100)`. Firestore serves an unordered limit
+   * in `__name__` order over random ids, so that was an ARBITRARY 100: a church
+   * with 130 courses was told it had 100, and the cap arithmetic agreed. A
+   * figure ships only when its read is EXACT — these come from
+   * `getCountFromServer`, an unclamped server-side aggregation.
+   *
+   * `null` means "not yet known / could not be counted", which renders as no
+   * figure rather than as a zero. A `0` and a "we could not read this" must
+   * never look the same.
+   */
+  const [ownCount, setOwnCount] = useState<number | null>(null);
+  const [libraryCount, setLibraryCount] = useState<number | null>(null);
+  const [ownReadFailed, setOwnReadFailed] = useState(false);
+  const [libraryReadFailed, setLibraryReadFailed] = useState(false);
+
+  /**
+   * The catalogue documents behind THIS church's adoptions, fetched BY ID.
+   *
+   * THE-342 — "Your courses" used to resolve adoptions against the ceiling-
+   * limited catalogue listener, so a church whose adopted course sorted past
+   * the ceiling lost it from the tab that answers "what does this church
+   * have?" — and, because the plan cap counts adoptions, from the cap too.
+   * Reading the pointers by id is COMPLETE BY CONSTRUCTION: no ceiling can
+   * apply. CoursePage resolves the member-facing list exactly the same way, so
+   * the two screens cannot disagree about which courses a church has adopted.
+   */
+  const [adoptedCourseDocs, setAdoptedCourseDocs] = useState<LibraryCourse[]>([]);
+
   // Unknown/loading plan falls back to 'plus' (maxCourses: 2) — fail closed on the cap.
   // ADOPTED COURSES COUNT: a church on Individual (2 slots) that adopts two
   // library courses cannot also create one of their own. Deliberate founder call.
@@ -100,7 +140,19 @@ const AdminCourses: React.FC = () => {
   // is enforced; creation is not.
   const maxCourses = resolveCourseLimit(tenantPlan);
   const adoptedIds = new Set(adopted.map((a) => a.libraryCourseId));
-  const atLimit = isAtCourseLimit(courses.length, adopted.length, maxCourses);
+  // THE-342 — the cap counts the EXACT total, not the capped list.
+  //
+  // `courses.length` came from a `limit(100)` read, so a church with 130
+  // courses on a 2-course plan was measured at 100 — the number was wrong in
+  // the church's favour every time the list was truncated. `ownCount` is the
+  // unclamped aggregation.
+  //
+  // Fails CLOSED when the count is unknown, matching the existing
+  // "unknown plan falls back to the smallest cap" stance directly above: an
+  // uncounted church is treated as at its limit rather than waved through.
+  const atLimit = ownCount === null
+    ? true
+    : isAtCourseLimit(ownCount, adopted.length, maxCourses);
   const limitMessage = courseLimitMessage(maxCourses);
 
   useEffect(() => {
@@ -109,16 +161,44 @@ const AdminCourses: React.FC = () => {
     (async () => {
       const tenantId = await getTenantScope();
       // Single-field filter only (tenantId); sort client-side to avoid a composite index.
-      const q = tenantId
-        ? query(collection(db, 'courses'), where('tenantId', '==', tenantId), limit(100))
-        : query(collection(db, 'courses'), limit(100));
+      //
+      // THE-342 — `orderBy(documentId())` and the SHARED ceiling.
+      //
+      // This was `limit(100)` with NO order, which does not mean "the first
+      // 100" or "the newest 100": Firestore has no default order, so it was an
+      // arbitrary and unstable 100. `__name__` is unique, so it is a total
+      // order and the window is at least stable between reads. It is served by
+      // the automatic (tenantId, __name__) index, so NO COMPOSITE INDEX is
+      // involved — which matters because firestore.indexes.json is not
+      // deployed by deploy-rules.yml and an index added there would be inert.
+      //
+      // Ordering by 'createdAt' instead would need that composite index AND
+      // would silently drop every course missing the field. The client-side
+      // sort below still puts the newest first for display.
+      const base = tenantId
+        ? query(collection(db, 'courses'), where('tenantId', '==', tenantId))
+        : query(collection(db, 'courses'));
+      const q = query(base, orderBy(documentId()), limit(TENANT_COURSE_FETCH_LIMIT));
+
+      // EXACT, and independent of the ceiling above: the aggregation runs over
+      // the whole query and loads no documents, so "N courses used" is true
+      // even when the list under it is capped.
+      try {
+        setOwnCount((await getCountFromServer(base)).data().count);
+      } catch (error) {
+        try { handleFirestoreError(error, OperationType.GET, 'courses:count'); } catch (e) { console.error(e); }
+        setOwnCount(null);
+      }
 
       unsubscribe = onSnapshot(q, (snapshot) => {
         const fetchedCourses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Course[];
         setCourses(sortByTime(fetchedCourses, 'createdAt', 'desc'));
+        setOwnReadFailed(false);
         setLoading(false);
       }, (error) => {
         try { handleFirestoreError(error, OperationType.GET, `courses`); } catch (e) { console.error(e); }
+        // Not an empty church. Rendering [] here is the bug THE-342 closes.
+        setOwnReadFailed(true);
         setLoading(false);
       });
     })();
@@ -139,24 +219,52 @@ const AdminCourses: React.FC = () => {
   // second place, and pushing it into the read rule was considered and rejected
   // (see the libraryCourses comment in firestore.rules).
   useEffect(() => {
+    //
+    // THE-342 — the SHARED ceiling, and why the number is imported.
+    //
+    // This screen capped the catalogue at a hardcoded 200 while CoursePage read
+    // it with no limit at all, so a church with 250 library courses saw 200 in
+    // the editor and 250 on the member page. Two screens, one collection, two
+    // different truths, and neither said which was which. The ceiling now comes
+    // from ONE exported constant so that drift cannot be reintroduced by
+    // editing a literal in one file.
+    //
+    // This ceiling governs the BROWSABLE catalogue only. Which courses this
+    // church has ADOPTED is resolved by id below, so an adopted course can
+    // never fall off the end of this window.
+    const libraryBase = collection(db, LIBRARY_COURSE_COLLECTIONS.courses);
     const unsubLibrary = onSnapshot(
-      query(collection(db, LIBRARY_COURSE_COLLECTIONS.courses), limit(200)),
+      query(libraryBase, orderBy(documentId()), limit(LIBRARY_COURSE_FETCH_LIMIT)),
       (snap) => {
         const fetched = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as LibraryCourse[];
         setLibraryCourses(sortByTime(fetched, 'createdAt', 'desc'));
+        setLibraryReadFailed(false);
       },
       (error) => {
         try { handleFirestoreError(error, OperationType.GET, LIBRARY_COURSE_COLLECTIONS.courses); } catch (e) { console.error(e); }
+        setLibraryReadFailed(true);
       },
     );
+    // EXACT catalogue total, so "Showing 200 of 250" can be said truthfully.
+    (async () => {
+      try {
+        setLibraryCount((await getCountFromServer(libraryBase)).data().count);
+      } catch (error) {
+        try { handleFirestoreError(error, OperationType.GET, `${LIBRARY_COURSE_COLLECTIONS.courses}:count`); } catch (e) { console.error(e); }
+        setLibraryCount(null);
+      }
+    })();
 
     // Authors for the preview. A library course's authorIds resolve against
     // libraryAuthors, NOT the tenant-scoped /authors — the two are separate
     // namespaces, and looking a catalogue author up in /authors finds nothing
     // (the same trap #248 hit on the certificate's teacher name). Unfiltered,
     // like every other catalogue read: these docs carry no tenantId.
+    // Bounded and ordered like every other read here (THE-342). A truncated
+    // author pool renders a course AUTHORLESS rather than short, which is why
+    // it gets a real ceiling instead of an unbounded scan.
     const unsubAuthors = onSnapshot(
-      collection(db, LIBRARY_COURSE_COLLECTIONS.authors),
+      query(collection(db, LIBRARY_COURSE_COLLECTIONS.authors), orderBy(documentId()), limit(COURSE_LOOKUP_FETCH_LIMIT)),
       (snap) => {
         setLibraryAuthors(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Author[]);
       },
@@ -175,7 +283,7 @@ const AdminCourses: React.FC = () => {
       const tenantId = await getWriteTenantScope();
       if (!tenantId) return; // genuinely no tenant to hold adoptions
       unsubAdopted = onSnapshot(
-        collection(db, 'tenants', tenantId, 'adoptedCourses'),
+        query(collection(db, 'tenants', tenantId, 'adoptedCourses'), orderBy(documentId()), limit(LIBRARY_COURSE_FETCH_LIMIT)),
         (snap) => {
           setAdopted(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as AdoptedCourse[]);
         },
@@ -187,6 +295,37 @@ const AdminCourses: React.FC = () => {
 
     return () => { unsubLibrary(); unsubAuthors(); if (unsubAdopted) unsubAdopted(); };
   }, []);
+
+  // Resolve the adoption pointers to catalogue documents, by id. Keyed on the
+  // ids themselves so it re-runs when an adoption is added or removed, not on
+  // every unrelated re-render of the `adopted` array.
+  // `filter(Boolean)` before the join: a dangling adoption record with no
+  // libraryCourseId would otherwise put the literal string "undefined" into the
+  // key and then into the `in` clause, asking Firestore for a document by that
+  // name. adoptedLibraryCourses() already drops such a pointer from the list.
+  const adoptedIdKey = adopted
+    .map((a) => a.libraryCourseId)
+    .filter((id): id is string => typeof id === 'string' && id.length > 0)
+    .sort()
+    .join(',');
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const ids = adoptedIdKey ? adoptedIdKey.split(',') : [];
+      if (ids.length === 0) { setAdoptedCourseDocs([]); return; }
+      try {
+        const docs = await readDocsByIds(
+          db, LIBRARY_COURSE_COLLECTIONS.courses, ids,
+          (id, data) => ({ id, ...data }) as LibraryCourse,
+        );
+        if (!cancelled) setAdoptedCourseDocs(docs);
+      } catch (error) {
+        try { handleFirestoreError(error, OperationType.GET, LIBRARY_COURSE_COLLECTIONS.courses); } catch (e) { console.error(e); }
+        if (!cancelled) setLibraryReadFailed(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [adoptedIdKey]);
 
   const filteredCourses = courses.filter(course =>
     (course.title?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
@@ -200,10 +339,33 @@ const AdminCourses: React.FC = () => {
   // They are POINTERS, so they render read-only — no Edit (the tenant does not
   // own the content; the platform edits it and the change reaches everyone) and
   // the remove action un-adopts rather than deleting anything.
-  const myAdoptedCourses = adoptedLibraryCourses(adopted, libraryCourses).filter(course =>
+  // From the by-id read, NOT from the ceiling-limited catalogue listener.
+  const myAdoptedCourses = adoptedLibraryCourses(adopted, adoptedCourseDocs).filter(course =>
     (course.title?.toLowerCase() || '').includes(searchQuery.toLowerCase())
   );
-  const ownTabCount = courses.length + adopted.length;
+  /**
+   * THE-342 — the figures on this screen, and which read each rests on.
+   *
+   * `ownCount` is the EXACT number of this church's courses (a
+   * getCountFromServer aggregation, unclamped by the list ceiling).
+   * `adopted.length` is exact by construction: adoptions are pointers, they are
+   * few, and the listener's ceiling is the catalogue ceiling — far above any
+   * real adoption count — so a truncated adoption list is not reachable in
+   * practice and would surface as a notice if it ever were.
+   *
+   * When the count could not be taken, `exactOwnTotal` is null and the
+   * header prints NO figure rather than a number derived from a capped list.
+   * A wrong number is worse than an absent one: nobody questions a number.
+   */
+  const exactOwnTotal = ownCount === null ? null : ownCount + adopted.length;
+  const ownTabCount = exactOwnTotal;
+  const ownListTruncated = ownCount !== null && courses.length < ownCount;
+  // Truncation is a fact about the READ WINDOW, not about what survives the
+  // draft filter. Comparing `adoptableCourses(...).length` against the
+  // collection total would announce "Showing 150 of 200" for a catalogue that
+  // was read in full and merely holds 50 drafts — a truncation notice that is
+  // itself untrue, which is the class of bug this ticket exists to remove.
+  const libraryListTruncated = libraryCount !== null && libraryCourses.length < libraryCount;
 
   const handleNewCourse = () => {
     if (loading) return; // course count not known yet — can't decide the cap
@@ -354,7 +516,11 @@ const AdminCourses: React.FC = () => {
   // live catalogue each render. A pointer that stops resolving (the platform
   // deleted the course while it was open) falls back to the list rather than
   // rendering a blank screen.
-  const previewCourse = previewId ? libraryCourses.find((c) => c.id === previewId) : undefined;
+  // Look in the by-id adoption pool as well as the browsable catalogue: an
+  // adopted course past the catalogue ceiling is still previewable (THE-342).
+  const previewCourse = previewId
+    ? (libraryCourses.find((c) => c.id === previewId) ?? adoptedCourseDocs.find((c) => c.id === previewId))
+    : undefined;
   if (previewCourse) {
     const previewAdoption = adopted.find((a) => a.libraryCourseId === previewCourse.id) ?? null;
     const previewIsAdopted = Boolean(previewAdoption);
@@ -393,9 +559,11 @@ const AdminCourses: React.FC = () => {
       <AdminPageHeader
         eyebrow="Discipleship"
         title={
-          maxCourses === -1
-            ? `${courses.length + adopted.length} course${courses.length + adopted.length === 1 ? '' : 's'}`
-            : `${courses.length + adopted.length} of ${maxCourses} course${maxCourses === 1 ? '' : 's'} used`
+          exactOwnTotal === null
+            ? 'Courses'
+            : maxCourses === -1
+              ? `${exactOwnTotal} course${exactOwnTotal === 1 ? '' : 's'}`
+              : `${exactOwnTotal} of ${maxCourses} course${maxCourses === 1 ? '' : 's'} used`
         }
         action={
           view === 'own'
@@ -408,7 +576,7 @@ const AdminCourses: React.FC = () => {
           adopted course occupies a plan slot exactly like one you authored. */}
       <div className="flex items-center gap-1 border-b border-line">
         {([
-          { key: 'own', label: `Your courses (${ownTabCount})` },
+          { key: 'own', label: ownTabCount === null ? 'Your courses' : `Your courses (${ownTabCount})` },
           { key: 'library', label: `Library (${adopted.length} adopted)` },
         ] as const).map((t) => (
           <button
@@ -429,6 +597,48 @@ const AdminCourses: React.FC = () => {
         <div className="bg-[var(--surface-gold)] text-strong rounded-brand p-3.5 text-sm border border-line">
           {limitMessage}
         </div>
+      )}
+
+      {/*
+        THE-342 — the READ FAILED, which is not "this church has no courses".
+        Rendered above the list and NOT as an empty state, because the two are
+        indistinguishable in the data and must never be indistinguishable on
+        screen. `alert variant="destructive"` — the primitive exists, so a
+        hand-rolled div would be a defect; `empty` was rejected because this is
+        a fault, not an empty collection.
+      */}
+      {(view === 'own' ? ownReadFailed : libraryReadFailed) && (
+        <Alert data-courses-read-failed={view} variant="destructive">
+          <AlertTitle>We could not load these courses</AlertTitle>
+          <AlertDescription>
+            The list below is not showing what is actually here, so please do not
+            treat it as complete. Try again in a moment.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/*
+        A truncated list SAYS SO, with an EXACT total from getCountFromServer.
+        "Showing 200 of 250" is honest; showing 200 silently is the quiet lie.
+      */}
+      {view === 'own' && ownListTruncated && ownCount !== null && (
+        <Alert data-courses-truncated="own">
+          <AlertTitle>This list is incomplete</AlertTitle>
+          <AlertDescription>
+            {truncationNotice(courses.length, ownCount, 'courses in this church')}{' '}
+            Use search to find one that is not shown.
+          </AlertDescription>
+        </Alert>
+      )}
+      {view === 'library' && libraryListTruncated && libraryCount !== null && (
+        <Alert data-courses-truncated="library">
+          <AlertTitle>This list is incomplete</AlertTitle>
+          <AlertDescription>
+            {truncationNotice(libraryCourses.length, libraryCount, 'library courses')}{' '}
+            Courses this church has already adopted are always shown in full under
+            Your courses.
+          </AlertDescription>
+        </Alert>
       )}
 
       <AdminSearchBar value={searchQuery} onChange={setSearchQuery} placeholder={view === 'own' ? 'Search by title or author…' : 'Search the library…'} />

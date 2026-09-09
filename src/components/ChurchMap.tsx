@@ -7,13 +7,29 @@ import { getPlaceholderImage } from '@/utils/placeholder';
 import { useResolvedTheme } from '@/lib/use-resolved-theme';
 import L from 'leaflet';
 import { ArrowLeft, LocateFixed, Map as MapIcon, List, Navigation, Home, CheckCircle, ChevronLeft } from 'lucide-react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
+import { readBoundedList, truncationNotice } from '../utils/bounded-list-read';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { db, auth } from '../firebase';
 import ChurchDetailsModal from './ChurchDetailsModal';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
 
 
+
+/**
+ * THE-342 — how many active churches the finder loads in one read.
+ *
+ * Paired ALWAYS with an exact `getCountFromServer` total and an on-screen
+ * notice when it bites, so this is a limit the visitor can SEE rather than a
+ * silent truncation. A bare `limit()` here would be the same defect in a
+ * smaller costume.
+ *
+ * This is a stopgap shape, not the end state: a church-finder ultimately
+ * wants a geographic bound (a geohash range scan), which needs a backfill and
+ * an index this repo cannot deploy. See the comment on the read itself.
+ */
+export const CHURCH_MAP_FETCH_LIMIT = 500;
 
 // Fix for default marker icon in react-leaflet (safe for SSR since component uses dynamic import)
 if (typeof window !== 'undefined') {
@@ -176,6 +192,11 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  // the basemap has to be swapped in JS when the theme flips.
  const mapTheme = useResolvedTheme();
  const [churches, setChurches] = useState<Church[]>([]);
+ // THE-342 — the two facts the finder must be able to state about its own read.
+ // `churchesFailed` is NOT "no churches near you"; `churchesTruncated` carries
+ // the "Showing N of M" line when the ceiling bites.
+ const [churchesFailed, setChurchesFailed] = useState(false);
+ const [churchesTruncated, setChurchesTruncated] = useState<string | null>(null);
  const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
  const [homeChurchId, setHomeChurchId] = useState<string | null>(null);
@@ -190,23 +211,52 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  try {
  const tenantId = await getTenantScope();
  // Single-field filter only (status); tenant scoping applied client-side.
- const q = query(collection(db, 'churches'), where('status', '==', 'active'));
- const querySnapshot = await getDocs(q);
+ //
+ // THE-342 — this read had NO limit and NO order: every active church on
+ // Earth, fetched in full on every visit to the public church-finder, then
+ // filtered client-side by distance. It grows with every customer Harvest
+ // ever signs, so the cost of opening this screen grows with the business.
+ //
+ // Bounded, NOT geohashed, and that is a deliberate and reported call.
+ // A real geo query wants a geohash column and a range scan over it, which
+ // needs a backfill of every existing church document and a composite
+ // index — and firestore.indexes.json is NOT deployed by deploy-rules.yml,
+ // so that index would be inert and the query would throw
+ // failed-precondition in production. That is its own ticket with its own
+ // migration, not a change to bundle here. What this does instead is make
+ // the read BOUNDED and its incompleteness VISIBLE, which is the part that
+ // is wrong today.
+ //
+ // The `where('status','==','active')` equality plus orderBy(documentId())
+ // is a prefix scan of the automatic (status, __name__) index, so NO
+ // COMPOSITE INDEX is added or needed.
+ const read = await readBoundedList(
+ query(collection(db, 'churches'), where('status', '==', 'active')),
+ CHURCH_MAP_FETCH_LIMIT,
+ (id, data) => ({ id, ...data }),
+ );
  const fetchedChurches: Church[] = [];
- querySnapshot.forEach((doc) => {
- const data = doc.data();
+ read.rows.forEach((row) => {
+ const data = row as Record<string, unknown>;
  if (tenantId && data.tenantId !== tenantId) return;
  // Convert lat/lng to numbers if they are strings
- const lat = typeof data.lat === 'string' ? parseFloat(data.lat) : data.lat;
- const lng = typeof data.lng === 'string' ? parseFloat(data.lng) : data.lng;
+ const lat = typeof data.lat === 'string' ? parseFloat(data.lat) : (data.lat as number);
+ const lng = typeof data.lng === 'string' ? parseFloat(data.lng) : (data.lng as number);
 
  if (!isNaN(lat) && !isNaN(lng)) {
- fetchedChurches.push({ id: doc.id, ...data, lat, lng } as Church);
+ fetchedChurches.push({ ...row, lat, lng } as Church);
  }
  });
  setChurches(fetchedChurches);
+ setChurchesTruncated(read.truncated
+ ? truncationNotice(read.rows.length, read.total, 'active churches')
+ : null);
+ setChurchesFailed(false);
  } catch (error) {
  try { handleFirestoreError(error, OperationType.GET, `churches`); } catch (e) { console.error(e); }
+ // An empty church map reads as "no churches near you", which is a lie
+ // if the query threw. The failure gets its own state and its own words.
+ setChurchesFailed(true);
  }
  };
  fetchChurches();
@@ -393,6 +443,19 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  </button>
  </div>
  <div className="space-y-4">
+ {/*
+   A truncated finder SAYS SO, with an EXACT total from getCountFromServer.
+   It matters more here than anywhere else in this ticket: a visitor reads
+   a short list as "there is no church near me" and stops looking.
+ */}
+ {churchesTruncated && (
+ <Alert data-churches-truncated>
+ <AlertTitle>This list is incomplete</AlertTitle>
+ <AlertDescription>
+ {churchesTruncated} Zoom the map or search to find one that is not shown.
+ </AlertDescription>
+ </Alert>
+ )}
  {sortedChurches.map((church) => {
  let distanceStr = "? km";
  if (userLocation) {
@@ -482,7 +545,22 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  );
  })}
  
- {churches.length === 0 && (
+ {/*
+ THE-342 — the FAILURE state, checked BEFORE the empty state below.
+ "No verified churches found in your area" is a claim about the world;
+ rendering it because the query threw is the exact quiet lie AGENTS.md's
+ Silent-Failure Rule names. The `alert` primitive supplies role="alert"
+ and the tokened surface — a hand-rolled div would be a defect here.
+ */}
+ {churchesFailed ? (
+ <Alert data-churches-read-failed variant="destructive" className="my-8">
+ <AlertTitle>We could not load the church map</AlertTitle>
+ <AlertDescription>
+ This is not a list of the churches near you — the search did not
+ complete. Please try again in a moment.
+ </AlertDescription>
+ </Alert>
+ ) : churches.length === 0 && (
  <div className="text-center py-12">
  <p className="text-muted ">No verified churches found in your area.</p>
  </div>

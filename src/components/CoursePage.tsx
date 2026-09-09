@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { doc, getDoc, updateDoc, getDocs, collection, query, where } from "firebase/firestore";
+import { doc, getDoc, updateDoc, collection, query, where } from "firebase/firestore";
 import { db, auth } from "../firebase";
 import { Course, Lesson, Author, QuizAttempt, LibraryCourse, AdoptedCourse } from "../types/course.types";
 import { getAllLessons } from "../utils/course.utils";
@@ -10,7 +10,13 @@ import { LessonView } from "../components/course/LessonView";
 import { AuthorProfile } from "../components/course/AuthorProfile";
 import { OperationType, handleFirestoreError } from "../utils/firestore-errors";
 import { getTenantScope, getWriteTenantScope } from "../utils/tenant-scope";
-import { LIBRARY_COURSE_COLLECTIONS } from "../utils/library-authoring";
+import {
+  LIBRARY_COURSE_COLLECTIONS,
+  LIBRARY_COURSE_FETCH_LIMIT,
+  TENANT_COURSE_FETCH_LIMIT,
+  COURSE_LOOKUP_FETCH_LIMIT,
+} from "../utils/library-authoring";
+import { readBoundedList, readDocsByIds, truncationNotice } from "../utils/bounded-list-read";
 import {
   adoptableCourses, mergeCoursesForMembers, mergeAuthors, mergeCategories,
   applyCourseOverrides,
@@ -46,6 +52,24 @@ export default function CoursePage({
   const [authors, setAuthors] = useState<Author[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  // THE-342 — the two facts every read here must be able to state.
+  //
+  // `coursesFailed` is NOT the same as "no courses", and conflating them is
+  // the bug this ticket closes. The course read below is REJECTED WHOLESALE for
+  // any signed-in member whose tenant scope came back null (see the comment on
+  // that read), and the old `catch { console.error }` turned that rejection into
+  // a library that said "No courses found" — a lie about this church's content,
+  // told confidently. AGENTS.md's Silent-Failure Rule names exactly this shape.
+  //
+  // `notices` collects the "Showing N of M" lines for whichever reads hit their
+  // ceiling. Empty is the normal case and renders nothing.
+  const [coursesFailed, setCoursesFailed] = useState(false);
+  const [notices, setNotices] = useState<string[]>([]);
+  // De-duplicating, because the effect below can run twice (StrictMode in dev
+  // double-invokes effects) and a notice appearing twice would look like two
+  // different problems. The text is the identity, which is also the render key.
+  const addNotice = (line: string) =>
+    setNotices((prev) => (prev.includes(line) ? prev : [...prev, line]));
 
   // Fetch user completed lessons
   useEffect(() => {
@@ -80,49 +104,71 @@ export default function CoursePage({
         // Tenant-scoped: authors carry a tenantId and the rules require it to
         // match, so the query must filter by tenantId — an unfiltered read is
         // rejected. A super admin in platform context (null) reads unscoped.
+        //
+        // THE-342: bounded and counted. An author pool that truncates does not
+        // render a SHORT list, it renders a course AUTHORLESS — the reader sees
+        // a course with no teacher and no reason given. Ordering by
+        // documentId() keeps the window stable and needs no composite index.
         const tenantId = await getTenantScope();
-        const authorsSnap = tenantId
-          ? await getDocs(query(collection(db, "authors"), where("tenantId", "==", tenantId)))
-          : await getDocs(collection(db, "authors"));
-        const fetchedAuthors: Author[] = [];
-        authorsSnap.forEach((d) => {
-          fetchedAuthors.push({ id: d.id, ...d.data() } as Author);
-        });
+        const authorsBase = tenantId
+          ? query(collection(db, "authors"), where("tenantId", "==", tenantId))
+          : collection(db, "authors");
+        const authorsRead = await readBoundedList(
+          authorsBase, COURSE_LOOKUP_FETCH_LIMIT,
+          (id, data) => ({ id, ...data }) as Author,
+        );
 
         // Adopted library courses resolve authorIds against libraryAuthors, not
         // the tenant-scoped authors above. Every consumer looks an author up
         // with an in-memory .find() over ONE array, so merging the two pools is
         // all a merged lookup needs — no per-id fetch, and no change to the
         // tenant-scoped /authors rule. This read is UNFILTERED by design.
-        const libAuthorsSnap = await getDocs(collection(db, LIBRARY_COURSE_COLLECTIONS.authors));
-        const libAuthors: Author[] = [];
-        libAuthorsSnap.forEach((d) => {
-          libAuthors.push({ id: d.id, ...d.data() } as Author);
-        });
-        setAuthors(mergeAuthors(fetchedAuthors, libAuthors));
+        const libAuthorsRead = await readBoundedList(
+          collection(db, LIBRARY_COURSE_COLLECTIONS.authors), COURSE_LOOKUP_FETCH_LIMIT,
+          (id, data) => ({ id, ...data }) as Author,
+        );
+        setAuthors(mergeAuthors(authorsRead.rows, libAuthorsRead.rows));
+        if (authorsRead.truncated || libAuthorsRead.truncated) {
+          const shown = authorsRead.rows.length + libAuthorsRead.rows.length;
+          const total = authorsRead.total + libAuthorsRead.total;
+          addNotice(truncationNotice(shown, total, "teachers"));
+        }
       } catch (error) {
         try { handleFirestoreError(error, OperationType.GET, "authors"); } catch (e) { console.error(e); }
+        // A teacher pool that failed to load is not an empty pool. Say so here
+        // rather than letting courses render silently authorless.
+        addNotice("Teacher profiles could not be loaded, so some courses may not show who teaches them.");
       }
 
       try {
         // Tenant-scoped (same as authors above): filter categories by tenantId
         // so the query is accepted by the tenant-scoped rules.
+        //
+        // THE-342: bounded and counted, for the same reason as the author pool.
+        // A missing category silently removes a filter chip, so a course becomes
+        // unreachable by browsing rather than visibly absent.
         const tenantId = await getTenantScope();
-        const catsSnap = tenantId
-          ? await getDocs(query(collection(db, "categories"), where("tenantId", "==", tenantId)))
-          : await getDocs(collection(db, "categories"));
-        const fetchedCats: string[] = ["All"];
-        catsSnap.forEach((d) => {
-          fetchedCats.push(d.data().name);
-        });
+        const catsBase = tenantId
+          ? query(collection(db, "categories"), where("tenantId", "==", tenantId))
+          : collection(db, "categories");
+        const catsRead = await readBoundedList(
+          catsBase, COURSE_LOOKUP_FETCH_LIMIT, (_id, data) => String(data.name ?? ""),
+        );
         // Library categories too — an adopted course's category must be
         // filterable. Unfiltered read, same as libraryAuthors above.
-        const libCatsSnap = await getDocs(collection(db, LIBRARY_COURSE_COLLECTIONS.categories));
-        const libCats: string[] = [];
-        libCatsSnap.forEach((d) => { libCats.push(d.data().name); });
-        setCategories(mergeCategories(fetchedCats, libCats));
+        const libCatsRead = await readBoundedList(
+          collection(db, LIBRARY_COURSE_COLLECTIONS.categories), COURSE_LOOKUP_FETCH_LIMIT,
+          (_id, data) => String(data.name ?? ""),
+        );
+        setCategories(mergeCategories(["All", ...catsRead.rows], libCatsRead.rows));
+        if (catsRead.truncated || libCatsRead.truncated) {
+          const shown = catsRead.rows.length + libCatsRead.rows.length;
+          const total = catsRead.total + libCatsRead.total;
+          addNotice(truncationNotice(shown, total, "categories"));
+        }
       } catch (error) {
         try { handleFirestoreError(error, OperationType.GET, "categories"); } catch (e) { console.error(e); }
+        addNotice("Categories could not be loaded, so the filters below are incomplete.");
       }
 
       try {
@@ -132,10 +178,39 @@ export default function CoursePage({
         // Query by tenantId alone (single-field, no composite index) and apply
         // the published-status filter client-side. A super admin in platform
         // context (null) reads unscoped and filters status client-side too.
+        //
+        // THE-342 — WHAT THE UNFILTERED `else` BRANCH ACTUALLY DOES.
+        // It is NOT a cross-tenant read for a member, and it is not merely a
+        // slow one. The /courses rule is
+        //   allow read: if isAuthenticated() && belongsToTenant(resource.data.tenantId)
+        // which references `resource.data`, and AGENTS.md's corollary applies:
+        // for a `list` Firestore must prove from the QUERY CONSTRAINTS ALONE
+        // that every result is readable — it does not evaluate per document and
+        // drop the failures. So for anyone who is not a super admin this
+        // unfiltered query is REJECTED WHOLESALE with permission-denied. No
+        // other church's course can reach a member through it.
+        //
+        // For a super admin it SUCCEEDS, deliberately: `belongsToTenant` short-
+        // circuits on `isSuperAdmin()`, which reads no document field, so the
+        // rule holds for every row. That is the platform-admin view, gated
+        // server-side by the rules' own `isSuperAdmin()` (a `superAdmin` token
+        // claim or the hardcoded platform emails) — not by this client branch.
+        //
+        // So the defect here was never a leak; it was what happened on the
+        // REJECTION. getTenantScope() also returns null for a NON-super-admin
+        // whenever the host carries no tenant subdomain (apex, a custom domain,
+        // a vercel preview) AND their user doc has no tenantId — including when
+        // reading that doc THREW, because getTenantId() catches and returns
+        // null. Such a member ran this query, got permission-denied, and the
+        // old `catch { console.error }` rendered it as "No courses found".
         const tenantId = await getTenantScope();
-        const coursesSnap = tenantId
-          ? await getDocs(query(collection(db, "courses"), where("tenantId", "==", tenantId)))
-          : await getDocs(collection(db, "courses"));
+        const coursesRead = await readBoundedList(
+          tenantId
+            ? query(collection(db, "courses"), where("tenantId", "==", tenantId))
+            : collection(db, "courses"),
+          TENANT_COURSE_FETCH_LIMIT,
+          (id, data) => ({ id, ...data }) as Course,
+        );
 
         // TWO DIFFERENT SCOPES, and the difference is the whole bug. The read
         // above is FIELD-FILTERED, so null correctly means "every tenant" for a
@@ -148,11 +223,13 @@ export default function CoursePage({
         // does (#249) — the two screens must agree on WHICH tenant holds the
         // adoptions, or the admin sees a course the members cannot.
         const pathScope = await getWriteTenantScope();
-        const fetchedCourses: Course[] = [];
-        coursesSnap.forEach((d) => {
-          if (d.data().status !== "published") return;
-          fetchedCourses.push({ id: d.id, ...d.data() } as Course);
-        });
+        // `status` is not on the `Course` type (only LibraryCourse/AdoptedCourse
+        // declare it) but tenant course docs carry the field, exactly as the
+        // previous `d.data().status` read it. Unchanged behaviour: anything not
+        // explicitly published stays out of the member app.
+        const fetchedCourses = coursesRead.rows.filter(
+          (c) => (c as { status?: string }).status === "published",
+        );
 
         // Adopted library courses. Adoption stores a POINTER, so the content is
         // read live from libraryCourses — an edit by the platform reaches every
@@ -163,19 +240,41 @@ export default function CoursePage({
         // Drafts are excluded in JS by adoptableCourses() a few lines down.
         let adoptedLibrary: LibraryCourse[] = [];
         if (pathScope) {
-          const adoptedSnap = await getDocs(collection(db, "tenants", pathScope, "adoptedCourses"));
+          const adoptedRead = await readBoundedList(
+            collection(db, "tenants", pathScope, "adoptedCourses"),
+            LIBRARY_COURSE_FETCH_LIMIT,
+            (id, data) => ({ id, ...data }) as AdoptedCourse,
+          );
           // Keyed by library course id: the record carries this church's own
           // requireQuiz / issueCertificate, which must reach the course object.
           const adoptions = new Map<string, AdoptedCourse>();
-          adoptedSnap.docs.forEach((d) => {
-            const record = { id: d.id, ...d.data() } as AdoptedCourse;
-            adoptions.set(record.libraryCourseId ?? d.id, record);
+          adoptedRead.rows.forEach((record) => {
+            adoptions.set(record.libraryCourseId ?? record.id, record);
           });
+          if (adoptedRead.truncated) {
+            addNotice(truncationNotice(adoptedRead.rows.length, adoptedRead.total, "adopted library courses"));
+          }
           if (adoptions.size > 0) {
-            const librarySnap = await getDocs(collection(db, LIBRARY_COURSE_COLLECTIONS.courses));
-            const all = librarySnap.docs
-              .filter((d) => adoptions.has(d.id))
-              .map((d) => ({ id: d.id, ...d.data() }) as LibraryCourse)
+            // THE-342 — BY ID, not a scan of the whole catalogue.
+            //
+            // This used to read every libraryCourses document and keep the
+            // handful this church had adopted. Bounding THAT scan would have
+            // introduced a worse bug than it fixed: the ceiling is applied in
+            // documentId() order, so a church whose adopted course sorted past
+            // the ceiling would lose it from the member app entirely, with
+            // nothing on screen to say a course had gone missing.
+            //
+            // The adoption records already name exactly which courses are
+            // wanted, so fetch exactly those. The result is COMPLETE BY
+            // CONSTRUCTION — no ceiling can apply and no truncation notice is
+            // possible — and it is also what makes this screen agree with
+            // AdminCourses, which resolves its adoptions the same way. The
+            // catalogue ceiling now governs only the browsable catalogue list,
+            // which is the one place a reader is actually browsing it.
+            const all = (await readDocsByIds(
+              db, LIBRARY_COURSE_COLLECTIONS.courses, Array.from(adoptions.keys()),
+              (id, data) => ({ id, ...data }) as LibraryCourse,
+            ))
               // THE COURSE AS THIS CHURCH RUNS IT. Resolved here, at the one
               // place the member app composes its course list, so every
               // downstream consumer is consistent for free: CourseOverview's
@@ -194,6 +293,12 @@ export default function CoursePage({
         // outrank a church's own content on the church's own screen.
         const allCourses = mergeCoursesForMembers(fetchedCourses, adoptedLibrary);
         setCourses(allCourses);
+        // The total is the church's OWN published courses plus its adopted
+        // ones. The adopted half is complete by construction (read by id), so
+        // only the /courses half can truncate, and only its figures go here.
+        if (coursesRead.truncated) {
+          addNotice(truncationNotice(coursesRead.rows.length, coursesRead.total, "courses in this church's library"));
+        }
 
         if (initialCourseId) {
           const course = allCourses.find((c) => c.id === initialCourseId);
@@ -208,6 +313,11 @@ export default function CoursePage({
         }
       } catch (error) {
         try { handleFirestoreError(error, OperationType.GET, "courses"); } catch (e) { console.error(e); }
+        // THE FIX. Not `setCourses([])`, and not silence. The library screen
+        // reads this and renders "We could not load this church's courses"
+        // INSTEAD of its empty state, so a rejected read can never again be
+        // presented to a member as a church that has published nothing.
+        setCoursesFailed(true);
       } finally {
         setLoading(false);
       }
@@ -332,6 +442,8 @@ export default function CoursePage({
           categories={categories}
           onSelectCourse={goToCourse}
           completed={completed}
+          readFailed={coursesFailed}
+          notices={notices}
         />
       )}
       {screen === "overview" && selectedCourse && (

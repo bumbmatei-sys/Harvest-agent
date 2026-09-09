@@ -34,7 +34,16 @@ const { mockGetDocs, mockIsSuperAdminEmail, authState } = vi.hoisted(() => ({
  * Record every query built, so a test can assert not just what came back but
  * WHICH query ran — "never issues the unscoped query" is the point of this file.
  */
-type BuiltQuery = { collection: string; whereClauses: Array<[string, string, unknown]>; limit: number | null };
+// THE-342 added `orderBy(documentId())` to every read here: an unordered
+// limit(N) is served in `__name__` order over random ids, so the window was an
+// arbitrary and unstable N. The built query records the ordering so a test can
+// assert it rather than merely tolerate it.
+type BuiltQuery = {
+  collection: string;
+  whereClauses: Array<[string, string, unknown]>;
+  limit: number | null;
+  orderBy: string | null;
+};
 const built: BuiltQuery[] = [];
 
 vi.mock('../../../firebase', () => ({
@@ -46,6 +55,8 @@ vi.mock('firebase/firestore', () => ({
   collection: (_db: unknown, name: string) => ({ __collection: name }),
   where: (field: string, op: string, value: unknown) => ({ __where: [field, op, value] as [string, string, unknown] }),
   limit: (n: number) => ({ __limit: n }),
+  orderBy: (field: unknown) => ({ __orderBy: field }),
+  documentId: () => '__name__',
   // getTenantScope() falls back to the signed-in user's own doc for a non-super
   // admin; answer it so the members query is scoped the way it is in the app.
   getDoc: vi.fn(async () => ({ exists: () => true, data: () => ({ tenantId: 'harvest' }) })),
@@ -55,6 +66,7 @@ vi.mock('firebase/firestore', () => ({
       collection: base.__collection,
       whereClauses: constraints.filter(c => '__where' in c).map(c => c.__where as [string, string, unknown]),
       limit: (constraints.find(c => '__limit' in c)?.__limit as number) ?? null,
+      orderBy: (constraints.find(c => '__orderBy' in c)?.__orderBy as string) ?? null,
     };
     built.push(q);
     return q;
@@ -155,6 +167,13 @@ describe('CRM contacts scoping', () => {
 
       expect(wasUnscopedContactsScan()).toBe(true);
       expect(contactQueries()[0].limit).toBe(1000);
+      // THE-342: the ceiling is only half a bounded read. Without a total order
+      // this 1,000 is an ARBITRARY 1,000 — Firestore answers an unordered limit
+      // in `__name__` order over random ids — so the same admin refreshing
+      // could be shown a different thousand people. `__name__` is unique, so
+      // the window is stable, and the equality filter plus this ordering is a
+      // prefix scan of an automatic index: NO composite index is involved.
+      expect(contactQueries()[0].orderBy, 'the contacts scan is unordered').toBe('__name__');
       expect(res.current.data?.map(c => c.id)).toEqual(['c1', 'c2', 'c3', 'c4']);
       expect(res.current.data?.map(c => c.id)).not.toContain('c5');
     });
@@ -180,6 +199,8 @@ describe('CRM contacts scoping', () => {
 
       expect(wasUnscopedContactsScan()).toBe(false);
       expect(contactQueries()[0].whereClauses).toEqual([['tenantId', '==', 'harvest']]);
+      // Ordered on the scoped path too (THE-342) — both paths or neither.
+      expect(contactQueries()[0].orderBy, 'the scoped contacts read is unordered').toBe('__name__');
       // 1,000, NOT the 500 this used to be. The scoped path must never load less
       // than the unscoped one: a church's own admin seeing fewer of their people
       // than a platform operator does is the truncation bug at its most backwards.

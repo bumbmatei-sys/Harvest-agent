@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import {
   collection, query, where, getDocs, getDoc, doc, limit, getCountFromServer,
+  orderBy, documentId,
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { DateLike } from '../../utils/format-date';
@@ -163,6 +164,23 @@ export const NO_TENANT_SCOPE_MESSAGE =
  * Raising this further is not free and not correct on its own — see the
  * `useCRMCounts` doc for why real pagination needs a data-model change first.
  */
+/*
+ * THE-342 — the ceiling was already honest; the ORDER was not.
+ *
+ * Every read below now carries `orderBy(documentId())`. An unordered `limit(N)`
+ * is served in `__name__` order over random document ids, so the 1,000 rows it
+ * returned were an ARBITRARY 1,000 and not a stable set between two loads: the
+ * same admin refreshing the CRM could be shown a different thousand people, and
+ * "Showing 1,000 of 1,240" was true about the number while saying nothing about
+ * WHICH. `__name__` is unique, so it is a total order and the window is at
+ * least stable and resumable.
+ *
+ * It is also free here. Every automatic single-field index is keyed
+ * `(field, __name__)`, so `where('tenantId','==',x)` plus this ordering is a
+ * prefix scan of an index that already exists — NO COMPOSITE INDEX is added,
+ * which matters because `firestore.indexes.json` is not deployed by
+ * `deploy-rules.yml` and an index added there would be inert.
+ */
 export const CRM_FETCH_LIMIT = 1000;
 
 /**
@@ -205,7 +223,7 @@ const fetchContactRows = async (tenantId: string | null | undefined): Promise<Co
     // dropping any that belong to a *named* tenant (no cross-tenant leakage).
     // NOTE: at larger scale, replace this scan with a one-time migration that
     // stamps every legacy/null contact with tenantId 'harvest'.
-    const snap = await getDocs(query(collection(db, 'contacts'), limit(CRM_FETCH_LIMIT)));
+    const snap = await getDocs(query(collection(db, 'contacts'), orderBy(documentId()), limit(CRM_FETCH_LIMIT)));
     return snap.docs
       .map(d => ({ id: d.id, ...d.data() }) as Contact)
       .filter(c => c.tenantId == null || c.tenantId === '' || c.tenantId === PLATFORM_TENANT_ID);
@@ -220,7 +238,7 @@ const fetchContactRows = async (tenantId: string | null | undefined): Promise<Co
   // tenant lands here rather than on the scan: the equality constraint is what
   // the rule needs, and it is the only query they are allowed to run.
   const snap = await getDocs(
-    query(collection(db, 'contacts'), where('tenantId', '==', tenantId), limit(CRM_FETCH_LIMIT)),
+    query(collection(db, 'contacts'), where('tenantId', '==', tenantId), orderBy(documentId()), limit(CRM_FETCH_LIMIT)),
   );
   return snap.docs.map(d => ({ id: d.id, ...d.data() }) as Contact);
 };
@@ -384,8 +402,8 @@ export const useContactsWithUsers = (tenantId: string | null | undefined, isAuth
       try {
         const scope = await getTenantScope();
         const usersQ = scope
-          ? query(collection(db, 'users'), where('tenantId', '==', scope), limit(CRM_FETCH_LIMIT))
-          : query(collection(db, 'users'), limit(CRM_FETCH_LIMIT));
+          ? query(collection(db, 'users'), where('tenantId', '==', scope), orderBy(documentId()), limit(CRM_FETCH_LIMIT))
+          : query(collection(db, 'users'), orderBy(documentId()), limit(CRM_FETCH_LIMIT));
         userDocs = (await getDocs(usersQ)).docs;
       } catch (e) {
         console.error('[CRM] failed to load app members from users:', e);

@@ -9,7 +9,7 @@
  *
  * That design has one hard invariant, and this module exists to hold it:
  *
- *   ⚠️ A LIBRARY DOCUMENT MUST NEVER CARRY A `tenantId`.
+ *   A LIBRARY DOCUMENT MUST NEVER CARRY A `tenantId`.
  *
  * It is easy to break by accident. `getWriteTenantScope()` returns the PLATFORM
  * tenant (`'harvest'`) for a super admin rather than null — see the comment at
@@ -42,6 +42,35 @@ export const LIBRARY_COURSE_COLLECTIONS: CourseCollections = {
   authors: 'libraryAuthors',
   categories: 'libraryCategories',
 };
+
+/**
+ * THE-342 — the ONE ceiling for every browsable read of the course catalogue.
+ *
+ * It lives here, beside the collection names, because the bug it closes was
+ * two screens disagreeing about the SAME collection. `AdminCourses` capped the
+ * library at 200 while `CoursePage` read it unbounded, so a church with 250
+ * library courses saw 200 in the editor and 250 on the member page. Two
+ * screens, one collection, two different truths — and neither said which.
+ *
+ * A second constant somewhere else would let that drift back silently, which
+ * is exactly how `CRM_FETCH_LIMIT` came to have a 500 on one path and a 1,000
+ * on the other. Import this; do not write a number.
+ *
+ * Every read using it goes through `readBoundedList`, so the ceiling is always
+ * paired with an EXACT total and an on-screen notice when it bites.
+ */
+export const LIBRARY_COURSE_FETCH_LIMIT = 200;
+
+/**
+ * The same ceiling for a tenant's OWN courses, and for the lookup pools
+ * (authors, categories) both screens resolve names against.
+ *
+ * These are lookup pools, not lists a reader counts: a truncated author pool
+ * renders a course AUTHORLESS rather than short, which is why they get the same
+ * count-first treatment and not a bare `limit()`.
+ */
+export const TENANT_COURSE_FETCH_LIMIT = 200;
+export const COURSE_LOOKUP_FETCH_LIMIT = 500;
 
 /** Which set of collections a given editor mode reads and writes. */
 export function collectionsFor(isLibrary: boolean): CourseCollections {
