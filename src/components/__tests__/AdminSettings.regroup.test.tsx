@@ -346,79 +346,77 @@ describe('THE-183 — admin Settings', () => {
   });
 
   // 1
-  it('admin Settings renders both the mode control and the family control', async () => {
+  it('admin Settings renders the mode control, and no family control', async () => {
+    // 🔴 THE-338 HALVED THIS TEST, and the half it removed is the whole of
+    // THE-296's original complaint: the palette FAMILY could not be chosen
+    // from admin Settings at all. It can now be chosen nowhere, because there
+    // is one family — so what this asserts is that the mode control survived
+    // the removal and that the family control did not come back with it.
     const host = await mount();
     await expandSection(host, 'Appearance');
 
     const mode = host.querySelector('[role="radiogroup"][aria-label="Colour theme"]');
-    const family = host.querySelector('[role="radiogroup"][aria-label="Palette family"]');
     expect(mode, 'the light/dark/system control is gone from admin Settings').toBeTruthy();
-    expect(family, 'the Harvest/Classic family control is missing from admin Settings').toBeTruthy();
+    expect(
+      host.querySelector('[role="radiogroup"][aria-label="Palette family"]'),
+      'the palette family control is back — THE-338 removed the family axis',
+    ).toBeNull();
 
-    // Both options of the family control are reachable — the founder's actual
-    // complaint was that Classic could not be chosen here at all.
-    for (const label of ['Harvest', 'Classic']) {
-      expect(family!.querySelector(`[aria-label="${label}"]`), `${label} is not offered`).toBeTruthy();
-    }
     for (const label of ['Light', 'Dark', 'System']) {
       expect(mode!.querySelector(`[aria-label="${label}"]`), `${label} is not offered`).toBeTruthy();
     }
 
-    // The same two components the member Profile renders, not a second copy:
-    // AdminSettings imports them, and defines no radiogroup of its own.
+    // The same component the member Profile renders, not a second copy:
+    // AdminSettings imports it, and defines no radiogroup of its own.
     const src = readFileSync(SETTINGS_SRC, 'utf8');
-    expect(src).toMatch(/import\s+PaletteFamilyToggle\s+from\s+'\.\/PaletteFamilyToggle'/);
     expect(src).toMatch(/import\s+ThemeToggle\s+from\s+'\.\/ThemeToggle'/);
+    expect(src, 'the palette family toggle is still imported').not.toContain('PaletteFamilyToggle');
     expect(src, 'admin Settings is building its own theme control instead of reusing one')
       .not.toMatch(/role=["']radiogroup["']/);
   });
 
   // 2
-  it('the family control renders to the left of the mode control on one row', async () => {
+  it('the mode control sits alone in the Appearance row, which is still a single flex line', async () => {
+    // 🔴 THE-338 — the row used to hold TWO controls, family first so tab order
+    // matched reading order. It now holds one. The row itself is unchanged and
+    // still asserted: it is what keeps the control from stacking or wrapping,
+    // and it is the wrapper the member Profile uses, so "match it exactly" is
+    // still a fact about the markup rather than a claim in a comment.
     const host = await mount();
     await expandSection(host, 'Appearance');
     const mode = host.querySelector('[role="radiogroup"][aria-label="Colour theme"]')!;
-    const family = host.querySelector('[role="radiogroup"][aria-label="Palette family"]')!;
+    const row = mode.parentElement as HTMLElement;
 
-    // One row: same parent, and that parent is a flex row at every viewport —
-    // not a column, and not allowed to wrap into two lines.
-    expect(mode.parentElement, 'the two controls are not in the same row').toBe(family.parentElement);
-    const row = family.parentElement as HTMLElement;
     for (const viewport of [380, 640, 1024, 1280, 1440]) {
       const d = effective(classesOf(row), viewport);
       expect(d.display, `the theme row is not a flex row at ${viewport}px`).toBe('flex');
       expect(d['flex-direction'], `the theme row stacks at ${viewport}px`).toBeUndefined();
       expect(d['flex-wrap'], `the theme row may wrap at ${viewport}px`).toBeUndefined();
     }
-
-    // Family FIRST in the DOM, so tab order matches the left-to-right reading
-    // order rather than being reversed with CSS.
-    expect(
-      family.compareDocumentPosition(mode) & Node.DOCUMENT_POSITION_FOLLOWING,
-      'the mode control does not follow the family control in the DOM',
-    ).toBeTruthy();
-    const kids = Array.from(row.children);
-    expect(kids.indexOf(family)).toBeLessThan(kids.indexOf(mode));
-    // Nothing reverses them visually either.
     for (const cls of classesOf(row)) {
       expect(cls, `${cls} would reverse the visual order away from the DOM order`)
         .not.toMatch(/flex-row-reverse|flex-col/);
     }
 
-    // Exactly the wrapper the member Profile uses, so "match it exactly" is a
-    // fact about the markup and not a claim in a comment.
     const profile = readFileSync(path.join(SRC, 'components/Profile.tsx'), 'utf8');
-    const pair = /<PaletteFamilyToggle\s*\/>\s*<ThemeToggle variant="row" \/>/;
-    expect(profile, 'the member Profile no longer renders the pair in this order').toMatch(pair);
-    expect(readFileSync(SETTINGS_SRC, 'utf8'), 'admin Settings renders a different pairing').toMatch(pair);
+    expect(profile, 'the member Profile still renders the removed family toggle')
+      .not.toContain('PaletteFamilyToggle');
+    expect(profile, 'the member Profile no longer renders the mode control')
+      .toMatch(/<ThemeToggle variant="row" \/>/);
+    expect(readFileSync(SETTINGS_SRC, 'utf8'), 'admin Settings renders a different control')
+      .toMatch(/<ThemeToggle variant="row" \/>/);
   });
 
   // 3
-  it('both write their own preference and stamp html through the existing single path', async () => {
+  it('the mode control writes its own preference and stamps html through the single path', async () => {
+    // 🔴 THE-338 — the family half of this test is gone with the family. What
+    // it proved (the two axes stayed orthogonal: picking a mode did not reset
+    // the family, and vice versa) has no subject any more; what remains is the
+    // half that still has one, plus the assertion that no family attribute is
+    // stamped by anything this screen does.
     const host = await mount();
     await expandSection(host, 'Appearance');
     const mode = host.querySelector('[role="radiogroup"][aria-label="Colour theme"]')!;
-    const family = host.querySelector('[role="radiogroup"][aria-label="Palette family"]')!;
 
     const pick = (group: Element, label: string) => {
       const btn = group.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`);
@@ -426,28 +424,20 @@ describe('THE-183 — admin Settings', () => {
       act(() => { btn!.click(); });
     };
 
-    // Mode: its own key, and <html> stamped.
     pick(mode, 'Dark');
     expect(localStorage.getItem('harvest-theme')).toBe('dark');
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
     expect(document.documentElement.classList.contains('dark')).toBe(true);
     expect(mode.querySelector('[aria-label="Dark"]')!.getAttribute('aria-checked')).toBe('true');
 
-    // Family: its own, separate key — and it does NOT reset the mode above.
-    pick(family, 'Classic');
-    expect(localStorage.getItem('harvest-theme-family')).toBe('classic');
-    expect(localStorage.getItem('harvest-theme'), 'the family control overwrote the mode preference').toBe('dark');
-    expect(document.documentElement.getAttribute('data-palette')).toBe('classic');
-    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
-    expect(family.querySelector('[aria-label="Classic"]')!.getAttribute('aria-checked')).toBe('true');
-
-    // Both are switches, not one-way doors, and changing the mode leaves the
-    // family alone — the two axes stay orthogonal from this screen too.
+    // It is a switch, not a one-way door.
     pick(mode, 'Light');
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');
-    expect(document.documentElement.getAttribute('data-palette'), 'picking a mode reset the palette').toBe('classic');
-    pick(family, 'Harvest');
-    expect(document.documentElement.getAttribute('data-palette')).toBe('harvest');
+    expect(document.documentElement.classList.contains('dark')).toBe(false);
+
+    // 🔴 And nothing here stamps a palette family, in either direction.
+    expect(document.documentElement.getAttribute('data-palette')).toBeNull();
+    expect(localStorage.getItem('harvest-theme-family')).toBeNull();
   });
 
   // 4 ── 🔴 by enumeration
@@ -514,8 +504,11 @@ describe('THE-183 — admin Settings', () => {
       stampCalls(readFileSync(path.join(SRC, 'lib/theme-runtime.ts'), 'utf8')),
       'theme-runtime.ts gained or lost a stamping call — applyTheme must stay the one stamping path THE-85 consolidated',
     ).toEqual([
+      // 🔴 THE-338 removed `.setAttribute('data-palette'` from this list. That
+      // is the point of counting the calls rather than diffing the file: the
+      // stamp was REMOVED, deliberately, and a removal has to come through
+      // here and say so — exactly as an addition would.
       "classList.toggle('dark'",
-      ".setAttribute('data-palette'",
       ".setAttribute('data-theme'",
     ].sort());
 
@@ -523,38 +516,38 @@ describe('THE-183 — admin Settings', () => {
       stampCalls(readFileSync(path.join(SRC, 'app/layout.tsx'), 'utf8')),
       'the pre-paint script gained or lost a stamping call',
     ).toEqual([
-      // the THE-85 pre-auth branch: light, un-dark, and the forced family
+      // 🔴 THE-338 removed both family stamps. The pre-paint script used to
+      // write `data-palette` on BOTH branches — the forced family on the
+      // THE-85 pre-auth path and the stored one on the normal path.
+      // the THE-85 pre-auth branch: light, un-dark
       ".setAttribute('data-theme'",
       "classList.remove('dark'",
-      ".setAttribute('data-palette'",
-      // the normal branch: resolved mode, the dark class, the stored family
+      // the normal branch: resolved mode, the dark class
       ".setAttribute('data-theme'",
       "classList.toggle('dark'",
-      ".setAttribute('data-palette'",
     ].sort());
   });
 
   // 5 ── 🔴 no-regression on the screen this PR copies
-  it('the member Profile still renders them side by side at a wide viewport', async () => {
-    // If this fails, PR 347 regressed and THE-183 is not the bug to fix.
+  it('the member Profile still renders the mode control in a single flex row', async () => {
+    // 🔴 THE-338 — this asserted the PAIR (family then mode) sat side by side
+    // in one flex row, because THE-183's bug was them stacking. One control is
+    // left, so the pairing is gone; the ROW is not, and it is still what keeps
+    // the control on one line at the 1280px band where Profile's settings
+    // column splits and available width stops growing with the viewport.
     const profile = readFileSync(path.join(SRC, 'components/Profile.tsx'), 'utf8');
+    expect(profile, 'the removed family toggle is back in the member Profile')
+      .not.toContain('PaletteFamilyToggle');
 
-    // The pair, in order, inside a single-line flex row.
     const rowMatch = profile.match(
-      /<div className="(flex[^"]*)">\s*<PaletteFamilyToggle \/>\s*<ThemeToggle variant="row" \/>\s*<\/div>/,
+      /<div className="(flex[^"]*)">\s*<ThemeToggle variant="row" \/>\s*<\/div>/,
     );
-    expect(rowMatch, 'the member Profile no longer renders the two controls in one flex row').not.toBeNull();
+    expect(rowMatch, 'the member Profile no longer renders the control in a flex row').not.toBeNull();
     const rowClasses = rowMatch![1].split(/\s+/);
     expect(rowClasses, 'the Profile theme row is no longer a flex row').toContain('flex');
-    expect(rowClasses, 'the Profile theme row stacks them').not.toContain('flex-col');
-    expect(rowClasses, 'the Profile theme row may wrap them onto two lines').not.toContain('flex-wrap');
-    expect(rowClasses, 'the Profile theme row reverses the visual order').not.toContain('flex-row-reverse');
+    expect(rowClasses, 'the Profile theme row stacks it').not.toContain('flex-col');
+    expect(rowClasses, 'the Profile theme row may wrap').not.toContain('flex-wrap');
 
-    // Side by side at a WIDE viewport specifically: the row carries no rule at
-    // any of these widths that would take it out of a single flex line. 1280px
-    // is the one that matters most — Profile's settings column SPLITS there, so
-    // available width is non-monotonic in viewport (THE-184), which is exactly
-    // where a side-by-side row would break first.
     const host = await mount(); // any mount; we only need `emitted` resolved
     void host;
     for (const viewport of [1024, 1280, 1360, 1440, 1920]) {
@@ -564,14 +557,13 @@ describe('THE-183 — admin Settings', () => {
       expect(d['flex-wrap'], `the Profile theme row may wrap at ${viewport}px`).toBeUndefined();
     }
 
-    // Both controls still hide their labels from `xl` up, which is what keeps
-    // the pair inside the narrowed column at 1280px rather than overflowing it.
-    for (const rel of ['components/ThemeToggle.tsx', 'components/PaletteFamilyToggle.tsx']) {
-      expect(
-        readFileSync(path.join(SRC, rel), 'utf8'),
-        `${rel} lost the icon-only fallback the 1280px band depends on`,
-      ).toMatch(/hidden sm:inline xl:hidden/);
-    }
+    // The icon-only fallback the 1280px band depends on is still there. With
+    // one control the row has room to spare, but the rule is unchanged and is
+    // what the measurement in THE-296 was taken against.
+    expect(
+      readFileSync(path.join(SRC, 'components/ThemeToggle.tsx'), 'utf8'),
+      'ThemeToggle lost the icon-only fallback the 1280px band depends on',
+    ).toMatch(/hidden sm:inline xl:hidden/);
   });
 
   // 6
@@ -728,8 +720,10 @@ describe('THE-183 — admin Settings', () => {
         px: 37.5,
         why: 'pre-existing `px-4 py-2` on the plan card. Raising it changes the plan card on a phone, which this PR is not allowed to do. Rule 4 gives it 40px from `sm:` up; the mobile height is untouched.',
       },
-      Harvest: { px: 20, why: 'PR 347 pill sizing, reused verbatim' },
-      Classic: { px: 20, why: 'PR 347 pill sizing, reused verbatim' },
+      // 🔴 THE-338 removed `Harvest` and `Classic` from this list — the two
+      // pills of the palette-family control, which no longer exists. The
+      // enumeration is exact in BOTH directions, so a removal has to be
+      // recorded here just as an addition would.
       Light: { px: 20, why: 'PR 347 pill sizing, reused verbatim' },
       Dark: { px: 20, why: 'PR 347 pill sizing, reused verbatim' },
       System: { px: 20, why: 'PR 347 pill sizing, reused verbatim' },
@@ -777,7 +771,7 @@ describe('THE-183 — admin Settings', () => {
   });
 
   // 10
-  it('no colour is hardcoded, and all four palettes resolve', async () => {
+  it('no colour is hardcoded, and both palettes resolve', async () => {
     const host = await mount();
 
     // (a) Nothing this PR adds carries a literal colour or an inline style.
@@ -809,13 +803,9 @@ describe('THE-183 — admin Settings', () => {
     };
     const rootVars = varsIn((s) => s.trim() === ':root');
     const darkVars = varsIn((s) => /\[data-theme="dark"\]/.test(s) && !/data-palette/.test(s));
-    const classicLight = varsIn((s) => /\[data-palette="classic"\]\[data-theme="light"\]/.test(s));
-    const classicDark = varsIn((s) => /\[data-palette="classic"\](\.dark|\[data-theme="dark"\])/.test(s));
     const palettes: Record<string, Record<string, string>> = {
-      'harvest/light': { ...rootVars },
-      'harvest/dark': { ...rootVars, ...darkVars },
-      'classic/light': { ...rootVars, ...classicLight },
-      'classic/dark': { ...rootVars, ...darkVars, ...classicDark },
+      light: { ...rootVars },
+      dark: { ...rootVars, ...darkVars },
     };
     const resolve = (vars: Record<string, string>, token: string): string | null => {
       let value: string | undefined = vars[token];
@@ -826,7 +816,7 @@ describe('THE-183 — admin Settings', () => {
       }
       return value ?? null;
     };
-    expect(Object.keys(palettes)).toHaveLength(4);
+    expect(Object.keys(palettes)).toHaveLength(2);
     // --text-faint is the heading ink, --border-default the danger separator,
     // --surface-raised/--surface-sunken the cards the regions hold.
     for (const [name, vars] of Object.entries(palettes)) {
@@ -837,12 +827,13 @@ describe('THE-183 — admin Settings', () => {
         expect(resolved, `${token} does not resolve to a colour for ${name}`).toMatch(/^(#|rgb|hsl|color-mix)/);
       }
     }
-    // The families must actually differ, or "four palettes" is one palette
-    // wearing four names.
-    expect(resolve(palettes['harvest/dark'], '--surface-raised'))
-      .not.toBe(resolve(palettes['classic/dark'], '--surface-raised'));
-    expect(resolve(palettes['harvest/light'], '--text-faint'))
-      .not.toBe(resolve(palettes['classic/light'], '--text-faint'));
+    // The two palettes must actually differ, or "both palettes" is one palette
+    // wearing two names. (THE-338: this compared the two FAMILIES; with one
+    // family the same property is that the two MODES differ.)
+    expect(resolve(palettes.dark, '--surface-raised'))
+      .not.toBe(resolve(palettes.light, '--surface-raised'));
+    expect(resolve(palettes.dark, '--text-faint'))
+      .not.toBe(resolve(palettes.light, '--text-faint'));
   });
 
   // 11

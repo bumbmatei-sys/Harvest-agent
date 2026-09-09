@@ -2,13 +2,9 @@
 import { useEffect, useLayoutEffect } from 'react';
 import {
   THEME_STORAGE_KEY,
-  FAMILY_STORAGE_KEY,
-  DEFAULT_PALETTE_FAMILY,
   isThemeChoice,
-  isPaletteFamily,
   resolveTheme,
   type ThemeChoice,
-  type PaletteFamily,
 } from './theme';
 import { isPreAuthPath } from './preauth-theme';
 
@@ -27,13 +23,12 @@ import { isPreAuthPath } from './preauth-theme';
  * they sign in again. That is the whole point of forcing at this layer rather
  * than resolving the choice to 'light' and persisting it.
  *
- * The palette-family PR extends this same file rather than adding a second
- * one: `applyTheme` now stamps `data-palette` alongside `data-theme`/`.dark`,
- * so mode and family always land through the identical call. A family
- * argument defaults to the stored value (re-read fresh on every call, not
- * cached), which is why picking a new MODE from the toggle needs no changes
- * here at all — the family that was already active is simply re-stamped.
- * Only the pre-auth/funnel force below passes an explicit override.
+ * 🔴 THE-338 removed the FAMILY axis this file used to carry. `applyTheme`
+ * stamped `data-palette` alongside `data-theme`/`.dark` and took a family
+ * argument that defaulted to the stored preference; there is one palette
+ * family now, the attribute matches no rule in globals.css, and both the
+ * argument and the `readStoredFamily` reader are gone. Mode is the only axis
+ * left, so this file is back to stamping one thing.
  */
 
 const prefersDark = (): boolean =>
@@ -42,40 +37,19 @@ const prefersDark = (): boolean =>
   window.matchMedia('(prefers-color-scheme: dark)').matches;
 
 /**
- * Read the persisted family. Never writes — see the file header.
- *
- * THE-265: both fall-throughs resolve to DEFAULT_PALETTE_FAMILY rather than
- * spelling a literal, so "what a missing value means" has exactly one home in
- * the bundled code. A stored 'harvest' or 'classic' is still returned as-is —
- * a user who has chosen keeps their choice; only the ABSENT and the GARBAGE
- * cases moved.
- */
-export function readStoredFamily(): PaletteFamily {
-  try {
-    const raw = localStorage.getItem(FAMILY_STORAGE_KEY);
-    return isPaletteFamily(raw) ? raw : DEFAULT_PALETTE_FAMILY;
-  } catch {
-    // localStorage can throw in private mode / sandboxed iframes.
-    return DEFAULT_PALETTE_FAMILY;
-  }
-}
-
-/**
  * Stamp <html>. Mirrors exactly what the pre-paint script does.
  *
- * `family` defaults to whatever is currently stored so that callers changing
- * only the mode (the toggle) don't have to know about the family axis at
- * all. Callers that need to FORCE a family — the pre-auth/funnel override
- * below — pass it explicitly, the same way they already pass an explicit
- * `choice` instead of relying on resolveTheme's default.
+ * 🔴 THE-338 removed the FAMILY axis. This used to take a second argument and
+ * stamp `data-palette` alongside `data-theme`; there is one palette family
+ * now, so the attribute matches no rule in globals.css and is no longer
+ * written. Mode is the only axis left, which is why this takes one argument.
  */
-export function applyTheme(choice: ThemeChoice, family: PaletteFamily = readStoredFamily()): void {
+export function applyTheme(choice: ThemeChoice): void {
   if (typeof document === 'undefined') return;
   const resolved = resolveTheme(choice, prefersDark());
   const el = document.documentElement;
   el.setAttribute('data-theme', resolved);
   el.classList.toggle('dark', resolved === 'dark');
-  el.setAttribute('data-palette', family);
 }
 
 /** Read the persisted choice. Never writes — see the file header. */
@@ -107,38 +81,24 @@ let forcedLightCount = 0;
  * knows its own state but not its route — and inside the SPA, React Router has
  * already updated `window.location` by the time effects run.
  *
- * The same `forced` flag also pins the FAMILY, not just the mode to light.
- * Reasoning: these are the screens a prospective customer sees before they
- * have an account at all, so a RETURNING signed-out user's stored family must
- * not leak through and put a combination nobody has design-reviewed in front
- * of the one audience that has not paid yet. THE-85 exists to keep half-
- * configured states off the screens where "reads as a broken product" is the
- * cost of getting it wrong, so the funnel renders exactly ONE presentation.
+ * 🔴 THE-338 SIMPLIFIED THIS. The `forced` flag used to pin the FAMILY as
+ * well as the mode, so a returning signed-out user's stored family could not
+ * leak a combination nobody had design-reviewed onto the screens a
+ * prospective customer sees first. There is one family now, so there is
+ * nothing left to pin: the funnel forces LIGHT and that is the whole force.
+ * THE-85's guarantee — the funnel renders exactly one deterministic
+ * presentation — is unchanged, and is now true by construction rather than
+ * by an explicit override.
  *
- * 🔴 THE-265 CHANGED WHICH ONE, and coupled it to the default rather than
- * spelling a second literal. `DEFAULT_PALETTE_FAMILY`, not `'classic'`: the
- * property the funnel actually wants is "render what a brand-new visitor gets
- * once they are inside", and a literal would have to be found and changed
- * again the next time the default moves. This cannot drift out of step with
- * it. It is still a FORCE — a stored 'harvest' is ignored here exactly as a
- * stored 'dark' is — so the funnel is still one deterministic presentation,
- * and it is now the same one the app opens in.
- *
- * ⚠️ VERIFIED, not assumed, because THE-85's original argument was that only
- * Harvest light had been checked. Every text token AuthPage actually paints
- * clears AA on the ground it paints on, under Classic light, and three of the
- * four improve on Harvest: --text-heading 14.25 -> 16.42:1, --text-faint
- * 4.98 -> 5.18:1, --text-body 9.52 -> 9.78:1, --text-muted 6.62 -> 6.61:1.
- * The `AuthShell` ground is `--cream`, which Classic does not override, so it
- * is the identical colour in both families. Asserted in `preauth-light.test.ts`
- * against the REAL Classic-light scope (`:root` with Classic's overrides
- * cascaded on top), not against `:root` alone.
+ * ⚠️ VERIFIED, not assumed. Every text token AuthPage actually paints clears
+ * AA on the ground it paints on under the promoted light ramp, and
+ * `preauth-light.test.ts` asserts it against the real `:root` scope.
  */
 export function applyThemeForLocation(pathname?: string): void {
   if (typeof document === 'undefined') return;
   const path = pathname ?? window.location.pathname;
   const forced = forcedLightCount > 0 || isPreAuthPath(path);
-  applyTheme(forced ? 'light' : readStoredChoice(), forced ? DEFAULT_PALETTE_FAMILY : readStoredFamily());
+  applyTheme(forced ? 'light' : readStoredChoice());
 }
 
 /**

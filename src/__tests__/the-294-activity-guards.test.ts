@@ -179,17 +179,15 @@ function varsIn(selectorTest: (sel: string) => boolean): Record<string, string> 
 
 const rootVars = varsIn((s) => s === ':root');
 const darkVars = varsIn((s) => /\.dark|\[data-theme="dark"\]/.test(s) && !s.includes('data-palette'));
-const classicLightVars = varsIn((s) => s.includes('data-palette="classic"') && s.includes('data-theme="light"'));
-const classicDarkVars = varsIn(
-  (s) => s.includes('data-palette="classic"') && (s.includes('.dark') || s.includes('data-theme="dark"')),
-);
 
 /** 🔴 Classic FIRST — it is the default since #409, so it is the primary case. */
+// 🔴 THE-338 — TWO palettes, not four. The second FAMILY (Classic) and its
+// `data-palette` selectors are gone; its 14 overrides were promoted into
+// :root/.dark. The surviving axis is light/dark, so keeping four keys would
+// have run every assertion below twice over identical declarations.
 const PALETTES: Record<string, Record<string, string>> = {
-  'Classic light': { ...rootVars, ...classicLightVars },
-  'Classic dark': { ...rootVars, ...darkVars, ...classicDarkVars },
-  'Harvest light': { ...rootVars },
-  'Harvest dark': { ...rootVars, ...darkVars },
+  Light: { ...rootVars },
+  Dark: { ...rootVars, ...darkVars },
 };
 
 function resolve(value: string | undefined, scope: Record<string, string>, depth = 0): string | null {
@@ -203,7 +201,7 @@ function resolve(value: string | undefined, scope: Record<string, string>, depth
   return v;
 }
 
-describe('all four palettes resolve every token this slice leans on', () => {
+describe('both palettes resolve every token this slice leans on', () => {
   /**
    * The semantic tokens the five new widgets reference, via the `ui/table`,
    * `ui/card` and `ui/empty` primitives and their own classes. Every one of them
@@ -227,9 +225,14 @@ describe('all four palettes resolve every token this slice leans on', () => {
     }
   });
 
-  it('Classic is genuinely distinct from Harvest — the four are not two copies', () => {
-    expect(resolve(PALETTES['Classic light']['--background'], PALETTES['Classic light']))
-      .not.toBe(resolve(PALETTES['Harvest light']['--background'], PALETTES['Harvest light']));
+  it('the two palettes are genuinely two — dark is not a copy of light', () => {
+    // 🔴 THE-338 REPOINTED THIS. It proved the two FAMILIES were distinct, so
+    // that "resolves in all four" was not four readings of the same values.
+    // With one family the equivalent claim is that the MODES are distinct —
+    // which is what makes "resolves in both" a real check rather than two
+    // readings of :root.
+    expect(resolve(PALETTES.Dark['--background'], PALETTES.Dark))
+      .not.toBe(resolve(PALETTES.Light['--background'], PALETTES.Light));
   });
 });
 
@@ -250,7 +253,7 @@ describe('no new token was defined', () => {
    */
   it('every custom property these files reference already exists in globals.css', () => {
     const declared = new Set(Object.keys(rootVars));
-    for (const map of [darkVars, classicLightVars, classicDarkVars]) {
+    for (const map of [darkVars]) {
       for (const key of Object.keys(map)) declared.add(key);
     }
     const globals = readFileSync(GLOBALS_CSS, 'utf8');
@@ -505,7 +508,7 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // again behind its own switch, the Newsletter nav entry and render branch
     // gated by a new one in the identical shape, and the Signups gate moved off
     // the `crm` cell onto its own so free can keep Signups without CRM.
-    ['3c26f36aa883e7c9540038e3afa1da2ec8bb61f091a4a8e5efa0d866fec6cf8f', 'main + THE-335 — SMS and the newsletter hidden; Signups on its own plan cell'],
+    ['d81a5b117569424515bf8c8ebca8654e8b6f57f3c7447f2419968adcebdf8bbe', 'main + THE-335 — SMS and the newsletter hidden; Signups on its own plan cell'],
   ],
   'firestore.indexes.json': [
     ['8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0', 'main at 133d557'],

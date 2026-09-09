@@ -707,24 +707,23 @@ describe('17 — no colour is hardcoded, no emoji is rendered, no token is added
     expect(codeOf(file), `${file} reads a raw custom property`).not.toMatch(/var\(--/);
   });
 
-  it('🔴 Classic is still the default, and all FOUR palettes still resolve', async () => {
-    const { DEFAULT_PALETTE_FAMILY, PALETTE_FAMILIES, THEME_CHOICES } = await import('@/lib/theme');
-    // ⚠️ THE FOUR ARE FAMILY × MODE, not four families. `PALETTE_FAMILIES` is
-    // `['harvest', 'classic']` and the resolved theme is light or dark, so the
-    // four combinations a surface must survive are harvest/light,
-    // harvest/dark, classic/light and classic/dark. Recorded here because
-    // "four palettes" reads as four families and is not.
-    expect([...PALETTE_FAMILIES].sort()).toEqual(['classic', 'harvest']);
+  it('🔴 both palettes still resolve — and there are TWO now, not four', async () => {
+    // 🔴 THE-338 HALVED THIS, and the arithmetic is the point. The four were
+    // FAMILY × MODE — {harvest, classic} × {light, dark} — never four
+    // families. Removing the family axis leaves the mode axis alone, so the
+    // combinations a surface must survive are light and dark. The assertion
+    // is kept (rather than dropped) because "this view spells no colour of its
+    // own, so every palette resolves" is still what the next test relies on.
+    const theme = await import('@/lib/theme');
+    expect('PALETTE_FAMILIES' in theme).toBe(false);
+    expect('DEFAULT_PALETTE_FAMILY' in theme).toBe(false);
     const RESOLVED = ['light', 'dark'] as const;
-    const combinations = PALETTE_FAMILIES.flatMap((f) => RESOLVED.map((m) => `${f}/${m}`));
-    expect(combinations).toHaveLength(4);
-    // 🔴 CLASSIC IS THE DEFAULT — #409.
-    expect(DEFAULT_PALETTE_FAMILY).toBe('classic');
-    expect(THEME_CHOICES).toContain('system');
+    expect(RESOLVED).toHaveLength(2);
+    expect(theme.THEME_CHOICES).toContain('system');
   });
 
   it('🔴 and the two views spell NO colour of their own — every surface is the primitive\'s', () => {
-    // That is what makes "all four palettes resolve" true here without this
+    // That is what makes "both palettes resolve" true here without this
     // ticket re-testing the theme: a file that names no colour cannot name a
     // wrong one in any palette. The only utility either view spells from these
     // families is `text-sm`, which is a SIZE.

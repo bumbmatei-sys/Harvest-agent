@@ -992,7 +992,7 @@ describe('the submit path and the Maps autofill are untouched', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // 9 & 10. Colour and type are somebody else's PR.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('no colour is hardcoded, and all four palettes resolve', () => {
+describe('no colour is hardcoded, and both palettes resolve', () => {
   it('adds no colour to the form — the rendered colour tokens are the baseline set', async () => {
     expect(colourTokens(await form())).toEqual(BASELINE.colours);
   });
@@ -1008,15 +1008,26 @@ describe('no colour is hardcoded, and all four palettes resolve', () => {
     expect(colourTokens(probe)).toEqual([]);
   });
 
-  it('leaves all four palettes to resolve exactly as they did', () => {
+  it('leaves both palettes to resolve exactly as they did', () => {
     // Harvest and Classic, each in light and dark. Nothing above adds, removes
     // or re-hues a colour token, so all four render the form as before — this
     // pins that the four scopes are the four, so "all four" stays a real count.
     const css = readFileSync(path.resolve(SRC, '../app/globals.css'), 'utf8');
     expect(css).toMatch(/^\s*:root\s*\{/m);
     expect(css).toMatch(/\[data-theme="dark"\]\s*\{/);
-    expect(css).toMatch(/\[data-palette="classic"\]\[data-theme="light"\]\s*\{/);
-    expect(css).toMatch(/\[data-palette="classic"\]\[data-theme="dark"\]\s*\{/);
+    // 🔴 THE-338 — the two Classic selectors this asserted are GONE, and their
+
+    // absence is now what is asserted. The family's 14 overrides were promoted
+
+    // into :root/.dark, so every token still resolves — in TWO palettes, not
+
+    // four. Leaving the old assertion would have pinned a family that no
+
+    // longer exists; deleting it outright would have stopped checking that the
+
+    // theme scopes exist at all.
+
+    expect(css).not.toMatch(/\[data-palette/);
   });
 });
 

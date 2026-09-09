@@ -479,13 +479,25 @@ describe('2 · a PR touching NO course file passes the course emoji sweep', () =
       .toBe(true);
   });
 
-  it('and this very branch is that PR — it touches no course source file', () => {
-    const touched = changedPaths().filter((f) =>
-      (f === 'src/utils/course.constants.ts' || f.startsWith('src/components/course/'))
-      && !f.includes('__tests__'));
-    expect(touched, 'THE-315 changed a course source file, so it is no longer the case under test')
-      .toEqual([]);
-  });
+  /* 🔴 A SELF-REFERENTIAL BRANCH-DIFF ASSERTION STOOD HERE, AND THE-338 REMOVED
+     IT — because it was the exact defect this file exists to catch.
+
+     It read: `changedPaths().filter(course files)` must be empty, "and this
+     very branch is that PR — it touches no course source file". That was true
+     of THE-315's own branch and is a claim about whatever branch happens to be
+     running: it goes red on any later PR that touches a course file, for a
+     reason that has nothing to do with that PR. That is word for word what the
+     register above forbids ("It asserts the CURRENT BRANCH'S DIFF … and then
+     every unrelated PR goes red for a reason that has nothing to do with it").
+
+     THE-338 is that unrelated PR: its `divide-stone-200 -> divide-line` sweep
+     touches CoursePreview.tsx, one of thirteen screens drawing row dividers
+     with an unthemed hardcoded scale.
+
+     Nothing was lost. The property section 2 is FOR is that THE-311's premise
+     stands down from the BASE REF rather than from the diff, and the two tests
+     either side of this one assert exactly that — which is also the shape
+     section 3 has for THE-312, with no self-referential test at all. */
 
   it('the stand-down is decided by the base ref and NOT by the diff', () => {
     const src = read(THE311);

@@ -579,8 +579,13 @@ describe('nothing was minted, added or hardcoded', () => {
       const root = token.split('-')[0];
       expect(`${config}${css}`, `${token} resolves to nothing in any palette`).toContain(root);
     }
-    // Classic first, and still the default.
-    expect(css).toContain('[data-palette="classic"]');
+    // 🔴 THE-338 — the palette FAMILY axis is gone. This required the Classic
+    // family's selector to exist ("Classic first, and still the default"); its
+    // 14 overrides were promoted into the two theme scopes, so what is
+    // required now is those two, and that no family selector came back.
+    expect(css).not.toContain('data-palette');
+    expect(css).toMatch(/^\s*:root\s*\{/m);
+    expect(css).toContain('[data-theme="dark"]');
     expect(read('src/__tests__/the-265-classic-default.test.ts')).toBeTruthy();
   });
 

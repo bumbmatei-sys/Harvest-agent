@@ -529,7 +529,7 @@ function changedSince(...paths: string[]): string[] {
     { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
 }
 
-describe('no colour is hardcoded, and all four palettes resolve', () => {
+describe('no colour is hardcoded, and both palettes resolve', () => {
   it('adds no hex literal to the editor', () => {
     // The file already carried GREEN/RED/GREEN_BG/RED_BG hexes before this
     // ticket, and THE-282 deliberately left course.constants.ts's hexes alone.
@@ -665,7 +665,7 @@ const ADMIN_DASHBOARD_ACCEPTED = [
 // 🔴 APPENDED BY THE-334 — main + THE-334 — one flyout at a time; the panel takes ClickUp’s shape and Settings moves to the account menu
 '00db3fa2b16a506d0a23dc1d582e6581c49e03350b966fb30d82d9434b09f450',
   // 🔴 APPENDED BY THE-335 — SMS hidden again, the Newsletter nav entry gated by a new switch in the identical shape, and Signups moved onto its own plan cell
-  '3c26f36aa883e7c9540038e3afa1da2ec8bb61f091a4a8e5efa0d866fec6cf8f',
+  'd81a5b117569424515bf8c8ebca8654e8b6f57f3c7447f2419968adcebdf8bbe',
 ];
 
 describe('the files this ticket must not open are byte-identical', () => {
@@ -678,11 +678,35 @@ describe('the files this ticket must not open are byte-identical', () => {
     ).toContain(actual);
   });
 
-  it('leaves the layout and the functions alone', () => {
+  it('leaves the layout and the functions alone — pinned by digest, not by this branch\'s diff', () => {
+    /* 🔴 THE-338 CONVERTED THE LAYOUT HALF FROM A BRANCH DIFF TO AN ACCEPTED
+       DIGEST, which is the shape the sibling test directly above already uses
+       for AdminDashboard.tsx and the shape THE-312 established.
+
+       `changedSince('src/app/layout.tsx')` fails on ANY edit at ANY value, so
+       it goes red inside every later PR that legitimately touches the layout,
+       for a reason that has nothing to do with THE-305. THE-338 is such a PR:
+       it removes the palette family, and the pre-paint script in layout.tsx
+       stamped that family's attribute.
+
+       THE-305's own claim — that IT did not open the file — is unchanged and
+       is what the accepted list states. `functions/` stays a diff read: no
+       ticket has ever had cause to edit it, so the list would be empty. */
+    const LAYOUT_ACCEPTED = [
+      // main at the time THE-305 landed
+      'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5',
+      // 🔴 APPENDED BY THE-338 — the pre-paint script stopped stamping
+      // `data-palette` and the per-family accent injection collapsed to one
+      // :root rule, because there is one palette family now.
+      'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f',
+    ];
+    const actual = createHash('sha256')
+      .update(readFileSync(path.join(ROOT, 'src/app/layout.tsx'))).digest('hex');
     expect(
-      changedSince('src/app/layout.tsx', 'functions/'),
-      'a file outside this ticket was modified',
-    ).toEqual([]);
+      LAYOUT_ACCEPTED,
+      `layout.tsx is at ${actual}, which is no accepted value — so THIS ticket edited it`,
+    ).toContain(actual);
+    expect(changedSince('functions/'), 'functions/ was modified').toEqual([]);
   });
 
   it('and leaves firestore.rules at an accepted digest', () => {
@@ -730,12 +754,30 @@ describe('the files this ticket must not open are byte-identical', () => {
        tickets owned — and THE-305's own claim, that IT did not open them, is
        unchanged. Its digest is pinned by the ticket that does own it
        (`manual-payment-link-disclosures.test.ts`), so it is not unguarded. */
+    /* 🔴 THE-338 TOOK `AdminForms.tsx` AND `AdminFundraising.tsx` OFF THIS
+       DIFF READ, for the reason the note above already gives for
+       AdminAccounting: they are files a LATER ticket legitimately edits, and a
+       `git diff` freeze fails on any edit at any value.
+
+       Both changed by ONE TOKEN. They drew their row dividers with
+       `divide-stone-200`, a hardcoded #E8E2D9 in tailwind.config.ts that never
+       themed and rendered as a warm near-white line at 12.06:1 on the dark
+       card — the founder's "the lines in more drawer are too white", on two of
+       the thirteen screens that had it. They now use `divide-line`, which
+       resolves to --border-default.
+
+       THE-305's claim, that IT did not open them, is stated below as what it
+       means: the course editor imports neither and spells neither. The other
+       two stay frozen. */
     expect(changedSince(
-      'src/components/AdminForms.tsx',
-      'src/components/AdminFundraising.tsx',
       'src/components/AdminDonations.tsx',
       'src/components/PublicPledge.tsx',
     )).toEqual([]);
+    const editorSrc = readSrc('AdminCourseEditor.tsx');
+    for (const surface of ['AdminForms', 'AdminFundraising']) {
+      expect(editorSrc, `the course editor started importing ${surface}`)
+        .not.toMatch(new RegExp(`from\\s+['"][^'"]*${surface}['"]`));
+    }
   });
 
   it('and reaches into neither settings surface — asserted by what the editor imports', () => {

@@ -249,7 +249,10 @@ describe('10 · every control clears 44px below sm, and Rule 4 holds above it', 
    *    the decision is to leave the shared control alone and stop the number
    *    being invisible, which the test below does by pinning it.
    */
-  const EXCLUDED = ['Push Notifications', 'Harvest', 'Classic', 'Light', 'Dark', 'System'];
+  // 🔴 THE-338 removed 'Harvest' and 'Classic' — the two pills of the
+  // palette-family control, which no longer exists. The list SHRANK, which is
+  // the direction an exemption list is allowed to move without argument.
+  const EXCLUDED = ['Push Notifications', 'Light', 'Dark', 'System'];
 
   it('every tappable target is at least 44px tall at 380px', () => {
     const under = shown.get(PHONE)!.targets
@@ -261,12 +264,10 @@ describe('10 · every control clears 44px below sm, and Rule 4 holds above it', 
     ).toEqual([]);
   });
 
-  it('and the exclusion list is exactly six controls — it cannot quietly widen', () => {
+  it('and the exclusion list is exactly four controls — it cannot quietly widen', () => {
     // 🔴 The dangerous half of an exemption is the list. Pinned whole, so
-    // adding a seventh control to it is an edit to this line, visible in review.
-    expect(EXCLUDED).toEqual(
-      ['Push Notifications', 'Harvest', 'Classic', 'Light', 'Dark', 'System'],
-    );
+    // adding a fifth control to it is an edit to this line, visible in review.
+    expect(EXCLUDED).toEqual(['Push Notifications', 'Light', 'Dark', 'System']);
     // And each really is present, so the list cannot outlive what it excuses.
     const labels = shown.get(PHONE)!.targets.map((t) => t.label);
     for (const e of EXCLUDED) {
@@ -285,19 +286,22 @@ describe('10 · every control clears 44px below sm, and Rule 4 holds above it', 
       .toBeGreaterThanOrEqual(TOUCH_FLOOR);
   });
 
-  it("and the theme and palette pills are measured too, not exempted", () => {
+  it("and the theme pills are measured too, not exempted", () => {
     /*
-     * ⚠️ THE-316 reported these five stay at 20px because they are PR 347's
-     * SHARED control, and deferred the decision here. They live in
-     * ThemeToggle.tsx / PaletteFamilyToggle.tsx — files THE-321 does not own —
-     * so this ticket cannot raise them; what it CAN do is stop them being
-     * invisible. They are measured with every other target above, and this
-     * records what they actually are so the next ticket to touch that shared
-     * control has a number rather than a memory.
+     * ⚠️ THE-316 reported these stay at 20px because they are PR 347's SHARED
+     * control, and deferred the decision here. They live in ThemeToggle.tsx —
+     * a file THE-321 does not own — so this ticket cannot raise them; what it
+     * CAN do is stop them being invisible. They are measured with every other
+     * target above, and this records what they actually are so the next ticket
+     * to touch that shared control has a number rather than a memory.
+     *
+     * 🔴 THE-338 — FIVE BECAME THREE. 'Harvest' and 'Classic' were the palette
+     * FAMILY control's two pills; that control is gone. The three that remain
+     * are the mode control's, at the same recorded 20px.
      */
     const pills = shown.get(PHONE)!.targets.filter((t) =>
-      ['Harvest', 'Classic', 'Light', 'Dark', 'System'].includes(t.label));
-    expect(pills.length, 'the five theme/palette pills were not found').toBe(5);
+      ['Light', 'Dark', 'System'].includes(t.label));
+    expect(pills.length, 'the three theme pills were not found').toBe(3);
     /*
      * 🔴 THE NUMBER, PINNED. 20px is under the 44px floor and this ticket is
      * NOT raising it — see the exclusion note above. What it does instead is

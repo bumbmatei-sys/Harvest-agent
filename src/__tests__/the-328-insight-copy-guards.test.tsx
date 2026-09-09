@@ -580,11 +580,11 @@ describe('no colour is hardcoded, no emoji; all four palettes resolve', () => {
    * `tailwind-v4-migration.test.ts` spells them — family × theme, with Classic
    * the default since #409 and therefore asserted FIRST.
    */
+  // 🔴 THE-338 — TWO palettes, not four. The Classic FAMILY's two selectors
+  // are gone; its 14 overrides were promoted into the two below.
   const PALETTES = [
-    ['Classic light', '[data-palette="classic"][data-theme="light"]'],
-    ['Classic dark', '[data-palette="classic"][data-theme="dark"]'],
-    ['Harvest light', ':root'],
-    ['Harvest dark', '[data-theme="dark"]'],
+    ['Light', ':root'],
+    ['Dark', '[data-theme="dark"]'],
   ] as const;
 
   it('the feed names no colour and no emoji', () => {
@@ -603,7 +603,7 @@ describe('no colour is hardcoded, no emoji; all four palettes resolve', () => {
     expect(textOf(el)).not.toMatch(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/u);
   });
 
-  it('every colour it does use is a token all four palettes resolve', () => {
+  it('every colour it does use is a token both palettes resolve', () => {
     // The only colour-bearing class this file introduces is the destructive
     // alert variant, which is the primitive's own and reads `--destructive`.
     const css = read('src/app/globals.css');

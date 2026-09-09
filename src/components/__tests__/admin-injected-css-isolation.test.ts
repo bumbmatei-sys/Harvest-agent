@@ -127,17 +127,21 @@ const isScoped = (selector: string): boolean =>
  * on the component's own outermost element.
  */
 const KNOWN_UNSCOPED: ReadonlyArray<{ file: string; why: string }> = [
-  {
-    // THE-277 renamed this from AnalyticsAndRoles.tsx when it split Signups out.
-    // The rename carried the defect across unchanged.
-    file: 'AdminRoles.tsx',
-    why:
-      'Identical `*` reset and identical unscoped input::placeholder / ' +
-      '::-webkit-scrollbar / button:disabled rules — a third admin tab with the ' +
-      'same user-visible bug. THE-277 owns this file and has just landed it; ' +
-      'reported rather than fixed here so a notes ticket does not reopen a file ' +
-      'whose own suite pins it, on the same day it merged.',
-  },
+  /* 🔴 AdminRoles.tsx WAS HERE, AND THE-338 FIXED IT — leaving the list is the
+     point of this guard being bidirectional.
+
+     This entry read: "Identical `*` reset and identical unscoped
+     input::placeholder / ::-webkit-scrollbar / button:disabled rules — a third
+     admin tab with the same user-visible bug… reported rather than fixed here
+     so a notes ticket does not reopen a file whose own suite pins it, on the
+     same day it merged."
+
+     That deferral was correct at the time and the defect then reached the
+     founder, who reported it as "in CRM if I press on roles the button switch
+     appears very small". The `*` reset zeroed the padding of AdminCRM's
+     Contacts/Roles switcher — a SIBLING of AdminRoles, not a child — so the
+     pill pair collapsed to bare text whenever the Roles tab was open. Every
+     rule in that block is now scoped to `[data-admin-roles]`. */
   {
     file: 'AIChat.tsx',
     why:

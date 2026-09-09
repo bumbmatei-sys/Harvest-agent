@@ -584,7 +584,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
                 <p className="text-sm font-display">No pledges yet</p>
               </div>
             ) : (
-              <div className="bg-surface-raised rounded-2xl border border-line divide-y divide-stone-200">
+              <div className="bg-surface-raised rounded-2xl border border-line divide-y divide-line">
                 {pledges.map(p => {
                   const status = derivePledgeStatus(p);
                   const isEditing = editPledge?.id === p.id;

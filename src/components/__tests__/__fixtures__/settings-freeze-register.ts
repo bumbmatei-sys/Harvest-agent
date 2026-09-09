@@ -162,7 +162,7 @@ export const RECORDED_EDITS: ReadonlyArray<RecordedEdit> = [
       + "inheriting the primitives' z-[101]/z-[102], so THE-286's tested stacking does not silently "
       + 'drop 98 layers, and both answers keep their exact labels and exact handlers. Every action '
       + 'takes a 44px touch floor below sm and hands back to Rule 4 above it.',
-    digest: 'e06f0882932827646e1effa6df01a93c9830e894d81dc318f584f76d8f0f21b6',
+    digest: '0541aac82443ef6523ecf9ed5e7f1081c8c1a7b611897ca38755aa67ca4e17d7',
   },
   {
     file: 'src/components/settings/SettingsAccordion.tsx',
@@ -227,7 +227,7 @@ export const RECORDED_EDITS: ReadonlyArray<RecordedEdit> = [
       + 'label still grows — and hands back to Rule 4 above it; DESKTOP_CONTROL_MAX_PX is not '
       + 'raised. The install-app row is untouched and still gated only on the Capacitor shell, '
       + 'never on beforeinstallprompt. No token and no dependency was added.',
-    digest: 'd7473af6fe6a3518e0494c74694b7689bf094603f7ff83cdc52e359820b080b6',
+    digest: 'b2b8e9d2c439a07eedf729ea26bde253a501abacbe0ad7828d7205cb5b13f342',
   },
   {
     file: 'src/components/PersonalInformationModal.tsx',
@@ -256,6 +256,48 @@ export const RECORDED_EDITS: ReadonlyArray<RecordedEdit> = [
       + 'assumed: the alert renders only in the error state, so the phone rendering at rest is the '
       + 'baseline fixture it always was.',
     digest: '00f4252576e342fd64fb034ff9244aa57369399ceb278f62611e2ede4fb1cf01',
+  },
+  {
+    file: 'src/components/AdminSettings.tsx',
+    ticket: 'THE-338',
+    why:
+      'The Appearance row lost the palette-family control. THE-338 removes the Harvest palette '
+      + 'FAMILY: the second family held only 14 overrides per mode and THE-265 had already made it '
+      + 'the family a user with no stored preference rendered in, so its values were promoted into '
+      + ':root/.dark and the axis — attribute, storage key, toggle component and hook fields — was '
+      + 'deleted. NO ROW WAS ADDED, REMOVED OR REORDERED, no `group` changed and no `hidden:` clause '
+      + 'changed; the ItemActions wrapper is byte-identical and now holds one child instead of two, '
+      + 'which is what keeps the frozen sub-640px page skeleton intact. The mode control (light / '
+      + 'dark / system) is untouched and still the only writer of the theme preference.',
+    digest: '0541aac82443ef6523ecf9ed5e7f1081c8c1a7b611897ca38755aa67ca4e17d7',
+  },
+  {
+    file: 'src/components/__tests__/AdminSettings.regroup.test.tsx',
+    ticket: 'THE-338',
+    why:
+      'Five assertions followed the control they guard. THE-183 put the palette-family switch on '
+      + 'admin Settings and this suite proved it rendered, sat left of the mode control on one flex '
+      + 'row, wrote its own storage key without resetting the mode, and stamped html through the '
+      + 'single applyTheme path. The family axis is gone, so each was INVERTED rather than deleted: '
+      + 'the family control must NOT render, the row must still be a single flex line, the mode '
+      + 'control must still write and stamp, and nothing may stamp data-palette. The '
+      + 'no-second-stamping-path enumeration and the sub-44px KNOWN_SHORT list both SHRANK — '
+      + "data-palette left theme-runtime's stamp list and the Harvest/Classic pills left the touch "
+      + 'list — and both are exact in either direction, so a removal has to be recorded here exactly '
+      + 'as an addition would.',
+    digest: '1c57ab93a8f8aab88f2011be4d6153215d73e702b7e447a9dc0c7f0cc3e2015a',
+  },
+  {
+    file: 'src/components/Profile.tsx',
+    ticket: 'THE-338',
+    why:
+      'The member Profile mounted the palette-family toggle beside the mode toggle; that component '
+      + 'is deleted with the family axis, so the import and the element are gone and the flex row '
+      + 'now holds one control. The measurement note above the row is KEPT and annotated rather '
+      + 'than dropped: it was taken when the row held two controls and justifies the icon-only '
+      + 'fallback below sm and from xl up, a rule that is unchanged and now satisfied with room to '
+      + 'spare. No other row moved, and the row order this file records is otherwise identical.',
+    digest: 'b2b8e9d2c439a07eedf729ea26bde253a501abacbe0ad7828d7205cb5b13f342',
   },
 ];
 

@@ -718,7 +718,7 @@ const TABS_PRIMITIVE_REASON =
   'list as a tab pair, so the tab bar reaches the phone layer the baseline was ' +
   'recorded without. tabs.tsx is unchanged - its digest is pinned in ' +
   'the-308-guards.test.ts - and none of these classes hardcodes a colour: each ' +
-  'colour-bearing one resolves through a theme token, so all four palettes hold.';
+  'colour-bearing one resolves through a theme token, so both palettes hold.';
 
 const TABS_PRIMITIVE_CLASSES: readonly string[] = [
   "data-[orientation=horizontal]:flex-col",
@@ -825,7 +825,7 @@ const TABS_UNPREFIXED_HEIGHTS: readonly string[] = [
  * `the-308-guards.test.ts`, and none is spelled by this ticket.
  *
  * 🔴 EVERY ONE RESOLVES THROUGH A THEME TOKEN — `bg-muted`, `text-foreground`,
- * `ring-ring/50`, `bg-input/30` — so all four palettes still resolve and
+ * `ring-ring/50`, `bg-input/30` — so both palettes still resolve and
  * Classic still decides first. Not one names a hex or a numbered shade, and the
  * test below asserts that rather than trusting this sentence.
  *
@@ -1665,7 +1665,7 @@ describe('the check-in CSV export still works', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // 8. Colour.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('no colour is hardcoded, and all four palettes resolve', () => {
+describe('no colour is hardcoded, and both palettes resolve', () => {
   /**
    * THE-308 — the documented-additions escape this assertion did not have.
    *
@@ -1750,12 +1750,23 @@ describe('no colour is hardcoded, and all four palettes resolve', () => {
     expect(mod).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
   });
 
-  it('leaves all four palettes to resolve exactly as they did', () => {
+  it('leaves both palettes to resolve exactly as they did', () => {
     const css = readFileSync(path.resolve(SRC, '../app/globals.css'), 'utf8');
     expect(css).toMatch(/^\s*:root\s*\{/m);
     expect(css).toMatch(/\[data-theme="dark"\]\s*\{/);
-    expect(css).toMatch(/\[data-palette="classic"\]\[data-theme="light"\]\s*\{/);
-    expect(css).toMatch(/\[data-palette="classic"\]\[data-theme="dark"\]\s*\{/);
+    // 🔴 THE-338 — the two Classic selectors this asserted are GONE, and their
+
+    // absence is now what is asserted. The family's 14 overrides were promoted
+
+    // into :root/.dark, so every token still resolves — in TWO palettes, not
+
+    // four. Leaving the old assertion would have pinned a family that no
+
+    // longer exists; deleting it outright would have stopped checking that the
+
+    // theme scopes exist at all.
+
+    expect(css).not.toMatch(/\[data-palette/);
   });
 });
 

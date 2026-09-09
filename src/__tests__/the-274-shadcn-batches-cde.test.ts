@@ -12,7 +12,7 @@ import {
   SET_BY_NEXT_FONT,
   rel,
 } from '../components/ui/__tests__/ds-primitives.audit';
-import { contrastRatio, AA_CONTRAST, DEFAULT_PALETTE_FAMILY } from '../lib/theme';
+import { contrastRatio, AA_CONTRAST } from '../lib/theme';
 import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
 
 /**
@@ -195,9 +195,9 @@ const PRE_EXISTING_COUNTS: Record<string, number> = {
 };
 
 /** The out-of-scope files, pinned at 788a589. */
-const LAYOUT_SHA = 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5';
+const LAYOUT_SHA = 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f';
 const TAILWIND_CODE_SHA = '491ebb5575d16eddfab00c6ed89900c725141b412e410e9e97342ff2108b2904';
-const GLOBALS_SHA = '772c79af681c2b97c496b91be4f2573415f2a65802dfac078dbc72e8a8fd3741';
+const GLOBALS_SHA = '1fd6001c2d3bddc50a45b02ce1253b6b60802699fb33fa159f5ed42b8aeb9957';
 
 const FUNCTIONS_DIGESTS: Record<string, string> = {
   'functions/.gcloudignore': '9c20b803e45cd916',
@@ -218,18 +218,17 @@ const NEW_DEPENDENCIES: Record<string, { range: string; version: string }> = {
   'react-resizable-panels': { range: '^4.12.3', version: '4.12.3' },
 };
 
-/* ── palette resolution — the same four chains THE-266/272 pinned ────────── */
-
+/* ── palette resolution ──────────────────────────────────────────────────
+   🔴 THE-338 COLLAPSED FOUR CHAINS TO TWO. There used to be two palette
+   FAMILIES (Harvest and Classic) crossed with two modes, and each of the four
+   resolved through its own selector chain. The family axis is gone — Classic's
+   14 overrides were promoted into :root/.dark and its selectors deleted — so
+   'classic light' and 'harvest light' now name the same declarations, as do
+   the two darks. Keeping four keys would have run every assertion below twice
+   and reported a four-palette guarantee this app no longer offers. */
 const PALETTES = {
-  // Classic first: it has been the default family since #409.
-  'classic light': ['[data-palette="classic"][data-theme="light"]', ':root'],
-  'classic dark': [
-    '[data-palette="classic"].dark, [data-palette="classic"][data-theme="dark"]',
-    '.dark, [data-theme="dark"]',
-    ':root',
-  ],
-  'harvest light': [':root'],
-  'harvest dark': ['.dark, [data-theme="dark"]', ':root'],
+  light: [':root'],
+  dark: ['.dark, [data-theme="dark"]', ':root'],
 } as const;
 
 type Palette = keyof typeof PALETTES;
@@ -629,7 +628,10 @@ describe('the token bridge held, with zero new tokens', () => {
 describe('every token the earlier phases shipped still resolves to the same value', () => {
   /** THE-263/264's bridge, --chart-*, and THE-267/412's sidebar family. */
   const PINNED: Record<Palette, Record<string, string>> = {
-    'classic light': {
+    // 🔴 THE-338 re-recorded these. Light is the neutral ramp (unchanged from
+    // what "classic light" held — the default since THE-265); dark is that
+    // ramp darkened. The brand rows are untouched in both.
+    light: {
       '--background': '#F7F7F7',
       '--foreground': '#404040',
       '--card': '#FFFFFF',
@@ -644,50 +646,20 @@ describe('every token the earlier phases shipped still resolves to the same valu
       '--sidebar': '#FFFFFF',
       '--sidebar-foreground': '#404040',
     },
-    'classic dark': {
-      '--background': '#1C1C1C',
+    dark: {
+      '--background': '#141414',
       '--foreground': '#CCCCCC',
-      '--card': '#242424',
-      '--muted': '#131313',
+      '--card': '#1F1F1F',
+      '--muted': '#0C0C0C',
       '--muted-foreground': '#ABABAB',
       '--primary': '#C9963A',
       '--primary-foreground': '#2D2519',
-      '--accent': '#2E2E2E',
+      '--accent': '#2A2A2A',
       '--accent-foreground': '#F2F2F2',
-      '--popover': '#242424',
+      '--popover': '#1F1F1F',
       '--popover-foreground': '#CCCCCC',
-      '--sidebar': '#242424',
+      '--sidebar': '#1F1F1F',
       '--sidebar-foreground': '#CCCCCC',
-    },
-    'harvest light': {
-      '--background': '#FAF8F5',
-      '--foreground': '#4A4038',
-      '--card': '#FFFFFF',
-      '--muted': '#F3EEE7',
-      '--muted-foreground': '#68563F',
-      '--primary': '#C9963A',
-      '--primary-foreground': '#2D2519',
-      '--accent': '#E8E2D9',
-      '--accent-foreground': '#2D2519',
-      '--popover': '#FFFFFF',
-      '--popover-foreground': '#4A4038',
-      '--sidebar': '#FFFFFF',
-      '--sidebar-foreground': '#4A4038',
-    },
-    'harvest dark': {
-      '--background': '#1A1612',
-      '--foreground': '#D1C7BA',
-      '--card': '#221D18',
-      '--muted': '#120F0C',
-      '--muted-foreground': '#B5A692',
-      '--primary': '#C9963A',
-      '--primary-foreground': '#2D2519',
-      '--accent': '#2E2822',
-      '--accent-foreground': '#FAF8F5',
-      '--popover': '#221D18',
-      '--popover-foreground': '#D1C7BA',
-      '--sidebar': '#221D18',
-      '--sidebar-foreground': '#D1C7BA',
     },
   };
 
@@ -725,8 +697,8 @@ describe('every token the earlier phases shipped still resolves to the same valu
     for (const n of [1, 2, 3, 4, 5]) expect(tokens).toContain(`--chart-${n}`);
     // Recorded by THE-272 and deliberately NOT fixed: the design's own muted
     // series, measured on the light ground.
-    const four = ratio(decls, 'classic light', '--chart-4', '--background');
-    const five = ratio(decls, 'classic light', '--chart-5', '--background');
+    const four = ratio(decls, 'light', '--chart-4', '--background');
+    const five = ratio(decls, 'light', '--chart-5', '--background');
     expect(four).toBeLessThan(3);
     expect(five).toBeLessThan(3);
     expect(four).toBeCloseTo(1.5, 1);
@@ -771,12 +743,18 @@ describe('every foreground/background pair the 21 components introduce clears AA
     ['item text-muted-foreground on bg-muted', '--muted-foreground', '--muted'],
   ] as const;
 
-  /** The measured ratios, Classic first. Pinned, not merely bounded. */
+  /**
+   * The measured ratios. Pinned, not merely bounded.
+   *
+   * 🔴 THE-338 — the LIGHT row is unchanged (it is what 'classic light' held,
+   * and that family has been the default since THE-265). Every DARK figure
+   * except the gold pair went UP, because darkening a ground can only improve
+   * text contrast — 9.67 -> 10.26, 9.46 -> 10.05, 11.57 -> 12.18, 8.09 -> 8.52.
+   * The gold pair sits at 5.69 in both, untouched.
+   */
   const RATIOS: Record<Palette, number[]> = {
-    'classic light': [10.37, 6.54, 10.37, 7.0, 13.18, 6.54, 5.69, 6.1, 9.02, 6.09],
-    'classic dark': [9.67, 9.46, 9.67, 6.76, 12.13, 9.46, 5.69, 10.39, 11.57, 8.09],
-    'harvest light': [10.09, 6.54, 10.09, 7.02, 11.73, 6.54, 5.69, 6.17, 8.74, 6.08],
-    'harvest dark': [10.02, 10.18, 10.02, 7.03, 13.73, 10.18, 5.69, 10.96, 11.45, 8.04],
+    light: [10.37, 6.54, 10.37, 7.0, 13.18, 6.54, 5.69, 6.1, 9.02, 6.09],
+    dark: [10.26, 10.05, 10.26, 7.18, 12.82, 10.05, 5.69, 11.23, 12.18, 8.52],
   };
 
   for (const palette of Object.keys(PALETTES) as Palette[]) {
@@ -799,7 +777,7 @@ describe('every foreground/background pair the 21 components introduce clears AA
    * ⚠️ THE 5.69 FLOOR IS THIS PAIR, ROUNDED — it is not a bar above it.
    *
    * The worst pair here is `text-primary-foreground` on `bg-primary`, identical
-   * in all four palettes because both tokens are family-invariant, and it
+   * in both palettes because both tokens are mode-invariant, and it
    * measures 5.6876:1. #412's recorded floor of "5.69" is that same gold pair —
    * `--sidebar-primary-foreground` on `--sidebar-primary` resolves to the very
    * same two hexes — quoted to two decimals. So this batch does not clear that
@@ -822,12 +800,10 @@ describe('every foreground/background pair the 21 components introduce clears AA
     expect(worst).toBeCloseTo(5.69, 2); // #412's floor, met — same pair.
     // And it really is the gold pair, not something else that happens to land
     // near it: the same two hexes #412 measured.
-    expect(toHexColour(resolve(decls, PALETTES['classic light'], '--primary-foreground'))).toBe(
-      '#2D2519',
-    );
-    expect(toHexColour(resolve(decls, PALETTES['classic light'], '--primary'))).toBe('#C9963A');
+    expect(toHexColour(resolve(decls, PALETTES.light, '--primary-foreground'))).toBe('#2D2519');
+    expect(toHexColour(resolve(decls, PALETTES.light, '--primary'))).toBe('#C9963A');
     expect(
-      ratio(decls, 'classic light', '--sidebar-primary-foreground', '--sidebar-primary'),
+      ratio(decls, 'light', '--sidebar-primary-foreground', '--sidebar-primary'),
     ).toBeCloseTo(worst, 4);
   });
 
@@ -856,17 +832,12 @@ describe('every foreground/background pair the 21 components introduce clears AA
         Number(ratio(decls, p, '--primary', '--background').toFixed(2)),
       ]),
     );
-    expect(measured).toEqual({
-      'classic light': 2.48,
-      'classic dark': 6.42,
-      'harvest light': 2.51,
-      'harvest dark': 6.77,
-    });
+    // ⚠️ The light figure is UNCHANGED at 2.48 — the accepted shortfall this
+    // ticket was told not to "fix". Dark rose 6.42 -> 6.94 with the ground.
+    expect(measured).toEqual({ light: 2.48, dark: 6.94 });
     // Asserted both ways, so a move in either direction fails here.
-    expect(measured['classic light']).toBeLessThan(AA_CONTRAST);
-    expect(measured['harvest light']).toBeLessThan(AA_CONTRAST);
-    expect(measured['classic dark']).toBeGreaterThanOrEqual(AA_CONTRAST);
-    expect(measured['harvest dark']).toBeGreaterThanOrEqual(AA_CONTRAST);
+    expect(measured.light).toBeLessThan(AA_CONTRAST);
+    expect(measured.dark).toBeGreaterThanOrEqual(AA_CONTRAST);
 
     // And the evidence that it predates this PR: button.tsx, untouched here,
     // already ships the identical treatment.
@@ -884,12 +855,8 @@ describe('every foreground/background pair the 21 components introduce clears AA
         Number(ratio(decls, p, '--primary', '--muted').toFixed(2)),
       ]),
     );
-    expect(measured).toEqual({
-      'classic light': 2.31,
-      'classic dark': 7.0,
-      'harvest light': 2.3,
-      'harvest dark': 7.19,
-    });
+    // ⚠️ 2.31 on light is the accepted 1.4.11 shortfall, preserved exactly.
+    expect(measured).toEqual({ light: 2.31, dark: 7.37 });
   });
 });
 
@@ -1214,7 +1181,7 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       'than cosmetic and is the same adoption THE-321 made one screen over in ' +
       '`PersonalInformationModal`: its `role="alert"` is what carries a refused write to a ' +
       'screen reader, who is the reader least likely to notice that a Finish button simply ' +
-      'did nothing, and it paints from `bg-card`/`text-destructive` so all four palettes ' +
+      'did nothing, and it paints from `bg-card`/`text-destructive` so both palettes ' +
       'resolve it. It renders the save-failure state of a saveState machine, above the first ' +
       'field, so the message and the answers it failed to write are on screen together. ' +
       '`empty` is REJECTED: it announces an absent list, and this is a write that was ' +
@@ -1479,10 +1446,16 @@ describe('date-picker is a composition, not a registry item', () => {
   });
 });
 
-/* ── 13. #409 is not disturbed ───────────────────────────────────────────── */
+/* ── 13. THE-338 — the family axis is gone ───────────────────────────────── */
 
-it('Classic is still the default palette family', () => {
-  expect(DEFAULT_PALETTE_FAMILY).toBe('classic');
+it('the palette family axis is gone (THE-338)', async () => {
+  // 🔴 INVERTED, not deleted. This pinned #409's guarantee that the ticket had
+  // not disturbed WHICH family a user with no stored preference rendered in.
+  // THE-338 removed the axis entirely, so the property worth keeping is that
+  // it stayed removed — a re-introduced constant fails here.
+  const theme = await import('../lib/theme');
+  expect('DEFAULT_PALETTE_FAMILY' in theme).toBe(false);
+  expect('PALETTE_FAMILIES' in theme).toBe(false);
 });
 
 /* ── 14. The extractor still reads what it always read ───────────────────── */

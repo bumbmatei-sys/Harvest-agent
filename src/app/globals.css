@@ -95,19 +95,23 @@
  --warm-brown: #8B7355; --earth: #2D2519; --warm-dark: #1A1612;
  --brand-success: #6E8E52; --brand-danger: #C4553B;
 
- /* Semantic text roles (warm neutrals) — used across desktop surfaces so
-    copy reads warm rather than cool-gray. */
- --text-heading: #2D2519;  /* earth */
- --text-body:    #4A4038;  /* warm dark-brown for running copy */
- /* Darkened to clear WCAG AA. Was #8B7355 at 4.23:1 on --surface, i.e. below
-    the 4.5 floor on the live light theme. Darkened along the warm-brown ->
-    earth axis so the hue is unchanged; now 6.62:1. */
- --text-muted:   #68563F;  /* warm brown — secondary */
- /* Was #A89A87 at 2.59:1 — the worst pair in the app, and it carries
-    timestamps and eyebrows everywhere. Now 4.98:1. Kept a visible step
-    lighter than --text-muted (4.98 vs 6.62) so the hierarchy survives;
-    AA is a floor, so 'faint' cannot be as faint as it was. */
- --text-faint:   #766A5A;  /* quiet taupe — eyebrows, timestamps */
+ /* Semantic text roles (NEUTRAL greys) — used across desktop surfaces.
+    THE-338 promoted these from the Classic family, which is what a user with
+    no stored preference has rendered since THE-265 made Classic the default.
+    The warm values they replace (#2D2519 / #4A4038 / #68563F / #766A5A) were
+    Harvest's, and Harvest no longer exists as a family — see the header of
+    the dark block below. Ratios are on --surface #F7F7F7 and are computed,
+    not eyeballed: theming-neutral-palette.test.ts recomputes every one. */
+ --text-heading: #1A1A1A;  /* 16.25:1 on --surface */
+ --text-body:    #404040;  /*  9.68:1 — running copy */
+ /* The AA-clearing step Harvest reached by darkening warm-brown toward earth,
+    reached here by desaturating instead. Was 6.62:1 warm; now 6.54:1 neutral,
+    i.e. the same rung of the hierarchy on a neutral ground. */
+ --text-muted:   #595959;  /*  6.54:1 — secondary */
+ /* Kept a visible step lighter than --text-muted (5.12 vs 6.54) so the
+    hierarchy survives; AA is a floor, so 'faint' cannot be as faint as it
+    once was. Harvest's neighbour here was 4.98:1, so this is a step BETTER. */
+ --text-faint:   #696969;  /*  5.12:1 — eyebrows, timestamps */
 
  /* Desktop (lg:+) structural tokens. Every consumer is `lg:`-scoped so these
     only affect desktop; mobile surfaces are untouched. Retargeted to the
@@ -128,7 +132,7 @@
     consumer is lg:-scoped, so mobile surfaces are untouched. Gold stays
     tenant-overridable via --brand-color. */
  --surface-gold:   var(--wheat-100);   /* soft gold tint fill (icon discs, active pills) */
- --surface-sunken: var(--stone-100);   /* recessed fills (toggles, inputs) */
+ --surface-sunken: #EFEFEF;            /* recessed fills (toggles, inputs) */
  --surface-night:  var(--navy-900);    /* dark hero band ground */
  --border-gold:    rgba(201, 150, 58, 0.40);
  /* Warm gold glow for primary CTAs on light — reads as a halo, tenant-aware. */
@@ -143,27 +147,27 @@
     mode, high-contrast, richer per-tenant white-label) override these
     vars only — components keep their current utility classes until
     migrated incrementally in a later, separate PR. */
- --surface:         var(--cream);      /* page ground, = bg-cream */
+ --surface:         #F7F7F7;           /* page ground — plain near-white */
  --surface-raised:  #FFFFFF;           /* cards/panels, = Tailwind `white` (bg-white) */
  /* (--surface-sunken, --surface-gold, --surface-night already exist above) */
- --border-default:  var(--stone-200);  /* common border, = border-stone-200 */
- --border-subtle:   var(--stone-100);  /* hairlines, = border-stone-100 */
- --border-strong:   var(--stone-300);  /* emphasis border, = border-stone-300 */
- --text-strong:     var(--earth);      /* headings/emphasis, = text-earth */
+ --border-default:  #E0E0E0;           /* common border */
+ --border-subtle:   #EFEFEF;           /* hairlines */
+ --border-strong:   #C7C7C7;           /* emphasis border, and shadcn's --input */
+ --text-strong:     #1A1A1A;           /* headings/emphasis  17.40:1 on raised */
  /* Stage 2 left a vocabulary gap: stone-200 is used both as a BORDER (spoken
     for by --border-default) and as a small opaque FILL — suffix pills, count
     chips, meta badges. The fill had no token, so those 38 uses stayed
     hardcoded and render as a bright chip on a dark ground. --surface-chip
     names the fill role; identical to --border-default in light, distinct in
     dark, which is exactly why they need separate tokens. */
- --surface-chip:    var(--stone-200);   /* opaque chip/pill fill, = bg-stone-200 */
- /* Two near-neutrals that predate the ramp and sit 2-3/255 per channel off it
-    (#EDEBE8 vs --stone-100, #F7F6F3 vs --cream) -- imperceptible, but the light
-    value is preserved EXACTLY rather than converged, because converging is a
-    design decision and this is a theming fix. Converging them onto the ramp
-    later would delete both tokens and is a one-line follow-up. */
- --border-hairline: #EDEBE8;            /* was border-[#EDEBE8], 47 uses */
- --surface-tint:    #F7F6F3;            /* was bg-[#F7F6F3], 26 uses */
+ --surface-chip:    #E0E0E0;            /* opaque chip/pill fill */
+ /* These two were the warm ramp's off-by-2 near-neutrals (#EDEBE8, #F7F6F3).
+    THE-338 promoted the Classic family's neutral values in their place; they
+    still sit a hair off their nearest ramp neighbours, which is preserved
+    rather than converged because converging is a design decision and this
+    ticket is a family removal. */
+ --border-hairline: #EDEDED;            /* was border-[#EDEBE8], 47 uses */
+ --surface-tint:    #F5F5F5;            /* was bg-[#F7F6F3], 26 uses */
 
  /* Stage 3: the accent's on-dark variant. Harvest gold already clears AA on
     the dark ground (6.77:1), so the default is the accent itself, untouched.
@@ -525,42 +529,66 @@
     matching `darkMode` variant in tailwind.config.ts. */
  .dark,
  [data-theme="dark"] {
-   /* Warm dark grey anchored on --warm-dark #1A1612. A cool/neutral grey was
-      rejected: Harvest's light neutrals are warm, and mixing warm light with
-      cool dark makes the gold read differently between themes. Documented
-      alternative if this reads flat in practice: --navy-900 #0C1526.
+   /* THE-338 — NEUTRAL dark grey. This block used to hold the warm near-black
+      Harvest ramp (--surface #1A1612, raised #221D18) and a second FAMILY,
+      Classic, overrode it from its own selectors further down. Both are gone: there is exactly one family now, and its values
+      live here. Two changes are folded into that promotion, and they are
+      separable:
+
+        1. PROMOTION — Classic's neutral greys replace Harvest's warm browns.
+           This is visually a NO-OP for the shipping app: THE-265 already made
+           Classic the family a user with no stored preference renders in, so
+           these are the greys on screen today, not a new look.
+        2. DARKENING — the founder's note, "current dark grey is lighter than
+           the one in the screenshot". Classic's ground was #1C1C1C with a
+           #242424 card; the ramp below drops both by 8/255 to #141414 and
+           #1F1F1F.
+
+      The darkening is not free in both directions and that is the whole
+      design problem here: a darker ground makes every TEXT pair better and
+      every BORDER pair worse. So the borders moved with it rather than being
+      left behind — each is darkened enough that its ratio against the new
+      ground lands at or below what it was against the old one (hairline
+      1.08 -> 1.06, default 1.23 -> 1.21, strong 1.67 -> 1.59).
 
       Every value below is contrast-verified, not eyeballed — see the ratios
-      asserted in src/__tests__/theming-stage3.test.ts. */
+      recomputed in src/__tests__/theming-neutral-palette.test.ts. */
    color-scheme: dark;
 
    /* ── Neutral ramp ────────────────────────────────────────────────────
       NOTE --surface-raised INVERTS DIRECTION: in light it is whiter than the
       ground, in dark it must be LIGHTER than a dark ground, not brighter in
       absolute terms. --surface-sunken stays recessive, i.e. darker. */
-   --surface:         #1A1612;   /* page ground = --warm-dark */
-   --surface-raised:  #221D18;   /* cards/panels — lighter than the ground */
-   --surface-sunken:  #120F0C;   /* recessed fills — darker than the ground */
+   --surface:         #141414;   /* page ground — near-black neutral chrome */
+   --surface-raised:  #1F1F1F;   /* cards/panels — lighter than the ground, 1.12:1 */
+   --surface-sunken:  #0C0C0C;   /* recessed fills — darker than the ground */
 
-   --border-subtle:   #2A2420;
-   --border-default:  #332C26;
-   --border-strong:   #463D35;
+   --border-subtle:   #242424;   /* 1.06:1 on --surface-raised */
+   --border-default:  #2E2E2E;   /* 1.21:1 — the row divider `divide-line` draws */
+   /* ⚠️ --border-strong ALSO feeds shadcn's --input, i.e. a form field's edge.
+      It is darkened with the rest of the ramp but deliberately NOT collapsed
+      onto --border-default: a decorative divider may go as dark as it likes,
+      a control whose boundary you cannot see is a worse defect than a bright
+      line. It stays the brightest rung at 1.59:1 on the card, against the
+      divider's 1.21:1 — a 1.31x separation, versus 1.36x before. */
+   --border-strong:   #404040;
    /* A chip must read as raised ON the raised surface, so it sits a step above
       --surface-raised rather than tracking --border-default. */
-   --surface-chip:    #2E2822;
+   --surface-chip:    #2A2A2A;
    /* Track their nearest ramp neighbours in dark -- there is no reason to carry
       the light theme's off-by-2 accident into a new theme. */
-   --border-hairline: #2A2420;   /* = --border-subtle */
-   --surface-tint:    #1A1612;   /* = --surface */
+   --border-hairline: #242424;   /* = --border-subtle */
+   --surface-tint:    #141414;   /* = --surface */
 
-   /* Warm text ramp, hue preserved by mixing warm-brown toward cream. Every
-      step clears AA (4.5:1) against all three surfaces above, and the ramp is
-      monotonic so the visual hierarchy survives the inversion. */
-   --text-strong:     #FAF8F5;   /* = --cream          15.76:1 on raised */
-   --text-heading:    #FAF8F5;
-   --text-body:       #D1C7BA;   /*                    10.02:1 on raised */
-   --text-muted:      #B5A692;   /*                     7.03:1 on raised */
-   --text-faint:      #998469;   /*                     4.66:1 on raised */
+   /* Neutral text ramp. Every step clears AA (4.5:1) against all three
+      surfaces above, and the ramp is monotonic so the visual hierarchy
+      survives the inversion. Darkening the ground moved every one of these
+      UP relative to the values they replace — none regressed. */
+   --text-strong:     #F2F2F2;   /*                    14.72:1 on raised */
+   --text-heading:    #F2F2F2;
+   --text-body:       #CCCCCC;   /*                    10.26:1 on raised */
+   --text-muted:      #ABABAB;   /*                     7.18:1 on raised */
+   --text-faint:      #969696;   /*                     5.57:1 on raised */
 
    /* ── The two surfaces a mechanical inversion misses ──────────────────
       Neither belongs to the neutral ramp, which is exactly why they'd be
@@ -674,82 +702,28 @@
    --chart-5: rgba(255, 255, 255, 0.28);
  }
 
- /* ── Palette family: Classic ─────────────────────────────────────────────
-    A second FAMILY, not a second theme. Harvest's two selectors above
-    (:root, .dark/[data-theme="dark"]) are completely untouched by this
-    block — Classic is purely additive, two new selectors that only ever
-    match when the pre-paint script / applyTheme has stamped
-    data-palette="classic" on <html>.
+ /* ── THE-338: one palette family ──────────────────────────────────────
+    A second FAMILY, Classic, used to live here: two additive selectors,
+    one for its light rendering and one for its dark rendering, each
+    overriding exactly 14 tokens (the surface / border / text ramp) and
+    letting the other ~153 fall through to the blocks above.
 
-    Only surface and text tokens are overridden — the exact set stage 3
-    already treats as "the neutral ramp" (surface/border/text), the same
-    tokens that already differ between :root and .dark above. Borders are
-    included in that ramp: a plain-white surface with Harvest's warm stone
-    borders would read as unfinished, not as a second family, and the brief
-    draws no third bucket between "surface" and "text". Every value below
-    is an OVERRIDE of a token Harvest already declares — no new custom
-    property is introduced here. Fonts, radii, spacing and shadows are not
-    touched: --ds-sh-*, --ds-radius-card etc. are absent from both blocks
-    below, so they keep resolving to :root's / .dark's values in Classic too.
+    It has been PROMOTED, not deleted, and the distinction is the whole
+    reason this note exists. Classic held only OVERRIDES — no token of its
+    own — so deleting the two blocks above and keeping these would have left
+    153 :root and 75 .dark declarations undeclared, and every var() reading
+    one of them would have resolved to nothing. Instead the 14 values Classic
+    overrode were written INTO :root and .dark, and everything Classic
+    deliberately never mentioned (the accent, --surface-gold, --border-gold,
+    --glow-gold, --ring-gold, --scrim-night, --surface-night, the hue scales,
+    the shadows, the chart series) keeps the value it already had.
 
-    Deliberately NOT overridden, in either mode: --surface-gold,
-    --border-gold, --glow-gold, --ring-gold, --scrim-night, --surface-night.
-    These are accent- or navy-derived (composited from --brand-color / the
-    fixed brand navy scale), not part of the neutral surface ramp, and the
-    non-negotiable is that the tenant accent — and the fixed brand structure
-    it composites against — must not grey out in either family. They fall
-    through to :root's / .dark's declarations unchanged, so a Classic gold
-    button or focus ring looks exactly like a Harvest one, as required.
-    --brand-color-on-dark (which --surface-gold/--border-gold/--glow-gold/
-    --ring-gold read on dark) is itself made family-aware — see layout.tsx —
-    so Classic dark still composites those against the RIGHT derived accent
-    even though this block never mentions the token.
-
-    Computed contrast ratios for every value below are asserted in
-    src/__tests__/theming-classic-palette.test.ts, resolved through postcss
-    exactly like theming-stage3.test.ts does for Harvest — nothing here is
-    eyeballed. */
-
- /* Classic — light. "Plain white surfaces": the page ground drops Harvest's
-    cream tint for a neutral near-white, and every border/text value is
-    desaturated to match rather than converged onto Harvest's warm hexes. */
- [data-palette="classic"][data-theme="light"] {
-   --surface:         #F7F7F7;
-   --surface-raised:  #FFFFFF;
-   --surface-sunken:  #EFEFEF;
-   --surface-chip:    #E0E0E0;
-   --surface-tint:    #F5F5F5;
-   --border-hairline: #EDEDED;
-   --border-default:  #E0E0E0;
-   --border-subtle:   #EFEFEF;
-   --border-strong:   #C7C7C7;
-   --text-strong:     #1A1A1A;
-   --text-heading:    #1A1A1A;
-   --text-body:       #404040;
-   --text-muted:      #595959;
-   --text-faint:      #696969;
- }
-
- /* Classic — dark. "Neutral dark grey": same lightness steps as Harvest's
-    dark ramp (mirrors --surface/-raised/-sunken's deltas almost exactly),
-    desaturated to neutral instead of warm-brown. */
- [data-palette="classic"].dark,
- [data-palette="classic"][data-theme="dark"] {
-   --surface:         #1C1C1C;
-   --surface-raised:  #242424;
-   --surface-sunken:  #131313;
-   --surface-chip:    #2E2E2E;
-   --surface-tint:    #1C1C1C;
-   --border-hairline: #2A2A2A;
-   --border-default:  #333333;
-   --border-subtle:   #2A2A2A;
-   --border-strong:   #474747;
-   --text-strong:     #F2F2F2;
-   --text-heading:    #F2F2F2;
-   --text-body:       #CCCCCC;
-   --text-muted:      #ABABAB;
-   --text-faint:      #969696;
- }
+    The gold accent is UNCHANGED. Classic never overrode it, on purpose —
+    "a Classic gold button or focus ring looks exactly like a Harvest one" —
+    and --brand-color is white-label, replaced per tenant at runtime. Removing
+    gold would re-derive --earth as the ink on gold, --brand-color-on-dark and
+    every gold contrast decision in this file; that is a separate ticket and
+    the founder's call, not a side effect of dropping a surface family. */
 }
 
 /* ── THE-263: the utility half of the bridge ─────────────────────────────

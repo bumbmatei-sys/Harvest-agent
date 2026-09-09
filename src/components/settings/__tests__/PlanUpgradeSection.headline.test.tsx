@@ -162,7 +162,12 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
 
     // The tokens really are what the comment says they are.
     const globals = readFileSync(path.resolve(__dirname, '../../../app/globals.css'), 'utf8');
-    expect(globals).toContain('--text-muted:   #68563F;');
+    // 🔴 THE-338 repointed --text-muted. It was the WARM #68563F; the Harvest
+    // palette family has been removed and the neutral ramp promoted into
+    // :root, so the light value is #595959. It is still the "muted" rung and
+    // still clears AA on the ground it paints on (6.54:1, versus the warm
+    // ramp's 6.62:1). --surface-raised is unchanged — plain white in both.
+    expect(globals).toContain('--text-muted:   #595959;');
     expect(globals).toContain('--surface-raised:  #FFFFFF;');
   });
 

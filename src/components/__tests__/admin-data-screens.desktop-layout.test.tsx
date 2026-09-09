@@ -510,6 +510,42 @@ const COMPOSED_SINCE_MEASUREMENT: ReadonlyArray<{ screen: string; file: string; 
   },
 ];
 
+/**
+ * 🔴 THE-338 — A TOKEN SWAPPED FOR ITS THEMED EQUIVALENT, ON ONE SCREEN.
+ *
+ * Not a composition and not an inert removal, so it needed its own register
+ * rather than being smuggled onto either of the two above. The swap is
+ * one-for-one and its VISUAL effect is the whole point, so calling it inert
+ * would have been false.
+ *
+ * `divide-stone-200` resolves to a HARDCODED hex in tailwind.config.ts
+ * (`stone: { 200: "#E8E2D9" }`) — a warm near-white that never themes. On the
+ * dark card that is a 12.06:1 divider sitting inside a 1.23:1 border, which is
+ * what the founder reported as "in mobile dark theme the lines in more drawer
+ * are too white". Thirteen screens drew row dividers that way;
+ * AdminGivingStatements is the one this suite has a baseline for.
+ *
+ * `divide-line` resolves to `--border-default` and themes with the ramp.
+ *
+ * ⚠️ Gated on the FILE, the TOKEN and the TICKET, never on the branch diff —
+ * same rule as the register above, and for the same reason.
+ */
+const RETHEMED_SINCE_MEASUREMENT: ReadonlyArray<
+  { screen: string; from: string; to: string; ticket: string; why: string }
+> = [
+  {
+    screen: 'AdminGivingStatements',
+    from: 'divide-stone-200',
+    to: 'divide-line',
+    ticket: 'THE-338',
+    why:
+      'divide-stone-200 is a hardcoded #E8E2D9 in tailwind.config.ts and never themed, so the ' +
+      'row dividers rendered as a warm near-white line at 12.06:1 on the dark card. divide-line ' +
+      'resolves to --border-default and follows the ramp. One token out, one in, same element.',
+  },
+];
+const RETHEMED = new Map(RETHEMED_SINCE_MEASUREMENT.map((e) => [e.screen, e]));
+
 /** Screens whose sub-640px class layer a later ticket has legitimately moved. */
 const COMPOSED_SCREENS = new Set(COMPOSED_SINCE_MEASUREMENT.map((e) => e.screen));
 /** Files whose recorded colour-literal multiset a later ticket has legitimately moved. */
@@ -517,10 +553,15 @@ const COMPOSED_FILES = new Set(COMPOSED_SINCE_MEASUREMENT.map((e) => e.file));
 
 /** The baseline's mobile layer with the enumerated inert tokens taken out. */
 const expectedMobileLayer = (screen: string): string[] => {
-  const drop = new Set(INERT_BELOW_SM[screen.split(' (')[0]] ?? []);
+  const bare = screen.split(' (')[0];
+  const drop = new Set(INERT_BELOW_SM[bare] ?? []);
+  const swap = RETHEMED.get(bare);
   return BASELINE[screen].mobileLayer.map((row) => {
     const [i, tag, tokens] = row.split('\t');
-    return [i, tag, (tokens ?? '').split(' ').filter((t) => t && !drop.has(t)).join(' ')].join('\t');
+    const kept = (tokens ?? '').split(' ')
+      .filter((t) => t && !drop.has(t))
+      .map((t) => (swap && t === swap.from ? swap.to : t));
+    return [i, tag, kept.join(' ')].join('\t');
   });
 };
 
@@ -544,8 +585,11 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       const after = new Set(mobileLayer(await s.open()).flatMap((r) => (r.split('\t')[2] ?? '').split(' ')).filter(Boolean));
       const gone = [...before].filter((t) => !after.has(t)).sort();
       if (COMPOSED_SCREENS.has(s.name.split(' (')[0])) continue;
-      expect(gone, `${s.name} lost a token that is not on the inert list`)
-        .toEqual((INERT_BELOW_SM[s.name.split(' (')[0]] ?? []).slice().sort());
+      const bare = s.name.split(' (')[0];
+      const swap = RETHEMED.get(bare);
+      const allowedGone = [...(INERT_BELOW_SM[bare] ?? []), ...(swap ? [swap.from] : [])].sort();
+      expect(gone, `${s.name} lost a token that is not on the inert or re-themed list`)
+        .toEqual(allowedGone);
     }
   });
 
@@ -567,8 +611,13 @@ describe('the sub-640px rendering of each file is unchanged', () => {
     for (const s of SCREENS) {
       const before = new Set(BASELINE[s.name].mobileLayer.flatMap((r) => (r.split('\t')[2] ?? '').split(' ')).filter(Boolean));
       const after = new Set(mobileLayer(await s.open()).flatMap((r) => (r.split('\t')[2] ?? '').split(' ')).filter(Boolean));
-      if (COMPOSED_SCREENS.has(s.name.split(' (')[0])) continue;
-      expect([...after].filter((t) => !before.has(t)), `${s.name} gained a token that applies on a phone`).toEqual([]);
+      const bare = s.name.split(' (')[0];
+      if (COMPOSED_SCREENS.has(bare)) continue;
+      const swap = RETHEMED.get(bare);
+      expect(
+        [...after].filter((t) => !before.has(t) && t !== swap?.to),
+        `${s.name} gained a token that applies on a phone`,
+      ).toEqual([]);
     }
   });
 });
@@ -1197,7 +1246,7 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
 // ═════════════════════════════════════════════════════════════════════════════
 // 8. Colour.
 // ═════════════════════════════════════════════════════════════════════════════
-describe('no colour is hardcoded, and all four palettes resolve', () => {
+describe('no colour is hardcoded, and both palettes resolve', () => {
   for (const s of SCREENS) {
     it(`adds no colour token to ${s.name}`, async () => {
       if (COMPOSED_SCREENS.has(s.name.split(' (')[0])) {
@@ -1206,7 +1255,16 @@ describe('no colour is hardcoded, and all four palettes resolve', () => {
            unconditionally by the raw-literal test below. */
         return;
       }
-      expect(colourTokens(await s.open())).toEqual(BASELINE[s.name].colours);
+      /* 🔴 THE-338 — one token swapped for its themed equivalent on one
+         screen; see RETHEMED_SINCE_MEASUREMENT. The swap is applied to the
+         RECORDED baseline rather than the baseline being re-recorded, so this
+         still compares the live screen against a frozen list and a second,
+         unregistered colour change still fails. */
+      const swap = RETHEMED.get(s.name.split(' (')[0]);
+      const expected = swap
+        ? BASELINE[s.name].colours.map((t) => (t === swap.from ? swap.to : t)).sort()
+        : BASELINE[s.name].colours;
+      expect(colourTokens(await s.open())).toEqual(expected);
     });
   }
 

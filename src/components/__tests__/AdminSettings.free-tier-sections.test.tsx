@@ -211,7 +211,11 @@ describe('a free tenant\'s Settings', () => {
     await expand(host, 'Appearance');
 
     expect(host.querySelector('[role="radiogroup"][aria-label="Colour theme"]')).toBeTruthy();
-    expect(host.querySelector('[role="radiogroup"][aria-label="Palette family"]')).toBeTruthy();
+    // 🔴 THE-338 removed the palette family control along with the family
+    // axis. The Appearance section still has a control — the mode one above —
+    // so "the removals must not take what free DOES have with them" still
+    // holds; there is simply one control there now rather than two.
+    expect(host.querySelector('[role="radiogroup"][aria-label="Palette family"]')).toBeNull();
     // Unpriced tiers already had no Manage/Cancel (THE-212); still true.
     expect(host.querySelector('[data-testid="settings-manage-action"]')).toBeNull();
     expect(sections(host)).not.toContain('Cancel Subscription');

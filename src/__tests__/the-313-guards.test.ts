@@ -447,15 +447,11 @@ describe('no emoji is rendered and no colour is hardcoded', () => {
     let css: string;
     beforeAll(async () => { css = await buildAppCss(); }, 180_000);
 
+    // 🔴 THE-338 — TWO palettes, not four. The Classic FAMILY's two selectors
+    // are gone; its 14 overrides were promoted into the two below.
     const PALETTES = [
-      { name: 'Classic light', selector: '[data-palette="classic"][data-theme="light"]', beneath: [':root'] },
-      {
-        name: 'Classic dark',
-        selector: '[data-palette="classic"].dark, [data-palette="classic"][data-theme="dark"]',
-        beneath: [':root', '.dark, [data-theme="dark"]'],
-      },
-      { name: 'Harvest light', selector: ':root', beneath: [] as string[] },
-      { name: 'Harvest dark', selector: '.dark, [data-theme="dark"]', beneath: [':root'] },
+      { name: 'Light', selector: ':root', beneath: [] as string[] },
+      { name: 'Dark', selector: '.dark, [data-theme="dark"]', beneath: [':root'] },
     ] as const;
 
     const declaredBy = (sheet: string, selector: string): Record<string, string> => {
@@ -522,8 +518,11 @@ describe('no emoji is rendered and no colour is hardcoded', () => {
       },
     );
 
-    it('Classic is still the default family, which is the palette this ships into first', () => {
-      expect(read('src/lib/theme.ts')).toContain("export const DEFAULT_PALETTE_FAMILY: PaletteFamily = 'classic'");
+    it('there is no default family, because there is no family axis (THE-338)', () => {
+      // 🔴 INVERTED, not deleted: this pinned #409's default family, which was
+      // the palette this ticket shipped into. THE-338 removed the axis, so the
+      // property worth guarding is that it stayed removed.
+      expect(read('src/lib/theme.ts')).not.toContain('DEFAULT_PALETTE_FAMILY');
     });
   });
 });

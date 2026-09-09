@@ -372,11 +372,13 @@ describe('Profile — the desktop composition', () => {
         .map((b) => (b.getAttribute('aria-label') || b.textContent || '').trim())
         .filter((t) => t && t !== 'Change photo');
 
-    // Captured from 752ff16 before the composition changed, with one
-    // deliberate reorder on top: Harvest/Classic now precedes Light/Dark/
-    // System, matching the Appearance row's new left-to-right visual order
-    // (family, then mode) — DOM order follows visual order so tab order
-    // stays in sync, rather than reversing one control with CSS alone.
+    // Captured from 752ff16 before the composition changed.
+    //
+    // 🔴 THE-338 removed the 'Harvest' and 'Classic' rows — the two pills of
+    // the palette-family control, which no longer exists. THE-296 had put them
+    // BEFORE Light/Dark/System so DOM order followed the row's left-to-right
+    // visual order; with the family gone, Light/Dark/System simply moves up.
+    // Every other row keeps its position, which is what this list is for.
     expect(rows(await mount(MEMBER))).toEqual([
       'Personal Information',
       'My Home Church',
@@ -390,8 +392,6 @@ describe('Profile — the desktop composition', () => {
       // (nothing to install there), which is why it appears here: happy-dom is
       // an ordinary browser origin, with no `window.Capacitor`.
       'Install app',
-      'Harvest',
-      'Classic',
       'Light',
       'Dark',
       'System',
@@ -418,8 +418,6 @@ describe('Profile — the desktop composition', () => {
       // (nothing to install there), which is why it appears here: happy-dom is
       // an ordinary browser origin, with no `window.Capacitor`.
       'Install app',
-      'Harvest',
-      'Classic',
       'Light',
       'Dark',
       'System',
@@ -436,17 +434,20 @@ describe('Profile — the desktop composition', () => {
   });
 
   // 5
-  it('keeps the light/dark/system control and the Harvest/Classic control, both working', async () => {
+  it('keeps the light/dark/system control working, and offers no family control', async () => {
+    // 🔴 THE-338 — the family half of this test is gone with the family. What
+    // it proved (the two axes stay orthogonal: choosing a family does not
+    // reset the mode) has no subject any more. The mode half is unchanged,
+    // and the absence of the family control is asserted so it cannot return
+    // unnoticed on the screen it was originally reachable from.
     const host = await mount(MEMBER);
 
     const mode = host.querySelector('[role="radiogroup"][aria-label="Colour theme"]');
-    const family = host.querySelector('[role="radiogroup"][aria-label="Palette family"]');
     expect(mode, 'the light/dark/system control is gone').toBeTruthy();
-    expect(family, 'the Harvest/Classic family switch is gone').toBeTruthy();
-
-    // Together, in one block — the family switch must not be pushed somewhere
-    // else or hidden behind the mode control.
-    expect(mode!.parentElement).toBe(family!.parentElement);
+    expect(
+      host.querySelector('[role="radiogroup"][aria-label="Palette family"]'),
+      'the palette family switch is back — THE-338 removed the family axis',
+    ).toBeNull();
 
     const pick = (group: Element, label: string) => {
       const btn = group.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`);
@@ -462,17 +463,12 @@ describe('Profile — the desktop composition', () => {
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
     expect(mode!.querySelector('[aria-label="Dark"]')!.getAttribute('aria-checked')).toBe('true');
 
-    // Family actually applies — and does not reset the mode chosen above.
-    pick(family!, 'Classic');
-    expect(document.documentElement.getAttribute('data-palette')).toBe('classic');
-    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
-    expect(family!.querySelector('[aria-label="Classic"]')!.getAttribute('aria-checked')).toBe('true');
-
     // And back, so the control is a switch and not a one-way door.
-    pick(family!, 'Harvest');
-    expect(document.documentElement.getAttribute('data-palette')).toBe('harvest');
     pick(mode!, 'Light');
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+
+    // 🔴 And nothing stamped a palette family on the way through.
+    expect(document.documentElement.getAttribute('data-palette')).toBeNull();
   });
 
   // 6
@@ -491,7 +487,7 @@ describe('Profile — the desktop composition', () => {
   });
 
   // 7
-  it('hardcodes no colour in the composition, and all four palettes resolve', async () => {
+  it('hardcodes no colour in the composition, and both palettes resolve', async () => {
     const c = composition(await mount(ADMIN));
 
     // (a) Nothing this PR put on the composition elements carries a literal
@@ -520,15 +516,11 @@ describe('Profile — the desktop composition', () => {
     };
     const rootVars = varsIn((s) => s.trim() === ':root');
     const darkVars = varsIn((s) => /\[data-theme="dark"\]/.test(s) && !/data-palette/.test(s));
-    const classicLight = varsIn((s) => /\[data-palette="classic"\]\[data-theme="light"\]/.test(s));
-    const classicDark = varsIn((s) => /\[data-palette="classic"\](\.dark|\[data-theme="dark"\])/.test(s));
     // Each rendering is the cascade that actually applies on <html>, not the
     // block in isolation — a classic/dark page still inherits :root.
     const palettes: Record<string, Record<string, string>> = {
-      'harvest/light': { ...rootVars },
-      'harvest/dark': { ...rootVars, ...darkVars },
-      'classic/light': { ...rootVars, ...classicLight },
-      'classic/dark': { ...rootVars, ...darkVars, ...classicDark },
+      light: { ...rootVars },
+      dark: { ...rootVars, ...darkVars },
     };
     // A token may point at another token; "resolves" has to mean it lands on a
     // real colour, not that it is spelled like a variable.
@@ -541,7 +533,7 @@ describe('Profile — the desktop composition', () => {
       }
       return value ?? null;
     };
-    expect(Object.keys(palettes)).toHaveLength(4);
+    expect(Object.keys(palettes)).toHaveLength(2);
     for (const [name, vars] of Object.entries(palettes)) {
       expect(Object.keys(vars).length, `${name} defines no variables`).toBeGreaterThan(0);
       for (const token of ['--surface-raised', '--surface-sunken']) {
@@ -553,8 +545,8 @@ describe('Profile — the desktop composition', () => {
     }
     // The two families must actually differ, or "four palettes" is one palette
     // wearing four names.
-    expect(resolve(palettes['harvest/dark'], '--surface-raised'))
-      .not.toBe(resolve(palettes['classic/dark'], '--surface-raised'));
+    expect(resolve(palettes.dark, '--surface-raised'))
+      .not.toBe(resolve(palettes.light, '--surface-raised'));
   });
 
   // 8

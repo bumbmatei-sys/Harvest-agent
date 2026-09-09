@@ -18,7 +18,6 @@ import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
 import { FORM_MEASURE, FIELD_WIDTH, CONTROL_DENSITY, DENSITY_PX, DESKTOP_CONTROL_MAX_PX } from '../layout/form-layout';
 import { MAX_FIELD_OPTIONS } from '../AdminForms';
-import { DEFAULT_PALETTE_FAMILY } from '../../lib/theme';
 
 /**
  * THE-304 — WHERE the option editor renders, measured in Chromium.
@@ -414,19 +413,18 @@ describe('no colour is hardcoded and no emoji is used', () => {
     expect(ADMIN_FORMS).toContain("const GOLD = 'var(--brand-color, #B8962E)';");
   });
 
-  it('resolves in all four palettes, Classic first — measured, not read off the CSS', async () => {
-    // 🔴 Classic is the DEFAULT since #409, so it is measured first and is the
-    // reading the other three are compared against. Four = {classic, harvest} ×
-    // {light, dark}, which is what use-theme stamps on <html>.
-    const FAMILIES = ['classic', 'harvest'] as const;
+  it('resolves in both palettes — measured, not read off the CSS', async () => {
+    // 🔴 THE-338 — FOUR BECAME TWO. The four were {classic, harvest} ×
+    // {light, dark}: a palette FAMILY axis crossed with the mode axis. The
+    // family axis is gone (its 14 overrides promoted into :root/.dark and its
+    // `data-palette` selectors deleted), so what use-theme stamps on <html> is
+    // the mode alone, and that is what is measured here.
     const THEMES = ['light', 'dark'] as const;
-    expect(DEFAULT_PALETTE_FAMILY).toBe('classic');
 
     const seen: Record<string, { surface: string; text: string; border: string }> = {};
-    for (const palette of FAMILIES) {
+    {
       for (const theme of THEMES) {
-        seen[`${palette}/${theme}`] = await browser.evaluateAt(380, `(() => {
-          document.documentElement.setAttribute('data-palette', ${JSON.stringify(palette)});
+        seen[theme] = await browser.evaluateAt(380, `(() => {
           document.documentElement.setAttribute('data-theme', ${JSON.stringify(theme)});
           const input = document.querySelector('[data-option-input="0"]');
           const cs = getComputedStyle(input);
@@ -448,12 +446,10 @@ describe('no colour is hardcoded and no emoji is used', () => {
         expect(value, `${key} resolved ${prop} to transparent`).not.toBe('rgba(0, 0, 0, 0)');
       }
     }
-    // And light and dark are genuinely different in each family, so "resolves"
-    // is not four readings of the same fallback.
-    for (const palette of FAMILIES) {
-      expect(seen[`${palette}/light`].text, `${palette} renders the same text colour in both themes`)
-        .not.toBe(seen[`${palette}/dark`].text);
-    }
+    // And light and dark are genuinely different, so "resolves" is not two
+    // readings of the same fallback.
+    expect(seen.light.text, 'the same text colour renders in both themes')
+      .not.toBe(seen.dark.text);
   });
 
   it('uses lucide icons and no emoji in the option editor', () => {

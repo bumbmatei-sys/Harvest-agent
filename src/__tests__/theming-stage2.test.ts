@@ -135,14 +135,24 @@ describe('text tokens are wired into Tailwind and resolve to the right CSS varia
   });
 
   it('those variables are defined in globals.css', () => {
-    expect(vars['--text-strong']).toBe('var(--earth)');
-    expect(resolveColour('var(--text-strong)', vars)).toBe('#2D2519');
-    // Updated deliberately by the light-theme AA fix. --text-muted was #8B7355
-    // (4.23:1 on --surface) and --text-faint was #A89A87 (2.59:1); both shipped
-    // below the 4.5 floor. They are now 6.62:1 and 4.98:1. The hue is unchanged
-    // -- each was darkened along the warm-brown -> earth axis.
-    expect(resolveColour('var(--text-muted)', vars)).toBe('#68563F');
-    expect(resolveColour('var(--text-faint)', vars)).toBe('#766A5A');
+    // 🔴 THE-338 REPOINTED ALL THREE, and the reason is the same one that
+    // already moved --text-muted and --text-faint once: a value here tracks a
+    // deliberate decision, not a constant.
+    //
+    // --text-strong was `var(--earth)` (#2D2519), the warm Harvest ink. The
+    // Harvest palette FAMILY has been removed and the neutral family's values
+    // promoted into :root, so the light text ramp is neutral grey: #1A1A1A /
+    // #595959 / #696969. Those are the values a user with no stored preference
+    // has actually rendered since THE-265 made that family the default, so
+    // this is the ramp catching up with what shipped, not a new look.
+    //
+    // The earlier AA fix these three carried is intact: every one still clears
+    // the 4.5 floor on --surface, at 16.25:1, 6.54:1 and 5.12:1 — the last two
+    // a shade better than the 6.62 and 4.98 the warm ramp reached.
+    expect(vars['--text-strong']).toBe('#1A1A1A');
+    expect(resolveColour('var(--text-strong)', vars)).toBe('#1A1A1A');
+    expect(resolveColour('var(--text-muted)', vars)).toBe('#595959');
+    expect(resolveColour('var(--text-faint)', vars)).toBe('#696969');
   });
 
   it('does not also mint bg-strong / border-strong (which would collide in meaning)', async () => {
@@ -163,9 +173,28 @@ describe('text tokens are wired into Tailwind and resolve to the right CSS varia
 describe('zero visual change in the light theme', () => {
   const swaps: Array<[legacy: string, prop: string, token: string]> = [
     ['bg-white', 'background-color', 'bg-surface-raised'],
-    ['bg-stone-100', 'background-color', 'bg-surface-sunken'],
-    ['border-stone-200', 'border-color', 'border-line'],
-    ['text-earth', 'color', 'text-strong'],
+    // ⚠️ THREE PAIRS LEFT HERE WITH THE-338, for exactly the reason the fourth
+    // left before them — see the note below, which was already the precedent.
+    //
+    //   ['bg-stone-100',     'background-color', 'bg-surface-sunken']
+    //   ['border-stone-200', 'border-color',     'border-line']
+    //   ['text-earth',       'color',            'text-strong']
+    //
+    // Each asserted that a semantic token renders the SAME colour as the
+    // hardcoded warm utility it replaced. That was true while the swap was
+    // pure vocabulary. THE-338 removed the Harvest palette family and promoted
+    // the neutral ramp into :root, so --surface-sunken is #EFEFEF where
+    // `stone-100` stays #F3EEE7, --border-default is #E0E0E0 where
+    // `stone-200` stays #E8E2D9, and --text-strong is #1A1A1A where `earth`
+    // stays #2D2519. Keeping any of the three would force the family removal
+    // to be reverted — the whole ticket — to satisfy a vocabulary-era
+    // equivalence.
+    //
+    // `bg-white` stays because it is still true: --surface-raised is #FFFFFF
+    // in the promoted ramp exactly as it was in the warm one. What the tokens
+    // actually render, and that it clears contrast, is asserted in
+    // theming-neutral-palette.test.ts, which is the check that matters.
+    //
     // ['text-warm-brown', 'color', 'text-muted'] was here and is deliberately
     // gone. It asserted the token renders identically to the hardcoded utility
     // it replaced -- true when the swap was pure vocabulary, and intentionally

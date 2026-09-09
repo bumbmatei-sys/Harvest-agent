@@ -618,7 +618,7 @@ describe('no statement, receipt, CRM write or Stripe path changed', () => {
      *     which is why the answer is a sentence and not a sum.
      */
     'src/components/AdminAccounting.tsx':
-      '4b2cd71b64db4cf9845856a92ba8a5b67902385001131b47085bdd8f45be058b',
+      'a1eef8c2147682196a25ad6dae7da75c820465160284e44438bac1c720911ec2',
   };
 
   it.each(Object.keys(UNCHANGED))('%s is byte-for-byte unchanged', (file) => {
@@ -671,7 +671,7 @@ describe('no statement, receipt, CRM write or Stripe path changed', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 // 10. Colour and palettes.
 // ═════════════════════════════════════════════════════════════════════════════
-describe('no colour is hardcoded and all four palettes resolve', () => {
+describe('no colour is hardcoded and both palettes resolve', () => {
   /** The elements this ticket adds, on every surface, as rendered. */
   const addedRegions = (): Element[] => {
     const out: Element[] = [];
@@ -689,7 +689,24 @@ describe('no colour is hardcoded and all four palettes resolve', () => {
       const regions = addedRegions();
       expect(regions.length, 'the added block did not render').toBeGreaterThan(0);
       for (const el of regions) {
-        expect(el.getAttribute('style'), `${el.tagName} carries an inline style`).toBeNull();
+        /**
+         * 🔴 THE-338 NARROWED THIS FROM "no inline style" TO "no inline
+         * COLOUR", and the distinction is the whole point of the assertion.
+         *
+         * The CRM note is now a Collapsible (the founder asked for the
+         * disclaimer to fold), and base-ui's panel sets its own measurement
+         * variables inline — `--collapsible-panel-height`, `--collapsible-
+         * panel-width`. Those are how the primitive animates its own height;
+         * they carry no colour and no layout decision this ticket made.
+         *
+         * What this test exists to catch is a hardcoded COLOUR escaping
+         * globals.css, which is exactly what the class scan below it checks.
+         * So the style attribute is checked for the same thing rather than
+         * for being absent — a `style="color: #C4553B"` still fails here.
+         */
+        const inline = el.getAttribute('style') ?? '';
+        expect(inline, `${el.tagName} carries an inline colour`)
+          .not.toMatch(/#[0-9a-fA-F]{3,8}|rgba?\(|hsla?\(|(?:^|;)\s*(?:color|background)/);
         for (const cls of (el.getAttribute('class') ?? '').split(/\s+/).filter(Boolean)) {
           expect(cls, `${cls} looks like a literal colour`)
             .not.toMatch(/#[0-9a-fA-F]{3,8}|rgba?\(|hsla?\(/);
@@ -717,7 +734,7 @@ describe('no colour is hardcoded and all four palettes resolve', () => {
     }
   });
 
-  it('every token the new blocks spell is defined for all four palettes', () => {
+  it('every token the new blocks spell is defined for both palettes', () => {
     // Harvest and Classic × light and dark. Resolved out of the REAL
     // globals.css, never pinned to a hex.
     const css = readFileSync(join(ROOT, 'src/app/globals.css'), 'utf8');
@@ -731,13 +748,9 @@ describe('no colour is hardcoded and all four palettes resolve', () => {
     };
     const rootVars = varsIn((s) => s.trim() === ':root');
     const darkVars = varsIn((s) => /\[data-theme="dark"\]/.test(s) && !/data-palette/.test(s));
-    const classicLight = varsIn((s) => /\[data-palette="classic"\]\[data-theme="light"\]/.test(s));
-    const classicDark = varsIn((s) => /\[data-palette="classic"\](\.dark|\[data-theme="dark"\])/.test(s));
     const palettes: Record<string, Record<string, string>> = {
-      'harvest/light': { ...rootVars },
-      'harvest/dark': { ...rootVars, ...darkVars },
-      'classic/light': { ...rootVars, ...classicLight },
-      'classic/dark': { ...rootVars, ...darkVars, ...classicDark },
+      light: { ...rootVars },
+      dark: { ...rootVars, ...darkVars },
     };
     const resolve = (vars: Record<string, string>, token: string): string | null => {
       let value: string | undefined = vars[token];
@@ -748,7 +761,7 @@ describe('no colour is hardcoded and all four palettes resolve', () => {
       }
       return value ?? null;
     };
-    expect(Object.keys(palettes)).toHaveLength(4);
+    expect(Object.keys(palettes)).toHaveLength(2);
 
     // The tokens behind the classes the new blocks use: the card and sunken
     // grounds, the border, the body/strong inks, and the gold the icon takes.
@@ -764,20 +777,43 @@ describe('no colour is hardcoded and all four palettes resolve', () => {
         expect(resolved, `${token} is not a colour for ${name}`).toMatch(/^(#|rgb|hsl|color-mix|var)/);
       }
     }
-    // The families must actually differ, or "four palettes" is one wearing four names.
-    expect(resolve(palettes['harvest/dark'], '--surface-raised'))
-      .not.toBe(resolve(palettes['classic/dark'], '--surface-raised'));
+    // The two palettes must actually differ, or "both palettes" is one wearing
+    // two names. (THE-338: this compared the two FAMILIES; with one family the
+    // same property is that the two MODES differ.)
+    expect(resolve(palettes.dark, '--surface-raised'))
+      .not.toBe(resolve(palettes.light, '--surface-raised'));
   });
 
   it('invents no width and shrinks no touch target', () => {
-    // Every block added is prose: no control, no height, no width of its own.
     // The measures on these screens are the ones form-layout.ts already set,
     // and the Donations paragraph sits inside the READING_MEASURE block THE-246
     // put its warning in.
+    /**
+     * 🔴 THE-338 — THE CRM BLOCK IS DELIBERATELY NO LONGER PROSE.
+     *
+     * The founder asked for this disclaimer to collapse ("make that
+     * disclaimer in CRM collapsible"), so it now has a trigger, and a trigger
+     * is a tap target: `min-h-11` below `sm`. Under the original rule that
+     * reads as "sets a height", which was written when every block here was a
+     * paragraph — so the CRM entry is checked against the rule that actually
+     * applies to a control, and the other two keep the prose rule unchanged.
+     *
+     * ⚠️ It is exempted from "sets a height" ONLY for the 44px minimum. A
+     * fixed height, or a width, still fails for the CRM block too.
+     */
+    const CRM = 'CRM — why a contact reads $0';
     for (const [label, block] of Object.entries(addedBlocks())) {
       expect(block, `${label} invents a width`).not.toMatch(/max-w-|\bw-\[|min-w-/);
-      expect(block, `${label} sets a height`).not.toMatch(/\bh-\[|\bh-\d|min-h-/);
-      expect(block, `${label} adds an interactive control`).not.toMatch(/<button|<input|<a\s/);
+      if (label === CRM) {
+        // A fixed or arbitrary height still fails; only `min-h-*` is allowed,
+        // and only because it is the tap-target floor asserted on the next line.
+        expect(block, `${label} sets a fixed height`).not.toMatch(/(?<!min-)\bh-\[|(?<!min-)\bh-\d/);
+        expect(block, `${label} lost the 44px tap target on its trigger`).toMatch(/min-h-11/);
+        expect(block, `${label} lost its disclosure trigger`).toMatch(/CollapsibleTrigger/);
+      } else {
+        expect(block, `${label} sets a height`).not.toMatch(/\bh-\[|\bh-\d|min-h-/);
+        expect(block, `${label} adds an interactive control`).not.toMatch(/<button|<input|<a\s/);
+      }
     }
     // The disclosure THE-246 wrote still sits inside the reading measure, so
     // the paragraph added to it inherits a measure rather than needing one.

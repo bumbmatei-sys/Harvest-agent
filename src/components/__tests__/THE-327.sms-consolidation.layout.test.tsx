@@ -246,32 +246,30 @@ describe('3 · the screen fits at all five widths', () => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   4 · 🔴 All four palettes resolve — Classic first.
+   4 · 🔴 Both palettes resolve.
    ═══════════════════════════════════════════════════════════════════════════ */
-describe('4 · all four palettes resolve on the moved surface', () => {
+describe('4 · both palettes resolve on the moved surface', () => {
   /**
-   * 🔴 MEASURED, BECAUSE A STYLESHEET GREP CANNOT ANSWER THIS. "Four palettes"
-   * is two FAMILIES (harvest, classic) × two THEMES (light, dark), and
-   * globals.css declares the harvest pair as the base and overrides only what
-   * Classic changes — so counting `[data-palette]` selectors finds one, not
-   * four, and proves nothing about whether a token resolves.
+   * 🔴 MEASURED, BECAUSE A STYLESHEET GREP CANNOT ANSWER THIS. Counting
+   * selectors proves nothing about whether a token RESOLVES — only a browser
+   * with the real cascade can answer that, which is why this suite exists.
    *
-   * ⚠️ Classic is asserted FIRST and by name: it has been the DEFAULT since
-   * #409, so it is the one that must be right.
+   * 🔴 THE-338 — "FOUR PALETTES" WAS TWO FAMILIES × TWO THEMES. The family
+   * axis is gone: the second family's 14 overrides were promoted into
+   * :root/.dark and its `data-palette` selectors deleted. The mode axis is
+   * untouched, so this measures the two themes.
    */
-  const FAMILIES = ['classic', 'harvest'] as const;   // Classic first, deliberately
   const THEMES = ['light', 'dark'] as const;
 
-  it('every family × theme paints a real colour on the number panel', async () => {
-    const { DEFAULT_PALETTE_FAMILY } = await import('../../lib/theme');
-    expect(DEFAULT_PALETTE_FAMILY, 'Classic stopped being the default').toBe('classic');
+  it('every theme paints a real colour on the number panel', async () => {
+    const theme_ = await import('../../lib/theme');
+    expect('DEFAULT_PALETTE_FAMILY' in theme_, 'the family axis is back').toBe(false);
 
     const seen: Record<string, { surface: string; text: string }> = {};
-    for (const palette of FAMILIES) {
+    {
       for (const theme of THEMES) {
-        seen[`${palette}/${theme}`] = await browser.evaluateAt(380, `(() => {
+        seen[theme] = await browser.evaluateAt(380, `(() => {
           const html = document.documentElement;
-          html.setAttribute('data-palette', ${JSON.stringify(palette)});
           html.setAttribute('data-theme', ${JSON.stringify(theme)});
           html.classList.toggle('dark', ${JSON.stringify(theme)} === 'dark');
           /* Read off elements that actually CARRY tokens. The screen wrapper
@@ -290,7 +288,7 @@ describe('4 · all four palettes resolve on the moved surface', () => {
       }
     }
 
-    expect(Object.keys(seen), 'a palette combination was not measured').toHaveLength(4);
+    expect(Object.keys(seen), 'a palette combination was not measured').toHaveLength(2);
     for (const [key, c] of Object.entries(seen)) {
       /* A token that did not resolve leaves the browser transparent — which
          is `rgba(…, 0)`, NOT `rgb(0, 0, 0)`: opaque black is a colour, and an
@@ -300,7 +298,7 @@ describe('4 · all four palettes resolve on the moved surface', () => {
         expect(value, `${key} resolved the ${what} to fully transparent`).not.toMatch(/,\s*0\)$/);
       }
     }
-    /* 🔴 And the palettes are not all the SAME colour, which is what a token
+    /* 🔴 And the two palettes are not the SAME colour, which is what a token
        that silently fell back to one literal would look like. */
     const surfaces = new Set(Object.values(seen).map((c) => c.surface));
     expect(surfaces.size, 'every palette painted an identical surface — a token fell back to a literal')

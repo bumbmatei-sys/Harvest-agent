@@ -562,7 +562,7 @@ describe('10 — layout.tsx is unchanged', () => {
     // ⚠️ A HASH, not a `git show`: CI's clone depth is not this suite's business
     // and a shell-out at assertion time would make it one.
     expect(digest('src/app/layout.tsx'))
-      .toBe('bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5');
+      .toBe('b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f');
   });
 
   it('and neither is anything else this ticket was told not to touch', () => {

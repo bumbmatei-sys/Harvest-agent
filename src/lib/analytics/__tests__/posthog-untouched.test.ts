@@ -84,7 +84,7 @@ const LAYOUT = 'src/app/layout.tsx';
  * The pre-paint script's own digest below moved for the same one reason, which
  * is the check that says the change was in the script and not elsewhere.
  */
-const LAYOUT_SHA = 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5';
+const LAYOUT_SHA = 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f';
 
 /**
  * The pre-paint script on its own, extracted the same way `preauth-light.test.ts`
@@ -99,8 +99,20 @@ const LAYOUT_SHA = 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b923
  * while the surrounding layout digest moves too is the expected pairing; this
  * one moving ALONE would be impossible, and the layout one moving alone would
  * mean something outside the script changed.
+ *
+ * ─── 🔴 THE-338 REGENERATED IT AGAIN, and this time by DELETION ────────────
+ * Both values THE-265 regenerated are gone, along with everything else the
+ * family axis put in this script: the `harvest-theme-family` read, the
+ * `f==='harvest'?'harvest':'classic'` ternary, and the two
+ * `setAttribute('data-palette', …)` calls (the forced one on the pre-auth
+ * branch and the stored one on the normal branch). There is one palette
+ * family now, so the attribute matches no rule in globals.css.
+ *
+ * What is left is the MODE stamp, which is what this script did before the
+ * family axis was ever added. The pairing above still holds: LAYOUT_SHA moved
+ * with it.
  */
-const PREPAINT_SCRIPT_SHA = 'fa77263023f750462f3fd1b31e28ca8ca342eee3482889de23903ce72052e65d';
+const PREPAINT_SCRIPT_SHA = 'feb337c39fecc9a01bffccd8548ab73830151e25109a7341878a04e27d199094';
 
 function prePaintScript(): string {
   const layout = readFileSync(path.join(ROOT, LAYOUT), 'utf8');
@@ -159,8 +171,8 @@ const PINNED: ReadonlyArray<readonly [string, ...string[]]> = [
   // ticket could have broken it, which is persisting the resolved default and
   // thereby converting every existing user into someone who has *chosen*
   // Classic, past the reach of the one-value revert.
-  ['src/lib/theme-runtime.ts', '499d75f3ee336303d247c02a38c7bcc2338206609066da420842795745d9dee3'],
-  ['src/lib/theme.ts', '97d2f057fa04f85f33a1faa0dc196324d51770c6032ca9b4d21e467dfd70d8de'],
+  ['src/lib/theme-runtime.ts', 'fce9fa8e8a9bd76c0b57bce0decc450e394968c93855e9e6702c306958e2d6ee'],
+  ['src/lib/theme.ts', 'e05b9e51ee019db5b7926358a5ed9de9a291c5c8372040f2a7ac435e88e2ba0b'],
   ['src/components/layout/form-layout.ts', 'aa62c7e8c339b35222d9b305be5acf9c6e4c52543174030d8977457fa961ed48'],
   /**
    * 🔴 THE-325 · THE ROW STAYS, its accepted VALUES come from the shared

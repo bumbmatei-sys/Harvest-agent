@@ -291,7 +291,7 @@ export function CoursePreview({
             These two are yours to decide for your own members. They do not affect any other
             church that has adopted this course, and Harvest&apos;s own value is only the default.
           </p>
-          <div className="mt-2 divide-y divide-stone-200">
+          <div className="mt-2 divide-y divide-line">
             <OverrideToggle
               label="Require the quiz"
               description="Members must pass every lesson quiz before the course counts as complete."

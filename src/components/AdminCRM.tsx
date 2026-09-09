@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Plus, Search, Edit2, Trash2, Users, Mail, Phone,
   MessageSquare, DollarSign, PhoneCall, Calendar, Clock, ChevronRight, MapPin,
-  List, LayoutGrid, Heart, Award, AlertTriangle, Send, Upload
+  List, LayoutGrid, Heart, Award, AlertTriangle, Send, Upload, ChevronDown
 } from 'lucide-react';
 import {
   collection, addDoc, deleteDoc, setDoc,
@@ -18,6 +18,7 @@ import { notifyError } from '../utils/notify';
 import { authFetch } from '../utils/auth-fetch';
 import AdminRoles, { Permission } from './AdminRoles';
 import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, CONTROL_DENSITY } from './layout/form-layout';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../store/useAppStore';
@@ -999,12 +1000,26 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   // its own nav entry, because it counts MEMBERS (people with accounts) where
   // this screen counts CONTACTS (people the church is working). The `analytics`
   // permission that gated the pill now gates that nav entry in AdminDashboard.
+  //
+  // 🔴 THE-338 — `min-h-11 min-w-11 sm:min-h-0 sm:min-w-0` on each pill, and
+  // BOTH axes are load-bearing. `px-4 py-1.5 text-xs` renders these at about
+  // 28px tall, under the 44px phone floor, and THE-308 found a tab that
+  // cleared the floor on height while measuring 35.6px WIDE — so height alone
+  // is not the check. Released from `sm:` up under Rule 4, which fixes
+  // controls at 38px above the phone band so a segmented control does not
+  // sprawl on desktop.
+  //
+  // ⚠️ The founder's report — "in CRM if I press on roles the button switch
+  // appears very small" — was NOT this. It was AdminRoles.tsx injecting an
+  // unscoped `* { margin: 0; padding: 0 }` that zeroed this control's padding
+  // from a sibling subtree; see the note on that file's <style> block. This
+  // floor is the second thing found while measuring the first.
   const subTabBar = (
     <div className="flex gap-1 bg-surface-sunken rounded-xl p-1 mb-5 w-fit">
       {canViewContacts && (
         <button
           onClick={() => setCrmSubView('contacts')}
-          className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+          className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 ${
             crmSubView === 'contacts' ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'
           }`}
         >
@@ -1014,7 +1029,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
       {canManageRoles && (
         <button
           onClick={() => { setCrmSubView('roles'); setView('list'); setSelected(null); }}
-          className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+          className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 ${
             crmSubView === 'roles' ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'
           }`}
         >
@@ -1651,21 +1666,59 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         contact is a real control on this screen, gated on the same
         `showGiving`, so there is no tier that reads this and cannot act on it.
       */}
+      {/*
+        🔴 THE-338 — COLLAPSED, NOT SHORTENED, AND NOT DELETED.
+
+        The founder's note was "make that disclaimer in CRM collapsible": six
+        lines on a phone, above the contact list, on every visit. The fix is
+        the fold, and it is deliberately ONLY the fold — every word THE-249
+        wrote is still here, byte for byte, and simply moved inside the panel.
+        Shortening it would be editing a true and load-bearing explanation to
+        buy vertical space, which is the one thing the note did not ask for.
+
+        WHAT STAYS VISIBLE WHEN IT IS SHUT is THE-249's own opening sentence,
+        unchanged. An admin who never opens the fold has still read the fact
+        that changes how they read the totals above; what the fold hides is
+        the WHY and the remedy, which is the half you only need once. Same
+        shape, and the same reasoning, as the disclosure AdminDonations
+        already ships — this reuses that pattern rather than inventing a
+        second one.
+
+        ⚠️ Still gated on `hasManualGivingLinks`, and that gate is the answer
+        to "should a church with no payment links see this at all": it never
+        has and still does not. The fold is for the churches that DO publish
+        links, who are the only ones this sentence is true of.
+      */}
       {showGiving && hasManualGivingLinks && (
-        <div
+        <Collapsible
           data-testid="crm-manual-giving"
-          className="mb-6 flex items-start gap-2.5 rounded-brand-lg border border-line bg-surface-sunken px-4 py-3 text-[13px] text-body"
+          className="mb-6 rounded-brand-lg border border-line bg-surface-sunken"
         >
-          <AlertTriangle size={15} className="mt-0.5 shrink-0 text-gold" aria-hidden="true" />
-          <div>
-            <span className="font-semibold">
+          <CollapsibleTrigger
+            data-testid="crm-manual-giving-toggle"
+            className={`group flex w-full items-start gap-2.5 px-4 py-3 text-left text-[13px] text-body min-h-11 sm:min-h-0 ${CONTROL_DENSITY.control}`}
+          >
+            <AlertTriangle size={15} className="mt-0.5 shrink-0 text-gold" aria-hidden="true" />
+            <span className="font-semibold flex-1">
               Gifts sent through your own payment links are not counted here.
-            </span>{' '}
-            Harvest never sees a {GIVING_PROVIDER_NAMES_OR} gift, so the member who sent
-            one stays at $0 total given, with no last gift and the Member stage. To record it,
-            open their contact, press Add Activity, choose Donation and enter the amount.
-          </div>
-        </div>
+            </span>
+            <ChevronDown
+              size={16}
+              className="mt-0.5 shrink-0 text-faint transition-transform group-data-[panel-open]:rotate-180"
+              aria-hidden="true"
+            />
+          </CollapsibleTrigger>
+          {/* `keepMounted` so the full explanation is in the DOM whether or not
+              the fold is open — THE-249's text must remain findable and
+              readable to assistive tech, not conjured on expand. */}
+          <CollapsibleContent keepMounted data-testid="crm-manual-giving-panel">
+            <div className="px-4 pb-3 pl-[42px] text-[13px] text-body">
+              Harvest never sees a {GIVING_PROVIDER_NAMES_OR} gift, so the member who sent
+              one stays at $0 total given, with no last gift and the Member stage. To record it,
+              open their contact, press Add Activity, choose Donation and enter the amount.
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       )}
 
       {/* Coverage line — how much of the church this list is showing.

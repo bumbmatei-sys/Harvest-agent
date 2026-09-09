@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import postcss from 'postcss';
-import { contrastRatio, AA_CONTRAST, THEME_STORAGE_KEY, FAMILY_STORAGE_KEY, DEFAULT_PALETTE_FAMILY } from '../lib/theme';
+import { contrastRatio, AA_CONTRAST, THEME_STORAGE_KEY } from '../lib/theme';
 import { PREAUTH_PATHS, isPreAuthPath, normalizePath } from '../lib/preauth-theme';
-import { applyThemeForLocation, readStoredFamily } from '../lib/theme-runtime';
+import { applyThemeForLocation } from '../lib/theme-runtime';
 
 /**
  * THE-85 — pre-auth screens are light mode only.
@@ -63,7 +63,6 @@ function runPrePaint(url: string): void {
 const stamped = () => ({
   attr: document.documentElement.getAttribute('data-theme'),
   dark: document.documentElement.classList.contains('dark'),
-  palette: document.documentElement.getAttribute('data-palette'),
 });
 
 let matchesDark = false;
@@ -98,17 +97,15 @@ afterEach(() => {
  * been built or reviewed (see theme-runtime.ts's applyThemeForLocation), so
  * this is the same regression, one axis further.
  */
-describe('a pre-auth screen renders Harvest light with the stored preference set to classic dark', () => {
-  it.each(PREAUTH_PATHS)('%s is light+harvest before first paint and after a route change', (p) => {
+describe('a pre-auth screen renders light with the stored preference set to dark', () => {
+  it.each(PREAUTH_PATHS)('%s is light before first paint and after a route change', (p) => {
     localStorage.setItem(THEME_STORAGE_KEY, 'dark');
-    localStorage.setItem(FAMILY_STORAGE_KEY, 'classic');
 
     // Half 1: the pre-paint script, i.e. a hard load / refresh / deep link.
     runPrePaint(p);
     expect(stamped(), `${p} painted dark/classic on load — this is THE-85, extended to family`).toEqual({
       attr: 'light',
       dark: false,
-      palette: DEFAULT_PALETTE_FAMILY,
     });
 
     // Half 2: the client applier, i.e. signing out of dark mode navigates here
@@ -120,7 +117,6 @@ describe('a pre-auth screen renders Harvest light with the stored preference set
     expect(stamped(), `${p} stayed dark/classic after a client-side navigation`).toEqual({
       attr: 'light',
       dark: false,
-      palette: DEFAULT_PALETTE_FAMILY,
     });
   });
 
@@ -151,11 +147,10 @@ describe('a pre-auth screen renders light with prefers-color-scheme: dark and no
     expect(stamped(), `${p} followed the OS instead of forcing light`).toEqual({
       attr: 'light',
       dark: false,
-      palette: DEFAULT_PALETTE_FAMILY,
     });
 
     applyThemeForLocation(p);
-    expect(stamped()).toEqual({ attr: 'light', dark: false, palette: DEFAULT_PALETTE_FAMILY });
+    expect(stamped()).toEqual({ attr: 'light', dark: false });
   });
 
   it('still follows a dark OS behind auth — the override is scoped, not global', () => {
@@ -169,7 +164,6 @@ describe('a pre-auth screen renders light with prefers-color-scheme: dark and no
     expect(stamped(), 'the OS preference stopped working everywhere').toEqual({
       attr: 'dark',
       dark: true,
-      palette: DEFAULT_PALETTE_FAMILY,
     });
   });
 });
@@ -185,25 +179,22 @@ describe('a pre-auth screen renders light with prefers-color-scheme: dark and no
  * screens rather than applied everywhere (STOP condition: a third stamping
  * path, or an over-broad one, would fail exactly here).
  */
-describe('a signed-in screen still renders dark and its stored family when the preference is dark/classic', () => {
+describe('a signed-in screen still renders dark when the stored preference is dark', () => {
   const SIGNED_IN = ['/', '/admin', '/admin/crm', '/admin/docs/abc', '/bible', '/profile'];
 
-  it.each(SIGNED_IN)('%s renders dark and classic', (p) => {
+  it.each(SIGNED_IN)('%s renders dark', (p) => {
     localStorage.setItem(THEME_STORAGE_KEY, 'dark');
-    localStorage.setItem(FAMILY_STORAGE_KEY, 'classic');
 
     runPrePaint(p);
     expect(stamped(), `${p} was forced light — dark mode is broken behind auth`).toEqual({
       attr: 'dark',
       dark: true,
-      palette: 'classic',
     });
 
     applyThemeForLocation(p);
     expect(stamped(), `${p} was forced light/harvest on a client-side navigation`).toEqual({
       attr: 'dark',
       dark: true,
-      palette: 'classic',
     });
   });
 
@@ -230,33 +221,27 @@ describe('a signed-in screen still renders dark and its stored family when the p
  * Extended to family: signing out and back in must return the user to
  * 'classic' too, and neither key may be overwritten by the pre-auth force.
  */
-describe('signing out and back in returns the user to dark and classic', () => {
-  it('round-trips /admin -> /auth -> / without losing the stored choice or family', () => {
+describe('signing out and back in returns the user to dark', () => {
+  it('round-trips /admin -> /auth -> / without losing the stored choice', () => {
     localStorage.setItem(THEME_STORAGE_KEY, 'dark');
-    localStorage.setItem(FAMILY_STORAGE_KEY, 'classic');
 
     // Signed in, dark + classic.
     applyThemeForLocation('/admin');
-    expect(stamped()).toEqual({ attr: 'dark', dark: true, palette: 'classic' });
+    expect(stamped()).toEqual({ attr: 'dark', dark: true });
 
     // Sign out: App.tsx navigates to /auth with no reload.
     applyThemeForLocation('/auth');
-    expect(stamped()).toEqual({ attr: 'light', dark: false, palette: DEFAULT_PALETTE_FAMILY });
+    expect(stamped()).toEqual({ attr: 'light', dark: false });
     expect(
       localStorage.getItem(THEME_STORAGE_KEY),
       'the pre-auth override overwrote the stored preference',
     ).toBe('dark');
-    expect(
-      localStorage.getItem(FAMILY_STORAGE_KEY),
-      'the pre-auth override overwrote the stored family',
-    ).toBe('classic');
 
     // Sign back in.
     applyThemeForLocation('/');
-    expect(stamped(), 'dark/classic did not come back after signing in again').toEqual({
+    expect(stamped(), 'dark did not come back after signing in again').toEqual({
       attr: 'dark',
       dark: true,
-      palette: 'classic',
     });
   });
 
@@ -274,89 +259,64 @@ describe('signing out and back in returns the user to dark and classic', () => {
     // ⚠️ Stores 'classic' deliberately: the point is that the funnel FORCES a
     // family rather than reading one, so the stored value is ignored on the
     // way in and still intact on the way out. THE-265 made the forced value
-    // the default, so this now happens to agree with what is stored — the
-    // harvest case below is the one that proves the force is still a force.
     localStorage.setItem(THEME_STORAGE_KEY, 'dark');
-    localStorage.setItem(FAMILY_STORAGE_KEY, 'classic');
     runPrePaint('/auth');
-    expect(stamped()).toEqual({ attr: 'light', dark: false, palette: DEFAULT_PALETTE_FAMILY });
+    expect(stamped()).toEqual({ attr: 'light', dark: false });
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark');
-    expect(localStorage.getItem(FAMILY_STORAGE_KEY)).toBe('classic');
   });
 });
 
 /**
- * A user with no stored family gets the DEFAULT family.
+ * 🔴 THE-338 INVERTED THIS BLOCK RATHER THAN DELETING IT.
  *
- * ⚠️ THE-265 CHANGED THE ANSWER, not the shape. This block used to assert
- * 'harvest' literally; it now asserts DEFAULT_PALETTE_FAMILY, which is
- * 'classic'. The assertions are written against the constant rather than
- * against a new literal so that the next change to the default moves this
- * suite with it instead of breaking it — the property being pinned here is
- * "a missing value resolves to THE default", which is what THE-85 cares
- * about; WHICH family that is belongs to `the-265-classic-default.test.ts`.
+ * It used to assert that a user with no stored FAMILY got the default one,
+ * that a stored 'harvest' was honoured behind auth, and that the pre-auth
+ * funnel forced the default family anyway — THE-85's guarantee extended one
+ * axis, so the sign-in screen never rendered a combination nobody had
+ * reviewed.
  *
- * Mirrors how a missing/garbage THEME_STORAGE_KEY already defaults to
- * 'system' via isThemeChoice. Nothing about the MODE axis changed.
+ * There is one palette family now. The attribute is stamped by nothing, the
+ * storage key is read by nothing, and the funnel has nothing left to force
+ * beyond the MODE. Deleting the block would have left the pre-auth path with
+ * no guard against the axis quietly coming back on exactly the screens THE-85
+ * exists to protect, so what it asserts was flipped: the family axis is
+ * ABSENT, and light is still forced without it.
  */
-describe('a user with no stored family gets the default family', () => {
-  it('readStoredFamily defaults to DEFAULT_PALETTE_FAMILY when the key is absent', () => {
-    expect(localStorage.getItem(FAMILY_STORAGE_KEY)).toBeNull();
-    expect(readStoredFamily()).toBe(DEFAULT_PALETTE_FAMILY);
-  });
-
-  it('defaults to DEFAULT_PALETTE_FAMILY for a garbage stored value too', () => {
-    localStorage.setItem(FAMILY_STORAGE_KEY, 'sepia');
-    expect(readStoredFamily()).toBe(DEFAULT_PALETTE_FAMILY);
-  });
-
-  it('the pre-paint script stamps the default when nothing is stored', () => {
-    runPrePaint('/');
-    expect(stamped().palette).toBe(DEFAULT_PALETTE_FAMILY);
-  });
-
-  it('applyThemeForLocation stamps the default for a fresh signed-in session', () => {
-    applyThemeForLocation('/');
-    expect(stamped().palette).toBe(DEFAULT_PALETTE_FAMILY);
-  });
-
-  it('🔴 and that default is Classic (THE-265)', () => {
-    // Stated once, plainly, so this file records WHICH family it is even
-    // though every assertion above is written against the constant.
-    expect(DEFAULT_PALETTE_FAMILY).toBe('classic');
-  });
-
-  it('a stored harvest is still honoured — nobody lost a choice', () => {
-    // ⚠️ '/' is BEHIND auth, where the stored family wins. Asserted as the
-    // literal 'harvest' on purpose, NOT as DEFAULT_PALETTE_FAMILY: the claim
-    // is that a stored choice beats the default, so writing it against the
-    // constant would make it vacuous the moment the two coincide.
-    localStorage.setItem(FAMILY_STORAGE_KEY, 'harvest');
-    expect(readStoredFamily()).toBe('harvest');
-    runPrePaint('/');
-    expect(stamped().palette).toBe('harvest');
-    expect(stamped().palette, 'the stored choice collapsed into the default').not.toBe(
-      DEFAULT_PALETTE_FAMILY,
-    );
-  });
-
-  it('🔴 but the funnel IGNORES it — the force is still a force (THE-85)', () => {
-    // The case that proves THE-265 coupled the funnel to the DEFAULT rather
-    // than merely stopping forcing: a stored 'harvest' is honoured at '/' and
-    // overridden on '/auth'.
-    localStorage.setItem(FAMILY_STORAGE_KEY, 'harvest');
-    for (const p of PREAUTH_PATHS) {
+describe('the family axis is gone, and THE-85’s light force does not depend on it', () => {
+  it('the pre-paint script stamps no family attribute on any path', () => {
+    for (const p of [...PREAUTH_PATHS, '/', '/admin']) {
+      document.documentElement.removeAttribute('data-palette');
       runPrePaint(p);
-      expect(stamped().palette, `${p} followed the stored family instead of forcing`).toBe(
-        DEFAULT_PALETTE_FAMILY,
-      );
+      expect(
+        document.documentElement.getAttribute('data-palette'),
+        `${p} stamped a palette family`,
+      ).toBeNull();
+    }
+  });
+
+  it('applyThemeForLocation stamps no family attribute either', () => {
+    for (const p of [...PREAUTH_PATHS, '/', '/admin']) {
       document.documentElement.removeAttribute('data-palette');
       applyThemeForLocation(p);
-      expect(stamped().palette, `${p}: the client applier disagreed with the script`).toBe(
-        DEFAULT_PALETTE_FAMILY,
-      );
+      expect(
+        document.documentElement.getAttribute('data-palette'),
+        `${p} stamped a palette family`,
+      ).toBeNull();
     }
-    expect(localStorage.getItem(FAMILY_STORAGE_KEY), 'the force wrote the preference').toBe('harvest');
+  });
+
+  it('a leftover stored family from before the removal changes nothing', () => {
+    // A returning user still has 'harvest-theme-family' in localStorage. It is
+    // deliberately not migrated or cleared — nothing reads it — so the proof
+    // that it is inert is that setting it moves neither axis.
+    localStorage.setItem('harvest-theme-family', 'harvest');
+    localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+    runPrePaint('/');
+    expect(stamped()).toEqual({ attr: 'dark', dark: true });
+    for (const p of PREAUTH_PATHS) {
+      runPrePaint(p);
+      expect(stamped(), `${p} stopped forcing light`).toEqual({ attr: 'light', dark: false });
+    }
   });
 });
 

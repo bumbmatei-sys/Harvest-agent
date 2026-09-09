@@ -385,9 +385,11 @@ describe('no emoji is rendered and no colour is hardcoded', () => {
     expect(codeOf(file), `${file} reads a raw custom property`).not.toMatch(/var\(--/);
   });
 
-  it('Classic is still the default palette family', async () => {
-    const { DEFAULT_PALETTE_FAMILY } = await import('@/lib/theme');
-    expect(DEFAULT_PALETTE_FAMILY).toBe('classic');
+  it('the palette family axis is gone (THE-338)', async () => {
+    // 🔴 INVERTED, not deleted — see THE-338. This pinned #409's default
+    // family; the axis no longer exists, so what is guarded is its absence.
+    const theme = await import('@/lib/theme');
+    expect('DEFAULT_PALETTE_FAMILY' in theme).toBe(false);
   });
 
   it('no width is invented — the container is form-layout.ts\'s', () => {

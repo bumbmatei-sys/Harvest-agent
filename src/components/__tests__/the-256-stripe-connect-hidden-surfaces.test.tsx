@@ -309,9 +309,9 @@ describe('3 — the panel is gated once, and that covers every screen that mount
 });
 
 /* ═════════════════════════════════════════════════════════════════════════
-   4 — no colour is hardcoded and all four palettes resolve.
+   4 — no colour is hardcoded and both palettes resolve.
    ═════════════════════════════════════════════════════════════════════════ */
-describe('4 — no colour is hardcoded and all four palettes resolve', () => {
+describe('4 — no colour is hardcoded and both palettes resolve', () => {
   it('the hidden state paints only through semantic tokens', async () => {
     await mountPanel(false);
     const block = hiddenBlock()!;
@@ -340,7 +340,7 @@ describe('4 — no colour is hardcoded and all four palettes resolve', () => {
     }
   });
 
-  it('the tokens it spends resolve in every family × mode', () => {
+  it('the tokens it spends resolve in both modes', () => {
     const css = readFileSync(GLOBALS, 'utf8');
     const varsIn = (match: (sel: string) => boolean) => {
       const out: Record<string, string> = {};
@@ -352,13 +352,9 @@ describe('4 — no colour is hardcoded and all four palettes resolve', () => {
     };
     const rootVars = varsIn((s) => s.trim() === ':root');
     const darkVars = varsIn((s) => /\[data-theme="dark"\]/.test(s) && !/data-palette/.test(s));
-    const classicLight = varsIn((s) => /\[data-palette="classic"\]\[data-theme="light"\]/.test(s));
-    const classicDark = varsIn((s) => /\[data-palette="classic"\](\.dark|\[data-theme="dark"\])/.test(s));
     const palettes: Record<string, Record<string, string>> = {
-      'harvest/light': { ...rootVars },
-      'harvest/dark': { ...rootVars, ...darkVars },
-      'classic/light': { ...rootVars, ...classicLight },
-      'classic/dark': { ...rootVars, ...darkVars, ...classicDark },
+      light: { ...rootVars },
+      dark: { ...rootVars, ...darkVars },
     };
     const resolve = (vars: Record<string, string>, token: string): string | null => {
       let value: string | undefined = vars[token];
@@ -370,7 +366,7 @@ describe('4 — no colour is hardcoded and all four palettes resolve', () => {
       return value ?? null;
     };
 
-    expect(Object.keys(palettes)).toHaveLength(4);
+    expect(Object.keys(palettes)).toHaveLength(2);
     // The CSS variables behind bg-surface-raised, border-line-subtle,
     // text-muted and text-body (tailwind.config.ts).
     for (const [name, vars] of Object.entries(palettes)) {
@@ -383,10 +379,10 @@ describe('4 — no colour is hardcoded and all four palettes resolve', () => {
     }
     // The families must actually differ, or "four palettes" is one palette
     // wearing four names.
-    expect(resolve(palettes['harvest/dark'], '--surface-raised'))
-      .not.toBe(resolve(palettes['classic/dark'], '--surface-raised'));
-    expect(resolve(palettes['harvest/light'], '--text-muted'))
-      .not.toBe(resolve(palettes['classic/light'], '--text-muted'));
+    expect(resolve(palettes.dark, '--surface-raised'))
+      .not.toBe(resolve(palettes.light, '--surface-raised'));
+    expect(resolve(palettes.light, '--text-muted'))
+      .not.toBe(resolve(palettes.dark, '--text-muted'));
   });
 });
 

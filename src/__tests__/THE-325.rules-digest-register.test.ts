@@ -394,8 +394,16 @@ const CONTENT_ASSERTING: ReadonlyArray<readonly [string, string]> = [
      THE-325's own bounds; this record only says which ticket last moved them. */
   ['src/components/__tests__/THE-320.sms-composition.test.tsx',
     '4c5729f359d64519f504f5f73287a2c730ebab34359b8399e2cf557bf8ffdca9'],
+  /* 🔴 MOVED BY THE-338, which removes the Harvest palette FAMILY. This suite
+     asserted that globals.css still declared the family's two
+     `[data-palette="classic"]` selectors, as its way of saying "all four
+     palettes still resolve". The family's 14 overrides were promoted into
+     :root/.dark and its selectors deleted, so the assertion now reads the two
+     theme scopes and requires that no family selector came back. It still
+     asserts CONTENT and still pins no digest, so it remains out of THE-325's
+     own bounds; this record only says which ticket last moved it. */
   ['src/components/__tests__/the-255-install-app.test.tsx',
-    'e8438de623b5a206f92a6ec1ae5d8696af4ad82ce99b413451486cb77f588985'],
+    'fc60a87f7b7d0396129963c43df16d3122788e461c65c90361da1566ad6dfcd2'],
   ['src/lib/__tests__/super-admin-consistency.test.ts',
     '2e5e38006a0c0da07b38bef1eac0fbc093fe722d5406dd1cf27aa5cb452f9a35'],
   ['src/lib/dodo/__tests__/dodo-subscription-lifecycle.test.ts',

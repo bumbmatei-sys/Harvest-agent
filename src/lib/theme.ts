@@ -20,68 +20,38 @@ export const isThemeChoice = (v: unknown): v is ThemeChoice =>
   typeof v === 'string' && (THEME_CHOICES as readonly string[]).includes(v);
 
 /**
- * A second, independent preference: which palette FAMILY (as opposed to which
- * MODE) the surfaces render in. Orthogonal to ThemeChoice — every family
- * resolves to a light and a dark rendering, exactly like Harvest does today.
- * Stored under its own key so it can be missing independently of the mode
- * choice; a missing value means DEFAULT_PALETTE_FAMILY (below).
+ * THE-338 — there is exactly ONE palette family.
+ *
+ * A second family, "Classic", used to live alongside the Harvest one behind a
+ * `data-palette` attribute and a stored `harvest-theme-family` preference.
+ * THE-265 had already made Classic the family a user with no stored choice
+ * rendered in, so Classic light and Classic dark were what the app actually
+ * put on screen; Harvest survived only as the set of declarations Classic
+ * layered its 14 overrides on top of.
+ *
+ * The founder asked for the family to go ("remove harvest theme"), so the 14
+ * overrides were promoted into `:root` / `.dark` in globals.css and BOTH the
+ * attribute and the stored preference were removed. What that leaves is the
+ * mode axis alone — light/dark — which is the axis this file still models.
+ *
+ * ⚠️ The stored `harvest-theme-family` key is deliberately NOT migrated or
+ * cleared. Nothing reads it any more, so a value left in a returning user's
+ * localStorage is inert; writing a migration would mean shipping code whose
+ * only job is to delete a key nobody consults.
  */
-export const FAMILY_STORAGE_KEY = 'harvest-theme-family';
 
-export type PaletteFamily = 'harvest' | 'classic';
 
-export const PALETTE_FAMILIES: readonly PaletteFamily[] = ['harvest', 'classic'] as const;
-
-export const isPaletteFamily = (v: unknown): v is PaletteFamily =>
-  typeof v === 'string' && (PALETTE_FAMILIES as readonly string[]).includes(v);
-
-/**
- * THE-265 — the family a user who has never chosen one renders in.
- *
- * 🔴 This is the whole ticket, and it is deliberately ONE VALUE. Flipping it
- * back to 'harvest' is the entire revert: nothing was deleted to make Classic
- * the default, both families' blocks are intact in globals.css, and
- * PaletteFamilyToggle still offers both. A user who has ALREADY chosen keeps
- * their choice — this changes only what a MISSING value means.
- *
- * Why Classic and not a new theme: Classic overrides 14 tokens (surfaces,
- * borders, text) and everything else — ~120 tokens, fonts, radii, spacing,
- * shadows, and every gold accent — falls through to Harvest. globals.css puts
- * it plainly: "A second FAMILY, not a second theme… Classic is purely
- * additive." So "remove Harvest" is not a thing that can be built; changing
- * which family a missing preference resolves to is, and it puts the same
- * neutral-grey dark surfaces on screen.
- *
- * ⚠️ DUPLICATED, UNAVOIDABLY, in the pre-paint script in layout.tsx — that
- * script is a string that runs before any bundle, so it cannot import this
- * (the same reason THEME_STORAGE_KEY and FAMILY_STORAGE_KEY are spelled there
- * as literals). `the-265-classic-default.test.ts` reads the default back OUT
- * of the real script and compares it to this constant, so the two cannot
- * drift. If they ever did, a user would get one family before hydration and
- * the other after — a visible flash on a cold load, and only on a cold load.
- *
- * ⚠️ THE PRE-AUTH FUNNEL FOLLOWS THIS TOO, but as a FORCE rather than as a
- * fallback: `applyThemeForLocation` passes this constant explicitly on the
- * funnel paths, so a returning signed-out user's stored family is ignored
- * there and the sign-in screen always renders what a brand-new visitor gets
- * once they are inside. THE-85 still owns the MODE force (always light); this
- * is only which family that light rendering uses.
- */
-export const DEFAULT_PALETTE_FAMILY: PaletteFamily = 'classic';
-
-/** The dark page ground for the Harvest family (warm brown). Kept here so
- *  contrast derivation and CSS agree. */
-export const DARK_SURFACE = '#1A1612';
-/** The dark page ground for the Classic family (neutral grey) — see
- *  --surface under [data-palette="classic"].dark in globals.css, which this
- *  must match exactly for deriveOnDarkAccent's AA guarantee to hold. */
-export const CLASSIC_DARK_SURFACE = '#1C1C1C';
-/** The dark RAISED surface per family — cards, panels, the admin sidebar.
- *  An accent-tinted chip composites onto THIS, not onto the page ground, so
- *  it is the ground deriveOnTintAccent has to correct against. Must match
- *  --surface-raised in each family's dark block in globals.css. */
-export const DARK_SURFACE_RAISED = '#221D18';
-export const CLASSIC_DARK_SURFACE_RAISED = '#242424';
+/** The dark page ground — see `--surface` in the `.dark` block of
+ *  globals.css, which this must match EXACTLY for deriveOnDarkAccent's AA
+ *  guarantee to hold. THE-338 darkened it from #1C1C1C (and, before the
+ *  family promotion, Harvest's warm #1A1612) on the founder's note that the
+ *  grey read lighter than his reference. */
+export const DARK_SURFACE = '#141414';
+/** The dark RAISED surface — cards, panels, the admin sidebar. An accent-
+ *  tinted chip composites onto THIS, not onto the page ground, so it is the
+ *  ground deriveOnTintAccent has to correct against. Must match
+ *  `--surface-raised` in the `.dark` block of globals.css. */
+export const DARK_SURFACE_RAISED = '#1F1F1F';
 /** Brand cream — what an accent is lightened toward. Shared by both families:
  *  lightening toward cream (rather than toward each family's own near-white)
  *  is what keeps a corrected tenant accent reading as gold-tinted instead of

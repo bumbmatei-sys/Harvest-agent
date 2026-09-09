@@ -649,7 +649,7 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ byte-identical', ()
   // 🔴 APPENDED BY THE-334 — main + THE-334 — one flyout at a time; the panel takes ClickUp’s shape and Settings moves to the account menu
   '00db3fa2b16a506d0a23dc1d582e6581c49e03350b966fb30d82d9434b09f450',
   // 🔴 APPENDED BY THE-335 — SMS hidden again, the Newsletter nav entry gated by a new switch in the identical shape, and Signups moved onto its own plan cell
-  '3c26f36aa883e7c9540038e3afa1da2ec8bb61f091a4a8e5efa0d866fec6cf8f',
+  'd81a5b117569424515bf8c8ebca8654e8b6f57f3c7447f2419968adcebdf8bbe',
   ];
 
   it('🔴 AdminDashboard.tsx — not opened by this ticket', () => {
@@ -731,10 +731,10 @@ describe('no city field was added anywhere', () => {
 });
 
 /* ═════════════════════════════════════════════════════════════════════════════
- * 14. No colour hardcoded, no emoji; all four palettes resolve
+ * 14. No colour hardcoded, no emoji; both palettes resolve
  * ═════════════════════════════════════════════════════════════════════════════ */
 
-describe('no colour hardcoded, no emoji; all four palettes resolve', () => {
+describe('no colour hardcoded, no emoji; both palettes resolve', () => {
   const MINE = ['src/lib/member-country.ts', 'src/components/country/CountryPrompt.tsx'];
 
   it('🔴 no hex, rgb() or hsl() literal', () => {
@@ -764,12 +764,16 @@ describe('no colour hardcoded, no emoji; all four palettes resolve', () => {
     }
   });
 
-  it('all four palettes define the tokens it depends on — Classic first, the default since #409', () => {
+  it('both palettes define the tokens it depends on (THE-338: two, not four)', () => {
     const css = src('src/app/globals.css');
-    for (const palette of ['classic', 'sand', 'slate', 'olive']) {
-      const declared = new RegExp(`\\[data-palette="${palette}"\\]`).test(css);
-      if (palette === 'classic') expect(declared, 'Classic must be declared').toBe(true);
-    }
+    // 🔴 THE-338 removed the palette FAMILY axis. This used to require the
+    // `classic` family's selector to exist (and no other family's); the family
+    // and its selectors are gone, its 14 overrides promoted into the two
+    // theme scopes, so what is required now is those two scopes and the
+    // absence of any family selector at all.
+    expect(css, 'a palette family selector is back').not.toContain('data-palette');
+    expect(css, 'the light scope is gone').toMatch(/^\s*:root\s*\{/m);
+    expect(css, 'the dark scope is gone').toContain('[data-theme="dark"]');
     // The scrim token this component paints with is redefined, not inherited.
     expect(css).toContain('--scrim-night');
     expect(css.match(/--scrim-night\s*:/g)!.length).toBeGreaterThan(1);

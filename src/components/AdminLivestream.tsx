@@ -220,7 +220,7 @@ const AdminLivestream: React.FC = () => {
   const pastStreamsBlock = pastSessions.filter(s => s.endedAt).length > 0 && (
     <div>
       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gold mb-3">Past Streams</p>
-      <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] divide-y divide-stone-200">
+      <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] divide-y divide-line">
         {pastSessions.filter(s => s.endedAt).map(s => (
           <div key={s.id} className="flex items-center gap-3 px-5 py-3.5">
             <span className="w-8 h-8 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)] flex items-center justify-center shrink-0">
@@ -249,7 +249,7 @@ const AdminLivestream: React.FC = () => {
       {activePrayers.length === 0 ? (
         <p className="text-center py-12 text-faint text-sm">No active prayer requests.</p>
       ) : (
-        <div className="divide-y divide-stone-200">
+        <div className="divide-y divide-line">
           {activePrayers.map(p => (
             <div key={p.id} className="flex items-start gap-3 px-5 py-4">
               <div className="flex-1 min-w-0">
@@ -278,7 +278,7 @@ const AdminLivestream: React.FC = () => {
       {comments.length === 0 ? (
         <p className="text-center py-12 text-faint text-sm">No comments yet.</p>
       ) : (
-        <div className="divide-y divide-stone-200 max-h-[28rem] overflow-y-auto">
+        <div className="divide-y divide-line max-h-[28rem] overflow-y-auto">
           {comments.map(c => (
             <div key={c.id} className="flex items-start gap-3 px-5 py-3.5">
               <div className="flex-1 min-w-0">

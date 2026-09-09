@@ -540,17 +540,28 @@ describe('both surfaces remain readable in light mode', () => {
   });
 
   it('the light theme itself is untouched by this PR', () => {
-    // Every token these surfaces now name already shipped, with the light value
-    // it shipped with. Nothing here re-tunes the light theme.
+    // 🔴 THE-338 REPOINTED THESE, and the header they sit under moved with
+    // them. They pinned the WARM Harvest light ramp, on the claim "nothing
+    // here re-tunes the light theme" — true of the PR that wrote them.
+    //
+    // THE-338 removes the Harvest palette FAMILY and promotes the neutral
+    // one into :root, so the light ramp IS re-tuned, deliberately and as the
+    // whole point of that ticket. The pins move with it rather than being
+    // deleted: what they protect is that a LATER PR cannot move the light
+    // ramp silently, and that is still worth protecting.
+    //
+    // ⚠️ Visually this is close to a no-op for the shipping app: THE-265 had
+    // already made the neutral family the one a user with no stored
+    // preference renders in, so these are the values that were on screen.
     const PINNED: Record<string, string> = {
-      '--surface': 'var(--cream)',
+      '--surface': '#F7F7F7',
       '--surface-raised': '#FFFFFF',
-      '--surface-sunken': 'var(--stone-100)',
-      '--surface-tint': '#F7F6F3',
-      '--border-strong': 'var(--stone-300)',
-      '--text-strong': 'var(--earth)',
-      '--text-body': '#4A4038',
-      '--text-faint': '#766A5A',
+      '--surface-sunken': '#EFEFEF',
+      '--surface-tint': '#F5F5F5',
+      '--border-strong': '#C7C7C7',
+      '--text-strong': '#1A1A1A',
+      '--text-body': '#404040',
+      '--text-faint': '#696969',
     };
     for (const [token, value] of Object.entries(PINNED)) {
       expect(lightVars[token], `${token} moved in the light theme`).toBe(value);

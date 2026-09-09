@@ -668,7 +668,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
                   <th className="px-3 py-2.5 text-right text-xs font-semibold text-muted uppercase">CRM</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-200">
+              <tbody className="divide-y divide-line">
                 {submissions.map(s => (
                   <tr key={s.id} className="hover:bg-surface-sunken">
                     <td className="px-3 py-2.5 text-xs text-muted whitespace-nowrap">{fmtDate(s.submittedAt)}</td>

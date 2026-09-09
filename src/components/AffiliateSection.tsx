@@ -246,7 +246,7 @@ export default function AffiliateSection() {
           <p className="text-[11px] font-semibold text-gold uppercase tracking-[0.14em] mb-2">
             Commission Windows
           </p>
-          <div className="bg-surface-raised rounded-2xl border border-line divide-y divide-stone-200">
+          <div className="bg-surface-raised rounded-2xl border border-line divide-y divide-line">
             {referralWindows.map(w => (
               <div key={w.tenantId} className="px-4 py-3 flex items-center justify-between gap-3">
                 <span className="text-sm text-strong truncate font-mono">{w.tenantId}</span>

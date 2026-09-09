@@ -10,9 +10,7 @@ import {
   deriveOnDarkAccent,
   deriveOnTintAccent,
   DARK_SURFACE,
-  CLASSIC_DARK_SURFACE,
   DARK_SURFACE_RAISED,
-  CLASSIC_DARK_SURFACE_RAISED,
 } from '@/lib/theme';
 import { PREAUTH_PATHS } from '@/lib/preauth-theme';
 import ReferralTracker from '@/components/ReferralTracker';
@@ -171,54 +169,23 @@ export default async function RootLayout({
             script against the same path table as that function and fails if
             they disagree.
 
-            ── Palette family: a second, independent preference ───────────────
-            Stamped as `data-palette` in the SAME script, right beside
-            `data-theme` — one pre-paint pass, two attributes, so there is
-            still exactly one moment where <html> goes from unstamped to fully
-            stamped and no window where a family-only or mode-only flash is
-            possible. FAMILY_STORAGE_KEY ('harvest-theme-family') is duplicated
-            here as a literal for the same reason THEME_STORAGE_KEY is: this
-            script cannot import. `theming-stage3.test.ts`'s existing pin is
-            extended to cover this key too.
+            ── Palette family: REMOVED (THE-338) ─────────────────────────────
+            This script used to stamp a second attribute, `data-palette`, in
+            the same pre-paint pass — one pass, two attributes, so <html> went
+            from unstamped to fully stamped in one moment and no family-only
+            or mode-only flash was possible. It also duplicated a second
+            storage key ('harvest-theme-family') and a second default literal,
+            both of which had to be pinned by tests against @/lib/theme
+            because a script that runs before any bundle cannot import.
 
-            On a pre-auth path, family is forced alongside mode being forced
-            to 'light' — see applyThemeForLocation's comment for why: a
-            returning signed-out user's stored family must not put a
-            never-reviewed combination in front of the one audience that has
-            not paid yet. The funnel renders exactly ONE presentation.
-
-            🔴 THE-265 made that presentation Classic, matching what a new
-            visitor gets once they are inside. In the runtime this is written
-            as DEFAULT_PALETTE_FAMILY so it cannot drift from the default; here
-            it is a literal for the same reason everything else in this script
-            is, and the test below pins BOTH literals in this script to that
-            one constant.
-
-            ── THE-265: the DEFAULT family is Classic ─────────────────────────
-            🔴 `f==='harvest'?'harvest':'classic'` — a MISSING or garbage
-            stored value now resolves to Classic, where it used to resolve to
-            Harvest. A stored 'harvest' is still honoured, so nobody who has
-            chosen loses their choice; this is only what an absent value means.
-
-            ⚠️ This is the SECOND HOME of a value whose first home is
-            DEFAULT_PALETTE_FAMILY in @/lib/theme — and it is a literal here
-            because this script is a string that runs before any bundle and
-            cannot import, exactly as the two storage keys above cannot.
-            The two are not held together by anything the compiler can see, so
-            `the-265-classic-default.test.ts` parses this very expression back
-            out of this file and fails if it disagrees with the constant. That
-            test is the only thing standing between a future edit and a
-            first-paint flash: change one and not the other, and a cold load
-            paints one family and hydrates into the other.
-
-            ⚠️ BOTH occurrences are pinned — the ternary's default arm here and
-            the forced value in the pre-auth branch above. They are the same
-            constant for different reasons (one is the default, one is a force
-            that follows it), so a test that checked only one would let the
-            funnel drift away from the app it leads into. */}
+            There is one palette family now, so all of that is gone: the
+            attribute matches no rule in globals.css, the stored key is read
+            by nothing, and the default it resolved to is the only rendering
+            there is. Mode is the only axis this script still stamps, which is
+            what it stamped before the family axis was ever added. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var e=document.documentElement;var p=(location.pathname||'/').split(/[?#]/)[0].replace(/\\/+$/,'');p=(p===''?'/':p).toLowerCase();if(${JSON.stringify(PREAUTH_PATHS)}.indexOf(p)>-1){e.setAttribute('data-theme','light');e.classList.remove('dark');e.setAttribute('data-palette','classic');return;}var s=localStorage.getItem('harvest-theme');var t=(s==='light'||s==='dark')?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');e.setAttribute('data-theme',t);e.classList.toggle('dark',t==='dark');var f=localStorage.getItem('harvest-theme-family');e.setAttribute('data-palette',f==='harvest'?'harvest':'classic');}catch(_){}})();`,
+            __html: `(function(){try{var e=document.documentElement;var p=(location.pathname||'/').split(/[?#]/)[0].replace(/\\/+$/,'');p=(p===''?'/':p).toLowerCase();if(${JSON.stringify(PREAUTH_PATHS)}.indexOf(p)>-1){e.setAttribute('data-theme','light');e.classList.remove('dark');return;}var s=localStorage.getItem('harvest-theme');var t=(s==='light'||s==='dark')?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');e.setAttribute('data-theme',t);e.classList.toggle('dark',t==='dark');}catch(_){}})();`,
           }}
         />
 
@@ -238,33 +205,29 @@ export default async function RootLayout({
             fixed color-mix would have been the only pure-CSS option, and it
             would have washed gold out to a pale #E2C99B.
 
-            ── Palette family: which ground does the server derive against? ───
-            🔴 The trap this PR calls out explicitly. Classic's dark ground
-            (#1C1C1C) is not Harvest's (#1A1612) — an accent corrected for one
-            can still fail AA on the other — so deriveOnDarkAccent's `ground`
-            argument has to match whichever family is actually rendering.
+            ── Which ground does the server derive against? (THE-338) ────────
+            There used to be TWO answers here, and that was the trap: the two
+            families had different dark grounds (#1C1C1C and #1A1612), an
+            accent corrected for one could still fail AA on the other, and the
+            server could not know which family was rendering because family
+            was a client-only localStorage preference. So BOTH derivations
+            were computed and injected, each scoped to the `data-palette`
+            value the pre-paint script stamped, and the cascade picked one.
 
-            The server CANNOT know that: family is a client-only localStorage
-            preference (like the mode), and this layout renders before any
-            client code runs. Resolving it here would mean guessing.
+            One family now, one dark ground, one derivation. The two scoped
+            rules collapse into the `:root` rule below, and the collapse is
+            safe for exactly the reason the mode axis never needed resolving
+            either: the value is injected unconditionally and only ever
+            consumed from inside a `.dark`-scoped rule, so it is inert in
+            light and correct in dark without the server asking which applies.
+            Every dark-mode consumer of --brand-color-on-dark (--surface-gold,
+            --border-gold, --glow-gold, --ring-gold in globals.css) is
+            unchanged — the variable they reference simply has one value now.
 
-            So it doesn't resolve anything — it does exactly what this file
-            already does one line up for --brand-color-on-dark itself, which
-            has the identical problem one dimension down (the server doesn't
-            know the MODE either, and doesn't need to: the value is injected
-            unconditionally and only ever consumed from inside a `.dark`-
-            scoped rule, so it is inert in light and correct in dark without
-            the server ever asking which one applies). Extended one axis
-            further: BOTH possible derivations are computed and injected,
-            each scoped to the `data-palette` value the pre-paint script
-            above stamps client-side before first paint. Only one selector
-            ever matches a given <html>, so exactly one of these two rules is
-            ever in effect — the CSS cascade is what "learns" the family, at
-            the moment the attribute lands, not this server render. Every
-            existing dark-mode consumer of --brand-color-on-dark
-            (--surface-gold, --border-gold, --glow-gold, --ring-gold in
-            globals.css) needs no changes at all: the variable they already
-            reference now resolves differently per family for free.
+            ⚠️ DARK_SURFACE / DARK_SURFACE_RAISED moved with the ramp: THE-338
+            darkened the ground to #141414 / #1F1F1F, and these derivations
+            read those constants rather than a literal, so the AA correction
+            follows the ground automatically.
 
             ── --brand-color-on-tint: the same correction, one layer up ──────
             --brand-color-on-dark corrects the accent against the PAGE
@@ -273,17 +236,16 @@ export default async function RootLayout({
             that clears AA on the ground can still fail on the chip. Harvest
             gold is comfortable either way; a dark white-label accent is not
             (navy #0C1526 clears 4.54:1 on the ground and only 4.27:1 on the
-            chip, in Harvest dark exactly as much as in Classic dark).
+            chip).
 
-            So a second value is derived against the chip itself, per family,
-            and injected the same way. Consumed through --ink-on-accent-tint
-            in globals.css, which is what makes it mode-aware — this rule
-            applies in BOTH modes, exactly like --brand-color-on-dark above,
-            and neither is ever read in light. Harvest gold is returned
-            unchanged by this derivation too (5.15:1 on its own 12% chip), so
-            the default brand renders identically. */}
+            So a second value is derived against the chip itself and injected
+            the same way. Consumed through --ink-on-accent-tint in globals.css,
+            which is what makes it mode-aware — this rule applies in BOTH
+            modes, exactly like --brand-color-on-dark above, and neither is
+            ever read in light. The gold accent is returned unchanged by this
+            derivation too, so the default brand renders identically. */}
         {brandColorValid && (
-          <style dangerouslySetInnerHTML={{ __html: `:root{--brand-color:${brandColor};--color-primary:${brandColor};}[data-palette="harvest"]{--brand-color-on-dark:${deriveOnDarkAccent(brandColor, DARK_SURFACE)};--brand-color-on-tint:${deriveOnTintAccent(brandColor, DARK_SURFACE_RAISED)};}[data-palette="classic"]{--brand-color-on-dark:${deriveOnDarkAccent(brandColor, CLASSIC_DARK_SURFACE)};--brand-color-on-tint:${deriveOnTintAccent(brandColor, CLASSIC_DARK_SURFACE_RAISED)};}` }} />
+          <style dangerouslySetInnerHTML={{ __html: `:root{--brand-color:${brandColor};--color-primary:${brandColor};--brand-color-on-dark:${deriveOnDarkAccent(brandColor, DARK_SURFACE)};--brand-color-on-tint:${deriveOnTintAccent(brandColor, DARK_SURFACE_RAISED)};}` }} />
         )}
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet" />
       </head>

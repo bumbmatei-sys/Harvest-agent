@@ -532,9 +532,9 @@ describe('11 · ProviderMark still renders monograms, not logos', () => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * 12 — no colour hardcoded, no emoji; all four palettes resolve
+ * 12 — no colour hardcoded, no emoji; both palettes resolve
  * ═══════════════════════════════════════════════════════════════════════════ */
-describe('12 · no colour hardcoded, no emoji; all four palettes resolve', () => {
+describe('12 · no colour hardcoded, no emoji; both palettes resolve', () => {
   /** Everything this ticket wrote. `tint`/`ink` live in the table, not here. */
   const ADDED = [
     'src/components/PublicGiving.tsx',
@@ -583,7 +583,7 @@ describe('12 · no colour hardcoded, no emoji; all four palettes resolve', () =>
     }
   });
 
-  it('every token the new blocks spell is defined for all four palettes, Classic first', () => {
+  it('every token the new blocks spell is defined for both palettes', () => {
     const css = read('src/app/globals.css');
     const varsIn = (match: (sel: string) => boolean) => {
       const out: Record<string, string> = {};
@@ -595,14 +595,10 @@ describe('12 · no colour hardcoded, no emoji; all four palettes resolve', () =>
     };
     const rootVars = varsIn((s) => s.trim() === ':root');
     const darkVars = varsIn((s) => /\[data-theme="dark"\]/.test(s) && !/data-palette/.test(s));
-    const classicLight = varsIn((s) => /\[data-palette="classic"\]\[data-theme="light"\]/.test(s));
-    const classicDark = varsIn((s) => /\[data-palette="classic"\](\.dark|\[data-theme="dark"\])/.test(s));
     const palettes: Record<string, Record<string, string>> = {
       // Classic is the default since #409, so it is named first here.
-      'classic/light': { ...rootVars, ...classicLight },
-      'classic/dark': { ...rootVars, ...darkVars, ...classicDark },
-      'harvest/light': { ...rootVars },
-      'harvest/dark': { ...rootVars, ...darkVars },
+      light: { ...rootVars },
+      dark: { ...rootVars, ...darkVars },
     };
     const resolve = (vars: Record<string, string>, token: string): string | null => {
       let value: string | undefined = vars[token];
@@ -613,7 +609,7 @@ describe('12 · no colour hardcoded, no emoji; all four palettes resolve', () =>
       }
       return value ?? null;
     };
-    expect(Object.keys(palettes)).toHaveLength(4);
+    expect(Object.keys(palettes)).toHaveLength(2);
     const TOKENS = [
       '--surface-raised', '--surface-sunken', '--surface-tint', '--border-default',
       '--text-body', '--text-strong', '--text-muted', '--text-faint',
@@ -625,8 +621,8 @@ describe('12 · no colour hardcoded, no emoji; all four palettes resolve', () =>
         expect(resolved, `${token} is not a colour for ${name}`).toMatch(/^(#|rgb|hsl|color-mix|var)/);
       }
     }
-    expect(resolve(palettes['harvest/dark'], '--surface-raised'))
-      .not.toBe(resolve(palettes['classic/dark'], '--surface-raised'));
+    expect(resolve(palettes.dark, '--surface-raised'))
+      .not.toBe(resolve(palettes.light, '--surface-raised'));
   });
 
   it('invents no width — the measures come from form-layout', () => {

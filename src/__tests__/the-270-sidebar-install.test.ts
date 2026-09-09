@@ -149,8 +149,8 @@ const PRE_EXISTING_HOOKS = [
 ] as const;
 
 /** As of 767ca9b. None is this PR's business; all are asserted in section 9. */
-const LAYOUT_SHA = 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5';
-const GLOBALS_SHA = '772c79af681c2b97c496b91be4f2573415f2a65802dfac078dbc72e8a8fd3741';
+const LAYOUT_SHA = 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f';
+const GLOBALS_SHA = '1fd6001c2d3bddc50a45b02ce1253b6b60802699fb33fa159f5ed42b8aeb9957';
 const COMPONENTS_JSON_SHA = '5102c25c44791f19be9a94380f85f6e78934feccbfce7fe9ec54c316e99a76b4';
 /** main's, as of 5b780e8 — proves this PR adds no dependency. */
 /**
@@ -273,17 +273,17 @@ const ADDED_SINCE_MAIN: readonly string[] = [
 const TAILWIND_CODE_SHA = '491ebb5575d16eddfab00c6ed89900c725141b412e410e9e97342ff2108b2904';
 const FUNCTIONS_TREE_SHA = '0acf97d60a6d5066680d7e7fe24ef1ce900bac0a274332942d570c259e0dddb9';
 
-/* ── palette resolution — the same four chains THE-266 and THE-267 use ───── */
-
+/* ── palette resolution ──────────────────────────────────────────────────
+   🔴 THE-338 COLLAPSED FOUR CHAINS TO TWO. There used to be two palette
+   FAMILIES (Harvest and Classic) crossed with two modes, and each of the four
+   resolved through its own selector chain. The family axis is gone — Classic's
+   14 overrides were promoted into :root/.dark and its selectors deleted — so
+   'classic light' and 'harvest light' now name the same declarations, as do
+   the two darks. Keeping four keys would have run every assertion below twice
+   and reported a four-palette guarantee this app no longer offers. */
 const PALETTES = {
-  'harvest light': [':root'],
-  'harvest dark': ['.dark, [data-theme="dark"]', ':root'],
-  'classic light': ['[data-palette="classic"][data-theme="light"]', ':root'],
-  'classic dark': [
-    '[data-palette="classic"].dark, [data-palette="classic"][data-theme="dark"]',
-    '.dark, [data-theme="dark"]',
-    ':root',
-  ],
+  light: [':root'],
+  dark: ['.dark, [data-theme="dark"]', ':root'],
 } as const;
 
 type Decls = Map<string, Map<string, string>>;
@@ -686,33 +686,19 @@ describe('--sidebar-width, --sidebar-width-mobile and --sidebar-width-icon are s
 /* ── 6. No THE-267 token moved ───────────────────────────────────────────── */
 
 /**
- * All eight tokens, in all four palettes, pinned by VALUE after the var()
+ * All eight tokens, in both palettes, pinned by VALUE after the var()
  * chain is followed. A test that only checked "resolves to some colour" would
  * stay green while a ramp token was moved underneath the sidebar — the exact
  * regression this section exists to catch. Recorded from #412 as merged.
  */
 const RESOLVED: Record<keyof typeof PALETTES, Record<string, string>> = {
-  'harvest light': {
-    '--sidebar': '#FFFFFF',
-    '--sidebar-foreground': '#4A4038',
-    '--sidebar-primary': '#C9963A',
-    '--sidebar-primary-foreground': '#2D2519',
-    '--sidebar-accent': '#E8E2D9',
-    '--sidebar-accent-foreground': '#2D2519',
-    '--sidebar-border': '#E8E2D9',
-    '--sidebar-ring': '#C9963A',
-  },
-  'harvest dark': {
-    '--sidebar': '#221D18',
-    '--sidebar-foreground': '#D1C7BA',
-    '--sidebar-primary': '#C9963A',
-    '--sidebar-primary-foreground': '#2D2519',
-    '--sidebar-accent': '#2E2822',
-    '--sidebar-accent-foreground': '#FAF8F5',
-    '--sidebar-border': '#332C26',
-    '--sidebar-ring': '#C9963A',
-  },
-  'classic light': {
+  // 🔴 THE-338 re-recorded these. The sidebar's ground is --surface-raised,
+  // which the founder's darkening moved from #242424 to #1F1F1F — so the
+  // sidebar chrome went with it, which is the point of anchoring it to a ramp
+  // token rather than a hex. The accent (--sidebar-primary / -ring) is
+  // UNCHANGED at #C9963A in both modes, and the ink on it is still --earth:
+  // this ticket removed a surface family, not the brand.
+  light: {
     '--sidebar': '#FFFFFF',
     '--sidebar-foreground': '#404040',
     '--sidebar-primary': '#C9963A',
@@ -722,14 +708,14 @@ const RESOLVED: Record<keyof typeof PALETTES, Record<string, string>> = {
     '--sidebar-border': '#E0E0E0',
     '--sidebar-ring': '#C9963A',
   },
-  'classic dark': {
-    '--sidebar': '#242424',
+  dark: {
+    '--sidebar': '#1F1F1F',
     '--sidebar-foreground': '#CCCCCC',
     '--sidebar-primary': '#C9963A',
     '--sidebar-primary-foreground': '#2D2519',
-    '--sidebar-accent': '#2E2E2E',
+    '--sidebar-accent': '#2A2A2A',
     '--sidebar-accent-foreground': '#F2F2F2',
-    '--sidebar-border': '#333333',
+    '--sidebar-border': '#2E2E2E',
     '--sidebar-ring': '#C9963A',
   },
 };

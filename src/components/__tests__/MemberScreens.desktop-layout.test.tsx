@@ -1027,7 +1027,7 @@ describe('no behaviour changed on any screen in scope', () => {
   });
 });
 
-describe('no colour is hardcoded, and all four palettes resolve', () => {
+describe('no colour is hardcoded, and both palettes resolve', () => {
   it.each(ALL_SURFACES)('%s renders exactly the colour tokens it rendered before', (name) => {
     expect(colourTokens(SURFACES[name])).toEqual(BASELINE[name].colours);
   });
@@ -1041,12 +1041,23 @@ describe('no colour is hardcoded, and all four palettes resolve', () => {
     expect(colourTokens(probe)).toEqual([]);
   });
 
-  it('leaves all four palettes to resolve exactly as they did', () => {
+  it('leaves both palettes to resolve exactly as they did', () => {
     const css = readFileSync(path.join(ROOT, 'src/app/globals.css'), 'utf8');
     expect(css).toMatch(/^\s*:root\s*\{/m);
     expect(css).toMatch(/\[data-theme="dark"\]\s*\{/);
-    expect(css).toMatch(/\[data-palette="classic"\]\[data-theme="light"\]\s*\{/);
-    expect(css).toMatch(/\[data-palette="classic"\]\[data-theme="dark"\]\s*\{/);
+    // 🔴 THE-338 — the two Classic selectors this asserted are GONE, and their
+
+    // absence is now what is asserted. The family's 14 overrides were promoted
+
+    // into :root/.dark, so every token still resolves — in TWO palettes, not
+
+    // four. Leaving the old assertion would have pinned a family that no
+
+    // longer exists; deleting it outright would have stopped checking that the
+
+    // theme scopes exist at all.
+
+    expect(css).not.toMatch(/\[data-palette/);
   });
 
   it('changes no font size — the type scale is a separate programme', () => {

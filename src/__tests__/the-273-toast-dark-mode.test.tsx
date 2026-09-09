@@ -8,14 +8,10 @@ import postcss from 'postcss';
 import { toast } from 'sonner';
 import {
   THEME_STORAGE_KEY,
-  FAMILY_STORAGE_KEY,
-  DEFAULT_PALETTE_FAMILY,
   THEME_CHOICES,
   contrastRatio,
   AA_CONTRAST,
   DARK_SURFACE_RAISED,
-  CLASSIC_DARK_SURFACE_RAISED,
-  type PaletteFamily,
   type ThemeChoice,
 } from '../lib/theme';
 import { PREAUTH_PATHS } from '../lib/preauth-theme';
@@ -117,21 +113,14 @@ const HARVEST_DARK_VARS = varsIn(
   GLOBALS_CSS,
   (s) => /\.dark|\[data-theme="dark"\]/.test(s) && !s.includes('data-palette'),
 );
-const CLASSIC_LIGHT_VARS = varsIn(
-  GLOBALS_CSS,
-  (s) => s.includes('data-palette="classic"') && s.includes('data-theme="light"'),
-);
-const CLASSIC_DARK_VARS = varsIn(
-  GLOBALS_CSS,
-  (s) => s.includes('data-palette="classic"') && (s.includes('.dark') || s.includes('data-theme="dark"')),
-);
 
-function scopeFor(theme: 'light' | 'dark', family: PaletteFamily): Record<string, string> {
+// 🔴 THE-338 — this took a FAMILY too, and layered a third map on top: the
+// additive Classic block. That family's 14 overrides per mode were promoted
+// into the two blocks below and its selectors deleted, so a stamp now selects
+// a scope from the mode alone.
+function scopeFor(theme: 'light' | 'dark'): Record<string, string> {
   const scope = { ...ROOT_VARS };
   if (theme === 'dark') Object.assign(scope, HARVEST_DARK_VARS);
-  if (family === 'classic') {
-    Object.assign(scope, theme === 'dark' ? CLASSIC_DARK_VARS : CLASSIC_LIGHT_VARS);
-  }
   return scope;
 }
 
@@ -157,32 +146,37 @@ function resolveVar(value: string, scope: Record<string, string>, depth = 0): st
   return resolveVar(next, scope, depth + 1);
 }
 
-/* ── the four palettes, Classic first (it is the default since #409) ─────── */
+/* ── the two palettes ────────────────────────────────────────────────────────
+   🔴 THE-338 — FOUR BECAME TWO. There used to be two palette FAMILIES
+   (Harvest and Classic) crossed with the two modes. The family axis is gone:
+   Classic's 14 overrides were promoted into :root/.dark and its `data-palette`
+   selectors deleted, so 'Classic dark' and 'Harvest dark' now name the same
+   declarations. Keeping four rows would have run every toast assertion below
+   twice over identical values and reported a four-palette guarantee the app
+   no longer makes. */
 
 interface Palette {
   name: string;
   theme: 'light' | 'dark';
-  family: PaletteFamily;
   /** Spelled as the theme.ts constant where one exists, so this suite cannot
    *  drift from the ground deriveOnDarkAccent's AA guarantee is measured on. */
   raised?: string;
 }
 
 const PALETTES: readonly Palette[] = [
-  { name: 'Classic light', theme: 'light', family: 'classic' },
-  { name: 'Classic dark', theme: 'dark', family: 'classic', raised: CLASSIC_DARK_SURFACE_RAISED },
-  { name: 'Harvest light', theme: 'light', family: 'harvest' },
-  { name: 'Harvest dark', theme: 'dark', family: 'harvest', raised: DARK_SURFACE_RAISED },
+  { name: 'Light', theme: 'light' },
+  { name: 'Dark', theme: 'dark', raised: DARK_SURFACE_RAISED },
 ];
 
 /* ── React mounting ──────────────────────────────────────────────────────── */
 
 const mounted: Array<{ root: Root; container: HTMLDivElement }> = [];
 
-const stampHtml = (theme: 'light' | 'dark', family: PaletteFamily) => {
+const stampHtml = (theme: 'light' | 'dark') => {
+  // 🔴 THE-338 — no `data-palette`. This helper mirrors what applyTheme and
+  // the pre-paint script actually write, and neither writes a family now.
   const el = document.documentElement;
   el.setAttribute('data-theme', theme);
-  el.setAttribute('data-palette', family);
   el.classList.toggle('dark', theme === 'dark');
 };
 
@@ -245,15 +239,24 @@ const mountToasterAndToast = async (): Promise<HTMLElement> => {
 /** What the wrapper passes to sonner, captured from the same hook call the
  *  wrapper makes. Paired with the source assertion in section 4 that the
  *  wrapper does `theme={theme}` and nothing else to it. */
+/**
+ * 🔴 THE-338 — `palette` is read off the hook DELIBERATELY, even though the
+ * hook no longer declares it. The cast is what lets this suite assert that the
+ * field is GONE from the contract rather than merely unused: if `palette` ever
+ * comes back, `probe()` starts reporting a value again and the assertion in
+ * section 3 fails. Typing it away would make that unfalsifiable.
+ */
 const ThemeProbe: React.FC = () => {
-  const { theme, palette } = useTheme();
+  const { theme, ...rest } = useTheme();
+  const palette = (rest as { palette?: string }).palette;
   return <span data-theme={theme} data-palette={palette} />;
 };
 
-const probe = async (): Promise<{ theme: string; palette: string }> => {
+const probe = async (): Promise<{ theme: string; palette: string | undefined }> => {
   const c = await mount(<ThemeProbe />);
   const el = c.querySelector('span')!;
-  return { theme: el.getAttribute('data-theme')!, palette: el.getAttribute('data-palette')! };
+  const palette = el.getAttribute('data-palette');
+  return { theme: el.getAttribute('data-theme')!, palette: palette ?? undefined };
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -265,7 +268,7 @@ describe('1 — the toast is dark in dark mode', () => {
     // Classic dark: the default family since #409, i.e. the case a dark-mode
     // user actually hits. Before this ticket the wrapper hard-coded "light"
     // and this attribute read 'light' on a #1C1C1C page.
-    stampHtml('dark', 'classic');
+    stampHtml('dark');
     const list = await mountToasterAndToast();
     expect(
       list.getAttribute('data-sonner-theme'),
@@ -274,7 +277,7 @@ describe('1 — the toast is dark in dark mode', () => {
   });
 
   it('and a light page still gets a LIGHT toast — the fix is not an inversion', async () => {
-    stampHtml('light', 'classic');
+    stampHtml('light');
     const list = await mountToasterAndToast();
     expect(list.getAttribute('data-sonner-theme')).toBe('light');
   });
@@ -283,11 +286,11 @@ describe('1 — the toast is dark in dark mode', () => {
     // applyTheme writes <html> directly rather than through React, so a toast
     // already on screen when someone flips the toggle would otherwise keep the
     // theme it mounted with.
-    stampHtml('light', 'classic');
+    stampHtml('light');
     const list = await mountToasterAndToast();
     expect(list.getAttribute('data-sonner-theme')).toBe('light');
 
-    await act(async () => { stampHtml('dark', 'classic'); });
+    await act(async () => { stampHtml('dark'); });
     await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
 
     expect(
@@ -315,30 +318,33 @@ describe('1 — the toast is dark in dark mode', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 2 · the toast renders correctly in all four palettes — Classic FIRST
+// 2 · the toast renders correctly in both palettes — Classic FIRST
 //
 //     ⚠️ This is also the answer to "does the toast need `palette`?". It does
 //     not: the component reads only the MODE, and the four correct colour sets
 //     below are produced by the cascade under it.
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('2 — the toast renders correctly in all four palettes', () => {
-  it('Classic is still the default family, so it is the palette checked first', () => {
-    expect(DEFAULT_PALETTE_FAMILY).toBe('classic');
+describe('2 — the toast renders correctly in both palettes', () => {
+  it('there is no default family, because there is no family axis (THE-338)', () => {
+    // 🔴 INVERTED, not deleted: this pinned #409's default family. THE-338
+    // removed the axis, so what is guarded is that it stayed removed.
+    expect(PALETTES.map((p) => p.name)).toEqual(['Light', 'Dark']);
   });
 
   for (const p of PALETTES) {
     it(`${p.name}: sonner is handed the right MODE for this stamp`, async () => {
-      stampHtml(p.theme, p.family);
+      stampHtml(p.theme);
       const list = await mountToasterAndToast();
       expect(list.getAttribute('data-sonner-theme')).toBe(p.theme);
-      // And the shim reports the family correctly even though the toast never
-      // asks for it — the axis exists, this component simply does not need it.
-      expect((await probe()).palette).toBe(p.family);
+      // 🔴 And the shim no longer reports a family at all — THE-338 removed
+      // `palette` from useTheme's contract, so a component that destructured
+      // it would now get undefined rather than a stale answer.
+      expect((await probe()).palette).toBeUndefined();
     });
 
     it(`${p.name}: the toast's three colours resolve to this palette's own values`, () => {
-      const scope = scopeFor(p.theme, p.family);
+      const scope = scopeFor(p.theme);
       const bg = resolveVar('var(--surface-raised)', scope);
       const fg = resolveVar('var(--text-body)', scope);
       const border = resolveVar('var(--border-default)', scope);
@@ -354,20 +360,22 @@ describe('2 — the toast renders correctly in all four palettes', () => {
     });
   }
 
-  it('🔴 the four are genuinely four — no two palettes paint the same toast', () => {
+  it('🔴 the two are genuinely two — the palettes do not paint the same toast', () => {
     const sets = PALETTES.map((p) => {
-      const s = scopeFor(p.theme, p.family);
+      const s = scopeFor(p.theme);
       return [
         resolveVar('var(--surface-raised)', s),
         resolveVar('var(--text-body)', s),
         resolveVar('var(--border-default)', s),
       ].join('/');
     });
-    // Classic light and Harvest light share #FFFFFF as the toast GROUND — the
-    // families differ there in text and border, not in the raised surface — so
-    // the distinctness claim is about the whole set, and saying which is what
-    // makes this test honest rather than lucky.
-    expect(new Set(sets).size, `two palettes paint an identical toast: ${sets.join(' | ')}`).toBe(4);
+    // 🔴 THE-338 — FOUR BECAME TWO. The old note here is worth keeping as the
+    // reason this is a set comparison rather than a per-token one: Classic
+    // light and Harvest light shared #FFFFFF as the toast GROUND and differed
+    // only in text and border, so the distinctness claim was always about the
+    // whole triple. With the family axis gone the two remaining palettes are
+    // the two MODES, which differ in all three.
+    expect(new Set(sets).size, `two palettes paint an identical toast: ${sets.join(' | ')}`).toBe(2);
   });
 
   it('⚠️ and the component reads the MODE only — `palette` is never destructured', () => {
@@ -395,7 +403,7 @@ describe('3 — the toast foreground clears AA on its own ground', () => {
 
   for (const p of PALETTES) {
     it(`${p.name}: --text-body on --surface-raised clears AA`, () => {
-      const scope = scopeFor(p.theme, p.family);
+      const scope = scopeFor(p.theme);
       const bg = resolveVar('var(--surface-raised)', scope)!;
       const fg = resolveVar('var(--text-body)', scope)!;
       const ratio = contrastRatio(fg, bg);
@@ -416,7 +424,7 @@ describe('3 — the toast foreground clears AA on its own ground', () => {
     // have to say so.
     const measured = Object.fromEntries(
       PALETTES.map((p) => {
-        const s = scopeFor(p.theme, p.family);
+        const s = scopeFor(p.theme);
         return [
           p.name,
           contrastRatio(resolveVar('var(--text-body)', s)!, resolveVar('var(--surface-raised)', s)!).toFixed(2),
@@ -424,10 +432,12 @@ describe('3 — the toast foreground clears AA on its own ground', () => {
       }),
     );
     expect(measured).toEqual({
-      'Classic light': '10.37',
-      'Classic dark': '9.67',
-      'Harvest light': '10.09',
-      'Harvest dark': '10.02',
+      // 🔴 THE-338 re-recorded these. Light is unchanged (it was already the
+      // neutral family's, the default since THE-265); dark rose 9.67 -> 10.26
+      // because the card darkened from #242424 to #1F1F1F and a darker ground
+      // can only improve text contrast.
+      Light: '10.37',
+      Dark: '10.26',
     });
   });
 
@@ -436,7 +446,7 @@ describe('3 — the toast foreground clears AA on its own ground', () => {
     // perfectly readable and completely invisible as a toast. The border is
     // what carries the edge, so both are checked.
     for (const p of PALETTES) {
-      const s = scopeFor(p.theme, p.family);
+      const s = scopeFor(p.theme);
       const page = resolveVar('var(--surface)', s)!;
       const raised = resolveVar('var(--surface-raised)', s)!;
       const border = resolveVar('var(--border-default)', s)!;
@@ -457,8 +467,7 @@ describe('4 — sonner receives the resolved theme, never "system"', () => {
   it('🔴 no stored choice — "system" included — makes the shim yield "system"', async () => {
     for (const choice of THEME_CHOICES as readonly ThemeChoice[]) {
       localStorage.setItem(THEME_STORAGE_KEY, choice);
-      localStorage.setItem(FAMILY_STORAGE_KEY, 'classic');
-      stampHtml('dark', 'classic');
+      stampHtml('dark');
       const { theme } = await probe();
       expect(theme, `a stored '${choice}' reached sonner as '${theme}'`).not.toBe('system');
       expect(['light', 'dark']).toContain(theme);
@@ -474,7 +483,7 @@ describe('4 — sonner receives the resolved theme, never "system"', () => {
     // "system", so this attribute would read 'dark' over a light UI.
     setOsPrefersDark(true);
     localStorage.setItem(THEME_STORAGE_KEY, 'system');
-    stampHtml('light', 'classic');
+    stampHtml('light');
     const list = await mountToasterAndToast();
     expect(
       list.getAttribute('data-sonner-theme'),
@@ -489,7 +498,7 @@ describe('4 — sonner receives the resolved theme, never "system"', () => {
     expect(PREAUTH_PATHS.length, 'there are no pre-auth paths to force').toBeGreaterThan(0);
     localStorage.setItem(THEME_STORAGE_KEY, 'dark');
     setOsPrefersDark(true);
-    stampHtml('light', DEFAULT_PALETTE_FAMILY); // what the pre-paint script stamps on /auth
+    stampHtml('light'); // what the pre-paint script stamps on /auth
     const list = await mountToasterAndToast();
     expect(
       list.getAttribute('data-sonner-theme'),
@@ -556,10 +565,10 @@ describe('5 — no toast colour resolves to unset', () => {
     }
   });
 
-  it('🔴 every var() the toast references resolves to a literal, in all four palettes', async () => {
+  it('🔴 every var() the toast references resolves to a literal, in both palettes', async () => {
     const style = await renderedStyle();
     for (const p of PALETTES) {
-      const scope = scopeFor(p.theme, p.family);
+      const scope = scopeFor(p.theme);
       for (const [prop, value] of Object.entries(style)) {
         const resolved = resolveVar(value, scope);
         expect(
@@ -577,7 +586,7 @@ describe('5 — no toast colour resolves to unset', () => {
   it('🔴 and the guard has teeth: an undefined token is REJECTED, not shrugged at', () => {
     // Mutation-proofs the assertion above. If this passes but the real check
     // cannot fail, section 5 is decorative and the invisible toast can ship.
-    const scope = scopeFor('dark', 'classic');
+    const scope = scopeFor('dark');
     expect(resolveVar('var(--popover-that-does-not-exist)', scope)).toBeNull();
     // A one-hop alias onto an undefined token is the realistic shape, since
     // every token here IS an alias.
@@ -585,7 +594,7 @@ describe('5 — no toast colour resolves to unset', () => {
     // And a cycle terminates rather than hanging the suite.
     expect(resolveVar('var(--a)', { '--a': 'var(--b)', '--b': 'var(--a)' })).toBeNull();
     // While a real token still resolves, so the check is not simply "always null".
-    expect(resolveVar('var(--surface-raised)', scope)).toBe(CLASSIC_DARK_SURFACE_RAISED);
+    expect(resolveVar('var(--surface-raised)', scope)).toBe(DARK_SURFACE_RAISED);
   });
 
   it('the four shadcn defaults are defined now — the revert would COMPILE, and is still not done', () => {
@@ -593,10 +602,10 @@ describe('5 — no toast colour resolves to unset', () => {
     // "they are undefined" was the reason the hand-patch existed, and that
     // reason has expired even though the hand-patch is still correct: each
     // upstream name resolves to exactly the value the wrapper spells directly,
-    // in all four palettes, so a revert would be a rename with no pixel behind
+    // in both palettes, so a revert would be a rename with no pixel behind
     // it. If that equality ever breaks, this test names which palette broke it.
     for (const p of PALETTES) {
-      const s = scopeFor(p.theme, p.family);
+      const s = scopeFor(p.theme);
       expect(resolveVar('var(--popover)', s), `${p.name}: --popover`).toBe(resolveVar('var(--surface-raised)', s));
       expect(resolveVar('var(--popover-foreground)', s), `${p.name}: --popover-foreground`).toBe(resolveVar('var(--text-body)', s));
       expect(resolveVar('var(--border)', s), `${p.name}: --border`).toBe(resolveVar('var(--border-default)', s));
@@ -712,7 +721,7 @@ describe('8 — use-theme.ts is untouched', () => {
     expect(
       digestOf('src/lib/use-theme.ts'),
       'src/lib/use-theme.ts changed — THE-273 must consume it, not edit it',
-    ).toBe('c025962d2b71784b946acfe103a0d197aca70f449ee815a109922c19c9a55cbc');
+    ).toBe('43f7bd461a8406c6432106c3d4963f39fe8cced8d391e1c09271f10f337cb479');
   });
 
   it('and it is still the shim, not a second stamping path', () => {
@@ -859,7 +868,7 @@ describe('10 — layout.tsx, firestore.rules and functions/ are byte-identical',
     // is entirely inside the component. Editing this file would mean
     // regenerating the pre-paint hash that four other suites pin.
     expect(digestOf('src/app/layout.tsx')).toBe(
-      'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5',
+      'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f',
     );
   });
 

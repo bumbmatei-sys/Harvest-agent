@@ -216,6 +216,16 @@ describe('the sub-640px rendering of both CRM tabs is unchanged', () => {
     'flex-col': 'moved with it, same value',
     'gap-[14px]': 'from an inline gap:14 on the permission list — same 14px',
     hidden: 'display:none on the desktop roster table — this is WHY the phone still renders the card stack and only the card stack',
+    // 🔴 THE-338 — the Contacts/Roles switcher's tap-target floor, on BOTH
+    // pills and BOTH axes. These are the one kind of addition this register
+    // exists to allow: they can only make a phone target BIGGER. The pills
+    // render at about 28px tall from `px-4 py-1.5 text-xs`, under the 44px
+    // floor; THE-308 found a tab that cleared the floor on height while
+    // measuring 35.6px wide, which is why the width floor is here too. Both
+    // are released at `sm:` under Rule 4, so nothing above the phone band
+    // moves.
+    'min-h-11': "the switcher's 44px height floor below sm — it can only grow a target, never shrink one",
+    'min-w-11': "the switcher's 44px width floor below sm — THE-308's 35.6px-wide tab is why height alone is not the check",
   };
 
   /**
@@ -329,7 +339,15 @@ describe('mobile touch targets are at least 44px', () => {
       const added = now.filter((t) => !before.has(t));
       // `p-[11px]` is the Analytics action padding, moved out of an inline
       // style at the identical value — see test 1.
-      expect(added.filter((t) => t !== 'p-[11px]'), `${name} gained a height on the phone`).toEqual([]);
+      //
+      // 🔴 THE-338 — `min-h-11` is a FLOOR, and this test is about tap targets
+      // SHRINKING. A minimum height cannot shrink one; it is what raises the
+      // switcher's pills from ~28px to the 44px phone floor. It is allowed
+      // here by name, alongside its width counterpart in ALLOWED_ADDITIONS,
+      // rather than by loosening the pattern — a `h-` or `py-` addition still
+      // fails.
+      const RAISES_ONLY = new Set(['p-[11px]', 'min-h-11']);
+      expect(added.filter((t) => !RAISES_ONLY.has(t)), `${name} gained a height on the phone`).toEqual([]);
     }
   });
 
@@ -771,20 +789,20 @@ describe('no colour is hardcoded, and all four palettes resolve', () => {
     }
   });
 
-  it('resolves those tokens in all four palettes', () => {
+  it('resolves those tokens in both palettes', () => {
     const globals = readFileSync(path.resolve(__dirname, '../../app/globals.css'), 'utf8');
-    // Harvest light (:root), Harvest dark, Classic light, Classic dark.
+    // 🔴 THE-338 — TWO, not four. The Classic FAMILY's two selectors are gone;
+    // its 14 overrides were promoted into the two blocks below.
     const PALETTES = [
       /(^|\n)\s*:root\s*\{/,
       /\[data-theme="dark"\]\s*\{/,
-      /\[data-palette="classic"\]\[data-theme="light"\]\s*\{/,
-      /\[data-palette="classic"\]\[data-theme="dark"\]\s*\{/,
     ];
     for (const p of PALETTES) expect(globals, `no block matching ${p}`).toMatch(p);
-    // The neutral ramp both TEXT constants read is redefined by every one of them.
+    expect(globals, 'a palette family selector is back').not.toContain('data-palette');
+    // The neutral ramp both TEXT constants read is redefined by each of them.
     for (const token of ['--text-strong', '--text-muted']) {
       const hits = globals.split(`${token}:`).length - 1;
-      expect(hits, `${token} is not redefined per palette`).toBeGreaterThanOrEqual(4);
+      expect(hits, `${token} is not redefined per palette`).toBeGreaterThanOrEqual(2);
     }
   });
 });

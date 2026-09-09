@@ -100,46 +100,59 @@ const RAIL_TAB_LABELS: Record<string, string> = { dashboard: 'Home' };
 
 // More-drawer groupings (Vercel-style). The section a tab appears in is keyed by
 // its tab id; order matters. Groups with no permitted tabs are omitted entirely.
+//
+// 🔴 THE-338 — THIS ARRAY IS NOW A MIRROR OF `DESKTOP_NAV_GROUPS` BELOW: the
+// same group labels, in the same order, holding the same ids in the same order.
+// The founder's note was "reorganize the more drawer from mobile to have the
+// same names and order from desktop", and the two had genuinely diverged in two
+// ways, both fixed here:
+//
+//   • GROUP NAMES. Mobile filed the super-admin surfaces under a `PLATFORM`
+//     group and `affiliate`/`branding` under a second group called `MORE`,
+//     where desktop files all five under one `GROW` group. Two groups became
+//     one, named as desktop names it. Nothing moved between shells — the SET
+//     of ids is byte-identical before and after this change, and all 23 stay
+//     reachable on both shells.
+//   • MINISTRY ORDER. Mobile ran crm · signups · churches · community ·
+//     services · fundraising · donations · forms · accounting; desktop runs
+//     THE-334's founder-given order, churches · crm · signups, then services ·
+//     community · forms, then fundraising · donations · accounting. Desktop's
+//     is the one the founder specified, so mobile adopts it.
+//
+// ⚠️ Every permission gate is untouched by this. A gate lives on the TAB entry
+// in `allTabs` (`isSuperAdmin && { id: 'library' … }`), never on the group, and
+// a group whose ids all resolve to nothing is omitted whole — so `library`,
+// `tenants` and `inbox` still appear and disappear together for a super admin,
+// and GROW still collapses to nothing for a church admin who has neither those
+// nor `affiliate`/`branding`.
+//
+// ⚠️ Deliberately TWO array literals rather than one shared constant. A single
+// constant would make them identical by construction and un-mutatable, which
+// would leave the guard that compares them unable to fail; two literals keep
+// the drift expressible, and therefore testable.
 const MORE_GROUPS: { label: string; ids: string[] }[] = [
   { label: 'CONTENT', ids: ['blog', 'courses', 'newsletter', 'ai', 'docs'] },
-  // Ministry: the "who" + giving. CRM leads the group AND is surfaced on the
-  // Dashboard home (Members card / "View Members") — both are valid entry points.
+  // Ministry: the "who" + giving. CRM is surfaced on the Dashboard home
+  // (Members card / "View Members") as well — both are valid entry points.
   // Admin Roles lives inside the CRM screen as an internal tab, not as its own
   // drawer entry. Signups (THE-277) does NOT: it counts members where CRM counts
   // contacts, so it is its own entry, placed next to CRM because that is where a
   // reader looking for "who joined" will look for it.
   // Statements now live as a sub-tab inside Accounting (not a standalone entry).
-  // 🔴 THE-326 — `services` IS MINISTRY, NOT BROADCASTING, and that is the
-  // whole placement decision. BROADCASTING is the outbound/live cluster:
-  // `events`, `checkin`, `sms`, `livestream` — surfaces that push something to
-  // an audience. Planning a Sunday service pushes nothing: it is a run sheet,
-  // a rota and the volunteers on it, which is the same category of work as
-  // `crm` (who is here) and `community` (what they belong to). It sits after
-  // `community` — closing the people-and-gatherings half of the group, before
-  // the giving half — because the rota is a question about PEOPLE and the
-  // reader looking for it is looking where the people are.
-  { label: 'MINISTRY', ids: ['crm', 'signups', 'churches', 'community', 'services', 'fundraising', 'donations', 'forms', 'accounting'] },
+  // 🔴 THE-326 — `services` IS MINISTRY, NOT BROADCASTING. BROADCASTING is the
+  // outbound/live cluster: surfaces that push something to an audience.
+  // Planning a Sunday service pushes nothing: it is a run sheet, a rota and the
+  // volunteers on it, which is the same category of work as `crm` (who is here)
+  // and `community` (what they belong to).
+  { label: 'MINISTRY', ids: ['churches', 'crm', 'signups', 'services', 'community', 'forms', 'fundraising', 'donations', 'accounting'] },
   // Broadcasting: outbound / live engagement channels.
   // QR Codes now live as a sub-tab inside Check-In (not a standalone entry).
   { label: 'BROADCASTING', ids: ['events', 'checkin', 'sms', 'livestream'] },
-  // Platform: super-admin-only surfaces (the Library catalogue, Tenants and the
-  // platform Inbox).
-  //
-  // 🔴 THE-327 — `library` WAS IN NEITHER NAV ARRAY, which is why the founder
-  // reported it deleted. It was not: the screen renders, the nav ENTRY exists
-  // below (`isSuperAdmin && { id: 'library' … }`) and `admin-sections.ts` maps
-  // the slug, so `/admin/library` has always resolved. What was missing was any
-  // way to CLICK to it. On this array the miss was cosmetic — the drawer's
-  // leftover catch-all below files an ungrouped tab under a bare "OTHER"
-  // heading — and on the desktop array it was total, because that sidebar has
-  // no catch-all. It is placed beside `tenants` because that is its co-gated
-  // sibling: both are `isSuperAdmin`-only, so the two appear and disappear
-  // together and this group still resolves to `[]` (and is omitted whole) for a
-  // church admin. It is NOT filed under CONTENT, which is the tenant's OWN
-  // content and is the one group every church admin sees — a super-admin-only
-  // surface there would be a permission smell even though the entry is gated.
-  { label: 'PLATFORM', ids: ['library', 'tenants', 'inbox'] },
-  { label: 'MORE', ids: ['affiliate', 'branding'] },
+  // Grow: the platform surfaces (Library, Tenants, the platform Inbox) plus
+  // Affiliate and Branding. `library` sits beside `tenants`, its co-gated
+  // sibling — both are `isSuperAdmin`-only, so the two appear and disappear
+  // together (THE-327).
+  { label: 'GROW', ids: ['affiliate', 'branding', 'library', 'tenants', 'inbox'] },
 ];
 const GROUPED_MORE_IDS = new Set(MORE_GROUPS.flatMap((g) => g.ids));
 
@@ -1684,7 +1697,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                       <p className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted px-1 pb-1.5">
                         {group.label}
                       </p>
-                      <div className="bg-surface-raised rounded-brand-xl border border-line overflow-hidden divide-y divide-stone-200">
+                      <div className="bg-surface-raised rounded-brand-xl border border-line overflow-hidden divide-y divide-line">
                         {groupTabs.map(renderMoreRow)}
                       </div>
                     </div>
@@ -1704,7 +1717,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                       <p className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted px-1 pb-1.5">
                         OTHER
                       </p>
-                      <div className="bg-surface-raised rounded-brand-xl border border-line overflow-hidden divide-y divide-stone-200">
+                      <div className="bg-surface-raised rounded-brand-xl border border-line overflow-hidden divide-y divide-line">
                         {leftover.map(renderMoreRow)}
                       </div>
                     </div>
