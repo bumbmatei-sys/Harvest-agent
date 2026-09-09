@@ -367,6 +367,14 @@ describe('5 · the money path is byte-identical', () => {
     ],
     'src/components/settings/PlanUpgradeSection.tsx': [
       ['47311df03e1ca76cb51e5094360c2ef868e14f1d9bb6c70509a48fdff174a553', 'main at 902763a'],
+      /* 🔴 APPENDED BY THE-335, nothing above removed. THE-291's claim is
+         untouched and this file still contains NO client-side plan write: what
+         moved is the in-app plan CARDS' feature list, which now withholds its
+         'Newsletter' line behind NEWSLETTER_FEATURE_ENABLED exactly as it
+         already withholds 'SMS Automation' and 'Custom Domain'. The
+         `newsletterAutomation` CELL is untouched, so the tiers that own the
+         newsletter still own it and get the line back with the switch. */
+      ['667a71285e506773f0d137654584f9c7ded1eedcb8de8998908b9b1aa2a9c935', 'main + THE-335 — the Newsletter card line withheld behind its master switch'],
     ],
   };
 
@@ -488,10 +496,22 @@ describe('6 · no plan cap or price changed', () => {
     // cross-repo price contract, which throws at module scope during the
     // marketing site's prerender if the two repos disagree on any of the nine.
     //
-    // Previous pin (pre-THE-314):
-    //   cd4fbdd58f6dbbcbd180aeab00a63f1c9be3189c9010ff7a844a0f8e817af403
+    // 🔴 REPINNED AGAIN FOR THE-335, and the reason is recorded rather than the
+    // old digest being silently swapped. THE-291's claim is again unaffected:
+    // what moved is `crm`, true → false on FREE, and a NEW `signups` cell true
+    // on every tier — the founder's split, "the free plan should have signup
+    // feature not CRM since we separated them". It needed a second cell because
+    // `AdminDashboard` gated BOTH the CRM screen and the Signups screen on
+    // `crm`, so flipping it alone would have taken Signups — and the analytics
+    // that lives on it — away in the same edit. NO PRICE AND NO CAP MOVED, both
+    // asserted directly above, and the cross-repo price contract still throws at
+    // module scope during the marketing site's prerender.
+    //
+    // Previous pins:
+    //   cd4fbdd58f6dbbcbd180aeab00a63f1c9be3189c9010ff7a844a0f8e817af403 (pre-THE-314)
+    //   f43327552f7c774586dabc040ac8da0d31bf4f84023d70af3b2f428024f7f570 (pre-THE-335)
     expect(sha256(readFileSync(path.join(REPO, 'src/utils/plan-features.ts')))).toBe(
-      'f43327552f7c774586dabc040ac8da0d31bf4f84023d70af3b2f428024f7f570',
+      'db4bd86a93fa34691da21bbb9b1dcdea9d3d37f932784d50177ad3b736c11d75',
     );
   });
 });

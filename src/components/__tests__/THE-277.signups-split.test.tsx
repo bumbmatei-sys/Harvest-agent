@@ -479,15 +479,24 @@ describe('6 — the Analytics permission gates the Signups page', () => {
   const DASH = src('src/components/AdminDashboard.tsx');
 
   it('🔴 gates the NAV ENTRY on the analytics permission', () => {
-    // The clause, as written: the plan cell AND the permission.
+    /* The clause, as written: the plan cell AND the permission.
+       🔴 THE PLAN CELL IS `signups` SINCE THE-335, not `crm`. THE-277 carried
+       this gate over as `crm`, which was right while the two screens were
+       entitled together; the founder has since split them ("The free plan should
+       have signup feature not CRM since we separated them") and a shared cell
+       cannot express that — crm:false on free took this screen, and the
+       analytics on it, away in the same edit.
+       ⚠️ THE PERMISSION HALF IS UNTOUCHED, which is what this section is about:
+       `analytics` still gates the page, and no `analytics` PLAN cell was
+       invented. "Free gets analytics" is now `signups: true` and nothing else. */
     expect(DASH).toMatch(
-      /navAllows\(features\?\.crm\) &&\s*\(hasFullAccess \|\| perms\.analytics\) &&\s*\{ id: 'signups', label: 'Signups', icon: UserPlus \},/
+      /navAllows\(features\?\.signups\) &&\s*\(hasFullAccess \|\| perms\.analytics\) &&\s*\{ id: 'signups', label: 'Signups', icon: UserPlus \},/
     );
   });
 
   it('🔴 gates the RENDER on the same plan cell, with an upgrade wall behind it', () => {
     expect(DASH).toMatch(
-      /activeTab === 'signups' \?\s*\(\s*planAllows\(features\?\.crm\)\s*\?\s*<div className="p-4 lg:p-0"><AdminSignups \/><\/div>\s*:\s*<PlanUpgradeScreen featureName="Signups" featureKey="crm"/
+      /activeTab === 'signups' \?\s*\([\s\S]*?planAllows\(features\?\.signups\)\s*\?\s*<div className="p-4 lg:p-0"><AdminSignups \/><\/div>\s*:\s*<PlanUpgradeScreen featureName="Signups" featureKey="signups"/
     );
   });
 

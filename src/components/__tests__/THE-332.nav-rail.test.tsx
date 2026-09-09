@@ -5,6 +5,8 @@ import AdminDashboard from '../AdminDashboard';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
+import { NEWSLETTER_FEATURE_ENABLED } from '../../lib/newsletter-feature';
+import { SMS_FEATURE_ENABLED } from '../../lib/sms-feature';
 
 /**
  * THE-332 — THE DESKTOP ADMIN NAV IS A RAIL WITH FLYOUTS, NOT A LIST OF 23.
@@ -317,6 +319,20 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
     reached.add('settings');
 
     const named = new Set<string>([...groups.flatMap((g) => g.ids), 'dashboard', 'settings']);
+    /* 🔵 THE-335 ADDED TWO MORE, on identical terms and for the same reason.
+       `newsletter` and `sms` are behind their own master switches now
+       (`NEWSLETTER_FEATURE_ENABLED`, `SMS_FEATURE_ENABLED`, both false), so
+       neither entry is built even for a super admin, and both ids stay listed in
+       BOTH nav arrays so that flipping one constant restores each in both halves
+       of the product at once. Derived from the switches rather than hardcoded to
+       three, so each id leaves this list in the same motion that turns its
+       feature back on — and a FOURTH unreachable id, or one of these becoming
+       unreachable for any OTHER reason, still fails here. */
+    const behindAKillSwitch = [
+      ...(NEWSLETTER_FEATURE_ENABLED ? [] : ['newsletter']),
+      ...(SMS_FEATURE_ENABLED ? [] : ['sms']),
+      'affiliate',
+    ];
     const missing = [...named].filter((id) => !reached.has(id));
 
     /* 🔴 `affiliate` IS THE ONE ID THAT IS NAMED AND NOT REACHABLE, and that is
@@ -330,7 +346,8 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
        every named tab is reachable EXCEPT the one behind the kill switch, and
        if that switch is ever flipped this test fails and is updated on purpose
        rather than silently passing a smaller nav. */
-    expect(missing, `unreachable from the rail: ${missing.join(', ')}`).toEqual(['affiliate']);
+    expect(missing.sort(), `unreachable from the rail: ${missing.join(', ')}`)
+      .toEqual([...behindAKillSwitch].sort());
     expect(read('src/utils/plan-features.ts'))
       .toContain('export const AFFILIATE_PROGRAM_ENABLED = false');
 
@@ -341,7 +358,11 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
        any of them from every path fails this test and names it. */
     expect(groups.flatMap((g) => g.ids).length, 'DESKTOP_NAV_GROUPS no longer holds 23 tabs').toBe(23);
     expect(named.size).toBe(25);
-    expect([...reached].sort()).toEqual([...named].filter((id) => id !== 'affiliate').sort());
+    // 🔵 THE-335 — the same three ids the assertion above derives, for the same
+    // reason: an id behind a master switch is NAMED in the group arrays (so the
+    // flip restores it) but is not built, so it cannot be reached.
+    expect([...reached].sort())
+      .toEqual([...named].filter((id) => !behindAKillSwitch.includes(id)).sort());
   });
 
   it('🔴 5b · the rail\'s advertised tab model is exactly what its flyout renders', async () => {

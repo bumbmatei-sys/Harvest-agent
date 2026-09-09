@@ -12,6 +12,7 @@ import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { useTenantOptional } from '../contexts/TenantContext';
 import { authFetch } from '../utils/auth-fetch';
 import { openStatementPdf } from '../utils/open-statement-pdf';
+import { QUICKBOOKS_FEATURE_ENABLED } from '../lib/quickbooks-feature';
 import { FEATURE_MIN_PLAN } from '../utils/plan-features';
 import AdminGivingStatements from './AdminGivingStatements';
 import { GIVING_PROVIDER_NAMES_OR } from './donations/giving-providers';
@@ -103,7 +104,18 @@ interface AdminAccountingProps {
 const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting = true, canManageStatements = true }) => {
   const ctx = useTenantOptional();
   const isTaxReceiptsEnabled = ctx?.planFeatures?.taxReceipt ?? true;
-  const isQbEnabled = ctx?.planFeatures?.accountingTools ?? true;
+  // 🔴 THE-335 — the master switch AND the plan cell. Every QuickBooks surface
+  // on this screen already routed through this one boolean — the connection
+  // card, the per-invoice sync badges, the retry control and the QuickBooks
+  // column — so hiding the integration is this line and nothing else, and the
+  // screen renders with all four simply absent.
+  //
+  // 🔴 ACCOUNTING ITSELF IS UNTOUCHED. `accountingTools` still gates the screen
+  // and the statements sub-tab still gates itself; invoices, receipts and
+  // statements all ship and all still render. Withdrawing them to hide one
+  // unverified integration would be the overreach the custom-domain switch
+  // names on the branding entry.
+  const isQbEnabled = QUICKBOOKS_FEATURE_ENABLED && (ctx?.planFeatures?.accountingTools ?? true);
 
   // Statements is now nested here as a sub-tab. Each keeps its own gate combining
   // the plan feature AND the admin's permission: Accounting behind accountingTools
@@ -202,9 +214,15 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
     }
   };
 
+  // 🔴 THE-335 — no request while the integration is hidden. The card this
+  // status feeds does not render, so the fetch would be one 503 on every mount
+  // of the accounting screen and a console warning with it. `setQbLoading(false)`
+  // is still reached so nothing is left spinning behind the flag.
   useEffect(() => {
+    if (!isQbEnabled) { setQbLoading(false); return; }
     loadQbStatus();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isQbEnabled]);
 
   const handleConnectQb = async () => {
     setQbConnecting(true);

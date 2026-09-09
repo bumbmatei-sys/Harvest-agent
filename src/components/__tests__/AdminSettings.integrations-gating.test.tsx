@@ -104,6 +104,7 @@ vi.mock('../../utils/plan-features', async (importOriginal) => {
 import AdminSettings from '../AdminSettings';
 import type { PlanFeatures } from '../../utils/plan-features';
 import { getPlanFeatures, PLAN_DISPLAY_NAMES } from '../../utils/plan-features';
+import { NEWSLETTER_FEATURE_ENABLED } from '../../lib/newsletter-feature';
 import {
   INTEGRATION_PROVIDERS,
   hasAnyIntegrationProvider,
@@ -210,10 +211,29 @@ describe('THE-193 — Integrations gating', () => {
     expect(features.crm, 'Individual lost the CRM').toBe(true);
   });
 
+/** 🔴 THE-335 — the providers a tier may see, once the master switches have had
+ *  their say. `NEWSLETTER_FEATURE_ENABLED` hides every `concern: 'newsletter'`
+ *  provider from EVERY tier and from the platform override too, in the shape the
+ *  SMS nav entry uses: the switch is ahead of the plan gate, so Instagram and
+ *  Mailchimp are absent for everyone while the newsletter is a coming-soon
+ *  entry. 🔴 GMAIL IS UNAFFECTED and must be: its concern is 'crm', it is what
+ *  sends a CRM contact an email, and it is the transport a rota invitation goes
+ *  out on — the founder's stated replacement for SMS.
+ *
+ *  Derived from the flag rather than hardcoded, so each provider returns to the
+ *  expected set in the same motion that turns its feature back on. */
+const EXPECTED_PROVIDERS = INTEGRATION_PROVIDERS
+  .filter((p) => NEWSLETTER_FEATURE_ENABLED || p.concern !== 'newsletter')
+  .map((p) => p.label);
+
   // 4
-  it('a Small Team tenant sees all three', async () => {
+  it('a Small Team tenant sees every provider a switch has not withheld', async () => {
     expect(PLAN_DISPLAY_NAMES[SMALL_TEAM]).toBe('Small Team');
-    expect(await providersOn(SMALL_TEAM)).toEqual(INTEGRATION_PROVIDERS.map(p => p.label));
+    expect(await providersOn(SMALL_TEAM)).toEqual(EXPECTED_PROVIDERS);
+    // 🔴 THE ENTITLEMENT IS UNTOUCHED behind the switch: Small Team still owns
+    // `newsletterAutomation`, so flipping the flag restores both providers here
+    // rather than an approximation of them.
+    expect(getPlanFeatures(SMALL_TEAM).newsletterAutomation).toBe(true);
   });
 
   // 5
@@ -225,8 +245,12 @@ describe('THE-193 — Integrations gating', () => {
       const host = await mount(plan);
       expect(rowHeader(host, 'Integrations'), `platformOverride lost the section on ${plan}`).toBeTruthy();
       await expandSection(host, 'Integrations');
+      // 🔴 THE-335 — the override reaches every provider a PLAN gate would have
+      // withheld, and none that a MASTER SWITCH withholds. That asymmetry is the
+      // point of both mechanisms: an override is a plan override, and a hidden
+      // feature is hidden from the super admin too.
       expect(visibleProviderCards(host), `platformOverride lost a provider on ${plan}`)
-        .toEqual(INTEGRATION_PROVIDERS.map(p => p.label));
+        .toEqual(EXPECTED_PROVIDERS);
     }
 
     // And the override is applied at every gate, in the shape it always had.

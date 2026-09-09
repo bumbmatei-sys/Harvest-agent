@@ -42,14 +42,31 @@ const armSwitchOff = () => {
   }));
 };
 
+/** 🔴 THE-335 — and the mirror of it. The switch is FALSE on disk again, so
+ *  proving "flipping it on brings every surface back" needs the flag MOCKED ON
+ *  exactly as proving the off state needed it mocked off. Section 2 below uses
+ *  this rather than the real value, which is what keeps BOTH directions
+ *  exercised from whichever state the file happens to be in — the property this
+ *  file is for is that the switch works in both directions, not that it happens
+ *  to be pointing one way today. */
+const armSwitchOn = () => {
+  vi.doMock('@/lib/sms-feature', () => ({
+    SMS_FEATURE_ENABLED: true,
+    SMS_HIDDEN_MESSAGE: 'SMS is temporarily unavailable.',
+  }));
+};
+
 /* ── 1 ─────────────────────────────────────────────────────────────────────
    The switch itself.                                                         */
-describe('1 — the switch is one value, in one place, and it is ON', () => {
-  it('🔴 is a single exported boolean, currently TRUE', async () => {
+describe('1 — the switch is one value, in one place, and it is OFF', () => {
+  it('🔴 is a single exported boolean, currently FALSE', async () => {
+    // 🔴 THE-335 — FALSE AGAIN, and this file's name is true again with it.
+    // THE-245 off, THE-314 on, THE-335 off. The "one value, one place" property
+    // is what has survived all three flips.
     const mod = await import('../sms-feature');
-    expect(mod.SMS_FEATURE_ENABLED).toBe(true);
+    expect(mod.SMS_FEATURE_ENABLED).toBe(false);
     expect(read('lib/sms-feature.ts'))
-      .toMatch(/export const SMS_FEATURE_ENABLED = true;/);
+      .toMatch(/export const SMS_FEATURE_ENABLED = false;/);
   });
 
   it('🔴 imports nothing, so the public webhook stays cheap to gate', () => {
@@ -112,6 +129,11 @@ describe('2 — the switch being TRUE brings every surface back', () => {
    *  master switch and reached its own authorisation — the surface is live.
    *  A 503 here would mean the switch is still standing in front of it. */
   const armAuthRefusal = async () => {
+    // 🔴 THE-335 — THE SWITCH IS MOCKED ON HERE. It is false on disk now, so
+    // without this every assertion below would read 503 and this whole section
+    // would be measuring the off state twice. Mocking it on is what keeps the
+    // "the flip restores every surface" half real from either resting state.
+    armSwitchOn();
     // A real NextResponse, because every route decides "did auth refuse?" with
     // `instanceof NextResponse`. A bare Response would sail past that check and
     // the route would carry on as an authenticated caller.
@@ -143,6 +165,7 @@ describe('2 — the switch being TRUE brings every surface back', () => {
     // The public webhook is back, and the thing standing in front of it now is
     // the signature rather than the master switch. Not 503 (still hidden) and
     // not 200 (an open door): 401.
+    armSwitchOn();
     const { POST } = await import('@/app/api/sms/incoming/route');
     const res = await POST(new Request('https://x/api/sms/incoming', {
       method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',

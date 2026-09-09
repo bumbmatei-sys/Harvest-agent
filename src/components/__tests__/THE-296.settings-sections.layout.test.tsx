@@ -8,7 +8,7 @@
 // environment the globals are replaced with browser-semantics ones, and a
 // request to the browser's own debugger port then fails same-origin, so the
 // measuring browser can never be attached to.
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -19,6 +19,24 @@ import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
 import { DENSITY_PX, DESKTOP_CONTROL_MAX_PX } from '../layout/form-layout';
 import { NAV_CLEARANCE } from '../settings/GivingStatementsSection';
+
+/* 🔴 THE-335 — THE NEWSLETTER SWITCH IS MOCKED ON.
+   This suite MEASURES `IntegrationsSection` as itself, through its own
+   `platformOverride` path, so that all three provider cards and their real
+   controls are on the page to measure. `NEWSLETTER_FEATURE_ENABLED` is false on
+   disk now, and the switch sits AHEAD of the override by design — a hidden
+   feature is hidden from the super admin too — so Instagram and Mailchimp would
+   both be absent and this file would be measuring one card where it means to
+   measure three. Its own vacuity guard catches that, which is how it was found.
+
+   ⚠️ MOCKED RATHER THAN THE FLOOR LOWERED. The composition has to stay measured
+   for the flip back; that the cards are GONE while the switch is off is asserted
+   in `AdminSettings.integrations-gating.test.tsx`. */
+vi.mock('../../lib/newsletter-feature', () => ({
+  NEWSLETTER_FEATURE_ENABLED: true,
+  NEWSLETTER_HIDDEN_MESSAGE: 'Newsletter is temporarily unavailable.',
+}));
+
 
 /**
  * ═════════════════════════════════════════════════════════════════════════════

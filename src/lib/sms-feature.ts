@@ -93,7 +93,41 @@
  * document when the new one has not got them yet, so the provider swap does not
  * silently discard configuration a church already entered.
  */
-export const SMS_FEATURE_ENABLED = true;
+/**
+ * 🔴 THE-335 — FALSE AGAIN. The founder, after a production crash on
+ * `/admin/sms`: "lets better hide sms feature entirely again and keep it for
+ * when ill add the scheduler. people can receive the serving notif from church
+ * service planner through resend mail".
+ *
+ * ⚠️ NOTHING WAS DELETED TO HIDE IT, exactly as the contract above promises.
+ * Every route file, component, collection and plan-matrix cell listed here is
+ * still in the tree; `THE-335.sms-hidden.test.ts` enumerates them and asserts
+ * each one exists, so the flip back stays this one line.
+ *
+ * ⚠️ TWO THINGS TO FIX BEFORE IT COMES BACK, both recorded rather than repaired
+ * here because the feature is being hidden:
+ *
+ *   · 🔴 REACT #31 ON "Check availability". `ZernioAvailableNumber.features` is
+ *     typed `string[]`, `/api/sms/numbers` passes the vendor's array through
+ *     without normalising it, and `settings/SmsSection.tsx` renders each entry
+ *     as a bare child of a `Badge`. The vendor answers with objects — the
+ *     minified error names "object with keys {name}" — so the badge receives an
+ *     object where React needs a string and the whole screen unmounts. The
+ *     one-line fix is to normalise in the route, where the vendor's shape stops
+ *     being the UI's problem: map each feature to
+ *     `typeof f === 'string' ? f : f?.name` before returning it.
+ *   · 10DLC CARRIER REGISTRATION IS UNBOUGHT ($9 once + $20/month, US only).
+ *     An unregistered number appears to work while carriers silently drop every
+ *     message, so the feature cannot be honest until it is paid for.
+ *
+ * ⚠️ ONE SURFACE THIS SWITCH DID NOT REACH WHEN THE-335 FOUND IT, now fixed and
+ * named so the next audit does not have to rediscover it: THE-324's
+ * `/api/rota/invitations` reported `smsAvailable` from the PLAN CELL alone
+ * (`getEffectiveFeatures(...).smsAutomation`), which stays true on Ministry
+ * whatever this flag says. The send funnel refused correctly, but the panel
+ * still told an admin a text was going out. It reads this flag first now.
+ */
+export const SMS_FEATURE_ENABLED = false;
 
 /**
  * What every gated route answers with while the switch is off.

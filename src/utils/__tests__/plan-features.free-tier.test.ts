@@ -133,14 +133,23 @@ describe('THE-200 — what a free tenant gets', () => {
     expect(free.maxCourses).toBe(1);
   });
 
-  // ── 6 ──────────────────────────────────────────────────────────────────────
-  it('free has CRM — which is also how it has analytics', () => {
-    // ⚠️ There is no `analytics` cell in this matrix, on ANY tier: analytics is
-    // a PERMISSION on a sub-tab of the CRM screen, not a plan flag. So "free
-    // gets analytics" is asserted as `crm: true` plus the absence of a flag
-    // that would be a lie to invent.
-    expect(free.crm).toBe(true);
-    expect(hasFeature('free', 'crm')).toBe(true);
+  // ── 6 ── 🔴 ───────────────────────────────────────────────────────────────
+  it('free has SIGNUPS and not CRM — which is also how it still has analytics', () => {
+    // 🔴 THE-335 — the founder's split: "The free plan should have signup
+    // feature not CRM since we separated them." This test used to read
+    // `free.crm === true`, and the sentence it asserted ("which is also how it
+    // has analytics") is the reason the swap needed a second cell rather than
+    // one flipped boolean.
+    expect(free.crm).toBe(false);
+    expect(hasFeature('free', 'crm')).toBe(false);
+    expect(free.signups).toBe(true);
+    expect(hasFeature('free', 'signups')).toBe(true);
+
+    // ⚠️ STILL no `analytics` cell in this matrix, on ANY tier: analytics is a
+    // PERMISSION on the Signups screen, not a plan flag. So "free gets
+    // analytics" is asserted as `signups: true` plus the continued absence of a
+    // flag that would be a lie to invent — the sentence moved to the screen
+    // analytics actually lives on, and no cell was added to carry it.
     expect('analytics' in free).toBe(false);
   });
 
@@ -220,7 +229,8 @@ describe('THE-200 — what a free tenant gets', () => {
     const truthy = (Object.keys(free) as (keyof PlanFeatures)[])
       .filter((k) => hasFeature('free', k))
       .sort();
-    expect(truthy).toEqual(['crm', 'maxContacts', 'maxCourses', 'maxAdmins', 'pwaApp'].sort());
+    // 🔴 THE-335 — `crm` left and `signups` arrived. The pair is what the split is.
+    expect(truthy).toEqual(['signups', 'maxContacts', 'maxCourses', 'maxAdmins', 'pwaApp'].sort());
   });
 });
 
@@ -244,14 +254,17 @@ describe('THE-200 — FEATURE_MIN_PLAN still names the cheapest tier that HAS ea
   });
 
   it('is correct for every gate key, written out', () => {
-    // The full map, pinned by value. Exactly ONE entry moved when free went in
-    // at the front of PLAN_ORDER: `crm`, Individual → Free. That is a true
-    // statement — free carries crm: true — and it is the reason free is first.
+    // The full map, pinned by value. `crm` moved to 'Free' when free went in at
+    // the front of PLAN_ORDER, and THE-335 moved it back to 'Individual': free
+    // no longer carries CRM, so the cheapest tier that does is Individual again.
+    // 🔴 `signups` IS NOT IN THIS MAP and must not be added to it: this map is
+    // keyed on GATE names (`FEATURE_MAP`), and the Signups screen is gated on
+    // its cell directly rather than through a gate key.
     expect(FEATURE_MIN_PLAN).toEqual({
       fundraising: 'Individual',
       event_registration: 'Ministry',
       docs: 'Small Team',
-      crm: 'Free', // ⬅️ MOVED. Was 'Individual'. True: free has CRM.
+      crm: 'Individual', // ⬅️ MOVED BACK (THE-335). Free no longer carries CRM.
       accounting: 'Ministry',
       community_chat: 'Ministry',
       tax_receipts: 'Ministry',
@@ -294,7 +307,8 @@ describe('THE-200 — FEATURE_MIN_PLAN still names the cheapest tier that HAS ea
       fundraising: 'plus',      // 🔴 UNCHANGED — free has no donate page
       eventRegistration: 'max',
       docs: 'pro',
-      crm: 'free',              // ⬅️ MOVED from 'plus'
+      crm: 'plus',              // ⬅️ MOVED BACK to 'plus' (THE-335)
+      signups: 'free',          // ⬅️ NEW CELL (THE-335) — free is what it exists for
       accountingTools: 'max',
       taxReceipt: 'max',
       communityGroups: 'max',
@@ -351,7 +365,7 @@ describe('THE-200 — the three priced tiers are untouched', () => {
       newsletterAutomation: false, automatedNewsletter: false,
       // 🔴 THE-314 — SMS is Ministry-only. plus and pro LOST these two cells.
       smsAutomation: false, fundraising: true,
-      eventRegistration: false, docs: false, crm: true,
+      eventRegistration: false, docs: false, crm: true, signups: true,
       accountingTools: false, taxReceipt: false, communityGroups: false,
       customForms: false, checkInSystem: false, livestream: false,
       sermonNotes: false, automatedBlog: false, givingStatements: false,
@@ -364,7 +378,7 @@ describe('THE-200 — the three priced tiers are untouched', () => {
       newsletterAutomation: true, automatedNewsletter: false,
       // 🔴 THE-314 — SMS is Ministry-only. plus and pro LOST these two cells.
       smsAutomation: false, fundraising: true,
-      eventRegistration: false, docs: true, crm: true,
+      eventRegistration: false, docs: true, crm: true, signups: true,
       accountingTools: false, taxReceipt: false, communityGroups: false,
       customForms: false, checkInSystem: true, livestream: true,
       sermonNotes: true, automatedBlog: false, givingStatements: false,
@@ -376,7 +390,7 @@ describe('THE-200 — the three priced tiers are untouched', () => {
       customDomain: true, customBranding: true,
       newsletterAutomation: true, automatedNewsletter: true,
       smsAutomation: true, fundraising: true,
-      eventRegistration: true, docs: true, crm: true,
+      eventRegistration: true, docs: true, crm: true, signups: true,
       accountingTools: true, taxReceipt: true, communityGroups: true,
       customForms: true, checkInSystem: true, livestream: true,
       sermonNotes: true, automatedBlog: true, givingStatements: true,
@@ -479,7 +493,11 @@ describe('THE-200 — add-ons layered on a free tenant (reported, not guarded)',
     expect(withAddons.fundraising).toBe(false);
     expect(withAddons.blog).toBe(false);
     expect(withAddons.livestream).toBe(false);
-    expect(withAddons.crm).toBe(true);
+    // 🔴 THE-335 — an add-on grants no feature flag, and that is still true of
+    // BOTH halves of the split: it neither restores the CRM free lost nor
+    // withdraws the Signups screen free keeps.
+    expect(withAddons.crm).toBe(false);
+    expect(withAddons.signups).toBe(true);
   });
 
   it('leaves the base matrix untouched — getEffectiveFeatures is pure', () => {

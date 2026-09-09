@@ -655,8 +655,12 @@ describe('10 · the switched-off sections stay off and SMS stays live', () => {
   });
 
   it('🔴 SmsSection is still LIVE and still Ministry-only', () => {
-    expect(read('src/lib/sms-feature.ts'), 'SMS was switched back off')
-      .toMatch(/export const SMS_FEATURE_ENABLED = true;/);
+    // 🔵 THE-335 — IT WAS SWITCHED BACK OFF, on the founder's instruction after a
+    // production crash on /admin/sms. THE-316's claim is about the SECTION's
+    // shape, not the switch's value: it still reads the ONE master switch and
+    // still renders `null` through it, which the assertions around this measure.
+    expect(read('src/lib/sms-feature.ts'), 'the switch is no longer a single declared boolean')
+      .toMatch(/export const SMS_FEATURE_ENABLED = false;/);
     // The row's gate: master switch FIRST, then the FEATURE cell — never the
     // tier by name, which is what let SMS go Ministry-only without this line
     // moving.

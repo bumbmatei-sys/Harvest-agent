@@ -42,6 +42,7 @@ import GraceWindowBanner from './GraceWindowBanner';
 import { AdminScreenHeader, AdminHeaderContext, AdminHeaderOverride } from './AdminScreenHeader';
 import { getEffectiveFeatures, hasBrandingAccess, AFFILIATE_PROGRAM_ENABLED, FREE_PLAN } from '../utils/plan-features';
 import { SMS_FEATURE_ENABLED } from '../lib/sms-feature';
+import { NEWSLETTER_FEATURE_ENABLED } from '../lib/newsletter-feature';
 import { db, auth } from '../firebase';
 import { checkRosterAdminStatus } from '../utils/tenant.utils';
 import { readCachedRosterAnswer } from '../utils/roster-cache';
@@ -707,7 +708,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     navAllows(features?.aiKnowledge) &&
       (hasFullAccess || perms.uploadRag) && { id: 'ai', label: 'AI Knowledge', icon: BrainCircuit },
     // Newsletter tab — Small Team and above; free sees it walled.
-    navAllows(features?.newsletterAutomation) &&
+    // Master switch first, exactly as the SMS entry above does it and for the
+    // same reason: while the newsletter is hidden NOBODY gets the entry, super
+    // admin included (THE-335). The plan and permission clauses behind it are
+    // left untouched, so flipping NEWSLETTER_FEATURE_ENABLED restores the
+    // identical entitlement. The 'newsletter' id stays listed in the CONTENT
+    // group above — those groups are filtered against this array, so an absent
+    // tab drops out of its group on its own and the grouping survives for the
+    // flip back. The literal is also what `admin-sections.ts` and its drift test
+    // read, so it must stay written here whether or not it renders.
+    NEWSLETTER_FEATURE_ENABLED &&
+      navAllows(features?.newsletterAutomation) &&
       (hasFullAccess || perms.manageNewsletter) &&
       { id: 'newsletter', label: 'Newsletter', icon: Mail },
     // Fundraising campaigns
@@ -758,14 +769,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     // 1/3/7/30-day windows, and the two CSV exports. Previously the CRM
     // screen's Analytics sub-tab.
     //
-    // 🔴 THE ENTITLEMENT IS CARRIED OVER, NOT INVENTED. Both halves are the
-    // same pair that gated the sub-tab: `features.crm` on the plan side —
-    // there is NO `analytics` cell in the plan matrix and adding one would be a
-    // flag nothing else reads (see the note in utils/plan-features.ts, which
-    // says "free gets analytics" is expressed by `crm: true` and nothing else)
-    // — and the `analytics` permission on the admin side, which is where
-    // `AdminCRM.canViewAnalytics` used to ask it.
-    navAllows(features?.crm) &&
+    // 🔴 THE PLAN HALF IS NOW `features.signups` — THE-335. THE-277 carried
+    // this gate over from the sub-tab as `features.crm`, which was right while
+    // the two screens were entitled together. The founder has since split them
+    // ("The free plan should have signup feature not CRM since we separated
+    // them"), and a shared cell cannot express that: `crm: false` on free took
+    // this screen — and the analytics on it — away in the same edit.
+    //
+    // ⚠️ IT IS NOT A FLAG NOTHING READS. This line and the render branch below
+    // both read it, which is the test the removed `churchDirectory`,
+    // `customBackground` and `publicCalendar` cells failed.
+    //
+    // 🔴 STILL NO `analytics` CELL, AND THERE MUST NOT BE ONE. The admin half is
+    // unchanged: the `analytics` permission, which is where
+    // `AdminCRM.canViewAnalytics` used to ask it. "Free gets analytics" is now
+    // expressed by `signups: true` and nothing else — the sentence moved to the
+    // screen analytics actually lives on.
+    navAllows(features?.signups) &&
       (hasFullAccess || perms.analytics) &&
       { id: 'signups', label: 'Signups', icon: UserPlus },
     // Accounting (Crater) — Statements is now a sub-tab inside this screen, so the
@@ -1472,7 +1492,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               ? <div className="p-4 lg:p-0"><AdminRAG /></div>
               : <PlanUpgradeScreen featureName="AI Knowledge" featureKey="aiKnowledge" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'newsletter' ? (
-            planAllows(features?.newsletterAutomation)
+            // With the newsletter hidden the nav entry is gone, so this branch
+            // only catches a typed or bookmarked /admin/newsletter — and it must
+            // not render the composer or the campaign list (THE-335).
+            //
+            // 🔴 NOT PlanUpgradeScreen, for the reason the SMS branch above is
+            // not one either: that screen sells the tier that includes the
+            // feature, which would advertise the newsletter on the very screen
+            // meant to hide it — and the tiers that own `newsletterAutomation`
+            // cannot use it either right now. Same "Page not found." treatment.
+            // Flip NEWSLETTER_FEATURE_ENABLED to bring the section, and its plan
+            // gate, back exactly as they were.
+            !NEWSLETTER_FEATURE_ENABLED
+              ? <div className="flex flex-col items-center justify-center h-full text-faint">
+                  <p className="text-lg font-medium">Page not found.</p>
+                </div>
+              : planAllows(features?.newsletterAutomation)
               ? <div className="p-4 lg:p-0">
                   {newsletterView === 'editor' ? (
                     <NewsletterEditor
@@ -1523,9 +1558,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               ? <div className="p-4 lg:p-0"><AdminCRM currentUserRole={isSuperAdmin ? 'super_admin' : userRole} currentUserPermissions={isChurchAdmin ? { fullAccess: true } as any : userPermissions} initialContactId={itemId} onItemConsumed={clearItemId} /></div>
               : <PlanUpgradeScreen featureName="CRM" featureKey="crm" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'signups' ? (
-            planAllows(features?.crm)
+            // 🔴 THE-335 — `signups`, not `crm`. The nav gate above says why.
+            // `featureKey` moves with it so the upgrade wall names the tier that
+            // actually grants this screen rather than the tier that grants CRM.
+            planAllows(features?.signups)
               ? <div className="p-4 lg:p-0"><AdminSignups /></div>
-              : <PlanUpgradeScreen featureName="Signups" featureKey="crm" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
+              : <PlanUpgradeScreen featureName="Signups" featureKey="signups" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'accounting' ? (
             planAllows(features && (features.accountingTools || features.givingStatements))
               ? <div className="p-4 lg:p-0"><AdminAccounting canManageAccounting={hasFullAccess || !!perms.manageAccounting} canManageStatements={hasFullAccess || !!perms.manageGivingStatements} /></div>

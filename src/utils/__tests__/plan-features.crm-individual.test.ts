@@ -35,23 +35,29 @@ describe('Individual includes CRM', () => {
     expect(getPlanFeatures('plus').crm).toBe(true);
   });
 
-  it('names Free as the cheapest plan that unlocks CRM (THE-200)', () => {
+  it('names Individual as the cheapest plan that unlocks CRM (moved back by THE-335)', () => {
     // Derived from the matrix, so no upgrade-screen label was edited to say so.
-    // 🔴 This moved when THE-200 added the Forever Free tier, which also has
-    // CRM — the evangelist must be able to see who enrolled. Individual keeping
-    // `crm: true` is the claim THIS file exists to protect, and it is asserted
-    // directly above and below; the LABEL naming a cheaper tier that genuinely
-    // has the feature is correct, not a regression.
-    expect(getFeatureMinPlan('crm')).toBe('free');
-    expect(getMinPlanForFeatureCell('crm')).toBe('free');
-    expect(FEATURE_MIN_PLAN.crm).toBe('Free');
+    // 🔴 It moved to 'free' when THE-200 added the Forever Free tier, and moved
+    // BACK at THE-335 when the founder split what free gets — "The free plan
+    // should have signup feature not CRM since we separated them". Individual
+    // keeping `crm: true` is the claim THIS file exists to protect, and it is
+    // untouched by either move; the label following the matrix is correct in
+    // both directions and is why it is derived rather than written.
+    expect(getFeatureMinPlan('crm')).toBe('plus');
+    expect(getMinPlanForFeatureCell('crm')).toBe('plus');
+    expect(FEATURE_MIN_PLAN.crm).toBe('Individual');
     // Individual still has it — that is what this suite is really about.
     expect(getPlanFeatures('plus').crm).toBe(true);
   });
 
-  it('leaves no tier without CRM', () => {
+  it('leaves no PRICED tier without CRM', () => {
+    // 🔵 THE-335 — free is the one tier without it now, by the founder's
+    // decision, and it is named rather than allowed by a loosened filter: a
+    // PRICED tier losing CRM would still fail here.
     const without = PLAN_ORDER.filter((plan) => !getPlanFeatures(plan).crm);
-    expect(without).toEqual([]);
+    expect(without).toEqual(['free']);
+    // …and what free got instead, so the swap is asserted as a swap.
+    expect(getPlanFeatures('free').signups).toBe(true);
   });
 });
 
@@ -248,7 +254,7 @@ describe('no rule, route or query gates on the crm flag', () => {
     // `FEATURE_MAP.crm` and `<PlanUpgradeScreen featureKey="crm" />` are the
     // remaining references. They resolve a plan NAME for upgrade copy — the
     // screen shown when the render decisions above have already said no.
-    expect(FEATURE_MIN_PLAN.crm).toBe(PLAN_DISPLAY_NAMES.free);
+    expect(FEATURE_MIN_PLAN.crm).toBe(PLAN_DISPLAY_NAMES.plus);
     expect(unlocked(getPlanFeatures('plus').crm)).toBe(true);
   });
 });

@@ -664,6 +664,8 @@ const ADMIN_DASHBOARD_ACCEPTED = [
 '508747ccbc7b2fef051d449626ef2f81f3655b214be0494c6c21a8c7df88b9bb',
 // 🔴 APPENDED BY THE-334 — main + THE-334 — one flyout at a time; the panel takes ClickUp’s shape and Settings moves to the account menu
 '00db3fa2b16a506d0a23dc1d582e6581c49e03350b966fb30d82d9434b09f450',
+  // 🔴 APPENDED BY THE-335 — SMS hidden again, the Newsletter nav entry gated by a new switch in the identical shape, and Signups moved onto its own plan cell
+  '3c26f36aa883e7c9540038e3afa1da2ec8bb61f091a4a8e5efa0d866fec6cf8f',
 ];
 
 describe('the files this ticket must not open are byte-identical', () => {
@@ -715,11 +717,23 @@ describe('the files this ticket must not open are byte-identical', () => {
    * unlocking them would be unlocking more than this ticket was asked to.
    */
   it('leaves the parallel tickets\' files alone', () => {
+    /* 🔵 `AdminAccounting.tsx` LEFT THIS LIST AT THE-335, and the list is
+       NARROWED rather than the assertion loosened — the shape THE-300 used when
+       SmsSection stopped qualifying for its own list.
+
+       THE-335 hides the QuickBooks integration behind a master switch, and
+       `AdminAccounting` is the one user-facing surface it has: every QuickBooks
+       control on that screen already routed through a single `isQbEnabled`
+       boolean, so hiding it is that one line plus the effect that stopped
+       fetching a status nothing renders. It is a file a LATER ticket legitimately
+       owns, exactly as the four remaining ones are files THE-305's parallel
+       tickets owned — and THE-305's own claim, that IT did not open them, is
+       unchanged. Its digest is pinned by the ticket that does own it
+       (`manual-payment-link-disclosures.test.ts`), so it is not unguarded. */
     expect(changedSince(
       'src/components/AdminForms.tsx',
       'src/components/AdminFundraising.tsx',
       'src/components/AdminDonations.tsx',
-      'src/components/AdminAccounting.tsx',
       'src/components/PublicPledge.tsx',
     )).toEqual([]);
   });

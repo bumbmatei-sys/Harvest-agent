@@ -52,6 +52,20 @@ describe('1 — every send is metered into tenants/{id}/usage/{YYYY-MM}', () => 
 
   /** A tenant on Ministry, with no opt-out, and a provider that accepts. */
   const armSend = (over: { plan?: string; optedOut?: boolean } = {}) => {
+    /* 🔴 THE-335 — THE MASTER SWITCH IS MOCKED ON. `SMS_FEATURE_ENABLED` is
+       false on disk again and it is the FIRST gate in the funnel, so without
+       this every assertion in this section would read `feature_hidden` and this
+       file would silently stop testing the meter, the refund and the plan gate
+       at all — a suite that passes while proving nothing.
+
+       ⚠️ MOCKED RATHER THAN THE ASSERTIONS RELAXED. The reseller machinery is
+       unchanged and must stay verified; what changed is that nothing can reach
+       it in production today, and `the-245-sms-hidden.test.ts` is where THAT is
+       asserted. */
+    vi.doMock('@/lib/sms-feature', () => ({
+      SMS_FEATURE_ENABLED: true,
+      SMS_HIDDEN_MESSAGE: 'SMS is temporarily unavailable.',
+    }));
     const reserve = vi.fn(async () => ({ allowed: true, used: 1, cap: 2_000 }));
     const settle = vi.fn(async () => {});
     const refund = vi.fn(async () => {});

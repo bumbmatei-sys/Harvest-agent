@@ -160,6 +160,34 @@ export interface PlanFeatures {
   docs: boolean;
   /** CRM for donors and members (Small Team / pro+) */
   crm: boolean;
+  /**
+   * The Signups screen — members who created an account: city search, the
+   * 1/3/7/30-day windows, and the two CSV exports (THE-277).
+   *
+   * 🔴 A NEW CELL, AND IT IS READ — THE-335. `AdminDashboard` gates both the
+   * `signups` nav entry and the `signups` render branch on it, so this is not
+   * the `churchDirectory` / `customBackground` / `publicCalendar` defect of a
+   * flag nothing reads. It exists because the founder split what free gets:
+   * "The free plan should have signup feature not CRM since we separated them."
+   *
+   * ⚠️ WHY A CELL WAS UNAVOIDABLE. Both gates used to read `crm`, which is what
+   * THE-277 carried over when it moved Analytics out of the CRM screen. So while
+   * they shared a cell, "free gets Signups but not CRM" was not expressible: any
+   * `crm: false` on free took Signups AND the analytics that lives on it away in
+   * the same edit. Separating the two gates is the change; this cell is what
+   * separates them.
+   *
+   * 🔴 STILL NO `analytics` CELL, AND THERE MUST NOT BE ONE. Analytics is a
+   * PERMISSION (`analytics` in AdminRoles) on the Signups screen. "Free gets
+   * analytics" is now expressed by `signups: true` and nothing else, exactly as
+   * it was expressed by `crm: true` before — the sentence moved with the screen
+   * it describes, and no flag was invented.
+   *
+   * VISIBILITY ONLY, exactly as `crm` is: no rule, route or query keys off this
+   * cell. Firestore scopes the `users` documents Signups reads on tenant
+   * membership, never on plan.
+   */
+  signups: boolean;
   /** Accounting tools integration */
   accountingTools: boolean;
   /** Tax receipt generation */
@@ -309,14 +337,34 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     fundraising: false,
     eventRegistration: false,
     docs: false,
-    // 🔴 TRUE — the second of the two things free actually does. The evangelist
-    // must be able to see WHO enrolled, with contact records, and export them.
-    // This also carries analytics (see the note above the block).
+    // 🔴 FALSE — THE-335, the founder's split: "The free plan should have signup
+    // feature not CRM since we separated them."
     //
-    // VISIBILITY ONLY, exactly as on `plus`/`pro`: no rule, route or query keys
-    // off this cell. Firestore scopes `contacts` on the `manageCRM` permission
-    // and `isTenantAdmin`, never on plan.
-    crm: true,
+    // ⚠️ WHAT FREE ACTUALLY NEEDED IS UNCHANGED AND NOW SITS ON `signups`
+    // BELOW. The line this cell used to carry — "the evangelist must be able to
+    // see WHO enrolled, with contact records, and export them" — is a
+    // description of the SIGNUPS screen, and has been since THE-277 moved it out
+    // of CRM. `signups-export.ts` proves it: `CONTACT_CSV_HEADERS` is Name,
+    // Phone Number, Email, Registration Date, Country, City, Accepted Jesus, so
+    // the export carries the CONTACT RECORDS and not merely enrolment rows.
+    // Nothing free needed left with this cell.
+    //
+    // 🔴 ANALYTICS DID NOT LEAVE EITHER, and that is why this could not be a
+    // lone `true` → `false`. Analytics is a permission on the Signups screen, so
+    // it followed the screen to `signups: true` — see the note on that cell.
+    // Flipping this alone, while the two gates still shared a cell, would have
+    // taken Signups and analytics away with the CRM.
+    //
+    // ⚠️ IT REMAINS VISIBILITY ONLY: no rule, route or query keys off this cell.
+    // Firestore scopes `contacts` on the `manageCRM` permission and
+    // `isTenantAdmin`, never on plan — so this changes what free SEES, not what
+    // a free tenant's records are protected by.
+    crm: false,
+    // 🔴 TRUE — the second of the two things free actually does, moved here from
+    // `crm` above by THE-335. Who enrolled, their contact records, and the two
+    // CSV exports; and the analytics that has lived on this screen since
+    // THE-277.
+    signups: true,
     accountingTools: false,
     taxReceipt: false,
     communityGroups: false,
@@ -392,6 +440,11 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     //
     // `maxContacts` (150 here) is what scopes it, and is enforced separately.
     crm: true,
+    // 🔴 TRUE — unchanged by THE-335, which only split what FREE gets. Every
+    // paid tier that had the CRM also had Signups (both gates read `crm`),
+    // so carrying this cell across at the same value is what makes the split
+    // a change to free alone rather than a re-derivation of the ladder.
+    signups: true,
     accountingTools: false,
     taxReceipt: false,
     communityGroups: false,
@@ -449,6 +502,11 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     // permission, not on plan).
     docs: true,
     crm: true,
+    // 🔴 TRUE — unchanged by THE-335, which only split what FREE gets. Every
+    // paid tier that had the CRM also had Signups (both gates read `crm`),
+    // so carrying this cell across at the same value is what makes the split
+    // a change to free alone rather than a re-derivation of the ladder.
+    signups: true,
     accountingTools: false,
     taxReceipt: false,
     communityGroups: false,
@@ -508,6 +566,11 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     eventRegistration: true,
     docs: true,
     crm: true,
+    // 🔴 TRUE — unchanged by THE-335, which only split what FREE gets. Every
+    // paid tier that had the CRM also had Signups (both gates read `crm`),
+    // so carrying this cell across at the same value is what makes the split
+    // a change to free alone rather than a re-derivation of the ladder.
+    signups: true,
     accountingTools: true,
     taxReceipt: true,
     communityGroups: true,

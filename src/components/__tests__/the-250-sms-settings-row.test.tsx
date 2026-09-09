@@ -309,11 +309,16 @@ describe('4 — one switch, and nothing else moved', () => {
     expect([...new Set(smsFlags)]).toEqual(['SMS_FEATURE_ENABLED']);
   });
 
-  it('🔴 the switch itself is TRUE now, and still the only declaration', async () => {
-    // ⚠️ THE-314 FLIPPED IT. The "only declaration" half is what this assertion
-    // has always really been for and it is unchanged: one boolean, one place.
+  it('🔴 the switch itself is FALSE again, and still the only declaration', async () => {
+    // ⚠️ THE-314 FLIPPED IT ON, THE-335 FLIPPED IT BACK OFF. The "only
+    // declaration" half is what this assertion has always really been for and it
+    // is unchanged by either: one boolean, one place.
+    //
+    // 🔴 READ OFF THE SOURCE, NOT OFF THE MOCK. This file mocks the module ON so
+    // the settings row can be measured, so the literal in the file is the only
+    // honest place to ask what the switch actually says.
     const src = readSrc('lib/sms-feature.ts');
-    expect(src).toMatch(/^export const SMS_FEATURE_ENABLED = true;$/m);
+    expect(src).toMatch(/^export const SMS_FEATURE_ENABLED = false;$/m);
     expect(src.match(/SMS_FEATURE_ENABLED\s*=/g)).toHaveLength(1);
   });
 

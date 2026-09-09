@@ -327,11 +327,25 @@ describe('no CRM control points at a hidden integration', () => {
     expect(hasAnyIntegrationProvider(features, FREE)).toBe(false);
   });
 
-  it('withholds the SEND, not the CRM — free keeps its roster', () => {
-    // The distinction the whole gate turns on. If this ever reads false, the
-    // gate has been moved onto the `crm` cell and free has lost the half of the
-    // product it exists for.
-    expect(getPlanFeatures(FREE).crm, 'free lost the CRM to the Gmail gate').toBe(true);
+  it('withholds the SEND, not the roster — free keeps the half it exists for', () => {
+    /* The distinction the whole gate turns on, and it survives THE-335 intact —
+       but the CELL it is read off moved, so the assertion had to move with it.
+
+       🔴 FREE'S ACCESS TO GMAIL DID NOT CHANGE, and that is the finding. Free
+       has never reached any provider: `outboundSend` plus `isUnpricedTier`
+       refuses the send on an unpriced tier regardless of the feature cell, which
+       is asserted directly above at "free still reaches …". THE-335 makes
+       `crm: false` on free a SECOND reason for the same answer; it removes
+       nothing a free tenant could do.
+
+       🔴 AND THE ROSTER IS STILL THERE. What free exists for — seeing who
+       enrolled, with contact records, and exporting them — is the SIGNUPS
+       screen, and `signups: true` is what carries it now. If THAT ever reads
+       false, free has lost the half of the product it exists for. */
+    expect(getPlanFeatures(FREE).signups, 'free lost the roster it exists for').toBe(true);
+    expect(getPlanFeatures(FREE).crm, 'free regained CRM — THE-335 took it').toBe(false);
+    expect(isProviderAvailable(getIntegrationProvider('gmail'), getPlanFeatures(FREE), FREE),
+      'free reached Gmail').toBe(false);
   });
 
   it('an unrecognised legacy tier keeps Gmail — the gate asks for KNOWN and unpriced', () => {
@@ -353,7 +367,11 @@ describe('no feature flag or price moved', () => {
     expect(getPlanFeatures('pro').fundraising).toBe(true);
     expect(getPlanFeatures('max').fundraising).toBe(true);
 
-    expect(getPlanFeatures('free').crm).toBe(true);
+    // 🔵 THE-335 — free's `crm` went false on the founder's split, and `signups`
+    // arrived true. Neither is WRITTEN by this ticket; both are read, and the
+    // transcription follows the matrix.
+    expect(getPlanFeatures('free').crm).toBe(false);
+    expect(getPlanFeatures('free').signups).toBe(true);
     expect(getPlanFeatures('plus').crm).toBe(true);
     expect(getPlanFeatures('pro').crm).toBe(true);
     expect(getPlanFeatures('max').crm).toBe(true);

@@ -123,6 +123,14 @@ const FLAG_SURFACES: Registry = {
   eventRegistration: { gates: ['components/AdminDashboard.tsx'] },
   docs:          { gates: ['components/AdminDashboard.tsx'] },
   crm:           { gates: ['components/AdminDashboard.tsx'] },
+  // 🔴 THE-335 — the cell that separated the Signups screen from the CRM one.
+  // It is HERE, with two real gates in the named file (the nav entry and the
+  // render branch), which is the whole answer to "is this a flag nothing
+  // reads?" — the question that removed `churchDirectory`, `customBackground`
+  // and `publicCalendar`. The founder's split ("The free plan should have
+  // signup feature not CRM since we separated them") is not expressible while
+  // both screens read one cell.
+  signups:       { gates: ['components/AdminDashboard.tsx'] },
   accountingTools: { gates: ['components/AdminDashboard.tsx', 'components/AdminAccounting.tsx'] },
   taxReceipt:    { gates: ['components/AdminAccounting.tsx'] },
   givingStatements: { gates: ['components/AdminAccounting.tsx', 'components/AdminDashboard.tsx'] },
@@ -370,7 +378,11 @@ describe('the gates refuse surfaces and change no data or rule', () => {
     expect(free.newsFeed).toBe(false);
     expect(free.checkInSystem).toBe(false);
     expect(free.fundraising).toBe(false);
-    expect(free.crm).toBe(true);
+    // 🔴 THE-335 RETUNED EXACTLY ONE PAIR, deliberately and on the founder's
+    // instruction — `crm` out, `signups` in — and this line is the guard that
+    // makes that a decision somebody had to write down rather than a drift.
+    expect(free.crm).toBe(false);
+    expect(free.signups).toBe(true);
   });
 
   it('and the three priced tiers still publish theirs', () => {

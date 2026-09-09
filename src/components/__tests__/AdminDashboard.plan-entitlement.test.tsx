@@ -76,6 +76,15 @@ vi.mock('../../lib/sms-feature', () => ({
   SMS_FEATURE_ENABLED: true,
   SMS_HIDDEN_MESSAGE: 'SMS is temporarily unavailable.',
 }));
+// 🔴 THE-335 — the newsletter switch is mocked ON here on EXACTLY the terms the
+// SMS switch above already is, and for the same reason. This file is about the
+// PLAN gate: which tier is entitled to which screen. A master switch in front of
+// that gate would blank the row and turn every assertion about it vacuous. That
+// the tab is GONE while the switch is off is asserted in THE-335's own suite.
+vi.mock('../../lib/newsletter-feature', () => ({
+  NEWSLETTER_FEATURE_ENABLED: true,
+  NEWSLETTER_HIDDEN_MESSAGE: 'Newsletter is temporarily unavailable.',
+}));
 
 vi.mock('react-router-dom', () => ({ useNavigate: () => navigate, useParams: () => params.current }));
 vi.mock('../../utils/tenant.utils', () => ({ checkRosterAdminStatus }));
@@ -201,7 +210,12 @@ const GATED_TABS: Row[] = [
   // cell in the matrix (plan-features.ts says so in as many words), so `crm`
   // is the only expression of who gets this screen, exactly as it was while
   // the screen was a sub-tab of that one.
-  { label: 'Signups', section: 'signups', screen: 'AdminSignups', entitled: (f) => f.crm },
+  // 🔴 THE-335 — `signups`, not `crm`. The founder split what free gets ("The
+  // free plan should have signup feature not CRM since we separated them"), and
+  // a shared cell cannot express that: crm:false on free took this screen — and
+  // the analytics that lives on it — away in the same edit. Still no `analytics`
+  // cell; "free gets analytics" is now `signups: true` and nothing else.
+  { label: 'Signups', section: 'signups', screen: 'AdminSignups', entitled: (f) => f.signups },
   { label: 'Accounting', section: 'accounting', screen: 'AdminAccounting', entitled: (f) => f.accountingTools || f.givingStatements },
   { label: 'Forms', section: 'forms', screen: 'AdminForms', entitled: (f) => f.customForms },
   { label: 'Livestream', section: 'livestream', screen: 'AdminLivestream', entitled: (f) => f.livestream },
@@ -620,7 +634,7 @@ describe('a super admin still sees everything through platformOverride', () => {
 // ── 7. Role gates are orthogonal to plan ─────────────────────────────────────
 describe("a limited admin's role gates still apply independently of plan", () => {
   it('withholds a tab the permission denies even on the tier that carries it', async () => {
-    // Ministry carries every cell, so anything missing here is the ROLE gate.
+    /* Ministry carries every cell, so anything missing here is the ROLE gate. */
     const { nav } = await openTab('max', UNGATED_TABS[0], {
       role: 'admin',
       permissions: { manageNewsletter: true },
@@ -756,6 +770,14 @@ describe('no feature flag changed', () => {
     // reaches the screen — `AdminDashboard` gates on `getEffectiveFeatures`, not
     // on this matrix.
     //
+    // ⚠️ `crm` MOVED IN THE-335: true → false ON FREE, and a NEW `signups` cell
+    // arrived true on every tier. The founder split what free gets — "The free
+    // plan should have signup feature not CRM since we separated them" — and it
+    // needed a second cell rather than one flipped boolean because
+    // `AdminDashboard` gated BOTH screens on `crm`, so crm:false alone would
+    // have taken the Signups screen and the analytics on it away in the same
+    // edit. 🔴 NO PRICED TIER MOVED: all three still carry `crm: true`.
+    //
     // ⚠️ `smsAutomation` MOVED IN THE-314: true → false on plus and pro. SMS was
     // true on every paid tier while a church brought its own Twilio account and
     // the cell gated nothing. Harvest now RESELLS and pays for every segment, so
@@ -765,7 +787,7 @@ describe('no feature flag changed', () => {
     const CELLS = [
       'newsletterAutomation', 'aiKnowledge', 'docs', 'communityGroups',
       'customForms', 'accountingTools', 'eventRegistration', 'checkInSystem', 'livestream',
-      'blog', 'crm', 'fundraising', 'smsAutomation', 'customBranding', 'customDomain',
+      'blog', 'crm', 'signups', 'fundraising', 'smsAutomation', 'customBranding', 'customDomain',
     ] as const;
     const actual: Record<string, Record<string, unknown>> = {};
     for (const plan of PLAN_ORDER) {
@@ -776,25 +798,25 @@ describe('no feature flag changed', () => {
       free: {
         newsletterAutomation: false, aiKnowledge: false, docs: false, communityGroups: false,
         customForms: false, accountingTools: false, eventRegistration: false, checkInSystem: false,
-        livestream: false, blog: false, crm: true, fundraising: false, smsAutomation: false,
+        livestream: false, blog: false, crm: false, signups: true, fundraising: false, smsAutomation: false,
         customBranding: false, customDomain: false,
       },
       plus: {
         newsletterAutomation: false, aiKnowledge: false, docs: false, communityGroups: false,
         customForms: false, accountingTools: false, eventRegistration: false, checkInSystem: false,
-        livestream: false, blog: true, crm: true, fundraising: true, smsAutomation: false,
+        livestream: false, blog: true, crm: true, signups: true, fundraising: true, smsAutomation: false,
         customBranding: false, customDomain: false,
       },
       pro: {
         newsletterAutomation: true, aiKnowledge: false, docs: true, communityGroups: false,
         customForms: false, accountingTools: false, eventRegistration: false, checkInSystem: true,
-        livestream: true, blog: true, crm: true, fundraising: true, smsAutomation: false,
+        livestream: true, blog: true, crm: true, signups: true, fundraising: true, smsAutomation: false,
         customBranding: false, customDomain: false,
       },
       max: {
         newsletterAutomation: true, aiKnowledge: false, docs: true, communityGroups: true,
         customForms: true, accountingTools: true, eventRegistration: true, checkInSystem: true,
-        livestream: true, blog: true, crm: true, fundraising: true, smsAutomation: true,
+        livestream: true, blog: true, crm: true, signups: true, fundraising: true, smsAutomation: true,
         customBranding: true, customDomain: true,
       },
     });

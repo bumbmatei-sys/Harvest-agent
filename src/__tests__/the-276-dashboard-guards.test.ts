@@ -377,6 +377,11 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     ['508747ccbc7b2fef051d449626ef2f81f3655b214be0494c6c21a8c7df88b9bb', 'main + THE-332 — the desktop nav becomes a rail with flyouts'],
     // 🔴 APPENDED BY THE-334, nothing above removed or rewritten.
     ['00db3fa2b16a506d0a23dc1d582e6581c49e03350b966fb30d82d9434b09f450', 'main + THE-334 — one flyout at a time; the panel takes ClickUp’s shape and Settings moves to the account menu'],
+    // 🔴 APPENDED BY THE-335, nothing above removed or rewritten: SMS hidden
+    // again behind its own switch, the Newsletter nav entry and render branch
+    // gated by a new one in the identical shape, and the Signups gate moved off
+    // the `crm` cell onto its own so free can keep Signups without CRM.
+    ['3c26f36aa883e7c9540038e3afa1da2ec8bb61f091a4a8e5efa0d866fec6cf8f', 'main + THE-335 — SMS and the newsletter hidden; Signups on its own plan cell'],
   ],
 };
 

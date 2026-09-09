@@ -609,7 +609,10 @@ describe('7 · PaymentSection still renders unavailable, DomainSection is still 
       // about — that the section renders through the ONE master switch and
       // renders `null` when it is off — is unchanged and still asserted.
       .toMatch(/SMS_FEATURE_ENABLED\s*\?\s*<SmsSettingsPointer\s*\/>\s*:\s*null/);
-    expect(readSrc('src/lib/sms-feature.ts')).toMatch(/SMS_FEATURE_ENABLED\s*=\s*true/);
+    // 🔵 FALSE AGAIN AT THE-335. THE-296's claim is unaffected by either flip and
+    // is what the assertions above measure: the section reads the ONE master
+    // switch and renders through it. Only the switch's VALUE moves.
+    expect(readSrc('src/lib/sms-feature.ts')).toMatch(/SMS_FEATURE_ENABLED\s*=\s*false/);
     // And the settings row stays hidden with it, so the label does not open
     // onto an empty panel (THE-250).
     expect(readSrc('src/components/AdminSettings.tsx'))

@@ -364,7 +364,12 @@ describe('10 — changing an admin tab emits a pageview', () => {
     await mountAdmin('/admin');
     await signIn();
     // Named by the label a founder reads, in the order the report lists them.
-    for (const label of ['CRM', 'Campus', 'Courses', 'Newsletter', 'Accounting', 'Forms', 'Livestream']) {
+    // 🔵 'Newsletter' → 'Notes' AT THE-335, which put the newsletter behind a
+    // master switch: the tab is in no tier's nav, so it cannot be clicked and a
+    // walk through it would be measuring the switch rather than the pageview.
+    // 'Notes' is the nearest ungated substitute — a real tab on this tier, one
+    // route of its own — so the walk is still seven distinct sections.
+    for (const label of ['CRM', 'Campus', 'Courses', 'Notes', 'Accounting', 'Forms', 'Livestream']) {
       await clickTab(label);
     }
     // One for the load, then one per tab change. None of them silent.
@@ -377,7 +382,7 @@ describe('10 — changing an admin tab emits a pageview', () => {
       '/admin/crm',
       '/admin/churches',
       '/admin/courses',
-      '/admin/newsletter',
+      '/admin/docs',
       '/admin/accounting',
       '/admin/forms',
       '/admin/livestream',

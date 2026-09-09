@@ -116,9 +116,27 @@ const withSwitchOff = () => {
   }));
 };
 
+/** 🔴 THE-335 — and the mirror of it. `SMS_FEATURE_ENABLED` is false on disk
+ *  again, so the "the surface is really there" half of every pair below needs
+ *  the switch mocked ON exactly as the "it is really gone" half needs it mocked
+ *  off. Without this the two halves would both measure the off state and this
+ *  file would pass while proving nothing — the failure mode this repo has been
+ *  bitten by eleven times.
+ *
+ *  ⚠️ MOCKED RATHER THAN THE PAIRS DELETED. The switch's whole design is that
+ *  the feature returns INTACT, and these pairs are what proves it. */
+const withSwitchOn = () => {
+  vi.resetModules();
+  vi.doMock('../../lib/sms-feature', () => ({
+    SMS_FEATURE_ENABLED: true,
+    SMS_HIDDEN_MESSAGE: 'SMS is temporarily unavailable.',
+  }));
+};
+
 /* ── 1 ───────────────────────────────────────────────────────────────────── */
 describe('1 — the SMS admin screen is back, and asks for its config again', () => {
   it('🔴 mounts its real UI', async () => {
+    withSwitchOn();
     const { default: AdminSms } = await import('../AdminSms');
     await render(<AdminSms />);
 
@@ -131,6 +149,7 @@ describe('1 — the SMS admin screen is back, and asks for its config again', ()
     // ministry with none cannot broadcast and is shown setup instead. Without
     // this the Automated tab is genuinely absent and the assertion below would
     // report a deleted panel when nothing was deleted.
+    withSwitchOn();
     withNumber();
     const { default: AdminSms } = await import('../AdminSms');
     await render(<AdminSms />);
@@ -238,6 +257,7 @@ describe('2 — the number panel replaced the credential form', () => {
 /* ── 3 ───────────────────────────────────────────────────────────────────── */
 describe('3 — the permission row comes back, and the grant behind it never left', () => {
   it('🔴 the rendered permission list offers "SMS Broadcasts" again', async () => {
+    withSwitchOn();
     const roles = await import('../AdminRoles');
     expect(roles.VISIBLE_PERMISSION_DEFS.map((d) => d.key)).toContain('manageSms');
     expect(roles.VISIBLE_PERMISSION_CATEGORIES.flatMap((c) => c.items.map((i) => i.key)))

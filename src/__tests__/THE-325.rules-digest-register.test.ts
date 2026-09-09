@@ -380,8 +380,20 @@ const CONTENT_ASSERTING: ReadonlyArray<readonly [string, string]> = [
    * It still asserts CONTENT and still pins no digest, so it remains out of
    * THE-325's own bounds; this record only says which ticket last moved it.
    */
+  /* 🔵 REPINNED AT THE-335, which is the ticket that last moved each of these
+     four. None of them was loosened; each followed a matrix cell or a switch:
+       · THE-320.sms-composition — the master switch is mocked ON at the head of
+         the file, because `AdminSms` renders `null` while it is off and every
+         composition assertion would otherwise measure an empty string.
+       · plan-features.crm-individual, plan-features.news-feed and
+         plan-flag-surface-guard — free's `crm` went false and a new `signups`
+         cell went true, on the founder's split, so each file's transcription of
+         the matrix moved with it. `plan-flag-surface-guard` also gained the
+         registry entry that proves the new cell is READ rather than inert.
+     They still assert CONTENT and still pin no digest, so they remain out of
+     THE-325's own bounds; this record only says which ticket last moved them. */
   ['src/components/__tests__/THE-320.sms-composition.test.tsx',
-    '2462f1268f2f78fb6a72450b0d86adfb05274943fbe5b4057f197e10abc0af10'],
+    '4c5729f359d64519f504f5f73287a2c730ebab34359b8399e2cf557bf8ffdca9'],
   ['src/components/__tests__/the-255-install-app.test.tsx',
     'e8438de623b5a206f92a6ec1ae5d8696af4ad82ce99b413451486cb77f588985'],
   ['src/lib/__tests__/super-admin-consistency.test.ts',
@@ -389,11 +401,11 @@ const CONTENT_ASSERTING: ReadonlyArray<readonly [string, string]> = [
   ['src/lib/dodo/__tests__/dodo-subscription-lifecycle.test.ts',
     '3fa216c7ce56ffb0a54092b82a4552f11ce76efa3ff3fcf755cc7222f99c0390'],
   ['src/utils/__tests__/plan-features.crm-individual.test.ts',
-    '408a41ca17cf6596dc7e2bd9532bd5134ebb9ef7642e45333efc88be90a64307'],
+    'b4d6c211ae5260da6b6866529f58bb0c003863ea583e3824791836c2608c73d8'],
   ['src/utils/__tests__/plan-features.news-feed.test.ts',
-    '871d24472090eef354a4df209d9986c9b21dad2cc0ab63a3bd9e04d3213f8b77'],
+    '76eed2ae08d7c4b52220b27d23fad5456b844b33822cdfb43813d85db49f828f'],
   ['src/utils/__tests__/plan-flag-surface-guard.test.ts',
-    'faf1467d62f2e9a0749a36ab8f0ce05eb7035f6110df77388d5b7684aec9a94e'],
+    '75e67239ed7798bc2995c99c965843f03bffd162748532c159dfa142930584d7'],
 ];
 
 describe('6 · the content-asserting suites are untouched', () => {

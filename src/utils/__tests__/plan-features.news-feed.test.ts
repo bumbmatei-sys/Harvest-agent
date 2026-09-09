@@ -103,7 +103,7 @@ describe('THE-205 moved no cell on any tier a church pays for', () => {
       newsletterAutomation: false, automatedNewsletter: false,
       // 🔴 THE-314 — SMS is Ministry-only. plus and pro LOST these two cells.
       smsAutomation: false, fundraising: true,
-      eventRegistration: false, docs: false, crm: true,
+      eventRegistration: false, docs: false, crm: true, signups: true,
       accountingTools: false, taxReceipt: false, communityGroups: false,
       customForms: false, checkInSystem: false, livestream: false,
       sermonNotes: false, automatedBlog: false, givingStatements: false,
@@ -116,7 +116,7 @@ describe('THE-205 moved no cell on any tier a church pays for', () => {
       newsletterAutomation: true, automatedNewsletter: false,
       // 🔴 THE-314 — SMS is Ministry-only. plus and pro LOST these two cells.
       smsAutomation: false, fundraising: true,
-      eventRegistration: false, docs: true, crm: true,
+      eventRegistration: false, docs: true, crm: true, signups: true,
       accountingTools: false, taxReceipt: false, communityGroups: false,
       customForms: false, checkInSystem: true, livestream: true,
       sermonNotes: true, automatedBlog: false, givingStatements: false,
@@ -128,7 +128,7 @@ describe('THE-205 moved no cell on any tier a church pays for', () => {
       customDomain: true, customBranding: true,
       newsletterAutomation: true, automatedNewsletter: true,
       smsAutomation: true, fundraising: true,
-      eventRegistration: true, docs: true, crm: true,
+      eventRegistration: true, docs: true, crm: true, signups: true,
       accountingTools: true, taxReceipt: true, communityGroups: true,
       customForms: true, checkInSystem: true, livestream: true,
       sermonNotes: true, automatedBlog: true, givingStatements: true,
@@ -157,7 +157,10 @@ describe('THE-205 moved no cell on any tier a church pays for', () => {
     const free = getPlanFeatures('free');
     expect(free.newsFeed).toBe(false);
     expect(free.blog).toBe(false);
-    expect(free.crm).toBe(true);
+    // 🔴 THE-335 moved this pair; THE-205's claim is unaffected either way —
+    // this test is about the FEED, and the feed cell is what it pins above.
+    expect(free.crm).toBe(false);
+    expect(free.signups).toBe(true);
     expect(free.pwaApp).toBe(true);
     expect(free.fundraising).toBe(false);
     expect(free.communityGroups).toBe(false);

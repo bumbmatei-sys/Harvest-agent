@@ -27,6 +27,22 @@ const settleSmsSegments = vi.fn(async () => {});
 const refundSmsSegment = vi.fn(async () => {});
 const isOptedOut = vi.fn(async () => false);
 
+/* 🔴 THE-335 — THE MASTER SWITCH IS MOCKED ON, and this suite is exactly why the
+   ticket's own note says "the meter and STOP handling are intact but
+   unreachable — they come back with the feature". `SMS_FEATURE_ENABLED` is
+   false on disk again, and it is the FIRST gate in the funnel: without this
+   mock every assertion below would read `feature_hidden` and this file would
+   silently stop testing the meter, the refund and STOP at all — a suite that
+   passes while proving nothing, which is the failure mode this repo has been
+   bitten by eleven times.
+
+   ⚠️ MOCKED RATHER THAN THE ASSERTIONS RELAXED. The machinery is unchanged and
+   must stay verified; what changed is that nothing can reach it in production
+   today, and `the-245-sms-hidden.test.ts` is where THAT is asserted. */
+vi.mock('../sms-feature', () => ({
+  SMS_FEATURE_ENABLED: true,
+  SMS_HIDDEN_MESSAGE: 'SMS is temporarily unavailable.',
+}));
 vi.mock('../zernio', () => ({ zernioSendSms }));
 vi.mock('../sms-usage', () => ({ reserveSmsSegment, settleSmsSegments, refundSmsSegment }));
 vi.mock('../sms-optout', () => ({

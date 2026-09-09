@@ -502,15 +502,17 @@ describe('getFeatureMinPlan / FEATURE_MIN_PLAN (derived)', () => {
     expect(getFeatureMinPlan('accounting')).toBe('max');
   });
 
-  it('puts CRM on Free — the cheapest tier there is (moved by THE-200)', () => {
+  it('puts CRM back on Individual — free no longer carries it (moved by THE-335)', () => {
     // THE-161 put CRM on every PAID tier and this said 'Individual'. THE-200
-    // added a cheaper tier that ALSO has CRM, and the label followed the cell
-    // with no literal edited in any component — which is the whole point of
-    // deriving it. 🔴 This is the ONE FEATURE_MIN_PLAN value the free tier
-    // moved, and it is a TRUE statement: free genuinely carries crm: true, so
-    // no church is being shown a claim about a tier that lacks the feature.
-    expect(getFeatureMinPlan('crm')).toBe('free');
-    expect(FEATURE_MIN_PLAN.crm).toBe('Free');
+    // added a cheaper tier that ALSO had CRM and the label followed the cell;
+    // THE-335 took CRM off free — the founder's split, "the free plan should
+    // have signup feature not CRM since we separated them" — and the label
+    // followed it BACK, with no literal edited in any component. That round trip
+    // is the whole point of deriving it, and it is a TRUE statement in both
+    // directions: no church is shown a claim about a tier that lacks the
+    // feature.
+    expect(getFeatureMinPlan('crm')).toBe('plus');
+    expect(FEATURE_MIN_PLAN.crm).toBe('Individual');
     expect(FEATURE_MIN_PLAN.crm).not.toBe('Ministry');
     // The cheapest PAID tier still has it — CRM did not become free-only.
     expect(getPlanFeatures('plus').crm).toBe(true);

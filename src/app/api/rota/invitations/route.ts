@@ -5,6 +5,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { requireAdmin, requireTenantPermission } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import { captureHandledError } from '@/lib/money-path-sentry';
+import { SMS_FEATURE_ENABLED } from '@/lib/sms-feature';
 import {
   MAX_SENDS_PER_REQUEST,
   listInvitations,
@@ -88,6 +89,21 @@ async function contactFor(tenantId: string, personId: string): Promise<PersonCon
  * church may not get.
  */
 async function smsAvailableFor(tenantId: string): Promise<boolean> {
+  // 🔴 THE-335 — THE MASTER SWITCH FIRST, BEFORE THE PLAN CELL.
+  //
+  // ⚠️ THIS IS THE ONE SURFACE THE-335 FOUND THE SWITCH NOT REACHING. THE-324
+  // wrote this function after THE-314 flipped SMS on, so it only ever asked the
+  // plan: `smsAutomation` is true on Ministry whatever `SMS_FEATURE_ENABLED`
+  // says, and this route answered `smsAvailable: true` to the panel while the
+  // funnel was refusing every send with `feature_hidden`. Nothing was ever sent
+  // and nothing was ever metered — `sendOneSms` maps that code to
+  // `'unavailable'` — but the panel PROMISED a Ministry admin a text it then
+  // did not deliver, which is the false claim this switch exists to prevent.
+  //
+  // 🔴 FAILS CLOSED IN THE SAME DIRECTION AS THE CATCH BELOW: the answer this
+  // route may safely get wrong is "no SMS", because the email carries the
+  // invitation on its own.
+  if (!SMS_FEATURE_ENABLED) return false;
   try {
     const snap = await adminDb.collection('tenants').doc(tenantId).get();
     if (!snap.exists) return false;

@@ -14,7 +14,7 @@
 | Events | visible · upgrade screen | hidden | hidden | visible · full |
 | Services | visible · upgrade screen | hidden | hidden | visible · full |
 | Notes | visible · upgrade screen | hidden | visible · full | visible · full |
-| CRM | visible · full | visible · full | visible · full | visible · full |
+| CRM | visible · upgrade screen | visible · full | visible · full | visible · full |
 | Signups | visible · full | visible · full | visible · full | visible · full |
 | Accounting | visible · upgrade screen | hidden | hidden | visible · full |
 | Forms | visible · upgrade screen | hidden | hidden | visible · full |

@@ -80,6 +80,16 @@ vi.mock('../../lib/sms-feature', () => ({
   SMS_FEATURE_ENABLED: true,
   SMS_HIDDEN_MESSAGE: 'SMS is temporarily unavailable.',
 }));
+// 🔴 THE-335 — the newsletter switch is mocked ON here on EXACTLY the terms the
+// SMS switch above already is, and for the same reason. This file is about the
+// PLAN gate: which tier reaches which tab, and whether the nav layer and the
+// render layer agree about it. A master switch in front of that gate would blank
+// two rows and turn every assertion about them vacuous. That the tab is GONE
+// while the switch is off is asserted in THE-335's own suite instead.
+vi.mock('../../lib/newsletter-feature', () => ({
+  NEWSLETTER_FEATURE_ENABLED: true,
+  NEWSLETTER_HIDDEN_MESSAGE: 'Newsletter is temporarily unavailable.',
+}));
 
 vi.mock('react-router-dom', () => ({ useNavigate: () => navigate, useParams: () => params.current }));
 vi.mock('../../utils/tenant.utils', () => ({ checkRosterAdminStatus }));
@@ -207,9 +217,11 @@ const TABS: Tab[] = [
   { label: 'Services', section: 'services', cell: (f) => f.eventRegistration },
   { label: 'Notes', section: 'docs', cell: (f) => f.docs },
   { label: 'CRM', section: 'crm', cell: (f) => f.crm },
-  // THE-277 — the Analytics sub-tab, promoted to its own page on the same
-  // `crm` cell it was already gated by.
-  { label: 'Signups', section: 'signups', cell: (f) => f.crm },
+  // THE-277 — the Analytics sub-tab, promoted to its own page.
+  // 🔴 THE-335 — on its OWN `signups` cell now, not `crm`. The founder split
+  // what free gets, and a shared cell could not express it: crm:false on free
+  // took this screen and its analytics away in the same edit.
+  { label: 'Signups', section: 'signups', cell: (f) => f.signups },
   { label: 'Accounting', section: 'accounting', cell: (f) => f.accountingTools || f.givingStatements },
   { label: 'Forms', section: 'forms', cell: (f) => f.customForms },
   { label: 'Check-In', section: 'checkin', cell: null },
@@ -389,8 +401,12 @@ describe('1 — a free tenant sees all eighteen nav items', () => {
     // same one cell now unlocks two rows. No cell in the matrix moved.
     const f = getPlanFeatures('free');
     const unlockedByCells = TABS.filter((t) => t.cell !== null && t.cell(f)).map((t) => t.label);
-    expect(unlockedByCells, "free's cells now unlock more than Courses, CRM and Signups — check the matrix")
-      .toEqual(['Courses', 'CRM', 'Signups']);
+    // 🔴 THE-335 — 'CRM' LEFT AND 'Signups' STAYED, which is the founder's split
+    // read straight off the matrix: free keeps the screen that shows who
+    // enrolled, with their contact records and the CSV export, and loses the one
+    // it was sharing a cell with.
+    expect(unlockedByCells, "free's cells unlock something other than Courses and Signups — check the matrix")
+      .toEqual(['Courses', 'Signups']);
   });
 
   it('Branding is NOT one of the sixteen, on free or on any tier below Ministry', async () => {
@@ -684,7 +700,18 @@ describe('8 — no feature flag changed', () => {
       ['fundraising', [false, true, true, true]],
       ['eventRegistration', [false, false, false, true]],
       ['docs', [false, false, true, true]],
-      ['crm', [true, true, true, true]],
+      // 🔴 MOVED BY THE-335, the THIRD cell in this table to move, and the only
+      // one whose move is about FREE. Was [true, true, true, true]. The founder
+      // split what free gets — "The free plan should have signup feature not CRM
+      // since we separated them" — so free is false and the three priced tiers
+      // are untouched.
+      ['crm', [false, true, true, true]],
+      // 🔴 NEW AT THE-335, and it is READ: `AdminDashboard` gates both the
+      // `signups` nav entry and the `signups` render branch on it. It exists
+      // because both screens shared `crm`, so crm:false on free would have taken
+      // the Signups screen — and the analytics that has lived on it since
+      // THE-277 — away in the same edit. No `analytics` cell was invented.
+      ['signups', [true, true, true, true]],
       ['accountingTools', [false, false, false, true]],
       ['givingStatements', [false, false, false, true]],
       ['customForms', [false, false, false, true]],

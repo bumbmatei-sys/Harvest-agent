@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import AdminDashboard from '../AdminDashboard';
@@ -317,102 +319,139 @@ async function screenFor(plan: TenantPlan | null, who: Who = {}, section = 'sms'
 
 /* ── 1 ─────────────────────────────────────────────────────────────────────
    No tier reaches SMS in the nav — free included.                            */
-describe('1 — the SMS nav entry is back, on Ministry alone', () => {
-  it('🔴 is PRESENT on max — the tier that bought it', async () => {
-    const { nav } = await navFor('max');
-    expect(nav, 'Ministry cannot reach SMS').toContain('SMS');
-  });
-
-  it('🔴 is absent on plus and pro — the two tiers THE-314 took it from', async () => {
-    // The downgrade, read off the rendered nav rather than off the matrix.
-    for (const plan of ['plus', 'pro'] as TenantPlan[]) {
+describe('1 — NO tier reaches the SMS nav entry, free and super admin included', () => {
+  /* 🔴 REVERSED AGAIN BY THE-335, back to the state THE-245 shipped and this
+     file is named for. The master switch sits IN FRONT of the plan clause and
+     the permission clause, so there is no tier, no role and no override that
+     produces the entry — which is what "hidden entirely" has to mean if it is
+     to mean anything. The plan and permission clauses behind it are untouched;
+     flipping SMS_FEATURE_ENABLED restores the identical Ministry-only
+     entitlement THE-314 built, which is what section 1b proves. */
+  for (const plan of ['plus', 'pro', 'max'] as TenantPlan[]) {
+    it(`🔴 is absent on ${plan}`, async () => {
       const { nav } = await navFor(plan);
       expect(nav, `${plan} still reaches SMS`).not.toContain('SMS');
-      // …and the rest of that tier's nav is untouched, so the change took one
+      // …and the rest of that tier's nav is untouched, so the switch took one
       // entry and not a category.
       for (const label of ['Blog', 'Courses', 'CRM', 'Fundraising', 'Check-In']) {
-        expect(nav, `removing SMS from ${plan} also took "${label}"`).toContain(label);
+        expect(nav, `hiding SMS on ${plan} also took "${label}"`).toContain(label);
       }
-    }
-  });
+    });
+  }
 
-  it('🔴 free SEES the entry but cannot open it — the same shape as every other paid feature', async () => {
-    // ⚠️ FREE IS THE ONE TIER WHOSE NAV IGNORES ITS OWN PLAN CELLS (THE-220):
-    // it shows every entry and meets the upgrade wall on click. SMS is not made
-    // an exception to that, and this is the assertion that says so on purpose
-    // rather than by omission — a free tenant sees "SMS" exactly as it sees
-    // "Blog" and "Newsletter", both of which it also cannot use.
-    //
-    // 🔴 WHAT ACTUALLY PROTECTS THE MONEY IS NOT THIS NAV ENTRY. `smsAutomation`
-    // is false on free, so the screen walls, `/api/sms/numbers` refuses the
-    // purchase with a 403, and the send funnel refuses before it reserves a
-    // segment. A nav label is a label; three server-side gates are the control.
+  it('🔴 free does NOT see it either — the one tier whose nav ignores its plan cells', async () => {
+    // ⚠️ FREE IS THE TIER THIS ASSERTION IS ABOUT (THE-220): its nav shows every
+    // entry and meets the upgrade wall on click, so a gate written only as a
+    // plan cell would still have drawn the label here. The master switch is
+    // ahead of `navAllows`, which is why it does not.
     const { nav } = await navFor(FREE_PLAN);
-    expect(nav, 'free lost the SMS entry that THE-220 gives it').toContain('SMS');
+    expect(nav, 'free still sees an SMS entry it cannot use').not.toContain('SMS');
     for (const label of ['Blog', 'Courses', 'CRM', 'Fundraising', 'Check-In', 'Livestream', 'Community']) {
       expect(nav, `free lost "${label}"`).toContain(label);
     }
-
-    // And the entry does not open the screen — asserted here rather than left
-    // to section 2, because "free sees the label" is only safe alongside it.
-    const { screen } = await screenFor(FREE_PLAN);
-    expect(screen, 'free reached the SMS screen from its see-everything nav').not.toBe('AdminSms');
   });
 
-  it('a SUPER ADMIN with the platform override reaches it', async () => {
+  it('🔴 a SUPER ADMIN with the platform override does not see it', async () => {
+    // The override is a PLAN override, and this is not a plan gate. Asserted
+    // rather than assumed: the super admin is the account that would otherwise
+    // reach a screen whose provider calls spend Harvest's own money.
     isSuperAdminMock.mockReturnValue(true);
     hasPlatformOverrideMock.mockReturnValue(true);
     const { nav } = await navFor(null, { role: 'super_admin' });
-    expect(nav, 'the super-admin nav lost SMS').toContain('SMS');
+    expect(nav, 'the platform override reached a hidden feature').not.toContain('SMS');
     expect(nav, 'the super-admin nav lost more than SMS').toContain('Tenants');
   });
 
-  it('🔴 the manageSms permission alone does not open it on a tier without the plan', async () => {
-    // Both clauses must hold. The permission is untouched in Firestore and
-    // still grants what it always granted — it just has no Individual-tier
-    // feature to open.
-    const { nav } = await navFor('plus', { role: 'church_admin', permissions: { manageSms: true } });
-    expect(nav, 'the manageSms permission overrode the plan gate').not.toContain('SMS');
+  it('🔴 the manageSms permission does not open it either', async () => {
+    // The stored grant is UNTOUCHED in Firestore — it just has nothing to open.
+    const { nav } = await navFor('max', { role: 'church_admin', permissions: { manageSms: true } });
+    expect(nav, 'the manageSms permission overrode the master switch').not.toContain('SMS');
+  });
+});
+
+/* ── 1b ────────────────────────────────────────────────────────────────────
+   🔴 …and the gate behind the switch is INTACT, so the flip restores it.      */
+describe('1b — the Ministry-only entitlement is intact behind the switch', () => {
+  /* 🔴 THE HIDE-NOT-DELETE GUARANTEE, READ OFF THE SOURCE. Section 1 proves no
+     tier reaches SMS today; on its own that is also exactly what DELETING the
+     plan clause would look like, so it cannot tell the two apart. This can: the
+     master switch is `&&`-ed IN FRONT of the plan and permission clauses, both
+     of which are still written, so flipping SMS_FEATURE_ENABLED restores the
+     identical Ministry-only entitlement THE-314 built rather than an
+     approximation of it.
+
+     ⚠️ ASSERTED ON SOURCE RATHER THAN BY MOCKING THE FLAG. `AdminDashboard` is
+     imported statically by this file's harness, so `vi.doMock` after load
+     cannot reach it, and `resetModules` would discard the whole mock graph the
+     harness is built on. The RENDERED half of "the flip works" is
+     `the-245-sms-hidden.test.ts` section 2, which mocks the switch on before
+     any import and drives the routes; this is the half that says the clauses
+     it would re-enable are still here. */
+  // ⚠️ `path.resolve(__dirname, …)` rather than `new URL(import.meta.url)`: this
+  // suite runs under a DOM environment where `import.meta.url` is not a file:
+  // URL, and `readFileSync` refuses it.
+  const SRC = readFileSync(
+    path.resolve(__dirname, '../AdminDashboard.tsx'), 'utf8');
+
+  it('🔴 the plan and permission clauses are still written, behind the switch', () => {
+    const entry = /SMS_FEATURE_ENABLED &&[\s\S]{0,240}?id: 'sms'/.exec(SRC);
+    expect(entry, 'the SMS nav entry is no longer gated by the master switch').not.toBeNull();
+    expect(entry![0], 'the plan clause was deleted rather than left behind the switch')
+      .toContain("navAllows(features?.smsAutomation)");
+    expect(entry![0], 'the permission clause was deleted rather than left behind the switch')
+      .toContain('perms.manageSms');
+  });
+
+  it("🔴 the 'sms' id still sits in its nav group, so the grouping survives the flip", () => {
+    // The groups are FILTERED against the tab array, so an absent tab drops out
+    // of its group on its own — the literal must stay written here whether or
+    // not it renders, and `admin-sections.ts`'s drift test reads it too.
+    expect(SRC, "the 'sms' id was removed from a nav group array")
+      .toMatch(/ids: \[[^\]]*'sms'[^\]]*\]/);
+  });
+
+  it('🔴 the plan matrix still sells it on Ministry alone', () => {
+    // The entitlement the flip would restore, read off the matrix rather than
+    // off the nav: THE-314's Ministry-only decision is untouched by THE-335.
+    expect(getPlanFeatures('max').smsAutomation, 'Ministry lost smsAutomation').toBe(true);
+    for (const plan of ['free', 'plus', 'pro'] as TenantPlan[]) {
+      expect(getPlanFeatures(plan).smsAutomation, `${plan} gained smsAutomation`).toBe(false);
+    }
   });
 });
 
 /* ── 2 ─────────────────────────────────────────────────────────────────────
    🔴 And a typed or bookmarked URL does not get in either.                    */
-describe('2 — /admin/sms renders for Ministry, and walls the tiers below it', () => {
-  it('🔴 a typed URL renders the screen on max', async () => {
-    const { screen } = await screenFor('max');
-    expect(screen, 'AdminSms did not render from a typed URL on Ministry').toBe('AdminSms');
-  });
-
-  it('🔴 answers WITH the upgrade wall on plus and pro — the feature exists now', async () => {
-    // ⚠️ REVERSED. While SMS was hidden this asserted the OPPOSITE: no upgrade
-    // wall, because PlanUpgradeScreen sells the tier that includes what you
-    // asked for, and marketing SMS on the very screen meant to hide it would
-    // have been a false claim — the tiers that owned `smsAutomation` could not
-    // use it either.
-    //
-    // Both halves of that reasoning are gone. SMS is real, Ministry genuinely
-    // has it, and an Individual tenant that bookmarked /admin/sms is now in the
-    // ordinary case this wall exists for: it asked for something a higher tier
-    // sells. Showing "Page not found." there would hide a capability Harvest is
-    // selling, which is the mirror of the false claim the old assertion feared.
-    for (const plan of ['plus', 'pro'] as TenantPlan[]) {
-      const { screen, wall } = await screenFor(plan);
+describe('2 — /admin/sms renders nothing for anyone, and does not crash', () => {
+  for (const plan of ['plus', 'pro', 'max'] as TenantPlan[]) {
+    it(`🔴 a typed URL renders neither the screen nor an upgrade wall on ${plan}`, async () => {
+      /* 🔴 NOT PlanUpgradeScreen, and that is the decision rather than an
+         oversight. That screen sells the tier that includes what you asked for,
+         so it would advertise SMS on the very screen meant to hide it — and the
+         tier that owns `smsAutomation` cannot use it either right now, so there
+         is nothing to upgrade to. "Page not found." is the honest answer.
+         ⚠️ THIS IS ALSO THE CRASH GUARD. The production failure that prompted
+         THE-335 was React #31 thrown out of the number-purchase panel; a branch
+         that renders nothing cannot reach the component that threw it. */
+      const { screen, wall, text } = await screenFor(plan);
       expect(screen, `${plan} reached the SMS screen`).not.toBe('AdminSms');
-      expect(wall, `${plan} got no upgrade wall for a feature Ministry sells`).not.toBeNull();
-    }
-  });
+      expect(wall, `${plan} is sold SMS on the screen meant to hide it`).toBeNull();
+      expect(text, `/admin/sms rendered nothing at all on ${plan}`).toContain('Page not found.');
+    });
+  }
 
   it('free is refused too', async () => {
-    const { screen } = await screenFor(FREE_PLAN);
+    const { screen, text } = await screenFor(FREE_PLAN);
     expect(screen, 'free reached the SMS screen').not.toBe('AdminSms');
+    expect(text).toContain('Page not found.');
   });
 
-  it('a super admin reaches the screen as well', async () => {
+  it('🔴 a super admin is refused as well', async () => {
     isSuperAdminMock.mockReturnValue(true);
     hasPlatformOverrideMock.mockReturnValue(true);
-    const { screen } = await screenFor(null, { role: 'super_admin' });
-    expect(screen).toBe('AdminSms');
+    const { screen, text } = await screenFor(null, { role: 'super_admin' });
+    expect(screen, 'the platform override reached the hidden screen').not.toBe('AdminSms');
+    expect(text).toContain('Page not found.');
   });
 
   it('every other section still renders, so the switch took exactly one', async () => {

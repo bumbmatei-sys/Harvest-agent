@@ -66,6 +66,15 @@ vi.mock('../../lib/sms-feature', () => ({
   SMS_FEATURE_ENABLED: true,
   SMS_HIDDEN_MESSAGE: 'SMS is temporarily unavailable.',
 }));
+// 🔴 THE-335 — the newsletter switch is mocked ON here on EXACTLY the terms the
+// SMS switch above already is, and for the same reason. This file is about the
+// PLAN gate; a master switch in front of it would blank the row and turn every
+// assertion about it vacuous. That the tab is GONE while the switch is off is
+// asserted in THE-335's own suite instead.
+vi.mock('../../lib/newsletter-feature', () => ({
+  NEWSLETTER_FEATURE_ENABLED: true,
+  NEWSLETTER_HIDDEN_MESSAGE: 'Newsletter is temporarily unavailable.',
+}));
 
 vi.mock('react-router-dom', () => ({ useNavigate: () => navigate, useParams: () => params.current }));
 vi.mock('../../utils/tenant.utils', () => ({ checkRosterAdminStatus }));
@@ -178,7 +187,11 @@ const TABS: Row[] = [
   { label: 'Services', section: 'services', screen: 'AdminServices', feature: (f) => f.eventRegistration },
   { label: 'Notes', section: 'docs', screen: 'AdminDocs', feature: (f) => f.docs },
   { label: 'CRM', section: 'crm', screen: 'AdminCRM', feature: (f) => f.crm },
-  { label: 'Signups', section: 'signups', screen: 'AdminSignups', feature: (f) => f.crm },
+  // 🔴 THE-335 — `signups`, not `crm`. The founder split what free gets ("The
+  // free plan should have signup feature not CRM since we separated them"), and
+  // a shared cell could not express it: crm:false on free took this screen — and
+  // the analytics on it — away in the same edit.
+  { label: 'Signups', section: 'signups', screen: 'AdminSignups', feature: (f) => f.signups },
   { label: 'Accounting', section: 'accounting', screen: 'AdminAccounting', feature: (f) => f.accountingTools || f.givingStatements },
   { label: 'Forms', section: 'forms', screen: 'AdminForms', feature: (f) => f.customForms },
   { label: 'Check-In', section: 'checkin', screen: 'AdminCheckin', feature: (f) => f.checkInSystem, note: 'hosts TWO products — see KNOWN_TWO_LAYER_EXCEPTIONS' },

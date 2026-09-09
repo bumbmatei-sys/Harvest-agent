@@ -367,20 +367,28 @@ describe('a super admin still can', () => {
 
 describe('the plan clause is satisfied on every paid tier', () => {
   /**
-   * The shell gates the Signups entry on `navAllows(features?.crm)` alongside
-   * the permission, so "the dashboard should be available in all paid plans"
-   * has a second half: `crm` must be true wherever a paid owner looks. It is —
-   * on all four tiers, free included — so the founder's premise holds and there
-   * is no second bug to report. A tier that ever loses the cell fails HERE,
-   * named, rather than silently hiding the tab from the people who paid.
+   * The shell gates the Signups entry on the plan cell alongside the permission,
+   * so "the dashboard should be available in all paid plans" has a second half:
+   * that cell must be true wherever a paid owner looks. It is — on all four
+   * tiers, free included — so the founder's premise holds and there is no second
+   * bug to report. A tier that ever loses the cell fails HERE, named, rather
+   * than silently hiding the tab from the people who paid.
+   *
+   * 🔴 THE CELL IS `signups` SINCE THE-335, not `crm`. The gate moved when the
+   * founder split what free gets — "the free plan should have signup feature not
+   * CRM since we separated them" — and this suite has to follow the gate it is
+   * about, or it would be asserting a cell the Signups entry no longer reads.
+   * THE-302's own claim is UNCHANGED and is if anything stronger: the analytics
+   * owner's dashboard is available on every tier, and now on free by a cell that
+   * exists for it rather than by one it was borrowing.
    */
-  it.each(PLAN_ORDER)('%s carries crm', (tier) => {
-    expect(getPlanFeatures(tier).crm, `${PLAN_DISPLAY_NAMES[tier]} (${tier}) has no crm cell`).toBe(true);
+  it.each(PLAN_ORDER)('%s carries signups', (tier) => {
+    expect(getPlanFeatures(tier).signups, `${PLAN_DISPLAY_NAMES[tier]} (${tier}) has no signups cell`).toBe(true);
   });
 
   it('names every tier that is missing it, rather than just failing', () => {
-    const missing = PLAN_ORDER.filter((p) => !getPlanFeatures(p).crm);
-    expect(missing, `tiers without crm: ${missing.join(', ') || 'none'}`).toEqual([]);
+    const missing = PLAN_ORDER.filter((p) => !getPlanFeatures(p).signups);
+    expect(missing, `tiers without signups: ${missing.join(', ') || 'none'}`).toEqual([]);
   });
 
   it('and there is still no analytics cell in the plan matrix', () => {
