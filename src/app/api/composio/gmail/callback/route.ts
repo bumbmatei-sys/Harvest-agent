@@ -3,10 +3,19 @@ import type { NextRequest } from 'next/server';
 import { getConnectionStatus, verifySignedState } from '@/lib/composio-client';
 import { adminDb } from '@/lib/firebase-admin';
 import { captureHandledError } from '@/lib/money-path-sentry';
+import { GMAIL_FEATURE_ENABLED, GMAIL_HIDDEN_MESSAGE } from '@/lib/gmail-feature';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  // 🔴 THE-339 — the master switch, before anything else in this handler.
+  // The route is not deleted and every gate below it is untouched; flipping
+  // GMAIL_FEATURE_ENABLED brings it back exactly as it was. A stale tab holding
+  // a signed state cannot complete a grant after the switch went off.
+  if (!GMAIL_FEATURE_ENABLED) {
+    return NextResponse.json({ error: GMAIL_HIDDEN_MESSAGE }, { status: 503 });
+  }
+
   const { searchParams } = new URL(request.url);
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
 

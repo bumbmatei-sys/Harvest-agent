@@ -105,6 +105,7 @@ import AdminSettings from '../AdminSettings';
 import type { PlanFeatures } from '../../utils/plan-features';
 import { getPlanFeatures, PLAN_DISPLAY_NAMES } from '../../utils/plan-features';
 import { NEWSLETTER_FEATURE_ENABLED } from '../../lib/newsletter-feature';
+import { GMAIL_FEATURE_ENABLED, GMAIL_PAUSED_NOTICE } from '../../lib/gmail-feature';
 import {
   INTEGRATION_PROVIDERS,
   hasAnyIntegrationProvider,
@@ -194,8 +195,25 @@ describe('THE-193 — Integrations gating', () => {
   });
 
   // 2
-  it('an Individual tenant sees the Gmail provider', async () => {
-    expect(await providersOn(INDIVIDUAL)).toContain('Gmail');
+  it('an Individual tenant sees the Gmail provider exactly while the switch allows it', async () => {
+    // 🔴 THE-339 — DERIVED, not restated. THE-193's claim was that Individual —
+    // a tier that HAS the CRM — reaches Gmail from Settings, and that claim is
+    // unchanged behind the switch: the plan gate below still says yes. What
+    // changed is that a master switch now sits ahead of it, so the CARD is
+    // absent while Gmail is hidden and returns in the same motion that flips
+    // the flag. Asserting the flag's own value here would make this a copy of
+    // test 1 in THE-339's suite; asserting the RELATIONSHIP is what this file
+    // is for, and it fails in either direction.
+    const shown = await providersOn(INDIVIDUAL);
+    if (GMAIL_FEATURE_ENABLED) expect(shown, 'Individual lost Gmail').toContain('Gmail');
+    else expect(shown, 'Gmail is hidden but its card is still on screen').not.toContain('Gmail');
+
+    // The ENTITLEMENT is untouched by the switch, which is what makes the flip
+    // back a restoration rather than a re-derivation.
+    const features = getPlanFeatures(INDIVIDUAL);
+    expect(features.crm, 'Individual lost the CRM').toBe(true);
+    expect(isProviderAvailable(getIntegrationProvider('gmail'), features, INDIVIDUAL),
+      'the Gmail plan gate moved rather than the switch doing the hiding').toBe(true);
   });
 
   // 3 ── 🔴 the flags did not change
@@ -216,14 +234,21 @@ describe('THE-193 — Integrations gating', () => {
  *  provider from EVERY tier and from the platform override too, in the shape the
  *  SMS nav entry uses: the switch is ahead of the plan gate, so Instagram and
  *  Mailchimp are absent for everyone while the newsletter is a coming-soon
- *  entry. 🔴 GMAIL IS UNAFFECTED and must be: its concern is 'crm', it is what
- *  sends a CRM contact an email, and it is the transport a rota invitation goes
- *  out on — the founder's stated replacement for SMS.
+ *  entry.
  *
- *  Derived from the flag rather than hardcoded, so each provider returns to the
- *  expected set in the same motion that turns its feature back on. */
+ *  🔴 THE-339 — AND GMAIL IS NOW HIDDEN TOO, ON ITS OWN SWITCH. The sentence
+ *  that stood here said Gmail was unaffected because "it is the transport a rota
+ *  invitation goes out on — the founder's stated replacement for SMS". THE-340
+ *  moved rota invitations onto Resend, from a Harvest-controlled sender, so that
+ *  reason no longer holds and is corrected rather than left to mislead: a
+ *  volunteer's serving invitation does not depend on any church's Gmail.
+ *
+ *  Derived from the flags rather than hardcoded, so each provider returns to the
+ *  expected set in the same motion that turns its feature back on — and so this
+ *  list cannot silently agree with a component that hides the wrong one. */
 const EXPECTED_PROVIDERS = INTEGRATION_PROVIDERS
   .filter((p) => NEWSLETTER_FEATURE_ENABLED || p.concern !== 'newsletter')
+  .filter((p) => GMAIL_FEATURE_ENABLED || p.id !== 'gmail')
   .map((p) => p.label);
 
   // 4
@@ -320,8 +345,20 @@ const EXPECTED_PROVIDERS = INTEGRATION_PROVIDERS
     expect(destination, 'the button no longer navigates anywhere').not.toBeNull();
     expect(destination![1]).toBe('/admin/settings');
 
+    // 🔴 THE-339 — THE DEAD END IS CLOSED FROM THE OTHER SIDE WHILE GMAIL IS
+    // HIDDEN, and that has to be asserted rather than assumed. THE-193's hole
+    // was a button pointing at a section that was not there. With the switch off
+    // the button is not rendered at all, so there is no journey to strand — and
+    // the source-level half above still proves the button and its destination
+    // survive intact for the flip back.
+    const crmGate = crm.slice(Math.max(0, crm.indexOf('const canConnectGmail')), crm.indexOf('const canConnectGmail') + 700);
+    expect(crmGate, 'the CRM email affordance stopped reading the Gmail switch')
+      .toContain('GMAIL_FEATURE_ENABLED &&');
+
     // …and Settings is where the Gmail connection lives, on every tier whose
-    // plan includes the CRM. That is the whole round trip.
+    // plan includes the CRM. That is the whole round trip, and the PLAN half of
+    // it is untouched by the switch: every CRM tier is still entitled to Gmail,
+    // which is what makes the flip back a restoration.
     const gmail = getIntegrationProvider('gmail');
     for (const plan of ALL_PLANS) {
       const features = getPlanFeatures(plan);
@@ -333,7 +370,16 @@ const EXPECTED_PROVIDERS = INTEGRATION_PROVIDERS
       const host = await mount(plan);
       expect(rowHeader(host, 'Integrations'), `${PLAN_DISPLAY_NAMES[plan]} lands on a Settings page with no Integrations`).toBeTruthy();
       await expandSection(host, 'Integrations');
-      expect(hasProviderCard(host, 'Gmail'), `${PLAN_DISPLAY_NAMES[plan]} cannot reach Gmail from Settings`).toBe(true);
+      if (GMAIL_FEATURE_ENABLED) {
+        expect(hasProviderCard(host, 'Gmail'), `${PLAN_DISPLAY_NAMES[plan]} cannot reach Gmail from Settings`).toBe(true);
+      } else {
+        expect(hasProviderCard(host, 'Gmail'), `${PLAN_DISPLAY_NAMES[plan]} still has a Gmail card while Gmail is hidden`).toBe(false);
+        // 🔴 …and the section is not a heading over nothing. It says what
+        // happened, which is the difference between hiding a feature and
+        // silently dropping one.
+        expect(host.textContent, `${PLAN_DISPLAY_NAMES[plan]} is shown an Integrations section that explains nothing`)
+          .toContain(GMAIL_PAUSED_NOTICE);
+      }
     }
   });
 
@@ -348,12 +394,25 @@ const EXPECTED_PROVIDERS = INTEGRATION_PROVIDERS
 
     // And the rendered Gmail card offers no "Make Primary" affordance, on the
     // tier that sees all three (so the control exists on screen for the others).
+    //
+    // 🔴 THE-339 — the SOURCE half above is the durable claim and is asserted
+    // unconditionally: `primaryGmail` appears nowhere whether or not the card is
+    // on screen. The RENDERED half can only be measured when there is a card to
+    // measure, so while the switch is off it is replaced by the stronger
+    // statement that there is no Gmail card at all — which is checked here
+    // rather than skipped, so this case can never pass by finding nothing.
     const host = await mount(SMALL_TEAM);
     await expandSection(host, 'Integrations');
     const gmailCard = Array.from(host.querySelectorAll('div')).find((d) =>
       Array.from(d.querySelectorAll('p')).some(p => (p.textContent || '').trim() === 'Gmail') &&
       (d.textContent || '').includes('Send-only access'),
     );
+    if (!GMAIL_FEATURE_ENABLED) {
+      expect(gmailCard, 'a Gmail card is on screen while Gmail is hidden').toBeUndefined();
+      expect(host.textContent, 'the send-only promise is still being made for a hidden feature')
+        .not.toContain('Send-only access');
+      return;
+    }
     expect(gmailCard, 'no Gmail card on a tier that has every provider').toBeTruthy();
     expect(gmailCard!.textContent, 'the Gmail card offers a Primary affordance').not.toContain('Make Primary');
     expect(gmailCard!.textContent, 'the Gmail card claims a Primary status').not.toContain('Primary');

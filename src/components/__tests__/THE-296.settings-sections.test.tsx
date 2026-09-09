@@ -714,9 +714,68 @@ describe('8 · assertSendOnlyGmailScopes still fails closed', () => {
     // THE-286's set and this slice is the first to make a claim about them.
     for (const rel of ['src/lib/gmail-scopes.ts', 'src/app/api/composio/gmail/connect/route.ts']) {
       const now = createHash('sha256').update(readFileSync(path.join(ROOT, rel))).digest('hex');
-      expect(now, `${rel} changed — this slice must not touch the scope path`)
-        .toBe(GMAIL_PATH_DIGESTS[rel]);
+      // 🔴 THE-339 — the accepted set is the ORIGINAL value plus whatever a
+      // recorded edit left the file at. APPENDED, never substituted: main went
+      // red for everyone once because a PR replaced a pinned digest instead of
+      // adding to it, and a substitution would also silently retire the original
+      // value this slice measured.
+      const accepted = [
+        GMAIL_PATH_DIGESTS[rel],
+        ...GMAIL_PATH_EDITS.filter((e) => e.file === rel).map((e) => e.digest),
+      ];
+      expect(accepted, `${rel} changed — this slice must not touch the scope path`)
+        .toContain(now);
     }
+  });
+
+  /**
+   * 🔴 THE-339 — `gmail-scopes.ts` CANNOT BE EXEMPTED, AND THAT IS DELIBERATE.
+   *
+   * The register above accepts a recorded edit for either file, so this says out
+   * loud which of the two may never use it. `assertSendOnlyGmailScopes` is the
+   * guard that stops Harvest ever holding a scope that can read a church's
+   * inbox; hiding the feature must not be a route by which that guard is
+   * loosened, and when Gmail comes back WITH an inbox, widening the scope is a
+   * deliberate separate decision rather than a side effect of un-hiding.
+   */
+  it('🔴 no edit may ever be recorded against gmail-scopes.ts', () => {
+    expect(GMAIL_PATH_EDITS.map((e) => e.file), 'the scope module was given an exemption')
+      .not.toContain('src/lib/gmail-scopes.ts');
+  });
+
+  it('🔴 the recorded edit is real, reasoned, and left the scope guard in place', async () => {
+    const { createHash } = await import('node:crypto');
+    expect(GMAIL_PATH_EDITS.map((e) => `${e.ticket} ${e.file}`), 'the edit list widened')
+      .toEqual(['THE-339 src/app/api/composio/gmail/connect/route.ts']);
+
+    for (const { file, why, digest } of GMAIL_PATH_EDITS) {
+      // The digest MUST actually differ from the original, so a later change
+      // that reverts the edit fails here and the entry has to come out.
+      expect(digest, `${file} is exempted at its original digest — drop the entry`)
+        .not.toBe(GMAIL_PATH_DIGESTS[file]);
+      expect(createHash('sha256').update(readFileSync(path.join(ROOT, file))).digest('hex'),
+        `${file} is recorded at a digest it is not at`).toBe(digest);
+      expect(why.length, `${file} is exempted without a stated reason`).toBeGreaterThan(80);
+    }
+
+    // 🔴 AND THE SUBSTANTIVE HALF: the route still CALLS the scope guard, still
+    // imports it from the module that owns it, and asks for no wider grant. A
+    // digest record says a file moved; this says the thing it moved for is
+    // still there. Read from the whole file rather than a window, because the
+    // call sits well below the switch that was added above it.
+    const route = readFileSync(path.join(ROOT, 'src/app/api/composio/gmail/connect/route.ts'), 'utf8');
+    expect(route, 'the connect route stopped importing the scope guard')
+      .toMatch(/import \{[^}]*assertSendOnlyGmailScopes[^}]*\} from '@\/lib\/gmail-scopes'/);
+    expect(route, 'the connect route stopped calling the scope guard')
+      .toMatch(/assertSendOnlyGmailScopes\(/);
+    expect(route, 'the connect route names a scope that can read a mailbox')
+      .not.toMatch(/gmail\.(readonly|modify|compose)|mail\.google\.com/);
+    // 🔴 The switch refuses BEFORE the guard rather than instead of it: the
+    // guard is unreached while Gmail is hidden, never relaxed.
+    expect(route.indexOf('if (!GMAIL_FEATURE_ENABLED)'), 'the connect route stopped refusing first')
+      .toBeGreaterThan(-1);
+    expect(route.indexOf('if (!GMAIL_FEATURE_ENABLED)'))
+      .toBeLessThan(route.indexOf('assertSendOnlyGmailScopes('));
   });
 });
 
@@ -731,6 +790,33 @@ const GMAIL_PATH_DIGESTS: Record<string, string> = {
   'src/lib/gmail-scopes.ts': 'c32ba5516b09a10e2b9f1fe83ca5f1657a04661a5676f35d4ce2a0f0ba827b10',
   'src/app/api/composio/gmail/connect/route.ts': 'e06e576687bfac84d2b9e1a900a66b0735ec4cdcaba3e0d79552184e85b728e4',
 };
+
+/**
+ * 🔴 Edits recorded against the two files above, each with the ticket that made
+ * it, why it was safe, and the digest it LEFT the file at.
+ *
+ * ⚠️ APPEND, NEVER SUBSTITUTE. The map above keeps the value this slice
+ * measured; entries here are ADDITIONAL accepted values. `gmail-scopes.ts` may
+ * never appear here — the case above asserts that in its own right.
+ */
+const GMAIL_PATH_EDITS: ReadonlyArray<{ file: string; ticket: string; why: string; digest: string }> = [
+  {
+    file: 'src/app/api/composio/gmail/connect/route.ts',
+    ticket: 'THE-339',
+    why:
+      'The master switch was added as the first statement in the handler, above the try, so a '
+      + 'hidden integration spends no Firestore read and starts no OAuth round trip on a caller. '
+      + 'THAT IS THE WHOLE EDIT: six lines and one import. Nothing else in the file moved — the '
+      + 'scope guard is called on the same object with the same arguments in the same place, the '
+      + 'sending-address capture, the pending-connection reaper, the ten-minute window and the '
+      + 'per-admin {uid}_gmail key are all byte-identical, and the case above asserts the guard is '
+      + 'still imported, still called, and reached only after the switch rather than instead of it. '
+      + 'Hiding the feature must not be a route by which the scope decision is loosened: with the '
+      + 'switch off the guard is UNREACHED, and every scope it refuses today it still refuses the '
+      + 'moment the flag flips back.',
+    digest: '9723768e27e467dbdc592886a5df39d7ef7c172f419f0f62907c64da1b067582',
+  },
+];
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * 9 — 🔴 the add-on entitlement lift is still `||`

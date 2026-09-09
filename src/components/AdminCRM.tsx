@@ -31,6 +31,7 @@ import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { useTenant } from '@/contexts/TenantContext';
 import { getEffectiveFeatures, toTenantPlan } from '../utils/plan-features';
 import { getIntegrationProvider, isProviderAvailable } from './settings/integration-providers';
+import { GMAIL_FEATURE_ENABLED } from '../lib/gmail-feature';
 import { GIVING_PROVIDER_NAMES_OR, readGivingLinks } from './donations/giving-providers';
 import {
   resolveContactLimit, countContactAccounts, isAtContactLimit, contactLimitMessage,
@@ -443,11 +444,19 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
    * previously-connected mailbox is touched; a tenant that upgrades gets the
    * button back with everything intact.
    */
-  const canConnectGmail = isProviderAvailable(
-    getIntegrationProvider('gmail'),
-    crmFeatures,
-    tenantPlan,
-  );
+  const canConnectGmail =
+    // 🔴 THE-339 — the master switch FIRST, ahead of the plan question, in the
+    // shape the newsletter rows use in `IntegrationsSection`: while Gmail is
+    // hidden NOBODY reaches an email affordance from a contact, on any tier.
+    // The predicate below is untouched, so flipping GMAIL_FEATURE_ENABLED
+    // restores the THE-193 / THE-225 behaviour exactly as it was rather than a
+    // re-derived version of it.
+    GMAIL_FEATURE_ENABLED &&
+    isProviderAvailable(
+      getIntegrationProvider('gmail'),
+      crmFeatures,
+      tenantPlan,
+    );
   // The platform-wide super-admin view counts EVERY church's users (the reads are
   // unscoped there), so a tenant plan cap is meaningless against it — gating on
   // that number would lock the platform CRM at 150. On a tenant subdomain a super

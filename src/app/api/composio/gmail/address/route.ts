@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { requireAdmin } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import { normalizeSenderEmail } from '@/lib/gmail-sender';
+import { GMAIL_FEATURE_ENABLED, GMAIL_HIDDEN_MESSAGE } from '@/lib/gmail-feature';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +27,13 @@ export const dynamic = 'force-dynamic';
  * so the address on a connection is only ever set by the admin who owns it.
  */
 export async function POST(request: NextRequest) {
+  // 🔴 THE-339 — the master switch, before anything else in this handler.
+  // The route is not deleted and every gate below it is untouched; flipping
+  // GMAIL_FEATURE_ENABLED brings it back exactly as it was.
+  if (!GMAIL_FEATURE_ENABLED) {
+    return NextResponse.json({ error: GMAIL_HIDDEN_MESSAGE }, { status: 503 });
+  }
+
   try {
     const userOrResponse = await requireAdmin(request);
     if (userOrResponse instanceof NextResponse) return userOrResponse;

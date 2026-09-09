@@ -44,10 +44,19 @@
  *     NewsletterEditor).
  *   · The "Newsletter" line on the in-app plan cards (PlanUpgradeSection).
  *   · The two `concern: 'newsletter'` integration rows — Instagram and Mailchimp
- *     — in Settings → Integrations. 🔴 GMAIL IS UNTOUCHED: it is a CRM
- *     capability (`concern: 'crm'`, `feature: 'crm'`) and it is what sends a
+ *     — in Settings → Integrations. 🔴 GMAIL IS UNTOUCHED BY *THIS* SWITCH: it
+ *     is a CRM capability (`concern: 'crm'`, `feature: 'crm'`), so nothing here
+ *     reads it and nothing here hides it.
+ *
+ *     ⚠️ THE SECOND HALF OF THAT SENTENCE HAS SINCE STOPPED BEING TRUE, and is
+ *     corrected rather than left to mislead. It read "and it is what sends a
  *     rota invitation, so hiding it here would break the founder's stated
- *     replacement for SMS.
+ *     replacement for SMS". THE-340 moved rota invitations onto Resend, from a
+ *     Harvest-controlled sender, so a serving invitation no longer depends on
+ *     any church's Gmail. THE-339 then hid Gmail on its OWN switch
+ *     (`gmail-feature.ts`) — which was only safe BECAUSE of THE-340, and which
+ *     changes nothing about this file: the newsletter switch still hides
+ *     exactly the two newsletter rows and reads no Gmail flag.
  *
  * ─── 🔴 No data is touched ───────────────────────────────────────────────────
  *
