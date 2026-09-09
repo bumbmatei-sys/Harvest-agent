@@ -144,7 +144,13 @@ const filesSpelling = (digest: string): string[] =>
  * rules entirely. Its suite reaches the accepted set through this module rather
  * than spelling the digest, so a real rules change still costs exactly one
  * edit. Nothing above is removed and no accepted value is widened. */
-const PINNING_SUITES = 60;
+/* ⚠️ APPENDED BY THE-341. It renames the nav group BROADCASTING to REACH and
+ * moves `forms` into it, on both shells — a label-and-membership change in two
+ * array literals that reads nothing from Firestore and needed NO rule. Its
+ * suite reaches the accepted set through this module rather than spelling the
+ * digest, so a real rules change still costs exactly one edit. Nothing above is
+ * removed and no accepted value is widened. */
+const PINNING_SUITES = 61;
 
 /**
  * A digest no ticket has recorded and none ever will — the planted change.

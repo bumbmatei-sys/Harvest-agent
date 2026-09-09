@@ -80,22 +80,40 @@ describe('1 · service planning is its own sidebar section, in both group arrays
   it.each([
     ['MORE_GROUPS', 'the mobile drawer'],
     ['DESKTOP_NAV_GROUPS', 'the desktop sidebar'],
-  ])('and in %s (%s) it is MINISTRY, not BROADCASTING', (name, which) => {
+  ])('and in %s (%s) it is MINISTRY, not REACH', (name, which) => {
     /**
-     * 🔴 THE PLACEMENT IS PART OF THE CLAIM. BROADCASTING is the outbound/live
-     * cluster — `events`, `checkin`, `sms`, `livestream` — surfaces that push
-     * something to an audience. Planning a Sunday service pushes nothing: it is
-     * a run sheet, a rota and the people on it, which is the same category of
-     * work as `crm` and `community`.
+     * 🔴 THE PLACEMENT IS PART OF THE CLAIM. REACH — `events`, `checkin`,
+     * `forms`, `sms`, `livestream` — is the outward-facing cluster: surfaces
+     * that carry something to an audience or carry an audience's answer back.
+     * Planning a Sunday service does neither: it is a run sheet, a rota and the
+     * people on it, which is the same category of work as `crm` and
+     * `community`.
+     *
+     * 🔴 THE-341 RENAMED THE GROUP, AND THIS GUARD HAD TO MOVE WITH IT. Read
+     * the slice below: `indexOf` on a name the array no longer spells returns
+     * -1, `slice(-1)` is the last CHARACTER, and `indexOf('},')` on that is -1
+     * again — so the row this asserts about would have been the EMPTY STRING
+     * and `not.toMatch(/'services'/)` would have passed on nothing at all.
+     * That is the vacuous-`slice` failure THE-338 found in one of its own
+     * assertions. `groupRow` below therefore PROVES the slice is non-empty
+     * before anything is asserted about it.
      */
     const body = groupArray(name);
-    const ministry = body.slice(body.indexOf("label: 'MINISTRY'"));
-    const ministryRow = ministry.slice(0, ministry.indexOf('},'));
-    expect(ministryRow, `services is not in MINISTRY in ${which}`).toMatch(/'services'/);
 
-    const broadcasting = body.slice(body.indexOf("label: 'BROADCASTING'"));
-    const broadcastingRow = broadcasting.slice(0, broadcasting.indexOf('},'));
-    expect(broadcastingRow, `services was filed under BROADCASTING in ${which}`)
+    /** The `{ label: 'X', ids: [...] }` row for one group, proven to exist. */
+    const groupRow = (label: string) => {
+      const at = body.indexOf(`label: '${label}'`);
+      expect(at, `${which} has no ${label} group — this assertion would be vacuous`)
+        .toBeGreaterThan(-1);
+      const rest = body.slice(at);
+      const end = rest.indexOf('},');
+      expect(end, `${label}'s row in ${which} never closes`).toBeGreaterThan(0);
+      return rest.slice(0, end);
+    };
+
+    expect(groupRow('MINISTRY'), `services is not in MINISTRY in ${which}`)
+      .toMatch(/'services'/);
+    expect(groupRow('REACH'), `services was filed under REACH in ${which}`)
       .not.toMatch(/'services'/);
   });
 

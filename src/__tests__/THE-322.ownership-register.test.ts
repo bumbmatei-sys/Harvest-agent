@@ -492,7 +492,7 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * retires a pinner updates this count and says what that suite still asserts;
  * a suite that quietly stops pinning fails here.
  */
-const RULES_PINNERS_NOW = 60;
+const RULES_PINNERS_NOW = 61;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per
@@ -651,6 +651,14 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
   // and that `firestore.indexes.json`, `functions/` and `layout.tsx` are
   // byte-identical too.
   ['THE-340', 'src/__tests__/THE-340.rota-resend.test.ts'],
+  // 🔴 THE-341 — BROADCASTING renamed to REACH and `forms` moved into it.
+  // APPENDED beside the entries above, never over one. Its suite asks the
+  // register `rulesDigestFailure()` rather than spelling the digest, exactly as
+  // every pinner here does, so a real rules change still costs ONE edit — and
+  // THE-333 writing a rules digest into its own record, which turned THE-322
+  // and THE-325 red, is the reason this ticket asks instead of writing. The
+  // rename is a nav change: it reads nothing from Firestore and needed no rule.
+  ['THE-341', 'src/__tests__/THE-341.reach-group.test.ts'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {

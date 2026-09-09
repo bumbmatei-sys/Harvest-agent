@@ -730,10 +730,20 @@ describe('THE-334 · the shape the founder asked for', () => {
       .toEqual([target.label]);
   });
 
-  it('🔴 12 · a nine-tab group scrolls inside the panel rather than clipping', async () => {
+  it('🔴 12 · the LARGEST group scrolls inside the panel rather than clipping', async () => {
     await mount({ superAdmin: true });
     const biggest = parsedDesktopGroups().sort((a, b) => b.ids.length - a.ids.length)[0];
-    expect(biggest.ids.length, 'no group has nine tabs any more').toBeGreaterThanOrEqual(9);
+    /* 🔴 EIGHT, NOT NINE, AND THAT IS THE-341 RATHER THAN A LOOSENING. MINISTRY
+       had nine ids when THE-334 wrote this; THE-341 moved `forms` out of it and
+       into REACH at the founder's instruction, so the biggest group is eight.
+       The CLAIM is unchanged and is the one the title states: whatever the
+       largest group is, every one of its rows renders INSIDE the scroll area
+       rather than off the bottom of a content-sized popover. The floor is kept
+       high enough to be worth asserting — a group of two proves nothing about
+       clipping — and the row count below is checked against the group's OWN
+       size, so it cannot pass by rendering fewer than it has. */
+    expect(biggest.ids.length, 'no group is large enough for this to mean anything')
+      .toBeGreaterThanOrEqual(8);
 
     await press(biggest.label);
     const p = panel(biggest.label)!;
@@ -753,7 +763,13 @@ describe('THE-334 · what it may not disturb', () => {
   it("🔴 a group's panel is BLOCKED into the founder's sections, in his order", async () => {
     /* "1. Campus (instead of church list) 2. CRM 3. Signups — a small separation
        bar representing another section — 4. services 5. community 6. forms —
-       another separation bar — 7. Fundraising 8. donations 9. accounting" */
+       another separation bar — 7. Fundraising 8. donations 9. accounting"
+       ⚠️ THE-341 moved `forms` out of MINISTRY and into REACH, so the founder's
+       middle block is two rows now. The BLOCKING is what this asserts and it is
+       untouched: three blocks, two separators, each break between the right two
+       rows. The map is read from `DESKTOP_GROUP_SECTIONS` rather than retyped,
+       and the enumeration below moves with it deliberately — a pin that is not
+       spelled out is a pin that passes whatever the map becomes. */
     await mount({ superAdmin: true });
     const label = 'MINISTRY';
     const blocks = DESKTOP_GROUP_SECTIONS[label];
@@ -761,7 +777,7 @@ describe('THE-334 · what it may not disturb', () => {
     expect(blocks.length, 'the founder asked for three blocks').toBe(3);
     expect(blocks).toEqual([
       ['churches', 'crm', 'signups'],
-      ['services', 'community', 'forms'],
+      ['services', 'community'],
       ['fundraising', 'donations', 'accounting'],
     ]);
 
@@ -1026,18 +1042,36 @@ describe('THE-334 · what it may not disturb', () => {
        becomes; this repo has already shipped one guard that compared a file to
        itself, and it is the reason this line is spelled out.
 
-       🔴 THE-338 MOVED THE DIGEST, and moving it is the correct outcome rather
-       than a weakening. THE-334 asserted mobile was UNTOUCHED because it was
-       changing the desktop rail only. THE-338 changes the drawer on purpose:
-       the founder asked for its group names and order to match desktop, so
-       the mobile `PLATFORM` and `MORE` groups became desktop's single `GROW`
-       and MINISTRY adopted desktop's order. No id moved between shells — the
-       SET of 23 is identical — and `THE-338`'s own suite asserts the two
-       arrays are now element-for-element equal, which is a stronger claim
-       than this digest ever made. */
+       🔴 AN ACCEPTED SET, APPENDED TO, NOT A SINGLE VALUE SUBSTITUTED. It was
+       written as one literal and THE-338 REPLACED that literal when it re-cut
+       the drawer — which works, and is the shape that turned `main` red for
+       everyone once, because CI runs against `refs/pull/N/merge` and a merge
+       ref cut before a ticket landed legitimately carries the older value.
+       THE-341 converts it to the accepted-SET shape every other digest pin in
+       this repo already uses and APPENDS its own value, so every earlier one
+       stays accepted and a digest that is NONE of them still fails.
+
+       🔴 EACH ENTRY IS A DELIBERATE DRAWER CHANGE, not drift:
+        • THE-338 — the founder asked the drawer's group names and order to
+          match desktop, so mobile's `PLATFORM` and `MORE` groups became
+          desktop's single `GROW` and MINISTRY adopted desktop's order. No id
+          moved between shells; the SET of 23 was identical before and after.
+        • THE-341 — the founder answered THE-338's open question with
+          "renames", so `BROADCASTING` became `REACH` and `forms` moved into
+          it. Again on BOTH shells, so the two arrays stay element-for-element
+          equal — which THE-338's own suite asserts and which is a stronger
+          claim than this digest ever made. */
+    const MORE_GROUPS_ACCEPTED = [
+      // THE-338 — the drawer re-cut to mirror desktop's names and order.
+      'b8f838ab6182d888e95e5b20b91f6c788726c145b7b1140e50de044dcaa155f8',
+      // 🔴 APPENDED BY THE-341 — BROADCASTING renamed to REACH, `forms` moved in.
+      '225e9a747654609050fc2be0a2205dc396c5b83d105ef86f625059bae2848fa6',
+    ];
     const more = src.split('const MORE_GROUPS')[1].split('\n];')[0];
-    expect(sha256(more), 'MORE_GROUPS changed — mobile was supposed to be untouched')
-      .toBe('b8f838ab6182d888e95e5b20b91f6c788726c145b7b1140e50de044dcaa155f8');
+    expect(
+      MORE_GROUPS_ACCEPTED,
+      `MORE_GROUPS is at ${sha256(more)}, which is none of the accepted values — so an unrecorded change reached the drawer`,
+    ).toContain(sha256(more));
     expect(src).toContain('flex lg:hidden justify-around items-center w-full');
   });
 

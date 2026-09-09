@@ -382,6 +382,7 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // gated by a new one in the identical shape, and the Signups gate moved off
     // the `crm` cell onto its own so free can keep Signups without CRM.
     ['d81a5b117569424515bf8c8ebca8654e8b6f57f3c7447f2419968adcebdf8bbe', 'main + THE-335 — SMS and the newsletter hidden; Signups on its own plan cell'],
+    ['a7dc96513ad4003892f3bc81d5faaed2f616bd04c496a4b3ec977777baf067b7', 'main + THE-341 — BROADCASTING renamed to REACH and `forms` moved into it, on both shells'],
   ],
 };
 

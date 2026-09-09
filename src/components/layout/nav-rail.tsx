@@ -266,7 +266,7 @@ export function NavRailContentGap() {
 
 export type NavRailFlyoutProps = {
   /**
-   * The group's IDENTITY — `CONTENT`, `MINISTRY`, `BROADCASTING`, `GROW` — as
+   * The group's IDENTITY — `CONTENT`, `MINISTRY`, `REACH`, `GROW` — as
    * `DESKTOP_NAV_GROUPS` spells it. It keys the shared open state and every
    * `data-nav-rail-*` attribute, and it is deliberately NOT what the admin
    * reads: seven pre-existing entitlement guards scan the nav by these names,

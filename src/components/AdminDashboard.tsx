@@ -126,6 +126,13 @@ const RAIL_TAB_LABELS: Record<string, string> = { dashboard: 'Home' };
 // and GROW still collapses to nothing for a church admin who has neither those
 // nor `affiliate`/`branding`.
 //
+// 🔴 THE-341 — the mirror SURVIVED this ticket. `BROADCASTING` became `REACH`
+// and `forms` moved out of MINISTRY into it, in BOTH arrays, in the same
+// position — so the two literals still hold the same labels in the same order
+// with the same ids in the same order, and THE-338's guard still compares them
+// to each other AND to an enumerated pin. All 23 ids are still present on both
+// shells; `forms` changed GROUP, not shell.
+//
 // ⚠️ Deliberately TWO array literals rather than one shared constant. A single
 // constant would make them identical by construction and un-mutatable, which
 // would leave the guard that compares them unable to fail; two literals keep
@@ -139,15 +146,31 @@ const MORE_GROUPS: { label: string; ids: string[] }[] = [
   // contacts, so it is its own entry, placed next to CRM because that is where a
   // reader looking for "who joined" will look for it.
   // Statements now live as a sub-tab inside Accounting (not a standalone entry).
-  // 🔴 THE-326 — `services` IS MINISTRY, NOT BROADCASTING. BROADCASTING is the
-  // outbound/live cluster: surfaces that push something to an audience.
-  // Planning a Sunday service pushes nothing: it is a run sheet, a rota and the
-  // volunteers on it, which is the same category of work as `crm` (who is here)
-  // and `community` (what they belong to).
-  { label: 'MINISTRY', ids: ['churches', 'crm', 'signups', 'services', 'community', 'forms', 'fundraising', 'donations', 'accounting'] },
-  // Broadcasting: outbound / live engagement channels.
+  // 🔴 THE-326 — `services` IS MINISTRY, NOT REACH. REACH (named BROADCASTING
+  // until THE-341) is the outward-facing cluster: surfaces that carry something
+  // to an audience, or carry an audience's answer back. Planning a Sunday
+  // service does neither: it is a run sheet, a rota and the volunteers on it,
+  // which is the same category of work as `crm` (who is here) and `community`
+  // (what they belong to).
+  // 🔴 THE-341 — `forms` LEFT MINISTRY for REACH at the founder's instruction.
+  // It is the only id this ticket moved between groups; every other id is where
+  // THE-338 left it, on both shells.
+  { label: 'MINISTRY', ids: ['churches', 'crm', 'signups', 'services', 'community', 'fundraising', 'donations', 'accounting'] },
+  // 🔴 THE-341 — REACH, renamed from BROADCASTING. The founder was asked whether
+  // "forms should go into reach section" meant a rename or a new group and
+  // answered "renames", so the group KEEPS ITS IDENTITY and changes its name:
+  // no id left the product, and only `forms` changed group.
+  //
+  // Reach is how a church reaches people and how people reach back — events and
+  // the livestream carry outward, check-in and forms carry an answer back. That
+  // is why `forms` belongs here and `services` (a run sheet) still does not.
+  //
+  // ⚠️ ORDER: `forms` is placed next to `checkin`, its inbound sibling, and the
+  // four ids THE-326 ordered keep their relative order exactly. The founder did
+  // not specify an order, so nothing already agreed is reshuffled.
+  //
   // QR Codes now live as a sub-tab inside Check-In (not a standalone entry).
-  { label: 'BROADCASTING', ids: ['events', 'checkin', 'sms', 'livestream'] },
+  { label: 'REACH', ids: ['events', 'checkin', 'forms', 'sms', 'livestream'] },
   // Grow: the platform surfaces (Library, Tenants, the platform Inbox) plus
   // Affiliate and Branding. `library` sits beside `tenants`, its co-gated
   // sibling — both are `isSuperAdmin`-only, so the two appear and disappear
@@ -165,12 +188,15 @@ const DESKTOP_NAV_GROUPS: { label: string; ids: string[] }[] = [
   // arrays are the mobile drawer and the desktop sidebar; a section in one and
   // not the other is a section half the product cannot reach.
   // 🔴 THE-334 — the founder's order, in three blocks: Campus · CRM · Signups,
-  // then Services · Community · Forms, then Fundraising · Donations ·
-  // Accounting. `DESKTOP_GROUP_SECTIONS` draws the separators between them; the
+  // then Services · Community, then Fundraising · Donations · Accounting.
+  // ⚠️ THE-341 took `Forms` out of the middle block when it moved to REACH; the
+  // block is two rows now, and `DESKTOP_GROUP_SECTIONS` was updated with it so
+  // the map names no id this group no longer holds.
+  // `DESKTOP_GROUP_SECTIONS` draws the separators between them; the
   // order lives HERE so what the group advertises on `data-nav-group-tabs` is
   // the order its flyout actually renders, and the two cannot drift.
-  { label: 'MINISTRY', ids: ['churches', 'crm', 'signups', 'services', 'community', 'forms', 'fundraising', 'donations', 'accounting'] },
-  { label: 'BROADCASTING', ids: ['events', 'checkin', 'sms', 'livestream'] },
+  { label: 'MINISTRY', ids: ['churches', 'crm', 'signups', 'services', 'community', 'fundraising', 'donations', 'accounting'] },
+  { label: 'REACH', ids: ['events', 'checkin', 'forms', 'sms', 'livestream'] },
   // 🔴 THE-327 — `library` here too, and in the SAME relative position: next to
   // `tenants`, its co-gated sibling. It goes in GROW rather than a new PLATFORM
   // group because this array has never had one — it already files `tenants` and
@@ -1228,7 +1254,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           </div>
 
           {/* THE-334 — Desktop: a RAIL of five entries and an account avatar.
-              Home · Content / People / Live / Grow · (avatar, at the floor).
+              Home · Content / Ministry / Reach / Grow · (avatar, at the floor).
 
               🔴 EVERY FLYOUT SHARES ONE OPEN GROUP. `NavRailProvider` holds it,
               so opening one closes the others BY CONSTRUCTION rather than four
