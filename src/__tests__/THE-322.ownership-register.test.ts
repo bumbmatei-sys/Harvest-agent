@@ -492,7 +492,7 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * retires a pinner updates this count and says what that suite still asserts;
  * a suite that quietly stops pinning fails here.
  */
-const RULES_PINNERS_NOW = 59;
+const RULES_PINNERS_NOW = 60;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per
@@ -630,6 +630,27 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
   // record can be picked, and that `firestore.indexes.json`, `functions/` and
   // `layout.tsx` are byte-identical too.
   ['THE-337', 'src/components/__tests__/THE-337.attach-menu-visibility.layout.test.tsx'],
+  // ⚠️ APPENDED BY THE-340, beside THE-337's entry and not instead of it.
+  //
+  // 🔴 THE-340 WRITES NO RULE AND NEEDED NONE. It moves rota invitations and
+  // reminders off the church's own Gmail onto Resend, from a Harvest-controlled
+  // sender on a verified domain, so a church that has connected nothing can
+  // still reach its volunteers. That is a TRANSPORT change: the collection it
+  // writes, `tenants/{t}/rotaInvitations`, still has no rule and still needs
+  // none, because every access to it goes through the Admin SDK inside a route
+  // under `api/rota/`, which bypasses rules entirely. Nothing about who may
+  // read or write anything changed.
+  //
+  // ⚠️ WHAT ITS SUITE ASSERTS BESIDE THE DIGEST: that a volunteer is reached
+  // with NOTHING connected, that the send goes out from the verified Harvest
+  // domain, that a rejected send — whether it throws, resolves with an error,
+  // or finds no API key — is reported as a FAILURE rather than as "no
+  // invitation", that the accept link's URL shape and its two-field write scope
+  // are unmoved, that `rota-invite.ts` still constructs no provider client and
+  // imports none, that the Gmail scope guard still fails closed when CALLED,
+  // and that `firestore.indexes.json`, `functions/` and `layout.tsx` are
+  // byte-identical too.
+  ['THE-340', 'src/__tests__/THE-340.rota-resend.test.ts'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {

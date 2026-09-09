@@ -491,12 +491,25 @@ describe('13 — assertSendOnlyGmailScopes still fails closed', () => {
       expect(code, `${file} names a mailbox-reading scope`)
         .not.toMatch(/gmail\.(?:readonly|modify|metadata)|mail\.google\.com/);
     }
-    // The email half calls the ONE Composio action the CRM route already calls,
-    // with `from_email` supplied — which is what makes a send-only grant work.
+    /* 🔴 THE-340 MOVED THE EMAIL HALF OFF GMAIL ENTIRELY, so the three
+       assertions that used to sit here — that `rota-invite.ts` names
+       `GMAIL_SEND_EMAIL`, passes `from_email: senderEmail`, and reaches
+       Composio exactly once — no longer have a subject. THE-335 had left the
+       church's Gmail as the ONLY channel a volunteer could be reached on, and
+       connecting it means clicking past Google's unverified-app warning.
+
+       ⚠️ THE PROPERTY THIS SECTION IS ABOUT IS UNCHANGED AND STRENGTHENED: this
+       feature must not call the scope guard, weaken it, or ask for a wider
+       grant. It now reaches Composio ZERO times, which is strictly less than
+       the one send-only call it used to make. */
     const lib = codeOf('src/lib/rota-invite.ts');
-    expect(lib).toContain("'GMAIL_SEND_EMAIL'");
-    expect(lib).toContain('from_email: senderEmail');
-    expect([...lib.matchAll(/executeComposioAction\(/g)]).toHaveLength(1);
+    expect(lib, 'the rota email half is back on the church\'s own Gmail')
+      .not.toContain("'GMAIL_SEND_EMAIL'");
+    expect([...lib.matchAll(/executeComposioAction\(/g)],
+      'the rota path reaches Composio again').toHaveLength(0);
+    // …and it goes through the one transactional funnel instead.
+    expect(lib, 'the email half left the transactional funnel')
+      .toContain('sendTransactionalEmail(');
   });
 });
 
