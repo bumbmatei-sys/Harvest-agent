@@ -58,6 +58,8 @@ import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
+import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
+
 const REPO_ROOT = path.resolve(__dirname, '../..');
 const read = (rel: string): string => readFileSync(path.join(REPO_ROOT, rel), 'utf8');
 const sha256 = (t: string | Buffer): string => createHash('sha256').update(t).digest('hex');
@@ -577,14 +579,20 @@ describe('13-14, 21 — the files this ticket may not touch', () => {
     }
   });
 
-  it('🔴 firestore.rules is byte-identical to its recorded digest', () => {
+  it('🔴 firestore.rules is at a digest some ticket recorded', () => {
     // ⚠️ It AUTO-DEPLOYS on merge with no emulator tests in CI, and THE-313's
-    // one-line change turned 46 files red. This ticket changed nothing in it —
-    // and deliberately records NO rules digest in the ownership register, which
-    // is what turned THE-325 red for THE-333 and THE-341.
-    expect(sha256(readFileSync(path.join(REPO_ROOT, 'firestore.rules')))).toBe(
-      THE_342_BASELINE.rulesDigest,
-    );
+    // one-line change turned 46 files red.
+    //
+    // 🔴 ASKED THROUGH THE SHARED HELPER, NEVER BY WRITING THE DIGEST DOWN.
+    // Writing the literal here is the mistake THE-333 and THE-341 each made:
+    // THE-325 asserts that the accepted set lives in exactly ONE place, so a
+    // second copy in a suite means a legitimate rules change would cost two
+    // edits instead of one — and it turned THE-325 red both times. This ticket
+    // records no rules digest anywhere, in this file or in its ownership
+    // entry, because it does not touch the file.
+    expect(rulesDigestFailure(),
+      'firestore.rules is at a digest no ticket recorded — it auto-deploys to production')
+      .toBeNull();
   });
 
   it('🔴 functions/ and src/app/layout.tsx are untouched by this ticket', () => {
@@ -786,7 +794,6 @@ describe('18-20 — this suite obeys the rules it enforces', () => {
  * where a `firestore.rules` digest turned THE-325 red for two tickets running.
  */
 const THE_342_BASELINE = {
-  rulesDigest: '4973c3c94c5a3be8d478f4373326b23fbd9de447d3ac6a5b8173f723dfd62075',
   layoutDigest: 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f',
   functionsTreeDigest: '1a3a1c7f27699263bcdf5bd0320c7cb0803a6f76644952f631000bc9bedef2d7',
   compositeIndexCount: 10,

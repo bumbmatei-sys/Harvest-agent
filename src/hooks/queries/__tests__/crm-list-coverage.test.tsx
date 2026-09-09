@@ -35,7 +35,16 @@ const { mockGetDocs, mockGetCount, mockIsSuperAdminEmail, authState } = vi.hoist
 }));
 
 /** Every query built, so a test can assert WHICH query ran, not just its result. */
-type BuiltQuery = { collection: string; whereClauses: Array<[string, string, unknown]>; limit: number | null };
+// THE-342 added `orderBy(documentId())` to every read here: an unordered
+// limit(N) is served in `__name__` order over random ids, so the window was an
+// arbitrary and unstable N. The built query records the ordering so a test can
+// assert it rather than merely tolerate it.
+type BuiltQuery = {
+  collection: string;
+  whereClauses: Array<[string, string, unknown]>;
+  limit: number | null;
+  orderBy: string | null;
+};
 const built: BuiltQuery[] = [];
 
 vi.mock('../../../firebase', () => ({
@@ -47,6 +56,8 @@ vi.mock('firebase/firestore', () => ({
   collection: (_db: unknown, name: string) => ({ __collection: name }),
   where: (field: string, op: string, value: unknown) => ({ __where: [field, op, value] as [string, string, unknown] }),
   limit: (n: number) => ({ __limit: n }),
+  orderBy: (field: unknown) => ({ __orderBy: field }),
+  documentId: () => '__name__',
   getDoc: vi.fn(async () => ({ exists: () => true, data: () => ({ tenantId: 'harvest' }) })),
   doc: vi.fn(),
   query: (base: { __collection: string }, ...constraints: Array<Record<string, unknown>>) => {
@@ -54,6 +65,7 @@ vi.mock('firebase/firestore', () => ({
       collection: base.__collection,
       whereClauses: constraints.filter(c => '__where' in c).map(c => c.__where as [string, string, unknown]),
       limit: (constraints.find(c => '__limit' in c)?.__limit as number) ?? null,
+      orderBy: (constraints.find(c => '__orderBy' in c)?.__orderBy as string) ?? null,
     };
     built.push(q);
     return q;

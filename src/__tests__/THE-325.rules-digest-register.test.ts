@@ -150,7 +150,18 @@ const filesSpelling = (digest: string): string[] =>
  * suite reaches the accepted set through this module rather than spelling the
  * digest, so a real rules change still costs exactly one edit. Nothing above is
  * removed and no accepted value is widened. */
-const PINNING_SUITES = 61;
+/* ⚠️ APPENDED BY THE-342. It replaces the unordered, unbounded and
+ * failure-swallowing reads in CoursePage, AdminCourses, ChurchMap and
+ * useCRMQueries with counted, ordered, ceiling-shared ones — a READ-SHAPE
+ * change that needed NO rule. The unfiltered /courses read it investigated is
+ * already rejected wholesale for a non-super-admin by the existing
+ * `belongsToTenant(resource.data...)` rule (rules are not filters), so the fix
+ * was to stop swallowing that rejection rather than to change what the rule
+ * allows. Its suite reaches the accepted set through this module rather than
+ * spelling the digest — its first draft DID spell it, and section 1 above
+ * caught that before review — so a real rules change still costs exactly one
+ * edit. Nothing above is removed and no accepted value is widened. */
+const PINNING_SUITES = 62;
 
 /**
  * A digest no ticket has recorded and none ever will — the planted change.
