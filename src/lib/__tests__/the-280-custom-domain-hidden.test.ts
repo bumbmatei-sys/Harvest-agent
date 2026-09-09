@@ -659,7 +659,12 @@ describe('8 — the app makes no custom-domain claim while the switch is off', (
       // ⚠️ AND NOTHING ELSE LEFT WITH IT. `customBranding` was never published by
       // this endpoint (only `customDomain` was), so the check that the gate did
       // not overreach is that every OTHER key it did publish is still here.
-      for (const kept of ['blog', 'newsFeed', 'aiChat', 'map', 'newsletterAutomation']) {
+      // 🔵 `newsletterAutomation` LEFT THIS LIST AT THE-335, which gave the
+      // newsletter its own master switch and made `/api/plans` withhold the key
+      // for exactly the reason stated above `customDomain`: ABSENT, not false.
+      // The check that THIS gate did not overreach is unchanged — every other
+      // key the endpoint publishes is still here.
+      for (const kept of ['blog', 'newsFeed', 'aiChat', 'map']) {
         expect(Object.keys(plan.features), `${plan.id} stopped publishing ${kept}`)
           .toContain(kept);
       }

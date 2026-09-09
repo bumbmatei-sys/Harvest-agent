@@ -5,7 +5,7 @@
 // attaches and the suite times out. Nothing here needs a DOM; the page is
 // rendered to a string and every measurement happens inside a real Chromium
 // over CDP.
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -17,6 +17,23 @@ import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
 import { DENSITY_PX } from '../layout/form-layout';
 import AdminSms from '../AdminSms';
+
+/* 🔴 THE-335 — THE MASTER SWITCH IS MOCKED ON.
+   `SMS_FEATURE_ENABLED` is false on disk again, and `AdminSms` and `SmsSection`
+   are one-line wrappers that render `null` while it is — so without this every
+   assertion in this file would measure an empty string and the suite would pass
+   while proving nothing about the composition it exists to pin. That is the
+   failure mode this repo has been bitten by eleven times.
+
+   ⚠️ MOCKED RATHER THAN THE SUITE DELETED OR SKIPPED. The switch's whole design
+   is that the feature comes back INTACT; these suites are what proves it is
+   still intact, so they have to keep running. `the-245-sms-hidden.test.ts` is
+   where "no surface is reachable today" is asserted. */
+vi.mock('../../lib/sms-feature', () => ({
+  SMS_FEATURE_ENABLED: true,
+  SMS_HIDDEN_MESSAGE: 'SMS is temporarily unavailable.',
+}));
+
 
 /**
  * THE-327 · Test 17 — the SMS section MEASURED, with the third tab on it.

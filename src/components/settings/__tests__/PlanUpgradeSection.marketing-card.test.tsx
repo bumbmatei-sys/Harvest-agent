@@ -120,6 +120,7 @@ import {
   REM_PX_DESKTOP, BREAKPOINT_MIN_PX,
 } from '../../../test/support/class-inventory';
 import { buildUtilityCss } from '../../../test/support/tailwind-build';
+import { NEWSLETTER_FEATURE_ENABLED } from '../../../lib/newsletter-feature';
 
 const ROOT = path.resolve(__dirname, '../../../..');
 const GLOBALS = path.join(ROOT, 'src/app/globals.css');
@@ -921,8 +922,20 @@ describe('6 — the sub-640px rendering changes only where the marketing match r
    * it, and the label `span`.
    */
   const FEATURE_LINE_ROWS = 4;
+  /* 🔵 THE-335 MOVED SMALL TEAM'S BY ONE MORE, and the baseline fixture is
+     STILL not re-recorded — for the reason the note above gives, which this
+     ticket is a second occasion to honour rather than a reason to abandon. The
+     newsletter went behind its own master switch, so `PlanUpgradeSection`
+     withholds its 'Newsletter' card line exactly as it already withholds 'SMS
+     Automation' and 'Custom Domain'. Small Team is the one card that LISTED the
+     newsletter (Ministry inherits it through "Everything in Small Team"), so it
+     loses one line and no other card moves.
+
+     ⚠️ THE `newsletterAutomation` CELL IS UNTOUCHED, so this is a withheld LINE
+     and not a withdrawn entitlement: flipping the switch restores the card to
+     [-1, 0, +1] and this figure with it. */
   /** Per card, in render order: Individual, Small Team, Ministry. */
-  const FEATURE_LINE_DELTA = [-1, 0, +1];
+  const FEATURE_LINE_DELTA = [-1, NEWSLETTER_FEATURE_ENABLED ? 0 : -1, +1];
 
   /** Strip every contiguous feature-line group, and report how many each card
    *  held. Cards are delimited by the row carrying `snap-center`. */
@@ -962,17 +975,21 @@ describe('6 — the sub-640px rendering changes only where the marketing match r
       expect(now.rest, `the sub-640px card layer moved for currentPlan=${plan} outside its feature lists`)
         .toEqual(was.rest);
       expect(now.perCard.map((n, i) => n - was.perCard[i]),
-        `currentPlan=${plan}: the per-card feature-line counts moved by something other than SMS`)
+        `currentPlan=${plan}: the per-card feature-line counts moved by something other than SMS and the newsletter`)
         .toEqual(FEATURE_LINE_DELTA);
 
       const counts = baseline.mobileElements[plan];
-      // Net zero rows across the three cards: two lines left the lower cards and
-      // two joined Ministry's. The whole-tree count therefore still grew by
-      // exactly the toggle's extra rows and nothing else.
+      /* Net zero rows across the three cards under THE-314: two lines left the
+         lower cards and two joined Ministry's.
+         🔵 THE-335 makes it net MINUS ONE LINE — Small Team's newsletter row —
+         so the whole-tree count is short by exactly one rendered feature line
+         and nothing else. Derived from the delta above rather than restated, so
+         the two cannot disagree. */
+      const netLines = FEATURE_LINE_DELTA.reduce((a, b) => a + b, 0);
       expect(fromTrack(layer).length, `card element count for currentPlan=${plan}`)
-        .toBe(fromTrack(recorded).length);
+        .toBe(fromTrack(recorded).length + netLines * FEATURE_LINE_ROWS);
       expect(layer.length - recorded.length, `currentPlan=${plan}: only the toggle should have grown`)
-        .toBe(TOGGLE_ROWS_ADDED);
+        .toBe(TOGGLE_ROWS_ADDED + netLines * FEATURE_LINE_ROWS);
       expect(counts.after, `currentPlan=${plan}: the rollup should have shortened the tree`)
         .toBeLessThan(counts.before);
       act(() => { root?.unmount(); }); root = null; container.remove();

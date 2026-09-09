@@ -114,8 +114,13 @@ describe('FEATURE_MIN_PLAN — minimum plan labels', () => {
   // now Free. Derived again, so again no label was edited to make it true — and
   // it is a TRUE claim, which is the bar: free really does have CRM, so no
   // church is shown a tier name for something that tier lacks.
-  it('names Free as the minimum plan for CRM (moved by THE-200)', () => {
-    expect(FEATURE_MIN_PLAN.crm).toBe('Free');
+  it('names Individual as the minimum plan for CRM (moved back by THE-335)', () => {
+    // 🔵 BACK TO 'Individual' AT THE-335. The founder split what free gets —
+    // "The free plan should have signup feature not CRM since we separated them"
+    // — so free no longer carries CRM and the cheapest tier that does is
+    // Individual again, which is where THE-200 found it. Derived from the matrix
+    // rather than written, so the label followed the cell on its own.
+    expect(FEATURE_MIN_PLAN.crm).toBe('Individual');
   });
 
   it('names Ministry as the minimum plan for tax receipts', () => {

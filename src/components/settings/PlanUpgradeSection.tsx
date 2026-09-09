@@ -19,6 +19,7 @@ import {
   PlanFeatures,
   PLAN_BLURBS,
 } from '../../utils/plan-features';
+import { NEWSLETTER_FEATURE_ENABLED } from '../../lib/newsletter-feature';
 import { SMS_FEATURE_ENABLED } from '../../lib/sms-feature';
 import { CUSTOM_DOMAIN_ENABLED } from '../../lib/custom-domain-feature';
 import { PLATFORM_FEE_MAP } from '../../lib/stripe-connect';
@@ -185,9 +186,20 @@ const CARD_FEATURES: CardFeature[] = [
 // the line back with the switch. `customBranding` keeps ITS line above and must:
 // it is a separate cell, it ships, and withdrawing it to hide a dead capability
 // is the overreach THE-280 exists to avoid.
+//
+// 🔴 THE-335 withholds 'Newsletter' on exactly the same terms, and for the same
+// reason: `/api/newsletter/send` now answers 503, so a church upgrading for this
+// line would reach a screen that is not in its nav and a send that refuses.
+//
+// 🔴 THE `newsletterAutomation` CELL IN THE PLAN MATRIX IS UNTOUCHED — only this
+// card's line is withheld, so Small Team and Ministry still own the newsletter
+// and get the line back with the switch. `automatedNewsletter` has no line here
+// to withhold and gains none: adding one to hide it would be inventing a promise
+// in order to retract it.
 const VISIBLE_CARD_FEATURES = CARD_FEATURES.filter(
   (f) => (SMS_FEATURE_ENABLED || f.key !== 'smsAutomation')
-    && (CUSTOM_DOMAIN_ENABLED || f.key !== 'customDomain'),
+    && (CUSTOM_DOMAIN_ENABLED || f.key !== 'customDomain')
+    && (NEWSLETTER_FEATURE_ENABLED || f.key !== 'newsletterAutomation'),
 );
 
 /**

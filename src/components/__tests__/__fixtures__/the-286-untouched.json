@@ -12,7 +12,7 @@
     "src/components/settings/IntegrationsSection.tsx": "ac058fb0e998e15bf2cb20be3f33f4f27cbef5f6c96074dec9eb4c77d2922921",
     "src/components/settings/OnboardingSection.tsx": "02db7a40137a5b27395152d07a22a5a6cde676d5f42448d70d28e148c524d93e",
     "src/components/settings/PaymentSection.tsx": "56eb0b539450eba0b072323f42c547f1d728ffdfc1107be55f3d3144fcfaf4f0",
-    "src/components/settings/PlanUpgradeSection.tsx": "47311df03e1ca76cb51e5094360c2ef868e14f1d9bb6c70509a48fdff174a553",
+    "src/components/settings/PlanUpgradeSection.tsx": "667a71285e506773f0d137654584f9c7ded1eedcb8de8998908b9b1aa2a9c935",
     "src/components/settings/SmsSection.tsx": "32bd4796af022b4285e56e9a6e4721ea4f5f7ffb77ad165cf5b25a8060eb9f39",
     "src/components/settings/integration-providers.ts": "62d8b949da2880e3555feae62558adbed369d023f97a188031e4b73980a07eb5",
     "src/components/settings/useStripeReturn.ts": "eaf89c0b2c22379d78e3a68ed20d07e91efe02f44755ed29068c706816fd5697",

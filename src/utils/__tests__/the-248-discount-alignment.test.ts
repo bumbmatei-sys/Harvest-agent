@@ -586,10 +586,18 @@ describe('the plan feature matrix and the Dodo product ids are unchanged', () =>
     }).join('\n');
     expect(
       createHash('sha256').update(matrix).digest('hex'),
+    /* 🔵 REPINNED AT THE-335, and THE-248's claim is untouched: it is a
+       REPRICE and still moves no feature cell. What moved in plan-features.ts
+       is `crm`, true → false on FREE, and a new `signups` cell true on every
+       tier — the founder's split, which needed a second cell because both
+       screens were gated on `crm`. NO PRICE AND NO CAP MOVED, asserted
+       elsewhere in this file, and the per-cell contract in
+       plan-features.test.ts moved in the same commit as instructed below.
+       Previous pin: 1e07d3aeb9024cdd1841144560d66bd7fa292b39c978f665881a83c90933ce23 */
       'the plan feature matrix changed. THE-248 is a REPRICE and must move no '
       + 'feature cell — if a later ticket legitimately does, update this digest '
       + 'and the per-cell contract in plan-features.test.ts together.',
-    ).toBe('1e07d3aeb9024cdd1841144560d66bd7fa292b39c978f665881a83c90933ce23');
+    ).toBe('3d463af824117ac12e2b50fc1b657e30a5798dee7866a0d769a6558445152dc6');
   });
 
   it('and the tier ladder itself is untouched', () => {

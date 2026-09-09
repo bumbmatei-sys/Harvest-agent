@@ -748,7 +748,7 @@ describe('8 · PaymentSection still renders unavailable; DomainSection is still 
     expect(readSrc('src/lib/custom-domain-feature.ts')).toMatch(/CUSTOM_DOMAIN_ENABLED\s*=\s*false/);
   });
 
-  it('🔴 SMS is ON now (THE-314), and still behind the one switch', () => {
+  it('🔴 SMS is OFF again (THE-335), and still behind the one switch', () => {
     // ⚠️ THIS ASSERTION WAS REVERSED, NOT LOOSENED. THE-300 pinned SMS as OFF
     // because it was one of three switched-off sections it must not convert.
     // THE-314 flipped the switch and rewrote the panel from a Twilio credential
@@ -764,7 +764,10 @@ describe('8 · PaymentSection still renders unavailable; DomainSection is still 
       // about — that the section renders through the ONE master switch and
       // renders `null` when it is off — is unchanged and still asserted.
       .toMatch(/SMS_FEATURE_ENABLED\s*\?\s*<SmsSettingsPointer\s*\/>\s*:\s*null/);
-    expect(readSrc('src/lib/sms-feature.ts')).toMatch(/SMS_FEATURE_ENABLED\s*=\s*true/);
+    // 🔵 FALSE AGAIN AT THE-335. THE-300's claim is unaffected by either flip
+    // and is what the two assertions above measure: the section reads the ONE
+    // master switch and renders through it. Only the switch's VALUE moves.
+    expect(readSrc('src/lib/sms-feature.ts')).toMatch(/SMS_FEATURE_ENABLED\s*=\s*false/);
     // 🔴 And the OTHER two switches this file guards are still off, which is the
     // half that had nothing to do with SMS and must not have moved with it.
     expect(readSrc('src/lib/stripe-connect-feature.ts')).toMatch(/STRIPE_CONNECT_ENABLED\s*=\s*false/);

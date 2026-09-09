@@ -648,6 +648,8 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ byte-identical', ()
   '508747ccbc7b2fef051d449626ef2f81f3655b214be0494c6c21a8c7df88b9bb',
   // 🔴 APPENDED BY THE-334 — main + THE-334 — one flyout at a time; the panel takes ClickUp’s shape and Settings moves to the account menu
   '00db3fa2b16a506d0a23dc1d582e6581c49e03350b966fb30d82d9434b09f450',
+  // 🔴 APPENDED BY THE-335 — SMS hidden again, the Newsletter nav entry gated by a new switch in the identical shape, and Signups moved onto its own plan cell
+  '3c26f36aa883e7c9540038e3afa1da2ec8bb61f091a4a8e5efa0d866fec6cf8f',
   ];
 
   it('🔴 AdminDashboard.tsx — not opened by this ticket', () => {

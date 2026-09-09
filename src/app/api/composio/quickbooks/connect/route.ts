@@ -6,6 +6,7 @@ import {
   createSignedState,
   deleteConnection,
 } from '@/lib/composio-client';
+import { QUICKBOOKS_FEATURE_ENABLED, QUICKBOOKS_HIDDEN_MESSAGE } from '@/lib/quickbooks-feature';
 import { adminDb } from '@/lib/firebase-admin';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
 import { captureHandledError } from '@/lib/money-path-sentry';
@@ -13,6 +14,13 @@ import { captureHandledError } from '@/lib/money-path-sentry';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  // 🔴 THE-335 — the master switch, before anything else in this handler.
+  // The route is not deleted and every gate below it is untouched; flipping
+  // QUICKBOOKS_FEATURE_ENABLED brings it back exactly as it was.
+  if (!QUICKBOOKS_FEATURE_ENABLED) {
+    return NextResponse.json({ error: QUICKBOOKS_HIDDEN_MESSAGE }, { status: 503 });
+  }
+
   try {
     const userOrResponse = await requireAdmin(request);
     if (userOrResponse instanceof NextResponse) return userOrResponse;

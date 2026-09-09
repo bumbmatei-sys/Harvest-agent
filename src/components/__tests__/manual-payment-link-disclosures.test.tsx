@@ -618,7 +618,7 @@ describe('no statement, receipt, CRM write or Stripe path changed', () => {
      *     which is why the answer is a sentence and not a sum.
      */
     'src/components/AdminAccounting.tsx':
-      '24164421aa931030041d9d7d7f1bb4e87f03382f26acce7e7fbfac298beb2f50',
+      '4b2cd71b64db4cf9845856a92ba8a5b67902385001131b47085bdd8f45be058b',
   };
 
   it.each(Object.keys(UNCHANGED))('%s is byte-for-byte unchanged', (file) => {

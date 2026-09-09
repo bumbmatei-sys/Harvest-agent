@@ -7,6 +7,7 @@ import { getPlanFeatures } from '../../utils/plan-features';
 import { hasPlatformOverride } from '../../utils/tenant-scope';
 import { CONTROL_DENSITY } from '../layout/form-layout';
 import { NAV_CLEARANCE } from './GivingStatementsSection';
+import { NEWSLETTER_FEATURE_ENABLED } from '../../lib/newsletter-feature';
 import {
   INTEGRATION_PROVIDERS,
   IntegrationProviderId,
@@ -46,8 +47,21 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ currentPlan, 
   const isPlatformOverride = platformOverride ?? hasPlatformOverride();
   /** One gate, applied per provider, keeping the `platformOverride || …` shape
    *  at every card. */
-  const showProvider = (id: IntegrationProviderId): boolean =>
-    isPlatformOverride || isProviderAvailable(getIntegrationProvider(id), features, currentPlan);
+  const showProvider = (id: IntegrationProviderId): boolean => {
+    const provider = getIntegrationProvider(id);
+    // 🔴 THE-335 — the master switch FIRST, ahead of the platform override, in
+    // the shape the SMS nav entry uses: while the newsletter is hidden NOBODY
+    // sees a newsletter provider, super admin included. `concern` is what
+    // decides, not a list of ids, so a newsletter provider added tomorrow is
+    // hidden by this line rather than by a second one somebody has to remember.
+    //
+    // 🔴 GMAIL IS UNAFFECTED and must be: its `concern` is 'crm', it is what
+    // sends a CRM contact an email, and it is the transport a rota invitation
+    // goes out on — the founder's stated replacement for SMS. Hiding it here to
+    // hide the newsletter would break the thing this ticket exists to protect.
+    if (!NEWSLETTER_FEATURE_ENABLED && provider.concern === 'newsletter') return false;
+    return isPlatformOverride || isProviderAvailable(provider, features, currentPlan);
+  };
   const showInstagram = showProvider('instagram');
   const showMailchimp = showProvider('mailchimp');
   const showGmail = showProvider('gmail');

@@ -5,12 +5,20 @@ import {
   executeComposioAction,
   verifySignedState,
 } from '@/lib/composio-client';
+import { QUICKBOOKS_FEATURE_ENABLED, QUICKBOOKS_HIDDEN_MESSAGE } from '@/lib/quickbooks-feature';
 import { adminDb } from '@/lib/firebase-admin';
 import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  // 🔴 THE-335 — the master switch, before anything else in this handler.
+  // The route is not deleted and every gate below it is untouched; flipping
+  // QUICKBOOKS_FEATURE_ENABLED brings it back exactly as it was.
+  if (!QUICKBOOKS_FEATURE_ENABLED) {
+    return NextResponse.json({ error: QUICKBOOKS_HIDDEN_MESSAGE }, { status: 503 });
+  }
+
   const { searchParams } = new URL(request.url);
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
 

@@ -7,6 +7,7 @@ import {
   PLAN_ORDER,
   isPricedPlan,
 } from '@/utils/plan-features';
+import { NEWSLETTER_FEATURE_ENABLED } from '@/lib/newsletter-feature';
 import { SMS_FEATURE_ENABLED } from '@/lib/sms-feature';
 import { CUSTOM_DOMAIN_ENABLED } from '@/lib/custom-domain-feature';
 
@@ -91,7 +92,12 @@ export async function GET() {
         // `customBackground` is intentionally absent: the app has no background
         // uploader, so advertising it here would sell a capability that does not
         // exist. Removed from the plan matrix too — see plan-features.ts.
-        newsletterAutomation: features.newsletterAutomation,
+        // 🔴 THE-335 — omitted while the newsletter is hidden, exactly as
+        // `smsAutomation` is omitted below and for the same reason: the
+        // marketing site renders a plan row from this catalogue, so publishing
+        // the cell would let it advertise a capability the app refuses. Flip
+        // NEWSLETTER_FEATURE_ENABLED to publish the real per-tier values again.
+        ...(NEWSLETTER_FEATURE_ENABLED ? { newsletterAutomation: features.newsletterAutomation } : {}),
         // THE-245 — SMS is hidden while it is untested, so this catalogue stops
         // publishing a per-tier value for it and no consumer can render a plan
         // row from one. Same treatment as the AI Assistant below, and for the
