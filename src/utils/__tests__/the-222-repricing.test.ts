@@ -61,13 +61,18 @@ const THE_222_TABLE: Record<PricedPlan, Record<BillingTerm, number>> = {
   max: { monthly: 80, quarterly: 199, yearly: 659 },
 };
 
-/** What is LIVE, as of THE-248 — written out independently of the table under
- *  test, and verified against the authenticated live Dodo API on 2026-08-27
- *  (2000 / 5400 / 19000 minor units on Individual, and so on). */
+/** What this repo PUBLISHES, written out independently of the table under test.
+ *
+ *  ⚠️ WAS "what is live". THE-248's nine were verified against the
+ *  authenticated live Dodo API on 2026-08-27 and the two agreed, so the two
+ *  readings were the same sentence. THE-343 separated them: Ministry is
+ *  repriced HERE and not yet in Dodo, so this table is the app's side only.
+ *  What Dodo still charges, and the assertion that fails when the founder
+ *  changes it, live in `dodo-catalogue.test.ts`'s `PENDING_DODO_REPRICE`. */
 const NEW_TABLE: Record<PricedPlan, Record<BillingTerm, number>> = {
   plus: { monthly: 20, quarterly: 54, yearly: 190 },
   pro: { monthly: 40, quarterly: 108, yearly: 380 },
-  max: { monthly: 80, quarterly: 216, yearly: 760 },
+  max: { monthly: 60, quarterly: 162, yearly: 564 },
 };
 
 /** What THE-222 advertised. Stated here rather than read from the live constant
@@ -235,17 +240,23 @@ describe('no copy claims a saving larger than the smallest actual saving', () =>
   });
 
   it('the smallest actual savings are exactly 10% quarterly and 20.83% yearly', () => {
-    // 🔴 NO TIER IS "THE WORST" ANY MORE. THE-222's worst quarterly tier was
-    // Ministry and its worst yearly tier was Individual — different tiers,
-    // which is why both were pinned. THE-248 makes both columns flat, so the
-    // minimum equals the maximum and every tier is pinned individually: a
-    // min/max pair alone would still pass if one tier had drifted.
+    // 🔴 THE QUARTERLY COLUMN HAS NO "WORST" TIER; THE YEARLY COLUMN HAS ONE
+    // AGAIN. THE-222's worst quarterly tier was Ministry and its worst yearly
+    // tier was Individual — different tiers, which is why both were pinned.
+    // THE-248 flattened both columns. THE-343 repriced Ministry alone, which
+    // leaves quarterly flat and puts Ministry AHEAD on the year (21.67 against
+    // 20.83), so the yearly minimum is once more a claim about the other two.
+    // Every tier is still pinned individually: a min/max pair alone would pass
+    // even if one tier had drifted.
     for (const plan of PRICED_PLAN_ORDER) {
       expect(actualSavingPct(plan, 'quarterly'), `${plan} quarterly`).toBe(10);
-      expect(actualSavingPct(plan, 'yearly'), `${plan} yearly`).toBeCloseTo(20.8333, 3);
+      expect(actualSavingPct(plan, 'yearly'), `${plan} yearly`)
+        .toBeCloseTo(plan === 'max' ? 21.6667 : 20.8333, 3);
     }
     expect(Math.min(...PRICED_PLAN_ORDER.map((p) => actualSavingPct(p, 'quarterly')))).toBe(10);
     expect(Math.max(...PRICED_PLAN_ORDER.map((p) => actualSavingPct(p, 'quarterly')))).toBe(10);
+    // 🔴 THE MINIMUM IS WHAT THE ADVERTISED 20% RESTS ON, and Ministry saving
+    // more may not raise it — so it is still 20.83, not 21.67.
     expect(Math.min(...PRICED_PLAN_ORDER.map((p) => actualSavingPct(p, 'yearly'))))
       .toBeCloseTo(20.8333, 3);
   });
@@ -254,7 +265,7 @@ describe('no copy claims a saving larger than the smallest actual saving', () =>
     expect(PRICED_PLAN_ORDER.map((p) => Number(actualSavingPct(p, 'quarterly').toFixed(1))))
       .toEqual([10.0, 10.0, 10.0]);
     expect(PRICED_PLAN_ORDER.map((p) => Number(actualSavingPct(p, 'yearly').toFixed(1))))
-      .toEqual([20.8, 20.8, 20.8]);
+      .toEqual([20.8, 20.8, 21.7]);
   });
 });
 
@@ -279,20 +290,21 @@ describe("no term's price is a whole number of months at the monthly rate", () =
 
   it('the arithmetic in full, for all six discounted cells', () => {
     // Written out so the numbers are readable in review rather than inferred:
-    // 54/20, 190/20, 108/40, 380/40, 216/80, 760/80.
+    // 54/20, 190/20, 108/40, 380/40, 162/60, 564/60.
     //
-    // 🔴 EVERY TIER LANDS ON THE SAME TWO MULTIPLES under THE-248 — 2.7 months
-    // on a quarter and 9.5 on a year — because the discount is now flat. That
-    // is a much closer call than the six distinct multiples THE-222 produced:
-    // 2.7 and 9.5 are each within a half-month of an integer, and a reprice
-    // that rounded a year to $200 (×10) or a quarter to $60 (×3) would resurrect
-    // the multiplier abstraction this guard exists to keep buried.
+    // 🔴 THE QUARTERLY MULTIPLE IS THE SAME ON EVERY TIER — 2.7 months —
+    // because that discount is flat at 10%. The yearly multiple is 9.5 on
+    // Individual and Small Team and 9.4 on Ministry since THE-343. All three
+    // are within a half-month of an integer, which is a much closer call than
+    // the six distinct multiples THE-222 produced: a reprice that rounded a
+    // year to $200 (×10) or a quarter to $60 (×3) would resurrect the
+    // multiplier abstraction this guard exists to keep buried.
     expect(planPriceUsd('plus', 'quarterly') / planPriceUsd('plus', 'monthly')).toBe(2.7);
     expect(planPriceUsd('plus', 'yearly') / planPriceUsd('plus', 'monthly')).toBe(9.5);
     expect(planPriceUsd('pro', 'quarterly') / planPriceUsd('pro', 'monthly')).toBe(2.7);
     expect(planPriceUsd('pro', 'yearly') / planPriceUsd('pro', 'monthly')).toBe(9.5);
     expect(planPriceUsd('max', 'quarterly') / planPriceUsd('max', 'monthly')).toBe(2.7);
-    expect(planPriceUsd('max', 'yearly') / planPriceUsd('max', 'monthly')).toBe(9.5);
+    expect(planPriceUsd('max', 'yearly') / planPriceUsd('max', 'monthly')).toBe(9.4);
   });
 });
 

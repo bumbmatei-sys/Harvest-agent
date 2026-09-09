@@ -636,14 +636,19 @@ export const TERM_MONTHS: Readonly<Record<BillingTerm, number>> = Object.freeze(
  *              Quarterly   Yearly
  *   Individual    10.0%     20.8%
  *   Small Team    10.0%     20.8%
- *   Ministry      10.0%     20.8%
+ *   Ministry      10.0%     21.7%
  *
- * ⚠️ THE-248 MADE EVERY COLUMN FLAT, and that is a property of today's prices
- * rather than a new rule. The quarters are exactly nine tenths of three months
- * ($54/$60, $108/$120, $216/$240) and the years exactly 190/240ths of twelve,
- * so all three tiers save the same on each term for the first time. Nothing
- * here may start assuming that: the tiers were 18.3 / 17.5 / 17.1 apart one
- * reprice ago and a rounder price on one tier alone would spread them again.
+ * ⚠️ THE QUARTERLY COLUMN IS FLAT; THE YEARLY COLUMN IS NOT, and THE-343 is
+ * what separated them again. The quarters are still exactly nine tenths of
+ * three months ($54/$60, $108/$120, $162/$180), so every tier saves 10.0% on a
+ * quarter to the cent. The years no longer share a ratio: Individual and Small
+ * Team are 190/240ths of twelve and Ministry is 564/720ths, which is 21.7%
+ * against their 20.8%.
+ *
+ * ⚠️ THE-248 HAD MADE BOTH COLUMNS FLAT, and that was a property of those
+ * prices rather than a rule. Nothing here may assume either shape: the tiers
+ * were 18.3 / 17.5 / 17.1 apart two reprices ago, flat after THE-248, and
+ * spread again on the yearly column now that Ministry alone was repriced.
  *
  * 🔴 DO NOT COMPUTE A BADGE FROM THIS TABLE. See `ADVERTISED_DISCOUNT_PCT` —
  * the yearly column is why that is still true even now the columns are flat.
@@ -659,7 +664,7 @@ export const PLAN_PRICING: Readonly<Record<PricedPlan, Readonly<Record<BillingTe
   Object.freeze({
     plus: Object.freeze({ monthly: 20, quarterly: 54,  yearly: 190 }),
     pro:  Object.freeze({ monthly: 40, quarterly: 108, yearly: 380 }),
-    max:  Object.freeze({ monthly: 80, quarterly: 216, yearly: 760 }),
+    max:  Object.freeze({ monthly: 60, quarterly: 162, yearly: 564 }),
   });
 
 /**
@@ -743,13 +748,19 @@ export function planTermMonthlyExact(plan: PricedPlan, term: BillingTerm): numbe
  * rather than a rounding preference. (The brief named the Individual yearly
  * cell; Small Team quarterly understates too, by $1.)
  *
- * ⚠️ THOSE TWO CELLS ARE HISTORY — THE RULE IS NOT. Under THE-248's prices the
- * three quarters divide exactly ($54/3, $108/3, $216/3 are $18, $36, $72) and
- * two of the three years round UP, so exactly one cell still understates under
- * `Math.round`: Ministry yearly, $760/12 = $63.3333 → $63 → implies $756
- * against a charged $760. One is all it takes, and the next reprice decides
- * which — which is why what follows is stated as a rule and guarded as one,
- * never as a list of the offending cells.
+ * ⚠️ THOSE TWO CELLS ARE HISTORY — THE RULE IS NOT, AND THE-343 IS WHY THAT
+ * DISTINCTION EARNS ITS KEEP. Under today's prices the three quarters divide
+ * exactly ($54/3, $108/3, $162/3 are $18, $36, $54), two years round UP
+ * ($190/12 → $16, $380/12 → $32) and Ministry's year divides exactly
+ * ($564/12 = $47). So NO cell understates under `Math.round` any more — the one
+ * that did, Ministry's $760/12 = $63.3333 → $63 → $756, was repriced away.
+ *
+ * 🔴 THAT IS NOT A REASON TO RELAX THE RULE, IT IS THE REASON IT IS A RULE.
+ * A list of offending cells would now be empty and would read as permission to
+ * go back to rounding; the next reprice puts a cell back without touching a
+ * line of this file. The guard below therefore states the invariant, and the
+ * mutations that prove it has teeth supply their own hazardous table rather
+ * than borrowing one from prices that happen not to offend today.
  *
  * So the headline must never imply less than the charged total. Two roundings
  * satisfy that, and the choice between them is not aesthetic:
@@ -907,6 +918,9 @@ export const ADVERTISED_DISCOUNT_PCT: Readonly<Record<DiscountedTerm, number>> =
  *   quarterly  advertises 10, worst tier saves 10.0  → 'flat'  → "Save 10%"
  *   yearly     advertises 20, worst tier saves 20.8  → 'flat'  → "Save 20%"
  *
+ * The WORST tier is what both lines turn on, so Ministry's better yearly saving
+ * does not move either of them: 20.8 is still the smallest yearly figure.
+ *
  * 🔴 QUARTERLY IS NOW THE CASE THIS DERIVATION TURNS ON, and it turns on
  * EQUALITY rather than clearance. Every tier's quarter is exactly 10.0% off, so
  * the claim does not clear the worst saving — it MEETS it, to the cent. `<=` is
@@ -918,7 +932,10 @@ export const ADVERTISED_DISCOUNT_PCT: Readonly<Record<DiscountedTerm, number>> =
  * — see the block comment there. The operator is right; the arithmetic feeding
  * it was not. Do not "fix" a future knife edge by loosening this to `<`.
  *
- * Yearly clears with room: 20 advertised against 20.83 delivered on all three.
+ * Yearly clears with room: 20 advertised against 20.83 delivered on Individual
+ * and Small Team, and 21.67 on Ministry since THE-343 repriced it alone. The
+ * claim is bounded by the WORST tier, so it is 20.83 that keeps this 'flat' —
+ * Ministry saving more cannot make a 20% claim any less true.
  *
  * ⚠️ NOTHING IN THIS FUNCTION CHANGED to make that happen, and that is the
  * point of deriving it: the wording followed the prices without an edit. Do not

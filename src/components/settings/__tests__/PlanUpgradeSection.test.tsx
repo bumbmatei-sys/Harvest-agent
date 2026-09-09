@@ -65,11 +65,16 @@ describe('PlanUpgradeSection yearly pricing copy', () => {
     mount();
     clickButtonWithText('Yearly');
     // 🔴 THE-196 flipped the hierarchy. The PER-MONTH figure headlines the
-    // card and the charged total sits beneath it. $760/12 is $63.3333, which
-    // ceils to $63.34. Under THE-248 no yearly cell divides exactly, so every
-    // one of the three shows cents.
-    expect(container.textContent).toContain('$63.34');
-    expect(container.textContent).toContain('billed as $760 every 12 months');
+    // card and the charged total sits beneath it.
+    //
+    // ⚠️ MINISTRY IS NOW THE ONE YEARLY CELL THAT DIVIDES EXACTLY. $564/12 is
+    // $47 on the nose since THE-343, so it shows NO cents where the other two
+    // still do — the inverse of THE-248, under which none of the three divided.
+    // $47 x 12 is $564 exactly: headline and charged total reconcile with
+    // nothing left over.
+    expect(container.textContent).toContain('$47');
+    expect(container.textContent).toContain('billed as $564 every 12 months');
+    expect(container.textContent).not.toContain('$47.');
   });
 
   it('derives the yearly copy from PLAN_PRICING for Individual (plus)', () => {
@@ -86,16 +91,16 @@ describe('PlanUpgradeSection yearly pricing copy', () => {
   it('derives the quarterly copy, the term this change added', () => {
     mount();
     clickButtonWithText('Quarterly');
-    // 🔴 ALL THREE QUARTERS DIVIDE EXACTLY under THE-248 — $54/3, $108/3 and
-    // $216/3 are $18, $36 and $72 — so none of them shows cents. Each headline
+    // 🔴 ALL THREE QUARTERS STILL DIVIDE EXACTLY — $54/3, $108/3 and $162/3
+    // are $18, $36 and $54 — so none of them shows cents. Each headline
     // is asserted beside the charged line that names its cycle rather than on
     // its own, because a bare "$36" says nothing about which tier drew it.
     expect(container.textContent).toContain('$18');
     expect(container.textContent).toContain('billed as $54 every 3 months');
     expect(container.textContent).toContain('$36');
     expect(container.textContent).toContain('billed as $108 every 3 months');
-    expect(container.textContent).toContain('$72');
-    expect(container.textContent).toContain('billed as $216 every 3 months');
+    expect(container.textContent).toContain('$54');
+    expect(container.textContent).toContain('billed as $162 every 3 months');
   });
 
   it('leaves the monthly view unchanged', () => {
@@ -103,7 +108,7 @@ describe('PlanUpgradeSection yearly pricing copy', () => {
     // Monthly is the default tab; assert the monthly prices render and no
     // longer-term copy (old strikethrough or the equivalent line) leaks in.
     expect(container.textContent).toContain('$20/mo');
-    expect(container.textContent).toContain('$80/mo');
+    expect(container.textContent).toContain('$60/mo');
     expect(container.textContent).not.toContain('equivalent');
     // 🔴 MONTHLY RENDERS AS DECIDED: headline alone, no note beneath. On
     // monthly the headline already IS the charged amount on the charged cycle,

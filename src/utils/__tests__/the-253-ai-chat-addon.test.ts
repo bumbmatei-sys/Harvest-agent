@@ -323,7 +323,9 @@ describe('no price and no other add-on moved', () => {
   it('the nine plan prices are exactly as they were', () => {
     expect(PLAN_PRICING.plus).toEqual({ monthly: 20, quarterly: 54, yearly: 190 });
     expect(PLAN_PRICING.pro).toEqual({ monthly: 40, quarterly: 108, yearly: 380 });
-    expect(PLAN_PRICING.max).toEqual({ monthly: 80, quarterly: 216, yearly: 760 });
+    // ⚠️ Moved by THE-343, not by this ticket — the add-on prices below are
+    // what this file guards and they are untouched.
+    expect(PLAN_PRICING.max).toEqual({ monthly: 60, quarterly: 162, yearly: 564 });
   });
 
   it('the five add-on meanings and their live Dodo ids are unchanged', () => {

@@ -100,6 +100,19 @@ const DODO_TEST_PRODUCTS_AS_VERIFIED = [
  * 🔴 A live id transposed or mistyped in the catalogue is a real card charged
  * at the wrong price. These nine lines are the independent record it is checked
  * against, character for character.
+ *
+ * 🔴 THE THREE MINISTRY ROWS ARE DELIBERATELY NOT IN STEP WITH THE APP, and
+ * THE-343 is why. That ticket repriced Ministry to $60 / $162 / $564 in
+ * `PLAN_PRICING`; the live Dodo products are edited BY HAND by the founder and
+ * still hold 8000 / 21600 / 76000. These rows record what Dodo actually
+ * charges TODAY, which is the only thing that makes them an independent check —
+ * writing the target amounts here would assert an agreement that does not exist
+ * and would quietly convert this fixture into a copy of catalogue.ts.
+ *
+ * ⚠️ The divergence is asserted from BOTH SIDES in `PENDING_DODO_REPRICE`
+ * below, exactly as the test-mode divergence above is, so it cannot decay into
+ * folklore: the day the founder updates the three products, those assertions
+ * fail and name the fixture to re-read from the API.
  */
 const DODO_LIVE_PRODUCTS_AS_VERIFIED = [
   { plan: 'plus', period: 'monthly', id: 'pdt_0NlJZKKU2AQSSH7E4ziKA', name: 'Harvest Individual - Monthly', cents: 2000, interval: 'Month' },
@@ -112,6 +125,36 @@ const DODO_LIVE_PRODUCTS_AS_VERIFIED = [
   { plan: 'max', period: 'quarterly', id: 'pdt_0NloCatUWEkEUq1usWJ0n', name: 'Harvest Ministry - Quarterly', cents: 21600, interval: 'Month' },
   { plan: 'max', period: 'yearly', id: 'pdt_0NlJZMXTnpRBAwTfBVpPs', name: 'Harvest Ministry - Annual', cents: 76000, interval: 'Year' },
 ] as const satisfies readonly VerifiedProduct[];
+
+/**
+ * 🔴 THE PRODUCTS THE-343 REPRICED IN CODE AND NOT YET IN DODO.
+ *
+ * `cents` above is what Dodo charges; `appCents` is what `PLAN_PRICING` now
+ * publishes and every app surface renders. For six of the nine products those
+ * are the same number and the equality below is asserted directly. For these
+ * three they are not, until the founder updates the live products by hand.
+ *
+ * 🔴 THIS IS A REAL WINDOW AND IT IS RECORDED RATHER THAN HIDDEN: while it
+ * stands the app advertises $60 and Dodo would charge $80. It is safe for
+ * exactly one reason — there are NO PAYING CUSTOMERS on `max`, so no card is
+ * charged at either figure. It is NOT safe to leave standing.
+ *
+ * ⚠️ `appCents` is DERIVED from the shipped table, never typed, so this record
+ * cannot drift from the prices it describes; only the `cents` half is a
+ * transcription, and it is the half that must be re-verified against the API.
+ */
+const PENDING_DODO_REPRICE = [
+  { plan: 'max', period: 'monthly', id: 'pdt_0NlJZMUUiT36FGMoiFXgl', cents: 8000, appCents: 6000 },
+  { plan: 'max', period: 'quarterly', id: 'pdt_0NloCatUWEkEUq1usWJ0n', cents: 21600, appCents: 16200 },
+  { plan: 'max', period: 'yearly', id: 'pdt_0NlJZMXTnpRBAwTfBVpPs', cents: 76000, appCents: 56400 },
+] as const;
+
+/** The six live products whose Dodo price and app price DO agree. Derived by
+ *  removing the pending three, so a product cannot be dropped from the strict
+ *  check by forgetting to add it here. */
+const DODO_LIVE_IN_STEP = DODO_LIVE_PRODUCTS_AS_VERIFIED.filter(
+  (p) => !PENDING_DODO_REPRICE.some((q) => q.id === p.id),
+);
 
 /**
  * 🔴 QUARTERLY IS `3 × Month`, NOT A QUARTER INTERVAL — Dodo has no such
@@ -189,11 +232,39 @@ describe('every live product id is pinned exactly as verified against Dodo', () 
     '$name ($plan/$period) maps to $id at $cents minor units',
     ({ plan, period, id, cents }) => {
       const entry = DODO_LIVE_CATALOGUE[plan][period];
+      // 🔴 THE ID IS PINNED FOR ALL NINE, unconditionally. A wrong id is a card
+      // charged against the wrong product, and no reprice window excuses one.
       expect(entry.productId).toBe(id);
-      expect(entry.priceMinorUnits).toBe(cents);
-      expect(entry.priceUsd).toBe(cents / 100);
+      // The PRICE half is what THE-343 put out of step on three of the nine.
+      const pending = PENDING_DODO_REPRICE.find((p) => p.id === id);
+      const expectedCents = pending ? pending.appCents : cents;
+      expect(entry.priceMinorUnits).toBe(expectedCents);
+      expect(entry.priceUsd).toBe(expectedCents / 100);
     },
   );
+
+  it('🔴 the three Ministry products Dodo has NOT yet repriced, from both sides', () => {
+    for (const { plan, period, id, cents, appCents } of PENDING_DODO_REPRICE) {
+      const entry = DODO_LIVE_CATALOGUE[plan][period];
+      // The id never moves.
+      expect(entry.productId).toBe(id);
+      // The app moved to the new price...
+      expect(entry.priceMinorUnits, `${plan}/${period} app side`).toBe(appCents);
+      expect(entry.priceMinorUnits).toBe(planPriceUsd(plan, period) * 100);
+      // ...and Dodo has not. 🔴 WHEN THE FOUNDER UPDATES THE THREE PRODUCTS
+      // THIS LINE FAILS, which is the only intended way out of this window:
+      // re-read the live API and fold the row back into the strict check above.
+      expect(cents, `${plan}/${period} live side — re-verify against Dodo`)
+        .not.toBe(appCents);
+      expect(appCents, 'THE-343 is a price CUT').toBeLessThan(cents);
+    }
+    // Exactly three products are out of step, and they are all Ministry.
+    expect(PENDING_DODO_REPRICE).toHaveLength(3);
+    expect(DODO_LIVE_IN_STEP).toHaveLength(6);
+    expect(new Set(PENDING_DODO_REPRICE.map((p) => p.plan))).toEqual(new Set(['max']));
+    // The exact amounts the founder must set, in minor units.
+    expect(PENDING_DODO_REPRICE.map((p) => p.appCents)).toEqual([6000, 16200, 56400]);
+  });
 
   it('the trial is 14 days on every live entry', () => {
     for (const { plan, period } of DODO_LIVE_PRODUCTS_AS_VERIFIED) {
@@ -232,7 +303,7 @@ describe('prices resolve to the nine figures in the table', () => {
   it.each([
     ['plus', 20, 54, 190],
     ['pro', 40, 108, 380],
-    ['max', 80, 216, 760],
+    ['max', 60, 162, 564],
   ] as const)('%s is $%i monthly, $%i quarterly and $%i annually', (plan, monthly, quarterly, annual) => {
     expect(termPriceUsd(plan, 'monthly')).toBe(monthly);
     expect(termPriceUsd(plan, 'quarterly')).toBe(quarterly);
@@ -242,7 +313,11 @@ describe('prices resolve to the nine figures in the table', () => {
     expect(catalogueEntry(plan, 'yearly').priceUsd).toBe(annual);
   });
 
-  it.each(DODO_LIVE_PRODUCTS_AS_VERIFIED)(
+  // 🔴 THE SIX IN STEP, at full strength. The three Ministry products THE-343
+  // repriced ahead of Dodo are asserted from both sides in their own test
+  // above; excluding them here keeps this one an exact equality rather than a
+  // conditional that would weaken for all nine.
+  it.each(DODO_LIVE_IN_STEP)(
     'live $name ($plan/$period) publishes $$cents minor units',
     ({ plan, period, cents }) => {
       expect(DODO_LIVE_CATALOGUE[plan][period].priceUsd).toBe(cents / 100);
@@ -250,7 +325,7 @@ describe('prices resolve to the nine figures in the table', () => {
     },
   );
 
-  it.each(DODO_LIVE_PRODUCTS_AS_VERIFIED)(
+  it.each(DODO_LIVE_IN_STEP)(
     '$name ($plan/$period) agrees with the price the app publishes',
     ({ plan, period, cents }) => {
       // 🔴 The whole point. `PLAN_PRICING` is what every app surface renders and

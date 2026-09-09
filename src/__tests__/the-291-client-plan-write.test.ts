@@ -464,7 +464,10 @@ describe('6 · no plan cap or price changed', () => {
     expect(PLAN_PRICING).toEqual({
       plus: { monthly: 20, quarterly: 54, yearly: 190 },
       pro: { monthly: 40, quarterly: 108, yearly: 380 },
-      max: { monthly: 80, quarterly: 216, yearly: 760 },
+      // ⚠️ THE-343 repriced Ministry ($80→$60, with the quarter and year
+      // following at the same 10% / >20% discounts). `plus` and `pro` are
+      // enumerated so a reprice that overreached its brief still fails here.
+      max: { monthly: 60, quarterly: 162, yearly: 564 },
     });
   });
 
@@ -507,11 +510,27 @@ describe('6 · no plan cap or price changed', () => {
     // asserted directly above, and the cross-repo price contract still throws at
     // module scope during the marketing site's prerender.
     //
+    // 🔴 REPINNED AGAIN FOR THE-343, and again the reason is recorded rather
+    // than the digest silently swapped. THE-343 is a REPRICE: `PLAN_PRICING.max`
+    // goes 80/216/760 → 60/162/564, plus three comment blocks that named the old
+    // figures. THE-291's claim is untouched by it — a price is not an
+    // entitlement, and this file's subject is that NOTHING WRITES `plan` FROM
+    // THE CLIENT. That claim is asserted by `planWritesIn` above and is
+    // independent of what any tier costs.
+    //
+    // ⚠️ THIS IS THE FIRST REPIN HERE THAT MOVED A PRICE, so the sentence the
+    // three previous notes carried — "NO PRICE MOVED" — is deliberately NOT
+    // repeated. The caps did not move (asserted directly above), the feature
+    // matrix did not move, and the cross-repo price contract still throws at
+    // module scope during the marketing site's prerender — which is what makes
+    // a one-sided reprice a failed build rather than a false advertisement.
+    //
     // Previous pins:
     //   cd4fbdd58f6dbbcbd180aeab00a63f1c9be3189c9010ff7a844a0f8e817af403 (pre-THE-314)
     //   f43327552f7c774586dabc040ac8da0d31bf4f84023d70af3b2f428024f7f570 (pre-THE-335)
+    //   db4bd86a93fa34691da21bbb9b1dcdea9d3d37f932784d50177ad3b736c11d75 (pre-THE-343)
     expect(sha256(readFileSync(path.join(REPO, 'src/utils/plan-features.ts')))).toBe(
-      'db4bd86a93fa34691da21bbb9b1dcdea9d3d37f932784d50177ad3b736c11d75',
+      '11f9c533ddaffcf89614219f2d9b37b201e218bc421d923a75fc9d38bf63ffcf',
     );
   });
 });

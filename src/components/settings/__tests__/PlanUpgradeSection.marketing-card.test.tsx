@@ -1105,7 +1105,9 @@ describe('7 — prices, the toggle and the blurbs', () => {
   it('leaves every price alone', () => {
     expect(PLAN_PRICING.plus.monthly).toBe(20);
     expect(PLAN_PRICING.pro.monthly).toBe(40);
-    expect(PLAN_PRICING.max.monthly).toBe(80);
+    // ⚠️ 80 until THE-343 repriced Ministry to $60. This file's subject is the
+    // card's LAYOUT, which a price change may not disturb.
+    expect(PLAN_PRICING.max.monthly).toBe(60);
     mount();
     for (const plan of PRICED_PLAN_ORDER) {
       // Monthly: the per-month headline and the charged price are the same
