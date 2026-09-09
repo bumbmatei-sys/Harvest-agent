@@ -213,7 +213,9 @@ describe('4 — what this change must NOT have moved', () => {
     expect(PLAN_PRICING).toEqual({
       plus: { monthly: 20, quarterly: 54,  yearly: 190 },
       pro:  { monthly: 40, quarterly: 108, yearly: 380 },
-      max:  { monthly: 80, quarterly: 216, yearly: 760 },
+      // ⚠️ THE-343 repriced Ministry; the affiliate RATE is what this file
+      // guards and it did not move with it.
+      max:  { monthly: 60, quarterly: 162, yearly: 564 },
     });
   });
 });

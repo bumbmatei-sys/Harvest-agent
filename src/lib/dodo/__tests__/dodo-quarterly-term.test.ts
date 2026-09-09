@@ -59,8 +59,15 @@ describe('the three quarterly product ids resolve', () => {
     }
   });
 
-  it('publishes the quarterly price Dodo actually charges, in both units', () => {
-    const CENTS = { plus: 5400, pro: 10800, max: 21600 } as const;
+  it('publishes the quarterly price this app charges, in both units', () => {
+    // ⚠️ WAS "the price Dodo actually charges", AND ON MINISTRY IT IS NO LONGER
+    // THE SAME NUMBER. THE-343 repriced Ministry's quarter to $162 (16200) in
+    // this repo; the live Dodo product still holds 21600 until the founder
+    // updates it by hand. These figures are what the CATALOGUE publishes, which
+    // is what a checkout cart is built from — the divergence against live Dodo
+    // is recorded and asserted from both sides in `PENDING_DODO_REPRICE`
+    // (dodo-catalogue.test.ts), which is the one place that owns it.
+    const CENTS = { plus: 5400, pro: 10800, max: 16200 } as const;
     for (const plan of PRICED_PLAN_ORDER) {
       expect(DODO_LIVE_CATALOGUE[plan].quarterly.priceMinorUnits).toBe(CENTS[plan]);
       expect(DODO_LIVE_CATALOGUE[plan].quarterly.priceUsd).toBe(CENTS[plan] / 100);

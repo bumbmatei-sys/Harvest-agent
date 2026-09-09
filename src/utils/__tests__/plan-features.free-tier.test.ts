@@ -96,9 +96,18 @@ describe('THE-200 — free is a tier, not a $0 price', () => {
     //     rounding RULE, which is the thing that can actually regress; checked
     //     against the shipped ceiling the assertion would be true by
     //     construction and would guard nothing.
-    expect(() => monthlyHeadlineContract(Math.round)).toThrow(
-      /may never promise less than the bill/,
-    );
+    //     ⚠️ THE-343 removed the last shipped cell `Math.round` understated
+    //     (Ministry's year is now $564/12 = $47 exactly), so the round mutation
+    //     is paired with the explicit table below rather than the shipped one.
+    //     `Math.floor` still understates on the shipped table and so is left
+    //     pointed at it.
+    expect(() =>
+      monthlyHeadlineContract(Math.round, {
+        plus: { monthly: 39, quarterly: 90, yearly: 360 },
+        pro: { monthly: 79, quarterly: 150, yearly: 600 },
+        max: { monthly: 159, quarterly: 399, yearly: 1325 },
+      }),
+    ).toThrow(/may never promise less than the bill/);
     expect(() => monthlyHeadlineContract(Math.floor)).toThrow();
 
     // And it names the TIER it caught. Note the mutation here must be of the
@@ -427,10 +436,15 @@ describe('THE-200 — the three priced tiers are untouched', () => {
 describe('THE-200 — no price, term or add-on price changed', () => {
   // ── 11 ─────────────────────────────────────────────────────────────────────
   it('the nine stored prices are byte-for-byte what they were', () => {
+    // ⚠️ THE SUBJECT OF THIS FILE IS THE FREE TIER, and the pin moves only when
+    // a reprice ticket moves it. THE-343 is that ticket for `max` — $80 to $60,
+    // with the quarter and year following at the established 10% and >20%
+    // discounts. `plus` and `pro` are enumerated here precisely so a reprice
+    // that reached further than its brief cannot pass this file.
     expect(PLAN_PRICING).toEqual({
       plus: { monthly: 20, quarterly: 54, yearly: 190 },
       pro: { monthly: 40, quarterly: 108, yearly: 380 },
-      max: { monthly: 80, quarterly: 216, yearly: 760 },
+      max: { monthly: 60, quarterly: 162, yearly: 564 },
     });
   });
 

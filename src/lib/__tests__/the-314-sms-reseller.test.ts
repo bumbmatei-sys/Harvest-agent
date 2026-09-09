@@ -457,7 +457,10 @@ describe('6 — no price, no other switch and no pinned file changed', () => {
     expect(PLAN_PRICING).toMatchObject({
       plus: { monthly: 20, quarterly: 54, yearly: 190 },
       pro: { monthly: 40, quarterly: 108, yearly: 380 },
-      max: { monthly: 80, quarterly: 216, yearly: 760 },
+      // ⚠️ THE-343 repriced Ministry ($80→$60, with the quarter and year
+      // following at the same 10% / >20% discounts). `plus` and `pro` are
+      // enumerated so a reprice that overreached its brief still fails here.
+      max: { monthly: 60, quarterly: 162, yearly: 564 },
     });
   });
 

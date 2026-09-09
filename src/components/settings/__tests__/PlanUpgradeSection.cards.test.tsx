@@ -279,7 +279,8 @@ describe('PlanUpgradeSection plan cards', () => {
     // more — the prices ARE the source, so each is asserted outright.
     expect(PLAN_PRICING.plus.monthly).toBe(20);
     expect(PLAN_PRICING.pro.monthly).toBe(40);
-    expect(PLAN_PRICING.max.monthly).toBe(80);
+    // ⚠️ 80 until THE-343 repriced Ministry to $60.
+    expect(PLAN_PRICING.max.monthly).toBe(60);
     for (const plan of PRICED_PLAN_ORDER) {
       for (const term of BILLING_TERMS) {
         expect(planPriceUsd(plan, term), `${PLAN_DISPLAY_NAMES[plan]} ${term}`)
