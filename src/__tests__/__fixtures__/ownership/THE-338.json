@@ -1,0 +1,37 @@
+{
+  "ticket": "THE-338",
+  "recordedIn": "THE-338",
+  "note": "THE-338 removes the Harvest palette FAMILY and darkens the neutral dark ramp. Because a palette lives in globals.css and every screen reads it, this ticket legitimately touches files several other tickets own — which is exactly why its own record is the place to say so. Digests are the state THE-338 LEAVES each file at, appended to the accepted set rather than substituted for anyone else's entry: main went red once when a PR replaced a pinned digest instead of appending, and the four files below are all ones another ticket already pinned at their pre-THE-338 value. Those earlier entries stay valid and untouched; these are additional accepted values. No firestore.rules digest is recorded here, deliberately — this ticket does not touch it.",
+  "entries": [
+    {
+      "file": "src/app/layout.tsx",
+      "digest": "b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f",
+      "why": "THE-338 owns this change. The pre-paint script stamped a second attribute, data-palette, and duplicated a second storage key and a second default literal so a script running before any bundle could resolve the family without importing. With one family none of that has anything to stamp, so the script is back to the single mode attribute it carried before the family axis existed. The per-request accent injection collapsed with it: two selector-scoped rules deriving --brand-color-on-dark against two different dark grounds became one :root rule against the only ground there is."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "d81a5b117569424515bf8c8ebca8654e8b6f57f3c7447f2419968adcebdf8bbe",
+      "why": "THE-338 owns this change, and it is two separate things in one file. First, MORE_GROUPS was re-cut to mirror DESKTOP_NAV_GROUPS exactly — the mobile PLATFORM and MORE groups became desktop's single GROW, and MINISTRY adopted desktop's THE-334 order — with no id moving between shells. Second, the More drawer's row dividers were drawn with divide-stone-200, a hardcoded hex scale in tailwind.config.ts that never themes, so they rendered at 12.06:1 against the dark card; they now use divide-line, which resolves to --border-default. THE-332 and THE-334 own the desktop rail in this file and neither of those regions was touched."
+    },
+    {
+      "file": "src/components/AdminBlog.tsx",
+      "digest": "138ff014b3b4d102c64e46d6f48a0b260112af5699065cf5cca995785e06a0f0",
+      "why": "One line: divide-stone-200 -> divide-line on the posts table. Part of the 17-call-site sweep that fixes the founder's 'the lines in more drawer are too white' at its root rather than only on the screen he happened to photograph — the same unthemed divider was drawn on thirteen screens. Nothing else in this file moved."
+    },
+    {
+      "file": "src/components/AdminSms.tsx",
+      "digest": "f48ae4b8b6deff201e3767e5812bf7045af632a64c88384e5a91f285c47caab2",
+      "why": "One line: divide-stone-200 -> divide-line on the desktop message list. Same sweep as AdminBlog.tsx above. THE-327 and THE-335 own this file's SMS consolidation and visibility work and neither is touched here."
+    },
+    {
+      "file": "src/components/AdminCRM.tsx",
+      "digest": "dce36c78b1c50e62abe6b6eef2e47ffc682c85c67ae187761d0054f9858c06f7",
+      "why": "THE-338 owns this change: THE-249's payment-links disclaimer became collapsible. The fold is the whole edit — every word of the explanation is unchanged and simply moved inside the panel, and the hasManualGivingLinks gate that keeps it off screens for churches with no payment links is untouched. Deliberately NOT composed: this file is 2,234 lines with zero ui/ primitive imports, and composing it is its own ticket."
+    },
+    {
+      "file": "src/components/AdminRoles.tsx",
+      "digest": "79f486a241982c55ea2e776b022cc348f9d7abdadbe1b96705436a70cc732437",
+      "why": "THE-338 owns this change, and it is the founder's 'in CRM if I press on roles the button switch appears very small'. This file injected an UNSCOPED <style> block whose first rule was `* { box-sizing: border-box; margin: 0; padding: 0; }`. A style element paints the whole document, so while the Roles sub-view was mounted that rule zeroed the padding of every element on the page — including AdminCRM's Contacts/Roles switcher, which is a SIBLING above this component. Every rule in the block is now scoped to [data-admin-roles]; the keyframes stay global because a keyframe name cannot be scoped."
+    }
+  ]
+}

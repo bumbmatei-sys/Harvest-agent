@@ -772,14 +772,11 @@ describe('no emoji, no hardcoded colour; all four palettes resolve', () => {
     }
   });
 
-  it('spends only tokens the four palettes define, Classic first', () => {
+  it('spends only tokens both palettes define', () => {
     const css = readRepo('src/app/globals.css');
-    // Classic has been the default family since #409; the app also ships the
-    // Harvest family, each in light and dark.
-    for (const selector of [
-      '[data-palette="classic"][data-theme="light"]',
-      '[data-palette="classic"][data-theme="dark"]',
-    ]) expect(css, `${selector} is gone`).toContain(selector);
+    // 🔴 THE-338 — the Classic FAMILY's two selectors are gone; its 14
+    // overrides were promoted into the two theme scopes asserted below.
+    expect(css, 'a palette family selector is back').not.toContain('data-palette');
     expect(css).toMatch(/^\s*:root\s*\{/m);
     expect(css).toMatch(/\[data-theme="dark"\]\s*\{/);
     for (const v of ['--surface-gold', '--surface-sunken', '--surface-raised']) {

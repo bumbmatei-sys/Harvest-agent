@@ -661,10 +661,10 @@ describe('8 — no emoji appears in the rendered output of either page', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 9 · 🔴 No hardcoded colour, and all four palettes resolve — Classic first
+// 9 · 🔴 No hardcoded colour, and both palettes resolve — Classic first
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('9 — no colour is hardcoded and all four palettes resolve', () => {
+describe('9 — no colour is hardcoded and both palettes resolve', () => {
   const GLOBALS = src('src/app/globals.css');
 
   const varsIn = (selectorTest: (sel: string) => boolean): Record<string, string> => {
@@ -740,8 +740,10 @@ describe('9 — no colour is hardcoded and all four palettes resolve', () => {
     expect(config).toContain('--ink-green-600');
   });
 
-  it('Classic really is the default, so it is the palette these tokens are read in first', () => {
-    expect(src('src/lib/theme.ts')).toMatch(/DEFAULT_PALETTE_FAMILY[^\n]*classic/);
+  it('there is no default family left to read these tokens in (THE-338)', () => {
+    // 🔴 INVERTED: THE-338 removed the family axis, so the constant that named
+    // the default is gone rather than pointing somewhere else.
+    expect(src('src/lib/theme.ts')).not.toContain('DEFAULT_PALETTE_FAMILY');
   });
 });
 

@@ -1016,18 +1016,28 @@ describe('THE-334 · what it may not disturb', () => {
     expect(rows, 'Settings reached an admin without manageSettings').not.toContain('Settings');
   });
 
-  it('11 · the rail does not render below lg, and mobile is byte-identical', () => {
+  it('11 · the rail does not render below lg, and the drawer is at its recorded digest', () => {
     const src = read('src/components/AdminDashboard.tsx');
     /* The rail column and every rail entry are `lg:`-gated. */
     expect(src).toContain('hidden lg:flex lg:flex-col lg:items-center');
-    /* 🔴 MORE_GROUPS — the mobile drawer's model — is untouched, and that is
-       pinned to a LITERAL digest of the block as `main` carries it. Comparing
-       the block to itself would have been a tautology that passes whatever the
-       mobile nav becomes; this repo has already shipped one guard that compared
-       a file to itself, and it is the reason this line is spelled out. */
+    /* 🔴 MORE_GROUPS — the mobile drawer's model — is pinned to a LITERAL
+       digest of the block as the base carries it. Comparing the block to
+       itself would have been a tautology that passes whatever the mobile nav
+       becomes; this repo has already shipped one guard that compared a file to
+       itself, and it is the reason this line is spelled out.
+
+       🔴 THE-338 MOVED THE DIGEST, and moving it is the correct outcome rather
+       than a weakening. THE-334 asserted mobile was UNTOUCHED because it was
+       changing the desktop rail only. THE-338 changes the drawer on purpose:
+       the founder asked for its group names and order to match desktop, so
+       the mobile `PLATFORM` and `MORE` groups became desktop's single `GROW`
+       and MINISTRY adopted desktop's order. No id moved between shells — the
+       SET of 23 is identical — and `THE-338`'s own suite asserts the two
+       arrays are now element-for-element equal, which is a stronger claim
+       than this digest ever made. */
     const more = src.split('const MORE_GROUPS')[1].split('\n];')[0];
     expect(sha256(more), 'MORE_GROUPS changed — mobile was supposed to be untouched')
-      .toBe('f253eb5723736dea118117e66705f81d8606d767324e4e5f3bcbe4ef8081c49a');
+      .toBe('b8f838ab6182d888e95e5b20b91f6c788726c145b7b1140e50de044dcaa155f8');
     expect(src).toContain('flex lg:hidden justify-around items-center w-full');
   });
 

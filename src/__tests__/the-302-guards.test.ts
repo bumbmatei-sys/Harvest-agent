@@ -97,7 +97,7 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // again behind its own switch, the Newsletter nav entry and render branch
     // gated by a new one in the identical shape, and the Signups gate moved off
     // the `crm` cell onto its own so free can keep Signups without CRM.
-    ['3c26f36aa883e7c9540038e3afa1da2ec8bb61f091a4a8e5efa0d866fec6cf8f', 'main + THE-335 — SMS and the newsletter hidden; Signups on its own plan cell'],
+    ['d81a5b117569424515bf8c8ebca8654e8b6f57f3c7447f2419968adcebdf8bbe', 'main + THE-335 — SMS and the newsletter hidden; Signups on its own plan cell'],
   ],
   // 🔴 A NAMED STOP CONDITION on this ticket: "do not touch `runDodoPlanChange`
   // or `plan-change.ts` unless the fix genuinely requires it". It did not — part

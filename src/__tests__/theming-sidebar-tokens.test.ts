@@ -55,7 +55,7 @@ import { buildCssForMarkup, GLOBALS_CSS } from '../test/support/tailwind-build';
  * than something this change introduces:
  *
  *   • --sidebar-border is --border-default, which is ~1.2-1.3:1 against its
- *     own ground in all four palettes — as every container hairline in this
+ *     own ground in both palettes — as every container hairline in this
  *     app is, and as --border (THE-263) already is. WCAG 1.4.11 asks 3:1 of a
  *     boundary that is the ONLY means of identifying a control; the sidebar
  *     is identified by its ground, which differs from the page ground in all
@@ -70,7 +70,7 @@ import { buildCssForMarkup, GLOBALS_CSS } from '../test/support/tailwind-build';
  * Rather than assert a threshold that is false, or drop the guard, every one
  * of these ratios is PINNED to its measured value below. A pin catches drift
  * in either direction, which a floor does not, and --sidebar-ring is asserted
- * identical to --ring in all four palettes so the two can only ever be fixed
+ * identical to --ring in both palettes so the two can only ever be fixed
  * together.
  */
 
@@ -91,23 +91,18 @@ function varsIn(selectorTest: (sel: string) => boolean, css: string = GLOBALS): 
 
 const IS_ROOT = (s: string) => s === ':root';
 const IS_DARK = (s: string) => /\.dark|\[data-theme="dark"\]/.test(s) && !s.includes('data-palette');
-const IS_CLASSIC_LIGHT = (s: string) =>
-  s.includes('data-palette="classic"') && s.includes('data-theme="light"');
-const IS_CLASSIC_DARK = (s: string) =>
-  s.includes('data-palette="classic"') && (s.includes('.dark') || s.includes('data-theme="dark"'));
-
+/**
+ * 🔴 THE-338 — TWO PALETTES, NOT FOUR. There used to be a second FAMILY
+ * (Classic) matched by its own `data-palette` selectors, crossed with the two
+ * modes. Its 14 overrides were promoted into :root/.dark and its selectors
+ * deleted, so the surviving axis is mode alone.
+ */
 function palettes(css: string = GLOBALS) {
   const root = varsIn(IS_ROOT, css);
   const dark = varsIn(IS_DARK, css);
-  const cl = varsIn(IS_CLASSIC_LIGHT, css);
-  const cd = varsIn(IS_CLASSIC_DARK, css);
   return {
-    // Classic first: it is the DEFAULT family since THE-265, so it is what
-    // most users actually see.
-    'Classic light': { ...root, ...cl },
-    'Classic dark': { ...root, ...dark, ...cd },
-    'Harvest light': { ...root },
-    'Harvest dark': { ...root, ...dark },
+    Light: { ...root },
+    Dark: { ...root, ...dark },
   } as const;
 }
 
@@ -199,11 +194,7 @@ describe('every --sidebar token is declared, and declared once', () => {
       // Falling through is the DECISION. Restating any of these in .dark or a
       // Classic block would change no computed value (test 2 proves each still
       // differs per palette) and would add three more places to keep in sync.
-      for (const [label, test] of [
-        ['.dark', IS_DARK],
-        ['Classic light', IS_CLASSIC_LIGHT],
-        ['Classic dark', IS_CLASSIC_DARK],
-      ] as const) {
+      for (const [label, test] of [['.dark', IS_DARK]] as const) {
         expect(varsIn(test)[token], `${token} was restated in ${label}; it is meant to fall through`)
           .toBeUndefined();
       }
@@ -219,9 +210,9 @@ describe('every --sidebar token is declared, and declared once', () => {
   });
 });
 
-/* ═══ 2 · Each resolves in all four palettes, Classic first ═════════════ */
+/* ═══ 2 · Each resolves in both palettes ═══════════════════════════════ */
 
-describe('each resolves in all four palettes', () => {
+describe('each resolves in both palettes', () => {
   for (const name of PALETTE_NAMES) {
     for (const { token } of SIDEBAR) {
       it(`${name}: ${token} resolves to a literal colour`, () => {
@@ -232,22 +223,21 @@ describe('each resolves in all four palettes', () => {
   }
 
   it('the five neutral aliases actually differ between the palettes they fall through to', () => {
-    // The point of falling through: one declaration, four different results.
-    // If these were equal the fall-through would be hiding a bug, not saving
-    // three restatements.
+    // The point of falling through: ONE declaration, a different result per
+    // mode. If these were equal the fall-through would be hiding a bug rather
+    // than saving a restatement. (THE-338: this compared four results across
+    // two families; with one family the same property is light vs dark.)
     for (const token of ['--sidebar', '--sidebar-foreground', '--sidebar-accent', '--sidebar-accent-foreground', '--sidebar-border']) {
-      const harvestDark = resolve(token, PALETTES['Harvest dark']);
-      const classicDark = resolve(token, PALETTES['Classic dark']);
-      const harvestLight = resolve(token, PALETTES['Harvest light']);
-      expect(harvestDark, `${token} did not change on dark`).not.toBe(harvestLight);
-      expect(classicDark, `${token} is identical in both dark families`).not.toBe(harvestDark);
+      expect(resolve(token, PALETTES.Dark), `${token} did not change on dark`)
+        .not.toBe(resolve(token, PALETTES.Light));
     }
   });
 
-  it('the three brand aliases are deliberately family- and mode-independent, except --sidebar-ring on dark', () => {
-    // --primary / --primary-foreground are fixed everywhere: the accent must
-    // not grey out in Classic. --ring tracks the contrast-corrected accent on
-    // dark, which is why chaining to it removes the need to restate anything.
+  it('the three brand aliases are deliberately mode-independent, except --sidebar-ring on dark', () => {
+    // --primary / --primary-foreground are fixed in both modes: THE-338 kept
+    // the gold accent untouched while removing the surface family, so this
+    // still holds and is worth pinning. --ring tracks the contrast-corrected
+    // accent on dark, which is why chaining to it removes the need to restate.
     for (const token of ['--sidebar-primary', '--sidebar-primary-foreground']) {
       const values = PALETTE_NAMES.map((n) => resolve(token, PALETTES[n]));
       expect(new Set(values).size, `${token} should be one value in every palette`).toBe(1);
@@ -334,37 +324,28 @@ const TEXT_PAIRS: { fg: string; bg: string; label: string }[] = [
 ];
 
 const EXPECTED_TEXT: Record<string, Record<string, number>> = {
-  'Classic light': {
+  // 🔴 THE-338 re-recorded these. The sidebar's ground is --surface-raised,
+  // so darkening the ramp moved every DARK figure — and moved them UP, since a
+  // darker ground can only improve text contrast. The 5.69 gold pair is
+  // untouched in both modes: this ticket removed a surface family, not the
+  // accent, and --sidebar-primary/-primary-foreground are fixed hexes.
+  Light: {
     '--sidebar-foreground/--sidebar': 10.37,
     '--sidebar-foreground/--sidebar-accent': 7.85,
     '--sidebar-accent-foreground/--sidebar-accent': 13.18,
     '--sidebar-accent-foreground/--sidebar': 17.4,
     '--sidebar-primary-foreground/--sidebar-primary': 5.69,
   },
-  'Classic dark': {
-    '--sidebar-foreground/--sidebar': 9.67,
-    '--sidebar-foreground/--sidebar-accent': 8.46,
-    '--sidebar-accent-foreground/--sidebar-accent': 12.13,
-    '--sidebar-accent-foreground/--sidebar': 13.87,
-    '--sidebar-primary-foreground/--sidebar-primary': 5.69,
-  },
-  'Harvest light': {
-    '--sidebar-foreground/--sidebar': 10.09,
-    '--sidebar-foreground/--sidebar-accent': 7.84,
-    '--sidebar-accent-foreground/--sidebar-accent': 11.73,
-    '--sidebar-accent-foreground/--sidebar': 15.11,
-    '--sidebar-primary-foreground/--sidebar-primary': 5.69,
-  },
-  'Harvest dark': {
-    '--sidebar-foreground/--sidebar': 10.02,
-    '--sidebar-foreground/--sidebar-accent': 8.73,
-    '--sidebar-accent-foreground/--sidebar-accent': 13.73,
-    '--sidebar-accent-foreground/--sidebar': 15.76,
+  Dark: {
+    '--sidebar-foreground/--sidebar': 10.26,
+    '--sidebar-foreground/--sidebar-accent': 8.94,
+    '--sidebar-accent-foreground/--sidebar-accent': 12.82,
+    '--sidebar-accent-foreground/--sidebar': 14.72,
     '--sidebar-primary-foreground/--sidebar-primary': 5.69,
   },
 };
 
-describe('every sidebar text pair clears AA in all four palettes', () => {
+describe('every sidebar text pair clears AA in both palettes', () => {
   for (const name of PALETTE_NAMES) {
     for (const { fg, bg, label } of TEXT_PAIRS) {
       it(`${name}: ${label} (${fg} on ${bg})`, () => {
@@ -379,9 +360,12 @@ describe('every sidebar text pair clears AA in all four palettes', () => {
     }
   }
 
-  it('the floor across all 20 pairs is 5.69:1, at or above THE-263’s 5.66', () => {
+  it('the floor across all 10 pairs is 5.69:1, at or above THE-263’s 5.66', () => {
+    // ⚠️ TEN, not twenty: THE-338 halved the palette count by removing the
+    // family axis. The FLOOR is unchanged, and that is the assertion that
+    // matters — it is the gold pair, which no ramp change can move.
     const all = PALETTE_NAMES.flatMap((n) => Object.values(EXPECTED_TEXT[n]));
-    expect(all).toHaveLength(20);
+    expect(all).toHaveLength(10);
     expect(Math.min(...all)).toBe(5.69);
     expect(Math.min(...all)).toBeGreaterThanOrEqual(5.66);
   });
@@ -397,10 +381,12 @@ describe('every sidebar text pair clears AA in all four palettes', () => {
  * dark grounds where the accent is contrast-corrected for exactly that.
  */
 const EXPECTED_NON_TEXT: Record<string, { accentLift: number; borderOnSidebar: number; ringOnSidebar: number; sidebarVsPage: number }> = {
-  'Classic light': { accentLift: 1.32, borderOnSidebar: 1.32, ringOnSidebar: 2.66, sidebarVsPage: 1.07 },
-  'Classic dark': { accentLift: 1.14, borderOnSidebar: 1.23, ringOnSidebar: 5.84, sidebarVsPage: 1.1 },
-  'Harvest light': { accentLift: 1.29, borderOnSidebar: 1.29, ringOnSidebar: 2.66, sidebarVsPage: 1.06 },
-  'Harvest dark': { accentLift: 1.15, borderOnSidebar: 1.22, ringOnSidebar: 6.29, sidebarVsPage: 1.08 },
+  // 🔴 THE-338 — `sidebarVsPage` is the number to read here: it went from
+  // 1.10 to 1.12 on dark. Darkening the page ground by more than the raised
+  // surface is what keeps the sidebar reading as a distinct panel rather than
+  // flattening into the page, which was the risk in dropping both.
+  Light: { accentLift: 1.32, borderOnSidebar: 1.32, ringOnSidebar: 2.66, sidebarVsPage: 1.07 },
+  Dark: { accentLift: 1.15, borderOnSidebar: 1.21, ringOnSidebar: 6.21, sidebarVsPage: 1.12 },
 };
 
 describe('the non-text pairs, measured and pinned', () => {
@@ -433,13 +419,11 @@ describe('the non-text pairs, measured and pinned', () => {
     });
   }
 
-  it('the focus ring clears the 3:1 non-text bar on both dark grounds', () => {
+  it('the focus ring clears the 3:1 non-text bar on the dark ground', () => {
     // Where the accent is contrast-corrected against a dark ground, the bar is
     // met. On light it is 2.66:1 — --ring's pre-existing shortfall, which the
     // header explains and which cannot be fixed without moving --brand-color.
-    for (const name of ['Classic dark', 'Harvest dark'] as const) {
-      expect(EXPECTED_NON_TEXT[name].ringOnSidebar).toBeGreaterThanOrEqual(3);
-    }
+    expect(EXPECTED_NON_TEXT.Dark.ringOnSidebar).toBeGreaterThanOrEqual(3);
   });
 });
 
@@ -497,58 +481,17 @@ describe('the two React constants stay out of the palette', () => {
 /* ═══ 9 · No THE-263 or #410 token moved ═══════════════════════════════ */
 
 /** Every bridge token's resolved value, per palette, as it stood at #410. */
-const PHASE_TWO_BASELINE: Record<string, Record<string, string>> = {
-  "Harvest light": {
-    "--background": "#FAF8F5",
-    "--foreground": "#4A4038",
-    "--card": "#FFFFFF",
-    "--card-foreground": "#4A4038",
-    "--popover": "#FFFFFF",
-    "--popover-foreground": "#4A4038",
-    "--primary": "#C9963A",
-    "--secondary": "#E6B325",
-    "--primary-foreground": "#2D2519",
-    "--secondary-foreground": "#2D2519",
-    "--muted": "#F3EEE7",
-    "--muted-foreground": "#68563F",
-    "--accent": "#E8E2D9",
-    "--accent-foreground": "#2D2519",
-    "--destructive": "#A23C28",
-    "--border": "#E8E2D9",
-    "--input": "#D6CCBE",
-    "--ring": "#C9963A",
-    "--chart-1": "#C9963A",
-    "--chart-2": "#4F97D6",
-    "--chart-3": "#6E8E52",
-    "--chart-4": "#D6CCBE",
-    "--chart-5": "#C8BCA9",
-  },
-  "Harvest dark": {
-    "--background": "#1A1612",
-    "--foreground": "#D1C7BA",
-    "--card": "#221D18",
-    "--card-foreground": "#D1C7BA",
-    "--popover": "#221D18",
-    "--popover-foreground": "#D1C7BA",
-    "--primary": "#C9963A",
-    "--secondary": "#E6B325",
-    "--primary-foreground": "#2D2519",
-    "--secondary-foreground": "#2D2519",
-    "--muted": "#120F0C",
-    "--muted-foreground": "#B5A692",
-    "--accent": "#2E2822",
-    "--accent-foreground": "#FAF8F5",
-    "--destructive": "#F0BFB2",
-    "--border": "#332C26",
-    "--input": "#463D35",
-    "--ring": "#C9963A",
-    "--chart-1": "#E5B65C",
-    "--chart-2": "#6BA8DD",
-    "--chart-3": "#8CA96E",
-    "--chart-4": "#FFFFFF",
-    "--chart-5": "#FFFFFF",
-  },
-  "Classic light": {
+const PHASE_TWO_BASELINE: Record<keyof typeof PALETTES, Record<string, string>> = {
+  // 🔴 THE-338 re-recorded these two rows and deleted the other two. The LIGHT
+  // row is byte-identical to what "Classic light" held — that family has been
+  // the default since THE-265, so promoting it changed nothing on screen. The
+  // DARK row is that family's values DARKENED, which is the founder's note.
+  //
+  // ⚠️ Read the brand rows: --primary, --secondary, --primary-foreground,
+  // --secondary-foreground, --ring and --chart-1..5 are UNCHANGED in both
+  // modes. That is the evidence for the report's claim that this ticket
+  // removed a surface family without touching the accent.
+  Light: {
     "--background": "#F7F7F7",
     "--foreground": "#404040",
     "--card": "#FFFFFF",
@@ -573,24 +516,24 @@ const PHASE_TWO_BASELINE: Record<string, Record<string, string>> = {
     "--chart-4": "#D6CCBE",
     "--chart-5": "#C8BCA9",
   },
-  "Classic dark": {
-    "--background": "#1C1C1C",
+  Dark: {
+    "--background": "#141414",
     "--foreground": "#CCCCCC",
-    "--card": "#242424",
+    "--card": "#1F1F1F",
     "--card-foreground": "#CCCCCC",
-    "--popover": "#242424",
+    "--popover": "#1F1F1F",
     "--popover-foreground": "#CCCCCC",
     "--primary": "#C9963A",
     "--secondary": "#E6B325",
     "--primary-foreground": "#2D2519",
     "--secondary-foreground": "#2D2519",
-    "--muted": "#131313",
+    "--muted": "#0C0C0C",
     "--muted-foreground": "#ABABAB",
-    "--accent": "#2E2E2E",
+    "--accent": "#2A2A2A",
     "--accent-foreground": "#F2F2F2",
     "--destructive": "#F0BFB2",
-    "--border": "#333333",
-    "--input": "#474747",
+    "--border": "#2E2E2E",
+    "--input": "#404040",
     "--ring": "#C9963A",
     "--chart-1": "#E5B65C",
     "--chart-2": "#6BA8DD",
@@ -611,12 +554,16 @@ describe('no existing token moved', () => {
   }
 });
 
-/* ═══ 10 · Classic is still the default family (no-regression on #409) ══ */
+/* ═══ 10 · THE-338 · the palette family axis is gone ════════════════════ */
 
-describe('THE-265 is intact', () => {
-  it('a missing preference still resolves to Classic', async () => {
-    const { DEFAULT_PALETTE_FAMILY } = await import('../lib/theme');
-    expect(DEFAULT_PALETTE_FAMILY).toBe('classic');
+describe('THE-265 has been superseded by THE-338', () => {
+  it('there is no default family, because there is no family axis', async () => {
+    // THE-265 made Classic the family a missing preference resolved to.
+    // THE-338 promoted that family's values into :root/.dark and deleted the
+    // axis, so "which family" has no answer rather than a different one.
+    const theme = await import('../lib/theme');
+    expect('DEFAULT_PALETTE_FAMILY' in theme).toBe(false);
+    expect('PALETTE_FAMILIES' in theme).toBe(false);
   });
 });
 

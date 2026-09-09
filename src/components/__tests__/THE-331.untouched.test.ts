@@ -94,7 +94,7 @@ const CASCADER: Readonly<Record<string, string>> = {
 /** Files this ticket is forbidden to touch at all. */
 const UNTOUCHABLE: Readonly<Record<string, string>> = {
   'firestore.indexes.json': '8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0',
-  'src/app/layout.tsx': 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5',
+  'src/app/layout.tsx': 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f',
 };
 
 // ===========================================================================

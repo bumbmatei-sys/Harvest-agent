@@ -13,7 +13,6 @@ import IntegrationsSection from './settings/IntegrationsSection';
 import { hasAnyIntegrationProvider } from './settings/integration-providers';
 import { GIVING_PROVIDER_NAMES_OR } from './donations/giving-providers';
 import ThemeToggle from './ThemeToggle';
-import PaletteFamilyToggle from './PaletteFamilyToggle';
 import SectionHeading from './settings/SectionHeading';
 import { FORM_MEASURE, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
 /*
@@ -284,12 +283,11 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
               "match the member Profile exactly" is the requirement, and a
               per-caller breakpoint would be a second answer to one question. */}
           {/* ⚠️ `ItemActions` IS `flex items-center gap-2` — the exact class
-              string this wrapper already carried, which is why the two theme
-              controls keep sharing one parent that is a flex row at every
-              viewport, never a column and never wrapping. The primitive
-              replaces the div without moving a pixel. */}
+              string this wrapper already carried. THE-338 removed the
+              palette-family control that used to sit beside ThemeToggle, so
+              this row now holds one child; the wrapper is unchanged, which is
+              what keeps the remaining control's position identical. */}
           <ItemActions>
-            <PaletteFamilyToggle />
             <ThemeToggle variant="row" />
           </ItemActions>
         </Item>

@@ -338,10 +338,16 @@ describe('2b · Library appears in the sidebar for a super admin, in BOTH nav ar
   };
 
   it("🔴 MORE_GROUPS (mobile drawer) lists 'library'", () => {
+    // 🔴 THE-338 changed the GROUP NAME, not the property. THE-327 put
+    // `library` in the mobile drawer's `PLATFORM` group; THE-338 folded that
+    // group and `MORE` into desktop's single `GROW`, because the founder asked
+    // for the drawer's group names and order to match desktop exactly. The id
+    // did not move between shells and is still in a group rather than under
+    // the bare OTHER catch-all, which is what this test is actually for.
     expect(
       groupHolding(codeOf(dashboard()), 'const MORE_GROUPS', 'library'),
       "'library' is in NO group of MORE_GROUPS — the mobile drawer files it under a bare OTHER heading",
-    ).toBe('PLATFORM');
+    ).toBe('GROW');
   });
 
   it("🔴 DESKTOP_NAV_GROUPS (desktop sidebar) lists 'library'", () => {
@@ -352,11 +358,14 @@ describe('2b · Library appears in the sidebar for a super admin, in BOTH nav ar
   });
 
   it('it sits with `tenants`, the surface it is gated with, in both arrays', () => {
-    /* The two arrays already disagree about where platform surfaces live —
-       mobile has a PLATFORM group, desktop files `tenants`/`inbox` under GROW.
-       Library follows its CO-GATED SIBLING in each rather than picking a side
-       of that disagreement, so it appears and disappears exactly when
-       `tenants` does. */
+    /* 🔴 THE-338 SETTLED THE DISAGREEMENT THIS COMMENT DESCRIBED. The two
+       arrays used to differ about where platform surfaces live — mobile had a
+       PLATFORM group, desktop filed `tenants`/`inbox` under GROW — and
+       Library followed its CO-GATED SIBLING in each rather than picking a
+       side. The founder asked for the drawer to match desktop, so mobile
+       adopted GROW and both arrays now agree. The property below is unchanged
+       and is now trivially satisfied in both: Library appears and disappears
+       exactly when `tenants` does. */
     const src = codeOf(dashboard());
     for (const arrayName of ['const MORE_GROUPS', 'const DESKTOP_NAV_GROUPS']) {
       expect(groupHolding(src, arrayName, 'library'), `${arrayName} split library from tenants`)
@@ -920,7 +929,7 @@ describe("18 · regroup's 10-class allowlist is unchanged", () => {
   });
 });
 
-describe('19 · no colour hardcoded, no emoji; all four palettes resolve', () => {
+describe('19 · no colour hardcoded, no emoji; both palettes resolve', () => {
   const TOUCHED = ['components/AdminSms.tsx', 'components/settings/SmsSection.tsx', 'components/AdminDashboard.tsx'];
 
   /**
@@ -970,16 +979,17 @@ describe('19 · no colour hardcoded, no emoji; all four palettes resolve', () =>
     expect(emoji, `${rel} renders an emoji`).toEqual([]);
   });
 
-  it('🔴 Classic is still the default, and both families are still offered', async () => {
-    /* ⚠️ "FOUR PALETTES" IS TWO FAMILIES × TWO THEMES, not four selectors —
-       globals.css declares the harvest pair as the base and overrides only
-       what Classic changes, which is the whole design. So the count is
-       asserted where it MEANS something (families × themes) and whether all
-       four RESOLVE to real colours is measured in Chromium, in this ticket's
-       layout suite, because a stylesheet grep cannot answer it. */
-    const { DEFAULT_PALETTE_FAMILY, PALETTE_FAMILIES } = await import('../../lib/theme');
-    expect(DEFAULT_PALETTE_FAMILY, 'Classic stopped being the default (#409)').toBe('classic');
-    expect([...PALETTE_FAMILIES].sort(), 'a palette family was lost').toEqual(['classic', 'harvest']);
+  it('🔴 the palette family axis is gone, so the count is two (THE-338)', async () => {
+    /* ⚠️ "FOUR PALETTES" WAS TWO FAMILIES × TWO THEMES, never four selectors.
+       THE-338 removed the family axis — the second family's 14 overrides were
+       promoted into the base pair and its selectors deleted — so the product
+       is now one family × two themes, i.e. two. Whether both RESOLVE to real
+       colours is still measured in Chromium, in this ticket's layout suite,
+       because a stylesheet grep cannot answer it. */
+    const theme = await import('../../lib/theme');
+    expect('DEFAULT_PALETTE_FAMILY' in theme, 'the family default is back').toBe(false);
+    expect('PALETTE_FAMILIES' in theme, 'the family list is back').toBe(false);
+    expect(theme.THEME_CHOICES, 'the MODE axis was lost with the family axis').toContain('system');
   });
 
   it('the moved panel paints from brand tokens, so it follows the palette', () => {
@@ -1074,7 +1084,7 @@ describe('22 · the untouchable files are byte-identical', () => {
   const UNTOUCHED: Record<string, string> = {
     'firestore.indexes.json': '8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0',
     'src/lib/sms-optout.ts': 'a92f960897d644ba7832b68c0a8e866c146babbe0c0a800b78cc9d71b49a527c',
-    'src/app/layout.tsx': 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5',
+    'src/app/layout.tsx': 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f',
   };
 
   /**

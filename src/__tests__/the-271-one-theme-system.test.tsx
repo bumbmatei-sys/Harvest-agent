@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import React, { act, useEffect, useState } from 'react';
@@ -8,10 +8,6 @@ import { flushSync } from 'react-dom';
 import postcss from 'postcss';
 import {
   THEME_STORAGE_KEY,
-  FAMILY_STORAGE_KEY,
-  DEFAULT_PALETTE_FAMILY,
-  PALETTE_FAMILIES,
-  isPaletteFamily,
   deriveOnDarkAccent,
   deriveOnTintAccent,
   accentTintGround,
@@ -19,17 +15,13 @@ import {
   contrastRatio,
   AA_CONTRAST,
   DARK_SURFACE,
-  CLASSIC_DARK_SURFACE,
   DARK_SURFACE_RAISED,
-  CLASSIC_DARK_SURFACE_RAISED,
-  type PaletteFamily,
   type ThemeChoice,
 } from '../lib/theme';
 import { PREAUTH_PATHS } from '../lib/preauth-theme';
-import { applyThemeForLocation, applyTheme, readStoredChoice, readStoredFamily } from '../lib/theme-runtime';
+import { applyThemeForLocation, applyTheme, readStoredChoice } from '../lib/theme-runtime';
 import { useTheme } from '../lib/use-theme';
 import ThemeToggle from '../components/ThemeToggle';
-import PaletteFamilyToggle from '../components/PaletteFamilyToggle';
 import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
 
 /**
@@ -204,31 +196,36 @@ const mountToPaint = (node: React.ReactElement): HTMLDivElement => {
 //     in section 9 is what now guards the removal.
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('1 — Harvest has two axes, and a one-value writer reaches none of them', () => {
-  it('🔴 so NONE of the four stamps the real system produces is reachable', () => {
-    // The closing argument, and it is about Harvest rather than about the
-    // library: a writer that puts ONE value on both attributes can only ever
-    // produce a stamp where data-theme === data-palette. Run the real
-    // pre-paint script for all four combinations and collect what it
-    // actually writes — not one of them has that shape, so not one of them
-    // is reachable, whatever theme names or `value` map you invent.
-    const produced: string[] = [];
-    for (const mode of ['light', 'dark'] as const) {
-      for (const family of PALETTE_FAMILIES) {
-        localStorage.clear();
-        localStorage.setItem(THEME_STORAGE_KEY, mode);
-        localStorage.setItem(FAMILY_STORAGE_KEY, family);
-        resetHtml();
-        runPrePaint('/');
-        const { attr, palette } = stamped();
-        produced.push(`${attr}/${palette}`);
-        expect(
-          attr === palette,
-          `${attr}/${palette} would need data-theme === data-palette to be reachable`,
-        ).toBe(false);
-      }
-    }
-    expect(new Set(produced).size, 'the four palettes are not four distinct stamps').toBe(4);
+/**
+ * 🔴 THE-338 WITHDREW THIS SECTION'S ARGUMENT, and that is the honest outcome
+ * rather than a rewrite.
+ *
+ * It was the closing argument against next-themes, and it was about HARVEST
+ * rather than about the library: Harvest had TWO axes (`data-theme` ×
+ * `data-palette`), next-themes writes ONE value to every attribute it is
+ * given, so it could only ever produce a stamp where data-theme ===
+ * data-palette — and none of the four real stamps has that shape. The test ran
+ * the real pre-paint script over all four combinations to prove it.
+ *
+ * THE-338 removed the second axis. That objection therefore no longer holds,
+ * and it was removed from `use-theme.ts`'s header at the same time rather than
+ * left as reasoning nobody can check.
+ *
+ * ⚠️ NOTHING WAS LOST. Section 2 below is the objection that always stood on
+ * its own and still does: next-themes ships its own inline pre-paint script,
+ * unconditionally, and that script knows nothing about PREAUTH_PATHS — so on
+ * `/auth` it would stamp the stored 'dark' straight over the light THE-85
+ * forces, which is the flash the mechanism exists to prevent. One sufficient
+ * objection is a stronger argument than three of which two have expired.
+ */
+describe('1 — the one remaining objection is the one that always stood alone', () => {
+  it('the two-axis argument is withdrawn, and is not left behind as dead reasoning', () => {
+    const shim = readFileSync(path.join(ROOT, 'src/lib/use-theme.ts'), 'utf8');
+    // The header must not still claim a second axis exists.
+    expect(shim, 'use-theme.ts still argues from an axis that was removed')
+      .not.toMatch(/Harvest has TWO/);
+    // And the objection that DOES stand is still stated there.
+    expect(shim, 'the pre-paint-script objection is gone too').toContain('PREAUTH_PATHS');
   });
 });
 
@@ -250,8 +247,11 @@ describe('2 — the app keeps exactly one inline theme script', () => {
     const scripts = layout.match(/__html: `\(function\(\)\{try\{[\s\S]*?`,/g) ?? [];
     expect(scripts, 'layout.tsx gained or lost a pre-paint script').toHaveLength(1);
     expect(SCRIPT).toContain("setAttribute('data-theme'");
-    expect(SCRIPT).toContain("setAttribute('data-palette'");
     expect(SCRIPT).toContain("classList.toggle('dark'");
+    // 🔴 THE-338 — and it stamps NOTHING ELSE. The script used to write a
+    // second attribute, `data-palette`, in the same pass.
+    expect(SCRIPT, 'a family stamp is back in the pre-paint script')
+      .not.toContain("setAttribute('data-palette'");
 
     // And no next-themes provider is mounted anywhere in the app: neither
     // rendered as JSX nor imported by name. (A bare mention in a comment is
@@ -294,7 +294,7 @@ function walkAllSrc(dir: string = SRC, out: string[] = []): string[] {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 3 · all four palettes resolve and render — one named test per palette
+// 3 · both palettes resolve and render — one named test per palette
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** Custom properties declared in a rule matched by `selectorTest`. Same
@@ -319,35 +319,33 @@ function resolveVar(name: string, scope: Record<string, string>, depth = 0): str
 
 const GLOBALS_CSS = readFileSync(GLOBALS, 'utf8');
 
+/**
+ * 🔴 THE-338 — the family preference key, kept ONLY as a leftover.
+ *
+ * `harvest-theme-family` was `FAMILY_STORAGE_KEY` in theme.ts until the
+ * palette family axis was removed. The constant is gone; the KEY still sits in
+ * every returning user's localStorage, deliberately un-migrated because
+ * nothing reads it. Spelling it here as a literal is what lets this suite
+ * assert that writing it moves neither axis — which is the whole claim.
+ */
+const LEGACY_FAMILY_KEY = 'harvest-theme-family';
+
 const ROOT_VARS = varsIn(GLOBALS_CSS, (s) => s === ':root');
 const HARVEST_DARK_VARS = varsIn(
   GLOBALS_CSS,
   (s) => /\.dark|\[data-theme="dark"\]/.test(s) && !s.includes('data-palette'),
 );
-const CLASSIC_LIGHT_VARS = varsIn(
-  GLOBALS_CSS,
-  (s) => s.includes('data-palette="classic"') && s.includes('data-theme="light"'),
-);
-const CLASSIC_DARK_VARS = varsIn(
-  GLOBALS_CSS,
-  (s) => s.includes('data-palette="classic"') && (s.includes('.dark') || s.includes('data-theme="dark"')),
-);
-
 /**
  * The cascade, resolved the way a browser would for a given stamp.
  *
- * Harvest is the substrate (`:root`, then `.dark`); Classic is purely
- * additive on top — globals.css says so itself. So a stamp selects a scope by
- * layering, never by replacing, which is why "Classic overrides 14 tokens and
- * ~120 fall through" is a property this function reproduces rather than a
- * claim it asserts.
+ * 🔴 THE-338 — this used to take a FAMILY too, and layer a third map on top:
+ * `:root`, then `.dark`, then the additive Classic block. That family's 14
+ * overrides per mode were promoted into the two blocks below and its selectors
+ * deleted, so a stamp now selects a scope from the mode alone.
  */
-function scopeFor(theme: 'light' | 'dark', family: PaletteFamily): Record<string, string> {
+function scopeFor(theme: 'light' | 'dark'): Record<string, string> {
   const scope = { ...ROOT_VARS };
   if (theme === 'dark') Object.assign(scope, HARVEST_DARK_VARS);
-  if (family === 'classic') {
-    Object.assign(scope, theme === 'dark' ? CLASSIC_DARK_VARS : CLASSIC_LIGHT_VARS);
-  }
   return scope;
 }
 
@@ -359,33 +357,37 @@ const CORE_TOKENS = [
   '--text-strong', '--text-heading', '--text-body', '--text-muted', '--text-faint',
 ];
 
+/**
+ * 🔴 THE-338 — TWO palettes, not four. There were two palette FAMILIES
+ * (Harvest and Classic) crossed with the two modes; the family axis is gone,
+ * its 14 overrides per mode promoted into :root/.dark.
+ */
 const PALETTES: ReadonlyArray<{
   name: string;
   choice: ThemeChoice;
   theme: 'light' | 'dark';
-  family: PaletteFamily;
   surface: string;
 }> = [
-  // 🔴 The two DARK grounds are spelled as the theme.ts constants, not as
-  // hexes retyped from globals.css: deriveOnDarkAccent's AA guarantee holds
-  // only while those constants match the CSS exactly, so asserting them here
-  // is what makes section 8 mean anything. The two LIGHT grounds are resolved
-  // out of the real cascade, since theme.ts has no constant for them.
-  { name: 'Harvest light', choice: 'light', theme: 'light', family: 'harvest', surface: resolveVar('--surface', ROOT_VARS) },
-  { name: 'Harvest dark', choice: 'dark', theme: 'dark', family: 'harvest', surface: DARK_SURFACE },
-  { name: 'Classic light', choice: 'light', theme: 'light', family: 'classic', surface: resolveVar('--surface', { ...ROOT_VARS, ...CLASSIC_LIGHT_VARS }) },
-  { name: 'Classic dark', choice: 'dark', theme: 'dark', family: 'classic', surface: CLASSIC_DARK_SURFACE },
+  // 🔴 The DARK ground is spelled as the theme.ts constant, not as a hex
+  // retyped from globals.css: deriveOnDarkAccent's AA guarantee holds only
+  // while that constant matches the CSS exactly, so asserting it here is what
+  // makes section 8 mean anything. The LIGHT ground is resolved out of the
+  // real cascade, since theme.ts has no constant for it.
+  { name: 'Light', choice: 'light', theme: 'light', surface: resolveVar('--surface', ROOT_VARS) },
+  { name: 'Dark', choice: 'dark', theme: 'dark', surface: DARK_SURFACE },
 ];
 
-describe('3 — all four palettes resolve and render', () => {
-  // 🔴 Classic is the DEFAULT since #409, so it is checked first.
-  it('Classic is still the default, so it is the palette to check first', () => {
-    expect(DEFAULT_PALETTE_FAMILY).toBe('classic');
+describe('3 — both palettes resolve and render', () => {
+  it('there is no default family left to check first (THE-338)', async () => {
+    // 🔴 INVERTED: this pinned #409's default family. The axis is gone, so what
+    // is guarded is that it stayed gone.
+    const theme = await import('../lib/theme');
+    expect('DEFAULT_PALETTE_FAMILY' in theme).toBe(false);
   });
 
   for (const p of PALETTES) {
     it(`${p.name} resolves every core token to a literal colour`, () => {
-      const scope = scopeFor(p.theme, p.family);
+      const scope = scopeFor(p.theme);
       for (const token of CORE_TOKENS) {
         const value = resolveVar(token, scope);
         expect(value, `${p.name}: ${token} does not resolve`).toMatch(/^#[0-9a-fA-F]{3,8}$/);
@@ -396,23 +398,22 @@ describe('3 — all four palettes resolve and render', () => {
       // Not "the CSS exists" — that the attributes the pre-paint script and
       // applyTheme actually write are the ones that select this scope.
       localStorage.setItem(THEME_STORAGE_KEY, p.choice);
-      localStorage.setItem(FAMILY_STORAGE_KEY, p.family);
 
       runPrePaint('/');
       expect(stamped(), `${p.name}: pre-paint stamped the wrong scope`).toEqual({
         attr: p.theme,
         dark: p.theme === 'dark',
-        palette: p.family,
+        palette: null,
       });
 
-      const scope = scopeFor(p.theme, p.family);
+      const scope = scopeFor(p.theme);
       expect(resolveVar('--surface', scope), `${p.name}: wrong page ground`).toBe(p.surface);
     });
 
     it(`${p.name} paints readable body text on its own ground`, () => {
       // A palette that "resolves" but puts 2:1 text on its surface does not
       // render in any sense worth having.
-      const scope = scopeFor(p.theme, p.family);
+      const scope = scopeFor(p.theme);
       const ground = resolveVar('--surface', scope);
       const body = resolveVar('--text-body', scope);
       const ratio = contrastRatio(body, ground);
@@ -421,21 +422,30 @@ describe('3 — all four palettes resolve and render', () => {
     });
   }
 
-  it('the four are genuinely four — no two share a page ground', () => {
-    const grounds = PALETTES.map((p) => resolveVar('--surface', scopeFor(p.theme, p.family)));
-    expect(new Set(grounds).size, `two palettes render the same ground: ${grounds.join(', ')}`).toBe(4);
+  it('the two are genuinely two — they do not share a page ground', () => {
+    const grounds = PALETTES.map((p) => resolveVar('--surface', scopeFor(p.theme)));
+    expect(new Set(grounds).size, `two palettes render the same ground: ${grounds.join(', ')}`).toBe(2);
   });
 
-  it('and Classic really is additive — it overrides surfaces/borders/text and nothing else', () => {
-    // The property #409 depends on: "remove Harvest" is not buildable because
-    // Classic is written on top of it. If Classic ever redefined a font or a
-    // radius, changing the default would change more than the ticket claimed.
-    for (const vars of [CLASSIC_LIGHT_VARS, CLASSIC_DARK_VARS]) {
-      for (const token of Object.keys(vars)) {
-        expect(token, `Classic overrides ${token}, which is not a surface/border/text token`)
-          .toMatch(/^--(surface|border|text)-?/);
-      }
-    }
+  it('🔴 and the promotion moved only surfaces, borders and text', () => {
+    /* THE property #409 depended on, and the one THE-338 had to act on.
+    
+       This asserted that the removed family overrode ONLY surface/border/text
+       tokens — "remove Harvest is not buildable because Classic is written on
+       top of it", and if Classic had ever redefined a font or a radius,
+       changing the default would have changed more than #409 claimed.
+    
+       THE-338 is the ticket that removed it, and that property is exactly what
+       made the removal a PROMOTION rather than a deletion: the family held 14
+       overrides per mode and nothing else, so its values could be written into
+       the two blocks below without touching a font, a radius or a shadow. The
+       claim is now asserted of the RESULT — the tokens whose dark value
+       differs from their light one are still only surfaces, borders and text. */
+    const moved = Object.keys(HARVEST_DARK_VARS).filter(
+      (t) => resolveVar(t, { ...ROOT_VARS }) !== resolveVar(t, { ...ROOT_VARS, ...HARVEST_DARK_VARS }),
+    );
+    const structural = moved.filter((t) => /^--(font|radius|ds-radius|spacing)/.test(t));
+    expect(structural, `the promotion moved a structural token: ${structural.join(', ')}`).toEqual([]);
   });
 });
 
@@ -446,69 +456,73 @@ describe('3 — all four palettes resolve and render', () => {
 /** Reads the theme through the shim and writes it into the DOM, so what the
  *  first frame would show is inspectable. */
 const ShimProbe: React.FC = () => {
-  const { theme, palette } = useTheme();
-  return <span data-probe={`${theme}/${palette}`} />;
+  // 🔴 THE-338 — `palette` is read through a cast ON PURPOSE, even though the
+  // hook no longer declares it. That is what lets this suite assert the field
+  // is GONE from the contract rather than merely unused: if it ever comes
+  // back, every probe string here changes and the tests fail.
+  const t = useTheme();
+  const palette = (t as { palette?: string }).palette;
+  return <span data-probe={`${t.theme}/${palette}`} />;
 };
 
 /** A deliberately WRONG control: identical, but syncing in a passive effect,
  *  i.e. after paint. Its only job is to prove the harness below can actually
  *  see a flash — a test for "no flash" that cannot detect one is worthless. */
 const FlashingProbe: React.FC = () => {
-  const [v, setV] = useState('light/classic');
+  // The seed a brand-new visitor renders with. THE-338 dropped the family half
+  // — `data-palette` is stamped by nothing, so it reads back as null/undefined.
+  const [v, setV] = useState('light/undefined');
   useEffect(() => {
     const el = document.documentElement;
-    setV(`${el.getAttribute('data-theme')}/${el.getAttribute('data-palette')}`);
+    setV(`${el.getAttribute('data-theme')}/${el.getAttribute('data-palette') ?? 'undefined'}`);
   }, []);
   return <span data-probe={v} />;
 };
 
 const probeValue = (c: HTMLElement): string => c.querySelector('span')!.getAttribute('data-probe')!;
 
-describe('4 — no flash on first paint, in all four combinations', () => {
+describe('4 — no flash on first paint, in both combinations', () => {
   it('🔴 the harness can SEE a flash — the control probe fails the way a flash looks', async () => {
     localStorage.setItem(THEME_STORAGE_KEY, 'dark');
-    localStorage.setItem(FAMILY_STORAGE_KEY, 'classic');
     runPrePaint('/');
 
     const c = mountToPaint(<FlashingProbe />);
     // At the paint boundary the post-paint prober still shows its seed: this
     // is exactly the wrong-theme frame a user would see.
     expect(probeValue(c), 'the control corrected before paint, so this harness proves nothing')
-      .toBe('light/classic');
+      .toBe('light/undefined');
     // …and only catches up afterwards.
     await act(async () => {});
-    expect(probeValue(c)).toBe('dark/classic');
+    expect(probeValue(c)).toBe('dark/undefined');
   });
 
   /**
    * ⚠️ One honest caveat, recorded rather than hidden: the seed the shim
-   * renders with before its layout effect runs is light/classic — what a
-   * brand-new visitor gets — so CLASSIC LIGHT is the one combination where a
-   * post-paint correction would be invisible here. The other three catch it,
-   * and the control test above catches the technique failing outright. Swap
-   * the shim's layout effect for a passive one and three of these four go
-   * red, which is what was verified.
+   * renders with before its layout effect runs is LIGHT — what a brand-new
+   * visitor gets — so light is the one combination where a post-paint
+   * correction would be invisible here. Dark catches it, and the control test
+   * above catches the technique failing outright. (THE-338: this used to say
+   * "three of these four"; with the family axis gone it is one of two.)
    */
   for (const p of PALETTES) {
     it(`${p.name}: <html> is stamped before paint and the shim agrees at that instant`, async () => {
       localStorage.setItem(THEME_STORAGE_KEY, p.choice);
-      localStorage.setItem(FAMILY_STORAGE_KEY, p.family);
 
       // 1. the document load: the head script runs before any bundle.
       runPrePaint('/');
       const atPrePaint = stamped();
-      expect(atPrePaint).toEqual({ attr: p.theme, dark: p.theme === 'dark', palette: p.family });
+      expect(atPrePaint).toEqual({ attr: p.theme, dark: p.theme === 'dark', palette: null });
 
       // 2. first paint: a component reading the theme already has the right
       //    value — no correction lands after the user has seen a frame.
       const c = mountToPaint(<ShimProbe />);
       expect(probeValue(c), `${p.name}: the shim painted the wrong theme first`)
-        .toBe(`${p.theme}/${p.family}`);
+        .toBe(`${p.theme}/undefined`);
 
       // 3. hydration settles: nothing moves.
       await act(async () => {});
       expect(probeValue(c), `${p.name}: the shim corrected itself AFTER paint — that is the flash`)
-        .toBe(`${p.theme}/${p.family}`);
+        .toBe(`${p.theme}/undefined`);
       expect(stamped(), `${p.name}: <html> changed after first paint`).toEqual(atPrePaint);
     });
 
@@ -517,7 +531,6 @@ describe('4 — no flash on first paint, in all four combinations', () => {
       // runs on every client navigation. If the two disagreed for any storage
       // state, a route change would repaint into the other palette.
       localStorage.setItem(THEME_STORAGE_KEY, p.choice);
-      localStorage.setItem(FAMILY_STORAGE_KEY, p.family);
 
       runPrePaint('/');
       const fromScript = stamped();
@@ -532,7 +545,7 @@ describe('4 — no flash on first paint, in all four combinations', () => {
     // The path most users take, and the one #409 changed.
     runPrePaint('/');
     const fromScript = stamped();
-    expect(fromScript.palette).toBe(DEFAULT_PALETTE_FAMILY);
+    expect(fromScript.palette, 'a palette family was stamped').toBeNull();
 
     resetHtml();
     applyThemeForLocation('/');
@@ -562,30 +575,28 @@ describe('5 — the pre-paint script and theme.ts still agree on the default', (
    * that pins them survived my change". A test that only re-ran #409's file
    * would prove the file still runs, not that the property still holds.
    */
-  const defaultFromScript = (): string => {
-    const m = SCRIPT.match(
-      /setAttribute\('data-palette',\s*f===('[a-z]+')\s*\?\s*('[a-z]+')\s*:\s*('[a-z]+')\)/,
-    );
-    if (!m) throw new Error('the family ternary was not found in the pre-paint script');
-    const [, tested, thenArm, elseArm] = m.map((x) => x && x.replace(/'/g, ''));
-    expect(thenArm, 'the pre-paint script rewrites a stored family to a different one').toBe(tested);
-    return elseArm;
-  };
-
-  it('🔴 the pre-paint default IS DEFAULT_PALETTE_FAMILY', () => {
-    expect(
-      defaultFromScript(),
-      'the script and DEFAULT_PALETTE_FAMILY disagree — a cold load would paint one family and hydrate into the other',
-    ).toBe(DEFAULT_PALETTE_FAMILY);
-  });
-
-  it('🔴 the pre-auth FORCED family in the script is that same constant', () => {
-    const m = SCRIPT.match(
-      /classList\.remove\('dark'\);e\.setAttribute\('data-palette','([a-z]+)'\);return;/,
-    );
-    expect(m, 'the pre-auth branch no longer stamps a literal family').toBeTruthy();
-    expect(m![1], 'the funnel and the app it leads into default to different families')
-      .toBe(DEFAULT_PALETTE_FAMILY);
+  /* 🔴 THREE TESTS STOOD HERE AND THE-338 REPLACED THEM WITH ONE.
+  
+     They parsed the FAMILY TERNARY out of the pre-paint script
+     (`f==='harvest'?'harvest':'classic'`) and the pre-auth branch's forced
+     family literal, and pinned both to DEFAULT_PALETTE_FAMILY — because the
+     script cannot import, so the default lived in two places and a drift
+     between them meant a cold load painting one family and hydrating into
+     another.
+  
+     THE-338 deleted the family axis: the ternary, the forced literal, the
+     second storage key and the constant are all gone. There is no second home
+     left to drift from, so the property is now structural. What replaces the
+     three is the assertion that the script really does stamp only the mode —
+     read off the SCRIPT rather than the file, since layout.tsx documents the
+     removal in prose that necessarily names the attribute. */
+  it('🔴 the pre-paint script stamps the MODE and nothing else', () => {
+    expect(SCRIPT, 'the script no longer stamps the mode at all')
+      .toContain("setAttribute('data-theme'");
+    expect(SCRIPT, 'a family stamp is back in the pre-paint script')
+      .not.toContain('data-palette');
+    expect(SCRIPT, 'the family storage key is read again')
+      .not.toContain('harvest-theme-family');
   });
 
   it('🔴 layout.tsx is byte-identical to main, so the hash pin needed no regeneration', () => {
@@ -596,7 +607,7 @@ describe('5 — the pre-paint script and theme.ts still agree on the default', (
     expect(
       digestOf('src/app/layout.tsx'),
       'layout.tsx changed — regenerate the four pinned digests and record the reason',
-    ).toBe('bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5');
+    ).toBe('b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f');
   });
 
   /**
@@ -615,18 +626,26 @@ describe('5 — the pre-paint script and theme.ts still agree on the default', (
    * touch them.
    */
   const UNCHANGED: Record<string, string> = {
-    'src/lib/theme.ts': '97d2f057fa04f85f33a1faa0dc196324d51770c6032ca9b4d21e467dfd70d8de',
-    'src/lib/theme-runtime.ts': '499d75f3ee336303d247c02a38c7bcc2338206609066da420842795745d9dee3',
+    'src/lib/theme.ts': 'e05b9e51ee019db5b7926358a5ed9de9a291c5c8372040f2a7ac435e88e2ba0b',
+    'src/lib/theme-runtime.ts': 'fce9fa8e8a9bd76c0b57bce0decc450e394968c93855e9e6702c306958e2d6ee',
     'src/lib/preauth-theme.ts': '1940796f21a9c5219ba6d35d15958eafb34aaada0e3a2670f5d858f65e840ad0',
     'src/lib/use-resolved-theme.ts': 'ec8961c8637fd0004c4cf8d6a9ba9830e88b7a02b65c730f52172acd396114a6',
-    'src/app/globals.css': '772c79af681c2b97c496b91be4f2573415f2a65802dfac078dbc72e8a8fd3741',
+    'src/app/globals.css': '1fd6001c2d3bddc50a45b02ce1253b6b60802699fb33fa159f5ed42b8aeb9957',
     'src/components/ThemeToggle.tsx': 'efd6790ae14ebb1e5238ce601828589724ffcd4931f6c90e631927d9e1522277',
-    'src/components/PaletteFamilyToggle.tsx': '6a88e764af6b6d861d6e4df7bf01593d497d240a326ea6c94c03794349484233',
+    // 🔴 PaletteFamilyToggle.tsx LEFT THIS LIST AT THE-338: the file is
+    // deleted with the palette family axis. Its absence is asserted below,
+    // rather than the entry simply disappearing.
   };
 
   it.each(Object.keys(UNCHANGED))('%s is byte-for-byte unchanged', (file) => {
     expect(digestOf(file), `${file} changed — THE-271 changes no existing theme code`)
       .toBe(UNCHANGED[file]);
+  });
+
+  it('🔴 and the file THE-338 deleted is really gone, not merely unpinned', () => {
+    // An entry that simply vanished from UNCHANGED would leave the file
+    // unguarded if it ever came back. This is the entry's replacement.
+    expect(existsSync(path.join(ROOT, 'src/components/PaletteFamilyToggle.tsx'))).toBe(false);
   });
 
   /**
@@ -654,70 +673,84 @@ describe('5 — the pre-paint script and theme.ts still agree on the default', (
     ).toBe(THE_273);
   });
 
-  it('the two storage keys are still spelled identically in both homes', () => {
+  it('the storage key is still spelled identically in both homes', () => {
+    // 🔴 THE-338 — there were TWO duplicated keys, because the script cannot
+    // import. The family one is gone with the family; the mode one still has
+    // to agree between theme.ts and the script or a stored choice is ignored
+    // on reload and the theme flashes.
     const layout = readFileSync(LAYOUT, 'utf8');
     expect(layout).toContain(`localStorage.getItem('${THEME_STORAGE_KEY}')`);
-    expect(layout).toContain(`localStorage.getItem('${FAMILY_STORAGE_KEY}')`);
+    expect(SCRIPT, 'the family key is read again').not.toContain(LEGACY_FAMILY_KEY);
   });
 
-  it('behaviourally: script and runtime stamp the same family in every storage state', () => {
+  it('behaviourally: a leftover family value changes nothing, in every storage state', () => {
+    // 🔴 INVERTED. This checked that script and runtime stamped the SAME
+    // family for every stored value. Nothing reads the key now, so what has to
+    // hold is that no value of it moves either axis — which is the claim that
+    // makes leaving it un-migrated safe.
     for (const stored of [null, 'harvest', 'classic', 'sepia', '']) {
       localStorage.clear();
-      if (stored !== null) localStorage.setItem(FAMILY_STORAGE_KEY, stored);
+      localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+      if (stored !== null) localStorage.setItem(LEGACY_FAMILY_KEY, stored);
 
       runPrePaint('/');
-      const fromScript = stamped().palette;
+      expect(stamped(), `stored=${JSON.stringify(stored)}: the pre-paint stamp moved`)
+        .toEqual({ attr: 'dark', dark: true, palette: null });
 
-      document.documentElement.removeAttribute('data-palette');
+      resetHtml();
       applyThemeForLocation('/');
-      expect(stamped().palette, `stored=${JSON.stringify(stored)}: pre-paint and hydration disagree`)
-        .toBe(fromScript);
+      expect(stamped(), `stored=${JSON.stringify(stored)}: pre-paint and hydration disagree`)
+        .toEqual({ attr: 'dark', dark: true, palette: null });
     }
   });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 6 · a user who has chosen keeps their choice
+// 6 · 🔴 THE-338 — a stored family is no longer honoured, and cannot be
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('6 — a stored family is still honoured', () => {
-  it("a stored 'harvest' still gets Harvest, through both paths and in dark", () => {
-    localStorage.setItem(FAMILY_STORAGE_KEY, 'harvest');
+/**
+ * 🔴 THIS SECTION'S CLAIM WAS DELIBERATELY WITHDRAWN.
+ *
+ * It asserted that a user who had CHOSEN a palette family kept their choice —
+ * a stored 'harvest' still rendered Harvest through both the pre-paint script
+ * and the client applier, and reading it never rewrote it. That was #409's
+ * promise: making Classic the default took nothing away from anyone.
+ *
+ * THE-338 does take it away, on the founder's "remove harvest theme". A user
+ * with 'harvest' stored now renders the one palette like everybody else. That
+ * is the ticket, not a regression, and it is written down here rather than
+ * left as a test that quietly disappeared.
+ *
+ * ⚠️ What is asserted instead is the part that still matters to that user: the
+ * change is not destructive. Their stored value is not rewritten, not cleared
+ * and not migrated — it is simply never read — so nothing about their account
+ * was altered to make this happen.
+ */
+describe('6 — a stored family is inert, and is not rewritten', () => {
+  it("a stored 'harvest' renders the one palette, through both paths and in dark", () => {
+    localStorage.setItem(LEGACY_FAMILY_KEY, 'harvest');
     localStorage.setItem(THEME_STORAGE_KEY, 'dark');
 
     runPrePaint('/');
-    expect(stamped()).toEqual({ attr: 'dark', dark: true, palette: 'harvest' });
+    expect(stamped()).toEqual({ attr: 'dark', dark: true, palette: null });
 
     resetHtml();
     applyThemeForLocation('/');
-    expect(stamped()).toEqual({ attr: 'dark', dark: true, palette: 'harvest' });
+    expect(stamped()).toEqual({ attr: 'dark', dark: true, palette: null });
 
-    expect(readStoredFamily()).toBe('harvest');
-    // …and reading it never rewrote it.
-    expect(localStorage.getItem(FAMILY_STORAGE_KEY)).toBe('harvest');
+    // …and neither path rewrote or cleared it.
+    expect(localStorage.getItem(LEGACY_FAMILY_KEY)).toBe('harvest');
   });
 
-  it("a stored 'classic' still gets Classic, through both paths and in dark", () => {
-    localStorage.setItem(FAMILY_STORAGE_KEY, 'classic');
+  it('the mode a user chose is still honoured — that axis was not touched', () => {
     localStorage.setItem(THEME_STORAGE_KEY, 'dark');
-
     runPrePaint('/');
-    expect(stamped()).toEqual({ attr: 'dark', dark: true, palette: 'classic' });
-
+    expect(stamped()).toEqual({ attr: 'dark', dark: true, palette: null });
     resetHtml();
     applyThemeForLocation('/');
-    expect(stamped()).toEqual({ attr: 'dark', dark: true, palette: 'classic' });
-
-    expect(readStoredFamily()).toBe('classic');
-    expect(localStorage.getItem(FAMILY_STORAGE_KEY)).toBe('classic');
-  });
-
-  it('and the shim reports the stored family back to a component', () => {
-    localStorage.setItem(FAMILY_STORAGE_KEY, 'harvest');
-    localStorage.setItem(THEME_STORAGE_KEY, 'dark');
-    runPrePaint('/');
-    const c = mountToPaint(<ShimProbe />);
-    expect(probeValue(c)).toBe('dark/harvest');
+    expect(stamped()).toEqual({ attr: 'dark', dark: true, palette: null });
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark');
   });
 });
 
@@ -725,11 +758,14 @@ describe('6 — a stored family is still honoured', () => {
 // 7 · 🔴 pre-auth is light-mode only, in BOTH families (THE-85, no-regression)
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('7 — pre-auth is light-mode only in both families', () => {
-  for (const family of PALETTE_FAMILIES) {
-    it(`a stored dark + ${family} still gets a LIGHT sign-in screen`, () => {
+describe('7 — pre-auth is light-mode only', () => {
+  // 🔴 THE-338 — this looped over the two palette FAMILIES. There is one, so
+  // the loop is over the leftover stored values a returning user might carry,
+  // which is what still needs proving inert.
+  for (const family of ['harvest', 'classic'] as const) {
+    it(`a stored dark + a leftover ${family} still gets a LIGHT sign-in screen`, () => {
       localStorage.setItem(THEME_STORAGE_KEY, 'dark');
-      localStorage.setItem(FAMILY_STORAGE_KEY, family);
+      localStorage.setItem(LEGACY_FAMILY_KEY, family);
 
       for (const p of PREAUTH_PATHS) {
         resetHtml();
@@ -737,7 +773,7 @@ describe('7 — pre-auth is light-mode only in both families', () => {
         expect(stamped(), `${p} (${family}) painted dark before hydration`).toEqual({
           attr: 'light',
           dark: false,
-          palette: DEFAULT_PALETTE_FAMILY,
+          palette: null,
         });
 
         resetHtml();
@@ -745,7 +781,7 @@ describe('7 — pre-auth is light-mode only in both families', () => {
         expect(stamped(), `${p} (${family}) went dark on hydration`).toEqual({
           attr: 'light',
           dark: false,
-          palette: DEFAULT_PALETTE_FAMILY,
+          palette: null,
         });
       }
     });
@@ -761,9 +797,9 @@ describe('7 — pre-auth is light-mode only in both families', () => {
   });
 
   it('🔴 it is still a FORCE, not a fallback — a stored harvest is ignored on the funnel', () => {
-    localStorage.setItem(FAMILY_STORAGE_KEY, 'harvest');
+    localStorage.setItem(LEGACY_FAMILY_KEY, 'harvest');
     runPrePaint('/auth');
-    expect(stamped().palette, 'the funnel let a stored family through').toBe(DEFAULT_PALETTE_FAMILY);
+    expect(stamped().palette, 'the funnel stamped a palette family').toBeNull();
   });
 
   it("🔴 but a stored 'system' does NOT report a false force on an ordinary screen", () => {
@@ -788,17 +824,18 @@ describe('7 — pre-auth is light-mode only in both families', () => {
 
   it('and the shim tells a component the funnel is forced, without inventing a value', () => {
     localStorage.setItem(THEME_STORAGE_KEY, 'dark');
-    localStorage.setItem(FAMILY_STORAGE_KEY, 'harvest');
+    localStorage.setItem(LEGACY_FAMILY_KEY, 'harvest');
     applyThemeForLocation('/auth');
 
     const Probe: React.FC = () => {
-      const { theme, themeChoice, forcedTheme, palette } = useTheme();
-      return <span data-probe={`${theme}|${themeChoice}|${forcedTheme}|${palette}`} />;
+      const t = useTheme();
+      const palette = (t as { palette?: string }).palette;
+      return <span data-probe={`${t.theme}|${t.themeChoice}|${t.forcedTheme}|${palette}`} />;
     };
     const c = mountToPaint(<Probe />);
     // Rendered light, REMEMBERS dark — the whole THE-85 property, visible to a
     // component for the first time.
-    expect(probeValue(c)).toBe(`light|dark|light|${DEFAULT_PALETTE_FAMILY}`);
+    expect(probeValue(c)).toBe('light|dark|light|undefined');
   });
 });
 
@@ -809,7 +846,7 @@ describe('7 — pre-auth is light-mode only in both families', () => {
 describe('8 — nothing writes the stored preference during a pre-auth force', () => {
   const snapshot = () => ({
     theme: localStorage.getItem(THEME_STORAGE_KEY),
-    family: localStorage.getItem(FAMILY_STORAGE_KEY),
+    family: localStorage.getItem(LEGACY_FAMILY_KEY),
     length: localStorage.length,
   });
 
@@ -821,7 +858,7 @@ describe('8 — nothing writes the stored preference during a pre-auth force', (
 
   it('🔴 a full funnel visit leaves both keys exactly as they were', () => {
     localStorage.setItem(THEME_STORAGE_KEY, 'dark');
-    localStorage.setItem(FAMILY_STORAGE_KEY, 'harvest');
+    localStorage.setItem(LEGACY_FAMILY_KEY, 'harvest');
     const before = snapshot();
 
     for (const p of PREAUTH_PATHS) {
@@ -836,25 +873,25 @@ describe('8 — nothing writes the stored preference during a pre-auth force', (
     // stored value on first read would break THE-85 from a direction nothing
     // was watching.
     localStorage.setItem(THEME_STORAGE_KEY, 'dark');
-    localStorage.setItem(FAMILY_STORAGE_KEY, 'harvest');
+    localStorage.setItem(LEGACY_FAMILY_KEY, 'harvest');
     applyThemeForLocation('/auth');
     const before = snapshot();
 
     const c = mountToPaint(<ShimProbe />);
-    expect(probeValue(c)).toBe(`light/${DEFAULT_PALETTE_FAMILY}`);
+    expect(probeValue(c)).toBe('light/undefined');
     await act(async () => {});
 
     expect(snapshot(), 'the shim wrote a preference while the funnel was forcing').toEqual(before);
   });
 
-  it('the user is back in dark/harvest the moment they sign in again', () => {
+  it('the user is back in dark the moment they sign in again', () => {
     localStorage.setItem(THEME_STORAGE_KEY, 'dark');
-    localStorage.setItem(FAMILY_STORAGE_KEY, 'harvest');
+    localStorage.setItem(LEGACY_FAMILY_KEY, 'harvest');
     applyThemeForLocation('/auth');
     expect(stamped().attr).toBe('light');
 
     applyThemeForLocation('/');
-    expect(stamped()).toEqual({ attr: 'dark', dark: true, palette: 'harvest' });
+    expect(stamped()).toEqual({ attr: 'dark', dark: true, palette: null });
   });
 });
 
@@ -877,7 +914,6 @@ describe('9 — useTheme() returns the real theme to a shadcn component', () => 
   for (const p of PALETTES) {
     it(`${p.name}: a sonner-shaped consumer gets '${p.theme}'`, () => {
       localStorage.setItem(THEME_STORAGE_KEY, p.choice);
-      localStorage.setItem(FAMILY_STORAGE_KEY, p.family);
       runPrePaint('/');
       const c = mountToPaint(<ShadcnShapedConsumer />);
       expect(probeValue(c)).toBe(p.theme);
@@ -909,22 +945,25 @@ describe('9 — useTheme() returns the real theme to a shadcn component', () => 
 
   it('it follows a live theme change, because both writers stamp <html> directly', async () => {
     localStorage.setItem(THEME_STORAGE_KEY, 'light');
-    localStorage.setItem(FAMILY_STORAGE_KEY, 'classic');
+    localStorage.setItem(LEGACY_FAMILY_KEY, 'classic');
     runPrePaint('/');
     const c = mountToPaint(<ShimProbe />);
-    expect(probeValue(c)).toBe('light/classic');
+    expect(probeValue(c)).toBe('light/undefined');
 
     // What ThemeToggle does when a user picks Dark.
     await act(async () => { applyTheme('dark'); });
-    expect(probeValue(c), 'the shim did not hear the stamp change').toBe('dark/classic');
+    expect(probeValue(c), 'the shim did not hear the stamp change').toBe('dark/undefined');
 
-    await act(async () => { applyTheme('dark', 'harvest'); });
-    expect(probeValue(c), 'the shim ignored the family axis').toBe('dark/harvest');
+    // 🔴 THE-338 — and back, so the shim tracks the stamp in both directions.
+    // (This used to drive a second `applyTheme('dark', 'harvest')` call to
+    // prove the shim heard the FAMILY axis; applyTheme takes one argument now.)
+    await act(async () => { applyTheme('light'); });
+    expect(probeValue(c), 'the shim did not hear the stamp change back').toBe('light/undefined');
   });
 
-  it('the shim exposes BOTH axes — the thing next-themes has no slot for', () => {
+  it('the shim exposes the mode axis, and no longer claims a second one', () => {
     localStorage.setItem(THEME_STORAGE_KEY, 'dark');
-    localStorage.setItem(FAMILY_STORAGE_KEY, 'harvest');
+    localStorage.setItem(LEGACY_FAMILY_KEY, 'harvest');
     runPrePaint('/');
 
     const Probe: React.FC = () => {
@@ -932,45 +971,52 @@ describe('9 — useTheme() returns the real theme to a shadcn component', () => 
       return (
         <span
           data-probe={[
-            t.theme, t.resolvedTheme, t.themeChoice, t.palette,
-            t.themes.join('+'), t.palettes.join('+'),
-            typeof t.setTheme, typeof t.setPalette,
+            // 🔴 THE-338 — `palette`, `palettes` and `setPalette` were removed
+            // from the contract. They are read through a cast so their ABSENCE
+            // is asserted rather than typed away: if any comes back, this
+            // string changes and the test fails.
+            t.theme, t.resolvedTheme, t.themeChoice,
+            (t as { palette?: string }).palette,
+            t.themes.join('+'),
+            (t as { palettes?: string[] }).palettes,
+            typeof t.setTheme, typeof (t as { setPalette?: unknown }).setPalette,
           ].join('|')}
         />
       );
     };
     const c = mountToPaint(<Probe />);
-    expect(probeValue(c)).toBe('dark|dark|dark|harvest|light+dark+system|harvest+classic|function|function');
+    expect(probeValue(c)).toBe('dark|dark|dark||light+dark+system||function|undefined');
   });
 
   /**
    * 🔴 One behaviour, two entry points, PINNED AGAINST EACH OTHER.
    *
-   * The shim cannot simply call the toggles' code: THE-265 pins the toggles'
-   * own write lines by source text (`localStorage.setItem(FAMILY_STORAGE_KEY,
-   * next)`), so refactoring them into a shared helper would break that pin.
-   * The next best thing is to prove the two paths are indistinguishable —
-   * drive the real control, snapshot storage and the stamp, reset, drive the
-   * shim setter, and require the identical result.
+   * The shim cannot simply call the toggle's code: THE-265 pins the toggle's
+   * own write line by source text, so refactoring it into a shared helper
+   * would break that pin. The next best thing is to prove the two paths are
+   * indistinguishable — drive the real control, snapshot storage and the
+   * stamp, reset, drive the shim setter, and require the identical result.
+   *
+   * 🔴 THE-338 — there were TWO setters here and one is gone: `setPalette`
+   * left `useTheme`'s contract with the palette family axis.
    */
   const ShimSetters: React.FC = () => {
-    const { setTheme, setPalette } = useTheme();
+    const { setTheme } = useTheme();
     return (
       <>
         <button type="button" data-act="mode" onClick={() => setTheme('dark')} />
-        <button type="button" data-act="family" onClick={() => setPalette('harvest')} />
       </>
     );
   };
 
   const outcome = () => ({
     theme: localStorage.getItem(THEME_STORAGE_KEY),
-    family: localStorage.getItem(FAMILY_STORAGE_KEY),
+    family: localStorage.getItem(LEGACY_FAMILY_KEY),
     ...stamped(),
   });
 
   it("setTheme leaves storage and <html> exactly where ThemeToggle's Dark button does", async () => {
-    localStorage.setItem(FAMILY_STORAGE_KEY, 'harvest');
+    localStorage.setItem(LEGACY_FAMILY_KEY, 'harvest');
     const toggle = await mount(<ThemeToggle />);
     await act(async () => {
       toggle.querySelector<HTMLButtonElement>('[data-theme-choice="dark"]')!.click();
@@ -978,35 +1024,25 @@ describe('9 — useTheme() returns the real theme to a shadcn component', () => 
     const viaToggle = outcome();
 
     localStorage.clear();
-    localStorage.setItem(FAMILY_STORAGE_KEY, 'harvest');
+    localStorage.setItem(LEGACY_FAMILY_KEY, 'harvest');
     resetHtml();
 
     const shim = await mount(<ShimSetters />);
     await act(async () => { shim.querySelector<HTMLButtonElement>('[data-act="mode"]')!.click(); });
     expect(outcome(), 'the shim and ThemeToggle write different things').toEqual(viaToggle);
-    expect(viaToggle).toEqual({ theme: 'dark', family: 'harvest', attr: 'dark', dark: true, palette: 'harvest' });
+    expect(viaToggle).toEqual({ theme: 'dark', family: 'harvest', attr: 'dark', dark: true, palette: null });
   });
 
-  it('setPalette leaves storage and <html> exactly where PaletteFamilyToggle does, mode intact', async () => {
-    localStorage.setItem(THEME_STORAGE_KEY, 'dark');
-    applyTheme('dark');
-    const toggle = await mount(<PaletteFamilyToggle />);
-    await act(async () => {
-      toggle.querySelector<HTMLButtonElement>('[data-palette-choice="harvest"]')!.click();
-    });
-    const viaToggle = outcome();
-
-    localStorage.clear();
-    localStorage.setItem(THEME_STORAGE_KEY, 'dark');
-    resetHtml();
-    applyTheme('dark');
-
-    const shim = await mount(<ShimSetters />);
-    await act(async () => { shim.querySelector<HTMLButtonElement>('[data-act="family"]')!.click(); });
-    expect(outcome(), 'the shim and PaletteFamilyToggle write different things').toEqual(viaToggle);
-    // 🔴 And the family change did not reset the mode, through either path.
-    expect(viaToggle).toEqual({ theme: 'dark', family: 'harvest', attr: 'dark', dark: true, palette: 'harvest' });
-  });
+  /* 🔴 A SECOND HALF OF THIS PAIR STOOD HERE AND THE-338 REMOVED IT.
+  
+     It drove PaletteFamilyToggle's Harvest button and the shim's `setPalette`,
+     and required the two to leave storage and <html> in the identical state —
+     the same "one behaviour, two entry points, pinned against each other"
+     technique the mode test above still uses. Both the control and the setter
+     are gone with the family axis, so there is no pair left to pin.
+  
+     The mode half above is untouched and still does the whole of what this
+     block is for. */
 
   it('🔴 the shim does not stamp — applyTheme stays the one stamping path', () => {
     const shim = readFileSync(path.join(SRC, 'lib/use-theme.ts'), 'utf8');
@@ -1098,17 +1134,17 @@ const ACCENTS: ReadonlyArray<readonly [string, string]> = [
 describe('10 — deriveOnDarkAccent still clears AA on both dark grounds', () => {
   const GROUNDS: ReadonlyArray<readonly [string, string, string]> = [
     ['Harvest', DARK_SURFACE, DARK_SURFACE_RAISED],
-    ['Classic', CLASSIC_DARK_SURFACE, CLASSIC_DARK_SURFACE_RAISED],
+    ['Classic', DARK_SURFACE, DARK_SURFACE_RAISED],
   ];
 
   it('🔴 the grounds the derivation uses still match globals.css exactly', () => {
     // The guarantee is only as good as this. If --surface in either dark block
     // moved and the constant did not, every ratio below would be computed
     // against a colour nobody renders.
-    expect(resolveVar('--surface', scopeFor('dark', 'harvest'))).toBe(DARK_SURFACE);
-    expect(resolveVar('--surface', scopeFor('dark', 'classic'))).toBe(CLASSIC_DARK_SURFACE);
-    expect(resolveVar('--surface-raised', scopeFor('dark', 'harvest'))).toBe(DARK_SURFACE_RAISED);
-    expect(resolveVar('--surface-raised', scopeFor('dark', 'classic'))).toBe(CLASSIC_DARK_SURFACE_RAISED);
+    expect(resolveVar('--surface', scopeFor('dark'))).toBe(DARK_SURFACE);
+    expect(resolveVar('--surface', scopeFor('dark'))).toBe(DARK_SURFACE);
+    expect(resolveVar('--surface-raised', scopeFor('dark'))).toBe(DARK_SURFACE_RAISED);
+    expect(resolveVar('--surface-raised', scopeFor('dark'))).toBe(DARK_SURFACE_RAISED);
   });
 
   for (const [familyName, ground, raised] of GROUNDS) {
@@ -1133,81 +1169,74 @@ describe('10 — deriveOnDarkAccent still clears AA on both dark grounds', () =>
     });
   }
 
-  it('🔴 Harvest gold is returned UNCHANGED on both grounds — the brand does not shift', () => {
+  it('🔴 the gold accent is returned UNCHANGED — the brand does not shift', () => {
     expect(deriveOnDarkAccent('#C9963A', DARK_SURFACE)).toBe('#C9963A');
-    expect(deriveOnDarkAccent('#C9963A', CLASSIC_DARK_SURFACE)).toBe('#C9963A');
   });
 
-  it('records the ratios both families actually produce, so a regression is legible', () => {
-    const rows = ACCENTS.map(([hex]) => {
-      const h = contrastRatio(deriveOnDarkAccent(hex, DARK_SURFACE), DARK_SURFACE);
-      const c = contrastRatio(deriveOnDarkAccent(hex, CLASSIC_DARK_SURFACE), CLASSIC_DARK_SURFACE);
-      return { hex, harvest: Number(h.toFixed(2)), classic: Number(c.toFixed(2)) };
-    });
-    for (const r of rows) {
-      expect(r.harvest, `${r.hex} Harvest`).toBeGreaterThanOrEqual(AA_CONTRAST);
-      expect(r.classic, `${r.hex} Classic`).toBeGreaterThanOrEqual(AA_CONTRAST);
-    }
-    // The Classic ground (#1C1C1C) is LIGHTER than Harvest's (#1A1612), so it
-    // is the harder case — the lowest ratio in the table must come from it.
-    const worstClassic = Math.min(...rows.map((r) => r.classic));
-    expect(worstClassic, `lowest Classic ratio is ${worstClassic}:1`).toBeGreaterThanOrEqual(AA_CONTRAST);
-    expect(contrastRatio('#FFFFFF', CLASSIC_DARK_SURFACE))
-      .toBeLessThan(contrastRatio('#FFFFFF', DARK_SURFACE));
+  it('records the ratios the dark ground actually produces, so a regression is legible', () => {
+    /* 🔴 THE-338 — this recorded a Harvest column and a Classic column, and
+       closed by asserting that the Classic ground (#1C1C1C) was LIGHTER than
+       Harvest's (#1A1612) and therefore the harder case.
+    
+       One ground now, so that comparison would have been the constant against
+       itself — a tautology that passes while asserting nothing, which is a
+       failure mode this repo has shipped before. It is replaced by the real
+       second value: the ground THE-338 moved AWAY from. The direction is the
+       point — #141414 is DARKER than the #1C1C1C it replaced, so every accent
+       has MORE room than it did, not less. */
+    const BEFORE_THE_338 = '#1C1C1C';
+    const rows = ACCENTS.map(([hex]) => ({
+      hex,
+      now: Number(contrastRatio(deriveOnDarkAccent(hex, DARK_SURFACE), DARK_SURFACE).toFixed(2)),
+    }));
+    for (const r of rows) expect(r.now, `${r.hex}`).toBeGreaterThanOrEqual(AA_CONTRAST);
+    const worst = Math.min(...rows.map((r) => r.now));
+    expect(worst, `lowest ratio is ${worst}:1`).toBeGreaterThanOrEqual(AA_CONTRAST);
+    expect(
+      contrastRatio('#FFFFFF', DARK_SURFACE),
+      'the ground got LIGHTER — an accent now has less room, not more',
+    ).toBeGreaterThan(contrastRatio('#FFFFFF', BEFORE_THE_338));
   });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 11 · both toggles still work
+// 11 · the one remaining toggle still works
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('11 — PaletteFamilyToggle and ThemeToggle still work', () => {
+/**
+ * 🔴 THE-338 — THIS SECTION HELD TWO CONTROLS AND NOW HOLDS ONE.
+ *
+ * PaletteFamilyToggle is deleted with the palette family axis, so the tests
+ * that drove its buttons, and the one that drove BOTH controls together to
+ * reach all four palettes, have no subject. ThemeToggle is untouched and is
+ * still asserted end to end: it writes the mode key and stamps <html>.
+ */
+describe('11 — ThemeToggle still works', () => {
   const click = async (c: HTMLElement, selector: string) => {
     await act(async () => { c.querySelector<HTMLButtonElement>(selector)!.click(); });
   };
 
   it('ThemeToggle still writes the mode key and stamps <html>', async () => {
-    localStorage.setItem(FAMILY_STORAGE_KEY, 'harvest');
     const c = await mount(<ThemeToggle />);
     expect(c.querySelectorAll('[role="radio"]')).toHaveLength(3);
 
     await click(c, '[data-theme-choice="dark"]');
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark');
-    expect(stamped(), 'ThemeToggle stopped stamping, or dropped the family').toEqual({
-      attr: 'dark', dark: true, palette: 'harvest',
+    expect(stamped(), 'ThemeToggle stopped stamping').toEqual({
+      attr: 'dark', dark: true, palette: null,
     });
 
     await click(c, '[data-theme-choice="light"]');
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
-    expect(stamped()).toEqual({ attr: 'light', dark: false, palette: 'harvest' });
+    expect(stamped()).toEqual({ attr: 'light', dark: false, palette: null });
   });
 
-  it('PaletteFamilyToggle still writes the family key and keeps the mode', async () => {
-    localStorage.setItem(THEME_STORAGE_KEY, 'dark');
-    const c = await mount(<PaletteFamilyToggle />);
-    expect(c.querySelectorAll('[role="radio"]')).toHaveLength(2);
-
-    await click(c, '[data-palette-choice="harvest"]');
-    expect(localStorage.getItem(FAMILY_STORAGE_KEY)).toBe('harvest');
-    expect(stamped(), 'the family change reset the mode').toEqual({
-      attr: 'dark', dark: true, palette: 'harvest',
-    });
-
-    await click(c, '[data-palette-choice="classic"]');
-    expect(localStorage.getItem(FAMILY_STORAGE_KEY)).toBe('classic');
-    expect(stamped()).toEqual({ attr: 'dark', dark: true, palette: 'classic' });
-  });
-
-  it('the two together still reach all four palettes', async () => {
+  it('it alone reaches both palettes — there is no second control to combine with', async () => {
     const modes = await mount(<ThemeToggle />);
-    await click(modes, '[data-theme-choice="dark"]');
-    const families = await mount(<PaletteFamilyToggle />);
-
     for (const p of PALETTES) {
       await click(modes, `[data-theme-choice="${p.choice}"]`);
-      await click(families, `[data-palette-choice="${p.family}"]`);
-      expect(stamped(), `${p.name} is unreachable from the two controls`).toEqual({
-        attr: p.theme, dark: p.theme === 'dark', palette: p.family,
+      expect(stamped(), `${p.name} is unreachable from the mode control`).toEqual({
+        attr: p.theme, dark: p.theme === 'dark', palette: null,
       });
     }
   });

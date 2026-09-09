@@ -877,7 +877,7 @@ describe("13 · AdminSettings.regroup.test.tsx's structural assertions still hol
 /* ═══════════════════════════════════════════════════════════════════════════
  * 14 — colour, emoji, palettes
  * ═══════════════════════════════════════════════════════════════════════════ */
-describe('14 · no colour hardcoded, no emoji; all four palettes resolve — Classic first', () => {
+describe('14 · no colour hardcoded, no emoji; both palettes resolve — Classic first', () => {
   /**
    * ⚠️ SCOPED TO WHAT THIS SLICE TOUCHED, exactly as THE-286 scoped its own.
    * `PlanUpgradeSection` and the mount site's status pills carry numbered
@@ -912,7 +912,7 @@ describe('14 · no colour hardcoded, no emoji; all four palettes resolve — Cla
     expect(NUMBERED.test('bg-surface-chip'), 'the matcher fires on a token').toBe(false);
   });
 
-  it('every colour these files DO spell is a token all four palettes define — Classic first', () => {
+  it('every colour these files DO spell is a token both palettes define — Classic first', () => {
     const globals = readSrc('src/app/globals.css');
     // Classic is the default since #409, so it is the one asserted first.
     for (const p of ['classic', 'harvest', 'light', 'dark']) {
@@ -969,7 +969,7 @@ describe('15 · layout.tsx, firestore.rules and functions/ are byte-identical', 
     // Pinned from origin/main at 77da58d, where this branch started. A literal,
     // not a value re-derived at assertion time.
     expect(sha256(readFileSync(path.join(ROOT, 'src/app/layout.tsx'))))
-      .toBe('bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5');
+      .toBe('b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f');
   });
 
   it('the ten settings sections this slice did NOT touch are byte-identical', () => {

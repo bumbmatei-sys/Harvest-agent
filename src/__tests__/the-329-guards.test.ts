@@ -437,23 +437,20 @@ describe('17 · no colour hardcoded, no emoji; all four palettes resolve', () =>
     expect(codeOf(file), `${file} renders an emoji`).not.toMatch(EMOJI);
   });
 
-  it('🔴 all four palettes still resolve, and Classic is still the default', () => {
-    // ⚠️ FOUR PALETTES IS TWO FAMILIES x LIGHT/DARK — `theme.ts` is where the
-    // families live and #409 made `classic` the default.
+  it('🔴 both palettes still resolve, and there is no family axis left', () => {
+    // 🔴 THE-338 — "FOUR PALETTES" WAS TWO FAMILIES × LIGHT/DARK. The family
+    // axis is gone: the second family's 14 overrides were promoted into
+    // :root/.dark and both its selectors deleted, so the product is one
+    // family × two themes. What this test protects — that a screen is not
+    // left unpainted because a block was dropped for one theme — is unchanged
+    // and is now asserted on the two blocks that remain.
     const theme = read('src/lib/theme.ts');
-    expect(theme, 'a palette family was added or removed')
-      .toContain("PALETTE_FAMILIES: readonly PaletteFamily[] = ['harvest', 'classic']");
-    expect(theme, 'Classic is no longer the default')
-      .toContain("DEFAULT_PALETTE_FAMILY: PaletteFamily = 'classic'");
-    // ⚠️ `harvest` is the ROOT palette (globals.css's own default block) and
-    // `classic` is the one selected by `data-palette`; each has a light and a
-    // dark form, which is where "four palettes" comes from. Both forms of the
-    // selected family are asserted, because a block dropped for one theme is the
-    // failure that would leave a screen unpainted in the other.
+    expect(theme, 'the family list is back').not.toContain('PALETTE_FAMILIES');
+    expect(theme, 'the family default is back').not.toContain('DEFAULT_PALETTE_FAMILY');
     const css = read('src/app/globals.css');
-    expect(css, 'the Classic light palette is gone')
-      .toContain('[data-palette="classic"][data-theme="light"]');
-    expect(css, 'the Classic dark palette is gone').toContain('[data-palette="classic"].dark');
+    expect(css, 'the light palette is gone').toMatch(/^\s*:root\s*\{/m);
+    expect(css, 'the dark palette is gone').toContain('[data-theme="dark"]');
+    expect(css, 'a palette family selector is back').not.toContain('data-palette');
     expect(css, 'the Harvest brand palette is gone').toContain('Harvest brand palette');
     // The form paints with `card`, `input` and `border` — semantic tokens every
     // palette redefines. It names no palette and no colour of its own.

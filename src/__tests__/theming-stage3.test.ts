@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import postcss from 'postcss';
 import {
@@ -7,7 +7,6 @@ import {
   deriveOnDarkAccent,
   resolveTheme,
   THEME_STORAGE_KEY,
-  FAMILY_STORAGE_KEY,
   AA_CONTRAST,
   DARK_SURFACE,
 } from '../lib/theme';
@@ -148,17 +147,35 @@ describe('WCAG AA contrast in both themes', () => {
 });
 
 /**
- * TEST 3 — the light theme is untouched.
+ * TEST 3 — the light theme ramp is pinned.
+ *
+ * 🔴 THE-338 REPOINTED THESE SEVEN, and the reason matters more than the
+ * values. This block was written as "the light theme is UNTOUCHED" — stage 3
+ * added a dark theme and had to prove it changed nothing in light — and the
+ * values it pinned were the warm Harvest ramp (#FAF8F5 cream, #F3EEE7,
+ * #E8E2D9 stone, #2D2519 earth, #68563F, #766A5A).
+ *
+ * THE-338 removed the Harvest palette FAMILY and promoted the neutral one
+ * into `:root`, so those six hexes are no longer what light renders — the
+ * neutral values below are. That is the ticket's whole point, not a
+ * regression, so the pins move WITH it rather than being deleted: the block
+ * still fails the moment anything moves the light ramp without saying so.
+ *
+ * ⚠️ Note what did NOT have to change: every other assertion in this file.
+ * This suite tests the light/dark MODE axis, which THE-338 did not touch —
+ * only the FAMILY axis was removed — so its dark-ramp contrast, its
+ * monotonicity checks and its toggle tests all still hold, computed against
+ * the new ramp. That is why this file was kept rather than deleted.
  */
 describe('the light theme ramp values are pinned', () => {
   it.each([
-    ['--surface', '#FAF8F5'],
+    ['--surface', '#F7F7F7'],
     ['--surface-raised', '#FFFFFF'],
-    ['--surface-sunken', '#F3EEE7'],
-    ['--border-default', '#E8E2D9'],
-    ['--text-strong', '#2D2519'],
-    ['--text-muted', '#68563F'],
-    ['--text-faint', '#766A5A'],
+    ['--surface-sunken', '#EFEFEF'],
+    ['--border-default', '#E0E0E0'],
+    ['--text-strong', '#1A1A1A'],
+    ['--text-muted', '#595959'],
+    ['--text-faint', '#696969'],
   ])('%s is still %s', (token, expected) => {
     expect(resolve(token, lightVars).toUpperCase()).toBe(expected);
   });
@@ -209,18 +226,35 @@ describe('the persisted choice survives a reload', () => {
   });
 
   /**
-   * THE-168 — extends the pin above to the second duplicated key. The
-   * pre-paint script also cannot import FAMILY_STORAGE_KEY, so it is
-   * duplicated as a literal the same way; PaletteFamilyToggle reads/writes
-   * the constant. If the two drift, a stored family is silently ignored on
-   * reload and the surface flashes from Classic to Harvest (or back) after
-   * first paint.
+   * 🔴 THE-338 INVERTED THIS TEST, rather than deleting it.
+   *
+   * It used to pin a SECOND duplicated storage key: the pre-paint script
+   * could not import FAMILY_STORAGE_KEY either, so it spelled
+   * 'harvest-theme-family' as a literal, and PaletteFamilyToggle read the
+   * constant. Drift between the two meant a stored family was ignored on
+   * reload and the surface flashed after first paint.
+   *
+   * There is one palette family now. The toggle is gone, the constant is
+   * gone, and the script must no longer read that key — so the property
+   * worth guarding flipped from "these two agree" to "neither exists". A
+   * deleted test would have let the key quietly come back; this one fails if
+   * it does.
    */
-  it('the family control writes the same key the pre-paint script reads', () => {
-    const familyToggle = readFileSync(path.join(ROOT, 'src/components/PaletteFamilyToggle.tsx'), 'utf8');
+  it('the pre-paint script reads no family key, and no family control exists', () => {
     const layout = readFileSync(LAYOUT, 'utf8');
-    expect(familyToggle).toContain('FAMILY_STORAGE_KEY');
-    expect(layout).toContain(`localStorage.getItem('${FAMILY_STORAGE_KEY}')`);
+    // 🔴 The SCRIPT, not the prose around it. layout.tsx documents the family
+    // removal in a comment that necessarily names `data-palette`, so a check
+    // over the whole file would match its own explanation and pass while the
+    // stamp was still live. The script is a template literal inside
+    // dangerouslySetInnerHTML and the tag is self-closing, so it is bounded by
+    // the IIFE itself rather than by a closing tag.
+    const script = (/\(function\(\)\{[\s\S]*?\}\)\(\);/.exec(layout) ?? [''])[0];
+    expect(script, 'the pre-paint IIFE was not found — this assertion would be vacuous')
+      .toContain('document.documentElement');
+    expect(script).toContain("setAttribute('data-theme'");
+    expect(script).not.toContain('harvest-theme-family');
+    expect(script).not.toContain('data-palette');
+    expect(existsSync(path.join(ROOT, 'src/components/PaletteFamilyToggle.tsx'))).toBe(false);
   });
 
   it('the pre-paint script stamps before paint and cannot throw', () => {

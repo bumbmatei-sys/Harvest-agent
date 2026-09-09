@@ -511,15 +511,28 @@ describe('every screen in scope is still readable in light mode', () => {
   );
 
   it('the light theme itself is untouched by this PR — every token these screens now name kept its light value', () => {
+    // 🔴 THE-338 REPOINTED THE EIGHT NEUTRAL-RAMP PINS. They held the WARM
+    // Harvest light values on the claim "this PR must not retune light" —
+    // true of the PR that wrote them. THE-338 removes the Harvest palette
+    // FAMILY and promotes the neutral one into :root, so light IS retuned,
+    // deliberately. The pins move with it rather than being deleted: they
+    // still stop a LATER PR moving the light ramp silently.
+    //
+    // ⚠️ THE LAST THREE DID NOT MOVE, and that is the interesting half. The
+    // hue-scale inks and the danger tint are not part of the neutral surface
+    // ramp — the removed family never overrode them — so they resolve to the
+    // same values they always did. That is the "everything Classic did not
+    // override keeps its current value" half of the promotion, asserted here
+    // rather than only described.
     const PINNED: Record<string, string> = {
-      '--surface': 'var(--cream)',
+      '--surface': '#F7F7F7',
       '--surface-raised': '#FFFFFF',
-      '--surface-chip': 'var(--stone-200)',
-      '--surface-sunken': 'var(--stone-100)',
-      '--text-strong': 'var(--earth)',
-      '--text-muted': '#68563F',
-      '--text-faint': '#766A5A',
-      '--border-default': 'var(--stone-200)',
+      '--surface-chip': '#E0E0E0',
+      '--surface-sunken': '#EFEFEF',
+      '--text-strong': '#1A1A1A',
+      '--text-muted': '#595959',
+      '--text-faint': '#696969',
+      '--border-default': '#E0E0E0',
       '--ink-wheat-700': '143 104 34',
       '--ink-danger': '196 85 59',
       '--c-danger-tint': '247 231 226',

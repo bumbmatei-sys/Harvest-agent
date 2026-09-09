@@ -647,7 +647,7 @@ const AdminSmsScreen: React.FC = () => {
               {/* Desktop history — existing approved layout, unchanged (now lg-only). */}
             {/* ⚠️ `ui/card` REJECTED here too — `rounded-brand-lg`, same measured
                 reason. The rows are `ui/item`. */}
-            <div className="hidden lg:block bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] divide-y divide-stone-200">
+            <div className="hidden lg:block bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] divide-y divide-line">
               {history.map(b => (
                 <Item key={b.id} className="flex-col items-stretch gap-0 rounded-none border-0 px-5 py-4">
                   <div className="flex items-center justify-between gap-2">

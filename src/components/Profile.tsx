@@ -44,7 +44,6 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import ThemeToggle from './ThemeToggle';
-import PaletteFamilyToggle from './PaletteFamilyToggle';
 import { auth, db, messaging, VAPID_KEY } from '../firebase';
 import { signOut, updateProfile } from 'firebase/auth';
 import { doc, onSnapshot, updateDoc, collection, query, where, getDocs, arrayUnion } from 'firebase/firestore';
@@ -647,15 +646,16 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
      left-to-right, so DOM/tab order and reading order agree — not reversed
      with CSS, which would desync focus order from what is on screen.
 
-     Full labels do not fit beside each other at a 380px viewport: measured in
-     Chromium, mode (Light/Dark/System) plus family (Harvest/Classic) need
-     ~380px of button content alone (161px family + 8px gap + 211px mode) —
-     more than the ~314px available inside this card's own px-4 gutters at
-     380px, even before either control's own padding. Text is never shrunk
-     below the 11px floor to close that gap; instead both controls hide their
-     label text below `sm` (640px) and fall back to icon + `aria-label`
-     (ThemeToggle.tsx / PaletteFamilyToggle.tsx), which fits at 380px with
-     ~150px to spare (194px natural width in a 346px-wide card).
+     🔴 THE-338 removed the palette-family control from this row; the row now
+     holds ThemeToggle alone. The measurement below was taken when it held
+     TWO controls, and is kept because the rule it justifies is unchanged:
+     mode (Light/Dark/System) plus family (Harvest/Classic) needed ~380px of
+     button content alone, more than the ~314px available inside this card's
+     px-4 gutters at 380px. Text is never shrunk below the 11px floor to close
+     a gap like that; instead the control hides its label text below `sm`
+     (640px) and falls back to icon + `aria-label` (ThemeToggle.tsx). With one
+     control the row has more room than the rule needs, so the rule is now
+     comfortably satisfied rather than exactly satisfied.
 
      Labels return from `sm` up — but NOT unconditionally: they hide again
      from `xl` (1280px) up, which is not symmetry for its own sake. `settings`
@@ -674,11 +674,9 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
      at every 50–170px step from 375px to 1920px with this rule: labels
      shown 640–1279px (this page's single-column phase, ~605–989px
      available) and hidden again everywhere from 1280px up, even past where
-     the column widens back out. See ThemeToggle.tsx / PaletteFamilyToggle.tsx
-     for the breakpoints. */}
+     the column widens back out. See ThemeToggle.tsx for the breakpoints. */}
  <Separator className="bg-surface-sunken mx-4 w-auto" />
  <div className="flex items-center gap-2 px-4 py-3">
- <PaletteFamilyToggle />
  <ThemeToggle variant="row" />
  </div>
  </Card>

@@ -465,7 +465,7 @@ describe('20 · primitives are used, and inline styles stay where they were', ()
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   23 · No colour hardcoded, no emoji; all four palettes resolve.
+   23 · No colour hardcoded, no emoji; both palettes resolve.
    ═══════════════════════════════════════════════════════════════════════════ */
 describe('23 · no colour hardcoded, no emoji; Classic is still the default', () => {
   const TOUCHED = [PANEL, COUNTRIES];
@@ -473,7 +473,7 @@ describe('23 · no colour hardcoded, no emoji; Classic is still the default', ()
   it.each(TOUCHED)('%s spells no colour literal', (rel) => {
     const src = codeOf(read(rel));
     // 🔴 A hex fallback is a defect, not a safety net: it paints the SAME colour
-    // in all four palettes the one moment the token is undefined.
+    // in both palettes the one moment the token is undefined.
     expect(src.match(/#[0-9a-fA-F]{3,8}\b/g) ?? [], `${rel} spells a raw colour`).toEqual([]);
     expect(src.match(/\b(?:rgba?|hsla?)\s*\(/g) ?? [], `${rel} spells an rgb()/hsl() colour`).toEqual([]);
   });
@@ -488,10 +488,14 @@ describe('23 · no colour hardcoded, no emoji; Classic is still the default', ()
     expect(emoji, `${rel} renders an emoji`).toEqual([]);
   });
 
-  it('🔴 Classic is still the default, and both palette families are still offered', async () => {
-    const { DEFAULT_PALETTE_FAMILY, PALETTE_FAMILIES } = await import('../lib/theme');
-    expect(DEFAULT_PALETTE_FAMILY, 'Classic stopped being the default (#409)').toBe('classic');
-    expect([...PALETTE_FAMILIES].sort(), 'a palette family was lost').toEqual(['classic', 'harvest']);
+  it('🔴 the palette family axis is gone (THE-338)', async () => {
+    // 🔴 INVERTED, not deleted: this pinned #409's default family and that
+    // both families were still offered. THE-338 removed the axis — the second
+    // family's 14 overrides were promoted into :root/.dark — so what is
+    // guarded is that neither the default nor the family list comes back.
+    const theme = await import('../lib/theme');
+    expect('DEFAULT_PALETTE_FAMILY' in theme, 'the family default is back').toBe(false);
+    expect('PALETTE_FAMILIES' in theme, 'the family list is back').toBe(false);
   });
 
   it('the new pickers paint from brand tokens, so they follow the palette', () => {
@@ -585,7 +589,7 @@ describe('26 · the untouchable files are byte-identical', () => {
   const UNTOUCHED: Record<string, string> = {
     'firestore.indexes.json': '8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0',
     'src/lib/sms-optout.ts': 'a92f960897d644ba7832b68c0a8e866c146babbe0c0a800b78cc9d71b49a527c',
-    'src/app/layout.tsx': 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5',
+    'src/app/layout.tsx': 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f',
   };
 
   it('firestore.rules is unchanged', () => {

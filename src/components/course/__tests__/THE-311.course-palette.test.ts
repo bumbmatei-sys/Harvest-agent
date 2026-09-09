@@ -11,7 +11,7 @@ import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import postcss from 'postcss';
 
-import { contrastRatio, deriveOnDarkAccent, AA_CONTRAST, DARK_SURFACE, CLASSIC_DARK_SURFACE } from '../../../lib/theme';
+import { contrastRatio, deriveOnDarkAccent, AA_CONTRAST, DARK_SURFACE } from '../../../lib/theme';
 import * as C from '../../../utils/course.constants';
 import { rulesDigestFailure } from '../../../__tests__/__fixtures__/firestore-rules-pin';
 
@@ -28,7 +28,7 @@ import { rulesDigestFailure } from '../../../__tests__/__fixtures__/firestore-ru
  *
  * ⚠️ NOTHING HERE IS EYEBALLED. Every ratio below is computed by the same
  * `contrastRatio()` the production code uses, over values resolved through the
- * REAL cascade in globals.css (postcss), in all four palettes. Classic is
+ * REAL cascade in globals.css (postcss), in both palettes. Classic is
  * asserted first because it is the default.
  *
  * ── Premises checked against the tree, and where they were wrong ────────────
@@ -146,15 +146,14 @@ function varsIn(css: string, selectorTest: (sel: string) => boolean): Record<str
 const GLOBALS = src('src/app/globals.css');
 const rootVars = varsIn(GLOBALS, (s) => s === ':root');
 const harvestDark = varsIn(GLOBALS, (s) => /\.dark|\[data-theme="dark"\]/.test(s) && !s.includes('data-palette'));
-const classicLight = varsIn(GLOBALS, (s) => s.includes('data-palette="classic"') && s.includes('data-theme="light"'));
-const classicDark = varsIn(GLOBALS, (s) => s.includes('data-palette="classic"') && (s.includes('.dark') || s.includes('data-theme="dark"')));
-
-/** Classic FIRST — it is the default family. */
+/**
+ * 🔴 THE-338 — TWO palettes, not four. The Classic FAMILY and its
+ * `data-palette` selectors are gone; its 14 overrides per mode were promoted
+ * into :root/.dark, so the surviving axis is light/dark.
+ */
 const PALETTES = [
-  { name: 'Classic light', scope: { ...rootVars, ...classicLight }, dark: false, ground: null as string | null },
-  { name: 'Classic dark', scope: { ...rootVars, ...harvestDark, ...classicDark }, dark: true, ground: CLASSIC_DARK_SURFACE },
-  { name: 'Harvest light', scope: { ...rootVars }, dark: false, ground: null },
-  { name: 'Harvest dark', scope: { ...rootVars, ...harvestDark }, dark: true, ground: DARK_SURFACE },
+  { name: 'Light', scope: { ...rootVars }, dark: false, ground: null as string | null },
+  { name: 'Dark', scope: { ...rootVars, ...harvestDark }, dark: true, ground: DARK_SURFACE },
 ] as const;
 
 /** Resolve a `var()` chain (and `rgb(var(--triplet))`) inside a scope to a hex. */
@@ -322,13 +321,13 @@ describe('1 — every course.constants export resolves through a palette token',
 });
 
 /* ═════════════════════════════════════════════════════════════════════════
-   2 · The screens render correctly in all four palettes
+   2 · The screens render correctly in both palettes
    ═════════════════════════════════════════════════════════════════════════ */
 
 /** The constants that name a single colour — the ones a palette must resolve. */
 const COLOUR_CONSTANTS = ['GOLD', 'GOLD_LIGHT', 'GOLD_ON_TINT', 'BG', 'BG_WARM', 'CARD', 'TEXT', 'TEXT2', 'TEXT3', 'BORDER', 'BORDER_LIGHT', 'GREEN', 'GREEN_BG'] as const;
 
-describe('2 — course screens render correctly in all four palettes', () => {
+describe('2 — course screens render correctly in both palettes', () => {
   it.each(PALETTES)('$name resolves every colour constant to a real value', (p) => {
     for (const name of COLOUR_CONSTANTS) {
       const value = C[name];
@@ -351,9 +350,13 @@ describe('2 — course screens render correctly in all four palettes', () => {
     }
   });
 
-  it('🔴 the four palettes really are four — no two resolve the card and ink alike', () => {
+  it('🔴 the two palettes really are two — they do not resolve the card and ink alike', () => {
+    // 🔴 THE-338 — FOUR BECAME TWO. The four were two palette FAMILIES × two
+    // modes; the family axis is gone. The claim is unchanged in kind: a card
+    // and its ink that resolved identically across palettes would mean a token
+    // had fallen back to a literal instead of theming.
     const seen = PALETTES.map((p) => `${resolveColour(C.CARD, p.scope)}/${resolveColour(C.TEXT, p.scope)}/${resolveColour(C.BORDER, p.scope)}`);
-    expect(new Set(seen).size, `two palettes render identically: ${seen.join(' , ')}`).toBe(4);
+    expect(new Set(seen).size, `two palettes render identically: ${seen.join(' , ')}`).toBe(2);
   });
 });
 
@@ -394,9 +397,12 @@ const PAIRS: ReadonlyArray<[string, string, string]> = [
  * The ratios are ASSERTED, not merely described, so the day someone does close
  * it this line fails and the card comes down.
  */
-const CARDED_LIGHT_GOLD_INK = { 'Classic light': 2.66, 'Harvest light': 2.66 } as const;
+// 🔴 THE-338 — one light palette now, not two. The recorded shortfall is
+// unchanged at 2.66:1: gold ink on a white card is a property of the ACCENT
+// and the card, neither of which this ticket moved.
+const CARDED_LIGHT_GOLD_INK = { Light: 2.66 } as const;
 
-describe('3 — every foreground/background pair clears AA, in all four palettes', () => {
+describe('3 — every foreground/background pair clears AA, in both palettes', () => {
   it.each(PALETTES)('$name', (p) => {
     const failures: string[] = [];
     const report: string[] = [];
@@ -442,8 +448,22 @@ describe('3 — every foreground/background pair clears AA, in all four palettes
    ═════════════════════════════════════════════════════════════════════════ */
 
 describe('5 — no new token was defined', () => {
-  it('🔴 globals.css and tailwind.config.ts are byte-identical to the base branch', () => {
-    expect(changed('src/app/globals.css', 'tailwind.config.ts'), 'a token was defined for this ticket').toEqual([]);
+  it('🔴 no token was defined for this ticket', () => {
+    /* 🔴 THE-338 REPLACED A BRANCH-DIFF FREEZE WITH THE PROPERTY IT WAS FOR,
+       the move THE-312 established and THE-315's register requires.
+
+       It read `changed('src/app/globals.css', 'tailwind.config.ts')` must be
+       empty — an assertion about whatever branch is running, so it goes red on
+       any later PR that legitimately edits the palette. THE-338 is such a PR.
+
+       The property is "no token was DEFINED", which is about contents: the
+       token count in each theme scope is unchanged, so a value may move but a
+       name may not appear. tailwind.config.ts genuinely is untouched and is
+       digest-pinned by ds-primitives.test.tsx, so it needs no diff read. */
+    expect(Object.keys(rootVars).length, ':root gained or lost a token').toBe(167);
+    expect(Object.keys(harvestDark).length, '.dark gained or lost a token').toBe(89);
+    expect(src('tailwind.config.ts'), 'the config learned about a palette family')
+      .not.toContain('data-palette');
   });
 
   it('and no ui primitive, dependency or digest ledger moved', () => {
@@ -725,8 +745,23 @@ describe('12 — no emoji in the course source', () => {
  */
 
 describe('13 — firestore.rules, functions/ and layout.tsx are byte-identical', () => {
-  it.each(['functions/', 'src/app/layout.tsx'])('%s', (p) => {
+  it.each(['functions/'])('%s', (p) => {
     expect(changed(p), `${p} was modified`).toEqual([]);
+  });
+
+  it('src/app/layout.tsx — asserted by what it contains, not by this branch\'s diff', () => {
+    /* 🔴 THE-338 CONVERTED THIS HALF, same reason as the freeze above: a diff
+       read fails on ANY edit at ANY value, and THE-338 legitimately edits the
+       pre-paint script when it removes the palette family.
+
+       THE-311's claim is that IT did not open the file, and what it actually
+       depends on is one line — that layout.tsx still injects the tenant colour
+       into --brand-color, which section 12 above reads. That is asserted
+       directly here, so the claim survives a later, unrelated edit. */
+    const layout = src('src/app/layout.tsx');
+    expect(layout, 'layout.tsx stopped injecting the tenant accent')
+      .toContain('--brand-color:${brandColor}');
+    expect(layout, 'the course files reached into the layout').not.toContain('course');
   });
 
   it('firestore.rules', () => {

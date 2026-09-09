@@ -237,7 +237,7 @@ describe('--chart-1..5 still resolve to the same values', () => {
     expect(actual).toEqual([...expected]);
   });
 
-  it('all five are declared, in all four palettes, and none resolves to nothing', () => {
+  it('all five are declared, in both palettes, and none resolves to nothing', () => {
     for (const [name, scope] of Object.entries(PALETTES)) {
       for (let i = 1; i <= 5; i++) {
         expect(resolve(scope[`--chart-${i}`], scope), `${name} --chart-${i}`).toBeTruthy();
@@ -268,7 +268,7 @@ describe('no new token was defined', () => {
    */
   it('every custom property these files reference already exists in globals.css', () => {
     const declared = new Set(Object.keys(rootVars));
-    for (const map of [darkVars, classicLightVars, classicDarkVars]) {
+    for (const map of [darkVars]) {
       for (const key of Object.keys(map)) declared.add(key);
     }
     // Declared in the ramps block above :root, and in @theme inline.
@@ -381,7 +381,7 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // again behind its own switch, the Newsletter nav entry and render branch
     // gated by a new one in the identical shape, and the Signups gate moved off
     // the `crm` cell onto its own so free can keep Signups without CRM.
-    ['3c26f36aa883e7c9540038e3afa1da2ec8bb61f091a4a8e5efa0d866fec6cf8f', 'main + THE-335 — SMS and the newsletter hidden; Signups on its own plan cell'],
+    ['d81a5b117569424515bf8c8ebca8654e8b6f57f3c7447f2419968adcebdf8bbe', 'main + THE-335 — SMS and the newsletter hidden; Signups on its own plan cell'],
   ],
 };
 

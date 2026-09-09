@@ -539,17 +539,24 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
 });
 
 describe('THE-332 · what this ticket may not disturb', () => {
-  it('🔴 8 · the mobile bottom nav and its More sheet are untouched', () => {
+  it('🔴 8 · the mobile bottom nav is untouched and the More sheet is at its recorded digest', () => {
     /* MORE_GROUPS is the mobile drawer's model. Byte-identity is asserted on
        the ARRAY, read out of the source, so a reordering or a renamed section
-       fails here rather than surfacing as a founder bug report. */
+       fails here rather than surfacing as a founder bug report.
+
+       🔴 THE-338 MOVED THE DIGEST — and it did so through a founder bug
+       report, which is exactly the path this guard was written to intercept.
+       He asked for the drawer's group names and order to match desktop, so
+       mobile's `PLATFORM` and `MORE` groups became desktop's single `GROW`
+       and MINISTRY adopted desktop's order. The guard did its job: the
+       reorder could not land silently. No id moved between shells. */
     const before = readFileSync(join(ROOT, 'src/components/AdminDashboard.tsx'), 'utf8');
     const slice = (src: string) => {
       const i = src.indexOf('const MORE_GROUPS');
       return src.slice(i, src.indexOf('\n];', i));
     };
     expect(sha256(slice(before)))
-      .toBe('1c33062e1815399dd3b2f8fc8c4813657d92d859b481633e75d81a2b2bdaa07e');
+      .toBe('33f0aaa0e0caef51e1a19f14e526ee0afa919d61f944760afc438bb52cb0651b');
   });
 
   it('🔴 9 · all eight sidebar theme variables map onto Harvest tokens, with no new token', () => {
@@ -714,10 +721,10 @@ const PRIMITIVE_DIGESTS: Record<string, string> = {
 };
 const NOT_OURS: Record<string, string> = {
   'firestore.indexes.json': '8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0',
-  'src/app/layout.tsx': 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5',
+  'src/app/layout.tsx': 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f',
   'src/components/AdminCommunity.tsx': '10333c22ed0c6f98d233b9f057f8da260a76f17682451c38c52f694e77fddc7a',
   'src/components/AdminEvents.tsx': 'edf9088a9c7aff6b3f5d672207cab0f50c1e1428490b1bee61685f55313dc508',
   'src/components/AdminServices.tsx': '17f508718d3c6b1ad016b9fb6be2c241629421705af4a9c0966b02739eba74ae',
-  'src/components/AdminSms.tsx': '9978dad36c777903a0e95cabfc307d8b9fdf053e6b36f2e0eabe58f5c11a5557',
+  'src/components/AdminSms.tsx': 'f48ae4b8b6deff201e3767e5812bf7045af632a64c88384e5a91f285c47caab2',
   'src/components/UserMessages.tsx': 'e6998c91739caf2605538a9f12f14eee034c93cb6668713cd619e925addb8e61',
 };

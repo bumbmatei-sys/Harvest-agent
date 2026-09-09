@@ -427,7 +427,7 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
           {attendees.length === 0 ? (
             <p className="text-center py-10 text-faint text-sm font-display">No one checked in yet.</p>
           ) : (
-            <div className="divide-y divide-stone-200">
+            <div className="divide-y divide-line">
               {attendees.map(a => (
                 <div key={a.id} className="flex items-center gap-3 px-4 py-2.5">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ backgroundColor: GOLD }}>

@@ -624,7 +624,7 @@ describe('the Partial list notice still renders when truncated', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 // 9 · colour
 // ═════════════════════════════════════════════════════════════════════════════
-describe('no colour is hardcoded and all four palettes resolve', () => {
+describe('no colour is hardcoded and both palettes resolve', () => {
   const NEW_FILES = [
     'components/docs/DocsTree.tsx',
     'components/docs/DocsQuickSwitcher.tsx',
@@ -647,9 +647,7 @@ describe('no colour is hardcoded and all four palettes resolve', () => {
   });
 
   let vars: Record<string, Record<string, string>>;
-  let DEFAULT_FAMILY: string;
   beforeAll(async () => {
-    DEFAULT_FAMILY = (await import('../../lib/theme')).DEFAULT_PALETTE_FAMILY;
     const css = readFileSync(path.join(REPO, 'src/app/globals.css'), 'utf8');
     const grab = (test: (sel: string) => boolean) => {
       const out: Record<string, string> = {};
@@ -661,24 +659,23 @@ describe('no colour is hardcoded and all four palettes resolve', () => {
     };
     const harvestLight = grab(s => s === ':root');
     const harvestDark = grab(s => /(^|,)\s*\.dark\b|\[data-theme="dark"\]/.test(s) && !/data-palette/.test(s));
-    const classicLight = grab(s => /\[data-palette="classic"\]\[data-theme="light"\]/.test(s));
-    const classicDark = grab(s => /\[data-palette="classic"\](\.dark|\[data-theme="dark"\])/.test(s));
     vars = {
-      // Classic first: it is DEFAULT_PALETTE_FAMILY, so it is the palette a
-      // church actually sees unless it has chosen otherwise.
-      'classic light': { ...harvestLight, ...classicLight },
-      'classic dark': { ...harvestLight, ...harvestDark, ...classicDark },
-      'harvest light': harvestLight,
-      'harvest dark': { ...harvestLight, ...harvestDark },
+      // 🔴 THE-338 — TWO, not four. The Classic FAMILY is gone; its 14
+      // overrides were promoted into :root/.dark, so the axis is mode alone.
+      light: harvestLight,
+      dark: { ...harvestLight, ...harvestDark },
     };
   });
 
-  it('Classic is the default, and is the first palette checked', () => {
-    expect(DEFAULT_FAMILY).toBe('classic');
-    expect(Object.keys(vars)[0]).toBe('classic light');
+  it('there is no default family, because there is no family axis (THE-338)', () => {
+    // 🔴 INVERTED, not deleted. This pinned "Classic is the default, and is
+    // the first palette checked" — THE-265's guarantee. THE-338 removed the
+    // family axis, so the property worth guarding is that it stayed removed
+    // and that the two palettes now checked are the two MODES.
+    expect(Object.keys(vars)).toEqual(['light', 'dark']);
   });
 
-  it('every token the tree names has a value in all four palettes', async () => {
+  it('every token the tree names has a value in both palettes', async () => {
     await mountDocs();
     // Read the tokens off what actually RENDERED, so a class the tree stopped
     // spelling cannot leave a stale assertion passing.
@@ -984,7 +981,7 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ are byte-identical'
   // 🔴 APPENDED BY THE-334 — main + THE-334 — one flyout at a time; the panel takes ClickUp’s shape and Settings moves to the account menu
   '00db3fa2b16a506d0a23dc1d582e6581c49e03350b966fb30d82d9434b09f450',
   // 🔴 APPENDED BY THE-335 — SMS hidden again, the Newsletter nav entry gated by a new switch in the identical shape, and Signups moved onto its own plan cell
-  '3c26f36aa883e7c9540038e3afa1da2ec8bb61f091a4a8e5efa0d866fec6cf8f',
+  'd81a5b117569424515bf8c8ebca8654e8b6f57f3c7447f2419968adcebdf8bbe',
   ];
 
   it('AdminDashboard.tsx is untouched by THIS ticket — others legitimately own it', () => {

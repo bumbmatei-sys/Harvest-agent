@@ -758,7 +758,7 @@ describe('9 · the add-on entitlement lift is still `||`, never assignment', () 
 /* ═══════════════════════════════════════════════════════════════════════════
  * 13 — colour, emoji, palettes
  * ═══════════════════════════════════════════════════════════════════════════ */
-describe('13 · no colour hardcoded, no emoji; all four palettes resolve — Classic first', () => {
+describe('13 · no colour hardcoded, no emoji; both palettes resolve — Classic first', () => {
   it.each(CONVERTED)('%s hardcodes no colour', (rel) => {
     expect(code(rel), `${rel} hardcodes a colour`)
       .not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(\s*\d|hsla?\(\s*\d/);
@@ -822,7 +822,7 @@ describe('13 · no colour hardcoded, no emoji; all four palettes resolve — Cla
 
 /** sha256 of the two files that define the design tokens, at origin/main 133d557. */
 const TOKEN_SOURCE_DIGESTS: Record<string, string> = {
-  'src/app/globals.css': '772c79af681c2b97c496b91be4f2573415f2a65802dfac078dbc72e8a8fd3741',
+  'src/app/globals.css': '1fd6001c2d3bddc50a45b02ce1253b6b60802699fb33fa159f5ed42b8aeb9957',
   'tailwind.config.ts': '32af690fa7f32c4e568deb8b66ff827ffbace309a07a83ff0d4582dd2cd15749',
 };
 
@@ -894,7 +894,7 @@ describe('15 · layout.tsx, firestore.rules and functions/ are byte-identical', 
   it('🔴 src/app/layout.tsx is unchanged — the brief forbids opening it', async () => {
     const { createHash } = await import('node:crypto');
     expect(createHash('sha256').update(readFileSync(path.join(ROOT, 'src/app/layout.tsx'))).digest('hex'),
-      'layout.tsx changed — the brief forbids opening it').toBe('bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5');
+      'layout.tsx changed — the brief forbids opening it').toBe('b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f');
   });
 
   /**

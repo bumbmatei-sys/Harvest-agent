@@ -143,7 +143,7 @@ const code = (rel: string) =>
 /* ── Files this ticket may not touch, pinned ─────────────────────── */
 
 const FROZEN_INDEXES = '8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0';
-const FROZEN_LAYOUT = 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5';
+const FROZEN_LAYOUT = 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f';
 const FROZEN_FUNCTIONS = '95490fe52cc2caa158d978ab48fe8ac94cf3986a19e22bcf4b21c099edb834aa';
 
 /* ── Harness ──────────────────────────────────────────────────────────────── */
@@ -825,7 +825,7 @@ describe('12. tap targets', () => {
   });
 });
 
-describe('13. no colour hardcoded, no emoji; all four palettes resolve', () => {
+describe('13. no colour hardcoded, no emoji; both palettes resolve', () => {
   const MINE = ['src/components/Onboarding.tsx', 'src/components/AuthPage.tsx'] as const;
 
   /**

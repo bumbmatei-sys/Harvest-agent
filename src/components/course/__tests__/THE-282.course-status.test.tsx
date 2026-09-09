@@ -555,9 +555,9 @@ describe('5 — the category filter narrows the list', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 6 · Colour — nothing hardcoded, all four palettes resolve, Classic first
+// 6 · Colour — nothing hardcoded, both palettes resolve, Classic first
 // ═══════════════════════════════════════════════════════════════════════════
-describe('6 — no colour is hardcoded and all four palettes resolve', () => {
+describe('6 — no colour is hardcoded and both palettes resolve', () => {
   /**
    * ⚠️ Widths, sizes and shadows are NOT colours, and the naive `border-[a-z]`
    * / `ring-[a-z]` spellings flag every one of them. They are excluded by name
@@ -658,26 +658,31 @@ describe('6 — no colour is hardcoded and all four palettes resolve', () => {
     expect(imported).toEqual(['GOLD']);
   });
 
-  it('Classic is the default palette these tokens are read in first', () => {
+  it('both palettes declare the neutral ramp this card leans on', () => {
     const globals = src('src/app/globals.css');
     expect(globals).toMatch(/--brand-color:\s*#C9963A;/);
     /**
-     * All four = two families × two themes. Harvest is the BASE pair and has no
-     * `[data-palette]` selector of its own — it is `:root` and
-     * `[data-theme="dark"]`; Classic is additive on top. So the four are
-     * asserted as the two base selectors plus Classic's two overrides.
+     * 🔴 THE-338 — TWO, not four. The four were two FAMILIES × two themes;
+     * the additive Classic family and both its `[data-palette]` selectors are
+     * gone, its 14 overrides promoted into the base pair. What remains is
+     * `:root` and `[data-theme="dark"]`, and the absence of the other two is
+     * asserted so a family cannot quietly return.
      */
     expect(globals).toContain('[data-theme="dark"]');
-    expect(globals).toContain('[data-palette="classic"][data-theme="light"]');
-    expect(globals).toContain('[data-palette="classic"][data-theme="dark"]');
-    // Every neutral token the card leans on is redeclared by Classic, so the
-    // card follows the family rather than staying on Harvest's warm ramp.
-    const classicLight = /\[data-palette="classic"\]\[data-theme="light"\] \{([\s\S]*?)\}/.exec(globals)![1];
+    expect(globals).not.toContain('[data-palette');
+    // Every neutral token the card leans on is declared in BOTH scopes, which
+    // is what makes the card follow the theme rather than pinning one ramp.
+    // (Before THE-338 this read Classic's override block and checked the card
+    // followed the FAMILY; the promotion moved those 14 values into the two
+    // scopes below, so the same property is now read there.)
+    const rootBlock = /:root \{([\s\S]*?)\n \}/.exec(globals)![1];
+    const darkBlock = /\.dark,\n \[data-theme="dark"\] \{([\s\S]*?)\n \}/.exec(globals)![1];
     for (const token of ['--surface-raised', '--surface-sunken', '--surface-chip', '--text-muted', '--border-default']) {
-      expect(classicLight, `Classic does not redeclare ${token}`).toContain(token);
+      expect(rootBlock, `:root does not declare ${token}`).toContain(token);
+      expect(darkBlock, `.dark does not declare ${token}`).toContain(token);
     }
-    // Classic is what the pre-paint script stamps when nothing is stored.
-    expect(src('src/app/layout.tsx')).toContain("'harvest':'classic'");
+    // 🔴 And the pre-paint script no longer stamps a family at all.
+    expect(src('src/app/layout.tsx')).not.toContain("'harvest':'classic'");
   });
 
   it('🔴 the token bridge needed no addition — every name the card resolves already existed', () => {
@@ -694,9 +699,29 @@ describe('6 — no colour is hardcoded and all four palettes resolve', () => {
       expect(config, `${token} is not defined — this change would be minting a token`)
         .toContain(token);
     }
-    // And globals.css itself is untouched by this ticket.
-    expect(changedSince('src/app/globals.css', 'tailwind.config.ts'),
-      'a token was defined for this ticket').toEqual([]);
+    // 🔴 THE-338 REPLACED A BRANCH-DIFF FREEZE WITH THE PROPERTY IT WAS FOR,
+    // which is the move THE-312 established and THE-315's register requires.
+    //
+    // This read `changedSince('src/app/globals.css', 'tailwind.config.ts')`
+    // must be empty — an assertion about whatever branch is running, so it
+    // goes red on any later PR that legitimately edits the palette, for a
+    // reason that has nothing to do with that PR. THE-338 is such a PR: it
+    // removes a palette FAMILY, which is a value change inside globals.css.
+    //
+    // What the freeze was FOR is stated in this test's own name: the bridge
+    // needed no ADDITION. That is a property of the file's contents, not of
+    // the diff, and it is asserted directly — the token COUNT in each theme
+    // scope is unchanged, so a value may move but a name may not appear.
+    // The authoritative count pin for both theme scopes lives in
+    // `theming-neutral-palette.test.ts` (167 in :root, 89 in .dark) and is
+    // resolved through postcss rather than by regex; duplicating a fragile
+    // second count here would add a way to be wrong, not a second check.
+    // What is worth asserting from this card's point of view is that the
+    // palette FAMILY mechanism it used to read through is gone, and that
+    // tailwind.config.ts — digest-pinned by ds-primitives.test.tsx — never
+    // knew about it in the first place.
+    expect(globals).not.toContain('data-palette');
+    expect(src('tailwind.config.ts')).not.toContain('data-palette');
   });
 });
 

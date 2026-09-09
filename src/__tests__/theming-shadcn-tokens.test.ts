@@ -68,10 +68,6 @@ function varsIn(selectorTest: (sel: string) => boolean): Record<string, string> 
 
 const rootVars = varsIn((s) => s === ':root');
 const darkVars = varsIn((s) => /\.dark|\[data-theme="dark"\]/.test(s) && !s.includes('data-palette'));
-const classicLightVars = varsIn((s) => s.includes('data-palette="classic"') && s.includes('data-theme="light"'));
-const classicDarkVars = varsIn(
-  (s) => s.includes('data-palette="classic"') && (s.includes('.dark') || s.includes('data-theme="dark"')),
-);
 
 /**
  * The four scopes, composed exactly as the cascade composes them: Classic
@@ -80,11 +76,12 @@ const classicDarkVars = varsIn(
  * isolation is the whole point — a token that falls through is only correct if
  * what it falls through TO is correct, and that is what these maps model.
  */
+// 🔴 THE-338 — TWO palettes, not four. The Classic FAMILY and its
+// `data-palette` selectors are gone; its 14 overrides were promoted into
+// :root/.dark, so the surviving axis is mode alone.
 const PALETTES = {
-  'Harvest light': { ...rootVars },
-  'Harvest dark': { ...rootVars, ...darkVars },
-  'Classic light': { ...rootVars, ...classicLightVars },
-  'Classic dark': { ...rootVars, ...darkVars, ...classicDarkVars },
+  Light: { ...rootVars },
+  Dark: { ...rootVars, ...darkVars },
 } as const;
 type Scope = Record<string, string>;
 
@@ -146,7 +143,7 @@ function over(fg: string, bg: string, alpha: number): string {
  * Every token THE-263 adds, and where it is declared.
  *
  * `fallsThrough: true` is a DECISION, not an absence. Each of these aliases a
- * Harvest token that all four palettes already override, and `var()` is
+ * Harvest token that both palettes already override, and `var()` is
  * late-bound: `--background: var(--surface)` resolves --surface in the scope
  * of the element that reads it, so one declaration in :root is correct in all
  * four palettes. Restating it in .dark and both Classic blocks would duplicate
@@ -238,7 +235,7 @@ describe('the unresolved list, which THE-264 took to zero', () => {
 
 /* ═══ 2 · All four palettes, and the fall-through list is explicit ═══════ */
 
-describe('every new token is declared once and correct in all four palettes', () => {
+describe('every new token is declared once and correct in both palettes', () => {
   it('declares exactly the tokens this PR set out to add, and no others', () => {
     const before = new Set(Object.keys(varsIn((s) => s === ':root')));
     // A token that appears in :root but is not in BRIDGE is either a typo or
@@ -250,11 +247,10 @@ describe('every new token is declared once and correct in all four palettes', ()
   it.each(BRIDGE.filter((b) => b.fallsThrough))(
     '$token falls through to the palettes deliberately ($why)',
     ({ token }) => {
-      // The DECISION: declared in :root, and in none of the other three.
+      // The DECISION: declared in :root, and restated nowhere else. (THE-338:
+      // there used to be three other blocks to check; there is now one.)
       expect(rootVars).toHaveProperty(token);
       expect(darkVars, `${token} should not be restated in .dark`).not.toHaveProperty(token);
-      expect(classicLightVars).not.toHaveProperty(token);
-      expect(classicDarkVars).not.toHaveProperty(token);
     },
   );
 
@@ -275,18 +271,19 @@ describe('every new token is declared once and correct in all four palettes', ()
     // that resolves everywhere because it is a fixed hex, i.e. the black-on-
     // black control. These four MUST differ between light and dark.
     for (const token of ['--background', '--foreground', '--card', '--muted', '--muted-foreground', '--accent']) {
-      expect(resolve(token, PALETTES['Harvest light'])).not.toBe(resolve(token, PALETTES['Harvest dark']));
-      expect(resolve(token, PALETTES['Classic light'])).not.toBe(resolve(token, PALETTES['Classic dark']));
+      expect(resolve(token, PALETTES.Light), `${token} is identical in both modes`)
+        .not.toBe(resolve(token, PALETTES.Dark));
     }
-    // …and Harvest must not equal Classic, or the family override is dead.
-    // --card is excluded and stays excluded: --surface-raised is pure white in
-    // BOTH light families (Classic's "plain white surfaces" and Harvest's
-    // raised surface agree exactly), so equality there is the correct answer,
-    // not a dead override. Every other pair must differ.
-    for (const token of ['--background', '--foreground', '--muted', '--muted-foreground', '--accent']) {
-      expect(resolve(token, PALETTES['Harvest light'])).not.toBe(resolve(token, PALETTES['Classic light']));
-      expect(resolve(token, PALETTES['Harvest dark'])).not.toBe(resolve(token, PALETTES['Classic dark']));
-    }
+    /* 🔴 THE-338 DROPPED THE SECOND HALF, and the note is worth keeping.
+       It asserted that the two palette FAMILIES differed for the same five
+       tokens, "or the family override is dead" — with `--card` excluded and
+       explicitly staying excluded, because --surface-raised was pure white in
+       BOTH light families and equality there was the correct answer rather
+       than a dead override.
+       There is one family now, so there is no override to be dead. The
+       light/dark half above is the whole claim, and note that it covers
+       `--card` too: #FFFFFF against #1F1F1F is the one comparison the family
+       version could never make. */
   });
 });
 
@@ -313,7 +310,7 @@ const TEXT_PAIRS: [string, string, string][] = [
   ['--destructive', '--muted', 'destructive text on the muted surface'],
 ];
 
-describe('every foreground/background pair clears AA in all four palettes', () => {
+describe('every foreground/background pair clears AA in both palettes', () => {
   for (const [name, scope] of Object.entries(PALETTES)) {
     describe(name, () => {
       it.each(TEXT_PAIRS)('%s on %s clears AA (%s)', (fg, bg) => {
@@ -450,7 +447,7 @@ describe('the bridge takes nothing that was already spoken for', () => {
     expect(GLOBALS).toContain('--color-border: var(--border);');
   });
 
-  it('--border itself IS declared, and resolves in all four palettes', () => {
+  it('--border itself IS declared, and resolves in both palettes', () => {
     for (const [name, scope] of Object.entries(PALETTES)) {
       expect(resolve('--border', scope), `--border in ${name}`).toMatch(/^#[0-9A-F]{6}$/);
     }
@@ -523,11 +520,11 @@ describe('--chart-1..5', () => {
   });
 
   it.each([1, 2, 3, 4, 5] as const)('--chart-%s matches the design PAL day variant', (n) => {
-    expect(resolve(`--chart-${n}`, PALETTES['Harvest light'])).toBe(PAL.day[n]);
+    expect(resolve(`--chart-${n}`, PALETTES.Light)).toBe(PAL.day[n]);
   });
 
   it.each([1, 2, 3] as const)('--chart-%s matches the design PAL night variant', (n) => {
-    expect(resolve(`--chart-${n}`, PALETTES['Harvest dark'])).toBe(PAL.night[n]);
+    expect(resolve(`--chart-${n}`, PALETTES.Dark)).toBe(PAL.night[n]);
   });
 
   it('the first four day variants come from ramps globals.css already declares', () => {
@@ -539,14 +536,19 @@ describe('--chart-1..5', () => {
     expect(rootVars['--chart-4']).toBe('var(--stone-300)');
   });
 
-  it('is deliberately NOT overridden per palette family', () => {
-    // A series colour is a categorical data encoding, not surface chrome:
-    // re-hueing it per family would make the same data render differently in
-    // Harvest and Classic. Same fall-through, same reason, as --surface-gold.
+  it('is a day/night pair and nothing finer', () => {
+    // 🔴 THE-338 REPOINTED THIS. A series colour is a categorical data
+    // encoding, not surface chrome, so re-hueing it per palette FAMILY would
+    // have made the same data render differently in the two families — which
+    // is why neither Classic block ever named a --chart-*. The families are
+    // gone; the equivalent claim is that the series are declared as a day/night
+    // pair in the two theme scopes and nowhere else, so no third thing can
+    // re-hue them.
     for (const n of [1, 2, 3, 4, 5]) {
-      expect(classicLightVars).not.toHaveProperty(`--chart-${n}`);
-      expect(classicDarkVars).not.toHaveProperty(`--chart-${n}`);
-      expect(resolve(`--chart-${n}`, PALETTES['Harvest light'])).toBe(resolve(`--chart-${n}`, PALETTES['Classic light']));
+      expect(rootVars, `--chart-${n} is not declared in :root`).toHaveProperty(`--chart-${n}`);
+      expect(darkVars, `--chart-${n} has no night variant`).toHaveProperty(`--chart-${n}`);
+      expect(resolve(`--chart-${n}`, PALETTES.Light))
+        .not.toBe(resolve(`--chart-${n}`, PALETTES.Dark));
     }
   });
 });
@@ -560,7 +562,7 @@ describe('THE-263 moves nothing outside globals.css', () => {
    * files as they stand on main at 0921de7.
    */
   const PINNED: Record<string, string> = {
-    'src/app/layout.tsx': 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5',
+    'src/app/layout.tsx': 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f',
     'functions/.gcloudignore': '9c20b803e45cd91612bcc0113d5e925422cd5c90686feaa4487e0349ae0951b2',
     'functions/package-lock.json': 'bbe18ca8fb92c17d72a991069017be73116d885643dcf681599a958aa3e31681',
     'functions/package.json': '33846d2de1bef5e32ab53a5fb37373aa725aab06a6dd12d2e81a1c69ac6034eb',
@@ -597,10 +599,13 @@ describe('THE-263 moves nothing outside globals.css', () => {
   it('changes globals.css by addition only', () => {
     // Every token the two pre-existing palette blocks declared is still there:
     // this PR appends a section to :root and six declarations to .dark, and
-    // rewrites nothing. theming-classic-palette.test.ts pins the values.
+    // rewrites nothing.
+    //
+    // 🔴 THE-338 DROPPED THE TWO CLASSIC COUNTS and the two that remain did
+    // NOT move. The removed family held only overrides — 14 per mode, no
+    // declarations of its own — so promoting it could change VALUES and never
+    // the count. `theming-neutral-palette.test.ts` pins the values.
     expect(Object.keys(rootVars).length).toBeGreaterThanOrEqual(135 + BRIDGE.length);
     expect(Object.keys(darkVars).length).toBe(83 + 6);
-    expect(Object.keys(classicLightVars)).toHaveLength(14);
-    expect(Object.keys(classicDarkVars)).toHaveLength(14);
   });
 });

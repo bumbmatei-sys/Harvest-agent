@@ -82,25 +82,20 @@ function resolve(value: string, vars: Record<string, string>, depth = 0): string
 }
 
 /**
- * The four palette blocks, each with the variable scope a browser would have
+ * The two palette blocks, each with the variable scope a browser would have
  * when that block is the winning one. Order matters: a later map wins, exactly
- * as the later rule does, and `:root` is beneath all of them — which is what
- * makes the Classic fall-through a property of the cascade rather than of a
- * list someone has to keep up to date.
+ * as the later rule does, and `:root` is beneath the dark one — which is what
+ * makes the dark fall-through a property of the cascade rather than of a list
+ * someone has to keep up to date.
+ *
+ * 🔴 THE-338 — THERE WERE FOUR. A second palette FAMILY, Classic, matched two
+ * further selectors and overrode 14 tokens in each. It was promoted: those 14
+ * values were written into the two blocks below and its selectors deleted, so
+ * the surviving axis is light/dark alone.
  */
 const PALETTES = [
-  { name: 'Harvest light (:root)', selector: ':root', beneath: [] as string[] },
-  { name: 'Harvest dark (.dark, [data-theme="dark"])', selector: '.dark, [data-theme="dark"]', beneath: [':root'] },
-  {
-    name: 'Classic light ([data-palette="classic"][data-theme="light"])',
-    selector: '[data-palette="classic"][data-theme="light"]',
-    beneath: [':root'],
-  },
-  {
-    name: 'Classic dark ([data-palette="classic"].dark, [data-palette="classic"][data-theme="dark"])',
-    selector: '[data-palette="classic"].dark, [data-palette="classic"][data-theme="dark"]',
-    beneath: [':root', '.dark, [data-theme="dark"]'],
-  },
+  { name: 'Light (:root)', selector: ':root', beneath: [] as string[] },
+  { name: 'Dark (.dark, [data-theme="dark"])', selector: '.dark, [data-theme="dark"]', beneath: [':root'] },
 ] as const;
 
 const scopeFor = (p: (typeof PALETTES)[number]): Record<string, string> =>
@@ -108,7 +103,7 @@ const scopeFor = (p: (typeof PALETTES)[number]): Record<string, string> =>
 
 /* ── 1. All four palettes still resolve ──────────────────────────────────── */
 
-describe('all four palettes resolve every token they declare', () => {
+describe('both palettes resolve every token they declare', () => {
   it.each(PALETTES.map((p) => [p.name, p] as const))('%s', (_name, palette) => {
     const declared = declaredBy(css, palette.selector);
     // A palette that stopped matching would declare nothing and every
@@ -137,76 +132,98 @@ describe('all four palettes resolve every token they declare', () => {
     //
     // THE-267 adds the sidebar family the same way and gets the same shape: 8
     // declarations to :root, and NOTHING to .dark or to either Classic block.
-    // Five of the eight alias ramp tokens all four palettes already override,
+    // Five of the eight alias ramp tokens both palettes already override,
     // and the other three chain to --primary / --primary-foreground / --ring,
     // which are deliberately family-independent (--ring carries its own .dark
     // restatement, so chaining to it is what makes one here unnecessary). The
     // three unmoved counts below are the proof of that claim.
+    //
+    // 🔴 THE-338 REMOVED THE TWO CLASSIC ROWS, and the two that remain did NOT
+    // move: 167 and 89, exactly as before. That is the load-bearing half of
+    // this assertion now. The removed family held only OVERRIDES — 14 tokens
+    // per mode, no declarations of its own — so promoting it could only change
+    // VALUES, never the count. A count that moved would mean the promotion had
+    // added a token or dropped one, which is the failure the whole ticket was
+    // written to avoid.
     expect(Object.fromEntries(PALETTES.map((p) => [p.selector, Object.keys(declaredBy(css, p.selector)).length])))
       .toEqual({
         ':root': 135 + 24 + 8,
         '.dark, [data-theme="dark"]': 83 + 6,
-        '[data-palette="classic"][data-theme="light"]': 14,
-        '[data-palette="classic"].dark, [data-palette="classic"][data-theme="dark"]': 14,
       });
   });
 });
 
-/* ── 2. The Classic fall-through ─────────────────────────────────────────── */
+/* ── 2. The dark fall-through ────────────────────────────────────────────── */
 
-describe('the Classic blocks still fall through to :root and .dark for unlisted tokens', () => {
+describe('the dark block still falls through to :root for unlisted tokens', () => {
   /**
-   * globals.css names these six as deliberately NOT overridden in either
-   * Classic block: they are accent- or navy-derived rather than part of the
-   * neutral surface ramp, and the non-negotiable is that a tenant's accent must
-   * not grey out in either family. The fall-through is what delivers that, so
-   * it is asserted as a property of the cascade rather than trusted.
+   * 🔴 THE-338 REPOINTED THIS SECTION, and it is the most valuable one in the
+   * file for this ticket.
+   *
+   * globals.css named these six as deliberately NOT overridden by the removed
+   * Classic family: accent- or navy-derived rather than part of the neutral
+   * surface ramp, and the non-negotiable was that a tenant's accent must not
+   * grey out in either family. That family is gone — but the same six are also
+   * absent from the DARK block for the same reason, and the same cascade
+   * delivers them. So the property survives its subject: these six are
+   * declared once and reached everywhere by fall-through.
+   *
+   * ⚠️ This is the "everything Classic did not override keeps its current
+   * value" half of the promotion, asserted rather than described.
    */
   const FALLS_THROUGH = [
     '--surface-gold', '--border-gold', '--glow-gold',
     '--ring-gold', '--scrim-night', '--surface-night',
   ];
 
-  const classicLight = PALETTES[2];
-  const classicDark = PALETTES[3];
+  const light = PALETTES[0];
+  const dark = PALETTES[1];
 
-  it.each(FALLS_THROUGH)('%s is absent from both Classic blocks', (token) => {
-    expect(declaredBy(css, classicLight.selector)).not.toHaveProperty(token);
-    expect(declaredBy(css, classicDark.selector)).not.toHaveProperty(token);
+  it.each(FALLS_THROUGH)('%s is declared in :root and given a dark treatment', (token) => {
+    // ⚠️ These six ARE mode-dependent — a gold tint and a navy band both need
+    // a different value on a dark ground — so each is declared in both blocks.
+    // What they were never dependent on is the FAMILY, which is why the
+    // removed family listed exactly these six as deliberate fall-throughs.
+    expect(declaredBy(css, light.selector), `${token} is not declared in :root`).toHaveProperty(token);
+    expect(declaredBy(css, dark.selector), `${token} has no dark treatment`).toHaveProperty(token);
   });
 
-  it('Classic light therefore renders :root’s value for each of them', () => {
-    const root = declaredBy(css, ':root');
-    const scope = scopeFor(classicLight);
+  it('each resolves in both modes, and none of them greyed out with the family removal', () => {
+    const lightScope = scopeFor(light);
+    const darkScope = scopeFor(dark);
     for (const token of FALLS_THROUGH) {
-      expect(resolve(`var(${token})`, scope), `${token} does not fall through in Classic light`)
-        .toBe(resolve(`var(${token})`, root));
+      const l = resolve(`var(${token})`, lightScope);
+      const d = resolve(`var(${token})`, darkScope);
+      expect(l, `${token} does not resolve in light`).not.toBeNull();
+      expect(d, `${token} does not resolve in dark`).not.toBeNull();
+      // 🔴 Still accent- or navy-derived, not a neutral grey. This is the
+      // non-negotiable the removed family's fall-through existed to protect,
+      // and THE-338 had to keep it while deleting the family that stated it.
+      expect(`${token}:${l}${d}`, `${token} was greyed out`).toMatch(/brand-color|wheat|navy|#/);
     }
   });
 
-  it('Classic dark therefore renders the dark block’s value for each of them', () => {
-    const harvestDark = scopeFor(PALETTES[1]);
-    const scope = scopeFor(classicDark);
-    for (const token of FALLS_THROUGH) {
-      expect(resolve(`var(${token})`, scope), `${token} does not fall through in Classic dark`)
-        .toBe(resolve(`var(${token})`, harvestDark));
-    }
-  });
-
-  it('and the tokens Classic DOES override differ from Harvest, so the families are still distinct', () => {
+  it('and the ramp tokens the dark block DOES override differ from :root, so the modes are distinct', () => {
+    // 🔴 THE-338 — this asserted the same property of the two FAMILIES: that
+    // the tokens Classic overrode actually differed from Harvest's, so it was
+    // a second family rather than a near-copy. With one family the equivalent
+    // claim is about the two MODES, and it is what makes "resolves in both"
+    // a real check rather than two readings of :root.
     const root = declaredBy(css, ':root');
-    const scope = scopeFor(classicLight);
-    const overridden = Object.keys(declaredBy(css, classicLight.selector));
-    expect(overridden.length).toBe(14);
-    const identical = overridden.filter(
+    const scope = scopeFor(dark);
+    const RAMP = [
+      '--surface', '--surface-raised', '--surface-sunken', '--surface-chip', '--surface-tint',
+      '--border-hairline', '--border-subtle', '--border-default', '--border-strong',
+      '--text-strong', '--text-heading', '--text-body', '--text-muted', '--text-faint',
+    ];
+    const identical = RAMP.filter(
       (token) => resolve(`var(${token})`, scope) === resolve(`var(${token})`, root),
     );
-    // --surface-raised is the one token the two families agree on, and they
-    // agree by design: Harvest's raised surface is plain white and Classic's
-    // "plain white surfaces" brief lands on the same white. Every other token
-    // in the block moves, which is what makes it a second family rather than a
-    // near-copy — a block that quietly stopped overriding would show up here.
-    expect(identical).toEqual(['--surface-raised']);
+    // Every one of the fourteen moves between modes. Note the contrast with
+    // what this test used to say: --surface-raised was the ONE token the two
+    // families agreed on (both plain white), and between LIGHT and DARK it is
+    // #FFFFFF against #1F1F1F, so nothing is shared here at all.
+    expect(identical).toEqual([]);
   });
 });
 
@@ -716,7 +733,7 @@ describe('layout.tsx, firestore.rules and functions/ are byte-identical', () => 
 
   it.each([
     // layout.tsx carries the pre-paint theme script and is hash-pinned by THE-85.
-    ['src/app/layout.tsx', 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5'],
+    ['src/app/layout.tsx', 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f'],
     ['functions/src/index.ts', '39ccade96ac3d4dd5a13047e9bc42b54ef5ac59ae72f932af042fc814bf23e0b'],
   ])('%s', (rel, digest) => {
     expect(sha256(readFileSync(path.join(REPO_ROOT, rel))), `${rel} changed`).toBe(digest);

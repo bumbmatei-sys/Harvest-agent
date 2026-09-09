@@ -480,7 +480,7 @@ describe('14 · the files THE-321 does not own are byte-identical', () => {
       // copied) behind a third `Number` tab, and shows setup instead of a
       // composer while the ministry has no number. THE-321 still cannot edit
       // this file, because a value that is none of the three continues to fail.
-      ['9978dad36c777903a0e95cabfc307d8b9fdf053e6b36f2e0eabe58f5c11a5557', 'main + THE-327 — the number lifecycle mounted in the SMS section'],
+      ['f48ae4b8b6deff201e3767e5812bf7045af632a64c88384e5a91f285c47caab2', 'main + THE-327 — the number lifecycle mounted in the SMS section'],
     ],
     'src/components/settings/SmsSection.tsx': [
       ['75c90bc448dc52eceb47e8866a06a32cd53a64bb1b0455c2b7585053800bdf03', 'main at acc0d66 — THE-320 owns it'],
@@ -543,7 +543,7 @@ describe('14 · the files THE-321 does not own are byte-identical', () => {
 
   it('16 · and layout.tsx, firestore.rules and functions/ were not opened', () => {
     expect(sha256File('src/app/layout.tsx'), 'layout.tsx changed — the brief forbids opening it')
-      .toBe('bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5');
+      .toBe('b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f');
   });
 
   it('🔴 PersonalInformationModal.tsx is at a REGISTER-ACCEPTED digest — THE-321 still edits it not at all', () => {

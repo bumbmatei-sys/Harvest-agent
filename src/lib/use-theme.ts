@@ -2,13 +2,8 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import {
   THEME_STORAGE_KEY,
-  FAMILY_STORAGE_KEY,
-  DEFAULT_PALETTE_FAMILY,
   THEME_CHOICES,
-  PALETTE_FAMILIES,
-  isPaletteFamily,
   type ThemeChoice,
-  type PaletteFamily,
   type ResolvedTheme,
 } from './theme';
 import { applyTheme, readStoredChoice } from './theme-runtime';
@@ -27,23 +22,12 @@ import { applyTheme, readStoredChoice } from './theme-runtime';
  * inferred (see `the-271-one-theme-system.test.tsx`, section 1, which drives
  * the real library and asserts each one):
  *
- *  1. 🔴 next-themes models ONE axis. Harvest has TWO — `data-theme`
- *     (light/dark) × `data-palette` (harvest/classic), four palettes. Its
- *     `attribute` prop accepts an array, but `applyTheme` computes a SINGLE
- *     string and writes THAT SAME STRING to every attribute in the array:
- *     `attribute={['data-theme','data-palette']}` yields
- *     `data-palette="dark"`, which matches no rule in globals.css. The
- *     `value` prop cannot rescue it either — it maps a theme name to one
- *     string, not to one string per attribute — so even the four-way cross
- *     product ('classic-dark', …) collapses to the same value on both
- *     attributes. The second axis is not expressible.
+ * (THE-338 note: two further objections used to stand here, both about the
+ * second PALETTE axis next-themes has no slot for. That axis is gone — one
+ * family now — so they were removed rather than left as reasoning nobody can
+ * check. The one below still stands on its own, and is sufficient.)
  *
- *  2. 🔴 It has ONE `storageKey` holding ONE value. Harvest stores two
- *     INDEPENDENT preferences under two keys, on purpose: a family can be
- *     absent while a mode is chosen, and vice versa. Folding them into one
- *     key would rewrite every existing user's stored choice.
- *
- *  3. 🔴 It ships its own inline pre-paint script, unconditionally, from
+ *  🔴 It ships its own inline pre-paint script, unconditionally, from
  *     inside the provider. layout.tsx already has one — and that one knows
  *     about PREAUTH_PATHS. next-themes' does not, so on `/auth` it would
  *     read the stored 'dark' and stamp dark straight over the light the
@@ -67,19 +51,19 @@ import { applyTheme, readStoredChoice } from './theme-runtime';
  * is still available, under `themeChoice`.
  *
  * ⚠️ This file never stamps `<html>`. `applyTheme` in theme-runtime.ts stays
- * the only stamping path THE-85 consolidated to — `theming-classic-palette
- * .test.ts` enforces that across all of src/ — and the setters below delegate
+ * the only stamping path THE-85 consolidated to — `theming-neutral-palette
+ * .test.ts` enforces that across all of src/ — and the setter below delegates
  * to it. What is read back is the stamp itself, not a second resolution of
  * the stored choice, so this hook cannot disagree with what is on screen.
  */
 
 /**
- * next-themes' `UseThemeProps`, plus the axis it has no slot for.
+ * next-themes' `UseThemeProps`, narrowed to the one axis Harvest has.
  *
- * A superset on purpose: a component that destructures the next-themes
- * fields compiles and behaves unchanged, and one that needs the family (a
- * chart picking series colours in JS, say — CSS variables cannot reach a
- * canvas) has somewhere to read it from.
+ * A component that destructures the next-themes fields compiles and behaves
+ * unchanged. THE-338 removed `palette` / `palettes` / `setPalette`: there is
+ * one family, so a field reporting which one is active can only ever return
+ * the same answer.
  */
 export interface HarvestTheme {
   /** 🔴 'light' | 'dark' — what is ACTUALLY stamped on `<html>` right now.
@@ -99,14 +83,9 @@ export interface HarvestTheme {
    *  route, so it covers both halves of the force: the paths the URL knows
    *  and the funnel screens that declare themselves after an async read. */
   forcedTheme: ResolvedTheme | undefined;
-  /** 🔴 The second axis. 'harvest' | 'classic'. */
-  palette: PaletteFamily;
   themes: readonly ThemeChoice[];
-  palettes: readonly PaletteFamily[];
   /** Persist and apply a MODE choice — what ThemeToggle's button does. */
   setTheme: (choice: ThemeChoice) => void;
-  /** Persist and apply a FAMILY choice — what PaletteFamilyToggle does. */
-  setPalette: (family: PaletteFamily) => void;
 }
 
 /**
@@ -123,37 +102,25 @@ const prefersDark = (): boolean =>
   window.matchMedia('(prefers-color-scheme: dark)').matches;
 
 /** What `<html>` currently carries. The stamp is the truth — both writers
- *  (the pre-paint script and applyTheme) set both attributes together. */
-function readStamp(): { theme: ResolvedTheme; palette: PaletteFamily } {
-  const el = document.documentElement;
-  const raw = el.getAttribute('data-palette');
-  return {
-    theme: el.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
-    palette: isPaletteFamily(raw) ? raw : DEFAULT_PALETTE_FAMILY,
-  };
+ *  (the pre-paint script and applyTheme) set it. */
+function readStamp(): ResolvedTheme {
+  return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
 }
 
 export function useTheme(): HarvestTheme {
-  // Seeded with the values a brand-new visitor renders in, so SSR and the
+  // Seeded with the value a brand-new visitor renders in, so SSR and the
   // first client render agree; the layout effect below corrects from the real
-  // stamp before the browser paints. Same contract useResolvedTheme has, and
-  // the same reason PaletteFamilyToggle seeds from DEFAULT_PALETTE_FAMILY.
-  const [stamp, setStamp] = useState<{ theme: ResolvedTheme; palette: PaletteFamily }>({
-    theme: 'light',
-    palette: DEFAULT_PALETTE_FAMILY,
-  });
+  // stamp before the browser paints. Same contract useResolvedTheme has.
+  const [stamp, setStamp] = useState<ResolvedTheme>('light');
   const [choice, setChoice] = useState<ThemeChoice>('system');
   const [system, setSystem] = useState<ResolvedTheme>('light');
 
   useIsomorphicLayoutEffect(() => {
     const sync = () => {
-      // Bail on an unchanged value: applyTheme writes all three attributes,
-      // so one theme change produces three mutation records, and a fresh
-      // object each time would re-render every consumer three times over.
-      setStamp((prev) => {
-        const next = readStamp();
-        return prev.theme === next.theme && prev.palette === next.palette ? prev : next;
-      });
+      // applyTheme writes both the attribute and the class, so one theme
+      // change produces two mutation records; setState bails on an identical
+      // primitive, so consumers re-render once rather than twice.
+      setStamp(readStamp());
       setChoice(readStoredChoice());
       setSystem(prefersDark() ? 'dark' : 'light');
     };
@@ -166,7 +133,7 @@ export function useTheme(): HarvestTheme {
     const observer = new MutationObserver(sync);
     observer.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ['data-theme', 'data-palette', 'class'],
+      attributeFilter: ['data-theme', 'class'],
     });
 
     // While the stored choice is 'system', the OS moving changes what renders
@@ -200,18 +167,6 @@ export function useTheme(): HarvestTheme {
     applyTheme(next);
   }, []);
 
-  const setPalette = useCallback((next: PaletteFamily) => {
-    try {
-      localStorage.setItem(FAMILY_STORAGE_KEY, next);
-    } catch {
-      // Same as above.
-    }
-    // Mode is untouched by a family change — re-apply whatever mode is
-    // already current rather than assuming light, exactly as
-    // PaletteFamilyToggle does.
-    applyTheme(readStoredChoice(), next);
-  }, []);
-
   /**
    * A force is in effect when a CONCRETE stored choice disagrees with what is
    * stamped. Nothing here writes, so observing the disagreement is the whole
@@ -226,18 +181,15 @@ export function useTheme(): HarvestTheme {
    * staying quiet: with 'system' stored there is no remembered mode being
    * overridden in the first place.
    */
-  const forcedTheme = choice !== 'system' && choice !== stamp.theme ? stamp.theme : undefined;
+  const forcedTheme = choice !== 'system' && choice !== stamp ? stamp : undefined;
 
   return {
-    theme: stamp.theme,
-    resolvedTheme: stamp.theme,
+    theme: stamp,
+    resolvedTheme: stamp,
     systemTheme: system,
     themeChoice: choice,
     forcedTheme,
-    palette: stamp.palette,
     themes: THEME_CHOICES,
-    palettes: PALETTE_FAMILIES,
     setTheme,
-    setPalette,
   };
 }

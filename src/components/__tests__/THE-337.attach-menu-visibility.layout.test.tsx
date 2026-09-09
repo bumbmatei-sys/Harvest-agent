@@ -1212,9 +1212,9 @@ describe('🔴 12 · the surface is NOT full-width from sm up', () => {
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
-// 14. No hardcoded colour, no emoji, and all four palettes resolve.
+// 14. No hardcoded colour, no emoji, and both palettes resolve.
 // ═════════════════════════════════════════════════════════════════════════════
-describe('14 · no colour hardcoded, no emoji; all four palettes resolve', () => {
+describe('14 · no colour hardcoded, no emoji; both palettes resolve', () => {
   it('the menu hardcodes no colour and invents no width', () => {
     const src = read('src/components/attach/AttachMenu.tsx');
     expect(/#[0-9a-fA-F]{3,8}\b/.test(src), 'a hex colour reached the file').toBe(false);
@@ -1222,7 +1222,7 @@ describe('14 · no colour hardcoded, no emoji; all four palettes resolve', () =>
     expect(/\bw-\[\d+px\]|\bmax-w-\[\d+px\]/.test(src), 'a pixel width was invented').toBe(false);
   });
 
-  it('🔴 all four palettes paint the open menu, measured on the popup itself', () => {
+  it('🔴 both palettes paint the open menu, measured on the popup itself', () => {
     expect(palettes.map((p) => p.key)).toEqual([
       'light/classic', 'light/harvest', 'dark/classic', 'dark/harvest',
     ]);
@@ -1346,7 +1346,7 @@ describe('18 · firestore.rules, firestore.indexes.json, functions/ and layout.t
   /** Recorded off `main` at 9731c1d, the commit this branch starts from. */
   const UNTOUCHABLE: Readonly<Record<string, string>> = {
     'firestore.indexes.json': '8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0',
-    'src/app/layout.tsx': 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5',
+    'src/app/layout.tsx': 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f',
   };
 
   it.each(Object.entries(UNTOUCHABLE))('%s is byte-identical', (rel, digest) => {

@@ -577,7 +577,7 @@ describe('nothing prompts to install inside the native shell', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 // 7. Colour and layout.
 // ═══════════════════════════════════════════════════════════════════════════
-describe('no colour is hardcoded and all four palettes resolve', () => {
+describe('no colour is hardcoded and both palettes resolve', () => {
   const FILES = [
     'lib/pwa-install.ts',
     'components/install/InstallInstructions.tsx',
@@ -613,12 +613,23 @@ describe('no colour is hardcoded and all four palettes resolve', () => {
     expect(classes.has('bg-gold') || classes.has('text-gold')).toBe(true);
   });
 
-  it('leaves all four palettes able to resolve', () => {
+  it('leaves both palettes able to resolve', () => {
     const css = readFileSync(GLOBALS, 'utf8');
     expect(css).toMatch(/^\s*:root\s*\{/m);
     expect(css).toMatch(/\[data-theme="dark"\]\s*\{/);
-    expect(css).toMatch(/\[data-palette="classic"\]\[data-theme="light"\]\s*\{/);
-    expect(css).toMatch(/\[data-palette="classic"\]\[data-theme="dark"\]\s*\{/);
+    // 🔴 THE-338 — the two Classic selectors this asserted are GONE, and their
+
+    // absence is now what is asserted. The family's 14 overrides were promoted
+
+    // into :root/.dark, so every token still resolves — in TWO palettes, not
+
+    // four. Leaving the old assertion would have pinned a family that no
+
+    // longer exists; deleting it outright would have stopped checking that the
+
+    // theme scopes exist at all.
+
+    expect(css).not.toMatch(/\[data-palette/);
   });
 
   it('pre-auth stays light-mode only and writes no theme preference', () => {

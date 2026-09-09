@@ -179,16 +179,19 @@ describe('1 · AdminSettings renders the new design', () => {
   it('the Appearance section draws its label as an Item and its controls as ItemActions', async () => {
     const host = await mount();
     await expandSection(host, 'Appearance');
-    const family = host.querySelector('[role="radiogroup"][aria-label="Palette family"]');
     const mode = host.querySelector('[role="radiogroup"][aria-label="Colour theme"]');
-    expect(family, 'the palette family control is gone').toBeTruthy();
     expect(mode, 'the light/dark control is gone').toBeTruthy();
-    // 🔴 The two controls still share ONE parent, and that parent is now the
-    // primitive rather than a hand-written `flex items-center gap-2` — which is
+    // 🔴 THE-338 — the row held TWO controls (family and mode) sharing one
+    // parent; the family control is gone with the family axis. The parent is
+    // what this test is actually about — it must still be the ItemActions
+    // primitive rather than a hand-written `flex items-center gap-2`, which is
     // the same class string, so the row does not move.
-    expect(mode!.parentElement, 'the two theme controls no longer share a row').toBe(family!.parentElement);
     expect(
-      (family!.parentElement as HTMLElement).getAttribute('data-slot'),
+      host.querySelector('[role="radiogroup"][aria-label="Palette family"]'),
+      'the palette family control is back',
+    ).toBeNull();
+    expect(
+      (mode!.parentElement as HTMLElement).getAttribute('data-slot'),
       'the theme row is not an ItemActions',
     ).toBe('item-actions');
   });
@@ -861,7 +864,7 @@ describe('20 · the forbidden files are byte-identical', () => {
     // Baselines from origin/main. Spelled here so a change fails in THIS file
     // as well as in the suites that already pin them.
     expect(sha256File('src/app/layout.tsx'), 'layout.tsx changed — the brief forbids opening it')
-      .toBe('bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5');
+      .toBe('b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f');
   });
 
   it('and this ticket recorded edits to exactly two files', () => {

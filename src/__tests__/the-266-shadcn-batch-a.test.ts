@@ -16,7 +16,7 @@ import {
   SET_BY_NEXT_FONT,
   rel,
 } from '../components/ui/__tests__/ds-primitives.audit';
-import { contrastRatio, AA_CONTRAST, DEFAULT_PALETTE_FAMILY } from '../lib/theme';
+import { contrastRatio, AA_CONTRAST } from '../lib/theme';
 import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
 
 /**
@@ -79,28 +79,20 @@ const PRE_EXISTING_DIGESTS: Record<string, string> = {
 };
 
 /** As of 6aceb0e. Neither file is this PR's business; both are asserted below. */
-const LAYOUT_SHA = 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5';
+const LAYOUT_SHA = 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f';
 const TAILWIND_CODE_SHA = '491ebb5575d16eddfab00c6ed89900c725141b412e410e9e97342ff2108b2904';
 
-/* ── palette resolution ──────────────────────────────────────────────────────
- * The four palettes are two theme blocks times two families. Classic overrides
- * only the surface/border/text ramp; everything else falls through — the file
- * says so itself ("Classic is purely additive").
- *
- * ⚠️ The shadcn names are ALIASES onto that ramp: `--background: var(--surface)`,
- * `--foreground: var(--text-body)`. So Classic reaches them by indirection
- * without ever naming them, and a table of literal values per palette would be
- * wrong in a way that still looked right. Hence a resolver that follows var().
- */
+/* ── palette resolution ──────────────────────────────────────────────────
+   🔴 THE-338 COLLAPSED FOUR CHAINS TO TWO. There used to be two palette
+   FAMILIES (Harvest and Classic) crossed with two modes, and each of the four
+   resolved through its own selector chain. The family axis is gone — Classic's
+   14 overrides were promoted into :root/.dark and its selectors deleted — so
+   'classic light' and 'harvest light' now name the same declarations, as do
+   the two darks. Keeping four keys would have run every assertion below twice
+   and reported a four-palette guarantee this app no longer offers. */
 const PALETTES = {
-  'harvest light': [':root'],
-  'harvest dark': ['.dark, [data-theme="dark"]', ':root'],
-  'classic light': ['[data-palette="classic"][data-theme="light"]', ':root'],
-  'classic dark': [
-    '[data-palette="classic"].dark, [data-palette="classic"][data-theme="dark"]',
-    '.dark, [data-theme="dark"]',
-    ':root',
-  ],
+  light: [':root'],
+  dark: ['.dark, [data-theme="dark"]', ':root'],
 } as const;
 
 type Decls = Map<string, Map<string, string>>;
@@ -379,28 +371,22 @@ describe('the token bridge held', () => {
    * here, by name and palette.
    */
   const RESOLVED: Record<keyof typeof PALETTES, Record<string, string>> = {
-    'harvest light': {
-      '--background': '#FAF8F5',
-      '--foreground': '#4A4038',
-      '--muted': '#F3EEE7',
-      '--muted-foreground': '#68563F',
-    },
-    'harvest dark': {
-      '--background': '#1A1612',
-      '--foreground': '#D1C7BA',
-      '--muted': '#120F0C',
-      '--muted-foreground': '#B5A692',
-    },
-    'classic light': {
+    // 🔴 THE-338 re-recorded these. The light row is the NEUTRAL ramp, which
+    // is what a user with no stored preference has rendered since THE-265 —
+    // the warm values that stood here (#FAF8F5 / #4A4038 / #F3EEE7 / #68563F)
+    // were the removed family's. The dark row is that neutral ramp DARKENED,
+    // which is the founder's "current dark grey is lighter than the one in
+    // the screenshot" expressed as the four numbers these components read.
+    light: {
       '--background': '#F7F7F7',
       '--foreground': '#404040',
       '--muted': '#EFEFEF',
       '--muted-foreground': '#595959',
     },
-    'classic dark': {
-      '--background': '#1C1C1C',
+    dark: {
+      '--background': '#141414',
       '--foreground': '#CCCCCC',
-      '--muted': '#131313',
+      '--muted': '#0C0C0C',
       '--muted-foreground': '#ABABAB',
     },
   };
@@ -414,21 +400,20 @@ describe('the token bridge held', () => {
     });
   }
 
-  it('and Classic reaches them by fall-through, without naming one of them', () => {
-    // The fall-through decision, asserted rather than described: Classic
-    // redefines the ramp (--surface, --text-body, --text-muted) and NOT the
-    // shadcn aliases. This PR adds no token, so it makes no new fall-through
-    // decision — but it depends on that one, so it pins it.
-    for (const family of ['light', 'dark'] as const) {
-      const sel =
-        family === 'light'
-          ? '[data-palette="classic"][data-theme="light"]'
-          : '[data-palette="classic"].dark, [data-palette="classic"][data-theme="dark"]';
-      const block = decls.get(sel);
-      expect(block, `the Classic ${family} block is missing`).toBeDefined();
-      for (const alias of ['--background', '--foreground', '--muted', '--muted-foreground']) {
-        expect(block?.has(alias), `Classic ${family} names ${alias} directly`).toBe(false);
-      }
+  it('the shadcn aliases still reach the ramp by fall-through, not by restatement', () => {
+    // 🔴 THE-338 REPOINTED THIS, and the property survives the family removal
+    // intact. It used to assert that the Classic family redefined the RAMP
+    // (--surface, --text-body, --text-muted) and never the shadcn ALIASES, so
+    // the aliases resolved per-family through late-bound var(). Classic is
+    // gone, but the same layering is what now makes light and dark correct
+    // from one declaration: the aliases are declared ONCE, in :root, and only
+    // the ramp beneath them is restated on .dark. Restating an alias there
+    // would be a second place to keep in sync, changing no computed value.
+    const dark = decls.get('.dark, [data-theme="dark"]');
+    expect(dark, 'the dark block is missing').toBeDefined();
+    for (const alias of ['--background', '--foreground', '--muted', '--muted-foreground']) {
+      expect(dark?.has(alias), `.dark restates ${alias} instead of letting it fall through`).toBe(false);
+      expect(decls.get(':root')?.has(alias), `${alias} is not declared in :root`).toBe(true);
     }
   });
 });
@@ -671,6 +656,12 @@ describe('the out-of-scope files are untouched', () => {
       // toggling a conditionally-rendered div: a Collapsible written longhand,
       // without the aria-expanded / aria-controls pairing the primitive gives.
       'src/components/settings/SettingsAccordion.tsx',
+      // THE-338 — the CRM's payment-links disclaimer. THE-249's explanation is
+      // true and load-bearing but six lines tall on a phone, above the contact
+      // list, on every visit; the founder asked for it to collapse. Adopting
+      // the primitive rather than hand-rolling a fold is what puts the
+      // aria-expanded / aria-controls pairing on it.
+      'src/components/AdminCRM.tsx',
     ],
     // The first three are pre-existing and were invisible to the alias-only
     // matcher until THE-316 closed it; recorded here so the set stays closed.
@@ -758,8 +749,17 @@ describe('the out-of-scope files are untouched', () => {
   });
 });
 
-/* ── 12. #409 is not disturbed ───────────────────────────────────────────── */
+/* ── 12. THE-338 — there is no palette family left to default to ─────────── */
 
-it('Classic is still the default palette family', () => {
-  expect(DEFAULT_PALETTE_FAMILY).toBe('classic');
+it('the palette family axis is gone', () => {
+  // 🔴 INVERTED, not deleted. This asserted "Classic is still the default
+  // palette family" — #409's guarantee that installing primitives had not
+  // disturbed which family a user with no stored preference rendered in.
+  // THE-338 removed the axis, so the guarantee worth keeping is that it
+  // stayed removed: neither the attribute nor the constant may come back.
+  const theme = readFileSync(path.join(REPO_ROOT, 'src/lib/theme.ts'), 'utf8');
+  expect(theme).not.toContain('DEFAULT_PALETTE_FAMILY');
+  expect(theme).not.toContain('PaletteFamily');
+  const globals = readFileSync(path.join(REPO_ROOT, 'src/app/globals.css'), 'utf8');
+  expect(globals).not.toContain('data-palette');
 });

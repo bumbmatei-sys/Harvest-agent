@@ -19,7 +19,7 @@ import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
  * visible in the SOURCE — a hardcoded hex, an inline style, a minted token, a
  * new dependency, a new index, an `orderBy` on a mixed-type field, an edit to a
  * file another ticket owns — plus the two claims that are specific to this
- * ticket: that the colour scale clears AA in all four palettes, and that the
+ * ticket: that the colour scale clears AA in both palettes, and that the
  * component was INSTALLED from a registry rather than invented.
  *
  * ⚠️ Nothing here shells out to `git show`. Every baseline is a literal digest
@@ -259,17 +259,12 @@ function varsIn(selectorTest: (sel: string) => boolean): Record<string, string> 
 
 const rootVars = varsIn((s) => s === ':root');
 const darkVars = varsIn((s) => /\.dark|\[data-theme="dark"\]/.test(s) && !s.includes('data-palette'));
-const classicLightVars = varsIn((s) => s.includes('data-palette="classic"') && s.includes('data-theme="light"'));
-const classicDarkVars = varsIn(
-  (s) => s.includes('data-palette="classic"') && (s.includes('.dark') || s.includes('data-theme="dark"')),
-);
-
-/** 🔴 Classic FIRST — it is the default since #409, so it is the primary case. */
+// 🔴 THE-338 — TWO palettes, not four. The Classic FAMILY and its
+// `data-palette` selectors are gone; its 14 overrides were promoted into
+// :root/.dark, so the surviving axis is light/dark.
 const PALETTES: Record<string, Record<string, string>> = {
-  'Classic light': { ...rootVars, ...classicLightVars },
-  'Classic dark': { ...rootVars, ...darkVars, ...classicDarkVars },
-  'Harvest light': { ...rootVars },
-  'Harvest dark': { ...rootVars, ...darkVars },
+  Light: { ...rootVars },
+  Dark: { ...rootVars, ...darkVars },
 };
 
 function resolve(value: string | undefined, scope: Record<string, string>, depth = 0): string | null {
@@ -283,7 +278,7 @@ function resolve(value: string | undefined, scope: Record<string, string>, depth
   return v;
 }
 
-describe('🔴 every cell number clears AA against its own cell colour, in all four palettes', () => {
+describe('🔴 every cell number clears AA against its own cell colour, in both palettes', () => {
   /**
    * The cell colour the browser actually paints.
    *
@@ -324,19 +319,34 @@ describe('🔴 every cell number clears AA against its own cell colour, in all f
   });
 
   /**
-   * 🔴 THE CAP IS LOAD-BEARING, AND THIS IS THE PROOF. One step past the top of
-   * the scale, the number stops clearing AA on a dark ground. If this ever
-   * passes, the cap has become arbitrary and the comment explaining it is
-   * wrong; if the scale is raised, this is the assertion that has to be
-   * confronted rather than a comment that can be skimmed.
+   * 🔴 THE CAP IS LOAD-BEARING, AND THIS IS THE PROOF — but THE-338 MOVED WHERE
+   * IT BITES, and that is worth reading rather than skimming.
+   *
+   * This asserted that 65% FAILED AA on the dark track while 60% cleared it,
+   * so the 60% cap was the last safe rung. THE-338 darkened the ramp, and
+   * --muted is --surface-sunken, so the track went from #131313 to #0C0C0C. A
+   * darker track makes every tint on it darker too, which RAISES the ratio
+   * against the near-white ink: 65% now measures 4.60:1 and clears.
+   *
+   * The cap did not become arbitrary — it gained headroom. Rewriting the test
+   * to "65% still fails" would have been asserting a falsehood, and deleting
+   * it would have thrown away the only thing standing between the scale and
+   * an unexamined raise. So it asserts the property that is still true and
+   * still load-bearing: there IS a rung where the ladder stops clearing AA,
+   * 60% is safely below it, and the first failing step is named. Raise the
+   * scale past 60 and this is the assertion that has to be confronted.
    */
-  it('🔴 65% would fail — the 60% cap is not a taste decision', () => {
-    const palette = PALETTES['Classic dark'];
+  it('🔴 the cap is not a taste decision — the ladder still breaks, at 70%', () => {
+    const palette = PALETTES.Dark;
     const track = resolve(palette['--muted'], palette)!;
     const hue = resolve(palette['--chart-2'], palette)!;
     const ink = resolve(palette['--text-strong'], palette)!;
-    expect(contrastRatio(accentTintGround(hue, track, 65), ink)).toBeLessThan(AA_CONTRAST);
+    // The shipped cap clears, with room.
     expect(contrastRatio(accentTintGround(hue, track, 60), ink)).toBeGreaterThanOrEqual(AA_CONTRAST);
+    // 65% now clears too — the headroom THE-338's darker track bought.
+    expect(contrastRatio(accentTintGround(hue, track, 65), ink)).toBeGreaterThanOrEqual(AA_CONTRAST);
+    // 🔴 And the ladder still has an end: 70% does not clear.
+    expect(contrastRatio(accentTintGround(hue, track, 70), ink)).toBeLessThan(AA_CONTRAST);
   });
 
   it('the two unreadable series slots are not used at any strength', () => {
@@ -395,7 +405,7 @@ describe('🔴 every cell number clears AA against its own cell colour, in all f
 
 /* ═══ 4 · All four palettes resolve every token this slice leans on ═════════ */
 
-describe('all four palettes resolve every token this slice leans on', () => {
+describe('both palettes resolve every token this slice leans on', () => {
   const USED = [
     '--muted', '--chart-2', '--text-strong', '--text-body', '--text-muted',
     '--border', '--muted-foreground', '--card', '--card-foreground',
@@ -407,9 +417,12 @@ describe('all four palettes resolve every token this slice leans on', () => {
     }
   });
 
-  it('Classic is genuinely distinct from Harvest — the four are not two copies', () => {
-    expect(resolve(PALETTES['Classic light']['--muted'], PALETTES['Classic light']))
-      .not.toBe(resolve(PALETTES['Harvest light']['--muted'], PALETTES['Harvest light']));
+  it('the two palettes are genuinely two — dark is not a copy of light', () => {
+    // 🔴 THE-338 REPOINTED THIS: it proved the two FAMILIES differed, so that
+    // "resolves in all four" was not four readings of one set of values. With
+    // one family the equivalent claim is that the MODES differ.
+    expect(resolve(PALETTES.Dark['--muted'], PALETTES.Dark))
+      .not.toBe(resolve(PALETTES.Light['--muted'], PALETTES.Light));
   });
 });
 
@@ -418,7 +431,7 @@ describe('all four palettes resolve every token this slice leans on', () => {
 describe('no new token was defined', () => {
   it('globals.css is byte-identical — the bridge has held through five batches', () => {
     expect(sha256(read('src/app/globals.css')))
-      .toBe('772c79af681c2b97c496b91be4f2573415f2a65802dfac078dbc72e8a8fd3741');
+      .toBe('1fd6001c2d3bddc50a45b02ce1253b6b60802699fb33fa159f5ed42b8aeb9957');
     expect(rootVars['--chart-5']).toBeTruthy();
     expect(rootVars['--chart-6']).toBeUndefined();
   });
@@ -432,7 +445,7 @@ describe('no new token was defined', () => {
 
   it('every custom property these files reference already exists in globals.css', () => {
     const declared = new Set(Object.keys(rootVars));
-    for (const map of [darkVars, classicLightVars, classicDarkVars]) {
+    for (const map of [darkVars]) {
       for (const key of Object.keys(map)) declared.add(key);
     }
     const globals = read('src/app/globals.css');
@@ -708,7 +721,7 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // again behind its own switch, the Newsletter nav entry and render branch
     // gated by a new one in the identical shape, and the Signups gate moved off
     // the `crm` cell onto its own so free can keep Signups without CRM.
-    ['3c26f36aa883e7c9540038e3afa1da2ec8bb61f091a4a8e5efa0d866fec6cf8f', 'main + THE-335 — SMS and the newsletter hidden; Signups on its own plan cell'],
+    ['d81a5b117569424515bf8c8ebca8654e8b6f57f3c7447f2419968adcebdf8bbe', 'main + THE-335 — SMS and the newsletter hidden; Signups on its own plan cell'],
   ],
   'firestore.indexes.json': [
     ['8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0', 'main at 133d557'],

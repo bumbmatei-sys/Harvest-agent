@@ -316,7 +316,7 @@ const AdminGivingStatements: React.FC = () => {
           </div>
 
           {/* Desktop history — existing approved layout, unchanged (now lg-only). */}
-        <div className="hidden lg:block bg-surface-raised rounded-2xl border border-line divide-y divide-stone-200">
+        <div className="hidden lg:block bg-surface-raised rounded-2xl border border-line divide-y divide-line">
           {statuses.map(s => (
             <div key={s.id} className="px-4 py-3 flex items-center gap-3">
               <div className="flex-1 min-w-0">

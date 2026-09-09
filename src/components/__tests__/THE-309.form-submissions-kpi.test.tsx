@@ -591,7 +591,7 @@ describe('the other readers of the same subcollection are untouched', () => {
     ],
     // THE-304 — the option editor, and the form list that mounts both views.
     'src/components/AdminForms.tsx': [
-      ['8777a80b5e75c7c3a913f91b113faf98b9508a03445d2cba64370f1f270e48b1', "THE-304's option editor — untouched by THE-319"],
+      ['8e7fc10589b8ba3c5bc27ec88debd1d598e19e33cfedd0041a5be65074249a9e', "THE-304's option editor — untouched by THE-319"],
     ],
     'src/app/api/forms/get/route.ts': [
       ['8e8ad1d36349725c7219f1c45c7e2f4e103e07e05bcfe70e3c6a2c5de98de2cc', 'unchanged since THE-298'],
@@ -748,7 +748,7 @@ describe('the strict money gate still refuses a missing amount', () => {
    12. No emoji, no inline style, no hardcoded colour.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-describe('no emoji, no inline style, no hardcoded colour; all four palettes resolve', () => {
+describe('no emoji, no inline style, no hardcoded colour; both palettes resolve', () => {
   it('renders no emoji anywhere on the tab', async () => {
     const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{1F1E6}-\u{1F1FF}]/u;
     grantAnalytics();
@@ -778,17 +778,16 @@ describe('no emoji, no inline style, no hardcoded colour; all four palettes reso
     }
   });
 
-  it('mints no token of its own: every colour is a --chart-N all four palettes define', () => {
+  it('mints no token of its own: every colour is a --chart-N both palettes define', () => {
     const css = readRepo('src/app/globals.css');
     // ⚠️ The four palettes, in the formulation THE-298 already uses against
     // this same file: the Harvest family on :root in light and dark, and the
     // Classic family — the default since #409 — in light and dark. A KPI
     // sparkline's colour is a `var(--chart-N)` string all the way down, so it
     // is correct in each only if each defines the token.
-    for (const selector of [
-      '[data-palette="classic"][data-theme="light"]',
-      '[data-palette="classic"][data-theme="dark"]',
-    ]) expect(css, `${selector} is gone`).toContain(selector);
+    // 🔴 THE-338 — the Classic FAMILY's two selectors are gone; its 14
+    // overrides were promoted into the two theme scopes asserted below.
+    expect(css, 'a palette family selector is back').not.toContain('data-palette');
     expect(css).toMatch(/^\s*:root\s*\{/m);
     expect(css).toMatch(/\[data-theme="dark"\]\s*\{/);
     for (const n of [1, 2, 3, 4, 5]) expect(css, `--chart-${n} is gone`).toContain(`--chart-${n}`);

@@ -582,6 +582,16 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
     // the same kind as Profile.tsx: neither view spells it in a className, which
     // `the-324-guards.test.ts` asserts on the stripped source.
     expect(users).toEqual([
+      // 🔴 APPENDED BY THE-338, NOTHING BELOW REMOVED OR REWRITTEN. It sits
+      // FIRST for the same reason THE-334's entry does: this list is the
+      // sweep's own sorted order, not the order tickets arrived in.
+      // ⚠️ It USES the class, in the Rule-4 form — `min-h-11 sm:min-h-0`. The
+      // founder asked for THE-249's payment-links disclaimer in the CRM to
+      // collapse; a disclosure trigger is a tap target, so it takes the 44px
+      // floor below `sm` and releases it from `sm:` up, which is exactly the
+      // band Rule 4 governs. The disclaimer's TEXT is unchanged — the fold is
+      // the whole edit.
+      'src/components/AdminCRM.tsx',
       // 🔴 APPENDED BY THE-334, NOTHING BELOW REMOVED OR REWRITTEN. It sits
       // FIRST because this list is the sweep's own sorted order, not the order
       // tickets arrived in.
@@ -826,7 +836,7 @@ describe('10 / 13 · the files this ticket must not touch are byte-identical', (
 
   it('src/app/layout.tsx is byte-identical', () => {
     expect(sha256File('src/app/layout.tsx'))
-      .toBe('bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5');
+      .toBe('b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f');
   });
 
   it('functions/ is byte-identical, file for file', () => {
@@ -915,7 +925,7 @@ describe('11 · no new token or dependency, no colour hardcoded, no emoji', () =
       'an emoji reaches the rendered modal').toEqual([]);
   });
 
-  it('the failure banner resolves in all four palettes — Classic first', () => {
+  it('the failure banner resolves in both palettes — Classic first', () => {
     const css = read('src/app/globals.css');
     // `alert` variant="destructive" paints `text-destructive` on `bg-card`,
     // and AlertTitle/Description read `--card-foreground` / `--muted-fore

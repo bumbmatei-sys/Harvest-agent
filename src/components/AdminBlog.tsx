@@ -327,7 +327,7 @@ const AdminBlog: React.FC = () => {
  <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em] text-right">Actions</th>
  </tr>
  </thead>
- <tbody className="divide-y divide-stone-200">
+ <tbody className="divide-y divide-line">
  {loading ? (
  <tr>
  <td colSpan={5} className="px-6 py-10 text-center text-muted">

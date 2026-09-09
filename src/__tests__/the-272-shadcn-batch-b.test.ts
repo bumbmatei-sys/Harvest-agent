@@ -12,7 +12,7 @@ import {
   SET_BY_NEXT_FONT,
   rel,
 } from '../components/ui/__tests__/ds-primitives.audit';
-import { contrastRatio, AA_CONTRAST, DEFAULT_PALETTE_FAMILY } from '../lib/theme';
+import { contrastRatio, AA_CONTRAST } from '../lib/theme';
 import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
 
 /**
@@ -152,9 +152,9 @@ const PRE_EXISTING_COUNTS: Record<string, number> = {
  * layout.tsx, firestore.rules or tailwind.config.ts. THE-271 owns layout.tsx
  * concurrently, so this PR must be able to say it did not touch it.
  */
-const LAYOUT_SHA = 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5';
+const LAYOUT_SHA = 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f';
 const TAILWIND_CODE_SHA = '491ebb5575d16eddfab00c6ed89900c725141b412e410e9e97342ff2108b2904';
-const GLOBALS_SHA = '772c79af681c2b97c496b91be4f2573415f2a65802dfac078dbc72e8a8fd3741';
+const GLOBALS_SHA = '1fd6001c2d3bddc50a45b02ce1253b6b60802699fb33fa159f5ed42b8aeb9957';
 
 /** functions/ — byte-identical, file for file. Not this PR's business either. */
 const FUNCTIONS_DIGESTS: Record<string, string> = {
@@ -165,18 +165,17 @@ const FUNCTIONS_DIGESTS: Record<string, string> = {
   'functions/tsconfig.json': 'a707d5b587803ee0',
 };
 
-/* ── palette resolution — the same four chains THE-266 pinned ────────────── */
-
+/* ── palette resolution ──────────────────────────────────────────────────
+   🔴 THE-338 COLLAPSED FOUR CHAINS TO TWO. There used to be two palette
+   FAMILIES (Harvest and Classic) crossed with two modes, and each of the four
+   resolved through its own selector chain. The family axis is gone — Classic's
+   14 overrides were promoted into :root/.dark and its selectors deleted — so
+   'classic light' and 'harvest light' now name the same declarations, as do
+   the two darks. Keeping four keys would have run every assertion below twice
+   and reported a four-palette guarantee this app no longer offers. */
 const PALETTES = {
-  // Classic first: it has been the default family since #409.
-  'classic light': ['[data-palette="classic"][data-theme="light"]', ':root'],
-  'classic dark': [
-    '[data-palette="classic"].dark, [data-palette="classic"][data-theme="dark"]',
-    '.dark, [data-theme="dark"]',
-    ':root',
-  ],
-  'harvest light': [':root'],
-  'harvest dark': ['.dark, [data-theme="dark"]', ':root'],
+  light: [':root'],
+  dark: ['.dark, [data-theme="dark"]', ':root'],
 } as const;
 
 type Palette = keyof typeof PALETTES;
@@ -535,17 +534,13 @@ describe('THE-263’s chart series are untouched by this PR', () => {
    * same data render differently between families. Neither Classic block
    * overrides --chart-*, and section 5's last test asserts that directly.
    */
+  // ⚠️ UNCHANGED BY THE-338, and that is the assertion. A chart series is a
+  // categorical encoding sourced from the brand ramps, not from the neutral
+  // surface ramp, so removing a surface family and darkening the ground moves
+  // none of these ten values.
   const CHART: Record<Palette, string[]> = {
-    'classic light': ['#C9963A', '#4F97D6', '#6E8E52', '#D6CCBE', '#C8BCA9'],
-    'classic dark': [
-      '#E5B65C',
-      '#6BA8DD',
-      '#8CA96E',
-      'rgba(255, 255, 255, 0.30)',
-      'rgba(255, 255, 255, 0.28)',
-    ],
-    'harvest light': ['#C9963A', '#4F97D6', '#6E8E52', '#D6CCBE', '#C8BCA9'],
-    'harvest dark': [
+    light: ['#C9963A', '#4F97D6', '#6E8E52', '#D6CCBE', '#C8BCA9'],
+    dark: [
       '#E5B65C',
       '#6BA8DD',
       '#8CA96E',
@@ -572,16 +567,17 @@ describe('THE-263’s chart series are untouched by this PR', () => {
     }
   });
 
-  it('neither Classic block overrides a chart series', () => {
-    for (const sel of [
-      '[data-palette="classic"][data-theme="light"]',
-      '[data-palette="classic"].dark, [data-palette="classic"][data-theme="dark"]',
-    ]) {
-      const block = decls.get(sel);
-      expect(block, `the Classic block ${sel} is missing`).toBeDefined();
-      for (const n of [1, 2, 3, 4, 5]) {
-        expect(block?.has(`--chart-${n}`), `Classic names --chart-${n} directly`).toBe(false);
-      }
+  it('the dark block overrides no chart series — they fall through from :root', () => {
+    // 🔴 THE-338 REPOINTED THIS. It asserted that neither Classic block named
+    // a --chart-* directly, which is what kept one dataset from rendering in
+    // two hues across two families. The families are gone; the equivalent
+    // property now is that the chart series are declared ONCE in :root, with
+    // only the day/night pairs restated on .dark — so `--chart-1..3` are
+    // present in both blocks by design, while nothing else re-hues them.
+    const root = decls.get(':root');
+    expect(root, 'the :root block is missing').toBeDefined();
+    for (const n of [1, 2, 3, 4, 5]) {
+      expect(root?.has(`--chart-${n}`), `--chart-${n} is not declared in :root`).toBe(true);
     }
   });
 
@@ -591,7 +587,7 @@ describe('THE-263’s chart series are untouched by this PR', () => {
     // before it puts a fourth series on a light chart and wonders where it
     // went — and so that a well-meaning later PR that "corrects" them has to
     // come through this test to do it.
-    for (const palette of ['classic light', 'harvest light'] as const) {
+    for (const palette of ['light'] as const) {
       const bg = resolve(decls, PALETTES[palette], '--background');
       const c4 = contrastRatio(resolve(decls, PALETTES[palette], '--chart-4'), bg);
       const c5 = contrastRatio(resolve(decls, PALETTES[palette], '--chart-5'), bg);
@@ -630,12 +626,19 @@ describe('every foreground/background pair the four components introduce clears 
     ['table text-muted-foreground on bg-muted', '--muted-foreground', '--muted'],
   ] as const;
 
-  /** The measured ratios, Classic first. Pinned, not merely bounded. */
+  /**
+   * The measured ratios. Pinned, not merely bounded.
+   *
+   * 🔴 THE-338 — the LIGHT row is unchanged (it was already the neutral
+   * family's, which has been the default since THE-265). Every DARK ratio went
+   * UP, because darkening a ground can only improve text contrast: 10.61 ->
+   * 11.47, 7.42 -> 8.02, 11.57 -> 12.18, 8.09 -> 8.52. That direction is the
+   * whole reason the founder's "make it darker" was safe to do to a palette
+   * that was already at its floors.
+   */
   const RATIOS: Record<Palette, number[]> = {
-    'classic light': [9.68, 6.54, 9.02, 6.09],
-    'classic dark': [10.61, 7.42, 11.57, 8.09],
-    'harvest light': [9.52, 6.62, 8.74, 6.08],
-    'harvest dark': [10.78, 7.57, 11.45, 8.04],
+    light: [9.68, 6.54, 9.02, 6.09],
+    dark: [11.47, 8.02, 12.18, 8.52],
   };
 
   for (const palette of Object.keys(PALETTES) as Palette[]) {
@@ -697,18 +700,14 @@ describe('every foreground/background pair the four components introduce clears 
         ),
       ]),
     );
-    expect(measured).toEqual({
-      'classic light': 2.31,
-      'classic dark': 7.0,
-      'harvest light': 2.3,
-      'harvest dark': 7.19,
-    });
-    // The dark palettes clear 1.4.11's 3:1; the light ones do not. Asserted in
-    // both directions so that a later token move in EITHER direction is caught.
-    expect(measured['classic dark']).toBeGreaterThanOrEqual(3);
-    expect(measured['harvest dark']).toBeGreaterThanOrEqual(3);
-    expect(measured['classic light']).toBeLessThan(3);
-    expect(measured['harvest light']).toBeLessThan(3);
+    // ⚠️ The light figure is the ACCEPTED low-contrast exception this ticket
+    // was told not to "fix", and it is unchanged at 2.31. The dark figure rose
+    // from 7.0 to 7.37 because --muted is --surface-sunken, which darkened.
+    expect(measured).toEqual({ light: 2.31, dark: 7.37 });
+    // Dark clears 1.4.11's 3:1; light does not. Asserted in both directions so
+    // that a later token move in EITHER direction is caught.
+    expect(measured.dark).toBeGreaterThanOrEqual(3);
+    expect(measured.light).toBeLessThan(3);
   });
 });
 
@@ -1244,8 +1243,14 @@ it('border-strong, border-faint, border-subtle and border-hairline still produce
   }
 }, 180_000);
 
-/* ── 11. #409 is not disturbed ───────────────────────────────────────────── */
+/* ── 11. THE-338 — the family axis is gone ───────────────────────────────── */
 
-it('Classic is still the default palette family', () => {
-  expect(DEFAULT_PALETTE_FAMILY).toBe('classic');
+it('the palette family axis is gone (THE-338)', async () => {
+  // 🔴 INVERTED, not deleted. This pinned #409's guarantee that the ticket had
+  // not disturbed WHICH family a user with no stored preference rendered in.
+  // THE-338 removed the axis entirely, so the property worth keeping is that
+  // it stayed removed — a re-introduced constant fails here.
+  const theme = await import('../lib/theme');
+  expect('DEFAULT_PALETTE_FAMILY' in theme).toBe(false);
+  expect('PALETTE_FAMILIES' in theme).toBe(false);
 });

@@ -758,7 +758,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
                       <th className="px-3 py-2 text-right text-[11px] font-semibold text-gold uppercase tracking-[0.08em]">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-stone-200">
+                  <tbody className="divide-y divide-line">
                     {yearStatements.map(s => (
                       <tr key={s.id} className="hover:bg-surface-sunken">
                         <td className="px-3 py-2">
@@ -884,7 +884,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
                     <th className="px-4 py-3 text-right text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-stone-200">
+                <tbody className="divide-y divide-line">
                   {filtered.map(inv => (
                     <tr key={inv.id} className="hover:bg-surface-sunken transition-colors">
                       <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">{fmtDate(inv.issuedAt)}</td>

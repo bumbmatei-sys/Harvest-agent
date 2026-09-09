@@ -850,7 +850,7 @@ describe('9 · positions and widths at all five viewports', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 // 10. Colour, emoji, palettes.
 // ═════════════════════════════════════════════════════════════════════════════
-describe('10 · no colour hardcoded, no emoji; all four palettes resolve', () => {
+describe('10 · no colour hardcoded, no emoji; both palettes resolve', () => {
   const TOUCHED = [
     'src/components/ui/dialog.tsx',
     'src/components/ui/sheet.tsx',
@@ -895,12 +895,12 @@ describe('10 · no colour hardcoded, no emoji; all four palettes resolve', () =>
       .toEqual({ '✓': 4, '✗': 4, '🔴': 12 });
   });
 
-  it('all four palettes still resolve, Classic included — it is the default since #409', () => {
+  it('both palettes still resolve (THE-338: two, not four)', () => {
+    // 🔴 The two Classic FAMILY selectors are gone — promoted into the two
+    // below — so the compiled sheet is checked for those two only.
     for (const selector of [
       ':root',
       '.dark, [data-theme="dark"]',
-      '[data-palette="classic"][data-theme="light"]',
-      '[data-palette="classic"].dark',
     ]) {
       const needle = selector.split(',')[0].trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       expect(appCss, `${selector} no longer declares anything`)
@@ -927,7 +927,7 @@ describe('11 · layout.tsx, firestore.rules and functions/ byte-identical', () =
   // time: CI's checkout is the only history a test can rely on, and this repo
   // has already been bitten by a shallow clone.
   const PINNED: Readonly<Record<string, string>> = {
-    'src/app/layout.tsx': 'bf5f96a61c3fa2f467556f44f0b36e91e49b7c830609b37c775fa6a2b9232ca5',
+    'src/app/layout.tsx': 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f',
   };
 
   /**
@@ -949,7 +949,21 @@ describe('11 · layout.tsx, firestore.rules and functions/ byte-identical', () =
 
   it('layout.tsx still carries its hash-pinned pre-paint theme script', () => {
     // Stated positively as well as by digest, so a failure says WHAT was lost.
-    expect(src('src/app/layout.tsx')).toContain('data-palette');
+    // 🔴 THE-338 — the script no longer stamps `data-palette` (there is one
+    // palette family), so the positive statement is now about the MODE stamp,
+    // which is what the script was for before the family axis was ever added.
+    const layout = src('src/app/layout.tsx');
+    // 🔴 The SCRIPT, not the prose around it. layout.tsx documents the family
+    // removal in a comment that necessarily names `data-palette`, so a check
+    // over the whole file would match its own explanation and pass while the
+    // stamp was still live. The script is a template literal inside
+    // dangerouslySetInnerHTML and the tag is self-closing, so it is bounded by
+    // the IIFE itself rather than by a closing tag.
+    const script = (/\(function\(\)\{[\s\S]*?\}\)\(\);/.exec(layout) ?? [''])[0];
+    expect(script, 'the pre-paint IIFE was not found — this assertion would be vacuous')
+      .toContain('document.documentElement');
+    expect(script).toContain("setAttribute('data-theme'");
+    expect(script).not.toContain('data-palette');
   });
 
   it('functions/ is unchanged, file for file', () => {

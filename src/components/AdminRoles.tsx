@@ -657,14 +657,45 @@ export default function AdminRoles({ currentUserRole, currentUserPermissions, mo
   }, [setHeaderAction, mode, atAdminLimit, adminLimitNotice]);
 
   return (
-    <div style={pageStyle}>
+    <div style={pageStyle} data-admin-roles="">
+      {/* 🔴 THE-338 — EVERY RULE HERE IS SCOPED TO `[data-admin-roles]`, and
+          that scoping is a BUG FIX, not tidying.
+
+          This block used to open with an unscoped `* { box-sizing: border-box;
+          margin: 0; padding: 0; }`. A <style> element paints the whole
+          DOCUMENT wherever it is mounted in the tree, so while the Roles
+          sub-view was open that rule zeroed the margin and padding of every
+          element on the page — including AdminCRM's Contacts/Roles switcher,
+          which is rendered as a SIBLING above this component, not inside it.
+
+          That is the founder's report, "in CRM if I press on roles the button
+          switch appears very small": the pill pair's own `p-1` container
+          padding, each pill's `px-4 py-1.5`, and the bar's `mb-5` were all
+          reset to 0, so the control collapsed to bare text at the top-left
+          with nothing separating it from the header. The switcher's markup is
+          IDENTICAL on both tabs — one `subTabBar` element, rendered from one
+          variable — so nothing in AdminCRM.tsx could have explained it.
+
+          The other five rules leaked just as far: `button:disabled` dimmed
+          every disabled button in the app, and `input, select { outline:
+          none }` removed the focus outline from every field on the page, for
+          as long as this screen was mounted. Scoping fixes all six together.
+
+          The `*` reset is DELETED rather than scoped, which is the fix
+          `admin-injected-css-isolation.test.ts` prescribes and the one
+          AdminRAG.tsx and AdminCourseEditor.tsx already took for the same
+          defect: Tailwind's preflight already sets `box-sizing: border-box`
+          on everything and zeroes margin and padding on the form elements and
+          lists this tree actually uses, so nothing here depended on it.
+
+          `@keyframes` stays unscoped because a keyframe name is global by
+          definition and cannot be scoped to a subtree. */}
       <style>{`
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        input::placeholder { color: #BBB; }
-        input, select { outline: none; }
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-thumb { background: #DDD; border-radius: 4px; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        [data-admin-roles] input::placeholder { color: #BBB; }
+        [data-admin-roles] input, [data-admin-roles] select { outline: none; }
+        [data-admin-roles] ::-webkit-scrollbar { width: 5px; }
+        [data-admin-roles] ::-webkit-scrollbar-thumb { background: #DDD; border-radius: 4px; }
+        [data-admin-roles] button:disabled { opacity: 0.5; cursor: not-allowed; }
         @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
       `}</style>
 

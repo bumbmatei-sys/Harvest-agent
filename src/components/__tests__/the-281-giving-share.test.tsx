@@ -477,7 +477,7 @@ describe('6/7/8 — the share surface at every width, in every palette', () => {
   });
 
   // ── 8 ──────────────────────────────────────────────────────────────────────
-  describe('8 — no colour is hardcoded and all four palettes resolve', () => {
+  describe('8 — no colour is hardcoded and both palettes resolve', () => {
     const NEW_FILES = [
       'components/donations/GivingShareSheet.tsx',
       'components/donations/giving-share.ts',
@@ -496,9 +496,7 @@ describe('6/7/8 — the share surface at every width, in every palette', () => {
     });
 
     let vars: Record<string, Record<string, string>>;
-    let DEFAULT_FAMILY: string;
     beforeAll(async () => {
-      DEFAULT_FAMILY = (await import('../../lib/theme')).DEFAULT_PALETTE_FAMILY;
       const css = readFileSync(path.join(REPO, 'src/app/globals.css'), 'utf8');
       const grab = (test: (sel: string) => boolean) => {
         const out: Record<string, string> = {};
@@ -510,23 +508,22 @@ describe('6/7/8 — the share surface at every width, in every palette', () => {
       };
       const harvestLight = grab((s) => s === ':root');
       const harvestDark = grab((s) => /(^|,)\s*\.dark\b|\[data-theme="dark"\]/.test(s) && !/data-palette/.test(s));
-      const classicLight = grab((s) => /\[data-palette="classic"\]\[data-theme="light"\]/.test(s));
-      const classicDark = grab((s) => /\[data-palette="classic"\](\.dark|\[data-theme="dark"\])/.test(s));
       vars = {
         // Classic first — it is DEFAULT_PALETTE_FAMILY, so it is what a church sees.
-        'classic light': { ...harvestLight, ...classicLight },
-        'classic dark': { ...harvestLight, ...harvestDark, ...classicDark },
-        'harvest light': harvestLight,
-        'harvest dark': { ...harvestLight, ...harvestDark },
+        light: harvestLight,
+        dark: { ...harvestLight, ...harvestDark },
       };
     });
 
-    it('Classic is the default, and is the first palette checked', () => {
-      expect(DEFAULT_FAMILY).toBe('classic');
-      expect(Object.keys(vars)[0]).toBe('classic light');
-    });
+  it('there is no default family, because there is no family axis (THE-338)', () => {
+    // 🔴 INVERTED, not deleted. This pinned "Classic is the default, and is
+    // the first palette checked" — THE-265's guarantee. THE-338 removed the
+    // family axis, so the property worth guarding is that it stayed removed
+    // and that the two palettes now checked are the two MODES.
+    expect(Object.keys(vars)).toEqual(['light', 'dark']);
+  });
 
-    it('every token the share surface names resolves in all four palettes', async () => {
+    it('every token the share surface names resolves in both palettes', async () => {
       await openSheet();
       const named = new Set<string>();
       for (const el of [container, ...qa('*')]) {
