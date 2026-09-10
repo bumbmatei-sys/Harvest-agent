@@ -511,6 +511,19 @@ describe('2 · every use of pb-safe is accounted for', () => {
       // that component into this register for what was only a comment. So the
       // one live entry above is still the one live entry.
       'src/components/__tests__/THE-317.volunteer-rota.layout.test.tsx',
+      // ⚠️ THE-348 is a NINTH ticket naming the class without applying it, and
+      //   it names it twice, for two different reasons. It asserts that the
+      //   ADMIN nav still carries `pb-safe` — not because the class works, but
+      //   because #490's four discovery guards match that nav's class string
+      //   byte for byte and THE-348 hides a DIFFERENT nav in a different shell.
+      //   And it names it in prose to record why the member chat's composer now
+      //   reserves the home-indicator inset ITSELF: inside a conversation the
+      //   member bottom nav is hidden, so the composer is the bottom-most chrome
+      //   and nothing else is reserving it. The composer takes the arbitrary form
+      //   THE-295 established here — `max-lg:pb-[calc(8px+env(safe-area-inset-
+      //   bottom))]` — never the inert class. That is a ninth ticket paying this
+      //   tax, and one more argument for fixing the admin nav itself.
+      'src/components/__tests__/THE-348.member-composer.guards.test.ts',
       'src/components/__tests__/__fixtures__/member-screens-mobile.json',
       'src/components/__tests__/the-281-giving-share.test.tsx',
       'src/components/__tests__/the-290-giving-layout.test.tsx',

@@ -359,9 +359,117 @@ describe('the revision this suite diffs against is reachable', () => {
 const undoTHE295 = (rows: string[]): string[] =>
   rows.map((r) => r.replace('pb-[calc(8px+env(safe-area-inset-bottom))]', 'pb-safe'));
 
+/**
+ * 🔴 THE-348 · THE TWO `UserMessages` SURFACES MOVED BELOW 640px, DELIBERATELY.
+ *
+ * This batch measured "nothing below 640px moved". THE-348 moves three things
+ * on the member chat on purpose, because all three are the founder's bug:
+ *
+ *   1. THE COMPOSER IS PINNED TO THE VIEWPORT below `lg` — *"in a chat I can
+ *      scroll up and down and the input bar moved as well… put the input text
+ *      field fixed at the bottom."* Five `max-lg:` tokens on the composer bar,
+ *      and one on the scroller reserving the band a fixed element vacates.
+ *   2. THE PAPERCLIP IS GONE FOR A MEMBER — *"The user, non admin should not
+ *      have the paperclip."* Three elements (button, svg, path) leave the
+ *      member's render entirely, which is what makes it 64 rows and not 67.
+ *   3. THE SEND BUTTON TAKES THE 44px PHONE FLOOR. It measured 36 × 36 at
+ *      380px in Chromium, beside an attach trigger that already cleared 44.
+ *
+ * 🔴 THE FIXTURE IS NOT RE-RECORDED, for the reason THE-295 wrote above:
+ * re-recording would pin whatever the file renders today across all seven
+ * surfaces at once, which is the silent re-baselining this suite exists to
+ * prevent. So the diff is folded out HERE, item by item, and the folding is
+ * itself pinned by the test directly below — a fourth change hiding behind
+ * these three still fails.
+ *
+ * ⚠️ WHAT REPLACES THE PROXY, rather than nothing. A class-string comparison
+ * was standing in for "the phone rendering did not move". For these two
+ * surfaces that claim is now made DIRECTLY and far more strongly, in a real
+ * browser, by `THE-348.member-composer.layout.test.tsx`: the composer's
+ * position, its box before and after a 3,281px scroll, the nav's band, the
+ * hit test in that band, and every control's height at five widths. A proxy
+ * that has stopped being true should stop being asserted rather than be
+ * quietly re-recorded — THE-205's words, in this file.
+ */
+const THE_348_SURFACES = ['UserMessages', 'UserMessagesThread'] as const;
+
+/** The tokens THE-348 ADDS. Nothing else may appear. */
+const THE_348_ADDED = [
+  // The composer, pinned to the viewport below `lg`.
+  // ⚠️ `z-10`, not the `z-[101]` this first shipped as. The composer does not
+  // have to clear the nav's `z-[100]`, because inside a conversation the nav
+  // is HIDDEN — and 101 put the composer above the ATTACH MENU, which
+  // `ui/dropdown-menu.tsx` paints at its positioner's hardcoded `z-50`. A hit
+  // test over the open menu's whole box found 22 of 121 pixels covered by it.
+  'max-lg:fixed', 'max-lg:inset-x-0', 'max-lg:bottom-0', 'max-lg:z-10',
+  // Its own safe-area padding — `undoTHE295` rewrites the calc form to this.
+  'max-lg:pb-safe',
+  // The band the scroller reserves for it.
+  'max-lg:pb-[calc(72px+env(safe-area-inset-bottom))]',
+  // The send button's 44px phone floor.
+  'min-h-11', 'min-w-11',
+] as const;
+
+/** The paperclip's three elements, as the baseline rendered them. */
+const THE_348_PAPERCLIP = 'lucide-paperclip';
+
+/**
+ * Fold THE-348's diff out of a row list so the rest can still be compared.
+ *
+ * ⚠️ THE INDEX COLUMN IS DROPPED, and that is not a loosening this ticket can
+ * avoid: removing three elements shifts every later index by three, so an
+ * index-keyed comparison would report 20 changed rows for one deletion. ORDER
+ * IS KEPT, so an element that MOVED still fails — which is the claim the index
+ * was carrying.
+ */
+function undoTHE348(nowRows: string[], baseRows: string[]): [string[], string[]] {
+  const dropIndex = (rows: string[]) => rows.map((r) => r.split('\t').slice(1).join('\t'));
+  // From the NEW rows: the tokens this ticket added.
+  const now = dropIndex(nowRows).map((r) =>
+    r.split(' ').filter((t) => !(THE_348_ADDED as readonly string[]).includes(t)).join(' '));
+  // From the BASELINE: the paperclip's button, its svg and its path — found by
+  // the svg's own lucide class, never by a row number.
+  const base = dropIndex(baseRows);
+  const at = base.findIndex((r) => r.includes(THE_348_PAPERCLIP));
+  const trimmed = at < 0 ? base : [...base.slice(0, at - 1), ...base.slice(at + 2)];
+  return [now, trimmed];
+}
+
 describe('the sub-640px rendering of each file is unchanged', () => {
   it.each(ALL_SURFACES)('%s renders the same class layer below 640px as it did before', (name) => {
-    expect(undoTHE295(mobileLayer(SURFACES[name]))).toEqual(BASELINE[name].mobileLayer);
+    const now = undoTHE295(mobileLayer(SURFACES[name]));
+    if ((THE_348_SURFACES as readonly string[]).includes(name)) {
+      const [a, b] = undoTHE348(now, BASELINE[name].mobileLayer);
+      expect(a, `${name} moved below 640px beyond THE-348's three folded changes`).toEqual(b);
+      return;
+    }
+    expect(now).toEqual(BASELINE[name].mobileLayer);
+  });
+
+  it("THE-348's fold touches exactly its three changes, and only on its two surfaces", () => {
+    // 🔴 The escape hatch above is only safe while it stays this small — the
+    // same guard THE-295's fold carries directly below.
+    for (const name of THE_348_SURFACES) {
+      const rows = undoTHE295(mobileLayer(SURFACES[name]));
+      // 1 · The added tokens are on the rows that are supposed to carry them.
+      const composer = rows.filter((r) => r.includes('max-lg:fixed'));
+      expect(composer, `${name}: the pinned composer is not exactly one element`).toHaveLength(1);
+      expect(composer[0], `${name}: the pinned element is not the composer bar`).toContain('bg-surface-raised');
+      const band = rows.filter((r) => r.includes('max-lg:pb-[calc(72px+env(safe-area-inset-bottom))]'));
+      expect(band, `${name}: the composer band is not on exactly one element`).toHaveLength(1);
+      expect(band[0], `${name}: the band is not on the message scroller`).toContain('overflow-y-auto');
+      const floored = rows.filter((r) => r.includes('min-h-11'));
+      expect(floored, `${name}: the 44px floor spread beyond the send button`).toHaveLength(1);
+      // 2 · The paperclip really is gone for a member, and stayed gone.
+      expect(rows.filter((r) => r.includes(THE_348_PAPERCLIP)),
+        `${name}: a member can still see the paperclip`).toHaveLength(0);
+      // 3 · And no token this ticket did not name entered the phone layer.
+      const wasTokens = new Set(BASELINE[name].mobileLayer.flatMap((r) => r.split('\t')[2]?.split(' ') ?? []));
+      const added = [...new Set(rows.flatMap((r) => r.split('\t')[2]?.split(' ') ?? []))]
+        .filter((t) => t && !wasTokens.has(t));
+      expect(added.sort(), `${name} gained a class nobody recorded`)
+        .toEqual([...THE_348_ADDED].sort());
+    }
   });
 
   it('and that normalisation touches exactly one class on exactly one row', () => {
@@ -401,6 +509,16 @@ describe('the sub-640px rendering of each file is unchanged', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 describe('no touch target got smaller', () => {
   it.each(ALL_SURFACES)('%s renders the same height tokens on the same elements', (name) => {
+    if ((THE_348_SURFACES as readonly string[]).includes(name)) {
+      // 🔴 NOTHING SHRANK — and one thing GREW, which is the point. THE-348's
+      // only height change is the send button gaining `min-h-11 min-w-11`
+      // below `sm`; it measured 36 × 36 at 380px. The fold drops the index
+      // column (three deleted elements shift every later one) and removes the
+      // two added tokens, so every other height must still match in order.
+      const [a, b] = undoTHE348(heightLayer(SURFACES[name]), BASELINE[name].heights);
+      expect(a, `${name} changed a height beyond THE-348's send-button floor`).toEqual(b);
+      return;
+    }
     expect(heightLayer(SURFACES[name])).toEqual(BASELINE[name].heights);
   });
 
@@ -911,21 +1029,58 @@ describe('the Messages gate is unchanged', () => {
     expectUnchangedUnlessExempted('MainApp.tsx');
   });
 
-  it('UserMessages’ queries and gates are byte-identical — only className strings moved', () => {
-    // The whole file with JSX comments and className VALUES stripped. If that
-    // normalised form matches the pre-PR revision, then no query, filter, sort,
-    // write path or gate condition changed — only presentation did.
-    const strip = (s: string) => stripComments(s)
-      .replace(/className=\{`[^`]*`\}/g, 'className=X')
-      .replace(/className="[^"]*"/g, 'className=X')
-      .replace(/^import \{ READING_MEASURE \}.*$/m, '')
-      .replace(/\s+/g, ' ').trim();
-    expect(strip(read('UserMessages.tsx'))).toBe(strip(at('UserMessages.tsx')));
+  /**
+   * 🔴 THE-348 · THIS CLAIM IS NARROWED, AND SAYS SO — THE-205's treatment of
+   * MainApp two describes below, for the same reason and by the same rule.
+   *
+   * The assertion was "only className strings moved". THE-348 changes what
+   * this screen DOES, on purpose and in three places the founder named: the
+   * forms-only attach sheet is deleted in favour of the shared `AttachMenu`,
+   * the paperclip is gated on the current user's role, and the screen tells
+   * the shell when a conversation is open so the bottom nav can hide. Folding
+   * a change of that size through a normaliser would GUT this test rather than
+   * extend it, so the claim narrows to the ones that are still true and states
+   * them directly — which is strictly more readable than an equality whose
+   * normaliser had grown to hide half a ticket.
+   *
+   * ⚠️ WHAT STILL HOLDS, ASSERTED BELOW: the Firestore call inventory, folded
+   * to exactly the five calls that left with the deleted picker; and the
+   * queries, gates and write paths themselves, named one by one. THE-348's own
+   * suite asserts the rest — that the DM list, channel list, compose-new,
+   * search, back arrow, read receipts and lastMessage bump all survive, and
+   * that the six live listeners are unchanged.
+   */
+  it('UserMessages’ queries and gates survive — the call inventory lost exactly the picker', () => {
+    const calls = (s: string) => (s.match(/(?:collection|doc|query|where|orderBy|limit|onSnapshot|getDocs|getDoc|addDoc|updateDoc|deleteDoc|setDoc)\(/g) ?? []).sort();
+    const now = calls(read('UserMessages.tsx'));
+    const before = calls(at('UserMessages.tsx'));
+
+    // 🔴 THE DELETED `FormPicker` HELD EXACTLY FIVE FIRESTORE CALLS — one
+    // `getDocs(query(collection(…), orderBy(…), limit(…)))`. Removing one
+    // instance of each from the BEFORE list must reproduce the AFTER list
+    // exactly: a sixth call removed, or any call ADDED, still fails here.
+    const folded = [...before];
+    for (const c of ['collection(', 'query(', 'orderBy(', 'limit(', 'getDocs(']) {
+      const i = folded.indexOf(c);
+      expect(i, `the picker's ${c} was not in the pre-PR call inventory — this fold is stale`).toBeGreaterThan(-1);
+      folded.splice(i, 1);
+    }
+    expect(now, 'UserMessages changed a Firestore call beyond deleting the forms picker').toEqual(folded);
   });
 
-  it('touches no Firestore path, no where(), no limit() and no listener', () => {
-    const calls = (s: string) => (s.match(/(?:collection|doc|query|where|orderBy|limit|onSnapshot|getDocs|getDoc|addDoc|updateDoc|deleteDoc|setDoc)\(/g) ?? []).sort();
-    expect(calls(read('UserMessages.tsx'))).toEqual(calls(at('UserMessages.tsx')));
+  it('and every listener, filter and write path it had is still spelled the same way', () => {
+    // The queries this test was standing for, named rather than proxied.
+    const src = stripComments(read('UserMessages.tsx'));
+    expect(src, 'the DM list query moved').toMatch(/'directMessages'\),\s*where\('participants', 'array-contains', currentUser\.uid\),\s*limit\(50\)/);
+    expect(src, 'the channel list query moved').toMatch(/'channels'\),\s*where\('members', 'array-contains', currentUser\.uid\),\s*limit\(50\)/);
+    expect(src, 'the DM message listener moved').toMatch(/'dmMessages'\),\s*where\('dmId', '==', dm\.id\),\s*limit\(300\)/);
+    expect(src, 'the channel message listener moved').toMatch(/'channelMessages'\),\s*where\('channelId', '==', channel\.id\),\s*limit\(300\)/);
+    expect(src, 'the admin picker query moved').toMatch(/'users'\),\s*where\('tenantId', '==', tenantId\),\s*limit\(200\)/);
+    // The listener COUNT is what the six-listener budget rests on.
+    expect((src.match(/onSnapshot\(/g) ?? []).length, 'the number of live listeners changed').toBe(4);
+    // And the two write paths.
+    expect(src, 'the read receipt write moved').toMatch(/updateDoc\(doc\(db, 'tenants', tenantId, 'dmMessages', d\.id\), \{ read: true \}\)/);
+    expect(src, 'the message write moved').toMatch(/addDoc\(collection\(db, 'tenants', tenantId, 'dmMessages'\), payload\)/);
   });
 });
 
@@ -942,10 +1097,56 @@ describe('no behaviour changed on any screen in scope', () => {
     .replace(/^import \{ (?:READING_MEASURE|FORM_CONTAINER)[^}]*\}.*$/gm, '')
     .replace(/\s+/g, ' ').trim();
 
-  it.each(['AllNews', 'BiblePage', 'UserMessages'] as const)(
+  it.each(['AllNews', 'BiblePage'] as const)(
     '%s differs from the pre-PR revision only in class strings', (n) => {
       expect(strip(read(`${n}.tsx`))).toBe(strip(at(`${n}.tsx`)));
     });
+
+  /**
+   * 🔴 `UserMessages` IS NO LONGER ON THAT LIST, and this is the entry that
+   * says why rather than a silent absence.
+   *
+   * THE-348 is a BEHAVIOUR change to this screen and is not claimed to be
+   * anything else: the forms-only attach sheet is deleted for the shared
+   * `AttachMenu`, the paperclip is gated on the current user's role, the
+   * composer is pinned to the viewport, and the screen raises a flag the shell
+   * reads to hide the bottom nav. All four are the founder's own words. The
+   * claim that "only class strings moved" is therefore FALSE for this file,
+   * and re-recording it or widening the normaliser until it passed would be
+   * the silent re-baselining this suite exists to prevent.
+   *
+   * ⚠️ WHAT IT IS REPLACED BY, in both directions: the two assertions in the
+   * Messages-gate describe above pin the Firestore surface to exactly the five
+   * calls the deleted picker took with it, and name every query, listener and
+   * write path individually; and `THE-348.member-composer.layout.test.tsx`
+   * measures the RESULT in Chromium at five widths, which is a stronger claim
+   * about this screen's phone rendering than a class-string diff ever was.
+   */
+  it('UserMessages differs from the pre-PR revision in exactly THE-348, and nothing else', () => {
+    const before = strip(at('UserMessages.tsx'));
+    const now = strip(read('UserMessages.tsx'));
+    expect(now, 'UserMessages is unchanged — THE-348 did not land').not.toBe(before);
+
+    // 🔴 THE THINGS THAT LEFT, and nothing else may have.
+    for (const gone of ['FormPicker', 'Paperclip', 'showPicker', 'Attach a Form']) {
+      expect(before, `${gone} was not in the pre-PR revision — this record is stale`).toContain(gone);
+      expect(now, `${gone} is still in UserMessages`).not.toContain(gone);
+    }
+    // 🔴 THE THINGS THAT ARRIVED, each traceable to one of the founder's items.
+    //
+    // ⚠️ `setIsAdmin` AND NOT `isAdmin`, deliberately. The bare name was
+    // ALREADY IN THIS FILE TWICE before THE-348 — `RoleBadge` derives one from
+    // the role of the MESSAGE'S SENDER to colour a badge, and the DM thread
+    // derives `isAdminSender` from `dm.participantRoles` to colour an avatar.
+    // Neither is "may the person at the keyboard attach", and neither is in
+    // scope at the composer. Greping the bare name would have matched a
+    // pre-existing derivation and reported this ticket's gate as already
+    // present — which is the shape of a guard that guards nothing.
+    for (const added of ['AttachMenu', 'AttachTypeIcon', 'setIsAdmin', 'onConversationOpenChange', 'FIXED_COMPOSER']) {
+      expect(before, `${added} was already there — this record is stale`).not.toContain(added);
+      expect(now, `${added} did not land`).toContain(added);
+    }
+  });
 
   it('NewsTab differs only in class strings, THE-246\'s condition and THE-345\'s price gate', () => {
     // NewsTab is the second exception, and it is AIChat's treatment rather than
@@ -1039,8 +1240,32 @@ describe('no behaviour changed on any screen in scope', () => {
     //     and the rename, is the whole of the normalisation below; it folds
     //     away no other class, no width and no token. Any second class edit
     //     — including one hiding behind this one — still fails here.
+    //
+    //     🔴 THE-348 ADDS A FOURTH AND FIFTH, pinned to exactly two
+    //     substitutions the way THE-295's is above. The member nav is hidden
+    //     while a conversation is open, and the content wrapper stops
+    //     reserving the nav's 65px band while it is. BOTH are folded out of
+    //     the SOURCE before the classes are read, so the inventory compares
+    //     the same literals it always did:
+    //
+    //       • the nav's condition gains one term, `|| isChatOpen`. The classes
+    //         it chooses BETWEEN are character-for-character what they were.
+    //       • the wrapper's `'overflow-hidden pb-[65px] lg:pb-0'` becomes a
+    //         template that drops `pb-[65px]` when the nav is hidden — which
+    //         is why the count went 40 -> 41: a nested template is a second
+    //         className match, not a second className.
+    //
+    //     🔴 NO ELEMENT WAS ADDED, REMOVED OR REORDERED, which is why the
+    //     element-tree inventory directly above still passes UNFOLDED — the
+    //     stronger of the two claims, and the one THE-348 deliberately kept by
+    //     hiding the nav through a condition the shell already carried rather
+    //     than through a wrapper. A third class edit hiding behind these two
+    //     still fails here.
+    const foldTHE348 = (src: string) => src
+      .replace("`overflow-hidden ${isChatOpen ? '' : 'pb-[65px]'} lg:pb-0`", "'overflow-hidden pb-[65px] lg:pb-0'")
+      .replace(" || isChatOpen ? 'max-lg:translate-y-full'", " ? 'max-lg:translate-y-full'");
     const classes = (src: string) =>
-      [...stripComments(src).matchAll(/className=\{`([^`]*)`\}|className="([^"]*)"/g)]
+      [...stripComments(foldTHE348(src)).matchAll(/className=\{`([^`]*)`\}|className="([^"]*)"/g)]
         .map((m) => (m[1] ?? m[2])
           .replace(/\beffectiveTopTab\b/g, 'activeTopTab')
           .replace('pb-[calc(8px+env(safe-area-inset-bottom))]', 'pb-safe'));
@@ -1050,6 +1275,18 @@ describe('no behaviour changed on any screen in scope', () => {
 
 describe('no colour is hardcoded, and both palettes resolve', () => {
   it.each(ALL_SURFACES)('%s renders exactly the colour tokens it rendered before', (name) => {
+    if ((THE_348_SURFACES as readonly string[]).includes(name)) {
+      // 🔴 THE-348 ADDS NO COLOUR AND REMOVES ONE: the paperclip button's
+      // `hover:bg-[var(--border-hairline)]` leaves with the button. Asserted as
+      // a REMOVAL of exactly that token rather than as a subset check, so a
+      // colour that appeared would still fail.
+      const gone = 'hover:bg-[var(--border-hairline)]';
+      expect(colourTokens(SURFACES[name]), `${name} changed a colour beyond the paperclip's hover`)
+        .toEqual(BASELINE[name].colours.filter((c) => c !== gone));
+      expect(BASELINE[name].colours, 'the paperclip hover was never in the baseline — this fold is stale')
+        .toContain(gone);
+      return;
+    }
     expect(colourTokens(SURFACES[name])).toEqual(BASELINE[name].colours);
   });
 

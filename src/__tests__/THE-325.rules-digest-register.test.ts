@@ -186,7 +186,20 @@ const filesSpelling = (digest: string): string[] =>
  * set through this module rather than spelling the digest, so a real rules
  * change still costs exactly one edit. Nothing above is removed and no accepted
  * value is widened. */
-const PINNING_SUITES = 64;
+/* 🔴 THE-348 — the member chat's composer, attach menu and admin gate. 64 -> 65.
+ * Its suite pins the rules for a reason worth recording HERE as well as in
+ * THE-322: it FOUND a gap and deliberately did not close it. `dmMessages` and
+ * `channelMessages` create carry no field allowlist, so the rules permit a
+ * member to write an `attachments` array by a route that is not the paperclip
+ * the founder asked to hide — and hiding a button is not a permission. Closing
+ * it means constraining two of the hottest write paths in the product, in a
+ * file that AUTO-DEPLOYS on merge with no emulator tests, so the gap is
+ * REPORTED as assertions that go red the day someone closes it rather than
+ * closed by a UI ticket. THE-348 records NO rules digest and reaches the
+ * accepted set through this module like every other pinner, so a real rules
+ * change still costs exactly one edit. Nothing above is removed and no
+ * accepted value is widened. */
+const PINNING_SUITES = 65;
 
 /**
  * A digest no ticket has recorded and none ever will — the planted change.

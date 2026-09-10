@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
 import postcss from 'postcss';
+import { stripComments } from './__fixtures__/the-346-strip-comments';
 import { contrastRatio, AA_CONTRAST } from '../lib/theme';
 import { PREAUTH_PATHS, isPreAuthPath } from '../lib/preauth-theme';
 import { ownershipFailure } from './__fixtures__/ownership-register';
@@ -628,9 +629,27 @@ describe('no hex, rgb() or inline colour is introduced', () => {
    * always resolves in a running app, and the hex is only reached if the
    * variable is missing outright.
    */
+  /**
+   * 🔴 AMENDED BY THE-348 — COMMENT-STRIPPED BEFORE THE SCAN. A correctness
+   * fix rather than a convenience, and a TIGHTENING rather than a loosening.
+   *
+   * `#[0-9A-Fa-f]{3,8}` matches a THREE-digit hex, and this repo writes PR
+   * numbers as `#104`, `#147`, `#490` in its prose — so every ticket reference
+   * in a comment was recorded as a COLOUR LITERAL. The baseline below said so
+   * out loud in two places ("false positive: ... an issue number, not a
+   * colour"). A guard whose accepted set is part prose cannot say what it is
+   * guarding, and the workaround grew by one entry per referencing ticket.
+   *
+   * ⚠️ IT REMOVES ACCEPTED ENTRIES AND ADDS NONE: `#104` and both `#147`s
+   * leave the baseline with this change. The set of literals this file
+   * tolerates therefore gets SMALLER — a real hardcoded colour in real code
+   * still fails, and a ticket reference in a comment no longer has to be
+   * recorded as though it were one. This is the same rule every other content
+   * grep in the repo follows, through the same parser-driven stripper.
+   */
   const literals = (src: string): string[] =>
     [
-      ...src
+      ...stripComments(src)
         .replace(/var\(\s*--[a-z0-9-]+\s*,\s*#[0-9A-Fa-f]{3,8}\s*\)/gi, 'var(--x)')
         // rgb()/rgba() wrapping a live CSS variable (e.g. this PR's own
         // rgb(var(--ink-danger))) is theme-aware, not a hardcoded literal —
@@ -642,11 +661,14 @@ describe('no hex, rgb() or inline colour is introduced', () => {
   const BASELINE: Record<ScreenKey, string[]> = {
     shell: [
       'rgba(0,0,0,0.05)', 'rgba(0,0,0,0.02)', // bottom-nav / sidebar elevation shadows
-      '#104', // false positive: the JSX comment "per #104 feedback" (an issue number, not a colour)
+      // THE-348 removed '#104' here — see `literals` above. It was the JSX
+      // comment "per #104 feedback", an issue number that was never a colour.
     ],
     home: [
       'rgba(0,0,0,0.12)', // dropdown-menu elevation shadow
-      '#147', '#147', // false positive: "(the #147 fix: ...)" / "mirrors the post path's #147 fix" comments
+      // THE-348 removed both '#147's here — see `literals` above. They were
+      // the comments "(the #147 fix: ...)" and "mirrors the post path's #147
+      // fix": issue numbers, never colours.
     ],
     blog: [],
     prayer: [],

@@ -639,6 +639,19 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/AdminEvents.tsx',
       'src/components/AdminSettings.tsx',   // uses it: THE-316's TOUCH_FLOOR
       'src/components/Profile.tsx',         // names it in a comment, does not use it
+      // 🔴 APPENDED BY THE-348, NOTHING AROUND IT REMOVED OR REWRITTEN. It sits
+      // here because this list is the sweep's own sorted order, not the order
+      // tickets arrived in.
+      // ⚠️ It USES the class, in the Rule-4 form — `min-h-11 min-w-11
+      // sm:min-h-0 sm:min-w-0`, on BOTH axes. The member chat's send button
+      // measured 36 × 36 at 380px in Chromium, beside an attach trigger that
+      // already cleared 44 through `AttachMenu`'s own pair — so two controls in
+      // one composer pill disagreed about the phone floor. `min-h-11` is NOT
+      // inert on this element: the button is `w-9 h-9`, so the floor is what
+      // takes it to 44 below `sm`, and releasing it from `sm:` up is what keeps
+      // it out of Rule 4's way at desktop widths. Measured both ways in
+      // `THE-348.member-composer.layout.test.tsx`, at five widths.
+      'src/components/UserMessages.tsx',
       // 🔴 APPENDED BY THE-331, NOTHING ABOVE OR BELOW REMOVED OR REWRITTEN.
       // ⚠️ NOT a comment-only mention — this one USES the class, which makes it
       // the same KIND as AdminSettings.tsx and only the second such entry in

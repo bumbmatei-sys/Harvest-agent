@@ -492,7 +492,7 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * retires a pinner updates this count and says what that suite still asserts;
  * a suite that quietly stops pinning fails here.
  */
-const RULES_PINNERS_NOW = 64;
+const RULES_PINNERS_NOW = 65;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per
@@ -730,6 +730,40 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
   // adopted and the ones it rejected, and that `firestore.indexes.json`,
   // `functions/` and `layout.tsx` are byte-identical.
   ['THE-346', 'src/__tests__/the-346-guards.test.tsx'],
+  // 🔴 THE-348 — the member chat's composer, attach menu and admin gate.
+  // APPENDED beside the entries above, never over one, and `RULES_PINNERS_NOW`
+  // goes 64 -> 65.
+  //
+  // ⚠️ THIS TICKET FOUND A RULES GAP AND DELIBERATELY DID NOT CLOSE IT, which
+  // is why it pins rather than edits. The founder asked for the paperclip to
+  // be hidden from members and it is — measured absent in a real browser. But
+  // `dmMessages` and `channelMessages` create carry NO field allowlist, so the
+  // rules permit a member to write an `attachments` array by any route that is
+  // not the button, and hiding a button is not a permission. Closing it means
+  // constraining two of the hottest write paths in the product, in a file that
+  // AUTO-DEPLOYS on merge with no emulator tests — THE-313's one line turned 46
+  // files red — so it is REPORTED, in this ticket's own suite, as a set of
+  // assertions that go red the day someone adds the allowlist and makes the
+  // report stale. THE-348 records NO rules digest in its ownership entry and
+  // asks `rulesDigestFailure()` like every other pinner.
+  //
+  // ⚠️ WHAT IT ASSERTS: that `firestore.rules` is at a recorded digest; that
+  // `dmMessages`/`channelMessages` create still ask only WHO is writing and
+  // never WHAT, and that exactly one of the four attachable categories
+  // (`forms`) is member-readable — all three of which go red if the rules move
+  // under the report; that #490's `data-nav-shell` string in AdminDashboard is
+  // still a plain double-quoted literal, so its four discovery guards still
+  // find it; that the member nav hides by a CONDITION and the lowering is an
+  // effect CLEANUP, so the nav cannot stay hidden; that #437's safe-area inset
+  // is carried and never applied unprefixed; that Rule 6, the DM and channel
+  // lists, compose-new, search and back all survive; that #475's
+  // `items-end sm:items-center` holds on every remaining sheet and the
+  // forms-only picker is gone; that the surface is the SHARED AttachMenu with
+  // its rejections named per element; that no emoji, hex or raw Tailwind scale
+  // entered the file; that this PR's own guards pin no line number, no
+  // near-today fixture and nothing about the branch diff; and that
+  // `firestore.indexes.json`, `functions/` and `layout.tsx` are byte-identical.
+  ['THE-348', 'src/components/__tests__/THE-348.member-composer.guards.test.ts'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {
