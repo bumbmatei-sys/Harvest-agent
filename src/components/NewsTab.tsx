@@ -26,6 +26,7 @@ import { useCampaigns } from '../hooks/queries/useCampaignQueries';
 import EmbedPicker, { type PickerItem } from './EmbedPicker';
 import { FeedEmbedCard, EmbedComposerChip, type PostEmbed, type EmbedType } from './EmbedCard';
 import { ImageLightbox, PostImageGrid, postImages } from './feed/PostMedia';
+import { eventPriceLabel } from '../lib/paid-events-feature';
 
 interface Comment {
   id: string;
@@ -1180,7 +1181,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
               {event.isOnline
                 ? <span className="flex items-center gap-1"><Globe size={12} />Online</span>
                 : event.location && <span className="flex items-center gap-1"><MapPin size={12} />{event.location}</span>}
-              <span className="font-medium">{event.price > 0 ? `$${event.price}` : 'Free'}</span>
+              {/* THE-345 - no price is quoted in the member feed while none can be collected. */}
+              {eventPriceLabel(event.price) && <span className="font-medium">{eventPriceLabel(event.price)}</span>}
             </div>
             <button
               onClick={() => { window.location.href = `/event/${event.id}`; }}
@@ -1485,7 +1487,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                     {event.isOnline
                       ? <span className="flex items-center gap-1"><Globe size={12} />Online</span>
                       : event.location && <span className="flex items-center gap-1"><MapPin size={12} />{event.location}</span>}
-                    <span className="font-medium">{event.price > 0 ? `$${event.price}` : 'Free'}</span>
+                    {/* THE-345 - same gate, the second event card in this file. */}
+                    {eventPriceLabel(event.price) && <span className="font-medium">{eventPriceLabel(event.price)}</span>}
                   </div>
                   <button
                     onClick={() => { window.location.href = `/event/${event.id}`; }}

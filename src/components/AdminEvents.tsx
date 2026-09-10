@@ -23,6 +23,11 @@ import { useEvents } from '../hooks/queries/useEventQueries';
 import { HeroBand } from './member/desktopKit';
 import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  PAID_EVENTS_ENABLED, PAID_EVENTS_HIDDEN_TITLE, PAID_EVENTS_HIDDEN_MESSAGE,
+  eventPriceLabel, csvAmountCell,
+} from '../lib/paid-events-feature';
 /**
  * THE-308 — the month grid is LAZY, and that is not an optimisation detail.
  *
@@ -257,7 +262,19 @@ const AdminEvents: React.FC = () => {
         endDate: toTimestamp(form.endDate),
         capacity: form.capacity ? Number(form.capacity) : null,
         registrationDeadline: toTimestamp(form.registrationDeadline),
-        price: Number(form.price) || 0,
+        // THE-345 - the write gate, and it is deliberately NOT `price: 0`.
+        //
+        // While no payment rail exists the price input is absent, so a CREATE
+        // can only ever carry the `emptyForm` zero and this clamp merely says so
+        // out loud. An EDIT is the case that matters: the founder's tenant holds
+        // a published event storing 50, `openEdit` seeds `form.price` from it,
+        // and writing a 0 here would SILENTLY MIGRATE that document the next
+        // time an admin changed its title. Re-writing the price it read keeps
+        // the stored figure exactly where it is; zeroing stored prices is
+        // irreversible and is the founder's call, not this write's.
+        price: PAID_EVENTS_ENABLED
+          ? (Number(form.price) || 0)
+          : (view === 'edit' && selected ? selected.price : 0),
         currency: form.currency,
         status: form.status,
         registrationEnabled: form.registrationEnabled,
@@ -350,7 +367,18 @@ const AdminEvents: React.FC = () => {
       // Use null, never undefined — the Firestore client SDK rejects undefined
       // field values (including nested inside the ticketTypes array).
       description: ticketDraft.description.trim() || null,
-      price: Math.max(0, Math.round((Number(ticketDraft.price) || 0) * 100)),
+      // THE-345 - a ticket type BEING CREATED here carries no price while no
+      // rail exists. This is a new object every time, so clamping it rewrites
+      // nothing: ticket types already stored arrive through `openEdit` in
+      // `form.ticketTypes` and are passed to `handleSave` untouched.
+      //
+      // `capacity` is deliberately NOT clamped. Capacity and the waitlist are
+      // independent of price - a capped FREE ticket type still fills up and
+      // still waitlists - and that is the half of this panel a church running a
+      // free conference actually needs.
+      price: PAID_EVENTS_ENABLED
+        ? Math.max(0, Math.round((Number(ticketDraft.price) || 0) * 100))
+        : 0,
       capacity: ticketDraft.capacity ? Number(ticketDraft.capacity) : null,
       order: form.ticketTypes.length,
     };
@@ -405,7 +433,12 @@ const AdminEvents: React.FC = () => {
       ['Name', 'Email', 'Phone', 'Ticket Code', 'Status', 'Amount', 'Registered At'],
       ...registrations.map(r => [
         r.name, r.email, r.phone || '', r.ticketCode, r.status,
-        `$${r.amount}`,
+        // THE-345 - the Amount column may not report money nobody sent. A row
+        // storing 0 exports `$0` in every configuration because nobody was
+        // charged and that is true; a non-zero amount is only vouchable while a
+        // rail exists. This is the sheet a treasurer reconciles against a bank
+        // statement, so a figure it cannot stand behind is worse than a word.
+        csvAmountCell(r.amount),
         r.registeredAt ? r.registeredAt.toDate().toLocaleDateString() : ''
       ])
     ];
@@ -473,18 +506,47 @@ const AdminEvents: React.FC = () => {
                   className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-hidden focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} placeholder="Event location / address" />
               )}
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            {/*
+              THE-345 - the price field is ABSENT while no payment rail exists,
+              not disabled-and-warning. A church that types 50 into a field that
+              warns still expects money to arrive; the warning just moves the
+              same lie one click further on. Capacity spans the row on its own
+              rather than sitting beside a gap, because capacity has nothing to
+              do with price and a church running a free conference still caps it.
+            */}
+            <div className={PAID_EVENTS_ENABLED ? 'grid grid-cols-2 gap-4' : ''}>
               <div>
                 <label className="text-xs font-semibold text-body mb-1.5 block">Capacity (blank = unlimited)</label>
                 <input type="number" min={0} value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })}
                   className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-hidden focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.short} ${CONTROL_DENSITY.control}`} placeholder="e.g. 100" />
               </div>
-              <div>
-                <label className="text-xs font-semibold text-body mb-1.5 block">Ticket Price ($)</label>
-                <input type="number" min={0} value={form.price} onChange={e => setForm({ ...form, price: e.target.value })}
-                  className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-hidden focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.short} ${CONTROL_DENSITY.control}`} placeholder="0 = free" />
-              </div>
+              {PAID_EVENTS_ENABLED && (
+                <div>
+                  <label className="text-xs font-semibold text-body mb-1.5 block">Ticket Price ($)</label>
+                  <input type="number" min={0} value={form.price} onChange={e => setForm({ ...form, price: e.target.value })}
+                    className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-hidden focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.short} ${CONTROL_DENSITY.control}`} placeholder="0 = free" />
+                </div>
+              )}
             </div>
+
+            {/*
+              What a church sees INSTEAD, and it has to say two things at once:
+              that money cannot be collected, and that registration is completely
+              unaffected. `alert` - the primitive is installed, so a hand-rolled
+              div would be a defect. The DEFAULT variant, not `destructive`:
+              nothing has failed and nothing the church did is wrong, so the red
+              treatment THE-342 reserves for a read that broke would overstate
+              this and train an admin to ignore it. `empty` was rejected outright
+              - this is a capability that is temporarily gone, not an empty
+              collection - and `badge` was rejected because the wording is two
+              sentences of instruction and a badge is a label.
+            */}
+            {!PAID_EVENTS_ENABLED && (
+              <Alert data-paid-events-gate="form">
+                <AlertTitle>{PAID_EVENTS_HIDDEN_TITLE}</AlertTitle>
+                <AlertDescription>{PAID_EVENTS_HIDDEN_MESSAGE}</AlertDescription>
+              </Alert>
+            )}
             <div>
               <label className="text-xs font-semibold text-body mb-1.5 block">Registration Deadline</label>
               <input type="datetime-local" value={form.registrationDeadline} onChange={e => setForm({ ...form, registrationDeadline: e.target.value })}
@@ -532,8 +594,15 @@ const AdminEvents: React.FC = () => {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-strong truncate">{t.name}</p>
+                            {/*
+                              THE-345 - a STORED ticket type keeps its price on
+                              the document and loses it from this line, because
+                              this line is a quote. `fmtCents` is untouched and
+                              comes straight back with the switch.
+                            */}
                             <p className="text-xs text-faint">
-                              {fmtCents(t.price)} · {t.capacity == null ? 'Unlimited' : `${t.capacity} cap`}
+                              {PAID_EVENTS_ENABLED ? `${fmtCents(t.price)} · ` : ''}
+                              {t.capacity == null ? 'Unlimited' : `${t.capacity} cap`}
                               {t.description ? ` · ${t.description}` : ''}
                             </p>
                           </div>
@@ -548,9 +617,22 @@ const AdminEvents: React.FC = () => {
                           placeholder="Name (e.g. Adult)" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`} />
                         <input value={ticketDraft.description} onChange={e => setTicketDraft({ ...ticketDraft, description: e.target.value })}
                           placeholder="Description (optional)" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} />
-                        <div className="grid grid-cols-2 gap-2">
-                          <input type="number" min={0} step="0.01" value={ticketDraft.price} onChange={e => setTicketDraft({ ...ticketDraft, price: e.target.value })}
-                            placeholder="Price ($) — 0 = Free" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.short} ${CONTROL_DENSITY.control}`} />
+                        {/*
+                          THE-345 - same gate, same reason as the event price
+                          above: a ticket type is where the price that ACTUALLY
+                          charges lives (`ticketTypes[].price`, in cents, is what
+                          /api/event-registration/submit totals), so leaving it
+                          editable would let a church build a $50 ticket and
+                          watch every member bounce off a 400 telling them to
+                          phone the church. Capacity stays, unconditionally, and
+                          spans the row alone while the price is gone - a capped
+                          FREE ticket type still fills and still waitlists.
+                        */}
+                        <div className={PAID_EVENTS_ENABLED ? "grid grid-cols-2 gap-2" : ""}>
+                          {PAID_EVENTS_ENABLED && (
+                            <input type="number" min={0} step="0.01" value={ticketDraft.price} onChange={e => setTicketDraft({ ...ticketDraft, price: e.target.value })}
+                              placeholder="Price ($) — 0 = Free" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.short} ${CONTROL_DENSITY.control}`} />
+                          )}
                           <input type="number" min={0} value={ticketDraft.capacity} onChange={e => setTicketDraft({ ...ticketDraft, capacity: e.target.value })}
                             placeholder="Capacity (blank = ∞)" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.short} ${CONTROL_DENSITY.control}`} />
                         </div>
@@ -930,7 +1012,16 @@ const AdminEvents: React.FC = () => {
                     ) : ev.location ? (
                       <span className="flex items-center gap-1"><MapPin size={11} /> {ev.location}</span>
                     ) : null}
-                    <span className={ev.price > 0 ? 'font-semibold text-muted' : 'font-semibold text-field-600'}>{ev.price > 0 ? `$${ev.price}` : 'Free'}</span>
+                    {/*
+                      THE-345 - the founder's screenshot, and the exact pixel he
+                      photographed. `eventPriceLabel` returns null while no rail
+                      exists and this span does not render at all: "$50" is the
+                      lie being fixed, and "Free" would be a different one, since
+                      the church did not decide the conference was free.
+                    */}
+                    {eventPriceLabel(ev.price) && (
+                      <span className={ev.price > 0 ? 'font-semibold text-muted' : 'font-semibold text-field-600'}>{eventPriceLabel(ev.price)}</span>
+                    )}
                   </div>
                   {ev.registrationEnabled && <div className="text-xs font-semibold text-gold mt-2">Registration open</div>}
                   <div className="flex items-center gap-1 mt-3 pt-2.5 border-t border-line">
@@ -979,9 +1070,12 @@ const AdminEvents: React.FC = () => {
                         <MapPin size={11} /> {ev.location}
                       </span>
                     ) : null}
-                    <span className="flex items-center gap-1 text-xs text-muted">
-                      <DollarSign size={11} /> {ev.price > 0 ? `$${ev.price}` : 'Free'}
-                    </span>
+                    {/* THE-345 - same quote, same gate, on the lg card. */}
+                    {eventPriceLabel(ev.price) && (
+                      <span className="flex items-center gap-1 text-xs text-muted">
+                        <DollarSign size={11} /> {eventPriceLabel(ev.price)}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">

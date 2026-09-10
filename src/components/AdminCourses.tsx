@@ -29,7 +29,7 @@ import { CoursePreview } from './course/CoursePreview';
 import type { AdoptedCourse, Author, LibraryCourse } from '../types/course.types';
 import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar, AdminCard, AdminBadge, statusTone } from './admin/AdminUI';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { FORM_CONTAINER } from './layout/form-layout';
+import { FORM_CONTAINER, CONTROL_DENSITY } from './layout/form-layout';
 
 /**
  * A tenant could not be resolved for a WRITE. Distinct from a generic failure
@@ -128,6 +128,30 @@ const AdminCourses: React.FC = () => {
    */
   const [adoptedCourseDocs, setAdoptedCourseDocs] = useState<LibraryCourse[]>([]);
 
+  /**
+   * THE-345 - which id set `adoptedCourseDocs` is an ANSWER TO, or null for
+   * "no answer yet".
+   *
+   * The by-id read is async, so `adoptedCourseDocs` is `[]` for a tick after
+   * every change to the adoption set - and `[]` is indistinguishable from "every
+   * pointer dangles". Counting resolved adoptions without this flag would drop
+   * the figure to `ownCount` on first paint and, far worse, hand a church a free
+   * slot for that tick, because the plan cap reads the same number. That is the
+   * cap failing OPEN, which is the one direction this file has never let it fail
+   * (an unknown plan falls back to `plus`; an uncounted church is treated as at
+   * its limit).
+   *
+   * It holds the KEY, not a boolean, so a stale answer to a previous id set is
+   * not mistaken for a current one: adopt a second course and the key moves on
+   * before the read for it lands.
+   *
+   * It is deliberately NOT set in the catch below. A REJECTED read must leave
+   * the figure where it was - at `adopted.length`, the larger number - so a
+   * failure can never present as a church having fewer courses or more room.
+   * That is THE-342's Silent-Failure Rule applied to the same read one layer up.
+   */
+  const [adoptedResolvedKey, setAdoptedResolvedKey] = useState<string | null>(null);
+
   // Unknown/loading plan falls back to 'plus' (maxCourses: 2) — fail closed on the cap.
   // ADOPTED COURSES COUNT: a church on Individual (2 slots) that adopts two
   // library courses cannot also create one of their own. Deliberate founder call.
@@ -140,6 +164,107 @@ const AdminCourses: React.FC = () => {
   // is enforced; creation is not.
   const maxCourses = resolveCourseLimit(tenantPlan);
   const adoptedIds = new Set(adopted.map((a) => a.libraryCourseId));
+
+  /**
+   * THE-345 - THE GHOST, and the three figures that must stop counting it.
+   *
+   * The founder: "In courses I only adopted one course in shadcn tenant from
+   * library but it says I used 2 in total." His screen read "2 of 15 courses
+   * used", "Your courses (2)" and "Library (2 adopted)" with exactly ONE row
+   * rendered - and one of his fifteen plan slots was spent on a course that does
+   * not exist.
+   *
+   * WHY A POINTER DANGLES. `adoptedCourses` holds POINTERS
+   * (`{ libraryCourseId }`) into the platform catalogue, and nothing keeps the
+   * two in step: the platform can delete a `libraryCourses` document at any time
+   * and no rule, index or hook reaches into every tenant to tidy up after it. So
+   * a pointer dangles for exactly two reasons, and this ticket established both
+   * rather than inferring them:
+   *
+   *   1. THE CATALOGUE DOCUMENT IS GONE. `readDocsByIds` resolves ids through
+   *      `where(documentId(), 'in', ids)`, which returns only documents that
+   *      EXIST - a deleted one is simply absent from the snapshot.
+   *   2. THE POINTER IS MALFORMED - no `libraryCourseId`, or an empty one. Those
+   *      are filtered out of `adoptedIdKey` below before the read, so they are
+   *      never even asked about.
+   *
+   * WHAT IS **NOT** A CAUSE, and this is the part that makes the fix safe:
+   *
+   *   · A FAILED READ. `readDocsByIds` THROWS on a rejected chunk and never
+   *     resolves into a short list, so a permission error or an outage cannot
+   *     masquerade as a missing course. The catch sets `libraryReadFailed` and
+   *     leaves `adoptedResolvedKey` alone, so every figure here stays at
+   *     `adopted.length`. Hiding a symptom without knowing the cause was the
+   *     risk; the read's own contract rules the dangerous cause out.
+   *   · AN UNPUBLISHED COURSE. `adoptedLibraryCourses` deliberately does not
+   *     filter `status`, and an unpublished document still exists, so it still
+   *     resolves and still counts. That is right: the slot really is spent.
+   *
+   * WHICH FIGURE EACH SURFACE READS - and they are NOT all the same answer:
+   *
+   *   · the header count, the "Your courses" tab and the PLAN CAP read
+   *     `countedAdoptions`: adoptions that resolved, falling back to
+   *     `adopted.length` while the answer is unknown.
+   *   · the "Library (N adopted)" tab reads `countedAdoptions` too, because the
+   *     "Adopted" badge beside it is driven by `adoptedIds` against catalogue
+   *     documents that exist - a ghost can never carry one - so a raw count here
+   *     is the precise thing the founder saw and could not reconcile.
+   *   · `myAdoptedCourses` reads the SEARCH-FILTERED list and must never be any
+   *     of the above. Typing in the search box would otherwise change "N courses
+   *     used" and, through the same number, the plan cap.
+   *
+   * WHY THIS IS NOT `:102`'s BUG ONE LAYER DOWN. That bug used `courses.length`
+   * - the length of a CEILING-LIMITED LIST - as both the figure and the cap
+   * input, so a truncated read flattered the church. Nothing here is a truncated
+   * list: `ownCount` is still the exact `getCountFromServer` aggregation and is
+   * untouched, and `adoptedCourseDocs` comes from `readDocsByIds`, which is
+   * complete by construction and subject to no ceiling at all. The count went
+   * DOWN by excluding a course that does not exist, not by failing to read one.
+   */
+  const adoptedIdKey = adopted
+    .map((a) => a.libraryCourseId)
+    .filter((id): id is string => typeof id === 'string' && id.length > 0)
+    .sort()
+    .join(',');
+  /** `adoptedCourseDocs` answers the CURRENT adoption set, not a previous one. */
+  const adoptionsResolved = adoptedResolvedKey === adoptedIdKey;
+  /**
+   * Every adoption that resolves to a real catalogue document. UNFILTERED by
+   * search on purpose - `myAdoptedCourses` filters this, never the reverse.
+   */
+  const resolvedAdopted = adoptedLibraryCourses(adopted, adoptedCourseDocs);
+  /**
+   * The adoptions that count. Falls back to the RAW pointer count while the
+   * resolution is unknown or failed, which is the fail-closed direction: a
+   * church is never handed a slot by a read that has not finished.
+   */
+  const countedAdoptions = adoptionsResolved ? resolvedAdopted.length : adopted.length;
+  /** Pointers that resolved to nothing. Zero unless the answer is in. */
+  const danglingAdoptions = adoptionsResolved ? adopted.length - resolvedAdopted.length : 0;
+  /**
+   * The ghosts a church can actually clear, by id.
+   *
+   * NO NEW ROUTE AND NO MIGRATION. `adoptedCourses` is `allow write: if false`
+   * and stays that way, but `DELETE /api/courses/adopt` already removes a
+   * pointer by `{ tenantId, libraryCourseId }`, already requires
+   * `createCourses`, never reads `libraryCourses` on the way through, and is
+   * documented idempotent ("removing something already gone is a success, not a
+   * 404"). A ghost is precisely the case it already handles, so clearing one is
+   * `handleUnadopt` with the id the church already holds.
+   *
+   * A MALFORMED pointer (no `libraryCourseId`) is counted in `danglingAdoptions`
+   * but is deliberately absent here: there is no id to address it by, so the
+   * route's own id validation would refuse it. It stops consuming a slot either
+   * way, which is the founder's bug; removing the record itself would need a
+   * server-side sweep and is reported, not built.
+   */
+  const resolvedAdoptedIds = new Set(resolvedAdopted.map((c) => c.id));
+  const danglingAdoptedIds = adoptionsResolved
+    ? adopted
+        .map((a) => a.libraryCourseId)
+        .filter((id): id is string =>
+          typeof id === 'string' && id.length > 0 && !resolvedAdoptedIds.has(id))
+    : [];
   // THE-342 — the cap counts the EXACT total, not the capped list.
   //
   // `courses.length` came from a `limit(100)` read, so a church with 130
@@ -150,9 +275,13 @@ const AdminCourses: React.FC = () => {
   // Fails CLOSED when the count is unknown, matching the existing
   // "unknown plan falls back to the smallest cap" stance directly above: an
   // uncounted church is treated as at its limit rather than waved through.
+  // THE-345 - `countedAdoptions`, not `adopted.length`. A ghost must not consume
+  // a plan slot. Everything else about this line is THE-342's and is unchanged:
+  // an unknown `ownCount` still fails CLOSED at `true`, and a REAL adoption
+  // still counts, which is the founder's deliberate call recorded above.
   const atLimit = ownCount === null
     ? true
-    : isAtCourseLimit(ownCount, adopted.length, maxCourses);
+    : isAtCourseLimit(ownCount, countedAdoptions, maxCourses);
   const limitMessage = courseLimitMessage(maxCourses);
 
   useEffect(() => {
@@ -303,24 +432,37 @@ const AdminCourses: React.FC = () => {
   // libraryCourseId would otherwise put the literal string "undefined" into the
   // key and then into the `in` clause, asking Firestore for a document by that
   // name. adoptedLibraryCourses() already drops such a pointer from the list.
-  const adoptedIdKey = adopted
-    .map((a) => a.libraryCourseId)
-    .filter((id): id is string => typeof id === 'string' && id.length > 0)
-    .sort()
-    .join(',');
+  //
+  // THE-345 - `adoptedIdKey` itself now lives above, beside the plan cap that
+  // also depends on it. It is the same expression, moved and not rewritten: the
+  // cap has to know whether the adoption set has been resolved, and a key
+  // declared below the cap could not tell it. The sentence directly above is
+  // where this ticket started - a pointer this key drops is a pointer that was
+  // still being COUNTED.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const ids = adoptedIdKey ? adoptedIdKey.split(',') : [];
-      if (ids.length === 0) { setAdoptedCourseDocs([]); return; }
+      // No well-formed pointers is a COMPLETE answer, not a missing one: either
+      // this church has adopted nothing, or every record it holds is malformed
+      // and none of them resolves. Both are resolved states, so the key is
+      // recorded here too - without it a church with one malformed pointer and
+      // nothing else would sit at "unresolved" forever and never lose the ghost.
+      if (ids.length === 0) { setAdoptedCourseDocs([]); setAdoptedResolvedKey(adoptedIdKey); return; }
       try {
         const docs = await readDocsByIds(
           db, LIBRARY_COURSE_COLLECTIONS.courses, ids,
           (id, data) => ({ id, ...data }) as LibraryCourse,
         );
-        if (!cancelled) setAdoptedCourseDocs(docs);
+        // Both together, and only on success. `readDocsByIds` THROWS on a
+        // rejected chunk (it never resolves into a short list), so reaching this
+        // line means the catalogue answered for every id asked about and any id
+        // missing from `docs` is missing from the CATALOGUE, not from the read.
+        if (!cancelled) { setAdoptedCourseDocs(docs); setAdoptedResolvedKey(adoptedIdKey); }
       } catch (error) {
         try { handleFirestoreError(error, OperationType.GET, LIBRARY_COURSE_COLLECTIONS.courses); } catch (e) { console.error(e); }
+        // NOT `setAdoptedResolvedKey`. See the state declaration: a failed read
+        // leaves every figure on this screen at the larger, fail-closed number.
         if (!cancelled) setLibraryReadFailed(true);
       }
     })();
@@ -340,7 +482,10 @@ const AdminCourses: React.FC = () => {
   // own the content; the platform edits it and the change reaches everyone) and
   // the remove action un-adopts rather than deleting anything.
   // From the by-id read, NOT from the ceiling-limited catalogue listener.
-  const myAdoptedCourses = adoptedLibraryCourses(adopted, adoptedCourseDocs).filter(course =>
+  // THE-345 - filters `resolvedAdopted` rather than re-resolving. One resolution,
+  // one truth: the count above and the rows below can no longer disagree, and
+  // the SEARCH-filtered length stays confined to rendering.
+  const myAdoptedCourses = resolvedAdopted.filter(course =>
     (course.title?.toLowerCase() || '').includes(searchQuery.toLowerCase())
   );
   /**
@@ -357,7 +502,10 @@ const AdminCourses: React.FC = () => {
    * header prints NO figure rather than a number derived from a capped list.
    * A wrong number is worse than an absent one: nobody questions a number.
    */
-  const exactOwnTotal = ownCount === null ? null : ownCount + adopted.length;
+  // THE-345 - `countedAdoptions`. `ownCount` is untouched and still the exact
+  // aggregation; what changed is that the adoptions added to it are the ones
+  // that exist.
+  const exactOwnTotal = ownCount === null ? null : ownCount + countedAdoptions;
   const ownTabCount = exactOwnTotal;
   const ownListTruncated = ownCount !== null && courses.length < ownCount;
   // Truncation is a fact about the READ WINDOW, not about what survives the
@@ -577,7 +725,7 @@ const AdminCourses: React.FC = () => {
       <div className="flex items-center gap-1 border-b border-line">
         {([
           { key: 'own', label: ownTabCount === null ? 'Your courses' : `Your courses (${ownTabCount})` },
-          { key: 'library', label: `Library (${adopted.length} adopted)` },
+          { key: 'library', label: `Library (${countedAdoptions} adopted)` },
         ] as const).map((t) => (
           <button
             key={t.key}
@@ -637,6 +785,63 @@ const AdminCourses: React.FC = () => {
             {truncationNotice(libraryCourses.length, libraryCount, 'library courses')}{' '}
             Courses this church has already adopted are always shown in full under
             Your courses.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/*
+        THE-345 - the count moved, so the screen SAYS SO.
+        Silently dropping the ghost from the figure would fix the arithmetic and
+        leave the church with a record it can neither see nor remove, and a
+        stored adoption set that disagrees with its own screen forever. This is
+        the same stance THE-342 took for a truncated list one section up: a
+        discrepancy a church cannot act on is the quiet lie, and the fix is to
+        name it, not to round it off.
+
+        `alert` - installed, so a hand-rolled div would be a defect. The DEFAULT
+        variant, not `destructive`: nothing failed and the church did nothing
+        wrong, and the read-failure Alert directly above IS destructive, so
+        reusing red here would flatten the difference between "we could not read
+        this" and "the platform withdrew a course you had". `empty` was rejected
+        - there is nothing empty about this screen - and `badge` was rejected
+        because this needs a sentence and an action, not a label.
+      */}
+      {view === 'own' && danglingAdoptions > 0 && (
+        <Alert data-courses-dangling-adoptions={danglingAdoptions}>
+          <AlertTitle>
+            {danglingAdoptions === 1
+              ? 'One adopted course is no longer in the library'
+              : `${danglingAdoptions} adopted courses are no longer in the library`}
+          </AlertTitle>
+          <AlertDescription>
+            Harvest has removed{' '}
+            {danglingAdoptions === 1 ? 'a course' : 'courses'} your church had
+            adopted, so {danglingAdoptions === 1 ? 'it is' : 'they are'} no longer
+            shown here and no longer{' '}
+            {danglingAdoptions === 1 ? 'counts' : 'count'} towards your plan.
+            {danglingAdoptedIds.length > 0 && (
+              <>
+                {' '}You can clear the leftover{' '}
+                {danglingAdoptedIds.length === 1 ? 'record' : 'records'} now.
+                <span className="mt-2 flex flex-wrap gap-2">
+                  {danglingAdoptedIds.map((id) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => handleUnadopt(id)}
+                      disabled={adoptingId === id}
+                      // min-h-11 is 44px and it is NOT inert here: this button
+                      // sits inside an AlertDescription whose own type scale
+                      // would otherwise leave it around 28px on a phone. Rule 4
+                      // takes over at sm with the shared 40px action token.
+                      className={`rounded-brand border border-line px-3 text-xs font-semibold text-strong hover:bg-surface-sunken disabled:opacity-50 min-h-11 sm:min-h-0 ${CONTROL_DENSITY.action}`}
+                    >
+                      {adoptingId === id ? 'Removing…' : 'Remove leftover record'}
+                    </button>
+                  ))}
+                </span>
+              </>
+            )}
           </AlertDescription>
         </Alert>
       )}

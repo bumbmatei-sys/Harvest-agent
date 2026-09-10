@@ -947,17 +947,38 @@ describe('no behaviour changed on any screen in scope', () => {
       expect(strip(read(`${n}.tsx`))).toBe(strip(at(`${n}.tsx`)));
     });
 
-  it('NewsTab differs only in class strings AND the one condition THE-246 added', () => {
+  it('NewsTab differs only in class strings, THE-246\'s condition and THE-345\'s price gate', () => {
     // NewsTab is the second exception, and it is AIChat's treatment rather than
     // a dropped assertion: the diff is pinned to EXACTLY the `onGoToPartner &&`
     // guard now in front of the "Partner with Us" card, and everything else in
     // the file must still normalise identically. A second edit hiding behind
     // this one still fails.
+    //
+    // THE-345 ADDS A SECOND PINNED DIFF, pinned the same way rather than folded
+    // into a looser normaliser. `events/{id}.price` is quoted here - twice, on
+    // the two event cards this file renders - and charged by nothing:
+    // /api/event-registration/submit totals `ticketTypes[].price` and never
+    // reads it. So a member was shown "$50" for a conference the flow confirmed
+    // them into for free. While no payment rail exists `eventPriceLabel` returns
+    // null and neither span renders. BOTH occurrences are folded below, in BOTH
+    // revisions, so a THIRD edit hiding behind these two still fails - and the
+    // fold is written to match the gated form ONLY, so removing the gate without
+    // restoring the original expression also fails.
     const norm = (src: string) =>
-      strip(src).replace(
-        /\{onGoToPartner && \( (<DesktopCard[\s\S]*?<\/DesktopCard>) \)\}/,
-        '$1',
-      );
+      strip(src)
+        .replace(
+          /\{onGoToPartner && \( (<DesktopCard[\s\S]*?<\/DesktopCard>) \)\}/,
+          '$1',
+        )
+        .replace(/import \{ eventPriceLabel \} from '\.\.\/lib\/paid-events-feature'; /g, '')
+        .replace(
+          /\{eventPriceLabel\(event\.price\) && <span className=X>\{eventPriceLabel\(event\.price\)\}<\/span>\}/g,
+          'PRICE_QUOTE',
+        )
+        .replace(
+          /<span className=X>\{event\.price > 0 \? `\$\$\{event\.price\}` : 'Free'\}<\/span>/g,
+          'PRICE_QUOTE',
+        );
     expect(norm(read('NewsTab.tsx'))).toBe(norm(at('NewsTab.tsx')));
   });
 

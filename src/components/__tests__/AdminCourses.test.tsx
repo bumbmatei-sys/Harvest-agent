@@ -278,9 +278,30 @@ describe('AdminCourses — library adoption', () => {
   });
 
   describe('the cap counts adopted courses', () => {
+    /**
+     * THE-345 - EVERY FIXTURE IN THIS BLOCK NOW SEEDS `mockLibrary` TOO, AND
+     * THAT IS THE FINDING, NOT A TIDY-UP.
+     *
+     * These four tests are the guard for "an adopted course occupies a plan
+     * slot". They set `mockAdopted` to a pointer at `lib-0` and left
+     * `mockLibrary` at the `beforeEach` empty array, so `lib-0` RESOLVED TO
+     * NOTHING: the by-id read serves `mockLibrary` filtered by the requested
+     * ids, and there was no such document to serve. Every one of them passed
+     * because the cap counted `adopted.length` - the raw pointer count - which
+     * is the exact defect THE-345 exists to fix. The guard for adoption was
+     * built on a fixture in which no adoption was real, so it could never have
+     * failed on a ghost, and did not.
+     *
+     * Seeding the catalogue makes each name true: these now assert that a REAL
+     * adoption reaches the cap. A ghost has its own tests in
+     * `THE-345.paid-events-and-course-count.test.tsx`, which assert the opposite
+     * outcome from the opposite fixture - and they fail if this file's fix is
+     * reverted, which is what makes the pair meaningful.
+     */
     it('one own course + one adoption reaches the Individual limit of 2', async () => {
       tenantCtx.tenantPlan = 'plus';
       mockCourses = makeCourses(1);
+      mockLibrary = makeLibrary(1);
       mockAdopted = [{ id: 'lib-0', libraryCourseId: 'lib-0' }];
       await mount();
 
@@ -291,6 +312,7 @@ describe('AdminCourses — library adoption', () => {
     it('mentions adopted courses in the cap message', async () => {
       tenantCtx.tenantPlan = 'plus';
       mockCourses = makeCourses(1);
+      mockLibrary = makeLibrary(1);
       mockAdopted = [{ id: 'lib-0', libraryCourseId: 'lib-0' }];
       await mount();
       expect(newCourseButton().title).toMatch(/including adopted/i);
@@ -299,6 +321,7 @@ describe('AdminCourses — library adoption', () => {
     it('adoptions alone can exhaust the plan', async () => {
       tenantCtx.tenantPlan = 'plus';
       mockCourses = [];
+      mockLibrary = makeLibrary(2);
       mockAdopted = [
         { id: 'lib-0', libraryCourseId: 'lib-0' },
         { id: 'lib-1', libraryCourseId: 'lib-1' },
@@ -336,6 +359,7 @@ describe('AdminCourses — library adoption', () => {
 
     it('fails closed to the plus limit when the plan is still loading', async () => {
       tenantCtx.tenantPlan = undefined;
+      mockLibrary = makeLibrary(2);
       mockAdopted = [
         { id: 'lib-0', libraryCourseId: 'lib-0' },
         { id: 'lib-1', libraryCourseId: 'lib-1' },

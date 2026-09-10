@@ -161,7 +161,19 @@ const filesSpelling = (digest: string): string[] =>
  * spelling the digest — its first draft DID spell it, and section 1 above
  * caught that before review — so a real rules change still costs exactly one
  * edit. Nothing above is removed and no accepted value is widened. */
-const PINNING_SUITES = 62;
+/* APPENDED BY THE-345. It gates paid event ticketing behind one value after the
+ * founder said "I should not be able to create paid events with stripe
+ * disabled", and stops a dangling adoption pointer counting towards the course
+ * figure and the plan cap - a CLIENT-SIDE gate and a COUNTING fix, both of which
+ * needed NO rule. `adoptedCourses` is already `allow write: if false` and stays
+ * that way: the leftover pointer is cleared through the DELETE
+ * /api/courses/adopt route that already exists, is already permission-checked
+ * and is already documented idempotent, so no route and no migration were added
+ * and nothing about the rule had to move. Its suite reaches the accepted set
+ * through this module rather than spelling the digest, so a real rules change
+ * still costs exactly one edit. Nothing above is removed and no accepted value
+ * is widened. */
+const PINNING_SUITES = 63;
 
 /**
  * A digest no ticket has recorded and none ever will — the planted change.

@@ -492,7 +492,7 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * retires a pinner updates this count and says what that suite still asserts;
  * a suite that quietly stops pinning fails here.
  */
-const RULES_PINNERS_NOW = 62;
+const RULES_PINNERS_NOW = 63;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per
@@ -680,6 +680,29 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
   // rule, so the fix was to stop swallowing that rejection, not to change what
   // the rule allows.
   ['THE-342', 'src/__tests__/THE-342.read-honesty-guards.test.ts'],
+  // APPENDED BY THE-345, beside THE-342's entry and never over it - the
+  // documented cost of adding a suite that pins firestore.rules through the
+  // shared register. RULES_PINNERS_NOW goes 62 -> 63.
+  //
+  // THE-345 gates paid event ticketing behind PAID_EVENTS_ENABLED after the
+  // founder said "I should not be able to create paid events with stripe
+  // disabled", and stops a dangling adoption pointer counting towards the course
+  // figure and the plan cap. It records NO rules digest in its ownership entry
+  // either, and it needed no rule change: `adoptedCourses` is already
+  // `allow write: if false` and STAYS that way - the ghost is cleared through
+  // the DELETE /api/courses/adopt route that already exists and is already
+  // idempotent - and nothing about gating a price in the client touches a rule,
+  // because the price was never written by a rule-governed path this ticket
+  // alters.
+  //
+  // WHAT IT ASSERTS: that the paid-events gate is ONE value in a module that
+  // imports nothing, that nothing was deleted to hide it (every gated surface is
+  // still named in AdminEvents), that the price is gated in BOTH write paths
+  // rather than merely hidden in the UI, that `adoptedCourses` is still
+  // server-only and still mutated only through its existing route, and that
+  // `firestore.indexes.json`, `functions/`, `layout.tsx`, the event-registration
+  // routes and THE-342's `bounded-list-read.ts` are byte-identical.
+  ['THE-345', 'src/__tests__/THE-345.paid-events-and-count-guards.test.ts'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {
