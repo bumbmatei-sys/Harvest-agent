@@ -16,6 +16,7 @@ import { build } from 'vite';
 import react from '@vitejs/plugin-react';
 
 import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
+import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
 
@@ -1142,57 +1143,90 @@ describe('10 · records still load on first open, not on mount', () => {
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
-// 11. UserMessages.tsx — 🔴 and a correction to the ticket's premise.
+// 11. UserMessages.tsx — 🔴 THE-348 RESOLVED THIS SECTION'S PIN.
 // ═════════════════════════════════════════════════════════════════════════════
 /**
- * ⚠️ THE TICKET SAID "THE-331 swapped the picker there too". IT DID NOT.
+ * ⚠️ THE-337's TICKET SAID "THE-331 swapped the picker there too". IT HAD NOT.
  *
- * `UserMessages.tsx` never imported `AttachMenu` and still opens its own
- * hand-rolled, forms-only sheet from `setShowPicker(true)`. So it CANNOT carry
- * this regression — its paperclip opens a `fixed inset-0 z-[300]` overlay whose
- * visibility depends on no anchoring at all — and swapping it now would be
- * THE-331's scope, not a regression fix.
+ * `UserMessages.tsx` never imported `AttachMenu`; it opened its own
+ * hand-rolled, forms-only sheet from `setShowPicker(true)`, rendered the four
+ * record types as EMOJI, and therefore could not carry THE-337's anchoring
+ * regression at all. Three assertions pinned that true state, and the first of
+ * them said what would happen next:
  *
- * 🔴 Pinned rather than narrated, so the next ticket inherits the true state:
- * if UserMessages ever DOES adopt `AttachMenu`, this fails and its composer
- * joins the measured set above.
+ *   *"if UserMessages ever DOES adopt `AttachMenu`, this fails and its
+ *   composer joins the measured set above."*
+ *
+ * 🔴 THE-348 IS THAT TICKET, AND THIS SECTION IS INVERTED RATHER THAN DELETED.
+ * The founder: *"as an admin if I press on paperclip it appears attach a form,
+ * not all that is in community and the same style that we applied."* So the
+ * forms-only sheet is gone, the composer mounts the shared `AttachMenu`, and
+ * the emoji went with it.
+ *
+ * ⚠️ AND IT DID JOIN A MEASURED SET, which is the half of that instruction
+ * that matters. `THE-348.member-composer.layout.test.tsx` drives the SHIPPED
+ * `UserMessages` in Chromium: it clicks the paperclip, reads the positioner's
+ * own inline transform and `--anchor-width`, and hit-tests every pixel of the
+ * open menu against a layer at the nav's `z-[100]` — the same three questions
+ * this suite asks of AdminCommunity's two composers, asked of the third.
+ *
+ * 🔴 IT IS NOT ADDED TO **THIS** SUITE'S `SITES`, deliberately. That discovery
+ * reads `AdminCommunity.tsx` and pairs each `<AttachMenu` mount with the
+ * composer pill above it; UserMessages' composer is a different shape in a
+ * different shell, whose surrounding chrome (a fixed composer, a hidden bottom
+ * nav) is the thing under test in THE-348. Measuring it here would mean this
+ * suite growing a second harness for someone else's screen. What is pinned
+ * here instead is that the adoption HAPPENED and that a measured suite exists
+ * for it — so the instruction above cannot be satisfied by a source grep alone.
  */
-describe('11 · UserMessages.tsx — what is actually there', () => {
+describe('11 · UserMessages.tsx — THE-348 adopted AttachMenu, and measured it', () => {
   const USER_MESSAGES = 'src/components/UserMessages.tsx';
+  const THE_348_LAYOUT = 'src/components/__tests__/THE-348.member-composer.layout.test.tsx';
 
-  it('🔴 does NOT use AttachMenu, so it never had the paperclip fault', () => {
-    const src = read(USER_MESSAGES);
-    expect(
-      src.includes('AttachMenu'),
-      'UserMessages now adopts AttachMenu. It must join the measured composers ' +
-        'in this suite rather than being asserted about from source.',
-    ).toBe(false);
+  it('🔴 DOES use AttachMenu now — THE-337\'s pin is resolved, not deleted', () => {
+    expect(read(USER_MESSAGES), 'UserMessages stopped adopting AttachMenu again').toContain('AttachMenu');
   });
 
-  it('its paperclip opens its own sheet, which needs no anchor to be visible', () => {
-    const src = read(USER_MESSAGES);
-    expect(src, 'the forms picker is still opened by state').toContain('setShowPicker(true)');
-    const overlays = [...src.matchAll(/className=["'`]([^"'`]*fixed inset-0[^"'`]*)["'`]/g)]
-      .map((m) => m[1])
-      .filter((c) => /z-\[\d+\]/.test(c));
-    expect(overlays.length, 'no fixed overlay backs the picker any more').toBeGreaterThan(0);
-    for (const c of overlays) {
-      const z = Number(c.match(/z-\[(\d+)\]/)![1]);
-      expect(z, `an overlay at z-${z} would open under the nav's z-[100]`).toBeGreaterThan(100);
-    }
+  it('and the forms-only sheet it used to open is gone', () => {
+    // 🔴 COMMENT-STRIPPED, and the difference is not cosmetic: THE-348 records
+    // in a doc comment what the deleted sheet WAS, so a raw grep for its
+    // heading finds the epitaph and reports the sheet as still shipping.
+    const src = stripComments(read(USER_MESSAGES));
+    expect(src, 'the forms picker is still opened by state').not.toContain('setShowPicker(true)');
+    expect(src, 'the forms-only sheet heading came back').not.toContain('Attach a Form');
   });
 
-  it('⚠️ and it still renders the four types as EMOJI — recorded, not fixed here', () => {
-    const src = read(USER_MESSAGES);
-    // THE-331's header claims AttachTypeIcon was exported because "the
+  it('🔴 its composer IS measured in a real browser — not asserted from source', () => {
+    // The instruction this section left behind was "join the measured
+    // composers", and a source grep cannot satisfy it. THE-348's suite must
+    // exist, run in `node`, and ask this suite's three anchoring questions.
+    const suite = readFileSync(path.join(ROOT, THE_348_LAYOUT), 'utf8');
+    expect(suite.startsWith('// @vitest-environment node'),
+      'THE-348 measures UserMessages without the node environment — every box would be a zero').toBe(true);
+    expect(suite, 'THE-348 does not drive the shipped component').toContain("from '@/components/UserMessages'");
+    expect(suite, 'THE-348 does not read the positioner, where THE-337\'s bug lived').toContain('--anchor-width');
+    expect(suite, 'THE-348 does not hit-test the open menu against the nav\'s layer').toContain('data-z100-probe');
+  });
+
+  it('⚠️ and the four types are no longer EMOJI — the recorded exception is closed', () => {
+    // THE-331's header claimed `AttachTypeIcon` was exported because "the
     // composer's chips and AttachmentCard rendered the same four types as
-    // EMOJI". That is true of AdminCommunity and NOT true here: this file was
-    // never converted. Pinned so the claim and the code stop disagreeing
-    // silently; fixing it is a swap this regression ticket may not make.
+    // EMOJI". That was true of AdminCommunity and NOT of this file, which was
+    // never converted — so THE-337 pinned the disagreement rather than fixing
+    // it in a regression ticket. THE-348 converted it, so the claim and the
+    // code agree at last.
+    //
+    // 🔴 AND IT IS COMMENT-STRIPPED, WHICH THE ORIGINAL PIN WAS NOT. Every
+    // file in this repo writes 🔴 and ⚠️ in its prose, both inside this
+    // character range — so `.toBe(true)` on RAW source was satisfied by the
+    // comments and would have stayed green the day the four record-type
+    // glyphs were deleted. The pin it replaces was therefore never watching
+    // the code it named. Stripped, the question is the one it meant to ask.
     expect(
-      /[\u{1F300}-\u{1FAFF}]/u.test(src),
-      'UserMessages no longer renders emoji — delete this pin and the note above it',
-    ).toBe(true);
+      /[\u{1F300}-\u{1FAFF}]/u.test(stripComments(read(USER_MESSAGES))),
+      'emoji came back to UserMessages',
+    ).toBe(false);
+    expect(read(USER_MESSAGES), 'the shared icon map is not what replaced them').toContain('AttachTypeIcon');
   });
 });
 

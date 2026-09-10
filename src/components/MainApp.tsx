@@ -102,6 +102,28 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   const [activeBottomTab, setActiveBottomTab] = useState('home');
   const [activeTopTab, setActiveTopTab] = useState('news');
   const [isNavVisible, setIsNavVisible] = useState(true);
+  /**
+   * THE-348 · True while a Messages conversation is open.
+   *
+   * The founder: *"In a chat hide the bottom menu and put the input text field
+   * fixed at the bottom."*
+   *
+   * IT REUSES THE MECHANISM THE MAP TAB ALREADY USES, and that is the whole
+   * reason it is a boolean here rather than a wrapper. #490 hid the ADMIN nav
+   * with a `display: contents` wrapper because that nav's own class string is
+   * DISCOVERED by four measured suites and interpolating into it broke all
+   * four. This nav is a different element in a different shell: its class
+   * string is already a template literal, no guard discovers it, and it
+   * already carries `activeBottomTab === 'map' ? 'max-lg:translate-y-full'` —
+   * a nav-hiding condition, shipped, for exactly this purpose. Adding a term
+   * to it introduces NO element, so MainApp's element-tree pin is untouched.
+   *
+   * ⚠️ THE LOWERING LIVES IN `UserMessages`, in an effect with a cleanup, so
+   * the nav returns on the back arrow, on switching conversations, on the tab
+   * changing and on unmount. #490's lesson: a nav that stays hidden is a trap
+   * with no way out.
+   */
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [enableSwipe, setEnableSwipe] = useState(false); // tab-swipe gesture: mobile/touch only
   const lastScrollYRef = useRef(0);
@@ -646,7 +668,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
       <ReferralTracker />
       
       {/* Side/Bottom Navigation */}
-      <div className={`bg-surface-raised border-t lg:border-t-0 lg:border-r border-line flex justify-center lg:justify-start py-2 lg:py-5 px-2 lg:px-3 pb-[calc(8px+env(safe-area-inset-bottom))] lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-[224px]'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300 ${!isNavVisible || activeBottomTab === 'map' ? 'max-lg:translate-y-full' : 'max-lg:translate-y-0'}`}>
+      <div className={`bg-surface-raised border-t lg:border-t-0 lg:border-r border-line flex justify-center lg:justify-start py-2 lg:py-5 px-2 lg:px-3 pb-[calc(8px+env(safe-area-inset-bottom))] lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-[224px]'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300 ${!isNavVisible || activeBottomTab === 'map' || isChatOpen ? 'max-lg:translate-y-full' : 'max-lg:translate-y-0'}`}>
         <div className={`flex lg:flex-col justify-around lg:justify-start items-center lg:items-stretch w-full lg:max-w-none lg:gap-2 ${isSidebarCollapsed ? 'lg:items-center' : ''}`}>
           {/* Desktop Logo */}
           <div className={`hidden lg:flex items-center mb-6 shrink-0 ${isSidebarCollapsed ? 'justify-center px-0 w-full' : 'gap-2.5 px-3'}`}>
@@ -768,7 +790,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
 
         {/* Main Content Area */}
         <ErrorBoundary>
-        <div className={`flex-1 overflow-x-hidden relative ${activeBottomTab === 'map' ? '' : (activeBottomTab === 'chat' || (activeBottomTab === 'home' && effectiveTopTab === 'messages')) ? 'overflow-hidden pb-[65px] lg:pb-0' : 'overflow-y-auto pb-24 lg:pb-0'}`} onScroll={handleScroll}>
+        <div className={`flex-1 overflow-x-hidden relative ${activeBottomTab === 'map' ? '' : (activeBottomTab === 'chat' || (activeBottomTab === 'home' && effectiveTopTab === 'messages')) ? `overflow-hidden ${isChatOpen ? '' : 'pb-[65px]'} lg:pb-0` : 'overflow-y-auto pb-24 lg:pb-0'}`} onScroll={handleScroll}>
           {activeBottomTab === 'home' ? (
             <DesktopContainer className="h-full">
             <div className="relative w-full h-full">
@@ -845,7 +867,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                   {effectiveTopTab === 'messages' && (
                     hasCommunityGroups ? (
                       <div className="-m-4 lg:-mx-10 xl:-mx-12 h-full lg:h-[calc(100%+2rem)]">
-                        <UserMessages embedded onBack={() => {}} />
+                        <UserMessages embedded onBack={() => {}} onConversationOpenChange={setIsChatOpen} />
                       </div>
                     ) : (
                       <PlanUpgradeScreen

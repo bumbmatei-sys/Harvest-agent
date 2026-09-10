@@ -793,5 +793,28 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
   ],
   'src/components/AdminServices.tsx': '17f508718d3c6b1ad016b9fb6be2c241629421705af4a9c0966b02739eba74ae',
   'src/components/AdminSms.tsx': 'f48ae4b8b6deff201e3767e5812bf7045af632a64c88384e5a91f285c47caab2',
-  'src/components/UserMessages.tsx': 'e6998c91739caf2605538a9f12f14eee034c93cb6668713cd619e925addb8e61',
+  /* AN ACCEPTED SET, APPENDED TO, NOT ONE VALUE SUBSTITUTED - the same shape
+     and the same reason as the sets above. THE-332's value stays accepted and a
+     digest that is NEITHER still fails, which is the whole job of this entry.
+
+     THE-348 legitimately changes UserMessages.tsx, and it arrives through a
+     founder bug report on a phone - the path this guard exists to intercept.
+     Three items: the chat composer travelled with the page and was half-cut by
+     the bottom nav ("put the input text field fixed at the bottom"); the
+     paperclip opened a forms-only sheet instead of the menu Community uses
+     ("not all that is in community and the same style that we applied"); and a
+     member could see the paperclip at all ("The user, non admin should not have
+     the paperclip"). NOTHING THE-332 OWNS MOVED: this file spells no nav group,
+     no rail entry and no flyout, and MOBILE-IS-UNTOUCHED does not apply to it -
+     THE-332 pinned it as a file it does not own, not as one that may not
+     change. The member bottom nav IS hidden inside a conversation, but that is
+     a term added to a condition in MainApp.tsx, which is not in this map, and
+     AdminDashboard's own `data-nav-shell` string is byte-identical. */
+  'src/components/UserMessages.tsx': [
+    // THE-332 - the value this guard was written at.
+    'e6998c91739caf2605538a9f12f14eee034c93cb6668713cd619e925addb8e61',
+    // APPENDED BY THE-348 - the fixed composer, the shared attach menu and the
+    // admin gate. Measured in Chromium at five widths.
+    '60a43ca453f322d7b0a14aa2c574ccfa539259bf4ffc37a4db2cdd7be09a680f',
+  ],
 };
