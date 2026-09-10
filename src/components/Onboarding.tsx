@@ -6,7 +6,13 @@ import { doc, updateDoc, setDoc, getDoc, arrayUnion } from 'firebase/firestore';
 import { getToken } from 'firebase/messaging';
 import CountrySelect from './CountrySelect';
 import { useTenant } from '../contexts/TenantContext';
-import { getTenantScope } from '../utils/tenant-scope';
+import { getTenantScope, isSuperAdmin } from '../utils/tenant-scope';
+import {
+  readAuthTenantFromBrowser,
+  tenantIdToWrite,
+  TENANT_UNRESOLVED_MESSAGE,
+  type AuthTenantResolution,
+} from '../utils/auth-tenant-resolution';
 import { CheckCircle2, ArrowRight, ArrowLeft, MapPin, Bell, User, Phone } from 'lucide-react';
 import type { TenantPlan } from '../types/tenant.types';
 import { InstallHeading, InstallPanel, useInstallState } from './install/InstallInstructions';
@@ -18,6 +24,56 @@ const GOLD = 'var(--brand-color, #B8962E)';
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
 
 /* ── The member's own `users` document ──────────────────────────────────────── */
+
+/**
+ * 🔴 THE-349 — the code `saveFailureMessage` maps to the refusal below.
+ *
+ * A string rather than a subclass because that is what `saveFailureMessage`
+ * already reads (`'code' in e`), so the refusal travels the path every other
+ * Firestore rejection on this screen travels and needs no new plumbing.
+ */
+export const TENANT_UNRESOLVED_CODE = 'harvest/tenant-unresolved';
+
+/**
+ * 🔴 THE-349 — which ministry a document CREATED here belongs to, in three
+ * answers rather than two.
+ *
+ * 🔴 `getTenantScope()` IS STILL THE RESOLVER AND STILL ASKED FIRST. This is
+ * not a replacement for it — it reads the HOST first (the authority, not
+ * spoofable by the client) and then the super-admin and own-document
+ * fallbacks, and everything it can answer it still answers here, unchanged.
+ *
+ * What changes is what its NULL is taken to mean. A null from it is two
+ * different facts wearing one value: "this account legitimately belongs to no
+ * ministry" and "I could not work out which ministry this is". The host
+ * classifier is asked ONLY to tell those apart — the apex, the
+ * www/app/admin/affiliate aliases, a `*.vercel.app` preview and localhost are
+ * `platform`, where null is the correct answer and is written; a host that
+ * names no ministry is `unresolved`, which is written by nobody.
+ *
+ * ⚠️ ONE WORD IS MISSING FROM THIS NOTE ON PURPOSE, and it is the word for the
+ * kind of host `unresolved` describes. THE-280 counts it to zero in this file
+ * to prove the MEMBER funnel asks no such question, exactly as the note below
+ * says of its own prose — see `utils/auth-tenant-resolution.ts`, which spends
+ * that budget freely because nothing counts it there.
+ *
+ * ⚠️ A SUPER ADMIN ON SUCH A HOST IS `platform`, NOT `unresolved`. They
+ * legitimately carry `tenantId: null` (`PLATFORM_TENANT_ID` is their write-side
+ * fallback), and refusing them would be this ticket breaking the very thing its
+ * non-negotiables name.
+ */
+export async function resolveCreateTenant(): Promise<AuthTenantResolution> {
+  const scope = await getTenantScope();
+  if (scope) {
+    // Host slug, middleware cookie, or the member's own document — all three
+    // are a named ministry, and getTenantScope prefers them in that order.
+    return { kind: 'tenant', tenantId: scope, reason: 'signed-in-user' };
+  }
+  const fromHost = readAuthTenantFromBrowser();
+  if (fromHost.kind === 'platform') return fromHost;
+  if (isSuperAdmin()) return { kind: 'platform', reason: 'super-admin' };
+  return { kind: 'unresolved', reason: fromHost.reason };
+}
 
 /**
  * 🔴 THE-336 — write onto the signed-in member's `users` document, CREATING it
@@ -54,10 +110,17 @@ const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/m
  * the member belongs to. So the create carries the identity block `AuthPage`
  * writes on the same document, and the caller's fields land on top of it.
  *
- * ⚠️ `tenantId` comes from `getTenantScope()`, which reads the HOST first — the
- * same authority `AuthPage` derives it from, and not spoofable by the client.
- * Off a tenant host it resolves to null, exactly as `AuthPage` does when the
- * middleware cookie is absent.
+ * ⚠️ `tenantId` comes from `resolveCreateTenant()`, which reads the HOST first
+ * — the same authority `AuthPage` derives it from, and not spoofable by the
+ * client. 🔴 THE-349 REPLACED `getTenantScope()` HERE, and the sentence that
+ * stood in its place ("off a tenant host it resolves to null, exactly as
+ * `AuthPage` does when the middleware cookie is absent") described the bug
+ * rather than the behaviour: BOTH resolved a host that serves one ministry and
+ * names none to null and then WROTE that null, and the cookie meant to name it
+ * is set by nothing at all. Off a tenant host the answer is now `platform`
+ * (null, correctly — the apex, the www/app/admin/affiliate aliases, a preview)
+ * or `unresolved`, which is not written: the create throws and the member is
+ * told.
  *
  * ⚠️ This note deliberately avoids one word: THE-280 counts it to zero in this
  * file to prove the MEMBER funnel asks no such question, and prose has no
@@ -102,14 +165,31 @@ export async function writeUserDoc(
     await updateDoc(ref, fields);
     return;
   }
-  const tenantId = await getTenantScope();
+  /**
+   * 🔴 THE-349 — was `const tenantId = await getTenantScope();` followed by
+   * `tenantId: tenantId || null`. That `|| null` is the same operator, the
+   * same lie and the same orphan as the two in `AuthPage`: on a host that
+   * serves one ministry and names it nowhere, it recorded "belongs to no
+   * church" as a fact rather than reporting that it did not know. A member
+   * cannot repair it afterwards — `firestore.rules` refuses a self-edit whose
+   * affected keys include `tenantId`, and refuses a tenant admin too — so the
+   * moment to fail is now, loudly, before a document exists.
+   *
+   * ⚠️ The UPDATE branch above is untouched, and deliberately: it writes only
+   * the member's own answers onto a document that already carries a tenant,
+   * and THE-336's note explains why the two branches must stay apart.
+   */
+  const resolution = await resolveCreateTenant();
+  if (resolution.kind === 'unresolved') {
+    throw Object.assign(new Error(TENANT_UNRESOLVED_MESSAGE), { code: TENANT_UNRESOLVED_CODE });
+  }
   await setDoc(ref, {
     uid: user.uid,
     email: user.email,
     displayName: user.displayName || (user.email ? user.email.split('@')[0] : ''),
     createdAt: new Date().toISOString(),
     role: 'user',
-    tenantId: tenantId || null,
+    tenantId: tenantIdToWrite(resolution),
     ...fields,
   });
 }
@@ -131,6 +211,14 @@ export function saveFailureMessage(e: unknown): string {
   const code = typeof e === 'object' && e !== null && 'code' in e ? String((e as { code: unknown }).code) : '';
   if (code === 'unavailable' || code === 'deadline-exceeded') {
     return 'We could not reach the server. Check your connection and press Finish again — your answers are still here.';
+  }
+  if (code === TENANT_UNRESOLVED_CODE) {
+    // 🔴 THE-349. Not "something went wrong" — nothing went wrong with the
+    // save. The address this funnel is being run on names no ministry, so a
+    // document created here would belong to none, and no amount of pressing
+    // Finish changes that. The next step is a different address, so that is
+    // what the sentence gives them.
+    return TENANT_UNRESOLVED_MESSAGE;
   }
   if (code === 'permission-denied' || code === 'unauthenticated') {
     return 'Your session is no longer valid, so we could not save your answers. Sign in again and you will be brought straight back here.';

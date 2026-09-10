@@ -1240,6 +1240,31 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       '`ui/card` was NOT adopted — the funnel already has its own cream shell, and swapping ' +
       'it would be a visual pass this fix has no business making.',
   },
+  {
+    file: 'src/components/AuthPage.tsx',
+    ticket: 'THE-349',
+    why:
+      'The auth screen. A member joined a ministry and was written into none — `tenantId: ' +
+      'null` on a host that serves exactly one church — so `set-custom-claims` withheld the ' +
+      'claim every tenant rule reads, and they were signed in to nothing. THE-349 makes the ' +
+      'unnamed tenant a REFUSAL rather than a null, and `alert` is what carries that refusal: ' +
+      'its `role="alert"` announces to a screen reader that the account they are about to ' +
+      'create cannot exist, which is exactly the reader least likely to notice that a signup ' +
+      'button quietly did nothing, and its `destructive` variant paints from ' +
+      '`bg-card`/`text-destructive` so both palettes resolve it and the block names no ' +
+      'colour of its own. It is the same load-bearing adoption THE-336 made one screen over ' +
+      'in `Onboarding`, which is the other writer of the same document and refuses in the ' +
+      'same words. It renders ABOVE the form and BEFORE a field is filled in, because the ' +
+      'refusal is a property of the address rather than of anything typed, and it introduces ' +
+      'no control, so no 44px tap target is at stake. The two pre-existing message boxes on ' +
+      'this screen are deliberately NOT rewritten: they work, this ticket does not own them, ' +
+      'and converting them would be a visual pass smuggled in behind a data fix. `sonner` is ' +
+      'REJECTED: a toast leaves while the address that caused it is still the address, and ' +
+      'the sentence has to stay beside the button it is refusing. `dialog` is REJECTED: a ' +
+      'modal over the auth card would hide the email and password fields that DO still work ' +
+      'for an existing member on that same host. `empty` is REJECTED: nothing here is an ' +
+      'absent collection — a ministry could not be named, which is a refusal, not emptiness.',
+  },
 ];
 
 it('only the recorded adopters import the new components, and each names its ticket', () => {

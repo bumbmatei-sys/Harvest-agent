@@ -492,7 +492,7 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * retires a pinner updates this count and says what that suite still asserts;
  * a suite that quietly stops pinning fails here.
  */
-const RULES_PINNERS_NOW = 65;
+const RULES_PINNERS_NOW = 66;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per
@@ -764,6 +764,43 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
   // near-today fixture and nothing about the branch diff; and that
   // `firestore.indexes.json`, `functions/` and `layout.tsx` are byte-identical.
   ['THE-348', 'src/components/__tests__/THE-348.member-composer.guards.test.ts'],
+  // THE-349 — GOOGLE SIGN-UP CREATED A USER WHO BELONGED TO NO CHURCH. A real
+  // member's `users` document carried `tenantId: null`, which withheld their
+  // `tenantId` claim and made them invisible to their ministry's dashboard and
+  // CRM, unable to post a prayer request and unable to read its posts.
+  //
+  // The cause is `tenantId: <x> || null` on three create paths — two in
+  // `AuthPage` and one in `Onboarding`'s THE-336 safety net. That operator
+  // cannot tell "belongs to no ministry" (a super admin, the apex, the
+  // www/app/admin/affiliate aliases, a preview host — where null is CORRECT
+  // and stays) from "belongs to a ministry I could not name", and writes null
+  // for both. The reproducible instance is a CUSTOM DOMAIN: the screen's
+  // fallback there is a `tenantId=` cookie "set server-side by middleware",
+  // and `src/middleware.ts` sets no cookie at all.
+  //
+  // 🔴 THIS SUITE ASKS `rulesDigestFailure()` AND RECORDS NO RULES DIGEST OF
+  // ITS OWN, which is the whole posture of the ticket. The repair a stuck
+  // member needs is a `tenantId` write, and the `users` update rule refuses
+  // one to the member AND to their tenant admin — only `isSuperAdmin()` or the
+  // Admin SDK can make it. Loosening that rule to allow a self-repair would be
+  // a tenant-hopping surface, in a file that AUTO-DEPLOYS on merge with no
+  // emulator tests; THE-313's one line turned 46 files red. So the rule is
+  // ASSERTED as it stands — the suite goes red the day it moves and the repair
+  // instructions in the PR become stale — and the repair itself is reported as
+  // a console change for the founder rather than shipped as a rules edit.
+  //
+  // ⚠️ WHAT IT ALSO ASSERTS: that the brief's iOS-redirect hypothesis is not
+  // in this codebase (`signInWithRedirect`/`getRedirectResult` appear in no
+  // source file, so there is no hop to lose a hostname on); that middleware
+  // still sets no cookie, which is the evidence the diagnosis rests on; that
+  // no create path coerces an unknown tenant to null and every one routes
+  // through a helper that THROWS on one; that the refusal composes the
+  // installed `alert` primitive and introduces no tappable control; that
+  // neither edited screen gained a hex literal or an emoji; that this PR's own
+  // guards pin no line number, no near-today fixture and nothing about the
+  // branch diff; and that `firestore.indexes.json`, `functions/`,
+  // `src/app/layout.tsx`, `package.json` and the lockfile are byte-identical.
+  ['THE-349', 'src/components/__tests__/THE-349.orphan-signup.guards.test.ts'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {
