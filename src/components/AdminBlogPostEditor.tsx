@@ -10,19 +10,36 @@ import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
 import { AdminPrimaryButton, AdminSecondaryButton, AdminCard, AdminSectionLabel } from './admin/AdminUI';
 import { useTenantCapability } from '../hooks/useTenantCapability';
 import { ARCHIVED_ACTION_MESSAGE } from '../lib/tenant-lifecycle';
+import { tsMillis } from '../utils/query-helpers';
+import type { FirestoreDate } from '../utils/firestore-date';
 
 interface BlogPost {
   id?: string;
   title: string;
   category: string;
   status: 'published' | 'draft' | 'scheduled';
-  createdAt?: string;
-  updatedAt?: string;
+  // THE-347 - the same widening AdminBlog and BlogTab needed. This editor is
+  // handed a post OBJECT straight out of AdminBlog's list, so whatever shape the
+  // document holds arrives here unchanged.
+  createdAt?: FirestoreDate;
+  updatedAt?: FirestoreDate;
   authorId?: string;
   content: string;
   featuredImage?: string;
   tags?: string[];
-  publishedAt?: string;
+  publishedAt?: FirestoreDate;
+}
+
+/**
+ * THE-347 - the value a `datetime-local` input can accept, or '' when there
+ * isn't one. Never throws, and never returns anything but a string.
+ */
+function toDatetimeLocal(value: FirestoreDate): string {
+  if (value == null || value === '') return '';
+  const ms = tsMillis(value as never);
+  const date = new Date(ms);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().slice(0, 16);
 }
 
 interface AdminBlogPostEditorProps {
@@ -44,7 +61,13 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
   const [tags, setTags] = useState<string[]>(post?.tags || []);
   const [newTag, setNewTag] = useState('');
   const [status, setStatus] = useState<'published' | 'draft' | 'scheduled'>(post?.status || 'draft');
-  const [scheduledDate, setScheduledDate] = useState(post?.publishedAt ? new Date(post.publishedAt).toISOString().slice(0, 16) : '');
+  // THE-347 - this was `new Date(post.publishedAt).toISOString().slice(0, 16)`.
+  // For a Firestore Timestamp that is `new Date(object)` - an Invalid Date -
+  // and `.toISOString()` on one THROWS RangeError, so merely OPENING a post
+  // whose publishedAt was a Timestamp took the editor down. Same crash family
+  // as the list's, one screen along, and it surfaced only once the interface
+  // above stopped claiming these fields were strings.
+  const [scheduledDate, setScheduledDate] = useState(() => toDatetimeLocal(post?.publishedAt));
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [availableCategories, setAvailableCategories] = useState<string[]>(categories);

@@ -10,7 +10,16 @@ import type { Timestamp } from 'firebase/firestore';
  * combinations that would otherwise require a manually-created index.
  */
 
-type TimestampLike = Timestamp | { toMillis?: () => number; seconds?: number } | null | undefined;
+/**
+ * What a Firestore date field can actually hold on the client.
+ *
+ * EXPORTED as of THE-347. It was file-private, so `formatFirestoreDate` in
+ * `firestore-date.ts` could not name the very shape it exists to render, and a
+ * screen that wanted to be honest about its own data had no type to be honest
+ * WITH - which is how `blog_posts.createdAt` came to be declared `string` while
+ * one of its three writers wrote a Timestamp. Nothing about the type changed.
+ */
+export type TimestampLike = Timestamp | { toMillis?: () => number; seconds?: number } | null | undefined;
 
 /**
  * Milliseconds for a Firestore Timestamp-like value.
