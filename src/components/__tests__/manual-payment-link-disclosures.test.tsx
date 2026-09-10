@@ -122,6 +122,8 @@ const h = vi.hoisted(() => ({
   contacts: { current: { data: [] as unknown[], isLoading: false, isError: false, error: null, refetch: vi.fn() } },
   activities: { current: { data: [] as unknown[], isLoading: false, isError: false, error: null, refetch: vi.fn() } },
   writes: { added: [] as Record<string, unknown>[], set: [] as Record<string, unknown>[], updated: [] as Record<string, unknown>[] },
+  /** THE-350 — every authFetch the screen made, so the ledger POST is checkable. */
+  requests: [] as { url: string; body: Record<string, unknown> | null }[],
   navigate: vi.fn(),
 }));
 
@@ -144,7 +146,24 @@ vi.mock('firebase/firestore', () => ({
 }));
 vi.mock('../settings/useTenantId', () => ({ getTenantId: async () => 'grace' }));
 vi.mock('../settings/PaymentSection', () => ({ default: () => null }));
-vi.mock('../../utils/auth-fetch', () => ({ authFetch: async () => ({ ok: true, json: async () => ({}) }) }));
+/**
+ * 🔴 AMENDED BY THE-350. The stub now RECORDS what was posted and answers the
+ * manual-donation route the way the real one does, because Add Activity →
+ * Donation goes through `/api/donations/manual` before it writes anything to
+ * the CRM: `tenants/{t}/invoices` is gated on `manageAccounting` in
+ * firestore.rules while the recording admin holds `manageCRM`, so the ledger
+ * write is server-side by necessity. A stub that answered `{}` would leave the
+ * end-to-end test below measuring a refused gift.
+ */
+vi.mock('../../utils/auth-fetch', () => ({
+  authFetch: async (url: string, init?: { body?: string }) => {
+    h.requests.push({ url, body: init?.body ? JSON.parse(init.body) : null });
+    if (typeof url === 'string' && url.startsWith('/api/donations/manual')) {
+      return { ok: true, json: async () => ({ invoiceId: 'inv_1', receiptNumber: 'R-1-AAA', visibleToMember: true }) };
+    }
+    return { ok: true, json: async () => ({}) };
+  },
+}));
 vi.mock('../../utils/notify', () => ({ notifyError: () => {} }));
 vi.mock('../../utils/open-statement-pdf', () => ({ openStatementPdf: async () => {} }));
 vi.mock('../../store/useAppStore', () => ({
@@ -242,6 +261,7 @@ beforeEach(() => {
   h.contacts.current = { data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() };
   h.activities.current = { data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() };
   h.writes = { added: [], set: [], updated: [] };
+  h.requests = [];
 });
 
 afterEach(async () => {
@@ -303,12 +323,28 @@ describe('it states that receipts are not generated for them', () => {
   });
 });
 
-describe('it states that giving statements will not include them', () => {
+describe('it states that nothing records these gifts until a church records them', () => {
   it('🔴 says the tax document will be missing them, not merely that they are untracked', async () => {
+    /**
+     * 🔴 AMENDED BY THE-350, and the amendment is a correction.
+     *
+     * THE-249 asserted "will not appear on giving statements". That was true of
+     * a manual entry that wrote a `contactActivities` row and nothing else. Add
+     * Activity → Donation now writes the same `donation_receipt` invoice the
+     * Stripe webhook writes, so the sentence became FALSE and a screen telling a
+     * church its own books cannot hold a gift it just recorded is the same class
+     * of false claim this file exists to catch.
+     *
+     * ⚠️ THE GAP IS UNCHANGED AND IS STILL ASSERTED: Harvest never SEES a gift
+     * sent through a church's own link, so ON THEIR OWN these gifts are missing
+     * from every one of those surfaces.
+     */
     await donations();
-    expect(text()).toMatch(/Gifts given this way will not appear on giving statements/i);
+    expect(text()).toMatch(/Gifts given this way are not recorded until you record them/i);
     expect(text(), 'the donation-history gap is not stated').toMatch(/donation history/i);
     expect(text(), 'the year-end statement is not named').toMatch(/every year-end statement you generate/i);
+    expect(text(), 'the copy no longer says the gap is what happens on their own')
+      .toMatch(/on their own they are missing/i);
   });
 
   it('🔴 and that is true of the code: statements read Stripe invoices only', () => {
@@ -350,8 +386,14 @@ describe('it points to the manual entry path', () => {
   it('names the control by the words on it', async () => {
     await donations();
     expect(text()).toMatch(/press Add Activity, choose Donation and enter the amount/i);
+    // 🔴 THE-350 — what it achieves is now ALL FIVE SURFACES, and the copy says
+    // each of them rather than stopping at the contact's own total.
     expect(text(), 'what the manual entry actually achieves is not said')
-      .toMatch(/adds to their total given and dates the gift/i);
+      .toMatch(/adds to their total given, dates the gift, and writes a donation receipt/i);
+    expect(text(), 'the dashboard is not named').toMatch(/counts on your dashboard/i);
+    expect(text(), 'accounting is not named').toMatch(/in your accounting/i);
+    expect(text(), 'the giving statement is not named').toMatch(/giving statement/i);
+    expect(text(), "the member's own history is not named").toMatch(/own donation history/i);
   });
 
   it('🔴 and that control EXISTS — driven end to end, not read off the source', async () => {
@@ -384,27 +426,81 @@ describe('it points to the manual entry path', () => {
     );
     await click(buttonSaying(/^\s*Add\s*$/));
 
+    /**
+     * 🔴 THE-350 — THE LEDGER WRITE, FIRST. This is the founder's exact
+     * complaint measured through the REAL mounted screen: "if I add a donation
+     * from a user in CRM it updates the CRM but not the dashboard". A $40 gift
+     * must now reach `tenants/{t}/invoices`, which is what the dashboard,
+     * accounting, the giving statement and the member's own history all read.
+     */
+    const ledger = h.requests.find((r) => r.url === '/api/donations/manual');
+    expect(ledger, '🔴 the gift never reached the money ledger — this is the bug').toBeTruthy();
+    // 🔴 INTEGER CENTS. `AdminAccounting` shipped the inverse and rendered
+    // $105,500 as $10,550,000; 40 dollars is 4000 cents, never 40 and never 400000.
+    expect(ledger!.body!.amountCents, 'the amount did not reach the ledger in integer cents')
+      .toBe(4000);
+    expect(Number.isInteger(ledger!.body!.amountCents as number)).toBe(true);
+    // 🔴 The identity key, and the source that tells a manual gift from a processed one.
+    expect(ledger!.body!.email, "the giver's email did not reach the ledger").toBe('ada@grace.org');
+    expect(ledger!.body!.source, 'the gift is indistinguishable from a processed one')
+      .toBe('crm_manual');
+    expect(ledger!.body!.description).toBe('PayPal gift, 3 Aug');
+    expect(ledger!.body!.tenantId).toBe('grace');
+
     // The activity, and the contact's own totals.
     const activity = h.writes.added.find((w) => w.type === 'donation');
     expect(activity, 'no donation activity was written').toBeTruthy();
-    expect(activity!.amount, 'the amount is not recorded in DOLLARS').toBe(40);
+    /**
+     * 🔴 THE ACTIVITY LINKS, IT DOES NOT DUPLICATE. `amount` is the field the
+     * Stripe webhook writes in DOLLARS and the field any future money reader
+     * would reach for; on a gift recorded here it is null, and the row points
+     * at the invoice instead. One gift, one money record — a gift counted twice
+     * is worse than a gift counted once in the wrong place.
+     */
+    expect(activity!.amount, 'the activity carries money as well as the invoice — double count')
+      .toBeNull();
+    expect(activity!.invoiceId, 'the activity does not reference the invoice it belongs to')
+      .toBe('inv_1');
+    expect(activity!.invoiceAmountCents, 'the timeline has no figure to render').toBe(4000);
+
+    // ⚠️ `totalDonated` is UNCHANGED and still in DOLLARS — the contact's own
+    // running total, the same field the webhook increments for a Stripe gift.
     const contact = h.writes.set.find((w) => 'totalDonated' in w);
     expect(contact, 'the contact total was not updated').toBeTruthy();
     expect(contact!.totalDonated, 'the gift did not add to total given').toBe(40);
     expect(contact!.lastDonationAt, 'the gift was not dated').toBe('SERVER_TS');
   });
 
-  it('🔴 and the copy does NOT oversell it — no manual entry reaches a statement', async () => {
-    // The write above touches `contactActivities` and `contacts`. It writes no
-    // invoice, and statements are built from invoices alone, so a church must
-    // not read "record it manually" as a fix for the tax document.
+  it('🔴 and the copy does NOT oversell it — the ONE gap left is named', async () => {
+    /**
+     * 🔴 INVERTED BY THE-350, and it is still the same question: does the copy
+     * match what the code does?
+     *
+     * THE-249 asserted the copy said a manual entry reaches NO statement,
+     * because it wrote only a `contactActivities` row. It now writes the
+     * `donation_receipt` invoice statements are built from, so the honest test
+     * is that the copy says so — and that the ONE case where a recorded gift
+     * still cannot reach its giver is named rather than left for January.
+     */
     await donations();
-    expect(text()).toMatch(/It does not put the gift on a giving statement, and nothing else does either/i);
-    expect(text()).toMatch(/statements are built from Stripe gifts alone/i);
+    expect(text(), 'the copy still says a recorded gift reaches no statement')
+      .not.toMatch(/It does not put the gift on a giving statement/i);
+    expect(text(), 'the copy still says statements are Stripe-only')
+      .not.toMatch(/statements are built from Stripe gifts alone/i);
+    expect(text(), 'the no-email exception is not named')
+      .toMatch(/no email address is the one exception/i);
 
+    // 🔴 And that is true of the CODE. The CRM reaches the ledger through the
+    // route — it does not, and may not, write `invoices` from the browser: the
+    // rule gates that collection on `manageAccounting`, which the admin
+    // recording a gift need not hold.
     const crmSrc = read('src/components/AdminCRM.tsx');
-    expect(crmSrc, 'the CRM now writes an invoice — the copy above is stale')
-      .not.toMatch(/collection\(db, 'tenants', [^)]*'invoices'\)|'invoices'/);
+    expect(crmSrc, 'the CRM writes the invoices collection directly from the client')
+      .not.toMatch(/'invoices'/);
+    expect(crmSrc, 'the CRM no longer records the gift in the ledger at all')
+      .toMatch(/authFetch\('\/api\/donations\/manual'/);
+    // The one server-side writer, and the shape statements read.
+    expect(read('src/lib/manual-donation.ts')).toMatch(/type: 'donation_receipt',/);
   });
 });
 
@@ -512,8 +608,18 @@ describe('the Stripe disclosure is unchanged and still true', () => {
     await donations();
     expect(text()).toMatch(/Card and bank gifts, taken inside the app/i);
     expect(text()).toMatch(/Harvest records every gift, sends the receipt, and includes it on your year-end giving statements/i);
-    expect(text(), 'the contrast half is missing')
-      .toMatch(/Only gifts given through Stripe are recorded and receipted/i);
+    /**
+     * ⚠️ THE CONTRAST HALF WAS RETIRED BY THE-350. It read "Only gifts given
+     * through Stripe are recorded and receipted", which became false the moment
+     * Add Activity → Donation started writing the same `donation_receipt`
+     * invoice. The Stripe promise itself is UNCHANGED and still asserted above,
+     * word for word; what is gone is the claim about everything else.
+     */
+    expect(text(), 'the retired contrast line is back, and it is not true')
+      .not.toMatch(/Only gifts given through Stripe are recorded and receipted/i);
+    // What replaced it: the manual path, named as a thing that also works.
+    expect(text(), 'the manual path is not named as a real alternative')
+      .toMatch(/writes a donation receipt/i);
   });
 
   it('🔴 and every clause of that promise is backed by the webhook', () => {
@@ -613,9 +719,27 @@ describe('no statement, receipt, CRM write or Stripe path changed', () => {
      *
      * The digest still asserts byte-for-byte identity; only the bytes it names
      * moved.
+     *
+     * ─── RE-RECORDED AGAIN BY THE-350, and again the whole of what moved ────
+     *
+     * TWO OPTIONAL FIELDS ON A TYPE AND ONE CORRECTED DOC COMMENT. `ContactActivity`
+     * gains `invoiceId` and `invoiceAmountCents`, and `amount`'s comment now says
+     * what it means: DOLLARS for a Stripe gift the webhook logs and for every
+     * manual activity written before THE-350, and ALWAYS NULL on a gift recorded
+     * by hand since it — because the money record for such a gift is the
+     * `tenants/{t}/invoices` receipt the row points at, and carrying the figure
+     * in `amount` as well would be one gift in two money-bearing documents.
+     *
+     * ⚠️ IT IS A TYPE, AND ONLY A TYPE. Every claim above still holds and is
+     * still the reason this file is pinned here: no write moved (there is still
+     * no setDoc, updateDoc or addDoc in the file), no ceiling moved, no scoping
+     * moved, THE-342's four `orderBy(documentId())` clauses are untouched, and
+     * no index is needed. The CRM WRITE this ticket does change is in
+     * `AdminCRM.tsx`, which this file exercises end to end above rather than
+     * pinning by hash.
      */
     'src/hooks/queries/useCRMQueries.ts':
-      '64f015cfdc045ac9e9fcffa7f8bd13a56ad838d136be3e5ae5787f01531232d7',
+      'da7f896acf15efc1c23d0137caf874ea2bba679e90351f63d667b6f1a2e458d5',
     // Re-recorded by THE-261: its v4 migration renamed shadow-sm and
     // outline-none across the app so those utilities keep painting what they
     // painted under v3. AdminAccounting carries those spellings and nothing

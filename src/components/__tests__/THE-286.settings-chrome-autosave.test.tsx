@@ -872,7 +872,16 @@ describe('10 · PaymentSection still renders unavailable and DomainSection is st
     expect(src, 'PaymentSection stopped reading the switch').toContain('STRIPE_CONNECT_ENABLED');
     expect(src, 'PaymentSection no longer renders the unavailable state')
       .toContain('STRIPE_CONNECT_HIDDEN_MESSAGE');
-    expect(code('src/lib/stripe-connect-feature.ts')).toMatch(/Temporarily unavailable/);
+    // ⚠️ THE-350 changed the WORDING of the hidden message ("Temporarily
+    // unavailable" told churches to wait for a Connect account Stripe has since
+    // closed as `rejected.fraud`). What this line was really asserting — that
+    // the module still HOLDS the one hidden message, so PaymentSection has
+    // something to render — is asserted by shape rather than by the old string,
+    // which now lives pinned in `the-256-stripe-connect-hidden.test.ts` §1.
+    expect(code('src/lib/stripe-connect-feature.ts'), 'the hidden message left its module')
+      .toMatch(/export const STRIPE_CONNECT_HIDDEN_MESSAGE\s*=/);
+    expect(code('src/lib/stripe-connect-feature.ts'), 'the hidden message promises a return')
+      .not.toMatch(/Temporarily unavailable/);
     // The Connect UI is mounted only behind the switch, never unconditionally.
     expect(src).toMatch(/STRIPE_CONNECT_ENABLED\s*\?\s*<StripeConnectPanel\s*\/>/);
   });

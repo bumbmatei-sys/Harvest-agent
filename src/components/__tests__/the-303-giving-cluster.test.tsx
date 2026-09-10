@@ -395,11 +395,30 @@ describe('5 · with Stripe off, neither page shows a Stripe control or an apolog
 
   it('🔴 the master switch itself is untouched, and no Connect UI came back', () => {
     // STOP condition 6, and the ticket's standing instruction.
-    // ⚠️ THE DIGEST IS THE ONE `AdminDonations.section.test.tsx` ALREADY PINS,
-    // copied rather than recorded here — the same cross-check the rules digests
-    // below rely on.
-    expect(sha(read('src/lib/stripe-connect-feature.ts')), 'stripe-connect-feature.ts changed')
-      .toBe('ae4767b86754d414d6d8a052756c15b27c5cdee9fec33dc77dbc9ec1acb11d67');
+    /**
+     * ⚠️ AN ACCEPTED SET SINCE THE-350, appended to and never substituted —
+     * the #422/#434 rule: CI runs against `refs/pull/N/merge`, so a file
+     * another ticket legitimately lands on holds a different value there than
+     * on this branch, and `main` went red for everyone the last time a digest
+     * was replaced instead of added.
+     *
+     * 🔴 WHAT MOVED IS ONE COPY STRING, AND THE CLAIM IS UNCHANGED.
+     * `STRIPE_CONNECT_HIDDEN_MESSAGE` said "Temporarily unavailable", which
+     * told churches to wait for a platform account Stripe has since CLOSED as
+     * `rejected.fraud` — no appeal, no migration, no date. The founder: "In
+     * donation right now it says stripe unavailable temporarily. Hide that."
+     * The switch itself is still the literal `false` and is still declared
+     * exactly once, both asserted below; a copy string cannot restore Connect
+     * UI, and a flipped boolean is what these lines are really for.
+     */
+    const ACCEPTED_SWITCH_DIGESTS = [
+      'ae4767b86754d414d6d8a052756c15b27c5cdee9fec33dc77dbc9ec1acb11d67',
+      '22b5d92d7225fe91d38288a6570bdd8d9551ee8be9095d86a2798945cfce2b30',
+    ];
+    expect(ACCEPTED_SWITCH_DIGESTS, 'stripe-connect-feature.ts is at a digest no ticket recorded')
+      .toContain(sha(read('src/lib/stripe-connect-feature.ts')));
+    expect(read('src/lib/stripe-connect-feature.ts').match(/STRIPE_CONNECT_ENABLED\s*=/g),
+      'a second Connect switch was declared').toHaveLength(1);
     expect(read('src/lib/stripe-connect-feature.ts'))
       .toMatch(/export const STRIPE_CONNECT_ENABLED = false;/);
     for (const file of ['src/components/PublicGiving.tsx', 'src/components/PublicPledge.tsx']) {

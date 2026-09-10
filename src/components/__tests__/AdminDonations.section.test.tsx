@@ -493,16 +493,40 @@ describe('the admin copy states that Harvest does not process these gifts and th
       .toMatch(/straight from your member to your own/i);
   });
 
-  it('🔴 warns that giving statements will NOT include these gifts', async () => {
-    // A church that expects year-end statements to cover PayPal gifts finds out
-    // in January, from a member asking where their receipt is.
+  it('🔴 warns that these gifts are not recorded until a church records them', async () => {
+    /**
+     * 🔴 AMENDED BY THE-350 — and the amendment is a correction, not a
+     * loosening.
+     *
+     * THE-249 asserted "will not appear on giving statements" and "Only gifts
+     * given through Stripe are recorded and receipted". Both were true of a
+     * manual entry that wrote a `contactActivities` row and nothing else. Add
+     * Activity → Donation now writes the same `donation_receipt` invoice the
+     * Stripe webhook writes, so both sentences became FALSE — and a screen
+     * telling a church its own books cannot hold a gift they just recorded is
+     * the same class of false claim this file exists to catch.
+     *
+     * The GAP is still real and still asserted: Harvest never SEES a gift sent
+     * through a church's own link, so nothing records it on its own. What
+     * changed is the remedy — it is now whole, and the copy has to say which.
+     */
     await open('pro', 'donations');
     const copy = container.textContent || '';
-    expect(copy, 'the statements gap is not stated')
-      .toMatch(/will not appear on giving statements/i);
+    expect(copy, 'the gap is not stated')
+      .toMatch(/not recorded until you record them/i);
     expect(copy, 'the donation-history gap is not stated').toMatch(/donation history/i);
-    expect(copy, 'the Stripe half of the contrast is missing')
-      .toMatch(/Only\s+gifts given through Stripe are recorded and receipted/i);
+    // 🔴 The old contrast is GONE, because it is no longer true.
+    expect(copy, 'the screen still says only Stripe gifts are recorded')
+      .not.toMatch(/Only\s+gifts given through Stripe are recorded and receipted/i);
+    // 🔴 And the whole remedy is named, all five surfaces of it.
+    expect(copy, 'the remedy is not named').toMatch(/press Add Activity, choose Donation/i);
+    expect(copy, 'the remedy does not say the gift reaches the dashboard')
+      .toMatch(/counts on your dashboard/i);
+    expect(copy, 'the remedy does not say the gift reaches the giving statement')
+      .toMatch(/giving statement/i);
+    // 🔴 And the ONE exception is named where a church will read it.
+    expect(copy, 'the no-email consequence is not stated')
+      .toMatch(/no email address is the one exception/i);
   });
 
   it('says the emails will be public BEFORE a church types one', async () => {

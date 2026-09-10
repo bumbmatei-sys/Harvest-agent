@@ -213,7 +213,22 @@ const filesSpelling = (digest: string): string[] =>
  * set through this module like every other pinner, so a real rules change still
  * costs exactly one edit. Nothing above is removed and no accepted value is
  * widened. */
-const PINNING_SUITES = 66;
+/* 🔴 THE-350 — a manual donation wrote a CRM note and nothing else. 66 -> 67.
+ * Its suite pins the rules for the reason THE-348's and THE-349's did: it FOUND
+ * something in them and deliberately did not change it. `tenants/{t}/invoices`
+ * is gated on `hasPermission('manageAccounting', tenantId)`, and the admin who
+ * records a gift in the CRM holds `manageCRM` — so a CLIENT write would be
+ * refused for exactly the people doing the recording, which is the founder's
+ * bug wearing a permission error. Loosening the rule would hand every CRM admin
+ * direct write access to the money ledger, in a file that AUTO-DEPLOYS on merge
+ * with no emulator tests. So the write goes through the Admin SDK behind
+ * `/api/donations/manual`, which imposes `requireTenantPermission(request,
+ * tenantId, 'manageCRM')` itself, and the rule is ASSERTED as it stands — the
+ * suite goes red the day it moves and that reasoning becomes stale. THE-350
+ * records NO rules digest and reaches the accepted set through this module like
+ * every other pinner, so a real rules change still costs exactly one edit.
+ * Nothing above is removed and no accepted value is widened. */
+const PINNING_SUITES = 67;
 
 /**
  * A digest no ticket has recorded and none ever will — the planted change.

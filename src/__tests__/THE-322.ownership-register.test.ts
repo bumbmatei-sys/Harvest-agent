@@ -492,7 +492,7 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * retires a pinner updates this count and says what that suite still asserts;
  * a suite that quietly stops pinning fails here.
  */
-const RULES_PINNERS_NOW = 66;
+const RULES_PINNERS_NOW = 67;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per
@@ -801,6 +801,48 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
   // branch diff; and that `firestore.indexes.json`, `functions/`,
   // `src/app/layout.tsx`, `package.json` and the lockfile are byte-identical.
   ['THE-349', 'src/components/__tests__/THE-349.orphan-signup.guards.test.ts'],
+  // THE-350 — A MANUAL DONATION WROTE A CRM NOTE AND NOTHING ELSE. The founder:
+  // "If I add a donation from a user in CRM it updates the CRM but not the
+  // dashboard." There were TWO records of a gift and only ONE of them counted:
+  // `tenants/{t}/invoices` is the money ledger every surface reads — the
+  // Overview giving figure, AdminAccounting, the year-end giving statement and
+  // `/api/donation-history`, which is how a MEMBER retrieves their own receipts
+  // — and its only writer was the Stripe donation webhook. Add Activity →
+  // Donation wrote a `contactActivities` row, which nothing downstream reads as
+  // money. `lib/manual-donation.ts` now writes the same `donation_receipt`
+  // invoice the webhook writes, so one manual entry reaches all five surfaces
+  // with no new reader anywhere.
+  //
+  // 🔴 THIS SUITE ASKS `rulesDigestFailure()` AND RECORDS NO RULES DIGEST OF
+  // ITS OWN, and that is the shape of the ticket rather than an omission. The
+  // invoices rule is `hasPermission('manageAccounting', tenantId)` and the
+  // admin recording a gift holds `manageCRM`, so a CLIENT write would be
+  // refused for exactly the people who do the recording. Loosening the rule
+  // would hand every CRM admin direct write access to the money ledger, in a
+  // file that AUTO-DEPLOYS on merge with no emulator tests. So the write goes
+  // through the Admin SDK behind `/api/donations/manual`, which imposes
+  // `requireTenantPermission(request, tenantId, 'manageCRM')` itself — the
+  // documented use for that helper — and the rule is ASSERTED as it stands, so
+  // the suite goes red the day it moves and this reasoning becomes stale.
+  //
+  // ⚠️ WHAT ELSE IT ASSERTS: that the gift is not counted twice (the invoice is
+  // the money record; the timeline entry carries `amount: null` and an
+  // `invoiceId`); that `amount` is INTEGER CENTS and every dollar value goes
+  // through `formatCents` (AdminAccounting shipped the inverse and rendered
+  // $105,500 as $10,550,000); that `recipientEmail` is normalised trim AND
+  // lowercase on the way in, matching what `/api/donation-history` does to the
+  // caller's verified token, with User A vs User B run through the REAL route;
+  // that a gift with no email is RECORDED and its consequence named on screen
+  // before the save; that `issuedAt` is an ISO string, the one representation
+  // all three webhook receipt writes use; that the writer is ONE function no
+  // second place duplicates; that a failed write keeps the dialog open with the
+  // typed value; that erasure and export reach a manual receipt unchanged; that
+  // no admin surface still says card giving is "temporarily" unavailable or
+  // implies a migration or a date; that its guards pin no line number, no
+  // near-today fixture and nothing about the branch diff; and that
+  // `firestore.indexes.json`, `functions/` and `src/app/layout.tsx` are
+  // byte-identical.
+  ['THE-350', 'src/__tests__/THE-350.manual-donation-invoice.test.ts'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {

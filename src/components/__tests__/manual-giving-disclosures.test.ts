@@ -182,13 +182,46 @@ describe('the four disclosures agree with one another', () => {
       const copy = DISCLOSURES[screen];
       expect(copy, `${screen} names a remedy`).toMatch(/Add Activity|Record an offline gift/);
     }
-    // Two of them state the statement caveat inline; the CRM's is stated on the
-    // Donations screen it links from. What none may do is claim the opposite,
-    // which the previous test pins for all four.
-    expect(DISCLOSURES['AdminDonations (before a link is pasted)'])
-      .toMatch(/does not put the gift on a giving statement/);
+    /**
+     * 🔴 AMENDED BY THE-350, AND THE TWO REMEDIES NOW DIFFER — deliberately,
+     * because what they DO differs.
+     *
+     * `AdminDonations` and `AdminCRM` point at Add Activity → Donation, which
+     * now writes the same `donation_receipt` invoice the Stripe webhook writes,
+     * so that gift DOES reach the year-end statement and the Donations copy
+     * says so. `AdminFundraising` points at Record an offline gift, which
+     * credits a campaign's `raised` total and writes NO invoice — so its caveat
+     * is unchanged and still asserted, byte for byte.
+     *
+     * ⚠️ THAT IS NOT THE CONTRADICTION THIS SUITE GUARDS AGAINST. The rule is
+     * that no screen may claim something the code does not do; two screens
+     * describing two different remedies accurately is the suite working. What
+     * would be a contradiction — a screen promising a statement entry its
+     * remedy cannot produce — is pinned for all four by the test above and by
+     * the invoice-writer assertion below.
+     */
+    expect(DISCLOSURES['AdminDonations (before a link is pasted)'],
+      'the Donations remedy no longer says the gift reaches the books')
+      .toMatch(/writes a donation receipt/);
+    expect(DISCLOSURES['AdminDonations (before a link is pasted)'],
+      'the Donations remedy still carries the retired Stripe-only caveat')
+      .not.toMatch(/does not put the gift on a giving statement/);
+    // 🔴 And that promise is backed by the code that keeps it.
+    const repoFile = (rel: string) => readFileSync(path.resolve(SRC, '..', '..', rel), 'utf8');
+    expect(repoFile('src/lib/manual-donation.ts'),
+      'the Donations copy promises a receipt no writer produces')
+      .toMatch(/type: 'donation_receipt',/);
+    expect(repoFile('src/components/AdminCRM.tsx'),
+      'Add Activity no longer records the gift in the ledger')
+      .toMatch(/authFetch\('\/api\/donations\/manual'/);
+
+    // ⚠️ The campaign caveat is UNCHANGED, because Record an offline gift still
+    // writes no invoice — it credits `raised` and nothing else.
     expect(DISCLOSURES['AdminFundraising (where the goal is set)'])
       .toMatch(/will not appear on a giving statement/);
+    expect(readFileSync(path.join(SRC, 'AdminFundraising.tsx'), 'utf8'),
+      'the offline-gift path started writing an invoice — its caveat is now false')
+      .not.toMatch(/donation_receipt/);
   });
 
   it('the campaign disclosure is about the raised total, not the CRM total', () => {
@@ -213,7 +246,8 @@ describe('the four disclosures agree with one another', () => {
     const crm = DISCLOSURES['AdminCRM (under the giving totals)'];
     const donations = DISCLOSURES['AdminDonations (before a link is pasted)'];
     const campaign = DISCLOSURES['AdminFundraising (where the goal is set)'];
-    expect(donations).toMatch(/that adds to their total given/);
+    // ⚠️ THE-350 — still an ADD, and now it says what else the add produces.
+    expect(donations).toMatch(/adds to their total given, dates the gift, and writes a donation receipt/);
     expect(crm).toMatch(/enter the amount/);
     expect(campaign).toMatch(/That\s+adds to the total/);
     for (const copy of [crm, donations, campaign]) {

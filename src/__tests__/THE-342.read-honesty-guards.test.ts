@@ -507,13 +507,20 @@ describe('11 — only one timestamp representation is written', () => {
 describe("12 — #482's CRM work is untouched", () => {
   const crm = () => read('src/components/AdminCRM.tsx');
 
-  it('🔴 AdminCRM.tsx is byte-identical — this ticket did not open it', () => {
-    // The strongest form of the claim, and the honest one: the CRM read this
-    // ticket fixed lives in useCRMQueries.ts, so the component never needed
-    // editing. A digest proves every behaviour below at once.
-    expect(sha256(readFileSync(path.join(REPO_ROOT, 'src/components/AdminCRM.tsx')))).toBe(
-      THE_342_BASELINE.adminCrmDigest,
-    );
+  it('🔴 AdminCRM.tsx is at a digest some ticket recorded', () => {
+    // THE-342 recorded the first accepted value because the read IT fixed lives
+    // in useCRMQueries.ts and the component never needed editing. THE-350
+    // recorded the second, because the founder's manual-donation bug is IN this
+    // component. A digest that is neither means a ticket edited the CRM without
+    // saying so, and the behavioural assertions below then measure a file
+    // nobody accounted for.
+    const actual = sha256(readFileSync(path.join(REPO_ROOT, 'src/components/AdminCRM.tsx')));
+    const match = THE_342_BASELINE.adminCrmDigests.find(([digest]) => digest === actual);
+    expect(
+      match,
+      `AdminCRM.tsx is at ${actual}, which is none of:\n  ` +
+        THE_342_BASELINE.adminCrmDigests.map(([d, why]) => `${d} (${why})`).join('\n  '),
+    ).toBeTruthy();
   });
 
   it('🔴 the payment-links disclaimer still collapses, with its text unchanged', () => {
@@ -797,5 +804,33 @@ const THE_342_BASELINE = {
   layoutDigest: 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f',
   functionsTreeDigest: '1a3a1c7f27699263bcdf5bd0320c7cb0803a6f76644952f631000bc9bedef2d7',
   compositeIndexCount: 10,
-  adminCrmDigest: 'a1b76895d3bc769d4213bad38f3e34c6a513bdff91b8a84f504e1217b33c82fc',
+  /**
+   * AdminCRM.tsx — an ACCEPTED SET, appended to and never substituted.
+   *
+   * THE-342 recorded the first value to say "this ticket did not open the CRM
+   * component; the read it fixed lives in useCRMQueries.ts". THE-350 DOES open
+   * it, deliberately and for a reason THE-342 could not have: the founder's
+   * "if I add a donation from a user in CRM it updates the CRM but not the
+   * dashboard". Add Activity → Donation now calls `/api/donations/manual`, so
+   * the gift is written to the `tenants/{t}/invoices` money ledger before any
+   * CRM write happens at all.
+   *
+   * A SET rather than a replacement is the #422/#434 lesson this repo already
+   * paid for: CI runs against `refs/pull/N/merge`, so a file another ticket
+   * legitimately lands on holds a different value on the merge ref than on this
+   * branch, and `main` went red for everyone the last time a digest was
+   * substituted instead of added. A value that is NEITHER — a ticket editing
+   * this file without recording why — still fails, which is the whole threat.
+   *
+   * What THE-342's OTHER twelve-section assertions prove is unchanged, and they
+   * are the ones that carry #482's work: the payment-links disclaimer still
+   * collapses with its text byte-for-byte, and the Contacts/Roles switcher is
+   * still ONE definition rendered on both sub-views. Those run against the file
+   * on disk, so they now measure THE-350's version of it rather than trusting a
+   * hash to stand in for them.
+   */
+  adminCrmDigests: [
+    ['a1b76895d3bc769d4213bad38f3e34c6a513bdff91b8a84f504e1217b33c82fc', 'THE-342 — the state that ticket left it in'],
+    ['6e6ea8889f8ca1842ba7ff67e5ce688ad1a846c00e4881121198172d69297412', 'THE-350 — Add Activity → Donation writes an invoice'],
+  ] as ReadonlyArray<readonly [digest: string, source: string]>,
 } as const;

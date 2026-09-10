@@ -66,12 +66,31 @@ describe('1 — the switch is one value, in one place', () => {
     expect(src.match(/STRIPE_CONNECT_ENABLED\s*=/g)).toHaveLength(1);
   });
 
-  it("the hidden message is the founder's wording, exactly", async () => {
-    // No explanation, no apology, and no pointer to the manual links — a church
-    // reading this is looking at the Stripe panel, and the links editor is
-    // already on the same screen.
+  it("the hidden message is the founder's CURRENT wording, exactly — and it promises nothing", async () => {
+    /**
+     * 🔴 AMENDED BY THE-350, and the amendment is the point of the test.
+     *
+     * THE-256 pinned 'Temporarily unavailable' as the founder's wording
+     * verbatim, and it was accurate then: an appeal was pending. The platform
+     * account is now CLOSED as `rejected.fraud` and Stripe stopped replying
+     * (`86bbnjmw9`) — no appeal, no migration, no date. The founder: "In
+     * donation right now it says stripe unavailable temporarily. Hide that."
+     *
+     * So the line still has ONE wording pinned in ONE place; what changed is
+     * that the wording no longer tells a church to wait for something that is
+     * not coming. The three assertions below are the rule, not the string:
+     * whatever this says, it may not carry a promise.
+     */
     const { STRIPE_CONNECT_HIDDEN_MESSAGE } = await import('../stripe-connect-feature');
-    expect(STRIPE_CONNECT_HIDDEN_MESSAGE).toBe('Temporarily unavailable');
+    expect(STRIPE_CONNECT_HIDDEN_MESSAGE).toBe(
+      'Card giving inside the app is off. Your own payment links still work, and a gift you record in the CRM counts on your dashboard, in accounting and on your giving statements.',
+    );
+    // 🔴 No "temporarily", no "migration", no "soon", and no date.
+    expect(STRIPE_CONNECT_HIDDEN_MESSAGE, 'the hidden message promises card giving is coming back')
+      .not.toMatch(/temporar|migrat|coming soon|for now|shortly|in the meantime|\b20\d{2}\b/i);
+    // 🔴 And it is TRUE only because THE-350 built the path it names.
+    expect(read('lib/manual-donation.ts'), 'the manual path the message names does not exist')
+      .toMatch(/export async function recordManualDonation\(/);
   });
 
   it('imports nothing, so it stays cheap on the server and free in the bundle', () => {
@@ -199,7 +218,13 @@ describe('2 — each gated route answers 503 with the hidden message while the s
    */
   const expectHidden = async (res: Response) => {
     expect(res.status).toBe(503);
-    expect(await res.json()).toEqual({ error: 'Temporarily unavailable' });
+    // ⚠️ Read from the module rather than spelled again. THE-256 spelled the
+    // sentence here AND in the module; THE-350 changed the wording (see §1) and
+    // a second copy in the suite is exactly the drift the named const exists to
+    // prevent. What this asserts is unchanged: the route refuses with 503 and
+    // says the one thing the panel says.
+    const { STRIPE_CONNECT_HIDDEN_MESSAGE } = await import('../stripe-connect-feature');
+    expect(await res.json()).toEqual({ error: STRIPE_CONNECT_HIDDEN_MESSAGE });
   };
 
   it('🔴 POST /api/stripe/connect → 503 — the call that reaches the closed platform account', async () => {
@@ -231,11 +256,13 @@ describe('2 — each gated route answers 503 with the hidden message while the s
     // nothing back — and one-time and monthly both pass through the same line.
     armRefusalMocks();
     const { POST } = await import('@/app/api/stripe/donate/route');
+    // ⚠️ Read from the module, not spelled again — see `expectHidden` above.
+    const { STRIPE_CONNECT_HIDDEN_MESSAGE } = await import('../stripe-connect-feature');
     for (const donationType of ['one-time', 'monthly']) {
       const res = await POST(post('https://grace.theharvest.app/api/stripe/donate',
         JSON.stringify({ amount: 5000, tenantId: 'grace', donationType, donorEmail: 'a@b.org' })));
       expect(res.status, `a ${donationType} gift was not refused`).toBe(503);
-      expect(await res.json()).toEqual({ error: 'Temporarily unavailable' });
+      expect(await res.json()).toEqual({ error: STRIPE_CONNECT_HIDDEN_MESSAGE });
     }
   });
 
