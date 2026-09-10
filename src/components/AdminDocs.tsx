@@ -876,7 +876,16 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
         status: 'draft',
         tenantId,
         author: auth.currentUser?.displayName || '',
-        createdAt: serverTimestamp(),
+        // THE-347 - an ISO STRING, not serverTimestamp(). `blog_posts` has three
+        // writers: AdminBlogPostEditor and /api/blog/generate both write
+        // `new Date().toISOString()`, the BlogPost interface declares a string,
+        // and /blog/[id] puts the value into a <time dateTime> attribute and
+        // into schema.org JSON-LD, both of which require ISO 8601 - a Timestamp
+        // there serialises as [object Object]. This writer was the only one
+        // storing an object, and a mixed field sorts wrong in Firestore (it
+        // orders by TYPE first) before it renders wrong. One representation,
+        // and this is the one the other two already agreed on.
+        createdAt: new Date().toISOString(),
       });
       toast.success('Blog draft created');
     } catch (e) {

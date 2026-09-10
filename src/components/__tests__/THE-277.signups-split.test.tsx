@@ -999,6 +999,20 @@ describe('12 — AdminDocs.tsx, AdminDashboardHome.tsx, firestore.rules and func
     'src/components/AdminDocs.tsx': [
       '46c8403674c79dcacbb3a0c60f183b77a3e265d33b441b2ea05c1e00fe42b15f',
       '277d2af4d151a45e6e908ea0488e3c053072824abf0c7e36f67dfff050452137',
+      /*
+       * THE-347, appended beside THE-346's value and never over it. That
+       * ticket's own `handleShareToBlogDraft` wrote `createdAt:
+       * serverTimestamp()` into `blog_posts`, whose other two writers both
+       * write `new Date().toISOString()` and whose interface declares a string
+       * - so some documents held a Timestamp OBJECT on that field, and
+       * `/admin/blog` went down with React error #31 when one reached JSX.
+       * THE-347 changes that ONE expression to an ISO string so no further
+       * mixed documents are created. The twelve `serverTimestamp()` writes
+       * belonging to the `docs` collection are deliberately untouched - `docs`
+       * stores Timestamps consistently - and no menu row, toolbar, share flow
+       * or Firestore path in this file moved.
+       */
+      'b903be259b175a5cf3c2d7df05970fe5e4c7fe8862a16676b296359fc6cc32dc',
     ],
   };
 

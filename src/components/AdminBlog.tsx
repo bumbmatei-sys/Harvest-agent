@@ -8,6 +8,7 @@ import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar, AdminCard, AdminBa
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope, hasPlatformOverride } from '../utils/tenant-scope';
 import { sortByTime } from '../utils/query-helpers';
+import { formatFirestoreDate, type FirestoreDate } from '../utils/firestore-date';
 import { useAppStore } from '../store/useAppStore';
 import { getPlanFeatures } from '../utils/plan-features';
 import { authFetch } from '../utils/auth-fetch';
@@ -24,13 +25,18 @@ interface BlogPost {
  title: string;
  category: string;
  status: 'published' | 'draft' | 'scheduled';
- createdAt: string;
- updatedAt: string;
+ // THE-347 - these are NOT strings. `blog_posts` has three writers and one of
+ // them writes serverTimestamp(), so a document's date field may arrive as a
+ // Firestore Timestamp. Declaring `string` here did not make it one: it made
+ // the compiler agree with a claim the data does not support, and the screen
+ // rendered the object straight into JSX. See utils/firestore-date.ts.
+ createdAt: FirestoreDate;
+ updatedAt: FirestoreDate;
  authorId: string;
  content: string;
  featuredImage?: string;
  tags?: string[];
- publishedAt?: string;
+ publishedAt?: FirestoreDate;
  isAiGenerated?: boolean;
 }
 
@@ -131,18 +137,12 @@ const AdminBlog: React.FC = () => {
 
 // status badge colors come from AdminUI's statusTone
 
- const formatDate = (dateString: string) => {
- try {
- const date = new Date(dateString);
- return new Intl.DateTimeFormat('en-US', {
- year: 'numeric',
- month: 'short',
- day: 'numeric'
- }).format(date);
- } catch (e) {
- return dateString;
- }
- };
+ // THE-347 - this used to `catch (e) { return dateString; }`, which handed the
+ // raw value back when it could not be parsed. For a Firestore Timestamp that
+ // meant returning an OBJECT from a function typed to return a string, and the
+ // next stop was JSX and React error #31. The shared helper is total: it
+ // returns a string on every path and cannot return its input.
+ const formatDate = (value: FirestoreDate) => formatFirestoreDate(value);
 
  const handleNewPost = () => {
  setEditingPost(null);

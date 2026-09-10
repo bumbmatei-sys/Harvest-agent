@@ -7,6 +7,8 @@ import { db, auth } from '../firebase';
 import { FileText, Calendar, Tag, ArrowLeft, Search } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
+import { tsMillis } from '../utils/query-helpers';
+import { formatFirestoreDate, type FirestoreDate } from '../utils/firestore-date';
 import { usePublicShareUrl } from '../utils/share-url';
 import ShareButton from './ShareButton';
 import SaveButton from './SaveButton';
@@ -24,13 +26,15 @@ interface BlogPost {
  title: string;
  category: string;
  status: 'published' | 'draft' | 'scheduled';
- createdAt: string;
- updatedAt: string;
+ // THE-347 - see AdminBlog. The same `blog_posts` documents are read here, so
+ // the same field can arrive as a Firestore Timestamp rather than a string.
+ createdAt: FirestoreDate;
+ updatedAt: FirestoreDate;
  authorId: string;
  content: string;
  featuredImage?: string;
  tags?: string[];
- publishedAt?: string;
+ publishedAt?: FirestoreDate;
 }
 
 interface BlogTabProps {
@@ -70,16 +74,24 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
   fetchedPosts = fetchedPosts.filter(p => (p as any).status === 'published');
  
   // Filter out scheduled posts that haven't reached their publish date yet
-  const now = new Date().toISOString();
-  const visiblePosts = fetchedPosts.filter(post => 
-  !post.publishedAt || post.publishedAt <= now
+  // THE-347 - compared as MILLISECONDS, not as strings. `publishedAt <= now`
+  // read as a lexicographic compare, which is only meaningful while every
+  // document holds an ISO string; against a Timestamp object it compares
+  // "[object Object]" and a scheduled post leaks out early. `tsMillis`
+  // resolves both representations, exactly as the sort below now does.
+  const nowMs = Date.now();
+  const visiblePosts = fetchedPosts.filter(post =>
+  !post.publishedAt || tsMillis(post.publishedAt as never) <= nowMs
   );
  
   // Sort by publishedAt (descending), fallback to createdAt
   visiblePosts.sort((a, b) => {
   const dateA = a.publishedAt || a.createdAt;
   const dateB = b.publishedAt || b.createdAt;
-  return new Date(dateB).getTime() - new Date(dateA).getTime();
+  // THE-347 - `new Date(timestampObject)` is an Invalid Date and its getTime()
+  // is NaN, so every comparison involving one returned NaN and the sort left
+  // those posts wherever they happened to be. `tsMillis` reads both shapes.
+  return tsMillis(dateB as never) - tsMillis(dateA as never);
   });
  
   setPosts(visiblePosts);
@@ -110,19 +122,11 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  return matchesTitle || matchesContent || matchesTags || matchesCategoryName;
  }), [posts, selectedCategory, searchQuery]);
 
- const formatDate = (dateString?: string) => {
- if (!dateString) return '';
- try {
- const date = new Date(dateString);
- return new Intl.DateTimeFormat('en-US', {
- year: 'numeric',
- month: 'long',
- day: 'numeric'
- }).format(date);
- } catch (e) {
- return dateString;
- }
- };
+ // THE-347 - the second copy of the defect that took `/admin/blog` down: the
+ // catch returned `dateString`, so an unparseable value - a Firestore
+ // Timestamp above all - came back out as an object and went into JSX.
+ const formatDate = (value?: FirestoreDate) =>
+ formatFirestoreDate(value, { year: 'numeric', month: 'long', day: 'numeric' });
 
  if (loading) {
  return (
