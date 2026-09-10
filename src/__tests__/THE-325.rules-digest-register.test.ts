@@ -227,8 +227,31 @@ const filesSpelling = (digest: string): string[] =>
  * suite goes red the day it moves and that reasoning becomes stale. THE-350
  * records NO rules digest and reaches the accepted set through this module like
  * every other pinner, so a real rules change still costs exactly one edit.
- * Nothing above is removed and no accepted value is widened. */
-const PINNING_SUITES = 67;
+ * Nothing above is removed and no accepted value is widened.
+ *
+ * ─── 67 -> 68, THE-351 ──────────────────────────────────────────────────────
+ *
+ * PAID EVENTS WITH NO PAYMENT RAIL: a church prices a ticket, a member pays the
+ * church's OWN PayPal / Revolut / Wise link with a reference in the payment
+ * note, and a named admin at that church opens that account, finds the payment
+ * and confirms it. `THE-351.manual-payment.guards.test.ts` joins the population.
+ *
+ * ⚠️ A PER-TENANT INBOX IS THE SHAPE THAT USUALLY NEEDS A RULE — a new
+ * collection, scoped to one church, readable by its admins — and this one needed
+ * none, which is a finding rather than luck. A claim and its confirmation are
+ * FIELDS on `tenants/{t}/registrations/{id}`, whose read rule already says
+ * `isAuthenticated() && (isTenantAdmin(tenantId) || …)` with the tenant taken
+ * from the PATH rather than from a `where()` clause that could be dropped. The
+ * WRITE side needed none either, for THE-350's reason one layer along: the
+ * registration update rule requires `manageEvents`, which a MEMBER pressing
+ * "I've paid" does not hold, so rather than loosen a rule on a document carrying
+ * a money amount the write goes through the Admin SDK behind a route whose own
+ * ownership check — verified uid OR verified token email — is STRICTER than the
+ * rule would have been. THE-351 records NO rules digest and reaches the accepted
+ * set through this module like every other pinner, so a real rules change still
+ * costs exactly one edit. Nothing above is removed and no accepted value is
+ * widened. */
+const PINNING_SUITES = 68;
 
 /**
  * A digest no ticket has recorded and none ever will — the planted change.

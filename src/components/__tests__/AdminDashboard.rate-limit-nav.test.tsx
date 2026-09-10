@@ -451,6 +451,24 @@ describe('THE-139 — a rate-limited entitlement lookup must not reduce the nav'
     }
     expect(callsTo('/api/tenants/roster-status')).toBe(1);
 
+    /**
+     * ─── THE-351 — AND NEITHER IS THE INBOX BADGE ─────────────────────────────
+     *
+     * THE-351 puts a per-tenant "payments to confirm" badge in this header on
+     * both shells, and a badge is a figure that has to be read from the server.
+     * Two things keep it out of THE-139's way, and both are asserted here:
+     *
+     *   · IT IS NOT ON THE MOUNT TICK. `TenantInbox` defers the read by one
+     *     macrotask so it never competes with the entitlement lookups the nav
+     *     depends on — which is why `perLoad` above is still 2. The `act`
+     *     flush is microtasks only, so nothing above has seen it.
+     *   · IT DOES NOT GROW WITH NAVIGATION. The read is cancelled on unmount
+     *     and deduped for `INBOX_CACHE_TTL_MS` across remounts, so SEVEN mounts
+     *     cost at most ONE. Had it been per-mount and on-tick, this would be 7.
+     */
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    expect(callsTo('/api/event-payment/inbox')).toBeLessThanOrEqual(1);
+
     // The whole session stays comfortably inside the limiter's window. The
     // ceiling is read from the limiter itself so this fails if either half
     // regresses — the cap being lowered, or the refetching coming back.

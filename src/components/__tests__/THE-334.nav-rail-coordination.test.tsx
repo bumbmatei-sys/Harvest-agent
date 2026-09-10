@@ -921,7 +921,23 @@ describe('THE-334 · what it may not disturb', () => {
        Log out. Removing that line fails here. */
     const src = read('src/components/AdminDashboard.tsx');
     expect(src, 'the mobile header lost its account menu')
-      .toContain('rightAccessory={<MyAccountMenu {...accountMenuProps} />}');
+      .toMatch(/**
+       * ─── AMENDED BY THE-351 — the string moved, the claim did not ──────────
+       *
+       * THE-334's claim is that the account menu is GONE from the desktop top
+       * bar and STILL THERE on mobile. THE-351 puts a second control in the
+       * mobile header's right accessory — the per-tenant "payments to confirm"
+       * inbox, which the founder asked for "in top right" and which has to be
+       * on the shell a phone actually paints — so the prop is now a fragment
+       * holding both rather than the bare element.
+       *
+       * 🔴 SO THIS ASSERTS THE ACCOUNT MENU IS STILL IN THE ACCESSORY, which is
+       * what THE-334 was protecting; pinning the exact one-element spelling
+       * would have made "nothing may ever join it there" the claim, which
+       * THE-334 never made. The desktop half below is untouched and still
+       * asserts the avatar is absent from the top bar.
+       */
+      /rightAccessory=\{[\s\S]{0,600}?<MyAccountMenu \{\.\.\.accountMenuProps\} \/>/);
     /* The desktop top bar's own instance is GONE — the wrapper that held it. */
     expect(src, 'the desktop top bar still renders an account avatar')
       .not.toContain('<div className="pl-1"><MyAccountMenu');

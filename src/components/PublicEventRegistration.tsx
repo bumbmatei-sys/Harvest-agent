@@ -76,7 +76,13 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<{ ticketCode: string; waitlisted: boolean } | null>(null);
+  const [done, setDone] = useState<{
+    ticketCode: string;
+    waitlisted: boolean;
+    /** THE-351 — null unless this seat owes money the church collects itself. */
+    paymentReference: string | null;
+    amountCents: number;
+  } | null>(null);
 
   // This same public page also renders inside the logged-in app. When an app
   // user is signed in we (a) pre-fill their name/email from the account and
@@ -214,7 +220,12 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
         return; // keep the button disabled through the redirect
       }
       // Free (or waitlisted) ticket → confirmed immediately, show the ticket code.
-      setDone({ ticketCode: data.ticketCode, waitlisted: !!data.waitlisted });
+      setDone({
+        ticketCode: data.ticketCode,
+        waitlisted: !!data.waitlisted,
+        paymentReference: typeof data.paymentReference === 'string' ? data.paymentReference : null,
+        amountCents: typeof data.amount === 'number' ? data.amount : 0,
+      });
     } catch (err: any) {
       setError(err?.message || 'Something went wrong. Please try again.');
     } finally {
@@ -297,6 +308,31 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
             <div className="text-3xl font-mono font-bold tracking-widest text-strong my-4">{done.ticketCode}</div>
           )}
           <p className="text-sm text-faint">A confirmation has been sent to {email}.</p>
+          {/*
+            🔴 THE-351 — the payment instruction, on the ONE screen a logged-out
+            registrant is guaranteed to see. It names the CHURCH as the party
+            that collects and the party that decides, and it does not claim
+            anything about what Harvest has checked, because Harvest cannot
+            check anything. `alert` was rejected here: this shell is the public
+            event page and carries none of the admin app's primitives, so the
+            copy is set in the page's own type rather than importing a second
+            visual vocabulary onto a public surface.
+          */}
+          {done.paymentReference && !done.waitlisted && (
+            <div className="mt-5 pt-5 border-t border-line text-left" data-public-payment-note>
+              <p className="text-sm text-body">
+                This ticket costs ${(done.amountCents / 100).toFixed(2)}, and {tenantName} collects
+                it directly through their own payment links — Harvest does not handle this money
+                and cannot see it.
+              </p>
+              <p className="text-sm text-body mt-2">
+                Put <span className="font-mono font-bold">{done.paymentReference}</span> in the
+                payment note so they can find it. They mark it paid themselves once they have
+                found it in their own account. Bring this ticket either way — you will not be
+                turned away at the door.
+              </p>
+            </div>
+          )}
         </div>
       </Shell>
     );

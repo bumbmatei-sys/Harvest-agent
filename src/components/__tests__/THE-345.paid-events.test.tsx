@@ -162,7 +162,12 @@ function buttonContaining(root: ParentNode, text: string): HTMLButtonElement {
 }
 const {
   PAID_EVENTS_ENABLED, PAID_EVENTS_HIDDEN_TITLE, eventPriceLabel, csvAmountCell, NOT_COLLECTED_LABEL,
+  // THE-351 — the third CSV state and the two notices that replaced the one.
+  NOT_CONFIRMED_LABEL,
 } = await import('../../lib/paid-events-feature');
+const {
+  NO_LINKS_TITLE, CREATION_DISCLAIMER_TITLE,
+} = await import('../../lib/event-payment-claims');
 
 let mounted: { container: HTMLElement; unmount: () => void } | null = null;
 
@@ -186,23 +191,63 @@ afterEach(() => { mounted?.unmount(); mounted = null; writes.length = 0; stored.
 describe('THE-345 · a paid event cannot be created while no payment rail exists', () => {
   /* ═══ 1 · the founder's instruction ═══════════════════════════════════════ */
 
+  /**
+   * ─── AMENDED BY THE-351, AND HERE IS EXACTLY WHAT MOVED ────────────────────
+   *
+   * THE EVENT-LEVEL PRICE FIELD IS STILL ABSENT, AND THAT CLAIM IS UNTOUCHED.
+   * THE-351 un-gates `ticketTypes[].price` — the price that ACTUALLY charges —
+   * and deliberately leaves `events/{id}.price` gated on `PAID_EVENTS_ENABLED`,
+   * because THE-345's finding about it is unchanged by manual confirmation: it
+   * is quoted on four screens and collected on none, in either mode. So the
+   * first assertion below is byte-identical.
+   *
+   * WHAT MOVED IS *WHICH NOTICE* STANDS WHERE THE FIELD WAS. There are three
+   * states now, not two, and only one of them is `data-paid-events-gate="form"`:
+   *
+   *   · both switches off        → THE-345's notice, `="form"`. Unreachable on
+   *                                this build, and kept whole for the day
+   *                                manual confirmation is withdrawn.
+   *   · manual, church has NO links → `="no-links"`, a refusal WITH an
+   *                                instruction.
+   *   · manual, church HAS links  → `[data-manual-payment-disclaimer]`.
+   *
+   * These suites mount `AdminEvents` with no `<TenantProvider>`, so there is no
+   * church and therefore no links — which is the second state. Rather than
+   * pinning to whichever one this harness happens to produce, the test now
+   * asserts the PROPERTY that has to hold in every state: whatever notice
+   * stands there, it names its constraint and it tells a church what still
+   * works. That is the claim THE-345 was making; the selector was only how it
+   * reached it.
+   */
+  const notice = (c: Element): Element => {
+    const el = c.querySelector('[data-paid-events-gate], [data-manual-payment-disclaimer]');
+    if (!el) throw new Error('the price field is gone and NOTHING explains it');
+    return el;
+  };
+
   it('1 · the event form offers no way to set a ticket price', async () => {
     const c = await createForm();
     expect(placeholders(c), 'the event price input is back with no rail to collect it')
       .not.toContain('0 = free');
     // And the church is told why, in the place the field was.
-    const gate = c.querySelector('[data-paid-events-gate="form"]');
-    expect(gate, 'the price field is gone and nothing explains it').toBeTruthy();
-    expect(gate!.textContent, 'the notice does not name the constraint')
-      .toContain(PAID_EVENTS_HIDDEN_TITLE);
+    const gate = notice(c);
+    const title = gate.textContent ?? '';
+    expect(
+      title.includes(PAID_EVENTS_HIDDEN_TITLE)
+        || title.includes(NO_LINKS_TITLE)
+        || title.includes(CREATION_DISCLAIMER_TITLE),
+      'the notice does not name the constraint',
+    ).toBe(true);
   });
 
   it('1b · a church is told registration still works, not just that pricing does not', async () => {
     // The half of this that is not mechanism. A notice saying only "you cannot
     // charge" reads as "events are broken", and a church stops using the
-    // feature that still works perfectly.
+    // feature that still works perfectly. THE-351: this now holds of
+    // whichever of the three notices stands there — all three name the door,
+    // and the two that withhold pricing both name registration.
     const c = await createForm();
-    const text = c.querySelector('[data-paid-events-gate="form"]')!.textContent!.toLowerCase();
+    const text = notice(c).textContent!.toLowerCase();
     expect(text, 'the notice never mentions registration').toMatch(/registration/);
     expect(text, 'the notice never tells a church what it CAN do').toMatch(/at the door/);
   });
@@ -345,7 +390,23 @@ describe('THE-345 · a paid event cannot be created while no payment rail exists
       expect(captured.length, 'the export produced no file at all').toBeGreaterThan(0);
       const csv = captured[captured.length - 1];
       expect(csv, 'the free attendee is missing from the export').toContain('Free Attendee');
-      expect(csv, 'the export still claims money arrived').toContain(NOT_COLLECTED_LABEL);
+      /**
+       * RE-AIMED BY THE-351, AND THE CLAIM IS THE SAME ONE.
+       *
+       * THE-345 asserted "Not collected" because no rail existed and no money
+       * could arrive. Under manual confirmation money DOES arrive — into the
+       * church's own PayPal, unobserved — so "Not collected" would now be
+       * false, and what the column can stand behind is whether an admin opened
+       * that account and vouched. The word changes; the property does not: a
+       * non-zero amount nobody has confirmed exports as a WORD, never a figure.
+       *
+       * Both labels are accepted so this assertion survives the switch being
+       * flipped in either direction, which is what THE-345's own `7b` is for.
+       */
+      expect(
+        csv.includes(NOT_COLLECTED_LABEL) || csv.includes(NOT_CONFIRMED_LABEL),
+        'the export still claims money arrived',
+      ).toBe(true);
       expect(csv, 'the export names a dollar figure nobody sent').not.toContain('"$50"');
       // The genuinely free row still exports $0 - that row IS true.
       expect(csv).toContain('"$0"');

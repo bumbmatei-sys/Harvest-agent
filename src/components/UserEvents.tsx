@@ -8,6 +8,16 @@ import { getTenantScope } from '../utils/tenant-scope';
 import { authFetch } from '../utils/auth-fetch';
 import { useShareBaseUrl } from '../utils/share-url';
 import ShareButton from './ShareButton';
+import { useTenantOptional } from '../contexts/TenantContext';
+import { CONTROL_DENSITY } from './layout/form-layout';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { claimPaymentSent } from './inbox/payment-claims-client';
+import {
+  MEMBER_CLAIMED_BADGE, MEMBER_CLAIMED_TITLE, MEMBER_CLAIM_BUTTON, MEMBER_CLAIM_FAILED,
+  MEMBER_CLAIM_HELP, MEMBER_CONFIRMED_BADGE, MEMBER_UNPAID_BADGE,
+  memberClaimedBody, memberConfirmedBody, memberUnpaidBody,
+  type PaymentState,
+} from '../lib/event-payment-claims';
 
 const BRAND = 'var(--brand-color, #B8962E)';
 
@@ -20,6 +30,11 @@ interface ApiTicket {
   ticketTypeName: string | null;
   waitlisted: boolean;
   amount: number;
+  /** THE-351 — derived server-side; see `/api/my-registrations`. */
+  payment?: PaymentState;
+  paymentReference?: string | null;
+  paymentConfirmedAt?: string | null;
+  payOptions?: { id: string; label: string; url: string | null; handle: string | null; email: string | null }[];
   event: {
     title: string;
     startMillis: number | null;
@@ -66,6 +81,20 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
   const [error, setError] = useState<string | null>(null);
   const [ticketView, setTicketView] = useState<EventRow | null>(null);
   const shareBase = useShareBaseUrl();
+  /**
+   * THE-351 — the church's name, for the payment copy. Every sentence a member
+   * reads about money names the CHURCH as the party that decides, so the name
+   * has to be a real one; `branding.churchName` is what `TenantContext` has
+   * already loaded, and the fallback is a neutral noun rather than "Harvest",
+   * which would be the one word that must never appear in that position.
+   */
+  // The OPTIONAL hook — see the note in AdminEvents: `useTenant` throws outside
+  // a provider, and this screen is mounted bare by existing suites.
+  const churchName =
+    (useTenantOptional()?.branding as { churchName?: string } | undefined)?.churchName
+    || 'the church';
+  /** Bumped after a successful "I've paid" so the ticket re-reads its state. */
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!auth.currentUser) { setLoading(false); return; }
@@ -160,7 +189,11 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
     })();
 
     return () => { cancelled = true; };
-  }, []);
+    // `reloadKey` bumps after a successful "I've paid" so the ticket re-reads
+    // its state from the server rather than being patched locally — the state is
+    // derived server-side by `paymentStateOf`, and a local guess is a second
+    // opinion about what "paid" means.
+  }, [reloadKey]);
 
   return (
     <div className="flex flex-col min-h-full h-full bg-surface overflow-y-auto">
@@ -270,7 +303,12 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
       </div>
 
       {ticketView && ticketView.ticket && (
-        <TicketModal row={ticketView} onClose={() => setTicketView(null)} />
+        <TicketModal
+          row={ticketView}
+          onClose={() => setTicketView(null)}
+          churchName={churchName}
+          onChanged={() => { setTicketView(null); setReloadKey(k => k + 1); }}
+        />
       )}
     </div>
   );
@@ -278,7 +316,143 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
 
 /** Full-screen ticket view: the QR (from the SAME ticketCode the email encodes)
  *  plus the code text, ticket type and status — scannable at the door offline. */
-const TicketModal: React.FC<{ row: EventRow; onClose: () => void }> = ({ row, onClose }) => {
+/**
+ * 🔴 THE-351 — WHAT THE MEMBER SEES, AND WHAT PRESSING THE BUTTON DOES.
+ *
+ * THE FOUNDER: "Don't let Harvest imply it verified anything."
+ *
+ * Three states and every one of them names the CHURCH as the party that
+ * decides. Every string comes from `event-payment-claims.ts`, which THE-351's
+ * suite sweeps against `FORBIDDEN_CLAIM_PHRASES`, so no wording here can drift
+ * into claiming Harvest checked something.
+ *
+ * ⚠️ THE HELP TEXT SITS BESIDE THE BUTTON, NOT BEHIND A TOOLTIP. A member who
+ * believes "I've paid" has settled the matter will arrive at the door believing
+ * they are paid; `tooltip` was rejected for exactly that, and a phone has no
+ * hover to reveal it with anyway.
+ *
+ * 🔴 A FAILED PRESS SAYS SO AND CHANGES NOTHING. `claimPaymentSent` throws on a
+ * rejection rather than resolving quietly, and this renders the failure in
+ * place — THE-321's `saveState` shape, THE-342's rule.
+ *
+ * `alert` for the panel — the primitive is installed, and this is a standing
+ * notice about the state of a record rather than a card of content. `badge` was
+ * used for the one-word state and rejected for the body (two sentences of
+ * instruction is not a label); `dialog` was rejected because this is already
+ * inside one.
+ */
+const TicketPaymentPanel: React.FC<{
+  ticket: ApiTicket;
+  churchName: string;
+  onChanged: () => void;
+}> = ({ ticket, churchName, onChanged }) => {
+  const [state, setState] = useState<'idle' | 'saving' | 'failed'>('idle');
+  const payment = ticket.payment ?? 'free';
+  const reference = ticket.paymentReference || '';
+
+  if (payment === 'free') return null;
+
+  if (payment === 'confirmed') {
+    return (
+      <div className="mt-5 text-left" data-ticket-payment="confirmed">
+        <Alert>
+          <AlertTitle>{MEMBER_CONFIRMED_BADGE}</AlertTitle>
+          <AlertDescription>
+            {memberConfirmedBody(churchName, ticket.paymentConfirmedAt || '')}
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  const press = async () => {
+    setState('saving');
+    try {
+      // The provider is not asked for here: the member has just been shown the
+      // church's tiles and may have used any of them, and a wrong answer on a
+      // required field is worse for the admin than an honest blank. The inbox
+      // row says "did not say which app they used" when it is null.
+      await claimPaymentSent(await getTenantScope() || '', ticket.id, null);
+      setState('idle');
+      onChanged();
+    } catch {
+      setState('failed');
+    }
+  };
+
+  if (payment === 'claimed') {
+    return (
+      <div className="mt-5 text-left" data-ticket-payment="claimed">
+        <Alert>
+          <AlertTitle>{MEMBER_CLAIMED_TITLE}</AlertTitle>
+          <AlertDescription>{memberClaimedBody(churchName, reference)}</AlertDescription>
+        </Alert>
+        <p className="mt-2 text-[11px] font-semibold text-muted">{MEMBER_CLAIMED_BADGE}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-5 text-left" data-ticket-payment="unpaid">
+      <Alert>
+        <AlertTitle>{MEMBER_UNPAID_BADGE}</AlertTitle>
+        <AlertDescription>
+          {memberUnpaidBody(churchName, ticket.amount, reference)}
+        </AlertDescription>
+      </Alert>
+
+      {(ticket.payOptions || []).length > 0 && (
+        <div className="mt-3 space-y-1.5" data-ticket-pay-options>
+          {(ticket.payOptions || []).map((o) => (
+            <div key={o.id} className="flex items-center justify-between gap-2 min-h-11 sm:min-h-0">
+              <span className="text-sm font-medium text-body">{o.label}</span>
+              {o.url ? (
+                <a
+                  href={o.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs font-semibold underline text-body"
+                >
+                  Open
+                </a>
+              ) : (
+                <span className="text-xs text-muted truncate">{o.handle || o.email}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <button
+        type="button"
+        data-ticket-claim
+        onClick={() => void press()}
+        disabled={state === 'saving'}
+        /* `bg-gold` is `var(--brand-color)` — the token this file's own
+           `BRAND` constant spells by hand. Used here so THE-351 introduces no
+           colour literal, on any surface. */
+        className={`mt-3 w-full min-h-11 rounded-xl text-sm font-semibold text-white bg-gold disabled:opacity-50 ${CONTROL_DENSITY.action}`}
+      >
+        {state === 'saving' ? 'Sending…' : MEMBER_CLAIM_BUTTON}
+      </button>
+      <p className="mt-1.5 text-[11px] text-muted" data-ticket-claim-help>{MEMBER_CLAIM_HELP}</p>
+      {state === 'failed' && (
+        <p className="mt-1.5 text-[11px] font-semibold text-destructive" data-ticket-claim-failed>
+          {MEMBER_CLAIM_FAILED}
+        </p>
+      )}
+    </div>
+  );
+};
+
+/** Full-screen ticket view: the QR (from the SAME ticketCode the email encodes)
+ *  plus the code text, ticket type and status — scannable at the door offline. */
+const TicketModal: React.FC<{
+  row: EventRow;
+  onClose: () => void;
+  churchName: string;
+  onChanged: () => void;
+}> = ({ row, onClose, churchName, onChanged }) => {
   const t = row.ticket!;
   const [qr, setQr] = useState<string>('');
   const [qrError, setQrError] = useState(false);
@@ -345,6 +519,8 @@ const TicketModal: React.FC<{ row: EventRow; onClose: () => void }> = ({ row, on
             <p className="text-sm text-muted mt-3">{t.ticketTypeName}</p>
           )}
           <p className="text-xs text-faint mt-4">Present this at the door — no email needed.</p>
+
+          <TicketPaymentPanel ticket={t} churchName={churchName} onChanged={onChanged} />
         </div>
       </div>
     </div>
@@ -352,3 +528,17 @@ const TicketModal: React.FC<{ row: EventRow; onClose: () => void }> = ({ row, on
 };
 
 export default UserEvents;
+
+/**
+ * 🔴 A TEST SEAM, AND IT IS NAMED AS ONE.
+ *
+ * `TicketPaymentPanel` is an implementation detail of the ticket modal and must
+ * not become a component other screens reach for — so it is exported under a
+ * dunder name rather than as part of this module's surface. THE-351's suite
+ * drives it directly because its four states (free / unpaid / claimed /
+ * confirmed) are the whole of the member-facing half of this ticket, and
+ * reaching them through the list, the modal and a mocked `/api/my-registrations`
+ * would be three fixtures deep before the first assertion — which is how a
+ * guard ends up testing the harness.
+ */
+export const __TicketPaymentPanel = TicketPaymentPanel;

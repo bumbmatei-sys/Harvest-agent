@@ -449,10 +449,26 @@ describe('5 — event registration is untouched', () => {
     // logic moved, which is what THE-256 actually guards — asserted below and in
     // the two rules further down, both untouched.
     //
-    // Previous pin (pre-THE-314):
-    //   0324b34c80861ea7e2ee61e40bba7b6ff6f8be72dbef43827e75837e08a5530e
+    // ── REPINNED AGAIN, FOR THE-351, AND THIS ONE IS NOT AN IMPORT ──────────
+    //
+    // THE-256's claim is that HIDING STRIPE CONNECT did not reach event
+    // registration, and that claim is untouched and is re-asserted two lines
+    // below: this route still never mentions the switch or its module.
+    //
+    // What THE-351 changes is a DIFFERENT proposition, and it changes it on the
+    // founder's instruction. THE-256 recorded that a paid ticket with no Connect
+    // account "fails cleanly", which was the right answer while a church could
+    // not be paid at all. It can be paid now - directly, through its own PayPal
+    // or Revolut, confirmed by hand - so sending the member to a closed rail to
+    // be refused is no longer clean, it is just wrong. `requiresPayment` gains
+    // `&& !manualConfirmationMode()`, the seat is written confirmed-and-unpaid,
+    // and the Stripe branch is left whole for the day a rail returns.
+    //
+    // Previous pins:
+    //   0324b34c80861ea7e2ee61e40bba7b6ff6f8be72dbef43827e75837e08a5530e  (pre-THE-314)
+    //   b0e55c91adcc9b342e4d16fc5cabfff1426842056e1f5bb9e0f47546fc41ed98  (THE-314)
     expect(digest('src/app/api/event-registration/submit/route.ts'))
-      .toBe('b0e55c91adcc9b342e4d16fc5cabfff1426842056e1f5bb9e0f47546fc41ed98');
+      .toBe('f203f58f402ec89f14415c9ae64134bd44286b8c4fcb0e8fa12fb70cfd7739a2');
     expect(read('app/api/event-registration/submit/route.ts'), 'the SMS call site moved off the retired module')
       .toContain("from '@/lib/sms-send'");
     expect(read('app/api/event-registration/submit/route.ts'), 'event registration was gated')
@@ -470,16 +486,42 @@ describe('5 — event registration is untouched', () => {
     // suite, pointed at the same function under a new home. That is the narrow
     // case this pin exists to distinguish from a suite being weakened.
     //
-    // Previous pin (pre-THE-314):
-    //   4e8b6ed25913eca78828ebdcf0abf726c48f7b5f182dbbc8b2a2877f77be8797
+    // ── REPINNED AGAIN, FOR THE-351, AND THE SUITE IS NOT WEAKENED ──────────
+    //
+    // This pin exists to distinguish "the suite was pointed at the same function
+    // under a new home" from "the suite was weakened to stay green", so what
+    // THE-351's edit IS matters more than that there was one. It is ONE
+    // `vi.mock`, and it makes the suite STRICTER rather than looser: with manual
+    // confirmation shipped, the Stripe branch these twenty assertions describe is
+    // dormant, so the suite now pins `manualConfirmationMode()` OFF and keeps
+    // proving that the direct charge, the platform fee, the metadata, the
+    // rollback and the free-ticket bypass are all still exactly right for the day
+    // a rail returns. NOT ONE ASSERTION CHANGED - deleting them was the wrong
+    // answer and is the thing THE-345's whole discipline forbids ("nothing is
+    // deleted to hide a feature").
+    //
+    // Previous pins:
+    //   4e8b6ed25913eca78828ebdcf0abf726c48f7b5f182dbbc8b2a2877f77be8797  (pre-THE-314)
+    //   d7adee5eb35cc9975a046004b650f126275e551ceb648feccbedd8ef377ed6ec  (THE-314)
     expect(digest('src/app/api/event-registration/__tests__/submit-route.test.ts'))
-      .toBe('d7adee5eb35cc9975a046004b650f126275e551ceb648feccbedd8ef377ed6ec');
+      .toBe('2215924946e5803840b368fa0862b2a362307f59f340ebd7adb4d6c99dbcf430');
   });
 
   it('the two rules that make it independent of Connect are still there', () => {
     const src = read('app/api/event-registration/submit/route.ts');
+    // ⚠️ AMENDED BY THE-351, AND THE TWO RULES ARE THE SAME TWO RULES.
+    //
+    // THE-256's claim is that a FREE registration, a WAITLIST entry and a ticket
+    // discounted to $0 never reach the payment question at all, so hiding Connect
+    // could not touch them. Both clauses are byte-identical in the expression
+    // below; what joins them is a third that narrows the Stripe path FURTHER,
+    // never widens it - under manual confirmation nothing reaches the rail. A
+    // guard pinned to the exact old spelling would have failed on a change that
+    // makes its own claim MORE true, so it is pinned to the two clauses instead.
     expect(src, 'free and waitlisted tickets no longer bypass Stripe')
-      .toContain('const requiresPayment = amount > 0 && !waitlisted;');
+      .toMatch(/const requiresPayment = amount > 0 && !waitlisted(?: && !manualConfirmationMode\(\))?;/);
+    expect(src, 'the free/waitlist bypass was replaced rather than extended')
+      .toContain('amount > 0 && !waitlisted');
     expect(src, 'the paid-ticket refusal on a missing Connect account is gone')
       .toContain('if (!connectAccountId) {');
     // And it never called the donate route, so gating that one cannot reach it.

@@ -378,6 +378,24 @@ describe('9-10 · event write paths are byte-identical', () => {
       'f5edf19edfeb164ae16710a91a85e20174a815468f4cb75ef54a84958e7125fb',
       // APPENDED BY THE-345 — the paid-events gate on the price it writes.
       '7c64f65f459692d5dbdec30737eea8f280718e08311e53db95563c5bf6446f7f',
+      /**
+       * APPENDED BY THE-351 — ONE FIELD JOINS THE WRITE, and it is not money.
+       *
+       * `paymentProviders`: WHICH of the church's own giving links accept
+       * payment for this event, stored as ids and cleaned through
+       * `readEventProviderIds` so a stored id this build does not define simply
+       * drops. The founder: "maybe just PayPal or just revolut or just whatever
+       * or all of them."
+       *
+       * 🔴 THE PRICE CLAMP IS BYTE-IDENTICAL. THE-345's expression is untouched
+       * — `events/{id}.price` stays gated on `PAID_EVENTS_ENABLED`, because
+       * THE-345's finding about it is unchanged by manual confirmation: it is
+       * charged by nothing in either mode. Only `ticketTypes[].price`, which
+       * this function passes through from `form.ticketTypes` exactly as it
+       * always did, is un-gated, and it is un-gated in `saveTicketDraft` rather
+       * than here. Nothing else in the create or update payload moved.
+       */
+      '65da31740529d15e98b603c1f30a3971bbe5fed8f91421f6883843a41a888655',
     ];
     const actual = sha256(src);
     expect(
@@ -391,9 +409,16 @@ describe('9-10 · event write paths are byte-identical', () => {
     expect(sha256(src)).toBe('803e468cb1f5b8061ce9c1481b813088b46bcba6d94e35dc553acd2bc0a616e5');
   });
 
-  it('and emptyForm still carries exactly its 18 stored fields', () => {
+  it('and emptyForm still carries exactly its 19 stored fields', () => {
+    /**
+     * 18 → 19, THE-351. `paymentProviders` joins the form, and it is the only
+     * addition: the point of counting rather than listing is that a NINETEENTH
+     * field arriving unannounced would be a new stored key on every event
+     * document, so the count moves once, deliberately, and goes red again for
+     * the next one.
+     */
     const src = region(read(EDITED), 'const emptyForm = {', '};');
-    expect((src.match(/^\s{2}\w+:/gm) || []).length).toBe(18);
+    expect((src.match(/^\s{2}\w+:/gm) || []).length).toBe(19);
   });
 
   /**
@@ -423,6 +448,32 @@ describe('9-10 · event write paths are byte-identical', () => {
     const SUBMIT_ROUTE_ACCEPTED = [
       // The value on `main` when THE-345 fixed this guard.
       'b0e55c91adcc9b342e4d16fc5cabfff1426842056e1f5bb9e0f47546fc41ed98',
+      /**
+       * APPENDED BY THE-351 — this route IS the ticket's change, on the founder's
+       * instruction, so the re-record is the work rather than collateral.
+       *
+       * "Registered immediately, marked UNPAID." Under manual confirmation a
+       * priced ticket must NOT reach the payment branch: the platform Connect
+       * account is closed, so it would answer the member "This ministry hasn't
+       * set up payments yet" — the exact 400 THE-345 gated the price field to
+       * avoid. So `requiresPayment` gains `&& !manualConfirmationMode()`, the
+       * seat is written CONFIRMED and unpaid, and it carries a reference code
+       * for the church to match against its own account.
+       *
+       * 🔴 WHAT THIS GUARD IS ACTUALLY FOR IS UNCHANGED AND STILL ASSERTED
+       * ELSEWHERE: THE-154's direct charge, the platform fee, the Checkout
+       * metadata, the pending-registration rollback, the capacity count in
+       * SEATS, the discount increment, the automated SMS trigger and the CRM
+       * activity are all byte-identical, and the three suites that pin them —
+       * `submit-route`, `submit-direct-charge` and `stripe-config-split` — now
+       * pin `manualConfirmationMode()` OFF, so the rail path keeps proving it
+       * is whole for the day it returns rather than being deleted.
+       *
+       * ⚠️ THE THREE EXISTING BYPASSES ARE UNTOUCHED. `amount > 0 && !waitlisted`
+       * still means a free registration, a waitlist entry and a ticket
+       * discounted to $0 never reach the question at all.
+       */
+      'f203f58f402ec89f14415c9ae64134bd44286b8c4fcb0e8fa12fb70cfd7739a2',
     ];
     const actual = sha256(read('src/app/api/event-registration/submit/route.ts'));
     expect(

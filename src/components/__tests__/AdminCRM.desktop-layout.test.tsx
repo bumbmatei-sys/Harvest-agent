@@ -623,6 +623,16 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
       'src/components/NewsTab.tsx',
       'src/components/NewsletterEditor.tsx',
       'src/components/PersonalInformationModal.tsx',
+      // THE-351 — the two surfaces of manual payment confirmation, and both opt
+      // in for the same narrow reason: each renders a primary ACTION button and
+      // must not mint a height for it. `UserEvents.tsx` carries the member's
+      // "I've paid"; `inbox/TenantInbox.tsx` carries the Confirm that records a
+      // gift. Both spend `CONTROL_DENSITY.action` above `sm` under the 44px
+      // touch floor `min-h-11` sets below it, which is exactly the band this
+      // module owns — the alternative was a hand-written `sm:min-h-[38px]`,
+      // which is the invented number Rule 4 exists to stop and which THE-345's
+      // height sweep catches. Neither takes a WIDTH: they are not forms.
+      'src/components/UserEvents.tsx',
       'src/components/UserMessages.tsx',
       // THE-292 — the post-sign-in country prompt. It renders ONE field and two
       // actions, and it takes exactly what that needs: FIELD_WIDTH.long as the
@@ -703,6 +713,8 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
       // already spends FORM_MEASURE — taking one here would cap a column inside
       // a column. It is the proof section for the settings chrome; the other
       // twelve sections are untouched and are not on this list.
+      // THE-351 — see the note on UserEvents above; same adoption, same reason.
+      'src/components/inbox/TenantInbox.tsx',
       'src/components/settings/GivingStatementsSection.tsx',
       // THE-296 — the two remaining sections AdminSettings mounts, onto the same
       // chrome and for the same reason. Both take CONTROL_DENSITY only and no

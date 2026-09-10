@@ -95,6 +95,20 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // `origin/main`, so THE-313 did not touch it — this is exactly the merge-ref
     // drift the header describes, and appending is how it is absorbed.
     ['b0e55c91adcc9b342e4d16fc5cabfff1426842056e1f5bb9e0f47546fc41ed98', 'main at 8a4a909 — THE-314 (#452) swapped the SMS import to @/lib/sms-send'],
+    // ⚠️ APPENDED, NOT SUBSTITUTED. THE-351 OWNS this file's change, on the
+    // founder's instruction — "registered immediately, marked UNPAID". Under
+    // manual confirmation a priced ticket must not enter the payment branch at
+    // all, because the platform Connect account is closed and the member would
+    // be answered "This ministry hasn't set up payments yet"; so
+    // `requiresPayment` gains `&& !manualConfirmationMode()`, the seat is
+    // written CONFIRMED and unpaid, and it carries a reference code for the
+    // church to match against its own account. 🔴 THE WRITE THIS GUARD EXISTS
+    // TO PROTECT IS UNCHANGED: the `contactActivities` CRM row is present and
+    // byte-identical, as are THE-154's direct charge, the platform fee, the
+    // Checkout metadata, the pending-registration rollback and the capacity
+    // count. THE-313 still did not touch this file.
+    ['f203f58f402ec89f14415c9ae64134bd44286b8c4fcb0e8fa12fb70cfd7739a2',
+      'main + THE-351 — manual confirmation skips the closed rail; the CRM write and the Stripe path are byte-identical'],
   ],
   'src/app/api/event-registration/apply-discount/route.ts': [
     ['47622ed746e6e3a652cd7ffab4bd5f434ff4f52fea94a14c5d3eb588ff3924e0', 'main at 5f431e3'],
@@ -106,6 +120,17 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
    */
   'src/hooks/queries/useEventQueries.ts': [
     ['30d41eb31170d0d20078a9666406fdf9fb5693caadbc9fea6ab8b21b9e64b119', 'main at 5f431e3'],
+    // ⚠️ APPENDED, NOT SUBSTITUTED. THE-351 adds optional FIELDS to two
+    // interfaces and moves no read: `Event.paymentProviders` (which of the
+    // church's own giving links accept payment for this event) and the
+    // `payment*` set on `Registration`. Their doc comments carry the rule the
+    // whole feature rests on — `status` is REGISTRATION status and has never
+    // meant money, and payment lives in separate fields so check-in, which
+    // reads `status`, can never come to depend on whether anybody has paid.
+    // `useEvents`' `orderBy('startDate','desc').limit(100)` and every other
+    // query in the file are byte-identical.
+    ['074f3a92e83d2d0cd6f7f35036dadf98edabfefddf65afd99d2e085b2dd22f15',
+      'main + THE-351 — optional payment fields on Event and Registration; no query, read or fetch shape moved'],
   ],
   /**
    * ✅ #413's drag mechanism. This ticket READ it and reimplemented the same
@@ -372,7 +397,18 @@ describe('no new token, component or dependency was added', () => {
     // unaffected. The primitive is installed, so a hand-rolled div would be the
     // defect this list exists to catch; it is on THE-274's RECORDED_ADOPTERS
     // with that reason. A THIRD import still fails here.
-    expect(imports, 'the events screen adopted an unrecorded primitive').toEqual(['alert', 'tabs']);
+    // APPENDED BY THE-351, NOT SUBSTITUTED - `alert` and `tabs` are both still
+    // required and still asserted. `checkbox` joins them because the founder
+    // asked churches to choose WHICH of their own payment links accept payment
+    // for an event - "maybe just PayPal or just revolut or just whatever or all
+    // of them" - which is a SUBSET of independent options, exactly what a
+    // checkbox group is. `toggle-group` was rejected: its multiple mode reads as
+    // a segmented control, i.e. "pick one", across a row of six; `select` was
+    // rejected because a multi-select is the worst control on a phone; and
+    // `radio-group` cannot express "all of them". A FOURTH import still fails
+    // here, and an unrecorded one still fails in THE-274's guard.
+    expect(imports, 'the events screen adopted an unrecorded primitive')
+      .toEqual(['alert', 'checkbox', 'tabs']);
   });
 
   it('the four new files import only modules that already existed', () => {
@@ -588,6 +624,14 @@ describe('the existing events list, its write paths and paid-event creation are 
       'f5edf19edfeb164ae16710a91a85e20174a815468f4cb75ef54a84958e7125fb',
       // APPENDED BY THE-345 — the paid-events gate on the price it writes.
       '7c64f65f459692d5dbdec30737eea8f280718e08311e53db95563c5bf6446f7f',
+      // 🔴 APPENDED BY THE-351 — ONE FIELD JOINS THE WRITE, and it is not money:
+      // `paymentProviders`, the ids of the church's own giving links that accept
+      // payment for this event, cleaned through `readEventProviderIds` so a
+      // stored id this build does not define simply drops. THE-345's price
+      // clamp is BYTE-IDENTICAL inside this region — the event-level price stays
+      // gated because it is charged by nothing in either mode — and the ticket
+      // types are still passed through from `form.ticketTypes` untouched.
+      '65da31740529d15e98b603c1f30a3971bbe5fed8f91421f6883843a41a888655',
     ];
     const actual = sha256(src);
     expect(
@@ -609,11 +653,17 @@ describe('the existing events list, its write paths and paid-event creation are 
       'startDate', 'endDate', 'capacity', 'registrationDeadline', 'price', 'currency',
       'status', 'registrationEnabled', 'ticketTypes', 'waitlistEnabled', 'discountCodes',
       'showOnPublicCalendar',
+      // APPENDED BY THE-351 — which of the church's OWN giving links accept
+      // payment for this event. Ids only: the links themselves stay on the
+      // tenant document, so a church that corrects its PayPal URL corrects it
+      // for every event at once and no event holds a stale copy of a money link.
+      'paymentProviders',
     ]) {
       expect(src, `emptyForm lost ${field}`).toContain(`${field}:`);
     }
-    // 18 fields and no nineteenth — a new one would be a new stored field.
-    expect((src.match(/^\s{2}\w+:/gm) || []).length).toBe(18);
+    // 19 fields and no twentieth — a new one would be a new stored field.
+    // 18 -> 19, THE-351, and the arrival is named in the list above.
+    expect((src.match(/^\s{2}\w+:/gm) || []).length).toBe(19);
   });
 
   /**
@@ -721,9 +771,28 @@ describe('the existing events list, its write paths and paid-event creation are 
     //
     // THE INLINE-STYLE COUNT IS STILL 7 - THE-346 removes no inline style and
     // adds none, so the ratio moved in the direction this guard has always been
-    // about. A count that is not exactly 210 means something else moved too.
+    // about.
+    //
+    // ── AMENDED AGAIN BY THE-351: 210 -> 219, AND ALL NINE ARE NAMED ─────────
+    //
+    // Ten arrive and one leaves. The ten: the provider picker's title, its help
+    // line, its list wrapper, one row label and one provider name (5); the
+    // ticket-type price row's wrapper, whose ternary now reads `canPriceTickets`
+    // (1); the door flag in each of its two states (2); the confirm result note
+    // beside the row (1); and the Confirm button itself (1). The one that
+    // leaves is the ticket-type price wrapper's previous spelling, replaced in
+    // place.
+    //
+    // 🔴 THE INLINE-STYLE COUNT IS STILL EXACTLY 7, and that is the half of
+    // this ratio that matters: THE-351's two new brand-coloured controls spend
+    // `bg-gold`, which IS `var(--brand-color)` (tailwind.config.ts, "Tenant-
+    // overridable action gold"), so this ticket adds no inline style and no
+    // colour literal - unlike the five pre-existing `var(--brand-color,
+    // #d4a017)` fallbacks in this file, which THE-346's registry pins by value
+    // and which a sixth would have added to. A count that is not exactly 219
+    // means something else moved too.
     const src = EVENTS();
-    expect((src.match(/className/g) || []).length, 'className count moved').toBe(210);
+    expect((src.match(/className/g) || []).length, 'className count moved').toBe(219);
     expect((src.match(/style=\{\{/g) || []).length, 'an inline style was added').toBe(7);
   });
 

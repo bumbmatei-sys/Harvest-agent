@@ -60,6 +60,20 @@ import { DESKTOP_GROUP_ICONS, DESKTOP_GROUP_LABELS, DESKTOP_GROUP_SECTIONS } fro
 import { Separator } from '@/components/ui/separator';
 import { NavRailRecents, RAIL_RECENT_GROUPS } from './layout/nav-rail-recents';
 import { SLUG_TO_TAB, TAB_TO_SLUG } from '../lib/admin-sections';
+/**
+ * THE-351 — the PER-TENANT inbox: someone said they paid for a ticket and a
+ * church admin has to go and confirm it.
+ *
+ * 🔴 IT IS NOT THE `'inbox'` TAB BELOW, AND THE NAMING IS NOT MADE WORSE. That
+ * tab is `platform_inbox` — Contact / Feature / Bug reports — and it renders
+ * only for a super admin on the apex (`showInbox = platformOverride`). THE-341
+ * already reported that it is labelled 'Platform Inbox' in one nav array and
+ * 'Inbox' in another; this ticket adds NEITHER spelling. It adds a control that
+ * is not a tab at all, whose accessible name is `INBOX_TRIGGER_LABEL` —
+ * "Payments to confirm" — so the two surfaces cannot be confused by a reader,
+ * by a screen reader, or by a test grepping for a label.
+ */
+import { TenantInbox } from './inbox/TenantInbox';
 
 const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
 
@@ -1491,6 +1505,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             {(headerOverride ? headerOverride.action : headerAction) && (
               <div className="mr-1 flex items-center">{headerOverride ? headerOverride.action : headerAction}</div>
             )}
+            {/* 🔴 THE-351 — "top right" on the DESKTOP shell is this cluster, and
+                it is the same one the platform bell has always sat in. It is
+                rendered for every tenant and for nobody on the platform apex:
+                `platformOverride` is the super-admin-on-apex context, which has
+                no church, no registrations and therefore nothing to confirm. */}
+            {!platformOverride && currentTenantId && (
+              <TenantInbox tenantId={currentTenantId} />
+            )}
             {showInbox && (
               <button
                 onClick={() => go('inbox')}
@@ -1526,7 +1548,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             titleIcon={headerOverride?.titleIcon}
             onBack={headerOverride ? headerOverride.onBack : (activeTab === 'dashboard' ? undefined : smartBack)}
             action={headerOverride ? headerOverride.action : headerAction}
-            rightAccessory={<MyAccountMenu {...accountMenuProps} />}
+            /* 🔴 THE-351 — "top right" on the MOBILE shell. `AdminScreenHeader`'s
+               right column already holds the account avatar, so the inbox goes
+               beside it rather than into a bottom nav that #492 hides inside a
+               conversation and a More sheet that costs two taps. A badge in a
+               header a phone does not render is not shipped, so this is the
+               same header a phone actually paints. */
+            rightAccessory={(
+              <>
+                {!platformOverride && currentTenantId && (
+                  <TenantInbox tenantId={currentTenantId} />
+                )}
+                <MyAccountMenu {...accountMenuProps} />
+              </>
+            )}
           />
         </div>
 

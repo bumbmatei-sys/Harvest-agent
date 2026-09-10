@@ -790,6 +790,15 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
        tab id, read, write or permission gate moved, which is what THE-332 pins
        this file for. */
     '6f645f19cce4f1b074f499fae928c36cc47ecaea0fd58147595aaf0167fe4ef2',
+    /* APPENDED BY THE-351 - paid events return, on manual terms: a disclaimer
+       above the pricing block, a per-event picker over the church's OWN payment
+       links, the ticket-type price un-gated, a payment flag beside each attendee
+       and a Confirm control on rows that owe money. NO NAV, TAB ID, READ, WRITE
+       OR PERMISSION GATE MOVED, which is what THE-332 pins this file for: the
+       Confirm control calls an API route through the shared client module, so
+       `firestorePathsOf` on this screen is unchanged and the money is written
+       server-side by THE-350's writer. */
+    '9ae3b79a3125d1734e6b1b9a9623fbedb40089572865919e132e0b37b72d6e53',
   ],
   'src/components/AdminServices.tsx': '17f508718d3c6b1ad016b9fb6be2c241629421705af4a9c0966b02739eba74ae',
   'src/components/AdminSms.tsx': 'f48ae4b8b6deff201e3767e5812bf7045af632a64c88384e5a91f285c47caab2',

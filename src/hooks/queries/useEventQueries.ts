@@ -45,6 +45,14 @@ export interface Event {
   waitlistEnabled?: boolean;           // false by default
   discountCodes?: DiscountCode[];      // empty array by default
   showOnPublicCalendar?: boolean;      // true by default for published events
+  /**
+   * THE-351 — which of the CHURCH'S OWN payment links accept payment for this
+   * event. `GivingProviderId[]`, typed as `string[]` here so this hook stays
+   * free of the provider table; every reader cleans it through
+   * `readEventProviderIds`, which walks the table and drops anything this build
+   * does not define. Empty (or absent) means every link the church publishes.
+   */
+  paymentProviders?: string[];
 }
 
 export interface Registration {
@@ -64,6 +72,31 @@ export interface Registration {
   discountCode?: string | null;
   discountAmount?: number;         // cents saved
   additionalAttendees?: { name: string; email?: string }[]; // household/group
+
+  /**
+   * ─── THE-351 · manual payment confirmation ────────────────────────────────
+   *
+   * 🔴 `status` ABOVE IS REGISTRATION STATUS AND HAS NEVER MEANT MONEY. These
+   * are separate fields precisely so that check-in — which reads `status` — can
+   * never come to depend on whether anybody has paid. See `paymentStateOf`,
+   * which is the ONE place these are read into a state.
+   */
+  /** `'unpaid' | 'confirmed'`. Absent entirely on a free registration. */
+  paymentStatus?: string;
+  /** The code the member is asked to put in the payment note. Never the QR's. */
+  paymentReference?: string;
+  /** ISO — when the member pressed "I've paid". 🔴 Confirms NOTHING. */
+  paymentClaimedAt?: string;
+  /** Which provider the MEMBER SAYS they used. Their word, stored as theirs. */
+  paymentClaimProvider?: string | null;
+  /** ISO — when a named admin at the church vouched for it. */
+  paymentConfirmedAt?: string;
+  /** 🔴 The uid of the admin who vouched. The audit trail of WHO. */
+  paymentConfirmedBy?: string;
+  /** That admin's address, resolved at confirm time, for a human to read. */
+  paymentConfirmedByName?: string;
+  /** 🔴 The `tenants/{t}/invoices` id THE-350's writer returned. */
+  paymentInvoiceId?: string;
 }
 
 export const useEvents = (tenantId: string | null | undefined, isAuthReady = true) =>
