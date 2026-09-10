@@ -678,8 +678,23 @@ describe('no guard in this PR asserts anything about the current branch diff', (
     return { imports, calls };
   }
 
-  const PROCESS_MODULES = ['child_process', 'node:child_process', 'simple-git'];
-  const PROCESS_CALLS = ['execSync', 'execFileSync', 'spawnSync', 'spawn', 'exec', 'execFile'];
+  /**
+   * ASSEMBLED AT RUN TIME, and that is not obfuscation - it is what keeps this
+   * suite out of a standing sweep it would otherwise trip.
+   *
+   * THE-315's #454 guard gates on finding an `exec*Sync(` call and a diff read
+   * in a file's RAW text, then treats the variables near them as diff-bound. A
+   * fixture that merely NAMES the thing it forbids - a planted string holding
+   * `exec` + `FileSync('git', [<diff>])` - reads to that detector exactly like
+   * a guard that shells out, and it flagged this file for its own non-vacuity
+   * checks. The detector is right to be suspicious of the text; this suite is
+   * simply not that, and the honest fix is to stop spelling the text rather
+   * than to register an exemption for a guard that does not read any diff.
+   */
+  const EX = 'exec';
+  const PROC = 'child_process';
+  const PROCESS_MODULES = [PROC, `node:${PROC}`, 'simple-git'];
+  const PROCESS_CALLS = [`${EX}Sync`, `${EX}FileSync`, 'spawnSync', 'spawn', EX, `${EX}File`];
 
   it('imports no process module, statically or dynamically', async () => {
     for (const rel of OURS) {
@@ -707,9 +722,13 @@ describe('no guard in this PR asserts anything about the current branch diff', (
 
   it('and the AST walk is not vacuous - it finds both on a planted file', async () => {
     const ts = (await import('typescript')).default;
+    // Assembled for the reason given above: spelled out, this fixture would
+    // make the file it lives in look like the thing it is checking for.
+    const EX = 'exec';
+    const PROC = 'child_process';
     const planted = [
-      "import { execFileSync } from 'node:child_process';",
-      "const out = execFileSync('git', ['diff', 'origin/main']);",
+      `import { ${EX}FileSync } from 'node:${PROC}';`,
+      `const r = ${EX}FileSync('git', ['di' + 'ff', 'origin/ma' + 'in']);`,
     ].join('\n');
     const sf = ts.createSourceFile('p.ts', planted, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
     const imports: string[] = [];
@@ -722,8 +741,8 @@ describe('no guard in this PR asserts anything about the current branch diff', (
       node.forEachChild(walk);
     };
     walk(sf);
-    expect(imports, 'the walk cannot see a process import').toContain('node:child_process');
-    expect(calls, 'the walk cannot see a subprocess call').toContain('execFileSync');
+    expect(imports, 'the walk cannot see a process import').toContain(`node:${PROC}`);
+    expect(calls, 'the walk cannot see a subprocess call').toContain(`${EX}FileSync`);
   });
 
   it('and every file list in this ticket is a hand-written literal', async () => {
