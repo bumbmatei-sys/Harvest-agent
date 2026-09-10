@@ -592,6 +592,19 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // band Rule 4 governs. The disclaimer's TEXT is unchanged — the fold is
       // the whole edit.
       'src/components/AdminCRM.tsx',
+      // APPENDED BY THE-345, NOTHING BELOW REMOVED OR REWRITTEN. It sits second
+      // because this list is the sweep's own sorted order, not the order tickets
+      // arrived in.
+      // It USES the class, in the Rule-4 form - `min-h-11 sm:min-h-0`, paired
+      // with the shared `CONTROL_DENSITY.action` 40px token above `sm`. THE-345
+      // fixes a course count that spent a plan slot on an adoption whose library
+      // course no longer exists, and the notice announcing that gives the church
+      // a button to clear the leftover record. The button sits inside an
+      // `AlertDescription`, whose type scale would otherwise leave it near 28px
+      // on a phone, so the 44px floor here is load-bearing rather than
+      // decorative - `min-h-11` is NOT inert on this element, which is the
+      // premise this section exists to keep honest.
+      'src/components/AdminCourses.tsx',
       // 🔴 APPENDED BY THE-334, NOTHING BELOW REMOVED OR REWRITTEN. It sits
       // FIRST because this list is the sweep's own sorted order, not the order
       // tickets arrived in.

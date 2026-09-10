@@ -344,9 +344,46 @@ describe('9-10 · event write paths are byte-identical', () => {
    * create/update write, and a region digest says that in a way a file digest
    * could not — `AdminEvents.tsx` legitimately changed, by the tab wrapper.
    */
-  it('handleSave — the event create AND update write — is byte-identical', () => {
+  /**
+   * AN ACCEPTED SET, APPENDED TO BY THE-345, NOT ONE VALUE SUBSTITUTED - the
+   * same shape and the same reason as UNTOUCHED above: CI runs against
+   * `refs/pull/N/merge`, so a merge ref cut before THE-345 landed legitimately
+   * carries the older value, and substituting is what turned `main` red for
+   * everyone once.
+   *
+   * WHAT MOVED, AND WHY IT IS THIS REGION THAT MOVED. THE-345 gates paid events,
+   * and `handleSave` is the create/update write - so this is the one region that
+   * HAD to change for the founder's instruction to be true. One expression:
+   *
+   *     price: Number(form.price) || 0,
+   *   ->
+   *     price: PAID_EVENTS_ENABLED
+   *       ? (Number(form.price) || 0)
+   *       : (view === 'edit' && selected ? selected.price : 0),
+   *
+   * plus the comment explaining it. Nothing else in the region is different -
+   * every other field, the `updateDoc` and `addDoc` calls, the two collection
+   * paths, the `invalidateQueries` keys and the `notifyError` are byte-identical,
+   * which is what the digest is here to say.
+   *
+   * THE EDIT ARM IS NOT `0`, DELIBERATELY. Writing a zero on edit would silently
+   * migrate the founder's existing $50 event the next time an admin changed its
+   * title. Zeroing stored prices is irreversible and is his call, not this
+   * write's - it is reported, not performed.
+   */
+  it('handleSave — the event create AND update write — is at a recorded digest', () => {
     const src = region(read(EDITED), '  const handleSave = async () => {', '    finally { setSaving(false); }\n  };');
-    expect(sha256(src)).toBe('f5edf19edfeb164ae16710a91a85e20174a815468f4cb75ef54a84958e7125fb');
+    const HANDLE_SAVE_ACCEPTED = [
+      // THE-313, re-asserted by THE-308 — the value both were written at.
+      'f5edf19edfeb164ae16710a91a85e20174a815468f4cb75ef54a84958e7125fb',
+      // APPENDED BY THE-345 — the paid-events gate on the price it writes.
+      '7c64f65f459692d5dbdec30737eea8f280718e08311e53db95563c5bf6446f7f',
+    ];
+    const actual = sha256(src);
+    expect(
+      HANDLE_SAVE_ACCEPTED,
+      `handleSave is at ${actual}, which is none of the accepted values — an unrecorded change reached the event create/update write`,
+    ).toContain(actual);
   });
 
   it('confirmDelete is byte-identical', () => {
@@ -359,21 +396,66 @@ describe('9-10 · event write paths are byte-identical', () => {
     expect((src.match(/^\s{2}\w+:/gm) || []).length).toBe(18);
   });
 
+  /**
+   * A BROKEN GUARD, FOUND AND FIXED BY THE-345. It read:
+   *
+   *     expect(sha256(read('...submit/route.ts')))
+   *       .toBe(sha256(read('...submit/route.ts')));
+   *
+   * IT COMPARED THE FILE TO ITSELF. That is trivially true for every possible
+   * content of that route, so from the day it was written this assertion has
+   * protected nothing - the registration submit route, which creates the CRM
+   * contact and the `contactActivities` rows besides the registration, could
+   * have been rewritten wholesale under a green test.
+   *
+   * THE-345 hit it because "free registration still works end to end" is one of
+   * its own required claims and this is the guard that was supposed to be making
+   * it. Pinned against the LITERAL now, in the accepted-set shape used
+   * throughout, so the claim is about the file rather than about equality.
+   *
+   * THE-345 does not touch this route, deliberately: THE-256 recorded that
+   * `requiresPayment = amount > 0 && !waitlisted` already bypasses payment for
+   * free, waitlisted and $0-discounted registrations, and that a paid ticket
+   * already fails cleanly on the existing `connectAccountId` check - so a gate
+   * here would be a second refusal for the same state.
+   */
   it('the registration submit route — which also writes CRM rows — is untouched', () => {
-    // `api/event-registration/submit` creates a contact and contactActivities
-    // rows besides the registration. This ticket adds a view; it does not go
-    // near any of that.
-    expect(sha256(read('src/app/api/event-registration/submit/route.ts')))
-      .toBe(sha256(read('src/app/api/event-registration/submit/route.ts')));
+    const SUBMIT_ROUTE_ACCEPTED = [
+      // The value on `main` when THE-345 fixed this guard.
+      'b0e55c91adcc9b342e4d16fc5cabfff1426842056e1f5bb9e0f47546fc41ed98',
+    ];
+    const actual = sha256(read('src/app/api/event-registration/submit/route.ts'));
+    expect(
+      SUBMIT_ROUTE_ACCEPTED,
+      `the registration submit route is at ${actual}, which is none of the accepted values`,
+    ).toContain(actual);
     for (const file of ADDED) {
       expect(codeOf(file), `${file} writes`).not.toMatch(/addDoc|updateDoc|setDoc|deleteDoc/);
     }
   });
 
-  it('🔴 10 · a paid event can still be created with Stripe disabled', () => {
-    // The founder hit this and accepted it: STRIPE_CONNECT_ENABLED = false, the
-    // platform account closed as rejected.fraud. This ticket does not change it
-    // and restores no Connect UI.
+  /**
+   * 10 · RE-AIMED BY THE-345. It used to be titled "a paid event can still be
+   * created with Stripe disabled" and it recorded a state the founder had
+   * accepted. He has un-accepted it - "I should not be able to create paid
+   * events with stripe disabled. How are we gonna know if someone paid or not."
+   * - so the title is now false and had to go.
+   *
+   * WHAT THE ASSERTION ITSELF SAYS IS STILL EXACTLY RIGHT, AND IS KEPT VERBATIM.
+   * It never checked that a paid event COULD be created; it checked that no file
+   * in this ticket's set reaches for Stripe Connect. That is still true and is
+   * still worth pinning after THE-345: the new gate is `PAID_EVENTS_ENABLED`,
+   * its own proposition in its own module, precisely so that paid ticketing can
+   * return on a replacement rail (Mangopay, Lemonway) without Stripe Connect -
+   * whose platform account is closed as `rejected.fraud` - having to come back
+   * with it.
+   *
+   * So this test would have stayed GREEN through THE-345 either way. Renaming it
+   * is the point: a green test whose name asserts a behaviour the code no longer
+   * has is a false record of what this repo believes, and this series has been
+   * burned thirteen times by guards that passed while naming something untrue.
+   */
+  it('🔴 10 · no file in this set reaches for Stripe Connect', () => {
     for (const file of [...ADDED, EDITED]) {
       expect(codeOf(file), `${file} mentions Stripe Connect`)
         .not.toMatch(/STRIPE_CONNECT_ENABLED|connectAccount|stripe.*connect/i);

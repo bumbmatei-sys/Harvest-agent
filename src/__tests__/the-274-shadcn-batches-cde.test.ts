@@ -894,6 +894,35 @@ it('border-strong, border-faint, border-subtle and border-hairline still produce
  */
 const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: string }> = [
   {
+    file: 'src/components/AdminEvents.tsx',
+    ticket: 'THE-345',
+    why:
+      'APPENDED, never substituted. THE-345 gates paid event ticketing behind PAID_EVENTS_ENABLED '
+      + 'after the founder, looking at a published event reading "$50 - Registration open", said "I '
+      + 'should not be able to create paid events with stripe disabled. How are we gonna know if '
+      + 'someone paid or not." Both price inputs go, and the space where the event price field was '
+      + 'needs a REPLACEMENT STATE rather than a silent gap: a church that came to this form to '
+      + 'charge for a conference has to learn two things in one breath - that Harvest cannot collect '
+      + 'the money, and that registration itself is completely unaffected, so it should publish the '
+      + 'event, take registrations, scan tickets at the door and collect any fee at the door. A '
+      + 'notice that says only the first reads as "events are broken" and a church stops using the '
+      + 'half that still works. It takes `alert` (Alert, AlertTitle, AlertDescription) for that '
+      + 'state, in the DEFAULT variant rather than destructive: nothing failed and the church did '
+      + 'nothing wrong, and THE-342 reserves the red treatment for a read that broke. Load-bearing '
+      + 'rather than cosmetic, for the same reason THE-339 gives above: the primitive carries '
+      + 'role="alert", so "ticket pricing is unavailable" reaches a screen reader and not only an '
+      + 'eye, and it paints from bg-card/text-card-foreground so both palettes resolve it with no '
+      + "colour of this ticket's own. `empty` is REJECTED: it announces an absent collection, and "
+      + 'this is a capability withheld on purpose over a form that is otherwise entirely usable. '
+      + '`badge` is REJECTED: this needs two sentences of instruction and a badge is a label. '
+      + '`field` is REJECTED: there is no longer a control here to caption. `dialog` is REJECTED: '
+      + 'nothing here is a decision that must interrupt a church mid-form. `sonner` is REJECTED: a '
+      + 'toast leaves the screen while the constraint it described is permanent. `switch` is '
+      + 'REJECTED for the gate itself - the church does not choose this, the platform does, and a '
+      + 'toggle would imply otherwise. The `tabs` import THE-308 recorded is untouched and no '
+      + 'primitive was edited.',
+  },
+  {
     file: 'src/components/settings/IntegrationsSection.tsx',
     ticket: 'THE-339',
     why:

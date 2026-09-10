@@ -364,7 +364,15 @@ describe('no new token, component or dependency was added', () => {
     const imports = [...codeOf(EDITED).matchAll(/from ['"][^'"]*\/ui\/([\w-]+)['"]/g)]
       .map((m) => m[1])
       .sort();
-    expect(imports, 'the events screen adopted an unrecorded primitive').toEqual(['tabs']);
+    // APPENDED BY THE-345, NOT SUBSTITUTED - `tabs` (THE-308's month view) is
+    // still required and still asserted. `alert` joins it because the founder's
+    // instruction needs a surface: a church that opens the event form to charge
+    // for a conference has to be told, in the place the price field used to be,
+    // that Harvest cannot collect payments AND that registration is completely
+    // unaffected. The primitive is installed, so a hand-rolled div would be the
+    // defect this list exists to catch; it is on THE-274's RECORDED_ADOPTERS
+    // with that reason. A THIRD import still fails here.
+    expect(imports, 'the events screen adopted an unrecorded primitive').toEqual(['alert', 'tabs']);
   });
 
   it('the four new files import only modules that already existed', () => {
@@ -546,9 +554,46 @@ describe('the existing events list, its write paths and paid-event creation are 
 
   const EVENTS = () => read(EDITED);
 
-  it('handleSave — the event create AND update write — is byte-identical', () => {
+  /**
+   * AN ACCEPTED SET, APPENDED TO BY THE-345, NOT ONE VALUE SUBSTITUTED - the
+   * same shape and the same reason as UNTOUCHED above: CI runs against
+   * `refs/pull/N/merge`, so a merge ref cut before THE-345 landed legitimately
+   * carries the older value, and substituting is what turned `main` red for
+   * everyone once.
+   *
+   * WHAT MOVED, AND WHY IT IS THIS REGION THAT MOVED. THE-345 gates paid events,
+   * and `handleSave` is the create/update write - so this is the one region that
+   * HAD to change for the founder's instruction to be true. One expression:
+   *
+   *     price: Number(form.price) || 0,
+   *   ->
+   *     price: PAID_EVENTS_ENABLED
+   *       ? (Number(form.price) || 0)
+   *       : (view === 'edit' && selected ? selected.price : 0),
+   *
+   * plus the comment explaining it. Nothing else in the region is different -
+   * every other field, the `updateDoc` and `addDoc` calls, the two collection
+   * paths, the `invalidateQueries` keys and the `notifyError` are byte-identical,
+   * which is what the digest is here to say.
+   *
+   * THE EDIT ARM IS NOT `0`, DELIBERATELY. Writing a zero on edit would silently
+   * migrate the founder's existing $50 event the next time an admin changed its
+   * title. Zeroing stored prices is irreversible and is his call, not this
+   * write's - it is reported, not performed.
+   */
+  it('handleSave — the event create AND update write — is at a recorded digest', () => {
     const src = region(EVENTS(), '  const handleSave = async () => {', '    finally { setSaving(false); }\n  };');
-    expect(sha256(src)).toBe('f5edf19edfeb164ae16710a91a85e20174a815468f4cb75ef54a84958e7125fb');
+    const HANDLE_SAVE_ACCEPTED = [
+      // THE-313 — the value this guard was written at.
+      'f5edf19edfeb164ae16710a91a85e20174a815468f4cb75ef54a84958e7125fb',
+      // APPENDED BY THE-345 — the paid-events gate on the price it writes.
+      '7c64f65f459692d5dbdec30737eea8f280718e08311e53db95563c5bf6446f7f',
+    ];
+    const actual = sha256(src);
+    expect(
+      HANDLE_SAVE_ACCEPTED,
+      `handleSave is at ${actual}, which is none of the accepted values — an unrecorded change reached the event create/update write`,
+    ).toContain(actual);
   });
 
   it('confirmDelete is byte-identical', () => {
@@ -572,21 +617,49 @@ describe('the existing events list, its write paths and paid-event creation are 
   });
 
   /**
-   * 🔴 TEST 11 — a paid event can still be created with Stripe disabled.
+   * TEST 11 - REVERSED BY THE-345, DELIBERATELY, AND THE REVERSAL IS THE POINT.
    *
-   * The founder hit this and ACCEPTED it. The behaviour is a NEGATIVE: nothing
-   * in the create path consults a Stripe flag, so `price > 0` and Connect off
-   * still saves. This asserts the absence, in the region that would have to
-   * gain the check for the behaviour to change.
+   * THIS TEST USED TO ASSERT THE DEFECT. It read:
+   *
+   *     it('paid-event creation consults no Stripe flag, so it still works
+   *         with Stripe disabled', ...)
+   *       expect(save.toLowerCase()).not.toContain('stripe');
+   *       expect(save).toContain('price: Number(form.price) || 0,');
+   *
+   * and it was correct to, at the time: THE-313 recorded that the founder had
+   * SEEN paid events working with Stripe off and accepted it, so the absence of
+   * a gate was a deliberate state worth pinning against accidental change.
+   *
+   * He has now un-accepted it, looking at a published event reading
+   * "$50 - Registration open": "I should not be able to create paid events with
+   * stripe disabled. How are we gonna know if someone paid or not." THE-345 adds
+   * the gate, so the negative this pinned is false and the test that asserts it
+   * has to go with it.
+   *
+   * WHY IT IS REWRITTEN RATHER THAN DELETED, and why it is not left as it was.
+   * THE-345's gate is named `PAID_EVENTS_ENABLED`, not `STRIPE_CONNECT_ENABLED`
+   * - two propositions, two lines, for the reasons `lib/paid-events-feature.ts`
+   * records - so EVERY ORIGINAL ASSERTION ABOVE WOULD STILL PASS UNCHANGED. The
+   * region names no Stripe, the screen names no `stripe_connect_enabled`, and
+   * only the `price:` literal moved. A test whose name says a paid event can
+   * still be created, sitting green over a screen where it cannot, is worse than
+   * no test: it is a false record of what this repo believes. So the assertions
+   * are inverted to the claim that is now true, in the same region.
    */
-  it('paid-event creation consults no Stripe flag, so it still works with Stripe disabled', () => {
+  it('paid-event creation IS gated now - THE-345 reversed THE-313\'s accepted state', () => {
     const save = region(EVENTS(), '  const handleSave = async () => {', '    finally { setSaving(false); }\n  };');
-    expect(save.toLowerCase()).not.toContain('stripe');
-    expect(save).not.toContain('connect');
-    // The price goes straight into the document, unguarded.
-    expect(save).toContain('price: Number(form.price) || 0,');
-    // And the whole screen still names no Stripe gate.
-    expect(codeOf(EDITED).toLowerCase()).not.toContain('stripe_connect_enabled');
+    // The unguarded write THE-313 pinned is gone.
+    expect(save, 'the price still goes into the document unguarded')
+      .not.toContain('price: Number(form.price) || 0,\n');
+    // And what replaced it consults the gate, in the create/update write itself.
+    expect(save, 'handleSave does not consult the paid-events gate')
+      .toContain('PAID_EVENTS_ENABLED');
+    // STILL TRUE AND STILL WORTH SAYING: the gate is its own proposition. This
+    // screen must not reach for Stripe Connect's flag, whose account is closed
+    // as rejected.fraud and which is a different surface entirely.
+    expect(save.toLowerCase(), 'handleSave reaches for Stripe').not.toContain('stripe');
+    expect(codeOf(EDITED).toLowerCase(), 'the screen reaches for the Stripe Connect flag')
+      .not.toContain('stripe_connect_enabled');
   });
 
   it('the events list still reads the same collection, the same way', () => {

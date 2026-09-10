@@ -1231,6 +1231,24 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
     // and no per-screen measure, and its two new notices render through the
     // installed ui/alert primitive rather than a hand-rolled box. AdminDashboard
     // stays EXEMPT and un-re-recorded, exactly as the note above requires.
+    //
+    // AdminCourses.tsx was RE-RECORDED AGAIN by THE-345, by the same treatment
+    // and for a reason equally outside this batch's subject. The founder: "In
+    // courses I only adopted one course in shadcn tenant from library but it
+    // says I used 2 in total." An adoption POINTER whose library course the
+    // platform has deleted was dropped from the rendered list and still counted
+    // in `adopted.length`, so a church permanently lost a plan slot to a course
+    // that does not exist. The header figure, the tab labels and the plan cap
+    // now count adoptions that RESOLVE, falling back to the raw pointer count
+    // while the by-id read is unfinished or failed - so the cap still fails
+    // CLOSED and a rejected read still surfaces as a failure rather than as a
+    // smaller number. NO WIDTH, HEIGHT OR GAP MOVED: the screen still renders
+    // through FORM_CONTAINER, gained no container class and no per-screen
+    // measure, and the one notice it adds renders through the installed
+    // ui/alert primitive rather than a hand-rolled box. The single control that
+    // notice carries takes the shared CONTROL_DENSITY.action token above sm and
+    // a 44px floor below it, so it spends no new number either. AdminDashboard
+    // stays EXEMPT and un-re-recorded.
     const moved = Object.entries(SOURCE.digests)
       .filter(([f]) => existsSync(path.join(SRC, f)))
       .filter(([f]) => !EXEMPT_FILES.includes(f))

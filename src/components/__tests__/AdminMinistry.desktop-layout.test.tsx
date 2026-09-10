@@ -818,6 +818,73 @@ const TABS_UNPREFIXED_HEIGHTS: readonly string[] = [
 ];
 
 /**
+ * THE-345 - every class the `alert` primitive emits on this screen, and the one
+ * reason they share. Exactly the shape TABS_PRIMITIVE_* uses directly above, for
+ * exactly the same situation one ticket later.
+ *
+ * THE-345 gates paid event ticketing behind PAID_EVENTS_ENABLED after the
+ * founder said "I should not be able to create paid events with stripe
+ * disabled." The event form's "Ticket Price ($)" input goes, and an `Alert`
+ * takes its place telling the church that Harvest cannot collect payments AND
+ * that registration is completely unaffected. These classes come from
+ * `ui/alert.tsx`; this ticket spells none of them, and the test below asserts
+ * that against the primitive's own source rather than trusting this sentence.
+ *
+ * Scoped to AdminEvents, the only screen in SCREENS that adopts `alert`. A
+ * second screen adopting it would fail here and have to say so, which is the
+ * property that makes this a record rather than a hole.
+ */
+const ALERT_PRIMITIVE_REASON =
+  'THE-345 - emitted by the `alert` primitive (Alert/AlertTitle/AlertDescription), ' +
+  'not spelled by this ticket, in the same category as the `tabs` classes THE-308 ' +
+  'documented above. The paid-events notice mounts INSIDE the event form where the ' +
+  'price input was, so it reaches the phone layer the baseline was recorded without. ' +
+  'alert.tsx is unchanged - its digest is pinned in THE-332.nav-rail.test.tsx - and ' +
+  'none of these classes hardcodes a colour: each colour-bearing one resolves through ' +
+  'a theme token, so both palettes hold.';
+
+const ALERT_PRIMITIVE_CLASSES: readonly string[] = [
+  "*:[svg]:text-current",
+  "[&_a]:hover:text-foreground",
+  "bg-card",
+  "md:text-pretty",
+  "text-balance",
+  "text-card-foreground",
+  "text-left",
+];
+
+/** The colour-bearing subset, for the additions sweep. */
+const ALERT_COLOUR_CLASSES: readonly string[] = [
+  "*:[svg]:text-current",
+  "[&_a]:hover:text-foreground",
+  "bg-card",
+  "text-card-foreground",
+];
+
+/**
+ * THE-345 - the one colour token that LEAVES AdminEvents, recorded rather than
+ * re-baselined.
+ *
+ * `text-field-600` was spelled by exactly one element: the "Free" half of the
+ * event card's price line, `ev.price > 0 ? '$50' : 'Free'`. THE-345 quotes no
+ * price at all while no payment rail exists - "$50" is the lie the ticket
+ * exists to fix, and "Free" is a different one, because the church did not
+ * decide the conference was free - so the whole span stops rendering and its
+ * token goes with it.
+ *
+ * A REMOVAL, NOT AN ADDITION, so ALLOWED_ADDITIONS cannot express it. Recorded
+ * here, narrowly and by name: every other baseline token on every screen is
+ * still required element-wise, and a SECOND disappearance still fails.
+ */
+const THE_345_REMOVED_COLOURS: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = {
+  // PER VIEW, not per screen. `text-field-600` disappears from the LIST, where
+  // the price line lives; the attendees view spells it for its own reasons and
+  // still must. A record scoped to the screen would have subtracted it there too
+  // and quietly exempted a token that never moved.
+  AdminEvents: { default: ['text-field-600'] },
+};
+
+/**
  * THE-308 — the TWENTY-FIVE colour-bearing classes `tabs` emits.
  *
  * Same provenance and the same proof as the heights above: every one appears
@@ -936,6 +1003,11 @@ describe('the sub-640px rendering of each file is unchanged', () => {
     ...Object.fromEntries(Object.entries(NON_BINDING_CAPS)
       .map(([t, px]) => [t, `a ${px}px cap, above the 639px top of the phone range`])),
     'mx-auto': 'auto side margins on a block whose width is auto resolve to 0 — it centred nothing until a cap gave it something to centre, and the cap is now sm:-gated with it',
+    // APPENDED BY THE-345, NOTHING ABOVE REMOVED OR REWRITTEN.
+    'text-field-600':
+      "THE-345 - the 'Free' half of the event card's price line, and it is REMOVED ON PURPOSE. events/{id}.price is quoted on four screens and charged by nothing: it is not read by /api/event-registration/submit, which totals ticketTypes[].price, and not by PublicEventRegistration, which does the same. So a church typed 50, published, and every one of those screens told a member the conference cost $50 while the flow confirmed them for free. While no payment rail exists eventPriceLabel() returns null and the whole span stops rendering, taking its token with it - '$50' is the lie the ticket exists to fix and 'Free' is a different one, since the church did not decide the conference was free. Phone-neutral by construction: nothing that remains changes size, spacing or layout, because an element that does not render cannot bind a rule. The stored price is untouched.",
+    'lucide-dollar-sign':
+      "THE-345 - the `DollarSign` glyph class, and it goes for the same reason and in the same edit as text-field-600 directly above. That icon sits INSIDE the price span on the lg event card; while no payment rail exists the span does not render, so lucide emits no <svg> and no identifier class. A lucide-* class carries no size, colour, spacing or layout - Tailwind defines no rule for it - so it could not have bound a phone even while it was there, which is exactly what THE-298 documented when it ADDED one to this same list. The DollarSign import stays in the file and the icon returns with the switch.",
   };
 
   /**
@@ -958,6 +1030,10 @@ describe('the sub-640px rendering of each file is unchanged', () => {
    * The list is still CLOSED: a second addition, or any token that is a real
    * utility, still fails.
    */
+  /** THE-345 - one reason, twenty-two tokens, one primitive. See ALERT_PRIMITIVE_REASON. */
+  const ALERT_MOBILE_REASON =
+    "THE-345 - emitted by the `alert` primitive (Alert/AlertTitle/AlertDescription), not spelled by this ticket, in the same category as the `tabs` classes THE-308 documented above and the lucide-* glyph classes THE-313 and THE-317 documented before it. The founder, looking at a published event reading '$50 - Registration open': 'I should not be able to create paid events with stripe disabled. How are we gonna know if someone paid or not.' So the event form's Ticket Price input is gone behind PAID_EVENTS_ENABLED and an Alert stands where it was, telling the church that Harvest cannot collect payments AND that registration, the QR code, check-in, the waitlist, discount codes and the CSV export are all completely unaffected - a notice that said only the first would read as 'events are broken'. It mounts INSIDE the form, so it reaches the phone layer this baseline was recorded without. alert.tsx is unchanged and its digest is pinned in THE-332.nav-rail.test.tsx.";
+
   const ALLOWED_ADDITIONS: Record<string, string> = {
     'lucide-chart-column':
       "THE-298 — the answers button's icon identifier. lucide names every icon " +
@@ -1053,6 +1129,63 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       'THE-313 — the same, for the `Plus` icon on the Start and Add item ' +
       'buttons. `AdminEvents` already renders `Plus` elsewhere; this is the same ' +
       'glyph reaching a surface the baseline was recorded without.',
+
+    /* ── THE-345 — the paid-events notice, on the event FORM view ──
+     *
+     * APPENDED, NOT SUBSTITUTED, which is this list's own stated rule and the
+     * one #434 broke when it made main red for everyone. Every token below comes
+     * from ONE primitive and shares ONE reason, so the reason is declared once
+     * and referenced, exactly as TABS_PRIMITIVE_REASON is above.
+     *
+     * The soundness of that claim is asserted, not asserted-in-prose: section
+     * "every recorded alert class is verbatim in ui/alert.tsx" reads the
+     * primitive's own source, so a hand-written class smuggled onto this list to
+     * silence a failure goes red naming itself.
+     */
+    "*:[svg:not([class*='size-'])]:size-4":
+      ALERT_MOBILE_REASON,
+    '*:[svg]:row-span-2':
+      ALERT_MOBILE_REASON,
+    '*:[svg]:text-current':
+      ALERT_MOBILE_REASON,
+    '*:[svg]:translate-y-0.5':
+      ALERT_MOBILE_REASON,
+    'bg-card':
+      ALERT_MOBILE_REASON,
+    'gap-0.5':
+      ALERT_MOBILE_REASON,
+    'group/alert':
+      ALERT_MOBILE_REASON,
+    'has-[>svg]:gap-x-2':
+      ALERT_MOBILE_REASON,
+    'has-[>svg]:grid-cols-[auto_1fr]':
+      ALERT_MOBILE_REASON,
+    'has-data-[slot=alert-action]:pr-18':
+      ALERT_MOBILE_REASON,
+    'has-data-[slot=alert-action]:relative':
+      ALERT_MOBILE_REASON,
+    'px-2.5':
+      ALERT_MOBILE_REASON,
+    'relative':
+      ALERT_MOBILE_REASON,
+    'text-card-foreground':
+      ALERT_MOBILE_REASON,
+    'text-left':
+      ALERT_MOBILE_REASON,
+    '[&_a]:hover:text-foreground':
+      ALERT_MOBILE_REASON,
+    '[&_a]:underline':
+      ALERT_MOBILE_REASON,
+    '[&_a]:underline-offset-3':
+      ALERT_MOBILE_REASON,
+    'font-medium':
+      ALERT_MOBILE_REASON,
+    'group-has-[>svg]/alert:col-start-2':
+      ALERT_MOBILE_REASON,
+    '[&_p:not(:last-child)]:mb-4':
+      ALERT_MOBILE_REASON,
+    'text-balance':
+      ALERT_MOBILE_REASON,
 
     /* ── THE-317 — the volunteer rota's entry point, on the event LIST view ──
      *
@@ -1526,9 +1659,56 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
    * THE-313 recorded — a stronger statement about a file that legitimately
    * changed than any whole-file hash can make.
    */
+  /**
+   * RE-AIMED AGAIN BY THE-345 - 935 -> 1004 STRIPPED LINES, AND WHAT MOVED IS
+   * NAMED. Previous pins, kept here so nothing is lost:
+   *
+   *     strippedSha:   4d0fdf8224232f191ad29049306d567bf0e2292e0478f3838142a1486cc80d6f
+   *     strippedLines: 919      (THE-308, the month view)
+   *     strippedSha:   78b5eee8c919f1ae379ab35a8a6443af169cae028420f5a0511cffec699e1f6d
+   *     strippedLines: 935      (THE-326, service planning split out)
+   *
+   * WHY RE-RECORDED RATHER THAN REVERSED. THE-251's note above sets out the two
+   * honest options and says which is weaker; THE-313, THE-317 and THE-324 each
+   * took the stronger one because their edits were two to five exact strings.
+   * THE-345's is not: it gates BOTH price inputs, replaces one of them with an
+   * Alert, gates three price QUOTES and the CSV Amount cell, and changes the
+   * price expression inside `handleSave`. Reversing that by exact string would
+   * put a large blob of duplicated production source in this file - unreviewable
+   * and red on the next comment rewording - which THE-251 names as a worse guard
+   * than none.
+   *
+   * WHY THE COUNT WENT UP BY 69 WHEN THE TICKET REMOVES TWO INPUTS.
+   * `stripPresentation` strips `//` comments and blank lines; it does NOT strip
+   * the `{/* ... *\/}` JSX comment blocks this repo writes its reasons in, and
+   * this ticket leaves one at every gate so a reader of the event editor is told
+   * why the price field is absent instead of finding a silent gap. 46 of the
+   * stripped lines are that prose. The rest is the ternaries and the Alert.
+   *
+   * WHAT THIS SECTION IS ACTUALLY FOR - "no ticket price, donation amount, fee
+   * or checkout call changed" - IS EXACTLY WHAT THIS TICKET CHANGES, at the
+   * founder's instruction: "I should not be able to create paid events with
+   * stripe disabled. How are we gonna know if someone paid or not." So the
+   * re-record is the ticket, not collateral. The three assertions that carry the
+   * claim underneath it are untouched and still pass unedited:
+   *
+   *   - `firestorePathsOf` below is unchanged - this ticket adds no read and no
+   *     write, and the money is written by the server either way.
+   *   - `handleSave` and `confirmDelete` stay pinned BY REGION DIGEST in
+   *     `the-308-guards.test.ts` and `the-313-guards.test.ts`. `confirmDelete`
+   *     is BYTE-IDENTICAL; `handleSave` moved by one expression and both suites
+   *     record the new value as an APPENDED accepted set, so the exact shape of
+   *     the change is reviewable rather than blessed wholesale.
+   *   - the event editor's money field is still asserted by label directly
+   *     below, inverted to the claim that is now true and requiring the notice
+   *     that replaced it.
+   *
+   * Update `THE_308_EVENTS` only for a deliberate, reviewed change to
+   * AdminEvents, and say which ticket in the same breath.
+   */
   const THE_308_EVENTS = {
-    strippedSha: '78b5eee8c919f1ae379ab35a8a6443af169cae028420f5a0511cffec699e1f6d',
-    strippedLines: 935,
+    strippedSha: '8fd9437c2ea58d7c3ea45ade0f238ea5605803c0fd0eb3243c60cdd751fea42d',
+    strippedLines: 1004,
   };
 
   it('changes nothing in AdminEvents outside a className, THE-308', () => {
@@ -1617,11 +1797,32 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
     expect(firestorePathsOf(read('AdminFundraising.tsx'))).toEqual(PRE_PR.AdminFundraising.firestorePaths);
   });
 
-  it('keeps every money-bearing field on the event editor, by its label', async () => {
+  /**
+   * RE-AIMED BY THE-345, WHICH REMOVES THE FIELD THIS ASSERTED.
+   *
+   * It used to require the "0 = free" placeholder - the event's Ticket Price
+   * input - on the grounds that a money-bearing field must not vanish in a
+   * presentation pass. That premise is right and is kept; what changed is that
+   * THE-345 removes the field ON PURPOSE, at the founder's instruction, because
+   * `events/{id}.price` is quoted on four screens and charged by nothing.
+   *
+   * So the claim inverts rather than relaxes. The field must now be ABSENT while
+   * `PAID_EVENTS_ENABLED` is false, and - this is the half that keeps the
+   * original guard's teeth - the notice that replaces it must be present, so a
+   * later pass cannot quietly delete both and leave a church with no explanation
+   * of where pricing went. Capacity is asserted exactly as before: it is NOT
+   * money-bearing, it is independent of price, and a church running a free
+   * conference still caps its seats.
+   */
+  it('the event editor gates its price field and says so, THE-345', async () => {
     const { form } = await surfaces('AdminEvents');
     const placeholders = Array.from(form.querySelectorAll('input')).map((i) => i.getAttribute('placeholder'));
-    expect(placeholders).toContain('0 = free');       // Ticket Price ($)
-    expect(placeholders).toContain('e.g. 100');       // Capacity
+    expect(placeholders, 'the event price input is back with no rail to collect it')
+      .not.toContain('0 = free');
+    expect(placeholders, 'capacity went with the price - it is independent of it')
+      .toContain('e.g. 100');
+    expect(form.querySelector('[data-paid-events-gate="form"]'),
+      'the price field is gone and nothing tells the church why').toBeTruthy();
   });
 
   it('keeps the pledge amount field on the fundraising screen, by its label', async () => {
@@ -1696,10 +1897,25 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
 
   for (const name of SCREENS) {
     it(`renders exactly the baseline colour tokens in ${name}`, async () => {
-      const excluded = new Set(TABS_PRIMITIVE_CLASSES);
+      // THE-345 - `alert` joins `tabs` in the exclusion, on the same terms and
+      // proved against the primitive's own source below. The recorded REMOVAL is
+      // subtracted from the expectation rather than from the fixture:
+      // `ministry-<screen>.json` is the pre-PR "before" and re-recording it
+      // would delete the claim instead of updating it.
+      // SCOPED TO AdminEvents, exactly as ALERT_PRIMITIVE_REASON claims. `alert`
+      // emits generic tokens - `bg-card`, `text-left`, `text-balance` - that
+      // four of these five screens legitimately spell for themselves, so a
+      // global exclusion would quietly delete them from those baselines and turn
+      // this guard into a hole on every screen but the one it is for.
+      const excluded = new Set(
+        name === 'AdminEvents'
+          ? [...TABS_PRIMITIVE_CLASSES, ...ALERT_PRIMITIVE_CLASSES]
+          : TABS_PRIMITIVE_CLASSES,
+      );
       for (const [view, c] of Object.entries(await surfaces(name))) {
+        const removed = new Set(THE_345_REMOVED_COLOURS[name]?.[view] ?? []);
         expect(colourTokens(c).filter((t) => !excluded.has(t)), `${name}/${view} colours moved`)
-          .toEqual(BASELINE[name]![view].colours);
+          .toEqual(BASELINE[name]![view].colours.filter((t: string) => !removed.has(t)));
       }
     });
   }
@@ -1709,7 +1925,10 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
     // twenty-five `tabs` emits, on AdminEvents alone. A TWENTY-SIXTH still
     // fails here, on this screen or any other, and the list stays element-wise
     // — it is never relaxed to a count.
-    const recorded = new Set(TABS_COLOUR_CLASSES);
+    // THE-345 appends `alert`'s colour-bearing classes beside THE-308's `tabs`
+    // ones. Both are scoped to AdminEvents and both stay element-wise - neither
+    // is ever relaxed to a count.
+    const recorded = new Set([...TABS_COLOUR_CLASSES, ...ALERT_PRIMITIVE_CLASSES]);
     const added = new Set<string>();
     for (const name of SCREENS) {
       for (const [view, c] of Object.entries(await surfaces(name))) {
@@ -1735,6 +1954,19 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
     for (const t of [...TABS_UNPREFIXED_HEIGHTS, ...TABS_COLOUR_CLASSES]) {
       expect(tabsSrc.includes(t), `${t} is recorded as a tabs class but is not in ui/tabs.tsx`)
         .toBe(true);
+    }
+    // THE-345 - the same proof for `alert`. A hand-written class added to
+    // either alert list to silence a failure is not in `alert.tsx`, and this
+    // goes red naming it.
+    const alertSrc = readFileSync(path.join(SRC, 'ui/alert.tsx'), 'utf8');
+    for (const t of [...ALERT_PRIMITIVE_CLASSES, ...ALERT_COLOUR_CLASSES]) {
+      expect(alertSrc.includes(t), `${t} is recorded as an alert class but is not in ui/alert.tsx`)
+        .toBe(true);
+    }
+    for (const t of ALERT_COLOUR_CLASSES) {
+      expect(t, `${t} hardcodes a hex colour`).not.toMatch(/#[0-9a-fA-F]{3,8}/);
+      expect(t, `${t} names a numbered palette shade`)
+        .not.toMatch(/-(?:red|blue|green|sky|amber|gold|wheat|slate|zinc|gray|grey|emerald|rose|violet|indigo)-\d{2,3}/);
     }
     for (const t of TABS_COLOUR_CLASSES) {
       expect(t, `${t} hardcodes a hex colour`).not.toMatch(/#[0-9a-fA-F]{3,8}/);

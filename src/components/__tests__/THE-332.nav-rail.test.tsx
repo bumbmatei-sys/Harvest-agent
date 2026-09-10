@@ -688,7 +688,12 @@ describe('THE-332 · what this ticket may not disturb', () => {
        digest. It is still pinned, by the register, and this ticket records no
        rules entry at all because it changes none. */
     for (const [file, digest] of Object.entries(NOT_OURS)) {
-      expect(sha256(read(file)), `${file} is not this ticket's to change`).toBe(digest);
+      const accepted = typeof digest === 'string' ? [digest] : digest;
+      const actual = sha256(read(file));
+      expect(
+        accepted,
+        `${file} is at ${actual}, which is none of the accepted values - so an unrecorded change reached a file THE-332 does not own`,
+      ).toContain(actual);
     }
   });
 });
@@ -741,11 +746,31 @@ const PRIMITIVE_DIGESTS: Record<string, string> = {
   'toggle.tsx': '290d2cd01c768d1e3c894bfebcf9c3d1532191ae7ec1e48da1e405dab0a95c4c',
   'tooltip.tsx': '2cea2294d4947b88d815860f64e0b5e0eb47a59bde47cfd194aac2230c923865',
 };
-const NOT_OURS: Record<string, string> = {
+const NOT_OURS: Record<string, string | readonly string[]> = {
   'firestore.indexes.json': '8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0',
   'src/app/layout.tsx': 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f',
   'src/components/AdminCommunity.tsx': '10333c22ed0c6f98d233b9f057f8da260a76f17682451c38c52f694e77fddc7a',
-  'src/components/AdminEvents.tsx': 'edf9088a9c7aff6b3f5d672207cab0f50c1e1428490b1bee61685f55313dc508',
+  /* AN ACCEPTED SET, APPENDED TO, NOT ONE VALUE SUBSTITUTED - the same shape and
+     the same reason as MORE_GROUPS_ACCEPTED above. CI runs against
+     `refs/pull/N/merge`, and a merge ref cut before THE-345 landed legitimately
+     carries the older value, so substituting is what turned `main` red for
+     everyone once. THE-332's value stays accepted and a digest that is NEITHER
+     still fails, which is the whole job of this entry.
+
+     THE-345 legitimately changes AdminEvents.tsx, and it arrives through a
+     founder bug report - which is exactly the path this guard exists to
+     intercept. Looking at a published event reading "$50 - Registration open":
+     "I should not be able to create paid events with stripe disabled. How are we
+     gonna know if someone paid or not." The screen now hides both price inputs
+     behind `PAID_EVENTS_ENABLED`, quotes no price it cannot collect, and reports
+     an uncollected CSV amount as a word rather than a figure. NOTHING THE-332
+     OWNS MOVED: this file spells no nav group, no rail entry and no flyout. */
+  'src/components/AdminEvents.tsx': [
+    // THE-332 - the value this guard was written at.
+    'edf9088a9c7aff6b3f5d672207cab0f50c1e1428490b1bee61685f55313dc508',
+    // APPENDED BY THE-345 - the paid-event gate.
+    '9c9eaabe1d7b5d202d623d4655328332025d425c810e102ad3d49aee775e86b4',
+  ],
   'src/components/AdminServices.tsx': '17f508718d3c6b1ad016b9fb6be2c241629421705af4a9c0966b02739eba74ae',
   'src/components/AdminSms.tsx': 'f48ae4b8b6deff201e3767e5812bf7045af632a64c88384e5a91f285c47caab2',
   'src/components/UserMessages.tsx': 'e6998c91739caf2605538a9f12f14eee034c93cb6668713cd619e925addb8e61',
