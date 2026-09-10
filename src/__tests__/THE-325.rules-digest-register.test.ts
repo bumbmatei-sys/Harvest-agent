@@ -199,7 +199,21 @@ const filesSpelling = (digest: string): string[] =>
  * accepted set through this module like every other pinner, so a real rules
  * change still costs exactly one edit. Nothing above is removed and no
  * accepted value is widened. */
-const PINNING_SUITES = 65;
+/* 🔴 THE-349 — Google sign-up created a user who belonged to no church. 65 -> 66.
+ * Its suite pins the rules for the reason THE-348's did: it FOUND something in
+ * them and deliberately did not change it. The repair a stranded member needs
+ * is a `tenantId` write, and the `users` update rule refuses one to the member
+ * (`tenantId` is in the self-edit blocklist) AND to their own church's admin
+ * (immutable on that branch) — only `isSuperAdmin()` or the Admin SDK can make
+ * it. Loosening that would open a tenant-hopping surface in a file that
+ * AUTO-DEPLOYS on merge with no emulator tests, so the rule is ASSERTED as it
+ * stands — the suite goes red the day it moves and the console repair written
+ * into that PR becomes stale — and the repair is reported to the founder
+ * instead of shipped. THE-349 records NO rules digest and reaches the accepted
+ * set through this module like every other pinner, so a real rules change still
+ * costs exactly one edit. Nothing above is removed and no accepted value is
+ * widened. */
+const PINNING_SUITES = 66;
 
 /**
  * A digest no ticket has recorded and none ever will — the planted change.

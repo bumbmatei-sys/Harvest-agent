@@ -4,10 +4,24 @@ import { auth, db } from '../firebase';
 import { signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { isNonTenantSubdomain, isAffiliateHost } from '../utils/non-tenant-subdomains';
+import { isAffiliateHost } from '../utils/non-tenant-subdomains';
+import {
+  readAuthTenantFromBrowser,
+  tenantIdToWrite,
+  TENANT_UNRESOLVED_MESSAGE,
+  TENANT_UNRESOLVED_TITLE,
+  type AuthTenantResolution,
+} from '../utils/auth-tenant-resolution';
+import {
+  browserIsIOSHomeScreenApp,
+  emailAuthFailureMessage,
+  googleAuthFailureMessage,
+  homeScreenGoogleMessage,
+} from '../utils/auth-failure-copy';
 import { AFFILIATE_PROGRAM_ENABLED } from '../utils/plan-features';
 import { useTenant } from '../contexts/TenantContext';
-import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, ArrowLeft, ShieldAlert } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { PRIVACY_URL, TERMS_URL } from '../lib/legal-links';
 import {
@@ -196,7 +210,33 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [newsletter, setNewsletter] = useState(true);
-  const [tenantId, setTenantId] = useState<string | null>(null);
+  /**
+   * 🔴 THE-349 — the tenant this signup belongs to, as a THREE-way answer.
+   *
+   * Was `useState<string | null>(null)` filled in by an effect, and written as
+   * `tenantId: tenantId || null` on both create paths. That `|| null` could not
+   * tell "this account belongs to no ministry" from "this account belongs to a
+   * ministry I could not name", and wrote null for both — which is how a real
+   * member ended up in Firestore with `tenantId: null`, no `tenantId` claim,
+   * and therefore no dashboard, no CRM row, no prayer request and no posts.
+   * `unresolved` is the answer that is never written; the handlers refuse.
+   *
+   * ⚠️ RESOLVED DURING RENDER, NOT IN AN EFFECT. `isAffiliate` above already
+   * reads `window` here for the same reason — the SPA is client-only (App is
+   * imported with ssr:false) and the hostname is stable for the session — and
+   * doing it in an effect meant the value was null for the whole first render.
+   * A lazy initialiser removes that window entirely rather than racing it.
+   */
+  const [tenantScope, setTenantScope] = useState<AuthTenantResolution>(readAuthTenantFromBrowser);
+  /**
+   * The slug for the paths that legitimately take `string | null`: the
+   * member-cap pre-flight, where null still means "no tenant, no cap applies"
+   * (D7), exactly as before. `unresolved` never reaches a write — the handlers
+   * refuse first — so it is safe for it to read as null HERE and only here.
+   */
+  const tenantId = tenantScope.kind === 'tenant' ? tenantScope.tenantId : null;
+  /** True where creating an account would orphan the person. Blocks the create. */
+  const tenantUnresolved = tenantScope.kind === 'unresolved';
   const [isChurchSignup, setIsChurchSignup] = useState(false);
   const { branding, tenantId: ctxTenantId, tenantName, tenantPlan } = useTenant();
   const isSubdomain = !!ctxTenantId;
@@ -225,21 +265,25 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
       : (isSubdomain && tenantName ? tenantName : 'Harvest');
 
   useEffect(() => {
-    // Derive tenantId from hostname (not spoofable) — cookie is fallback for custom domains
     const hostname = window.location.hostname;
-    const parts = hostname.split('.');
-    // Non-tenant subdomains (www/app/admin/affiliate) are platform aliases, not
-    // tenants — skip them here so the auth screen never derives a bogus tenantId.
-    if (parts.length >= 3 && (hostname.endsWith('.theharvest.app') || hostname.endsWith('.vercel.app')) && !isNonTenantSubdomain(parts[0])) {
-      setTenantId(parts[0]);
-    } else {
-      // Custom domain (or non-tenant subdomain) — use cookie (set server-side by middleware via resolve-domain)
-      const cookies = document.cookie.split(';');
-      const tenantCookie = cookies.find(c => c.trim().startsWith('tenantId='));
-      if (tenantCookie) {
-        setTenantId(tenantCookie.split('=')[1].trim());
-      }
-    }
+    /**
+     * 🔴 THE-349 — the derivation that used to live here now lives in
+     * `resolveAuthTenant()`, and the state above is seeded from it during
+     * render. Re-read once on mount so a screen that first rendered without a
+     * `window` (a server render, a test that sets its URL late) still lands on
+     * the browser's real answer rather than keeping the `unresolved` seed.
+     *
+     * ⚠️ TWO THINGS CHANGED BESIDES THE SHAPE, and both were divergences from
+     * the resolver `non-tenant-subdomains.ts` names as the single source of
+     * truth. A custom domain with no `tenantId=` cookie is now `unresolved`
+     * rather than null — the cookie is set by nothing at all (`src/middleware.ts`
+     * rate-limits `/api/*` and does nothing else; see `auth-tenant-resolution`
+     * for the whole finding), so that branch WAS the orphan factory. And a `*.vercel.app`
+     * preview no longer has its first label read as a tenant slug: every other
+     * resolver answers null there, and a signup was being stamped into a
+     * ministry that does not exist.
+     */
+    setTenantScope(readAuthTenantFromBrowser());
     // Check if arriving from presentation site "Start Ministry" button. On the
     // affiliate host the subdomain implies affiliate intent (single-role, hard
     // boundary), so a stray ?signup=church never flips this screen into the
@@ -340,6 +384,38 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
       setError('');
       setEmailInUse(false);
 
+      /**
+       * 🔴 THE-349 — refuse BEFORE Firebase when the host names no ministry.
+       *
+       * On the signup path this lands before a Firebase Auth user exists at
+       * all, which is the same posture as the member-cap pre-flight below and
+       * for the same reason: an account nobody can use is worse than a
+       * refusal. On the sign-in path the button belongs to an EXISTING member
+       * — including one on a live custom domain — so it is not blocked here;
+       * the create branch below refuses instead, and only the create.
+       */
+      if (!isLogin && tenantUnresolved) {
+        setSuccess('');
+        setError(TENANT_UNRESOLVED_MESSAGE);
+        setLoading(false);
+        return;
+      }
+
+      /**
+       * 🔴 THE-349 — "it kicked him out", and then nothing, forever.
+       *
+       * Inside an iPhone home-screen app `signInWithPopup` hands the URL to
+       * Safari and returns a popup with no window handle, so the promise never
+       * settles and no `catch` can speak. Refusing here is the only place a
+       * message can be produced at all. See `auth-failure-copy.ts`.
+       */
+      if (browserIsIOSHomeScreenApp()) {
+        setSuccess('');
+        setError(homeScreenGoogleMessage(typeof window === 'undefined' ? '' : window.location.hostname));
+        setLoading(false);
+        return;
+      }
+
       // THE-201 — the pre-flight, on the SIGNUP path only. In `isLogin` mode
       // this button reads "Continue with Google" and belongs to an existing
       // member, who is never gated (D3). Asking before the popup is what keeps
@@ -375,13 +451,33 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
       }
 
       if (!userSnap.exists()) {
+        /**
+         * 🔴 THE-349 — THE ORPHAN GATE, and it is on the CREATE alone.
+         *
+         * This is the branch that stamps a `tenantId` onto a brand-new member,
+         * and the only branch that can orphan one. A sign-in by somebody who
+         * already has a document never reaches it, so an existing member on a
+         * custom domain is untouched by this. Nothing is written: the Firebase
+         * Auth user exists, which `App.tsx` routes to `/onboarding`, where
+         * `writeUserDoc` refuses in the same words rather than creating the
+         * orphan there instead.
+         */
+        if (tenantUnresolved) {
+          setSuccess('');
+          setError(TENANT_UNRESOLVED_MESSAGE);
+          return;
+        }
         try {
           const userData: any = {
             uid: result.user.uid,
             email: result.user.email,
             createdAt: new Date().toISOString(),
             role: 'user',
-            tenantId: tenantId || null,
+            // 🔴 THE-349 — NOT `tenantId || null`. `tenantIdToWrite` throws on
+            // an unresolved tenant rather than quietly writing null, so this
+            // line cannot regress into the bug by itself; the gate above is
+            // what keeps it from ever being asked.
+            tenantId: tenantIdToWrite(tenantScope),
             newsletter: newsletter,
             termsAccepted: true,
           };
@@ -467,13 +563,15 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
       }
     } catch (err: any) {
       console.error(err);
-      if (err.code === 'auth/popup-closed-by-user') {
-        setError('Sign-in was cancelled.');
-      } else {
-        // Same one-line fallback fix as handleEmailAuth below: no raw Firebase
-        // wording reaches the screen.
-        setError('Failed to sign in with Google. Please try again.');
-      }
+      /**
+       * 🔴 THE-349 — named per cause. `auth/account-exists-with-different-
+       * credential` is the one this ticket was written for: the reported member
+       * made a password account with the same address after Google failed, so
+       * every Google press since collides with it and "Please try again" is
+       * advice that can never come true. `auth-failure-copy.ts` carries the
+       * wording and the reasoning for each branch.
+       */
+      setError(googleAuthFailureMessage(err?.code ?? ''));
     } finally {
       setLoading(false);
     }
@@ -553,6 +651,21 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
           return;
         }
 
+        /**
+         * 🔴 THE-349 — the same refusal as the Google path, in the same place
+         * and for the same reason. This is the branch the reported member
+         * eventually took ("he created an account with email/password instead
+         * — that worked"), and on a host whose ministry cannot be named it
+         * "works" by producing exactly the document in the screenshot. Before
+         * any Firebase Auth call: no Auth user, no `users` doc, nothing to
+         * clean up, and a sentence the person can act on.
+         */
+        if (tenantUnresolved) {
+          setError(TENANT_UNRESOLVED_MESSAGE);
+          setLoading(false);
+          return;
+        }
+
         // THE-201 — ask whether this ministry can take one more account BEFORE
         // any Firebase Auth call fires. On the email path the signup intent is
         // unambiguous, so the refusal lands before an account exists at all: no
@@ -575,7 +688,8 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
             displayName: email.split('@')[0],
             createdAt: new Date().toISOString(),
             role: 'user',
-            tenantId: tenantId || null,
+            // 🔴 THE-349 — NOT `tenantId || null`; see the Google create above.
+            tenantId: tenantIdToWrite(tenantScope),
             newsletter: newsletter,
             termsAccepted: true,
           });
@@ -620,24 +734,26 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
       }
     } catch (err: any) {
       console.error(err);
-      if (err.code === 'auth/operation-not-allowed') {
-        setError('Email/Password sign-in is not enabled. Please enable it in the Firebase Console.');
-      } else if (err.code === 'auth/email-already-in-use') {
+      if (err.code === 'auth/email-already-in-use') {
         // The population most likely to convert — someone who already has a
         // Harvest account — must be pointed at what to do next, not just told
         // what went wrong. The "Sign in instead" action next to this message
         // reuses the same mode-switch as the toggle link below (switchAuthMode).
+        // Kept inline rather than in the copy module because it is the one
+        // branch that also raises an ACTION, not only a sentence.
         setEmailInUse(true);
         setError('An account with this email already exists.');
-      } else if (err.code === 'auth/invalid-email') {
-        setError('Please enter a valid email address.');
-      } else if (err.code === 'auth/network-request-failed') {
-        setError("We couldn't reach the server. Check your connection and try again.");
       } else {
-        // No raw Firebase wording reaches the screen — an unrecognised code
-        // still gets a message a church can act on (retry), just not one
-        // written by a library.
-        setError(isLogin ? 'Unable to sign in. Please try again.' : 'Unable to create your account. Please try again.');
+        /**
+         * 🔴 THE-349 — the generic "Unable to sign in. Please try again." was
+         * catching `auth/invalid-credential`, which is what v10 returns for
+         * BOTH a wrong password and an unknown address — the commonest sign-in
+         * failure there is, answered with a retry and never once pointed at the
+         * password-reset link on the same screen. Every named cause now names
+         * its next step; the generic line survives only for a genuine unknown,
+         * where trying again really is the advice.
+         */
+        setError(emailAuthFailureMessage(err?.code ?? '', isLogin));
       }
     } finally {
       setLoading(false);
@@ -739,6 +855,29 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
             <p className="mt-2.5 text-[13px] leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>{subText}</p>
 
             {/* Messages */}
+            {/**
+              * 🔴 THE-349 — said BEFORE the person fills the form in, not after.
+              *
+              * On a host whose ministry cannot be named, no signup on this
+              * screen can succeed, so waiting for a submit to say so wastes an
+              * email address, a password and whatever hope brought them here.
+              * Sign-in mode does not render it: an existing member on a live
+              * custom domain signs in perfectly well, and only the CREATE is
+              * refused.
+              *
+              * ⚠️ THE INSTALLED `alert` PRIMITIVE, not a fourth hand-rolled
+              * banner. The two message boxes below predate it and are left
+              * exactly as they were — rewriting working copy this ticket does
+              * not own is how a fix grows a blast radius. Its `destructive`
+              * variant carries the colour, so nothing here names one.
+              */}
+            {tenantUnresolved && !isLogin && (
+              <Alert variant="destructive" className="mt-5">
+                <ShieldAlert aria-hidden="true" />
+                <AlertTitle>{TENANT_UNRESOLVED_TITLE}</AlertTitle>
+                <AlertDescription>{TENANT_UNRESOLVED_MESSAGE}</AlertDescription>
+              </Alert>
+            )}
             {error && (
               <div className="mt-5 rounded-lg border px-3.5 py-3 text-sm" style={{ background: '#FBEEEA', borderColor: '#EBD0C7', color: '#B0432B' }}>
                 {error}
