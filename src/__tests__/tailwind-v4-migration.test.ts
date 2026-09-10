@@ -384,8 +384,14 @@ describe('prose still drives off the theme ramp', () => {
     // COMMENTS about column measure and carries no prose class at all. Read
     // from the class attributes rather than listed, so the count cannot drift
     // again without this failing by name.
+    // THE-346 appends a TENTH: `src/app/n/[token]/page.tsx`, the public note
+    // reader. It renders a note's stored HTML for a signed-out stranger, which
+    // is the same job the blog page above it does, so it takes the same `prose`
+    // typography rather than minting a second one. APPENDED, never substituted
+    // - the nine below are unchanged and still read off the class attributes.
     expect(proseCallSites()).toEqual([
       'src/app/blog/[id]/page.tsx',
+      'src/app/n/[token]/page.tsx',
       'src/components/BlogTab.tsx',
       'src/components/CourseDetails.tsx',
       'src/components/NewsletterEditor.tsx',

@@ -172,6 +172,11 @@ const RESOLVED_PATH: Record<string, string> = {
   // that the resolved path never leaves as a property matters more here than
   // anywhere else in this table.
   '/rota/[token]': '/rota/Zk3Nq7Xb2Wd9Rt5Yu8Ip4Ol1Mc6Hv0Ge3Ja7Sf2Q',
+  // THE-346 — 43 characters of base64url, the shape `PUBLIC_NOTE_TOKEN_RE`
+  // accepts. Like the rota token above it is a CAPABILITY rather than a
+  // document id, so section 9's assertion that the resolved path never leaves
+  // as a property is the one that matters most for this row too.
+  '/n/[token]': '/n/Pd7Kx2Nv9Qw4Bz6Rt1Yu8Ie5Oa3Sl0Gh7Jm2Cf6XaBc',
 };
 
 /** The page file that must render `<PublicRouteAnalytics>` for each Next route. */
@@ -187,6 +192,7 @@ const PAGE_FILE: Record<string, string> = {
   '/pledge/[campaignId]': 'src/app/pledge/[campaignId]/page.tsx',
   '/post/[postId]': 'src/app/post/[postId]/page.tsx',
   '/rota/[token]': 'src/app/rota/[token]/page.tsx',
+  '/n/[token]': 'src/app/n/[token]/page.tsx',
 };
 
 const NEXT_ROUTES = ANALYTICS_ROUTES.filter((r) => r.entry === 'next-page');
@@ -335,6 +341,13 @@ describe('1 — every route in the stated list emits a pageview', () => {
       // the enumeration is read back off the filesystem, so a new page that was
       // not registered fails, and registering it means naming it here.
       '/rota/[token]',
+      // THE-346 — the public note reader. APPENDED for the same reason THE-324's
+      // row above was, and never substituted: the ten before it are still
+      // exactly the routes THE-36 reported. A TWELFTH public Next route, and the
+      // second whose dynamic segment is a 256-bit capability rather than a
+      // document id, so section 9's "the resolved path never leaves as a
+      // property" covers it too.
+      '/n/[token]',
     ]);
   });
 

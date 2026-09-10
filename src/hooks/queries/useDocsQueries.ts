@@ -35,6 +35,18 @@ export interface Doc {
   sharedWith: string[];
   tenantId?: string;
   pinned?: boolean;
+  /**
+   * THE-346 — set while a public web link is live, cleared when it is revoked.
+   *
+   * THIS FIELD IS A MIRROR, NOT THE PERMISSION. What actually makes a note
+   * readable by a stranger is the server-only `publicNotes/{token}` record; this
+   * exists so the Notes menu can say "Stop sharing" without a second read.
+   * `/docs/{docId}`'s update rule lets the author write it, so it is FORGEABLE
+   * from a console — and forging it grants nothing, because the reader resolves
+   * the record first and a token with no record is a 404. See
+   * `lib/public-note.ts`.
+   */
+  publicShare?: { token: string } | null;
 }
 
 export interface DocFolder {

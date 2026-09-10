@@ -620,6 +620,23 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // clears the 44px floor on BOTH axes where THE-332's icon-only 39.875px
       // box never did. THE-332's own measured suite asserts that band.
       'src/components/AdminDashboard.tsx',
+      // APPENDED BY THE-346, NOTHING BELOW REMOVED OR REWRITTEN. Both entries
+      // USE the class, in the Rule-4 form - `min-h-11 sm:min-h-0`.
+      //
+      // AdminDocs: every row of the note's three-dot menu, its submenu rows and
+      // the expand toggle beside "Notes". The menu was a hand-rolled div of
+      // plain buttons and the toggle was `p-1.5` around a 16px glyph - 27px,
+      // which is not a tap target on a phone.
+      //
+      // AdminEvents: the List/Month triggers, RESPELLED from THE-308's
+      // `min-h-[44px]` rather than newly floored. Below `sm`, the only band
+      // where the floor applies, the root is 16px and the two spellings are
+      // identical - which is exactly what the prose above records, and is why
+      // the respelling changes no measured height. The absolute form is right
+      // where a number must hold at every width; this floor is phone-only, so
+      // the scale form says the same thing on the scale everything else uses.
+      'src/components/AdminDocs.tsx',
+      'src/components/AdminEvents.tsx',
       'src/components/AdminSettings.tsx',   // uses it: THE-316's TOUCH_FLOOR
       'src/components/Profile.tsx',         // names it in a comment, does not use it
       // 🔴 APPENDED BY THE-331, NOTHING ABOVE OR BELOW REMOVED OR REWRITTEN.

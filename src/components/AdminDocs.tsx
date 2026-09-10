@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Plus, FileText, Trash2, Folder, Maximize2, Minimize2,
-  X, ArrowLeft, Edit2, Pin, MoreHorizontal, Share2, Check, Download, Radio
+  X, ArrowLeft, Edit2, Pin, MoreHorizontal, Share2, Check, Download, Radio,
+  Globe, Newspaper
 } from 'lucide-react';
 import {
   collection, query, where, addDoc, updateDoc, deleteDoc,
@@ -21,6 +22,16 @@ import { markdownToHtml, titleFromMarkdown } from '../utils/markdown-import';
 import RichTextEditor, { COMPACT_PROSE_CLASS } from './RichTextEditor';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { Sidebar, SidebarProvider } from './ui/sidebar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from './ui/empty';
 import { Item, ItemMedia, ItemTitle } from './ui/item';
 import DocsTree from './docs/DocsTree';
@@ -36,6 +47,20 @@ interface AdminUser {
   name: string;
   email: string;
 }
+
+/**
+ * THE-346 — every row of the note menu is a tap target.
+ *
+ * `min-h-11` IS 44px OFF THE SPACING SCALE, and it is on EVERY row —
+ * submenu trigger, submenu rows and top-level rows alike — because the ticket's
+ * floor is per tappable element, not per menu. Released at `sm`, where Rule 4
+ * owns density and the primitive's own padding is right.
+ *
+ * `gap-2` RATHER THAN THE PRIMITIVE'S DEFAULT because these rows carry a
+ * 15px icon; the icons were 13px in the hand-rolled menu, which is smaller than
+ * anything else on the screen.
+ */
+const MENU_ROW = 'min-h-11 gap-2 sm:min-h-0';
 
 // ─── Rename Modal ──────────────────────────────────────────────
 
@@ -93,23 +118,29 @@ const EditorMenu: React.FC<{
   onShare: () => void;
   onShareToLivestream: () => void;
   canShareToLivestream: boolean;
-  /** When set, the trigger renders as a labelled button (e.g. "Export") instead of a ⋯ icon. */
-  triggerLabel?: string;
-}> = ({ title, content, createdBy, currentUid, isPinned, onPin, onRename, onDelete, onShare, onShareToLivestream, canShareToLivestream, triggerLabel }) => {
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
+  /** THE-346 — toggle the public web link. See `lib/public-note.ts`. */
+  onShareOnWeb: () => void;
+  /** Whether a public link is live right now, so the row can say which way it goes. */
+  isSharedOnWeb: boolean;
+  /** THE-346 — copy this note into `blog_posts` as a DRAFT. */
+  onShareToBlogDraft: () => void;
+}> = ({
+  title, content, createdBy, currentUid, isPinned, onPin, onRename, onDelete,
+  onShare, onShareToLivestream, canShareToLivestream,
+  onShareOnWeb, isSharedOnWeb, onShareToBlogDraft,
+}) => {
+  /*
+     THE-346 — `open`, `menuRef` AND THE OUTSIDE-CLICK EFFECT ARE ALL GONE.
+    They were this component hand-rolling what `ui/dropdown-menu` already does:
+    open state, dismiss-on-outside-click, dismiss-on-Escape, focus return to the
+    trigger, roving focus across the rows, and typeahead. The hand-rolled
+    version had the first two and none of the rest — the rows were plain
+    `<button>`s in a `<div>`, so a keyboard user tabbed through the whole page
+    behind the menu. `setOpen(false)` disappears from the export handlers for
+    the same reason: Base UI closes the menu when an item is activated.
+  */
 
   const handleExportPDF = async () => {
-    setOpen(false);
     try {
       await exportToPDF(title || 'Untitled', content);
       toast.success('Exported as PDF');
@@ -117,7 +148,6 @@ const EditorMenu: React.FC<{
   };
 
   const handleExportDOCX = async () => {
-    setOpen(false);
     try {
       await exportToDOCX(title || 'Untitled', content);
       toast.success('Exported as DOCX');
@@ -125,7 +155,6 @@ const EditorMenu: React.FC<{
   };
 
   const handleExportMD = () => {
-    setOpen(false);
     try {
       exportToMarkdown(title || 'Untitled', content);
       toast.success('Exported as Markdown');
@@ -133,70 +162,150 @@ const EditorMenu: React.FC<{
   };
 
   return (
-    <div className="relative" ref={menuRef}>
-      {triggerLabel ? (
-        <button
-          onClick={() => setOpen(!open)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-brand border border-line text-[13px] font-semibold text-strong hover:bg-surface-sunken transition-colors"
-        >
-          <Download size={15} /> {triggerLabel}
-        </button>
-      ) : (
-        <button
-          onClick={() => setOpen(!open)}
-          className="p-1.5 rounded-lg hover:bg-surface-sunken transition-colors"
-          aria-label="Document options"
-        >
-          <MoreHorizontal size={18} className="text-muted" />
-        </button>
-      )}
-      {open && (
-        <div className="absolute right-0 top-full mt-1 w-48 bg-surface-raised rounded-xl shadow-lg border border-line z-[250] py-1">
-          <div className="px-3 py-1 text-[10px] font-bold text-faint uppercase tracking-wider">Export</div>
-          <button onClick={handleExportPDF}
-            className="flex items-center gap-2 w-full px-3 py-2 text-xs text-body hover:bg-surface-sunken">
-            <Download size={13} /> Export as PDF
-          </button>
-          <button onClick={handleExportDOCX}
-            className="flex items-center gap-2 w-full px-3 py-2 text-xs text-body hover:bg-surface-sunken">
-            <Download size={13} /> Export as DOCX
-          </button>
-          <button onClick={handleExportMD}
-            className="flex items-center gap-2 w-full px-3 py-2 text-xs text-body hover:bg-surface-sunken">
-            <Download size={13} /> Export as Markdown
-          </button>
-          {currentUid === createdBy && (
-            <>
-              <div className="border-t border-line my-1" />
-              <button onClick={() => { setOpen(false); onShare(); }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-xs text-body hover:bg-surface-sunken">
-                <Share2 size={13} /> Share with Admins
-              </button>
-            </>
-          )}
-          {canShareToLivestream && (
-            <button onClick={() => { setOpen(false); onShareToLivestream(); }}
-              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-body hover:bg-surface-sunken">
-              <Radio size={13} /> Share to Livestream
-            </button>
-          )}
-          <div className="border-t border-line my-1" />
-          <button onClick={() => { setOpen(false); onPin(); }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-xs text-body hover:bg-surface-sunken">
-            <Pin size={13} /> {isPinned ? 'Unpin' : 'Pin to Top'}
-          </button>
-          <button onClick={() => { setOpen(false); onRename(); }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-xs text-body hover:bg-surface-sunken">
-            <Edit2 size={13} /> Rename
-          </button>
-          <div className="border-t border-line my-1" />
-          <button onClick={() => { setOpen(false); onDelete(); }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-xs text-red-600 hover:bg-red-50">
-            <Trash2 size={13} /> Delete
-          </button>
-        </div>
-      )}
-    </div>
+    <DropdownMenu>
+      {/*
+         THE-346 · THE TRIGGER IS THE THREE DOTS, FULL STOP.
+        The founder: *"The 'export' button should be just the 3 dots."* The
+        labelled `Export` button and the `triggerLabel` prop that produced it
+        are both gone; every caller now gets the same ⋯ the note cards in the
+        tree always had, so one control means one thing across the screen.
+
+         `min-h-11 min-w-11` released at `sm`: 44px of tap target on a phone,
+        Rule 4's density above it. The old trigger was `p-1.5` around an 18px
+        glyph — 27px, which is not a target.
+      */}
+      <DropdownMenuTrigger
+        aria-label="Document options"
+        className="flex min-h-11 min-w-11 items-center justify-center rounded-lg transition-colors hover:bg-surface-sunken sm:min-h-0 sm:min-w-0 sm:p-1.5"
+      >
+        <MoreHorizontal size={18} className="text-muted" />
+      </DropdownMenuTrigger>
+
+      {/*
+         `z-[110]` IS COPIED FROM `AttachMenu` DELIBERATELY, AND WITH ITS
+        CAVEAT. THE-337 established that this class lands on the Base UI POPUP
+        while `ui/dropdown-menu.tsx` hardcodes the POSITIONER above it as
+        `isolate z-50` — and `isolation: isolate` opens a stacking context, so
+        110 is painted at the positioner's 50. 110 is still the RIGHT NUMBER
+        (it clears the nav's 100 and the dialog primitives' 101/102 and stays
+        under the modals' 300); only the element it lands on is wrong, and
+        fixing that needs a line in the frozen primitive.
+
+         IT DOES NOT BITE HERE, AND THAT WAS MEASURED RATHER THAN ASSUMED —
+        see this ticket's layout suite, which hit-tests the open menu against
+        the nav at all five widths and finds zero occluded pixels. This menu
+        hangs from a toolbar at the TOP of the editor and the nav is pinned to
+        the BOTTOM; they do not intersect. The frozen primitive is therefore
+        left alone.
+      */}
+      <DropdownMenuContent align="end" className="z-[110] w-56">
+        {/*
+           EXPORT IS A SUBMENU NOW — *"end when pressed on export to give me
+          the options. Something like the paperclip from chat"*. The paperclip
+          is `attach/AttachMenu.tsx`, and this is its shape: a
+          `DropdownMenuSub` whose trigger is a row and whose content is the
+          flyout. The three formats moved INSIDE it unchanged; the little
+          "EXPORT" caption that used to head the flat list is gone, because a
+          submenu that says Export does not need a label saying Export.
+        */}
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className={MENU_ROW}>
+            <Download size={15} /> Export
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="z-[110] w-52">
+            <DropdownMenuItem className={MENU_ROW} onClick={handleExportPDF}>
+              <Download size={15} /> PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem className={MENU_ROW} onClick={handleExportDOCX}>
+              <Download size={15} /> DOCX
+            </DropdownMenuItem>
+            <DropdownMenuItem className={MENU_ROW} onClick={handleExportMD}>
+              <Download size={15} /> Markdown
+            </DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+
+        {/*
+           `Share with Admins` KEEPS ITS AUTHOR GATE. Sharing a note with the
+          rest of the tenant's admins writes `sharedWith` on the doc, which
+          `/docs/{docId}`'s update rule allows only the author (or a
+          `manageDocs` holder) to do — so offering the row to a reader who was
+          shared INTO the note would be offering a write that fails.
+        */}
+        {currentUid === createdBy && (
+          <DropdownMenuItem className={MENU_ROW} onClick={onShare}>
+            <Share2 size={15} /> Share with Admins
+          </DropdownMenuItem>
+        )}
+
+        {/*
+           SHARE ON WEB IS THE ONE WITH REAL WEIGHT — it puts a church's
+          internal note on the open web. What makes it public, why the URL is
+          not guessable, and why pressing it again REVOKES rather than hides,
+          are all in `lib/public-note.ts`. Two things belong here:
+
+           THE LABEL SAYS WHICH WAY THE SWITCH GOES. "Stop sharing" while a
+          link is live, "Share on web" while it is not — never a single label
+          with a tick, because a row that reads `Share on web ` does not say
+          whether pressing it shares or unshares, and getting that wrong on
+          this particular row publishes a note.
+
+           AND IT IS AUTHOR-GATED like the row above it, for the same reason:
+          publishing writes `publicShare` on the doc.
+        */}
+        {currentUid === createdBy && (
+          <DropdownMenuItem className={MENU_ROW} onClick={onShareOnWeb}>
+            <Globe size={15} /> {isSharedOnWeb ? 'Stop sharing on web' : 'Share on web'}
+          </DropdownMenuItem>
+        )}
+
+        {/*
+           SHARE TO LIVESTREAM LIVES HERE NOW AND NOWHERE ELSE — *"we have to
+          move the button from the headerbar into the more drawer"*. The
+          broadcast button is gone from the editor's toolbar; this row is the
+          only trigger, and `handleShareToLivestream` behind it is unchanged.
+
+           STILL PLAN-GATED. It is a Small Team (pro) feature, so the row is
+          ABSENT rather than disabled below that plan — the same posture the
+          header button had.
+        */}
+        {canShareToLivestream && (
+          <DropdownMenuItem className={MENU_ROW} onClick={onShareToLivestream}>
+            <Radio size={15} /> Share to Livestream
+          </DropdownMenuItem>
+        )}
+
+        {/* Share to blog draft — a DRAFT, never a published post. See
+            `handleShareToBlogDraft`: the church still has to open Blog and
+            publish it, so a sermon note cannot reach the church's public blog
+            through a single menu tap. */}
+        <DropdownMenuItem className={MENU_ROW} onClick={onShareToBlogDraft}>
+          <Newspaper size={15} /> Share to blog draft
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuItem className={MENU_ROW} onClick={onPin}>
+          <Pin size={15} /> {isPinned ? 'Unpin' : 'Pin to Top'}
+        </DropdownMenuItem>
+        <DropdownMenuItem className={MENU_ROW} onClick={onRename}>
+          <Edit2 size={15} /> Rename
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+
+        {/*
+           `variant="destructive"` — NOT `text-red-600 hover:bg-red-50`, which
+          is what this row used to carry. Those are raw Tailwind scale colours
+          hardcoded into a screen whose palette is a single token family, and
+          PR 482 is the ticket about exactly that. The primitive's own destructive
+          variant reads the theme.
+        */}
+        <DropdownMenuItem variant="destructive" className={MENU_ROW} onClick={onDelete}>
+          <Trash2 size={15} /> Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
 
@@ -214,7 +323,7 @@ interface AdminDocsProps {
 }
 
 const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) => {
-  const { setHeaderAction, setHeaderHidden } = useAdminHeader();
+  const { setHeaderAction, setHeaderHidden, setNavHidden } = useAdminHeader();
   const queryClient = useQueryClient();
   // Fall back to the platform tenant for a super admin if the store value is
   // briefly null so created docs/folders are never orphaned with a null
@@ -327,14 +436,47 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // While a note is open (focus mode) hide the mobile app header so the editor is
-  // fullscreen. The editor keeps its own toolbar row (sidebar toggle · back to
-  // Notes · broadcast · Export), so there is still a way back. Always restore the
-  // header on exit and on unmount so you can never get stuck headerless.
+  // fullscreen. The editor keeps its own toolbar row (back to Notes · expand ·
+  // breadcrumb | the three-dot menu), so there is still a way back. Always
+  // restore the header on exit and on unmount so you can never get stuck
+  // headerless. THE-346 moved the expand toggle into that row's left group and
+  // took the broadcast button out of it; the way back is unchanged.
   const editorFullscreen = focusMode && !!openDoc;
   useEffect(() => {
     setHeaderHidden(editorFullscreen);
     return () => setHeaderHidden(false);
   }, [editorFullscreen, setHeaderHidden]);
+
+  /**
+   * THE-346 — AND THE BOTTOM NAV, WHICH IS THE HALF THAT CAN TRAP YOU.
+   *
+   * The founder: *"On phone if I press on expand the bottom nav menu should
+   * disappear as well, and reappear when I exit the notes or press the button
+   * again."* Two exits, and BOTH have to give it back.
+   *
+   * THIS IS ONE EFFECT, NOT TWO HANDLERS, and that is what makes both exits
+   * work rather than one. `editorFullscreen` is `focusMode && !!openDoc`, so:
+   *
+   * · pressing expand again  → `focusMode` false → effect re-runs with false
+   * · leaving the note       → `openDoc` null    → effect re-runs with false
+   * · navigating away        → unmount           → cleanup runs with false
+   *
+   * Writing it as an onClick on the expand button would have covered the first
+   * exit only, and `closeEditor` would have had to remember to do the same — a
+   * nav still hidden on a screen that has no expand button to press is a trap
+   * with no way out, which is strictly worse than the layout this fixes. There
+   * is nothing to remember here: the nav is a function of the same state the
+   * fullscreen editor is, so it cannot get out of step with it.
+   *
+   * THE CLEANUP IS LOAD-BEARING AND IS NOT DEAD CODE. React runs it on
+   * unmount, which is the ONLY thing covering a route change that takes the
+   * whole screen away while `focusMode` is still true — the case where no
+   * re-render with `false` ever happens on this component.
+   */
+  useEffect(() => {
+    setNavHidden(editorFullscreen);
+    return () => setNavHidden(false);
+  }, [editorFullscreen, setNavHidden]);
 
   /**
    * The single writer for a document. Resolves true only once the write is on
@@ -662,6 +804,86 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
   // Share this note to the currently-live stream so viewers see it read-only.
   // There is only ever one active stream (livestream/current); if none is live,
   // surface an error instead of silently no-op'ing.
+  /**
+   * THE-346 — "Share on web", from the button's side.
+   *
+   * THIS IS AN API CALL, NOT A FIRESTORE WRITE, and that is the whole design.
+   * The record that makes a note publicly readable lives in `publicNotes`, which
+   * has NO rule and so is unreachable from a browser — see `lib/public-note.ts`
+   * for why that is the shape rather than a `firestore.rules` change.
+   *
+   * THE LINK IS BUILT FROM `window.location.origin`, not from anything the
+   * server said. The route deliberately returns a PATH: echoing a host derived
+   * from the request would let a forwarded `Host` header decide what a church
+   * copies onto its clipboard.
+   *
+   * THE CACHE IS INVALIDATED ON BOTH BRANCHES so the row's label flips. A
+   * "Stop sharing" that still reads "Share on web" is how somebody shares twice
+   * and believes they have unshared.
+   */
+  const handleShareOnWeb = async (docId: string, isShared: boolean) => {
+    try {
+      const res = await fetch('/api/docs/public-share', {
+        method: isShared ? 'DELETE' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${await auth.currentUser?.getIdToken()}`,
+        },
+        body: JSON.stringify({ docId }),
+      });
+      if (!res.ok) throw new Error(`${res.status}`);
+      await queryClient.invalidateQueries({ queryKey: ['docs', tenantId] });
+
+      if (isShared) {
+        toast.success('Link revoked — the note is no longer public');
+        return;
+      }
+      const { path } = (await res.json()) as { path: string };
+      const url = `${window.location.origin}${path}`;
+      // The clipboard is best-effort: a browser that refuses it must not turn
+      // a successful share into an error, so the URL is shown either way.
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success('Public link copied to clipboard');
+      } catch {
+        toast.success(`Public link: ${url}`);
+      }
+    } catch (e) {
+      notifyError(isShared ? 'Failed to revoke the link' : 'Failed to share on web', e);
+    }
+  };
+
+  /**
+   * THE-346 — "Share to blog draft".
+   *
+   * `status: 'draft'`, AND NOTHING PUBLISHES IT. A sermon note is written for
+   * a room, not for a church's public blog, so this copies it into `blog_posts`
+   * where the Blog screen's own editor and its own publish step are waiting.
+   * Writing `'published'` here would put a note on the public web from a single
+   * tap in a menu, which is the mistake "Share on web" is careful not to make
+   * either.
+   *
+   * IT IS A COPY, NOT A LINK. Editing the note afterwards does not edit the
+   * draft — the church may well want to rewrite it for a different audience,
+   * and a live link would fight that. The note is untouched.
+   */
+  const handleShareToBlogDraft = async (title: string, contentHtml: string) => {
+    if (!tenantId) return;
+    try {
+      await addDoc(collection(db, 'blog_posts'), {
+        title: title.trim() || 'Untitled',
+        content: contentHtml,
+        status: 'draft',
+        tenantId,
+        author: auth.currentUser?.displayName || '',
+        createdAt: serverTimestamp(),
+      });
+      toast.success('Blog draft created');
+    } catch (e) {
+      notifyError('Failed to create a blog draft', e);
+    }
+  };
+
   const handleShareToLivestream = async (docId: string, title: string, contentHtml: string) => {
     if (!tenantId) return;
     try {
@@ -869,7 +1091,10 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
     >
       {openDoc ? (
         <>
-          {/* Editor header — back · where this note lives · saved · focus · livestream · Export */}
+          {/* Editor header. THE-346 re-ordered it: back · EXPAND · where this note
+              lives · saved | the three-dot menu. The expand toggle moved into the
+              left group beside "Notes", and the broadcast button that used to sit
+              on the right is a row of the menu now. */}
           <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-3">
             <div className="flex min-w-0 items-center gap-2">
               <button
@@ -877,6 +1102,37 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
                 className="flex shrink-0 items-center gap-1.5 text-[13px] font-semibold text-gold transition-opacity hover:opacity-80"
               >
                 <ArrowLeft size={15} /> Notes
+              </button>
+              {/*
+                 THE-346 · THE EXPAND CONTROL MOVED HERE, and "here" is the
+                point. The founder: *"The expand button should be in the left not
+                right. Exactly on the right of the notes button."*
+
+                It was the first child of the right-hand group, next to Export.
+                It is now the sibling immediately after `← Notes` inside the
+                LEFT group, so the two controls that change what the screen IS
+                sit together and the right-hand group is left holding only what
+                you can DO to the note.
+
+                 `shrink-0` MATTERS ON A PHONE. Its new neighbour is the
+                breadcrumb, which is `min-w-0` so it can truncate; without this
+                the 44px button would be the thing that gave way to a long
+                folder path, and a tap target that shrinks is not one.
+
+                 `min-h-11 min-w-11` IS NEW, and the old `p-1.5` is why: a
+                16px icon in 6px of padding measured 28px, which is not a tap
+                target on a phone. Released above `sm`, where Rule 4 owns
+                density — the same shape the List/Month triggers use.
+              */}
+              <button
+                onClick={() => setFocusMode(v => !v)}
+                aria-pressed={focusMode}
+                title={focusMode ? 'Exit focus mode' : 'Focus mode'}
+                aria-label={focusMode ? 'Exit focus mode' : 'Focus mode'}
+                data-testid="docs-expand-toggle"
+                className="flex shrink-0 min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 items-center justify-center rounded-lg p-1.5 text-faint transition-colors hover:bg-surface-sunken"
+              >
+                {focusMode ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
               </button>
               <div className="hidden min-w-0 sm:block">
                 <DocsBreadcrumb folderId={openDoc.folderId} folders={folders} title={editTitle} />
@@ -892,30 +1148,25 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
             >
               {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : saveStatus === 'error' ? 'Not saved' : ''}
             </span>
+            {/*
+               THE-346 · WHAT IS *NOT* HERE ANY MORE.
+
+              Two controls left this group. The expand toggle moved to sit beside
+              `← Notes` on the left, where the founder asked for it. And the
+              broadcast button — `<Radio /> Share to livestream` — is GONE from
+              the header bar entirely: *"we have to move the button from the
+              headerbar into the more drawer"*. It is a row in the ⋯ menu now,
+              which is what "the more drawer" is on this screen, and it is not
+              duplicated here. `handleShareToLivestream` is unchanged and is
+              still the one writer; only its trigger moved.
+
+               `triggerLabel` IS GONE TOO, and with it the labelled `Export`
+              button: *"The 'export' button should be just the 3 dots."* Dropping
+              the prop is what makes `EditorMenu` render its ⋯ trigger, which is
+              the same trigger every note card in the tree already uses.
+            */}
             <div className="flex shrink-0 items-center gap-2">
-              {/* focusMode survives THE-275 with the job it always did — a
-                  fullscreen editor — but as a TOGGLE rather than as something
-                  opening a note did to you. Auto-entering it is what made the
-                  tree disappear the moment you picked a note. */}
-              <button
-                onClick={() => setFocusMode(v => !v)}
-                aria-pressed={focusMode}
-                title={focusMode ? 'Exit focus mode' : 'Focus mode'}
-                aria-label={focusMode ? 'Exit focus mode' : 'Focus mode'}
-                className="rounded-lg p-1.5 text-faint transition-colors hover:bg-surface-sunken"
-              >
-                {focusMode ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-              </button>
-              {canShareToLivestream && (
-                <button
-                  onClick={() => handleShareToLivestream(openDoc.id, editTitle, editContent)}
-                  className="flex items-center gap-1.5 rounded-brand border border-line px-3 py-2 text-[13px] font-semibold text-strong transition-colors hover:bg-surface-sunken"
-                >
-                  <Radio size={15} /> <span className="hidden sm:inline">Share to livestream</span>
-                </button>
-              )}
               <EditorMenu
-                triggerLabel="Export"
                 title={editTitle}
                 content={editContent}
                 createdBy={openDoc.createdBy}
@@ -925,8 +1176,15 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
                 onRename={() => setRenameDocData({ id: openDoc.id, name: editTitle })}
                 onDelete={() => setDeleteDocId(openDoc.id)}
                 onShare={() => openShareModal(openDoc.id)}
-                canShareToLivestream={false}
+                // THE-346 — was hard `false` while the header carried its own
+                // broadcast button, so a menu row would have been a duplicate.
+                // The header button is gone, so the menu is now the ONLY way to
+                // reach the livestream and has to be told the truth.
+                canShareToLivestream={canShareToLivestream}
                 onShareToLivestream={() => handleShareToLivestream(openDoc.id, editTitle, editContent)}
+                isSharedOnWeb={!!openDoc.publicShare?.token}
+                onShareOnWeb={() => handleShareOnWeb(openDoc.id, !!openDoc.publicShare?.token)}
+                onShareToBlogDraft={() => handleShareToBlogDraft(editTitle, editContent)}
               />
             </div>
           </div>

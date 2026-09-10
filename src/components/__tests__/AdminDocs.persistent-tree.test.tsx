@@ -986,6 +986,12 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ are byte-identical'
   // value above stays accepted, so a merge ref cut before this ticket landed
   // still passes and a digest that is NONE of them still fails.
   'a7dc96513ad4003892f3bc81d5faaed2f616bd04c496a4b3ec977777baf067b7',
+  // APPENDED BY THE-346 - the bottom nav gains a display:contents visibility
+  // wrapper, so the Notes editor can take the 65px band back on a phone when it
+  // goes fullscreen. The nav OWN class string is byte-identical: four measured
+  // suites discover it out of that file by pattern, and interpolating a flag into
+  // that attribute stopped all four finding it. APPENDED, NEVER SUBSTITUTED.
+  '3f1556d136fc8f4d2027772dfbd9b8d1be08c3678a9122ccbda8f5ac5e460e8c',
   ];
 
   it('AdminDashboard.tsx is untouched by THIS ticket — others legitimately own it', () => {
@@ -1051,9 +1057,17 @@ describe('the persisted Doc and DocFolder shapes are unchanged', () => {
   };
 
   it('Doc carries exactly the fields it carried', () => {
+    // THE-346 APPENDS ONE FIELD, `publicShare`, and appends is the word: the
+    // eleven above it are unchanged and in the same order, so a field that went
+    // missing still fails here. It is a MIRROR of server state, not a new
+    // persisted concept the screen depends on - what actually makes a note
+    // publicly readable is the server-only `publicNotes/{token}` record, and
+    // this exists so the note menu can say "Stop sharing" without a second
+    // read. Nothing migrates: a note that has never been shared simply has no
+    // such field, which is why it is optional.
     expect(fields('Doc')).toEqual([
       'id', 'title', 'content', 'folderId', 'createdBy', 'createdAt', 'updatedAt',
-      'isPrivate', 'sharedWith', 'tenantId', 'pinned',
+      'isPrivate', 'sharedWith', 'tenantId', 'pinned', 'publicShare',
     ]);
   });
 
@@ -1075,9 +1089,17 @@ describe('the persisted Doc and DocFolder shapes are unchanged', () => {
     ).not.toMatch(/updateDoc|addDoc|deleteDoc|setDoc/);
   });
 
-  it('the hooks file itself is untouched', () => {
-    // The data model already supported this ticket; nothing had to migrate.
-    expect(sha256(readFileSync(path.join(SRC, 'hooks/queries/useDocsQueries.ts'))))
-      .toBe('47a90c2851cb4156b2965fc32f35750774efcade1a2cfb583c6e45a84ff4d2e8');
+  it('the hooks file itself is untouched, or is at a digest a ticket recorded', () => {
+    // The data model already supported THIS ticket; nothing had to migrate.
+    //
+    // THE-346 APPENDS its digest rather than substituting: the original value
+    // stays as the first entry, so the file cannot silently return to some
+    // third state. THE-346 adds the optional `publicShare` mirror described in
+    // the Doc-fields case above and changes nothing else in the file - no
+    // query, no key, no read path.
+    expect([
+      '47a90c2851cb4156b2965fc32f35750774efcade1a2cfb583c6e45a84ff4d2e8',
+      '4bf6d9e04aa8f2e491ec9a2d3f883af92b40ce4b2df8cb24c4b88b566fa28357',
+    ]).toContain(sha256(readFileSync(path.join(SRC, 'hooks/queries/useDocsQueries.ts'))));
   });
 });

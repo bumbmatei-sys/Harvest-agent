@@ -132,9 +132,23 @@ beforeAll(async () => {
             */}
             <div data-tabs-scope>
               <Tabs value="list">
-                <TabsList>
-                  <TabsTrigger value="list" className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0">List</TabsTrigger>
-                  <TabsTrigger value="month" className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0">Month</TabsTrigger>
+                {/*
+                  THE-346 moved this replica with the screen. The triggers still
+                  carry a 44px floor released at `sm` - spelled `min-h-11` /
+                  `min-w-11` off the spacing scale now rather than as arbitrary
+                  values, which is the same 44px - and the LIST now carries a
+                  height too.
+
+                  THAT LAST PART IS THE DEFECT THE-308 COULD NOT SEE. This suite
+                  measured the TRIGGERS and found a correct 44px, and passed
+                  while `ui/tabs.tsx` held the LIST at `h-8` (32px), so the pill
+                  hung 6px out of each end of the box it lived in. Both
+                  numbers were right on their own; nobody had measured the
+                  relationship. THE-346's own suite asserts containment.
+                */}
+                <TabsList className="group-data-[orientation=horizontal]/tabs:h-auto sm:group-data-[orientation=horizontal]/tabs:h-8">
+                  <TabsTrigger value="list" className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0">List</TabsTrigger>
+                  <TabsTrigger value="month" className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0">Month</TabsTrigger>
                 </TabsList>
                 <TabsContent value="list" className="mt-4 space-y-6" />
               </Tabs>
@@ -401,8 +415,9 @@ describe('13b · the tab pair is a real target at 380px', () => {
   it('the replica matches the tab bar AdminEvents actually renders', () => {
     const screen = readFileSync(path.join(REPO_ROOT, 'src/components/AdminEvents.tsx'), 'utf8');
     for (const line of [
-      '<TabsTrigger value="list" className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0">List</TabsTrigger>',
-      '<TabsTrigger value="month" className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0">Month</TabsTrigger>',
+      '<TabsList className="group-data-[orientation=horizontal]/tabs:h-auto sm:group-data-[orientation=horizontal]/tabs:h-8">',
+      '<TabsTrigger value="list" className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0">List</TabsTrigger>',
+      '<TabsTrigger value="month" className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0">Month</TabsTrigger>',
     ]) {
       expect(screen, `the shipped tab bar no longer contains: ${line}`).toContain(line);
     }

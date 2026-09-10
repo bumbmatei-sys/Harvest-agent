@@ -492,7 +492,7 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * retires a pinner updates this count and says what that suite still asserts;
  * a suite that quietly stops pinning fails here.
  */
-const RULES_PINNERS_NOW = 63;
+const RULES_PINNERS_NOW = 64;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per
@@ -703,6 +703,33 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
   // `firestore.indexes.json`, `functions/`, `layout.tsx`, the event-registration
   // routes and THE-342's `bounded-list-read.ts` are byte-identical.
   ['THE-345', 'src/__tests__/THE-345.paid-events-and-count-guards.test.ts'],
+  // 🔴 THE-346 — six UI defects the founder found on a phone. APPENDED beside
+  // the entries above, never over one, and `RULES_PINNERS_NOW` goes 63 -> 64.
+  //
+  // ⚠️ THE ONE ITEM THAT COULD HAVE NEEDED A RULE IS "Share on web", which
+  // creates a PUBLIC link to a church's internal note — and it needed none,
+  // for the reason THE-324 established one ticket at a time earlier: the share
+  // record lives at the top-level `publicNotes/{token}`, which has NO RULE and
+  // therefore no client read and no client write, and every access — minting,
+  // revoking, and the signed-out reader's own fetch — goes through the Admin
+  // SDK in `app/api/docs/public-share/` and `app/n/[token]/`. `/docs/{docId}`'s
+  // read is UNTOUCHED, which is the point: widening that one line is the change
+  // that would expose every note in the collection rather than the one being
+  // shared. This ticket records NO rules digest in its ownership entry either,
+  // and asks `rulesDigestFailure()` like every other pinner — THE-333 and
+  // THE-341 each spelling one is what turned THE-325 red, twice.
+  //
+  // ⚠️ WHAT IT ASSERTS: that `firestore.rules` is at a recorded digest, that
+  // `publicNotes` appears nowhere in it, that there is no catch-all
+  // `match /{document=**}` (so an unruled top-level collection really is
+  // default-deny, which is the assumption the whole design rests on), that
+  // `/docs/{docId}` still requires authentication, that every path to a share
+  // record goes through the Admin SDK, that the map declares a `minZoom` and a
+  // non-wrapping tile layer while #476's `key={mapTheme}` and OSM attribution
+  // stay byte-identical, that every element it shipped names the primitive it
+  // adopted and the ones it rejected, and that `firestore.indexes.json`,
+  // `functions/` and `layout.tsx` are byte-identical.
+  ['THE-346', 'src/__tests__/the-346-guards.test.tsx'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {

@@ -192,6 +192,15 @@ const ROUTE_TABLE = [
   // message, and requiring a sign-in would put it behind the origin hop THE-289
   // measured members never finishing.
   { pattern: '/rota/[token]', entry: 'next-page', surface: 'public', public: true },
+  // THE-346 - the public note reader. THE SEGMENT IS A CAPABILITY, NOT AN ID,
+  // exactly as `/rota/[token]` is: `/n/{token}` carries 256 bits of
+  // `randomBytes` and holding it IS permission to read one church's note, so
+  // the resolved path must never become a property - only the PATTERN does.
+  // Leaking one into an analytics event would hand a third party's store a live
+  // link to a church's internal note, which is the whole thing "Share on web"
+  // is careful about. Public and signed-out by construction: the point of the
+  // link is that somebody outside the church can open it.
+  { pattern: '/n/[token]', entry: 'next-page', surface: 'public', public: true },
 ] as const satisfies readonly AnalyticsRoute[];
 
 export const ANALYTICS_ROUTES: readonly AnalyticsRoute[] = Object.freeze(ROUTE_TABLE);

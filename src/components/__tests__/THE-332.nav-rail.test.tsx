@@ -749,7 +749,20 @@ const PRIMITIVE_DIGESTS: Record<string, string> = {
 const NOT_OURS: Record<string, string | readonly string[]> = {
   'firestore.indexes.json': '8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0',
   'src/app/layout.tsx': 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f',
-  'src/components/AdminCommunity.tsx': '10333c22ed0c6f98d233b9f057f8da260a76f17682451c38c52f694e77fddc7a',
+  /* AN ACCEPTED SET, APPENDED TO, NOT ONE VALUE SUBSTITUTED - the same shape
+     and the same reason as the sets below. THE-331 owns the first value. */
+  'src/components/AdminCommunity.tsx': [
+    '10333c22ed0c6f98d233b9f057f8da260a76f17682451c38c52f694e77fddc7a',
+    /* APPENDED BY THE-346 - ONE className token, `-mx-4 lg:mx-0` on the thread
+       pane, plus the note explaining it. The founder: the chat input is not wide
+       enough. Measured at 380px, the composer pill spanned 316px of 380 because
+       AdminDashboard wraps this screen in `p-4` and the thread adds `px-4` of its
+       own. The shell padding is deliberately NOT removed - the conversation rail
+       has none of its own below `lg` - so the gutter is cancelled for the thread
+       pane alone. No nav, tab id, read, write or permission gate moved, which is
+       what THE-332 pins this file for. */
+    'fedb1e028e2c74d0184411ed651c922a280369c7b549fff8943706b8c03257c9',
+  ],
   /* AN ACCEPTED SET, APPENDED TO, NOT ONE VALUE SUBSTITUTED - the same shape and
      the same reason as MORE_GROUPS_ACCEPTED above. CI runs against
      `refs/pull/N/merge`, and a merge ref cut before THE-345 landed legitimately
@@ -770,6 +783,13 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
     'edf9088a9c7aff6b3f5d672207cab0f50c1e1428490b1bee61685f55313dc508',
     // APPENDED BY THE-345 - the paid-event gate.
     '9c9eaabe1d7b5d202d623d4655328332025d425c810e102ad3d49aee775e86b4',
+    /* APPENDED BY THE-346 - THREE className strings on the List/Month tab bar
+       and the note explaining them. Measured at 380px, TabsList was 32px tall
+       while the triggers inside it carried a required 44px tap floor, so the
+       active pill hung 6px out of each end of its own container. No nav,
+       tab id, read, write or permission gate moved, which is what THE-332 pins
+       this file for. */
+    '6f645f19cce4f1b074f499fae928c36cc47ecaea0fd58147595aaf0167fe4ef2',
   ],
   'src/components/AdminServices.tsx': '17f508718d3c6b1ad016b9fb6be2c241629421705af4a9c0966b02739eba74ae',
   'src/components/AdminSms.tsx': 'f48ae4b8b6deff201e3767e5812bf7045af632a64c88384e5a91f285c47caab2',

@@ -1063,7 +1063,35 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
             </div>
           )}
 
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-line pl-12">
+          {/*
+             THE-346 · `pl-12` IS GONE, and that ONE class was the whole bug.
+
+            The founder: *"In news user app when creating a post put that
+            paperclip and pin button in the left to be in parallel with the user
+            profile picture."*
+
+            The composer's text row is `flex items-start gap-3` with a `w-9`
+            (36px) avatar, so the textarea beside it starts at 36 + 12 = 48px.
+            `pl-12` is exactly that 48px, and it is CORRECT on the four rows
+            above — poll options, the attachment chips, the image strip and the
+            embed card all continue the SENTENCE the textarea started, so they
+            line up with the text.
+
+             THIS ROW IS NOT ONE OF THOSE. It is the composer's action bar —
+            paperclip, Pin, Post — and it belongs to the whole composer, not to
+            the text column, which is what the founder is seeing when he says it
+            should be in parallel with the picture. Measured at 380px, before:
+            the paperclip's icon sat at x=64 against an avatar at x=16.
+
+             THE `-ml-2` ON THE PAPERCLIP STAYS, and it is why this is `pl-0`
+            rather than `pl-2`. That negative margin exists so the ICON, not the
+            44px hit area around it, is what aligns — the same optical trick the
+            row's right-hand `Post` button gets from its own padding. With the
+            indent gone the button's box starts 8px into the card's own padding
+            and the GLYPH lands at exactly the avatar's left edge, which is the
+            edge the founder is pointing at. Measured after: both at x=16.
+          */}
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-line">
             <div className="flex items-center gap-1">
               {/* Paperclip "add" menu — image + blog / fundraising / event embeds (post mode only). */}
               {composerMode === 'post' && (
