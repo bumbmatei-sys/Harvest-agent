@@ -120,9 +120,38 @@ export interface ContactActivity {
   contactId: string;
   type: 'note' | 'donation' | 'email' | 'call' | 'meeting';
   description: string;
-  /** DOLLARS for donation activities (webhook writes amount/100; manual-add writes
-   *  the admin-typed dollar figure). Formatted directly by `fmt()`. See BUG 2. */
+  /**
+   * DOLLARS for donation activities the Stripe webhook logs (it writes
+   * `amount/100`), and for every manual activity written BEFORE THE-350.
+   * Formatted directly by `fmt()`. See BUG 2.
+   *
+   * ALWAYS NULL ON A GIFT RECORDED BY HAND SINCE THE-350. The money record
+   * for such a gift is the `tenants/{t}/invoices` receipt this row points at
+   * with {@link invoiceId}; carrying the figure here as well would be one gift
+   * in two money-bearing documents, and a gift counted twice is worse than a
+   * gift counted once in the wrong place.
+   */
   amount: number | null;
+  /**
+   * THE-350 — the `tenants/{t}/invoices` receipt this activity REFERENCES.
+   *
+   * Present only on a gift recorded through the CRM's Add Activity → Donation
+   * dialog. The invoice is the record; this row is the CRM's pointer at it, and
+   * the pointer is what makes the link auditable without duplicating the money.
+   */
+  invoiceId?: string | null;
+  /**
+   * THE-350 — A DISPLAY MIRROR OF THE INVOICE'S AMOUNT, IN CENTS, and the
+   * name is the guard.
+   *
+   * The CRM cannot read `tenants/{t}/invoices` (admin-read-only, and gated on
+   * `manageAccounting`, which a CRM admin need not hold), so the timeline needs
+   * the figure locally to draw the row. It is deliberately NOT called `amount`:
+   * nothing in this repository sums a field by this name, so a future reader
+   * reaching for the money cannot pick the same gift up twice. It is rendered
+   * through `formatCents` and never through `fmt()`.
+   */
+  invoiceAmountCents?: number | null;
   createdAt: DateLike;
   createdBy: string;
   tenantId?: string;

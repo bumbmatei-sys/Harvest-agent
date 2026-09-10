@@ -73,11 +73,28 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collap
  * — both gate on `fundraising` (`showGiving` in AdminCRM), so there is no tier
  * that can paste a link and cannot record the gift.
  *
- * 🔴 It fixes the CRM and NOTHING ELSE. Giving statements are built from
- * `tenants/{id}/invoices` where `type === 'donation_receipt'`, and the only
- * writer of those is the Stripe donation webhook. No admin surface writes one,
- * so no manual entry can put a gift on a statement. The copy below says that
- * out loud instead of letting "record it manually" read as a fix for all three.
+ * ─── 🔴 THE-350 — THE THIRD GAP IS CLOSED, AND THIS PARAGRAPH IS REWRITTEN ──
+ *
+ * THE-249 wrote here: "It fixes the CRM and NOTHING ELSE... the only writer of
+ * those is the Stripe donation webhook. No admin surface writes one, so no
+ * manual entry can put a gift on a statement." Every word of that was true, and
+ * it is now false — deliberately, because it described the defect rather than a
+ * design.
+ *
+ * The founder: "If I add a donation from a user in CRM it updates the CRM but
+ * not the dashboard." Add Activity → Donation now calls
+ * `lib/manual-donation.ts`, which writes the SAME `tenants/{id}/invoices`
+ * document of `type: 'donation_receipt'` the webhook writes — cents, an ISO
+ * `issuedAt`, and `recipientEmail` as the identity key. So one manual entry now
+ * reaches the dashboard giving figure, AdminAccounting, the year-end giving
+ * statement, the member's own donation history and their per-year totals, with
+ * no new reader anywhere.
+ *
+ * ⚠️ WHAT IS STILL TRUE, AND IS STILL SAID BELOW. Harvest never SEES a gift
+ * sent through a church's own payment link, so nothing records it on its own —
+ * a member who gives that way still sits at $0 until an admin records it. The
+ * disclosure below therefore keeps its first two paragraphs unchanged and only
+ * corrects the sentences that promised the manual path led nowhere.
  */
 
 /** The draft an admin is editing — strings, exactly as typed. */
@@ -413,20 +430,35 @@ const AdminDonations: React.FC = () => {
               </p>
               <p>
                 <b className="text-strong">
-                  Gifts given this way will not appear on giving statements.
+                  Gifts given this way are not recorded until you record them.
                 </b>{' '}
-                Harvest never sees them, so they are missing from donation history, from a
-                member&apos;s receipts, and from every year-end statement you generate. Only
-                gifts given through Stripe are recorded and receipted.
+                Harvest never sees them, so on their own they are missing from donation
+                history, from a member&apos;s receipts, and from every year-end statement you
+                generate.
               </p>
               <p>
+                {/*
+                  🔴 THE-350 — THE REMEDY IS NOW A WHOLE REMEDY, AND THIS SAYS SO.
+
+                  THE-249's version ended "It does not put the gift on a giving
+                  statement, and nothing else does either — statements are built
+                  from Stripe gifts alone." That was true of a manual entry that
+                  wrote only a `contactActivities` row. Add Activity → Donation
+                  now writes the same `donation_receipt` invoice the Stripe
+                  webhook writes, so all five surfaces follow from the one entry.
+                  Leaving the old sentence up would be telling a church its own
+                  books are wrong.
+                */}
                 <b className="text-strong">Your CRM will not record them either.</b> A member
                 who gives this way keeps a total given of $0, no last-gift date and the Member
                 stage &mdash; the same as someone who has never given. To record one, open the
-                contact in your CRM, press Add Activity, choose Donation and enter the amount:
-                that adds to their total given and dates the gift. It does not put the gift on
-                a giving statement, and nothing else does either &mdash; statements are built
-                from Stripe gifts alone.
+                contact in your CRM, press Add Activity, choose Donation and enter the amount.
+                That adds to their total given, dates the gift, and writes a donation receipt
+                &mdash; so the gift counts on your dashboard, in your accounting, on this
+                year&apos;s giving statement, and in the member&apos;s own donation history.
+                A contact with no email address is the one exception: the gift still counts
+                for your church, but nothing can reach the person who gave it, and the CRM
+                says so before you save.
               </p>
             </div>
           </div>

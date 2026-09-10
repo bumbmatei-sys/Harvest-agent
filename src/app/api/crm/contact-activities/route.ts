@@ -15,6 +15,17 @@ interface ActivityRow {
   type: string;
   description: string;
   amount: number | null;
+  /**
+   * THE-350 — the `tenants/{t}/invoices` receipt a manually recorded gift
+   * points at, and a CENTS mirror of its amount for the timeline row.
+   *
+   * 🔴 Carried on the wire so the CRM can DRAW the figure without reading the
+   * invoices collection, which is admin-read-only and gated on
+   * `manageAccounting`. The money record is the invoice; `amount` is null on
+   * these rows precisely so nothing counts the gift twice.
+   */
+  invoiceId?: string | null;
+  invoiceAmountCents?: number | null;
   createdAt: unknown;
   createdBy: string;
 }

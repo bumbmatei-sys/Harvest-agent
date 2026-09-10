@@ -227,11 +227,37 @@ describe('2 — 🔴 sharing emits only allow-listed URLs', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 describe('3 — 🔴 Stripe Connect appears as static "soon" copy, not a live control', () => {
   it('the switch itself is untouched and still off', () => {
+    /**
+     * 🔴 THE CLAIM IS THE SWITCH, AND THE SWITCH IS WHAT IS PINNED.
+     *
+     * THE-256 said "do not touch this file" and THE-281 backed it with a whole-
+     * file digest. THE-350 edits ONE export in it — `STRIPE_CONNECT_HIDDEN_MESSAGE`,
+     * whose "Temporarily unavailable" told churches to wait for a platform
+     * account Stripe has since closed as `rejected.fraud` — so the whole-file
+     * digest is now an ACCEPTED SET, appended to and never substituted (the
+     * #422/#434 rule: CI runs against `refs/pull/N/merge`, and a substituted
+     * digest turned `main` red for everyone).
+     *
+     * ⚠️ WHAT THIS SUITE ACTUALLY GUARDS IS UNCHANGED AND IS ASSERTED HARDER
+     * BELOW, not softer: the switch is still the literal `false`, it is still
+     * declared exactly once, and the two tests after this one still prove the
+     * share surface neither imports nor reads it. A copy string moving cannot
+     * restore Connect UI; a flipped boolean or a new binding could, and those
+     * are what the structural assertions catch whatever the digest says.
+     */
     const src = readFileSync(path.join(SRC, 'lib/stripe-connect-feature.ts'), 'utf8');
     expect(src).toMatch(/export const STRIPE_CONNECT_ENABLED = false;/);
-    expect(createHash('sha256').update(src).digest('hex'),
-      '🔴 stripe-connect-feature.ts was modified — THE-256 says do not touch it')
-      .toBe('ae4767b86754d414d6d8a052756c15b27c5cdee9fec33dc77dbc9ec1acb11d67');
+    expect(src.match(/STRIPE_CONNECT_ENABLED\s*=/g), 'a second switch was declared').toHaveLength(1);
+    const ACCEPTED: ReadonlyArray<readonly [digest: string, source: string]> = [
+      ['ae4767b86754d414d6d8a052756c15b27c5cdee9fec33dc77dbc9ec1acb11d67', 'THE-256/THE-281 — before the copy correction'],
+      ['22b5d92d7225fe91d38288a6570bdd8d9551ee8be9095d86a2798945cfce2b30', 'THE-350 — the hidden message no longer says "temporarily"'],
+    ];
+    const actual = createHash('sha256').update(src).digest('hex');
+    expect(
+      ACCEPTED.find(([digest]) => digest === actual),
+      `🔴 stripe-connect-feature.ts is at ${actual}, which is none of:\n  ` +
+        ACCEPTED.map(([d, why]) => `${d} (${why})`).join('\n  '),
+    ).toBeTruthy();
   });
 
   it('the share surface names Stripe as a sentence, with no control', async () => {

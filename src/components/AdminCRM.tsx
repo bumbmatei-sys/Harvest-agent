@@ -33,6 +33,8 @@ import { getEffectiveFeatures, toTenantPlan } from '../utils/plan-features';
 import { getIntegrationProvider, isProviderAvailable } from './settings/integration-providers';
 import { GMAIL_FEATURE_ENABLED } from '../lib/gmail-feature';
 import { GIVING_PROVIDER_NAMES_OR, readGivingLinks } from './donations/giving-providers';
+import { formatCents } from '../lib/donation-history';
+import { dollarsToCents } from '../lib/donation-amount';
 import {
   resolveContactLimit, countContactAccounts, isAtContactLimit, contactLimitMessage,
 } from '../utils/contact-capacity';
@@ -483,6 +485,18 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   const [showAddActivity, setShowAddActivity] = useState(false);
   const [actForm, setActForm] = useState({ type: 'note' as ContactActivity['type'], description: '', amount: '' });
   const [savingAct, setSavingAct] = useState(false);
+  /**
+   * THE-350 — what keeps a failed gift from vanishing.
+   *
+   * 🔴 THE SAME CONTRACT `emailError` KEEPS BELOW, for the same reason. A gift
+   * whose invoice write fails must surface VISIBLY: the dialog stays open, the
+   * typed amount and description are still in their fields, and NOTHING is
+   * written — no timeline entry, no `totalDonated` bump. An admin who was shown
+   * a closed dialog would believe a gift was recorded that the ledger never
+   * accepted, which is precisely the defect this ticket exists to close, one
+   * layer up.
+   */
+  const [activityError, setActivityError] = useState<string | null>(null);
   // Email compose. `gmailConnected` is tri-state: null while the status is still
   // unknown, so the UI renders neither a send button nor a "connect" prompt off
   // an unanswered question. `emailError` is what keeps a failed send from
@@ -892,27 +906,125 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   // is to record giving — which the donation webhook and addActivity below
   // already do. Re-adding a mutator would reintroduce the stored copy.
 
+  /**
+   * THE-350 — 🔴 A MANUAL DONATION NOW WRITES AN INVOICE, NOT JUST A CRM NOTE.
+   *
+   * The founder: "If I add a donation from a user in CRM it updates the CRM but
+   * not the dashboard." It updated the CRM because that is all this function
+   * ever wrote. `tenants/{t}/invoices` is THE money ledger — the Overview tab
+   * sums it, `AdminAccounting` reads it, giving statements aggregate it and
+   * `/api/donation-history` is how a MEMBER sees their own giving — and until
+   * this ticket its only writer was the Stripe donation webhook.
+   *
+   * ─── 🔴 THE LEDGER WRITE HAPPENS FIRST, AND IT DECIDES ──────────────────────
+   *
+   * `recordManualDonation` runs behind `/api/donations/manual` BEFORE anything
+   * here writes. If it refuses, this function writes NOTHING at all: no
+   * timeline entry, no `totalDonated` bump, no `lastDonationAt`. The alternative
+   * ordering — CRM first, ledger second — is the bug wearing a different shape:
+   * the church would see a gift on the contact and never on the dashboard, which
+   * is the exact complaint.
+   *
+   * ⚠️ IT IS A ROUTE AND NOT A CLIENT WRITE because `firestore.rules` gates the
+   * invoices collection on `manageAccounting`, and the admin recording a gift
+   * holds `manageCRM`. See the route's own header: firestore.rules is untouched
+   * by this ticket.
+   *
+   * ─── 🔴 ONE GIFT, ONE MONEY RECORD — THE ACTIVITY LINKS, IT DOES NOT COPY ──
+   *
+   * The invoice IS the record of the money. The timeline entry REFERENCES it by
+   * `invoiceId` and carries `amount: null`, so nothing that ever sums
+   * `contactActivities.amount` — the field the webhook writes in DOLLARS — can
+   * pick the same gift up a second time. A gift counted twice is worse than a
+   * gift counted once in the wrong place.
+   *
+   * ⚠️ `invoiceAmountCents` IS A DISPLAY MIRROR AND SAYS SO IN ITS NAME. The CRM
+   * cannot read `invoices` (admin-read-only, and gated on a permission this
+   * screen's admin need not hold), so the timeline needs the figure locally to
+   * render the row. It is in CENTS under a name no money reader in this
+   * repository touches, it is keyed to `invoiceId`, and it is rendered through
+   * `formatCents` — the one helper that turns cents into dollars.
+   *
+   * ⚠️ `totalDonated` IS UNCHANGED AND STILL BUMPED, in DOLLARS. It is the
+   * contact's own running total — the same field the webhook increments for a
+   * Stripe gift, and what `resolvePipelineStage` reads — not a second copy of
+   * the ledger. Leaving it alone would have regressed the half of the founder's
+   * sentence that already worked.
+   */
   const addActivity = async () => {
     if (!actForm.description.trim() || !selected) return;
     setSavingAct(true);
+    setActivityError(null);
     try {
+      const contactTenantId = selected.tenantId || tenantId || PLATFORM_TENANT_ID;
+      const isDonation = actForm.type === 'donation' && !!actForm.amount;
+
+      // ── 1. The ledger. Nothing below runs unless this lands. ──────────────
+      let invoiceId: string | null = null;
+      let invoiceAmountCents: number | null = null;
+      let donationDollars = 0;
+      if (isDonation) {
+        // 🔴 The ONE conversion from dollars to cents, and it refuses rather
+        // than coercing — a blank, a letter, a zero or a negative never reaches
+        // the ledger as $0.00.
+        const amountCents = dollarsToCents(actForm.amount);
+        if (amountCents === null) {
+          // `finally` below clears `savingAct`; the dialog stays open with the
+          // typed value in it, exactly as a rejected ledger write leaves it.
+          setActivityError('Enter an amount greater than zero.');
+          return;
+        }
+        const res = await authFetch('/api/donations/manual', {
+          method: 'POST',
+          body: JSON.stringify({
+            tenantId: contactTenantId,
+            amountCents,
+            // 🔴 THE IDENTITY KEY. The route normalises it (trim + lowercase,
+            // `normalizeEmail`) exactly as `/api/donation-history` normalises
+            // the member's own verified token before matching. A contact with
+            // no email still records — and the dialog says, above this button,
+            // that its giver will never see the gift.
+            email: selected.email || '',
+            description: actForm.description.trim(),
+            source: 'crm_manual',
+            recipientName: `${selected.firstName || ''} ${selected.lastName || ''}`.trim(),
+          }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.invoiceId) {
+          // Throwing keeps every failure on one path — the catch below leaves
+          // the dialog open with the typed value still in it.
+          throw new Error(data?.error || `The gift could not be recorded (${res.status}).`);
+        }
+        invoiceId = data.invoiceId as string;
+        invoiceAmountCents = amountCents;
+        donationDollars = amountCents / 100;
+      }
+
+      // ── 2. The CRM timeline entry, which now points at the ledger. ────────
       await addDoc(collection(db, 'contactActivities'), {
         // Store the contact's own concrete tenantId (never null) so the doc is
         // readable under the top-level contactActivities rule, which gates the
         // read on isTenantAdmin(resource.data.tenantId). A null/mismatched
         // tenantId is why an added activity wrote but never showed in the
         // timeline. Mirrors the donation branch below and the contact writes.
-        contactId: selected.id, tenantId: selected.tenantId || tenantId || PLATFORM_TENANT_ID, type: actForm.type,
+        contactId: selected.id, tenantId: contactTenantId, type: actForm.type,
         description: actForm.description.trim(),
-        amount: actForm.type === 'donation' && actForm.amount ? Number(actForm.amount) : null,
+        // 🔴 ALWAYS NULL FOR A GIFT RECORDED HERE. The money lives on the
+        // invoice; see this function's header.
+        amount: null,
+        invoiceId,
+        invoiceAmountCents,
         createdAt: serverTimestamp(), createdBy: auth.currentUser?.uid || '',
       });
-      if (actForm.type === 'donation' && actForm.amount) {
-        const newTotal = (selected.totalDonated || 0) + Number(actForm.amount);
+
+      // ── 3. The contact's own running total, in DOLLARS, as before. ────────
+      if (isDonation) {
+        const newTotal = (selected.totalDonated || 0) + donationDollars;
         await setDoc(doc(db, 'contacts', selected.id), {
           firstName: selected.firstName ?? '', lastName: selected.lastName ?? '',
           email: selected.email ?? '', phone: selected.phone ?? '', type: selected.type ?? 'member',
-          tenantId: selected.tenantId || tenantId || PLATFORM_TENANT_ID,
+          tenantId: contactTenantId,
           totalDonated: newTotal, lastDonationAt: serverTimestamp(),
         }, { merge: true });
         setSelected({ ...selected, totalDonated: newTotal });
@@ -921,7 +1033,16 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
       await queryClient.invalidateQueries({ queryKey: ['contactActivities', tenantId, selected.id] });
       setShowAddActivity(false);
       setActForm({ type: 'note', description: '', amount: '' });
-    } catch (e) { notifyError('Failed to add activity', e); }
+    } catch (e) {
+      // 🔴 VISIBLE, AND THE INPUT IS KEPT. `notifyError` alone dismissed itself
+      // and left an admin with a closed dialog and no gift; the banner in the
+      // dialog stays until they act on it. `notifyError` is still called so the
+      // failure reaches the console/toast path every other write here uses.
+      const message = (e as Error)?.message || 'The gift could not be recorded.';
+      console.error('Failed to add activity:', e);
+      setActivityError(message);
+      notifyError('Failed to add activity', e);
+    }
     finally { setSavingAct(false); }
   };
 
@@ -1420,9 +1541,23 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                 <div>
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="text-xs font-bold text-muted capitalize">{act.type}</span>
-                    {act.amount && (
+                    {/*
+                      🔴 THE-350 · TWO SHAPES, TWO UNITS, ONE FORMATTER EACH.
+
+                      `amount` is DOLLARS and belongs to every activity written
+                      before this ticket and to every Stripe gift the webhook
+                      logs — those rows are untouched and still read `fmt`.
+                      `invoiceAmountCents` is CENTS and belongs to a gift
+                      recorded here, whose money record is the invoice this row
+                      points at; it goes through `formatCents`, the one helper
+                      that turns cents into dollars, because reading cents with
+                      the dollar formatter is exactly the `$10,550,000` bug.
+                    */}
+                    {act.amount ? (
                       <span className="text-xs font-bold" style={{ color: 'var(--brand-color, #B8962E)' }}>{fmt(act.amount)}</span>
-                    )}
+                    ) : typeof act.invoiceAmountCents === 'number' ? (
+                      <span className="text-xs font-bold" style={{ color: 'var(--brand-color, #B8962E)' }}>{formatCents(act.invoiceAmountCents)}</span>
+                    ) : null}
                     <span className="text-[10px] text-faint ml-auto">{fmtDate(act.createdAt)}</span>
                   </div>
                   <p className="text-sm text-body">{act.description}</p>
@@ -1482,6 +1617,72 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                     <label className="text-xs font-semibold text-muted mb-1 block">Amount ($)</label>
                     <input type="number" min={0} value={actForm.amount} onChange={e => setActForm({ ...actForm, amount: e.target.value })}
                       className="w-full rounded-xl border border-line-hairline px-3 py-2.5 text-sm focus:border-gold focus:outline-hidden" placeholder="0.00" />
+                    {/*
+                      🔴 THE-350 · WHAT A GIFT RECORDED HERE NOW REACHES, said
+                      once and said truly. This used to write a timeline entry
+                      and nothing else; it now writes the same donation receipt
+                      the Stripe webhook writes, which is why every one of these
+                      surfaces starts working without a line of new reading.
+                    */}
+                    <p className="text-[11px] text-muted leading-relaxed mt-2" data-testid="manual-donation-reach">
+                      Recording this adds a donation receipt to your books, so the gift counts on your
+                      dashboard, in accounting, and on this year&apos;s giving statement.
+                    </p>
+                    {/*
+                      🔴 THE CONSEQUENCE OF NO EMAIL, ON SCREEN, BEFORE THE SAVE.
+
+                      `recipientEmail` is the identity key: `/api/donation-history`
+                      matches a member's own receipts by NORMALISED email and
+                      refuses an empty caller outright, and the giving-statement
+                      generator skips a receipt with no email. So a gift recorded
+                      for a contact with no address is real money the church
+                      received that its giver can never see.
+
+                      ⚠️ THE GIFT IS STILL RECORDED, deliberately. Refusing would
+                      lose the church's own record of a cash gift from someone
+                      who has no email — it belongs on the dashboard and in the
+                      books whether or not anyone can be shown a receipt. What is
+                      not acceptable is recording it silently, which is the quiet
+                      lie this ticket exists to remove. So it is named here, in
+                      the dialog, where the decision is still reversible: adding
+                      an email to the contact first is one screen away.
+                    */}
+                    {!(selected?.email || '').trim() && (
+                      <div
+                        className="flex gap-2 rounded-xl border border-line-hairline bg-surface-tint p-3 mt-2"
+                        data-testid="manual-donation-no-email"
+                      >
+                        <AlertTriangle size={14} className="text-gold shrink-0 mt-0.5" aria-hidden="true" />
+                        <p className="text-[11px] text-body leading-relaxed">
+                          <b className="text-strong">This contact has no email address.</b> The gift will still
+                          count on your dashboard, in accounting and on your giving statements &mdash; but{' '}
+                          {selected?.firstName || 'this person'} will never see it in their own donation history,
+                          and no receipt can reach them. Add an email to the contact first if they should.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/*
+                  🔴 THE-350 · A FAILED WRITE SURFACES, AND THE INPUT IS KEPT.
+                  `role="alert"` so it is announced rather than merely drawn; the
+                  dialog stays open and the typed amount and description are
+                  still in their fields above.
+                */}
+                {activityError && (
+                  <div
+                    role="alert"
+                    className="flex gap-2 rounded-xl border border-danger bg-danger-tint p-3"
+                    data-testid="manual-donation-error"
+                  >
+                    <AlertTriangle size={14} className="text-danger shrink-0 mt-0.5" aria-hidden="true" />
+                    <div>
+                      <p className="text-xs font-semibold text-danger-strong">Not recorded</p>
+                      <p className="text-xs text-danger-strong mt-0.5">{activityError}</p>
+                      <p className="text-[11px] text-danger mt-1">
+                        Nothing was saved &mdash; what you typed has been kept, so you can try again.
+                      </p>
+                    </div>
                   </div>
                 )}
                 <div>
@@ -1494,7 +1695,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                 </div>
               </div>
               <div className="p-5 border-t border-line-hairline space-y-2">
-                <button onClick={() => setShowAddActivity(false)} className="w-full py-2.5 rounded-xl border border-line-hairline text-sm font-semibold text-muted">Cancel</button>
+                <button onClick={() => { setShowAddActivity(false); setActivityError(null); }} className="w-full py-2.5 rounded-xl border border-line-hairline text-sm font-semibold text-muted">Cancel</button>
                 <button onClick={addActivity} disabled={savingAct || !actForm.description.trim()}
                   className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
                   style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>

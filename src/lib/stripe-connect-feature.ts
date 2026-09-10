@@ -106,15 +106,50 @@ export const STRIPE_CONNECT_ENABLED = false;
 
 /**
  * What every gated route and the payment panel answer with while the switch is
- * off. The founder's wording, verbatim: no explanation, and no pointer to the
- * manual payment links — a church reading this is looking at the Stripe panel,
- * and the links editor is already on the same screen.
+ * off.
  *
- * 503 rather than 404: the route EXISTS and is coming back, which is what a
- * stale admin tab should be told. (The appeal is pending; this is days, not a
- * removal.)
+ * ─── 🔴 THE-350 — IT NO LONGER SAYS "TEMPORARILY", AND HERE IS WHY ──────────
+ *
+ * The founder: "In donation right now it says stripe unavailable temporarily.
+ * Hide that."
+ *
+ * THE-256 recorded this line as the founder's wording verbatim, and it was
+ * accurate when it was written: an appeal was pending and the sentence in the
+ * docblock above it read "this is days, not a removal". 🔴 THAT IS NO LONGER
+ * TRUE. The platform account is CLOSED as `rejected.fraud` and Stripe stopped
+ * replying (`86bbnjmw9`). There is no appeal in flight, no migration in
+ * progress and no date. A church reading "Temporarily unavailable" was being
+ * told to wait for something that is not coming — the same class as the six
+ * false-claim incidents this site has already corrected.
+ *
+ * ⚠️ SO THE REPLACEMENT CARRIES NO PROMISE. No "temporarily", no "migration",
+ * no date, and nothing that implies card giving is on its way back. It says
+ * what is true today — card giving inside the app is off — and then names what
+ * the church CAN actually do, which is the half a bare refusal left them to
+ * guess at.
+ *
+ * 🔴 AND THE SECOND SENTENCE IS ONLY TRUE BECAUSE OF THIS TICKET. Before
+ * THE-350 a gift recorded by hand wrote a CRM timeline entry and nothing else:
+ * it reached no dashboard, no books and no giving statement. `lib/manual-
+ * donation.ts` now writes the same `donation_receipt` invoice the Stripe
+ * webhook writes, so the manual path really is the path, end to end. Naming it
+ * here before that was built would have been a second false claim replacing the
+ * first.
+ *
+ * ⚠️ THIS REVERSES ONE THING THE-256 DECIDED ON PURPOSE — "no pointer to the
+ * manual payment links". That reasoning was that the links editor is already on
+ * the same screen, which is still so; what changed is that the pointer is no
+ * longer just navigational. It is the answer to "then how does my church get
+ * paid, and will it count", and that answer is not visible anywhere on the
+ * Stripe panel.
+ *
+ * 503 rather than 404: the route EXISTS and is refusing, which is what a stale
+ * admin tab should be told. It is deliberately NOT 410 — nothing here asserts
+ * the endpoint is gone for good, only that it is off, and `STRIPE_CONNECT_ENABLED`
+ * remains the one value that decides.
  *
  * Exported as a named const so a route and a component cannot word it
  * differently — the same reason `SMS_HIDDEN_MESSAGE` is one.
  */
-export const STRIPE_CONNECT_HIDDEN_MESSAGE = 'Temporarily unavailable';
+export const STRIPE_CONNECT_HIDDEN_MESSAGE =
+  'Card giving inside the app is off. Your own payment links still work, and a gift you record in the CRM counts on your dashboard, in accounting and on your giving statements.';

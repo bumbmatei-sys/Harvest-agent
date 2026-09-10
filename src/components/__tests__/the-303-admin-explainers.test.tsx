@@ -132,15 +132,37 @@ describe('6 · the donations explainer is collapsible and its text is unchanged'
     `The money goes straight from your member to your own ${GIVING_PROVIDER_NAMES_OR} account.`,
     'There is no Harvest fee, no Harvest receipt, and nothing for Harvest to refund or dispute',
     'these accounts are yours, and so is everything that happens in them.',
-    'Gifts given this way will not appear on giving statements.',
-    "Harvest never sees them, so they are missing from donation history, from a member's receipts, and from every year-end statement you generate.",
-    'Only gifts given through Stripe are recorded and receipted.',
+    /*
+     * 🔴 AMENDED BY THE-350 — four of these sentences became FALSE and are
+     * replaced by the true ones; the rest are byte-for-byte as THE-303 wrote
+     * them and are still asserted verbatim.
+     *
+     * THE-249 wrote "will not appear on giving statements", "Only gifts given
+     * through Stripe are recorded and receipted", "It does not put the gift on
+     * a giving statement, and nothing else does either" and "statements are
+     * built from Stripe gifts alone". Every one was true of a manual entry that
+     * wrote a `contactActivities` row and nothing else. Add Activity → Donation
+     * now calls `lib/manual-donation.ts`, which writes the same
+     * `donation_receipt` invoice the Stripe webhook writes, so a recorded gift
+     * reaches the dashboard, accounting, the year-end statement and the
+     * member's own history. Keeping those four would be telling a church its
+     * own books are wrong — the same class of false claim this suite exists to
+     * catch, pointing the other way.
+     *
+     * ⚠️ THE GAP IS STILL REAL AND IS STILL PINNED. Harvest never SEES a gift
+     * sent through a church's own link, so nothing records it on its own, and a
+     * member who gives that way still sits at $0 given until an admin records
+     * it. Both of those sentences are unchanged below.
+     */
+    'Gifts given this way are not recorded until you record them.',
+    "Harvest never sees them, so on their own they are missing from donation history, from a member's receipts, and from every year-end statement you generate.",
     'Your CRM will not record them either.',
     'A member who gives this way keeps a total given of $0, no last-gift date and the Member stage',
     'the same as someone who has never given.',
-    'To record one, open the contact in your CRM, press Add Activity, choose Donation and enter the amount: that adds to their total given and dates the gift.',
-    'It does not put the gift on a giving statement, and nothing else does either',
-    'statements are built from Stripe gifts alone.',
+    'To record one, open the contact in your CRM, press Add Activity, choose Donation and enter the amount.',
+    'That adds to their total given, dates the gift, and writes a donation receipt',
+    "so the gift counts on your dashboard, in your accounting, on this year's giving statement, and in the member's own donation history.",
+    'A contact with no email address is the one exception: the gift still counts for your church, but nothing can reach the person who gave it, and the CRM says so before you save.',
     'Everything you enter here is shown publicly on your Give page, including the email addresses',
     'that is how a member sends to the right account. Use an address you are happy to publish.',
   ];

@@ -438,7 +438,21 @@ describe('5 · the money path is byte-identical', () => {
     // THE-291's own claim, asserted below: it writes no `plan`, no feature flag
     // and no add-on count. Publishing a note is not granting a capability; the
     // Dodo webhook remains the only writer of one.
-    expect(routes.length, 'an API route was added or removed').toBe(117);
+    // 118 SINCE THE-350, and the one it adds is NAMED rather than absorbed into
+    // a moved number: `app/api/donations/manual/route.ts`, which records a gift
+    // no payment rail processed. It exists for exactly the reason THE-324's two
+    // and THE-346's one above do — `firestore.rules` needs no change and is
+    // byte-identical. The invoices collection is gated on `manageAccounting`
+    // while the admin recording a gift in the CRM holds `manageCRM`, so rather
+    // than loosening a rule that auto-deploys with no emulator tests, the write
+    // goes through the Admin SDK behind a route that imposes
+    // `requireTenantPermission(request, tenantId, 'manageCRM')` itself.
+    //
+    // 🔴 AND IT PASSES THE-291'S OWN CLAIM, asserted below: it writes no `plan`,
+    // no feature flag and no add-on count. AN INVOICE IS NOT AN ENTITLEMENT —
+    // recording that a church received money says nothing about what the church
+    // may do, and the Dodo webhook remains the only writer of a capability.
+    expect(routes.length, 'an API route was added or removed').toBe(118);
     expect(
       routes.some((f) => f.endsWith(path.join('app/api/sms/numbers/route.ts'))),
       'the route THE-314 added is missing — the count moved for some other reason',
@@ -447,6 +461,7 @@ describe('5 · the money path is byte-identical', () => {
       'app/api/rota/invitations/route.ts',
       'app/api/rota/respond/route.ts',
       'app/api/docs/public-share/route.ts',
+      'app/api/donations/manual/route.ts',
     ]) {
       expect(
         routes.some((f) => f.endsWith(path.join(added))),
@@ -468,6 +483,22 @@ describe('5 · the money path is byte-identical', () => {
     // It reads the tenant doc, and only reads it.
     expect(numbers, 'the number purchase route stopped checking entitlement')
       .toMatch(/collection\(['"]tenants['"]\)\.doc\([^)]*\)\.get\(\)/);
+
+    /**
+     * 🔴 THE-350's route, held to the same claim and for the same reason: an
+     * INVOICE IS NOT AN ENTITLEMENT. It writes one document, into
+     * `tenants/{t}/invoices`, and never touches the tenant document itself —
+     * which is where `plan` and `addons` live and which only the Dodo webhook
+     * may write. #434 removed a client-side `plan` write and THE-259's sweep
+     * catches its return; this is the same property, asserted on the write.
+     */
+    for (const rel of ['src/app/api/donations/manual/route.ts', 'src/lib/manual-donation.ts']) {
+      const src = read(rel);
+      expect(src, `${rel} writes to the tenant document`)
+        .not.toMatch(/collection\(['"]tenants['"]\)\s*\.doc\([^)]*\)\s*\.(set|update|delete)\(/);
+      expect(src, `${rel} writes a plan, a feature flag or an add-on count`)
+        .not.toMatch(/\b(plan|addons|features?)\s*:\s*['"{]/);
+    }
     expect(numbers, 'the number purchase route writes an add-on count').not.toMatch(/addons\s*:/);
   });
 });

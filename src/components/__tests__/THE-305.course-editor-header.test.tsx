@@ -780,12 +780,31 @@ describe('the files this ticket must not open are byte-identical', () => {
        THE-305's claim, that IT did not open them, is stated below as what it
        means: the course editor imports neither and spells neither. The other
        two stay frozen. */
+    /* 🔴 THE-350 TOOK `AdminDonations.tsx` OFF THIS DIFF READ, for the reason
+       the notes above already give for AdminAccounting, AdminForms and
+       AdminFundraising: it is a file a LATER ticket legitimately edits, and a
+       `git diff` freeze fails on any edit at any value.
+
+       THE-350 corrects copy on it that this ticket's own change made false.
+       THE-249 wrote "It does not put the gift on a giving statement, and
+       nothing else does either — statements are built from Stripe gifts alone",
+       which was true of a manual CRM entry that wrote a `contactActivities` row
+       and nothing else. Add Activity → Donation now writes the same
+       `donation_receipt` invoice the Stripe webhook writes, so leaving those
+       sentences up would be telling a church its own books are wrong. The file
+       is not unguarded: `manual-payment-link-disclosures.test.ts` and
+       `AdminDonations.section.test.tsx` are the suites that own it, both of
+       them assert its copy against what the code actually does, and both were
+       updated with it.
+
+       THE-305's own claim, that IT did not open the file, is stated below as
+       what it means: the course editor imports it and spells it nowhere.
+       `PublicPledge.tsx` stays frozen. */
     expect(changedSince(
-      'src/components/AdminDonations.tsx',
       'src/components/PublicPledge.tsx',
     )).toEqual([]);
     const editorSrc = readSrc('AdminCourseEditor.tsx');
-    for (const surface of ['AdminForms', 'AdminFundraising']) {
+    for (const surface of ['AdminForms', 'AdminFundraising', 'AdminDonations']) {
       expect(editorSrc, `the course editor started importing ${surface}`)
         .not.toMatch(new RegExp(`from\\s+['"][^'"]*${surface}['"]`));
     }
