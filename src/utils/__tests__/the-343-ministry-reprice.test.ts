@@ -59,10 +59,12 @@ import { planWritesIn } from '../../__tests__/the-291-client-plan-write.test';
  * ownership of `plan` are all asserted UNMOVED. A tenant already on `max` pays
  * less at renewal and loses nothing.
  *
- * 🔴 AND DODO HAS NOT BEEN REPRICED YET. The three live products still charge
- * 8000 / 21600 / 76000; the founder updates them by hand. That window is
- * recorded and asserted from both sides in `dodo-catalogue.test.ts`
- * (`PENDING_DODO_REPRICE`) and cross-checked here.
+ * ✅ AND DODO HAS SINCE BEEN REPRICED TOO — THE-344. When this ticket landed,
+ * the three live products carried the superseded amounts and that gap was
+ * recorded, and asserted from both sides, in `dodo-catalogue.test.ts`. They now
+ * hold 6000 / 16200 / 56400, read back from the authenticated live API with the
+ * 14-day trial and the billing intervals intact, so the sections below assert
+ * AGREEMENT where they used to assert a gap.
  * ───────────────────────────────────────────────────────────────────────────*/
 
 const REPO = resolve(__dirname, '../../..');
@@ -513,12 +515,17 @@ describe('10 · PLATFORM_FEE_MAP is still zero on every tier', () => {
   });
 });
 
-/* ── Dodo · the window this ticket opens ──────────────────────────────────── */
-describe('the Dodo reprice the founder has NOT yet made', () => {
-  const PENDING = {
-    monthly: { live: 8000, app: 6000, id: 'pdt_0NlJZMUUiT36FGMoiFXgl' },
-    quarterly: { live: 21600, app: 16200, id: 'pdt_0NloCatUWEkEUq1usWJ0n' },
-    yearly: { live: 76000, app: 56400, id: 'pdt_0NlJZMXTnpRBAwTfBVpPs' },
+/* ── Dodo · the window this ticket opened, and THE-344 closed ─────────────── */
+describe('the Dodo reprice, which THE-344 completed', () => {
+  /** 🔴 WHAT THE LIVE PRODUCTS HOLD, transcribed from the authenticated live
+   *  API by THE-344 (`products.retrieve` on each id) rather than derived from
+   *  this repo. `live` carried the superseded amounts while THE-343 was out in
+   *  front; it is now the same figure the app publishes, which is what makes
+   *  asserting the two EQUAL a check rather than a restatement. */
+  const MINISTRY = {
+    monthly: { live: 6000, app: 6000, id: 'pdt_0NlJZMUUiT36FGMoiFXgl' },
+    quarterly: { live: 16200, app: 16200, id: 'pdt_0NloCatUWEkEUq1usWJ0n' },
+    yearly: { live: 56400, app: 56400, id: 'pdt_0NlJZMXTnpRBAwTfBVpPs' },
   } as const;
 
   it('🔴 the catalogue derives its price from PLAN_PRICING — no literal to edit', () => {
@@ -532,31 +539,36 @@ describe('the Dodo reprice the founder has NOT yet made', () => {
     }
   });
 
-  it('🔴 the exact minor-unit amounts the founder must set in Dodo', () => {
+  it('🔴 the exact minor-unit amounts Dodo now holds, per product id', () => {
     for (const term of BILLING_TERMS) {
       const entry = DODO_LIVE_CATALOGUE.max[term];
-      expect(entry.productId, `${term} product id moved`).toBe(PENDING[term].id);
-      expect(entry.priceMinorUnits, `${term} app-side minor units`).toBe(PENDING[term].app);
+      expect(entry.productId, `${term} product id moved`).toBe(MINISTRY[term].id);
+      expect(entry.priceMinorUnits, `${term} app-side minor units`).toBe(MINISTRY[term].app);
     }
     expect(BILLING_TERMS.map((t) => DODO_LIVE_CATALOGUE.max[t].priceMinorUnits))
       .toEqual([6000, 16200, 56400]);
   });
 
-  it('🔴 and the window is real: the app is AHEAD of live Dodo on all three', () => {
-    // Recorded plainly rather than papered over. Until the founder updates the
-    // three products the app advertises $60 and Dodo would charge $80. It is
-    // harmless only because there are NO PAYING CUSTOMERS on max — not because
-    // the two agree.
+  it('🔴 and the window is CLOSED: the app and live Dodo agree on all three', () => {
+    // THE-343 opened a real window — the app advertised $60 while Dodo would
+    // have charged $80 — and it was harmless only because there are no paying
+    // customers on max. THE-344 closed it by repricing the three products and
+    // reading them back. This asserts the agreement directly; a partial update,
+    // which is the failure mode that actually matters, fails here per term.
     for (const term of BILLING_TERMS) {
-      expect(PENDING[term].app, `${term} is meant to be a reduction`)
-        .toBeLessThan(PENDING[term].live);
+      expect(MINISTRY[term].app, `${term} still diverges from live Dodo`)
+        .toBe(MINISTRY[term].live);
+      expect(DODO_LIVE_CATALOGUE.max[term].priceMinorUnits, `${term} live side`)
+        .toBe(MINISTRY[term].live);
     }
   });
 
   it('the trial and the billing interval are untouched by the reprice', () => {
-    // The founder's own step replaces the WHOLE price object, so these are the
-    // fields that get wiped if they are not resent. They are recorded here as
-    // what the app expects to still be true afterwards.
+    // `products.update` replaces the WHOLE price object, so these are the
+    // fields that get wiped if they are not resent. THE-344 re-read all three
+    // products after the update and confirmed `trial_period_days: 14`,
+    // `trial_type: 'free'` and the 1 Month / 3 Month / 1 Year frequencies
+    // survived; this is the app-side half of that check.
     for (const term of BILLING_TERMS) {
       expect(DODO_LIVE_CATALOGUE.max[term].trialDays, `${term} trial`).toBe(14);
     }
