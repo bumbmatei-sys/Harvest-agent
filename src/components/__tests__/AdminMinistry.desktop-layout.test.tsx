@@ -1829,8 +1829,57 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
    * and THE-345's price gating and THE-308's lazy month-view mount are
    * byte-identical.
    */
-    strippedSha: '56a8bd901375d088e0b6ec8a1865e09dbbac12ce4d1dd9deae06839d1b8988ee',
-    strippedLines: 1044,
+  /**
+   * RE-AIMED AGAIN BY THE-351 - 1044 -> 1262 STRIPPED LINES. Previous pins,
+   * kept so nothing is lost:
+   *
+   *     strippedSha:   8fd9437c2ea58d7c3ea45ade0f238ea5605803c0fd0eb3243c60cdd751fea42d
+   *     strippedLines: 1004     (THE-345, paid events gated)
+   *     strippedSha:   56a8bd901375d088e0b6ec8a1865e09dbbac12ce4d1dd9deae06839d1b8988ee
+   *     strippedLines: 1044     (THE-346, the List/Month tab bar)
+   *
+   * WHAT THE-351 CHANGED IN THIS FILE, and this is the case THE-345's own note
+   * above describes: "WHAT THIS SECTION IS ACTUALLY FOR - no ticket price,
+   * donation amount, fee or checkout call changed - IS EXACTLY WHAT THIS TICKET
+   * CHANGES, at the founder's instruction." It is true again here, for the
+   * opposite instruction. The founder now wants paid events BACK, on terms
+   * Harvest can be honest about: "Don't let Harvest imply it verified anything.
+   * The church confirms; Harvest records what the church says."
+   *
+   * So the re-record is the ticket, not collateral. What moved:
+   *
+   *   - a DISCLAIMER above the pricing block, before the price input, so an
+   *     admin cannot type a number without having read that Harvest cannot check
+   *     anything and that THEY will confirm each payment by hand;
+   *   - a per-event PROVIDER PICKER over the church's own giving links;
+   *   - the TICKET-TYPE price input and its clamp move from `PAID_EVENTS_ENABLED`
+   *     to `ticketPricingAvailable()`. The EVENT-LEVEL price input is UNTOUCHED
+   *     and still absent, because THE-345's finding about it holds in either
+   *     mode: it is charged by nothing;
+   *   - a payment flag beside each attendee and a Confirm control on rows that
+   *     owe money.
+   *
+   * THE THREE ASSERTIONS THAT CARRY THE CLAIM UNDERNEATH IT STILL PASS:
+   *
+   *   - `firestorePathsOf` below is UNCHANGED - the Confirm control calls an API
+   *     route through the shared client module, so this screen still reads and
+   *     writes exactly what it always did, and the money is written server-side
+   *     by THE-350's writer.
+   *   - `handleSave` and `confirmDelete` stay pinned BY REGION DIGEST in
+   *     `the-308-guards.test.ts` and `the-313-guards.test.ts`. `confirmDelete`
+   *     is BYTE-IDENTICAL; `handleSave` gained exactly one field - the provider
+   *     ids, which are not money - and both suites record the new value as an
+   *     APPENDED accepted set, so the exact shape of the change is reviewable
+   *     rather than blessed wholesale.
+   *   - the event editor's money field is still asserted by label directly
+   *     below, and THE-345's claim about it is UNINVERTED: the event-level price
+   *     field is still absent and the notice that replaced it is still required.
+   *
+   * Update `THE_308_EVENTS` only for a deliberate, reviewed change to
+   * AdminEvents, and say which ticket in the same breath.
+   */
+    strippedSha: '69aed7ec56c33aa685543a7428a7a1c648afa8b48bc86e80a24b57a9fa326fbe',
+    strippedLines: 1262,
   };
 
   it('changes nothing in AdminEvents outside a className, THE-308', () => {
@@ -1943,8 +1992,31 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
       .not.toContain('0 = free');
     expect(placeholders, 'capacity went with the price - it is independent of it')
       .toContain('e.g. 100');
-    expect(form.querySelector('[data-paid-events-gate="form"]'),
-      'the price field is gone and nothing tells the church why').toBeTruthy();
+    /**
+     * AMENDED BY THE-351 - the notice moved, the claim did not.
+     *
+     * THE-345's claim is that the EVENT-LEVEL price field is absent and that
+     * something stands where it was telling the church why. Both halves still
+     * hold - the first assertion above is byte-identical, and THE-351 leaves
+     * `events/{id}.price` gated on `PAID_EVENTS_ENABLED` because THE-345's
+     * finding about it is unchanged by manual confirmation: it is quoted on four
+     * screens and charged by nothing in either mode.
+     *
+     * What moved is WHICH notice stands there, because there are three states
+     * now instead of two: `[data-paid-events-gate="form"]` when no pricing is
+     * available at all, `[data-paid-events-gate="no-links"]` when a church has
+     * saved no payment link to be paid through, and
+     * `[data-manual-payment-disclaimer]` when it has. Pinning one spelling would
+     * have made "the notice is always this one" the claim, which THE-345 never
+     * made; asserting that SOMETHING with a reason stands there is the claim it
+     * did make, and it fails if the notice is deleted in any of the three.
+     */
+    const notice = form.querySelector(
+      '[data-paid-events-gate], [data-manual-payment-disclaimer]',
+    );
+    expect(notice, 'the price field is gone and nothing tells the church why').toBeTruthy();
+    expect((notice!.textContent ?? '').length,
+      'the notice is there but says nothing').toBeGreaterThan(80);
   });
 
   it('keeps the pledge amount field on the fundraising screen, by its label', async () => {

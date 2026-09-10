@@ -9,6 +9,9 @@ import { getTenantPrivate } from '@/lib/tenant-private';
 import { verifyAuth } from '@/lib/api-auth';
 import { PLATFORM_FEE_MAP } from '@/lib/stripe-connect';
 import { sendAutomatedSms } from '@/lib/sms-send';
+import { manualConfirmationMode } from '@/lib/paid-events-feature';
+import { buildPaymentReference, REFERENCE_BODY_LENGTH } from '@/lib/event-payment-claims';
+import { randomBytes } from 'node:crypto';
 import { captureHandledError, captureMoneyPathError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
@@ -160,7 +163,48 @@ export async function POST(request: NextRequest) {
     // and a ticket that discounts to $0 is free — both keep the immediate-confirm
     // flow below. Everything else goes through Stripe Checkout and is confirmed
     // only by the webhook after payment succeeds.
-    const requiresPayment = amount > 0 && !waitlisted;
+    /**
+     * THE-351 — 🔴 UNDER MANUAL CONFIRMATION THIS NEVER GOES TO A RAIL.
+     *
+     * `manualConfirmationMode()` is true while `PAID_EVENTS_ENABLED` is false and
+     * `MANUAL_EVENT_PAYMENTS_ENABLED` is true — i.e. a church may price a ticket
+     * and collects it ITSELF, through its own PayPal / Revolut / Wise link.
+     *
+     * ⚠️ WITHOUT THIS CLAUSE THE WHOLE FEATURE IS UNREACHABLE. A priced ticket
+     * would compute `requiresPayment`, look for a Connect account that does not
+     * exist (the platform account is closed as `rejected.fraud`) and answer the
+     * member with "This ministry hasn't set up payments yet" — the exact 400
+     * THE-345 gated the price field to avoid. So the founder's instruction —
+     * "Registered immediately, marked UNPAID" — is implemented HERE, as a
+     * refusal to enter the payment branch at all.
+     *
+     * 🔴 THE THREE EXISTING BYPASSES ARE UNTOUCHED. `amount > 0` still means a
+     * free registration, a waitlist entry and a ticket discounted to $0 never
+     * reach this question — a church running a free conference sees nothing this
+     * ticket added, and that is Do-not-break 2.
+     */
+    const requiresPayment = amount > 0 && !waitlisted && !manualConfirmationMode();
+
+    /**
+     * 🔴 THE REFERENCE CODE — the string the admin matches against a bank line.
+     *
+     * Generated for any seat that owes money under manual confirmation, and for
+     * nothing else: a free registration has no payment to reference and must not
+     * acquire the vocabulary of one.
+     *
+     * ⚠️ IT IS NOT THE TICKET CODE, and `event-payment-claims.ts` records why in
+     * full: the ticket code is what the QR encodes and what gets a person
+     * through the door, and this string is written into a payment note — on
+     * Venmo, whose transaction feed is PUBLIC BY DEFAULT. Two identifiers, one
+     * of which grants nothing.
+     */
+    const owesManualPayment = amount > 0 && !waitlisted && manualConfirmationMode();
+    const paymentFields = owesManualPayment
+      ? {
+          paymentStatus: 'unpaid',
+          paymentReference: buildPaymentReference(randomBytes(REFERENCE_BODY_LENGTH)),
+        }
+      : {};
 
     if (requiresPayment) {
       const stripeKey = process.env.STRIPE_SECRET_KEY;
@@ -330,6 +374,11 @@ export async function POST(request: NextRequest) {
       ticketTypeId,
       ticketTypeName: ticketType.name,
       ticketCode,
+      // 🔴 THE-351 — `status` IS REGISTRATION STATUS AND HAS NEVER MEANT MONEY.
+      // A manually-paid seat is `confirmed` the moment it is taken, exactly like
+      // a free one, which is what makes the founder's decision — "let them in,
+      // flagged" — structural: check-in reads THIS field, and payment lives in
+      // the separate `payment*` fields below where no door control looks.
       status: waitlisted ? 'waitlisted' : 'confirmed',
       waitlisted: !!waitlisted,
       amount,
@@ -338,6 +387,7 @@ export async function POST(request: NextRequest) {
       discountAmount: discountAmount || 0,
       additionalAttendees,
       registeredAt: FieldValue.serverTimestamp(),
+      ...paymentFields,
     });
 
     // ── Increment discount usage (read-modify-write the array) ──
@@ -389,6 +439,35 @@ export async function POST(request: NextRequest) {
         const tenantName = tenantSnap.data()?.name || tenantSnap.data()?.displayName || 'Harvest';
         const qrDataUrl = await QRCode.toDataURL(ticketCode, { width: 240, margin: 1 });
         const resend = new Resend(resendKey);
+        /**
+         * 🔴 THE-351 — THE PAYMENT INSTRUCTION, FOR THE MEMBER WHO WILL NEVER
+         * SEE THE IN-APP TICKET.
+         *
+         * ⚠️ A LOGGED-OUT REGISTRANT CANNOT PRESS "I'VE PAID" — that route
+         * requires a verified identity, because a button that could be pressed
+         * for anyone else's ticket is a button that puts strangers in a
+         * church's inbox. So for them this email IS the whole instruction: what
+         * to pay, where the reference goes, and that the church is who decides.
+         * The church can still confirm them from the attendee list, which
+         * carries the same flag and the same Confirm.
+         *
+         * ⚠️ IT IS INLINE HERE RATHER THAN THROUGH `transactional-email.ts`,
+         * and that is deliberate rather than a twelfth copy: this is an
+         * EXISTING send that THE-340 explicitly left alone ("the nine inline
+         * copies are left exactly as they are"), it carries an HTML body with
+         * an embedded QR that the funnel's text-only signature cannot express,
+         * and rewriting a live registration email is not this ticket's risk to
+         * take. THE-351's OWN send — the admin notification — goes through the
+         * funnel, which is what test 14c asserts.
+         */
+        const payNote = owesManualPayment
+          ? `<p>This ticket costs $${(amount / 100).toFixed(2)}, and ${tenantName} collects it `
+            + `directly — Harvest does not handle this money and cannot see it. Pay them using `
+            + `the links on their giving page and put <strong>${paymentFields.paymentReference}</strong> `
+            + `in the payment note so they can find it. They will mark it paid themselves once `
+            + `they have found it in their own account. Bring this ticket either way — you will `
+            + `not be turned away at the door.</p>`
+          : '';
         const intro = waitlisted
           ? `You're on the waitlist for <strong>${event.title}</strong>. We'll contact you if a spot opens.`
           : `you're registered for <strong>${event.title}</strong>. Your ticket code is <strong>${ticketCode}</strong>.`;
@@ -398,6 +477,7 @@ export async function POST(request: NextRequest) {
           subject: `Your registration for ${event.title}`,
           html: `<p>Hi ${firstName}, ${intro}</p>` +
             (waitlisted ? '' : `<p>Present this QR code at the door:</p><p><img src="${qrDataUrl}" alt="Ticket QR" width="200" height="200" /></p>`) +
+            payNote +
             `<br><p>— ${tenantName}</p>`,
         });
       } catch (e) {
@@ -433,7 +513,16 @@ export async function POST(request: NextRequest) {
       console.warn('Registration CRM activity log failed:', e);
     }
 
-    return NextResponse.json({ success: true, ticketCode, waitlisted });
+    // THE-351 — the reference travels back so the public success screen can
+    // show it to somebody who will never open the in-app ticket. `null` for a
+    // free seat, which has no payment to reference.
+    return NextResponse.json({
+      success: true,
+      ticketCode,
+      waitlisted,
+      paymentReference: paymentFields.paymentReference ?? null,
+      amount: owesManualPayment ? amount : 0,
+    });
   } catch (e) {
     console.error('Event registration submit error:', e);
     // A public visitor's registration didn't happen. They see a generic failure

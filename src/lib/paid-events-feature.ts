@@ -109,6 +109,94 @@
 export const PAID_EVENTS_ENABLED = false;
 
 /**
+ * THE-351 — THE SECOND PROPOSITION, AND IT IS A DIFFERENT ONE.
+ *
+ * ═════════════════════════════════════════════════════════════════════════════
+ * WHY THE-345'S SWITCH IS NOT SIMPLY FLIPPED, AND IS NOT DELETED EITHER
+ *
+ * THE-345 above states its own proposition exactly: "can a church be paid for a
+ * ticket AT ALL". Read that way the answer is now yes — a church can be paid,
+ * through its own PayPal, and an admin confirms each payment by hand. So the
+ * naive change is `PAID_EVENTS_ENABLED = true`.
+ *
+ * THAT WOULD BREAK REGISTRATION FOR EVERY PAID TICKET, IMMEDIATELY. The one
+ * value gates a SECOND thing the paragraph above does not name: with a non-zero
+ * amount, `/api/event-registration/submit` computes `requiresPayment` and goes
+ * to STRIPE CHECKOUT, which fails with "This ministry hasn't set up payments
+ * yet" because the platform Connect account is closed. Flipping the flag would
+ * put a price back on the form and bounce every member off a 400 — the exact
+ * state THE-345 was written to remove, one layer further along.
+ *
+ * So there are two propositions tangled in one name, and THE-345's own argument
+ * for not reusing `STRIPE_CONNECT_ENABLED` — "Two propositions, two lines" — is
+ * the argument for splitting them here:
+ *
+ *   `PAID_EVENTS_ENABLED`            HARVEST CAN PROCESS A PAYMENT.
+ *                                    Still false. Nothing about that changed:
+ *                                    no rail exists, and this is the flag that
+ *                                    must gate any charging path.
+ *
+ *   `MANUAL_EVENT_PAYMENTS_ENABLED`  A CHURCH MAY PRICE A TICKET AND COLLECT IT
+ *                                    OUTSIDE HARVEST, confirming each payment
+ *                                    itself. True — that is THE-351.
+ *
+ * NEITHER IMPLIES THE OTHER, WHICH IS THE TEST OF A HONEST SPLIT. The day a
+ * rail lands, the first goes true and the second may stay true (a church that
+ * prefers its own Revolut) or go false (every church on the rail). Neither
+ * value has to move because the other did.
+ *
+ * ═════════════════════════════════════════════════════════════════════════════
+ * WHAT THIS DOES *NOT* UN-GATE, AND WHY THAT IS NOT AN OVERSIGHT
+ *
+ * `events/{id}.price` — the "Ticket Price ($)" field on the event itself —
+ * STAYS GATED ON `PAID_EVENTS_ENABLED`, i.e. stays hidden. THE-345 established
+ * the finding this rests on: that field IS NEVER CHARGED BY ANYTHING. It is not
+ * read by `/api/event-registration/submit`, which totals `ticketTypes[].price`
+ * alone, and it is not read by `PublicEventRegistration`, which does the same.
+ * It is quoted on four screens and collected on none.
+ *
+ * Manual confirmation does not change that by one line. A church that typed 50
+ * into it would still see "$50" on the public calendar, still take a
+ * registration for `amount: 0`, and still have nothing to confirm — a price with
+ * no ticket behind it is exactly as false when the church collects the money as
+ * when Stripe does. So `eventPriceLabel` and the event-level input are
+ * UNTOUCHED by this ticket, and THE-345's assertions about them still pass
+ * unedited.
+ *
+ * `ticketTypes[].price` IS UN-GATED, because that is the price that actually
+ * charges: it is what the submit route totals into `registrations/{id}.amount`,
+ * which is what the member is asked to pay, what the inbox row shows, and what
+ * THE-350's writer turns into an invoice. It is real money, so it may be typed.
+ */
+export const MANUAL_EVENT_PAYMENTS_ENABLED = true;
+
+/**
+ * May a TICKET TYPE carry a price on this deployment?
+ *
+ * ONE FUNCTION, for the same reason `eventPriceLabel` is one: the ticket-type
+ * price is gated in THREE places in `AdminEvents` — the input, the quote on a
+ * stored row, and the clamp in `saveTicketDraft` — and gating two of them is how
+ * a church builds a priced ticket it is then told it cannot have.
+ */
+export function ticketPricingAvailable(): boolean {
+  return PAID_EVENTS_ENABLED || MANUAL_EVENT_PAYMENTS_ENABLED;
+}
+
+/**
+ * IS THIS DEPLOYMENT ON MANUAL CONFIRMATION — i.e. must the registration
+ * route SKIP the payment rail and record the seat unpaid instead?
+ *
+ * NOT THE SAME QUESTION AS {@link ticketPricingAvailable}, and reading it as
+ * such is how a priced ticket ends up at a closed Stripe account. Pricing asks
+ * "may a number be typed"; this asks "who collects it". While
+ * `PAID_EVENTS_ENABLED` is false, a priced ticket is registered IMMEDIATELY and
+ * marked unpaid — never sent to Checkout, never left pending, never refused.
+ */
+export function manualConfirmationMode(): boolean {
+  return !PAID_EVENTS_ENABLED && MANUAL_EVENT_PAYMENTS_ENABLED;
+}
+
+/**
  * What the event form says while the switch is off.
  *
  * THE WORDING IS LOAD-BEARING and it is the half of this ticket that is not
@@ -167,14 +255,69 @@ export function eventPriceLabel(dollars: number): string | null {
 }
 
 /**
+ * THE-351 — what the `Amount` column says about a payment nobody has confirmed.
+ *
+ * NOT `$0.00`, for the reason above, and NOT the price either — the price is
+ * what was ASKED, and this column is read as what was RECEIVED. A church
+ * reconciling against a bank statement needs the row to say "there is no
+ * confirmed money here" in a word it cannot mistake for a figure.
+ */
+export const NOT_CONFIRMED_LABEL = 'Not confirmed';
+
+/**
  * The `Amount` cell for one exported registration row.
  *
  * `amount` is the stored `registrations/{id}.amount`. Zero is a fact the
  * platform can vouch for in every configuration — nobody was charged — so it
  * exports as `$0` whether or not a rail exists. A non-zero amount can only be
  * vouched for while a rail exists.
+ *
+ * ─── THE-351 — the third case, and it is the common one now ────────────────
+ *
+ * UNDER MANUAL CONFIRMATION THE COLUMN MEANS SOMETHING TRUE AGAIN, AND WHAT
+ * IT MEANS DEPENDS ON THE ROW RATHER THAN ON THE DEPLOYMENT. Money for these
+ * tickets is real and does arrive — into the church's own PayPal, unobserved by
+ * Harvest — so `NOT_COLLECTED_LABEL` ("Not collected") would now be false: it
+ * was collected, by the church, off-platform.
+ *
+ * What Harvest can stand behind is exactly one fact per row: did somebody at
+ * this church open their own account and vouch for this payment?
+ *
+ *   · CONFIRMED  → the dollar figure. An admin found it and said so, and there
+ *     is a `tenants/{t}/invoices` document behind it — the same ledger a
+ *     processed gift lands in. The treasurer can tie this cell to a receipt.
+ *
+ *     AND IT IS FORMATTED FROM CENTS, WHICH THE OTHER TWO BRANCHES ARE NOT.
+ *     `registrations/{id}.amount` is CENTS (it is `ticketTypes[].price × qty`,
+ *     and that field is cents), while `$${amount}` renders it as though it were
+ *     dollars — so a $50 ticket exports as `$5000`. That mismatch is
+ *     PRE-EXISTING and THE-345 reported it rather than changing it, because
+ *     while the gate is on the branch is unreachable for any non-zero amount.
+ *     It is NOT acceptable on a cell this ticket is putting a real, confirmed,
+ *     invoice-backed figure into, so this branch — and only this branch —
+ *     divides. The other two are left exactly as THE-345 wrote them, so
+ *     nothing that was true before this ticket changes shape.
+ *
+ *     The division is spelled out rather than imported: this file imports
+ *     nothing, by the discipline in the header, and reaching for
+ *     `event-payment-claims.ts` would put the provider table in every bundle
+ *     that reads the gate.
+ *   · NOT CONFIRMED → `NOT_CONFIRMED_LABEL`, whether the member has pressed
+ *     "I've paid" or not. A CLAIM IS NOT A CONFIRMATION and must not export
+ *     as one: "I've paid" is the member's word, and this sheet is reconciled
+ *     against a bank statement. A member's assertion in a money column is
+ *     precisely the quiet lie this whole ticket exists to remove.
+ *   · Rail off AND manual off → `NOT_COLLECTED_LABEL`, exactly as THE-345 left
+ *     it. Nothing about that configuration changed.
+ *
+ * `state` is optional so the two THE-345 callers and its tests read unchanged;
+ * a caller that omits it gets THE-345's behaviour verbatim.
  */
-export function csvAmountCell(amount: number): string {
+export function csvAmountCell(amount: number, state?: 'confirmed' | 'unconfirmed'): string {
+  if (amount > 0 && MANUAL_EVENT_PAYMENTS_ENABLED && state !== undefined) {
+    if (state !== 'confirmed') return NOT_CONFIRMED_LABEL;
+    return `$${(Math.round(amount) / 100).toFixed(2)}`;
+  }
   if (!PAID_EVENTS_ENABLED && amount > 0) return NOT_COLLECTED_LABEL;
   return `$${amount}`;
 }

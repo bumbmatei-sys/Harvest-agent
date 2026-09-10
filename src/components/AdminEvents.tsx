@@ -26,8 +26,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   PAID_EVENTS_ENABLED, PAID_EVENTS_HIDDEN_TITLE, PAID_EVENTS_HIDDEN_MESSAGE,
-  eventPriceLabel, csvAmountCell,
+  eventPriceLabel, csvAmountCell, ticketPricingAvailable, manualConfirmationMode,
 } from '../lib/paid-events-feature';
+import { useTenantOptional } from '../contexts/TenantContext';
+import { readGivingLinks } from './donations/giving-providers';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  CREATION_DISCLAIMER_BODY, CREATION_DISCLAIMER_TITLE,
+  DOOR_CONFIRMED_BADGE, DOOR_UNCONFIRMED_BADGE, DOOR_UNCONFIRMED_HELP,
+  NO_LINKS_BODY, NO_LINKS_TITLE,
+  PROVIDER_PICKER_HELP, PROVIDER_PICKER_TITLE,
+  CONFIRM_ALREADY, CONFIRM_BUTTON, CONFIRM_BUTTON_HELP, CONFIRM_FAILED, CONFIRM_SUCCESS,
+  paymentStateOf, readEventProviderIds,
+} from '../lib/event-payment-claims';
+import { confirmPaymentClaim } from './inbox/payment-claims-client';
 /**
  * THE-308 — the month grid is LAZY, and that is not an optimisation detail.
  *
@@ -119,6 +131,16 @@ const emptyForm = {
   waitlistEnabled: false,
   discountCodes: [] as DiscountCode[],
   showOnPublicCalendar: true,
+  /**
+   * THE-351 — WHICH of the church's own links accept payment for THIS event.
+   *
+   * THE FOUNDER: "maybe just PayPal or just revolut or just whatever or all of
+   * them." Empty means every link the church publishes; see
+   * `resolveEventPaymentLinks`, which intersects this against what the church
+   * currently publishes on every read so a deleted link cannot leave a member
+   * staring at a dead tile.
+   */
+  paymentProviders: [] as string[],
 };
 
 const AdminEvents: React.FC = () => {
@@ -134,6 +156,28 @@ const AdminEvents: React.FC = () => {
 
   const { data: events = [], isLoading: loading } = useEvents(tenantId, isAuthReady);
 
+  /**
+   * 🔴 THE-351 — the church's OWN payment links, off the tenant document
+   * `TenantContext` has already loaded. NO NEW QUERY and no new failure mode:
+   * `readGivingLinks` is the same validator the member Give page reads through,
+   * so a link that stops passing the phishing allow-list stops being offered
+   * here at exactly the moment it stops rendering there. AdminCRM reads it the
+   * same way for the same reason (THE-249).
+   */
+  // ⚠️ THE *OPTIONAL* HOOK, AND THAT IS NOT DEFENSIVENESS. `useTenant` THROWS
+  // outside a `<TenantProvider>`, and this screen is mounted bare by a dozen
+  // existing suites (THE-308, THE-345, THE-346, the tier/tab matrices) that
+  // have no reason to know about a tenant document. A screen that cannot be
+  // rendered without a provider is a screen every one of those suites has to
+  // be rewritten for — and a `useTenant` here would have turned this ticket's
+  // no-regression half red for a reason that has nothing to do with money.
+  // Outside a provider there is no church, so there are no links, so pricing is
+  // simply unavailable — which is the correct answer, not a fallback.
+  const tenantCtx = useTenantOptional();
+  const branding = tenantCtx?.branding;
+  const churchLinks = React.useMemo(() => readGivingLinks(branding), [branding]);
+  const canPriceTickets = ticketPricingAvailable() && (PAID_EVENTS_ENABLED || churchLinks.length > 0);
+
   const [view, setView] = useState<ViewMode>('list');
   // THE-308 — which tab the list screen is showing. `list` is the default.
   const [listTab, setListTab] = useState<'list' | 'month'>('list');
@@ -147,6 +191,27 @@ const AdminEvents: React.FC = () => {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [regSearch, setRegSearch] = useState('');
   const [checkingIn, setCheckingIn] = useState<string | null>(null);
+  /**
+   * 🔴 THE-351 — confirming from the ATTENDEE LIST, and why this surface exists
+   * as well as the inbox.
+   *
+   * ⚠️ A MEMBER WHO REGISTERED LOGGED-OUT CAN NEVER PRESS "I'VE PAID". That
+   * route requires a verified identity, because a button anyone could press for
+   * anyone else's ticket is a button that fills a church's inbox with
+   * strangers. So a logged-out registrant never raises an inbox row, and
+   * without this control their payment could never be confirmed at all — a hole
+   * the inbox alone cannot close.
+   *
+   * 🔴 IT IS THE SAME BUTTON, NOT A SECOND ONE. `confirmPaymentClaim` is the one
+   * client call, reaching the one idempotent route, which calls THE-350's one
+   * writer. The inbox is where an admin is PROMPTED; this is where they are
+   * already standing. Two doors, one act.
+   *
+   * THE-321's `saveState` shape: a failure is a STATE beside the row, not a
+   * toast that scrolls away, and the row does not move.
+   */
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [confirmNote, setConfirmNote] = useState<{ id: string; ok: boolean; text: string } | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [copied, setCopied] = useState(false);
 
@@ -233,6 +298,9 @@ const AdminEvents: React.FC = () => {
       waitlistEnabled: ev.waitlistEnabled ?? false,
       discountCodes: Array.isArray(ev.discountCodes) ? ev.discountCodes : [],
       showOnPublicCalendar: ev.showOnPublicCalendar ?? true,
+      // THE-351 — cleaned through the provider table, so a stored id this build
+      // no longer defines simply drops rather than rendering an empty tile.
+      paymentProviders: readEventProviderIds((ev as { paymentProviders?: unknown }).paymentProviders),
     });
     setShowTicketForm(false);
     setShowDiscountForm(false);
@@ -282,6 +350,10 @@ const AdminEvents: React.FC = () => {
         waitlistEnabled: form.waitlistEnabled,
         discountCodes: form.discountCodes,
         showOnPublicCalendar: form.showOnPublicCalendar,
+        // THE-351 — ids only. The links themselves stay on the tenant document,
+        // so a church that corrects its PayPal URL corrects it for every event
+        // at once and nothing here holds a stale copy of a money link.
+        paymentProviders: readEventProviderIds(form.paymentProviders),
       };
       if (view === 'edit' && selected) {
         await updateDoc(doc(db, 'tenants', tenantId, 'events', selected.id), {
@@ -349,6 +421,40 @@ const AdminEvents: React.FC = () => {
     } catch (e) { notifyError('Failed to update event', e); }
   };
 
+  /**
+   * 🔴 RECORD THAT THE CHURCH FOUND THE PAYMENT. Never writes an invoice itself
+   * and never writes a payment field itself — the route does both, in a
+   * transaction, so two taps produce one invoice.
+   */
+  const confirmPayment = async (reg: Registration) => {
+    if (!tenantId) return;
+    setConfirming(reg.id);
+    setConfirmNote(null);
+    try {
+      const out = await confirmPaymentClaim(tenantId, reg.id);
+      setConfirmNote({
+        id: reg.id,
+        ok: true,
+        text: out.alreadyConfirmed ? CONFIRM_ALREADY : CONFIRM_SUCCESS,
+      });
+      // ⚠️ NO LOCAL PATCH AND NO REFETCH IS NEEDED. `registrations` is an
+      // `onSnapshot` listener on this same subcollection, so the row re-renders
+      // from the document the route just wrote. Patching it here would be a
+      // second opinion about what "paid" means, held for however long the
+      // listener took to disagree.
+    } catch (e) {
+      // 🔴 NOTHING WAS RECORDED AND THE TICKET IS STILL UNPAID. Said where the
+      // admin is looking, with the row still in front of them.
+      setConfirmNote({
+        id: reg.id,
+        ok: false,
+        text: e instanceof Error && e.message ? e.message : CONFIRM_FAILED,
+      });
+    } finally {
+      setConfirming(null);
+    }
+  };
+
   const checkIn = async (reg: Registration) => {
     if (!tenantId) return;
     setCheckingIn(reg.id);
@@ -376,7 +482,13 @@ const AdminEvents: React.FC = () => {
       // independent of price - a capped FREE ticket type still fills up and
       // still waitlists - and that is the half of this panel a church running a
       // free conference actually needs.
-      price: PAID_EVENTS_ENABLED
+      // THE-351 - `ticketPricingAvailable()` rather than the rail flag. A price
+      // is real under MANUAL confirmation too: it is what the member is asked
+      // to send to the church's own PayPal, what the inbox row shows, and what
+      // THE-350's writer turns into an invoice once an admin vouches for it.
+      // The clamp stays for the both-off case, where THE-345's reasoning is
+      // unchanged and a new ticket type is built at 0.
+      price: ticketPricingAvailable()
         ? Math.max(0, Math.round((Number(ticketDraft.price) || 0) * 100))
         : 0,
       capacity: ticketDraft.capacity ? Number(ticketDraft.capacity) : null,
@@ -438,7 +550,15 @@ const AdminEvents: React.FC = () => {
         // charged and that is true; a non-zero amount is only vouchable while a
         // rail exists. This is the sheet a treasurer reconciles against a bank
         // statement, so a figure it cannot stand behind is worse than a word.
-        csvAmountCell(r.amount),
+        // THE-351 — the column means something true again, ROW BY ROW. A
+        // confirmed row exports the figure (an admin found it in their own
+        // account and there is an invoice behind it); anything else exports
+        // "Not confirmed". 🔴 A CLAIM IS NOT A CONFIRMATION: "I've paid" is the
+        // member's word, and this is the sheet a treasurer reconciles against a
+        // bank statement.
+        manualConfirmationMode()
+          ? csvAmountCell(r.amount, paymentStateOf(r) === 'confirmed' ? 'confirmed' : 'unconfirmed')
+          : csvAmountCell(r.amount),
         r.registeredAt ? r.registeredAt.toDate().toLocaleDateString() : ''
       ])
     ];
@@ -541,11 +661,88 @@ const AdminEvents: React.FC = () => {
               collection - and `badge` was rejected because the wording is two
               sentences of instruction and a badge is a label.
             */}
-            {!PAID_EVENTS_ENABLED && (
+            {/*
+              🔴 THE-351 — THREE STATES NOW, AND THE MIDDLE ONE IS THE COMMON ONE.
+
+              · No pricing at all (both switches off) — THE-345's notice,
+                unchanged and still reached the day manual confirmation is
+                withdrawn.
+              · Manual confirmation, but the church has NO payment links — a
+                refusal WITH an instruction. Pricing a ticket with nowhere for
+                the money to go produces a member staring at a price and no way
+                to pay, so the input is ABSENT (THE-345's reasoning, verbatim)
+                and the copy names the screen that fixes it.
+              · Manual confirmation with links — 🔴 THE DISCLAIMER, and it is NOT
+                A FOOTNOTE. It sits ABOVE the pricing block, before the price
+                input, so an admin cannot type a number without having read that
+                Harvest cannot check anything, that THEY will confirm each
+                payment by hand, and that an unconfirmed member is still let in
+                at the door.
+
+              `alert` for all three — the primitive is installed, and a
+              hand-rolled div would be the defect THE-345 names. The DEFAULT
+              variant, not `destructive`: nothing has failed and nothing the
+              church did is wrong. `empty` was rejected (a capability, not an
+              empty collection); `badge` was rejected (two sentences of
+              instruction is not a label); `tooltip` was rejected outright — a
+              disclaimer behind a hover is a disclaimer nobody on a phone reads.
+            */}
+            {!ticketPricingAvailable() && (
               <Alert data-paid-events-gate="form">
                 <AlertTitle>{PAID_EVENTS_HIDDEN_TITLE}</AlertTitle>
                 <AlertDescription>{PAID_EVENTS_HIDDEN_MESSAGE}</AlertDescription>
               </Alert>
+            )}
+            {manualConfirmationMode() && churchLinks.length === 0 && (
+              <Alert data-paid-events-gate="no-links">
+                <AlertTitle>{NO_LINKS_TITLE}</AlertTitle>
+                <AlertDescription>{NO_LINKS_BODY}</AlertDescription>
+              </Alert>
+            )}
+            {manualConfirmationMode() && churchLinks.length > 0 && (
+              <>
+                <Alert data-manual-payment-disclaimer>
+                  <AlertTitle>{CREATION_DISCLAIMER_TITLE}</AlertTitle>
+                  <AlertDescription>{CREATION_DISCLAIMER_BODY}</AlertDescription>
+                </Alert>
+
+                {/*
+                  🔴 WHICH links accept payment for THIS event. `checkbox` — the
+                  choice is a SUBSET and each option is independent, which is
+                  exactly what a checkbox group is. `toggle-group` was rejected:
+                  its multiple mode looks like a segmented control, which reads
+                  as "pick one" on a row of six; `select` was rejected because a
+                  multi-select is the worst control on a phone; `radio-group`
+                  was rejected because it cannot express "all of them".
+                */}
+                <div data-event-provider-picker>
+                  <p className="text-xs font-semibold text-body mb-1">{PROVIDER_PICKER_TITLE}</p>
+                  <p className="text-xs text-muted mb-2.5">{PROVIDER_PICKER_HELP}</p>
+                  <div className="space-y-1">
+                    {churchLinks.map(({ provider }) => {
+                      const ticked = form.paymentProviders.includes(provider.id);
+                      return (
+                        <label
+                          key={provider.id}
+                          data-provider-option={provider.id}
+                          className="flex items-center gap-2.5 min-h-11 sm:min-h-0 cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={ticked}
+                            onCheckedChange={() => setForm({
+                              ...form,
+                              paymentProviders: ticked
+                                ? form.paymentProviders.filter(id => id !== provider.id)
+                                : [...form.paymentProviders, provider.id],
+                            })}
+                          />
+                          <span className="text-sm text-body">{provider.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
             )}
             <div>
               <label className="text-xs font-semibold text-body mb-1.5 block">Registration Deadline</label>
@@ -601,7 +798,7 @@ const AdminEvents: React.FC = () => {
                               comes straight back with the switch.
                             */}
                             <p className="text-xs text-faint">
-                              {PAID_EVENTS_ENABLED ? `${fmtCents(t.price)} · ` : ''}
+                              {canPriceTickets ? `${fmtCents(t.price)} · ` : ''}
                               {t.capacity == null ? 'Unlimited' : `${t.capacity} cap`}
                               {t.description ? ` · ${t.description}` : ''}
                             </p>
@@ -628,8 +825,8 @@ const AdminEvents: React.FC = () => {
                           spans the row alone while the price is gone - a capped
                           FREE ticket type still fills and still waitlists.
                         */}
-                        <div className={PAID_EVENTS_ENABLED ? "grid grid-cols-2 gap-2" : ""}>
-                          {PAID_EVENTS_ENABLED && (
+                        <div className={canPriceTickets ? "grid grid-cols-2 gap-2" : ""}>
+                          {canPriceTickets && (
                             <input type="number" min={0} step="0.01" value={ticketDraft.price} onChange={e => setTicketDraft({ ...ticketDraft, price: e.target.value })}
                               placeholder="Price ($) — 0 = Free" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.short} ${CONTROL_DENSITY.control}`} />
                           )}
@@ -891,7 +1088,74 @@ const AdminEvents: React.FC = () => {
                   <p className="text-xs text-faint">
                     {r.email} · #{r.ticketCode}{r.ticketTypeName ? ` · ${r.ticketTypeName}` : ''}
                   </p>
+                  {/*
+                    🔴 THE-351 — WHAT THE VOLUNTEER ON THE DOOR SEES, AND IT
+                    CHANGES NOTHING ABOUT WHETHER THE PERSON COMES IN.
+
+                    ✅ THE FOUNDER'S DECISION: LET THEM IN, FLAGGED. The Check In
+                    control below is gated on `r.status === 'confirmed'` —
+                    REGISTRATION status, which has never meant money — and this
+                    flag is rendered BESIDE it, never in place of it. Somebody
+                    who paid on Friday and was not confirmed until Sunday walks
+                    in. Turning a paying guest away because an admin had not
+                    tapped a button is the worst outcome this ticket could
+                    produce, and the shape of this JSX is what makes it
+                    impossible: there is no branch here that reaches `checkIn`.
+
+                    ⚠️ THE WORDING IS SHORT AND NEUTRAL ON PURPOSE. It names the
+                    RECORD's state ("Payment not confirmed"), never the person's
+                    ("hasn't paid"), so it is enough for the volunteer to act on
+                    and not enough to embarrass the guest if they read it over a
+                    shoulder. The instruction — "Let them in" — is in the title
+                    attribute, where the volunteer looks and the queue does not.
+                  */}
+                  {(() => {
+                    const pay = paymentStateOf(r);
+                    if (pay === 'free') return null;
+                    return pay === 'confirmed' ? (
+                      <span data-door-payment="confirmed" className="text-[10px] font-semibold text-field-700">
+                        {DOOR_CONFIRMED_BADGE}
+                      </span>
+                    ) : (
+                      <span
+                        data-door-payment="unconfirmed"
+                        title={DOOR_UNCONFIRMED_HELP}
+                        className="text-[10px] font-semibold text-wheat-700"
+                      >
+                        {DOOR_UNCONFIRMED_BADGE}
+                      </span>
+                    );
+                  })()}
+                  {confirmNote && confirmNote.id === r.id && (
+                    <span
+                      data-confirm-note={confirmNote.ok ? 'ok' : 'failed'}
+                      className={`block text-[10px] font-semibold ${confirmNote.ok ? 'text-muted' : 'text-destructive'}`}
+                    >
+                      {confirmNote.text}
+                    </span>
+                  )}
                 </div>
+                {/* 🔴 THE-351 — Confirm sits BESIDE Check In and never in place
+                    of it: the founder's decision is that an unconfirmed guest
+                    walks in, so the door control below is reached on exactly
+                    the same condition it always was. */}
+                {manualConfirmationMode() && (paymentStateOf(r) === 'claimed' || paymentStateOf(r) === 'unpaid') && (
+                  <button
+                    onClick={() => void confirmPayment(r)}
+                    disabled={confirming === r.id}
+                    data-row-confirm-payment
+                    title={CONFIRM_BUTTON_HELP}
+                    // 🔴 `bg-gold` IS `var(--brand-color)` (tailwind.config.ts:
+                    // "Tenant-overridable action gold"), so this mints no colour
+                    // literal at all — unlike the five pre-existing
+                    // `var(--brand-color, #d4a017)` fallbacks in this file,
+                    // which THE-346's registry pins by value and which a sixth
+                    // would have added to.
+                    className={`min-h-11 px-3 rounded-xl text-xs font-semibold text-white bg-gold disabled:opacity-50 ${CONTROL_DENSITY.action}`}
+                  >
+                    {confirming === r.id ? 'Recording…' : CONFIRM_BUTTON}
+                  </button>
+                )}
                 {r.status === 'confirmed' && (
                   <button
                     onClick={() => checkIn(r)}

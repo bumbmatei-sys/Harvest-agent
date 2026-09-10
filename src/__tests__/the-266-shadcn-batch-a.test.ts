@@ -711,6 +711,25 @@ describe('the out-of-scope files are untouched', () => {
       // lose — so the file both adopts and rejects `skeleton`, per element.
       // 🔴 AN EIGHTH adopter still fails.
       'src/components/settings/SmsSection.tsx',
+      /**
+       * ── APPENDED BY THE-351, and it is a NINTH now ─────────────────────────
+       *
+       * The tenant inbox: who has said they paid for a ticket and needs an
+       * admin to confirm it. Its first paint is a LIST WHOSE SHAPE IS KNOWN —
+       * rows of name, matching line and a Confirm — which is what `skeleton` is
+       * for and what a spinner cannot say.
+       *
+       * 🔴 ITS OTHER TWO STATES ARE DELIBERATELY NOT SKELETONS, and that is the
+       * same distinction SmsSection draws above. An inbox with nothing in it
+       * renders `empty` ("Nothing to confirm"); an inbox whose READ FAILED
+       * renders a destructive `alert` saying so. A shimmer in either position
+       * would be a screen that never resolves, and painting "Nothing to
+       * confirm" over a failed read would tell a church nobody is waiting when
+       * people are — the Silent-Failure Rule exactly.
+       *
+       * 🔴 A TENTH adopter still fails.
+       */
+      'src/components/inbox/TenantInbox.tsx',
     ],
     breadcrumb: ['src/components/docs/DocsBreadcrumb.tsx'],
   };

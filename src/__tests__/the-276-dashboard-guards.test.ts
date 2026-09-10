@@ -386,6 +386,9 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // APPENDED BY THE-346, nothing above removed or rewritten.
     ['3f1556d136fc8f4d2027772dfbd9b8d1be08c3678a9122ccbda8f5ac5e460e8c',
       'main + THE-346 - the bottom nav gains a display:contents visibility wrapper so the Notes editor can take the 65px band back on a phone when it goes fullscreen; the nav OWN class string is byte-identical, because four measured suites discover it out of this file by pattern'],
+    // APPENDED BY THE-351, nothing above removed or rewritten.
+    ['2db14e00681bca8af26bbffceb3749178dd7df89a0e226a4b527be1d4dc37bc1',
+      `main + THE-351 - the per-tenant inbox of payments to confirm joins the header on BOTH shells: the desktop top bar's right cluster (beside the super-admin platform bell) and AdminScreenHeader's rightAccessory on mobile, which is the only header a phone renders. The founder: "Put inbox in all tenants in top right where this will appear, that someone pressed on I paid and they have to confirm it." It is NOT the existing 'inbox' TAB - that one is platform_inbox, super-admin-on-apex only, and this ticket adds neither of its two spellings; the new control is not a tab at all and its accessible name is "Payments to confirm". No nav array, no group, no permission, no route and no screen mount moved.`],
   ],
 };
 

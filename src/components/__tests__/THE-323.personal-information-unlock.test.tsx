@@ -651,7 +651,20 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // takes it to 44 below `sm`, and releasing it from `sm:` up is what keeps
       // it out of Rule 4's way at desktop widths. Measured both ways in
       // `THE-348.member-composer.layout.test.tsx`, at five widths.
-      'src/components/UserMessages.tsx',
+      /**
+     * APPENDED BY THE-351 — two surfaces where a person taps to move money, and
+     * they sit in sorted position because this list is compared in order.
+     *
+     * `UserEvents.tsx`: the member's "I've paid" button and each of the
+     * church's payment links beside it. `inbox/TenantInbox.tsx` (below): the
+     * badge an admin taps to open the queue, every row in it, and the Confirm
+     * button that records a gift. Both carry `min-h-11` below `sm` with Rule
+     * 4's 38px above — the shape this sweep exists to keep honest, because a
+     * 44px floor written as a raw pixel value drifts and one written nowhere is
+     * a control a thumb misses.
+     */
+    'src/components/UserEvents.tsx',
+    'src/components/UserMessages.tsx',
       // 🔴 APPENDED BY THE-331, NOTHING ABOVE OR BELOW REMOVED OR REWRITTEN.
       // ⚠️ NOT a comment-only mention — this one USES the class, which makes it
       // the same KIND as AdminSettings.tsx and only the second such entry in
@@ -675,7 +688,8 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // 🔴 APPENDED BY THE-334, for the same reason and of the same KIND as
       // AdminDashboard.tsx above: the flyout's "Recent" rows are nav targets in
       // the same `lg:`-only panel, so they take the same ungated 44px floor.
-      'src/components/layout/nav-rail-recents.tsx',  // THE-324: names it in a comment, does not use it
+      'src/components/inbox/TenantInbox.tsx',
+    'src/components/layout/nav-rail-recents.tsx',  // THE-324: names it in a comment, does not use it
       // 🔴 APPENDED BY THE-330, NOTHING ABOVE REMOVED OR REWRITTEN. Another
       // COMMENT-ONLY mention, the same kind as the two THE-324 entries: the
       // ticket adds two native `<select>` pickers and records, at their call

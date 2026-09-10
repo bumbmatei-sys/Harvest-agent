@@ -452,7 +452,28 @@ describe('5 · the money path is byte-identical', () => {
     // no feature flag and no add-on count. AN INVOICE IS NOT AN ENTITLEMENT —
     // recording that a church received money says nothing about what the church
     // may do, and the Dodo webhook remains the only writer of a capability.
-    expect(routes.length, 'an API route was added or removed').toBe(118);
+    /**
+     * ─── 118 → 121, APPENDED BY THE-351 ───────────────────────────────────────
+     *
+     * Three routes, and every one of them is named in the loop below so the
+     * count cannot move for an unnamed reason. They exist because a church can
+     * now be paid for an event ticket THROUGH ITS OWN PAYPAL and confirms each
+     * payment by hand:
+     *
+     *   · `event-payment/claim`   the member says they have paid. 🔴 Writes no
+     *                             money state whatsoever — a claim flag and a
+     *                             timestamp, nothing else.
+     *   · `event-payment/inbox`   reads the queue of unconfirmed claims.
+     *   · `event-payment/confirm` an admin vouches. Calls THE-350's writer.
+     *
+     * 🔴 AND ALL THREE PASS THE-291'S OWN CLAIM, asserted below beside
+     * THE-350's: none of them writes `plan`, a feature flag or an add-on count,
+     * and none touches the tenant document at all. A CONFIRMED TICKET IS NOT AN
+     * ENTITLEMENT — a church recording that a member paid for a seat says
+     * nothing about what that church may do, and the Dodo webhook remains the
+     * single writer of a capability.
+     */
+    expect(routes.length, 'an API route was added or removed').toBe(121);
     expect(
       routes.some((f) => f.endsWith(path.join('app/api/sms/numbers/route.ts'))),
       'the route THE-314 added is missing — the count moved for some other reason',
@@ -462,6 +483,10 @@ describe('5 · the money path is byte-identical', () => {
       'app/api/rota/respond/route.ts',
       'app/api/docs/public-share/route.ts',
       'app/api/donations/manual/route.ts',
+      // APPENDED BY THE-351 — see the note on the count above.
+      'app/api/event-payment/claim/route.ts',
+      'app/api/event-payment/inbox/route.ts',
+      'app/api/event-payment/confirm/route.ts',
     ]) {
       expect(
         routes.some((f) => f.endsWith(path.join(added))),
@@ -492,7 +517,20 @@ describe('5 · the money path is byte-identical', () => {
      * may write. #434 removed a client-side `plan` write and THE-259's sweep
      * catches its return; this is the same property, asserted on the write.
      */
-    for (const rel of ['src/app/api/donations/manual/route.ts', 'src/lib/manual-donation.ts']) {
+    for (const rel of [
+      'src/app/api/donations/manual/route.ts',
+      'src/lib/manual-donation.ts',
+      /**
+       * 🔴 THE-351's three, held to exactly the same claim. The confirm route
+       * writes ONE registration document and delegates the money to THE-350's
+       * writer above; the claim route writes three non-money fields on the same
+       * document; the inbox route only reads. None of them may reach the tenant
+       * document, where `plan` and `addons` live.
+       */
+      'src/app/api/event-payment/claim/route.ts',
+      'src/app/api/event-payment/inbox/route.ts',
+      'src/app/api/event-payment/confirm/route.ts',
+    ]) {
       const src = read(rel);
       expect(src, `${rel} writes to the tenant document`)
         .not.toMatch(/collection\(['"]tenants['"]\)\s*\.doc\([^)]*\)\s*\.(set|update|delete)\(/);

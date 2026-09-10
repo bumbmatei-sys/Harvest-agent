@@ -1265,6 +1265,60 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       'for an existing member on that same host. `empty` is REJECTED: nothing here is an ' +
       'absent collection — a ministry could not be named, which is a refusal, not emptiness.',
   },
+  {
+    file: 'src/components/inbox/TenantInbox.tsx',
+    ticket: 'THE-351',
+    why:
+      'APPENDED, never substituted. The per-tenant inbox: everyone who has said they paid for ' +
+      'an event ticket, waiting for a church admin to open their own PayPal, find the payment ' +
+      'and confirm it. It composes FOUR of the recorded primitives and rejects several more, ' +
+      'per element. `sheet` for the panel: this is a side surface an admin works DOWN while ' +
+      'the screen behind it stays put, and it is the primitive `nav-rail` already uses for the ' +
+      'same shape. `dialog` is REJECTED for the panel - it is modal and centred, which is right ' +
+      'for a decision and wrong for a queue - and `popover` is REJECTED as far too small for a ' +
+      'row carrying a name, an amount, a reference, a provider and a timestamp. `item` for a ' +
+      'row: ItemTitle/ItemDescription/ItemActions is exactly the name / matching line / Confirm ' +
+      'shape, and a hand-rolled flex div would be the defect THE-345 names one entry above. ' +
+      '`empty` for nothing-to-confirm - an absent collection is precisely what it announces, ' +
+      'which is why THE-345 rejected it for a withheld capability and why it is right here. ' +
+      '`alert` twice, and the two variants are a distinction rather than a style: the DEFAULT ' +
+      "variant carries the founder's own rule to the person about to press the button (\"Harvest " +
+      'has not checked any of it\"), and the DESTRUCTIVE variant carries a READ THAT FAILED - ' +
+      'THE-342 reserves red for exactly that, and painting "Nothing to confirm" over a failed ' +
+      'read would tell a church nobody is waiting while people are. `badge` carries the unread ' +
+      'count and `skeleton` the first paint (both recorded in the-266). `button` is REJECTED ' +
+      "for Confirm: the admin app's own brand-coloured pill is what every other admin action " +
+      'in this product looks like, and importing a second button vocabulary would make this ' +
+      'one sheet the only place that looks different. `sonner` is REJECTED for the outcome of ' +
+      'a confirmation: a toast leaves the screen while the money it described is permanent, and ' +
+      "THE-321's saveState shape keeps a failure BESIDE the row it belongs to. `table` is " +
+      'REJECTED: these are cards a person taps, not a grid they scan, and a table cannot hold a ' +
+      '44px tap target per row on a phone without scrolling sideways.',
+  },
+  {
+    file: 'src/components/UserEvents.tsx',
+    ticket: 'THE-351',
+    why:
+      "APPENDED, never substituted. The member's own ticket, which now has to say three things " +
+      'about money and not one of them may imply Harvest checked anything: that the ticket is ' +
+      'unpaid and what reference to put in the payment note; that pressing "I\'ve paid" has ' +
+      'told the church to go and look and settled nothing; or that the church has marked it ' +
+      'paid on their own word. It takes `alert` (Alert, AlertTitle, AlertDescription) for all ' +
+      'three, in the DEFAULT variant: none of them is a failure and none of them is something ' +
+      'the member did wrong, and THE-342 reserves the destructive treatment for a read that ' +
+      'broke. Load-bearing rather than cosmetic, for the reason THE-339 and THE-345 both give ' +
+      'above: the primitive carries role="alert", so "your ticket is unpaid and the church has ' +
+      'not confirmed it" reaches a screen reader rather than only an eye - and this is the one ' +
+      'statement on the screen a member most needs not to miss before they arrive at a door. ' +
+      '`badge` is REJECTED for the body: each state is two sentences of instruction and a badge ' +
+      'is a label (the one-word state beside it is plain type in the page\'s own scale). ' +
+      '`dialog` is REJECTED: this panel is already INSIDE the ticket modal. `tooltip` is ' +
+      'REJECTED outright for the sentence beside the button, and that rejection is the whole ' +
+      'premise of the ticket: a member who believes "I\'ve paid" has settled the matter will ' +
+      'arrive at the door believing they are paid, and a phone has no hover to reveal the ' +
+      'correction with. `empty` is REJECTED: an unpaid ticket is a state, not an absent ' +
+      'collection. `sonner` is REJECTED: a toast leaves while the amount owed does not.',
+  },
 ];
 
 it('only the recorded adopters import the new components, and each names its ticket', () => {

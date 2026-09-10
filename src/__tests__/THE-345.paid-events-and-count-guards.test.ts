@@ -212,11 +212,30 @@ describe('7 · the gate is one value, and nothing was deleted to hide the featur
     // would break the promise that flipping one value brings everything back.
     // What must be true is that every place it QUOTES a stored ticket price is
     // behind the gate.
+    //
+    // ── AMENDED BY THE-351: THE GATE IS NAMED, NOT ASSUMED TO BE ONE VALUE ───
+    //
+    // THE-351 un-gates the TICKET-TYPE price on manual terms - a church may
+    // charge for a ticket it collects itself, through its own PayPal, and
+    // confirms each payment by hand - so this quote now sits behind
+    // `canPriceTickets`, which is `ticketPricingAvailable() && the church has a
+    // payment link`. The CLAIM IS UNCHANGED and is still the one that matters:
+    // a stored ticket price may never be quoted with NO gate in front of it,
+    // which is what would tell a member a conference costs $50 on a deployment
+    // that can take no money for it. What is no longer assumed is that the gate
+    // can only ever be spelled one way.
+    //
+    // THE EVENT-LEVEL price is a separate assertion, directly above, and is
+    // UNAMENDED: it is still gated on `PAID_EVENTS_ENABLED` alone and
+    // `eventPriceLabel` still returns null, because THE-345's finding about it
+    // holds in either mode - it is charged by nothing.
+    const GATES = ['PAID_EVENTS_ENABLED', 'canPriceTickets'];
     const code = codeOf(EVENTS);
     for (const m of code.matchAll(/fmtCents\(t\.price\)/g)) {
       const before = code.slice(Math.max(0, m.index! - 120), m.index!);
-      expect(before, 'a stored ticket price is quoted with no gate in front of it')
-        .toContain('PAID_EVENTS_ENABLED');
+      expect(GATES.some((g) => before.includes(g)),
+        `a stored ticket price is quoted with no gate in front of it: ...${before.slice(-80)}`)
+        .toBe(true);
     }
     expect([...code.matchAll(/fmtCents\(t\.price\)/g)].length,
       'the ticket-type price line vanished entirely').toBeGreaterThan(0);
@@ -249,9 +268,23 @@ describe('7 · the gate is one value, and nothing was deleted to hide the featur
     const save = code.slice(code.indexOf('const handleSave'), code.indexOf('const confirmDelete'));
     expect(save, 'the event create/update write does not consult the gate')
       .toContain('PAID_EVENTS_ENABLED');
+    // ── AMENDED BY THE-351, and the claim is unchanged ──────────────────────
+    //
+    // The ticket-type WRITE still consults a gate rather than trusting the UI to
+    // have hidden the input - a hidden input is not a gate, because the form
+    // state still holds whatever was seeded. What the gate IS has moved:
+    // `ticketPricingAvailable()` is `PAID_EVENTS_ENABLED || MANUAL_EVENT_
+    // PAYMENTS_ENABLED`, so with both off it clamps to 0 exactly as THE-345
+    // wrote it, and with manual confirmation on a church may write the price it
+    // will collect itself. The EVENT write above is unamended and still consults
+    // `PAID_EVENTS_ENABLED` alone.
     const ticket = code.slice(code.indexOf('const saveTicketDraft'), code.indexOf('const removeTicket'));
     expect(ticket, 'the ticket-type write does not consult the gate')
-      .toContain('PAID_EVENTS_ENABLED');
+      .toContain('ticketPricingAvailable()');
+    // And the clamp is still a clamp: the un-gated arm builds a NEW object at 0,
+    // so nothing stored is rewritten by the branch either way.
+    expect(ticket, 'the ticket-type write stopped clamping')
+      .toMatch(/ticketPricingAvailable\(\)\s*\?[\s\S]{0,120}?:\s*0,/);
   });
 });
 
@@ -350,8 +383,29 @@ describe('22 · firestore.rules, the indexes, functions/ and layout.tsx are unto
     // free, waitlisted and $0-discounted registrations, and a paid ticket
     // already fails cleanly on the existing `connectAccountId` check. A gate
     // here would be a second refusal for the same state.
+    /**
+     * ── AMENDED BY THE-351, AND THE RE-RECORD IS THE TICKET ──────────────────
+     *
+     * THE-345 pinned this route because it deliberately did NOT touch it: with
+     * no rail, `requiresPayment` already failed cleanly on the missing Connect
+     * account and a second refusal would have been redundant.
+     *
+     * THE-351 changes exactly that decision, on the founder's instruction —
+     * "registered immediately, marked UNPAID". Under manual confirmation the
+     * clean refusal is the wrong answer: a church CAN be paid now, through its
+     * own PayPal, so the route must not send the member to a closed rail at all.
+     * `requiresPayment` gains `&& !manualConfirmationMode()` and the seat is
+     * written confirmed-and-unpaid with a reference code.
+     *
+     * WHAT THIS ASSERTION IS ACTUALLY FOR IS UNCHANGED and is asserted in the
+     * three suites that own it: THE-154's direct charge, the platform fee, the
+     * Checkout metadata, the pending-registration rollback and the CRM write are
+     * byte-identical, and `submit-route`, `submit-direct-charge` and
+     * `stripe-config-split` now pin `manualConfirmationMode()` OFF so the rail
+     * path keeps proving it is whole for the day it returns.
+     */
     expect(sha256(read('src/app/api/event-registration/submit/route.ts')))
-      .toBe('b0e55c91adcc9b342e4d16fc5cabfff1426842056e1f5bb9e0f47546fc41ed98');
+      .toBe('f203f58f402ec89f14415c9ae64134bd44286b8c4fcb0e8fa12fb70cfd7739a2');
     expect(sha256(read('src/app/api/event-registration/apply-discount/route.ts')))
       .toBe('47622ed746e6e3a652cd7ffab4bd5f434ff4f52fea94a14c5d3eb588ff3924e0');
   });

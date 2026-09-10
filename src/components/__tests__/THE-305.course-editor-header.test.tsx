@@ -677,6 +677,14 @@ const ADMIN_DASHBOARD_ACCEPTED = [
   // suites discover it out of that file by pattern, and interpolating a flag into
   // that attribute stopped all four finding it. APPENDED, NEVER SUBSTITUTED.
   '3f1556d136fc8f4d2027772dfbd9b8d1be08c3678a9122ccbda8f5ac5e460e8c',
+  // APPENDED BY THE-351 - the per-tenant inbox of payments to confirm joins the
+  // header on BOTH shells: the desktop top bar's right cluster (beside the
+  // super-admin platform bell) and AdminScreenHeader's rightAccessory on mobile,
+  // which is the only header a phone renders. It is NOT the existing 'inbox'
+  // TAB - that one is platform_inbox, super-admin-on-apex only - and this ticket
+  // adds neither of its two spellings. No nav array, no group, no permission, no
+  // route and no screen mount moved. APPENDED, NEVER SUBSTITUTED.
+  '2db14e00681bca8af26bbffceb3749178dd7df89a0e226a4b527be1d4dc37bc1',
 ];
 
 describe('the files this ticket must not open are byte-identical', () => {

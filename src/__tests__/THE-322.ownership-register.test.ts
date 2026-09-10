@@ -492,7 +492,7 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * retires a pinner updates this count and says what that suite still asserts;
  * a suite that quietly stops pinning fails here.
  */
-const RULES_PINNERS_NOW = 67;
+const RULES_PINNERS_NOW = 68;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per
@@ -843,6 +843,41 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
   // `firestore.indexes.json`, `functions/` and `src/app/layout.tsx` are
   // byte-identical.
   ['THE-350', 'src/__tests__/THE-350.manual-donation-invoice.test.ts'],
+  // 🔴 THE-351 — PAID EVENTS WITH NO PAYMENT RAIL: the church confirms, Harvest
+  // records what the church says. APPENDED beside THE-350's entry, never over
+  // it, and `RULES_PINNERS_NOW` goes 67 -> 68 — the documented cost of adding a
+  // suite that pins firestore.rules through the shared register.
+  //
+  // ⚠️ A PER-TENANT INBOX IS THE SHAPE THAT USUALLY NEEDS A RULE — a new
+  // collection, scoped to one church, readable by its admins — and this one
+  // needed none, which is a finding rather than luck. A claim and its
+  // confirmation are FIELDS on `tenants/{t}/registrations/{id}`, whose read rule
+  // already says `isAuthenticated() && (isTenantAdmin(tenantId) || …)` with the
+  // tenant taken from the PATH; and the WRITE side needed none either, for
+  // THE-350's reason one layer along — the registration update rule requires
+  // `manageEvents`, which a MEMBER pressing "I've paid" does not hold, so rather
+  // than loosen a rule on a document carrying a money amount in a file that
+  // AUTO-DEPLOYS with no emulator tests, the write goes through the Admin SDK
+  // behind a route whose own ownership check (verified uid OR verified token
+  // email) is STRICTER than the rule would have been. THE-351 records NO rules
+  // digest in its ownership entry and asks `rulesDigestFailure()` like every
+  // other pinner.
+  //
+  // ⚠️ WHAT IT ASSERTS: that `firestore.rules` is at a recorded digest and that
+  // the registrations read rule it relies on has not moved; that no UI, email or
+  // push string in the feature claims Harvest verified anything, swept over
+  // COMMENT-STRIPPED source with a vacuity guard on each sweep; that the
+  // creation disclaimer is present and unsoftened and stands ABOVE the pricing;
+  // that a church's per-event provider selection can only ever NARROW the links
+  // it publishes; that check-in is gated on registration status and nothing
+  // else, so an unconfirmed guest is never turned away; that the CSV Amount
+  // column exports a WORD for anything nobody vouched for and a figure only for
+  // an invoice-backed row; that erasure and export already cover an inbox item
+  // because it IS a registration; that the two switches are separate and
+  // neither implies the other; that this PR's own guards pin no line number, no
+  // near-today fixture and nothing about the branch diff; and that
+  // `firestore.indexes.json`, `functions/` and `layout.tsx` are byte-identical.
+  ['THE-351', 'src/__tests__/THE-351.manual-payment.guards.test.ts'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {

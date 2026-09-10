@@ -50,6 +50,36 @@ function makeDocRef(): any {
   };
 }
 
+/**
+ * ─── THE-351 — WHY THIS SUITE PINS THE RAIL BRANCH ON ─────────────────────────
+ *
+ * 🔴 THIS FILE IS THE RECORD OF THE STRIPE PATH, AND THAT PATH IS NOW DORMANT
+ * RATHER THAN GONE.
+ *
+ * THE-351 un-gates paid tickets on MANUAL terms: while
+ * `MANUAL_EVENT_PAYMENTS_ENABLED` is true and `PAID_EVENTS_ENABLED` is false,
+ * the route registers a priced seat IMMEDIATELY as unpaid and never reaches
+ * Checkout at all — the church collects through its own PayPal and confirms by
+ * hand. With the shipped values, every assertion below would be testing a
+ * branch nothing enters.
+ *
+ * ⚠️ DELETING THEM WOULD BE THE WRONG ANSWER, AND IT IS THE ANSWER THIS MOCK
+ * EXISTS TO REFUSE. THE-345's whole discipline is that nothing is deleted to
+ * hide a feature — "set the value to true and every surface comes back exactly
+ * as it was" — and these tests are what makes that promise checkable. So the
+ * suite pins `manualConfirmationMode()` OFF and keeps proving that the direct
+ * charge, the platform fee, the metadata, the rollback and the free-ticket
+ * bypass are all still exactly right for the day a rail returns.
+ *
+ * ⚠️ The same idiom `stripe-config-split.test.ts` already uses for
+ * `@/lib/stripe-connect-feature`. THE-351's own coverage of the MANUAL branch
+ * lives in `THE-351.manual-payment.*`.
+ */
+vi.mock('@/lib/paid-events-feature', async (orig) => {
+  const real = await (orig() as Promise<Record<string, unknown>>);
+  return { ...real, manualConfirmationMode: () => false };
+});
+
 vi.mock('stripe', () => ({
   default: class MockStripe {
     checkout = { sessions: { create: mockCheckoutCreate } };
