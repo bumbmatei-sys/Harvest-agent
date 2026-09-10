@@ -173,7 +173,20 @@ const filesSpelling = (digest: string): string[] =>
  * through this module rather than spelling the digest, so a real rules change
  * still costs exactly one edit. Nothing above is removed and no accepted value
  * is widened. */
-const PINNING_SUITES = 63;
+/* APPENDED BY THE-346. It fixes six UI defects the founder found on a phone,
+ * and the only one that could have needed a rule is "Share on web", which
+ * creates a PUBLIC link to a church's internal note. It needed none, for the
+ * reason THE-324 established: the share record lives at the top-level
+ * `publicNotes/{token}`, which has NO RULE and therefore no client read and no
+ * client write, and every access - minting, revoking and the signed-out
+ * reader's own fetch - goes through the Admin SDK in `app/api/docs/public-share`
+ * and `app/n/[token]`. `/docs/{docId}`'s read is UNTOUCHED, which is the point:
+ * widening that one line is the change that would expose every note in the
+ * collection rather than the one being shared. Its suite reaches the accepted
+ * set through this module rather than spelling the digest, so a real rules
+ * change still costs exactly one edit. Nothing above is removed and no accepted
+ * value is widened. */
+const PINNING_SUITES = 64;
 
 /**
  * A digest no ticket has recorded and none ever will — the planted change.

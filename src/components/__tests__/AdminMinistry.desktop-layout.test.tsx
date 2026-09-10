@@ -818,6 +818,32 @@ const TABS_UNPREFIXED_HEIGHTS: readonly string[] = [
 ];
 
 /**
+ * THE-346 - the ONE unprefixed height this ticket spells itself, kept OUT of
+ * TABS_UNPREFIXED_HEIGHTS above and exempted separately.
+ *
+ * It does not belong in that list because that list's own provenance case
+ * asserts every entry appears VERBATIM in `ui/tabs.tsx` - they are classes the
+ * primitive emits and no ticket writes. This one is written by AdminEvents, so
+ * putting it there would have quietly weakened that check into one this token
+ * could never satisfy honestly.
+ *
+ * WHY IT IS EXEMPT AT ALL: it overrides the primitive's own
+ * `group-data-[orientation=horizontal]/tabs:h-8` for this screen below sm:.
+ * The primitive fixes TabsList at 32px, and the 44px tap-target floor THE-308
+ * put on the triggers inside it did not fit - measured in Chromium at 380px,
+ * the pill hung 6px out of each end of its own container, which is the
+ * founder's List/Month report.
+ *
+ * AND IT CANNOT SHRINK A TARGET, which is what this sweep exists to catch:
+ * `h-auto` is the ABSENCE of a height, and it is on the CONTAINER, raising it
+ * to 50px so the 44px triggers fit inside. The sm: half restores the
+ * primitive's 32px above the phone.
+ */
+const THE_346_UNPREFIXED_HEIGHTS: readonly string[] = [
+  'group-data-[orientation=horizontal]/tabs:h-auto',
+];
+
+/**
  * THE-345 - every class the `alert` primitive emits on this screen, and the one
  * reason they share. Exactly the shape TABS_PRIMITIVE_* uses directly above, for
  * exactly the same situation one ticket later.
@@ -1248,6 +1274,45 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       'here, which the baseline was recorded without. Margin carries no colour, and ' +
       'no tap target is sized by it.',
     ...Object.fromEntries(TABS_PRIMITIVE_CLASSES.map((t) => [t, TABS_PRIMITIVE_REASON])),
+
+    /* --- THE-346 - four tokens, APPENDED to everything above -----------------
+       Every entry above stays exactly as its ticket wrote it. These three
+       screens are the ones this ticket touches, and each token here RAISES or
+       is structural: nothing below shrinks a target, which is what section 2
+       actually forbids. */
+    'min-h-11':
+      'THE-346 - the phone tap-target floor on the Events List/Month triggers, ' +
+      'and the same 44px THE-304 spells as min-h-[44px] above, off the spacing ' +
+      'scale instead of as an arbitrary value. It REPLACES min-h-[44px] on those ' +
+      'two triggers rather than adding to them, so the measured height is ' +
+      'unchanged at 44px; it binds below sm: on purpose and is paired with ' +
+      'sm:min-h-0 so Rule 4 still decides above it.',
+    'min-w-11':
+      'THE-346 - the same 44px on the other axis of the same two triggers, ' +
+      'replacing min-w-[44px]. Height alone does not make a target when the ' +
+      'content is two short words, which is the finding THE-308 recorded when ' +
+      'one of these tabs measured 35.6px wide.',
+    'group-data-[orientation=horizontal]/tabs:h-auto':
+      'THE-346 - the ONE token of this group the ticket spells itself, and the ' +
+      'fix for the founder\'s List/Month report. The tabs primitive fixes ' +
+      'TabsList at h-8 (32px) through the identically-shaped variant already ' +
+      'allowed above; the 44px triggers inside it therefore hung 6px out of each end of ' +
+      'the bottom of their own container, measured at 380px. This releases the ' +
+      'LIST below sm: so it wraps whatever the triggers need (50px), and the ' +
+      'sm: half restores the primitive\'s 32px above it. It RAISES a container ' +
+      'to fit a target rather than sizing a target, and h-auto can shrink ' +
+      'nothing - it is the absence of a height.',
+    '-mx-4':
+      'THE-346 - the chat composer\'s width, and it CANCELS a padding rather ' +
+      'than adding a length. AdminDashboard wraps the whole community screen in ' +
+      'p-4 pb-0 lg:p-0 for the conversation rail\'s sake, and ChannelThread and ' +
+      'DmThread then add px-4 of their own around the composer, so the composer ' +
+      'pill spanned 316px of 380 - 32px of gutter each side, against a message ' +
+      'list whose box-less bubbles read as edge-to-edge. This undoes exactly the ' +
+      'shell\'s 16px for the THREAD PANE only (lg:mx-0 above), leaving the one ' +
+      '16px inset the bubbles already sit on. It fills the parent\'s padding ' +
+      'box and never leaves its border box, so the shell\'s overflow-hidden has ' +
+      'nothing to clip, and it sizes no tap target.',
   };
 
   const toTokens = (layer: string[]) =>
@@ -1312,7 +1377,7 @@ describe('no touch target got smaller', () => {
     // that adopts it, recorded and provenance-checked above. Every other
     // screen, and every other token, is asserted exactly as before: a FIFTH
     // unprefixed height from `tabs`, or ANY from anywhere else, still fails.
-    const recorded = new Set(TABS_UNPREFIXED_HEIGHTS);
+    const recorded = new Set([...TABS_UNPREFIXED_HEIGHTS, ...THE_346_UNPREFIXED_HEIGHTS]);
     for (const name of SCREENS) {
       for (const [view, c] of Object.entries(await surfaces(name))) {
         const base = new Set(BASELINE[name]![view].mobileLayer.flatMap((l) => l.split('\t')[2]?.split(' ') ?? []));
@@ -1542,9 +1607,37 @@ describe('no community query or write path changed', () => {
    * Update `THE_331_COMMUNITY` only for a deliberate, reviewed change to
    * AdminCommunity, and say which ticket in the same breath.
    */
+  /**
+   * RE-AIMED BY THE-346 - 1341 -> 1367 STRIPPED LINES, AND ALL 26 ARE PROSE.
+   * The previous pin, kept so nothing is lost:
+   *
+   *     strippedSha:   830df7a4fc28c8d4e468270e7dae171ecb2e8691e76e842d4a6cfa61a88bbe0c
+   *     strippedLines: 1341     (THE-331, the attach surface)
+   *
+   * WHAT THE-346 CHANGED IN THIS FILE: ONE className token, `-mx-4 lg:mx-0` on
+   * the thread pane, and a `{/* ... *\/}` note explaining it. The founder:
+   * *"the input text field is not wide enough to the whole width of the
+   * screen."* Measured at 380px, the composer's pill spanned 316px of 380
+   * because TWO paddings stack - AdminDashboard's `p-4` around the whole screen
+   * and the thread's own `px-4` around the composer.
+   *
+   * SO WHY DID THE COUNT GO UP WHEN ONLY A CLASS CHANGED? `stripPresentation`
+   * strips `//` comments and blank lines; it does NOT strip the `{/* ... *\/}`
+   * JSX comment blocks this repo writes its reasons in - the same answer
+   * THE-326 and THE-345 record for AdminEvents below. The whole of the +26 is
+   * that note, and it is long because the padding it cancels is NOT IN THIS
+   * FILE and a reader has to be told where it is.
+   *
+   * WHAT THIS SECTION IS FOR IS UNTOUCHED. No read, no write, no handler and no
+   * import moved: `firestorePathsOf` above is unchanged and still passes
+   * unedited, the six live listeners and the send path are byte-identical, and
+   * the shell's own `p-4` was DELIBERATELY NOT removed - the conversation rail
+   * carries no horizontal padding of its own below `lg`, so dropping it would
+   * have pushed every channel row against the screen edge.
+   */
   const THE_331_COMMUNITY = {
-    strippedSha: '830df7a4fc28c8d4e468270e7dae171ecb2e8691e76e842d4a6cfa61a88bbe0c',
-    strippedLines: 1341,
+    strippedSha: '3ea9a952c2c7645c1e0e1de628f57159367ec12ece1b9a42bdb4bcac236f21a0',
+    strippedLines: 1367,
     /**
      * The pre-PR list minus the one path that moved to attach-records.ts.
      * ⚠️ A FUNCTION, not a value: `PRE_PR` is loaded in `beforeAll`, so a
@@ -1707,8 +1800,37 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
    * AdminEvents, and say which ticket in the same breath.
    */
   const THE_308_EVENTS = {
-    strippedSha: '8fd9437c2ea58d7c3ea45ade0f238ea5605803c0fd0eb3243c60cdd751fea42d',
-    strippedLines: 1004,
+  /**
+   * RE-AIMED AGAIN BY THE-346 - 1004 -> 1044 STRIPPED LINES, AND ALL 40 ARE
+   * PROSE. Previous pins, kept so nothing is lost:
+   *
+   *     strippedSha:   8fd9437c2ea58d7c3ea45ade0f238ea5605803c0fd0eb3243c60cdd751fea42d
+   *     strippedLines: 1004     (THE-345, paid events gated)
+   *
+   * WHAT THE-346 CHANGED IN THIS FILE: THREE className strings on the
+   * List/Month tab bar, and a `{/* ... *\/}` note explaining them. The founder:
+   * *"look at how the buttons for list and month look like. It needs to be
+   * fixed."* Measured in Chromium at 380px, `TabsList` was 32px tall and its
+   * triggers 44px, so the active pill hung 6px out of each end of the box
+   * it lived in. The list is released to `h-auto` below sm: so it wraps the
+   * triggers, and the primitive's 32px is restored above.
+   *
+   * WHY THE COUNT WENT UP WHEN ONLY THREE CLASSES CHANGED - the same answer
+   * THE-326 and THE-345 give above: `stripPresentation` does not strip JSX
+   * comment blocks. The note is long because the reading that had to be ruled
+   * out - PR 482's injected global reset zeroing a sibling's padding - is the
+   * one a later reader would reach for first, and ruling it out is part of the
+   * finding.
+   *
+   * WHAT THIS SECTION IS ACTUALLY FOR - "no ticket price, donation amount, fee
+   * or checkout call changed" - IS UNTOUCHED BY THIS TICKET, which is the
+   * difference from THE-345's re-record above. THE-346 changes nothing but tab
+   * geometry: `firestorePathsOf` below is unchanged, no read or write moved,
+   * and THE-345's price gating and THE-308's lazy month-view mount are
+   * byte-identical.
+   */
+    strippedSha: '56a8bd901375d088e0b6ec8a1865e09dbbac12ce4d1dd9deae06839d1b8988ee',
+    strippedLines: 1044,
   };
 
   it('changes nothing in AdminEvents outside a className, THE-308', () => {

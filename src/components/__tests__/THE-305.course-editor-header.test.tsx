@@ -126,6 +126,7 @@ async function editor(course: Course | null = null): Promise<Mounted> {
   const api = {
     setHeaderAction: () => {},
     setHeaderHidden: () => {},
+    setNavHidden: () => {},
     setHeaderOverride: (o: AdminHeaderOverride | null) => { latest = o; },
   };
   let root!: Root;
@@ -670,6 +671,12 @@ const ADMIN_DASHBOARD_ACCEPTED = [
   // value above stays accepted, so a merge ref cut before this ticket landed
   // still passes and a digest that is NONE of them still fails.
   'a7dc96513ad4003892f3bc81d5faaed2f616bd04c496a4b3ec977777baf067b7',
+  // APPENDED BY THE-346 - the bottom nav gains a display:contents visibility
+  // wrapper, so the Notes editor can take the 65px band back on a phone when it
+  // goes fullscreen. The nav OWN class string is byte-identical: four measured
+  // suites discover it out of that file by pattern, and interpolating a flag into
+  // that attribute stopped all four finding it. APPENDED, NEVER SUBSTITUTED.
+  '3f1556d136fc8f4d2027772dfbd9b8d1be08c3678a9122ccbda8f5ac5e460e8c',
 ];
 
 describe('the files this ticket must not open are byte-identical', () => {

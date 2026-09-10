@@ -429,12 +429,25 @@ describe('5 · the money path is byte-identical', () => {
     // The invitations route READS entitlement (SMS is Ministry-only) to decide
     // what the panel SAYS; the real gate is inside THE-314's send funnel. The
     // Dodo webhook remains the only writer of a capability.
-    expect(routes.length, 'an API route was added or removed').toBe(116);
+    // 117 SINCE THE-346, and the one it adds is NAMED rather than absorbed into
+    // a moved number: `app/api/docs/public-share/route.ts`, which mints and
+    // revokes the public web link for one note. It exists for exactly the
+    // reason THE-324's two above do - the collection it owns,
+    // `publicNotes/{token}`, has NO rule and therefore no client access, so
+    // `firestore.rules` needs no change and is byte-identical. And it passes
+    // THE-291's own claim, asserted below: it writes no `plan`, no feature flag
+    // and no add-on count. Publishing a note is not granting a capability; the
+    // Dodo webhook remains the only writer of one.
+    expect(routes.length, 'an API route was added or removed').toBe(117);
     expect(
       routes.some((f) => f.endsWith(path.join('app/api/sms/numbers/route.ts'))),
       'the route THE-314 added is missing — the count moved for some other reason',
     ).toBe(true);
-    for (const added of ['app/api/rota/invitations/route.ts', 'app/api/rota/respond/route.ts']) {
+    for (const added of [
+      'app/api/rota/invitations/route.ts',
+      'app/api/rota/respond/route.ts',
+      'app/api/docs/public-share/route.ts',
+    ]) {
       expect(
         routes.some((f) => f.endsWith(path.join(added))),
         `${added} is missing — the count moved for some other reason`,

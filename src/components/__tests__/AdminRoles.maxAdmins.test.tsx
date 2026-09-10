@@ -81,7 +81,7 @@ function Harness() {
   const [action, setAction] = React.useState<React.ReactNode>(null);
   headerAction = action;
   const api = React.useMemo(
-    () => ({ setHeaderAction: setAction, setHeaderOverride: () => {}, setHeaderHidden: () => {} }),
+    () => ({ setHeaderAction: setAction, setHeaderOverride: () => {}, setHeaderHidden: () => {}, setNavHidden: () => {} }),
     []
   );
   return (

@@ -951,10 +951,59 @@ const AdminEvents: React.FC = () => {
         COMPLETE read because a month must contain everything in it or say that
         it does not. See `events/month-view.ts`.
       */}
+      {/*
+         THE-346 · THE HEIGHT IS ON THE WRONG ELEMENT, AND IT IS THIS FILE'S
+        BUG — NOT THE PRIMITIVE'S, AND NOT PR 482's LEAK.
+
+        The founder: *"look at how the buttons for list and month look like. It
+        needs to be fixed."* Measured in Chromium at 380px, before:
+
+            TabsList    32.00px tall   (y 0.0 → 32.0)
+            TabsTrigger 44.00px tall   (y -6 → 38 relative to a list at 0 → 32)
+
+        The PILL IS TALLER THAN THE BOX IT LIVES IN and hangs 6px out of each end of the
+        bottom of it. That is the "misaligned, floating inside an oversized
+        container" the founder is describing, seen from the other side: the
+        container is not oversized, the pill has outgrown it.
+
+        Both numbers are correct in isolation and that is the whole trap.
+        `ui/tabs.tsx` fixes the LIST at `h-8` (32px) through
+        `group-data-[orientation=horizontal]/tabs:h-8`, which is the right
+        desktop density and is shared by every other Tabs in the app. THE-308
+        then put a 44px tap-target floor on the TRIGGERS here, which is required
+        below `sm` and is correct. Nobody raised the list to hold them.
+
+         PR 482's CLASS OF FAULT WAS RULED OUT BEFORE THIS WAS WRITTEN, not
+        assumed away. `AdminRoles.tsx` injecting an unscoped `* { margin:0 }`
+        zeroed a SIBLING's padding, so the same shape was looked for here: the
+        compiled stylesheet carries exactly one non-utility `min-height` rule
+        (`::-webkit-date-and-time-value`), and the 32/44 split reproduces with
+        these two triggers and NOTHING ELSE on the page. It is local styling.
+
+         `min-h-[44px]` IS NOT INERT and was not the culprit either — it
+        measures a true 44px. It is spelled `min-h-11` now only because that is
+        the same 44px off the spacing scale rather than an arbitrary value.
+
+         SO THE LIST IS RELEASED BELOW `sm`, NOT GIVEN A NUMBER. `h-auto` lets
+        it wrap whatever the triggers need — 44px of tap target plus the list's
+        own `p-[3px]`, so 50px — which stays correct if that floor ever moves.
+        Hard-coding `h-[50px]` would be the same mistake one breakpoint along.
+        The `sm:` half restores the primitive's own 32px from `sm` up, where
+        Rule 4 owns density and a 44px target is not required.
+
+         THE VARIANT IS SPELLED OUT IN FULL on both halves on purpose. Plain
+        `h-auto` LOSES: `group-data-[orientation=horizontal]/tabs:h-8` compiles
+        to `.group[data-orientation=horizontal] .h-8`, two selectors of
+        specificity against one, so the base wins whatever `cn()` does. Matching
+        the variant is what lets tailwind-merge see the same key and replace it.
+
+        After, at 380px: list 50.0px, both triggers 44.0px, top-aligned at 3.0
+        and bottom at 47.0 — inside the box, on both axes.
+      */}
       <Tabs value={listTab} onValueChange={(v) => setListTab(v as 'list' | 'month')}>
-        <TabsList>
-          <TabsTrigger value="list" className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0">List</TabsTrigger>
-          <TabsTrigger value="month" className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0">Month</TabsTrigger>
+        <TabsList className="group-data-[orientation=horizontal]/tabs:h-auto sm:group-data-[orientation=horizontal]/tabs:h-8">
+          <TabsTrigger value="list" className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0">List</TabsTrigger>
+          <TabsTrigger value="month" className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0">Month</TabsTrigger>
         </TabsList>
         <TabsContent value="month" className="mt-4">
           <React.Suspense fallback={null}>

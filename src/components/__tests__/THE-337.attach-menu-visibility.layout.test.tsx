@@ -346,7 +346,42 @@ beforeAll(async () => {
   writeFileSync(
     file,
     `<!doctype html><html data-theme="light" data-palette="classic"><head><meta charset="utf-8">` +
-      `<style>${css}</style></head><body><div id="root"></div>` +
+      `<style>${css}</style>` +
+      /*
+       * 🔴 AMENDED BY THE-346 — THE OPEN ANIMATION WAS BEING MEASURED, and this
+       * is a correctness fix rather than a flake suppression.
+       *
+       * `DropdownMenuContent` carries `data-open:zoom-in-95 duration-100`: a
+       * keyframe from `scale(0.95)` to `scale(1)`. `getBoundingClientRect()`
+       * reports the SCALED box, so a menu measured while that keyframe is
+       * running answers 95% of every height in it.
+       *
+       * ⚠️ THE 450ms WAIT ABOVE IS NOT A FIX FOR THAT, and cannot be. It is
+       * wall clock, not frames: on a loaded runner the click's effect lands
+       * late and the 450ms is spent before the menu opens, so the FIRST frame
+       * of the animation is what gets measured. Observed on CI, exactly once
+       * and exactly there: `a category row is 41.79998779296875px at 380`,
+       * which is 44 × 0.94999972 — the opening frame of `zoom-in-95` to seven
+       * decimal places, not a row that is genuinely too short.
+       *
+       * 🔴 THIS DOES NOT WEAKEN THE ASSERTION. Suppressing the animation makes
+       * the measurement the RESTING layout, which is the only thing "every
+       * control is ≥44px" can sensibly mean — a control is not 41.8px tall
+       * because it is being drawn mid-zoom. A row that is really under 44px
+       * still fails, and the mutation that shrinks one still catches it.
+       *
+       * ⚠️ THE SAME CLASS OF DEFECT, ONE ELEMENT OVER, IS WRITTEN UP IN
+       * `THE-346.six-defects.layout.test.tsx`: `TabsTrigger`'s `transition-all`
+       * animates `min-height`, and `MeasuringBrowser.settle()` waits two
+       * animation frames — well inside a 150ms transition — so a trigger
+       * measured after a viewport change reports a drifting mid-flight value
+       * (7.7469px, then 1.43015px on the next run). THE-323's header records
+       * the same artefact from the other side and attributes it to timing
+       * rather than to the class. Any measured suite in this repo that does not
+       * suppress animation is reading a frame rather than a layout.
+       */
+      `<style>*,*::before,*::after{animation:none !important;transition:none !important}</style>` +
+      `</head><body><div id="root"></div>` +
       `<script>window.__err=null;window.addEventListener('error',(e)=>{window.__err=String(e.message)});</script>` +
       `<script>${js}</script></body></html>`,
   );

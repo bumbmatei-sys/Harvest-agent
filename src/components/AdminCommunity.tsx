@@ -1271,7 +1271,37 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
       </div>{/* /left rail */}
 
       {/* ── Right pane: active channel / DM thread (persistent on desktop, full-width takeover on mobile) ── */}
-      <div className={`${anyThreadOpen ? 'flex' : 'hidden lg:flex'} flex-1 min-w-0 flex-col min-h-0 lg:bg-surface-raised lg:rounded-brand-lg lg:border lg:border-line lg:shadow-[var(--ds-sh-sm)] lg:overflow-hidden`}>
+      {/*
+         THE-346 · `-mx-4` IS THE FIX FOR "the input text field is not wide
+        enough to the whole width of the screen", and the padding it cancels is
+        NOT IN THIS FILE.
+
+        Measured at 380px, before: the composer's pill spanned 316px of 380 —
+        32px of gutter on each side — because TWO paddings stack. AdminDashboard
+        wraps this whole screen in `p-4 pb-0 lg:p-0` (its own line, for the
+        conversation list), and ChannelThread/DmThread then add `px-4` of their
+        own around the composer. The message list above reads as edge-to-edge
+        because its content is box-less bubbles hugging the right; the composer
+        draws a bordered `bg-surface-tint` pill, so the same 32px shows up as
+        dead space either side of a visible box. That is the founder's bug.
+
+         THE SHELL'S `p-4` IS NOT REMOVED, and removing it was the first thing
+        tried. The left rail (channels / Admin DMs / Member DMs) carries NO
+        horizontal padding of its own below `lg` — only `lg:px-4` — so it is the
+        shell's gutter that keeps those rows off the screen edge. Dropping it
+        would fix the composer and push every conversation row hard against the
+        edge, on a screen the founder did not complain about.
+
+        So the gutter is cancelled for the THREAD PANE ONLY, which below `lg` is
+        a full-width takeover anyway. `-mx-4` exactly undoes 16px on each side
+        and fills the parent's padding box — no overflow past its border box, so
+        the shell's `overflow-hidden` has nothing to clip. From `lg` up the pane
+        is a bordered card inside a row and the margin goes back to 0.
+
+        After, at 380px: pill 16 → 364 (348px), which is the SAME 16px gutter the
+        message bubbles above it sit on. One inset for the whole thread.
+      */}
+      <div className={`${anyThreadOpen ? 'flex' : 'hidden lg:flex'} -mx-4 lg:mx-0 flex-1 min-w-0 flex-col min-h-0 lg:bg-surface-raised lg:rounded-brand-lg lg:border lg:border-line lg:shadow-[var(--ds-sh-sm)] lg:overflow-hidden`}>
         {openChannel && currentUser ? (
           <>
             {/* Channel header — desktop only; on mobile the shell header override supplies back + Members */}

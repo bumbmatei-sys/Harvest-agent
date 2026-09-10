@@ -989,7 +989,17 @@ describe('12 — AdminDocs.tsx, AdminDashboardHome.tsx, firestore.rules and func
     // panes with the tree always mounted. This branch still did not author a
     // byte of it — the entry records that the OTHER ticket landed, exactly as
     // the AdminDashboardHome one above does for THE-276.
-    'src/components/AdminDocs.tsx': ['46c8403674c79dcacbb3a0c60f183b77a3e265d33b441b2ea05c1e00fe42b15f'],
+    // APPENDED BY THE-346, never substituted: THE-275's value above stays
+    // accepted, so a merge ref cut before this ticket landed still passes and a
+    // digest that is NEITHER still fails. THE-346 owns the notes editor toolbar
+    // and its menu - the labelled Export button became the three dots the founder
+    // asked for, the hand-rolled menu became the dropdown-menu primitive with an
+    // Export submenu, three share rows were added and the expand toggle moved to
+    // sit beside "Notes". This branch still did not author a byte of it.
+    'src/components/AdminDocs.tsx': [
+      '46c8403674c79dcacbb3a0c60f183b77a3e265d33b441b2ea05c1e00fe42b15f',
+      '277d2af4d151a45e6e908ea0488e3c053072824abf0c7e36f67dfff050452137',
+    ],
   };
 
   /**

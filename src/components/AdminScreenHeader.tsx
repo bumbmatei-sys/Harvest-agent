@@ -101,6 +101,32 @@ interface AdminHeaderApi {
    * must restore it (false) on exit/unmount. Desktop chrome is unaffected.
    */
   setHeaderHidden: (hidden: boolean) => void;
+  /**
+   * THE-346 — hide the MOBILE BOTTOM NAV as well, for a screen that goes truly
+   * fullscreen (the Notes editor's expand toggle).
+   *
+   * A SEPARATE SWITCH FROM `setHeaderHidden`, THOUGH TODAY ONE SCREEN DRIVES
+   * BOTH FROM THE SAME STATE — and that is worth being exact about rather than
+   * inventing a difference. AdminDocs sets both from `focusMode && !!openDoc`,
+   * so on that screen they currently move together, and neither fires on
+   * merely opening a note.
+   *
+   * THEY ARE STILL TWO SWITCHES BECAUSE THEY HIDE TWO DIFFERENT THINGS, and
+   * neither could hide the other. `headerHidden` toggles a wrapper that is
+   * ALREADY `lg:hidden` — a mobile-only header, so a plain `hidden` is enough.
+   * The nav is ONE element that is the fixed bottom nav below `lg` and the
+   * `relative` 64px side rail above it, so hiding it has to be scoped
+   * (`max-lg:`) or a phone's expand toggle would strip the desktop rail. One
+   * flag would also bind every future screen to wanting both, when "hide the
+   * app header" and "give me the bottom 65px back" are different requests.
+   *
+   * THE CALLER MUST RESTORE IT (false) ON EXIT *AND* ON UNMOUNT. A nav still
+   * hidden after you have navigated away is a trap with no way out, which is
+   * strictly worse than the layout this fixes. The effect that sets it is
+   * written with a cleanup for exactly that, and all three exits are driven in
+   * THE-346.notes-menu-and-nav.
+   */
+  setNavHidden: (hidden: boolean) => void;
 }
 
 /**
@@ -112,6 +138,7 @@ export const AdminHeaderContext = createContext<AdminHeaderApi>({
   setHeaderAction: () => {},
   setHeaderOverride: () => {},
   setHeaderHidden: () => {},
+  setNavHidden: () => {},
 });
 export const useAdminHeader = (): AdminHeaderApi => useContext(AdminHeaderContext);
 

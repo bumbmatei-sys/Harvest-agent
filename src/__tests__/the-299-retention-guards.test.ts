@@ -723,6 +723,9 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // the `crm` cell onto its own so free can keep Signups without CRM.
     ['d81a5b117569424515bf8c8ebca8654e8b6f57f3c7447f2419968adcebdf8bbe', 'main + THE-335 — SMS and the newsletter hidden; Signups on its own plan cell'],
     ['a7dc96513ad4003892f3bc81d5faaed2f616bd04c496a4b3ec977777baf067b7', 'main + THE-341 — BROADCASTING renamed to REACH and `forms` moved into it, on both shells'],
+    // APPENDED BY THE-346, nothing above removed or rewritten.
+    ['3f1556d136fc8f4d2027772dfbd9b8d1be08c3678a9122ccbda8f5ac5e460e8c',
+      'main + THE-346 - the bottom nav gains a display:contents visibility wrapper so the Notes editor can take the 65px band back on a phone when it goes fullscreen; the nav OWN class string is byte-identical, because four measured suites discover it out of this file by pattern'],
   ],
   'firestore.indexes.json': [
     ['8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0', 'main at 133d557'],

@@ -187,6 +187,18 @@ const MapReady = ({ onReady }: { onReady: (map: L.Map) => void }) => {
  return null;
 };
 
+/**
+ * THE-346 — ONE WORLD, and the latitudes Web Mercator can actually draw.
+ *
+ * THE LATITUDE IS 85.0511, NOT 90. Web Mercator's y grows without bound as
+ * latitude approaches the poles, so the projection is cut at the latitude that
+ * makes the world SQUARE — ±85.05112878 — and that is the edge tiles exist up
+ * to. Writing ±90 here would ask Leaflet to fit a strip of map that has no
+ * tiles, and `getBoundsZoom` would answer with a floor one step too low, which
+ * is the void this constant exists to remove.
+ */
+const WORLD_BOUNDS: L.LatLngBoundsExpression = [[-85.05112878, -180], [85.05112878, 180]];
+
 const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  // Tiles are images, not CSS, so they cannot react to a variable changing —
  // the basemap has to be swapped in JS when the theme flips.
@@ -205,6 +217,45 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  const [selectedChurchId, setSelectedChurchId] = useState<string | null>(null);
  const [listCollapsed, setListCollapsed] = useState(false);
  const [mapRef, setMapRef] = useState<L.Map | null>(null);
+
+ /**
+  * THE-346 — RAISE THE ZOOM FLOOR TO WHATEVER FITS THIS CONTAINER.
+  *
+  * `minZoom={2}` on the MapContainer is the declared floor and it is a real
+  * one — it is what stops zoom 0 and 1 outright, and it holds before this
+  * effect has ever run. What it cannot be is CORRECT AT EVERY WIDTH, because
+  * the zoom at which one world fills the viewport depends on the viewport:
+  * 256·2^2 = 1024px of world covers a 380px phone four times over and falls
+  * 416px short of a 1440px desktop, which is the grey void again.
+  *
+  * `getBoundsZoom(WORLD_BOUNDS)` asks Leaflet the question directly — "what is
+  * the largest zoom at which this whole box still fits" — so the floor tracks
+  * the container instead of a breakpoint table, and the ticket's warning that
+  * width is not monotonic stops mattering: nothing here is indexed by width.
+  *
+  * IT ONLY EVER RAISES. `Math.max` against the declared floor means a very
+  * small container can never talk the map BELOW 2, so the static prop stays the
+  * guarantee and this is a tightening of it.
+  *
+  * AND IT RE-RUNS ON RESIZE, because a rotated phone or a dragged desktop
+  * window changes the answer. Leaflet fires `resize` for exactly this. If the
+  * map is already sitting below the new floor — zoomed out on a narrow window,
+  * then widened — `setZoom` walks it back up, since a floor that is not
+  * enforced on the CURRENT view only applies to the next gesture.
+  */
+ useEffect(() => {
+ if (!mapRef) return;
+ const applyFloor = () => {
+ const fits = mapRef.getBoundsZoom(WORLD_BOUNDS, true);
+ if (!Number.isFinite(fits)) return;
+ const floor = Math.max(2, Math.ceil(fits));
+ mapRef.setMinZoom(floor);
+ if (mapRef.getZoom() < floor) mapRef.setZoom(floor);
+ };
+ applyFloor();
+ mapRef.on('resize', applyFloor);
+ return () => { mapRef.off('resize', applyFloor); };
+ }, [mapRef]);
 
  useEffect(() => {
  const fetchChurches = async () => {
@@ -346,9 +397,49 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  `}</style>
 
  {/* Map is always mounted (never display:none) so leaflet keeps its size */}
+ {/*
+      THE-346 · TWO SEPARATE FAULTS, BOTH FIXED HERE, AND PR 476's WORK IS
+     UNTOUCHED — `key={mapTheme}`, the OSM URL and the attribution below are
+     byte-identical.
+
+     The founder: *"In map I should not be able to zoom out this much."* His
+     screenshot shows the world repeating THREE TIMES across, with grey void
+     above and below it. Those are not one bug seen twice:
+
+       1. NOTHING SET A FLOOR ON ZOOM. `zoom={2}` is only where the map STARTS;
+          Leaflet's own default `minZoom` for a tile layer this shallow lets you
+          scroll out to 0, where the whole world is 256px and the rest of the
+          container is the grey void behind the tile pane.
+       2. NOTHING STOPPED THE WORLD REPEATING. Web Mercator tiles wrap in x by
+          default, so once the container is wider than 256·2^z the SAME tiles
+          are re-requested for the next copy — and the same church is drawn at
+          the same longitude in each one. `worldCopyJump` does NOT fix this and
+          was never the lever: it changes what PANNING does across the seam, not
+          whether the seam exists. `noWrap` on the TileLayer is the lever.
+
+      `minZoom={2}` IS A FLOOR, NOT THE WHOLE ANSWER, because the width that
+     shows a whole world is not fixed: 256·2^2 = 1024px of world covers 380 and
+     768 with room to spare and leaves 416px of void at 1440. So the floor is
+     RAISED TO FIT THE CONTAINER at run time, in the `mapRef` effect below,
+     via Leaflet's own `getBoundsZoom` — which is width-adaptive by
+     construction, and so answers the ticket's warning that width is not
+     monotonic without a table of magic numbers per breakpoint.
+
+     `maxBounds` + `maxBoundsViscosity={1}` is what keeps the single world put
+     once you cannot zoom out past it: without them you can still PAN off the
+     edge into the void that zooming can no longer reach.
+
+      THE-342's distance filter is unaffected and was checked rather than
+     assumed: it bounds which churches are READ, by radius from the member, and
+     never reads the map's zoom or bounds. A zoom floor changes what is drawn,
+     not what is fetched, so the two do not interact.
+ */}
  <MapContainer
  center={[20, 0]}
  zoom={2} 
+ minZoom={2}
+ maxBounds={WORLD_BOUNDS}
+ maxBoundsViscosity={1}
  style={{ height: '100%', width: '100%', zIndex: 0 }}
  zoomControl={false}
  >
@@ -384,6 +475,8 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  key={mapTheme}
  url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+ noWrap
+ bounds={WORLD_BOUNDS}
  className={mapTheme === 'dark' ? 'harvest-tiles-dark' : undefined}
  />
  <MapReady onReady={setMapRef} />

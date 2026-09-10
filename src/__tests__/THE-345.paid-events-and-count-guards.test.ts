@@ -435,9 +435,13 @@ describe('17 · control heights', () => {
     // matters. No branch diff is consulted to establish it.
     const RECORDED_PIXEL_HEIGHTS: Record<string, readonly string[]> = {
       [FEATURE]: [],
-      // Pre-existing: THE-308's two `min-h-[44px]` tab triggers, the 44px floor
-      // this repo already spends on a phone tap target.
-      [EVENTS]: ['44', '44'],
+      // AMENDED BY THE-346: ['44','44'] -> [], AND THE FILE SPENDS LESS, NOT
+      // MORE. THE-308's two `min-h-[44px]` tab triggers were the entry here;
+      // THE-346 respells that same 44px as `min-h-11` off the spacing scale
+      // while fixing the List/Month control, so the file now mints NO raw pixel
+      // height at all. The measured target is unchanged at 44px - this is the
+      // arbitrary value going away, not the floor.
+      [EVENTS]: [],
       // Pre-existing: the three 52px course/library thumbnail boxes.
       [COURSES]: ['52', '52', '52'],
       'src/components/PublicCalendar.tsx': [],

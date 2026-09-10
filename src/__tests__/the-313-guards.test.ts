@@ -710,8 +710,20 @@ describe('the existing events list, its write paths and paid-event creation are 
    * about. A count that is not exactly 209 means something else moved too.
    */
   it('keeps its className-to-inline-style ratio exactly', () => {
+    // AMENDED BY THE-346: 209 -> 210, AND THE ONE THAT ARRIVED IS NAMED.
+    //
+    // `<TabsList>` had no className at all; it has one now. Measured in
+    // Chromium at 380px, the primitive holds TabsList at 32px while the
+    // triggers inside it carry a 44px tap-target floor, so the active pill hung
+    // 6px at each end out of the bottom of its own container - the founder's List/Month
+    // report. The class releases the list below sm: and restores the
+    // primitive's 32px above it.
+    //
+    // THE INLINE-STYLE COUNT IS STILL 7 - THE-346 removes no inline style and
+    // adds none, so the ratio moved in the direction this guard has always been
+    // about. A count that is not exactly 210 means something else moved too.
     const src = EVENTS();
-    expect((src.match(/className/g) || []).length, 'className count moved').toBe(209);
+    expect((src.match(/className/g) || []).length, 'className count moved').toBe(210);
     expect((src.match(/style=\{\{/g) || []).length, 'an inline style was added').toBe(7);
   });
 

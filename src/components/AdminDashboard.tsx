@@ -274,7 +274,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // When a sub-view wants a fullscreen writing surface (Notes editor) it hides
   // the mobile app header entirely. Desktop chrome is left untouched.
   const [headerHidden, setHeaderHidden] = useState(false);
-  const headerApi = React.useMemo(() => ({ setHeaderAction, setHeaderOverride, setHeaderHidden }), []);
+  // THE-346 — and, separately, the MOBILE BOTTOM NAV, for a screen that goes
+  // truly fullscreen. See the doc comment on `setNavHidden` in
+  // AdminScreenHeader for why this is not folded into `headerHidden`.
+  const [navHidden, setNavHidden] = useState(false);
+  const headerApi = React.useMemo(() => ({ setHeaderAction, setHeaderOverride, setHeaderHidden, setNavHidden }), []);
 
   // Restore saved nav configuration from user data
   const navInitialized = useRef(false);
@@ -1197,6 +1201,47 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           entries inside it stay above the 44px floor on both axes, which the
           measured guard asserts. The mobile half of this element — every class
           without an `lg:` prefix — is untouched. */}
+      {/*
+        THE-346 · THE NAV IS HIDDEN BY A WRAPPER, AND THE WRAPPER IS THE POINT.
+        The founder: *"On phone if I press on expand the bottom nav menu should
+        disappear as well, and reappear when I exit the notes or press the
+        button again."*
+
+        THE NAV'S OWN CLASS STRING IS BYTE-IDENTICAL, and it has to be. FOUR
+        other measured suites - THE-279, THE-286, THE-296 and THE-337 - do not
+        hand-copy this nav; they DISCOVER it out of this file by pattern, each
+        matching `data-nav-shell` followed by a plain double-quoted class
+        string, precisely so a nav that moved could not leave them measuring a
+        stale copy. Interpolating `navHidden` into that attribute turned it into
+        a template literal and all four stopped finding it - loudly, which is
+        what a discovery guard is for. So the conditional went onto a wrapper
+        and the string they read is untouched.
+
+        `contents`, SO THE WRAPPER IS NOT A LAYOUT ELEMENT. `display: contents`
+        makes the box disappear from layout while its child stays exactly where
+        it was, so the desktop rail keeps its place in the shell's flex row and
+        the mobile nav keeps positioning against the viewport.
+
+        THE TWO STATES ARE IN DIFFERENT MEDIA QUERIES, deliberately: below `lg`
+        `max-lg:hidden` removes it, from `lg` up `lg:contents` restores
+        transparency. Neither has to out-specify the other, because they never
+        both apply. This ONE element is both chromes - the fixed bottom nav
+        below `lg`, the `relative` 64px side rail above it - so an unscoped
+        `hidden` would strip the desktop rail as well.
+
+        IT IS `display`, NOT LAYERING. The nav is `z-[100]` and out-stacking it
+        is the obvious move, but the editor is an ordinary in-flow screen with
+        no stacking context of its own to raise, and a competing z-index would
+        leave the nav painted UNDER the editor while still taking its 65px of
+        the viewport and still swallowing taps in that band. Taking it out of
+        layout is the only thing that gives the band back.
+
+        THE RESTORE IS NOT HERE. `navHidden` is owned by whichever screen set
+        it, and AdminDocs' effect clears it on BOTH exits and on unmount - see
+        the comment there. A nav that stays hidden after you leave the note is a
+        trap with no way out, and it is why that effect has a cleanup.
+      */}
+      <div data-nav-visibility className={navHidden ? 'max-lg:hidden lg:contents' : 'contents'}>
       <div data-nav-shell className="bg-surface-raised border-t lg:border-t-0 lg:border-r border-line lg:border-line flex justify-center lg:justify-start py-2 lg:py-6 px-2 lg:px-2 pb-safe lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full lg:w-[64px] lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300">
         <div className="flex lg:flex-col justify-around lg:justify-start items-center lg:items-center w-full lg:max-w-none lg:gap-2">
           {/* Desktop Logo — the member-app entry point on desktop (the More-drawer
@@ -1401,6 +1446,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           </div>
         </div>
       </div>
+      </div>{/* /nav visibility wrapper — THE-346 */}
 
       {/* Main Container */}
       <div data-admin-content className="flex-1 flex flex-col h-[100dvh] relative bg-surface lg:bg-surface overflow-hidden min-w-0">
