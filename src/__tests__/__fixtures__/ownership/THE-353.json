@@ -1,0 +1,10 @@
+{
+  "ticket": "THE-353",
+  "entries": [
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "dd2fe3cf6642700424631ae07b9a23d302a8bd955d87abd8b64560f9c831fd06",
+      "why": "The fundraising-chooser Stripe flag fix. `hasStripeGiving` used to be `isMainSite || stripeConnectStatus === 'active'`, so the platform's own apex Give page (`isMainSite` short-circuits before any tenant document exists) always showed the donate form's amount picker, 'Monthly' toggle and 'Secure, encrypted payment via Stripe' line, even while the platform's own Stripe Connect account is closed (THE-256, STRIPE_CONNECT_ENABLED = false) and /api/stripe/donate already refuses every request with 503. That is the same false-claim shape THE-303 already fixed on the public campaign page (app/campaign/[campaignId]/page.tsx), which reads `STRIPE_CONNECT_ENABLED && stripeConnectStatus === 'active'` — MainApp's own comment claimed to use 'the same reading, in the same words' but had not actually adopted the switch. It now does: `hasStripeGiving = STRIPE_CONNECT_ENABLED && (isMainSite || stripeConnectStatus === 'active')`. `hasGiving` (the Give TAB's own visibility) is unchanged — `isMainSite ||` still leads there, so the apex tab keeps showing, now rendering PartnerWithUsTab's links-only branch instead of a form whose submit is guaranteed to fail. No JSX element was added or removed and no class or wrapper moved; one import (`STRIPE_CONNECT_ENABLED` from `lib/stripe-connect-feature`) and one boolean expression changed, plus doc comments explaining both. MemberScreens.desktop-layout.test.tsx's mobileLayer/colours/heights pins for MainApp are unaffected and still pass; its byte-identity assertion for this file is already unconditionally exempted (EXEMPT_FILES already lists MainApp.tsx from THE-202/205/213/295) so this is a second, independently-justified reason it stays exempt rather than a widening of that list."
+    }
+  ]
+}

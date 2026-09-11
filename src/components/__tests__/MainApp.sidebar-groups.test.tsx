@@ -50,6 +50,13 @@ import { visibleNavGroups } from '../layout/nav-groups';
 const ROOT = path.resolve(__dirname, '../../..');
 const read = (p: string) => readFileSync(path.join(ROOT, p), 'utf8');
 
+// This suite simulates `stripeConnectStatus: 'active'` to exercise the
+// desktop sidebar groups, a question orthogonal to whether the platform's own
+// Stripe Connect account is open. Mocked on here — its real value is `false`
+// while the platform account is closed (THE-256) — so the tenant fixture's
+// 'active' status actually reaches the Give entry this file checks.
+vi.mock('../../lib/stripe-connect-feature', () => ({ STRIPE_CONNECT_ENABLED: true }));
+
 vi.mock('../../firebase', () => ({ db: {}, auth: { currentUser: null } }));
 
 vi.mock('../../utils/tenant-scope', () => ({

@@ -39,6 +39,14 @@ import { getPlanFeatures } from '../../utils/plan-features';
  */
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+// This suite simulates `stripeConnectStatus: 'active'` to exercise the
+// community-groups gate, a question orthogonal to whether the platform's own
+// Stripe Connect account is open. Mocked on here — its real value is `false`
+// while the platform account is closed (THE-256) — so the tenant fixture's
+// 'active' status actually reaches the Give surfaces this file checks are
+// unaffected by the community-groups gate.
+vi.mock('../../lib/stripe-connect-feature', () => ({ STRIPE_CONNECT_ENABLED: true }));
+
 vi.mock('../../firebase', () => ({ db: {}, auth: { currentUser: null } }));
 
 vi.mock('../../utils/tenant-scope', () => ({

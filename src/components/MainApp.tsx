@@ -23,6 +23,7 @@ import ReferralTracker from './ReferralTracker';
 import { getEffectiveFeatures } from '../utils/plan-features';
 import { hasMemberVisibleCourses } from '../utils/member-courses';
 import { hasPlatformOverride } from '../utils/tenant-scope';
+import { STRIPE_CONNECT_ENABLED } from '../lib/stripe-connect-feature';
 import { useAppStore } from '../store/useAppStore';
 import { useTenant } from '../contexts/TenantContext';
 import LiveNowBanner from './LiveNowBanner';
@@ -234,8 +235,21 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
    * Validated on READ, not trusted from storage — `readGivingLinks` re-derives
    * every URL against its provider's host allow-list, so a link that no longer
    * passes stops counting as a rail rather than keeping the page alive.
+   *
+   * `STRIPE_CONNECT_ENABLED` NOW GATES THIS TOO, and here is the gap it
+   * closes. THE-303 read the master switch on the public campaign page
+   * (`app/campaign/[campaignId]/page.tsx`) so a church with no connected
+   * account stops publishing a form whose Donate button 503s — "the same
+   * reading, in the same words, MainApp has used for the member Give page
+   * since THE-246", that comment said. It was wrong: `isMainSite` short-circuits
+   * BEFORE `stripeConnectStatus` is even read, so while the platform's own
+   * Stripe account is closed (THE-256), the platform's OWN Give page still drew
+   * the amount picker, "Secure, encrypted payment via Stripe" and a Donate
+   * button that posts to a route already refusing with 503. Reading the switch
+   * here is not restoring Connect UI — flip it back on and this line reads
+   * exactly as it did.
    */
-  const hasStripeGiving = isMainSite || stripeConnectStatus === 'active';
+  const hasStripeGiving = STRIPE_CONNECT_ENABLED && (isMainSite || stripeConnectStatus === 'active');
   const givingLinks = useMemo(() => readGivingLinks(branding), [branding]);
   const hasGivingRails = hasStripeGiving || givingLinks.length > 0;
 

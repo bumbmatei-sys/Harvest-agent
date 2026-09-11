@@ -1947,10 +1947,25 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
    * screen was touched: no control, no handler, no payload, no gate. The
    * `firestorePaths` guard below still compares against the PRE-PR revision and
    * still passes, which is the assertion that actually protects the money.
+   *
+   * ─── the fundraising-chooser Stripe flag fix — re-recorded, whole of what moved ─
+   *
+   * ONE LINE ADDED (the `STRIPE_CONNECT_ENABLED` import) and one existing line's
+   * text changed in place, so the line count goes up by exactly one.
+   * `AdminFundraising.tsx`'s "New campaign" chooser advertised "One-time &
+   * recurring gifts toward a goal" for Fundraising campaigns unconditionally,
+   * even though `STRIPE_CONNECT_ENABLED` is `false` and recurring giving is
+   * only reachable through the (gated) `/api/stripe/donate` route. The
+   * Fundraising option now reads that flag: the original string survives
+   * byte-for-byte when the flag is on, and reads "Gifts toward a goal, through
+   * your own giving links" while it is off. The Pledge option's copy, the
+   * `canPledge` gate, and every handler and payload on this screen are
+   * untouched — the `firestorePaths` guard below still compares against the
+   * PRE-PR revision and still passes.
    */
   const THE_251_FUNDRAISING = {
-    strippedSha: '3fa68aac24d3431d4eb826d4adbcbf8e39ae31967c8dce92a330e780cf92786d',
-    strippedLines: 850,
+    strippedSha: 'f4878df40dfb3641cbb3496ccdf86eaf31428c7d5d03524aea7172aced2ac5b5',
+    strippedLines: 851,
   };
 
   it('changes nothing in AdminFundraising outside a className, THE-251 and THE-254', () => {
