@@ -161,6 +161,13 @@ export const PAYMENT_CLAIM_FIELDS = Object.freeze({
   confirmedByName: 'paymentConfirmedByName',
   /** 🔴 The `tenants/{t}/invoices` id THE-350's writer returned. */
   invoiceId: 'paymentInvoiceId',
+  /**
+   * 🔴 THE-355 — the 256-bit token a LOGGED-OUT registrant claims with. Minted
+   * by the submit route for a seat that owes money, handed back once to the
+   * person who just registered, and never read by any surface but the public
+   * claim route. See {@link PUBLIC_CLAIM_TOKEN_RE}.
+   */
+  claimToken: 'paymentClaimToken',
 } as const);
 
 /**
@@ -576,6 +583,148 @@ export function memberConfirmedBody(churchName: string, whenIso: string): string
 export const MEMBER_CLAIM_FAILED =
   'That could not be sent, so the church has not been told. Nothing changed — try again.';
 
+/* ── 2b. The PUBLIC registrant ─────────────────────────────── */
+
+/**
+ * THE-355 — 🔴 THE NORMAL CASE FOR A CRUSADE HAS NO ACCOUNT AT ALL.
+ *
+ * THE FOUNDER, REGISTERING FOR HIS OWN EVENT: "i pressed on pay but it did not
+ * brought me to the payment page but to the payment confirmation directly.
+ * there is no confirm button in inbox, only in event page."
+ *
+ * Both halves of that sentence are the same defect seen from two ends. THE-351
+ * built the claim flow and mounted it on `UserEvents` — the LOGGED-IN member
+ * app — and its own ownership record names the hole it left: the attendee row
+ * "is the only surface that reaches a member who registered LOGGED OUT and can
+ * therefore never press 'I've paid' themselves". For a crusade, where most
+ * attendees have no account and never will, that is not an edge: it is
+ * everybody. No public registrant could claim, so no claim was ever created,
+ * so the inbox was empty — correctly, about a thing that never happened.
+ *
+ * ⚠️ THE COPY BELOW IS THE SAME PROPOSITION AS THE MEMBER'S, SAID TO SOMEONE
+ * WITH NO ACCOUNT. It is separate from {@link MEMBER_CLAIM_HELP} and friends
+ * rather than reused verbatim because the two audiences differ in one fact that
+ * changes the instruction: a signed-in member can come back to this ticket in
+ * My Events, and a logged-out registrant cannot — so this copy has to tell them
+ * to press now, and has to say what the email they were just sent is for.
+ */
+
+/** The heading over the church's own payment links on the public page. */
+export const PUBLIC_PAY_TITLE = 'How to pay';
+
+/**
+ * 🔴 WHAT THE PUBLIC REGISTRANT IS TOLD BEFORE THE LINKS.
+ *
+ * Names the CHURCH as the party that collects and the party that decides, and
+ * claims nothing about what Harvest has checked, because Harvest checks
+ * nothing. The last sentence is the founder's own decision about the door and
+ * is repeated here rather than assumed: this screen is the only thing a
+ * logged-out registrant is guaranteed to read.
+ */
+export function publicPayBody(churchName: string, amountCents: number, reference: string): string {
+  return (
+    `This ticket costs ${formatCents(amountCents)}, and ${churchName} collects it directly `
+    + `through their own payment links below. Put ${reference} in the payment note so they `
+    + `can find it. Harvest does not handle this money and cannot see it — ${churchName} `
+    + 'opens their own account and decides. Bring this ticket either way — you will not be '
+    + 'turned away at the door.'
+  );
+}
+
+/**
+ * 🔴 STOP CONDITION 6 — A PRICED EVENT WHOSE CHURCH PUBLISHES NO LINK.
+ *
+ * ⚠️ AN EVENT WITH A PRICE AND NO WAY TO PAY IS THE ORIGINAL BUG IN A DIFFERENT
+ * COSTUME, so the member is never shown an empty space where the links should
+ * be. THE-351 made this state hard to reach from the admin side — the price
+ * input is ABSENT while a church has no links saved — but it stays reachable
+ * two ways that no form validation can close: a church that priced an event
+ * first and DELETED its links afterwards, and a stored link that no longer
+ * passes `readGivingLinks`'s allow-list on re-validation.
+ *
+ * 🔴 SO THE HONEST ANSWER IS THE ONLY ONE AVAILABLE: say that the church has not
+ * published a way to pay yet, tell them to ask the church, and tell them the
+ * one thing that is unambiguously true and useful — their place is booked and
+ * the door is not in question. It does NOT invent a fallback, and it does not
+ * imply the registration failed, because it did not.
+ */
+export const PUBLIC_NO_LINKS_TITLE = 'Ask the church how to pay';
+
+export function publicNoLinksBody(churchName: string, amountCents: number, reference: string): string {
+  return (
+    `Your place is booked. This ticket costs ${formatCents(amountCents)}, but ${churchName} has `
+    + 'not published a payment link yet, so there is nowhere for us to send you. Contact them '
+    + `and quote ${reference}. Bring this ticket either way — you will not be turned away at `
+    + 'the door.'
+  );
+}
+
+/**
+ * 🔴 THE PUBLIC CLAIM HELP, AND IT SAYS MORE THAN THE MEMBER'S DOES.
+ *
+ * ⚠️ {@link MEMBER_CLAIM_HELP} can be short because a signed-in member can open
+ * My Events tomorrow and see what happened. A logged-out registrant cannot come
+ * back to this screen — it is gone the moment they close the tab — so the
+ * sentence has to carry the same warning AND tell them where the record lives.
+ */
+export const PUBLIC_CLAIM_HELP =
+  'This only tells the church to go and look. It settles nothing on its own and it does '
+  + 'not change what you owe. Keep the email with your ticket code.';
+
+/** Shown in place of the button once a public registrant has pressed it. */
+export const PUBLIC_CLAIMED_TITLE = 'The church has been asked to look';
+
+export function publicClaimedBody(churchName: string, reference: string): string {
+  return (
+    `${churchName} has been asked to find ${reference} in their own account. Harvest has not `
+    + 'checked anything and cannot. Until someone there marks it paid your ticket still reads '
+    + 'unpaid — bring it anyway, you will not be turned away at the door.'
+  );
+}
+
+/* ── 2c. The claim token a logged-out registrant carries ─────────────── */
+
+/**
+ * 🔴 HOW A REGISTRANT WITH NO ACCOUNT PROVES THE REGISTRATION IS THEIRS.
+ *
+ * ⚠️ THE REFERENCE CODE CANNOT DO THIS JOB, AND THE REASON IS ALREADY WRITTEN
+ * DOWN IN THIS FILE. `isPaymentReference`'s note says the reference is
+ * deliberately "a SECOND identifier that GRANTS NOTHING", and says why in the
+ * same breath: IT IS WRITTEN INTO A PAYMENT NOTE, ON VENMO, WHOSE TRANSACTION
+ * FEED IS PUBLIC BY DEFAULT. A reference that authorised a write would be a
+ * credential the feature PUBLISHES — and at 31⁶ ≈ 887 million it is ~29.7 bits,
+ * which is a guessing target rather than a secret. Either fact alone disqualifies
+ * it; together they are STOP condition 3 exactly.
+ *
+ * 🔴 SO IT IS THE-324's SHAPE, WHICH SOLVED THIS FOR ROTA INVITATIONS: a stored
+ * 256-bit token, no sign-in, authorising ONLY the fields it needs. 43 characters
+ * of base64url, the same spelling `rota-invitations.ts` pins with `TOKEN_RE`.
+ *
+ * 🔴 AND THE TOKEN *SELECTS* THE REGISTRATION RATHER THAN ACCOMPANYING AN ID.
+ * The public route takes NO `registrationId` at all: it looks the document up
+ * BY this field. There is therefore no pair to mismatch and no check to forget
+ * — a claim can only ever land on the one registration whose own token was
+ * presented, which is stronger than validating a client-supplied id against it
+ * and is why this is a query rather than a comparison.
+ *
+ * ⚠️ THE MINTER IS NOT HERE. This module is imported by client components, so
+ * it may not pull in `node:crypto` — the same discipline `buildPaymentReference`
+ * follows by taking its bytes as an argument. The route mints
+ * `randomBytes(32).toString('base64url')`; this file owns the SHAPE, which is
+ * what both ends have to agree on.
+ */
+export const PUBLIC_CLAIM_TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
+
+/** The field the token is stored under, named once so both ends spell it the same. */
+export const PUBLIC_CLAIM_TOKEN_FIELD = 'paymentClaimToken';
+
+/** 32 bytes, base64url — the length the minter must produce. */
+export const PUBLIC_CLAIM_TOKEN_BYTES = 32;
+
+export function isPublicClaimToken(value: unknown): value is string {
+  return typeof value === 'string' && PUBLIC_CLAIM_TOKEN_RE.test(value);
+}
+
 /* ── 3. The tenant inbox ─────────────────────────────────────────────────── */
 
 export const INBOX_TITLE = 'To confirm';
@@ -659,6 +808,74 @@ export const DOOR_UNCONFIRMED_HELP =
   + 'afterwards, not at the door.';
 
 export const DOOR_CONFIRMED_BADGE = 'Paid';
+
+/* ── 4b. The word "confirmed", which means two things ────────────────── */
+
+/**
+ * THE-355 — 🔴 ONE ROW SAID "confirmed" AND "Payment not confirmed" AT ONCE.
+ *
+ * THE FOUNDER'S SCREENSHOT of his own event page: two attendees, each showing a
+ * badge reading `confirmed` AND a warning reading "Payment not confirmed", each
+ * with a working Confirm button beside both. Three appearances of one word
+ * meaning two different things, on one line.
+ *
+ * ⚠️ THEY ARE GENUINELY TWO DIFFERENT FACTS AND BOTH WERE TRUE. The badge is
+ * REGISTRATION status — `registrations/{id}.status`, the field that decides
+ * whether Check In is offered, which has never meant money and which
+ * `submit/route.ts` sets to `confirmed` the moment a seat is taken, exactly as
+ * it does for a free one. The warning is PAYMENT state, which lives in the
+ * separate `payment*` fields no door control reads. Neither was wrong. What was
+ * wrong is that they were spelled with the same word, so an admin reading
+ * "confirmed · Payment not confirmed" could not tell which of them the Confirm
+ * button was about to change.
+ *
+ * 🔴 SO THE REGISTRATION SIDE GIVES UP THE WORD, AND THE PAYMENT SIDE KEEPS IT.
+ * That direction is not arbitrary:
+ *
+ *   · "Confirm" is the founder's own word for the payment button, it is the
+ *     correct verb for what the CHURCH does, and `FORBIDDEN_CLAIM_PHRASES`
+ *     deliberately does not ban it. The whole feature is named in it.
+ *   · The registration side has a plainer word available that says the same
+ *     thing better — a person with a seat is REGISTERED — and it is the word
+ *     the product already uses everywhere else for this state.
+ *
+ * So after this ticket exactly one thing on that row says "confirmed", and it
+ * is the payment. The stat above the list is re-labelled in the same breath and
+ * for the same reason: it counts `status === 'confirmed'`, i.e. REGISTRATION
+ * status, and a header reading "2 Confirmed" over two unpaid seats is the same
+ * collision one level up.
+ *
+ * ⚠️ THE STORED VALUES DO NOT MOVE. This is a display map and nothing else:
+ * `status` still stores `confirmed`, every query still filters on it, and
+ * check-in still gates on it. Renaming a stored enum to fix a label would be a
+ * migration on a live collection to solve a wording problem.
+ */
+export const REGISTRATION_STATUS_LABEL: Readonly<Record<string, string>> = Object.freeze({
+  confirmed: 'Registered',
+  attended: 'Attended',
+  waitlisted: 'Waitlisted',
+  cancelled: 'Cancelled',
+});
+
+/**
+ * The label for one stored registration status. Falls back to the stored value
+ * so a status this map has not met yet renders as itself rather than blank —
+ * an unknown state must still be visible to the admin looking at it.
+ */
+export function registrationStatusLabel(status: unknown): string {
+  if (typeof status !== 'string' || !status) return '';
+  return REGISTRATION_STATUS_LABEL[status] ?? status;
+}
+
+/**
+ * 🔴 WHAT THE STAT ABOVE THE ATTENDEE LIST COUNTS, SAID IN ITS OWN LABEL.
+ *
+ * It counts registrations whose REGISTRATION status is `confirmed` — people who
+ * hold a seat. It has never counted payments and does not now; a paid event
+ * with two unpaid seats reads 2 here, which is correct and was unreadable while
+ * the word was "Confirmed".
+ */
+export const REGISTERED_STAT_LABEL = 'Registered';
 
 /* ── 5. The notification to the church's admins ──────────────────────────── */
 

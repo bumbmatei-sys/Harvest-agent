@@ -474,6 +474,25 @@ describe('9-10 · event write paths are byte-identical', () => {
        * discounted to $0 never reach the question at all.
        */
       'f203f58f402ec89f14415c9ae64134bd44286b8c4fcb0e8fa12fb70cfd7739a2',
+      /**
+       * 🔴 APPENDED FOR THE-355, never substituted. The route mints a 256-bit
+       * `paymentClaimToken` for a seat that owes money, inside THE-351's own
+       * `owesManualPayment` ternary, and hands it back once — so a LOGGED-OUT
+       * registrant can press "I've paid". THE-351's claim flow sat behind
+       * `requireAuth` and mounted on the member app, which for a crusade reaches
+       * nobody: no claim was ever created, so the church's inbox was correctly
+       * empty about a thing that had never happened.
+       *
+       * ⚠️ THE THREE EXISTING BYPASSES ARE STILL UNTOUCHED. `amount > 0 &&
+       * !waitlisted` still means a free registration, a waitlist entry and a
+       * ticket discounted to $0 never reach the question — so none of them mints
+       * a reference and none of them mints a token either.
+       *
+       * ⚠️ AND THE WRITES THIS GUARD PROTECTS ARE BYTE-IDENTICAL: the CRM row,
+       * THE-154's direct charge, the platform fee, the Checkout metadata, the
+       * pending-registration rollback and the capacity count.
+       */
+      '20be877124903dd6eeda68f20ea3835206381dcc766e8d680f755e2766cc50ed',
     ];
     const actual = sha256(read('src/app/api/event-registration/submit/route.ts'));
     expect(

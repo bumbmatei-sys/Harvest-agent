@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import { getTenantFromHost } from '@/lib/server-tenant';
 import PublicEventRegistration from '@/components/PublicEventRegistration';
 import PublicRouteAnalytics from '@/components/PublicRouteAnalytics';
+import { readGivingLinks } from '@/components/donations/giving-providers';
+import { resolveEventPaymentLinks } from '@/lib/event-payment-claims';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,6 +59,43 @@ export default async function PublicEventPage({
 
   const branding = (tenant as any).config || {};
 
+  /**
+   * THE-355 — 🔴 THE CHURCH'S OWN PAYMENT LINKS, ON THE ONE SCREEN THAT NEEDS
+   * THEM.
+   *
+   * THE FOUNDER CONFIGURED REVOLUT AND WAS NEVER SHOWN IT. THE-351 added the
+   * per-event provider choice and resolved it for `/api/my-registrations` —
+   * i.e. for the LOGGED-IN member app — and this page, the one a public
+   * registrant actually lands on, rendered the reference code and the
+   * disclaimer and nothing else. The one screen that needed the link was the
+   * one screen without it.
+   *
+   * 🔴 RESOLVED HERE RATHER THAN FETCHED BY THE CLIENT. This component already
+   * holds the tenant and the event; a second round trip would add an API
+   * surface, a loading state and a failure mode to a page that has the answer
+   * in hand. `my-registrations` resolves it server-side for the same reason.
+   *
+   * ⚠️ INTERSECTED ON EVERY READ, NEVER TRUSTED FROM THE EVENT DOCUMENT.
+   * `readGivingLinks` re-validates each stored URL against the phishing
+   * allow-list, so a link that no longer passes simply stops being a link, and
+   * `resolveEventPaymentLinks` can only ever NARROW what the church currently
+   * publishes — a provider ticked for this event and since deleted from
+   * Donations cannot render as a dead tile.
+   *
+   * ⚠️ THESE ARE PUBLIC BY CONSTRUCTION. They are the same links the church
+   * publishes on its own giving page; nothing private crosses this boundary.
+   */
+  const payOptions = resolveEventPaymentLinks(
+    readGivingLinks(branding as { givingLinks?: unknown }),
+    data.paymentProviders,
+  ).map((l) => ({
+    id: l.provider.id,
+    label: l.provider.label,
+    url: l.url,
+    handle: l.handle,
+    email: l.email,
+  }));
+
   return (
     <>
       <PublicRouteAnalytics route="/event/[eventId]" />
@@ -66,6 +105,7 @@ export default async function PublicEventPage({
         logo={branding.logo || null}
         primaryColor={branding.primaryColor || '#B8962E'}
         event={event}
+        payOptions={payOptions}
       />
     </>
   );

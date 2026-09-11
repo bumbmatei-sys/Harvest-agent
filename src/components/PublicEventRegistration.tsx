@@ -5,6 +5,31 @@ import type { User } from 'firebase/auth';
 import { auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { authFetch } from '../utils/auth-fetch';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { Item, ItemContent, ItemTitle, ItemDescription, ItemActions } from './ui/item';
+import { Separator } from './ui/separator';
+import { CONTROL_DENSITY } from './layout/form-layout';
+import { PAID_EVENTS_ENABLED, manualConfirmationMode } from '../lib/paid-events-feature';
+import {
+  MEMBER_CLAIM_BUTTON,
+  MEMBER_CLAIM_FAILED,
+  PUBLIC_CLAIMED_TITLE,
+  PUBLIC_CLAIM_HELP,
+  PUBLIC_NO_LINKS_TITLE,
+  PUBLIC_PAY_TITLE,
+  publicClaimedBody,
+  publicNoLinksBody,
+  publicPayBody,
+} from '../lib/event-payment-claims';
+
+/** One of the church's own payment links, resolved server-side by the page. */
+export interface PublicPayOption {
+  id: string;
+  label: string;
+  url: string | null;
+  handle: string | null;
+  email: string | null;
+}
 
 interface TicketType {
   id: string;
@@ -21,6 +46,13 @@ interface PublicEventRegistrationProps {
   logo: string | null;
   primaryColor: string;
   event: any; // serialized event document
+  /**
+   * THE-355 — the church's own payment links for THIS event, already
+   * intersected against what the church currently publishes. Resolved on the
+   * server (see `app/event/[eventId]/page.tsx`) so this page needs no second
+   * round trip, no loading state and no failure mode to render them.
+   */
+  payOptions?: PublicPayOption[];
 }
 
 const fmtCents = (cents: number) => (cents > 0 ? `$${(cents / 100).toFixed(2)}` : 'Free');
@@ -55,7 +87,7 @@ const fmtDateTime = (iso: string | null) => {
 };
 
 const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
-  tenantId, tenantName, logo, primaryColor, event,
+  tenantId, tenantName, logo, primaryColor, event, payOptions = [],
 }) => {
   const ticketTypes: TicketType[] = Array.isArray(event.ticketTypes)
     ? [...event.ticketTypes].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
@@ -82,7 +114,31 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
     /** THE-351 — null unless this seat owes money the church collects itself. */
     paymentReference: string | null;
     amountCents: number;
+    /**
+     * THE-355 — 🔴 THE 256-BIT TOKEN THAT LETS THIS REGISTRANT CLAIM.
+     *
+     * ⚠️ HELD IN COMPONENT STATE AND NOWHERE ELSE. Not `localStorage`, not the
+     * URL, not a cookie: it authorises a write against a document carrying a
+     * money amount, and its whole security argument is that the only party
+     * holding it is the person who just pressed Register in this tab. A URL
+     * lands in browser history, a referer header and a shared screenshot; a
+     * storage key outlives the tab and the person. This dies with the tab,
+     * which is exactly the lifetime of the screen that uses it.
+     */
+    claimToken: string | null;
   } | null>(null);
+
+  /**
+   * THE-355 — the public claim's own `saveState`, THE-321's shape.
+   *
+   * 🔴 A FAILED CLAIM MUST SURFACE VISIBLY AND MUST NOT LOSE THE REGISTRATION.
+   * `done` is never cleared by this machine, so a rejected press leaves the
+   * ticket code, the reference and the links exactly where they were and adds a
+   * failure beside the button. THE-342's rule: a default that hides an error is
+   * a bug, and a silent failure here would be a person who believes the church
+   * has been told when it has not.
+   */
+  const [claimState, setClaimState] = useState<'idle' | 'saving' | 'claimed' | 'failed'>('idle');
 
   // This same public page also renders inside the logged-in app. When an app
   // user is signed in we (a) pre-fill their name/email from the account and
@@ -108,11 +164,47 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
     return () => unsub();
   }, []);
 
-  // When Stripe Checkout redirects back to /event/{id}?registration=success|cancel,
-  // show the matching state. The QR ticket for a paid registration arrives by
-  // email once the webhook confirms the payment.
+  /**
+   * When Stripe Checkout redirects back to /event/{id}?registration=success|cancel,
+   * show the matching state. The QR ticket for a paid registration arrives by
+   * email once the webhook confirms the payment.
+   *
+   * ═══════════════════════════════════════════════════════════════════════════
+   * THE-355 — 🔴 DORMANT, AND THE GATE IS WHAT MAKES IT DORMANT.
+   *
+   * ⚠️ THE STATE STAYS; THE READ THAT SETS IT IS GATED. Asked to report whether
+   * this should go or stay dormant: IT STAYS, GATED, and the reason is that
+   * neither of the other two answers is honest.
+   *
+   *   · DELETING IT would be this ticket vandalising a dormant rail on its way
+   *     past. `PAID_EVENTS_ENABLED` is a real switch with a real day to be
+   *     flipped, `paid-events-feature.ts` is written around flipping it, and
+   *     the branch below is the correct screen for the world where a rail took
+   *     the money and a webhook said so. Deleting it means whoever flips the
+   *     flag ships a checkout that returns to a registration form.
+   *   · LEAVING IT UNGATED is what shipped, and it is the defect: the strings
+   *     are reachable from a URL ANY VISITOR CAN TYPE. `?registration=success`
+   *     on a live event rendered "Payment received — you're registered!" to
+   *     somebody who had paid nobody. 🔴 THAT IS A LIE ABOUT MONEY, and it does
+   *     not need a Stripe session to tell it — only a query string.
+   *
+   * 🔴 SO THE BRANCH IS MADE STRUCTURALLY UNREACHABLE RATHER THAN MERELY
+   * UNUSED. `PAID_EVENTS_ENABLED` is a module constant and it is `false`, so
+   * `setPostPayment` is never called, `postPayment` is never anything but
+   * `null`, and no string inside either branch can render for any input. The
+   * day the flag goes true, the rail that makes those sentences TRUE is the
+   * same thing that makes them reachable again — one switch, both halves.
+   *
+   * ⚠️ AND IT IS THE SAME GATE THE SUBMIT ROUTE USES. `requiresPayment` there is
+   * `amount > 0 && !waitlisted && !manualConfirmationMode()`, and
+   * `manualConfirmationMode()` is `!PAID_EVENTS_ENABLED && …`. So the condition
+   * that decides whether anyone is ever SENT to Checkout and the condition that
+   * decides whether the RETURN screen exists are the same proposition, spelled
+   * from the one constant. They cannot drift into disagreeing.
+   */
   const [postPayment, setPostPayment] = useState<'success' | 'cancel' | null>(null);
   useEffect(() => {
+    if (!PAID_EVENTS_ENABLED) return;
     const reg = new URLSearchParams(window.location.search).get('registration');
     if (reg === 'success' || reg === 'cancel') setPostPayment(reg);
   }, []);
@@ -225,11 +317,43 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
         waitlisted: !!data.waitlisted,
         paymentReference: typeof data.paymentReference === 'string' ? data.paymentReference : null,
         amountCents: typeof data.amount === 'number' ? data.amount : 0,
+        claimToken: typeof data.paymentClaimToken === 'string' ? data.paymentClaimToken : null,
       });
     } catch (err: any) {
       setError(err?.message || 'Something went wrong. Please try again.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  /**
+   * THE-355 — 🔴 THE PUBLIC REGISTRANT PRESSES "I'VE PAID".
+   *
+   * ⚠️ IT SENDS THE TOKEN AND NO REGISTRATION ID, because the route takes none:
+   * the token SELECTS the row it was minted for, so there is no pair to
+   * mismatch and no way to address somebody else's seat. See the route.
+   *
+   * ⚠️ THE PROVIDER IS NOT ASKED FOR, the same reading `UserEvents` records:
+   * the registrant has just been shown every tile the church accepts and may
+   * have used any of them, and a wrong answer on a required field is worse for
+   * the admin than an honest blank. The inbox row says "did not say which app
+   * they used" when it is null.
+   */
+  const pressClaim = async () => {
+    if (!done?.claimToken) return;
+    setClaimState('saving');
+    try {
+      const resp = await fetch('/api/event-payment/public-claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, token: done.claimToken, provider: null }),
+      });
+      if (!resp.ok) throw new Error('claim failed');
+      setClaimState('claimed');
+    } catch {
+      // 🔴 VISIBLE, AND THE REGISTRATION IS UNTOUCHED. `done` is not cleared, so
+      // the ticket code, the reference and the links all stay on screen.
+      setClaimState('failed');
     }
   };
 
@@ -309,28 +433,167 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
           )}
           <p className="text-sm text-faint">A confirmation has been sent to {email}.</p>
           {/*
-            🔴 THE-351 — the payment instruction, on the ONE screen a logged-out
-            registrant is guaranteed to see. It names the CHURCH as the party
-            that collects and the party that decides, and it does not claim
-            anything about what Harvest has checked, because Harvest cannot
-            check anything. `alert` was rejected here: this shell is the public
-            event page and carries none of the admin app's primitives, so the
-            copy is set in the page's own type rather than importing a second
-            visual vocabulary onto a public surface.
+            🔴 THE-351's PAYMENT INSTRUCTION, AND THE-355's LINKS, CLAIM CONTROL
+            AND NO-LINKS STATE — ON THE ONE SCREEN A LOGGED-OUT REGISTRANT IS
+            GUARANTEED TO SEE.
+
+            THE FOUNDER CHOSE REVOLUT AND WAS NEVER SHOWN IT. THE-351 rendered
+            the reference and the disclaimer here and nothing else: `givingLinks`
+            reached the LOGGED-IN member app through `/api/my-registrations` and
+            reached this page not at all. So the church picked a provider and the
+            member was never shown it — the one screen that needed the link was
+            the one screen without it.
+
+            🔴 THE PRIMITIVES, AND THE ONES REJECTED.
+
+            `alert` for every standing notice (the instruction, the no-links
+            state, the claimed state): it carries `role="alert"`, so what a paid
+            registrant must not miss reaches a screen reader and not only an eye,
+            and it paints from `bg-card`/`text-card-foreground`, which resolve on
+            `:root` in `globals.css` — so this mints no colour of its own and
+            both palettes answer for it.
+
+            ⚠️ THE-351 REJECTED `alert` HERE ON A PREMISE THAT WAS WRONG. Its
+            note reads: "this shell is the public event page and carries none of
+            the admin app's primitives". The shadcn token layer is declared on
+            bare `:root` — `--card`, `--foreground`, `--border` and the rest —
+            not inside an admin scope, so every primitive resolves on this page
+            exactly as it does on an admin one. The copy was set in the page's
+            own type for a reason that does not hold, and the accessible role was
+            the cost.
+
+            `item` for each payment link: a row with a label, a means of reaching
+            it and one action is what `item` IS, and `ItemActions` keeps the tap
+            target out of the text flow.
+
+            `separator` for the rule above the block — it replaces a hand-rolled
+            `border-t`.
+
+            🔴 REJECTED, EACH FOR A REASON:
+            · `button` for "I've paid" — its `default` size is `h-8` (32px) and
+              its largest, `lg`, is `h-9` (36px). Both are UNDER the 44px tap
+              floor below `sm`, so spending it would mean overriding the one
+              thing it was chosen for. The same finding THE-351 recorded for the
+              inbox's own Confirm. A plain button wearing `min-h-11` and
+              `CONTROL_DENSITY.action` mints no height of its own.
+            · `card` — this is a notice inside a panel that is already a card,
+              not a second container.
+            · `badge` — the instruction is three sentences; a badge is a label.
+            · `empty` — it announces an absent COLLECTION. A church that has
+              published no payment link is a capability withheld over a
+              registration that completely succeeded, not an empty list.
+            · `dialog` — nothing here is a decision that must interrupt, and the
+              registrant has already finished the only flow on this page.
+            · `sonner` — a toast leaves the screen; a payment instruction the
+              registrant must act on later must not.
+            · `tooltip` — a phone has no hover, and a member who believes "I've
+              paid" settles the matter will arrive at the door believing they are
+              paid. The help text sits beside the button, never behind a reveal.
           */}
           {done.paymentReference && !done.waitlisted && (
-            <div className="mt-5 pt-5 border-t border-line text-left" data-public-payment-note>
-              <p className="text-sm text-body">
-                This ticket costs ${(done.amountCents / 100).toFixed(2)}, and {tenantName} collects
-                it directly through their own payment links — Harvest does not handle this money
-                and cannot see it.
-              </p>
-              <p className="text-sm text-body mt-2">
-                Put <span className="font-mono font-bold">{done.paymentReference}</span> in the
-                payment note so they can find it. They mark it paid themselves once they have
-                found it in their own account. Bring this ticket either way — you will not be
-                turned away at the door.
-              </p>
+            <div className="mt-5 text-left" data-public-payment-note>
+              <Separator className="mb-5" />
+
+              {payOptions.length > 0 ? (
+                <>
+                  <Alert>
+                    <AlertTitle>{PUBLIC_PAY_TITLE}</AlertTitle>
+                    <AlertDescription>
+                      {publicPayBody(tenantName, done.amountCents, done.paymentReference)}
+                    </AlertDescription>
+                  </Alert>
+
+                  {/*
+                    🔴 THE CHURCH'S OWN LINKS. A row with no valid URL renders as a
+                    handle or an email rather than a dead link — the Zelle case,
+                    which has no per-church URL at all and is reached by email
+                    alone. `readGivingLinks` re-derived every one of these on
+                    this request, so a stored URL that no longer passes the
+                    allow-list has already stopped being a link.
+                  */}
+                  <div className="mt-3 space-y-1.5" data-public-pay-options>
+                    {payOptions.map((o) => (
+                      <Item key={o.id} variant="outline" data-public-pay-option={o.id}>
+                        <ItemContent>
+                          <ItemTitle>{o.label}</ItemTitle>
+                          {!o.url && (o.handle || o.email) && (
+                            <ItemDescription>{o.handle || o.email}</ItemDescription>
+                          )}
+                        </ItemContent>
+                        {o.url && (
+                          <ItemActions>
+                            <a
+                              href={o.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              data-public-pay-link
+                              className={`inline-flex items-center justify-center min-h-11 px-4 rounded-xl text-sm font-semibold underline text-body ${CONTROL_DENSITY.action}`}
+                            >
+                              Open
+                            </a>
+                          </ItemActions>
+                        )}
+                      </Item>
+                    ))}
+                  </div>
+
+                  {/*
+                    🔴 THE CONTROL THE INBOX WAS WAITING FOR. Without it no claim was
+                    ever created, so the church's inbox was empty — correctly,
+                    about a thing that never happened.
+                  */}
+                  {claimState === 'claimed' ? (
+                    <div className="mt-4" data-public-claim-done>
+                      <Alert>
+                        <AlertTitle>{PUBLIC_CLAIMED_TITLE}</AlertTitle>
+                        <AlertDescription>
+                          {publicClaimedBody(tenantName, done.paymentReference)}
+                        </AlertDescription>
+                      </Alert>
+                    </div>
+                  ) : done.claimToken ? (
+                    <div className="mt-4">
+                      <button
+                        type="button"
+                        data-public-claim
+                        onClick={() => void pressClaim()}
+                        disabled={claimState === 'saving'}
+                        className={`w-full min-h-11 rounded-xl text-sm font-semibold text-white disabled:opacity-50 ${CONTROL_DENSITY.action}`}
+                        style={{ backgroundColor: primaryColor }}
+                      >
+                        {claimState === 'saving' ? 'Sending…' : MEMBER_CLAIM_BUTTON}
+                      </button>
+                      <p className="mt-1.5 text-[11px] text-muted" data-public-claim-help>
+                        {PUBLIC_CLAIM_HELP}
+                      </p>
+                      {claimState === 'failed' && (
+                        <p
+                          className="mt-1.5 text-[11px] font-semibold text-destructive"
+                          data-public-claim-failed
+                        >
+                          {MEMBER_CLAIM_FAILED}
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                /*
+                  🔴 STOP CONDITION 6 — PRICED, WITH NO LINK PUBLISHED. An event with
+                  a price and no way to pay is the original defect in a different
+                  costume, so this says the true thing rather than leaving a gap:
+                  the place is booked, the church has published nowhere to send
+                  money, ask them and quote the reference, and the door is not in
+                  question either way. No claim control is offered, because there
+                  is nothing here they could have paid.
+                */
+                <Alert data-public-no-links>
+                  <AlertTitle>{PUBLIC_NO_LINKS_TITLE}</AlertTitle>
+                  <AlertDescription>
+                    {publicNoLinksBody(tenantName, done.amountCents, done.paymentReference)}
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           )}
         </div>
@@ -487,12 +750,40 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
 
         {error && <p className="text-sm text-red-600 mt-4">{error}</p>}
 
-        <button onClick={submit} disabled={submitting}
+        {/*
+          🔴 THE-355 — THE BUTTON THAT LIED, AND WHAT IT SAYS NOW.
+
+          THE FOUNDER: "i pressed on pay but it did not brought me to the
+          payment page but to the payment confirmation directly."
+
+          It did exactly what the code says it does. Under manual confirmation
+          the submit route never enters the payment branch — `requiresPayment`
+          is `amount > 0 && !waitlisted && !manualConfirmationMode()` and
+          `manualConfirmationMode()` is true — so no Checkout session is created,
+          no `url` comes back, and the redirect the button PROMISED cannot
+          happen. "Continue to payment" and "Redirecting to payment…" were both
+          claims about a processor that no longer exists.
+
+          🔴 SO THE COPY IS DERIVED FROM THE SAME CONSTANT THAT DECIDES THE
+          BEHAVIOUR, rather than describing it from memory.
+          `manualConfirmationMode()` is what makes the redirect not happen, so it
+          is what chooses the words — the two cannot drift apart, and the day a
+          rail exists the promise comes back with the thing it promises.
+
+          ⚠️ IT STILL NAMES THE PRICE. The registrant is about to owe money and
+          must see how much before they commit; what is removed is the claim
+          about WHERE THEY ARE ABOUT TO BE SENT, which was the false half.
+        */}
+        <button onClick={submit} disabled={submitting} data-public-submit
           className="mt-6 w-full py-3 rounded-xl text-white font-semibold disabled:opacity-50"
           style={{ backgroundColor: primaryColor }}>
           {submitting
-            ? (total > 0 ? 'Redirecting to payment…' : 'Registering…')
-            : (total > 0 ? `Continue to payment · ${fmtCents(total)}` : 'Register')}
+            ? (total > 0 && !manualConfirmationMode() ? 'Redirecting to payment…' : 'Registering…')
+            : (total > 0
+              ? (manualConfirmationMode()
+                ? `Register · ${fmtCents(total)}`
+                : `Continue to payment · ${fmtCents(total)}`)
+              : 'Register')}
         </button>
       </div>
     </Shell>

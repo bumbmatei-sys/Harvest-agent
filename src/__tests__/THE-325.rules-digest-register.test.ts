@@ -250,8 +250,33 @@ const filesSpelling = (digest: string): string[] =>
  * rule would have been. THE-351 records NO rules digest and reaches the accepted
  * set through this module like every other pinner, so a real rules change still
  * costs exactly one edit. Nothing above is removed and no accepted value is
+ * widened.
+ *
+ * ─── 68 -> 69, THE-355 ───────────────────────────────────────────────────────
+ *
+ * THE PUBLIC EVENT PAGE: no payment link, no way to claim, and a button that
+ * promised a processor that no longer exists. THE-351 built the claim flow
+ * behind `requireAuth` and mounted it on the LOGGED-IN member app; for a
+ * crusade, where most attendees have no account and never will, that reached
+ * nobody — so no claim was ever created and the founder's inbox was correctly
+ * empty about a thing that had never happened.
+ * `THE-355.public-payment.guards.test.ts` joins the population.
+ *
+ * ⚠️ A PUBLIC, UNAUTHENTICATED WRITE AGAINST A DOCUMENT CARRYING A MONEY AMOUNT
+ * IS THE SHAPE THAT MOST OBVIOUSLY NEEDS A RULE, and it needed none — the same
+ * finding THE-351 made one layer in. The public claim is the Admin SDK inside a
+ * route, exactly as THE-351's authenticated one is, so the registration UPDATE
+ * rule requiring `manageEvents` is untouched and nothing is loosened in a file
+ * that AUTO-DEPLOYS with no emulator tests. What stands in place of a rule is a
+ * STRONGER shape rather than a weaker one: the route accepts no
+ * `registrationId` at all and finds the document BY a stored 256-bit token —
+ * THE-324's rota-invitation pattern, no sign-in, authorising only the fields it
+ * needs — so there is no pair to mismatch and no expressible request that names
+ * somebody else's seat. THE-355 records NO rules digest and reaches the accepted
+ * set through this module like every other pinner, so a real rules change still
+ * costs exactly one edit. Nothing above is removed and no accepted value is
  * widened. */
-const PINNING_SUITES = 68;
+const PINNING_SUITES = 69;
 
 /**
  * A digest no ticket has recorded and none ever will — the planted change.

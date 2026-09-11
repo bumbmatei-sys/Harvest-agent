@@ -333,7 +333,7 @@ interface PrePr {
  * behaviour — every query, write, handler and value.
  */
 const stripPresentation = (src: string): string =>
-  unwrapRota(unwrapServicePlan(unwrapSmsGate(unwrapRotaInvite(src))))
+  unwrapRota(unwrapServicePlan(unwrapSmsGate(unwrapRotaInvite(unwrapConfirmedWording(src)))))
   .replace(/className=(?:"[^"]*"|\{`[^`]*`\}|\{[A-Za-z_$][\w.$]*\})/g, 'className=X')
   // An import of a LAYOUT module is presentation, not behaviour — the same
   // reasoning that already exempted form-layout, widened to the directory. A
@@ -560,6 +560,61 @@ const ROTA_INVITE_EDITS: [string, string][] = [
 
 const unwrapRotaInvite = (src: string): string =>
   ROTA_INVITE_EDITS.reduce((acc, [after, before]) => acc.replace(after, before), src);
+
+/**
+ * THE-355 — THE SAME CHOICE AGAIN, AND THE PINNED DIGEST IS NOT TOUCHED.
+ *
+ * 🔴 EDITED_SINCE_MEASUREMENT's RULE: APPEND, NEVER SUBSTITUTE. `main` went red
+ * for everyone once because a PR REPLACED a pinned digest, and THE-251's note
+ * above says which of the two honest options is weaker in the same words:
+ * "Re-recording is the weaker one: it would bless every other byte that moved
+ * in the same breath, which is the one thing this guard exists to catch." So
+ * `THE_308_EVENTS.strippedSha` and `.strippedLines` below are UNCHANGED by this
+ * ticket, and the edit is reversed instead.
+ *
+ * 🔴 THE TICKET: THE-355. THE REASON: the founder's own event page showed each
+ * attendee as `confirmed` (a badge) AND "Payment not confirmed" (a warning),
+ * with a Confirm button beside both — one word meaning two different things on
+ * one row, so an admin could not tell what the button was about to change. The
+ * badge is REGISTRATION status and the warning is PAYMENT state; both were
+ * true. The registration side gives up the word and now reads "Registered",
+ * because "Confirm" is the founder's own word for the payment button and the
+ * correct verb for what the CHURCH does. The stat above the list is re-labelled
+ * in the same breath: it counts `status === 'confirmed'`, so "2 Confirmed" over
+ * two unpaid seats was the same collision one level up.
+ *
+ * 🔴 THE EDIT IS THREE EXACT STRINGS — an import, the badge's own expression and
+ * the stat's label — so the stronger option is available and is what is taken.
+ * The hash still compares against the revision THE-345 recorded, byte for byte,
+ * and anything else that moves in this screen still goes red tomorrow.
+ *
+ * ⚠️ APPENDED, AND IT RUNS FIRST. Every other list here matches the file as its
+ * own ticket left it, and this ticket writes INSIDE regions those lists do not
+ * cover, so reversing this one first leaves all four of them matching exactly
+ * what they were written against. None is weakened: all five must match, in
+ * order, or the hash goes red.
+ *
+ * ⚠️ NOTHING ABOUT THE MONEY MOVED. This is a DISPLAY map: `status` still stores
+ * `confirmed`, every query still filters on it, and the Check In control is
+ * still gated on it — so `firestorePathsOf` below is unchanged and check-in
+ * still never blocks on payment.
+ *
+ * Delete this when the baseline is next legitimately re-recorded.
+ */
+const CONFIRMED_WORDING_EDITS: [string, string][] = [
+  [
+    '  paymentStateOf, readEventProviderIds, registrationStatusLabel, REGISTERED_STAT_LABEL,',
+    '  paymentStateOf, readEventProviderIds,',
+  ],
+  ['}`}>{registrationStatusLabel(r.status)}</span>', '}`}>{r.status}</span>'],
+  [
+    '<div className="text-xs text-faint mt-0.5">{REGISTERED_STAT_LABEL}</div>',
+    '<div className="text-xs text-faint mt-0.5">Confirmed</div>',
+  ],
+];
+
+const unwrapConfirmedWording = (src: string): string =>
+  CONFIRMED_WORDING_EDITS.reduce((acc, [after, before]) => acc.replace(after, before), src);
 
 const firestorePathsOf = (src: string): string[] =>
   [...src.matchAll(/(?:collection|doc)\(db,\s*([^)]*)\)/g)].map((m) => m[1].replace(/\s+/g, ' '));

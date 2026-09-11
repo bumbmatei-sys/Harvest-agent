@@ -404,8 +404,27 @@ describe('22 · firestore.rules, the indexes, functions/ and layout.tsx are unto
      * `stripe-config-split` now pin `manualConfirmationMode()` OFF so the rail
      * path keeps proving it is whole for the day it returns.
      */
+    /**
+     * ─── RE-PINNED BY THE-355, AND WHAT MOVED IS ONE EXPRESSION ──────────────
+     *
+     * Previous pins, kept so nothing is lost:
+     *   f203f58f402ec89f14415c9ae64134bd44286b8c4fcb0e8fa12fb70cfd7739a2  (THE-351)
+     *
+     * THE-355 mints a 256-bit `paymentClaimToken` inside THE-351's own
+     * `owesManualPayment` ternary and returns it once, so a LOGGED-OUT
+     * registrant can say they paid — THE-351 built that flow behind
+     * `requireAuth` and mounted it on the member app, which for a crusade
+     * reaches nobody, so no claim was ever created and the founder's inbox was
+     * empty while two registrations sat unpaid.
+     *
+     * WHAT THIS ASSERTION IS ACTUALLY FOR IS STILL UNCHANGED: THE-154's
+     * direct charge, the platform fee, the Checkout metadata, the
+     * pending-registration rollback and the CRM write are byte-identical, and
+     * the three bypasses still mean a free registration, a waitlist entry and a
+     * ticket discounted to $0 mint neither a reference nor a token.
+     */
     expect(sha256(read('src/app/api/event-registration/submit/route.ts')))
-      .toBe('f203f58f402ec89f14415c9ae64134bd44286b8c4fcb0e8fa12fb70cfd7739a2');
+      .toBe('20be877124903dd6eeda68f20ea3835206381dcc766e8d680f755e2766cc50ed');
     expect(sha256(read('src/app/api/event-registration/apply-discount/route.ts')))
       .toBe('47622ed746e6e3a652cd7ffab4bd5f434ff4f52fea94a14c5d3eb588ff3924e0');
   });

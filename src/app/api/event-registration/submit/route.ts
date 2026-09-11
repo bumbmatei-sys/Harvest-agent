@@ -10,7 +10,11 @@ import { verifyAuth } from '@/lib/api-auth';
 import { PLATFORM_FEE_MAP } from '@/lib/stripe-connect';
 import { sendAutomatedSms } from '@/lib/sms-send';
 import { manualConfirmationMode } from '@/lib/paid-events-feature';
-import { buildPaymentReference, REFERENCE_BODY_LENGTH } from '@/lib/event-payment-claims';
+import {
+  buildPaymentReference,
+  PUBLIC_CLAIM_TOKEN_BYTES,
+  REFERENCE_BODY_LENGTH,
+} from '@/lib/event-payment-claims';
 import { randomBytes } from 'node:crypto';
 import { captureHandledError, captureMoneyPathError } from '@/lib/money-path-sentry';
 
@@ -199,10 +203,32 @@ export async function POST(request: NextRequest) {
      * of which grants nothing.
      */
     const owesManualPayment = amount > 0 && !waitlisted && manualConfirmationMode();
+
+    /**
+     * THE-355 — 🔴 THE TOKEN THAT LETS A LOGGED-OUT REGISTRANT SAY THEY PAID.
+     *
+     * ⚠️ THE NORMAL CASE FOR A CRUSADE HAS NO ACCOUNT. THE-351 built the claim
+     * flow against `requireAuth`, which is right for the member app and reaches
+     * nobody on the public page — so no public registrant could ever claim, no
+     * claim was ever created, and the founder's inbox was empty while two
+     * registrations sat unpaid. This is the credential that closes that hole.
+     *
+     * 🔴 IT IS NOT THE REFERENCE CODE, and `event-payment-claims.ts` records the
+     * two independent reasons in full: the reference is WRITTEN INTO A PAYMENT
+     * NOTE on Venmo, whose transaction feed is PUBLIC BY DEFAULT, and at ~29.7
+     * bits it is a guessing target rather than a secret. THE-324's rota
+     * invitation solved this exact shape with a stored 256-bit token and no
+     * sign-in; this is that pattern, authorising ONLY the three claim fields.
+     *
+     * 🔴 MINTED FOR A SEAT THAT OWES MONEY AND FOR NOTHING ELSE. A free
+     * registration acquires no credential, because it has nothing to claim —
+     * the same rule the reference code already follows one line up.
+     */
     const paymentFields = owesManualPayment
       ? {
           paymentStatus: 'unpaid',
           paymentReference: buildPaymentReference(randomBytes(REFERENCE_BODY_LENGTH)),
+          paymentClaimToken: randomBytes(PUBLIC_CLAIM_TOKEN_BYTES).toString('base64url'),
         }
       : {};
 
@@ -522,6 +548,10 @@ export async function POST(request: NextRequest) {
       waitlisted,
       paymentReference: paymentFields.paymentReference ?? null,
       amount: owesManualPayment ? amount : 0,
+      // THE-355 — 🔴 HANDED BACK ONCE, TO THE PERSON WHO JUST REGISTERED, AND
+      // never read back out of Firestore by any other surface. It is how the
+      // public page's "I've paid" proves whose registration it is speaking for.
+      paymentClaimToken: paymentFields.paymentClaimToken ?? null,
     });
   } catch (e) {
     console.error('Event registration submit error:', e);

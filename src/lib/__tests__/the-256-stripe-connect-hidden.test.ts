@@ -464,11 +464,27 @@ describe('5 — event registration is untouched', () => {
     // `&& !manualConfirmationMode()`, the seat is written confirmed-and-unpaid,
     // and the Stripe branch is left whole for the day a rail returns.
     //
+    //
+    // ─── REPINNED FOR THE-355 ───────────────────────────────────────────────
+    //
+    // THE-256's OWN CLAIM IS UNTOUCHED AND IS RE-ASSERTED TWO LINES BELOW: this
+    // route still never mentions the Connect switch or its module.
+    //
+    // What THE-355 changes is ONE EXPRESSION inside the `owesManualPayment`
+    // ternary THE-351 added: a seat that owes money now also gets a 256-bit
+    // `paymentClaimToken`, handed back once to the person who just registered,
+    // so a LOGGED-OUT registrant can say they paid. THE-351 built that flow
+    // behind `requireAuth` and mounted it on the member app; for a crusade,
+    // where most attendees have no account, that reached nobody, so no claim was
+    // ever created and the church's inbox was empty. The mint sits inside the
+    // existing ternary and nowhere else, which is what keeps "a free
+    // registration acquires no credential" structural.
     // Previous pins:
     //   0324b34c80861ea7e2ee61e40bba7b6ff6f8be72dbef43827e75837e08a5530e  (pre-THE-314)
     //   b0e55c91adcc9b342e4d16fc5cabfff1426842056e1f5bb9e0f47546fc41ed98  (THE-314)
+    //   f203f58f402ec89f14415c9ae64134bd44286b8c4fcb0e8fa12fb70cfd7739a2  (THE-351)
     expect(digest('src/app/api/event-registration/submit/route.ts'))
-      .toBe('f203f58f402ec89f14415c9ae64134bd44286b8c4fcb0e8fa12fb70cfd7739a2');
+      .toBe('20be877124903dd6eeda68f20ea3835206381dcc766e8d680f755e2766cc50ed');
     expect(read('app/api/event-registration/submit/route.ts'), 'the SMS call site moved off the retired module')
       .toContain("from '@/lib/sms-send'");
     expect(read('app/api/event-registration/submit/route.ts'), 'event registration was gated')

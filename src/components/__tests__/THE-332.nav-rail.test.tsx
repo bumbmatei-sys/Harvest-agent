@@ -799,6 +799,25 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
        `firestorePathsOf` on this screen is unchanged and the money is written
        server-side by THE-350's writer. */
     '9ae3b79a3125d1734e6b1b9a9623fbedb40089572865919e132e0b37b72d6e53',
+    /* APPENDED BY THE-355 - THREE exact strings, and the word "confirmed" is all
+       that moves. The founder's screenshot of his own event page showed each
+       attendee as `confirmed` (a badge) AND "Payment not confirmed" (a warning),
+       with a Confirm button beside both: one word for two different facts, so an
+       admin could not tell what the button would change. The badge is
+       REGISTRATION status - the field that gates Check In and has never meant
+       money - and it now reads "Registered"; the stat above the list, which
+       counts `status === 'confirmed'` and therefore SEATS, is re-labelled in the
+       same breath, because "2 Confirmed" over two unpaid seats is the same
+       collision one level up. The payment side keeps the word, because "Confirm"
+       is the founder's own word for the button and the correct verb for what the
+       CHURCH does.
+
+       IT IS A DISPLAY MAP AND NOT A MIGRATION: `status` still stores
+       `confirmed`, every query still filters on it, and the Check In control is
+       still gated on it. NO NAV, TAB ID, READ, WRITE OR PERMISSION GATE MOVED,
+       which is what THE-332 pins this file for - this ticket adds no read and no
+       write to this screen at all, so `firestorePathsOf` on it is unchanged. */
+    'd0f2f7d652ce08c4e80d46957cf7022559cd7624df97705ce0d66e6d54a6a2e8',
   ],
   'src/components/AdminServices.tsx': '17f508718d3c6b1ad016b9fb6be2c241629421705af4a9c0966b02739eba74ae',
   'src/components/AdminSms.tsx': 'f48ae4b8b6deff201e3767e5812bf7045af632a64c88384e5a91f285c47caab2',

@@ -492,7 +492,7 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * retires a pinner updates this count and says what that suite still asserts;
  * a suite that quietly stops pinning fails here.
  */
-const RULES_PINNERS_NOW = 68;
+const RULES_PINNERS_NOW = 69;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per
@@ -878,6 +878,40 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
   // near-today fixture and nothing about the branch diff; and that
   // `firestore.indexes.json`, `functions/` and `layout.tsx` are byte-identical.
   ['THE-351', 'src/__tests__/THE-351.manual-payment.guards.test.ts'],
+  // 🔴 THE-355 — THE PUBLIC EVENT PAGE: no payment link, no way to claim, and a
+  // button that promised a processor that no longer exists. APPENDED beside
+  // THE-351's entry, never over it, and `RULES_PINNERS_NOW` goes 68 -> 69 — the
+  // documented cost of adding a suite that pins firestore.rules through the
+  // shared register.
+  //
+  // ⚠️ A PUBLIC, UNAUTHENTICATED WRITE AGAINST A DOCUMENT CARRYING A MONEY
+  // AMOUNT IS THE SHAPE THAT MOST OBVIOUSLY NEEDS A RULE, and it needed none —
+  // which is a finding rather than luck, and the same one THE-351 made one layer
+  // in. The public claim is the Admin SDK inside a route, exactly as THE-351's
+  // authenticated one is, so the registration UPDATE rule requiring
+  // `manageEvents` is untouched and nothing is loosened in a file that
+  // AUTO-DEPLOYS with no emulator tests. What replaces the rule is a STRONGER
+  // shape: the route accepts no `registrationId` at all and finds the document
+  // BY a stored 256-bit token — THE-324's rota-invitation pattern — so there is
+  // no pair to mismatch and no expressible request that names somebody else's
+  // seat. THE-355 records NO rules digest in its ownership entry and asks
+  // `rulesDigestFailure()` like every other pinner.
+  //
+  // ⚠️ WHAT IT ASSERTS: that `firestore.rules` is at a recorded digest; that the
+  // public page shows the church's own chosen payment links, which reached only
+  // the logged-in member app before; that the submit button promises no redirect
+  // while `manualConfirmationMode()` holds; that the dormant Stripe-return
+  // branch is GATED on the same constant that gates Checkout, so "Payment
+  // received" cannot render for a query string anyone can type; that a
+  // logged-out registrant can claim and that a claim cannot land on another
+  // person's registration; that Confirm still appears in the inbox, is still
+  // idempotent and still calls THE-350's writer; that the two meanings of
+  // "confirmed" are spelled differently; that check-in still never blocks on
+  // payment and free registration is untouched; that every control clears 44px
+  // below `sm` measured in a real Chromium at five widths with animation
+  // suppressed; and that `firestore.indexes.json`, `functions/` and
+  // `layout.tsx` are byte-identical.
+  ['THE-355', 'src/__tests__/THE-355.public-payment.guards.test.ts'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {
