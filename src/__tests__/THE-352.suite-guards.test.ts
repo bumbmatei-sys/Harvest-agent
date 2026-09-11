@@ -498,6 +498,31 @@ describe('6 · 🔴 a beforeAll failure FAILS the suite’s tests, it does not s
     expect(subject.every((s) => s === 'failed'), `the subject reported ${subject.join(', ')}`).toBe(true);
   });
 
+  it('🔴 the CONTROL for #477\u2019s actual shape — a setup that HANGS — also skips', () => {
+    // Nothing threw in #477: three suites sat in `beforeAll` until the hook ran
+    // out of time. A hook aborted at its timeout is aborted by the RUNNER, from
+    // outside the callback, so a `try/catch` around the body never sees it —
+    // which is why `setUpOrFail` enforces the caller's budget ITSELF.
+    const control = statuses(report, 'raw-hanging.probe.ts');
+    expect(control, 'the hanging control did not run').toHaveLength(2);
+    expect(control.every((s) => s === 'skipped'), `the hanging control reported ${control.join(', ')}`).toBe(true);
+  });
+
+  it('🔴 and a hanging setup through setUpOrFail FAILS, naming the budget it missed', () => {
+    const subject = statuses(report, 'hanging-set-up.probe.ts');
+    expect(subject, 'the hanging subject did not run').toHaveLength(2);
+    expect(subject.filter((s) => s === 'skipped'), 'a test was still skipped').toEqual([]);
+    expect(subject.every((s) => s === 'failed'), `the hanging subject reported ${subject.join(', ')}`).toBe(true);
+    const messages = report.testResults
+      .filter((r) => r.name.includes('hanging-set-up.probe.ts'))
+      .flatMap((r) => r.assertionResults.flatMap((a) => a.failureMessages ?? []));
+    expect(messages, 'no failure message reached the report').not.toEqual([]);
+    for (const m of messages) {
+      expect(m, 'the failure does not say what it was waiting for')
+        .toContain('suite setup did not finish within');
+    }
+  });
+
   it('and each failure carries the ORIGINAL error, not a wrapper', () => {
     const messages = report.testResults
       .filter((r) => r.name.includes('set-up-or-fail.probe.ts'))
@@ -521,14 +546,24 @@ describe('6 · 🔴 a beforeAll failure FAILS the suite’s tests, it does not s
     }
   });
 
-  it('and the helper neither swallows a failure nor loosens a timeout', () => {
+  it('🔴 and the caller\u2019s budget is enforced, not loosened', () => {
     const body = stripComments(read(HELPER));
-    // The caller's timeout is forwarded, not replaced by a literal of the
-    // helper's own choosing.
-    expect(body, 'setUpOrFail invents its own timeout').toMatch(/beforeAll\([\s\S]*?,\s*timeoutMs\)/);
-    expect(body, 'setUpOrFail has a hardcoded timeout literal').not.toMatch(/\d{2,}_?\d*\s*\)/);
+    // The BODY gets exactly what the caller asked for. The hook is given a
+    // fixed tie-break on top so that the body's own deadline is the one that
+    // fires — the runner's would skip the tests, which is the whole defect.
+    expect(body, 'the body no longer races the caller’s budget')
+      .toMatch(/reject\(new Error\(`suite setup did not finish within \$\{timeoutMs\}ms`\)\)/);
+    expect(body, 'the hook budget is no longer the caller’s plus a fixed grace')
+      .toMatch(/timeoutMs \+ HOOK_GRACE_MS/);
+    // 🔴 And the grace is a constant, not a multiple: a proportion would hand a
+    // slow suite real extra time, which would be a loosening.
+    expect(body, 'the grace scales with the caller’s budget')
+      .toMatch(/const HOOK_GRACE_MS = 5_000;/);
+    expect(body.match(/HOOK_GRACE_MS/g) ?? [], 'the grace is used somewhere unexpected').toHaveLength(2);
     // And the held failure is rethrown rather than reported and dropped.
     expect(body, 'setUpOrFail does not rethrow').toMatch(/throw failure/);
+    // And the timer never outlives the hook that set it.
+    expect(body, 'the deadline timer is not cleared').toMatch(/clearTimeout\(timer\)/);
   });
 });
 

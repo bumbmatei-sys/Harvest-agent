@@ -54,6 +54,24 @@ import { beforeAll, beforeEach } from 'vitest';
  * skip — the assertions would then measure an unopened browser and report
  * whatever nonsense that produces.
  */
+/**
+ * 🔴 HOW MUCH LONGER THE HOOK IS GIVEN THAN THE BODY, and why that is not a
+ * loosened timeout.
+ *
+ * The caller's `timeoutMs` is the body's budget and is enforced here, unchanged
+ * — a suite that passed 180_000 fails at 180_000. What the grace buys is WHICH
+ * DEADLINE FIRES FIRST. A hook aborted by Vitest at its own timeout is aborted
+ * from OUTSIDE the callback: the runner rejects, the suite errors, and the tests
+ * are skipped — the exact outcome this helper exists to prevent, and #477's
+ * actual shape, since nothing threw there. Giving the hook a slightly later
+ * deadline than the body guarantees the body's own deadline lands first, inside
+ * the `try`, where it becomes a per-test failure naming the budget it missed.
+ *
+ * ⚠️ Five seconds, not a proportion: it is a tie-break, and it must not grow
+ * with the budget or a slow suite would gain real extra time.
+ */
+const HOOK_GRACE_MS = 5_000;
+
 export function setUpOrFail(setup: () => Promise<void> | void, timeoutMs?: number): void {
   // A separate flag rather than `failure !== undefined`: a body that throws
   // `undefined` (or `null`) is rare but not impossible, and reading the flag
@@ -62,13 +80,34 @@ export function setUpOrFail(setup: () => Promise<void> | void, timeoutMs?: numbe
   let failure: unknown;
 
   beforeAll(async () => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      await setup();
+      const body = (async () => setup())();
+      if (timeoutMs === undefined) {
+        // No budget to enforce — Vitest's default hook timeout still applies,
+        // and a suite that hits it still skips. Every caller in this repo
+        // passes one; this branch exists so the helper is safe without.
+        await body;
+      } else {
+        await Promise.race([
+          body,
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(
+              () => reject(new Error(`suite setup did not finish within ${timeoutMs}ms`)),
+              timeoutMs,
+            );
+          }),
+        ]);
+      }
     } catch (e) {
       failed = true;
       failure = e;
+    } finally {
+      // ⚠️ Cleared on every path. A pending timer holds the worker's event loop
+      // open, and a harness that delays the run's exit is its own defect.
+      if (timer !== undefined) clearTimeout(timer);
     }
-  }, timeoutMs);
+  }, timeoutMs === undefined ? undefined : timeoutMs + HOOK_GRACE_MS);
 
   beforeEach(() => {
     if (!failed) return;
