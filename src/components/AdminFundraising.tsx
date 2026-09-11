@@ -22,6 +22,7 @@ import { getPlanFeatures } from '../utils/plan-features';
 import { useCampaigns, type Campaign } from '../hooks/queries/useCampaignQueries';
 import { FORM_CONTAINER, FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
 import { SMS_FEATURE_ENABLED } from '../lib/sms-feature';
+import { STRIPE_CONNECT_ENABLED } from '../lib/stripe-connect-feature';
 import { GIVING_PROVIDERS, GIVING_PROVIDER_NAMES_OR, readGivingLinks } from './donations/giving-providers';
 import { useTenant } from '@/contexts/TenantContext';
 
@@ -815,7 +816,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
                     <button onClick={() => setForm({ ...form, campaignType: 'fundraising' })}
                       className={`text-left p-4 rounded-brand border transition-colors ${form.campaignType !== 'pledge' ? 'border-[color-mix(in_srgb,var(--brand-color)_55%,transparent)] bg-[color-mix(in_srgb,var(--brand-color)_8%,transparent)]' : 'border-line hover:border-line-strong'}`}>
                       <p className={`font-semibold text-sm ${form.campaignType !== 'pledge' ? 'text-gold' : 'text-strong'}`}>Fundraising</p>
-                      <p className="text-[11px] text-muted mt-1 leading-relaxed">One-time &amp; recurring gifts toward a goal</p>
+                      <p className="text-[11px] text-muted mt-1 leading-relaxed">{STRIPE_CONNECT_ENABLED ? 'One-time & recurring gifts toward a goal' : 'Gifts toward a goal, through your own giving links'}</p>
                     </button>
                     <button onClick={() => setForm({ ...form, campaignType: 'pledge' })}
                       className={`text-left p-4 rounded-brand border transition-colors ${form.campaignType === 'pledge' ? 'border-[color-mix(in_srgb,var(--brand-color)_55%,transparent)] bg-[color-mix(in_srgb,var(--brand-color)_8%,transparent)]' : 'border-line hover:border-line-strong'}`}>

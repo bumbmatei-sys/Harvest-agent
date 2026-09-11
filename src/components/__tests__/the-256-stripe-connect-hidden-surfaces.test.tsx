@@ -298,13 +298,34 @@ describe('3 — the panel is gated once, and that covers every screen that mount
     expect(settings, 'the Payments row no longer opens Donations').toMatch(/onClick=\{onOpenDonations\}/);
   });
 
-  it('neither screen grew a gate of its own', () => {
+  it('AdminDonations grew no gate of its own', () => {
     // One switch, read in one place. A screen-level copy is how "one gate"
     // becomes two that can disagree.
-    for (const f of ['AdminDonations', 'AdminFundraising']) {
-      expect(read(`components/${f}.tsx`), `${f} grew its own Stripe Connect gate`)
-        .not.toMatch(/STRIPE_CONNECT_ENABLED|stripe-connect-feature/);
-    }
+    expect(read('components/AdminDonations.tsx'), 'AdminDonations grew its own Stripe Connect gate')
+      .not.toMatch(/STRIPE_CONNECT_ENABLED|stripe-connect-feature/);
+  });
+
+  /**
+   * ⚠️ AdminFundraising is the ONE deliberate exception, and it is narrow.
+   *
+   * The "New campaign" chooser's Fundraising option promised "One-time &
+   * recurring gifts toward a goal" unconditionally, even with the switch off —
+   * recurring giving only exists through `/api/stripe/donate`, which THIS
+   * switch gates. That is a false claim, not a payment gate this screen was
+   * missing: PaymentSection remains the only thing that decides whether the
+   * Connect panel itself renders. So the flag is read here for exactly one
+   * ternary, in copy, and nothing else — not a second "connected / pending /
+   * restricted / not connected" branch, not an early return, not a call to any
+   * gated route. `STRIPE_CONNECT_HIDDEN_MESSAGE` is not imported: that message
+   * belongs to PaymentSection alone.
+   */
+  it('AdminFundraising reads the switch exactly once, for the chooser copy, and nothing else', () => {
+    const fundraising = read('components/AdminFundraising.tsx');
+    // The import line and its one use in the chooser's ternary — nowhere else.
+    const uses = [...fundraising.matchAll(/STRIPE_CONNECT_ENABLED/g)];
+    expect(uses.length, 'AdminFundraising reads STRIPE_CONNECT_ENABLED more than once').toBe(2);
+    expect(fundraising, 'AdminFundraising imports the hidden-message constant too — that belongs to PaymentSection alone')
+      .not.toMatch(/STRIPE_CONNECT_HIDDEN_MESSAGE/);
   });
 });
 
