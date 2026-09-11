@@ -38,10 +38,15 @@ import { beforeAll, beforeEach } from 'vitest';
  * fails the individual test, so every test in the file is reported RED, each
  * carrying the original error, instead of a silent skip.
  *
- * ⚠️ THE TIMEOUT IS THE CALLER'S AND IS NOT LOOSENED HERE. `timeoutMs` is
- * forwarded to `beforeAll` verbatim; a suite that passed 180_000 still gets
- * 180_000. A hook that exceeds it is aborted by Vitest with an error, which is
- * exactly the case this helper converts into per-test failures.
+ * 🔴 AND A SETUP THAT HANGS IS #477'S ACTUAL SHAPE, so catching is not enough
+ * on its own. NOTHING THREW on that run: three suites sat in `beforeAll` until
+ * the hook ran out of time. A hook aborted at its timeout is aborted by the
+ * RUNNER, from outside the callback, so a `try/catch` around the body never
+ * sees it and the tests are skipped exactly as before — a fix that stopped at
+ * catching would have missed the reported failure mode entirely. The body is
+ * therefore raced against the caller's own budget, so the deadline that fires
+ * first is one this `catch` can observe. See {@link HOOK_GRACE_MS} for why that
+ * is not a loosened timeout.
  *
  * ⚠️ `afterAll` STILL RUNS. Vitest runs teardown hooks even when setup failed,
  * so a suite that assigns its browser before opening it still closes it.

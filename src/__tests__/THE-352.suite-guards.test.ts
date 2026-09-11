@@ -97,6 +97,37 @@ const NAMED_SUITES = [
   'src/components/__tests__/THE-296.settings-sections.layout.test.tsx',
 ] as const;
 const HARNESS = 'src/test/support/browser-measure.ts';
+
+/**
+ * 🔴 THE TWO MEASURING SUITES THIS TICKET COULD NOT CONVERT, AND WHY.
+ *
+ * Both carry the reporting defect and both are LEFT BYTE-IDENTICAL TO `main`,
+ * because converting either means editing a pin this repo forbids editing:
+ *
+ *   · THE-308's month-view suite is pinned byte-identical by a bare
+ *     `expect(sha(…)).toBe('ec28c0…')` in THE-351's inbox layout suite, with no
+ *     register beside it. The house rule is APPENDED, NEVER SUBSTITUTED — `main`
+ *     went red for everyone the week a PR replaced a pinned digest — and there
+ *     is nothing here to append to. Giving that pin an append path means
+ *     rebuilding another ticket's guard, which is a ticket of its own.
+ *
+ *   · THE-305's course-editor-header suite is pinned by THE-311, whose section 8
+ *     reads `git diff --name-only <base>` and asserts the file is absent from
+ *     it. ⚠️ THAT IS A GUARD ABOUT THE CURRENT BRANCH'S DIFF — the shape #454
+ *     sweeps for and #482 found inside THE-315's own section 2 — and its premise
+ *     ("THE-311 did not touch this") expired when THE-311 landed in #447, so it
+ *     now fires for ANY later branch that touches the file. THE-311 already
+ *     retired one assertion of exactly this shape in the same file for exactly
+ *     this reason; this one was missed. Reported rather than repaired: loosening
+ *     another ticket's guard is not this ticket's call.
+ *
+ * ⚠️ NAMED, NOT PATTERNED. An exception matched by a regex would silently grow;
+ * these two are listed so a third has to be argued for.
+ */
+const UNCONVERTED = [
+  'src/components/__tests__/THE-308.month-view.layout.test.tsx',
+  'src/components/__tests__/THE-305.course-editor-header.layout.test.tsx',
+] as const;
 const HELPER = 'src/test/support/suite-setup.ts';
 const STRIPPER = 'src/__tests__/__fixtures__/the-346-strip-comments.ts';
 
@@ -132,6 +163,11 @@ function measuringSuites(): string[] {
     && rel !== HARNESS
     && !rel.startsWith('src/__tests__/__fixtures__/the-352-probe/')
     && rel !== SELF);
+}
+
+/** The measuring suites this ticket converted — all of them but {@link UNCONVERTED}. */
+function convertedSuites(): string[] {
+  return measuringSuites().filter((rel) => !(UNCONVERTED as readonly string[]).includes(rel));
 }
 
 function sourceFiles(): string[] {
@@ -523,6 +559,23 @@ describe('6 · 🔴 a beforeAll failure FAILS the suite’s tests, it does not s
     }
   });
 
+  it('and a body that rejects AFTER its budget does not red the run twice', () => {
+    // The real shape of an abandoned browser open: the race reports the missed
+    // deadline, the body keeps running and fails on its own later. An unhandled
+    // rejection is a run-level error in Vitest, so a harness that produced one
+    // would be reporting its own bookkeeping as a failure.
+    const late = statuses(report, 'late-rejection.probe.ts');
+    expect(late, 'the late-rejection probe did not run').toHaveLength(1);
+    expect(late, 'the late rejection surfaced as a second failure').toEqual(['failed']);
+    const messages = report.testResults
+      .filter((r) => r.name.includes('late-rejection.probe.ts'))
+      .flatMap((r) => r.assertionResults.flatMap((a) => a.failureMessages ?? []));
+    for (const m of messages) {
+      expect(m, 'the reported failure is the late rejection rather than the missed budget')
+        .toContain('suite setup did not finish within');
+    }
+  });
+
   it('and each failure carries the ORIGINAL error, not a wrapper', () => {
     const messages = report.testResults
       .filter((r) => r.name.includes('set-up-or-fail.probe.ts'))
@@ -537,12 +590,30 @@ describe('6 · 🔴 a beforeAll failure FAILS the suite’s tests, it does not s
     // The 61 assertions #477 reported skipped belong to three of these; the
     // rest carry the same defect and are converted with them. Discovered by
     // pattern — a suite added tomorrow is swept by this, not by a list.
-    const measuring = measuringSuites();
-    expect(measuring.length, 'the measuring suites could not be found').toBeGreaterThan(30);
-    for (const rel of measuring) {
+    const converted = convertedSuites();
+    expect(converted.length, 'the measuring suites could not be found').toBeGreaterThan(30);
+    for (const rel of converted) {
       expect(read(rel), `${rel} still opens its browser in a bare beforeAll`)
         .not.toMatch(/^beforeAll\(/m);
       expect(read(rel), `${rel} does not use setUpOrFail`).toContain('setUpOrFail(');
+    }
+  });
+
+  it('🔴 and the two it could not convert are byte-identical to main, not half-edited', () => {
+    // The exception has to stay an exception. A file listed as unconverted that
+    // had been touched anyway would be the worst of both: the pin broken AND the
+    // defect still there.
+    for (const rel of UNCONVERTED) {
+      expect(read(rel), `${rel} is listed as unconverted but uses setUpOrFail`)
+        .not.toContain('setUpOrFail');
+      expect(read(rel), `${rel} no longer opens its browser in a beforeAll at all`)
+        .toMatch(/^beforeAll\(/m);
+    }
+    // And they really are measuring suites, so the exception is not a stale
+    // name kept alive after the file stopped mattering.
+    const measuring = measuringSuites();
+    for (const rel of UNCONVERTED) {
+      expect(measuring, `${rel} no longer opens a measuring browser`).toContain(rel);
     }
   });
 
@@ -735,17 +806,32 @@ describe('9 · several measured suites in one run do not interfere', () => {
  * 10-13 — the house rules, about this PR's own guards
  * ═══════════════════════════════════════════════════════════════════════════ */
 
-/** Everything this ticket wrote or rewrote, discovered from its own subjects. */
+/**
+ * Everything this ticket wrote, for the house rules in sections 10-13.
+ *
+ * ⚠️ The probe list is CHECKED against the directory below rather than trusted,
+ * so a probe added later cannot quietly escape those rules by not being listed.
+ */
 const OWN_FILES = [
   SELF,
   HELPER,
   'src/__tests__/__fixtures__/the-352-probe/vitest.probe.config.ts',
   'src/__tests__/__fixtures__/the-352-probe/raw-before-all.probe.ts',
   'src/__tests__/__fixtures__/the-352-probe/set-up-or-fail.probe.ts',
+  'src/__tests__/__fixtures__/the-352-probe/raw-hanging.probe.ts',
+  'src/__tests__/__fixtures__/the-352-probe/hanging-set-up.probe.ts',
+  'src/__tests__/__fixtures__/the-352-probe/late-rejection.probe.ts',
   'src/__tests__/__fixtures__/the-352-probe/exit-sweep.probe.ts',
 ] as const;
 
 describe('10 · no test in this PR pins a line number', () => {
+  it('and the list of this PR’s own files is complete', () => {
+    const dir = 'src/__tests__/__fixtures__/the-352-probe';
+    const onDisk = readdirSync(path.join(ROOT, dir)).map((e) => `${dir}/${e}`).sort();
+    const listed = OWN_FILES.filter((rel) => rel.startsWith(dir)).slice().sort();
+    expect(listed, 'a probe file is not covered by the house rules below').toEqual(onDisk);
+  });
+
   it('every surface is discovered by pattern', () => {
     // THE-331 pinned `AdminCommunity.tsx:491`; a deletion shifted it to `:311`,
     // so the suite MEASURED WHATEVER LANDED THERE rather than failing. Comments

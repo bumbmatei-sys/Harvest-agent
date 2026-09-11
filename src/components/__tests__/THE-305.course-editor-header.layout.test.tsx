@@ -8,7 +8,7 @@
 // repo's default happy-dom environment the globals are replaced with
 // browser-semantics ones, and a request to the browser's own debugger port then
 // fails same-origin, so the measuring browser can never be attached to.
-import { describe, it, expect, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -17,7 +17,6 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
-import { setUpOrFail } from '../../test/support/suite-setup';
 import { execFileSync } from 'node:child_process';
 import { DENSITY_PX } from '../layout/form-layout';
 
@@ -97,7 +96,7 @@ interface Box { x: number; width: number; height: number; right: number; label: 
 
 let browser: MeasuringBrowser;
 
-setUpOrFail(async () => {
+beforeAll(async () => {
   const css = await buildAppCss();
   const { default: AdminCourseEditor } = await import('../AdminCourseEditor');
 

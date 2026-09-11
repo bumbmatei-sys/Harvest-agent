@@ -5,7 +5,7 @@
 // assertion below could tell a 44px day cell from a 28px one. Which is exactly
 // the number at stake here: `calendar` ships `[--cell-size:--spacing(7)]`, and
 // 28px is what a month grid draws unless somebody measures it.
-import { describe, it, expect, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -14,7 +14,6 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
-import { setUpOrFail } from '../../test/support/suite-setup';
 import { DENSITY_PX, FORM_CONTAINER } from '../layout/form-layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import EventMonthView from '../events/EventMonthView';
@@ -102,7 +101,7 @@ interface Reading {
 let browser: MeasuringBrowser;
 const readings = new Map<number, Reading>();
 
-setUpOrFail(async () => {
+beforeAll(async () => {
   const css = await buildAppCss();
 
   /**
