@@ -29,9 +29,14 @@ import { getTenantPrivate } from '@/lib/tenant-private';
  * 2. OTHERWISE IT IS DERIVED from which identifiers the tenant carries.
  *    This is what makes the fix work WITHOUT A FIRESTORE MIGRATION: every tenant
  *    that exists today was created by the Stripe webhook and carries
- *    `stripeCustomerId`, so all of them derive to 'stripe' — which is also their
- *    current behaviour, unchanged. A migration would be cheap now and is worth
- *    doing, but correctness does not wait on it. See the PR body.
+ *    `stripeCustomerId`, so all of them derive to 'stripe' — confidently, with
+ *    `reason: 'derived'`. That resolution is no longer routed anywhere (see
+ *    `STRIPE_PLATFORM_ACCOUNT_OPERATIONAL` below): the Stripe platform account
+ *    behind it was closed as `rejected.fraud` and Stripe has stopped responding
+ *    to appeals, so "confidently derived" and "reaches a working processor" are
+ *    no longer the same claim. A migration would still be cheap, but it is not
+ *    what fixes this — a stored `billingProcessor: 'stripe'` would resolve
+ *    exactly as confidently to the same dead account. See the PR body.
  *
  * 3. NEITHER identifier → `reason: 'none'`. Not a billing-owned tenant (a legacy
  *    or hand-made free tenant). Callers refuse the action; they must never pick a
@@ -91,6 +96,40 @@ export interface BillingOwnership {
 /** The tenant_private field that records ownership explicitly. */
 export const BILLING_PROCESSOR_FIELD = 'billingProcessor';
 
+/**
+ * Whether the Stripe platform account behind every `'stripe'` resolution can
+ * actually process a billing action right now.
+ *
+ * 🔴 FALSE. The platform account was closed by Stripe as `rejected.fraud` and
+ * Stripe has stopped responding to appeals (ClickUp 86bbnjmw9). Every tenant
+ * created before the Dodo cutover derives to `processor: 'stripe'` above —
+ * correctly, with `reason: 'derived'` — but there is no live account on the
+ * other end of that resolution. Before this flag existed, `blocksStripeAction`
+ * let a `'stripe'` resolution proceed, so a plan change or portal request for
+ * one of those tenants reached a real Stripe API call against a closed account
+ * and failed deep inside the Stripe SDK — a raw 500, not a named refusal. This
+ * flag turns that into the same kind of visible, actionable refusal every other
+ * blocked state already gets.
+ *
+ * ⚠️ THIS IS NOT A STATEMENT THAT STRIPE IS RETIRED. `BillingProcessor` keeps
+ * `'stripe'` as a resolvable value deliberately: a fresh Stripe account under a
+ * new business entity is already being pursued (ClickUp 86bbnjmv5), and the
+ * whole point of a named, reversible flag — the same shape as
+ * `DODO_BILLING_ENABLED` in `plan-features.ts` — is that restoring Stripe
+ * billing for every existing Stripe-owned tenant is flipping this back to
+ * `true` once a live secret key backs the new account, not a rewrite of this
+ * module or a migration of any tenant's stored data.
+ *
+ * Deliberately scoped to WRITES (`blocksStripeAction`) and the one path that
+ * must still fail honestly rather than hang (`/api/stripe/portal`). It does not
+ * gate `/api/billing/invoices` or `/api/billing/statement`: those already read
+ * through `resolveBillingOwnership` only to pick a data source, never to
+ * decide whether to block, and a closed account failing a historical-invoice
+ * read is a Stripe API error surfaced like any other — not the double-billing
+ * or silent-misroute class of bug this module exists for.
+ */
+export const STRIPE_PLATFORM_ACCOUNT_OPERATIONAL = false;
+
 function readDeclared(raw: unknown): BillingProcessor | null {
   return raw === 'stripe' || raw === 'dodo' ? raw : null;
 }
@@ -134,9 +173,11 @@ export async function getBillingOwnership(tenantId: string): Promise<BillingOwne
 /**
  * True when a Stripe billing action must NOT run for this tenant.
  *
- * 🔴 The single predicate every Stripe write path guards on. It blocks exactly
- * two states — someone else owns the subscription, or ownership is contradictory
- * — and deliberately does NOT block `reason: 'none'`.
+ * 🔴 The single predicate every Stripe write path guards on. It blocks THREE
+ * states now — someone else owns the subscription, ownership is contradictory,
+ * or the tenant is Stripe-owned and the Stripe platform account is not
+ * operational (`STRIPE_PLATFORM_ACCOUNT_OPERATIONAL`) — and deliberately does
+ * NOT block `reason: 'none'`.
  *
  * ⚠️ WHY `none` FALLS THROUGH, stated because it is the one judgement call here.
  * A tenant carrying no subscription identifier at all has nothing to be
@@ -147,11 +188,20 @@ export async function getBillingOwnership(tenantId: string): Promise<BillingOwne
  * Every other route guarded by this predicate already refuses `none` a line or
  * two later with its own "no active subscription" message, because it needs a
  * subscription id it does not have. So `none` means "Stripe, the default
- * processor, and nothing to collide with" — the behaviour it has today,
- * unchanged.
+ * processor, and nothing to collide with" — unchanged, and NOT reconsidered by
+ * the account closure: that path only ever mattered for the still-hypothetical
+ * moment a legacy tenant with no subscription anywhere subscribes for the first
+ * time, and blocking it now would strand a case this module has no evidence
+ * exists (see `STRIPE_PLATFORM_ACCOUNT_OPERATIONAL`'s note on scope for the one
+ * write path — `/api/stripe/checkout`'s new-ministry branch — this still leaves
+ * open).
  */
 export function blocksStripeAction(ownership: BillingOwnership): boolean {
-  return ownership.processor === 'dodo' || ownership.reason === 'conflict';
+  return (
+    ownership.processor === 'dodo' ||
+    ownership.reason === 'conflict' ||
+    (ownership.processor === 'stripe' && !STRIPE_PLATFORM_ACCOUNT_OPERATIONAL)
+  );
 }
 
 /**
@@ -177,7 +227,9 @@ export function billingActionUnavailable(
       ? `This organization has billing records with more than one payment processor, so ${action} has been blocked to prevent a duplicate charge. Please contact support.`
       : ownership.processor === 'dodo'
         ? `${capitalize(action)} is not available yet for organizations billed through Dodo Payments. Please contact support and we will make the change for you.`
-        : `No active subscription was found for this organization, so ${action} is not available.`;
+        : ownership.processor === 'stripe'
+          ? `This organization's subscription is billed through a Stripe account that is not currently active, so ${action} has been blocked. Please contact support and we will make the change for you.`
+          : `No active subscription was found for this organization, so ${action} is not available.`;
 
   return NextResponse.json(
     {

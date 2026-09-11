@@ -396,7 +396,11 @@ describe('a Dodo tenant can change plan', () => {
 // ── Test 2: a Stripe tenant still uses the Stripe path ───────────────────────
 
 describe('a Stripe tenant still uses the Stripe path', () => {
-  it('gets a Stripe checkout session from /api/stripe/checkout, untouched by this PR', async () => {
+  it('THE-353: /api/stripe/checkout now refuses a Stripe tenant — the platform account is closed', async () => {
+    // Before THE-353 this reached a real Stripe checkout session — correct
+    // while the account was live. "Untouched by this PR" (THE-89's Dodo
+    // cutover) is not the same claim as "untouched by the account closure",
+    // a different, later event this route is now correctly not immune to.
     seedStripeTenant();
     asOwner();
     mockCustomersRetrieve.mockResolvedValue({ id: 'cus_stripe_1', deleted: false });
@@ -406,9 +410,9 @@ describe('a Stripe tenant still uses the Stripe path', () => {
       plan: 'pro', billing: 'monthly', tenantId: T.tenant, tenantName: 'Grace Chapel',
     });
 
-    expect(res.status).toBe(200);
-    expect((await res.json()).url).toBe('https://checkout.stripe/session_1');
-    expect(mockSessionsCreate).toHaveBeenCalledTimes(1);
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toMatch(/not currently active/i);
+    expect(mockSessionsCreate).not.toHaveBeenCalled();
   });
 
   it('is refused by the Dodo route, which serves only Dodo-owned tenants', async () => {

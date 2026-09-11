@@ -1050,7 +1050,20 @@ export const AFFILIATE_PROGRAM_ENABLED = false;
  * `ministryName`, `newTenant`).
  *
  * Rolling back is the same one-line, reviewable change in reverse — set it to
- * `false` and both signup call sites return to Stripe with no other edit.
+ * `false` and both signup call sites POST to `/api/stripe/checkout` instead.
+ *
+ * 🔴 THAT NO LONGER MEANS "WORKS" (THE-353). It was true when written: at the
+ * time, every tenant derived to `'stripe'` and Stripe was live, so "returns to
+ * Stripe" and "returns to a working processor" were the same claim. They no
+ * longer are — the Stripe platform account behind that route was closed by
+ * Stripe as `rejected.fraud` and Stripe has stopped responding to appeals
+ * (`STRIPE_PLATFORM_ACCOUNT_OPERATIONAL` in `@/lib/billing-processor`, which
+ * this flag mirrors in shape). Flipping this flag off today would send EVERY
+ * new-ministry signup — the one path with no existing tenant to route by, so
+ * nothing in `billing-processor.ts` gates it — straight at that closed
+ * account, with no other edit. Do not roll back believing "no other edit"
+ * still means "safe": bring the new Stripe account (ClickUp 86bbnjmv5) live,
+ * or fix signup on Dodo, before this flag ever goes false in production.
  *
  * ─── What it does, exactly ───────────────────────────────────────────────────
  *

@@ -635,12 +635,23 @@ describe('6 · no plan cap or price changed', () => {
     // module scope during the marketing site's prerender — which is what makes
     // a one-sided reprice a failed build rather than a false advertisement.
     //
+    // 🔴 REPINNED AGAIN FOR THE-353, and again the reason is recorded rather
+    // than the digest silently swapped. THE-353's change to this file is a
+    // COMMENT ONLY: the `DODO_BILLING_ENABLED` rollback docblock claimed
+    // flipping the flag "returns to Stripe with no other edit", true when
+    // written and false once the Stripe platform account was closed as
+    // `rejected.fraud` — a future agent trusting that comment would route
+    // every new-ministry signup at a dead account. No plan cap, no price, no
+    // feature cell and no code path changed; THE-291's claim (no CLIENT-SIDE
+    // plan write exists) is unaffected because nothing here executes.
+    //
     // Previous pins:
     //   cd4fbdd58f6dbbcbd180aeab00a63f1c9be3189c9010ff7a844a0f8e817af403 (pre-THE-314)
     //   f43327552f7c774586dabc040ac8da0d31bf4f84023d70af3b2f428024f7f570 (pre-THE-335)
     //   db4bd86a93fa34691da21bbb9b1dcdea9d3d37f932784d50177ad3b736c11d75 (pre-THE-343)
+    //   11f9c533ddaffcf89614219f2d9b37b201e218bc421d923a75fc9d38bf63ffcf (pre-THE-353)
     expect(sha256(readFileSync(path.join(REPO, 'src/utils/plan-features.ts')))).toBe(
-      '11f9c533ddaffcf89614219f2d9b37b201e218bc421d923a75fc9d38bf63ffcf',
+      '017c56ceda3c0032ac9f5c08468a225ae975a029e4f8cb8a6d73033a14ec4c82',
     );
   });
 });

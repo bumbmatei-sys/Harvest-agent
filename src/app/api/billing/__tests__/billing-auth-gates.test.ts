@@ -229,6 +229,15 @@ interface BillingRoute {
   /** The gate this route is expected to enforce after THE-80. */
   tier: 'owner' | 'admin';
   call: (as: Persona | null, tenantId?: string) => Promise<Response>;
+  /**
+   * THE-353: this route now refuses `grace`/`hope` (both `billingProcessor:
+   * 'stripe'`) with 409 once authorised, because the Stripe platform account
+   * is closed (`STRIPE_PLATFORM_ACCOUNT_OPERATIONAL`). Set on every route this
+   * suite drives through `blocksStripeAction` or the portal's own account
+   * check — NOT on `remove-billing` (never gated by billing-processor.ts) or
+   * the two READ_ROUTES (they pick a data source, never block).
+   */
+  blockedByClosedAccount?: boolean;
 }
 
 /** Every WRITE path from THE-79's enumeration that acts on a tenant's billing. */
@@ -238,23 +247,27 @@ const WRITE_ROUTES: BillingRoute[] = [
     tier: 'owner',
     call: (as, tenantId = 'grace') =>
       checkout(request('stripe/checkout', { plan: 'max', billing: 'monthly', tenantId }, as)),
+    blockedByClosedAccount: true,
   },
   {
     name: 'POST /api/stripe/portal (manage subscription / cancel)',
     tier: 'owner',
     call: (as, tenantId = 'grace') => portal(request('stripe/portal', { tenantId }, as)),
+    blockedByClosedAccount: true,
   },
   {
     name: 'POST /api/stripe/update-quantity (billed seat count)',
     tier: 'admin',
     call: (as, tenantId = 'grace') =>
       updateQuantity(request('stripe/update-quantity', { tenantId, action: 'sync' }, as)),
+    blockedByClosedAccount: true,
   },
   {
     name: 'POST /api/churches/add-billing (per-church $10/mo)',
     tier: 'admin',
     call: (as, tenantId = 'grace') =>
       addBilling(request('churches/add-billing', { tenantId, churchId: 'c2', churchName: 'Second' }, as)),
+    blockedByClosedAccount: true,
   },
   {
     name: 'POST /api/stripe/add-church-billing (legacy twin)',
@@ -263,6 +276,7 @@ const WRITE_ROUTES: BillingRoute[] = [
       addChurchBillingLegacy(
         request('stripe/add-church-billing', { tenantId, churchId: 'c2', churchName: 'Second' }, as),
       ),
+    blockedByClosedAccount: true,
   },
   {
     name: 'POST /api/churches/remove-billing (per-church $10/mo)',
@@ -360,6 +374,27 @@ function stripeMoneyCalls() {
   ];
 }
 
+/**
+ * THE-353: what an AUTHORISED caller gets back now depends on whether the
+ * route is one `blocksStripeAction` (or the portal's own account check)
+ * guards. This suite is about AUTHORISATION, not processor availability, so
+ * every call site below asks this rather than hand-writing `toBe(200)` —
+ * proving the auth gate passed (never 401/403) is the actual claim; whether
+ * the business rule behind it then allows or blocks the action is a separate,
+ * already-covered concern (`billing-processor-routing.test.ts`).
+ */
+async function expectAuthorized(res: Response, route: BillingRoute): Promise<void> {
+  expect(res.status, `${route.name} — auth gate`).not.toBe(401);
+  expect(res.status, `${route.name} — auth gate`).not.toBe(403);
+  if (route.blockedByClosedAccount) {
+    expect(res.status, route.name).toBe(409);
+    const body = await res.json();
+    expect(body.error, route.name).toMatch(/not currently active|contact support/i);
+  } else {
+    expect(res.status, route.name).toBe(200);
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Test 1 — THE regression test for the whole issue.
 // ═══════════════════════════════════════════════════════════════════════════
@@ -408,14 +443,14 @@ describe('the permitted role still gets through', () => {
   for (const route of ALL_BILLING_ROUTES) {
     it(`lets the owner through: ${route.name}`, async () => {
       const res = await route.call(OWNER);
-      expect(res.status).toBe(200);
+      await expectAuthorized(res, route);
     });
   }
 
   it('lets a volunteer admin operate the per-church seat routes', async () => {
     for (const route of WRITE_ROUTES.filter((r) => r.tier === 'admin')) {
       const res = await route.call(VOLUNTEER_ADMIN);
-      expect(res.status, route.name).toBe(200);
+      await expectAuthorized(res, route);
     }
   });
 
@@ -452,10 +487,11 @@ describe('🔴 a roster-only admin is NOT locked out (THE-64)', () => {
       const res = await route.call(ROSTER_ADMIN);
 
       // Stated as "not refused" rather than "200" on purpose: the assertion that
-      // matters is that authorisation did not reject them.
-      expect(res.status).not.toBe(401);
-      expect(res.status).not.toBe(403);
-      expect(res.status).toBe(200);
+      // matters is that authorisation did not reject them. THE-353: a route the
+      // closed Stripe account now blocks answers 409 even for a fully
+      // authorised roster admin — still not 401/403, which is what this test
+      // guards.
+      await expectAuthorized(res, route);
     });
   }
 
@@ -464,7 +500,11 @@ describe('🔴 a roster-only admin is NOT locked out (THE-64)', () => {
     // 'Roster@Grace.org'. A case-sensitive compare would lock them out.
     expect(ROSTER_ADMIN.email).not.toBe(ROSTER_ADMIN.email.toLowerCase());
     const res = await portal(request('stripe/portal', { tenantId: 'grace' }, ROSTER_ADMIN));
-    expect(res.status).toBe(200);
+    // THE-353: 'grace' is Stripe-owned and the account is closed, so the portal
+    // now refuses even a correctly-matched roster admin — with 409, not 403.
+    // The case-insensitive MATCH is proven by "not 403", not by "200".
+    expect(res.status).not.toBe(403);
+    expect(res.status).toBe(409);
   });
 
   it('is not admitted to a tenant whose roster does NOT name them', async () => {
@@ -488,14 +528,18 @@ describe('a super admin operating from the apex still passes', () => {
   for (const route of WRITE_ROUTES) {
     it(`passes with tenantId: null: ${route.name}`, async () => {
       const res = await route.call(SUPER_ADMIN);
-      expect(res.status).toBe(200);
+      await expectAuthorized(res, route);
     });
   }
 
   it('reaches ANY tenant, not just one', async () => {
     const res = await portal(request('stripe/portal', { tenantId: 'hope' }, SUPER_ADMIN));
-    expect(res.status).toBe(200);
-    expect(mockPortalCreate).toHaveBeenCalledWith(expect.objectContaining({ customer: 'cus_hope' }));
+    // THE-353: 'hope' is Stripe-owned too, so the portal now refuses with 409
+    // rather than opening a session — "reaches" is proven by NOT 403 (the
+    // super-admin apex bypass worked for 'hope' specifically), not by 200.
+    expect(res.status).not.toBe(403);
+    expect(res.status).toBe(409);
+    expect(mockPortalCreate).not.toHaveBeenCalled();
   });
 });
 
@@ -513,10 +557,15 @@ describe('an admin of tenant A cannot touch tenant B billing', () => {
     });
   }
 
-  it('the same caller succeeds on their OWN tenant — the refusal is about scope, not identity', async () => {
+  it('the same caller is authorised on their OWN tenant — the refusal above is about scope, not identity', async () => {
     const res = await portal(request('stripe/portal', { tenantId: 'hope' }, OTHER_TENANT_OWNER));
-    expect(res.status).toBe(200);
-    expect(mockPortalCreate).toHaveBeenCalledWith(expect.objectContaining({ customer: 'cus_hope' }));
+    // THE-353: 'hope' is Stripe-owned and the account is closed, so this now
+    // answers 409 rather than opening a session. The claim under test — scope,
+    // not identity — is proven by NOT 403, exactly as the cross-tenant case
+    // above IS 403.
+    expect(res.status).not.toBe(403);
+    expect(res.status).toBe(409);
+    expect(mockPortalCreate).not.toHaveBeenCalled();
   });
 
   it('scopes the READ paths to the caller own tenant, ignoring anything client-supplied', async () => {

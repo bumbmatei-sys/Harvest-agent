@@ -342,7 +342,25 @@ const PINNED: ReadonlyArray<readonly [string, ...string[]]> = [
   // !waitlisted`) and a paid one already fails on its own `connectAccountId`
   // check. Neither file is touched by THE-256.
   ['src/app/api/stripe/donate/route.ts', '04c78731552a29297e41495af61e5202eae7461d954806a3792c0e763ccd26b9'],
-  ['src/app/api/stripe/portal/route.ts', 'cbe0b50f7f96845444e6995ae94d61a17354309b4e2c4f56109b9ec703bd237f'],
+  // ─── THE-353 REGENERATED THIS ONE, deliberately and with reason ──────────
+  //
+  // 🔴 ONE ADDED REFUSAL, in the Stripe-owned branch only. The account behind
+  // it is closed, so the real `stripe.billingPortal.sessions.create` call
+  // below would fail every time; the new block answers 409 with a named,
+  // actionable message BEFORE that call runs, instead of surfacing whatever
+  // the Stripe SDK throws through the generic catch. Ordering asserted in
+  // `THE-353.stripe-account-closed.test.ts`.
+  //
+  // ⚠️ THE DODO BRANCH IS BYTE-FOR-BYTE UNTOUCHED, and that is the one
+  // invariant this route may never lose: "must never be unavailable" is a
+  // promise about the ADMIN always having an exit, not that the Stripe branch
+  // always calls Stripe. A Dodo-owned tenant still always reaches Dodo's real
+  // hosted portal, exactly as before. The owner/roster/super-admin gate above
+  // it, the conflict fallback to `declared`, and the "no Stripe subscription,
+  // subscribe first" 400 for a genuinely unbilled tenant are all unmoved —
+  // asserted in `billing-processor-routing.test.ts` and
+  // `billing-auth-gates.test.ts`.
+  ['src/app/api/stripe/portal/route.ts', '725f355877504b1b7e4f1c05c1409f315336ddbefd368ce2102393e4db6a7a5a'],
   ['src/app/api/stripe/remove-church-billing/route.ts', '496d8343c2ae764ccddf1c7d23d710562709add397c8d5cbf6809e6d724bd7d3'],
   // `src/app/api/stripe/standalone-checkout/route.ts` was DELETED (THE-253).
   // It existed solely to sell the Telegram assistant to marketing-site
@@ -436,7 +454,39 @@ const PINNED: ReadonlyArray<readonly [string, ...string[]]> = [
   ['src/lib/donation-receipt.ts', 'a7d4872a73e7eb3518d47c264373428d1663afd43032506e5402123cdab1723a'],
   ['src/lib/donation-history.ts', '47e4c9edfe038efd2497df976254868faef08f8a6c208b4885203908ffda19db'],
   ['src/lib/billing.ts', '44b06fd8dcefbc543726bc1067247df53ebef236cd8ad39c5e1a3c4f9335433c'],
-  ['src/lib/billing-processor.ts', '7a60765318e0f0152fb20d490641e585ddf79d638b87d08bae75e32f2958dc87'],
+  // ─── THE-353 REGENERATED THIS ONE, deliberately and with reason ──────────
+  //
+  // 🔴 ONE NEW EXPORTED FLAG AND TWO WIDENED CHECKS, nothing else. The Stripe
+  // platform account behind every `'stripe'`-derived tenant was closed as
+  // `rejected.fraud`, so a resolution that used to proceed to a real (now
+  // doomed) Stripe API call must refuse instead:
+  //
+  //   STRIPE_PLATFORM_ACCOUNT_OPERATIONAL   new, `false`. Named and reversible
+  //                                         — a fresh Stripe account under a
+  //                                         new entity needs only this
+  //                                         flipped back, no other edit here.
+  //   blocksStripeAction                    now ALSO blocks
+  //                                         `processor === 'stripe'` while the
+  //                                         flag is false. `dodo` and
+  //                                         `conflict` block exactly as
+  //                                         before; `none` still falls
+  //                                         through, unchanged.
+  //   billingActionUnavailable              one new message branch, keyed on
+  //                                         `processor === 'stripe'`, naming
+  //                                         the closed account rather than
+  //                                         falling into the pre-existing "no
+  //                                         active subscription" wording that
+  //                                         a real subscriber does not have.
+  //
+  // ⚠️ EVERYTHING THIS MODULE'S OWN DOCBLOCK PROMISES IS STILL TRUE: `null`
+  // still means refuse, never default; `conflict` still refuses and never
+  // guesses; the stored `billingProcessor` field still wins over derivation;
+  // `stripeConnectAccountId` is still excluded from ownership (donations, not
+  // a subscription). All four are pinned as no-regression tests in
+  // `billing-processor.test.ts`, mutation-checked in the same file's THE-353
+  // additions, and the routing consequence is asserted end to end in
+  // `billing-processor-routing.test.ts` and `billing-auth-gates.test.ts`.
+  ['src/lib/billing-processor.ts', '794bce96f6f92012b0c5a2695c402359417ea25f825dbfd73c39f7278c798fea'],
   ['src/lib/affiliate-payout.ts', '27897499fb3e768027c25b015ee6d30dd5ba4bf0763cd40776e4885c36657407'],
   ['src/lib/affiliate-commission-window.ts', '368474f47c541b94cbc51a663c1b0c76bfd50d46d00df03c8001c6eddd6b427c'],
   ['src/lib/money-path-sentry.ts', '2469f323c39050c240570937e52d22bda75d6efdfcaf78152fa5768a95edcbc2'],
