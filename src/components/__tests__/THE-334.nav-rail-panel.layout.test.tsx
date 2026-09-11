@@ -4,13 +4,14 @@
 // re-verified here: with happy-dom selected `MeasuringBrowser` never attaches
 // and the file hangs in `browser.open()`. Nothing here needs a DOM. The markup
 // is built as a STRING and every measurement happens in a real Chromium.
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
+import { setUpOrFail } from '../../test/support/suite-setup';
 import { RAIL_PANEL_INSET_TOP_PX, RAIL_PANEL_INSET_EDGE_PX } from '../layout/nav-rail';
 
 /** What the panel's insets leave it: the viewport less the header clearance
@@ -80,7 +81,7 @@ function scrollerClassFromSource(): string {
 
 let browser: MeasuringBrowser;
 
-beforeAll(async () => {
+setUpOrFail(async () => {
   const css = await buildAppCss();
   const panelClass = panelClassFromSource();
   const scrollerClass = scrollerClassFromSource();

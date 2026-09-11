@@ -7,6 +7,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 import { AUTOSAVE_EXCLUDED, AUTOSAVE_ERROR_TOAST_ID, useAutosaveField } from '../settings/autosave';
+import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
 
 /**
  * ⚠️ The failure toast is asserted by RUNNING the hook (test 4), so `sonner` is
@@ -135,13 +136,14 @@ const sha256 = (b: Buffer | string) => createHash('sha256').update(b).digest('he
  * ⚠️ Load-bearing, and both THE-286 and THE-296 learned it the same way: these
  * files DISCUSS what they no longer do. A raw grep fails on the documentation
  * and passes on the defect. Every content sweep below goes through this.
+ *
+ * 🔴 THE-352 — the three-regex version this replaced was destructive: an
+ * opening brace followed by a JSDoc anchors its JSX-comment pattern, which then
+ * runs to the first `*\/` that happens to be followed by `}`, deleting every
+ * line between. Measured at a 154-line span, 85 lines of it code, on `IntegrationsSection.tsx`. The
+ * parser-driven module takes its comment ranges off TypeScript's own parse.
  */
-function code(rel: string): string {
-  return readSrc(rel)
-    .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, ' ')
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/^[ \t]*\/\/.*$/gm, ' ');
-}
+const code = (rel: string): string => stripComments(readSrc(rel));
 
 /** The mount site. */
 const BILLING = 'src/components/BillingAndPayments.tsx';

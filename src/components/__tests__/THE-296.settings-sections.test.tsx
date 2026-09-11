@@ -9,6 +9,7 @@ import { AUTOSAVE_ERROR_TOAST_ID, AUTOSAVE_SAVED_TOAST_ID, AUTOSAVE_EXCLUDED } f
 import UNTOUCHED from './__fixtures__/the-286-untouched.json';
 import { freezeFailure } from './__fixtures__/settings-freeze-register';
 import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
+import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
 
 /**
  * ═════════════════════════════════════════════════════════════════════════════
@@ -82,7 +83,6 @@ const ONBOARDING = 'src/components/settings/OnboardingSection.tsx';
 const INTEGRATIONS = 'src/components/settings/IntegrationsSection.tsx';
 /** The two sections this slice converts, named per section for tests 1 and 13. */
 const CONVERTED = [ONBOARDING, INTEGRATIONS] as const;
-
 /**
  * Source with every comment removed — block, line and JSX.
  *
@@ -90,13 +90,17 @@ const CONVERTED = [ONBOARDING, INTEGRATIONS] as const;
  * they no longer do. OnboardingSection's header quotes the `alert()` it removed
  * and the `text-green-600` it stopped spelling, in order to explain why. A raw
  * grep would fail on the documentation and pass on the defect.
+ *
+ * 🔴 THE-352 — THE REGEX VERSION ATE A 154-LINE SPAN OF `IntegrationsSection.tsx`.
+ * `interface IntegrationsSectionProps {` is followed by a JSDoc on its first
+ * member, so `/\{\s*\/\*[\s\S]*?\*\/\s*\}/` anchored on that brace and ran to
+ * the first comment that closes with `*\/ }` — `catch { /* prefill … *\/ }`,
+ * 154 lines on: lines 34 to 187, 85 of them code. The provider gate lived
+ * inside that span, so every guard
+ * this suite made over it passed on an empty string. The parser-driven module
+ * reads its ranges off a real parse and cannot make that mistake.
  */
-function code(rel: string): string {
-  return readSrc(rel)
-    .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, ' ')
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/^[ \t]*\/\/.*$/gm, ' ');
-}
+const code = (rel: string): string => stripComments(readSrc(rel));
 
 /* ── Firestore / firebase / sonner doubles ────────────────────────────────── */
 

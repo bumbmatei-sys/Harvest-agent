@@ -4,7 +4,7 @@
 // compiled stylesheet injected, `getBoundingClientRect()` returns zeros on every
 // element, so no question about a box can be asked of it. Everything below is
 // measured in real Chromium over CDP (`src/test/support/browser-measure.ts`).
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -13,6 +13,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
+import { setUpOrFail } from '../../test/support/suite-setup';
 import { InsightFeed } from '../dashboard/InsightFeed';
 import { REASON } from '../dashboard/dashboard-data';
 
@@ -76,7 +77,7 @@ interface Reading {
 let browser: MeasuringBrowser;
 const readings = new Map<number, Reading>();
 
-beforeAll(async () => {
+setUpOrFail(async () => {
   const css = await buildAppCss();
 
   const page = renderToStaticMarkup(

@@ -6,13 +6,14 @@
 // 600s with the page already written, then again at 45s and at 280s. Nothing
 // here needs a DOM. The shell is rendered to a STRING and every measurement
 // happens inside a real Chromium over CDP.
-import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, vi, afterAll } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
+import { setUpOrFail } from '../../test/support/suite-setup';
 import { DENSITY_PX, DESKTOP_CONTROL_MAX_PX } from '../layout/form-layout';
 
 /**
@@ -144,7 +145,7 @@ const SELECTORS = {
 let browser: MeasuringBrowser;
 const shots: Record<number, { scrollWidth: number; boxes: Record<string, { width: number; height: number; right: number } | null> }> = {};
 
-beforeAll(async () => {
+setUpOrFail(async () => {
   const css = await buildAppCss();
 
   /* ⚠️ The shell is imported DYNAMICALLY, so that the `vi.mock` factories above

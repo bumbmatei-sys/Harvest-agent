@@ -106,6 +106,68 @@ export interface Measurement {
   kpiCards: Box[];
 }
 
+/**
+ * 🔴 THE-352 — EVERY LIVE BROWSER, SO NONE OUTLIVES THE WORKER THAT SPAWNED IT.
+ *
+ * ⚠️ THE-333 counted TWENTY leaked Chromium processes left behind by earlier
+ * timeouts, and a leak is not a tidiness problem here: each one holds memory
+ * and a shared-memory segment on a two-core runner, so every leak makes the
+ * NEXT launch likelier to fail. That is intermittency with a cause.
+ *
+ * `close()` handles the ordinary path and `open()` now disposes its own
+ * half-built browser (see below), but neither runs when Vitest tears the worker
+ * down under it — a hook that blows its timeout, a worker killed mid-run. A
+ * child spawned without `detached` is NOT killed when its parent dies on Linux;
+ * it is reparented and keeps running. So the last resort is synchronous and
+ * runs on the way out.
+ */
+const LIVE = new Set<ChildProcess>();
+let sweepInstalled = false;
+function installSweep(): void {
+  if (sweepInstalled) return;
+  sweepInstalled = true;
+  // `exit` only permits synchronous work, which `kill` is. SIGKILL rather than
+  // SIGTERM: there is no turn of the event loop left in which to observe a
+  // graceful shutdown, so asking politely would just let the process survive.
+  const sweep = () => { for (const p of LIVE) { try { p.kill('SIGKILL'); } catch { /* gone */ } } };
+  // The ordinary end of a run: the loop drains and the process exits normally.
+  process.once('exit', sweep);
+  //
+  // 🔴 AND THE SIGNAL, because `exit` ALONE DOES NOT FIRE ON THE PATH THAT
+  // LEAKS — measured, not assumed. Vitest terminates a worker by SIGTERM and
+  // registers no handler for it itself, so with no listener here Node's default
+  // kills the worker outright and NOTHING runs on the way out. A probe that
+  // leaves a browser open and lets the run end confirmed it: the stand-in
+  // browser survived, reparented to init.
+  //
+  // ⚠️ `once` PLUS A RE-RAISE, so this changes nothing about how the process
+  // dies. Adding a listener suppresses Node's default for that signal, which
+  // would be this module deciding the worker's fate — Vitest's job, not its
+  // harness's. `once` removes the listener as it fires, so re-sending the same
+  // signal to self lands on the default handler and the worker terminates
+  // exactly as it would have, one sweep later.
+  for (const sig of ['SIGTERM', 'SIGINT'] as const) {
+    process.once(sig, () => { sweep(); process.kill(process.pid, sig); });
+  }
+}
+
+/**
+ * 🔴 THE-352 — A CDP REQUEST THAT IS NEVER ANSWERED MUST FAIL, NOT HANG.
+ *
+ * ⚠️ `send()` used to resolve only when a reply with a matching id arrived, and
+ * nothing else. A browser that dies mid-request, or a `Runtime.evaluate` whose
+ * awaited promise never settles, therefore left the caller waiting FOREVER —
+ * and `settle()` awaits `requestAnimationFrame`, which a headless Chrome that
+ * considers itself fully occluded can decline to fire. THE-333 traced the
+ * original stall to exactly there. An unbounded wait is what turns a broken
+ * browser into a hung job rather than a failing test.
+ *
+ * This is a NEW bound where there was none, not a loosened one: 60s is far
+ * longer than any real CDP round trip and far shorter than a suite timeout, so
+ * the failure arrives inside the hook that caused it, naming the method.
+ */
+const CDP_TIMEOUT_MS = 60_000;
+
 /** A headless browser, held open across viewports so one launch serves them all. */
 export class MeasuringBrowser {
   private proc: ChildProcess | null = null;
@@ -156,6 +218,8 @@ export class MeasuringBrowser {
       '--disable-gpu', '--disable-dev-shm-usage', '--hide-scrollbars',
       '--force-device-scale-factor=1', 'about:blank',
     ], { stdio: ['ignore', 'ignore', 'pipe'] });
+    LIVE.add(this.proc);
+    installSweep();
     // ⚠️ Kept, and reported on failure. A browser that refuses to start in CI
     // says why on stderr; without this the only symptom is a timeout, which is
     // the least diagnosable failure a test can have. (Its dbus warnings on a
@@ -166,29 +230,51 @@ export class MeasuringBrowser {
     });
     this.proc.on('exit', (code) => { this.exited = `browser exited with code ${code}`; });
 
-    const wsUrl = await this.announcedUrl();
-    this.ws = new WebSocket(wsUrl);
-    await new Promise<void>((resolve, reject) => {
-      this.ws!.onopen = () => resolve();
-      this.ws!.onerror = () => reject(new Error('could not attach to the browser'));
-    });
-    this.ws.onmessage = (e: MessageEvent) => {
-      const msg = JSON.parse(String(e.data)) as { id?: number };
-      if (msg.id && this.pending.has(msg.id)) {
-        this.pending.get(msg.id)!(msg as Record<string, unknown>);
-        this.pending.delete(msg.id);
-      }
-    };
+    /**
+     * 🔴 THE-352 — EVERYTHING PAST THE SPAWN DISPOSES ITSELF ON FAILURE.
+     *
+     * ⚠️ A browser that is spawned and then fails to be attached to used to be
+     * left running: `open()` threw, and whether anything ever killed the child
+     * depended entirely on the caller having assigned its `browser` variable
+     * BEFORE awaiting, so that `afterAll` had something to close. Every suite
+     * happens to be written that way today, which is a convention and not a
+     * guarantee — and it does nothing at all for the case that actually leaked,
+     * a hook aborted at its timeout while this method is still awaiting.
+     *
+     * The `catch` makes disposal this method's own responsibility: whatever
+     * goes wrong between the spawn and the first settled page, the browser is
+     * killed and waited for before the error is re-thrown. The error itself is
+     * untouched — `announcedUrl()`'s stderr dump is the most diagnosable
+     * failure this class produces and must survive the cleanup.
+     */
+    try {
+      const wsUrl = await this.announcedUrl();
+      this.ws = new WebSocket(wsUrl);
+      await new Promise<void>((resolve, reject) => {
+        this.ws!.onopen = () => resolve();
+        this.ws!.onerror = () => reject(new Error('could not attach to the browser'));
+      });
+      this.ws.onmessage = (e: MessageEvent) => {
+        const msg = JSON.parse(String(e.data)) as { id?: number };
+        if (msg.id && this.pending.has(msg.id)) {
+          this.pending.get(msg.id)!(msg as Record<string, unknown>);
+          this.pending.delete(msg.id);
+        }
+      };
 
-    const target = await this.send('Target.createTarget', { url: 'about:blank' });
-    const attached = await this.send('Target.attachToTarget', {
-      targetId: (target.result as { targetId: string }).targetId, flatten: true,
-    });
-    this.sessionId = (attached.result as { sessionId: string }).sessionId;
-    await this.send('Page.enable', {}, this.sessionId);
-    await this.send('Runtime.enable', {}, this.sessionId);
-    await this.send('Page.navigate', { url: fileUrl }, this.sessionId);
-    await this.settle();
+      const target = await this.send('Target.createTarget', { url: 'about:blank' });
+      const attached = await this.send('Target.attachToTarget', {
+        targetId: (target.result as { targetId: string }).targetId, flatten: true,
+      });
+      this.sessionId = (attached.result as { sessionId: string }).sessionId;
+      await this.send('Page.enable', {}, this.sessionId);
+      await this.send('Runtime.enable', {}, this.sessionId);
+      await this.send('Page.navigate', { url: fileUrl }, this.sessionId);
+      await this.settle();
+    } catch (e) {
+      await this.close();
+      throw e;
+    }
   }
 
   /**
@@ -233,10 +319,26 @@ export class MeasuringBrowser {
   }
 
   private send(method: string, params: Record<string, unknown> = {}, sessionId?: string) {
-    return new Promise<Record<string, unknown>>((resolve) => {
+    return new Promise<Record<string, unknown>>((resolve, reject) => {
       const id = ++this.nextId;
-      this.pending.set(id, resolve);
-      this.ws!.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
+      // 🔴 THE-352 — bounded, for the reason CDP_TIMEOUT_MS documents. The
+      // timer is cleared on the reply, so a healthy round trip costs one
+      // `setTimeout` and nothing else.
+      const timer = setTimeout(() => {
+        this.pending.delete(id);
+        reject(new Error(
+          `the browser never answered ${method} within ${CDP_TIMEOUT_MS}ms. ` +
+          `${this.exited || 'the process is still alive'}\n${this.stderr.slice(0, 2000)}`,
+        ));
+      }, CDP_TIMEOUT_MS);
+      this.pending.set(id, (msg) => { clearTimeout(timer); resolve(msg); });
+      try {
+        this.ws!.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
+      } catch (e) {
+        clearTimeout(timer);
+        this.pending.delete(id);
+        reject(e instanceof Error ? e : new Error(String(e)));
+      }
     });
   }
 
@@ -328,7 +430,9 @@ export class MeasuringBrowser {
    */
   async close(): Promise<void> {
     try { this.ws?.close(); } catch { /* already gone */ }
+    this.ws = null;
     const proc = this.proc;
+    if (proc) LIVE.delete(proc);
     if (proc && proc.exitCode === null && proc.signalCode === null) {
       await new Promise<void>((resolve) => {
         const timer = setTimeout(() => {

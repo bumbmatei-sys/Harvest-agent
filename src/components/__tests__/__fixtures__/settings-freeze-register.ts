@@ -299,6 +299,28 @@ export const RECORDED_EDITS: ReadonlyArray<RecordedEdit> = [
       + 'spare. No other row moved, and the row order this file records is otherwise identical.',
     digest: 'b2b8e9d2c439a07eedf729ea26bde253a501abacbe0ad7828d7205cb5b13f342',
   },
+  {
+    file: 'src/components/__tests__/AdminSettings.regroup.test.tsx',
+    ticket: 'THE-352',
+    why:
+      'ONE HELPER SWAPPED, NO ASSERTION CHANGED. This suite stripped comments from '
+      + 'OnboardingSection.tsx with the same three-regex chain THE-352 removes from three other '
+      + 'suites, and that chain is destructive: an opening brace followed by a docblock anchors its '
+      + 'JSX-comment pattern, whose lazy quantifier then runs to the first `*/` that is also '
+      + 'followed by `}` and deletes every line between. Measured at a 154-line span, 85 lines of it code, on '
+      + 'IntegrationsSection.tsx, where it hid a planted palette class, a planted Gmail scope and a '
+      + 'planted price literal from five named guards. OnboardingSection.tsx happens not to trigger '
+      + 'it today — the sweep says it loses nothing there — so THIS EDIT FIXES NO CURRENT DEFECT '
+      + 'and is recorded as what it is: removing a landmine that arms itself the moment that file '
+      + 'gains an `interface X {` with a documented first member. The replacement is the '
+      + 'parser-driven module THE-346 built for this class, IMPORTED rather than copied, which '
+      + 'takes its comment ranges off TypeScript\'s own parse. The alert() assertion it feeds is '
+      + 'byte-identical and still reads stripped code for the reason the note beside it gives: this '
+      + "file's own header quotes the alert() it removed in order to explain why. Nothing else in "
+      + 'the suite changed — no allowlist, no digest literal, no assertion added, removed or '
+      + 'loosened.',
+    digest: '5f39d54920abc4e3a87f58e5a8b71c38f08e543b77846321ece0be7daf6b2c80',
+  },
 ];
 
 /** A ticket reference the register will accept. */

@@ -5,7 +5,7 @@
 // measurement happens inside a real browser over CDP. Under happy-dom the
 // globals carry browser semantics and a request to the browser's own debugger
 // port fails same-origin, so the browser could never be attached to.
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -14,6 +14,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
+import { setUpOrFail } from '../../test/support/suite-setup';
 import { FORM_CONTAINER, CONTROL_DENSITY, DENSITY_PX, DESKTOP_CONTROL_MAX_PX } from '../layout/form-layout';
 import { AdminEditorHeader, AdminSecondaryButton } from '../admin/AdminUI';
 import FormAnswersView from '../forms/FormAnswersView';
@@ -186,7 +187,7 @@ interface Reading {
 let browser: MeasuringBrowser;
 const readings = new Map<number, Reading>();
 
-beforeAll(async () => {
+setUpOrFail(async () => {
   expect(SHELL_NOTE).toBeTruthy();
   expect(PB_SAFE).toBeTruthy();
   const css = await buildAppCss();

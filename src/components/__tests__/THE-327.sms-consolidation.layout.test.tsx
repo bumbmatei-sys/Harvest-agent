@@ -5,7 +5,7 @@
 // attaches and the suite times out. Nothing here needs a DOM; the page is
 // rendered to a string and every measurement happens inside a real Chromium
 // over CDP.
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, afterAll, vi } from 'vitest';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -15,6 +15,7 @@ import { MemoryRouter } from 'react-router-dom';
 
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
+import { setUpOrFail } from '../../test/support/suite-setup';
 import { DENSITY_PX } from '../layout/form-layout';
 import AdminSms from '../AdminSms';
 
@@ -80,7 +81,7 @@ interface Reading { vw: number; screenW: number; docScrollW: number; bodyScrollW
 let browser: MeasuringBrowser;
 const readings = new Map<number, Reading>();
 
-beforeAll(async () => {
+setUpOrFail(async () => {
   const { useAppStore } = await import('../../store/useAppStore');
   useAppStore.setState({ currentTenantId: 't1', isAuthReady: true, isSuperAdmin: true } as any);
 

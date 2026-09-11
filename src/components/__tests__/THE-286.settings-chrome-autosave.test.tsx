@@ -14,6 +14,7 @@ import { DELETE_CONFIRM_COPY } from '../../lib/member-erasure-copy';
 import UNTOUCHED from './__fixtures__/the-286-untouched.json';
 import { freezeFailure } from './__fixtures__/settings-freeze-register';
 import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
+import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
 
 /**
  * ═════════════════════════════════════════════════════════════════════════════
@@ -119,7 +120,6 @@ function autosaveImportsIn(file: string, src: string): string[] {
     return resolved === AUTOSAVE_MODULE || path.posix.basename(resolved) === 'autosave';
   });
 }
-
 /**
  * Source with every comment removed — block, line and JSX.
  *
@@ -129,15 +129,28 @@ function autosaveImportsIn(file: string, src: string): string[] {
  * PlanUpgradeSection's own comment quotes the `$39` literal that outlived a
  * reprice. Grepping raw text would fail on the documentation and pass on the
  * defect — exactly backwards.
+ *
+ * 🔴 THE-352 — THIS USED TO BE THREE REGEXES AND THEY ATE A 154-LINE SPAN OF
+ * `IntegrationsSection.tsx`, INCLUDING THE PROVIDER GATE.
+ *
+ * The trigger is the JSX-comment regex `/\{\s*\/\*[\s\S]*?\*\/\s*\}/`.
+ * `IntegrationsSectionProps` opens with `interface … {` followed immediately by
+ * a `/** … *\/` JSDoc on its first member, so the pattern anchors on that brace.
+ * It is lazy, but laziness only picks the FIRST `*\/` that is also followed by
+ * `\s*\}` — and no comment inside the component ends that way until
+ * `catch { /* prefill is a convenience, not a requirement *\/ }` in the loader.
+ * Everything between the two — the props interface, the component signature,
+ * `isPlatformOverride`, the per-provider gate, the state and the whole load
+ * effect — was replaced by a single space. Every assertion this suite made over
+ * that region was reading text that was not there and passing on nothing.
+ *
+ * The replacement takes its comment ranges off TypeScript's own parse, so it
+ * cannot mistake a brace, a string, a URL or JSX text for a comment boundary.
+ * It is the module THE-346 built for exactly this class and nine suites already
+ * import; importing it adds a line to THIS file and edits nothing shared, so it
+ * serialises no other PR.
  */
-function code(rel: string): string {
-  return readSrc(rel)
-    .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, ' ')  // JSX  {/* … */}
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')                // block /* … */
-    .replace(/^[ \t]*\/\/.*$/gm, ' ');                  // line //
-}
-
-/* ── Firestore / firebase / sonner doubles ────────────────────────────────── */
+const code = (rel: string): string => stripComments(readSrc(rel));
 
 /** Typed with the arguments the section really passes, so `mock.calls[n][1]`
  *  is the write payload rather than an element of an empty tuple. */

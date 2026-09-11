@@ -5,7 +5,7 @@
 // injected — so no assertion written against it could tell a 44px tap target
 // from a 24px one, which is the entire question this file exists to answer.
 // Profile is rendered to static markup and measured in real Chromium over CDP.
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, afterAll, vi } from 'vitest';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -14,6 +14,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
+import { setUpOrFail } from '../../test/support/suite-setup';
 import { DENSITY_PX, DESKTOP_CONTROL_MAX_PX } from '../layout/form-layout';
 
 /**
@@ -193,7 +194,7 @@ let browser: MeasuringBrowser | null = null;
 const shown = new Map<number, Reading>();
 const hidden = new Map<number, Reading>();
 
-beforeAll(async () => {
+setUpOrFail(async () => {
   const css = await buildAppCss();
   const dir = mkdtempSync(path.join(os.tmpdir(), 'the321-'));
 

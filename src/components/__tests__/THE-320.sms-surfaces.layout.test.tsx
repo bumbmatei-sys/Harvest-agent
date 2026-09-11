@@ -5,7 +5,7 @@
 // happy-dom selected, `MeasuringBrowser` never attaches and the suite times out
 // at 180s. Nothing here needs a DOM. The page is rendered to a string and every
 // measurement happens inside a real Chromium over CDP.
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, afterAll, vi } from 'vitest';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -15,6 +15,7 @@ import { MemoryRouter } from 'react-router-dom';
 
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
+import { setUpOrFail } from '../../test/support/suite-setup';
 import { DENSITY_PX, CONTROL_DENSITY, FIELD_WIDTH } from '../layout/form-layout';
 import AdminSms from '../AdminSms';
 import { Input } from '../ui/input';
@@ -92,7 +93,7 @@ interface Reading {
 let browser: MeasuringBrowser;
 const readings = new Map<number, Reading>();
 
-beforeAll(async () => {
+setUpOrFail(async () => {
   const { useAppStore } = await import('../../store/useAppStore');
   useAppStore.setState({ currentTenantId: 't1', isAuthReady: true, isSuperAdmin: true } as any);
 

@@ -10,7 +10,7 @@
 // over CDP.
 //
 // ONE `MeasuringBrowser` PER PROCESS — two instances collide on a debugger port.
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { createHash } from 'node:crypto';
 import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import os from 'node:os';
@@ -20,6 +20,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
+import { setUpOrFail } from '../../test/support/suite-setup';
 import { CONTROL_DENSITY } from '../layout/form-layout';
 
 /**
@@ -189,7 +190,7 @@ const SELECTORS: Record<string, string> = {
 let browser: MeasuringBrowser;
 const readings = new Map<number, Reading>();
 
-beforeAll(async () => {
+setUpOrFail(async () => {
   const css = await buildAppCss();
   const html = renderToStaticMarkup(page());
   const dir = mkdtempSync(path.join(os.tmpdir(), 'the351-'));
