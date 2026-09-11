@@ -142,15 +142,31 @@ const KNOWN_UNSCOPED: ReadonlyArray<{ file: string; why: string }> = [
      Contacts/Roles switcher — a SIBLING of AdminRoles, not a child — so the
      pill pair collapsed to bare text whenever the Roles tab was open. Every
      rule in that block is now scoped to `[data-admin-roles]`. */
-  {
-    file: 'AIChat.tsx',
-    why:
-      'Carries the `*` reset too, plus unscoped ::-webkit-scrollbar rules. It is ' +
-      'a MEMBER-app surface rather than an admin tab, so it is not behind the ' +
-      'reported defect and was left alone rather than changed on a notes ticket. ' +
-      'Its unlayered `:root` block is separate and deliberate — see the assertion ' +
-      'below that keeps it to custom properties.',
-  },
+  /* 🔴 AIChat.tsx WAS HERE, AND THE-356 FIXED IT — the same bidirectional
+     workflow THE-338 used for AdminRoles, and the reason this list is asserted
+     in both directions rather than merely consulted.
+
+     This entry read: "Carries the `*` reset too, plus unscoped
+     ::-webkit-scrollbar rules. It is a MEMBER-app surface rather than an admin
+     tab, so it is not behind the reported defect and was left alone rather than
+     changed on a notes ticket."
+
+     That deferral was correct for a notes ticket and wrong to leave standing:
+     being a MEMBER-app surface makes it worse, not safer. AdminRoles' identical
+     reset reached a SIBLING — AdminCRM's Contacts/Roles switcher, which the
+     founder reported as "the button switch appears very small" — and AIChat
+     ships the same rule to every member of every church.
+
+     THE-356 measured it in Chromium before changing anything: with the block as
+     it was, a sibling carrying `p-4` computed `0px` of padding at all five
+     widths, and a class-padded box INSIDE the chat was zeroed too. The `*` rule
+     is deleted (Tailwind's preflight already sets box-sizing and zeroes margins,
+     so nothing depended on it — measured: every box inside the chat is
+     identical with the block, without it, and with the old reset) and the
+     scrollbar and textarea rules are scoped to `[data-ai-chat]` on the
+     component's own outermost element. Its unlayered `:root` block is separate
+     and deliberate — see the assertion below that keeps it to custom
+     properties. */
   {
     file: 'BiblePage.tsx',
     why:

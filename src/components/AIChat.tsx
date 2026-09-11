@@ -487,7 +487,7 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  // child (the chat column) — visually identical to the previous single-column
  // layout. The old maxWidth:1024 / margin:auto only had any effect at >=1024px
  // (i.e. lg), where we now redesign, so dropping them leaves mobile untouched.
- <div style={{ fontFamily: "var(--font-sans), system-ui, sans-serif", background: BG, height: "100%", width: "100%", display: "flex", position: "relative", overflow: "hidden" }}>
+ <div data-ai-chat style={{ fontFamily: "var(--font-sans), system-ui, sans-serif", background: BG, height: "100%", width: "100%", display: "flex", position: "relative", overflow: "hidden" }}>
  <style>{`
  :root {
  /* Pointed at the semantic ramp rather than fixed hexes. Every value below is
@@ -509,9 +509,8 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  --chat-gold-light: color-mix(in srgb, var(--brand-color, #C9963A) 12%, var(--surface-raised));
  --chat-gold-btn: linear-gradient(135deg, var(--brand-color, #C9963A), color-mix(in srgb, var(--brand-color, #C9963A) 82%, var(--surface-raised)));
  }
- * { box-sizing: border-box; margin: 0; padding: 0; }
- ::-webkit-scrollbar { width: 0; }
- textarea { outline: none; resize: none; }
+ [data-ai-chat]::-webkit-scrollbar, [data-ai-chat] ::-webkit-scrollbar { width: 0; }
+ [data-ai-chat] textarea { outline: none; resize: none; }
  @keyframes bounce {
  0%, 60%, 100% { transform: translateY(0); }
  30% { transform: translateY(-6px); }

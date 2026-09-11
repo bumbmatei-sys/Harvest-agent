@@ -1191,7 +1191,7 @@ describe('no behaviour changed on any screen in scope', () => {
     expect(norm(read('NewsTab.tsx'))).toBe(norm(at('NewsTab.tsx')));
   });
 
-  it('AIChat differs only in class strings, the two inline properties it retired, and THE-333\'s two rail controls', () => {
+  it('AIChat differs only in class strings, the two inline properties it retired, THE-333\'s two rail controls, and THE-356\'s CSS scoping', () => {
     // AIChat is the exception by design: removing the inline width IS the fix.
     // Everything else must still normalise identically, so the diff is pinned
     // to exactly `maxWidth: "48rem"` and the `margin` shorthand it sat in.
@@ -1204,10 +1204,33 @@ describe('no behaviour changed on any screen in scope', () => {
     // icon never had. The two opening tags below are collapsed in BOTH
     // revisions; every other byte of this file must still match, so a third
     // edit hiding behind these two still fails.
+    //
+    // 🔴 THE-356 ADDS A THIRD PINNED DIFF, PINNED THE SAME WAY. AIChat injected
+    // an unscoped `* { box-sizing; margin: 0; padding: 0 }` plus unscoped
+    // `::-webkit-scrollbar` and `textarea` rules — the reset #482 traced from
+    // `AdminRoles.tsx` to a SIBLING's collapsed padding, shipping here to every
+    // member of every church. The `*` rule is deleted (preflight covers it) and
+    // the other two are scoped to a `data-ai-chat` marker on the root element.
+    //
+    // ⚠️ BOTH REVISIONS' EXACT TEXT IS SPELLED OUT, never a wildcard. Each
+    // alternation below matches the before OR the after and nothing else, so a
+    // FOURTH edit hiding behind these still fails — which is the property
+    // THE-333's entry above was careful to keep, and the reason this is an
+    // append rather than a loosened normaliser. No baseline is re-recorded:
+    // the class, colour and height fixtures for both AIChat surfaces are
+    // untouched by this ticket and still pass.
+    const CHAT_RULES_BEFORE =
+      '\\* \\{ box-sizing: border-box; margin: 0; padding: 0; \\} '
+      + '::-webkit-scrollbar \\{ width: 0; \\} textarea \\{ outline: none; resize: none; \\}';
+    const CHAT_RULES_AFTER =
+      '\\[data-ai-chat\\]::-webkit-scrollbar, \\[data-ai-chat\\] ::-webkit-scrollbar \\{ width: 0; \\} '
+      + '\\[data-ai-chat\\] textarea \\{ outline: none; resize: none; \\}';
     const norm = (s: string) => strip(s)
       .replace(/textAlign: "center", fontSize: 11, color: TEXT2, margin(?:Top)?: (?:"8px auto 0"|8), (?:maxWidth: "48rem", )?lineHeight: 1\.5/g, 'DISCLAIMER')
       .replace(/<button onClick=\{\(\) => setRailCollapsed\(true\)\}.*?\}\}>/g, 'COLLAPSE_CONTROL')
-      .replace(/<button onClick=\{\(\) => setRailCollapsed\(false\)\}.*?\}\}>/g, 'REOPEN_CONTROL');
+      .replace(/<button onClick=\{\(\) => setRailCollapsed\(false\)\}.*?\}\}>/g, 'REOPEN_CONTROL')
+      .replace(new RegExp(`${CHAT_RULES_BEFORE}|${CHAT_RULES_AFTER}`, 'g'), 'CHAT_INJECTED_RULES')
+      .replace(/<div (?:data-ai-chat )?style=\{\{ fontFamily: "var\(--font-sans\), system-ui, sans-serif"/g, 'CHAT_ROOT');
     expect(norm(read('AIChat.tsx'))).toBe(norm(at('AIChat.tsx')));
   });
 
