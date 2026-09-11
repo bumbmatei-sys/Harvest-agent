@@ -1,0 +1,10 @@
+{
+  "ticket": "THE-356",
+  "entries": [
+    {
+      "file": "src/components/AIChat.tsx",
+      "digest": "2b7e79ecd94e4033a0bd574ba119ee5b9ad5e528a85a32ce83422510ab9dfac9",
+      "why": "The state THE-356 left the member AI chat in after scoping the CSS it injects. The file carried an unscoped `* { box-sizing; margin: 0; padding: 0 }` plus unscoped ::-webkit-scrollbar and textarea rules - the same reset #482 traced from AdminRoles.tsx to a sibling's collapsed padding (the founder's 'the button switch appears very small'), shipping here to every member of every church rather than to one admin tab. Measured in Chromium at 380/768/1024/1280/1440 before anything changed: a sibling carrying p-4 computed 0px of padding at all five widths, and a class-padded box inside the chat was zeroed too. The `*` rule is deleted because Tailwind's preflight already sets box-sizing and zeroes margins - verified by measurement, not assumed: every box inside the chat is identical with the block, without it, and with the old reset, so the reset was not load-bearing. The remaining two rules are scoped to a data-ai-chat marker on the component's own outermost element. No markup, no class string and no colour moved, which is why MemberScreens.desktop-layout's class, colour and height baselines for both AIChat surfaces are untouched and still pass. This file was previously recorded by no ticket, so nothing was checking it; recording it here starts that, and a later ticket editing it appends its own per-ticket file rather than replacing this digest."
+    }
+  ]
+}
