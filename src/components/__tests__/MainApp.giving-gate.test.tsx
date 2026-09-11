@@ -33,6 +33,13 @@ import { getPlanFeatures, PLAN_ORDER, PLAN_DISPLAY_NAMES } from '../../utils/pla
  */
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+// This suite is about the PLAN gate (`fundraising`), a question orthogonal to
+// whether the platform's own Stripe Connect account is open. It simulates a
+// tenant with `stripeConnectStatus: 'active'`, so the master switch is mocked
+// on here — real value is `false` while the platform account is closed
+// (THE-256) — to isolate the plan-tier gate this file actually tests.
+vi.mock('../../lib/stripe-connect-feature', () => ({ STRIPE_CONNECT_ENABLED: true }));
+
 vi.mock('../../firebase', () => ({ db: {}, auth: { currentUser: null } }));
 
 vi.mock('../../utils/tenant-scope', () => ({

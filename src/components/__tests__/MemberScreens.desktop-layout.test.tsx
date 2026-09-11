@@ -887,10 +887,18 @@ describe('the Give tab is gated on fundraising, which is why MainApp is exempted
     expect(read('MainApp.tsx')).toMatch(
       /const hasGiving =\s*isMainSite \|\| \(isPlanReady && features\?\.fundraising === true && hasGivingRails\);/,
     );
-    // And the rails half itself short-circuits on the platform for the same
-    // reason, so `hasStripeGiving` is true there without a document.
+    // 🔴 `hasStripeGiving` no longer short-circuits on `isMainSite` alone. It
+    // now reads `STRIPE_CONNECT_ENABLED` first — the same master switch THE-303
+    // already reads on the public campaign page — because `isMainSite` says
+    // nothing about whether a CARD can actually be taken: while the platform's
+    // own Stripe account is closed, `/api/stripe/donate` refuses for the apex
+    // Give page exactly as it does for any tenant, so a form promising "Secure,
+    // encrypted payment via Stripe" there was the same false-claim shape THE-303
+    // fixed elsewhere. `hasGiving` above is UNCHANGED — the apex Give TAB still
+    // shows unconditionally, now rendering the links-only branch instead of a
+    // form that would fail after a stranger typed their card in.
     expect(read('MainApp.tsx')).toMatch(
-      /const hasStripeGiving = isMainSite \|\| stripeConnectStatus === 'active';/,
+      /const hasStripeGiving = STRIPE_CONNECT_ENABLED && \(isMainSite \|\| stripeConnectStatus === 'active'\);/,
     );
   });
 

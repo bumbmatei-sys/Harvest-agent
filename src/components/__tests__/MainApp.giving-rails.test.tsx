@@ -39,6 +39,14 @@ import { GIVING_PROVIDERS } from '../donations/giving-providers';
  */
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+// This suite is about the RAILS gate (Stripe status vs. the church's own
+// links), a question orthogonal to whether the platform's own Stripe Connect
+// account is open. It simulates tenants with `stripeConnectStatus: 'active'`,
+// so the master switch is mocked on here — its real value is `false` while
+// the platform account is closed (THE-256) — to isolate the rails logic this
+// file actually tests.
+vi.mock('../../lib/stripe-connect-feature', () => ({ STRIPE_CONNECT_ENABLED: true }));
+
 vi.mock('../../firebase', () => ({ db: {}, auth: { currentUser: null } }));
 
 vi.mock('../../utils/tenant-scope', () => ({
