@@ -17,7 +17,7 @@ import {
 import {
   HARVEST_APEX,
   GIVING_PATH,
-  GIVING_SHARE_STRIPE_SOON,
+  GIVING_SHARE_CARD_GIVING_OFF,
   buildGivingPageUrl,
   buildGivingSharePayload,
   givingShareUrls,
@@ -260,18 +260,42 @@ describe('3 — 🔴 Stripe Connect appears as static "soon" copy, not a live co
     ).toBeTruthy();
   });
 
-  it('the share surface names Stripe as a sentence, with no control', async () => {
+  /**
+   * ⚠️ AMENDED BY THE-357, AND THE CLAIM IS KEPT WHILE ONE HALF OF IT IS
+   * CORRECTED. THE-281's claim is that the share surface names card giving as a
+   * SENTENCE and not as a control, and every part of that is still asserted
+   * below, unchanged: the line exists, it is the exported constant verbatim, it
+   * is a <p>, and it holds nothing pressable or navigable.
+   *
+   * 🔴 WHAT WENT IS `toContain('coming soon')`. THE-281 wrote that because the
+   * founder's brief said "with Stripe Connect marked as coming soon", and it
+   * pinned a PROMISE: the platform Connect account is closed as `rejected.fraud`
+   * and Stripe stopped replying, so there is no migration, no date and nothing
+   * coming. THE-350 (#494) corrected the same false promise on the two admin
+   * card-giving surfaces and REPORTED this one because it sat under another
+   * ticket's digest pin; THE-357 is that follow-up.
+   *
+   * ⚠️ IT IS NOT DELETED, IT IS INVERTED. A line that promised is now a line
+   * that may not promise, asserted against the same rendered node — so this
+   * assertion is strictly harder to satisfy than the one it replaces, and
+   * putting "coming soon" back fails here as well as in THE-357's own sweep.
+   */
+  it('the share surface names card giving as a sentence, with no control and no promise', async () => {
     await mountSheet();
     await act(async () => { (q('[data-testid="giving-share-button"]') as HTMLButtonElement).click(); });
-    const line = q('[data-testid="giving-share-stripe-soon"]')!;
-    expect(line, 'the share sheet says nothing about Stripe').toBeTruthy();
-    expect(line.textContent).toBe(GIVING_SHARE_STRIPE_SOON);
-    expect(line.textContent!.toLowerCase()).toContain('coming soon');
+    const line = q('[data-testid="giving-share-card-giving-off"]')!;
+    expect(line, 'the share sheet says nothing about card giving').toBeTruthy();
+    expect(line.textContent).toBe(GIVING_SHARE_CARD_GIVING_OFF);
+    expect(line.textContent!.toLowerCase(), 'the share sheet still names card giving')
+      .toContain('card giving');
+    // 🔴 AMENDED BY THE-357 — was `toContain('coming soon')`.
+    expect(line.textContent!, 'the share sheet promises a card-giving return again')
+      .not.toMatch(/coming soon|back soon|shortly|in the meantime|for now|until then|soon\b|\b20\d{2}\b/i);
 
     // 🔴 It is a <p>, and it contains nothing pressable or navigable.
     expect(line.tagName).toBe('P');
     expect(line.querySelector('button, a, input, select, [role="button"], [onclick]'),
-      'the Stripe line carries a control').toBeNull();
+      'the card-giving line carries a control').toBeNull();
   });
 
   it('🔴 the module holding that copy does not read the Connect flag at all', () => {

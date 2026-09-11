@@ -4,7 +4,7 @@ import QRCode from 'qrcode';
 import { Share2, Copy, Check, QrCode, Download, X } from 'lucide-react';
 import { ProviderMark } from './GivingLinks';
 import {
-  GIVING_SHARE_STRIPE_SOON,
+  GIVING_SHARE_CARD_GIVING_OFF,
   buildGivingSharePayload,
   type GivingSharePayload,
 } from './giving-share';
@@ -277,10 +277,11 @@ const GivingShareSheet: React.FC<{
                 </div>
               )}
 
-              {/* 🔴 STATIC COPY — THE-256. A sentence, not a control: no button,
-                  no link, no gate that could become one. */}
-              <p className="text-xs text-faint leading-relaxed" data-testid="giving-share-stripe-soon">
-                {GIVING_SHARE_STRIPE_SOON}
+              {/* 🔴 STATIC COPY — THE-256, corrected by THE-357. A sentence,
+                  not a control: no button, no link, no gate that could become
+                  one — and since THE-357 it promises nothing either. */}
+              <p className="text-xs text-faint leading-relaxed" data-testid="giving-share-card-giving-off">
+                {GIVING_SHARE_CARD_GIVING_OFF}
               </p>
             </div>
           </div>

@@ -160,6 +160,30 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
    */
   'src/components/donations/giving-share.ts': [
     ['b28d762c711c016c57f593b83d70f131fe92f8418395a34bf1e644b06a1ae01b', 'main at 5f431e3'],
+    /* ⚠️ APPENDED BY THE-357, NOT SUBSTITUTED — the header's rule, and the one
+       #434 broke. THE-313's own value above stays accepted; a digest that is
+       NEITHER still fails, which is the entire threat this entry carries.
+
+       🔴 WHAT THIS ENTRY IS FOR IS UNCHANGED, and it is written three lines
+       above: "do NOT reuse `giving-share.ts`'s URL builder or loosen its host
+       validation." THE-357 does neither. `buildGivingPageUrl` and its six rules
+       — https, no credentials, no port, a single-label subdomain of the apex,
+       re-asked of the PARSED url — are byte-identical, `HARVEST_APEX`,
+       `GIVING_PATH`, `DNS_LABEL`, `buildGivingSharePayload` and
+       `givingShareUrls` are byte-identical, and the module still imports
+       nothing but `readGivingLinks` from `giving-providers`. THE-357's own
+       suite pins all of that verbatim, so this append is checked by content
+       rather than taken on trust.
+
+       WHAT MOVED IS ONE EXPORTED SENTENCE AND ITS NAME. The share sheet said
+       "Card giving through Stripe Connect is coming soon. Until then, …" while
+       the platform Connect account is closed as `rejected.fraud` — a promise
+       the product cannot keep. THE-350 corrected the same false promise on the
+       two admin card-giving surfaces and reported this one; this is the
+       follow-up it handed over, and `GIVING_SHARE_STRIPE_SOON` is renamed
+       `GIVING_SHARE_CARD_GIVING_OFF` with it. */
+    ['cb82182d615d85a737709dc049734bc1906c4801bd1ac73e9f5ba477f0dc8ba9',
+      'main + THE-357 — the share-sheet copy stops promising card giving; the URL builder and the host validation are byte-identical'],
   ],
 };
 

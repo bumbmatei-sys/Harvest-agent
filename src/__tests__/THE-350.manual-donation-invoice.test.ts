@@ -1115,37 +1115,57 @@ describe('17d — whatever replaces it is TRUE', () => {
 
 describe('17e — the rest of the sweep: REPORTED, and pinned so the report cannot go stale', () => {
   /**
-   * 🔴 TWO MORE PLACES NAME CARD GIVING, AND NEITHER IS FIXED HERE. Pinned by
+   * 🔴 TWO MORE PLACES NAMED CARD GIVING, AND NEITHER WAS FIXED HERE. Pinned by
    * VALUE rather than described in a PR body, so the day either one moves this
    * suite says so and the report stops being a claim nobody re-checked.
+   *
+   * ⚠️ THE PIN DID ITS JOB: THE-357 (this file's first row) took the share
+   * sheet, and the row below it is now a pin on the CORRECTED copy rather than
+   * on the promise. The portal route's note is still prose and is still only
+   * reported.
    */
-  it('🔴 the share sheet still says "coming soon" — reported, deliberately not touched', async () => {
-    /**
-     * `GIVING_SHARE_STRIPE_SOON` in `components/donations/giving-share.ts` reads
-     * "Card giving through Stripe Connect is coming soon. Until then, these are
-     * the ways your members can give." — rendered in `GivingShareSheet` as a
-     * <p>, with no control.
-     *
-     * ⚠️ IT IS THE SAME FALSE PROMISE and it belongs in a follow-up, not here.
-     * `the-313-guards` pins `giving-share.ts` in an `UNTOUCHED` set whose own
-     * docblock says the point is that "a value that is NEITHER — i.e. this
-     * ticket editing the file — still fails", and `the-281` asserts the rendered
-     * line contains "coming soon". Appending a digest there to get past a guard
-     * built to catch exactly this would defeat it, and it is a DIFFERENT surface
-     * from the two the founder named: a share sheet, not the Stripe panel on the
-     * Donations and Fundraising screens.
-     *
-     * 🔴 SO IT IS RECORDED HERE INSTEAD, pinned to its current text, and the
-     * ticket that corrects it will have to move this line and say why.
-     */
-    const { GIVING_SHARE_STRIPE_SOON } = await import('@/components/donations/giving-share');
-    expect(GIVING_SHARE_STRIPE_SOON,
+  /**
+   * ⚠️ AMENDED BY THE-357, ON THE HANDOVER THIS BLOCK ITSELF WROTE: "the ticket
+   * that corrects it will have to move this line and say why". This is that
+   * ticket, and this is why.
+   *
+   * 🔴 THE-350's REPORT WAS RIGHT AND IS NOT WITHDRAWN. The share sheet said
+   * "Card giving through Stripe Connect is coming soon. Until then, these are
+   * the ways your members can give." — the same false promise as the two admin
+   * surfaces THE-350 fixed, on a third surface it correctly judged out of scope.
+   * What kept THE-350 off it was `the-313-guards`, which pins
+   * `giving-share.ts` by digest, and THE-350's reading of that pin: appending a
+   * digest there "to get past a guard built to catch exactly this would defeat
+   * it".
+   *
+   * ⚠️ THE-357 ESTABLISHED THAT THE APPEND PATH IS THE GUARD'S OWN DESIGN, not a
+   * way past it. THE-313's `UNTOUCHED` header prescribes it in terms — "APPENDED,
+   * NEVER SUBSTITUTED … a value that is NEITHER — i.e. this ticket editing the
+   * file — still fails" — and three later tickets have used it on that same map
+   * (THE-314 via #452, THE-351 and THE-355), each appending WITH a reason that
+   * names the property the pin exists for and states it is unchanged. What that
+   * entry exists for is narrow and written down beside it: "do NOT reuse
+   * `giving-share.ts`'s URL builder or loosen its host validation." THE-357
+   * changes one exported SENTENCE and touches neither, and it says so by pinning
+   * `buildGivingPageUrl`'s six rules verbatim in its own suite — so the guard is
+   * STRONGER after the append than before it, not weaker.
+   *
+   * 🔴 SO THE PIN BELOW IS INVERTED RATHER THAN DELETED. It pinned the promise
+   * so the report could not go stale; it now pins the ABSENCE of one, on the
+   * same constant, so the correction cannot be undone quietly either. Restoring
+   * "coming soon" fails here and in THE-357's own sweep.
+   */
+  it('🔴 the share sheet no longer says "coming soon" — corrected by THE-357', async () => {
+    const { GIVING_SHARE_CARD_GIVING_OFF } = await import('@/components/donations/giving-share');
+    expect(GIVING_SHARE_CARD_GIVING_OFF,
       'the share sheet copy changed — re-read the report in this test before accepting it')
-      .toBe('Card giving through Stripe Connect is coming soon. Until then, these are the ways your members can give.');
-    // And the file really is still under another ticket's pin, which is the
-    // reason it is reported rather than corrected.
+      .toBe('Card giving inside the app is off. These are the ways your members can give, and a gift you record in the CRM counts on your dashboard, in accounting and on your giving statements.');
+    expect(GIVING_SHARE_CARD_GIVING_OFF, 'the share sheet promises card giving again')
+      .not.toMatch(/temporar|migrat|coming soon|shortly|in the meantime|for now|until then|soon\b|\b20\d{2}\b/i);
+    // And the file is still under THE-313's pin, at an APPENDED accepted value:
+    // THE-357 added one beside THE-313's own, and substituted none.
     expect(codeOf('src/__tests__/the-313-guards.test.ts'),
-      "giving-share.ts left THE-313's untouched set — this can now be fixed properly")
+      "giving-share.ts left THE-313's untouched set — the pin was removed rather than appended to")
       .toMatch(/src\/components\/donations\/giving-share\.ts/);
   });
 

@@ -481,6 +481,18 @@ describe('14 · the files THE-321 does not own are byte-identical', () => {
       // composer while the ministry has no number. THE-321 still cannot edit
       // this file, because a value that is none of the three continues to fail.
       ['f48ae4b8b6deff201e3767e5812bf7045af632a64c88384e5a91f285c47caab2', 'main + THE-327 — the number lifecycle mounted in the SMS section'],
+      // 🔴 APPENDED BY THE-357, NEVER SUBSTITUTED — all three values above
+      // still stand. #500 measured this screen's five Buttons at 25.38 / 36.25 /
+      // 36.25 / 36.25 / 34.63px above `sm`, every one under Rule 4's 38px floor,
+      // and reported them without sweeping. THE-357 is that sweep: each of the
+      // five now spells `${CONTROL_DENSITY.action}` — Rule 4's own opt-in token,
+      // `sm:h-[40px] sm:py-0` — in place of the `sm:h-auto` that let the
+      // primitive's 24/28/32/36px intrinsic sizes through, and each measures 40px
+      // at 768/1024/1280/1440 and 44px at 380. NOTHING ELSE MOVED: no markup, no
+      // handler, no read, no write, no colour, no inline style and no primitive —
+      // five className strings and one named import. THE-321 still cannot edit
+      // this file, because a value that is none of the four continues to fail.
+      ['36dbc419cc5990f1021b81e03dfa33851c62199a54a5052c89511e8e34d43002', 'main + THE-357 — the five SMS controls adopt Rule 4'],
     ],
     'src/components/settings/SmsSection.tsx': [
       ['75c90bc448dc52eceb47e8866a06a32cd53a64bb1b0455c2b7585053800bdf03', 'main at acc0d66 — THE-320 owns it'],
