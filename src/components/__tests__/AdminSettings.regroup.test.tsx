@@ -6,6 +6,8 @@ import { execSync } from 'node:child_process';
 import path from 'node:path';
 import postcss from 'postcss';
 
+import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
+
 /**
  * THE-183 — admin Settings: the two theme controls, and the layout rules.
  *
@@ -1003,10 +1005,12 @@ describe('THE-183 — admin Settings', () => {
     // helper exists: this file's header QUOTES the alert() it removed in order
     // to explain why, and a raw-text search reads that explanation as the
     // defect.
-    const onboardingCode = onboardingSection
-      .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, ' ')
-      .replace(/\/\*[\s\S]*?\*\//g, ' ')
-      .replace(/^[ \t]*\/\/.*$/gm, ' ');
+    // 🔴 THE-352 — the three-regex chain that used to stand here is gone. An
+    // opening brace followed by a JSDoc anchored its JSX-comment pattern, which
+    // then ran to the first `*/` that happened to be followed by `}`; on
+    // `IntegrationsSection.tsx` that deleted 151 lines of real code. The
+    // parser-driven module reads its ranges off TypeScript's own parse.
+    const onboardingCode = stripComments(onboardingSection);
     expect(onboardingCode, 'OnboardingSection reports a failed save through alert() again')
       .not.toMatch(/\balert\(/);
     // 🔴 DELETE stays an explicit, confirmed action. The Save button used to be

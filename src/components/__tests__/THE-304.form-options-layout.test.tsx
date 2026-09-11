@@ -6,7 +6,7 @@
 // getBoundingClientRect() returns zeros on every element even with the real
 // compiled stylesheet injected — so no assertion written against it could tell
 // a usable option row from an unusable one.
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -16,6 +16,7 @@ import { Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
+import { setUpOrFail } from '../../test/support/suite-setup';
 import { FORM_MEASURE, FIELD_WIDTH, CONTROL_DENSITY, DENSITY_PX, DESKTOP_CONTROL_MAX_PX } from '../layout/form-layout';
 import { MAX_FIELD_OPTIONS } from '../AdminForms';
 
@@ -179,7 +180,7 @@ interface Reading {
 let browser: MeasuringBrowser;
 const readings = new Map<number, Reading>();
 
-beforeAll(async () => {
+setUpOrFail(async () => {
   expect(PB_SAFE).toBeTruthy();
   const css = await buildAppCss();
 

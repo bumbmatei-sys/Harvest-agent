@@ -10,11 +10,12 @@
 // `browser-measure.ts` says why in its own header — a DOM-emulating environment
 // enforces browser semantics on the request to the browser's own debugger port
 // and refuses it as cross-origin, so the browser can never be attached to.
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { MeasuringBrowser } from '../test/support/browser-measure';
+import { setUpOrFail } from '../test/support/suite-setup';
 import { buildAppCss } from '../test/support/tailwind-build';
 import { contrastRatio, AA_CONTRAST } from '../lib/theme';
 
@@ -59,7 +60,7 @@ let browser: MeasuringBrowser;
 /** token -> hex, per mode, as Chromium resolves it. */
 const measured: Record<'light' | 'dark', Record<string, string>> = { light: {}, dark: {} };
 
-beforeAll(async () => {
+setUpOrFail(async () => {
   const css = await buildAppCss();
   const dir = mkdtempSync(path.join(os.tmpdir(), 'the338-measured-'));
   const file = path.join(dir, 'palette.html');

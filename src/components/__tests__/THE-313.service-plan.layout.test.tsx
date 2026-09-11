@@ -7,7 +7,7 @@
 // from an unusable one. Everything below is measured in real Chromium over CDP
 // (`src/test/support/browser-measure.ts`), which is why this file selects the
 // `node` environment and renders to a string.
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -16,6 +16,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
+import { setUpOrFail } from '../../test/support/suite-setup';
 import { FORM_CONTAINER, DENSITY_PX, DESKTOP_CONTROL_MAX_PX } from '../layout/form-layout';
 import { ItemRow, TEXT_BUTTON, NAV_CLEARANCE } from '../events/ServicePlanRow';
 import { fmtClock, itemClockTimes, type ServicePlanItem } from '../events/service-plan';
@@ -157,7 +158,7 @@ interface Reading {
 let browser: MeasuringBrowser;
 const readings = new Map<number, Reading>();
 
-beforeAll(async () => {
+setUpOrFail(async () => {
   expect(PB_SAFE_IS_INERT).toBeTruthy();
   const css = await buildAppCss();
 

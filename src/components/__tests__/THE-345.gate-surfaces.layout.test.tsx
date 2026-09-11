@@ -5,7 +5,7 @@
 // below could tell a 44px tap target from a 28px one. A DOM environment also
 // breaks the CDP attach: `browser-measure` reaches the browser's own debugger
 // port, which a DOM-emulating global `fetch` treats as cross-origin and blocks.
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -14,6 +14,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
+import { setUpOrFail } from '../../test/support/suite-setup';
 import { CONTROL_DENSITY, DENSITY_PX, FORM_CONTAINER } from '../layout/form-layout';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { PAID_EVENTS_HIDDEN_TITLE, PAID_EVENTS_HIDDEN_MESSAGE } from '../../lib/paid-events-feature';
@@ -62,7 +63,7 @@ interface Reading {
 const readings = new Map<number, Reading>();
 let browser: MeasuringBrowser | null = null;
 
-beforeAll(async () => {
+setUpOrFail(async () => {
   const css = await buildAppCss();
 
   const page = renderToStaticMarkup(

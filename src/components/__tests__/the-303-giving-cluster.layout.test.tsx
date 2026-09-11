@@ -8,7 +8,7 @@
 // spend, so it is asked of a real browser over CDP. And under happy-dom the
 // globals carry browser semantics, so a request to the browser's own debugger
 // port fails same-origin and the browser could never be attached at all.
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -17,6 +17,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
+import { setUpOrFail } from '../../test/support/suite-setup';
 import { CONTROL_DENSITY, DENSITY_PX } from '../layout/form-layout';
 import PublicGiving from '../PublicGiving';
 import { readGivingLinks } from '../donations/giving-providers';
@@ -170,7 +171,7 @@ interface Reading {
 let browser: MeasuringBrowser;
 const readings = new Map<number, Reading>();
 
-beforeAll(async () => {
+setUpOrFail(async () => {
   const css = await buildAppCss();
   const dir = mkdtempSync(path.join(os.tmpdir(), 'the303-'));
   const file = path.join(dir, 'giving.html');

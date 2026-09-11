@@ -5,7 +5,7 @@
 // `MeasuringBrowser` never attaches and the suite times out. Nothing here needs
 // a DOM. The page is rendered to a string and every measurement happens inside a
 // real Chromium over CDP.
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, afterAll, vi } from 'vitest';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -14,6 +14,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
+import { setUpOrFail } from '../../test/support/suite-setup';
 import { DENSITY_PX, CONTROL_DENSITY, FIELD_WIDTH } from '../layout/form-layout';
 import { SMS_PICKER_CLASSES } from '../settings/SmsSection';
 import { Badge } from '../ui/badge';
@@ -91,7 +92,7 @@ interface Reading {
 let browser: MeasuringBrowser;
 const readings = new Map<number, Reading>();
 
-beforeAll(async () => {
+setUpOrFail(async () => {
   const css = await buildAppCss();
 
   /**

@@ -8,7 +8,7 @@
 // which is how THE-276 shipped a broken dashboard behind a green run.
 //
 // ⚠️ ONE `MeasuringBrowser` PER PROCESS, opened once and driven across widths.
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -17,6 +17,7 @@ import react from '@vitejs/plugin-react';
 
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
+import { setUpOrFail } from '../../test/support/suite-setup';
 
 /**
  * THE-348 · The member chat: a floating composer, the wrong attach menu, and
@@ -447,7 +448,7 @@ const readings = new Map<number, Reading>();
 let adminFlow: MenuFlow;
 let memberSeesPaperclip = true;
 
-beforeAll(async () => {
+setUpOrFail(async () => {
   harnessDir = mkdtempSync(path.join(ROOT, 'node_modules', '.the348-'));
   writeFileSync(path.join(harnessDir, 'firebase-stub.ts'), FIREBASE_STUB);
   writeFileSync(path.join(harnessDir, 'firestore-stub.ts'), FIRESTORE_STUB);

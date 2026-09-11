@@ -7,7 +7,7 @@
 // debugger port fails same-origin ("Cross-Origin Request Blocked"), so the
 // browser can never be attached to. `renderToStaticMarkup` and `buildAppCss`
 // are both server-side and unaffected.
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -21,6 +21,7 @@ import {
 
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
+import { setUpOrFail } from '../../test/support/suite-setup';
 import RichTextToolbar, {
   TAP_TARGET_PX, TOOLBAR_GROUPS, type ToolbarItem,
 } from '../editor/RichTextToolbar';
@@ -148,7 +149,7 @@ interface Box {
 
 let browser: MeasuringBrowser;
 
-beforeAll(async () => {
+setUpOrFail(async () => {
   const css = await buildAppCss();
 
   // The card markup this suite measures is the editor's own.

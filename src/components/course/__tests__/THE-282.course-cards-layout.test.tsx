@@ -5,7 +5,7 @@
 // Chromium over CDP. Under this repo's default happy-dom environment a request
 // to the browser's own debugger port fails same-origin, so the browser can
 // never be attached to.
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -14,6 +14,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { buildAppCss } from '../../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../../test/support/browser-measure';
+import { setUpOrFail } from '../../../test/support/suite-setup';
 import { CourseLibrary } from '../CourseLibrary';
 import { TAP_TARGET_PX } from '../CourseCard';
 import type { Author, Course, Lesson } from '../../../types/course.types';
@@ -129,7 +130,7 @@ interface Box {
 
 let browser: MeasuringBrowser;
 
-beforeAll(async () => {
+setUpOrFail(async () => {
   const css = await buildAppCss();
 
   const body = renderToStaticMarkup(

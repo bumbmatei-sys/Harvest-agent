@@ -5,7 +5,7 @@
 // getBoundingClientRect() and `display: block` for a flex container, and a
 // request to the browser's own debugger port fails same-origin. Every number
 // here comes from real Chromium over CDP.
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, afterAll, vi } from 'vitest';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -31,6 +31,7 @@ vi.mock('../../../utils/sanitize', () => ({
 
 import { buildAppCss } from '../../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../../test/support/browser-measure';
+import { setUpOrFail } from '../../../test/support/suite-setup';
 import { CourseLibrary } from '../CourseLibrary';
 import { CourseCurriculum } from '../CourseCurriculum';
 import { AuthorProfile } from '../AuthorProfile';
@@ -166,7 +167,7 @@ let browser: MeasuringBrowser;
 /** shots[paletteKey][viewport] */
 const shots: Record<string, Record<number, Shot>> = {};
 
-beforeAll(async () => {
+setUpOrFail(async () => {
   const css = await buildAppCss();
 
   const body = renderToStaticMarkup(

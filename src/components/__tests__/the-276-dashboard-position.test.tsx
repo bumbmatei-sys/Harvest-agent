@@ -7,7 +7,7 @@
 // debugger port fails same-origin ("Cross-Origin Request Blocked"), so the
 // browser can never be attached to. `renderToStaticMarkup` and `buildAppCss`
 // are both server-side and unaffected.
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -16,6 +16,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser, type Box, type Measurement } from '../../test/support/browser-measure';
+import { setUpOrFail } from '../../test/support/suite-setup';
 import { DashboardTabs } from '../dashboard/DashboardTabs';
 import { OverviewTab } from '../dashboard/OverviewTab';
 import type { OverviewData } from '../dashboard/useOverviewData';
@@ -93,7 +94,7 @@ const SELECTORS = {
 let browser: MeasuringBrowser;
 const measured = new Map<number, Measurement>();
 
-beforeAll(async () => {
+setUpOrFail(async () => {
   const css = await buildAppCss();
   const body = renderToStaticMarkup(
     <div className="flex">

@@ -7,7 +7,7 @@
 // in THE-276's post-mortem, not assumed). Under the repo's default happy-dom
 // environment the globals are also replaced with browser-semantics ones, and a
 // request to the measuring browser's own debugger port then fails same-origin.
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
@@ -15,6 +15,7 @@ import path from 'node:path';
 
 import { buildAppCss, buildCssForMarkup } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
+import { setUpOrFail } from '../../test/support/suite-setup';
 import { DENSITY_PX, DESKTOP_CONTROL_MAX_PX } from '../layout/form-layout';
 import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
 
@@ -248,7 +249,7 @@ const FLAT_SELECTORS = [
 
 const key = (sel: string, vw: number) => `${sel}@${vw}`;
 
-beforeAll(async () => {
+setUpOrFail(async () => {
   appCss = await buildAppCss();
 
   const flat = await launch(appCss, 'flat');

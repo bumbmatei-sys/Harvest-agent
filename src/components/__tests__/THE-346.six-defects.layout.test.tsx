@@ -8,7 +8,7 @@
 //
 // ONE `MeasuringBrowser` PER PROCESS. Two instances in one process collide on
 // a debugger port.
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -17,6 +17,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
+import { setUpOrFail } from '../../test/support/suite-setup';
 
 /**
  * THE-346 · six defects the founder found on a phone. EVERY ONE OF THEM IS A
@@ -467,7 +468,7 @@ const SELECTORS: Record<string, string> = {
   tabMonth: '[data-tab="month"]',
 };
 
-beforeAll(async () => {
+setUpOrFail(async () => {
   const css = await buildAppCss();
   const html = renderToStaticMarkup(page());
   const dir = mkdtempSync(path.join(os.tmpdir(), 'the346-'));

@@ -8,7 +8,7 @@
 // environment the globals are replaced with browser-semantics ones, and a
 // request to the browser's own debugger port then fails same-origin, so the
 // measuring browser can never be attached to.
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, afterAll, vi } from 'vitest';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -17,6 +17,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
+import { setUpOrFail } from '../../test/support/suite-setup';
 import { DENSITY_PX, DESKTOP_CONTROL_MAX_PX } from '../layout/form-layout';
 import { NAV_CLEARANCE } from '../settings/GivingStatementsSection';
 
@@ -149,7 +150,7 @@ interface Box { x: number; y: number; width: number; height: number; top: number
 
 let browser: MeasuringBrowser;
 
-beforeAll(async () => {
+setUpOrFail(async () => {
   const css = await buildAppCss();
 
   // Rendered as STATIC MARKUP in the states that matter, rather than mounted:

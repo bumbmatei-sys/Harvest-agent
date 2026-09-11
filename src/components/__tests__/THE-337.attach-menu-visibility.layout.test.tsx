@@ -7,7 +7,7 @@
 // "measured" tests, and section 0 of this file records exactly how.
 //
 // ⚠️ ONE `MeasuringBrowser` PER PROCESS, opened once and driven across widths.
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import os from 'node:os';
@@ -19,6 +19,7 @@ import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules
 import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
+import { setUpOrFail } from '../../test/support/suite-setup';
 
 /**
  * THE-337 · The paperclip opens nothing.
@@ -303,7 +304,7 @@ interface SiteReading {
   viewportW: number;
 }
 
-beforeAll(async () => {
+setUpOrFail(async () => {
   harnessDir = mkdtempSync(path.join(ROOT, 'node_modules', '.the337-'));
   writeFileSync(path.join(harnessDir, 'firebase-stub.ts'), FIREBASE_STUB);
   writeFileSync(path.join(harnessDir, 'firestore-stub.ts'), FIRESTORE_STUB);
