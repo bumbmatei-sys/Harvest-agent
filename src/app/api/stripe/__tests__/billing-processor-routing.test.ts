@@ -201,23 +201,24 @@ describe('plan change routes to the processor that owns the subscription', () =>
     expect(mockCustomersRetrieve).not.toHaveBeenCalled();
   });
 
-  // ── Test 2: the Stripe path is untouched. ────────────────────────────────
-  it('behaves exactly as before for a Stripe-owned tenant', async () => {
+  // ── Test 2 (THE-353): a Stripe-owned tenant no longer reaches Stripe. ────
+  it('refuses a Stripe-owned tenant now that the Stripe platform account is closed', async () => {
+    // Before THE-353 this created a real Stripe checkout session — correct
+    // while the account was live, and the exact defect once it was closed as
+    // `rejected.fraud`: a confidently-derived 'stripe' tenant silently routed
+    // to a dead account instead of refusing visibly.
     mockGetTenantPrivate.mockResolvedValue(STRIPE_TENANT);
 
     const res = await checkout(makeRequest('stripe/checkout', {
       plan: 'max', billing: 'yearly', tenantId: 'grace',
     }));
 
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ url: 'https://checkout.stripe/session' });
-
-    const args = mockSessionsCreate.mock.calls[0][0] as any;
-    expect(args.customer).toBe('cus_stripe_1');
-    expect(args.line_items[0].price).toBe('price_max_y');
-    expect(args.subscription_data.metadata).toMatchObject({ tenantId: 'grace', plan: 'max', billing: 'yearly' });
-    // Still no trial on a plan change — unchanged behaviour.
-    expect(args.subscription_data.trial_period_days).toBeUndefined();
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.error).toMatch(/not currently active/i);
+    expect(body.error).toMatch(/contact support/i);
+    expect(mockSessionsCreate).not.toHaveBeenCalled();
+    expect(stripeWriteCalls()).toHaveLength(0);
   });
 
   // ── Test 5: a tenant with neither identifier. ────────────────────────────
@@ -290,18 +291,31 @@ describe('the billing portal — the only way an admin can cancel', () => {
     expect(res.status).toBe(200);
   });
 
-  it('still opens the STRIPE portal for a Stripe-owned tenant, unchanged', async () => {
+  // ── THE-353: the Stripe portal branch refuses honestly instead of calling
+  // a closed account. This does NOT weaken "must never be unavailable" — an
+  // admin still gets an immediate, actionable next step (contact support)
+  // rather than whatever the Stripe SDK throws against a closed account.
+  it('refuses the STRIPE portal for a Stripe-owned tenant now that the account is closed', async () => {
     mockGetTenantPrivate.mockResolvedValue(STRIPE_TENANT);
 
     const res = await portal(makeRequest('stripe/portal', { tenantId: 'grace' }));
 
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ url: 'https://billing.stripe/portal' });
-    expect(mockPortalCreate).toHaveBeenCalledWith({
-      customer: 'cus_stripe_1',
-      return_url: 'https://theharvest.app/?stripe=portal_return',
-    });
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.error).toMatch(/not currently active/i);
+    expect(body.error).toMatch(/contact support/i);
+    expect(mockPortalCreate).not.toHaveBeenCalled();
     expect(mockDodoPortalCreate).not.toHaveBeenCalled();
+  });
+
+  it('still tells a Stripe tenant with NO subscription to subscribe first — unrelated to the closed account', async () => {
+    mockGetTenantPrivate.mockResolvedValue({});
+
+    const res = await portal(makeRequest('stripe/portal', { tenantId: 'grace' }));
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/subscribe first/i);
+    expect(mockPortalCreate).not.toHaveBeenCalled();
   });
 
   it('lets a CONFLICTING tenant still reach the portal via the declared processor', async () => {
@@ -359,7 +373,9 @@ describe('unbuilt Dodo actions refuse — never a silent no-op, never a Stripe c
     expect(mockSubItemCreate).not.toHaveBeenCalled();
   });
 
-  it('still adds per-church billing for a Stripe-owned Ministry tenant', async () => {
+  // ── THE-353: these two used to say "still works, unchanged" — that was
+  // correct while Stripe was live and is now the same dead end as the others.
+  it('refuses per-church billing for a Stripe-owned Ministry tenant now that the account is closed', async () => {
     mockGetTenantPrivate.mockResolvedValue(STRIPE_TENANT);
     mockDocGet
       .mockResolvedValueOnce({ exists: true, data: () => ({ plan: 'ultra' }) })
@@ -369,17 +385,18 @@ describe('unbuilt Dodo actions refuse — never a silent no-op, never a Stripe c
       tenantId: 'grace', churchId: 'c9', churchName: 'Second Campus',
     }));
 
-    expect(res.status).toBe(200);
-    expect(mockSubItemCreate).toHaveBeenCalledTimes(1);
-    expect((mockSubItemCreate.mock.calls[0][0] as any).subscription).toBe('sub_stripe_1');
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toMatch(/not currently active/i);
+    expect(mockSubItemCreate).not.toHaveBeenCalled();
   });
 
-  it('still updates seat quantity for a Stripe-owned Ministry tenant', async () => {
+  it('refuses a seat-quantity update for a Stripe-owned Ministry tenant now that the account is closed', async () => {
     mockGetTenantPrivate.mockResolvedValue(STRIPE_TENANT);
 
     const res = await updateQuantity(makeRequest('stripe/update-quantity', { tenantId: 'grace' }));
 
-    expect(res.status).toBe(200);
-    expect(mockSubItemUpdate).toHaveBeenCalledWith('si_1', { quantity: 3 });
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toMatch(/not currently active/i);
+    expect(mockSubItemUpdate).not.toHaveBeenCalled();
   });
 });

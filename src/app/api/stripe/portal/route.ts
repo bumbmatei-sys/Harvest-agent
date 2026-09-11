@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { getTenantPrivate } from '@/lib/tenant-private';
-import { resolveBillingOwnership } from '@/lib/billing-processor';
+import { resolveBillingOwnership, STRIPE_PLATFORM_ACCOUNT_OPERATIONAL } from '@/lib/billing-processor';
 import { dodoBillingProvider } from '@/lib/dodo/dodo-provider';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { requireAuth, requireOwner } from '@/lib/api-auth';
@@ -26,6 +26,17 @@ import { requireAuth, requireOwner } from '@/lib/api-auth';
  * ⚠️ The path is still spelled `/api/stripe/portal`. Renaming it would mean
  * shipping a client that stale tabs do not have, on the one route that must never
  * be unavailable. It gets its honest name when the Stripe path is retired.
+ *
+ * 🔴 A STRIPE-OWNED TENANT NOW GETS A NAMED REFUSAL INSTEAD OF A REAL CALL
+ * (THE-353). "Must never be unavailable" was never a promise that the Stripe
+ * branch itself always works — it is a promise that an admin is never left
+ * with no way out. With the Stripe platform account closed
+ * (`STRIPE_PLATFORM_ACCOUNT_OPERATIONAL`, billing-processor.ts), the real API
+ * call this branch used to make would fail every time; replacing it with an
+ * immediate, actionable "contact support" refusal keeps that promise better
+ * than attempting a doomed call and surfacing whatever the Stripe SDK throws.
+ * This is a STATEMENT ABOUT THE ACCOUNT, not the branch: it reverts to the
+ * real call the moment the flag does.
  */
 
 export const dynamic = 'force-dynamic';
@@ -94,18 +105,42 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ url: session.url });
     }
 
-    // ── Stripe-owned (and the no-identifier default): unchanged. ─────────────
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    if (!stripeKey) {
-      return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 });
-    }
-    const stripe = new Stripe(stripeKey);
-
+    // ── Stripe-owned (and the no-identifier default). ────────────────────────
     const customerId = privateData.stripeCustomerId;
 
     if (!customerId) {
       return NextResponse.json({ error: 'No Stripe subscription found. Please subscribe first.' }, { status: 400 });
     }
+
+    // 🔴 The Stripe platform account behind every Stripe-owned tenant is
+    // closed (`STRIPE_PLATFORM_ACCOUNT_OPERATIONAL`, billing-processor.ts) —
+    // a real call below would fail every time, deep inside the Stripe SDK,
+    // with no actionable message. THIS ROUTE MAY NEVER MERELY FAIL: it is the
+    // only way an admin cancels a subscription or replaces a card, so a
+    // known-doomed call is replaced with the same honest, actionable refusal
+    // every other blocked billing path already gives, rather than attempted
+    // and left to surface whatever Stripe's SDK throws.
+    if (!STRIPE_PLATFORM_ACCOUNT_OPERATIONAL) {
+      captureMoneyPathError(
+        new Error('[billing] Stripe-owned tenant attempted portal access while the Stripe platform account is inactive'),
+        { step: 'billing-portal-stripe-account-inactive', level: 'error', tenantId },
+      );
+      return NextResponse.json(
+        {
+          error: 'Your subscription is billed through a Stripe account that is not currently active, so we could not open your billing portal. Please contact support and we will cancel or update your subscription for you.',
+          code: 'billing-action-unavailable',
+          processor: 'stripe',
+          reason: ownership.reason,
+        },
+        { status: 409 },
+      );
+    }
+
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeKey) {
+      return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 });
+    }
+    const stripe = new Stripe(stripeKey);
 
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,

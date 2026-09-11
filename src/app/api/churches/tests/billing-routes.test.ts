@@ -118,19 +118,20 @@ describe('POST /api/churches/add-billing', () => {
     expect(mockSubItemCreate).not.toHaveBeenCalled();
   });
 
-  it("bills $10/mo for Ministry's second church", async () => {
+  it("THE-353: no longer bills $10/mo for Ministry's second church — the Stripe platform account is closed", async () => {
+    // Before THE-353 this created a real subscription item at $10/mo, correct
+    // while the account was live. Skipping (the two tests above) still
+    // succeeds because those never reach a charge; this one used to, so it is
+    // this one — not the skip paths — that the closed account now blocks.
     authAsTenantAdmin();
     queueTenantDoc({ plan: 'ultra', stripeSubscriptionId: 'sub_1' });
     queueChurchDoc({ tenantId: 'tenant-a', name: 'Second Church' });
     setChurchCount(2);
     const res = await addBilling(makeRequest('add-billing', { tenantId: 'tenant-a', churchId: 'c2' }, 'tok'));
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ success: true, subscriptionItemId: 'si_new' });
-    expect(mockSubItemCreate).toHaveBeenCalledTimes(1);
-    const createArgs = mockSubItemCreate.mock.calls[0][0];
-    expect(createArgs.subscription).toBe('sub_1');
-    expect(createArgs.price_data.unit_amount).toBe(1000);
-    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ stripeSubscriptionItemId: 'si_new' }));
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toMatch(/not currently active/i);
+    expect(mockSubItemCreate).not.toHaveBeenCalled();
+    expect(mockUpdate).not.toHaveBeenCalled();
   });
 
   it('is idempotent — a church that already has a subscription item is not billed again', async () => {

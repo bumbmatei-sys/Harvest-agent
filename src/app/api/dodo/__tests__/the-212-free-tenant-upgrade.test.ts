@@ -313,7 +313,7 @@ describe('a paid Dodo tenant’s manage action reaches Dodo’s portal, not Stri
     expect(mockStripeSessionsCreate).not.toHaveBeenCalled();
   });
 
-  it('still opens Stripe’s portal for a Stripe-owned tenant', async () => {
+  it('refuses Stripe’s portal for a Stripe-owned tenant now that the platform account is closed (THE-353)', async () => {
     mockRequireOwner.mockResolvedValue({
       user: { uid: 'u1' }, tenantId: 't1', tenantData: { name: 'Grace', plan: 'max' },
     });
@@ -323,9 +323,9 @@ describe('a paid Dodo tenant’s manage action reaches Dodo’s portal, not Stri
 
     const res = await portalPOST(post('api/stripe/portal', { tenantId: 't1' }));
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(409);
     expect(mockPortalCreate).not.toHaveBeenCalled();
-    expect(mockStripeSessionsCreate).toHaveBeenCalledTimes(1);
+    expect(mockStripeSessionsCreate).not.toHaveBeenCalled();
   });
 });
 

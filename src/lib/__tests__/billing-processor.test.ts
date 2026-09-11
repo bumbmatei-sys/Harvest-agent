@@ -3,6 +3,7 @@ import {
   blocksStripeAction,
   resolveBillingOwnership,
   billingActionUnavailable,
+  STRIPE_PLATFORM_ACCOUNT_OPERATIONAL,
 } from '@/lib/billing-processor';
 
 /**
@@ -109,8 +110,57 @@ describe('blocksStripeAction', () => {
     expect(blocksStripeAction(resolveBillingOwnership({ dodoSubscriptionId: 'sub_d' }))).toBe(true);
   });
 
-  it('allows a Stripe-owned tenant', () => {
-    expect(blocksStripeAction(resolveBillingOwnership({ stripeSubscriptionId: 'sub_s' }))).toBe(false);
+  // ── THE-353 — the Stripe platform account is closed. ─────────────────────
+  it('assumes the Stripe platform account is inactive — flip this fixture with the flag', () => {
+    // Every assertion below encodes CURRENT reality: the account is closed.
+    // If `STRIPE_PLATFORM_ACCOUNT_OPERATIONAL` is ever restored to `true`
+    // (a new account is live), this test — and the two below it — must be
+    // revisited rather than silently passing against a stale assumption.
+    expect(STRIPE_PLATFORM_ACCOUNT_OPERATIONAL).toBe(false);
+  });
+
+  it('blocks a Stripe-owned tenant while the platform account is inactive (THE-353)', () => {
+    // 🔴 THE WHOLE TICKET: a tenant that confidently derives to 'stripe' must
+    // not silently reach a closed account. Before THE-353 this returned
+    // `false` — "allows a Stripe-owned tenant" — which was correct while
+    // Stripe was live and is the exact defect once it was not.
+    expect(blocksStripeAction(resolveBillingOwnership({ stripeSubscriptionId: 'sub_s' }))).toBe(true);
+    expect(blocksStripeAction(resolveBillingOwnership({ stripeCustomerId: 'cus_s' }))).toBe(true);
+  });
+
+  it('blocks a tenant whose stored field explicitly declares stripe, not only a derived one', () => {
+    // The field-wins rule (test 6) says the stored field is authoritative for
+    // WHICH processor owns the tenant. It says nothing about whether that
+    // processor is reachable — a `field`-reason 'stripe' resolution hits the
+    // same closed account as a `derived` one.
+    const own = resolveBillingOwnership({ billingProcessor: 'stripe', stripeCustomerId: 'cus_s' });
+    expect(own).toMatchObject({ processor: 'stripe', reason: 'field' });
+    expect(blocksStripeAction(own)).toBe(true);
+  });
+
+  it('does NOT block `none` — the account closure does not reach the no-identifier path', () => {
+    // No-regression (test 5): blocking `none` would strand the one legacy path
+    // that still legitimately depends on it. The account closure changes what
+    // happens once Stripe is actually reached, not this predicate's shape.
+    expect(blocksStripeAction(resolveBillingOwnership({}))).toBe(false);
+  });
+});
+
+describe('billingActionUnavailable — a Stripe-owned tenant (THE-353)', () => {
+  it('names the closed account, not "no active subscription"', async () => {
+    // A tenant with a real Stripe subscription id is not "unbilled" — saying so
+    // would be a different, less honest lie than the one this ticket exists to
+    // fix. The refusal must say what is actually true: the processor it is on
+    // is not reachable right now.
+    const own = resolveBillingOwnership({ stripeSubscriptionId: 'sub_s' });
+    const res = billingActionUnavailable('changing your plan', own);
+
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.error).toMatch(/not currently active/i);
+    expect(body.error).toMatch(/contact support/i);
+    expect(body.error).not.toMatch(/no active subscription/i);
+    expect(body).toMatchObject({ code: 'billing-action-unavailable', processor: 'stripe', reason: 'derived' });
   });
 });
 
