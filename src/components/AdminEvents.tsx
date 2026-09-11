@@ -37,7 +37,7 @@ import {
   NO_LINKS_BODY, NO_LINKS_TITLE,
   PROVIDER_PICKER_HELP, PROVIDER_PICKER_TITLE,
   CONFIRM_ALREADY, CONFIRM_BUTTON, CONFIRM_BUTTON_HELP, CONFIRM_FAILED, CONFIRM_SUCCESS,
-  paymentStateOf, readEventProviderIds,
+  paymentStateOf, readEventProviderIds, registrationStatusLabel, REGISTERED_STAT_LABEL,
 } from '../lib/event-payment-claims';
 import { confirmPaymentClaim } from './inbox/payment-claims-client';
 /**
@@ -977,7 +977,7 @@ const AdminEvents: React.FC = () => {
           </div>
           <div className="bg-surface-raised rounded-2xl p-4 border border-line text-center shadow-xs">
             <div className="text-2xl font-bold text-field-600">{confirmed}</div>
-            <div className="text-xs text-faint mt-0.5">Confirmed</div>
+            <div className="text-xs text-faint mt-0.5">{REGISTERED_STAT_LABEL}</div>
           </div>
           <div className="bg-surface-raised rounded-2xl p-4 border border-line text-center shadow-xs">
             <div className="text-2xl font-bold" style={{ color: 'var(--brand-color, #d4a017)' }}>{attended}</div>
@@ -1083,7 +1083,7 @@ const AdminEvents: React.FC = () => {
                       r.status === 'attended' ? 'bg-field-100 text-field-700' :
                       r.status === 'confirmed' ? 'bg-sky-100 text-sky-700' :
                       r.status === 'waitlisted' ? 'bg-wheat-100 text-wheat-700' : 'bg-red-100 text-red-600'
-                    }`}>{r.status}</span>
+                    }`}>{registrationStatusLabel(r.status)}</span>
                   </div>
                   <p className="text-xs text-faint">
                     {r.email} · #{r.ticketCode}{r.ticketTypeName ? ` · ${r.ticketTypeName}` : ''}

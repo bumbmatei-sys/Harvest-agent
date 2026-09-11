@@ -109,6 +109,17 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // count. THE-313 still did not touch this file.
     ['f203f58f402ec89f14415c9ae64134bd44286b8c4fcb0e8fa12fb70cfd7739a2',
       'main + THE-351 — manual confirmation skips the closed rail; the CRM write and the Stripe path are byte-identical'],
+    // 🔴 APPENDED for THE-355, never substituted. A seat that owes money now also
+    // mints a 256-bit `paymentClaimToken` inside THE-351's OWN `owesManualPayment`
+    // ternary, so a LOGGED-OUT registrant can say they paid — THE-351's claim flow
+    // sat behind `requireAuth` and reached nobody on the public page, which is why
+    // no claim was ever created and the church's inbox was empty. 🔴 THE WRITE THIS
+    // GUARD EXISTS TO PROTECT IS STILL UNCHANGED: the `contactActivities` CRM row
+    // is byte-identical, as are THE-154's direct charge, the platform fee, the
+    // Checkout metadata, the pending-registration rollback and the capacity count.
+    // THE-313 still did not touch this file.
+    ['20be877124903dd6eeda68f20ea3835206381dcc766e8d680f755e2766cc50ed',
+      'main + THE-355 — the claim token is minted beside the reference; the CRM write and the Stripe path are byte-identical'],
   ],
   'src/app/api/event-registration/apply-discount/route.ts': [
     ['47622ed746e6e3a652cd7ffab4bd5f434ff4f52fea94a14c5d3eb588ff3924e0', 'main at 5f431e3'],

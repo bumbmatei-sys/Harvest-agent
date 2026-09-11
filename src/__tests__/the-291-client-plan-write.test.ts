@@ -473,7 +473,33 @@ describe('5 · the money path is byte-identical', () => {
      * nothing about what that church may do, and the Dodo webhook remains the
      * single writer of a capability.
      */
-    expect(routes.length, 'an API route was added or removed').toBe(121);
+    /**
+     * ─── 121 -> 122, THE-355 ─────────────────────────────────────────────────
+     *
+     * ONE route: `event-payment/public-claim`. THE-351's claim route sits behind
+     * `requireAuth` and is reached from the LOGGED-IN member app; for a crusade,
+     * where most attendees have no account and never will, that reaches nobody.
+     * No public registrant could say they had paid, so no claim was ever
+     * created, so the church's inbox was correctly empty about a thing that had
+     * never happened — which is the founder's own bug report.
+     *
+     * 🔴 IT PASSES THE-291'S CLAIM FOR THE SAME REASON ALL THREE OF THE-351'S
+     * DO, and more narrowly. It writes THREE fields on ONE registration — a
+     * claim flag, a timestamp and the inbox queue key — and there is no branch
+     * in it that writes `paymentStatus`, `paymentInvoiceId` or `amount`, let
+     * alone `plan`, a feature flag or an add-on count. It does not touch the
+     * tenant document except to READ the church's name for a notification. A
+     * CLAIMED TICKET IS NOT AN ENTITLEMENT — and it is not even a payment — so
+     * the Dodo webhook remains the single writer of a capability.
+     *
+     * ⚠️ IT IS UNAUTHENTICATED, WHICH IS THE POINT AND IS NOT A WIDENING. It
+     * carries no session because a logged-out registrant has none; what it
+     * carries instead is a stored 256-bit token minted for one registration,
+     * and the route finds the document BY that token rather than accepting a
+     * `registrationId` to check against it — so there is no expressible request
+     * that names somebody else's seat.
+     */
+    expect(routes.length, 'an API route was added or removed').toBe(122);
     expect(
       routes.some((f) => f.endsWith(path.join('app/api/sms/numbers/route.ts'))),
       'the route THE-314 added is missing — the count moved for some other reason',
@@ -487,6 +513,8 @@ describe('5 · the money path is byte-identical', () => {
       'app/api/event-payment/claim/route.ts',
       'app/api/event-payment/inbox/route.ts',
       'app/api/event-payment/confirm/route.ts',
+      // APPENDED BY THE-355 — see the note on the count above.
+      'app/api/event-payment/public-claim/route.ts',
     ]) {
       expect(
         routes.some((f) => f.endsWith(path.join(added))),

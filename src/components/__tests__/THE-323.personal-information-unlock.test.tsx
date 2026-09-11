@@ -663,6 +663,30 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
      * 44px floor written as a raw pixel value drifts and one written nowhere is
      * a control a thumb misses.
      */
+    /**
+     * APPENDED BY THE-355, NOTHING AROUND IT REMOVED OR REWRITTEN. It sits in
+     * sorted position because this list is compared in order.
+     *
+     * `PublicEventRegistration.tsx`: the PUBLIC event page, and the two controls
+     * a person at a crusade actually taps — each of the church's own payment
+     * links, and the "I've paid" button beside them. It USES the class rather
+     * than naming it: both carry `min-h-11` below `sm` with Rule 4's density
+     * above, spent as `CONTROL_DENSITY.action` so this ticket mints no height of
+     * its own.
+     *
+     * ⚠️ AND IT IS THE FIRST PUBLIC, LOGGED-OUT SURFACE IN THIS LIST. THE-351
+     * put the same pair on `UserEvents.tsx` — the member app — which for a
+     * crusade, where most attendees have no account and never will, reaches
+     * nobody: no claim was ever created, so the church's inbox was correctly
+     * empty about a thing that had never happened. The floor matters more here
+     * than anywhere above it, because this screen is reached on a phone, once,
+     * by somebody who will not come back to it.
+     *
+     * Measured in a real Chromium at five widths in
+     * `THE-355.public-payment.layout.test.tsx`: 44px at 380 and 768, 40px from
+     * 1024 up where the desktop rem base puts `min-h-11` under the token.
+     */
+    'src/components/PublicEventRegistration.tsx',
     'src/components/UserEvents.tsx',
     'src/components/UserMessages.tsx',
       // 🔴 APPENDED BY THE-331, NOTHING ABOVE OR BELOW REMOVED OR REWRITTEN.

@@ -822,6 +822,24 @@ describe('the layout rules live in one shared place and have a caller', () => {
       'src/components/NewsTab.tsx',
       'src/components/NewsletterEditor.tsx',
       'src/components/PersonalInformationModal.tsx',
+      // 🔴 THE-355 — the PUBLIC event page opts in, and it is the first
+      // logged-out surface in this list. It takes CONTROL_DENSITY and nothing
+      // else, for the same narrow reason THE-351's two surfaces took it: the
+      // page renders a primary ACTION button — the church's payment links and
+      // the "I've paid" button beside them — and must not mint a height for
+      // either. It does NOT take Rule 1 or FORM_CONTAINER: this page has its own
+      // `max-w-xl` shell, which is a public marketing-shaped column rather than
+      // an admin form measure, and taking the admin one would have rewidened a
+      // screen nobody complained about.
+      //
+      // ⚠️ WHY THE PUBLIC PAGE NEEDED IT AT ALL: THE-351 put the claim flow on
+      // `UserEvents.tsx`, the member app, which for a crusade — where most
+      // attendees have no account and never will — reaches nobody. No public
+      // registrant could say they had paid, so no claim was ever created and the
+      // church's inbox was correctly empty about a thing that had never
+      // happened. The controls that close that hole live here now, and they are
+      // tap targets on a phone.
+      'src/components/PublicEventRegistration.tsx',
       // THE-351 — the two surfaces of manual payment confirmation, and both opt
       // in for the same narrow reason: each renders a primary ACTION button and
       // must not mint a height for it. `UserEvents.tsx` carries the member's
