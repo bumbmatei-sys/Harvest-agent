@@ -91,11 +91,12 @@ const CONVERTED = [ONBOARDING, INTEGRATIONS] as const;
  * and the `text-green-600` it stopped spelling, in order to explain why. A raw
  * grep would fail on the documentation and pass on the defect.
  *
- * 🔴 THE-352 — THE REGEX VERSION ATE 151 LINES OF `IntegrationsSection.tsx`.
+ * 🔴 THE-352 — THE REGEX VERSION ATE A 154-LINE SPAN OF `IntegrationsSection.tsx`.
  * `interface IntegrationsSectionProps {` is followed by a JSDoc on its first
  * member, so `/\{\s*\/\*[\s\S]*?\*\/\s*\}/` anchored on that brace and ran to
  * the first comment that closes with `*\/ }` — `catch { /* prefill … *\/ }`,
- * 151 lines later. The provider gate lived inside that span, so every guard
+ * 154 lines on: lines 34 to 187, 85 of them code. The provider gate lived
+ * inside that span, so every guard
  * this suite made over it passed on an empty string. The parser-driven module
  * reads its ranges off a real parse and cannot make that mistake.
  */

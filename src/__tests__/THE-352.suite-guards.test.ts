@@ -21,7 +21,7 @@ import { MeasuringBrowser } from '../test/support/browser-measure';
  * Both halves of this ticket are one failure wearing two shapes: a suite that
  * LOOKS like it guards something and does not.
  *
- * ─── PART 1 · a comment stripper ate 151 lines, so four suites guarded nothing
+ * ─── PART 1 · a comment stripper ate 154 lines, so four suites guarded nothing
  *
  * 🔴 THE EXACT TRIGGER, because "usually an unterminated construct" was not the
  * answer and the answer matters for knowing what else is affected.
@@ -38,7 +38,8 @@ import { MeasuringBrowser } from '../test/support/browser-measure';
  * LAZY, which sounds like a defence and is not: laziness stops at the first
  * `*\/` THAT IS ALSO FOLLOWED BY `\s*\}`, and no comment in the file closes
  * that way until `catch { /* prefill is a convenience, not a requirement *\/ }`
- * inside the load effect — 151 lines further down. Everything between the two
+ * inside the load effect — at line 187, 154 lines on from the brace at 34.
+ * Everything between the two
  * became a single space: the props interface, the component signature,
  * `isPlatformOverride`, the per-provider gate, the provider state and the whole
  * loader.
@@ -158,11 +159,24 @@ describe('1 · the stripper preserves ALL code in IntegrationsSection.tsx', () =
     expect(stripComments(raw).split('\n'), 'the stripper changed the line count')
       .toHaveLength(raw.split('\n').length);
 
-    // And the damage it replaces is stated as a number rather than described,
-    // so this fails if the old behaviour ever comes back looking harmless.
+    // And the damage it replaces is stated as numbers rather than described, so
+    // this fails if the old behaviour ever comes back looking harmless.
     const lost = raw.split('\n').length - brokenStrip(raw).split('\n').length;
     expect(lost, 'the old three-regex helper no longer eats this file — re-derive the trigger')
       .toBe(178);
+
+    // Of which ONE MATCH accounts for 154 contiguous lines. Located by running
+    // the broken rule and measuring what it swallowed, not by naming a
+    // coordinate: the numbers are an outcome here, never an input.
+    const span = /\{\s*\/\*[\s\S]*?\*\/\s*\}/.exec(raw);
+    expect(span, 'the JSX-comment rule no longer matches at all').not.toBeNull();
+    const lines = span![0].split('\n');
+    expect(lines, 'the eaten span changed size — re-derive the trigger').toHaveLength(154);
+    const codeLines = lines.filter((l) => {
+      const t = l.trim();
+      return t !== '' && !t.startsWith('*') && !t.startsWith('/*') && !t.startsWith('//');
+    });
+    expect(codeLines.length, 'the eaten span stopped being mostly code').toBe(85);
   });
 
   it('🔴 the provider gate survives, BY NAME', () => {

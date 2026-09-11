@@ -140,7 +140,7 @@ const sha256 = (b: Buffer | string) => createHash('sha256').update(b).digest('he
  * 🔴 THE-352 — the three-regex version this replaced was destructive: an
  * opening brace followed by a JSDoc anchors its JSX-comment pattern, which then
  * runs to the first `*\/` that happens to be followed by `}`, deleting every
- * line between. Measured at 151 lines on `IntegrationsSection.tsx`. The
+ * line between. Measured at a 154-line span, 85 lines of it code, on `IntegrationsSection.tsx`. The
  * parser-driven module takes its comment ranges off TypeScript's own parse.
  */
 const code = (rel: string): string => stripComments(readSrc(rel));

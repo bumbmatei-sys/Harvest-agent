@@ -1008,7 +1008,8 @@ describe('THE-183 — admin Settings', () => {
     // 🔴 THE-352 — the three-regex chain that used to stand here is gone. An
     // opening brace followed by a JSDoc anchored its JSX-comment pattern, which
     // then ran to the first `*/` that happened to be followed by `}`; on
-    // `IntegrationsSection.tsx` that deleted 151 lines of real code. The
+    // `IntegrationsSection.tsx` that deleted a 154-line span, 85 lines of it
+    // real code. The
     // parser-driven module reads its ranges off TypeScript's own parse.
     const onboardingCode = stripComments(onboardingSection);
     expect(onboardingCode, 'OnboardingSection reports a failed save through alert() again')

@@ -130,7 +130,7 @@ function autosaveImportsIn(file: string, src: string): string[] {
  * reprice. Grepping raw text would fail on the documentation and pass on the
  * defect — exactly backwards.
  *
- * 🔴 THE-352 — THIS USED TO BE THREE REGEXES AND THEY ATE 151 LINES OF
+ * 🔴 THE-352 — THIS USED TO BE THREE REGEXES AND THEY ATE A 154-LINE SPAN OF
  * `IntegrationsSection.tsx`, INCLUDING THE PROVIDER GATE.
  *
  * The trigger is the JSX-comment regex `/\{\s*\/\*[\s\S]*?\*\/\s*\}/`.
