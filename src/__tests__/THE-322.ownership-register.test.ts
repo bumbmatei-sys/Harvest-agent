@@ -492,7 +492,7 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * retires a pinner updates this count and says what that suite still asserts;
  * a suite that quietly stops pinning fails here.
  */
-const RULES_PINNERS_NOW = 69;
+const RULES_PINNERS_NOW = 70;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per
@@ -912,6 +912,30 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
   // suppressed; and that `firestore.indexes.json`, `functions/` and
   // `layout.tsx` are byte-identical.
   ['THE-355', 'src/__tests__/THE-355.public-payment.guards.test.ts'],
+  // 🔴 THE-357 — three things reported and never swept. APPENDED beside
+  // THE-355's entry, never over it, and the floor above moves 69 -> 70 with it:
+  // the count is exact by design and this register is what keeps it so.
+  //
+  // ⚠️ WHAT IT ASSERTS: that `firestore.rules` is at a recorded digest, and that
+  // `firestore.indexes.json`, `functions/` and `layout.tsx` are byte-identical —
+  // this ticket adds no read, no write and no collection, so there is nothing
+  // for a rule to govern and it records NO rules digest in its own ownership
+  // entry. Beyond that: that THE-311 §8 asserts nothing about the current
+  // branch's diff and that each of its three claims survives by CONTENT; that
+  // #454's standing sweep would NOT have caught §8 even with its known binding
+  // blind spot closed, because its detector hunts the NON-EMPTY direction alone
+  // — proved on planted samples with the dataflow held fixed, and the cost of
+  // closing it pinned per suite as a handover rather than swept here; that no
+  // shipped source file promises a money rail is coming back, swept over the
+  // whole tree and named per file; that what replaces the share-sheet copy is
+  // TRUE, clause by clause against the tree; that `the-313-guards` is not
+  // weakened — THE-313's own digest still accepted, THE-357's appended beside
+  // it, and the URL builder and host validation the pin exists for pinned
+  // verbatim; and that no colour, emoji, token, primitive or dependency was
+  // added. Its measured half lives in
+  // `THE-357.admin-sms-controls.layout.test.tsx`, in real Chromium at five
+  // widths with animation suppressed.
+  ['THE-357', 'src/__tests__/THE-357.guards.test.ts'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {

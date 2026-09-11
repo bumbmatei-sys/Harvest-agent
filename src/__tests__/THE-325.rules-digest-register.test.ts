@@ -275,8 +275,27 @@ const filesSpelling = (digest: string): string[] =>
  * somebody else's seat. THE-355 records NO rules digest and reaches the accepted
  * set through this module like every other pinner, so a real rules change still
  * costs exactly one edit. Nothing above is removed and no accepted value is
- * widened. */
-const PINNING_SUITES = 69;
+ * widened.
+ *
+ * ─── 69 -> 70, THE-357 ───────────────────────────────────────────────────────
+ *
+ * THREE THINGS REPORTED AND NEVER SWEPT: THE-311 §8's expired branch-diff
+ * freezes, the giving share sheet still promising card giving was "coming soon"
+ * while the platform Connect account is closed as `rejected.fraud`, and
+ * `AdminSms`'s five Buttons measuring 25.38-36.25px above `sm` under Rule 4's
+ * 38px floor. `THE-357.guards.test.ts` joins the population.
+ *
+ * ⚠️ IT TOUCHES NO RULE AND RECORDS NO RULES DIGEST. Its three parts open a
+ * test file, a copy constant and five className strings; none of them adds a
+ * read, a write or a collection, so there is nothing for a rule to govern. It
+ * reaches the accepted set through this module like every other pinner —
+ * `rulesDigestFailure()` and nothing else — so a real rules change still costs
+ * exactly one edit. Nothing above is removed and no accepted value is widened.
+ *
+ * 🔴 ITS OWN OWNERSHIP RECORD DELIBERATELY CARRIES NO `firestore.rules`
+ * ENTRY, which is the register's rule for a ticket that does not change the
+ * file: `THE-357.json` records `AdminSms.tsx` alone. */
+const PINNING_SUITES = 70;
 
 /**
  * A digest no ticket has recorded and none ever will — the planted change.

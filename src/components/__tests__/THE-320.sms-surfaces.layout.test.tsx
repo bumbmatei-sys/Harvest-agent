@@ -150,7 +150,33 @@ setUpOrFail(async () => {
   const file = path.join(dir, 'sms.html');
   writeFileSync(
     file,
-    `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head><body>${page}</body></html>`,
+    '<!doctype html><html><head><meta charset="utf-8">'
+      + `<style>${css}</style>`
+      /* \u{1F534} AMENDED BY THE-357 — TRANSITIONS AND ANIMATIONS SUPPRESSED, and
+         this is a TIGHTENING of the measurement rather than a relaxation of any
+         claim below. `buttonVariants`' base string carries `transition-all`,
+         which includes `height` and `min-height`; `evaluateAt` RESIZES the
+         viewport and then waits two animation frames (~32ms), well inside a
+         150ms transition. So every reading here was taken while the box was
+         still moving from the layout the PREVIOUS viewport had.
+
+         It went unnoticed because it only bites when both ends of the change
+         are interpolable. `sm:h-auto` -> `h-11` does not animate (`auto` is not
+         an interpolable length, so it snaps), while `sm:h-[40px]` -> `h-11`
+         does — so the day a control adopted Rule 4's own density token this
+         suite started reading 40.13px, 40.69px and 43.67px on consecutive runs
+         for a button that rests at 44px. The repo has hit this three times
+         already: THE-346 read 7.7469px and 1.43015px for one element, #490 read
+         a menu row at 41.79998779296875px (exactly 44 x 0.95, the first frame of
+         `zoom-in-95`, because `getBoundingClientRect()` reports the SCALED box),
+         and THE-356 added this same line for the same reason.
+
+         \u{1F534} NO ASSERTION IS WEAKENED. The 44px floor, the Rule-4 heights, the
+         width ladder and the bottom-nav clearance are all unchanged and all
+         still measured — they are now measured at the RESTING layout, which is
+         the one a person sees and taps. */
+      + '<style>*,*::before,*::after{transition:none !important;animation:none !important}</style>'
+      + `</head><body>${page}</body></html>`,
   );
 
   browser = new MeasuringBrowser();

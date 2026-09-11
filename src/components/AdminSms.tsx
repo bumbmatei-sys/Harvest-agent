@@ -10,7 +10,7 @@ import { authFetch } from '../utils/auth-fetch';
 import { AdminSectionLabel, AdminBadge, statusTone } from './admin/AdminUI';
 // Rules 2 and 3 (form-layout.ts). Rule 1 is deliberately NOT applied here — see
 // the note on the page root below.
-import { FIELD_WIDTH, ACTION_BUTTON } from './layout/form-layout';
+import { FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
 import { SMS_FEATURE_ENABLED } from '../lib/sms-feature';
 // ── The installed primitives this screen composes from ──────────────────────
 //
@@ -235,7 +235,7 @@ const SmsUsageMeter: React.FC<{ usage: SmsUsage; onUpgrade: () => void }> = ({ u
               `rounded-lg` for it — so the corner stays exactly 12px. */}
           <Button
             onClick={onUpgrade}
-            className="shrink-0 h-11 sm:h-auto border-0 px-3.5 py-1.5 rounded-[12px] bg-gold text-white text-xs font-semibold hover:bg-gold"
+            className={`shrink-0 h-11 border-0 px-3.5 py-1.5 rounded-[12px] bg-gold text-white text-xs font-semibold hover:bg-gold ${CONTROL_DENSITY.action}`}
           >
             Upgrade plan
           </Button>
@@ -579,7 +579,7 @@ const AdminSmsScreen: React.FC = () => {
                 usage meter above. */}
             {/* `rounded-[12px]` rather than `rounded-brand`, for the reason set
                 out on the upgrade Button above. */}
-            <Button onClick={send} disabled={sending || capReached} className={`h-11 sm:h-auto w-full sm:w-auto border-0 flex items-center justify-center gap-2 py-2.5 px-2.5 rounded-[12px] bg-gold hover:bg-gold text-white text-sm font-semibold disabled:opacity-50 min-h-[44px] sm:min-h-0 ${ACTION_BUTTON}`}>
+            <Button onClick={send} disabled={sending || capReached} className={`h-11 w-full sm:w-auto border-0 flex items-center justify-center gap-2 py-2.5 px-2.5 rounded-[12px] bg-gold hover:bg-gold text-white text-sm font-semibold disabled:opacity-50 min-h-[44px] sm:min-h-0 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>
               {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
               {capReached ? 'Monthly SMS limit reached' : 'Send now'}
             </Button>
@@ -709,7 +709,7 @@ const AdminSmsScreen: React.FC = () => {
           {/* `rounded-xl` here, not `rounded-brand` — this button already spelled
               `rounded-xl`, which twMerge resolves cleanly against the
               primitive's `rounded-lg`, so no override literal is needed. */}
-          <Button onClick={saveTemplates} disabled={savingTpl} className="h-11 sm:h-auto border-0 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gold hover:bg-gold text-white text-sm font-semibold disabled:opacity-50">
+          <Button onClick={saveTemplates} disabled={savingTpl} className={`h-11 border-0 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gold hover:bg-gold text-white text-sm font-semibold disabled:opacity-50 ${CONTROL_DENSITY.action}`}>
             <Save size={15} /> {savingTpl ? 'Saving…' : 'Save Templates'}
           </Button>
           {tplSaved && <span className="text-sm text-field-600 font-medium ml-2">✓ Saved</span>}
@@ -756,7 +756,7 @@ const AdminSmsScreen: React.FC = () => {
                   <AlertDescription className="text-[11px] text-muted">Your number is already connected — incoming texts reach Harvest automatically, with nothing for you to set up.</AlertDescription>
                 </Alert>
                 <div className="flex items-center gap-3">
-                  <Button onClick={saveT2g} disabled={savingT2g} className="h-11 sm:h-auto border-0 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gold hover:bg-gold text-white text-sm font-semibold disabled:opacity-50">
+                  <Button onClick={saveT2g} disabled={savingT2g} className={`h-11 border-0 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gold hover:bg-gold text-white text-sm font-semibold disabled:opacity-50 ${CONTROL_DENSITY.action}`}>
                     <Save size={15} /> {savingT2g ? 'Saving…' : 'Save Text-to-Give'}
                   </Button>
                   {t2gSaved && <span className="text-sm text-field-600 font-medium">✓ Saved</span>}
@@ -764,7 +764,7 @@ const AdminSmsScreen: React.FC = () => {
               </div>
             )}
             {!t2g.enabled && (
-              <Button variant="outline" onClick={saveT2g} disabled={savingT2g} className="h-11 sm:h-auto flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-line bg-transparent hover:bg-transparent text-muted hover:text-muted disabled:opacity-50">
+              <Button variant="outline" onClick={saveT2g} disabled={savingT2g} className={`h-11 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-line bg-transparent hover:bg-transparent text-muted hover:text-muted disabled:opacity-50 ${CONTROL_DENSITY.action}`}>
                 <Save size={14} /> {savingT2g ? 'Saving…' : 'Save'}
               </Button>
             )}

@@ -530,8 +530,53 @@ describe('7 — the #425 toolbar still renders as one horizontally-scrolling row
 });
 
 describe('8 — #445 (THE-305) header is unchanged', () => {
-  it('the header THE-305 built is untouched, because the editor is untouched', () => {
-    expect(changed('src/components/AdminCourseEditor.tsx'), 'THE-311 modified THE-305\'s header').toEqual([]);
+  /**
+   * 🔴 THE-357 REPLACED THIS SECTION'S THREE BRANCH-DIFF FREEZES WITH THE
+   * PROPERTIES THEY WERE FOR — the move THE-338 made in section 5 above and
+   * THE-319 made in the `ui/progress` section below, for the same reason and
+   * under the same rule: the CLAIM is kept, only the MECHANISM is replaced, and
+   * no pinned value anywhere is rewritten.
+   *
+   * All three read `changed(...)`, which is this file's read of the current
+   * branch's diff, and each said "THE-311 did not open this file". That was a
+   * statement about THE-311'S OWN BRANCH, and THE-311 landed in #447. From that
+   * commit the same expression asks a different question on every later branch
+   * — not "did THE-311 touch it" but "may ANYONE ever touch it" — and it carries
+   * BOTH failure modes at once. It passes VACUOUSLY on every PR that happens not
+   * to open these files, which is what it did here and proved nothing about
+   * THE-311; and it goes red for the first PR that legitimately edits THE-305's
+   * header, for a reason that has nothing to do with that PR. Section 5's
+   * docblock records exactly this of its own freeze ("an assertion about
+   * whatever branch is running, so it goes red on any later PR that legitimately
+   * edits the palette").
+   *
+   * ⚠️ AND #454's STANDING SWEEP WOULD NEVER HAVE CAUGHT IT. Its detector hunts
+   * the NON-EMPTY direction alone and its own header calls an EMPTY-direction
+   * read of the diff "a freeze … it cannot expire"; THE-322's stronger dataflow
+   * version asserts outright that a freeze must NOT be flagged. So closing
+   * #454's known one-declaration blind spot would not have surfaced these three.
+   * That second blind spot, and every other freeze of this shape still in the
+   * tree, are reported and pinned in `src/__tests__/THE-357.guards.test.ts`.
+   *
+   * 🔴 NOTHING IS WEAKENED. Section 6 already freezes the editor by CONTENT
+   * — three drag depths anchored per depth, and #413's absent handlers — and
+   * section 1 already asserts that the editor carries its own migrated constants
+   * and imports nothing from `course.constants`. What no assertion made was a
+   * content claim about THE-305's OWN header and its OWN measured suite, and
+   * that is what stands here now: it holds on any branch, and it fails if either
+   * really does go.
+   */
+  it('the header THE-305 built is still the shared-header mechanism', () => {
+    const editor = src('src/components/AdminCourseEditor.tsx');
+    expect(editor, 'the editor stopped publishing THE-305\'s header through the shared API')
+      .toContain('useAdminHeader');
+    expect(editor, 'the header override THE-305 built is gone').toContain('setHeaderOverride');
+    // THE-311's own half of the claim — "THE-311 modified THE-305's header" is
+    // false because THE-311 never opened the editor. Section 1 makes the same
+    // claim across all three sibling copies; it is restated here so this
+    // section stands on its own rather than on a diff.
+    expect(editor, 'the course palette migration reached THE-305\'s editor')
+      .not.toContain('course.constants');
   });
 
   /**
@@ -550,11 +595,33 @@ describe('8 — #445 (THE-305) header is unchanged', () => {
    */
   const THE_311_AMENDED = ['src/components/__tests__/THE-305.course-editor-header.test.tsx'];
 
-  it('THE-305\'s measured-geometry suite is byte-identical, and only its source guard moved', () => {
-    expect(changed('src/components/__tests__/THE-305.course-editor-header.layout.test.tsx'),
-      'THE-311 touched THE-305\'s measured geometry').toEqual([]);
-    expect(changed('src/components/__tests__/THE-305.').filter((f) => !THE_311_AMENDED.includes(f)),
-      'a second THE-305 guard was amended').toEqual([]);
+  it('THE-305\'s measured-geometry suite still measures, and only its source guard was amended', () => {
+    /* 🔴 WAS `changed(the layout suite) === []`. "Not in this branch's diff"
+       was only ever a statement about THE-311's diff. What THE-311 actually
+       depends on is that THE-305's measured pins are still THERE to be depended
+       on — and that is a claim about the file, true or false on any branch. */
+    const layout = src('src/components/__tests__/THE-305.course-editor-header.layout.test.tsx');
+    expect(layout, 'THE-305 stopped measuring at all five widths')
+      .toContain('const VIEWPORTS = [380, 768, 1024, 1280, 1440] as const;');
+    expect(layout, "THE-305's 44px touch floor is gone").toContain('TOUCH_TARGET_MIN_PX = 44');
+    expect(layout, "THE-305's Rule 4 boundary case is gone")
+      .toContain('every control is a real target below sm, and Rule 4 holds above');
+    expect(layout, "THE-305's bottom-nav clearance is gone")
+      .toContain('the editor clears the fixed bottom nav');
+
+    /* 🔴 WAS `changed('src/components/__tests__/THE-305.')` minus the one
+       amended file. Asked of the DIRECTORY instead, which is where the answer
+       actually lives: exactly one THE-305 guard carries THE-311's amendment
+       marker, and a SECOND one appearing is the whole thing this ever meant to
+       catch — on this branch or any later one. */
+    const guards = readdirSync(path.join(ROOT, 'src/components/__tests__'))
+      .filter((f) => f.startsWith('THE-305.'))
+      .map((f) => `src/components/__tests__/${f}`)
+      .sort();
+    expect(guards.length, "THE-305's guards vanished, so this would prove nothing")
+      .toBeGreaterThanOrEqual(3);
+    expect(guards.filter((f) => src(f).includes('AMENDED BY THE-311')),
+      'a second THE-305 guard was amended by THE-311').toEqual(THE_311_AMENDED);
   });
 
   it('and the amendment kept THE-305\'s own claim rather than deleting it', () => {

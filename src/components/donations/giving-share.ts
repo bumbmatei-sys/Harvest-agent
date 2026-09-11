@@ -2,8 +2,9 @@
  * THE-281 — sharing the giving page.
  *
  * The founder: a button in the donations section that shares the giving page,
- * carrying all the church's payment links, with Stripe Connect marked as coming
- * soon.
+ * carrying all the church's payment links, with card giving named as a
+ * sentence. (⚠️ THE BRIEF SAID "marked as coming soon". THE-357 removed that
+ * promise — see `GIVING_SHARE_CARD_GIVING_OFF` at the foot of this file.)
  *
  * ─── 🔴 EVERY URL THIS MODULE EMITS IS ONE THE ALLOW-LIST ALREADY PASSED ────
  *
@@ -199,9 +200,9 @@ export function givingShareUrls(payload: GivingSharePayload): string[] {
  * ⚠️ STATIC COPY, NOT A CONTROL — THE-256.
  *
  * Stripe Connect is switched off (`STRIPE_CONNECT_ENABLED = false`; the
- * platform account is closed as `rejected.fraud`). The share surface names it
- * because a founder looking at "all the ways people can give" will otherwise
- * wonder where card giving went — but it names it as a SENTENCE. There is no
+ * platform account is closed as `rejected.fraud`). The share surface names card
+ * giving because a founder looking at "all the ways people can give" will
+ * otherwise wonder where it went — but it names it as a SENTENCE. There is no
  * button, no link, no toggle and no gated branch that could become one: this is
  * a string, and the surface renders it as text.
  *
@@ -210,6 +211,32 @@ export function givingShareUrls(payload: GivingSharePayload): string[] {
  * which is the half-working money surface THE-256 removed. When Connect comes
  * back it comes back through `PaymentSection`, which already owns that state
  * for both screens that mount it — not through a share sheet.
+ *
+ * ─── 🔴 THE-357 · IT NO LONGER PROMISES ─────────────────────────────────────
+ *
+ * It read "Card giving through Stripe Connect is coming soon. Until then, these
+ * are the ways your members can give." THERE IS NO "UNTIL THEN". The platform
+ * Connect account is closed as `rejected.fraud` and Stripe stopped replying
+ * (`86bbnjmw9`); there is no migration, no date and nothing in progress, so
+ * "coming soon" was a promise the product cannot keep and the church had no way
+ * to know that. THE-350 corrected the same false promise on the two
+ * admin card-giving surfaces and REPORTED this one, because it sat under
+ * another ticket's pin. This is that follow-up, and it is the last surface.
+ *
+ * ⚠️ EVERY CLAUSE BELOW IS TRUE TODAY, and each is asserted from the tree in
+ * `THE-357.guards.test.ts` rather than taken on trust:
+ *   · "Card giving inside the app is off" — `STRIPE_CONNECT_ENABLED` is false.
+ *   · "These are the ways your members can give" — the links this very payload
+ *     carries, re-validated by `readGivingLinks`, rendered directly above it.
+ *   · "a gift you record in the CRM counts on your dashboard, in accounting and
+ *     on your giving statements" — THE-350 built that path: the CRM posts to
+ *     `/api/donations/manual`, the writer writes the ledger, and all three
+ *     surfaces read it.
+ *
+ * 🔴 THE NAME CHANGED WITH THE SENTENCE. `GIVING_SHARE_STRIPE_SOON` said
+ * "soon" in an identifier every reader of this module sees, which is the same
+ * false promise one layer down. It is renamed rather than left to rot beside
+ * copy that contradicts it.
  */
-export const GIVING_SHARE_STRIPE_SOON =
-  'Card giving through Stripe Connect is coming soon. Until then, these are the ways your members can give.';
+export const GIVING_SHARE_CARD_GIVING_OFF =
+  'Card giving inside the app is off. These are the ways your members can give, and a gift you record in the CRM counts on your dashboard, in accounting and on your giving statements.';

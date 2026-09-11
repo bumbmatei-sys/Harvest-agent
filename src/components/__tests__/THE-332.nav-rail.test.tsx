@@ -820,7 +820,25 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
     'd0f2f7d652ce08c4e80d46957cf7022559cd7624df97705ce0d66e6d54a6a2e8',
   ],
   'src/components/AdminServices.tsx': '17f508718d3c6b1ad016b9fb6be2c241629421705af4a9c0966b02739eba74ae',
-  'src/components/AdminSms.tsx': 'f48ae4b8b6deff201e3767e5812bf7045af632a64c88384e5a91f285c47caab2',
+  /* 🔴 AN ACCEPTED SET, APPENDED TO, NOT ONE VALUE SUBSTITUTED — the shape the
+     entries above and below already use, and the rule this map states: THE-332's
+     own value stays accepted and a digest that is NEITHER still fails.
+
+     THE-357 legitimately changes AdminSms.tsx, on a defect #500 measured and
+     deliberately did not sweep: the screen's five Buttons computed 25.38 / 36.25
+     / 36.25 / 36.25 / 34.63px above `sm`, every one under Rule 4's 38px floor,
+     because `sm:h-auto` let `ui/button.tsx`'s 24/28/32/36px intrinsic sizes
+     through. Each now spells Rule 4's own opt-in token instead and measures 40px
+     at 768/1024/1280/1440, 44px at 380. NOTHING THE-332 OWNS MOVED: this file
+     spells no nav group, no rail entry and no flyout, and this ticket adds no
+     read and no write to the screen — five className strings and one named
+     import from `layout/form-layout`. */
+  'src/components/AdminSms.tsx': [
+    // THE-332 — the value this guard was written at.
+    'f48ae4b8b6deff201e3767e5812bf7045af632a64c88384e5a91f285c47caab2',
+    // APPENDED BY THE-357 — the five SMS controls adopt Rule 4's density token.
+    '36dbc419cc5990f1021b81e03dfa33851c62199a54a5052c89511e8e34d43002',
+  ],
   /* AN ACCEPTED SET, APPENDED TO, NOT ONE VALUE SUBSTITUTED - the same shape
      and the same reason as the sets above. THE-332's value stays accepted and a
      digest that is NEITHER still fails, which is the whole job of this entry.
