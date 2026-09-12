@@ -638,6 +638,41 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/AdminDocs.tsx',
       'src/components/AdminEvents.tsx',
       'src/components/AdminSettings.tsx',   // uses it: THE-316's TOUCH_FLOOR
+      /**
+       * 🔴 APPENDED BY THE-358, NOTHING AROUND IT REMOVED OR REWRITTEN. It sits
+       * here because this list is the sweep's own sorted order, not the order
+       * tickets arrived in.
+       *
+       * ⚠️ IT USES THE CLASS, and DELIBERATELY NOT in the Rule-4 form — a flat
+       * `min-h-11` with no `sm:min-h-0`. That is a considered divergence from
+       * THE-331's entry below, which argues the gate is load-bearing, and the
+       * difference is MEASURED rather than asserted.
+       *
+       * Every row of the admin account menu was under BOTH floors before this
+       * ticket, in real Chromium with animation suppressed:
+       *
+       *     before   380: 40px    768: 40px    1024 / 1280 / 1440: 36.25px
+       *     after    380: 44px    768: 44px    1024 / 1280 / 1440: 39.875px
+       *
+       * `px-4 py-2.5` around `text-sm` is 40px, and globals.css trims the rem
+       * base to 14.5px above 1024, taking the same row to 36.25px — under Rule
+       * 4's own 38px control floor, not merely under the phone floor. So the
+       * desktop half was ALREADY broken here, and `sm:min-h-0` would restore
+       * exactly that: gating the floor off from `sm` up puts these rows back at
+       * 36.25px and fails Rule 4. THE-331's gate is right for a control whose
+       * desktop height is FIXED at 38px by a density token; these rows have no
+       * such token, so the ungated minimum is what carries them.
+       *
+       * 🔴 AND IT DOES NOT FIGHT RULE 4, which is the thing that gate exists to
+       * prevent: `min-h-11` is 2.75rem, so above 1024 it computes to 39.875px —
+       * INSIDE Rule 4's 38-40px band, not above it. One token therefore serves
+       * both floors at every width, which is the same figure THE-334 measured
+       * for this very component's rail trigger.
+       *
+       * Measured at five widths in `THE-358.account-menu.layout.test.tsx`,
+       * which asserts BOTH floors, so this divergence cannot rot silently.
+       */
+      'src/components/MyAccountMenu.tsx',   // THE-358: USES it, ungated, as a both-floors minimum
       'src/components/Profile.tsx',         // names it in a comment, does not use it
       // 🔴 APPENDED BY THE-348, NOTHING AROUND IT REMOVED OR REWRITTEN. It sits
       // here because this list is the sweep's own sorted order, not the order

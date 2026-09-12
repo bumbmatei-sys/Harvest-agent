@@ -492,7 +492,7 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * retires a pinner updates this count and says what that suite still asserts;
  * a suite that quietly stops pinning fails here.
  */
-const RULES_PINNERS_NOW = 70;
+const RULES_PINNERS_NOW = 71;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per
@@ -936,6 +936,24 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
   // `THE-357.admin-sms-controls.layout.test.tsx`, in real Chromium at five
   // widths with animation suppressed.
   ['THE-357', 'src/__tests__/THE-357.guards.test.ts'],
+  // ⚠️ WHAT IT ASSERTS: that `firestore.rules` is at a recorded digest, and that
+  // `firestore.indexes.json`, `functions/` and `layout.tsx` are byte-identical.
+  // THE-358 adds a LINK — one <a> to docs.theharvest.site in the admin account
+  // menu, below Billing & Payments — so it adds no read, no write and no
+  // collection, there is nothing for a rule to govern, and it records NO rules
+  // digest in its own ownership entry. Beyond that: that the row renders at the
+  // right address, opens in a new tab with rel="noopener", is UNGATED (present
+  // for an admin who may reach neither Settings nor Billing), and sits DIRECTLY
+  // under Billing & Payments — asserted as an ORDER over rendered markup, since
+  // "above or under billing" was the founder's whole instruction; that every
+  // pre-existing row survives in order, still a button, still carrying the
+  // `w-full` THE-181's guard requires of that file; that the rail's flyouts and
+  // the REACH group are untouched, asked of the ownership register rather than
+  // of the diff; and that no colour, emoji, token, primitive or dependency was
+  // added. Its measured half lives in `THE-358.account-menu.layout.test.tsx`,
+  // in real Chromium at five widths with animation suppressed, where it also
+  // records that every row of that menu was under BOTH floors before it.
+  ['THE-358', 'src/components/__tests__/THE-358.account-menu.test.tsx'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {

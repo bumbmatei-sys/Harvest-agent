@@ -295,7 +295,23 @@ const filesSpelling = (digest: string): string[] =>
  * 🔴 ITS OWN OWNERSHIP RECORD DELIBERATELY CARRIES NO `firestore.rules`
  * ENTRY, which is the register's rule for a ticket that does not change the
  * file: `THE-357.json` records `AdminSms.tsx` alone. */
-const PINNING_SUITES = 70;
+/**
+ * 🔵 71 SINCE THE-358, which adds `THE-358.account-menu.test.tsx` to the
+ * population.
+ *
+ * ⚠️ IT TOUCHES NO RULE AND RECORDS NO RULES DIGEST. It adds a LINK — one <a>
+ * to the live documentation site in the admin account menu, below Billing &
+ * Payments — so it opens no read, no write and no collection, and there is
+ * nothing for a rule to govern. It reaches the accepted set through this module
+ * like every other pinner — `rulesDigestFailure()` and nothing else — so a real
+ * rules change still costs exactly one edit. Nothing above is removed and no
+ * accepted value is widened.
+ *
+ * 🔴 ITS OWN OWNERSHIP RECORD DELIBERATELY CARRIES NO `firestore.rules` ENTRY,
+ * which is the register's rule for a ticket that does not change the file:
+ * `THE-358.json` records `MyAccountMenu.tsx` and the two suites it edits, and
+ * no rules digest. */
+const PINNING_SUITES = 71;
 
 /**
  * A digest no ticket has recorded and none ever will — the planted change.
