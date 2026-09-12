@@ -1,8 +1,37 @@
 "use client";
 import React, { useEffect, useRef, useState } from 'react';
-import { User, Settings, CreditCard, ExternalLink, LogOut } from 'lucide-react';
+import { User, Settings, CreditCard, ExternalLink, BookOpen, LogOut } from 'lucide-react';
 
 const GOLD = 'var(--brand-color, #B8962E)';
+
+/**
+ * 🔴 EVERY ROW'S CLASS STRING, IN ONE PLACE, AND IT CARRIES THE TOUCH FLOOR.
+ *
+ * ⚠️ `min-h-11` IS NEW AND IT FIXES A PRE-EXISTING DEFECT, measured in real
+ * Chromium with transitions and animations suppressed:
+ *
+ *     before   380px: 40px      768px: 40px      1024/1280/1440px: 36.25px
+ *     after    380px: 44px      768px: 44px      1024/1280/1440px: 39.875px
+ *
+ * `px-4 py-2.5` around `text-sm` computes to 40px, which is UNDER the 44px
+ * touch floor below `sm`; above 1024 globals.css trims the rem base to 14.5px
+ * and the same row computes to 36.25px, which is under Rule 4's 38px control
+ * floor too. Every row in this menu was under both, and a dropdown row is a tap
+ * target. THE-358 adds a row to this menu, so it brings the menu to the floor
+ * rather than adding a seventh row that misses it — the sweep THE-357 did for
+ * AdminSms's Buttons after #500 measured them.
+ *
+ * ⚠️ ONE `min-h-11` SERVES BOTH FLOORS, which is why there is no `sm:` variant:
+ * 2.75rem is 44px below 1024 and 39.875px above it, inside Rule 4's band. That
+ * is the same figure THE-334 measured for this component's rail trigger.
+ *
+ * 🔴 `w-full` IS LOAD-BEARING — THE-181's guard requires every `[role="menuitem"]`
+ * in this file to carry it, on the ground that `w-full` inside a fixed `w-60`
+ * menu means "fill the menu" rather than the unbounded-stretch defect the form
+ * rules exist for. Keeping one shared string is what stops a new row missing it.
+ */
+const ROW = 'w-full flex items-center gap-3 px-4 py-2.5 min-h-11 text-left';
+const ROW_HOVER = `${ROW} hover:bg-surface-sunken transition-colors`;
 
 /**
  * "May this admin reach Billing & Payments?" — deliberately THREE-state.
@@ -93,8 +122,10 @@ const Avatar: React.FC<{ photoURL?: string | null; name?: string | null; email?:
 /**
  * Circular avatar button (admin header, top-right) that opens a small dropdown
  * with My Profile · Settings (if entitled) · Billing & Payments (owners, by
- * `ownerId` OR by the admin roster) · Go to User App · Log out. Closes on
- * outside-click / Esc. Admin-side only — the user app has its own Profile tab.
+ * `ownerId` OR by the admin roster) · Documentation · Go to User App · Log out.
+ * Closes on outside-click / Esc. Admin-side only — the user app has its own
+ * Profile tab, and the docs are written for church ADMINS, so the member app
+ * does not link them.
  */
 const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
   photoURL, displayName, email, billingAccess, onOpenProfile, onOpenSettings, onOpenBilling, onGoToUserApp, onLogout,
@@ -154,7 +185,7 @@ const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
             <button
               role="menuitem"
               onClick={() => run(onOpenProfile)}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-surface-sunken transition-colors"
+              className={ROW_HOVER}
             >
               <User size={16} className="text-muted" />
               <span className="text-sm font-medium text-body">My Profile</span>
@@ -164,7 +195,7 @@ const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
               <button
                 role="menuitem"
                 onClick={() => run(onOpenSettings)}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-surface-sunken transition-colors"
+                className={ROW_HOVER}
               >
                 <Settings size={16} className="text-muted" />
                 <span className="text-sm font-medium text-body">Settings</span>
@@ -181,7 +212,7 @@ const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
                 role="menuitem"
                 aria-disabled="true"
                 aria-busy="true"
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-left opacity-60 cursor-default"
+                className={`${ROW} opacity-60 cursor-default`}
               >
                 <CreditCard size={16} className="text-muted" />
                 <span className="text-sm font-medium text-body">Billing &amp; Payments</span>
@@ -194,12 +225,47 @@ const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
               <button
                 role="menuitem"
                 onClick={() => run(onOpenBilling)}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-surface-sunken transition-colors"
+                className={ROW_HOVER}
               >
                 <CreditCard size={16} className="text-muted" />
                 <span className="text-sm font-medium text-body">Billing &amp; Payments</span>
               </button>
             ) : null}
+
+            {/* 🔴 DOCUMENTATION — the live docs site, docs.theharvest.site.
+                It existed for a while with nothing in either product linking to
+                it; this is the admin app's link to it.
+
+                ⚠️ BELOW BILLING & PAYMENTS, DELIBERATELY. Billing is a
+                destructive-adjacent destination people go to on purpose and
+                reach by muscle memory; a new row ABOVE it moves a target they
+                already know, and the one time that matters is the time somebody
+                is trying to cancel. Documentation is a reference people browse
+                to, so it takes the new position rather than displacing the
+                item that cannot afford to move.
+
+                🔴 NOT GATED. Every admin can read the docs — there is no
+                entitlement to check and nothing to hide, so this row carries no
+                condition at all, unlike Settings and Billing above it.
+
+                🔴 AN <a>, NOT A BUTTON, and it does not go through `run()`.
+                This leaves the app for another origin: `target="_blank"` so the
+                admin's place in the app survives, and `rel="noopener"` so the
+                opened page gets no `window.opener` handle back. `onClick` only
+                closes the menu — the navigation is the anchor's own, so it
+                still works middle-clicked or opened from the keyboard, which a
+                button with a handler would not. */}
+            <a
+              role="menuitem"
+              href="https://docs.theharvest.site"
+              target="_blank"
+              rel="noopener"
+              onClick={() => setOpen(false)}
+              className={ROW_HOVER}
+            >
+              <BookOpen size={16} className="text-muted" />
+              <span className="text-sm font-medium text-body">Documentation</span>
+            </a>
 
             {/* Go to User App — gold accent, mirroring the old More-drawer row.
                 Hidden on desktop (lg:hidden): the branded top bar already has an
@@ -207,7 +273,7 @@ const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
             <button
               role="menuitem"
               onClick={() => run(onGoToUserApp)}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-surface-sunken transition-colors lg:hidden"
+              className={`${ROW_HOVER} lg:hidden`}
             >
               <ExternalLink size={16} style={{ color: GOLD }} />
               <span className="text-sm font-semibold" style={{ color: GOLD }}>Go to User App</span>
@@ -218,7 +284,7 @@ const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
             <button
               role="menuitem"
               onClick={() => run(onLogout)}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-red-50 transition-colors"
+              className={`${ROW} hover:bg-red-50 transition-colors`}
             >
               <LogOut size={16} className="text-red-500" />
               <span className="text-sm font-semibold text-red-600">Log out</span>
