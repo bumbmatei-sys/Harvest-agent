@@ -13,9 +13,10 @@ import { CONTROL_DENSITY } from './layout/form-layout';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { claimPaymentSent } from './inbox/payment-claims-client';
 import {
-  MEMBER_CLAIMED_BADGE, MEMBER_CLAIMED_TITLE, MEMBER_CLAIM_BUTTON, MEMBER_CLAIM_FAILED,
-  MEMBER_CLAIM_HELP, MEMBER_CONFIRMED_BADGE, MEMBER_UNPAID_BADGE,
-  memberClaimedBody, memberConfirmedBody, memberUnpaidBody,
+  MEMBER_CLAIM_BUTTON, MEMBER_UNPAID_BADGE, TICKET_QR_WAITING_TITLE,
+  memberClaimFailed, memberClaimHelp, memberClaimedBadge, memberClaimedBody,
+  memberClaimedTitle, memberConfirmedBadge, memberConfirmedBody, memberUnpaidBody,
+  ticketQrWaitingBody,
   type PaymentState,
 } from '../lib/event-payment-claims';
 
@@ -82,17 +83,23 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
   const [ticketView, setTicketView] = useState<EventRow | null>(null);
   const shareBase = useShareBaseUrl();
   /**
-   * THE-351 — the church's name, for the payment copy. Every sentence a member
-   * reads about money names the CHURCH as the party that decides, so the name
+   * THE-351 — the TENANT's name, for the payment copy. Every sentence a member
+   * reads about money names the tenant as the party that decides, so the name
    * has to be a real one; `branding.churchName` is what `TenantContext` has
-   * already loaded, and the fallback is a neutral noun rather than "Harvest",
-   * which would be the one word that must never appear in that position.
+   * already loaded.
+   *
+   * ⚠️ THE-359 REMOVED THE LOCAL `|| 'the church'` FALLBACK. The founder: "not
+   * all tenants are churches." The fallback now lives in ONE place —
+   * `tenantLabel` in `event-payment-claims.ts` — so this screen and the public
+   * page cannot describe the same missing name two different ways. The raw
+   * value (which may be undefined) is handed straight to the copy functions,
+   * every one of which resolves it.
    */
   // The OPTIONAL hook — see the note in AdminEvents: `useTenant` throws outside
   // a provider, and this screen is mounted bare by existing suites.
-  const churchName =
+  const tenantName =
     (useTenantOptional()?.branding as { churchName?: string } | undefined)?.churchName
-    || 'the church';
+    ?? null;
   /** Bumped after a successful "I've paid" so the ticket re-reads its state. */
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -306,7 +313,7 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
         <TicketModal
           row={ticketView}
           onClose={() => setTicketView(null)}
-          churchName={churchName}
+          tenantName={tenantName}
           onChanged={() => { setTicketView(null); setReloadKey(k => k + 1); }}
         />
       )}
@@ -343,9 +350,9 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
  */
 const TicketPaymentPanel: React.FC<{
   ticket: ApiTicket;
-  churchName: string;
+  tenantName: string | null;
   onChanged: () => void;
-}> = ({ ticket, churchName, onChanged }) => {
+}> = ({ ticket, tenantName, onChanged }) => {
   const [state, setState] = useState<'idle' | 'saving' | 'failed'>('idle');
   const payment = ticket.payment ?? 'free';
   const reference = ticket.paymentReference || '';
@@ -356,9 +363,9 @@ const TicketPaymentPanel: React.FC<{
     return (
       <div className="mt-5 text-left" data-ticket-payment="confirmed">
         <Alert>
-          <AlertTitle>{MEMBER_CONFIRMED_BADGE}</AlertTitle>
+          <AlertTitle>{memberConfirmedBadge(tenantName)}</AlertTitle>
           <AlertDescription>
-            {memberConfirmedBody(churchName, ticket.paymentConfirmedAt || '')}
+            {memberConfirmedBody(tenantName, ticket.paymentConfirmedAt || '')}
           </AlertDescription>
         </Alert>
       </div>
@@ -384,10 +391,10 @@ const TicketPaymentPanel: React.FC<{
     return (
       <div className="mt-5 text-left" data-ticket-payment="claimed">
         <Alert>
-          <AlertTitle>{MEMBER_CLAIMED_TITLE}</AlertTitle>
-          <AlertDescription>{memberClaimedBody(churchName, reference)}</AlertDescription>
+          <AlertTitle>{memberClaimedTitle(tenantName)}</AlertTitle>
+          <AlertDescription>{memberClaimedBody(tenantName, reference)}</AlertDescription>
         </Alert>
-        <p className="mt-2 text-[11px] font-semibold text-muted">{MEMBER_CLAIMED_BADGE}</p>
+        <p className="mt-2 text-[11px] font-semibold text-muted">{memberClaimedBadge(tenantName)}</p>
       </div>
     );
   }
@@ -397,7 +404,7 @@ const TicketPaymentPanel: React.FC<{
       <Alert>
         <AlertTitle>{MEMBER_UNPAID_BADGE}</AlertTitle>
         <AlertDescription>
-          {memberUnpaidBody(churchName, ticket.amount, reference)}
+          {memberUnpaidBody(tenantName, ticket.amount, reference)}
         </AlertDescription>
       </Alert>
 
@@ -435,10 +442,10 @@ const TicketPaymentPanel: React.FC<{
       >
         {state === 'saving' ? 'Sending…' : MEMBER_CLAIM_BUTTON}
       </button>
-      <p className="mt-1.5 text-[11px] text-muted" data-ticket-claim-help>{MEMBER_CLAIM_HELP}</p>
+      <p className="mt-1.5 text-[11px] text-muted" data-ticket-claim-help>{memberClaimHelp(tenantName)}</p>
       {state === 'failed' && (
         <p className="mt-1.5 text-[11px] font-semibold text-destructive" data-ticket-claim-failed>
-          {MEMBER_CLAIM_FAILED}
+          {memberClaimFailed(tenantName)}
         </p>
       )}
     </div>
@@ -450,14 +457,49 @@ const TicketPaymentPanel: React.FC<{
 const TicketModal: React.FC<{
   row: EventRow;
   onClose: () => void;
-  churchName: string;
+  tenantName: string | null;
   onChanged: () => void;
-}> = ({ row, onClose, churchName, onChanged }) => {
+}> = ({ row, onClose, tenantName, onChanged }) => {
   const t = row.ticket!;
   const [qr, setQr] = useState<string>('');
   const [qrError, setQrError] = useState(false);
 
+  /**
+   * THE-359 — 🔴 A PAID TICKET SHOWS NO QR UNTIL THE TENANT HAS CONFIRMED IT.
+   *
+   * THE FOUNDER: "the user should not have the qr code unless his payment has
+   * been confirmed."
+   *
+   * 🔴 THE GATE IS THE ABSENCE OF A CONFIRMATION, NOT THE PRESENCE OF A PRICE,
+   * and the difference is the regression this ticket is most likely to ship. A
+   * FREE ticket has no payment to confirm: `paymentStateOf` answers `free` for
+   * it and so does the `?? 'free'` here for a row from before the field
+   * existed, so it takes the `false` branch and its QR renders exactly as it
+   * always has. Only `unpaid` and `claimed` — the two states that mean "money
+   * is owed and nobody at the tenant has vouched" — withhold anything.
+   *
+   * ⚠️ A TICKET ISSUED BEFORE THIS CHANGE NEEDS NO MIGRATION. The state is
+   * derived from fields the registration already carries, so an old unconfirmed
+   * paid ticket simply stops showing its QR at the next render and gets it back
+   * the moment an admin confirms. Nothing is written and nothing is lost.
+   *
+   * 🔴 AND THE CODE GOES WITH IT. `QRCode.toDataURL(t.ticketCode)` — the code IS
+   * the QR's payload, so printing it beside an withheld QR is the same token in
+   * text and anyone could turn it back into a scannable one. What the member
+   * keeps for reconciliation is the PAYMENT REFERENCE, which the panel below
+   * still shows, and their confirmation email, which still carries the code.
+   *
+   * ⚠️ CHECK-IN IS UNTOUCHED AND MUST STAY UNTOUCHED. A volunteer finds an
+   * unconfirmed guest by searching their name in the attendee list and admits
+   * them; the Check In control is gated on `status === 'confirmed'`, which is
+   * REGISTRATION status and has nothing to do with money. Withholding a QR from
+   * the member's own screen cannot turn anybody away, because the door has
+   * never needed it.
+   */
+  const awaitingPayment = (t.payment ?? 'free') === 'unpaid' || (t.payment ?? 'free') === 'claimed';
+
   const generate = useCallback(async () => {
+    if (awaitingPayment) return;
     if (!t.ticketCode) { setQrError(true); return; }
     try {
       const url = await QRCode.toDataURL(t.ticketCode, { width: 512, margin: 1 });
@@ -465,7 +507,7 @@ const TicketModal: React.FC<{
     } catch {
       setQrError(true);
     }
-  }, [t.ticketCode]);
+  }, [t.ticketCode, awaitingPayment]);
 
   useEffect(() => { generate(); }, [generate]);
 
@@ -489,8 +531,22 @@ const TicketModal: React.FC<{
             {status.text}
           </span>
 
-          {t.ticketCode ? (
-            <>
+          {awaitingPayment ? (
+            /* THE-359 — what stands where the QR was. `alert` is the primitive
+               this screen already uses for a standing notice about the state of
+               a record (see TicketPaymentPanel), and it carries role="alert" so
+               the one thing a waiting member must not miss — that their place
+               IS held — reaches a screen reader too. Left-aligned inside the
+               centred column because it is two sentences of explanation, not a
+               label. */
+            <div className="text-left" data-ticket-qr="withheld">
+              <Alert>
+                <AlertTitle>{TICKET_QR_WAITING_TITLE}</AlertTitle>
+                <AlertDescription>{ticketQrWaitingBody(tenantName)}</AlertDescription>
+              </Alert>
+            </div>
+          ) : t.ticketCode ? (
+            <div data-ticket-qr="shown">
               {qr ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={qr} alt="Ticket QR code" className="w-60 h-60 max-w-full mx-auto rounded-xl" />
@@ -506,7 +562,7 @@ const TicketModal: React.FC<{
               )}
               <p className="text-xs text-faint mt-4">Ticket code</p>
               <p className="text-2xl font-mono font-bold tracking-widest text-strong">{t.ticketCode}</p>
-            </>
+            </div>
           ) : (
             <div className="py-8 text-sm text-muted">
               {t.status === 'waitlisted'
@@ -518,9 +574,17 @@ const TicketModal: React.FC<{
           {t.ticketTypeName && (
             <p className="text-sm text-muted mt-3">{t.ticketTypeName}</p>
           )}
-          <p className="text-xs text-faint mt-4">Present this at the door — no email needed.</p>
+          {/* THE-359 — "Present this at the door" goes with the QR it refers to.
+              There is nothing to present while the code is withheld, and a line
+              telling a member to present something they do not have is the
+              "your registration failed" reading the waiting panel exists to
+              prevent. It says nothing about whether the door WILL admit them:
+              that promise is what section 1 of this ticket deleted. */}
+          {!awaitingPayment && (
+            <p className="text-xs text-faint mt-4">Present this at the door — no email needed.</p>
+          )}
 
-          <TicketPaymentPanel ticket={t} churchName={churchName} onChanged={onChanged} />
+          <TicketPaymentPanel ticket={t} tenantName={tenantName} onChanged={onChanged} />
         </div>
       </div>
     </div>

@@ -531,18 +531,90 @@ export const PROVIDER_PICKER_HELP =
   'Tick the ones you want people to use. Everyone registering sees exactly '
   + 'these, and a reference code to put in the payment note.';
 
-/* ── 2. The member's ticket ──────────────────────────────────────────────── */
+/* ── 1b. The tenant's own name, on every attendee-facing sentence ────────── */
+
+/**
+ * THE-359 - 🔴 SAY THE TENANT'S NAME, NEVER "THE CHURCH".
+ *
+ * THE FOUNDER: "instead of 'the church', say the name of the ministry. not all
+ * tenants are churches." And again: "after a ticket is confirmed, do not say
+ * the church but the name of the tenant."
+ *
+ * ⚠️ THE "HOW TO PAY" BLOCK ALREADY DID THIS and is the model - it read
+ * "Kingdom Living collects it directly" while the ticket dialog beside it read
+ * "Waiting for the church to check". Every string below now interpolates the
+ * tenant, and the resolver is HERE rather than at each call site so the
+ * fallback cannot differ between two surfaces describing the same registration.
+ *
+ * 🔴 THE FALLBACK IS NAMED AND IT IS NOT A CHURCH. `tenants/{t}.name` is
+ * raw Firestore and can be absent, and a blank renders "  has been asked to
+ * look", which is worse than the noun this ticket removes. So an empty name
+ * resolves to {@link TENANT_NAME_FALLBACK}: a description of the party's ROLE
+ * in this transaction that is true of a church, a ministry, a conference host
+ * and a crusade alike. It is never "Harvest" - that is the one word that must
+ * not appear in this position, because Harvest is not who collects, decides or
+ * confirms.
+ */
+export const TENANT_NAME_FALLBACK = 'the event organizer';
+
+/** The tenant's name for attendee copy, or {@link TENANT_NAME_FALLBACK}. */
+export function tenantLabel(name: string | null | undefined): string {
+  return (name || '').trim() || TENANT_NAME_FALLBACK;
+}
+
+/* ── 1c. A paid ticket that nobody has confirmed yet ────────────────── */
+
+/**
+ * THE-359 - 🔴 NO QR CODE UNTIL THE PAYMENT IS CONFIRMED.
+ *
+ * THE FOUNDER: "the user should not have the qr code unless his payment has
+ * been confirmed."
+ *
+ * ⚠️ WHAT REPLACES IT HAS TO SAY THE REGISTRATION IS REAL. An absent QR
+ * with nothing in its place reads as "your registration failed", which is the
+ * opposite of what happened: the seat is held, the row exists, and the only
+ * outstanding thing is a human at the tenant opening their own account. So the
+ * space the QR leaves is FILLED, by these two strings, on every surface that
+ * withholds it - the member's ticket dialog, the public success screen and the
+ * registration email.
+ *
+ * ⚠️ IT PROMISES NOTHING ABOUT THE DOOR. That sentence is what section 1
+ * of this ticket deletes, and it is not reintroduced here in a softer costume.
+ */
+export const TICKET_QR_WAITING_TITLE = 'Your place is held';
+
+export function ticketQrWaitingBody(tenantName: string | null | undefined): string {
+  return (
+    'Your registration is complete. The QR code for this ticket is issued once '
+    + `${tenantLabel(tenantName)} has marked it paid.`
+  );
+}
+
+/* ── 2. The member's ticket ─────────────────────────────────── */
 
 export const MEMBER_UNPAID_BADGE = 'Unpaid';
-export const MEMBER_CLAIMED_BADGE = 'Waiting on the church';
-export const MEMBER_CONFIRMED_BADGE = 'Marked paid by the church';
 
-/** The instruction on an unpaid ticket. `{church}` and `{amount}` interpolate. */
-export function memberUnpaidBody(churchName: string, amountCents: number, reference: string): string {
+/** THE-359 - was the constant 'Waiting on the church'. */
+export function memberClaimedBadge(tenantName: string | null | undefined): string {
+  return `Waiting on ${tenantLabel(tenantName)}`;
+}
+
+/** THE-359 - was the constant 'Marked paid by the church'. */
+export function memberConfirmedBadge(tenantName: string | null | undefined): string {
+  return `Marked paid by ${tenantLabel(tenantName)}`;
+}
+
+/** The instruction on an unpaid ticket. The TENANT and `{amount}` interpolate. */
+export function memberUnpaidBody(
+  tenantName: string | null | undefined,
+  amountCents: number,
+  reference: string,
+): string {
+  const who = tenantLabel(tenantName);
   return (
-    `Your place is booked. Pay ${churchName} ${formatCents(amountCents)} using one of the `
+    `Your place is booked. Pay ${who} ${formatCents(amountCents)} using one of the `
     + `options below, and put ${reference} in the payment note so they can find it. `
-    + `Harvest does not handle this money and cannot see it — ${churchName} checks `
+    + `Harvest does not handle this money and cannot see it — ${who} checks `
     + 'their own account.'
   );
 }
@@ -559,29 +631,62 @@ export const MEMBER_CLAIM_BUTTON = "I've paid";
  * this sentence exists to prevent. It is rendered beside the button, not behind
  * a tooltip.
  */
-export const MEMBER_CLAIM_HELP =
-  'This only tells the church to go and look. It settles nothing on its own '
-  + 'and it does not change what you owe.';
-
-export const MEMBER_CLAIMED_TITLE = 'Waiting for the church to check';
-
-export function memberClaimedBody(churchName: string, reference: string): string {
+/**
+ * THE-359 rewrote this sentence. THE FOUNDER, of the old one: "'This only tells
+ * the church to go and look. It settles nothing on its own and it does not
+ * change what you owe. Keep the email with your ticket code.' this has to be
+ * modified."
+ *
+ * 🔴 IT STILL CARRIES THE ONE FACT IT EXISTS FOR: pressing the button does
+ * not confirm payment. What went is "it does not change what you owe", which
+ * reads as a debt-collection line over a gift, and "the church", which names
+ * the wrong kind of tenant. What replaced them is the tenant's own name and the
+ * verb for what actually happens next - somebody there looks.
+ */
+export function memberClaimHelp(tenantName: string | null | undefined): string {
   return (
-    `${churchName} has been asked to look for ${reference} in their own account. `
-    + 'Harvest has not checked anything and cannot. Until someone there marks it '
-    + 'paid, your ticket still reads unpaid — bring it anyway, you will not be '
-    + 'turned away at the door.'
+    'This does not confirm payment. It asks '
+    + `${tenantLabel(tenantName)} to look for it in their own account.`
   );
 }
 
-export function memberConfirmedBody(churchName: string, whenIso: string): string {
+/** THE-359 - was the constant 'Waiting for the church to check'. */
+export function memberClaimedTitle(tenantName: string | null | undefined): string {
+  return `Waiting for ${tenantLabel(tenantName)} to check`;
+}
+
+/**
+ * THE-359 - 🔴 THE WAITING NOTE, NARROWED TO WHAT IS TRUE.
+ *
+ * THE FOUNDER: "also remove 'Harvest has not checked anything and cannot. Until
+ * someone there marks it paid, your ticket still reads unpaid — bring it anyway,
+ * you will not be turned away at the door.'"
+ *
+ * ⚠️ BOTH HALVES WENT, and the second half is the door guarantee this ticket
+ * deletes everywhere: Harvest has no way to know what any tenant does at its
+ * own door and must not characterise it. What remains is one sentence saying
+ * exactly what the press did and who has to act on it. Nothing was substituted
+ * for the removed clauses - the note is shorter, on purpose.
+ */
+export function memberClaimedBody(
+  tenantName: string | null | undefined,
+  reference: string,
+): string {
+  return `${tenantLabel(tenantName)} has been asked to look for ${reference} in their own account.`;
+}
+
+export function memberConfirmedBody(
+  tenantName: string | null | undefined,
+  whenIso: string,
+): string {
   const when = formatClaimTime(whenIso);
-  return `${churchName} marked this ticket paid on ${when}. Harvest recorded their word for it.`;
+  return `${tenantLabel(tenantName)} marked this ticket paid on ${when}. Harvest recorded their word for it.`;
 }
 
 /** Shown when the member's own "I've paid" press could not be saved. */
-export const MEMBER_CLAIM_FAILED =
-  'That could not be sent, so the church has not been told. Nothing changed — try again.';
+export function memberClaimFailed(tenantName: string | null | undefined): string {
+  return `That could not be sent, so ${tenantLabel(tenantName)} has not been told. Nothing changed — try again.`;
+}
 
 /* ── 2b. The PUBLIC registrant ─────────────────────────────── */
 
@@ -615,19 +720,27 @@ export const PUBLIC_PAY_TITLE = 'How to pay';
 /**
  * 🔴 WHAT THE PUBLIC REGISTRANT IS TOLD BEFORE THE LINKS.
  *
- * Names the CHURCH as the party that collects and the party that decides, and
+ * Names the TENANT as the party that collects and the party that decides, and
  * claims nothing about what Harvest has checked, because Harvest checks
- * nothing. The last sentence is the founder's own decision about the door and
- * is repeated here rather than assumed: this screen is the only thing a
- * logged-out registrant is guaranteed to read.
+ * nothing.
+ *
+ * ⚠️ THE-359 DELETED THE LAST SENTENCE. It read "Bring this ticket either way —
+ * you will not be turned away at the door." THE FOUNDER: "this should be
+ * deleted. there is no way for us to know what each church is doing. or
+ * ministry." Nothing softer stands in its place: a hedge would be the same
+ * claim with a qualifier, and Harvest still would not know the answer.
  */
-export function publicPayBody(churchName: string, amountCents: number, reference: string): string {
+export function publicPayBody(
+  tenantName: string | null | undefined,
+  amountCents: number,
+  reference: string,
+): string {
+  const who = tenantLabel(tenantName);
   return (
-    `This ticket costs ${formatCents(amountCents)}, and ${churchName} collects it directly `
+    `This ticket costs ${formatCents(amountCents)}, and ${who} collects it directly `
     + `through their own payment links below. Put ${reference} in the payment note so they `
-    + `can find it. Harvest does not handle this money and cannot see it — ${churchName} `
-    + 'opens their own account and decides. Bring this ticket either way — you will not be '
-    + 'turned away at the door.'
+    + `can find it. Harvest does not handle this money and cannot see it — ${who} `
+    + 'opens their own account and decides.'
   );
 }
 
@@ -642,44 +755,62 @@ export function publicPayBody(churchName: string, amountCents: number, reference
  * first and DELETED its links afterwards, and a stored link that no longer
  * passes `readGivingLinks`'s allow-list on re-validation.
  *
- * 🔴 SO THE HONEST ANSWER IS THE ONLY ONE AVAILABLE: say that the church has not
- * published a way to pay yet, tell them to ask the church, and tell them the
- * one thing that is unambiguously true and useful — their place is booked and
- * the door is not in question. It does NOT invent a fallback, and it does not
- * imply the registration failed, because it did not.
+ * 🔴 SO THE HONEST ANSWER IS THE ONLY ONE AVAILABLE: say that the tenant has not
+ * published a way to pay yet, tell them to ask the tenant, and tell them the
+ * one thing that is unambiguously true and useful — their place is booked. It
+ * does NOT invent a fallback, and it does not imply the registration failed,
+ * because it did not.
+ *
+ * ⚠️ THE-359 DELETED THE DOOR SENTENCE HERE TOO. "the door is not in question"
+ * was never Harvest's to answer; "your place is booked" is, and it survives.
  */
-export const PUBLIC_NO_LINKS_TITLE = 'Ask the church how to pay';
+export function publicNoLinksTitle(tenantName: string | null | undefined): string {
+  return `Ask ${tenantLabel(tenantName)} how to pay`;
+}
 
-export function publicNoLinksBody(churchName: string, amountCents: number, reference: string): string {
+export function publicNoLinksBody(
+  tenantName: string | null | undefined,
+  amountCents: number,
+  reference: string,
+): string {
   return (
-    `Your place is booked. This ticket costs ${formatCents(amountCents)}, but ${churchName} has `
-    + 'not published a payment link yet, so there is nowhere for us to send you. Contact them '
-    + `and quote ${reference}. Bring this ticket either way — you will not be turned away at `
-    + 'the door.'
+    `Your place is booked. This ticket costs ${formatCents(amountCents)}, but `
+    + `${tenantLabel(tenantName)} has not published a payment link yet, so there is nowhere `
+    + `for us to send you. Contact them and quote ${reference}.`
   );
 }
 
 /**
  * 🔴 THE PUBLIC CLAIM HELP, AND IT SAYS MORE THAN THE MEMBER'S DOES.
  *
- * ⚠️ {@link MEMBER_CLAIM_HELP} can be short because a signed-in member can open
+ * ⚠️ {@link memberClaimHelp} can be short because a signed-in member can open
  * My Events tomorrow and see what happened. A logged-out registrant cannot come
  * back to this screen — it is gone the moment they close the tab — so the
  * sentence has to carry the same warning AND tell them where the record lives.
+ *
+ * ⚠️ THE-359 rewrote the shared half of it. See {@link memberClaimHelp}: the
+ * debt line went, "the church" went, and what the press actually does stayed.
+ * The third sentence is this surface's own and is unchanged.
  */
-export const PUBLIC_CLAIM_HELP =
-  'This only tells the church to go and look. It settles nothing on its own and it does '
-  + 'not change what you owe. Keep the email with your ticket code.';
+export function publicClaimHelp(tenantName: string | null | undefined): string {
+  return `${memberClaimHelp(tenantName)} Keep the email with your ticket code.`;
+}
 
 /** Shown in place of the button once a public registrant has pressed it. */
-export const PUBLIC_CLAIMED_TITLE = 'The church has been asked to look';
+export function publicClaimedTitle(tenantName: string | null | undefined): string {
+  return `${tenantLabel(tenantName)} has been asked to look`;
+}
 
-export function publicClaimedBody(churchName: string, reference: string): string {
-  return (
-    `${churchName} has been asked to find ${reference} in their own account. Harvest has not `
-    + 'checked anything and cannot. Until someone there marks it paid your ticket still reads '
-    + 'unpaid — bring it anyway, you will not be turned away at the door.'
-  );
+/**
+ * ⚠️ THE-359 narrowed this exactly as it narrowed {@link memberClaimedBody} —
+ * the same two clauses, on the surface that duplicated them. "Harvest has not
+ * checked anything and cannot" went with the door guarantee it was joined to.
+ */
+export function publicClaimedBody(
+  tenantName: string | null | undefined,
+  reference: string,
+): string {
+  return `${tenantLabel(tenantName)} has been asked to find ${reference} in their own account.`;
 }
 
 /* ── 2c. The claim token a logged-out registrant carries ─────────────── */

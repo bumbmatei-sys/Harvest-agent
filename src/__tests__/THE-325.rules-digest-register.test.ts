@@ -311,7 +311,34 @@ const filesSpelling = (digest: string): string[] =>
  * which is the register's rule for a ticket that does not change the file:
  * `THE-358.json` records `MyAccountMenu.tsx` and the two suites it edits, and
  * no rules digest. */
-const PINNING_SUITES = 71;
+/**
+ * 🔵 72 SINCE THE-359, which adds `THE-359.paid-event-copy.guards.test.ts` to
+ * the population.
+ *
+ * ⚠️ IT TOUCHES NO RULE AND RECORDS NO RULES DIGEST, and unlike the two above it
+ * is worth saying WHY, because this one does add a WRITE. Confirming a paid
+ * event ticket now also writes a DONATION activity onto the giver's CRM contact
+ * — the founder: "in crm it doesnt show that i have paid for an event after i
+ * confirmed but it appears in the accounting." That write goes through the
+ * Admin SDK inside a route that already imposes `manageEvents` on a verified
+ * token, exactly as THE-350's money write does and for the same reason, so no
+ * client reaches `contactActivities` by a path a rule would have to govern.
+ * Both collections it touches are ones `member-erasure.ts` and
+ * `member-export.ts` already enumerate, including the donation-activity
+ * retention carve-out, so no GDPR path learns a new name either. The contact
+ * lookup is ONE equality `where` with no `orderBy` — a single-field index
+ * Firestore maintains automatically — so `firestore.indexes.json`, which
+ * `deploy-rules.yml` does not deploy and where an added index would be INERT
+ * while the query threw in production, is untouched as well. It reaches the
+ * accepted set through this module like every other pinner —
+ * `rulesDigestFailure()` and nothing else — so a real rules change still costs
+ * exactly one edit. Nothing above is removed and no accepted value is widened.
+ *
+ * 🔴 ITS OWN OWNERSHIP RECORD DELIBERATELY CARRIES NO `firestore.rules` ENTRY,
+ * which is the register's rule for a ticket that does not change the file:
+ * `THE-359.json` records the seven shipped files it edits and THE-322's suite,
+ * and no rules digest. */
+const PINNING_SUITES = 72;
 
 /**
  * A digest no ticket has recorded and none ever will — the planted change.

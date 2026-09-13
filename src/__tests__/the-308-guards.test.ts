@@ -493,6 +493,25 @@ describe('9-10 · event write paths are byte-identical', () => {
        * pending-registration rollback and the capacity count.
        */
       '20be877124903dd6eeda68f20ea3835206381dcc766e8d680f755e2766cc50ed',
+      /**
+       * 🔴 APPENDED FOR THE-359, never substituted. The confirmation email is
+       * the only thing that moved: the pay note loses the door guarantee the
+       * founder deleted, and the QR paragraph becomes a `qrBlock` gated on
+       * `owesManualPayment`, so a paid ticket's email carries "your place is
+       * held" wording rather than a scannable code for a payment nobody has
+       * confirmed.
+       *
+       * ⚠️ THE THREE EXISTING BYPASSES ARE STILL UNTOUCHED, and the new gate is
+       * deliberately the SAME expression rather than a fresh `amount > 0`: a
+       * free registration, a waitlist entry and a ticket discounted to $0 still
+       * mint neither a reference nor a token, and all three still receive their
+       * QR image exactly as before.
+       *
+       * ⚠️ AND THE WRITES THIS GUARD PROTECTS ARE BYTE-IDENTICAL: the CRM row,
+       * THE-154's direct charge, the platform fee, the Checkout metadata, the
+       * pending-registration rollback and the capacity count.
+       */
+      '0acc9d864c5623cac79ac44588e83899a086a3be57831bb31e49d7c8d5abbb7e',
     ];
     const actual = sha256(read('src/app/api/event-registration/submit/route.ts'));
     expect(

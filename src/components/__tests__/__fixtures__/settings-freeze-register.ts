@@ -321,6 +321,40 @@ export const RECORDED_EDITS: ReadonlyArray<RecordedEdit> = [
       + 'loosened.',
     digest: '5f39d54920abc4e3a87f58e5a8b71c38f08e543b77846321ece0be7daf6b2c80',
   },
+  {
+    file: 'src/components/Profile.tsx',
+    ticket: 'THE-359',
+    why:
+      'THE PARTNERSHIP CARD STOPPED CLAIMING SOMETHING HARVEST CANNOT KNOW. Its third state — a '
+      + 'member with no platform subscription and no recorded giving — rendered an Empty block '
+      + 'reading "You don\'t have an active partnership" with a "Partner with Us →" link under '
+      + 'it. THE FOUNDER: "that section should be transformed into a button that says Partner '
+      + 'with Us and thats it, above donation history in the same partnership section. there is '
+      + 'no way to create as of right now any recuring payments tracked by harvest so that copy '
+      + 'is not good." He is right, and the reason is structural: recurring giving to a TENANT '
+      + 'runs through that tenant\'s own PayPal / Revolut / Wise links, STRIPE_CONNECT_ENABLED is '
+      + 'false and the platform account is closed, so Harvest never sees a penny of it. A member '
+      + 'with a monthly standing order to their church was told flatly that they had no '
+      + 'partnership. So the sentence is DELETED rather than hedged — no status line, no "we '
+      + 'cannot see recurring gifts" note, nothing — and what remains is one Button labelled '
+      + '"Partner with Us" carrying the same onGoToPartner handler the old link carried, to the '
+      + 'same destination, still gated on that prop for THE-246\'s reason (no Give page, no '
+      + 'button, never a dead one). Because the card now holds nothing else in that state, the '
+      + 'Card itself is skipped when the gate closes rather than rendering as a blank padded box; '
+      + 'the PARTNERSHIP heading and Donation History are untouched and keep their order, heading '
+      + 'then card then history, which is what the founder asked for. Button\'s intrinsic heights '
+      + 'are 24/28/32/36px and its default h-8 is 32px, under the tap floor, so the size is '
+      + 'explicit: h-auto min-h-[44px] below sm and sm:h-[40px] above it, the same shape the '
+      + 'Cancel Partnership button in this file already uses, so no height is minted. THE OTHER '
+      + 'TWO STATES ARE DELIBERATELY UNTOUCHED and are reported rather than swept in: an active '
+      + 'platform subscription is a real Stripe record Harvest itself created, and its branch '
+      + 'carries the only Cancel Partnership control on this screen — removing it would strand a '
+      + 'live recurring charge; and "Donor · $N given" is read off the tenant\'s own ledger, which '
+      + 'is knowable. Neither claims a partnership status Harvest cannot see. No token, no '
+      + 'primitive and no dependency was added; Empty is still imported and used elsewhere in '
+      + 'this file.',
+    digest: '84b79ad3b5682970f9711cd70ed554c223d588a442ddd9b835a994b5e59f1577',
+  },
 ];
 
 /** A ticket reference the register will accept. */

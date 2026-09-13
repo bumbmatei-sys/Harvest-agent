@@ -479,12 +479,32 @@ describe('5 — event registration is untouched', () => {
     // ever created and the church's inbox was empty. The mint sits inside the
     // existing ternary and nowhere else, which is what keeps "a free
     // registration acquires no credential" structural.
+    //
+    // ─── REPINNED FOR THE-359 ───────────────────────────────────────────────
+    //
+    // THE-256's OWN CLAIM IS UNTOUCHED AND IS RE-ASSERTED TWO LINES BELOW: this
+    // route still never mentions the Connect switch or its module, and the
+    // Stripe branch is still whole for the day a rail returns.
+    //
+    // What THE-359 changes is the CONFIRMATION EMAIL and nothing else. Two
+    // edits, both inside the `if (resendKey)` block: the pay note loses its
+    // last sentence — "Bring this ticket either way — you will not be turned
+    // away at the door", which the founder deleted because "there is no way for
+    // us to know what each church is doing. or ministry" — and the QR paragraph
+    // becomes a `qrBlock` gated on `owesManualPayment`, the SAME condition the
+    // pay note is built on. A paid ticket's email no longer carries a scannable
+    // QR for a payment nobody has confirmed; a FREE one still embeds its image
+    // exactly as before, because `owesManualPayment` is false for it. The
+    // ticket code stays in the intro either way: for a logged-out registrant
+    // this email is the only record they will ever hold.
+    //
     // Previous pins:
     //   0324b34c80861ea7e2ee61e40bba7b6ff6f8be72dbef43827e75837e08a5530e  (pre-THE-314)
     //   b0e55c91adcc9b342e4d16fc5cabfff1426842056e1f5bb9e0f47546fc41ed98  (THE-314)
     //   f203f58f402ec89f14415c9ae64134bd44286b8c4fcb0e8fa12fb70cfd7739a2  (THE-351)
+    //   20be877124903dd6eeda68f20ea3835206381dcc766e8d680f755e2766cc50ed  (THE-355)
     expect(digest('src/app/api/event-registration/submit/route.ts'))
-      .toBe('20be877124903dd6eeda68f20ea3835206381dcc766e8d680f755e2766cc50ed');
+      .toBe('0acc9d864c5623cac79ac44588e83899a086a3be57831bb31e49d7c8d5abbb7e');
     expect(read('app/api/event-registration/submit/route.ts'), 'the SMS call site moved off the retired module')
       .toContain("from '@/lib/sms-send'");
     expect(read('app/api/event-registration/submit/route.ts'), 'event registration was gated')

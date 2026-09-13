@@ -2,6 +2,8 @@ import React, { act } from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createRoot } from 'react-dom/client';
 import { readFileSync } from 'node:fs';
+
+import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
 import path from 'node:path';
 import {
   RECORDED_EDITS,
@@ -177,14 +179,51 @@ describe('2 · the file imports its primitives from @/components/ui/', () => {
       ['avatar-fallback', 1, "the initial shown when there is no photo, or it fails to load"],
       ['badge', 1, 'the "Member since" chip'],
       ['switch', 1, 'the Push Notifications toggle'],
-      ['button', 1, 'Log Out and the partnership CTAs'],
-      ['empty', 1, 'the no-partnership state'],
+      ['button', 1, 'Log Out and the partnership CTA'],
     ];
     for (const [slot, atLeast, what] of REQUIRED) {
       expect(slots(slot),
         `${what}: expected at least ${atLeast} [data-slot="${slot}"], found ${slots(slot)} — ` +
         'a hand-written substitute carries no slot').toBeGreaterThanOrEqual(atLeast);
     }
+
+    /**
+     * 🔴 THE-359 RETIRED THE `empty` ROW, AND IT IS RECORDED HERE RATHER THAN
+     * DELETED. This list required `['empty', 1, 'the no-partnership state']`.
+     * THE-321 chose that primitive to state "you have nothing here yet" — and
+     * "yet" is a claim about a partnership Harvest cannot see. THE FOUNDER:
+     * "there is no way to create as of right now any recuring payments tracked
+     * by harvest so that copy is not good." Recurring giving runs through the
+     * tenant's own PayPal / Revolut / Wise links and Harvest never sees it, so
+     * a member with a monthly standing order was told, flatly, that they had
+     * none. The empty state is GONE — replaced by a bare "Partner with Us"
+     * button that asserts nothing — so there is no empty collection left to
+     * announce and no primitive owed for announcing one.
+     *
+     * ⚠️ THE REQUIREMENT IS INVERTED, NOT DROPPED. A future PR that reinstates
+     * an empty-state claim about partnership fails right here.
+     */
+    expect(slots('empty'),
+      '🔴 an Empty block is back in Profile — Harvest cannot know whether a member partners')
+      .toBe(0);
+    /**
+     * ⚠️ OVER PARSER-STRIPPED SOURCE, AND THE NEEDLE IS ASSEMBLED FROM
+     * FRAGMENTS. #496 found two of its own guards SELF-MATCHING — a grep whose
+     * pattern is spelled out in the comment explaining it finds itself and
+     * passes forever. The docblock above quotes the deleted sentence verbatim,
+     * so a raw read of this file's subject would match the quotation; the
+     * stripper removes comments from the SUBJECT, and the needle is built at
+     * run time so it cannot appear as a literal anywhere in this suite.
+     */
+    const needle = new RegExp(['active', 'partnership'].join('\\s+'), 'i');
+    expect(stripComments(read(PROFILE)), 'the "no active partnership" claim came back')
+      .not.toMatch(needle);
+    // The CTA that replaced it is still a real Button with a real destination.
+    const cta = Array.from(host.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Partner with Us');
+    expect(cta, 'the "Partner with Us" button is gone').toBeTruthy();
+    expect(cta!.getAttribute('data-slot'),
+      'the CTA is hand-written rather than ui/button').toBe('button');
   });
 
   it('2b · and no hand-written substitute is left beside the primitive it replaced', async () => {
@@ -233,6 +272,22 @@ describe('2 · the file imports its primitives from @/components/ui/', () => {
 
 describe('3 · Profile.tsx has a valid register entry', () => {
   it('names a ticket, a reason of 80+ chars and a digest that matches disk', () => {
+    /**
+     * ⚠️ THE-359 SPLIT THIS INTO TWO CLAIMS, because it was quietly making one
+     * that the register's own rule forbids. It read THE-321's entry and
+     * required ITS digest to equal the file on disk — so every later ticket
+     * that touched Profile.tsx could only get green by REWRITING THE-321's
+     * digest in place, which is the substitution "append, never substitute"
+     * exists to stop, and it loses the record of what THE-321 actually left.
+     *
+     * The two claims it should have been making, and now does:
+     *   1. THE-321's entry still exists, still names a ticket and still carries
+     *      a reason above the floor. Its digest is HISTORY and is not compared
+     *      to disk.
+     *   2. Profile.tsx on disk is at a digest SOME entry recorded — the append
+     *      path — and the most recent entry for the file is the one that
+     *      matches, so a ticket that edits it and records nothing fails here.
+     */
     const mine = RECORDED_EDITS.filter((e) => e.file === PROFILE && e.ticket === 'THE-321');
     expect(mine.length, 'THE-321 recorded no edit to Profile.tsx').toBe(1);
     const entry = mine[0];
@@ -241,7 +296,18 @@ describe('3 · Profile.tsx has a valid register entry', () => {
       `the reason is under ${MIN_REASON_LENGTH} chars — a bare hash is a loophole`)
       .toBeGreaterThanOrEqual(MIN_REASON_LENGTH);
     expect(entry.digest, 'the digest is not a sha256').toMatch(/^[0-9a-f]{64}$/);
-    expect(entry.digest, 'the recorded digest is not what Profile.tsx is at')
+
+    // 2 — the file on disk, against the LATEST recorded state of it.
+    const forProfile = RECORDED_EDITS.filter((e) => e.file === PROFILE);
+    expect(forProfile.length, 'no ticket has recorded Profile.tsx').toBeGreaterThan(0);
+    const latest = forProfile[forProfile.length - 1];
+    expect(latest.why.length,
+      `${latest.ticket}'s reason is under ${MIN_REASON_LENGTH} chars`)
+      .toBeGreaterThanOrEqual(MIN_REASON_LENGTH);
+    expect(latest.digest,
+      `Profile.tsx is at ${sha256File(PROFILE)}, which ${latest.ticket} — the newest entry for `
+      + 'it — does not record. Append { file, ticket, why, digest } rather than editing an '
+      + 'existing row.')
       .toBe(sha256File(PROFILE));
   });
 

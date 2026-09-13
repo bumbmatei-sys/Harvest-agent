@@ -559,7 +559,7 @@ describe('Profile — the desktop composition', () => {
     // The exact inventory at 752ff16. The type scale is a separate step; this
     // PR is composition only, so the multiset must not move in either
     // direction — no additions, no "while I'm here" tidy-ups.
-    expect(tally).toEqual({
+    const BASELINE: Record<string, number> = {
       'text-sm': 10,
       'text-[10px]': 4,
       'text-xs': 3,
@@ -570,7 +570,46 @@ describe('Profile — the desktop composition', () => {
       'text-[22px]': 1,
       'text-[12px]': 1,
       'text-[10.5px]': 1,
-    });
+    };
+
+    /**
+     * 🔴 APPEND, NEVER SUBSTITUTE. `main` went red for everyone once because a
+     * PR replaced a pinned baseline instead of recording its delta against it,
+     * and the record of what the baseline WAS went with it. Every deliberate
+     * movement since is a row here, with the ticket that made it and why.
+     */
+    const EDITED_SINCE_MEASUREMENT: ReadonlyArray<{
+      ticket: string; size: string; delta: number; why: string;
+    }> = [
+      {
+        ticket: 'THE-359',
+        size: 'text-sm',
+        delta: -1,
+        why: "The PARTNERSHIP card's no-partnership state lost its Empty block and gained a "
+          + 'single "Partner with Us" Button. THE FOUNDER: "\'You don\'t have an active '
+          + 'partnership\' section should be transformed into a button that says Partner with Us '
+          + 'and thats it ... there is no way to create as of right now any recuring payments '
+          + 'tracked by harvest so that copy is not good." Two `text-sm` went with the deleted '
+          + 'EmptyDescription sentence and the link-variant CTA; one came back on the button that '
+          + 'replaced them, so the net movement is exactly -1. No size was introduced, none was '
+          + 'retuned, and nothing below the 11px floor was touched.',
+      },
+    ];
+
+    const expected = { ...BASELINE };
+    for (const e of EDITED_SINCE_MEASUREMENT) {
+      expected[e.size] = (expected[e.size] ?? 0) + e.delta;
+      if (expected[e.size] === 0) delete expected[e.size];
+    }
+    // Every row is reviewable on its own terms, on the floor the ownership
+    // register already sets for an exemption reason.
+    for (const e of EDITED_SINCE_MEASUREMENT) {
+      expect(e.ticket, 'a delta with no ticket is an exemption, not a record')
+        .toMatch(/^(?:THE-\d+|#\d+)$/);
+      expect(e.why.length, `${e.ticket} ${e.size} has no reason`).toBeGreaterThanOrEqual(80);
+      expect(e.delta, 'a zero delta is not a movement').not.toBe(0);
+    }
+    expect(tally).toEqual(expected);
     expect(src).not.toMatch(/fontSize/);
     // 10px/10.5px are pre-existing and deliberately untouched here; what this
     // PR must not do is introduce a NEW size under 11px.

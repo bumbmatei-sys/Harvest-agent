@@ -492,7 +492,7 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * retires a pinner updates this count and says what that suite still asserts;
  * a suite that quietly stops pinning fails here.
  */
-const RULES_PINNERS_NOW = 71;
+const RULES_PINNERS_NOW = 72;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per
@@ -954,6 +954,36 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
   // in real Chromium at five widths with animation suppressed, where it also
   // records that every row of that menu was under BOTH floors before it.
   ['THE-358', 'src/components/__tests__/THE-358.account-menu.test.tsx'],
+  // ⚠️ WHAT IT ASSERTS: that `firestore.rules` is at a recorded digest, and that
+  // `firestore.indexes.json`, `functions/` and `layout.tsx` are byte-identical.
+  // THE-359 rewrites attendee copy, withholds a QR until a payment is confirmed
+  // and adds ONE CRM activity write — and that write is the reason it is worth
+  // saying it needed no rule change. It goes through the Admin SDK behind a
+  // route that already imposes `manageEvents`, and both collections it reaches,
+  // `contacts` and `contactActivities`, are ones `member-erasure.ts` and
+  // `member-export.ts` already enumerate; the contact lookup is ONE equality
+  // `where` with no `orderBy`, a single-field index Firestore maintains
+  // automatically, so `firestore.indexes.json` — which `deploy-rules.yml` does
+  // not deploy — stays untouched too. It records NO rules digest in its own
+  // ownership entry. Beyond that: that the door guarantee is gone from every
+  // attendee-facing surface, swept per file over parser-stripped source AND
+  // over what the copy builders actually produce at a real tenant name and at
+  // a missing one; that check-in still never blocks on payment, read off the
+  // shipped `AdminEvents` source it does not edit; that the "I've paid"
+  // disclaimer names the tenant, says the press confirms nothing, and mentions
+  // neither the door, nor what you owe, nor anything Harvest checked; that no
+  // attendee-facing string says "the church", with a COMPLETENESS check proving
+  // a newly added member-facing export cannot escape the sweep; that the public
+  // claim route's request body still takes no registration id; and that free
+  // registration, the waitlist, discount codes, ticket-type capacity and the
+  // CSV export are untouched. Its rendered halves live in
+  // `THE-359.member-ticket-qr.test.tsx` (the QR gate, including the FREE-ticket
+  // regression at both spellings), `THE-359.crm-activity.test.ts` (THE-350's
+  // no-double-count shape and idempotence) and
+  // `THE-359.partnership-card.test.tsx`; its measured half in
+  // `THE-359.partnership-button.layout.test.tsx`, in real Chromium at five
+  // widths with animation suppressed.
+  ['THE-359', 'src/__tests__/THE-359.paid-event-copy.guards.test.ts'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {
