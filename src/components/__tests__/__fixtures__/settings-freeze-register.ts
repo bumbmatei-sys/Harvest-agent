@@ -355,6 +355,35 @@ export const RECORDED_EDITS: ReadonlyArray<RecordedEdit> = [
       + 'this file.',
     digest: '84b79ad3b5682970f9711cd70ed554c223d588a442ddd9b835a994b5e59f1577',
   },
+  {
+    file: 'src/components/Profile.tsx',
+    ticket: 'THE-359',
+    why:
+      'THE SAME CHANGE AS THE ENTRY ABOVE, WEARING THE RIGHT CLOTHES. THE FOUNDER, on the first '
+      + 'attempt at it: "The partner with us button should look just as all other buttons with an '
+      + 'icon. Not that huge fat ugly button you created." He is right. The empty state had been '
+      + 'replaced by a full-bleed `bg-primary` Button, which on a screen of quiet icon-disc rows '
+      + 'read as the loudest element on the page and as a commitment rather than a link to one. '
+      + 'It is now a `SettingItem` \u2014 the shared row component My Home Church, My Events, '
+      + 'Saved, Install app and Donation History are all already built from \u2014 carrying a '
+      + 'HeartHandshake disc on bg-wheat-100, the label, and a chevron, inside the same `py-0` '
+      + 'card every other row group on this page uses. The claim being withdrawn is unchanged and '
+      + 'still withdrawn: no status line, no empty-state sentence, nothing asserting whether a '
+      + 'member partners, because recurring giving runs through the tenant\'s own PayPal / Revolut '
+      + '/ Wise links and Harvest never sees it. THE DESTINATION IS UNCHANGED (`onGoToPartner`) and '
+      + "so is THE-246's gate on it: no Give page, no row, never a dead one \u2014 and when that "
+      + 'gate closes neither card renders rather than leaving a blank padded box. THE TOUCH FLOOR '
+      + 'IS NOW INHERITED RATHER THAN SPELLED: `SettingItem` already carries min-h-[44px] '
+      + 'sm:min-h-0, so this row needs no explicit height of its own and mints none \u2014 which '
+      + 'also retires the Button-size override the previous entry had to justify. The two knowable '
+      + 'states are still untouched: an active platform subscription keeps its figure and the only '
+      + 'Cancel Partnership control on this screen, and "Donor \u00b7 $N given" still reads off the '
+      + "tenant's own ledger. The three-arm chain inside the padded card is now a binary, because "
+      + 'the third arm moved out of it; no branch changed behaviour. Net type movement is -2 '
+      + '`text-sm` and nothing added, recorded as a delta in Profile.composition. No token, no '
+      + 'primitive and no dependency was added.',
+    digest: '97e7e49eeace68692ce69b0280c9b8dd3845ce9c8e75a2c5bb48b740125bbac9',
+  },
 ];
 
 /** A ticket reference the register will accept. */

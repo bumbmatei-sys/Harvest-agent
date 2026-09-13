@@ -218,12 +218,23 @@ describe('2 · the file imports its primitives from @/components/ui/', () => {
     const needle = new RegExp(['active', 'partnership'].join('\\s+'), 'i');
     expect(stripComments(read(PROFILE)), 'the "no active partnership" claim came back')
       .not.toMatch(needle);
-    // The CTA that replaced it is still a real Button with a real destination.
+    /**
+     * The CTA that replaced it is a REAL ROW, composed from the same `item`
+     * primitive as every other navigation row on this page. The founder, on the
+     * first attempt: "The partner with us button should look just as all other
+     * buttons with an icon. Not that huge fat ugly button you created." So the
+     * slot asserted here is `item`, not `button` — a hand-written substitute,
+     * or a return to the full-bleed Button, fails on that.
+     */
     const cta = Array.from(host.querySelectorAll('button'))
       .find((b) => b.textContent?.trim() === 'Partner with Us');
-    expect(cta, 'the "Partner with Us" button is gone').toBeTruthy();
+    expect(cta, 'the "Partner with Us" control is gone').toBeTruthy();
     expect(cta!.getAttribute('data-slot'),
-      'the CTA is hand-written rather than ui/button').toBe('button');
+      'the CTA is not composed from the shared row primitive').toBe('item');
+    // It carries the same three parts every sibling row does.
+    expect(cta!.querySelector('[data-slot="item-media"]'), 'the row has no icon disc').toBeTruthy();
+    expect(cta!.querySelector('[data-slot="item-title"]'), 'the row has no label').toBeTruthy();
+    expect(cta!.querySelector('[data-slot="item-actions"]'), 'the row has no chevron').toBeTruthy();
   });
 
   it('2b · and no hand-written substitute is left beside the primitive it replaced', async () => {

@@ -584,14 +584,18 @@ describe('Profile — the desktop composition', () => {
       {
         ticket: 'THE-359',
         size: 'text-sm',
-        delta: -1,
-        why: "The PARTNERSHIP card's no-partnership state lost its Empty block and gained a "
-          + 'single "Partner with Us" Button. THE FOUNDER: "\'You don\'t have an active '
-          + 'partnership\' section should be transformed into a button that says Partner with Us '
-          + 'and thats it ... there is no way to create as of right now any recuring payments '
-          + 'tracked by harvest so that copy is not good." Two `text-sm` went with the deleted '
-          + 'EmptyDescription sentence and the link-variant CTA; one came back on the button that '
-          + 'replaced them, so the net movement is exactly -1. No size was introduced, none was '
+        delta: -2,
+        why: "The PARTNERSHIP card's no-partnership state lost its Empty block and became a "
+          + 'SettingItem row. THE FOUNDER: "\'You don\'t have an active partnership\' section '
+          + 'should be transformed into a button that says Partner with Us and thats it ... there '
+          + 'is no way to create as of right now any recuring payments tracked by harvest so that '
+          + 'copy is not good." And, on the first attempt: "The partner with us button should look '
+          + 'just as all other buttons with an icon. Not that huge fat ugly button you created." '
+          + 'Two `text-sm` went with the deleted EmptyDescription sentence and the link-variant '
+          + 'CTA, and NOTHING came back in their place: the replacement is `SettingItem`, the '
+          + 'shared row component every other navigation row on this page already uses, whose own '
+          + '`text-[13px]` is defined once and was already in the baseline. So the net movement is '
+          + 'exactly -2, and it is a REMOVAL rather than a swap. No size was introduced, none was '
           + 'retuned, and nothing below the 11px floor was touched.',
       },
     ];

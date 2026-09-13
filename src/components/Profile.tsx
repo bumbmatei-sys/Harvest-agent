@@ -706,18 +706,25 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
      record of what was given, which is the related idea. Donation History is
      inside this block and is never gated on the card above it.
 
-     ⚠️ THE-359 — THE CARD ITSELF IS NOW CONDITIONAL, and only in one state.
-     Its three branches are: an active platform partnership, a past donor, and
-     everybody else. The third is a single "Partner with Us" button gated on
-     `onGoToPartner` (THE-246: no Give page, no button), and with the empty-state
-     sentence deleted there is nothing else in it — so when that gate closes the
-     card would be a blank box with 16px of padding. It is skipped instead.
-     Donation History still renders; its own `mt-3` is a margin, not a gap left
-     by something missing. */}
+     ⚠️ THE-359 — THERE ARE NOW TWO CARDS ABOVE Donation History, NOT ONE, and
+     only one of them ever renders. The three states this section can be in are:
+     an active platform partnership, a past donor, and everybody else. The first
+     two are content — a figure, a status, a cancel control — and share the
+     padded `py-4` card they always had. The THIRD is now a NAVIGATION ROW, so it
+     gets the `py-0` card every other row group on this page uses and holds a
+     `SettingItem`, which is what makes it look like My Events, Saved and
+     Donation History rather than a slab.
+
+     ⚠️ AND THE THIRD IS STILL GATED ON `onGoToPartner` (THE-246: no Give page,
+     no row, never a dead one). With the empty-state sentence deleted there is
+     nothing else in that card, so when the gate closes NEITHER card renders and
+     the section is the heading plus Donation History. Donation History always
+     renders and is never gated on what is above it; its `mt-3` is a margin, not
+     a gap left by something missing. */}
  {hasGiving && (
  <div>
  <h4 className="text-[10px] font-bold text-faint tracking-wider uppercase mb-3 ml-2">Partnership</h4>
- {(donationSubscriptionId || totalDonated > 0 || onGoToPartner) && (
+ {(donationSubscriptionId || totalDonated > 0) ? (
  <Card className="bg-surface-raised rounded-3xl shadow-xs border border-line ring-0 py-4 gap-0 overflow-hidden">
  {donationSubscriptionId ? (
  <div>
@@ -774,7 +781,11 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  </Button>
  )}
  </div>
- ) : totalDonated > 0 ? (
+ ) : (
+ /* THE-321's donor state, unchanged. The outer condition above already
+    guarantees one of the two branches applies, so this is a binary rather
+    than the three-arm chain it was: the third arm — the empty state — moved
+    out of this Card entirely when THE-359 turned it into a row. */
  <div>
  <div className="flex items-center gap-3">
  <div className="w-7 h-7 rounded-full flex items-center justify-center bg-wheat-100">
@@ -796,14 +807,18 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  )}
  </div>
  </div>
- ) : (
- /* THE-359 — 🔴 A BUTTON, AND NOTHING ELSE.
+ )}
+ </Card>
+ ) : onGoToPartner ? (
+ /* THE-359 — 🔴 A ROW, LIKE EVERY OTHER ROW ON THIS PAGE.
 
     THE FOUNDER: "'You don't have an active partnership' section should be
     transformed into a button that says Partner with Us and thats it, above
     donation history in the same partnership section. there is no way to create
     as of right now any recuring payments tracked by harvest so that copy is not
-    good."
+    good." And, on the first attempt at it: "The partner with us button should
+    look just as all other buttons with an icon. Not that huge fat ugly button
+    you created."
 
     🔴 THE SENTENCE ASSERTED A FACT HARVEST CANNOT KNOW. Recurring giving to a
     TENANT goes through that tenant's own payment links — PayPal, Revolut, Wise
@@ -811,36 +826,38 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
     the platform account is closed). A member with a monthly standing order to
     their church was told, flatly, that they had no partnership. The empty state
     is therefore GONE rather than reworded: no status line, no explanatory note,
-    no "we cannot see recurring gifts". A button that claims nothing cannot be
-    wrong, and the founder asked for a button.
+    no "we cannot see recurring gifts". A control that claims nothing cannot be
+    wrong.
 
-    ⚠️ `empty` GOES WITH IT. THE-321 chose that primitive to state "you have
-    nothing here yet" — which is the claim being withdrawn. There is no empty
-    collection to announce any more, so the primitive that announces one has no
-    job here; `Empty`/`EmptyHeader`/`EmptyDescription`/`EmptyContent` are still
-    used elsewhere in this file and are untouched.
+    🔴 AND IT IS `SettingItem`, WHICH IS WHAT EVERY OTHER NAVIGATION ROW ON THIS
+    PAGE ALREADY IS — icon disc, label, chevron. The first attempt shipped a
+    full-bleed `bg-primary` Button, which read as the loudest element on a screen
+    of quiet rows and as a commitment rather than a link to a page. This row goes
+    somewhere, exactly like My Events, Saved and Donation History directly below
+    it, so it is spelled the same way and inherits their 44px tap floor, their
+    hover, their `Item` primitive and their type. No new component, no new height
+    and no colour: `HeartHandshake` on `bg-wheat-100` is the disc the other two
+    partnership states already use, and `Receipt` on `bg-wheat-100` is Donation
+    History's — the pair now reads as one section.
+
+    ⚠️ `empty` GOES WITH THE SENTENCE. THE-321 chose that primitive to state "you
+    have nothing here yet" — which is the claim being withdrawn. There is no
+    empty collection to announce any more, so the primitive that announces one
+    has no job here; `Empty` and friends are still used elsewhere in this file.
 
     ⚠️ THE DESTINATION IS UNCHANGED — `onGoToPartner`, the same handler the old
     link carried — and so is THE-246's gate on it: with no Give page to jump to
-    there is no button at all, not a dead one. When that gate closes there is now
-    nothing left to draw, so the card itself is skipped rather than rendered
-    empty (see `partnershipCard` below).
-
-    🔴 THE SIZE IS EXPLICIT AND IT HAS TO BE. `Button`'s intrinsic heights are
-    24/28/32/36px and its default is `h-8` — 32px, under the 44px tap floor.
-    `h-auto min-h-[44px]` overrides it below `sm`; `sm:h-[40px]` hands density
-    back to Rule 4 above it, clearing its 38px. Same shape as the Cancel
-    Partnership button twenty lines up, so no new height is minted. */
- <Button
- size="lg"
+    there is no row at all, not a dead one, and the card is skipped rather than
+    rendered as an empty box. */
+ <Card className="bg-surface-raised rounded-3xl shadow-xs border border-line ring-0 py-0 gap-0 overflow-hidden">
+ <SettingItem
+ icon={<HeartHandshake size={16} className="text-wheat-600" />}
+ iconBg="bg-wheat-100"
+ label="Partner with Us"
  onClick={onGoToPartner}
- className="w-full h-auto min-h-[44px] sm:min-h-0 sm:h-[40px] rounded-xl font-bold text-sm"
- >
- Partner with Us
- </Button>
- )}
+ />
  </Card>
- )}
+ ) : null}
  {/* Donation History — the member's own receipts + giving totals, private to
      them. Placed under Partnership (per the founder), reusing SettingItem/card
      styling. Always shown; the view renders an empty state for non-donors. */}
