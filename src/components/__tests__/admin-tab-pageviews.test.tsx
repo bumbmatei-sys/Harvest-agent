@@ -673,17 +673,19 @@ describe('15 — session recording, autocapture and the closed vocabulary are al
   });
 
   it('the event vocabulary is still closed, and the tab opening is still not in it', () => {
-    // 🔴 THE-360 widened this list from one name to ten, and the point of THIS
-    // assertion survives the widening intact: `admin_tab_opened` is STILL not
-    // among them. Every event THE-360 added is something a church DID — a gift
-    // recorded, a course published, a cap hit. Not one is a view, a read or an
-    // open, because pageviews already answer that and every extra event is a
-    // new way for a property to leak.
+    // 🔴 THE-360 widened this list from one name to ten and THE-361 took it to
+    // eleven, and the point of THIS assertion survives both intact:
+    // `admin_tab_opened` is STILL not among them. Every event those tickets
+    // added is something a church DID — a gift recorded, a course published, a
+    // library course adopted, a cap hit. Not one is a view, a read or an open,
+    // because pageviews already answer that and every extra event is a new way
+    // for a property to leak.
     expect(Object.values(ANALYTICS_EVENTS)).toEqual([
       '$pageview',
       'gift_recorded',
       'event_payment_confirmed',
       'course_published',
+      'course_adopted',
       'service_created',
       'rota_invitations_sent',
       'form_published',

@@ -358,8 +358,27 @@ const filesSpelling = (digest: string): string[] =>
  *
  * 🔴 ITS OWN OWNERSHIP RECORD CARRIES NO `firestore.rules` ENTRY either, for
  * the reason this register states: `THE-360.json` records the ten shipped files
- * it edits, and no rules digest. */
-const PINNING_SUITES = 73;
+ * it edits, and no rules digest.
+ *
+ * 73 -> 74, APPENDED BY THE-361, through the same module and for the same
+ * reason. Its suite adds ONE name to the analytics vocabulary -
+ * `course_adopted`, the event THE-360 proposed and dropped on a wrong premise -
+ * and pins that doing so needed NO rule change: the event is a single
+ * client-side `capture()` fired beside a request that already existed, on a
+ * screen whose permissions already governed it. `adoptedCourses` remains
+ * `allow write: if false` and the adoption pointer is still written only by the
+ * Admin SDK behind `/api/courses/adopt`, so neither half of that rule is read
+ * or relaxed here. The vocabulary lives in `src/lib/analytics/events.ts`, which
+ * Firestore never sees.
+ *
+ * ITS OWN OWNERSHIP RECORD CARRIES NO `firestore.rules` ENTRY either, for the
+ * reason this register states and for the reason THE-342, THE-345 and THE-360
+ * each recorded after THE-333 and THE-341 turned it red: `THE-361.json` records
+ * the files it edits, and no rules digest. It reaches the accepted set through
+ * `acceptedRulesDigests()` like every other pinner, so a real rules change
+ * still costs exactly one edit. Nothing above is removed and no accepted value
+ * is widened. */
+const PINNING_SUITES = 74;
 
 /**
  * A digest no ticket has recorded and none ever will — the planted change.

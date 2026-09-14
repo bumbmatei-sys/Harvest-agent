@@ -153,11 +153,18 @@ describe('1 — an event not in the vocabulary is dropped before the network', (
   it('an unregistered event never leaves, whatever it is called', () => {
     // Assembled, so this file does not contain the needles it sweeps for and
     // cannot satisfy its own greps below.
+    //
+    // ⚠️ `course_adopted` STOOD HERE UNTIL THE-361 and is deliberately gone,
+    // not quietly dropped: the founder asked for it, it was added to
+    // `events.ts` the way this file intends, and an event that IS in the
+    // vocabulary cannot also be an example of one that is dropped. The list
+    // keeps its length - `course_unadopted` takes the slot, which is the
+    // neighbouring event THE-361 considered and did NOT add.
     const unregistered = [
       ['gift', 'deleted'].join('_'),
       ['donor', 'exported'].join('_'),
       ['prayer', 'read'].join('_'),
-      ['course', 'adopted'].join('_'),
+      ['course', 'unadopted'].join('_'),
       ['onboarding', 'step', 'completed'].join('_'),
     ];
     for (const event of unregistered) {
@@ -171,14 +178,16 @@ describe('1 — an event not in the vocabulary is dropped before the network', (
     }
   });
 
-  it('the vocabulary is exactly these thirteen names', () => {
+  it('the vocabulary is exactly these fourteen names', () => {
     // 🔴 SPELLED OUT. Comparing the export to itself would pass forever; this
-    // is the assertion a tenth product event has to come through.
+    // is the assertion an eleventh product event has to come through - as
+    // THE-361's `course_adopted` did.
     expect([...ALLOWED_EVENT_NAMES]).toEqual([
       '$pageview',
       'gift_recorded',
       'event_payment_confirmed',
       'course_published',
+      'course_adopted',
       'service_created',
       'rota_invitations_sent',
       'form_published',
