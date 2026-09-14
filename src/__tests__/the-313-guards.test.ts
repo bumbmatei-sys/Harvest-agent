@@ -118,6 +118,17 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // is byte-identical, as are THE-154's direct charge, the platform fee, the
     // Checkout metadata, the pending-registration rollback and the capacity count.
     // THE-313 still did not touch this file.
+    // 🔴 APPENDED for THE-359, never substituted. The confirmation email is all
+    // that moved: the pay note loses the door guarantee the founder deleted, and
+    // the QR paragraph becomes a `qrBlock` gated on `owesManualPayment`, so a
+    // paid ticket's email no longer carries a scannable code for a payment
+    // nobody has confirmed while a FREE one still embeds its image. 🔴 THE WRITE
+    // THIS GUARD EXISTS TO PROTECT IS STILL UNCHANGED: the `contactActivities`
+    // CRM row is byte-identical, as are THE-154's direct charge, the platform
+    // fee, the Checkout metadata, the pending-registration rollback and the
+    // capacity count. THE-313 still did not touch this file.
+    ['0acc9d864c5623cac79ac44588e83899a086a3be57831bb31e49d7c8d5abbb7e',
+      'main + THE-359 — the confirmation email drops the door promise and withholds the QR on an unconfirmed paid ticket; every write is byte-identical'],
     ['20be877124903dd6eeda68f20ea3835206381dcc766e8d680f755e2766cc50ed',
       'main + THE-355 — the claim token is minted beside the reference; the CRM write and the Stripe path are byte-identical'],
   ],

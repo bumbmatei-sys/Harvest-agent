@@ -416,13 +416,47 @@ describe('21 · erasure and export handle an inbox item and a confirmed registra
     // exported with no edit and cannot be forgotten.
     expect(exporter).toMatch(/pageQuery\(coll\.where\('userId', '==', assertConcreteScope\(ctx\.uid, 'uid'\)\), budget, whole\)/);
 
+    /**
+     * 🔴 THE-359 ADDED TWO NAMES TO THIS LIST AND PROVED THEM FIRST.
+     *
+     * The confirm route now writes a DONATION activity onto the member's CRM
+     * contact — the founder: "in crm it doesnt show that i have paid for an
+     * event after i confirmed but it appears in the accounting" — so it reaches
+     * `contacts` (to find the row by email) and `contactActivities` (to write
+     * the timeline entry). This guard asks whether either path would have to
+     * LEARN a collection, and the honest answer is no: both are already
+     * enumerated by `member-erasure.ts` and `member-export.ts`, including the
+     * `contactActivities (type: donation)` carve-out that RETAINS exactly the
+     * type this route writes, because a financial record is the tenant's.
+     *
+     * ⚠️ THE NAMES ARE NOT SIMPLY APPENDED. Widening a whitelist on the promise
+     * that coverage exists is how a whitelist stops guarding, so the coverage is
+     * ASSERTED against the two source files immediately below. If either path
+     * ever drops `contactActivities`, this fails here rather than in a subject
+     * access request.
+     */
+    for (const [collection, why] of [
+      ['contacts', 'the confirm route matches the giver by email'],
+      ['contactActivities', "THE-359's donation timeline entry"],
+    ] as const) {
+      expect(erasure, `member-erasure.ts does not reach ${collection} — ${why}`)
+        .toContain(`collection('${collection}')`);
+      expect(exporter, `member-export.ts does not reach ${collection} — ${why}`)
+        .toContain(`collection('${collection}')`);
+    }
+    // And the donation carve-out that decides what happens to THIS row.
+    expect(erasure, 'the donation-activity retention rule is gone')
+      .toContain("collection: 'contactActivities (type: donation)'");
+
     // 🔴 AND THIS TICKET ADDS NO COLLECTION EITHER PATH WOULD HAVE TO LEARN.
     for (const rel of OWNED) {
       const src = code(rel);
       const collections = [...src.matchAll(/\.collection\(\s*['"]([a-zA-Z_]+)['"]\s*\)/g)].map((m) => m[1]);
       for (const c of collections) {
-        expect(['tenants', 'registrations', 'events', 'users', 'invoices'],
-          `${rel} reaches a collection no GDPR path knows about: ${c}`).toContain(c);
+        expect(
+          ['tenants', 'registrations', 'events', 'users', 'invoices', 'contacts', 'contactActivities'],
+          `${rel} reaches a collection no GDPR path knows about: ${c}`,
+        ).toContain(c);
       }
     }
   });

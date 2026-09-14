@@ -5,7 +5,7 @@ import { captureHandledError } from '@/lib/money-path-sentry';
 import { notifyChurchOfPaymentClaim } from '@/lib/event-payment-notify';
 import {
   CLAIM_QUEUE_FIELD,
-  MEMBER_CLAIM_FAILED,
+  memberClaimFailed,
   PUBLIC_CLAIM_TOKEN_FIELD,
   isPublicClaimToken,
   paymentStateOf,
@@ -208,6 +208,11 @@ export async function POST(request: NextRequest) {
     captureHandledError(e, { step: 'event-payment-public-claim', tenantId });
     // 🔴 The registrant is told nothing changed, because nothing did. THE-342's
     // rule: a default that hides an error is a bug.
-    return NextResponse.json({ error: MEMBER_CLAIM_FAILED }, { status: 500 });
+    // THE-359 — this route holds a tenantId, not a tenant NAME, and a doc read
+    // on the failure path to fetch one would be a second way to fail while
+    // already failing. `tenantLabel`'s fallback is exactly what it is for.
+    // The surfaces that DO hold the name render their own copy of this
+    // sentence with it interpolated; this is the body of a 500.
+    return NextResponse.json({ error: memberClaimFailed(null) }, { status: 500 });
   }
 }

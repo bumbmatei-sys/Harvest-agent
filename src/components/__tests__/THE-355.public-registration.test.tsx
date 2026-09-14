@@ -37,8 +37,9 @@ vi.mock('../../utils/auth-fetch', () => ({ authFetch: vi.fn() }));
 const { mountScreen, settle, click } = await import('../../test/support/ministry-screens');
 const PublicEventRegistration = (await import('../PublicEventRegistration')).default;
 const {
-  MEMBER_CLAIM_BUTTON, PUBLIC_CLAIM_HELP, PUBLIC_CLAIMED_TITLE, PUBLIC_NO_LINKS_TITLE,
-  PUBLIC_PAY_TITLE, publicPayBody, publicNoLinksBody, publicClaimedBody,
+  MEMBER_CLAIM_BUTTON, PUBLIC_PAY_TITLE,
+  publicClaimHelp, publicClaimedTitle, publicNoLinksTitle,
+  publicPayBody, publicNoLinksBody, publicClaimedBody,
   FORBIDDEN_CLAIM_PHRASES, claimsVerification,
 } = await import('@/lib/event-payment-claims');
 
@@ -311,21 +312,29 @@ describe('4 · a public registrant can claim they paid', () => {
     await registerAndSubmit(root);
     const help = root.querySelector('[data-public-claim-help]');
     expect(help, 'the warning is gone').toBeTruthy();
-    expect(text(help!)).toBe(PUBLIC_CLAIM_HELP);
+    expect(text(help!)).toBe(publicClaimHelp('Kingdom Living'));
+    // THE-359 — what it must still carry, and what it must no longer carry.
+    expect(text(help!)).toMatch(/does not confirm payment/i);
+    expect(text(help!)).toContain('Kingdom Living');
+    expect(text(help!), 'the logged-out registrant lost the pointer to their record')
+      .toContain('Keep the email with your ticket code');
+    expect(text(help!), 'THE-359 removed the debt line').not.toMatch(/what you owe/i);
     // A phone has no hover. It must be rendered text, not a title attribute.
     const btn = root.querySelector('[data-public-claim]')!;
     expect(btn.getAttribute('title'), 'the warning moved behind a hover').toBeNull();
   });
 
-  it('🔴 after a successful press it says the CHURCH was asked to look — not that anything is paid', async () => {
+  it('🔴 after a successful press it names the TENANT that was asked — not that anything is paid', async () => {
     const root = await mount();
     await registerAndSubmit(root);
     await click(root.querySelector('[data-public-claim]') as HTMLElement);
 
     const done = root.querySelector('[data-public-claim-done]');
     expect(done, 'the press left no visible outcome').toBeTruthy();
-    expect(text(done!)).toContain(PUBLIC_CLAIMED_TITLE);
+    expect(text(done!)).toContain(publicClaimedTitle('Kingdom Living'));
+    expect(text(done!)).toContain('Kingdom Living has been asked to look');
     expect(text(done!)).toContain(publicClaimedBody('Kingdom Living', REFERENCE));
+    expect(text(done!), 'the claimed state still says "the church"').not.toMatch(/the church/i);
     expect(claimsVerification(text(done!)), 'the confirmation claims Harvest checked something')
       .toBeNull();
     expect(root.querySelector('[data-public-claim]'), 'the button is still pressable after a claim')
@@ -374,35 +383,60 @@ describe('13 · a paid event with no configured link', () => {
     const note = root.querySelector('[data-public-payment-note]')!;
     const noLinks = root.querySelector('[data-public-no-links]');
     expect(noLinks, 'a priced event with no link renders an empty space — the original bug').toBeTruthy();
-    expect(text(noLinks!)).toContain(PUBLIC_NO_LINKS_TITLE);
+    // THE-359 — the heading names the TENANT: 'Ask the church how to pay' was
+    // a constant until this ticket.
+    expect(text(noLinks!)).toContain(publicNoLinksTitle('Kingdom Living'));
+    expect(text(noLinks!)).toContain('Ask Kingdom Living how to pay');
     expect(text(noLinks!)).toContain(publicNoLinksBody('Kingdom Living', 5000, REFERENCE));
 
     // 🔴 IT IS TRUE, AND IT IS NOT A FAILURE. The place IS booked.
     expect(text(note)).toContain('Your place is booked');
     expect(text(note)).toContain(REFERENCE);
-    expect(text(note), 'the door guarantee is missing from the state that most needs it')
-      .toContain('you will not be turned away at the door');
+    // 🔴 THE-359 INVERTED THIS. It demanded the door guarantee on "the state
+    // that most needs it"; the founder deleted the guarantee outright, because
+    // Harvest cannot know what any tenant does at its own door.
+    expect(text(note), '🔴 the door guarantee came back on the no-links state')
+      .not.toMatch(/turned away/i);
     // Nothing to have paid, so nothing to claim.
     expect(root.querySelector('[data-public-claim]'), 'a claim was offered with nowhere to pay').toBeNull();
     expect(claimsVerification(text(note))).toBeNull();
   });
 });
 
-/* ═══ 12 · check-in still never blocks on payment ════════════════════════ */
+/* ═══ 12 · THE-359 — the door guarantee is GONE from the public page ═════ */
 
-describe('12 · the door guarantee survives on the public page', () => {
-  it('🔴 the paid confirmation still promises the door', async () => {
+/**
+ * 🔴 THIS BLOCK IS THE EXACT INVERSE OF THE ONE IT REPLACES, and the inversion
+ * is the ticket. THE-355 asserted "the founder's door decision fell off the
+ * public page" if the promise was missing. THE FOUNDER, THE-359: "'Bring this
+ * ticket either way — you will not be turned away at the door.' this should be
+ * deleted. there is no way for us to know what each church is doing. or
+ * ministry."
+ *
+ * ⚠️ THE BEHAVIOUR DID NOT CHANGE — check-in still never blocks on payment, and
+ * `THE-351.manual-payment.guards.test.ts` §14 still proves it against the real
+ * `AdminEvents` source. What went is the PROMISE, which was never Harvest's to
+ * make on a tenant's behalf.
+ */
+describe('12 · the door guarantee is gone from the public page', () => {
+  it('🔴 a paid confirmation promises nothing about the door', async () => {
     const root = await mount();
     await registerAndSubmit(root);
-    expect(text(root).toLowerCase(), '🔴 the founder’s door decision fell off the public page')
-      .toContain('you will not be turned away at the door');
+    const all = text(root).toLowerCase();
+    expect(all, '🔴 the door guarantee came back on the public confirmation')
+      .not.toContain('turned away');
+    expect(all, 'a softened door claim was substituted for the deleted one')
+      .not.toMatch(/at the door[^.]*\b(let in|admitted|welcome)\b/);
   });
 
-  it('🔴 and it survives a claim being made', async () => {
+  it('🔴 and it stays gone once a claim has been made', async () => {
     const root = await mount();
     await registerAndSubmit(root);
     await click(root.querySelector('[data-public-claim]') as HTMLElement);
-    expect(text(root).toLowerCase()).toContain('you will not be turned away at the door');
+    const all = text(root).toLowerCase();
+    expect(all).not.toContain('turned away');
+    expect(all, 'the deleted Harvest-has-not-checked line came back')
+      .not.toContain('harvest has not checked');
   });
 });
 

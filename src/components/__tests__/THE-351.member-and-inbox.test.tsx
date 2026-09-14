@@ -97,7 +97,7 @@ describe('4+5 · the member’s ticket', () => {
           id: 'reg1', payment: 'unpaid', amount: 5000, paymentReference: 'HV-4KTM9P',
           payOptions: [{ id: 'paypal', label: 'PayPal', url: 'https://paypal.me/grace', handle: null, email: null }],
         }}
-        churchName="Grace Chapel"
+        tenantName="Grace Chapel"
         onChanged={() => {}}
       />,
     );
@@ -121,7 +121,7 @@ describe('4+5 · the member’s ticket', () => {
     const c = await mount(
       <Panel
         ticket={{ id: 'reg1', payment: 'unpaid', amount: 5000, paymentReference: 'HV-4KTM9P', payOptions: [] }}
-        churchName="Grace Chapel"
+        tenantName="Grace Chapel"
         onChanged={() => {}}
       />,
     );
@@ -130,10 +130,13 @@ describe('4+5 · the member’s ticket', () => {
     expect(button.textContent).toBe("I've paid");
 
     const help = c.querySelector('[data-ticket-claim-help]')!;
-    expect(help.textContent).toBe(COPY.MEMBER_CLAIM_HELP);
+    // THE-359 rewrote this sentence and gave it the TENANT's name. What it must
+    // still carry is the premise: the press does not confirm anything.
+    expect(help.textContent).toBe(COPY.memberClaimHelp('Grace Chapel'));
     // 🔴 THE PREMISE, IN THE MEMBER'S OWN VIEW.
-    expect(help.textContent).toMatch(/only tells the church to go and look/i);
-    expect(help.textContent).toMatch(/settles nothing on its own/i);
+    expect(help.textContent).toMatch(/does not confirm payment/i);
+    expect(help.textContent).toContain('Grace Chapel');
+    expect(help.textContent, 'THE-359 removed the debt line').not.toMatch(/what you owe/i);
     // 🔴 NOT BEHIND A HOVER. A phone has no hover, and a member who thinks the
     // press settled it arrives at the door believing they are paid.
     expect(help.getAttribute('title')).toBeNull();
@@ -148,7 +151,7 @@ describe('4+5 · the member’s ticket', () => {
     const c = await mount(
       <Panel
         ticket={{ id: 'reg1', payment: 'unpaid', amount: 5000, paymentReference: 'HV-4KTM9P', payOptions: [] }}
-        churchName="Grace Chapel"
+        tenantName="Grace Chapel"
         onChanged={() => { changed += 1; }}
       />,
     );
@@ -162,54 +165,71 @@ describe('4+5 · the member’s ticket', () => {
     const c = await mount(
       <Panel
         ticket={{ id: 'reg1', payment: 'unpaid', amount: 5000, paymentReference: 'HV-4KTM9P', payOptions: [] }}
-        churchName="Grace Chapel"
+        tenantName="Grace Chapel"
         onChanged={() => { throw new Error('a failed press reported success'); }}
       />,
     );
     await click(c.querySelector('[data-ticket-claim]'));
     const failed = c.querySelector('[data-ticket-claim-failed]');
     expect(failed, 'the failure was swallowed').not.toBeNull();
-    expect(failed!.textContent).toBe(COPY.MEMBER_CLAIM_FAILED);
-    expect(failed!.textContent).toMatch(/the church has not been told/i);
+    expect(failed!.textContent).toBe(COPY.memberClaimFailed('Grace Chapel'));
+    expect(failed!.textContent).toMatch(/Grace Chapel has not been told/);
     // Still unpaid, and the button is still there to try again.
     expect(c.querySelector('[data-ticket-payment="unpaid"]')).not.toBeNull();
   });
 
-  it('a CLAIMED ticket says the church has been asked, and that it still reads unpaid', async () => {
+  it('a CLAIMED ticket names the TENANT that was asked — THE-359', async () => {
     const c = await mount(
       <Panel
         ticket={{ id: 'reg1', payment: 'claimed', amount: 5000, paymentReference: 'HV-4KTM9P', payOptions: [] }}
-        churchName="Grace Chapel"
+        tenantName="Grace Chapel"
         onChanged={() => {}}
       />,
     );
     const text = c.querySelector('[data-ticket-payment="claimed"]')!.textContent ?? '';
-    expect(text).toContain(COPY.MEMBER_CLAIMED_TITLE);
-    expect(text).toMatch(/Harvest has not checked anything and cannot/);
-    expect(text, '🔴 the member is not told they still get in at the door')
-      .toMatch(/you will not be turned away at the door/i);
+    expect(text).toContain(COPY.memberClaimedTitle('Grace Chapel'));
+    expect(text).toContain('Waiting for Grace Chapel to check');
+    expect(text).toContain('Waiting on Grace Chapel');
+    /**
+     * 🔴 THE-359 INVERTED THE TWO ASSERTIONS THAT USED TO LIVE HERE. This test
+     * demanded "Harvest has not checked anything and cannot" and "you will not
+     * be turned away at the door" — both sentences THE FOUNDER asked to be
+     * deleted: "also remove 'Harvest has not checked anything and cannot. Until
+     * someone there marks it paid, your ticket still reads unpaid — bring it
+     * anyway, you will not be turned away at the door.'" Harvest has no way to
+     * know what any tenant does at its own door. They are now REFUSED here.
+     */
+    expect(text, 'the deleted Harvest-has-not-checked line came back')
+      .not.toMatch(/Harvest has not checked/i);
+    expect(text, '🔴 the door guarantee came back on the member ticket')
+      .not.toMatch(/turned away/i);
     expect(COPY.claimsVerification(text)).toBeNull();
     // 🔴 No "I've paid" button — pressing again would tell them nothing new.
     expect(c.querySelector('[data-ticket-claim]')).toBeNull();
   });
 
-  it('a CONFIRMED ticket credits the CHURCH, never Harvest', async () => {
+  it('a CONFIRMED ticket credits the TENANT BY NAME, never Harvest — THE-359', async () => {
     const c = await mount(
       <Panel
         ticket={{ id: 'reg1', payment: 'confirmed', amount: 5000, paymentReference: 'HV-4KTM9P', paymentConfirmedAt: AT(5), payOptions: [] }}
-        churchName="Grace Chapel"
+        tenantName="Grace Chapel"
         onChanged={() => {}}
       />,
     );
     const text = c.querySelector('[data-ticket-payment="confirmed"]')!.textContent ?? '';
+    // 🔴 BOTH HALVES name the tenant — the heading was 'Marked paid by the
+    // church' until THE-359. THE FOUNDER: "after a ticket is confirmed, do not
+    // say the church but the name of the tenant."
+    expect(text).toContain('Marked paid by Grace Chapel');
     expect(text).toContain('Grace Chapel marked this ticket paid');
+    expect(text, 'the confirmed ticket still says "the church"').not.toMatch(/the church/i);
     expect(text).toMatch(/Harvest recorded their word for it/);
     expect(COPY.claimsVerification(text)).toBeNull();
   });
 
   it('🔴 a FREE ticket renders none of this at all', async () => {
     const c = await mount(
-      <Panel ticket={{ id: 'reg1', payment: 'free', amount: 0, payOptions: [] }} churchName="Grace Chapel" onChanged={() => {}} />,
+      <Panel ticket={{ id: 'reg1', payment: 'free', amount: 0, payOptions: [] }} tenantName="Grace Chapel" onChanged={() => {}} />,
     );
     expect(c.querySelector('[data-ticket-payment]'),
       'a free registration grew payment vocabulary').toBeNull();

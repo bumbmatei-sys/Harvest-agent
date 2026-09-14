@@ -12,14 +12,16 @@ import { CONTROL_DENSITY } from './layout/form-layout';
 import { PAID_EVENTS_ENABLED, manualConfirmationMode } from '../lib/paid-events-feature';
 import {
   MEMBER_CLAIM_BUTTON,
-  MEMBER_CLAIM_FAILED,
-  PUBLIC_CLAIMED_TITLE,
-  PUBLIC_CLAIM_HELP,
-  PUBLIC_NO_LINKS_TITLE,
   PUBLIC_PAY_TITLE,
+  TICKET_QR_WAITING_TITLE,
+  memberClaimFailed,
+  publicClaimHelp,
   publicClaimedBody,
+  publicClaimedTitle,
   publicNoLinksBody,
+  publicNoLinksTitle,
   publicPayBody,
+  ticketQrWaitingBody,
 } from '../lib/event-payment-claims';
 
 /** One of the church's own payment links, resolved server-side by the page. */
@@ -415,6 +417,14 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
 
   // ── Success ──
   if (done) {
+    /**
+     * THE-359 — a PRICED registration on this screen is, by construction, one
+     * nobody has confirmed yet: the tenant has to open its own account and
+     * vouch, and this render happens seconds after the form was submitted. A
+     * waitlisted row owes nothing and a free row has no `paymentReference`, so
+     * both take the `false` branch and are completely unaffected.
+     */
+    const awaitingPayment = !!done.paymentReference && !done.waitlisted;
     return (
       <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
         {EventHeader}
@@ -423,10 +433,26 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
           <h2 className="font-display text-xl font-bold text-strong mb-1">
             {done.waitlisted ? "You're on the waitlist!" : "You're registered!"}
           </h2>
+          {/*
+            THE-359 — 🔴 A PAID TICKET NOBODY HAS CONFIRMED IS NOT A DOOR PASS.
+            "Show this code at the door:" is the same claim the QR makes, made in
+            words, so it goes for exactly as long as the QR does — and what
+            stands in its place says the registration is real, which is the one
+            thing the registrant needs to know.
+
+            ⚠️ THE CODE ITSELF STAYS ON THIS SCREEN, and that is a deliberate
+            difference from the member's in-app ticket. A logged-out registrant
+            can never come back here: this render and the email are the only
+            record they will ever hold, and `publicClaimHelp` tells them to keep
+            it. A code is not a scannable ticket, and check-in never blocks on
+            payment, so nothing about the door turns on whether they have it.
+          */}
           <p className="text-sm text-muted mb-4">
             {done.waitlisted
               ? "We'll contact you if a spot opens up."
-              : 'Show this code at the door:'}
+              : awaitingPayment
+                ? `${TICKET_QR_WAITING_TITLE}. ${ticketQrWaitingBody(tenantName)}`
+                : 'Show this code at the door:'}
           </p>
           {!done.waitlisted && (
             <div className="text-3xl font-mono font-bold tracking-widest text-strong my-4">{done.ticketCode}</div>
@@ -545,7 +571,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
                   {claimState === 'claimed' ? (
                     <div className="mt-4" data-public-claim-done>
                       <Alert>
-                        <AlertTitle>{PUBLIC_CLAIMED_TITLE}</AlertTitle>
+                        <AlertTitle>{publicClaimedTitle(tenantName)}</AlertTitle>
                         <AlertDescription>
                           {publicClaimedBody(tenantName, done.paymentReference)}
                         </AlertDescription>
@@ -564,14 +590,14 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
                         {claimState === 'saving' ? 'Sending…' : MEMBER_CLAIM_BUTTON}
                       </button>
                       <p className="mt-1.5 text-[11px] text-muted" data-public-claim-help>
-                        {PUBLIC_CLAIM_HELP}
+                        {publicClaimHelp(tenantName)}
                       </p>
                       {claimState === 'failed' && (
                         <p
                           className="mt-1.5 text-[11px] font-semibold text-destructive"
                           data-public-claim-failed
                         >
-                          {MEMBER_CLAIM_FAILED}
+                          {memberClaimFailed(tenantName)}
                         </p>
                       )}
                     </div>
@@ -582,13 +608,16 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
                   🔴 STOP CONDITION 6 — PRICED, WITH NO LINK PUBLISHED. An event with
                   a price and no way to pay is the original defect in a different
                   costume, so this says the true thing rather than leaving a gap:
-                  the place is booked, the church has published nowhere to send
-                  money, ask them and quote the reference, and the door is not in
-                  question either way. No claim control is offered, because there
-                  is nothing here they could have paid.
+                  the place is booked, the tenant has published nowhere to send
+                  money, and ask them and quote the reference. No claim control is
+                  offered, because there is nothing here they could have paid.
+
+                  ⚠️ THE-359 removed the fourth clause — "the door is not in
+                  question either way". Harvest does not know what any tenant does
+                  at its own door and must not say.
                 */
                 <Alert data-public-no-links>
-                  <AlertTitle>{PUBLIC_NO_LINKS_TITLE}</AlertTitle>
+                  <AlertTitle>{publicNoLinksTitle(tenantName)}</AlertTitle>
                   <AlertDescription>
                     {publicNoLinksBody(tenantName, done.amountCents, done.paymentReference)}
                   </AlertDescription>

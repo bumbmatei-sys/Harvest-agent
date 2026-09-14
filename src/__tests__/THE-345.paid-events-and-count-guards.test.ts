@@ -423,8 +423,30 @@ describe('22 · firestore.rules, the indexes, functions/ and layout.tsx are unto
      * the three bypasses still mean a free registration, a waitlist entry and a
      * ticket discounted to $0 mint neither a reference nor a token.
      */
+    /**
+     * ─── RE-PINNED BY THE-359, AND WHAT MOVED IS THE EMAIL ───────────────────
+     *
+     * Previous pins, kept so nothing is lost:
+     *   f203f58f402ec89f14415c9ae64134bd44286b8c4fcb0e8fa12fb70cfd7739a2  (THE-351)
+     *   20be877124903dd6eeda68f20ea3835206381dcc766e8d680f755e2766cc50ed  (THE-355)
+     *
+     * THE-359 edits the confirmation email twice and nothing else in this file.
+     * The pay note loses the door guarantee the founder deleted; and the QR
+     * paragraph becomes a `qrBlock` gated on `owesManualPayment`, so an email
+     * for a paid ticket carries "your place is held" wording instead of a
+     * scannable code for a payment nobody has confirmed — the founder: "the
+     * user should not have the qr code unless his payment has been confirmed."
+     *
+     * WHAT THIS ASSERTION IS ACTUALLY FOR IS STILL UNCHANGED: THE-154's direct
+     * charge, the platform fee, the Checkout metadata, the pending-registration
+     * rollback and the CRM write are byte-identical, and the three bypasses
+     * still mean a free registration, a waitlist entry and a ticket discounted
+     * to $0 mint neither a reference nor a token — and, now, still receive their
+     * QR, because the new gate is `owesManualPayment` rather than a fresh
+     * `amount > 0` that a discounted-to-zero seat could trip.
+     */
     expect(sha256(read('src/app/api/event-registration/submit/route.ts')))
-      .toBe('20be877124903dd6eeda68f20ea3835206381dcc766e8d680f755e2766cc50ed');
+      .toBe('0acc9d864c5623cac79ac44588e83899a086a3be57831bb31e49d7c8d5abbb7e');
     expect(sha256(read('src/app/api/event-registration/apply-discount/route.ts')))
       .toBe('47622ed746e6e3a652cd7ffab4bd5f434ff4f52fea94a14c5d3eb588ff3924e0');
   });

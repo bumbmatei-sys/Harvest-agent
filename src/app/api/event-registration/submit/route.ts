@@ -14,6 +14,8 @@ import {
   buildPaymentReference,
   PUBLIC_CLAIM_TOKEN_BYTES,
   REFERENCE_BODY_LENGTH,
+  TICKET_QR_WAITING_TITLE,
+  ticketQrWaitingBody,
 } from '@/lib/event-payment-claims';
 import { randomBytes } from 'node:crypto';
 import { captureHandledError, captureMoneyPathError } from '@/lib/money-path-sentry';
@@ -486,23 +488,53 @@ export async function POST(request: NextRequest) {
          * take. THE-351's OWN send — the admin notification — goes through the
          * funnel, which is what test 14c asserts.
          */
+        /**
+         * ⚠️ THE-359 DELETED THE LAST SENTENCE — "Bring this ticket either way —
+         * you will not be turned away at the door." THE FOUNDER: "there is no
+         * way for us to know what each church is doing. or ministry." Nothing
+         * replaces it; a softened version would be the same unknowable claim.
+         */
         const payNote = owesManualPayment
           ? `<p>This ticket costs $${(amount / 100).toFixed(2)}, and ${tenantName} collects it `
             + `directly — Harvest does not handle this money and cannot see it. Pay them using `
             + `the links on their giving page and put <strong>${paymentFields.paymentReference}</strong> `
             + `in the payment note so they can find it. They will mark it paid themselves once `
-            + `they have found it in their own account. Bring this ticket either way — you will `
-            + `not be turned away at the door.</p>`
+            + `they have found it in their own account.</p>`
           : '';
         const intro = waitlisted
           ? `You're on the waitlist for <strong>${event.title}</strong>. We'll contact you if a spot opens.`
           : `you're registered for <strong>${event.title}</strong>. Your ticket code is <strong>${ticketCode}</strong>.`;
+        /**
+         * THE-359 — 🔴 NO QR IN THE EMAIL EITHER, WHILE THE PAYMENT IS UNCONFIRMED.
+         *
+         * THE FOUNDER: "the user should not have the qr code unless his payment
+         * has been confirmed." An email that carries the QR would make the gate
+         * on the member's ticket dialog decorative: this send happens seconds
+         * after registration, so for a PAID ticket the payment is unconfirmed by
+         * construction and the QR it embedded was always one nobody had vouched
+         * for. `owesManualPayment` is the same condition `payNote` is built on.
+         *
+         * ⚠️ THE TICKET CODE STAYS IN `intro`. This email is the only record a
+         * logged-out registrant will ever hold — the public success screen is
+         * gone the moment they close the tab — and the claim copy tells them to
+         * keep it. A code is not a scannable ticket, and check-in never blocks
+         * on payment, so nothing at the door turns on it.
+         *
+         * ⚠️ A FREE TICKET IS COMPLETELY UNAFFECTED and still carries its QR: it
+         * has no payment to confirm. That is the regression this ticket is most
+         * likely to ship, and it is asserted rather than assumed.
+         */
+        const qrBlock = waitlisted
+          ? ''
+          : owesManualPayment
+            ? `<p><strong>${TICKET_QR_WAITING_TITLE}.</strong> ${ticketQrWaitingBody(tenantName)}</p>`
+            : `<p>Present this QR code at the door:</p><p><img src="${qrDataUrl}" alt="Ticket QR" width="200" height="200" /></p>`;
         await resend.emails.send({
           from: 'Harvest <noreply@theharvest.app>',
           to: email,
           subject: `Your registration for ${event.title}`,
           html: `<p>Hi ${firstName}, ${intro}</p>` +
-            (waitlisted ? '' : `<p>Present this QR code at the door:</p><p><img src="${qrDataUrl}" alt="Ticket QR" width="200" height="200" /></p>`) +
+            qrBlock +
             payNote +
             `<br><p>— ${tenantName}</p>`,
         });

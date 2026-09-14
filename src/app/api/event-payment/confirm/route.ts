@@ -84,6 +84,56 @@ export const dynamic = 'force-dynamic';
  * reads `claimed`, the queue key is still there so the row is still in the
  * inbox, and the response carries `CONFIRM_FAILED` for the admin to read. There
  * is no path that reports a confirmation without an invoice id behind it.
+ *
+ * ═════════════════════════════════════════════════════════════════════════════
+ * 🔴 4. THE-359 — AND IT NOW SHOWS UP IN THE CRM
+ *
+ * THE FOUNDER: "in crm it doesnt show that i have paid for an event after i
+ * confirmed but it appears in the accounting. it should appear in the crm as an
+ * activity that i paid for the event and the amount as donation activity."
+ *
+ * Exactly right, and the reason is section 1: this route wrote the INVOICE and
+ * nothing else, so every surface fed by `invoices` had the gift and the
+ * contact's own timeline — which is fed by `contactActivities` — did not.
+ *
+ * 🔴 THE ACTIVITY FOLLOWS THE-350'S SHAPE TO THE BYTE, AND THAT SHAPE IS WHAT
+ * STOPS THE GIFT BEING COUNTED TWICE. `AdminCRM.addActivity` says it in its own
+ * header: the invoice IS the record of the money; the timeline entry REFERENCES
+ * it by `invoiceId` and carries `amount: null`, so nothing that ever sums
+ * `contactActivities.amount` — the field the Stripe webhook writes, in DOLLARS —
+ * can pick the same gift up a second time. `invoiceAmountCents` is a DISPLAY
+ * MIRROR and says so in its name: cents, keyed to the invoice, under a name no
+ * money reader in this repository sums, rendered through `formatCents` by the
+ * one row that draws it. An activity carrying a real `amount` here would double
+ * `totalDonated` and every giving figure derived from it.
+ *
+ * 🔴 IT IS BEST-EFFORT AND IT RUNS LAST, for the same reason the invoice runs
+ * first: the money record is the one that must not be lost. The stamp in phase
+ * 3b has already landed by the time this runs, so a failed timeline write
+ * cannot un-confirm a ticket, cannot strand the row in the inbox, and cannot
+ * make a second press write a second invoice. It is logged, not thrown.
+ *
+ * 🔴 IDEMPOTENCE IS PHASE 1'S, UNCHANGED AND NOT DUPLICATED HERE. A second
+ * press finds `paymentInvoiceId` and returns from the transaction before
+ * reaching phase 2, so it writes neither an invoice nor an activity. Two taps,
+ * one of each — and the guard is the invoice id that already existed rather
+ * than a new dedupe query that could answer wrongly under a race.
+ *
+ * ⚠️ WHICH CONTACT, AND WHAT IF THERE IS NONE. Matched by EMAIL within the
+ * tenant, exactly as `/api/event-registration/submit` already matches one to
+ * log its "Registered: <event>" activity — same single-field query, same
+ * client-side tenant filter, so no composite index and no rules change. A
+ * PUBLIC REGISTRANT MAY NOT BE IN THE CRM AT ALL, and when no contact matches
+ * this writes NOTHING: it does not mint one. Creating contacts as a side effect
+ * of a ticket confirmation would populate the CRM from the public event form
+ * and spend the tenant's `maxContacts` capacity without anybody asking for it —
+ * a CRM data-model decision, not this route's to take. The invoice still
+ * records the money either way.
+ *
+ * ⚠️ `totalDonated` IS NOT TOUCHED. It is a client-maintained running total on
+ * the contact (`AdminCRM` writes it from a read-modify-write of a value it
+ * already holds); a server-side bump from here would race that write, and the
+ * founder asked for an activity, not a total. Reported rather than assumed.
  */
 export async function POST(request: NextRequest) {
   let body: { tenantId?: string; registrationId?: string };
@@ -233,6 +283,43 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 },
     );
+  }
+
+  // ── PHASE 3c — THE-359's CRM timeline entry. See section 4 of the header. ──
+  if (claim.email) {
+    try {
+      const matchSnap = await adminDb
+        .collection('contacts').where('email', '==', claim.email).limit(20).get();
+      const match = matchSnap.docs.find((d) => (d.data().tenantId || null) === tenantId);
+      if (match) {
+        await adminDb.collection('contactActivities').add({
+          contactId: match.id,
+          // The contact's own concrete tenantId, never null — the top-level
+          // `contactActivities` rule gates the read on
+          // `isTenantAdmin(resource.data.tenantId)`, and a mismatch is why an
+          // activity can write and never show in the timeline.
+          tenantId: match.data().tenantId || tenantId,
+          type: 'donation',
+          // 🔴 NAMES THE EVENT. The same description the invoice carries, so the
+          // timeline row and the giving statement say the same thing about the
+          // same gift.
+          description: `Event ticket — ${eventTitle}`,
+          // 🔴 ALWAYS NULL. THE-350's shape: the money lives on the invoice.
+          amount: null,
+          invoiceId: donation.invoiceId,
+          // A DISPLAY MIRROR, in CENTS, under a name nothing in this repository
+          // sums. `AdminCRM`'s timeline renders it through `formatCents`.
+          invoiceAmountCents: claim.amountCents,
+          createdAt: FieldValue.serverTimestamp(),
+          createdBy: admin.uid,
+        });
+      }
+    } catch (e) {
+      // The gift IS recorded and the ticket IS confirmed. A missing timeline row
+      // is a display gap on one screen, not a money error, so it is a warning
+      // and never a reason to fail a confirmation that already landed.
+      console.warn('event payment confirm CRM activity failed:', e);
+    }
   }
 
   return NextResponse.json({

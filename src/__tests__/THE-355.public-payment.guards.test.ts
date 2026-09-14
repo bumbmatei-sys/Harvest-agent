@@ -84,9 +84,16 @@ describe('11 · no text on the public page implies Harvest verified anything', (
     }
     // 🔴 THIS TICKET'S OWN ADDITIONS ARE IN THE SWEPT SET, by name. Without this
     // the sweep would still pass if every new constant were somehow skipped.
+    // ⚠️ THE-359 turned PUBLIC_NO_LINKS_TITLE, PUBLIC_CLAIM_HELP and
+    // PUBLIC_CLAIMED_TITLE into FUNCTIONS of the tenant's name — the founder:
+    // "instead of 'the church', say the name of the ministry." A function is
+    // not a string, so they moved out of this sweep and into the builder sweep
+    // below, which calls them at real arguments. Named there rather than
+    // dropped: a constant that quietly became a builder must not fall out of
+    // both.
     for (const added of [
-      'PUBLIC_PAY_TITLE', 'PUBLIC_NO_LINKS_TITLE', 'PUBLIC_CLAIM_HELP',
-      'PUBLIC_CLAIMED_TITLE', 'REGISTERED_STAT_LABEL',
+      'PUBLIC_PAY_TITLE', 'REGISTERED_STAT_LABEL', 'TENANT_NAME_FALLBACK',
+      'TICKET_QR_WAITING_TITLE',
     ]) {
       expect(checked, `${added} was not swept`).toContain(added);
     }
@@ -95,13 +102,31 @@ describe('11 · no text on the public page implies Harvest verified anything', (
   it('🔴 every string this ticket’s BUILDERS produce is clean, at real arguments', async () => {
     const {
       claimsVerification, publicPayBody, publicNoLinksBody, publicClaimedBody,
+      publicNoLinksTitle, publicClaimHelp, publicClaimedTitle, ticketQrWaitingBody,
       registrationStatusLabel, REGISTRATION_STATUS_LABEL,
     } = await import('@/lib/event-payment-claims');
 
+    /**
+     * ⚠️ EVERY BUILDER IS CALLED TWICE — once with a real tenant name and once
+     * with `null`, which is THE-359's missing-name path. A builder that
+     * over-claims only when the name is absent would otherwise pass, and the
+     * absent name is precisely the case nobody looks at.
+     */
     const produced = [
       publicPayBody('Kingdom Living', 5000, 'HV-VSFK4W'),
       publicNoLinksBody('Kingdom Living', 5000, 'HV-VSFK4W'),
       publicClaimedBody('Kingdom Living', 'HV-VSFK4W'),
+      publicNoLinksTitle('Kingdom Living'),
+      publicClaimHelp('Kingdom Living'),
+      publicClaimedTitle('Kingdom Living'),
+      ticketQrWaitingBody('Kingdom Living'),
+      publicPayBody(null, 5000, 'HV-VSFK4W'),
+      publicNoLinksBody(null, 5000, 'HV-VSFK4W'),
+      publicClaimedBody(null, 'HV-VSFK4W'),
+      publicNoLinksTitle(null),
+      publicClaimHelp(null),
+      publicClaimedTitle(null),
+      ticketQrWaitingBody(null),
       ...Object.values(REGISTRATION_STATUS_LABEL),
       registrationStatusLabel('confirmed'),
     ];
