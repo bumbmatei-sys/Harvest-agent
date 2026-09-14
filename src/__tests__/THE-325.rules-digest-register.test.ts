@@ -337,8 +337,29 @@ const filesSpelling = (digest: string): string[] =>
  * 🔴 ITS OWN OWNERSHIP RECORD DELIBERATELY CARRIES NO `firestore.rules` ENTRY,
  * which is the register's rule for a ticket that does not change the file:
  * `THE-359.json` records the seven shipped files it edits and THE-322's suite,
- * and no rules digest. */
-const PINNING_SUITES = 72;
+ * and no rules digest.
+ *
+ * 🔴 72 → 73, APPENDED BY THE-360, through the same module and for the same
+ * reason. Its suite widens the analytics vocabulary from one event to ten —
+ * `gift_recorded`, `plan_limit_reached` and seven more — and pins that doing so
+ * needed NO rule change: every one of the nine is a client-side `capture()`
+ * fired beside a write that already existed, on a screen whose permissions
+ * already governed it. The one money path among them, a manual gift, still
+ * reaches `tenants/{t}/invoices` through `/api/donations/manual` on the Admin
+ * SDK, exactly as THE-350 left it, so the `manageAccounting` gate on that
+ * collection is neither read nor relaxed by this ticket. The vocabulary lives
+ * in `src/lib/analytics/events.ts`, which Firestore never sees.
+ *
+ * ⚠️ THE FIRST DRAFT OF THAT SUITE SPELLED THE LIVE DIGEST AS A LITERAL, and
+ * the assertion above caught it. It now reaches the accepted set through
+ * `acceptedRulesDigests()` like every other pinner, so a real rules change
+ * still costs exactly one edit. Nothing above is removed and no accepted value
+ * is widened.
+ *
+ * 🔴 ITS OWN OWNERSHIP RECORD CARRIES NO `firestore.rules` ENTRY either, for
+ * the reason this register states: `THE-360.json` records the ten shipped files
+ * it edits, and no rules digest. */
+const PINNING_SUITES = 73;
 
 /**
  * A digest no ticket has recorded and none ever will — the planted change.

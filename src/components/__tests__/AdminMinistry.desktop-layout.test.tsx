@@ -2018,9 +2018,33 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
    * untouched — the `firestorePaths` guard below still compares against the
    * PRE-PR revision and still passes.
    */
+  /**
+   * ─── THE-360 — re-recorded, and here is the whole of what moved ────────────
+   *
+   * THREE LINES ADDED, which is exactly what the count goes up by — and the
+   * count moving in step with the edit is itself part of the record: a
+   * re-recording that also changed the shape of the file would be hiding
+   * something in the same breath.
+   *
+   *   1-2. the import gained `ANALYTICS_EVENTS` and `trackProductEvent`
+   *   3.   `trackProductEvent(ANALYTICS_EVENTS.CAMPAIGN_CREATED)` on the line
+   *        after `addDoc(collection(db, 'campaigns'), …)` resolves
+   *
+   * 🔴 THE CREATE BRANCH ONLY. Editing a campaign's title is not fundraising
+   * activation, so the `updateDoc` branch fires nothing — firing on both would
+   * make every saved typo look like a new campaign.
+   *
+   * ⚠️ NOTHING ABOUT THE MONEY MOVED, which is the assertion that actually
+   * protects it: `firestorePathsOf` below is UNCHANGED and still compares
+   * against the PRE-PR revision. No ticket price, donation amount, fee or
+   * checkout call was touched; THE-251's `raised` strip on the edit path and
+   * the active-campaign exclusivity pass are byte-for-byte as they were. The
+   * event carries no campaign name, no goal and no raised total — the seam it
+   * fires through has no parameter to pass one.
+   */
   const THE_251_FUNDRAISING = {
-    strippedSha: 'f4878df40dfb3641cbb3496ccdf86eaf31428c7d5d03524aea7172aced2ac5b5',
-    strippedLines: 851,
+    strippedSha: '6cd3074a14d8b2df5d51f2de7097f872d4affe7a19eee85498a77010a921b80a',
+    strippedLines: 854,
   };
 
   it('changes nothing in AdminFundraising outside a className, THE-251 and THE-254', () => {

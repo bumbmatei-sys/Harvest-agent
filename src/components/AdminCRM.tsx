@@ -27,6 +27,8 @@ import {
   CRM_FETCH_LIMIT,
   type Contact, type ContactActivity, type PipelineStage,
 } from '../hooks/queries/useCRMQueries';
+import { ANALYTICS_EVENTS } from '../lib/analytics/events';
+import { trackProductEvent } from '../lib/analytics/client';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { useTenant } from '@/contexts/TenantContext';
 import { getEffectiveFeatures, toTenantPlan } from '../utils/plan-features';
@@ -664,6 +666,9 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     // a count that has since gone stale.
     if (atContactLimit) {
       notifyError(contactLimitNotice, 'Contact limit reached');
+      // THE-360 - a refusal, not a render: this line is only reached because an
+      // action was blocked by the cap. See PLAN_LIMIT_KINDS in events.ts.
+      trackProductEvent(ANALYTICS_EVENTS.PLAN_LIMIT_REACHED, { limitKind: 'contacts' });
       return;
     }
     setImporting(true);
@@ -857,6 +862,9 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     // `contacts` doc, and neither creates an account.
     if (!isEditing && atContactLimit) {
       notifyError(contactLimitNotice, 'Contact limit reached');
+      // THE-360 - a refusal, not a render: this line is only reached because an
+      // action was blocked by the cap. See PLAN_LIMIT_KINDS in events.ts.
+      trackProductEvent(ANALYTICS_EVENTS.PLAN_LIMIT_REACHED, { limitKind: 'contacts' });
       return;
     }
     setSaving(true);
@@ -999,6 +1007,15 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         invoiceId = data.invoiceId as string;
         invoiceAmountCents = amountCents;
         donationDollars = amountCents / 100;
+        // 🔴 THE-360 - HERE, and not at the end of this function. The gift IS
+        // the ledger write: the two writes below (the timeline entry and the
+        // contact's running total) are the CRM catching up with money that has
+        // already landed, and one of them failing does not un-record the gift.
+        // Counting at the end would under-count exactly the sessions where
+        // something went wrong, which is when the number matters most.
+        //
+        // Fire-and-forget, and NO AMOUNT - see `GIFT_RECORDED` in events.ts.
+        trackProductEvent(ANALYTICS_EVENTS.GIFT_RECORDED);
       }
 
       // ── 2. The CRM timeline entry, which now points at the ledger. ────────

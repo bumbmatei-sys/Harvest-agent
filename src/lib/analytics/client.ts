@@ -45,6 +45,7 @@ import {
   ANALYTICS_EVENTS,
   TENANT_GROUP_TYPE,
   type AnalyticsEventName,
+  type PlanLimitKind,
 } from './events';
 // 🔴 TYPE-ONLY, and it must stay that way — see the header. The runtime import
 // lives inside `identifyUser`.
@@ -62,6 +63,25 @@ import {
  */
 let clientPromise: Promise<PostHog | null> | null = null;
 
+/**
+ * THE-360 — whether the person currently identified is platform staff, or
+ * `null` when NOBODY has been identified in this session.
+ *
+ * ⚠️ THREE-VALUED, AND THE THIRD VALUE IS THE POINT. A product event fires from
+ * a call site that knows what happened but not who is signed in, so this is
+ * where that answer is kept between `identifyUser` and the next capture.
+ * Defaulting it to `false` would have been the easy shape and it would LIE on
+ * exactly the surface this ticket adds an event to: `signup_created` fires on
+ * `/form/[formId]`, where nobody signed in and nobody was identified, and
+ * `is_platform_admin: false` there asserts a fact about a person who does not
+ * exist.
+ *
+ * `null` means the property is OMITTED instead — the same choice, for the same
+ * reason, that `capturePublicPageview` makes in its own header: "an absent
+ * property says that where `false` would lie".
+ */
+let identifiedIsPlatformAdmin: boolean | null = null;
+
 /** Whether anything has been loaded. Read by tests and by `resetIdentity`. */
 export function isAnalyticsStarted(): boolean {
   return clientPromise !== null;
@@ -70,6 +90,7 @@ export function isAnalyticsStarted(): boolean {
 /** Drop the loaded instance. Test seam only — never called by the app. */
 export function __resetAnalyticsForTests(): void {
   clientPromise = null;
+  identifiedIsPlatformAdmin = null;
 }
 
 /**
@@ -136,8 +157,70 @@ export async function captureEvent(
   event: AnalyticsEventName,
   properties: Record<string, unknown> = {},
 ): Promise<void> {
-  const client = await initAnalytics();
-  client?.capture(event, allowedProperties(properties));
+  // 🔴 THE-360 — NOTHING HERE MAY THROW, AND THIS try/catch IS WHY.
+  //
+  // Until THE-360 every capture was a `$pageview` fired from an effect, where a
+  // rejected promise was a console warning and nothing else. This ticket puts
+  // `captureEvent` on the line AFTER a gift is written to the money ledger. The
+  // failure mode changed with it: `initAnalytics()` already catches a chunk
+  // that will not load, but `client.capture()` itself was unguarded, and
+  // because this function is `async` a throw from it becomes a REJECTED
+  // PROMISE — which an awaiting call site in the CRM would have turned into a
+  // visible "the gift could not be recorded" over a gift that was recorded.
+  //
+  // Analytics failing must not break a gift being recorded. The app works
+  // without analytics; analytics does not work without the app. Every call site
+  // fires this and does not await it, and this catch is what makes that safe
+  // rather than merely usual.
+  try {
+    const client = await initAnalytics();
+    const result: unknown = client?.capture(event, allowedProperties(properties));
+
+    // ⚠️ AND A THENABLE RESULT NEEDS ITS OWN HANDLER, which the `catch` below
+    // cannot give it. `capture()` is synchronous in posthog-js today and
+    // returns a CaptureResult — but nothing here awaits it, so if a future
+    // version (or a wrapper, or a test double) ever returns a promise, a
+    // rejection from it would surface as an UNHANDLED REJECTION and never
+    // reach the `catch`. In Node that is a process-level event; in a browser
+    // it is a reported error on a page where a church has just recorded a gift.
+    //
+    // 🔴 ATTACHED, NOT AWAITED. Awaiting would put a network round trip between
+    // the church pressing the button and the dialog closing, which is the one
+    // thing this whole seam exists to prevent.
+    //
+    // This was found by MUTATION, not by reading: the test that claimed to
+    // cover a rejecting capture passed with the `try` removed entirely, because
+    // an un-awaited rejection was never the `catch`'s to catch.
+    if (isThenable(result)) {
+      result.then(undefined, (error: unknown) => swallow(event, error));
+    }
+  } catch (error) {
+    swallow(event, error);
+  }
+}
+
+/** A value with a `then`, without trusting it to be a real promise. */
+function isThenable(value: unknown): value is PromiseLike<unknown> {
+  return (
+    typeof value === 'object'
+    && value !== null
+    && typeof (value as PromiseLike<unknown>).then === 'function'
+  );
+}
+
+/**
+ * Note a failed capture and go no further.
+ *
+ * Loud in development, silent in production — the same split `before_send` and
+ * `allowedProperties` already use. A dropped event is the safe outcome; a
+ * developer who broke capture needs to learn it here rather than from an empty
+ * dashboard three weeks later.
+ */
+function swallow(event: string, error: unknown): void {
+  if (process.env.NODE_ENV !== 'production') {
+    // eslint-disable-next-line no-console
+    console.warn(`[analytics] capture of "${event}" failed and was swallowed`, error);
+  }
 }
 
 /**
@@ -194,6 +277,84 @@ export async function capturePublicPageview(
 }
 
 /**
+ * THE-360 - capture a PRODUCT event: something a person DID, rather than a page
+ * they looked at.
+ *
+ * --- Why there is one of these and not nine ---------------------------------
+ *
+ * Every product event carries the same three answers, and not one of them is
+ * something the call site knows. `AdminCRM` knows a gift was recorded; it does
+ * not know the route pattern, the surface family, or whether the admin who
+ * pressed the button is platform staff. Asking nine call sites to assemble that
+ * bag correctly is asking for nine chances to assemble it WRONG, and the way it
+ * goes wrong is by reaching for something to hand -- the contact, the amount,
+ * the title -- which is the entire failure this module exists to prevent.
+ *
+ * So a call site passes a NAME and, for one event, a KIND. It cannot pass a
+ * property, because there is no parameter to pass one through.
+ *
+ * --- 🔴 The path is read here, and it is normalised before it is anything ----
+ *
+ * `window.location.pathname` is a RESOLVED path: on `/form/aB3xQ...` it is a
+ * Firestore document id. It is handed straight to `normalizeAnalyticsPath`,
+ * which matches it against the enumeration in `routes.ts` and answers the
+ * PATTERN or {@link UNROUTED_PATTERN}. The resolved string is never stored,
+ * never passed on and never becomes a property -- the rule `routes.ts` opens
+ * with, applied at the one new place a path now enters analytics.
+ *
+ * --- Both shells, from one function -----------------------------------------
+ *
+ * `app_surface` is resolved from the matched route, so an event fired from the
+ * member app is 'member' and the same event fired from the admin app is
+ * 'admin', with no call site choosing and no user agent consulted. That is the
+ * founder's "for mobile and desktop" answered as a SHELL question. The DEVICE
+ * question is answered separately and already: posthog-js attaches
+ * `$device_type` itself, and `scrubProperties` deliberately leaves `$`-prefixed
+ * properties alone, so mobile-versus-desktop needs nothing from this file.
+ */
+export async function captureProductEvent(
+  event: Exclude<AnalyticsEventName, typeof ANALYTICS_EVENTS.PAGEVIEW>,
+  options: { limitKind?: PlanLimitKind } = {},
+): Promise<void> {
+  const pathname = typeof window === 'undefined' ? '/' : window.location.pathname;
+
+  await captureEvent(event, {
+    route: normalizeAnalyticsPath(pathname),
+    app_surface: resolveAppSurface(pathname),
+    // Omitted, not false, when nobody has been identified -- see the note on
+    // `identifiedIsPlatformAdmin`.
+    ...(identifiedIsPlatformAdmin === null
+      ? {}
+      : { is_platform_admin: identifiedIsPlatformAdmin }),
+    ...(options.limitKind ? { limit_kind: options.limitKind } : {}),
+  });
+}
+
+/**
+ * THE-360 - fire a product event without waiting for it and without any way for
+ * it to reach the caller.
+ *
+ * 🔴 THIS IS WHAT EVERY CALL SITE USES, and the reason is the money. The nine
+ * moments this ticket instruments are the lines immediately after a gift is
+ * written, a course is published, an invitation is sent. `captureEvent` already
+ * swallows its own failures, so this adds no safety there -- what it adds is
+ * that the ANALYTICS CALL CANNOT BE AWAITED BY ACCIDENT. A call site cannot
+ * slow a gift down by a network round trip, cannot forget a `.catch`, and
+ * cannot turn a recorded gift into a visible error, because there is no promise
+ * handed back to mishandle.
+ *
+ * Returns `void` deliberately. An `async` function here would hand back a
+ * promise that a future call site could `await`, which is the thing being
+ * prevented.
+ */
+export function trackProductEvent(
+  event: Exclude<AnalyticsEventName, typeof ANALYTICS_EVENTS.PAGEVIEW>,
+  options: { limitKind?: PlanLimitKind } = {},
+): void {
+  void captureProductEvent(event, options);
+}
+
+/**
  * Identify the signed-in user and attach them to their church.
  *
  * Returns the resolved identity so the caller can stamp the same
@@ -229,6 +390,11 @@ export async function identifyUser(
     client.resetGroups();
   }
 
+  // 🔴 THE-360 — remembered here so a product event fired later from a screen
+  // that has no idea who is signed in still carries the same answer this
+  // pageview does. Set AFTER the identify lands, never before.
+  identifiedIsPlatformAdmin = identity.isPlatformAdmin;
+
   return { isPlatformAdmin: identity.isPlatformAdmin };
 }
 
@@ -244,6 +410,11 @@ export async function identifyUser(
  * that never started analytics must not start it.
  */
 export async function resetIdentity(): Promise<void> {
+  // 🔴 THE-360 — cleared BEFORE the early return, not after it. The whole point
+  // of this function is the shared church office computer, and a signed-out
+  // session that never started analytics must still not leave the last person's
+  // answer behind for whoever signs in next.
+  identifiedIsPlatformAdmin = null;
   if (!clientPromise) return;
   const client = await clientPromise;
   client?.reset();

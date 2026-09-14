@@ -285,6 +285,11 @@ describe('11 — parts 1 and 2\'s persisted data are unchanged', () => {
     'src/hooks/queries/useServicePlanQueries.ts': [
       '37f36970629a5a7fb06e89abfcab907dcd7d7cf976adcd5fb399650b5f677b37',
       '44439b5d47bededcf8f16f5bd08720245d1f6d2db2a51f6d4e433407a0964e60',
+      // 🔴 APPENDED BY THE-360, never substituted. `createServicePlan` fires
+      // `service_created` after the write, and only for a real service — a
+      // template is not Sunday being planned. No query, no field and no
+      // ordering changed; part 2's read side is untouched.
+      '6ea03628ca55d95b8f07cef4d138c2dcb15f0ddcdbdd7bf6110b6ae61da2f311',
     ],
   } as const;
 

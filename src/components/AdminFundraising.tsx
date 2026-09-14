@@ -25,6 +25,8 @@ import { SMS_FEATURE_ENABLED } from '../lib/sms-feature';
 import { STRIPE_CONNECT_ENABLED } from '../lib/stripe-connect-feature';
 import { GIVING_PROVIDERS, GIVING_PROVIDER_NAMES_OR, readGivingLinks } from './donations/giving-providers';
 import { useTenant } from '@/contexts/TenantContext';
+import { ANALYTICS_EVENTS } from '../lib/analytics/events';
+import { trackProductEvent } from '../lib/analytics/client';
 
 const empty: Omit<Campaign, 'id'> = {
   title: '',
@@ -209,6 +211,10 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
+        // THE-360 - the CREATE branch only. Editing a campaign's title is not
+        // fundraising activation, and firing here too would make every saved
+        // typo look like a new campaign.
+        trackProductEvent(ANALYTICS_EVENTS.CAMPAIGN_CREATED);
       }
       await queryClient.invalidateQueries({ queryKey: ['campaigns', tenantId] });
       setShowForm(false);

@@ -1117,6 +1117,26 @@ describe('no tenant query, SMS send path or statement figure changed', () => {
     expect(after).not.toMatch(/collection\(db, 'tenants'\),\s*where\(/);
   });
 
+  /**
+   * ─── THE-360 — the broadcast send path re-recorded, and the whole of what moved ─
+   *
+   * SIX LINES, all inside the existing `if (d.capReached)` outcome the send
+   * already reported: one `trackProductEvent` call and the five comment lines
+   * that say why it is there. The template and Text-to-Give paths below are
+   * UNTOUCHED and still compare against the values their own batch recorded.
+   *
+   * 🔴 WHY THE SEND AND NOT THE BUTTON. `capReached` is also a render state —
+   * the Send button is disabled and relabelled on a later visit — and firing
+   * there would report "a church has a screen open", not "a church hit a cap".
+   * The moment is the send that RAN and ran out of segments part-way through.
+   *
+   * ⚠️ NOTHING ABOUT THE SEND MOVED: the request, its payload, the response
+   * handling, the three partial-outcome messages, the `setMessage('')` guard
+   * and the `finally` are byte-for-byte as they were. `d.skipped` is rendered
+   * to the admin and goes no further — how many recipients a church has is a
+   * fact about that church's roster, and the event carries no count, no number
+   * and no message text.
+   */
   it('leaves every SMS write path byte-identical, Text-to-Give included', () => {
     const after = readSrc('AdminSms.tsx');
     for (const { file, label, decl } of BEHAVIOUR_EXTRACTS.filter((b) => b.file === 'AdminSms.tsx')) {

@@ -573,12 +573,24 @@ describe('5 — autocapture, heatmaps, rageclicks and copy-autocapture are all s
 describe('6 — the event vocabulary is still closed', () => {
   it('the event vocabulary is still closed', () => {
     expect([...ALLOWED_EVENT_NAMES]).toEqual([
-      '$pageview', '$identify', '$groupidentify', '$set',
+      '$pageview',
+      // THE-360's nine product events. Spelled out, in order, so a tenth
+      // arrives through this list or does not arrive.
+      'gift_recorded',
+      'event_payment_confirmed',
+      'course_published',
+      'service_created',
+      'rota_invitations_sent',
+      'form_published',
+      'signup_created',
+      'campaign_created',
+      'plan_limit_reached',
+      '$identify', '$groupidentify', '$set',
     ]);
-    // THE-206 adds `route` and nothing else. Widening coverage is not a licence
-    // to widen the vocabulary.
+    // THE-206 adds `route`; THE-360 adds `limit_kind` and nothing else.
+    // Widening coverage is not a licence to widen the vocabulary.
     expect([...ALLOWED_EVENT_PROPERTY_KEYS]).toEqual([
-      'app_surface', 'is_platform_admin', 'route',
+      'app_surface', 'is_platform_admin', 'route', 'limit_kind',
     ]);
     expect([...ALLOWED_PERSON_PROPERTY_KEYS]).toEqual(['account_kind']);
   });

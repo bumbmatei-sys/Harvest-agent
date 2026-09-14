@@ -123,6 +123,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { sortByString } from '../../utils/query-helpers';
+import { ANALYTICS_EVENTS } from '../../lib/analytics/events';
+import { trackProductEvent } from '../../lib/analytics/client';
 import {
   MAX_PLAN_ITEMS,
   clampMinutes,
@@ -372,6 +374,24 @@ export async function createServicePlan(
     createdAt: serverTimestamp(),
     ...stamped({}),
   });
+
+  // 🔴 THE-360 — INSTRUMENTED AT THE WRITE, NOT AT THE SCREEN. `AdminServices`
+  // and `ServicePlanPanel` both create plans through this one function, so this
+  // is the only place `service_created` can fire once per service rather than
+  // once per screen somebody remembered to edit.
+  //
+  // 🔴 A TEMPLATE IS NOT A SERVICE, and this is the whole reason the check is
+  // here rather than in the caller. `createServicePlan` writes both; a template
+  // is a church setting up a reusable running order, not Sunday being planned,
+  // and counting one as the other would report a church that built one template
+  // as a church running services it never ran.
+  //
+  // The NAME is not sent and there is no parameter to send it through: a
+  // service name is free text a church typed.
+  if (planKind(fields) !== 'template') {
+    trackProductEvent(ANALYTICS_EVENTS.SERVICE_CREATED);
+  }
+
   return ref.id;
 }
 

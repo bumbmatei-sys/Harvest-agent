@@ -1,6 +1,8 @@
 "use client";
 import React, { useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
+import { ANALYTICS_EVENTS } from '../lib/analytics/events';
+import { trackProductEvent } from '../lib/analytics/client';
 
 export interface PublicFormField {
   id: string;
@@ -66,6 +68,17 @@ const PublicForm: React.FC<PublicFormProps> = ({
         throw new Error(data.error || 'Submission failed');
       }
       setSubmitted(true);
+      // 🔴 THE-360 - the ONE event in this ticket that fires from a PUBLIC
+      // surface, by a visitor with no account. It therefore carries NO
+      // `is_platform_admin`: nobody was identified, so an absent property says
+      // "unknown" where `false` would assert a fact about a person who does not
+      // exist. `captureProductEvent` omits it on its own - see the note on
+      // `identifiedIsPlatformAdmin` in client.ts.
+      //
+      // The ANSWERS are not passed and there is no parameter to pass them
+      // through. A form's answers are whatever a church chose to ask for, which
+      // on a pastoral-care form is the most sensitive free text in the product.
+      trackProductEvent(ANALYTICS_EVENTS.SIGNUP_CREATED);
     } catch (err: any) {
       setError(err?.message || 'Something went wrong. Please try again.');
     } finally {

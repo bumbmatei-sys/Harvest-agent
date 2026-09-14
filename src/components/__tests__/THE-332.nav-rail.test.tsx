@@ -838,6 +838,11 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
     'f48ae4b8b6deff201e3767e5812bf7045af632a64c88384e5a91f285c47caab2',
     // APPENDED BY THE-357 — the five SMS controls adopt Rule 4's density token.
     '36dbc419cc5990f1021b81e03dfa33851c62199a54a5052c89511e8e34d43002',
+    /* APPENDED BY THE-360, never substituted. One `plan_limit_reached` capture
+       on the existing `d.capReached` branch of the broadcast send. No nav, tab
+       id, read, write or permission gate moved, which is what THE-332 pins this
+       file for. */
+    '6c1ef963a4c7c2986f52d57890b592d7ea9ff735418336016d3d69ed2561cc2f',
   ],
   /* AN ACCEPTED SET, APPENDED TO, NOT ONE VALUE SUBSTITUTED - the same shape
      and the same reason as the sets above. THE-332's value stays accepted and a

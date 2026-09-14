@@ -592,6 +592,15 @@ describe('the other readers of the same subcollection are untouched', () => {
     // THE-304 — the option editor, and the form list that mounts both views.
     'src/components/AdminForms.tsx': [
       ['8e7fc10589b8ba3c5bc27ec88debd1d598e19e33cfedd0041a5be65074249a9e', "THE-304's option editor — untouched by THE-319"],
+      // 🔴 APPENDED BY THE-360, never substituted. Two captures of one event,
+      // `form_published`, fired where a form BECOMES reachable: on create,
+      // where `active: true` is written unconditionally, and on `toggleActive`
+      // in the ON direction only. `toggleActive` now names the value it writes
+      // so the direction can be read; the value written is identical. No
+      // submission count, field, label or title moved — which is what THE-309
+      // pins this file for — and no read of the submissions subcollection
+      // changed.
+      ['ae9ac5039cf3dd10513fc7e7797f0f005d053bd9536eba8fa87d6213da2d59b5', 'THE-360 — form_published fires where a form goes live'],
     ],
     'src/app/api/forms/get/route.ts': [
       ['8e8ad1d36349725c7219f1c45c7e2f4e103e07e05bcfe70e3c6a2c5de98de2cc', 'unchanged since THE-298'],

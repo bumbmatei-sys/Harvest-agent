@@ -31,6 +31,64 @@
  */
 export const ANALYTICS_EVENTS = {
   PAGEVIEW: '$pageview',
+
+  /* -- THE-360: the product events -------------------------------------- */
+  /**
+   * A gift recorded by hand, from the CRM. The action the whole manual-money
+   * model rests on, and the one signal that says a church is still getting
+   * value: a church that stops recording gifts has stopped using Harvest for
+   * the thing it bought Harvest for.
+   *
+   * Carries NO AMOUNT, bucketed or otherwise. A church with one donor makes any
+   * bucket the identity of that donor, and the product question this event
+   * exists to answer -- "are they recording gifts at all?" -- is answered by
+   * the count. `amount` is a FORBIDDEN label besides (see GIVING_LABELS), so
+   * sending one would take a deletion from that list rather than an addition to
+   * this one. That asymmetry is deliberate.
+   */
+  GIFT_RECORDED: 'gift_recorded',
+
+  /**
+   * The same money by its other route: an admin confirming that a member paid
+   * for a paid event. Writes the same `donation_receipt` invoice through the
+   * same `recordManualDonation`, so it is a gift by every definition the
+   * ledger uses -- but it is a different ACTION, taken on a different screen by
+   * an admin doing a different job, and collapsing the two would hide which of
+   * the two ways of getting money in is actually used.
+   */
+  EVENT_PAYMENT_CONFIRMED: 'event_payment_confirmed',
+
+  /** Discipleship material actually going out, rather than being drafted. */
+  COURSE_PUBLISHED: 'course_published',
+
+  /** Sunday planning being used: an order of service that exists. */
+  SERVICE_CREATED: 'service_created',
+
+  /** The other half of Sunday planning: the volunteers actually being asked. */
+  ROTA_INVITATIONS_SENT: 'rota_invitations_sent',
+
+  /** A form going live. The Free tier's product, so Free churches are visible. */
+  FORM_PUBLISHED: 'form_published',
+
+  /**
+   * Somebody filled a form in. The one event here that fires from a PUBLIC
+   * surface (`/form/[formId]`), by a visitor with no account -- so it carries
+   * no `is_platform_admin`, for the reason `capturePublicPageview` gives.
+   */
+  SIGNUP_CREATED: 'signup_created',
+
+  /** Fundraising activation: a campaign that exists to be given to. */
+  CAMPAIGN_CREATED: 'campaign_created',
+
+  /**
+   * A church that hit a cap. The event closest to revenue in this whole file:
+   * it is a church about to upgrade, or a church about to leave, and the two
+   * look identical until somebody looks.
+   *
+   * The only event that carries `limit_kind`, which names WHICH cap from a
+   * fixed table -- see PLAN_LIMIT_KINDS.
+   */
+  PLAN_LIMIT_REACHED: 'plan_limit_reached',
 } as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[keyof typeof ANALYTICS_EVENTS];
@@ -78,7 +136,58 @@ export const ALLOWED_EVENT_PROPERTY_KEYS: readonly string[] = Object.freeze([
   'app_surface',
   'is_platform_admin',
   'route',
+  'limit_kind',
 ]);
+
+/**
+ * THE-360 - which cap a `plan_limit_reached` was. The ONE property this ticket
+ * adds, and the only one it needed.
+ *
+ * The founder asked for three: `surface`, `plan` and `section`. Two of the
+ * three were already shipping and the third does not belong on an event:
+ *
+ *   - `surface` IS `app_surface`, which has answered 'admin' | 'member' |
+ *     'public' since THE-36 and answers it from the ROUTE THAT MATCHED, not
+ *     from the user agent. A phone-sized browser on `/admin/crm` matches the
+ *     `/admin/crm` row and is 'admin', which is the rule that was wanted.
+ *   - `section` is already inside `route`. THE-227 generates one row per admin
+ *     section, so `/admin/crm` and `/admin/accounting` are already two values.
+ *   - `plan` is a fact about a CHURCH, and churches are already a PostHog
+ *     GROUP. It belongs on that group, not stamped onto every event -- see the
+ *     note in `client.ts`.
+ *
+ * So the list grows by one key, for the one question the three existing keys
+ * genuinely cannot answer: WHICH cap a church hit.
+ *
+ * 🔴 WHY THIS IS SAFE, AND IT IS THE SAME ARGUMENT `admin-sections.ts` MAKES.
+ * Every value below is a compile-time literal naming a FEATURE -- the same
+ * category of word as `app_surface: 'admin'`, from a vocabulary this app
+ * defines in its own source. Nothing user-chosen, nothing tenant-specific,
+ * nothing a document supplies, no count and no ceiling: a ceiling is a fact
+ * about a plan, and a COUNT ("you have 149 of 150 contacts") is a fact about
+ * one church's records. Neither is needed to answer "which churches are hitting
+ * which wall", and both would be new ways for a number to leak.
+ */
+export const PLAN_LIMIT_KINDS = ['contacts', 'sms', 'admin_seats'] as const;
+
+export type PlanLimitKind = (typeof PLAN_LIMIT_KINDS)[number];
+
+/*
+ * ⚠️ `ai_knowledge` IS DELIBERATELY ABSENT, and it is the one the ticket named
+ * that this file does not carry.
+ *
+ * The RAG cap has no MOMENT. `AdminRAG`'s `UsageMeter` computes `over = used >=
+ * limit` while RENDERING, so there is no action that was refused -- only a bar
+ * that is full. An event fired from there would fire on every render and on
+ * every usage poll, which is not "a church hit a cap" but "a church has a
+ * screen open", and `each new event fires exactly once at its moment` would be
+ * asserting something untrue. The other three are real refusals: a contact that
+ * was not saved, an admin that was not promoted, a broadcast that ran out of
+ * segments part-way through.
+ *
+ * If the RAG upload path ever grows a server-side refusal, it earns a row here
+ * the way every other row was earned -- by having a moment to fire at.
+ */
 
 /**
  * Person property keys set on identify.

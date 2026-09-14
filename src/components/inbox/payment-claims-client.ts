@@ -1,5 +1,7 @@
 import { authFetch } from '@/utils/auth-fetch';
 import type { InboxItem } from '@/lib/event-payment-claims';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
+import { trackProductEvent } from '@/lib/analytics/client';
 
 /**
  * THE-351 — the browser half of the payment-claim routes, in ONE module.
@@ -114,11 +116,26 @@ export async function confirmPaymentClaim(
   // forever. Dropping it either way costs one read and cannot be wrong.
   invalidatePaymentInbox(tenantId);
   if (!res.ok) throw new Error(data.error || 'The confirmation failed.');
-  return {
+  const outcome: ConfirmOutcome = {
     invoiceId: typeof data.invoiceId === 'string' ? data.invoiceId : undefined,
     alreadyConfirmed: data.alreadyConfirmed === true,
     visibleToMember: data.visibleToMember === true,
   };
+
+  // 🔴 THE-360 - INSTRUMENTED HERE, IN THE SHARED CLIENT, NOT IN THE TWO
+  // SCREENS THAT CALL IT. `AdminEvents` and `TenantInbox` both confirm through
+  // this one function, so this is the only place the event can fire once per
+  // confirmation rather than once per screen somebody remembered to edit.
+  //
+  // 🔴 AND ONLY WHEN IT WAS NOT ALREADY CONFIRMED. This route is idempotent on
+  // purpose - a second press returns the existing `paymentInvoiceId` rather
+  // than writing a second invoice - so counting it again would report money
+  // that a deliberate no-op did not take. One gift, one event.
+  if (!outcome.alreadyConfirmed) {
+    trackProductEvent(ANALYTICS_EVENTS.EVENT_PAYMENT_CONFIRMED);
+  }
+
+  return outcome;
 }
 
 /** The member's own "I've paid". THROWS on failure — see the module header. */
