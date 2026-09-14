@@ -332,8 +332,39 @@ interface PrePr {
  * PR's import line, and comment-only and blank lines. What survives is the
  * behaviour — every query, write, handler and value.
  */
+
+/**
+ * THE-362 — undo the two copy strings before hashing, and NOTHING else.
+ *
+ * THE FOUNDER: "Hide everything that talks about stripe. In donations,
+ * everywhere." Two lines on this screen still named the processor to a church
+ * reading about its own fundraising: the collapsed Payment-setup row's
+ * subtitle, and the campaign disclaimer explaining why a total reads low.
+ *
+ * 🔴 THE STRONGER OF THE TWO HONEST OPTIONS, in THE-251's own words one block
+ * below: "Re-recording is the weaker one: it would bless every other byte that
+ * moved in the same breath, which is the one thing this guard exists to catch."
+ * So `THE_251_FUNDRAISING.strippedSha` and `.strippedLines` are UNTOUCHED, and
+ * the edit is reversed instead. Every other byte of this screen still goes red
+ * tomorrow, and `firestorePathsOf` still compares against the PRE-PR revision.
+ *
+ * ⚠️ IT IS TWO EXACT STRINGS AND NO LINE COUNT MOVES — the claim being kept is
+ * that nothing but copy changed: no control, no handler, no payload, no gate,
+ * and the `STRIPE_CONNECT_ENABLED` branch on the campaign-type blurb that
+ * THE-251 recorded is untouched.
+ */
+const THE_362_FUNDRAISING_EDITS: ReadonlyArray<readonly [after: string, before: string]> = [
+  ['Card giving \u2014 100% of donations go to your ministry',
+   'Stripe Connect \u2014 100% of donations go to your ministry'],
+  ['counts card gifts alone and its total will read lower than what you actually',
+   'counts Stripe gifts alone and its total will read lower than what you actually'],
+];
+
+const unwrapTHE362Fundraising = (src: string): string =>
+  THE_362_FUNDRAISING_EDITS.reduce((acc, [after, before]) => acc.replace(after, before), src);
+
 const stripPresentation = (src: string): string =>
-  unwrapRota(unwrapServicePlan(unwrapSmsGate(unwrapRotaInvite(unwrapConfirmedWording(src)))))
+  unwrapRota(unwrapServicePlan(unwrapSmsGate(unwrapRotaInvite(unwrapConfirmedWording(unwrapTHE362Fundraising(src))))))
   .replace(/className=(?:"[^"]*"|\{`[^`]*`\}|\{[A-Za-z_$][\w.$]*\})/g, 'className=X')
   // An import of a LAYOUT module is presentation, not behaviour — the same
   // reasoning that already exempted form-layout, widened to the directory. A

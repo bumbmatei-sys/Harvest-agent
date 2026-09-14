@@ -377,8 +377,32 @@ const filesSpelling = (digest: string): string[] =>
  * the files it edits, and no rules digest. It reaches the accepted set through
  * `acceptedRulesDigests()` like every other pinner, so a real rules change
  * still costs exactly one edit. Nothing above is removed and no accepted value
- * is widened. */
-const PINNING_SUITES = 74;
+ * is widened.
+ *
+ * 74 -> 75, APPENDED BY THE-362, through the same module and for the same
+ * reason. Its suite pins the rules while fixing four founder bugs on four
+ * surfaces - a cents series drawn as dollars on both giving charts, the
+ * processor's name still standing on the giving screens, a livestream button
+ * that opened a second tab onto the news feed, and a CRM delete that aimed at
+ * a document which has never existed.
+ *
+ * ITS STOP CONDITION 4 WAS "the CRM delete needs a firestore.rules change",
+ * AND THE ANSWER IS THAT IT DOES NOT - which is why it pins rather than edits.
+ * The top-level `contacts` rule already allows delete to a holder of
+ * `manageCRM`, and the founder's bug was never a permission one: the CRM list
+ * MERGES `contacts` with `users`, an app member's row is keyed by their `users`
+ * id, and the delete named a `contacts` document that does not exist. The fix
+ * PREVENTS two writes and adds no Firestore operation of any kind, so there is
+ * nothing here a rule could have expressed.
+ *
+ * ITS OWN OWNERSHIP RECORD CARRIES NO `firestore.rules` ENTRY either, for the
+ * reason this register states: `THE-362.json` records the six files it edits,
+ * and no rules digest. It reaches the accepted set through
+ * `rulesDigestFailure()` like every other pinner - never as a literal, which is
+ * the mistake this register caught #504 making - so a real rules change still
+ * costs exactly one edit. Nothing above is removed and no accepted value is
+ * widened. */
+const PINNING_SUITES = 75;
 
 /**
  * A digest no ticket has recorded and none ever will — the planted change.

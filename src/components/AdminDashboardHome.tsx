@@ -163,7 +163,7 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({
  *
  * ⚠️ `useOverviewData` is held HERE, above the tab strip, and its series are
  * handed to the tabs that plot them. `memberSeries` goes to BOTH Overview and
- * Growth; `givingSeries` goes to BOTH Overview and Giving. Each is one
+ * Growth; `givingSeriesCents` goes to BOTH Overview and Giving. Each is one
  * complete, count-gated read, so no two tabs can show different numbers for the
  * same eight weeks and opening a tab costs no second query for a series that
  * has already been read.

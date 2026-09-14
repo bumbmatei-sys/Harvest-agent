@@ -5,7 +5,7 @@
  * ─── THREE widgets, and one of them is a RELOCATION ──────────────────────────
  *
  * 🔴 GIVING OVER TIME IS NOT REBUILT HERE. It is the Overview tab's
- * `givingSeries` — the same complete, count-gated, `readableReceipts`-gated
+ * `givingSeriesCents` — the same complete, count-gated, `readableReceipts`-gated
  * weekly series over `invoices.issuedAt`, weighed by `amountCents` — read once
  * by the one `useOverviewData` instance that sits above the whole tab strip and
  * handed to this tab as a prop.
@@ -20,12 +20,20 @@
  * byte, and this slice's no-regression test asserts it against Overview's
  * rendered output.
  *
- * ⚠️ THE UNITS ARE UNCHANGED BY THE MOVE. `givingSeries` is denominated in
+ * THE UNITS ARE UNCHANGED BY THE MOVE. `givingSeriesCents` is denominated in
  * CENTS, exactly as the Overview tab plots it, and it is passed through here
- * with no transformation of any kind. Formatting it as dollars on this tab
- * would make the two tabs render one series differently, and dividing it would
- * be the cents/dollars mixing this ticket forbids. The two dollar-denominated
- * widgets below never touch it.
+ * with no transformation of any kind. Dividing it would be the cents/dollars
+ * mixing this ticket forbids. The two dollar-denominated widgets below never
+ * touch it.
+ *
+ * THE-362 — AND THAT IS PRECISELY WHY BOTH TABS WERE WRONG. "Passed through
+ * untouched" was true, and the field's name said nothing about its unit, so
+ * `TrendChart` drew the raw bucket: a $50 gift appeared as 5,000 on BOTH this
+ * tab and Overview. The founder: "instead of 50$ donated it shows 5000$."
+ * The series is STILL passed through untouched — what changed is that the call
+ * site now hands the chart `formatCents` alongside it, so the one conversion
+ * happens where the number becomes text, and it happens identically on both
+ * tabs because both call sites pass the same helper.
  *
  * ─── The other two, and what they cost ───────────────────────────────────────
  *
@@ -48,6 +56,7 @@
  */
 import React from 'react';
 
+import { formatCents } from '../../lib/donation-history';
 import { CampaignProgress } from './CampaignProgress';
 import { CHART_VARS } from './GivingMix';
 import { PledgeFulfilment } from './PledgeFulfilment';
@@ -62,7 +71,7 @@ export function GivingTab({ data, giving }: {
   return (
     <div className="space-y-4" data-giving-tab>
       {/*
-        🔴 ONE SERIES, and it is `data.givingSeries` verbatim — not a copy, not a
+        ONE SERIES, and it is `data.givingSeriesCents` verbatim — not a copy, not a
         remapped one. `TrendChart` takes an overridable title (THE-283 added it
         for the same reason) so the heading can be this tab's while the chart
         stays the one component both tabs share. `CHART_VARS[0]` is the slot the
@@ -73,7 +82,13 @@ export function GivingTab({ data, giving }: {
         title="Giving over time"
         description="Every receipt on the ledger over the last eight weeks, by week."
         series={[
-          { key: 'giving', label: 'Received', chartVar: CHART_VARS[0], series: data.givingSeries },
+          {
+            key: 'giving',
+            label: 'Received',
+            chartVar: CHART_VARS[0],
+            series: data.givingSeriesCents,
+            format: formatCents,
+          },
         ]}
       />
 

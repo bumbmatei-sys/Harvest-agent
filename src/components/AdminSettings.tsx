@@ -317,7 +317,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
       content: (
         <div className="space-y-3">
           <p className="text-sm text-body leading-relaxed">
-            Connecting Stripe, and adding your own {GIVING_PROVIDER_NAMES_OR} links,
+            Card giving, and your own {GIVING_PROVIDER_NAMES_OR} links,
             now live together in <b className="text-strong">Donations</b>.
           </p>
           {/* 🔴 THE-316 removed the ONLY inline style on this screen, and the

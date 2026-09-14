@@ -97,6 +97,33 @@ export interface Contact {
    *  contact row so the same person never surfaces under two different ids. */
   userId?: string;
   /**
+   * THE-362 — TRUE WHEN THERE IS NO `contacts` DOCUMENT BEHIND THIS ROW.
+   *
+   * The CRM list is a MERGE of two collections, and half of it is not a CRM
+   * record at all: {@link useContactsWithUsers} surfaces every app member from
+   * `users` who has no matching contact, keyed by their `users` doc id. A
+   * reader of the merged array could not tell the two apart, and that is the
+   * founder's bug: "If I delete a user in CRM, it doesn't disappear from the
+   * table."
+   *
+   * `AdminCRM`'s delete aimed at `contacts/<row.id>` for EVERY row.
+   * For one of these the id is a `users` id, so it named a `contacts` document
+   * that has never existed — and whatever Firestore makes of that (the
+   * top-level `contacts` delete rule reads `resource.data`, which is null for a
+   * missing document), the outcome on screen is the same and it is
+   * deterministic: the row's source is the `users` doc, that doc is untouched,
+   * and the row is still there on the next read. Nothing the admin could do
+   * would make it go.
+   *
+   * IT IS `true` OR ABSENT, never `false`. A contact row — including one
+   * that FOLDED a `users` doc and so carries {@link Contact.account} — leaves
+   * it unset, because that row does have a `contacts` document and deleting it
+   * is a real, correct operation. `account` answers "does this person hold an
+   * app account"; this answers "is this row backed by a CRM record", and the
+   * delete path needs the second question, not the first.
+   */
+  accountOnly?: true;
+  /**
    * DERIVED, never stored. Set by `mergeContactsWithUsers` on every row backed
    * by a `users` document — both users-only members and `contacts` rows that
    * folded one in — and left undefined on donor-only rows (someone who gave via
@@ -321,6 +348,10 @@ const userDocToMemberContact = (
     updatedAt: null,
     tenantId: (u.tenantId ?? fallbackTenantId ?? PLATFORM_TENANT_ID) as string,
     account: accountOf(u),
+    // THE-362 — stamped HERE and nowhere else, so it is true exactly when
+    // this row was built from a `users` doc with no contact behind it. See
+    // `Contact.accountOnly`.
+    accountOnly: true,
   };
 };
 

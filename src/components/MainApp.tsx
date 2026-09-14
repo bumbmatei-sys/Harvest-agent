@@ -672,7 +672,18 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
       <LivestreamView
         tenantId={tenantId}
         onBack={() => setFullScreenView({ type: 'none' })}
-        onDonate={() => window.open('/?giving=1', '_blank', 'noopener,noreferrer')}
+        /* THE-362 — the SAME jump Profile's "Give again →" makes, and the
+           same gate in front of it. Not `window.open`: this closes the
+           full-screen livestream and moves the member to the Give tab in the
+           app they are already signed in to, which is the surface
+           `PartnerWithUsTab` renders and the one `?giving=1` exists to reach.
+           `undefined` when there is no Give page — LivestreamView then draws no
+           button, rather than one that lands on Home. */
+        onDonate={hasGiving ? () => {
+          setFullScreenView({ type: 'none' });
+          setActiveBottomTab('home');
+          setActiveTopTab('partner');
+        } : undefined}
       />
     );
   }

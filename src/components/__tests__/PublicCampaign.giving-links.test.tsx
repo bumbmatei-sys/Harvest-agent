@@ -135,7 +135,7 @@ describe('a campaign shows the tenant’s payment links', () => {
     await mount(readGivingLinks(BRANDING));
     // The links ADD to the page; they never replace what was already there.
     expect(container.textContent).toContain('Select an amount');
-    expect(container.textContent).toContain('Secure payment powered by Stripe.');
+    expect(container.textContent).toContain('Secure, encrypted payment.');
   });
 });
 

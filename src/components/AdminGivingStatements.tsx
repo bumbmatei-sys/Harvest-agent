@@ -206,12 +206,14 @@ const AdminGivingStatements: React.FC = () => {
         <div className="flex items-start gap-2.5">
           <AlertTriangle size={16} className="text-gold shrink-0 mt-0.5" aria-hidden="true" />
           <p className="text-sm text-body leading-relaxed">
-            <b className="text-strong">These statements cover Stripe gifts only.</b> Harvest
-            builds them from the gifts it processed, so anything your members sent through your
-            own payment links &mdash; {GIVING_PROVIDER_NAMES} &mdash; is not on them, and
-            a member who gave that way will see a total lower than what they actually gave you.
-            Recording a gift in your CRM does not add it here either. Check your own provider
-            records before you send.
+            <b className="text-strong">These statements cover every gift with a receipt.</b> Harvest
+            builds them from the receipts on your ledger &mdash; a card gift it processed, and a gift
+            you recorded by hand in the CRM. Anything your members sent through your own payment
+            links &mdash; {GIVING_PROVIDER_NAMES} &mdash; reaches a statement only once somebody
+            records it, so a member who gave that way and was never recorded will see a total lower
+            than what they actually gave you. A gift recorded against a contact with no email
+            address cannot appear at all, because statements are grouped by email address. Check
+            your own provider records before you send.
           </p>
         </div>
       </div>

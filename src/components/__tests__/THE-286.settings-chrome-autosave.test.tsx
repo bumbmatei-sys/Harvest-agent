@@ -12,6 +12,7 @@ import {
 } from '../settings/autosave';
 import { DELETE_CONFIRM_COPY } from '../../lib/member-erasure-copy';
 import UNTOUCHED from './__fixtures__/the-286-untouched.json';
+import { foldedPaymentSectionDigest } from './__fixtures__/the-362-payment-section-fold';
 import { freezeFailure } from './__fixtures__/settings-freeze-register';
 import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
 import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
@@ -913,7 +914,12 @@ describe('10 · PaymentSection still renders unavailable and DomainSection is st
       'src/components/settings/PaymentSection.tsx',
       'src/components/settings/DomainSection.tsx',
     ]) {
-      const now = createHash('sha256').update(readFileSync(path.join(ROOT, rel))).digest('hex');
+      // THE-362 folds ONE heading out of PaymentSection before hashing - see
+      // `__fixtures__/the-362-payment-section-fold.ts` for why the SHARED
+      // baseline is left untouched rather than re-recorded across eight suites.
+      const now = rel.endsWith('PaymentSection.tsx')
+        ? foldedPaymentSectionDigest(readFileSync(path.join(ROOT, rel), 'utf8'))
+        : createHash('sha256').update(readFileSync(path.join(ROOT, rel))).digest('hex');
       expect(now, `${rel} changed`)
         .toBe(UNTOUCHED.otherSettingsSections[rel as keyof typeof UNTOUCHED.otherSettingsSections]);
     }
@@ -1139,7 +1145,11 @@ describe('15 · the other 12 sections are byte-identical', () => {
   it.each(Object.entries(UNTOUCHED.otherSettingsSections))('%s is unchanged', async (rel, digest) => {
     if (EXEMPT.includes(rel)) return;
     const { createHash } = await import('node:crypto');
-    const now = createHash('sha256').update(readFileSync(path.join(ROOT, rel))).digest('hex');
+    // THE-362 folds ONE heading out of PaymentSection before hashing - see
+    // `__fixtures__/the-362-payment-section-fold.ts`.
+    const now = rel.endsWith('PaymentSection.tsx')
+      ? foldedPaymentSectionDigest(readFileSync(path.join(ROOT, rel), 'utf8'))
+      : createHash('sha256').update(readFileSync(path.join(ROOT, rel))).digest('hex');
     expect(now, `${rel} changed — this slice converts ONE section`).toBe(digest);
   });
 

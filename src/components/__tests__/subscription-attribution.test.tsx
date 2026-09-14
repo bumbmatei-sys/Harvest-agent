@@ -137,9 +137,9 @@ describe('the donation surfaces still say Stripe', () => {
     expect(paymentSection).not.toMatch(/dodo/i);
   });
 
-  it('PublicCampaign still tells donors their payment is secured by Stripe', () => {
+  it('PublicCampaign still reassures donors the payment is secure and encrypted', () => {
     const publicCampaign = src('components/PublicCampaign.tsx');
-    expect(publicCampaign).toContain('Secure payment powered by Stripe.');
+    expect(publicCampaign).toContain('Secure, encrypted payment.');
     expect(publicCampaign).not.toContain('subscriptionProcessorAttribution');
     expect(publicCampaign).not.toMatch(/dodo/i);
   });

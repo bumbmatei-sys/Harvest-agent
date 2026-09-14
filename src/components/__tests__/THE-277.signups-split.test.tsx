@@ -982,6 +982,21 @@ describe('12 — AdminDocs.tsx, AdminDashboardHome.tsx, firestore.rules and func
        * still fails.
        */
       '4ca12eef2f6409cb08601f5947011935387d58bbfbbaa3a12710d125905b17bf',
+      /*
+       * ⚠️ THE-362 fixed the dashboard's 100x — the giving series is CENTS and
+       * both trend charts drew it raw, so a $50 gift read as 5,000 — and the
+       * field it renamed for that (`givingSeries` -> `givingSeriesCents`, so
+       * the unit is in the name the way `giving-data.ts` already names every
+       * dollar figure) is QUOTED in this file's own docblock. What moved here
+       * is that one word, inside a comment: no panel, no read, no hook and no
+       * mount changed, and `DashboardTabs` is passed exactly the same six tabs.
+       * 🔴 THIS branch still did not author a byte of it, which is the claim
+       * the entry preserves: a value that is none of the six still fails.
+       *
+       * APPENDED, NEVER SUBSTITUTED — every value above stays accepted, so a
+       * merge ref cut before this ticket landed still passes.
+       */
+      '551097a89199c19b5dc0bd0584e6d9c7697d07f8d19c1c99cb44df9218b16d29',
     ],
     // THE-275, the same situation one ticket over. It owns AdminDocs.tsx and has
     // rewritten it: the notes screen was a drill-down (a folder-directory view,

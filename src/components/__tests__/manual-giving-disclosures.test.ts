@@ -104,7 +104,8 @@ const LEAD: Record<Screen, string> = {
   'AdminDonations (before a link is pasted)':
     'Harvest does not process these gifts.',
   'AdminGivingStatements (before a statement is sent)':
-    'These statements cover Stripe gifts only.',
+    // AMENDED BY THE-362 - see manual-payment-link-disclosures for the reason.
+    'These statements cover every gift with a receipt.',
   'AdminCRM (under the giving totals)':
     'Gifts sent through your own payment links are not counted here.',
   'AdminFundraising (where the goal is set)':
@@ -151,20 +152,56 @@ describe('the four disclosures agree with one another', () => {
 
   it('all four say the gift does not reach Harvest', () => {
     // The shared premise. Every remedy below only makes sense because of it.
-    const claims = [/Harvest (never sees|does not process)/, /not (on them|counted here)|do not update/];
+    //
+    // AMENDED BY THE-362. The premise is unchanged - Harvest still never sees a
+    // payment-link gift - but one screen now states it as a CONDITION rather
+    // than an absolute, because THE-350 made recording one write a receipt:
+    // statements carry it "only once somebody records it". The old shape
+    // ("not on them", full stop) would now be a false claim, so the branch is
+    // added rather than the assertion loosened.
+    const claims = [
+      /Harvest (never sees|does not process)/,
+      /not (on them|counted here)|do not update/,
+      /only once somebody records it/,
+    ];
     for (const screen of SCREENS) {
       const copy = DISCLOSURES[screen];
       expect(claims.some((c) => c.test(copy)), `${screen} states the gap`).toBe(true);
     }
   });
 
-  it('none of the four claims a manual entry reaches a giving statement', () => {
-    // 🔴 THE CONTRADICTION THAT WOULD MATTER MOST. Statements are built from
-    // Stripe invoices alone; a screen implying otherwise would put a church's
-    // signature on an overstated tax document.
+  it('none of the four claims a manual entry reaches a giving statement UNCONDITIONALLY', () => {
+    /**
+     * 🔴 AMENDED BY THE-362, AND THE AMENDMENT IS THE POINT OF THE TICKET.
+     *
+     * This guard was written on the premise that "statements are built from
+     * Stripe invoices alone", so any screen saying a manual entry reaches one
+     * would be overstating a tax document. THE-350 made that premise FALSE:
+     * `recordManualDonation` writes the same `donation_receipt` invoice the
+     * webhook writes, and `/api/giving-statements/generate` aggregates it -
+     * PROVEN end to end by running both against one store in
+     * `THE-362.manual-gift-reaches-the-books`.
+     *
+     * So the guard was defending the false claim. What it must still forbid is
+     * the OVERSTATEMENT, and that is narrower than it was: no screen may
+     * promise a statement for a gift that has not been recorded, or for one
+     * recorded against a contact with no email address - the generator does
+     * `if (!donorEmail) continue`, so such a gift is on the books and on no
+     * statement. The unconditional promise is what would put a church's
+     * signature on a document it cannot stand behind.
+     */
     for (const screen of SCREENS) {
       const copy = DISCLOSURES[screen];
-      expect(copy, screen).not.toMatch(/will appear on (a |your )?giving statement/i);
+      // An UNCONDITIONAL promise: "will appear on a giving statement" with no
+      // "once you record it" in front of it.
+      expect(copy, `${screen} promises a statement unconditionally`)
+        .not.toMatch(/(?<!not )will appear on (a |your )?giving statement/i);
+      // And any screen that DOES mention reaching a statement must also carry
+      // the condition, so the promise cannot be read as automatic.
+      if (/reaches? a statement|on a giving statement/i.test(copy)) {
+        expect(copy, `${screen} promises a statement without naming the condition`)
+          .toMatch(/records? it|recorded|email address/i);
+      }
       expect(copy, screen).not.toMatch(/added to (a |your )?giving statement/i);
     }
   });

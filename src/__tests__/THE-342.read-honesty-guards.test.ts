@@ -833,5 +833,6 @@ const THE_342_BASELINE = {
     ['a1b76895d3bc769d4213bad38f3e34c6a513bdff91b8a84f504e1217b33c82fc', 'THE-342 — the state that ticket left it in'],
     ['6e6ea8889f8ca1842ba7ff67e5ce688ad1a846c00e4881121198172d69297412', 'THE-350 — Add Activity → Donation writes an invoice'],
     ['a1e114fae75b3eb23ebb947efd58898d873440fc0f95b96500bf0c40f7b0003e', 'THE-360 — two analytics captures, no read and no write changed'],
+    ['d7b84c1725df38bac92a51bb947e13ea656db901043dc2f51e41db752061980c', 'THE-362 — the CRM delete refuses a row it cannot remove, and says why'],
   ] as ReadonlyArray<readonly [digest: string, source: string]>,
 } as const;

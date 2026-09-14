@@ -188,7 +188,7 @@ const PartnerWithUsTab: React.FC<PartnerWithUsTabProps> = ({ showDonationForm, l
       {/* Security Info */}
       <div className="flex items-center justify-center gap-2 text-faint mb-4">
         <Lock size={14} />
-        <span className="text-xs font-medium">Secure, encrypted payment via Stripe</span>
+        <span className="text-xs font-medium">Secure, encrypted payment</span>
         <ShieldCheck size={14} className="ml-2" />
       </div>
 
@@ -208,7 +208,7 @@ const PartnerWithUsTab: React.FC<PartnerWithUsTabProps> = ({ showDonationForm, l
         {isLoading ? (
           <>
             <Loader2 size={18} className="animate-spin" />
-            Redirecting to Stripe...
+            Redirecting to checkout...
           </>
         ) : (
           <>

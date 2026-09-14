@@ -7,6 +7,7 @@ import path from 'node:path';
 
 import { AUTOSAVE_ERROR_TOAST_ID, AUTOSAVE_SAVED_TOAST_ID, AUTOSAVE_EXCLUDED } from '../settings/autosave';
 import UNTOUCHED from './__fixtures__/the-286-untouched.json';
+import { foldedPaymentSectionDigest } from './__fixtures__/the-362-payment-section-fold';
 import { freezeFailure } from './__fixtures__/settings-freeze-register';
 import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
 import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
@@ -634,7 +635,12 @@ describe('7 · PaymentSection still renders unavailable, DomainSection is still 
     const { createHash } = await import('node:crypto');
     for (const file of ['src/components/settings/PaymentSection.tsx',
                         'src/components/settings/DomainSection.tsx']) {
-      const now = createHash('sha256').update(readFileSync(path.join(ROOT, file))).digest('hex');
+      // THE-362 folds ONE heading out of PaymentSection before hashing - see
+      // `__fixtures__/the-362-payment-section-fold.ts` for why the SHARED
+      // baseline is left untouched rather than re-recorded across eight suites.
+      const now = file.endsWith('PaymentSection.tsx')
+        ? foldedPaymentSectionDigest(readFileSync(path.join(ROOT, file), 'utf8'))
+        : createHash('sha256').update(readFileSync(path.join(ROOT, file))).digest('hex');
       expect(now, `${file} changed — a switched-off section is not convertible`)
         .toBe(UNTOUCHED.otherSettingsSections[file as keyof typeof UNTOUCHED.otherSettingsSections]);
     }

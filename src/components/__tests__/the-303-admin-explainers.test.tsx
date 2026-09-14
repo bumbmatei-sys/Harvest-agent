@@ -238,20 +238,43 @@ describe('7 · accounting explains that cash and non-Stripe gifts do not appear'
     expect(trigger!.getAttribute('aria-expanded')).toBe('false');
     // "in accounting it shows 0 dollars given. Is it because I didn't donate
     // through stripe?" — the shut state answers exactly that.
-    expect(flat(trigger)).toContain('Why a cash or payment-link gift shows as $0 here');
+    // AMENDED BY THE-362: "until you record it". THE-303's claim is intact -
+    // the summary line still answers the founder's question on its own - but
+    // the answer is no longer "it never counts", because THE-350 made a
+    // recorded gift write the same receipt the webhook writes.
+    expect(flat(trigger)).toContain('Why a cash or payment-link gift shows as $0 until you record it');
   });
 
   it('🔴 and says, when opened, why — and where the gift IS recorded', async () => {
     await accounting();
     await click(container.querySelector('[data-testid="accounting-cash-note-toggle"]'));
     const text = flat(container.querySelector('[data-testid="accounting-cash-note"]'));
-    expect(text).toContain('These totals count Stripe gifts only.');
+    // AMENDED BY THE-362: the note used to say Harvest issues a receipt only
+    // for a gift it PROCESSED. Since THE-350 it also issues one for a gift an
+    // admin records by hand, so the totals count every gift with a receipt.
+    expect(text).toContain('These totals count every gift with a receipt.');
     expect(text, 'cash is not named — it is what the founder actually recorded').toContain('Cash');
     expect(text).toContain(GIVING_PROVIDER_NAMES_OR);
-    expect(text, 'the CRM remedy is not connected to the $0').toContain('Recording one in your CRM does not change these');
+    // AMENDED BY THE-362. The claim this pinned - that recording a gift in the
+    // CRM changes nothing here - was TRUE when THE-303 wrote it and FALSE from
+    // THE-350 onward, which made the manual path write the same receipt the
+    // webhook writes. What THE-303 was really asserting is that the note
+    // CONNECTS the $0 to the CRM remedy, and it still does - it now names the
+    // remedy as the thing that fixes the $0 rather than as a dead end.
+    expect(text, 'the CRM remedy is not connected to the $0')
+      .toContain('Recording one in your CRM does count here.');
     expect(text).toContain('Add Activity');
-    expect(text, 'the double-count reason is not given').toContain('would count a Stripe gift twice');
-    expect(text).toContain('a giving statement generated');
+    expect(text, 'the double-count reason is not given').toContain('would count a card gift twice');
+    // AMENDED BY THE-362. This pinned the tail of "a giving statement generated
+    // here will not include it either" - the false half of the old sentence.
+    // What it was asserting is that the note reaches all the way to the giving
+    // statement rather than stopping at this screen, and it still does: the
+    // note now names the statement as somewhere a recorded gift DOES arrive,
+    // and names the one gift that cannot arrive there.
+    expect(text, 'the note no longer reaches the giving statement')
+      .toContain('year-end giving statement');
+    expect(text, 'the emailless gift is not named as the exception')
+      .toContain('no email address');
   });
 });
 

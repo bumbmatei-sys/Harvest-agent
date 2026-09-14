@@ -300,6 +300,46 @@ let SURFACES!: Record<string, HTMLDivElement>;
 const SCOPE = ['NewsTab', 'MainApp', 'UserMessages', 'BiblePage', 'LivestreamView', 'AllNews', 'AIChat'] as const;
 const ALL_SURFACES = [...SCOPE, 'UserMessagesThread', 'AIChatThread'] as const;
 
+/**
+ * THE-362 — LivestreamView's support button, FOLDED OUT rather than re-recorded.
+ *
+ * THE FOUNDER: "In Livestream the support this message button brings you
+ * nowhere. It should go to the donation page." It was wired to
+ * `window.open('/?giving=1', '_blank')` — a new tab onto the SPA root, which
+ * lands on HOME whenever the church has no Give page, which is the normal case
+ * while card giving is off at THE-256's master switch. `onDonate` is now
+ * OPTIONAL and the button is not drawn at all when there is nowhere to go —
+ * THE-246's shape, the same one `Profile`'s "Give again" row already uses.
+ *
+ * 🔴 THE STRONGER OF THE TWO HONEST OPTIONS, which is the one THE-355 named on
+ * `AdminMinistry.desktop-layout`: "Re-recording is the weaker one: it would
+ * bless every other byte that moved in the same breath, which is the one thing
+ * this guard exists to catch." So `PRE_PR_REVISION` and every baseline in this
+ * file are UNTOUCHED, and the edit is REVERSED before the comparison instead.
+ * Anything else that moves in LivestreamView still goes red tomorrow.
+ *
+ * ⚠️ THE EDIT IS PURELY ADDITIVE — two inserted regions, asserted below to
+ * reverse EXACTLY, so the fold cannot quietly absorb a third change: the prop's
+ * docblock plus its `?`, and the `{onDonate && …}` wrapper carrying the
+ * button's new `data-livestream-support` handle and its explicit
+ * `min-h-[44px]`. Nothing else in the file moved: no handler, no subscription,
+ * no cap, no dark value.
+ */
+const THE_362_LIVESTREAM_EDITS: ReadonlyArray<readonly [after: string, before: string]> = [
+  ["  /**\n   * THE-362 \u2014 OPTIONAL, AND THAT IS THE FIX. THE-246's shape, exactly.\n   *\n   * The founder: \"In Livestream the support this message button brings you\n   * nowhere. It should go to the donation page.\"\n   *\n   * It was required, and `MainApp` satisfied it with\n   * `window.open('/?giving=1', '_blank')` \u2014 a NEW TAB onto the app root. Two\n   * things were wrong with that and they compound:\n   *\n   *   1. `?giving=1` is the IN-APP deep link. `donations/giving-share.ts` says\n   *      so in as many words \u2014 \"it is still the in-app deep link a signed-in\n   *      member follows to the Give tab \u2026 a member already inside the app\n   *      should stay inside it\". Opening it in a second tab reboots the whole\n   *      SPA: auth again, tenant again, branding again, and the livestream the\n   *      member was watching left running in the tab behind them.\n   *   2. IT LANDS ON HOME WHENEVER THERE IS NO GIVE PAGE, which is the normal\n   *      case today. `MainApp`'s `effectiveTopTab` collapses `'partner'` to\n   *      Home when `hasGiving` is false, and `hasGiving` needs `hasGivingRails`\n   *      \u2014 card giving (off at the master switch) OR a saved payment link. A\n   *      church with neither got a new tab showing the news feed. \"Brings you\n   *      nowhere\" is the literal behaviour.\n   *\n   * So it is now `undefined` when there is no Give page to reach, and the\n   * button is not drawn at all \u2014 `Profile`'s `onGoToPartner` has worked exactly\n   * this way since THE-246, for exactly this reason: a CTA that jumps at a tab\n   * `effectiveTopTab` sends straight back is the THE-193 dead end, not a gate.\n   */\n  onDonate?: () => void;\n",
+   "  onDonate: () => void;\n"],
+  ["            {/* Drawn only when there is somewhere for it to go. See the\n                prop's own note: when this is absent the church has no Give page\n                at all, and a button onto the news feed is worse than no button.\n                `min-h-[44px]` is explicit rather than inferred from `py-3`:\n                #500 recorded that every intrinsic `Button` size sits under both\n                floors, so a control this ticket touches states its own. */}\n            {onDonate && (\n              <button\n                onClick={onDonate}\n                data-livestream-support\n                className=\"w-full min-h-[44px] flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white lg:flex-1\"\n                style={{ backgroundColor: GOLD }}\n              >\n                <Heart size={18} /> Support This Message\n              </button>\n            )}\n",
+   "            <button\n              onClick={onDonate}\n              className=\"w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white lg:flex-1\"\n              style={{ backgroundColor: GOLD }}\n            >\n              <Heart size={18} /> Support This Message\n            </button>\n"],
+];
+
+/** LivestreamView as THE-362 found it. */
+const unwrapTHE362 = (src: string): string =>
+  THE_362_LIVESTREAM_EDITS.reduce((acc, [after, before]) => acc.replace(after, before), src);
+
+/** The only CLASS the fold above adds, for the rendered-layer comparison. */
+const THE_362_ADDED_TOKENS = ['min-h-[44px]'] as const;
+
+
 beforeAll(async () => {
   if (RECORDING) {
     // Restore all seven in-scope files to the pre-PR revision, record, put back.
@@ -437,13 +477,48 @@ function undoTHE348(nowRows: string[], baseRows: string[]): [string[], string[]]
 
 describe('the sub-640px rendering of each file is unchanged', () => {
   it.each(ALL_SURFACES)('%s renders the same class layer below 640px as it did before', (name) => {
-    const now = undoTHE295(mobileLayer(SURFACES[name]));
+    const now0 = undoTHE295(mobileLayer(SURFACES[name]));
+    // THE-362 folds ONE class out of LivestreamView's rendered layer — see the
+    // register above. The source-level fold cannot reach this comparison
+    // because these rows come from the RENDERED tree, not the file.
+    const now = name === 'LivestreamView'
+      ? now0.map((r) => r.split(' ')
+          .filter((t) => !(THE_362_ADDED_TOKENS as readonly string[]).includes(t)).join(' '))
+      : now0;
     if ((THE_348_SURFACES as readonly string[]).includes(name)) {
       const [a, b] = undoTHE348(now, BASELINE[name].mobileLayer);
       expect(a, `${name} moved below 640px beyond THE-348's three folded changes`).toEqual(b);
       return;
     }
     expect(now).toEqual(BASELINE[name].mobileLayer);
+  });
+
+  it("THE-362's fold reverses exactly its two insertions, and nothing else", () => {
+    /**
+     * THE ESCAPE HATCH IS ONLY SAFE WHILE IT STAYS THIS SMALL - the same guard
+     * THE-348's fold below carries, and THE-295's directly under that.
+     *
+     * Each pair must apply EXACTLY ONCE: a pattern that matched nothing would
+     * make the unwrap a no-op and the byte-identity assertions would then be
+     * measuring the edited file against the old one and failing for the right
+     * reason, but a pattern that matched TWICE would silently swallow a second
+     * change somewhere else in the file. And the reversal must be complete:
+     * after it, not one byte of the ticket's own marker survives.
+     */
+    const src = read('LivestreamView.tsx');
+    for (const [after] of THE_362_LIVESTREAM_EDITS) {
+      expect(src.split(after).length - 1, 'a folded region is not in the file exactly once').toBe(1);
+    }
+    const unwrapped = unwrapTHE362(src);
+    expect(unwrapped, 'the fold left part of the edit behind').not.toContain('THE-362');
+    expect(unwrapped, 'the optional prop survived the fold').toContain('onDonate: () => void;');
+    expect(unwrapped, 'the conditional wrapper survived the fold').not.toContain('{onDonate && (');
+    expect(unwrapped, 'the measurement handle survived the fold')
+      .not.toContain('data-livestream-support');
+    // And the fold really is a fold: it makes the file SHORTER, never longer.
+    expect(unwrapped.length).toBeLessThan(src.length);
+    // The class list it folds out of the rendered layer is one token, not a set.
+    expect(THE_362_ADDED_TOKENS).toHaveLength(1);
   });
 
   it("THE-348's fold touches exactly its three changes, and only on its two surfaces", () => {
@@ -617,7 +692,7 @@ describe('each surface is constrained at desktop widths', () => {
    */
   it('LivestreamView was already capped, and this PR leaves that cap alone', () => {
     expect(capsOf(SURFACES.LivestreamView)).toContain(1280);
-    expect(read('LivestreamView.tsx')).toBe(toV4Spelling(at('LivestreamView.tsx')));
+    expect(unwrapTHE362(read('LivestreamView.tsx'))).toBe(toV4Spelling(at('LivestreamView.tsx')));
   });
 
   it('no surface is left unbounded — every one of the seven now carries a maximum', () => {
@@ -1006,7 +1081,7 @@ describe("LivestreamView's deliberate dark values are unchanged", () => {
   });
 
   it('this PR did not touch the file at all', () => {
-    expect(read('LivestreamView.tsx')).toBe(toV4Spelling(at('LivestreamView.tsx')));
+    expect(unwrapTHE362(read('LivestreamView.tsx'))).toBe(toV4Spelling(at('LivestreamView.tsx')));
   });
 });
 
@@ -1236,7 +1311,7 @@ describe('no behaviour changed on any screen in scope', () => {
 
   it('MainApp and LivestreamView carry no LAYOUT change, so nothing measured could have moved', () => {
     // LivestreamView is still byte-identical and asserted as such.
-    expect(read('LivestreamView.tsx')).toBe(toV4Spelling(at('LivestreamView.tsx')));
+    expect(unwrapTHE362(read('LivestreamView.tsx'))).toBe(toV4Spelling(at('LivestreamView.tsx')));
 
     // MainApp is exempted from byte-identity twice now (THE-202, THE-205). This
     // test used to fold THE-202's one-line Give clause out of the whole file and
