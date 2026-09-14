@@ -510,12 +510,31 @@ describe('it points to the manual entry path', () => {
 describe('the giving-statement surface carries the same limitation', () => {
   it('🔴 states it above the Generate button, in the terms a tax document needs', async () => {
     await statements();
-    expect(text()).toMatch(/These statements cover gifts Harvest processed/i);
+    // AMENDED BY THE-362: a gift recorded in the CRM now writes a receipt and
+    // therefore DOES reach a statement. The gap this asserts is still stated -
+    // it is now "until somebody records it" rather than "never".
+    expect(text()).toMatch(/These statements cover every gift with a receipt/i);
     expect(text(), 'the providers are not named').toContain(GIVING_PROVIDER_NAMES);
     expect(text(), 'the consequence to the MEMBER is not stated')
       .toMatch(/will see a total lower than what they actually gave you/i);
-    expect(text(), 'a church could still think the CRM entry fixes this')
-      .toMatch(/Recording a gift in your CRM does not add it here either/i);
+    /**
+     * AMENDED BY THE-362, and this one was defending the false claim outright.
+     *
+     * It required the screen to say a CRM entry does NOT reach a statement.
+     * That was true when it was written and false from THE-350 onward - the
+     * manual path writes the same `donation_receipt` invoice the generator
+     * aggregates, proven end to end in `THE-362.manual-gift-reaches-the-books`.
+     *
+     * What a tax document surface actually needs stated is the CONDITION, and
+     * there are two: a link gift reaches a statement only once somebody records
+     * it, and a gift recorded against a contact with NO EMAIL ADDRESS cannot
+     * reach one at all, because the generator groups by email and skips an
+     * empty one. Both are asserted; the false absolute is not.
+     */
+    expect(text(), 'the screen does not say recording is what puts a gift on a statement')
+      .toMatch(/only once somebody records it/i);
+    expect(text(), 'the emailless gift - on the books, on no statement - is not stated')
+      .toMatch(/no email\s+address cannot appear at all/i);
     expect(text(), 'the church is not told what to do instead')
       .toMatch(/Check your own provider records before you send/i);
 
@@ -813,7 +832,7 @@ describe('no statement, receipt, CRM write or Stripe path changed', () => {
      * rather than trusting this hash to stand in for it.
      */
     'src/components/AdminAccounting.tsx':
-      '742b8230820aea1db2f83f2aa724907719695f17a362f91ff6b1955aadd217f7',
+      '9e9b77792d2316217b13fe2b700574db414fbce511ab9bd8945d04ed3b7faf0c',
   };
 
   it.each(Object.keys(UNCHANGED))('%s is byte-for-byte unchanged', (file) => {

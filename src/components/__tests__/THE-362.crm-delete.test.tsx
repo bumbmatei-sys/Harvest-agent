@@ -64,7 +64,13 @@ const ME = { uid: 'me-uid', email: 'Pastor@Grace.Church' };
 const { navigate, authFetch, notifyError, invalidateQueries, contactsResult, deleteDoc, docPaths } =
   vi.hoisted(() => ({
     navigate: vi.fn(),
-    authFetch: vi.fn(async () => ({ ok: true, json: async () => ({ connected: false }) })),
+    // Typed with its real parameters: `.mock.calls` is how the cascade's URL
+    // and method are asserted, and a zero-arg signature makes that a tuple
+    // of length 0 that nothing can be read out of.
+    authFetch: vi.fn(
+      async (_url: string, _init?: { method?: string }): Promise<unknown> =>
+        ({ ok: true, json: async () => ({ connected: false }) }),
+    ),
     notifyError: vi.fn(),
     invalidateQueries: vi.fn(async () => {}),
     deleteDoc: vi.fn(async () => {}),
@@ -146,6 +152,9 @@ beforeEach(() => {
   container = document.createElement('div');
   document.body.appendChild(container);
   deleteDoc.mockClear(); deleteDoc.mockImplementation(async () => {});
+  // The cascade call succeeds by default; the tests that need it to fail say so.
+  authFetch.mockClear();
+  authFetch.mockImplementation(async () => ({ ok: true, json: async () => ({ removed: 0 }) }) as never);
   invalidateQueries.mockClear();
   notifyError.mockClear();
   docPaths.length = 0;
@@ -270,6 +279,149 @@ describe('12 - deleting a contact removes the row from the table', () => {
 });
 
 /* ═══ 13 · a failed delete surfaces visibly ═══════════════════════════════ */
+
+describe('13b - the CASCADE, and the failure mode one layer down', () => {
+  /**
+   * THE-362's follow-up. Deleting a contact left every `contactActivities` row
+   * behind pointing at a document that no longer exists - a dangling reference
+   * in a collection where a donation row carries an `invoiceId`.
+   *
+   * The sweep cannot run on the client: rules are not filters, so a `list`
+   * constrained only on `contactId` cannot prove `tenantId` and is refused
+   * outright. It runs on the Admin SDK behind a route that gates on `manageCRM`
+   * itself - THE-350's pattern, at the same wall.
+   */
+  const cascadeCalls = () =>
+    authFetch.mock.calls.filter((c) => String(c[0]).includes('/api/crm/contact-activities'));
+
+  it('the timeline sweep runs, and it names the contact and the tenant', async () => {
+    await openContact([contactRow({ id: 'c1', tenantId: 't1' })], 'c1');
+    await pressDelete();
+    await confirm();
+
+    const calls = cascadeCalls();
+    expect(calls, 'the timeline is no longer swept - the orphan is back').toHaveLength(1);
+    expect(String(calls[0][0])).toContain('contactId=c1');
+    expect(String(calls[0][0]), 'the sweep does not name a tenant').toContain('tenantId=t1');
+    expect((calls[0][1] as { method?: string })?.method, 'the sweep is not a DELETE').toBe('DELETE');
+  });
+
+  it('THE ORDER: the timeline goes BEFORE the contact, never after', async () => {
+    /**
+     * THE SAFETY ARGUMENT, asserted at runtime rather than read off the source.
+     * A failure after the contact is gone is exactly the orphan this fixes, so
+     * the contact document must be the LAST thing removed.
+     */
+    const order: string[] = [];
+    authFetch.mockImplementation(async (url: unknown) => {
+      if (String(url).includes('/api/crm/contact-activities')) order.push('activities');
+      return { ok: true, json: async () => ({ removed: 2 }) } as never;
+    });
+    deleteDoc.mockImplementation(async () => { order.push('contact'); });
+
+    await openContact([contactRow({ id: 'c1' })], 'c1');
+    await pressDelete();
+    await confirm();
+
+    expect(order, 'the contact was deleted before its timeline - that IS the orphan')
+      .toEqual(['activities', 'contact']);
+  });
+
+  it('a FAILED sweep stops the contact delete, surfaces visibly, and keeps the dialog open', async () => {
+    /**
+     * 7 - NO-REGRESSION ON THIS PR'S OWN FIX, one layer down. The bug fixed
+     * earlier in THE-362 was a delete that closed the dialog and walked back to
+     * the list as though it had worked. Adding a second write in front of it is
+     * exactly how that bug comes back, so the new failure path is asserted the
+     * same way: by MAKING IT FAIL.
+     */
+    authFetch.mockImplementation(async () => ({
+      ok: false, status: 503, json: async () => ({ error: 'Failed to remove this contact\u2019s activity.' }),
+    }) as never);
+
+    await openContact([contactRow({ id: 'c1' })], 'c1');
+    await pressDelete();
+    await confirm();
+
+    expect(deleteDoc, 'THE ORPHAN: the contact went while its timeline stayed')
+      .not.toHaveBeenCalled();
+    expect(notifyError, 'the cascade failed silently').toHaveBeenCalledWith(
+      'Failed to delete contact', expect.any(Error),
+    );
+    expect(dialogOpen(), 'a failed cascade closed the dialog as though it had worked').toBe(true);
+    expect(byText('Delete'), 'the admin cannot retry - the control is gone').toBeTruthy();
+  });
+
+  it('and RESUMING is what the admin does next: pressing Delete again re-runs it', async () => {
+    /**
+     * 9 - RESUMABLE, WHICH IS THE GUARANTEE THAT HOLDS FOR ANY NUMBER OF ROWS.
+     * The first attempt fails; the contact is still there, with fewer rows
+     * behind it. The second attempt completes. At no point does a row point at
+     * a contact that is gone.
+     */
+    let attempts = 0;
+    authFetch.mockImplementation(async (url: unknown) => {
+      if (!String(url).includes('/api/crm/contact-activities')) {
+        return { ok: true, json: async () => ({}) } as never;
+      }
+      attempts += 1;
+      return attempts === 1
+        ? { ok: false, status: 503, json: async () => ({ error: 'network' }) } as never
+        : { ok: true, json: async () => ({ removed: 2 }) } as never;
+    });
+
+    await openContact([contactRow({ id: 'c1' })], 'c1');
+    await pressDelete();
+    await confirm();
+    expect(deleteDoc, 'the contact went on a failed first attempt').not.toHaveBeenCalled();
+    expect(dialogOpen(), 'there is nothing left to press').toBe(true);
+
+    await confirm();
+    expect(attempts, 'the second attempt did not re-run the sweep').toBe(2);
+    expect(deleteDoc, 'the resumed delete never finished').toHaveBeenCalledTimes(1);
+    expect(docPaths).toContain('contacts/c1');
+  });
+
+  it('8 - self-deletion is still refused FIRST, before anything is swept', async () => {
+    /**
+     * NO-REGRESSION, and the ordering matters as much as the refusal: a guard
+     * that ran after the cascade would destroy an admin's own timeline on the
+     * way to telling them they cannot do this.
+     */
+    await openContact([accountRow({ id: ME.uid, firstName: 'Pastor' })], ME.uid);
+    await pressDelete();
+
+    expect(refusal(), 'self-deletion is offered').not.toBeNull();
+    expect(cascadeCalls(), "the admin's own timeline was swept before the refusal").toEqual([]);
+    expect(deleteDoc).not.toHaveBeenCalled();
+    expect(byText('Delete'), 'a Delete control is still offered on the admin\u2019s own row')
+      .toBeUndefined();
+  });
+
+  it('and an account-backed row is refused before any sweep too', async () => {
+    await openContact([accountRow({ id: 'u-9', firstName: 'Ada', lastName: 'Lovelace' })], 'u-9');
+    await pressDelete();
+    expect(refusal()).not.toBeNull();
+    expect(cascadeCalls(), "an app member's timeline was swept on a refused delete").toEqual([]);
+    expect(deleteDoc).not.toHaveBeenCalled();
+  });
+
+  it('the confirmation says what it removes, and that it is NOT account erasure', () => {
+    /**
+     * "This cannot be undone" was the whole warning. A church could reasonably
+     * read that as removing the person from the app. Both facts this PR
+     * established are now on screen: the timeline goes with the contact, the
+     * receipt does not, and an app account is not touched.
+     */
+    const c = read(CRM);
+    expect(c, 'the dialog no longer says the timeline goes too')
+      .toContain('contact record and its whole activity');
+    expect(c, 'the dialog no longer says the money survives')
+      .toContain('a receipt is never deleted');
+    expect(c, 'the dialog no longer distinguishes itself from account erasure')
+      .toContain('only they can do that, from their own profile');
+  });
+});
 
 describe('13 - a failed delete surfaces VISIBLY', () => {
   it('a rejected write is reported, and the screen does not pretend it worked', async () => {

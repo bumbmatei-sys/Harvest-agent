@@ -541,7 +541,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
             className="group w-full flex items-center justify-between gap-3 px-4 py-3 text-left min-h-[44px] sm:min-h-0 sm:h-[38px] sm:py-0"
           >
             <span className="text-sm font-semibold text-strong">
-              Why a cash or payment-link gift shows as $0 here
+              Why a cash or payment-link gift shows as $0 until you record it
             </span>
             <ChevronDown
               size={16}
@@ -552,25 +552,27 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
           <CollapsibleContent keepMounted data-testid="accounting-cash-note">
             <div className="px-4 pb-4 pt-1 text-sm text-body leading-relaxed space-y-2 border-t border-line">
               <p>
-                <b className="text-strong">These totals count gifts Harvest processed.</b> Every
-                figure on this screen is built from the receipts Harvest issued, and Harvest
-                only issues one for a gift it processed. Cash, a cheque, a bank transfer and
-                anything sent through your own {GIVING_PROVIDER_NAMES_OR} links never passes
-                through Harvest, so there is no receipt to count and no amount to add.
+                <b className="text-strong">These totals count every gift with a receipt.</b> Every
+                figure on this screen is built from the receipts on your ledger — the one Harvest
+                issues when it processes a card gift, and the one it issues when you record a gift
+                by hand. Cash, a cheque, a bank transfer and anything sent through your own
+                {GIVING_PROVIDER_NAMES_OR} links never passes through Harvest, so none of them has
+                a receipt until somebody records it.
               </p>
               <p>
-                <b className="text-strong">Recording one in your CRM does not change these
-                numbers.</b> Add Activity → Donation adds to that contact&apos;s total given,
-                dates their last gift and moves them along the pipeline — which is why the CRM
-                looks right while this screen still reads $0. The two are deliberately separate
-                records: adding them together would count a card gift twice, because a card
-                gift already writes both.
+                <b className="text-strong">Recording one in your CRM does count here.</b> Open the
+                contact, press Add Activity, choose Donation and enter the amount: that writes a
+                receipt to your ledger, so the gift reaches this screen, your dashboard and that
+                member&apos;s year-end giving statement. One exception — a gift recorded against a
+                contact with no email address still counts in these totals, but it cannot appear on
+                a giving statement, because statements are grouped by email address.
               </p>
               <p>
-                So a church that takes gifts both ways should expect this page to read lower
-                than what it actually received. Your own bank and provider statements are the
-                record for everything Harvest did not process, and a giving statement generated
-                here will not include it either.
+                <b className="text-strong">What is still missing is a gift nobody recorded.</b> Until
+                somebody enters it, a cash or payment-link gift reads as $0 here, and your own bank
+                and provider statements remain the record for it. The CRM&apos;s own total given on a
+                contact is never added to these figures: a card gift already writes both, so adding
+                them together would count a card gift twice.
               </p>
             </div>
           </CollapsibleContent>

@@ -187,8 +187,8 @@ describe('6 - no donation surface shows the word Stripe to a church', () => {
      */
     for (const [file, needle] of [
       ['src/components/AdminDonations.tsx', 'How your church gets paid'],
-      ['src/components/AdminGivingStatements.tsx', 'These statements cover gifts Harvest processed.'],
-      ['src/components/AdminAccounting.tsx', 'These totals count gifts Harvest processed.'],
+      ['src/components/AdminGivingStatements.tsx', 'These statements cover every gift with a receipt.'],
+      ['src/components/AdminAccounting.tsx', 'These totals count every gift with a receipt.'],
       ['src/components/PublicCampaign.tsx', 'Secure, encrypted payment.'],
     ] as const) {
       const all = userFacingText(read(file)).map((t) => t.text).join(' | ');

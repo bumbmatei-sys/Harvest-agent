@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { requireAdmin } from '@/lib/api-auth';
+import { requireAdmin, requireTenantPermission } from '@/lib/api-auth';
+import { deleteByQuery } from '@/lib/member-deletion';
 import { adminDb } from '@/lib/firebase-admin';
 import { captureHandledError } from '@/lib/money-path-sentry';
 import { sortByTime } from '@/utils/query-helpers';
@@ -136,5 +137,113 @@ export async function GET(request: NextRequest) {
       ids: { contactId },
     });
     return NextResponse.json({ error: 'Failed to load activities.' }, { status: 500 });
+  }
+}
+
+/**
+ * DELETE /api/crm/contact-activities?contactId=<id>&tenantId=<id>
+ *
+ * THE-362 - every timeline row belonging to one contact, removed with it.
+ *
+ * ─── The defect ─────────────────────────────────────────────────────────────
+ *
+ * Deleting a contact removed ONE document. `contactActivities` rows are a
+ * TOP-LEVEL collection keyed by a `contactId` field, not a subcollection, so
+ * Firestore deletes none of them with the parent and every row was left behind
+ * pointing at a document that no longer exists. In a collection where a
+ * donation row carries an `invoiceId` that is a dangling reference next to the
+ * money, and it accumulates for as long as a church tidies its CRM.
+ *
+ * ─── 🔴 WHY THIS IS SERVER-SIDE, AND WHY firestore.rules IS UNTOUCHED ───────
+ *
+ * A CLIENT CANNOT LIST THIS COLLECTION AT ALL. The GET above records the reason
+ * in full: rules are not filters, so a `list` constrained only on `contactId`
+ * cannot prove anything about `resource.data.tenantId` and the whole query is
+ * refused. Adding `where('tenantId','==',…)` would satisfy the rule and need a
+ * COMPOSITE INDEX - and `firestore.indexes.json` is not deployed by this repo's
+ * CI, so the index would be absent in production and the query would throw
+ * `failed-precondition` there while passing everywhere else.
+ *
+ * So a cascade cannot be written on the client without loosening a file that
+ * AUTO-DEPLOYS on merge with no emulator tests (THE-313's one line turned 46
+ * files red). It runs on the Admin SDK instead, behind
+ * `requireTenantPermission(request, tenantId, 'manageCRM')` - the same gate,
+ * the same helper and the same argument THE-350 used when the invoice write hit
+ * exactly this wall. 🔴 NO RULE CHANGES, and no client gains any access.
+ *
+ * ─── 🔴 THE QUERY IS THE GET'S, EXACTLY ─────────────────────────────────────
+ *
+ * One single-field `where('contactId', '==', …)`, with the tenant filtered IN
+ * MEMORY afterwards. Not a second equality filter: that is the composite index
+ * again, and the guard below is stricter anyway because it is applied per
+ * document immediately before that document is deleted.
+ *
+ * ─── 🔴 RESUMABLE, WHICH IS STRONGER HERE THAN ATOMIC ───────────────────────
+ *
+ * `deleteByQuery` pages at `CHUNK_LIMIT` and commits each page as ONE batch, so
+ * a contact with fewer rows than that page size is deleted atomically and a
+ * larger one is deleted in whole pages. A batch cannot span an unbounded number
+ * of rows, so "atomic" is not available for every contact - but it is not what
+ * protects the church here. THE ORDER IS:
+ *
+ *   1. the activities (this route),
+ *   2. the contact document itself (the client, afterwards).
+ *
+ * A failure anywhere leaves the CONTACT STILL PRESENT with fewer rows behind
+ * it, which is a state the CRM already renders correctly and which pressing
+ * Delete again completes. There is no ordering of these two steps that can
+ * produce the dangling reference this exists to remove, and no partial state
+ * that leaves half a contact on screen. The reverse order - contact first -
+ * would manufacture the orphan on every failure.
+ *
+ * ─── 🔴 WHAT THIS DOES NOT TOUCH ────────────────────────────────────────────
+ *
+ * `tenants/{t}/invoices` IS NEVER READ OR WRITTEN HERE. The receipt is the
+ * money record, it carries no `contactId`, and `AdminAccounting` reads invoices
+ * alone - so a gift stays on the church's books, in its totals and on its
+ * giving statements after the person it came from is gone, exactly as it does
+ * for a donor who erases their account (that path ANONYMISES invoices rather
+ * than deleting them). A donation row's `invoiceId` points AT the receipt;
+ * deleting the row removes a pointer, never its target.
+ *
+ * ⚠️ AND THIS IS NOT ERASURE. It removes a church's own CRM record of a person.
+ * It does not touch `users`, an account, or any of the other collections
+ * `lib/member-erasure.ts` sweeps; that path is member-initiated behind
+ * `/api/account/delete` and there is deliberately no admin-facing surface for
+ * it. Nothing here may become one.
+ */
+export async function DELETE(request: NextRequest) {
+  const contactId = request.nextUrl.searchParams.get('contactId');
+  const tenantId = request.nextUrl.searchParams.get('tenantId');
+  if (!contactId) {
+    return NextResponse.json({ error: 'contactId is required' }, { status: 400 });
+  }
+  if (!tenantId) {
+    return NextResponse.json({ error: 'tenantId is required' }, { status: 400 });
+  }
+
+  // The gate. `requireTenantPermission` verifies the caller BELONGS to this
+  // tenant before it checks the permission, so a client-supplied id can only
+  // ever name a tenant the caller is already a member of.
+  const auth = await requireTenantPermission(request, tenantId, 'manageCRM');
+  if (auth instanceof NextResponse) return auth;
+
+  try {
+    const removed = await deleteByQuery(
+      adminDb.collection('contactActivities').where('contactId', '==', contactId),
+      // 🔴 THE CROSS-TENANT GUARD, applied per document. `deleteByQuery` skips
+      // a row this returns false for and never aborts the page, so another
+      // church's row sharing a contact id is spared rather than deleted.
+      (data) => (data.tenantId ?? null) === tenantId,
+    );
+    return NextResponse.json({ removed });
+  } catch (e) {
+    console.error('contact-activities delete error:', e);
+    captureHandledError(e, {
+      step: 'crm-contact-activities-delete',
+      tenantId,
+      ids: { contactId },
+    });
+    return NextResponse.json({ error: 'Failed to remove this contact’s activity.' }, { status: 500 });
   }
 }

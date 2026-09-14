@@ -22,6 +22,7 @@ const sha = (rel: string) => createHash('sha256').update(readFileSync(path.join(
 
 /** Every production file this ticket edited. */
 const TOUCHED = [
+  'src/app/api/crm/contact-activities/route.ts',
   'src/components/AdminCRM.tsx',
   'src/components/AdminAccounting.tsx',
   'src/components/AdminDonations.tsx',
@@ -44,6 +45,7 @@ const TOUCHED = [
 /** Every test file this ticket added. */
 const OWN_SUITES = [
   'src/__tests__/THE-362.guards.test.ts',
+  'src/__tests__/THE-362.manual-gift-reaches-the-books.test.ts',
   'src/__tests__/THE-362.stripe-on-donation-surfaces.test.tsx',
   'src/components/__tests__/THE-362.crm-delete.test.tsx',
   'src/components/__tests__/THE-362.livestream-support.test.tsx',

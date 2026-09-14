@@ -485,6 +485,8 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  /** THE-362 - a delete now spans two writes, so the control says so. */
+  const [deleting, setDeleting] = useState(false);
   const [showAddActivity, setShowAddActivity] = useState(false);
   const [actForm, setActForm] = useState({ type: 'note' as ContactActivity['type'], description: '', amount: '' });
   const [savingAct, setSavingAct] = useState(false);
@@ -993,13 +995,57 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
       }
     : null;
 
+  /**
+   * The tenant a contact belongs to, for a write that must name one.
+   *
+   * The ROW's own `tenantId` first: the merged list can hold a platform-wide
+   * row for a super admin, and deleting its activity under the screen's tenant
+   * would name the wrong church and delete nothing. Falls back to the screen's
+   * scope, then to the platform tenant, exactly as every other write here does.
+   */
+  const selectedTenantScope = (target: Contact | null, screenTenant: string | null | undefined) =>
+    target?.tenantId || screenTenant || PLATFORM_TENANT_ID;
+
   const confirmDelete = async () => {
     if (!deleteId) return;
     // THE GUARD IS HERE, not only in the dialog. A refusal that lived only in
     // the markup would be one re-render away from being bypassed, and this
     // function is the only thing that reaches Firestore.
     if (deleteRefusal) return;
+    setDeleting(true);
     try {
+      /**
+       * THE-362 - THE ACTIVITIES FIRST, THE CONTACT LAST, AND THE ORDER IS THE
+       * WHOLE SAFETY ARGUMENT.
+       *
+       * `contactActivities` is a TOP-LEVEL collection keyed by a `contactId`
+       * field, not a subcollection, so Firestore deletes none of it with the
+       * parent: every row used to be left behind pointing at a document that no
+       * longer exists, and a donation row carries an `invoiceId`, so that is a
+       * dangling reference next to the money.
+       *
+       * It cannot be swept from here - a client cannot LIST that collection at
+       * all (rules are not filters; see the route's own note) - so this calls
+       * the Admin-SDK route, which gates on `manageCRM` itself and deletes in
+       * batched pages.
+       *
+       * 🔴 IF THIS THROWS, THE CONTACT IS STILL HERE. That is deliberate: a
+       * failure leaves a contact with fewer timeline rows, which this screen
+       * already renders correctly and which pressing Delete again finishes.
+       * Deleting the contact first would manufacture the orphan on every
+       * failure instead.
+       */
+      const scope = selectedTenantScope(deleteTarget, tenantId);
+      const res = await authFetch(
+        `/api/crm/contact-activities?contactId=${encodeURIComponent(deleteId)}`
+        + `&tenantId=${encodeURIComponent(scope)}`,
+        { method: 'DELETE' },
+      );
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error || `Could not remove this contact's activity (${res.status})`);
+      }
+
       await deleteDoc(doc(db, 'contacts', deleteId));
       await queryClient.invalidateQueries({ queryKey: ['contacts', tenantId] });
       // INSIDE THE `try`, AND THAT IS THE SILENT-FAILURE RULE. Both of these
@@ -1013,6 +1059,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
       setDeleteId(null);
       if (view === 'detail') setView('list');
     } catch (e) { notifyError('Failed to delete contact', e); }
+    finally { setDeleting(false); }
   };
 
   /**
@@ -1046,12 +1093,45 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             </button>
           </>
         ) : (
-          <div className="text-center">
-            <p className="font-bold text-strong mb-2 font-display">Delete contact?</p>
-            <p className="text-sm text-muted mb-5">This cannot be undone.</p>
+          <div>
+            <p className="font-bold text-strong mb-2 font-display text-center">Delete contact?</p>
+            {/*
+              THE-362 - WHAT IT REMOVES, AND WHAT IT DOES NOT.
+              "This cannot be undone" was the whole warning, and it left a church
+              to guess how far the deletion reaches. Two things are worth saying
+              and both are established elsewhere in this PR: the timeline goes
+              WITH the contact now (it used to be left behind pointing at a
+              document that no longer existed), and this is NOT account erasure -
+              it removes the church's own record of a person, never their app
+              account, which only they can delete from their own profile. The
+              money is named too, because a treasurer reading "cannot be undone"
+              beside a donor's name deserves to know the receipt survives.
+            */}
+            <p className="text-sm text-muted mb-2">
+              This removes {deleteTarget ? 'their' : 'the'} contact record and its whole activity
+              timeline, and cannot be undone.
+            </p>
+            <p className="text-sm text-muted mb-5">
+              Their giving stays on your books: a receipt is never deleted, so your accounting
+              totals and giving statements do not change. If they have an app account, this does
+              not remove it &mdash; only they can do that, from their own profile.
+            </p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteId(null)} className="flex-1 min-h-[44px] py-2.5 rounded-xl border border-line-hairline text-sm font-semibold text-muted">Cancel</button>
-              <button onClick={confirmDelete} className="flex-1 min-h-[44px] py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold">Delete</button>
+              <button
+                onClick={() => setDeleteId(null)}
+                disabled={deleting}
+                className="flex-1 min-h-[44px] py-2.5 rounded-xl border border-line-hairline text-sm font-semibold text-muted disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleting}
+                data-testid="crm-confirm-delete"
+                className="flex-1 min-h-[44px] py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold disabled:opacity-50"
+              >
+                {deleting ? 'Deleting\u2026' : 'Delete'}
+              </button>
             </div>
           </div>
         )}
