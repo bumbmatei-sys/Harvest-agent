@@ -479,10 +479,51 @@ describe('5 — no new token was defined', () => {
 describe('6 — the drag-to-reorder still works at level, section and lesson', () => {
   const EDITOR = 'src/components/AdminCourseEditor.tsx';
 
+  /**
+   * ⚠️ THE-360 EDITS AdminCourseEditor.tsx, so blanket byte-identity over it no
+   * longer states something true. NAMED HERE — the same treatment THE-282
+   * established for THE-305, THE-313 and THE-342 — rather than the assertion
+   * being dropped or loosened to "contains": THE-311's claim is that IT never
+   * opened the editor, and that claim is unchanged. A SECOND name still fails.
+   *
+   * What THE-360 did to it: `handleSave` fires `course_published` immediately
+   * before its existing `setSaved(true)`, guarded on `status === "published"`
+   * so Save Draft fires nothing, plus the two import lines that call needs.
+   * Five lines and an import.
+   *
+   * 🔴 IT WENT NOWHERE NEAR WHAT THIS SECTION PINS THE FILE FOR. The drag
+   * mechanism is untouched at all three depths — the `key={…} draggable`
+   * anchors below still match byte for byte, `onDragOver` and `onDrop` are
+   * still absent, and `onDragEnter` still does not `stopPropagation`. Those
+   * assertions run against the file's CONTENTS rather than against which branch
+   * you are on, which is why they keep the hard pin here and this one does not.
+   */
+  const THE_360 = [EDITOR];
+
   it('🔴 AdminCourseEditor.tsx is byte-identical to the base branch', () => {
     // THE-282 pins this file and exempts THE-305 alone. THE-311 adds no
     // exemption: it never opened the editor.
-    expect(changed(EDITOR), 'THE-311 modified the editor').toEqual([]);
+    expect(changed(EDITOR).filter((f) => !THE_360.includes(f)),
+      'THE-311 modified the editor').toEqual([]);
+  });
+
+  it('🔴 the editor is the ONLY file THE-360 is exempted for here', () => {
+    // The exemption is one file wide and must stay that way. Stated as its own
+    // assertion so widening it is an edit to this line, visible in review —
+    // exactly as THE-282 states its own three.
+    expect(THE_360).toEqual(['src/components/AdminCourseEditor.tsx']);
+
+    // 🔴 A SECOND ASSERTION WAS DRAFTED HERE AND DELIBERATELY NOT KEPT, because
+    // THE-357's guard was right about it. It read
+    // `expect(changed('src/components/course/')).toEqual([])` — "THE-360
+    // reached into no course source" — and that is an EMPTY-DIRECTION FINDING
+    // about a BRANCH: it holds while THE-360 is unmerged and stops meaning
+    // anything the day it lands, which is the exact defect this series exists
+    // for. THE-357 counts those per suite and went red on the ninth.
+    //
+    // What the claim was actually worth saying is said above, against CONTENT
+    // rather than against a diff: the exemption is one file wide, and the drag
+    // assertions below still match the editor's own source byte for byte.
   });
 
   /**

@@ -570,6 +570,14 @@ describe('14 · the files THE-321 does not own are byte-identical', () => {
       // five className strings and one named import. THE-321 still cannot edit
       // this file, because a value that is none of the four continues to fail.
       ['36dbc419cc5990f1021b81e03dfa33851c62199a54a5052c89511e8e34d43002', 'main + THE-357 — the five SMS controls adopt Rule 4'],
+      // 🔴 APPENDED BY THE-360, never substituted. ONE capture:
+      // `plan_limit_reached` with limitKind 'sms', fired on the same
+      // `d.capReached` the existing outcome message already reports — a send
+      // that RAN and ran out of segments part-way through. No markup, no
+      // handler, no read, no write, no colour, no inline style, no primitive
+      // and no className moved, which is what THE-321 pins this file for.
+      // THE-321 still cannot edit it: a value that is none of the five fails.
+      ['6c1ef963a4c7c2986f52d57890b592d7ea9ff735418336016d3d69ed2561cc2f', 'THE-360 — plan_limit_reached on a capped broadcast'],
     ],
     'src/components/settings/SmsSection.tsx': [
       ['75c90bc448dc52eceb47e8866a06a32cd53a64bb1b0455c2b7585053800bdf03', 'main at acc0d66 — THE-320 owns it'],

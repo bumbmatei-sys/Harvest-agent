@@ -154,6 +154,23 @@ interface Baseline {
  * but HEAD exists on the runner and a `git show <sha>` here fails the job
  * rather than the assertion.
  */
+/**
+ * ─── THE-360 — `handleSave` re-recorded, and the whole of what moved ────────
+ *
+ * FIVE LINES, all immediately before the existing `setSaved(true)`: one
+ * `trackProductEvent` call and the four comment lines that say why. The other
+ * five write paths are UNTOUCHED and still compare against a32665a.
+ *
+ * 🔴 ONLY A PUBLISH, AND ONLY AFTER THE WRITE LANDED. `handleSave` serves both
+ * buttons, so the call is guarded on `status === "published"`: Save Draft fires
+ * nothing, and the tenant-mismatch `return` above means an abandoned save never
+ * reaches the line at all.
+ *
+ * ⚠️ NOTHING ABOUT THE SAVE MOVED: the payload, the tenant-ownership check, the
+ * create-versus-update branch, `stampTenant`, `resolveWriteTenant` and the
+ * error path are byte-for-byte as they were. No course title, author, category
+ * or lesson content leaves — the seam has no parameter to pass one through.
+ */
 const WRITE_PATHS = [
   'const handleSave',
   'const handleUpdateCategories',

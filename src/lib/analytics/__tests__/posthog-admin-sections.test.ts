@@ -477,10 +477,17 @@ describe('8 — session recording, autocapture and the closed vocabulary are unc
     expect(options.capture_dead_clicks).toBe(false);
     expect(options.rageclick).toBe(false);
 
-    // 🔴 The closed vocabulary, unchanged in WIDTH by this ticket. A section
-    // name is a new VALUE of `route`, not a new property — the same way
-    // THE-206's 'public' was a third value of `app_surface`.
-    expect(ALLOWED_EVENT_PROPERTY_KEYS).toEqual(['app_surface', 'is_platform_admin', 'route']);
+    // 🔴 The closed vocabulary, unchanged in WIDTH by THE-227. A section name is
+    // a new VALUE of `route`, not a new property — the same way THE-206's
+    // 'public' was a third value of `app_surface`.
+    //
+    // ⚠️ THE-360 adds the FOURTH key, `limit_kind`, and this list is spelled out
+    // rather than read from the source so that a fifth cannot arrive unnoticed.
+    // It is carried by `plan_limit_reached` alone; the assertion below pins that
+    // a PAGEVIEW still carries exactly three.
+    expect(ALLOWED_EVENT_PROPERTY_KEYS).toEqual([
+      'app_surface', 'is_platform_admin', 'route', 'limit_kind',
+    ]);
     expect(options.before_send).toBe(beforeSendEvent);
   });
 
@@ -493,8 +500,13 @@ describe('8 — session recording, autocapture and the closed vocabulary are unc
 
   it('a section pageview carries the three registered keys and nothing else', async () => {
     await capturePageview('/admin/accounting', true);
+    // ⚠️ THE-360 — spelled out rather than compared against
+    // ALLOWED_EVENT_PROPERTY_KEYS, which now holds a fourth key. Deferring to
+    // that list would have made this assertion widen itself every time the
+    // vocabulary grew, which is the opposite of what it is for: a pageview
+    // carries THESE THREE, and `limit_kind` reaching one would be a defect.
     expect(Object.keys(lastPageview()).sort())
-      .toEqual([...ALLOWED_EVENT_PROPERTY_KEYS].sort());
+      .toEqual(['app_surface', 'is_platform_admin', 'route'].sort());
   });
 });
 

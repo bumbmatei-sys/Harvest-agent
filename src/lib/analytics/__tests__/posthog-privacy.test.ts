@@ -166,7 +166,9 @@ describe('3 — no captured event carries an email, phone, donor name, prayer re
     // 'public' is one bucket holding a blog, a form and an event page. The
     // assertion below still does its real job: `route` is checked against the
     // forbidden labels like every other key.
-    expect(ALLOWED_EVENT_PROPERTY_KEYS).toEqual(['app_surface', 'is_platform_admin', 'route']);
+    expect(ALLOWED_EVENT_PROPERTY_KEYS).toEqual([
+      'app_surface', 'is_platform_admin', 'route', 'limit_kind',
+    ]);
     expect(ALLOWED_PERSON_PROPERTY_KEYS).toEqual(['account_kind']);
 
     for (const key of [...ALLOWED_EVENT_PROPERTY_KEYS, ...ALLOWED_PERSON_PROPERTY_KEYS]) {
@@ -293,7 +295,21 @@ describe('3 — no captured event carries an email, phone, donor name, prayer re
       expect(ALLOWED_EVENT_NAMES).not.toContain(event);
     }
     // The vocabulary, in full.
-    expect(ALLOWED_EVENT_NAMES).toEqual(['$pageview', '$identify', '$groupidentify', '$set']);
+    expect(ALLOWED_EVENT_NAMES).toEqual([
+      '$pageview',
+      'gift_recorded',
+      'event_payment_confirmed',
+      'course_published',
+      'service_created',
+      'rota_invitations_sent',
+      'form_published',
+      'signup_created',
+      'campaign_created',
+      'plan_limit_reached',
+      '$identify',
+      '$groupidentify',
+      '$set',
+    ]);
   });
 
   it('autocapture is off at the source as well', () => {

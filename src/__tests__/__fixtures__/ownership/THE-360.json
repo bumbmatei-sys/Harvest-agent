@@ -1,0 +1,65 @@
+{
+  "ticket": "THE-360",
+  "entries": [
+    {
+      "file": "src/components/AdminCRM.tsx",
+      "digest": "a1e114fae75b3eb23ebb947efd58898d873440fc0f95b96500bf0c40f7b0003e",
+      "why": "THE-360 fires two analytics events from this screen and changes nothing else in it. `gift_recorded` is captured on the line after `/api/donations/manual` returns an invoiceId - the moment the money ledger accepted the gift, deliberately BEFORE the timeline entry and the totalDonated bump, because those two writes are the CRM catching up with money that has already landed and one of them failing does not un-record the gift. `plan_limit_reached` with limitKind 'contacts' is fired at the two existing refusals where `atContactLimit` already returned early, so it marks an action a cap actually blocked rather than a meter being rendered. Both go through `trackProductEvent`, which returns void and cannot be awaited, so no network round trip sits between a church pressing Record and the dialog closing. NO AMOUNT, no contact id, no email and no description ride on either: the seam has no parameter to pass one through, and `amount` is a forbidden label besides. The donation flow, its ordering, its error handling and the firestore.rules posture THE-350 set are all untouched."
+    },
+    {
+      "file": "src/components/AdminRoles.tsx",
+      "digest": "dc1b0362ff05478d4a028ee56be250128edd1a9706207b9d9f56ce7184dc4c8c",
+      "why": "THE-360 adds one analytics capture and nothing else. `plan_limit_reached` with limitKind 'admin_seats' fires at the existing `adminLimitNotice` refusal, which is reached only when a promotion was actually blocked by the seat cap - an action refused, not a meter rendered. The seat rule in admin-seats.ts, the roster, the permission editing and every existing notify path are byte-for-byte unchanged; the event carries no member name, no email and no seat count, because how many admins a church has is a fact about that church's roster and 'which churches are hitting which wall' does not need it."
+    },
+    {
+      "file": "src/components/AdminSms.tsx",
+      "digest": "6c1ef963a4c7c2986f52d57890b592d7ea9ff735418336016d3d69ed2561cc2f",
+      "why": "THE-360 adds one analytics capture and nothing else. `plan_limit_reached` with limitKind 'sms' fires on the same `d.capReached` the existing message already reports, which means the send RAN and ran out of segments part-way through - a church hitting a wall mid-action, which is the moment. The disabled button a later visit shows is the consequence and fires nothing. `d.skipped` is rendered to the admin and goes no further: recipient counts are a fact about a church's roster. The send path, the US-only skip, the segment accounting and the usage meter are all unchanged."
+    },
+    {
+      "file": "src/components/inbox/payment-claims-client.ts",
+      "digest": "da754a2a10905c74fc13b508fbeb33d72543943173ad1ada5c5904b96f0c14da",
+      "why": "THE-360 instruments `event_payment_confirmed` HERE, in the shared client, rather than in the two screens that call it: AdminEvents and TenantInbox both confirm through `confirmPaymentClaim`, so this is the only place the event can fire once per confirmation instead of once per screen somebody remembered to edit. It fires ONLY when `alreadyConfirmed` is false, because the route is idempotent on purpose - a second press returns the existing paymentInvoiceId rather than writing a second invoice - and counting it again would report money a deliberate no-op did not take. The returned object is unchanged in shape and value; the inbox invalidation still happens on both outcomes, and no registrationId, member name or amount leaves."
+    },
+    {
+      "file": "src/components/AdminCourseEditor.tsx",
+      "digest": "bb7ebf368053047921d9f228ec152ee4cb21c978707acff4e5cb66814be34da5",
+      "why": "THE-360 adds one analytics capture and nothing else. `course_published` fires only when `handleSave` was called with status 'published' and only after the Firestore write landed, so Save Draft fires nothing and an abandoned save - the tenant-mismatch branch returns early above - fires nothing either. No course title, author, category or lesson content rides on it: a title is a free-text field and the seam has no parameter for one. Every field, save, draft, category, author and AI-knowledge path in this editor is otherwise byte-for-byte unchanged, drag-to-reorder included."
+    },
+    {
+      "file": "src/components/AdminFundraising.tsx",
+      "digest": "a2df5eec11e2ec4044f0cedfc9df5ed4bbf61be94c0b5c089c073f63ca3db51d",
+      "why": "THE-360 adds one analytics capture and nothing else. `campaign_created` fires in the CREATE branch alone, never in the edit branch, because editing a campaign's title is not fundraising activation and firing on both would make every saved typo look like a new campaign. It carries no campaign name, no goal and no raised total. THE-251's `raised` strip on the edit path, the active-campaign exclusivity pass and every ticket price, donation amount, fee and checkout call in this file are untouched."
+    },
+    {
+      "file": "src/components/AdminForms.tsx",
+      "digest": "ae9ac5039cf3dd10513fc7e7797f0f005d053bd9536eba8fa87d6213da2d59b5",
+      "why": "THE-360 adds two captures of one event and nothing else. `form_published` fires when a form BECOMES reachable: on create, where `active: true` is written unconditionally so creating a form is publishing it, and on `toggleActive` in the ON direction only - deactivating is the opposite of publishing, and firing on both directions would count a church that toggled one off as having published two. The edit branch fires nothing. `toggleActive` now names the value it writes so the direction can be read; the value written is identical. No form title, description, field label or submission count leaves - a form's fields are whatever a church chose to ask for, which on a pastoral-care form is sensitive free text."
+    },
+    {
+      "file": "src/components/PublicForm.tsx",
+      "digest": "79ee242f4167e4befe6e3ef6e5d7df9975f99054f3eb4883f315addfc3c4dca4",
+      "why": "THE-360 adds one analytics capture and nothing else. `signup_created` fires after `setSubmitted(true)`, on the only PUBLIC surface this ticket instruments, so it carries no `is_platform_admin` at all: nobody was identified, and an absent property says unknown where false would assert a fact about a person who does not exist. THE ANSWERS ARE NOT PASSED AND THERE IS NO PARAMETER TO PASS THEM THROUGH - a form's answers are whatever a church chose to ask for. Validation, the submit request, the error path and the success screen are unchanged."
+    },
+    {
+      "file": "src/components/events/RotaInvitePanel.tsx",
+      "digest": "e3e05228273961711126f5e6f3454beb5de8ff3a13fcb94831edac7dc32d4417",
+      "why": "THE-360 adds one analytics capture and nothing else. `rota_invitations_sent` fires for the INVITE action only, never the reminder: a reminder chases volunteers about an invitation already sent and already counted, so firing on both would make one rota that needed three nudges look like four rotas. `result.delivered`, `result.attempted` and the segment count are rendered to the admin and go no further - how many volunteers a church has is a fact about that church's roster. No token, no name and no phone number leaves; the accept-link token is exactly the capability routes.ts refuses to let into a property. The send, its outcome message and its failure path are unchanged."
+    },
+    {
+      "file": "src/__tests__/THE-322.ownership-register.test.ts",
+      "digest": "ed3bda54ad6306f35930b0c7a6df6e62c52720dd193eeb44a8e7cb420c572ecc",
+      "why": "THE-360 appends two things to this suite and removes nothing. `RULES_PINNERS_NOW` goes 72 -> 73, in step with THE-325's own `PINNING_SUITES`, because THE-360's guard suite reaches the accepted rules digests through the shared module like every other pinner - its first draft spelled the live digest as a literal and THE-325's no-copy sweep caught it. A per-ticket note beside the existing ones records what THE-360's suite asserts and why it records NO firestore.rules digest of its own: every one of its nine events is a client-side capture fired beside a write that already existed, and the one money path still reaches the invoices collection through the Admin SDK exactly as THE-350 left it. No entry above is edited, no count is lowered and no accepted value is widened."
+    },
+    {
+      "file": "src/hooks/queries/useServicePlanQueries.ts",
+      "digest": "6ea03628ca55d95b8f07cef4d138c2dcb15f0ddcdbdd7bf6110b6ae61da2f311",
+      "why": "THE-360 fires `service_created` from `createServicePlan`, after the write lands and ONLY when `planKind(fields)` is not a template - a template is a church setting up a reusable running order, not Sunday being planned, and counting one as the other would report a church that built one template as a church running services it never ran. Instrumented at this shared WRITE SEAM rather than in `AdminServices`, because that screen and `ServicePlanPanel` both create through this one function, so the event fires once per service instead of once per screen somebody remembered to edit - and because THE-329's ownership record freezes `AdminServices.tsx` at the digest it left, which is the register working as designed. NO QUERY CHANGED: still no `orderBy`, still one `where` per read, no new Firestore call, and the document written is the same fields in the same order. The plan NAME is not sent and there is no parameter to send it through."
+    },
+    {
+      "file": "src/__tests__/the-324-guards.test.ts",
+      "digest": "2a8b3e4ef87a71fb358fbe5577e6d8b0725ac94690fc2aa1fbaefd9954d61b45",
+      "why": "THE-360 APPENDS one digest to this suite's accepted set for `src/hooks/queries/useServicePlanQueries.ts` and changes nothing else: no existing value is substituted, no assertion is loosened and no reason is rewritten. The seam now fires `service_created` after `createServicePlan`'s write lands, and only for a real service - a template is a reusable running order, not Sunday being planned. Part 2's read side is untouched: no query, no field, no ordering and no `where` moved, so everything this suite pins about the rota's reads still holds, and a digest that is none of the three accepted values still fails."
+    }
+  ]
+}

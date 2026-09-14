@@ -436,7 +436,14 @@ describe('11 — the pageview carries a route pattern, never a resolved id', () 
     expect(last.properties.app_surface).toBe('admin');
     // ⚠️ A tab pageview needed NO new property. `route` was already registered
     // by THE-206; nothing was added to the allowlist by this ticket.
-    expect(ALLOWED_EVENT_PROPERTY_KEYS).toEqual(['app_surface', 'is_platform_admin', 'route']);
+    //
+    // ⚠️ THE-360 adds a fourth key, `limit_kind`, carried by `plan_limit_reached`
+    // alone. The assertion above is the one that matters here and is unchanged:
+    // a TAB PAGEVIEW still sends exactly three, and `limit_kind` reaching one
+    // would be a defect.
+    expect(ALLOWED_EVENT_PROPERTY_KEYS).toEqual([
+      'app_surface', 'is_platform_admin', 'route', 'limit_kind',
+    ]);
   });
 
   it('survives `before_send` unchanged — the choke point does not strip it', () => {
@@ -665,9 +672,28 @@ describe('15 — session recording, autocapture and the closed vocabulary are al
     expect(beforeSendEvent({ event: '$rageclick', properties: {} } as never)).toBeNull();
   });
 
-  it('the event vocabulary is still closed, and is still three property keys wide', () => {
-    expect(Object.values(ANALYTICS_EVENTS)).toEqual(['$pageview']);
-    expect(ALLOWED_EVENT_PROPERTY_KEYS).toEqual(['app_surface', 'is_platform_admin', 'route']);
+  it('the event vocabulary is still closed, and the tab opening is still not in it', () => {
+    // 🔴 THE-360 widened this list from one name to ten, and the point of THIS
+    // assertion survives the widening intact: `admin_tab_opened` is STILL not
+    // among them. Every event THE-360 added is something a church DID — a gift
+    // recorded, a course published, a cap hit. Not one is a view, a read or an
+    // open, because pageviews already answer that and every extra event is a
+    // new way for a property to leak.
+    expect(Object.values(ANALYTICS_EVENTS)).toEqual([
+      '$pageview',
+      'gift_recorded',
+      'event_payment_confirmed',
+      'course_published',
+      'service_created',
+      'rota_invitations_sent',
+      'form_published',
+      'signup_created',
+      'campaign_created',
+      'plan_limit_reached',
+    ]);
+    expect(ALLOWED_EVENT_PROPERTY_KEYS).toEqual([
+      'app_surface', 'is_platform_admin', 'route', 'limit_kind',
+    ]);
     expect(beforeSendEvent({ event: 'admin_tab_opened', properties: {} } as never), 'an unregistered event now leaves').toBeNull();
   });
 

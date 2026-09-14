@@ -18,6 +18,8 @@ import {
 import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, CONTROL_DENSITY } from './layout/form-layout';
 import { readAllSubmissions, summariseForm, type AnswerField } from './forms/form-answers';
 import FormAnswersView from './forms/FormAnswersView';
+import { ANALYTICS_EVENTS } from '../lib/analytics/events';
+import { trackProductEvent } from '../lib/analytics/client';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 
@@ -287,6 +289,10 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
           createdAt: serverTimestamp(),
           createdBy: auth.currentUser?.uid || '',
         });
+        // THE-360 - a new form is created `active: true` unconditionally, so
+        // creating one IS publishing it. The edit branch above is not a publish
+        // and does not fire.
+        trackProductEvent(ANALYTICS_EVENTS.FORM_PUBLISHED);
       }
       setView('list');
     } catch (e) {
@@ -299,7 +305,12 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
 
   const toggleActive = async (form: CustomForm) => {
     if (!tenantId) return;
-    await updateDoc(doc(db, 'tenants', tenantId, 'forms', form.id), { active: !form.active });
+    const nowActive = !form.active;
+    await updateDoc(doc(db, 'tenants', tenantId, 'forms', form.id), { active: nowActive });
+    // THE-360 - the other way a form becomes reachable. Only the ON direction:
+    // deactivating a form is the opposite of publishing it, and firing on both
+    // would count a church that toggled one off as having published two.
+    if (nowActive) trackProductEvent(ANALYTICS_EVENTS.FORM_PUBLISHED);
   };
 
   const handleDelete = async (form: CustomForm) => {

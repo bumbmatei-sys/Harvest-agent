@@ -492,7 +492,7 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * retires a pinner updates this count and says what that suite still asserts;
  * a suite that quietly stops pinning fails here.
  */
-const RULES_PINNERS_NOW = 72;
+const RULES_PINNERS_NOW = 73;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per
@@ -984,6 +984,26 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
   // `THE-359.partnership-button.layout.test.tsx`, in real Chromium at five
   // widths with animation suppressed.
   ['THE-359', 'src/__tests__/THE-359.paid-event-copy.guards.test.ts'],
+  // THE-360 — THE ANALYTICS VOCABULARY HAD ONE WORD IN IT. Fourteen days of
+  // production held 372 pageviews and nothing else, because `ANALYTICS_EVENTS`
+  // listed exactly `$pageview`: a church could record a gift, publish a course
+  // and send a rota invitation without any of it being visible. This suite
+  // widens that list to ten and asserts the widening changed none of the
+  // decisions that make PostHog safe on an app holding donor records —
+  // autocapture still off, `capture_pageview` still off, the identity events
+  // still a LIST of three rather than a `$` prefix that would admit
+  // `$copy_autocapture`, paths still replaced by their route PATTERN, an
+  // unmatched path still `UNROUTED_PATTERN`, and `admin-sections.ts` still at
+  // zero imports so the blog bundle stays free of the Firestore SDK.
+  //
+  // 🔴 IT ASKS `rulesDigestFailure()` AND RECORDS NO RULES DIGEST OF ITS OWN.
+  // Every one of the nine events is a client-side `capture()` fired beside a
+  // write that already existed, on a screen whose permissions already governed
+  // it; the one money path, a manual gift, still reaches
+  // `tenants/{t}/invoices` through `/api/donations/manual` on the Admin SDK
+  // exactly as THE-350 left it. Nothing this ticket adds is a document read, a
+  // document write, or a name Firestore has ever seen.
+  ['THE-360', 'src/lib/analytics/__tests__/THE-360.product-vocabulary.test.ts'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {

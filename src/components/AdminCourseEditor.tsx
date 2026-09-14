@@ -43,6 +43,8 @@ import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, ACTION_BUTTON, COLUMN_SPLIT,
 // `headerOverride?.title ?? headerTitle` on both the desktop bar and the mobile
 // header, and `headerOverride.onBack` as the single back chevron.
 import { useAdminHeader } from './AdminScreenHeader';
+import { ANALYTICS_EVENTS } from '../lib/analytics/events';
+import { trackProductEvent } from '../lib/analytics/client';
 
 
 
@@ -1185,6 +1187,11 @@ export default function CourseBuilder({ course: initialCourse, onClose, library 
        const docRef = await addDoc(collection(db, cols.courses), stampTenant(library, { ...payload }, writeTenantId));
        setCourse(c => ({ ...c, id: docRef.id }));
      }
+ // THE-360 - only a PUBLISH, and only after the write landed. `handleSave`
+ // serves both buttons; "Save Draft" is not discipleship material going out,
+ // and the `return` on a tenant mismatch above means an abandoned save never
+ // reaches this line. No title: a course title is a free-text field.
+ if (status === "published") trackProductEvent(ANALYTICS_EVENTS.COURSE_PUBLISHED);
  setSaved(true);
  setTimeout(() => setSaved(false), 2500);
  } catch (e) {

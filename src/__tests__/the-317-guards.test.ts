@@ -272,6 +272,16 @@ describe("#449's item shape and persisted data are unchanged", () => {
        + 'standalone service — which has no `eventId` to filter on — can be read by its own document id. '
        + '🔴 STILL NO `orderBy` AND STILL ONE `where` PER QUERY: section 3 below asserts both, and this '
        + 'ticket adds no Firestore query at all for its list (it reuses the rota\'s existing read).'],
+      ['6ea03628ca55d95b8f07cef4d138c2dcb15f0ddcdbdd7bf6110b6ae61da2f311',
+       'THE-360 - `createServicePlan` fires `service_created` after the write lands, and ONLY when '
+       + '`planKind(fields)` is not a template: a template is a church setting up a reusable running order, '
+       + 'not Sunday being planned, and counting one as the other would report a church that built one '
+       + 'template as a church running services it never ran. Instrumented HERE rather than in '
+       + '`AdminServices` because that screen and `ServicePlanPanel` both create through this one function, '
+       + 'so it fires once per service instead of once per screen somebody remembered to edit. '
+       + 'NO QUERY CHANGED: still no `orderBy`, still one `where` per read, no new Firestore call, and the '
+       + 'document written is the same fields in the same order. The plan NAME is not sent and there is no '
+       + 'parameter to send it through.'],
     ],
   };
 

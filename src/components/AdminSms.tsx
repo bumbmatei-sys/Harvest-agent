@@ -40,6 +40,8 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
  * second copy of a screen that spends money is how the two drift.
  */
 import { SmsNumberPanel, hasUsableNumber, type NumberRecord } from './settings/SmsSection';
+import { ANALYTICS_EVENTS } from '../lib/analytics/events';
+import { trackProductEvent } from '../lib/analytics/client';
 
 /**
  * The gold the brand token resolves to, and NOTHING ELSE.
@@ -413,6 +415,12 @@ const AdminSmsScreen: React.FC = () => {
       if (d.failed) parts.push(`${d.failed} failed`);
       if (d.skippedNonUs) parts.push(`${d.skippedNonUs} skipped (non-US number)`);
       if (d.capReached) parts.push(`${d.skipped} not sent — monthly SMS limit reached`);
+      // THE-360 - the send RAN and ran out of segments part-way through. That
+      // is a church hitting a wall mid-action, which is the moment; the
+      // disabled button on a later visit is the consequence, not the event.
+      // `d.skipped` is rendered to the admin and goes no further - how many
+      // recipients a church has is a fact about that church's roster.
+      if (d.capReached) trackProductEvent(ANALYTICS_EVENTS.PLAN_LIMIT_REACHED, { limitKind: 'sms' });
       setSendMsg({
         ok: !d.failed && !d.capReached && !d.skippedNonUs,
         text: parts.join(' • ') + '.',

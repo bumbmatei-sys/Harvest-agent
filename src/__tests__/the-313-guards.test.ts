@@ -163,6 +163,16 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
    */
   'src/components/AdminCourseEditor.tsx': [
     ['d828dbf298ca353244e54715700da362a09f96e4d46078b09d54f71917fe56eb', 'main at 5f431e3'],
+    /* 🔴 APPENDED BY THE-360, never substituted. ONE capture:
+       `course_published`, fired inside `handleSave` only when it was called
+       with status 'published' and only after the Firestore write landed, so
+       Save Draft fires nothing and the tenant-mismatch early return fires
+       nothing. The drag mechanism above is untouched — no event write path, no
+       rule, no index and no money path moved, which is what the-313 pins this
+       file for — and no course title, author or category leaves, because the
+       seam has no parameter for one. */
+    ['bb7ebf368053047921d9f228ec152ee4cb21c978707acff4e5cb66814be34da5',
+      'THE-360 — course_published fires on a publish that landed'],
   ],
   /**
    * 🔴 "do NOT reuse `giving-share.ts`'s URL builder or loosen its host
@@ -463,6 +473,14 @@ describe('no new token, component or dependency was added', () => {
       '../../firebase', '../../utils/notify', '../../utils/query-helpers',
       '../layout/form-layout', './service-plan', './ServicePlanRow',
       '../../hooks/queries/useServicePlanQueries', '../../components/events/service-plan',
+      // 🔴 APPENDED BY THE-360, and they satisfy this assertion's actual claim
+      // rather than widening it: both modules shipped with THE-36 and neither
+      // is a new dependency. `createServicePlan` fires `service_created` after
+      // the write, for a real service and not a template. `analytics/client`
+      // loads posthog-js through a DYNAMIC import, so nothing new lands in this
+      // feature's bundle either; `analytics/events` is a table of string
+      // literals that imports nothing at all.
+      '../../lib/analytics/events', '../../lib/analytics/client',
     ];
     for (const file of ADDED) {
       const specifiers = [...codeOf(file).matchAll(/from ['"]([^'"]+)['"]/g)].map((m) => m[1]);

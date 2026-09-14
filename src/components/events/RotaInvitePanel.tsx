@@ -52,6 +52,8 @@ import {
   smsSegmentsFor,
   unfilledSlots,
 } from './rota-invitations';
+import { ANALYTICS_EVENTS } from '../../lib/analytics/events';
+import { trackProductEvent } from '../../lib/analytics/client';
 
 export interface RotaInvitePanelProps {
   tenantId: string | null;
@@ -188,6 +190,18 @@ const RotaInvitePanel: React.FC<RotaInvitePanelProps> = ({ tenantId, churchName,
       setOutcome(null);
       try {
         const result = await sendRotaInvitations(body);
+        // 🔴 THE-360 - THE INVITE ACTION ONLY, never the reminder. A reminder is
+        // the same volunteers being chased about an invitation that was already
+        // sent and already counted; firing on both would make one rota that
+        // needed three nudges look like four rotas.
+        //
+        // No count, no names: `result.delivered` and `result.attempted` are
+        // rendered to the admin and go no further. How MANY volunteers a church
+        // has is a fact about that church's roster, and "is Sunday planning
+        // being used" is answered by whether this happened at all.
+        if (body.action === 'invite') {
+          trackProductEvent(ANALYTICS_EVENTS.ROTA_INVITATIONS_SENT);
+        }
         await queryClient.invalidateQueries({ queryKey: rotaInviteKeys.invitations(tenantId) });
         setOutcome({
           kind: 'sent',

@@ -77,6 +77,8 @@ const uid = (): string => Math.random().toString(36).slice(2, 9);
  * one place cannot silently disagree with the other.
  */
 import type { UserRecord } from '../lib/signups-export';
+import { ANALYTICS_EVENTS } from '../lib/analytics/events';
+import { trackProductEvent } from '../lib/analytics/client';
 
 export interface Permission {
   analytics: boolean;
@@ -563,6 +565,9 @@ export default function AdminRoles({ currentUserRole, currentUserPermissions, mo
     // never strand a tenant with admins they cannot manage, and never demotes.
     if (atAdminLimit && wouldSpendNewSeat(admins, admin.id)) {
       notifyError(adminLimitNotice, 'Admin limit reached');
+      // THE-360 - a refusal: this line is reached only because a promotion was
+      // blocked by the seat cap.
+      trackProductEvent(ANALYTICS_EVENTS.PLAN_LIMIT_REACHED, { limitKind: 'admin_seats' });
       return;
     }
     try {
