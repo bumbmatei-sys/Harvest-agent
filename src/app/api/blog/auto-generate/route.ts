@@ -35,7 +35,35 @@ export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
   const secret = process.env.CRON_SECRET;
   if (!secret || authHeader !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // THE-104 - THE ONE EXIT THAT USED TO VANISH.
+    //
+    // Every other failure in this route already surfaces: a per-tenant
+    // generation error goes to Sentry as `blog-auto-generate-tenant` AND is
+    // written to the tenant's settings doc, which AdminBlog renders; a
+    // whole-run failure goes to Sentry as `blog-auto-generate-cron` and returns
+    // a 500. This branch did neither — no capture, no `console.error` — so a
+    // `CRON_SECRET` that was never set, or rotated on one side only, produced a
+    // daily 401 that reached NO error tracker at all. The job silently stops
+    // posting for every tenant and the only trace is a status code in a cron
+    // log nobody reads. That is exactly the shape the Silent-Failure Rule
+    // exists to forbid.
+    //
+    // 🔴 BOTH DESTINATIONS, because the two readers are different people:
+    // Sentry is where an operator finds out the scheduled job is dead, and the
+    // response body names the reason so the cron log is diagnosable on its own.
+    //
+    // ⚠️ AN UNAUTHENTICATED PROBE ALSO LANDS HERE and will also be captured.
+    // That is the accepted cost: a misconfigured cron and a probe are
+    // indistinguishable from inside this handler, and the failure mode of
+    // staying quiet is a feature that is off for weeks. `level: 'warning'` keeps
+    // it out of the error budget while remaining searchable.
+    const reason = secret ? 'cron-secret-mismatch' : 'cron-secret-not-configured';
+    captureHandledError(
+      new Error(`[blog] auto-generate refused: ${reason}`),
+      { step: 'blog-auto-generate-auth', level: 'warning', diagnostics: { reason } },
+    );
+    console.error(`Auto-generate cron refused: ${reason}`);
+    return NextResponse.json({ error: 'Unauthorized', reason }, { status: 401 });
   }
 
   const now = new Date();

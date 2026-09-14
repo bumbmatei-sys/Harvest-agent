@@ -780,13 +780,50 @@ describe('use-mobile exists and is the only new hook', () => {
     expect(readFileSync(USE_MOBILE, 'utf8')).toContain('export function useIsMobile()');
   });
 
-  it('src/hooks holds exactly the five that were there, plus it', () => {
+  /**
+   * Hooks added SINCE THE-270, one entry per ticket, with its reason.
+   *
+   * ⚠️ APPENDED RATHER THAN FOLDED INTO `PRE_EXISTING_HOOKS`, which names the
+   * five that existed before `use-mobile` and would become a lie if a later
+   * hook were added to it. This is the same shape `RULES_PINNERS_ADDED_SINCE`
+   * uses in THE-322 and for the same reason: written as a bare list, the
+   * assertion below said two things at once - "no hook vanished", which is the
+   * claim and which gets more true over time, and "no hook is ever added",
+   * which is false the moment any ticket writes one.
+   *
+   * 🔴 THE CLAIM IS UNWEAKENED. The six below may not shrink, and a hook that
+   * appears here has to be named with its ticket - so a deletion still fails,
+   * and so does an unrecorded new hook.
+   */
+  const ADDED_SINCE: ReadonlyArray<readonly [ticket: string, file: string]> = [
+    // THE-363 (THE-141) — the member header's profile photo. It exists because
+    // there are TWO `photoURL` fields: `users/{uid}.photoURL` in Firestore,
+    // which is what an upload writes, and `auth.currentUser.photoURL`, which is
+    // what an identity provider writes. Six surfaces read the Firestore one and
+    // the desktop header read the Auth one, so a member who uploaded a photo saw
+    // their initial. A HOOK rather than an inline effect because the read is a
+    // live subscription with a cleanup and a failure path that must reach
+    // `handleFirestoreError` — the same shape `useLiveNow` and
+    // `useClaimsFreshness` already have, and the reason this directory exists.
+    ['THE-363', 'useMemberPhoto.ts'],
+  ];
+
+  it('src/hooks holds exactly the five that were there, plus it and the recorded additions', () => {
     expect(
       readdirSync(HOOKS_DIR, { withFileTypes: true })
         .filter((e) => e.isFile() && e.name.endsWith('.ts'))
         .map((e) => e.name)
         .sort(),
-    ).toEqual([...PRE_EXISTING_HOOKS, 'use-mobile.ts'].sort());
+    ).toEqual([...PRE_EXISTING_HOOKS, 'use-mobile.ts', ...ADDED_SINCE.map(([, f]) => f)].sort());
+  });
+
+  it('every recorded addition names a ticket and really is on disk', () => {
+    // A record that outlives the file it records is a hole with a name on it.
+    expect(ADDED_SINCE.length, 'the register must not be vacuous').toBeGreaterThan(0);
+    for (const [ticket, file] of ADDED_SINCE) {
+      expect(ticket, `${file} is recorded without a ticket`).toMatch(/^THE-\d+$/);
+      expect(existsSync(path.join(HOOKS_DIR, file)), `${file} is recorded but absent`).toBe(true);
+    }
   });
 
   it('and it collided with nothing — no other useIsMobile in the repo', () => {

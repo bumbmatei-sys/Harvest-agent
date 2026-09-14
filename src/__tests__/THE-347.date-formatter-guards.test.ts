@@ -510,17 +510,31 @@ describe('no colour hardcoded, no emoji added, no raw Tailwind scale', () => {
 
   it('and the EDITED files gain none - each is recorded at what it already had', () => {
     /**
-     * AdminBlog carries exactly ONE, and this ticket did not put it there:
-     * U+26A1 in the Generate Now button's label. It is REPORTED rather than
-     * fixed - the emoji sweep is per-ticket and no existing guard sweeps this
-     * file, so removing it is pre-existing work and its own ticket. Recording
-     * it here means a SECOND emoji in any of these files fails.
+     * AdminBlog carried exactly ONE, and this ticket did not put it there:
+     * U+26A1 in the Generate Now button's label. It was REPORTED rather than
+     * fixed - the emoji sweep is per-ticket and no existing guard swept this
+     * file, so removing it was pre-existing work and its own ticket.
+     *
+     * THE-363 IS THAT TICKET, and this entry goes [HIGH_VOLTAGE] -> [].
+     * THAT IS A TIGHTENING, NOT A SUBSTITUTION, which is why it is the one
+     * edit to a recorded value this repo's "append, never replace" rule
+     * permits: the accepted set SHRANK. Before, a second emoji in AdminBlog
+     * failed; now a FIRST one does. THE-363 removed the glyph while it was
+     * already editing this file's automation gate, and replaced it with the
+     * `Sparkles` lucide icon the Automate control beside it already used, so
+     * the button makes the same statement without shipping a character.
+     *
+     * `HIGH_VOLTAGE` is KEPT, deliberately, and is still exercised by the
+     * vacuity test below - the pattern has to be shown to MATCH the character
+     * this screen used to carry, or "AdminBlog ships no emoji" would be a
+     * claim about a regex that cannot see one.
      */
     const HIGH_VOLTAGE = '\u26A1'; // spelled as an ESCAPE so this guard file
     // does not itself ship the character it is recording - a guard whose own
     // text satisfies the string it greps for is one of the thirteen.
+    void HIGH_VOLTAGE;
     const RECORDED_EMOJI: Record<string, readonly string[]> = {
-      'src/components/AdminBlog.tsx': [HIGH_VOLTAGE],
+      'src/components/AdminBlog.tsx': [],
       'src/components/BlogTab.tsx': [],
       'src/components/AdminBlogPostEditor.tsx': [],
       'src/components/AdminDocs.tsx': [],
