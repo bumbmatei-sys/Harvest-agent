@@ -492,7 +492,7 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * retires a pinner updates this count and says what that suite still asserts;
  * a suite that quietly stops pinning fails here.
  */
-const RULES_PINNERS_NOW = 73;
+const RULES_PINNERS_NOW = 74;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per
@@ -1004,6 +1004,27 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
   // exactly as THE-350 left it. Nothing this ticket adds is a document read, a
   // document write, or a name Firestore has ever seen.
   ['THE-360', 'src/lib/analytics/__tests__/THE-360.product-vocabulary.test.ts'],
+  // THE-361 — THE ELEVENTH WORD. THE-360 proposed `course_adopted` and dropped
+  // it on its own agent's report that no adopt action could be found; the agent
+  // then found one and said so, and the founder has since asked for it. The
+  // premise was wrong, not the decision: `AdminCourses.tsx` has posted to
+  // `/api/courses/adopt` since #228, and `CoursePreview` adopts through the
+  // same handler, so ONE instrumentation point covers both surfaces. This suite
+  // asserts that adding the name changed none of the decisions THE-360's entry
+  // above lists — autocapture still off, `capture_pageview` still off, the
+  // identity events still a LIST of three, paths still replaced by their
+  // PATTERN, `admin-sections.ts` still at zero imports — and that the event
+  // itself fires on SUCCESS ONLY, exactly once, carrying NO course id, title or
+  // author, through the seam that returns void and cannot be awaited.
+  //
+  // IT ASKS `acceptedRulesDigests()` AND RECORDS NO RULES DIGEST OF ITS OWN.
+  // The event is one client-side `capture()` fired beside a request that
+  // already existed, on a screen whose permissions already governed it;
+  // `adoptedCourses` is still `allow write: if false` and the pointer is still
+  // written only by the Admin SDK behind `/api/courses/adopt`. Nothing this
+  // ticket adds is a document read, a document write, or a name Firestore has
+  // ever seen.
+  ['THE-361', 'src/components/__tests__/THE-361.course-adopted.test.tsx'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {

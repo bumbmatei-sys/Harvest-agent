@@ -30,6 +30,8 @@ import type { AdoptedCourse, Author, LibraryCourse } from '../types/course.types
 import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar, AdminCard, AdminBadge, statusTone } from './admin/AdminUI';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { FORM_CONTAINER, CONTROL_DENSITY } from './layout/form-layout';
+import { ANALYTICS_EVENTS } from '../lib/analytics/events';
+import { trackProductEvent } from '../lib/analytics/client';
 
 /**
  * A tenant could not be resolved for a WRITE. Distinct from a generic failure
@@ -562,6 +564,28 @@ const AdminCourses: React.FC = () => {
         const body = await res.json().catch(() => ({}));
         setErrorMessage(body?.error || 'Failed to adopt this course. Please try again.');
         setTimeout(() => setErrorMessage(null), 5000);
+      } else {
+        // THE-361 - the adoption LANDED. Fired here and nowhere else:
+        //
+        //   · AFTER the response check, so a plan cap, an unpublished course or
+        //     any other refusal by the route fires nothing. The route is the
+        //     authority on both, and a client-side event on a refused adopt
+        //     would report an activation that did not happen.
+        //   · INSIDE the try, so a thrown request (network down, no tenant
+        //     scope) lands in the catch above and fires nothing either.
+        //   · BEFORE the `finally`, which only clears the spinner and runs on
+        //     every outcome.
+        //   · THROUGH `trackProductEvent`, which returns void and cannot be
+        //     awaited, so a dead analytics stack cannot turn an adoption that
+        //     succeeded into a visible failure. It carries no course id, no
+        //     title and no author: the seam has no parameter to pass one.
+        //
+        // The early return at the top of this handler is what keeps it to ONE
+        // fire per adoption - a second press on an adopted course never reaches
+        // here - and `CoursePreview` adopts through this same handler
+        // (`onAdopt={handleAdopt}`), so the preview path is covered by this one
+        // point rather than by a second one that could drift from it.
+        trackProductEvent(ANALYTICS_EVENTS.COURSE_ADOPTED);
       }
     } catch (error) {
       reportAdoptionFailure('adopt', error);

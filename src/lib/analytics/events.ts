@@ -61,6 +61,38 @@ export const ANALYTICS_EVENTS = {
   /** Discipleship material actually going out, rather than being drafted. */
   COURSE_PUBLISHED: 'course_published',
 
+  /**
+   * THE-361 - a church taking a course out of the Harvest LIBRARY and making it
+   * their own. The other half of `course_published`: that one says a church
+   * WROTE discipleship material, this one says a church is using material the
+   * platform wrote. A church that adopts is a church that has found the library
+   * worth something, which is the activation question the catalogue exists to
+   * answer.
+   *
+   * ⚠️ THE-360 PROPOSED THIS AND DID NOT ADD IT, on a report that no adopt
+   * action could be found. The action was there - `AdminCourses` has posted to
+   * `/api/courses/adopt` since #228 - so the omission was a wrong premise
+   * rather than a decision, and this ticket corrects it.
+   *
+   * Carries NO COURSE ID, NO TITLE AND NO AUTHOR NAME, and not because a
+   * library title identifies anybody - it does not; the catalogue is the
+   * platform's own and every church sees the same rows. It carries none
+   * because the product question is "are churches adopting at all", and a
+   * COUNT answers that. A title would be a new kind of value on an event -
+   * text a document supplies rather than a literal this app wrote - and the
+   * seam that fires this has no parameter to carry one through, which is the
+   * design working rather than an obstacle to route around.
+   *
+   * 🔴 SUCCESS ONLY. The route independently refuses an unpublished course and
+   * re-checks the plan cap server-side, so a refused adopt that fired this
+   * would report an activation that did not happen.
+   *
+   * NOT ADDED: an un-adopt event. Adoption is the activation signal; dropping
+   * a course is noise until there is enough of it to be a pattern, and every
+   * event that is not needed is another way for a property to leak.
+   */
+  COURSE_ADOPTED: 'course_adopted',
+
   /** Sunday planning being used: an order of service that exists. */
   SERVICE_CREATED: 'service_created',
 

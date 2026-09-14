@@ -1269,6 +1269,20 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
     // notice carries takes the shared CONTROL_DENSITY.action token above sm and
     // a 44px floor below it, so it spends no new number either. AdminDashboard
     // stays EXEMPT and un-re-recorded.
+    //
+    // AdminCourses.tsx was RE-RECORDED AGAIN by THE-361, by the same treatment
+    // and for a reason equally outside this batch's subject. THE-360 widened
+    // the analytics vocabulary and proposed `course_adopted` as an eleventh
+    // event, then dropped it on a report that no adopt action could be found;
+    // the action was there, and the founder has since asked for the event. The
+    // screen gains TWO IMPORTS AND ONE STATEMENT: a fire-and-forget
+    // `trackProductEvent(ANALYTICS_EVENTS.COURSE_ADOPTED)` in the success
+    // branch of `handleAdopt`'s response check. NO WIDTH, HEIGHT OR GAP MOVED
+    // and nothing was rendered at all: the statement is inside an async
+    // handler, it adds no element, no control, no container class, no
+    // per-screen measure and no colour, and the screen still renders through
+    // FORM_CONTAINER exactly as THE-345 left it. AdminDashboard stays EXEMPT
+    // and un-re-recorded, exactly as the note above requires.
     const moved = Object.entries(SOURCE.digests)
       .filter(([f]) => existsSync(path.join(SRC, f)))
       .filter(([f]) => !EXEMPT_FILES.includes(f))

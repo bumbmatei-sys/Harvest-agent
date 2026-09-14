@@ -574,11 +574,12 @@ describe('6 — the event vocabulary is still closed', () => {
   it('the event vocabulary is still closed', () => {
     expect([...ALLOWED_EVENT_NAMES]).toEqual([
       '$pageview',
-      // THE-360's nine product events. Spelled out, in order, so a tenth
-      // arrives through this list or does not arrive.
+      // THE-360's nine product events, and THE-361's tenth. Spelled out, in
+      // order, so an eleventh arrives through this list or does not arrive.
       'gift_recorded',
       'event_payment_confirmed',
       'course_published',
+      'course_adopted',
       'service_created',
       'rota_invitations_sent',
       'form_published',
@@ -587,8 +588,9 @@ describe('6 — the event vocabulary is still closed', () => {
       'plan_limit_reached',
       '$identify', '$groupidentify', '$set',
     ]);
-    // THE-206 adds `route`; THE-360 adds `limit_kind` and nothing else.
-    // Widening coverage is not a licence to widen the vocabulary.
+    // THE-206 adds `route`; THE-360 adds `limit_kind` and nothing else, and
+    // THE-361 adds NO property at all. Widening coverage is not a licence to
+    // widen the vocabulary, and neither is widening the event list.
     expect([...ALLOWED_EVENT_PROPERTY_KEYS]).toEqual([
       'app_surface', 'is_platform_admin', 'route', 'limit_kind',
     ]);

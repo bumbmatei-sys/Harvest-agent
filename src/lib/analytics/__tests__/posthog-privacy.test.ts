@@ -300,6 +300,7 @@ describe('3 — no captured event carries an email, phone, donor name, prayer re
       'gift_recorded',
       'event_payment_confirmed',
       'course_published',
+      'course_adopted',
       'service_created',
       'rota_invitations_sent',
       'form_published',
