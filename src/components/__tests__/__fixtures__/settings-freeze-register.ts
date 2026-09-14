@@ -384,6 +384,26 @@ export const RECORDED_EDITS: ReadonlyArray<RecordedEdit> = [
       + 'primitive and no dependency was added.',
     digest: '97e7e49eeace68692ce69b0280c9b8dd3845ce9c8e75a2c5bb48b740125bbac9',
   },
+  {
+    file: 'src/components/AdminSettings.tsx',
+    ticket: 'THE-362',
+    why:
+      'ONE SENTENCE ON THE DONATIONS POINTER ROW, and the processor\'s name is what leaves it. '
+      + 'THE FOUNDER: "Hide everything that talks about stripe. In donations, everywhere." THE-246 '
+      + 'turned this row into a POINTER at the Donations screen, and its one line of copy read '
+      + '"Connecting Stripe, and adding your own PayPal / Cash App / Venmo / Zelle / Revolut or Wise '
+      + 'links, now live together in Donations." It now reads "Card giving, and your own \u2026 links, '
+      + 'now live together in Donations." THE CLAIM IS UNCHANGED, only the noun: the row still says '
+      + 'both things live on one screen, and it still points at the screen that has them. '
+      + 'THIS IS NOT A CONVERSION AND NOT A VISUAL PASS, which is what every guard reading this '
+      + 'register is protecting: no row was added, removed, reordered or re-gated; `hidden:` '
+      + '!SMS_FEATURE_ENABLED is untouched; the Stripe-return effect, its four status branches and '
+      + 'the portal call are untouched; `PaymentSection` is still mounted NOWHERE from this screen, '
+      + 'which is THE-246\'s arrangement and the reason the pointer exists at all; no primitive was '
+      + 'composed in, no token was minted, no colour was hardcoded and THE-316\'s zero-inline-style '
+      + 'property still holds because this ticket adds no style attribute anywhere.',
+    digest: '0170068b6a01751d2026c4c4e34e62434c3dfeaeabce1a799e1cf9ccf96b31a8',
+  },
 ];
 
 /** A ticket reference the register will accept. */

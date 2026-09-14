@@ -510,7 +510,7 @@ describe('it points to the manual entry path', () => {
 describe('the giving-statement surface carries the same limitation', () => {
   it('🔴 states it above the Generate button, in the terms a tax document needs', async () => {
     await statements();
-    expect(text()).toMatch(/These statements cover Stripe gifts only/i);
+    expect(text()).toMatch(/These statements cover gifts Harvest processed/i);
     expect(text(), 'the providers are not named').toContain(GIVING_PROVIDER_NAMES);
     expect(text(), 'the consequence to the MEMBER is not stated')
       .toMatch(/will see a total lower than what they actually gave you/i);
@@ -738,8 +738,26 @@ describe('no statement, receipt, CRM write or Stripe path changed', () => {
      * `AdminCRM.tsx`, which this file exercises end to end above rather than
      * pinning by hash.
      */
-    'src/hooks/queries/useCRMQueries.ts':
-      'da7f896acf15efc1c23d0137caf874ea2bba679e90351f63d667b6f1a2e458d5',
+        /**
+     * RE-RECORDED BY THE-362, and here is the whole of what moved: `Contact`
+     * gains ONE optional field, `accountOnly?: true`.
+     *
+     * It is the fact the CRM delete had no way to ask for. This list MERGES
+     * `contacts` with `users`, and a consumer of the merged array could not
+     * tell a CRM record from a surfaced app member - so the delete aimed at
+     * `contacts/<row.id>` for every row, and for an app member that id is a
+     * `users` id naming a document that has never existed. The founder: "If I
+     * delete a user in CRM, it doesn't disappear from the table."
+     *
+     * NO READ, NO QUERY AND NO FETCH SHAPE MOVED, which is what this pin exists
+     * to prove: the four `orderBy(documentId())` clauses, `CRM_FETCH_LIMIT`,
+     * the scoping branch, the super-admin gate, the `NO_TENANT_SCOPE_MESSAGE`
+     * throw, the members-read rethrow and the merge itself are byte-identical,
+     * and THE-342's own guards still measure every one of them against the file
+     * on disk rather than trusting a hash to stand in for them.
+     */
+'src/hooks/queries/useCRMQueries.ts':
+      'df98719e6341a4cbd7e73c207f744a915457473b59fb1c0abc94d8f7e74da512',
     // Re-recorded by THE-261: its v4 migration renamed shadow-sm and
     // outline-none across the app so those utilities keep painting what they
     // painted under v3. AdminAccounting carries those spellings and nothing
@@ -773,8 +791,29 @@ describe('no statement, receipt, CRM write or Stripe path changed', () => {
      *     the church's books would double-count every gift recorded both ways,
      *     which is why the answer is a sentence and not a sum.
      */
+    /**
+     * RE-RECORDED BY THE-362, and here is the whole of what moved: TWO
+     * OCCURRENCES OF ONE WORD, inside the note THE-303 added.
+     *
+     * The founder: "Hide everything that talks about stripe. In donations,
+     * everywhere." The cash note named the processor twice — "These totals
+     * count Stripe gifts only" and "would count a Stripe gift twice" — on a
+     * screen a church reads about its own giving.
+     *
+     * THE CLAIM IS UNCHANGED, only the noun. "Gifts Harvest processed" is
+     * the same set the old sentence meant, said without the brand: a gift is on
+     * this screen when Harvest issued a receipt for it, and the reason the two
+     * records are kept apart is still that a card gift already writes both.
+     *
+     * AND NOTHING ELSE IN THE FILE MOVED. No collection was added, no total
+     * changed, `/ 100` still appears exactly twice on two different fields, and
+     * `totalDonated` / `lastDonationAt` / `contactActivities` still appear
+     * nowhere — every one of those is asserted by name in
+     * `the-303-admin-explainers.test.tsx`, which runs against the file on disk
+     * rather than trusting this hash to stand in for it.
+     */
     'src/components/AdminAccounting.tsx':
-      'a1eef8c2147682196a25ad6dae7da75c820465160284e44438bac1c720911ec2',
+      '742b8230820aea1db2f83f2aa724907719695f17a362f91ff6b1955aadd217f7',
   };
 
   it.each(Object.keys(UNCHANGED))('%s is byte-for-byte unchanged', (file) => {

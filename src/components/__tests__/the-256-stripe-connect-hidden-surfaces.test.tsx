@@ -163,7 +163,13 @@ describe('1 — PaymentSection shows the unavailable message off, and its Connec
     const block = hiddenBlock()!;
     // The card keeps its own heading, so the church still knows WHICH panel is
     // unavailable — and below it, the message and nothing else.
-    expect(block.querySelector('h3')!.textContent).toBe('Stripe Connect');
+    // 🔴 THE-362 CHANGED THIS ONE WORD, and the property is unchanged: the
+    // card still carries its OWN heading, so a church still knows WHICH thing
+    // is unavailable. What it no longer does is name the processor — the
+    // founder ("Hide everything that talks about stripe. In donations,
+    // everywhere.") was reading it here, above the very sentence THE-350
+    // rewrote for them.
+    expect(block.querySelector('h3')!.textContent).toBe('Card giving');
     expect(block.querySelector('p')!.textContent).toBe(HIDDEN_MESSAGE);
     const text = (block.textContent || '').replace(/\s+/g, ' ').trim();
     expect(text).toBe(`Stripe Connect${HIDDEN_MESSAGE}`);

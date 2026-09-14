@@ -552,7 +552,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
           <CollapsibleContent keepMounted data-testid="accounting-cash-note">
             <div className="px-4 pb-4 pt-1 text-sm text-body leading-relaxed space-y-2 border-t border-line">
               <p>
-                <b className="text-strong">These totals count Stripe gifts only.</b> Every
+                <b className="text-strong">These totals count gifts Harvest processed.</b> Every
                 figure on this screen is built from the receipts Harvest issued, and Harvest
                 only issues one for a gift it processed. Cash, a cheque, a bank transfer and
                 anything sent through your own {GIVING_PROVIDER_NAMES_OR} links never passes
@@ -563,7 +563,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
                 numbers.</b> Add Activity → Donation adds to that contact&apos;s total given,
                 dates their last gift and moves them along the pipeline — which is why the CRM
                 looks right while this screen still reads $0. The two are deliberately separate
-                records: adding them together would count a Stripe gift twice, because a card
+                records: adding them together would count a card gift twice, because a card
                 gift already writes both.
               </p>
               <p>

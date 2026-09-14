@@ -259,7 +259,13 @@ const PaymentSection: React.FC = () =>
   STRIPE_CONNECT_ENABLED ? <StripeConnectPanel /> : (
     <div className="space-y-6" data-testid="stripe-connect-hidden">
       <div className="bg-surface-raised rounded-2xl border border-line-subtle p-6">
-        <h3 className="text-sm font-semibold text-muted uppercase tracking-wide mb-4">Stripe Connect</h3>
+        {/* THE-362 — the heading, not just the message. THE-350 rewrote the
+            sentence below this line and left the processor's NAME standing over
+            it, so the founder ("Hide everything that talks about stripe. In
+            donations, everywhere.") was still reading it on the one screen that
+            ticket was about. The testid is unchanged: it names the STATE, which
+            is still "Connect is hidden", and nothing renders it to a church. */}
+        <h3 className="text-sm font-semibold text-muted uppercase tracking-wide mb-4">Card giving</h3>
         <p className="text-sm text-body">{STRIPE_CONNECT_HIDDEN_MESSAGE}</p>
       </div>
     </div>

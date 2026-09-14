@@ -726,8 +726,31 @@ describe('no Stripe Connect route, donation route, fee or receipt path changed',
      * deleted. That test, and every other behavioural one in this file, now runs
      * with the switch mocked ON, which is the restore proof.
      */
+    /**
+     * RE-RECORDED BY THE-362, and here is the whole of what moved: ONE
+     * WORD OF COPY, in the HIDDEN branch.
+     *
+     * The founder: "Hide everything that talks about stripe. In donations,
+     * everywhere." THE-350 rewrote the sentence this panel shows while Connect
+     * is off and left the processor's NAME as the heading above it, so the one
+     * screen that ticket was about still read "Stripe Connect" to a church.
+     * That `<h3>` now reads "Card giving".
+     *
+     * NO MONEY PATH MOVED, which is what this pin exists to prove:
+     *
+     *   • `StripeConnectPanel` — every one of its four status branches, both
+     *     of its fetches and all three of its handlers — is BYTE-FOR-BYTE
+     *     untouched. It is still not mounted while the switch is off, and it
+     *     still comes back whole when the switch goes on, exactly as THE-256
+     *     requires.
+     *   • `STRIPE_CONNECT_ENABLED` and `STRIPE_CONNECT_HIDDEN_MESSAGE` are
+     *     read from `lib/stripe-connect-feature.ts`, which is untouched.
+     *   • no route, no fee, no receipt path and no Firestore call changed.
+     *   • `data-testid="stripe-connect-hidden"` is unchanged: it names the
+     *     STATE, not the copy, and no church ever reads it.
+     */
     'src/components/settings/PaymentSection.tsx':
-      '56eb0b539450eba0b072323f42c547f1d728ffdfc1107be55f3d3144fcfaf4f0',
+      '3ca18f998b4cce909523f132e0871847438b569729084fb92d260e5c3eca636f',
     /*
      * ⚠️ RE-RECORDED BY THE-251, and by nothing else in this list.
      *

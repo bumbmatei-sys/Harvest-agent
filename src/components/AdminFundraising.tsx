@@ -660,7 +660,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
           </span>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-strong">Payment setup</p>
-            <p className="text-xs text-faint">Stripe Connect — 100% of donations go to your ministry</p>
+            <p className="text-xs text-faint">Card giving — 100% of donations go to your ministry</p>
           </div>
           <ChevronDown size={16} className={`text-faint transition-transform ${showPayment ? 'rotate-180' : ''}`} />
         </button>
@@ -884,7 +884,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
                       Gifts sent through your own payment links do not update the amount raised.
                     </span>{' '}
                     Harvest never sees a {GIVING_PROVIDER_NAMES_OR} gift, so this campaign
-                    counts Stripe gifts alone and its total will read lower than what you actually
+                    counts card gifts alone and its total will read lower than what you actually
                     received. To add one, open the campaign and press Record an offline gift. That
                     adds to the total; it does not create a receipt and will not appear on a giving
                     statement.

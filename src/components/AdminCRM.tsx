@@ -18,6 +18,7 @@ import { notifyError } from '../utils/notify';
 import { authFetch } from '../utils/auth-fetch';
 import AdminRoles, { Permission } from './AdminRoles';
 import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, CONTROL_DENSITY } from './layout/form-layout';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { useQueryClient } from '@tanstack/react-query';
@@ -899,15 +900,164 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     finally { setSaving(false); }
   };
 
+  /**
+   * THE-362 — WHY A DELETE CAN DO NOTHING, AND WHAT IT NOW SAYS INSTEAD.
+   *
+   * The founder, twice over: "If I delete a user in CRM, it doesn't disappear
+   * from the table." and "I created a user, I gave him admin. I entered from
+   * that admin account and tried to delete my own account basically and nothing
+   * happened."
+   *
+   * ONE ROOT CAUSE, TWO REFUSALS. This list is a MERGE of `contacts` and
+   * `users` (see `useContactsWithUsers`), and `confirmDelete` sent every row to
+   * a delete aimed at `contacts/<row.id>` regardless of which collection the
+   * row came from.
+   * For an app member with no contact record that id is a `users` id, so the
+   * write named a document that has never existed: the `users` doc is untouched,
+   * the refetch returns the row, and the table is unchanged. An admin's own row
+   * is one of those rows, which is why deleting themselves also did nothing.
+   *
+   * IT IS NOT A REFRESH BUG. `confirmDelete` already invalidated
+   * `['contacts', tenantId]`, which react-query matches by PREFIX, so
+   * `['contacts', tenantId, 'with-users']` refetches — and refetching is
+   * precisely what puts the row back. Invalidating harder would change nothing.
+   *
+   * AND IT IS NOT A PERMISSION BUG EITHER. `manageCRM` already gates this
+   * screen, and a contact the church really does own deletes and disappears
+   * today. What was missing is that the CRM cannot remove an APP ACCOUNT, and
+   * never could — so the honest answer is to say so rather than to issue a
+   * write that cannot land.
+   */
+  const myUid = auth.currentUser?.uid || null;
+  const myEmail = (auth.currentUser?.email || '').trim().toLowerCase();
+
+  /**
+   * Is this row the signed-in admin themselves?
+   *
+   * Identity is the ACCOUNT, not the row id: an admin who also has a contact
+   * record surfaces under the CONTACTS id (that is `mergeContactsWithUsers`'s
+   * whole point), so an id comparison alone would miss exactly the admin most
+   * likely to try this. The three tests below are the same `userId`-then-email
+   * link rule the merge itself uses.
+   */
+  const isSelf = (c: Contact): boolean =>
+    (!!myUid && c.id === myUid) ||
+    (!!myUid && !!c.userId && c.userId === myUid) ||
+    (!!myEmail && !!c.account && (c.account.email || '').trim().toLowerCase() === myEmail);
+
+  /**
+   * The row this delete is about.
+   *
+   * `selected` FIRST, and the list only as a fallback. The delete is reached
+   * from the contact card, so `selected` is the row the admin is looking at,
+   * and it is present even on the render before the merged list resolves -
+   * resolving only through `contacts` would leave a window in which no target
+   * is found, every refusal below evaluates to `null`, and a self-delete would
+   * go through. FAILING CLOSED covers the rest: an id that matches neither is
+   * refused rather than deleted, because a destructive write against a row this
+   * screen cannot identify is not one it should be issuing.
+   */
+  const deleteTarget = deleteId
+    ? (selected?.id === deleteId ? selected : contacts.find(c => c.id === deleteId) ?? null)
+    : null;
+
+  /**
+   * The reason this delete cannot go ahead, or `null` when it can.
+   *
+   * ORDER MATTERS. Self comes first: an admin's own row is almost always an
+   * account-backed one too, and "you cannot remove your own account" is the
+   * thing they need to be told — the lockout is the serious half.
+   */
+  const deleteRefusal: { readonly title: string; readonly body: string } | null =
+    !deleteId ? null
+    : !deleteTarget ? {
+        title: 'This person could not be identified',
+        body:
+          'The contact list has not finished loading, so there is no way to tell whose '
+          + 'record this is. Close this, wait for the list, and try again.',
+      }
+    : isSelf(deleteTarget) ? {
+        title: 'You cannot remove your own account',
+        body:
+          'Removing yourself would lock you out of this church, and you may be the only '
+          + 'admin left in it. Another admin can change your role on the Roles tab.',
+      }
+    : deleteTarget.accountOnly ? {
+        title: `${[deleteTarget.firstName, deleteTarget.lastName].filter(Boolean).join(' ') || 'This person'} has an app account`,
+        body:
+          'They signed up in the app, so there is no CRM record here to delete \u2014 this row '
+          + 'IS their account. Deleting an account erases a person\u2019s profile and their '
+          + 'content across the whole app, and only they can do that, from Personal '
+          + 'Information in their own profile. Their giving is never erased either way: a '
+          + 'receipt stays on your books with the name replaced.',
+      }
+    : null;
+
   const confirmDelete = async () => {
     if (!deleteId) return;
+    // THE GUARD IS HERE, not only in the dialog. A refusal that lived only in
+    // the markup would be one re-render away from being bypassed, and this
+    // function is the only thing that reaches Firestore.
+    if (deleteRefusal) return;
     try {
       await deleteDoc(doc(db, 'contacts', deleteId));
       await queryClient.invalidateQueries({ queryKey: ['contacts', tenantId] });
+      // INSIDE THE `try`, AND THAT IS THE SILENT-FAILURE RULE. Both of these
+      // used to run after the `catch`, so a REFUSED delete closed the dialog and
+      // walked back to the list exactly as a successful one did — the screen
+      // performed the whole gesture of having deleted somebody while the row sat
+      // there untouched. The `notifyError` alert said otherwise, but the screen
+      // said it had worked, and the screen is what a reader believes. A failure
+      // now leaves the dialog open on the row it failed on, so the admin can
+      // read the alert, see which person it was about, and try again or cancel.
+      setDeleteId(null);
+      if (view === 'detail') setView('list');
     } catch (e) { notifyError('Failed to delete contact', e); }
-    setDeleteId(null);
-    if (view === 'detail') setView('list');
   };
+
+  /**
+   * The delete dialog, defined ONCE and rendered on both sub-views.
+   *
+   * ONE DEFINITION, for the same reason `subTabBar` below is one: the two
+   * copies of this dialog were byte-identical, and a guard that was added to
+   * only one of them would refuse on the contact card and not in the list.
+   * Asserting that two copies currently agree proves nothing about the next
+   * edit; there being one is true by construction.
+   */
+  const deleteDialog = deleteId && (
+    <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-surface-raised rounded-3xl p-6 w-full max-w-sm">
+        {deleteRefusal ? (
+          <>
+            {/* THE SILENT-FAILURE RULE, on the `alert` primitive — the one
+                this repo installs for a refusal. `role="alert"` comes with it,
+                so a screen reader is told too, and the only control left is the
+                one that closes it: there is no button here that would issue a
+                write that cannot land. */}
+            <Alert variant="destructive" data-crm-delete-refused>
+              <AlertTitle>{deleteRefusal.title}</AlertTitle>
+              <AlertDescription>{deleteRefusal.body}</AlertDescription>
+            </Alert>
+            <button
+              onClick={() => setDeleteId(null)}
+              className="mt-5 w-full min-h-[44px] py-2.5 rounded-xl border border-line-hairline text-sm font-semibold text-muted"
+            >
+              Close
+            </button>
+          </>
+        ) : (
+          <div className="text-center">
+            <p className="font-bold text-strong mb-2 font-display">Delete contact?</p>
+            <p className="text-sm text-muted mb-5">This cannot be undone.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteId(null)} className="flex-1 min-h-[44px] py-2.5 rounded-xl border border-line-hairline text-sm font-semibold text-muted">Cancel</button>
+              <button onClick={confirmDelete} className="flex-1 min-h-[44px] py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold">Delete</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   // There is deliberately no stage-change handler here. The pipeline stage is a
   // function of `totalDonated`, so the only way to move a contact between stages
@@ -1387,7 +1537,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             <button data-testid="crm-edit-contact" onClick={() => openEdit(selected)} className="p-2 rounded-xl border border-line-hairline hover:bg-surface-sunken">
               <Edit2 size={14} className="text-muted" />
             </button>
-            <button onClick={() => setDeleteId(selected.id)} className="p-2 rounded-xl border border-line-hairline hover:bg-red-50">
+            <button data-testid="crm-delete-contact" onClick={() => setDeleteId(selected.id)} className="p-2 rounded-xl border border-line-hairline hover:bg-red-50">
               <Trash2 size={14} className="text-red-400" />
             </button>
           </div>
@@ -1788,18 +1938,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           </div>
         )}
 
-        {deleteId && (
-          <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50 p-4">
-            <div className="bg-surface-raised rounded-3xl p-6 w-full max-w-sm text-center">
-              <p className="font-bold text-strong mb-2 font-display">Delete contact?</p>
-              <p className="text-sm text-muted mb-5">This cannot be undone.</p>
-              <div className="flex gap-3">
-                <button onClick={() => setDeleteId(null)} className="flex-1 py-2.5 rounded-xl border border-line-hairline text-sm font-semibold text-muted">Cancel</button>
-                <button onClick={confirmDelete} className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold">Delete</button>
-              </div>
-            </div>
-          </div>
-        )}
+        {deleteDialog}
       </div>
     );
   }
@@ -2494,18 +2633,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         </div>
       )}
 
-      {deleteId && (
-        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-surface-raised rounded-3xl p-6 w-full max-w-sm text-center">
-            <p className="font-bold text-strong mb-2 font-display">Delete contact?</p>
-            <p className="text-sm text-muted mb-5">This cannot be undone.</p>
-            <div className="flex gap-3">
-              <button onClick={() => setDeleteId(null)} className="flex-1 py-2.5 rounded-xl border border-line-hairline text-sm font-semibold text-muted">Cancel</button>
-              <button onClick={confirmDelete} className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold">Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {deleteDialog}
     </div>
   );
 };

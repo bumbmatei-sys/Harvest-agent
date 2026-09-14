@@ -21,6 +21,7 @@ import { Cell, Pie, PieChart } from 'recharts';
 import { PieChart as PieChartIcon } from 'lucide-react';
 
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from '../ui/chart';
+import { formatCents } from '../../lib/donation-history';
 import { REASON, type ReadableReceipt } from './dashboard-data';
 import { WidgetFrame, type WidgetState } from './WidgetFrame';
 
@@ -39,8 +40,20 @@ const TYPE_LABELS: Record<string, string> = {
   invoice: 'Invoices',
 };
 
-const money = (cents: number) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(cents / 100);
+/**
+ * THE-362 — the local `/ 100` is gone; this is `formatCents` now.
+ *
+ * The figure it produced was already RIGHT — this widget's legend has divided
+ * once since THE-276 — but it divided at the call site, which is the thing the
+ * money rule forbids and the only reason the inverse bug (`$10,550,000` for
+ * `$105,500`, AdminAccounting) was ever possible. One tested helper, one
+ * division, everywhere.
+ *
+ * WHAT CHANGED ON SCREEN: cents. `maximumFractionDigits: 0` rendered $250.00
+ * as `$250`; `formatCents` renders `$250.00`, the same string the member's own
+ * donation history, the CRM timeline and the giving statements already show for
+ * the same receipt. The VALUE is identical.
+ */
 
 export interface MixSlice { readonly key: string; readonly label: string; readonly cents: number }
 
@@ -90,7 +103,34 @@ export function GivingMix({ rows, reason }: { rows: readonly ReadableReceipt[] |
       <div className="space-y-3">
         <ChartContainer config={config} className="aspect-auto h-48 w-full">
           <PieChart>
-            <ChartTooltip content={<ChartTooltipContent nameKey="key" />} />
+            {/* THE-362 — the SLICE TOOLTIP was the widget's one un-converted
+                money figure. `dataKey="cents"` handed `ChartTooltipContent` a
+                raw cents number and it printed `5,000` for a $50 gift, while
+                the legend two elements below said `$50.00` for the same slice:
+                one widget, one receipt, two answers, 100× apart. */}
+            <ChartTooltip
+              content={
+                <ChartTooltipContent
+                  nameKey="key"
+                  formatter={(value, name) => (
+                    /* NO SWATCH — see TrendChart's tooltip. THE-276 forbids a
+                       style attribute here, and the slice LABEL already names
+                       the slice the reader is hovering. */
+                    <div className="flex flex-1 items-center justify-between gap-4 leading-none">
+                      <span className="text-muted-foreground">
+                        {TYPE_LABELS[String(name)] ?? String(name)}
+                      </span>
+                      <span
+                        className="font-mono font-medium text-foreground tabular-nums"
+                        data-mix-tooltip-value={String(name)}
+                      >
+                        {formatCents(Number(value))}
+                      </span>
+                    </div>
+                  )}
+                />
+              }
+            />
             <Pie data={slices as MixSlice[]} dataKey="cents" nameKey="key" innerRadius={45} outerRadius={75} isAnimationActive={false}>
               {slices.map((s) => (
                 <Cell key={s.key} fill={`var(--color-${s.key})`} />
@@ -107,7 +147,7 @@ export function GivingMix({ rows, reason }: { rows: readonly ReadableReceipt[] |
           {slices.map((s) => (
             <li key={s.key} className="flex items-center gap-2 text-xs" data-mix-slice={s.key}>
               <span className="flex-1 truncate text-muted-foreground">{s.label}</span>
-              <span className="font-medium tabular-nums text-foreground">{money(s.cents)}</span>
+              <span className="font-medium tabular-nums text-foreground">{formatCents(s.cents)}</span>
             </li>
           ))}
         </ul>

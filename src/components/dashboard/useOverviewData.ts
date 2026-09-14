@@ -55,7 +55,30 @@ export interface OverviewData {
   /** The seventh card: receipts for a tenant, ministries on the apex. */
   readonly seventh: { readonly label: string; readonly figure: Figure | null };
   readonly memberSeries: Series | null;
-  readonly givingSeries: Series | null;
+  /**
+   * CENTS, AND THE NAME SAYS SO — THE-362.
+   *
+   * It was `givingSeries`, and the unit lived only in a docblock. The founder:
+   * "In dashboard in all charts about giving/donations instead of 50$ donated
+   * it shows 5000$." Exactly 100×: `bucketWeekly` weighs each receipt by
+   * `amountCents`, so every bucket is cents, and both charts that plot it drew
+   * the raw number with no unit attached to it.
+   *
+   * THE VALUE IS UNCHANGED BY THE RENAME. Nothing here divides, and nothing
+   * downstream may either — the conversion happens ONCE, at the moment a figure
+   * becomes a string, through `formatCents`. `giving-data.ts` names every
+   * dollar figure it produces `goalDollars` / `raisedDollars` /
+   * `pledgedDollars` / `paidDollars` for precisely this reason; this field was
+   * the one money-bearing thing on the tab strip without a unit in its name,
+   * which is how a cents series reached two charts that formatted it as
+   * dollars.
+   *
+   * `InsightFeed`'s `InsightInputs.givingSeries` KEEPS ITS NAME and its own
+   * conversion. It was already correct (THE-328 pins `$1,235` for 123456 cents)
+   * and renaming a correct, pinned input would be churn; the call site below
+   * hands this field to it under that name.
+   */
+  readonly givingSeriesCents: Series | null;
   readonly submissionSeries: Series | null;
   /** Receipt rows for the mix — `null` with a reason when the read was refused. */
   readonly invoiceRows: readonly ReadableReceipt[] | null;
@@ -67,7 +90,7 @@ const PENDING: OverviewData = {
   loading: true,
   members: null, contacts: null, courses: null, posts: null, articles: null, submissions: null,
   seventh: { label: 'Receipts', figure: null },
-  memberSeries: null, givingSeries: null, submissionSeries: null,
+  memberSeries: null, givingSeriesCents: null, submissionSeries: null,
   invoiceRows: null, invoiceReason: null, liveNow: null,
 };
 
@@ -169,7 +192,7 @@ export function useOverviewData(
 
       // Receipts: one complete read serves BOTH the trend and the mix, so the
       // ledger is counted once and loaded once.
-      let givingSeries: Series = refused(REASON.noTenant);
+      let givingSeriesCents: Series = refused(REASON.noTenant);
       let invoiceRows: readonly ReadableReceipt[] | null = null;
       let invoiceReason: string | null = REASON.noTenant;
       if (tenantId) {
@@ -181,13 +204,13 @@ export function useOverviewData(
         if (money.kind === 'complete') {
           invoiceRows = money.rows;
           invoiceReason = null;
-          givingSeries = {
+          givingSeriesCents = {
             kind: 'complete',
             points: bucketWeekly(money.rows, readAt, (r) => r.issuedAt, (r) => r.amountCents).points,
           };
         } else {
           invoiceReason = money.reason;
-          givingSeries = refused(money.reason);
+          givingSeriesCents = refused(money.reason);
         }
       }
 
@@ -197,7 +220,7 @@ export function useOverviewData(
       setData({
         loading: false,
         members, contacts, courses, posts, articles, submissions, seventh,
-        memberSeries, givingSeries, submissionSeries,
+        memberSeries, givingSeriesCents, submissionSeries,
         invoiceRows, invoiceReason, liveNow,
       });
     })();

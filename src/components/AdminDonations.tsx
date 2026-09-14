@@ -318,7 +318,7 @@ const AdminDonations: React.FC = () => {
       <AdminPageHeader
         eyebrow="Donations"
         title="How your church gets paid"
-        subtitle="Connect Stripe to take card gifts inside the app, and add your own payment links for everything else."
+        subtitle="Take card gifts inside the app, and add your own payment links for everything else."
       />
 
       {/* ── Stripe ───────────────────────────────────────────────────────────
@@ -328,7 +328,7 @@ const AdminDonations: React.FC = () => {
           connected", and the two would disagree the first time one was edited. */}
       <AdminCard>
         <div className="px-5 py-4 border-b border-line">
-          <AdminSectionLabel>Stripe</AdminSectionLabel>
+          <AdminSectionLabel>Card giving</AdminSectionLabel>
           <p className="text-sm text-muted mt-1.5">
             Card and bank gifts, taken inside the app. Harvest records every gift, sends
             the receipt, and includes it on your year-end giving statements.

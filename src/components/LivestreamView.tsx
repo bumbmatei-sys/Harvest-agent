@@ -9,7 +9,35 @@ import TipTapReadOnly from './TipTapReadOnly';
 interface LivestreamViewProps {
   tenantId: string | null;
   onBack: () => void;
-  onDonate: () => void;
+  /**
+   * THE-362 — OPTIONAL, AND THAT IS THE FIX. THE-246's shape, exactly.
+   *
+   * The founder: "In Livestream the support this message button brings you
+   * nowhere. It should go to the donation page."
+   *
+   * It was required, and `MainApp` satisfied it with
+   * `window.open('/?giving=1', '_blank')` — a NEW TAB onto the app root. Two
+   * things were wrong with that and they compound:
+   *
+   *   1. `?giving=1` is the IN-APP deep link. `donations/giving-share.ts` says
+   *      so in as many words — "it is still the in-app deep link a signed-in
+   *      member follows to the Give tab … a member already inside the app
+   *      should stay inside it". Opening it in a second tab reboots the whole
+   *      SPA: auth again, tenant again, branding again, and the livestream the
+   *      member was watching left running in the tab behind them.
+   *   2. IT LANDS ON HOME WHENEVER THERE IS NO GIVE PAGE, which is the normal
+   *      case today. `MainApp`'s `effectiveTopTab` collapses `'partner'` to
+   *      Home when `hasGiving` is false, and `hasGiving` needs `hasGivingRails`
+   *      — card giving (off at the master switch) OR a saved payment link. A
+   *      church with neither got a new tab showing the news feed. "Brings you
+   *      nowhere" is the literal behaviour.
+   *
+   * So it is now `undefined` when there is no Give page to reach, and the
+   * button is not drawn at all — `Profile`'s `onGoToPartner` has worked exactly
+   * this way since THE-246, for exactly this reason: a CTA that jumps at a tab
+   * `effectiveTopTab` sends straight back is the THE-193 dead end, not a gate.
+   */
+  onDonate?: () => void;
 }
 
 const GOLD = 'var(--brand-color, #B8962E)';
@@ -214,13 +242,22 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
           )}
 
           <div className="p-4 space-y-3 max-w-2xl mx-auto lg:col-start-1 lg:row-start-3 lg:flex lg:gap-3 lg:space-y-0 lg:max-w-none lg:mx-0 lg:p-0 lg:mt-4">
-            <button
-              onClick={onDonate}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white lg:flex-1"
-              style={{ backgroundColor: GOLD }}
-            >
-              <Heart size={18} /> Support This Message
-            </button>
+            {/* Drawn only when there is somewhere for it to go. See the
+                prop's own note: when this is absent the church has no Give page
+                at all, and a button onto the news feed is worse than no button.
+                `min-h-[44px]` is explicit rather than inferred from `py-3`:
+                #500 recorded that every intrinsic `Button` size sits under both
+                floors, so a control this ticket touches states its own. */}
+            {onDonate && (
+              <button
+                onClick={onDonate}
+                data-livestream-support
+                className="w-full min-h-[44px] flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white lg:flex-1"
+                style={{ backgroundColor: GOLD }}
+              >
+                <Heart size={18} /> Support This Message
+              </button>
+            )}
             <button
               onClick={() => setShowPrayer(true)}
               className="w-full py-3 rounded-xl font-semibold text-white bg-white/10 hover:bg-white/15 lg:hidden"

@@ -308,7 +308,7 @@ function overviewDataFixture(): OverviewData {
     submissions: { kind: 'exact', value: 1 },
     seventh: { label: 'Receipts', figure: { kind: 'exact', value: RECEIPTS.length } },
     memberSeries: { kind: 'complete', points: [{ label: 'W1', value: 1 }] },
-    givingSeries: { kind: 'complete', points },
+    givingSeriesCents: { kind: 'complete', points },
     submissionSeries: { kind: 'complete', points: [{ label: 'W1', value: 1 }] },
     invoiceRows: money.rows,
     invoiceReason: null,
@@ -341,7 +341,7 @@ describe('giving over time renders on Giving with figures identical to Overview\
 
     // 🔴 THE ASSERTION. Reference identity, so there is no arithmetic, no map
     // and no copy anywhere between the two tabs that could make them differ.
-    expect(givingGiving!.series).toBe(data.givingSeries);
+    expect(givingGiving!.series).toBe(data.givingSeriesCents);
     expect(givingGiving!.series).toBe(overviewGiving!.series);
     // And the same series slot, so the colour does not change under a reader
     // who moves between the tabs.

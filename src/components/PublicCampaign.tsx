@@ -242,7 +242,7 @@ const PublicCampaign: React.FC<PublicCampaignProps> = ({ tenantId, tenantName, l
               {processing ? <Loader2 size={16} className="animate-spin" /> : <Heart size={15} strokeWidth={2.5} />}
               {processing ? 'Processing…' : `Donate${amount ? ` ${fmt(amount)}` : ''}`}
             </button>
-            <p className="text-[11px] text-faint text-center mt-3">Secure payment powered by Stripe.</p>
+            <p className="text-[11px] text-faint text-center mt-3">Secure, encrypted payment.</p>
           </div>
           )}
 

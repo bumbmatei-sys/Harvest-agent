@@ -1282,10 +1282,29 @@ describe('18 — primitives, touch targets, colour and emoji', () => {
     for (const p of ['alert', 'field', 'input', 'dialog', 'badge', 'empty', 'button']) {
       expect(primitives, `${p} is not installed`).toContain(p);
     }
-    // 🔴 And this ticket really did add no primitive import to the CRM.
-    const before = ["import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';"];
+    /**
+     * 🔴 THE EXACT IMPORT LIST, and THE-362 APPENDED THE SECOND ENTRY.
+     *
+     * THE-350 rejected `ui/alert` above and said in as many words that it "is
+     * the right primitive and it is what a follow-up should use". THE-362 IS
+     * that follow-up: the founder's "I tried to delete my own account and
+     * nothing happened" needs a REFUSAL on screen, `alert` is the primitive
+     * this repo installs for one, and it arrives on its own rather than beside
+     * a money-ledger write — which is the whole of what THE-350 objected to.
+     *
+     * 🔴 WHAT THIS GUARD STILL ASSERTS IS UNCHANGED: the list is EXACT, so a
+     * third primitive cannot appear without a ticket saying why, and THE-350's
+     * own rejections stand — the amount field is still a labelled `<input>`,
+     * the modal is still not `ui/dialog`, and the two notices THIS ticket did
+     * not touch are still the dialog's own chrome.
+     */
+    const expected = [
+      "import { Alert, AlertDescription, AlertTitle } from './ui/alert';",
+      "import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';",
+    ];
     const imports = read(CRM).match(/^import .*from '(\.\/ui\/|@\/components\/ui\/)[^']*';$/gm) ?? [];
-    expect(imports, 'this ticket composed a primitive into AdminCRM').toEqual(before);
+    expect(imports, 'a primitive was composed into AdminCRM without a ticket recording it')
+      .toEqual(expected);
   });
 
   it('🔴 every tappable target this ticket added is >= 44px below sm', () => {

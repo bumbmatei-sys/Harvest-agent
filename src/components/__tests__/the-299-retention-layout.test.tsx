@@ -69,7 +69,7 @@ const READY = {
   submissions: { kind: 'exact', value: 3 },
   seventh: { label: 'Receipts', figure: { kind: 'exact', value: 88 } },
   memberSeries: { kind: 'complete', points: POINTS },
-  givingSeries: { kind: 'complete', points: POINTS },
+  givingSeriesCents: { kind: 'complete', points: POINTS },
   submissionSeries: { kind: 'complete', points: POINTS },
   invoiceRows: [{ amountCents: 25000, issuedAt: null, type: 'donation_receipt' }],
   invoiceReason: null,

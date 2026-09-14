@@ -492,7 +492,7 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * retires a pinner updates this count and says what that suite still asserts;
  * a suite that quietly stops pinning fails here.
  */
-const RULES_PINNERS_NOW = 74;
+const RULES_PINNERS_NOW = 75;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per
@@ -1025,6 +1025,24 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
   // ticket adds is a document read, a document write, or a name Firestore has
   // ever seen.
   ['THE-361', 'src/components/__tests__/THE-361.course-adopted.test.tsx'],
+  // 🔴 THE-362 — the dashboard's 100x, the Stripe copy on the giving screens,
+  // the livestream support button and the CRM delete. APPENDED beside the
+  // entries above, never over one, and `RULES_PINNERS_NOW` goes 74 -> 75.
+  //
+  // ⚠️ IT RECORDS NO `firestore.rules` DIGEST, and that is a FINDING rather
+  // than an omission. Its STOP condition 4 was "the CRM delete needs a rules
+  // change"; it does not. The top-level `contacts` rule already allows delete
+  // to a holder of `manageCRM`, and the founder's bug was never a permission
+  // one — the write named a `contacts` document that has never existed, because
+  // the CRM list merges `contacts` with `users` and an app member's row is
+  // keyed by their `users` id. The fix PREVENTS two writes and adds no
+  // Firestore operation of any kind, so there is nothing here a rule could
+  // have expressed, and a rules record would be this ticket claiming a file it
+  // never opened. What its guard suite asserts is what every pinner asserts:
+  // `firestore.rules` on disk is at a digest some ticket recorded, through
+  // `rulesDigestFailure()` and never as a literal — the mistake THE-325 caught
+  // #504 making, and which this register exists to keep catching.
+  ['THE-362', 'src/__tests__/THE-362.guards.test.ts'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {

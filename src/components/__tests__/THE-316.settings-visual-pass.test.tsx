@@ -407,14 +407,45 @@ describe('4 · the register', () => {
     expect(validateRegister(), 'the register is malformed').toEqual([]);
   });
 
-  it("🔴 each file THE-316 edited has a THE-316 entry at the file's CURRENT digest", () => {
+  it('🔴 each file THE-316 edited has a THE-316 entry, and the file is at a RECORDED digest', () => {
+    /**
+     * ⚠️ AMENDED BY THE-362, and the amendment makes this CORRECT rather than
+     * weaker. As written it required THE-316's own entry to equal the file's
+     * digest RIGHT NOW — which is not "my record is honest", it is "I am still
+     * the last ticket to have touched this file". That is a claim no register
+     * entry can keep: it holds until the next legitimate edit and then fails
+     * for the one ticket that did everything right, and the only way to make it
+     * pass again is to SUBSTITUTE THE-316's digest — the exact move the test
+     * directly below this one exists to forbid, and the one that turned `main`
+     * red for everyone when #434 made it.
+     *
+     * 🔴 SO THE CLAIM SPLITS INTO THE TWO THINGS IT WAS CONFLATING, and both
+     * are asserted:
+     *
+     *   1. THE-316 still has exactly one entry per file it edited, still
+     *      carrying a reason over the floor — its record is intact and nobody
+     *      has quietly rewritten it;
+     *   2. the file on disk is at a digest THE REGISTER ACCEPTS — the baseline,
+     *      or some ticket's recorded edit.
+     *
+     * A file at a digest NO ticket recorded still fails, which is the whole
+     * threat this pin was built for. What no longer fails is a later ticket
+     * appending its own entry, which is the mechanism working.
+     *
+     * THE LATER TICKET IS THE-362: the founder asked for the processor's name
+     * to be gone from the giving surfaces, and this screen's Donations pointer
+     * row was one of the places still carrying it.
+     */
     for (const file of EDITED) {
       const mine = RECORDED_EDITS.filter((e) => e.file === file && e.ticket === 'THE-316');
       expect(mine.length, `${file} has no THE-316 register entry`).toBe(1);
-      expect(mine[0].digest, `${file}'s THE-316 entry records a digest the file is not at`)
-        .toBe(sha256File(file));
       expect(mine[0].why.length, `${file}'s reason is under the ${MIN_REASON_LENGTH}-char floor`)
         .toBeGreaterThanOrEqual(MIN_REASON_LENGTH);
+      expect(mine[0].digest, `${file}'s THE-316 entry carries no sha256`).toMatch(/^[0-9a-f]{64}$/);
+      // Derived from the REGISTER itself, so this needs no second baseline to
+      // drift from: the file must be at a digest some ticket recorded for it.
+      const recorded = RECORDED_EDITS.filter((e) => e.file === file).map((e) => e.digest);
+      expect(recorded, `${file} is at a digest no ticket recorded`).toContain(sha256File(file));
     }
   });
 

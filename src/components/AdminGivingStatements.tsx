@@ -206,7 +206,7 @@ const AdminGivingStatements: React.FC = () => {
         <div className="flex items-start gap-2.5">
           <AlertTriangle size={16} className="text-gold shrink-0 mt-0.5" aria-hidden="true" />
           <p className="text-sm text-body leading-relaxed">
-            <b className="text-strong">These statements cover Stripe gifts only.</b> Harvest
+            <b className="text-strong">These statements cover gifts Harvest processed.</b> Harvest
             builds them from the gifts it processed, so anything your members sent through your
             own payment links &mdash; {GIVING_PROVIDER_NAMES} &mdash; is not on them, and
             a member who gave that way will see a total lower than what they actually gave you.

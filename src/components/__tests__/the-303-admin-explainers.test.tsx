@@ -245,12 +245,12 @@ describe('7 · accounting explains that cash and non-Stripe gifts do not appear'
     await accounting();
     await click(container.querySelector('[data-testid="accounting-cash-note-toggle"]'));
     const text = flat(container.querySelector('[data-testid="accounting-cash-note"]'));
-    expect(text).toContain('These totals count Stripe gifts only.');
+    expect(text).toContain('These totals count gifts Harvest processed.');
     expect(text, 'cash is not named — it is what the founder actually recorded').toContain('Cash');
     expect(text).toContain(GIVING_PROVIDER_NAMES_OR);
     expect(text, 'the CRM remedy is not connected to the $0').toContain('Recording one in your CRM does not change these');
     expect(text).toContain('Add Activity');
-    expect(text, 'the double-count reason is not given').toContain('would count a Stripe gift twice');
+    expect(text, 'the double-count reason is not given').toContain('would count a card gift twice');
     expect(text).toContain('a giving statement generated');
   });
 });

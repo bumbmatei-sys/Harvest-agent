@@ -17,6 +17,7 @@ import {
   BookOpen, Building2, FileText, HandCoins, MessageCircle, Newspaper, Users, UserSquare,
 } from 'lucide-react';
 
+import { formatCents } from '../../lib/donation-history';
 import { REASON, type Series } from './dashboard-data';
 import { FunnelChart } from './FunnelChart';
 import { GivingMix, CHART_VARS } from './GivingMix';
@@ -80,7 +81,15 @@ export function OverviewTab({ data, unreadCount, showInbox }: {
       <TrendChart
         series={[
           { key: 'members', label: 'New members', chartVar: CHART_VARS[1], series: data.memberSeries },
-          { key: 'giving', label: 'Received', chartVar: CHART_VARS[0], series: data.givingSeries },
+          /* THE-362 — `format` is not decoration. `givingSeriesCents` is
+             CENTS, and without it this chart printed 5000 for a $50 gift. */
+          {
+            key: 'giving',
+            label: 'Received',
+            chartVar: CHART_VARS[0],
+            series: data.givingSeriesCents,
+            format: formatCents,
+          },
         ]}
       />
 
@@ -89,7 +98,10 @@ export function OverviewTab({ data, unreadCount, showInbox }: {
           loading={data.loading}
           inputs={{
             memberSeries: data.memberSeries,
-            givingSeries: data.givingSeries,
+            /* The SAME cents series, under the name `InsightFeed` has always
+               taken it by. That panel converts correctly already (THE-328 pins
+               `$1,235` for 123456 cents) and is deliberately not renamed. */
+            givingSeries: data.givingSeriesCents,
             submissionsSeries: data.submissionSeries,
           }}
         />

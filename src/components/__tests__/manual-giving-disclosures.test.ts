@@ -104,7 +104,7 @@ const LEAD: Record<Screen, string> = {
   'AdminDonations (before a link is pasted)':
     'Harvest does not process these gifts.',
   'AdminGivingStatements (before a statement is sent)':
-    'These statements cover Stripe gifts only.',
+    'These statements cover gifts Harvest processed.',
   'AdminCRM (under the giving totals)':
     'Gifts sent through your own payment links are not counted here.',
   'AdminFundraising (where the goal is set)':
