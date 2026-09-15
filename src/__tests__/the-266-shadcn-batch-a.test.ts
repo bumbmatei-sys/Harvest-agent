@@ -730,6 +730,32 @@ describe('the out-of-scope files are untouched', () => {
        * 🔴 A TENTH adopter still fails.
        */
       'src/components/inbox/TenantInbox.tsx',
+      /**
+       * ── APPENDED BY THE-363, and it is an ELEVENTH ────────────────────────
+       *
+       * The blog Automate control, while the PLAN is still unknown.
+       *
+       * This is a different use from the ten above, and the difference is the
+       * reason it earns the primitive rather than inheriting it. Those ten
+       * stand in for CONTENT whose shape is known while it loads. This one
+       * stands in for a CONTROL WHOSE EXISTENCE IS NOT YET DECIDED: a
+       * capability gate has three answers - permitted, denied, and not yet
+       * known - and AdminBlog collapsed the third into DENIED, so the button
+       * was absent on first paint and appeared when the tenant document
+       * resolved (THE-110's flicker).
+       *
+       * 🔴 THE OTHER TWO STATES ARE DELIBERATELY NOT THIS, which is the same
+       * per-element judgement SmsSection and TenantInbox draw above. A tier
+       * that does NOT carry `automatedBlog` renders NOTHING - a shimmer there
+       * would promise a church a control it cannot have. A tier that DOES
+       * renders the real button. The skeleton is only ever the not-yet-known
+       * state, and it is sized to the button's own footprint so the header
+       * does not reflow when the answer lands - which was the other half of
+       * what "flicker" meant here.
+       *
+       * 🔴 A TWELFTH adopter still fails.
+       */
+      'src/components/AdminBlog.tsx',
     ],
     breadcrumb: ['src/components/docs/DocsBreadcrumb.tsx'],
   };

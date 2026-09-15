@@ -10,11 +10,12 @@ import { getTenantScope, hasPlatformOverride } from '../utils/tenant-scope';
 import { sortByTime } from '../utils/query-helpers';
 import { formatFirestoreDate, type FirestoreDate } from '../utils/firestore-date';
 import { useAppStore } from '../store/useAppStore';
-import { getPlanFeatures } from '../utils/plan-features';
+import { resolvePlanGateState, planGatePermits } from '../utils/plan-gate-state';
 import { authFetch } from '../utils/auth-fetch';
 import { notifyError } from '../utils/notify';
 import { MAX_CONSECUTIVE_FAILURES } from '../lib/blog-automation';
 import { FORM_CONTAINER } from './layout/form-layout';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 
@@ -55,8 +56,21 @@ const AdminBlog: React.FC = () => {
  const { tenantPlan } = useAppStore();
  // Platform-context super admins (apex) get this feature; on a tenant subdomain
  // it's gated by the tenant's plan, even for a super admin.
- const canAutomate = hasPlatformOverride() ||
-   (tenantPlan ? getPlanFeatures(tenantPlan).automatedBlog : false);
+ //
+ // THE-110 - three states, not two. This was `tenantPlan ? …automatedBlog :
+ // false`, which answered "not permitted" for a plan that had not loaded yet —
+ // so the button was absent on first paint and appeared when the tenant doc
+ // resolved, and vanished and came back whenever the plan re-resolved. The
+ // not-yet-known case now says so, and the header renders it as a skeleton in
+ // the button's own footprint rather than as either wrong answer. See
+ // utils/plan-gate-state.ts for why a CAP still fails closed and a capability
+ // gate must not.
+ const automateGate = resolvePlanGateState('automatedBlog', {
+   plan: tenantPlan,
+   platformOverride: hasPlatformOverride(),
+ });
+ // Side effects only on a definite yes — see `planGatePermits`.
+ const canAutomate = planGatePermits(automateGate);
  const [showAutomation, setShowAutomation] = useState(false);
  // Detected once — the IANA zone the hour picker's options are labeled in.
  const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -241,10 +255,23 @@ const AdminBlog: React.FC = () => {
  title={`${posts.length} post${posts.length === 1 ? '' : 's'}`}
  action={
  <div className="flex items-center gap-2.5">
- {canAutomate && (
+ {/* THE-110 - THREE states, rendered as three things.
+     `unknown` is a Skeleton IN THE BUTTON'S OWN FOOTPRINT: not the permitted
+     state (that flashes a control the church may not have and then retracts
+     it) and not the denied state (that is the flicker this ticket fixes).
+     Reserving the space also means the row does not reflow when the answer
+     lands, which is the other half of what "flicker" meant here. */}
+ {automateGate === 'unknown' && (
+ <Skeleton
+ data-testid="automate-gate-pending"
+ aria-hidden="true"
+ className="min-h-[44px] sm:min-h-0 h-11 sm:h-[42px] w-[124px] rounded-brand"
+ />
+ )}
+ {automateGate === 'permitted' && (
  <button
  onClick={() => setShowAutomation(true)}
- className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-brand border border-line bg-surface-raised text-[13px] font-semibold text-strong hover:bg-surface-sunken transition-colors"
+ className="inline-flex items-center justify-center gap-1.5 min-h-[44px] sm:min-h-0 px-4 py-2.5 rounded-brand border border-line bg-surface-raised text-[13px] font-semibold text-strong hover:bg-surface-sunken transition-colors"
  >
  <Sparkles size={15} className="text-gold" /> Automate
  </button>
@@ -558,12 +585,15 @@ const AdminBlog: React.FC = () => {
 
  {/* Actions */}
  <div className="flex gap-3 pt-1">
+ {/* THE-363 - the lightning glyph is gone: no emoji, and the lucide icon
+     beside the label is the primitive-consistent way to say the same thing.
+     The touch floor is declared because this control did not have one. */}
  <button
  onClick={handleGenerateNow}
  disabled={generatingNow}
- className="flex-1 py-3 rounded-xl text-sm font-semibold border border-line text-body disabled:opacity-50"
+ className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-[44px] py-3 rounded-xl text-sm font-semibold border border-line text-body disabled:opacity-50"
  >
- {generatingNow ? 'Generating…' : '⚡ Generate Now'}
+ {generatingNow ? 'Generating…' : (<><Sparkles size={15} className="text-gold" aria-hidden="true" /> Generate Now</>)}
  </button>
  <button
  onClick={handleSaveAutomation}

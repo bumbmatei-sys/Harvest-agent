@@ -30,6 +30,7 @@ import LiveNowBanner from './LiveNowBanner';
 import LivestreamView from './LivestreamView';
 import { DesktopContainer } from './layout/DesktopLayout';
 import { visibleNavGroups } from './layout/nav-groups';
+import { useMemberPhoto, memberInitial } from '../hooks/useMemberPhoto';
 
 const PLATFORM_TENANT_ID = process.env.NEXT_PUBLIC_PLATFORM_TENANT_ID || 'harvest';
 const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -78,6 +79,8 @@ interface MainAppProps {
 
 const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   const { tenantPlan, currentUser } = useAppStore();
+  // THE-141 - the member's own photo, from the Firestore user document.
+  const { photoURL: memberPhotoURL } = useMemberPhoto();
   const { tenantId, tenantName, branding, tenantPlan: ctxTenantPlan, tenantAddons, isLoading: tenantLoading, stripeConnectStatus } = useTenant();
   // White-label tenants (any real tenant other than the platform) show their own
   // name + logo; the platform / super-admin view keeps the "Harvest" brand.
@@ -773,15 +776,35 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
               <h1 className="font-display text-lg font-normal tracking-[-0.01em] text-strong">{desktopTitle}</h1>
               {showDesktopDate && <p className="text-xs text-faint mt-0.5">{desktopDate}</p>}
             </div>
+            {/* THE-141 - the photo comes from `useMemberPhoto`, which reads the
+                FIRESTORE user document and falls back to the Auth profile. This
+                read `currentUser?.photoURL` — the Auth profile ALONE — which
+                Google sign-in populates but an upload never reaches, so an
+                email/password member who had set a photo saw their initial here
+                while all six other surfaces showed the photo. The letter avatar
+                is still the fallback for a member who genuinely has none.
+
+                THE ELEMENT TREE IS DELIBERATELY UNCHANGED, and that is a SPLIT
+                rather than an oversight. Adopting `ui/avatar` here is a
+                presentation change the DEFECT does not need, and it moves this
+                header's tags, class literals, colour tokens and rendered row
+                inventory — six assertions across three frozen baselines
+                (MemberScreens.desktop-layout, THE-295, THE-348), each of which
+                would need its own reversible fold and meta-guard. `main` went
+                red for everyone once because a PR replaced a pinned baseline.
+                So the data source is fixed here and the primitive adoption is
+                reported as its own ticket: same markup, same classes, different
+                FIELD. See hooks/useMemberPhoto.ts. */}
             <button
               onClick={() => setActiveBottomTab('profile')}
               className="flex items-center justify-center w-9 h-9 rounded-full overflow-hidden bg-surface-sunken text-sm font-bold text-muted shrink-0 hover:opacity-90 transition-opacity"
               title="My Profile"
+              data-testid="member-header-avatar"
             >
-              {currentUser?.photoURL ? (
-                <img src={currentUser.photoURL} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              {memberPhotoURL ? (
+                <img src={memberPhotoURL} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               ) : (
-                <span>{(currentUser?.displayName?.trim()?.[0] || 'U').toUpperCase()}</span>
+                <span>{memberInitial(currentUser?.displayName)}</span>
               )}
             </button>
           </div>
