@@ -243,7 +243,30 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
    if (data.photoURL) {
      setProfilePic(data.photoURL);
    }
-   if (data.role === 'admin' || data.role === 'church_admin' || data.role === 'super_admin' || isSuperAdminEmail(data.email)) {
+   /**
+    * 🔴 THE-107 — `auth.currentUser?.email`, NOT `data.email`.
+    *
+    * `data` is this user's OWN `users/{uid}` document, and `email` is one of the
+    * fields the self-edit branch of the users rule does NOT fence: that branch
+    * blocks `role`, `permissions`, `tenantId`, `plan` and the affiliate fields,
+    * and lets everything else through. So `data.email` is a value the signed-in
+    * user can write to any string they like, including a platform owner's
+    * address — and this line then handed them the admin entry point.
+    *
+    * ⚠️ IT WAS NEVER AN ESCALATION, and that is the point rather than a reason
+    * to leave it. `firestore.rules` is the boundary and its `isSuperAdmin()`
+    * reads `request.auth.token.email`, which is the Auth record and is not
+    * writable from a client at all — so the forged doc field opened a DOOR ONTO
+    * A ROOM WHERE EVERY READ IS STILL DENIED. What it cost was a screen full of
+    * permission errors for the person who tried it, and a real super admin's
+    * check disagreeing with the one the server makes.
+    *
+    * The token email is what `isSuperAdmin()` in the rules, `verifyAuth` in
+    * `api-auth.ts` and `setCustomClaims` all key off, so reading it here is the
+    * client agreeing with the boundary instead of guessing alongside it. The
+    * three ROLE tests are untouched: `role` is already server-authority.
+    */
+   if (data.role === 'admin' || data.role === 'church_admin' || data.role === 'super_admin' || isSuperAdminEmail(auth.currentUser?.email)) {
      setIsAdmin(true);
    }
    // Partnership data

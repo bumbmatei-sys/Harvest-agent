@@ -404,6 +404,30 @@ export const RECORDED_EDITS: ReadonlyArray<RecordedEdit> = [
       + 'property still holds because this ticket adds no style attribute anywhere.',
     digest: '0170068b6a01751d2026c4c4e34e62434c3dfeaeabce1a799e1cf9ccf96b31a8',
   },
+  {
+    file: 'src/components/Profile.tsx',
+    ticket: 'THE-107',
+    why:
+      'ONE ARGUMENT CHANGED: the admin-flag test now reads `auth.currentUser?.email` instead of '
+      + '`data.email`. `data` is the signed-in user\'s OWN `users/{uid}` document, and the '
+      + "self-edit branch of the users rule fences only `role`, `permissions`, `tenantId`, `plan` "
+      + 'and the affiliate fields \u2014 `email` is NOT fenced, so it is a string the user can '
+      + "write to a platform owner's address, and this line then showed them the admin entry "
+      + 'point. IT WAS NEVER AN ESCALATION and the fix does not claim it was: `firestore.rules` is '
+      + "the boundary, its `isSuperAdmin()` reads `request.auth.token.email`, and that is not "
+      + 'client-writable \u2014 so the forged field opened a door onto a room where every read is '
+      + 'still denied. What it cost was a permission-error screen for whoever tried it, and a '
+      + 'client disagreeing with the server about who a super admin is. The token email is the '
+      + 'value `isSuperAdmin()` in the rules, `verifyAuth` in `api-auth.ts` and `setCustomClaims` '
+      + 'already key off, so this is the client agreeing with the boundary rather than guessing '
+      + 'beside it. THE THREE ROLE TESTS ARE UNTOUCHED \u2014 `role` is already server-authority '
+      + 'and the rules refuse a self-write to it. No token, no primitive, no dependency and no '
+      + 'other line of this file changed; `isSuperAdminEmail` is the same import it always was, '
+      + 'and `auth` was already used two lines above for `displayName`. RENDERED OUTPUT IS '
+      + 'IDENTICAL for every legitimate user, super admin included, because for them the Auth '
+      + 'record and the doc copy carry the same address.',
+    digest: '6fd7396b7ad92e4e902ea2c81a1fb0a66c5d4e16534a15adf35fd946f1a53e12',
+  },
 ];
 
 /** A ticket reference the register will accept. */

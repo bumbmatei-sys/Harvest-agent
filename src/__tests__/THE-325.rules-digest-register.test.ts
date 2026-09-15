@@ -401,8 +401,29 @@ const filesSpelling = (digest: string): string[] =>
  * `rulesDigestFailure()` like every other pinner - never as a literal, which is
  * the mistake this register caught #504 making - so a real rules change still
  * costs exactly one edit. Nothing above is removed and no accepted value is
- * widened. */
-const PINNING_SUITES = 75;
+ * widened.
+ *
+ * THE-364 IS THE SEVENTY-SIXTH, and it is the clearest case this register has
+ * had for existing. It bundles eight backlog cards, and TWO of them ended at
+ * this file rather than going through it:
+ *
+ *   · THE-107 - `isSuperAdmin()` accepts `tokenEmail()` against a frozen list
+ *     with NO `email_verified` test anywhere, so the leg that identifies a
+ *     platform owner trusts an address Firebase never made anyone prove. The
+ *     replacement rule is one line and it is written out in the pull request,
+ *     NOT applied: requiring verification could lock the founder out of their
+ *     own platform if their Auth record is unverified, and no test here can
+ *     read that.
+ *   · THE-52 - a message cap on Community Groups. A cap is only a cap where it
+ *     BINDS, which is this file; a client `maxLength` is display, exactly as
+ *     86bbtx3dj settled. So the recommended number, its reasoning and the rule
+ *     text are reported, and nothing ships.
+ *
+ * ITS OWN OWNERSHIP RECORD CARRIES NO `firestore.rules` ENTRY, per #464: it
+ * records the one suite it edits and no rules digest, because it opened the
+ * rules file to READ it and left it byte-identical. It reaches the accepted set
+ * through `rulesDigestFailure()` like every other pinner. */
+const PINNING_SUITES = 76;
 
 /**
  * A digest no ticket has recorded and none ever will — the planted change.
