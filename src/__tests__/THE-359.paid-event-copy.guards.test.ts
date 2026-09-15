@@ -834,10 +834,30 @@ describe('23 · firestore.rules, the indexes, functions/ and layout.tsx are byte
     expect(recorded.map((e) => e.digest),
       `${FREEZE_REGISTERED} is at a digest no ticket recorded`)
       .toContain(sha256File(FREEZE_REGISTERED));
-    // 🔴 AND THE NEWEST ENTRY IS THIS TICKET'S — appended, never substituted.
+    /**
+     * 🔴 THE-359 RECORDED ITS EDIT — appended, never substituted.
+     *
+     * ⚠️ THIS ASSERTION USED TO READ "the NEWEST entry is THE-359's", and
+     * THE-364 is the ticket it expired on. That shape is the one THE-315 bans
+     * one step removed: it does not read the branch's diff, but "I am the last
+     * to touch this file" is true only until somebody else legitimately appends
+     * — which the register's whole protocol exists to let them do. THE-107
+     * appended a row for Profile.tsx, this went red, and the failure had nothing
+     * to do with THE-359's work. That is the definition of a guard that blocks
+     * unrelated PRs.
+     *
+     * What THE-359 actually needs to claim is unchanged and is claimed here: its
+     * OWN row is still present (so no later ticket substituted over it), and the
+     * file on disk is at a digest SOME ticket recorded — asserted directly above
+     * — with the NEWEST row being the one that matches disk, whoever wrote it.
+     * Both get MORE true as tickets append, so neither can expire.
+     */
+    expect(recorded.map((e) => e.ticket),
+      "THE-359's own row was removed or substituted over").toContain('THE-359');
     const latest = recorded[recorded.length - 1];
-    expect(latest.ticket, 'THE-359 edited Profile.tsx and recorded nothing').toBe('THE-359');
-    expect(latest.digest).toBe(sha256File(FREEZE_REGISTERED));
+    expect(latest.digest,
+      'the newest recorded row for Profile.tsx is not the state it is in on disk')
+      .toBe(sha256File(FREEZE_REGISTERED));
   });
 
   it('🔴 the suites this ticket edits are at recorded digests too', () => {

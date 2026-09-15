@@ -492,7 +492,7 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * retires a pinner updates this count and says what that suite still asserts;
  * a suite that quietly stops pinning fails here.
  */
-const RULES_PINNERS_NOW = 75;
+const RULES_PINNERS_NOW = 76;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per
@@ -1043,6 +1043,27 @@ const RULES_PINNERS_ADDED_SINCE: ReadonlyArray<readonly [ticket: string, suite: 
   // `rulesDigestFailure()` and never as a literal — the mistake THE-325 caught
   // #504 making, and which this register exists to keep catching.
   ['THE-362', 'src/__tests__/THE-362.guards.test.ts'],
+  // 🔴 THE-364 — the eight-card bundle (THE-107, THE-218, THE-171, THE-101,
+  // THE-52, THE-98, THE-56, THE-43). APPENDED beside the entries above, never
+  // over one, and `RULES_PINNERS_NOW` goes 75 -> 76.
+  //
+  // ⚠️ IT RECORDS NO `firestore.rules` DIGEST, and for this bundle that is the
+  // HEADLINE rather than a footnote. TWO of its eight cards landed on a rule
+  // and BOTH stopped at the file:
+  //
+  //   · THE-107 found that `isSuperAdmin()` accepts `tokenEmail()` with no
+  //     `email_verified` test, on all three surfaces. The replacement rule is
+  //     written out in the pull request and NOT applied here — whether the
+  //     founder's own accounts are verified decides whether that one line locks
+  //     the platform owner out, and that is not a question a test can answer.
+  //   · THE-52 was asked for a message cap on Community Groups. The only
+  //     BINDING place to put one is this file, so the recommended number and
+  //     the exact rule are reported and no cap ships.
+  //
+  // What its guard suite asserts is what every pinner asserts: `firestore.rules`
+  // on disk is at a digest some ticket recorded, through `rulesDigestFailure()`
+  // and never as a literal — the mistake THE-325 caught #504 making.
+  ['THE-364', 'src/__tests__/THE-364.bundle-guards.test.ts'],
 ];
 
 describe('5 · every suite that pinned firestore.rules still pins it', () => {

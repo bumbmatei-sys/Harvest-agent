@@ -611,8 +611,8 @@ describe('a super admin still sees everything through platformOverride', () => {
      * incidental.
      *
      * `harvest.theharvest.app` resolves as a tenant slug, so `platformOverride`
-     * is false there. `scripts/seed-platform-tenant.js` writes that tenant
-     * `plan: 'ministry'` — NOT one of the four ids in PLAN_ORDER — so
+     * is false there. `scripts/seed-platform-tenant.js` USED TO WRITE that
+     * tenant `plan: 'ministry'` — NOT one of the four ids in PLAN_ORDER — so
      * `getPlanFeatures` fell through its `|| PLAN_FEATURES.plus` default and the
      * platform's own admin surface was silently gated to INDIVIDUAL. `plan`
      * being truthy also meant `!isTenantAdmin` was false, so the old bypass
@@ -620,8 +620,15 @@ describe('a super admin still sees everything through platformOverride', () => {
      *
      * `!isWhiteLabel` now answers this the way every other platform-tenant check
      * in the shell already does (`isPlanReady`, `showInbox`, the logo choice):
-     * Harvest is not a customer, so there is no tier to hold it to. The seed's
-     * invalid plan id is a separate defect and is reported, not fixed here.
+     * Harvest is not a customer, so there is no tier to hold it to.
+     *
+     * 🔴 THE SEED IS FIXED — THE-107/THE-218 moved it to `plan: 'max'`, and
+     * `THE-218.platform-tenant-plan.test.ts` pins that. THIS TEST IS UNCHANGED
+     * AND STILL RIGHT, because what it asserts was never "the seed writes
+     * 'ministry'": it is that an UNRECOGNISED plan id resolves to Individual,
+     * and that `!isWhiteLabel` unlocks the platform tenant REGARDLESS of what
+     * its plan field happens to say. Both remain true, and the second is the
+     * reason the shell was never actually gated on the seed being right.
      */
     store.current = { ...store.current, currentTenantId: 'harvest' };
     hasPlatformOverrideMock.mockReturnValue(false);
