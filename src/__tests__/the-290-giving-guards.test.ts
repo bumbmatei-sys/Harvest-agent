@@ -382,6 +382,9 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // APPENDED BY THE-351, nothing above removed or rewritten.
     ['2db14e00681bca8af26bbffceb3749178dd7df89a0e226a4b527be1d4dc37bc1',
       `main + THE-351 - the per-tenant inbox of payments to confirm joins the header on BOTH shells: the desktop top bar's right cluster (beside the super-admin platform bell) and AdminScreenHeader's rightAccessory on mobile, which is the only header a phone renders. The founder: "Put inbox in all tenants in top right where this will appear, that someone pressed on I paid and they have to confirm it." It is NOT the existing 'inbox' TAB - that one is platform_inbox, super-admin-on-apex only, and this ticket adds neither of its two spellings; the new control is not a tab at all and its accessible name is "Payments to confirm". No nav array, no group, no permission, no route and no screen mount moved.`],
+    // APPENDED BY THE-191, nothing above removed or rewritten.
+    ['465b72f66ae55ec668f5bc7407c49edaeee0be5f5b20e028f6a64e57de6a8397',
+      `main + THE-191 - the campus cap offers the add-on, so AdminChurches needs a door to the screen that sells one. ONE prop on the existing <AdminChurches /> mount: onOpenBilling, wired to the SAME expression the account menu already passes (billingAccess === 'yes' ? () => setShowBilling(true) : undefined), so an admin without settled billing access still gets undefined and no button. No nav array, group, tab id, permission gate, render arm, import or new state moved.`],
   ],
   'firestore.indexes.json': [
     ['8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0', 'main at 7fd4672'],

@@ -1,0 +1,11 @@
+{
+  "ticket": "THE-191",
+  "entries": [
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "465b72f66ae55ec668f5bc7407c49edaeee0be5f5b20e028f6a64e57de6a8397",
+      "why": "THE CAMPUS CAP NEEDS A DOOR TO THE SCREEN THAT SELLS A CAMPUS. At its campus limit, AdminChurches used to disable \"Add church\" and hang a title on it reading \"Your plan includes 1 church. Upgrade to Ministry to add more.\" That sentence was FALSE - maxChurches is 1 on every tier, Ministry included, because Ministry deliberately did not inherit the deleted ultra tier's -1 - and it was also unreachable on touch, since a title needs a hover and a disabled button never fires its own onClick. The cap is a thing to BUY, not a wall, so the button now opens an offer that names the live campus price read from /api/dodo/addons and routes the church to the add-ons surface. THE EDIT TO THIS FILE IS ONE PROP on the existing <AdminChurches /> mount: onOpenBilling, wired to the SAME expression the account menu already passes for its own Billing row - billingAccess === 'yes' ? () => setShowBilling(true) : undefined - so an admin whose billing access has not settled to 'yes' still receives undefined and the offer renders no button to a screen they cannot open. NO NEW CAPABILITY AND NO NEW STATE: setShowBilling and billingAccess both already existed in this file for the account menu, and this is a second reader of them. Nothing else here moves - no nav array, no group, no tab id, no permission gate, no render arm, no import, and no screen mount is added or removed."
+    }
+  ],
+  "note": "Recorded because AdminDashboard.tsx is byte-frozen by THE-319 and pinned by this register. APPENDED, NEVER SUBSTITUTED: the matching digest was added to the accepted SET for this file in the-299-retention-guards.test.ts with every earlier value kept, because CI runs against refs/pull/N/merge and a merge ref cut before this ticket landed legitimately carries one of them. A digest that is NEITHER - i.e. a later slice editing this file without recording it - still fails, which is the whole threat the freeze exists for. No firestore.rules digest is recorded here: this register is per ticket (#464) and the rules file is not this ticket's to touch."
+}

@@ -11,12 +11,77 @@ import { getPlanFeatures } from '../utils/plan-features';
 import { useTenant } from '@/contexts/TenantContext';
 import { AdminPageHeader, AdminPrimaryButton } from './admin/AdminUI';
 import { FORM_MEASURE } from './layout/form-layout';
+import {
+  fetchOfferableAddons,
+  formatAddonPrice,
+  type AddonBillingPeriod,
+} from '../utils/addon-change';
 
 /** Every plan includes 1 church free (the tenant's own). */
 const INCLUDED_CHURCHES = 1;
 
+/**
+ * THE-191 — the campus cap now names what a second campus costs.
+ *
+ * ─── What a church used to get here ──────────────────────────────────────────
+ *
+ * At the cap, "Add church" was `disabled`, carrying a `title` that read "Your
+ * plan includes 1 church. Upgrade to Ministry to add more." Three things were
+ * wrong with that, and the first is the one that matters:
+ *
+ *  1. 🔴 IT WAS FALSE. `maxChurches` is 1 on EVERY tier — Ministry included (see
+ *     `plan-features.ts`, where Ministry deliberately did not inherit the
+ *     deleted ultra tier's -1). Upgrading to Ministry buys no campus at all. The
+ *     church would have paid $199/mo and arrived at the same refusal.
+ *  2. 🔴 THE SENTENCE WAS UNREACHABLE ANYWAY on the surface that matters. It sat
+ *     on a `title` attribute of a DISABLED button, so it needed a hover: a touch
+ *     admin — the mobile case this product is built around — pressed a greyed
+ *     control and got nothing at all. The matching branch inside
+ *     `handleAddChurchClick` was dead code, because a disabled button never
+ *     fires `onClick`.
+ *  3. It named no price and offered no route forward.
+ *
+ * ─── Why an upgrade prompt is right HERE and nowhere else ────────────────────
+ *
+ * Harvest does not put teasers in the nav. This is the one place the prompt is
+ * genuinely earned: a church has pressed a specific button, at a specific
+ * moment, wanting a specific thing that is for sale. So the cap now OPENS the
+ * offer instead of refusing, and the button is no longer disabled.
+ *
+ * ─── 🔴 THE PRICE IS READ, NEVER WRITTEN ─────────────────────────────────────
+ *
+ * The figure comes from `/api/dodo/addons` — the same live catalogue read
+ * `AddOnsSection` renders from — via `fetchOfferableAddons`, and is formatted by
+ * the same `formatAddonPrice` on the add-on's own billing period. NOTHING here
+ * spells a number.
+ *
+ * ⚠️ That is not fastidiousness. This file already carried
+ * `ENTERPRISE_PRICE_PER_CHURCH = 10`, and `catalogue.ts` still describes the
+ * campus add-on as "$15 a month" in a comment. The LIVE price is neither: both
+ * hardcoded figures are wrong, which is exactly what a hardcoded price becomes.
+ * Quoting a church a stale number on a money decision is the class of claim this
+ * product keeps having to correct.
+ *
+ * 🔴 AND A FAILED READ NAMES NO FIGURE. If the catalogue call fails, or this
+ * build cannot sell a campus in the running environment (`addonIdFor` returns
+ * null, so the meaning is absent from the response), the offer renders WITHOUT a
+ * price rather than falling back to one. Same rule `AddOnsSection`'s failed
+ * preview follows: no figure beats a wrong figure. The read is reported through
+ * `priceError` and never swallowed.
+ */
+const CAMPUS_ADDON = 'campus' as const;
 
-const AdminChurches: React.FC = () => {
+interface AdminChurchesProps {
+  /**
+   * Opens the billing screen, where `AddOnsSection` actually sells the campus.
+   * Optional and undefined-when-not-entitled, mirroring `onOpenBilling` on
+   * `MyAccountMenu`: an admin without billing access gets the explanation and
+   * the price, but no button to a screen they cannot open.
+   */
+  onOpenBilling?: () => void;
+}
+
+const AdminChurches: React.FC<AdminChurchesProps> = ({ onOpenBilling }) => {
   const { tenantId, tenantPlan } = useTenant();
   const [churches, setChurches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,6 +97,13 @@ const AdminChurches: React.FC = () => {
   const [billingNotice, setBillingNotice] = useState<string | null>(null);
   const [showBillingConfirm, setShowBillingConfirm] = useState(false);
   const [billingLoading, setBillingLoading] = useState(false);
+  // THE-191 — the campus offer shown at the cap, and the live price it quotes.
+  const [showCampusOffer, setShowCampusOffer] = useState(false);
+  const [campusPrice, setCampusPrice] = useState<string | null>(null);
+  const [priceLoading, setPriceLoading] = useState(false);
+  // 🔴 Held so the offer can say the price is missing rather than quietly
+  // render as though a campus were free. Never rendered as a figure.
+  const [priceError, setPriceError] = useState<string | null>(null);
   // Whether the church being added right now is a paid one. Captured at add-time
   // because `churches` can update via onSnapshot before handleChurchSaved runs.
   const willBeBilledRef = useRef(false);
@@ -151,11 +223,59 @@ const AdminChurches: React.FC = () => {
     }
   };
 
+  /**
+   * Ask the live catalogue what a campus costs. READ-ONLY, and lazy.
+   *
+   * Only ever called when an admin has actually pressed "Add church" at the cap,
+   * so the Dodo-backed catalogue read is not spent on every admin who merely
+   * opens this screen.
+   *
+   * 🔴 A failure is RECORDED, not swallowed: `priceError` is what makes the
+   * offer drop its figure instead of rendering a blank where a price belongs.
+   */
+  const loadCampusPrice = async (forTenant: string) => {
+    setPriceLoading(true);
+    setPriceError(null);
+    try {
+      const { addons, billing, error } = await fetchOfferableAddons(forTenant);
+      if (error) {
+        setCampusPrice(null);
+        setPriceError(error);
+        return;
+      }
+      const campus = addons.find((a) => a.addon === CAMPUS_ADDON);
+      // Absent means this build cannot sell a campus here — `offerableAddonMeanings`
+      // derives the response from the active add-on table, so an unmapped id is
+      // simply not in it. That is a refusal to sell, not a failed read.
+      if (!campus || !billing) {
+        setCampusPrice(null);
+        setPriceError(
+          campus ? 'We could not confirm the billing period.' : 'A campus cannot be added on this account yet.',
+        );
+        return;
+      }
+      setCampusPrice(
+        formatAddonPrice(campus.priceMinorUnits, campus.currency, billing as AddonBillingPeriod),
+      );
+    } catch (err) {
+      console.error('Failed to load campus add-on price:', err);
+      setCampusPrice(null);
+      setPriceError('We could not load the campus price just now.');
+    } finally {
+      setPriceLoading(false);
+    }
+  };
+
   const handleAddChurchClick = () => {
     if (loading) return; // church count not known yet — can't decide cap/billing
     if (atLimit) {
-      setBillingNotice(`Your plan includes ${INCLUDED_CHURCHES} church. Upgrade to Ministry to add more.`);
-      setTimeout(() => setBillingNotice(null), 5000);
+      // 🔴 Reachable now. The button is no longer `disabled`, so this opens the
+      // offer instead of being dead code behind a control that cannot be pressed.
+      setShowCampusOffer(true);
+      setCampusPrice(null);
+      setPriceError(null);
+      if (tenantId) loadCampusPrice(tenantId);
+      else setPriceError('A campus cannot be priced without an organisation.');
       return;
     }
     // The first church is free on every plan; only Ministry's 2nd+ church is billed.
@@ -217,7 +337,10 @@ const AdminChurches: React.FC = () => {
         eyebrow="Platform"
         title="Churches"
         subtitle={isMinistry ? `${churches.length} church${churches.length !== 1 ? 'es' : ''} · $${Math.max(0, churches.length - INCLUDED_CHURCHES) * ENTERPRISE_PRICE_PER_CHURCH}/mo (${INCLUDED_CHURCHES} included free)` : undefined}
-        action={<AdminPrimaryButton onClick={() => handleAddChurchClick()} disabled={atLimit} title={atLimit ? `Your plan includes ${INCLUDED_CHURCHES} church. Upgrade to Ministry to add more.` : undefined} icon={<span className="text-[15px] leading-none">+</span>}>Add church</AdminPrimaryButton>}
+        /* 🔴 NOT `disabled` at the cap — see the module note. The cap is a thing
+           to BUY, so the button opens the offer; disabling it is what made the
+           refusal silent on touch and its own handler unreachable. */
+        action={<AdminPrimaryButton onClick={() => handleAddChurchClick()} className="min-h-[44px] sm:min-h-0" icon={<span className="text-[15px] leading-none">+</span>}>Add church</AdminPrimaryButton>}
       />
 
       {/* Billing Notice */}
@@ -257,6 +380,55 @@ const AdminChurches: React.FC = () => {
                 <DollarSign size={16} />
                 Confirm & Add Church ($10/mo)
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* THE-191 — at the cap: what a campus costs, and where to buy one. */}
+      {showCampusOffer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="bg-surface-raised rounded-2xl p-6 max-w-md w-full shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-[var(--surface-gold)] flex items-center justify-center">
+                <Church size={20} className="text-gold" />
+              </div>
+              <h3 className="text-xl font-bold text-strong font-display">Add another campus</h3>
+            </div>
+            <p className="text-muted mb-2">
+              {/* 🔴 "every plan, Ministry included" is the correction. The old copy
+                  sent a church to a $199/mo tier that grants no extra campus. */}
+              Every Harvest plan includes {INCLUDED_CHURCHES} campus — Ministry included.
+              A second campus is an add-on.
+            </p>
+            {priceLoading ? (
+              <p className="text-sm text-muted mb-6">Checking the price…</p>
+            ) : campusPrice ? (
+              <p className="text-base text-strong font-semibold mb-6">
+                {campusPrice} for each extra campus
+              </p>
+            ) : (
+              /* 🔴 NO FIGURE ON A FAILED READ. See the module note. */
+              <p className="text-sm text-muted mb-6">
+                {priceError || 'We could not load the campus price just now.'}
+                {' '}You can see the current price on the billing screen.
+              </p>
+            )}
+            <div className="flex flex-col sm:flex-row sm:justify-end gap-3">
+              <button
+                onClick={() => setShowCampusOffer(false)}
+                className="min-h-[44px] sm:min-h-0 px-4 py-2.5 text-muted hover:bg-surface-sunken rounded-xl transition-colors font-medium"
+              >
+                Not now
+              </button>
+              {onOpenBilling && (
+                <button
+                  onClick={() => { setShowCampusOffer(false); onOpenBilling(); }}
+                  className="min-h-[44px] sm:min-h-0 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-gold text-white rounded-xl hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors font-medium"
+                >
+                  Add a campus
+                </button>
+              )}
             </div>
           </div>
         </div>

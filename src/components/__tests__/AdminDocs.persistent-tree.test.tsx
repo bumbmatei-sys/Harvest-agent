@@ -1000,6 +1000,12 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ are byte-identical'
   // adds neither of its two spellings. No nav array, no group, no permission, no
   // route and no screen mount moved. APPENDED, NEVER SUBSTITUTED.
   '2db14e00681bca8af26bbffceb3749178dd7df89a0e226a4b527be1d4dc37bc1',
+    // APPENDED BY THE-191, nothing above removed or rewritten: the campus cap
+    // offers the add-on, so AdminChurches gains a door to the billing screen.
+    // ONE prop on the existing <AdminChurches /> mount (onOpenBilling), wired to
+    // the same billingAccess check the account menu already uses. No nav array,
+    // group, tab id, permission gate, render arm or import moved.
+    '465b72f66ae55ec668f5bc7407c49edaeee0be5f5b20e028f6a64e57de6a8397',
   ];
 
   it('AdminDashboard.tsx is untouched by THIS ticket — others legitimately own it', () => {

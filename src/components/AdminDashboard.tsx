@@ -1602,7 +1602,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           ) : activeTab === 'inbox' ? (
             <div className="p-4 lg:p-0"><PlatformInbox /></div>
           ) : activeTab === 'churches' ? (
-            <div className="p-4 lg:p-0"><AdminChurches /></div>
+            /* THE-191 — the campus cap offers the add-on, so it needs the same
+               billing door `MyAccountMenu` gets, gated the same way: undefined
+               unless billing access has settled to 'yes'. */
+            <div className="p-4 lg:p-0"><AdminChurches onOpenBilling={billingAccess === 'yes' ? () => setShowBilling(true) : undefined} /></div>
           ) : activeTab === 'courses' ? (
             planAllows(features && features.maxCourses !== 0)
               ? <div className="p-4 lg:p-0"><AdminCourses /></div>
