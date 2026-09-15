@@ -1,6 +1,6 @@
 "use client";
 import React from 'react';
-import { ChartColumn, AlignLeft, Lock, TriangleAlert, FileText } from 'lucide-react';
+import { ChartColumn, AlignLeft, Lock, TriangleAlert, FileText, Star } from 'lucide-react';
 
 import { Progress } from '../ui/progress';
 import type { QuestionSummary } from './form-answers';
@@ -194,6 +194,60 @@ const ListBody: React.FC<{ summary: Extract<QuestionSummary, { kind: 'list' }> }
 };
 
 /**
+ * 🔴 THE-366 — a rating or scale question: the distribution over every point,
+ * and the mean.
+ *
+ * EVERY POINT GETS A ROW, including the ones nobody chose. A gap is information
+ * — "nobody rated it below a 4" is the reading — and dropping the empty rows
+ * would silently rescale the chart so that a unanimous 5 and a spread both
+ * looked like a full bar.
+ *
+ * 🔴 THE MEAN IS ABSENT, NOT ZERO, WHEN NOBODY ANSWERED. A displayed "0.0" over
+ * an unanswered question is the same lie as an unanswered row exporting as 0,
+ * one level up, and it is the figure a church reads off a screen and repeats
+ * out loud. `aggregate.mean` is `null` in that case and this renders a dash.
+ */
+const ScaleBody: React.FC<{ summary: Extract<QuestionSummary, { kind: 'scale' }> }> = ({ summary }) => {
+  const { aggregate, field } = summary;
+  return (
+    <div data-scale-body={field.type}>
+      <p data-scale-mean className="text-[13px] text-muted mb-2">
+        {aggregate.mean === null
+          ? 'Average — no answers yet'
+          : `Average ${aggregate.mean.toFixed(1)} across ${aggregate.answered} ${aggregate.answered === 1 ? 'answer' : 'answers'}`}
+      </p>
+      <div className="space-y-2.5">
+        {aggregate.points.map((point) => (
+          <div key={point.point} data-scale-point={point.point}>
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-[13px] text-body tabular-nums">{point.point}</span>
+              <span data-scale-count className="text-[13px] font-semibold text-strong shrink-0 tabular-nums">
+                {point.count} · {Math.round(point.percent)}%
+              </span>
+            </div>
+            {/* Same seam and same `aria-hidden` argument as ChoiceBody: the
+                count and the share are written out above the bar, so naming
+                the bar would announce the same figure twice. */}
+            <Progress
+              aria-hidden
+              data-scale-bar
+              value={barValue(point.percent)}
+              className="mt-1.5 block [&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-track]]:bg-surface-sunken [&_[data-slot=progress-indicator]]:rounded-full [&_[data-slot=progress-indicator]]:bg-gold"
+            />
+          </div>
+        ))}
+      </div>
+      {(field.scaleMinLabel || field.scaleMaxLabel) && (
+        <div className="mt-2 flex justify-between text-xs text-faint">
+          <span>{field.scaleMinLabel ?? ''}</span>
+          <span>{field.scaleMaxLabel ?? ''}</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
  * 🔴 An email or phone question — counted, never charted and never listed.
  *
  * See PRIVATE_TYPES in form-answers.ts for the whole argument. In short: every
@@ -213,12 +267,14 @@ const NOTE: Record<QuestionSummary['kind'], (s: QuestionSummary) => string> = {
   choice: (s) => (s.field.type === 'checkbox' ? 'choose any, so shares can total over 100%' : 'choose one'),
   list: (s) => `${s.field.type.replace('_', ' ')}, listed in full`,
   private: (s) => `${s.field.type}, counted only`,
+  scale: (s) => (s.field.type === 'rating' ? '1-5, averaged' : 'a scale, averaged'),
 };
 
 const ICON: Record<QuestionSummary['kind'], React.ReactNode> = {
   choice: <ChartColumn size={17} />,
   list: <AlignLeft size={17} />,
   private: <Lock size={17} />,
+  scale: <Star size={17} />,
 };
 
 export interface FormAnswersViewProps {
@@ -291,6 +347,7 @@ export const FormAnswersView: React.FC<FormAnswersViewProps> = ({
         >
           {summary.kind === 'choice' ? <ChoiceBody summary={summary} />
             : summary.kind === 'list' ? <ListBody summary={summary} />
+            : summary.kind === 'scale' ? <ScaleBody summary={summary} />
             : <PrivateBody summary={summary} />}
         </QuestionCard>
       ))}

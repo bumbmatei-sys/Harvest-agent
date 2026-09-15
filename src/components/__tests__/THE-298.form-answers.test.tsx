@@ -324,9 +324,17 @@ describe('each question renders its own aggregate, keyed to the form’s fields'
       .matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
     expect(declared.sort()).toEqual([...FIELD_TYPES_WITH_ANSWERS].sort());
     for (const t of declared) expect(TREATMENT[t as keyof typeof TREATMENT], `${t} has no treatment`).toBeTruthy();
-    // ⚠️ Reported rather than assumed: this schema has NO rating or scale type.
-    expect(declared).not.toContain('rating');
-    expect(declared).not.toContain('scale');
+    // ⚠️ Reported rather than assumed. THE-298 recorded here that the schema had
+    // NO rating and NO scale type, and that was true of the builder it read.
+    // 🔴 THE-366 ADDED BOTH, so the report is inverted rather than deleted: the
+    // fact is still asserted, it has simply changed, and the line above — the
+    // one that matters — is untouched and still requires the builder's union and
+    // FIELD_TYPES_WITH_ANSWERS to agree exactly, so a type added to one and not
+    // the other fails HERE rather than rendering with no aggregate.
+    expect(declared, 'the rating type left the builder').toContain('rating');
+    expect(declared, 'the scale type left the builder').toContain('scale');
+    expect(TREATMENT.rating, 'rating has no treatment').toBe('scale');
+    expect(TREATMENT.scale, 'scale has no treatment').toBe('scale');
   });
 });
 
@@ -662,6 +670,18 @@ describe('no Firestore orderBy is issued if the timestamp field holds mixed type
  * than retyped, and stored here as text so a failure shows the real diff. ⚠️ A
  * church may already depend on this shape.
  */
+/**
+ * 🔴 AN ACCEPTED LIST, APPENDED TO AND NEVER SUBSTITUTED.
+ *
+ * This was ONE literal — THE-298's record of the CSV export as it stood — until
+ * THE-366 added the `rating` and `scale` types, which the column has to render
+ * as numbers. Replacing the literal would have destroyed the record of what
+ * THE-298 actually pinned, and `main` went red for everyone the week a PR
+ * replaced a pinned value instead of adding one. So THE-298's body stays FIRST
+ * and byte-for-byte unchanged, and THE-366's is appended after it with its
+ * reason — the idiom THE-309, THE-305 and THE-364 already use. A body that is
+ * NEITHER still fails, which is the whole threat.
+ */
 const CSV_EXPORT_AT_MAIN = `  const exportCsv = () => {
     if (!selectedForm) return;
     const cols = selectedForm.fields.sort((a, b) => a.order - b.order);
@@ -692,15 +712,67 @@ const exportCsvOf = (src: string): string | null => {
   return to < 0 ? null : src.slice(from, to + '\n  };'.length);
 };
 
+/** 🔴 APPENDED BY THE-366 — rating and scale export as NUMBERS, and an
+ *  unanswered one as the EMPTY string rather than 0. A zero IS a rating: export
+ *  skipped rows as 0 and the mean of a feedback form is dragged toward zero by
+ *  people who simply did not answer. Every other column is untouched. */
+const CSV_EXPORT_AT_THE_366 = `  const exportCsv = () => {
+    if (!selectedForm) return;
+    const cols = selectedForm.fields.sort((a, b) => a.order - b.order);
+    const header = ['Submitted At', ...cols.map(c => c.label)];
+    const rows = submissions.map(s => [
+      s.submittedAt?.toDate ? s.submittedAt.toDate().toISOString() : '',
+      ...cols.map(c => {
+        const v = s.answers?.[c.id];
+        // 🔴 THE-366 — a rating or scale answer is a NUMBER in this column, never
+        // a label: \`4\`, not "Good" and not "4 of 5". A spreadsheet column is
+        // where arithmetic happens and a label cannot be averaged. An UNANSWERED
+        // one is the empty string — never 0. A zero IS a rating, so exporting
+        // skipped rows as 0 drags the mean of a feedback form toward zero and a
+        // church concludes their conference went badly on the strength of the
+        // rows where nobody answered.
+        if (fieldIsScale(c.type)) return toCsvCell(v, c.type, { min: c.scaleMin, max: c.scaleMax });
+        return Array.isArray(v) ? v.join('; ') : (v ?? '');
+      }),
+    ]);
+    const csv = [header, ...rows]
+      .map(r => r.map(cell => \`"\${String(cell).replace(/"/g, '""')}"\`).join(','))
+      .join('\\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = \`\${selectedForm.title.replace(/[^a-z0-9]/gi, '_')}_submissions.csv\`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };`;
+
+const CSV_EXPORT_ACCEPTED: ReadonlyArray<readonly [body: string, source: string]> = [
+  [CSV_EXPORT_AT_MAIN, "THE-298's value — before rating and scale existed"],
+  [CSV_EXPORT_AT_THE_366, 'THE-366 — rating and scale export as numbers, unanswered as empty'],
+];
+
 describe('the existing CSV export’s columns are unchanged', () => {
-  it('is byte-identical to the implementation on main', () => {
-    expect(exportCsvOf(readRepo('src/components/AdminForms.tsx'))).toBe(CSV_EXPORT_AT_MAIN);
+  it('is at a body some ticket recorded — appended to, never substituted', () => {
+    const actual = exportCsvOf(readRepo('src/components/AdminForms.tsx'));
+    expect(
+      CSV_EXPORT_ACCEPTED.map(([body]) => body),
+      'exportCsv is at a body no ticket recorded — the columns a church depends on moved',
+    ).toContain(actual);
   });
 
-  it('still names Submitted At and then every field, in the form’s order', () => {
-    expect(CSV_EXPORT_AT_MAIN).toContain("const header = ['Submitted At', ...cols.map(c => c.label)]");
-    expect(CSV_EXPORT_AT_MAIN).toContain('sort((a, b) => a.order - b.order)');
-    expect(CSV_EXPORT_AT_MAIN).toContain("Array.isArray(v) ? v.join('; ') : (v ?? '')");
+  it('still names Submitted At and then every field, in the form’s order — in EVERY accepted body', () => {
+    for (const [body, source] of CSV_EXPORT_ACCEPTED) {
+      expect(body, `${source}: the header moved`).toContain("const header = ['Submitted At', ...cols.map(c => c.label)]");
+      expect(body, `${source}: the column order moved`).toContain('sort((a, b) => a.order - b.order)');
+      expect(body, `${source}: the multi-value join moved`).toContain("Array.isArray(v) ? v.join('; ') : (v ?? '')");
+    }
+  });
+
+  it('🔴 and only the newest body knows about rating and scale', () => {
+    expect(CSV_EXPORT_AT_MAIN, "THE-298's record was rewritten").not.toContain('fieldIsScale');
+    expect(CSV_EXPORT_AT_THE_366).toContain('fieldIsScale(c.type)');
+    expect(CSV_EXPORT_AT_THE_366).toContain('toCsvCell(v, c.type');
   });
 
   it('still renders the Export CSV control on the responses table', async () => {

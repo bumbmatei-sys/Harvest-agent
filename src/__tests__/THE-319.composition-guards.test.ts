@@ -445,7 +445,28 @@ describe("THE-298's decisions all survive the composition", () => {
     expect(code).toMatch(/data-question=\{summary\.field\.id\}/);
     // Choice gets counts per option; number and date are LISTED, never averaged.
     expect(code).toMatch(/summary\.kind === 'choice'/);
-    expect(code).not.toMatch(/\bmean\b|\baverage\b|reduce\(\(.*\).*\/\s*length/);
+    /**
+     * 🔴 THE-366 — THIS CLAIM IS NARROWED, NOT DROPPED.
+     *
+     * It read `expect(code).not.toMatch(/mean|average|…/)` over the WHOLE file,
+     * which was a fair proxy while nothing on the screen had an average. THE-366
+     * added `rating` and `scale`, which DO carry one — they are the only types
+     * with a declared, finite, ORDERED run, which is exactly what `number` lacks
+     * and why a mean over "Year you joined" is still meaningless.
+     *
+     * So the claim THE-298 actually made is asserted directly instead of by
+     * proxy: the average is reachable ONLY from the scale branch, and the list
+     * branch — where `number` and `date` land — still has none.
+     */
+    const listBody = code.slice(code.indexOf('const ListBody'), code.indexOf('const ScaleBody'));
+    expect(listBody.length, 'ListBody or ScaleBody moved — this slice measures nothing')
+      .toBeGreaterThan(0);
+    expect(listBody, 'a number or date question grew an average')
+      .not.toMatch(/\bmean\b|\baverage\b|reduce\(\(.*\).*\/\s*length/i);
+    const scaleBody = code.slice(code.indexOf('const ScaleBody'), code.indexOf('const PrivateBody'));
+    expect(scaleBody, 'the average left the scale branch').toMatch(/\bmean\b/);
+    expect(read('src/components/forms/form-answers.ts'), 'number stopped being a list')
+      .toMatch(/number: 'list'/);
   });
 
   it('email and phone are still counted only', () => {

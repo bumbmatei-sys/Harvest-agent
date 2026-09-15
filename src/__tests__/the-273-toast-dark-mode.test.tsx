@@ -206,14 +206,18 @@ const PALETTES: readonly Palette[] = [
  * exit animation nobody observes play out against a toast that is being
  * unmounted in the same hook. Disposal is immediate and leaves nothing pending.
  */
-const liveTimers = new Set<ReturnType<typeof setTimeout>>();
+/** Whatever this environment's `setTimeout` hands back — a number in the DOM
+ *  lib, a `Timeout` under @types/node. Only identity matters here. */
+type TimerId = ReturnType<typeof globalThis.setTimeout>;
+
+const liveTimers = new Set<TimerId>();
 const realSetTimeout = globalThis.setTimeout;
 const realClearTimeout = globalThis.clearTimeout;
 
 /** Install the recorder. Real timers throughout — only the ids are kept. */
 const trackTimers = () => {
-  globalThis.setTimeout = ((handler: TimerHandler, timeout?: number, ...rest: unknown[]) => {
-    const id: ReturnType<typeof setTimeout> = realSetTimeout(
+  const wrapped = (handler: TimerHandler, timeout?: number, ...rest: unknown[]) => {
+    const id = (realSetTimeout as unknown as (h: TimerHandler, t?: number, ...r: unknown[]) => TimerId)(
       ((...args: unknown[]) => {
         liveTimers.delete(id);
         return typeof handler === 'function'
@@ -225,18 +229,19 @@ const trackTimers = () => {
     );
     liveTimers.add(id);
     return id;
-  }) as typeof globalThis.setTimeout;
+  };
+  globalThis.setTimeout = wrapped as unknown as typeof globalThis.setTimeout;
 
-  globalThis.clearTimeout = ((id?: Parameters<typeof clearTimeout>[0]) => {
-    liveTimers.delete(id as ReturnType<typeof setTimeout>);
-    return realClearTimeout(id);
-  }) as typeof globalThis.clearTimeout;
+  globalThis.clearTimeout = ((id?: TimerId) => {
+    if (id !== undefined) liveTimers.delete(id);
+    return (realClearTimeout as unknown as (i?: TimerId) => void)(id);
+  }) as unknown as typeof globalThis.clearTimeout;
 };
 
 /** Cancel whatever is still pending, and report how much that was. */
 const disposeTimers = (): number => {
   const pending = liveTimers.size;
-  for (const id of [...liveTimers]) realClearTimeout(id);
+  for (const id of [...liveTimers]) (realClearTimeout as unknown as (i: TimerId) => void)(id);
   liveTimers.clear();
   return pending;
 };

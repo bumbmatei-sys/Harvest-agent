@@ -1,3 +1,4 @@
+import { aggregateScale, isPointAnswered, normaliseAnswer, type ScaleAggregate } from './rating-scale';
 import {
   collection, query, orderBy, limit, startAfter, documentId, getDocs, getCountFromServer,
   type Firestore, type Query, type DocumentData, type QueryDocumentSnapshot,
@@ -25,14 +26,18 @@ import {
  * runtime — a tenth type added to the builder without a treatment here shows up
  * as a test failure rather than as a question rendered with no aggregate.
  *
- * ⚠️ There is no `rating` type in this schema, and no `scale`. A per-question
- * view for either would be a different aggregate again, and inventing one for a
- * type the builder cannot produce would be fabricating a slot as well as a
- * visualisation.
+ * 🔴 THE-366 added `rating` and `scale`. The note that stood here said a
+ * per-question view for either "would be a different aggregate again, and
+ * inventing one for a type the builder cannot produce would be fabricating a
+ * slot as well as a visualisation." The builder produces both now, so the
+ * aggregate is no longer fabricated — it is the one thing these two types have
+ * that `number` does not: a DECLARED, FINITE, ORDERED set of points. That is
+ * exactly what `number` lacks and why `number` is still a list. See the
+ * `'scale'` treatment below.
  */
 export const FIELD_TYPES_WITH_ANSWERS = [
   'short_text', 'long_text', 'email', 'phone', 'number',
-  'dropdown', 'radio', 'checkbox', 'date',
+  'dropdown', 'radio', 'checkbox', 'date', 'rating', 'scale',
 ] as const;
 
 export type AnswerFieldType = typeof FIELD_TYPES_WITH_ANSWERS[number];
@@ -43,6 +48,11 @@ export interface AnswerField {
   label: string;
   options?: string[];
   order: number;
+  /** THE-366 — a `scale`'s run. Absent on every other type. */
+  scaleMin?: number;
+  scaleMax?: number;
+  scaleMinLabel?: string;
+  scaleMaxLabel?: string;
 }
 
 export interface AnswerSubmission {
@@ -65,7 +75,7 @@ export interface AnswerSubmission {
  *   'private' — the field IDENTIFIES the respondent. Counted, never charted and
  *               never listed here. See {@link PRIVATE_TYPES}.
  */
-export const TREATMENT: Record<AnswerFieldType, 'choice' | 'list' | 'private'> = {
+export const TREATMENT: Record<AnswerFieldType, 'choice' | 'list' | 'private' | 'scale'> = {
   short_text: 'list',
   long_text: 'list',
   email: 'private',
@@ -75,6 +85,15 @@ export const TREATMENT: Record<AnswerFieldType, 'choice' | 'list' | 'private'> =
   radio: 'choice',
   checkbox: 'choice',
   date: 'list',
+  // 🔴 THE-366 — a FOURTH treatment, and the reason it is not 'choice' or
+  // 'list' is the whole of it. A choice bar chart keys on the answer STRING and
+  // would lose the order of the points and the arithmetic; a list would hand an
+  // admin 300 numbers to add up by eye. These two carry a declared, finite,
+  // ORDERED run, which is precisely what `number` lacks — a mean over "Year you
+  // joined" is meaningless, a mean over "1-5, how was the conference" is the
+  // question — so they get a distribution over every point plus that mean.
+  rating: 'scale',
+  scale: 'scale',
 };
 
 /**
@@ -121,7 +140,8 @@ export interface OptionCount {
 export type QuestionSummary =
   | { kind: 'choice'; field: AnswerField; answered: number; options: OptionCount[] }
   | { kind: 'list'; field: AnswerField; answered: number; values: string[] }
-  | { kind: 'private'; field: AnswerField; answered: number };
+  | { kind: 'private'; field: AnswerField; answered: number }
+  | { kind: 'scale'; field: AnswerField; answered: number; aggregate: ScaleAggregate };
 
 /** An answer counts as given when it is neither absent nor empty. */
 const isAnswered = (v: unknown): boolean => {
@@ -158,6 +178,20 @@ export function summariseField(field: AnswerField, submissions: AnswerSubmission
   const given = submissions.map((s) => s.answers?.[field.id]).filter(isAnswered);
   const answered = given.length;
   const treatment = TREATMENT[field.type] ?? 'list';
+
+  if (treatment === 'scale' && (field.type === 'rating' || field.type === 'scale')) {
+    // 🔴 Counted over NORMALISED points, not over `isAnswered`. `isAnswered`
+    // asks whether a value is non-empty, and `String(0).trim()` is '0' — so an
+    // unanswered question stored as 0 by a form authored before THE-366, or by
+    // anything writing to this collection outside the public form, would be
+    // counted as a real response and would drag the mean down. The gate here is
+    // `normaliseAnswer`, which admits a number only when it is one of THIS
+    // field's declared points.
+    const raw = submissions.map((s) => s.answers?.[field.id]);
+    const range = { min: field.scaleMin, max: field.scaleMax };
+    const aggregate = aggregateScale(raw, field.type, range);
+    return { kind: 'scale', field, answered: aggregate.answered, aggregate };
+  }
 
   if (treatment === 'private') return { kind: 'private', field, answered };
 
