@@ -18,12 +18,16 @@ import {
 import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, CONTROL_DENSITY } from './layout/form-layout';
 import { readAllSubmissions, summariseForm, type AnswerField } from './forms/form-answers';
 import FormAnswersView from './forms/FormAnswersView';
+import RatingScaleInput from './forms/RatingScaleInput';
+import {
+  SCALE_DEFAULT_MIN, SCALE_DEFAULT_MAX, SCALE_LIMIT_MIN, SCALE_LIMIT_MAX, toCsvCell,
+} from './forms/rating-scale';
 import { ANALYTICS_EVENTS } from '../lib/analytics/events';
 import { trackProductEvent } from '../lib/analytics/client';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 
-type FieldType = 'short_text' | 'long_text' | 'email' | 'phone' | 'number' | 'dropdown' | 'radio' | 'checkbox' | 'date';
+type FieldType = 'short_text' | 'long_text' | 'email' | 'phone' | 'number' | 'dropdown' | 'radio' | 'checkbox' | 'date' | 'rating' | 'scale';
 
 interface FormField {
   id: string;
@@ -33,6 +37,12 @@ interface FormField {
   required?: boolean;
   options?: string[];
   order: number;
+  /** THE-366 — a `scale`'s run and its poles. A `rating` is always 1-5 and
+   *  reads none of these. */
+  scaleMin?: number;
+  scaleMax?: number;
+  scaleMinLabel?: string;
+  scaleMaxLabel?: string;
 }
 
 interface CustomForm {
@@ -63,7 +73,19 @@ const FIELD_TYPES: { type: FieldType; label: string; hasOptions?: boolean }[] = 
   { type: 'radio', label: 'Radio', hasOptions: true },
   { type: 'checkbox', label: 'Checkbox', hasOptions: true },
   { type: 'date', label: 'Date' },
+  // 🔴 THE-366 — TWO types, not one with a `max` option. A 1-5 verdict and a
+  // 1-10 agreement scale read differently and are drawn differently; one
+  // control forced to cover both would draw ten stars for the second, which is
+  // the thing a church sees once and does not ship. They share a stored shape
+  // (a plain number) and therefore one CSV column treatment and one aggregate.
+  { type: 'rating', label: 'Rating' },
+  { type: 'scale', label: 'Scale' },
 ];
+
+/** The two numeric-point types, derived rather than spelled at each use. */
+export const SCALE_TYPES: ReadonlyArray<FieldType> = ['rating', 'scale'];
+export const fieldIsScale = (type: FieldType): type is 'rating' | 'scale' =>
+  (SCALE_TYPES as ReadonlyArray<string>).includes(type);
 
 const newId = () => `f_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e6).toString(36)}`;
 
@@ -183,6 +205,9 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
     setFields(f => [...f, {
       id: newId(), type, label: '', placeholder: '', required: false,
       options: fieldHasOptions(type) ? ['Option 1'] : undefined,
+      // A new `scale` starts on the default run so the builder's preview has
+      // something real to draw; a `rating` is fixed at 1-5 and stores neither.
+      ...(type === 'scale' ? { scaleMin: SCALE_DEFAULT_MIN, scaleMax: SCALE_DEFAULT_MAX } : {}),
       order: f.length,
     }]);
   };
@@ -382,6 +407,14 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
       s.submittedAt?.toDate ? s.submittedAt.toDate().toISOString() : '',
       ...cols.map(c => {
         const v = s.answers?.[c.id];
+        // 🔴 THE-366 — a rating or scale answer is a NUMBER in this column, never
+        // a label: `4`, not "Good" and not "4 of 5". A spreadsheet column is
+        // where arithmetic happens and a label cannot be averaged. An UNANSWERED
+        // one is the empty string — never 0. A zero IS a rating, so exporting
+        // skipped rows as 0 drags the mean of a feedback form toward zero and a
+        // church concludes their conference went badly on the strength of the
+        // rows where nobody answered.
+        if (fieldIsScale(c.type)) return toCsvCell(v, c.type, { min: c.scaleMin, max: c.scaleMax });
         return Array.isArray(v) ? v.join('; ') : (v ?? '');
       }),
     ]);
@@ -461,8 +494,79 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
                       <input value={f.label} onChange={e => updateField(f.id, { label: e.target.value })} placeholder="Field label" className={`flex-1 px-3 py-2 border border-line rounded-lg text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} />
                       <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-surface-sunken text-muted whitespace-nowrap">{FIELD_TYPES.find(t => t.type === f.type)?.label}</span>
                     </div>
-                    {!fieldHasOptions(f.type) && (
+                    {!fieldHasOptions(f.type) && !fieldIsScale(f.type) && (
                       <input value={f.placeholder || ''} onChange={e => updateField(f.id, { placeholder: e.target.value })} placeholder="Placeholder (optional)" className={`w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-hidden focus:border-gold ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} />
+                    )}
+                    {fieldIsScale(f.type) && (
+                      /* 🔴 THE-366 — THE BUILDER PREVIEWS THE REAL CONTROL.
+                         A church setting a 1-10 scale and being shown ten stars
+                         will not ship it, and a church that cannot see the
+                         control at all ships whatever it imagined. So the
+                         preview is the SAME component the public form renders,
+                         with the same props — not a drawing of it — which is
+                         also why a drift between the two is impossible rather
+                         than merely guarded. It is read-only here: tapping a
+                         point in the builder edits nothing. */
+                      <div className="space-y-2">
+                        {f.type === 'scale' && (
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <label className="text-xs text-faint" htmlFor={`${f.id}-min`}>From</label>
+                            <input
+                              id={`${f.id}-min`}
+                              type="number"
+                              min={SCALE_LIMIT_MIN}
+                              max={SCALE_LIMIT_MAX}
+                              value={f.scaleMin ?? SCALE_DEFAULT_MIN}
+                              onChange={e => updateField(f.id, { scaleMin: Number(e.target.value) })}
+                              aria-label="Scale starts at"
+                              className={`w-20 px-3 py-2 border border-line rounded-lg text-sm focus:outline-hidden focus:border-gold min-h-[44px] sm:min-h-0 ${CONTROL_DENSITY.control}`}
+                            />
+                            <label className="text-xs text-faint" htmlFor={`${f.id}-max`}>to</label>
+                            <input
+                              id={`${f.id}-max`}
+                              type="number"
+                              min={SCALE_LIMIT_MIN}
+                              max={SCALE_LIMIT_MAX}
+                              value={f.scaleMax ?? SCALE_DEFAULT_MAX}
+                              onChange={e => updateField(f.id, { scaleMax: Number(e.target.value) })}
+                              aria-label="Scale ends at"
+                              className={`w-20 px-3 py-2 border border-line rounded-lg text-sm focus:outline-hidden focus:border-gold min-h-[44px] sm:min-h-0 ${CONTROL_DENSITY.control}`}
+                            />
+                          </div>
+                        )}
+                        {f.type === 'scale' && (
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <input
+                              value={f.scaleMinLabel || ''}
+                              onChange={e => updateField(f.id, { scaleMinLabel: e.target.value })}
+                              placeholder="Label for the low end (optional)"
+                              aria-label="Label for the low end"
+                              className={`basis-full min-w-0 sm:basis-auto sm:flex-1 px-3 py-2 border border-line rounded-lg text-sm focus:outline-hidden focus:border-gold min-h-[44px] sm:min-h-0 ${CONTROL_DENSITY.control}`}
+                            />
+                            <input
+                              value={f.scaleMaxLabel || ''}
+                              onChange={e => updateField(f.id, { scaleMaxLabel: e.target.value })}
+                              placeholder="Label for the high end (optional)"
+                              aria-label="Label for the high end"
+                              className={`basis-full min-w-0 sm:basis-auto sm:flex-1 px-3 py-2 border border-line rounded-lg text-sm focus:outline-hidden focus:border-gold min-h-[44px] sm:min-h-0 ${CONTROL_DENSITY.control}`}
+                            />
+                          </div>
+                        )}
+                        <div data-rating-scale-preview={f.type}>
+                          <p className="text-xs text-faint mb-1">Preview</p>
+                          <RatingScaleInput
+                            id={`${f.id}-preview`}
+                            type={f.type}
+                            value={undefined}
+                            onChange={() => {}}
+                            range={{ min: f.scaleMin, max: f.scaleMax }}
+                            minLabel={f.scaleMinLabel}
+                            maxLabel={f.scaleMaxLabel}
+                            accent={GOLD}
+                            disabled
+                          />
+                        </div>
+                      </div>
                     )}
                     {fieldHasOptions(f.type) && (
                       /* ⚠️ A repeating row of small controls is the hard case at 380px, so

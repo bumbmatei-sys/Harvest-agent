@@ -608,7 +608,16 @@ describe('nothing outside the builder moved', () => {
     // ⚠️ Pinned as the TEXT of the function, per THE-298 — a church may already
     // depend on the shape, so a digest that says "something changed" is not
     // enough; the columns themselves are the thing being fixed in place.
-    expect(body).toBe(`const exportCsv = () => {
+    //
+    // 🔴 AN ACCEPTED LIST, APPENDED TO AND NEVER SUBSTITUTED. This was one
+    // literal until THE-366 added the `rating` and `scale` types, which the CSV
+    // has to render as numbers. Replacing the literal would have destroyed the
+    // record of what THE-304 actually pinned, so THE-304's value stays FIRST and
+    // unchanged and the new one is appended below it, with its reason — the
+    // idiom THE-309 and THE-364 already use for exactly this. A body that is
+    // NEITHER still fails, which is the whole threat.
+    const ACCEPTED: ReadonlyArray<readonly [body: string, source: string]> = [
+      [`const exportCsv = () => {
     if (!selectedForm) return;
     const cols = selectedForm.fields.sort((a, b) => a.order - b.order);
     const header = ['Submitted At', ...cols.map(c => c.label)];
@@ -629,6 +638,47 @@ describe('nothing outside the builder moved', () => {
     a.download = \`\${selectedForm.title.replace(/[^a-z0-9]/gi, '_')}_submissions.csv\`;
     a.click();
     URL.revokeObjectURL(url);
-  };`);
+  };`, "THE-304's value — the columns as they stood before rating and scale existed"],
+      [`const exportCsv = () => {
+    if (!selectedForm) return;
+    const cols = selectedForm.fields.sort((a, b) => a.order - b.order);
+    const header = ['Submitted At', ...cols.map(c => c.label)];
+    const rows = submissions.map(s => [
+      s.submittedAt?.toDate ? s.submittedAt.toDate().toISOString() : '',
+      ...cols.map(c => {
+        const v = s.answers?.[c.id];
+        // 🔴 THE-366 — a rating or scale answer is a NUMBER in this column, never
+        // a label: \`4\`, not "Good" and not "4 of 5". A spreadsheet column is
+        // where arithmetic happens and a label cannot be averaged. An UNANSWERED
+        // one is the empty string — never 0. A zero IS a rating, so exporting
+        // skipped rows as 0 drags the mean of a feedback form toward zero and a
+        // church concludes their conference went badly on the strength of the
+        // rows where nobody answered.
+        if (fieldIsScale(c.type)) return toCsvCell(v, c.type, { min: c.scaleMin, max: c.scaleMax });
+        return Array.isArray(v) ? v.join('; ') : (v ?? '');
+      }),
+    ]);
+    const csv = [header, ...rows]
+      .map(r => r.map(cell => \`"\${String(cell).replace(/"/g, '""')}"\`).join(','))
+      .join('\\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = \`\${selectedForm.title.replace(/[^a-z0-9]/gi, '_')}_submissions.csv\`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };`, 'THE-366 — rating and scale export as numbers, unanswered as empty'],
+    ];
+    expect(
+      ACCEPTED.map(([b]) => b),
+      'exportCsv is at a body no ticket recorded — the columns a church depends on moved',
+    ).toContain(body);
+    // And the columns themselves are still what they were, in both bodies.
+    for (const [accepted] of ACCEPTED) {
+      expect(accepted).toContain("const header = ['Submitted At', ...cols.map(c => c.label)]");
+      expect(accepted).toContain('sort((a, b) => a.order - b.order)');
+      expect(accepted).toContain("Array.isArray(v) ? v.join('; ') : (v ?? '')");
+    }
   });
 });

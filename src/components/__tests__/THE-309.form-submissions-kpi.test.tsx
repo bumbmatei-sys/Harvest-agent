@@ -584,10 +584,27 @@ describe('the other readers of the same subcollection are untouched', () => {
     // THE-298 — the answers view and its complete, paged read.
     'src/components/forms/form-answers.ts': [
       ['b84d40bcd9f47910e9f7afaad3e38ef7eaa68500bb90b4b7fbd9990744ebd0eb', 'THE-298\'s value — untouched by THE-319, which reads it and does not edit it'],
+      // 🔴 APPENDED BY THE-366, never substituted. `rating` and `scale` join
+      // FIELD_TYPES_WITH_ANSWERS and take a FOURTH treatment, `'scale'`: a
+      // declared, finite, ORDERED run of points, so a distribution plus a mean
+      // rather than a choice chart (which would lose the order) or a list
+      // (which would hand an admin 300 numbers to add up by eye). `number`
+      // stays a list for exactly the reason the file already gives — it has no
+      // declared run, and a mean over "Year you joined" is meaningless.
+      // 🔴 The submissions READ is untouched: same collection, same paging,
+      // same ceiling, same `answers[field.id]` keying — which is what THE-309
+      // pins this file for. No submission count moved.
+      ['32fed47f759fa320a7fa9833bc943477893e96077343501c40b8653d664ca056', 'THE-366 — rating and scale take the scale treatment; the read is unchanged'],
     ],
     'src/components/forms/FormAnswersView.tsx': [
       ['edf8fccd4ad2759c09b5b6114d1109d9237a580c021b620e98224b97a8ad1df1', 'THE-298\'s value — main before THE-319'],
       ['db6c05f4d6e3ed101d3c3c22f9104bb38793f91aecda89243cfa17b886304027', 'THE-319 (composition sweep) — the option bar is `ui/progress`; no figure, copy or measured value moved'],
+      // 🔴 APPENDED BY THE-366. One new body, `ScaleBody`, for the rating and
+      // scale treatment — the same `ui/progress` seam and the same `aria-hidden`
+      // argument as ChoiceBody, because the count and the share are written out
+      // above each bar. ChoiceBody, ListBody and PrivateBody are untouched, and
+      // so is every figure on the existing cards.
+      ['53bb29a53b9351e2a4376a2c4c658d2a6a69978535d9e318c25151dba6fcf9cc', 'THE-366 — ScaleBody renders the rating/scale distribution and its mean'],
     ],
     // THE-304 — the option editor, and the form list that mounts both views.
     'src/components/AdminForms.tsx': [
@@ -601,6 +618,17 @@ describe('the other readers of the same subcollection are untouched', () => {
       // pins this file for — and no read of the submissions subcollection
       // changed.
       ['ae9ac5039cf3dd10513fc7e7797f0f005d053bd9536eba8fa87d6213da2d59b5', 'THE-360 — form_published fires where a form goes live'],
+      // 🔴 APPENDED BY THE-366, never substituted. Two builder types, `rating`
+      // and `scale`, their option controls, a PREVIEW that mounts the very
+      // component the public form renders (so a church setting 1-10 is shown
+      // numbers rather than ten stars), and the one CSV change: those two types
+      // export as NUMBERS and an unanswered one as the EMPTY string, never 0.
+      // The header, the column order and the multi-value join are byte-for-byte
+      // what they were — THE-298's and THE-304's pins on the export body both
+      // gained an appended entry rather than a replaced one, and both still
+      // assert those three things across EVERY accepted body. No submission
+      // count, label or title moved.
+      ['62107208566c3e1ba8bb17713965e5f40ecf8821876570418971b931a317a1b7', 'THE-366 — the rating and scale field types, their preview, and their CSV column'],
     ],
     'src/app/api/forms/get/route.ts': [
       ['8e8ad1d36349725c7219f1c45c7e2f4e103e07e05bcfe70e3c6a2c5de98de2cc', 'unchanged since THE-298'],

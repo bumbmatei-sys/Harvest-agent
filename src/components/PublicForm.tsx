@@ -1,16 +1,24 @@
 "use client";
 import React, { useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
+import RatingScaleInput from './forms/RatingScaleInput';
+import { normaliseAnswer } from './forms/rating-scale';
 import { ANALYTICS_EVENTS } from '../lib/analytics/events';
 import { trackProductEvent } from '../lib/analytics/client';
 
 export interface PublicFormField {
   id: string;
-  type: 'short_text' | 'long_text' | 'email' | 'phone' | 'number' | 'dropdown' | 'radio' | 'checkbox' | 'date';
+  type: 'short_text' | 'long_text' | 'email' | 'phone' | 'number' | 'dropdown' | 'radio' | 'checkbox' | 'date' | 'rating' | 'scale';
   label: string;
   placeholder?: string;
   required?: boolean;
   options?: string[];
+  /** THE-366 — a `scale`'s run and its poles. Unused by every other type, and
+   *  by `rating`, which is always 1-5 and carries no numerals. */
+  scaleMin?: number;
+  scaleMax?: number;
+  scaleMinLabel?: string;
+  scaleMaxLabel?: string;
 }
 
 interface PublicFormProps {
@@ -33,7 +41,17 @@ const PublicForm: React.FC<PublicFormProps> = ({
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const setAnswer = (id: string, value: any) => setAnswers((a) => ({ ...a, [id]: value }));
+  const setAnswer = (id: string, value: any) => setAnswers((a) => {
+    // 🔴 THE-366 — `undefined` REMOVES the key rather than storing it. A rating
+    // cleared back to unanswered must leave nothing behind: `{ [id]: undefined }`
+    // survives JSON.stringify as an absent key here, but leaving the key in the
+    // object would make `Object.keys(answers)` disagree with what was sent.
+    if (value === undefined) {
+      const { [id]: _dropped, ...rest } = a;
+      return rest;
+    }
+    return { ...a, [id]: value };
+  });
 
   const toggleCheckbox = (id: string, option: string) => {
     setAnswers((a) => {
@@ -142,6 +160,21 @@ const PublicForm: React.FC<PublicFormProps> = ({
                       </label>
                     ))}
                   </div>
+                ) : f.type === 'rating' || f.type === 'scale' ? (
+                  /* 🔴 THE-366 — the value is `number | undefined` and starts
+                     UNDEFINED. An untouched control contributes NO key to
+                     `answers`, so a skipped question reaches the CSV empty
+                     rather than as a 0 that would read as a real rating. */
+                  <RatingScaleInput
+                    id={f.id}
+                    type={f.type}
+                    value={normaliseAnswer(answers[f.id], f.type, { min: f.scaleMin, max: f.scaleMax })}
+                    onChange={(v) => setAnswer(f.id, v)}
+                    range={{ min: f.scaleMin, max: f.scaleMax }}
+                    minLabel={f.scaleMinLabel}
+                    maxLabel={f.scaleMaxLabel}
+                    accent={primaryColor}
+                  />
                 ) : f.type === 'checkbox' ? (
                   <div className="space-y-2">
                     {(f.options || []).map((o) => (

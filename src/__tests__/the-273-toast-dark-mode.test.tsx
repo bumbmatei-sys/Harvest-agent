@@ -168,6 +168,102 @@ const PALETTES: readonly Palette[] = [
   { name: 'Dark', theme: 'dark', raised: DARK_SURFACE_RAISED },
 ];
 
+/* ── The exit timer, tracked and disposed ────────────────────────────────── */
+
+/**
+ * 🔴 THE-366 — the suite exited 1 with every test passing, and this is why.
+ *
+ * `toast.dismiss()` does not remove a toast synchronously. sonner's `deleteToast`
+ * marks it removed, then schedules the real removal on a macrotask:
+ *
+ *     setTimeout(() => removeToast(toast), TIME_BEFORE_UNMOUNT)   // 200ms
+ *
+ * (`node_modules/sonner/dist/index.mjs`, and `TIME_BEFORE_UNMOUNT = 200` is
+ * "equal to exit animation duration" in sonner's own comment.) The old
+ * `afterEach` dismissed and unmounted without waiting those 200ms, so the timer
+ * outlived the file. When it fired after `happy-dom` had torn `window` down it
+ * threw `ReferenceError: window is not defined` — an UNHANDLED error, which
+ * Vitest reports as `Errors 1` and exits 1 with, in its own summary, every test
+ * passed. Whether the process lived long enough for it to fire is why the same
+ * commit exited 0 on one run and 1 on the next.
+ *
+ * ⚠️ MEASURED, NOT INFERRED: with the previous `afterEach`, exactly ONE timer
+ * was still live once teardown finished. Section 11 asserts that count is now
+ * zero rather than reading it off a passing run.
+ *
+ * 🔴 WHY WRAPPING AND NOT `vi.useFakeTimers()`. Faking timers wholesale also
+ * fakes the `setTimeout` that `showToast` and the mount helpers AWAIT, which is
+ * how #468 put 28 of 47 tests into timeout and took a run from 4s to 141s. This
+ * wrapper does not fake anything: every timer is still scheduled on the real
+ * clock by the real `setTimeout` and still fires on its own. It only records
+ * the ids so teardown can dispose whatever is still pending, which is why
+ * `toFake: ['Date']` stays the established pattern elsewhere and is untouched
+ * here.
+ *
+ * 🔴 WHY DISPOSING AND NOT AWAITING. Awaiting the 200ms in `afterEach` also
+ * drives the live count to zero — both were measured — but it costs 250ms on
+ * each of this file's 38 tests, roughly a 40x rise in its test time, to let an
+ * exit animation nobody observes play out against a toast that is being
+ * unmounted in the same hook. Disposal is immediate and leaves nothing pending.
+ */
+/** Whatever this environment's `setTimeout` hands back — a number in the DOM
+ *  lib, a `Timeout` under @types/node. Only identity matters here. */
+type TimerId = ReturnType<typeof globalThis.setTimeout>;
+
+const liveTimers = new Set<TimerId>();
+const realSetTimeout = globalThis.setTimeout;
+const realClearTimeout = globalThis.clearTimeout;
+
+/** Install the recorder. Real timers throughout — only the ids are kept. */
+const trackTimers = () => {
+  const wrapped = (handler: TimerHandler, timeout?: number, ...rest: unknown[]) => {
+    const id = (realSetTimeout as unknown as (h: TimerHandler, t?: number, ...r: unknown[]) => TimerId)(
+      ((...args: unknown[]) => {
+        liveTimers.delete(id);
+        return typeof handler === 'function'
+          ? (handler as (...a: unknown[]) => unknown)(...args)
+          : undefined;
+      }) as TimerHandler,
+      timeout,
+      ...rest,
+    );
+    liveTimers.add(id);
+    return id;
+  };
+  globalThis.setTimeout = wrapped as unknown as typeof globalThis.setTimeout;
+
+  globalThis.clearTimeout = ((id?: TimerId) => {
+    if (id !== undefined) liveTimers.delete(id);
+    return (realClearTimeout as unknown as (i?: TimerId) => void)(id);
+  }) as unknown as typeof globalThis.clearTimeout;
+};
+
+/** Cancel whatever is still pending, and report how much that was. */
+const disposeTimers = (): number => {
+  const pending = liveTimers.size;
+  for (const id of [...liveTimers]) (realClearTimeout as unknown as (i: TimerId) => void)(id);
+  liveTimers.clear();
+  return pending;
+};
+
+const restoreTimers = () => {
+  globalThis.setTimeout = realSetTimeout;
+  globalThis.clearTimeout = realClearTimeout;
+};
+
+/**
+ * What section 11 reads, both recorded by `afterEach` rather than inferred:
+ *   `disposedAtTeardown` — how many timers were STILL PENDING when teardown
+ *       reached them. With a toast raised and dismissed this is the leak, and
+ *       it is what made the file exit 1.
+ *   `survivorsAfterTeardown` — how many are pending once teardown has finished.
+ *       This is the one that must be zero. It is a real assertion and not a
+ *       tautology: anything scheduled after the disposal point is still counted,
+ *       which is exactly the defect being guarded against.
+ */
+let mostDisposedAtTeardown = 0;
+let survivorsAfterTeardown = -1;
+
 /* ── React mounting ──────────────────────────────────────────────────────── */
 
 const mounted: Array<{ root: Root; container: HTMLDivElement }> = [];
@@ -192,6 +288,7 @@ const setOsPrefersDark = (dark: boolean) => {
 };
 
 beforeEach(() => {
+  trackTimers();
   localStorage.clear();
   const el = document.documentElement;
   el.removeAttribute('data-theme');
@@ -206,6 +303,15 @@ afterEach(async () => {
     await act(async () => { m.root.unmount(); });
     m.container.remove();
   }
+  // 🔴 sonner's 200ms exit timer is scheduled by `dismiss` and by unmounting a
+  // toast that is still on screen, so it is disposed AFTER both — otherwise the
+  // unmount re-arms what the dismiss left behind. `survivorsAfterTeardown`
+  // records what was pending so section 11 can assert on a measured number.
+  // A running MAX, not the last reading: every test's teardown writes here, and
+  // the tests that raise no toast legitimately dispose nothing.
+  mostDisposedAtTeardown = Math.max(mostDisposedAtTeardown, disposeTimers());
+  survivorsAfterTeardown = liveTimers.size;
+  restoreTimers();
 });
 
 const mount = async (node: React.ReactElement): Promise<HTMLDivElement> => {
@@ -904,5 +1010,81 @@ describe('10 — layout.tsx, firestore.rules and functions/ are byte-identical',
     const layout = readFileSync(path.join(SRC, 'app/layout.tsx'), 'utf8');
     expect(layout).toContain("import { Toaster } from '@/components/ui/sonner'");
     expect(layout).toContain('<Toaster />');
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 11 — THE-366 · the suite exits 0, and the unhandled-error net stays up
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+describe('11 — no timer survives teardown, and nothing was silenced to achieve it', () => {
+  /**
+   * 🔴 Raise a real toast, dismiss it through the SAME `afterEach` every other
+   * test in this file uses, and then read what teardown recorded. The next test
+   * is what asserts on it — `afterEach` has run by then, which is the only
+   * point at which "survived teardown" means anything.
+   */
+  it('a dismissed toast is the case that used to leak', async () => {
+    stampHtml('light');
+    await mount(<Toaster />);
+    await showToast();
+    expect(
+      document.querySelector('[data-sonner-toast]'),
+      'no toast was raised, so the teardown reading below would prove nothing',
+    ).toBeTruthy();
+  });
+
+  it('🔴 no timer is left pending once teardown has finished', () => {
+    expect(
+      survivorsAfterTeardown,
+      'teardown has not run yet — this assertion would be vacuous',
+    ).toBeGreaterThanOrEqual(0);
+    expect(
+      survivorsAfterTeardown,
+      `${survivorsAfterTeardown} timer(s) still pending after teardown — one of these ` +
+        'fires after happy-dom tears `window` down and exits the run 1 with every test passing',
+    ).toBe(0);
+  });
+
+  it('🔴 and teardown genuinely had something to dispose — the leak is real, not assumed', () => {
+    // sonner schedules removal on a macrotask (TIME_BEFORE_UNMOUNT = 200ms), so
+    // the previous test's dismiss-and-unmount always leaves one pending. If this
+    // ever reads 0, sonner stopped deferring and the disposal above is dead code
+    // guarding nothing — which is worth failing for, not worth passing quietly.
+    expect(
+      mostDisposedAtTeardown,
+      'teardown never disposed anything across the whole file — sonner no longer defers its ' +
+        'removal, so the disposal above is dead code guarding nothing',
+    ).toBeGreaterThan(0);
+  });
+
+  /**
+   * 🔴 THE NET STAYS UP. The reason this defect was ever visible is that Vitest
+   * fails a run on an unhandled error even when every test passed. Turning that
+   * off would have made the symptom disappear while the stray timer stayed, and
+   * would hide the next one — so the fix is in the timer and the config is
+   * asserted untouched, by reading the config rather than by trusting it.
+   */
+  it('🔴 unhandled errors still fail the run — the net was not switched off', () => {
+    const config = readFileSync(path.join(ROOT, 'vitest.config.ts'), 'utf8');
+    const live = config.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    expect(
+      live,
+      'dangerouslyIgnoreUnhandledErrors silences the net that surfaced this defect',
+    ).not.toContain('dangerouslyIgnoreUnhandledErrors');
+    expect(live, 'a custom onUnhandledError can swallow the same error').not.toContain('onUnhandledError');
+    expect(live, 'the run must not be told to pass on no tests either').not.toContain('passWithNoTests');
+  });
+
+  it('🔴 and the suite still runs on real timers — `setTimeout` is not faked', () => {
+    const suite = readFileSync(path.join(SRC, '__tests__/the-273-toast-dark-mode.test.tsx'), 'utf8');
+    const live = suite.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    // #468: a plain `useFakeTimers()` also fakes the `setTimeout` the mount
+    // helpers await — 28 of 47 tests timed out and a run went 4s to 141s.
+    expect(live, 'faking timers wholesale is the path that cost 137 seconds')
+      .not.toMatch(/\buseFakeTimers\s*\(/);
+    // The wrapper must delegate to the real thing rather than replace it.
+    expect(live).toContain('const realSetTimeout = globalThis.setTimeout');
+    expect(live).toContain('realSetTimeout(');
   });
 });
