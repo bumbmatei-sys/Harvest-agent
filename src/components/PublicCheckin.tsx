@@ -54,7 +54,7 @@ const PublicCheckin: React.FC<PublicCheckinProps> = ({
         <div className="text-center mb-6">
           {logo ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={logo} alt={tenantName} className="h-12 mx-auto mb-2 object-contain" />
+            <img src={logo} alt={tenantName} className="logo-plate h-12 mx-auto mb-2 object-contain" />
           ) : (
             <div className="font-display text-lg font-extrabold" style={{ color: primaryColor }}>{tenantName}</div>
           )}

@@ -417,13 +417,22 @@ function suites(): string[] {
  */
 const EMPTY_DIRECTION_FREEZES: Readonly<Record<string, number>> = {
   'src/components/__tests__/THE-277.signups-split.test.tsx': 1,
-  'src/components/__tests__/THE-305.course-editor-header.test.tsx': 9,
+  // 🔵 9 → 8, RETIRED BY THE-111, which is the direction this report exists to
+  // encourage. THE-305 froze `src/components/PublicPledge.tsx` against the
+  // branch diff; THE-111 adds `logo-plate` to that page's tenant logo, and a
+  // diff-based freeze fails on ANY edit at ANY value — it measures WHO TOUCHED
+  // a file rather than WHAT IT SAYS. It is the FIFTH file taken off that same
+  // read, after THE-338 took three and THE-350 took one, and THE-305's claim is
+  // now stated as what it means: the course editor imports and spells it
+  // nowhere. The file is not unguarded — `the-303-giving-cluster` renders it and
+  // asserts its behaviour, and THE-111 measures the plate in a real browser.
+  'src/components/__tests__/THE-305.course-editor-header.test.tsx': 8,
   'src/components/__tests__/THE-305.install-reachable.test.tsx': 1,
   'src/components/course/__tests__/THE-282.course-status.test.tsx': 4,
   'src/components/course/__tests__/THE-311.course-palette.test.ts': 8,
 };
 
-const EMPTY_DIRECTION_TOTAL = 23;
+const EMPTY_DIRECTION_TOTAL = 22;  // 23 → 22: see THE-111's note above.
 
 describe('3 · #454 would NOT catch §8 even with its blind spot closed', () => {
   /**

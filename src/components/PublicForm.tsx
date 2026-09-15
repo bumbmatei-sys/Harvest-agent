@@ -126,7 +126,7 @@ const PublicForm: React.FC<PublicFormProps> = ({
         <div className="text-center mb-6">
           {logo ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={logo} alt={tenantName} className="h-12 mx-auto mb-3 object-contain" />
+            <img src={logo} alt={tenantName} className="logo-plate h-12 mx-auto mb-3 object-contain" />
           ) : (
             <div className="font-display text-lg font-extrabold mb-3" style={{ color: primaryColor }}>{tenantName}</div>
           )}

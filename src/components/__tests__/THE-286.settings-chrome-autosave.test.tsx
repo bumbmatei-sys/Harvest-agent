@@ -1113,6 +1113,11 @@ describe('15 · the other 12 sections are byte-identical', () => {
         + 'AUTOSAVE_EXCLUDED. It never writes entitlement — it asks /api/sms/numbers and re-reads '
         + 'what that route recorded, rather than rendering the outcome it requested.',
     },
+    {
+      file: 'src/components/settings/BrandingSection.tsx',
+      ticket: 'THE-111',
+      why: "THE-111 edits this section's LIVE COLOUR PICKER and nothing else in it. `handleColorChange` wrote `--brand-color` alone through `documentElement.style.setProperty` - an INLINE style on <html>, which beats the server's `:root{}` block on specificity. `layout.tsx` stamps THREE properties together from one hex (`--brand-color` raw, `--brand-color-on-dark` corrected against the page ground, `--brand-color-on-tint` one layer up) and they are only correct AS A SET, so moving the raw accent alone left both DERIVED values at what the server computed from the PREVIOUS hex: on the dark theme every on-dark consumer painted an accent corrected against a colour no longer on screen. Here that disagreement is NOT brief - it persists for as long as the admin stays on the screen, which is precisely when they are judging the colour they just picked. The call now goes through `applyBrandAccent`, which writes all three or none. NO autosave was added and none may be: this file's save is an explicit action and it stays one. No read, no write, no endpoint, no control, no string and no chrome moved - the picker, the upload, the plan gate and the save button are untouched.",
+    },
   ];
 
   it('the digest exemption list is exactly the edits that justify it', async () => {
@@ -1127,6 +1132,9 @@ describe('15 · the other 12 sections are byte-identical', () => {
       // they were, so this list keeps reading as the history of every edit since
       // the measurement rather than as a snapshot of the latest one.
       'THE-314 src/components/settings/SmsSection.tsx',
+      // ⚠️ APPENDED BY THE-111, never substituted: every entry above stays
+      // exactly as it was. The tenant accent is written as a SET or not at all.
+      'THE-111 src/components/settings/BrandingSection.tsx',
     ]);
     for (const { file, why } of EDITED_SINCE_MEASUREMENT) {
       expect(UNTOUCHED.otherSettingsSections, `${file} is exempted but was never recorded`)
