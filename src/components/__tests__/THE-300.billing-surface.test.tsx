@@ -995,6 +995,12 @@ describe('15 · layout.tsx, firestore.rules and functions/ are byte-identical', 
     // THE-286's exemption list, which is where a settings-section rewrite is
     // registered.
     edited.add('src/components/settings/SmsSection.tsx');
+    // BrandingSection's live colour picker was corrected by THE-111 — it wrote
+    // `--brand-color` alone, leaving the two DERIVED accent properties at the
+    // value the server computed from the previous hex — and is recorded in that
+    // ticket's entry on THE-286's exemption list, which is where a
+    // settings-section edit is registered.
+    edited.add('src/components/settings/BrandingSection.tsx');
     for (const [rel, digest] of Object.entries(UNTOUCHED.otherSettingsSections)) {
       if (edited.has(rel)) continue;
       // THE-362 folds ONE heading out of PaymentSection before hashing - see

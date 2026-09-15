@@ -80,6 +80,8 @@ interface Reading { vw: number; screenW: number; docScrollW: number; bodyScrollW
 
 let browser: MeasuringBrowser;
 const readings = new Map<number, Reading>();
+/** Computed transition/animation timing on the measured controls, read in the browser. */
+let transitions: Array<{ property: string; duration: string; animation: string }> = [];
 
 setUpOrFail(async () => {
   const { useAppStore } = await import('../../store/useAppStore');
@@ -113,7 +115,42 @@ setUpOrFail(async () => {
   const file = path.join(dir, 'sms.html');
   writeFileSync(
     file,
-    `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head><body>${page}</body></html>`,
+    `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style>` +
+      /*
+       * 🔴 TRANSITIONS AND ANIMATIONS SUPPRESSED BEFORE MEASURING — #490's rule,
+       * which this file was the last measuring suite in the repo not to follow.
+       *
+       * ⚠️ THE DEFECT THIS CLOSES IS A CI-ONLY `readings never settled at 768px`,
+       * and the cause was MEASURED rather than reasoned about. Of the six
+       * controls the probe below reads at 768px, the resolved
+       * `transitionProperty` / `transitionDuration` are:
+       *
+       *     4 × `color, background-color, …`  0.15s   (colors only)
+       *     1 × `all`                         0s      (nothing)
+       *     1 × `all`                         0.15s   ← THIS ONE
+       *
+       * 🔴 `transition-all` animates WIDTH AND HEIGHT, and width and height are
+       * exactly the two numbers the probe records. Stepping the viewport from
+       * 380 to 768 crosses `sm`, where `min-h-[44px] sm:min-h-0` changes that
+       * control's box — and `transition-all` ANIMATES the change. The settle
+       * loop then compares readings taken while the box is still moving. The
+       * four `transition-colors` controls are irrelevant here: a colour cannot
+       * move a box.
+       *
+       * 🔴 IN A STATIC, SCRIPT-FREE PAGE A CSS TRANSITION IS THE ONLY THING THAT
+       * CAN MAKE TWO CONSECUTIVE LAYOUT READINGS DIFFER. The markup here is
+       * `renderToStaticMarkup` output with no bundle behind it, so suppressing
+       * transitions does not make the drift less likely — it makes it
+       * impossible, which is why this is a fix and not a retry.
+       *
+       * ⚠️ NOTHING IS RELAXED. The settle loop, its five attempts and its loud
+       * failure all stay exactly as they were, and every expectation in this file
+       * is unchanged — the resting layout is what `settle()` was always trying to
+       * approximate, and #490 measured `min-h-[44px]` at 7.7469px mid-transition
+       * to establish that a mid-flight number is simply the wrong reading.
+       */
+      `<style>*,*::before,*::after{transition:none !important;animation:none !important}</style>` +
+      `</head><body>${page}</body></html>`,
   );
 
   browser = new MeasuringBrowser();
@@ -155,6 +192,17 @@ setUpOrFail(async () => {
     if (!settled) throw new Error(`readings never settled at ${viewport}px`);
     readings.set(viewport, settled);
   }
+
+  /* Read at 768 — the width the un-suppressed page failed at, and the one that
+     crosses `sm` on the way from 380. */
+  transitions = await browser.evaluateAt(768, `(() => {
+    const els = [...document.querySelectorAll('[data-screen] [role="tab"], [data-screen] button')];
+    return els.slice(0, 12).map((el) => {
+      const cs = getComputedStyle(el);
+      return { property: cs.transitionProperty, duration: cs.transitionDuration,
+               animation: cs.animationDuration };
+    });
+  })()`);
 }, 300_000);
 
 afterAll(async () => { await browser?.close(); });
@@ -170,6 +218,33 @@ const tabs = (v: number) => at(v).controls.filter((c) => c.slot === 'tabs-trigge
 /* ═══════════════════════════════════════════════════════════════════════════
    1 · 🔴 Every tappable target clears 44px below `sm`.
    ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   0 · the measured page is actually at rest
+   ═══════════════════════════════════════════════════════════════════════════ */
+describe('0 · nothing in the measured page can still be moving', () => {
+  it('🔴 the suppression really reaches TabsTrigger, whose transition-all moved the box', () => {
+    /**
+     * 🔴 GUARDING THE FIX, NOT RESTATING IT. This file hit a CI-only
+     * `readings never settled at 768px`. One of the six controls the probe reads
+     * resolves to `transition-all` at 0.15s, which animates WIDTH AND HEIGHT —
+     * the two numbers this file records — and stepping 380 → 768 crosses `sm`,
+     * where `min-h-[44px] sm:min-h-0` changes that box while the transition is
+     * still running.
+     *
+     * ⚠️ ASSERTED ON A REAL TRIGGER, RESOLVED IN THE BROWSER, not on the
+     * `<style>` string. A guard that checked the page source would pass on a
+     * suppression block that some later rule out-specifies, which is the
+     * difference between "the tag is present" and "nothing is moving".
+     */
+    expect(transitions, 'the measured page has no tab triggers — the probe would measure nothing')
+      .not.toEqual([]);
+    for (const t of transitions) {
+      expect(t.duration, `a control is still animating (${t.property} ${t.duration})`).toBe('0s');
+      expect(t.animation, 'a control carries a running animation').toBe('0s');
+    }
+  });
+});
+
 describe('1 · every control is at least 44px below sm', () => {
   it('measures every control on the SMS section at 380px', () => {
     const r = at(380);

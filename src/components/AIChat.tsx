@@ -639,7 +639,7 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 20px", animation: "fadeSlideUp 0.4s ease" }}>
  <div style={{ width: 108, height: 108, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, marginBottom: 16 }}>
  {/* Plain <img> (not next/image) so tenant logos on arbitrary domains render without remotePatterns config, matching MainApp/AuthPage. */}
- <img src={displayLogo} alt={displayName} width={96} height={96} className="object-contain drop-shadow-md" />
+ <img src={displayLogo} alt={displayName} width={96} height={96} className="logo-plate object-contain drop-shadow-md" />
  </div>
  <div style={{ fontFamily: "var(--font-display), Georgia, serif", fontWeight: 700, fontSize: 22, color: TEXT, marginBottom: 6, textAlign: "center" }}>{`Ask ${askBrandName}`}</div>
  <div style={{ fontSize: 13, color: TEXT2, textAlign: "center", lineHeight: 1.6, marginBottom: 28, maxWidth: 280 }}>

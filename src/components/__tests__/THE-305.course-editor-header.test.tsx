@@ -812,13 +812,37 @@ describe('the files this ticket must not open are byte-identical', () => {
        updated with it.
 
        THE-305's own claim, that IT did not open the file, is stated below as
-       what it means: the course editor imports it and spells it nowhere.
-       `PublicPledge.tsx` stays frozen. */
-    expect(changedSince(
-      'src/components/PublicPledge.tsx',
-    )).toEqual([]);
+       what it means: the course editor imports it and spells it nowhere. */
+    /* 🔴 THE-111 TOOK `PublicPledge.tsx` OFF THIS DIFF READ — the LAST of the
+       five, for the reason the four notes above already give for
+       AdminAccounting, AdminForms, AdminFundraising and AdminDonations: it is a
+       file a LATER ticket legitimately edits, and a `git diff` freeze fails on
+       any edit at any value, so it measures WHO TOUCHED IT rather than WHAT IT
+       SAYS.
+
+       THE-111 adds `logo-plate` to the pledge page's tenant logo. `/pledge` is
+       not in `PREAUTH_PATHS`, so it follows the visitor's own
+       prefers-color-scheme and paints `--surface-tint` — `#141414` in dark — and
+       a church with a dark-ink wordmark was handing out a shared link whose
+       header was blank for every visitor whose phone is in dark mode. One class
+       name; no read, write, gate, control or string moved.
+
+       THE FILE IS NOT UNGUARDED. `the-303-giving-cluster.test.tsx` owns it: it
+       RENDERS the shipped component and asserts the giving-link derivation, and
+       `THE-111.tenant-logo-dark.layout.test.tsx` measures the plate this change
+       adds in a real browser. Both assert what the file DOES; neither fails
+       because somebody edited it.
+
+       ⚠️ AND THE DIFF READ IS GONE RATHER THAN EMPTIED. `changedSince()` is
+       variadic — called with no paths it diffs the WHOLE TREE and would report
+       every file any ticket touched. An emptied call is not a weaker guard, it
+       is a broken one. THE-305's claim is stated below as what it means, which
+       is the shape the four notes above already settled on.
+
+       ⚠️ `PublicPledge.tsx` IS STILL SPELLED IN THIS FILE, which
+       `THE-312.settings-freeze-registers.test.tsx` asserts by name. */
     const editorSrc = readSrc('AdminCourseEditor.tsx');
-    for (const surface of ['AdminForms', 'AdminFundraising', 'AdminDonations']) {
+    for (const surface of ['AdminForms', 'AdminFundraising', 'AdminDonations', 'PublicPledge']) {
       expect(editorSrc, `the course editor started importing ${surface}`)
         .not.toMatch(new RegExp(`from\\s+['"][^'"]*${surface}['"]`));
     }

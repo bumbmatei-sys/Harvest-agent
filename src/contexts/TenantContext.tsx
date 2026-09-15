@@ -18,6 +18,7 @@ import {
 import { hasPlatformOverride } from '../utils/tenant-scope';
 import { isNonTenantSubdomain } from '../utils/non-tenant-subdomains';
 import { isReturningFromCheckout } from '../utils/signup-checkout';
+import { applyBrandAccent } from '../lib/brand-accent';
 
 /**
  * THE BOUND ON THE POST-CHECKOUT RE-READ (THE-217). Five extra reads of
@@ -319,7 +320,11 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
     setBranding(config);
     const color = (config as any).primaryColor;
     if (color) {
-      document.documentElement.style.setProperty('--brand-color', color);
+      // All three accent properties, or none. Setting --brand-color alone left
+      // the two DERIVED properties at the value the server computed from the
+      // PREVIOUS hex, so the dark theme corrected the accent against a colour
+      // that was no longer on screen. See `applyBrandAccent`.
+      applyBrandAccent(document.documentElement, color);
     }
   }, []);
 

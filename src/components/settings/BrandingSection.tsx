@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { ImageUpload } from '../ImageUpload';
 import { PlanFeatures } from '../../utils/plan-features';
 import { useTenant } from '../../contexts/TenantContext';
+import { applyBrandAccent } from '../../lib/brand-accent';
 
 interface BrandingSectionProps {
   currentFeatures?: PlanFeatures;
@@ -58,7 +59,11 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ afterName }) =
   const handleColorChange = (color: string) => {
     setBrandingColor(color);
     if (typeof document !== 'undefined') {
-      document.documentElement.style.setProperty('--brand-color', color);
+      // All three accent properties, or none. This is the live picker, where
+      // setting --brand-color alone left the derived on-dark accent at the
+      // server's value for as long as the admin stayed on the screen — which is
+      // precisely when they are judging the colour. See `applyBrandAccent`.
+      applyBrandAccent(document.documentElement, color);
     }
   };
 
