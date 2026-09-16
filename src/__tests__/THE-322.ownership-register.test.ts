@@ -492,7 +492,13 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * retires a pinner updates this count and says what that suite still asserts;
  * a suite that quietly stops pinning fails here.
  */
-const RULES_PINNERS_NOW = 76;
+/* ⚠️ 76 → 77, APPENDED BY THE-368, and the count is RAISED rather than
+ * loosened: its guard suite is a new pinner that reaches the accepted set
+ * through the shared module, asserting that linking the giving documentation
+ * from the admin surfaces left `firestore.rules` untouched — the ticket renders
+ * an anchor and adds no Firestore operation for a rule to express. No pinner
+ * was retired and the floor still refuses a suite that quietly drops its pin. */
+const RULES_PINNERS_NOW = 77;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per

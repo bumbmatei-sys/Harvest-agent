@@ -15,6 +15,7 @@ import { authFetch } from '../utils/auth-fetch';
 import PaymentSection from './settings/PaymentSection';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { AdminPageHeader, AdminPrimaryButton, AdminBadge } from './admin/AdminUI';
+import { GivingDocsLink } from './admin/GivingDocsLink';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../store/useAppStore';
 import { PLATFORM_TENANT_ID, hasPlatformOverride } from '../utils/tenant-scope';
@@ -680,6 +681,22 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
           title={`${campaigns.length} campaign${campaigns.length === 1 ? '' : 's'}`}
           action={<AdminPrimaryButton onClick={openCreate} icon={<Plus size={16} />}>New campaign</AdminPrimaryButton>}
         />
+
+        {/* 🔴 THE-368 — THE MONEY FLOW. A campaign's progress bar is a FIGURE,
+            and on this screen it is the figure most likely to look wrong: a
+            gift that came in through one of the church's own payment links
+            genuinely does NOT move `campaigns.raised`, so an admin watching the
+            bar sit still after a gift arrived has exactly the question that
+            page exists to answer.
+
+            🔴 IT IS A LINK AND NOT A SENTENCE, DELIBERATELY. #506 swept the
+            other giving screens and LEFT THIS ONE ALONE, because the claim it
+            would have had to make here — "recorded gifts count" — is false of
+            `campaigns.raised`. So this ticket adds no copy to this screen at
+            all: a destination, and not one word about what updates what. The
+            link cannot restate a claim; it carries the docs page's own title
+            and nothing else. */}
+        <GivingDocsLink page="theMoneyFlow" className="mt-3" />
       </div>
 
       {campaigns.length === 0 ? (

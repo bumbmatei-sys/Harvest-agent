@@ -659,6 +659,19 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
       // alternative was minting a card width, which is the thing Rule 2 exists
       // to stop. It mints none: the component carries no `max-w-[…px]` at all,
       // asserted in THE-292.country-prompt.layout.test.tsx.
+      // THE-368 — the giving documentation link, the ONE treatment every admin
+      // surface that links the docs renders. A deliberate adoption, and the
+      // narrowest possible one: it takes `CONTROL_DENSITY.control` and nothing
+      // else from this module, under the 44px touch floor `min-h-11` sets below
+      // `sm`. It takes no WIDTH — it is a link, not a form.
+      //
+      // 🔴 THE ALTERNATIVE WAS A HAND-WRITTEN `sm:h-[38px]`, which is the
+      // invented number Rule 4 exists to stop, and it would have been invented
+      // SEVEN TIMES over — once per linking surface — had the link been an
+      // inline anchor per screen rather than one component. Importing the token
+      // is what makes "this link obeys Rule 4" a fact rather than seven copies
+      // of a number that agree today.
+      'src/components/admin/GivingDocsLink.tsx',
       'src/components/country/CountryPrompt.tsx',
       // THE-313 — the order of service, mounted on the event detail view. Two
       // files, and only ONE of them spends a rule: `events/ServicePlanRow.tsx`

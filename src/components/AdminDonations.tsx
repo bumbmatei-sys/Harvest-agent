@@ -7,6 +7,7 @@ import { getTenantId } from './settings/useTenantId';
 import PaymentSection from './settings/PaymentSection';
 import { AdminCard, AdminPageHeader, AdminPrimaryButton, AdminSectionLabel } from './admin/AdminUI';
 import { ProviderMark } from './donations/GivingLinks';
+import { GivingDocsLink } from './admin/GivingDocsLink';
 import GivingShareSheet from './donations/GivingShareSheet';
 import {
   GIVING_PROVIDERS,
@@ -320,6 +321,16 @@ const AdminDonations: React.FC = () => {
         title="How your church gets paid"
         subtitle="Take card gifts inside the app, and add your own payment links for everything else."
       />
+
+      {/* 🔴 THE-368 — HOW GIVING WORKS, not the money flow and not recording a
+          gift. This is the screen a church meets giving ON: its own title is
+          "How your church gets paid", and everything under it is the church
+          deciding how money will reach it. The question a person has here is
+          the model question — who actually collects the money — which is the
+          one `how-giving-works` answers. The money flow answers "why is this
+          figure what it is", and there is no figure on this screen; recording a
+          gift answers "what do I type", and nothing is entered here. */}
+      <GivingDocsLink page="howGivingWorks" />
 
       {/* ── Stripe ───────────────────────────────────────────────────────────
           🔴 THE SAME COMPONENT SETTINGS AND FUNDRAISING MOUNT, not a second

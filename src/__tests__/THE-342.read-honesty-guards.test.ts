@@ -834,5 +834,6 @@ const THE_342_BASELINE = {
     ['6e6ea8889f8ca1842ba7ff67e5ce688ad1a846c00e4881121198172d69297412', 'THE-350 — Add Activity → Donation writes an invoice'],
     ['a1e114fae75b3eb23ebb947efd58898d873440fc0f95b96500bf0c40f7b0003e', 'THE-360 — two analytics captures, no read and no write changed'],
     ['d7b84c1725df38bac92a51bb947e13ea656db901043dc2f51e41db752061980c', 'THE-362 — the CRM delete refuses a row it cannot remove, and says why'],
+    ['62431bdf404503dba342a88eb85efac02427bd24742308522cae43f739ebd3e0', 'THE-368 — one GivingDocsLink in the Add Activity → Donation branch'],
   ] as ReadonlyArray<readonly [digest: string, source: string]>,
 } as const;

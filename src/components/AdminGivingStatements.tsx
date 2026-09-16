@@ -9,6 +9,7 @@ import { authFetch } from '../utils/auth-fetch';
 import { openStatementPdf } from '../utils/open-statement-pdf';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { GIVING_PROVIDER_NAMES } from './donations/giving-providers';
+import { GivingDocsLink } from './admin/GivingDocsLink';
 // Rules 2 and 3 (form-layout.ts). Rule 1 is deliberately NOT applied — see the
 // note on the page root below. No figure on this screen is touched: the rules
 // below change the WIDTH a control is drawn at and nothing else.
@@ -183,6 +184,20 @@ const AdminGivingStatements: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* 🔴 THE-368 — THE MONEY FLOW. Which gifts reach a statement and which
+          cannot is a money-flow question: it is decided by the ROUTE a gift
+          came in by, and by what that route updated. Somebody on this screen is
+          about to send documents a member will file with their tax return, so
+          "why is this figure what it is" is the question, and that is the page.
+
+          🔴 IT SITS ABOVE THE DISCLAIMER BLOCK, AND OUTSIDE IT, FOR A MEASURED
+          REASON. That block is pinned by `manual-payment-link-disclosures` from
+          its `data-testid` to the Section B comment, so anything placed after it
+          lands INSIDE the pinned region — which is how this link first tripped
+          that suite's colour guard. The corrected copy is not this ticket's to
+          sit inside, so the link is a neighbour to it rather than a tenant. */}
+      <GivingDocsLink page="theMoneyFlow" className="mb-3" />
 
       {/*
         🔴 THE-249 — WHAT THIS DOCUMENT DOES NOT COVER, said before it is sent.

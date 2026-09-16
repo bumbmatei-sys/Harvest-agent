@@ -741,6 +741,17 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // the prose above records is exactly why that gating is safe here — the
       // class is only ever allowed to bind below `sm`, the one band where the
       // root is 16px and `min-h-11` and `min-h-[44px]` are identical.
+      // 🔴 APPENDED BY THE-368, and it is the same KIND of mention as the two
+      // above: a phone-only 44px tap floor, spelled `min-h-11 sm:min-h-0` and
+      // released above `sm` to `CONTROL_DENSITY.control`'s 38px. It is the
+      // giving documentation link — ONE component rendered by every admin
+      // surface that links the docs, so this list gains one file rather than
+      // the seven it would have gained had the link been inlined per screen.
+      // Measured in a real Chromium with transitions suppressed at 380/639/640/
+      // 768/1280 in THE-368.giving-docs-link.layout.test.tsx, so the class is
+      // known to produce 44px below the breakpoint and 38px above it rather
+      // than assumed to.
+      'src/components/admin/GivingDocsLink.tsx',     // THE-368: USES it, as a phone-only 44px tap floor
       'src/components/attach/AttachMenu.tsx',        // THE-331: USES it, as a phone-only 44px tap floor
       'src/components/events/RotaInviteView.tsx',   // THE-324: names it in a comment, does not use it
       'src/components/events/RotaRespondView.tsx',

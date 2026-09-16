@@ -818,6 +818,18 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
        which is what THE-332 pins this file for - this ticket adds no read and no
        write to this screen at all, so `firestorePathsOf` on it is unchanged. */
     'd0f2f7d652ce08c4e80d46957cf7022559cd7624df97705ce0d66e6d54a6a2e8',
+    /* APPENDED BY THE-368 - ONE ELEMENT: a giving documentation link pointing at
+       the money flow, placed directly beneath the manual-payment disclaimer in
+       the event form and drawn under the SAME condition that draws it.
+       Confirming an event payment is one of the two routes money takes into
+       Harvest, so an admin who has just been told they will confirm each
+       payment by hand has somewhere to read what that confirmation updates.
+       NO NAV, TAB ID, READ, WRITE OR PERMISSION GATE MOVED, which is what
+       THE-332 pins this file for: the element is an anchor with an href, so
+       `firestorePathsOf` on this screen is unchanged and the ticket adds no
+       Firestore operation of any kind. THE-351's disclaimer text is untouched -
+       the link is a sibling to that Alert, never inside it. */
+    'fe2f10bfd39a3b1f5012a2f3e38aeaa232515ab8925a1225668e7691a76f7a05',
   ],
   'src/components/AdminServices.tsx': '17f508718d3c6b1ad016b9fb6be2c241629421705af4a9c0966b02739eba74ae',
   /* 🔴 AN ACCEPTED SET, APPENDED TO, NOT ONE VALUE SUBSTITUTED — the shape the

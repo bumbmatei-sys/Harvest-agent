@@ -423,7 +423,14 @@ const filesSpelling = (digest: string): string[] =>
  * records the one suite it edits and no rules digest, because it opened the
  * rules file to READ it and left it byte-identical. It reaches the accepted set
  * through `rulesDigestFailure()` like every other pinner. */
-const PINNING_SUITES = 76;
+/* ⚠️ 76 → 77, APPENDED BY THE-368. It links the giving documentation from the
+ * admin surfaces that need it, and needed NO rule change: the whole ticket
+ * renders an anchor, so it adds no Firestore read, write or query for a rule to
+ * express. Its suite reaches the accepted set through this module rather than
+ * spelling the digest — an earlier draft DID spell it, which is precisely the
+ * forty-seventh-copy defect this register exists to prevent, and this sweep
+ * caught it. Nothing above is removed and no accepted value is widened. */
+const PINNING_SUITES = 77;
 
 /**
  * A digest no ticket has recorded and none ever will — the planted change.
