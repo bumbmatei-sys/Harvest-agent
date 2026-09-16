@@ -180,12 +180,14 @@ describe('the assistant is available to NO tier without the add-on', () => {
 
        The guard survives its inversion: still asserted over the WHOLE feature
        object, so an unexpected moved cell cannot appear silently. It was six
-       cells and is now five — `aiAssistant` was deleted with the Telegram
-       assistant, so no capacity cell corresponds to this add-on any more. */
+       cells, then five — `aiAssistant` was deleted with the Telegram assistant —
+       and is now THREE: THE-370 retired the contact-pack and campus add-ons, so
+       `maxContacts` and `maxChurches` no longer move for anyone. `maxAdmins` is
+       the one capacity cell an add-on still raises. */
     for (const plan of PLANS) {
       const base = getPlanFeatures(plan);
       const loaded = getEffectiveFeatures(plan, {
-        aiAssistant: 2, adminSeats: 2, contactPacks: 2, campuses: 2, unlimitedContacts: false,
+        aiAssistant: 2, adminSeats: 2, unlimitedContacts: false,
       });
       const cells = base as unknown as Record<string, unknown>;
       const after = loaded as unknown as Record<string, unknown>;
@@ -195,7 +197,7 @@ describe('the assistant is available to NO tier without the add-on', () => {
       // on and a lift that changed nothing was not a move; now no tier does.
       // No tier carries either boolean now, so both always move — the `if`s
       // are kept so this reads the matrix rather than assuming it.
-      const expected = ['maxAdmins', 'maxChurches', 'maxContacts'];
+      const expected = ['maxAdmins'];
       if (!base.aiChat) expected.push('aiChat');
       if (!base.aiKnowledge) expected.push('aiKnowledge');
       expect(moved.sort()).toEqual(expected.sort());

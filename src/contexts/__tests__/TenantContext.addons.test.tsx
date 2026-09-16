@@ -39,10 +39,10 @@ vi.mock('../../utils/tenant-scope', () => ({
 
 import { TenantProvider, useTenant, type TenantContextValue } from '../TenantContext';
 import {
-  CONTACTS_PER_PACK,
   NO_ADDONS,
   getEffectiveFeatures,
   getPlanFeatures,
+  UNLIMITED_CAP,
   TOP_PLAN,
 } from '../../utils/plan-features';
 
@@ -56,12 +56,16 @@ function tenantDoc(data: Record<string, unknown>) {
   });
 }
 
-/** The five meanings, as `tenants/{id}.addons` carries them. */
+/** The three meanings, as `tenants/{id}.addons` carries them. */
 const OWNS = {
-  nothing: { aiAssistant: 0, adminSeats: 0, contactPacks: 0, unlimitedContacts: false, campuses: 0 },
-  fiveSeats: { aiAssistant: 0, adminSeats: 5, contactPacks: 0, unlimitedContacts: false, campuses: 0 },
+  nothing: { aiAssistant: 0, adminSeats: 0, unlimitedContacts: false },
+  fiveSeats: { aiAssistant: 0, adminSeats: 5, unlimitedContacts: false },
   aBitOfEverything: {
-    aiAssistant: 1, adminSeats: 2, contactPacks: 3, unlimitedContacts: true, campuses: 1,
+    aiAssistant: 1, adminSeats: 2, unlimitedContacts: true,
+  },
+  /** 🔴 THE-370 — a document still carrying the two retired keys. */
+  legacyRetiredKeys: {
+    aiAssistant: 0, adminSeats: 0, unlimitedContacts: false, contactPacks: 3, campuses: 2,
   },
 };
 
@@ -138,13 +142,31 @@ describe('the client sees the add-ons a tenant owns', () => {
     tenantDoc({
       plan: 'pro',
       status: 'active',
-      addons: { adminSeats: -5, contactPacks: 'lots', unlimitedContacts: 'yes', campuses: 2.7 },
+      addons: { adminSeats: -5, aiAssistant: 'lots', unlimitedContacts: 'yes' },
     });
     await renderProvider();
 
     expect(seen?.tenantAddons).toEqual({
-      aiAssistant: 0, adminSeats: 0, contactPacks: 0, unlimitedContacts: false, campuses: 2,
+      aiAssistant: 0, adminSeats: 0, unlimitedContacts: false,
     });
+  });
+
+  it('🔴 THE-370 — a document carrying a retired key resolves as if it did not', async () => {
+    // `contactPacks` and `campuses` left `TenantAddons`, but a stale value may
+    // still sit in Firestore. The reader names the fields it wants and never
+    // enumerates the document's keys, so a retired one is not read at all.
+    tenantDoc({ plan: 'pro', status: 'active', addons: OWNS.legacyRetiredKeys });
+    await renderProvider();
+
+    expect(seen?.tenantAddons).toEqual(OWNS.nothing);
+    expect(seen?.tenantAddons).not.toHaveProperty('contactPacks');
+    expect(seen?.tenantAddons).not.toHaveProperty('campuses');
+
+    // And it granted nothing: every cap is the tier's own.
+    const tier = getPlanFeatures('pro');
+    expect(seen?.planFeatures?.maxChurches).toBe(tier.maxChurches);
+    expect(seen?.planFeatures?.maxContacts).toBe(tier.maxContacts);
+    expect(seen?.planFeatures?.maxAdmins).toBe(tier.maxAdmins);
   });
 });
 
@@ -171,15 +193,20 @@ describe('effective caps include owned add-ons', () => {
     const features = seen?.planFeatures;
 
     expect(features?.maxAdmins).toBe(tier.maxAdmins + 2);
-    expect(features?.maxContacts).toBe(tier.maxContacts + 3 * CONTACTS_PER_PACK);
+    // 🔴 `maxContacts` NO LONGER MOVES — THE-370 retired the pack that raised
+    // it and raised the tier caps instead.
+    expect(features?.maxContacts).toBe(tier.maxContacts);
     // The AI add-on no longer raises a COUNT — `PlanFeatures.aiAssistant` went
     // with the Telegram assistant (THE-253). The same owned quantity now lifts
     // the two capability cells instead, which is what the church actually buys.
     expect(features?.aiChat).toBe(true);
     expect(features?.aiKnowledge).toBe(true);
-    // 🔴 The Campus add-on is the ONLY path past `maxChurches: 1`, by design.
-    expect(tier.maxChurches).toBe(1);
-    expect(features?.maxChurches).toBe(2);
+    // 🔴 CAMPUSES ARE UNCAPPED ON EVERY PAID TIER — THE-370. This used to read
+    // "the Campus add-on is the ONLY path past `maxChurches: 1`, by design";
+    // that design is retired, so the tier itself is unlimited and no add-on
+    // moves it.
+    expect(tier.maxChurches).toBe(UNLIMITED_CAP);
+    expect(features?.maxChurches).toBe(UNLIMITED_CAP);
     // Unlimited Contacts travels as its own boolean beside a finite, honest
     // number — never folded into `maxContacts` as a sentinel.
     expect(features?.unlimitedContacts).toBe(true);
@@ -191,10 +218,13 @@ describe('effective caps include owned add-ons', () => {
     // ⚠️ THE EXEMPT LIST CHANGED SHAPE IN THE-253, not just membership. It was
     // "an add-on buys capacity, never a feature flag", so all four exemptions
     // were caps. `aiAssistant` (the Telegram count) is gone, and `aiChat` and
-    // `aiKnowledge` join as the first FLAGS an add-on may move — which is the
-    // whole of what the AI Assistant add-on now buys. Everything outside these
-    // five must still be the tier's, exactly.
-    const MOVES = ['maxAdmins', 'maxContacts', 'maxChurches', 'aiChat', 'aiKnowledge'];
+    // `aiKnowledge` join as the first FLAGS an add-on may move.
+    //
+    // 🔴 AND THE-370 TOOK TWO CAPS BACK OFF IT. `maxContacts` and `maxChurches`
+    // moved only for the two retired add-ons, so they are the tier's now and
+    // belong on the exempt side. Three may move; everything else must be the
+    // tier's, exactly.
+    const MOVES = ['maxAdmins', 'aiChat', 'aiKnowledge'];
     for (const key of Object.keys(tier) as (keyof typeof tier)[]) {
       if (MOVES.includes(key)) continue;
       expect(features?.[key], `${key} moved`).toEqual(tier[key]);
@@ -261,7 +291,16 @@ describe('add-ons for a platform super admin resolve to owning nothing', () => {
     await renderProvider();
 
     expect(seen?.tenantAddons).toEqual(NO_ADDONS);
-    expect(seen?.planFeatures?.maxChurches).toBe(1);
+    // 🔴 ASSERTED ON `maxAdmins`, WHICH AN ADD-ON STILL RAISES. This used to
+    // read `maxChurches).toBe(1)`, which worked because the Campus add-on was
+    // the only way past 1. THE-370 retired that add-on, so `maxChurches` is the
+    // tier's on every path and could no longer detect a leak. Admin seats are
+    // the remaining purchased capacity, so they are what proves the override
+    // shows the TIER rather than this church's purchases.
+    // The override resolves to the TOP tier, so that is what the platform view
+    // must show — this church's two purchased seats must not be added to it.
+    expect(seen?.planFeatures?.maxAdmins).toBe(getPlanFeatures(TOP_PLAN).maxAdmins);
+    expect(seen?.planFeatures?.maxChurches).toBe(getPlanFeatures(TOP_PLAN).maxChurches);
   });
 
   it('on a tenant subdomain a super admin gets that tenant’s real add-ons', async () => {

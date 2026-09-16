@@ -1,75 +1,59 @@
 "use client";
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { collection, query, where, onSnapshot, doc, deleteDoc, getDoc, limit } from 'firebase/firestore';
-import { Church, Search, Filter, Edit2, Trash2, CheckCircle, Clock, DollarSign } from 'lucide-react';
+import { Church, Search, Filter, Edit2, Trash2, CheckCircle, Clock } from 'lucide-react';
 import ChurchEnrollment from './ChurchEnrollment';
-import { authFetch } from '../utils/auth-fetch';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
-import { getPlanFeatures } from '../utils/plan-features';
+import { getPlanFeatures, UNLIMITED_CAP } from '../utils/plan-features';
 import { useTenant } from '@/contexts/TenantContext';
 import { AdminPageHeader, AdminPrimaryButton } from './admin/AdminUI';
 import { FORM_MEASURE } from './layout/form-layout';
-import {
-  fetchOfferableAddons,
-  formatAddonPrice,
-  type AddonBillingPeriod,
-} from '../utils/addon-change';
-
-/** Every plan includes 1 church free (the tenant's own). */
-const INCLUDED_CHURCHES = 1;
 
 /**
- * THE-191 — the campus cap now names what a second campus costs.
+ * THE-370 — A CAMPUS COSTS NOTHING, SO NOTHING HERE NAMES A PRICE.
  *
- * ─── What a church used to get here ──────────────────────────────────────────
+ * ─── What this screen used to do, and why none of it survives ────────────────
  *
- * At the cap, "Add church" was `disabled`, carrying a `title` that read "Your
- * plan includes 1 church. Upgrade to Ministry to add more." Three things were
- * wrong with that, and the first is the one that matters:
+ * THE-191 turned the cap into an OFFER: at `maxChurches`, "Add church" opened a
+ * panel that read "Every Harvest plan includes 1 campus — Ministry included. A
+ * second campus is an add-on", quoted the live Campus price from
+ * `/api/dodo/addons`, and sent the admin to billing to buy one. Every sentence
+ * of that was true when it shipped and none of it is true now: the founder
+ * retired the campus add-on ("remove the campus addon. let them add as many as
+ * they want"), Dodo has the two Campus products DETACHED from all nine plan
+ * products, and `maxChurches` is `UNLIMITED_CAP` on all three paid tiers. So the
+ * offer is gone rather than reworded — there is no product to send anyone to.
  *
- *  1. 🔴 IT WAS FALSE. `maxChurches` is 1 on EVERY tier — Ministry included (see
- *     `plan-features.ts`, where Ministry deliberately did not inherit the
- *     deleted ultra tier's -1). Upgrading to Ministry buys no campus at all. The
- *     church would have paid $199/mo and arrived at the same refusal.
- *  2. 🔴 THE SENTENCE WAS UNREACHABLE ANYWAY on the surface that matters. It sat
- *     on a `title` attribute of a DISABLED button, so it needed a hover: a touch
- *     admin — the mobile case this product is built around — pressed a greyed
- *     control and got nothing at all. The matching branch inside
- *     `handleAddChurchClick` was dead code, because a disabled button never
- *     fires `onClick`.
- *  3. It named no price and offered no route forward.
+ * ⚠️ THE CAP STILL EXISTS, ON EXACTLY ONE TIER. Forever Free is `maxChurches: 0`
+ * and stays there: the founder's sentence was about the ADD-ON, and free has
+ * never had campuses at all. So `atLimit` is reachable only on free, and what it
+ * opens is an UPGRADE prompt — campuses are a paid-plan capability — and not a
+ * purchase. It names no figure, because the thing it is pointing at is a plan,
+ * and plan prices live on the billing screen it opens.
  *
- * ─── Why an upgrade prompt is right HERE and nowhere else ────────────────────
+ * ─── 🔴 AND THE DORMANT $10/mo PER-CHURCH BILLING IS DELETED ─────────────────
  *
- * Harvest does not put teasers in the nav. This is the one place the prompt is
- * genuinely earned: a church has pressed a specific button, at a specific
- * moment, wanting a specific thing that is for sale. So the cap now OPENS the
- * offer instead of refusing, and the button is no longer disabled.
+ * This file carried a second, older money path: `ENTERPRISE_PRICE_PER_CHURCH =
+ * 10`, a header subtitle printing "N churches · $X/mo", a confirm dialog reading
+ * "Confirm & Add Church ($10/mo)", and calls to /api/churches/add-billing and
+ * /api/churches/remove-billing. All of it hung off `isMinistry = maxChurches ===
+ * -1`, which was FALSE ON EVERY TIER — so none of it had rendered since the
+ * `ultra` tier was deleted.
  *
- * ─── 🔴 THE PRICE IS READ, NEVER WRITTEN ─────────────────────────────────────
+ * 🔴 UNCAPPING `maxChurches` WOULD HAVE SWITCHED ALL OF IT BACK ON, and every
+ * word of it is false: the server half refuses unconditionally (add-billing
+ * returns `skipped: 'not-ministry'` because it tests `plan !== 'ultra'` and no
+ * tenant can be `ultra`), so the screen would have promised a church a $10/mo
+ * charge, told it the charge had been applied, and no charge would exist. That
+ * is not a latent bug this ticket happened to pass — it is the direct
+ * consequence of the cell this ticket changes, so it is removed here.
  *
- * The figure comes from `/api/dodo/addons` — the same live catalogue read
- * `AddOnsSection` renders from — via `fetchOfferableAddons`, and is formatted by
- * the same `formatAddonPrice` on the add-on's own billing period. NOTHING here
- * spells a number.
- *
- * ⚠️ That is not fastidiousness. This file already carried
- * `ENTERPRISE_PRICE_PER_CHURCH = 10`, and `catalogue.ts` still describes the
- * campus add-on as "$15 a month" in a comment. The LIVE price is neither: both
- * hardcoded figures are wrong, which is exactly what a hardcoded price becomes.
- * Quoting a church a stale number on a money decision is the class of claim this
- * product keeps having to correct.
- *
- * 🔴 AND A FAILED READ NAMES NO FIGURE. If the catalogue call fails, or this
- * build cannot sell a campus in the running environment (`addonIdFor` returns
- * null, so the meaning is absent from the response), the offer renders WITHOUT a
- * price rather than falling back to one. Same rule `AddOnsSection`'s failed
- * preview follows: no figure beats a wrong figure. The read is reported through
- * `priceError` and never swallowed.
+ * The two API routes are left exactly as they are. They are unreachable from
+ * this screen now, they already decline, and deleting a money-path route is a
+ * larger change than this ticket's mandate. Nothing renders them.
  */
-const CAMPUS_ADDON = 'campus' as const;
 
 interface AdminChurchesProps {
   /**
@@ -94,36 +78,26 @@ const AdminChurches: React.FC<AdminChurchesProps> = ({ onOpenBilling }) => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [activeFilterPopup, setActiveFilterPopup] = useState<'city' | 'pastor' | 'country' | null>(null);
   const [tempFilterValue, setTempFilterValue] = useState('');
-  const [billingNotice, setBillingNotice] = useState<string | null>(null);
-  const [showBillingConfirm, setShowBillingConfirm] = useState(false);
-  const [billingLoading, setBillingLoading] = useState(false);
-  // THE-191 — the campus offer shown at the cap, and the live price it quotes.
+  // THE-370 — the upgrade prompt shown at the cap. Reachable on Forever Free
+  // only, which is the one tier that still has a campus cap.
   const [showCampusOffer, setShowCampusOffer] = useState(false);
-  const [campusPrice, setCampusPrice] = useState<string | null>(null);
-  const [priceLoading, setPriceLoading] = useState(false);
-  // 🔴 Held so the offer can say the price is missing rather than quietly
-  // render as though a campus were free. Never rendered as a figure.
-  const [priceError, setPriceError] = useState<string | null>(null);
-  // Whether the church being added right now is a paid one. Captured at add-time
-  // because `churches` can update via onSnapshot before handleChurchSaved runs.
-  const willBeBilledRef = useRef(false);
 
-  // Unknown/loading plan falls back to 'plus' (maxChurches: 1) — fail closed on the cap.
+  // 🔴 THE UNKNOWN/LOADING PLAN STILL FALLS BACK TO 'plus', AND STILL FAILS
+  // CLOSED — unchanged by THE-370. `plus` is the cheapest PAID tier, so falling
+  // back to it grants the least of anything a payer gets. What it grants for
+  // campuses is now UNLIMITED rather than 1, and that is the same direction as
+  // before, not a loosening: the fallback's job is to avoid showing a paying
+  // church a refusal it did not earn while its plan loads, and campuses are no
+  // longer a thing any paying church can be refused. The cap that still bites —
+  // free's 0 — is never reached by this fallback, because an unknown plan is not
+  // free.
   const maxChurches = getPlanFeatures(tenantPlan ?? 'plus').maxChurches;
 
-  // Whether this plan bills PER CHURCH beyond the first. Derived from the plan's
-  // own church allowance instead of naming a tier: only an uncapped plan can
-  // reach church 2+, so only an uncapped plan can be billed for one.
-  //
-  // No tier is uncapped today — every plan is maxChurches: 1, so this is false
-  // everywhere and the per-church billing UI never renders. That is deliberate:
-  // additional campuses become a paid add-on rather than a property of the top
-  // tier. It used to read `tenantPlan === 'ultra'`, which would have gone
-  // silently dead when that tier was deleted. /api/churches/add-billing is the
-  // server half and is unchanged; it independently declines to charge.
-  const isMinistry = maxChurches === -1;
-  const ENTERPRISE_PRICE_PER_CHURCH = 10; // $10/church/mo
-  const atLimit = maxChurches !== -1 && churches.length >= maxChurches;
+  // 🔴 UNLIMITED IS -1, SO IT IS TESTED BEFORE THE COMPARISON. `length >= -1` is
+  // true forever, which would turn "unlimited" into "at the limit immediately" —
+  // the exact sentinel-unaware `>=` failure `getEffectiveFeatures` keeps
+  // `unlimitedContacts` a separate boolean to avoid. Reachable on free (0) only.
+  const atLimit = maxChurches !== UNLIMITED_CAP && churches.length >= maxChurches;
 
   const openFilterPopup = (type: 'city' | 'pastor' | 'country') => {
     setActiveFilterPopup(type);
@@ -137,25 +111,6 @@ const AdminChurches: React.FC<AdminChurchesProps> = ({ onOpenBilling }) => {
     if (activeFilterPopup === 'pastor') setPastorFilter(value);
     if (activeFilterPopup === 'country') setCountryFilter(value);
     setActiveFilterPopup(null);
-  };
-
-  const addChurchBilling = async (churchId: string, churchName: string) => {
-    if (!tenantId) return;
-    try {
-      const res = await authFetch('/api/churches/add-billing', {
-        method: 'POST',
-        body: JSON.stringify({ tenantId, churchId, churchName }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to add billing');
-      }
-      return await res.json() as { success: boolean; subscriptionItemId: string };
-    } catch (err) {
-      console.error('Failed to add church billing:', err);
-      setBillingNotice('Warning: Church created but billing setup failed. Contact support.');
-      setTimeout(() => setBillingNotice(null), 7000);
-    }
   };
 
   useEffect(() => {
@@ -193,13 +148,6 @@ const AdminChurches: React.FC<AdminChurchesProps> = ({ onOpenBilling }) => {
           return;
         }
       }
-      // Remove Stripe $10/mo billing for this church before deleting
-      if (isMinistry && resolvedTenantId) {
-        await authFetch('/api/churches/remove-billing', {
-          method: 'POST',
-          body: JSON.stringify({ tenantId: resolvedTenantId, churchId: id }),
-        }).catch(err => console.error('remove-billing failed (non-fatal):', err));
-      }
       await deleteDoc(doc(db, 'churches', id));
       setDeleteConfirmId(null);
     } catch (error) {
@@ -207,89 +155,26 @@ const AdminChurches: React.FC<AdminChurchesProps> = ({ onOpenBilling }) => {
     }
   };
 
-  const handleChurchSaved = async (churchData?: any) => {
-    const wasAdding = isAdding;
-    const shouldBill = willBeBilledRef.current;
+  const handleChurchSaved = async () => {
     setIsAdding(false);
     setEditingChurch(null);
-    willBeBilledRef.current = false;
-
-    // Bill only Ministry churches beyond the included free one (decided at add-time)
-    if (isMinistry && wasAdding && churchData?.id && shouldBill) {
-      setBillingNotice('Adding $10/mo to your subscription...');
-      await addChurchBilling(churchData.id, churchData.name || '');
-      setBillingNotice(`$10/mo added to your bill for "${churchData.name || 'New Church'}"`);
-      setTimeout(() => setBillingNotice(null), 5000);
-    }
   };
 
   /**
-   * Ask the live catalogue what a campus costs. READ-ONLY, and lazy.
+   * At the cap, explain — do not sell.
    *
-   * Only ever called when an admin has actually pressed "Add church" at the cap,
-   * so the Dodo-backed catalogue read is not spent on every admin who merely
-   * opens this screen.
-   *
-   * 🔴 A failure is RECORDED, not swallowed: `priceError` is what makes the
-   * offer drop its figure instead of rendering a blank where a price belongs.
+   * 🔴 THE ONLY TIER THAT REACHES THIS IS FOREVER FREE. Every paid tier is
+   * `UNLIMITED_CAP`, so `atLimit` is false for anyone paying and this branch is
+   * unreachable for them. What a free tenant needs is the PLAN, not a product:
+   * there is no campus add-on to price any more, so nothing is fetched and no
+   * figure is named. `onOpenBilling` opens the screen that does carry prices.
    */
-  const loadCampusPrice = async (forTenant: string) => {
-    setPriceLoading(true);
-    setPriceError(null);
-    try {
-      const { addons, billing, error } = await fetchOfferableAddons(forTenant);
-      if (error) {
-        setCampusPrice(null);
-        setPriceError(error);
-        return;
-      }
-      const campus = addons.find((a) => a.addon === CAMPUS_ADDON);
-      // Absent means this build cannot sell a campus here — `offerableAddonMeanings`
-      // derives the response from the active add-on table, so an unmapped id is
-      // simply not in it. That is a refusal to sell, not a failed read.
-      if (!campus || !billing) {
-        setCampusPrice(null);
-        setPriceError(
-          campus ? 'We could not confirm the billing period.' : 'A campus cannot be added on this account yet.',
-        );
-        return;
-      }
-      setCampusPrice(
-        formatAddonPrice(campus.priceMinorUnits, campus.currency, billing as AddonBillingPeriod),
-      );
-    } catch (err) {
-      console.error('Failed to load campus add-on price:', err);
-      setCampusPrice(null);
-      setPriceError('We could not load the campus price just now.');
-    } finally {
-      setPriceLoading(false);
-    }
-  };
-
   const handleAddChurchClick = () => {
-    if (loading) return; // church count not known yet — can't decide cap/billing
+    if (loading) return; // church count not known yet — can't decide the cap
     if (atLimit) {
-      // 🔴 Reachable now. The button is no longer `disabled`, so this opens the
-      // offer instead of being dead code behind a control that cannot be pressed.
       setShowCampusOffer(true);
-      setCampusPrice(null);
-      setPriceError(null);
-      if (tenantId) loadCampusPrice(tenantId);
-      else setPriceError('A campus cannot be priced without an organisation.');
       return;
     }
-    // The first church is free on every plan; only Ministry's 2nd+ church is billed.
-    const willBeBilled = isMinistry && churches.length >= INCLUDED_CHURCHES;
-    willBeBilledRef.current = willBeBilled;
-    if (willBeBilled) {
-      setShowBillingConfirm(true);
-    } else {
-      setIsAdding(true);
-    }
-  };
-
-  const confirmBillingAndAdd = () => {
-    setShowBillingConfirm(false);
     setIsAdding(true);
   };
 
@@ -336,56 +221,18 @@ const AdminChurches: React.FC<AdminChurchesProps> = ({ onOpenBilling }) => {
       <AdminPageHeader
         eyebrow="Platform"
         title="Churches"
-        subtitle={isMinistry ? `${churches.length} church${churches.length !== 1 ? 'es' : ''} · $${Math.max(0, churches.length - INCLUDED_CHURCHES) * ENTERPRISE_PRICE_PER_CHURCH}/mo (${INCLUDED_CHURCHES} included free)` : undefined}
-        /* 🔴 NOT `disabled` at the cap — see the module note. The cap is a thing
-           to BUY, so the button opens the offer; disabling it is what made the
-           refusal silent on touch and its own handler unreachable. */
+        /* 🔴 NO SUBTITLE. It used to print a per-church running total in dollars,
+           behind `isMinistry` — see the module note on the deleted $10/mo path.
+           Campuses are free on every plan that has them, so there is no figure
+           this header could honestly carry.
+
+           🔴 NOT `disabled` at the cap. On free the button opens the upgrade
+           prompt; disabling it is what made the refusal silent on touch and its
+           own handler unreachable. */
         action={<AdminPrimaryButton onClick={() => handleAddChurchClick()} className="min-h-[44px] sm:min-h-0" icon={<span className="text-[15px] leading-none">+</span>}>Add church</AdminPrimaryButton>}
       />
 
-      {/* Billing Notice */}
-      {billingNotice && (
-        <div className="bg-wheat-50 border border-wheat-200 rounded-xl p-3 flex items-center gap-2">
-          <DollarSign size={16} className="text-wheat-600" />
-          <p className="text-sm text-wheat-700 font-medium">{billingNotice}</p>
-        </div>
-      )}
-
-      {/* Add Church Billing Confirmation Modal */}
-      {showBillingConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-surface-raised rounded-2xl p-6 max-w-md w-full shadow-xl">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-wheat-100 flex items-center justify-center">
-                <DollarSign size={20} className="text-wheat-600" />
-              </div>
-              <h3 className="text-xl font-bold text-strong font-display">Adding a New Church</h3>
-            </div>
-            <p className="text-muted mb-6">
-              Each additional church added to your organization will increase your monthly plan by{' '}
-              <span className="font-semibold text-strong">$10/mo</span>. This will be charged
-              automatically to your payment method on file.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowBillingConfirm(false)}
-                className="px-4 py-2 text-muted hover:bg-surface-sunken rounded-xl transition-colors font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmBillingAndAdd}
-                className="flex items-center gap-1.5 px-4 py-2 bg-gold text-white rounded-xl hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors font-medium"
-              >
-                <DollarSign size={16} />
-                Confirm & Add Church ($10/mo)
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* THE-191 — at the cap: what a campus costs, and where to buy one. */}
+      {/* THE-370 — at the cap: which plans have campuses. Free only; no price. */}
       {showCampusOffer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
           <div className="bg-surface-raised rounded-2xl p-6 max-w-md w-full shadow-xl">
@@ -393,27 +240,18 @@ const AdminChurches: React.FC<AdminChurchesProps> = ({ onOpenBilling }) => {
               <div className="w-10 h-10 rounded-full bg-[var(--surface-gold)] flex items-center justify-center">
                 <Church size={20} className="text-gold" />
               </div>
-              <h3 className="text-xl font-bold text-strong font-display">Add another campus</h3>
+              <h3 className="text-xl font-bold text-strong font-display">Campuses are on the paid plans</h3>
             </div>
-            <p className="text-muted mb-2">
-              {/* 🔴 "every plan, Ministry included" is the correction. The old copy
-                  sent a church to a $199/mo tier that grants no extra campus. */}
-              Every Harvest plan includes {INCLUDED_CHURCHES} campus — Ministry included.
-              A second campus is an add-on.
+            <p className="text-muted mb-6">
+              {/* 🔴 NO FIGURE, AND NO ADD-ON. The old copy read "Every Harvest plan
+                  includes 1 campus — Ministry included. A second campus is an
+                  add-on", and quoted a live Campus price beneath it. Both are
+                  false since THE-370: the add-on is retired and every paid plan
+                  carries as many campuses as a church needs. What a free tenant
+                  is missing is the PLAN, so that is what this names. */}
+              Your Forever Free plan does not include campuses. Every paid plan does — as many
+              as you need, with no per-campus charge.
             </p>
-            {priceLoading ? (
-              <p className="text-sm text-muted mb-6">Checking the price…</p>
-            ) : campusPrice ? (
-              <p className="text-base text-strong font-semibold mb-6">
-                {campusPrice} for each extra campus
-              </p>
-            ) : (
-              /* 🔴 NO FIGURE ON A FAILED READ. See the module note. */
-              <p className="text-sm text-muted mb-6">
-                {priceError || 'We could not load the campus price just now.'}
-                {' '}You can see the current price on the billing screen.
-              </p>
-            )}
             <div className="flex flex-col sm:flex-row sm:justify-end gap-3">
               <button
                 onClick={() => setShowCampusOffer(false)}
@@ -426,7 +264,7 @@ const AdminChurches: React.FC<AdminChurchesProps> = ({ onOpenBilling }) => {
                   onClick={() => { setShowCampusOffer(false); onOpenBilling(); }}
                   className="min-h-[44px] sm:min-h-0 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-gold text-white rounded-xl hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors font-medium"
                 >
-                  Add a campus
+                  See the plans
                 </button>
               )}
             </div>
@@ -591,11 +429,6 @@ const AdminChurches: React.FC<AdminChurchesProps> = ({ onOpenBilling }) => {
             <h3 className="text-xl font-bold text-strong mb-2 font-display">Delete Church</h3>
             <p className="text-muted mb-6">
               Are you sure you want to delete this church? This action cannot be undone.
-              {isMinistry && churches.find(c => c.id === deleteConfirmId)?.stripeSubscriptionItemId && (
-                <span className="block text-sm text-field-700 mt-1">
-                  This will automatically remove the $10/mo charge from your subscription.
-                </span>
-              )}
             </p>
             <div className="flex justify-end gap-3">
               <button

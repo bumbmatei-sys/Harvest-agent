@@ -77,22 +77,30 @@ export type TenantStatus =
  *
  * ─── The field names are counts, and say so ──────────────────────────────────
  *
- * `contactPacks` is a COUNT OF BLOCKS, not a contact count: 2 means two blocks
- * of `CONTACTS_PER_PACK`, i.e. +1,000 contacts. `unlimitedContacts` is a plain
+ * `adminSeats` and `aiAssistant` are COUNTS. `unlimitedContacts` is a plain
  * boolean and stays one — see `getEffectiveFeatures` for why no number can carry
  * "unlimited" through Firestore safely.
+ *
+ * 🔴 TWO FIELDS WERE DELETED HERE — THE-370, and deleted rather than left
+ * dormant. `contactPacks` (blocks of `CONTACTS_PER_PACK`) and `campuses` (the
+ * then-only path past `maxChurches: 1`) named add-ons the founder retired: every
+ * paid tier is uncapped on campuses now, and the contact caps were raised
+ * instead of sold in blocks. Both products are detached from all nine plan
+ * products in Dodo and neither is purchasable.
+ *
+ * ⚠️ A STALE `campuses: 2` OR `contactPacks: 3` MAY STILL SIT IN A DOCUMENT, and
+ * that is safe by construction: `readTenantAddons` reads the fields it names off
+ * an untrusted value and never enumerates the document's own keys, so a retired
+ * key is not read, cannot throw, and grants nothing. A tenant carrying one
+ * resolves exactly as if it did not. No migration was written — see the PR.
  */
 export interface TenantAddons {
   /** Extra AI assistants bought, on top of whatever the tier includes. */
   aiAssistant: number;
   /** Extra admin seats bought, on top of the tier's `maxAdmins`. */
   adminSeats: number;
-  /** Blocks of contacts bought. One pack = `CONTACTS_PER_PACK` contacts. */
-  contactPacks: number;
-  /** True when the Unlimited Contacts add-on is held. Beats any pack count. */
+  /** True when the Unlimited Contacts add-on is held. */
   unlimitedContacts: boolean;
-  /** Extra churches/campuses bought. The ONLY path past `maxChurches: 1`. */
-  campuses: number;
 }
 
 export interface TenantConfig {

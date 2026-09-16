@@ -588,11 +588,14 @@ describe('6 · no plan cap or price changed', () => {
         return [p, { maxCourses: f.maxCourses, maxAdmins: f.maxAdmins, maxContacts: f.maxContacts }];
       }),
     );
+    // ⚠️ THE CONTACT CAPS MOVED IN THE-370 — 150 → 500, 500 → 2,000,
+    // 2,000 → 4,000, with free's 500 unchanged. Transcribed rather than relaxed
+    // so this keeps guarding `maxCourses` and `maxAdmins`, which did not move.
     expect(caps).toEqual({
       free: { maxCourses: 1, maxAdmins: 1, maxContacts: 500 },
-      plus: { maxCourses: 2, maxAdmins: 2, maxContacts: 150 },
-      pro: { maxCourses: 5, maxAdmins: 5, maxContacts: 500 },
-      max: { maxCourses: 15, maxAdmins: 15, maxContacts: 2_000 },
+      plus: { maxCourses: 2, maxAdmins: 2, maxContacts: 500 },
+      pro: { maxCourses: 5, maxAdmins: 5, maxContacts: 2_000 },
+      max: { maxCourses: 15, maxAdmins: 15, maxContacts: 4_000 },
     });
   });
 
@@ -645,13 +648,32 @@ describe('6 · no plan cap or price changed', () => {
     // feature cell and no code path changed; THE-291's claim (no CLIENT-SIDE
     // plan write exists) is unaffected because nothing here executes.
     //
+    // 🔴 REPINNED AGAIN FOR THE-370, and again the reason is recorded rather
+    // than the digest silently swapped. THE-370 is a CAP CHANGE and an ADD-ON
+    // RETIREMENT: `maxContacts` goes 150 → 500, 500 → 2,000 and 2,000 → 4,000;
+    // `maxChurches` goes 1 → UNLIMITED_CAP on all three paid tiers (free stays
+    // 0); `CONTACTS_PER_PACK` is deleted; `NO_ADDONS`, `readTenantAddons` and
+    // `getEffectiveFeatures` lose the `contactPacks` and `campuses` fields with
+    // the two Dodo products the founder detached; and `UNLIMITED_CAP` moves
+    // above `PLAN_FEATURES` so the matrix can name the sentinel it now carries.
+    //
+    // THE-291's claim is untouched by all of it. This file's subject is that
+    // NOTHING WRITES `plan` FROM THE CLIENT — asserted by `planWritesIn` above
+    // and independent of what any tier includes or costs. The webhook is still
+    // the single writer.
+    //
+    // 🔴 NO PRICE MOVED. The nine plan prices are asserted directly above, and
+    // the cross-repo price contract still throws at module scope during the
+    // marketing site's prerender if the two repos disagree on any of them.
+    //
     // Previous pins:
     //   cd4fbdd58f6dbbcbd180aeab00a63f1c9be3189c9010ff7a844a0f8e817af403 (pre-THE-314)
     //   f43327552f7c774586dabc040ac8da0d31bf4f84023d70af3b2f428024f7f570 (pre-THE-335)
     //   db4bd86a93fa34691da21bbb9b1dcdea9d3d37f932784d50177ad3b736c11d75 (pre-THE-343)
     //   11f9c533ddaffcf89614219f2d9b37b201e218bc421d923a75fc9d38bf63ffcf (pre-THE-353)
+    //   017c56ceda3c0032ac9f5c08468a225ae975a029e4f8cb8a6d73033a14ec4c82 (pre-THE-370)
     expect(sha256(readFileSync(path.join(REPO, 'src/utils/plan-features.ts')))).toBe(
-      '017c56ceda3c0032ac9f5c08468a225ae975a029e4f8cb8a6d73033a14ec4c82',
+      '9b1be3db2c7287216084f46fb1dc15c8caff3d680f0dbb9d53db2ea59d564a92',
     );
   });
 });

@@ -243,6 +243,26 @@ export interface PlanFeatures {
 // The contract test in __tests__/plan-features.test.ts will fail CI if this
 // matrix changes without an explicit update to that test.
 
+/**
+ * The sentinel `PlanFeatures`' numeric cells use for "unlimited".
+ *
+ * 🔴 DECLARED ABOVE `PLAN_FEATURES` BECAUSE THE MATRIX NOW NAMES IT — THE-370.
+ * It used to sit beside `getEffectiveFeatures` further down, which was fine
+ * while no tier carried it; `maxChurches` is `UNLIMITED_CAP` on all three paid
+ * tiers now, and a `const` cannot be read above its own declaration. The
+ * alternative was a bare `-1` in three cells, which is the unexplained literal
+ * this constant exists to abolish.
+ *
+ * `getEffectiveFeatures` still has to RECOGNISE it: adding capacity to a cell
+ * that already means unlimited would turn -1 into a small positive number and
+ * silently LOWER the cap. That is `raiseCap`'s first line, and it is now a LIVE
+ * case rather than a guard against a future matrix change.
+ *
+ * `contact-capacity.ts` and `admin-seats.ts` each export the same value under
+ * the name `UNLIMITED` for their own call sites.
+ */
+export const UNLIMITED_CAP = -1;
+
 const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
   // ─── Forever Free — no price, no billing term, no Dodo subscription ────────
   //
@@ -257,12 +277,20 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
   // free look like a term-billable product to every discount, headline and
   // catalogue calculation that walks that table.
   //
-  // ⚠️ `maxContacts: 500` is deliberately GENEROUS AGAINST INDIVIDUAL'S 150, and
-  // that is not a mistake in the ladder. The founder chose a capped-but-generous
-  // free tier (option A of three) over an unlimited one precisely so the ladder
-  // stays honest in the other direction: an unlimited free tier would mean an
-  // evangelist with 800 disciples gets a WORSE product by paying $39. The cap is
-  // what bounds free; the paid tiers sell capability, not just capacity.
+  // ⚠️ `maxContacts: 500` IS NO LONGER GENEROUS AGAINST INDIVIDUAL — THE-370.
+  // This comment used to read "deliberately GENEROUS AGAINST INDIVIDUAL'S 150",
+  // and that comparison is now FALSE: Individual is 500 too, so free and the
+  // cheapest paid tier hold the same number of contacts and there is no gap left
+  // to describe. The founder raised every cap ("lets not put cap on users that
+  // badly") and free was the one tier already high enough to leave alone.
+  //
+  // 🔴 WHAT THAT CHANGES, AND WHAT IT DOES NOT. Free is still CAPPED rather than
+  // unlimited, and the original reason survives the repricing: an unlimited free
+  // tier would mean an evangelist with 800 disciples gets a WORSE product by
+  // paying for one. What free no longer does is out-hold the tier above it.
+  // Individual is now bought for CAPABILITY — the feed, the blog, a second
+  // course, a second admin — and not for capacity, which is the honest shape for
+  // a ladder whose first paid rung costs $20.
   //
   // ⚠️ THERE IS NO `analytics` CELL IN THIS MATRIX, on free or on any tier.
   // Analytics is not a plan flag today — it is a PERMISSION (`analytics` in
@@ -410,8 +438,14 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     aiChat: false,
     aiKnowledge: false,
     map: false,
-    maxChurches: 1,
-    maxContacts: 150,
+    // 🔴 UNLIMITED — THE-370. Was 1, with additional campuses sold as an add-on.
+    // The founder retired that add-on ("remove the campus addon. let them add as
+    // many as they want"), so campuses are a property of paying at all rather
+    // than a thing to buy. Identical on all three paid tiers, by design.
+    maxChurches: UNLIMITED_CAP,
+    // 🔴 500 — THE-370. Was 150. See the note on free's cap: this tier no longer
+    // holds fewer contacts than the tier that costs nothing.
+    maxContacts: 500,
     maxCourses: 2,
     maxAdmins: 2,
     customDomain: false,
@@ -481,8 +515,10 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     aiChat: false,
     aiKnowledge: false,
     map: true,
-    maxChurches: 1,
-    maxContacts: 500,
+    // 🔴 UNLIMITED — THE-370, same as Individual above.
+    maxChurches: UNLIMITED_CAP,
+    // 🔴 2,000 — THE-370. Was 500.
+    maxContacts: 2_000,
     maxCourses: 5,
     maxAdmins: 5,
     customDomain: false,
@@ -525,9 +561,17 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
   //
   // Absorbed the deleted `ultra` tier: accountingTools folded in here.
   // (Ultra's `aiAssistant: 1` folded in too, and went with the Telegram
-  // assistant in THE-253 — see the note on its old declaration site.) `maxChurches` deliberately did NOT inherit ultra's -1 —
-  // every tier is capped at 1 campus and additional campuses become a paid
-  // add-on. Ultra's third folded-in cell, `churchDirectory`, was later removed
+  // assistant in THE-253 — see the note on its old declaration site.)
+  //
+  // 🔴 `maxChurches` NOW CARRIES ultra's -1 AFTER ALL — THE-370, and not by
+  // inheritance. This comment used to read "deliberately did NOT inherit ultra's
+  // -1 — every tier is capped at 1 campus and additional campuses become a paid
+  // add-on"; both halves are false now. The campus add-on is retired and all
+  // three PAID tiers are `UNLIMITED_CAP`, so this is not Ministry reclaiming a
+  // top-tier privilege — it is the cap ceasing to be a product on every tier
+  // that pays. Free stays at 0, which is the only campus distinction left.
+  //
+  // Ultra's third folded-in cell, `churchDirectory`, was later removed
   // entirely — see the comment on its old declaration site above `maxChurches`
   // in the PlanFeatures interface.
   max: {
@@ -550,8 +594,10 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     aiChat: false,
     aiKnowledge: false,
     map: true,
-    maxChurches: 1,
-    maxContacts: 2_000,
+    // 🔴 UNLIMITED — THE-370, same as the two tiers below.
+    maxChurches: UNLIMITED_CAP,
+    // 🔴 4,000 — THE-370. Was 2,000.
+    maxContacts: 4_000,
     maxCourses: 15,
     maxAdmins: 15,
     customDomain: true,
@@ -1107,29 +1153,11 @@ export function getPlanFeatures(plan: TenantPlan): PlanFeatures {
 
 // ─── Add-ons layered on a plan (REP-5a) ──────────────────────────────────────
 
-/**
- * The sentinel `PlanFeatures`' numeric cells use for "unlimited".
- *
- * Written down here because `getEffectiveFeatures` has to RECOGNISE it: adding
- * capacity to a cell that already means unlimited would turn -1 into a small
- * positive number and silently LOWER the cap. No tier currently carries it —
- * every cap in the matrix above is a real count — so this is a guard against a
- * future matrix change, not a live case. `contact-capacity.ts` and
- * `admin-seats.ts` each export the same value under the name `UNLIMITED` for
- * their own call sites.
- */
-export const UNLIMITED_CAP = -1;
-
-/** Contacts one "Contacts +500" pack adds. The pack's whole meaning, once. */
-export const CONTACTS_PER_PACK = 500;
-
 /** Owning nothing. The answer for every tenant that predates add-ons. */
 export const NO_ADDONS: TenantAddons = Object.freeze({
   aiAssistant: 0,
   adminSeats: 0,
-  contactPacks: 0,
   unlimitedContacts: false,
-  campuses: 0,
 });
 
 /**
@@ -1147,8 +1175,8 @@ export const NO_ADDONS: TenantAddons = Object.freeze({
  *     expensive add-on Harvest sells.
  *
  * So `maxContacts` here is always a real, finite, honest number — the tier's
- * allowance plus `CONTACTS_PER_PACK` per pack — and the unlimited fact travels
- * beside it. A cap check asks "unlimited, or under the number?" (see
+ * published allowance, and since THE-370 nothing else, because the pack that
+ * used to be added to it is retired — and the unlimited fact travels beside it. A cap check asks "unlimited, or under the number?" (see
  * `isAtContactLimit`). A consumer that has NOT been taught about the boolean
  * still reads a finite number that is at worst too small, never zero, and never
  * smaller than what the church actually paid for.
@@ -1180,9 +1208,7 @@ export function readTenantAddons(raw: unknown): TenantAddons {
   return {
     aiAssistant: count(value.aiAssistant),
     adminSeats: count(value.adminSeats),
-    contactPacks: count(value.contactPacks),
     unlimitedContacts: value.unlimitedContacts === true,
-    campuses: count(value.campuses),
   };
 }
 
@@ -1216,12 +1242,19 @@ function raiseCap(base: number, extra: number): number {
  * touches `PLAN_FEATURES`; `plan-features.test.ts` pins that every tier reads
  * identically before and after this is called.
  *
- * Five cells move, and only these five:
- *   `maxContacts`  + `CONTACTS_PER_PACK` per pack (and see `unlimitedContacts`)
+ * Three cells move, and only these three:
  *   `maxAdmins`    + one per admin seat
- *   `maxChurches`  + one per campus — the ONLY path past 1, which is the design
  *   `aiChat`       ← true when the AI Assistant add-on is held (THE-253)
  *   `aiKnowledge`  ← true when the AI Assistant add-on is held (THE-253)
+ *
+ * 🔴 `maxChurches` AND `maxContacts` NO LONGER MOVE HERE — THE-370. This list
+ * used to carry two more lines, and the `maxChurches` one described the campus
+ * add-on as "+ one per campus — the ONLY path past 1, which is the design".
+ * THAT DESIGN IS RETIRED. Campuses are `UNLIMITED_CAP` on every paid tier, so
+ * there is no cap left for an add-on to raise and no add-on left to raise it;
+ * `maxContacts` lost its line with the Contacts +500 pack for the same reason.
+ * Both cells now read straight through from the tier, which is what makes the
+ * published number and the tenant's number the same number again.
  *
  * 🔴 THE LAST TWO BREAK THE OLD RULE ON PURPOSE — "an add-on buys capacity,
  * never a feature flag" was true, and it was exactly the defect. The AI
@@ -1261,9 +1294,7 @@ export function getEffectiveFeatures(
   const owned = readTenantAddons(addons);
   return Object.freeze({
     ...base,
-    maxContacts: raiseCap(base.maxContacts, owned.contactPacks * CONTACTS_PER_PACK),
     maxAdmins: raiseCap(base.maxAdmins, owned.adminSeats),
-    maxChurches: raiseCap(base.maxChurches, owned.campuses),
     // 🔴 The RAG capability the AI Assistant add-on actually buys — see above.
     // `owned.aiAssistant` is the COUNT the Dodo webhook wrote from the live
     // product; owning one or ten is the same capability, so this is a

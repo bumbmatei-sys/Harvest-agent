@@ -46,26 +46,26 @@ import AddOnsSection from '../AddOnsSection';
 
 const TENANT = 'grace-chapel';
 
-/** The five meanings as `tenants/{id}.addons` carries them. */
+/** The three meanings as `tenants/{id}.addons` carries them. */
 function owns(overrides: Partial<TenantAddons> = {}): TenantAddons {
   return {
     aiAssistant: 0,
     adminSeats: 0,
-    contactPacks: 0,
     unlimitedContacts: false,
-    campuses: 0,
     ...overrides,
   };
 }
 
 /**
- * The catalogue as `/api/dodo/addons` returns it: named and priced by Dodo, and
- * NOT including Campus — the live gap, which is what the disabled card is for.
+ * The catalogue as `/api/dodo/addons` returns it: named and priced by Dodo.
+ *
+ * 🔴 THREE, NOT FOUR — THE-370 retired Contacts +500 along with Campus, so the
+ * server can no longer offer either. The disabled-card behaviour is still
+ * exercised below by withholding one of the three that remain.
  */
 const OFFERED = [
   { addon: 'aiAssistant', name: 'AI Assistant', priceMinorUnits: 22800, currency: 'USD' },
   { addon: 'adminSeat', name: 'Admin Seat', priceMinorUnits: 12000, currency: 'USD' },
-  { addon: 'contactPack', name: 'Contacts +500', priceMinorUnits: 24000, currency: 'USD' },
   { addon: 'unlimitedContacts', name: 'Unlimited Contacts', priceMinorUnits: 70800, currency: 'USD' },
 ];
 
@@ -271,52 +271,42 @@ describe('owned quantity renders separately from the pending change', () => {
 
 // ── 4 ────────────────────────────────────────────────────────────────────────
 
-describe('the contacts card shows the resulting total', () => {
-  it('states what the packs add up to, from getEffectiveFeatures', async () => {
-    const held = owns({ contactPacks: 1 });
-    tenantValue.current.tenantAddons = held;
-    tenantValue.current.planFeatures = getEffectiveFeatures('max', held);
+describe('THE-370 — the retired add-on cards are gone', () => {
+  it('🔴 no Contacts +500 card, because the server cannot offer one', async () => {
     await mount();
-
-    // 🔴 Asserted against the REAL layering function, never a literal: a church
-    // checks its contact list against this number.
-    const total = getEffectiveFeatures('max', held).maxContacts.toLocaleString();
-    expect(cardFor('Contacts +500').textContent).toContain(`1 owned · ${total} total`);
+    expect(hasCard('Contacts +500')).toBe(false);
   });
 
-  it('takes the total from the layered features, not from a tier it assumed', async () => {
-    // The same one pack on a SMALLER tier is a different total. A component
-    // that added CONTACTS_PER_PACK to a base it picked would answer the Ministry
-    // number here.
-    const held = owns({ contactPacks: 1 });
-    tenantValue.current.tenantAddons = held;
-    tenantValue.current.planFeatures = getEffectiveFeatures('pro', held);
+  it('🔴 no Campus card either', async () => {
     await mount();
-
-    const total = getEffectiveFeatures('pro', held).maxContacts.toLocaleString();
-    expect(cardFor('Contacts +500').textContent).toContain(`1 owned · ${total} total`);
-    expect(cardFor('Contacts +500').textContent).not.toContain(
-      getEffectiveFeatures('max', held).maxContacts.toLocaleString(),
-    );
+    expect(hasCard('Campus')).toBe(false);
   });
 
-  it('does the pack arithmetic nowhere in this file', async () => {
+  it('🔴 the component names neither meaning, so neither can come back by copy', async () => {
     const code = source();
-    // 🔴 `getEffectiveFeatures` is the one implementation of "tier allowance
-    // plus packs". A second one here would be the number a church checks its
-    // contact list against, computed twice.
-    expect(code).toContain('planFeatures.maxContacts');
-    expect(code, 'a pack is being multiplied out here').not.toMatch(/CONTACTS_PER_PACK\s*[*+\-/]/);
-    expect(code, 'a pack count is being multiplied out here').not.toMatch(/contactPacks\s*[*+\-/]/);
+    expect(code, 'a retired meaning is named in this file').not.toMatch(/contactPack/);
+    expect(code, 'a retired meaning is named in this file').not.toMatch(/'campus'/);
+    // And the pack constant is not imported or multiplied out anywhere.
+    expect(code).not.toMatch(/CONTACTS_PER_PACK/);
   });
 
-  it('does not quote a finite total to a church that holds Unlimited Contacts', async () => {
-    const held = owns({ contactPacks: 1, unlimitedContacts: true });
+  it('the three that remain all render', async () => {
+    await mount();
+    for (const name of ['AI Assistant', 'Admin Seat', 'Unlimited Contacts']) {
+      expect(hasCard(name), name).toBe(true);
+    }
+  });
+
+  it('holding Unlimited Contacts still reads Active, not a count', async () => {
+    const held = owns({ unlimitedContacts: true });
     tenantValue.current.tenantAddons = held;
     tenantValue.current.planFeatures = getEffectiveFeatures('max', held);
     await mount();
 
-    expect(cardFor('Contacts +500').textContent).toContain('1 owned · unlimited total');
+    // 🔴 It is a BOOLEAN — "one owned" would be the first step toward folding
+    // it into a number, which is the thing `getEffectiveFeatures` refuses.
+    expect(cardFor('Unlimited Contacts').textContent).toContain('Active');
+    expect(cardFor('Unlimited Contacts').textContent).not.toContain('1 owned');
   });
 
   it('leaves the count alone on the add-ons that are not capacity', async () => {
@@ -596,37 +586,44 @@ describe('unlimited contacts renders one button and no stepper', () => {
 
 describe('an add-on missing from the offerable set renders disabled, by data not by name', () => {
   it('shows what the server did not offer, disabled and uncontrollable', async () => {
+    // 🔴 THE-370: the example used to be Campus, which was mapped in test mode
+    // and not in live. Campus is not an add-on at all now, so the disabled
+    // state is exercised by withholding one of the three that remain — which
+    // is the same mechanism and a live case rather than a retired one.
+    catalogueBody = {
+      billing: 'yearly',
+      plan: 'max',
+      addons: OFFERED.filter((offer) => offer.addon !== 'unlimitedContacts'),
+    };
     await mount();
-    const card = cardFor('Campus');
+    const card = cardFor('Unlimited Contacts');
 
     expect(card.textContent).toContain('Not available yet');
     expect(card.querySelectorAll('button')).toHaveLength(0);
   });
 
   it('disables whichever add-on is absent — the rule is the set, not the word', async () => {
-    // 🔴 The same catalogue with Campus present and Admin Seat missing must
-    // disable Admin Seat and offer Campus. A component that knew the word
-    // "Campus" would get this backwards, and would still be disabling Campus
-    // the day its two live ids are filled in.
+    // 🔴 The same catalogue with Admin Seat missing must disable Admin Seat and
+    // offer the rest. A component that knew any add-on by NAME would get this
+    // backwards — which is why the disabled set is derived by SUBTRACTION from
+    // `ADDON_MEANINGS` and never from a list in the component.
     catalogueBody = {
       billing: 'yearly',
       plan: 'max',
-      addons: [
-        ...OFFERED.filter((offer) => offer.addon !== 'adminSeat'),
-        { addon: 'campus', name: 'Additional Campus', priceMinorUnits: 18000, currency: 'USD' },
-      ],
+      addons: OFFERED.filter((offer) => offer.addon !== 'adminSeat'),
     };
     await mount();
 
-    expect(cardFor('Additional Campus').textContent).toContain('$180/year');
-    expect(cardFor('Additional Campus').querySelector('[aria-label="Add one Additional Campus"]')).not.toBeNull();
     expect(cardFor('Admin Seat').textContent).toContain('Not available yet');
     expect(cardFor('Admin Seat').querySelectorAll('button')).toHaveLength(0);
-    expect(hasCard('Campus')).toBe(false);
+    // The two the server DID offer are controllable — this is a filter, not an
+    // outage.
+    expect(cardFor('Unlimited Contacts').querySelectorAll('button').length).toBeGreaterThan(0);
+    expect(cardFor('AI Assistant').querySelectorAll('button').length).toBeGreaterThan(0);
   });
 
   it('renders no disabled cards at all when the catalogue could not be read', async () => {
-    // An outage is not a product statement. Five "Not available yet" cards
+    // An outage is not a product statement. Three "Not available yet" cards
     // would tell a church nothing is for sale when the truth is we could not
     // ask.
     mockAuthFetch.mockImplementation(async (url: string) => {
@@ -678,8 +675,8 @@ describe('a trial refusal shows the copy the route returned', () => {
 
 describe('the owned set comes from the tenant document, not a second fetch', () => {
   it('reads what they hold off the context, and asks nothing for it', async () => {
-    tenantValue.current.tenantAddons = owns({ adminSeats: 4, contactPacks: 2 });
-    tenantValue.current.planFeatures = getEffectiveFeatures('max', owns({ adminSeats: 4, contactPacks: 2 }));
+    tenantValue.current.tenantAddons = owns({ adminSeats: 4, aiAssistant: 2 });
+    tenantValue.current.planFeatures = getEffectiveFeatures('max', owns({ adminSeats: 4, aiAssistant: 2 }));
     await mount();
 
     expect(cardFor('Admin Seat').textContent).toContain('4 owned');

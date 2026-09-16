@@ -50,18 +50,15 @@ type VerifiedAddon = { meaning: DodoAddonMeaning; period: BillingPeriod; id: str
 /**
  * The TEST-mode add-ons, as recorded when they were created in Dodo.
  *
- * All ten. Campus included — test mode is where Campus must work end to end, so
- * that filling the live gap is two ids and no logic.
+ * 🔴 SIX, NOT TEN — THE-370. The Campus and Contacts +500 rows are deleted from
+ * this fixture because they are deleted from the table: both products are
+ * detached from all nine live plan products and neither meaning exists any more.
  */
 const DODO_TEST_ADDONS_AS_RECORDED = [
   { meaning: 'aiAssistant', period: 'monthly', id: 'adn_0NlNfaOwHWiV8CrPNREiU', label: 'AI Assistant - Monthly' },
   { meaning: 'aiAssistant', period: 'yearly', id: 'adn_0NlNfaSduoV543Ey8y9tR', label: 'AI Assistant - Annual' },
   { meaning: 'adminSeat', period: 'monthly', id: 'adn_0NlNfaVFaLLWXU8KXw1JI', label: 'Admin Seat - Monthly' },
   { meaning: 'adminSeat', period: 'yearly', id: 'adn_0NlNfaXplUpTTYwm1jJCV', label: 'Admin Seat - Annual' },
-  { meaning: 'campus', period: 'monthly', id: 'adn_0NlNfafdHZgpetrweMI31', label: 'Campus - Monthly' },
-  { meaning: 'campus', period: 'yearly', id: 'adn_0NlNfaiGQpP5IAxXI82Fz', label: 'Campus - Annual' },
-  { meaning: 'contactPack', period: 'monthly', id: 'adn_0NlNfakv8J9oKpmVGavKm', label: 'Contacts +500 - Monthly' },
-  { meaning: 'contactPack', period: 'yearly', id: 'adn_0NlNfanWnF8iZ0A8rESdW', label: 'Contacts +500 - Annual' },
   { meaning: 'unlimitedContacts', period: 'monthly', id: 'adn_0NlNfaqEXuZZsLYWtKcer', label: 'Unlimited Contacts - Monthly' },
   { meaning: 'unlimitedContacts', period: 'yearly', id: 'adn_0NlNfaspQfXIgGxB6d0Bd', label: 'Unlimited Contacts - Annual' },
 ] as const satisfies readonly VerifiedAddon[];
@@ -69,19 +66,19 @@ const DODO_TEST_ADDONS_AS_RECORDED = [
 /**
  * The LIVE-mode add-ons, as recorded when they were created in Dodo.
  *
- * All ten. The two live Campus ids were read from the authenticated live Dodo
- * API and verified against all six live products — the gap this fixture used
- * to leave deliberately is closed.
+ * 🔴 SIX, NOT TEN — THE-370, and the four removed ids are recorded in the PR
+ * rather than here: a retired id left in a fixture is the "stale excuse that
+ * outlives its product" the site's own add-on contract refuses.
+ *
+ * ⚠️ UNLIMITED CONTACTS WAS REPRICED IN DODO AT THE SAME TIME ($40 → $30
+ * monthly, $480 → $360 annual). Its two ids are unchanged and no price lives in
+ * this repo, so nothing in this fixture moves for it.
  */
 const DODO_LIVE_ADDONS_AS_RECORDED = [
   { meaning: 'aiAssistant', period: 'monthly', id: 'adn_0NlKtuImtSn7PcdvjnSni', label: 'AI Assistant - Monthly' },
   { meaning: 'aiAssistant', period: 'yearly', id: 'adn_0NlKtw3IOHfv1GGCevNol', label: 'AI Assistant - Annual' },
   { meaning: 'adminSeat', period: 'monthly', id: 'adn_0NlKtw7AayNYI6YYwphQ5', label: 'Admin Seat - Monthly' },
   { meaning: 'adminSeat', period: 'yearly', id: 'adn_0NlKtw9lWLs0VRN9hWciX', label: 'Admin Seat - Annual' },
-  { meaning: 'campus', period: 'monthly', id: 'adn_0NlKwDcuqIWoVK7Qay13L', label: 'Campus - Monthly' },
-  { meaning: 'campus', period: 'yearly', id: 'adn_0NlKwDgKMpuqzR5VmlCBD', label: 'Campus - Annual' },
-  { meaning: 'contactPack', period: 'monthly', id: 'adn_0NlKtwD3VfBLgx2LTw69O', label: 'Contacts +500 - Monthly' },
-  { meaning: 'contactPack', period: 'yearly', id: 'adn_0NlKtwGbLRk2nPC07uC6o', label: 'Contacts +500 - Annual' },
   { meaning: 'unlimitedContacts', period: 'monthly', id: 'adn_0NlKtwKAhJgz0jeaqDX2c', label: 'Unlimited Contacts - Monthly' },
   { meaning: 'unlimitedContacts', period: 'yearly', id: 'adn_0NlKtwMjMlsjzZ8z2Wt7P', label: 'Unlimited Contacts - Annual' },
 ] as const satisfies readonly VerifiedAddon[];
@@ -124,7 +121,7 @@ describe('every add-on id is pinned exactly, in both modes', () => {
   );
 
   it('pins the whole table, so an id cannot be ADDED unnoticed either', () => {
-    // The assertions above would still pass if a sixth meaning appeared, or if
+    // The assertions above would still pass if a fourth meaning appeared, or if
     // a mapped id were duplicated onto a second meaning. This compares the
     // tables whole, in both directions.
     const flatten = (table: typeof DODO_TEST_ADDONS) =>
@@ -142,32 +139,87 @@ describe('every add-on id is pinned exactly, in both modes', () => {
   });
 });
 
-// ── Test 2 — the live Campus gap is closed ────────────────────────────────────
+// ── Test 2 — 🔴 THE-370: the four retired ids resolve to NOTHING ─────────────
 
-describe('live Campus is now mapped, exactly as verified against Dodo', () => {
-  it('both live Campus ids are pinned exactly as verified against Dodo', () => {
-    expect(DODO_LIVE_ADDONS.campus.monthly).toBe('adn_0NlKwDcuqIWoVK7Qay13L');
-    expect(DODO_LIVE_ADDONS.campus.yearly).toBe('adn_0NlKwDgKMpuqzR5VmlCBD');
+/**
+ * The four add-on ids THE-370 retired, in both modes.
+ *
+ * 🔴 WRITTEN DOWN HERE AND NOWHERE ELSE IN THE BUILD. These ids must not appear
+ * in `catalogue.ts` — that is half of what this guard asserts — so the only way
+ * to prove they resolve to nothing is to hold them somewhere that is not the
+ * table. A test fixture is that place: it can name a product the build must not
+ * know, which is exactly the assertion.
+ */
+const RETIRED_ADDON_IDS = [
+  { mode: 'test', label: 'Campus - Monthly', id: 'adn_0NlNfafdHZgpetrweMI31' },
+  { mode: 'test', label: 'Campus - Annual', id: 'adn_0NlNfaiGQpP5IAxXI82Fz' },
+  { mode: 'test', label: 'Contacts +500 - Monthly', id: 'adn_0NlNfakv8J9oKpmVGavKm' },
+  { mode: 'test', label: 'Contacts +500 - Annual', id: 'adn_0NlNfanWnF8iZ0A8rESdW' },
+  { mode: 'live', label: 'Campus - Monthly', id: 'adn_0NlKwDcuqIWoVK7Qay13L' },
+  { mode: 'live', label: 'Campus - Annual', id: 'adn_0NlKwDgKMpuqzR5VmlCBD' },
+  { mode: 'live', label: 'Contacts +500 - Monthly', id: 'adn_0NlKtwD3VfBLgx2LTw69O' },
+  { mode: 'live', label: 'Contacts +500 - Annual', id: 'adn_0NlKtwGbLRk2nPC07uC6o' },
+] as const;
+
+describe('THE-370 — the campus and contactPack add-ons no longer exist', () => {
+  it('neither meaning is in the vocabulary', () => {
+    expect(DODO_ADDON_MEANINGS).not.toContain('campus' as never);
+    expect(DODO_ADDON_MEANINGS).not.toContain('contactPack' as never);
+    expect([...DODO_ADDON_MEANINGS].sort()).toEqual(
+      ['adminSeat', 'aiAssistant', 'unlimitedContacts'],
+    );
   });
 
-  it('live Campus resolves to the campus meaning at both periods', async () => {
+  it('neither table carries a row for either, in either mode', () => {
+    for (const table of [DODO_TEST_ADDONS, DODO_LIVE_ADDONS]) {
+      expect(Object.keys(table).sort()).toEqual(
+        ['adminSeat', 'aiAssistant', 'unlimitedContacts'],
+      );
+    }
+  });
+
+  it.each(RETIRED_ADDON_IDS)(
+    '🔴 $mode mode: $label ($id) resolves to nothing',
+    async ({ mode, id }) => {
+      const resolve = mode === 'live'
+        ? (await withEnvironment('live_mode')).catalogue.resolveAddonMeaning
+        : resolveAddonMeaning;
+      // Not "close enough", not a partial grant — unknown.
+      expect(resolve(id)).toBeNull();
+    },
+  );
+
+  it('🔴 a subscription still carrying a retired id GRANTS NOTHING and is REPORTED', async () => {
     const live = await withEnvironment('live_mode');
 
-    expect(live.catalogue.resolveAddonMeaning('adn_0NlKwDcuqIWoVK7Qay13L')).toBe('campus');
-    expect(live.catalogue.resolveAddonMeaning('adn_0NlKwDgKMpuqzR5VmlCBD')).toBe('campus');
+    const result = live.addons.mapDodoAddons([
+      { addon_id: 'adn_0NlKwDcuqIWoVK7Qay13L', quantity: 3 },
+      { addon_id: 'adn_0NlKtwD3VfBLgx2LTw69O', quantity: 2 },
+    ]);
 
-    // End to end: a church buying a live Campus is now GRANTED it, not just
-    // recognised — the same path that used to hit the unrecognised-id branch.
-    const monthly = live.addons.mapDodoAddons([
+    // 🔴 NOTHING GRANTED. The resolved set is exactly "owns nothing".
+    expect(result.addons).toEqual({
+      aiAssistant: 0,
+      adminSeats: 0,
+      unlimitedContacts: false,
+    });
+    // 🔴 AND NOT SILENTLY DROPPED — both are handed back to be reported, which
+    // is what makes a church being charged for a retired product discoverable.
+    expect(result.unrecognised.map((s) => s.addon_id).sort()).toEqual(
+      ['adn_0NlKtwD3VfBLgx2LTw69O', 'adn_0NlKwDcuqIWoVK7Qay13L'],
+    );
+  });
+
+  it('a retired id alongside a live one costs the live one nothing', async () => {
+    const live = await withEnvironment('live_mode');
+
+    const result = live.addons.mapDodoAddons([
       { addon_id: 'adn_0NlKwDcuqIWoVK7Qay13L', quantity: 1 },
+      { addon_id: 'adn_0NlKtw7AayNYI6YYwphQ5', quantity: 2 },
     ]);
-    const yearly = live.addons.mapDodoAddons([
-      { addon_id: 'adn_0NlKwDgKMpuqzR5VmlCBD', quantity: 1 },
-    ]);
-    expect(monthly.unrecognised).toEqual([]);
-    expect(monthly.addons.campuses).toBe(1);
-    expect(yearly.unrecognised).toEqual([]);
-    expect(yearly.addons.campuses).toBe(1);
+
+    expect(result.addons.adminSeats).toBe(2);
+    expect(result.unrecognised).toHaveLength(1);
   });
 });
 
@@ -201,7 +253,7 @@ describe('live and test add-on ids still never overlap', () => {
 
 // ── Test 4 — 🔴 THE TEST-MODE-ONLY QUALIFIER COMES OFF ────────────────────────
 
-describe('each mode now maps all five meanings at both periods', () => {
+describe('each mode now maps all three meanings at both periods', () => {
   it.each(DODO_ADDON_MEANINGS)('test mode maps %s at monthly AND yearly', (meaning) => {
     for (const period of ['monthly', 'yearly'] as const) {
       const id = DODO_TEST_ADDONS[meaning][period];
@@ -220,34 +272,36 @@ describe('each mode now maps all five meanings at both periods', () => {
     }
   });
 
-  it('resolves the ten recorded test ids and nothing else', () => {
+  it('resolves the six recorded test ids and nothing else', () => {
     expect(new Set(allMappedAddonIds())).toEqual(
       new Set(DODO_TEST_ADDONS_AS_RECORDED.map((addon) => addon.id)),
     );
   });
 
-  it('resolves the ten recorded live ids and nothing else', async () => {
+  it('resolves the six recorded live ids and nothing else', async () => {
     const live = await withEnvironment('live_mode');
     expect(new Set(live.catalogue.allMappedAddonIds())).toEqual(
       new Set(DODO_LIVE_ADDONS_AS_RECORDED.map((addon) => addon.id)),
     );
   });
 
-  it('carries a Campus purchase all the way to a campus count, in test mode', () => {
+  it('carries an Admin Seat purchase all the way to a seat count, in test mode', () => {
+    // Was a Campus purchase until THE-370 retired that product. Admin Seat is
+    // the remaining COUNTED meaning, so it is what exercises the same path.
     // Both periods, because they are separate products.
     for (const period of ['monthly', 'yearly'] as const) {
-      const campusId = DODO_TEST_ADDONS.campus[period] as string;
-      const mapped = mapDodoAddons([{ addon_id: campusId, quantity: 2 }]);
+      const seatId = DODO_TEST_ADDONS.adminSeat[period] as string;
+      const mapped = mapDodoAddons([{ addon_id: seatId, quantity: 2 }]);
       expect(mapped.unrecognised).toEqual([]);
-      expect(mapped.addons.campuses).toBe(2);
+      expect(mapped.addons.adminSeats).toBe(2);
     }
   });
 
   it('reads a monthly and an annual add-on as the SAME meaning', () => {
-    // Period is a billing fact, not an entitlement one: an annual campus is one
-    // campus, same as a monthly one.
-    const monthly = mapDodoAddons([{ addon_id: DODO_TEST_ADDONS.campus.monthly as string, quantity: 1 }]);
-    const yearly = mapDodoAddons([{ addon_id: DODO_TEST_ADDONS.campus.yearly as string, quantity: 1 }]);
+    // Period is a billing fact, not an entitlement one: an annual seat is one
+    // seat, same as a monthly one.
+    const monthly = mapDodoAddons([{ addon_id: DODO_TEST_ADDONS.adminSeat.monthly as string, quantity: 1 }]);
+    const yearly = mapDodoAddons([{ addon_id: DODO_TEST_ADDONS.adminSeat.yearly as string, quantity: 1 }]);
     expect(monthly.addons).toEqual(yearly.addons);
   });
 });
@@ -265,9 +319,7 @@ describe('an unrecognised add-on id is still reported, not silently dropped', ()
     expect(mapped.addons).toEqual({
       aiAssistant: 0,
       adminSeats: 0,
-      contactPacks: 0,
       unlimitedContacts: false,
-      campuses: 0,
     });
   });
 
@@ -303,11 +355,11 @@ describe('an unrecognised add-on id is still reported, not silently dropped', ()
     const mapped = mapDodoAddons([
       { addon_id: DODO_TEST_ADDONS.adminSeat.monthly as string, quantity: 3 },
       { addon_id: 'adn_unknown', quantity: 1 },
-      { addon_id: DODO_TEST_ADDONS.contactPack.monthly as string, quantity: 2 },
+      { addon_id: DODO_TEST_ADDONS.aiAssistant.monthly as string, quantity: 2 },
     ]);
 
     expect(mapped.addons.adminSeats).toBe(3);
-    expect(mapped.addons.contactPacks).toBe(2);
+    expect(mapped.addons.aiAssistant).toBe(2);
     expect(mapped.unrecognised).toEqual([{ addon_id: 'adn_unknown', quantity: 1 }]);
   });
 

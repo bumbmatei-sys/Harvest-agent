@@ -138,21 +138,16 @@ import { __setDodoClientForTests } from '@/lib/dodo/dodo-provider';
 
 const ADMIN_SEAT_MONTHLY = DODO_TEST_ADDONS.adminSeat.monthly as string;
 const ADMIN_SEAT_YEARLY = DODO_TEST_ADDONS.adminSeat.yearly as string;
-const CONTACT_PACK_MONTHLY = DODO_TEST_ADDONS.contactPack.monthly as string;
 const UNLIMITED_MONTHLY = DODO_TEST_ADDONS.unlimitedContacts.monthly as string;
-const CAMPUS_MONTHLY = DODO_TEST_ADDONS.campus.monthly as string;
+const AI_ASSISTANT_MONTHLY = DODO_TEST_ADDONS.aiAssistant.monthly as string;
 
 /** Dodo's own display names, as `addons.retrieve` reports them. */
 const ADDON_NAMES: Record<string, string> = {
   [ADMIN_SEAT_MONTHLY]: 'Admin Seat - Monthly',
   [ADMIN_SEAT_YEARLY]: 'Admin Seat - Annual',
-  [CONTACT_PACK_MONTHLY]: 'Contacts +500 - Monthly',
   [UNLIMITED_MONTHLY]: 'Unlimited Contacts - Monthly',
-  [CAMPUS_MONTHLY]: 'Campus - Monthly',
-  [DODO_TEST_ADDONS.aiAssistant.monthly as string]: 'AI Assistant - Monthly',
+  [AI_ASSISTANT_MONTHLY]: 'AI Assistant - Monthly',
   [DODO_TEST_ADDONS.aiAssistant.yearly as string]: 'AI Assistant - Annual',
-  [DODO_TEST_ADDONS.campus.yearly as string]: 'Campus - Annual',
-  [DODO_TEST_ADDONS.contactPack.yearly as string]: 'Contacts +500 - Annual',
   [DODO_TEST_ADDONS.unlimitedContacts.yearly as string]: 'Unlimited Contacts - Annual',
 };
 
@@ -169,15 +164,16 @@ const MAX_MONTHLY = requireProductId('max', 'monthly');
 // the processor would answer. That is this fixture, and it belongs here in the
 // Dodo stub for the same reason add-on names and prices do.
 //
-// Mirrors the attachment read from the six LIVE products on 2026-08-16, which is
-// what makes tests 1–4 statements about the real ladder rather than invented
-// ones: Individual carries AI Assistant, Admin Seat and Campus; Small Team adds
-// Contacts +500; Ministry adds Unlimited Contacts. Named by MEANING and resolved
-// to ids through the real catalogue, never retyped.
+// 🔴 REWRITTEN FOR THE-370. Mirrors the attachment the founder applied across
+// all nine live plan products: Individual and Small Team carry AI Assistant and
+// Admin Seat; Ministry adds Unlimited Contacts. Campus and Contacts +500 were
+// DETACHED from every one of the nine, so no plan offers them and both meanings
+// are gone from the vocabulary. Named by MEANING and resolved to ids through the
+// real catalogue, never retyped.
 const ATTACHED_MEANINGS: Readonly<Record<PricedPlan, readonly DodoAddonMeaning[]>> = {
-  plus: ['aiAssistant', 'adminSeat', 'campus'],
-  pro: ['aiAssistant', 'adminSeat', 'campus', 'contactPack'],
-  max: ['aiAssistant', 'adminSeat', 'campus', 'contactPack', 'unlimitedContacts'],
+  plus: ['aiAssistant', 'adminSeat'],
+  pro: ['aiAssistant', 'adminSeat'],
+  max: ['aiAssistant', 'adminSeat', 'unlimitedContacts'],
 };
 
 /** productId → the add-on ids Dodo reports on it, for all six products. */
@@ -413,7 +409,7 @@ describe('the preview and the confirm send an identical add-on list', () => {
     asOwner();
     // Holds two things already; the request touches only one of them.
     subscriptionHolding(PLUS_MONTHLY, [
-      { addon_id: CONTACT_PACK_MONTHLY, quantity: 2 },
+      { addon_id: AI_ASSISTANT_MONTHLY, quantity: 2 },
       { addon_id: ADMIN_SEAT_MONTHLY, quantity: 1 },
     ]);
 
@@ -438,7 +434,7 @@ describe('the preview and the confirm send an identical add-on list', () => {
     // The untouched add-on carried through at its own quantity; the requested
     // one moved to exactly what was asked for.
     expect(charged).toEqual([
-      { addon_id: CONTACT_PACK_MONTHLY, quantity: 2 },
+      { addon_id: AI_ASSISTANT_MONTHLY, quantity: 2 },
       { addon_id: ADMIN_SEAT_MONTHLY, quantity: 3 },
     ]);
   });
@@ -771,7 +767,7 @@ describe('an ordinary tenant member cannot buy an add-on', () => {
 describe('nothing in this path writes the tenant plan or the add-on set', () => {
   it('leaves Firestore byte-for-byte unchanged through a confirmed purchase', async () => {
     seedDodoTenant(PLUS_MONTHLY, 'plus', {
-      aiAssistant: 0, adminSeats: 1, contactPacks: 0, unlimitedContacts: false, campuses: 0,
+      aiAssistant: 0, adminSeats: 1, unlimitedContacts: false,
     });
     asOwner();
     subscriptionHolding(PLUS_MONTHLY, [{ addon_id: ADMIN_SEAT_MONTHLY, quantity: 1 }]);
@@ -792,13 +788,13 @@ describe('nothing in this path writes the tenant plan or the add-on set', () => 
     expect(new Map([...currentDb.store].map(([k, v]) => [k, { ...v }]))).toEqual(before);
     expect(currentDb.store.get(`tenants/${T.tenant}`)?.plan).toBe('plus');
     expect(currentDb.store.get(`tenants/${T.tenant}`)?.addons).toEqual({
-      aiAssistant: 0, adminSeats: 1, contactPacks: 0, unlimitedContacts: false, campuses: 0,
+      aiAssistant: 0, adminSeats: 1, unlimitedContacts: false,
     });
   });
 
   it('leaves Firestore unchanged through a REMOVAL too', async () => {
     seedDodoTenant(PLUS_MONTHLY, 'plus', {
-      aiAssistant: 0, adminSeats: 2, contactPacks: 0, unlimitedContacts: false, campuses: 0,
+      aiAssistant: 0, adminSeats: 2, unlimitedContacts: false,
     });
     asOwner();
     subscriptionHolding(PLUS_MONTHLY, [{ addon_id: ADMIN_SEAT_MONTHLY, quantity: 2 }]);
@@ -955,10 +951,10 @@ describe('the catalogue lists what can be sold, priced by Dodo', () => {
     const data = await res.json();
 
     expect(data.billing).toBe('monthly');
-    // A Ministry tenant, whose product carries all five. Named by meaning,
+    // A Ministry tenant, whose product carries all three. Named by meaning,
     // never by id — and the set is the product's, not the period's.
     expect(data.addons.map((a: { addon: string }) => a.addon).sort()).toEqual(
-      ['adminSeat', 'aiAssistant', 'campus', 'contactPack', 'unlimitedContacts'],
+      ['adminSeat', 'aiAssistant', 'unlimitedContacts'],
     );
     // Prices came from Dodo. The route reports what it was told.
     for (const offered of data.addons) {
@@ -1009,7 +1005,7 @@ const readSource = (rel: string) =>
 describe('the add-ons offered follow the tenant’s own product, not its billing period', () => {
   // ── Tests 1 and 2 — 🔴 THE REGRESSION ──────────────────────────────────────
 
-  it('an Individual tenant is not offered Contacts +500', async () => {
+  it('an Individual tenant is not offered Unlimited Contacts', async () => {
     seedDodoTenant(PLUS_MONTHLY, 'plus');
     asOwner();
 
@@ -1017,29 +1013,30 @@ describe('the add-ons offered follow the tenant’s own product, not its billing
 
     // 🔴 THE DEFECT, in one line. The offered set was filtered by billing period
     // alone, so every monthly-mapped add-on reached every monthly tenant —
-    // including a pack Dodo does not attach to the Individual products.
-    expect(offered).not.toContain('contactPack');
-    // And the three the Individual products DO carry are still there: this is a
+    // including one Dodo does not attach to the Individual products. The example
+    // was Contacts +500 until THE-370 retired it; Unlimited Contacts is the
+    // remaining add-on the Individual products do not carry.
+    expect(offered).not.toContain('unlimitedContacts');
+    // And the two the Individual products DO carry are still there: this is a
     // filter, not an outage.
-    expect(offered).toEqual(['adminSeat', 'aiAssistant', 'campus']);
+    expect(offered).toEqual(['adminSeat', 'aiAssistant']);
   });
 
-  it('an Individual tenant is not offered Unlimited Contacts', async () => {
+  it('nothing is even PRICED for an add-on the tenant cannot buy', async () => {
     seedDodoTenant(PLUS_MONTHLY, 'plus');
     asOwner();
 
     const offered = await offeredMeanings();
 
     // 🔴 THE MONEY HALF. Unlimited Contacts is attached to Ministry alone, so
-    // offering it on a $49 plan inverts the tier ladder — which is the exact
-    // thing THE-133 put availability in Dodo to prevent.
+    // offering it on the cheapest plan inverts the tier ladder — which is the
+    // exact thing THE-133 put availability in Dodo to prevent.
     expect(offered).not.toContain('unlimitedContacts');
 
     // Nothing was even priced for it: the intersection is taken before the
     // per-add-on reads, so an unsellable add-on costs no round trip either.
     const asked = dodoStub.addonsRetrieve.mock.calls.map((call) => call[0]);
     expect(asked).not.toContain(UNLIMITED_MONTHLY);
-    expect(asked).not.toContain(CONTACT_PACK_MONTHLY);
   });
 
   it('an Individual tenant on ANNUAL billing is filtered the same way', async () => {
@@ -1048,25 +1045,28 @@ describe('the add-ons offered follow the tenant’s own product, not its billing
 
     // The two questions are independent: the period picks WHICH id, the product
     // decides WHETHER it is offered. Both apply on both periods.
-    expect(await offeredMeanings()).toEqual(['adminSeat', 'aiAssistant', 'campus']);
+    expect(await offeredMeanings()).toEqual(['adminSeat', 'aiAssistant']);
   });
 
   // ── Test 3 ─────────────────────────────────────────────────────────────────
 
-  it('a Small Team tenant is offered Contacts +500 but not Unlimited', async () => {
+  it('a Small Team tenant is offered the two shared add-ons but not Unlimited', async () => {
     seedDodoTenant(PRO_MONTHLY, 'pro');
     asOwner();
 
     const offered = await offeredMeanings();
 
     // The middle rung, which is what makes this a ladder rather than a switch.
-    expect(offered).toContain('contactPack');
+    // ⚠️ SMALL TEAM AND INDIVIDUAL NOW CARRY THE SAME SET — THE-370 detached
+    // Contacts +500, which was the one add-on that separated them. The ladder
+    // is still a ladder: Ministry alone carries Unlimited Contacts.
+    expect(offered).toEqual(['adminSeat', 'aiAssistant']);
     expect(offered).not.toContain('unlimitedContacts');
   });
 
   // ── Test 4 ─────────────────────────────────────────────────────────────────
 
-  it('a Ministry tenant is offered all five', async () => {
+  it('a Ministry tenant is offered all three', async () => {
     seedDodoTenant(MAX_MONTHLY, 'max');
     asOwner();
 
@@ -1196,7 +1196,7 @@ describe('a POST for an add-on not attached to the tenant’s product is refused
 
     const res = await post({
       tenantId: T.tenant,
-      addons: [{ addon: 'contactPack', quantity: 1 }],
+      addons: [{ addon: 'unlimitedContacts', quantity: 1 }],
     });
 
     expect(res.status).toBe(400);
@@ -1243,15 +1243,16 @@ describe('a POST for an add-on not attached to the tenant’s product is refused
   it('🔴 still lets the tenant REMOVE one it already holds', async () => {
     seedDodoTenant(PLUS_MONTHLY, 'plus');
     asOwner();
-    // Sold by the very defect this fixes: an Individual tenant holding the pack
-    // its product does not carry. Refusing the removal would trap it in the
-    // charge — so attachment is checked on what is ADDED, never on what is
-    // dropped, and this is the unwind path for anything already sold.
-    subscriptionHolding(PLUS_MONTHLY, [{ addon_id: CONTACT_PACK_MONTHLY, quantity: 2 }]);
+    // Sold by the very defect this fixes: an Individual tenant holding an
+    // add-on its product does not carry. Refusing the removal would trap it in
+    // the charge — so attachment is checked on what is ADDED, never on what is
+    // dropped, and this is the unwind path for anything already sold. That
+    // includes anything left over from a RETIRED product (THE-370).
+    subscriptionHolding(PLUS_MONTHLY, [{ addon_id: UNLIMITED_MONTHLY, quantity: 1 }]);
 
     const res = await post({
       tenantId: T.tenant,
-      addons: [{ addon: 'contactPack', quantity: 0 }],
+      addons: [{ addon: 'unlimitedContacts', quantity: 0 }],
       confirm: true,
     });
 

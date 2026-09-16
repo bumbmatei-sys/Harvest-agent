@@ -99,8 +99,8 @@ beforeEach(() => {
 // ── AC-1 ── the refusal ─────────────────────────────────────────────────────
 describe('a new member at the cap (AC-1)', () => {
   it('gets 403 member_cap_reached, and setCustomClaims is NEVER called', async () => {
-    // plus caps at 150. total 151 → othersCount 150 → refused.
-    h.countGet.mockResolvedValue(countsTo(151));
+    // plus caps at 500 (THE-370; was 150). total 501 → othersCount 500 → refused.
+    h.countGet.mockResolvedValue(countsTo(501));
 
     const res = await POST(post());
     expect(res.status).toBe(403);
@@ -113,18 +113,18 @@ describe('a new member at the cap (AC-1)', () => {
   });
 
   it('the refusal body carries no count and no cap number', async () => {
-    h.countGet.mockResolvedValue(countsTo(151));
+    h.countGet.mockResolvedValue(countsTo(501));
     const body = await (await POST(post())).json();
 
     expect(Object.keys(body).sort()).toEqual(['code', 'error']);
-    expect(body.error).not.toMatch(/\b150\b|\b151\b/);
+    expect(body.error).not.toMatch(/\b500\b|\b501\b/);
   });
 });
 
 // ── AC-10 ── nothing is ever removed ────────────────────────────────────────
 describe('the refusal path removes, disables and demotes nobody (AC-10)', () => {
   it('makes zero destructive Admin SDK calls, and stamps only the applicant own doc', async () => {
-    h.countGet.mockResolvedValue(countsTo(151));
+    h.countGet.mockResolvedValue(countsTo(501));
 
     expect((await POST(post())).status).toBe(403);
 
@@ -149,13 +149,13 @@ describe('the refusal path removes, disables and demotes nobody (AC-10)', () => 
 // ── AC-2 ── an existing member on an over-cap tenant ────────────────────────
 describe('an existing member of an over-cap tenant still signs in (AC-2)', () => {
   it('gets 200, claims are minted, and NO count query runs at all', async () => {
-    // Moved down to plus (cap 150) carrying 500 members.
+    // Moved down to plus (cap 500) carrying 900 members.
     h.userDocGet.mockResolvedValue({ exists: true, data: () => ({ tenantId: 'gracechurch' }) });
     h.getUser.mockResolvedValue({
       uid: APPLICANT,
       customClaims: { tenantId: 'gracechurch', role: 'user' },
     });
-    h.countGet.mockResolvedValue(countsTo(500));
+    h.countGet.mockResolvedValue(countsTo(900));
 
     const res = await POST(post());
     expect(res.status).toBe(200);
@@ -173,7 +173,7 @@ describe('an existing member of an over-cap tenant still signs in (AC-2)', () =>
     // NEW member and IS gated — a client cannot talk its way past the gate by
     // writing its own doc.
     h.getUser.mockResolvedValue({ uid: APPLICANT, customClaims: {} });
-    h.countGet.mockResolvedValue(countsTo(151));
+    h.countGet.mockResolvedValue(countsTo(501));
 
     expect((await POST(post())).status).toBe(403);
     expect(h.setCustomClaims).not.toHaveBeenCalled();
@@ -181,19 +181,21 @@ describe('an existing member of an over-cap tenant still signs in (AC-2)', () =>
 });
 
 // ── AC-3 ── the off-by-one, through the route ───────────────────────────────
-describe('the 500th is allowed and the 501st is refused on a pro tenant (AC-3)', () => {
+describe('the cap-th is allowed and the next is refused on a pro tenant (AC-3)', () => {
+  // 🔴 pro caps at 2,000 since THE-370 (was 500). The property is the
+  // OFF-BY-ONE, asserted at whatever the real boundary is.
   beforeEach(() => {
     h.tenantGet.mockResolvedValue({ exists: true, data: () => ({ plan: 'pro' }) });
   });
 
-  it('total 500 → 200 and claims minted', async () => {
-    h.countGet.mockResolvedValue(countsTo(500));
+  it('total 2,000 → 200 and claims minted', async () => {
+    h.countGet.mockResolvedValue(countsTo(2_000));
     expect((await POST(post())).status).toBe(200);
     expect(h.setCustomClaims).toHaveBeenCalledTimes(1);
   });
 
-  it('total 501 → 403 and claims withheld', async () => {
-    h.countGet.mockResolvedValue(countsTo(501));
+  it('total 2,001 → 403 and claims withheld', async () => {
+    h.countGet.mockResolvedValue(countsTo(2_001));
     expect((await POST(post())).status).toBe(403);
     expect(h.setCustomClaims).not.toHaveBeenCalled();
   });
@@ -214,7 +216,7 @@ describe('a super admin / main-site account is unaffected (AC-8)', () => {
     h.verifyIdToken.mockResolvedValue({ uid: 'super-admin-uid', superAdmin: true });
     h.userDocGet.mockResolvedValue({ exists: true, data: () => ({ tenantId: 'gracechurch' }) });
     h.getUser.mockResolvedValue({ uid: 'target-uid', customClaims: undefined });
-    h.countGet.mockResolvedValue(countsTo(151));
+    h.countGet.mockResolvedValue(countsTo(501));
 
     expect((await POST(post('target-uid'))).status).toBe(403);
     // The target's own users doc supplied the tenant — not the caller's.
@@ -231,19 +233,38 @@ describe('paying for room lifts the gate at the enforcement point itself', () =>
     h.countGet.mockResolvedValue(countsTo(651)); // othersCount 650
   });
 
-  it('plus alone refuses at 650 others (AC-4 control)', async () => {
+  it('plus alone refuses at 650 others, over its 500 cap (AC-4 control)', async () => {
     h.tenantGet.mockResolvedValue({ exists: true, data: () => ({ plan: 'plus' }) });
     expect((await POST(post())).status).toBe(403);
     expect(h.setCustomClaims).not.toHaveBeenCalled();
   });
 
-  it('the Contacts +500 add-on lifts it — 200 and claims minted (AC-4)', async () => {
-    // plus 150 + one 500-pack = 650. othersCount 650 >= 650 would refuse, so
-    // take one off the count: 649 others under a 650 cap.
-    h.countGet.mockResolvedValue(countsTo(650));
+  it('🔴 THE-370 — a retired contactPacks key lifts NOTHING (AC-4, inverted)', async () => {
+    /* WAS 'the Contacts +500 add-on lifts it — 200 and claims minted': plus's
+       150 plus one 500-pack made 650, and 649 others slipped under it.
+
+       The add-on is retired, so the same document must now be refused on plus's
+       own 500. This is the enforcement point — the call that decides whether a
+       real person can join a church — so it is where a retired key silently
+       still granting capacity would matter most. */
     h.tenantGet.mockResolvedValue({
       exists: true,
       data: () => ({ plan: 'plus', addons: { contactPacks: 1 } }),
+    });
+
+    // 651 others (from the enclosing beforeEach) against plus's real cap of 500.
+    expect((await POST(post())).status).toBe(403);
+    expect(h.setCustomClaims).not.toHaveBeenCalled();
+  });
+
+  it('an ADMIN SEAT still lifts the admin cap — the surviving add-on works', async () => {
+    // The control that keeps the test above from passing vacuously: the add-on
+    // path is intact, and it is the retired MEANING that is gone, not the
+    // mechanism. Under plus's 500 cap with 400 others, this is allowed.
+    h.countGet.mockResolvedValue(countsTo(400));
+    h.tenantGet.mockResolvedValue({
+      exists: true,
+      data: () => ({ plan: 'plus', addons: { adminSeats: 2 } }),
     });
 
     expect((await POST(post())).status).toBe(200);

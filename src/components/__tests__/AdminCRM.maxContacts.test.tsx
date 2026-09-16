@@ -192,13 +192,13 @@ afterEach(async () => {
 // ── 2 ── OVER THE CAP: THE ADMIN'S ADD PATH IS CLOSED, AND SAYS WHY ──────────
 describe('a tenant over its cap', () => {
   beforeEach(() => {
-    // Individual (150). 150 accounts loaded and counted server-side.
+    // Individual (500 since THE-370). 500 accounts loaded and counted server-side.
     tenantCtx.tenantPlan = 'plus';
     contactsResult.current = {
-      data: Array.from({ length: 150 }, (_, i) => accountRow(i)),
+      data: Array.from({ length: 500 }, (_, i) => accountRow(i)),
       isLoading: false, isError: false, error: null, refetch: vi.fn(),
     };
-    countsResult.current = { data: counts({ memberAccounts: 150, contactRecords: 0 }) };
+    countsResult.current = { data: counts({ memberAccounts: 500, contactRecords: 0 }) };
   });
 
   it('disables the manual-add button and explains why on hover', async () => {
@@ -231,7 +231,7 @@ describe('a tenant over its cap', () => {
   it('states the limit on screen, once, with the count in use', async () => {
     await mountCRM();
     const notice = limitNotice();
-    expect(notice).toMatch(/150 member accounts in use/);
+    expect(notice).toMatch(/500 member accounts in use/);
     expect(notice).toMatch(/upgrade your plan/i);
     // Said once — not repeated as a running meter elsewhere on the screen.
     expect(container.querySelectorAll('[data-testid="crm-contact-limit"]')).toHaveLength(1);
@@ -312,7 +312,7 @@ describe('a tenant under its cap', () => {
 // ── 4 + 5 ── DONORS: UNCOUNTED, BUT VISIBLE ─────────────────────────────────
 describe('donors without an account', () => {
   beforeEach(() => {
-    // Individual (150). 149 accounts and 500 donor-only rows — UNDER the cap.
+    // Individual (500). 499 accounts and 500 donor-only rows — UNDER the cap.
     tenantCtx.tenantPlan = 'plus';
     contactsResult.current = {
       data: [
@@ -326,7 +326,7 @@ describe('donors without an account', () => {
     };
   });
 
-  it('are not counted: 149 accounts + 500 donor rows is under the 150 cap', async () => {
+  it('are not counted: 499 accounts + 500 donor rows is under the 500 cap', async () => {
     await mountCRM();
     // The gate is open and nothing on screen claims a limit was reached.
     expect(addButton()!.disabled).toBe(false);
@@ -353,8 +353,8 @@ describe('donors without an account', () => {
 // ── 6 ── SUPER ADMINS ARE EXCLUDED ──────────────────────────────────────────
 describe('a super admin inside the tenant', () => {
   it('does not consume the church’s capacity', async () => {
-    tenantCtx.tenantPlan = 'plus'; // 150
-    // 150 `users` docs in scope, but one of them is Harvest staff → 149 spent.
+    tenantCtx.tenantPlan = 'plus'; // 500
+    // 500 `users` docs in scope, but one of them is Harvest staff → 499 spent.
     contactsResult.current = {
       data: [
         accountRow(0, { email: SUPER_ADMIN_EMAILS[0], firstName: 'Harvest', lastName: 'Staff' }),
@@ -362,7 +362,7 @@ describe('a super admin inside the tenant', () => {
       ],
       isLoading: false, isError: false, error: null, refetch: vi.fn(),
     };
-    countsResult.current = { data: counts({ memberAccounts: 150 }) };
+    countsResult.current = { data: counts({ memberAccounts: 500 }) };
 
     await mountCRM();
     expect(addButton()!.disabled).toBe(false);
@@ -390,7 +390,7 @@ describe('a super admin inside the tenant', () => {
       ],
       isLoading: false, isError: false, error: null, refetch: vi.fn(),
     };
-    countsResult.current = { data: counts({ memberAccounts: 150 }) };
+    countsResult.current = { data: counts({ memberAccounts: 500 }) };
 
     await mountCRM();
     expect(addButton()!.disabled).toBe(false);
@@ -399,7 +399,7 @@ describe('a super admin inside the tenant', () => {
 
 // ── 7 ── THE OWNER COUNTS ───────────────────────────────────────────────────
 describe('the plan owner', () => {
-  it('counts: an Individual tenant whose 150th account is the owner is AT the cap', async () => {
+  it('counts: an Individual tenant whose 500th account is the owner is AT the cap', async () => {
     tenantCtx.tenantPlan = 'plus';
     contactsResult.current = {
       data: [
@@ -408,20 +408,20 @@ describe('the plan owner', () => {
       ],
       isLoading: false, isError: false, error: null, refetch: vi.fn(),
     };
-    countsResult.current = { data: counts({ memberAccounts: 150 }) };
+    countsResult.current = { data: counts({ memberAccounts: 500 }) };
 
     await mountCRM();
     expect(addButton()!.disabled).toBe(true);
-    expect(limitNotice()).toMatch(/150 member accounts in use/);
+    expect(limitNotice()).toMatch(/500 member accounts in use/);
   });
 });
 
 // ── 8 ── THE NUMBER COMES FROM THE PLAN MATRIX ──────────────────────────────
 describe('each plan enforces its own published allowance', () => {
   it.each([
-    ['plus', 150],
-    ['pro', 500],
-    ['max', 2_000],
+    ['plus', 500],
+    ['pro', 2_000],
+    ['max', 4_000],
   ] as const)('%s is capped at %i — the PLAN_FEATURES cell, not a literal', async (plan, expected) => {
     expect(getPlanFeatures(plan).maxContacts).toBe(expected);
     tenantCtx.tenantPlan = plan;
@@ -440,9 +440,11 @@ describe('each plan enforces its own published allowance', () => {
     expect(limitNotice()).toContain(expected.toLocaleString());
   });
 
-  it('an unknown / still-loading plan falls back to Individual (150)', async () => {
+  it('an unknown / still-loading plan falls back to Individual (500)', async () => {
+    // 🔴 THE FALL-BACK IS UNCHANGED — still 'plus'. Only the number moved, in
+    // THE-370, because the tier moved (150 → 500).
     tenantCtx.tenantPlan = undefined;
-    countsResult.current = { data: counts({ memberAccounts: 150 }) };
+    countsResult.current = { data: counts({ memberAccounts: 500 }) };
     await mountCRM();
     expect(addButton()!.disabled).toBe(true);
   });
@@ -465,7 +467,7 @@ describe('when the count is missing', () => {
 
   it('does not gate the platform-wide super-admin view, whose counts span every church', async () => {
     // On the apex domain the `users` count is UNSCOPED — it is every church's
-    // accounts. A 150 cap against that would lock the platform CRM immediately.
+    // accounts. A 500 cap against that would lock the platform CRM immediately.
     tenantCtx.tenantPlan = 'plus';
     countsResult.current = { data: counts({ memberAccounts: 40_000, platformWide: true }) };
     await mountCRM();

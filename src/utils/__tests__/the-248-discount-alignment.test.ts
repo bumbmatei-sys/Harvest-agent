@@ -458,7 +458,7 @@ describe("no term's price is a whole number of months at the monthly rate", () =
 });
 
 /* ── 8 ─────────────────────────────────────────────────────────────────────── */
-describe('the five add-on prices are unchanged and annual is still ×12', () => {
+describe('the three add-on prices are unchanged and annual is still ×12', () => {
   it('🔴 this repo holds add-on IDS and deliberately holds no add-on PRICE', () => {
     // The add-on figures a customer reads live on the marketing site
     // (`ADD_ONS` / `DODO_ADD_ON_CATALOG` in Pricing.tsx), pinned there against
@@ -478,14 +478,19 @@ describe('the five add-on prices are unchanged and annual is still ×12', () => 
     expect(addonBlock.slice(0, addonBlock.indexOf('});'))).not.toMatch(/\d{3,}/);
   });
 
-  it('the five live add-on product ids are byte-for-byte what they were', () => {
+  it('the three live add-on product ids are byte-for-byte what they were', () => {
     // 🔴 An id transposed is a real card charged for the wrong product. THE-248
     // moved plan prices; it moved no add-on and no id.
+    //
+    // ⚠️ WAS FIVE. THE-370 retired `campus` and `contactPack` — the founder
+    // detached both from all nine live plan products — so their four ids are
+    // gone from the table. The three that remain are byte-for-byte unchanged,
+    // INCLUDING Unlimited Contacts, whose Dodo price moved ($40 → $30 monthly,
+    // $480 → $360 annual) on the same two products. That is the property worth
+    // pinning: a reprice in Dodo must not re-point an id.
     expect(DODO_LIVE_ADDONS).toEqual({
       aiAssistant: { monthly: 'adn_0NlKtuImtSn7PcdvjnSni', yearly: 'adn_0NlKtw3IOHfv1GGCevNol' },
       adminSeat: { monthly: 'adn_0NlKtw7AayNYI6YYwphQ5', yearly: 'adn_0NlKtw9lWLs0VRN9hWciX' },
-      campus: { monthly: 'adn_0NlKwDcuqIWoVK7Qay13L', yearly: 'adn_0NlKwDgKMpuqzR5VmlCBD' },
-      contactPack: { monthly: 'adn_0NlKtwD3VfBLgx2LTw69O', yearly: 'adn_0NlKtwGbLRk2nPC07uC6o' },
       unlimitedContacts: { monthly: 'adn_0NlKtwKAhJgz0jeaqDX2c', yearly: 'adn_0NlKtwMjMlsjzZ8z2Wt7P' },
     });
   });
@@ -660,11 +665,24 @@ describe('the plan feature matrix and the Dodo product ids are unchanged', () =>
        screens were gated on `crm`. NO PRICE AND NO CAP MOVED, asserted
        elsewhere in this file, and the per-cell contract in
        plan-features.test.ts moved in the same commit as instructed below.
-       Previous pin: 1e07d3aeb9024cdd1841144560d66bd7fa292b39c978f665881a83c90933ce23 */
+
+       🔵 REPINNED AGAIN AT THE-370, and THE-248's claim is again untouched: it
+       is a REPRICE and still moves no feature cell. What moved here is a CAP
+       change, which is a different kind of edit and this ticket's whole
+       subject — `maxContacts` 150 → 500, 500 → 2,000, 2,000 → 4,000, and
+       `maxChurches` 1 → -1 (UNLIMITED_CAP) on all three paid tiers, with the
+       campus add-on that used to be the only path past 1 retired. NO PRICE
+       MOVED: the nine plan prices are asserted unchanged elsewhere in this
+       file, and the cross-repo price contract would throw at module scope
+       during the marketing site's prerender if any had. The per-cell contract
+       in plan-features.test.ts moved in the same commit.
+       Previous pins:
+         1e07d3aeb9024cdd1841144560d66bd7fa292b39c978f665881a83c90933ce23 (pre-THE-335)
+         3d463af824117ac12e2b50fc1b657e30a5798dee7866a0d769a6558445152dc6 (pre-THE-370) */
       'the plan feature matrix changed. THE-248 is a REPRICE and must move no '
       + 'feature cell — if a later ticket legitimately does, update this digest '
       + 'and the per-cell contract in plan-features.test.ts together.',
-    ).toBe('3d463af824117ac12e2b50fc1b657e30a5798dee7866a0d769a6558445152dc6');
+    ).toBe('603e4eea639edc99c32f54610d2824101d16ced5a6fab26e82ee29974cc50a2d');
   });
 
   it('and the tier ladder itself is untouched', () => {

@@ -369,7 +369,9 @@ describe('10 — changing an admin tab emits a pageview', () => {
     // walk through it would be measuring the switch rather than the pageview.
     // 'Notes' is the nearest ungated substitute — a real tab on this tier, one
     // route of its own — so the walk is still seven distinct sections.
-    for (const label of ['CRM', 'Campus', 'Courses', 'Notes', 'Accounting', 'Forms', 'Livestream']) {
+    // 'Campuses', not 'Campus': THE-370 made the nav label unconditionally
+    // plural, because no tier is capped at one campus any more.
+    for (const label of ['CRM', 'Campuses', 'Courses', 'Notes', 'Accounting', 'Forms', 'Livestream']) {
       await clickTab(label);
     }
     // One for the load, then one per tab change. None of them silent.

@@ -9,7 +9,8 @@ import { authFetch } from './auth-fetch';
  * calculation, so the number here is a real number rather than a sticker price.
  *
  * 🔴 NO DODO ADD-ON ID APPEARS IN THIS FILE OR ON THE WIRE. The vocabulary is
- * the five MEANINGS (`adminSeat`, `contactPack`, …); the server maps them to ids
+ * the three MEANINGS (`aiAssistant`, `adminSeat`, `unlimitedContacts`); the
+ * server maps them to ids
  * for the tenant's own billing period. REP-5a's rule — ids live once,
  * server-side — is not weakened by making add-ons buyable, and it is what keeps
  * this bundle working when an add-on is recreated in Dodo.
@@ -25,15 +26,13 @@ import { authFetch } from './auth-fetch';
  * that wants to say "this exists but cannot be bought here yet" has to be able
  * to subtract the offerable set from the whole set, and a type union cannot be
  * subtracted at runtime. It is the client's counterpart of the server's
- * `DODO_ADDON_MEANINGS` — the same five words, in the same order, and nothing
+ * `DODO_ADDON_MEANINGS` — the same three words, in the same order, and nothing
  * else: no id, no price, and no statement about what is offerable. Availability
  * still comes from the server and only from the server.
  */
 export const ADDON_MEANINGS = [
   'aiAssistant',
   'adminSeat',
-  'campus',
-  'contactPack',
   'unlimitedContacts',
 ] as const;
 
@@ -111,9 +110,7 @@ export function ownedAddonQuantity(
   addons: {
     aiAssistant: number;
     adminSeats: number;
-    contactPacks: number;
     unlimitedContacts: boolean;
-    campuses: number;
   },
   meaning: AddonMeaning,
 ): number {
@@ -122,10 +119,6 @@ export function ownedAddonQuantity(
       return addons.aiAssistant;
     case 'adminSeat':
       return addons.adminSeats;
-    case 'campus':
-      return addons.campuses;
-    case 'contactPack':
-      return addons.contactPacks;
     case 'unlimitedContacts':
       return addons.unlimitedContacts ? 1 : 0;
   }

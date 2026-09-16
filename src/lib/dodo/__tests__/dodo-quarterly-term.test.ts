@@ -101,7 +101,7 @@ describe('every add-on price is unchanged and add-ons are still not discounted a
     expect(addonPeriodFor('quarterly')).toBe('monthly');
     expect(addonPeriodFor('monthly')).toBe('monthly');
     expect(addonPeriodFor('yearly')).toBe('yearly');
-    for (const meaning of ['aiAssistant', 'adminSeat', 'campus', 'contactPack', 'unlimitedContacts'] as const) {
+    for (const meaning of ['aiAssistant', 'adminSeat', 'unlimitedContacts'] as const) {
       expect(addonIdFor(meaning, 'quarterly')).toBe(addonIdFor(meaning, 'monthly'));
       expect(addonIdFor(meaning, 'quarterly')).not.toBe(addonIdFor(meaning, 'yearly'));
     }
@@ -120,15 +120,15 @@ describe('every add-on price is unchanged and add-ons are still not discounted a
   });
 
   it('pins the live monthly add-on ids the quarterly products actually attach', () => {
-    // Transcribed from the live quarterly products' `addons` arrays, read back
-    // on 2026-08-20. Asserted against DODO_LIVE_ADDONS rather than through
+    // Transcribed from the live quarterly products' `addons` arrays. THE-370
+    // detached Campus and Contacts +500 from every plan product, so the three
+    // below are the whole attachment now. Asserted against DODO_LIVE_ADDONS
+    // rather than through
     // `addonIdFor`, which resolves the ACTIVE table — and this suite runs under
     // test_mode.
     const LIVE_MONTHLY = {
       aiAssistant: 'adn_0NlKtuImtSn7PcdvjnSni',
       adminSeat: 'adn_0NlKtw7AayNYI6YYwphQ5',
-      campus: 'adn_0NlKwDcuqIWoVK7Qay13L',
-      contactPack: 'adn_0NlKtwD3VfBLgx2LTw69O',
       unlimitedContacts: 'adn_0NlKtwKAhJgz0jeaqDX2c',
     } as const;
     for (const [meaning, id] of Object.entries(LIVE_MONTHLY)) {

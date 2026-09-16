@@ -14,10 +14,10 @@ vi.hoisted(() => {
 });
 
 import {
-  CONTACTS_PER_PACK,
   NO_ADDONS,
   PLAN_ORDER,
   PLAN_PRICING,
+  UNLIMITED_CAP,
   getEffectiveFeatures,
   getMinPlanForFeatureCell,
   getPlanFeatures,
@@ -209,24 +209,18 @@ describe('a tenant WITHOUT the add-on does not have the AI chat', () => {
 });
 
 /* ── test 6 — 🔴 THE DELETION GUARD ────────────────────────────────────────── */
-describe('raiseCap still raises contacts, admins and campuses', () => {
-  /* 🔴 WHY THIS EXISTS. THE-253's sibling change removes the `aiAssistant` cell
-     from `PlanFeatures`, and that cell is one of four `raiseCap` call sites in
-     `getEffectiveFeatures`. The other three raise capacity a church has PAID
-     FOR — contacts, admin seats, campuses — so a careless edit to that function
-     is the one place this work could take away something already sold. These
-     assertions do not care whether the AI cell is there; they pin the three
-     that must survive it. */
+describe('raiseCap still raises admins, and nothing an add-on bought was lost', () => {
+  /* 🔴 WHY THIS EXISTS. THE-253's sibling change removed the `aiAssistant` cell
+     from `PlanFeatures`, and that cell was one of four `raiseCap` call sites in
+     `getEffectiveFeatures`. The others raised capacity a church had PAID FOR, so
+     a careless edit to that function was the one place this work could take away
+     something already sold.
 
-  it('one contact pack adds exactly CONTACTS_PER_PACK, on every tier', () => {
-    for (const plan of PLANS) {
-      const base = getPlanFeatures(plan).maxContacts;
-      expect(getEffectiveFeatures(plan, owning({ contactPacks: 1 })).maxContacts, plan)
-        .toBe(base + CONTACTS_PER_PACK);
-      expect(getEffectiveFeatures(plan, owning({ contactPacks: 4 })).maxContacts, plan)
-        .toBe(base + 4 * CONTACTS_PER_PACK);
-    }
-  });
+     🔴 THREE OF THE FOUR ARE NOW GONE, AND NOT BY CARELESSNESS — THE-370. The
+     contact-pack and campus raises went with the two add-ons the founder
+     retired, and `maxAdmins` is the one capacity an add-on still buys. Nothing
+     was taken away: both retired caps were RAISED in the matrix instead, which
+     is the assertion directly below. */
 
   it('one admin seat adds exactly one admin, on every tier', () => {
     for (const plan of PLANS) {
@@ -236,39 +230,63 @@ describe('raiseCap still raises contacts, admins and campuses', () => {
     }
   });
 
-  it('one campus adds exactly one church — the only path past maxChurches: 1', () => {
-    for (const plan of PLANS) {
-      const base = getPlanFeatures(plan).maxChurches;
-      expect(getEffectiveFeatures(plan, owning({ campuses: 1 })).maxChurches, plan).toBe(base + 1);
-      expect(getEffectiveFeatures(plan, owning({ campuses: 3 })).maxChurches, plan).toBe(base + 3);
+  it('🔴 THE-370 took NOTHING AWAY — every retired cap went UP, not down', () => {
+    // The one property that makes deleting two add-ons safe: a tenant that held
+    // one is not worse off, because the tier itself now publishes at least what
+    // the tier-plus-add-on used to.
+    //
+    // Contacts: Individual 150 → 500, Small Team 500 → 2,000, Ministry
+    // 2,000 → 4,000. One retired pack was +500, so every tier gained more than
+    // a single pack ever added.
+    expect(getPlanFeatures('plus').maxContacts).toBe(500);
+    expect(getPlanFeatures('pro').maxContacts).toBe(2_000);
+    expect(getPlanFeatures('max').maxContacts).toBe(4_000);
+    // Campuses: every paid tier was 1 and is now unlimited, which is strictly
+    // more than 1 + any number of retired campus add-ons.
+    for (const plan of ['plus', 'pro', 'max'] as const) {
+      expect(getPlanFeatures(plan).maxChurches, plan).toBe(UNLIMITED_CAP);
     }
   });
 
-  it('the three raise INDEPENDENTLY — a full set moves each by its own amount', () => {
+  it('the two raises are INDEPENDENT — a full set moves each by its own amount', () => {
     // The failure mode a shared helper invites: one edit that wires two cells
     // to the same quantity. Distinct quantities, so a crossed wire cannot pass.
     for (const plan of PLANS) {
       const base = getPlanFeatures(plan);
       const all = getEffectiveFeatures(plan, owning({
-        contactPacks: 2, adminSeats: 5, campuses: 3, aiAssistant: 1, unlimitedContacts: true,
+        adminSeats: 5, aiAssistant: 1, unlimitedContacts: true,
       }));
-      expect(all.maxContacts, `${plan}.maxContacts`).toBe(base.maxContacts + 2 * CONTACTS_PER_PACK);
       expect(all.maxAdmins, `${plan}.maxAdmins`).toBe(base.maxAdmins + 5);
-      expect(all.maxChurches, `${plan}.maxChurches`).toBe(base.maxChurches + 3);
+      // 🔴 `maxContacts` NO LONGER MOVES AT ALL. It reads straight through from
+      // the tier, which is what makes the published number and the tenant's
+      // number the same number.
+      expect(all.maxContacts, `${plan}.maxContacts`).toBe(base.maxContacts);
+      expect(all.maxChurches, `${plan}.maxChurches`).toBe(base.maxChurches);
       expect(all.unlimitedContacts, `${plan}.unlimitedContacts`).toBe(true);
     }
   });
 
-  it('and NO add-on ever lowers one of the three', () => {
+  it('and NO add-on ever lowers a cap', () => {
     // Including the negative quantities `readTenantAddons` is meant to clamp.
     for (const plan of PLANS) {
       const base = getPlanFeatures(plan);
-      for (const set of [NO_ADDONS, owning({ contactPacks: -5, adminSeats: -5, campuses: -5 })]) {
+      for (const set of [NO_ADDONS, owning({ adminSeats: -5, aiAssistant: -5 })]) {
         const f = getEffectiveFeatures(plan, set);
-        expect(f.maxContacts, `${plan}.maxContacts`).toBeGreaterThanOrEqual(base.maxContacts);
         expect(f.maxAdmins, `${plan}.maxAdmins`).toBeGreaterThanOrEqual(base.maxAdmins);
-        expect(f.maxChurches, `${plan}.maxChurches`).toBeGreaterThanOrEqual(base.maxChurches);
+        expect(f.maxContacts, `${plan}.maxContacts`).toBe(base.maxContacts);
+        expect(f.maxChurches, `${plan}.maxChurches`).toBe(base.maxChurches);
       }
+    }
+  });
+
+  it('🔴 an UNLIMITED cap is never turned into a small positive number', () => {
+    // `raiseCap`'s first line, now a live case rather than a future guard:
+    // every paid tier's `maxChurches` is the sentinel, and no add-on may add to
+    // it. A `raiseCap` that dropped its sentinel check would read -1 + 0 = -1
+    // here and still pass, so the seat count is deliberately non-zero.
+    for (const plan of ['plus', 'pro', 'max'] as const) {
+      const f = getEffectiveFeatures(plan, owning({ adminSeats: 3 }));
+      expect(f.maxChurches, plan).toBe(UNLIMITED_CAP);
     }
   });
 });
@@ -313,7 +331,7 @@ describe('the webhook is still the only writer of the add-on set', () => {
        match its new meaning would silently strip the capability from every
        church that already bought it — the webhook writes this exact key. */
     expect(Object.keys(NO_ADDONS).sort())
-      .toEqual(['adminSeats', 'aiAssistant', 'campuses', 'contactPacks', 'unlimitedContacts']);
+      .toEqual(['adminSeats', 'aiAssistant', 'unlimitedContacts']);
     expect(srcOf('../../lib/dodo/addons.ts')).toMatch(/case 'aiAssistant':/);
   });
 });
@@ -328,20 +346,19 @@ describe('no price and no other add-on moved', () => {
     expect(PLAN_PRICING.max).toEqual({ monthly: 60, quarterly: 162, yearly: 564 });
   });
 
-  it('the five add-on meanings and their live Dodo ids are unchanged', () => {
-    /* The other four are not this ticket's to touch. Pinned by id, so a
-       re-point at a different Dodo product fails here rather than in billing. */
+  it('the three surviving add-on meanings and their live Dodo ids are unchanged', () => {
+    /* ⚠️ WAS FIVE. THE-370 retired `campus` and `contactPack`; the three below
+       are what Dodo still attaches. Pinned by id, so a re-point at a different
+       Dodo product fails here rather than in billing. */
     expect([...DODO_ADDON_MEANINGS].sort())
-      .toEqual(['adminSeat', 'aiAssistant', 'campus', 'contactPack', 'unlimitedContacts']);
+      .toEqual(['adminSeat', 'aiAssistant', 'unlimitedContacts']);
     expect(DODO_LIVE_ADDONS.adminSeat).toEqual({
       monthly: 'adn_0NlKtw7AayNYI6YYwphQ5', yearly: 'adn_0NlKtw9lWLs0VRN9hWciX',
     });
-    expect(DODO_LIVE_ADDONS.campus).toEqual({
-      monthly: 'adn_0NlKwDcuqIWoVK7Qay13L', yearly: 'adn_0NlKwDgKMpuqzR5VmlCBD',
-    });
-    expect(DODO_LIVE_ADDONS.contactPack).toEqual({
-      monthly: 'adn_0NlKtwD3VfBLgx2LTw69O', yearly: 'adn_0NlKtwGbLRk2nPC07uC6o',
-    });
+    /* 🔴 THE IDS ARE UNCHANGED THOUGH THE PRICE MOVED. Dodo repriced Unlimited
+       Contacts $40 → $30 monthly and $480 → $360 annual on the SAME two
+       products, so this pin is exactly as strong as it was — and no price lives
+       in this repo to drift with it. */
     expect(DODO_LIVE_ADDONS.unlimitedContacts).toEqual({
       monthly: 'adn_0NlKtwKAhJgz0jeaqDX2c', yearly: 'adn_0NlKtwMjMlsjzZ8z2Wt7P',
     });
@@ -411,7 +428,7 @@ describe('no price and no other add-on moved', () => {
 
   it('owning the AI add-on moves no capacity cell', () => {
     // It is a capability, not capacity. A church that buys it gets no extra
-    // contacts, admins or campuses — which is what its blurb must keep saying.
+    // contacts or admins — which is what its blurb must keep saying.
     for (const plan of PLANS) {
       const base = getPlanFeatures(plan);
       const f = getEffectiveFeatures(plan, owning({ aiAssistant: 3 }));

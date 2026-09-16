@@ -316,10 +316,14 @@ describe('the plan feature matrix and the Dodo product ids are unchanged', () =>
     expect(getPlanFeatures('free').fundraising).toBe(false);
     expect(getPlanFeatures('free').newsFeed).toBe(false);
     expect(getPlanFeatures('free').maxContacts).toBe(500);
-    expect(getPlanFeatures('plus').maxContacts).toBe(150);
+    // ⚠️ THE CONTACT CAPS MOVED IN THE-370, WHICH IS A CAP CHANGE AND NOT A
+    // REPRICE. THE-222's claim — "prices changed, access did not" — is about
+    // THE-222 and is unaffected; these three are transcribed to their current
+    // values so this row keeps guarding every OTHER cell named here.
+    expect(getPlanFeatures('plus').maxContacts).toBe(500);
     expect(getPlanFeatures('plus').maxAdmins).toBe(2);
     expect(getPlanFeatures('plus').fundraising).toBe(true);
-    expect(getPlanFeatures('pro').maxContacts).toBe(500);
+    expect(getPlanFeatures('pro').maxContacts).toBe(2_000);
     expect(getPlanFeatures('pro').checkInSystem).toBe(true);
     expect(getPlanFeatures('max').communityGroups).toBe(true);
     expect(getPlanFeatures('max').customBranding).toBe(true);

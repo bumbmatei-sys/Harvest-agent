@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import AdminDashboard from '../AdminDashboard';
-import { getPlanFeatures, hasBrandingAccess, PLAN_ORDER, FREE_PLAN } from '../../utils/plan-features';
+import { getPlanFeatures, hasBrandingAccess, PLAN_ORDER, FREE_PLAN, UNLIMITED_CAP } from '../../utils/plan-features';
 import type { TenantPlan, TenantAddons } from '../../types/tenant.types';
 
 /**
@@ -204,7 +204,7 @@ type Tab = {
 
 const TABS: Tab[] = [
   { label: 'Dashboard', section: '', cell: null },
-  { label: 'Campus', section: 'churches', cell: null },
+  { label: 'Campuses', section: 'churches', cell: null },
   { label: 'Courses', section: 'courses', cell: (f) => f.maxCourses !== 0 },
   { label: 'Blog', section: 'blog', cell: (f) => f.blog },
   { label: 'AI Knowledge', section: 'ai-knowledge', cell: (f) => f.aiKnowledge },
@@ -257,8 +257,11 @@ function expectedNav(plan: TenantPlan): string[] {
   const f = getPlanFeatures(plan);
   const labels = TABS
     .filter((t) => plan === FREE_PLAN || t.cell === null || t.cell(f))
-    // The churches label is per-tier: a tier capped at one campus says 'Campus'.
-    .map((t) => (t.label === 'Campus' && f.maxChurches !== 1 ? 'Campuses' : t.label));
+    // 🔴 THE CHURCHES LABEL IS NO LONGER PER-TIER — THE-370. It used to read
+    // 'Campus' on a tier capped at one and 'Campuses' otherwise; no tier is
+    // capped at one now, so the label is always plural and this derivation is
+    // gone rather than left computing a branch that cannot be taken.
+    .map((t) => t.label);
   if (hasBrandingAccess(f)) labels.push('Branding');
   return labels.sort();
 }
@@ -272,7 +275,7 @@ const flush = async () => {
 };
 
 const ALL_TAB_LABELS = [
-  'Dashboard', 'Campus', 'Campuses', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
+  'Dashboard', 'Campuses', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
   'Fundraising', 'Events', 'Services', 'Notes', 'CRM', 'Signups', 'Accounting', 'Forms', 'Check-In', 'Livestream',
   'SMS', 'Community', 'Library', 'Tenants', 'Affiliate', 'Branding',
 ];
@@ -381,7 +384,7 @@ describe('1 — a free tenant sees all eighteen nav items', () => {
     // 🔴 THE POINT OF THE TIER. Named individually, not counted, so a nav that
     // lost one and gained another cannot pass on arithmetic.
     for (const tab of TABS) {
-      const label = tab.label === 'Campus' ? 'Campuses' : tab.label;
+      const label = tab.label;
       expect(nav, `a free admin lost "${label}" — free must see every feature`).toContain(label);
     }
     // ⚠️ Seventeen since THE-277: Signups split out of the CRM screen, taking
@@ -432,7 +435,7 @@ describe('2 — an Individual tenant sees exactly its six', () => {
    * `smsAutomation: true` while SMS was bring-your-own and the cell gated
    * nothing. Harvest now resells and pays for every segment, so the founder made
    * SMS Ministry-only and this tier lost the tab with the capability. */
-  const SIX = ['Dashboard', 'Blog', 'Campus', 'Courses', 'CRM', 'Fundraising'];
+  const SIX = ['Dashboard', 'Blog', 'Campuses', 'Courses', 'CRM', 'Fundraising'];
 
   /** 🔴 The nine the ticket says must go, by label — plus SMS, which THE-314
    *  added to this set by making the capability Ministry-only. */
@@ -488,7 +491,7 @@ describe('3 — a Small Team tenant sees exactly its expected set', () => {
   // tenant HOLDING the add-on does see it: `AdminDashboard` gates on
   // `getEffectiveFeatures`, and `navFor` here mounts with no add-ons.
   const EXPECTED = [
-    'Dashboard', 'Campus', 'Courses', 'Blog', 'Newsletter',
+    'Dashboard', 'Campuses', 'Courses', 'Blog', 'Newsletter',
     // ⚠️ 'SMS' LEFT THIS SET — THE-314. Small Team lost the capability with
     // Individual, for the same reason: SMS is Ministry-only now that Harvest
     // pays for every segment rather than the church's own carrier account.
@@ -583,7 +586,7 @@ describe('4 — a Ministry tenant sees exactly its expected set', () => {
     // future cell is set on a cheaper tier but not a dearer one.
     const navs = new Map<TenantPlan, string[]>();
     for (const plan of PLAN_ORDER) navs.set(plan, (await navFor(plan)).nav);
-    const gated = (l: string[]) => l.filter((x) => x !== 'Campus' && x !== 'Campuses' && x !== 'Branding');
+    const gated = (l: string[]) => l.filter((x) => x !== 'Campuses' && x !== 'Branding');
     for (const [smaller, larger] of [['plus', 'pro'], ['pro', 'max'], ['max', 'free']] as const) {
       for (const label of gated(navs.get(smaller)!)) {
         expect(gated(navs.get(larger)!), `${larger} lost "${label}" that ${smaller} has`).toContain(label);
@@ -733,7 +736,12 @@ describe('8 — no feature flag changed', () => {
     // The one numeric cell a nav clause reads, and the reason Courses is on
     // every tier: no tier has zero courses.
     expect(PLAN_ORDER.map((p) => getPlanFeatures(p).maxCourses)).toEqual([1, 2, 5, 15]);
-    expect(PLAN_ORDER.map((p) => getPlanFeatures(p).maxChurches)).toEqual([0, 1, 1, 1]);
+    // 🔴 MOVED BY THE-370. Was [0, 1, 1, 1]. The founder retired the campus
+    // add-on — "remove the campus addon. let them add as many as they want" —
+    // so every PAID tier is unlimited. Free is still 0, which is what keeps the
+    // Campuses nav entry meaningful as a paid capability.
+    expect(PLAN_ORDER.map((p) => getPlanFeatures(p).maxChurches))
+      .toEqual([0, UNLIMITED_CAP, UNLIMITED_CAP, UNLIMITED_CAP]);
   });
 });
 

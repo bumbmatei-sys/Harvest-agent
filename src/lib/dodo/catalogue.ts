@@ -402,19 +402,22 @@ export function allCatalogueProductIds(): string[] {
 // recreated in Dodo, and the mapping belongs server-side, once.
 
 /**
- * What owning an add-on MEANS — the five things Harvest sells beyond a tier.
+ * What owning an add-on MEANS — the three things Harvest sells beyond a tier.
  *
- * These are the words the rest of the app reasons in. `campus` and `adminSeat`
- * are singular because one add-on unit is one campus / one seat and the
- * quantity carries the count; `contactPack` is one block of
- * `CONTACTS_PER_PACK` contacts for the same reason. `unlimitedContacts` is the
- * odd one: a quantity means nothing there, holding it at all is the whole fact.
+ * These are the words the rest of the app reasons in. `adminSeat` is singular
+ * because one add-on unit is one seat and the quantity carries the count.
+ * `unlimitedContacts` is the odd one: a quantity means nothing there, holding it
+ * at all is the whole fact.
+ *
+ * 🔴 WAS FIVE — THE-370 removed `campus` and `contactPack`. Both products are
+ * DETACHED from all nine live plan products in Dodo, so neither can be bought
+ * and no new subscription can carry one. They are deleted from the vocabulary
+ * rather than left unmapped: an unmapped id is this module's way of saying "sold
+ * in Dodo, unknown here", which is the opposite of what is true of these two.
  */
 export const DODO_ADDON_MEANINGS = [
   'aiAssistant',
   'adminSeat',
-  'campus',
-  'contactPack',
   'unlimitedContacts',
 ] as const;
 
@@ -456,19 +459,20 @@ export type AddonBillingPeriod = Extract<BillingPeriod, 'monthly' | 'yearly'>;
 /** The two ids one meaning is sold under. `null` names a deliberate gap. */
 export type DodoAddonIds = Readonly<Record<AddonBillingPeriod, string | null>>;
 
-/** meaning → its ids, in one mode. Total over the five meanings, by type. */
+/** meaning → its ids, in one mode. Total over the three meanings, by type. */
 export type DodoAddonTable = Readonly<Record<DodoAddonMeaning, DodoAddonIds>>;
 
 /**
- * The ten add-ons, in Dodo TEST MODE. Five meanings × two billing periods.
+ * The six add-ons, in Dodo TEST MODE. Three meanings × two billing periods.
  *
  * `yearly` is the app's word for what Dodo's dashboard calls "Annual", the same
  * reconciliation the product catalogue above makes — the two vocabularies meet
  * in this module and nowhere else.
  *
- * ⚠️ COMPLETE, DELIBERATELY. Campus is mapped here and NOT in live (below), and
- * that asymmetry is the point: test mode is where Campus has to work end to end,
- * so that filling the live gap is two ids and no logic.
+ * ⚠️ WAS TEN — THE-370 removed the Campus and Contacts +500 rows from BOTH
+ * tables. The note that used to sit here explained why Campus was mapped in test
+ * and not in live; that asymmetry was closed before this ticket and both rows are
+ * now gone from both sides, which keeps the two tables the same shape.
  */
 export const DODO_TEST_ADDONS: DodoAddonTable = Object.freeze({
   aiAssistant: Object.freeze({
@@ -479,14 +483,6 @@ export const DODO_TEST_ADDONS: DodoAddonTable = Object.freeze({
     monthly: 'adn_0NlNfaVFaLLWXU8KXw1JI',
     yearly: 'adn_0NlNfaXplUpTTYwm1jJCV',
   }),
-  campus: Object.freeze({
-    monthly: 'adn_0NlNfafdHZgpetrweMI31',
-    yearly: 'adn_0NlNfaiGQpP5IAxXI82Fz',
-  }),
-  contactPack: Object.freeze({
-    monthly: 'adn_0NlNfakv8J9oKpmVGavKm',
-    yearly: 'adn_0NlNfanWnF8iZ0A8rESdW',
-  }),
   unlimitedContacts: Object.freeze({
     monthly: 'adn_0NlNfaqEXuZZsLYWtKcer',
     yearly: 'adn_0NlNfaspQfXIgGxB6d0Bd',
@@ -494,13 +490,15 @@ export const DODO_TEST_ADDONS: DodoAddonTable = Object.freeze({
 });
 
 /**
- * The ten add-ons, in Dodo LIVE MODE — all ten mapped.
+ * The six add-ons, in Dodo LIVE MODE — all six mapped.
  *
- * The two live Campus ids were read from the authenticated live Dodo API and
- * verified against all six live products (every one carries the correct
- * period-matched add-on set), closing the gap `dodo-addon-catalogue.test.ts`
- * used to pin deliberately. Attachment needed no change in Dodo; this table
- * was the only place the gap lived.
+ * 🔴 WAS TEN — THE-370. The founder DETACHED Campus and Contacts +500 from all
+ * nine live plan products, so neither is purchasable and no subscription can
+ * report one. Their four ids are deleted here rather than kept as unmapped
+ * markers: an unmapped marker means "Dodo sells this and we cannot name it",
+ * and Dodo no longer sells either. Unlimited Contacts was repriced in Dodo at
+ * the same time ($40 → $30 monthly, $480 → $360 annual); its two ids are
+ * unchanged, and no price lives in this repo to move with them.
  */
 export const DODO_LIVE_ADDONS: DodoAddonTable = Object.freeze({
   aiAssistant: Object.freeze({
@@ -510,14 +508,6 @@ export const DODO_LIVE_ADDONS: DodoAddonTable = Object.freeze({
   adminSeat: Object.freeze({
     monthly: 'adn_0NlKtw7AayNYI6YYwphQ5',
     yearly: 'adn_0NlKtw9lWLs0VRN9hWciX',
-  }),
-  campus: Object.freeze({
-    monthly: 'adn_0NlKwDcuqIWoVK7Qay13L',
-    yearly: 'adn_0NlKwDgKMpuqzR5VmlCBD',
-  }),
-  contactPack: Object.freeze({
-    monthly: 'adn_0NlKtwD3VfBLgx2LTw69O',
-    yearly: 'adn_0NlKtwGbLRk2nPC07uC6o',
   }),
   unlimitedContacts: Object.freeze({
     monthly: 'adn_0NlKtwKAhJgz0jeaqDX2c',
@@ -572,13 +562,12 @@ export function resolveAddonMeaning(addonId: string): DodoAddonMeaning | null {
  * lookup failed", it is "this build cannot sell that in this environment", and
  * every caller must refuse rather than substitute anything.
  *
- * The live Campus gap is exactly this case: `DODO_LIVE_ADDONS.campus` is
- * `DODO_ADDON_UNMAPPED` on both periods, so under live mode this returns `null`
- * for Campus and the add-on is not offerable. Charging a church $15 a month for
- * an id this build cannot recognise on the way back in is the failure that gap
- * exists to prevent; refusing to SELL it is the other half of the same
- * guarantee. Filling the two ids in the table above makes Campus purchasable
- * with no other edit anywhere.
+ * ⚠️ NO MEANING IS UNMAPPED TODAY. The example this note used to carry was the
+ * live Campus gap, and Campus is not a meaning any more (THE-370) — so every
+ * member of the union resolves on both periods in both modes, and `null` is
+ * reachable only if a future table leaves a row out. `DODO_ADDON_UNMAPPED`
+ * survives for that case; see its own note for why an absent key and a declared
+ * gap must not look alike.
  *
  * The exact counterpart of `resolveAddonMeaning`, which walks this same table in
  * the other direction — so the set of ids that can be sold and the set that can
