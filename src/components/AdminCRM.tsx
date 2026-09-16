@@ -36,6 +36,7 @@ import { getEffectiveFeatures, toTenantPlan } from '../utils/plan-features';
 import { getIntegrationProvider, isProviderAvailable } from './settings/integration-providers';
 import { GMAIL_FEATURE_ENABLED } from '../lib/gmail-feature';
 import { GIVING_PROVIDER_NAMES_OR, readGivingLinks } from './donations/giving-providers';
+import { GivingDocsLink } from './admin/GivingDocsLink';
 import { formatCents } from '../lib/donation-history';
 import { dollarsToCents } from '../lib/donation-amount';
 import {
@@ -1908,6 +1909,20 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                         </p>
                       </div>
                     )}
+                    {/* 🔴 THE-368 — RECORDING A GIFT, and this is the one
+                        surface in the app that gets that page. The entry
+                        HAPPENS here: this is the amount field, and pressing
+                        save writes the donation receipt. The page is "the exact
+                        steps, and the email-match caveat" — which is precisely
+                        the pair of things the two notes above state in short,
+                        so an admin who wants the long form has somewhere to go
+                        without either note growing.
+
+                        ⚠️ INSIDE THE `donation` BRANCH, so it is drawn only
+                        when the type chosen is a gift. On a note, a call or a
+                        meeting there is no gift being recorded and the link
+                        would be an answer to a question nobody asked. */}
+                    <GivingDocsLink page="recordingAGift" className="mt-2" />
                   </div>
                 )}
                 {/*

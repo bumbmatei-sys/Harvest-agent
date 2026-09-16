@@ -363,8 +363,49 @@ const THE_362_FUNDRAISING_EDITS: ReadonlyArray<readonly [after: string, before: 
 const unwrapTHE362Fundraising = (src: string): string =>
   THE_362_FUNDRAISING_EDITS.reduce((acc, [after, before]) => acc.replace(after, before), src);
 
+/**
+ * 🔴 THE-368 — REVERSED BEFORE HASHING, SO NO PIN ON THIS SCREEN MOVES.
+ *
+ * THE-368 links the giving documentation from the admin surfaces that need it,
+ * and two of them are pinned here: AdminFundraising gets a money-flow link
+ * under its campaigns header, AdminEvents gets one beneath the manual-payment
+ * disclaimer in the event form.
+ *
+ * 🔴 APPENDED, NEVER SUBSTITUTED — THE-251's argument in its own words, one
+ * block above: "Re-recording is the weaker one: it would bless every other byte
+ * that moved in the same breath, which is the one thing this guard exists to
+ * catch." So `THE_251_FUNDRAISING` and `THE_308_EVENTS` keep their `strippedSha`
+ * and `strippedLines` byte for byte, `firestorePathsOf` still compares against
+ * the PRE-PR revision, and every other byte of both screens still goes red
+ * tomorrow.
+ *
+ * ⚠️ IT RUNS FIRST — innermost in the composition below — so THE-362's,
+ * THE-355's and every earlier reversal still meet the file in the state each was
+ * written against. A reversal applied out of order restores a file nobody
+ * recorded.
+ *
+ * 🔴 IT IS STRUCTURAL RATHER THAN A LIST OF EXACT STRINGS, and deliberately so:
+ * what this ticket adds to a screen is ALWAYS the same two things — one import
+ * and one `<GivingDocsLink>` under a JSX comment naming the ticket — so the
+ * reversal describes that shape instead of transcribing two long comment
+ * blocks that would have to be re-transcribed on every wording change. The
+ * comment match cannot run past its own JSX-comment terminator, so it can
+ * never eat
+ * code beyond the block it names.
+ *
+ * ⚠️ AND IT IS CHECKED RATHER THAN TRUSTED: the assertions below hash the
+ * unwrapped source against pins recorded before this ticket existed, so an
+ * unwrap that removed too much or too little fails immediately and loudly.
+ */
+const THE_368_COMMENT_AND_LINK =
+  /\n?[ \t]*\{\/\*(?:(?!\*\/\})[\s\S])*?THE-368(?:(?!\*\/\})[\s\S])*?\*\/\}\s*\n[ \t]*<GivingDocsLink[^>]*\/>\n/g;
+const THE_368_IMPORT = /^import \{ GivingDocsLink \} from '[^']*';\n/m;
+
+const unwrapTHE368Docs = (src: string): string =>
+  src.replace(THE_368_COMMENT_AND_LINK, '\n').replace(THE_368_IMPORT, '');
+
 const stripPresentation = (src: string): string =>
-  unwrapRota(unwrapServicePlan(unwrapSmsGate(unwrapRotaInvite(unwrapConfirmedWording(unwrapTHE362Fundraising(src))))))
+  unwrapRota(unwrapServicePlan(unwrapSmsGate(unwrapRotaInvite(unwrapConfirmedWording(unwrapTHE362Fundraising(unwrapTHE368Docs(src)))))))
   .replace(/className=(?:"[^"]*"|\{`[^`]*`\}|\{[A-Za-z_$][\w.$]*\})/g, 'className=X')
   // An import of a LAYOUT module is presentation, not behaviour — the same
   // reasoning that already exempted form-layout, widened to the directory. A
@@ -997,6 +1038,30 @@ const THE_345_REMOVED_COLOURS: Readonly<Record<string, Readonly<Record<string, r
 };
 
 /**
+ * THE-368 — the ONE colour token this ticket adds, and where.
+ *
+ * 🔴 EXPRESSED AS A DELTA, NOT BY RE-RECORDING THE BASELINE, which is the same
+ * argument `THE_345_REMOVED_COLOURS` makes directly above for a removal:
+ * `ministry-<screen>.json` is the pre-PR "before", and re-recording it would
+ * DELETE the claim instead of updating it. Every addition since is named here
+ * with its ticket, so the record stays readable.
+ *
+ * ⚠️ PER VIEW, not per screen, for the reason the removals map gives: a record
+ * scoped to the screen would exempt a token on views where it never appeared.
+ *
+ * 🔴 IT CANNOT PAINT ON A PHONE AND IT CANNOT SHRINK A TARGET. `hover:text-body`
+ * is the giving docs link's hover ink: a `hover:` variant needs a pointer that
+ * can hover, so it binds nothing below `sm`. The link's RESTING ink is
+ * `text-muted`, which is already on this screen's baseline — so this ticket
+ * introduces no new resting colour anywhere. Its height is `min-h-11` below
+ * `sm` released to `CONTROL_DENSITY.control` above, measured in a real Chromium
+ * with transitions suppressed rather than asserted.
+ */
+const THE_368_ADDED_COLOURS: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = {
+  AdminFundraising: { default: ['hover:text-body'] },
+};
+
+/**
  * THE-308 — the TWENTY-FIVE colour-bearing classes `tabs` emits.
  *
  * Same provenance and the same proof as the heights above: every one appears
@@ -1147,6 +1212,30 @@ describe('the sub-640px rendering of each file is unchanged', () => {
     "THE-345 - emitted by the `alert` primitive (Alert/AlertTitle/AlertDescription), not spelled by this ticket, in the same category as the `tabs` classes THE-308 documented above and the lucide-* glyph classes THE-313 and THE-317 documented before it. The founder, looking at a published event reading '$50 - Registration open': 'I should not be able to create paid events with stripe disabled. How are we gonna know if someone paid or not.' So the event form's Ticket Price input is gone behind PAID_EVENTS_ENABLED and an Alert stands where it was, telling the church that Harvest cannot collect payments AND that registration, the QR code, check-in, the waitlist, discount codes and the CSV export are all completely unaffected - a notice that said only the first would read as 'events are broken'. It mounts INSIDE the form, so it reaches the phone layer this baseline was recorded without. alert.tsx is unchanged and its digest is pinned in THE-332.nav-rail.test.tsx.";
 
   const ALLOWED_ADDITIONS: Record<string, string> = {
+    /* ─── THE-368 — the giving documentation link, APPENDED to the list below ──
+       Two entries, both from ONE element: the money-flow link this ticket puts
+       under the campaigns header. Added here rather than by re-recording
+       ministry-AdminFundraising.json, so the baseline still describes the
+       rendering it was measured against and every addition since is named with
+       its ticket — appending is what keeps the record readable, and
+       substituting a baseline is what turned main red last week. */
+    'lucide-book-open':
+      'THE-368 — the link\'s icon identifier, the same BookOpen the account ' +
+      'menu\'s Documentation row carries. lucide names every icon in its own ' +
+      'class; Tailwind defines no rule for it, so it sets NOTHING on a phone. ' +
+      'It is an identifier reaching the layer, not a style.',
+    'hover:text-body':
+      'THE-368 — the link\'s hover ink, and it cannot bind on a phone at all: ' +
+      'a hover: variant needs a pointer that can hover, so this changes nothing ' +
+      'about the sub-640px rendering the layer describes. It is listed because ' +
+      'the sweep reads every token on the layer rather than guessing which ones ' +
+      'can paint, which is the right way round. The link\'s RESTING ink is ' +
+      'text-muted, already on this screen\'s baseline. ' +
+      'The tap target it sits on is RAISED, never shrunk: min-h-11 below sm:, ' +
+      'released by sm:min-h-0 to CONTROL_DENSITY.control\'s 38px above — ' +
+      'measured in a real Chromium with transitions suppressed in ' +
+      'THE-368.giving-docs-link.layout.test.tsx, never asserted.',
+
     'lucide-chart-column':
       "THE-298 — the answers button's icon identifier. lucide names every icon " +
       'in its own class; Tailwind defines no rule for it, so it sets nothing on ' +
@@ -2233,8 +2322,15 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
       );
       for (const [view, c] of Object.entries(await surfaces(name))) {
         const removed = new Set(THE_345_REMOVED_COLOURS[name]?.[view] ?? []);
+        // THE-368's addition is merged into the EXPECTATION, in sort order, so
+        // the comparison stays element-wise against the recorded baseline rather
+        // than being relaxed to a subset check.
+        const expected = [
+          ...BASELINE[name]![view].colours.filter((t: string) => !removed.has(t)),
+          ...(THE_368_ADDED_COLOURS[name]?.[view] ?? []),
+        ].sort();
         expect(colourTokens(c).filter((t) => !excluded.has(t)), `${name}/${view} colours moved`)
-          .toEqual(BASELINE[name]![view].colours.filter((t: string) => !removed.has(t)));
+          .toEqual(expected);
       }
     });
   }
@@ -2255,6 +2351,7 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
         for (const t of colourTokens(c)) {
           if (base.has(t)) continue;
           if (name === 'AdminEvents' && recorded.has(t)) continue;
+          if ((THE_368_ADDED_COLOURS[name]?.[view] ?? []).includes(t)) continue;
           added.add(`${name}/${view}:${t}`);
         }
       }

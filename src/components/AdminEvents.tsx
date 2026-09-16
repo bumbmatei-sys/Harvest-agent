@@ -30,6 +30,7 @@ import {
 } from '../lib/paid-events-feature';
 import { useTenantOptional } from '../contexts/TenantContext';
 import { readGivingLinks } from './donations/giving-providers';
+import { GivingDocsLink } from './admin/GivingDocsLink';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   CREATION_DISCLAIMER_BODY, CREATION_DISCLAIMER_TITLE,
@@ -705,6 +706,20 @@ const AdminEvents: React.FC = () => {
                   <AlertTitle>{CREATION_DISCLAIMER_TITLE}</AlertTitle>
                   <AlertDescription>{CREATION_DISCLAIMER_BODY}</AlertDescription>
                 </Alert>
+
+                {/* 🔴 THE-368 — THE MONEY FLOW, because confirming an event
+                    payment is one of the TWO ROUTES IN that page describes;
+                    recording a gift in the CRM is the other. An admin pricing a
+                    ticket has just been told that Harvest cannot check
+                    anything and that THEY will confirm each payment by hand —
+                    the next question is what that confirmation actually
+                    updates, which is the money flow's subject.
+
+                    ⚠️ AFTER THE ALERT, NEVER INSIDE IT. #482's disclaimer text
+                    is pinned; this adds a sibling and changes no word of it.
+                    It is drawn under the same condition the disclaimer is, so
+                    an event with no manual payment never shows it. */}
+                <GivingDocsLink page="theMoneyFlow" />
 
                 {/*
                   🔴 WHICH links accept payment for THIS event. `checkbox` — the

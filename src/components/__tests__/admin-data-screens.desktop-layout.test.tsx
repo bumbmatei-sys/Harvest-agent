@@ -547,6 +547,104 @@ const RETHEMED_SINCE_MEASUREMENT: ReadonlyArray<
 const RETHEMED = new Map(RETHEMED_SINCE_MEASUREMENT.map((e) => [e.screen, e]));
 
 /** Screens whose sub-640px class layer a later ticket has legitimately moved. */
+/**
+ * 🔴 THE-368 — ONE ELEMENT ADDED TO A MEASURED SCREEN, SUBTRACTED RATHER THAN
+ * RE-RECORDED, AND NOT BLANKET-EXEMPTED.
+ *
+ * THE-368 puts a giving documentation link on AdminGivingStatements. That is an
+ * ADDITION to a screen whose phone rendering is pinned by exact equality, and
+ * the register above cannot express it: `COMPOSED_SINCE_MEASUREMENT` exempts a
+ * screen from the layer check ENTIRELY, which is right for a wholesale
+ * re-composition and far too blunt for one anchor — it would delete a live
+ * guard on every other element of the screen to admit one.
+ *
+ * 🔴 SO THE LAYER IS UNWRAPPED INSTEAD. This ticket's subtree is located BY ITS
+ * OWN ATTRIBUTE, removed, and the remaining rows RE-INDEXED — so what is
+ * compared against the untouched fixture is the screen with this ticket's
+ * addition taken back out. Every other element still compares byte for byte at
+ * its original index, and a second addition by a later ticket still fails.
+ * `admin-data-screens-mobile.json` keeps describing the rendering it was
+ * measured against, which is the whole value of a baseline.
+ *
+ * ⚠️ WHY SUBTRACTING IS HONEST HERE. The claim this section makes is that the
+ * sub-640px rendering DID NOT MOVE, and it has not: no existing element gained,
+ * lost or changed a token. What arrives is a new control, and it is not
+ * abandoned — it is pinned by this ticket's own measured suite,
+ * `THE-368.giving-docs-link.layout.test.tsx`, which measures it in a real
+ * Chromium with transitions suppressed at 380/639/640/768/1280 and requires
+ * ≥44px below `sm` and exactly Rule 4's 38px above. That is a stronger
+ * statement about the new element than this layer could make.
+ *
+ * 🔴 AND THE SUBTRACTION IS PROVED NON-VACUOUS: the link must actually be found
+ * on the screen named here, asserted directly, so a selector that silently
+ * matched nothing would fail rather than quietly disable this register.
+ */
+const ADDED_SINCE_MEASUREMENT: ReadonlyArray<{ screen: string; ticket: string; selector: string; why: string }> = [
+  {
+    screen: 'AdminGivingStatements',
+    ticket: 'THE-368',
+    selector: '[data-giving-docs-link]',
+    why:
+      'The money-flow documentation link, placed ABOVE the pinned manual-links disclaimer and '
+      + 'outside it. Which gifts reach a statement is decided by the route each gift came in by — '
+      + 'a money-flow question — and somebody on this screen is about to send documents a member '
+      + 'files with a tax return. It is the one shared GivingDocsLink component, so this register '
+      + 'gains one entry rather than one per linking surface. It reads nothing, writes nothing and '
+      + 'gates nothing: it is an anchor with an href, target=_blank and rel=noopener.',
+  },
+];
+
+/**
+ * The tokens a recorded ADDITION contributes and NOTHING ELSE on the screen
+ * does. Derived from the subtree itself rather than listed by hand, so the
+ * register cannot over-allow: a token the addition shares with any existing
+ * element is NOT exempted, and therefore still has to match the baseline.
+ */
+const tokensOnlyFromAdditions = (screen: string, host: ParentNode): Set<string> => {
+  const entry = ADDED_BY_SCREEN.get(screen.split(' (')[0]);
+  if (!entry) return new Set();
+  const roots = Array.from(host.querySelectorAll(entry.selector));
+  const inside = new Set<Element>();
+  for (const root of roots) {
+    inside.add(root);
+    for (const d of Array.from(root.querySelectorAll('*'))) inside.add(d);
+  }
+  const tokensOf = (el: Element) => (el.getAttribute('class') ?? '').split(/\s+/).filter(Boolean);
+  const outside = new Set<string>();
+  for (const el of Array.from(host.querySelectorAll('*'))) {
+    if (inside.has(el)) continue;
+    for (const t of tokensOf(el)) outside.add(t);
+  }
+  const only = new Set<string>();
+  for (const el of inside) for (const t of tokensOf(el)) if (!outside.has(t)) only.add(t);
+  return only;
+};
+
+/** The screens this ticket added an element to, and the selector that finds it. */
+const ADDED_BY_SCREEN = new Map(ADDED_SINCE_MEASUREMENT.map((e) => [e.screen, e]));
+
+/**
+ * The host's mobile layer with any recorded ADDITION's subtree removed and the
+ * remaining rows re-indexed, so it can be compared against a fixture measured
+ * before that addition existed.
+ */
+const layerWithoutAdditions = (screen: string, host: ParentNode): string[] => {
+  const entry = ADDED_BY_SCREEN.get(screen.split(' (')[0]);
+  if (!entry) return mobileLayer(host);
+  const all = Array.from(host.querySelectorAll('*'));
+  const drop = new Set<Element>();
+  for (const root of Array.from(host.querySelectorAll(entry.selector))) {
+    drop.add(root);
+    for (const d of Array.from(root.querySelectorAll('*'))) drop.add(d);
+  }
+  return all
+    .filter((el) => !drop.has(el))
+    .map((el, index) => {
+      const tokens = (el.getAttribute('class') ?? '').split(/\s+/).filter(Boolean).sort();
+      return `${index}\t${el.tagName.toLowerCase()}\t${tokens.filter((t) => !isResponsive(t)).join(' ')}`;
+    });
+};
+
 const COMPOSED_SCREENS = new Set(COMPOSED_SINCE_MEASUREMENT.map((e) => e.screen));
 /** Files whose recorded colour-literal multiset a later ticket has legitimately moved. */
 const COMPOSED_FILES = new Set(COMPOSED_SINCE_MEASUREMENT.map((e) => e.file));
@@ -575,14 +673,14 @@ describe('the sub-640px rendering of each file is unchanged', () => {
         expect(mobileLayer(await s.open()).length).toBeGreaterThan(0);
         return;
       }
-      expect(mobileLayer(await s.open())).toEqual(expectedMobileLayer(s.name));
+      expect(layerWithoutAdditions(s.name, await s.open())).toEqual(expectedMobileLayer(s.name));
     });
   }
 
   it('lets nothing but the enumerated inert tokens leave the sub-640px layer', async () => {
     for (const s of SCREENS) {
       const before = new Set(BASELINE[s.name].mobileLayer.flatMap((r) => (r.split('\t')[2] ?? '').split(' ')).filter(Boolean));
-      const after = new Set(mobileLayer(await s.open()).flatMap((r) => (r.split('\t')[2] ?? '').split(' ')).filter(Boolean));
+      const after = new Set(layerWithoutAdditions(s.name, await s.open()).flatMap((r) => (r.split('\t')[2] ?? '').split(' ')).filter(Boolean));
       const gone = [...before].filter((t) => !after.has(t)).sort();
       if (COMPOSED_SCREENS.has(s.name.split(' (')[0])) continue;
       const bare = s.name.split(' (')[0];
@@ -610,7 +708,7 @@ describe('the sub-640px rendering of each file is unchanged', () => {
   it('adds no unprefixed token to any file it touches', async () => {
     for (const s of SCREENS) {
       const before = new Set(BASELINE[s.name].mobileLayer.flatMap((r) => (r.split('\t')[2] ?? '').split(' ')).filter(Boolean));
-      const after = new Set(mobileLayer(await s.open()).flatMap((r) => (r.split('\t')[2] ?? '').split(' ')).filter(Boolean));
+      const after = new Set(layerWithoutAdditions(s.name, await s.open()).flatMap((r) => (r.split('\t')[2] ?? '').split(' ')).filter(Boolean));
       const bare = s.name.split(' (')[0];
       if (COMPOSED_SCREENS.has(bare)) continue;
       const swap = RETHEMED.get(bare);
@@ -637,7 +735,7 @@ describe('no touch target got smaller', () => {
       if (COMPOSED_SCREENS.has(s.name.split(' (')[0])) continue;
       const heights = (layer: string[]) =>
         layer.flatMap((row) => row.split('\t')[2]?.split(' ') ?? []).filter((t) => t && /^h-/.test(t)).sort();
-      expect(heights(mobileLayer(await s.open())), s.name).toEqual(heights(BASELINE[s.name].mobileLayer));
+      expect(heights(layerWithoutAdditions(s.name, await s.open())), s.name).toEqual(heights(BASELINE[s.name].mobileLayer));
     }
   });
 
@@ -1327,7 +1425,56 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
       const expected = swap
         ? BASELINE[s.name].colours.map((t) => (t === swap.from ? swap.to : t)).sort()
         : BASELINE[s.name].colours;
-      expect(colourTokens(await s.open())).toEqual(expected);
+      /* 🔴 THE-368 — an ADDITION, subtracted the same way the layer above
+         subtracts it, and by the same rule: the tokens taken out are DERIVED
+         from the added subtree and are only those NOTHING ELSE on the screen
+         spells, so this cannot exempt a colour that moved on an existing
+         element. See ADDED_SINCE_MEASUREMENT. The baseline is not re-recorded,
+         and a second unregistered colour change still fails. */
+      const host = await s.open();
+      const fromAddition = tokensOnlyFromAdditions(s.name, host);
+      expect(colourTokens(host).filter((t) => !fromAddition.has(t))).toEqual(expected);
+    });
+  }
+
+  /**
+   * 🔴 THE ADDITION REGISTER IS ONLY SOUND IF IT REALLY FINDS SOMETHING.
+   *
+   * A selector that silently matched nothing would make every subtraction above
+   * a no-op — which would LOOK like a passing suite and would in fact mean the
+   * register had quietly disabled itself. This turns "the link is on that
+   * screen" from a sentence in a comment into an assertion, and it fails if the
+   * element is ever removed without the register being cleaned up with it.
+   */
+  for (const entry of ADDED_SINCE_MEASUREMENT) {
+    it(`🔴 ${entry.ticket}'s recorded addition is really on ${entry.screen}, and really removed by the unwrap`, async () => {
+      const s = SCREENS.find((x) => x.name.split(' (')[0] === entry.screen);
+      expect(s, `${entry.screen} is registered as having an addition but is not a screen in this suite`).toBeTruthy();
+      const host = await s!.open();
+
+      const found = Array.from(host.querySelectorAll(entry.selector));
+      expect(found.length, `${entry.selector} matches nothing on ${entry.screen} — the register exempts nothing`)
+        .toBeGreaterThan(0);
+
+      // The unwrap must actually shorten the layer, by exactly the subtree.
+      const full = mobileLayer(host);
+      const unwrapped = layerWithoutAdditions(s!.name, host);
+      const subtree = found.reduce((n, el) => n + 1 + el.querySelectorAll('*').length, 0);
+      expect(full.length - unwrapped.length, 'the unwrap removed a different number of rows than the subtree holds')
+        .toBe(subtree);
+
+      // And the derived token set must be non-empty and must not contain a
+      // token the rest of the screen also spells.
+      const only = tokensOnlyFromAdditions(s!.name, host);
+      expect(only.size, 'the addition contributed no token of its own').toBeGreaterThan(0);
+      const outside = new Set(
+        Array.from(host.querySelectorAll('*'))
+          .filter((el) => !found.some((r) => r === el || r.contains(el)))
+          .flatMap((el) => (el.getAttribute('class') ?? '').split(/\s+/).filter(Boolean)),
+      );
+      for (const t of only) {
+        expect(outside.has(t), `${t} is exempted but is also spelled outside the addition`).toBe(false);
+      }
     });
   }
 

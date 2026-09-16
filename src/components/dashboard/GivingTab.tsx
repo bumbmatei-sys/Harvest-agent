@@ -61,6 +61,7 @@ import { CampaignProgress } from './CampaignProgress';
 import { CHART_VARS } from './GivingMix';
 import { PledgeFulfilment } from './PledgeFulfilment';
 import { TrendChart } from './TrendChart';
+import { GivingDocsLink } from '../admin/GivingDocsLink';
 import type { GivingData } from './useGivingData';
 import type { OverviewData } from './useOverviewData';
 
@@ -70,6 +71,20 @@ export function GivingTab({ data, giving }: {
 }) {
   return (
     <div className="space-y-4" data-giving-tab>
+      {/* 🔴 THE-368 — THE MONEY FLOW, and THIS is the dashboard's giving
+          surface rather than `AdminDashboard.tsx`, which is the shell that
+          routes between screens and draws no figure at all. Every widget below
+          is a figure — a trend, a campaign bar, a pledge total — so "why is
+          this number what it is" is the only question this tab raises, and the
+          money flow is the page that answers it.
+
+          ⚠️ AT THE TOP, NOT THE FOOT. The last widget on this tab is the one
+          that clears the admin shell's fixed bottom nav, and that clearance is
+          measured elsewhere against a real Chromium; appending anything after
+          `PledgeFulfilment` would put this link under the nav bar on a phone
+          and move the thing that measurement is about. */}
+      <GivingDocsLink page="theMoneyFlow" />
+
       {/*
         ONE SERIES, and it is `data.givingSeriesCents` verbatim — not a copy, not a
         remapped one. `TrendChart` takes an overridable title (THE-283 added it
