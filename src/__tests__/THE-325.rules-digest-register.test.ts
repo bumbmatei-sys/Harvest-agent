@@ -430,7 +430,20 @@ const filesSpelling = (digest: string): string[] =>
  * spelling the digest — an earlier draft DID spell it, which is precisely the
  * forty-seventh-copy defect this register exists to prevent, and this sweep
  * caught it. Nothing above is removed and no accepted value is widened. */
-const PINNING_SUITES = 77;
+/* ⚠️ 77 → 78, APPENDED BY THE-369, AND FOR THE STRONGEST REASON ON THIS LIST.
+ * That ticket lets a church DELETE a `tenants/{t}/invoices` receipt, and that
+ * collection's rule is the one thing standing between a CRM admin and the money
+ * ledger: `allow write: if hasPermission('manageAccounting', tenantId)`. A
+ * reviewer of a ticket that deletes receipts is entitled to know the rule did
+ * not move an inch to permit it — it did not, and it could not usefully,
+ * because the delete runs on the Admin SDK behind a route that imposes
+ * `requireTenantPermission(request, tenantId, 'manageCRM')` itself, exactly the
+ * posture THE-350 established for the invoice WRITE when it hit this same wall
+ * from the other side. No client gains any access. Its suite reaches the
+ * accepted set through `rulesDigestFailure()` and spells no digest anywhere,
+ * and its ownership record carries no `firestore.rules` entry, per #464.
+ * Nothing above is removed and no accepted value is widened. */
+const PINNING_SUITES = 78;
 
 /**
  * A digest no ticket has recorded and none ever will — the planted change.
