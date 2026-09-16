@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   Plus, Search, Edit2, Trash2, Users, Mail, Phone,
   MessageSquare, DollarSign, PhoneCall, Calendar, Clock, ChevronRight, MapPin,
-  List, LayoutGrid, Heart, Award, AlertTriangle, Send, Upload, ChevronDown
+  List, LayoutGrid, Heart, Award, AlertTriangle, Send, Upload, ChevronDown,
+  MoreHorizontal
 } from 'lucide-react';
 import {
   collection, addDoc, deleteDoc, setDoc,
@@ -20,6 +21,9 @@ import AdminRoles, { Permission } from './AdminRoles';
 import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, CONTROL_DENSITY } from './layout/form-layout';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from './ui/dropdown-menu';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../store/useAppStore';
@@ -145,6 +149,22 @@ const ACTIVITY_ICONS: Record<ContactActivity['type'], React.ReactNode> = {
   email: <Mail size={13} />,
   call: <PhoneCall size={13} />,
   meeting: <Calendar size={13} />,
+};
+
+/**
+ * THE-369 - what ONE timeline row is CALLED, so a confirmation can name it.
+ *
+ * A Record over the `type` union rather than a default, and that is the point:
+ * the union is CLOSED, so a sixth activity type is a COMPILE ERROR here rather
+ * than a dialog that asks "Delete this activity?" about something the copy was
+ * never written for. `ACTIVITY_ICONS` above is exhaustive for the same reason.
+ */
+const ACTIVITY_NOUNS: Record<ContactActivity['type'], string> = {
+  note: 'note',
+  donation: 'gift',
+  email: 'email',
+  call: 'call',
+  meeting: 'meeting',
 };
 
 const emptyContact = {
@@ -503,6 +523,29 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
    * layer up.
    */
   const [activityError, setActivityError] = useState<string | null>(null);
+  /**
+   * THE-369 - the timeline row a delete is about, held as the ROW and not an id.
+   *
+   * 🔴 THE CONFIRMATION HAS TO NAME THE AMOUNT before a receipt is destroyed,
+   * and the figure lives on the row itself - `invoiceAmountCents`, THE-350's
+   * display mirror in CENTS. Holding only an id would mean asking for the figure
+   * again from a screen that CANNOT READ `invoices` at all, and a confirmation
+   * that cannot state what it is about is the silent destruction this guards.
+   */
+  const [deleteActivity, setDeleteActivity] = useState<ContactActivity | null>(null);
+  const [deletingActivity, setDeletingActivity] = useState(false);
+  /**
+   * 🔴 THE SILENT-FAILURE RULE, AND #506 FIXED EXACTLY THIS BUG ONE LAYER UP.
+   *
+   * A refused contact delete used to close its dialog and walk back to the list
+   * as if it had worked - the screen performed the whole gesture of having
+   * deleted somebody while the row sat there untouched. Here a failed delete
+   * leaves the dialog OPEN on the row it failed on with the reason inside it,
+   * and the row is still on the timeline underneath, because the row really is
+   * still there. Nothing is removed optimistically, so there is no state in
+   * which the screen is ahead of the database.
+   */
+  const [activityDeleteError, setActivityDeleteError] = useState<string | null>(null);
   // Email compose. `gmailConnected` is tri-state: null while the status is still
   // unknown, so the UI renders neither a send button nor a "connect" prompt off
   // an unanswered question. `emailError` is what keeps a failed send from
@@ -1294,6 +1337,53 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     finally { setSavingAct(false); }
   };
 
+  /**
+   * THE-369 - 🔴 ONE ACTIVITY OFF THE TIMELINE, AND THE GIFT BEHIND IT.
+   *
+   * THE FOUNDER: "make sure that if i delete the activity, it is deleted from
+   * the dashboard analytics donation as well."
+   *
+   * ─── 🔴 THE DASHBOARD READS INVOICES, SO THE INVOICE IS WHAT GOES ──────────
+   *
+   * `addActivity` above is the mirror of this function and says why: the invoice
+   * IS the record of the money and the timeline row REFERENCES it, carrying
+   * `amount: null` so nothing sums the gift twice. Which means a delete that
+   * removed only the row would take the gift off ONE screen and leave it in the
+   * dashboard figure, in accounting, in the member's own giving history and on
+   * their giving statement - while the church watched the row vanish and
+   * reasonably concluded the money had moved with it. Every one of the three
+   * reasons to delete a gift (wrong contact, wrong amount, never happened) is
+   * wrong in that state.
+   *
+   * ⚠️ IT IS A ROUTE AND NOT A CLIENT WRITE for THE-350's reason exactly:
+   * `firestore.rules` gates `invoices` on `manageAccounting` and this screen's
+   * admin holds `manageCRM`. firestore.rules is untouched by this ticket.
+   *
+   * ─── 🔴 THE ROUTE DECIDES, NOT THIS FUNCTION ───────────────────────────────
+   *
+   * Which invoices may be reached is the SERVER's judgement - it is the only
+   * side that can read the receipt and see its `source`. An event ticket and a
+   * processed gift both come back as a REFUSAL with copy already written, and
+   * this function renders it rather than second-guessing it. A client that
+   * decided would be a second copy of the rule, one release away from
+   * disagreeing with the one that enforces it.
+   *
+   * ─── 🔴 `totalDonated` IS DECREMENTED HERE, AND HERE IS THE ONLY SAFE PLACE ─
+   *
+   * It is a CLIENT-MAINTAINED running total: `addActivity` bumps it with a
+   * read-modify-write of a value this component already holds, and THE-359
+   * deliberately did NOT touch it from a server route because a server write
+   * would race that one. So the decrement is the same read-modify-write in the
+   * same component - symmetric with the bump, and racing nothing. Leaving it
+   * would overstate this person's giving permanently and, because
+   * `resolvePipelineStage` is a function of it, park them in a pipeline stage
+   * their giving no longer supports.
+   *
+   * ⚠️ `lastDonationAt` IS DELIBERATELY NOT REWOUND. It means "when did they
+   * last give", and answering it after a deletion needs the whole timeline
+   * rather than the one row in hand. A stale "last gift" date is a display fact;
+   * a guessed one would be a new false one.
+   */
   // Is the *calling admin's own* Gmail connected? The route keys on the uid in
   // the token, so this answers for this admin only — a colleague's connection
   // never unlocks the button here. Asked once per mount; a network failure
@@ -1370,6 +1460,154 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     }
   };
 
+  /**
+   * THE-369 - does this row have a MONEY RECORD behind it?
+   *
+   * `invoiceId` is the whole test, and it is the same one the route applies. A
+   * gift recorded through Add Activity -> Donation carries it (THE-350) and so
+   * does an event ticket an admin confirmed (THE-359). ⚠️ A STRIPE GIFT DOES
+   * NOT: `lib/donation-webhook.ts` writes its CRM row with an `amount` in
+   * DOLLARS and no `invoiceId` at all, so a processed gift's row is a plain
+   * timeline entry here and its receipt is never in reach of this screen.
+   */
+  const deleteActivityInvoiceId =
+    typeof deleteActivity?.invoiceId === 'string' && deleteActivity.invoiceId.length > 0
+      ? deleteActivity.invoiceId
+      : null;
+
+  /**
+   * The gift's figure, in CENTS, or null.
+   *
+   * 🔴 RENDERED THROUGH `formatCents` AND NOWHERE ELSE - the one helper that
+   * turns cents into dollars. Reading cents with the dollar formatter is exactly
+   * `AdminAccounting`'s `$10,550,000` bug, and doing it in a sentence that asks
+   * a church to approve destroying a receipt would be that bug with a button
+   * under it.
+   */
+  const deleteActivityCents =
+    typeof deleteActivity?.invoiceAmountCents === 'number'
+      ? deleteActivity.invoiceAmountCents
+      : null;
+
+  /** The row is a gift AND this screen can state what it is worth. */
+  const deleteActivityIsGift = !!deleteActivityInvoiceId && deleteActivityCents !== null;
+
+  /**
+   * The reason this delete cannot be offered, or `null` when it can.
+   *
+   * 🔴 ONE CASE, AND IT IS THE ONE TEST 5d IS ABOUT: a row that points at a
+   * receipt whose figure this screen cannot read. The confirmation MUST name the
+   * amount before a financial record is destroyed, so a dialog that cannot name
+   * it must not carry a Delete button at all - the alternative is a church
+   * approving the removal of a receipt for an amount nobody showed them.
+   *
+   * ⚠️ THE ROUTE'S OWN REFUSALS ARE NOT HERE. An event ticket and a processed
+   * gift are refused SERVER-SIDE, where the receipt can actually be read, and
+   * arrive as an error this dialog renders. Restating them here would be a
+   * second copy of a rule that is enforced somewhere else.
+   */
+  const activityDeleteRefusal: { readonly title: string; readonly body: string } | null =
+    !deleteActivity ? null
+    : deleteActivityInvoiceId && deleteActivityCents === null ? {
+        title: 'This gift\u2019s amount could not be read',
+        body:
+          'This row points at a receipt on your books, but its amount is not available on '
+          + 'this screen \u2014 so there is no way to tell you what deleting it would take out '
+          + 'of your accounting. Nothing has been deleted. Reload the timeline and try again.',
+      }
+    : null;
+
+  const confirmDeleteActivity = async () => {
+    if (!deleteActivity || !selected) return;
+    // THE GUARD IS HERE, not only in the dialog - the same rule THE-362's
+    // `confirmDelete` states. A refusal that lived in the markup alone would be
+    // one re-render away from being bypassed, and this is the only thing here
+    // that reaches the route.
+    if (activityDeleteRefusal) return;
+    setDeletingActivity(true);
+    setActivityDeleteError(null);
+    try {
+      const scope = selectedTenantScope(selected, tenantId);
+      const res = await authFetch(
+        `/api/crm/contact-activities/${encodeURIComponent(deleteActivity.id)}`
+        + `?tenantId=${encodeURIComponent(scope)}`,
+        { method: 'DELETE' },
+      );
+      const body = (await res.json().catch(() => null)) as
+        { error?: string; invoiceRemoved?: boolean; amountCents?: number | null } | null;
+      if (!res.ok) {
+        throw new Error(body?.error || `This activity could not be removed (${res.status}).`);
+      }
+
+      /**
+       * 🔴 ONLY WHEN THE LEDGER REALLY LOST IT. `invoiceRemoved` comes from the
+       * transaction that did the deleting, and `amountCents` is the INVOICE's
+       * own figure rather than the row's display mirror - so the total is
+       * reduced by what the books actually lost. A row with no receipt behind it
+       * (a note, or a donation whose invoice was already gone) moves nothing.
+       *
+       * Floored at zero: a contact whose total was bumped by some other writer's
+       * arithmetic must not be driven negative by a correct subtraction here.
+       */
+      if (body?.invoiceRemoved && typeof body.amountCents === 'number') {
+        const newTotal = Math.max(0, (selected.totalDonated || 0) - body.amountCents / 100);
+        /**
+         * 🔴 ITS OWN try, AND THE MESSAGE IS DIFFERENT, BECAUSE THE CLAIM IS.
+         *
+         * By this line the route has returned 200: the row and its receipt are
+         * ALREADY GONE, atomically. If this running total then fails to write,
+         * "this activity could not be removed" is a FALSE STATEMENT on screen —
+         * and it is the dangerous direction of false, because a church that
+         * believes the delete failed will press Delete again and be told the
+         * activity cannot be found.
+         *
+         * So the two failures are reported as the two different things they are.
+         * What is left wrong here is one contact's running total, which is a
+         * derived display figure rather than the money: the ledger, the dashboard
+         * and the books are all already correct.
+         */
+        try {
+          await setDoc(doc(db, 'contacts', selected.id), {
+            firstName: selected.firstName ?? '', lastName: selected.lastName ?? '',
+            email: selected.email ?? '', phone: selected.phone ?? '', type: selected.type ?? 'member',
+            tenantId: selected.tenantId || tenantId || PLATFORM_TENANT_ID,
+            totalDonated: newTotal,
+          }, { merge: true });
+          setSelected({ ...selected, totalDonated: newTotal });
+          await queryClient.invalidateQueries({ queryKey: ['contacts', tenantId] });
+        } catch (e) {
+          console.error('Failed to correct totalDonated after an activity delete:', e);
+          notifyError('The gift was deleted, but this person\u2019s total was not updated', e);
+        }
+      }
+      await queryClient.invalidateQueries({ queryKey: ['contactActivities', tenantId, selected.id] });
+      // INSIDE THE `try`, AND THAT IS THE SILENT-FAILURE RULE - #506's bug, one
+      // layer up, was this line sitting after the `catch`.
+      setDeleteActivity(null);
+    } catch (e) {
+      const message = (e as Error)?.message || 'This activity could not be removed.';
+      console.error('Failed to delete activity:', e);
+      setActivityDeleteError(message);
+      notifyError('Failed to delete activity', e);
+    }
+    finally { setDeletingActivity(false); }
+  };
+
+  /**
+   * ⚠️ THE-369's DELETE LIVES BELOW `sendEmail` AND NOT BESIDE `addActivity`,
+   * WHICH IS ITS MIRROR, AND THE REASON IS A GUARD RATHER THAN TASTE.
+   *
+   * THE-350 asserts the CRM's ledger-first ordering and its kept-input failure
+   * path by SLICING this file from `const addActivity = async` to
+   * `const sendEmail = async` and reading the last `catch` in the slice. A
+   * second async function placed inside that span moves what that guard reads
+   * onto code it was never written about - measured, not guessed: it went red
+   * on the first arrangement of this ticket, reporting `addActivity` as having
+   * lost its error banner when `addActivity` had not changed by one byte.
+   *
+   * 🔴 SO THIS TICKET MOVED ITS OWN CODE RATHER THAN RELAXING THAT GUARD. The
+   * slice still contains exactly the function it names.
+   */
   // Pill segmented control for the Contacts / Roles sub-views. Each pill is
   // shown only to admins entitled to that sub-view (Roles lives here rather
   // than as its own top-level tab).
@@ -1807,6 +2045,45 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                       <span className="text-xs font-bold" style={{ color: 'var(--brand-color, #B8962E)' }}>{formatCents(act.invoiceAmountCents)}</span>
                     ) : null}
                     <span className="text-[10px] text-faint ml-auto">{fmtDate(act.createdAt)}</span>
+                    {/*
+                      🔴 THE-369 · THE ROW ACTION, ON THE INSTALLED PRIMITIVE.
+
+                      A church could not remove a single activity: a note typed
+                      on the wrong contact, a call logged twice, a meeting that
+                      did not happen were all permanent. This is the way in.
+
+                      ⚠️ A MENU RATHER THAN A BARE BIN ICON. A destructive
+                      control sitting open on every row of a timeline is one
+                      mis-tap from a deleted gift, and `dropdown-menu` is what
+                      this repo installs for a row action - the same ⋯ trigger,
+                      the same `min-h-11`/`sm:min-h-0` pair and the same
+                      `z-[110]` as `AdminDocs`, whose note on that z-index
+                      applies here unchanged.
+
+                      ⚠️ `Button`'s INTRINSIC SIZES ARE 24/28/32/36px AND EVERY
+                      ONE IS BELOW BOTH FLOORS (#500), which is why the trigger
+                      carries its own: 44px below `sm`, released above it and
+                      replaced by `CONTROL_DENSITY.control`, Rule 4's 38px,
+                      IMPORTED rather than respelled.
+                    */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        aria-label={`Options for this ${ACTIVITY_NOUNS[act.type]}`}
+                        data-activity-menu={act.id}
+                        className={`flex min-h-11 min-w-11 items-center justify-center rounded-lg transition-colors hover:bg-surface-sunken sm:min-h-0 sm:min-w-0 sm:px-1.5 ${CONTROL_DENSITY.control}`}
+                      >
+                        <MoreHorizontal size={16} className="text-muted" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="z-[110] w-48">
+                        <DropdownMenuItem
+                          data-activity-delete={act.id}
+                          className="flex min-h-11 items-center gap-2 text-sm sm:min-h-0"
+                          onClick={() => { setActivityDeleteError(null); setDeleteActivity(act); }}
+                        >
+                          <Trash2 size={15} /> Delete {ACTIVITY_NOUNS[act.type]}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                   <p className="text-sm text-body">{act.description}</p>
                 </div>
@@ -1822,6 +2099,124 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             polluted with blanks. For every tenant without custom questions the
             field is absent, so this was a guaranteed empty box. The data still
             ships in the users CSV (AdminRoles). Nothing lost. */}
+
+        {/*
+          🔴 THE-369 · THE CONFIRMATION, AND FOR A GIFT IT NAMES THE MONEY.
+
+          `z-[220]` sits ABOVE THE-362's contact-delete dialog at `z-[210]` and
+          above Add Activity at `z-[200]`, so this is never drawn under a layer
+          it was opened from.
+
+          ⚠️ "This cannot be undone" IS NOT ENOUGH, and #506 established that on
+          the contact dialog one layer up: a treasurer reading it beside a
+          donor's name is entitled to know how far the deletion reaches. For a
+          gift it reaches FIVE places at once - the dashboard figure, the books,
+          the member's own giving history, their giving statement and the
+          receipt numbering - and the copy below names every one of them and the
+          AMOUNT, because the church cannot see the receipt from here.
+
+          🔴 THE DELETE BUTTON DOES NOT EXIST WHEN THE AMOUNT CANNOT BE STATED.
+          That is `activityDeleteRefusal`, on the `alert` primitive this repo
+          installs for a refusal, and it is the structural half of "no receipt is
+          ever deleted silently": not a warning that could be ignored, a screen
+          with nothing on it that writes.
+        */}
+        {deleteActivity && (
+          <div className="fixed inset-0 z-[220] flex items-end sm:items-center justify-center bg-black/50 p-4">
+            <div className="bg-surface-raised rounded-3xl p-6 w-full max-w-md">
+              {activityDeleteRefusal ? (
+                <>
+                  <Alert variant="destructive" data-activity-delete-refused>
+                    <AlertTitle>{activityDeleteRefusal.title}</AlertTitle>
+                    <AlertDescription>{activityDeleteRefusal.body}</AlertDescription>
+                  </Alert>
+                  <button
+                    onClick={() => { setDeleteActivity(null); setActivityDeleteError(null); }}
+                    className={`mt-5 w-full min-h-11 rounded-xl border border-line-hairline text-sm font-semibold text-muted sm:min-h-0 ${CONTROL_DENSITY.control}`}
+                  >
+                    Close
+                  </button>
+                </>
+              ) : (
+                <div>
+                  <p className="font-bold text-strong mb-2 font-display text-center">
+                    {deleteActivityIsGift
+                      ? `Delete this ${formatCents(deleteActivityCents as number)} gift?`
+                      : `Delete this ${ACTIVITY_NOUNS[deleteActivity.type]}?`}
+                  </p>
+
+                  {deleteActivityIsGift ? (
+                    <div data-activity-delete-money>
+                      {/*
+                        🔴 THE FOUNDER'S DECISION, SPELLED OUT BEFORE IT HAPPENS:
+                        "make sure that if i delete the activity, it is deleted
+                        from the dashboard analytics donation as well." The
+                        dashboard reads INVOICES, so this deletes the receipt -
+                        and a church that is not told that would watch the row
+                        vanish and assume the figure moved on its own.
+                      */}
+                      <p className="text-sm text-muted mb-2">
+                        This removes the receipt for {formatCents(deleteActivityCents as number)}{' '}
+                        from your books, not only this row on the timeline.
+                      </p>
+                      <p className="text-sm text-muted mb-2">
+                        Your dashboard giving figure and your accounting totals both fall by{' '}
+                        {formatCents(deleteActivityCents as number)}, the gift leaves this
+                        person&rsquo;s own giving history, and a giving statement generated from now
+                        on will no longer include it. Its receipt number is not reused, so your
+                        receipts will have a gap where this one was.
+                      </p>
+                      <p className="text-sm text-muted mb-5">
+                        This cannot be undone. If the amount was wrong, delete this and record the
+                        gift again with the right one.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted mb-5" data-activity-delete-plain>
+                      This removes it from {selected ? 'their' : 'the'} timeline and cannot be
+                      undone. It carries no money, so your accounting totals and giving statements
+                      do not change.
+                    </p>
+                  )}
+
+                  {/*
+                    🔴 VISIBLE, AND THE ROW IS STILL THERE. #506's bug was a
+                    dialog that closed and returned to the list on failure as if
+                    it had succeeded. This banner stays until the admin acts on
+                    it, the dialog stays open on the row it failed on, and the
+                    timeline behind it still holds that row - because nothing was
+                    removed optimistically. The route's own refusals (an event
+                    ticket, a processed gift) arrive here too, already worded.
+                  */}
+                  {activityDeleteError && (
+                    <Alert variant="destructive" className="mb-4" data-activity-delete-error>
+                      <AlertTitle>This activity was not deleted</AlertTitle>
+                      <AlertDescription>{activityDeleteError}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => { setDeleteActivity(null); setActivityDeleteError(null); }}
+                      disabled={deletingActivity}
+                      className={`flex-1 min-h-11 rounded-xl border border-line-hairline text-sm font-semibold text-muted disabled:opacity-50 sm:min-h-0 ${CONTROL_DENSITY.control}`}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={confirmDeleteActivity}
+                      disabled={deletingActivity}
+                      data-testid="crm-confirm-delete-activity"
+                      className={`flex-1 min-h-11 rounded-xl bg-red-500 text-white text-sm font-semibold disabled:opacity-50 sm:min-h-0 ${CONTROL_DENSITY.control}`}
+                    >
+                      {deletingActivity ? 'Deleting\u2026' : 'Delete'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {showAddActivity && (
           <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 p-4">

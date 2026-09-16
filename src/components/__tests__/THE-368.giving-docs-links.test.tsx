@@ -5,6 +5,7 @@ import path from 'node:path';
 
 import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
 import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
+import { acceptedFor, ownershipFailure } from '../../__tests__/__fixtures__/ownership-register';
 import { GIVING_DOCS, type GivingDocsPage } from '../admin/GivingDocsLink';
 
 /**
@@ -708,10 +709,43 @@ describe('14 · firestore.rules, firestore.indexes.json, functions/ and layout.t
       expect(e.file, 'an entry names no file').toBeTruthy();
       expect(e.digest, `${e.file} carries no digest`).toMatch(/^[0-9a-f]{64}$/);
       expect(e.why.length, `${e.file}'s reason is too short to be a record`).toBeGreaterThanOrEqual(80);
-      // A recorded digest that does not match the file on disk is a record that
-      // has drifted from what it records.
-      const actual = createHash('sha256').update(readFileSync(path.join(ROOT, e.file))).digest('hex');
-      expect(actual, `${e.file}'s recorded digest is not the file on disk`).toBe(e.digest);
+
+      /**
+       * 🔴 AMENDED BY THE-369, AND THIS IS A BUG FIX IN THE GUARD RATHER THAN A
+       * RELAXATION — the same amendment THE-326 made to THE-322's section 1, and
+       * for the identical reason.
+       *
+       * This line used to read `expect(actual).toBe(e.digest)`: the file on disk
+       * must equal the digest THIS TICKET recorded. That is right for exactly one
+       * PR — the one that lands it — and it says two things at once: "THE-368's
+       * record is live", which is the claim, and "no later ticket may ever edit
+       * AdminCRM.tsx again", which is false and which no ticket agreed to. The
+       * register is a UNION of accepted digests across tickets precisely so a
+       * shared file can be touched twice; asserting one ticket's entry IS the
+       * disk state contradicts the mechanism it is written on top of. THE-369
+       * legitimately edits `AdminCRM.tsx` (a timeline row can now be deleted) and
+       * recorded its own digest in its OWN per-ticket file, which is the whole
+       * documented append path — `ownershipFailureFor` says so in as many words:
+       * "Do not delete this assertion and do not edit another ticket's file."
+       *
+       * 🔴 THE CLAIM IS UNWEAKENED AND IN FACT SPLIT IN TWO, both stronger than
+       * a bare equality because both go through the shared union:
+       *
+       *   · THE FILE ON DISK is at a digest SOME ticket recorded. A file edited
+       *     without any record still fails — which is the entire threat.
+       *   · THIS TICKET'S ENTRY is still IN that union, so THE-368's record
+       *     cannot rot into a string nothing accepts.
+       *
+       * ⚠️ AND NOTHING WAS SUBSTITUTED. THE-368's recorded digest for
+       * `AdminCRM.tsx` is untouched, byte for byte, in its own file. `main` went
+       * red for everyone the last time a digest was replaced instead of added.
+       */
+      expect(ownershipFailure(e.file),
+        `${e.file} is at a digest NO ticket recorded`).toBeNull();
+      expect(
+        acceptedFor(e.file).map(([digest]) => digest),
+        `${e.file}: THE-368's own record is no longer in the accepted union`,
+      ).toContain(e.digest);
     }
   });
 });

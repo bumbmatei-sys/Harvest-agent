@@ -499,7 +499,30 @@ describe('5 · the money path is byte-identical', () => {
      * `registrationId` to check against it — so there is no expressible request
      * that names somebody else's seat.
      */
-    expect(routes.length, 'an API route was added or removed').toBe(122);
+    /**
+     * ─── 122 -> 123, THE-369 ─────────────────────────────────────────────────
+     *
+     * ONE route: `crm/contact-activities/[activityId]`. A church could not
+     * remove a SINGLE row from a contact's timeline - a note typed on the wrong
+     * contact, a call logged twice - and the DELETE that already existed on the
+     * collection deletes ALL of a contact's activities for THE-362's cascade.
+     *
+     * 🔴 IT IS A SECOND ROUTE PRECISELY SO THE FIRST ONE DOES NOT MOVE. The
+     * cascade's contract is that deleting a PERSON keeps their receipts; this
+     * ticket's is that deliberately deleting ONE GIFT takes its receipt with it.
+     * Two different acts, two different answers, and the collection route stays
+     * byte-identical rather than growing a branch that decides between them from
+     * a query string.
+     *
+     * 🔴 IT PASSES THE-291'S CLAIM, and the sweep below asserts it: it deletes
+     * one `contactActivities` document and, when the row points at a gift the
+     * CRM itself recorded, one `tenants/{t}/invoices` document. It never touches
+     * the TENANT document, where `plan` and `addons` live and which only the
+     * Dodo webhook may write. DELETING A RECEIPT IS NOT AN ENTITLEMENT CHANGE -
+     * a church correcting its own books says nothing about what that church may
+     * do - so the Dodo webhook remains the single writer of a capability.
+     */
+    expect(routes.length, 'an API route was added or removed').toBe(123);
     expect(
       routes.some((f) => f.endsWith(path.join('app/api/sms/numbers/route.ts'))),
       'the route THE-314 added is missing — the count moved for some other reason',
@@ -515,6 +538,8 @@ describe('5 · the money path is byte-identical', () => {
       'app/api/event-payment/confirm/route.ts',
       // APPENDED BY THE-355 — see the note on the count above.
       'app/api/event-payment/public-claim/route.ts',
+      // APPENDED BY THE-369 — see the note on the count above.
+      'app/api/crm/contact-activities/[activityId]/route.ts',
     ]) {
       expect(
         routes.some((f) => f.endsWith(path.join(added))),
@@ -558,6 +583,14 @@ describe('5 · the money path is byte-identical', () => {
       'src/app/api/event-payment/claim/route.ts',
       'src/app/api/event-payment/inbox/route.ts',
       'src/app/api/event-payment/confirm/route.ts',
+      /**
+       * 🔴 THE-369's single-activity delete, held to the same claim. It is the
+       * first route in this list that DELETES from `tenants/{t}/invoices`
+       * rather than adding to it, which makes the claim sharper rather than
+       * weaker: a receipt removed is still not a capability, and the route may
+       * not reach the tenant document itself on the way to the subcollection.
+       */
+      'src/app/api/crm/contact-activities/[activityId]/route.ts',
     ]) {
       const src = read(rel);
       expect(src, `${rel} writes to the tenant document`)
