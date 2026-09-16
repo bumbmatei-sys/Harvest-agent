@@ -864,11 +864,32 @@ describe('no statement, receipt, CRM write or Stripe path changed', () => {
     expect(don, 'the donations screen gained a second write')
       .not.toMatch(/\b(addDoc|setDoc|deleteDoc|writeBatch)\(/);
 
-    // The CRM's write surface is the same set of calls it already had.
+    /**
+     * The CRM's write surface, ENUMERATED so a screen cannot gain a silent one.
+     *
+     * ⚠️ ONE `setDoc(` APPENDED BY THE-369, AND THE LIST SAYS WHICH. That ticket
+     * lets a church delete ONE row from a contact's timeline, and when the row
+     * is a gift the CRM itself recorded the receipt goes with it — so the
+     * contact's `totalDonated` has to come back down. It is the SAME
+     * read-modify-write `addActivity` uses to put it up, in the same component,
+     * deliberately: the total is client-maintained, and THE-359 declined to bump
+     * it from a server route precisely because a server write would race this
+     * one. Subtracting it anywhere else would reintroduce that race.
+     *
+     * 🔴 APPENDED, NEVER REWRITTEN. The five calls this list already held are
+     * all still here and still named; a call that is in neither set still fails,
+     * which is the whole threat the enumeration was built for. The deletion
+     * itself adds no `deleteDoc(` — it goes through an Admin-SDK route, because
+     * a client cannot reach `tenants/{t}/invoices` at all.
+     */
     const crmSrc = read('src/components/AdminCRM.tsx');
     const calls = (crmSrc.match(/\b(addDoc|setDoc|deleteDoc|updateDoc|writeBatch)\(/g) ?? []).sort();
     expect(calls, 'the CRM gained or lost a write call').toEqual(
-      ['addDoc(', 'addDoc(', 'deleteDoc(', 'setDoc(', 'setDoc(', 'setDoc(', 'writeBatch('].sort(),
+      [
+        'addDoc(', 'addDoc(', 'deleteDoc(', 'setDoc(', 'setDoc(', 'setDoc(', 'writeBatch(',
+        // APPENDED BY THE-369 — the `totalDonated` decrement. See the note above.
+        'setDoc(',
+      ].sort(),
     );
   });
 

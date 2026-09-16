@@ -497,8 +497,24 @@ describe('4 · every entry carries a ticket and a reason, not a bare hash', () =
  * through the shared module, asserting that linking the giving documentation
  * from the admin surfaces left `firestore.rules` untouched — the ticket renders
  * an anchor and adds no Firestore operation for a rule to express. No pinner
- * was retired and the floor still refuses a suite that quietly drops its pin. */
-const RULES_PINNERS_NOW = 77;
+ * was retired and the floor still refuses a suite that quietly drops its pin.
+ *
+ * ⚠️ 77 → 78, RAISED BY THE-369, AND FOR THE STRONGEST REASON ON THIS LIST. That
+ * ticket lets a church DELETE a `tenants/{t}/invoices` receipt, and that
+ * collection's rule is the one thing standing between a CRM admin and the money
+ * ledger: `allow write: if hasPermission('manageAccounting', tenantId)`. A
+ * reviewer of a ticket that deletes receipts is entitled to know the rule did
+ * not move an inch to let it — it did not, and it could not usefully, because
+ * the delete runs on the Admin SDK behind a `manageCRM` route exactly as
+ * THE-350's invoice WRITE does. THE-369 therefore records NO firestore.rules
+ * digest of its own in this directory (#464 — the register is per ticket, and a
+ * rules digest in it turned THE-325 red for two tickets running); it reaches the
+ * accepted set through `rulesDigestFailure()` and spells no hash.
+ *
+ * 🔴 RAISED, NEVER LOOSENED. The floor exists to catch a suite that quietly
+ * STOPS pinning, and that still fails; no pinner was retired, no accepted value
+ * was widened and no digest was replaced. */
+const RULES_PINNERS_NOW = 78;
 
 /**
  * Suites added SINCE THE-322 that also pin the rules digest, one line per
