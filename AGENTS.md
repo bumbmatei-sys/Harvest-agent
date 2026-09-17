@@ -1,7 +1,7 @@
 # Harvest Agent — Project Context
 
 ## What This Is
-Harvest (theharvest.app) is a **multi-tenant ministry SaaS** platform. Churches/ministries sign up, get a subdomain (e.g. `gracechurch.theharvest.app`), and manage their community through an admin dashboard. End users access church content through a mobile-first web app.
+Harvest (theharvest.app) is a **multi-tenant ministry SaaS** platform. A tenant signs up, gets a subdomain (e.g. `gracechurch.theharvest.app`), and runs its community from an admin dashboard. Members reach the same tenant through a mobile-first web app. Most tenants are churches; not all of them are, and user-facing copy says **"Ministries"**, never "churches".
 
 ## The Silent-Failure Rule
 Read this before writing anything.
@@ -26,341 +26,449 @@ therefore rejects the *entire query* when the query does not constrain that fiel
 caused #236 and #239. If a list needs a rule that reads document data, the query must
 carry the matching `where` — or the read belongs server-side.
 
-## Traps
-Each of these has already cost real time. None are obvious from the code.
+## How to read this file
+This file is not a specification and it cannot be trusted as one. Every previous
+version of it went stale in the same way: it restated a number that a test already
+owned, the number moved, and the file kept saying the old one. So the contract here is:
 
-- **`firestore.rules` auto-deploys to production on merge.** `.github/workflows/deploy-rules.yml`
-  fires on any push to `main` touching `firestore.rules`, `storage.rules` or
-  `firebase.json`. CI runs **no** emulator rules tests — `npm test` only covers `src/**`.
-  There are **378 rules tests** across the 10 files in `tests/rules/`; run
-  `npm run test:rules` yourself for any rules change, because nothing else will.
+- **If a guard would catch the change, the guard is the truth.** This file names the
+  guard and stops. It does not repeat the figure. When the two disagree the test wins,
+  and the correct fix is to edit this file, never the test.
+- **If nothing executable holds it, it belongs here**, because otherwise it is held
+  nowhere.
+- **Prefer "why" over "what".** `plan-features.ts`'s fail-closed fallbacks stay a
+  correct explanation long after the numbers move; the numbers do not.
+
+Anything you read here that the repo contradicts is a bug in this file. Correct it in
+the same PR that found it.
+
+## The money model
+The single thing agents get wrong most often. Read the whole section before touching
+anything with a dollar sign in it.
+
+**Harvest does not process card payments.** Three declared values say so, each with its
+own docblock arguing why it is a separate proposition:
+
+- `STRIPE_CONNECT_ENABLED` (`src/lib/stripe-connect-feature.ts`) — false. There is no
+  in-app card giving.
+- `STRIPE_PLATFORM_ACCOUNT_OPERATIONAL` (`src/lib/billing-processor.ts`) — false. The
+  Stripe platform account was closed by Stripe as `rejected.fraud` and appeals have gone
+  unanswered. Any path that still points at it is pointing at a dead account.
+- `PAID_EVENTS_ENABLED` (`src/lib/paid-events-feature.ts`) — false. Harvest charging for
+  a ticket is a separate proposition from a ministry being paid for one, and only the
+  second is live (`MANUAL_EVENT_PAYMENTS_ENABLED`, true).
+
+**Dodo Payments is the only live rail, and only for Harvest's own subscriptions**
+(`DODO_BILLING_ENABLED` in `src/utils/plan-features.ts`, true). Signup goes through Dodo
+Checkout and the Dodo webhook's `subscription.active` handler is what creates a tenant.
+Do not roll that switch back believing the Stripe path still works; the docblock on it
+spells out why that is no longer the same claim it was when it was written.
+
+**A ministry collects its own giving through its own payment links** — PayPal, Revolut,
+Wise, Venmo, Cash App, Zelle. Harvest takes 0% because Harvest never holds the money.
+Links live on the world-readable `tenants/{id}.config.givingLinks` (so the emails on them
+are public), and every URL is re-validated on read against a per-provider host allow-list
+in `src/components/donations/giving-providers.ts`.
+
+**Nothing counts until somebody records it.** A gift sitting in a ministry's PayPal that
+nobody entered does not exist to Harvest. Every figure on every giving surface is a sum
+of records a human made.
+
+**Harvest verifies nothing.** The tenant confirms; Harvest records what the tenant says
+it confirmed. No copy may say "verified", "payment received", or imply Harvest confirmed
+anything. `THE-355.confirmed-wording.test.tsx` polices the wording.
+
+### The invariants, each broken at least once
+- **`invoices.amount` is in CENTS.** `AdminAccounting` once rendered `$10,550,000` for
+  `$105,500`; three dashboard charts once showed a $50 gift as $5,000. Cents become
+  dollars through `formatCents` and nowhere else — `src/lib/donation-history.ts` for the
+  member-facing surfaces, and a second one in `src/lib/event-payment-claims.ts` for the
+  event surface. **The unit belongs in the field name**: `goalDollars`, `raisedDollars`,
+  `givingSeriesCents`. `THE-362.money-units.test.tsx` sweeps for the violation.
+- **The invoice is the money record.** The CRM activity that accompanies a gift points at
+  it by `invoiceId` and carries `amount: null`, so nothing can sum the gift twice.
+  Summing `contactActivities` will not give you a giving total, and a sweep asserts that
+  no surface tries.
+- **A gift reaches a member by normalised email.** `normalizeEmail`
+  (`src/lib/donation-history.ts`) trims and lowercases, and the identity match normalises
+  *both* sides — that is what makes "member A cannot see member B's receipts" hold
+  regardless of the casing either was recorded in. Note the divergence: the giving-
+  statement generator (`src/app/api/giving-statements/generate/route.ts`) groups donors on
+  `.toLowerCase()` alone, with no trim. If you touch that grouping, route it through the
+  shared helper rather than adding a third spelling.
+- **A gift against a contact with no email counts in the books but can never reach a
+  giving statement.** The generator skips a donor with an empty `recipientEmail` outright.
+  That is deliberate — there is nobody to send it to — but it means the books and the
+  statements can legitimately disagree, and a surface that presents them as the same
+  number is lying.
+- **Check-in never blocks on payment**, and Harvest makes no promise about what happens at
+  a tenant's actual door, because Harvest does not know their policy.
+- **Paid events run on trust, in this order:** register unpaid, pay the ministry using a
+  reference code, tell Harvest "I've paid", the ministry confirms from its own account.
+  The QR and ticket code are withheld on a paid ticket until that confirmation lands. A
+  free ticket shows its QR immediately.
+
+## Plans, add-ons and prices
+Source of truth: `src/utils/plan-features.ts` — `PLAN_FEATURES` for the matrix,
+`PLAN_PRICING` for the nine prices, `TERM_MONTHS` for the term arithmetic. **This file
+deliberately restates none of those numbers.** The previous version of this section
+carried a full price-and-caps table; every cell in it was wrong by the time anyone read
+it again.
+
+What you cannot read off the table, and therefore needs saying:
+
+- **There are four tiers: `free`, `plus`, `pro`, `max`** (displayed Forever Free,
+  Individual, Small Team, Ministry). `free` is **absent from `PLAN_PRICING` by design** —
+  it is not a `$0` row, it has no price and no billing term, and `planPriceUsd('free', …)`
+  is a compile error. Narrow with `isPricedPlan` first.
+- **Free is capped, not unlimited, and it is capped at the same contact figure as the
+  cheapest paid tier.** That is intentional as of THE-370: Individual is now bought for
+  capability, not capacity. Free is for one evangelist doing personal discipleship — one
+  admin, one adopted course, no feed, no giving page, and zero campuses ("a free tenant is
+  one evangelist, not a multi-campus ministry").
+- **Campuses are unlimited on every paid tier** and zero on free. The cap sentinel is
+  `UNLIMITED_CAP = -1`, and it is a *number*, so any new consumer comparing with `>=` or
+  `<` must learn the sentinel or it will report a church as at its limit forever.
+- **A campus is a sub-entity of a tenant, never a tenant of its own.** The cap that counts
+  them is `maxChurches`. A multi-campus ministry is one tenant, one subdomain, one
+  subscription — do not model a second campus by provisioning a second tenant.
+- **There are exactly three add-ons**: AI Assistant, Admin Seats, Unlimited Contacts
+  (`TenantAddons` in `src/types/tenant.types.ts`). `contactPacks` and `campuses` were
+  retired in THE-370 and their Dodo products detached from all nine plan products, so
+  neither is purchasable. A stale `campuses: 2` may still sit in a live document;
+  `readTenantAddons` reads only the fields it names, so a retired key grants nothing.
+- **Add-on prices are not in this repo and must not be copied into it.** Prices are
+  settled in Dodo and quoted by the marketing site; this repo maps add-on IDs to meanings
+  (`src/lib/dodo/catalogue.ts`) and carries no figure. A stale $200 add-on price outlived
+  its product here once already.
+- **Dodo add-ons are `client.addons`, not `client.products`**, and they exist in two sets
+  with different IDs — monthly and annual. `addonIdFor(meaning, period)` performs the
+  mapping; a quarterly subscription carries the monthly add-on IDs.
+- **`unlimitedContacts` is a separate boolean and stays one.** It is not folded into
+  `maxContacts`, so `maxContacts` is always a real, finite, honest number and the
+  unlimited fact travels beside it.
+- **The nine prices are contract-pinned across both repos.** The marketing site carries
+  its own copy and a module-scope contract there compares the whole table against what
+  this file publishes — the site's **build throws at prerender** if they disagree. A price
+  change must land in both repos together.
+- **`maxContacts` is enforced in two places with two different strengths.** New member
+  signup is a hard server-side gate at custom-claim issuance (`src/lib/member-capacity.ts`,
+  `POST /api/auth/set-claims`): a new applicant over the cap gets 403 `member_cap_reached`
+  and no `tenantId` claim is minted. A capacity check that itself fails answers 503
+  `capacity_check_unavailable` — fail-closed, claims withheld, and the copy does not claim
+  the ministry is full. Existing members always sign in; nothing is ever removed or
+  demoted. The admin's manual contact add is a **client-side gate only**
+  (`src/utils/contact-capacity.ts`), shares no code with the signup gate, and only
+  `AdminCRM.tsx` may import it.
+- **Minimum-plan labels on upgrade screens are derived** from the matrix
+  (`getFeatureMinPlan` / `FEATURE_MIN_PLAN`). Never put a literal plan name in a gate
+  message.
+- **The webhook is the single writer of `plan`** (swept by THE-259 and pinned in several
+  suites). No client-side write to that field, ever.
+
+## Hidden features — do NOT describe these as available
+Each is a master switch, each is a single declared value, each hides every user-facing
+surface while leaving the backend intact so it can be restored by flipping one boolean.
+`THE-335.hidden-features.test.ts` asserts they are false and that nothing behind them was
+deleted.
+
+| Switch | File |
+|--------|------|
+| `SMS_FEATURE_ENABLED` | `src/lib/sms-feature.ts` |
+| `NEWSLETTER_FEATURE_ENABLED` | `src/lib/newsletter-feature.ts` |
+| `QUICKBOOKS_FEATURE_ENABLED` | `src/lib/quickbooks-feature.ts` |
+| `GMAIL_FEATURE_ENABLED` | `src/lib/gmail-feature.ts` |
+| `CUSTOM_DOMAIN_ENABLED` | `src/lib/custom-domain-feature.ts` |
+| `STRIPE_CONNECT_ENABLED` | `src/lib/stripe-connect-feature.ts` |
+| `PAID_EVENTS_ENABLED` | `src/lib/paid-events-feature.ts` |
+| `AFFILIATE_PROGRAM_ENABLED` | `src/utils/plan-features.ts` |
+
+So: **SMS automation and text-to-give, the newsletter and automated newsletter, custom
+domains, the Gmail connection, QuickBooks, in-app card giving, paid-event charging and
+the affiliate programme are all unavailable today.** A plan cell may still read `true` for
+one of them — the plan matrix says what a tier *entitles*, the switch says what the
+deployment *serves*, and the switch wins. Do not read a `true` cell as a shipped feature.
+
+Two more that are easy to get wrong:
+
+- **No custom domain has ever provisioned.** The Vercel subscription was never bought, so
+  the path has never run end to end against a live plan.
+- **`aiChat` is `false` on every tier including Ministry.** Ask Harvest is an add-on, not
+  a plan inclusion. `getEffectiveFeatures` turns it on only when the tenant holds the
+  add-on.
+
+The hidden routes answer **503**, not 404: the route exists and is coming back, which is
+what a provider retry and an admin's stale tab should both be told.
+
+## The guard culture
+This repo defends itself with executable guards, not conventions. That is the single most
+important thing to understand before writing a test here.
+
+**Guards in this series have passed a planted defect, repeatedly, and every one of them
+was caught by MUTATION — none by reading.** Write the guard, then break the thing it
+guards and watch it go red. If it does not, it is not a guard.
+
+The failure shapes, each of them real:
+
+- A guard passed with **its own gate deleted**, because the assertion's *message* contained
+  the string it was grepping for.
+- A guard **compared a file to itself**.
+- A guard was satisfied by an **import line** that happened to carry the word.
+- A guard read a **docblock 700 lines away** that quoted the rule while explaining it.
+- Two were vacuous because an **empty `slice`** made them trivially true.
+- One hardcoded **element order**, so moving a button changed nothing and 27 assertions
+  kept passing.
+- One used **`pointerEvents: none`** in a copied occlusion probe, so `elementFromPoint`
+  skipped it and the check was *structurally unable to fail*.
+- A hand-rolled **comment stripper ate 154 lines** of a file, 85 of them code, because a
+  JSX-comment regex anchored on `interface X {`. It damaged 89 files.
+- A sweep on the marketing site read a **test file as source text** and failed a build on a
+  price written inside a comment that was explaining that test.
+
+Hence the two rules that follow from them:
+
+1. **Every content grep runs over parser-stripped source**, using the shared stripper at
+   `src/__tests__/__fixtures__/the-346-strip-comments.ts` — **imported, never copied**. It
+   uses TypeScript's real parser (`ts.createSourceFile`), not a lexer and not a regex,
+   because only a parser knows it is standing in JSX. A hand-rolled scanner desynchronises
+   on an apostrophe in JSX text; `ts.createScanner` eats the `//` in a URL written as JSX
+   text. Both failures are silent.
+2. **Assemble any self-matching needle from fragments.** A guard that greps for a literal
+   the guard itself spells will find itself.
+
+And the structural rules:
+
+- **No guard may assert anything about the current branch's diff** in the non-empty
+  direction ("the diff contains X", "more than zero files changed"). Such an assertion is
+  true on its own branch and false for every branch after it merges, so it blocks
+  unrelated PRs. The *empty* direction ("this file is not in the diff") is a freeze and
+  gets more true on merge — that one is fine. `THE-315.branch-diff-guards.test.ts` is the
+  repo-wide detector; read its docblock before writing any sweep.
+- **Nothing shells out to git at assertion time** where it can be avoided. CI checks out
+  `refs/pull/N/merge`, so `origin/main` may not exist, and a depth-1 clone has no base
+  revision at all. Walk the working tree instead.
+- **A sweep over tracked files only will miss a file you have not `git add`ed yet.**
+  THE-347's CI went red for exactly that. Track every new file before the final run.
+- **No fixture may be pinned near today's date.**
+- **`vi.useFakeTimers({ toFake: ['Date'] })` — `toFake` is load-bearing.** A plain
+  `useFakeTimers()` also fakes `setTimeout`, which mount helpers await: 28 of 47 tests
+  timed out and one run went from 4s to 141s.
+- **`happy-dom` has no layout engine.** Anything that measures needs the
+  `// @vitest-environment node` pragma and `src/test/support/browser-measure.ts`; a DOM
+  environment breaks the CDP attach.
+- **Suppress transitions before measuring.** `transition-all` animates width and height —
+  the exact numbers a probe reads. A measured `min-h-[44px]` came back as 7.7469px, and a
+  menu row as 41.79998779296875px, which is 44 x 0.95 caught mid-animation.
+- **The ownership register is per ticket.** Add
+  `src/__tests__/__fixtures__/ownership/THE-nnn.json` — your ticket, nobody else's — with a
+  digest, a ticket and a reason for each entry. Never edit another ticket's file and never
+  replace a digest that is already there. Four PRs once conflicted in sequence on one
+  shared map, which is why this is a directory.
+- **Digest pins: append with ticket and reason, never substitute.** `main` went red for
+  everyone once because a PR replaced one instead of adding to it.
+
+## Standing constraints
+- **`firestore.rules` auto-deploys to production on merge.**
+  `.github/workflows/deploy-rules.yml` fires on any push to `main` touching
+  `firestore.rules`, `storage.rules` or `firebase.json`. **CI runs no emulator rules
+  tests** — `npm test` only covers `src/**`. Run `npm run test:rules` yourself for any
+  rules change, because nothing else will. THE-313's one-line change turned 46 files red.
+  Never change this file without reporting the exact rule you changed.
+- **`firestore.indexes.json` does NOT deploy.** That workflow runs
+  `firebase deploy --only firestore:rules,storage`. Every composite index in the project
+  was created by hand in the console. **A new composite index committed to this file is
+  inert, and the query that needs it throws `failed-precondition` in production.**
 - **`functions/` does NOT deploy on merge.** It needs a separate
   `firebase deploy --only functions` from Cloud Shell, and its own
-  `npm install && npm run build` inside `functions/` first. Merging a Cloud Function
-  change and assuming it shipped is a standing trap.
-- **`typescript: { ignoreBuildErrors: true }`** in `next.config.mjs` — a green Vercel
-  build proves *nothing* about types. Run `tsc --noEmit` yourself and diff against a
-  stashed baseline. Per THE-48 the baseline is not currently reproducible between
-  environments, so always measure it on the same checkout you are comparing against
-  rather than trusting a number from another session.
-- **`skipWaiting: false`** (next-pwa) — a new service worker waits for every tab on the
-  origin to close before activating. Deliberate: it protects mid-form state during a
-  deploy. The side effect is that a merged, correctly deployed fix keeps looking broken
-  to anyone with a stale tab open. Verify in a fresh private window before re-debugging.
-- **`buildExcludes: [/\.map$/]` in the next-pwa block is load-bearing.** It keeps ~150
-  source maps out of the precache manifest — both so PWA users don't download the app's
-  entire source on install, and because Sentry is configured with
-  `deleteSourcemapsAfterUpload: true`. The maps are gone by the time the app is served,
-  so a precache entry pointing at one would 404 and the service worker would never
-  activate. Do not "tidy" this line.
-- **Missing Firestore indexes fail silently** in the sense that matters: the query
-  rejects, and a `catch`-to-default renders it as an empty list. House convention is
-  therefore **single-field `where` + client-side sort/filter** (see `AdminBlog`,
-  `PrayerWall`, `AdminCommunity`, …). Any new `collectionGroup` or multi-field `where`
-  needs its entry in `firestore.indexes.json` **in the same PR**.
-- **Stripe amounts are CENTS; `totalDonated` is DOLLARS.** Both appear in the same
-  webhook block (`src/app/api/stripe/webhook/route.ts`) — a renewal writes
-  `amount: 5000` and increments `totalDonated` by `50`. This has already shipped as a
-  100× error. Check the unit at every boundary.
-- **Vercel's serverless request body cap is 4.5MB**, enforced as a 413 before the
-  handler runs — which is why PDF/image upload goes presign → PUT straight to R2
-  (`/api/storage/presign`) instead of through an API route.
-- **Never authorize Composio — or any integration — on a Stripe account.** It makes the
-  account platform-controlled and permanently unable to host a Connect integration. This
-  has already killed two accounts (THE-16). Composio is fine for Gmail, Instagram and
-  Mailchimp; it must never touch Stripe.
+  `npm install && npm run build` inside `functions/` first. Merging a Cloud Function change
+  and assuming it shipped is a standing trap.
+- **No new dependency.** The lockfile is pinned to an exact byte size with no append
+  point; `@tanstack/react-virtual` had to be backed out over this. If you genuinely need a
+  package, stop and report before adding it.
+- **`src/app/layout.tsx` is pinned by a large number of suites and only a few of them have
+  an append path.** Treat it as frozen.
+- **`sendTenantSms` (`src/lib/sms-send.ts`) is the only SMS interface** and
+  `src/lib/transactional-email.ts` is the only email funnel. THE-340 found eleven inlined
+  Resend sends, none of them behind a function. Do not add a twelfth.
 - **Four host resolvers must stay in sync**, all deriving from
   `src/utils/non-tenant-subdomains.ts`: `getTenantIdFromHost()` (`tenant-scope.ts`),
   `resolveTenantIdFromHostname()` (`TenantContext.tsx`), `getTenantFromHost()`
   (`server-tenant.ts`) and AuthPage's derivation. A disagreement between them is the bug
   class behind #181 and #185. Never hardcode a subdomain string.
 - **Super admin `tenantId` is `null`.** Any tenant-scoped write must resolve a real
-  `tenantId` first (see `api/rag/extract/route.ts`, which falls back to the platform
-  tenant) or it writes to `tenants/null/...`.
+  `tenantId` first or it writes to `tenants/null/...`.
+- **No unordered `limit(N)`.** Firestore has no default order, so an unordered limit
+  returns arbitrary rows. #405 found 41 files doing it.
+- **A figure ships only if its read is exact or provably complete.** Where a list is
+  capped, the screen says so. `THE-342.read-honesty-guards.test.ts` owns this.
+- **No emoji in rendered code**, and none in this file. The repo's prose comments do use
+  emoji as section markers and that is accepted; what the guards forbid is an emoji
+  reaching a component's *code* or a user's screen.
+- **LF, never CRLF.** `.gitattributes` forces `eol=lf` in the working tree on every
+  platform because dozens of suites pin file contents by `sha256`. A CRLF checkout breaks
+  them all at once and presents, misleadingly, as "the shadcn primitives have all drifted".
+  If a digest fails, fix the line endings — never re-record the hash.
+- **Windows has bitten this repo repeatedly.** `path.relative` returns backslashes there
+  and caused roughly 67 false failures. Normalise separators in anything that builds a
+  path for comparison, and do not assume a symlink survives a Windows checkout — git
+  materialises one as a plain text file unless `core.symlinks` is on.
 
 ## Tech Stack
 - **Framework**: Next.js 14 (App Router) + React 18 + TypeScript
-- **Styling**: Tailwind CSS 3 + Framer Motion (motion)
+- **Styling**: Tailwind CSS + Framer Motion (motion)
 - **Backend**: Firebase (Firestore, Auth, Storage)
-- **Payments**: Stripe (subscriptions + Stripe Connect for revenue sharing)
-- **Email**: Resend
-- **AI**: Xiaomi MiMo (mimo-v2.5) for RAG chat, kept Gemini for embeddings
+- **Subscription billing**: Dodo Payments (merchant of record). Stripe is present in the
+  tree but its platform account is closed — see the money model above.
+- **Email**: Resend, through `src/lib/transactional-email.ts`
+- **AI**: Xiaomi MiMo (`MIMO_MODEL`, `src/lib/ai-config.ts`) for RAG chat; Gemini for
+  embeddings and video. `src/lib/ai-config.ts` is the single place a model swap happens.
+  `MIMO_BASE_URL` is per-region and must include `/v1` (the code appends
+  `/chat/completions`); a key only authenticates against its own region's base URL.
+  **Standing launch blocker:** the key in use is a Token Plan subscription key, and the
+  Token Plan terms forbid using one as an application backend. A pay-as-you-go key is
+  required before launch. Nothing in the tree enforces this, which is why it is here.
 - **Maps**: Leaflet + Google Places Autocomplete
-- **Rich Text**: TipTap editor
+- **Rich Text**: TipTap
 - **Hosting**: Vercel (app) + Firebase (Firestore/Auth)
+- **Testing**: Vitest + Testing Library, `happy-dom` by default, `node` for measurement
+- **Monitoring**: Sentry (client, server, edge; source maps uploaded then deleted)
+
+## Traps
+Each of these has already cost real time. None are obvious from the code.
+
+- **`typescript: { ignoreBuildErrors: true }`** in `next.config.mjs` — a green Vercel
+  build proves *nothing* about types. Run `npm run typecheck` yourself and diff against a
+  baseline measured on the same checkout.
+- **`skipWaiting: false`** (next-pwa) — a new service worker waits for every tab on the
+  origin to close before activating. Deliberate: it protects mid-form state during a
+  deploy. The side effect is that a merged, correctly deployed fix keeps looking broken to
+  anyone with a stale tab open. Verify in a fresh private window before re-debugging.
+- **`buildExcludes: [/\.map$/]` in the next-pwa block is load-bearing.** It keeps the
+  source maps out of the precache manifest — both so PWA users do not download the app's
+  source on install, and because Sentry runs with `deleteSourcemapsAfterUpload: true`. The
+  maps are gone by the time the app is served, so a precache entry pointing at one would
+  404 and the service worker would never activate. Do not "tidy" this line.
+- **Missing Firestore indexes fail silently** in the sense that matters: the query
+  rejects, and a `catch`-to-default renders it as an empty list. House convention is
+  therefore **single-field `where` + client-side sort/filter**. See the indexes note under
+  standing constraints before you reach for a composite.
+- **Vercel's serverless request body cap is 4.5MB**, enforced as a 413 before the handler
+  runs — which is why PDF/image upload goes presign then PUT straight to R2
+  (`/api/storage/presign`) instead of through an API route.
+- **Never authorize Composio — or any integration — on a Stripe account.** It makes the
+  account platform-controlled and permanently unable to host a Connect integration. This
+  has already killed two accounts (THE-16).
+- **`src/app/api/stripe/update-prices/route.ts` hardcodes product IDs from an abandoned
+  account.** Treat that route as dead.
 
 ## Key Files & Structure
 
 ```
 src/
 ├── app/
-│   ├── [[...slug]]/page.tsx  # Entry point → loads App.tsx (optional catch-all:
-│   │                         #   serves the SPA shell for EVERY non-API path so
-│   │                         #   React Router deep links survive a hard refresh)
-│   ├── layout.tsx            # Root layout
+│   ├── [[...slug]]/page.tsx  # Optional catch-all: serves the SPA shell for EVERY
+│   │                         #   non-API path so React Router deep links survive
+│   │                         #   a hard refresh
+│   ├── layout.tsx            # Root layout — pinned, treat as frozen
 │   └── api/
-│       ├── ai-assistant/route.ts    # AI Assistant (Telegram bot)
-│       ├── gemini/route.ts          # RAG chat endpoint (MiMo)
-│       ├── stripe/                  # All Stripe endpoints
-│       │   ├── checkout/route.ts    # Subscription checkout
-│       │   ├── connect/route.ts     # Stripe Connect onboarding
-│       │   ├── webhook/route.ts     # Stripe webhooks
-│       │   ├── portal/route.ts      # Customer portal
-│       │   ├── donate/route.ts      # Donations
-│       │   └── ...
-│       ├── auth/                    # Custom claims management
-│       ├── send-email/route.ts      # Email sending
-│       └── enterprise-lead/route.ts # Enterprise contact form
+│       ├── dodo/             # Subscription checkout, webhook, provisioning
+│       ├── stripe/           # Legacy; platform account closed
+│       ├── auth/set-claims   # Custom claims + the member capacity gate
+│       ├── giving-statements/
+│       ├── event-registration/, event-payment/
+│       ├── crm/
+│       └── storage/presign   # R2 presigned PUT
 ├── components/
-│   ├── MainApp.tsx           # Main user-facing app shell (tabs: Home, Bible, Chat, Map, Profile)
+│   ├── MainApp.tsx           # Member app shell
 │   ├── AdminDashboard.tsx    # Admin panel
-│   ├── AdminBlog.tsx         # Blog management
-│   ├── AdminCourses.tsx      # Course management
-│   ├── AdminChurches.tsx     # Church management (Ministry)
-│   ├── AdminSettings.tsx     # Tenant settings
-│   ├── AdminDonations.tsx    # Donations — Stripe Connect + the church's own
-│   │                         #   payment links (PayPal/Cash App/Venmo/Zelle).
-│   │                         #   Links live on `tenants/{id}.config.givingLinks`
-│   │                         #   (world-readable doc — the emails on it are
-│   │                         #   PUBLIC), and every URL is re-validated on read
-│   │                         #   against a per-provider host allow-list in
-│   │                         #   components/donations/giving-providers.ts.
-│   ├── AdminTenants.tsx      # Super admin tenant management
-│   ├── AIChat.tsx            # AI chat interface
-│   ├── AuthPage.tsx          # Login/signup
-│   ├── Profile.tsx           # User profile
-│   ├── BlogTab.tsx           # User blog view
-│   ├── ChurchMap.tsx         # Church map
-│   ├── EnterpriseContactModal.tsx
-│   ├── Onboarding.tsx        # Tenant onboarding flow
-│   └── course/               # Course components
-├── contexts/
-│   └── TenantContext.tsx     # Tenant context provider
-├── types/
-│   ├── tenant.types.ts       # TenantPlan, TenantConfig, Tenant
-│   └── course.types.ts       # Course types
-├── utils/
-│   ├── plan-features.ts      # Plan feature flags
-│   ├── tenant.utils.ts       # Tenant helpers
-│   ├── sanitize.ts           # XSS sanitization
-│   └── email.ts              # Email templates
+│   ├── AdminCRM.tsx          # Contacts, activities, manual gifts
+│   ├── AdminDonations.tsx    # The ministry's own payment links
+│   ├── AdminAccounting.tsx   # Cents. Always cents.
+│   ├── donations/            # giving-providers.ts host allow-list lives here
+│   └── ui/                   # shadcn primitives, digest-pinned
+├── contexts/TenantContext.tsx
+├── types/tenant.types.ts     # TenantPlan, TenantAddons, TenantConfig, Tenant
+├── utils/plan-features.ts    # The plan matrix, pricing, add-on layering
 ├── lib/
-│   ├── firebase-admin.ts     # Server-side Firebase
-│   └── api-auth.ts           # API authentication helpers
-└── firebase.ts               # Client-side Firebase config
+│   ├── donation-history.ts   # normalizeEmail + formatCents
+│   ├── billing-processor.ts  # Which rail a tenant is on
+│   ├── dodo/                 # Catalogue, webhook dispatch, provisioning
+│   ├── member-capacity.ts    # The server-side signup gate
+│   └── *-feature.ts          # The master switches
+├── test/support/             # browser-measure.ts and friends
+└── __tests__/__fixtures__/   # the-346-strip-comments.ts, ownership/, digests
 ```
-
-## Pricing Tiers (TenantPlan)
-Source of truth: `src/utils/plan-features.ts` (`PLAN_PRICING` + the `PLAN_FEATURES` matrix).
-This table is a summary — when they disagree, the code is right and this file is stale.
-
-| Plan | Display Name | Price   | Fee | Contacts | Admins | Courses | Campuses | Blog | AI  | Custom Domain | Event Reg | CRM | Notes | Check-In | Livestream | Sermon Notes | Accounting | Community Groups |
-|------|-------------|---------|-----|----------|--------|---------|----------|------|-----|---------------|-----------|-----|-------|----------|------------|--------------|------------|------------------|
-| plus | Individual  | $49/mo  | 0%  | 150      | 2      | 2       | 1        | ✅   | ❌  | ❌            | ❌        | ❌  | ❌    | ❌       | ❌         | ❌           | ❌         | ❌               |
-| pro  | Small Team  | $99/mo  | 0%  | 500      | 5      | 5       | 1        | ✅   | ✅  | ❌            | ❌        | ✅  | ✅    | ✅       | ✅         | ✅           | ❌         | ❌               |
-| max  | Ministry    | $199/mo | 0%  | 2,000    | 15     | 15      | 1        | ✅   | ✅  | ✅            | ✅        | ✅  | ✅    | ✅       | ✅         | ✅           | ✅         | ✅               |
-
-Annual billing is monthly × `ANNUAL_BILLED_MONTHS` (pay nine months, get twelve —
-a 25% discount): $441 / $891 / $1,791, or $37 / $74 / $149 a month equivalent.
-
-`ANNUAL_BILLED_MONTHS` (src/utils/plan-features.ts) is the ONLY place the
-multiplier is written. Every annual price, monthly-equivalent figure and
-"months free" badge derives from it — do not reintroduce a literal. The
-marketing site (harvest-presentation-site) carries its own copy in
-src/components/Pricing.tsx; the two repos cannot share code, so a change to one
-must land with a change to the other or the app and the public pricing page
-will quote different prices.
-
-**There are three tiers.** A fourth, `ultra` (displayed as "Ministry", $299), was
-deleted and folded into `max` — which inherited both its display name and its
-Accounting Tools and included AI Assistant. (Ultra's third folded-in capability,
-a global Church Directory, was carried by a `churchDirectory` flag that turned
-out to gate nothing anywhere in the app and was later removed — see below.)
-`max` did **not** inherit ultra's unlimited campuses/courses/admins: every cap
-is finite now, and extra capacity is sold as add-ons instead.
-
-`maxContacts` is **published and now enforced in two different places, with two
-different strengths.** It lives in `PLAN_FEATURES` (not `PLAN_LIMITS`, which holds
-metered token/segment flows) because it is a static entity count like `maxCourses` /
-`maxAdmins` / `maxChurches`.
-
-- **New member signup is a hard, server-side gate** (THE-201). `src/lib/member-capacity.ts`
-  counts `users` documents whose `tenantId` equals the tenant and compares that against
-  the tenant's **effective** `maxContacts` (`getEffectiveFeatures`, so Contacts +500 and
-  Unlimited Contacts lift it). Enforcement is at custom-claim issuance in
-  `POST /api/auth/set-claims`: a NEW applicant over the cap gets **403** with
-  `code: 'member_cap_reached'` and `setCustomClaims` is never called, so no `tenantId`
-  claim is minted and `firestore.rules` grant no tenant content. A capacity check that
-  itself fails answers **503 `capacity_check_unavailable`** — fail-closed, claims
-  withheld, and the copy does not claim the ministry is full. Existing members (already
-  holding the tenant's claim) skip the check entirely and always sign in; nothing is ever
-  removed, disabled or demoted.
-- **The admin's manual contact add is still a client-side gate only** — `src/utils/contact-capacity.ts`,
-  over `contacts` rows, blocking new creation only, the same shape as `maxCourses`.
-  Tenants already over the limit keep what they have. It shares no code with the signup
-  gate; only `AdminCRM.tsx` may import it.
-
-Five features — **Check-In, Livestream, Sermon Notes, Notes/Docs and CRM** — moved
-down from the top tier to **Small Team (pro)**. The move is visibility only: no
-Firestore rule, API route, query or cap keys off those cells (CRM's `contacts` /
-`contactActivities` rules scope on the `manageCRM` permission, not on plan).
-
-The "AI Assistant" column was removed: the Telegram add-on is retired (#214, THE-13).
-`AI_TELEGRAM_ASSISTANT_ENABLED = false` hides every customer-facing surface; the
-backend routes, Stripe wiring and the `aiAssistant` plan flag are left intact so the
-feature can be restored by flipping that one boolean.
-
-Ministry (max) is the top tier and carries everything: CRM, Tax Receipts, Community
-Groups, Custom Forms, Check-In, Livestream, Pledge Campaigns, Custom Domain, and —
-folded in from the deleted `ultra` tier — Accounting Tools. CRM, Check-In and
-Livestream are **not** exclusive to it: Small Team (pro) has them too. What Ministry
-adds over Small Team is Custom Domain, Custom Branding, Event Registration, Tax
-Receipts, Giving Statements, Custom Forms, Automated Blog/Newsletter, Pledge
-Campaigns, Community Groups and Accounting Tools.
-
-**SMS is not sold by plan.** `smsAutomation` and `textToGive` are `true` on all three
-tiers; whether a tenant can actually send is decided by whether they have connected
-their **own Twilio** credentials. Harvest offers no platform SMS, so every tier's
-`smsSegmentsPerMonth` in `planLimits.ts` is `null` (unmetered). The previous
-250/500/2,000 budgets metered tiers whose `smsAutomation` flag was `false` — a budget
-for a feature those tiers could not reach.
-
-Custom domains are entitled on Ministry (max) only, enforced server-side in
-`src/app/api/domains/provision/route.ts` (403 for a plan without `customDomain`,
-super admins bypass) — not in the UI alone. Note the marketing site does not yet
-advertise custom domains: provisioning has not been proven end to end against a live
-Vercel plan, so the code ships ahead of the public promise.
-
-Minimum-plan labels on upgrade screens are **derived** from this matrix
-(`getFeatureMinPlan` / `FEATURE_MIN_PLAN` in `plan-features.ts`), not hand-written.
-Flipping a cell in `PLAN_FEATURES` moves the upgrade copy with it — never put a
-literal plan name in a gate message.
-
-Map note: `ChurchMap` (member-facing map, gated by the `map` flag — pro and
-above) shows a tenant's own church location(s). There is no plan-gated
-cross-tenant discovery directory in the app — the `churchDirectory` flag that
-used to name one was read nowhere and has been removed (THE-77). ⚠️ The
-marketing site's pricing page still carries a "Church directory — Ministry
-only" row; that claim is now unimplemented by any tier and needs its own
-fix on that site (a separate repo, out of scope here).
-
-## Revenue Sharing (Stripe Connect)
-The platform application fee is taken on money flowing through a tenant's connected
-account — donations AND paid event tickets. `PLATFORM_FEE_MAP`
-(`src/lib/stripe-connect.ts`) is the rate actually charged.
-
-| Plan | Platform fee |
-|------|--------------|
-| Individual (plus) | **0%** |
-| Small Team (pro)  | **0%** |
-| Ministry (max)    | **0%** |
-
-**Donations are free on every tier.** The plans sell features and capacity, not a
-share of giving. A destination charge with `application_fee_amount: 0` sends the
-whole gift to the connected account.
-
-`PLAN_FEATURES.*.donationRetention` and `PLAN_DONATION_RETENTION` are **deleted**.
-They were a hand-maintained complement of the fee (`100 - fee * 100`), which is the
-duplication that let the app advertise "keeps 100%" while charging 2.5% (THE-51). At
-a flat 0% the retention number is a constant 100 that carries no information, so the
-mirror is gone rather than re-pinned. `PLATFORM_FEE_MAP` is the only place a rate is
-written down; customer-facing surfaces render the **fee** ("Donation fee — 0%"), not
-what's left over. `platform-fee-map.test.ts` and `donate-platform-fee.test.ts` pin
-both the map and the real `application_fee` Stripe receives, so a rate cannot creep
-back while the UI still promises 0%.
 
 ## Design System — Harvest Brand & Design System v1.0
 Tokens live in `src/app/globals.css` (`:root`) and `tailwind.config.ts`.
-- **Type**: Fraunces (serif) for display/headings — `font-display`; hero/editorial at **300 (light)**, section/card titles at 600–700. Inter for all UI/body — `font-sans`.
-- **Grounds**: page = **cream `#FAF8F5`** (desktop `--ds-page-bg`); cards/sidebar/top-bar = **white**.
-- **Action gold**: Wheat Gold 500 `#C9963A` via **`--brand-color`** (tenant-overridable — every gold accent uses this var, never a hard hex). Reference scale = `wheat-{50..700}`.
-- **Text (warm neutrals)**: heading = earth `#2D2519` (`text-earth`), body `--text-body` `#4A4038`, secondary = warm brown `#8B7355` (`text-warm-brown`), faint/eyebrow `--text-faint` `#A89A87`.
-- **Borders/elevation**: stone `#E8E2D9` (`border-stone-200`, `--ds-border`); warm-tinted shadows `--ds-sh-{sm,md,lg}`.
-- **Palette also available**: `navy-{500..950}` (dark surfaces), `sky-*`, `field-*` (green), `stone-{100..300}`. Radii `rounded-brand{,-lg,-xl}` (12/16/24).
-- **Desktop shell** (`MainApp.tsx`): grouped sidebar (FEED/COMMUNITY/SUPPORT US) with taupe eyebrow labels + gold-tint active pill; "Harvest." wordmark carries the gold period (platform only — white-label tenants show their own name).
-- **Terminology**: "Ministries" NOT "churches" in user-facing copy
-- **"AI Assistant"** (admin-only Telegram bot) is **retired** (#214, THE-13) — hidden
-  everywhere by `AI_TELEGRAM_ASSISTANT_ENABLED = false`, dormant code intact. Not to be
-  confused with the RAG **AI Chat** / **AI Knowledge Base**, which are live on pro+.
-- Plus/Pro plans have **NO custom branding**
 
-## Firebase Project
+- **Type**: Fraunces (serif) for display/headings — `font-display`; hero/editorial at 300,
+  section/card titles at 600-700. Inter for all UI/body — `font-sans`.
+- **Grounds**: page = cream `#FAF8F5` (`--ds-page-bg`); cards/sidebar/top-bar = white.
+- **Action gold**: Wheat Gold via **`--brand-color`** (tenant-overridable — every gold
+  accent uses this var, never a hard hex).
+- **Text (warm neutrals)**: heading earth, body `--text-body`, secondary warm brown,
+  faint/eyebrow `--text-faint`.
+- **One palette family.** `divide-stone-*` and every raw Tailwind colour scale are
+  forbidden; use the tokens.
+- **Contrast is measured, not assumed.** `theming-neutral-palette.test.ts` resolves every
+  value through postcss and computes every ratio; `THE-338.palette-measured.test.ts` runs
+  the real compiled stylesheet in a real page and reads the values back off
+  `getComputedStyle`. **Do not "fix" a low ratio you find by eye.** Several are
+  deliberate and pinned as deliberate — the chart accents and the progress track are
+  low-contrast on purpose, and the single worst *text* pair is accepted. The often-quoted
+  5.66 figure is one gold button pair, not a repo-wide floor.
+- **Touch targets**: at least 44px below `sm`; above `sm` a separate rule fixes controls
+  at 38px. `min-h-11` is not inert — it is doing work. `Button`'s intrinsic sizes all sit
+  below both floors, so a bare `<Button>` does not meet the floor by itself.
+- **Terminology**: "Ministries", not "churches", in user-facing copy.
+- 43 shadcn primitives are installed under `src/components/ui/`, digest-pinned.
+  **`accordion` and `rating` are both absent** — check before importing, and grep both the
+  `@/` and the relative `./ui/` spellings when you are looking for a primitive's usage.
+
+## Firebase
 - Project ID: `harvest-agent-233a1`
 - **No service account key file needed.** Run admin scripts from Firebase Cloud Shell,
-  which supplies Application Default Credentials; every script in `scripts/` falls back
-  to `applicationDefault()`. Pass `GOOGLE_APPLICATION_CREDENTIALS` only if running
-  somewhere without ADC, and keep the key outside the repo.
-- **Super admin** is no longer an env var (removed in #240). It is two frozen literals
-  in `src/utils/super-admins.ts` plus a `superAdmin` custom claim minted by email in
-  `src/lib/set-custom-claims.ts`. The same list is mirrored — deliberately, since they
-  are separate packages that cannot import from `src/` — in `firestore.rules`'
-  `isSuperAdmin()` and in `functions/src/index.ts`. Change one, change all four.
-  (`.env.example` still lists `NEXT_PUBLIC_SUPER_ADMIN_EMAIL`; it is dead and ignored.)
+  which supplies Application Default Credentials; every script in `scripts/` falls back to
+  `applicationDefault()`. Keep any key outside the repo.
+- **Super admin is not an env var.** It is two frozen literals in
+  `src/utils/super-admins.ts` plus a `superAdmin` custom claim minted by email in
+  `src/lib/set-custom-claims.ts`. The same list is mirrored — deliberately, since these are
+  separate packages that cannot import from `src/` — in `firestore.rules`' `isSuperAdmin()`
+  and in `functions/src/index.ts`. Change one, change all four. (`.env.example` still lists
+  `NEXT_PUBLIC_SUPER_ADMIN_EMAIL`; it is dead and ignored.)
 
-## Stripe (test mode)
-- The original test account is abandoned (THE-16) and a fresh one is being created, so
-  no account / product / webhook IDs are recorded here on purpose — the old ones are
-  dead and an agent trusting them will chase ghosts. Read the current values from the
-  Vercel env vars, which are the only live source.
-- Stripe is **not live** and there are no paying customers yet.
-- Note `src/app/api/stripe/update-prices/route.ts` still hardcodes product IDs from the
-  abandoned account; treat that route as stale until the new account exists.
+## Workflow
+Ticket, prompt, agent, PR, CI, merge. **Verified plus green equals done.**
 
-## AI / RAG Chat
-- Model: Xiaomi MiMo `mimo-v2.5` via Token Plan API — see `src/lib/ai-config.ts`, the
-  single place a model swap happens.
-- Base URL is per-region and configurable via `MIMO_BASE_URL` (must include `/v1`; the
-  code appends `/chat/completions`). Unset defaults to `token-plan-cn.xiaomimimo.com`.
-  A Token Plan key only authenticates against its own region's base URL.
-- Key prefix today is `tp-` (a Token Plan subscription key). **Blocker before launch
-  (T4):** the Token Plan ToS forbids using it as an app backend — a pay-as-you-go `sk-`
-  key is required.
-- Gemini kept for embeddings only (`gemini-embedding-001`).
-
-## Deployment
-- **App**: Vercel at `harvest-agent.vercel.app`
-- **Presentation site**: Vercel at `harvest-site.vercel.app`
-- **Domain**: theharvest.app (Namecheap, A→76.76.21.21, CNAME→vercel-dns.com)
-- **Git author**: `bumbmatei@gmail.com` / `Matei`
-
-## Important Rules
-1. **NEVER modify Harvest-Site---STABLE** — it's the stable backup
-2. Always set git config before committing: `git config --global user.email "bumbmatei@gmail.com" && git config --global user.name "Matei"`
-3. `git config` defaults to root@vps which breaks Vercel deployments
-4. **Churches as sub-entities**, not separate tenants
-5. Always verify which branch/version is deployed before editing
-6. Run bug analysis after feature implementation (3+ files changed)
+- CI (`.github/workflows/test.yml`, job **Test & Lint**) runs on `pull_request` only, with
+  `fetch-depth: 0` because several suites diff against the revision their branch came from.
+  There is no `push` trigger, so **`main` is unprotected and a commit pushed straight to it
+  gets no CI at all**.
+- A `pull_request` run tests `refs/pull/N/merge`, which is the tree the merge produces
+  *only while `main` has not moved*. If a PR has sat while others landed, update the branch
+  or re-run before merging rather than trusting the older green check.
+- When polling CI, read `completed_at` on the **job**. A run summary can serve a frozen
+  snapshot long after the job actually finished.
+- Always set git author before committing:
+  `git config user.email "bumbmatei@gmail.com" && git config user.name "Matei"`. The
+  default `root@vps` breaks Vercel deployments.
 
 ## Related Repos
-- `Harvest-agent` — main app (this repo)
-- `harvest-presentation-site` — marketing/landing page. **Vite + React** with
-  `vite-react-ssg` (statically prerendered), plus a markdown blog under `/blog`.
-  Not plain HTML, and not Next.js — do not assume App Router conventions there.
-- `Harvest-Site---STABLE` — stable backup (DO NOT MODIFY)
+Only the first of these is checked out here, so everything said about the others is a
+claim this repository cannot verify. Treat it as a starting point and confirm in the repo
+itself.
 
-## Current Status (as of last commits)
-- **No paying customers yet. Stripe is not live.** Nothing in production is taking real
-  money, which is why fee/retention correctness is cheap to fix now and expensive later.
-- Plans: Individual ($49), Small Team ($99), Ministry ($199) — three tiers, 0% fee
-- No enterprise plan — Ministry (max) is the top tier
-- **1894 tests + 1 todo / 124 files** passing (`npm test`), plus **363 Firestore rules tests**
-  under `tests/rules/` that run separately (`npm run test:rules`, needs the emulator)
-- AI Assistant (Telegram bot) **retired** (#214) — dormant code intact
-- Newsletter live · Community Groups live on **Ministry (max)**
-- CRM, Notes, Check-In, Livestream and Sermon Notes live on **Small Team (pro)** and
-  above; Tax Receipts and Accounting Tools on **Ministry (max)**. Upgrade-screen
-  labels are derived from the matrix — the old hand-written maps oversold the top tier
-- Community Groups is gated **client-side only** — no Firestore-rules or server check
-  keys off the `communityGroups` flag (rules scope channels/DMs by roster, not by plan)
-- CRM outbound email sends through **Composio Gmail** (`GMAIL_SEND_EMAIL`), per-admin
-  connected account, with an explicit `from_email` so send-only grants work
-- **Sentry** live (client, server, edge; source maps uploaded and then deleted)
-- **Vercel Analytics** on both repos
-- **R2 direct upload** via presigned PUT for images and RAG documents
-- Per-tenant **RAG token caps** (`src/lib/planLimits.ts`), surfaced in-app before the
-  wall is hit. SMS segment caps are `null` on every tier — SMS is BYO-Twilio, so there
-  is no Harvest allotment to meter; the reserve/settle machinery stays live and tested
-  for the day a cap returns
-- Zustand + TanStack Query in place
-- React Router migrated (served through the `[[...slug]]` catch-all)
-- Composite index refactor done
+- `Harvest-agent` — the app (this repo).
+- `harvest-presentation-site` — the marketing site at `theharvest.site`. **Vite + React**
+  with `vite-react-ssg` (statically prerendered), plus a markdown blog under `/blog`. Not
+  Next.js — do not assume App Router conventions there. It carries its own copy of the nine
+  prices and a module-scope contract that throws at prerender if they disagree with
+  `PLAN_PRICING` here, which is why a price change has to land in both repos together. It
+  is reported to have CI now (a `Test & Build` workflow); older prompts in this project say
+  it has none, and those are stale. Its `main` is reported to be unprotected.
+- `harvest-docs` — a separate repository. The customer docs are served from
+  `docs.theharvest.site`, which `src/components/admin/GivingDocsLink.tsx` links into; this
+  repo does not record which repository publishes them, so check before assuming it is the
+  marketing site.
+- `Harvest-Site---STABLE` — stable backup. **Never modify.**
