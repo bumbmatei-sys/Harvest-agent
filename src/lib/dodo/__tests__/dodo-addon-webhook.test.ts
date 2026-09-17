@@ -138,8 +138,6 @@ const T = {
 const ADDON = {
   aiAssistant: DODO_TEST_ADDONS.aiAssistant.monthly as string,
   adminSeat: DODO_TEST_ADDONS.adminSeat.monthly as string,
-  campus: DODO_TEST_ADDONS.campus.monthly as string,
-  contactPack: DODO_TEST_ADDONS.contactPack.monthly as string,
   unlimitedContacts: DODO_TEST_ADDONS.unlimitedContacts.monthly as string,
   unlimitedContactsAnnual: DODO_TEST_ADDONS.unlimitedContacts.yearly as string,
 } as const;
@@ -214,20 +212,18 @@ describe('plan_changed writes the add-on set', () => {
     const result = await receiveDodoWebhookEvent(
       'whk_addons_1',
       planChangedEvent(T.proMonthly, [
-        { addon_id: ADDON.contactPack, quantity: 2 },
+        { addon_id: ADDON.aiAssistant, quantity: 2 },
         { addon_id: ADDON.adminSeat, quantity: 3 },
-        { addon_id: ADDON.campus, quantity: 1 },
+        { addon_id: ADDON.unlimitedContacts, quantity: 1 },
       ]),
       { store: memoryStore() },
     );
     expect(result.outcome).toBe('routed');
 
     expect(tenantDoc()?.addons).toEqual({
-      aiAssistant: 0,
+      aiAssistant: 2,
       adminSeats: 3,
-      contactPacks: 2,
-      unlimitedContacts: false,
-      campuses: 1,
+      unlimitedContacts: true,
     });
     // The tier still moved: this is one event and one write.
     expect(tenantDoc()?.plan).toBe('pro');
@@ -251,7 +247,7 @@ describe('plan_changed writes the add-on set', () => {
   it('writes the EMPTY set when the subscription holds nothing', async () => {
     // A downgrade that drops every add-on has to be recorded, or the church
     // keeps capacity it stopped paying for.
-    seedDodoTenant({ addons: { ...NO_ADDONS, contactPacks: 4, unlimitedContacts: true } });
+    seedDodoTenant({ addons: { ...NO_ADDONS, adminSeats: 4, unlimitedContacts: true } });
 
     await applyDodoPlanChange({
       subscription_id: T.sub,
@@ -270,12 +266,12 @@ describe('plan_changed writes the add-on set', () => {
     const outcome = await applyDodoPlanChange({
       subscription_id: T.sub,
       product_id: T.plusMonthly,
-      addons: [{ addon_id: ADDON.contactPack, quantity: 1 }],
+      addons: [{ addon_id: ADDON.adminSeat, quantity: 1 }],
     });
 
     expect(outcome.outcome).toBe('plan-moved');
     expect(tenantDoc()?.plan).toBe('plus');
-    expect(tenantDoc()?.addons.contactPacks).toBe(1);
+    expect(tenantDoc()?.addons.adminSeats).toBe(1);
   });
 
   it('reports an unrecognised id and grants the rest of the set', async () => {
@@ -286,14 +282,14 @@ describe('plan_changed writes the add-on set', () => {
       product_id: T.proMonthly,
       addons: [
         { addon_id: ADDON.adminSeat, quantity: 1 },
-        { addon_id: 'adn_a_live_campus_id_this_build_lacks', quantity: 1 },
+        { addon_id: 'adn_an_addon_id_this_build_lacks', quantity: 1 },
       ],
     });
 
     expect(outcome).toMatchObject({ outcome: 'plan-moved', unrecognisedAddons: 1 });
     // The seat was granted; the unknown one was NOT, and was reported.
     expect(tenantDoc()?.addons.adminSeats).toBe(1);
-    expect(tenantDoc()?.addons.campuses).toBe(0);
+    expect(tenantDoc()?.addons.aiAssistant).toBe(0);
     expect(mockCapture).toHaveBeenCalledWith(
       expect.any(Error),
       expect.objectContaining({
@@ -307,7 +303,7 @@ describe('plan_changed writes the add-on set', () => {
   it('leaves the stored set ALONE when the payload does not report add-ons', async () => {
     // "None" and "could not read" must never converge: writing the empty set on
     // a payload that said nothing would strip capacity a church pays for.
-    const owned = { ...NO_ADDONS, contactPacks: 3, unlimitedContacts: true };
+    const owned = { ...NO_ADDONS, aiAssistant: 3, unlimitedContacts: true };
     seedDodoTenant({ addons: owned });
 
     const outcome = await applyDodoPlanChange({
@@ -328,12 +324,12 @@ describe('plan_changed writes the add-on set', () => {
     await applyDodoPlanChange({
       subscription_id: T.sub,
       product_id: T.proMonthly,
-      addons: [{ addon_id: ADDON.campus, quantity: 2 }],
+      addons: [{ addon_id: ADDON.adminSeat, quantity: 2 }],
     });
 
     const doc = tenantDoc();
     expect(doc?.plan).toBe('pro');
-    expect(doc?.addons.campuses).toBe(2);
+    expect(doc?.addons.adminSeats).toBe(2);
     expect(doc?.updatedAt).toEqual(expect.any(String));
   });
 
@@ -349,7 +345,7 @@ describe('plan_changed writes the add-on set', () => {
     const outcome = await applyDodoPlanChange({
       subscription_id: T.sub,
       product_id: T.proMonthly,
-      addons: [{ addon_id: ADDON.contactPack, quantity: 5 }],
+      addons: [{ addon_id: ADDON.adminSeat, quantity: 5 }],
     });
 
     expect(outcome.outcome).toBe('not-dodo-owned');
@@ -378,15 +374,15 @@ describe('a redelivered plan_changed does not double a count', () => {
   it('is skipped entirely when the webhook-id repeats', async () => {
     seedDodoTenant();
     const store = memoryStore();
-    const event = planChangedEvent(T.proMonthly, [{ addon_id: ADDON.contactPack, quantity: 2 }]);
+    const event = planChangedEvent(T.proMonthly, [{ addon_id: ADDON.adminSeat, quantity: 2 }]);
 
     const first = await receiveDodoWebhookEvent('whk_dup', event, { store });
     expect(first.outcome).toBe('routed');
-    expect(tenantDoc()?.addons.contactPacks).toBe(2);
+    expect(tenantDoc()?.addons.adminSeats).toBe(2);
 
     const second = await receiveDodoWebhookEvent('whk_dup', event, { store });
     expect(second.outcome).toBe('duplicate');
-    expect(tenantDoc()?.addons.contactPacks).toBe(2);
+    expect(tenantDoc()?.addons.adminSeats).toBe(2);
   });
 
   it('applies ONCE under a FRESH webhook-id, which the reservation cannot cover', async () => {
@@ -395,13 +391,13 @@ describe('a redelivered plan_changed does not double a count', () => {
     seedDodoTenant();
     const store = memoryStore();
     const event = planChangedEvent(T.proMonthly, [
-      { addon_id: ADDON.contactPack, quantity: 2 },
+      { addon_id: ADDON.aiAssistant, quantity: 2 },
       { addon_id: ADDON.adminSeat, quantity: 1 },
     ]);
 
     await receiveDodoWebhookEvent('whk_a', event, { store });
     const after = { ...tenantDoc()! };
-    expect(after.addons.contactPacks).toBe(2);
+    expect(after.addons.aiAssistant).toBe(2);
 
     const again = await receiveDodoWebhookEvent('whk_b', event, { store });
     expect(again.outcome).toBe('routed');
@@ -409,7 +405,7 @@ describe('a redelivered plan_changed does not double a count', () => {
     // Byte for byte — `updatedAt` included, so this cannot pass by rewriting
     // the same numbers on a doc nobody compared.
     expect(tenantDoc()).toEqual(after);
-    expect(tenantDoc()?.addons.contactPacks).toBe(2);
+    expect(tenantDoc()?.addons.aiAssistant).toBe(2);
     expect(tenantDoc()?.addons.adminSeats).toBe(1);
   });
 
@@ -420,30 +416,30 @@ describe('a redelivered plan_changed does not double a count', () => {
     for (let i = 0; i < 10; i++) {
       await receiveDodoWebhookEvent(
         `whk_${i}`,
-        planChangedEvent(T.proMonthly, [{ addon_id: ADDON.contactPack, quantity: 2 }]),
+        planChangedEvent(T.proMonthly, [{ addon_id: ADDON.adminSeat, quantity: 2 }]),
         { store },
       );
     }
 
-    expect(tenantDoc()?.addons.contactPacks).toBe(2);
+    expect(tenantDoc()?.addons.adminSeats).toBe(2);
   });
 
   it('still applies a REAL later change after a redelivery', async () => {
-    // Idempotency must not become inertness: the third pack is a purchase.
+    // Idempotency must not become inertness: the third seat is a purchase.
     seedDodoTenant();
     const store = memoryStore();
 
     await receiveDodoWebhookEvent('whk_1', planChangedEvent(T.proMonthly, [
-      { addon_id: ADDON.contactPack, quantity: 2 },
+      { addon_id: ADDON.adminSeat, quantity: 2 },
     ]), { store });
     await receiveDodoWebhookEvent('whk_2', planChangedEvent(T.proMonthly, [
-      { addon_id: ADDON.contactPack, quantity: 2 },
+      { addon_id: ADDON.adminSeat, quantity: 2 },
     ]), { store });
     await receiveDodoWebhookEvent('whk_3', planChangedEvent(T.proMonthly, [
-      { addon_id: ADDON.contactPack, quantity: 3 },
+      { addon_id: ADDON.adminSeat, quantity: 3 },
     ]), { store });
 
-    expect(tenantDoc()?.addons.contactPacks).toBe(3);
+    expect(tenantDoc()?.addons.adminSeats).toBe(3);
   });
 
   it('does not double the unlimited flag into something other than true', async () => {
@@ -463,7 +459,7 @@ describe('a redelivered plan_changed does not double a count', () => {
 // ── Test 14 — 🔴 NO DODO ID ON THE WORLD-READABLE DOC ────────────────────────
 
 describe('no addon id is written to the tenant doc', () => {
-  it('stores meanings, and not one of the ten ids, anywhere on the doc', async () => {
+  it('stores meanings, and not one of the six ids, anywhere on the doc', async () => {
     seedDodoTenant();
 
     await applyDodoPlanChange({
@@ -472,8 +468,6 @@ describe('no addon id is written to the tenant doc', () => {
       addons: [
         { addon_id: ADDON.aiAssistant, quantity: 1 },
         { addon_id: ADDON.adminSeat, quantity: 2 },
-        { addon_id: ADDON.campus, quantity: 1 },
-        { addon_id: ADDON.contactPack, quantity: 3 },
         { addon_id: ADDON.unlimitedContacts, quantity: 1 },
       ],
     });
@@ -490,9 +484,7 @@ describe('no addon id is written to the tenant doc', () => {
     expect(tenantDoc()?.addons).toEqual({
       aiAssistant: 1,
       adminSeats: 2,
-      contactPacks: 3,
       unlimitedContacts: true,
-      campuses: 1,
     });
   });
 
@@ -500,7 +492,7 @@ describe('no addon id is written to the tenant doc', () => {
     // The id this build cannot map is the one most tempting to store "for
     // later". It is reported instead — the tenant doc stays free of ids.
     seedDodoTenant();
-    const unknown = 'adn_a_live_campus_id_this_build_lacks';
+    const unknown = 'adn_an_addon_id_this_build_lacks';
 
     await applyDodoPlanChange({
       subscription_id: T.sub,
@@ -511,17 +503,21 @@ describe('no addon id is written to the tenant doc', () => {
     expect(JSON.stringify(tenantDoc())).not.toContain(unknown);
   });
 
-  it('writes only the five known keys under addons', async () => {
+  it('writes only the three known keys under addons — THE-370', async () => {
+    // 🔴 WAS FIVE. `campuses` and `contactPacks` are gone from `TenantAddons`,
+    // so the webhook — the single writer of this field — must stop writing them.
+    // A tenant doc that still carries an old key keeps it until it is next
+    // written; nothing reads it, so it grants nothing (see `readTenantAddons`).
     seedDodoTenant();
 
     await applyDodoPlanChange({
       subscription_id: T.sub,
       product_id: T.proMonthly,
-      addons: [{ addon_id: ADDON.campus, quantity: 1 }],
+      addons: [{ addon_id: ADDON.adminSeat, quantity: 1 }],
     });
 
     expect(Object.keys(tenantDoc()!.addons).sort()).toEqual(
-      ['adminSeats', 'aiAssistant', 'campuses', 'contactPacks', 'unlimitedContacts'],
+      ['adminSeats', 'aiAssistant', 'unlimitedContacts'],
     );
   });
 });

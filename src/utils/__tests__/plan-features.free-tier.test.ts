@@ -15,13 +15,14 @@ import {
   PLAN_BLURBS,
   BILLING_TERMS,
   ADVERTISED_DISCOUNT_PCT,
-  CONTACTS_PER_PACK,
   TOP_PLAN,
+  UNLIMITED_CAP,
   FEATURE_MIN_PLAN,
   FEATURE_MAP,
   type PlanFeatures,
   type FeatureKey,
 } from '../plan-features';
+import * as planFeaturesModule from '../plan-features';
 import type { TenantPlan, PricedPlan } from '@/types/tenant.types';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -365,11 +366,18 @@ describe('THE-200 — the three priced tiers are untouched', () => {
   // than compared against getPlanFeatures, which would compare the subject with
   // itself. If adding a tier changed one cell on a plan a church pays for, one
   // of these three fails and names it.
+  //
+  // 🔴 SIX CELLS MOVED SINCE, AND ONLY BY DELIBERATE REPRICINGS — THE-370 moved
+  // `maxContacts` (150 → 500, 500 → 2,000, 2,000 → 4,000) and `maxChurches`
+  // (1 → UNLIMITED_CAP on all three). Those are the ticket's whole subject and
+  // are asserted per plan in `effective-features.test.ts`; they are transcribed
+  // here so this row keeps being a no-regression check on EVERY OTHER cell
+  // rather than failing wholesale on the two that were meant to move.
 
   const BEFORE: Record<PricedPlan, PlanFeatures> = {
     plus: {
       newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: false,
-      maxChurches: 1, maxContacts: 150, maxCourses: 2, maxAdmins: 2,
+      maxChurches: UNLIMITED_CAP, maxContacts: 500, maxCourses: 2, maxAdmins: 2,
       customDomain: false, customBranding: false,
       newsletterAutomation: false, automatedNewsletter: false,
       // 🔴 THE-314 — SMS is Ministry-only. plus and pro LOST these two cells.
@@ -382,7 +390,7 @@ describe('THE-200 — the three priced tiers are untouched', () => {
     },
     pro: {
       newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: true,
-      maxChurches: 1, maxContacts: 500, maxCourses: 5, maxAdmins: 5,
+      maxChurches: UNLIMITED_CAP, maxContacts: 2_000, maxCourses: 5, maxAdmins: 5,
       customDomain: false, customBranding: false,
       newsletterAutomation: true, automatedNewsletter: false,
       // 🔴 THE-314 — SMS is Ministry-only. plus and pro LOST these two cells.
@@ -395,7 +403,7 @@ describe('THE-200 — the three priced tiers are untouched', () => {
     },
     max: {
       newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: true,
-      maxChurches: 1, maxContacts: 2_000, maxCourses: 15, maxAdmins: 15,
+      maxChurches: UNLIMITED_CAP, maxContacts: 4_000, maxCourses: 15, maxAdmins: 15,
       customDomain: true, customBranding: true,
       newsletterAutomation: true, automatedNewsletter: true,
       smsAutomation: true, fundraising: true,
@@ -453,12 +461,18 @@ describe('THE-200 — no price, term or add-on price changed', () => {
     expect(ADVERTISED_DISCOUNT_PCT).toEqual({ quarterly: 10, yearly: 20 });
   });
 
-  it('the add-on pack size is unchanged', () => {
-    // WAS 'the add-on prices are unchanged', pinning
-    // `AI_ASSISTANT_ADDON_PRICING.monthlyUsd === 200` alongside the pack size.
-    // That constant is deleted (THE-253) and its figure was wrong anyway — $200
-    // against a live $20 product. `CONTACTS_PER_PACK` is not a price and stays.
-    expect(CONTACTS_PER_PACK).toBe(500);
+  it('🔴 the contact pack is GONE, constant and all — THE-370', () => {
+    /* WAS 'the add-on pack size is unchanged', pinning `CONTACTS_PER_PACK` at
+       500. The founder retired the Contacts +500 add-on and raised the caps
+       instead, so the constant has no meaning left and is DELETED rather than
+       left dormant — the same treatment `plan-features.ts` records for the
+       three cells it removed for being read by nothing.
+
+       Asserted on the module's own exports, so a reintroduced constant fails
+       here by name. */
+    const exported = Object.keys(planFeaturesModule);
+    expect(exported).not.toContain('CONTACTS_PER_PACK');
+    expect(exported).toContain('UNLIMITED_CAP');
   });
 });
 
@@ -469,23 +483,24 @@ describe('THE-200 — add-ons layered on a free tenant (reported, not guarded)',
   // pins what WOULD happen if one arrived anyway (a hand-edited Firestore doc,
   // a tenant downgraded to free while holding one), so PR 2 and PR 4 can decide
   // deliberately rather than discovering it.
-  it('raises free\u2019s caps like any other tier, and grants no feature flag', () => {
+  it('raises free\u2019s admin cap like any other tier, and grants no feature flag', () => {
     const withAddons = getEffectiveFeatures('free', {
       aiAssistant: 1,
       adminSeats: 2,
-      contactPacks: 1,
       unlimitedContacts: false,
-      campuses: 1,
     });
 
-    // Capacity moves — the three cap cells getEffectiveFeatures raises, and
-    // only those. Note this can lift a free tenant ABOVE Individual's 150
-    // contacts; that is the existing add-on model, not something this
-    // introduced. (Was four: the `aiAssistant` count went with the Telegram
-    // assistant in THE-253.)
-    expect(withAddons.maxContacts).toBe(500 + CONTACTS_PER_PACK);
+    // 🔴 ONE CAP CELL MOVES NOW, NOT THREE — THE-370. The contact-pack and
+    // campus add-ons are retired, so `maxContacts` and `maxChurches` read
+    // straight through from the tier even for a tenant holding everything.
+    // The old note here worried that a pack could lift a free tenant above
+    // Individual's 150 contacts; that cannot happen any more, and Individual
+    // is 500 in any case.
     expect(withAddons.maxAdmins).toBe(1 + 2);
-    expect(withAddons.maxChurches).toBe(0 + 1);
+    expect(withAddons.maxContacts).toBe(500);
+    // 🔴 AND FREE STAYS AT ZERO CAMPUSES. Nothing an add-on carries can give a
+    // free tenant a campus now — the only path there was the retired add-on.
+    expect(withAddons.maxChurches).toBe(0);
 
     // 🔴 ONE FEATURE FLAG NOW MOVES, AND EXACTLY ONE — INVERTED BY THE-253.
     // This block used to read "NO FEATURE FLAG MOVES. An add-on buys capacity,
@@ -516,7 +531,7 @@ describe('THE-200 — add-ons layered on a free tenant (reported, not guarded)',
 
   it('leaves the base matrix untouched — getEffectiveFeatures is pure', () => {
     const before = { ...getPlanFeatures('free') };
-    getEffectiveFeatures('free', { aiAssistant: 9, adminSeats: 9, contactPacks: 9, unlimitedContacts: true, campuses: 9 });
+    getEffectiveFeatures('free', { aiAssistant: 9, adminSeats: 9, unlimitedContacts: true });
     expect(getPlanFeatures('free')).toEqual(before);
   });
 });

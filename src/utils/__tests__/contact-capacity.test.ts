@@ -46,20 +46,24 @@ const donorRows = (n: number) => Array.from({ length: n }, donorOnly);
 
 describe('resolveContactLimit — the number comes from PLAN_FEATURES', () => {
   // ── 8 ──────────────────────────────────────────────────────────────────────
-  it('resolves 150 / 500 / 2,000 for Individual / Small Team / Ministry', () => {
-    // 🔴 The three PAID tiers, unchanged. Free is asserted separately below
-    // rather than folded into this list, because its 500 is a different KIND of
-    // number — a bound on a free tier, not a rung on the paid capacity ladder.
-    expect(PRICED_PLAN_ORDER.map((p) => resolveContactLimit(p))).toEqual([150, 500, 2_000]);
+  it('resolves 500 / 2,000 / 4,000 for Individual / Small Team / Ministry', () => {
+    // 🔴 THE-370 RAISED ALL THREE, from 150 / 500 / 2,000. Free is asserted
+    // separately below rather than folded into this list, because its 500 is a
+    // different KIND of number — a bound on a free tier, not a rung on the paid
+    // capacity ladder.
+    expect(PRICED_PLAN_ORDER.map((p) => resolveContactLimit(p))).toEqual([500, 2_000, 4_000]);
   });
 
   it('resolves 500 for the Forever Free tier (THE-200)', () => {
-    // ⚠️ DELIBERATELY ABOVE INDIVIDUAL'S 150. The founder chose a capped-but-
-    // generous free tier over an unlimited one so the ladder stays honest the
-    // other way: an unlimited free tier means an evangelist with 800 disciples
-    // gets a WORSE product by paying $39. Nothing enforces this cell yet —
-    // the server-side gate on member signup is THE-201.
+    // ⚠️ WAS "DELIBERATELY ABOVE INDIVIDUAL'S 150" — no longer true. THE-370
+    // raised Individual to 500, so free now EQUALS the cheapest paid tier
+    // rather than exceeding it. Free stays capped rather than unlimited for the
+    // original reason, which survives: an unlimited free tier would mean an
+    // evangelist with 800 disciples gets a WORSE product by paying. Nothing
+    // enforces this cell yet — the server-side gate on member signup is THE-201.
     expect(resolveContactLimit('free')).toBe(500);
+    // The equality, asserted rather than left implied.
+    expect(resolveContactLimit('free')).toBe(resolveContactLimit('plus'));
     expect(PLAN_ORDER[0]).toBe('free');
   });
 
@@ -72,13 +76,22 @@ describe('resolveContactLimit — the number comes from PLAN_FEATURES', () => {
     });
   });
 
-  it('fails CLOSED to Individual (150) when the plan is unknown or still loading', () => {
-    // Same fallback maxCourses/maxAdmins/maxChurches use. `undefined` is the
-    // loading state TenantContext exposes before tenants/{id} resolves.
-    expect(resolveContactLimit(undefined)).toBe(150);
-    expect(resolveContactLimit(null)).toBe(150);
-    expect(resolveContactLimit('')).toBe(150);
-    expect(resolveContactLimit('enterprise-that-does-not-exist')).toBe(150);
+  it('fails CLOSED to Individual when the plan is unknown or still loading', () => {
+    // 🔴 THE FALL-BACK IS UNCHANGED BY THE-370 — still 'plus', still the
+    // cheapest PAID tier, so an unknown plan is granted the least any payer
+    // gets. Only the number behind it moved, 150 → 500, because the tier moved.
+    // Asserted through the matrix rather than as a literal, so this states the
+    // FALL-BACK rather than restating the cap.
+    const individual = getPlanFeatures('plus').maxContacts;
+    expect(individual).toBe(500);
+    expect(resolveContactLimit(undefined)).toBe(individual);
+    expect(resolveContactLimit(null)).toBe(individual);
+    expect(resolveContactLimit('')).toBe(individual);
+    expect(resolveContactLimit('enterprise-that-does-not-exist')).toBe(individual);
+    // 🔴 AND IT IS NOT THE TOP TIER. A fall-back that resolved to Ministry
+    // would hand an unknown plan 4,000 contacts, which is the direction this
+    // cap exists to refuse.
+    expect(resolveContactLimit(undefined)).toBeLessThan(getPlanFeatures('max').maxContacts);
   });
 });
 

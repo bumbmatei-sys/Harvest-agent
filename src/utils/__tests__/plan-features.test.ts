@@ -25,6 +25,7 @@ import {
   PLAN_ORDER,
   PRICED_PLAN_ORDER,
   TOP_PLAN,
+  UNLIMITED_CAP,
   PLAN_DISPLAY_NAMES,
   getMinPlanForFeatureCell,
   type FeatureKey,
@@ -45,8 +46,8 @@ describe('getPlanFeatures', () => {
     expect(f.blog).toBe(true);
     // No tier includes the RAG chat — it is the AI Assistant add-on (THE-253).
     expect(f.aiChat).toBe(false);
-    expect(f.maxChurches).toBe(1);
-    expect(f.maxContacts).toBe(150);
+    expect(f.maxChurches).toBe(UNLIMITED_CAP);
+    expect(f.maxContacts).toBe(500);
     expect(f.maxCourses).toBe(2);
     expect(f.maxAdmins).toBe(2);
     expect(f.customDomain).toBe(false);
@@ -55,7 +56,7 @@ describe('getPlanFeatures', () => {
   it('returns correct features for pro plan', () => {
     const f = getPlanFeatures('pro');
     expect(f.aiChat).toBe(false);
-    expect(f.maxContacts).toBe(500);
+    expect(f.maxContacts).toBe(2_000);
     expect(f.maxCourses).toBe(5);
     expect(f.maxAdmins).toBe(5);
     expect(f.customDomain).toBe(false);
@@ -64,11 +65,12 @@ describe('getPlanFeatures', () => {
   it('returns correct features for max plan (the top tier)', () => {
     const f = getPlanFeatures('max');
     expect(f.customDomain).toBe(true);
-    expect(f.maxContacts).toBe(2_000);
+    expect(f.maxContacts).toBe(4_000);
     expect(f.maxAdmins).toBe(15);
-    // NOT -1: max did not inherit the deleted ultra tier's unlimited churches.
-    // Every tier is capped at one campus; extra campuses become a paid add-on.
-    expect(f.maxChurches).toBe(1);
+    // 🔴 -1 SINCE THE-370, and not by inheriting the deleted ultra tier: every
+    // PAID tier is unlimited now, because the campus add-on that used to be the
+    // only path past 1 is retired.
+    expect(f.maxChurches).toBe(UNLIMITED_CAP);
     expect(f.map).toBe(true);
   });
 
@@ -388,8 +390,9 @@ describe('capacity limits per tier', () => {
   // 🔴 THE PAID capacity ladder, unchanged by THE-200. Free's own caps are a
   // different kind of number (a bound on a free tier, not a rung a church buys)
   // and are asserted in plan-features.free-tier.test.ts.
-  it('maxContacts is 150 / 500 / 2000', () => {
-    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).maxContacts)).toEqual([150, 500, 2_000]);
+  it('maxContacts is 500 / 2,000 / 4,000 — THE-370', () => {
+    // Was 150 / 500 / 2,000. The founder: "lets not put cap on users that badly."
+    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).maxContacts)).toEqual([500, 2_000, 4_000]);
   });
 
   it('maxAdmins is 2 / 5 / 15', () => {
@@ -400,32 +403,38 @@ describe('capacity limits per tier', () => {
     expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).maxCourses)).toEqual([2, 5, 15]);
   });
 
-  it('maxChurches is 1 on every PAID tier — no tier gets unlimited campuses', () => {
-    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).maxChurches)).toEqual([1, 1, 1]);
-    // Free gets 0, not 1: one evangelist is not a campus. 0 is falsy to
-    // hasFeature, which is what keeps the min-plan label off Free for it.
+  it('maxChurches is UNLIMITED on every PAID tier — THE-370', () => {
+    // 🔴 INVERTED. This read "maxChurches is 1 on every PAID tier — no tier gets
+    // unlimited campuses" until the founder retired the campus add-on: "remove
+    // the campus addon. let them add as many as they want."
+    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).maxChurches))
+      .toEqual([UNLIMITED_CAP, UNLIMITED_CAP, UNLIMITED_CAP]);
+    // Free still gets 0, not unlimited: one evangelist is not a campus. 0 is
+    // falsy to hasFeature, which is what keeps the min-plan label off Free.
     expect(getPlanFeatures('free').maxChurches).toBe(0);
   });
 
-  it('no capacity cell is unlimited (-1) any more', () => {
-    // The deleted ultra tier carried -1 for churches, courses and admins.
-    // Nothing inherited it: every cap is a finite number, which is what makes
-    // the add-on model (buy more contacts / seats / campuses) coherent.
-    //
-    // ⚠️ `>= 0`, not `> 0`, across ALL tiers: free's maxChurches is a real 0
-    // (hidden), which is finite and correct. UNLIMITED_CAP is -1, so the guard
-    // that matters is "never negative", and that is what is asserted.
+  it('maxChurches is the ONLY unlimited capacity cell', () => {
+    // The deleted ultra tier carried -1 for churches, courses and admins, and
+    // nothing inherited it. THE-370 brought -1 back for churches ALONE, on the
+    // paid tiers, so contacts, courses and admins must all still be finite —
+    // which is what keeps the remaining add-on model (buy more seats) coherent
+    // and the published numbers real.
     PLAN_ORDER.forEach((plan) => {
       const f = getPlanFeatures(plan);
-      (['maxChurches', 'maxContacts', 'maxCourses', 'maxAdmins'] as const).forEach((cell) => {
+      (['maxContacts', 'maxCourses', 'maxAdmins'] as const).forEach((cell) => {
         expect(f[cell], `${plan}.${cell} is unlimited`).toBeGreaterThanOrEqual(0);
-        expect(f[cell], `${plan}.${cell} is the unlimited sentinel`).not.toBe(-1);
+        expect(f[cell], `${plan}.${cell} is the unlimited sentinel`).not.toBe(UNLIMITED_CAP);
       });
+      // Churches is 0 on free and the sentinel on every paid tier — never some
+      // other negative number, which would be a corrupt cap rather than a
+      // deliberate one.
+      expect([0, UNLIMITED_CAP], `${plan}.maxChurches`).toContain(f.maxChurches);
     });
-    // And every PAID tier's caps are still strictly positive.
+    // And every PAID tier's finite caps are still strictly positive.
     PRICED_PLAN_ORDER.forEach((plan) => {
       const f = getPlanFeatures(plan);
-      (['maxChurches', 'maxContacts', 'maxCourses', 'maxAdmins'] as const).forEach((cell) => {
+      (['maxContacts', 'maxCourses', 'maxAdmins'] as const).forEach((cell) => {
         expect(f[cell], `${plan}.${cell}`).toBeGreaterThan(0);
       });
     });
@@ -1041,10 +1050,12 @@ describe('four features moved from the top tier to Small Team (pro)', () => {
     expect(f.accountingTools).toBe(false);
     // `churchDirectory` was asserted false here too; it was later removed from
     // the matrix entirely (see 'retired matrix cells stay retired' above).
-    // Caps are explicitly out of scope for the move.
+    // Caps are explicitly out of scope for the move. (`maxChurches` became
+    // UNLIMITED_CAP on every paid tier in THE-370 — still not this move's doing,
+    // and still identical across the three, which is what "out of scope" meant.)
     expect(f.maxCourses).toBe(5);
     expect(f.maxAdmins).toBe(5);
-    expect(f.maxChurches).toBe(1);
+    expect(f.maxChurches).toBe(UNLIMITED_CAP);
   });
 
   it('moves the derived upsell label down with it — Notes now says Small Team', () => {

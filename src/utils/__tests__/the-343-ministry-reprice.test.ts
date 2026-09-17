@@ -419,7 +419,10 @@ describe('8 · an existing max tenant is NOT re-entitled, downgraded or disturbe
     const pro = getPlanFeatures('pro');
 
     // Caps first: the numbers a tenant would notice immediately.
-    expect(max.maxContacts).toBe(2_000);
+    // ⚠️ `maxContacts` 2,000 → 4,000 IN THE-370, which is a CAP RAISE and not
+    // this reprice's doing. THE-343's claim — a price cut took nothing away —
+    // is unaffected and is strengthened: the cap went UP afterwards, never down.
+    expect(max.maxContacts).toBe(4_000);
     expect(max.maxAdmins).toBe(15);
     expect(max.maxCourses).toBe(15);
 

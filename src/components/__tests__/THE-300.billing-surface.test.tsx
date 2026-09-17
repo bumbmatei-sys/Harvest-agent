@@ -826,15 +826,22 @@ describe('9 · no plan cap changed', () => {
     // Pinned as a LITERAL rather than re-derived from the module: a baseline a
     // guard computes for itself at assertion time cannot fail — it only
     // describes whatever it was handed. Recorded from origin/main at 77da58d.
+    //
+    // 🔴 RE-TRANSCRIBED AT THE-370, which is a deliberate CAP CHANGE and the
+    // only thing that has moved these numbers: `maxContacts` 150 → 500,
+    // 500 → 2,000 and 2,000 → 4,000, and `maxChurches` 1 → -1 (UNLIMITED_CAP)
+    // on the three paid tiers, with the campus add-on retired. `maxAdmins` did
+    // NOT move, and free's row is byte-identical — which is what this guard
+    // still protects for THE-300's own subject, the billing surface.
     const caps = (PLAN_ORDER as readonly string[]).map((tier) => {
       const f = getPlanFeatures(tier as never);
       return `${tier}|${f.maxAdmins}|${f.maxChurches}|${f.maxContacts}`;
     });
     expect(caps, 'a plan cap moved — THE-207/THE-55 closed as won\'t-fix').toEqual([
       'free|1|0|500',
-      'plus|2|1|150',
-      'pro|5|1|500',
-      'max|15|1|2000',
+      'plus|2|-1|500',
+      'pro|5|-1|2000',
+      'max|15|-1|4000',
     ]);
   });
 });

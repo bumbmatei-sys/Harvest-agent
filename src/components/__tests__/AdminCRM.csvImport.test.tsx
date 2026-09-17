@@ -593,12 +593,12 @@ describe('every imported contact carries a concrete tenantId, never null', () =>
 // none, so trimming a file "to fit" would report a limit that nothing consumed.
 describe('an import that exceeds the plan cap behaves as decided, and says so', () => {
   beforeEach(() => {
-    tenantCtx.tenantPlan = 'plus'; // Individual — 150
+    tenantCtx.tenantPlan = 'plus'; // Individual — 500 since THE-370
     contactsResult.current = {
-      data: Array.from({ length: 150 }, (_, i) => accountRow(i)),
+      data: Array.from({ length: 500 }, (_, i) => accountRow(i)),
       isLoading: false, isError: false, error: null, refetch: vi.fn(),
     };
-    countsResult.current = { data: counts({ memberAccounts: 150 }) };
+    countsResult.current = { data: counts({ memberAccounts: 500 }) };
   });
 
   it('closes the import entry point, and says why on hover', async () => {

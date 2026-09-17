@@ -716,8 +716,22 @@ const CONTENT_ASSERTING: ReadonlyArray<readonly [string, string]> = [
     '3fa216c7ce56ffb0a54092b82a4552f11ce76efa3ff3fcf755cc7222f99c0390'],
   ['src/utils/__tests__/plan-features.crm-individual.test.ts',
     'b4d6c211ae5260da6b6866529f58bb0c003863ea583e3824791836c2608c73d8'],
+  /* 🔵 REPINNED AT THE-370, which is the ticket that last moved this one. It
+     was not loosened; it followed the matrix, exactly as THE-335 moved it
+     before. This file transcribes each priced tier's WHOLE feature row to prove
+     THE-205 took nothing from a tier that pays, and THE-370 moved two cells in
+     that row on the founder's instruction: `maxContacts` 150 → 500, 500 → 2,000
+     and 2,000 → 4,000 ("lets not put cap on users that badly"), and
+     `maxChurches` 1 → UNLIMITED_CAP on all three paid tiers, with the campus
+     add-on that used to be the only path past 1 retired ("remove the campus
+     addon. let them add as many as they want"). Both are transcribed into the
+     BEFORE rows rather than the assertion being relaxed, so the snapshot keeps
+     failing on any OTHER cell that drifts — which is THE-205's claim and is
+     untouched. It still asserts CONTENT and still pins no digest, so it remains
+     out of THE-325's own bounds; this record only says which ticket last moved
+     it. */
   ['src/utils/__tests__/plan-features.news-feed.test.ts',
-    '76eed2ae08d7c4b52220b27d23fad5456b844b33822cdfb43813d85db49f828f'],
+    'a6021c818f2196d6d14d7f3cb7cd939962bce52ac34622c20b3285984160ad03'],
   ['src/utils/__tests__/plan-flag-surface-guard.test.ts',
     '75e67239ed7798bc2995c99c965843f03bffd162748532c159dfa142930584d7'],
 ];

@@ -13,18 +13,22 @@ import {
  * What a Dodo subscription's add-ons MEAN for a tenant (REP-5a).
  *
  * The one place `Array<{ addon_id, quantity }>` becomes
- * `{ contactPacks: 2, unlimitedContacts: false, ... }`. Everything either side
+ * `{ adminSeats: 2, unlimitedContacts: false, ... }`. Everything either side
  * of this module speaks one vocabulary: Dodo ids on the wire side, meanings on
  * the tenant side, and no id crosses over — see `TenantAddons`.
  *
  * ─── Three rules, and each one is a bug this build refuses to have ───────────
  *
- *  1. 🔴 AN UNRECOGNISED ID IS REPORTED, NEVER DROPPED. A church that buys a
- *     live Campus today hits exactly this path (its ids are an acknowledged gap
- *     in `catalogue.ts`), and the difference between reporting and skipping is
- *     the difference between someone finding out and a church paying £15 a month
- *     for nothing. The tenant's other add-ons still apply — one unknown id must
- *     not cost them the four that mapped.
+ *  1. 🔴 AN UNRECOGNISED ID IS REPORTED, NEVER DROPPED. The difference between
+ *     reporting and skipping is the difference between someone finding out and a
+ *     church paying every month for nothing. The tenant's other add-ons still
+ *     apply — one unknown id must not cost them the ones that mapped.
+ *
+ *     ⚠️ THE RETIRED IDS NOW TAKE THIS PATH, and that is correct. THE-370
+ *     removed Campus and Contacts +500 from the table, so a subscription still
+ *     carrying one is REPORTED rather than silently granted. Dodo has them
+ *     detached from all nine plan products, so no live subscription should —
+ *     and if one does, that is precisely the thing worth a Sentry event.
  *
  *  2. 🔴 "NONE" AND "COULD NOT READ" NEVER CONVERGE. `readHeldDodoAddons`
  *     (THE-132's parser, reused here rather than rewritten) throws when a
@@ -61,10 +65,6 @@ function applyMeaning(
       return { ...into, aiAssistant: into.aiAssistant + units };
     case 'adminSeat':
       return { ...into, adminSeats: into.adminSeats + units };
-    case 'contactPack':
-      return { ...into, contactPacks: into.contactPacks + units };
-    case 'campus':
-      return { ...into, campuses: into.campuses + units };
     case 'unlimitedContacts':
       // A quantity means nothing here: holding it at all is the fact. Two of
       // them is still unlimited, and zero of them is not holding it.
@@ -184,7 +184,7 @@ export function reportUnrecognisedDodoAddons(
  * Do two add-on sets say the same thing?
  *
  * Used to decide whether a `plan_changed` event has anything left to apply.
- * Field-by-field over the five meanings rather than a JSON compare: key order
+ * Field-by-field over the three meanings rather than a JSON compare: key order
  * off a Firestore document is not guaranteed, and a stringify would call two
  * identical sets different and rewrite the doc on every redelivery.
  */
@@ -192,8 +192,6 @@ export function sameTenantAddons(a: TenantAddons, b: TenantAddons): boolean {
   return (
     a.aiAssistant === b.aiAssistant &&
     a.adminSeats === b.adminSeats &&
-    a.contactPacks === b.contactPacks &&
-    a.unlimitedContacts === b.unlimitedContacts &&
-    a.campuses === b.campuses
+    a.unlimitedContacts === b.unlimitedContacts
   );
 }

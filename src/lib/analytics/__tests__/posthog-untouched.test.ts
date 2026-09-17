@@ -502,9 +502,46 @@ const PINNED: ReadonlyArray<readonly [string, ...string[]]> = [
   ['src/lib/stripe-connect.ts', 'ca494d925deb1e6dde5a740cbef0c1d24fc48e8e8655222b53ba4cda19b4d6e1'],
   ['src/lib/event-registration-webhook.ts', 'bfc03590515a98f72ef87571c6e11146f78270b170bc04eb22d2fd3b2966d184'],
   ['src/lib/dodo/addon-purchase.ts', '8a71a8bdcf4640c4296a70197f079356545652e9b651e9672c3246bba022b488'],
-  ['src/lib/dodo/addons.ts', '46b254f7dc59b9a3fbe5056f6600741c355e52ab43e19b8bd63716c52e584557'],
+  // ─── THE-370 APPENDED TO THIS ONE, deliberately and with reason ─────────
+  //
+  // 🔴 TWO ADD-ON MEANINGS RETIRED, nothing else. The founder removed the
+  // campus add-on — "remove the campus addon. let them add as many as they want"
+  // — and the Contacts +500 pack with it, raising the tier contact caps instead.
+  // Both products are DETACHED from all nine live plan products in Dodo, so
+  // neither is purchasable. In this module that is: the `contactPack` and
+  // `campus` arms deleted from `applyMeaning`, and the two matching fields
+  // dropped from `sameTenantAddons`.
+  //
+  // ⚠️ THE SAFETY PROPERTY IS UNCHANGED AND NOW COVERS THEM: an id the table
+  // cannot map is still REPORTED and never dropped, so a subscription somehow
+  // still carrying a retired Campus takes the unrecognised-id path and raises a
+  // money-path Sentry event rather than silently granting nothing. Rules 2 and 3
+  // — "none" and "could not read" never converge, and the result is a
+  // REPLACEMENT not an increment — are byte-identical.
+  //
+  // 🔴 NO PRICE IS IN THIS MODULE AND NONE WAS ADDED. Add-on prices live in
+  // Dodo; Unlimited Contacts was repriced there ($40 → $30 monthly, $480 → $360
+  // annual) on the same two product ids, and nothing here moved for it.
+  ['src/lib/dodo/addons.ts',
+    '46b254f7dc59b9a3fbe5056f6600741c355e52ab43e19b8bd63716c52e584557',
+    '9d6bcf4294e0157cf282717baa6a9f939ca7ce00c9e0b31fd338d32a0042b93d'],
   ['src/lib/dodo/billing-context.ts', '0b6305b0e1db2eefb126ed6663d2ca808e2e2a1951b36b971339a8e186bb4e61'],
-  ['src/lib/dodo/catalogue.ts', '63819b7313479a5b351f56e10c6f43752453ac40cd743fdca2389ab6e5b193d7'],
+  // ─── THE-370 APPENDED TO THIS ONE, deliberately and with reason ─────────
+  //
+  // 🔴 THE SAME TWO MEANINGS, AND THEIR FOUR IDS. `DODO_ADDON_MEANINGS` goes
+  // five to three, and the `campus` and `contactPack` rows leave BOTH the test
+  // and the live tables — deleted rather than left as `DODO_ADDON_UNMAPPED`
+  // markers, because that marker means "Dodo sells this and we cannot name it"
+  // and Dodo sells neither any more.
+  //
+  // ⚠️ THE NINE PLAN PRODUCT IDS AND THE NINE PRICES ARE BYTE-IDENTICAL. This
+  // is not a reprice: `PLAN_PRICING` did not move, the cross-repo price contract
+  // still throws at module scope during the marketing site's prerender, and the
+  // three surviving add-on ids — Unlimited Contacts' included, whose Dodo PRICE
+  // moved — are unchanged, which is the property `the-248` pins.
+  ['src/lib/dodo/catalogue.ts',
+    '63819b7313479a5b351f56e10c6f43752453ac40cd743fdca2389ab6e5b193d7',
+    'd23c8fbfa59ef31f55ca196964f72959f8e2b5f9d25d29349adc08ff352d0a32'],
   ['src/lib/dodo/config.ts', '1ecb3d021960e7b4c09f0a1d15324e74978cda97799830709ae6f6f3cfdfb26a'],
   ['src/lib/dodo/dodo-provider.ts', '2b3e0b168d87b8b88c231fe49a450bc9416561f1a32a7668bd207bd7861d125d'],
   ['src/lib/dodo/events.ts', '0b94d1275c6120a0ccb5c4dfeb3f5c68545e6ecbccf7c276ad87910985034ea9'],

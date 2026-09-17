@@ -2,31 +2,35 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
 /**
- * REP-5b, test 7 — 🔴 THE LIVE CAMPUS GUARD, now the live Campus SALE.
+ * THE-370, live mode — 🔴 CAMPUS AND CONTACTS +500 CANNOT BE SOLD, AND THE
+ * REMAINING THREE STILL CAN.
  *
- * REP-5a originally mapped Campus in TEST mode only: both live Campus add-ons
- * existed in Dodo — created, priced, attached — but their ids were never
- * recorded, and guessing one would have been worse than the gap. This file
- * pinned the purchase-side half of that gap's safety property: a live Campus
- * could not be SOLD while its ids were unknown.
+ * This file used to pin the opposite. REP-5a mapped Campus in TEST mode only;
+ * then its two live ids were recorded and every assertion here flipped from a
+ * refusal to a sale ("live Campus is now offerable"). THE-370 retires the
+ * product outright: the founder said "remove the campus addon. let them add as
+ * many as they want", Dodo has Campus and Contacts +500 DETACHED from all nine
+ * plan products, and both meanings are gone from `DODO_ADDON_MEANINGS`.
  *
- * The two live ids are now recorded in `catalogue.ts`, exactly as this file's
- * own docstring anticipated: "recording the two live ids turns the refusals
- * below into sales with no logic change anywhere." That is exactly what
- * happened — `route.ts` is untouched, and every assertion below flips from a
- * refusal to a success because `addonIdFor`/`offerableAddonMeanings` now
- * resolve Campus like any other live meaning.
+ * So the subject is unchanged — what LIVE mode will and will not sell — and only
+ * the answer moved. Keeping the file is what makes the reversal legible: the
+ * same harness, the same route, the same live table, and a purchase that used to
+ * succeed now has no meaning to name.
+ *
+ * 🔴 THE REFUSAL IS STRUCTURAL, NOT A DENY-LIST. Nothing here or in the route
+ * says "campus is retired". The meaning left the union, so the request body
+ * fails validation before any money path is reached — which is why the guard
+ * below asserts the route's own 400 rather than a hand-written check.
  *
  * 🔴 THE WHOLE FILE RUNS IN LIVE MODE. `catalogue.ts` selects its active table
  * from `dodoConfig.environment` at module load, so this cannot share a file with
  * the test-mode route tests — hence its own `DODO_PAYMENTS_ENVIRONMENT`, hoisted
  * above every import.
  */
-
 vi.hoisted(() => {
   process.env.DODO_PAYMENTS_API_KEY = 'dodo_live_key';
   process.env.DODO_PAYMENTS_WEBHOOK_KEY = 'whsec_' + Buffer.from('livesecret').toString('base64');
-  // 🔴 LIVE. The mode where Campus has no id.
+  // 🔴 LIVE. The mode whose table THE-370 removed Campus from.
   process.env.DODO_PAYMENTS_ENVIRONMENT = 'live_mode';
 });
 
@@ -105,16 +109,15 @@ const PLUS_MONTHLY = requireProductId('plus', 'monthly');
 /**
  * 🔴 WHAT THE LIVE INDIVIDUAL PRODUCT CARRIES, as Dodo reports it (THE-160).
  *
- * Read from the live `pdt_…` behind `requireProductId('plus', 'monthly')` on
- * 2026-08-16: AI Assistant, Admin Seat and Campus — and NOT Contacts +500 or
- * Unlimited Contacts, which is the attachment THE-160 exists to respect.
+ * Read from the live `pdt_…` behind `requireProductId('plus', 'monthly')`:
+ * AI Assistant and Admin Seat — and NOT Unlimited Contacts, which is attached to
+ * the Ministry products only and is the attachment THE-160 exists to respect.
  *
- * ⚠️ CAMPUS IS ON IT, which is what keeps this file's subject intact. The gap
- * this file pins was never about attachment — Campus was attached to all six
- * live products all along — it was about the two ids not being written down.
- * Availability now asks both questions, and Campus answers yes to both.
+ * 🔴 CAMPUS WAS ON THIS LIST AND IS NOT ANY MORE — THE-370. The founder detached
+ * it (and Contacts +500) from all nine plan products, so the live Individual
+ * product now carries exactly two add-ons.
  */
-const LIVE_PLUS_MEANINGS = ['aiAssistant', 'adminSeat', 'campus'] as const;
+const LIVE_PLUS_MEANINGS = ['aiAssistant', 'adminSeat'] as const;
 
 const dodoStub = {
   retrieve: vi.fn(),
@@ -212,10 +215,10 @@ beforeEach(() => {
   installDodoStub();
 });
 
-// ── Test 7 — 🔴 THE GAP IS CLOSED: refusals become sales, no logic changed ───
+// ── THE-370 — 🔴 THE SALE BECOMES A REFUSAL, AND NO LOGIC CHANGED ───────────
 
-describe('live Campus is now offerable — the ids close the gap with no route change', () => {
-  it('the live catalogue now lists Campus among what this tenant’s product carries', async () => {
+describe('THE-370 — live Campus and Contacts +500 are retired and unsellable', () => {
+  it('the live catalogue no longer lists campus or contactPack for this tenant', async () => {
     seedDodoTenant();
     asOwner();
 
@@ -223,23 +226,20 @@ describe('live Campus is now offerable — the ids close the gap with no route c
     expect(res.status).toBe(200);
     const offered: string[] = (await res.json()).addons.map((a: { addon: string }) => a.addon);
 
-    // Named by MEANING, from the real table. Campus is present because
-    // `addonIdFor('campus', …)` now resolves in live AND because the live
-    // Individual product carries it — two independent yeses, not one.
-    expect(offered).toContain('campus');
+    // 🔴 THE TWO RETIRED MEANINGS ARE ABSENT. `addonIdFor('campus', …)` cannot
+    // resolve because `campus` is not a meaning any more.
+    expect(offered).not.toContain('campus');
+    expect(offered).not.toContain('contactPack');
     expect(offered.sort()).toEqual([...LIVE_PLUS_MEANINGS].sort());
 
-    // ⚠️ AND IT IS NOT ALL FIVE, deliberately (THE-160). This tenant is on the
-    // $49 Individual plan, whose products Dodo does not attach Contacts +500 or
-    // Unlimited Contacts to. Asserting all five here is what the defect looked
-    // like: an offer list filtered by billing period, with the product's own
-    // answer never asked for.
-    expect(offered).not.toContain('contactPack');
+    // ⚠️ AND IT IS STILL NOT ALL THREE (THE-160). This tenant is on the
+    // Individual plan, whose products Dodo does not attach Unlimited Contacts
+    // to. Asserting every meaning here is what the old defect looked like.
     expect(offered).not.toContain('unlimitedContacts');
     expect(offered.length).toBeLessThan(DODO_ADDON_MEANINGS.length);
   });
 
-  it('🔴 buying a live Campus now SUCCEEDS — the ids close the gap with no logic change', async () => {
+  it('🔴 buying a live campus is REFUSED — the meaning no longer exists', async () => {
     seedDodoTenant();
     asOwner();
 
@@ -249,38 +249,35 @@ describe('live Campus is now offerable — the ids close the gap with no route c
       confirm: true,
     });
 
-    expect(res.status).toBe(200);
-    expect(dodoStub.changePlan).toHaveBeenCalledTimes(1);
-    // The LIVE campus id, read from the real table rather than retyped.
-    expect(dodoStub.changePlan.mock.calls[0][1].addons).toEqual([
-      { addon_id: DODO_LIVE_ADDONS.campus.monthly as string, quantity: 1 },
-    ]);
+    // 400, not 200: the body fails validation because `campus` is not in the
+    // meaning union, so the request never reaches a money path.
+    expect(res.status).toBe(400);
+    // 🔴 NOTHING WAS CHARGED AND NOTHING WAS PREVIEWED.
+    expect(dodoStub.changePlan).not.toHaveBeenCalled();
+    expect(dodoStub.previewChangePlan).not.toHaveBeenCalled();
   });
 
-  it('quotes a preview for it too, now that it is offerable', async () => {
+  it('🔴 buying a live contactPack is REFUSED for the same reason', async () => {
     seedDodoTenant();
     asOwner();
 
-    const res = await post({ tenantId: T.tenant, addons: [{ addon: 'campus', quantity: 1 }] });
-    expect(res.status).toBe(200);
-    expect(dodoStub.previewChangePlan).toHaveBeenCalledTimes(1);
+    const res = await post({
+      tenantId: T.tenant,
+      addons: [{ addon: 'contactPack', quantity: 2 }],
+      confirm: true,
+    });
+
+    expect(res.status).toBe(400);
+    expect(dodoStub.changePlan).not.toHaveBeenCalled();
   });
 
-  it('reports nothing — a normal purchase, not a drifted offer surface', async () => {
+  it('🔴 a retired meaning POISONS THE WHOLE REQUEST — no partial purchase', async () => {
     seedDodoTenant();
     asOwner();
 
-    await post({ tenantId: T.tenant, addons: [{ addon: 'campus', quantity: 1 }] });
-
-    // The catalogue can render Campus now, so a request for one is no longer a
-    // sign that something drifted.
-    expect(mockCapture).not.toHaveBeenCalled();
-  });
-
-  it('buys a live Campus alongside another add-on in the same request', async () => {
-    seedDodoTenant();
-    asOwner();
-
+    // An admin seat is still perfectly sellable. Asking for it alongside a
+    // retired meaning must buy NEITHER: a request that half-succeeds would
+    // charge for something the church did not agree to in the shape it asked.
     const res = await post({
       tenantId: T.tenant,
       addons: [
@@ -290,19 +287,11 @@ describe('live Campus is now offerable — the ids close the gap with no route c
       confirm: true,
     });
 
-    expect(res.status).toBe(200);
-    expect(dodoStub.changePlan).toHaveBeenCalledTimes(1);
-    const addons = dodoStub.changePlan.mock.calls[0][1].addons;
-    expect(addons).toEqual(
-      expect.arrayContaining([
-        { addon_id: DODO_LIVE_ADDONS.adminSeat.monthly as string, quantity: 1 },
-        { addon_id: DODO_LIVE_ADDONS.campus.monthly as string, quantity: 1 },
-      ]),
-    );
-    expect(addons).toHaveLength(2);
+    expect(res.status).toBe(400);
+    expect(dodoStub.changePlan).not.toHaveBeenCalled();
   });
 
-  it('🔴 the OTHER four live add-ons still sell normally too', async () => {
+  it('🔴 the THREE remaining live add-ons still sell normally', async () => {
     seedDodoTenant();
     asOwner();
 
@@ -318,20 +307,26 @@ describe('live Campus is now offerable — the ids close the gap with no route c
     expect(dodoStub.changePlan.mock.calls[0][1].addons).toEqual([
       { addon_id: DODO_LIVE_ADDONS.adminSeat.monthly as string, quantity: 2 },
     ]);
+    // A normal purchase reports nothing.
+    expect(mockCapture).not.toHaveBeenCalled();
   });
 
-  it('availability is DERIVED from the table — filling the ids was the only change needed', () => {
-    // The claim this whole file rests on: nothing anywhere states "campus is
-    // available". Availability is a lookup, and the lookup now resolves.
-    expect(addonIdFor('campus', 'monthly')).toBe(DODO_LIVE_ADDONS.campus.monthly);
-    expect(addonIdFor('campus', 'yearly')).toBe(DODO_LIVE_ADDONS.campus.yearly);
+  it('availability is still DERIVED from the table — removing the rows was the only change', () => {
+    // The claim this whole file rests on, unchanged in mechanism and reversed in
+    // answer: nothing anywhere states "campus is unavailable". Availability is a
+    // lookup, and there is no longer anything to look up.
+    expect(DODO_ADDON_MEANINGS).not.toContain('campus' as never);
+    expect(DODO_ADDON_MEANINGS).not.toContain('contactPack' as never);
+    expect(Object.keys(DODO_LIVE_ADDONS).sort()).toEqual(
+      ['adminSeat', 'aiAssistant', 'unlimitedContacts'],
+    );
 
     for (const period of ['monthly', 'yearly'] as const) {
       const offerable = offerableAddonMeanings(period);
-      expect(offerable).toContain('campus');
-      // Every meaning WITH an id is offerable, with no second condition applied.
+      // 🔴 EVERY REMAINING MEANING IS MAPPED IN LIVE. No gap survives.
       for (const meaning of DODO_ADDON_MEANINGS) {
-        expect(offerable.includes(meaning)).toBe(addonIdFor(meaning, period) !== null);
+        expect(addonIdFor(meaning, period)).not.toBeNull();
+        expect(offerable.includes(meaning)).toBe(true);
       }
     }
   });

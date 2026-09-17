@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2, Minus, Plus, AlertCircle, CheckCircle2, PackagePlus } from 'lucide-react';
 import { useTenantOptional } from '../../contexts/TenantContext';
 import { ACTION_HEIGHT, ICON_BUTTON } from './OnboardingSection';
-import { CONTACTS_PER_PACK, NO_ADDONS } from '../../utils/plan-features';
+import { NO_ADDONS } from '../../utils/plan-features';
 import {
   ADDON_MEANINGS,
   fetchOfferableAddons,
@@ -79,24 +79,25 @@ interface AddOnsSectionProps {
  *
  * There is no list of add-ons in this file. `/api/dodo/addons` derives it from
  * the active add-on table, so an add-on with no id in the running environment is
- * absent from the response and therefore cannot appear here or be bought. Live
- * Campus is exactly that today: its two Dodo ids were never recorded, so a live
- * deployment does not offer it, and a church cannot be charged $15 a month for
- * something no code path could grant them. Recording the ids makes it appear
+ * absent from the response and therefore cannot appear here or be bought. That
+ * is what makes retiring one a table edit and nothing more: THE-370 removed
+ * Campus and Contacts +500 from the table, and both vanish from this surface
  * with no change to this component.
  *
  * ⚠️ AND WHAT THE SERVER DID NOT OFFER IS SHOWN, DISABLED — see `unavailable`
  * below. An add-on a church cannot buy yet is still a fact about the product,
- * and hiding it entirely is how a Ministry church never learns a second campus
- * is possible. The card is derived by SUBTRACTION from `ADDON_MEANINGS`, so no
- * add-on is named here and filling the two live Campus ids moves it from the
- * disabled group to the buyable one with no edit to this file.
+ * and hiding it entirely is how a church never learns it is possible. The card
+ * is derived by SUBTRACTION from `ADDON_MEANINGS`, so no add-on is named here
+ * and a newly mapped id moves from the disabled group to the buyable one with no
+ * edit to this file. The example this note used to give was the live Campus ids;
+ * Campus is not an add-on any more (THE-370) and `ADDON_MEANINGS` is three.
  *
  * ⚠️ NO TIER GATE HERE, DELIBERATELY (THE-133). Which add-ons a plan may hold is
- * enforced by Dodo, on the product — "Contacts +500" is not attached to the
- * Individual products and "Unlimited Contacts" only to Ministry — precisely so
- * that a Harvest bug cannot sell Unlimited Contacts to a $49 plan. A gate here
- * would move that decision out of the payment processor and into a component.
+ * enforced by Dodo, on the product — "Unlimited Contacts" is attached to the
+ * Ministry products only, while AI Assistant and Admin Seat are on all three —
+ * precisely so that a Harvest bug cannot sell Unlimited Contacts to the cheapest
+ * plan. A gate here would move that decision out of the payment processor and
+ * into a component.
  *
  * ⚠️ NO PRICE IS WRITTEN IN THIS FILE. Add-on prices are settled and live in
  * Dodo; every figure rendered arrived from the catalogue call or from the
@@ -105,9 +106,10 @@ interface AddOnsSectionProps {
  * `$228.00` — which beside an add-on reads as a one-off charge — cannot be
  * spelled from here.
  *
- * ⚠️ OUT OF SCOPE: prompting at the cap. Offering "+500 for $20" at the moment a
- * church hits 500 contacts is where add-on revenue actually comes from, and it
- * is a sweep across many surfaces — REP-5c. This is the canonical surface only.
+ * ⚠️ OUT OF SCOPE: prompting at the cap. Offering Unlimited Contacts at the
+ * moment a church reaches its contact cap is where add-on revenue actually comes
+ * from, and it is a sweep across many surfaces — REP-5c. This is the canonical
+ * surface only. (The pack that prompt used to offer is retired — THE-370.)
  */
 
 /**
@@ -127,7 +129,7 @@ const PREVIEW_DEBOUNCE_MS = 400;
  *
  * Copy, and only copy — it decides nothing. What can be bought is still whatever
  * the server returned, and an entry here for a meaning the server did not offer
- * is simply never read. Exhaustive over the union by type, so a sixth add-on
+ * is simply never read. Exhaustive over the union by type, so a fourth add-on
  * cannot be added to the vocabulary without someone writing its line.
  */
 const GRANTS: Record<AddonMeaning, string> = {
@@ -153,8 +155,6 @@ const GRANTS: Record<AddonMeaning, string> = {
      card labelled rather than blank. */
   aiAssistant: 'Adds one AI assistant to your account.',
   adminSeat: 'One more admin account, beyond what your plan includes.',
-  campus: 'One more campus on your account.',
-  contactPack: `Adds ${CONTACTS_PER_PACK.toLocaleString()} to your contact limit.`,
   unlimitedContacts: 'Removes the contact limit on your plan entirely.',
 };
 
@@ -194,10 +194,10 @@ const AddOnsSection: React.FC<AddOnsSectionProps> = ({ tenantId, processor }) =>
   const owned = tenant?.tenantAddons ?? NO_ADDONS;
   const refreshTenantAddons = tenant?.refreshTenantAddons;
   // 🔴 AND THE RESULTING CAPACITY COMES FROM THE SAME PLACE, already layered by
-  // `getEffectiveFeatures`. A component that added CONTACTS_PER_PACK per pack by
-  // hand would be a second implementation of the one function whose whole job is
-  // that sum — and the number it printed would be the one a church checks its
-  // contact list against.
+  // `getEffectiveFeatures`. A component that layered add-ons by hand would be a
+  // second implementation of the one function whose whole job is that sum — and
+  // the number it printed would be the one a church checks its contact list
+  // against.
   const planFeatures = tenant?.planFeatures ?? null;
 
   const [catalogue, setCatalogue] = useState<OfferableAddon[]>([]);
@@ -410,17 +410,7 @@ const AddOnsSection: React.FC<AddOnsSectionProps> = ({ tenantId, processor }) =>
                      for IntegrationsSection's connection state. */
                   <span className="shrink-0 inline-flex items-center gap-1 rounded-full border border-line bg-surface-chip px-2 py-0.5 text-xs font-medium text-body">
                     <CheckCircle2 size={11} aria-hidden="true" className="shrink-0 text-gold" />
-                    {isToggle
-                      ? 'Active'
-                      : addon.addon === 'contactPack' && planFeatures
-                        ? // What they hold, and what it adds up to. A church
-                          // buying capacity is buying the second number.
-                          `${held} owned · ${
-                            planFeatures.unlimitedContacts
-                              ? 'unlimited'
-                              : planFeatures.maxContacts.toLocaleString()
-                          } total`
-                        : `${held} owned`}
+                    {isToggle ? 'Active' : `${held} owned`}
                   </span>
                 )}
               </div>

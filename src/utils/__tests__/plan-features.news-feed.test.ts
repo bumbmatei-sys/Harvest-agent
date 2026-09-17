@@ -8,6 +8,7 @@ import {
   crmLabel,
   PLAN_ORDER,
   PRICED_PLAN_ORDER,
+  UNLIMITED_CAP,
   type PlanFeatures,
 } from '../plan-features';
 import type { PricedPlan, TenantPlan } from '../../types/tenant.types';
@@ -94,11 +95,18 @@ describe('THE-205 moved no cell on any tier a church pays for', () => {
    * Writing `aiAssistant: 0` here would keep the snapshot compiling and quietly
    * stop asserting that the cell is gone. Removing the key makes
    * `Object.keys(...)` fail if it ever comes back.
+   *
+   * THE-370 moved two more, and both are transcribed rather than relaxed:
+   *   · `maxContacts`  150 → 500, 500 → 2,000, 2,000 → 4,000
+   *   · `maxChurches`  1 → UNLIMITED_CAP on all three
+   * Those are that ticket's whole subject and are asserted per plan in
+   * `effective-features.test.ts`; transcribing them here keeps this row a
+   * no-regression check on EVERY OTHER cell.
    */
   const BEFORE: Record<PricedPlan, PlanFeatures> = {
     plus: {
       newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: false,
-      maxChurches: 1, maxContacts: 150, maxCourses: 2, maxAdmins: 2,
+      maxChurches: UNLIMITED_CAP, maxContacts: 500, maxCourses: 2, maxAdmins: 2,
       customDomain: false, customBranding: false,
       newsletterAutomation: false, automatedNewsletter: false,
       // 🔴 THE-314 — SMS is Ministry-only. plus and pro LOST these two cells.
@@ -111,7 +119,7 @@ describe('THE-205 moved no cell on any tier a church pays for', () => {
     },
     pro: {
       newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: true,
-      maxChurches: 1, maxContacts: 500, maxCourses: 5, maxAdmins: 5,
+      maxChurches: UNLIMITED_CAP, maxContacts: 2_000, maxCourses: 5, maxAdmins: 5,
       customDomain: false, customBranding: false,
       newsletterAutomation: true, automatedNewsletter: false,
       // 🔴 THE-314 — SMS is Ministry-only. plus and pro LOST these two cells.
@@ -124,7 +132,7 @@ describe('THE-205 moved no cell on any tier a church pays for', () => {
     },
     max: {
       newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: true,
-      maxChurches: 1, maxContacts: 2_000, maxCourses: 15, maxAdmins: 15,
+      maxChurches: UNLIMITED_CAP, maxContacts: 4_000, maxCourses: 15, maxAdmins: 15,
       customDomain: true, customBranding: true,
       newsletterAutomation: true, automatedNewsletter: true,
       smsAutomation: true, fundraising: true,
