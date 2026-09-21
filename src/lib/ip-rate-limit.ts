@@ -1,8 +1,8 @@
 /**
- * The bounded IP rate-limit key, shared by the two public submission routes.
+ * The bounded IP rate-limit key, shared by the public submission routes.
  *
- * BOTH ROUTES USED TO READ EVERY DOCUMENT AN ADDRESS HAD EVER WRITTEN.
- * `/api/contact` (THE-109) and `/api/enterprise-lead` each ran
+ * CONTACT AND ENTERPRISE-LEAD USED TO READ EVERY DOCUMENT AN ADDRESS HAD EVER
+ * WRITTEN. `/api/contact` (THE-109) and `/api/enterprise-lead` each ran
  * `.where('ip', '==', ip).get()` with no `.limit()` and filtered the hour window
  * in memory: to answer "have there been 3 in an hour" they read all of them,
  * forever, on public unauthenticated endpoints. The `'unknown'` bucket — shared
