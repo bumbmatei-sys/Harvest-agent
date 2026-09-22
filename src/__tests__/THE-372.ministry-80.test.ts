@@ -299,7 +299,17 @@ describe('6 · all nine prices pass the strict equality check — no exclusion',
       const abs = path.join(dir, n);
       return statSync(abs).isDirectory() ? all(abs) : /\.tsx?$/.test(n) ? [abs] : [];
     });
-    const carriers = all(path.join(REPO, 'src')).filter((abs) => stripComments(readFileSync(abs, 'utf8')).includes(retired));
+    // Raw text first, and the parser only for a file that carries the name at
+    // all: parsing every module under src/ took ~4s locally and timed out on
+    // the CI runner. The verdict is still read off stripped code, so a mention
+    // in a comment stays allowed and a use in code still fails.
+    const files = all(path.join(REPO, 'src'));
+    expect(files.length, 'the sweep found almost nothing — it is vacuous').toBeGreaterThan(1000);
+    const carriers = files
+      .map((abs) => [abs, readFileSync(abs, 'utf8')] as const)
+      .filter(([, raw]) => raw.includes(retired))
+      .filter(([, raw]) => stripComments(raw).includes(retired))
+      .map(([abs]) => abs);
     expect(carriers).toEqual([]);
   });
 });
