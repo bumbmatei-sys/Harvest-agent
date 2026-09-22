@@ -522,7 +522,11 @@ describe('5 · the money path is byte-identical', () => {
      * a church correcting its own books says nothing about what that church may
      * do - so the Dodo webhook remains the single writer of a capability.
      */
-    expect(routes.length, 'an API route was added or removed').toBe(123);
+    // APPENDED FOR #517 — the public /api/waitlist product-updates capture, merged
+    // with CI red, so this count never moved with it. It writes a
+    // `product_updates` document and never the tenant document, so it applies
+    // no entitlement; it is named in the list below like every other addition.
+    expect(routes.length, 'an API route was added or removed').toBe(124);
     expect(
       routes.some((f) => f.endsWith(path.join('app/api/sms/numbers/route.ts'))),
       'the route THE-314 added is missing — the count moved for some other reason',
@@ -540,6 +544,8 @@ describe('5 · the money path is byte-identical', () => {
       'app/api/event-payment/public-claim/route.ts',
       // APPENDED BY THE-369 — see the note on the count above.
       'app/api/crm/contact-activities/[activityId]/route.ts',
+      // APPENDED FOR #517 — see the note on the count above.
+      'app/api/waitlist/route.ts',
     ]) {
       expect(
         routes.some((f) => f.endsWith(path.join(added))),

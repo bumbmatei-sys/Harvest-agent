@@ -88,8 +88,8 @@ export async function POST(request: NextRequest) {
     const safeEmail = rawEmail.slice(0, MAX_EMAIL_LENGTH);
     const source = ALLOWED_SOURCES.has(rawSource) ? rawSource : 'waitlist';
 
-    // Durable store only — no Mailchimp / newsletter audience, and we do not
-    // flip NEWSLETTER_FEATURE_ENABLED. Admin notification can come later via a
+    // Durable store only — no Mailchimp / newsletter audience, and the
+    // newsletter feature switch stays off. Admin notification can come later via a
     // Cloud Function on product_updates create (same pattern as platform_inbox).
     const createdAt = new Date().toISOString();
     await adminDb.collection(COLLECTION).add({
