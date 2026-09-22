@@ -10,6 +10,12 @@
  * asserted from both sides, and three exclusion branches that lifted the three
  * Ministry products out of the catalogue suite's strict equality check.
  *
+ * ⚠️ SUPERSEDED IN ITS FIGURES BY THE-372, which put Ministry back to $80
+ * (8000 / 21600 / 75200 minor units, applied in Dodo first). The record this
+ * file retires stays retired and no exclusion came back; what moved is the
+ * table of live amounts below and the set of SUPERSEDED amounts the prose and
+ * code sweeps hunt for.
+ *
  * That record was correct on the day it was written. It is not correct now: the
  * three live products have been repriced and read back from the authenticated
  * live API at 6000 / 16200 / 56400, so it described a gap that no longer
@@ -193,9 +199,12 @@ const LIVE_DODO_MINOR = [
   { plan: 'pro', period: 'monthly', id: 'pdt_0NlJZMOMhmZWiG6UVDl8I', cents: 4000 },
   { plan: 'pro', period: 'quarterly', id: 'pdt_0NloCaqg1QPMAlkfDnlOe', cents: 10800 },
   { plan: 'pro', period: 'yearly', id: 'pdt_0NlJZMRWL8tuAZseUIRTP', cents: 38000 },
-  { plan: 'max', period: 'monthly', id: 'pdt_0NlJZMUUiT36FGMoiFXgl', cents: 6000 },
-  { plan: 'max', period: 'quarterly', id: 'pdt_0NloCatUWEkEUq1usWJ0n', cents: 16200 },
-  { plan: 'max', period: 'yearly', id: 'pdt_0NlJZMXTnpRBAwTfBVpPs', cents: 56400 },
+  // ⚠️ MOVED AT THE-372: Ministry back to $80, with the quarter and year at
+  // $216 / $752 keeping THE-343's ratios. The founder applied all three in the
+  // live Dodo products first and verified them, trial intact.
+  { plan: 'max', period: 'monthly', id: 'pdt_0NlJZMUUiT36FGMoiFXgl', cents: 8000 },
+  { plan: 'max', period: 'quarterly', id: 'pdt_0NloCatUWEkEUq1usWJ0n', cents: 21600 },
+  { plan: 'max', period: 'yearly', id: 'pdt_0NlJZMXTnpRBAwTfBVpPs', cents: 75200 },
 ] as const;
 
 /** The three Ministry ids, by term — the products THE-344 repriced. */
@@ -336,7 +345,7 @@ describe('2 · no exclusion branch lifts a product out of the strict check', () 
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * 3 — the fixture holds 6000 / 16200 / 56400, named per product
+ * 3 — the fixture holds what Dodo charges, named per product (THE-372's since)
  * ═══════════════════════════════════════════════════════════════════════════ */
 describe('3 · the live fixture transcribes what Dodo now charges', () => {
   it('🔴 it still has exactly nine rows, one per live product', () => {
@@ -355,7 +364,7 @@ describe('3 · the live fixture transcribes what Dodo now charges', () => {
   it('🔴 and the three Ministry rows carry the ids they were read from', () => {
     const rows = liveFixtureRows().filter((r) => r.plan === 'max');
     expect(rows.map((r) => r.id)).toEqual(MINISTRY.map((p) => p.id));
-    expect(rows.map((r) => r.cents)).toEqual([6000, 16200, 56400]);
+    expect(rows.map((r) => r.cents)).toEqual([8000, 21600, 75200]);
   });
 });
 
@@ -453,6 +462,11 @@ describe('7 · the prose says nothing the code stopped being true', () => {
    * the catalogue suite is real and still described there, so the patterns are
    * chosen not to reach it: they anchor on the hand-edit that closed this gap
    * and on the superseded minor units, neither of which test mode ever used.
+   *
+   * ⚠️ THE SUPERSEDED UNITS MOVED AT THE-372. Ministry is back at 8000 /
+   * 21600 / 75200, so those are CURRENT figures now and cannot be a stale
+   * claim; the superseded set is THE-343's (the three it retires) plus
+   * THE-248's annual, which never came back.
    */
   const CLAIMS: ReadonlyArray<readonly [RegExp, string]> = [
     [new RegExp(RETIRED_RECORD), 'names the retired record'],
@@ -460,7 +474,7 @@ describe('7 · the prose says nothing the code stopped being true', () => {
     [/founder\s+(?:updates?|must\s+set|has\s+not|changes?\s+it)/i, 'says the founder has still to act'],
     [/not\s+yet\s+(?:in\s+dodo|repriced|made)/i, 'says the reprice has not happened'],
     [/\b(?:is|are)\s+(?:still\s+)?ahead\s+of\s+(?:live\s+)?dodo/i, 'says the app is ahead of Dodo'],
-    [/\b(?:8000|21600|76000)\b/, 'restates a superseded Ministry amount'],
+    [/\b(?:6000|16200|56400|76000)\b/, 'restates a superseded Ministry amount'],
   ];
 
   it.each(DIVERGENCE_FILES)('%s describes no gap that has been closed', (rel) => {
@@ -502,7 +516,7 @@ describe('7 · the prose says nothing the code stopped being true', () => {
       '// the founder updates them by hand',
       '// the reprice is not yet in Dodo',
       '// the app is AHEAD of live Dodo on all three',
-      '// the live products still hold 8000 / 21600 / 76000',
+      '// the live products still hold 6000 / 16200 / 56400',
     ];
     expect(retired.length).toBe(CLAIMS.length);
     for (const [i, [pattern]] of CLAIMS.entries()) {
@@ -517,12 +531,13 @@ describe('7 · the prose says nothing the code stopped being true', () => {
  * ═══════════════════════════════════════════════════════════════════════════ */
 describe('8 · prices are derived, not restated', () => {
   it('🔴 the superseded Ministry minor units appear in no pricing module', () => {
-    // Scoped to the pricing and Dodo surface on purpose: `8000` is a real
-    // figure elsewhere in this repo — a UUID field and git's binary heuristic
-    // both carry it — and a repo-wide sweep for it would flag those and be
-    // deleted by whoever it blocked.
+    // Scoped to the pricing and Dodo surface on purpose: `6000` is a real
+    // figure elsewhere in this repo — toast and lookup timeouts carry it — and
+    // a repo-wide sweep for it would flag those and be deleted by whoever it
+    // blocked. ⚠️ The superseded set moved at THE-372: 8000 / 21600 are
+    // Ministry's current units again (see the claim table above).
     for (const rel of [...DIVERGENCE_FILES, 'src/lib/dodo/catalogue.ts', 'src/utils/plan-features.ts']) {
-      for (const digits of ['8000', '21600', '76000']) {
+      for (const digits of ['6000', '16200', '56400', '76000']) {
         expect(codeOf(rel), `${rel} still writes the superseded amount ${digits}`)
           .not.toMatch(new RegExp(`(?<![\\w.])${digits}(?![\\w.])`));
       }

@@ -533,7 +533,7 @@ describe('no price or product id changed', () => {
     expect(PLAN_PRICING.plus).toMatchObject({ monthly: 20, quarterly: 54, yearly: 190 });
     expect(PLAN_PRICING.pro).toMatchObject({ monthly: 40, quarterly: 108, yearly: 380 });
     // ⚠️ Moved by THE-343. The product ids this file pins are unchanged.
-    expect(PLAN_PRICING.max).toMatchObject({ monthly: 60, quarterly: 162, yearly: 564 });
+    expect(PLAN_PRICING.max).toMatchObject({ monthly: 80, quarterly: 216, yearly: 752 });
   });
 
   it('leaves every resolver mapping intact', () => {

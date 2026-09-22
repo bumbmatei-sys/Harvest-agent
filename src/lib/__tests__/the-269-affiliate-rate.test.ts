@@ -215,7 +215,7 @@ describe('4 — what this change must NOT have moved', () => {
       pro:  { monthly: 40, quarterly: 108, yearly: 380 },
       // ⚠️ THE-343 repriced Ministry; the affiliate RATE is what this file
       // guards and it did not move with it.
-      max:  { monthly: 60, quarterly: 162, yearly: 564 },
+      max:  { monthly: 80, quarterly: 216, yearly: 752 },
     });
   });
 });

@@ -127,9 +127,9 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
         // Derived bound: ceiling at the cent adds at most one cent per month,
         // so `months × $0.01`. It was a flat 0.05 — the worst gap THE-222's
         // prices happened to give — and THE-248's $760 year overshot by $0.08
-        // without breaking the rule at all. THE-343's $564 year overshoots by
-        // NOTHING: $47 x 12 is exactly $564, the one cell where the bound is
-        // slack rather than merely satisfied.
+        // without breaking the rule at all. THE-343's $564 year overshot by
+        // nothing; THE-372's $752 year overshoots by $0.04 ($62.67 x 12 is
+        // $752.04), well inside the twelve-cent bound.
         expect(implied - charged, `${plan} ${term}`)
           .toBeLessThan(TERM_MONTHS[term] * 0.01 + 1e-9);
       }
@@ -195,7 +195,7 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
     const SITE_HEADLINES: Record<PricedPlan, Record<string, string>> = {
       plus: { monthly: '$20', quarterly: '$18', yearly: '$15.84' },
       pro:  { monthly: '$40', quarterly: '$36', yearly: '$31.67' },
-      max:  { monthly: '$60', quarterly: '$54', yearly: '$47' },
+      max:  { monthly: '$80', quarterly: '$72', yearly: '$62.67' },
     };
     mount();
     for (const term of BILLING_TERMS) {
@@ -212,9 +212,9 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
     // Presentation only. Nothing in THE-196 may move a price.
     // ⚠️ Ministry's column moved at THE-343; Individual's and Small Team's did
     // not, and they are enumerated so a reprice that overreached still fails.
-    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'monthly'))).toEqual([20, 40, 60]);
-    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'quarterly'))).toEqual([54, 108, 162]);
-    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'yearly'))).toEqual([190, 380, 564]);
+    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'monthly'))).toEqual([20, 40, 80]);
+    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'quarterly'))).toEqual([54, 108, 216]);
+    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'yearly'))).toEqual([190, 380, 752]);
     // …and the displayed figure is derived from them, never stored beside them.
     for (const plan of PRICED_PLAN_ORDER) {
       for (const term of BILLING_TERMS) {

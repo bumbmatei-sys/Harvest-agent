@@ -1,0 +1,46 @@
+{
+  "ticket": "THE-372",
+  "note": "THE-372 records ownership of the eight ownership-pinned test files its reprice necessarily moves. THE-372 is a REPRICE and nothing else: Ministry goes 60/162/564 to 80/216/752, the founder's $80 with THE-343's discount ratios kept (2.7x and 9.4x monthly), applied to the three live Dodo products first and verified there. No cap, feature cell, add-on or code path moved. NO firestore.rules digest is recorded here: this ticket does not go near that file.",
+  "entries": [
+    {
+      "file": "src/components/__tests__/AdminSettings.free-tier-sections.test.tsx",
+      "digest": "8997494b8f2e8625f7f20c661d87235ba7737b8f21a2d86799b3a0d968dec13f",
+      "why": "THE-372 owns this change and it is the max row of this file's nine-price no-regression pin, 60/162/564 to 80/216/752, plus the comment beside it naming THE-372. plus and pro stay enumerated so a reprice that reached past its brief still fails here; nothing about the free tier's sections was touched."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/dodo-catalogue.test.ts",
+      "digest": "ecc2c9bdacb1dce127badb053d0b70e1b2347a44264b99cdcb98a6ea290b3bc6",
+      "why": "THE-372 owns this change. The three Ministry rows of the live fixture move to 8000/21600/75200 minor units, transcribed from the repriced live products rather than from PLAN_PRICING, and the max row of the nine-figure price table moves with them. All nine rows still go through the strict equality check with no exclusion. The docblock gains a paragraph recording THE-372 and stops restating THE-343's minor units, which THE-344's prose sweep now treats as superseded."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/dodo-quarterly-term.test.ts",
+      "digest": "afd0ec5e86a09d633c457b78f3f852a39c27abc411ae0d1f2af8bb37aae46544",
+      "why": "THE-372 owns this change: Ministry's quarterly minor units in the CENTS table move to 21600, and the comment above it is rewritten to say the catalogue and live Dodo agree at THE-372's figure. The 3 x Month frequency and id-disjointness checks are untouched."
+    },
+    {
+      "file": "src/utils/__tests__/the-222-repricing.test.ts",
+      "digest": "34ad83038abca58dd4050eebc04462c076d1dedc33ea65a883e5589ba68e4caf",
+      "why": "THE-372 owns this change and it is the current-table max row, 60/162/564 to 80/216/752. THE-222's own historical tables are untouched."
+    },
+    {
+      "file": "src/utils/__tests__/the-248-discount-alignment.test.ts",
+      "digest": "55aa154a3c5cabd019b53dd66a1e3532b8d573093ed19e1047093ea52e5d1db8",
+      "why": "THE-372 owns this change. The live-Dodo and site-transcription max rows, the derived minor units, the formatted charged figures and headlines ($216/qtr, $752/yr, $72, $62.67) move to the new prices. The rise-over-THE-248 check covers all three tiers again, because THE-372 put Ministry's quarter and year back above THE-248's predecessors; THE-343 had scoped it to two. Ratios (2.7 and 9.4) and the restated-price sweep are unchanged."
+    },
+    {
+      "file": "src/utils/__tests__/the-343-ministry-reprice.test.ts",
+      "digest": "96b3204955510b461224c6ceea8bf80fd8a86857fb91d5562ce1d5595413e5c1",
+      "why": "THE-372 owns this change. THE-343's suite asserted its own figures; they are superseded, so every assertion naming 60/162/564, the clean $47 headline or THE-343's minor units now names the current figures and says where it moved, and the 'reprice is a cut' check becomes the true statement of what THE-372 did relative to THE-248. The stripper, the entitlement no-regression pins, the platform fee and the client plan-write sweep are unchanged."
+    },
+    {
+      "file": "src/__tests__/THE-344.reprice-retired.test.ts",
+      "digest": "74b18d96af23f80e4034a484a329bf9342a56bd37c9f6334cdc45ae9a410d226",
+      "why": "THE-372 owns this change. THE-344's live-Dodo table moves its three Ministry rows to 8000/21600/75200, and its SUPERSEDED set moves with them: 8000 and 21600 are current again, so the prose and code sweeps now hunt THE-343's 6000/16200/56400 plus THE-248's 76000. The retired exclusion record stays retired and every sweep keeps its population floor and its planted-mutation proof."
+    },
+    {
+      "file": "src/__tests__/THE-322.ownership-register.test.ts",
+      "digest": "61a6251e868275d6db6cc8d97c455e3b4a289ebb2d4292af771eb54d5b5366d0",
+      "why": "THE-372 owns this change, and it NARROWS one check without loosening what it guards. The no-index check was a substring match of every other ticket's id against a record's structural fields, so it also matched a SOURCE FILE named after a ticket: THE-372 must record its edit to THE-344's own suite, whose path contains that ticket's id, and a test file is not a record. The check now asks whether a record names another RECORD - its ticket field, or an entry pointing at that record by id, filename or path - through one helper, and a new test proves both directions: the suite path passes, and all three ways of naming a record still fail."
+    }
+  ]
+}

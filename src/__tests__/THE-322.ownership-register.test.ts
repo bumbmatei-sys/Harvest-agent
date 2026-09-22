@@ -106,6 +106,26 @@ const BEFORE: ReadonlyArray<readonly [file: string, digest: string]> = [
  */
 const MIGRATED_SOURCES = ['THE-319.json', 'THE-320.json'];
 
+
+/**
+ * Does record `parsed` name the ownership record `otherFile` (e.g. `THE-344.json`)
+ * in a STRUCTURAL field? Its `ticket` naming that ticket, or an entry pointing at
+ * that record — as a bare id, as the record's filename, or by a path ending in it.
+ * A source file that merely carries the ticket's id in its own name is not a
+ * record, so it is not an index (see the THE-372 note where this is asserted).
+ */
+function namesRecord(
+  parsed: { ticket: string; entries: ReadonlyArray<{ file: string }> },
+  otherFile: string,
+): boolean {
+  const id = otherFile.replace(/\.json$/, '');
+  if (parsed.ticket === id) return true;
+  return parsed.entries.some(({ file }) => {
+    const base = file.split('/').pop() ?? file;
+    return file === id || base === otherFile || base === id;
+  });
+}
+
 describe('1 · every entry that existed before exists after', () => {
   const after = loadOwnership();
   /** The entries THE-322 actually moved — the population section 1 is about. */
@@ -213,11 +233,30 @@ describe('2 · two tickets recording different files touch no common file', () =
       const parsed = JSON.parse(readFileSync(path.join(OWNERSHIP_DIR, name), 'utf8')) as {
         ticket: string; entries: ReadonlyArray<{ file: string }>;
       };
-      const structural = [parsed.ticket, ...parsed.entries.map((e) => e.file)].join(' ');
-      const others = names.filter((n) => n !== name && structural.includes(n.replace(/\.json$/, '')));
+      const others = names.filter((n) => n !== name && namesRecord(parsed, n));
       expect(others, `${name} names another ticket's record in a structural field — that is an `
         + `index by another name:\n  ${others.join('\n  ')}`).toEqual([]);
     }
+  });
+
+  it('the index check fires on a RECORD, and not on a suite that shares a ticket\'s name', () => {
+    /**
+     * ⚠️ NARROWED AT THE-372, and proved in both directions here. The check
+     * used to be a substring match of the other ticket's id against every
+     * structural field, which also matched a SOURCE FILE named after a ticket:
+     * THE-372 reprices Ministry and must record its edit to THE-344's own
+     * suite, `THE-344.reprice-retired.test.ts`, and that path contains
+     * `THE-344`. A test file is not a record, so listing it is not an index.
+     * What still fails: a `ticket` field naming another ticket, and an entry
+     * pointing at another ticket's record file, by name or by path.
+     */
+    const other = 'THE-344.json';
+    const rec = (ticket: string, file: string) => ({ ticket, entries: [{ file }] });
+    expect(namesRecord(rec('THE-372', 'src/__tests__/THE-344.reprice-retired.test.ts'), other)).toBe(false);
+    expect(namesRecord(rec('THE-344', 'src/x.ts'), other)).toBe(true);
+    expect(namesRecord(rec('THE-372', 'src/__tests__/__fixtures__/ownership/THE-344.json'), other)).toBe(true);
+    expect(namesRecord(rec('THE-372', 'THE-344.json'), other)).toBe(true);
+    expect(namesRecord(rec('THE-372', 'THE-344'), other)).toBe(true);
   });
 
   it('🔴 and two tickets recording DIFFERENT files write two different files', () => {
