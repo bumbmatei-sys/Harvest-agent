@@ -418,10 +418,10 @@ describe('no feature flag or price moved', () => {
     expect(PLAN_PRICING).toEqual({
       plus: { monthly: 20, quarterly: 54, yearly: 190 },
       pro: { monthly: 40, quarterly: 108, yearly: 380 },
-      // ⚠️ THE-343 repriced Ministry ($80→$60, with the quarter and year
+      // ⚠️ THE-343 repriced Ministry ($80→$60, and THE-372 back to $80, with the quarter and year
       // following at the same 10% / >20% discounts). `plus` and `pro` are
       // enumerated so a reprice that overreached its brief still fails here.
-      max: { monthly: 60, quarterly: 162, yearly: 564 },
+      max: { monthly: 80, quarterly: 216, yearly: 752 },
     });
     expect(Object.keys(PLAN_PRICING), 'free gained a price').not.toContain('free');
   });

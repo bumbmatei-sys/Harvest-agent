@@ -339,9 +339,9 @@ describe('4 — one switch, and nothing else moved', () => {
     const { PLAN_PRICING } = await import('../../utils/plan-features');
     expect(PLAN_PRICING.plus.monthly).toBe(20);
     expect(PLAN_PRICING.pro.monthly).toBe(40);
-    // ⚠️ 80 until THE-343, which repriced Ministry to $60. Plus and pro above
-    // are what this file actually guards: an SMS switch may not move a price.
-    expect(PLAN_PRICING.max.monthly).toBe(60);
+    // ⚠️ 80, then 60 from THE-343, and 80 again since THE-372. Plus and pro
+    // above are what this file actually guards: an SMS switch may not move a price.
+    expect(PLAN_PRICING.max.monthly).toBe(80);
   });
 
   it('🔴 this ticket deletes no data and touches no rules or functions', async () => {

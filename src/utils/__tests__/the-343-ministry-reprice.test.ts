@@ -61,10 +61,17 @@ import { planWritesIn } from '../../__tests__/the-291-client-plan-write.test';
  *
  * ✅ AND DODO HAS SINCE BEEN REPRICED TOO — THE-344. When this ticket landed,
  * the three live products carried the superseded amounts and that gap was
- * recorded, and asserted from both sides, in `dodo-catalogue.test.ts`. They now
- * hold 6000 / 16200 / 56400, read back from the authenticated live API with the
- * 14-day trial and the billing intervals intact, so the sections below assert
- * AGREEMENT where they used to assert a gap.
+ * recorded, and asserted from both sides, in `dodo-catalogue.test.ts`. THE-344
+ * read them back at this ticket's figures, with the 14-day trial and the
+ * billing intervals intact, so the sections below assert AGREEMENT.
+ *
+ * 🔴 SUPERSEDED BY THE-372. The founder put Ministry back to $80, applied in
+ * Dodo first and verified live, with the quarter and year at $216 and $752 —
+ * THIS ticket's discount RATIOS kept exactly (2.7x and 9.4x monthly). Every
+ * assertion below that named this ticket's figures now names the current ones
+ * and says so where it moved; the entitlement no-regression pins, the stripper
+ * and the derivation sweeps are unchanged, because they were never about the
+ * $60. `THE-372.ministry-80.test.ts` owns the new guards.
  * ───────────────────────────────────────────────────────────────────────────*/
 
 const REPO = resolve(__dirname, '../../..');
@@ -193,9 +200,9 @@ describe('🔴 the comment stripper is verified before any guard relies on it', 
 });
 
 /* ── 1 & 2 · the table ────────────────────────────────────────────────────── */
-describe('1 & 2 · PLAN_PRICING.max is exactly 60 / 162 / 564, and nothing else moved', () => {
-  it('🔴 max is exactly { monthly: 60, quarterly: 162, yearly: 564 }', () => {
-    expect(PLAN_PRICING.max).toEqual({ monthly: 60, quarterly: 162, yearly: 564 });
+describe('1 & 2 · PLAN_PRICING.max is exactly what THE-372 restored, and nothing else moved', () => {
+  it('max is exactly { monthly: 80, quarterly: 216, yearly: 752 } (moved at THE-372)', () => {
+    expect(PLAN_PRICING.max).toEqual({ monthly: 80, quarterly: 216, yearly: 752 });
   });
 
   it('🔴 plus and pro are UNCHANGED — enumerated, every cell', () => {
@@ -205,7 +212,7 @@ describe('1 & 2 · PLAN_PRICING.max is exactly 60 / 162 / 564, and nothing else 
     expect(PLAN_PRICING).toEqual({
       plus: { monthly: 20, quarterly: 54, yearly: 190 },
       pro: { monthly: 40, quarterly: 108, yearly: 380 },
-      max: { monthly: 60, quarterly: 162, yearly: 564 },
+      max: { monthly: 80, quarterly: 216, yearly: 752 },
     });
   });
 
@@ -214,11 +221,14 @@ describe('1 & 2 · PLAN_PRICING.max is exactly 60 / 162 / 564, and nothing else 
     for (const plan of PRICED_PLAN_ORDER) expect(Object.isFrozen(PLAN_PRICING[plan])).toBe(true);
   });
 
-  it('🔴 the reprice is a CUT on every term, which is what the founder asked for', () => {
-    const BEFORE = { monthly: 80, quarterly: 216, yearly: 760 } as const;
-    for (const term of BILLING_TERMS) {
-      expect(PLAN_PRICING.max[term], `max ${term} did not fall`).toBeLessThan(BEFORE[term]);
-    }
+  it('THE-343 was a cut on every term; THE-372 reversed it on month and quarter, and the year stays below THE-248', () => {
+    // ⚠️ INVERTED AT THE-372. THE-343 cut all three from THE-248's 80 / 216 /
+    // 760. THE-372 restored the month and the quarter exactly and derived the
+    // year from THE-343's ratio, so it lands at 752 — still $8 under 760.
+    const THE_248 = { monthly: 80, quarterly: 216, yearly: 760 } as const;
+    expect(PLAN_PRICING.max.monthly).toBe(THE_248.monthly);
+    expect(PLAN_PRICING.max.quarterly).toBe(THE_248.quarterly);
+    expect(PLAN_PRICING.max.yearly).toBeLessThan(THE_248.yearly);
   });
 });
 
@@ -234,7 +244,8 @@ describe('3 & 4 · the delivered discounts, and the validator', () => {
 
   it('🔴 THE DELIVERED YEARLY PERCENTAGES, per tier — Ministry now differs', () => {
     // The figures this ticket has to report. Individual and Small Team are
-    // unchanged at 190/240 and 380/480; Ministry is 564/720.
+    // unchanged at 190/240 and 380/480; Ministry was 564/720 and since THE-372
+    // is 752/960 — the same ratio, so the same percentage.
     expect(actualSavingPct('plus', 'yearly')).toBeCloseTo(20.8333, 4);
     expect(actualSavingPct('pro', 'yearly')).toBeCloseTo(20.8333, 4);
     expect(actualSavingPct('max', 'yearly')).toBeCloseTo(21.6667, 4);
@@ -284,16 +295,15 @@ describe('3 & 4 · the delivered discounts, and the validator', () => {
 });
 
 /* ── 5 · the monthly equivalent ───────────────────────────────────────────── */
-describe("5 · Ministry's monthly equivalent is a clean 47", () => {
-  it('🔴 564 / 12 is 47 EXACTLY — no decimal, no rounding boundary', () => {
-    expect(PLAN_PRICING.max.yearly / 12).toBe(47);
-    expect(planTermMonthlyDisplayed('max', 'yearly')).toBe(47);
-    expect(Number.isInteger(planTermMonthlyDisplayed('max', 'yearly'))).toBe(true);
-    expect(formatPlanMonthlyHeadline('max', 'yearly')).toBe('$47');
-    expect(formatPlanMonthlyHeadline('max', 'yearly')).not.toContain('.');
-    // 🔴 AND IT RECONCILES WITH THE BILL EXACTLY. No other yearly cell does:
-    // $15.84 x 12 is $190.08 against $190, $31.67 x 12 is $380.04 against $380.
-    expect(planTermMonthlyDisplayed('max', 'yearly') * 12).toBe(PLAN_PRICING.max.yearly);
+describe("5 · Ministry's monthly equivalent", () => {
+  it('752 / 12 is CEILED to $62.67 — THE-343\'s clean $47 moved at THE-372', () => {
+    // THE-343 chose 564 because 564 / 12 is exactly 47. THE-372's 752 is not a
+    // whole multiple of twelve, so the headline carries cents again, and the
+    // ceiling is what keeps it from promising less than the bill.
+    expect(PLAN_PRICING.max.yearly / 12).toBeCloseTo(62.6667, 4);
+    expect(planTermMonthlyDisplayed('max', 'yearly')).toBe(62.67);
+    expect(formatPlanMonthlyHeadline('max', 'yearly')).toBe('$62.67');
+    expect(planTermMonthlyDisplayed('max', 'yearly') * 12).toBeGreaterThanOrEqual(PLAN_PRICING.max.yearly);
   });
 
   it('🔴 THE ROUNDING TRAP 564 WAS CHOSEN TO AVOID, stated as arithmetic', () => {
@@ -306,8 +316,8 @@ describe("5 · Ministry's monthly equivalent is a clean 47", () => {
     expect(48 * 12).toBe(576);
     expect(576).toBeGreaterThan(570);
     // 🔴 THIS REPO CEILS TO THE CENT rather than rounding, so 570 would print
-    // $47.50 — honest, but a decimal on the card. 564 is the figure that is
-    // both honest AND clean, and that is why it was chosen.
+    // $47.50 — honest, but a decimal on the card. The rule, not the figure, is
+    // what this still guards now that THE-372's figure carries cents anyway.
     expect(ceilToCent(570 / 12)).toBe(47.5);
     expect(Number.isInteger(ceilToCent(570 / 12))).toBe(false);
     expect(Number.isInteger(ceilToCent(564 / 12))).toBe(true);
@@ -319,7 +329,7 @@ describe("5 · Ministry's monthly equivalent is a clean 47", () => {
     // All three quarters still divide exactly.
     expect(formatPlanMonthlyHeadline('plus', 'quarterly')).toBe('$18');
     expect(formatPlanMonthlyHeadline('pro', 'quarterly')).toBe('$36');
-    expect(formatPlanMonthlyHeadline('max', 'quarterly')).toBe('$54');
+    expect(formatPlanMonthlyHeadline('max', 'quarterly')).toBe('$72');
   });
 
   it('🔴 and no headline promises less than the bill, on any tier or term', () => {
@@ -336,9 +346,9 @@ describe("5 · Ministry's monthly equivalent is a clean 47", () => {
 /* ── 6 · every displayed price is derived ─────────────────────────────────── */
 describe('6 · no price literal on a surface — every figure goes through the helpers', () => {
   it('formatPlanPrice renders the charged figure and its cycle, per tier and term', () => {
-    expect(formatPlanPrice('max', 'monthly')).toBe('$60/mo');
-    expect(formatPlanPrice('max', 'quarterly')).toBe('$162/qtr');
-    expect(formatPlanPrice('max', 'yearly')).toBe('$564/yr');
+    expect(formatPlanPrice('max', 'monthly')).toBe('$80/mo');
+    expect(formatPlanPrice('max', 'quarterly')).toBe('$216/qtr');
+    expect(formatPlanPrice('max', 'yearly')).toBe('$752/yr');
     expect(formatPlanPrice('plus', 'monthly')).toBe('$20/mo');
     expect(formatPlanPrice('pro', 'yearly')).toBe('$380/yr');
     // Free has no price and no cycle.
@@ -387,9 +397,9 @@ describe('6 · no price literal on a surface — every figure goes through the h
     const catches = (lit: string) =>
       PRICED_PLAN_ORDER.flatMap((p) => BILLING_TERMS.map((t) => String(PLAN_PRICING[p][t])))
         .some((price) => new RegExp(`\\$${price}(?![\\d.])`).test(lit));
-    expect(catches('Ministry is $60/mo'), 'a planted $60 would not be caught').toBe(true);
-    expect(catches('billed as $564 every 12 months'), 'a planted $564 would not be caught').toBe(true);
-    expect(catches('$162/qtr'), 'a planted $162 would not be caught').toBe(true);
+    expect(catches('Ministry is $80/mo'), 'a planted $80 would not be caught').toBe(true);
+    expect(catches('billed as $752 every 12 months'), 'a planted $752 would not be caught').toBe(true);
+    expect(catches('$216/qtr'), 'a planted $216 would not be caught').toBe(true);
     // And it does NOT fire on things that are not plan prices.
     expect(catches('borderRadius 60'), 'a bare number was read as a price').toBe(false);
     expect(catches('$600 raised'), 'a longer figure was read as a price').toBe(false);
@@ -524,11 +534,13 @@ describe('the Dodo reprice, which THE-344 completed', () => {
    *  API by THE-344 (`products.retrieve` on each id) rather than derived from
    *  this repo. `live` carried the superseded amounts while THE-343 was out in
    *  front; it is now the same figure the app publishes, which is what makes
-   *  asserting the two EQUAL a check rather than a restatement. */
+   *  asserting the two EQUAL a check rather than a restatement.
+   *  ⚠️ MOVED AT THE-372: the founder repriced the three products to $80 /
+   *  $216 / $752 in Dodo first and verified them; the app followed. */
   const MINISTRY = {
-    monthly: { live: 6000, app: 6000, id: 'pdt_0NlJZMUUiT36FGMoiFXgl' },
-    quarterly: { live: 16200, app: 16200, id: 'pdt_0NloCatUWEkEUq1usWJ0n' },
-    yearly: { live: 56400, app: 56400, id: 'pdt_0NlJZMXTnpRBAwTfBVpPs' },
+    monthly: { live: 8000, app: 8000, id: 'pdt_0NlJZMUUiT36FGMoiFXgl' },
+    quarterly: { live: 21600, app: 21600, id: 'pdt_0NloCatUWEkEUq1usWJ0n' },
+    yearly: { live: 75200, app: 75200, id: 'pdt_0NlJZMXTnpRBAwTfBVpPs' },
   } as const;
 
   it('🔴 the catalogue derives its price from PLAN_PRICING — no literal to edit', () => {
@@ -549,7 +561,7 @@ describe('the Dodo reprice, which THE-344 completed', () => {
       expect(entry.priceMinorUnits, `${term} app-side minor units`).toBe(MINISTRY[term].app);
     }
     expect(BILLING_TERMS.map((t) => DODO_LIVE_CATALOGUE.max[t].priceMinorUnits))
-      .toEqual([6000, 16200, 56400]);
+      .toEqual([8000, 21600, 75200]);
   });
 
   it('🔴 and the window is CLOSED: the app and live Dodo agree on all three', () => {

@@ -686,10 +686,12 @@ export const TERM_MONTHS: Readonly<Record<BillingTerm, number>> = Object.freeze(
  *
  * ⚠️ THE QUARTERLY COLUMN IS FLAT; THE YEARLY COLUMN IS NOT, and THE-343 is
  * what separated them again. The quarters are still exactly nine tenths of
- * three months ($54/$60, $108/$120, $162/$180), so every tier saves 10.0% on a
+ * three months ($54/$60, $108/$120, $216/$240), so every tier saves 10.0% on a
  * quarter to the cent. The years no longer share a ratio: Individual and Small
- * Team are 190/240ths of twelve and Ministry is 564/720ths, which is 21.7%
- * against their 20.8%.
+ * Team are 190/240ths of twelve and Ministry is 752/960ths, which is 21.7%
+ * against their 20.8%. (THE-372 put Ministry back to $80 and kept THE-343's
+ * ratios exactly — 2.7x monthly a quarter, 9.4x a year — so this table's
+ * percentages did not move.)
  *
  * ⚠️ THE-248 HAD MADE BOTH COLUMNS FLAT, and that was a property of those
  * prices rather than a rule. Nothing here may assume either shape: the tiers
@@ -710,7 +712,7 @@ export const PLAN_PRICING: Readonly<Record<PricedPlan, Readonly<Record<BillingTe
   Object.freeze({
     plus: Object.freeze({ monthly: 20, quarterly: 54,  yearly: 190 }),
     pro:  Object.freeze({ monthly: 40, quarterly: 108, yearly: 380 }),
-    max:  Object.freeze({ monthly: 60, quarterly: 162, yearly: 564 }),
+    max:  Object.freeze({ monthly: 80, quarterly: 216, yearly: 752 }),
   });
 
 /**
@@ -796,10 +798,10 @@ export function planTermMonthlyExact(plan: PricedPlan, term: BillingTerm): numbe
  *
  * ⚠️ THOSE TWO CELLS ARE HISTORY — THE RULE IS NOT, AND THE-343 IS WHY THAT
  * DISTINCTION EARNS ITS KEEP. Under today's prices the three quarters divide
- * exactly ($54/3, $108/3, $162/3 are $18, $36, $54), two years round UP
- * ($190/12 → $16, $380/12 → $32) and Ministry's year divides exactly
- * ($564/12 = $47). So NO cell understates under `Math.round` any more — the one
- * that did, Ministry's $760/12 = $63.3333 → $63 → $756, was repriced away.
+ * exactly ($54/3, $108/3, $216/3 are $18, $36, $72) and all three years round
+ * UP ($190/12 → $16, $380/12 → $32, $752/12 → $63). So NO cell understates
+ * under `Math.round` today — the one that did, Ministry's $760/12 = $63.3333 →
+ * $63 → $756, was repriced away by THE-343, and THE-372's $752 overstates.
  *
  * 🔴 THAT IS NOT A REASON TO RELAX THE RULE, IT IS THE REASON IT IS A RULE.
  * A list of offending cells would now be empty and would read as permission to

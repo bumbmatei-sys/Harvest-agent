@@ -736,6 +736,23 @@ const CONTENT_ASSERTING: ReadonlyArray<readonly [string, string]> = [
     '75e67239ed7798bc2995c99c965843f03bffd162748532c159dfa142930584d7'],
 ];
 
+/**
+ * 🔵 LATER EDITS ARE APPENDED HERE, NEVER SUBSTITUTED ABOVE. Each entry names
+ * the change that last moved a content-asserting suite, the digest it left, and
+ * why; the list above stays exactly as it was, and a suite must match its entry
+ * here when it has one. These suites still assert CONTENT and still pin no
+ * digest, so they remain out of THE-325's own bounds.
+ */
+const CONTENT_ASSERTING_MOVED: Readonly<Record<string, readonly [digest: string, change: string, why: string]>> = {
+  'src/components/__tests__/the-255-install-app.test.tsx': [
+    '74c840b447d9cd8bda7b1012c879cd4f0adae071768b3ef3eaa3850ce5667a1d',
+    '#517',
+    'the public /api/waitlist route answers CORS for the marketing site, so it '
+      + 'joins /api/contact on the theharvest.site allow-list; #517 merged with CI '
+      + 'red, so the list never moved with it. No other line of the suite changed.',
+  ],
+};
+
 describe('6 · the content-asserting suites are untouched', () => {
   it('there are eight of them', () => {
     expect(CONTENT_ASSERTING).toHaveLength(8);
@@ -744,7 +761,16 @@ describe('6 · the content-asserting suites are untouched', () => {
   it.each(CONTENT_ASSERTING)('%s is byte-identical', (rel, digest) => {
     expect(sha256(readFileSync(path.join(ROOT, rel))),
       `${rel} was edited — it asserts CONTENT, not a digest, and is out of THE-325's bounds`)
-      .toBe(digest);
+      .toBe(CONTENT_ASSERTING_MOVED[rel]?.[0] ?? digest);
+  });
+
+  it('every appended entry names a suite in the list, a change and a reason', () => {
+    for (const [rel, [digest, change, why]] of Object.entries(CONTENT_ASSERTING_MOVED)) {
+      expect(CONTENT_ASSERTING.map(([r]) => r), `${rel} is not a content-asserting suite`).toContain(rel);
+      expect(digest).toMatch(/^[0-9a-f]{64}$/);
+      expect(change).toMatch(/^(?:THE-\d+|#\d+)$/);
+      expect(why.length).toBeGreaterThan(40);
+    }
   });
 
   it('and none of them was quietly turned into a digest pin', () => {

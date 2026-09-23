@@ -522,7 +522,11 @@ describe('5 · the money path is byte-identical', () => {
      * a church correcting its own books says nothing about what that church may
      * do - so the Dodo webhook remains the single writer of a capability.
      */
-    expect(routes.length, 'an API route was added or removed').toBe(123);
+    // APPENDED FOR #517 — the public /api/waitlist product-updates capture, merged
+    // with CI red, so this count never moved with it. It writes a
+    // `product_updates` document and never the tenant document, so it applies
+    // no entitlement; it is named in the list below like every other addition.
+    expect(routes.length, 'an API route was added or removed').toBe(124);
     expect(
       routes.some((f) => f.endsWith(path.join('app/api/sms/numbers/route.ts'))),
       'the route THE-314 added is missing — the count moved for some other reason',
@@ -540,6 +544,8 @@ describe('5 · the money path is byte-identical', () => {
       'app/api/event-payment/public-claim/route.ts',
       // APPENDED BY THE-369 — see the note on the count above.
       'app/api/crm/contact-activities/[activityId]/route.ts',
+      // APPENDED FOR #517 — see the note on the count above.
+      'app/api/waitlist/route.ts',
     ]) {
       expect(
         routes.some((f) => f.endsWith(path.join(added))),
@@ -607,10 +613,10 @@ describe('6 · no plan cap or price changed', () => {
     expect(PLAN_PRICING).toEqual({
       plus: { monthly: 20, quarterly: 54, yearly: 190 },
       pro: { monthly: 40, quarterly: 108, yearly: 380 },
-      // ⚠️ THE-343 repriced Ministry ($80→$60, with the quarter and year
+      // ⚠️ THE-343 repriced Ministry ($80→$60, and THE-372 back to $80, with the quarter and year
       // following at the same 10% / >20% discounts). `plus` and `pro` are
       // enumerated so a reprice that overreached its brief still fails here.
-      max: { monthly: 60, quarterly: 162, yearly: 564 },
+      max: { monthly: 80, quarterly: 216, yearly: 752 },
     });
   });
 
@@ -705,8 +711,22 @@ describe('6 · no plan cap or price changed', () => {
     //   db4bd86a93fa34691da21bbb9b1dcdea9d3d37f932784d50177ad3b736c11d75 (pre-THE-343)
     //   11f9c533ddaffcf89614219f2d9b37b201e218bc421d923a75fc9d38bf63ffcf (pre-THE-353)
     //   017c56ceda3c0032ac9f5c08468a225ae975a029e4f8cb8a6d73033a14ec4c82 (pre-THE-370)
+    //
+    // 🔴 FROM THE-372 ON THE PIN IS APPENDED, NEVER SUBSTITUTED: each entry
+    // names the ticket that left the file in that state, and the file must
+    // match the LAST. The THE-370 value above is the first entry, unchanged.
+    //
+    // THE-372 is a REPRICE and nothing else: `PLAN_PRICING.max` goes
+    // 60/162/564 → 80/216/752 (the founder's $80, with THE-343's ratios kept),
+    // matching the three live Dodo products, plus two comment blocks that
+    // named the old figures. No cap, no feature cell, no code path. THE-291's
+    // claim — nothing writes `plan` from the client — is independent of price.
+    const PLAN_FEATURES_PINS: ReadonlyArray<readonly [ticket: string, digest: string]> = [
+      ['THE-370', '9b1be3db2c7287216084f46fb1dc15c8caff3d680f0dbb9d53db2ea59d564a92'],
+      ['THE-372', '36f2b6c26662c4a5d95e7de4b15b8482a190c54a134f08c104fc209806352d5c'],
+    ];
     expect(sha256(readFileSync(path.join(REPO, 'src/utils/plan-features.ts')))).toBe(
-      '9b1be3db2c7287216084f46fb1dc15c8caff3d680f0dbb9d53db2ea59d564a92',
+      PLAN_FEATURES_PINS[PLAN_FEATURES_PINS.length - 1][1],
     );
   });
 });

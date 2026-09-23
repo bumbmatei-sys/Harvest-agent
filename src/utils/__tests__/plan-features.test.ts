@@ -667,7 +667,7 @@ describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
   const DODO_CATALOGUE_USD = {
     plus: { monthly: 20, quarterly: 54,  yearly: 190 },
     pro:  { monthly: 40, quarterly: 108, yearly: 380 },
-    max:  { monthly: 60, quarterly: 162, yearly: 564 },
+    max:  { monthly: 80, quarterly: 216, yearly: 752 },
   } as const;
 
   it.each(
@@ -773,7 +773,8 @@ describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
 
   it('yearly is claimed flat — the WORST tier saves 20.83% against an advertised 20%', () => {
     // Yearly clears with room, but NO LONGER IDENTICALLY. $190/$240 and
-    // $380/$480 are each 20.8333%; THE-343 made Ministry $564/$720, which is
+    // $380/$480 are each 20.8333%; Ministry is $752/$960 (THE-343's ratio, kept
+    // by THE-372), which is
     // 21.6667%. The claim is bounded by the WORST tier, so what keeps this
     // 'flat' is the 20.83 pair — Ministry saving MORE cannot weaken a 20%
     // claim. Yearly is still not the term a future reprice breaks first;
@@ -814,27 +815,25 @@ describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
     expect(formatPlanPrice('plus', 'quarterly')).toBe('$54/qtr');
     expect(formatPlanPrice('plus', 'yearly')).toBe('$190/yr');
     expect(formatPlanPrice('pro', 'quarterly')).toBe('$108/qtr');
-    expect(formatPlanPrice('max', 'yearly')).toBe('$564/yr');
-    expect(formatPlanPrice('max', 'monthly')).toBe('$60/mo');
-    expect(formatPlanPrice('max', 'quarterly')).toBe('$162/qtr');
+    expect(formatPlanPrice('max', 'yearly')).toBe('$752/yr');
+    expect(formatPlanPrice('max', 'monthly')).toBe('$80/mo');
+    expect(formatPlanPrice('max', 'quarterly')).toBe('$216/qtr');
   });
 
   it('the headline is the per-month figure on every term and tier', () => {
     // Ceiled at the cent. An exact division keeps its whole-dollar form.
     expect(formatPlanMonthlyHeadline('plus', 'yearly')).toBe('$15.84');
     expect(formatPlanMonthlyHeadline('pro', 'yearly')).toBe('$31.67');
-    // 🔴 MINISTRY'S YEAR DIVIDES EXACTLY SINCE THE-343: $564/12 is $47 on the
-    // nose, so it keeps the WHOLE-DOLLAR form and carries no cents at all.
-    // $47 x 12 is $564 exactly — the headline and the charged total reconcile
-    // with nothing left over, which no other yearly cell manages.
-    expect(formatPlanMonthlyHeadline('max', 'yearly')).toBe('$47');
-    expect(formatPlanMonthlyHeadline('max', 'yearly')).not.toContain('.');
+    // 🔴 MINISTRY'S YEAR CARRIES CENTS AGAIN SINCE THE-372: $752/12 is
+    // $62.6667, CEILED to $62.67. THE-343's $564 had divided to a clean $47;
+    // the ceiling is what keeps $62.67 x 12 = $752.04 at or above the bill.
+    expect(formatPlanMonthlyHeadline('max', 'yearly')).toBe('$62.67');
     // 🔴 ALL THREE QUARTERS DIVIDE EXACTLY under THE-248, so all three keep the
     // whole-dollar form. That branch used to carry one cell; it now carries the
     // whole column.
     expect(formatPlanMonthlyHeadline('plus', 'quarterly')).toBe('$18');
     expect(formatPlanMonthlyHeadline('pro', 'quarterly')).toBe('$36');
-    expect(formatPlanMonthlyHeadline('max', 'quarterly')).toBe('$54');
+    expect(formatPlanMonthlyHeadline('max', 'quarterly')).toBe('$72');
   });
 
   it('monthly renders as decided: the headline IS the charged price, no note', () => {
@@ -896,9 +895,9 @@ describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
     // ceiling the guard could never fail, so it takes the rule as its subject.
     expect(() => monthlyHeadlineContract()).not.toThrow();
     // ⚠️ THE-343 TOOK THE LAST OFFENDING CELL AWAY. Every quarter divides
-    // exactly ($54/3, $108/3, $162/3 → $18, $36, $54), and every year now
-    // either rounds UP ($190/12 = $15.83 → $16; $380/12 = $31.67 → $32) or
-    // divides exactly ($564/12 = $47). `Math.round` therefore understates
+    // exactly ($54/3, $108/3, $216/3 → $18, $36, $72), and every year now
+    // rounds UP ($190/12 = $15.83 → $16; $380/12 = $31.67 → $32; since THE-372
+    // $752/12 = $62.67 → $63). `Math.round` therefore understates
     // NOWHERE on the shipped table, so pointing this mutation at it would
     // assert a rule that cannot fire — a guard that passes while proving
     // nothing. The rule is still the subject; the hazard is now supplied.

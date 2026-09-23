@@ -72,7 +72,7 @@ const THE_222_TABLE: Record<PricedPlan, Record<BillingTerm, number>> = {
 const NEW_TABLE: Record<PricedPlan, Record<BillingTerm, number>> = {
   plus: { monthly: 20, quarterly: 54, yearly: 190 },
   pro: { monthly: 40, quarterly: 108, yearly: 380 },
-  max: { monthly: 60, quarterly: 162, yearly: 564 },
+  max: { monthly: 80, quarterly: 216, yearly: 752 },
 };
 
 /** What THE-222 advertised. Stated here rather than read from the live constant

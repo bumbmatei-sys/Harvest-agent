@@ -62,13 +62,15 @@ import type { PricedPlan } from '@/types/tenant.types';
 const LIVE_DODO_USD: Record<PricedPlan, Record<BillingTerm, number>> = {
   plus: { monthly: 20, quarterly: 54, yearly: 190 },
   pro: { monthly: 40, quarterly: 108, yearly: 380 },
-  // ✅ 60 / 162 / 564, RE-READ FROM THE LIVE API BY THE-344. This row carried
+  // ✅ 80 / 216 / 752 SINCE THE-372, which the founder applied in Dodo first
+  // and verified live (8000 / 21600 / 75200 minor units); THE-344 had re-read
+  // THE-343's 60 / 162 / 564 from the live API. This row carried
   // the superseded amounts for as long as Dodo did: THE-343 repriced Ministry
   // in this repo and could not touch Dodo, so the transcription and the table
   // genuinely disagreed. The three live products have since been repriced and
   // read back (`products.retrieve` on each id, trial and billing interval
   // intact), so this is a transcription of the live API again, not a gap.
-  max: { monthly: 60, quarterly: 162, yearly: 564 },
+  max: { monthly: 80, quarterly: 216, yearly: 752 },
 };
 
 /** What the marketing site transcribes as EXPECTED_PLAN_PRICES. Written out
@@ -76,7 +78,7 @@ const LIVE_DODO_USD: Record<PricedPlan, Record<BillingTerm, number>> = {
 const SITE_EXPECTED_PLAN_PRICES: Record<PricedPlan, Record<BillingTerm, number>> = {
   plus: { monthly: 20, quarterly: 54, yearly: 190 },
   pro: { monthly: 40, quarterly: 108, yearly: 380 },
-  max: { monthly: 60, quarterly: 162, yearly: 564 },
+  max: { monthly: 80, quarterly: 216, yearly: 752 },
 };
 
 /** Render a component into a detached container, the idiom the rest of this
@@ -116,7 +118,7 @@ describe('the nine plan prices match the new table exactly', () => {
     }
     // 🔴 The minor units Dodo now holds, derived rather than retyped, so this
     // cannot drift from the table it is meant to describe.
-    expect(BILLING_TERMS.map((t) => PLAN_PRICING.max[t] * 100)).toEqual([6000, 16200, 56400]);
+    expect(BILLING_TERMS.map((t) => PLAN_PRICING.max[t] * 100)).toEqual([8000, 21600, 75200]);
   });
 
   it('and the live Dodo catalogue publishes the same nine, per tier and per term', () => {
@@ -133,11 +135,12 @@ describe('the nine plan prices match the new table exactly', () => {
     }
   });
 
-  it('🔴 THE-248 left the monthly column alone; THE-343 moved Ministry only', () => {
-    // Individual and Small Team are untouched by both tickets. Ministry's
-    // monthly is the ONE cell THE-343's founder brief names — $80 to $60 —
-    // and the other two columns follow it down by the same discount rules.
-    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'monthly'))).toEqual([20, 40, 60]);
+  it('🔴 THE-248 left the monthly column alone; THE-343 and THE-372 moved Ministry only', () => {
+    // Individual and Small Team are untouched by all three tickets. Ministry's
+    // monthly is the ONE cell each later founder brief names — $80 to $60 at
+    // THE-343, back to $80 at THE-372 — and the other two columns follow it by
+    // the same discount ratios.
+    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'monthly'))).toEqual([20, 40, 80]);
   });
 
   it('every discounted price went UP, which is what a smaller discount means', () => {
@@ -146,31 +149,26 @@ describe('the nine plan prices match the new table exactly', () => {
       pro: { quarterly: 99, yearly: 329 },
       max: { quarterly: 199, yearly: 659 },
     };
-    // ⚠️ SCOPED TO THE TWO TIERS THE-248 STILL OWNS. THE-343 took Ministry the
-    // other way on purpose — $60 is a price CUT, so its quarter and year are
-    // now BELOW THE-248's predecessors. Asserting a rise there would be
-    // asserting that the later ticket did not happen.
-    for (const plan of ['plus', 'pro'] as const) {
+    // ⚠️ ALL THREE TIERS AGAIN SINCE THE-372. THE-343 had cut Ministry, which
+    // put its quarter and year BELOW THE-248's predecessors and scoped this
+    // check to two tiers; THE-372 put Ministry back up ($80, with $216 and
+    // $752 keeping THE-343's ratios), so every discounted cell sits above its
+    // pre-THE-248 figure once more.
+    for (const plan of PRICED_PLAN_ORDER) {
       for (const term of DISCOUNTED_TERMS) {
         expect(planPriceUsd(plan, term), `${plan} ${term} did not rise`)
           .toBeGreaterThan(BEFORE[plan][term]);
       }
-    }
-    // Ministry moved DOWN, and the discount shape is what THE-248 established:
-    // still a flat 10% quarter, still better than 20% on the year.
-    for (const term of DISCOUNTED_TERMS) {
-      expect(planPriceUsd('max', term), `max ${term} did not fall`)
-        .toBeLessThan(BEFORE.max[term]);
     }
   });
 
   it('renders the charged figure and its cycle, per tier and per term', () => {
     expect(formatPlanPrice('plus', 'quarterly')).toBe('$54/qtr');
     expect(formatPlanPrice('pro', 'quarterly')).toBe('$108/qtr');
-    expect(formatPlanPrice('max', 'quarterly')).toBe('$162/qtr');
+    expect(formatPlanPrice('max', 'quarterly')).toBe('$216/qtr');
     expect(formatPlanPrice('plus', 'yearly')).toBe('$190/yr');
     expect(formatPlanPrice('pro', 'yearly')).toBe('$380/yr');
-    expect(formatPlanPrice('max', 'yearly')).toBe('$564/yr');
+    expect(formatPlanPrice('max', 'yearly')).toBe('$752/yr');
   });
 });
 
@@ -390,8 +388,8 @@ describe('a saving exactly equal to the claim passes the percentage guard', () =
     expect(() => monthlyHeadlineContract()).not.toThrow();
     // ⚠️ THE-343 CLOSED THE CELL THIS USED TO BORROW. Ministry's year was
     // $760/12 = $63.3333, which rounded DOWN to $63 and implied $756; it is now
-    // $564/12 = $47 exactly. No shipped cell understates under `Math.round` any
-    // more, so the hazard is supplied explicitly rather than taken from the
+    // $752/12 = $62.6667 (THE-372), which rounds UP. No shipped cell understates
+    // under `Math.round` any more, so the hazard is supplied explicitly rather than taken from the
     // table — otherwise this line would pass without exercising the guard.
     expect(() => monthlyHeadlineContract(Math.round, {
           // 🔴 THE TABLE IS EXPLICIT BECAUSE THE SHIPPED ONE NO LONGER OFFENDS.
@@ -441,10 +439,10 @@ describe("no term's price is a whole number of months at the monthly rate", () =
   it('and the headline still never promises less than the bill', () => {
     expect(formatPlanMonthlyHeadline('plus', 'quarterly')).toBe('$18');
     expect(formatPlanMonthlyHeadline('pro', 'quarterly')).toBe('$36');
-    expect(formatPlanMonthlyHeadline('max', 'quarterly')).toBe('$54');
+    expect(formatPlanMonthlyHeadline('max', 'quarterly')).toBe('$72');
     expect(formatPlanMonthlyHeadline('plus', 'yearly')).toBe('$15.84');
     expect(formatPlanMonthlyHeadline('pro', 'yearly')).toBe('$31.67');
-    expect(formatPlanMonthlyHeadline('max', 'yearly')).toBe('$47');
+    expect(formatPlanMonthlyHeadline('max', 'yearly')).toBe('$62.67');
     for (const plan of PRICED_PLAN_ORDER) {
       for (const term of BILLING_TERMS) {
         const months = TERM_MONTHS[term];

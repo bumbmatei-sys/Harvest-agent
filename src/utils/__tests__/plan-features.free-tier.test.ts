@@ -98,7 +98,8 @@ describe('THE-200 — free is a tier, not a $0 price', () => {
     //     against the shipped ceiling the assertion would be true by
     //     construction and would guard nothing.
     //     ⚠️ THE-343 removed the last shipped cell `Math.round` understated
-    //     (Ministry's year is now $564/12 = $47 exactly), so the round mutation
+    //     (Ministry's year was $564/12 = $47 exactly; since THE-372 it is
+    //     $752/12, which rounds UP), so the round mutation
     //     is paired with the explicit table below rather than the shipped one.
     //     `Math.floor` still understates on the shipped table and so is left
     //     pointed at it.
@@ -445,14 +446,14 @@ describe('THE-200 — no price, term or add-on price changed', () => {
   // ── 11 ─────────────────────────────────────────────────────────────────────
   it('the nine stored prices are byte-for-byte what they were', () => {
     // ⚠️ THE SUBJECT OF THIS FILE IS THE FREE TIER, and the pin moves only when
-    // a reprice ticket moves it. THE-343 is that ticket for `max` — $80 to $60,
-    // with the quarter and year following at the established 10% and >20%
-    // discounts. `plus` and `pro` are enumerated here precisely so a reprice
+    // a reprice ticket moves it. THE-343 was that ticket for `max` — $80 to
+    // $60 — and THE-372 moved it back to $80, with the quarter and year at $216
+    // and $752 keeping THE-343's ratios. `plus` and `pro` are enumerated here precisely so a reprice
     // that reached further than its brief cannot pass this file.
     expect(PLAN_PRICING).toEqual({
       plus: { monthly: 20, quarterly: 54, yearly: 190 },
       pro: { monthly: 40, quarterly: 108, yearly: 380 },
-      max: { monthly: 60, quarterly: 162, yearly: 564 },
+      max: { monthly: 80, quarterly: 216, yearly: 752 },
     });
   });
 

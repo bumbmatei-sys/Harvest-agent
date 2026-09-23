@@ -207,7 +207,7 @@ describe('2 — the switch being TRUE brings every surface back', () => {
     const priceOf = (id: string) => body.plans.find((p: { id: string }) => p.id === id)?.pricing;
     expect(priceOf('plus')).toMatchObject({ monthlyUsd: 20, quarterlyUsd: 54, yearlyUsd: 190 });
     expect(priceOf('pro')).toMatchObject({ monthlyUsd: 40, quarterlyUsd: 108, yearlyUsd: 380 });
-    expect(priceOf('max')).toMatchObject({ monthlyUsd: 60, quarterlyUsd: 162, yearlyUsd: 564 });
+    expect(priceOf('max')).toMatchObject({ monthlyUsd: 80, quarterlyUsd: 216, yearlyUsd: 752 });
   });
 });
 

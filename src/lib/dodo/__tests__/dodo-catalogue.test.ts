@@ -106,12 +106,17 @@ const DODO_TEST_PRODUCTS_AS_VERIFIED = [
  * Dodo itself, so for a window the three Ministry rows carried the superseded
  * amounts and a second table recorded the gap from both sides. Those three live
  * products have since been repriced, and THE-344 READ THEM BACK from the
- * authenticated live API before changing a line here: 6000, 16200 and 56400,
- * with the 14-day free trial (`trial_period_days: 14`, `trial_type: 'free'`),
+ * authenticated live API before changing a line here — THE-343's $60 / $162 /
+ * $564 — with the 14-day free trial (`trial_period_days: 14`, `trial_type: 'free'`),
  * the 1 Month / 3 Month / 1 Year frequencies, `currency: USD`,
  * `tax_inclusive: false` and `tax_category: saas` all intact. `products.update`
  * REPLACES the whole price object, so each of those fields was resent
  * deliberately and each was verified afterwards rather than assumed.
+ *
+ * ⚠️ THE-372 PUT MINISTRY BACK TO $80, with the quarter and year at $216 and
+ * $752 keeping THE-343's ratios. The founder applied all three to the live
+ * products first and verified them, trial and frequencies intact, so the three
+ * Ministry rows below moved with them and still go through the strict check.
  *
  * 🔴 SO THE SECOND TABLE IS GONE AND ALL NINE ROWS GO THROUGH THE STRICT
  * EQUALITY CHECK BELOW, like every other product. A record of a divergence that
@@ -129,9 +134,9 @@ const DODO_LIVE_PRODUCTS_AS_VERIFIED = [
   { plan: 'pro', period: 'monthly', id: 'pdt_0NlJZMOMhmZWiG6UVDl8I', name: 'Harvest Small Team - Monthly', cents: 4000, interval: 'Month' },
   { plan: 'pro', period: 'quarterly', id: 'pdt_0NloCaqg1QPMAlkfDnlOe', name: 'Harvest Small Team - Quarterly', cents: 10800, interval: 'Month' },
   { plan: 'pro', period: 'yearly', id: 'pdt_0NlJZMRWL8tuAZseUIRTP', name: 'Harvest Small Team - Annual', cents: 38000, interval: 'Year' },
-  { plan: 'max', period: 'monthly', id: 'pdt_0NlJZMUUiT36FGMoiFXgl', name: 'Harvest Ministry - Monthly', cents: 6000, interval: 'Month' },
-  { plan: 'max', period: 'quarterly', id: 'pdt_0NloCatUWEkEUq1usWJ0n', name: 'Harvest Ministry - Quarterly', cents: 16200, interval: 'Month' },
-  { plan: 'max', period: 'yearly', id: 'pdt_0NlJZMXTnpRBAwTfBVpPs', name: 'Harvest Ministry - Annual', cents: 56400, interval: 'Year' },
+  { plan: 'max', period: 'monthly', id: 'pdt_0NlJZMUUiT36FGMoiFXgl', name: 'Harvest Ministry - Monthly', cents: 8000, interval: 'Month' },
+  { plan: 'max', period: 'quarterly', id: 'pdt_0NloCatUWEkEUq1usWJ0n', name: 'Harvest Ministry - Quarterly', cents: 21600, interval: 'Month' },
+  { plan: 'max', period: 'yearly', id: 'pdt_0NlJZMXTnpRBAwTfBVpPs', name: 'Harvest Ministry - Annual', cents: 75200, interval: 'Year' },
 ] as const satisfies readonly VerifiedProduct[];
 
 /**
@@ -262,7 +267,7 @@ describe('prices resolve to the nine figures in the table', () => {
   it.each([
     ['plus', 20, 54, 190],
     ['pro', 40, 108, 380],
-    ['max', 60, 162, 564],
+    ['max', 80, 216, 752],
   ] as const)('%s is $%i monthly, $%i quarterly and $%i annually', (plan, monthly, quarterly, annual) => {
     expect(termPriceUsd(plan, 'monthly')).toBe(monthly);
     expect(termPriceUsd(plan, 'quarterly')).toBe(quarterly);

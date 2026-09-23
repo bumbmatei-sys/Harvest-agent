@@ -60,14 +60,13 @@ describe('the three quarterly product ids resolve', () => {
   });
 
   it('publishes the quarterly price this app charges, in both units', () => {
-    // ✅ AND ON MINISTRY IT IS THE SAME NUMBER AGAIN. THE-343 repriced
-    // Ministry's quarter to $162 (16200) in this repo ahead of Dodo, so for a
-    // window these figures were the app's side only; THE-344 repriced the live
-    // product and read it back at 16200, so the catalogue and live Dodo agree
-    // on all three quarters. These figures are still what the CATALOGUE
+    // ✅ AND ON MINISTRY IT IS THE SAME NUMBER AGAIN. THE-372 put Ministry's
+    // quarter back to $216 (21600); the founder repriced the live product in
+    // Dodo first and verified it, so the catalogue and live Dodo agree on all
+    // three quarters. These figures are still what the CATALOGUE
     // publishes, which is what a checkout cart is built from; the live side is
     // pinned per product id in dodo-catalogue.test.ts, which owns it.
-    const CENTS = { plus: 5400, pro: 10800, max: 16200 } as const;
+    const CENTS = { plus: 5400, pro: 10800, max: 21600 } as const;
     for (const plan of PRICED_PLAN_ORDER) {
       expect(DODO_LIVE_CATALOGUE[plan].quarterly.priceMinorUnits).toBe(CENTS[plan]);
       expect(DODO_LIVE_CATALOGUE[plan].quarterly.priceUsd).toBe(CENTS[plan] / 100);
