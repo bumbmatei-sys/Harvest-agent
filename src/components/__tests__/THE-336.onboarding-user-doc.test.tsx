@@ -715,7 +715,7 @@ const USER_DOC_UPDATES: ReadonlyArray<{
   },
   {
     file: 'src/components/AuthPage.tsx',
-    what: 'the termsAccepted/newsletter refresh on both sign-in paths',
+    what: 'the termsAccepted refresh only on both sign-in paths (newsletter was removed because writing it on sign-in overwrote opt-outs)',
     verdict: 'fixed by this ticket',
     why: 'Left as updateDoc deliberately — a consent refresh must not create an account — but its '
       + 'catch no longer returns. Aborting there withheld the set-claims call that follows, so a '

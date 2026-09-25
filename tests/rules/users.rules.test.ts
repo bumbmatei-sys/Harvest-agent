@@ -1,11 +1,15 @@
 import { describe, it, beforeEach, afterAll } from 'vitest';
 import { assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/firestore';
 import {
   seedBase, seedAdmin, teardownEnv,
   superAdmin, owner, fullAdmin, member, adminB, asUid,
   permsOnly, permsAllBut, permsFull,
   TENANT_A, TENANT_B, MEMBER_UID, OWNER_UID, FULL_ADMIN_UID,
 } from './helpers';
+
+const serverNow = () => firebase.firestore.FieldValue.serverTimestamp();
 
 /**
  * users/{userId}: self-edit lock (permissions / tenantId / plan / role),
@@ -154,5 +158,93 @@ describe('users: create/read regressions', () => {
   it('an admin keeps working when their OWN doc update touches only profile fields', async () => {
     const db = (await fullAdmin()).firestore();
     await assertSucceeds(db.doc(`users/${FULL_ADMIN_UID}`).update({ adminNavConfig: { primaryTabIds: ['dashboard'] } }));
+  });
+});
+
+describe('users: newsletter consent', () => {
+  const consent = (optIn: boolean, source: 'signup-email' | 'signup-google') => ({
+    newsletterOptIn: optIn,
+    newsletterOptInAt: serverNow(),
+    newsletterOptInSource: source,
+  });
+
+  it('self-create with the three fields succeeds for both true and false', async () => {
+    const optedIn = (await asUid('consent-in')).firestore();
+    await assertSucceeds(optedIn.doc('users/consent-in').set({
+      role: 'user', email: 'in@t.com', tenantId: TENANT_A,
+      ...consent(true, 'signup-email'),
+    }));
+    const optedOut = (await asUid('consent-out')).firestore();
+    await assertSucceeds(optedOut.doc('users/consent-out').set({
+      role: 'user', email: 'out@t.com', tenantId: TENANT_A,
+      ...consent(false, 'signup-google'),
+    }));
+  });
+
+  it('create without the three fields still succeeds', async () => {
+    const db = (await asUid('consent-absent')).firestore();
+    await assertSucceeds(db.doc('users/consent-absent').set({
+      role: 'user', email: 'absent@t.com', tenantId: TENANT_A,
+    }));
+  });
+
+  it('create with a non-bool, a client timestamp, or a bad source fails', async () => {
+    const badBool = (await asUid('consent-bad-bool')).firestore();
+    await assertFails(badBool.doc('users/consent-bad-bool').set({
+      role: 'user', email: 'b@t.com', tenantId: TENANT_A,
+      newsletterOptIn: 'yes',
+      newsletterOptInAt: serverNow(),
+      newsletterOptInSource: 'signup-email',
+    }));
+
+    const badTime = (await asUid('consent-bad-time')).firestore();
+    await assertFails(badTime.doc('users/consent-bad-time').set({
+      role: 'user', email: 't@t.com', tenantId: TENANT_A,
+      newsletterOptIn: true,
+      newsletterOptInAt: firebase.firestore.Timestamp.fromDate(new Date('2020-01-15T00:00:00Z')),
+      newsletterOptInSource: 'signup-email',
+    }));
+
+    const badSource = (await asUid('consent-bad-source')).firestore();
+    await assertFails(badSource.doc('users/consent-bad-source').set({
+      role: 'user', email: 's@t.com', tenantId: TENANT_A,
+      newsletterOptIn: true,
+      newsletterOptInAt: serverNow(),
+      newsletterOptInSource: 'signup',
+    }));
+  });
+
+  it('a member cannot update their own newsletterOptIn, At, or Source', async () => {
+    const db = (await member()).firestore();
+    await assertFails(db.doc(`users/${MEMBER_UID}`).update({ newsletterOptIn: false }));
+    await assertFails(db.doc(`users/${MEMBER_UID}`).update({ newsletterOptInAt: serverNow() }));
+    await assertFails(db.doc(`users/${MEMBER_UID}`).update({ newsletterOptInSource: 'signup-email' }));
+    await assertSucceeds(db.doc(`users/${MEMBER_UID}`).update({ displayName: 'Still Mine' }));
+  });
+
+  it('a tenant admin cannot rewrite a member\'s consent but can still edit an ordinary field', async () => {
+    await seedAdmin('limited-crm', TENANT_A, permsOnly('manageCRM'));
+    const limited = (await asUid('limited-crm')).firestore();
+    await assertFails(limited.doc(`users/${MEMBER_UID}`).update({ newsletterOptIn: true }));
+    await assertFails(limited.doc(`users/${MEMBER_UID}`).update({ newsletterOptInAt: serverNow() }));
+    await assertFails(limited.doc(`users/${MEMBER_UID}`).update({ newsletterOptInSource: 'signup-google' }));
+    await assertSucceeds(limited.doc(`users/${MEMBER_UID}`).update({ phone: '555-0100' }));
+
+    const full = (await fullAdmin()).firestore();
+    await assertFails(full.doc(`users/${MEMBER_UID}`).update({
+      newsletterOptIn: false,
+      newsletterOptInAt: serverNow(),
+      newsletterOptInSource: 'signup-email',
+    }));
+    await assertSucceeds(full.doc(`users/${MEMBER_UID}`).update({ displayName: 'Edited By Admin' }));
+  });
+
+  it('a super admin can correct the three fields', async () => {
+    const db = (await superAdmin()).firestore();
+    await assertSucceeds(db.doc(`users/${MEMBER_UID}`).update({
+      newsletterOptIn: false,
+      newsletterOptInAt: serverNow(),
+      newsletterOptInSource: 'signup-google',
+    }));
   });
 });

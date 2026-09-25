@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Plus, Search, Edit2, Trash2, Users, Mail, Phone,
   MessageSquare, DollarSign, PhoneCall, Calendar, Clock, ChevronRight, MapPin,
-  List, LayoutGrid, Heart, Award, AlertTriangle, Send, Upload, ChevronDown,
+  List, LayoutGrid, Heart, Award, AlertTriangle, Send, Upload, Download, ChevronDown,
   MoreHorizontal
 } from 'lucide-react';
 import {
@@ -34,7 +34,9 @@ import {
 } from '../hooks/queries/useCRMQueries';
 import { ANALYTICS_EVENTS } from '../lib/analytics/events';
 import { trackProductEvent } from '../lib/analytics/client';
-import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
+import { PLATFORM_TENANT_ID, isPlatformContext } from '../utils/tenant-scope';
+import { matchesCrmFilters } from '../lib/crm-filter';
+import type { NewsletterFilter } from '../lib/newsletter-consent';
 import { useTenant } from '@/contexts/TenantContext';
 import { getEffectiveFeatures, toTenantPlan } from '../utils/plan-features';
 import { getIntegrationProvider, isProviderAvailable } from './settings/integration-providers';
@@ -52,6 +54,26 @@ import {
   IMPORT_FIELDS, IMPORT_FIELD_LABELS, REQUIRED_IMPORT_FIELD,
   type CsvTable, type ColumnMapping, type ImportField, type ImportOutcome,
 } from '../utils/csv-import';
+
+/**
+ * The founder (platform-wide) CRM: a super admin on the apex domain, decided by
+ * `isPlatformContext()` - the same email-list check the export route's
+ * `requireSuperAdmin` makes - and NOT by `currentUserRole`, which AdminDashboard
+ * also sets from the user-doc role.
+ *
+ * FAILS CLOSED. If the check cannot be evaluated (a partial `tenant-scope` test
+ * mock without this export throws on access), the answer is "not platform": the
+ * newsletter filter and the export button stay hidden and the church CRM renders
+ * as before. Hiding is not the access control - the route's server-side
+ * `requireSuperAdmin` is.
+ */
+function platformCrmContext(): boolean {
+  try {
+    return isPlatformContext() === true;
+  } catch {
+    return false;
+  }
+}
 
 const TYPE_LABELS: Record<Contact['type'], string> = {
   donor: 'Donor',
@@ -500,6 +522,10 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | Contact['type']>('all');
+  const [newsletterFilter, setNewsletterFilter] = useState<NewsletterFilter>('all');
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const platformContext = platformCrmContext();
   const [view, setView] = useState<ViewMode>('list');
   const [selected, setSelected] = useState<Contact | null>(null);
   const [form, setForm] = useState(emptyContact);
@@ -866,14 +892,53 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     if (scroller) scroller.scrollTo({ top: 0, left: 0 });
   }, [view, crmSubView, selected?.id]);
 
-  const filtered = contacts.filter(c => {
-    const matchType = filter === 'all' || c.type === filter || (filter !== 'both' && c.type === 'both');
-    const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
-    const matchSearch = !search ||
-      fullName.includes(search.toLowerCase()) ||
-      (c.email || '').toLowerCase().includes(search.toLowerCase());
-    return matchType && matchSearch;
-  });
+  const newsletterSelection: NewsletterFilter = platformContext ? newsletterFilter : 'all';
+  const filtered = contacts.filter(c => matchesCrmFilters(c, {
+    search,
+    type: filter,
+    newsletter: newsletterSelection,
+  }));
+  const filtersActive = Boolean(search) || filter !== 'all' || newsletterSelection !== 'all';
+
+  const exportCsv = async () => {
+    if (exporting) return;
+    setExporting(true);
+    setExportError(null);
+    try {
+      const params = new URLSearchParams();
+      params.set('newsletter', newsletterSelection);
+      params.set('type', filter);
+      params.set('q', search);
+      const res = await authFetch(`/api/admin/crm-export?${params.toString()}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        const message = data && typeof data.error === 'string' && data.error
+          ? data.error
+          : `Export failed (${res.status}).`;
+        setExportError(message);
+        notifyError('Export failed', new Error(message));
+        return;
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get('Content-Disposition') || '';
+      const quoted = /filename="([^"]+)"/.exec(disposition);
+      const filename = quoted?.[1] || 'harvest-crm-newsletter.csv';
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch (e) {
+      const message = (e as Error)?.message || 'Export failed.';
+      setExportError(message);
+      notifyError('Export failed', e);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const openCreate = () => { setIsEditing(false); setForm(emptyContact); setView('form'); };
 
@@ -2603,8 +2668,18 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                 {counts.platformWide
                   ? `Across all churches there are ${nf(counts.contactRecords)} contact records and ${nf(counts.memberAccounts)} member accounts.`
                   : `This church has ${nf(counts.contactRecords)} contact records and ${nf(counts.memberAccounts)} member accounts.`}{' '}
-                The CRM loads at most {nf(CRM_FETCH_LIMIT)} of each, so search, the
-                type filter and the totals above cover only the rows loaded here.
+                {platformContext ? (
+                  <>
+                    The CRM loads at most {nf(CRM_FETCH_LIMIT)} of each, so search, the
+                    type filter, the newsletter filter and the totals above cover only the rows loaded here.
+                    The CSV export covers every account.
+                  </>
+                ) : (
+                  <>
+                    The CRM loads at most {nf(CRM_FETCH_LIMIT)} of each, so search, the
+                    type filter and the totals above cover only the rows loaded here.
+                  </>
+                )}
               </>
             ) : counts.platformWide ? (
               <>
@@ -2678,6 +2753,29 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             </button>
           ))}
         </div>
+        {platformContext && (
+          <div className="flex items-center gap-2 shrink-0" data-testid="crm-newsletter-filter">
+            <span className="text-xs font-semibold text-faint">Newsletter</span>
+            <div className="flex gap-0.5 bg-surface-sunken rounded-lg p-1 shrink-0">
+              {([
+                ['all', 'All', 'crm-newsletter-filter-all'],
+                ['in', 'Opted in', 'crm-newsletter-filter-in'],
+                ['out', 'Opted out', 'crm-newsletter-filter-out'],
+                ['unknown', 'Unknown', 'crm-newsletter-filter-unknown'],
+              ] as const).map(([val, label, testId]) => (
+                <button
+                  key={val}
+                  type="button"
+                  data-testid={testId}
+                  onClick={() => setNewsletterFilter(val)}
+                  className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-colors ${newsletterFilter === val ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {/* List / Pipeline view toggle. The pipeline's three columns ARE the
             giving ladder — `resolvePipelineStage` reads `totalDonated` and
             nothing else — so on a tenant with no donate page the board is one
@@ -2712,6 +2810,17 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         >
           <Upload size={16} /> Import CSV
         </button>
+        {platformContext && (
+          <button
+            type="button"
+            data-testid="crm-export-csv"
+            onClick={exportCsv}
+            disabled={exporting}
+            className={`shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-brand border border-line bg-surface-raised text-[13px] font-semibold text-muted transition-colors hover:bg-surface-sunken disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-surface-raised ${CONTROL_DENSITY.action}`}
+          >
+            <Download size={16} /> {exporting ? 'Exporting…' : 'Export CSV'}
+          </button>
+        )}
         {/* At the cap this is disabled and says why on hover — the same shape the
             Roles screen uses for maxAdmins. It is never hidden: an admin who
             cannot find the button learns nothing, and the disabled state plus the
@@ -2728,6 +2837,13 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         </button>
       </div>
 
+      {exportError && (
+        <Alert variant="destructive" className="mb-4" data-testid="crm-export-error">
+          <AlertTitle>Export failed</AlertTitle>
+          <AlertDescription>{exportError}</AlertDescription>
+        </Alert>
+      )}
+
       {listMode === 'kanban' && showGiving ? (
         <KanbanBoard
           contacts={filtered}
@@ -2737,8 +2853,8 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-faint">
           <Users size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="font-medium font-display">{search || filter !== 'all' ? 'No contacts match' : 'No contacts yet'}</p>
-          {!search && filter === 'all' && (
+          <p className="font-medium font-display">{filtersActive ? 'No contacts match' : 'No contacts yet'}</p>
+          {!filtersActive && (
             <p className="text-sm mt-1">
               {showGiving ? 'Add your first donor or member' : 'Add your first member'}
             </p>

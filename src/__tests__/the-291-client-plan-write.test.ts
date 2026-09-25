@@ -526,7 +526,18 @@ describe('5 · the money path is byte-identical', () => {
     // with CI red, so this count never moved with it. It writes a
     // `product_updates` document and never the tenant document, so it applies
     // no entitlement; it is named in the list below like every other addition.
-    expect(routes.length, 'an API route was added or removed').toBe(124);
+    /**
+     * --- 124 -> 125, the founder CRM newsletter export (ClickUp 86bc7g0uz) ---
+     *
+     * ONE route: `admin/crm-export`. A super admin on the apex domain downloads
+     * the platform CRM (every church's accounts plus platform contacts) as CSV,
+     * filtered by newsletter consent, type and search. It is gated by
+     * `requireSuperAdmin` and it ONLY READS: `users`, `contacts` and the
+     * `tenants` documents for church names. It passes THE-291's claim, asserted
+     * in the loop below: it writes nothing at all, so it cannot write the tenant
+     * document, a `plan`, a feature flag or an add-on count.
+     */
+    expect(routes.length, 'an API route was added or removed').toBe(125);
     expect(
       routes.some((f) => f.endsWith(path.join('app/api/sms/numbers/route.ts'))),
       'the route THE-314 added is missing — the count moved for some other reason',
@@ -546,6 +557,8 @@ describe('5 · the money path is byte-identical', () => {
       'app/api/crm/contact-activities/[activityId]/route.ts',
       // APPENDED FOR #517 — see the note on the count above.
       'app/api/waitlist/route.ts',
+      // APPENDED FOR the founder CRM export — see the note on the count above.
+      'app/api/admin/crm-export/route.ts',
     ]) {
       expect(
         routes.some((f) => f.endsWith(path.join(added))),
@@ -597,6 +610,11 @@ describe('5 · the money path is byte-identical', () => {
        * not reach the tenant document itself on the way to the subcollection.
        */
       'src/app/api/crm/contact-activities/[activityId]/route.ts',
+      /**
+       * The founder CRM export, held to the same claim. It is read-only: the
+       * tenant document is only ever fetched (`getAll`) for a church name.
+       */
+      'src/app/api/admin/crm-export/route.ts',
     ]) {
       const src = read(rel);
       expect(src, `${rel} writes to the tenant document`)

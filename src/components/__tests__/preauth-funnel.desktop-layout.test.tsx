@@ -72,6 +72,7 @@ vi.mock('firebase/firestore', () => ({
   doc: (_d: unknown, ...s: string[]) => ({ __path: s.join('/') }),
   getDoc: vi.fn(async () => ({ exists: () => true, data: () => ({}) })),
   setDoc: setDocMock, updateDoc: updateDocMock, arrayUnion: (...a: unknown[]) => a,
+  serverTimestamp: () => ({ __serverTimestamp: true }),
 }));
 vi.mock('../../utils/firestore-errors', () => ({
   OperationType: { GET: 'get', WRITE: 'write' }, handleFirestoreError: () => {},
@@ -300,6 +301,16 @@ function touchTargets(rootEl: ParentNode): Record<string, { heightPx: number | n
  *
  *     UPDATE_LAYOUT_BASELINE=1 npx vitest run \
  *       src/components/__tests__/preauth-funnel.desktop-layout.test.tsx
+ */
+/*
+ * RE-RECORDED FOR AuthPage.tsx ONLY by the newsletter opt-in change (ClickUp
+ * 86bc7g0uz): the newsletter switch moved from inside the email form to ABOVE
+ * the Google button in signup mode, so Google signups see it. That is a pure
+ * reorder plus one `mb-4` on the moved row: every control keeps its size tokens
+ * and height, only their order (the index in each touch-target key) moved. The
+ * other screens' entries and every `sourceDigests` value are byte-identical to
+ * the previous fixture - `5583096` is no longer in this repository's history, so
+ * the source digests were carried over rather than re-derived.
  */
 const PRE_PR_REVISION = '5583096';
 const FIXTURES = path.join(__dirname, '__fixtures__');

@@ -9,6 +9,10 @@ import { sortByString } from '../../utils/query-helpers';
 import { PLATFORM_TENANT_ID, getTenantScope, isSuperAdmin } from '../../utils/tenant-scope';
 import { authFetch } from '../../utils/auth-fetch';
 import { captureHandledError } from '../../lib/money-path-sentry';
+import type { NewsletterAccountProfile } from '../../lib/newsletter-consent';
+import { mergeContactsWithUsers, userDocToMemberContact } from '../../lib/crm-merge';
+
+export { mergeContactsWithUsers, userDocToMemberContact };
 
 /**
  * CRM pipeline stages — DERIVED from giving, never stored.
@@ -140,6 +144,21 @@ export interface Contact {
    * form fields explicitly, so this never reaches Firestore.
    */
   account?: { role: string; email: string };
+  /**
+   * DERIVED, never stored. Stamped by `mergeContactsWithUsers` in the same
+   * places as {@link Contact.account} — users-only rows and contact rows that
+   * folded a users doc — and left undefined on donor-only rows.
+   *
+   * Newsletter consent is read only from here. A stray `newsletter` or
+   * `newsletterOptIn` on a contacts document is not consent. `newsletterOptIn`
+   * is `null` when the users doc has no boolean (signed up before the field
+   * existed, or the switch was never shown). Timestamps are ISO strings, or
+   * null when the stored value has no readable instant.
+   *
+   * NOT part of any write payload, and not part of `account`: that field
+   * carries only what the `maxContacts` cap needs.
+   */
+  accountProfile?: NewsletterAccountProfile;
 }
 
 export interface ContactActivity {
@@ -307,129 +326,6 @@ export const useContacts = (tenantId: string | null | undefined, isAuthReady = t
     enabled: isAuthReady && tenantId !== undefined,
     staleTime: 1000 * 60 * 5,
   });
-
-/** Turn an app `users` doc into a synthetic Member-type Contact for the CRM. */
-const userDocToMemberContact = (
-  id: string,
-  u: Record<string, any>,
-  fallbackTenantId: string | null | undefined,
-): Contact => {
-  const fullName = String(u.displayName || u.name || '').trim();
-  const parts = fullName ? fullName.split(/\s+/) : [];
-  // A member who has donated (their users doc was stamped by the donation webhook)
-  // surfaces here as Donor & Member with their real total — no duplicate contact row.
-  const totalDonated = Number(u.totalDonated) || 0;
-  return {
-    id,
-    firstName: parts[0] || '',
-    lastName: parts.slice(1).join(' '),
-    email: u.email || '',
-    phone: u.phone || '',
-    photoURL: u.photoURL || undefined,
-    type: totalDonated > 0 ? 'both' : 'member',
-    address: {
-      city: u.city || undefined,
-      country: u.country || undefined,
-    },
-    notes: '',
-    tags: [],
-    totalDonated,
-    // Carried THROUGH from the users doc, not hardcoded to null (THE-149). The
-    // donation webhook stamps `lastDonationAt` on the donor's `users` document in
-    // the same write that increments `totalDonated` there (linkDonationToCRM), so
-    // dropping it here handed the CRM a row whose total said "$100 given" and
-    // whose date said "never" — the same fact, split, with one half thrown away
-    // on read. `DateLike` already covers the webhook's ISO string, and every
-    // reader goes through toSafeDate, so no shape conversion belongs here.
-    lastDonationAt: (u.lastDonationAt ?? null) as DateLike,
-    memberSince: null,
-    createdAt: null,
-    createdBy: id,
-    updatedAt: null,
-    tenantId: (u.tenantId ?? fallbackTenantId ?? PLATFORM_TENANT_ID) as string,
-    account: accountOf(u),
-    // THE-362 — stamped HERE and nowhere else, so it is true exactly when
-    // this row was built from a `users` doc with no contact behind it. See
-    // `Contact.accountOnly`.
-    accountOnly: true,
-  };
-};
-
-/** Normalize an email for cross-collection matching: a missing value, casing, or
- *  stray surrounding whitespace must never split one person into two rows. */
-const normEmail = (s: unknown): string => String(s ?? '').trim().toLowerCase();
-
-/** The two `users` fields the `maxContacts` cap needs — see `Contact.account`. */
-const accountOf = (u: Record<string, any>): { role: string; email: string } => ({
-  role: String(u.role ?? ''),
-  email: String(u.email ?? ''),
-});
-
-/**
- * Merge CRM `contacts` rows with app `users` rows into ONE contact list, keeping
- * each person's id STABLE.
- *
- * A person who exists in BOTH collections must surface as a single row carrying
- * the `contacts` doc id — never the `users` doc id. This is the fix for the
- * dual-id bug: contact activities are keyed by whichever id is selected at write
- * time (manual CRM add) and by the id the donation webhook resolves to (the
- * contact id when a contact exists). If the same person could surface under two
- * ids, activities keyed to one become invisible when the other is selected.
- *
- * A `users` row is folded into an existing contact (i.e. dropped from the member
- * list) when it matches a contact on EITHER:
- *   1. the contact's `userId` link (`contact.userId === users doc id`) — stable
- *      across email changes and immune to casing/whitespace, or
- *   2. the normalized (trim + lowercase) email — a fallback for contacts written
- *      before the `userId` link was populated.
- * The previous email-only, lowercase-but-not-trimmed match missed people whose
- * two docs differed by surrounding whitespace or the `userId` link, which is how
- * a member ended up surfaced under their `users` id with an empty timeline.
- *
- * `users`-only members (no matching contact) are still surfaced, keyed by their
- * `users` id — the same id the webhook writes their activities under.
- *
- * A folded row keeps its `contacts` id and its `contacts` fields, but GAINS
- * `account` (the folded `users` doc's role + email). That flag is the only way a
- * consumer can tell "this person holds an account" from "this person only ever
- * gave money", which the `maxContacts` cap depends on — see `Contact.account`
- * and src/utils/contact-capacity.ts. Contact rows are COPIED rather than
- * mutated so stamping it never writes through to react-query's cached array.
- */
-export const mergeContactsWithUsers = (
-  contactRows: Contact[],
-  userRows: Array<{ id: string; data: Record<string, any> }>,
-  fallbackTenantId: string | null | undefined,
-): Contact[] => {
-  const merged: Contact[] = contactRows.map(c => ({ ...c }));
-  // Both fold indexes point AT the row, not at a bare id, so a match can stamp
-  // `account` on it. Same two keys and the same precedence as before: the
-  // `userId` link first, normalized email as the legacy fallback.
-  const byLinkedUserId = new Map<string, Contact>();
-  const byEmail = new Map<string, Contact>();
-  for (const c of merged) {
-    if (c.userId) byLinkedUserId.set(c.userId, c);
-    const email = normEmail(c.email);
-    // First writer wins, matching the old Set-based membership test: two contact
-    // rows sharing an email fold the same single users doc into the first.
-    if (email && !byEmail.has(email)) byEmail.set(email, c);
-  }
-  const userMembers: Contact[] = [];
-  for (const d of userRows) {
-    const email = normEmail(d.data.email);
-    const linked = byLinkedUserId.get(d.id) ?? (email ? byEmail.get(email) : undefined);
-    if (linked) {                                 // already a contact (userId link, then email)
-      linked.account = accountOf(d.data);
-      continue;
-    }
-    const row = userDocToMemberContact(d.id, d.data, fallbackTenantId);
-    // Seed the email index with the surfaced member so a SECOND users doc
-    // sharing this email dedupes against it, exactly as `seenEmails` did.
-    if (email) byEmail.set(email, row);
-    userMembers.push(row);
-  }
-  return [...merged, ...userMembers];
-};
 
 /**
  * CRM contacts list that ALSO surfaces app members from the `users` collection.
