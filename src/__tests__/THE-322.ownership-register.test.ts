@@ -220,7 +220,13 @@ describe('2 · two tickets recording different files touch no common file', () =
 
     // Nothing in the directory but per-ticket records. An `index.ts`, a
     // `manifest.json` or a generated union would be the shared file again.
-    expect(readdirSync(OWNERSHIP_DIR).filter((n) => !/^THE-\d+\.json$/.test(n)),
+    //
+    // 🔵 WIDENED AT #519 to the SAME two spellings `loadOwnership` already
+    // accepts as a ticket (`TICKET_RE`: `THE-nnn` or `#nnn`). A change with no
+    // THE ticket (#517, #519) records under its PR number, as #517 already does
+    // in THE-325's CONTENT_ASSERTING_MOVED table. Still one file per ticket,
+    // still no index: anything else in the directory fails exactly as before.
+    expect(readdirSync(OWNERSHIP_DIR).filter((n) => !/^(?:THE-\d+|#\d+)\.json$/.test(n)),
       'the ownership directory grew something that is not a per-ticket record')
       .toEqual([]);
 

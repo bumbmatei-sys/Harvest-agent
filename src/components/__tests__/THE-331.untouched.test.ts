@@ -172,13 +172,17 @@ describe('the files this ticket may not touch are byte-identical', () => {
     // of 49 suites into one register precisely so that a rules change costs
     // ONE edit; a literal in this file would put it back to two and its own
     // guard fails on exactly that. The register is read instead.
-    const register = JSON.parse(
-      readFileSync(
-        path.join(ROOT, 'src/__tests__/__fixtures__/ownership/THE-325.json'),
-        'utf8',
-      ),
-    ) as { entries: ReadonlyArray<{ file: string; digest: string }> };
-    const accepted = register.entries
+    //
+    // 🔵 AMENDED AT #519: read EVERY per-ticket record, not THE-325's alone. A
+    // later ticket that legitimately changes the rules records the new state in
+    // its own file (THE-325's documented one edit), so reading one file made
+    // this suite a second edit. An unrecorded state still fails.
+    const ownershipDir = path.join(ROOT, 'src/__tests__/__fixtures__/ownership');
+    const accepted = readdirSync(ownershipDir)
+      .filter((n) => n.endsWith('.json'))
+      .flatMap((n) => (JSON.parse(readFileSync(path.join(ownershipDir, n), 'utf8')) as {
+        entries: ReadonlyArray<{ file: string; digest: string }>;
+      }).entries)
       .filter((e) => e.file === 'firestore.rules')
       .map((e) => e.digest);
     expect(accepted.length, 'the register must record firestore.rules').toBeGreaterThan(0);
