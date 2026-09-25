@@ -1,0 +1,31 @@
+{
+  "ticket": "#519",
+  "note": "#519 (ClickUp 86bc7g0uz, founder go 2026-09-25) persists the signup newsletter choice on users/{uid} (newsletterOptIn, newsletterOptInAt, newsletterOptInSource, written only at account creation, no backfill), adds a founder-only Newsletter filter and a server-side super-admin CSV export (/api/admin/crm-export) to the platform-wide CRM, and locks the three consent fields in firestore.rules against later edits by the member or a church admin. This record carries the firestore.rules digest because this ticket DOES change that file, and firestore.rules auto-deploys on merge: merge needs explicit founder go.",
+  "entries": [
+    {
+      "file": "firestore.rules",
+      "digest": "94b039e605cb386086b761ca1a74fa663ba71ebb71441bef62887082b5b42115",
+      "why": "#519 owns this change and it is the users match block only: a new newsletterConsentOnCreate() check makes the three consent keys all-or-none when a user creates their own doc (any one present requires all three) and validates newsletterOptIn (bool), newsletterOptInAt (== request.time) and newsletterOptInSource ('signup-email' or 'signup-google'), and the three keys join both the self-edit and the tenant-admin affectedKeys deny lists so neither a member nor a church admin can rewrite consent after signup. The super-admin branch and every other match block are byte-identical. Proven by 7 new emulator tests in tests/rules/users.rules.test.ts, including one that refuses every partial set of the three keys on create."
+    },
+    {
+      "file": "src/components/AuthPage.tsx",
+      "digest": "048c29176182b75339e16696f9c0d0dce3c40565612d24ec9e37696dfb49ee2f",
+      "why": "#519 owns this change: the pre-ticked newsletter switch moves above the Google button on the signup tab, both account-creation paths write newsletterOptIn / newsletterOptInAt (serverTimestamp) / newsletterOptInSource at create time (true and false alike), the legacy newsletter write is gone, and both sign-in updateDoc calls now write termsAccepted only."
+    },
+    {
+      "file": "src/components/AdminCRM.tsx",
+      "digest": "599607c140ffb55d4f6d1acdea2bbc45ea63ed824ab1852d5f59f036237b7499",
+      "why": "#519 owns this change: in the platform-wide super-admin CRM view only, a Newsletter segmented filter (All / Opted in / Opted out / Unknown) ANDed with search and Type, and an Export CSV button that calls /api/admin/crm-export with the same filters and the caller's ID token. Church-admin tenant views render neither control; the existing Signups export is untouched."
+    },
+    {
+      "file": "src/hooks/queries/useCRMQueries.ts",
+      "digest": "d273ea858f0433f534282a3bd42df2a4f898887fb0dc8fef8e36a9a5f5959f04",
+      "why": "#519 owns this change: the contact/user merge moves verbatim into src/lib/crm-merge.ts so the server export route runs the exact same merge, and this hook imports and re-exports it. Contact gains an optional accountProfile (tenantId, createdAt, newsletterOptIn/At/Source) carried from the users doc; queries and caching are unchanged."
+    },
+    {
+      "file": "src/__tests__/THE-322.ownership-register.test.ts",
+      "digest": "f28faaedf255bf0696f837c7e82233f5cc010226c79176e766d061a499a1b462",
+      "why": "#519 owns ONE widened regex in this file and the comment that says why: the directory sweep now accepts a per-ticket record named `#nnn.json` as well as `THE-nnn.json`, which is exactly the pair of spellings loadOwnership's TICKET_RE already accepts as a ticket and that THE-325's CONTENT_ASSERTING_MOVED table already uses for #517. Still one file per ticket and still no index; every other assertion, count and entry is byte-identical."
+    }
+  ]
+}

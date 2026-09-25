@@ -836,5 +836,6 @@ const THE_342_BASELINE = {
     ['d7b84c1725df38bac92a51bb947e13ea656db901043dc2f51e41db752061980c', 'THE-362 — the CRM delete refuses a row it cannot remove, and says why'],
     ['62431bdf404503dba342a88eb85efac02427bd24742308522cae43f739ebd3e0', 'THE-368 — one GivingDocsLink in the Add Activity → Donation branch'],
     ['46763248677479d47059a7e1a278d6c50f5c6ed65b59a69868a6fb9e67a7a6ea', 'THE-369 — one activity can be deleted, and a gift takes its receipt with it'],
+    ['599607c140ffb55d4f6d1acdea2bbc45ea63ed824ab1852d5f59f036237b7499', '#519 — founder-only Newsletter filter and CSV export in the platform-wide view; no CRM read or write changed'],
   ] as ReadonlyArray<readonly [digest: string, source: string]>,
 } as const;

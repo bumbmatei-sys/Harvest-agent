@@ -775,8 +775,18 @@ describe('no statement, receipt, CRM write or Stripe path changed', () => {
      * and THE-342's own guards still measure every one of them against the file
      * on disk rather than trusting a hash to stand in for them.
      */
+    /**
+     * RE-RECORDED BY #519 (newsletter opt-in). What moved: the contacts/users
+     * MERGE and its helpers move verbatim into `src/lib/crm-merge.ts`, which this
+     * hook imports and re-exports, so the server CSV export runs the identical
+     * merge; and `Contact` gains ONE optional field, `accountProfile`, carrying
+     * the users doc's tenantId, createdAt and newsletter consent fields. NO
+     * READ, NO QUERY AND NO FETCH SHAPE MOVED: the four `orderBy(documentId())`
+     * clauses, `CRM_FETCH_LIMIT`, the scoping branch and the super-admin gate
+     * are byte-identical, and still no write lives in this file.
+     */
 'src/hooks/queries/useCRMQueries.ts':
-      'df98719e6341a4cbd7e73c207f744a915457473b59fb1c0abc94d8f7e74da512',
+      'd273ea858f0433f534282a3bd42df2a4f898887fb0dc8fef8e36a9a5f5959f04',
     // Re-recorded by THE-261: its v4 migration renamed shadow-sm and
     // outline-none across the app so those utilities keep painting what they
     // painted under v3. AdminAccounting carries those spellings and nothing

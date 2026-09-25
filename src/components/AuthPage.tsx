@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
 import { signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { isAffiliateHost } from '../utils/non-tenant-subdomains';
 import {
@@ -24,6 +24,11 @@ import { Eye, EyeOff, Mail, Lock, ArrowLeft, ShieldAlert } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { PRIVACY_URL, TERMS_URL } from '../lib/legal-links';
+import {
+  newsletterConsentFields,
+  SIGNUP_EMAIL_SOURCE,
+  SIGNUP_GOOGLE_SOURCE,
+} from '../lib/newsletter-consent';
 import {
   MEMBER_CAP_REFUSED_CODE,
   MEMBER_CAP_UNAVAILABLE_CODE,
@@ -478,9 +483,16 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
             // line cannot regress into the bug by itself; the gate above is
             // what keeps it from ever being asked.
             tenantId: tenantIdToWrite(tenantScope),
-            newsletter: newsletter,
             termsAccepted: true,
           };
+          // The switch is rendered only in signup mode. "Continue with Google"
+          // on the sign-in tab can still create a users doc for someone who has
+          // none, but that person never saw the switch — writing the default
+          // would record a consent they were not shown. Leave all three fields
+          // off so the CRM shows Unknown.
+          if (!isLogin) {
+            Object.assign(userData, newsletterConsentFields(newsletter, SIGNUP_GOOGLE_SOURCE, serverTimestamp()));
+          }
           if (result.user.displayName) userData.displayName = result.user.displayName;
           if (result.user.photoURL) userData.photoURL = result.user.photoURL;
 
@@ -511,17 +523,17 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
           return;
         }
       } else {
-        // Update termsAccepted and newsletter for existing users
+        // Update termsAccepted for existing users. Newsletter consent is not
+        // refreshed here: the switch is hidden on sign-in, and writing it overwrote opt-outs.
         try {
           await updateDoc(userRef, {
             termsAccepted: true,
-            newsletter: newsletter,
           });
         } catch (err) {
           /**
            * 🔴 THE-336 — THE `return` IS GONE, and removing it is the fix.
            *
-           * This is a housekeeping refresh of two consent fields on a document
+           * This is a housekeeping refresh of termsAccepted on a document
            * that already exists, on a SIGN-IN that has already succeeded.
            * Aborting the rest of the handler over it withheld the `set-claims`
            * call below, so a member whose consent write was refused for any
@@ -607,12 +619,12 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
       if (isLogin) {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
-        // Update termsAccepted and newsletter for existing users
+        // Update termsAccepted for existing users. Newsletter consent is not
+        // refreshed here: the switch is hidden on sign-in, and writing it overwrote opt-outs.
         try {
           const userRef = doc(db, 'users', userCredential.user.uid);
           await updateDoc(userRef, {
             termsAccepted: true,
-            newsletter: newsletter,
           });
         } catch (err) {
           // 🔴 THE-336 — the `return` is gone here for the same reason as the
@@ -690,7 +702,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
             role: 'user',
             // 🔴 THE-349 — NOT `tenantId || null`; see the Google create above.
             tenantId: tenantIdToWrite(tenantScope),
-            newsletter: newsletter,
+            ...newsletterConsentFields(newsletter, SIGNUP_EMAIL_SOURCE, serverTimestamp()),
             termsAccepted: true,
           });
         } catch (err) {
@@ -936,6 +948,14 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
             ) : (
               /* ── Main auth view ── */
               <div className="mt-6">
+                {!isLogin && (
+                  <div className="mb-4 flex items-start gap-3">
+                    <ToggleSwitch checked={newsletter} onChange={setNewsletter} color={brandColor} />
+                    <span className="text-xs leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>
+                      Send me the Harvest newsletter — product updates and ministry stories. No noise.
+                    </span>
+                  </div>
+                )}
                 {/* Google */}
                 <button
                   onClick={handleGoogleSignIn}
@@ -1013,15 +1033,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
                     <p className="-mt-1 text-xs leading-relaxed" style={{ color: 'var(--text-muted, #8B7355)' }}>
                       At least 10 characters, one capital letter, and one symbol.
                     </p>
-                  )}
-
-                  {!isLogin && (
-                    <div className="flex items-start gap-3">
-                      <ToggleSwitch checked={newsletter} onChange={setNewsletter} color={brandColor} />
-                      <span className="text-xs leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>
-                        Send me the Harvest newsletter — product updates and ministry stories. No noise.
-                      </span>
-                    </div>
                   )}
 
                   {/* Bot gate — renders for both Sign In and Sign Up. Submit stays

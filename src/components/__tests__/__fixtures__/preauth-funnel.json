@@ -211,13 +211,13 @@
         }
       },
       "renderingHash": {
-        "380": "51170a67ec432f880ae3d71f15648896d415294aa6e4bc42b0205e9b7f8951f3",
-        "480": "51170a67ec432f880ae3d71f15648896d415294aa6e4bc42b0205e9b7f8951f3",
-        "639": "51170a67ec432f880ae3d71f15648896d415294aa6e4bc42b0205e9b7f8951f3",
-        "768": "d0055edca7213e183051e248ef6175b1370dcbba494dced8cb65240de8b8cad0",
-        "1024": "d0055edca7213e183051e248ef6175b1370dcbba494dced8cb65240de8b8cad0",
-        "1280": "d0055edca7213e183051e248ef6175b1370dcbba494dced8cb65240de8b8cad0",
-        "1440": "d0055edca7213e183051e248ef6175b1370dcbba494dced8cb65240de8b8cad0"
+        "380": "6d495e24bc12476161d8125b0fa4a6ecfb426e27baf7eeb7a65c05940c7a65b8",
+        "480": "6d495e24bc12476161d8125b0fa4a6ecfb426e27baf7eeb7a65c05940c7a65b8",
+        "639": "6d495e24bc12476161d8125b0fa4a6ecfb426e27baf7eeb7a65c05940c7a65b8",
+        "768": "5598c9eb17eed254e6d850a7f192ecf9ed71113bb1417e3960c273251729dc37",
+        "1024": "5598c9eb17eed254e6d850a7f192ecf9ed71113bb1417e3960c273251729dc37",
+        "1280": "5598c9eb17eed254e6d850a7f192ecf9ed71113bb1417e3960c273251729dc37",
+        "1440": "5598c9eb17eed254e6d850a7f192ecf9ed71113bb1417e3960c273251729dc37"
       },
       "mobileLayer": [
         "0\tdiv\tflex items-center justify-center min-h-screen overflow-hidden px-5 py-16 relative",
@@ -235,51 +235,51 @@
         "12\th1\tfont-display",
         "13\tp\tleading-relaxed mt-2.5 text-[13px]",
         "14\tdiv\tmt-6",
-        "15\tbutton\tbg-surface-raised border disabled:opacity-50 flex font-semibold gap-2.5 h-12 hover:bg-surface-sunken items-center justify-center rounded-lg text-sm transition-colors w-full",
-        "16\tsvg\t",
-        "17\tpath\t",
-        "18\tpath\t",
-        "19\tpath\t",
-        "20\tpath\t",
-        "21\tdiv\tflex gap-3 items-center my-4",
-        "22\tdiv\tflex-1 h-px",
-        "23\tspan\ttext-xs",
-        "24\tdiv\tflex-1 h-px",
-        "25\tform\tflex flex-col gap-4",
-        "26\tdiv\t",
-        "27\tlabel\tblock font-semibold mb-1.5 text-xs",
-        "28\tdiv\tbg-surface-raised flex gap-2.5 items-center rounded-lg transition-all",
-        "29\tspan\tflex shrink-0",
-        "30\tsvg\tlucide lucide-mail",
-        "31\trect\t",
-        "32\tpath\t",
-        "33\tinput\tbg-transparent flex-1 min-w-0 outline-hidden placeholder:text-faint",
-        "34\tdiv\t",
-        "35\tdiv\tflex items-baseline justify-between mb-1.5",
-        "36\tlabel\tfont-semibold text-xs",
-        "37\tdiv\tbg-surface-raised flex gap-2.5 items-center rounded-lg transition-all",
-        "38\tspan\tflex shrink-0",
-        "39\tsvg\tlucide lucide-lock",
-        "40\trect\t",
-        "41\tpath\t",
-        "42\tinput\tbg-transparent flex-1 min-w-0 outline-hidden placeholder:text-faint",
-        "43\tbutton\tflex shrink-0 transition-colors",
-        "44\tsvg\tlucide lucide-eye",
+        "15\tdiv\tflex gap-3 items-start mb-4",
+        "16\tbutton\trelative rounded-full shrink-0 transition-colors",
+        "17\tspan\tbg-surface-raised block rounded-full transition-transform",
+        "18\tspan\tleading-relaxed text-xs",
+        "19\tbutton\tbg-surface-raised border disabled:opacity-50 flex font-semibold gap-2.5 h-12 hover:bg-surface-sunken items-center justify-center rounded-lg text-sm transition-colors w-full",
+        "20\tsvg\t",
+        "21\tpath\t",
+        "22\tpath\t",
+        "23\tpath\t",
+        "24\tpath\t",
+        "25\tdiv\tflex gap-3 items-center my-4",
+        "26\tdiv\tflex-1 h-px",
+        "27\tspan\ttext-xs",
+        "28\tdiv\tflex-1 h-px",
+        "29\tform\tflex flex-col gap-4",
+        "30\tdiv\t",
+        "31\tlabel\tblock font-semibold mb-1.5 text-xs",
+        "32\tdiv\tbg-surface-raised flex gap-2.5 items-center rounded-lg transition-all",
+        "33\tspan\tflex shrink-0",
+        "34\tsvg\tlucide lucide-mail",
+        "35\trect\t",
+        "36\tpath\t",
+        "37\tinput\tbg-transparent flex-1 min-w-0 outline-hidden placeholder:text-faint",
+        "38\tdiv\t",
+        "39\tdiv\tflex items-baseline justify-between mb-1.5",
+        "40\tlabel\tfont-semibold text-xs",
+        "41\tdiv\tbg-surface-raised flex gap-2.5 items-center rounded-lg transition-all",
+        "42\tspan\tflex shrink-0",
+        "43\tsvg\tlucide lucide-lock",
+        "44\trect\t",
         "45\tpath\t",
-        "46\tcircle\t",
-        "47\tdiv\t",
-        "48\tlabel\tblock font-semibold mb-1.5 text-xs",
-        "49\tdiv\tbg-surface-raised flex gap-2.5 items-center rounded-lg transition-all",
-        "50\tspan\tflex shrink-0",
-        "51\tsvg\tlucide lucide-lock",
-        "52\trect\t",
-        "53\tpath\t",
-        "54\tinput\tbg-transparent flex-1 min-w-0 outline-hidden placeholder:text-faint",
-        "55\tp\t-mt-1 leading-relaxed text-xs",
-        "56\tdiv\tflex gap-3 items-start",
-        "57\tbutton\trelative rounded-full shrink-0 transition-colors",
-        "58\tspan\tbg-surface-raised block rounded-full transition-transform",
-        "59\tspan\tleading-relaxed text-xs",
+        "46\tinput\tbg-transparent flex-1 min-w-0 outline-hidden placeholder:text-faint",
+        "47\tbutton\tflex shrink-0 transition-colors",
+        "48\tsvg\tlucide lucide-eye",
+        "49\tpath\t",
+        "50\tcircle\t",
+        "51\tdiv\t",
+        "52\tlabel\tblock font-semibold mb-1.5 text-xs",
+        "53\tdiv\tbg-surface-raised flex gap-2.5 items-center rounded-lg transition-all",
+        "54\tspan\tflex shrink-0",
+        "55\tsvg\tlucide lucide-lock",
+        "56\trect\t",
+        "57\tpath\t",
+        "58\tinput\tbg-transparent flex-1 min-w-0 outline-hidden placeholder:text-faint",
+        "59\tp\t-mt-1 leading-relaxed text-xs",
         "60\tdiv\tflex justify-center pt-1",
         "61\tbutton\tdisabled:opacity-50 flex font-semibold gap-2 h-12 items-center justify-center mt-1 rounded-lg text-white transition-all w-full",
         "62\tp\tmt-5 text-[13px] text-center",
@@ -329,6 +329,7 @@
         "lucide-lock",
         "lucide-mail",
         "mb-1.5",
+        "mb-4",
         "mb-5",
         "min-h-screen",
         "min-w-0",
@@ -376,30 +377,30 @@
         "z-[1]"
       ],
       "touchTargets": {
-        "0:Sign up with Google": {
+        "0:button#0": {
+          "heightPx": 24,
+          "sizeTokens": []
+        },
+        "1:Sign up with Google": {
           "heightPx": 48,
           "sizeTokens": [
             "h-12"
           ]
         },
-        "1:placeholder:you@ministry.org": {
+        "2:placeholder:you@ministry.org": {
           "heightPx": null,
           "sizeTokens": []
         },
-        "2:placeholder:Create a password": {
+        "3:placeholder:Create a password": {
           "heightPx": null,
           "sizeTokens": []
         },
-        "3:Show password": {
+        "4:Show password": {
           "heightPx": null,
           "sizeTokens": []
         },
-        "4:placeholder:Re-enter password": {
+        "5:placeholder:Re-enter password": {
           "heightPx": null,
-          "sizeTokens": []
-        },
-        "5:button#0": {
-          "heightPx": 24,
           "sizeTokens": []
         },
         "6:Create account": {

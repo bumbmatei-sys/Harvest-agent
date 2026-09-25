@@ -133,7 +133,33 @@ service cloud.firestore {
       return hasPermission('manageCommunity', tenantId);
     }
 
+    // Newsletter consent (`newsletterOptIn`, `newsletterOptInAt`,
+    // `newsletterOptInSource`) is recorded only when an account is created
+    // from a screen that showed the switch. There is no later UI for the
+    // member to change it, so a self-edit cannot rewrite the three fields,
+    // and a church admin cannot rewrite a member's platform consent either.
+    // A super admin still can, to correct a value. Missing keys mean the
+    // choice was never recorded (Unknown) — older creates and a Google
+    // sign-in that never showed the switch write none of them. The three
+    // keys are all-or-none; when any is present all three must be present
+    // and well-formed, so a partial record (e.g. an opt-in with no
+    // timestamp or source) is refused.
+    function newsletterConsentOnCreate() {
+      return !request.resource.data.keys().hasAny(
+          ['newsletterOptIn', 'newsletterOptInAt', 'newsletterOptInSource'])
+        || (request.resource.data.keys().hasAll(
+              ['newsletterOptIn', 'newsletterOptInAt', 'newsletterOptInSource'])
+          && request.resource.data.newsletterOptIn is bool
+          && request.resource.data.newsletterOptInAt == request.time
+          && request.resource.data.newsletterOptInSource in ['signup-email', 'signup-google']);
+    }
+
     // ─── Users ───────────────────────────────────────────────────────
+    //
+    // newsletterOptIn / newsletterOptInAt / newsletterOptInSource: platform
+    // newsletter consent. Set only at create (see newsletterConsentOnCreate).
+    // The self-edit and tenant-admin update branches both refuse to touch
+    // them. isSuperAdmin() is unchanged and may correct a value.
 
     match /users/{userId} {
       allow read: if isAuthenticated() &&
@@ -143,23 +169,27 @@ service cloud.firestore {
 
       allow create: if isAuthenticated() && request.auth.uid == userId &&
         (!request.resource.data.keys().hasAny(['role']) ||
-         request.resource.data.role == 'user');
+         request.resource.data.role == 'user') &&
+        newsletterConsentOnCreate();
 
       allow update: if isAuthenticated() && (
         // Self-edit: not your own role, permissions, tenantId or plan (privilege /
         // tenant-hopping surface — those change only via admin flows or server
-        // routes), and not any affiliate payout/status field (affiliate fields are
-        // server-authority — /api/affiliate/* via Admin SDK).
+        // routes), not any affiliate payout/status field (affiliate fields are
+        // server-authority — /api/affiliate/* via Admin SDK), and not the
+        // platform newsletter consent (set only at create; no UI changes it later).
         (request.auth.uid == userId &&
           !request.resource.data.diff(resource.data).affectedKeys().hasAny([
             'role', 'permissions', 'tenantId', 'plan',
             'affiliateStripeAccountId', 'affiliateConnectStatus',
-            'affiliateEarnings', 'affiliatePendingPayouts', 'affiliateCode'
+            'affiliateEarnings', 'affiliatePendingPayouts', 'affiliateCode',
+            'newsletterOptIn', 'newsletterOptInAt', 'newsletterOptInSource'
           ])) ||
         // Tenant admins manage their own tenant's members: role may only be set to
         // 'user' or 'admin' (never 'super_admin'); tenantId/plan are immutable here
         // (an admin must not move a member between tenants — membership is set at
         // creation and otherwise server-only); affiliate fields stay server-only.
+        // Newsletter consent is platform-level and not a church admin's to rewrite.
         // Changing role/permissions additionally requires the manageAdmins
         // permission (the Roles screen's gate) — otherwise ANY limited admin
         // could escalate themselves or others to full access with one write.
@@ -169,7 +199,8 @@ service cloud.firestore {
           !request.resource.data.diff(resource.data).affectedKeys().hasAny([
             'tenantId', 'plan',
             'affiliateStripeAccountId', 'affiliateConnectStatus',
-            'affiliateEarnings', 'affiliatePendingPayouts', 'affiliateCode'
+            'affiliateEarnings', 'affiliatePendingPayouts', 'affiliateCode',
+            'newsletterOptIn', 'newsletterOptInAt', 'newsletterOptInSource'
           ]) &&
           (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'permissions']) ||
            hasPermission('manageAdmins', resource.data.tenantId))) ||

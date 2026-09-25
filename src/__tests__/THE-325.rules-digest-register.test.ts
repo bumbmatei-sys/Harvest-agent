@@ -112,6 +112,31 @@ const pinningSuites = (): string[] =>
 const filesSpelling = (digest: string): string[] =>
   suiteFiles().filter((p) => read(p).includes(digest));
 
+/**
+ * 🔵 ADDED AT #519, the first ticket since THE-325 to change `firestore.rules`
+ * for real. The per-ticket record(s) that carry `digest` for the rules file,
+ * repo-relative. Before #519 every accepted value lived in THE-325's record, so
+ * section 1 could spell `[REGISTER_RECORD]`; a later ticket's value lives in
+ * THAT ticket's record, exactly as this suite's docblock says it should, and
+ * the one-edit property is unchanged: one value, one carrier, and the carrier
+ * is the record that accepted it.
+ */
+const recordsCarrying = (digest: string): string[] =>
+  loadOwnership()
+    .filter((e) => e.file === RULES_FILE && e.digest === digest)
+    .map((e) => path.relative(ROOT, path.join(OWNERSHIP_DIR, e.source)).split(path.sep).join('/'));
+
+/**
+ * 🔵 ADDED AT #519. Rules states appended AFTER THE-325 by a later ticket's own
+ * record. THE-325's two migrated values stay in THE-325's record (section 3
+ * still names both); anything else must come from a different record.
+ */
+const laterRulesDigests = (): string[] => [...new Set(
+  loadOwnership()
+    .filter((e) => e.file === RULES_FILE && e.source !== path.basename(REGISTER_RECORD))
+    .map((e) => e.digest),
+)];
+
 /** The measured population, named in one place so a change to it is one edit.
  *
  * 🔴 56 → 57, APPENDED BY THE-330. Its guard suite reaches the accepted set
@@ -519,13 +544,16 @@ describe('1 · a legitimate rules change is one edit', () => {
       const carriers = filesSpelling(digest).filter((p) => !SPELLING_EXEMPT.includes(p));
       expect(carriers,
         `${digest} is written outside the register, so a rules change would cost more than one edit`)
-        .toEqual([REGISTER_RECORD]);
+        .toEqual(recordsCarrying(digest));
+      expect(carriers, `${digest} is carried by more than one record`).toHaveLength(1);
     }
     // 🔴 AND THE LIVE STATE — the one a rules change actually supersedes — is
-    // spelled in no suite at all, exemptions included but for this record.
+    // spelled in no suite at all, exemptions included but for its own record.
     expect(filesSpelling(rulesDigestOnDisk()).filter((p) => p !== SELF),
       'a suite still spells the digest on disk, so a rules change would cost it an edit too')
-      .toEqual([REGISTER_RECORD]);
+      .toEqual(recordsCarrying(rulesDigestOnDisk()));
+    expect(recordsCarrying(rulesDigestOnDisk()), 'the digest on disk is recorded by no ticket')
+      .toHaveLength(1);
     // The exemptions are real files that really do carry a value, so the list
     // cannot quietly become a pair of names that exempt nothing.
     for (const rel of SPELLING_EXEMPT) {
@@ -585,10 +613,20 @@ describe('3 · every accepted value survived the move', () => {
     }
   });
 
+  // 🔵 AMENDED AT #519: THE-325 itself added and dropped nothing, and that is
+  // still what this asserts — its own record carries exactly the values it
+  // migrated. A later ticket's legitimately APPENDED state is counted from that
+  // ticket's own record, never from here, so the set grows only by recorded
+  // values and a dropped one still fails the case above.
   it('the count before equals the count after', () => {
     expect(new Set(acceptedRulesDigests().map(([d]) => d)).size,
       'the accepted set changed size — THE-325 migrates values, it does not add or drop them')
-      .toBe(ACCEPTED_BEFORE.length);
+      .toBe(ACCEPTED_BEFORE.length + laterRulesDigests().length);
+    expect(
+      new Set(loadOwnership()
+        .filter((e) => e.file === RULES_FILE && e.source === path.basename(REGISTER_RECORD))
+        .map((e) => e.digest)).size,
+      "THE-325's own record gained or lost a rules value").toBe(ACCEPTED_BEFORE.length);
   });
 
   it('and each carries the provenance it had', () => {
@@ -806,10 +844,15 @@ describe("7 · THE-322's population pin still works", () => {
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 describe('8 · test and fixture files only', () => {
+  // 🔵 AMENDED AT #519. THE-325 still did not open the file: the state it found
+  // is still accepted (section 3), and the file on disk is either that state or
+  // one a LATER ticket appended in its OWN record (#519 changes the users block
+  // for newsletter consent). An unrecorded edit still fails here and in all the
+  // pinning suites.
   it('🔴 firestore.rules is byte-identical to the state THE-325 found it in', () => {
-    expect(rulesDigestOnDisk(),
+    expect([ACCEPTED_BEFORE[1][0], ...laterRulesDigests()],
       'firestore.rules was edited — this ticket may not open it, and it auto-deploys to production')
-      .toBe(ACCEPTED_BEFORE[1][0]);
+      .toContain(rulesDigestOnDisk());
   });
 
   it('every file THE-325 touched is a test or a fixture under __tests__', () => {

@@ -39,6 +39,7 @@ vi.mock('firebase/firestore', () => ({
   setDoc,
   getDoc: vi.fn(async () => ({ exists: () => false, data: () => ({}) })),
   updateDoc: vi.fn(async () => {}),
+  serverTimestamp: () => ({ __serverTimestamp: true }),
 }));
 vi.mock('../../utils/firestore-errors', () => ({
   OperationType: { GET: 'get', WRITE: 'write', UPDATE: 'update' },
