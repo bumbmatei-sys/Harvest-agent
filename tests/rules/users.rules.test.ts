@@ -214,6 +214,53 @@ describe('users: newsletter consent', () => {
     }));
   });
 
+  it('a partial set of the three fields is refused on create (all or none)', async () => {
+    const optInTrue = (await asUid('consent-partial-true')).firestore();
+    await assertFails(optInTrue.doc('users/consent-partial-true').set({
+      role: 'user', email: 'pt@t.com', tenantId: TENANT_A,
+      newsletterOptIn: true,
+    }));
+
+    const optInFalse = (await asUid('consent-partial-false')).firestore();
+    await assertFails(optInFalse.doc('users/consent-partial-false').set({
+      role: 'user', email: 'pf@t.com', tenantId: TENANT_A,
+      newsletterOptIn: false,
+    }));
+
+    const noSource = (await asUid('consent-partial-no-source')).firestore();
+    await assertFails(noSource.doc('users/consent-partial-no-source').set({
+      role: 'user', email: 'ns@t.com', tenantId: TENANT_A,
+      newsletterOptIn: true,
+      newsletterOptInAt: serverNow(),
+    }));
+
+    const noAt = (await asUid('consent-partial-no-at')).firestore();
+    await assertFails(noAt.doc('users/consent-partial-no-at').set({
+      role: 'user', email: 'na@t.com', tenantId: TENANT_A,
+      newsletterOptIn: true,
+      newsletterOptInSource: 'signup-email',
+    }));
+
+    const noOptIn = (await asUid('consent-partial-no-optin')).firestore();
+    await assertFails(noOptIn.doc('users/consent-partial-no-optin').set({
+      role: 'user', email: 'no@t.com', tenantId: TENANT_A,
+      newsletterOptInAt: serverNow(),
+      newsletterOptInSource: 'signup-google',
+    }));
+
+    const sourceOnly = (await asUid('consent-partial-source')).firestore();
+    await assertFails(sourceOnly.doc('users/consent-partial-source').set({
+      role: 'user', email: 'so@t.com', tenantId: TENANT_A,
+      newsletterOptInSource: 'signup-email',
+    }));
+
+    const atOnly = (await asUid('consent-partial-at')).firestore();
+    await assertFails(atOnly.doc('users/consent-partial-at').set({
+      role: 'user', email: 'ao@t.com', tenantId: TENANT_A,
+      newsletterOptInAt: serverNow(),
+    }));
+  });
+
   it('a member cannot update their own newsletterOptIn, At, or Source', async () => {
     const db = (await member()).firestore();
     await assertFails(db.doc(`users/${MEMBER_UID}`).update({ newsletterOptIn: false }));

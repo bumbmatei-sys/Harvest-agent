@@ -4,8 +4,8 @@
   "entries": [
     {
       "file": "firestore.rules",
-      "digest": "3ef86ad3add69406494a3f001cf6f32349d2ecb07cf11cd1e973badb178620e1",
-      "why": "#519 owns this change and it is the users match block only: a new newsletterConsentOnCreate() check validates newsletterOptIn (bool), newsletterOptInAt (== request.time) and newsletterOptInSource ('signup-email' or 'signup-google') when a user creates their own doc, and the three keys join both the self-edit and the tenant-admin affectedKeys deny lists so neither a member nor a church admin can rewrite consent after signup. The super-admin branch and every other match block are byte-identical. Proven by 6 new emulator tests in tests/rules/users.rules.test.ts."
+      "digest": "94b039e605cb386086b761ca1a74fa663ba71ebb71441bef62887082b5b42115",
+      "why": "#519 owns this change and it is the users match block only: a new newsletterConsentOnCreate() check makes the three consent keys all-or-none when a user creates their own doc (any one present requires all three) and validates newsletterOptIn (bool), newsletterOptInAt (== request.time) and newsletterOptInSource ('signup-email' or 'signup-google'), and the three keys join both the self-edit and the tenant-admin affectedKeys deny lists so neither a member nor a church admin can rewrite consent after signup. The super-admin branch and every other match block are byte-identical. Proven by 7 new emulator tests in tests/rules/users.rules.test.ts, including one that refuses every partial set of the three keys on create."
     },
     {
       "file": "src/components/AuthPage.tsx",

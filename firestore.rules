@@ -140,15 +140,18 @@ service cloud.firestore {
     // and a church admin cannot rewrite a member's platform consent either.
     // A super admin still can, to correct a value. Missing keys mean the
     // choice was never recorded (Unknown) — older creates and a Google
-    // sign-in that never showed the switch write none of them. When a key
-    // IS present on create it has to be well-formed.
+    // sign-in that never showed the switch write none of them. The three
+    // keys are all-or-none; when any is present all three must be present
+    // and well-formed, so a partial record (e.g. an opt-in with no
+    // timestamp or source) is refused.
     function newsletterConsentOnCreate() {
-      return (!request.resource.data.keys().hasAny(['newsletterOptIn'])
-          || request.resource.data.newsletterOptIn is bool)
-        && (!request.resource.data.keys().hasAny(['newsletterOptInAt'])
-          || request.resource.data.newsletterOptInAt == request.time)
-        && (!request.resource.data.keys().hasAny(['newsletterOptInSource'])
-          || request.resource.data.newsletterOptInSource in ['signup-email', 'signup-google']);
+      return !request.resource.data.keys().hasAny(
+          ['newsletterOptIn', 'newsletterOptInAt', 'newsletterOptInSource'])
+        || (request.resource.data.keys().hasAll(
+              ['newsletterOptIn', 'newsletterOptInAt', 'newsletterOptInSource'])
+          && request.resource.data.newsletterOptIn is bool
+          && request.resource.data.newsletterOptInAt == request.time
+          && request.resource.data.newsletterOptInSource in ['signup-email', 'signup-google']);
     }
 
     // ─── Users ───────────────────────────────────────────────────────
