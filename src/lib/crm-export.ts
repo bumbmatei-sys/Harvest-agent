@@ -45,6 +45,7 @@ export interface CrmExportContact extends CrmFilterable {
   tenantId?: string;
   account?: { role: string; email: string };
   accountProfile?: {
+    tenantId?: string | null;
     createdAt: string | null;
     newsletterOptIn: boolean | null;
     newsletterOptInAt: string | null;
@@ -72,12 +73,22 @@ function newsletterCell(contact: CrmExportContact): string {
   return '';
 }
 
+/**
+ * The church a row belongs to in the export: the ACCOUNT's tenant when the row
+ * holds one, else the row's own. A platform `contacts` row that folded a member
+ * of another church carries `tenantId: 'harvest'`; the person's church is the
+ * one on their users doc.
+ */
+export function exportTenantIdOf(contact: CrmExportContact): string {
+  return contact.accountProfile?.tenantId || contact.tenantId || '';
+}
+
 export function contactToCrmExportRecord(contact: CrmExportContact, church: string): CrmExportRecord {
   return {
     name: `${contact.firstName} ${contact.lastName}`.trim(),
     email: contact.email || '',
     church,
-    tenantId: contact.tenantId || '',
+    tenantId: exportTenantIdOf(contact),
     role: contact.account?.role ?? '',
     signedUp: contact.accountProfile?.createdAt ?? '',
     newsletter: newsletterCell(contact),

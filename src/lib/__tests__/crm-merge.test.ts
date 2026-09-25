@@ -51,6 +51,7 @@ describe('mergeContactsWithUsers — accountProfile', () => {
         email: 'Member@Church.org',
         displayName: 'Ada Member',
         role: 'user',
+        tenantId: 'hope',
         createdAt: WHEN,
         newsletter: true,
         newsletterOptInAt: { toDate: () => when },
@@ -60,6 +61,7 @@ describe('mergeContactsWithUsers — accountProfile', () => {
 
     expect(row.account).toEqual({ role: 'user', email: 'Member@Church.org' });
     expect(row.accountProfile).toEqual({
+      tenantId: 'hope',
       createdAt: WHEN,
       newsletterOptIn: null,
       newsletterOptInAt: WHEN,
@@ -82,6 +84,7 @@ describe('mergeContactsWithUsers — accountProfile', () => {
       userRow('uid-1', {
         email: 'ada@example.com',
         role: 'admin',
+        tenantId: 'hope',
         createdAt: when,
         newsletterOptIn: false,
         newsletterOptInAt: { seconds: Math.floor(when.getTime() / 1000), nanoseconds: 0 },
@@ -93,7 +96,9 @@ describe('mergeContactsWithUsers — accountProfile', () => {
     expect(row.id).toBe('contact-1');
     expect(row.accountOnly).toBeUndefined();
     expect(row.account).toEqual({ role: 'admin', email: 'ada@example.com' });
+    // The account's church, not the platform contact's own tenantId.
     expect(row.accountProfile).toEqual({
+      tenantId: 'hope',
       createdAt: WHEN,
       newsletterOptIn: false,
       newsletterOptInAt: new Date(Math.floor(when.getTime() / 1000) * 1000).toISOString(),

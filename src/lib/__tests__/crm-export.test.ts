@@ -5,6 +5,7 @@ import {
   contactToCrmExportRecord,
   crmExportFilename,
   crmExportRowCap,
+  exportTenantIdOf,
   guardCrmCsvCell,
   renderCrmCsv,
   type CrmExportContact,
@@ -36,6 +37,24 @@ const contact = (over: Partial<CrmExportContact> = {}): CrmExportContact => ({
 const unquote = (cell: string) => cell.slice(1, -1);
 
 describe('CRM newsletter CSV', () => {
+  it("names the ACCOUNT's church for a platform contact that folded a member", () => {
+    // A platform `contacts` row carries tenantId 'harvest'; the member it folded
+    // belongs to 'hope'. The export must say 'hope', or every folded member of
+    // a church reads as a Harvest-platform person.
+    const folded = contact({
+      tenantId: 'harvest',
+      account: { role: 'user', email: 'ada@example.com' },
+      accountProfile: {
+        tenantId: 'hope',
+        createdAt: null, newsletterOptIn: true, newsletterOptInAt: null, newsletterOptInSource: null,
+      },
+    });
+    expect(exportTenantIdOf(folded)).toBe('hope');
+    expect(contactToCrmExportRecord(folded, 'Hope').tenantId).toBe('hope');
+    // A donor-only row has no account, so its own tenant stands.
+    expect(exportTenantIdOf(contact({ tenantId: 'harvest', type: 'donor' }))).toBe('harvest');
+  });
+
   it('writes the header in order', () => {
     const header = renderCrmCsv([]).split('\n')[0];
     expect(header.split(',').map(unquote)).toEqual([...CRM_EXPORT_HEADERS]);

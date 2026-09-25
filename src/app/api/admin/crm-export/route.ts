@@ -12,6 +12,7 @@ import {
   crmCsvStream,
   crmExportFilename,
   crmExportRowCap,
+  exportTenantIdOf,
 } from '@/lib/crm-export';
 import { sortByString } from '@/utils/query-helpers';
 import type { Contact } from '@/hooks/queries/useCRMQueries';
@@ -133,8 +134,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const names = await churchNames(filtered.map(contact => contact.tenantId || ''));
-    const records = filtered.map(contact => contactToCrmExportRecord(contact, churchOf(contact.tenantId, names)));
+    const names = await churchNames(filtered.map(exportTenantIdOf));
+    const records = filtered.map(contact => contactToCrmExportRecord(contact, churchOf(exportTenantIdOf(contact), names)));
     const filename = crmExportFilename(newsletter);
 
     return new NextResponse(crmCsvStream(records), {

@@ -25,6 +25,12 @@ export type NewsletterFilter = (typeof NEWSLETTER_FILTERS)[number];
 
 /** Derived consent carried on a CRM row. Never stored, never written back. */
 export interface NewsletterAccountProfile {
+  /**
+   * The ACCOUNT's church: `tenantId` on the users doc. A contact row that folded
+   * a users doc keeps the contact's own `tenantId` (a platform contact says
+   * `harvest`), so the founder export reads the person's church from here.
+   */
+  tenantId: string | null;
   createdAt: string | null;
   /** `null` when the users doc has no boolean — the CRM shows that as Unknown. */
   newsletterOptIn: boolean | null;

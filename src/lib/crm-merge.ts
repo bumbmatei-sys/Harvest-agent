@@ -64,6 +64,7 @@ function accountProfileOf(u: Record<string, any>): NewsletterAccountProfile {
   const optIn = u[NEWSLETTER_OPT_IN_FIELD];
   const source = u[NEWSLETTER_OPT_IN_SOURCE_FIELD];
   return {
+    tenantId: typeof u.tenantId === 'string' && u.tenantId ? u.tenantId : null,
     createdAt: isoTimestamp(u.createdAt),
     newsletterOptIn: optIn === true || optIn === false ? optIn : null,
     newsletterOptInAt: isoTimestamp(u[NEWSLETTER_OPT_IN_AT_FIELD]),

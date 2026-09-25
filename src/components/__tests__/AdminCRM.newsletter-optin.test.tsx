@@ -58,6 +58,7 @@ vi.mock('../../hooks/queries/useCRMQueries', async (importOriginal) => ({
 }));
 
 const profile = (opt: boolean | null) => ({
+  tenantId: 'grace',
   createdAt: '2020-06-15T08:30:00.000Z',
   newsletterOptIn: opt,
   newsletterOptInAt: opt === null ? null : '2020-06-15T08:30:00.000Z',
