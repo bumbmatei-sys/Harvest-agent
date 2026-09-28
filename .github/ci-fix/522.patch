@@ -1,0 +1,232 @@
+diff --git a/src/__tests__/the-313-guards.test.ts b/src/__tests__/the-313-guards.test.ts
+index faebae8..8aab967 100644
+--- a/src/__tests__/the-313-guards.test.ts
++++ b/src/__tests__/the-313-guards.test.ts
+@@ -463,8 +463,14 @@ describe('no new token, component or dependency was added', () => {
+     // rejected because a multi-select is the worst control on a phone; and
+     // `radio-group` cannot express "all of them". A FOURTH import still fails
+     // here, and an unrecorded one still fails in THE-274's guard.
++    // APPENDED BY #522, AND `checkbox` LEFT WITH THE PICKER.
++    // The events screen no longer imports `checkbox`. The same group now lives
++    // in donations/PaymentLinkPicker.tsx, mounted here and on the campaign
++    // form, and that file is the adopter on THE-274's RECORDED_ADOPTERS.
++    // `alert` (THE-345) and `tabs` (THE-308) are still required. A third import
++    // on this screen still fails here.
+     expect(imports, 'the events screen adopted an unrecorded primitive')
+-      .toEqual(['alert', 'checkbox', 'tabs']);
++      .toEqual(['alert', 'tabs']);
+   });
+ 
+   it('the four new files import only modules that already existed', () => {
+diff --git a/src/components/__tests__/AdminDonations.section.test.tsx b/src/components/__tests__/AdminDonations.section.test.tsx
+index 8bab50d..09e51e8 100644
+--- a/src/components/__tests__/AdminDonations.section.test.tsx
++++ b/src/components/__tests__/AdminDonations.section.test.tsx
+@@ -639,7 +639,7 @@ describe('no Stripe Connect route, donation route, fee or receipt path changed',
+    * moves WHERE the Connect panel is mounted and adds a second, separate way to
+    * give that Harvest is deliberately not part of.
+    */
+-  const UNCHANGED: Readonly<Record<string, string>> = {
++  const UNCHANGED: Readonly<Record<string, string | readonly string[]>> = {
+     /*
+      * ─── THE-256 RE-RECORDED THESE FOUR, deliberately and with one reason ───
+      *
+@@ -805,8 +805,19 @@ describe('no Stripe Connect route, donation route, fee or receipt path changed',
+      * restoring Connect UI: flip that one value and this page's form returns
+      * exactly as it was.
+      */
+-    'src/app/campaign/[campaignId]/page.tsx':
++    /*
++     * AN ACCEPTED SET, APPENDED TO BY #522, NOT ONE VALUE SUBSTITUTED.
++     * THE-303's digest stays accepted. What #522 changed on this page: the
++     * campaign stores provider ids and resolveCampaignGiving narrows the
++     * links handed to PublicCampaign, and the card-form gate is isCardGivingOn
++     * (the same expression as MainApp) instead of an inlined
++     * STRIPE_CONNECT_ENABLED read. loadCampaign's gate is not in this edit.
++     * A digest that is neither value still fails.
++     */
++    'src/app/campaign/[campaignId]/page.tsx': [
+       '4e7181866e9487913ef7e458229c950e0f1b94572e2b4cdf5619cc6c26ffdcf8',
++      '3544e3bf9786c6d40bf396685ae862b7017b985b55f8f18efff858dcf2a2a8ac',
++    ],
+     'functions/src/index.ts':
+       '39ccade96ac3d4dd5a13047e9bc42b54ef5ac59ae72f932af042fc814bf23e0b',
+   };
+@@ -826,7 +837,12 @@ describe('no Stripe Connect route, donation route, fee or receipt path changed',
+ 
+   it.each(Object.keys(UNCHANGED))('%s is byte-for-byte unchanged', (file) => {
+     const digest = createHash('sha256').update(readFileSync(join(ROOT, file))).digest('hex');
+-    expect(digest, `${file} changed — this ticket must not touch a money path`).toBe(UNCHANGED[file]);
++    const accepted = UNCHANGED[file];
++    const set = typeof accepted === 'string' ? [accepted] : [...accepted];
++    expect(
++      set,
++      `${file} is at ${digest}, which is none of the accepted values — this ticket must not touch a money path`,
++    ).toContain(digest);
+   });
+ 
+   it('adds no second donate endpoint, and no fee anywhere in the new code', async () => {
+diff --git a/src/components/__tests__/AdminMinistry.desktop-layout.test.tsx b/src/components/__tests__/AdminMinistry.desktop-layout.test.tsx
+index 5e36734..c982ed7 100644
+--- a/src/components/__tests__/AdminMinistry.desktop-layout.test.tsx
++++ b/src/components/__tests__/AdminMinistry.desktop-layout.test.tsx
+@@ -404,8 +404,139 @@ const THE_368_IMPORT = /^import \{ GivingDocsLink \} from '[^']*';\n/m;
+ const unwrapTHE368Docs = (src: string): string =>
+   src.replace(THE_368_COMMENT_AND_LINK, '\n').replace(THE_368_IMPORT, '');
+ 
++/**
++ * #522 — reverse the shared payment-link picker before hashing, and NOTHING else.
++ *
++ * 🔴 THE STRONGER OF THE TWO HONEST OPTIONS, in THE-251's own words: re-recording
++ * would bless every other byte that moved in the same breath. So
++ * `THE_308_EVENTS` and `THE_251_FUNDRAISING` keep their strippedSha and
++ * strippedLines, and these edits are reversed instead.
++ *
++ * WHAT MOVED, NAMED SO THE REVERSAL CAN BE CHECKED:
++ *
++ *   AdminEvents — the inline checkbox group became `<PaymentLinkPicker>`. The
++ *   control still writes `form.paymentProviders`. No handler, payload or
++ *   Firestore path in this file changed, which is why reversing the markup
++ *   restores the pin rather than hiding a write.
++ *
++ *   AdminFundraising — a campaign may now store provider ids. The reversal puts
++ *   back the editor as THE-368 left it: no picker, no `paymentProviders` on
++ *   `empty`, and `const payload = { ...form }` without the id cleaner. The
++ *   money path this suite actually pins — `firestorePathsOf` against the pre-PR
++ *   revision — is asserted on the file as it is, not on this reversal, and that
++ *   set did not grow.
++ *
++ * ⚠️ APPENDED, AND IT RUNS FIRST. Every later reversal matches the file as its
++ * own ticket left it. If any string here stops matching, the replacement
++ * no-ops and the hash goes red.
++ */
++const CAMPAIGN_PICKER_EDITS: ReadonlyArray<readonly [after: string, before: string]> = [
++  // Fundraising's import is two statements. It has to go before the one-line
++  // events import, or the one-line replace rewrites the first line and this
++  // block no longer matches.
++  ["import PaymentLinkPicker from './donations/PaymentLinkPicker';\nimport {\n  CAMPAIGN_NO_PAYMENT_LINKS,\n  CAMPAIGN_PICKER_HELP,\n  CAMPAIGN_PICKER_TITLE,\n  readSelectedProviderIds,\n} from '../lib/payment-link-selection';\n", ''],
++  ["import PaymentLinkPicker from './donations/PaymentLinkPicker';\n", "import { Checkbox } from '@/components/ui/checkbox';\n"],
++  [
++    `                <PaymentLinkPicker
++                  links={churchLinks}
++                  selected={form.paymentProviders}
++                  onChange={(paymentProviders) => setForm({ ...form, paymentProviders })}
++                  title={PROVIDER_PICKER_TITLE}
++                  help={PROVIDER_PICKER_HELP}
++                  wrapperAttribute="data-event-provider-picker"
++                />`,
++    `                {/*
++                  🔴 WHICH links accept payment for THIS event. \`checkbox\` — the
++                  choice is a SUBSET and each option is independent, which is
++                  exactly what a checkbox group is. \`toggle-group\` was rejected:
++                  its multiple mode looks like a segmented control, which reads
++                  as "pick one" on a row of six; \`select\` was rejected because a
++                  multi-select is the worst control on a phone; \`radio-group\`
++                  was rejected because it cannot express "all of them".
++                */}
++                <div data-event-provider-picker>
++                  <p className="text-xs font-semibold text-body mb-1">{PROVIDER_PICKER_TITLE}</p>
++                  <p className="text-xs text-muted mb-2.5">{PROVIDER_PICKER_HELP}</p>
++                  <div className="space-y-1">
++                    {churchLinks.map(({ provider }) => {
++                      const ticked = form.paymentProviders.includes(provider.id);
++                      return (
++                        <label
++                          key={provider.id}
++                          data-provider-option={provider.id}
++                          className="flex items-center gap-2.5 min-h-11 sm:min-h-0 cursor-pointer"
++                        >
++                          <Checkbox
++                            checked={ticked}
++                            onCheckedChange={() => setForm({
++                              ...form,
++                              paymentProviders: ticked
++                                ? form.paymentProviders.filter(id => id !== provider.id)
++                                : [...form.paymentProviders, provider.id],
++                            })}
++                          />
++                          <span className="text-sm text-body">{provider.label}</span>
++                        </label>
++                      );
++                    })}
++                  </div>
++                </div>`,
++  ],
++  ['  pledgeDeadline: null,\n  paymentProviders: [],\n};', '  pledgeDeadline: null,\n};'],
++  [
++    '  const churchLinks = useMemo(() => readGivingLinks(branding), [branding]);\n  const hasManualGivingLinks = churchLinks.length > 0;',
++    '  const hasManualGivingLinks = useMemo(() => readGivingLinks(branding).length > 0, [branding]);',
++  ],
++  [
++    `      // Ids only. A URL is never written onto the campaign, and \`donateUrl\`
++      // is not written either: omitting it leaves a legacy value in place
++      // (updateDoc does not delete a field it is not given) and does not
++      // create one.
++      const { donateUrl: _ignoredDonateUrl, ...payload } = {
++        ...form,
++        campaignType: form.campaignType || 'fundraising',
++        pledgeDeadline: form.campaignType === 'pledge' ? (form.pledgeDeadline || null) : null,
++        paymentProviders: readSelectedProviderIds(form.paymentProviders),
++      };`,
++    `      const payload = {
++        ...form,
++        campaignType: form.campaignType || 'fundraising',
++        pledgeDeadline: form.campaignType === 'pledge' ? (form.pledgeDeadline || null) : null,
++      };`,
++  ],
++  [
++    `              {hasManualGivingLinks ? (
++                <PaymentLinkPicker
++                  links={churchLinks}
++                  selected={form.paymentProviders ?? []}
++                  onChange={(paymentProviders) => setForm({ ...form, paymentProviders })}
++                  title={CAMPAIGN_PICKER_TITLE}
++                  help={CAMPAIGN_PICKER_HELP}
++                  wrapperAttribute="data-campaign-provider-picker"
++                />
++              ) : (
++                // Donations is gated by \`canDonations\` in AdminDashboard (full
++                // access or manageSettings). This screen does not know that
++                // permission, so the pointer is text only: a link would send a
++                // fundraising-only admin to a tab they cannot open.
++                <p
++                  data-testid="campaign-no-payment-links"
++                  className="text-[13px] text-body leading-relaxed rounded-brand-lg border border-line bg-surface-sunken px-4 py-3"
++                >
++                  {CAMPAIGN_NO_PAYMENT_LINKS}
++                </p>
++              )}
++
++`,
++    '',
++  ],
++];
++
++const unwrapCampaignPicker = (src: string): string =>
++  CAMPAIGN_PICKER_EDITS.reduce((acc, [after, before]) => acc.replace(after, before), src);
++
+ const stripPresentation = (src: string): string =>
+-  unwrapRota(unwrapServicePlan(unwrapSmsGate(unwrapRotaInvite(unwrapConfirmedWording(unwrapTHE362Fundraising(unwrapTHE368Docs(src)))))))
++  unwrapRota(unwrapServicePlan(unwrapSmsGate(unwrapRotaInvite(unwrapConfirmedWording(unwrapTHE362Fundraising(unwrapTHE368Docs(unwrapCampaignPicker(src))))))))
+   .replace(/className=(?:"[^"]*"|\{`[^`]*`\}|\{[A-Za-z_$][\w.$]*\})/g, 'className=X')
+   // An import of a LAYOUT module is presentation, not behaviour — the same
+   // reasoning that already exempted form-layout, widened to the directory. A
+diff --git a/src/components/__tests__/THE-332.nav-rail.test.tsx b/src/components/__tests__/THE-332.nav-rail.test.tsx
+index 62baf01..7b5bf7f 100644
+--- a/src/components/__tests__/THE-332.nav-rail.test.tsx
++++ b/src/components/__tests__/THE-332.nav-rail.test.tsx
+@@ -830,6 +830,14 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
+        Firestore operation of any kind. THE-351's disclaimer text is untouched -
+        the link is a sibling to that Alert, never inside it. */
+     'fe2f10bfd39a3b1f5012a2f3e38aeaa232515ab8925a1225668e7691a76f7a05',
++    /* APPENDED BY #522, never substituted. The inline provider checkboxes
++       moved into PaymentLinkPicker so the event form and the campaign form
++       share one control. The screen still writes form.paymentProviders and
++       still mounts the picker under data-event-provider-picker. NO NAV, TAB
++       ID, READ, WRITE OR PERMISSION GATE MOVED, which is what THE-332 pins
++       this file for: handleSave, confirmDelete and firestorePathsOf are
++       unchanged. */
++    'db9fbb0478cbeb3f2425c9afdaa40c6c59770f211625da0fc598fa7c041276be',
+   ],
+   'src/components/AdminServices.tsx': '17f508718d3c6b1ad016b9fb6be2c241629421705af4a9c0966b02739eba74ae',
+   /* 🔴 AN ACCEPTED SET, APPENDED TO, NOT ONE VALUE SUBSTITUTED — the shape the

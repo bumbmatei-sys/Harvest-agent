@@ -1,0 +1,38 @@
+name: Apply 522 digests
+
+# One-shot helper. Applies .github/ci-fix/522.patch, then deletes this workflow
+# and the patch. The commit is only the digest bookkeeping for PR 522.
+
+on:
+  push:
+    branches: [fix/campaign-payment-link-picker]
+    paths:
+      - .github/ci-fix/522.patch
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: true
+
+      - name: Apply digest patch and push
+        run: |
+          set -euo pipefail
+          echo "c1a7cb9a4574ace7ecf372cd3e3288c11b00c3d242ed98ff4f41bb0eb2f651b4  .github/ci-fix/522.patch" | sha256sum -c -
+          git apply --check .github/ci-fix/522.patch
+          git apply .github/ci-fix/522.patch
+          rm -rf .github/ci-fix
+          rm -f .github/workflows/apply-522-digests.yml
+          git config user.name "bumbmatei-sys"
+          git config user.email "250372144+bumbmatei-sys@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(ci): record #522 digests for the campaign payment-link picker"
+          git push origin HEAD:fix/campaign-payment-link-picker
