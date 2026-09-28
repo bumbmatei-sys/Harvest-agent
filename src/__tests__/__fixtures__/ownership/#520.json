@@ -1,0 +1,11 @@
+{
+  "ticket": "#520",
+  "note": "#520 (ClickUp 86bc8jd5u, founder go 2026-09-28) fixes the Notes editor keeping the previous note's body when another note is picked from the sidebar, and long sidebar titles overflowing the selected row. It records AdminDocs.tsx only; DocsTree.tsx is not digest-pinned and RichTextEditor.tsx is unchanged. No firestore.rules, functions/, layout.tsx or ui/ primitive is touched.",
+  "entries": [
+    {
+      "file": "src/components/AdminDocs.tsx",
+      "digest": "9ad059189109d0e72203579322e23883a692aa9adafadcbcd5a2d3fe25b23f74",
+      "why": "#520 owns this change and it is the note SWITCH path and the auto-save binding, nothing else. The editor was never re-created when the open note changed: RichTextEditor builds its TipTap instance once and reads `content` only at creation, and AdminDocs rendered it without a key, so picking another note from Recents or the tree changed the title, breadcrumb and highlight while the body kept the previous note. Any keystroke then queued `{ id: newNote, content: previousNote's body }` and the 2s debounce wrote it over the newly selected note; a still-queued save for the previous note was also replaced and lost. Now the editor is keyed on `openDoc.id`, every body update carries the id of the editor instance that produced it and is ignored unless that note is still open (`openDocIdRef`), and ONE helper, `switchToDoc`, is the only way a note is opened (tree, Recents, quick switcher, deep link, New doc, .md import): it is a no-op for the note already open, and otherwise flushes the previous note's queued payload - bound to that note's own id - before switching. closeEditor, the title blur save, the unmount flush and the delete-cancels-not-flushes rule are unchanged, and every Firestore path, the share flows, the menu and the toolbar are byte-identical."
+    }
+  ]
+}
