@@ -43,6 +43,7 @@ import { AdminScreenHeader, AdminHeaderContext, AdminHeaderOverride } from './Ad
 import { getEffectiveFeatures, hasBrandingAccess, AFFILIATE_PROGRAM_ENABLED, FREE_PLAN } from '../utils/plan-features';
 import { SMS_FEATURE_ENABLED } from '../lib/sms-feature';
 import { NEWSLETTER_FEATURE_ENABLED } from '../lib/newsletter-feature';
+import { isKnowledgeBaseEnabled } from '../lib/knowledge-base-feature';
 import { db, auth } from '../firebase';
 import { checkRosterAdminStatus } from '../utils/tenant.utils';
 import { readCachedRosterAnswer } from '../utils/roster-cache';
@@ -568,6 +569,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
    * `null` from `false` is the same "unknown reads as yes" defect one level down.
    */
   const planAllows = (cell: boolean | null | undefined): boolean => planUnlocked || cell === true;
+  // Same answer the AI Knowledge screen gives. Blog automation writes from
+  // that base, so the blog screen hides Automate until this is true — a plan
+  // cell or the AI Assistant add-on brings both back together.
+  const knowledgeBaseEnabled = isKnowledgeBaseEnabled(features, planUnlocked);
   /**
    * Does this tenant's NAV show the tab this cell gates? (THE-220)
    *
@@ -1597,7 +1602,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             </div>
           ) : activeTab === 'blog' ? (
             planAllows(features?.blog)
-              ? <div className="p-4 lg:p-0"><AdminBlog /></div>
+              ? <div className="p-4 lg:p-0"><AdminBlog knowledgeBaseEnabled={knowledgeBaseEnabled} /></div>
               : <PlanUpgradeScreen featureName="Blog" featureKey="blog" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'inbox' ? (
             <div className="p-4 lg:p-0"><PlatformInbox /></div>
@@ -1611,7 +1616,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               ? <div className="p-4 lg:p-0"><AdminCourses /></div>
               : <PlanUpgradeScreen featureName="Courses" featureKey="maxCourses" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'ai' ? (
-            planAllows(features?.aiKnowledge)
+            knowledgeBaseEnabled
               ? <div className="p-4 lg:p-0"><AdminRAG /></div>
               : <PlanUpgradeScreen featureName="AI Knowledge" featureKey="aiKnowledge" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'newsletter' ? (

@@ -143,7 +143,7 @@ afterEach(() => {
 });
 
 async function render() {
-  await act(async () => { root.render(<AdminBlog />); });
+  await act(async () => { root.render(<AdminBlog knowledgeBaseEnabled />); });
 }
 
 /** The Automate control, if the header is rendering it at all. */

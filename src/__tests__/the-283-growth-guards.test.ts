@@ -317,6 +317,9 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // APPENDED BY THE-191, nothing above removed or rewritten.
     ['465b72f66ae55ec668f5bc7407c49edaeee0be5f5b20e028f6a64e57de6a8397',
       `main + THE-191 - the campus cap offers the add-on, so AdminChurches needs a door to the screen that sells one. ONE prop on the existing <AdminChurches /> mount: onOpenBilling, wired to the SAME expression the account menu already passes (billingAccess === 'yes' ? () => setShowBilling(true) : undefined), so an admin without settled billing access still gets undefined and no button. No nav array, group, tab id, permission gate, render arm, import or new state moved.`],
+    // APPENDED BY #521, nothing above removed or rewritten.
+    ['025b037f7ff786e047c50c62c5ad213a1af1ade121640bd6100b88c6627f048e',
+      `main + #521 - the Blog Automate button hides while the AI knowledge base is hidden. One import (isKnowledgeBaseEnabled), one const knowledgeBaseEnabled computed from the SAME planUnlocked || features.aiKnowledge === true predicate the AI Knowledge render arm already used, that const in place of planAllows(features?.aiKnowledge) in the ai render arm (behaviour identical), and ONE prop on the existing <AdminBlog /> mount (knowledgeBaseEnabled). No nav array, group, tab id, permission gate, route or other screen mount moved.`],
   ],
   'firestore.indexes.json': [
     ['8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0', 'main at 625e3eb'],
