@@ -691,6 +691,12 @@ const ADMIN_DASHBOARD_ACCEPTED = [
   // the same billingAccess check the account menu already uses. No nav array,
   // group, tab id, permission gate, render arm or import moved.
   '465b72f66ae55ec668f5bc7407c49edaeee0be5f5b20e028f6a64e57de6a8397',
+  // APPENDED BY #521, nothing above removed or rewritten: the Blog Automate
+  // button hides while the AI knowledge base is hidden. One import, one const
+  // (isKnowledgeBaseEnabled, the same predicate the ai render arm used), that
+  // const in the ai render arm, and ONE prop on the existing <AdminBlog /> mount.
+  // No nav array, group, tab id, permission gate or route moved.
+  '025b037f7ff786e047c50c62c5ad213a1af1ade121640bd6100b88c6627f048e',
 ];
 
 describe('the files this ticket must not open are byte-identical', () => {

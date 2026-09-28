@@ -1,0 +1,16 @@
+{
+  "ticket": "#521",
+  "note": "#521 (ClickUp 86bc8k4jt, founder-approved 2026-09-28) hides the Blog Automate button while the AI knowledge base is hidden. Blog automation writes its articles FROM the knowledge base, and the base is hidden on every tier (aiKnowledge false since THE-253; only the AI Assistant add-on or the platform bypass lifts it), yet Automate was gated on automatedBlog alone. One exported predicate, isKnowledgeBaseEnabled (src/lib/knowledge-base-feature.ts), is now the condition for both surfaces so they come back together. No automation code, component or API route is deleted. APPENDED, NEVER SUBSTITUTED: the AdminDashboard.tsx digest below is also appended to every hardcoded accepted set that pins that file, with every earlier value kept. No firestore.rules change.",
+  "entries": [
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "025b037f7ff786e047c50c62c5ad213a1af1ade121640bd6100b88c6627f048e",
+      "why": "#521 owns three edits here and nothing else: one import of isKnowledgeBaseEnabled, one const knowledgeBaseEnabled = isKnowledgeBaseEnabled(features, planUnlocked) computed right after planAllows (the SAME planUnlocked || cell === true predicate the AI Knowledge render arm already used), that const replacing planAllows(features?.aiKnowledge) in the activeTab === 'ai' render arm (behaviour identical), and ONE prop on the existing <AdminBlog /> mount: knowledgeBaseEnabled={knowledgeBaseEnabled}. No nav array, group, tab id, permission gate, route or other screen mount moved; the AI Knowledge nav entry still reads navAllows(features?.aiKnowledge)."
+    },
+    {
+      "file": "src/components/AdminBlog.tsx",
+      "digest": "caaf29762ba80ce19486243c28af7e7871529dc5e6d9a5a0698107ff467773e4",
+      "why": "#521 owns this change: AdminBlog takes an optional knowledgeBaseEnabled prop defaulting to false (fail closed). While it is false the header renders neither the Automate button nor its automate-gate-pending skeleton, the /api/blog/automate settings fetch does not run, and the automation modal does not render even if showAutomation is still true. While it is true the THE-110 three-state plan gate is byte-for-byte what it was. The button gains data-testid blog-automate-button. All automation state, handlers and modal JSX are kept."
+    }
+  ]
+}
