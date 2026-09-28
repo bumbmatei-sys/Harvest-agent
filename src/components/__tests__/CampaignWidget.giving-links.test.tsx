@@ -29,6 +29,7 @@ vi.mock('../../firebase', () => ({ db: {}, auth: { currentUser: { uid: 'u1' } } 
 vi.mock('../../utils/tenant-scope', () => ({
   getTenantScope: () => ({ tenantId: 't1' }),
   PLATFORM_TENANT_ID: 'harvest',
+  hasPlatformOverride: () => false,
 }));
 vi.mock('../../utils/share-url', () => ({ usePublicShareUrl: () => 'https://grace.example/campaign/c1' }));
 vi.mock('../ShareButton', () => ({ default: () => null }));
@@ -128,10 +129,19 @@ describe('a campaign shows the tenant’s payment links (member news feed)', () 
     );
   });
 
-  it('keeps the in-app donate form beside them', async () => {
+  it('hides the in-app card form while card giving is off', async () => {
+    // card 86bc8jhwc — the founder: hide the card form while card giving is
+    // off. The links stay. The card Donate button does not.
     await mount(WITH_LINKS);
     await openDetail();
-    expect(container.textContent).toMatch(/Donate/);
+    expect(container.textContent).not.toContain('Select Amount');
+    expect(container.querySelector('input[placeholder="Custom amount ($)"]')).toBeNull();
+    expect(container.textContent).not.toContain('Your Information');
+    expect(container.querySelector('input[placeholder="Your email *"]')).toBeNull();
+    const cardDonate = [...container.querySelectorAll('button')]
+      .find((b) => /^Donate/.test((b.textContent || '').trim()));
+    expect(cardDonate).toBeUndefined();
+    expect(givingBlock()).not.toBeNull();
   });
 
   it('orders the rows by the provider table', async () => {
@@ -144,9 +154,14 @@ describe('a campaign shows the tenant’s payment links (member news feed)', () 
     expect(renderedProviders()).toEqual(GIVING_PROVIDERS.map((p) => p.id));
   });
 
-  it('shows no giving block when the church publishes no links', async () => {
+  it('shows no Give Now button when the church publishes no links and card giving is off', async () => {
+    // card 86bc8jhwc — the founder: no Give Now when there is nowhere to give.
+    // The campaign card stays. There is no sheet, and so no giving block.
     await mount({});
-    await openDetail();
+    const give = [...container.querySelectorAll('button')]
+      .find((b) => /give now/i.test(b.textContent || ''));
+    expect(give).toBeUndefined();
+    expect(container.textContent).toContain('Roof Fund');
     expect(givingBlock()).toBeNull();
     expect(container.textContent).not.toContain('Other ways to give');
   });

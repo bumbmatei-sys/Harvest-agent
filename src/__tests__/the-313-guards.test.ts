@@ -463,8 +463,14 @@ describe('no new token, component or dependency was added', () => {
     // rejected because a multi-select is the worst control on a phone; and
     // `radio-group` cannot express "all of them". A FOURTH import still fails
     // here, and an unrecorded one still fails in THE-274's guard.
+    // APPENDED BY #522, AND `checkbox` LEFT WITH THE PICKER.
+    // The events screen no longer imports `checkbox`. The same group now lives
+    // in donations/PaymentLinkPicker.tsx, mounted here and on the campaign
+    // form, and that file is the adopter on THE-274's RECORDED_ADOPTERS.
+    // `alert` (THE-345) and `tabs` (THE-308) are still required. A third import
+    // on this screen still fails here.
     expect(imports, 'the events screen adopted an unrecorded primitive')
-      .toEqual(['alert', 'checkbox', 'tabs']);
+      .toEqual(['alert', 'tabs']);
   });
 
   it('the four new files import only modules that already existed', () => {
@@ -853,10 +859,15 @@ describe('the existing events list, its write paths and paid-event creation are 
     // overridable action gold"), so this ticket adds no inline style and no
     // colour literal - unlike the five pre-existing `var(--brand-color,
     // #d4a017)` fallbacks in this file, which THE-346's registry pins by value
-    // and which a sixth would have added to. A count that is not exactly 219
-    // means something else moved too.
+    // and which a sixth would have added to.
+    //
+    // AMENDED FOR #0000: 219 -> 214, AND THE FIVE THAT LEFT ARE NAMED.
+    // The provider picker moved into PaymentLinkPicker. The five classNames
+    // that left with it are its title, its help line, its list wrapper, the
+    // option row, and the provider name. The inline-style count stays 7.
+    // A count that is not exactly 214 means something else moved too.
     const src = EVENTS();
-    expect((src.match(/className/g) || []).length, 'className count moved').toBe(219);
+    expect((src.match(/className/g) || []).length, 'className count moved').toBe(214);
     expect((src.match(/style=\{\{/g) || []).length, 'an inline style was added').toBe(7);
   });
 

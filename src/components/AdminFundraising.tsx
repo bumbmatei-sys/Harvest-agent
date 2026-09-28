@@ -25,6 +25,13 @@ import { FORM_CONTAINER, FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './l
 import { SMS_FEATURE_ENABLED } from '../lib/sms-feature';
 import { STRIPE_CONNECT_ENABLED } from '../lib/stripe-connect-feature';
 import { GIVING_PROVIDERS, GIVING_PROVIDER_NAMES_OR, readGivingLinks } from './donations/giving-providers';
+import PaymentLinkPicker from './donations/PaymentLinkPicker';
+import {
+  CAMPAIGN_NO_PAYMENT_LINKS,
+  CAMPAIGN_PICKER_HELP,
+  CAMPAIGN_PICKER_TITLE,
+  readSelectedProviderIds,
+} from '../lib/payment-link-selection';
 import { useTenant } from '@/contexts/TenantContext';
 import { ANALYTICS_EVENTS } from '../lib/analytics/events';
 import { trackProductEvent } from '../lib/analytics/client';
@@ -39,6 +46,7 @@ const empty: Omit<Campaign, 'id'> = {
   isActive: false,
   campaignType: 'fundraising',
   pledgeDeadline: null,
+  paymentProviders: [],
 };
 
 interface Pledge {
@@ -101,7 +109,8 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
    * sentence about payment links is shown only to the churches that have them.
    */
   const { branding } = useTenant();
-  const hasManualGivingLinks = useMemo(() => readGivingLinks(branding).length > 0, [branding]);
+  const churchLinks = useMemo(() => readGivingLinks(branding), [branding]);
+  const hasManualGivingLinks = churchLinks.length > 0;
 
   const platformOverride = hasPlatformOverride();
   const features = tenantPlan ? getPlanFeatures(tenantPlan) : null;
@@ -179,10 +188,15 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
     if (!tenantId) { notifyError('Unable to determine your tenant. Please refresh.', null); return; }
     setSaving(true);
     try {
-      const payload = {
+      // Ids only. A URL is never written onto the campaign, and `donateUrl`
+      // is not written either: omitting it leaves a legacy value in place
+      // (updateDoc does not delete a field it is not given) and does not
+      // create one.
+      const { donateUrl: _ignoredDonateUrl, ...payload } = {
         ...form,
         campaignType: form.campaignType || 'fundraising',
         pledgeDeadline: form.campaignType === 'pledge' ? (form.pledgeDeadline || null) : null,
+        paymentProviders: readSelectedProviderIds(form.paymentProviders),
       };
       if (editing) {
         // 🔴 `raised` IS NOT THE EDITOR'S TO WRITE — THE-251.
@@ -873,6 +887,28 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
                     className="w-full border border-line rounded-brand px-3.5 py-2.5 text-sm text-strong focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
                 </div>
               </div>
+
+              {hasManualGivingLinks ? (
+                <PaymentLinkPicker
+                  links={churchLinks}
+                  selected={form.paymentProviders ?? []}
+                  onChange={(paymentProviders) => setForm({ ...form, paymentProviders })}
+                  title={CAMPAIGN_PICKER_TITLE}
+                  help={CAMPAIGN_PICKER_HELP}
+                  wrapperAttribute="data-campaign-provider-picker"
+                />
+              ) : (
+                // Donations is gated by `canDonations` in AdminDashboard (full
+                // access or manageSettings). This screen does not know that
+                // permission, so the pointer is text only: a link would send a
+                // fundraising-only admin to a tab they cannot open.
+                <p
+                  data-testid="campaign-no-payment-links"
+                  className="text-[13px] text-body leading-relaxed rounded-brand-lg border border-line bg-surface-sunken px-4 py-3"
+                >
+                  {CAMPAIGN_NO_PAYMENT_LINKS}
+                </p>
+              )}
 
               {/*
                 🔴 THE-251 — WHAT THE GOAL WILL BE MEASURED AGAINST.

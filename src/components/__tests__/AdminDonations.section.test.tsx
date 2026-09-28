@@ -639,7 +639,7 @@ describe('no Stripe Connect route, donation route, fee or receipt path changed',
    * moves WHERE the Connect panel is mounted and adds a second, separate way to
    * give that Harvest is deliberately not part of.
    */
-  const UNCHANGED: Readonly<Record<string, string>> = {
+  const UNCHANGED: Readonly<Record<string, string | readonly string[]>> = {
     /*
      * ─── THE-256 RE-RECORDED THESE FOUR, deliberately and with one reason ───
      *
@@ -805,8 +805,19 @@ describe('no Stripe Connect route, donation route, fee or receipt path changed',
      * restoring Connect UI: flip that one value and this page's form returns
      * exactly as it was.
      */
-    'src/app/campaign/[campaignId]/page.tsx':
+    /*
+     * AN ACCEPTED SET, APPENDED TO BY #522, NOT ONE VALUE SUBSTITUTED.
+     * THE-303's digest stays accepted. What #522 changed on this page: the
+     * campaign stores provider ids and resolveCampaignGiving narrows the
+     * links handed to PublicCampaign, and the card-form gate is isCardGivingOn
+     * (the same expression as MainApp) instead of an inlined
+     * STRIPE_CONNECT_ENABLED read. loadCampaign's gate is not in this edit.
+     * A digest that is neither value still fails.
+     */
+    'src/app/campaign/[campaignId]/page.tsx': [
       '4e7181866e9487913ef7e458229c950e0f1b94572e2b4cdf5619cc6c26ffdcf8',
+      '3544e3bf9786c6d40bf396685ae862b7017b985b55f8f18efff858dcf2a2a8ac',
+    ],
     'functions/src/index.ts':
       '39ccade96ac3d4dd5a13047e9bc42b54ef5ac59ae72f932af042fc814bf23e0b',
   };
@@ -826,7 +837,12 @@ describe('no Stripe Connect route, donation route, fee or receipt path changed',
 
   it.each(Object.keys(UNCHANGED))('%s is byte-for-byte unchanged', (file) => {
     const digest = createHash('sha256').update(readFileSync(join(ROOT, file))).digest('hex');
-    expect(digest, `${file} changed — this ticket must not touch a money path`).toBe(UNCHANGED[file]);
+    const accepted = UNCHANGED[file];
+    const set = typeof accepted === 'string' ? [accepted] : [...accepted];
+    expect(
+      set,
+      `${file} is at ${digest}, which is none of the accepted values — this ticket must not touch a money path`,
+    ).toContain(digest);
   });
 
   it('adds no second donate endpoint, and no fee anywhere in the new code', async () => {

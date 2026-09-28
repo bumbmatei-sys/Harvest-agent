@@ -3,14 +3,16 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { collection, query, where, onSnapshot, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { getTenantScope } from '../utils/tenant-scope';
+import { getTenantScope, hasPlatformOverride, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { usePublicShareUrl } from '../utils/share-url';
 import ShareButton from './ShareButton';
 import { Heart, Clock, ChevronLeft, Loader2 } from 'lucide-react';
 import { HeroBand, Eyebrow } from './member/desktopKit';
 import { useTenant } from '@/contexts/TenantContext';
-import GivingLinks from './donations/GivingLinks';
+import CampaignGivingOptions from './donations/CampaignGivingOptions';
 import { readGivingLinks } from './donations/giving-providers';
+import { resolveCampaignGiving } from '@/lib/payment-link-selection';
+import { isCardGivingOn } from '@/lib/card-giving';
 
 interface Campaign {
   id: string;
@@ -21,7 +23,14 @@ interface Campaign {
   raised: number;
   endDate?: string;
   isActive: boolean;
+  /** Legacy. Written by no editor since #13. Still opened below, ahead of a chosen link. */
   donateUrl?: string;
+  /**
+   * Provider ids only. Empty or absent means every link the ministry
+   * publishes. Cleaned by `readSelectedProviderIds` inside
+   * `resolveCampaignGiving`.
+   */
+  paymentProviders?: string[];
   tenantId?: string;
   campaignType?: string;
 }
@@ -39,7 +48,7 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
   // re-derives every URL against its provider's host allow-list on READ, so a
   // link that no longer passes stops being a link here exactly as it does in
   // MainApp — one implementation, one answer, four surfaces.
-  const { branding } = useTenant();
+  const { branding, tenantId: contextTenantId, stripeConnectStatus } = useTenant();
   const givingLinks = useMemo(() => readGivingLinks(branding), [branding]);
 
   const [campaign, setCampaign] = useState<Campaign | null>(null);
@@ -51,6 +60,10 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
   const [donorEmail, setDonorEmail] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [donateError, setDonateError] = useState('');
+  const giving = useMemo(
+    () => resolveCampaignGiving(givingLinks, campaign?.paymentProviders),
+    [givingLinks, campaign],
+  );
   // Pledge campaigns have their own public page (/pledge/[id]); regular
   // (fundraising) donation campaigns live at /campaign/[id] — mirror the routing
   // the public pages enforce (src/app/campaign/[campaignId]/page.tsx:29).
@@ -115,9 +128,24 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
   const fmt = (n: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
 
+  // `isCardGivingOn` is MainApp.tsx:255 (`hasStripeGiving`). `isMainSite` is
+  // the same derivation MainApp uses just above that line. While this is
+  // false the sheet below draws no card form, so it cannot post to the
+  // donate route.
+  const isWhiteLabel = !!contextTenantId && contextTenantId !== PLATFORM_TENANT_ID;
+  const isMainSite = !isWhiteLabel || hasPlatformOverride();
+  const cardGivingOn = isCardGivingOn({ isMainSite, stripeConnectStatus });
+  // Same shape as MainApp's `hasGivingRails`: a Give Now button with nowhere
+  // to land is a dead control. A legacy donateUrl, a published link, or card
+  // giving each count. None of them means the campaign card stays and the
+  // button does not. `onDonate` is a handoff, not a rail of its own.
+  const showGiveNow = Boolean(campaign.donateUrl) || giving.links.length > 0 || cardGivingOn;
+
   const handleDonateClick = () => {
     if (campaign.donateUrl) {
       window.open(campaign.donateUrl, '_blank', 'noopener,noreferrer');
+    } else if (giving.direct) {
+      window.open(giving.direct.url, '_blank', 'noopener,noreferrer');
     } else if (onDonate) {
       onDonate(campaign);
     } else {
@@ -203,13 +231,15 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
                 )}
               </div>
             </div>
-            <button
-              onClick={handleDonateClick}
-              className="self-start lg:self-auto shrink-0 whitespace-nowrap px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: 'var(--brand-color, #e6b325)', boxShadow: 'var(--glow-gold)' }}
-            >
-              Give Now
-            </button>
+            {showGiveNow && (
+              <button
+                onClick={handleDonateClick}
+                className="self-start lg:self-auto shrink-0 whitespace-nowrap px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: 'var(--brand-color, #e6b325)', boxShadow: 'var(--glow-gold)' }}
+              >
+                Give Now
+              </button>
+            )}
           </div>
         </HeroBand>
       </div>
@@ -255,74 +285,78 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
             {/* Description */}
             <p className="text-sm text-muted leading-relaxed">{campaign.description}</p>
 
-            {/* Amount Selection */}
-            <div>
-              <p className="text-sm font-bold text-strong mb-3">Select Amount</p>
-              <div className="grid grid-cols-4 gap-2 mb-3">
-                {AMOUNT_PRESETS.map(amt => (
-                  <button
-                    key={amt}
-                    onClick={() => { setSelectedAmount(amt); setCustomAmount(''); }}
-                    className={`py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${
-                      selectedAmount === amt ? 'text-white border-transparent' : 'text-body border-line bg-surface-raised'
-                    }`}
-                    style={selectedAmount === amt ? { backgroundColor: 'var(--brand-color, #e6b325)', borderColor: 'var(--brand-color, #e6b325)' } : {}}
-                  >
-                    ${amt}
-                  </button>
-                ))}
-              </div>
-              <input
-                type="number"
-                min={1}
-                value={customAmount}
-                onChange={e => { setCustomAmount(e.target.value); setSelectedAmount(null); }}
-                placeholder="Custom amount ($)"
-                className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-gold"
-              />
-            </div>
+            {/* Card giving only. While the switch is off, none of this renders,
+                so this sheet cannot post to `/api/stripe/donate`. */}
+            {cardGivingOn && (
+              <>
+                <div>
+                  <p className="text-sm font-bold text-strong mb-3">Select Amount</p>
+                  <div className="grid grid-cols-4 gap-2 mb-3">
+                    {AMOUNT_PRESETS.map(amt => (
+                      <button
+                        key={amt}
+                        onClick={() => { setSelectedAmount(amt); setCustomAmount(''); }}
+                        className={`py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${
+                          selectedAmount === amt ? 'text-white border-transparent' : 'text-body border-line bg-surface-raised'
+                        }`}
+                        style={selectedAmount === amt ? { backgroundColor: 'var(--brand-color, #e6b325)', borderColor: 'var(--brand-color, #e6b325)' } : {}}
+                      >
+                        ${amt}
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    type="number"
+                    min={1}
+                    value={customAmount}
+                    onChange={e => { setCustomAmount(e.target.value); setSelectedAmount(null); }}
+                    placeholder="Custom amount ($)"
+                    className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-gold"
+                  />
+                </div>
 
-            {/* Donor Info */}
-            <div className="space-y-3">
-              <p className="text-sm font-bold text-strong">Your Information</p>
-              <input
-                value={donorName}
-                onChange={e => setDonorName(e.target.value)}
-                placeholder="Your name"
-                className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-gold"
-              />
-              <input
-                type="email"
-                value={donorEmail}
-                onChange={e => setDonorEmail(e.target.value)}
-                placeholder="Your email *"
-                className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-gold"
-              />
-            </div>
+                <div className="space-y-3">
+                  <p className="text-sm font-bold text-strong">Your Information</p>
+                  <input
+                    value={donorName}
+                    onChange={e => setDonorName(e.target.value)}
+                    placeholder="Your name"
+                    className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-gold"
+                  />
+                  <input
+                    type="email"
+                    value={donorEmail}
+                    onChange={e => setDonorEmail(e.target.value)}
+                    placeholder="Your email *"
+                    className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-gold"
+                  />
+                </div>
 
-            {donateError && (
-              <p className="text-xs text-red-500 font-medium">{donateError}</p>
+                {donateError && (
+                  <p className="text-xs text-red-500 font-medium">{donateError}</p>
+                )}
+
+                <button
+                  onClick={handleSubmitDonation}
+                  disabled={isProcessing || (!selectedAmount && !customAmount)}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold text-white disabled:opacity-50 transition-opacity"
+                  style={{ backgroundColor: 'var(--brand-color, #e6b325)' }}
+                >
+                  {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <Heart size={15} strokeWidth={2.5} />}
+                  {isProcessing
+                    ? 'Processing...'
+                    : `Donate${selectedAmount ? ` $${selectedAmount}` : customAmount ? ` $${customAmount}` : ''}`}
+                </button>
+              </>
             )}
 
-            <button
-              onClick={handleSubmitDonation}
-              disabled={isProcessing || (!selectedAmount && !customAmount)}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold text-white disabled:opacity-50 transition-opacity"
-              style={{ backgroundColor: 'var(--brand-color, #e6b325)' }}
-            >
-              {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <Heart size={15} strokeWidth={2.5} />}
-              {isProcessing
-                ? 'Processing...'
-                : `Donate${selectedAmount ? ` $${selectedAmount}` : customAmount ? ` $${customAmount}` : ''}`}
-            </button>
-
-            {/*
-              THE-251 — the church's own links, under the card form, rendered by
-              the Give page's own component rather than a second one written
-              here. `GivingLinks` returns null on an empty list, so a church that
-              publishes none sees this detail view exactly as it was.
-            */}
-            <GivingLinks links={givingLinks} heading="Other ways to give" />
+            <CampaignGivingOptions
+              links={giving.links}
+              directLink={giving.direct}
+              narrowed={giving.narrowed}
+              showCardForm={cardGivingOn}
+              brandColor="var(--brand-color, #e6b325)"
+            />
           </div>
         </div>
       )}

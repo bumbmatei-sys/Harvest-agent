@@ -1,0 +1,21 @@
+{
+  "ticket": "#522",
+  "note": "#522 (per-campaign payment link picker) moves the event provider checkboxes into one shared PaymentLinkPicker, lets a campaign store provider ids and open Donate on the chosen link, and hides the card form while card giving is off. This record appends the three files whose whole-file digests already had an accepted set. Nothing here replaces a digest that was already recorded. The test guards that accept those digests were updated alongside this record.",
+  "entries": [
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "db9fbb0478cbeb3f2425c9afdaa40c6c59770f211625da0fc598fa7c041276be",
+      "why": "#522 owns this change and it is the provider picker leaving the screen, not a new behaviour. The checkbox group THE-351 mounted inline (title, help, list, option row, provider name) now renders through donations/PaymentLinkPicker, which AdminFundraising mounts as well, so the two forms cannot drift. The Checkbox import leaves with it; alert and tabs stay. data-event-provider-picker, PROVIDER_PICKER_TITLE and PROVIDER_PICKER_HELP are unchanged, and onChange still writes form.paymentProviders. handleSave, confirmDelete, emptyForm, the Check In gate, THE-355's Registered badge, THE-368's money-flow link and the registration URL are byte-identical. No Firestore path moved: the picker is a control, not a read or a write."
+    },
+    {
+      "file": "src/components/AdminFundraising.tsx",
+      "digest": "76ef6af60b227c6745e79f1cb57c37d455a29d5faf3bd5b90a723914aea0ebba",
+      "why": "#522 owns this change. A campaign can now name which of the ministry's saved payment links apply to it. The editor stores ids only, via readSelectedProviderIds, and never a URL; donateUrl is omitted from the write so a legacy value stays put and updateDoc does not delete a field it is not given. Empty paymentProviders means every current link, which is the campaign a church already had. When the ministry has no links, the form shows CAMPAIGN_NO_PAYMENT_LINKS as text rather than a link, because this screen does not know canDonations and a link would send a fundraising-only admin to a tab they cannot open. THE-368's money-flow link, THE-362's copy and the raised strip on the edit path are untouched. firestorePathsOf is unchanged: no new client write."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "abbc48faed625ffdac118f9e6883d77e8f850f7a80953bba5b8b821856ed3add",
+      "why": "#522 owns this APPEND to RECORDED_ADOPTERS and nothing else in the file. PaymentLinkPicker.tsx joins the list as the checkbox adopter, ticket #0000 in that entry because the picker has no THE ticket, and the reason names the three primitives it rejected: toggle-group, select and radio-group. The checkbox import moved here from AdminEvents; that screen still imports alert and tabs. No earlier adopter was removed or rewritten, and no assertion in the suite changed."
+    }
+  ]
+}

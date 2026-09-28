@@ -753,6 +753,10 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // than assumed to.
       'src/components/admin/GivingDocsLink.tsx',     // THE-368: USES it, as a phone-only 44px tap floor
       'src/components/attach/AttachMenu.tsx',        // THE-331: USES it, as a phone-only 44px tap floor
+      // APPENDED FOR #0000, NOTHING AROUND IT REMOVED. Sorted position, not arrival order.
+      // PaymentLinkPicker USES the class as `min-h-11 sm:min-h-0` on each provider row,
+      // the same phone floor the event picker had before that markup moved here.
+      'src/components/donations/PaymentLinkPicker.tsx',
       'src/components/events/RotaInviteView.tsx',   // THE-324: names it in a comment, does not use it
       'src/components/events/RotaRespondView.tsx',
       // 🔴 APPENDED BY THE-334, for the same reason and of the same KIND as

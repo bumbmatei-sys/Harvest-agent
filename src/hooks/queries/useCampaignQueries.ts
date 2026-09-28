@@ -15,6 +15,16 @@ export interface Campaign {
   tenantId?: string;
   campaignType?: 'fundraising' | 'pledge'; // default 'fundraising'
   pledgeDeadline?: string | null;          // ISO date — pledge campaigns only
+  /**
+   * Provider ids only, never URLs. Empty or absent means every link the
+   * ministry publishes. Cleaned via `readSelectedProviderIds` on every read.
+   */
+  paymentProviders?: string[];
+  /**
+   * Legacy read-only field. Written by no editor since #13. CampaignWidget
+   * still opens it. Do not write it.
+   */
+  donateUrl?: string;
 }
 
 export const useCampaigns = (tenantId: string | null | undefined, isAuthReady = true) =>

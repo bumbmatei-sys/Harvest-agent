@@ -6,7 +6,8 @@ import PublicCampaign from '@/components/PublicCampaign';
 import PublicRouteAnalytics from '@/components/PublicRouteAnalytics';
 import { tenantFeatures } from '@/lib/tenant-features';
 import { readGivingLinks } from '@/components/donations/giving-providers';
-import { STRIPE_CONNECT_ENABLED } from '@/lib/stripe-connect-feature';
+import { resolveCampaignGiving } from '@/lib/payment-link-selection';
+import { isCardGivingOn } from '@/lib/card-giving';
 
 export const dynamic = 'force-dynamic';
 
@@ -143,6 +144,11 @@ export default async function PublicCampaignPage({
   // more here than anywhere: this page is public and unauthenticated, so the
   // reader is a stranger with no account and no way to judge a bad href.
   const givingLinks = readGivingLinks(branding);
+  // The campaign stores provider ids, never a URL. The selection can only
+  // narrow `givingLinks`. Empty, absent, or a selection that matches nothing
+  // keeps every current link — the page a campaign had before the field
+  // existed. One surviving link with a URL is the direct Donate target.
+  const giving = resolveCampaignGiving(givingLinks, data.paymentProviders);
 
   // 🔴 THE-303 — CAN A CARD ACTUALLY BE TAKEN ON THIS PAGE?
   //
@@ -154,7 +160,8 @@ export default async function PublicCampaignPage({
   //
   // Two facts, both server-side, both read and neither re-stated:
   //
-  //   · `STRIPE_CONNECT_ENABLED` — the master switch (THE-256). It is `false`
+  //   · `STRIPE_CONNECT_ENABLED` — the master switch (THE-256), read inside
+  //     `isCardGivingOn` (the same expression as MainApp.tsx:255). It is `false`
   //     while the platform account is closed, so today no tenant can take a
   //     card at all and `/api/stripe/donate` answers 503 before it opens
   //     Firestore. READING the switch is not restoring Connect UI: nothing here
@@ -172,8 +179,13 @@ export default async function PublicCampaignPage({
   // ⚠️ THE GATE IS NOT WHAT REFUSES THE MONEY. `/api/stripe/donate` already
   // does, before any Stripe object exists. This is the surface catching up with
   // the server, which is the order THE-256 argued for.
-  const showDonationForm =
-    STRIPE_CONNECT_ENABLED && (tenant as { stripeConnectStatus?: string }).stripeConnectStatus === 'active';
+  // `isCardGivingOn` is MainApp.tsx:255. This page has no main-site
+  // short-circuit, so `isMainSite: false` leaves the gate as the switch and
+  // the tenant's own 'active' status — the reading this page already had.
+  const showDonationForm = isCardGivingOn({
+    isMainSite: false,
+    stripeConnectStatus: (tenant as { stripeConnectStatus?: string }).stripeConnectStatus,
+  });
 
   return (
     <>
@@ -184,7 +196,9 @@ export default async function PublicCampaignPage({
         logo={branding.logo || null}
         primaryColor={isValidHex(branding.primaryColor) ? branding.primaryColor : '#B8962E'}
         campaign={campaign}
-        links={givingLinks}
+        links={giving.links}
+        directLink={giving.direct}
+        narrowed={giving.narrowed}
         showDonationForm={showDonationForm}
       />
     </>
