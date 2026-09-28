@@ -1319,6 +1319,18 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       'correction with. `empty` is REJECTED: an unpaid ticket is a state, not an absent ' +
       'collection. `sonner` is REJECTED: a toast leaves while the amount owed does not.',
   },
+  {
+    file: 'src/components/donations/PaymentLinkPicker.tsx',
+    ticket: '#0000',
+    why:
+      'APPENDED, never substituted. The event form and the campaign form share one checkbox '
+      + 'group for which of the ministry\'s saved payment links apply. It takes `checkbox` '
+      + 'because the choice is a subset and each option is independent. `toggle-group` was '
+      + 'rejected: its multiple mode reads as pick-one across a row of providers. `select` was '
+      + 'rejected because a multi-select is the worst control on a phone. `radio-group` was '
+      + 'rejected because it cannot express all of them. The primitive moved here from '
+      + 'AdminEvents; that screen still imports `alert` and `tabs`.',
+  },
 ];
 
 it('only the recorded adopters import the new components, and each names its ticket', () => {

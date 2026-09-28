@@ -52,6 +52,14 @@ describe('every giving surface derives from the one provider table', () => {
           .not.toMatch(new RegExp(`['"\`]${id}['"\`]`));
       }
     }
+    // card 86bc8jhwc — the shared campaign options are a giving surface too.
+    const options = read('components/donations/CampaignGivingOptions.tsx')
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')
+      .replace(/^[ \t]*\/\/[^\n]*$/gm, ' ');
+    for (const id of GIVING_PROVIDER_IDS) {
+      expect(options, `CampaignGivingOptions names the provider "${id}" itself`)
+        .not.toMatch(new RegExp(`['"\`]${id}['"\`]`));
+    }
   });
 
   it('every surface resolves its links through readGivingLinks', () => {
@@ -87,14 +95,17 @@ describe('every giving surface derives from the one provider table', () => {
   it('every surface draws them with the one shared component', () => {
     // GivingLinks owns the row, the monogram, the rel tokens and the member's
     // half of the disclosure. A second renderer is a second set of all four.
-    const renderers: Surface[] = [
-      'the Give tab itself',
-      'a campaign in the news feed',
-      'a public campaign page',
-    ];
-    for (const name of renderers) {
-      expect(read(SURFACES[name]), `${name} does not render through GivingLinks`)
-        .toMatch(/<GivingLinks/);
+    expect(read(SURFACES['the Give tab itself']), 'the Give tab does not render through GivingLinks')
+      .toMatch(/<GivingLinks/);
+    // card 86bc8jhwc — the two campaign surfaces share CampaignGivingOptions,
+    // and that file is the one that renders GivingLinks. A campaign surface
+    // that drew its own rows would no longer mention either component.
+    const options = read('components/donations/CampaignGivingOptions.tsx');
+    expect(options, 'CampaignGivingOptions does not render through GivingLinks')
+      .toMatch(/<GivingLinks/);
+    for (const name of ['a campaign in the news feed', 'a public campaign page'] as Surface[]) {
+      expect(read(SURFACES[name]), `${name} does not use the shared campaign options`)
+        .toMatch(/<CampaignGivingOptions/);
     }
   });
 

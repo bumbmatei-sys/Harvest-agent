@@ -853,10 +853,15 @@ describe('the existing events list, its write paths and paid-event creation are 
     // overridable action gold"), so this ticket adds no inline style and no
     // colour literal - unlike the five pre-existing `var(--brand-color,
     // #d4a017)` fallbacks in this file, which THE-346's registry pins by value
-    // and which a sixth would have added to. A count that is not exactly 219
-    // means something else moved too.
+    // and which a sixth would have added to.
+    //
+    // AMENDED FOR #0000: 219 -> 214, AND THE FIVE THAT LEFT ARE NAMED.
+    // The provider picker moved into PaymentLinkPicker. The five classNames
+    // that left with it are its title, its help line, its list wrapper, the
+    // option row, and the provider name. The inline-style count stays 7.
+    // A count that is not exactly 214 means something else moved too.
     const src = EVENTS();
-    expect((src.match(/className/g) || []).length, 'className count moved').toBe(219);
+    expect((src.match(/className/g) || []).length, 'className count moved').toBe(214);
     expect((src.match(/style=\{\{/g) || []).length, 'an inline style was added').toBe(7);
   });
 

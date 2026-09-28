@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import { Heart, Clock, Loader2 } from 'lucide-react';
-import GivingLinks from './donations/GivingLinks';
+import CampaignGivingOptions from './donations/CampaignGivingOptions';
 import type { PublishedGivingLink } from './donations/giving-providers';
 
 interface PublicCampaignProps {
@@ -25,12 +25,28 @@ interface PublicCampaignProps {
    * 🔴 NOT RE-DERIVED HERE, and not fetched here. The page that mounts this
    * resolves them from the same `tenant.config` it takes the logo from, so the
    * campaign page and the Give page cannot disagree about which links a church
-   * publishes — a second derivation is exactly how two surfaces drift.
+   * publishes — a second derivation is exactly how two surfaces drift. The
+   * route may pass a subset of that published list. It cannot pass a link the
+   * church does not publish.
    *
    * Optional, and defaulted to empty: every other caller of this component
    * (tests, and any future mount) keeps rendering exactly as it did.
    */
   links?: readonly PublishedGivingLink[];
+  /**
+   * The one link Donate opens directly, or null. The route sets this only
+   * when the campaign narrowed the church's links to a single provider that
+   * has a URL. Absent, a Zelle row, and a stale selection all pass null, so
+   * this page never redirects on a guess. Defaulted so a caller that only
+   * passes `links` keeps today's page.
+   */
+  directLink?: PublishedGivingLink | null;
+  /**
+   * True when a non-empty selection matched at least one published link.
+   * With the card form off, a narrowed list is "Choose how to give" rather
+   * than "Ways to give". Defaults to false.
+   */
+  narrowed?: boolean;
   /**
    * 🔴 THE-303 — CAN THIS CHURCH ACTUALLY TAKE A CARD?
    *
@@ -85,7 +101,10 @@ const Shell: React.FC<{ logo: string | null; tenantName: string; primaryColor: s
   </div>
 );
 
-const PublicCampaign: React.FC<PublicCampaignProps> = ({ tenantId, tenantName, logo, primaryColor, campaign, links = [], showDonationForm }) => {
+const PublicCampaign: React.FC<PublicCampaignProps> = ({
+  tenantId, tenantName, logo, primaryColor, campaign, links = [], showDonationForm,
+  directLink = null, narrowed = false,
+}) => {
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState('');
   const [donorName, setDonorName] = useState('');
@@ -247,29 +266,17 @@ const PublicCampaign: React.FC<PublicCampaignProps> = ({ tenantId, tenantName, l
           )}
 
           {/*
-            THE-251 — the church's OWN payment links, beneath the Stripe form.
-
-            🔴 THE SAME COMPONENT AND THE SAME TABLE AS THE GIVE PAGE. Logo,
-            name, handle, email, ordering, the external-link affordance and the
-            "not processed by Harvest" line are all `GivingLinks`' already, and
-            a second renderer here would drift from it the first time either
-            changed. Adding the fifth provider stays one row in
-            `GIVING_PROVIDERS` — this file does not know how many there are.
-
-            ⚠️ NO EMPTY BLOCK. `GivingLinks` returns null on an empty list, so a
-            campaign whose church publishes no links renders exactly what it
-            rendered before this change — no heading, no rule, no gap. That is
-            the Give page's fourth state reproduced here by the same mechanism
-            rather than by a second condition that could disagree with it.
+            The church's own payment links, beneath the card form when that
+            form is drawn. `CampaignGivingOptions` is the same renderer the
+            member detail uses: the direct Donate anchor, then `GivingLinks`.
+            An empty list still draws nothing — `GivingLinks` returns null.
           */}
-          {/* 🔴 THE HEADING FOLLOWS THE FORM (THE-303). With no form above them
-              these are not "other" ways to give — they are the ways — and a
-              heading naming a way that is not on the page sends a member
-              looking for it. The member Give page makes the same swap for the
-              same reason. */}
-          <GivingLinks
+          <CampaignGivingOptions
             links={links}
-            heading={showDonationForm ? 'Other ways to give' : 'Ways to give'}
+            directLink={directLink}
+            narrowed={narrowed}
+            showCardForm={showDonationForm}
+            brandColor={primaryColor}
           />
         </div>
       </div>

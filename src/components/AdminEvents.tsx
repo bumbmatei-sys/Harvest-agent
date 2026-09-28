@@ -31,7 +31,7 @@ import {
 import { useTenantOptional } from '../contexts/TenantContext';
 import { readGivingLinks } from './donations/giving-providers';
 import { GivingDocsLink } from './admin/GivingDocsLink';
-import { Checkbox } from '@/components/ui/checkbox';
+import PaymentLinkPicker from './donations/PaymentLinkPicker';
 import {
   CREATION_DISCLAIMER_BODY, CREATION_DISCLAIMER_TITLE,
   DOOR_CONFIRMED_BADGE, DOOR_UNCONFIRMED_BADGE, DOOR_UNCONFIRMED_HELP,
@@ -721,42 +721,14 @@ const AdminEvents: React.FC = () => {
                     an event with no manual payment never shows it. */}
                 <GivingDocsLink page="theMoneyFlow" />
 
-                {/*
-                  🔴 WHICH links accept payment for THIS event. `checkbox` — the
-                  choice is a SUBSET and each option is independent, which is
-                  exactly what a checkbox group is. `toggle-group` was rejected:
-                  its multiple mode looks like a segmented control, which reads
-                  as "pick one" on a row of six; `select` was rejected because a
-                  multi-select is the worst control on a phone; `radio-group`
-                  was rejected because it cannot express "all of them".
-                */}
-                <div data-event-provider-picker>
-                  <p className="text-xs font-semibold text-body mb-1">{PROVIDER_PICKER_TITLE}</p>
-                  <p className="text-xs text-muted mb-2.5">{PROVIDER_PICKER_HELP}</p>
-                  <div className="space-y-1">
-                    {churchLinks.map(({ provider }) => {
-                      const ticked = form.paymentProviders.includes(provider.id);
-                      return (
-                        <label
-                          key={provider.id}
-                          data-provider-option={provider.id}
-                          className="flex items-center gap-2.5 min-h-11 sm:min-h-0 cursor-pointer"
-                        >
-                          <Checkbox
-                            checked={ticked}
-                            onCheckedChange={() => setForm({
-                              ...form,
-                              paymentProviders: ticked
-                                ? form.paymentProviders.filter(id => id !== provider.id)
-                                : [...form.paymentProviders, provider.id],
-                            })}
-                          />
-                          <span className="text-sm text-body">{provider.label}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
+                <PaymentLinkPicker
+                  links={churchLinks}
+                  selected={form.paymentProviders}
+                  onChange={(paymentProviders) => setForm({ ...form, paymentProviders })}
+                  title={PROVIDER_PICKER_TITLE}
+                  help={PROVIDER_PICKER_HELP}
+                  wrapperAttribute="data-event-provider-picker"
+                />
               </>
             )}
             <div>

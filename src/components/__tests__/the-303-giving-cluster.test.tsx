@@ -278,9 +278,15 @@ describe('3 · a campaign page shows the tenant’s payment links', () => {
   });
 
   it('both public campaign surfaces render through the ONE shared component', () => {
-    for (const file of ['src/components/PublicPledge.tsx', 'src/components/PublicCampaign.tsx', 'src/components/PublicGiving.tsx']) {
+    for (const file of ['src/components/PublicPledge.tsx', 'src/components/PublicGiving.tsx']) {
       expect(code(file), `${file} does not render through GivingLinks`).toMatch(/<GivingLinks/);
     }
+    // card 86bc8jhwc — the public campaign page draws its links through
+    // CampaignGivingOptions, which is what renders GivingLinks there.
+    expect(code('src/components/PublicCampaign.tsx'), 'the campaign page left the shared options')
+      .toMatch(/<CampaignGivingOptions/);
+    expect(code('src/components/donations/CampaignGivingOptions.tsx'), 'the options reimplemented the rows')
+      .toMatch(/<GivingLinks/);
   });
 
   it('🔴 no new surface carries a provider list of its own', () => {
@@ -385,9 +391,15 @@ describe('5 · with Stripe off, neither page shows a Stripe control or an apolog
   });
 
   it('🔴 the route derives it from the master switch AND the tenant’s own status', () => {
+    // card 86bc8jhwc — the expression moved to isCardGivingOn, which is the
+    // same reading MainApp.tsx:255 uses. This page passes isMainSite: false,
+    // so it stays the switch and the tenant's own 'active' status.
     const src = code('src/app/campaign/[campaignId]/page.tsx');
-    expect(src).toMatch(/STRIPE_CONNECT_ENABLED/);
-    expect(src, "'pending' or 'restricted' would draw a form that fails after a card is typed in")
+    expect(src).toMatch(/isCardGivingOn\(/);
+    expect(src).toMatch(/isMainSite:\s*false/);
+    const gate = code('src/lib/card-giving.ts');
+    expect(gate).toMatch(/STRIPE_CONNECT_ENABLED && \(input\.isMainSite \|\| input\.stripeConnectStatus === 'active'\)/);
+    expect(gate, "'pending' or 'restricted' would draw a form that fails after a card is typed in")
       .toMatch(/stripeConnectStatus === 'active'/);
     // Today that resolves to false for every tenant, which is the whole of bug 4.
     expect(STRIPE_CONNECT_ENABLED, 'Connect came back on — re-read this suite').toBe(false);
