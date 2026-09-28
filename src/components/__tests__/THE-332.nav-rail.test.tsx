@@ -830,6 +830,14 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
        Firestore operation of any kind. THE-351's disclaimer text is untouched -
        the link is a sibling to that Alert, never inside it. */
     'fe2f10bfd39a3b1f5012a2f3e38aeaa232515ab8925a1225668e7691a76f7a05',
+    /* APPENDED BY #522, never substituted. The inline provider checkboxes
+       moved into PaymentLinkPicker so the event form and the campaign form
+       share one control. The screen still writes form.paymentProviders and
+       still mounts the picker under data-event-provider-picker. NO NAV, TAB
+       ID, READ, WRITE OR PERMISSION GATE MOVED, which is what THE-332 pins
+       this file for: handleSave, confirmDelete and firestorePathsOf are
+       unchanged. */
+    'db9fbb0478cbeb3f2425c9afdaa40c6c59770f211625da0fc598fa7c041276be',
   ],
   'src/components/AdminServices.tsx': '17f508718d3c6b1ad016b9fb6be2c241629421705af4a9c0966b02739eba74ae',
   /* 🔴 AN ACCEPTED SET, APPENDED TO, NOT ONE VALUE SUBSTITUTED — the shape the

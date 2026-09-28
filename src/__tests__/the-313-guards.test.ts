@@ -463,8 +463,14 @@ describe('no new token, component or dependency was added', () => {
     // rejected because a multi-select is the worst control on a phone; and
     // `radio-group` cannot express "all of them". A FOURTH import still fails
     // here, and an unrecorded one still fails in THE-274's guard.
+    // APPENDED BY #522, AND `checkbox` LEFT WITH THE PICKER.
+    // The events screen no longer imports `checkbox`. The same group now lives
+    // in donations/PaymentLinkPicker.tsx, mounted here and on the campaign
+    // form, and that file is the adopter on THE-274's RECORDED_ADOPTERS.
+    // `alert` (THE-345) and `tabs` (THE-308) are still required. A third import
+    // on this screen still fails here.
     expect(imports, 'the events screen adopted an unrecorded primitive')
-      .toEqual(['alert', 'checkbox', 'tabs']);
+      .toEqual(['alert', 'tabs']);
   });
 
   it('the four new files import only modules that already existed', () => {

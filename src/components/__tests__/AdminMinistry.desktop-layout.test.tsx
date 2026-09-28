@@ -404,8 +404,139 @@ const THE_368_IMPORT = /^import \{ GivingDocsLink \} from '[^']*';\n/m;
 const unwrapTHE368Docs = (src: string): string =>
   src.replace(THE_368_COMMENT_AND_LINK, '\n').replace(THE_368_IMPORT, '');
 
+/**
+ * #522 — reverse the shared payment-link picker before hashing, and NOTHING else.
+ *
+ * 🔴 THE STRONGER OF THE TWO HONEST OPTIONS, in THE-251's own words: re-recording
+ * would bless every other byte that moved in the same breath. So
+ * `THE_308_EVENTS` and `THE_251_FUNDRAISING` keep their strippedSha and
+ * strippedLines, and these edits are reversed instead.
+ *
+ * WHAT MOVED, NAMED SO THE REVERSAL CAN BE CHECKED:
+ *
+ *   AdminEvents — the inline checkbox group became `<PaymentLinkPicker>`. The
+ *   control still writes `form.paymentProviders`. No handler, payload or
+ *   Firestore path in this file changed, which is why reversing the markup
+ *   restores the pin rather than hiding a write.
+ *
+ *   AdminFundraising — a campaign may now store provider ids. The reversal puts
+ *   back the editor as THE-368 left it: no picker, no `paymentProviders` on
+ *   `empty`, and `const payload = { ...form }` without the id cleaner. The
+ *   money path this suite actually pins — `firestorePathsOf` against the pre-PR
+ *   revision — is asserted on the file as it is, not on this reversal, and that
+ *   set did not grow.
+ *
+ * ⚠️ APPENDED, AND IT RUNS FIRST. Every later reversal matches the file as its
+ * own ticket left it. If any string here stops matching, the replacement
+ * no-ops and the hash goes red.
+ */
+const CAMPAIGN_PICKER_EDITS: ReadonlyArray<readonly [after: string, before: string]> = [
+  // Fundraising's import is two statements. It has to go before the one-line
+  // events import, or the one-line replace rewrites the first line and this
+  // block no longer matches.
+  ["import PaymentLinkPicker from './donations/PaymentLinkPicker';\nimport {\n  CAMPAIGN_NO_PAYMENT_LINKS,\n  CAMPAIGN_PICKER_HELP,\n  CAMPAIGN_PICKER_TITLE,\n  readSelectedProviderIds,\n} from '../lib/payment-link-selection';\n", ''],
+  ["import PaymentLinkPicker from './donations/PaymentLinkPicker';\n", "import { Checkbox } from '@/components/ui/checkbox';\n"],
+  [
+    `                <PaymentLinkPicker
+                  links={churchLinks}
+                  selected={form.paymentProviders}
+                  onChange={(paymentProviders) => setForm({ ...form, paymentProviders })}
+                  title={PROVIDER_PICKER_TITLE}
+                  help={PROVIDER_PICKER_HELP}
+                  wrapperAttribute="data-event-provider-picker"
+                />`,
+    `                {/*
+                  🔴 WHICH links accept payment for THIS event. \`checkbox\` — the
+                  choice is a SUBSET and each option is independent, which is
+                  exactly what a checkbox group is. \`toggle-group\` was rejected:
+                  its multiple mode looks like a segmented control, which reads
+                  as "pick one" on a row of six; \`select\` was rejected because a
+                  multi-select is the worst control on a phone; \`radio-group\`
+                  was rejected because it cannot express "all of them".
+                */}
+                <div data-event-provider-picker>
+                  <p className="text-xs font-semibold text-body mb-1">{PROVIDER_PICKER_TITLE}</p>
+                  <p className="text-xs text-muted mb-2.5">{PROVIDER_PICKER_HELP}</p>
+                  <div className="space-y-1">
+                    {churchLinks.map(({ provider }) => {
+                      const ticked = form.paymentProviders.includes(provider.id);
+                      return (
+                        <label
+                          key={provider.id}
+                          data-provider-option={provider.id}
+                          className="flex items-center gap-2.5 min-h-11 sm:min-h-0 cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={ticked}
+                            onCheckedChange={() => setForm({
+                              ...form,
+                              paymentProviders: ticked
+                                ? form.paymentProviders.filter(id => id !== provider.id)
+                                : [...form.paymentProviders, provider.id],
+                            })}
+                          />
+                          <span className="text-sm text-body">{provider.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>`,
+  ],
+  ['  pledgeDeadline: null,\n  paymentProviders: [],\n};', '  pledgeDeadline: null,\n};'],
+  [
+    '  const churchLinks = useMemo(() => readGivingLinks(branding), [branding]);\n  const hasManualGivingLinks = churchLinks.length > 0;',
+    '  const hasManualGivingLinks = useMemo(() => readGivingLinks(branding).length > 0, [branding]);',
+  ],
+  [
+    `      // Ids only. A URL is never written onto the campaign, and \`donateUrl\`
+      // is not written either: omitting it leaves a legacy value in place
+      // (updateDoc does not delete a field it is not given) and does not
+      // create one.
+      const { donateUrl: _ignoredDonateUrl, ...payload } = {
+        ...form,
+        campaignType: form.campaignType || 'fundraising',
+        pledgeDeadline: form.campaignType === 'pledge' ? (form.pledgeDeadline || null) : null,
+        paymentProviders: readSelectedProviderIds(form.paymentProviders),
+      };`,
+    `      const payload = {
+        ...form,
+        campaignType: form.campaignType || 'fundraising',
+        pledgeDeadline: form.campaignType === 'pledge' ? (form.pledgeDeadline || null) : null,
+      };`,
+  ],
+  [
+    `              {hasManualGivingLinks ? (
+                <PaymentLinkPicker
+                  links={churchLinks}
+                  selected={form.paymentProviders ?? []}
+                  onChange={(paymentProviders) => setForm({ ...form, paymentProviders })}
+                  title={CAMPAIGN_PICKER_TITLE}
+                  help={CAMPAIGN_PICKER_HELP}
+                  wrapperAttribute="data-campaign-provider-picker"
+                />
+              ) : (
+                // Donations is gated by \`canDonations\` in AdminDashboard (full
+                // access or manageSettings). This screen does not know that
+                // permission, so the pointer is text only: a link would send a
+                // fundraising-only admin to a tab they cannot open.
+                <p
+                  data-testid="campaign-no-payment-links"
+                  className="text-[13px] text-body leading-relaxed rounded-brand-lg border border-line bg-surface-sunken px-4 py-3"
+                >
+                  {CAMPAIGN_NO_PAYMENT_LINKS}
+                </p>
+              )}
+
+`,
+    '',
+  ],
+];
+
+const unwrapCampaignPicker = (src: string): string =>
+  CAMPAIGN_PICKER_EDITS.reduce((acc, [after, before]) => acc.replace(after, before), src);
+
 const stripPresentation = (src: string): string =>
-  unwrapRota(unwrapServicePlan(unwrapSmsGate(unwrapRotaInvite(unwrapConfirmedWording(unwrapTHE362Fundraising(unwrapTHE368Docs(src)))))))
+  unwrapRota(unwrapServicePlan(unwrapSmsGate(unwrapRotaInvite(unwrapConfirmedWording(unwrapTHE362Fundraising(unwrapTHE368Docs(unwrapCampaignPicker(src))))))))
   .replace(/className=(?:"[^"]*"|\{`[^`]*`\}|\{[A-Za-z_$][\w.$]*\})/g, 'className=X')
   // An import of a LAYOUT module is presentation, not behaviour — the same
   // reasoning that already exempted form-layout, widened to the directory. A
