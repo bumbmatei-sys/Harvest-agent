@@ -729,7 +729,16 @@ describe('no nav item is shown by a bypass that skips its feature check', () => 
     // no tab at all instead of a walled one. See section 7 for what that buys —
     // free has no donate page by decision, and a wall in front of Stripe Connect
     // would be the surface THE-225 deleted from Settings.
-    expect(gateCount).toBe(GATED_TABS.length + 1 + 1 + 1);
+    //
+    // The AI Knowledge RENDER gate is the one call that does not spell
+    // `planAllows`. It asks `isKnowledgeBaseEnabled`, which is that same
+    // `planUnlocked || cell === true` predicate, so the blog screen (which
+    // hides Automate on it) and the knowledge-base screen cannot drift. It
+    // still counts: dropping it, or open-coding a second bypass in its place,
+    // moves this total.
+    const kbGate = (CODE.match(/isKnowledgeBaseEnabled\(/g) ?? []).length;
+    expect(kbGate, 'the knowledge-base screen stopped sharing its one predicate').toBe(1);
+    expect(gateCount + kbGate).toBe(GATED_TABS.length + 1 + 1 + 1);
   });
 
   it('builds the NAV gate from the render gate plus exactly one term: the free tier', () => {

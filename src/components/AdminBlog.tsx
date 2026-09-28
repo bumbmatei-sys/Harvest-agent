@@ -41,7 +41,13 @@ interface BlogPost {
  isAiGenerated?: boolean;
 }
 
-const AdminBlog: React.FC = () => {
+interface AdminBlogProps {
+ // Fail closed. Automation writes from the knowledge base, so Automate stays
+ // hidden unless the caller says that screen is on.
+ knowledgeBaseEnabled?: boolean;
+}
+
+const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) => {
  const [posts, setPosts] = useState<BlogPost[]>([]);
  const [loading, setLoading] = useState(true);
  const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -124,9 +130,11 @@ const AdminBlog: React.FC = () => {
   return () => { cancelled = true; if (unsubscribe) unsubscribe(); };
  }, []);
 
- // Load automation settings (only for plans that support it).
+ // Settings exist only for a control this screen is going to show. The plan
+ // gate is not enough: the knowledge base can be hidden on a tier that owns
+ // automatedBlog, and a fetch then would ask for a panel that cannot appear.
  useEffect(() => {
-   if (!canAutomate) return;
+   if (!canAutomate || !knowledgeBaseEnabled) return;
    let cancelled = false;
    (async () => {
      try {
@@ -138,7 +146,7 @@ const AdminBlog: React.FC = () => {
      } catch {}
    })();
    return () => { cancelled = true; };
- }, [canAutomate]);
+ }, [canAutomate, knowledgeBaseEnabled]);
 
  const categories = Array.from(new Set(posts.map(post => post.category)));
  const filterCategories = ['All', ...categories];
@@ -260,16 +268,19 @@ const AdminBlog: React.FC = () => {
      state (that flashes a control the church may not have and then retracts
      it) and not the denied state (that is the flicker this ticket fixes).
      Reserving the space also means the row does not reflow when the answer
-     lands, which is the other half of what "flicker" meant here. */}
- {automateGate === 'unknown' && (
+     lands, which is the other half of what "flicker" meant here.
+     While the knowledge base is hidden there is nothing to reserve a
+     footprint for: neither the control nor its skeleton is offered. */}
+ {knowledgeBaseEnabled && automateGate === 'unknown' && (
  <Skeleton
  data-testid="automate-gate-pending"
  aria-hidden="true"
  className="min-h-[44px] sm:min-h-0 h-11 sm:h-[42px] w-[124px] rounded-brand"
  />
  )}
- {automateGate === 'permitted' && (
+ {knowledgeBaseEnabled && automateGate === 'permitted' && (
  <button
+ data-testid="blog-automate-button"
  onClick={() => setShowAutomation(true)}
  className="inline-flex items-center justify-center gap-1.5 min-h-[44px] sm:min-h-0 px-4 py-2.5 rounded-brand border border-line bg-surface-raised text-[13px] font-semibold text-strong hover:bg-surface-sunken transition-colors"
  >
@@ -427,8 +438,9 @@ const AdminBlog: React.FC = () => {
  </div>
  )}
 
- {/* Automated Blog Settings */}
- {showAutomation && (
+ {/* Same gate as the button. `showAutomation` is local state, and a stale
+     true must not open this panel while the knowledge base is hidden. */}
+ {knowledgeBaseEnabled && showAutomation && (
  <div className="fixed inset-0 z-[200] bg-black/50 flex items-end sm:items-center justify-center sm:p-4">
  <div className="bg-surface-raised rounded-t-3xl sm:rounded-3xl w-full max-w-lg mx-auto p-6 space-y-5"
  style={{ paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }}>

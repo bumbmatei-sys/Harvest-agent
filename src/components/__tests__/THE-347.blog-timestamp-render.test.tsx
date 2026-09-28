@@ -143,7 +143,7 @@ afterEach(() => {
 async function mount(): Promise<Error | null> {
   let thrown: Error | null = null;
   try {
-    await act(async () => { root.render(<AdminBlog />); });
+    await act(async () => { root.render(<AdminBlog knowledgeBaseEnabled />); });
   } catch (e) {
     thrown = e as Error;
   }
