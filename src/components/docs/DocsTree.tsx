@@ -89,7 +89,7 @@ const DocContextMenu: React.FC<{
   children: React.ReactNode;
 }> = ({ doc, onRename, onDelete, onMove, onPin, children }) => (
   <ContextMenu>
-    <ContextMenuTrigger render={<div className="min-w-0" />}>{children}</ContextMenuTrigger>
+    <ContextMenuTrigger render={<div className="min-w-0 overflow-hidden" />}>{children}</ContextMenuTrigger>
     <ContextMenuContent>
       <ContextMenuItem onClick={() => onRename(doc)}>Rename</ContextMenuItem>
       <ContextMenuItem onClick={() => onMove(doc.id)}>Move to folder</ContextMenuItem>
@@ -111,7 +111,7 @@ const FolderContextMenu: React.FC<{
   children: React.ReactNode;
 }> = ({ folder, onRename, onDelete, onNewDoc, children }) => (
   <ContextMenu>
-    <ContextMenuTrigger render={<div className="min-w-0" />}>{children}</ContextMenuTrigger>
+    <ContextMenuTrigger render={<div className="min-w-0 overflow-hidden" />}>{children}</ContextMenuTrigger>
     <ContextMenuContent>
       <ContextMenuItem onClick={() => onRename(folder)}>Rename</ContextMenuItem>
       <ContextMenuItem onClick={() => onNewDoc(folder.id)}>New note here</ContextMenuItem>
@@ -126,27 +126,35 @@ const DocLeaf: React.FC<{
   doc: Doc;
   active: boolean;
   onOpen: (d: Doc) => void;
-}> = ({ doc, active, onOpen }) => (
-  <Item
-    render={<button type="button" />}
-    size="xs"
-    data-doc-id={doc.id}
-    data-active={active || undefined}
-    onClick={() => onOpen(doc)}
-    // The selected fill and the two inks are the ones this row already
-    // carried. THE-136 established them and theming-inputs-lists.test.ts
-    // computes their real contrast in both themes; the fill is a color-mix
-    // over `transparent` — over the SURFACE — because mixing the accent over
-    // a fixed light colour is the exact bug that ticket fixed.
-    className={`text-left ${active ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)]' : 'hover:bg-surface-sunken'}`}
-  >
-    <ItemMedia variant="icon"><FileText className={active ? 'text-gold' : 'text-faint'} /></ItemMedia>
-    <ItemContent className="min-w-0 gap-0">
-      <ItemTitle className={`truncate ${active ? 'text-strong' : 'text-body'}`}>{doc.title || 'Untitled'}</ItemTitle>
-    </ItemContent>
-    {doc.pinned && <Pin data-testid={`pinned-${doc.id}`} className="size-3 shrink-0 text-gold" />}
-  </Item>
-);
+}> = ({ doc, active, onOpen }) => {
+  const label = doc.title || 'Untitled';
+  return (
+    <Item
+      render={<button type="button" />}
+      size="xs"
+      data-doc-id={doc.id}
+      data-active={active || undefined}
+      onClick={() => onOpen(doc)}
+      title={label}
+      // The selected fill and the two inks are the ones this row already
+      // carried. THE-136 established them and theming-inputs-lists.test.ts
+      // computes their real contrast in both themes; the fill is a color-mix
+      // over `transparent` — over the SURFACE — because mixing the accent over
+      // a fixed light colour is the exact bug that ticket fixed.
+      // Layout classes sit in both branches so that source scan still reads
+      // `text-left ${active ? '...' : '...'}` for the fill/ink pair.
+      className={`text-left ${active ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)] min-w-0 overflow-hidden flex-nowrap' : 'hover:bg-surface-sunken min-w-0 overflow-hidden flex-nowrap'}`}
+    >
+      <ItemMedia variant="icon"><FileText className={active ? 'text-gold' : 'text-faint'} /></ItemMedia>
+      <ItemContent className="min-w-0 overflow-hidden gap-0">
+        {/* block/w-full/min-w-0 override ItemTitle's `flex w-fit`, which is why
+            `truncate` alone never ellipsized. Inks stay in the ternary. */}
+        <ItemTitle className={`truncate ${active ? 'text-strong block w-full min-w-0' : 'text-body block w-full min-w-0'}`}>{label}</ItemTitle>
+      </ItemContent>
+      {doc.pinned && <Pin data-testid={`pinned-${doc.id}`} className="size-3 shrink-0 text-gold" />}
+    </Item>
+  );
+};
 
 /**
  * One folder and everything beneath it, recursively.
@@ -181,11 +189,12 @@ const FolderBranch: React.FC<{
         onNewDoc={props.onNewDoc}
       >
         <Item
-          render={<button type="button" />}
+          render={<button type="button" className="min-w-0 overflow-hidden flex-nowrap" />}
           size="xs"
           data-folder-toggle={folder.id}
           aria-expanded={open}
           onClick={() => toggle(folder.id)}
+          title={folder.name}
           className="text-left hover:bg-surface-sunken"
         >
           <ItemMedia variant="icon">
@@ -194,7 +203,7 @@ const FolderBranch: React.FC<{
           <ItemMedia variant="icon">
             {open ? <FolderOpen className="text-gold" /> : <Folder className="text-faint" />}
           </ItemMedia>
-          <ItemContent className="min-w-0 gap-0">
+          <ItemContent className="min-w-0 overflow-hidden gap-0 [&_[data-slot=item-title]]:block [&_[data-slot=item-title]]:w-full [&_[data-slot=item-title]]:min-w-0">
             <ItemTitle className="truncate text-body">{folder.name}</ItemTitle>
           </ItemContent>
         </Item>
@@ -430,11 +439,12 @@ const DocsTree: React.FC<DocsTreeProps> = (props) => {
                     data-shared-doc-id={d.id}
                     data-active={openDocId === d.id || undefined}
                     onClick={() => onOpenDoc(d)}
-                    className={`text-left ${openDocId === d.id ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)]' : 'hover:bg-surface-sunken'}`}
+                    title={d.title || 'Untitled'}
+                    className={`text-left ${openDocId === d.id ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)] min-w-0 overflow-hidden flex-nowrap' : 'hover:bg-surface-sunken min-w-0 overflow-hidden flex-nowrap'}`}
                   >
                     <ItemMedia variant="icon"><Share2 className="text-faint" /></ItemMedia>
-                    <ItemContent className="min-w-0 gap-0">
-                      <ItemTitle className="truncate text-body">{d.title || 'Untitled'}</ItemTitle>
+                    <ItemContent className="min-w-0 overflow-hidden gap-0">
+                      <ItemTitle className="truncate text-body block w-full min-w-0">{d.title || 'Untitled'}</ItemTitle>
                     </ItemContent>
                   </Item>
                 </SidebarMenuItem>

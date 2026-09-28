@@ -1028,6 +1028,15 @@ describe('12 — AdminDocs.tsx, AdminDashboardHome.tsx, firestore.rules and func
        * or Firestore path in this file moved.
        */
       'b903be259b175a5cf3c2d7df05970fe5e4c7fe8862a16676b296359fc6cc32dc',
+      /*
+       * #520, appended beside THE-347's value and never over it. That PR keys
+       * the notes editor on the open note's id and routes every open through one
+       * `switchToDoc` helper, so picking another note from the sidebar no longer
+       * leaves the previous note's body in the editor for the auto-save to write
+       * onto the new one. No Firestore path, share flow, menu row or toolbar in
+       * this file moved, and this branch still did not author a byte of it.
+       */
+      '9ad059189109d0e72203579322e23883a692aa9adafadcbcd5a2d3fe25b23f74',
     ],
   };
 

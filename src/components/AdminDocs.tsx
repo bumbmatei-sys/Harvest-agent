@@ -400,15 +400,16 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
   // content is already on the server, so the failure is moot and must not raise
   // an alarm the user cannot act on.
   const saveSeq = useRef(0);
+  // The id of the note whose editor is on screen. Written synchronously in
+  // switchToDoc so a late onUpdate from an unmounted editor cannot queue a
+  // write against the note we just opened.
+  const openDocIdRef = useRef<string | null>(null);
+  // openDocument is declared above switchToDoc so the persistent-tree source
+  // slice (openDocument .. revealFolderIds) still names the public opener.
+  const switchToDocRef = useRef<(d: Doc) => void>(() => {});
 
   const openDocument = useCallback((d: Doc) => {
-    setOpenDoc(d);
-    setEditTitle(d.title || '');
-    setEditContent(d.content || '');
-    setSaveStatus('idle');
-    // Deliberately does NOT set focus mode. That single line was the drill-down:
-    // every route into a note switched the screen to the editor-only view, and
-    // the tree only existed there.
+    switchToDocRef.current(d);
   }, []);
 
   // Hold the open note's folder chain open so the tree shows where the note in
@@ -549,14 +550,37 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
     };
   }, []);
 
-  const handleContentChange = (content: string) => {
+  /**
+   * One switch path for click, create, import and the deep-link effect.
+   *
+   * Re-selecting the open note must not reset the body to the query copy (that
+   * copy can be older than unsaved typing, and close/title-blur would write it
+   * back). Any other note flushes the previous payload — its own id — without
+   * waiting, so the pane moves immediately and a failed flush still toasts.
+   */
+  const switchToDoc = useCallback((d: Doc) => {
+    if (openDocIdRef.current === d.id) return;
+    void flushPendingSave();
+    openDocIdRef.current = d.id;
+    setOpenDoc(d);
+    setEditTitle(d.title || '');
+    setEditContent(d.content || '');
+    setSaveStatus('idle');
+    // Deliberately does NOT set focus mode. That single line was the drill-down:
+    // every route into a note switched the screen to the editor-only view, and
+    // the tree only existed there.
+  }, [flushPendingSave]);
+  switchToDocRef.current = switchToDoc;
+
+  const handleContentChange = (docId: string, content: string) => {
+    // Bind the write to the id captured when this editor instance was keyed,
+    // never to whatever is selected now.
+    if (openDocIdRef.current !== docId) return;
     setEditContent(content);
-    if (openDoc) {
-      setSaveStatus('saving');
-      pendingSave.current = { id: openDoc.id, title: editTitle, content };
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => { void flushPendingSave(); }, 2000);
-    }
+    setSaveStatus('saving');
+    pendingSave.current = { id: docId, title: editTitle, content };
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => { void flushPendingSave(); }, 2000);
   };
 
   const handleTitleBlur = () => {
@@ -591,6 +615,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
     cancelPendingSave();
     const ok = await saveDoc(openDoc.id, editTitle, editContent);
     if (!ok) return;
+    openDocIdRef.current = null;
     setOpenDoc(null);
     setFocusMode(false);
   };
@@ -614,10 +639,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
         createdBy: auth.currentUser?.uid || '', createdAt: null, updatedAt: null,
         isPrivate: true, sharedWith: [],
       };
-      setOpenDoc(newDoc);
-      setEditTitle('Untitled');
-      setEditContent('');
-      setSaveStatus('idle');
+      switchToDoc(newDoc);
       setTimeout(() => { titleRef.current?.select(); }, 100);
       await queryClient.invalidateQueries({ queryKey: ['docs', tenantId] });
     } catch (e) { notifyError('Failed to create document', e); }
@@ -650,10 +672,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
         createdBy: auth.currentUser?.uid || '', createdAt: null, updatedAt: null,
         isPrivate: true, sharedWith: [],
       };
-      setOpenDoc(newDoc);
-      setEditTitle(title);
-      setEditContent(html);
-      setSaveStatus('idle');
+      switchToDoc(newDoc);
       await queryClient.invalidateQueries({ queryKey: ['docs', tenantId] });
       toast.success('Note imported successfully');
     } catch (err) {
@@ -684,7 +703,12 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
     // Drop the queued auto-save before the document goes: flushing it would write
     // to a doc that is about to stop existing and raise a save error for a delete
     // the user asked for.
-    if (openDoc?.id === deleteDocId) { cancelPendingSave(); setOpenDoc(null); setFocusMode(false); }
+    if (openDoc?.id === deleteDocId) {
+      cancelPendingSave();
+      openDocIdRef.current = null;
+      setOpenDoc(null);
+      setFocusMode(false);
+    }
     try {
       await deleteDoc(doc(db, 'docs', deleteDocId));
       await queryClient.invalidateQueries({ queryKey: ['docs', tenantId] });
@@ -1220,8 +1244,9 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
               placeholder="Untitled"
             />
             <RichTextEditor
+              key={openDoc.id}
               content={editContent}
-              onChange={handleContentChange}
+              onChange={(html) => handleContentChange(openDoc.id, html)}
               minHeight="calc(100vh - 320px)"
               placeholder="Start writing... Type / for commands"
               // The shared default ends at `xl:prose-2xl` — a 1.5rem base — so
