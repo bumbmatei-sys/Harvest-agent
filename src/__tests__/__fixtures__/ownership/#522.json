@@ -1,6 +1,6 @@
 {
   "ticket": "#522",
-  "note": "#522 (per-campaign payment link picker) moves the event provider checkboxes into one shared PaymentLinkPicker, lets a campaign store provider ids and open Donate on the chosen link, and hides the card form while card giving is off. This record appends the three files whose whole-file digests already had an accepted set. Nothing here replaces a digest that was already recorded.",
+  "note": "#522 (per-campaign payment link picker) moves the event provider checkboxes into one shared PaymentLinkPicker, lets a campaign store provider ids and open Donate on the chosen link, and hides the card form while card giving is off. This record appends the three files whose whole-file digests already had an accepted set. Nothing here replaces a digest that was already recorded. The test guards that accept those digests were updated alongside this record.",
   "entries": [
     {
       "file": "src/components/AdminEvents.tsx",
