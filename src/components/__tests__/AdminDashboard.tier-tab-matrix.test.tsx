@@ -214,14 +214,12 @@ const TABS: Row[] = [
 const KNOWN_TWO_LAYER_EXCEPTIONS: ReadonlyArray<{ label: string; tiers: TenantPlan[]; why: string }> = [
   {
     label: 'Check-In',
-    tiers: ['free', 'plus'],
+    tiers: ['free'],
     why:
-      'The tab hosts TWO products. QR Codes is on every tier deliberately (THE-213: gating the QR '
-      + 'selector "would change a PRICED tier\'s screen, which the brief forbids"), and the check-in '
-      + 'half self-gates inside AdminCheckin and again server-side. So `checkInSystem` describes half '
-      + 'this tab, and hiding the whole tab on Individual would take QR from a tier that has it. '
-      + 'BOTH layers are ungated here, so they agree with each other — what they disagree with is the '
-      + 'one-cell-per-tab assumption, and that is the honest reading. STOP CONDITION 3.',
+      'The tab hosts two products. QR Codes stays on free deliberately, and the attendance half self-gates '
+      + 'inside AdminCheckin and again server-side. THE-373 took the tab off Individual: it was the only '
+      + 'Reach entry that plan could see, and the founder hid that section. Free is now the only tier '
+      + 'where the tab is visible in full while checkInSystem is false. Small Team and Ministry carry the cell.',
   },
 ];
 
@@ -400,15 +398,15 @@ describe('17 — the tier/tab matrix is generated from the real nav array and th
     expect(matrix.get('Branding')!.get('free')!.cell).toBe('hidden');
   });
 
-  it('resolves the Individual column to the seven plus Check-In', async () => {
+  it('resolves the Individual column without Reach', async () => {
     const matrix = await buildMatrix();
     const visible = TABS
       .filter((r) => matrix.get(r.label)!.get('plus')!.cell !== 'hidden')
       .map((r) => r.label);
     expect(visible.sort()).toEqual(
-      // ⚠️ 'SMS' LEFT THIS COLUMN — THE-314 made SMS Ministry-only, so an
-      // Individual tenant no longer sees the tab at all.
-      ['Blog', 'CRM', 'Check-In', 'Campus', 'Courses', 'Dashboard', 'Fundraising', 'Signups'].sort(),
+      // THE-373 — Check-In left this column. It was the only Reach tab Individual
+      // could see, and the section is hidden. Forms was not added.
+      ['Blog', 'CRM', 'Campus', 'Courses', 'Dashboard', 'Fundraising', 'Signups'].sort(),
     );
     // And every one of them is FULL — an Individual tenant meets no wall on a
     // tab it can see. That is the product promise the nav gate now keeps.
@@ -497,6 +495,16 @@ describe('19 — no tab hidden from the nav renders fully when reached by URL', 
       for (const plan of PLAN_ORDER) {
         const resolved = matrix.get(row.label)!.get(plan)!;
         if (resolved.cell !== 'hidden') continue;
+        // THE-373 — Check-In on Individual is not an upgrade pitch. The section
+        // does not exist on that plan, so a typed URL is "page not found" and
+        // the unknown-tab guard sends it home. Every other hidden cell is still
+        // a wall.
+        if (row.label === 'Check-In' && plan === 'plus') {
+          expect(resolved.wall, 'Individual Check-In became an upgrade wall').toBeNull();
+          expect(resolved.screen, 'Individual Check-In still mounted').toBeNull();
+          expect(resolved.redirected, 'Individual Check-In URL was not bounced').toBe(true);
+          continue;
+        }
         expect(resolved.wall, `${row.label}/${plan} refused with no upgrade screen`).not.toBeNull();
         checked += 1;
       }

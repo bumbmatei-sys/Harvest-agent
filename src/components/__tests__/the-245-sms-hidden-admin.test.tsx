@@ -202,7 +202,11 @@ const CHECKIN_NOTE = 'QR Codes is on every tier; checkInSystem gates only the in
 function expectedNav(plan: TenantPlan): string[] {
   const f = getPlanFeatures(plan);
   const labels = TABS
-    .filter((t) => plan === FREE_PLAN || t.cell === null || t.cell(f))
+    .filter((t) => {
+      // THE-373 — Individual has no Reach group, so no Check-In tab.
+      if (plan === 'plus' && t.label === 'Check-In') return false;
+      return plan === FREE_PLAN || t.cell === null || t.cell(f);
+    })
     // The churches label is per-tier: a tier capped at one campus says 'Campus'.
     .map((t) => (t.label === 'Campus' && f.maxChurches !== 1 ? 'Campuses' : t.label));
   if (hasBrandingAccess(f)) labels.push('Branding');
@@ -333,8 +337,15 @@ describe('1 — NO tier reaches the SMS nav entry, free and super admin included
       expect(nav, `${plan} still reaches SMS`).not.toContain('SMS');
       // …and the rest of that tier's nav is untouched, so the switch took one
       // entry and not a category.
-      for (const label of ['Blog', 'Courses', 'CRM', 'Fundraising', 'Check-In']) {
+      for (const label of ['Blog', 'Courses', 'CRM', 'Fundraising']) {
         expect(nav, `hiding SMS on ${plan} also took "${label}"`).toContain(label);
+      }
+      // THE-373 — Check-In is gone on Individual only. It was that plan's entire
+      // Reach group. Small Team and Ministry still have the tab.
+      if (plan === 'plus') {
+        expect(nav, 'Individual still lists Check-In').not.toContain('Check-In');
+      } else {
+        expect(nav, `${plan} lost Check-In`).toContain('Check-In');
       }
     });
   }
