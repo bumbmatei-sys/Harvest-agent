@@ -1012,6 +1012,13 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ are byte-identical'
     // const in the ai render arm, and ONE prop on the existing <AdminBlog /> mount.
     // No nav array, group, tab id, permission gate or route moved.
     '025b037f7ff786e047c50c62c5ad213a1af1ade121640bd6100b88c6627f048e',
+    // APPENDED BY THE-373, nothing above removed or rewritten: Check-In is
+    // withheld on Individual (planUnlocked || resolvedPlan !== 'plus') so the
+    // Reach group disappears there, and the checkin render arm shows
+    // page-not-found on Individual without the platform override. Free, Small
+    // Team and Ministry still mount AdminCheckin. Forms is not added. No other
+    // nav id, group, permission or screen mount moved.
+    '308d159615f0d5d966d7a8fa60d1a342069b2f790f9b965e9bda3ac896a86cda',
   ];
 
   it('AdminDashboard.tsx is untouched by THIS ticket — others legitimately own it', () => {

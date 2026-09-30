@@ -18,7 +18,7 @@
 | Signups | visible · full | visible · full | visible · full | visible · full |
 | Accounting | visible · upgrade screen | hidden | hidden | visible · full |
 | Forms | visible · upgrade screen | hidden | hidden | visible · full |
-| Check-In | visible · full | visible · full | visible · full | visible · full |
+| Check-In | visible · full | hidden | visible · full | visible · full |
 | Livestream | visible · upgrade screen | hidden | visible · full | visible · full |
 | SMS | visible · upgrade screen | hidden | hidden | visible · full |
 | Community | visible · upgrade screen | hidden | hidden | visible · full |

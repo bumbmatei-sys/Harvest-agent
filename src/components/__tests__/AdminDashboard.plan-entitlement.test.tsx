@@ -226,13 +226,14 @@ const GATED_TABS: Row[] = [
 /**
  * Tabs that mount unconditionally, and why each one is not a hole.
  *
- * ⚠️ CHECK-IN IS HERE ON PURPOSE, and it is the one place this file disagrees
- * with the ticket's list of nine. The tab hosts TWO products: QR Codes, which
- * every tier carries (see the `smsAutomation`/`textToGive` reasoning in
- * plan-features.ts — a plan cell gating a capability the plan does not sell
- * gates nothing), and Check-In, which `checkInSystem` gates INSIDE AdminCheckin
- * and again server-side (THE-213). Refusing the whole tab on Individual would
- * take away the QR generator that tier does have.
+ * ⚠️ CHECK-IN IS HERE, AND THE-373 NARROWED WHO REACHES IT.
+ * The tab hosts two products: QR Codes, which free still has, and attendance,
+ * which `checkInSystem` gates inside the screen. Individual used to reach the
+ * tab for the QR half. That tab was the whole Reach group on that plan, and
+ * the founder asked for the group to be gone — so Individual no longer mounts
+ * this screen. Free, Small Team and Ministry still do. `entitled` stays true
+ * because those three still open it; Individual is asserted by name below,
+ * not by this predicate.
  */
 const UNGATED_TABS: Row[] = [
   { label: 'Dashboard', section: '', screen: 'AdminDashboardHome', entitled: () => true },
@@ -257,17 +258,10 @@ const UNGATED_TABS: Row[] = [
 const INDIVIDUAL_ENTITLED = ['Dashboard', 'Blog', 'Campus', 'Courses', 'CRM', 'Signups', 'Fundraising'];
 
 /**
- * The eight, plus the one tab that mounts on every tier: Check-In.
- *
- * ⚠️ THE TICKET COUNTS CHECK-IN AMONG THE NINE THAT SHOULD NOT BE THERE, and
- * this is the deliberate deviation from that list. The tab hosts QR Codes — on
- * every tier, and NOT because a gate was missed: `checkInSystem` gates the
- * check-in half inside AdminCheckin and again server-side (THE-213), whose own
- * note says gating the QR selector "would change a PRICED tier's screen, which
- * the brief forbids". So Individual reaches this tab and finds only what it
- * bought. Refusing the whole tab would take the QR generator away from it.
+ * What an Individual tenant can open. THE-373 removed Check-In: it was the
+ * only Reach tab left on this plan, and Reach is hidden there.
  */
-const INDIVIDUAL_REACHABLE = [...INDIVIDUAL_ENTITLED, 'Check-In'];
+const INDIVIDUAL_REACHABLE = [...INDIVIDUAL_ENTITLED];
 
 let container: HTMLDivElement;
 let root: Root;
@@ -419,7 +413,7 @@ describe("an Individual tenant's admin nav is exactly the seven correct items", 
         expect(screen, `${row.label} mounted its screen behind an upgrade wall`).toBeNull();
       }
     }
-    // Check-In is absent from this list by design — see UNGATED_TABS above.
+    // Check-In is not in this list: it is not walled, it is absent. THE-373.
     // 🔴 'SMS' JOINED THIS LIST — THE-314. Individual used to reach the SMS
     // screen; it now meets the upgrade wall there, naming Ministry.
     // 🔴 'Services' JOINED IT — THE-326, and it is the SAME wall 'Events'
@@ -432,10 +426,12 @@ describe("an Individual tenant's admin nav is exactly the seven correct items", 
     );
   });
 
-  it('keeps Check-In reachable for its QR half, which every tier carries', async () => {
-    const { screen } = await openTab('plus', UNGATED_TABS[2]);
-    expect(screen).toBe('AdminCheckin');
-    expect(getPlanFeatures('plus').checkInSystem, 'the Check-In half stays gated inside the screen').toBe(false);
+  it('does not mount Check-In for Individual — Reach is hidden on that plan', async () => {
+    const { screen, nav } = await openTab('plus', UNGATED_TABS[2]);
+    expect(screen, 'Individual still opens Check-In').toBeNull();
+    expect(nav, 'Individual still lists Check-In').not.toContain('Check-In');
+    expect(getPlanFeatures('plus').checkInSystem, 'attendance was already off').toBe(false);
+    expect(getPlanFeatures('plus').customForms, 'Forms was not added').toBe(false);
   });
 
   it('does not put Branding in an Individual nav', async () => {

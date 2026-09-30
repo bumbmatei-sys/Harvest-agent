@@ -860,20 +860,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     navAllows(features?.customForms) &&
       (hasFullAccess || perms.manageForms) &&
       { id: 'forms', label: 'Forms', icon: ClipboardList },
-    // Check-In System (QR attendance) — the QR Code generator is a sub-tab inside
-    // this screen.
+    // Check-In System (QR attendance). The QR generator is a sub-tab of this
+    // screen, which is why free still has the tab: attendance itself is off
+    // there, and the QR half is what the tab is for on that plan.
     //
-    // 🔴 DELIBERATELY THE ONE GATED TAB WITH NO PLAN CLAUSE, and THE-220 kept it
-    // that way after checking. `checkInSystem` gates only HALF this tab: QR Codes
-    // is on every tier on purpose (THE-213), and the check-in half self-gates
-    // inside AdminCheckin and again server-side. So the plan clause that would
-    // read naturally here — `navAllows(features?.checkInSystem)` — would hide the
-    // tab from free and Individual and take QR Codes away from two tiers that
-    // genuinely have it, to hide a sub-tab those tiers already cannot open. The
-    // render switch below carries no plan clause for the same reason, so the two
-    // layers agree; `AdminDashboard.tier-tab-matrix` records this as the one
-    // named exception to "visible in the nav implies the feature is on".
-    (hasFullAccess || perms.manageCheckin || perms.manageQR) &&
+    // 🔴 THE-373 — NOT ON INDIVIDUAL. The founder: hide Reach entirely on
+    // Individual. The other Reach ids are already off on that plan, so the
+    // group was only this tab, and this tab was only visible because it had
+    // no plan clause. Withholding it here empties the group, and an empty
+    // group is omitted. Free keeps the tab. Small Team and Ministry keep it
+    // because they bought attendance. Gating the entry on the attendance cell
+    // would have taken the tab from free as well, which this is not. A platform
+    // override still sees it: that bypass is how a super admin inspects a plan
+    // they are not on.
+    (planUnlocked || resolvedPlan !== 'plus') &&
+      (hasFullAccess || perms.manageCheckin || perms.manageQR) &&
       { id: 'checkin', label: 'Check-In', icon: QrCode },
     // Livestream (YouTube + live giving)
     navAllows(features?.livestream) &&
@@ -1701,9 +1702,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               ? <div className="p-4 lg:p-0"><AdminForms /></div>
               : <PlanUpgradeScreen featureName="Forms" featureKey="customForms" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'checkin' ? (
-            // QR is available on all plans; AdminCheckin renders only the QR sub-tab
-            // when the tenant lacks checkInSystem, so it's always safe to mount here.
-            <div className="p-4 lg:p-0"><AdminCheckin canCheckin={hasFullAccess || !!perms.manageCheckin} canQR={hasFullAccess || !!perms.manageQR} /></div>
+            // THE-373 — Individual has no Reach section. A typed /admin/checkin
+            // must not mount this screen; the unknown-tab guard also sends the
+            // URL back to the dashboard. Free still mounts it (the QR half),
+            // and so does every plan except Individual.
+            resolvedPlan === 'plus' && !planUnlocked
+              ? <div className="flex flex-col items-center justify-center h-full text-faint">
+                  <p className="text-lg font-medium">Page not found.</p>
+                </div>
+              : <div className="p-4 lg:p-0"><AdminCheckin canCheckin={hasFullAccess || !!perms.manageCheckin} canQR={hasFullAccess || !!perms.manageQR} /></div>
           ) : activeTab === 'livestream' ? (
             planAllows(features?.livestream)
               ? <div className="p-4 lg:p-0"><AdminLivestream /></div>

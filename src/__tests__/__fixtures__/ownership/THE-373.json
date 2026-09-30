@@ -1,0 +1,11 @@
+{
+  "ticket": "THE-373",
+  "note": "THE-373 hides the Reach section on Individual. Check-In was the only Reach tab still visible there, because it was the one gated tab with no plan clause (the QR generator lives inside it, and free still has that half). Forms is not added. The nav entry is now planUnlocked || resolvedPlan !== 'plus', so free, Small Team and Ministry keep the tab and a platform admin inspecting an Individual org still sees it. The checkin render arm shows page-not-found on Individual without that override, which is the same screen the unknown-tab guard already uses. APPENDED, NEVER SUBSTITUTED: the digest below is also appended to every hardcoded accepted set that pins AdminDashboard.tsx, with every earlier value kept. No firestore.rules change.",
+  "entries": [
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "308d159615f0d5d966d7a8fa60d1a342069b2f790f9b965e9bda3ac896a86cda",
+      "why": "THE-373 owns two edits here and nothing else: the Check-In nav entry gains one plan clause, planUnlocked || resolvedPlan !== 'plus', and the activeTab === 'checkin' arm renders page-not-found when resolvedPlan === 'plus' && !planUnlocked. Free still mounts AdminCheckin (the QR half). Small Team and Ministry still mount it. Forms is not added. No other nav id, group, permission, route or screen mount moved."
+    }
+  ]
+}

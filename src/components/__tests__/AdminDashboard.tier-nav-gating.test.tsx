@@ -193,7 +193,9 @@ vi.mock('../GraceWindowBanner', stub);
  *               unconditionally; adding a nav clause alone would hide a tab that
  *               still renders in full when reached by URL, which is exactly the
  *               disagreement `tier-tab-matrix` fails on.
- *   Check-In  — 🔴 STOP CONDITION 3, the known case. See CHECKIN_NOTE.
+ *   Check-In  — no cell, so free still shows it. THE-373 withholds the tab on
+ *               Individual by name, which is what empties that plan's Reach
+ *               group. See CHECKIN_NOTE.
  */
 type Tab = {
   label: string;
@@ -231,22 +233,16 @@ const TABS: Tab[] = [
 ];
 
 /**
- * 🔴 CHECK-IN, AND WHY IT STAYS VISIBLE ON EVERY TIER.
+ * 🔴 THE-373 — CHECK-IN IS WITHHELD ON INDIVIDUAL, AND ONLY THERE.
  *
- * The ticket counts Check-In among the nine an Individual tenant must not see,
- * and this file deliberately does not. `checkInSystem` gates only HALF the tab:
- * it hosts QR Codes as well, which every tier carries on purpose (THE-213,
- * whose own note says gating the QR selector "would change a PRICED tier's
- * screen, which the brief forbids"), and the check-in half self-gates inside
- * `AdminCheckin` and again server-side.
- *
- * So hiding the tab on Individual would take the QR generator away from a tier
- * that genuinely has it, in order to hide a sub-tab that tier already cannot
- * open. The render switch carries no plan clause here for the same reason, so
- * both layers agree — which is the property that matters, and the one
- * `tier-tab-matrix` checks.
+ * The tab used to stay on every tier because it also hosts QR Codes (THE-213).
+ * On Individual that leftover tab was the entire Reach group — Events, Forms,
+ * SMS and Livestream are already off — and the founder asked for the group to
+ * be gone. Free still has the tab. Small Team and Ministry still have it,
+ * because they bought attendance. The cell stays null so free's open nav clause
+ * is not what decides this; `expectedNav` drops the label on `plus` alone.
  */
-const CHECKIN_NOTE = 'QR Codes is on every tier; checkInSystem gates only the inner sub-tab';
+const CHECKIN_NOTE = 'Reach is hidden on Individual; Check-In stays on every other tier';
 
 /**
  * The nav a tier is expected to show. DERIVED — free takes everything, a priced
@@ -256,7 +252,12 @@ const CHECKIN_NOTE = 'QR Codes is on every tier; checkInSystem gates only the in
 function expectedNav(plan: TenantPlan): string[] {
   const f = getPlanFeatures(plan);
   const labels = TABS
-    .filter((t) => plan === FREE_PLAN || t.cell === null || t.cell(f))
+    .filter((t) => {
+      // THE-373 — Individual has no Reach group. Check-In is the only Reach tab
+      // whose cell is null, so without this it is the group.
+      if (plan === 'plus' && t.label === 'Check-In') return false;
+      return plan === FREE_PLAN || t.cell === null || t.cell(f);
+    })
     // 🔴 THE CHURCHES LABEL IS NO LONGER PER-TIER — THE-370. It used to read
     // 'Campus' on a tier capped at one and 'Campuses' otherwise; no tier is
     // capped at one now, so the label is always plural and this derivation is
@@ -449,17 +450,18 @@ describe('2 — an Individual tenant sees exactly its six', () => {
     for (const label of SIX) {
       expect(nav, `Individual lost "${label}", one of its six`).toContain(label);
     }
-    // Seven, not six: Check-In is the ticket's own known exception and the
-    // reason is recorded above. STOP CONDITION 3, reported not silently applied.
-    expect(nav, CHECKIN_NOTE).toContain('Check-In');
-    expect(nav.length, 'Individual shows its six plus Check-In and nothing else').toBe(8);
+    // THE-373 — Check-In was the seventh extra, and it was the whole Reach
+    // group. It is gone. Signups is the item that makes six into seven.
+    expect(nav, CHECKIN_NOTE).not.toContain('Check-In');
+    expect(nav, CHECKIN_NOTE).not.toContain('Forms');
+    expect(nav.length, 'Individual shows its six plus Signups and nothing else').toBe(7);
     expect(nav).toEqual(expectedNav('plus'));
   });
 
-  it('hides eight of the nine, and keeps Check-In for the QR half it does carry', async () => {
+  it('hides the nine, including Check-In, which used to survive for its QR half', async () => {
     const { nav } = await navFor('plus');
     const f = getPlanFeatures('plus');
-    for (const label of NINE_HIDDEN) {
+    for (const label of [...NINE_HIDDEN, 'Check-In']) {
       expect(nav, `"${label}" is still in an Individual nav`).not.toContain(label);
     }
     // Every cell the ticket names is false on plus — asserted, not assumed, so
@@ -472,8 +474,29 @@ describe('2 — an Individual tenant sees exactly its six', () => {
     ] as const) {
       expect(f[cell], `${cell} is not false on plus`).toBe(false);
     }
-    // The ninth: hidden nowhere, because its tab is not only checkInSystem.
-    expect(nav, CHECKIN_NOTE).toContain('Check-In');
+    // THE-373 — Check-In left this nav. It is no longer the recorded exception.
+    expect(nav, CHECKIN_NOTE).not.toContain('Check-In');
+  });
+
+  it('THE-373 — Individual has no Reach group, and the other tiers still do', async () => {
+    store.current = { ...store.current, tenantPlan: 'plus' };
+    ctx.current = { ...ctx.current, tenantPlan: 'plus' };
+    await mount({}, '');
+    const plusGroups = [...container.querySelectorAll('[data-nav-group]')].map((el) => el.getAttribute('data-nav-group'));
+    expect(plusGroups, 'Individual still draws a Reach section').not.toContain('REACH');
+    expect(navLabels()).not.toContain('Check-In');
+    await unmount();
+
+    for (const plan of ['free', 'pro', 'max'] as const) {
+      store.current = { ...store.current, tenantPlan: plan };
+      ctx.current = { ...ctx.current, tenantPlan: plan };
+      await mount({}, '');
+      const groups = [...container.querySelectorAll('[data-nav-group]')].map((el) => el.getAttribute('data-nav-group'));
+      expect(groups, `${plan} lost Reach`).toContain('REACH');
+      const reach = container.querySelector('[data-nav-group="REACH"]');
+      expect(reach?.getAttribute('data-nav-group-labels') ?? '', `${plan} Reach has no Check-In`).toContain('Check-In');
+      await unmount();
+    }
   });
 });
 
@@ -776,8 +799,9 @@ describe('9 — the nav is derived from one tab array, not two', () => {
   });
 
   it('every gated entry states its plan clause through the one helper', () => {
-    // 15 nav clauses — one per gated tab. Check-In, Church and Dashboard carry
-    // none, deliberately, and `canBranding` predates this family.
+    // 15 nav clauses — one per gated tab. Check-In is withheld on Individual by
+    // a plan-identity term, not by navAllows, so it does not join this count.
+    // Church and Dashboard carry none, and `canBranding` predates this family.
     //
     // ⚠️ 14 → 15 IS THE-326's SERVICES ENTRY AND NOTHING ELSE. Service planning
     // was split out of Events into its own section, and its nav clause repeats
@@ -791,9 +815,12 @@ describe('9 — the nav is derived from one tab array, not two', () => {
     expect(gatedTabs).toBe(15);
   });
 
-  it('leaves Check-In and Church without a plan clause, which is the recorded decision', () => {
-    // If someone later adds one, this fails and they have to say why here.
-    expect(CODE).toMatch(/\(hasFullAccess \|\| perms\.manageCheckin \|\| perms\.manageQR\) &&\s*\{ id: 'checkin'/);
+  it('withholds Check-In on Individual, and leaves Church without a plan clause', () => {
+    // Dropping `resolvedPlan !== 'plus'` puts Check-In — and therefore Reach —
+    // back on Individual. The permission clause stays; it is not the plan gate.
+    expect(CODE).toMatch(
+      /\(planUnlocked \|\| resolvedPlan !== 'plus'\) &&\s*\(hasFullAccess \|\| perms\.manageCheckin \|\| perms\.manageQR\) &&\s*\{ id: 'checkin'/,
+    );
     expect(CODE).toMatch(/\(hasFullAccess \|\| perms\.modifyChurches\) && \{ id: 'churches'/);
   });
 });
