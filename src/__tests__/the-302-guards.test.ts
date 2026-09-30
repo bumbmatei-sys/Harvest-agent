@@ -111,6 +111,9 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // APPENDED BY #521, nothing above removed or rewritten.
     ['025b037f7ff786e047c50c62c5ad213a1af1ade121640bd6100b88c6627f048e',
       `main + #521 - the Blog Automate button hides while the AI knowledge base is hidden. One import (isKnowledgeBaseEnabled), one const knowledgeBaseEnabled computed from the SAME planUnlocked || features.aiKnowledge === true predicate the AI Knowledge render arm already used, that const in place of planAllows(features?.aiKnowledge) in the ai render arm (behaviour identical), and ONE prop on the existing <AdminBlog /> mount (knowledgeBaseEnabled). No nav array, group, tab id, permission gate, route or other screen mount moved.`],
+    // APPENDED BY THE-373, nothing above removed or rewritten.
+    ['308d159615f0d5d966d7a8fa60d1a342069b2f790f9b965e9bda3ac896a86cda',
+      `main + THE-373 - Check-In is withheld on Individual so the Reach group disappears there. The nav entry gains one plan clause, planUnlocked || resolvedPlan !== 'plus', and the checkin render arm shows page-not-found on Individual without the platform override. Free, Small Team and Ministry still mount AdminCheckin. Forms is not added. No other nav id, group, permission or screen mount moved.`],
   ],
   // 🔴 A NAMED STOP CONDITION on this ticket: "do not touch `runDodoPlanChange`
   // or `plan-change.ts` unless the fix genuinely requires it". It did not — part
