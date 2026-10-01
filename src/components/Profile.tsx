@@ -609,13 +609,14 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  onChange={handleToggleNotifications}
  />
  {/* Messages now lives in the top tab bar (News | Blog | Courses | Messages | Partner) */}
- {/* My Events row — shown to everyone with a resolved tenant/plan context.
-     Admins/owners register for and hold their own event tickets too, so they
-     need this just like members do. UserEvents queries /api/my-registrations by
-     the current user's own uid/email, so an admin only ever sees their own
-     tickets — no admin-specific logic and no cross-user leakage. */}
- {/* Always shown — UserEvents scopes to the current user's own registrations
-     and handles a missing tenant gracefully (empty state). */}
+ {/* My Events — only when this tenant's plan includes event registration.
+     That cell is Ministry-only. Free, Individual and Small Team have no
+     events, so a row that can only ever be empty is a claim the plan does
+     not make. Admins hold their own tickets too, which is why this is the
+     plan cell and not an admin check: UserEvents still queries
+     /api/my-registrations for the current user alone. */}
+ {planFeatures.eventRegistration && (
+ <>
  <Separator className="bg-surface-sunken mx-4 w-auto" />
  <SettingItem
  icon={<CalendarCheck size={16} className="text-field-600" />}
@@ -623,6 +624,8 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  label="My Events"
  onClick={() => setShowMyEvents(true)}
  />
+ </>
+ )}
  {/* Saved — bookmarked articles, lessons, posts and verses (private to the user). */}
  <Separator className="bg-surface-sunken mx-4 w-auto" />
  <SettingItem
@@ -1036,7 +1039,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  </DialogContent>
  </Dialog>
 
- {showMyEvents && (
+ {planFeatures.eventRegistration && showMyEvents && (
  <div className="fixed inset-0 z-[300] bg-surface-tint">
  <UserEvents onBack={() => setShowMyEvents(false)} />
  </div>
