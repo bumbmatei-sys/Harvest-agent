@@ -47,12 +47,13 @@ const SIDEBAR = 224;
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const { authMock, userDoc, updateDocCalls } = vi.hoisted(() => ({
+const { authMock, userDoc, updateDocCalls, planBox } = vi.hoisted(() => ({
   authMock: {
     currentUser: { uid: 'u1', email: 'member@church.org', photoURL: null, displayName: 'Member' },
   },
   userDoc: { current: {} as Record<string, unknown> },
   updateDocCalls: [] as Array<Record<string, unknown>>,
+  planBox: { current: 'plus' },
 }));
 
 vi.mock('../../firebase', () => ({
@@ -85,7 +86,7 @@ vi.mock('../../utils/tenant-scope', () => ({
   isSuperAdmin: () => false,
   getTenantScope: async () => 'tenant-1',
 }));
-vi.mock('../../store/useAppStore', () => ({ useAppStore: () => ({ tenantPlan: 'plus' }) }));
+vi.mock('../../store/useAppStore', () => ({ useAppStore: () => ({ tenantPlan: planBox.current }) }));
 vi.mock('next/image', () => ({ default: () => null }));
 
 // Sibling screens drag in their own Firebase surface and none of them is under
@@ -219,6 +220,7 @@ beforeAll(async () => {
 beforeEach(() => {
   document.body.innerHTML = '';
   updateDocCalls.length = 0;
+  planBox.current = 'plus';
   try {
     localStorage.clear();
   } catch {
@@ -383,7 +385,7 @@ describe('Profile — the desktop composition', () => {
       'Personal Information',
       'My Home Church',
       'Push Notifications',
-      'My Events',
+      // My Events is Ministry-only (eventRegistration). This mount is Individual.
       'Saved',
       // THE-255 — the Install app row. It opens the same screen the onboarding
       // install step shows, so a member who skipped it during signup can still
@@ -409,7 +411,7 @@ describe('Profile — the desktop composition', () => {
       'Personal Information',
       'My Home Church',
       'Push Notifications',
-      'My Events',
+      // My Events is Ministry-only (eventRegistration). This mount is Individual.
       'Saved',
       // THE-255 — the Install app row. It opens the same screen the onboarding
       // install step shows, so a member who skipped it during signup can still
@@ -431,6 +433,22 @@ describe('Profile — the desktop composition', () => {
       // Support & Info keeps its other three rows, so the group still renders.
       'Log Out',
     ]);
+  });
+
+  it('shows My Events only when the plan includes event registration', async () => {
+    const labels = (host: HTMLElement) =>
+      Array.from(host.querySelectorAll('button'))
+        .map((b) => (b.getAttribute('aria-label') || b.textContent || '').trim());
+
+    expect(labels(await mount(MEMBER)), 'Individual has no events').not.toContain('My Events');
+
+    document.body.innerHTML = '';
+    planBox.current = 'pro';
+    expect(labels(await mount(MEMBER)), 'Small Team has no events').not.toContain('My Events');
+
+    document.body.innerHTML = '';
+    planBox.current = 'max';
+    expect(labels(await mount(MEMBER)), 'Ministry includes events').toContain('My Events');
   });
 
   // 5

@@ -115,7 +115,8 @@ describe('1 · Profile renders the new design', () => {
     }
     for (const row of [
       'Member since 2026', 'Change photo', 'Personal Information', 'Push Notifications',
-      'My Events', 'Saved', 'Install app', 'Donation History', 'Contact Us', 'FAQ',
+      // My Events is eventRegistration, Ministry only. This mount is Individual.
+      'Saved', 'Install app', 'Donation History', 'Contact Us', 'FAQ',
       'Privacy & Terms', 'Log Out',
     ]) {
       expect(text, `"${row}" is missing from the redesigned Profile`).toContain(row);
@@ -172,9 +173,9 @@ describe('2 · the file imports its primitives from @/components/ui/', () => {
       ['item', 8, 'every settings row, including Push Notifications'],
       ['item-media', 7, "each row's icon disc"],
       ['item-title', 8, "each row's label"],
-      // Eight render for this fixture; the ninth is inside the `hasChurches`
-      // gate (My Home Church), which no church makes true here.
-      ['separator', 8, 'the hairline between rows'],
+      // Eight render when Events is on. This fixture is Individual, so the
+      // My Events row and its separator are absent: seven.
+      ['separator', 7, 'the hairline between rows'],
       ['avatar', 1, 'the profile photo'],
       ['avatar-fallback', 1, "the initial shown when there is no photo, or it fails to load"],
       ['badge', 1, 'the "Member since" chip'],

@@ -428,6 +428,22 @@ export const RECORDED_EDITS: ReadonlyArray<RecordedEdit> = [
       + 'record and the doc copy carry the same address.',
     digest: '6fd7396b7ad92e4e902ea2c81a1fb0a66c5d4e16534a15adf35fd946f1a53e12',
   },
+  {
+    file: 'src/components/Profile.tsx',
+    ticket: 'THE-373',
+    why:
+      'MY EVENTS FOLLOWS THE PLAN CELL, NOT THE SCREEN. eventRegistration is false on '
+      + 'free, Individual and Small Team and true only on Ministry, and the admin nav '
+      + 'already hides Events on that cell. The member Profile still rendered the row '
+      + 'unconditionally, so an Individual church showed My Events for a feature it '
+      + 'does not have. The row and the full-screen UserEvents mount are now both '
+      + 'behind planFeatures.eventRegistration, the same effective features the '
+      + 'Partnership card already reads. Nothing else on the page moved: Saved keeps '
+      + 'the separator that used to sit under My Events, so the list does not grow a '
+      + 'double rule or lose the one between Push Notifications and Saved. A platform '
+      + 'override still resolves to the top tier, which includes the cell.',
+    digest: '71b2e71af14cbb11b4ba3231cf4a3b8feeded0433fc115ea54e7c6718ba7642f',
+  },
 ];
 
 /** A ticket reference the register will accept. */
