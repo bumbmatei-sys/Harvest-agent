@@ -87,7 +87,7 @@ const docsCache = vi.hoisted(() => {
     state[bucket] = next as CachedList | undefined;
     return next;
   });
-  return { state, setQueryData };
+  return { state, setQueryData, followCache: false };
 });
 
 const editorHarness = vi.hoisted(() => ({
@@ -140,6 +140,13 @@ const ackBridge = vi.hoisted(() => {
     hold: false,
     mode: 'time' as 'time' | 'null' | 'error',
     poisonReads: false,
+    /** Indexes whose unsubscribe the component actually called. */
+    unsubscribed: [] as number[],
+    /**
+     * When set, unsubscribe delivers the held acknowledgement synchronously.
+     * That is a snapshot already in flight as the listener is removed.
+     */
+    deliverOnUnsub: false,
   };
   function deliver(listener: Listener, write: NotedWrite | undefined) {
     if (state.mode === 'error') {
@@ -170,6 +177,8 @@ const ackBridge = vi.hoisted(() => {
       state.hold = false;
       state.mode = 'time';
       state.poisonReads = false;
+      state.unsubscribed = [];
+      state.deliverOnUnsub = false;
     },
     noteWrite(payload: { title?: string; content?: string }, ms: number) {
       writes.push({ ms, title: payload.title, content: payload.content });
@@ -181,7 +190,10 @@ const ackBridge = vi.hoisted(() => {
       if (!state.hold) {
         queueMicrotask(() => deliver(listener, writes[index]));
       }
-      return () => {};
+      return () => {
+        state.unsubscribed.push(index);
+        if (state.deliverOnUnsub) deliver(listener, writes[index]);
+      };
     },
     release(index: number) {
       const listener = listeners[index];
@@ -273,11 +285,22 @@ vi.mock('@tanstack/react-query', () => ({
 vi.mock('../../store/useAppStore', () => ({
   useAppStore: () => ({ currentTenantId: 't1', isAuthReady: true, tenantPlan: 'seed', isSuperAdmin: false }),
 }));
-// The list the screen renders stays the stale copy on purpose. A save may
-// patch the query cache; it must not be required to replace this hook result
-// before a click, because that is the window the bug lives in.
+// The list the screen renders stays the fixture on purpose, unless a test
+// sets `followCache`. A save may patch the query cache; most tests must not
+// require that patch to replace the hook result before a click, because a
+// refetch that started earlier is the window the remembered copy exists for.
+// `followCache` is the other window: setQueryData has landed and the refetch
+// has not, which is what `useDocs` returns in the app.
 vi.mock('../../hooks/queries/useDocsQueries', () => ({
-  useDocs: () => ({ data: { items: fixtures.NOTES, truncated: false }, isLoading: false }),
+  useDocs: () => ({
+    data: {
+      items: docsCache.followCache && docsCache.state.docs
+        ? docsCache.state.docs.items
+        : fixtures.NOTES,
+      truncated: false,
+    },
+    isLoading: false,
+  }),
   useDocFolders: () => ({ data: { items: [], truncated: false } }),
   useSharedDocs: () => ({ data: { items: [fixtures.NOTE_A], truncated: false } }),
 }));
@@ -398,6 +421,7 @@ beforeEach(() => {
   serverTime.ms = 5_000_000;
   ackBridge.reset();
   freshRead.reset();
+  docsCache.followCache = false;
   seedCaches();
   container = document.createElement('div');
   document.body.appendChild(container);
@@ -957,5 +981,155 @@ describe('AdminDocs — a collaborator between the write and its acknowledgement
     await clickLeaf('note-b');
     await clickLeaf('note-a');
     expect(editorBody()).toBe(OTHER_A);
+  });
+});
+
+/**
+ * The acknowledgement listener used to wait forever. `runDebounce` advances
+ * 100ms past the 2s debounce, which would move the fake clock off the
+ * timeout boundary, so these tests fire the debounce at exactly 2s.
+ */
+const SAVE_ACK_TIMEOUT_MS = 10_000;
+
+async function advance(ms: number) {
+  await act(async () => {
+    vi.advanceTimersByTime(ms);
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+  });
+}
+
+async function fireDebounce() {
+  await advance(2_000);
+}
+
+describe('AdminDocs — the save acknowledgement listener times out', () => {
+  it('resolves with no time after 10s, clears Saving, and ignores a late snapshot', async () => {
+    ackBridge.state.hold = true;
+    await mountDocs();
+    await clickLeaf('note-a');
+    await typeContent(FRESH_A);
+    await fireDebounce();
+
+    expect(statusChip()).toBe('Saving…');
+    expect(ackBridge.listeners).toHaveLength(1);
+    expect(ackBridge.state.unsubscribed).toEqual([]);
+    // The snapshot the timeout is about to drop is delivered from unsubscribe
+    // itself, the way a listener callback already in flight still runs.
+    ackBridge.state.deliverOnUnsub = true;
+
+    await advance(SAVE_ACK_TIMEOUT_MS - 1);
+    expect(statusChip()).toBe('Saving…');
+    expect(ackBridge.state.unsubscribed).toEqual([]);
+
+    await advance(1);
+    expect(statusChip()).toBe('Saved');
+    expect(statusChip()).not.toContain('Saving');
+    expect(ackBridge.state.unsubscribed).toEqual([0]);
+
+    const cached = docsCache.state.docs?.items.find((item) => item.id === 'note-a');
+    expect(cached?.content).toBe(FRESH_A);
+    expect(cached?.clientWriteVersion).toBeGreaterThan(0);
+
+    // The snapshot that would have been this commit's acknowledgement, arriving
+    // after the listener was dropped. It must not replace the patched body.
+    await releaseAck(0);
+    expect(ackBridge.state.unsubscribed).toEqual([0]);
+    expect(docsCache.state.docs?.items.find((item) => item.id === 'note-a')?.content).toBe(FRESH_A);
+
+    fixtures.NOTE_A.content = SERVER_A;
+    fixtures.NOTE_A.updatedAt = { toMillis: () => 1 };
+    await clickLeaf('note-b');
+    await clickLeaf('note-a');
+    expect(editorBody()).toBe(SERVER_A);
+
+    const before = writes().length;
+    await runDebounce();
+    expect(writes().slice(before).some((w) => w.content === FRESH_A)).toBe(false);
+  });
+
+  it('still records an acknowledgement that arrives before the timeout', async () => {
+    ackBridge.state.hold = true;
+    await mountDocs();
+    await clickLeaf('note-a');
+    await typeContent(FRESH_A);
+    await fireDebounce();
+    expect(statusChip()).toBe('Saving…');
+
+    await advance(SAVE_ACK_TIMEOUT_MS - 1);
+    expect(statusChip()).toBe('Saving…');
+    expect(ackBridge.state.unsubscribed).toEqual([]);
+
+    await releaseAck(0);
+    expect(statusChip()).toBe('Saved');
+    expect(ackBridge.state.unsubscribed).toEqual([0]);
+    const cached = docsCache.state.docs?.items.find((item) => item.id === 'note-a');
+    expect(cached?.content).toBe(FRESH_A);
+    expect(cached?.clientWriteVersion).toBeGreaterThan(0);
+
+    // The deadline passing afterwards must not drop the time we already stored,
+    // and must not subscribe a second listener to do it.
+    await advance(SAVE_ACK_TIMEOUT_MS);
+    expect(statusChip()).toBe('Saved');
+    expect(ackBridge.state.unsubscribed).toEqual([0]);
+    expect(ackBridge.listeners).toHaveLength(1);
+
+    fixtures.NOTE_A.content = SERVER_A;
+    fixtures.NOTE_A.updatedAt = { toMillis: () => 5_000_000 };
+    await clickLeaf('note-b');
+    await clickLeaf('note-a');
+    expect(editorBody()).toBe(FRESH_A);
+  });
+
+  it('after a timeout, leaving and reopening the note shows the body that was saved', async () => {
+    // The list the tree reads is the query cache until a refetch lands.
+    docsCache.followCache = true;
+    editorHarness.emitOnMount = true;
+    ackBridge.state.hold = true;
+    await mountDocs();
+    await clickLeaf('note-a');
+    await typeContent(FRESH_A);
+    await fireDebounce();
+
+    await advance(SAVE_ACK_TIMEOUT_MS);
+    expect(statusChip()).toBe('Saved');
+    expect(docsCache.state.docs?.items.find((item) => item.id === 'note-a')?.content).toBe(FRESH_A);
+
+    await clickLeaf('note-b');
+    expect(editorBody()).toBe(NOTE_B.content);
+    await clickLeaf('note-a');
+    expect(editorBody()).toBe(FRESH_A);
+    expect(editorBody()).not.toBe(CACHED_A);
+
+    const before = writes().length;
+    await runDebounce();
+    expect(writes().slice(before).some((w) => w.content === CACHED_A)).toBe(false);
+    expect(editorBody()).toBe(FRESH_A);
+  });
+
+  it('clears the acknowledgement timer when the snapshot arrives', async () => {
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+    try {
+      ackBridge.state.hold = true;
+      await mountDocs();
+      await clickLeaf('note-a');
+      await typeContent(FRESH_A);
+      await fireDebounce();
+
+      const scheduled = setTimeoutSpy.mock.calls.find((call) => call[1] === SAVE_ACK_TIMEOUT_MS);
+      const scheduledIndex = setTimeoutSpy.mock.calls.findIndex((call) => call[1] === SAVE_ACK_TIMEOUT_MS);
+      expect(scheduled, 'the acknowledgement wait was not scheduled').toBeTruthy();
+      const timerId = setTimeoutSpy.mock.results[scheduledIndex]?.value;
+      expect(timerId).toBeDefined();
+      expect(clearTimeoutSpy.mock.calls.some((call) => call[0] === timerId)).toBe(false);
+
+      await releaseAck(0);
+      expect(statusChip()).toBe('Saved');
+      expect(clearTimeoutSpy.mock.calls.some((call) => call[0] === timerId)).toBe(true);
+    } finally {
+      setTimeoutSpy.mockRestore();
+      clearTimeoutSpy.mockRestore();
+    }
   });
 });
