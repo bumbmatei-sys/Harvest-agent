@@ -1037,6 +1037,17 @@ describe('12 — AdminDocs.tsx, AdminDashboardHome.tsx, firestore.rules and func
        * this file moved, and this branch still did not author a byte of it.
        */
       '9ad059189109d0e72203579322e23883a692aa9adafadcbcd5a2d3fe25b23f74',
+      /*
+       * The notes autosave follow-up, appended beside #520's value and never
+       * over it. A note reopened from the stale docs query was painting the
+       * body from before the last successful save, and the next autosave wrote
+       * that body back. Save failures were also one screen-wide generation, so
+       * note A's error could land while note B was open. The save funnel now
+       * keeps a per-note generation and the last body that landed. No menu
+       * row, toolbar, share flow or Firestore path in this file moved, and
+       * this branch still did not author a byte of it.
+       */
+      'c56e20c9e6ad9c74c710b2ca608dc9a41ba3625b654d7c31c6553c8af689716a',
     ],
   };
 
