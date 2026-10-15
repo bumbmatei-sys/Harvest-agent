@@ -1057,6 +1057,14 @@ describe('12 — AdminDocs.tsx, AdminDashboardHome.tsx, firestore.rules and func
        * No menu row, toolbar, share flow or Firestore path in this file moved.
        */
       '094dc959bee784901d1be1ce9de343fd4c8a4f7cce14e9988acb2197b8218193',
+      /*
+       * Appended beside the digest above, never over it. The reopen comparison
+       * was the browser clock against the server updatedAt, so skew hid a
+       * later edit or promoted a stale refetch. The write now reads its own
+       * server time back, and Retry will not resend a payload a newer save
+       * or a newer server row has already replaced.
+       */
+      '1264b3fa4c5a65f7773cb923e93948fbd4d5494967d010a2ad89d7459867536f',
     ],
   };
 

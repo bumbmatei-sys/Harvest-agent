@@ -11,6 +11,11 @@
       "file": "src/components/AdminDocs.tsx",
       "digest": "094dc959bee784901d1be1ce9de343fd4c8a4f7cce14e9988acb2197b8218193",
       "why": "#526 owns this follow-up to its own autosave bookkeeping, appended beside the digest above and not in place of it. A list row from Firestore never carries the client write stamp, so preferring the session copy whenever that stamp was missing also beat a later edit from another tab or collaborator, and the next autosave wrote the older body back over both the docs and sharedDocs caches. noteToOpen now keeps the session copy only when the row's server updatedAt is not later than the write that produced it, and adopts the server body when it is, so a stale row afterwards cannot restore the older copy. The rename path moves that clock with the title. A save that fails after the note has been left still does not paint Not saved onto the note on screen, and it now toasts the note's name with a retry. closeEditor, the title blur, the unmount flush, the delete-cancels-not-flushes rule, every Firestore path, the share flows, the menu and the toolbar are unchanged."
+    },
+    {
+      "file": "src/components/AdminDocs.tsx",
+      "digest": "1264b3fa4c5a65f7773cb923e93948fbd4d5494967d010a2ad89d7459867536f",
+      "why": "#526 owns this correction to the server-time comparison, appended beside the digests above and not in place of them. The previous comparison used Date.now() against the row's server updatedAt, so a browser clock ahead of the server kept a stale session body over a later collaborator edit, and a browser clock behind treated a stale refetch as the newer copy. saveDoc and the rename path now read the document back after the write and store that server updatedAt, and noteToOpen compares the row's server updatedAt with that value. The Retry toast skips when a newer save of the note has started or the list row is newer than the last write this session read back, and a successful save of that note dismisses the toast. closeEditor, the title blur, the unmount flush, the delete-cancels-not-flushes rule, the share flows, the menu and the toolbar are unchanged."
     }
   ]
 }

@@ -118,7 +118,15 @@ vi.mock('../RichTextEditor', () => {
   };
 });
 
+/** Server time returned by the read-back after a write. Not the browser clock. */
+const serverTime = vi.hoisted(() => ({ ms: 5_000_000 }));
 const updateDoc = vi.hoisted(() => vi.fn(async () => undefined as unknown));
+const getDoc = vi.hoisted(() => vi.fn(async () => ({
+  data: () => ({
+    active: false,
+    updatedAt: { toMillis: () => serverTime.ms },
+  }),
+})));
 vi.mock('firebase/firestore', () => ({
   collection: () => ({}),
   query: () => ({}),
@@ -127,7 +135,7 @@ vi.mock('firebase/firestore', () => ({
   updateDoc,
   deleteDoc: vi.fn(async () => {}),
   doc: (_db: unknown, _collection: string, id: string) => ({ id }),
-  getDoc: vi.fn(async () => ({ data: () => ({ active: false }) })),
+  getDoc,
   getDocs: vi.fn(async () => ({ docs: [] })),
   serverTimestamp: () => 'SERVER_TS',
   Timestamp: class {},
@@ -135,7 +143,7 @@ vi.mock('firebase/firestore', () => ({
   arrayRemove: (v: unknown) => v,
 }));
 
-const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
+const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), dismiss: vi.fn() }));
 vi.mock('sonner', () => ({ toast }));
 vi.mock('../../firebase', () => ({ db: {}, auth: { currentUser: { uid: 'u1' } } }));
 vi.mock('../../utils/notify', () => ({ notifyError: vi.fn() }));
@@ -203,6 +211,11 @@ async function unmountDocs() {
 
 const editorBody = () => container.querySelector('[data-testid="editor-body"]')?.textContent ?? null;
 
+function titleValue(): string | null {
+  const input = container.querySelector('input[placeholder="Untitled"]') as HTMLInputElement | null;
+  return input?.value ?? null;
+}
+
 /** The save chip's exact label, or '' when the note is idle. */
 function statusChip(): string {
   const labelled = container.querySelector('[data-testid="docs-save-status"]');
@@ -255,6 +268,7 @@ beforeEach(() => {
   fixtures.NOTE_A.updatedAt = null;
   fixtures.NOTE_B.content = '<p>cached-beta</p>';
   fixtures.NOTE_B.updatedAt = null;
+  serverTime.ms = 5_000_000;
   seedCaches();
   container = document.createElement('div');
   document.body.appendChild(container);
@@ -339,6 +353,95 @@ describe('AdminDocs — reopening a note uses the body that was just saved', () 
     await clickLeaf('note-a');
     expect(editorBody()).toBe(SERVER_A);
   });
+
+  it('prefers a later server edit when the browser clock is ahead of the server', async () => {
+    // An hour ahead. A collaborator who saved five seconds after us is still
+    // earlier than this clock, which is what used to make their edit lose.
+    const now = vi.spyOn(Date, 'now').mockReturnValue(serverTime.ms + 3_600_000);
+    try {
+      await mountDocs();
+      await clickLeaf('note-a');
+      await typeContent(FRESH_A);
+      await runDebounce();
+
+      fixtures.NOTE_A.content = SERVER_A;
+      fixtures.NOTE_A.updatedAt = { toMillis: () => serverTime.ms + 5_000 };
+      await clickLeaf('note-b');
+      await clickLeaf('note-a');
+      expect(editorBody()).toBe(SERVER_A);
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  it('keeps the saved body when the browser clock is behind and a stale refetch looks newer', async () => {
+    // An hour behind. A row from a minute before our write is still later than
+    // this clock, which is what used to make that stale body the one remembered.
+    const now = vi.spyOn(Date, 'now').mockReturnValue(serverTime.ms - 3_600_000);
+    try {
+      editorHarness.emitOnMount = true;
+      await mountDocs();
+      await clickLeaf('note-a');
+      await typeContent(FRESH_A);
+      await runDebounce();
+
+      fixtures.NOTE_A.content = CACHED_A;
+      fixtures.NOTE_A.updatedAt = { toMillis: () => serverTime.ms - 60_000 };
+      await clickLeaf('note-b');
+      await clickLeaf('note-a');
+      expect(editorBody()).toBe(FRESH_A);
+
+      const before = writes().length;
+      await runDebounce();
+      expect(writes().slice(before).some((w) => w.content === CACHED_A)).toBe(false);
+      expect(editorBody()).toBe(FRESH_A);
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  it('uses the rename\'s server time, so a fast browser clock cannot hide a later edit', async () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(serverTime.ms + 3_600_000);
+    try {
+      await mountDocs();
+      await clickLeaf('note-a');
+      await typeContent(FRESH_A);
+      await runDebounce();
+
+      const trigger = container.querySelector('[aria-label="Document options"]') as HTMLElement | null;
+      expect(trigger, 'document options').toBeTruthy();
+      await act(async () => {
+        trigger!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+        trigger!.click();
+      });
+      await flush();
+      const rename = [...document.querySelectorAll('[role="menuitem"]')].find((el) => el.textContent?.trim() === 'Rename') as HTMLElement | undefined;
+      expect(rename, 'Rename row').toBeTruthy();
+      await act(async () => { rename!.click(); });
+      await flush();
+      const input = document.querySelector('input[placeholder="Name"]') as HTMLInputElement | null;
+      expect(input, 'rename field').toBeTruthy();
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!;
+      setter.call(input, 'Renamed alpha');
+      await act(async () => { input!.dispatchEvent(new Event('input', { bubbles: true })); });
+      // The rename lands at a later server time than the content save.
+      serverTime.ms += 2_000;
+      const save = [...document.querySelectorAll('button')].find((el) => el.textContent?.trim() === 'Save');
+      expect(save, 'rename save').toBeTruthy();
+      await act(async () => { save!.click(); });
+      await flush();
+
+      fixtures.NOTE_A.title = 'Someone else';
+      fixtures.NOTE_A.content = SERVER_A;
+      fixtures.NOTE_A.updatedAt = { toMillis: () => serverTime.ms + 5_000 };
+      await clickLeaf('note-b');
+      await clickLeaf('note-a');
+      expect(editorBody()).toBe(SERVER_A);
+      expect(titleValue()).toBe('Someone else');
+    } finally {
+      now.mockRestore();
+    }
+  });
 });
 
 describe('AdminDocs — a save error stays on the note that failed', () => {
@@ -403,10 +506,55 @@ describe('AdminDocs — a save error stays on the note that failed', () => {
     expect(editorBody()).toBe(NOTE_B.content);
     expect(statusChip()).toBe('');
     expect(writes().at(-1)).toMatchObject({ id: 'note-a', content: DRAFT_A });
+    expect(toast.dismiss).toHaveBeenCalledWith('doc-save-error');
 
     await clickLeaf('note-a');
     expect(editorBody()).toBe(DRAFT_A);
     expect(statusChip()).toBe('Saved');
+  });
+
+  it('does not retry a payload once a newer save of that note has started', async () => {
+    await mountDocs();
+    await clickLeaf('note-a');
+    updateDoc.mockRejectedValueOnce(new Error('offline'));
+    await typeContent(DRAFT_A);
+    await clickLeaf('note-b');
+    const retry = (toast.error.mock.calls.at(-1) as [string, { action: { onClick: () => void } }])[1].action.onClick;
+
+    const pending = deferred();
+    updateDoc.mockImplementation(() => pending.promise);
+    await clickLeaf('note-a');
+    await typeContent(SECOND_A);
+    await runDebounce();
+    const calls = updateDoc.mock.calls.length;
+    await act(async () => { retry(); });
+    await flush();
+    expect(updateDoc.mock.calls.length).toBe(calls);
+    expect(toast.dismiss).toHaveBeenCalledWith('doc-save-error');
+    pending.resolve();
+    await flush();
+  });
+
+  it('does not retry over a server row newer than the last write this session read back', async () => {
+    serverTime.ms = 5_000_000;
+    await mountDocs();
+    await clickLeaf('note-a');
+    await typeContent(FRESH_A);
+    await runDebounce();
+
+    updateDoc.mockRejectedValueOnce(new Error('offline'));
+    await typeContent(DRAFT_A);
+    await clickLeaf('note-b');
+    const retry = (toast.error.mock.calls.at(-1) as [string, { action: { onClick: () => void } }])[1].action.onClick;
+
+    fixtures.NOTE_A.content = SERVER_A;
+    fixtures.NOTE_A.updatedAt = { toMillis: () => 5_000_000 + 10_000 };
+    const calls = updateDoc.mock.calls.length;
+    await act(async () => { retry(); });
+    await flush();
+    expect(updateDoc.mock.calls.length).toBe(calls);
+    expect(toast.dismiss).toHaveBeenCalledWith('doc-save-error');
+    expect(writes().filter((w) => w.content === DRAFT_A)).toHaveLength(1);
   });
 
   it('does not mark note B saved when note A\'s autosave lands', async () => {
@@ -493,11 +641,6 @@ describe('AdminDocs — a flush that fails while switching stays on the note tha
     await clickLeaf('note-a');
     updateDoc.mockRejectedValue(new Error('offline'));
     await typeContent(DRAFT_A);
-  }
-
-  function titleValue(): string | null {
-    const input = container.querySelector('input[placeholder="Untitled"]') as HTMLInputElement | null;
-    return input?.value ?? null;
   }
 
   function expectFailureStayedOnAlpha(destination: { body: string; title: string }) {

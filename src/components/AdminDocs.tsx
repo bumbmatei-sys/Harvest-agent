@@ -324,16 +324,19 @@ type NoteSaveOutcome = {
 
 /**
  * Body this session has successfully written, and which generation of that write it was.
- * `writtenAtMs` is the client time the write was sent. A list row whose server
- * `updatedAt` is later than that is a newer edit (this session's refetch, another
- * tab, or someone else) and must win.
+ * `serverUpdatedAtMs` is the server `updatedAt` read back after that write, not
+ * `Date.now()`. A list row is newer only when its own server `updatedAt` is later
+ * than that. Comparing either side to the browser clock goes wrong in both
+ * directions when the two clocks disagree.
  */
 type LastWrittenNote = {
   title: string;
   content: string;
   version: number;
-  writtenAtMs: number;
+  serverUpdatedAtMs: number | null;
 };
+
+const DOC_SAVE_ERROR_TOAST = 'doc-save-error';
 
 /**
  * Version stamped onto the query-cache copy when a save lands. Absent on a
@@ -354,6 +357,42 @@ function updatedAtMs(d: Doc): number | null {
 }
 
 /**
+ * The server time of the write that just landed. `updateDoc` does not return
+ * the timestamp it stored, so this reads the document back. Both sides of the
+ * reopen comparison are then server times. A failed read is null — there is
+ * no client clock to substitute.
+ */
+async function readServerUpdatedAtMs(id: string): Promise<number | null> {
+  try {
+    const snap = await getDoc(doc(db, 'docs', id));
+    const data = snap.data() as { updatedAt?: { toMillis?: () => number } } | undefined;
+    if (!data?.updatedAt || typeof data.updatedAt.toMillis !== 'function') return null;
+    const ms = data.updatedAt.toMillis();
+    return typeof ms === 'number' && Number.isFinite(ms) ? ms : null;
+  } catch (e) {
+    console.error('Failed to read the saved note time', e);
+    return null;
+  }
+}
+
+/** True when `rowMs` is a server time strictly after this session's own write. */
+function serverRowIsNewer(rowMs: number | null, written: LastWrittenNote): boolean {
+  if (rowMs === null || written.serverUpdatedAtMs === null) return false;
+  return rowMs > written.serverUpdatedAtMs;
+}
+
+/** The later server `updatedAt` of `id` across the lists the screen can open it from. */
+function newestListUpdatedAtMs(id: string, docs: readonly Doc[], sharedDocs: readonly Doc[]): number | null {
+  let best: number | null = null;
+  for (const list of [docs, sharedDocs]) {
+    const row = list.find((item) => item.id === id);
+    const ms = row ? updatedAtMs(row) : null;
+    if (ms !== null && (best === null || ms > best)) best = ms;
+  }
+  return best;
+}
+
+/**
  * The row to put in the editor.
  *
  * A save that is still in flight, or the latest one that failed, wins over the
@@ -364,9 +403,11 @@ function updatedAtMs(d: Doc): number | null {
  * A row from Firestore never carries the client stamp. Preferring the session
  * copy whenever the stamp is missing would also beat a later edit from another
  * tab or collaborator, and the next autosave would put the older body back.
- * The server `updatedAt` is the tie-break: newer than this session's write means
+ * The tie-break is server time against server time: the row's `updatedAt`
+ * against the `updatedAt` read back from this session's write. Newer means
  * the server row wins, and that body becomes the one remembered, so a stale
- * list row afterwards cannot restore the older copy.
+ * list row afterwards cannot restore the older copy. The browser clock is
+ * not part of the comparison.
  */
 function noteToOpen(
   d: Doc,
@@ -382,12 +423,12 @@ function noteToOpen(
   const last = written.get(d.id);
   if (last && last.version > clientWriteVersionOf(d)) {
     const serverMs = updatedAtMs(d);
-    if (serverMs !== null && serverMs > last.writtenAtMs) {
+    if (serverRowIsNewer(serverMs, last)) {
       written.set(d.id, {
         title: d.title,
         content: d.content,
         version: last.version,
-        writtenAtMs: serverMs,
+        serverUpdatedAtMs: serverMs,
       });
       return d;
     }
@@ -446,6 +487,12 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
   const docs = docsRead?.items ?? NO_DOCS;
   const folders = foldersRead?.items ?? NO_FOLDERS;
   const sharedDocs = sharedDocsRead?.items ?? NO_DOCS;
+  // Latest list rows, read when a Retry toast is clicked — the click happens
+  // long after the render that created the toast.
+  const docsRef = useRef(docs);
+  const sharedDocsRef = useRef(sharedDocs);
+  docsRef.current = docs;
+  sharedDocsRef.current = sharedDocs;
   const docsTruncated = !!docsRead?.truncated || !!foldersRead?.truncated || !!sharedDocsRead?.truncated;
 
   const [openDoc, setOpenDoc] = useState<Doc | null>(null);
@@ -498,13 +545,16 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
   // The chip reads this for the note on screen, so A's "Not saved" cannot land
   // while B is open, and reopening A still shows it.
   const saveOutcomeByNote = useRef(new Map<string, NoteSaveOutcome>());
-  // The body this session successfully wrote, and when that write was sent.
-  // The docs query is stale for minutes, and a refetch that started before the
-  // write can arrive afterwards with the older body. Reopening from that copy
-  // is what makes the next autosave put the old body back on the server. A row
-  // whose server updatedAt is later than the write is a newer edit and replaces
-  // this copy instead.
+  // The body this session successfully wrote, and the server `updatedAt` read
+  // back from that write. The docs query is stale for minutes, and a refetch
+  // that started before the write can arrive afterwards with the older body.
+  // Reopening from that copy is what makes the next autosave put the old body
+  // back on the server. A row whose server updatedAt is later than the one we
+  // read back is a newer edit and replaces this copy instead.
   const lastWrittenByNote = useRef(new Map<string, LastWrittenNote>());
+  // Which note the current save-error toast belongs to, so a later success
+  // of that note can dismiss it and a success of a different note cannot.
+  const errorToastNoteId = useRef<string | null>(null);
   // The id of the note whose editor is on screen. Written synchronously in
   // switchToDoc so a late onUpdate from an unmounted editor cannot queue a
   // write against the note we just opened.
@@ -631,17 +681,19 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
     const isLatest = () => saveSeqByNote.current.get(id) === seq;
     saveOutcomeByNote.current.set(id, { seq, phase: 'saving', title: storedTitle, content });
     if (isMounted.current && openDocIdRef.current === id) setSaveStatus('saving');
-    // Captured as the write is sent, so a server `updatedAt` from this commit
-    // (or any edit after it) compares as later than a list row from before it.
-    const writtenAtMs = Date.now();
     try {
       await updateDoc(doc(db, 'docs', id), { title: storedTitle, content, updatedAt: serverTimestamp() });
       if (isLatest()) {
+        const serverUpdatedAtMs = await readServerUpdatedAtMs(id);
         const version = (lastWrittenByNote.current.get(id)?.version ?? 0) + 1;
-        lastWrittenByNote.current.set(id, { title: storedTitle, content, version, writtenAtMs });
+        lastWrittenByNote.current.set(id, { title: storedTitle, content, version, serverUpdatedAtMs });
         saveOutcomeByNote.current.set(id, { seq, phase: 'saved', title: storedTitle, content });
         patchCachedNote(id, storedTitle, content, version);
         if (isMounted.current && openDocIdRef.current === id) setSaveStatus('saved');
+        if (errorToastNoteId.current === id) {
+          toast.dismiss(DOC_SAVE_ERROR_TOAST);
+          errorToastNoteId.current = null;
+        }
       }
       await queryClient.invalidateQueries({ queryKey: ['docs', tenantId] });
       return true;
@@ -650,16 +702,34 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
       if (isLatest()) {
         saveOutcomeByNote.current.set(id, { seq, phase: 'error', title: storedTitle, content });
         // A fixed id means a run of failures (offline) replaces rather than stacks.
+        errorToastNoteId.current = id;
         if (openDocIdRef.current === id) {
           if (isMounted.current) setSaveStatus('error');
-          toast.error('Could not save this note — your changes are still here. Try again.', { id: 'doc-save-error' });
+          toast.error('Could not save this note — your changes are still here. Try again.', { id: DOC_SAVE_ERROR_TOAST });
         } else {
           const label = storedTitle || 'Untitled';
           toast.error(`Could not save "${label}". Your changes are still here.`, {
-            id: 'doc-save-error',
+            id: DOC_SAVE_ERROR_TOAST,
             action: {
               label: 'Retry',
-              onClick: () => { void saveDoc(id, storedTitle, content); },
+              onClick: () => {
+                // The payload was captured when this attempt failed. A later
+                // save of this note, or a server row newer than the last write
+                // we read back, has already moved on.
+                if (saveSeqByNote.current.get(id) !== seq) {
+                  toast.dismiss(DOC_SAVE_ERROR_TOAST);
+                  if (errorToastNoteId.current === id) errorToastNoteId.current = null;
+                  return;
+                }
+                const rowMs = newestListUpdatedAtMs(id, docsRef.current, sharedDocsRef.current);
+                const written = lastWrittenByNote.current.get(id);
+                if (written && serverRowIsNewer(rowMs, written)) {
+                  toast.dismiss(DOC_SAVE_ERROR_TOAST);
+                  if (errorToastNoteId.current === id) errorToastNoteId.current = null;
+                  return;
+                }
+                void saveDoc(id, storedTitle, content);
+              },
             },
           });
         }
@@ -946,17 +1016,23 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
     if (!renameDocData || !newName.trim()) return;
     const trimmed = newName.trim();
     try {
-      const renamedAtMs = Date.now();
       await updateDoc(doc(db, 'docs', renameDocData.id), { title: trimmed, updatedAt: serverTimestamp() });
       if (openDoc?.id === renameDocData.id) setEditTitle(trimmed);
       // A later open prefers the body this session wrote. Leave that body, and
       // move the title with the rename, or the reopen puts the old title back.
-      // The clock moves with the rename so a refetch of the title is not treated
-      // as a newer edit that still has the previous title.
+      // The clock moves to the server time of the rename, read back the same
+      // way a content save is, so a browser clock cannot make a stale row look
+      // newer than the rename.
       const written = lastWrittenByNote.current.get(renameDocData.id);
       if (written) {
         const version = written.version + 1;
-        lastWrittenByNote.current.set(renameDocData.id, { ...written, title: trimmed, version, writtenAtMs: renamedAtMs });
+        const serverUpdatedAtMs = await readServerUpdatedAtMs(renameDocData.id);
+        lastWrittenByNote.current.set(renameDocData.id, {
+          ...written,
+          title: trimmed,
+          version,
+          serverUpdatedAtMs: serverUpdatedAtMs ?? written.serverUpdatedAtMs,
+        });
         const seq = saveSeqByNote.current.get(renameDocData.id);
         const outcome = saveOutcomeByNote.current.get(renameDocData.id);
         if (outcome && outcome.seq === seq) {
