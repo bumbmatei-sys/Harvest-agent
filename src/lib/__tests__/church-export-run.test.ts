@@ -20,27 +20,24 @@ interface JobDoc {
   byteSize?: number;
 }
 
-interface SweepDoc {
-  id: string;
-  tenantId: string;
-  data: JobDoc;
-  deleted: boolean;
-}
-
 const state = vi.hoisted(() => ({
   bucket: 'exports-bucket' as string | undefined,
   rows: {} as Record<string, { id: string; data: Record<string, unknown> }[] | Error>,
   jobs: new Map<string, JobDoc>(),
   objects: [] as { Key: string; LastModified: Date }[],
-  docs: [] as SweepDoc[],
   deletedKeys: [] as string[],
   wheres: [] as string[],
   paths: [] as string[],
   signed: [] as { expiresIn?: number; key?: string }[],
   audits: new Map<string, Record<string, unknown>>(),
+  gates: new Map<string, Record<string, unknown>>(),
   uploads: [] as { Key: string; UploadId: string; Initiated: Date }[],
   aborted: [] as string[],
-  groups: [] as string[],
+  collectionGroupCalls: 0,
+  indexedQueries: 0,
+  firestoreOps: [] as string[],
+  auditError: null as Error | null,
+  txTail: Promise.resolve() as Promise<void>,
 }));
 
 const mockSend = vi.hoisted(() => vi.fn());
@@ -99,33 +96,37 @@ function collection(name: string) {
   }
   if (name.endsWith('/churchExports')) {
     const tenantId = name.split('/')[1];
+    // A query is not implemented. The sweep must read a document by id. A
+    // where/orderBy chain would need an index this repo does not deploy.
+    const refuseQuery = () => {
+      state.indexedQueries += 1;
+      throw new Error('firestore query');
+    };
     return {
       doc: (id: string) => ({
         set: async (data: JobDoc, options?: { merge?: boolean }) => {
+          for (const value of Object.values(data)) {
+            if (value === undefined) throw new Error('undefined firestore value');
+          }
           const key = `${tenantId}/${id}`;
+          state.firestoreOps.push(`doc set ${name}/${id}`);
           state.jobs.set(key, options?.merge ? { ...state.jobs.get(key), ...data } : data);
         },
+        delete: async () => {
+          state.firestoreOps.push(`doc delete ${name}/${id}`);
+          state.jobs.delete(`${tenantId}/${id}`);
+        },
         get: async () => {
+          state.firestoreOps.push(`doc get ${name}/${id}`);
           const data = state.jobs.get(`${tenantId}/${id}`);
           return { exists: !!data, id, data: () => data };
         },
       }),
-      orderBy: () => ({
-        limit: () => ({
-          get: async () => {
-            const docs = [...state.jobs.entries()]
-              .filter(([key]) => key.startsWith(`${tenantId}/`))
-              .map(([key, data]) => ({ id: key.slice(tenantId.length + 1), data, createdAtMs: data.createdAtMs ?? 0 }))
-              .sort((a, b) => b.createdAtMs - a.createdAtMs)
-              .slice(0, 1);
-            return {
-              empty: docs.length === 0,
-              size: docs.length,
-              docs: docs.map((doc) => ({ id: doc.id, data: () => doc.data })),
-            };
-          },
-        }),
-      }),
+      where: refuseQuery,
+      orderBy: refuseQuery,
+      limit: refuseQuery,
+      startAfter: refuseQuery,
+      get: refuseQuery,
     };
   }
   if (name.endsWith('/churchExportAudits')) {
@@ -137,7 +138,23 @@ function collection(name: string) {
           return { exists: !!data, id, data: () => data };
         },
         set: async (data: Record<string, unknown>) => {
+          if (state.auditError) throw state.auditError;
           state.audits.set(`${tenantId}/${id}`, data);
+        },
+      }),
+    };
+  }
+  if (name.endsWith('/churchExportGate')) {
+    const tenantId = name.split('/')[1];
+    return {
+      doc: (id: string) => ({
+        get: async () => {
+          const data = state.gates.get(`${tenantId}/${id}`);
+          return { exists: data !== undefined, id, data: () => data };
+        },
+        set: async (data: Record<string, unknown>, options?: { merge?: boolean }) => {
+          const key = `${tenantId}/${id}`;
+          state.gates.set(key, options?.merge ? { ...state.gates.get(key), ...data } : data);
         },
       }),
     };
@@ -150,41 +167,25 @@ function collection(name: string) {
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {
     collection: (name: string) => collection(name),
-    collectionGroup: (group: string) => {
-      state.groups.push(group);
-      const filters: { field: string; op: string; value: unknown }[] = [];
-      const api = {
-        where(field: string, op: string, value: unknown) {
-          filters.push({ field, op, value });
-          return api;
-        },
-        orderBy() { return api; },
-        limit() { return api; },
-        get: async () => {
-          let docs = state.docs.filter((doc) => !doc.deleted);
-          for (const filter of filters) {
-            if (filter.field === 'createdAtMs' && filter.op === '<=') {
-              docs = docs.filter((doc) => (doc.data.createdAtMs ?? 0) <= (filter.value as number));
-            }
-            if (filter.field === 'status' && filter.op === '==') {
-              docs = docs.filter((doc) => doc.data.status === filter.value);
-            }
-          }
-          return {
-            empty: docs.length === 0,
-            size: docs.length,
-            docs: docs.map((doc) => ({
-              id: doc.id,
-              data: () => doc.data,
-              ref: {
-                parent: { parent: { id: doc.tenantId } },
-                delete: async () => { doc.deleted = true; },
-              },
-            })),
-          };
-        },
-      };
-      return api;
+    collectionGroup: () => {
+      state.collectionGroupCalls += 1;
+      throw new Error('collection group query');
+    },
+    runTransaction: async (fn: (tx: {
+      get: (ref: { get: () => Promise<unknown> }) => Promise<unknown>;
+      set: (ref: { set: (data: unknown) => Promise<void> }, data: unknown) => void;
+    }) => Promise<unknown>) => {
+      const run = state.txTail.then(async () => {
+        const writes: (() => Promise<void>)[] = [];
+        const result = await fn({
+          get: (ref) => ref.get(),
+          set: (ref, data) => { writes.push(() => ref.set(data)); },
+        });
+        for (const write of writes) await write();
+        return result;
+      });
+      state.txTail = run.then(() => undefined, () => undefined);
+      return run;
     },
   },
 }));
@@ -203,15 +204,19 @@ beforeEach(() => {
   state.rows = {};
   state.jobs.clear();
   state.objects = [];
-  state.docs = [];
   state.deletedKeys = [];
   state.wheres = [];
   state.paths = [];
   state.signed = [];
   state.audits.clear();
+  state.gates.clear();
   state.uploads = [];
   state.aborted = [];
-  state.groups = [];
+  state.collectionGroupCalls = 0;
+  state.indexedQueries = 0;
+  state.firestoreOps = [];
+  state.auditError = null;
+  state.txTail = Promise.resolve();
   parts.length = 0;
   mockSend.mockClear();
   mockSend.mockImplementation(async (cmd: { constructor: { name: string }; input?: Record<string, unknown> }) => {
@@ -341,7 +346,7 @@ describe('runChurchExport', () => {
 
   it('stores a generic failure and an audit, and does not keep the leaked read', async () => {
     state.rows = { users: new Error('row leaked@example.com') };
-    await expect(runChurchExport('tenant-a', 'admin-1')).rejects.toThrow('Export failed');
+    await expect(runChurchExport('tenant-a', 'admin-1')).rejects.toThrow('Could not read members.csv');
     const failed = [...state.jobs.values()].find((entry) => entry.status === 'failed');
     expect(failed?.error).toBe('Export failed');
     expect(JSON.stringify(failed)).not.toContain('leaked');
@@ -353,35 +358,50 @@ describe('runChurchExport', () => {
     expect(names).not.toContain('CompleteMultipartUploadCommand');
   });
 
+  it('logs an audit failure and still rejects with the original read error', async () => {
+    state.rows = { users: new Error('row leaked@example.com') };
+    state.auditError = new Error('audit blew up');
+    const logged: string[] = [];
+    const spy = vi.spyOn(console, 'error').mockImplementation((msg: unknown, err?: unknown) => {
+      const detail = err instanceof Error ? err.message : '';
+      logged.push(`${String(msg)} ${detail}`);
+    });
+    await expect(runChurchExport('tenant-a', 'admin-1')).rejects.toThrow('Could not read members.csv');
+    spy.mockRestore();
+    expect(logged.some((line) => line.includes('Could not read members.csv'))).toBe(true);
+    expect(logged.some((line) => line.includes('audit blew up'))).toBe(true);
+  });
+
   it('allows one running export, then a cooldown, and clears a stuck upload', async () => {
-    state.jobs.set('tenant-a/live', {
+    state.gates.set('tenant-a/lock', {
       status: 'running',
-      createdAtMs: NOW - 1000,
+      startedAtMs: NOW - 1000,
+      exportId: 'live',
       objectKey: 'church-exports/tenant-a/live.zip',
-      uploadId: 'up-live',
       createdBy: 'admin-1',
     });
     await expect(runChurchExport('tenant-a', 'admin-1', NOW)).rejects.toBeInstanceOf(ChurchExportRejected);
     await expect(runChurchExport('tenant-a', 'admin-1', NOW)).rejects.toMatchObject({ code: 'active' });
     expect(state.aborted).toEqual([]);
 
-    state.jobs.set('tenant-a/live', {
+    state.gates.set('tenant-a/lock', {
       status: 'ready',
-      createdAtMs: NOW - 1000,
+      startedAtMs: NOW - 1000,
+      exportId: 'live',
       objectKey: 'church-exports/tenant-a/live.zip',
       createdBy: 'admin-1',
     });
     await expect(runChurchExport('tenant-a', 'admin-1', NOW)).rejects.toMatchObject({ code: 'cooldown' });
     expect(NOW - (NOW - 1000)).toBeLessThan(CHURCH_EXPORT_COOLDOWN_MS);
 
-    state.jobs.set('tenant-a/stuck', {
+    state.gates.set('tenant-a/lock', {
       status: 'running',
-      createdAtMs: NOW - CHURCH_EXPORT_STUCK_MS,
+      startedAtMs: NOW - CHURCH_EXPORT_STUCK_MS,
+      exportId: 'stuck',
       objectKey: 'church-exports/tenant-a/stuck.zip',
       uploadId: 'up-stuck',
       createdBy: 'admin-1',
     });
-    state.jobs.delete('tenant-a/live');
     const result = await runChurchExport('tenant-a', 'admin-1', NOW);
     expect(result.status).toBe('ready');
     expect(state.aborted).toContain('up-stuck');
@@ -392,6 +412,44 @@ describe('runChurchExport', () => {
       tenantId: 'tenant-a',
       rowCounts: {},
     });
+    expect(state.gates.get('tenant-a/lock')).toMatchObject({ status: 'ready', exportId: result.exportId });
+  });
+
+  it('does not mark a finished export failed when its lock is stolen', async () => {
+    state.gates.set('tenant-a/lock', {
+      status: 'running',
+      startedAtMs: NOW - CHURCH_EXPORT_STUCK_MS,
+      exportId: 'done',
+      objectKey: 'church-exports/tenant-a/done.zip',
+      uploadId: 'up-done',
+      createdBy: 'admin-1',
+    });
+    state.jobs.set('tenant-a/done', {
+      status: 'ready',
+      objectKey: 'church-exports/tenant-a/done.zip',
+      createdAtMs: NOW - CHURCH_EXPORT_STUCK_MS,
+      uploadId: 'up-done',
+      createdBy: 'admin-1',
+    });
+    const result = await runChurchExport('tenant-a', 'admin-1', NOW);
+    expect(result.status).toBe('ready');
+    expect(state.jobs.get('tenant-a/done')?.status).toBe('ready');
+    expect(state.audits.has('tenant-a/done')).toBe(false);
+    expect(state.gates.get('tenant-a/lock')).toMatchObject({ status: 'ready', exportId: result.exportId });
+  });
+
+  it('lets one of two simultaneous claims start', async () => {
+    const settled = await Promise.allSettled([
+      runChurchExport('tenant-a', 'admin-1', NOW),
+      runChurchExport('tenant-a', 'admin-2', NOW),
+    ]);
+    const started = settled.filter((result) => result.status === 'fulfilled');
+    const refused = settled.filter((result) => result.status === 'rejected');
+    expect(started).toHaveLength(1);
+    expect(refused).toHaveLength(1);
+    expect((refused[0] as PromiseRejectedResult).reason).toMatchObject({ code: 'active' });
+    const creates = mockSend.mock.calls.filter((call) => call[0] instanceof CreateMultipartUploadCommand);
+    expect(creates).toHaveLength(1);
   });
 
   it('refuses to report success when storage is not configured', async () => {
@@ -449,73 +507,31 @@ describe('the 24-hour sweep', () => {
     expect(counts).toEqual({ deleted: 2, kept: 2, refused: 1, aborted: 0 });
   });
 
-  it('deletes expired objects once, deletes a bad pointer record without deleting the foreign object, and fails closed without a bucket', async () => {
+  it('deletes an expired object and that one job document, and refuses a collection-group query', async () => {
     state.objects = [
       { Key: 'church-exports/tenant-a/oldexport.zip', LastModified: new Date(NOW - DAY - 1000) },
       { Key: 'church-exports/tenant-a/newexport.zip', LastModified: new Date(NOW - 60 * 60 * 1000) },
       { Key: 'church-exports/tenant-a/exact.zip', LastModified: new Date(NOW - DAY) },
       { Key: 'tenants/tenant-a/uploads/nope.bin', LastModified: new Date(NOW - DAY - 1000) },
     ];
-    state.docs = [
-      {
-        id: 'olddoc',
-        tenantId: 'tenant-a',
-        deleted: false,
-        data: { objectKey: 'church-exports/tenant-a/olddoc.zip', createdAtMs: NOW - DAY },
-      },
-      {
-        id: 'baddoc',
-        tenantId: 'tenant-a',
-        deleted: false,
-        data: { objectKey: 'tenants/tenant-a/uploads/secret.bin', createdAtMs: NOW - DAY - 1000 },
-      },
-      {
-        id: 'freshdoc',
-        tenantId: 'tenant-a',
-        deleted: false,
-        data: { objectKey: 'church-exports/tenant-a/freshdoc.zip', createdAtMs: NOW - 1000 },
-      },
-    ];
-    const counts = await sweepChurchExports(NOW);
-    expect(state.deletedKeys.sort()).toEqual([
-      'church-exports/tenant-a/exact.zip',
-      'church-exports/tenant-a/olddoc.zip',
-      'church-exports/tenant-a/oldexport.zip',
-    ]);
-    expect(counts.deleted).toBe(3);
-    expect(counts.kept).toBe(1);
-    expect(counts.refused).toBe(2);
-    expect(state.docs.find((doc) => doc.id === 'baddoc')?.deleted).toBe(true);
-    expect(state.docs.find((doc) => doc.id === 'freshdoc')?.deleted).toBe(false);
-    expect(state.deletedKeys).not.toContain('tenants/tenant-a/uploads/secret.bin');
-    expect(state.deletedKeys).not.toContain('tenants/tenant-a/uploads/nope.bin');
-    expect(state.groups.every((group) => group === 'churchExports')).toBe(true);
-    expect(state.audits.size).toBe(0);
-
-    state.bucket = undefined;
-    await expect(sweepChurchExports(NOW)).rejects.toThrow('Export storage is not configured');
-  });
-
-  it('aborts an orphaned multipart upload and a stuck job, and leaves the audit in place', async () => {
-    state.uploads = [
-      { Key: 'church-exports/tenant-a/old-upload.zip', UploadId: 'up-old', Initiated: new Date(NOW - CHURCH_EXPORT_STUCK_MS) },
-      { Key: 'church-exports/tenant-a/live-upload.zip', UploadId: 'up-live', Initiated: new Date(NOW - 1000) },
-      { Key: 'tenants/tenant-a/uploads/nope.bin', UploadId: 'up-foreign', Initiated: new Date(NOW - CHURCH_EXPORT_STUCK_MS) },
-    ];
-    state.docs = [
-      {
-        id: 'stuck-job',
-        tenantId: 'tenant-a',
-        deleted: false,
-        data: {
-          status: 'running',
-          objectKey: 'church-exports/tenant-a/stuck-job.zip',
-          createdAtMs: NOW - CHURCH_EXPORT_STUCK_MS,
-          uploadId: 'up-job',
-          createdBy: 'admin-1',
-        },
-      },
-    ];
+    state.jobs.set('tenant-a/oldexport', {
+      status: 'ready',
+      objectKey: 'church-exports/tenant-a/oldexport.zip',
+      createdAtMs: NOW - DAY - 1000,
+      createdBy: 'admin-1',
+    });
+    state.jobs.set('tenant-a/newexport', {
+      status: 'ready',
+      objectKey: 'church-exports/tenant-a/newexport.zip',
+      createdAtMs: NOW - 60 * 60 * 1000,
+      createdBy: 'admin-1',
+    });
+    state.jobs.set('tenant-a/unrelated', {
+      status: 'failed',
+      objectKey: 'tenants/tenant-a/uploads/secret.bin',
+      createdAtMs: NOW - DAY - 1000,
+      createdBy: 'admin-1',
+    });
     state.audits.set('tenant-a/already', {
       exportId: 'already',
       tenantId: 'tenant-a',
@@ -525,16 +541,67 @@ describe('the 24-hour sweep', () => {
       rowCounts: { 'members.csv': 3 },
     });
     const counts = await sweepChurchExports(NOW);
-    expect(state.aborted.sort()).toEqual(['up-job', 'up-old']);
-    expect(counts.aborted).toBe(2);
-    expect(state.jobs.get('tenant-a/stuck-job')?.status).toBe('failed');
-    expect(state.docs.find((doc) => doc.id === 'stuck-job')?.deleted).toBe(false);
+    expect(state.deletedKeys.sort()).toEqual([
+      'church-exports/tenant-a/exact.zip',
+      'church-exports/tenant-a/oldexport.zip',
+    ]);
+    expect(counts).toMatchObject({ deleted: 2, kept: 1, refused: 1, aborted: 0 });
+    expect(state.jobs.has('tenant-a/oldexport')).toBe(false);
+    expect(state.jobs.get('tenant-a/newexport')?.status).toBe('ready');
+    expect(state.jobs.get('tenant-a/unrelated')?.objectKey).toBe('tenants/tenant-a/uploads/secret.bin');
+    expect(state.deletedKeys).not.toContain('tenants/tenant-a/uploads/secret.bin');
+    expect(state.deletedKeys).not.toContain('tenants/tenant-a/uploads/nope.bin');
     expect(state.audits.get('tenant-a/already')).toMatchObject({ rowCounts: { 'members.csv': 3 } });
-    expect(state.audits.get('tenant-a/stuck-job')).toMatchObject({
+    expect(state.collectionGroupCalls).toBe(0);
+    expect(state.indexedQueries).toBe(0);
+    expect(state.firestoreOps.every((op) => op.startsWith('doc '))).toBe(true);
+    expect(state.firestoreOps).toContain('doc delete tenants/tenant-a/churchExports/oldexport');
+    const listed = mockSend.mock.calls.filter((call) => call[0].constructor.name === 'ListObjectsV2Command');
+    expect(listed.length).toBeGreaterThan(0);
+    expect(listed[0][0].input.Prefix).toBe('church-exports/');
+
+    state.bucket = undefined;
+    await expect(sweepChurchExports(NOW)).rejects.toThrow('Export storage is not configured');
+  });
+
+  it('aborts an orphaned multipart upload and updates the job that key names', async () => {
+    state.uploads = [
+      { Key: 'church-exports/tenant-a/old-upload.zip', UploadId: 'up-old', Initiated: new Date(NOW - CHURCH_EXPORT_STUCK_MS) },
+      { Key: 'church-exports/tenant-a/live-upload.zip', UploadId: 'up-live', Initiated: new Date(NOW - 1000) },
+      { Key: 'tenants/tenant-a/uploads/nope.bin', UploadId: 'up-foreign', Initiated: new Date(NOW - CHURCH_EXPORT_STUCK_MS) },
+    ];
+    state.jobs.set('tenant-a/old-upload', {
+      status: 'running',
+      objectKey: 'church-exports/tenant-a/old-upload.zip',
+      createdAtMs: NOW - CHURCH_EXPORT_STUCK_MS,
+      uploadId: 'up-old',
+      createdBy: 'admin-1',
+    });
+    state.jobs.set('tenant-a/live-upload', {
+      status: 'running',
+      objectKey: 'church-exports/tenant-a/live-upload.zip',
+      createdAtMs: NOW - 1000,
+      uploadId: 'up-live',
+      createdBy: 'admin-1',
+    });
+    const counts = await sweepChurchExports(NOW);
+    expect(state.aborted).toEqual(['up-old']);
+    expect(counts.aborted).toBe(1);
+    expect(counts.refused).toBe(1);
+    expect(state.jobs.get('tenant-a/old-upload')?.status).toBe('failed');
+    expect(state.jobs.get('tenant-a/live-upload')?.status).toBe('running');
+    expect(state.audits.get('tenant-a/old-upload')).toMatchObject({
       status: 'failed',
       tenantId: 'tenant-a',
       createdBy: 'admin-1',
     });
-    expect(JSON.stringify(state.audits.get('tenant-a/stuck-job'))).not.toContain('@');
+    expect(JSON.stringify(state.audits.get('tenant-a/old-upload'))).not.toContain('@');
+    expect(state.collectionGroupCalls).toBe(0);
+    expect(state.indexedQueries).toBe(0);
+    expect(state.firestoreOps).toContain('doc get tenants/tenant-a/churchExports/old-upload');
+    expect(state.firestoreOps.every((op) => op.startsWith('doc '))).toBe(true);
+    const listed = mockSend.mock.calls.filter((call) => call[0].constructor.name === 'ListMultipartUploadsCommand');
+    expect(listed.length).toBeGreaterThan(0);
+    expect(listed[0][0].input.Prefix).toBe('church-exports/');
   });
 });

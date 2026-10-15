@@ -67,9 +67,9 @@ describe('GET /api/church-export/sweep', () => {
     expect(mockSweep).not.toHaveBeenCalled();
   });
 
-  it('refuses when CRON_SECRET is missing and does not sweep', async () => {
+  it('refuses when CRON_SECRET is missing, including the header an unset secret stringifies to', async () => {
     delete process.env.CRON_SECRET;
-    const missing = await GET(cron('Bearer test-cron-secret'));
+    const missing = await GET(cron('Bearer undefined'));
     expect(missing.status).toBe(401);
     expect(await missing.json()).toEqual({ error: 'Unauthorized' });
     expect(mockCapture).toHaveBeenCalledWith(

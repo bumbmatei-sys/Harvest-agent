@@ -34,6 +34,13 @@ export const CHURCH_EXPORTS = 'churchExports';
 /** Survives the 24-hour object sweep. Not a `churchExports` document. */
 export const CHURCH_EXPORT_AUDITS = 'churchExportAudits';
 
+/**
+ * One document per tenant. The claim transaction is the only writer that
+ * decides a start, so two requests cannot both observe an empty slot.
+ */
+export const CHURCH_EXPORT_GATE = 'churchExportGate';
+const GATE_DOC_ID = 'lock';
+
 const PUBLIC_EXPORT_ERROR = 'Export failed';
 
 export type ChurchExportStatus = 'running' | 'ready' | 'failed' | 'consumed';
@@ -202,14 +209,29 @@ async function abortUpload(bucket: string, key: string, uploadId: string): Promi
 }
 
 async function failStuckJob(tenantId: string, job: ChurchExportJob, nowMs: number): Promise<void> {
-  await adminDb.collection('tenants').doc(tenantId).collection(CHURCH_EXPORTS).doc(job.id).set({
+  const ref = adminDb.collection('tenants').doc(tenantId).collection(CHURCH_EXPORTS).doc(job.id);
+  const snap = await ref.get();
+  if (snap.exists) {
+    const current = jobFrom(job.id, snap.data() as JobDoc | undefined);
+    // A lock can outlive a finished export. Stealing it must not rewrite a ready file as failed.
+    if (current && current.status !== 'running') return;
+  }
+  const doc: {
+    status: 'failed';
+    createdAtMs: number;
+    objectKey: string;
+    error: string;
+    createdBy?: string;
+    uploadId?: string;
+  } = {
     status: 'failed',
     createdAtMs: job.createdAtMs,
-    createdBy: job.createdBy,
     objectKey: job.objectKey,
-    uploadId: job.uploadId,
     error: PUBLIC_EXPORT_ERROR,
-  });
+  };
+  if (typeof job.createdBy === 'string') doc.createdBy = job.createdBy;
+  if (typeof job.uploadId === 'string') doc.uploadId = job.uploadId;
+  await ref.set(doc);
   await writeAudit({
     exportId: job.id,
     tenantId,
@@ -221,23 +243,83 @@ async function failStuckJob(tenantId: string, job: ChurchExportJob, nowMs: numbe
   });
 }
 
+interface GateDoc {
+  status?: string;
+  startedAtMs?: number;
+  exportId?: string;
+  objectKey?: string;
+  createdBy?: string;
+  uploadId?: string;
+}
+
+interface StolenExport {
+  exportId: string;
+  objectKey: string;
+  createdAtMs: number;
+  createdBy?: string;
+  uploadId?: string;
+}
+
+function gateRef(tenantId: string) {
+  return adminDb.collection('tenants').doc(tenantId).collection(CHURCH_EXPORT_GATE).doc(GATE_DOC_ID);
+}
+
 /**
- * One running export per tenant. A job still running past
- * {@link CHURCH_EXPORT_STUCK_MS} is failed and its upload aborted, so a
- * killed request cannot hold the slot. Anything newer than the cooldown,
- * running or not, refuses another start.
+ * One running export per tenant. The read and the write are one transaction
+ * on `churchExportGate/lock`, so a second request sees the first claim.
+ * A lock still running past {@link CHURCH_EXPORT_STUCK_MS} is stolen: the
+ * previous upload is aborted after the transaction commits.
  */
-async function claimExportSlot(tenantId: string, nowMs: number, bucket: string): Promise<void> {
-  const latest = await latestChurchExport(tenantId);
-  if (!latest) return;
-  const age = nowMs - latest.createdAtMs;
-  if (latest.status === 'running' && age >= CHURCH_EXPORT_STUCK_MS) {
-    if (latest.uploadId) await abortUpload(bucket, latest.objectKey, latest.uploadId);
-    await failStuckJob(tenantId, latest, nowMs);
-    return;
-  }
-  if (latest.status === 'running') throw new ChurchExportRejected('active');
-  if (age < CHURCH_EXPORT_COOLDOWN_MS) throw new ChurchExportRejected('cooldown');
+async function claimExportSlot(
+  tenantId: string,
+  uid: string,
+  nowMs: number,
+): Promise<{ exportId: string; objectKey: string; stolen: StolenExport | null }> {
+  const exportId = randomUUID();
+  const objectKey = churchExportObjectKey(tenantId, exportId);
+  const ref = gateRef(tenantId);
+  const stolen: { current: StolenExport | null } = { current: null };
+  await adminDb.runTransaction(async (tx) => {
+    stolen.current = null;
+    const snap = await tx.get(ref);
+    const data = snap.exists ? (snap.data() as GateDoc | undefined) ?? {} : {};
+    const startedAtMs = typeof data.startedAtMs === 'number' ? data.startedAtMs : null;
+    if (startedAtMs !== null) {
+      const age = nowMs - startedAtMs;
+      if (data.status === 'running' && age < CHURCH_EXPORT_STUCK_MS) {
+        throw new ChurchExportRejected('active');
+      }
+      if (data.status === 'running' && age >= CHURCH_EXPORT_STUCK_MS && data.exportId && data.objectKey) {
+        stolen.current = {
+          exportId: data.exportId,
+          objectKey: data.objectKey,
+          createdAtMs: startedAtMs,
+          createdBy: data.createdBy,
+          uploadId: data.uploadId,
+        };
+      } else if (age < CHURCH_EXPORT_COOLDOWN_MS) {
+        throw new ChurchExportRejected('cooldown');
+      }
+    }
+    tx.set(ref, {
+      status: 'running',
+      startedAtMs: nowMs,
+      exportId,
+      objectKey,
+      createdBy: uid,
+    });
+  });
+  return { exportId, objectKey, stolen: stolen.current };
+}
+
+async function releaseGate(tenantId: string, exportId: string, status: 'ready' | 'failed'): Promise<void> {
+  const ref = gateRef(tenantId);
+  await adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const data = snap.exists ? (snap.data() as GateDoc | undefined) ?? {} : {};
+    if (data.exportId !== exportId) return;
+    tx.set(ref, { ...data, status });
+  });
 }
 
 export async function runChurchExport(
@@ -247,10 +329,25 @@ export async function runChurchExport(
 ): Promise<{ exportId: string; status: 'ready'; files: string[] }> {
   const bucket = r2Bucket();
   if (!bucket) throw new Error('Export storage is not configured');
-  await claimExportSlot(tenantId, nowMs, bucket);
-
-  const exportId = randomUUID();
-  const objectKey = churchExportObjectKey(tenantId, exportId);
+  const claimed = await claimExportSlot(tenantId, uid, nowMs);
+  const { exportId, objectKey } = claimed;
+  if (claimed.stolen?.uploadId) {
+    await abortUpload(bucket, claimed.stolen.objectKey, claimed.stolen.uploadId).catch((abortErr) => {
+      console.error('[church-export] could not abort the stuck upload', abortErr);
+    });
+  }
+  if (claimed.stolen) {
+    await failStuckJob(tenantId, {
+      id: claimed.stolen.exportId,
+      status: 'running',
+      createdAtMs: claimed.stolen.createdAtMs,
+      objectKey: claimed.stolen.objectKey,
+      uploadId: claimed.stolen.uploadId,
+      createdBy: claimed.stolen.createdBy,
+    }, nowMs).catch((stuckErr) => {
+      console.error('[church-export] could not record the stuck export', stuckErr);
+    });
+  }
   const ref = adminDb.collection('tenants').doc(tenantId).collection(CHURCH_EXPORTS).doc(exportId);
   const createdAtMs = nowMs;
   let uploadId: string | undefined;
@@ -282,6 +379,7 @@ export async function runChurchExport(
       onCreated: async (id) => {
         uploadId = id;
         await ref.set({ uploadId: id }, { merge: true });
+        await gateRef(tenantId).set({ uploadId: id }, { merge: true });
       },
       write: async (sink) => {
         const written = await writeChurchExportZip(sources, sink);
@@ -308,29 +406,51 @@ export async function runChurchExport(
       rowCounts,
       byteSize: bytes,
     });
+    await releaseGate(tenantId, exportId, 'ready').catch((gateErr) => {
+      console.error('[church-export] could not release the export lock', gateErr);
+    });
     return { exportId, status: 'ready', files };
   } catch (err) {
     console.error('[church-export] failed', err);
-    await ref.set({
-      status: 'failed',
-      createdAtMs,
-      createdBy: uid,
-      objectKey,
-      uploadId,
-      error: PUBLIC_EXPORT_ERROR,
-    }).catch((setErr) => {
+    try {
+      const failedDoc: {
+        status: 'failed';
+        createdAtMs: number;
+        createdBy: string;
+        objectKey: string;
+        error: string;
+        uploadId?: string;
+      } = {
+        status: 'failed',
+        createdAtMs,
+        createdBy: uid,
+        objectKey,
+        error: PUBLIC_EXPORT_ERROR,
+      };
+      if (uploadId) failedDoc.uploadId = uploadId;
+      await ref.set(failedDoc);
+    } catch (setErr) {
       console.error('[church-export] could not record the failure', setErr);
-    });
-    await writeAudit({
-      exportId,
-      tenantId,
-      createdBy: uid,
-      createdAtMs,
-      completedAtMs: Date.now(),
-      status: 'failed',
-      rowCounts,
-    });
-    throw new Error(PUBLIC_EXPORT_ERROR);
+    }
+    try {
+      await releaseGate(tenantId, exportId, 'failed');
+    } catch (gateErr) {
+      console.error('[church-export] could not release the export lock', gateErr);
+    }
+    try {
+      await writeAudit({
+        exportId,
+        tenantId,
+        createdBy: uid,
+        createdAtMs,
+        completedAtMs: Date.now(),
+        status: 'failed',
+        rowCounts,
+      });
+    } catch (auditErr) {
+      console.error('[church-export] could not record the audit', auditErr);
+    }
+    throw err;
   }
 }
 
@@ -481,16 +601,29 @@ async function* listOpenUploads(bucket: string): AsyncGenerator<OpenUpload> {
   }
 }
 
+function jobRef(tenantId: string, exportId: string) {
+  return adminDb.collection('tenants').doc(tenantId).collection(CHURCH_EXPORTS).doc(exportId);
+}
+
+/** The upload listing named this object. Mark that one job failed. No query. */
+async function failListedUpload(tenantId: string, exportId: string, nowMs: number): Promise<void> {
+  const snap = await jobRef(tenantId, exportId).get();
+  if (!snap.exists) return;
+  const job = jobFrom(exportId, snap.data() as JobDoc | undefined);
+  if (!job || job.status !== 'running') return;
+  await failStuckJob(tenantId, job, nowMs);
+}
+
 /**
- * R2 listing is the source of truth for bytes. Firestore rows older than the
- * same window are deleted with their object, so a record cannot outlive the
- * file it points at. Audit documents live in `churchExportAudits` and this
- * sweep never reads them.
+ * R2 is the list. An expired object is deleted, and the one job document
+ * named by that key (`tenants/{tenant}/churchExports/{exportId}`) is deleted
+ * with it. An incomplete upload older than {@link CHURCH_EXPORT_STUCK_MS} is
+ * aborted, and that same direct document read marks the job failed.
  *
- * A running job older than {@link CHURCH_EXPORT_STUCK_MS}, and any incomplete
- * multipart upload under `church-exports/` of that age, is aborted. The
- * `status == running` read is a single-field query with no `limit`, so it
- * does not need a composite index. Running exports are one per tenant.
+ * There is no collection-group query and no `where` + `orderBy`, so nothing
+ * here needs an index deploy. A job document with no object is invisible to
+ * this sweep; the next claim steals a lock that has been running too long.
+ * Audit documents are a different collection and are not read.
  *
  * R2 lifecycle is a bucket setting this repo cannot write. Set one anyway:
  * abort incomplete multipart uploads after 1 day. The cron is the path that
@@ -502,66 +635,32 @@ export async function sweepChurchExports(nowMs: number = Date.now()): Promise<Sw
 
   const abortedIds = new Set<string>();
   let aborted = 0;
+  let refused = 0;
   for await (const upload of listOpenUploads(bucket)) {
-    if (!parseChurchExportKey(upload.key)) continue;
-    if (nowMs - upload.initiatedMs < CHURCH_EXPORT_STUCK_MS) continue;
-    if (abortedIds.has(upload.uploadId)) continue;
-    await abortUpload(bucket, upload.key, upload.uploadId);
-    abortedIds.add(upload.uploadId);
-    aborted += 1;
-  }
-
-  const running = await adminDb.collectionGroup(CHURCH_EXPORTS).where('status', '==', 'running').get();
-  for (const doc of running.docs) {
-    const job = jobFrom(doc.id, doc.data() as JobDoc);
-    const pathTenant = doc.ref.parent.parent?.id;
-    if (!job || !pathTenant || job.status !== 'running') continue;
-    if (nowMs - job.createdAtMs < CHURCH_EXPORT_STUCK_MS) continue;
-    if (job.uploadId && !abortedIds.has(job.uploadId)) {
-      const parsed = parseChurchExportKey(job.objectKey);
-      if (parsed && parsed.tenantId === pathTenant) {
-        await abortUpload(bucket, job.objectKey, job.uploadId);
-        abortedIds.add(job.uploadId);
-        aborted += 1;
-      }
+    const parsed = parseChurchExportKey(upload.key);
+    if (!parsed) {
+      refused += 1;
+      continue;
     }
-    await failStuckJob(pathTenant, job, nowMs);
+    if (nowMs - upload.initiatedMs < CHURCH_EXPORT_STUCK_MS) continue;
+    if (!abortedIds.has(upload.uploadId)) {
+      await abortUpload(bucket, upload.key, upload.uploadId);
+      abortedIds.add(upload.uploadId);
+      aborted += 1;
+    }
+    await failListedUpload(parsed.tenantId, parsed.exportId, nowMs);
   }
 
-  const removed = new Set<string>();
   const counts = await sweepListedObjects(
     listExportObjects(bucket),
     nowMs,
     async (key) => {
       await deleteStoredKey(bucket, key);
-      removed.add(key);
+      const parsed = parseChurchExportKey(key);
+      if (parsed) await jobRef(parsed.tenantId, parsed.exportId).delete();
     },
   );
   counts.aborted = aborted;
-
-  const cutoff = nowMs - CHURCH_EXPORT_MAX_AGE_MS;
-  for (;;) {
-    const snap = await adminDb.collectionGroup(CHURCH_EXPORTS)
-      .where('createdAtMs', '<=', cutoff)
-      .orderBy('createdAtMs', 'asc')
-      .limit(200)
-      .get();
-    if (snap.empty) break;
-    for (const doc of snap.docs) {
-      const data = doc.data() as JobDoc;
-      const key = typeof data.objectKey === 'string' ? data.objectKey : '';
-      const parsed = parseChurchExportKey(key);
-      const pathTenant = doc.ref.parent.parent?.id;
-      if (!parsed || parsed.tenantId !== pathTenant) {
-        counts.refused += 1;
-      } else if (!removed.has(key)) {
-        await deleteStoredKey(bucket, key);
-        removed.add(key);
-      }
-      await doc.ref.delete();
-    }
-    if (snap.size < 200) break;
-  }
-  counts.deleted = removed.size;
+  counts.refused += refused;
   return counts;
 }
