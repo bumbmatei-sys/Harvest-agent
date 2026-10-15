@@ -1,0 +1,11 @@
+{
+  "ticket": "#526",
+  "note": "#526 (ClickUp 86bc8kmhd) is the follow-up to #520. It records AdminDocs.tsx only. The notes editor now remembers the last body successfully written for each note and attributes save status per note, so reopening a note cannot autosave a stale cached body and a save error cannot surface on a different note. DocsTree.tsx and RichTextEditor.tsx are unchanged. No firestore.rules, functions/, layout.tsx or ui/ primitive is touched. The digest below is appended beside #520's; nothing already recorded is replaced.",
+  "entries": [
+    {
+      "file": "src/components/AdminDocs.tsx",
+      "digest": "c56e20c9e6ad9c74c710b2ca608dc9a41ba3625b654d7c31c6553c8af689716a",
+      "why": "#526 owns this change and it is the autosave bookkeeping after a note is saved or switched, nothing else. #520 keyed the editor and bound each queued payload to the note that produced it, but the docs query still served the body it loaded: a click back onto that note painted the pre-save copy and the next autosave wrote it over the body that had just landed. saveDoc now keeps a per-note generation (saveSeqByNote) and the last title and body that actually landed (lastWrittenByNote), and patches that body onto the docs and sharedDocs query caches with a client-only version that updateDoc never sends. switchToDoc opens that remembered body when the list row is older, and a failed or in-flight save reopens the body it carried. The chip and the error toast update only while that note is the one on screen, so a late failure for an older generation, or a failure that arrives while another note is open, cannot mark the wrong note. The rename path moves the remembered title with the rename so a later open does not restore the previous one. closeEditor, the title blur, the unmount flush, the delete-cancels-not-flushes rule, every Firestore path, the share flows, the menu and the toolbar are unchanged."
+    }
+  ]
+}
