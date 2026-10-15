@@ -20,19 +20,17 @@ interface ExportJob {
   error?: string | null;
 }
 
-interface ChurchDataExportPanelProps {
-  /** Hint only. The server decides the tenant from the Firebase token. */
-  tenantId?: string;
-}
-
 /**
  * THE-228 — "Export church data" on admin Settings.
  *
  * The button starts the export. While that request runs the label is the
  * progress. When the file is ready, Download fetches a 15-minute signed URL,
  * saves the zip, then asks the server to delete the object.
+ *
+ * The request carries no tenant id. The server reads the tenant from the
+ * Firebase token, or from the user document when the claim is absent.
  */
-const ChurchDataExportPanel: React.FC<ChurchDataExportPanelProps> = ({ tenantId }) => {
+const ChurchDataExportPanel: React.FC = () => {
   const [job, setJob] = useState<ExportJob | null>(null);
   const [phase, setPhase] = useState<'idle' | 'preparing' | 'downloading' | 'opened'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -41,8 +39,7 @@ const ChurchDataExportPanel: React.FC<ChurchDataExportPanelProps> = ({ tenantId 
     let cancelled = false;
     (async () => {
       try {
-        const query = tenantId ? `?tenantId=${encodeURIComponent(tenantId)}` : '';
-        const res = await authFetch(`/api/church-export${query}`);
+        const res = await authFetch('/api/church-export');
         const data = await res.json().catch(() => ({} as { error?: string; export?: ExportJob | null }));
         if (cancelled) return;
         if (!res.ok) {
@@ -62,15 +59,13 @@ const ChurchDataExportPanel: React.FC<ChurchDataExportPanelProps> = ({ tenantId 
       }
     })();
     return () => { cancelled = true; };
-  }, [tenantId]);
-
-  const body = () => JSON.stringify(tenantId ? { tenantId } : {});
+  }, []);
 
   const start = async () => {
     setPhase('preparing');
     setError(null);
     try {
-      const res = await authFetch('/api/church-export', { method: 'POST', body: body() });
+      const res = await authFetch('/api/church-export', { method: 'POST', body: '{}' });
       const data = await res.json().catch(() => ({} as { error?: string; exportId?: string; status?: string }));
       if (!res.ok || !data.exportId) {
         setError(typeof data.error === 'string' ? data.error : 'Export failed.');
@@ -92,7 +87,7 @@ const ChurchDataExportPanel: React.FC<ChurchDataExportPanelProps> = ({ tenantId 
     try {
       const res = await authFetch('/api/church-export/url', {
         method: 'POST',
-        body: JSON.stringify({ exportId: job.id, ...(tenantId ? { tenantId } : {}) }),
+        body: JSON.stringify({ exportId: job.id }),
       });
       const data = await res.json().catch(() => ({} as { error?: string; url?: string }));
       if (!res.ok || !data.url) {
@@ -133,7 +128,7 @@ const ChurchDataExportPanel: React.FC<ChurchDataExportPanelProps> = ({ tenantId 
 
       const done = await authFetch('/api/church-export/complete', {
         method: 'POST',
-        body: JSON.stringify({ exportId: job.id, ...(tenantId ? { tenantId } : {}) }),
+        body: JSON.stringify({ exportId: job.id }),
       });
       const doneBody = await done.json().catch(() => ({} as { error?: string }));
       if (!done.ok) {
@@ -155,7 +150,7 @@ const ChurchDataExportPanel: React.FC<ChurchDataExportPanelProps> = ({ tenantId 
     try {
       const done = await authFetch('/api/church-export/complete', {
         method: 'POST',
-        body: JSON.stringify({ exportId: job.id, ...(tenantId ? { tenantId } : {}) }),
+        body: JSON.stringify({ exportId: job.id }),
       });
       const doneBody = await done.json().catch(() => ({} as { error?: string }));
       if (!done.ok) {

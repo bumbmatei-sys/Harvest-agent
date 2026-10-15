@@ -36,7 +36,7 @@ async function mount() {
   document.body.appendChild(host);
   const root = createRoot(host);
   await act(async () => {
-    root.render(<ChurchDataExportPanel tenantId="tenant-a" />);
+    root.render(<ChurchDataExportPanel />);
   });
   await settle();
   return host;
@@ -94,7 +94,7 @@ describe('ChurchDataExportPanel', () => {
     expect(calls.some((call) => call.url === '/api/church-export/complete')).toBe(true);
     expect(host.textContent).toContain('removed from storage');
     const started = calls.find((call) => call.url === '/api/church-export' && call.method === 'POST');
-    expect(JSON.parse(started!.body!)).toEqual({ tenantId: 'tenant-a' });
+    expect(JSON.parse(started!.body!)).toEqual({});
   });
 
   it('shows the server refusal when a manageCRM admin starts an export', async () => {
@@ -113,10 +113,10 @@ describe('ChurchDataExportPanel', () => {
 
   it('shows a failed export that was already recorded', async () => {
     mockAuthFetch.mockResolvedValue(reply(200, {
-      export: { id: 'exp-1', status: 'failed', error: 'Could not read members.csv' },
+      export: { id: 'exp-1', status: 'failed', error: 'Export failed' },
     }));
     const host = await mount();
-    expect(host.textContent).toContain('Could not read members.csv');
+    expect(host.textContent).toContain('Export failed');
   });
 
   it('does not remove the stored copy when the browser blocks the download', async () => {

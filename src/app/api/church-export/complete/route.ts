@@ -17,12 +17,11 @@ export const runtime = 'nodejs';
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({} as Record<string, unknown>));
   const exportId = typeof body.exportId === 'string' ? body.exportId : '';
-  const requested = typeof body.tenantId === 'string' && body.tenantId ? body.tenantId : null;
   if (!exportId || !isSafeExportId(exportId)) {
     return NextResponse.json({ error: 'exportId is required' }, { status: 400 });
   }
 
-  const auth = await requireChurchExportAdmin(request, requested);
+  const auth = await requireChurchExportAdmin(request);
   if (auth instanceof NextResponse) return auth;
 
   try {

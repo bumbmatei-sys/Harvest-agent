@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
+import { ChurchExportRejected } from '@/lib/church-export';
 
 /**
  * THE-228 — the export routes.
@@ -17,6 +18,7 @@ interface User {
   isAdmin: boolean;
   isSuperAdmin: boolean;
   authTime: number;
+  emailVerified: boolean;
 }
 
 const state = vi.hoisted(() => ({
@@ -25,6 +27,7 @@ const state = vi.hoisted(() => ({
   users: {} as Record<string, { role?: string; permissions?: Record<string, boolean> } | undefined>,
   roster: {} as Record<string, string[]>,
   tenantGets: 0,
+  tenantIds: [] as string[],
 }));
 
 const mockRun = vi.hoisted(() => vi.fn());
@@ -44,6 +47,7 @@ vi.mock('@/lib/firebase-admin', () => ({
         get: async () => {
           if (name === 'tenants') {
             state.tenantGets += 1;
+            state.tenantIds.push(id);
             const data = state.tenants[id];
             return { exists: data !== undefined, data: () => data };
           }
@@ -73,6 +77,7 @@ function user(partial: Partial<User> & Pick<User, 'uid'>): User {
     isAdmin: true,
     isSuperAdmin: false,
     authTime: 1_700_000_000,
+    emailVerified: true,
     ...partial,
   };
 }
@@ -90,6 +95,7 @@ beforeEach(() => {
   state.users = { 'full-1': { role: 'admin', permissions: { fullAccess: true } } };
   state.roster = {};
   state.tenantGets = 0;
+  state.tenantIds = [];
   mockRun.mockReset().mockResolvedValue({
     exportId: 'exp-1',
     status: 'ready',
@@ -115,24 +121,72 @@ describe('POST /api/church-export', () => {
     expect(mockRun).toHaveBeenCalledWith('tenant-a', 'full-1');
   });
 
-  it('refuses manageCRM-only, another tenant, and a signed-out caller without starting an export', async () => {
+  it('refuses manageCRM-only and a signed-out caller without starting an export', async () => {
     state.user = user({ uid: 'crm-1', isAdmin: true });
     state.users['crm-1'] = { role: 'admin', permissions: { manageCRM: true } };
     const crm = await start.POST(post('/api/church-export', { tenantId: 'tenant-a' }));
     expect(crm.status).toBe(403);
     expect(await crm.json()).toEqual({ error: 'Tenant admin access required' });
 
-    state.user = user({ uid: 'full-1', tenantId: 'tenant-a' });
-    state.tenantGets = 0;
-    const other = await start.POST(post('/api/church-export', { tenantId: 'tenant-b' }));
-    expect(other.status).toBe(403);
-    expect(state.tenantGets).toBe(0);
-
     state.user = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const anon = await start.POST(post('/api/church-export', { tenantId: 'tenant-a' }));
     expect(anon.status).toBe(401);
 
     expect(mockRun).not.toHaveBeenCalled();
+  });
+
+  it('ignores a tenant id in the body and exports the token tenant only', async () => {
+    const res = await start.POST(post('/api/church-export', { tenantId: 'tenant-b' }));
+    expect(res.status).toBe(200);
+    expect(mockRun).toHaveBeenCalledWith('tenant-a', 'full-1');
+    expect(state.tenantIds).not.toContain('tenant-b');
+  });
+
+  it('does not export a church named in the body when the caller has no tenant', async () => {
+    state.user = user({
+      uid: 'stranger',
+      tenantId: null,
+      isAdmin: false,
+      email: 'admin@example.com',
+      emailVerified: true,
+    });
+    state.roster['tenant-b'] = ['admin@example.com'];
+    const res = await start.POST(post('/api/church-export', { tenantId: 'tenant-b' }));
+    expect(res.status).toBe(403);
+    expect(state.tenantIds).not.toContain('tenant-b');
+    expect(mockRun).not.toHaveBeenCalled();
+  });
+
+  it('refuses an unverified roster email', async () => {
+    state.user = user({
+      uid: 'unverified',
+      tenantId: 'tenant-a',
+      isAdmin: false,
+      email: 'admin@example.com',
+      emailVerified: false,
+    });
+    state.roster['tenant-a'] = ['admin@example.com'];
+    const res = await start.POST(post('/api/church-export', {}));
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: 'Tenant admin access required' });
+    expect(mockRun).not.toHaveBeenCalled();
+  });
+
+  it('returns a generic failure and a rate-limit status without the underlying error', async () => {
+    mockRun.mockRejectedValue(new Error('Could not read members.csv leaked@example.com'));
+    const failed = await start.POST(post('/api/church-export', {}));
+    expect(failed.status).toBe(500);
+    expect(await failed.json()).toEqual({ error: 'Export failed' });
+
+    mockRun.mockRejectedValue(new ChurchExportRejected('active'));
+    const active = await start.POST(post('/api/church-export', {}));
+    expect(active.status).toBe(409);
+    expect(await active.json()).toEqual({ error: 'An export is already in progress' });
+
+    mockRun.mockRejectedValue(new ChurchExportRejected('cooldown'));
+    const cooled = await start.POST(post('/api/church-export', {}));
+    expect(cooled.status).toBe(429);
+    expect(await cooled.json()).toEqual({ error: 'An export was requested too recently' });
   });
 });
 
@@ -191,21 +245,34 @@ describe('POST /api/church-export/url', () => {
     expect(mockGet).toHaveBeenCalledWith('tenant-a', 'exp-1');
   });
 
-  it('refuses manageCRM, another tenant, and a key that points at a different church', async () => {
+  it('refuses manageCRM, looks up the token tenant rather than the body, and hides a signer error', async () => {
     state.user = user({ uid: 'crm-1' });
     state.users['crm-1'] = { role: 'admin', permissions: { manageCRM: true } };
     const crm = await urlRoute.POST(post('/api/church-export/url', { exportId: 'exp-1', tenantId: 'tenant-a' }));
     expect(crm.status).toBe(403);
 
-    state.user = user({ uid: 'full-1', tenantId: 'tenant-a' });
-    const other = await urlRoute.POST(post('/api/church-export/url', { exportId: 'exp-1', tenantId: 'tenant-b' }));
-    expect(other.status).toBe(403);
+    state.user = user({ uid: 'full-1', tenantId: 'tenant-b' });
+    state.users['full-1'] = { role: 'admin', permissions: { fullAccess: true } };
+    mockGet.mockResolvedValue(null);
+    const other = await urlRoute.POST(post('/api/church-export/url', { exportId: 'exp-1', tenantId: 'tenant-a' }));
+    expect(other.status).toBe(404);
+    expect(mockGet).toHaveBeenCalledWith('tenant-b', 'exp-1');
 
+    state.user = user({ uid: 'full-1', tenantId: 'tenant-a' });
+    state.users['full-1'] = { role: 'admin', permissions: { fullAccess: true } };
     mockGet.mockResolvedValue({ ...ready, objectKey: 'church-exports/tenant-b/exp-1.zip' });
     const foreign = await urlRoute.POST(post('/api/church-export/url', { exportId: 'exp-1' }));
     expect(foreign.status).toBe(500);
-
+    expect(await foreign.json()).toEqual({ error: 'Failed to generate download link' });
     expect(mockSign).not.toHaveBeenCalled();
+
+    mockGet.mockResolvedValue(ready);
+    mockSign.mockRejectedValue(new Error('Export storage is not configured: secret-value'));
+    const raw = await urlRoute.POST(post('/api/church-export/url', { exportId: 'exp-1' }));
+    expect(raw.status).toBe(500);
+    const rawBody = await raw.json();
+    expect(rawBody).toEqual({ error: 'Failed to generate download link' });
+    expect(JSON.stringify(rawBody)).not.toContain('secret-value');
   });
 });
 
@@ -242,10 +309,11 @@ describe('POST /api/church-export/complete', () => {
 
     state.user = user({ uid: 'full-1', tenantId: 'tenant-b' });
     state.users['full-1'] = { role: 'admin', permissions: { fullAccess: true } };
+    mockGet.mockResolvedValue(null);
     const other = await complete.POST(post('/api/church-export/complete', { exportId: 'exp-1', tenantId: 'tenant-a' }));
-    expect(other.status).toBe(403);
+    expect(other.status).toBe(404);
+    expect(mockGet).toHaveBeenCalledWith('tenant-b', 'exp-1');
 
     expect(mockConsume).not.toHaveBeenCalled();
-    expect(mockGet).not.toHaveBeenCalled();
   });
 });

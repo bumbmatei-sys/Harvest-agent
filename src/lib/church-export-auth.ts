@@ -12,16 +12,22 @@ import { isSafeTenantId } from '@/lib/church-export';
  * `requireTenantPermission(..., 'manageCRM')`, and a tenant admin whose only
  * grant is that flag is refused.
  *
- * What passes:
- *   • the tenant owner (`tenants/{id}.ownerId`)
- *   • a roster admin (`tenant_private.adminEmails`) — the grant that does not
- *     live on the user document
+ * The tenant is the one on the verified token. `verifyAuth` fills that from
+ * the custom claim, or from the server-side user document when the claim is
+ * absent. A tenant id in the body or the query is never read: a caller with
+ * no tenant of their own must not be able to name one.
+ *
+ * What passes, for that tenant only:
+ *   • the tenant owner (`tenants/{id}.ownerId`) — a uid match
+ *   • a roster admin (`tenant_private.adminEmails`) whose email is verified
  *   • a tenant admin of THIS tenant with `fullAccess`, or the legacy
  *     `church_admin` role
  *
- * A super admin is not a bypass. Their token tenant is null, and a body
- * tenant id must not let the platform account download a church they do not
- * own. A caller whose token already names a tenant cannot name a different one.
+ * The roster match is the only email match, and it requires
+ * `email_verified`. An unverified signup can carry an admin's address.
+ *
+ * A super admin is not a bypass. Their token tenant is null, and nothing in
+ * the request may supply one.
  */
 
 export const CHURCH_EXPORT_DENIED = 'Tenant admin access required';
@@ -33,22 +39,12 @@ export interface ChurchExportCaller {
 
 export async function requireChurchExportAdmin(
   request: NextRequest,
-  requestedTenantId: string | null,
 ): Promise<ChurchExportCaller | NextResponse> {
   const userOrResponse = await requireAuth(request);
   if (userOrResponse instanceof NextResponse) return userOrResponse;
   const user = userOrResponse;
 
-  if (requestedTenantId && !isSafeTenantId(requestedTenantId)) {
-    return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
-  }
-
-  // Token already names a church. A different id in the body is another church.
-  if (requestedTenantId && user.tenantId && requestedTenantId !== user.tenantId) {
-    return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
-  }
-
-  const tenantId = user.tenantId || requestedTenantId;
+  const tenantId = user.tenantId;
   if (!tenantId || !isSafeTenantId(tenantId)) {
     return NextResponse.json({ error: 'No tenant associated with this account' }, { status: 403 });
   }
@@ -61,11 +57,13 @@ export async function requireChurchExportAdmin(
 
   if (tenant.ownerId === user.uid) return { user, tenantId };
 
-  const privateData = await getTenantPrivate(tenantId);
-  const adminEmails: string[] = Array.isArray(privateData.adminEmails) ? privateData.adminEmails : [];
-  const email = (user.email || '').toLowerCase();
-  if (email && adminEmails.some((entry) => (entry || '').toLowerCase() === email)) {
-    return { user, tenantId };
+  if (user.emailVerified === true) {
+    const privateData = await getTenantPrivate(tenantId);
+    const adminEmails: string[] = Array.isArray(privateData.adminEmails) ? privateData.adminEmails : [];
+    const email = (user.email || '').toLowerCase();
+    if (email && adminEmails.some((entry) => (entry || '').toLowerCase() === email)) {
+      return { user, tenantId };
+    }
   }
 
   if (user.tenantId !== tenantId || !user.isAdmin) {

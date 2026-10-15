@@ -23,6 +23,33 @@ export const SIGNED_URL_TTL_SECONDS = SIGNED_URL_TTL_MS / 1000;
 export const CHURCH_EXPORT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 /**
+ * One export at a time, and a finished one holds the slot briefly so a
+ * retry loop cannot start the next church-sized read immediately.
+ */
+export const CHURCH_EXPORT_COOLDOWN_MS = 60 * 1000;
+
+/**
+ * The start route's `maxDuration` is 300s. An upload still open after this
+ * is not a live request: the function has already been killed. The extra
+ * minute is so the sweep does not abort a request that is still inside its
+ * own limit.
+ */
+export const CHURCH_EXPORT_STUCK_MS = 6 * 60 * 1000;
+
+/** A start the rate limit refused. The message is the one the admin sees. */
+export class ChurchExportRejected extends Error {
+  readonly code: 'active' | 'cooldown';
+
+  constructor(code: 'active' | 'cooldown') {
+    super(code === 'active'
+      ? 'An export is already in progress'
+      : 'An export was requested too recently');
+    this.name = 'ChurchExportRejected';
+    this.code = code;
+  }
+}
+
+/**
  * Documents per Firestore read. Small enough that a page is not the church,
  * large enough that a few hundred members are not hundreds of round trips.
  */
@@ -182,24 +209,21 @@ export function csvLine(cells: readonly unknown[]): string {
   return `${cells.map(csvCell).join(',')}\n`;
 }
 
+/**
+ * One cell per allowlisted column, in column order. A field that is not a
+ * column is not exported: payment ids, card brand, last4, addresses, notes,
+ * IPs and permission maps stay in Firestore.
+ */
 export function rowToCells(spec: ChurchExportSpec, id: string, data: Record<string, unknown>): unknown[] {
   const clean = sanitizeExportValue(data) as Record<string, unknown>;
-  const used = new Set<string>();
   const cells: unknown[] = [];
   for (const column of spec.columns) {
     if (!column.field && !column.from) {
       cells.push(id);
       continue;
     }
-    const key = column.from || column.field!;
-    used.add(key);
-    cells.push(clean[key]);
+    cells.push(clean[column.from || column.field!]);
   }
-  const extra: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(clean)) {
-    if (!used.has(key)) extra[key] = value;
-  }
-  cells.push(Object.keys(extra).length ? extra : '');
   return cells;
 }
 
@@ -392,25 +416,29 @@ export interface ExportSource {
 export async function writeChurchExportZip(
   sources: readonly ExportSource[],
   sink: ByteSink,
-): Promise<{ files: string[]; rows: number }> {
+): Promise<{ files: string[]; rows: number; rowCounts: Record<string, number> }> {
   const zip = new StoreZipWriter(sink);
   const files: string[] = [];
+  const rowCounts: Record<string, number> = {};
   let rows = 0;
   for (const source of sources) {
     await zip.startFile(source.spec.filename);
     files.push(source.spec.filename);
-    const headers = [...source.spec.columns.map((column) => column.header), 'extra'];
+    const headers = source.spec.columns.map((column) => column.header);
     await zip.write(Buffer.from(csvLine(headers), 'utf8'));
+    let fileRows = 0;
     for await (const page of source.pages) {
       for (const row of page) {
         await zip.write(Buffer.from(csvLine(rowToCells(source.spec, row.id, row.data)), 'utf8'));
         rows += 1;
+        fileRows += 1;
       }
     }
+    rowCounts[source.spec.filename] = fileRows;
     await zip.endFile();
   }
   await zip.finish();
-  return { files, rows };
+  return { files, rows, rowCounts };
 }
 
 interface QueryChain {

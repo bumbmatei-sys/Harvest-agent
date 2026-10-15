@@ -17,12 +17,11 @@ export const runtime = 'nodejs';
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({} as Record<string, unknown>));
   const exportId = typeof body.exportId === 'string' ? body.exportId : '';
-  const requested = typeof body.tenantId === 'string' && body.tenantId ? body.tenantId : null;
   if (!exportId || !isSafeExportId(exportId)) {
     return NextResponse.json({ error: 'exportId is required' }, { status: 400 });
   }
 
-  const auth = await requireChurchExportAdmin(request, requested);
+  const auth = await requireChurchExportAdmin(request);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -33,14 +32,13 @@ export async function POST(request: NextRequest) {
     }
     const parsed = parseChurchExportKey(job.objectKey);
     if (!parsed || parsed.tenantId !== auth.tenantId || parsed.exportId !== exportId) {
-      return NextResponse.json({ error: 'Export file is missing' }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to generate download link' }, { status: 500 });
     }
     const url = await signChurchExportUrl(job.objectKey);
     return NextResponse.json({ url, expiresInSeconds: SIGNED_URL_TTL_SECONDS });
   } catch (err) {
     console.error('[church-export] url failed', err);
     captureHandledError(err, { step: 'church-export-url', tenantId: auth.tenantId, ids: { exportId } });
-    const message = err instanceof Error ? err.message : 'Failed to generate download link';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to generate download link' }, { status: 500 });
   }
 }

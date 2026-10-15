@@ -10,6 +10,7 @@ import {
   churchExportObjectKey,
   crc32,
   csvCell,
+  csvLine,
   exportExpired,
   isSafeExportId,
   isSafeTenantId,
@@ -117,9 +118,31 @@ describe('church export csv', () => {
     expect(headers).toContain('amountCents');
     expect(headers).not.toContain('amount');
     expect(cells[headers.indexOf('amountCents')]).toBe(105500);
-    const extra = cells[cells.length - 1] as Record<string, unknown>;
-    expect(extra).toEqual({ note: 'general' });
-    expect(JSON.stringify(extra)).not.toContain('do-not-export');
+    expect(cells).toHaveLength(headers.length);
+    expect(JSON.stringify(cells)).not.toContain('do-not-export');
+    expect(JSON.stringify(cells)).not.toContain('general');
+  });
+
+  it('does not export a field that is not an allowlisted column', () => {
+    const cells = rowToCells(giving, 'inv-1', {
+      amount: 105500,
+      currency: 'usd',
+      note: 'general',
+      cardBrand: 'visa',
+      last4: '4242',
+      paymentIntentId: 'pi_example',
+      address: '1 Example Street',
+      ip: '203.0.113.5',
+      permissions: { manageCRM: true },
+      password: 'do-not-export',
+    });
+    expect(cells).toHaveLength(giving.columns.length);
+    const text = JSON.stringify(cells);
+    for (const leaked of ['general', 'visa', '4242', 'pi_example', 'Example Street', '203.0.113.5', 'manageCRM', 'do-not-export']) {
+      expect(text).not.toContain(leaked);
+    }
+    const csv = csvLine(cells);
+    expect(csv).not.toContain('extra');
   });
 
   it('prefixes a formula and quotes a comma', () => {
@@ -157,6 +180,8 @@ describe('church export streaming', () => {
     const csv = zip.get('members.csv')!.toString('utf8');
     expect(csv).toContain('one@example.com');
     expect(csv).toContain('two@example.com');
+    expect(csv.split('\n')[0]).toBe(spec.columns.map((column) => column.header).join(','));
+    expect(csv.split('\n')[0]).not.toContain('extra');
   });
 
   it('pages a query and does not fetch page two before page one is consumed', async () => {

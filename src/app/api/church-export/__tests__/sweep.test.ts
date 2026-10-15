@@ -51,11 +51,11 @@ describe('GET /api/church-export/sweep', () => {
     expect(mockSweep).toHaveBeenCalledTimes(1);
   });
 
-  it('refuses a missing or wrong secret and does not sweep', async () => {
+  it('refuses a wrong secret without putting the reason in the response', async () => {
     process.env.CRON_SECRET = 'test-cron-secret';
     const wrong = await GET(cron('Bearer something-else'));
     expect(wrong.status).toBe(401);
-    expect((await wrong.json()).reason).toBe('cron-secret-mismatch');
+    expect(await wrong.json()).toEqual({ error: 'Unauthorized' });
     expect(mockCapture).toHaveBeenCalledWith(
       expect.any(Error),
       expect.objectContaining({
@@ -64,12 +64,20 @@ describe('GET /api/church-export/sweep', () => {
         diagnostics: { reason: 'cron-secret-mismatch' },
       }),
     );
+    expect(mockSweep).not.toHaveBeenCalled();
+  });
 
+  it('refuses when CRON_SECRET is missing and does not sweep', async () => {
     delete process.env.CRON_SECRET;
-    mockCapture.mockClear();
     const missing = await GET(cron('Bearer test-cron-secret'));
     expect(missing.status).toBe(401);
-    expect((await missing.json()).reason).toBe('cron-secret-not-configured');
+    expect(await missing.json()).toEqual({ error: 'Unauthorized' });
+    expect(mockCapture).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.objectContaining({
+        diagnostics: { reason: 'cron-secret-not-configured' },
+      }),
+    );
     expect(mockSweep).not.toHaveBeenCalled();
   });
 

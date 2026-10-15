@@ -16,6 +16,7 @@ interface User {
   isAdmin: boolean;
   isSuperAdmin: boolean;
   authTime: number;
+  emailVerified: boolean;
 }
 
 const state = vi.hoisted(() => ({
@@ -61,6 +62,7 @@ function asUser(partial: Partial<User> & Pick<User, 'uid'>): User {
     isAdmin: true,
     isSuperAdmin: false,
     authTime: 1_700_000_000,
+    emailVerified: true,
     ...partial,
   };
 }
@@ -73,8 +75,8 @@ beforeEach(() => {
   state.tenantGets = 0;
 });
 
-async function gate(tenantId: string | null = 'tenant-a') {
-  return requireChurchExportAdmin(request, tenantId);
+async function gate(req: NextRequest = request) {
+  return requireChurchExportAdmin(req);
 }
 
 describe('requireChurchExportAdmin', () => {
@@ -83,7 +85,7 @@ describe('requireChurchExportAdmin', () => {
     const owner = await gate();
     expect(owner).toMatchObject({ tenantId: 'tenant-a' });
 
-    state.user = asUser({ uid: 'roster-1', tenantId: null, isAdmin: false, email: 'Roster@Example.com' });
+    state.user = asUser({ uid: 'roster-1', isAdmin: false, email: 'Roster@Example.com', emailVerified: true });
     state.roster['tenant-a'] = ['roster@example.com'];
     const roster = await gate();
     expect(roster).toMatchObject({ tenantId: 'tenant-a' });
@@ -113,13 +115,43 @@ describe('requireChurchExportAdmin', () => {
     expect((member as NextResponse).status).toBe(403);
   });
 
-  it('refuses another tenant before reading that church', async () => {
-    state.user = asUser({ uid: 'admin-1', tenantId: 'tenant-a' });
-    state.users['admin-1'] = { role: 'admin', permissions: { fullAccess: true } };
-    const res = await gate('tenant-b');
+  it('does not take a tenant from the body when the token and the user document have none', async () => {
+    state.user = asUser({
+      uid: 'stranger',
+      tenantId: null,
+      isAdmin: false,
+      email: 'admin@example.com',
+      emailVerified: true,
+    });
+    state.roster['tenant-a'] = ['admin@example.com'];
+    const named = new NextRequest('http://localhost/api/church-export?tenantId=tenant-a', {
+      method: 'POST',
+      body: JSON.stringify({ tenantId: 'tenant-a' }),
+    });
+    const res = await gate(named);
     expect((res as NextResponse).status).toBe(403);
-    expect(await (res as NextResponse).json()).toEqual({ error: 'Access denied to this tenant' });
+    expect(await (res as NextResponse).json()).toEqual({ error: 'No tenant associated with this account' });
     expect(state.tenantGets).toBe(0);
+  });
+
+  it('refuses an unverified email that matches the admin roster', async () => {
+    state.user = asUser({
+      uid: 'unverified',
+      tenantId: 'tenant-a',
+      isAdmin: false,
+      email: 'admin@example.com',
+      emailVerified: false,
+    });
+    state.roster['tenant-a'] = ['admin@example.com'];
+    const res = await gate();
+    expect((res as NextResponse).status).toBe(403);
+    expect(await (res as NextResponse).json()).toEqual({ error: CHURCH_EXPORT_DENIED });
+  });
+
+  it('still lets the owner through when their email is unverified', async () => {
+    state.user = asUser({ uid: 'owner-1', isAdmin: false, emailVerified: false });
+    const owner = await gate();
+    expect(owner).toMatchObject({ tenantId: 'tenant-a' });
   });
 
   it('does not let a super admin export a church they do not administer', async () => {
@@ -129,10 +161,12 @@ describe('requireChurchExportAdmin', () => {
       tenantId: null,
       isAdmin: true,
       isSuperAdmin: true,
+      emailVerified: true,
     });
-    const res = await gate('tenant-a');
+    const res = await gate();
     expect((res as NextResponse).status).toBe(403);
-    expect(await (res as NextResponse).json()).toEqual({ error: CHURCH_EXPORT_DENIED });
+    expect(await (res as NextResponse).json()).toEqual({ error: 'No tenant associated with this account' });
+    expect(state.tenantGets).toBe(0);
   });
 
   it('refuses an unauthenticated caller and an unsafe tenant id', async () => {
@@ -141,8 +175,8 @@ describe('requireChurchExportAdmin', () => {
     expect((anon as NextResponse).status).toBe(401);
     expect(state.tenantGets).toBe(0);
 
-    state.user = asUser({ uid: 'admin-1' });
-    const unsafe = await gate('../tenant-a');
+    state.user = asUser({ uid: 'admin-1', tenantId: '../tenant-a' });
+    const unsafe = await gate();
     expect((unsafe as NextResponse).status).toBe(403);
     expect(state.tenantGets).toBe(0);
   });

@@ -681,7 +681,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
 
       {/* THE-228 — whole-church export. Outside the accordion, after Navigation,
           so the row ids and the region headings stay exactly as they are. */}
-      <ChurchDataExportPanel tenantId={tenantId} />
+      <ChurchDataExportPanel />
 
       {/* Cancel Confirmation Modal */}
       {/* THE-316 — `dialog` is the primitive for a modal, and this was one

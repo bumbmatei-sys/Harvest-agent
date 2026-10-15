@@ -634,8 +634,9 @@ describe('5 · the money path is byte-identical', () => {
       'src/app/api/admin/crm-export/route.ts',
       /**
        * THE-228's church export. The routes do not write. The runner writes
-       * `tenants/{id}/churchExports/{exportId}` and never the tenant document
-       * itself, which is where `plan` and `addons` live.
+       * `tenants/{id}/churchExports/{exportId}` and an audit at
+       * `tenants/{id}/churchExportAudits/{exportId}`, and never the tenant
+       * document itself, which is where `plan` and `addons` live.
        */
       'src/app/api/church-export/route.ts',
       'src/app/api/church-export/url/route.ts',
