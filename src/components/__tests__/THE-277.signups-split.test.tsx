@@ -1048,6 +1048,15 @@ describe('12 — AdminDocs.tsx, AdminDashboardHome.tsx, firestore.rules and func
        * this branch still did not author a byte of it.
        */
       'c56e20c9e6ad9c74c710b2ca608dc9a41ba3625b654d7c31c6553c8af689716a',
+      /*
+       * Appended beside the digest above, never over it. A Firestore row has
+       * no client write stamp, so the session copy was winning over a later
+       * edit as well as over a stale list row. The reopen now prefers a
+       * server updatedAt that is newer than this session's write, and a save
+       * that fails after the note was left toasts that note with a retry.
+       * No menu row, toolbar, share flow or Firestore path in this file moved.
+       */
+      '094dc959bee784901d1be1ce9de343fd4c8a4f7cce14e9988acb2197b8218193',
     ],
   };
 

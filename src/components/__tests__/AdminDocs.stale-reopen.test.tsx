@@ -25,28 +25,40 @@ import AdminDocs from '../AdminDocs';
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const fixtures = vi.hoisted(() => {
-  const NOTE_A = {
+  type NoteFixture = {
+    id: string;
+    title: string;
+    content: string;
+    folderId: string | null;
+    createdBy: string;
+    createdAt: null;
+    updatedAt: { toMillis: () => number } | null;
+    isPrivate: boolean;
+    sharedWith: string[];
+    pinned: boolean;
+  };
+  const NOTE_A: NoteFixture = {
     id: 'note-a',
     title: 'Alpha note',
     content: '<p>cached-alpha</p>',
-    folderId: null as string | null,
+    folderId: null,
     createdBy: 'u1',
     createdAt: null,
     updatedAt: null,
     isPrivate: true,
-    sharedWith: [] as string[],
+    sharedWith: [],
     pinned: false,
   };
-  const NOTE_B = {
+  const NOTE_B: NoteFixture = {
     id: 'note-b',
     title: 'Beta note',
     content: '<p>cached-beta</p>',
-    folderId: null as string | null,
+    folderId: null,
     createdBy: 'u1',
     createdAt: null,
     updatedAt: null,
     isPrivate: true,
-    sharedWith: [] as string[],
+    sharedWith: [],
     pinned: false,
   };
   return { NOTE_A, NOTE_B, NOTES: [NOTE_A, NOTE_B] };
@@ -58,6 +70,8 @@ const DRAFT_A = '<p>draft-alpha</p>';
 const FIRST_A = '<p>first-alpha</p>';
 const SECOND_A = '<p>second-alpha</p>';
 const FRESH_B = '<p>saved-beta</p>';
+const SERVER_A = '<p>server-alpha</p>';
+const CACHED_A = '<p>cached-alpha</p>';
 
 type CachedDoc = { id: string; content: string; title: string; clientWriteVersion?: number };
 type CachedList = { items: CachedDoc[]; truncated: boolean };
@@ -236,6 +250,11 @@ beforeEach(() => {
   updateDoc.mockImplementation(async () => undefined);
   editorHarness.emitOnMount = false;
   editorHarness.type = null;
+  fixtures.NOTE_A.title = 'Alpha note';
+  fixtures.NOTE_A.content = CACHED_A;
+  fixtures.NOTE_A.updatedAt = null;
+  fixtures.NOTE_B.content = '<p>cached-beta</p>';
+  fixtures.NOTE_B.updatedAt = null;
   seedCaches();
   container = document.createElement('div');
   document.body.appendChild(container);
@@ -289,7 +308,36 @@ describe('AdminDocs — reopening a note uses the body that was just saved', () 
     expect(shared?.clientWriteVersion).toBe(cached?.clientWriteVersion);
     // The hook the tree renders from is still the pre-save copy. The patch
     // has to live on the query cache, not by mutating that list.
-    expect(fixtures.NOTE_A.content).toBe('<p>cached-alpha</p>');
+    expect(fixtures.NOTE_A.content).toBe(CACHED_A);
+  });
+
+  it('opens a newer server row instead of the body this session wrote', async () => {
+    editorHarness.emitOnMount = true;
+    await mountDocs();
+    await clickLeaf('note-a');
+    await typeContent(FRESH_A);
+    await runDebounce();
+
+    // A refetch (or the other tab, or a collaborator) hands back a row that
+    // never carries the client stamp. Its updatedAt is after our write.
+    fixtures.NOTE_A.content = SERVER_A;
+    fixtures.NOTE_A.updatedAt = { toMillis: () => Date.now() + 60_000 };
+    await clickLeaf('note-b');
+    await clickLeaf('note-a');
+
+    expect(editorBody()).toBe(SERVER_A);
+    const before = writes().length;
+    await runDebounce();
+    const after = writes().slice(before);
+    expect(after.some((w) => w.content === FRESH_A || w.content === CACHED_A)).toBe(false);
+    expect(after.some((w) => w.id === 'note-a' && w.content === SERVER_A)).toBe(true);
+
+    // A stale list row that arrives afterwards must not put the older body back.
+    fixtures.NOTE_A.content = CACHED_A;
+    fixtures.NOTE_A.updatedAt = null;
+    await clickLeaf('note-b');
+    await clickLeaf('note-a');
+    expect(editorBody()).toBe(SERVER_A);
   });
 });
 
@@ -313,8 +361,10 @@ describe('AdminDocs — a save error stays on the note that failed', () => {
 
     expect(editorBody()).toBe(NOTE_B.content);
     expect(statusChip()).toBe('');
-    expect(toast.error).not.toHaveBeenCalled();
     expect(container.textContent ?? '').not.toContain('Not saved');
+    const away = toast.error.mock.calls.at(-1) as [string, { action?: { label: string } }] | undefined;
+    expect(away?.[0]).toContain('Alpha note');
+    expect(away?.[1].action?.label).toBe('Retry');
   });
 
   it('shows that error, and the unsaved body, when note A is opened again', async () => {
@@ -330,10 +380,33 @@ describe('AdminDocs — a save error stays on the note that failed', () => {
       await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
     });
 
+    expect(toast.error).toHaveBeenCalledTimes(1);
     await clickLeaf('note-a');
     expect(editorBody()).toBe(DRAFT_A);
     expect(statusChip()).toBe('Not saved');
-    expect(toast.error).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries the save of the note that failed after it was left', async () => {
+    await mountDocs();
+    await clickLeaf('note-a');
+    updateDoc.mockRejectedValueOnce(new Error('offline'));
+    await typeContent(DRAFT_A);
+    await clickLeaf('note-b');
+
+    const away = toast.error.mock.calls.at(-1) as [string, { action?: { onClick: () => void } }];
+    expect(away[0]).toContain('Alpha note');
+    updateDoc.mockResolvedValue(undefined);
+    await act(async () => { away[1].action?.onClick(); });
+    await flush();
+
+    expect(editorBody()).toBe(NOTE_B.content);
+    expect(statusChip()).toBe('');
+    expect(writes().at(-1)).toMatchObject({ id: 'note-a', content: DRAFT_A });
+
+    await clickLeaf('note-a');
+    expect(editorBody()).toBe(DRAFT_A);
+    expect(statusChip()).toBe('Saved');
   });
 
   it('does not mark note B saved when note A\'s autosave lands', async () => {
@@ -412,5 +485,75 @@ describe('AdminDocs — a save error stays on the note that failed', () => {
       expect.objectContaining({ id: 'doc-save-error' }),
     );
     expect(editorBody()).toBe(DRAFT_A);
+  });
+});
+
+describe('AdminDocs — a flush that fails while switching stays on the note that was left', () => {
+  async function leaveAlphaWithFailingDraft() {
+    await clickLeaf('note-a');
+    updateDoc.mockRejectedValue(new Error('offline'));
+    await typeContent(DRAFT_A);
+  }
+
+  function titleValue(): string | null {
+    const input = container.querySelector('input[placeholder="Untitled"]') as HTMLInputElement | null;
+    return input?.value ?? null;
+  }
+
+  function expectFailureStayedOnAlpha(destination: { body: string; title: string }) {
+    expect(editorBody()).toBe(destination.body);
+    expect(titleValue()).toBe(destination.title);
+    expect(statusChip()).toBe('');
+    expect(container.textContent ?? '').not.toContain('Not saved');
+    const away = toast.error.mock.calls.at(-1) as [string, { id?: string; action?: { label: string } }];
+    expect(away?.[0]).toContain('Alpha note');
+    expect(away?.[1]?.id).toBe('doc-save-error');
+    expect(away?.[1]?.action?.label).toBe('Retry');
+    expect(writes().some((w) => w.id === 'note-a' && w.content === DRAFT_A)).toBe(true);
+    expect(writes().some((w) => w.id !== 'note-a' && w.content === DRAFT_A)).toBe(false);
+  }
+
+  it('does not attribute the failure to the note opened from the quick switcher', async () => {
+    await mountDocs();
+    await leaveAlphaWithFailingDraft();
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }));
+    });
+    await flush();
+    const item = document.querySelector('[data-switcher-doc-id="note-b"]') as HTMLElement | null;
+    expect(item, 'switcher row for note B').toBeTruthy();
+    await act(async () => { item!.click(); });
+    await flush();
+    expectFailureStayedOnAlpha({ body: NOTE_B.content, title: NOTE_B.title });
+  });
+
+  it('does not attribute the failure to the note opened from a deep link', async () => {
+    await mountDocs();
+    await leaveAlphaWithFailingDraft();
+    await act(async () => { root.render(<AdminDocs initialDocId="note-b" />); });
+    await flush();
+    expectFailureStayedOnAlpha({ body: NOTE_B.content, title: NOTE_B.title });
+  });
+
+  it('does not attribute the failure to a new note', async () => {
+    await mountDocs();
+    await leaveAlphaWithFailingDraft();
+    const button = [...container.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'New doc');
+    expect(button, 'New doc control').toBeTruthy();
+    await act(async () => { button!.click(); });
+    await flush();
+    expectFailureStayedOnAlpha({ body: '', title: 'Untitled' });
+  });
+
+  it('does not attribute the failure to an imported note', async () => {
+    await mountDocs();
+    await leaveAlphaWithFailingDraft();
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement | null;
+    expect(input, 'markdown file input').toBeTruthy();
+    const file = new File(['# from-file'], 'sermon.md', { type: 'text/markdown' });
+    Object.defineProperty(input!, 'files', { configurable: true, value: [file] });
+    await act(async () => { input!.dispatchEvent(new Event('change', { bubbles: true })); });
+    await flush();
+    expectFailureStayedOnAlpha({ body: '# from-file', title: 'Imported' });
   });
 });
