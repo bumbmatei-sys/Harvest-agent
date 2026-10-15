@@ -1,0 +1,11 @@
+{
+  "ticket": "#527",
+  "note": "#527 (THE-228) is the whole-church export: streamed CSVs written to object storage, a 15-minute signed URL, delete-after-download, and a 24-hour sweep. This record appends the one file whose whole-file digest already had an accepted set. Nothing here replaces a digest that was already recorded. AdminSettings is pinned by the settings freeze register, not by this directory.",
+  "entries": [
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "a4f0ac4fc94464f2d05b2ec632a71488d3dfbd576068f5a940e907072329af33",
+      "why": "#527 owns this APPEND to RECORDED_ADOPTERS and nothing else in the file. ChurchDataExportPanel.tsx joins the list as the item and alert adopter, ticket THE-228, because the export row and the failed-export alert use those primitives. The reason on that entry names the three primitives it rejected: button, empty and dialog, plus sonner. No earlier adopter was removed or rewritten, and no assertion in the suite changed."
+    }
+  ]
+}
