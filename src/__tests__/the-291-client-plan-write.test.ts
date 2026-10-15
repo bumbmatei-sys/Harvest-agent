@@ -537,7 +537,19 @@ describe('5 · the money path is byte-identical', () => {
      * in the loop below: it writes nothing at all, so it cannot write the tenant
      * document, a `plan`, a feature flag or an add-on count.
      */
-    expect(routes.length, 'an API route was added or removed').toBe(125);
+    /**
+     * --- 125 -> 129, THE-228 ---
+     *
+     * FOUR routes: `church-export`, `church-export/url`, `church-export/complete`
+     * and `church-export/sweep`. A tenant admin streams the ministry to object
+     * storage and downloads it through a signed URL. The job lives at
+     * `tenants/{id}/churchExports/{exportId}`, a subcollection. The tenant
+     * document, where `plan` and `addons` live, is read to prove the caller
+     * owns the church and is never written. The sweep deletes aged objects.
+     * None of this is an entitlement change, so the Dodo webhook stays the
+     * single writer of `plan`.
+     */
+    expect(routes.length, 'an API route was added or removed').toBe(129);
     expect(
       routes.some((f) => f.endsWith(path.join('app/api/sms/numbers/route.ts'))),
       'the route THE-314 added is missing — the count moved for some other reason',
@@ -559,6 +571,11 @@ describe('5 · the money path is byte-identical', () => {
       'app/api/waitlist/route.ts',
       // APPENDED FOR the founder CRM export — see the note on the count above.
       'app/api/admin/crm-export/route.ts',
+      // APPENDED BY THE-228 — see the note on the count above.
+      'app/api/church-export/route.ts',
+      'app/api/church-export/url/route.ts',
+      'app/api/church-export/complete/route.ts',
+      'app/api/church-export/sweep/route.ts',
     ]) {
       expect(
         routes.some((f) => f.endsWith(path.join(added))),
@@ -615,6 +632,16 @@ describe('5 · the money path is byte-identical', () => {
        * tenant document is only ever fetched (`getAll`) for a church name.
        */
       'src/app/api/admin/crm-export/route.ts',
+      /**
+       * THE-228's church export. The routes do not write. The runner writes
+       * `tenants/{id}/churchExports/{exportId}` and never the tenant document
+       * itself, which is where `plan` and `addons` live.
+       */
+      'src/app/api/church-export/route.ts',
+      'src/app/api/church-export/url/route.ts',
+      'src/app/api/church-export/complete/route.ts',
+      'src/app/api/church-export/sweep/route.ts',
+      'src/lib/church-export-run.ts',
     ]) {
       const src = read(rel);
       expect(src, `${rel} writes to the tenant document`)

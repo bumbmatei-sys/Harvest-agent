@@ -907,7 +907,7 @@ describe('13 · no colour hardcoded, no emoji; both palettes resolve — Classic
     // And settings/ gained no component file.
     const files = readdirSync(path.join(ROOT, 'src/components/settings')).filter((f) => /\.tsx?$/.test(f));
     expect(files.sort(), 'settings/ gained or lost a file').toEqual([
-      'AddOnsSection.tsx', 'BillingTermToggle.tsx', 'BrandingSection.tsx', 'DomainSection.tsx',
+      'AddOnsSection.tsx', 'BillingTermToggle.tsx', 'BrandingSection.tsx', 'ChurchDataExportPanel.tsx', 'DomainSection.tsx',
       'GivingStatementsSection.tsx', 'IntegrationsSection.tsx', 'OnboardingSection.tsx',
       'PaymentSection.tsx', 'PlanUpgradeSection.tsx', 'SectionHeading.tsx', 'SettingsAccordion.tsx',
       'SmsSection.tsx', 'autosave.ts', 'integration-providers.ts', 'useStripeReturn.ts',

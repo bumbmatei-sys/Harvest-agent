@@ -1331,6 +1331,23 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       + 'rejected because it cannot express all of them. The primitive moved here from '
       + 'AdminEvents; that screen still imports `alert` and `tabs`.',
   },
+  {
+    file: 'src/components/settings/ChurchDataExportPanel.tsx',
+    ticket: 'THE-228',
+    why:
+      'APPENDED, never substituted. The whole-church export control on admin Settings. It takes '
+      + '`item` (Item, ItemContent, ItemDescription, ItemMedia, ItemTitle) for the export row and '
+      + 'the download row, the same row-of-things shape Customize Navigation already uses, so this '
+      + 'screen does not grow a second hand-rolled flex button. It takes `alert` (Alert, AlertTitle, '
+      + 'AlertDescription) for a failed export. Load-bearing rather than cosmetic: the primitive '
+      + 'carries role="alert", which is what makes "the export did not finish" reach a screen reader '
+      + 'instead of only a line of muted type. `button` is rejected for the row: Button\'s own '
+      + 'heights sit below the 44px phone floor, and the Item rendered as a button is how the '
+      + 'navigation row beside it already clears that floor. `empty` is rejected: a church with '
+      + 'nothing to export is still a file of headers, not an absent collection. `dialog` is '
+      + 'rejected: starting the export is one tap, not a decision that must interrupt. `sonner` is '
+      + 'rejected: a toast leaves the screen while the file is still in storage.',
+  },
 ];
 
 it('only the recorded adopters import the new components, and each names its ticket', () => {

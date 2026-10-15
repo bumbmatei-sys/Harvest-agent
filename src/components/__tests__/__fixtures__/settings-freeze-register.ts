@@ -444,6 +444,19 @@ export const RECORDED_EDITS: ReadonlyArray<RecordedEdit> = [
       + 'override still resolves to the top tier, which includes the cell.',
     digest: '71b2e71af14cbb11b4ba3231cf4a3b8feeded0433fc115ea54e7c6718ba7642f',
   },
+  {
+    file: 'src/components/AdminSettings.tsx',
+    ticket: 'THE-228',
+    why:
+      'ONE CONTROL, MOUNTED OUTSIDE THE ACCORDION. A tenant admin can export the whole ministry '
+      + 'from Settings. The panel sits after Customize Navigation and is not a `sections` entry, '
+      + 'so the row ids, the region headings and every `hidden:` gate stay exactly as they were. '
+      + 'Nothing in the plan card, the Stripe-return effect, the portal call or the cancel dialog '
+      + 'moved. The panel imports the Item and Alert this screen already imported; no primitive, '
+      + 'token or dependency was added, and the file still has no inline style. The button label '
+      + 'is the one the card asked for. The description says ministry.',
+    digest: 'b27cf2cbd7fdcd2223528d6c9b20ebcbee47363138453548df8593a5ee2d6182',
+  },
 ];
 
 /** A ticket reference the register will accept. */
