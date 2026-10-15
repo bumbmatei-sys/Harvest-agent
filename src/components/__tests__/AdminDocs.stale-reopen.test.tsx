@@ -140,6 +140,13 @@ const ackBridge = vi.hoisted(() => {
     hold: false,
     mode: 'time' as 'time' | 'null' | 'error',
     poisonReads: false,
+    /** Indexes whose unsubscribe the component actually called. */
+    unsubscribed: [] as number[],
+    /**
+     * When set, unsubscribe delivers the held acknowledgement synchronously.
+     * That is a snapshot already in flight as the listener is removed.
+     */
+    deliverOnUnsub: false,
   };
   function deliver(listener: Listener, write: NotedWrite | undefined) {
     if (state.mode === 'error') {
@@ -170,6 +177,8 @@ const ackBridge = vi.hoisted(() => {
       state.hold = false;
       state.mode = 'time';
       state.poisonReads = false;
+      state.unsubscribed = [];
+      state.deliverOnUnsub = false;
     },
     noteWrite(payload: { title?: string; content?: string }, ms: number) {
       writes.push({ ms, title: payload.title, content: payload.content });
@@ -181,7 +190,10 @@ const ackBridge = vi.hoisted(() => {
       if (!state.hold) {
         queueMicrotask(() => deliver(listener, writes[index]));
       }
-      return () => {};
+      return () => {
+        state.unsubscribed.push(index);
+        if (state.deliverOnUnsub) deliver(listener, writes[index]);
+      };
     },
     release(index: number) {
       const listener = listeners[index];
@@ -957,5 +969,103 @@ describe('AdminDocs — a collaborator between the write and its acknowledgement
     await clickLeaf('note-b');
     await clickLeaf('note-a');
     expect(editorBody()).toBe(OTHER_A);
+  });
+});
+
+/**
+ * The acknowledgement listener used to wait forever. `runDebounce` advances
+ * 100ms past the 2s debounce, which would move the fake clock off the
+ * timeout boundary, so these tests fire the debounce at exactly 2s.
+ */
+const SAVE_ACK_TIMEOUT_MS = 10_000;
+
+async function advance(ms: number) {
+  await act(async () => {
+    vi.advanceTimersByTime(ms);
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+  });
+}
+
+async function fireDebounce() {
+  await advance(2_000);
+}
+
+describe('AdminDocs — the save acknowledgement listener times out', () => {
+  it('resolves with no time after 10s, clears Saving, and ignores a late snapshot', async () => {
+    ackBridge.state.hold = true;
+    await mountDocs();
+    await clickLeaf('note-a');
+    await typeContent(FRESH_A);
+    await fireDebounce();
+
+    expect(statusChip()).toBe('Saving…');
+    expect(ackBridge.listeners).toHaveLength(1);
+    expect(ackBridge.state.unsubscribed).toEqual([]);
+    // The snapshot the timeout is about to drop is delivered from unsubscribe
+    // itself, the way a listener callback already in flight still runs.
+    ackBridge.state.deliverOnUnsub = true;
+
+    await advance(SAVE_ACK_TIMEOUT_MS - 1);
+    expect(statusChip()).toBe('Saving…');
+    expect(ackBridge.state.unsubscribed).toEqual([]);
+
+    await advance(1);
+    expect(statusChip()).toBe('Saved');
+    expect(statusChip()).not.toContain('Saving');
+    expect(ackBridge.state.unsubscribed).toEqual([0]);
+
+    const cached = docsCache.state.docs?.items.find((item) => item.id === 'note-a');
+    expect(cached?.content).toBe(CACHED_A);
+    expect(cached?.clientWriteVersion).toBeUndefined();
+
+    // The snapshot that would have been this commit's acknowledgement, arriving
+    // after the listener was dropped. It must not put the session body back.
+    await releaseAck(0);
+    expect(ackBridge.state.unsubscribed).toEqual([0]);
+    expect(docsCache.state.docs?.items.find((item) => item.id === 'note-a')?.content).toBe(CACHED_A);
+
+    fixtures.NOTE_A.content = SERVER_A;
+    fixtures.NOTE_A.updatedAt = { toMillis: () => 1 };
+    await clickLeaf('note-b');
+    await clickLeaf('note-a');
+    expect(editorBody()).toBe(SERVER_A);
+
+    const before = writes().length;
+    await runDebounce();
+    expect(writes().slice(before).some((w) => w.content === FRESH_A)).toBe(false);
+  });
+
+  it('still records an acknowledgement that arrives before the timeout', async () => {
+    ackBridge.state.hold = true;
+    await mountDocs();
+    await clickLeaf('note-a');
+    await typeContent(FRESH_A);
+    await fireDebounce();
+    expect(statusChip()).toBe('Saving…');
+
+    await advance(SAVE_ACK_TIMEOUT_MS - 1);
+    expect(statusChip()).toBe('Saving…');
+    expect(ackBridge.state.unsubscribed).toEqual([]);
+
+    await releaseAck(0);
+    expect(statusChip()).toBe('Saved');
+    expect(ackBridge.state.unsubscribed).toEqual([0]);
+    const cached = docsCache.state.docs?.items.find((item) => item.id === 'note-a');
+    expect(cached?.content).toBe(FRESH_A);
+    expect(cached?.clientWriteVersion).toBeGreaterThan(0);
+
+    // The deadline passing afterwards must not drop the time we already stored,
+    // and must not subscribe a second listener to do it.
+    await advance(SAVE_ACK_TIMEOUT_MS);
+    expect(statusChip()).toBe('Saved');
+    expect(ackBridge.state.unsubscribed).toEqual([0]);
+    expect(ackBridge.listeners).toHaveLength(1);
+
+    fixtures.NOTE_A.content = SERVER_A;
+    fixtures.NOTE_A.updatedAt = { toMillis: () => 5_000_000 };
+    await clickLeaf('note-b');
+    await clickLeaf('note-a');
+    expect(editorBody()).toBe(FRESH_A);
   });
 });

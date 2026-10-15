@@ -367,6 +367,15 @@ function updatedAtMs(d: Doc): number | null {
 type OwnWriteClock = { ms: number | null };
 
 /**
+ * How long to wait for this commit's server snapshot after the listener is
+ * attached. The write can be on the server while that snapshot never arrives
+ * — the network drops between the two — and without a bound the chip stays on
+ * "Saving…" until the tab reconnects. Past this, the wait resolves with no
+ * time, which is the same outcome as an acknowledgement that carried none.
+ */
+const SAVE_ACK_TIMEOUT_MS = 10_000;
+
+/**
  * Commit `fields` and resolve with the server `updatedAt` of THIS commit.
  *
  * `updateDoc` does not return the timestamp it stored. A `getDoc` afterwards
@@ -380,7 +389,10 @@ type OwnWriteClock = { ms: number | null };
  * its time is not ours.
  *
  * `{ ms: null }` means the acknowledgement had no timestamp, did not match,
- * or the listener failed. There is no client clock to substitute. A failed
+ * the listener failed, or no server snapshot arrived within
+ * `SAVE_ACK_TIMEOUT_MS`. There is no client clock to substitute. A snapshot
+ * that arrives after the wait is ignored: the listener is already
+ * unsubscribed, and `settled` drops anything already in flight. A failed
  * write rejects from `updateDoc` instead of resolving null.
  */
 function commitNoteAndReadOwnUpdatedAt(
@@ -392,14 +404,25 @@ function commitNoteAndReadOwnUpdatedAt(
   let writeStarted = false;
   let sawPending = false;
   let settled = false;
+  let timer: ReturnType<typeof setTimeout> | null = null;
   const clock: OwnWriteClock = { ms: null };
+
+  const stopWaiting = () => {
+    if (timer !== null) {
+      clearTimeout(timer);
+      timer = null;
+    }
+    const stop = unsub;
+    unsub = () => {};
+    stop();
+  };
 
   const ack = new Promise<void>((resolve) => {
     const finish = (ms: number | null) => {
       if (settled) return;
       settled = true;
       clock.ms = ms;
-      unsub();
+      stopWaiting();
       resolve();
     };
     const onNext = (snap: {
@@ -441,6 +464,7 @@ function commitNoteAndReadOwnUpdatedAt(
     };
     try {
       unsub = onSnapshot(ref, { includeMetadataChanges: true }, onNext, onError);
+      timer = setTimeout(() => finish(null), SAVE_ACK_TIMEOUT_MS);
     } catch (err) {
       console.error('Failed to read the saved note time', err);
       settled = true;
@@ -455,8 +479,10 @@ function commitNoteAndReadOwnUpdatedAt(
   return updateDoc(ref, payload).then(
     () => ack.then(() => clock),
     (err) => {
-      settled = true;
-      unsub();
+      if (!settled) {
+        settled = true;
+        stopWaiting();
+      }
       throw err;
     },
   );
