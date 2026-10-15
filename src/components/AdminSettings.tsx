@@ -6,6 +6,7 @@ import { getPlanFeatures, PLAN_DISPLAY_NAMES, PLAN_ORDER, formatPlanPrice, isUnp
 import { hasPlatformOverride } from '../utils/tenant-scope';
 import { SMS_FEATURE_ENABLED } from '../lib/sms-feature';
 import SettingsAccordion from './settings/SettingsAccordion';
+import ChurchDataExportPanel from './settings/ChurchDataExportPanel';
 import OnboardingSection from './settings/OnboardingSection';
 import GivingStatementsSection from './settings/GivingStatementsSection';
 import SmsSection from './settings/SmsSection';
@@ -677,6 +678,10 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
         </Item>
         </div>
       )}
+
+      {/* THE-228 — whole-church export. Outside the accordion, after Navigation,
+          so the row ids and the region headings stay exactly as they are. */}
+      <ChurchDataExportPanel />
 
       {/* Cancel Confirmation Modal */}
       {/* THE-316 — `dialog` is the primitive for a modal, and this was one

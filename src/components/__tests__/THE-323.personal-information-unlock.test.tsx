@@ -764,6 +764,12 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // the same `lg:`-only panel, so they take the same ungated 44px floor.
       'src/components/inbox/TenantInbox.tsx',
     'src/components/layout/nav-rail-recents.tsx',  // THE-324: names it in a comment, does not use it
+      // APPENDED BY THE-228, NOTHING ABOVE REMOVED OR REWRITTEN. It sits here
+      // because this list is the sweep's own sorted order. The export row USES
+      // the class, in the Rule-4 form `min-h-11 sm:min-h-0`, the same floor
+      // Customize Navigation already takes. It is a real tap target, not a
+      // comment that happens to name the class.
+      'src/components/settings/ChurchDataExportPanel.tsx',
       // 🔴 APPENDED BY THE-330, NOTHING ABOVE REMOVED OR REWRITTEN. Another
       // COMMENT-ONLY mention, the same kind as the two THE-324 entries: the
       // ticket adds two native `<select>` pickers and records, at their call

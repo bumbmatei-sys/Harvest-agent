@@ -14,6 +14,12 @@ export interface AuthenticatedUser {
   isAdmin: boolean;
   isSuperAdmin: boolean;
   /**
+   * Firebase `email_verified`. Absent on the token means unverified.
+   * An email-based grant has to read this: the address is on the token
+   * before anyone proves they own it.
+   */
+  emailVerified: boolean;
+  /**
    * When the caller last actually authenticated (`auth_time`, epoch SECONDS —
    * not when this token was minted; a refresh does not move it).
    *
@@ -69,6 +75,7 @@ export async function verifyAuth(request: NextRequest): Promise<AuthenticatedUse
       tenantId,
       isAdmin,
       isSuperAdmin: decoded.superAdmin === true || isSuperAdminEmail(decoded.email),
+      emailVerified: decoded.email_verified === true,
       // Absent on a malformed token — 0 reads as "ancient", which fails closed
       // for anything gating on freshness rather than waving it through.
       authTime: typeof decoded.auth_time === 'number' ? decoded.auth_time : 0,
