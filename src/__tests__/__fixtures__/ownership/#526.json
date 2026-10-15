@@ -16,6 +16,11 @@
       "file": "src/components/AdminDocs.tsx",
       "digest": "1264b3fa4c5a65f7773cb923e93948fbd4d5494967d010a2ad89d7459867536f",
       "why": "#526 owns this correction to the server-time comparison, appended beside the digests above and not in place of them. The previous comparison used Date.now() against the row's server updatedAt, so a browser clock ahead of the server kept a stale session body over a later collaborator edit, and a browser clock behind treated a stale refetch as the newer copy. saveDoc and the rename path now read the document back after the write and store that server updatedAt, and noteToOpen compares the row's server updatedAt with that value. The Retry toast skips when a newer save of the note has started or the list row is newer than the last write this session read back, and a successful save of that note dismisses the toast. closeEditor, the title blur, the unmount flush, the delete-cancels-not-flushes rule, the share flows, the menu and the toolbar are unchanged."
+    },
+    {
+      "file": "src/components/AdminDocs.tsx",
+      "digest": "0961ad16512860aafe192ee45a27c69efa7292c6006c8b9033daa52bff2bee39",
+      "why": "#526 owns this correction to the save acknowledgement, appended beside the digests above and not in place of them. saveDoc checked isLatest only before awaiting the read-back, and the remembered version was an independent increment, so an earlier save whose acknowledgement resolved last recorded and cached the older body, showed Saved, and the next reopen autosaved it over the newer one. The check now happens after the acknowledgement, and the remembered version is that save's sequence. The time stored is the acknowledgement snapshot's updatedAt (hasPendingWrites clearing), not a later getDoc, so a collaborator who commits in the gap is not recorded as our write. A missing or failed acknowledgement drops the remembered copy so a null time cannot hide every server row. Retry reads the note with getDocFromServer before sending the captured payload, including when this session has no successful save to compare against the list. closeEditor, the title blur, the unmount flush, the delete-cancels-not-flushes rule, the share flows, the menu and the toolbar are unchanged."
     }
   ]
 }

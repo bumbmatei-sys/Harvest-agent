@@ -1065,6 +1065,13 @@ describe('12 — AdminDocs.tsx, AdminDashboardHome.tsx, firestore.rules and func
        * or a newer server row has already replaced.
        */
       '1264b3fa4c5a65f7773cb923e93948fbd4d5494967d010a2ad89d7459867536f',
+      /*
+       * Appended beside the digest above, never over it. An earlier save's
+       * read-back could resolve after a later save and record the older body.
+       * The acknowledgement is re-checked, its version is the save sequence,
+       * and Retry reads the note from the server before sending again.
+       */
+      '0961ad16512860aafe192ee45a27c69efa7292c6006c8b9033daa52bff2bee39',
     ],
   };
 

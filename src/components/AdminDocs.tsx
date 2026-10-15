@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import {
   collection, query, where, addDoc, updateDoc, deleteDoc,
-  doc, getDoc, serverTimestamp, getDocs, arrayUnion, arrayRemove
+  doc, getDoc, getDocFromServer, onSnapshot, serverTimestamp, getDocs, arrayUnion, arrayRemove
 } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { db, auth } from '../firebase';
@@ -324,10 +324,12 @@ type NoteSaveOutcome = {
 
 /**
  * Body this session has successfully written, and which generation of that write it was.
- * `serverUpdatedAtMs` is the server `updatedAt` read back after that write, not
- * `Date.now()`. A list row is newer only when its own server `updatedAt` is later
- * than that. Comparing either side to the browser clock goes wrong in both
- * directions when the two clocks disagree.
+ * `version` is that save's sequence, so a late completion of an older save cannot
+ * increment past a newer one. `serverUpdatedAtMs` is the server `updatedAt` of
+ * this commit's acknowledgement, not a later read and not `Date.now()`. A list
+ * row is newer only when its own server `updatedAt` is later than that. When the
+ * acknowledgement has no timestamp the entry is removed: a null time used to
+ * lose every comparison, and the session body then hid every server row.
  */
 type LastWrittenNote = {
   title: string;
@@ -348,31 +350,168 @@ function clientWriteVersionOf(d: Doc): number {
   return typeof version === 'number' && Number.isFinite(version) ? version : 0;
 }
 
-/** Milliseconds of a Firestore `updatedAt`, or null when the row has none. */
-function updatedAtMs(d: Doc): number | null {
-  const stamp = d.updatedAt as { toMillis?: () => number } | null;
-  if (!stamp || typeof stamp.toMillis !== 'function') return null;
-  const ms = stamp.toMillis();
+/** Milliseconds of a Firestore timestamp value, or null when it has none. */
+function millisOf(value: unknown): number | null {
+  if (!value || typeof value !== 'object') return null;
+  const toMillis = (value as { toMillis?: () => number }).toMillis;
+  if (typeof toMillis !== 'function') return null;
+  const ms = toMillis();
   return typeof ms === 'number' && Number.isFinite(ms) ? ms : null;
 }
 
+/** Milliseconds of a Firestore `updatedAt`, or null when the row has none. */
+function updatedAtMs(d: Doc): number | null {
+  return millisOf(d.updatedAt);
+}
+
+type OwnWriteClock = { ms: number | null };
+
 /**
- * The server time of the write that just landed. `updateDoc` does not return
- * the timestamp it stored, so this reads the document back. Both sides of the
- * reopen comparison are then server times. A failed read is null — there is
- * no client clock to substitute.
+ * Commit `fields` and resolve with the server `updatedAt` of THIS commit.
+ *
+ * `updateDoc` does not return the timestamp it stored. A `getDoc` afterwards
+ * is a different observation: a collaborator can commit in the gap, and their
+ * `updatedAt` then compares equal to the one remembered beside our body, so
+ * the next open keeps our body and the next autosave writes it over theirs.
+ * The listener is attached first. `hasPendingWrites` is the local echo; the
+ * next snapshot with pending writes cleared is this commit's acknowledgement
+ * (`includeMetadataChanges`), and its `updatedAt` is this commit's time. A
+ * snapshot whose title or body is not what we sent is not this commit, so
+ * its time is not ours.
+ *
+ * `{ ms: null }` means the acknowledgement had no timestamp, did not match,
+ * or the listener failed. There is no client clock to substitute. A failed
+ * write rejects from `updateDoc` instead of resolving null.
  */
-async function readServerUpdatedAtMs(id: string): Promise<number | null> {
+function commitNoteAndReadOwnUpdatedAt(
+  id: string,
+  fields: { title: string; content?: string },
+): Promise<OwnWriteClock> {
+  const ref = doc(db, 'docs', id);
+  let unsub = () => {};
+  let writeStarted = false;
+  let sawPending = false;
+  let settled = false;
+  const clock: OwnWriteClock = { ms: null };
+
+  const ack = new Promise<void>((resolve) => {
+    const finish = (ms: number | null) => {
+      if (settled) return;
+      settled = true;
+      clock.ms = ms;
+      unsub();
+      resolve();
+    };
+    const onNext = (snap: {
+      metadata: { hasPendingWrites: boolean; fromCache: boolean };
+      data: () => unknown;
+    }) => {
+      if (!writeStarted || settled) return;
+      if (snap.metadata.hasPendingWrites) {
+        sawPending = true;
+        return;
+      }
+      if (!sawPending || snap.metadata.fromCache) return;
+      const data = snap.data() as {
+        title?: unknown;
+        content?: unknown;
+        updatedAt?: unknown;
+      } | undefined;
+      if (!data) {
+        finish(null);
+        return;
+      }
+      if (data.title !== undefined && data.title !== fields.title) {
+        finish(null);
+        return;
+      }
+      if (
+        fields.content !== undefined
+        && data.content !== undefined
+        && data.content !== fields.content
+      ) {
+        finish(null);
+        return;
+      }
+      finish(millisOf(data.updatedAt));
+    };
+    const onError = (err: unknown) => {
+      console.error('Failed to read the saved note time', err);
+      finish(null);
+    };
+    try {
+      unsub = onSnapshot(ref, { includeMetadataChanges: true }, onNext, onError);
+    } catch (err) {
+      console.error('Failed to read the saved note time', err);
+      settled = true;
+      resolve();
+    }
+  });
+
+  writeStarted = true;
+  const payload = fields.content === undefined
+    ? { title: fields.title, updatedAt: serverTimestamp() }
+    : { title: fields.title, content: fields.content, updatedAt: serverTimestamp() };
+  return updateDoc(ref, payload).then(
+    () => ack.then(() => clock),
+    (err) => {
+      settled = true;
+      unsub();
+      throw err;
+    },
+  );
+}
+
+/**
+ * The note as the server has it now, not as the list last fetched it. The
+ * docs query is allowed to be minutes old. Null is a failed read — distinct
+ * from a document that simply has no `updatedAt`.
+ */
+async function readFreshNote(id: string): Promise<{
+  title: string | null;
+  content: string | null;
+  updatedAtMs: number | null;
+} | null> {
   try {
-    const snap = await getDoc(doc(db, 'docs', id));
-    const data = snap.data() as { updatedAt?: { toMillis?: () => number } } | undefined;
-    if (!data?.updatedAt || typeof data.updatedAt.toMillis !== 'function') return null;
-    const ms = data.updatedAt.toMillis();
-    return typeof ms === 'number' && Number.isFinite(ms) ? ms : null;
+    const snap = await getDocFromServer(doc(db, 'docs', id));
+    const data = snap.data() as { title?: unknown; content?: unknown; updatedAt?: unknown } | undefined;
+    if (!data) return { title: null, content: null, updatedAtMs: null };
+    return {
+      title: typeof data.title === 'string' ? data.title : null,
+      content: typeof data.content === 'string' ? data.content : null,
+      updatedAtMs: millisOf(data.updatedAt),
+    };
   } catch (e) {
-    console.error('Failed to read the saved note time', e);
+    console.error('Failed to read the note before retrying the save', e);
     return null;
   }
+}
+
+/**
+ * Whether Retry would write `payload` over a server row that has moved on.
+ * `unread` means the fresh read failed: do not write, and leave the toast so
+ * another attempt can still see the server. A remembered write compares the
+ * fresh `updatedAt` with that write's own acknowledgement time. With no
+ * remembered write, the list is not a baseline — it can be minutes old — so
+ * a fresh body that is not the payload and is newer than that list wins.
+ */
+function retryWouldClobber(
+  payload: { title: string; content: string },
+  fresh: { title: string | null; content: string | null; updatedAtMs: number | null } | null,
+  written: LastWrittenNote | undefined,
+  listMs: number | null,
+): 'unread' | 'newer' | 'current' {
+  if (!fresh) return 'unread';
+  if (written && written.serverUpdatedAtMs !== null) {
+    return serverRowIsNewer(fresh.updatedAtMs, written) ? 'newer' : 'current';
+  }
+  if (fresh.updatedAtMs === null) return 'current';
+  if (fresh.content === null && fresh.title === null) return 'current';
+  const sameBody = fresh.content === payload.content
+    && (fresh.title === null || fresh.title === payload.title);
+  if (sameBody) return 'current';
+  if (listMs !== null && fresh.updatedAtMs <= listMs) return 'current';
+  return 'newer';
 }
 
 /** True when `rowMs` is a server time strictly after this session's own write. */
@@ -682,17 +821,32 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
     saveOutcomeByNote.current.set(id, { seq, phase: 'saving', title: storedTitle, content });
     if (isMounted.current && openDocIdRef.current === id) setSaveStatus('saving');
     try {
-      await updateDoc(doc(db, 'docs', id), { title: storedTitle, content, updatedAt: serverTimestamp() });
+      const observed = await commitNoteAndReadOwnUpdatedAt(id, { title: storedTitle, content });
+      // Re-check after the acknowledgement. An earlier save's listener can
+      // resolve after a later save has already recorded its body; writing
+      // that older body here is what the next reopen autosaves over the newer one.
       if (isLatest()) {
-        const serverUpdatedAtMs = await readServerUpdatedAtMs(id);
-        const version = (lastWrittenByNote.current.get(id)?.version ?? 0) + 1;
-        lastWrittenByNote.current.set(id, { title: storedTitle, content, version, serverUpdatedAtMs });
-        saveOutcomeByNote.current.set(id, { seq, phase: 'saved', title: storedTitle, content });
-        patchCachedNote(id, storedTitle, content, version);
-        if (isMounted.current && openDocIdRef.current === id) setSaveStatus('saved');
-        if (errorToastNoteId.current === id) {
-          toast.dismiss(DOC_SAVE_ERROR_TOAST);
-          errorToastNoteId.current = null;
+        const remembered = lastWrittenByNote.current.get(id);
+        // Version is this save's sequence. An older completion must not
+        // increment a counter past the newer save and then outrank it.
+        if (!remembered || remembered.version <= seq) {
+          if (observed.ms === null) {
+            lastWrittenByNote.current.delete(id);
+          } else {
+            lastWrittenByNote.current.set(id, {
+              title: storedTitle,
+              content,
+              version: seq,
+              serverUpdatedAtMs: observed.ms,
+            });
+            patchCachedNote(id, storedTitle, content, seq);
+          }
+          saveOutcomeByNote.current.set(id, { seq, phase: 'saved', title: storedTitle, content });
+          if (isMounted.current && openDocIdRef.current === id) setSaveStatus('saved');
+          if (errorToastNoteId.current === id) {
+            toast.dismiss(DOC_SAVE_ERROR_TOAST);
+            errorToastNoteId.current = null;
+          }
         }
       }
       await queryClient.invalidateQueries({ queryKey: ['docs', tenantId] });
@@ -713,22 +867,39 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
             action: {
               label: 'Retry',
               onClick: () => {
-                // The payload was captured when this attempt failed. A later
-                // save of this note, or a server row newer than the last write
-                // we read back, has already moved on.
-                if (saveSeqByNote.current.get(id) !== seq) {
-                  toast.dismiss(DOC_SAVE_ERROR_TOAST);
-                  if (errorToastNoteId.current === id) errorToastNoteId.current = null;
-                  return;
-                }
-                const rowMs = newestListUpdatedAtMs(id, docsRef.current, sharedDocsRef.current);
-                const written = lastWrittenByNote.current.get(id);
-                if (written && serverRowIsNewer(rowMs, written)) {
-                  toast.dismiss(DOC_SAVE_ERROR_TOAST);
-                  if (errorToastNoteId.current === id) errorToastNoteId.current = null;
-                  return;
-                }
-                void saveDoc(id, storedTitle, content);
+                // The payload was captured when this attempt failed. Read the
+                // note from the server before sending it again: the lists can
+                // be minutes old, and a session that never saved this note
+                // has no acknowledgement time to compare them with.
+                void (async () => {
+                  const dismiss = () => {
+                    toast.dismiss(DOC_SAVE_ERROR_TOAST);
+                    if (errorToastNoteId.current === id) errorToastNoteId.current = null;
+                  };
+                  if (saveSeqByNote.current.get(id) !== seq) {
+                    dismiss();
+                    return;
+                  }
+                  const fresh = await readFreshNote(id);
+                  if (saveSeqByNote.current.get(id) !== seq) {
+                    dismiss();
+                    return;
+                  }
+                  const verdict = retryWouldClobber(
+                    { title: storedTitle, content },
+                    fresh,
+                    lastWrittenByNote.current.get(id),
+                    newestListUpdatedAtMs(id, docsRef.current, sharedDocsRef.current),
+                  );
+                  if (verdict === 'newer') {
+                    dismiss();
+                    return;
+                  }
+                  // A failed read is not proof the server still has this draft.
+                  // Leave the toast up so a later click can look again.
+                  if (verdict === 'unread') return;
+                  void saveDoc(id, storedTitle, content);
+                })();
               },
             },
           });
@@ -1015,30 +1186,41 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
   const confirmRenameDoc = async (newName: string) => {
     if (!renameDocData || !newName.trim()) return;
     const trimmed = newName.trim();
+    const id = renameDocData.id;
+    const written = lastWrittenByNote.current.get(id);
+    const versionBefore = written?.version;
+    const contentBefore = written?.content;
     try {
-      await updateDoc(doc(db, 'docs', renameDocData.id), { title: trimmed, updatedAt: serverTimestamp() });
-      if (openDoc?.id === renameDocData.id) setEditTitle(trimmed);
+      const observed = await commitNoteAndReadOwnUpdatedAt(id, { title: trimmed });
+      if (openDoc?.id === id) setEditTitle(trimmed);
       // A later open prefers the body this session wrote. Leave that body, and
       // move the title with the rename, or the reopen puts the old title back.
-      // The clock moves to the server time of the rename, read back the same
-      // way a content save is, so a browser clock cannot make a stale row look
-      // newer than the rename.
-      const written = lastWrittenByNote.current.get(renameDocData.id);
-      if (written) {
-        const version = written.version + 1;
-        const serverUpdatedAtMs = await readServerUpdatedAtMs(renameDocData.id);
-        lastWrittenByNote.current.set(renameDocData.id, {
-          ...written,
-          title: trimmed,
-          version,
-          serverUpdatedAtMs: serverUpdatedAtMs ?? written.serverUpdatedAtMs,
-        });
-        const seq = saveSeqByNote.current.get(renameDocData.id);
-        const outcome = saveOutcomeByNote.current.get(renameDocData.id);
-        if (outcome && outcome.seq === seq) {
-          saveOutcomeByNote.current.set(renameDocData.id, { ...outcome, title: trimmed });
+      // The clock is this rename's acknowledgement time, same as a content
+      // save. A content save that landed while this acknowledgement was in
+      // flight owns the record; putting the pre-rename body back would undo it.
+      // A missing acknowledgement drops the remembered copy so a server row
+      // is not compared against a time we do not have.
+      const current = lastWrittenByNote.current.get(id);
+      const stillOurs = !!current
+        && versionBefore !== undefined
+        && current.version === versionBefore
+        && current.content === contentBefore;
+      if (stillOurs && current) {
+        if (observed.ms === null) {
+          lastWrittenByNote.current.delete(id);
+        } else {
+          lastWrittenByNote.current.set(id, {
+            ...current,
+            title: trimmed,
+            serverUpdatedAtMs: observed.ms,
+          });
+          const seq = saveSeqByNote.current.get(id);
+          const outcome = saveOutcomeByNote.current.get(id);
+          if (outcome && outcome.seq === seq) {
+            saveOutcomeByNote.current.set(id, { ...outcome, title: trimmed });
+          }
+          patchCachedNote(id, trimmed, current.content, current.version);
         }
-        patchCachedNote(renameDocData.id, trimmed, written.content, version);
       }
       await queryClient.invalidateQueries({ queryKey: ['docs', tenantId] });
     } catch (e) { notifyError('Failed to rename document', e); }

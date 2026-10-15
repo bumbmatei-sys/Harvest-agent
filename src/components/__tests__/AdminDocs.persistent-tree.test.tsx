@@ -120,6 +120,17 @@ vi.mock('firebase/firestore', () => ({
   deleteDoc: deleteDocFn,
   doc: (_db: unknown, _c: string, id: string) => ({ id }),
   getDoc: vi.fn(async () => ({ data: () => ({ active: false }) })),
+  onSnapshot: (_ref: unknown, arg2: unknown, arg3?: unknown) => {
+    const onNext = (typeof arg2 === 'function' ? arg2 : arg3) as (snap: unknown) => void;
+    queueMicrotask(() => {
+      onNext({ metadata: { hasPendingWrites: true, fromCache: false }, data: () => ({}) });
+      onNext({
+        metadata: { hasPendingWrites: false, fromCache: false },
+        data: () => ({ updatedAt: { toMillis: () => 5_000_000 } }),
+      });
+    });
+    return () => {};
+  },
   getDocs: vi.fn(async () => ({ docs: [] })),
   serverTimestamp: () => 'SERVER_TS',
   Timestamp: class {},

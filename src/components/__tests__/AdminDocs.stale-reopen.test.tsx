@@ -72,6 +72,7 @@ const SECOND_A = '<p>second-alpha</p>';
 const FRESH_B = '<p>saved-beta</p>';
 const SERVER_A = '<p>server-alpha</p>';
 const CACHED_A = '<p>cached-alpha</p>';
+const OTHER_A = '<p>other-alpha</p>';
 
 type CachedDoc = { id: string; content: string; title: string; clientWriteVersion?: number };
 type CachedList = { items: CachedDoc[]; truncated: boolean };
@@ -118,15 +119,121 @@ vi.mock('../RichTextEditor', () => {
   };
 });
 
-/** Server time returned by the read-back after a write. Not the browser clock. */
+/** Server time captured with each note commit. Not the browser clock. */
 const serverTime = vi.hoisted(() => ({ ms: 5_000_000 }));
-const updateDoc = vi.hoisted(() => vi.fn(async () => undefined as unknown));
+
+/**
+ * The acknowledgement snapshot is this session's write, frozen when
+ * `updateDoc` runs. A later `getDoc` / `getDocFromServer` can be pointed at
+ * a collaborator without changing that snapshot — which is the gap a
+ * follow-up read loses.
+ */
+const ackBridge = vi.hoisted(() => {
+  type Listener = {
+    onNext: (snap: unknown) => void;
+    onError: (err: Error) => void;
+  };
+  type NotedWrite = { ms: number; title?: string; content?: string };
+  const listeners: Listener[] = [];
+  const writes: NotedWrite[] = [];
+  const state = {
+    hold: false,
+    mode: 'time' as 'time' | 'null' | 'error',
+    poisonReads: false,
+  };
+  function deliver(listener: Listener, write: NotedWrite | undefined) {
+    if (state.mode === 'error') {
+      listener.onError(new Error('read failed'));
+      return;
+    }
+    const ms = write?.ms ?? 5_000_000;
+    listener.onNext({
+      metadata: { hasPendingWrites: true, fromCache: false },
+      data: () => ({}),
+    });
+    listener.onNext({
+      metadata: { hasPendingWrites: false, fromCache: false },
+      data: () => ({
+        title: write?.title,
+        content: write?.content,
+        updatedAt: state.mode === 'null' ? undefined : { toMillis: () => ms },
+      }),
+    });
+  }
+  return {
+    state,
+    listeners,
+    writes,
+    reset() {
+      listeners.length = 0;
+      writes.length = 0;
+      state.hold = false;
+      state.mode = 'time';
+      state.poisonReads = false;
+    },
+    noteWrite(payload: { title?: string; content?: string }, ms: number) {
+      writes.push({ ms, title: payload.title, content: payload.content });
+    },
+    subscribe(onNext: (snap: unknown) => void, onError: (err: Error) => void) {
+      const listener = { onNext, onError };
+      const index = listeners.length;
+      listeners.push(listener);
+      if (!state.hold) {
+        queueMicrotask(() => deliver(listener, writes[index]));
+      }
+      return () => {};
+    },
+    release(index: number) {
+      const listener = listeners[index];
+      if (!listener) throw new Error(`no acknowledgement listener at ${index}`);
+      deliver(listener, writes[index]);
+    },
+  };
+});
+
+const freshRead = vi.hoisted(() => ({
+  ms: null as number | null,
+  content: null as string | null,
+  title: null as string | null,
+  fail: false,
+  reset() {
+    this.ms = null;
+    this.content = null;
+    this.title = null;
+    this.fail = false;
+  },
+}));
+
+const updateDoc = vi.hoisted(() => vi.fn(async (
+  _ref?: unknown,
+  _payload?: { title?: string; content?: string; updatedAt?: unknown },
+) => undefined as unknown));
 const getDoc = vi.hoisted(() => vi.fn(async () => ({
-  data: () => ({
-    active: false,
-    updatedAt: { toMillis: () => serverTime.ms },
-  }),
+  data: () => {
+    if (ackBridge.state.poisonReads) {
+      return {
+        active: false,
+        title: 'Alpha note',
+        content: '<p>other-alpha</p>',
+        updatedAt: { toMillis: () => 5_008_000 },
+      };
+    }
+    return {
+      active: false,
+      updatedAt: { toMillis: () => serverTime.ms },
+    };
+  },
 })));
+const getDocFromServer = vi.hoisted(() => vi.fn(async () => {
+  if (freshRead.fail) throw new Error('unavailable');
+  return {
+    data: () => ({
+      title: freshRead.title,
+      content: freshRead.content,
+      updatedAt: freshRead.ms == null ? undefined : { toMillis: () => freshRead.ms },
+    }),
+  };
+}));
 vi.mock('firebase/firestore', () => ({
   collection: () => ({}),
   query: () => ({}),
@@ -136,6 +243,12 @@ vi.mock('firebase/firestore', () => ({
   deleteDoc: vi.fn(async () => {}),
   doc: (_db: unknown, _collection: string, id: string) => ({ id }),
   getDoc,
+  getDocFromServer,
+  onSnapshot: (_ref: unknown, arg2: unknown, arg3?: unknown, arg4?: unknown) => {
+    const onNext = (typeof arg2 === 'function' ? arg2 : arg3) as (snap: unknown) => void;
+    const onError = (typeof arg2 === 'function' ? arg3 : arg4) as (err: Error) => void;
+    return ackBridge.subscribe(onNext, onError ?? (() => {}));
+  },
   getDocs: vi.fn(async () => ({ docs: [] })),
   serverTimestamp: () => 'SERVER_TS',
   Timestamp: class {},
@@ -179,6 +292,7 @@ let mounted = false;
 
 const flush = async () => {
   await act(async () => {
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
     await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
   });
 };
@@ -244,6 +358,15 @@ async function runDebounce() {
   await act(async () => {
     vi.advanceTimersByTime(2100);
     await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+  });
+}
+
+async function releaseAck(index: number) {
+  await act(async () => {
+    ackBridge.release(index);
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
   });
 }
 
@@ -260,7 +383,11 @@ function deferred() {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
-  updateDoc.mockImplementation(async () => undefined);
+  updateDoc.mockImplementation(async (_ref, payload) => {
+    if (payload && typeof payload.title === 'string' && 'updatedAt' in payload) {
+      ackBridge.noteWrite(payload, serverTime.ms);
+    }
+  });
   editorHarness.emitOnMount = false;
   editorHarness.type = null;
   fixtures.NOTE_A.title = 'Alpha note';
@@ -269,6 +396,8 @@ beforeEach(() => {
   fixtures.NOTE_B.content = '<p>cached-beta</p>';
   fixtures.NOTE_B.updatedAt = null;
   serverTime.ms = 5_000_000;
+  ackBridge.reset();
+  freshRead.reset();
   seedCaches();
   container = document.createElement('div');
   document.body.appendChild(container);
@@ -547,14 +676,54 @@ describe('AdminDocs — a save error stays on the note that failed', () => {
     await clickLeaf('note-b');
     const retry = (toast.error.mock.calls.at(-1) as [string, { action: { onClick: () => void } }])[1].action.onClick;
 
-    fixtures.NOTE_A.content = SERVER_A;
-    fixtures.NOTE_A.updatedAt = { toMillis: () => 5_000_000 + 10_000 };
+    // The list the screen is holding is still the pre-save copy. The fresh
+    // read is a later row. Retry used to trust the list.
+    expect(fixtures.NOTE_A.updatedAt).toBeNull();
+    freshRead.ms = 5_000_000 + 10_000;
+    freshRead.content = SERVER_A;
+    freshRead.title = 'Alpha note';
     const calls = updateDoc.mock.calls.length;
     await act(async () => { retry(); });
     await flush();
     expect(updateDoc.mock.calls.length).toBe(calls);
     expect(toast.dismiss).toHaveBeenCalledWith('doc-save-error');
     expect(writes().filter((w) => w.content === DRAFT_A)).toHaveLength(1);
+  });
+
+  it('does not retry a first save over a server row the list has not caught up to', async () => {
+    await mountDocs();
+    await clickLeaf('note-a');
+    updateDoc.mockRejectedValueOnce(new Error('offline'));
+    await typeContent(DRAFT_A);
+    await clickLeaf('note-b');
+    const retry = (toast.error.mock.calls.at(-1) as [string, { action: { onClick: () => void } }])[1].action.onClick;
+
+    expect(fixtures.NOTE_A.updatedAt).toBeNull();
+    freshRead.ms = 9_000_000;
+    freshRead.content = SERVER_A;
+    freshRead.title = 'Someone else';
+    const calls = updateDoc.mock.calls.length;
+    await act(async () => { retry(); });
+    await flush();
+    expect(updateDoc.mock.calls.length).toBe(calls);
+    expect(toast.dismiss).toHaveBeenCalledWith('doc-save-error');
+    expect(writes().filter((w) => w.content === DRAFT_A)).toHaveLength(1);
+  });
+
+  it('does not retry when the fresh read fails', async () => {
+    await mountDocs();
+    await clickLeaf('note-a');
+    updateDoc.mockRejectedValueOnce(new Error('offline'));
+    await typeContent(DRAFT_A);
+    await clickLeaf('note-b');
+    const retry = (toast.error.mock.calls.at(-1) as [string, { action: { onClick: () => void } }])[1].action.onClick;
+
+    freshRead.fail = true;
+    const calls = updateDoc.mock.calls.length;
+    await act(async () => { retry(); });
+    await flush();
+    expect(updateDoc.mock.calls.length).toBe(calls);
+    expect(toast.dismiss).not.toHaveBeenCalled();
   });
 
   it('does not mark note B saved when note A\'s autosave lands', async () => {
@@ -698,5 +867,95 @@ describe('AdminDocs — a flush that fails while switching stays on the note tha
     await act(async () => { input!.dispatchEvent(new Event('change', { bubbles: true })); });
     await flush();
     expectFailureStayedOnAlpha({ body: '# from-file', title: 'Imported' });
+  });
+});
+
+describe('AdminDocs — a late read-back cannot replace a newer save', () => {
+  it('keeps the later body when the earlier acknowledgement resolves last', async () => {
+    ackBridge.state.hold = true;
+    await mountDocs();
+    await clickLeaf('note-a');
+    await typeContent(FIRST_A);
+    await runDebounce();
+    await typeContent(SECOND_A);
+    await runDebounce();
+    expect(ackBridge.writes.map((w) => w.content)).toEqual([FIRST_A, SECOND_A]);
+
+    await releaseAck(1);
+    const afterSecond = docsCache.state.docs?.items.find((item) => item.id === 'note-a');
+    expect(afterSecond?.content).toBe(SECOND_A);
+    expect(afterSecond?.clientWriteVersion).toBe(2);
+
+    await releaseAck(0);
+    const afterFirst = docsCache.state.docs?.items.find((item) => item.id === 'note-a');
+    expect(afterFirst?.content).toBe(SECOND_A);
+    expect(afterFirst?.clientWriteVersion).toBe(afterSecond?.clientWriteVersion);
+    expect(statusChip()).toBe('Saved');
+
+    await clickLeaf('note-b');
+    await clickLeaf('note-a');
+    expect(editorBody()).toBe(SECOND_A);
+
+    const before = writes().length;
+    await runDebounce();
+    expect(writes().slice(before).some((w) => w.content === FIRST_A)).toBe(false);
+    expect(editorBody()).toBe(SECOND_A);
+  });
+});
+
+describe('AdminDocs — a read-back with no server time forgets the session copy', () => {
+  async function saveThenAdoptServerRow() {
+    await mountDocs();
+    await clickLeaf('note-a');
+    await typeContent(FRESH_A);
+    await runDebounce();
+    expect(writes().some((w) => w.content === FRESH_A)).toBe(true);
+
+    fixtures.NOTE_A.content = SERVER_A;
+    fixtures.NOTE_A.updatedAt = { toMillis: () => 1 };
+    await clickLeaf('note-b');
+    await clickLeaf('note-a');
+    expect(editorBody()).toBe(SERVER_A);
+
+    const before = writes().length;
+    await runDebounce();
+    expect(writes().slice(before).some((w) => w.content === FRESH_A)).toBe(false);
+  }
+
+  it('lets the server row win when the acknowledgement has no timestamp', async () => {
+    ackBridge.state.mode = 'null';
+    await saveThenAdoptServerRow();
+  });
+
+  it('lets the server row win when the acknowledgement listener fails', async () => {
+    ackBridge.state.mode = 'error';
+    await saveThenAdoptServerRow();
+  });
+});
+
+describe('AdminDocs — a collaborator between the write and its acknowledgement', () => {
+  it('remembers our commit time, so their later row is not treated as ours', async () => {
+    ackBridge.state.hold = true;
+    ackBridge.state.poisonReads = true;
+    await mountDocs();
+    await clickLeaf('note-a');
+    await typeContent(FRESH_A);
+    await runDebounce();
+    expect(ackBridge.writes[0]).toMatchObject({ content: FRESH_A, ms: 5_000_000 });
+
+    // The follow-up read now sees the collaborator. The acknowledgement,
+    // released next, is still our write at 5_000_000.
+    await releaseAck(0);
+
+    fixtures.NOTE_A.content = OTHER_A;
+    fixtures.NOTE_A.updatedAt = { toMillis: () => 5_000_000 };
+    await clickLeaf('note-b');
+    await clickLeaf('note-a');
+    expect(editorBody()).toBe(FRESH_A);
+
+    fixtures.NOTE_A.updatedAt = { toMillis: () => 5_008_000 };
+    await clickLeaf('note-b');
+    await clickLeaf('note-a');
+    expect(editorBody()).toBe(OTHER_A);
   });
 });
