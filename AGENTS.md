@@ -472,3 +472,36 @@ itself.
   repo does not record which repository publishes them, so check before assuming it is the
   marketing site.
 - `Harvest-Site---STABLE` — stable backup. **Never modify.**
+
+## Cursor Cloud specific instructions
+
+When this Cloud Agent environment includes both repositories, they are checked
+out at `/agent/repos/Harvest-agent` and `/agent/repos/harvest-presentation-site`.
+Login shells resolve `node` to 24, which is what `package.json` `engines` asks
+for. The agent runtime also ships Node 22 earlier on `PATH`;
+`/etc/profile.d/node24.sh` prepends `/usr/local/lib/nodejs/bin`.
+
+`npm run dev` here listens on port 3000. In the marketing repo, `npm run dev`
+listens on port 5173. The environment start script launches both and is safe to
+run again. CI checks for this repo are `npm test`, `npm run typecheck`, and
+`npm run lint`. The marketing repo's check is `npm test` and then `npm run build`
+(that build is also its typecheck). `npm test` on this repo is large; on a small
+machine pass `--maxWorkers=2`.
+
+`npm run build` in this repo imports `src/lib/dodo/config.ts`, which throws
+unless `DODO_PAYMENTS_API_KEY`, `DODO_PAYMENTS_WEBHOOK_KEY`, and
+`DODO_PAYMENTS_ENVIRONMENT` are set to non-blank values, with the environment
+exactly `test_mode` or `live_mode`. `npm test` and `npm run dev` do not need
+them. Values that only satisfy that import are not credentials and do not
+authorise a charge. Real keys belong in Cursor secrets.
+
+The committed Firebase web config points at the live project, and the dev
+server reads it. Do not create users, tenants, or gifts from this environment.
+
+`functions/` stays on Node 22, as `firebase.json` records. `npm ci` there prints
+`EBADENGINE` under Node 24 and still installs. `npm run build` in `functions/`
+is `tsc`.
+
+Two Chromium layout suites under `src/components/` pin pixel geometry taken on
+CI's browser. A different Chrome can miss by a pixel. Leave the assertion; do
+not retune it to this machine.
