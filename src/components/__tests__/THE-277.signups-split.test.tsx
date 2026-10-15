@@ -1073,14 +1073,14 @@ describe('12 — AdminDocs.tsx, AdminDashboardHome.tsx, firestore.rules and func
        */
       '0961ad16512860aafe192ee45a27c69efa7292c6006c8b9033daa52bff2bee39',
       /*
-       * Appended beside the digest above, never over it. The acknowledgement
-       * listener waited until hasPendingWrites cleared and had no bound, so a
-       * write the server had already taken could leave the chip on Saving
-       * until the tab reconnected. It now gives up after 10s, unsubscribes,
-       * and resolves with no time — the same path as a missing timestamp —
-       * and a snapshot that arrives after that is ignored. No menu row,
-       * toolbar, share flow or Firestore path in this file moved, and this
-       * branch still did not author a byte of it.
+       * #528, appended beside the digest above, never over it. The
+       * acknowledgement listener waited until hasPendingWrites cleared and
+       * had no bound, so a write the server had already taken could leave the
+       * chip on Saving until the tab reconnected. It now gives up after 10s,
+       * unsubscribes, and resolves with no time — the same path as a missing
+       * timestamp — and a snapshot that arrives after that is ignored. No
+       * menu row, toolbar, share flow or Firestore path in this file moved,
+       * and this branch still did not author a byte of it.
        */
       '9e19c753dd1ee120f65a1ff0c2eb812a2fe77b9ae584068d312914fe50be8a67',
     ],
