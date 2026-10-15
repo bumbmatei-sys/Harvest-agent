@@ -1083,6 +1083,17 @@ describe('12 — AdminDocs.tsx, AdminDashboardHome.tsx, firestore.rules and func
        * and this branch still did not author a byte of it.
        */
       '9e19c753dd1ee120f65a1ff0c2eb812a2fe77b9ae584068d312914fe50be8a67',
+      /*
+       * #528, appended beside the digest above, never over it. A null
+       * acknowledgement time skipped the query-cache patch as well as the
+       * remembered copy, so a slow acknowledgement reopened the pre-save
+       * body and the next keystroke wrote it back. A successful write now
+       * patches the cache even when the time is null, and still drops the
+       * remembered copy so a newer server row can win. No menu row, toolbar,
+       * share flow or Firestore path in this file moved, and this branch
+       * still did not author a byte of it.
+       */
+      '399bb0ef989809da247681401bab90d46eb0fa211274289db0b036daa73e49da',
     ],
   };
 

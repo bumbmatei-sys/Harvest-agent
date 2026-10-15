@@ -392,7 +392,7 @@ const SAVE_ACK_TIMEOUT_MS = 10_000;
  * the listener failed, or no server snapshot arrived within
  * `SAVE_ACK_TIMEOUT_MS`. There is no client clock to substitute. A snapshot
  * that arrives after the wait is ignored: the listener is already
- * unsubscribed, and `settled` drops anything already in flight. A failed
+ * unsubscribed, and `finish` drops anything already in flight. A failed
  * write rejects from `updateDoc` instead of resolving null.
  */
 function commitNoteAndReadOwnUpdatedAt(
@@ -429,7 +429,7 @@ function commitNoteAndReadOwnUpdatedAt(
       metadata: { hasPendingWrites: boolean; fromCache: boolean };
       data: () => unknown;
     }) => {
-      if (!writeStarted || settled) return;
+      if (!writeStarted) return;
       if (snap.metadata.hasPendingWrites) {
         sawPending = true;
         return;
@@ -857,6 +857,11 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
         // increment a counter past the newer save and then outrank it.
         if (!remembered || remembered.version <= seq) {
           if (observed.ms === null) {
+            // No server time to compare against a later row. Keeping a
+            // remembered copy here hides every server row, because a null
+            // time loses that comparison. The write itself landed, so the
+            // list cache still has to carry this body until a refetch
+            // replaces it.
             lastWrittenByNote.current.delete(id);
           } else {
             lastWrittenByNote.current.set(id, {
@@ -865,8 +870,8 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
               version: seq,
               serverUpdatedAtMs: observed.ms,
             });
-            patchCachedNote(id, storedTitle, content, seq);
           }
+          patchCachedNote(id, storedTitle, content, seq);
           saveOutcomeByNote.current.set(id, { seq, phase: 'saved', title: storedTitle, content });
           if (isMounted.current && openDocIdRef.current === id) setSaveStatus('saved');
           if (errorToastNoteId.current === id) {

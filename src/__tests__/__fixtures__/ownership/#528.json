@@ -6,6 +6,11 @@
       "file": "src/components/AdminDocs.tsx",
       "digest": "9e19c753dd1ee120f65a1ff0c2eb812a2fe77b9ae584068d312914fe50be8a67",
       "why": "#528 owns this follow-up to #526's save acknowledgement, appended beside that digest and not in place of it. saveDoc waits for this commit's server snapshot on an onSnapshot listener with includeMetadataChanges until hasPendingWrites clears. That wait had no bound, so a write the server had already accepted could leave the chip on Saving until the tab reconnected and a snapshot finally arrived. The listener now unsubscribes after 10 seconds and resolves with no timestamp, which is the existing path that drops the remembered copy so a later server row can win. A snapshot already in flight when the listener is removed is ignored, because settled is set before unsubscribe. The timer is cleared on the acknowledgement, on the timeout, on a listener error and on a rejected write, so the listener does not stay attached. closeEditor, the title blur, the unmount flush, the delete-cancels-not-flushes rule, the share flows, the menu and the toolbar are unchanged."
+    },
+    {
+      "file": "src/components/AdminDocs.tsx",
+      "digest": "399bb0ef989809da247681401bab90d46eb0fa211274289db0b036daa73e49da",
+      "why": "#528 owns this correction to the timeout above, appended beside that digest and not in place of it. A null acknowledgement time dropped the remembered copy and also skipped the query-cache patch, so any acknowledgement slower than 10 seconds took that path. Until a refetch landed, leaving the note and opening it again painted the pre-save body, and the next keystroke autosaved that body over the write that had just succeeded. A successful updateDoc now patches the cached doc with the body that was written even when the acknowledgement time is null. The remembered copy is still dropped in that case, so a newer server row can win once the refetch arrives. The duplicate settled check on the snapshot callback is gone; finish already ignores a late snapshot. closeEditor, the title blur, the unmount flush, the delete-cancels-not-flushes rule, the share flows, the menu and the toolbar are unchanged."
     }
   ]
 }
