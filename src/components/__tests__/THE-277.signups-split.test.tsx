@@ -1037,6 +1037,41 @@ describe('12 — AdminDocs.tsx, AdminDashboardHome.tsx, firestore.rules and func
        * this file moved, and this branch still did not author a byte of it.
        */
       '9ad059189109d0e72203579322e23883a692aa9adafadcbcd5a2d3fe25b23f74',
+      /*
+       * The notes autosave follow-up, appended beside #520's value and never
+       * over it. A note reopened from the stale docs query was painting the
+       * body from before the last successful save, and the next autosave wrote
+       * that body back. Save failures were also one screen-wide generation, so
+       * note A's error could land while note B was open. The save funnel now
+       * keeps a per-note generation and the last body that landed. No menu
+       * row, toolbar, share flow or Firestore path in this file moved, and
+       * this branch still did not author a byte of it.
+       */
+      'c56e20c9e6ad9c74c710b2ca608dc9a41ba3625b654d7c31c6553c8af689716a',
+      /*
+       * Appended beside the digest above, never over it. A Firestore row has
+       * no client write stamp, so the session copy was winning over a later
+       * edit as well as over a stale list row. The reopen now prefers a
+       * server updatedAt that is newer than this session's write, and a save
+       * that fails after the note was left toasts that note with a retry.
+       * No menu row, toolbar, share flow or Firestore path in this file moved.
+       */
+      '094dc959bee784901d1be1ce9de343fd4c8a4f7cce14e9988acb2197b8218193',
+      /*
+       * Appended beside the digest above, never over it. The reopen comparison
+       * was the browser clock against the server updatedAt, so skew hid a
+       * later edit or promoted a stale refetch. The write now reads its own
+       * server time back, and Retry will not resend a payload a newer save
+       * or a newer server row has already replaced.
+       */
+      '1264b3fa4c5a65f7773cb923e93948fbd4d5494967d010a2ad89d7459867536f',
+      /*
+       * Appended beside the digest above, never over it. An earlier save's
+       * read-back could resolve after a later save and record the older body.
+       * The acknowledgement is re-checked, its version is the save sequence,
+       * and Retry reads the note from the server before sending again.
+       */
+      '0961ad16512860aafe192ee45a27c69efa7292c6006c8b9033daa52bff2bee39',
     ],
   };
 

@@ -1,0 +1,26 @@
+{
+  "ticket": "#526",
+  "note": "#526 (ClickUp 86bc8kmhd) is the follow-up to #520. It records AdminDocs.tsx only. The notes editor now remembers the last body successfully written for each note and attributes save status per note, so reopening a note cannot autosave a stale cached body and a save error cannot surface on a different note. DocsTree.tsx and RichTextEditor.tsx are unchanged. No firestore.rules, functions/, layout.tsx or ui/ primitive is touched. The digest below is appended beside #520's; nothing already recorded is replaced.",
+  "entries": [
+    {
+      "file": "src/components/AdminDocs.tsx",
+      "digest": "c56e20c9e6ad9c74c710b2ca608dc9a41ba3625b654d7c31c6553c8af689716a",
+      "why": "#526 owns this change and it is the autosave bookkeeping after a note is saved or switched, nothing else. #520 keyed the editor and bound each queued payload to the note that produced it, but the docs query still served the body it loaded: a click back onto that note painted the pre-save copy and the next autosave wrote it over the body that had just landed. saveDoc now keeps a per-note generation (saveSeqByNote) and the last title and body that actually landed (lastWrittenByNote), and patches that body onto the docs and sharedDocs query caches with a client-only version that updateDoc never sends. switchToDoc opens that remembered body when the list row is older, and a failed or in-flight save reopens the body it carried. The chip and the error toast update only while that note is the one on screen, so a late failure for an older generation, or a failure that arrives while another note is open, cannot mark the wrong note. The rename path moves the remembered title with the rename so a later open does not restore the previous one. closeEditor, the title blur, the unmount flush, the delete-cancels-not-flushes rule, every Firestore path, the share flows, the menu and the toolbar are unchanged."
+    },
+    {
+      "file": "src/components/AdminDocs.tsx",
+      "digest": "094dc959bee784901d1be1ce9de343fd4c8a4f7cce14e9988acb2197b8218193",
+      "why": "#526 owns this follow-up to its own autosave bookkeeping, appended beside the digest above and not in place of it. A list row from Firestore never carries the client write stamp, so preferring the session copy whenever that stamp was missing also beat a later edit from another tab or collaborator, and the next autosave wrote the older body back over both the docs and sharedDocs caches. noteToOpen now keeps the session copy only when the row's server updatedAt is not later than the write that produced it, and adopts the server body when it is, so a stale row afterwards cannot restore the older copy. The rename path moves that clock with the title. A save that fails after the note has been left still does not paint Not saved onto the note on screen, and it now toasts the note's name with a retry. closeEditor, the title blur, the unmount flush, the delete-cancels-not-flushes rule, every Firestore path, the share flows, the menu and the toolbar are unchanged."
+    },
+    {
+      "file": "src/components/AdminDocs.tsx",
+      "digest": "1264b3fa4c5a65f7773cb923e93948fbd4d5494967d010a2ad89d7459867536f",
+      "why": "#526 owns this correction to the server-time comparison, appended beside the digests above and not in place of them. The previous comparison used Date.now() against the row's server updatedAt, so a browser clock ahead of the server kept a stale session body over a later collaborator edit, and a browser clock behind treated a stale refetch as the newer copy. saveDoc and the rename path now read the document back after the write and store that server updatedAt, and noteToOpen compares the row's server updatedAt with that value. The Retry toast skips when a newer save of the note has started or the list row is newer than the last write this session read back, and a successful save of that note dismisses the toast. closeEditor, the title blur, the unmount flush, the delete-cancels-not-flushes rule, the share flows, the menu and the toolbar are unchanged."
+    },
+    {
+      "file": "src/components/AdminDocs.tsx",
+      "digest": "0961ad16512860aafe192ee45a27c69efa7292c6006c8b9033daa52bff2bee39",
+      "why": "#526 owns this correction to the save acknowledgement, appended beside the digests above and not in place of them. saveDoc checked isLatest only before awaiting the read-back, and the remembered version was an independent increment, so an earlier save whose acknowledgement resolved last recorded and cached the older body, showed Saved, and the next reopen autosaved it over the newer one. The check now happens after the acknowledgement, and the remembered version is that save's sequence. The time stored is the acknowledgement snapshot's updatedAt (hasPendingWrites clearing), not a later getDoc, so a collaborator who commits in the gap is not recorded as our write. A missing or failed acknowledgement drops the remembered copy so a null time cannot hide every server row. Retry reads the note with getDocFromServer before sending the captured payload, including when this session has no successful save to compare against the list. closeEditor, the title blur, the unmount flush, the delete-cancels-not-flushes rule, the share flows, the menu and the toolbar are unchanged."
+    }
+  ]
+}

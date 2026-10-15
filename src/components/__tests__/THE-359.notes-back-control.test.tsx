@@ -93,6 +93,17 @@ vi.mock('firebase/firestore', () => ({
   deleteDoc: vi.fn(async () => {}),
   doc: (_db: unknown, _c: string, id: string) => ({ id }),
   getDoc: vi.fn(async () => ({ data: () => ({ active: false }) })),
+  onSnapshot: (_ref: unknown, arg2: unknown, arg3?: unknown) => {
+    const onNext = (typeof arg2 === 'function' ? arg2 : arg3) as (snap: unknown) => void;
+    queueMicrotask(() => {
+      onNext({ metadata: { hasPendingWrites: true, fromCache: false }, data: () => ({}) });
+      onNext({
+        metadata: { hasPendingWrites: false, fromCache: false },
+        data: () => ({ updatedAt: { toMillis: () => 5_000_000 } }),
+      });
+    });
+    return () => {};
+  },
   getDocs: vi.fn(async () => ({ docs: [] })),
   serverTimestamp: () => 'SERVER_TS',
   Timestamp: class {},
@@ -106,7 +117,7 @@ vi.mock('../../utils/plan-features', () => ({ getPlanFeatures: () => ({ sermonNo
 vi.mock('../../utils/tenant-scope', () => ({ hasPlatformOverride: () => false, PLATFORM_TENANT_ID: 'harvest' }));
 vi.mock('../../utils/doc-export', () => ({ exportToPDF: vi.fn(), exportToDOCX: vi.fn(), exportToMarkdown: vi.fn() }));
 vi.mock('../../utils/markdown-import', () => ({ markdownToHtml: (s: string) => s, titleFromMarkdown: () => 'Imported' }));
-vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries: async () => {} }) }));
+vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries: async () => {}, setQueryData: () => {} }) }));
 vi.mock('../../store/useAppStore', () => ({
   useAppStore: () => ({ currentTenantId: 't1', isAuthReady: true, tenantPlan: 'seed', isSuperAdmin: false }),
 }));
