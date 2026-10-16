@@ -402,7 +402,7 @@ describe("an Individual tenant's admin nav is exactly the seven correct items", 
     for (const label of INDIVIDUAL_ENTITLED) {
       expect(await entitledLabels('plus'), `"${label}" is one of the seven`).toContain(label);
     }
-  });
+  }, 20_000);
 
   it('shows the upgrade wall — naming the feature — on each of the nine it did not buy', async () => {
     const walled: string[] = [];

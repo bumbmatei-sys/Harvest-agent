@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { act } from 'react';
+import { act, type CSSProperties } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { Church, FileText, GraduationCap } from 'lucide-react';
@@ -16,8 +16,8 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { THEME_STORAGE_KEY } from '@/lib/theme';
 
-import { AdminDesktopSidebar } from './AdminDesktopSidebar';
-import { AdminHome } from './AdminHome';
+import { AdminDesktopSidebar, SIDEBAR_ICON_WIDTH } from './AdminDesktopSidebar';
+import { AdminHome, AdminHomeView } from './AdminHome';
 import { REASON } from '../dashboard/dashboard-data';
 import { countDatedInWindow, formatKpi, HOME_KPI_SOURCES, sumCentsInWindow } from './home-kpis';
 import { NO_TENANT, READ_FAILED } from './use-home-kpis';
@@ -43,11 +43,12 @@ describe('shell nav mapping', () => {
     expect(ids).not.toContain('sms');
   });
 
-  it('keeps the ministry page and publish placeholders, and drops email without a newsletter tab', () => {
+  it('keeps live public tabs and hides ministry page and publish until those screens exist', () => {
     const publicIds = groupsForSide('public', tabs).flatMap((group) => group.items.map((item) => item.id));
-    expect(publicIds).toContain('church-page');
-    expect(publicIds).toContain('publish');
+    expect(publicIds).toContain('blog');
     expect(publicIds).toContain('courses');
+    expect(publicIds).not.toContain('church-page');
+    expect(publicIds).not.toContain('publish');
     expect(publicIds).not.toContain('newsletter');
   });
 
@@ -146,10 +147,77 @@ describe('desktop sidebar', () => {
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
   });
 
+  it('does not offer ministry page, publish, or the unavailable quick actions', async () => {
+    await act(async () => {
+      root = createRoot(container);
+      root.render(
+        <TooltipProvider>
+          <SidebarProvider defaultOpen={false} style={{ '--sidebar-width-icon': SIDEBAR_ICON_WIDTH } as CSSProperties}>
+            <AdminDesktopSidebar
+              side="public"
+              onSide={() => {}}
+              activeTab="livestream"
+              placeholder={null}
+              tabs={tabs}
+              tenantName="Grace Ministry"
+              logoUrl="https://example.com/logo.png"
+              onNavigate={() => {}}
+              onPlaceholder={() => {}}
+              accountMenu={<button type="button" data-nav-rail-account="" aria-label="My account">Account</button>}
+            />
+          </SidebarProvider>
+        </TooltipProvider>,
+      );
+    });
+    expect(container.textContent).not.toContain('Ministry page');
+    expect(container.textContent).not.toContain('Publish');
+    const trigger = container.querySelector('[data-sidebar="trigger"]');
+    const account = container.querySelector('[data-nav-rail-account]');
+    expect(trigger).toBeTruthy();
+    expect(trigger!.parentElement?.contains(account)).toBe(false);
+    const homeLabel = container.querySelector('[data-nav-tab="dashboard"] span');
+    expect(homeLabel?.className ?? '').toContain('sr-only');
+  });
+
   it('leaves an explicit system choice in place until the toggle is used', () => {
     localStorage.setItem(THEME_STORAGE_KEY, 'system');
     ensureLightDefault();
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('system');
+  });
+});
+
+describe('home copy', () => {
+  it('does not print collection paths or unavailable-feature cards', () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const local = createRoot(host);
+    act(() => {
+      local.render(
+        <AdminHomeView
+          tenantName="Grace Ministry"
+          period={14}
+          onPeriod={() => {}}
+          loading={false}
+          cards={[{
+            id: 'newMembers',
+            label: 'New members',
+            collection: 'users',
+            field: 'createdAt',
+            figure: { kind: 'exact', value: 2 },
+          }]}
+          givingByDay={{ kind: 'unavailable', reason: 'This read did not complete, so no figure can be shown.' }}
+          onOpen={() => {}}
+        />,
+      );
+    });
+    expect(host.textContent).toContain('New members');
+    expect(host.textContent).not.toContain('createdAt');
+    expect(host.textContent).not.toContain('users ·');
+    expect(host.textContent).not.toContain('Email sending from here is not available');
+    expect(host.textContent).not.toContain('Scheduling is not in this version');
+    expect(host.textContent).toContain('New program');
+    act(() => { local.unmount(); });
+    host.remove();
   });
 });
 

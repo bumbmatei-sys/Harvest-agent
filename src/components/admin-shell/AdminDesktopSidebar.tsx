@@ -54,7 +54,10 @@ import {
 } from './shell-nav';
 import { useShellTheme } from './use-shell-theme';
 
-const MENU_BUTTON = 'min-h-11 group-data-[collapsible=icon]:size-11!';
+/** Wide enough for a 44px icon with the inset padding, at the 14.5px desktop root. */
+export const SIDEBAR_ICON_WIDTH = '3.75rem';
+
+const MENU_BUTTON = 'min-h-11 group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:size-11! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0!';
 
 export function AdminDesktopSidebar({
   side,
@@ -101,23 +104,29 @@ export function AdminDesktopSidebar({
   };
 
   return (
-    <Sidebar variant="inset" collapsible="icon" data-shell-side={side}>
-      <SidebarHeader className="gap-3">
-        <div className="flex items-center gap-2 px-1 group-data-[collapsible=icon]:justify-center">
+    <Sidebar
+      variant="inset"
+      collapsible="icon"
+      data-shell-side={side}
+      className="bg-sidebar text-sidebar-foreground group-data-[collapsible=icon]:overflow-hidden group-data-[collapsible=icon]:p-1!"
+    >
+      <SidebarHeader className="gap-3 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-0">
+        <div className="flex items-center gap-2 px-1 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:px-0">
           <img src={logoUrl} alt="" className="size-8 shrink-0 object-contain" />
-          <span className="truncate font-display text-base font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">
+          <span className="min-w-0 flex-1 truncate font-display text-base font-semibold text-sidebar-foreground group-data-[collapsible=icon]:sr-only">
             {tenantName}
           </span>
+          <SidebarTrigger className="relative z-20 ml-auto min-h-11 min-w-11 shrink-0 group-data-[collapsible=icon]:ml-0" />
         </div>
         <Button
           type="button"
           variant="outline"
-          className="min-h-11 w-full justify-start gap-2 px-3 group-data-[collapsible=icon]:size-11 group-data-[collapsible=icon]:px-0"
+          className="min-h-11 w-full justify-start gap-2 border-sidebar-border bg-sidebar px-3 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-11 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
           onClick={() => setPaletteOpen(true)}
           aria-label="Search"
         >
           <Search />
-          <span className="group-data-[collapsible=icon]:hidden">Search</span>
+          <span className="group-data-[collapsible=icon]:sr-only">Search</span>
         </Button>
         <ToggleGroup
           value={[side]}
@@ -126,7 +135,7 @@ export function AdminDesktopSidebar({
             if (picked === 'people' || picked === 'public') onSide(picked);
           }}
           spacing={0}
-          className="w-full justify-center"
+          className="w-full justify-center group-data-[collapsible=icon]:flex-col"
           aria-label="Sidebar side"
         >
           {SHELL_SIDES.map((meta) => {
@@ -161,7 +170,7 @@ export function AdminDesktopSidebar({
                 onClick={() => onNavigate('dashboard')}
               >
                 <Home />
-                <span>Home</span>
+                <span className="group-data-[collapsible=icon]:sr-only">Home</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -172,6 +181,7 @@ export function AdminDesktopSidebar({
           return (
           <Collapsible key={group.id} defaultOpen className="group/collapsible">
             <SidebarGroup
+              className="group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-0"
               {...(live.length > 0 ? {
                 'data-nav-group': group.id,
                 'data-nav-group-tabs': live.map((item) => item.id).join(','),
@@ -179,10 +189,11 @@ export function AdminDesktopSidebar({
               } : {})}
             >
               <SidebarGroupLabel
-                render={<CollapsibleTrigger className="min-h-11" />}
+                className="group-data-[collapsible=icon]:hidden"
+                render={<CollapsibleTrigger className="min-h-11 group-data-[collapsible=icon]:hidden" />}
               >
                 <span>{group.label}</span>
-                <ChevronRight className="ml-auto transition-transform group-data-open/collapsible:rotate-90" />
+                <ChevronRight className="ml-auto transition-transform group-data-open/collapsible:rotate-90 group-data-[collapsible=icon]:hidden" />
               </SidebarGroupLabel>
               <CollapsibleContent>
                 <SidebarGroupContent>
@@ -202,7 +213,7 @@ export function AdminDesktopSidebar({
                             onClick={() => openItem(item.id, item.placeholder)}
                           >
                             <Icon />
-                            <span>{item.label}</span>
+                            <span className="group-data-[collapsible=icon]:sr-only">{item.label}</span>
                           </SidebarMenuButton>
                         </SidebarMenuItem>
                       );
@@ -216,24 +227,21 @@ export function AdminDesktopSidebar({
         })}
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarFooter className="group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-0">
         <Button
           type="button"
           variant="outline"
-          className="min-h-11 w-full justify-start gap-2"
+          className="min-h-11 w-full justify-start gap-2 border-sidebar-border bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-11 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
           onClick={toggle}
           aria-label={resolved === 'dark' ? 'Switch to light' : 'Switch to dark'}
           data-shell-theme={resolved}
         >
           {resolved === 'dark' ? <Sun /> : <Moon />}
-          <span className="group-data-[collapsible=icon]:hidden">
+          <span className="group-data-[collapsible=icon]:sr-only">
             {resolved === 'dark' ? 'Light' : 'Dark'}
           </span>
         </Button>
-        <div className="flex items-center gap-2">
-          <div className="min-w-0 flex-1">{accountMenu}</div>
-          <SidebarTrigger className="min-h-11 min-w-11" />
-        </div>
+        <div className="flex w-full items-center group-data-[collapsible=icon]:justify-center">{accountMenu}</div>
       </SidebarFooter>
 
       <CommandDialog open={paletteOpen} onOpenChange={setPaletteOpen} title="Search" description="Jump to a section">

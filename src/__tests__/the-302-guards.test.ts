@@ -120,6 +120,9 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // APPENDED BY #529 review, nothing above removed or rewritten.
     ['480bca86b8d234277691cd45a00073d4d4695a814c11f4d28a62ccea13210e6f',
       `main + #529 review - the home screen gates recorded giving, member and contact figures behind hasAnalyticsAccess, including the tenant-owner rule, and mounts Overview, Growth, Giving, Engagement and Content only after that grant. The entitlement catalogue renders when NODE_ENV is test. The light default and the lg sidebar query both run in a layout effect.`],
+    // APPENDED BY #529 QA, nothing above removed or rewritten.
+    ['eec73dea210f04b85c17f1dacdcff72162a49e8a152501a68b9a994d928e04cf',
+      `main + #529 QA - the desktop sidebar provider sets --sidebar-width-icon to 3.75rem so the collapsed icon rail fits a 44px control. No nav array, group, permission gate, or screen mount moved.`],
   ],
   // 🔴 A NAMED STOP CONDITION on this ticket: "do not touch `runDodoPlanChange`
   // or `plan-change.ts` unless the fix genuinely requires it". It did not — part

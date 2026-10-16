@@ -21,6 +21,11 @@
       "file": "src/components/MyAccountMenu.tsx",
       "digest": "99ba0f534377371aaf264e16e8707ad57705361f55514b455493a64010dc8fcb",
       "why": "#529 review, appended beside the earlier digests and never over them. The rail variant of the account menu advertises data-nav-rail-account and data-nav-account-labels so THE-334 tests 10 and 10b can read the Settings entitlement off the desktop sidebar. The rows, the w-60 panel, and the manageSettings gate are unchanged."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "eec73dea210f04b85c17f1dacdcff72162a49e8a152501a68b9a994d928e04cf",
+      "why": "#529 QA, appended beside the digests above and never over them. The desktop sidebar provider sets --sidebar-width-icon to 3.75rem so the collapsed icon rail fits a 44px control. No nav array, group, permission gate, or screen mount moved."
     }
   ]
 }

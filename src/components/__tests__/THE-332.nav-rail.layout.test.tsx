@@ -7,6 +7,7 @@
 // here needs a DOM. The shell is rendered to a STRING and every measurement
 // happens inside a real Chromium over CDP.
 import { describe, it, expect, vi, afterAll } from 'vitest';
+import type { CSSProperties } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
@@ -142,6 +143,15 @@ const SELECTORS = {
 };
 
 let browser: MeasuringBrowser;
+let collapsedProbe: {
+  lightBg: string;
+  darkBg: string;
+  darkButton: string;
+  triggerOwnsHit: boolean;
+  overlapsAccount: boolean;
+  clippedIcons: number;
+  shown: string;
+} | null = null;
 const shots: Record<number, { scrollWidth: number; boxes: Record<string, { width: number; height: number; right: number } | null> }> = {};
 const sidebarShots: Record<number, { tab: { width: number; height: number } | null; account: { width: number; height: number } | null }> = {};
 
@@ -188,7 +198,7 @@ setUpOrFail(async () => {
       ),
     };
   }
-  const { AdminDesktopSidebar } = await import('../admin-shell/AdminDesktopSidebar');
+  const { AdminDesktopSidebar, SIDEBAR_ICON_WIDTH } = await import('../admin-shell/AdminDesktopSidebar');
   const { SidebarProvider } = await import('../ui/sidebar');
   const { TooltipProvider } = await import('../ui/tooltip');
   const Icon = () => null;
@@ -226,8 +236,80 @@ setUpOrFail(async () => {
     };
   }
 
+  const collapsedBody = renderToStaticMarkup(
+    <TooltipProvider>
+      <SidebarProvider defaultOpen={false} style={{ '--sidebar-width-icon': SIDEBAR_ICON_WIDTH } as CSSProperties}>
+        <AdminDesktopSidebar
+          side="public"
+          onSide={() => {}}
+          activeTab="livestream"
+          placeholder={null}
+          tabs={sidebarTabs as never}
+          tenantName="Grace Ministry"
+          logoUrl="/logo.png"
+          onNavigate={() => {}}
+          onPlaceholder={() => {}}
+          accountMenu={<button type="button" data-nav-rail-account="" aria-label="My account" className="min-h-11 min-w-11" />}
+        />
+      </SidebarProvider>
+    </TooltipProvider>,
+  );
+  const collapsedFile = path.join(dir, 'collapsed.html');
+  writeFileSync(
+    collapsedFile,
+    `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style><style>${FREEZE}</style></head><body>${collapsedBody}</body></html>`,
+  );
+  await browser.open(`file://${collapsedFile}`);
+  collapsedProbe = await browser.evaluateAt(1440, `(() => {
+    const rail = document.querySelector('[data-sidebar="sidebar"]');
+    const channel = (el) => {
+      const raw = getComputedStyle(el).backgroundColor;
+      const m = raw.match(/\\d+/g);
+      return m ? Number(m[0]) : 255;
+    };
+    const lightBg = getComputedStyle(rail).backgroundColor;
+    const trigger = document.querySelector('[data-sidebar="trigger"]');
+    const account = document.querySelector('[data-nav-rail-account]');
+    const tb = trigger.getBoundingClientRect();
+    const ab = account.getBoundingClientRect();
+    const hit = document.elementFromPoint(tb.left + tb.width / 2, tb.top + tb.height / 2);
+    const overlapsAccount = !(tb.right <= ab.left || ab.right <= tb.left || tb.bottom <= ab.top || ab.bottom <= tb.top);
+    const railBox = rail.getBoundingClientRect();
+    let clippedIcons = 0;
+    for (const svg of rail.querySelectorAll('svg')) {
+      const b = svg.getBoundingClientRect();
+      if (b.width < 12 || b.left < railBox.left - 1 || b.right > railBox.right + 1) clippedIcons += 1;
+    }
+    let shown = '';
+    const walker = document.createTreeWalker(rail, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      const el = node.parentElement;
+      if (!el) continue;
+      const cs = getComputedStyle(el);
+      const box = el.getBoundingClientRect();
+      const clippedAway = cs.position === 'absolute' && parseFloat(cs.width) <= 1;
+      if (cs.display === 'none' || cs.visibility === 'hidden' || clippedAway || box.width < 2 || box.height < 2) continue;
+      shown += node.textContent;
+    }
+    document.documentElement.classList.add('dark');
+    document.documentElement.setAttribute('data-theme', 'dark');
+    const darkBg = getComputedStyle(rail).backgroundColor;
+    const button = rail.querySelector('button[aria-label="Search"]');
+    const darkButton = getComputedStyle(button).backgroundColor;
+    return {
+      lightBg,
+      darkBg,
+      darkButton,
+      triggerOwnsHit: !!(hit && trigger.contains(hit)),
+      overlapsAccount,
+      clippedIcons,
+      shown,
+    };
+  })()`);
+
   // eslint-disable-next-line no-console
-  console.log('THE-332 measurements:', JSON.stringify({ shots, sidebarShots }, null, 1));
+  console.log('THE-332 measurements:', JSON.stringify({ shots, sidebarShots, collapsedProbe }, null, 1));
 }, 600_000);
 
 afterAll(async () => { await browser?.close?.(); });
@@ -297,6 +379,18 @@ describe('THE-332 · measured', () => {
         expect(box!.width, `${key} width at ${v}px`).toBeGreaterThanOrEqual(38);
       }
     }
+  });
+
+  it('collapsed icon mode keeps icons whole, hides label fragments, and leaves the trigger clickable in both themes', () => {
+    expect(collapsedProbe, 'the collapsed sidebar was not measured').toBeTruthy();
+    const probe = collapsedProbe!;
+    expect(probe.clippedIcons, 'an icon is clipped by the collapsed rail').toBe(0);
+    expect(probe.shown, `collapsed rail still shows "${probe.shown}"`).not.toMatch(/Home|CRM|People|Search|Ministry|Publish/);
+    expect(probe.overlapsAccount, 'the expand trigger overlaps the account avatar').toBe(false);
+    expect(probe.triggerOwnsHit, 'the expand trigger is not the element under the pointer').toBe(true);
+    expect(probe.lightBg, 'collapsed rail is not the light sidebar ground').toBe('rgb(255, 255, 255)');
+    expect(probe.darkBg, 'dark mode did not reach the collapsed rail').toBe('rgb(31, 31, 31)');
+    expect(probe.darkButton, 'the collapsed search control stayed on the light ground').not.toBe('rgb(255, 255, 255)');
   });
 
   it('🔴 the static shell no longer reserves a 64px rail', () => {

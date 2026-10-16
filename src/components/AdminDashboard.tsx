@@ -13,7 +13,7 @@ import AdminSettings from './AdminSettings';
 import AdminUpgradePage from './AdminUpgradePage';
 import AdminBranding from './AdminBranding';
 import { AdminHome } from './admin-shell/AdminHome';
-import { AdminDesktopSidebar } from './admin-shell/AdminDesktopSidebar';
+import { AdminDesktopSidebar, SIDEBAR_ICON_WIDTH } from './admin-shell/AdminDesktopSidebar';
 import { NavEntitlementCatalog } from './admin-shell/NavEntitlementCatalog';
 import { ShellPlaceholder } from './admin-shell/ShellPlaceholder';
 import { useLgUp } from './admin-shell/use-lg';
@@ -1007,7 +1007,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   return (
     <AdminHeaderContext.Provider value={headerApi}>
     <TooltipProvider>
-    <SidebarProvider className="h-[100dvh] min-h-0 overflow-hidden bg-surface font-sans">
+    <SidebarProvider
+      className="h-[100dvh] min-h-0 overflow-hidden bg-surface font-sans"
+      style={{ '--sidebar-width-icon': SIDEBAR_ICON_WIDTH } as React.CSSProperties}
+    >
       {lgUp && (
         <AdminDesktopSidebar
           side={shellSide}

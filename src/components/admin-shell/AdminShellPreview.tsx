@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import {
   Church,
   FileText,
@@ -16,7 +16,7 @@ import { DESKTOP_GROUP_ICONS, DESKTOP_GROUP_LABELS } from '@/components/layout/n
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
-import { AdminDesktopSidebar } from './AdminDesktopSidebar';
+import { AdminDesktopSidebar, SIDEBAR_ICON_WIDTH } from './AdminDesktopSidebar';
 import { AdminHomeView } from './AdminHome';
 import { HOME_KPI_ORDER, HOME_KPI_SOURCES } from './home-kpis';
 import { useLgUp } from './use-lg';
@@ -165,7 +165,7 @@ function BeforeChrome() {
   );
 }
 
-function AfterChrome({ side }: { side: ShellSideId }) {
+function AfterChrome({ side, collapsed }: { side: ShellSideId; collapsed: boolean }) {
   const lgUp = useLgUp();
   const [current, setCurrent] = useState<ShellSideId>(side);
   useEffect(() => { setCurrent(side); }, [side]);
@@ -182,7 +182,12 @@ function AfterChrome({ side }: { side: ShellSideId }) {
   });
   return (
     <TooltipProvider>
-      <SidebarProvider className="h-[100dvh] min-h-0 bg-surface">
+      <SidebarProvider
+        key={collapsed ? 'collapsed' : 'open'}
+        defaultOpen={!collapsed}
+        className="h-[100dvh] min-h-0 bg-surface"
+        style={{ '--sidebar-width-icon': SIDEBAR_ICON_WIDTH } as CSSProperties}
+      >
         <div data-preview-view="after" className="contents">
           {lgUp && (
             <AdminDesktopSidebar
@@ -225,23 +230,38 @@ function AfterChrome({ side }: { side: ShellSideId }) {
   );
 }
 
+type PreviewBoot = {
+  view: 'before' | 'after';
+  theme: 'light' | 'dark';
+  side: ShellSideId;
+  collapsed: boolean;
+};
+
+function readBoot(): PreviewBoot {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    view: params.get('view') === 'before' ? 'before' : 'after',
+    theme: params.get('theme') === 'dark' ? 'dark' : 'light',
+    side: params.get('side') === 'public' ? 'public' : 'people',
+    collapsed: params.get('collapsed') === '1',
+  };
+}
+
 export function AdminShellPreview() {
-  const [view, setView] = useState<'before' | 'after'>('after');
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [side, setSide] = useState<ShellSideId>('people');
+  // Null until the query is read, so the sidebar mounts once with the right open state.
+  const [boot, setBoot] = useState<PreviewBoot | null>(null);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setView(params.get('view') === 'before' ? 'before' : 'after');
-    setTheme(params.get('theme') === 'dark' ? 'dark' : 'light');
-    setSide(params.get('side') === 'public' ? 'public' : 'people');
+    setBoot(readBoot());
   }, []);
 
   useEffect(() => {
-    try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch { /* ignore */ }
-    applyTheme(theme);
-  }, [theme]);
+    if (!boot) return;
+    try { localStorage.setItem(THEME_STORAGE_KEY, boot.theme); } catch { /* ignore */ }
+    applyTheme(boot.theme);
+  }, [boot]);
 
-  if (view === 'before') return <BeforeChrome />;
-  return <AfterChrome side={side} />;
+  if (!boot) return null;
+  if (boot.view === 'before') return <BeforeChrome />;
+  return <AfterChrome side={boot.side} collapsed={boot.collapsed} />;
 }

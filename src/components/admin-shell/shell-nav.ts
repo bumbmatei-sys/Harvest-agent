@@ -20,11 +20,11 @@ import {
  *   people — people, care, events, check-in, giving records
  *   public — page, social, email, products
  *
- * Every real entry is an existing admin tab id. Placeholders are the only
- * destinations that are not tabs, and only where this phase's nav names a
- * screen the product does not have yet (church page, post scheduling).
- * Newsletter and SMS stay out unless the caller passes those tab ids, which
- * is how the hidden-feature switches already decide.
+ * Every real entry is an existing admin tab id. Ministry page and Publish
+ * stay out until those screens exist — a row that does not change the URL
+ * leaves the header on the previous page. Newsletter and SMS stay out unless
+ * the caller passes those tab ids, which is how the hidden-feature switches
+ * already decide.
  */
 
 export type ShellSideId = 'people' | 'public';
@@ -145,12 +145,6 @@ const PUBLIC_GROUPS: readonly GroupTemplate[] = [
       { id: 'blog', label: 'Blog', icon: FileText },
       { id: 'branding', label: 'Branding', icon: FileText },
       { id: 'ai', label: 'AI Knowledge', icon: FileText },
-      {
-        id: 'church-page',
-        label: 'Ministry page',
-        icon: FileText,
-        placeholder: 'church-page',
-      },
     ],
   },
   {
@@ -160,12 +154,6 @@ const PUBLIC_GROUPS: readonly GroupTemplate[] = [
     items: [
       { id: 'livestream', label: 'Livestream', icon: Radio },
       { id: 'sms', label: 'SMS', icon: Radio },
-      {
-        id: 'publish',
-        label: 'Publish',
-        icon: Radio,
-        placeholder: 'publish',
-      },
     ],
   },
   {

@@ -33,19 +33,11 @@ type HomeTarget =
 
 const CHECKLIST: readonly { title: string; target: HomeTarget }[] = [
   { title: 'Add your service times', target: { kind: 'tab', id: 'services' } },
-  { title: 'Claim your page address', target: { kind: 'placeholder', id: 'church-page' } },
-  { title: 'Connect your social accounts', target: { kind: 'placeholder', id: 'publish' } },
 ];
 
 const ACTIONS: readonly { title: string; body: string; target: HomeTarget }[] = [
   { title: 'New program', body: 'Open courses', target: { kind: 'tab', id: 'courses' } },
   { title: 'Your events', body: 'Open events', target: { kind: 'tab', id: 'events' } },
-  {
-    title: 'Send an email',
-    body: 'Email sending from here is not available',
-    target: { kind: 'placeholder', id: 'send-email' },
-  },
-  { title: 'Schedule a post', body: 'Scheduling is not in this version', target: { kind: 'placeholder', id: 'publish' } },
 ];
 
 interface TestimonyRow {
@@ -130,11 +122,11 @@ export function AdminHomeView({
       <Card>
         <CardHeader>
           <CardTitle className="font-display text-2xl font-semibold">Set up your ministry</CardTitle>
-          <CardDescription>0 of 3</CardDescription>
+          <CardDescription>0 of {CHECKLIST.length}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <Progress value={0} aria-label="Setup progress">
-            <span className="sr-only">0 of 3</span>
+            <span className="sr-only">0 of {CHECKLIST.length}</span>
           </Progress>
           <ul className="flex flex-col gap-2">
             {CHECKLIST.map((step) => (
@@ -200,17 +192,15 @@ function HomeFigures({
                   {loading ? <Skeleton className="h-9 w-24" /> : shown ?? 'Unavailable'}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                {loading ? (
+              {loading ? (
+                <CardContent>
                   <Skeleton className="h-4 w-full" />
-                ) : card.figure.kind === 'exact' ? (
-                  <p className="text-xs text-muted">
-                    {card.collection} · {card.field}
-                  </p>
-                ) : (
+                </CardContent>
+              ) : card.figure.kind === 'exact' ? null : (
+                <CardContent>
                   <p className="text-xs text-muted">{card.figure.reason}</p>
-                )}
-              </CardContent>
+                </CardContent>
+              )}
             </Card>
           );
         })}

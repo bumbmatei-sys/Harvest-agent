@@ -751,6 +751,9 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // APPENDED BY #529 review, nothing above removed or rewritten.
     ['480bca86b8d234277691cd45a00073d4d4695a814c11f4d28a62ccea13210e6f',
       `main + #529 review - the home screen gates recorded giving, member and contact figures behind hasAnalyticsAccess, including the tenant-owner rule, and mounts Overview, Growth, Giving, Engagement and Content only after that grant. The entitlement catalogue renders when NODE_ENV is test. The light default and the lg sidebar query both run in a layout effect.`],
+    // APPENDED BY #529 QA, nothing above removed or rewritten.
+    ['eec73dea210f04b85c17f1dacdcff72162a49e8a152501a68b9a994d928e04cf',
+      `main + #529 QA - the desktop sidebar provider sets --sidebar-width-icon to 3.75rem so the collapsed icon rail fits a 44px control. No nav array, group, permission gate, or screen mount moved.`],
   ],
   'firestore.indexes.json': [
     ['8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0', 'main at 133d557'],
