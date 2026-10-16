@@ -676,11 +676,16 @@ describe('the plan feature matrix and the Dodo product ids are unchanged', () =>
        in plan-features.test.ts moved in the same commit.
        Previous pins:
          1e07d3aeb9024cdd1841144560d66bd7fa292b39c978f665881a83c90933ce23 (pre-THE-335)
-         3d463af824117ac12e2b50fc1b657e30a5798dee7866a0d769a6558445152dc6 (pre-THE-370) */
+         3d463af824117ac12e2b50fc1b657e30a5798dee7866a0d769a6558445152dc6 (pre-THE-370)
+         603e4eea639edc99c32f54610d2824101d16ced5a6fab26e82ee29974cc50a2d (pre social scheduler)
+
+       The social scheduler adds `socialScheduler: false` on every tier. No
+       price moved. The per-cell contract in plan-features.test.ts moved in
+       the same commit. */
       'the plan feature matrix changed. THE-248 is a REPRICE and must move no '
       + 'feature cell — if a later ticket legitimately does, update this digest '
       + 'and the per-cell contract in plan-features.test.ts together.',
-    ).toBe('603e4eea639edc99c32f54610d2824101d16ced5a6fab26e82ee29974cc50a2d');
+    ).toBe('7e89af17c3a81b20fa333c881dcd7d3dd9c1fb1a8f1423b821ae111b200de8f6');
   });
 
   it('and the tier ladder itself is untouched', () => {

@@ -717,6 +717,8 @@ const ADMIN_DASHBOARD_ACCEPTED = [
   'eec73dea210f04b85c17f1dacdcff72162a49e8a152501a68b9a994d928e04cf',
   // APPENDED BY #529 QA, nothing above removed or rewritten. Home receives the nav's tab ids so a quick action exists only when that route would. No permission term was added.
   '666b4cbf551ba1ed1711105035f9a112f3f9d74686b16bc748ca0a1998a0f078',
+  // APPENDED BY the social scheduler, nothing above removed or rewritten. Public gains a Social tab that mounts the scheduler. The mobile bottom bar, More groups, and the shell class string are unchanged. The plan cell stays false on every tier, so the screen shows the add-on wall.
+  '5b52184914f227832a2e023d3467d351b291412e54c5968bbc0fd45dcaae40d1',
 ];
 
 describe('the files this ticket must not open are byte-identical', () => {

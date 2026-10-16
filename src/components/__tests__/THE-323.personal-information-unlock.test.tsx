@@ -582,6 +582,9 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
     // the same kind as Profile.tsx: neither view spells it in a className, which
     // `the-324-guards.test.ts` asserts on the stripped source.
     expect(users).toEqual([
+      // The social scheduler screenshot harness. The stand-in account button
+      // uses min-h-11. It is not a product screen, and it 404s in production.
+      'src/app/dev/social-scheduler/preview.tsx',
       // 🔴 APPENDED BY THE-338, NOTHING BELOW REMOVED OR REWRITTEN. It sits
       // FIRST for the same reason THE-334's entry does: this list is the
       // sweep's own sorted order, not the order tickets arrived in.
@@ -751,6 +754,13 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // known to produce 44px below the breakpoint and 38px above it rather
       // than assumed to.
       'src/components/admin/GivingDocsLink.tsx',     // THE-368: USES it, as a phone-only 44px tap floor
+      // APPENDED for the social scheduler, nothing around it removed. Sorted
+      // here because this list is the sweep's own order. Both USE the class as
+      // `min-h-11 sm:min-h-[38px]`: 44px below sm, and 38px from sm up, which
+      // is the desktop control floor. A flat min-h-11 would sit under that
+      // floor once the root drops to 14.5px.
+      'src/components/admin/social/SocialScheduler.tsx',
+      'src/components/admin/social/SocialUpgradeWall.tsx',
       'src/components/attach/AttachMenu.tsx',        // THE-331: USES it, as a phone-only 44px tap floor
       // APPENDED FOR #0000, NOTHING AROUND IT REMOVED. Sorted position, not arrival order.
       // PaymentLinkPicker USES the class as `min-h-11 sm:min-h-0` on each provider row,

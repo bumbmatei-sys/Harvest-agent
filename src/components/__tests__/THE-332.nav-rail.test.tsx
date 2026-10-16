@@ -392,8 +392,12 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
     // 🔵 THE-335 — the same three ids the assertion above derives, for the same
     // reason: an id behind a master switch is NAMED in the group arrays (so the
     // flip restores it) but is not built, so it cannot be reached.
+    // Social is a shell-nav destination. It is not one of the 23
+    // DESKTOP_NAV_GROUPS ids and it is not a mobile-nav entry. The desktop
+    // sidebar reaches it; the frozen group arrays do not.
+    const shellOnly = ['social'];
     expect([...reached].sort())
-      .toEqual([...named].filter((id) => !behindAKillSwitch.includes(id)).sort());
+      .toEqual([...named, ...shellOnly].filter((id) => !behindAKillSwitch.includes(id)).sort());
   });
 
   it('🔴 5b · the rail\'s advertised tab model is exactly what its flyout renders', async () => {

@@ -195,7 +195,7 @@ describe('1 — an invitation reaches a volunteer by email with SMS off, on ever
     // …and the plan cell it sits in front of is untouched, so the flip restores
     // the identical Ministry-only answer.
     const NO_ADDONS: TenantAddons = {
-      aiAssistant: 0, adminSeats: 0, unlimitedContacts: false,
+      aiAssistant: 0, adminSeats: 0, unlimitedContacts: false, socialScheduler: 0,
     };
     expect(getEffectiveFeatures('max', NO_ADDONS).smsAutomation, 'the Ministry cell moved').toBe(true);
     expect(SMS_FEATURE_ENABLED, 'this suite is measuring the wrong state').toBe(false);

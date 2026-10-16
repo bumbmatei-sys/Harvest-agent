@@ -101,6 +101,11 @@ export interface TenantAddons {
   adminSeats: number;
   /** True when the Unlimited Contacts add-on is held. */
   unlimitedContacts: boolean;
+  /**
+   * Social scheduler quantity. The webhook is the only writer. No Dodo product
+   * is mapped, so a subscription replacement stores zero until one is.
+   */
+  socialScheduler: number;
 }
 
 export interface TenantConfig {

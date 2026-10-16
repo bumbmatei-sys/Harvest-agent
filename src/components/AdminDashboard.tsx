@@ -37,6 +37,7 @@ import AdminAccounting from './AdminAccounting';
 import AdminForms from './AdminForms';
 import AdminCheckin from './AdminCheckin';
 import AdminLivestream from './AdminLivestream';
+import { SocialScheduler } from './admin/social/SocialScheduler';
 import AdminSms from './AdminSms';
 import AdminEvents from './AdminEvents';
 import AdminServices from './AdminServices';
@@ -848,6 +849,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     navAllows(features?.livestream) &&
       (hasFullAccess || perms.manageLivestream) &&
       { id: 'livestream', label: 'Livestream', icon: Radio },
+    // Social scheduling is an add-on on every tier, so the tab stays visible
+    // and the screen shows the upgrade wall. Gating the entry on the plan cell
+    // would hide the wall, because that cell is false everywhere.
+    hasFullAccess && { id: 'social', label: 'Social', icon: Radio },
     // SMS Automation (Twilio)
     // Master switch first, exactly as the Affiliate entry below does it: while
     // SMS is hidden NOBODY gets the entry, super admin included. The plan and
@@ -1403,6 +1408,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             planAllows(features?.livestream)
               ? <div className="p-4 lg:p-0"><AdminLivestream /></div>
               : <PlanUpgradeScreen featureName="Livestream" featureKey="livestream" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
+          ) : activeTab === 'social' ? (
+            <div className="p-4 lg:p-0"><SocialScheduler onUpgrade={() => go('upgrade')} /></div>
           ) : activeTab === 'sms' ? (
             // With SMS hidden the nav entry is gone, so this branch only catches
             // a typed or bookmarked /admin/sms — and it must not render AdminSms

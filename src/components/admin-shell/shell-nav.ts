@@ -152,6 +152,7 @@ const PUBLIC_GROUPS: readonly GroupTemplate[] = [
     label: 'Social',
     icon: Radio,
     items: [
+      { id: 'social', label: 'Social', icon: Radio },
       { id: 'livestream', label: 'Livestream', icon: Radio },
       { id: 'sms', label: 'SMS', icon: Radio },
     ],

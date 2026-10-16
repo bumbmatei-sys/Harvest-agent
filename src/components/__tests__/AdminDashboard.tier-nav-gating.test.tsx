@@ -546,10 +546,10 @@ describe('3 — a Small Team tenant sees exactly its expected set', () => {
  * A source guard can be satisfied by an unused import; this cannot. */
 describe('3b — an entitled admin is not refused at the surface', () => {
   const OWNS_ADDON = {
-    aiAssistant: 1, adminSeats: 0, contactPacks: 0, unlimitedContacts: false, campuses: 0,
+    aiAssistant: 1, adminSeats: 0, contactPacks: 0, unlimitedContacts: false, campuses: 0, socialScheduler: 0,
   } as const;
   const OWNS_NOTHING = {
-    aiAssistant: 0, adminSeats: 0, contactPacks: 0, unlimitedContacts: false, campuses: 0,
+    aiAssistant: 0, adminSeats: 0, contactPacks: 0, unlimitedContacts: false, campuses: 0, socialScheduler: 0,
   } as const;
 
   /* ⚠️ THE THREE PRICED TIERS, NOT ALL FOUR. `free` is the permissive fallback

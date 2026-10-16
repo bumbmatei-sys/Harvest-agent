@@ -141,6 +141,9 @@ const FLAG_SURFACES: Registry = {
   automatedBlog: { gates: ['app/api/blog/generate/route.ts', 'app/api/blog/auto-generate/route.ts'] },
   customDomain:  { gates: ['components/settings/DomainSection.tsx', 'app/api/domains/provision/route.ts'] },
   customBranding: { gates: ['components/AdminDashboard.tsx'] },
+  // False on every tier. The screen stays reachable so the upgrade wall can
+  // render; the refusal is the API, which reads the lifted cell.
+  socialScheduler: { gates: ['lib/social/access.ts'] },
 
   // ─── check-in: THE-213's defect 1, client AND server ──────────────────────
   checkInSystem: { gates: [
