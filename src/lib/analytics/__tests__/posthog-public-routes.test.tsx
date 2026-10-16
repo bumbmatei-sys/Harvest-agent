@@ -374,7 +374,17 @@ describe('1 — every route in the stated list emits a pageview', () => {
     const catchAll = '/[[...slug]]';
     expect(found).toContain(catchAll);
 
-    expect(found.filter((r) => r !== catchAll).sort()).toEqual(
+    // Dev-only layout preview. Production calls notFound(), so there is no
+    // document to count and it is not an analytics route. A second unlisted
+    // page still fails the comparison below.
+    const devOnlyPreview = '/preview/admin-shell';
+    expect(found).toContain(devOnlyPreview);
+    const preview = readFileSync(path.join(ROOT, 'src/app/preview/admin-shell/page.tsx'), 'utf8');
+    expect(preview).toContain("if (process.env.NODE_ENV === 'production') notFound();");
+    expect(preview).not.toMatch(/PublicRouteAnalytics/);
+    expect(NEXT_ROUTES.map((r) => r.pattern)).not.toContain(devOnlyPreview);
+
+    expect(found.filter((r) => r !== catchAll && r !== devOnlyPreview).sort()).toEqual(
       NEXT_ROUTES.map((r) => r.pattern).sort(),
     );
   });

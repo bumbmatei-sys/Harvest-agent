@@ -7,6 +7,7 @@
 // here needs a DOM. The shell is rendered to a STRING and every measurement
 // happens inside a real Chromium over CDP.
 import { describe, it, expect, vi, afterAll } from 'vitest';
+import type { CSSProperties } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
@@ -14,7 +15,6 @@ import path from 'node:path';
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
 import { setUpOrFail } from '../../test/support/suite-setup';
-import { DENSITY_PX, DESKTOP_CONTROL_MAX_PX } from '../layout/form-layout';
 
 /**
  * THE-332 — the rail, MEASURED, at the six widths this repo measures at.
@@ -143,7 +143,17 @@ const SELECTORS = {
 };
 
 let browser: MeasuringBrowser;
+let collapsedProbe: {
+  lightBg: string;
+  darkBg: string;
+  darkButton: string;
+  triggerOwnsHit: boolean;
+  overlapsAccount: boolean;
+  clippedIcons: number;
+  shown: string;
+} | null = null;
 const shots: Record<number, { scrollWidth: number; boxes: Record<string, { width: number; height: number; right: number } | null> }> = {};
+const sidebarShots: Record<number, { tab: { width: number; height: number } | null; account: { width: number; height: number } | null }> = {};
 
 setUpOrFail(async () => {
   const css = await buildAppCss();
@@ -188,8 +198,122 @@ setUpOrFail(async () => {
       ),
     };
   }
+  const { AdminDesktopSidebar, SIDEBAR_ICON_WIDTH } = await import('../admin-shell/AdminDesktopSidebar');
+  const { SidebarProvider } = await import('../ui/sidebar');
+  const { TooltipProvider } = await import('../ui/tooltip');
+  const Icon = () => null;
+  const sidebarTabs = new Map([['crm', { id: 'crm', label: 'CRM', icon: Icon }]]);
+  const sidebarBody = renderToStaticMarkup(
+    <TooltipProvider>
+      <SidebarProvider>
+        <AdminDesktopSidebar
+          side="people"
+          onSide={() => {}}
+          activeTab="dashboard"
+          placeholder={null}
+          tabs={sidebarTabs as never}
+          tenantName="Grace Ministry"
+          logoUrl="/logo.png"
+          onNavigate={() => {}}
+          onPlaceholder={() => {}}
+          accountMenu={<button type="button" data-nav-rail-account="" aria-label="My account" className="min-h-11 min-w-11" />}
+        />
+      </SidebarProvider>
+    </TooltipProvider>,
+  );
+  const sidebarFile = path.join(dir, 'sidebar.html');
+  writeFileSync(
+    sidebarFile,
+    `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style><style>${FREEZE}</style></head><body>${sidebarBody}</body></html>`,
+  );
+  await browser.open(`file://${sidebarFile}`);
+  for (const v of VIEWPORTS.filter((x) => x >= 1024)) {
+    await browser.measure(v, { tab: '[data-nav-tab]', account: '[data-nav-rail-account]' });
+    const m = await browser.measure(v, { tab: '[data-nav-tab]', account: '[data-nav-rail-account]' });
+    sidebarShots[v] = {
+      tab: m.boxes.tab ? { width: m.boxes.tab.width, height: m.boxes.tab.height } : null,
+      account: m.boxes.account ? { width: m.boxes.account.width, height: m.boxes.account.height } : null,
+    };
+  }
+
+  const collapsedBody = renderToStaticMarkup(
+    <TooltipProvider>
+      <SidebarProvider defaultOpen={false} style={{ '--sidebar-width-icon': SIDEBAR_ICON_WIDTH } as CSSProperties}>
+        <AdminDesktopSidebar
+          side="public"
+          onSide={() => {}}
+          activeTab="livestream"
+          placeholder={null}
+          tabs={sidebarTabs as never}
+          tenantName="Grace Ministry"
+          logoUrl="/logo.png"
+          onNavigate={() => {}}
+          onPlaceholder={() => {}}
+          accountMenu={(
+            <button type="button" data-nav-rail-account="" aria-label="My account" className="flex size-11 items-center justify-center">
+              <span data-shell-account-label>Account</span>
+            </button>
+          )}
+        />
+      </SidebarProvider>
+    </TooltipProvider>,
+  );
+  const collapsedFile = path.join(dir, 'collapsed.html');
+  writeFileSync(
+    collapsedFile,
+    `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style><style>${FREEZE}</style></head><body>${collapsedBody}</body></html>`,
+  );
+  await browser.open(`file://${collapsedFile}`);
+  collapsedProbe = await browser.evaluateAt(1440, `(() => {
+    const rail = document.querySelector('[data-sidebar="sidebar"]');
+    const channel = (el) => {
+      const raw = getComputedStyle(el).backgroundColor;
+      const m = raw.match(/\\d+/g);
+      return m ? Number(m[0]) : 255;
+    };
+    const lightBg = getComputedStyle(rail).backgroundColor;
+    const trigger = document.querySelector('[data-sidebar="trigger"]');
+    const account = document.querySelector('[data-nav-rail-account]');
+    const tb = trigger.getBoundingClientRect();
+    const ab = account.getBoundingClientRect();
+    const hit = document.elementFromPoint(tb.left + tb.width / 2, tb.top + tb.height / 2);
+    const overlapsAccount = !(tb.right <= ab.left || ab.right <= tb.left || tb.bottom <= ab.top || ab.bottom <= tb.top);
+    const railBox = rail.getBoundingClientRect();
+    let clippedIcons = 0;
+    for (const svg of rail.querySelectorAll('svg')) {
+      const b = svg.getBoundingClientRect();
+      if (b.width < 12 || b.left < railBox.left - 1 || b.right > railBox.right + 1) clippedIcons += 1;
+    }
+    let shown = '';
+    const walker = document.createTreeWalker(rail, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      const el = node.parentElement;
+      if (!el) continue;
+      const cs = getComputedStyle(el);
+      const box = el.getBoundingClientRect();
+      const clippedAway = cs.position === 'absolute' && parseFloat(cs.width) <= 1;
+      if (cs.display === 'none' || cs.visibility === 'hidden' || clippedAway || box.width < 2 || box.height < 2) continue;
+      shown += node.textContent;
+    }
+    document.documentElement.classList.add('dark');
+    document.documentElement.setAttribute('data-theme', 'dark');
+    const darkBg = getComputedStyle(rail).backgroundColor;
+    const button = rail.querySelector('button[aria-label="Search"]');
+    const darkButton = getComputedStyle(button).backgroundColor;
+    return {
+      lightBg,
+      darkBg,
+      darkButton,
+      triggerOwnsHit: !!(hit && trigger.contains(hit)),
+      overlapsAccount,
+      clippedIcons,
+      shown,
+    };
+  })()`);
+
   // eslint-disable-next-line no-console
-  console.log('THE-332 measurements:', JSON.stringify(shots, null, 1));
+  console.log('THE-332 measurements:', JSON.stringify({ shots, sidebarShots, collapsedProbe }, null, 1));
 }, 600_000);
 
 afterAll(async () => { await browser?.close?.(); });
@@ -201,18 +325,14 @@ describe('THE-332 · measured', () => {
     }
   });
 
-  it('🔴 1 · the rail is narrow — 64px, the width the founder asked for', () => {
-    /* Below `lg` the rail does not exist; the mobile bottom bar is what draws,
-       and this ticket did not touch it. So the rail is asserted only where it
-       renders. */
-    for (const v of VIEWPORTS.filter((x) => x >= 1024)) {
-      const dash = shots[v].boxes.rail;
-      expect(dash, `no rail at ${v}px`).toBeTruthy();
-      /* The whole nav column, measured through the entry that sits in it. */
-      /* 🔴 THE-334 — 64px, down from THE-332's 88px. The founder asked twice
-         ("our sidebar is too wide", then "the sidebar is still too wide" against
-         a build measured at 88px) and named the size himself. */
-      expect(dash!.right, `the rail is wider than 64px at ${v}px`).toBeLessThanOrEqual(64);
+  it('🔴 1 · the hover rail is not in the shell markup', () => {
+    /* The desktop sidebar mounts on the client, after `useLgUp` reads the
+       viewport. `renderToStaticMarkup` never runs that effect, so this page
+       has the mobile bar and not the new sidebar. The hover rail is gone
+       from the markup entirely. */
+    for (const v of VIEWPORTS) {
+      expect(shots[v].boxes.rail, `the rail rendered at ${v}px`).toBeNull();
+      expect(shots[v].boxes.group, `a rail group rendered at ${v}px`).toBeNull();
     }
   });
 
@@ -245,45 +365,45 @@ describe('THE-332 · measured', () => {
        did — and still caps growth, at 64px, so a rail entry cannot quietly
        become a card. Both axes, because THE-332's own notes record a tab that
        measured 44px tall and 35.6px WIDE. */
-    for (const v of VIEWPORTS.filter((x) => x < 1024)) {
+    for (const v of VIEWPORTS) {
       for (const key of ['rail', 'account', 'group'] as const) {
-        expect(shots[v].boxes[key]?.height ?? 0, `the rail rendered at ${v}px, below lg`).toBe(0);
+        expect(shots[v].boxes[key]?.height ?? 0, `the rail rendered at ${v}px`).toBe(0);
       }
     }
+    /* The hover rail is gone, so the floor moves to the desktop sidebar.
+       It mounts only from lg, where Rule 4's control floor is 38px and
+       min-h-11 at the 14.5px root is 39.875px. Both axes, with a cap so a
+       row cannot quietly become a card. */
     for (const v of VIEWPORTS.filter((x) => x >= 1024)) {
-      for (const key of ['rail', 'group'] as const) {
-        const b = shots[v].boxes[key];
-        expect(b, `${key} missing at ${v}px`).toBeTruthy();
-        for (const axis of ['height', 'width'] as const) {
-          expect(b![axis], `${key} ${axis} is ${b![axis]}px at ${v}px — under the 44px floor`)
-            .toBeGreaterThanOrEqual(44);
-          expect(b![axis], `${key} ${axis} is ${b![axis]}px at ${v}px — a rail entry, not a card`)
-            .toBeLessThanOrEqual(64);
-        }
+      for (const key of ['tab', 'account'] as const) {
+        const box = sidebarShots[v][key];
+        expect(box, `no ${key} box at ${v}px`).toBeTruthy();
+        expect(box!.height, `${key} height at ${v}px`).toBeGreaterThanOrEqual(38);
+        expect(box!.height, `${key} height at ${v}px`).toBeLessThanOrEqual(64);
+        expect(box!.width, `${key} width at ${v}px`).toBeGreaterThanOrEqual(38);
       }
-      /* The account avatar is a 36px circle (`w-9 h-9`), deliberately: it is an
-         identity affordance rather than a nav tile, it is the SAME control the
-         top bar already draws, and THE-334 did not resize it. It is asserted to
-         still be square and still be there, not held to the tile's floor. */
-      const acct = shots[v].boxes.account;
-      expect(acct, `no account avatar at ${v}px`).toBeTruthy();
-      expect(acct!.height, `account avatar at ${v}px`).toBeGreaterThanOrEqual(DENSITY_PX.control);
-      expect(acct!.height, `account avatar at ${v}px`).toBeLessThanOrEqual(DESKTOP_CONTROL_MAX_PX);
     }
   });
 
-  it('🔴 the rail gives the content box 168px back at every desktop width', () => {
-    /* form-layout.ts derives its 1120px page measure from a 232px sidebar. The
-       rail is 88px, so the shell hands 144px back — the number is asserted
-       rather than described, because #429 showed this arithmetic is where a
-       non-monotonic surprise hides. */
+  it('collapsed icon mode keeps icons whole, hides label fragments, and leaves the trigger clickable in both themes', () => {
+    expect(collapsedProbe, 'the collapsed sidebar was not measured').toBeTruthy();
+    const probe = collapsedProbe!;
+    expect(probe.clippedIcons, 'an icon is clipped by the collapsed rail').toBe(0);
+    expect(probe.shown, `collapsed rail still shows "${probe.shown}"`).not.toMatch(/Home|CRM|People|Search|Ministry|Publish|Account/);
+    expect(probe.overlapsAccount, 'the expand trigger overlaps the account avatar').toBe(false);
+    expect(probe.triggerOwnsHit, 'the expand trigger is not the element under the pointer').toBe(true);
+    expect(probe.lightBg, 'collapsed rail is not the light sidebar ground').toBe('rgb(255, 255, 255)');
+    expect(probe.darkBg, 'dark mode did not reach the collapsed rail').toBe('rgb(31, 31, 31)');
+    expect(probe.darkButton, 'the collapsed search control stayed on the light ground').not.toBe('rgb(255, 255, 255)');
+  });
+
+  it('🔴 the static shell no longer reserves a 64px rail', () => {
+    /* The client sidebar is absent from this SSR string, and the bottom bar
+       is `lg:hidden`, so at desktop the content column is the viewport. */
     for (const v of VIEWPORTS.filter((x) => x >= 1024)) {
       const content = shots[v].boxes.content;
       expect(content, `no content box at ${v}px`).toBeTruthy();
-      /* form-layout.ts derives its 1120px page measure from a 232px sidebar.
-         The rail is 64px, so the shell hands 168px back — 24px more than
-         THE-332's 88px rail did. */
-      expect(content!.width, `content box at ${v}px`).toBe(v - 64);
+      expect(content!.width, `content box at ${v}px`).toBe(v);
     }
   });
 });

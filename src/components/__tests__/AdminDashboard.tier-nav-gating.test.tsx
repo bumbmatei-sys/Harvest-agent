@@ -492,9 +492,11 @@ describe('2 — an Individual tenant sees exactly its six', () => {
       ctx.current = { ...ctx.current, tenantPlan: plan };
       await mount({}, '');
       const groups = [...container.querySelectorAll('[data-nav-group]')].map((el) => el.getAttribute('data-nav-group'));
-      expect(groups, `${plan} lost Reach`).toContain('REACH');
-      const reach = container.querySelector('[data-nav-group="REACH"]');
-      expect(reach?.getAttribute('data-nav-group-labels') ?? '', `${plan} Reach has no Check-In`).toContain('Check-In');
+      // The desktop rail's REACH group is gone. Check-In now lives in the
+      // check-in group of the phase-1 sidebar, advertised on the same attribute.
+      expect(groups, `${plan} lost Check-In's group`).toContain('check-in');
+      const checkin = container.querySelector('[data-nav-group="check-in"]');
+      expect(checkin?.getAttribute('data-nav-group-labels') ?? '', `${plan} check-in has no Check-In`).toContain('Check-In');
       await unmount();
     }
   });

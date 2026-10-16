@@ -208,6 +208,11 @@ describe('no tracked text file contains a CR byte', () => {
  * digest. This test pins that the declaration and reality agree in BOTH
  * directions: nothing binary is left to the heuristic, and nothing text is
  * wrongly excused from the CR sweep above.
+ *
+ * #529 appended the phase-1 proof shots under docs/redesign/phase-1/. They are
+ * PNGs, so `*.png binary` already covers them. The expected list below grew
+ * by those ten paths, then by the two collapsed 1440px shots, and every path
+ * that was already here stayed.
  */
 describe('binaries are not treated as text', () => {
   it('declares binary extensions in .gitattributes', () => {
@@ -219,9 +224,24 @@ describe('binaries are not treated as text', () => {
     expect(undeclared, `binary but not declared:\n${undeclared.join('\n')}`).toEqual([]);
   });
 
-  it('the binary set is exactly the 13 PNGs this repo tracks', () => {
+  it('the binary set is the original 13 PNGs plus the #529 proof shots', () => {
     const binaries = FILES.filter((rel) => isDeclaredBinary(rel));
     expect(binaries).toEqual([
+      // APPENDED BY #529, nothing below removed. Before and after shots at
+      // 1440 and 390, light and dark, so the review can see them without a login.
+      'docs/redesign/phase-1/1440-after-people-dark.png',
+      'docs/redesign/phase-1/1440-after-people-light.png',
+      'docs/redesign/phase-1/1440-after-public-dark.png',
+      'docs/redesign/phase-1/1440-after-public-light.png',
+      'docs/redesign/phase-1/1440-before-dark.png',
+      'docs/redesign/phase-1/1440-before-light.png',
+      // APPENDED BY #529 QA, nothing above removed. Collapsed icon mode, light and dark, at 1440.
+      'docs/redesign/phase-1/1440-collapsed-dark.png',
+      'docs/redesign/phase-1/1440-collapsed-light.png',
+      'docs/redesign/phase-1/390-after-dark.png',
+      'docs/redesign/phase-1/390-after-light.png',
+      'docs/redesign/phase-1/390-before-dark.png',
+      'docs/redesign/phase-1/390-before-light.png',
       'mockups/screenshot-canvas.png',
       'mockups/screenshot-integrations.png',
       'mockups/screenshot-newsletter.png',

@@ -151,7 +151,14 @@ const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
   const run = (fn?: () => void) => { setOpen(false); fn?.(); };
 
   return (
-    <div className="relative" ref={ref}>
+    <div
+      className="relative"
+      ref={ref}
+      {...(variant === 'rail' ? {
+        'data-nav-rail-account': '',
+        'data-nav-account-labels': onOpenSettings ? 'Settings' : '',
+      } : {})}
+    >
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="My account"

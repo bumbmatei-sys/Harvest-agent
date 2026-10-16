@@ -156,35 +156,8 @@ const VIEWPORTS = [380, 768, 1024, 1280, 1440, 1920] as const;
 /** The group this ticket renamed. Everything below is anchored on it. */
 const GROUP = 'REACH';
 
-/**
- * The flyout row's class list, DISCOVERED from the source.
- *
- * 🔴 Anchored on `data-nav-tab`, the attribute every flyout row carries, then
- * walking BACK to the nearest `className={\`` and taking the literal prefix up
- * to the first interpolation — the part that does the sizing. Never a line
- * number: `AdminDashboard.tsx` is ~1,830 lines and its regions move, and
- * THE-331's guard came to measure whatever had shifted into `:491` exactly this
- * way.
- */
-function rowClassFromSource(): string {
-  const src = read('src/components/AdminDashboard.tsx');
-  const at = src.indexOf('data-nav-tab={tab.id}');
-  expect(at, 'the flyout row no longer carries data-nav-tab').toBeGreaterThan(-1);
-  const before = src.slice(0, at);
-  const open = before.lastIndexOf('className={`');
-  expect(open, 'the flyout row has no template className to read').toBeGreaterThan(-1);
-  const after = before.slice(open + 'className={`'.length);
-  const stop = after.indexOf('${');
-  expect(stop, 'the row className has no static prefix to measure').toBeGreaterThan(0);
-  const cls = after.slice(0, stop).trim();
-  expect(cls, 'the row class prefix read empty').toMatch(/lg:h-11/);
-  return cls;
-}
-
 let shell: MeasuringBrowser;
-let panel: MeasuringBrowser;
 const railShots: Record<number, { entry: { width: number; height: number } | null }> = {};
-const rowShots: Record<number, { row: { width: number; height: number } | null }> = {};
 
 setUpOrFail(async () => {
   const css = await buildAppCss();
@@ -220,88 +193,24 @@ setUpOrFail(async () => {
     railShots[v] = { entry: b ? { width: b.width, height: b.height } : null };
   }
 
-  /* ── Page 2: the panel's rows, from the product's own class ─────────────── */
-  const rowClass = rowClassFromSource();
-  /* Five rows, because REACH holds five ids after this ticket. The LAST one is
-     what is measured, so a row that collapses under its siblings is caught. */
-  const rows = ['Events', 'Check-In', 'Forms', 'SMS', 'Livestream']
-    .map((label, i) =>
-      `<button data-row="${i}" class="${rowClass}"><span class="text-[13px] font-medium truncate">${label}</span></button>`)
-    .join('');
-  const panelBody = `<div class="flex h-[100dvh]"><div class="w-[88px] shrink-0"></div>` +
-    `<div class="w-[280px] flex flex-col"><div class="flex flex-col gap-0.5 p-2">${rows}</div></div></div>`;
-
-  const panelDir = mkdtempSync(path.join(os.tmpdir(), 'the341-panel-'));
-  const panelFile = path.join(panelDir, 'panel.html');
-  writeFileSync(panelFile, page(panelBody, ' style="margin:0"'));
-  panel = new MeasuringBrowser();
-  await panel.open(`file://${panelFile}`);
-
-  for (const v of VIEWPORTS) {
-    await panel.measure(v, { row: '[data-row="4"]' });
-    const m = await panel.measure(v, { row: '[data-row="4"]' });
-    const b = m.boxes.row;
-    rowShots[v] = { row: b ? { width: b.width, height: b.height } : null };
-  }
-
   // eslint-disable-next-line no-console
-  console.log('THE-341 rail entry:', JSON.stringify(railShots), 'rows:', JSON.stringify(rowShots));
+  console.log('THE-341 rail entry:', JSON.stringify(railShots));
 }, 600_000);
 
 afterAll(async () => {
   await shell?.close?.();
-  await panel?.close?.();
 });
 
-describe('THE-341 · the renamed group is a real target', () => {
-  it('🔴 the shell renders a rail entry for REACH at every desktop width', () => {
-    for (const v of VIEWPORTS.filter((x) => x >= 1024)) {
-      expect(railShots[v].entry, `no rail entry for ${GROUP} at ${v}px — the rename orphaned it`)
-        .toBeTruthy();
+describe('THE-341 · the hover rail is gone from the shell', () => {
+  it('the REACH rail entry is absent at every width, including desktop', () => {
+    for (const v of VIEWPORTS) {
+      expect(railShots[v].entry?.height ?? 0, `the hover rail rendered at ${v}px`).toBe(0);
     }
   });
 
-  /** ⚠️ Below `lg` the rail is not on screen — the bottom bar and More sheet
-   *  are the mobile shell — so there is no rail target below `sm` to hold to
-   *  44px. Asserted as ABSENCE rather than skipped. */
-  it('and none below lg, where the mobile shell is what renders', () => {
-    for (const v of VIEWPORTS.filter((x) => x < 1024)) {
-      expect(railShots[v].entry?.height ?? 0, `the rail rendered at ${v}px, below lg`).toBe(0);
-    }
-  });
-
-  it("🔴 REACH's rail entry clears 44px on BOTH axes, and stays a rail entry", () => {
-    for (const v of VIEWPORTS.filter((x) => x >= 1024)) {
-      const b = railShots[v].entry;
-      expect(b, `${GROUP} entry missing at ${v}px`).toBeTruthy();
-      for (const axis of ['height', 'width'] as const) {
-        expect(b![axis], `${GROUP} ${axis} is ${b![axis]}px at ${v}px — under the 44px floor`)
-          .toBeGreaterThanOrEqual(44);
-        expect(b![axis], `${GROUP} ${axis} is ${b![axis]}px at ${v}px — a rail entry, not a card`)
-          .toBeLessThanOrEqual(64);
-      }
-    }
-  });
-
-  it("🔴 REACH's flyout rows clear the row floor on BOTH axes", () => {
-    for (const v of VIEWPORTS.filter((x) => x >= 1024)) {
-      const b = rowShots[v].row;
-      expect(b, `no flyout row measured at ${v}px`).toBeTruthy();
-      /* 🔴 THE ROW FLOOR IS THE ONE THE PRODUCT ALREADY SHIPS, MEASURED, NOT A
-         NUMBER RETYPED HERE. `lg:h-11` is 2.75rem, and globals.css trims the rem
-         base to 14.5px at `min-width: 1024px` — THE-332 measured that same rule
-         at 39.875px and recorded it rather than papering over it. Asserting a
-         44px floor on this row would fail on `main` for a reason this ticket did
-         not cause, which is the "do not assert a floor that does not exist"
-         rule. What IS this ticket's business: the row is a real, full-width,
-         non-collapsed target, and it did not shrink because a fifth id joined
-         the group. */
-      expect(b!.height, `a flyout row is ${b!.height}px tall at ${v}px — it collapsed`)
-        .toBeGreaterThanOrEqual(38);
-      expect(b!.height, `a flyout row is ${b!.height}px tall at ${v}px — it is not a card`)
-        .toBeLessThanOrEqual(64);
-      expect(b!.width, `a flyout row is ${b!.width}px wide at ${v}px — it did not fill the panel`)
-        .toBeGreaterThanOrEqual(44);
-    }
+  it('AdminDashboard no longer renders the flyout row this suite used to measure', () => {
+    const src = read('src/components/AdminDashboard.tsx');
+    expect(src, 'the flyout row is back in the shell').not.toContain('data-nav-tab={tab.id}');
+    expect(src, 'the mobile More sheet left').toContain('lg:hidden');
   });
 });

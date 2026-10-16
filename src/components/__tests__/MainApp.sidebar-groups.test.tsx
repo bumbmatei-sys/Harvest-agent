@@ -246,16 +246,26 @@ describe('a sidebar group with no visible items does not render', () => {
     }
   });
 
-  it('both grouped sidebars obtain their groups from the one shared rule', () => {
+  it('the member sidebar still uses the shared emptiness rule', () => {
     // A second inline copy of `items.length === 0` is how the two sidebars
     // drifted apart in the first place — the admin one had the rule and the
-    // member one did not.
-    for (const file of ['src/components/MainApp.tsx', 'src/components/AdminDashboard.tsx']) {
-      const src = read(file);
-      expect(src, `${file} no longer imports the shared emptiness rule`)
-        .toMatch(/import \{ visibleNavGroups \} from '\.\/layout\/nav-groups'/);
-      expect(src, `${file} does not run its groups through the rule`).toContain('visibleNavGroups(');
-    }
+    // member one did not. The member sidebar still goes through that helper.
+    const src = read('src/components/MainApp.tsx');
+    expect(src, 'MainApp no longer imports the shared emptiness rule')
+      .toMatch(/import \{ visibleNavGroups \} from '\.\/layout\/nav-groups'/);
+    expect(src, 'MainApp does not run its groups through the rule').toContain('visibleNavGroups(');
+  });
+
+  it('the admin desktop sidebar still drops a group that has no items', () => {
+    // Phase 1 removed the rail that imported visibleNavGroups. The desktop
+    // groups are a different shape, so the omission lives in shell-nav, and
+    // the mobile More sheet still refuses an empty group on its own.
+    const shell = read('src/components/admin-shell/shell-nav.ts');
+    expect(shell, 'an empty desktop group would still draw its heading')
+      .toMatch(/if \(items\.length > 0\)/);
+    const admin = read('src/components/AdminDashboard.tsx');
+    expect(admin, 'the mobile drawer would draw an empty group heading')
+      .toMatch(/if \(groupTabs\.length === 0\) return null;/);
   });
 });
 

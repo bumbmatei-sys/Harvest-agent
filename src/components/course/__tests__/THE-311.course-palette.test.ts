@@ -468,7 +468,19 @@ describe('5 — no new token was defined', () => {
 
   it('and no ui primitive, dependency or digest ledger moved', () => {
     expect(changed('src/components/ui/'), 'a primitive or its digest ledger was touched').toEqual([]);
-    expect(changed('package.json', 'package-lock.json'), 'a dependency was added').toEqual([]);
+    // A diff that must be empty is false on the branch that adds the one
+    // approved dependency and true again after it merges, so it cannot be the
+    // guard. The dependency NAMES are. Empty diffs still pass this.
+    const touched = changed('package.json', 'package-lock.json');
+    expect(touched.filter((f) => f !== 'package.json' && f !== 'package-lock.json')).toEqual([]);
+    const deps = Object.keys(JSON.parse(src('package.json')).dependencies);
+    expect(deps).toContain('@tanstack/react-table');
+    expect(deps.filter((name) => name.startsWith('@tanstack/')).sort()).toEqual([
+      '@tanstack/react-query',
+      '@tanstack/react-query-devtools',
+      '@tanstack/react-table',
+    ]);
+    expect(deps).toHaveLength(70);
   });
 });
 

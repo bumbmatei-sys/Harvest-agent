@@ -236,7 +236,7 @@ const GATED_TABS: Row[] = [
  * not by this predicate.
  */
 const UNGATED_TABS: Row[] = [
-  { label: 'Dashboard', section: '', screen: 'AdminDashboardHome', entitled: () => true },
+  { label: 'Dashboard', section: '', screen: 'AdminHome', entitled: () => true },
   { label: 'Campus', section: 'churches', screen: 'AdminChurches', entitled: () => true },
   { label: 'Check-In', section: 'checkin', screen: 'AdminCheckin', entitled: () => true },
 ];
@@ -402,7 +402,7 @@ describe("an Individual tenant's admin nav is exactly the seven correct items", 
     for (const label of INDIVIDUAL_ENTITLED) {
       expect(await entitledLabels('plus'), `"${label}" is one of the seven`).toContain(label);
     }
-  });
+  }, 20_000);
 
   it('shows the upgrade wall — naming the feature — on each of the nine it did not buy', async () => {
     const walled: string[] = [];

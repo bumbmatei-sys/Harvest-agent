@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { LayoutDashboard, Church, FileText, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, ListChecks, QrCode, Radio, ExternalLink, Link2, Palette, Bell, X, Library, HandCoins, UserPlus } from 'lucide-react';
 import AdminBlog from './AdminBlog';
@@ -12,7 +12,13 @@ import AdminLibraryCourses from './AdminLibraryCourses';
 import AdminSettings from './AdminSettings';
 import AdminUpgradePage from './AdminUpgradePage';
 import AdminBranding from './AdminBranding';
-import AdminDashboardHome from './AdminDashboardHome';
+import { AdminHome } from './admin-shell/AdminHome';
+import { AdminDesktopSidebar, SIDEBAR_ICON_WIDTH } from './admin-shell/AdminDesktopSidebar';
+import { NavEntitlementCatalog } from './admin-shell/NavEntitlementCatalog';
+import { ShellPlaceholder } from './admin-shell/ShellPlaceholder';
+import { useLgUp } from './admin-shell/use-lg';
+import { ensureLightDefault } from './admin-shell/use-shell-theme';
+import { sideForTab, type ShellPlaceholderId, type ShellSideId } from './admin-shell/shell-nav';
 import AffiliateSection from './AffiliateSection';
 import NewsletterEditor from './NewsletterEditor';
 import NewsletterCampaigns from './NewsletterCampaigns';
@@ -55,11 +61,8 @@ import { useAppStore } from '../store/useAppStore';
 import { useCurrentUser } from '../hooks/queries/useUserQueries';
 import { useTenant as useTenantDoc } from '../hooks/queries/useTenantQueries';
 import { useTenant } from '../contexts/TenantContext';
-import { visibleNavGroups } from './layout/nav-groups';
-import { NavRailFlyout, NavRailProvider, NavRailContentGap } from './layout/nav-rail';
-import { DESKTOP_GROUP_ICONS, DESKTOP_GROUP_LABELS, DESKTOP_GROUP_SECTIONS } from './layout/nav-rail-groups';
-import { Separator } from '@/components/ui/separator';
-import { NavRailRecents, RAIL_RECENT_GROUPS } from './layout/nav-rail-recents';
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { SLUG_TO_TAB, TAB_TO_SLUG } from '../lib/admin-sections';
 /**
  * THE-351 — the PER-TENANT inbox: someone said they paid for a ticket and a
@@ -77,32 +80,6 @@ import { SLUG_TO_TAB, TAB_TO_SLUG } from '../lib/admin-sections';
 import { TenantInbox } from './inbox/TenantInbox';
 
 const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
-
-/**
- * THE-332 — the active row's ink, named ONCE.
- *
- * The four pre-existing sites that spell this string are left byte-identical
- * (this file is digest-pinned and the rule is APPEND, never substitute), but
- * the rail added three more places that need it, and three more copies of a
- * hex fallback is how a colour literal quietly multiplies. So the NEW code
- * shares one constant: THE-327's budget of nine code-level colour literals in
- * this file is met exactly — one removed with the rail's wordmark, one added
- * here — and a future edit to the fallback has one place to happen, not four.
- */
-const RAIL_ACTIVE_INK = 'var(--ink-on-accent-tint, var(--brand-color, #C9963A))';
-
-/**
- * THE-334 — the short word a DIRECT rail entry wears under its icon.
- *
- * The rail's four group entries take theirs from `DESKTOP_GROUP_LABELS`; this
- * map is for the entries that are a tab rather than a group. Only `dashboard`
- * is one now — `settings` left the rail entirely, into the account menu the
- * founder asked for at the rail's floor — and it reads `Home`, which is both
- * ClickUp's word for the same entry and short enough for the rail's measure,
- * where `Dashboard` at nine characters was not. Absence falls back to the tab's
- * own label, so a future direct entry is legible before it is listed here.
- */
-const RAIL_TAB_LABELS: Record<string, string> = { dashboard: 'Home' };
 
 // URL slug ↔ internal tab id. Most ids map 1:1; only `ai` differs, so the URL
 // reads nicely (/admin/ai-knowledge).
@@ -197,7 +174,7 @@ const GROUPED_MORE_IDS = new Set(MORE_GROUPS.flatMap((g) => g.ids));
 // Desktop sidebar groups (branded — matches the admin mockup). Dashboard sits
 // above the groups; Settings sits below them. Any id the admin isn't permitted
 // for is dropped, and a group with no permitted tabs is omitted entirely.
-const DESKTOP_NAV_GROUPS: { label: string; ids: string[] }[] = [
+export const DESKTOP_NAV_GROUPS: { label: string; ids: string[] }[] = [
   { label: 'CONTENT', ids: ['blog', 'courses', 'newsletter', 'ai', 'docs'] },
   // 🔴 THE-326 — `services` in MINISTRY here too, in the SAME position. The two
   // arrays are the mobile drawer and the desktop sidebar; a section in one and
@@ -276,6 +253,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const [canvasId, setCanvasId] = useState<string | null>(null);
   const [canvasName, setCanvasName] = useState<string>('');
   const [newsletterView, setNewsletterView] = useState<'list' | 'editor'>('list');
+  const [shellSide, setShellSide] = useState<ShellSideId>('people');
+  const [shellPlaceholder, setShellPlaceholder] = useState<ShellPlaceholderId | null>(null);
+  const lgUp = useLgUp();
+  useLayoutEffect(() => { ensureLightDefault(); }, []);
   // Nav customizer state
   const [showNavCustomizer, setShowNavCustomizer] = useState(false);
   // Ordered IDs for the bottom bar; null means use default (first 4 from allTabs)
@@ -313,23 +294,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const go = useCallback((id: string) => {
     setShowMoreSheet(false);
     setNewsletterView('list');
+    setShellPlaceholder(null);
+    const side = sideForTab(id);
+    if (side) setShellSide(side);
     navigate(id === 'dashboard' ? '/admin' : `/admin/${TAB_TO_SLUG[id] || id}`);
-  }, [navigate]);
-
-  /** THE-334 — open a tab AND deep-link to one item inside it.
-   *
-   *  The nav rail's "Recent" footer needs to land ON the note or the person you
-   *  picked, not merely on the screen that lists them. The `:itemId` route
-   *  segment already exists and three screens already consume it (AdminDocs via
-   *  `initialDocId`, AdminCRM via `initialContactId`, AdminFundraising via
-   *  `initialCampaignId`), each clearing it through `clearItemId`. This is the
-   *  same navigation `go` does, with that segment appended when the caller has
-   *  one — callers pass no id for a screen that does not read it. */
-  const goItem = useCallback((id: string, itemId?: string) => {
-    setShowMoreSheet(false);
-    setNewsletterView('list');
-    const slug = id === 'dashboard' ? '' : (TAB_TO_SLUG[id] || id);
-    navigate(itemId && slug ? `/admin/${slug}/${itemId}` : (slug ? `/admin/${slug}` : '/admin'));
   }, [navigate]);
 
   /** Back arrow: go where the user came from, or fall back to the dashboard. */
@@ -971,15 +939,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // MainApp, which did NOT have the rule and drew a "SUPPORT US" heading over
   // nothing for a free member, now shares this one implementation rather than
   // growing a second copy of it.
-  const desktopSidebarGroups = visibleNavGroups(
-    DESKTOP_NAV_GROUPS.map((group) => ({
-      label: group.label,
-      items: group.ids
-        .map((id) => desktopNavById.get(id))
-        .filter(Boolean) as { id: string; label: string; icon: any }[],
-    })),
-  );
-
   // If the active tab is not in the allowed tabs, switch to the first allowed tab
   const allTabIds = allTabs.map(t => t.id).join(',');
   useEffect(() => {
@@ -1041,172 +1000,37 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     );
   };
 
-  /** A single branded desktop sidebar row (used for Dashboard, each group item,
-   *  and Settings). Active = gold-tint pill + gold icon/label; inactive = warm. */
-  const renderDesktopTab = (tab: { id: string; label: string; icon: any }) => {
-    const Icon = tab.icon;
-    const isActive = activeTab === tab.id;
-    const showDot =
-      (tab.id === 'churches' && pendingChurchesCount > 0) ||
-      (tab.id === 'inbox' && unreadCount > 0);
-    return (
-      <button
-        key={tab.id}
-        onClick={() => go(tab.id)}
-        className={`flex items-center rounded-xl transition-all relative shrink-0 lg:justify-start lg:gap-3 lg:w-full lg:h-11 lg:px-3 ${
-          isActive
-            // The active pill is an accent TINT, so it has to composite over
-            // whatever surface is under it. Mixing over hardcoded `white` (as
-            // this did) pins it to a near-white #F6EEDF in every theme: on a
-            // dark sidebar that is a glaring bright block at 14.5:1 against
-            // its own background, and the gold label on it falls to 2.30:1.
-            // Same bug, same fix as the twelve member screens in #340, and as
-            // the More-drawer row above already does — `white` -> `transparent`.
-            // Light is unchanged BY CONSTRUCTION: the sidebar is
-            // --surface-raised (#FFFFFF) in light in both families, so mixing
-            // over transparent composites onto the very white this hardcoded.
-            //
-            // The dark tint is stepped down to 12% because the label sits ON
-            // it: at 16% the pill lifts far enough off the ground that gold
-            // reaches only 4.48:1 on Classic's neutral grey, just under AA.
-            // 12% clears it in both families (5.15:1 Harvest, 4.78:1 Classic)
-            // and still reads clearly as a selected state. Mode-dependent
-            // accent opacity is the same call globals.css already makes for
-            // --ring-gold (35% -> 48%) and --border-gold (40% -> 52%).
-            //
-            // The label/icon below paint in --ink-on-accent-tint: the raw
-            // accent in light (unchanged), the chip-corrected accent in dark,
-            // so a dark white-label accent stays readable on the tint it sits
-            // on. Harvest gold resolves to itself in both.
-            ? 'lg:bg-[color-mix(in_srgb,var(--brand-color)_16%,transparent)] dark:lg:bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)]'
-            : 'text-muted hover:text-strong lg:hover:bg-surface-sunken'
-        }`}
-        style={isActive ? { color: 'var(--ink-on-accent-tint, var(--brand-color, #C9963A))' } : undefined}
-        data-nav-tab={tab.id}
-      >
-        <Icon
-          size={20}
-          strokeWidth={isActive ? 2.4 : 2}
-          className="shrink-0"
-          style={isActive ? { color: 'var(--ink-on-accent-tint, var(--brand-color, #C9963A))' } : undefined}
-        />
-        <span className="text-[13px] font-medium truncate">{tab.label}</span>
-        {showDot && (
-          <span className="absolute bg-red-500 rounded-full border-2 border-white top-1/2 -translate-y-1/2 right-3 w-2.5 h-2.5"></span>
-        )}
-      </button>
-    );
-  };
-
-  /** THE-334 — a group's rows, BLOCKED into sections with separators between.
-   *
-   *  ClickUp's reference panel is sectioned rather than one long list, and the
-   *  founder gave MINISTRY's blocks explicitly: Campus · CRM · Signups, then
-   *  Services · Community · Forms, then Fundraising · Donations · Accounting.
-   *
-   *  🔴 NOTHING CAN GO MISSING HERE. The blocks are read from
-   *  `DESKTOP_GROUP_SECTIONS`, which is PRESENTATION ONLY — membership and
-   *  permission stay with `DESKTOP_NAV_GROUPS.ids` and `visibleNavGroups`. Any
-   *  permitted tab this map forgets to name still renders, in a trailing block
-   *  of its own, so a new tab added to a group without being listed loses its
-   *  place in the order and nothing else. A group with no entry renders as one
-   *  block, exactly as it did before. */
-  const renderGroupRows = (label: string, items: { id: string; label: string; icon: any }[]) => {
-    const blocks = DESKTOP_GROUP_SECTIONS[label];
-    if (!blocks) return items.map(renderDesktopTab);
-
-    const byId = new Map(items.map((t) => [t.id, t]));
-    const placed = new Set<string>();
-    const sections = blocks
-      .map((ids) => {
-        const rows = ids.map((id) => byId.get(id)).filter(Boolean) as typeof items;
-        rows.forEach((t) => placed.add(t.id));
-        return rows;
-      })
-      .filter((rows) => rows.length > 0);
-
-    // Whatever the map did not name — the safety net described above.
-    const leftover = items.filter((t) => !placed.has(t.id));
-    if (leftover.length) sections.push(leftover);
-
-    return sections.map((rows, i) => (
-      <React.Fragment key={rows[0].id}>
-        {i > 0 && (
-          <Separator
-            data-nav-rail-section-break={label}
-            className="my-1.5"
-          />
-        )}
-        {rows.map(renderDesktopTab)}
-      </React.Fragment>
-    ));
-  };
-
-  /** THE-334 — a RAIL button: icon with a VISIBLE TEXT LABEL under it.
-   *
-   *  THE-332 drew these icon-only, with the name reaching a screen reader
-   *  through `aria-label` and nobody else. 🔴 The founder's complaint is exactly
-   *  that — "there's no title under to know what category is it" — and ClickUp's
-   *  rail, his reference, labels every entry in visible text. So the label is
-   *  real text now, not `sr-only` and not a tooltip.
-   *
-   *  ⚠️ IT COSTS NO WIDTH. The words were shortened rather than the rail
-   *  widened (the founder picked the set: Home · Content · People · Live ·
-   *  Grow), because he ALSO asked for the nav to be less wide. The longest is
-   *  seven characters, which fits the 56px of measure inside the rail's
-   *  existing `lg:w-[88px]` — so no width is invented and none changes.
-   *
-   *  The target GREW: an icon over a label is ~52px tall against the old 44px
-   *  box, so the 44px floor is cleared more comfortably than before, on both
-   *  axes, and `min-h-11` states the floor rather than leaving it to line-height. */
-  const renderRailTab = (tab: { id: string; label: string; icon: any }) => {
-    const Icon = tab.icon;
-    const isActive = activeTab === tab.id;
-    const showDot =
-      (tab.id === 'churches' && pendingChurchesCount > 0) ||
-      (tab.id === 'inbox' && unreadCount > 0);
-    return (
-      <button
-        key={tab.id}
-        onClick={() => go(tab.id)}
-        aria-label={RAIL_TAB_LABELS[tab.id] ?? tab.label}
-        aria-current={isActive ? 'page' : undefined}
-        data-nav-rail-tab={tab.id}
-        className={`flex flex-col items-center justify-center gap-1 rounded-xl transition-all relative shrink-0 min-h-11 w-full py-2 ${
-          isActive
-            ? 'bg-[color-mix(in_srgb,var(--brand-color)_16%,transparent)] dark:bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)]'
-            : 'text-muted hover:text-strong hover:bg-surface-sunken'
-        }`}
-        style={isActive ? { color: RAIL_ACTIVE_INK } : undefined}
-      >
-        <Icon
-          size={20}
-          strokeWidth={isActive ? 2.4 : 2}
-          className="shrink-0"
-          style={isActive ? { color: RAIL_ACTIVE_INK } : undefined}
-        />
-        <span data-nav-rail-label={tab.id} className="text-[10px] font-medium leading-none">
-          {RAIL_TAB_LABELS[tab.id] ?? tab.label}
-        </span>
-        {showDot && (
-          <span className="absolute bg-red-500 rounded-full border-2 border-white top-1 right-1 w-2.5 h-2.5"></span>
-        )}
-      </button>
-    );
-  };
-
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen bg-surface"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #C9963A)', borderTopColor: 'transparent' }}></div></div>;
   }
 
   return (
     <AdminHeaderContext.Provider value={headerApi}>
-    {/* 🔴 THE-334 — the provider wraps the WHOLE shell, not just the rail: the
-        content column has to know when a panel is PINNED so it can be pushed
-        aside rather than covered ("if i click on it, it should push the content
-        to the right, not overlap it"). */}
-    <NavRailProvider>
-    <div className="flex flex-col lg:flex-row h-[100dvh] bg-surface lg:bg-surface font-sans overflow-hidden transition-colors duration-300">
+    <TooltipProvider>
+    <SidebarProvider
+      className="h-[100dvh] min-h-0 overflow-hidden bg-surface font-sans"
+      style={{ '--sidebar-width-icon': SIDEBAR_ICON_WIDTH } as React.CSSProperties}
+    >
+      {lgUp && (
+        <AdminDesktopSidebar
+          side={shellSide}
+          onSide={setShellSide}
+          activeTab={activeTab}
+          placeholder={shellPlaceholder}
+          tabs={desktopNavById}
+          tenantName={isWhiteLabel ? tenantName : 'Harvest'}
+          logoUrl={displayLogo}
+          onNavigate={go}
+          onPlaceholder={(id) => { setShellPlaceholder(id); const next = sideForTab(id); if (next) setShellSide(next); }}
+          accountMenu={<MyAccountMenu {...accountMenuProps} variant="rail" />}
+        />
+      )}
+      {process.env.NODE_ENV === 'test' && (
+        <NavEntitlementCatalog
+          tabs={desktopNavById}
+          canSettings={!!accountMenuProps.onOpenSettings}
+        />
+      )}
 
       {/* Side/Bottom Navigation */}
       {/* 🔴 THE-334 — `lg:w-[64px]`, down from THE-332's 88px.
@@ -1262,7 +1086,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         trap with no way out, and it is why that effect has a cleanup.
       */}
       <div data-nav-visibility className={navHidden ? 'max-lg:hidden lg:contents' : 'contents'}>
-      <div data-nav-shell className="bg-surface-raised border-t lg:border-t-0 lg:border-r border-line lg:border-line flex justify-center lg:justify-start py-2 lg:py-6 px-2 lg:px-2 pb-safe lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full lg:w-[64px] lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300">
+      <div data-nav-shell className="bg-surface-raised border-t lg:border-t-0 lg:border-r border-line lg:border-line flex justify-center lg:justify-start py-2 lg:py-6 px-2 lg:px-2 pb-safe lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full lg:w-[64px] lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300 lg:hidden">
         <div className="flex lg:flex-col justify-around lg:justify-start items-center lg:items-center w-full lg:max-w-none lg:gap-2">
           {/* Desktop Logo — the member-app entry point on desktop (the More-drawer
               "Go to User App" row is mobile-only). Routes through handleViewApp so
@@ -1318,158 +1142,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             </button>
           </div>
 
-          {/* THE-334 — Desktop: a RAIL of five entries and an account avatar.
-              Home · Content / Ministry / Reach / Grow · (avatar, at the floor).
-
-              🔴 EVERY FLYOUT SHARES ONE OPEN GROUP. `NavRailProvider` holds it,
-              so opening one closes the others BY CONSTRUCTION rather than four
-              components racing — which is the whole defect: a PINNED CONTENT
-              used to survive MINISTRY opening on hover, and the founder
-              screenshotted both panels overlapping.
-
-              🔴 SETTINGS IS NO LONGER A RAIL ENTRY. The founder: "at the bottom
-              of sidebar put the profile picture with its settings… clicking on
-              the profile picture it opens a list that has the settings, remove
-              the settings from the sidebar." It is not lost and no gate moved:
-              `accountMenuProps.onOpenSettings` already carried the SAME
-              `canSettings` entitlement and already called `go('settings')`, so
-              the tab is reachable in two actions from the rail's own avatar and
-              in two from the top bar's, and an admin without the entitlement
-              still sees no Settings row anywhere. THE-334's guard enumerates all
-              23 tabs through these paths.
-
-              Nothing scrolls: five entries fit any laptop. Empty groups are
-              still omitted whole by `desktopSidebarGroups`, untouched. */}
-          <div className="hidden lg:flex lg:flex-col lg:items-center lg:gap-0.5 lg:w-full lg:flex-1 lg:min-h-0">
-            {desktopNavById.has('dashboard') && renderRailTab(desktopNavById.get('dashboard')!)}
-
-            {desktopSidebarGroups.length > 0 && (
-              <div className="w-8 my-2 border-t border-line" />
-            )}
-
-            {desktopSidebarGroups.map(({ label, items }) => {
-              const GroupIcon = DESKTOP_GROUP_ICONS[label];
-              const groupTitle = DESKTOP_GROUP_LABELS[label] ?? label;
-              // The rail entry lights up when the tab you are on lives inside
-              // it, so the rail still answers "where am I" at a glance.
-              const groupHoldsActiveTab = items.some((t) => t.id === activeTab);
-              // A dot on the rail entry when a tab inside it has one, because a
-              // closed flyout would otherwise hide the only unread signal.
-              const groupHasDot = items.some(
-                (t) =>
-                  (t.id === 'churches' && pendingChurchesCount > 0) ||
-                  (t.id === 'inbox' && unreadCount > 0),
-              );
-              return (
-                /* THE-332 — the group's PERMITTED tabs, named on the rail entry
-                   itself. Before the rail, every tab was in the DOM at all
-                   times (the sidebar was hidden by `lg:` CSS, which a happy-dom
-                   test does not apply), and seven entitlement guards read the
-                   nav by scanning button labels. A flyout unmounts when closed,
-                   so those guards would otherwise see a five-entry nav and
-                   report a permission regression that has not happened.
-                   Entitlement is still asserted from the model here; that the
-                   model matches what the flyout actually RENDERS is asserted in
-                   THE-332's and THE-334's suites, so this attribute cannot
-                   drift into a comfortable lie without them going red. */
-                <div
-                  key={label}
-                  className="w-full"
-                  data-nav-group={label}
-                  data-nav-group-tabs={items.map((t) => t.id).join(',')}
-                  data-nav-group-labels={items.map((t) => t.label).join('|')}
-                >
-                  <NavRailFlyout
-                    label={label}
-                    title={groupTitle}
-                    isActive={groupHoldsActiveTab}
-                    /* 🔴 The ACTIVE entry is filled, so it is obvious which rail
-                       entry the open panel belongs to — and Base UI's own arrow
-                       points out of this button into that panel. */
-                    triggerClassName={`flex flex-col items-center justify-center gap-1 rounded-xl transition-all relative shrink-0 min-h-11 w-full py-2 ${
-                      groupHoldsActiveTab
-                        ? 'bg-[color-mix(in_srgb,var(--brand-color)_16%,transparent)] dark:bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)]'
-                        : 'text-muted hover:text-strong hover:bg-surface-sunken'
-                    }`}
-                    /* 🔴 Mounted INSIDE the popup, so its read only runs while
-                       the panel is actually open. GROW has no recency source and
-                       deliberately gets no footer rather than an invented one. */
-                    footer={
-                      RAIL_RECENT_GROUPS.includes(label) ? (
-                        <NavRailRecents
-                          group={label}
-                          tenantId={tenantId}
-                          isAuthReady={isAuthReady}
-                          onOpenItem={goItem}
-                        />
-                      ) : undefined
-                    }
-                    trigger={
-                      <>
-                        {GroupIcon && (
-                          <GroupIcon
-                            size={20}
-                            strokeWidth={groupHoldsActiveTab ? 2.4 : 2}
-                            className="shrink-0"
-                            style={
-                              groupHoldsActiveTab
-                                ? { color: RAIL_ACTIVE_INK }
-                                : undefined
-                            }
-                          />
-                        )}
-                        <span
-                          data-nav-rail-label={label}
-                          className="text-[10px] font-medium leading-none"
-                          style={groupHoldsActiveTab ? { color: RAIL_ACTIVE_INK } : undefined}
-                        >
-                          {groupTitle}
-                        </span>
-                        {groupHasDot && (
-                          <span className="absolute bg-red-500 rounded-full border-2 border-white top-1 right-1 w-2.5 h-2.5"></span>
-                        )}
-                      </>
-                    }
-                  >
-                    {renderGroupRows(label, items)}
-                  </NavRailFlyout>
-                </div>
-              );
-            })}
-
-            {/* 🔴 The account avatar, pinned to the rail's FLOOR — where the
-                founder's ClickUp reference pins Invite and Upgrade, and where he
-                asked for "the profile picture with its settings". `mt-auto` is
-                what keeps it at the floor rather than under the last group.
-                `variant="rail"` opens the menu UPWARD — at the bottom of a
-                full-height column a downward menu would open off-screen — and
-                sizes the avatar as a nav target rather than a bar accessory. */}
-            <div
-              data-nav-rail-account
-              /* 🔴 THE-334 — the account entry ADVERTISES what it can reach, for
-                 the same reason THE-332 made each rail group advertise its tabs:
-                 a menu that is closed has no rows in the DOM, and several
-                 pre-existing entitlement guards read this nav by scanning it.
-                 Without this they would see Settings vanish and report a
-                 permission regression that has not happened — the entitlement is
-                 unchanged, only the entry point moved. It is gated on the SAME
-                 `canSettings` the menu row itself is gated on (they are one
-                 expression, `accountMenuProps.onOpenSettings`), and THE-334's
-                 suite holds this attribute equal to what the menu actually
-                 renders, so it cannot drift into a comfortable lie. */
-              data-nav-account-tabs={accountMenuProps.onOpenSettings ? 'settings' : ''}
-              data-nav-account-labels={accountMenuProps.onOpenSettings ? 'Settings' : ''}
-              className="mt-auto pt-2"
-            >
-              <MyAccountMenu {...accountMenuProps} variant="rail" />
-            </div>
-          </div>
         </div>
       </div>
       </div>{/* /nav visibility wrapper — THE-346 */}
 
       {/* Main Container */}
-      <div data-admin-content className="flex-1 flex flex-col h-[100dvh] relative bg-surface lg:bg-surface overflow-hidden min-w-0">
+      <SidebarInset data-admin-content className="flex-1 flex flex-col h-[100dvh] min-w-0 overflow-hidden bg-surface">
         {/* Desktop branded top bar — Open member app · centered page title ·
             search / notifications / account. Matches the admin mockup. */}
         <div className="hidden lg:flex bg-surface-raised border-b border-line h-14 items-center px-6 xl:px-8 z-10 w-full shrink-0">
@@ -1580,7 +1258,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             founder screenshotted. The bar now runs the full width, as it does in
             his ClickUp reference, and only the body below it is pushed aside. */}
         <div className="flex-1 flex min-h-0 min-w-0">
-          <NavRailContentGap />
         <div className={`flex-1 min-w-0 ${activeTab === 'community' ? 'overflow-hidden lg:overflow-y-auto pb-[65px] lg:pb-8' : 'overflow-y-auto pb-24 lg:pb-8'} p-0 lg:p-6 ${showMoreSheet ? 'overflow-hidden' : ''}`}>
           {/* Billing grace window. Mounted in the SHELL rather than on one tab so a
               failed renewal is visible from whichever screen the admin happens to
@@ -1591,14 +1268,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           <div className="px-4 lg:px-0">
             <GraceWindowBanner tenantId={tenantId ?? null} />
           </div>
-          {activeTab === 'dashboard' ? (
+          {shellPlaceholder ? (
+            <ShellPlaceholder id={shellPlaceholder} />
+          ) : activeTab === 'dashboard' ? (
             <div className="p-4 lg:p-0">
-              <AdminDashboardHome
+              <AdminHome
                 tenantId={tenantId ?? null}
                 tenantName={isWhiteLabel ? tenantName : 'Harvest'}
                 isSuperAdmin={isSuperAdmin}
                 unreadCount={unreadCount}
-                onNavigate={go}
+                openTabIds={allTabs.map((tab) => tab.id)}
+                onOpen={(target) => {
+                  if (target.kind === 'placeholder') {
+                    setShellPlaceholder(target.id);
+                    const next = sideForTab(target.id);
+                    if (next) setShellSide(next);
+                  } else {
+                    go(target.id);
+                  }
+                }}
               />
             </div>
           ) : activeTab === 'blog' ? (
@@ -1870,7 +1558,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             onCancel={() => setShowNavCustomizer(false)}
           />
         )}
-      </div>
 
       {/* Canvas focus mode — covers the entire viewport over the nav & header */}
       {activeTab === 'canvas' && canvasId && (
@@ -1935,8 +1622,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           </div>
         </div>
       )}
-    </div>
-    </NavRailProvider>
+    </SidebarInset>
+    </SidebarProvider>
+    </TooltipProvider>
     </AdminHeaderContext.Provider>
   );
 };

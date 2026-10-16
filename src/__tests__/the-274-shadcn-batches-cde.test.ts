@@ -1348,6 +1348,30 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       + 'rejected: starting the export is one tap, not a decision that must interrupt. `sonner` is '
       + 'rejected: a toast leaves the screen while the file is still in storage.',
   },
+  {
+    file: 'src/components/admin-shell/AdminHome.tsx',
+    ticket: 'phase-1',
+    why:
+      'APPENDED, never substituted. The phase-1 admin home. It takes `checkbox` for the three '
+      + 'setup steps, as a sibling of the step button rather than nested inside it, and '
+      + '`toggle-group` for the 7, 14 and 30 day period, which is one choice among three. '
+      + '`switch` is rejected: a period is not a boolean. `radio-group` is rejected: the '
+      + 'control is a row of pills, not a form field. `empty` is rejected for testimonies: '
+      + 'there is no testimonies collection, and the data table\'s own empty row is that '
+      + 'state. The table lives outside src/components/ui so the 43-primitive count stays.',
+  },
+  {
+    file: 'src/components/admin-shell/AdminDesktopSidebar.tsx',
+    ticket: 'phase-1',
+    why:
+      'APPENDED, never substituted. The phase-1 desktop sidebar, mounted only from the lg '
+      + 'breakpoint so the mobile bottom bar is unchanged and the sidebar primitive never '
+      + 'takes its Sheet path. It takes `toggle-group` for the two icon-only sides, People '
+      + 'and Public, and `command` for the search dialog. `button-group` is rejected: the '
+      + 'two sides are one selection, not a cluster of independent actions. `popover` is '
+      + 'rejected for the side names: each icon has a tooltip, and a popover would cover '
+      + 'the groups underneath it.',
+  },
 ];
 
 it('only the recorded adopters import the new components, and each names its ticket', () => {
@@ -1485,9 +1509,14 @@ describe('the new dependencies are declared, pinned and resolvable', () => {
     'date-fns',
     'react-day-picker',
     'react-resizable-panels',
+    // Phase 1 data table. The only dependency this phase adds. Appended, not
+    // substituted: the twenty-two entries above stay, and the rest-of-tree
+    // digest below still has to match once these two keys are removed.
+    '@tanstack/react-table',
+    '@tanstack/table-core',
   ].map((k) => `node_modules/${k}`);
 
-  it('the lockfile gained exactly these 22 entries', () => {
+  it('the lockfile gained exactly the recorded entries', () => {
     const after = Object.keys(lock().packages).filter(Boolean);
     for (const key of LOCK_ADDED) {
       expect(after, `${key} is missing from the lockfile`).toContain(key);

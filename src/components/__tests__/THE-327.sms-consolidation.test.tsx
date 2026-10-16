@@ -944,11 +944,16 @@ describe('19 · no colour hardcoded, no emoji; both palettes resolve', () => {
    * pinned to the count on `main`, rather than a zero that would have to be
    * bought by editing a file out of scope. The two SMS files are held at zero,
    * which is where they already were.
+   *
+   * Phase 1 removed the desktop icon rail. Three of those nine fallbacks lived
+   * on the rail controls and left with them. The budget below is the remaining
+   * six, still the same fallback, still not a new colour. The functional
+   * budget stays at one.
    */
   const COLOUR_BUDGET: Record<string, number> = {
     'components/AdminSms.tsx': 0,
     'components/settings/SmsSection.tsx': 0,
-    'components/AdminDashboard.tsx': 9,        // pre-existing on main; not this ticket's to change
+    'components/AdminDashboard.tsx': 6,        // was 9 on main; the rail's three fallbacks left with the rail
   };
 
   /** Same budget, for functional colour notation. Also pre-existing. */

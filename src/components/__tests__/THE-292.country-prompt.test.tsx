@@ -687,6 +687,19 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ byte-identical', ()
     // Team and Ministry still mount AdminCheckin. Forms is not added. No other
     // nav id, group, permission or screen mount moved.
     '308d159615f0d5d966d7a8fa60d1a342069b2f790f9b965e9bda3ac896a86cda',
+    // APPENDED BY the phase-1 shell, nothing above removed or rewritten: the
+    // desktop icon rail and its hover flyouts are replaced by a shadcn Sidebar
+    // that mounts only from the lg breakpoint. The mobile bottom bar and More
+    // sheet are unchanged; the shell class string gains only lg:hidden so that
+    // bar does not also paint on desktop. MORE_GROUPS is byte-identical and no
+    // permission gate moved.
+    '41a14031bb605f8028018a2d3a2008d6df132fa30d92b8570b5a21d159c18eed',
+    // APPENDED BY #529 review, nothing above removed or rewritten. The home screen gates recorded giving and the analytics tabs behind hasAnalyticsAccess. The entitlement catalogue is test-only. Light default and the lg query run before paint.
+    '480bca86b8d234277691cd45a00073d4d4695a814c11f4d28a62ccea13210e6f',
+    // APPENDED BY #529 QA, nothing above removed or rewritten. The collapsed icon rail width is set on the sidebar provider. No nav, permission, or screen mount moved.
+    'eec73dea210f04b85c17f1dacdcff72162a49e8a152501a68b9a994d928e04cf',
+    // APPENDED BY #529 QA, nothing above removed or rewritten. Home receives the nav's tab ids so a quick action exists only when that route would. No permission term was added.
+    '666b4cbf551ba1ed1711105035f9a112f3f9d74686b16bc748ca0a1998a0f078',
   ];
 
   it('🔴 AdminDashboard.tsx — not opened by this ticket', () => {

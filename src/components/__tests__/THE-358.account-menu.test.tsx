@@ -310,8 +310,10 @@ describe('17 · no colour hardcoded, no emoji, no new token, component or depend
     const pkg = JSON.parse(read('package.json')) as {
       dependencies: Record<string, string>; devDependencies: Record<string, string>;
     };
+    // 89 was the tree before phase 1. The one addition is @tanstack/react-table.
     expect(Object.keys(pkg.dependencies).length + Object.keys(pkg.devDependencies).length,
-      'a dependency was added').toBe(89);
+      'a dependency was added').toBe(90);
+    expect(pkg.dependencies['@tanstack/react-table']).toBe('^8.21.3');
     expect(readdirSync(path.join(ROOT, 'src/components/ui')).filter((f) => f.endsWith('.tsx')),
       'a primitive was installed or removed').toHaveLength(43);
     expect(readdirSync(path.join(ROOT, 'src/components/ui')).includes('accordion.tsx'),

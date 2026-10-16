@@ -654,13 +654,15 @@ describe('expanding hides the bottom nav on mobile', () => {
     expect(r.boxes.navHidden?.w ?? -1).toBe(0);
   });
 
-  it('but the DESKTOP RAIL survives the same flag from lg up', () => {
-    // The same element is the side rail above `lg`. An unscoped `hidden` would
-    // strip it, which is why the wrapper's two states live in different media
-    // queries.
+  it('the old bar is hidden from lg up, and the hide-on-expand wrapper still restores', () => {
+    // Phase 1 replaced the icon rail with a separate desktop sidebar. This
+    // element is the mobile bar, and it now carries `lg:hidden`, so from lg up
+    // it occupies no band. The WRAPPER still splits by media query
+    // (`max-lg:hidden lg:contents`): an unscoped `hidden` on that wrapper would
+    // report `none` here, which is the defect this case still catches.
     for (const v of [1024, 1280, 1440] as const) {
-      expect(at(v).navHiddenDisplay, `the desktop rail was stripped at ${v}px`).toBe('contents');
-      expect(at(v).navHiddenH, `the desktop rail lost its height at ${v}px`).toBeGreaterThan(0);
+      expect(at(v).navHiddenDisplay, `the hide-on-expand wrapper lost its lg restore at ${v}px`).toBe('contents');
+      expect(at(v).navHiddenH, `the old bar still takes height at ${v}px`).toBe(0);
     }
   });
 

@@ -241,58 +241,89 @@ function parsedDesktopGroups(): { label: string; ids: string[] }[] {
   return out;
 }
 
+describe('THE-332 · the desktop rail is no longer the admin nav', () => {
+  it('AdminDashboard does not mount the hover rail', async () => {
+    await mount({ superAdmin: true });
+    expect(container.querySelector('[data-nav-rail-tab]'), 'the rail tab is back').toBeNull();
+    expect(container.querySelector('[data-nav-rail-group]'), 'the rail group is back').toBeNull();
+    expect(document.querySelector('[data-nav-rail-flyout]'), 'a flyout opened on its own').toBeNull();
+    expect(DASHBOARD_SRC, 'AdminDashboard still renders NavRailFlyout').not.toContain('<NavRailFlyout');
+    expect(DASHBOARD_SRC, 'the mobile More row is gone').toContain('flex lg:hidden justify-around items-center w-full');
+    expect(container.textContent, 'the mobile More button is gone').toContain('More');
+  });
+});
+
 describe('THE-332 · the desktop nav is a rail with flyouts', () => {
-  it('🔴 1 · the desktop sidebar is a narrow rail, not a list of 23 items', async () => {
+  beforeEach(() => {
+    /* The sidebar mounts from matchMedia, in a layout effect, so a desktop
+       width has to be in place before render. happy-dom's own answer is not
+       a 1440px window. */
+    Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: 1440 });
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      writable: true,
+      value: (query: string) => {
+        const min = /min-width:\s*(\d+)px/.exec(query);
+        const max = /max-width:\s*(\d+)px/.exec(query);
+        const matches = min ? 1440 >= Number(min[1]) : max ? 1440 <= Number(max[1]) : false;
+        return {
+          matches,
+          media: query,
+          addEventListener() {},
+          removeEventListener() {},
+          addListener() {},
+          removeListener() {},
+          dispatchEvent() { return false; },
+          onchange: null,
+        };
+      },
+    });
+  });
+
+  const sideButtons = () =>
+    Array.from(container.querySelectorAll('[data-shell-side] [data-nav-tab]'))
+      .map((el) => el.getAttribute('data-nav-tab')!);
+  const sideGroups = () =>
+    Array.from(container.querySelectorAll<HTMLElement>('[data-shell-side] [data-nav-group]'));
+
+  async function showSide(label: 'People' | 'Public') {
+    const btn = container.querySelector<HTMLElement>(`[aria-label="${label}"]`);
+    expect(btn, `${label} side is not in the sidebar`).toBeTruthy();
+    await act(async () => { btn!.click(); });
+    await flush();
+  }
+
+  it('🔴 1 · the desktop sidebar is grouped, not a hover rail and not one flat list', async () => {
     await mount({ superAdmin: true });
 
-    /* The rail's own entries: ONE pinned tab plus one trigger per group.
-       The DEFECT this replaces rendered every permitted tab at once.
-
-       🔴 THE-334 — one pinned tab, not two. Settings left the rail for the
-       account menu pinned at the column's floor, on the founder's instruction
-       ("at the bottom of sidebar put the profile picture with its settings…
-       remove the settings from the sidebar"). Dashboard is the only direct tab
-       left. That Settings is still REACHABLE, and still behind the same
-       entitlement, is proved by walking the menu in test 5 — not assumed here. */
-    const entries = railTabs().length + railGroups().length;
-    const groups = parsedDesktopGroups();
-    expect(railGroups().sort()).toEqual(groups.map((g) => g.label).sort());
-    expect(
-      entries,
-      `the rail draws ${entries} entries; it must be the 1 pinned tab plus ${groups.length} groups`,
-    ).toBe(1 + groups.length);
-
-    /* 🔴 THE MUTATION THIS CATCHES: render all 23 tabs in the rail and this
-       fails, because the rail would then carry a `data-nav-tab` per tab where
-       it may only carry the two pinned ones. */
-    const everyTabId = new Set(groups.flatMap((g) => g.ids));
-    for (const id of railTabs()) {
-      expect(everyTabId.has(id), `${id} is a GROUP tab and may not sit in the rail`).toBe(false);
-    }
-
-    /* And the column really is narrow. 🔴 THE-334 took it from THE-332's 88px
-       — the width the sidebar used when collapsed — down to 64px, because the
-       founder asked twice ("our sidebar is too wide", then "the sidebar is
-       still too wide" against a build measured at 88px) and named the size
-       himself. That is a deliberate override of "invent no width", recorded in
-       THE-334's ownership entry rather than slipped in. */
-    const shell = container.querySelector('[class*="lg:w-[64px]"]');
-    expect(shell, 'the nav column is not at the rail width').toBeTruthy();
+    /* Phase 1 replaced the hover rail with a labelled sidebar. The mutation
+       this still catches: a flyout rail coming back, or every tab rendered as
+       a sibling of Home with no group. Settings stays in the account menu,
+       which test 5 walks. */
+    expect(container.querySelector('[data-nav-rail-tab]'), 'the hover rail is back').toBeNull();
+    expect(document.querySelector('[data-nav-rail-flyout]'), 'a flyout opened').toBeNull();
+    expect(container.querySelector('[data-shell-side]'), 'the desktop sidebar did not mount').toBeTruthy();
+    expect(DASHBOARD_SRC).not.toContain('<NavRailFlyout');
     expect(DASHBOARD_SRC).not.toContain('lg:w-64');
+
+    const home = container.querySelector('[data-shell-side] [data-nav-tab="dashboard"]');
+    expect(home, 'Home is not a one-click sidebar entry').toBeTruthy();
+    expect(home!.closest('[data-nav-group]'), 'Home was folded into a group').toBeNull();
+    expect(sideGroups().length, 'the sidebar has no groups').toBeGreaterThan(0);
+    for (const group of sideGroups()) {
+      const tabs = group.querySelectorAll('[data-nav-tab]');
+      expect(tabs.length, `${group.getAttribute('data-nav-group')} is an empty group`).toBeGreaterThan(0);
+    }
   });
 
   it('🔴 5 · all 23 tabs are still reachable, enumerated by id', async () => {
     await mount({ superAdmin: true });
     const groups = parsedDesktopGroups();
 
-    const reached = new Set<string>(railTabs());
-    for (const { label } of groups) {
-      const trigger = groupTrigger(label)!;
-      await act(async () => { trigger.click(); });
-      await flush();
-      for (const id of flyoutTabs(label)) reached.add(id);
-      await act(async () => { trigger.click(); });
-      await flush();
+    const reached = new Set<string>();
+    for (const label of ['People', 'Public'] as const) {
+      await showSide(label);
+      for (const id of sideButtons()) reached.add(id);
     }
 
     /* 🔴 THE-334 — SETTINGS IS WALKED, NOT ASSUMED. It left the rail for the
@@ -374,17 +405,15 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
        mutation that would otherwise hide a tab from every real path while the
        other guards stayed green — and this fails, naming it. */
     await mount({ superAdmin: true });
-    for (const label of railGroups()) {
-      const advertised = (container
-        .querySelector(`[data-nav-group="${label}"]`)!
-        .getAttribute('data-nav-group-tabs') ?? '').split(',').filter(Boolean);
-      const trigger = groupTrigger(label)!;
-      await act(async () => { trigger.click(); });
-      await flush();
-      expect(flyoutTabs(label), `${label} advertises a tab set its flyout does not render`)
-        .toEqual(advertised);
-      await act(async () => { trigger.click(); });
-      await flush();
+    for (const label of ['People', 'Public'] as const) {
+      await showSide(label);
+      for (const group of sideGroups()) {
+        const name = group.getAttribute('data-nav-group');
+        const advertised = (group.getAttribute('data-nav-group-tabs') ?? '').split(',').filter(Boolean);
+        const rendered = [...group.querySelectorAll('[data-nav-tab]')]
+          .map((el) => el.getAttribute('data-nav-tab'));
+        expect(rendered, `${name} advertises a tab set it does not render`).toEqual(advertised);
+      }
     }
   });
 
@@ -396,59 +425,36 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
        🔴 THE-334 — Settings is no longer one of these. It moved into the account
        menu at the rail's floor, which is TWO actions (open the menu, pick the
        row), and that is what the founder asked for. Dashboard is still one. */
-    expect(railTabs().sort()).toEqual(['dashboard']);
-    for (const id of ['dashboard']) {
-      const btn = container.querySelector<HTMLElement>(`[data-nav-rail-tab="${id}"]`)!;
-      expect(btn.tagName).toBe('BUTTON');
-      expect(btn.getAttribute('aria-label')).toBeTruthy();
-    }
-  });
-
-  it('🔴 3 · clicking a rail entry opens and PINS its flyout', async () => {
-    await mount({ superAdmin: true });
-    const label = parsedDesktopGroups()[0].label;
-    const trigger = groupTrigger(label)!;
-
-    expect(openFlyouts()).toEqual([]);
-    await act(async () => { trigger.click(); });
+    const btn = container.querySelector<HTMLElement>('[data-shell-side] [data-nav-tab="dashboard"]')!;
+    expect(btn, 'Home is not in the sidebar').toBeTruthy();
+    expect(btn.tagName).toBe('BUTTON');
+    navigate.mockClear();
+    await act(async () => { btn.click(); });
     await flush();
-    expect(openFlyouts(), 'a click did not open the flyout').toContain(label);
-    /* PINNED — the primitive marks the trigger, and a pointer leaving does not
-       close it. A hover-only flyout would have no pinned state at all. */
-    expect(trigger.getAttribute('data-pinned'), 'the click did not pin').toBe('true');
+    expect(navigate, 'Home did not navigate in one action').toHaveBeenCalledWith('/admin');
   });
 
-  it('🔴 4 · every flyout item is reachable by keyboard', async () => {
+  it('🔴 3 · a click does not open a hover flyout', async () => {
     await mount({ superAdmin: true });
-    const groups = parsedDesktopGroups();
+    expect(openFlyouts()).toEqual([]);
+    const row = container.querySelector<HTMLElement>('[data-shell-side] [data-nav-tab]')!;
+    await act(async () => { row.click(); });
+    await flush();
+    expect(openFlyouts(), 'a click opened a flyout').toEqual([]);
+    expect(document.querySelector('[data-nav-rail-flyout]')).toBeNull();
+  });
 
-    for (const { label } of groups) {
-      const trigger = groupTrigger(label)!;
-      /* The keyboard path, named: the trigger is a real <button>, so it is in
-         the tab order and Enter/Space fire a press — the SAME open reason a
-         mouse click produces, which is why keyboard users get the pinned
-         flyout rather than a hover-only one they could never open. */
-      expect(trigger.tagName, `${label}'s rail trigger is not a button`).toBe('BUTTON');
-      expect(trigger.getAttribute('disabled')).toBeNull();
-      expect(
-        trigger.getAttribute('tabindex'),
-        `${label}'s trigger is removed from the tab order`,
-      ).not.toBe('-1');
-
-      await act(async () => { trigger.click(); });
-      await flush();
-
-      const rows = document.querySelectorAll(`[data-nav-rail-flyout="${label}"] [data-nav-tab]`);
-      expect(rows.length, `${label} opened an empty flyout`).toBeGreaterThan(0);
+  it('🔴 4 · every sidebar item is a button in the tab order', async () => {
+    await mount({ superAdmin: true });
+    for (const label of ['People', 'Public'] as const) {
+      await showSide(label);
+      const rows = container.querySelectorAll('[data-shell-side] [data-nav-tab]');
+      expect(rows.length, `${label} rendered no tabs`).toBeGreaterThan(0);
       rows.forEach((r) => {
-        /* Each row is a real button too, so Tab reaches it and Enter activates
-           it. Nothing here relies on a pointer. */
-        expect(r.tagName, 'a flyout row is not a button').toBe('BUTTON');
+        expect(r.tagName, 'a sidebar row is not a button').toBe('BUTTON');
         expect((r as HTMLElement).getAttribute('tabindex')).not.toBe('-1');
+        expect((r as HTMLElement).getAttribute('disabled')).toBeNull();
       });
-
-      await act(async () => { trigger.click(); });
-      await flush();
     }
   });
 
@@ -484,15 +490,10 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
        resolves to nothing. */
     await mount({ superAdmin: false, perms: FULL_TENANT_PERMS });
 
-    const reached = new Set<string>(railTabs());
-    for (const { label } of parsedDesktopGroups()) {
-      const trigger = groupTrigger(label);
-      if (!trigger) continue; // an omitted group draws no rail entry at all
-      await act(async () => { trigger.click(); });
-      await flush();
-      for (const id of flyoutTabs(label)) reached.add(id);
-      await act(async () => { trigger.click(); });
-      await flush();
+    const reached = new Set<string>();
+    for (const label of ['People', 'Public'] as const) {
+      await showSide(label);
+      for (const id of sideButtons()) reached.add(id);
     }
 
     for (const denied of ['library', 'tenants', 'inbox']) {
@@ -505,13 +506,13 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
 
   it("🔴 7b · a group whose tabs are all denied draws NO rail entry", async () => {
     await mount({ superAdmin: false, perms: FULL_TENANT_PERMS });
-    for (const label of railGroups()) {
-      const trigger = groupTrigger(label)!;
-      await act(async () => { trigger.click(); });
-      await flush();
-      expect(flyoutTabs(label).length, `${label} is in the rail but opens empty`).toBeGreaterThan(0);
-      await act(async () => { trigger.click(); });
-      await flush();
+    for (const label of ['People', 'Public'] as const) {
+      await showSide(label);
+      for (const group of sideGroups()) {
+        const tabs = (group.getAttribute('data-nav-group-tabs') ?? '').split(',').filter(Boolean);
+        expect(tabs.length, `${group.getAttribute('data-nav-group')} is drawn with no permitted tabs`).toBeGreaterThan(0);
+        expect(group.querySelectorAll('[data-nav-tab]').length).toBe(tabs.length);
+      }
     }
   });
 

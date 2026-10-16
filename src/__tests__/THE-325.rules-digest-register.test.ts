@@ -789,6 +789,19 @@ const CONTENT_ASSERTING_MOVED: Readonly<Record<string, readonly [digest: string,
       + 'joins /api/contact on the theharvest.site allow-list; #517 merged with CI '
       + 'red, so the list never moved with it. No other line of the suite changed.',
   ],
+  // APPENDED BY #529, the row above is untouched. The line-ending suite gained
+  // the ten phase-1 proof PNGs. *.png was already binary. The assertion still
+  // checks content (PNG magic, CRLF, the declared binary set) and pins no digest.
+  'src/__tests__/the-268-line-endings.test.ts': [
+    'bf5f6cef36b649f85d1a184bfbb8aab851c1a2e76f7c8f5adc95efdfe66a03c6',
+    '#529',
+    'the phase-1 review commits the 1440px and 390px before and after screenshots '
+      + 'under docs/redesign/phase-1, and the QA pass appends the collapsed icon '
+      + 'rail in light and dark at 1440. the-268 lists every PNG so a new binary '
+      + 'is not left to the text heuristic. The original thirteen paths stay, '
+      + 'and the suite still asserts file content rather than a digest pin. '
+      + 'This map holds the current digest; the row in CONTENT_ASSERTING is untouched.',
+  ],
 };
 
 describe('6 · the content-asserting suites are untouched', () => {

@@ -391,6 +391,18 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // APPENDED BY THE-373, nothing above removed or rewritten.
     ['308d159615f0d5d966d7a8fa60d1a342069b2f790f9b965e9bda3ac896a86cda',
       `main + THE-373 - Check-In is withheld on Individual so the Reach group disappears there. The nav entry gains one plan clause, planUnlocked || resolvedPlan !== 'plus', and the checkin render arm shows page-not-found on Individual without the platform override. Free, Small Team and Ministry still mount AdminCheckin. Forms is not added. No other nav id, group, permission or screen mount moved.`],
+    // APPENDED BY the phase-1 shell, nothing above removed or rewritten.
+    ['41a14031bb605f8028018a2d3a2008d6df132fa30d92b8570b5a21d159c18eed',
+      `main + phase 1 app shell - the desktop icon rail and its hover flyouts are replaced by a shadcn Sidebar that mounts only from the lg breakpoint, with always-visible labels, collapsible groups, and collapse-to-icons. The mobile bottom bar and More sheet are unchanged; the shell class string gains only lg:hidden so that bar does not also paint on desktop. MORE_GROUPS is byte-identical and no permission gate moved.`],
+    // APPENDED BY #529 review, nothing above removed or rewritten.
+    ['480bca86b8d234277691cd45a00073d4d4695a814c11f4d28a62ccea13210e6f',
+      `main + #529 review - the home screen gates recorded giving, member and contact figures behind hasAnalyticsAccess, including the tenant-owner rule, and mounts Overview, Growth, Giving, Engagement and Content only after that grant. The entitlement catalogue renders when NODE_ENV is test. The light default and the lg sidebar query both run in a layout effect.`],
+    // APPENDED BY #529 QA, nothing above removed or rewritten.
+    ['eec73dea210f04b85c17f1dacdcff72162a49e8a152501a68b9a994d928e04cf',
+      `main + #529 QA - the desktop sidebar provider sets --sidebar-width-icon to 3.75rem so the collapsed icon rail fits a 44px control. No nav array, group, permission gate, or screen mount moved.`],
+    // APPENDED BY #529 QA, nothing above removed or rewritten.
+    ['666b4cbf551ba1ed1711105035f9a112f3f9d74686b16bc748ca0a1998a0f078',
+      `main + #529 QA - Home receives the tab ids already in the nav, so a quick action is offered only when that route would accept it. No nav array, group, permission term, or screen mount moved.`],
   ],
   'firestore.indexes.json': [
     ['8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0', 'main at 7fd4672'],
@@ -516,10 +528,14 @@ describe('no npm dependency was added', () => {
      * entirely in memory. Wanting a clickable header later is a dependency
      * decision to report, not one to take silently inside this ticket.
      */
-    for (const absent of ['@tanstack/react-table', '@tanstack/table-core']) {
-      expect(pkg.dependencies[absent], `${absent} was added`).toBeUndefined();
-      expect(pkg.devDependencies?.[absent], `${absent} was added as a devDependency`).toBeUndefined();
-    }
+    // Phase 1 installs @tanstack/react-table for the admin home table. This
+    // campaign screen still does not import it, and table-core is not a direct
+    // dependency.
+    expect(pkg.dependencies['@tanstack/react-table']).toBe('^8.21.3');
+    expect(pkg.dependencies['@tanstack/table-core'], 'table-core became a direct dependency').toBeUndefined();
+    expect(pkg.devDependencies?.['@tanstack/react-table']).toBeUndefined();
+    expect(pkg.devDependencies?.['@tanstack/table-core']).toBeUndefined();
+    expect(read('src/components/dashboard/CampaignProgress.tsx')).not.toMatch(/@tanstack\/react-table/);
   });
 
   it('no charting or gauge library was added — recharts is still the only one', () => {
