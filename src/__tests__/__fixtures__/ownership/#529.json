@@ -1,0 +1,16 @@
+{
+  "ticket": "#529",
+  "note": "#529 is the phase-1 admin shell. It records the two files the ownership register already pinned whose digests moved: AdminDashboard.tsx and the-274-shadcn-batches-cde.test.ts. Both digests are appended. Nothing already recorded is replaced. No firestore.rules change.",
+  "entries": [
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "41a14031bb605f8028018a2d3a2008d6df132fa30d92b8570b5a21d159c18eed",
+      "why": "#529 replaces the desktop icon rail and its hover flyouts with a shadcn Sidebar that mounts only from the lg breakpoint, with always-visible labels, collapsible groups, and collapse-to-icons. The mobile bottom bar and More sheet are unchanged; the shell class string gains only lg:hidden so that bar does not also paint on desktop. MORE_GROUPS is byte-identical and no permission gate moved."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "ed4c840322db941d844ffbdd6afb9f65466b3e962c54c145180e571fbcf0edcf",
+      "why": "#529 appends the phase-1 adopters to this guard and does not replace earlier rows. AdminHome.tsx is recorded for checkbox and toggle-group, AdminDesktopSidebar.tsx for toggle-group and command, and the lockfile allow-list gains @tanstack/react-table and @tanstack/table-core, which is the only dependency this phase adds."
+    }
+  ]
+}
