@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requireAuth, type AuthenticatedUser } from '@/lib/api-auth';
+import { firebaseAdminCredentialsAvailable } from '@/lib/firebase-admin-credentials';
 import { adminDb } from '@/lib/firebase-admin';
 import { getTenantPrivate } from '@/lib/tenant-private';
 import { getEffectiveFeatures, readTenantAddons, toTenantPlan } from '@/utils/plan-features';
@@ -13,6 +14,19 @@ export interface SocialAccess {
   readonly sample: boolean;
   /** The session layer must use the mock client and must not call Zernio. */
   readonly mockOnly: boolean;
+}
+
+/**
+ * The signed-in person, already verified from their token. The service does
+ * not read the request. `isSuperAdmin` is the claim `verifyAuth` set, never
+ * a body, header, or query flag.
+ */
+export interface SocialActor {
+  readonly uid: string;
+  readonly email: string | undefined;
+  readonly tenantId: string | null;
+  readonly isSuperAdmin: boolean;
+  readonly requestedTenantId: string | null;
 }
 
 /**
@@ -51,15 +65,28 @@ async function hasSocialFullAccess(user: AuthenticatedUser, tenantId: string): P
  * the sample is not a fallback: there is no tenant to attach a live profile
  * to, so the route answers 503.
  */
-export async function requireSocialAccess(request: NextRequest): Promise<SocialAccess | NextResponse> {
-  const headerTenant = request.headers.get('x-harvest-tenant');
-  const user = await requireAuth(request);
-  if (user instanceof NextResponse) return user;
+function actorUser(actor: SocialActor): AuthenticatedUser {
+  return {
+    uid: actor.uid,
+    email: actor.email,
+    tenantId: actor.tenantId,
+    isAdmin: false,
+    isSuperAdmin: actor.isSuperAdmin,
+    emailVerified: false,
+    authTime: 0,
+  };
+}
 
+/**
+ * Role, add-on (with the super-admin bypass), and tenant scope for one actor.
+ * Nothing here writes `tenants.addons`.
+ */
+export async function authorizeSocialActor(actor: SocialActor): Promise<SocialAccess | NextResponse> {
+  const headerTenant = actor.requestedTenantId;
   const mode = socialMode();
   const sampleGate = mode === 'mock' && socialSampleWithoutEntitlement();
 
-  if (user.isSuperAdmin && !user.tenantId) {
+  if (actor.isSuperAdmin && !actor.tenantId) {
     if (headerTenant) {
       return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
     }
@@ -69,31 +96,59 @@ export async function requireSocialAccess(request: NextRequest): Promise<SocialA
     return NextResponse.json({ error: 'social_unavailable' }, { status: 503 });
   }
 
-  if (!user.tenantId) {
+  if (!actor.tenantId) {
     return NextResponse.json({ error: 'No tenant associated with this account' }, { status: 403 });
   }
-  if (headerTenant && headerTenant !== user.tenantId) {
+  if (headerTenant && headerTenant !== actor.tenantId) {
     return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
   }
 
-  if (!(await hasSocialFullAccess(user, user.tenantId))) {
-    return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
-  }
-
-  const snap = await adminDb.collection('tenants').doc(user.tenantId).get();
-  if (!snap.exists) {
-    return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
-  }
-  const data = snap.data() || {};
-  const features = getEffectiveFeatures(toTenantPlan(data.plan), readTenantAddons(data.addons));
-  const holdsAddon = features.socialScheduler === true;
-  const entitled = holdsAddon || user.isSuperAdmin;
-  if (!entitled && !sampleGate) {
-    return NextResponse.json({ error: 'social_scheduler_not_entitled' }, { status: 403 });
-  }
-  if (mode === 'unavailable') {
+  if (!firebaseAdminCredentialsAvailable()) {
+    console.error('Social scheduling skipped Firebase admin: credentials are not available');
+    if (sampleGate) {
+      return { tenantId: actor.tenantId, entitled: actor.isSuperAdmin, sample: true, mockOnly: true };
+    }
     return NextResponse.json({ error: 'social_unavailable' }, { status: 503 });
   }
-  const mock = mode === 'mock';
-  return { tenantId: user.tenantId, entitled, sample: mock, mockOnly: mock };
+
+  try {
+    if (!(await hasSocialFullAccess(actorUser(actor), actor.tenantId))) {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    }
+
+    const snap = await adminDb.collection('tenants').doc(actor.tenantId).get();
+    if (!snap.exists) {
+      return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
+    }
+    const data = snap.data() || {};
+    const features = getEffectiveFeatures(toTenantPlan(data.plan), readTenantAddons(data.addons));
+    const holdsAddon = features.socialScheduler === true;
+    const entitled = holdsAddon || actor.isSuperAdmin;
+    if (!entitled && !sampleGate) {
+      return NextResponse.json({ error: 'social_scheduler_not_entitled' }, { status: 403 });
+    }
+    if (mode === 'unavailable') {
+      return NextResponse.json({ error: 'social_unavailable' }, { status: 503 });
+    }
+    const mock = mode === 'mock';
+    return { tenantId: actor.tenantId, entitled, sample: mock, mockOnly: mock };
+  } catch (error) {
+    console.error('Social scheduling could not read Firebase admin', error);
+    if (sampleGate) {
+      return { tenantId: actor.tenantId, entitled: actor.isSuperAdmin, sample: true, mockOnly: true };
+    }
+    return NextResponse.json({ error: 'social_unavailable' }, { status: 503 });
+  }
+}
+
+export async function requireSocialAccess(request: NextRequest): Promise<SocialAccess | NextResponse> {
+  const user = await requireAuth(request);
+  if (user instanceof NextResponse) return user;
+  return authorizeSocialActor({
+    uid: user.uid,
+    email: user.email,
+    tenantId: user.tenantId,
+    isSuperAdmin: user.isSuperAdmin,
+    requestedTenantId: request.headers.get('x-harvest-tenant'),
+  });
 }

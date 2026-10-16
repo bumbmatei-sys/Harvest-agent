@@ -1,49 +1,34 @@
 /**
  * The platforms a ministry may connect or post to.
  *
- * 🔴 AN ALLOW-LIST, NOT A DENY-LIST. X/Twitter is absent because it is not
- * offered, and so is every other network Zernio can name that is not in this
- * list (Discord, Slack, iMessage). A check that only rejected the strings
- * "twitter" and "x" would accept the next slug Zernio adds. Anything that is
- * not one of these thirteen is refused, on every connect, publish, schedule
- * and edit path, before a client is asked to do anything.
+ * 🔴 AN ALLOW-LIST, NOT A DENY-LIST. Publishing is Facebook, Instagram,
+ * Threads, TikTok and YouTube. X/Twitter is absent, and so is every other
+ * network Zernio can name (LinkedIn, Pinterest, Discord, Slack). A check that
+ * only rejected the strings "twitter" and "x" would accept the next slug
+ * Zernio adds. Anything that is not one of these five is refused, on every
+ * connect, publish, schedule and edit path, before a client is asked to do
+ * anything.
  *
  * Slugs are Zernio's own (`googlebusiness`, not "Google Business"). Comparison
  * is case-insensitive and trimmed; the stored value is always the slug below.
  */
 
 export const SOCIAL_PLATFORMS = [
+  'facebook',
   'instagram',
+  'threads',
   'tiktok',
   'youtube',
-  'linkedin',
-  'pinterest',
-  'facebook',
-  'threads',
-  'bluesky',
-  'snapchat',
-  'googlebusiness',
-  'reddit',
-  'telegram',
-  'whatsapp',
 ] as const;
 
 export type SocialPlatform = (typeof SOCIAL_PLATFORMS)[number];
 
 export const PLATFORM_LABELS: Record<SocialPlatform, string> = {
+  facebook: 'Facebook',
   instagram: 'Instagram',
+  threads: 'Threads',
   tiktok: 'TikTok',
   youtube: 'YouTube',
-  linkedin: 'LinkedIn',
-  pinterest: 'Pinterest',
-  facebook: 'Facebook',
-  threads: 'Threads',
-  bluesky: 'Bluesky',
-  snapchat: 'Snapchat',
-  googlebusiness: 'Google Business',
-  reddit: 'Reddit',
-  telegram: 'Telegram',
-  whatsapp: 'WhatsApp',
 };
 
 /**
@@ -71,7 +56,17 @@ export type PlatformField =
  * Fields Zernio documents on `platformSpecificData` for an offered platform.
  * A platform with an empty list gets the shared text and nothing else.
  */
+/**
+ * YouTube fields Zernio actually stores on `platformSpecificData`.
+ *
+ * Title and visibility are real fields. Shorts are not: YouTube classifies a
+ * vertical video of three minutes or less as a Short from the file itself,
+ * and Zernio documents no Shorts flag. The composer says that in words. A
+ * YouTube post also needs a video; upload is still refused, so the composer
+ * cannot submit one.
+ */
 export const PLATFORM_FIELDS: Record<SocialPlatform, readonly PlatformField[]> = {
+  facebook: [],
   instagram: [
     { key: 'firstComment', label: 'First comment', kind: 'text' },
     {
@@ -85,6 +80,7 @@ export const PLATFORM_FIELDS: Record<SocialPlatform, readonly PlatformField[]> =
       ],
     },
   ],
+  threads: [],
   tiktok: [
     {
       key: 'privacyLevel',
@@ -98,6 +94,7 @@ export const PLATFORM_FIELDS: Record<SocialPlatform, readonly PlatformField[]> =
     },
   ],
   youtube: [
+    { key: 'title', label: 'Title', kind: 'text' },
     {
       key: 'visibility',
       label: 'Visibility',
@@ -109,27 +106,6 @@ export const PLATFORM_FIELDS: Record<SocialPlatform, readonly PlatformField[]> =
       ],
     },
   ],
-  linkedin: [],
-  pinterest: [{ key: 'title', label: 'Pin title', kind: 'text' }],
-  facebook: [],
-  threads: [],
-  bluesky: [],
-  snapchat: [],
-  googlebusiness: [
-    {
-      key: 'topicType',
-      label: 'Post type',
-      kind: 'select',
-      options: [
-        { value: 'STANDARD', label: 'Update' },
-        { value: 'EVENT', label: 'Event' },
-        { value: 'OFFER', label: 'Offer' },
-      ],
-    },
-  ],
-  reddit: [{ key: 'subreddit', label: 'Subreddit', kind: 'text' }],
-  telegram: [{ key: 'silent', label: 'Silent message', kind: 'boolean' }],
-  whatsapp: [],
 };
 
 const ALLOWED = new Set<string>(SOCIAL_PLATFORMS);

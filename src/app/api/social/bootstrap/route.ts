@@ -1,22 +1,11 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { requireSocialAccess } from '@/lib/social/access';
-import { loadSocialWorkspace } from '@/lib/social/session';
+import { actorFromRequest, list, socialResponse } from '@/lib/social/service';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-  const access = await requireSocialAccess(request);
-  if (access instanceof NextResponse) return access;
-  const workspace = await loadSocialWorkspace(access.tenantId, new Date(), access.mockOnly);
-  if (!workspace) {
-    return NextResponse.json({ error: 'social_unavailable' }, { status: 503 });
-  }
-  return NextResponse.json({
-    entitled: access.entitled,
-    sample: access.sample,
-    timezone: workspace.timezone,
-    accounts: workspace.accounts,
-    posts: workspace.posts,
-  });
+  const actor = await actorFromRequest(request);
+  if (actor instanceof NextResponse) return actor;
+  return socialResponse(await list(actor));
 }

@@ -1,26 +1,34 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { NextRequest, NextResponse } from 'next/server';
 
-const session = vi.hoisted(() => ({
-  createSocialPost: vi.fn(),
-  updateSocialPost: vi.fn(),
-  cancelSocialPost: vi.fn(),
-  connectSocialAccount: vi.fn(),
-  loadSocialWorkspace: vi.fn(),
+const service = vi.hoisted(() => ({
+  actorFromRequest: vi.fn(),
+  submitPost: vi.fn(),
+  update: vi.fn(),
+  cancel: vi.fn(),
+  connectAccount: vi.fn(),
+  list: vi.fn(),
+  socialResponse: (result: { ok: boolean; status: number; error?: string; data?: unknown }) => (
+    NextResponse.json(result.ok ? result.data : { error: result.error }, { status: result.status })
+  ),
 }));
 
-const access = vi.hoisted(() => ({
-  requireSocialAccess: vi.fn(),
-}));
-
-vi.mock('@/lib/social/session', () => session);
-vi.mock('@/lib/social/access', () => access);
+vi.mock('@/lib/social/service', () => service);
 
 import { POST as connectPost } from '../connect/route';
+import { GET as bootstrap } from '../bootstrap/route';
 import { POST as createPost } from '../posts/route';
 import { PATCH, DELETE } from '../posts/[id]/route';
 
-const entitled = { tenantId: 'tenant-a', entitled: true, sample: true, mockOnly: true };
+const actor = {
+  uid: 'admin-1',
+  email: 'owner@church.test',
+  tenantId: 'tenant-a',
+  isSuperAdmin: false,
+  requestedTenantId: null,
+};
 
 function request(method: string, url: string, body?: unknown, headers?: Record<string, string>) {
   return new NextRequest(url, {
@@ -30,96 +38,63 @@ function request(method: string, url: string, body?: unknown, headers?: Record<s
   });
 }
 
-function target(platform: string, publishNow = false) {
-  const scheduledFor = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-  return {
-    content: 'Sunday at 10.',
-    publishNow,
-    scheduledFor: publishNow ? null : scheduledFor,
-    targets: [{ platform, accountId: 'acct-1', text: 'Sunday at 10.', madeWithAi: true }],
-  };
-}
-
-const publishKey = { 'idempotency-key': '11111111-1111-4111-8111-111111111111' };
-
-describe('social routes reject anything outside the allow-list', () => {
+describe('social routes delegate to the service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    access.requireSocialAccess.mockResolvedValue(entitled);
-    session.createSocialPost.mockResolvedValue({ ok: true, post: { id: 'p1', status: 'scheduled' } });
-    session.updateSocialPost.mockResolvedValue({ ok: true, post: { id: 'p1', status: 'scheduled' } });
-    session.connectSocialAccount.mockResolvedValue({ ok: true, authUrl: null, sample: true });
+    service.actorFromRequest.mockResolvedValue(actor);
+    service.submitPost.mockResolvedValue({ ok: true, status: 200, data: { post: { id: 'p1' } } });
+    service.update.mockResolvedValue({ ok: true, status: 200, data: { post: { id: 'p1' } } });
+    service.cancel.mockResolvedValue({ ok: true, status: 200, data: { cancelled: true } });
+    service.connectAccount.mockResolvedValue({ ok: true, status: 200, data: { platform: 'instagram', authUrl: null, sample: true } });
+    service.list.mockResolvedValue({ ok: true, status: 200, data: { accounts: [], posts: [] } });
   });
 
-  it.each(['twitter', 'x', 'X', 'Twitter', 'discord', 'slack'])(
-    'connect, schedule, publish and edit refuse %s and do not call the provider',
-    async (platform) => {
-      const connect = await connectPost(request('POST', 'http://localhost/api/social/connect', { platform }));
-      expect(connect.status).toBe(400);
-      expect(await connect.json()).toEqual({ error: 'platform_not_offered' });
-
-      const scheduled = await createPost(request('POST', 'http://localhost/api/social/posts', target(platform, false)));
-      expect(scheduled.status).toBe(400);
-      expect(await scheduled.json()).toEqual({ error: 'platform_not_offered' });
-
-      const published = await createPost(request('POST', 'http://localhost/api/social/posts', target(platform, true), publishKey));
-      expect(published.status).toBe(400);
-
-      const edited = await PATCH(
-        request('PATCH', 'http://localhost/api/social/posts/p1', target(platform, false)),
-        { params: { id: 'p1' } },
-      );
-      expect(edited.status).toBe(400);
-
-      expect(session.connectSocialAccount).not.toHaveBeenCalled();
-      expect(session.createSocialPost).not.toHaveBeenCalled();
-      expect(session.updateSocialPost).not.toHaveBeenCalled();
-    },
-  );
-
-  it('schedules an offered platform for the token tenant and stores the AI flag as off', async () => {
-    const response = await createPost(request('POST', 'http://localhost/api/social/posts', target('Instagram', false)));
-    expect(response.status).toBe(200);
-    expect(session.createSocialPost).toHaveBeenCalledTimes(1);
-    const [tenantId, draft] = session.createSocialPost.mock.calls[0];
-    expect(tenantId).toBe('tenant-a');
-    expect(draft.targets[0].platform).toBe('instagram');
-    expect(draft.targets[0].madeWithAi).toBe(false);
-    expect(draft.publishNow).toBe(false);
-  });
-
-  it('publish now is the same allow-list and requires an idempotency key from the header', async () => {
-    const missing = await createPost(request('POST', 'http://localhost/api/social/posts', target('instagram', true)));
-    expect(missing.status).toBe(400);
-    expect(await missing.json()).toEqual({ error: 'idempotency_key_required' });
-    expect(session.createSocialPost).not.toHaveBeenCalled();
-
+  it('passes the verified actor, the body and the idempotency header through', async () => {
+    const body = { content: 'Sunday', confirm: true };
     const response = await createPost(request(
       'POST',
       'http://localhost/api/social/posts',
-      { ...target('instagram', true), idempotencyKey: 'from-the-body' },
-      publishKey,
+      body,
+      { 'idempotency-key': '11111111-1111-4111-8111-111111111111' },
     ));
     expect(response.status).toBe(200);
-    expect(session.createSocialPost.mock.calls[0][1].publishNow).toBe(true);
-    expect(session.createSocialPost.mock.calls[0][1].idempotencyKey).toBe(publishKey['idempotency-key']);
+    expect(service.submitPost).toHaveBeenCalledWith(actor, body, '11111111-1111-4111-8111-111111111111');
   });
 
-  it('returns the access response unchanged when the ministry is not entitled', async () => {
-    const denied = NextResponse.json({ error: 'social_scheduler_not_entitled' }, { status: 403 });
-    access.requireSocialAccess.mockResolvedValue(denied);
-    const response = await createPost(request('POST', 'http://localhost/api/social/posts', target('instagram', true)));
-    expect(response.status).toBe(403);
-    expect(session.createSocialPost).not.toHaveBeenCalled();
+  it('returns the auth response and does not call the service when the token is refused', async () => {
+    service.actorFromRequest.mockResolvedValue(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
+    const response = await createPost(request('POST', 'http://localhost/api/social/posts', { content: 'x' }));
+    expect(response.status).toBe(401);
+    expect(service.submitPost).not.toHaveBeenCalled();
   });
 
-  it('cancel stays on the tenant the access check named', async () => {
-    session.cancelSocialPost.mockResolvedValue(true);
-    const response = await DELETE(
-      request('DELETE', 'http://localhost/api/social/posts/p1'),
+  it('lists, updates, cancels and connects through the same actor', async () => {
+    await bootstrap(request('GET', 'http://localhost/api/social/bootstrap'));
+    expect(service.list).toHaveBeenCalledWith(actor);
+
+    await PATCH(
+      request('PATCH', 'http://localhost/api/social/posts/post-9', { content: 'edited', confirm: true }),
       { params: { id: 'post-9' } },
     );
-    expect(response.status).toBe(200);
-    expect(session.cancelSocialPost).toHaveBeenCalledWith('tenant-a', 'post-9', true);
+    expect(service.update).toHaveBeenCalledWith(actor, 'post-9', { content: 'edited', confirm: true }, null);
+
+    await DELETE(
+      request('DELETE', 'http://localhost/api/social/posts/post-9', { confirm: true }),
+      { params: { id: 'post-9' } },
+    );
+    expect(service.cancel).toHaveBeenCalledWith(actor, 'post-9', { confirm: true });
+
+    await connectPost(request('POST', 'http://localhost/api/social/connect', { platform: 'threads' }));
+    expect(service.connectAccount).toHaveBeenCalledWith(actor, { platform: 'threads' });
+  });
+
+  it('keeps allow-list and ownership checks out of the route files', () => {
+    const dir = path.join(__dirname, '..');
+    for (const rel of ['posts/route.ts', 'posts/[id]/route.ts', 'connect/route.ts', 'bootstrap/route.ts']) {
+      const text = readFileSync(path.join(dir, rel), 'utf8');
+      expect(text).not.toContain('parseSocialDraft');
+      expect(text).not.toContain('createSocialPost');
+      expect(text).not.toContain('platform_not_offered');
+    }
   });
 });

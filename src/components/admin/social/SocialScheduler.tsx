@@ -26,6 +26,7 @@ import {
   platformsSupportingMadeWithAi,
   type SocialPlatform,
 } from '@/lib/social/platforms';
+import { calendarDayKey, defaultCalendarDay, postsOnCalendarDay, undatedDrafts } from '@/lib/social/calendar';
 import type { SocialAccount, SocialPost, SocialTarget, SocialWorkspace } from '@/lib/social/types';
 import { authFetch } from '@/utils/auth-fetch';
 import { SocialUpgradeWall } from './SocialUpgradeWall';
@@ -38,11 +39,25 @@ export interface SocialScreenData extends SocialWorkspace {
 
 const CONTROL = 'min-h-11 sm:min-h-[38px]';
 
-function dayKey(iso: string | null): string | null {
-  if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString().slice(0, 10);
+const FRIENDLY_ERROR: Record<string, string> = {
+  platform_not_offered: 'That platform is not offered.',
+  youtube_needs_video: 'YouTube posts need a video. They cannot be submitted until video upload is available.',
+  media_not_accepted: 'Media upload is not available yet.',
+  schedule_invalid: 'Choose a time in the future, within a year.',
+  post_incomplete: 'Write the post and choose at least one connected account.',
+  account_not_owned: 'That account is not connected to this ministry.',
+  idempotency_key_required: 'The post could not be saved. Try again.',
+  post_not_editable: 'That post can no longer be changed.',
+};
+
+function friendlyError(error: unknown): string {
+  if (typeof error === 'string' && FRIENDLY_ERROR[error]) return FRIENDLY_ERROR[error];
+  return 'The post could not be saved.';
+}
+
+function dayFromKey(key: string): Date {
+  const [year, month, day] = key.split('-').map(Number);
+  return new Date(year, (month || 1) - 1, day || 1);
 }
 
 function labelFor(platform: SocialPlatform): string {
@@ -91,10 +106,7 @@ export function SocialScheduler({
   const [editText, setEditText] = useState('');
   const [editWhen, setEditWhen] = useState('');
   const [cancelling, setCancelling] = useState<SocialPost | null>(null);
-  const seededDay = initial?.posts.find((post) => post.scheduledFor)?.scheduledFor;
-  const [day, setDay] = useState<Date | undefined>(
-    seededDay ? new Date(seededDay) : initial ? new Date() : undefined,
-  );
+  const [pickedDay, setPickedDay] = useState<string | null>(null);
 
   useEffect(() => {
     if (initial) return;
@@ -148,11 +160,12 @@ export function SocialScheduler({
     (SOCIAL_PLATFORMS as readonly string[]).includes(slug)));
 
   const marked = useMemo(() => {
+    const zone = data?.timezone || 'UTC';
     return (data?.posts ?? [])
-      .map((post) => dayKey(post.scheduledFor))
+      .map((post) => calendarDayKey(post.scheduledFor, zone))
       .filter((value): value is string => Boolean(value))
-      .map((value) => new Date(`${value}T12:00:00.000Z`));
-  }, [data?.posts]);
+      .map((value) => dayFromKey(value));
+  }, [data?.posts, data?.timezone]);
 
   if (unavailable) {
     return (
@@ -237,6 +250,7 @@ export function SocialScheduler({
         body: JSON.stringify({
           content,
           publishNow,
+          confirm: true,
           scheduledFor: when || null,
           timezone: data?.timezone,
           targets,
@@ -247,8 +261,9 @@ export function SocialScheduler({
         setUnavailable(true);
         return;
       }
+      const body = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setFailed(true);
+        setNotice(friendlyError(body.error));
         return;
       }
       if (publishNow) publishKey.current = null;
@@ -277,11 +292,14 @@ export function SocialScheduler({
     if (typeof body.authUrl === 'string' && body.authUrl) window.location.assign(body.authUrl);
   }
 
-  const selectedDay = day ? day.toISOString().slice(0, 10) : null;
-  const onDay = posts.filter((post) => dayKey(post.scheduledFor) === selectedDay);
+  const zone = data.timezone || 'UTC';
+  const selectedDay = pickedDay ?? defaultCalendarDay(posts, zone, new Date());
+  const onDay = postsOnCalendarDay(posts, selectedDay, zone);
+  const drafts = undatedDrafts(posts);
+  const youtubeSelected = selected.includes('youtube');
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 p-4 lg:p-0" data-testid="social-scheduler">
+    <div className="flex w-full flex-col gap-6 p-4 lg:p-0" data-testid="social-scheduler">
       <header>
         <h1 className="font-display text-4xl font-light tracking-tight text-strong">Social</h1>
         <p className="mt-2 text-sm text-faint">
@@ -309,7 +327,9 @@ export function SocialScheduler({
         </TabsContent>
 
         <TabsContent value="compose" className="mt-4">
-          <Card data-testid="social-composer">
+          <div className="flex w-full flex-col lg:-mr-4 lg:flex-row lg:items-stretch">
+            <div className="flex min-w-0 flex-1 justify-center">
+          <Card className="w-full lg:max-w-[640px]" data-testid="social-composer">
             <CardHeader>
               <CardTitle className="font-display text-2xl font-semibold">New post</CardTitle>
               <CardDescription>One text, then the accounts that should carry it.</CardDescription>
@@ -408,11 +428,21 @@ export function SocialScheduler({
                 />
               </label>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" className={CONTROL} disabled={saving} onClick={() => schedule(false)}>Schedule</Button>
-                <Button type="button" variant="outline" className={CONTROL} disabled={saving} onClick={() => schedule(true)}>Post now</Button>
+                <Button type="button" className={CONTROL} disabled={saving || youtubeSelected} onClick={() => schedule(false)}>Schedule</Button>
+                <Button type="button" variant="outline" className={CONTROL} disabled={saving || youtubeSelected} onClick={() => schedule(true)}>Post now</Button>
               </div>
+              {youtubeSelected && (
+                <p className="text-sm text-faint" data-testid="youtube-needs-video">
+                  YouTube posts need a video, so they cannot be submitted until video upload is available.
+                  A vertical video of three minutes or less is a Short. YouTube decides that from the video.
+                  There is no separate Shorts switch.
+                </p>
+              )}
             </CardContent>
           </Card>
+            </div>
+            <SidePanel posts={posts} />
+          </div>
         </TabsContent>
 
         <TabsContent value="calendar" className="mt-4">
@@ -427,19 +457,40 @@ export function SocialScheduler({
             <CardContent className="flex flex-col gap-4 lg:flex-row">
               <Calendar
                 mode="single"
-                selected={day}
-                onSelect={setDay}
+                selected={dayFromKey(selectedDay)}
+                onSelect={(next) => {
+                  if (!next) return;
+                  const month = String(next.getMonth() + 1).padStart(2, '0');
+                  const day = String(next.getDate()).padStart(2, '0');
+                  setPickedDay(`${next.getFullYear()}-${month}-${day}`);
+                }}
                 modifiers={{ scheduled: marked }}
                 modifiersClassNames={{ scheduled: 'bg-muted font-semibold' }}
               />
-              <ul className="flex flex-1 flex-col gap-2">
-                {onDay.length === 0 && (
-                  <li className="text-sm text-faint">No posts on this day.</li>
-                )}
-                {onDay.map((post) => (
-                  <li key={post.id} className="rounded-lg border border-line px-3 py-2 text-sm text-strong">{post.content}</li>
-                ))}
-              </ul>
+              <div className="flex flex-1 flex-col gap-4">
+                <section>
+                  <h2 className="mb-2 text-sm font-medium text-strong">This day</h2>
+                  <ul className="flex flex-col gap-2" data-testid="social-day-posts">
+                    {onDay.length === 0 && (
+                      <li className="text-sm text-faint">No posts on this day.</li>
+                    )}
+                    {onDay.map((post) => (
+                      <li key={post.id} className="rounded-lg border border-line px-3 py-2 text-sm text-strong">{post.content}</li>
+                    ))}
+                  </ul>
+                </section>
+                <section data-testid="social-calendar-drafts">
+                  <h2 className="mb-2 text-sm font-medium text-strong">Drafts</h2>
+                  <ul className="flex flex-col gap-2">
+                    {drafts.length === 0 && (
+                      <li className="text-sm text-faint">No undated drafts.</li>
+                    )}
+                    {drafts.map((post) => (
+                      <li key={post.id} className="rounded-lg border border-line px-3 py-2 text-sm text-strong">{post.content}</li>
+                    ))}
+                  </ul>
+                </section>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -493,9 +544,11 @@ export function SocialScheduler({
                     timezone: data.timezone,
                     targets: editing.targets,
                     publishNow: false,
+                    confirm: true,
                   }),
                 });
-                if (!response.ok) setFailed(true);
+                const body = await response.json().catch(() => ({}));
+                if (!response.ok) setNotice(friendlyError(body.error));
                 else await refresh();
                 setEditing(null);
               }}
@@ -524,8 +577,12 @@ export function SocialScheduler({
                   setCancelling(null);
                   return;
                 }
-                const response = await authFetch(`/api/social/posts/${cancelling.id}`, { method: 'DELETE' });
-                if (!response.ok) setFailed(true);
+                const response = await authFetch(`/api/social/posts/${cancelling.id}`, {
+                  method: 'DELETE',
+                  body: JSON.stringify({ confirm: true }),
+                });
+                const body = await response.json().catch(() => ({}));
+                if (!response.ok) setNotice(friendlyError(body.error));
                 else await refresh();
                 setCancelling(null);
               }}
@@ -536,6 +593,39 @@ export function SocialScheduler({
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function SidePanel({ posts }: { posts: readonly SocialPost[] }) {
+  const [tab, setTab] = useState<'draft' | 'scheduled' | 'sent'>('draft');
+  const labels = { draft: 'Drafts', scheduled: 'Scheduled', sent: 'Sent' } as const;
+  const rows = posts.filter((post) => post.status === tab);
+  return (
+    <aside
+      className="hidden w-80 shrink-0 border-l border-line bg-card lg:flex lg:flex-col"
+      data-testid="social-side-panel"
+    >
+      <div className="flex border-b border-line" role="tablist" aria-label="Drafts, scheduled and sent">
+        {(Object.keys(labels) as Array<keyof typeof labels>).map((id) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={tab === id}
+            className={`${CONTROL} flex-1 px-2 text-sm ${tab === id ? 'text-strong' : 'text-faint'}`}
+            onClick={() => setTab(id)}
+          >
+            {labels[id]}
+          </button>
+        ))}
+      </div>
+      <ul className="flex flex-col gap-2 p-3">
+        {rows.length === 0 && <li className="text-sm text-faint">Nothing in {labels[tab].toLowerCase()}.</li>}
+        {rows.map((post) => (
+          <li key={post.id} className="rounded-lg border border-line px-3 py-2 text-sm text-strong">{post.content}</li>
+        ))}
+      </ul>
+    </aside>
   );
 }
 

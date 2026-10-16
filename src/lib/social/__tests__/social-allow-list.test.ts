@@ -5,6 +5,7 @@ import { LiveSocialClient, buildZernioRequest } from '../live-client';
 import { MockSocialClient, resetSocialMock } from '../mock-client';
 import { socialMode, socialSampleWithoutEntitlement } from '../mode';
 import {
+  PLATFORM_FIELDS,
   SOCIAL_PLATFORMS,
   parseSocialPlatform,
   platformsSupportingMadeWithAi,
@@ -41,11 +42,10 @@ function draft(platform: string, extra: Record<string, unknown> = {}) {
   };
 }
 
-describe('the thirteen platforms', () => {
-  it('names exactly the offered networks', () => {
+describe('the five publishing platforms', () => {
+  it('names exactly Facebook, Instagram, Threads, TikTok and YouTube', () => {
     expect([...SOCIAL_PLATFORMS]).toEqual([
-      'instagram', 'tiktok', 'youtube', 'linkedin', 'pinterest', 'facebook',
-      'threads', 'bluesky', 'snapchat', 'googlebusiness', 'reddit', 'telegram', 'whatsapp',
+      'facebook', 'instagram', 'threads', 'tiktok', 'youtube',
     ]);
   });
 
@@ -54,9 +54,18 @@ describe('the thirteen platforms', () => {
       expect(parseSocialPlatform(slug)).toBe(slug);
       expect(parseSocialPlatform(`  ${slug.toUpperCase()}  `)).toBe(slug);
     }
-    for (const refused of ['twitter', 'x', 'X', 'Twitter', ' TWITTER ', 'discord', 'slack', '', 1, null]) {
+    for (const refused of [
+      'twitter', 'x', 'X', 'Twitter', ' TWITTER ', 'discord', 'slack',
+      'linkedin', 'pinterest', 'bluesky', 'snapchat', 'googlebusiness', 'reddit', 'telegram', 'whatsapp',
+      '', 1, null,
+    ]) {
       expect(parseSocialPlatform(refused)).toBeNull();
     }
+  });
+
+  it('offers YouTube title and visibility, and no Shorts flag', () => {
+    expect(PLATFORM_FIELDS.youtube.map((field) => field.key)).toEqual(['title', 'visibility']);
+    expect(JSON.stringify(PLATFORM_FIELDS)).not.toContain('shorts');
   });
 
   it('does not offer Made with AI on any allowed platform', () => {
@@ -65,7 +74,7 @@ describe('the thirteen platforms', () => {
 });
 
 describe('draft parsing refuses a platform before a provider is asked', () => {
-  it.each(['twitter', 'x', 'X', 'Twitter', 'discord', 'slack'])(
+  it.each(['twitter', 'x', 'X', 'Twitter', 'discord', 'slack', 'linkedin', 'pinterest', 'reddit'])(
     'connect and schedule refuse %s',
     (platform) => {
       expect(parseConnectPlatform({ platform })).toBeNull();
@@ -98,6 +107,12 @@ describe('draft parsing refuses a platform before a provider is asked', () => {
     expect(parseSocialDraft(soon, now).ok).toBe(true);
     expect(parseSocialDraft({ ...soon, media: [{ name: 'https://cdn.example/a.jpg', kind: 'image' }] }, now))
       .toEqual({ ok: false, error: 'media_not_accepted' });
+    const youtube = draft('youtube');
+    expect(parseSocialDraft(youtube, now)).toEqual({ ok: false, error: 'youtube_needs_video' });
+    expect(parseSocialDraft({
+      ...youtube,
+      media: [{ name: 'clip.mp4', kind: 'video' }],
+    }, now)).toEqual({ ok: false, error: 'media_not_accepted' });
   });
 
   it('one refused target refuses the whole post', () => {
@@ -149,6 +164,7 @@ describe('mock mode', () => {
     expect(visible).not.toContain('grace-chapel');
     expect(workspace.accounts.every((account) => account.displayName === 'Sample Ministry')).toBe(true);
     expect(workspace.posts.some((post) => post.status === 'scheduled')).toBe(true);
+    expect(workspace.accounts.every((account) => (SOCIAL_PLATFORMS as readonly string[]).includes(account.platform))).toBe(true);
     expect(new MockSocialClient('grace-chapel', clock).connect('instagram')).toEqual({
       connected: false,
       reason: 'preview_connect_disabled',

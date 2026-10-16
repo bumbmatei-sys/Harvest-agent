@@ -136,4 +136,83 @@ describe('SocialScheduler', () => {
     });
     expect(container.textContent).toContain('Sample Ministry');
   });
+
+  it('keeps an undated draft out of the selected day', async () => {
+    const workspace = new MockSocialClient('preview', clock).load();
+    await act(async () => {
+      root.render(
+        <SocialScheduler
+          initial={{ ...workspace, entitled: true }}
+          initialView="calendar"
+          onUpgrade={() => {}}
+        />,
+      );
+    });
+    expect(container.querySelector('[data-testid="social-day-posts"]')?.textContent).not.toContain('This Sunday');
+    expect(container.querySelector('[data-testid="social-calendar-drafts"]')?.textContent).toContain('This Sunday');
+    expect(container.querySelector('[data-testid="social-day-posts"]')?.textContent).not.toContain('Verse of the day');
+  });
+
+  it('centers the composer and docks the drafts panel on desktop classes only', async () => {
+    const workspace = new MockSocialClient('preview', clock).load();
+    await act(async () => {
+      root.render(
+        <SocialScheduler
+          initial={{ ...workspace, entitled: true }}
+          initialView="compose"
+          onUpgrade={() => {}}
+        />,
+      );
+    });
+    const rootEl = container.querySelector('[data-testid="social-scheduler"]');
+    expect(rootEl?.className).not.toContain('max-w-5xl');
+    expect(container.querySelector('[data-testid="social-composer"]')?.className).toContain('lg:max-w-[640px]');
+    const panel = container.querySelector('[data-testid="social-side-panel"]');
+    expect(panel?.className).toContain('hidden');
+    expect(panel?.className).toContain('lg:flex');
+    expect(panel?.textContent).toContain('Drafts');
+    expect(panel?.textContent).toContain('Scheduled');
+    expect(panel?.textContent).toContain('Sent');
+  });
+
+  it('tells the admin that a YouTube post needs a video and cannot be submitted', async () => {
+    const workspace = new MockSocialClient('preview', clock).load();
+    await act(async () => {
+      root.render(
+        <SocialScheduler
+          initial={{ ...workspace, entitled: true }}
+          initialView="compose"
+          onUpgrade={() => {}}
+        />,
+      );
+    });
+    await act(async () => {
+      const youtube = [...container.querySelectorAll('button')].find((button) => button.textContent === 'YouTube');
+      youtube?.click();
+    });
+    expect(container.querySelector('[data-testid="youtube-needs-video"]')?.textContent).toContain('need a video');
+    expect(container.textContent).toContain('Short');
+    expect(container.textContent).not.toContain('LinkedIn');
+    expect(container.textContent).not.toContain('Twitter');
+    const schedule = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Schedule');
+    expect(schedule?.hasAttribute('disabled')).toBe(true);
+  });
+
+  it('does not alert or show a raw credential error', async () => {
+    const alertSpy = vi.fn();
+    window.alert = alertSpy;
+    authFetch.mockResolvedValue({
+      status: 500,
+      ok: false,
+      json: async () => ({
+        error: 'Could not load the default credentials. Browse to https://cloud.google.com/docs/authentication/getting-started for more information.',
+      }),
+    });
+    await act(async () => {
+      root.render(<SocialScheduler onUpgrade={() => {}} />);
+    });
+    expect(alertSpy).not.toHaveBeenCalled();
+    expect(container.textContent).not.toContain('default credentials');
+    expect(container.querySelector('[data-testid="social-error"]')).toBeTruthy();
+  });
 });

@@ -57,6 +57,16 @@ describe('shell nav mapping', () => {
     expect(sideForTab('courses')).toBe('public');
     expect(sideForTab('crm')).toBe('people');
   });
+
+  it('does not label the Social item and its group with the same word', () => {
+    const withSocial = new Map(tabs);
+    withSocial.set('social', { id: 'social', label: 'Social', icon: FileText });
+    withSocial.set('livestream', { id: 'livestream', label: 'Livestream', icon: FileText });
+    const group = groupsForSide('public', withSocial).find((entry) => entry.items.some((item) => item.id === 'social'));
+    expect(group?.items.find((item) => item.id === 'social')?.label).toBe('Social');
+    expect(group?.label).not.toBe('Social');
+    expect(group?.label).toBe('Channels');
+  });
 });
 
 describe('home figures', () => {

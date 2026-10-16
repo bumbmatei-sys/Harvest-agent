@@ -3,7 +3,7 @@ import type { SocialPostDraft, SocialTarget } from './types';
 
 export interface DraftError {
   readonly ok: false;
-  readonly error: 'platform_not_offered' | 'post_incomplete' | 'schedule_invalid' | 'media_not_accepted';
+  readonly error: 'platform_not_offered' | 'post_incomplete' | 'schedule_invalid' | 'media_not_accepted' | 'youtube_needs_video';
 }
 
 /** A scheduled post has to be in the future, and not more than a year out. */
@@ -30,9 +30,12 @@ function readFields(raw: unknown): Record<string, string | boolean> {
  * Turn an untrusted body into a draft, or refuse it.
  *
  * Every platform string is parsed through the allow-list. A body that names
- * X, Twitter, or any other slug is `platform_not_offered` and produces no
- * draft, so the caller never reaches Zernio. `madeWithAi` is kept only for a
- * platform Zernio documents the flag for, and defaults to false.
+ * X, Twitter, or any other slug outside the five publishing platforms is
+ * `platform_not_offered` and produces no draft, so the caller never reaches
+ * Zernio. Media upload is refused. A YouTube target with no video is
+ * `youtube_needs_video`, which is what a YouTube post is until upload exists.
+ * `madeWithAi` is kept only for a platform Zernio documents the flag for, and
+ * defaults to false.
  */
 export function parseSocialDraft(body: unknown, now = new Date()): DraftResult {
   if (!body || typeof body !== 'object') return { ok: false, error: 'post_incomplete' };
@@ -61,6 +64,10 @@ export function parseSocialDraft(body: unknown, now = new Date()): DraftResult {
       fields: readFields(target.fields),
       madeWithAi: requestedAi && supportsMadeWithAi(platform),
     });
+  }
+
+  if (targets.some((target) => target.platform === 'youtube')) {
+    return { ok: false, error: 'youtube_needs_video' };
   }
 
   const publishNow = row.publishNow === true;
