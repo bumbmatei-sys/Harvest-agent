@@ -22,6 +22,7 @@ export function NavEntitlementCatalog({
     <div data-nav-entitlement-catalog hidden>
       {groups.map((group) => {
         const live = group.items.filter((item) => item.placeholder === null);
+        if (live.length === 0) return null;
         return (
           <div
             key={group.id}

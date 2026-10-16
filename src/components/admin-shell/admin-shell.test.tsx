@@ -1,8 +1,14 @@
 import { useState } from 'react';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { describe, expect, it, beforeEach, afterEach } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { Church, FileText, GraduationCap } from 'lucide-react';
+
+const analyticsGrant = vi.hoisted(() => ({ value: false }));
+
+vi.mock('../dashboard/analytics-permission', () => ({
+  hasAnalyticsAccess: () => Promise.resolve(analyticsGrant.value),
+}));
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -11,6 +17,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { THEME_STORAGE_KEY } from '@/lib/theme';
 
 import { AdminDesktopSidebar } from './AdminDesktopSidebar';
+import { AdminHome } from './AdminHome';
 import { REASON } from '../dashboard/dashboard-data';
 import { countDatedInWindow, formatKpi, HOME_KPI_SOURCES, sumCentsInWindow } from './home-kpis';
 import { NO_TENANT, READ_FAILED } from './use-home-kpis';
@@ -143,5 +150,55 @@ describe('desktop sidebar', () => {
     localStorage.setItem(THEME_STORAGE_KEY, 'system');
     ensureLightDefault();
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('system');
+  });
+});
+
+describe('home analytics gate', () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    analyticsGrant.value = false;
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    act(() => { root?.unmount(); });
+    container.remove();
+  });
+
+  async function mount() {
+    await act(async () => {
+      root = createRoot(container);
+      root.render(
+        <AdminHome
+          tenantId="grace"
+          tenantName="Grace Ministry"
+          isSuperAdmin={false}
+          unreadCount={0}
+          onOpen={() => {}}
+        />,
+      );
+    });
+  }
+
+  it('withholds recorded figures and the analytics tabs when access is denied', async () => {
+    await mount();
+    expect(container.querySelector('[data-analytics-denied]')).toBeTruthy();
+    expect(container.querySelector('[data-home-kpi]')).toBeNull();
+    expect(container.textContent).not.toContain('Overview');
+    expect(container.textContent).not.toContain('Engagement');
+  });
+
+  it('shows the analytics tabs once access is granted', async () => {
+    analyticsGrant.value = true;
+    await mount();
+    expect(container.querySelector('[data-analytics-denied]')).toBeNull();
+    expect(container.textContent).toContain('Overview');
+    expect(container.textContent).toContain('Growth');
+    expect(container.textContent).toContain('Giving');
+    expect(container.textContent).toContain('Engagement');
+    expect(container.textContent).toContain('Content');
   });
 });

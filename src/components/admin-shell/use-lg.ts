@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 
 /** The admin's existing desktop breakpoint (`lg`, 1024px). */
 const QUERY = '(min-width: 1024px)';
@@ -11,12 +11,26 @@ const QUERY = '(min-width: 1024px)';
  * Below `lg` the component stays unmounted, so the shadcn Sidebar never
  * takes its mobile Sheet path. The bottom nav is unchanged.
  */
-export function useLgUp(): boolean {
-  const [matches, setMatches] = useState(false);
+function readLg(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+  try {
+    return window.matchMedia(QUERY).matches;
+  } catch {
+    return false;
+  }
+}
 
-  useEffect(() => {
+export function useLgUp(): boolean {
+  const [matches, setMatches] = useState(readLg);
+
+  useLayoutEffect(() => {
     if (typeof window.matchMedia !== 'function') return;
-    const mql = window.matchMedia(QUERY);
+    let mql: MediaQueryList;
+    try {
+      mql = window.matchMedia(QUERY);
+    } catch {
+      return;
+    }
     const onChange = () => setMatches(mql.matches);
     onChange();
     mql.addEventListener?.('change', onChange);

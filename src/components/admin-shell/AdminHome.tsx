@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 
@@ -12,6 +12,9 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { formatCents } from '@/lib/donation-history';
+
+import { DashboardAnalytics } from '../AdminDashboardHome';
+import { hasAnalyticsAccess, type AnalyticsAccess } from '../dashboard/analytics-permission';
 
 import { DataTable } from './data-table';
 import {
@@ -75,6 +78,10 @@ export interface AdminHomeViewProps {
   givingByDay: Series;
   sampleLabel?: string;
   onOpen: (target: HomeTarget) => void;
+  /** Preview shows the figure cards. The live home passes false and gates them. */
+  includeFigures?: boolean;
+  showPeriod?: boolean;
+  after?: ReactNode;
 }
 
 export function AdminHomeView({
@@ -86,6 +93,9 @@ export function AdminHomeView({
   givingByDay,
   sampleLabel,
   onOpen,
+  includeFigures = true,
+  showPeriod = true,
+  after,
 }: AdminHomeViewProps) {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8" data-admin-home data-screen="AdminHome">
@@ -95,11 +105,12 @@ export function AdminHomeView({
             {greeting(new Date())}
           </h1>
           <p className="mt-1 text-sm text-muted">
-            {tenantName}. Figures below are what was recorded.
+            {tenantName}.
+            {includeFigures ? ' Figures below are what was recorded.' : ''}
             {sampleLabel ? ` ${sampleLabel}` : ''}
           </p>
         </div>
-        <ToggleGroup
+        {showPeriod && <ToggleGroup
           value={[String(period)]}
           onValueChange={(next) => {
             const picked = Number(next[0]);
@@ -113,7 +124,7 @@ export function AdminHomeView({
               {days}d
             </ToggleGroupItem>
           ))}
-        </ToggleGroup>
+        </ToggleGroup>}
       </header>
 
       <Card>
@@ -160,6 +171,23 @@ export function AdminHomeView({
         ))}
       </div>
 
+      {includeFigures && <HomeFigures loading={loading} cards={cards} givingByDay={givingByDay} />}
+      {after}
+    </div>
+  );
+}
+
+function HomeFigures({
+  loading,
+  cards,
+  givingByDay,
+}: {
+  loading: boolean;
+  cards: readonly HomeKpiCard[];
+  givingByDay: Series;
+}) {
+  return (
+    <>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => {
           const source = HOME_KPI_SOURCES[card.id];
@@ -238,30 +266,115 @@ export function AdminHomeView({
           <DataTable columns={TESTIMONY_COLUMNS} data={[]} empty="No testimonies recorded." />
         </CardContent>
       </Card>
-    </div>
+    </>
+  );
+}
+
+function AnalyticsDenied() {
+  return (
+    <section className="rounded-xl border border-dashed border-line px-6 py-10 text-center" data-analytics-denied>
+      <h2 className="font-display text-xl font-semibold text-strong">Analytics is not part of your access</h2>
+      <p className="mx-auto mt-2 max-w-sm text-sm text-muted">
+        Ask an admin who can manage roles to turn on the Analytics permission for your account.
+      </p>
+    </section>
+  );
+}
+
+function GrantedAnalytics({
+  tenantId,
+  period,
+  onPeriod,
+  isSuperAdmin,
+  unreadCount,
+}: {
+  tenantId: string | null;
+  period: HomePeriod;
+  onPeriod: (period: HomePeriod) => void;
+  isSuperAdmin: boolean;
+  unreadCount: number;
+}) {
+  const state = useHomeKpis(tenantId, period);
+  return (
+    <>
+      <div className="flex justify-end">
+        <ToggleGroup
+          value={[String(period)]}
+          onValueChange={(next) => {
+            const picked = Number(next[0]);
+            if (picked === 7 || picked === 14 || picked === 30) onPeriod(picked);
+          }}
+          spacing={0}
+          aria-label="Period"
+        >
+          {HOME_PERIODS.map((days) => (
+            <ToggleGroupItem key={days} value={String(days)} className="min-h-11 px-3" aria-label={`${days} days`}>
+              {days}d
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </div>
+      <HomeFigures loading={state.loading} cards={state.cards} givingByDay={state.givingByDay} />
+      <DashboardAnalytics
+        tenantId={tenantId}
+        isSuperAdmin={isSuperAdmin}
+        unreadCount={unreadCount}
+        showInbox={isSuperAdmin && !tenantId}
+      />
+    </>
   );
 }
 
 export function AdminHome({
   tenantId,
   tenantName,
+  isSuperAdmin,
+  unreadCount,
   onOpen,
 }: {
   tenantId: string | null;
   tenantName: string;
+  isSuperAdmin: boolean;
+  unreadCount: number;
   onOpen: (target: HomeTarget) => void;
 }) {
   const [period, setPeriod] = useState<HomePeriod>(14);
-  const state = useHomeKpis(tenantId, period);
+  const [access, setAccess] = useState<AnalyticsAccess>('pending');
+
+  useEffect(() => {
+    let live = true;
+    hasAnalyticsAccess().then((granted) => {
+      if (live) setAccess(granted ? 'granted' : 'denied');
+    });
+    return () => { live = false; };
+  }, []);
+
   return (
     <AdminHomeView
       tenantName={tenantName}
       period={period}
       onPeriod={setPeriod}
-      loading={state.loading}
-      cards={state.cards}
-      givingByDay={state.givingByDay}
+      loading={false}
+      cards={[]}
+      givingByDay={{ kind: 'unavailable', reason: '' }}
       onOpen={onOpen}
+      includeFigures={false}
+      showPeriod={false}
+      after={
+        access === 'pending' ? (
+          <Skeleton className="h-64 w-full" data-analytics-pending />
+        ) : access === 'denied' ? (
+          <AnalyticsDenied />
+        ) : (
+          <GrantedAnalytics
+            tenantId={tenantId}
+            period={period}
+            onPeriod={setPeriod}
+            isSuperAdmin={isSuperAdmin}
+            unreadCount={unreadCount}
+          />
+        )
+      }
     />
   );
 }

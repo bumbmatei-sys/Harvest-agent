@@ -694,6 +694,8 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ byte-identical', ()
     // bar does not also paint on desktop. MORE_GROUPS is byte-identical and no
     // permission gate moved.
     '41a14031bb605f8028018a2d3a2008d6df132fa30d92b8570b5a21d159c18eed',
+    // APPENDED BY #529 review, nothing above removed or rewritten. The home screen gates recorded giving and the analytics tabs behind hasAnalyticsAccess. The entitlement catalogue is test-only. Light default and the lg query run before paint.
+    '480bca86b8d234277691cd45a00073d4d4695a814c11f4d28a62ccea13210e6f',
   ];
 
   it('🔴 AdminDashboard.tsx — not opened by this ticket', () => {

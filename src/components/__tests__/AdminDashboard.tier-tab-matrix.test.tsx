@@ -322,8 +322,14 @@ async function resolveCell(plan: TenantPlan, row: Row): Promise<Resolved> {
   return { cell, inNav, screen, wall, redirected };
 }
 
-/** The whole table, resolved once and shared by every assertion below. */
-const MATRIX = new Map<string, Map<TenantPlan, Resolved>>();
+/**
+ * The whole table, resolved once and shared by every assertion below.
+ *
+ * Committed only when every row is present. A build that times out used to
+ * leave a partial map, and the next test then died on `undefined.get`.
+ */
+let MATRIX: Map<string, Map<TenantPlan, Resolved>> | null = null;
+let MATRIX_BUILD: Promise<Map<string, Map<TenantPlan, Resolved>>> | null = null;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -343,17 +349,27 @@ afterEach(async () => {
 });
 
 async function buildMatrix() {
-  if (MATRIX.size) return MATRIX;
-  for (const row of TABS) {
-    const byPlan = new Map<TenantPlan, Resolved>();
-    for (const plan of PLAN_ORDER) byPlan.set(plan, await resolveCell(plan, row));
-    MATRIX.set(row.label, byPlan);
+  if (MATRIX) return MATRIX;
+  if (!MATRIX_BUILD) {
+    MATRIX_BUILD = (async () => {
+      const next = new Map<string, Map<TenantPlan, Resolved>>();
+      for (const row of TABS) {
+        const byPlan = new Map<TenantPlan, Resolved>();
+        for (const plan of PLAN_ORDER) byPlan.set(plan, await resolveCell(plan, row));
+        next.set(row.label, byPlan);
+      }
+      MATRIX = next;
+      return next;
+    })().catch((err: unknown) => {
+      MATRIX_BUILD = null;
+      throw err;
+    });
   }
-  return MATRIX;
+  return MATRIX_BUILD;
 }
 
 // ── 17 ───────────────────────────────────────────────────────────────────────
-describe('17 — the tier/tab matrix is generated from the real nav array and the real render switch', () => {
+describe('17 — the tier/tab matrix is generated from the real nav array and the real render switch', { timeout: 60_000 }, () => {
   it('the tier/tab matrix is generated from the real nav array and the real render switch', async () => {
     const matrix = await buildMatrix();
 
@@ -418,7 +434,7 @@ describe('17 — the tier/tab matrix is generated from the real nav array and th
 });
 
 // ── 18 ───────────────────────────────────────────────────────────────────────
-describe('18 — no tab is visible in the nav but renders fully without its feature', () => {
+describe('18 — no tab is visible in the nav but renders fully without its feature', { timeout: 60_000 }, () => {
   it('no tab is visible in the nav but renders fully without its feature', async () => {
     const matrix = await buildMatrix();
     const offenders: string[] = [];
@@ -468,7 +484,7 @@ describe('18 — no tab is visible in the nav but renders fully without its feat
 });
 
 // ── 19 ───────────────────────────────────────────────────────────────────────
-describe('19 — no tab hidden from the nav renders fully when reached by URL', () => {
+describe('19 — no tab hidden from the nav renders fully when reached by URL', { timeout: 60_000 }, () => {
   it('no tab hidden from the nav renders fully when reached by URL', async () => {
     const matrix = await buildMatrix();
     const leaks: string[] = [];

@@ -157,6 +157,7 @@ export function AdminDesktopSidebar({
                 isActive={activeTab === 'dashboard' && placeholder === null}
                 tooltip="Home"
                 className={MENU_BUTTON}
+                data-nav-tab="dashboard"
                 onClick={() => onNavigate('dashboard')}
               >
                 <Home />
@@ -166,12 +167,16 @@ export function AdminDesktopSidebar({
           </SidebarMenu>
         </SidebarGroup>
 
-        {groups.map((group) => (
+        {groups.map((group) => {
+          const live = group.items.filter((item) => !item.placeholder);
+          return (
           <Collapsible key={group.id} defaultOpen className="group/collapsible">
             <SidebarGroup
-              data-nav-group={group.id}
-              data-nav-group-tabs={group.items.filter((item) => !item.placeholder).map((item) => item.id).join(',')}
-              data-nav-group-labels={group.items.filter((item) => !item.placeholder).map((item) => item.entitlementLabel).join('|')}
+              {...(live.length > 0 ? {
+                'data-nav-group': group.id,
+                'data-nav-group-tabs': live.map((item) => item.id).join(','),
+                'data-nav-group-labels': live.map((item) => item.entitlementLabel).join('|'),
+              } : {})}
             >
               <SidebarGroupLabel
                 render={<CollapsibleTrigger className="min-h-11" />}
@@ -193,6 +198,7 @@ export function AdminDesktopSidebar({
                             isActive={isActive}
                             tooltip={item.label}
                             className={MENU_BUTTON}
+                            data-nav-tab={item.placeholder ? undefined : item.id}
                             onClick={() => openItem(item.id, item.placeholder)}
                           >
                             <Icon />
@@ -206,7 +212,8 @@ export function AdminDesktopSidebar({
               </CollapsibleContent>
             </SidebarGroup>
           </Collapsible>
-        ))}
+          );
+        })}
       </SidebarContent>
 
       <SidebarFooter>

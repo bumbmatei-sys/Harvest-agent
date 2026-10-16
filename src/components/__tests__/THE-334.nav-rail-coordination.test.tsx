@@ -275,6 +275,29 @@ function parsedDesktopGroups(): { label: string; ids: string[] }[] {
  * still in place. So the gate is switched on explicitly, and ONLY for the
  * query the rail actually asks about.
  */
+function showDesktop() {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: 1440 });
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: (query: string) => {
+      const min = /min-width:\s*(\d+)px/.exec(query);
+      const max = /max-width:\s*(\d+)px/.exec(query);
+      const matches = min ? 1440 >= Number(min[1]) : max ? 1440 <= Number(max[1]) : false;
+      return {
+        matches,
+        media: query,
+        addEventListener() {},
+        removeEventListener() {},
+        addListener() {},
+        removeListener() {},
+        dispatchEvent() { return false; },
+        onchange: null,
+      };
+    },
+  });
+}
+
 function enableHover(matches = true) {
   const listeners = new Set<() => void>();
   Object.defineProperty(window, 'matchMedia', {
@@ -1001,13 +1024,14 @@ describe('THE-334 · what it may not disturb', () => {
     expect(openFlyouts(), 'the panel closed when a section was picked').toEqual([first]);
   });
 
-  it.skip('🔴 10b · the account entry ADVERTISES exactly what its menu renders', async () => {
+  it('🔴 10b · the account entry ADVERTISES exactly what its menu renders', async () => {
     /* 🔴 The attribute the entitlement guards read is only safe because this
        holds it equal to the menu's actual rows. Advertising a tab the menu does
        not render — or gating the two differently — fails here, which is what
        stops the attribute becoming a comfortable lie. */
     for (const perms of [FULL_TENANT_PERMS, { ...FULL_TENANT_PERMS, manageSettings: false }]) {
       if (mounted) { await act(async () => { root.unmount(); }); mounted = false; }
+      showDesktop();
       await mount({ superAdmin: false, perms, role: 'staff' });
       const entry = container.querySelector<HTMLElement>('[data-nav-rail-account]')!;
       const advertised = (entry.getAttribute('data-nav-account-labels') ?? '')
@@ -1023,7 +1047,8 @@ describe('THE-334 · what it may not disturb', () => {
     }
   });
 
-  it.skip('🔴 10 · every permission gate is unchanged — library stays super-admin-only', async () => {
+  it('🔴 10 · every permission gate is unchanged — library stays super-admin-only', async () => {
+    showDesktop();
     await mount({ superAdmin: false, perms: FULL_TENANT_PERMS });
     const advertised = Array.from(container.querySelectorAll('[data-nav-group-tabs]'))
       .flatMap((el) => (el.getAttribute('data-nav-group-tabs') ?? '').split(',').filter(Boolean));
@@ -1040,6 +1065,7 @@ describe('THE-334 · what it may not disturb', () => {
        SAME entitlement it always did: no manageSettings, no row. */
     await act(async () => { root.unmount(); });
     mounted = false;
+    showDesktop();
     await mount({ superAdmin: false, perms: { ...FULL_TENANT_PERMS, manageSettings: false }, role: 'staff' });
     const avatar = container.querySelector<HTMLElement>('[data-nav-rail-account] button[aria-label="My account"]')!;
     await act(async () => { avatar.click(); });

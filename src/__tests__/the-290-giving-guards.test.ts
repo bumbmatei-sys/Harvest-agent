@@ -394,6 +394,9 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // APPENDED BY the phase-1 shell, nothing above removed or rewritten.
     ['41a14031bb605f8028018a2d3a2008d6df132fa30d92b8570b5a21d159c18eed',
       `main + phase 1 app shell - the desktop icon rail and its hover flyouts are replaced by a shadcn Sidebar that mounts only from the lg breakpoint, with always-visible labels, collapsible groups, and collapse-to-icons. The mobile bottom bar and More sheet are unchanged; the shell class string gains only lg:hidden so that bar does not also paint on desktop. MORE_GROUPS is byte-identical and no permission gate moved.`],
+    // APPENDED BY #529 review, nothing above removed or rewritten.
+    ['480bca86b8d234277691cd45a00073d4d4695a814c11f4d28a62ccea13210e6f',
+      `main + #529 review - the home screen gates recorded giving, member and contact figures behind hasAnalyticsAccess, including the tenant-owner rule, and mounts Overview, Growth, Giving, Engagement and Content only after that grant. The entitlement catalogue renders when NODE_ENV is test. The light default and the lg sidebar query both run in a layout effect.`],
   ],
   'firestore.indexes.json': [
     ['8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0', 'main at 7fd4672'],

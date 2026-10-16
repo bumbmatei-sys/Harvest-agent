@@ -997,6 +997,13 @@ describe('12 — AdminDocs.tsx, AdminDashboardHome.tsx, firestore.rules and func
        * merge ref cut before this ticket landed still passes.
        */
       '551097a89199c19b5dc0bd0584e6d9c7697d07f8d19c1c99cb44df9218b16d29',
+      /*
+       * #529, appended beside the digest above, never over it. DashboardAnalytics
+       * is exported so the new admin home can mount Overview, Growth, Giving,
+       * Engagement and Content behind the same hasAnalyticsAccess gate. The five
+       * props, the pending/denied/granted states, and the tab panels are unchanged.
+       */
+      '880c5b50cdf222f6d6500849637db3af508ed132919da0263e88cbc8e0e4c05f',
     ],
     // THE-275, the same situation one ticket over. It owns AdminDocs.tsx and has
     // rewritten it: the notes screen was a drill-down (a folder-directory view,

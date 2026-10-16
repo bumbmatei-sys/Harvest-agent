@@ -133,7 +133,7 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({
       )}
 
       {access === 'granted' && (
-        <AnalyticsDashboard tenantId={tenantId} isSuperAdmin={isSuperAdmin} unreadCount={unreadCount} showInbox={isPlatform} />
+        <DashboardAnalytics tenantId={tenantId} isSuperAdmin={isSuperAdmin} unreadCount={unreadCount} showInbox={isPlatform} />
       )}
 
       <div>
@@ -198,7 +198,7 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({
  * keep consistent and passing the object would only invite one to be derived
  * from it later.
  */
-function AnalyticsDashboard({ tenantId, isSuperAdmin, unreadCount, showInbox }: {
+export function DashboardAnalytics({ tenantId, isSuperAdmin, unreadCount, showInbox }: {
   tenantId: string | null;
   isSuperAdmin: boolean;
   unreadCount: number;

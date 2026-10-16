@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { LayoutDashboard, Church, FileText, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, ListChecks, QrCode, Radio, ExternalLink, Link2, Palette, Bell, X, Library, HandCoins, UserPlus } from 'lucide-react';
 import AdminBlog from './AdminBlog';
@@ -256,7 +256,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const [shellSide, setShellSide] = useState<ShellSideId>('people');
   const [shellPlaceholder, setShellPlaceholder] = useState<ShellPlaceholderId | null>(null);
   const lgUp = useLgUp();
-  useEffect(() => { ensureLightDefault(); }, []);
+  useLayoutEffect(() => { ensureLightDefault(); }, []);
   // Nav customizer state
   const [showNavCustomizer, setShowNavCustomizer] = useState(false);
   // Ordered IDs for the bottom bar; null means use default (first 4 from allTabs)
@@ -1022,10 +1022,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           accountMenu={<MyAccountMenu {...accountMenuProps} variant="rail" />}
         />
       )}
-      <NavEntitlementCatalog
-        tabs={desktopNavById}
-        canSettings={!!accountMenuProps.onOpenSettings}
-      />
+      {process.env.NODE_ENV === 'test' && (
+        <NavEntitlementCatalog
+          tabs={desktopNavById}
+          canSettings={!!accountMenuProps.onOpenSettings}
+        />
+      )}
 
       {/* Side/Bottom Navigation */}
       {/* 🔴 THE-334 — `lg:w-[64px]`, down from THE-332's 88px.
@@ -1270,6 +1272,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               <AdminHome
                 tenantId={tenantId ?? null}
                 tenantName={isWhiteLabel ? tenantName : 'Harvest'}
+                isSuperAdmin={isSuperAdmin}
+                unreadCount={unreadCount}
                 onOpen={(target) => {
                   if (target.kind === 'placeholder') {
                     setShellPlaceholder(target.id);

@@ -143,6 +143,7 @@ const SELECTORS = {
 
 let browser: MeasuringBrowser;
 const shots: Record<number, { scrollWidth: number; boxes: Record<string, { width: number; height: number; right: number } | null> }> = {};
+const sidebarShots: Record<number, { tab: { width: number; height: number } | null; account: { width: number; height: number } | null }> = {};
 
 setUpOrFail(async () => {
   const css = await buildAppCss();
@@ -187,8 +188,46 @@ setUpOrFail(async () => {
       ),
     };
   }
+  const { AdminDesktopSidebar } = await import('../admin-shell/AdminDesktopSidebar');
+  const { SidebarProvider } = await import('../ui/sidebar');
+  const { TooltipProvider } = await import('../ui/tooltip');
+  const Icon = () => null;
+  const sidebarTabs = new Map([['crm', { id: 'crm', label: 'CRM', icon: Icon }]]);
+  const sidebarBody = renderToStaticMarkup(
+    <TooltipProvider>
+      <SidebarProvider>
+        <AdminDesktopSidebar
+          side="people"
+          onSide={() => {}}
+          activeTab="dashboard"
+          placeholder={null}
+          tabs={sidebarTabs as never}
+          tenantName="Grace Ministry"
+          logoUrl="/logo.png"
+          onNavigate={() => {}}
+          onPlaceholder={() => {}}
+          accountMenu={<button type="button" data-nav-rail-account="" aria-label="My account" className="min-h-11 min-w-11" />}
+        />
+      </SidebarProvider>
+    </TooltipProvider>,
+  );
+  const sidebarFile = path.join(dir, 'sidebar.html');
+  writeFileSync(
+    sidebarFile,
+    `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style><style>${FREEZE}</style></head><body>${sidebarBody}</body></html>`,
+  );
+  await browser.open(`file://${sidebarFile}`);
+  for (const v of VIEWPORTS.filter((x) => x >= 1024)) {
+    await browser.measure(v, { tab: '[data-nav-tab]', account: '[data-nav-rail-account]' });
+    const m = await browser.measure(v, { tab: '[data-nav-tab]', account: '[data-nav-rail-account]' });
+    sidebarShots[v] = {
+      tab: m.boxes.tab ? { width: m.boxes.tab.width, height: m.boxes.tab.height } : null,
+      account: m.boxes.account ? { width: m.boxes.account.width, height: m.boxes.account.height } : null,
+    };
+  }
+
   // eslint-disable-next-line no-console
-  console.log('THE-332 measurements:', JSON.stringify(shots, null, 1));
+  console.log('THE-332 measurements:', JSON.stringify({ shots, sidebarShots }, null, 1));
 }, 600_000);
 
 afterAll(async () => { await browser?.close?.(); });
@@ -243,6 +282,19 @@ describe('THE-332 · measured', () => {
     for (const v of VIEWPORTS) {
       for (const key of ['rail', 'account', 'group'] as const) {
         expect(shots[v].boxes[key]?.height ?? 0, `the rail rendered at ${v}px`).toBe(0);
+      }
+    }
+    /* The hover rail is gone, so the floor moves to the desktop sidebar.
+       It mounts only from lg, where Rule 4's control floor is 38px and
+       min-h-11 at the 14.5px root is 39.875px. Both axes, with a cap so a
+       row cannot quietly become a card. */
+    for (const v of VIEWPORTS.filter((x) => x >= 1024)) {
+      for (const key of ['tab', 'account'] as const) {
+        const box = sidebarShots[v][key];
+        expect(box, `no ${key} box at ${v}px`).toBeTruthy();
+        expect(box!.height, `${key} height at ${v}px`).toBeGreaterThanOrEqual(38);
+        expect(box!.height, `${key} height at ${v}px`).toBeLessThanOrEqual(64);
+        expect(box!.width, `${key} width at ${v}px`).toBeGreaterThanOrEqual(38);
       }
     }
   });

@@ -11,6 +11,16 @@
       "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
       "digest": "ed4c840322db941d844ffbdd6afb9f65466b3e962c54c145180e571fbcf0edcf",
       "why": "#529 appends the phase-1 adopters to this guard and does not replace earlier rows. AdminHome.tsx is recorded for checkbox and toggle-group, AdminDesktopSidebar.tsx for toggle-group and command, and the lockfile allow-list gains @tanstack/react-table and @tanstack/table-core, which is the only dependency this phase adds."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "480bca86b8d234277691cd45a00073d4d4695a814c11f4d28a62ccea13210e6f",
+      "why": "#529 review, appended beside the digest above and never over it. The home screen gates recorded giving, member and contact figures behind hasAnalyticsAccess, including the tenant-owner rule, and mounts Overview, Growth, Giving, Engagement and Content only after that grant. The entitlement catalogue renders when NODE_ENV is test. The light default and the lg sidebar query both run in a layout effect."
+    },
+    {
+      "file": "src/components/MyAccountMenu.tsx",
+      "digest": "99ba0f534377371aaf264e16e8707ad57705361f55514b455493a64010dc8fcb",
+      "why": "#529 review, appended beside the earlier digests and never over them. The rail variant of the account menu advertises data-nav-rail-account and data-nav-account-labels so THE-334 tests 10 and 10b can read the Settings entitlement off the desktop sidebar. The rows, the w-60 panel, and the manageSettings gate are unchanged."
     }
   ]
 }
