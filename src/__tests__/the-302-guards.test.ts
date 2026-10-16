@@ -123,6 +123,9 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // APPENDED BY #529 QA, nothing above removed or rewritten.
     ['eec73dea210f04b85c17f1dacdcff72162a49e8a152501a68b9a994d928e04cf',
       `main + #529 QA - the desktop sidebar provider sets --sidebar-width-icon to 3.75rem so the collapsed icon rail fits a 44px control. No nav array, group, permission gate, or screen mount moved.`],
+    // APPENDED BY #529 QA, nothing above removed or rewritten.
+    ['666b4cbf551ba1ed1711105035f9a112f3f9d74686b16bc748ca0a1998a0f078',
+      `main + #529 QA - Home receives the tab ids already in the nav, so a quick action is offered only when that route would accept it. No nav array, group, permission term, or screen mount moved.`],
   ],
   // 🔴 A NAMED STOP CONDITION on this ticket: "do not touch `runDodoPlanChange`
   // or `plan-change.ts` unless the fix genuinely requires it". It did not — part

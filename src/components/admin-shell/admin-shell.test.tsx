@@ -206,6 +206,7 @@ describe('home copy', () => {
             figure: { kind: 'exact', value: 2 },
           }]}
           givingByDay={{ kind: 'unavailable', reason: 'This read did not complete, so no figure can be shown.' }}
+          openTabIds={['courses', 'events']}
           onOpen={() => {}}
         />,
       );
@@ -216,8 +217,60 @@ describe('home copy', () => {
     expect(host.textContent).not.toContain('Email sending from here is not available');
     expect(host.textContent).not.toContain('Scheduling is not in this version');
     expect(host.textContent).toContain('New program');
+    expect(host.textContent).toContain('Your events');
     act(() => { local.unmount(); });
     host.remove();
+  });
+
+  it('hides a quick action when that screen is not in the route list', () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const local = createRoot(host);
+    const open = vi.fn();
+    act(() => {
+      local.render(
+        <AdminHomeView
+          tenantName="Grace Ministry"
+          period={14}
+          onPeriod={() => {}}
+          loading={false}
+          cards={[]}
+          givingByDay={{ kind: 'unavailable', reason: 'This read did not complete, so no figure can be shown.' }}
+          openTabIds={['courses', 'dashboard']}
+          onOpen={open}
+        />,
+      );
+    });
+    expect(host.textContent).toContain('New program');
+    expect(host.textContent).not.toContain('Your events');
+    const courses = [...host.querySelectorAll('button')].find((button) => button.textContent?.includes('New program'));
+    act(() => { courses?.click(); });
+    expect(open).toHaveBeenCalledWith({ kind: 'tab', id: 'courses' });
+    act(() => { local.unmount(); });
+    host.remove();
+
+    const denied = document.createElement('div');
+    document.body.appendChild(denied);
+    const deniedRoot = createRoot(denied);
+    act(() => {
+      deniedRoot.render(
+        <AdminHomeView
+          tenantName="Grace Ministry"
+          period={14}
+          onPeriod={() => {}}
+          loading={false}
+          cards={[]}
+          givingByDay={{ kind: 'unavailable', reason: 'This read did not complete, so no figure can be shown.' }}
+          openTabIds={['dashboard', 'services']}
+          onOpen={() => {}}
+        />,
+      );
+    });
+    expect(denied.textContent).not.toContain('New program');
+    expect(denied.textContent).not.toContain('Your events');
+    expect(denied.textContent).toContain('Add your service times');
+    act(() => { deniedRoot.unmount(); });
+    denied.remove();
   });
 });
 

@@ -1277,6 +1277,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                 tenantName={isWhiteLabel ? tenantName : 'Harvest'}
                 isSuperAdmin={isSuperAdmin}
                 unreadCount={unreadCount}
+                openTabIds={allTabs.map((tab) => tab.id)}
                 onOpen={(target) => {
                   if (target.kind === 'placeholder') {
                     setShellPlaceholder(target.id);

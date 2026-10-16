@@ -26,6 +26,11 @@
       "file": "src/components/AdminDashboard.tsx",
       "digest": "eec73dea210f04b85c17f1dacdcff72162a49e8a152501a68b9a994d928e04cf",
       "why": "#529 QA, appended beside the digests above and never over them. The desktop sidebar provider sets --sidebar-width-icon to 3.75rem so the collapsed icon rail fits a 44px control. No nav array, group, permission gate, or screen mount moved."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "666b4cbf551ba1ed1711105035f9a112f3f9d74686b16bc748ca0a1998a0f078",
+      "why": "#529 QA, appended beside the digests above and never over them. Home receives the tab ids already in the nav, so New program and Your events appear only when those routes would accept the click. No nav array, group, permission term, or screen mount moved."
     }
   ]
 }

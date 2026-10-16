@@ -7,6 +7,7 @@ import {
   GraduationCap,
   LayoutDashboard,
   MoreHorizontal,
+  User,
 } from 'lucide-react';
 
 import { applyTheme } from '@/lib/theme-runtime';
@@ -200,7 +201,17 @@ function AfterChrome({ side, collapsed }: { side: ShellSideId; collapsed: boolea
               logoUrl={LOGO}
               onNavigate={() => {}}
               onPlaceholder={() => {}}
-              accountMenu={<span className="px-2 text-sm text-muted">Account</span>}
+              accountMenu={(
+                <button
+                  type="button"
+                  data-nav-rail-account=""
+                  aria-label="My account"
+                  title="My account"
+                  className="flex size-11 items-center justify-center rounded-full border border-sidebar-border bg-sidebar text-sidebar-foreground"
+                >
+                  <User />
+                </button>
+              )}
             />
           )}
           <MobileBar className={AFTER_SHELL} />
@@ -221,6 +232,7 @@ function AfterChrome({ side, collapsed }: { side: ShellSideId; collapsed: boolea
                 ],
               }}
               sampleLabel="Sample figures for a layout preview, not a live ministry."
+              openTabIds={['courses', 'events']}
               onOpen={() => {}}
             />
           </SidebarInset>

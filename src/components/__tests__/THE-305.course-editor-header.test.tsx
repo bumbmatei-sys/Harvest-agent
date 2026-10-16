@@ -715,6 +715,8 @@ const ADMIN_DASHBOARD_ACCEPTED = [
   '480bca86b8d234277691cd45a00073d4d4695a814c11f4d28a62ccea13210e6f',
   // APPENDED BY #529 QA, nothing above removed or rewritten. The collapsed icon rail width is set on the sidebar provider. No nav, permission, or screen mount moved.
   'eec73dea210f04b85c17f1dacdcff72162a49e8a152501a68b9a994d928e04cf',
+  // APPENDED BY #529 QA, nothing above removed or rewritten. Home receives the nav's tab ids so a quick action exists only when that route would. No permission term was added.
+  '666b4cbf551ba1ed1711105035f9a112f3f9d74686b16bc748ca0a1998a0f078',
 ];
 
 describe('the files this ticket must not open are byte-identical', () => {

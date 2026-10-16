@@ -754,6 +754,9 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // APPENDED BY #529 QA, nothing above removed or rewritten.
     ['eec73dea210f04b85c17f1dacdcff72162a49e8a152501a68b9a994d928e04cf',
       `main + #529 QA - the desktop sidebar provider sets --sidebar-width-icon to 3.75rem so the collapsed icon rail fits a 44px control. No nav array, group, permission gate, or screen mount moved.`],
+    // APPENDED BY #529 QA, nothing above removed or rewritten.
+    ['666b4cbf551ba1ed1711105035f9a112f3f9d74686b16bc748ca0a1998a0f078',
+      `main + #529 QA - Home receives the tab ids already in the nav, so a quick action is offered only when that route would accept it. No nav array, group, permission term, or screen mount moved.`],
   ],
   'firestore.indexes.json': [
     ['8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0', 'main at 133d557'],

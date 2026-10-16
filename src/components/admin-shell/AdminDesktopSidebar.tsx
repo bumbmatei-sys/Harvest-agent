@@ -241,7 +241,7 @@ export function AdminDesktopSidebar({
             {resolved === 'dark' ? 'Light' : 'Dark'}
           </span>
         </Button>
-        <div className="flex w-full items-center group-data-[collapsible=icon]:justify-center">{accountMenu}</div>
+        <div className="flex w-full items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:[&_[data-shell-account-label]]:sr-only">{accountMenu}</div>
       </SidebarFooter>
 
       <CommandDialog open={paletteOpen} onOpenChange={setPaletteOpen} title="Search" description="Jump to a section">

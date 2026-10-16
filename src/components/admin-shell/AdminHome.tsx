@@ -40,6 +40,18 @@ const ACTIONS: readonly { title: string; body: string; target: HomeTarget }[] = 
   { title: 'Your events', body: 'Open events', target: { kind: 'tab', id: 'events' } },
 ];
 
+/**
+ * Quick actions the admin can actually open.
+ *
+ * `openTabIds` is the same list the dashboard puts in the nav and accepts as a
+ * route. A tab missing from it is bounced back to Dashboard, so the card must
+ * not be offered. An empty list hides both.
+ */
+export function homeQuickActions(openTabIds: readonly string[]) {
+  const open = new Set(openTabIds);
+  return ACTIONS.filter((action) => action.target.kind === 'tab' && open.has(action.target.id));
+}
+
 interface TestimonyRow {
   name: string;
   date: string;
@@ -70,6 +82,12 @@ export interface AdminHomeViewProps {
   givingByDay: Series;
   sampleLabel?: string;
   onOpen: (target: HomeTarget) => void;
+  /**
+   * Tab ids this admin may open. The live home passes the dashboard's nav list,
+   * which is the plan and role gate the routes use. Omit none of them: an empty
+   * list hides every quick action.
+   */
+  openTabIds?: readonly string[];
   /** Preview shows the figure cards. The live home passes false and gates them. */
   includeFigures?: boolean;
   showPeriod?: boolean;
@@ -85,10 +103,12 @@ export function AdminHomeView({
   givingByDay,
   sampleLabel,
   onOpen,
+  openTabIds = [],
   includeFigures = true,
   showPeriod = true,
   after,
 }: AdminHomeViewProps) {
+  const actions = homeQuickActions(openTabIds);
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8" data-admin-home data-screen="AdminHome">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -145,8 +165,9 @@ export function AdminHomeView({
         </CardContent>
       </Card>
 
+      {actions.length > 0 && (
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {ACTIONS.map((action) => (
+        {actions.map((action) => (
           <button
             key={action.title}
             type="button"
@@ -162,6 +183,7 @@ export function AdminHomeView({
           </button>
         ))}
       </div>
+      )}
 
       {includeFigures && <HomeFigures loading={loading} cards={cards} givingByDay={givingByDay} />}
       {after}
@@ -321,12 +343,15 @@ export function AdminHome({
   isSuperAdmin,
   unreadCount,
   onOpen,
+  openTabIds = [],
 }: {
   tenantId: string | null;
   tenantName: string;
   isSuperAdmin: boolean;
   unreadCount: number;
   onOpen: (target: HomeTarget) => void;
+  /** Tab ids the dashboard already accepted. Same list the route guard uses. */
+  openTabIds?: readonly string[];
 }) {
   const [period, setPeriod] = useState<HomePeriod>(14);
   const [access, setAccess] = useState<AnalyticsAccess>('pending');
@@ -348,6 +373,7 @@ export function AdminHome({
       cards={[]}
       givingByDay={{ kind: 'unavailable', reason: '' }}
       onOpen={onOpen}
+      openTabIds={openTabIds}
       includeFigures={false}
       showPeriod={false}
       after={

@@ -249,7 +249,11 @@ setUpOrFail(async () => {
           logoUrl="/logo.png"
           onNavigate={() => {}}
           onPlaceholder={() => {}}
-          accountMenu={<button type="button" data-nav-rail-account="" aria-label="My account" className="min-h-11 min-w-11" />}
+          accountMenu={(
+            <button type="button" data-nav-rail-account="" aria-label="My account" className="flex size-11 items-center justify-center">
+              <span data-shell-account-label>Account</span>
+            </button>
+          )}
         />
       </SidebarProvider>
     </TooltipProvider>,
@@ -385,7 +389,7 @@ describe('THE-332 · measured', () => {
     expect(collapsedProbe, 'the collapsed sidebar was not measured').toBeTruthy();
     const probe = collapsedProbe!;
     expect(probe.clippedIcons, 'an icon is clipped by the collapsed rail').toBe(0);
-    expect(probe.shown, `collapsed rail still shows "${probe.shown}"`).not.toMatch(/Home|CRM|People|Search|Ministry|Publish/);
+    expect(probe.shown, `collapsed rail still shows "${probe.shown}"`).not.toMatch(/Home|CRM|People|Search|Ministry|Publish|Account/);
     expect(probe.overlapsAccount, 'the expand trigger overlaps the account avatar').toBe(false);
     expect(probe.triggerOwnsHit, 'the expand trigger is not the element under the pointer').toBe(true);
     expect(probe.lightBg, 'collapsed rail is not the light sidebar ground').toBe('rgb(255, 255, 255)');
