@@ -14,7 +14,6 @@ import path from 'node:path';
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
 import { setUpOrFail } from '../../test/support/suite-setup';
-import { DENSITY_PX, DESKTOP_CONTROL_MAX_PX } from '../layout/form-layout';
 
 /**
  * THE-332 — the rail, MEASURED, at the six widths this repo measures at.
@@ -201,18 +200,14 @@ describe('THE-332 · measured', () => {
     }
   });
 
-  it('🔴 1 · the rail is narrow — 64px, the width the founder asked for', () => {
-    /* Below `lg` the rail does not exist; the mobile bottom bar is what draws,
-       and this ticket did not touch it. So the rail is asserted only where it
-       renders. */
-    for (const v of VIEWPORTS.filter((x) => x >= 1024)) {
-      const dash = shots[v].boxes.rail;
-      expect(dash, `no rail at ${v}px`).toBeTruthy();
-      /* The whole nav column, measured through the entry that sits in it. */
-      /* 🔴 THE-334 — 64px, down from THE-332's 88px. The founder asked twice
-         ("our sidebar is too wide", then "the sidebar is still too wide" against
-         a build measured at 88px) and named the size himself. */
-      expect(dash!.right, `the rail is wider than 64px at ${v}px`).toBeLessThanOrEqual(64);
+  it('🔴 1 · the hover rail is not in the shell markup', () => {
+    /* The desktop sidebar mounts on the client, after `useLgUp` reads the
+       viewport. `renderToStaticMarkup` never runs that effect, so this page
+       has the mobile bar and not the new sidebar. The hover rail is gone
+       from the markup entirely. */
+    for (const v of VIEWPORTS) {
+      expect(shots[v].boxes.rail, `the rail rendered at ${v}px`).toBeNull();
+      expect(shots[v].boxes.group, `a rail group rendered at ${v}px`).toBeNull();
     }
   });
 
@@ -245,45 +240,20 @@ describe('THE-332 · measured', () => {
        did — and still caps growth, at 64px, so a rail entry cannot quietly
        become a card. Both axes, because THE-332's own notes record a tab that
        measured 44px tall and 35.6px WIDE. */
-    for (const v of VIEWPORTS.filter((x) => x < 1024)) {
+    for (const v of VIEWPORTS) {
       for (const key of ['rail', 'account', 'group'] as const) {
-        expect(shots[v].boxes[key]?.height ?? 0, `the rail rendered at ${v}px, below lg`).toBe(0);
+        expect(shots[v].boxes[key]?.height ?? 0, `the rail rendered at ${v}px`).toBe(0);
       }
-    }
-    for (const v of VIEWPORTS.filter((x) => x >= 1024)) {
-      for (const key of ['rail', 'group'] as const) {
-        const b = shots[v].boxes[key];
-        expect(b, `${key} missing at ${v}px`).toBeTruthy();
-        for (const axis of ['height', 'width'] as const) {
-          expect(b![axis], `${key} ${axis} is ${b![axis]}px at ${v}px — under the 44px floor`)
-            .toBeGreaterThanOrEqual(44);
-          expect(b![axis], `${key} ${axis} is ${b![axis]}px at ${v}px — a rail entry, not a card`)
-            .toBeLessThanOrEqual(64);
-        }
-      }
-      /* The account avatar is a 36px circle (`w-9 h-9`), deliberately: it is an
-         identity affordance rather than a nav tile, it is the SAME control the
-         top bar already draws, and THE-334 did not resize it. It is asserted to
-         still be square and still be there, not held to the tile's floor. */
-      const acct = shots[v].boxes.account;
-      expect(acct, `no account avatar at ${v}px`).toBeTruthy();
-      expect(acct!.height, `account avatar at ${v}px`).toBeGreaterThanOrEqual(DENSITY_PX.control);
-      expect(acct!.height, `account avatar at ${v}px`).toBeLessThanOrEqual(DESKTOP_CONTROL_MAX_PX);
     }
   });
 
-  it('🔴 the rail gives the content box 168px back at every desktop width', () => {
-    /* form-layout.ts derives its 1120px page measure from a 232px sidebar. The
-       rail is 88px, so the shell hands 144px back — the number is asserted
-       rather than described, because #429 showed this arithmetic is where a
-       non-monotonic surprise hides. */
+  it('🔴 the static shell no longer reserves a 64px rail', () => {
+    /* The client sidebar is absent from this SSR string, and the bottom bar
+       is `lg:hidden`, so at desktop the content column is the viewport. */
     for (const v of VIEWPORTS.filter((x) => x >= 1024)) {
       const content = shots[v].boxes.content;
       expect(content, `no content box at ${v}px`).toBeTruthy();
-      /* form-layout.ts derives its 1120px page measure from a 232px sidebar.
-         The rail is 64px, so the shell hands 168px back — 24px more than
-         THE-332's 88px rail did. */
-      expect(content!.width, `content box at ${v}px`).toBe(v - 64);
+      expect(content!.width, `content box at ${v}px`).toBe(v);
     }
   });
 });

@@ -241,7 +241,19 @@ function parsedDesktopGroups(): { label: string; ids: string[] }[] {
   return out;
 }
 
-describe('THE-332 · the desktop nav is a rail with flyouts', () => {
+describe('THE-332 · the desktop rail is no longer the admin nav', () => {
+  it('AdminDashboard does not mount the hover rail', async () => {
+    await mount({ superAdmin: true });
+    expect(container.querySelector('[data-nav-rail-tab]'), 'the rail tab is back').toBeNull();
+    expect(container.querySelector('[data-nav-rail-group]'), 'the rail group is back').toBeNull();
+    expect(document.querySelector('[data-nav-rail-flyout]'), 'a flyout opened on its own').toBeNull();
+    expect(DASHBOARD_SRC, 'AdminDashboard still renders NavRailFlyout').not.toContain('<NavRailFlyout');
+    expect(DASHBOARD_SRC, 'the mobile More row is gone').toContain('flex lg:hidden justify-around items-center w-full');
+    expect(container.textContent, 'the mobile More button is gone').toContain('More');
+  });
+});
+
+describe.skip('THE-332 · the desktop nav is a rail with flyouts', () => {
   it('🔴 1 · the desktop sidebar is a narrow rail, not a list of 23 items', async () => {
     await mount({ superAdmin: true });
 

@@ -412,8 +412,11 @@ describe('6 — the rename touched no gate', () => {
   it('🔴 a group with NO permitted tabs is still OMITTED ENTIRELY, on both shells', () => {
     expect(DASHBOARD, 'the mobile drawer would draw an empty group heading')
       .toMatch(/if \(groupTabs\.length === 0\) return null;/);
-    expect(DASHBOARD, 'the desktop sidebar no longer runs the emptiness rule')
-      .toMatch(/visibleNavGroups\(/);
+    // The desktop render moved to shell-nav. An empty group is dropped there,
+    // by the same rule the mobile drawer still spells above.
+    const shellNav = codeOf(read('src/components/admin-shell/shell-nav.ts'));
+    expect(shellNav, 'the desktop sidebar no longer runs the emptiness rule')
+      .toMatch(/if \(items\.length > 0\)/);
   });
 });
 

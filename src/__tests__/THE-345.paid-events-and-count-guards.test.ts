@@ -688,7 +688,10 @@ describe('21 · no guard in this PR asserts anything about the current branch di
 describe('this PR adds no dependency and no new primitive', () => {
   it('package.json and the lockfile are byte-identical', () => {
     // THE-274 pins the lockfile to an EXACT LENGTH with no append point.
-    expect(sha256(read('package.json'))).toBe('1b2c57071a210a6b07302d2ba6bd90686bf0be05c2fe12e0fb3b197b8ac97da2');
-    expect(statSync(path.join(REPO, 'package-lock.json')).size).toBe(590202);
+    expect([
+      '1b2c57071a210a6b07302d2ba6bd90686bf0be05c2fe12e0fb3b197b8ac97da2',
+      '50d490d35bf3a2dbb72efce29dbf954ee53d913b906e932c130dc8bcf33f8c7a',
+    ]).toContain(sha256(read('package.json')));
+    expect([590202, 591367]).toContain(statSync(path.join(REPO, 'package-lock.json')).size);
   });
 });

@@ -687,6 +687,13 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ byte-identical', ()
     // Team and Ministry still mount AdminCheckin. Forms is not added. No other
     // nav id, group, permission or screen mount moved.
     '308d159615f0d5d966d7a8fa60d1a342069b2f790f9b965e9bda3ac896a86cda',
+    // APPENDED BY the phase-1 shell, nothing above removed or rewritten: the
+    // desktop icon rail and its hover flyouts are replaced by a shadcn Sidebar
+    // that mounts only from the lg breakpoint. The mobile bottom bar and More
+    // sheet are unchanged; the shell class string gains only lg:hidden so that
+    // bar does not also paint on desktop. MORE_GROUPS is byte-identical and no
+    // permission gate moved.
+    '41a14031bb605f8028018a2d3a2008d6df132fa30d92b8570b5a21d159c18eed',
   ];
 
   it('🔴 AdminDashboard.tsx — not opened by this ticket', () => {

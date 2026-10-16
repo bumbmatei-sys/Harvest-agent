@@ -236,7 +236,7 @@ const GATED_TABS: Row[] = [
  * not by this predicate.
  */
 const UNGATED_TABS: Row[] = [
-  { label: 'Dashboard', section: '', screen: 'AdminDashboardHome', entitled: () => true },
+  { label: 'Dashboard', section: '', screen: 'AdminHome', entitled: () => true },
   { label: 'Campus', section: 'churches', screen: 'AdminChurches', entitled: () => true },
   { label: 'Check-In', section: 'checkin', screen: 'AdminCheckin', entitled: () => true },
 ];

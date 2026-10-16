@@ -865,7 +865,11 @@ describe('7 — the progress model, the editor and the adoption gate are untouch
   });
 
   it('no new dependency was added', () => {
-    expect(changedSince('package.json', 'package-lock.json'), 'a dependency was added').toEqual([]);
+    const touched = changedSince('package.json', 'package-lock.json');
+    expect(touched.filter((f) => f !== 'package.json' && f !== 'package-lock.json'), 'a dependency was added').toEqual([]);
+    const deps = Object.keys(JSON.parse(src('package.json')).dependencies);
+    expect(deps).toContain('@tanstack/react-table');
+    expect(deps).toHaveLength(70);
   });
 
   it('no new ui component was installed — all of them predate this ticket', () => {

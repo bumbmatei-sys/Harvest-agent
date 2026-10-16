@@ -557,6 +557,11 @@ describe('2 · every use of pb-safe is accounted for', () => {
       // own overlay instead, precisely so it is correct on the admin shell too.
       // Its own layout suite asserts the component carries no `pb-safe`
       // className, so this entry cannot quietly become a use.
+      // The phase-1 preview copies the admin bottom-nav class string, `pb-safe`
+      // included, so a 390px shot of the old bar and the new bar can be compared.
+      // It is the same inert class the live shell already carries. The preview
+      // route is dev-only and adds no new padding of its own.
+      'src/components/admin-shell/AdminShellPreview.tsx',
       'src/components/country/CountryPrompt.tsx',
       'src/components/course/__tests__/THE-282.course-cards-layout.test.tsx',
       'src/components/dashboard/GivingTab.tsx',

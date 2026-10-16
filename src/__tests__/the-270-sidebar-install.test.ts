@@ -265,6 +265,7 @@ const REMOVED_SINCE_MAIN: readonly string[] = [
  *  package this app did not have. Named here rather than the assertion below
  *  being loosened, so the next addition still has to come back and say so. */
 const ADDED_SINCE_MAIN: readonly string[] = [
+  '@tanstack/react-table', // phase-1 — the admin home data table, outside src/components/ui
   'cmdk', // THE-274 — command.tsx
   'date-fns', // THE-274 — react-day-picker's peer, reached by calendar.tsx
   'react-day-picker', // THE-274 — calendar.tsx
@@ -741,14 +742,22 @@ describe('every THE-267 sidebar token still resolves to the same value', () => {
 
 /* ── 7. Installed, not adopted ───────────────────────────────────────────── */
 
-describe('sidebar is imported by nothing', () => {
-  it('no file outside src/components/ui imports it', () => {
+describe('sidebar importers are the phase-1 shell and nothing else', () => {
+  it('no file outside src/components/ui imports it except the recorded shell', () => {
     const importers = walk(path.join(REPO_ROOT, 'src')).filter((f) => {
       if (f.startsWith(UI_DIR)) return false;
       if (f.includes(`${path.sep}__tests__${path.sep}`)) return false;
       return /@\/components\/ui\/sidebar/.test(readFileSync(f, 'utf8'));
     });
-    expect(importers.map((f) => rel(f))).toEqual([]);
+    // The primitive stays unedited. These four are the phase-1 adoption: the
+    // dashboard mounts it only at lg, the sidebar block itself, the dev-only
+    // before/after preview, and the shell test that sits beside that code.
+    expect(importers.map((f) => rel(f)).sort()).toEqual([
+      'src/components/AdminDashboard.tsx',
+      'src/components/admin-shell/AdminDesktopSidebar.tsx',
+      'src/components/admin-shell/AdminShellPreview.tsx',
+      'src/components/admin-shell/admin-shell.test.tsx',
+    ].sort());
   });
 
   it('and no primitive inside src/components/ui imports it either', () => {

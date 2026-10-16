@@ -646,8 +646,15 @@ describe('the out-of-scope files are untouched', () => {
    * inherited and which this ticket added.
    */
   const RECORDED_UI_ADOPTERS: Readonly<Record<string, readonly string[]>> = {
-    // 🔴 Adopted by nothing, still — the one name THE-266's claim held for.
-    tooltip: [],
+    // Phase 1. The desktop sidebar's icon-only People/Public switch, and the
+    // providers that mount it. ui/sidebar.tsx is inside the primitive dir and
+    // is excluded from this walk, so it is not listed.
+    tooltip: [
+      'src/components/AdminDashboard.tsx',
+      'src/components/admin-shell/AdminDesktopSidebar.tsx',
+      'src/components/admin-shell/AdminShellPreview.tsx',
+      'src/components/admin-shell/admin-shell.test.tsx',
+    ],
     collapsible: [
       // Pre-existing, and invisible to the alias-only matcher until now.
       'src/components/AdminAccounting.tsx',
@@ -662,6 +669,8 @@ describe('the out-of-scope files are untouched', () => {
       // the primitive rather than hand-rolling a fold is what puts the
       // aria-expanded / aria-controls pairing on it.
       'src/components/AdminCRM.tsx',
+      // Phase 1. The desktop sidebar's collapsible groups.
+      'src/components/admin-shell/AdminDesktopSidebar.tsx',
     ],
     // The first three are pre-existing and were invisible to the alias-only
     // matcher until THE-316 closed it; recorded here so the set stays closed.
@@ -756,6 +765,10 @@ describe('the out-of-scope files are untouched', () => {
        * 🔴 A TWELFTH adopter still fails.
        */
       'src/components/AdminBlog.tsx',
+      // Phase 1. The admin home KPI cards while a read is in flight. An
+      // unavailable figure renders the reason, and an empty testimonies table
+      // renders its empty state — neither of those is a skeleton.
+      'src/components/admin-shell/AdminHome.tsx',
     ],
     breadcrumb: ['src/components/docs/DocsBreadcrumb.tsx'],
   };

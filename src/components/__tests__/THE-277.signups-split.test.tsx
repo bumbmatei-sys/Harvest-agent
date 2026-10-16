@@ -1115,15 +1115,19 @@ describe('12 — AdminDocs.tsx, AdminDashboardHome.tsx, firestore.rules and func
     expect(accepted, `${file} changed — it belongs to another ticket`).toContain(digest(file));
   });
 
-  it('🔴 AdminDocs is still mounted from AdminDashboard, and so is AdminDashboardHome', () => {
+  it('🔴 AdminDocs is still mounted from AdminDashboard', () => {
     // This ticket DOES edit AdminDashboard.tsx — it is the one of the three
-    // allowed to, because only it needs a nav entry. So the two mounts that
+    // allowed to, because only it needs a nav entry. So the mounts that
     // belong to the other tickets are pinned by shape rather than by digest.
+    // The landing route no longer mounts AdminDashboardHome: phase 1 replaced
+    // that screen with AdminHome. AdminDashboardHome.tsx stays in the tree for
+    // the tab suites that render it directly.
     const dash = src('src/components/AdminDashboard.tsx');
     expect(dash).toContain("import AdminDocs from './AdminDocs';");
-    expect(dash).toContain("import AdminDashboardHome from './AdminDashboardHome';");
+    expect(dash).toContain("import { AdminHome } from './admin-shell/AdminHome';");
     expect(dash).toContain('<AdminDocs initialDocId={itemId} onItemConsumed={clearItemId} />');
-    expect(dash).toMatch(/<AdminDashboardHome\s/);
+    expect(dash).toContain('<AdminHome');
+    expect(dash).not.toMatch(/<AdminDashboardHome\s/);
   });
 
   it('and no file under src/components/dashboard was added, edited or read', () => {

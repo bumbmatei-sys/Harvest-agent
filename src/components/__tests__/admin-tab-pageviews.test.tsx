@@ -273,39 +273,25 @@ async function unmount() {
   await act(async () => { root.unmount(); });
 }
 
-/** Click a nav button by the LABEL a founder reads in the product. */
-/** The rail entry that OWNS a tab label, if the tab lives inside a flyout. */
-function owningRailGroup(label: string): HTMLButtonElement | null {
-  const group = [...container.querySelectorAll('[data-nav-group-labels]')].find((g) =>
-    (g.getAttribute('data-nav-group-labels') ?? '').split('|').includes(label),
-  );
-  if (!group) return null;
-  return group.querySelector<HTMLButtonElement>('[data-nav-rail-group]');
-}
-
 /**
- * Click a nav destination by name.
+ * Click a nav destination by the label a person reads.
  *
- * THE-332 — the desktop nav is a rail, so a tab is one of three things: a
- * button with that text (the mobile bar), an icon-only pinned rail button whose
- * name is its `aria-label`, or a row inside a flyout that is not mounted until
- * its rail entry is opened. This walks the REAL path a user walks — it opens
- * the flyout and clicks the row — rather than reaching past the interaction, so
- * a tab that could not actually be opened still fails here.
+ * The desktop sidebar mounts only at `lg`. happy-dom has no viewport, so the
+ * path that is actually in the tree is the mobile one, which this phase left
+ * in place: a primary-tab button, or a row inside the More sheet. Opening More
+ * and clicking the row is the path a phone walks. A label that is neither a
+ * primary tab nor a More row still fails here.
  */
 async function clickTab(label: string) {
   const byText = () =>
     [...container.querySelectorAll('button'), ...document.querySelectorAll('button')]
       .find((b) => b.textContent?.trim() === label);
-  const byAria = () =>
-    [...container.querySelectorAll<HTMLButtonElement>('[data-nav-rail-tab]')]
-      .find((b) => b.getAttribute('aria-label') === label);
 
-  let button: Element | undefined = byText() ?? byAria();
+  let button: Element | undefined = byText();
   if (!button) {
-    const group = owningRailGroup(label);
-    expect(group, `no nav entry named "${label}", and no rail group advertises it`).toBeTruthy();
-    await act(async () => { group!.click(); });
+    const more = [...container.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'More');
+    expect(more, `no nav entry named "${label}", and the More sheet is not in the shell`).toBeTruthy();
+    await act(async () => { (more as HTMLButtonElement).click(); });
     await flush();
     button = byText();
   }
@@ -518,14 +504,14 @@ describe('12 — one tab change emits exactly one pageview', () => {
     await clickTab('CRM');
     const after = pageviews().length;
 
-    // A state change inside the shell: open and close the desktop nav group.
-    // THE-332 — the group heading is now a rail entry whose name is its
-    // `aria-label`, so it is found by the attribute the rail marks it with
-    // rather than by text content it no longer renders.
-    const group = container.querySelector<HTMLButtonElement>('[data-nav-rail-group="MINISTRY"]');
-    await act(async () => { (group as HTMLButtonElement).click(); });
+    // A state change inside the shell that is not navigation: open and close
+    // the mobile More sheet. The hover rail this used to toggle is gone; More
+    // is the chrome that is still mounted below lg.
+    const more = [...container.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'More');
+    expect(more, 'the More button left the mobile bar').toBeTruthy();
+    await act(async () => { (more as HTMLButtonElement).click(); });
     await flush();
-    await act(async () => { (group as HTMLButtonElement).click(); });
+    await act(async () => { (more as HTMLButtonElement).click(); });
     await flush();
     expect(pageviews().length, 'a re-render counted as a page view').toBe(after);
   });

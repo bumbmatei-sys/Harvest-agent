@@ -758,15 +758,17 @@ describe('the new dependencies are declared, pinned and resolvable', () => {
     expect(reactIs?.dev, 'react-is is dev-only; recharts needs it at runtime').not.toBe(true);
   });
 
-  it('@tanstack/react-table was NOT added — nothing installed here needs it', () => {
-    // Premise 2 of the header. `data-table` is not a registry item, so nothing
-    // pulled TanStack Table, and it is not speculatively added. Adopting it is
-    // a Phase 8 build decision. @tanstack/react-QUERY is a different package
-    // and predates this PR — asserted so the two are never confused.
+  it('@tanstack/react-table is the phase-1 data table, at the recorded version', () => {
+    // Premise 2 of the header was "not a dependency of THIS work" (batch B).
+    // Phase 1 is the later decision that adopts it, for the admin home table
+    // only, and THE-274 records the lockfile entries. @tanstack/react-QUERY
+    // stays the package it already was, so the two are never confused.
+    // @tanstack/table-core is a transitive lockfile entry, not a direct dependency.
     const p = pkg();
-    expect(p.dependencies['@tanstack/react-table']).toBeUndefined();
+    expect(p.dependencies['@tanstack/react-table']).toBe('^8.21.3');
     expect(p.devDependencies['@tanstack/react-table']).toBeUndefined();
-    expect(lock().packages['node_modules/@tanstack/react-table']).toBeUndefined();
+    expect(p.dependencies['@tanstack/table-core']).toBeUndefined();
+    expect(lock().packages['node_modules/@tanstack/react-table']).toBeDefined();
     expect(p.dependencies['@tanstack/react-query']).toBe('^5.101.1');
   });
 
@@ -1112,6 +1114,16 @@ const THE_320_PROGRESS_ADOPTERS = [
  */
 const THE_330_TABLE_ADOPTERS = ['src/components/settings/SmsSection.tsx'] as const;
 
+/**
+ * Phase 1. The admin home draws the recorded-giving series through `chart`
+ * and the setup checklist through `progress`. The testimonies grid is
+ * `data-table.tsx`, which is the `table` adopter — the home screen itself
+ * does not import `ui/table`. `pagination` stays unadopted.
+ */
+const PHASE_1_CHART_ADOPTERS = ['src/components/admin-shell/AdminHome.tsx'] as const;
+const PHASE_1_TABLE_ADOPTERS = ['src/components/admin-shell/data-table.tsx'] as const;
+const PHASE_1_PROGRESS_ADOPTERS = ['src/components/admin-shell/AdminHome.tsx'] as const;
+
 it('only THE-276 adopts chart, THE-283/THE-290/THE-294/THE-319/THE-317 adopt table, THE-290/THE-319/THE-320 adopt progress, and pagination is still adopted by nothing', () => {
   const walk = (dir: string): string[] =>
     readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -1128,7 +1140,9 @@ it('only THE-276 adopts chart, THE-283/THE-290/THE-294/THE-319/THE-317 adopt tab
     new RegExp(`from ['"](?:@/components|\\.{1,2}(?:/[\\w.-]+)*)/ui/${name}['"]`).test(src);
 
   const chartImporters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), 'chart'));
-  expect(chartImporters.map((f) => rel(f)).sort()).toEqual([...THE_276_CHART_ADOPTERS]);
+  expect(chartImporters.map((f) => rel(f)).sort()).toEqual(
+    [...THE_276_CHART_ADOPTERS, ...PHASE_1_CHART_ADOPTERS].sort(),
+  );
 
   const tableImporters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), 'table'));
   expect(tableImporters.map((f) => rel(f)).sort())
@@ -1139,11 +1153,17 @@ it('only THE-276 adopts chart, THE-283/THE-290/THE-294/THE-319/THE-317 adopt tab
       ...THE_319_TABLE_ADOPTERS,
       ...THE_317_TABLE_ADOPTERS,
       ...THE_330_TABLE_ADOPTERS,
+      ...PHASE_1_TABLE_ADOPTERS,
     ].sort());
 
   const progressImporters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), 'progress'));
   expect(progressImporters.map((f) => rel(f)).sort())
-    .toEqual([...THE_290_PROGRESS_ADOPTERS, ...THE_319_PROGRESS_ADOPTERS, ...THE_320_PROGRESS_ADOPTERS].sort());
+    .toEqual([
+      ...THE_290_PROGRESS_ADOPTERS,
+      ...THE_319_PROGRESS_ADOPTERS,
+      ...THE_320_PROGRESS_ADOPTERS,
+      ...PHASE_1_PROGRESS_ADOPTERS,
+    ].sort());
 
   for (const name of ['pagination']) {
     const adopters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), name));
@@ -1170,7 +1190,7 @@ it('and recharts is imported by the chart primitive and THE-276\'s widgets, and 
     return /from "recharts"|from 'recharts'/.test(readFileSync(f, 'utf8'));
   });
   expect(importers.map((f) => rel(f)).sort()).toEqual(
-    [...THE_276_CHART_ADOPTERS, 'src/components/ui/chart.tsx'].sort(),
+    [...THE_276_CHART_ADOPTERS, ...PHASE_1_CHART_ADOPTERS, 'src/components/ui/chart.tsx'].sort(),
   );
 });
 

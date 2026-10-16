@@ -395,7 +395,10 @@ describe('🔴 this ticket adds NO npm dependency at all', () => {
     // exact entry count with no append point, so an unused dependency would
     // have broken a prior ticket's deliberate guard for nothing.
     expect(all['@tanstack/react-virtual'], 'not needed once windowing is off').toBeUndefined();
-    expect(all['@tanstack/react-table'], 'the data-grid is its OWN ticket').toBeUndefined();
+    // Phase 1 is the data-grid ticket this comment was waiting for. The attach
+    // picker still does not import the package; the version is the one THE-274
+    // records in the lockfile.
+    expect(all['@tanstack/react-table']).toBe('^8.21.3');
     // The registry's broken `import { cn } from "cn"` would have pulled this in.
     expect(all['cn'], '`cn` is a broken import artefact, not a package').toBeUndefined();
     expect(all['@testing-library/dom'], 'the project deliberately omits this peer').toBeUndefined();
@@ -406,7 +409,9 @@ describe('🔴 this ticket adds NO npm dependency at all', () => {
     const lock = JSON.parse(readFileSync('package-lock.json', 'utf8')) as {
       packages: Record<string, unknown>;
     };
-    expect(Object.keys(lock.packages).filter(Boolean)).toHaveLength(1825);
+    // 1825 was the count before phase 1. The two added keys are
+    // @tanstack/react-table and @tanstack/table-core.
+    expect(Object.keys(lock.packages).filter(Boolean)).toHaveLength(1827);
   });
 
   it('🔴 windowing is pinned OFF, not left to a flag that only half-works', async () => {

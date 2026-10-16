@@ -172,7 +172,7 @@ type Row = {
 };
 
 const TABS: Row[] = [
-  { label: 'Dashboard', section: '', screen: 'AdminDashboardHome', feature: null, note: 'the welcome screen — nothing to buy' },
+  { label: 'Dashboard', section: '', screen: 'AdminHome', feature: null, note: 'the welcome screen — nothing to buy' },
   { label: 'Campus', section: 'churches', screen: 'AdminChurches', feature: null, note: '`maxChurches` is a create-path cap, not a surface gate; ungated on BOTH layers' },
   { label: 'Courses', section: 'courses', screen: 'AdminCourses', feature: (f) => f.maxCourses !== 0 },
   { label: 'Blog', section: 'blog', screen: 'AdminBlog', feature: (f) => f.blog },

@@ -863,8 +863,10 @@ describe('9 · no colour hardcoded, no emoji added, no new token or dependency',
     // THE-274 pins the lockfile to an EXACT LENGTH with no append path, so a
     // dependency is not an option even if one were wanted.
     const pkg = JSON.parse(read('package.json')) as { dependencies: Record<string, string>; devDependencies: Record<string, string> };
+    // 89 was the tree before phase 1. The one addition is @tanstack/react-table.
     expect(Object.keys(pkg.dependencies).length + Object.keys(pkg.devDependencies).length,
-      'a dependency was added').toBe(89);
+      'a dependency was added').toBe(90);
+    expect(pkg.dependencies['@tanstack/react-table']).toBe('^8.21.3');
     // No primitive was installed, and none was adopted that is not already
     // recorded — AdminSms's ten are unchanged and `accordion` is still absent.
     expect(readdirSync(path.join(ROOT, 'src/components/ui')).filter((f) => f.endsWith('.tsx')),

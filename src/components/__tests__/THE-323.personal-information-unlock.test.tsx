@@ -605,21 +605,11 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // decorative - `min-h-11` is NOT inert on this element, which is the
       // premise this section exists to keep honest.
       'src/components/AdminCourses.tsx',
-      // 🔴 APPENDED BY THE-334, NOTHING BELOW REMOVED OR REWRITTEN. It sits
-      // FIRST because this list is the sweep's own sorted order, not the order
-      // tickets arrived in.
-      // ⚠️ It USES the class, ungated — `min-h-11` with no `sm:min-h-0`. That is
-      // deliberate and it does NOT fight Rule 4. The entries taking the floor are
-      // the NAV RAIL's buttons, and the rail is `lg:`-gated: it does not render
-      // below 1024px at all, so the sub-`sm` half of `min-h-11 sm:min-h-0` would
-      // never apply and the `sm:` half would be the only live rule. Rule 4's
-      // 38px band governs FORM CONTROLS — inputs, selects, submit buttons — so a
-      // form does not sprawl; a rail entry that stacks an icon over a visible
-      // text label is not one, and the founder asked for exactly that label.
-      // Measured, the entry is 48.125 × 50.75px at every desktop width, which
-      // clears the 44px floor on BOTH axes where THE-332's icon-only 39.875px
-      // box never did. THE-332's own measured suite asserts that band.
-      'src/components/AdminDashboard.tsx',
+      // Phase 1 removed the desktop icon rail, and those rail buttons were the
+      // only `min-h-11` spellings in AdminDashboard. The file is no longer in
+      // this list because the sweep matches the class, and the class left with
+      // the rail. The same ungated floor now lives on the desktop sidebar,
+      // recorded below with the other admin-shell files.
       // APPENDED BY THE-346, NOTHING BELOW REMOVED OR REWRITTEN. Both entries
       // USE the class, in the Rule-4 form - `min-h-11 sm:min-h-0`.
       //
@@ -724,6 +714,15 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
     'src/components/PublicEventRegistration.tsx',
     'src/components/UserEvents.tsx',
     'src/components/UserMessages.tsx',
+      // Phase 1 desktop sidebar and its preview. Sorted here, between
+      // UserMessages and admin/, because '-' sorts before '/'.
+      // AdminDesktopSidebar and AdminHome use the class ungated: the sidebar
+      // mounts only from lg, where the floor is 38px and 2.75rem at the 14.5px
+      // root is 39.875px, inside that band. The preview copies the old rail
+      // button classes so the before shot still measures them.
+      'src/components/admin-shell/AdminDesktopSidebar.tsx',
+      'src/components/admin-shell/AdminHome.tsx',
+      'src/components/admin-shell/AdminShellPreview.tsx',
       // 🔴 APPENDED BY THE-331, NOTHING ABOVE OR BELOW REMOVED OR REWRITTEN.
       // ⚠️ NOT a comment-only mention — this one USES the class, which makes it
       // the same KIND as AdminSettings.tsx and only the second such entry in
@@ -1011,7 +1010,9 @@ describe('11 · no new token or dependency, no colour hardcoded, no emoji', () =
     };
     // The count is the assertion: a new runtime or dev dependency moves it, and
     // `alert` is an already-installed FILE in this repo, not a package.
-    expect(Object.keys(pkg.dependencies)).toHaveLength(69);
+    // Phase 1 is the approved exception: @tanstack/react-table, and nothing else.
+    expect(Object.keys(pkg.dependencies)).toHaveLength(70);
+    expect(pkg.dependencies['@tanstack/react-table']).toBe('^8.21.3');
     expect(Object.keys(pkg.devDependencies)).toHaveLength(20);
   });
 
