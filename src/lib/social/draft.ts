@@ -1,25 +1,19 @@
 import { parseSocialPlatform, supportsMadeWithAi, type SocialPlatform } from './platforms';
-import type { SocialMedia, SocialPostDraft, SocialTarget } from './types';
+import type { SocialPostDraft, SocialTarget } from './types';
 
 export interface DraftError {
   readonly ok: false;
-  readonly error: 'platform_not_offered' | 'post_incomplete';
+  readonly error: 'platform_not_offered' | 'post_incomplete' | 'schedule_invalid' | 'media_not_accepted';
+}
+
+/** A scheduled post has to be in the future, and not more than a year out. */
+const MAX_SCHEDULE_MS = 366 * 24 * 60 * 60 * 1000;
+
+export function isIdempotencyKey(value: string | null): value is string {
+  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 export type DraftResult = { readonly ok: true; readonly draft: SocialPostDraft } | DraftError;
-
-function readMedia(raw: unknown): SocialMedia[] {
-  if (!Array.isArray(raw)) return [];
-  const media: SocialMedia[] = [];
-  for (const item of raw) {
-    if (!item || typeof item !== 'object') continue;
-    const row = item as Record<string, unknown>;
-    const name = typeof row.name === 'string' ? row.name.slice(0, 180) : '';
-    if (!name) continue;
-    media.push({ name, kind: row.kind === 'video' ? 'video' : 'image' });
-  }
-  return media;
-}
 
 function readFields(raw: unknown): Record<string, string | boolean> {
   if (!raw || typeof raw !== 'object') return {};
@@ -40,9 +34,12 @@ function readFields(raw: unknown): Record<string, string | boolean> {
  * draft, so the caller never reaches Zernio. `madeWithAi` is kept only for a
  * platform Zernio documents the flag for, and defaults to false.
  */
-export function parseSocialDraft(body: unknown): DraftResult {
+export function parseSocialDraft(body: unknown, now = new Date()): DraftResult {
   if (!body || typeof body !== 'object') return { ok: false, error: 'post_incomplete' };
   const row = body as Record<string, unknown>;
+  if (Array.isArray(row.media) && row.media.length > 0) {
+    return { ok: false, error: 'media_not_accepted' };
+  }
   const content = typeof row.content === 'string' ? row.content.trim() : '';
   const targetsRaw = Array.isArray(row.targets) ? row.targets : [];
   if (!content || targetsRaw.length === 0) return { ok: false, error: 'post_incomplete' };
@@ -67,17 +64,24 @@ export function parseSocialDraft(body: unknown): DraftResult {
   }
 
   const publishNow = row.publishNow === true;
-  const scheduledFor = typeof row.scheduledFor === 'string' && row.scheduledFor ? row.scheduledFor : null;
+  const scheduledRaw = typeof row.scheduledFor === 'string' && row.scheduledFor ? row.scheduledFor : null;
+  if (!publishNow && scheduledRaw) {
+    const parsed = Date.parse(scheduledRaw);
+    if (!Number.isFinite(parsed) || parsed <= now.getTime() || parsed > now.getTime() + MAX_SCHEDULE_MS) {
+      return { ok: false, error: 'schedule_invalid' };
+    }
+  }
   const timezone = typeof row.timezone === 'string' && row.timezone ? row.timezone.slice(0, 80) : 'UTC';
   return {
     ok: true,
     draft: {
       content,
-      scheduledFor: publishNow ? null : scheduledFor,
+      scheduledFor: publishNow ? null : scheduledRaw,
       publishNow,
       timezone,
       targets,
-      media: readMedia(row.media),
+      media: [],
+      idempotencyKey: null,
     },
   };
 }

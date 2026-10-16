@@ -78,11 +78,26 @@ describe('draft parsing refuses a platform before a provider is asked', () => {
   );
 
   it('keeps an offered platform and forces the AI flag off', () => {
-    const parsed = parseSocialDraft(draft('instagram'));
+    const parsed = parseSocialDraft(draft('instagram'), new Date('2024-01-01T00:00:00.000Z'));
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.draft.targets[0]?.platform).toBe('instagram');
     expect(parsed.draft.targets[0]?.madeWithAi).toBe(false);
+  });
+
+  it('rejects a past time, a distant time, and any media attachment', () => {
+    const now = new Date('2024-06-01T00:00:00.000Z');
+    const past = draft('instagram');
+    past.scheduledFor = '2024-05-01T00:00:00.000Z';
+    expect(parseSocialDraft(past, now)).toEqual({ ok: false, error: 'schedule_invalid' });
+    const far = draft('instagram');
+    far.scheduledFor = '2026-06-02T15:00:00.000Z';
+    expect(parseSocialDraft(far, now)).toEqual({ ok: false, error: 'schedule_invalid' });
+    const soon = draft('instagram');
+    soon.scheduledFor = '2024-06-02T15:00:00.000Z';
+    expect(parseSocialDraft(soon, now).ok).toBe(true);
+    expect(parseSocialDraft({ ...soon, media: [{ name: 'https://cdn.example/a.jpg', kind: 'image' }] }, now))
+      .toEqual({ ok: false, error: 'media_not_accepted' });
   });
 
   it('one refused target refuses the whole post', () => {
@@ -93,18 +108,37 @@ describe('draft parsing refuses a platform before a provider is asked', () => {
 });
 
 describe('mock mode', () => {
-  it('preview, a missing key, and an explicit mock never go live', () => {
-    expect(socialMode({ VERCEL_ENV: 'preview', ZERNIO_API_KEY: 'secret', ZERNIO_SOCIAL_LIVE: '1' })).toBe('mock');
+  it('preview, a missing key, and an explicit mock never go live outside production', () => {
+    expect(socialMode({ VERCEL_ENV: 'preview', NODE_ENV: 'production', ZERNIO_API_KEY: 'secret', ZERNIO_SOCIAL_LIVE: '1' })).toBe('mock');
     expect(socialMode({})).toBe('mock');
     expect(socialMode({ ZERNIO_API_KEY: 'secret' })).toBe('mock');
     expect(socialMode({ ZERNIO_API_KEY: 'secret', ZERNIO_SOCIAL_LIVE: '1' })).toBe('live');
     expect(socialMode({ ZERNIO_SOCIAL_MODE: 'mock', ZERNIO_API_KEY: 'secret', ZERNIO_SOCIAL_LIVE: '1' })).toBe('mock');
   });
 
-  it('sample without entitlement is preview or an explicit sample flag, and still requires mock', () => {
-    expect(socialSampleWithoutEntitlement({ VERCEL_ENV: 'preview' })).toBe(true);
+  it('production does not pretend a missing key or a mock flag is a success', () => {
+    expect(socialMode({ VERCEL_ENV: 'production' })).toBe('unavailable');
+    expect(socialMode({ NODE_ENV: 'production' })).toBe('unavailable');
+    expect(socialMode({ VERCEL_ENV: 'production', ZERNIO_API_KEY: 'secret' })).toBe('unavailable');
+    expect(socialMode({
+      VERCEL_ENV: 'production',
+      ZERNIO_SOCIAL_MODE: 'mock',
+      ZERNIO_API_KEY: 'secret',
+      ZERNIO_SOCIAL_LIVE: '1',
+    })).toBe('live');
+    expect(socialMode({
+      NODE_ENV: 'production',
+      ZERNIO_SOCIAL_MODE: 'sample',
+      ZERNIO_API_KEY: 'secret',
+    })).toBe('unavailable');
+  });
+
+  it('sample without entitlement is preview or an explicit dev flag, never production', () => {
+    expect(socialSampleWithoutEntitlement({ VERCEL_ENV: 'preview', NODE_ENV: 'production' })).toBe(true);
     expect(socialSampleWithoutEntitlement({ ZERNIO_SOCIAL_MODE: 'sample' })).toBe(true);
     expect(socialSampleWithoutEntitlement({})).toBe(false);
+    expect(socialSampleWithoutEntitlement({ VERCEL_ENV: 'production', ZERNIO_SOCIAL_MODE: 'sample' })).toBe(false);
+    expect(socialSampleWithoutEntitlement({ NODE_ENV: 'production', ZERNIO_SOCIAL_MODE: 'sample' })).toBe(false);
     expect(socialMode({ VERCEL_ENV: 'preview', ZERNIO_API_KEY: 'secret', ZERNIO_SOCIAL_LIVE: '1' })).toBe('mock');
   });
 
@@ -173,6 +207,20 @@ describe('the live client', () => {
     expect(seen[0]?.url).not.toContain(key);
   });
 
+  it('names a new profile with the opaque id it was given', async () => {
+    let body = '';
+    const fetchImpl = async (_url: string, init: RequestInit) => {
+      body = typeof init.body === 'string' ? init.body : '';
+      return new Response(JSON.stringify({ profile: { _id: 'prof-1' } }), { status: 200 });
+    };
+    const client = new LiveSocialClient(key, fetchImpl);
+    const id = await client.ensureProfile('11111111-1111-4111-8111-111111111111');
+    expect(id).toBe('prof-1');
+    expect(body).toContain('11111111-1111-4111-8111-111111111111');
+    expect(body).not.toContain('grace');
+    expect(body).not.toContain('tenant');
+  });
+
   it('refuses a connect URL for a slug outside the allow-list', async () => {
     const fetchImpl = async () => new Response('{}', { status: 200 });
     const client = new LiveSocialClient(key, fetchImpl);
@@ -197,10 +245,9 @@ describe('the key stays on the server', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('the browser surfaces never mention the key', () => {
-    const leaked = socialTree
-      .filter((file) => !file.endsWith('live-client.ts') && !file.endsWith('mode.ts') && !file.endsWith('session.ts'))
-      .filter((file) => readFileSync(file, 'utf8').includes('ZERNIO_API_KEY'));
-    expect(leaked).toEqual([]);
+  it('the key is read in one server module', () => {
+    const mentions = socialTree.filter((file) => readFileSync(file, 'utf8').includes('ZERNIO_API_KEY'));
+    expect(mentions.map((file) => path.basename(file))).toEqual(['zernio-key.ts']);
+    expect(readFileSync(path.join(ROOT, 'src/lib/social/zernio-key.ts'), 'utf8')).toContain("import 'server-only'");
   });
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Calendar as CalendarIcon, ImagePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -26,7 +26,7 @@ import {
   platformsSupportingMadeWithAi,
   type SocialPlatform,
 } from '@/lib/social/platforms';
-import type { SocialAccount, SocialMedia, SocialPost, SocialTarget, SocialWorkspace } from '@/lib/social/types';
+import type { SocialAccount, SocialPost, SocialTarget, SocialWorkspace } from '@/lib/social/types';
 import { authFetch } from '@/utils/auth-fetch';
 import { SocialUpgradeWall } from './SocialUpgradeWall';
 
@@ -82,9 +82,11 @@ export function SocialScheduler({
   );
   const [fields, setFields] = useState<Record<string, Record<string, string | boolean>>>({});
   const [madeWithAi, setMadeWithAi] = useState(false);
-  const [media, setMedia] = useState<SocialMedia[]>([]);
   const [when, setWhen] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const publishKey = useRef<string | null>(null);
   const [editing, setEditing] = useState<SocialPost | null>(null);
   const [editText, setEditText] = useState('');
   const [editWhen, setEditWhen] = useState('');
@@ -100,6 +102,10 @@ export function SocialScheduler({
     authFetch('/api/social/bootstrap')
       .then(async (response) => {
         if (cancelled) return;
+        if (response.status === 503) {
+          setUnavailable(true);
+          return;
+        }
         if (response.status === 403) {
           setData({
             entitled: false,
@@ -148,6 +154,17 @@ export function SocialScheduler({
       .map((value) => new Date(`${value}T12:00:00.000Z`));
   }, [data?.posts]);
 
+  if (unavailable) {
+    return (
+      <Card className="m-4 lg:m-0" data-testid="social-unavailable">
+        <CardHeader>
+          <CardTitle>Social scheduling is not available</CardTitle>
+          <CardDescription>Nothing was scheduled, and nothing was published.</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
   if (failed) {
     return (
       <Card className="m-4 lg:m-0" data-testid="social-error">
@@ -187,6 +204,7 @@ export function SocialScheduler({
   }
 
   async function schedule(publishNow: boolean) {
+    if (saving) return;
     const targets = targetsFor(content, selected, accounts).map((target) => ({
       ...target,
       fields: fields[target.platform] || {},
@@ -204,29 +222,41 @@ export function SocialScheduler({
         scheduledFor: publishNow ? new Date().toISOString() : when || null,
         timezone: data?.timezone || 'UTC',
         targets,
-        media,
+        media: [],
       };
       setData({ ...data!, posts: [post, ...posts] });
       setNotice(publishNow ? 'Saved in this preview. Nothing was published.' : 'Saved in this preview.');
       return;
     }
-    const response = await authFetch('/api/social/posts', {
-      method: 'POST',
-      body: JSON.stringify({
-        content,
-        publishNow,
-        scheduledFor: when || null,
-        timezone: data?.timezone,
-        targets,
-        media,
-      }),
-    });
-    if (!response.ok) {
-      setFailed(true);
-      return;
+    if (publishNow && !publishKey.current) publishKey.current = crypto.randomUUID();
+    setSaving(true);
+    try {
+      const response = await authFetch('/api/social/posts', {
+        method: 'POST',
+        headers: publishNow && publishKey.current ? { 'Idempotency-Key': publishKey.current } : {},
+        body: JSON.stringify({
+          content,
+          publishNow,
+          scheduledFor: when || null,
+          timezone: data?.timezone,
+          targets,
+          media: [],
+        }),
+      });
+      if (response.status === 503) {
+        setUnavailable(true);
+        return;
+      }
+      if (!response.ok) {
+        setFailed(true);
+        return;
+      }
+      if (publishNow) publishKey.current = null;
+      setNotice(data?.sample ? 'Saved in this preview. Nothing was published.' : 'Scheduled.');
+      await refresh();
+    } finally {
+      setSaving(false);
     }
-    setNotice(data?.sample ? 'Saved in this preview. Nothing was published.' : 'Scheduled.');
-    await refresh();
   }
 
   async function connect(platform: SocialPlatform) {
@@ -361,23 +391,11 @@ export function SocialScheduler({
                 </label>
               )}
               <div className="flex flex-wrap items-center gap-2">
-                <label className={`${CONTROL} inline-flex cursor-pointer items-center gap-2 rounded-lg border border-line px-3 text-sm`}>
+                <Button type="button" variant="outline" className={CONTROL} disabled>
                   <ImagePlus className="size-4" aria-hidden />
                   Add media
-                  <input
-                    type="file"
-                    accept="image/*,video/*"
-                    className="sr-only"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (!file) return;
-                      setMedia((current) => [...current, { name: file.name, kind: file.type.startsWith('video') ? 'video' : 'image' }]);
-                    }}
-                  />
-                </label>
-                {media.map((item) => (
-                  <span key={item.name} className="text-sm text-faint">{item.name}</span>
-                ))}
+                </Button>
+                <p className="text-sm text-faint">Media upload is not available yet.</p>
               </div>
               <label className="flex flex-col gap-1 text-sm text-faint">
                 Schedule time
@@ -390,8 +408,8 @@ export function SocialScheduler({
                 />
               </label>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" className={CONTROL} onClick={() => schedule(false)}>Schedule</Button>
-                <Button type="button" variant="outline" className={CONTROL} onClick={() => schedule(true)}>Post now</Button>
+                <Button type="button" className={CONTROL} disabled={saving} onClick={() => schedule(false)}>Schedule</Button>
+                <Button type="button" variant="outline" className={CONTROL} disabled={saving} onClick={() => schedule(true)}>Post now</Button>
               </div>
             </CardContent>
           </Card>

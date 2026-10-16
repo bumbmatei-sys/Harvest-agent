@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   if (!platform) {
     return NextResponse.json({ error: 'platform_not_offered' }, { status: 400 });
   }
-  const result = await connectSocialAccount(access.tenantId, platform);
+  const result = await connectSocialAccount(access.tenantId, platform, access.mockOnly);
   if (!result.ok) {
     return NextResponse.json({ error: 'social_unavailable' }, { status: 503 });
   }

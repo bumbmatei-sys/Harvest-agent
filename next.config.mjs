@@ -1,5 +1,9 @@
+import path from "path";
+import { fileURLToPath } from "url";
 import withPWAInit from "next-pwa";
 import { withSentryConfig } from "@sentry/nextjs";
+
+const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
 /** @type {import('next-pwa').PWAConfig} */
 const withPWA = withPWAInit({
@@ -30,6 +34,15 @@ const nextConfig = {
   // initialized. Required on Next 14; the default from Next 15 onward.
   experimental: {
     instrumentationHook: true,
+  },
+  webpack: (config) => {
+    // `server-only` is vendored (vendor/server-only) so the social key module
+    // can import it without a lockfile change. node_modules stays first.
+    const modules = Array.isArray(config.resolve.modules) ? [...config.resolve.modules] : ["node_modules"];
+    const vendor = path.join(rootDir, "vendor");
+    if (!modules.includes(vendor)) modules.push(vendor);
+    config.resolve.modules = modules;
+    return config;
   },
   images: {
     remotePatterns: [

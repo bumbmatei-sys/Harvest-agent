@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   const access = await requireSocialAccess(request);
   if (access instanceof NextResponse) return access;
-  const workspace = await loadSocialWorkspace(access.tenantId);
+  const workspace = await loadSocialWorkspace(access.tenantId, new Date(), access.mockOnly);
   if (!workspace) {
     return NextResponse.json({ error: 'social_unavailable' }, { status: 503 });
   }

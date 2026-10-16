@@ -17,11 +17,12 @@ export async function PATCH(
   if (!parsed.ok) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
-  const post = await updateSocialPost(access.tenantId, context.params.id, parsed.draft);
-  if (!post) {
-    return NextResponse.json({ error: 'post_not_editable' }, { status: 404 });
+  const result = await updateSocialPost(access.tenantId, context.params.id, parsed.draft, access.mockOnly);
+  if (!result.ok) {
+    const status = result.error === 'account_not_owned' ? 403 : result.error === 'social_unavailable' ? 503 : 404;
+    return NextResponse.json({ error: result.error }, { status });
   }
-  return NextResponse.json({ post, sample: access.sample });
+  return NextResponse.json({ post: result.post, sample: access.sample });
 }
 
 export async function DELETE(
@@ -30,7 +31,7 @@ export async function DELETE(
 ) {
   const access = await requireSocialAccess(request);
   if (access instanceof NextResponse) return access;
-  const removed = await cancelSocialPost(access.tenantId, context.params.id);
+  const removed = await cancelSocialPost(access.tenantId, context.params.id, access.mockOnly);
   if (!removed) {
     return NextResponse.json({ error: 'post_not_editable' }, { status: 404 });
   }

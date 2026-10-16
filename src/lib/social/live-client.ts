@@ -3,12 +3,13 @@ import { parseSocialPlatform, supportsMadeWithAi } from './platforms';
 import type { SocialAccount, SocialMedia, SocialPost, SocialPostDraft, SocialTarget, SocialWorkspace } from './types';
 
 /**
- * HTTP to Zernio for the social scheduler. The key is read here and nowhere
- * else in this feature. It is never returned, logged, or placed on a URL.
+ * HTTP to Zernio for the social scheduler. The key is passed in by the
+ * session layer, which reads it from the one key module. It is never
+ * returned, logged, or placed on a URL.
  *
  * The SMS transport in `src/lib/zernio.ts` is a different module on purpose:
  * social routes must not import it, or they become a second caller of the
- * send funnel's provider module. Both read `ZERNIO_API_KEY` at call time.
+ * send funnel's provider module.
  */
 
 const ZERNIO_SOCIAL_API = 'https://api.zernio.com/v1';
@@ -139,12 +140,11 @@ export class LiveSocialClient {
     private readonly fetchImpl: FetchLike = fetch,
   ) {}
 
-  async ensureProfile(tenantId: string, existingId: string | null): Promise<string | null> {
-    if (existingId) return existingId;
+  async ensureProfile(profileName: string): Promise<string | null> {
     const created = await call<{ profile?: { _id?: string } }>(
       this.key,
       '/profiles',
-      { method: 'POST', body: { name: `harvest-${tenantId}` } },
+      { method: 'POST', body: { name: profileName } },
       this.fetchImpl,
     );
     if (!created.ok) return null;
@@ -244,7 +244,7 @@ function toProviderBody(profileId: string | null, draft: SocialPostDraft): Recor
     timezone: draft.timezone,
     ...(draft.publishNow ? { publishNow: true } : {}),
     ...(draft.scheduledFor && !draft.publishNow ? { scheduledFor: draft.scheduledFor } : {}),
-    mediaItems: draft.media.map((item) => ({ type: item.kind, url: item.name })),
+    mediaItems: [],
     platforms,
   };
 }

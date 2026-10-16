@@ -47,4 +47,6 @@ export interface SocialPostDraft {
   readonly timezone: string;
   readonly targets: readonly SocialTarget[];
   readonly media: readonly SocialMedia[];
+  /** Present only for Post now. The route copies it from the header, never the body. */
+  readonly idempotencyKey?: string | null;
 }
