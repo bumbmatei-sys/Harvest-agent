@@ -91,6 +91,11 @@
       "file": "src/components/AdminBlogPostEditor.tsx",
       "digest": "b03884d6b8be90e85a085ff83ad267f5920339bfea86c9ec8d6e316fb41bce76",
       "why": "#531 shows Confirm before the editor calls the blog service, including for a new unsaved draft. A published post no longer starts Schedule on its past publish date, and a new draft starts with an empty category. A save that does not settle still unlocks and shows the timeout sentence. The colour and scale literals are unchanged."
+    },
+    {
+      "file": "src/components/AdminBlog.tsx",
+      "digest": "8d219dc8fad1b91e09d688a5d1c1c5d641f1d092e61806ad3806b0610ea9a1ac",
+      "why": "#531 tells the admin that Generate Now saved a draft and leaves the panel open so that sentence is visible. Publishing still happens in the editor after preview. The colour and scale literals are unchanged."
     }
   ]
 }

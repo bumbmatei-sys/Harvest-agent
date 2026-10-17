@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { requireAdmin, requireTenantAdmin, type AuthenticatedUser } from '@/lib/api-auth';
+import { requireAdmin, type AuthenticatedUser } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import firebaseConfig from '../../../../firebase-applet-config.json';
@@ -12,23 +12,24 @@ import {
 import { computeNextScheduled } from '../generate/route';
 
 /**
- * The token's ministry, or the ministry the screen is actually showing.
- * A super admin on a preview host has no tenant on the token. Calling this
- * route anyway is what returned 400 "No tenant" in the console. A caller who
- * names a different ministry still has to pass the tenant-admin check.
+ * The token's ministry, or the ministry a super admin named.
+ *
+ * Naming a ministry other than the one on the token is a cross-tenant read
+ * or write. Only a super admin may do that, on the production domain as well
+ * as on a preview: a tenant admin's authority is the ministry on their token,
+ * and being on another ministry's roster does not extend it to this route.
+ * No ministry at all is 400, so the write cannot land on `tenants/null`.
  */
-async function resolveMinistry(
-  request: NextRequest,
+function resolveMinistry(
   user: AuthenticatedUser,
   requested: string,
-): Promise<string | NextResponse> {
+): string | NextResponse {
   const own = user.tenantId || '';
   const named = requested.trim();
   const tenantId = named || own;
   if (!tenantId) return NextResponse.json({ error: 'No tenant' }, { status: 400 });
-  if (named && named !== own) {
-    const allowed = await requireTenantAdmin(request, named);
-    if (allowed instanceof NextResponse) return allowed;
+  if (named && named !== own && !user.isSuperAdmin) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   return tenantId;
 }
@@ -39,8 +40,7 @@ export async function GET(request: NextRequest) {
   try {
     const userOrErr = await requireAdmin(request);
     if (userOrErr instanceof Response) return userOrErr;
-    const tenantIdOrErr = await resolveMinistry(
-      request,
+    const tenantIdOrErr = resolveMinistry(
       userOrErr,
       request.nextUrl?.searchParams.get('tenantId') || '',
     );
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     if (userOrErr instanceof Response) return userOrErr;
     const body = await request.json();
     const requested = typeof body?.tenantId === 'string' ? body.tenantId : '';
-    const tenantIdOrErr = await resolveMinistry(request, userOrErr, requested);
+    const tenantIdOrErr = resolveMinistry(userOrErr, requested);
     if (tenantIdOrErr instanceof NextResponse) return tenantIdOrErr;
     const tenantId = tenantIdOrErr;
 
