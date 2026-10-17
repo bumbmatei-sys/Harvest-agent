@@ -499,7 +499,10 @@ service cloud.firestore {
       allow create: if isSuperAdmin();
 
       // plan / status / add-on fields are billing authority, written only by
-      // the Stripe webhook + billing routes via the Admin SDK. ownerId is owner
+      // the Stripe webhook + billing routes via the Admin SDK. `addons` is
+      // that map (Dodo writes it; socialScheduler and the other counts live
+      // there). A client update that touches it is refused, including a
+      // dotted `addons.socialScheduler` write. ownerId is owner
       // authority (set once by the webhook; gates owner-only billing routes and
       // the users-rule owner protection) — server/super-admin-only, or the
       // owner lock could be dodged by rewriting it. The adminEmails roster and
@@ -514,7 +517,7 @@ service cloud.firestore {
         isSuperAdmin() ||
         ((hasPermission('manageBranding', tenantId) || hasPermission('manageSettings', tenantId)) &&
          !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-           'plan', 'status', 'ownerId',
+           'plan', 'status', 'ownerId', 'addons',
            'addOnAiAssistant', 'addOnAiAssistantCode', 'aiAssistantSubscriptionItemId'
          ]))
       );
