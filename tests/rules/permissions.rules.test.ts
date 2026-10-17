@@ -550,8 +550,11 @@ describe('tenant doc update [manageBranding || manageSettings]', () => {
     const branding = (await asUid(holderUid('manageBranding'))).firestore();
     await assertFails(branding.doc(`tenants/${T}`).update({ plan: 'ultra' }));
     await assertFails(branding.doc(`tenants/${T}`).update({ ownerId: 'me' }));
+    await assertFails(branding.doc(`tenants/${T}`).update({ 'addons.socialScheduler': 1 }));
+    await assertFails(branding.doc(`tenants/${T}`).update({ addons: { socialScheduler: 1, aiAssistant: 1 } }));
     const sa = (await superAdmin()).firestore();
     await assertSucceeds(sa.doc(`tenants/${T}`).update({ plan: 'ultra' }));
+    await assertSucceeds(sa.doc(`tenants/${T}`).update({ 'addons.socialScheduler': 1 }));
   });
 });
 

@@ -1,0 +1,11 @@
+{
+  "ticket": "#532",
+  "note": "#532 refuses client writes to tenants.addons. The digest below is appended. Earlier rules digests are not replaced. No other match block moved.",
+  "entries": [
+    {
+      "file": "firestore.rules",
+      "digest": "2c3d491cdd15b8b8a89afc47f799b43523b814df148efabe22ddee1f89cf6bff",
+      "why": "#532 appends addons to the tenants/{tenantId} update deny list, beside plan, status, and ownerId. The Dodo webhook writes that map through the Admin SDK, which bypasses rules. A branding or settings admin can no longer updateDoc socialScheduler or any other add-on count. The super-admin branch is unchanged. No other match block moved."
+    }
+  ]
+}
