@@ -1,9 +1,31 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { requireAdmin } from '@/lib/api-auth';
+import { requireAdmin, requireTenantAdmin, type AuthenticatedUser } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { computeNextScheduled } from '../generate/route';
+
+/**
+ * The token's ministry, or the ministry the screen is actually showing.
+ * A super admin on a preview host has no tenant on the token. Calling this
+ * route anyway is what returned 400 "No tenant" in the console. A caller who
+ * names a different ministry still has to pass the tenant-admin check.
+ */
+async function resolveMinistry(
+  request: NextRequest,
+  user: AuthenticatedUser,
+  requested: string,
+): Promise<string | NextResponse> {
+  const own = user.tenantId || '';
+  const named = requested.trim();
+  const tenantId = named || own;
+  if (!tenantId) return NextResponse.json({ error: 'No tenant' }, { status: 400 });
+  if (named && named !== own) {
+    const allowed = await requireTenantAdmin(request, named);
+    if (allowed instanceof NextResponse) return allowed;
+  }
+  return tenantId;
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -11,8 +33,13 @@ export async function GET(request: NextRequest) {
   try {
     const userOrErr = await requireAdmin(request);
     if (userOrErr instanceof Response) return userOrErr;
-    const { tenantId } = userOrErr;
-    if (!tenantId) return NextResponse.json({ error: 'No tenant' }, { status: 400 });
+    const tenantIdOrErr = await resolveMinistry(
+      request,
+      userOrErr,
+      request.nextUrl.searchParams.get('tenantId') || '',
+    );
+    if (tenantIdOrErr instanceof NextResponse) return tenantIdOrErr;
+    const tenantId = tenantIdOrErr;
 
     const snap = await adminDb
       .collection('tenants').doc(tenantId)
@@ -43,10 +70,13 @@ export async function POST(request: NextRequest) {
   try {
     const userOrErr = await requireAdmin(request);
     if (userOrErr instanceof Response) return userOrErr;
-    const { tenantId } = userOrErr;
-    if (!tenantId) return NextResponse.json({ error: 'No tenant' }, { status: 400 });
+    const body = await request.json();
+    const requested = typeof body?.tenantId === 'string' ? body.tenantId : '';
+    const tenantIdOrErr = await resolveMinistry(request, userOrErr, requested);
+    if (tenantIdOrErr instanceof NextResponse) return tenantIdOrErr;
+    const tenantId = tenantIdOrErr;
 
-    const { enabled, frequency, dayOfWeek, hour, timezone, topicHint } = await request.json();
+    const { enabled, frequency, dayOfWeek, hour, timezone, topicHint } = body;
 
     // Seed nextScheduledAt on save so the cron honors the admin-picked schedule.
     // Use the SAME helper the cron reschedules with, so the save path and the

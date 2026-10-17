@@ -24,6 +24,7 @@ const platformOverride = vi.hoisted(() => ({ current: false }));
 const authFetch = vi.hoisted(() =>
   vi.fn(async (_url: string, _init?: RequestInit) => ({ ok: true, json: async () => ({}) })),
 );
+const tenantScope = vi.hoisted(() => ({ current: 'grace' as string | null }));
 const store = vi.hoisted(() => ({
   current: {
     tenantPlan: null as string | null,
@@ -50,7 +51,7 @@ vi.mock('../../utils/tenant.utils', () => ({ checkRosterAdminStatus }));
 vi.mock('../../utils/tenant-scope', () => ({
   isSuperAdmin: isSuperAdminMock,
   hasPlatformOverride: () => platformOverride.current,
-  getTenantScope: async () => TENANT_ID,
+  getTenantScope: async () => tenantScope.current,
   PLATFORM_TENANT_ID: 'harvest',
 }));
 vi.mock('../../store/useAppStore', () => ({ useAppStore: () => store.current }));
@@ -173,6 +174,7 @@ beforeEach(() => {
   blogMode.record = false;
   recorded.values = [];
   authFetch.mockClear();
+  tenantScope.current = TENANT_ID;
   navigate.mockClear();
   platformOverride.current = false;
   isSuperAdminMock.mockReturnValue(false);
@@ -277,11 +279,29 @@ describe('AdminBlog hides Automate while the knowledge base is off', () => {
     expect(gatePending()).toBeNull();
     expect(newPost()).not.toBeNull();
     expect(automateFetches().length, 'settings were not loaded for a visible control').toBeGreaterThan(0);
+    expect(String(automateFetches()[0][0])).toContain('tenantId=grace');
 
     await act(async () => { (button as HTMLButtonElement).click(); });
 
     expect(host.textContent ?? '').toContain('Automated Blog');
     expect(host.textContent ?? '').toContain('Generate Now');
+  });
+
+  it('does not request settings when no ministry is in scope', async () => {
+    tenantScope.current = null;
+    await renderBlog('max', true);
+
+    expect(automateButton(), 'Automate stays available once a ministry is selected').not.toBeNull();
+    expect(automateFetches(), 'a host with no ministry was asked for settings').toEqual([]);
+
+    await act(async () => { (automateButton() as HTMLButtonElement).click(); });
+    const save = [...host.querySelectorAll('button')].find((b) => (b.textContent ?? '').includes('Save Settings'));
+    expect(save, 'the settings panel did not open').toBeTruthy();
+    await act(async () => { (save as HTMLButtonElement).click(); });
+    await flush();
+
+    expect(automateFetches(), 'saving with no ministry still called the route').toEqual([]);
+    expect(host.textContent ?? '').toContain('A ministry is required before automation settings can be saved.');
   });
 
   it('closes the panel if the base turns off while it is open', async () => {

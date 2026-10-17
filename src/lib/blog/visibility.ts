@@ -213,5 +213,9 @@ export function publicPostMatchesHost(postTenantId: string, hostTenantId: string
 /** How long the editor waits for a blog save before it shows an error and unlocks. */
 export const BLOG_SAVE_TIMEOUT_MS = 15_000;
 
-/** Shown when that wait ends. The post is unchanged. */
-export const BLOG_SAVE_TIMEOUT_MESSAGE = 'Saving took too long. Nothing was changed.';
+/**
+ * Shown when that wait ends. Aborting the browser request does not stop a
+ * write the server has already started, so the sentence does not claim the
+ * post is unchanged.
+ */
+export const BLOG_SAVE_TIMEOUT_MESSAGE = 'Saving is taking longer than expected. Refresh to check whether your changes were saved.';
