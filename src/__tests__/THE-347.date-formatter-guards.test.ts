@@ -346,10 +346,11 @@ describe('no date field is rendered raw into JSX', () => {
 
   it('`blog_posts` is written with ONE representation, and it is the ISO string', () => {
     // Firestore orders across types by TYPE first, so a mixed field sorts wrong
-    // before it renders wrong. AdminBlogPostEditor and /api/blog/generate both
-    // wrote a string already; AdminDocs was the one writer storing an object.
+    // before it renders wrong. The editor used to write this collection; the
+    // blog service's store does now, still as an ISO string. AdminDocs was
+    // the writer that stored an object.
     const writers = [
-      'src/components/AdminBlogPostEditor.tsx',
+      'src/lib/blog/firestore-store.ts',
       'src/app/api/blog/generate/route.ts',
       'src/components/AdminDocs.tsx',
     ];
