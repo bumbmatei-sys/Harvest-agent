@@ -18,6 +18,7 @@ describe('SocialScheduler', () => {
 
   beforeEach(() => {
     resetSocialMock();
+    authFetch.mockClear();
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -344,6 +345,68 @@ describe('SocialScheduler', () => {
     expect(document.body.textContent).toContain('Nothing was scheduled');
     const postsCalls = authFetch.mock.calls.filter((call) => String(call[0]).includes('/api/social/posts'));
     expect(postsCalls).toHaveLength(1);
+  });
+
+  it('reuses one Idempotency-Key when a schedule confirm is retried', async () => {
+    const workspace = new MockSocialClient('live', clock).load();
+    let confirms = 0;
+    authFetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (String(url).includes('bootstrap')) {
+        return {
+          status: 200,
+          ok: true,
+          json: async () => ({
+            entitled: true,
+            sample: false,
+            timezone: workspace.timezone,
+            accounts: workspace.accounts,
+            posts: workspace.posts,
+          }),
+        };
+      }
+      const body = JSON.parse(String(init?.body || '{}')) as { confirmToken?: string };
+      if (!body.confirmToken) {
+        return { status: 200, ok: true, json: async () => ({ confirmToken: 'tok-1' }) };
+      }
+      confirms += 1;
+      if (confirms === 1) {
+        return { status: 503, ok: false, json: async () => ({ error: 'social_unavailable' }) };
+      }
+      return { status: 200, ok: true, json: async () => ({ post: { id: 'p1' } }) };
+    });
+    await act(async () => {
+      root.render(<SocialScheduler onUpgrade={() => {}} />);
+    });
+    const text = container.querySelector<HTMLTextAreaElement>('textarea');
+    const time = container.querySelector<HTMLInputElement>('input[aria-label="Schedule time"]');
+    await act(async () => {
+      const area = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+      const input = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      area?.call(text, 'Sunday at 10.');
+      text?.dispatchEvent(new Event('input', { bubbles: true }));
+      input?.call(time, '2027-03-22T10:00');
+      time?.dispatchEvent(new Event('input', { bubbles: true }));
+      time?.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    const schedule = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Schedule');
+    await act(async () => { schedule?.click(); });
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    const confirm = () => [...document.body.querySelectorAll('button')].find((button) => button.textContent === 'Confirm');
+    expect(confirm()?.hasAttribute('disabled')).toBe(false);
+    await act(async () => { confirm()?.click(); });
+    await act(async () => { await Promise.resolve(); });
+    expect(document.body.querySelector('[data-testid="social-confirm-error"]')).toBeTruthy();
+    await act(async () => { confirm()?.click(); });
+    await act(async () => { await Promise.resolve(); });
+    const keys = authFetch.mock.calls
+      .filter((call) => String(call[0]).includes('/api/social/posts'))
+      .map((call) => {
+        const init = call[1] as { headers?: Record<string, string> } | undefined;
+        return init?.headers?.['Idempotency-Key'];
+      })
+      .filter((key): key is string => typeof key === 'string' && key.length > 0);
+    expect(keys.length).toBeGreaterThanOrEqual(3);
+    expect(new Set(keys).size).toBe(1);
   });
 
   it('does not alert or show a raw credential error', async () => {

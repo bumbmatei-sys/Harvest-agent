@@ -240,6 +240,7 @@ export async function actorFromRequest(request: NextRequest): Promise<SocialActo
   return {
     uid: user.uid,
     email: user.email,
+    emailVerified: user.emailVerified === true,
     tenantId: user.tenantId,
     isSuperAdmin: user.isSuperAdmin,
     requestedTenantId: request.headers.get('x-harvest-tenant'),

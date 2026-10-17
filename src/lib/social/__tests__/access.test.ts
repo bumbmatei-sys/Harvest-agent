@@ -98,6 +98,25 @@ describe('requireSocialAccess', () => {
     expect(h.get.mock.calls.map((callArgs) => callArgs[0])).not.toContain('tenants');
   });
 
+  it('refuses a roster email that is not verified', async () => {
+    h.requireAuth.mockResolvedValue({
+      uid: 'roster-1',
+      email: 'owner@church.test',
+      tenantId: 'tenant-a',
+      isAdmin: false,
+      isSuperAdmin: false,
+      emailVerified: false,
+    });
+    h.userDoc = { role: 'user', permissions: {} };
+    h.privateDoc = { adminEmails: ['owner@church.test'] };
+    const response = await call();
+    expect(response).toBeInstanceOf(NextResponse);
+    if (!(response instanceof NextResponse)) return;
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: 'Admin access required' });
+    expect(h.get.mock.calls.map((callArgs) => callArgs[0])).not.toContain('tenants');
+  });
+
   it('reaches the add-on wall for a roster admin without the add-on', async () => {
     process.env.VERCEL_ENV = 'production';
     h.requireAuth.mockResolvedValue({

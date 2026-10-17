@@ -233,7 +233,12 @@ async function mount(enabled: boolean, who: Who, opts: { section?: string } = {}
 // on beforeAll's clock rather than a test's.
 beforeAll(async () => {
   await import('../AdminDashboard');
-});
+}, 20_000);
+
+// Each mount still calls resetModules() and imports AdminDashboard again.
+// The warmup above pays for the cold transform; this budget is what remains
+// if that import still lands inside the test on a slow runner.
+const MOUNT_MS = 15_000;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -258,7 +263,7 @@ describe('AFFILIATE_PROGRAM_ENABLED === false — nothing invites anyone into th
     it(`shows no Affiliate nav entry to ${name}`, async () => {
       await mount(false, who);
       expect(hasAffiliateNavEntry()).toBe(false);
-    });
+    }, MOUNT_MS);
 
     it(`renders no affiliate section at /admin/affiliate for ${name}`, async () => {
       await mount(false, who, { section: 'affiliate' });
@@ -266,7 +271,7 @@ describe('AFFILIATE_PROGRAM_ENABLED === false — nothing invites anyone into th
       // The dashboard's own copy — referral link, earnings, "Set Up Payouts
       // with Stripe" — must be nowhere on the page either.
       expect(container.textContent).not.toMatch(/referral link|Set Up Payouts|commission/i);
-    });
+    }, MOUNT_MS);
   }
 
   it('still renders the rest of the nav — this hides one entry, not the dashboard', async () => {
@@ -274,7 +279,7 @@ describe('AFFILIATE_PROGRAM_ENABLED === false — nothing invites anyone into th
     const labels = navNames();
     expect(labels).toContain('Dashboard');
     expect(labels).toContain('Settings');
-  });
+  }, MOUNT_MS);
 });
 
 describe('AFFILIATE_PROGRAM_ENABLED === true — every hidden surface comes back', () => {
@@ -282,12 +287,12 @@ describe('AFFILIATE_PROGRAM_ENABLED === true — every hidden surface comes back
     it(`restores the Affiliate nav entry for ${name}`, async () => {
       await mount(true, who);
       expect(hasAffiliateNavEntry()).toBe(true);
-    });
+    }, MOUNT_MS);
 
     it(`restores the affiliate section at /admin/affiliate for ${name}`, async () => {
       await mount(true, who, { section: 'affiliate' });
       expect(hasAffiliateSection()).toBe(true);
-    });
+    }, MOUNT_MS);
   }
 
   it('leaves the permission gate behind the flag intact — an admin with neither grant still gets nothing', async () => {
@@ -299,5 +304,5 @@ describe('AFFILIATE_PROGRAM_ENABLED === true — every hidden surface comes back
     // Sanity: this admin IS entitled to something, so the nav really rendered.
     const labels = navNames();
     expect(labels).toContain('Blog');
-  });
+  }, MOUNT_MS);
 });

@@ -24,6 +24,11 @@ export interface SocialAccess {
 export interface SocialActor {
   readonly uid: string;
   readonly email: string | undefined;
+  /**
+   * Firebase `email_verified` from the ID token. A roster match is an email
+   * match, and an unverified signup can carry an admin's address.
+   */
+  readonly emailVerified: boolean;
   readonly tenantId: string | null;
   readonly isSuperAdmin: boolean;
   readonly requestedTenantId: string | null;
@@ -43,7 +48,9 @@ async function hasSocialFullAccess(user: AuthenticatedUser, tenantId: string): P
   const privateData = await getTenantPrivate(tenantId);
   const adminEmails: string[] = Array.isArray(privateData.adminEmails) ? privateData.adminEmails : [];
   const email = (user.email || '').toLowerCase();
-  if (email && adminEmails.some((entry) => (entry || '').toLowerCase() === email)) return true;
+  if (user.emailVerified === true && email && adminEmails.some((entry) => (entry || '').toLowerCase() === email)) {
+    return true;
+  }
   const userSnap = await adminDb.collection('users').doc(user.uid).get();
   const data = userSnap.exists ? userSnap.data() || {} : {};
   const permissions = (data.permissions ?? {}) as Record<string, unknown>;
@@ -72,7 +79,7 @@ function actorUser(actor: SocialActor): AuthenticatedUser {
     tenantId: actor.tenantId,
     isAdmin: false,
     isSuperAdmin: actor.isSuperAdmin,
-    emailVerified: false,
+    emailVerified: actor.emailVerified,
     authTime: 0,
   };
 }
@@ -154,6 +161,7 @@ export async function requireSocialAccess(request: NextRequest): Promise<SocialA
   return authorizeSocialActor({
     uid: user.uid,
     email: user.email,
+    emailVerified: user.emailVerified === true,
     tenantId: user.tenantId,
     isSuperAdmin: user.isSuperAdmin,
     requestedTenantId: request.headers.get('x-harvest-tenant'),

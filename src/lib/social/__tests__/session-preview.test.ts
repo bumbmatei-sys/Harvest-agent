@@ -165,6 +165,23 @@ describe('loadSocialWorkspace mock boundary', () => {
     expect(h.update).not.toHaveBeenCalled();
   });
 
+  it('schedules once when the same idempotency key is sent twice', async () => {
+    const body = {
+      ...draft('sample-ig'),
+      scheduledFor: '2027-03-22T15:00:00.000Z',
+      idempotencyKey: '33333333-3333-4333-8333-333333333333',
+    };
+    const [first, second] = await Promise.all([
+      createSocialPost('tenant-a', body, true),
+      createSocialPost('tenant-a', body, true),
+    ]);
+    expect(first.ok && second.ok && first.post.id === second.post.id).toBe(true);
+    expect(first.ok && first.post.status).toBe('scheduled');
+    const workspace = await loadSocialWorkspace('tenant-a', clock, true);
+    const copies = workspace?.posts.filter((post) => post.id === (first.ok ? first.post.id : '')) ?? [];
+    expect(copies).toHaveLength(1);
+  });
+
   it('posts now once when the same idempotency key is sent twice', async () => {
     const body = draft('sample-ig', true);
     const [first, second] = await Promise.all([

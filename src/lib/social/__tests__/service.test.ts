@@ -66,6 +66,7 @@ const ADC = 'Could not load the default credentials. Browse to https://cloud.goo
 const actor: SocialActor = {
   uid: 'admin-1',
   email: 'owner@church.test',
+  emailVerified: true,
   tenantId: 'tenant-a',
   isSuperAdmin: false,
   requestedTenantId: null,
