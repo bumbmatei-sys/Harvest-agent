@@ -1,0 +1,31 @@
+{
+  "ticket": "#531",
+  "note": "Scheduled blog publishing. Digests are appended for the five files the register already pinned. Nothing already recorded is replaced. No firestore.rules change.",
+  "entries": [
+    {
+      "file": "src/components/AdminBlog.tsx",
+      "digest": "1cda4456a7b2d271e94d69d04d0af9202e3177c9997343ecde9bfe27305d60ba",
+      "why": "#531 owns the post-list status and the delete path. Desktop rows use the full Scheduled-for sentence; the existing mobile card keeps the short Draft, Scheduled, or Published word so the narrow list does not grow a new layout. Delete previews then confirms through the blog service instead of deleteDoc, and a failure is shown rather than returned silently."
+    },
+    {
+      "file": "src/components/AdminBlogPostEditor.tsx",
+      "digest": "3514ca3c3683dfce70c6d3bfb4858b12c9acb0e38940e7d47009f614a4fb81f9",
+      "why": "#531 replaces the status select with the shadcn Publish now, Schedule, and Draft control. The editor no longer writes blog_posts. Save draft, schedule, and publish now call the blog service; schedule and publish now preview the effect and only write on confirm. The recorded colour and scale literals are unchanged."
+    },
+    {
+      "file": "src/components/BlogTab.tsx",
+      "digest": "93bdb76e728ab4771805afbf1ec60a3264abb8de397c92add7da1d207a393f00",
+      "why": "#531 filters the member blog list with the shared read-time visibility predicate. A draft stays hidden, a scheduled post appears once its UTC instant has arrived without a status flip, and a published post with a future instant stays hidden. The tenant query and the date formatter are unchanged."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "80ef777e4ae3c6839c9572104a0e576e15ead0bc79d5f02747c8a21caf850591",
+      "why": "#531 applies the same read-time visibility predicate to both blog lists on the news tab, so a scheduled post does not surface in the picker or the article strip before its instant. No layout, colour, or news-post behaviour moved."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "c9a57fed9ca283b5ad1c9749334cbfbad69204b7d515459d94afd13d1f534238",
+      "why": "#531 gates the saved-article opener with the same visibility predicate. A saved post that is still a draft or still waiting for its scheduled instant does not open. The shell, the nav, and the element tree are otherwise untouched."
+    }
+  ]
+}
