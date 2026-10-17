@@ -85,7 +85,8 @@ jobs:
 
   # Rules tests are not part of Test & Lint. `npm test` only includes `src/**`.
   # This job runs the Firestore emulator and does not deploy rules, indexes,
-  # functions, or the blog_confirm_tokens TTL policy.
+  # or functions. #531 adds this same job. After this pull request merges,
+  # rebasing #531 onto main should drop that duplicate.
   rules:
     name: Firestore rules
     runs-on: ubuntu-latest
