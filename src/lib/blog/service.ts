@@ -519,20 +519,17 @@ export function createBlogService(deps: {
       const owned = await loadOwned(actor, gated.tenantId, input.postId);
       if (!owned.ok) return owned;
       if (!owned.post) return fail('not_found', 'That post does not exist.');
-      const zone = owned.post.scheduleTimeZone || 'UTC';
-      const fields: BlogPostFields = {
-        title: owned.post.title,
-        category: owned.post.category,
-        content: owned.post.content,
-        featuredImage: owned.post.featuredImage,
-        tags: owned.post.tags,
-      };
+      const fields = fieldsFrom(input, owned.post);
+      if (!isFields(fields)) return fields;
+      const zone = owned.post.scheduleTimeZone && isValidTimeZone(owned.post.scheduleTimeZone)
+        ? owned.post.scheduleTimeZone
+        : 'UTC';
       const preview = effect(
         'unschedule',
         { id: gated.tenantId, name: gated.churchName },
-        { id: owned.post.id, title: owned.post.title, status: 'draft' },
+        { id: owned.post.id, title: fields.title, status: 'draft' },
         null,
-        isValidTimeZone(zone) ? zone : 'UTC',
+        zone,
         'draft',
       );
       return openOrSpend(actor, mode, confirmToken, bindingFor('unschedule', actor, gated.tenantId, owned.post.id, fields, null, null), preview, async () => {

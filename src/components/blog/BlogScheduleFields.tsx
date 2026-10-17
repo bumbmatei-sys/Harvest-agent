@@ -1,6 +1,7 @@
 'use client';
 
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { wallClockAfterPickerChange } from '@/lib/blog/visibility';
 
 export type BlogEditorIntent = 'published' | 'scheduled' | 'draft';
 
@@ -16,6 +17,7 @@ export function BlogScheduleFields({
   onWallClock,
   timeZone,
   preview,
+  scheduleError,
   fieldLabel,
   fieldInput,
 }: {
@@ -25,6 +27,7 @@ export function BlogScheduleFields({
   onWallClock: (value: string) => void;
   timeZone: string;
   preview: string | null;
+  scheduleError?: string | null;
   fieldLabel: string;
   fieldInput: string;
 }) {
@@ -61,12 +64,26 @@ export function BlogScheduleFields({
             id="blog-schedule-time"
             type="datetime-local"
             value={wallClock}
-            onChange={(event) => onWallClock(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== 'Escape') return;
+              event.preventDefault();
+              event.stopPropagation();
+              event.currentTarget.value = wallClock;
+            }}
+            onChange={(event) => {
+              const next = wallClockAfterPickerChange(wallClock, event.target.value);
+              if (next !== event.target.value) event.target.value = next;
+              if (next !== wallClock) onWallClock(next);
+            }}
             className={fieldInput}
           />
-          <p className="mt-1.5 text-xs text-muted">
-            Shown in {timeZone}. Stored in UTC. The post stays off the ministry page until this time.
-          </p>
+          {scheduleError ? (
+            <p className="mt-1.5 text-sm text-danger" role="alert">{scheduleError}</p>
+          ) : (
+            <p className="mt-1.5 text-xs text-muted">
+              Shown in {timeZone}. Stored in UTC. The post stays off the ministry page until this time.
+            </p>
+          )}
         </div>
       )}
       {preview && (

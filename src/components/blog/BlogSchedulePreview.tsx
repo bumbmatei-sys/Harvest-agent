@@ -87,12 +87,14 @@ const SAMPLE_POSTS: readonly SamplePost[] = [
   },
 ];
 
-type PreviewView = 'editor' | 'list' | 'before' | 'after';
+type PreviewView = 'editor' | 'list' | 'before' | 'after' | 'publish' | 'takedown';
 
 function readBoot(): { view: PreviewView; theme: 'light' | 'dark' } {
   const params = new URLSearchParams(window.location.search);
   const raw = params.get('view');
-  const view: PreviewView = raw === 'list' || raw === 'before' || raw === 'after' || raw === 'editor' ? raw : 'editor';
+  const view: PreviewView = raw === 'list' || raw === 'before' || raw === 'after' || raw === 'editor' || raw === 'publish' || raw === 'takedown'
+    ? raw
+    : 'editor';
   return { view, theme: params.get('theme') === 'dark' ? 'dark' : 'light' };
 }
 
@@ -103,14 +105,20 @@ function shortStatus(post: SamplePost): string {
   return 'Published';
 }
 
-function EditorShot() {
+function EditorShot({ step }: { step: 'schedule' | 'publish' | 'takedown' }) {
+  const preview = step === 'publish'
+    ? `${CHURCH}: this post becomes public on the ministry page now.`
+    : step === 'takedown'
+      ? `${CHURCH}: this post returns to a draft and leaves the ministry page.`
+      : null;
+  const primary = preview ? 'Confirm' : step === 'takedown' ? 'Take down' : step === 'publish' ? 'Publish now' : 'Schedule';
   return (
-    <div className="w-full min-w-0 max-w-full pb-10" data-blog-shot="editor">
+    <div className="w-full min-w-0 max-w-full pb-10" data-blog-shot="editor" data-blog-confirm={preview ? step : undefined}>
       <div className="flex items-center justify-between gap-4 mb-6">
         <span className="text-[13px] font-semibold text-gold">Blog</span>
         <div className="flex items-center gap-2.5">
           <AdminSecondaryButton type="button">Save draft</AdminSecondaryButton>
-          <AdminPrimaryButton type="button">Schedule</AdminPrimaryButton>
+          <AdminPrimaryButton type="button">{primary}</AdminPrimaryButton>
         </div>
       </div>
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(220px,340px)] lg:gap-6 space-y-6 lg:space-y-0 items-start">
@@ -125,12 +133,12 @@ function EditorShot() {
         <AdminCard className="p-5 space-y-4">
           <AdminSectionLabel>Post settings</AdminSectionLabel>
           <BlogScheduleFields
-            intent="scheduled"
+            intent={step === 'publish' ? 'published' : step === 'takedown' ? 'draft' : 'scheduled'}
             onIntent={() => {}}
             wallClock="2026-07-20T09:00"
             onWallClock={() => {}}
             timeZone={ZONE}
-            preview={null}
+            preview={preview}
             fieldLabel={FIELD_LABEL}
             fieldInput={FIELD_INPUT}
           />
@@ -279,7 +287,11 @@ export function BlogSchedulePreview() {
       ? <PageShot nowMs={LIST_NOW} />
       : boot.view === 'after'
         ? <PageShot nowMs={AFTER_NOW} />
-        : <EditorShot />;
+        : boot.view === 'publish'
+          ? <EditorShot step="publish" />
+          : boot.view === 'takedown'
+            ? <EditorShot step="takedown" />
+            : <EditorShot step="schedule" />;
 
   return (
     <div data-blog-preview={boot.view}>

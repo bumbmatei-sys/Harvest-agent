@@ -170,3 +170,39 @@ export function blogStatusLabel(
   const label = formatInstantInZone(new Date(at).toISOString(), zone);
   return label ? `Scheduled for ${label}` : 'Scheduled';
 }
+
+/** The category string stored on a post. Missing or non-string values are empty. */
+export function readBlogCategory(post: { readonly category?: unknown } | null | undefined): string {
+  const value = post?.category;
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+/**
+ * Why a schedule wall clock cannot be confirmed. Null when it is a real
+ * future instant. The messages match the blog service so the editor and the
+ * server refuse the same way.
+ */
+export function scheduleWallClockError(wallClock: string, timeZone: string, now: Date): string | null {
+  const wall = wallClock.trim();
+  if (!wall) return 'Choose a date and time.';
+  if (!timeZone || !isValidTimeZone(timeZone)) return 'Choose a timezone.';
+  const utc = wallClockToUtcIso(wall, timeZone);
+  if (!utc) return 'That date does not exist in this timezone.';
+  if (new Date(utc).getTime() <= now.getTime()) return 'Scheduled date must be in the future.';
+  return null;
+}
+
+/**
+ * A native datetime-local control clears its value when the picker is
+ * cancelled or Escape is pressed. Keep the value the admin already chose.
+ */
+export function wallClockAfterPickerChange(previous: string, next: string): string {
+  if (next === '' && previous.trim() !== '') return previous;
+  return next;
+}
+
+/** How long the editor waits for a blog save before it shows an error and unlocks. */
+export const BLOG_SAVE_TIMEOUT_MS = 15_000;
+
+/** Shown when that wait ends. The post is unchanged. */
+export const BLOG_SAVE_TIMEOUT_MESSAGE = 'Saving took too long. Nothing was changed.';

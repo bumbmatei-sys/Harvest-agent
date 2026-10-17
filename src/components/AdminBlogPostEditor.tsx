@@ -9,7 +9,15 @@ import { useTenantCapability } from '../hooks/useTenantCapability';
 import { ARCHIVED_ACTION_MESSAGE } from '../lib/tenant-lifecycle';
 import type { FirestoreDate } from '../utils/firestore-date';
 import { authFetch } from '../utils/auth-fetch';
-import { publishedAtMillis, utcIsoToWallClock, isValidTimeZone } from '../lib/blog/visibility';
+import {
+  BLOG_SAVE_TIMEOUT_MESSAGE,
+  BLOG_SAVE_TIMEOUT_MS,
+  publishedAtMillis,
+  readBlogCategory,
+  scheduleWallClockError,
+  utcIsoToWallClock,
+  isValidTimeZone,
+} from '../lib/blog/visibility';
 import { BlogScheduleFields, schedulePreviewSentence, type BlogEditorIntent } from './blog/BlogScheduleFields';
 
 interface BlogPost {
@@ -47,7 +55,7 @@ const fieldInput = 'w-full px-3 py-2.5 bg-surface-raised border border-line roun
 
 const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose, categories }) => {
   const [title, setTitle] = useState(post?.title || '');
-  const [category, setCategory] = useState(post?.category || '');
+  const [category, setCategory] = useState(() => readBlogCategory(post));
   const [newCategory, setNewCategory] = useState('');
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [featuredImage, setFeaturedImage] = useState(post?.featuredImage || '');
@@ -67,16 +75,21 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
   };
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
+  const [scheduleError, setScheduleError] = useState('');
   const [availableCategories, setAvailableCategories] = useState<string[]>(categories);
   const canPublish = useTenantCapability('publishing');
   const storedLive = post?.status === 'published' || post?.status === 'scheduled';
   const takingDown = storedLive && status === 'draft';
 
   useEffect(() => {
-    if (categories.length > 0 && !category) {
-      setCategory(categories[0]);
-    }
-  }, [categories, category]);
+    // A new post can start on the first real category. An existing post keeps
+    // the category it was stored with, including none, so the editor cannot
+    // show a category the list does not.
+    if (post?.id) return;
+    if (category) return;
+    const first = categories.find((item) => item.trim() !== '');
+    if (first) setCategory(first);
+  }, [categories, category, post?.id]);
 
   const handleAddCategory = () => {
     if (newCategory.trim() && !availableCategories.includes(newCategory.trim())) {
@@ -113,7 +126,12 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
     timeZone,
   });
 
-  const callService = async (action: string, mode?: 'preview' | 'confirm', confirmToken?: string | null) => {
+  const callService = async (
+    action: string,
+    mode?: 'preview' | 'confirm',
+    confirmToken?: string | null,
+    signal?: AbortSignal,
+  ) => {
     const tenantId = await getWriteTenantScope();
     if (!tenantId) {
       setError('A ministry is required before this post can be saved.');
@@ -121,6 +139,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
     }
     const response = await authFetch('/api/blog/actions', {
       method: 'POST',
+      signal,
       body: JSON.stringify({
         ...payload(),
         tenantId,
@@ -131,7 +150,9 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
     });
     const data = await response.json();
     if (!response.ok || data.ok === false) {
-      setError(typeof data.message === 'string' ? data.message : 'Failed to save post');
+      const message = typeof data.message === 'string' ? data.message : 'Failed to save post';
+      setError(message);
+      if (action === 'schedule') setScheduleError(message);
       return null;
     }
     return data;
@@ -139,24 +160,53 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
 
   const handleSave = async (saveStatus: 'published' | 'draft' | 'scheduled', mode: 'preview' | 'confirm') => {
     const demote = takingDown && saveStatus === 'draft';
+    const action = demote ? 'unschedule' : saveStatus === 'draft' ? 'createDraft' : saveStatus === 'scheduled' ? 'schedule' : 'publishNow';
     if (!demote && saveStatus !== 'draft' && !canPublish) {
       setError(ARCHIVED_ACTION_MESSAGE);
+      setIsSaving(false);
       return;
+    }
+    if (action === 'schedule') {
+      const problem = scheduleWallClockError(scheduledDate, timeZone, new Date());
+      if (problem) {
+        setScheduleError(problem);
+        setError(problem);
+        setIsSaving(false);
+        return;
+      }
     }
     setIsSaving(true);
     setError('');
+    setScheduleError('');
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let timedOut = false;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+        reject(new Error(BLOG_SAVE_TIMEOUT_MESSAGE));
+      }, BLOG_SAVE_TIMEOUT_MS);
+    });
     try {
-      const action = demote ? 'unschedule' : saveStatus === 'draft' ? 'createDraft' : saveStatus === 'scheduled' ? 'schedule' : 'publishNow';
       const needsConfirm = action !== 'createDraft';
-      const data = await callService(
-        action,
-        needsConfirm ? mode : undefined,
-        needsConfirm && mode === 'confirm' ? pendingToken : undefined,
-      );
-      if (!data) return;
+      const data = await Promise.race([
+        callService(
+          action,
+          needsConfirm ? mode : undefined,
+          needsConfirm && mode === 'confirm' ? pendingToken : undefined,
+          controller.signal,
+        ),
+        timeout,
+      ]);
+      if (!data) {
+        clearPreview();
+        return;
+      }
       if (needsConfirm && mode === 'preview') {
         if (typeof data.confirmToken !== 'string' || data.confirmToken === '') {
           setError('The preview did not return a confirmation.');
+          clearPreview();
           return;
         }
         setPendingToken(data.confirmToken);
@@ -165,8 +215,16 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
       }
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to save post');
+      clearPreview();
+      // Aborting the request rejects the fetch as well. The timeout is the
+      // reason, and that sentence is what the admin should read.
+      const message = timedOut
+        ? BLOG_SAVE_TIMEOUT_MESSAGE
+        : err instanceof Error ? err.message : 'Failed to save post';
+      setError(message);
+      setIsSaving(false);
     } finally {
+      if (timer) clearTimeout(timer);
       setIsSaving(false);
     }
   };
@@ -202,7 +260,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
             disabled={isSaving || (!takingDown && (!canPublish || status === 'draft'))}
             title={canPublish || takingDown ? undefined : ARCHIVED_ACTION_MESSAGE}
           >
-            {pendingPreview ? 'Confirm' : takingDown ? 'Save as draft' : status === 'scheduled' ? 'Schedule' : 'Publish now'}
+            {pendingPreview ? 'Confirm' : takingDown ? 'Take down' : status === 'scheduled' ? 'Schedule' : 'Publish now'}
           </AdminPrimaryButton>
         </div>
       </div>
@@ -237,11 +295,12 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
 
             <BlogScheduleFields
               intent={status}
-              onIntent={(next) => { setStatus(next); clearPreview(); }}
+              onIntent={(next) => { setStatus(next); setScheduleError(''); clearPreview(); }}
               wallClock={scheduledDate}
-              onWallClock={(value) => { setScheduledDate(value); clearPreview(); }}
+              onWallClock={(value) => { setScheduledDate(value); setScheduleError(''); setError(''); clearPreview(); }}
               timeZone={timeZone}
               preview={pendingPreview}
+              scheduleError={scheduleError}
               fieldLabel={fieldLabel}
               fieldInput={fieldInput}
             />

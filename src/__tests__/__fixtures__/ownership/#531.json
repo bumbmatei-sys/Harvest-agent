@@ -56,6 +56,16 @@
       "file": "src/components/AdminBlogPostEditor.tsx",
       "digest": "d90621b9b7f03df1bd2f662b591988abe50ae1056d2138940c4fbdbe1ddc8cfd",
       "why": "#531 stops Save draft from turning a published or scheduled post into a draft. Saving the body keeps the current status. Choosing Draft on a live post calls unschedule, which previews and confirms before the post leaves the ministry page. The colour and scale literals are unchanged."
+    },
+    {
+      "file": "src/components/AdminBlog.tsx",
+      "digest": "b1887f1361179acee97a209371b7c3aef3ab34fd987dd097d6ee6a4427d50fc9",
+      "why": "#531 reads each post category through one helper in the list snapshot and the category filter. A missing or non-string category stays blank, so the list and the editor show the same value and a blank category is not offered as a filter."
+    },
+    {
+      "file": "src/components/AdminBlogPostEditor.tsx",
+      "digest": "73f23eb067921ec4835b8c98dd30a29d6787f9f1e1f3f833d476137b5c3b0dea",
+      "why": "#531 requires a future schedule date before saving and shows that sentence inline. A save that does not return unlocks the editor and says nothing changed. An existing post keeps its stored category, including none. The colour and scale literals are unchanged."
     }
   ]
 }

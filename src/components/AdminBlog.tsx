@@ -7,7 +7,7 @@ import AdminBlogPostEditor from './AdminBlogPostEditor';
 import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar, AdminCard, AdminBadge, statusTone } from './admin/AdminUI';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope, getWriteTenantScope, hasPlatformOverride } from '../utils/tenant-scope';
-import { blogListKind, blogStatusLabel } from '../lib/blog/visibility';
+import { blogListKind, blogStatusLabel, readBlogCategory } from '../lib/blog/visibility';
 import { sortByTime } from '../utils/query-helpers';
 import { formatFirestoreDate, type FirestoreDate } from '../utils/firestore-date';
 import { useAppStore } from '../store/useAppStore';
@@ -118,10 +118,14 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
       ? query(collection(db, 'blog_posts'), where('tenantId', '==', tenantId), limit(100))
       : query(collection(db, 'blog_posts'), limit(100));
     unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedPosts = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as BlogPost[];
+      const fetchedPosts = snapshot.docs.map(doc => {
+        const data = doc.data() as Partial<BlogPost>;
+        return {
+          ...data,
+          id: doc.id,
+          category: readBlogCategory(data),
+        };
+      }) as BlogPost[];
       setPosts(sortByTime(fetchedPosts, 'createdAt', 'desc'));
       setLoading(false);
     }, (error) => {
@@ -150,7 +154,7 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
    return () => { cancelled = true; };
  }, [canAutomate, knowledgeBaseEnabled]);
 
- const categories = Array.from(new Set(posts.map(post => post.category)));
+ const categories = Array.from(new Set(posts.map(post => readBlogCategory(post)).filter((category) => category !== '')));
  const filterCategories = ['All', ...categories];
 
  const filteredPosts = posts.filter(post => {
