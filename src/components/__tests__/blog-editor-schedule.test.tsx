@@ -173,7 +173,7 @@ describe('scheduling from the editor', () => {
     expect(host.textContent).not.toContain('Saving…');
   });
 
-  it('previews a future schedule and writes only after confirm', async () => {
+  it('previews a future schedule only after confirm, and writes on that confirm', async () => {
     authFetch.mockImplementation(async (_url: string, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body)) as { action: string };
       return { ok: true, json: async () => previewBody(body.action) };
@@ -183,14 +183,14 @@ describe('scheduling from the editor', () => {
     await act(async () => { setClock('2027-07-20T09:00'); });
     await clickLabel('Schedule');
 
-    expect(sentBodies()).toEqual([
-      expect.objectContaining({ action: 'schedule', mode: 'preview', wallClock: '2027-07-20T09:00' }),
-    ]);
+    expect(authFetch).not.toHaveBeenCalled();
     expect(host.querySelector('[data-blog-schedule-preview]')?.textContent).toContain('hidden until');
     expect(buttonByText('Confirm')).toBeTruthy();
+    expect(host.textContent).not.toContain('Saving…');
 
     await clickLabel('Confirm');
 
+    expect(sentBodies()[0]).toMatchObject({ action: 'schedule', mode: 'preview', wallClock: '2027-07-20T09:00' });
     expect(sentBodies()[1]).toMatchObject({ action: 'schedule', mode: 'confirm', confirmToken: 'tok-1' });
     expect(onClose).toHaveBeenCalledOnce();
   });
@@ -215,6 +215,10 @@ describe('scheduling from the editor', () => {
       });
     }));
     await mountEditor();
+    await clickLabel('Publish now');
+    expect(authFetch).not.toHaveBeenCalled();
+    expect(buttonByText('Confirm')).toBeTruthy();
+
     const realSetTimeout = globalThis.setTimeout;
     const spy = vi.spyOn(globalThis, 'setTimeout').mockImplementation(((fn: TimerHandler, ms?: number, ...args: unknown[]) => {
       if (ms === BLOG_SAVE_TIMEOUT_MS) {
@@ -226,7 +230,7 @@ describe('scheduling from the editor', () => {
     }) as typeof setTimeout);
     try {
       await act(async () => {
-        buttonByText('Publish now').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        buttonByText('Confirm').dispatchEvent(new MouseEvent('click', { bubbles: true }));
         await new Promise((resolve) => realSetTimeout(resolve, 30));
       });
     } finally {
@@ -240,6 +244,89 @@ describe('scheduling from the editor', () => {
     const signal = (authFetch.mock.calls[0]?.[1] as RequestInit | undefined)?.signal;
     expect(signal?.aborted).toBe(true);
   });
+
+  it('shows the timeout when the request never settles', async () => {
+    authFetch.mockImplementation(() => new Promise(() => {}));
+    await mountEditor(null, ['Communion']);
+    await chooseIntent('Schedule');
+    await act(async () => { setClock('2026-12-01T10:00'); });
+    await clickLabel('Schedule');
+    expect(authFetch).not.toHaveBeenCalled();
+
+    const realSetTimeout = globalThis.setTimeout;
+    const spy = vi.spyOn(globalThis, 'setTimeout').mockImplementation(((fn: TimerHandler, ms?: number, ...args: unknown[]) => {
+      if (ms === BLOG_SAVE_TIMEOUT_MS) {
+        return realSetTimeout(() => {
+          if (typeof fn === 'function') fn();
+        }, 0);
+      }
+      return realSetTimeout(fn, ms, ...args);
+    }) as typeof setTimeout);
+    try {
+      await act(async () => {
+        buttonByText('Confirm').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        await new Promise((resolve) => realSetTimeout(resolve, 30));
+      });
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(host.textContent).toContain(BLOG_SAVE_TIMEOUT_MESSAGE);
+    expect(host.textContent).not.toContain('Saving…');
+  });
+
+  it('confirms a new untitled draft before creating it', async () => {
+    authFetch.mockImplementation(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as { action: string };
+      return { ok: true, json: async () => previewBody(body.action) };
+    });
+    await mountEditor(null, ['Communion', 'News']);
+    const select = host.querySelector('select');
+    if (!(select instanceof HTMLSelectElement)) throw new Error('category select missing');
+    expect(select.value).toBe('');
+
+    await chooseIntent('Schedule');
+    const input = host.querySelector('#blog-schedule-time');
+    if (!(input instanceof HTMLInputElement)) throw new Error('schedule input missing');
+    expect(input.value).toBe('');
+    await act(async () => { setClock('2026-12-01T10:00'); });
+    await clickLabel('Schedule');
+
+    expect(authFetch).not.toHaveBeenCalled();
+    expect(host.querySelector('[data-blog-schedule-preview]')?.textContent).toContain('hidden until');
+    expect(host.textContent).not.toContain('Saving…');
+
+    await clickLabel('Confirm');
+
+    expect(sentBodies()[0]).toMatchObject({
+      action: 'schedule',
+      mode: 'preview',
+      postId: null,
+      wallClock: '2026-12-01T10:00',
+      category: '',
+    });
+    expect(sentBodies()[1]).toMatchObject({ action: 'schedule', mode: 'confirm', postId: null });
+  });
+
+  it('starts a published post schedule empty and still refuses a past date', async () => {
+    await mountEditor({
+      ...livePost,
+      publishedAt: '2026-09-28T16:00:00.000Z',
+    });
+    await chooseIntent('Schedule');
+    const input = host.querySelector('#blog-schedule-time');
+    if (!(input instanceof HTMLInputElement)) throw new Error('schedule input missing');
+    expect(input.value).toBe('');
+    await clickLabel('Schedule');
+    expect(authFetch).not.toHaveBeenCalled();
+    expect(host.querySelector('[role="alert"]')?.textContent).toBe('Choose a date and time.');
+
+    await act(async () => { setClock('2026-09-28T09:00'); });
+    await clickLabel('Schedule');
+    expect(authFetch).not.toHaveBeenCalled();
+    expect(host.querySelector('[role="alert"]')?.textContent).toBe('Scheduled date must be in the future.');
+    expect(host.textContent).not.toContain('Saving…');
+  });
 });
 
 describe('publish and take down confirm', () => {
@@ -252,12 +339,13 @@ describe('publish and take down confirm', () => {
     const onClose = await mountEditor();
     await clickLabel('Publish now');
 
-    expect(sentBodies()[0]).toMatchObject({ action: 'publishNow', mode: 'preview' });
+    expect(authFetch).not.toHaveBeenCalled();
     expect(host.querySelector('[data-blog-schedule-preview]')?.textContent).toContain('becomes public on the ministry page now');
     expect(onClose).not.toHaveBeenCalled();
 
     await clickLabel('Confirm');
 
+    expect(sentBodies()[0]).toMatchObject({ action: 'publishNow', mode: 'preview' });
     expect(sentBodies()[1]).toMatchObject({ action: 'publishNow', mode: 'confirm', confirmToken: 'tok-1' });
     expect(onClose).toHaveBeenCalledOnce();
   });
@@ -273,17 +361,18 @@ describe('publish and take down confirm', () => {
     expect(buttonByText('Take down')).toBeTruthy();
     await clickLabel('Take down');
 
+    expect(authFetch).not.toHaveBeenCalled();
+    expect(host.querySelector('[data-blog-schedule-preview]')?.textContent).toContain('returns to a draft');
+    expect(onClose).not.toHaveBeenCalled();
+
+    await clickLabel('Confirm');
+
     expect(sentBodies()[0]).toMatchObject({
       action: 'unschedule',
       mode: 'preview',
       title: 'Second test',
       content: '<p>Hello</p>',
     });
-    expect(host.querySelector('[data-blog-schedule-preview]')?.textContent).toContain('returns to a draft');
-    expect(onClose).not.toHaveBeenCalled();
-
-    await clickLabel('Confirm');
-
     expect(sentBodies()[1]).toMatchObject({ action: 'unschedule', mode: 'confirm', confirmToken: 'tok-1' });
     expect(onClose).toHaveBeenCalledOnce();
   });

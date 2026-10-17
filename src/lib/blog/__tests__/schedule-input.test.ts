@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  editorConfirmSentence,
+  initialScheduleWallClock,
   publicPostMatchesHost,
   readBlogCategory,
   scheduleWallClockError,
@@ -25,6 +27,25 @@ describe('schedule wall clock', () => {
     expect(wallClockAfterPickerChange('2026-07-20T09:00', '')).toBe('2026-07-20T09:00');
     expect(wallClockAfterPickerChange('', '')).toBe('');
     expect(wallClockAfterPickerChange('2026-07-20T09:00', '2026-07-21T10:00')).toBe('2026-07-21T10:00');
+  });
+
+  it('does not offer a published post its past publish date', () => {
+    expect(initialScheduleWallClock({
+      status: 'published',
+      publishedAt: '2026-09-28T16:00:00.000Z',
+    }, ZONE)).toBe('');
+    expect(initialScheduleWallClock({ status: 'draft', publishedAt: '2026-09-28T16:00:00.000Z' }, ZONE)).toBe('');
+    expect(initialScheduleWallClock(null, ZONE)).toBe('');
+    expect(initialScheduleWallClock({
+      status: 'scheduled',
+      publishedAt: '2026-12-01T18:00:00.000Z',
+    }, 'UTC')).toBe('2026-12-01T18:00');
+  });
+
+  it('describes a schedule before any request', () => {
+    expect(editorConfirmSentence('schedule', '2026-12-01T10:00', 'UTC')).toContain('hidden until');
+    expect(editorConfirmSentence('publishNow', '', 'UTC')).toBe('This post becomes public on the ministry page now.');
+    expect(editorConfirmSentence('unschedule', '', 'UTC')).toBe('This post returns to a draft and leaves the ministry page.');
   });
 });
 

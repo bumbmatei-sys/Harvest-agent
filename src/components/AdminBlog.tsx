@@ -1,13 +1,14 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, FileText, Sparkles, X, ChevronDown } from 'lucide-react';
-import { collection, onSnapshot, query, where, limit } from 'firebase/firestore';
+import { collection, doc, getDoc, onSnapshot, query, where, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import AdminBlogPostEditor from './AdminBlogPostEditor';
 import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar, AdminCard, AdminBadge, statusTone } from './admin/AdminUI';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope, getWriteTenantScope, hasPlatformOverride } from '../utils/tenant-scope';
 import { blogListKind, blogStatusLabel, readBlogCategory } from '../lib/blog/visibility';
+import { automationSettingsJson } from '../lib/blog/automation-settings-json';
 import { sortByTime } from '../utils/query-helpers';
 import { formatFirestoreDate, type FirestoreDate } from '../utils/firestore-date';
 import { useAppStore } from '../store/useAppStore';
@@ -150,17 +151,28 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
        // instead of sending a request with an empty tenant.
        const tenantId = await getWriteTenantScope();
        if (!tenantId || cancelled) return;
-       const resp = await authFetch(`/api/blog/automate?tenantId=${encodeURIComponent(tenantId)}`);
-       if (!resp.ok) {
-         if (!cancelled) notifyError('Automation settings could not be loaded.', new Error(`HTTP ${resp.status}`));
-         return;
+       let data: unknown = null;
+       try {
+         const resp = await authFetch(`/api/blog/automate?tenantId=${encodeURIComponent(tenantId)}`);
+         if (resp.ok) data = await resp.json();
+       } catch {
+         data = null;
        }
-       if (!cancelled) {
-         const data = await resp.json();
-         setAutomation(a => ({ ...a, ...data }));
+       // The preview's admin SDK answers 500 for this read. The signed-in
+       // browser can still read the same document. A failure here is a
+       // sentence in the panel, not an alert over the editor.
+       if (data == null) {
+         const snap = await getDoc(doc(db, 'tenants', tenantId, 'blogAutomation', 'settings'));
+         data = snap.exists() ? (snap.data() ?? { enabled: false }) : { enabled: false };
        }
-     } catch (e) {
-       if (!cancelled) notifyError('Automation settings could not be loaded.', e);
+       if (cancelled) return;
+       const settings = automationSettingsJson(data);
+       if (settings && typeof settings === 'object') {
+         setAutomation(a => ({ ...a, ...(settings as object) }));
+         setAutomationError(null);
+       }
+     } catch {
+       if (!cancelled) setAutomationError('Automation settings could not be loaded.');
      }
    })();
    return () => { cancelled = true; };
@@ -314,7 +326,7 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  };
 
  if (isEditorOpen) {
- return <AdminBlogPostEditor post={editingPost} onClose={() => setIsEditorOpen(false)} categories={categories} />;
+ return <AdminBlogPostEditor key={editingPost?.id ?? 'new'} post={editingPost} onClose={() => setIsEditorOpen(false)} categories={categories} />;
  }
 
  return (
@@ -348,7 +360,7 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  {knowledgeBaseEnabled && automateGate === 'permitted' && (
  <button
  data-testid="blog-automate-button"
- onClick={() => { setAutomationError(null); setShowAutomation(true); }}
+ onClick={() => { setShowAutomation(true); }}
  className="inline-flex items-center justify-center gap-1.5 min-h-[44px] sm:min-h-0 px-4 py-2.5 rounded-brand border border-line bg-surface-raised text-[13px] font-semibold text-strong hover:bg-surface-sunken transition-colors"
  >
  <Sparkles size={15} className="text-gold" /> Automate

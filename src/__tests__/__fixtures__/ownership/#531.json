@@ -81,6 +81,16 @@
       "file": "src/components/AdminBlog.tsx",
       "digest": "dda52ce2a377394a327390b0bbcb2ae34a6055dc01bbcd43e092fcfc1db01bb5",
       "why": "#531 loads and saves automation through the write tenant scope. A null read scope on the apex stays an unscoped post list. A null write scope is the only case that stops, and that sentence stays inside the panel. The colour and scale literals are unchanged."
+    },
+    {
+      "file": "src/components/AdminBlog.tsx",
+      "digest": "64fc412d85069b749755000cbe7b67279386974cc3a94a8d444929af649d219c",
+      "why": "#531 shows a failed automation settings read inside the panel instead of an alert, and falls back to the ministry document when the route cannot read it. The post list still uses the read scope. The colour and scale literals are unchanged."
+    },
+    {
+      "file": "src/components/AdminBlogPostEditor.tsx",
+      "digest": "b03884d6b8be90e85a085ff83ad267f5920339bfea86c9ec8d6e316fb41bce76",
+      "why": "#531 shows Confirm before the editor calls the blog service, including for a new unsaved draft. A published post no longer starts Schedule on its past publish date, and a new draft starts with an empty category. A save that does not settle still unlocks and shows the timeout sentence. The colour and scale literals are unchanged."
     }
   ]
 }

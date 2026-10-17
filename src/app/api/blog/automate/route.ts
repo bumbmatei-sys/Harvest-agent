@@ -3,6 +3,12 @@ import type { NextRequest } from 'next/server';
 import { requireAdmin, requireTenantAdmin, type AuthenticatedUser } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import firebaseConfig from '../../../../firebase-applet-config.json';
+import {
+  automationSettingsJson,
+  decodeFirestoreRestFields,
+  isAutomationTenantId,
+} from '@/lib/blog/automation-settings-json';
 import { computeNextScheduled } from '../generate/route';
 
 /**
@@ -41,29 +47,47 @@ export async function GET(request: NextRequest) {
     if (tenantIdOrErr instanceof NextResponse) return tenantIdOrErr;
     const tenantId = tenantIdOrErr;
 
-    const snap = await adminDb
-      .collection('tenants').doc(tenantId)
-      .collection('blogAutomation').doc('settings').get();
+    // The admin SDK is what production uses. A preview deployment often has no
+    // service-account credential, and that read throws. The signed-in admin's
+    // own token can still read the same document through the Firestore REST
+    // API, under the rules that already allow a tenant admin to read it.
+    let raw: unknown;
+    try {
+      const snap = await adminDb
+        .collection('tenants').doc(tenantId)
+        .collection('blogAutomation').doc('settings').get();
+      raw = snap.exists ? (snap.data() ?? { enabled: false }) : { enabled: false };
+    } catch {
+      const fallback = await readSettingsWithUserToken(request, tenantId);
+      if (fallback instanceof NextResponse) return fallback;
+      raw = fallback;
+    }
 
-    // Normalize Firestore Timestamp fields to ISO strings before returning.
-    // Through NextResponse.json a Firestore Timestamp serializes to
-    // {_seconds, _nanoseconds}, which the client can't parse — new Date(...) on
-    // that shape is Invalid Date, so AdminBlog's "Next:" line stays hidden.
-    // Converting the two known Timestamp fields keeps the JSON contract clean;
-    // null / already-string / absent values pass through untouched.
-    const raw = snap.exists ? snap.data()! : { enabled: false };
-    const toIso = (v: any) =>
-      v && typeof v.toDate === 'function' ? v.toDate().toISOString() : v;
-    const data = {
-      ...raw,
-      nextScheduledAt: toIso((raw as any).nextScheduledAt),
-      updatedAt: toIso((raw as any).updatedAt),
-    };
-
-    return NextResponse.json(data);
+    return NextResponse.json(automationSettingsJson(raw));
   } catch (err: any) {
     return NextResponse.json({ error: err?.message }, { status: 500 });
   }
+}
+
+async function readSettingsWithUserToken(
+  request: NextRequest,
+  tenantId: string,
+): Promise<Record<string, unknown> | NextResponse> {
+  const header = request.headers.get('authorization') || '';
+  const token = header.startsWith('Bearer ') ? header.slice('Bearer '.length).trim() : '';
+  if (!token || !isAutomationTenantId(tenantId)) {
+    return NextResponse.json({ error: 'Automation settings could not be loaded.' }, { status: 500 });
+  }
+  const database = encodeURIComponent(firebaseConfig.firestoreDatabaseId);
+  const project = encodeURIComponent(firebaseConfig.projectId);
+  const url = `https://firestore.googleapis.com/v1/projects/${project}/databases/${database}/documents/tenants/${tenantId}/blogAutomation/settings`;
+  const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (resp.status === 404) return { enabled: false };
+  if (!resp.ok) {
+    return NextResponse.json({ error: 'Automation settings could not be loaded.' }, { status: 500 });
+  }
+  const body = await resp.json() as { fields?: unknown };
+  return decodeFirestoreRestFields(body.fields);
 }
 
 export async function POST(request: NextRequest) {
