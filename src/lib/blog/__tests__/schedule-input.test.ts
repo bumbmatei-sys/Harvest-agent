@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  publicPostMatchesHost,
   readBlogCategory,
   scheduleWallClockError,
   wallClockAfterPickerChange,
@@ -24,6 +25,14 @@ describe('schedule wall clock', () => {
     expect(wallClockAfterPickerChange('2026-07-20T09:00', '')).toBe('2026-07-20T09:00');
     expect(wallClockAfterPickerChange('', '')).toBe('');
     expect(wallClockAfterPickerChange('2026-07-20T09:00', '2026-07-21T10:00')).toBe('2026-07-21T10:00');
+  });
+});
+
+describe('public article host', () => {
+  it('shows a post on its own ministry and on a host with no ministry', () => {
+    expect(publicPostMatchesHost('sample', 'sample')).toBe(true);
+    expect(publicPostMatchesHost('sample', null)).toBe(true);
+    expect(publicPostMatchesHost('sample', 'other')).toBe(false);
   });
 });
 

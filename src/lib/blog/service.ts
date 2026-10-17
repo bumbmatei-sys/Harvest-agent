@@ -438,9 +438,14 @@ export function createBlogService(deps: {
       if (!isFields(fields)) return fields;
       // A published or scheduled post keeps its status. Saving the body is
       // not a takedown. Returning it to a draft is `unschedule`, which
-      // previews and confirms.
+      // previews and confirms. Keeping that post live is still publishing,
+      // so the same gate that schedule and publishNow use applies here.
       const existing = owned.post;
       const live = existing?.status === 'published' || existing?.status === 'scheduled';
+      if (live) {
+        const open = await publishingOpen(gated.tenantId);
+        if (open !== true) return open;
+      }
       const status: BlogStoredStatus = live && existing ? existing.status : 'draft';
       const publishedAt = live && existing ? existing.publishedAt : null;
       const zone = live && existing ? existing.scheduleTimeZone : null;

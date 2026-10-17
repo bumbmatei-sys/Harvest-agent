@@ -201,6 +201,15 @@ export function wallClockAfterPickerChange(previous: string, next: string): stri
   return next;
 }
 
+/**
+ * A ministry host may present only that ministry's public post. A host that
+ * resolves no tenant still shows the post, branded as Harvest.
+ */
+export function publicPostMatchesHost(postTenantId: string, hostTenantId: string | null): boolean {
+  if (hostTenantId === null) return true;
+  return postTenantId === hostTenantId;
+}
+
 /** How long the editor waits for a blog save before it shows an error and unlocks. */
 export const BLOG_SAVE_TIMEOUT_MS = 15_000;
 

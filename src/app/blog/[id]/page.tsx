@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import sanitizeHtml from 'sanitize-html';
 import { createBlogService } from '@/lib/blog/service';
 import { firestoreBlogStore } from '@/lib/blog/firestore-store';
+import { publicPostMatchesHost } from '@/lib/blog/visibility';
 import { getTenantFromHost } from '@/lib/server-tenant';
 import { getPlanFeatures } from '@/utils/plan-features';
 import PublicRouteAnalytics from '@/components/PublicRouteAnalytics';
@@ -25,13 +26,26 @@ const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
   allowedSchemes: ['https', 'http', 'mailto', 'tel'],
 };
 
+async function loadPublicArticle(id: string) {
+  const headersList = await headers();
+  const host = headersList.get('host') || '';
+  const [post, tenant] = await Promise.all([
+    createBlogService({ store: firestoreBlogStore }).readPublic(id),
+    getTenantFromHost(host),
+  ]);
+  if (!post || !publicPostMatchesHost(post.tenantId, tenant?.id ?? null)) {
+    return { post: null, tenant: null };
+  }
+  return { post, tenant };
+}
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const post = await createBlogService({ store: firestoreBlogStore }).readPublic(id);
+  const { post } = await loadPublicArticle(id);
   if (!post) {
     return { title: 'Post Not Found' };
   }
@@ -65,14 +79,7 @@ export default async function BlogPostPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-
-  const headersList = await headers();
-  const host = headersList.get('host') || '';
-
-  const [post, tenant] = await Promise.all([
-    createBlogService({ store: firestoreBlogStore }).readPublic(id),
-    getTenantFromHost(host),
-  ]);
+  const { post, tenant } = await loadPublicArticle(id);
 
   if (!post) {
     notFound();
