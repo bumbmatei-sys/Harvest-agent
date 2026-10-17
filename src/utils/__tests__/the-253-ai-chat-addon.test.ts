@@ -331,7 +331,7 @@ describe('the webhook is still the only writer of the add-on set', () => {
        match its new meaning would silently strip the capability from every
        church that already bought it — the webhook writes this exact key. */
     expect(Object.keys(NO_ADDONS).sort())
-      .toEqual(['adminSeats', 'aiAssistant', 'unlimitedContacts']);
+      .toEqual(['adminSeats', 'aiAssistant', 'socialScheduler', 'unlimitedContacts']);
     expect(srcOf('../../lib/dodo/addons.ts')).toMatch(/case 'aiAssistant':/);
   });
 });

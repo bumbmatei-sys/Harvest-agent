@@ -149,9 +149,10 @@ const PUBLIC_GROUPS: readonly GroupTemplate[] = [
   },
   {
     id: 'social',
-    label: 'Social',
+    label: 'Channels',
     icon: Radio,
     items: [
+      { id: 'social', label: 'Social', icon: Radio },
       { id: 'livestream', label: 'Livestream', icon: Radio },
       { id: 'sms', label: 'SMS', icon: Radio },
     ],
@@ -184,9 +185,14 @@ const PUBLIC_TAB_IDS = new Set(
  *
  * `dashboard` returns null so opening Home does not yank the sidebar from
  * the side the admin was just using. Home is pinned at the top of both.
+ *
+ * Social is the same. It is listed on the public side, but the route must
+ * not switch the sidebar: a reload of `/admin/social` was reading this map
+ * and landing on Blog and Branding. The side changes only when the admin
+ * toggles it, or opens a tab that actually belongs to the other side.
  */
 export function sideForTab(tabId: string): ShellSideId | null {
-  if (tabId === 'dashboard') return null;
+  if (tabId === 'dashboard' || tabId === 'social') return null;
   if (PUBLIC_TAB_IDS.has(tabId)) return 'public';
   return 'people';
 }

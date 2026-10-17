@@ -225,6 +225,18 @@ export interface PlanFeatures {
   textToGive: boolean;
   /** Installable Progressive Web App (mobile app) — all plans */
   pwaApp: boolean;
+  /**
+   * Social scheduling: connected accounts, a composer, a month calendar and a
+   * queue.
+   *
+   * 🔴 FALSE ON EVERY TIER. No plan includes it. The only path to `true` is
+   * holding the social scheduler add-on, which `getEffectiveFeatures` lifts
+   * with `||` and never assignment. There is no price and no Dodo product in
+   * this repo. The webhook remains the single writer of
+   * `tenants/{id}.addons.socialScheduler`, and until a product is mapped that
+   * write is zero.
+   */
+  socialScheduler: boolean;
   // `donationRetention` ("percentage of a donation the ministry keeps") was
   // removed with the move to a flat 0% platform fee on every tier. It was a
   // hand-maintained complement of PLATFORM_FEE_MAP (`100 - fee * 100`), and
@@ -427,6 +439,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     // lists the PWA as something you get BY UPGRADING is now advertising a free
     // feature as paid — see the PR for the file:line list.
     pwaApp: true,
+    // 🔴 FALSE ON EVERY TIER. Social scheduling is an add-on. See PlanFeatures.
+    socialScheduler: false,
   },
   // Individual — $49/mo
   plus: {
@@ -493,6 +507,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     // and outbound SMS are one capability; see the interface comment.
     textToGive: false,
     pwaApp: true,
+    // 🔴 FALSE ON EVERY TIER. Social scheduling is an add-on. See PlanFeatures.
+    socialScheduler: false,
   },
   // Small Team — $99/mo
   pro: {
@@ -556,6 +572,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     // 🔴 FALSE — THE-314, moving with `smsAutomation` above.
     textToGive: false,
     pwaApp: true,
+    // 🔴 FALSE ON EVERY TIER. Social scheduling is an add-on. See PlanFeatures.
+    socialScheduler: false,
   },
   // Ministry — $199/mo. The top tier.
   //
@@ -629,6 +647,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     pledgeCampaigns: true,
     textToGive: true,
     pwaApp: true,
+    // 🔴 FALSE ON EVERY TIER. Social scheduling is an add-on. See PlanFeatures.
+    socialScheduler: false,
   },
 };
 
@@ -1160,6 +1180,8 @@ export const NO_ADDONS: TenantAddons = Object.freeze({
   aiAssistant: 0,
   adminSeats: 0,
   unlimitedContacts: false,
+  // Written by the webhook as zero until a product is mapped. Not a price.
+  socialScheduler: 0,
 });
 
 /**
@@ -1211,6 +1233,7 @@ export function readTenantAddons(raw: unknown): TenantAddons {
     aiAssistant: count(value.aiAssistant),
     adminSeats: count(value.adminSeats),
     unlimitedContacts: value.unlimitedContacts === true,
+    socialScheduler: count(value.socialScheduler),
   };
 }
 
@@ -1244,10 +1267,15 @@ function raiseCap(base: number, extra: number): number {
  * touches `PLAN_FEATURES`; `plan-features.test.ts` pins that every tier reads
  * identically before and after this is called.
  *
- * Three cells move, and only these three:
- *   `maxAdmins`    + one per admin seat
- *   `aiChat`       ← true when the AI Assistant add-on is held (THE-253)
- *   `aiKnowledge`  ← true when the AI Assistant add-on is held (THE-253)
+ * Four cells move, and only these four:
+ *   `maxAdmins`       + one per admin seat
+ *   `aiChat`          ← true when the AI Assistant add-on is held (THE-253)
+ *   `aiKnowledge`     ← true when the AI Assistant add-on is held (THE-253)
+ *   `socialScheduler` ← true when the social scheduler add-on count is held
+ *
+ * `socialScheduler` follows the same law as the chat: `||`, never assignment,
+ * and the plan cell stays false on every tier. No Dodo product maps to the
+ * count yet, so a webhook write is zero and the lift does not open the screen.
  *
  * 🔴 `maxChurches` AND `maxContacts` NO LONGER MOVE HERE — THE-370. This list
  * used to carry two more lines, and the `maxChurches` one described the campus
@@ -1303,6 +1331,7 @@ export function getEffectiveFeatures(
     // threshold, never a cap. `raiseCap` is the wrong tool for a boolean.
     aiChat: base.aiChat || owned.aiAssistant > 0,
     aiKnowledge: base.aiKnowledge || owned.aiAssistant > 0,
+    socialScheduler: base.socialScheduler || owned.socialScheduler > 0,
     unlimitedContacts: owned.unlimitedContacts,
   });
 }

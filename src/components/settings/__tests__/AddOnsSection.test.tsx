@@ -52,6 +52,7 @@ function owns(overrides: Partial<TenantAddons> = {}): TenantAddons {
     aiAssistant: 0,
     adminSeats: 0,
     unlimitedContacts: false,
+    socialScheduler: 0,
     ...overrides,
   };
 }

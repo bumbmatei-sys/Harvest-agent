@@ -654,6 +654,9 @@ describe('the out-of-scope files are untouched', () => {
       'src/components/admin-shell/AdminDesktopSidebar.tsx',
       'src/components/admin-shell/AdminShellPreview.tsx',
       'src/components/admin-shell/admin-shell.test.tsx',
+      // The social scheduler screenshot harness mounts the same desktop sidebar,
+      // so it needs the same provider. It is not a product screen.
+      'src/app/dev/social-scheduler/preview.tsx',
     ],
     collapsible: [
       // Pre-existing, and invisible to the alias-only matcher until now.

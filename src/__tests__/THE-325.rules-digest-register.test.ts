@@ -793,14 +793,28 @@ const CONTENT_ASSERTING_MOVED: Readonly<Record<string, readonly [digest: string,
   // the ten phase-1 proof PNGs. *.png was already binary. The assertion still
   // checks content (PNG magic, CRLF, the declared binary set) and pins no digest.
   'src/__tests__/the-268-line-endings.test.ts': [
-    'bf5f6cef36b649f85d1a184bfbb8aab851c1a2e76f7c8f5adc95efdfe66a03c6',
-    '#529',
-    'the phase-1 review commits the 1440px and 390px before and after screenshots '
-      + 'under docs/redesign/phase-1, and the QA pass appends the collapsed icon '
-      + 'rail in light and dark at 1440. the-268 lists every PNG so a new binary '
-      + 'is not left to the text heuristic. The original thirteen paths stay, '
-      + 'and the suite still asserts file content rather than a digest pin. '
-      + 'This map holds the current digest; the row in CONTENT_ASSERTING is untouched.',
+    'bfc06cbac4df6781c91000bda2f49d8f24215a38628b17141f18840e60115ba1',
+    '#530',
+    'phase 2 lists the social scheduler screenshots at 1280, 1440 and 1600, light and dark. '
+      + 'the-268 lists every PNG. The phase-1 paths stay. The previous map digest '
+      + '8e275d0e1e3d57164de1058de6c4c5ebd09b17ba350d7724df6fc341cc3fd76b was the '
+      + 'compose before/after width list, before the other views were added at 1280 and 1600. '
+      + 'The suite still asserts file content rather than a digest pin. The row in '
+      + 'CONTENT_ASSERTING is untouched.',
+  ],
+  'src/utils/__tests__/plan-features.news-feed.test.ts': [
+    'f588a613c3dbd33bc7c89f6f9d6e305da25a7405caade29ef8d4628bc350afc6',
+    '#530',
+    'the news-feed matrix transcription gained socialScheduler false on every tier. '
+      + 'The suite still asserts the cell values. No price moved. The row in '
+      + 'CONTENT_ASSERTING is untouched.',
+  ],
+  'src/utils/__tests__/plan-flag-surface-guard.test.ts': [
+    '33f06751e189cf25f262327a0fc6d4f692a7991b287bc52b56820dc16522f8ce',
+    '#530',
+    'the flag-surface registry gained a gate for socialScheduler in lib/social/access.ts. '
+      + 'The suite still asserts that every plan cell is read. The row in '
+      + 'CONTENT_ASSERTING is untouched.',
   ],
 };
 

@@ -187,7 +187,7 @@ describe('the assistant is available to NO tier without the add-on', () => {
     for (const plan of PLANS) {
       const base = getPlanFeatures(plan);
       const loaded = getEffectiveFeatures(plan, {
-        aiAssistant: 2, adminSeats: 2, unlimitedContacts: false,
+        aiAssistant: 2, adminSeats: 2, unlimitedContacts: false, socialScheduler: 0,
       });
       const cells = base as unknown as Record<string, unknown>;
       const after = loaded as unknown as Record<string, unknown>;
