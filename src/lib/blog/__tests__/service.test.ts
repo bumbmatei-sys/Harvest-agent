@@ -17,7 +17,7 @@ import {
   type StoredBlogPost,
 } from '@/lib/blog/service';
 import { renderBlogRss, renderBlogSitemap } from '@/lib/blog/feeds';
-import { isBlogPostPublic, wallClockToUtcIso } from '@/lib/blog/visibility';
+import { isBlogPostPublic, scheduleWallClockError, wallClockToUtcIso } from '@/lib/blog/visibility';
 import { ARCHIVED_ACTION_MESSAGE, TENANT_STATUS_ARCHIVED } from '@/lib/tenant-lifecycle';
 
 const NOW = '2026-06-01T15:00:00.000Z';
@@ -166,6 +166,27 @@ describe('wall clock', () => {
 
   it('rejects a wall clock that does not exist', () => {
     expect(wallClockToUtcIso('2026-03-08T02:30', ZONE)).toBeNull();
+  });
+
+  it('refuses a schedule with the same sentence the editor shows', async () => {
+    const { service, saves } = harness({
+      posts: [samplePost({ id: 'reflection', tenantId: 'sample', status: 'draft' })],
+      permissions: { 'admin-1': { writeArticles: true } },
+    });
+    const now = new Date(NOW);
+    const cases = [
+      { wallClock: '', timeZone: ZONE },
+      { wallClock: '2020-01-01T09:00', timeZone: ZONE },
+      { wallClock: WALL, timeZone: 'Not/AZone' },
+      { wallClock: '2026-03-08T02:30', timeZone: ZONE },
+    ];
+    for (const item of cases) {
+      const shown = scheduleWallClockError(item.wallClock, item.timeZone, now);
+      const result = await service.schedule(writer, { ...scheduleInput, ...item }, 'confirm');
+      expect(shown).toEqual(expect.any(String));
+      expect(result).toMatchObject({ ok: false, message: shown });
+    }
+    expect(saves).toEqual([]);
   });
 });
 
@@ -672,6 +693,32 @@ describe('createDraft keeps a live post up', () => {
     expect(saves[1].status).toBe('draft');
     expect(saves[1].publishedAt).toBeNull();
     expect(isBlogPostPublic(saves[1], Date.parse(NOW))).toBe(false);
+  });
+
+  it('keeps the editor contents when a live post is taken down', async () => {
+    const { service, saves } = harness({
+      posts: [samplePost({
+        id: 'reflection',
+        tenantId: 'sample',
+        status: 'published',
+        publishedAt: '2026-01-04T18:00:00.000Z',
+      })],
+      permissions,
+    });
+    const input = { ...scheduleInput, title: 'Rewritten before takedown', content: '<p>New body</p>' };
+    const preview = await service.unschedule(writer, input, 'preview');
+    expect(effectOf(preview).post.title).toBe('Rewritten before takedown');
+    const mismatched = await service.unschedule(writer, { ...input, title: 'A different title' }, 'confirm', tokenFrom(preview));
+    expect(mismatched).toMatchObject({ ok: false, error: 'confirm_mismatch' });
+    expect(saves).toEqual([]);
+    const confirmed = await service.unschedule(writer, input, 'confirm', tokenFrom(preview));
+    expect(confirmed.ok).toBe(true);
+    expect(saves[0]).toMatchObject({
+      status: 'draft',
+      title: 'Rewritten before takedown',
+      content: '<p>New body</p>',
+      publishedAt: null,
+    });
   });
 });
 

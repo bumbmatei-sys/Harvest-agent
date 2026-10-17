@@ -21,14 +21,20 @@ function asIso(value: unknown): string | null {
   return null;
 }
 
-function readPost(id: string, data: Record<string, unknown>): StoredBlogPost | null {
+/**
+ * Share to blog draft used to write `createdAt` and leave `updatedAt` unset.
+ * Those drafts are still in the list. Fill `updatedAt` from `createdAt` so
+ * save, schedule, and delete can load them. A row with no `createdAt` stays
+ * unreadable.
+ */
+export function readStoredBlogPost(id: string, data: Record<string, unknown>): StoredBlogPost | null {
   const status = asStatus(data.status);
   const tenantId = typeof data.tenantId === 'string' ? data.tenantId : '';
   if (!status || !tenantId) return null;
   if (typeof data.title !== 'string' || typeof data.content !== 'string') return null;
   const createdAt = asIso(data.createdAt);
-  const updatedAt = asIso(data.updatedAt);
-  if (!createdAt || !updatedAt) return null;
+  if (!createdAt) return null;
+  const updatedAt = asIso(data.updatedAt) ?? createdAt;
   const tags = Array.isArray(data.tags) ? data.tags.filter((tag): tag is string => typeof tag === 'string') : [];
   return {
     id,
@@ -108,7 +114,7 @@ export const firestoreBlogStore: BlogStore = {
   async getPost(id) {
     const snap = await adminDb.collection('blog_posts').doc(id).get();
     if (!snap.exists) return null;
-    return readPost(snap.id, (snap.data() || {}) as Record<string, unknown>);
+    return readStoredBlogPost(snap.id, (snap.data() || {}) as Record<string, unknown>);
   },
 
   async insertPost(post) {
@@ -139,7 +145,7 @@ export const firestoreBlogStore: BlogStore = {
     const posts: StoredBlogPost[] = [];
     let skipped = 0;
     for (const doc of snap.docs) {
-      const post = readPost(doc.id, doc.data() as Record<string, unknown>);
+      const post = readStoredBlogPost(doc.id, doc.data() as Record<string, unknown>);
       if (post) posts.push(post);
       else skipped += 1;
     }
