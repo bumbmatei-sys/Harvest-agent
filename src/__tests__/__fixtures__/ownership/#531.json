@@ -76,6 +76,11 @@
       "file": "src/components/AdminBlog.tsx",
       "digest": "d05e728619f35674d94aca8e2d503e3bd6ee8856e41c7fa88be23b79f932ffa8",
       "why": "#531 shows the missing-ministry sentence inside the automation panel. The page banner sits under that panel, so Save and Generate Now were refusing the request without a reason the admin could see. The colour and scale literals are unchanged."
+    },
+    {
+      "file": "src/components/AdminBlog.tsx",
+      "digest": "dda52ce2a377394a327390b0bbcb2ae34a6055dc01bbcd43e092fcfc1db01bb5",
+      "why": "#531 loads and saves automation through the write tenant scope. A null read scope on the apex stays an unscoped post list. A null write scope is the only case that stops, and that sentence stays inside the panel. The colour and scale literals are unchanged."
     }
   ]
 }

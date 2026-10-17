@@ -25,6 +25,7 @@ const authFetch = vi.hoisted(() =>
   vi.fn(async (_url: string, _init?: RequestInit) => ({ ok: true, json: async () => ({}) })),
 );
 const tenantScope = vi.hoisted(() => ({ current: 'grace' as string | null }));
+const writeScope = vi.hoisted(() => ({ current: 'grace' as string | null }));
 const store = vi.hoisted(() => ({
   current: {
     tenantPlan: null as string | null,
@@ -52,6 +53,7 @@ vi.mock('../../utils/tenant-scope', () => ({
   isSuperAdmin: isSuperAdminMock,
   hasPlatformOverride: () => platformOverride.current,
   getTenantScope: async () => tenantScope.current,
+  getWriteTenantScope: async () => writeScope.current,
   PLATFORM_TENANT_ID: 'harvest',
 }));
 vi.mock('../../store/useAppStore', () => ({ useAppStore: () => store.current }));
@@ -175,6 +177,7 @@ beforeEach(() => {
   recorded.values = [];
   authFetch.mockClear();
   tenantScope.current = TENANT_ID;
+  writeScope.current = TENANT_ID;
   navigate.mockClear();
   platformOverride.current = false;
   isSuperAdminMock.mockReturnValue(false);
@@ -288,7 +291,7 @@ describe('AdminBlog hides Automate while the knowledge base is off', () => {
   });
 
   it('does not request settings when no ministry is in scope', async () => {
-    tenantScope.current = null;
+    writeScope.current = null;
     await renderBlog('max', true);
 
     expect(automateButton(), 'Automate stays available once a ministry is selected').not.toBeNull();
