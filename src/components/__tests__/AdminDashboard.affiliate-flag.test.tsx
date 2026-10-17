@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
@@ -224,6 +224,16 @@ async function mount(enabled: boolean, who: Who, opts: { section?: string } = {}
   mounted = true;
   await flush();
 }
+
+// The first import of AdminDashboard pays for transforming that module.
+// On CI that cost landed inside the first test and crossed the 5s timeout
+// (5024ms on "shows no Affiliate nav entry to a tenant admin with full
+// access"). Every later mount in this file, which also calls resetModules
+// and imports again, stayed under 200ms. The warmup is the cold transform,
+// on beforeAll's clock rather than a test's.
+beforeAll(async () => {
+  await import('../AdminDashboard');
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
