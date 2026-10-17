@@ -47,6 +47,8 @@ const FRIENDLY_ERROR: Record<string, string> = {
   post_incomplete: 'Write the post and choose at least one connected account.',
   account_not_owned: 'That account is not connected to this ministry.',
   idempotency_key_required: 'The post could not be saved. Try again.',
+  confirm_token_required: 'Confirm the post before it is sent.',
+  confirm_invalid: 'That confirmation expired. Preview the post again.',
   post_not_editable: 'That post can no longer be changed.',
 };
 
@@ -93,7 +95,9 @@ export function SocialScheduler({
   const [view, setView] = useState<SocialView>(initialView);
   const [content, setContent] = useState(initial?.posts.find((post) => post.status === 'draft')?.content ?? '');
   const [selected, setSelected] = useState<string[]>(
-    initial ? [initial.accounts[0]?.platform].filter(Boolean) as string[] : [],
+    initial
+      ? [initial.accounts.find((account) => account.platform !== 'youtube')?.platform].filter(Boolean) as string[]
+      : [],
   );
   const [fields, setFields] = useState<Record<string, Record<string, string | boolean>>>({});
   const [madeWithAi, setMadeWithAi] = useState(false);
@@ -143,7 +147,8 @@ export function SocialScheduler({
           accounts: Array.isArray(body.accounts) ? body.accounts : [],
           posts: Array.isArray(body.posts) ? body.posts : [],
         });
-        const first = Array.isArray(body.accounts) ? body.accounts[0]?.platform : null;
+        const accounts = Array.isArray(body.accounts) ? body.accounts : [];
+        const first = accounts.find((account: { platform?: unknown }) => account?.platform !== 'youtube')?.platform;
         if (typeof first === 'string') setSelected([first]);
       })
       .catch(() => {
@@ -244,26 +249,20 @@ export function SocialScheduler({
     if (publishNow && !publishKey.current) publishKey.current = crypto.randomUUID();
     setSaving(true);
     try {
-      const response = await authFetch('/api/social/posts', {
-        method: 'POST',
-        headers: publishNow && publishKey.current ? { 'Idempotency-Key': publishKey.current } : {},
-        body: JSON.stringify({
-          content,
-          publishNow,
-          confirm: true,
-          scheduledFor: when || null,
-          timezone: data?.timezone,
-          targets,
-          media: [],
-        }),
-      });
+      const response = await commit('/api/social/posts', 'POST', {
+        content,
+        publishNow,
+        scheduledFor: when || null,
+        timezone: data?.timezone,
+        targets,
+        media: [],
+      }, publishNow && publishKey.current ? { 'Idempotency-Key': publishKey.current } : undefined);
       if (response.status === 503) {
         setUnavailable(true);
         return;
       }
-      const body = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setNotice(friendlyError(body.error));
+        setNotice(friendlyError(response.body.error));
         return;
       }
       if (publishNow) publishKey.current = null;
@@ -272,6 +271,30 @@ export function SocialScheduler({
     } finally {
       setSaving(false);
     }
+  }
+
+  async function commit(
+    url: string,
+    method: string,
+    payload: Record<string, unknown>,
+    headers?: Record<string, string>,
+  ): Promise<{ ok: boolean; status: number; body: { error?: unknown; confirmToken?: unknown } }> {
+    const previewResponse = await authFetch(url, {
+      method,
+      headers,
+      body: JSON.stringify(payload),
+    });
+    const previewBody = await previewResponse.json().catch(() => ({}));
+    if (!previewResponse.ok || typeof previewBody.confirmToken !== 'string') {
+      return { ok: previewResponse.ok, status: previewResponse.status, body: previewBody };
+    }
+    const saved = await authFetch(url, {
+      method,
+      headers,
+      body: JSON.stringify({ ...payload, confirmToken: previewBody.confirmToken }),
+    });
+    const body = await saved.json().catch(() => ({}));
+    return { ok: saved.ok, status: saved.status, body };
   }
 
   async function connect(platform: SocialPlatform) {
@@ -344,17 +367,23 @@ export function SocialScheduler({
               />
               <ToggleGroup
                 multiple
-                value={selected}
-                onValueChange={(next) => setSelected(next)}
+                value={selected.filter((slug) => slug !== 'youtube')}
+                onValueChange={(next) => setSelected(next.filter((slug) => slug !== 'youtube'))}
                 aria-label="Platforms"
                 className="flex flex-wrap"
               >
-                {accounts.map((account) => (
+                {accounts.filter((account) => account.platform !== 'youtube').map((account) => (
                   <ToggleGroupItem key={account.id} value={account.platform} className={CONTROL}>
                     {labelFor(account.platform)}
                   </ToggleGroupItem>
                 ))}
               </ToggleGroup>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" variant="outline" className={CONTROL} disabled data-testid="youtube-posting-disabled">
+                  YouTube
+                </Button>
+                <p className="text-sm text-faint" data-testid="youtube-coming-soon">Video upload coming soon</p>
+              </div>
               {selected.map((slug) => {
                 const platform = slug as SocialPlatform;
                 const specs = PLATFORM_FIELDS[platform] || [];
@@ -433,9 +462,7 @@ export function SocialScheduler({
               </div>
               {youtubeSelected && (
                 <p className="text-sm text-faint" data-testid="youtube-needs-video">
-                  YouTube posts need a video, so they cannot be submitted until video upload is available.
-                  A vertical video of three minutes or less is a Short. YouTube decides that from the video.
-                  There is no separate Shorts switch.
+                  Video upload coming soon
                 </p>
               )}
             </CardContent>
@@ -536,19 +563,14 @@ export function SocialScheduler({
                   setEditing(null);
                   return;
                 }
-                const response = await authFetch(`/api/social/posts/${editing.id}`, {
-                  method: 'PATCH',
-                  body: JSON.stringify({
-                    content: editText,
-                    scheduledFor: editWhen || null,
-                    timezone: data.timezone,
-                    targets: editing.targets,
-                    publishNow: false,
-                    confirm: true,
-                  }),
+                const response = await commit(`/api/social/posts/${editing.id}`, 'PATCH', {
+                  content: editText,
+                  scheduledFor: editWhen || null,
+                  timezone: data.timezone,
+                  targets: editing.targets,
+                  publishNow: false,
                 });
-                const body = await response.json().catch(() => ({}));
-                if (!response.ok) setNotice(friendlyError(body.error));
+                if (!response.ok) setNotice(friendlyError(response.body.error));
                 else await refresh();
                 setEditing(null);
               }}
@@ -577,12 +599,8 @@ export function SocialScheduler({
                   setCancelling(null);
                   return;
                 }
-                const response = await authFetch(`/api/social/posts/${cancelling.id}`, {
-                  method: 'DELETE',
-                  body: JSON.stringify({ confirm: true }),
-                });
-                const body = await response.json().catch(() => ({}));
-                if (!response.ok) setNotice(friendlyError(body.error));
+                const response = await commit(`/api/social/posts/${cancelling.id}`, 'DELETE', {});
+                if (!response.ok) setNotice(friendlyError(response.body.error));
                 else await refresh();
                 setCancelling(null);
               }}
@@ -649,6 +667,9 @@ function AccountsPanel({
           {accounts.map((account) => (
             <li key={account.id} className="flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2">
               <span className="text-sm text-strong">{labelFor(account.platform)}</span>
+              {account.platform === 'youtube' && (
+                <span className="text-sm text-faint">Video upload coming soon</span>
+              )}
               <span className="text-sm text-faint">{account.displayName} · @{account.username}</span>
             </li>
           ))}
@@ -658,9 +679,15 @@ function AccountsPanel({
             <p className="text-sm text-faint">Connect another account</p>
             <div className="flex flex-wrap gap-2">
               {available.map((platform) => (
-                <Button key={platform} type="button" variant="outline" className={CONTROL} onClick={() => onConnect(platform)}>
-                  {labelFor(platform)}
-                </Button>
+                platform === 'youtube' ? (
+                  <Button key={platform} type="button" variant="outline" className={CONTROL} disabled>
+                    {labelFor(platform)}
+                  </Button>
+                ) : (
+                  <Button key={platform} type="button" variant="outline" className={CONTROL} onClick={() => onConnect(platform)}>
+                    {labelFor(platform)}
+                  </Button>
+                )
               ))}
             </div>
           </div>

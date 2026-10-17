@@ -793,14 +793,13 @@ const CONTENT_ASSERTING_MOVED: Readonly<Record<string, readonly [digest: string,
   // the ten phase-1 proof PNGs. *.png was already binary. The assertion still
   // checks content (PNG magic, CRLF, the declared binary set) and pins no digest.
   'src/__tests__/the-268-line-endings.test.ts': [
-    '8e275d0e1e3d57164de1058de6c4c5ebd09b17ba350d7724df6fc341cc3fd76b',
+    'bfc06cbac4df6781c91000bda2f49d8f24215a38628b17141f18840e60115ba1',
     '#530',
-    'phase 2 appends the social scheduler screenshots under docs/redesign/phase-2, '
-      + 'including the compose before and after shots at 1280, 1440 and 1600. '
+    'phase 2 lists the social scheduler screenshots at 1280, 1440 and 1600, light and dark. '
       + 'the-268 lists every PNG. The phase-1 paths stay. The previous map digest '
-      + 'a38d59db78d7b51efb9f2f9701811b262ebf6e53a05d9a6f79646f4ff7b61b6b was the '
-      + 'first #530 screenshot list, before the width pair was added. The suite '
-      + 'still asserts file content rather than a digest pin. The row in '
+      + '8e275d0e1e3d57164de1058de6c4c5ebd09b17ba350d7724df6fc341cc3fd76b was the '
+      + 'compose before/after width list, before the other views were added at 1280 and 1600. '
+      + 'The suite still asserts file content rather than a digest pin. The row in '
       + 'CONTENT_ASSERTING is untouched.',
   ],
   'src/utils/__tests__/plan-features.news-feed.test.ts': [

@@ -116,6 +116,29 @@ describe('requireSocialAccess', () => {
     expect(await response.json()).toEqual({ error: 'social_scheduler_not_entitled' });
   });
 
+  it('still checks the role on preview when Firebase credentials are missing', async () => {
+    process.env.VERCEL_ENV = 'preview';
+    h.userDoc = { role: 'admin', permissions: { manageEvents: true } };
+    const response = await call();
+    expect(response).toBeInstanceOf(NextResponse);
+    if (!(response instanceof NextResponse)) return;
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: 'Admin access required' });
+    expect(h.get.mock.calls.map((callArgs) => callArgs[0])).toContain('users');
+  });
+
+  it('does not open the sample when the role check itself cannot run', async () => {
+    process.env.VERCEL_ENV = 'preview';
+    h.get.mockRejectedValue(new Error('Could not load the default credentials. Browse to https://cloud.google.com/docs/authentication/getting-started for more information.'));
+    const response = await call();
+    expect(response).toBeInstanceOf(NextResponse);
+    if (!(response instanceof NextResponse)) return;
+    expect(response.status).toBe(503);
+    const body = await response.json();
+    expect(body).toEqual({ error: 'social_unavailable' });
+    expect(JSON.stringify(body)).not.toContain('default credentials');
+  });
+
   it('opens the sample workspace on preview without reading a live profile', async () => {
     process.env.VERCEL_ENV = 'preview';
     vi.stubEnv('NODE_ENV', 'production');

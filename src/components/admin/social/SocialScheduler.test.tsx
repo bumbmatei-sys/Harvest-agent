@@ -175,7 +175,7 @@ describe('SocialScheduler', () => {
     expect(panel?.textContent).toContain('Sent');
   });
 
-  it('tells the admin that a YouTube post needs a video and cannot be submitted', async () => {
+  it('shows YouTube as not selectable until video upload exists', async () => {
     const workspace = new MockSocialClient('preview', clock).load();
     await act(async () => {
       root.render(
@@ -186,16 +186,16 @@ describe('SocialScheduler', () => {
         />,
       );
     });
+    const youtube = container.querySelector('[data-testid="youtube-posting-disabled"]');
+    expect(youtube?.hasAttribute('disabled')).toBe(true);
+    expect(container.querySelector('[data-testid="youtube-coming-soon"]')?.textContent).toBe('Video upload coming soon');
     await act(async () => {
-      const youtube = [...container.querySelectorAll('button')].find((button) => button.textContent === 'YouTube');
-      youtube?.click();
+      youtube?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
-    expect(container.querySelector('[data-testid="youtube-needs-video"]')?.textContent).toContain('need a video');
-    expect(container.textContent).toContain('Short');
     expect(container.textContent).not.toContain('LinkedIn');
     expect(container.textContent).not.toContain('Twitter');
     const schedule = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Schedule');
-    expect(schedule?.hasAttribute('disabled')).toBe(true);
+    expect(schedule?.hasAttribute('disabled')).toBe(false);
   });
 
   it('does not alert or show a raw credential error', async () => {

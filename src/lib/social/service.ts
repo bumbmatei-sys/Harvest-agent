@@ -4,6 +4,13 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import { authorizeSocialActor, type SocialAccess, type SocialActor } from './access';
+import {
+  consumeConfirmToken,
+  hashCancelledPost,
+  hashSocialDraft,
+  issueConfirmToken,
+  type ConfirmAction,
+} from './confirm-token';
 import { isIdempotencyKey, parseConnectPlatform, parseSocialDraft } from './draft';
 import {
   cancelSocialPost,
@@ -23,7 +30,9 @@ import type { SocialPost, SocialPostDraft, SocialWorkspace } from './types';
  *
  * Schedule, publish, update and cancel are preview-then-confirm. A preview
  * names the ministry, the platforms, the text and the time, and writes
- * nothing. Confirm runs the same checks again and then performs the action.
+ * nothing except a single-use token. Confirm presents that token. The server
+ * checks it against the action, ministry, person, post and draft, consumes
+ * it, and only then performs the action.
  */
 
 export type { SocialActor };
@@ -35,6 +44,8 @@ export type SocialErrorCode =
   | 'media_not_accepted'
   | 'youtube_needs_video'
   | 'idempotency_key_required'
+  | 'confirm_token_required'
+  | 'confirm_invalid'
   | 'account_not_owned'
   | 'post_not_editable'
   | 'social_unavailable'
@@ -65,6 +76,7 @@ export interface SocialActionPreview {
 export interface SocialPreviewResult {
   readonly preview: SocialActionPreview;
   readonly requiresConfirm: true;
+  readonly confirmToken: string;
   readonly sample: boolean;
 }
 
@@ -75,6 +87,8 @@ const KNOWN_ERRORS = new Set<string>([
   'media_not_accepted',
   'youtube_needs_video',
   'idempotency_key_required',
+  'confirm_token_required',
+  'confirm_invalid',
   'account_not_owned',
   'post_not_editable',
   'social_unavailable',
@@ -113,7 +127,13 @@ async function fromResponse(response: NextResponse): Promise<SocialResult<never>
   return { ok: false, status: response.status, error };
 }
 
-function confirmed(body: unknown): boolean {
+function readConfirmToken(body: unknown): string | null {
+  if (!body || typeof body !== 'object') return null;
+  const token = (body as Record<string, unknown>).confirmToken;
+  return typeof token === 'string' && token.trim() ? token.trim() : null;
+}
+
+function wantsConfirm(body: unknown): boolean {
   return Boolean(body && typeof body === 'object' && (body as Record<string, unknown>).confirm === true);
 }
 
@@ -182,6 +202,36 @@ async function prepare(actor: SocialActor, body: unknown): Promise<Prepared | So
 
 function isPrepared(value: Prepared | SocialResult<never>): value is Prepared {
   return !('ok' in value && value.ok === false);
+}
+
+async function openOrSpend(
+  actor: SocialActor,
+  body: unknown,
+  preview: SocialActionPreview,
+  sample: boolean,
+  draftHash: string,
+): Promise<SocialResult<SocialPreviewResult> | { readonly proceed: true }> {
+  const token = readConfirmToken(body);
+  const binding = {
+    action: preview.action as ConfirmAction,
+    tenantId: preview.ministryId,
+    uid: actor.uid,
+    postId: preview.postId,
+    draftHash,
+  };
+  if (!token) {
+    if (wantsConfirm(body)) return fail('confirm_token_required', 400);
+    const issued = await issueConfirmToken(binding);
+    if (!issued) return fail('social_unavailable', 503);
+    return ok({ preview, requiresConfirm: true, confirmToken: issued, sample });
+  }
+  const gate = await consumeConfirmToken(token, binding);
+  if (gate !== 'ok') return fail('confirm_invalid', 400);
+  return { proceed: true };
+}
+
+function isPreview(value: SocialResult<SocialPreviewResult> | { proceed: true }): value is SocialResult<SocialPreviewResult> {
+  return !('proceed' in value);
 }
 
 export async function actorFromRequest(request: NextRequest): Promise<SocialActor | NextResponse> {
@@ -273,12 +323,11 @@ export async function schedule(
     prepared.draft.publishNow,
     null,
   );
-  if (!confirmed(body)) {
-    return ok({ preview, requiresConfirm: true, sample: prepared.access.sample });
-  }
-  if (prepared.draft.publishNow && !isIdempotencyKey(idempotencyKey)) {
+  if (prepared.draft.publishNow && readConfirmToken(body) && !isIdempotencyKey(idempotencyKey)) {
     return fail('idempotency_key_required', 400);
   }
+  const gate = await openOrSpend(actor, body, preview, prepared.access.sample, hashSocialDraft(prepared.draft));
+  if (isPreview(gate)) return gate;
   const draft = {
     ...prepared.draft,
     idempotencyKey: prepared.draft.publishNow ? idempotencyKey : null,
@@ -309,12 +358,11 @@ export async function update(
     prepared.draft.publishNow,
     id,
   );
-  if (!confirmed(body)) {
-    return ok({ preview, requiresConfirm: true, sample: prepared.access.sample });
-  }
-  if (prepared.draft.publishNow && !isIdempotencyKey(idempotencyKey)) {
+  if (prepared.draft.publishNow && readConfirmToken(body) && !isIdempotencyKey(idempotencyKey)) {
     return fail('idempotency_key_required', 400);
   }
+  const gate = await openOrSpend(actor, body, preview, prepared.access.sample, hashSocialDraft(prepared.draft));
+  if (isPreview(gate)) return gate;
   const draft = {
     ...prepared.draft,
     idempotencyKey: prepared.draft.publishNow ? idempotencyKey : null,
@@ -345,9 +393,8 @@ export async function cancel(
     false,
     id,
   );
-  if (!confirmed(body)) {
-    return ok({ preview, requiresConfirm: true, sample: access.sample });
-  }
+  const gate = await openOrSpend(actor, body, preview, access.sample, hashCancelledPost(existing));
+  if (isPreview(gate)) return gate;
   const removed = await cancelSocialPost(access.tenantId, id, access.mockOnly);
   if (!removed) return fail('post_not_editable', 404);
   return ok({ cancelled: true, sample: access.sample });

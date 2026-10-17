@@ -103,6 +103,17 @@ export async function authorizeSocialActor(actor: SocialActor): Promise<SocialAc
     return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
   }
 
+  let allowed = false;
+  try {
+    allowed = await hasSocialFullAccess(actorUser(actor), actor.tenantId);
+  } catch (error) {
+    console.error('Social scheduling could not verify the role', error);
+    return NextResponse.json({ error: 'social_unavailable' }, { status: 503 });
+  }
+  if (!allowed) {
+    return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+  }
+
   if (!firebaseAdminCredentialsAvailable()) {
     console.error('Social scheduling skipped Firebase admin: credentials are not available');
     if (sampleGate) {
@@ -112,10 +123,6 @@ export async function authorizeSocialActor(actor: SocialActor): Promise<SocialAc
   }
 
   try {
-    if (!(await hasSocialFullAccess(actorUser(actor), actor.tenantId))) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
-    }
-
     const snap = await adminDb.collection('tenants').doc(actor.tenantId).get();
     if (!snap.exists) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
