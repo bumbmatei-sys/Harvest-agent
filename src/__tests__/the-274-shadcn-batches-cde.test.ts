@@ -1372,6 +1372,17 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       + 'rejected for the side names: each icon has a tooltip, and a popover would cover '
       + 'the groups underneath it.',
   },
+  {
+    file: 'src/components/blog/BlogScheduleFields.tsx',
+    ticket: '#531',
+    why:
+      'APPENDED, never substituted. #531 is scheduled publishing for the ministry blog. The editor '
+      + 'control is one choice among Publish now, Schedule and Draft, so it takes toggle-group '
+      + 'rather than three independent buttons. switch is rejected: the three states are not a '
+      + 'boolean. radio-group is rejected: the control is a vertical stack of pills in the existing '
+      + 'editor rail, not a form field with a legend. checkbox is rejected: the states are exclusive. '
+      + 'The primitive is unedited.',
+  },
 ];
 
 it('only the recorded adopters import the new components, and each names its ticket', () => {

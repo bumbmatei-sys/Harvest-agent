@@ -549,7 +549,17 @@ describe('5 · the money path is byte-identical', () => {
      * None of this is an entitlement change, so the Dodo webhook stays the
      * single writer of `plan`.
      */
-    expect(routes.length, 'an API route was added or removed').toBe(129);
+    /**
+     * --- 129 -> 130, #531 ---
+     *
+     * ONE route: `blog/actions`. Scheduled publishing for a ministry's own
+     * posts. It verifies the caller, then hands the body to the blog service,
+     * which writes `blog_posts` through the Admin SDK. It never writes the
+     * tenant document, so it cannot write `plan`, a feature flag or an add-on
+     * count. A published post is not an entitlement. The Dodo webhook remains
+     * the single writer of `plan`.
+     */
+    expect(routes.length, 'an API route was added or removed').toBe(130);
     expect(
       routes.some((f) => f.endsWith(path.join('app/api/sms/numbers/route.ts'))),
       'the route THE-314 added is missing — the count moved for some other reason',
@@ -576,6 +586,8 @@ describe('5 · the money path is byte-identical', () => {
       'app/api/church-export/url/route.ts',
       'app/api/church-export/complete/route.ts',
       'app/api/church-export/sweep/route.ts',
+      // APPENDED BY #531 — see the note on the count above.
+      'app/api/blog/actions/route.ts',
     ]) {
       expect(
         routes.some((f) => f.endsWith(path.join(added))),
@@ -645,6 +657,12 @@ describe('5 · the money path is byte-identical', () => {
       'src/app/api/church-export/complete/route.ts',
       'src/app/api/church-export/sweep/route.ts',
       'src/lib/church-export-run.ts',
+      /**
+       * #531's blog actions route, held to the same claim. It writes blog
+       * posts through the service, never the tenant document, where `plan`
+       * and `addons` live.
+       */
+      'src/app/api/blog/actions/route.ts',
     ]) {
       const src = read(rel);
       expect(src, `${rel} writes to the tenant document`)
