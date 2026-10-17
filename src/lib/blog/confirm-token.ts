@@ -58,6 +58,30 @@ export interface ConfirmLedger {
   consume(token: string, binding: ConfirmBinding, nowMs: number): Promise<ConsumeDecision>;
 }
 
+/**
+ * The row a ledger stores for one token.
+ *
+ * `expiresAt` is the millisecond instant `decideConsume` compares. `expireAt`
+ * is that same instant as a Date. The Admin SDK stores a Date as a Firestore
+ * timestamp, which is the field type a TTL policy can read. A policy on
+ * `blog_confirm_tokens.expireAt` would delete the row after that instant.
+ * This repository does not deploy that policy. Creating it is a separate
+ * founder go, the same constraint as deploying `firestore.rules`.
+ */
+export function confirmTokenFields(binding: ConfirmBinding, nowMs: number): ConfirmRecord & { readonly expireAt: Date } {
+  const expiresAt = nowMs + CONFIRM_TOKEN_TTL_MS;
+  return {
+    action: binding.action,
+    tenantId: binding.tenantId,
+    uid: binding.uid,
+    postId: binding.postId,
+    draftHash: binding.draftHash,
+    expiresAt,
+    expireAt: new Date(expiresAt),
+    consumed: false,
+  };
+}
+
 export function hashBlogPayload(payload: BlogConfirmPayload): string {
   const body = {
     action: payload.action,
@@ -106,15 +130,7 @@ export function memoryConfirmLedger(): ConfirmLedger & { readonly records: Map<s
     records,
     async issue(binding, nowMs) {
       const id = crypto.randomUUID();
-      records.set(id, {
-        action: binding.action,
-        tenantId: binding.tenantId,
-        uid: binding.uid,
-        postId: binding.postId,
-        draftHash: binding.draftHash,
-        expiresAt: nowMs + CONFIRM_TOKEN_TTL_MS,
-        consumed: false,
-      });
+      records.set(id, confirmTokenFields(binding, nowMs));
       return id;
     },
     async consume(token, binding, nowMs) {

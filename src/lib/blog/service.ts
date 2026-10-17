@@ -434,9 +434,17 @@ export function createBlogService(deps: {
       if (!owned.ok) return owned;
       const fields = fieldsFrom(input, owned.post);
       if (!isFields(fields)) return fields;
-      const post = stamp(owned.post, gated.tenantId, actor.uid, fields, 'draft', null, owned.post?.scheduleTimeZone ?? null, true);
+      // A published or scheduled post keeps its status. Saving the body is
+      // not a takedown. Returning it to a draft is `unschedule`, which
+      // previews and confirms.
+      const existing = owned.post;
+      const live = existing?.status === 'published' || existing?.status === 'scheduled';
+      const status: BlogStoredStatus = live && existing ? existing.status : 'draft';
+      const publishedAt = live && existing ? existing.publishedAt : null;
+      const zone = live && existing ? existing.scheduleTimeZone : null;
+      const post = stamp(existing, gated.tenantId, actor.uid, fields, status, publishedAt, zone, true);
       await noteCrossChurch(actor, gated.tenantId, 'createDraft', post.id);
-      await write(owned.post, post);
+      await write(existing, post);
       return { ok: true, post };
     },
 

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { stripComments } from '@/__tests__/__fixtures__/the-346-strip-comments';
-import { CONFIRM_TOKEN_TTL_MS, memoryConfirmLedger } from '@/lib/blog/confirm-token';
+import { CONFIRM_TOKEN_TTL_MS, confirmTokenFields, decideConsume, memoryConfirmLedger } from '@/lib/blog/confirm-token';
 import {
   createBlogService,
   dispatchBlogAction,
@@ -459,6 +459,52 @@ describe('confirm token', () => {
     expect(saves).toEqual([]);
   });
 
+  it.each([
+    ['action', { action: 'delete' }],
+    ['tenant', { tenantId: 'other' }],
+    ['post', { postId: 'other-post' }],
+  ] as const)('refuses a token when only the %s differs', async (_field, patch) => {
+    const { service, ledger, saves } = box();
+    const preview = await service.schedule(writer, scheduleInput, 'preview');
+    const token = tokenFrom(preview);
+    const stored = ledger.records.get(token);
+    if (!stored) throw new Error('preview did not store a token');
+    ledger.records.set(token, { ...stored, ...patch });
+    const result = await service.schedule(writer, scheduleInput, 'confirm', token);
+    expect(result).toMatchObject({ ok: false, error: 'confirm_mismatch' });
+    expect(saves).toEqual([]);
+    expect(decideConsume(
+      { ...stored, ...patch },
+      {
+        action: 'schedule',
+        tenantId: 'sample',
+        uid: writer.uid,
+        postId: 'reflection',
+        draftHash: stored.draftHash,
+      },
+      Date.parse(NOW),
+    )).toBe('mismatch');
+  });
+
+  it('stamps expireAt for a TTL policy this repo does not deploy', () => {
+    const nowMs = Date.parse(NOW);
+    const fields = confirmTokenFields({
+      action: 'schedule',
+      tenantId: 'sample',
+      uid: writer.uid,
+      postId: 'reflection',
+      draftHash: 'ab'.repeat(32),
+    }, nowMs);
+    expect(fields.expiresAt).toBe(nowMs + CONFIRM_TOKEN_TTL_MS);
+    expect(fields.expireAt.toISOString()).toBe(new Date(nowMs + CONFIRM_TOKEN_TTL_MS).toISOString());
+    const raw = readFileSync(path.join(process.cwd(), 'src/lib/blog/firestore-confirm.ts'), 'utf8');
+    expect(raw).toContain('not deployed');
+    const ledger = stripComments(raw);
+    expect(ledger).toContain('confirmTokenFields');
+    const fieldsSrc = stripComments(readFileSync(path.join(process.cwd(), 'src/lib/blog/confirm-token.ts'), 'utf8'));
+    expect(fieldsSrc).toContain('expireAt:');
+  });
+
   it('refuses a token presented for another ministry, user, or action', async () => {
     const { service, saves, inserts, ledger } = box();
     const preview = await service.schedule(writer, scheduleInput, 'preview');
@@ -549,6 +595,83 @@ describe('super admin audit', () => {
     const outsider = actor({ isSuperAdmin: true, tenantId: null });
     await expect(service.createDraft(outsider, { ...scheduleInput, postId: null })).rejects.toThrow('audit down');
     expect(posts.size).toBe(0);
+  });
+});
+
+describe('createDraft keeps a live post up', () => {
+  const permissions = { 'admin-1': { writeArticles: true } };
+
+  it('saves a published post without taking it off the ministry page', async () => {
+    const { service, saves, ledger } = harness({
+      posts: [samplePost({
+        id: 'reflection',
+        tenantId: 'sample',
+        status: 'published',
+        publishedAt: '2026-01-04T18:00:00.000Z',
+        scheduleTimeZone: ZONE,
+      })],
+      permissions,
+    });
+    const saved = await service.createDraft(writer, {
+      ...scheduleInput,
+      title: 'Revised reflection',
+      content: '<p>A revised paragraph.</p>',
+    });
+    expect(saved.ok).toBe(true);
+    expect(saves).toHaveLength(1);
+    expect(saves[0]).toMatchObject({
+      status: 'published',
+      title: 'Revised reflection',
+      publishedAt: '2026-01-04T18:00:00.000Z',
+      scheduleTimeZone: ZONE,
+    });
+    expect(isBlogPostPublic(saves[0], Date.parse(NOW))).toBe(true);
+    expect(ledger.records.size).toBe(0);
+  });
+
+  it('saves a scheduled post without clearing its instant', async () => {
+    const { service, saves } = harness({
+      posts: [samplePost({
+        id: 'reflection',
+        tenantId: 'sample',
+        status: 'scheduled',
+        publishedAt: SCHEDULED_AT,
+        scheduleTimeZone: ZONE,
+      })],
+      permissions,
+    });
+    const saved = await service.createDraft(writer, { ...scheduleInput, title: 'Still scheduled' });
+    expect(saved.ok).toBe(true);
+    expect(saves[0]).toMatchObject({
+      status: 'scheduled',
+      title: 'Still scheduled',
+      publishedAt: SCHEDULED_AT,
+      scheduleTimeZone: ZONE,
+    });
+    expect(isBlogPostPublic(saves[0], Date.parse(NOW))).toBe(false);
+  });
+
+  it('returns a live post to a draft only through unschedule confirm', async () => {
+    const { service, saves } = harness({
+      posts: [samplePost({
+        id: 'reflection',
+        tenantId: 'sample',
+        status: 'published',
+        publishedAt: '2026-01-04T18:00:00.000Z',
+      })],
+      permissions,
+    });
+    await service.createDraft(writer, { ...scheduleInput, title: 'Still public' });
+    expect(saves[0].status).toBe('published');
+    const refused = await service.unschedule(writer, { tenantId: 'sample', postId: 'reflection' }, 'confirm');
+    expect(refused).toMatchObject({ ok: false, error: 'confirm_required' });
+    expect(saves).toHaveLength(1);
+    const preview = await service.unschedule(writer, { tenantId: 'sample', postId: 'reflection' }, 'preview');
+    const confirmed = await service.unschedule(writer, { tenantId: 'sample', postId: 'reflection' }, 'confirm', tokenFrom(preview));
+    expect(confirmed.ok).toBe(true);
+    expect(saves[1].status).toBe('draft');
+    expect(saves[1].publishedAt).toBeNull();
+    expect(isBlogPostPublic(saves[1], Date.parse(NOW))).toBe(false);
   });
 });
 
@@ -647,6 +770,8 @@ describe('thin wrappers', () => {
     const list = source('src/components/AdminBlog.tsx');
     const route = source('src/app/api/blog/actions/route.ts');
     expect(editor).toContain('/api/blog/actions');
+    expect(editor).toContain("'unschedule'");
+    expect(editor).toContain("takingDown && saveStatus === 'draft'");
     expect(list).toContain('/api/blog/actions');
     expect(route).toContain('dispatchBlogAction');
     for (const file of [editor, list]) {

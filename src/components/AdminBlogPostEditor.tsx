@@ -69,6 +69,8 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
   const [error, setError] = useState('');
   const [availableCategories, setAvailableCategories] = useState<string[]>(categories);
   const canPublish = useTenantCapability('publishing');
+  const storedLive = post?.status === 'published' || post?.status === 'scheduled';
+  const takingDown = storedLive && status === 'draft';
 
   useEffect(() => {
     if (categories.length > 0 && !category) {
@@ -136,21 +138,23 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
   };
 
   const handleSave = async (saveStatus: 'published' | 'draft' | 'scheduled', mode: 'preview' | 'confirm') => {
-    if (saveStatus !== 'draft' && !canPublish) {
+    const demote = takingDown && saveStatus === 'draft';
+    if (!demote && saveStatus !== 'draft' && !canPublish) {
       setError(ARCHIVED_ACTION_MESSAGE);
       return;
     }
     setIsSaving(true);
     setError('');
     try {
-      const action = saveStatus === 'draft' ? 'createDraft' : saveStatus === 'scheduled' ? 'schedule' : 'publishNow';
+      const action = demote ? 'unschedule' : saveStatus === 'draft' ? 'createDraft' : saveStatus === 'scheduled' ? 'schedule' : 'publishNow';
+      const needsConfirm = action !== 'createDraft';
       const data = await callService(
         action,
-        saveStatus === 'draft' ? undefined : mode,
-        mode === 'confirm' ? pendingToken : undefined,
+        needsConfirm ? mode : undefined,
+        needsConfirm && mode === 'confirm' ? pendingToken : undefined,
       );
       if (!data) return;
-      if (mode === 'preview' && saveStatus !== 'draft') {
+      if (needsConfirm && mode === 'preview') {
         if (typeof data.confirmToken !== 'string' || data.confirmToken === '') {
           setError('The preview did not return a confirmation.');
           return;
@@ -168,11 +172,8 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
   };
 
   const handlePublish = () => {
-    if (pendingPreview) {
-      void handleSave(status === 'scheduled' ? 'scheduled' : 'published', 'confirm');
-      return;
-    }
-    void handleSave(status === 'scheduled' ? 'scheduled' : 'published', 'preview');
+    const next = takingDown ? 'draft' : status === 'scheduled' ? 'scheduled' : 'published';
+    void handleSave(next, pendingPreview ? 'confirm' : 'preview');
   };
 
   return (
@@ -183,15 +184,25 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
           <ArrowLeft size={16} /> Blog
         </button>
         <div className="flex items-center gap-2.5">
-          <AdminSecondaryButton onClick={() => { clearPreview(); void handleSave('draft', 'confirm'); }} disabled={isSaving}>
+          <AdminSecondaryButton
+            onClick={() => {
+              if (takingDown) {
+                void handleSave('draft', pendingPreview ? 'confirm' : 'preview');
+                return;
+              }
+              clearPreview();
+              void handleSave('draft', 'preview');
+            }}
+            disabled={isSaving}
+          >
             {isSaving ? 'Saving…' : 'Save draft'}
           </AdminSecondaryButton>
           <AdminPrimaryButton
             onClick={handlePublish}
-            disabled={isSaving || !canPublish || status === 'draft'}
-            title={canPublish ? undefined : ARCHIVED_ACTION_MESSAGE}
+            disabled={isSaving || (!takingDown && (!canPublish || status === 'draft'))}
+            title={canPublish || takingDown ? undefined : ARCHIVED_ACTION_MESSAGE}
           >
-            {pendingPreview ? 'Confirm' : status === 'scheduled' ? 'Schedule' : 'Publish now'}
+            {pendingPreview ? 'Confirm' : takingDown ? 'Save as draft' : status === 'scheduled' ? 'Schedule' : 'Publish now'}
           </AdminPrimaryButton>
         </div>
       </div>
