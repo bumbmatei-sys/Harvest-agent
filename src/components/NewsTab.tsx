@@ -18,6 +18,7 @@ import { usePlanGate } from '../hooks/usePlanGate';
 import CampaignWidget from './CampaignWidget';
 import KebabMenu from './KebabMenu';
 import { sortByTime } from '../utils/query-helpers';
+import { isBlogPostPublic } from '../lib/blog/visibility';
 import { TwoColumnLayout, DesktopCard } from './layout/DesktopLayout';
 import { FORM_CONTAINER } from './layout/form-layout';
 import { HeroBand } from './member/desktopKit';
@@ -221,7 +222,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
           ? query(collection(db, 'blog_posts'), where('tenantId', '==', scopeTenantId), limit(100))
           : query(collection(db, 'blog_posts'), where('status', '==', 'published'), limit(100));
         const snap = await getDocs(q);
-        const list = (snap.docs.map(d => ({ id: d.id, ...d.data() })) as BlogPost[]).filter(b => b.status === 'published');
+        const list = (snap.docs.map(d => ({ id: d.id, ...d.data() })) as BlogPost[]).filter(b => isBlogPostPublic(b, Date.now()));
         if (!cancelled) setPickerBlog(sortByTime(list, 'publishedAt', 'desc'));
       } catch (e) {
         console.error('Failed to load articles for picker', e);
@@ -519,7 +520,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
           id: doc.id,
           ...doc.data()
         })) as BlogPost[];
-        articlesData = articlesData.filter(a => (a as any).status === 'published');
+        articlesData = articlesData.filter(a => isBlogPostPublic(a, Date.now()));
         setArticles(sortByTime(articlesData, 'publishedAt', 'desc').slice(0, 5));
       }, (error) => {
         console.error('Failed to load articles:', error);

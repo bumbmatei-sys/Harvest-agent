@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { db, auth } from '../firebase';
+import { authFetch } from '../utils/auth-fetch';
 import { notifyError } from '../utils/notify';
 import { getPlanFeatures } from '../utils/plan-features';
 import { hasPlatformOverride, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
@@ -1364,23 +1365,22 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
   const handleShareToBlogDraft = async (title: string, contentHtml: string) => {
     if (!tenantId) return;
     try {
-      await addDoc(collection(db, 'blog_posts'), {
-        title: title.trim() || 'Untitled',
-        content: contentHtml,
-        status: 'draft',
-        tenantId,
-        author: auth.currentUser?.displayName || '',
-        // THE-347 - an ISO STRING, not serverTimestamp(). `blog_posts` has three
-        // writers: AdminBlogPostEditor and /api/blog/generate both write
-        // `new Date().toISOString()`, the BlogPost interface declares a string,
-        // and /blog/[id] puts the value into a <time dateTime> attribute and
-        // into schema.org JSON-LD, both of which require ISO 8601 - a Timestamp
-        // there serialises as [object Object]. This writer was the only one
-        // storing an object, and a mixed field sorts wrong in Firestore (it
-        // orders by TYPE first) before it renders wrong. One representation,
-        // and this is the one the other two already agreed on.
-        createdAt: new Date().toISOString(),
+      // The blog service is the only writer. It stores the draft, including
+      // the ISO timestamp, and it does not publish.
+      const response = await authFetch('/api/blog/actions', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'createDraft',
+          tenantId,
+          title: title.trim() || 'Untitled',
+          category: 'Notes',
+          content: contentHtml,
+        }),
       });
+      const data = await response.json() as { ok?: boolean; message?: string };
+      if (!response.ok || data.ok === false) {
+        throw new Error(typeof data.message === 'string' ? data.message : 'Failed to create a blog draft');
+      }
       toast.success('Blog draft created');
     } catch (e) {
       notifyError('Failed to create a blog draft', e);

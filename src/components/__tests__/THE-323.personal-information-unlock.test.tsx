@@ -752,6 +752,12 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // than assumed to.
       'src/components/admin/GivingDocsLink.tsx',     // THE-368: USES it, as a phone-only 44px tap floor
       'src/components/attach/AttachMenu.tsx',        // THE-331: USES it, as a phone-only 44px tap floor
+      // APPENDED BY #531, NOTHING AROUND IT REMOVED. Sorted position, not arrival
+      // order. BlogScheduleFields USES the class as a flat min-h-11 on each of
+      // the three schedule choices. The editor rail is a narrow stack, and a
+      // ToggleGroupItem's own padding leaves the row under 44px, so the floor
+      // is what makes Publish now, Schedule and Draft a real target.
+      'src/components/blog/BlogScheduleFields.tsx',
       // APPENDED FOR #0000, NOTHING AROUND IT REMOVED. Sorted position, not arrival order.
       // PaymentLinkPicker USES the class as `min-h-11 sm:min-h-0` on each provider row,
       // the same phone floor the event picker had before that markup moved here.
