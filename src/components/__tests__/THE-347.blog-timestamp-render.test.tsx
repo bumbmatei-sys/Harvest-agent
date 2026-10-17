@@ -94,6 +94,7 @@ vi.mock('firebase/firestore', () => ({
 }));
 vi.mock('../../utils/tenant-scope', () => ({
   getTenantScope: async () => 'grace',
+  getWriteTenantScope: async () => 'grace',
   hasPlatformOverride: () => platformOverride.current,
   PLATFORM_TENANT_ID: 'harvest',
 }));
