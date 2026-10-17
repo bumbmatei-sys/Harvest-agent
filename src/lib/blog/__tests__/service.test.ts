@@ -759,6 +759,41 @@ describe('archived ministries', () => {
     expect(inserts[0]?.status).toBe('draft');
     expect(inserts[0]?.publishedAt).toBeNull();
   });
+
+  it('cannot rewrite a live post while publishing is closed', async () => {
+    const { service, saves } = harness({
+      tenants: { sample: { name: 'Sample Ministry', status: TENANT_STATUS_ARCHIVED } },
+      posts: [
+        samplePost({
+          id: 'reflection',
+          tenantId: 'sample',
+          status: 'published',
+          publishedAt: '2026-01-04T18:00:00.000Z',
+        }),
+        samplePost({ id: 'quiet', tenantId: 'sample', status: 'draft' }),
+        samplePost({
+          id: 'later',
+          tenantId: 'sample',
+          status: 'scheduled',
+          publishedAt: SCHEDULED_AT,
+          scheduleTimeZone: ZONE,
+        }),
+      ],
+      permissions: { 'admin-1': { writeArticles: true } },
+    });
+    const published = await service.createDraft(writer, { ...scheduleInput, title: 'Changed while closed' });
+    expect(published).toMatchObject({ ok: false, error: 'publishing_closed', message: ARCHIVED_ACTION_MESSAGE });
+    const scheduled = await service.createDraft(writer, { ...scheduleInput, postId: 'later', title: 'Changed while closed' });
+    expect(scheduled).toMatchObject({ ok: false, error: 'publishing_closed' });
+    const draft = await service.createDraft(writer, { ...scheduleInput, postId: 'quiet', title: 'Draft still saves' });
+    expect(draft.ok).toBe(true);
+    expect(saves).toHaveLength(1);
+    expect(saves[0]).toMatchObject({ id: 'quiet', status: 'draft', title: 'Draft still saves' });
+    const http = await dispatchBlogAction(service, writer, { ...scheduleInput, action: 'createDraft', title: 'Changed while closed' });
+    expect(http.status).toBe(403);
+    expect(http.body).toMatchObject({ ok: false, error: 'publishing_closed' });
+    expect(saves).toHaveLength(1);
+  });
 });
 
 describe('date range and public visibility', () => {
@@ -851,6 +886,14 @@ describe('thin wrappers', () => {
     }
     expect(route).not.toContain('wallClockToUtcIso');
     expect(route).not.toContain('tenantAllows');
+    const serviceSrc = source('src/lib/blog/service.ts');
+    const draftBody = serviceSrc.slice(serviceSrc.indexOf('async createDraft'), serviceSrc.indexOf('async schedule'));
+    expect(draftBody).toContain('publishingOpen');
+    const article = source('src/app/blog/[id]/page.tsx');
+    expect(article.split('readPublic').length - 1).toBe(1);
+    expect(article.split('loadPublicArticle').length - 1).toBe(3);
+    expect(article).toContain('publicPostMatchesHost');
+    expect(article).toContain('notFound');
     const ledger = source('src/lib/blog/firestore-confirm.ts');
     expect(ledger).toContain(['run', 'Transaction'].join(''));
     expect(ledger).toContain('decideConsume');
