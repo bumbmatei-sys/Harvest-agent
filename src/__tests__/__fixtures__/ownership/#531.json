@@ -71,6 +71,11 @@
       "file": "src/components/AdminBlog.tsx",
       "digest": "0121b27c763b2c4ec65b09283ff7a75cd0015455751038b6218a30e4611b05eb",
       "why": "#531 does not ask the automate route when no ministry is in scope. A super admin on the preview host has no tenant on the token, and that request was the 400. When a ministry is in scope the request names it. The colour and scale literals are unchanged."
+    },
+    {
+      "file": "src/components/AdminBlog.tsx",
+      "digest": "d05e728619f35674d94aca8e2d503e3bd6ee8856e41c7fa88be23b79f932ffa8",
+      "why": "#531 shows the missing-ministry sentence inside the automation panel. The page banner sits under that panel, so Save and Generate Now were refusing the request without a reason the admin could see. The colour and scale literals are unchanged."
     }
   ]
 }
