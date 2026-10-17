@@ -106,6 +106,7 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  });
  const [savingAutomation, setSavingAutomation] = useState(false);
  const [generatingNow, setGeneratingNow] = useState(false);
+ const [automationError, setAutomationError] = useState<string | null>(null);
 
  useEffect(() => {
   let unsubscribe: (() => void) | null = null;
@@ -192,9 +193,10 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  const handleSaveAutomation = async () => {
    setSavingAutomation(true);
    try {
+     setAutomationError(null);
      const tenantId = await getTenantScope();
      if (!tenantId) {
-       setErrorMessage('A ministry is required before automation settings can be saved.');
+       setAutomationError('A ministry is required before automation settings can be saved.');
        return;
      }
      const resp = await authFetch('/api/blog/automate', {
@@ -229,9 +231,10 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  const handleGenerateNow = async () => {
    setGeneratingNow(true);
    try {
+     setAutomationError(null);
      const tenantId = await getTenantScope();
      if (!tenantId) {
-       setErrorMessage('A ministry is required before an article can be generated.');
+       setAutomationError('A ministry is required before an article can be generated.');
        return;
      }
      const resp = await authFetch('/api/blog/generate', {
@@ -344,7 +347,7 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  {knowledgeBaseEnabled && automateGate === 'permitted' && (
  <button
  data-testid="blog-automate-button"
- onClick={() => setShowAutomation(true)}
+ onClick={() => { setAutomationError(null); setShowAutomation(true); }}
  className="inline-flex items-center justify-center gap-1.5 min-h-[44px] sm:min-h-0 px-4 py-2.5 rounded-brand border border-line bg-surface-raised text-[13px] font-semibold text-strong hover:bg-surface-sunken transition-colors"
  >
  <Sparkles size={15} className="text-gold" /> Automate
@@ -516,7 +519,7 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  AI generates SEO articles from your Knowledge Base
  </p>
  </div>
- <button onClick={() => setShowAutomation(false)}>
+ <button onClick={() => { setAutomationError(null); setShowAutomation(false); }}>
  <X size={20} className="text-faint" />
  </button>
  </div>
@@ -656,6 +659,10 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  </span>
  )}
  </div>
+ )}
+
+ {automationError && (
+ <p role="alert" className="text-sm text-danger">{automationError}</p>
  )}
 
  {/* Actions */}

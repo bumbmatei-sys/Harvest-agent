@@ -301,7 +301,20 @@ describe('AdminBlog hides Automate while the knowledge base is off', () => {
     await flush();
 
     expect(automateFetches(), 'saving with no ministry still called the route').toEqual([]);
-    expect(host.textContent ?? '').toContain('A ministry is required before automation settings can be saved.');
+    const panel = host.querySelector('.z-\\[200\\]');
+    expect(panel, 'the automation panel closed instead of explaining').not.toBeNull();
+    expect(panel!.querySelector('[role="alert"]')?.textContent).toBe(
+      'A ministry is required before automation settings can be saved.',
+    );
+
+    const generate = [...panel!.querySelectorAll('button')].find((b) => (b.textContent ?? '').includes('Generate Now'));
+    expect(generate, 'Generate Now left the panel').toBeTruthy();
+    await act(async () => { (generate as HTMLButtonElement).click(); });
+    await flush();
+    expect(authFetch.mock.calls, 'generating with no ministry still called a blog route').toEqual([]);
+    expect(panel!.querySelector('[role="alert"]')?.textContent).toBe(
+      'A ministry is required before an article can be generated.',
+    );
   });
 
   it('closes the panel if the base turns off while it is open', async () => {
