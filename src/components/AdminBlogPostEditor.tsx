@@ -1,17 +1,16 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, X, Plus, Trash2 } from 'lucide-react';
-import { collection, addDoc, updateDoc, doc, getDoc } from 'firebase/firestore';
-import { db, auth } from '../firebase';
 import { ImageUpload } from './ImageUpload';
 import RichTextEditor from './RichTextEditor';
-import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
+import { getWriteTenantScope } from '../utils/tenant-scope';
 import { AdminPrimaryButton, AdminSecondaryButton, AdminCard, AdminSectionLabel } from './admin/AdminUI';
 import { useTenantCapability } from '../hooks/useTenantCapability';
 import { ARCHIVED_ACTION_MESSAGE } from '../lib/tenant-lifecycle';
-import { tsMillis } from '../utils/query-helpers';
 import type { FirestoreDate } from '../utils/firestore-date';
+import { authFetch } from '../utils/auth-fetch';
+import { publishedAtMillis, utcIsoToWallClock, isValidTimeZone } from '../lib/blog/visibility';
+import { BlogScheduleFields, schedulePreviewSentence, type BlogEditorIntent } from './blog/BlogScheduleFields';
 
 interface BlogPost {
   id?: string;
@@ -28,18 +27,13 @@ interface BlogPost {
   featuredImage?: string;
   tags?: string[];
   publishedAt?: FirestoreDate;
+  scheduleTimeZone?: string | null;
 }
 
-/**
- * THE-347 - the value a `datetime-local` input can accept, or '' when there
- * isn't one. Never throws, and never returns anything but a string.
- */
-function toDatetimeLocal(value: FirestoreDate): string {
-  if (value == null || value === '') return '';
-  const ms = tsMillis(value as never);
-  const date = new Date(ms);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toISOString().slice(0, 16);
+function initialWallClock(value: FirestoreDate | undefined, timeZone: string): string {
+  const ms = publishedAtMillis(value);
+  if (ms == null || !isValidTimeZone(timeZone)) return '';
+  return utcIsoToWallClock(new Date(ms).toISOString(), timeZone);
 }
 
 interface AdminBlogPostEditorProps {
@@ -60,14 +54,12 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
   const [content, setContent] = useState(post?.content || '');
   const [tags, setTags] = useState<string[]>(post?.tags || []);
   const [newTag, setNewTag] = useState('');
-  const [status, setStatus] = useState<'published' | 'draft' | 'scheduled'>(post?.status || 'draft');
-  // THE-347 - this was `new Date(post.publishedAt).toISOString().slice(0, 16)`.
-  // For a Firestore Timestamp that is `new Date(object)` - an Invalid Date -
-  // and `.toISOString()` on one THROWS RangeError, so merely OPENING a post
-  // whose publishedAt was a Timestamp took the editor down. Same crash family
-  // as the list's, one screen along, and it surfaced only once the interface
-  // above stopped claiming these fields were strings.
-  const [scheduledDate, setScheduledDate] = useState(() => toDatetimeLocal(post?.publishedAt));
+  const [status, setStatus] = useState<BlogEditorIntent>(post?.status || 'draft');
+  const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  const timeZone = post?.scheduleTimeZone && isValidTimeZone(post.scheduleTimeZone) ? post.scheduleTimeZone : browserZone;
+  // Wall-clock in the church or browser zone. The service stores the UTC instant.
+  const [scheduledDate, setScheduledDate] = useState(() => initialWallClock(post?.publishedAt, timeZone));
+  const [pendingPreview, setPendingPreview] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [availableCategories, setAvailableCategories] = useState<string[]>(categories);
@@ -93,84 +85,75 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
       e.preventDefault();
       setTags([...tags, newTag.trim()]);
       setNewTag('');
+      setPendingPreview(null);
     }
   };
 
   const removeTag = (tagToRemove: string) => {
     setTags(tags.filter(tag => tag !== tagToRemove));
+    setPendingPreview(null);
   };
 
-  const handleSave = async (saveStatus: 'published' | 'draft' | 'scheduled') => {
-    const missing: string[] = [];
-    if (!title.trim()) missing.push('Title');
-    if (!category) missing.push('Category');
-    const strippedContent = content.replace(/<[^>]*>/g, '').trim();
-    if (!strippedContent) missing.push('Content');
-    if (saveStatus === 'scheduled' && !scheduledDate) missing.push('Scheduled date');
-    if (saveStatus === 'scheduled' && scheduledDate && new Date(scheduledDate) <= new Date()) missing.push('Scheduled date must be in the future');
-    if (missing.length > 0) {
-      setError(`Missing required fields: ${missing.join(', ')}`);
-      return;
-    }
+  const payload = () => ({
+    tenantId: undefined as string | undefined,
+    postId: post?.id ?? null,
+    title,
+    category,
+    content,
+    featuredImage: featuredImage.trim() || null,
+    tags,
+    wallClock: scheduledDate,
+    timeZone,
+  });
 
-    // REP-4: publishing stops when the subscription ends. DRAFTS DO NOT — an
-    // archived church keeps writing, keeps its posts, and gets them back the
-    // moment it reactivates. Downgrade, not lockout.
+  const callService = async (action: string, mode?: 'preview' | 'confirm') => {
+    const tenantId = await getWriteTenantScope();
+    if (!tenantId) {
+      setError('A ministry is required before this post can be saved.');
+      return null;
+    }
+    const response = await authFetch('/api/blog/actions', {
+      method: 'POST',
+      body: JSON.stringify({ ...payload(), tenantId, action, mode }),
+    });
+    const data = await response.json();
+    if (!response.ok || data.ok === false) {
+      setError(typeof data.message === 'string' ? data.message : 'Failed to save post');
+      return null;
+    }
+    return data;
+  };
+
+  const handleSave = async (saveStatus: 'published' | 'draft' | 'scheduled', mode: 'preview' | 'confirm') => {
     if (saveStatus !== 'draft' && !canPublish) {
       setError(ARCHIVED_ACTION_MESSAGE);
       return;
     }
-
     setIsSaving(true);
     setError('');
-
     try {
-      const postData = {
-        title: title.trim(),
-        category,
-        status: saveStatus,
-        content,
-        featuredImage: featuredImage.trim() || null,
-        tags,
-        authorId: auth.currentUser?.uid,
-        updatedAt: new Date().toISOString(),
-        ...(saveStatus === 'scheduled' ? { publishedAt: new Date(scheduledDate).toISOString() } : {}),
-        ...(saveStatus === 'published' && !post?.publishedAt ? { publishedAt: new Date().toISOString() } : {})
-      };
-
-      const tenantId = await getTenantScope();
-      if (post?.id) {
-        if (tenantId) {
-          const docSnap = await getDoc(doc(db, 'blog_posts', post.id));
-          if (docSnap.exists() && docSnap.data().tenantId && docSnap.data().tenantId !== tenantId) {
-            setError('Permission denied: cannot modify another ministry\'s post.');
-            return;
-          }
-        }
-        await updateDoc(doc(db, 'blog_posts', post.id), postData);
-      } else {
-        await addDoc(collection(db, 'blog_posts'), {
-          ...postData,
-          createdAt: new Date().toISOString(),
-          // Platform-aware: a super admin on the apex persists the platform
-          // tenant instead of null so the post is never orphaned. (The edit
-          // branch above keeps getTenantScope() for its ownership check.)
-          tenantId: await getWriteTenantScope(),
-        });
+      const action = saveStatus === 'draft' ? 'createDraft' : saveStatus === 'scheduled' ? 'schedule' : 'publishNow';
+      const data = await callService(action, saveStatus === 'draft' ? undefined : mode);
+      if (!data) return;
+      if (mode === 'preview' && saveStatus !== 'draft') {
+        setPendingPreview(schedulePreviewSentence(data.preview));
+        return;
       }
       onClose();
-    } catch (err: any) {
-      try { handleFirestoreError(err, OperationType.WRITE, 'blog_posts'); } catch (e) { console.error(e); }
-      setError(err.message || 'Failed to save post');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to save post');
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Single-page, in-shell editor: title + TipTap content (left) · post settings
-  // and featured image (right). "Publish" honours the selected status (schedules
-  // only when Status is explicitly "Scheduled"); "Save draft" always stores a draft.
-  const handlePublish = () => handleSave(status === 'scheduled' ? 'scheduled' : 'published');
+  const handlePublish = () => {
+    if (pendingPreview) {
+      void handleSave(status === 'scheduled' ? 'scheduled' : 'published', 'confirm');
+      return;
+    }
+    void handleSave(status === 'scheduled' ? 'scheduled' : 'published', 'preview');
+  };
 
   return (
     <div className="w-full max-w-6xl mx-auto pb-10">
@@ -180,15 +163,15 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
           <ArrowLeft size={16} /> Blog
         </button>
         <div className="flex items-center gap-2.5">
-          <AdminSecondaryButton onClick={() => handleSave('draft')} disabled={isSaving}>
+          <AdminSecondaryButton onClick={() => { setPendingPreview(null); void handleSave('draft', 'confirm'); }} disabled={isSaving}>
             {isSaving ? 'Saving…' : 'Save draft'}
           </AdminSecondaryButton>
           <AdminPrimaryButton
             onClick={handlePublish}
-            disabled={isSaving || !canPublish}
+            disabled={isSaving || !canPublish || status === 'draft'}
             title={canPublish ? undefined : ARCHIVED_ACTION_MESSAGE}
           >
-            Publish
+            {pendingPreview ? 'Confirm' : status === 'scheduled' ? 'Schedule' : 'Publish now'}
           </AdminPrimaryButton>
         </div>
       </div>
@@ -201,7 +184,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
           <input
             type="text"
             value={title}
-            onChange={(e) => { setTitle(e.target.value); setError(''); }}
+            onChange={(e) => { setTitle(e.target.value); setError(''); setPendingPreview(null); }}
             placeholder="Post title"
             className="w-full px-6 pt-6 pb-5 font-display text-[1.9rem] font-normal text-strong placeholder:text-stone-300 border-none outline-hidden bg-transparent leading-tight"
             autoFocus
@@ -209,7 +192,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
           <div className="border-t border-line px-6 py-5">
             <RichTextEditor
               content={content}
-              onChange={(c) => { setContent(c); setError(''); }}
+              onChange={(c) => { setContent(c); setError(''); setPendingPreview(null); }}
               minHeight="46vh"
               placeholder="Write your article… Type '/' for formatting options"
             />
@@ -221,20 +204,22 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
           <AdminCard className="p-5 space-y-4">
             <AdminSectionLabel>Post settings</AdminSectionLabel>
 
-            <div>
-              <label className={fieldLabel}>Status</label>
-              <select value={status} onChange={(e) => setStatus(e.target.value as any)} className={`${fieldInput} appearance-none`}>
-                <option value="draft">Draft</option>
-                <option value="published">Published</option>
-                <option value="scheduled">Scheduled</option>
-              </select>
-            </div>
+            <BlogScheduleFields
+              intent={status}
+              onIntent={(next) => { setStatus(next); setPendingPreview(null); }}
+              wallClock={scheduledDate}
+              onWallClock={(value) => { setScheduledDate(value); setPendingPreview(null); }}
+              timeZone={timeZone}
+              preview={pendingPreview}
+              fieldLabel={fieldLabel}
+              fieldInput={fieldInput}
+            />
 
             <div>
               <label className={fieldLabel}>Category</label>
               {!isAddingCategory ? (
                 <div className="flex gap-2">
-                  <select value={category} onChange={(e) => setCategory(e.target.value)} className={`${fieldInput} flex-1 appearance-none`}>
+                  <select value={category} onChange={(e) => { setCategory(e.target.value); setPendingPreview(null); }} className={`${fieldInput} flex-1 appearance-none`}>
                     <option value="" disabled>Select a category</option>
                     {availableCategories.map(cat => (<option key={cat} value={cat}>{cat}</option>))}
                   </select>
@@ -286,15 +271,11 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
               <input type="text" value={newTag} onChange={(e) => setNewTag(e.target.value)} onKeyDown={handleAddTag} placeholder="Type a tag, press Enter" className={fieldInput} />
             </div>
 
-            <div>
-              <label className={fieldLabel}>Schedule <span className="font-normal text-faint normal-case">(optional)</span></label>
-              <input type="datetime-local" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} className={fieldInput} />
-            </div>
           </AdminCard>
 
           <AdminCard className="p-5 space-y-3">
             <AdminSectionLabel>Featured image</AdminSectionLabel>
-            <ImageUpload value={featuredImage} onChange={setFeaturedImage} placeholder="Upload or paste URL" />
+            <ImageUpload value={featuredImage} onChange={(value) => { setFeaturedImage(value); setPendingPreview(null); }} placeholder="Upload or paste URL" />
           </AdminCard>
         </div>
       </div>

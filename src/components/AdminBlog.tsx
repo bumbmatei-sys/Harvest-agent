@@ -1,12 +1,13 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, FileText, Sparkles, X, ChevronDown } from 'lucide-react';
-import { collection, onSnapshot, query, where, deleteDoc, doc, getDoc, limit } from 'firebase/firestore';
-import { db, auth } from '../firebase';
+import { collection, onSnapshot, query, where, limit } from 'firebase/firestore';
+import { db } from '../firebase';
 import AdminBlogPostEditor from './AdminBlogPostEditor';
 import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar, AdminCard, AdminBadge, statusTone } from './admin/AdminUI';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { getTenantScope, hasPlatformOverride } from '../utils/tenant-scope';
+import { getTenantScope, getWriteTenantScope, hasPlatformOverride } from '../utils/tenant-scope';
+import { blogListKind, blogStatusLabel } from '../lib/blog/visibility';
 import { sortByTime } from '../utils/query-helpers';
 import { formatFirestoreDate, type FirestoreDate } from '../utils/firestore-date';
 import { useAppStore } from '../store/useAppStore';
@@ -38,6 +39,7 @@ interface BlogPost {
  featuredImage?: string;
  tags?: string[];
  publishedAt?: FirestoreDate;
+ scheduleTimeZone?: string | null;
  isAiGenerated?: boolean;
 }
 
@@ -227,18 +229,44 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  setIsEditorOpen(true);
  };
 
+ const listZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+ const statusLabel = (post: BlogPost, full: boolean) => {
+   const nowMs = Date.now();
+   if (!full) {
+     const kind = blogListKind(post, nowMs);
+     if (kind === 'draft') return 'Draft';
+     if (kind === 'scheduled') return 'Scheduled';
+     return 'Published';
+   }
+   return blogStatusLabel(post, nowMs, listZone);
+ };
+
  const handleDeletePost = async (id: string) => {
  try {
-   const tenantId = await getTenantScope();
-   if (tenantId) {
-     const docSnap = await getDoc(doc(db, 'blog_posts', id));
-     if (docSnap.exists() && docSnap.data().tenantId && docSnap.data().tenantId !== tenantId) {
-       console.error('Tenant mismatch — cannot modify another tenant\'s document');
-       return;
-     }
+   const tenantId = await getWriteTenantScope();
+   if (!tenantId) {
+     setErrorMessage('A ministry is required before this post can be deleted.');
+     return;
    }
-   await deleteDoc(doc(db, 'blog_posts', id));
- setDeleteConfirmId(null);
+   const preview = await authFetch('/api/blog/actions', {
+     method: 'POST',
+     body: JSON.stringify({ action: 'delete', mode: 'preview', tenantId, postId: id }),
+   });
+   const previewBody = await preview.json();
+   if (!preview.ok || previewBody.ok === false) {
+     setErrorMessage(typeof previewBody.message === 'string' ? previewBody.message : 'Failed to delete post. Please try again.');
+     return;
+   }
+   const confirmed = await authFetch('/api/blog/actions', {
+     method: 'POST',
+     body: JSON.stringify({ action: 'delete', mode: 'confirm', tenantId, postId: id }),
+   });
+   const confirmedBody = await confirmed.json();
+   if (!confirmed.ok || confirmedBody.ok === false) {
+     setErrorMessage(typeof confirmedBody.message === 'string' ? confirmedBody.message : 'Failed to delete post. Please try again.');
+     return;
+   }
+   setDeleteConfirmId(null);
  } catch (error) {
  try { handleFirestoreError(error, OperationType.DELETE, `blog_posts/${id}`); } catch (e) { console.error(e); }
  setErrorMessage("Failed to delete post. Please try again.");
@@ -342,7 +370,7 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  <span className="text-[11px] text-faint whitespace-nowrap">{formatDate(post.createdAt)}</span>
  </div>
  </div>
- <AdminBadge tone={statusTone(post.status)} className="shrink-0">{post.status}</AdminBadge>
+ <AdminBadge tone={statusTone(blogListKind(post, Date.now()))} className="shrink-0">{statusLabel(post, false)}</AdminBadge>
  <div className="flex items-center shrink-0">
  <button onClick={() => handleEditPost(post)} className="p-2 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors" title="Edit"><Edit2 size={15} /></button>
  <button onClick={() => setDeleteConfirmId(post.id)} className="p-2 rounded-brand text-faint hover:text-danger hover:bg-danger-tint transition-colors" title="Delete"><Trash2 size={15} /></button>
@@ -395,7 +423,7 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  </div>
  </td>
  <td className="px-6 py-3.5"><span className="text-sm text-muted">{post.category}</span></td>
- <td className="px-6 py-3.5"><AdminBadge tone={statusTone(post.status)}>{post.status}</AdminBadge></td>
+ <td className="px-6 py-3.5"><AdminBadge tone={statusTone(blogListKind(post, Date.now()))}>{statusLabel(post, true)}</AdminBadge></td>
  <td className="px-6 py-3.5"><span className="text-sm text-muted whitespace-nowrap">{formatDate(post.createdAt)}</span></td>
  <td className="px-6 py-3.5 text-right">
  <div className="flex items-center justify-end gap-1">
