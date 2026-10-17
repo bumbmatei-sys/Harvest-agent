@@ -257,6 +257,10 @@ describe('binaries are not treated as text', () => {
       'docs/redesign/phase-2c/page-before-1440-dark.png',
       'docs/redesign/phase-2c/page-before-1440-light.png',
       'docs/redesign/phase-2c/page-before-390-light.png',
+      // APPENDED BY #531 QA, nothing above removed. Publish now and Take down
+      // each show the confirm step at 1440, light.
+      'docs/redesign/phase-2c/publish-confirm-1440-light.png',
+      'docs/redesign/phase-2c/takedown-confirm-1440-light.png',
       'mockups/screenshot-canvas.png',
       'mockups/screenshot-integrations.png',
       'mockups/screenshot-newsletter.png',

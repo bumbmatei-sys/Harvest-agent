@@ -791,17 +791,20 @@ const CONTENT_ASSERTING_MOVED: Readonly<Record<string, readonly [digest: string,
   ],
   // APPENDED BY #529, then the current digest moved by #531. The row in
   // CONTENT_ASSERTING is untouched. This map holds one current digest, so the
-  // #529 hash stays in this comment and the value below is the file as #531
-  // left it. #529 added the phase-1 proof PNGs. #531 appends the twelve
-  // phase-2c shots. *.png was already binary. The suite still asserts content.
+  // earlier hashes stay in this comment and the value below is the file as
+  // #531 left it. #529 added the phase-1 proof PNGs. #531 appends the twelve
+  // phase-2c shots, then the Publish now and Take down confirm shots. *.png
+  // was already binary. The suite still asserts content.
   'src/__tests__/the-268-line-endings.test.ts': [
-    '5da9d07037eb4a46c2f0ebe11863714e4ee8b34d51aaeceb4d9da4846cc1017c',
+    '9afa6f0fbc261d14c272730907acf4fd9ad0df1b283d04cf537a7255b44ffad5',
     '#531',
-    '#531 appends the twelve phase-2c proof shots under docs/redesign/phase-2c '
-      + 'to the binary list #529 already extended with the phase-1 shots. The '
-      + 'original thirteen paths and the phase-1 paths stay. *.png was already '
-      + 'binary. The suite still asserts PNG magic and the declared set, and it '
-      + 'still pins no digest. The previous current digest, from #529, was '
+    '#531 appends the Publish now and Take down confirm shots to the binary '
+      + 'list that already held the twelve phase-2c shots and the phase-1 shots. '
+      + 'The original thirteen paths stay. *.png was already binary. The suite '
+      + 'still asserts PNG magic and the declared set, and it still pins no '
+      + 'digest. The previous current digest was '
+      + '5da9d07037eb4a46c2f0ebe11863714e4ee8b34d51aaeceb4d9da4846cc1017c, and '
+      + 'the #529 digest was '
       + 'bf5f6cef36b649f85d1a184bfbb8aab851c1a2e76f7c8f5adc95efdfe66a03c6.',
   ],
 };
