@@ -1101,6 +1101,14 @@ describe('12 — AdminDocs.tsx, AdminDashboardHome.tsx, firestore.rules and func
        * still did not author a byte of it.
        */
       '399bb0ef989809da247681401bab90d46eb0fa211274289db0b036daa73e49da',
+      /*
+       * #531, appended beside the digest above, never over it. Share to blog
+       * draft no longer writes blog_posts from the client. The menu posts
+       * createDraft to the blog service, which is the only client write path,
+       * and the docs collection timestamps are unchanged. This branch still
+       * did not author a byte of the notes editor.
+       */
+      '8080b494ea2b400358c5bde9756c4737e3742153a49fb924955f85b09e08aca4',
     ],
   };
 
