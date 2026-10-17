@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import { ArrowLeft, X, Plus, Trash2 } from 'lucide-react';
 import { ImageUpload } from './ImageUpload';
 import RichTextEditor from './RichTextEditor';
@@ -12,13 +12,13 @@ import { authFetch } from '../utils/auth-fetch';
 import {
   BLOG_SAVE_TIMEOUT_MESSAGE,
   BLOG_SAVE_TIMEOUT_MS,
-  publishedAtMillis,
+  editorConfirmSentence,
+  initialScheduleWallClock,
   readBlogCategory,
   scheduleWallClockError,
-  utcIsoToWallClock,
   isValidTimeZone,
 } from '../lib/blog/visibility';
-import { BlogScheduleFields, schedulePreviewSentence, type BlogEditorIntent } from './blog/BlogScheduleFields';
+import { BlogScheduleFields, type BlogEditorIntent } from './blog/BlogScheduleFields';
 
 interface BlogPost {
   id?: string;
@@ -36,12 +36,6 @@ interface BlogPost {
   tags?: string[];
   publishedAt?: FirestoreDate;
   scheduleTimeZone?: string | null;
-}
-
-function initialWallClock(value: FirestoreDate | undefined, timeZone: string): string {
-  const ms = publishedAtMillis(value);
-  if (ms == null || !isValidTimeZone(timeZone)) return '';
-  return utcIsoToWallClock(new Date(ms).toISOString(), timeZone);
 }
 
 interface AdminBlogPostEditorProps {
@@ -66,12 +60,12 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
   const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   const timeZone = post?.scheduleTimeZone && isValidTimeZone(post.scheduleTimeZone) ? post.scheduleTimeZone : browserZone;
   // Wall-clock in the church or browser zone. The service stores the UTC instant.
-  const [scheduledDate, setScheduledDate] = useState(() => initialWallClock(post?.publishedAt, timeZone));
+  const [scheduledDate, setScheduledDate] = useState(() => initialScheduleWallClock(post, timeZone));
   const [pendingPreview, setPendingPreview] = useState<string | null>(null);
-  const [pendingToken, setPendingToken] = useState<string | null>(null);
+  const saveAttempt = useRef(0);
+  const saveTimedOut = useRef(false);
   const clearPreview = () => {
     setPendingPreview(null);
-    setPendingToken(null);
   };
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
@@ -80,16 +74,6 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
   const canPublish = useTenantCapability('publishing');
   const storedLive = post?.status === 'published' || post?.status === 'scheduled';
   const takingDown = storedLive && status === 'draft';
-
-  useEffect(() => {
-    // A new post can start on the first real category. An existing post keeps
-    // the category it was stored with, including none, so the editor cannot
-    // show a category the list does not.
-    if (post?.id) return;
-    if (category) return;
-    const first = categories.find((item) => item.trim() !== '');
-    if (first) setCategory(first);
-  }, [categories, category, post?.id]);
 
   const handleAddCategory = () => {
     if (newCategory.trim() && !availableCategories.includes(newCategory.trim())) {
@@ -132,7 +116,9 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
     confirmToken?: string | null,
     signal?: AbortSignal,
   ) => {
+    if (saveTimedOut.current || signal?.aborted) return null;
     const tenantId = await getWriteTenantScope();
+    if (saveTimedOut.current || signal?.aborted) return null;
     if (!tenantId) {
       setError('A ministry is required before this post can be saved.');
       return null;
@@ -149,6 +135,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
       }),
     });
     const data = await response.json();
+    if (saveTimedOut.current || signal?.aborted) return null;
     if (!response.ok || data.ok === false) {
       const message = typeof data.message === 'string' ? data.message : 'Failed to save post';
       setError(message);
@@ -158,7 +145,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
     return data;
   };
 
-  const handleSave = async (saveStatus: 'published' | 'draft' | 'scheduled', mode: 'preview' | 'confirm') => {
+  const handleSave = async (saveStatus: 'published' | 'draft' | 'scheduled', phase: 'local' | 'commit') => {
     const demote = takingDown && saveStatus === 'draft';
     const action = demote ? 'unschedule' : saveStatus === 'draft' ? 'createDraft' : saveStatus === 'scheduled' ? 'schedule' : 'publishNow';
     if (!demote && saveStatus !== 'draft' && !canPublish) {
@@ -166,72 +153,87 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
       setIsSaving(false);
       return;
     }
-    if (action === 'schedule') {
-      const problem = scheduleWallClockError(scheduledDate, timeZone, new Date());
-      if (problem) {
-        setScheduleError(problem);
-        setError(problem);
-        setIsSaving(false);
-        return;
+    // The confirm sentence is local. Nothing is requested, and a new draft is
+    // not created, until the admin presses Confirm.
+    if (action !== 'createDraft' && phase === 'local') {
+      if (action === 'schedule') {
+        const problem = scheduleWallClockError(scheduledDate, timeZone, new Date());
+        if (problem) {
+          setScheduleError(problem);
+          setError(problem);
+          setIsSaving(false);
+          return;
+        }
       }
+      setError('');
+      setScheduleError('');
+      setPendingPreview(editorConfirmSentence(
+        action === 'schedule' ? 'schedule' : action === 'publishNow' ? 'publishNow' : 'unschedule',
+        scheduledDate,
+        timeZone,
+      ));
+      setIsSaving(false);
+      return;
     }
+
+    const attempt = ++saveAttempt.current;
+    saveTimedOut.current = false;
     setIsSaving(true);
     setError('');
     setScheduleError('');
     const controller = new AbortController();
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let timedOut = false;
-    const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => {
-        timedOut = true;
-        controller.abort();
-        reject(new Error(BLOG_SAVE_TIMEOUT_MESSAGE));
-      }, BLOG_SAVE_TIMEOUT_MS);
-    });
+    // The timer writes the message itself. Waiting for the fetch to reject
+    // never showed it: the token refresh can sit past the abort, and the
+    // race then never settles.
+    const timer = setTimeout(() => {
+      if (saveAttempt.current !== attempt) return;
+      saveTimedOut.current = true;
+      controller.abort();
+      setError(BLOG_SAVE_TIMEOUT_MESSAGE);
+      setIsSaving(false);
+      setPendingPreview(null);
+    }, BLOG_SAVE_TIMEOUT_MS);
+    const stale = () => saveTimedOut.current || saveAttempt.current !== attempt;
     try {
-      const needsConfirm = action !== 'createDraft';
-      const data = await Promise.race([
-        callService(
-          action,
-          needsConfirm ? mode : undefined,
-          needsConfirm && mode === 'confirm' ? pendingToken : undefined,
-          controller.signal,
-        ),
-        timeout,
-      ]);
-      if (!data) {
+      if (action === 'createDraft') {
+        const data = await callService(action, undefined, undefined, controller.signal);
+        if (stale() || !data) return;
+        onClose();
+        return;
+      }
+      const preview = await callService(action, 'preview', undefined, controller.signal);
+      if (stale()) return;
+      if (!preview) {
         clearPreview();
         return;
       }
-      if (needsConfirm && mode === 'preview') {
-        if (typeof data.confirmToken !== 'string' || data.confirmToken === '') {
-          setError('The preview did not return a confirmation.');
-          clearPreview();
-          return;
-        }
-        setPendingToken(data.confirmToken);
-        setPendingPreview(schedulePreviewSentence(data.preview));
+      const token = preview.confirmToken;
+      if (typeof token !== 'string' || token === '') {
+        setError('The preview did not return a confirmation.');
+        clearPreview();
+        return;
+      }
+      const saved = await callService(action, 'confirm', token, controller.signal);
+      if (stale()) return;
+      if (!saved) {
+        clearPreview();
         return;
       }
       onClose();
     } catch (err: unknown) {
-      clearPreview();
-      // Aborting the request rejects the fetch as well. The timeout is the
-      // reason, and that sentence is what the admin should read.
-      const message = timedOut
-        ? BLOG_SAVE_TIMEOUT_MESSAGE
-        : err instanceof Error ? err.message : 'Failed to save post';
+      if (saveAttempt.current !== attempt || saveTimedOut.current) return;
+      const message = err instanceof Error ? err.message : 'Failed to save post';
       setError(message);
-      setIsSaving(false);
+      clearPreview();
     } finally {
-      if (timer) clearTimeout(timer);
-      setIsSaving(false);
+      clearTimeout(timer);
+      if (saveAttempt.current === attempt && !saveTimedOut.current) setIsSaving(false);
     }
   };
 
   const handlePublish = () => {
     const next = takingDown ? 'draft' : status === 'scheduled' ? 'scheduled' : 'published';
-    void handleSave(next, pendingPreview ? 'confirm' : 'preview');
+    void handleSave(next, pendingPreview ? 'commit' : 'local');
   };
 
   return (
@@ -245,11 +247,11 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
           <AdminSecondaryButton
             onClick={() => {
               if (takingDown) {
-                void handleSave('draft', pendingPreview ? 'confirm' : 'preview');
+                void handleSave('draft', pendingPreview ? 'commit' : 'local');
                 return;
               }
               clearPreview();
-              void handleSave('draft', 'preview');
+              void handleSave('draft', 'commit');
             }}
             disabled={isSaving}
           >
@@ -310,7 +312,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
               {!isAddingCategory ? (
                 <div className="flex gap-2">
                   <select value={category} onChange={(e) => { setCategory(e.target.value); clearPreview(); }} className={`${fieldInput} flex-1 appearance-none`}>
-                    <option value="" disabled>Select a category</option>
+                    <option value="">Select a category</option>
                     {availableCategories.map(cat => (<option key={cat} value={cat}>{cat}</option>))}
                   </select>
                   {category && (

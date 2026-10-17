@@ -193,6 +193,34 @@ export function scheduleWallClockError(wallClock: string, timeZone: string, now:
 }
 
 /**
+ * The schedule field starts empty unless the post is already scheduled.
+ * A published post's `publishedAt` is when it went live. Putting that past
+ * instant into the picker makes Schedule look like that old date.
+ */
+export function initialScheduleWallClock(
+  post: { readonly status?: string | null; readonly publishedAt?: FirestoreDate | null } | null | undefined,
+  timeZone: string,
+): string {
+  if (post?.status !== 'scheduled') return '';
+  const ms = publishedAtMillis(post.publishedAt);
+  if (ms == null || !isValidTimeZone(timeZone)) return '';
+  return utcIsoToWallClock(new Date(ms).toISOString(), timeZone);
+}
+
+/** The sentence the editor shows before it asks the server to do anything. */
+export function editorConfirmSentence(
+  action: 'schedule' | 'publishNow' | 'unschedule',
+  wallClock: string,
+  timeZone: string,
+): string {
+  if (action === 'publishNow') return 'This post becomes public on the ministry page now.';
+  if (action === 'unschedule') return 'This post returns to a draft and leaves the ministry page.';
+  const utc = wallClockToUtcIso(wallClock, timeZone);
+  const label = utc ? formatInstantInZone(utc, timeZone) : wallClock.trim();
+  return `hidden until ${label} (${timeZone}), then public on the ministry page.`;
+}
+
+/**
  * A native datetime-local control clears its value when the picker is
  * cancelled or Escape is pressed. Keep the value the admin already chose.
  */

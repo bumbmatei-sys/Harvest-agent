@@ -24,6 +24,11 @@ const platformOverride = vi.hoisted(() => ({ current: false }));
 const authFetch = vi.hoisted(() =>
   vi.fn(async (_url: string, _init?: RequestInit) => ({ ok: true, json: async () => ({}) })),
 );
+const notifyError = vi.hoisted(() => vi.fn());
+const getDoc = vi.hoisted(() => vi.fn(async (_ref?: unknown): Promise<{ exists: () => boolean; data: () => Record<string, unknown> }> => ({
+  exists: () => false,
+  data: () => ({}),
+})));
 const tenantScope = vi.hoisted(() => ({ current: 'grace' as string | null }));
 const writeScope = vi.hoisted(() => ({ current: 'grace' as string | null }));
 const store = vi.hoisted(() => ({
@@ -72,8 +77,8 @@ vi.mock('firebase/firestore', () => ({
   query: () => ({}),
   where: () => ({}),
   limit: () => ({}),
-  doc: () => ({}),
-  getDoc: async () => ({ exists: () => false, data: () => ({}) }),
+  doc: (...parts: string[]) => parts.join('/'),
+  getDoc,
   deleteDoc: async () => {},
   onSnapshot: (_q: unknown, next: (snap: { docs: unknown[] }) => void) => {
     next({ docs: [] });
@@ -81,7 +86,7 @@ vi.mock('firebase/firestore', () => ({
   },
 }));
 vi.mock('../../utils/auth-fetch', () => ({ authFetch }));
-vi.mock('../../utils/notify', () => ({ notifyError: () => {} }));
+vi.mock('../../utils/notify', () => ({ notifyError }));
 vi.mock('../../utils/firestore-errors', () => ({
   OperationType: { GET: 'get', DELETE: 'delete' },
   handleFirestoreError: () => {},
@@ -175,7 +180,11 @@ let root: Root | null = null;
 beforeEach(() => {
   blogMode.record = false;
   recorded.values = [];
-  authFetch.mockClear();
+  authFetch.mockReset();
+  authFetch.mockImplementation(async () => ({ ok: true, json: async () => ({}) }));
+  notifyError.mockClear();
+  getDoc.mockReset();
+  getDoc.mockResolvedValue({ exists: () => false, data: () => ({}) });
   tenantScope.current = TENANT_ID;
   writeScope.current = TENANT_ID;
   navigate.mockClear();
@@ -288,6 +297,39 @@ describe('AdminBlog hides Automate while the knowledge base is off', () => {
 
     expect(host.textContent ?? '').toContain('Automated Blog');
     expect(host.textContent ?? '').toContain('Generate Now');
+  });
+
+  it('loads the ministry document when the settings route fails, without an alert', async () => {
+    authFetch.mockImplementation(async () => ({ ok: false, status: 500, json: async () => ({ error: 'down' }) }));
+    getDoc.mockResolvedValue({
+      exists: () => true,
+      data: () => ({
+        timezone: 'Europe/Bucharest',
+        enabled: true,
+        totalGenerated: 2,
+        nextScheduledAt: '2026-12-01T08:00:00.000Z',
+      }),
+    });
+    await renderBlog('max', true);
+
+    expect(notifyError, 'a failed settings read opened an alert').not.toHaveBeenCalled();
+    expect(String(getDoc.mock.calls[0]?.[0])).toContain('blogAutomation/settings');
+
+    await act(async () => { (automateButton() as HTMLButtonElement).click(); });
+    expect(host.textContent ?? '').toContain('Europe/Bucharest');
+    expect(host.textContent ?? '').not.toContain('could not be loaded');
+  });
+
+  it('shows a failed settings read in the panel and does not alert', async () => {
+    authFetch.mockImplementation(async () => ({ ok: false, status: 500, json: async () => ({}) }));
+    getDoc.mockRejectedValue(new Error('permission'));
+    await renderBlog('max', true);
+
+    expect(notifyError).not.toHaveBeenCalled();
+    await act(async () => { (automateButton() as HTMLButtonElement).click(); });
+    const panel = host.querySelector('.z-\\[200\\]');
+    expect(panel, 'the panel did not open').not.toBeNull();
+    expect(panel!.querySelector('[role="alert"]')?.textContent).toBe('Automation settings could not be loaded.');
   });
 
   it('does not request settings when no ministry is in scope', async () => {
