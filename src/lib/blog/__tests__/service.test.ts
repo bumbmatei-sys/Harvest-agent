@@ -720,6 +720,28 @@ describe('createDraft keeps a live post up', () => {
       publishedAt: null,
     });
   });
+
+  it('saves and takes down a post that has no category', async () => {
+    const { service, saves } = harness({
+      posts: [samplePost({
+        id: 'reflection',
+        tenantId: 'sample',
+        status: 'published',
+        category: '',
+        publishedAt: '2026-01-04T18:00:00.000Z',
+      })],
+      permissions,
+    });
+    const input = { ...scheduleInput, category: '' };
+    const saved = await service.createDraft(writer, input);
+    expect(saved.ok).toBe(true);
+    expect(saves[0]).toMatchObject({ status: 'published', category: '' });
+    const preview = await service.unschedule(writer, input, 'preview');
+    expect(preview.ok).toBe(true);
+    const confirmed = await service.unschedule(writer, input, 'confirm', tokenFrom(preview));
+    expect(confirmed.ok).toBe(true);
+    expect(saves[1]).toMatchObject({ status: 'draft', category: '', publishedAt: null });
+  });
 });
 
 describe('archived ministries', () => {

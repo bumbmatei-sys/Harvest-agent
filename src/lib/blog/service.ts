@@ -195,11 +195,13 @@ function plainContent(html: string): string {
 
 function fieldsFrom(input: BlogDraftInput, existing: StoredBlogPost | null): BlogPostFields | BlogFailure {
   const title = input.title !== undefined ? cleanText(input.title) : existing?.title ?? '';
+  // Category is optional. Share-to-blog drafts and some live posts store none,
+  // and the editor sends that blank value. Requiring one blocked take down
+  // and save for those posts.
   const category = input.category !== undefined ? cleanText(input.category) : existing?.category ?? '';
   const content = input.content !== undefined ? (typeof input.content === 'string' ? input.content : '') : existing?.content ?? '';
   const missing: string[] = [];
   if (!title) missing.push('Title');
-  if (!category) missing.push('Category');
   if (!plainContent(content)) missing.push('Content');
   if (missing.length > 0) return fail('invalid', `Missing required fields: ${missing.join(', ')}`);
   let featuredImage: string | null;
