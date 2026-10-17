@@ -404,6 +404,31 @@ describe('social service', () => {
     expect(new MockSocialClient('tenant-a', new Date()).load().posts.filter((post) => post.content === 'Sunday at 10.')).toHaveLength(0);
   });
 
+  it('saves a text edit of an undated draft and refuses to drop a scheduled time', async () => {
+    const body = postBody('instagram', {
+      content: 'A revised Sunday word.',
+      scheduledFor: null,
+      targets: [{ platform: 'instagram', accountId: 'sample-ig', text: 'A revised Sunday word.', madeWithAi: false }],
+    });
+    const preview = await update(actor, 'sample-draft', body, null);
+    expect(preview).toMatchObject({ ok: true });
+    if (!preview.ok || !('preview' in preview.data)) return;
+    expect(preview.data.preview.scheduledFor).toBeNull();
+    const bare = await update(actor, 'sample-draft', { ...body, confirm: true }, null);
+    expect(bare).toMatchObject({ ok: false, error: 'confirm_token_required' });
+    expect(postContent('sample-draft')).toContain('parable');
+    const saved = await update(actor, 'sample-draft', { ...body, confirmToken: tokenOf(preview) }, null);
+    expect(saved.ok).toBe(true);
+    if (!saved.ok || !('post' in saved.data)) return;
+    expect(saved.data.post.content).toBe('A revised Sunday word.');
+    expect(saved.data.post.scheduledFor).toBeNull();
+    expect(saved.data.post.status).toBe('draft');
+
+    const stripped = await update(actor, 'sample-scheduled', body, null);
+    expect(stripped).toMatchObject({ ok: false, error: 'schedule_invalid' });
+    expect(postContent('sample-scheduled')).toContain('Verse of the day');
+  });
+
   it('refuses a missing, changed, foreign, or reused confirm token', async () => {
     const body = postBody('instagram');
     const before = new MockSocialClient('tenant-a', new Date()).load().posts.length;

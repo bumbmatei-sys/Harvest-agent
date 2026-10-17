@@ -361,7 +361,10 @@ export async function update(
     prepared.draft.publishNow,
     id,
   );
-  if (!prepared.draft.publishNow && !prepared.draft.scheduledFor) {
+  // Schedule still requires a future time. An undated draft may be edited
+  // without one. Omitting the time on a post that already has one is a refusal,
+  // so a scheduled post cannot be saved back into an undated draft by accident.
+  if (!prepared.draft.publishNow && !prepared.draft.scheduledFor && existing.scheduledFor) {
     return fail('schedule_invalid', 400);
   }
   if (prepared.draft.publishNow && readConfirmToken(body) && !isIdempotencyKey(idempotencyKey)) {

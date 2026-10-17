@@ -235,6 +235,37 @@ describe('SocialScheduler', () => {
     }
   });
 
+  it('saves an undated draft edit and keeps a scheduled time required', async () => {
+    const workspace = new MockSocialClient('preview', clock).load();
+    await act(async () => {
+      root.render(
+        <SocialScheduler initial={{ ...workspace, entitled: true }} initialView="queue" onUpgrade={() => {}} />,
+      );
+    });
+    const edits = [...container.querySelectorAll('button')].filter((button) => button.textContent === 'Edit');
+    await act(async () => { edits[0]?.click(); });
+    const save = [...document.body.querySelectorAll('button')].find((button) => button.textContent === 'Save');
+    await act(async () => { save?.click(); });
+    expect(document.body.querySelector('[data-testid="social-edit-error"]')).toBeNull();
+    const confirm = document.body.querySelector('[data-testid="social-confirm-dialog"]');
+    expect(confirm?.textContent).toContain('Save this edit?');
+    const dismiss = [...(confirm?.querySelectorAll('button') ?? [])].find((button) => button.textContent === 'Cancel');
+    await act(async () => { dismiss?.click(); });
+    const scheduledEdit = [...container.querySelectorAll('button')].filter((button) => button.textContent === 'Edit')[1];
+    await act(async () => { scheduledEdit?.click(); });
+    const time = document.body.querySelector<HTMLInputElement>('input[aria-label="New time"]');
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(time, '');
+      time?.dispatchEvent(new Event('input', { bubbles: true }));
+      time?.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    const saveScheduled = [...document.body.querySelectorAll('button')].find((button) => button.textContent === 'Save');
+    await act(async () => { saveScheduled?.click(); });
+    expect(document.body.querySelector('[data-testid="social-edit-error"]')?.textContent).toContain('Choose a time in the future');
+    expect(document.body.querySelector('[data-testid="social-confirm-dialog"]')).toBeNull();
+  });
+
   it('asks for a future time before the confirm dialog', async () => {
     const workspace = new MockSocialClient('preview', clock).load();
     await act(async () => {

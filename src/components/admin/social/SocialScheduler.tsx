@@ -143,6 +143,7 @@ export function SocialScheduler({
   const [editing, setEditing] = useState<SocialPost | null>(null);
   const [editText, setEditText] = useState('');
   const [editWhen, setEditWhen] = useState('');
+  const [editError, setEditError] = useState<string | null>(null);
   const [pickedDay, setPickedDay] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -607,6 +608,7 @@ export function SocialScheduler({
             posts={posts}
             onEdit={(post) => {
               setEditing(post);
+              setEditError(null);
               setEditText(post.content);
               const zone = post.timezone || data.timezone || 'UTC';
               setEditWhen(post.scheduledFor ? isoToWallTime(post.scheduledFor, zone) : '');
@@ -629,7 +631,7 @@ export function SocialScheduler({
         </TabsContent>
       </Tabs>
 
-      <Dialog open={Boolean(editing)} onOpenChange={(open) => { if (!open) setEditing(null); }}>
+      <Dialog open={Boolean(editing)} onOpenChange={(open) => { if (!open) { setEditing(null); setEditError(null); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit post</DialogTitle>
@@ -643,6 +645,9 @@ export function SocialScheduler({
             onChange={(event) => setEditWhen(event.target.value)}
             aria-label="New time"
           />
+          {editError && (
+            <p className="text-sm text-faint" role="alert" data-testid="social-edit-error">{editError}</p>
+          )}
           <DialogFooter>
             <Button
               type="button"
@@ -651,10 +656,15 @@ export function SocialScheduler({
                 if (!editing) return;
                 const zone = editing.timezone || data.timezone || 'UTC';
                 const scheduledFor = editWhen ? futureIso(editWhen, zone) : null;
-                if (!scheduledFor) {
-                  setNotice('Choose a time in the future, within a year.');
+                if (editWhen && !scheduledFor) {
+                  setEditError('Choose a time in the future, within a year.');
                   return;
                 }
+                if (editing.scheduledFor && !scheduledFor) {
+                  setEditError('Choose a time in the future, within a year.');
+                  return;
+                }
+                setEditError(null);
                 const post = editing;
                 setEditing(null);
                 ask({
