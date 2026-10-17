@@ -1,6 +1,6 @@
 {
   "ticket": "#531",
-  "note": "Scheduled blog publishing. Digests are appended for the five files the register already pinned. Nothing already recorded is replaced. No firestore.rules change.",
+  "note": "Scheduled blog publishing. Digests are appended for the files the register already pinned, including the firestore.rules lockdown that closes client writes of blog_posts. Nothing already recorded is replaced. The rules file is changed in this PR and is not deployed.",
   "entries": [
     {
       "file": "src/components/AdminBlog.tsx",
@@ -31,6 +31,26 @@
       "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
       "digest": "0a89ce7805cb544d0f7efa72f520fbc5f440d973a0413cd7aed2c9bb9eeb7589",
       "why": "#531 appends BlogScheduleFields.tsx as a toggle-group adopter and does not replace earlier rows. The schedule control is one choice among Publish now, Schedule and Draft. switch, radio-group and checkbox are rejected in the recorded reason. No primitive was edited."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "874260c6176e10ffc9360cfb4467a25bc9f936b6609d07d1b777858e920baee9",
+      "why": "#531 closes client creates, updates and deletes of blog_posts. Reads stay tenant-scoped. blog_confirm_tokens and blog_admin_audit are denied to clients because the blog service writes both through the Admin SDK. This file auto-deploys on merge and this PR does not deploy it."
+    },
+    {
+      "file": "src/components/AdminDocs.tsx",
+      "digest": "8080b494ea2b400358c5bde9756c4737e3742153a49fb924955f85b09e08aca4",
+      "why": "#531 moves Share to blog draft off a client addDoc of blog_posts and onto the blog service createDraft action. The note is still copied as a draft and nothing is published from the menu. The docs collection and its timestamps are unchanged."
+    },
+    {
+      "file": "src/components/AdminBlog.tsx",
+      "digest": "3a61ea2035592727aa8bebbedbf51612a43c5df1d47b6f797f7e3f2ae5ddbc69",
+      "why": "#531 sends the preview token back on delete confirm. A delete without the token returned by the preview is refused by the service, and the list still shows the failure instead of swallowing it. The desktop and mobile status labels are unchanged."
+    },
+    {
+      "file": "src/components/AdminBlogPostEditor.tsx",
+      "digest": "3230232814702296d6c57c14f38fc0489ef059d8518b8e70b2174db4be356805",
+      "why": "#531 keeps the confirmation token from the preview and sends it only when the admin confirms. Editing the title, body, category, tags, image, intent or time clears the token so a changed payload cannot be confirmed. The colour and scale literals are unchanged."
     }
   ]
 }

@@ -3,10 +3,12 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { stripComments } from '@/__tests__/__fixtures__/the-346-strip-comments';
+import { CONFIRM_TOKEN_TTL_MS, memoryConfirmLedger } from '@/lib/blog/confirm-token';
 import {
   createBlogService,
   dispatchBlogAction,
   type BlogActor,
+  type BlogAuditEvent,
   type BlogDraftInput,
   type BlogEffect,
   type BlogFailure,
@@ -35,6 +37,8 @@ interface Harness {
   readonly inserts: StoredBlogPost[];
   readonly saves: StoredBlogPost[];
   readonly removes: string[];
+  readonly audits: BlogAuditEvent[];
+  readonly ledger: ReturnType<typeof memoryConfirmLedger>;
 }
 
 function actor(over: Partial<BlogActor> = {}): BlogActor {
@@ -73,11 +77,14 @@ function harness(opts: {
   permissions?: Record<string, Record<string, boolean>>;
   skipped?: number;
   now?: string;
+  clock?: () => Date;
 }): Harness {
   const posts = new Map((opts.posts ?? []).map((post) => [post.id, post]));
   const inserts: StoredBlogPost[] = [];
   const saves: StoredBlogPost[] = [];
   const removes: string[] = [];
+  const audits: BlogAuditEvent[] = [];
+  const ledger = memoryConfirmLedger();
   const tenants = opts.tenants ?? { sample: { name: 'Sample Ministry', ownerId: 'owner-1' } };
   const store: BlogStore = {
     async getTenant(tenantId) {
@@ -112,17 +119,28 @@ function harness(opts: {
         skipped: opts.skipped ?? 0,
       };
     },
+    async appendAudit(event) {
+      audits.push(event);
+    },
   };
   return {
     service: createBlogService({
       store,
-      now: () => new Date(opts.now ?? NOW),
+      ledger,
+      now: opts.clock ?? (() => new Date(opts.now ?? NOW)),
       newId: () => 'post-new',
     }),
     inserts,
     saves,
     removes,
+    audits,
+    ledger,
   };
+}
+
+function tokenFrom(result: { ok: true; confirmToken?: string } | BlogFailure): string {
+  if (!result.ok || !result.confirmToken) throw new Error('preview did not issue a token');
+  return result.confirmToken;
 }
 
 const writer = actor();
@@ -223,6 +241,28 @@ describe('permissions and tenant scope', () => {
     expect(result).toMatchObject({ ok: false, error: 'cross_tenant' });
     expect(saves).toEqual([]);
   });
+
+  it('refuses a super admin when the post belongs to a ministry other than the one they named', async () => {
+    // loadOwned compares the post's ministry with the ministry the request
+    // named. A super admin skips the actor-ministry check, so deleting that
+    // post comparison lets this preview succeed and the post can be rewritten
+    // under the named ministry.
+    const { service, saves, inserts } = harness({
+      posts: [samplePost({ id: 'reflection', tenantId: 'other', status: 'draft' })],
+      tenants: {
+        sample: { name: 'Sample Ministry' },
+        other: { name: 'Other Ministry' },
+      },
+    });
+    const result = await service.publishNow(
+      actor({ isSuperAdmin: true, tenantId: null }),
+      scheduleInput,
+      'preview',
+    );
+    expect(result).toMatchObject({ ok: false, error: 'cross_tenant' });
+    expect(saves).toEqual([]);
+    expect(inserts).toEqual([]);
+  });
 });
 
 describe('preview then confirm', () => {
@@ -251,7 +291,7 @@ describe('preview then confirm', () => {
     });
     expect(described.time.localLabel).toContain('2026');
 
-    const confirmed = await service.schedule(writer, scheduleInput, 'confirm');
+    const confirmed = await service.schedule(writer, scheduleInput, 'confirm', tokenFrom(preview));
     expect(effectOf(confirmed)).toEqual(described);
     expect(saves).toHaveLength(1);
     expect(saves[0].status).toBe('scheduled');
@@ -267,7 +307,7 @@ describe('preview then confirm', () => {
     const preview = await service.schedule(writer, { ...scheduleInput, postId: null }, 'preview');
     expect(effectOf(preview).post.id).toBe('');
     expect(inserts).toEqual([]);
-    const confirmed = await service.schedule(writer, { ...scheduleInput, postId: null }, 'confirm');
+    const confirmed = await service.schedule(writer, { ...scheduleInput, postId: null }, 'confirm', tokenFrom(preview));
     expect(effectOf(confirmed).post.id).toBe('post-new');
     expect(inserts.map((post) => post.id)).toEqual(['post-new']);
   });
@@ -291,7 +331,7 @@ describe('preview then confirm', () => {
       church: { name: 'Sample Ministry' },
       time: { publishedAt: '2026-01-04T18:00:00.000Z' },
     });
-    const confirmed = await service.publishNow(writer, input, 'confirm');
+    const confirmed = await service.publishNow(writer, input, 'confirm', tokenFrom(preview));
     expect(effectOf(confirmed)).toEqual(effectOf(preview));
     expect(saves[0].publishedAt).toBe('2026-01-04T18:00:00.000Z');
     expect(isBlogPostPublic(saves[0], Date.parse(NOW))).toBe(true);
@@ -318,7 +358,7 @@ describe('preview then confirm', () => {
       becomesPublicAt: null,
       time: { publishedAt: null },
     });
-    const confirmed = await service.unschedule(writer, { tenantId: 'sample', postId: 'reflection' }, 'confirm');
+    const confirmed = await service.unschedule(writer, { tenantId: 'sample', postId: 'reflection' }, 'confirm', tokenFrom(preview));
     expect(effectOf(confirmed)).toEqual(effectOf(preview));
     expect(saves[0].status).toBe('draft');
     expect(saves[0].publishedAt).toBeNull();
@@ -339,7 +379,7 @@ describe('preview then confirm', () => {
       visibility: 'removed',
       time: { publishedAt: SCHEDULED_AT, timeZone: ZONE },
     });
-    const confirmed = await service.deletePost(writer, { tenantId: 'sample', postId: 'reflection' }, 'confirm');
+    const confirmed = await service.deletePost(writer, { tenantId: 'sample', postId: 'reflection' }, 'confirm', tokenFrom(preview));
     expect(effectOf(confirmed)).toEqual(effectOf(preview));
     expect(removes).toEqual(['reflection']);
   });
@@ -352,6 +392,163 @@ describe('preview then confirm', () => {
     expect(await service.schedule(writer, { ...scheduleInput, postId: null, wallClock: '2026-03-08T02:30' }, 'confirm')).toMatchObject({ ok: false, error: 'invalid' });
     expect(saves).toEqual([]);
     expect(inserts).toEqual([]);
+  });
+
+  it('refuses a past schedule on preview, before any token exists', async () => {
+    // The refusal is the comparison against now. Removing it lets the preview
+    // succeed and issue a token for a time that has already passed.
+    const { service, inserts, ledger } = harness({ permissions: { 'admin-1': { writeArticles: true } } });
+    const past = { ...scheduleInput, postId: null, wallClock: '2026-06-01T07:00' };
+    const preview = await service.schedule(writer, past, 'preview');
+    expect(preview).toMatchObject({ ok: false, error: 'time_not_future' });
+    expect(inserts).toEqual([]);
+    expect(ledger.records.size).toBe(0);
+  });
+});
+
+describe('confirm token', () => {
+  const existing = samplePost({ id: 'reflection', tenantId: 'sample', status: 'draft' });
+
+  function box(over: Parameters<typeof harness>[0] = {}) {
+    return harness({
+      posts: [existing],
+      permissions: { 'admin-1': { writeArticles: true }, 'admin-2': { writeArticles: true } },
+      tenants: { sample: { name: 'Sample Ministry' }, other: { name: 'Other Ministry' } },
+      ...over,
+    });
+  }
+
+  it('refuses confirm with no token and writes nothing', async () => {
+    const { service, saves } = box();
+    const result = await service.schedule(writer, scheduleInput, 'confirm');
+    expect(result).toMatchObject({ ok: false, error: 'confirm_required' });
+    expect(saves).toEqual([]);
+  });
+
+  it('refuses a payload that changed after the preview', async () => {
+    const { service, saves } = box();
+    const preview = await service.schedule(writer, scheduleInput, 'preview');
+    const changed = await service.schedule(
+      writer,
+      { ...scheduleInput, title: 'A different title' },
+      'confirm',
+      tokenFrom(preview),
+    );
+    expect(changed).toMatchObject({ ok: false, error: 'confirm_mismatch' });
+    expect(saves).toEqual([]);
+  });
+
+  it('refuses a token that was already used', async () => {
+    const { service, saves } = box();
+    const preview = await service.schedule(writer, scheduleInput, 'preview');
+    const token = tokenFrom(preview);
+    expect((await service.schedule(writer, scheduleInput, 'confirm', token)).ok).toBe(true);
+    const again = await service.schedule(writer, scheduleInput, 'confirm', token);
+    expect(again).toMatchObject({ ok: false, error: 'confirm_reused' });
+    expect(saves).toHaveLength(1);
+  });
+
+  it('refuses a token after ten minutes', async () => {
+    expect(CONFIRM_TOKEN_TTL_MS).toBe(10 * 60 * 1000);
+    let clock = Date.parse(NOW);
+    const { service, saves } = box({ clock: () => new Date(clock) });
+    const preview = await service.schedule(writer, scheduleInput, 'preview');
+    clock += CONFIRM_TOKEN_TTL_MS + 1;
+    const expired = await service.schedule(writer, scheduleInput, 'confirm', tokenFrom(preview));
+    expect(expired).toMatchObject({ ok: false, error: 'confirm_expired' });
+    expect(saves).toEqual([]);
+  });
+
+  it('refuses a token presented for another ministry, user, or action', async () => {
+    const { service, saves, inserts, ledger } = box();
+    const preview = await service.schedule(writer, scheduleInput, 'preview');
+    const token = tokenFrom(preview);
+    const stored = ledger.records.get(token);
+    expect(stored).toMatchObject({
+      action: 'schedule',
+      tenantId: 'sample',
+      uid: writer.uid,
+      postId: 'reflection',
+    });
+    expect(stored?.draftHash).toMatch(/^[0-9a-f]{64}$/);
+
+    const otherMinistry = await service.schedule(
+      actor({ isSuperAdmin: true, tenantId: null }),
+      { ...scheduleInput, postId: null, tenantId: 'other' },
+      'confirm',
+      token,
+    );
+    expect(otherMinistry).toMatchObject({ ok: false, error: 'confirm_mismatch' });
+
+    const otherUser = await service.schedule(
+      actor({ uid: 'admin-2' }),
+      scheduleInput,
+      'confirm',
+      token,
+    );
+    expect(otherUser).toMatchObject({ ok: false, error: 'confirm_mismatch' });
+
+    const otherAction = await service.publishNow(writer, scheduleInput, 'confirm', token);
+    expect(otherAction).toMatchObject({ ok: false, error: 'confirm_mismatch' });
+    expect(saves).toEqual([]);
+    expect(inserts).toEqual([]);
+  });
+});
+
+describe('super admin audit', () => {
+  it('records a cross-ministry action and stays quiet for the admin of that ministry', async () => {
+    const { service, audits, saves } = harness({
+      posts: [samplePost({ id: 'reflection', tenantId: 'sample', status: 'draft' })],
+      permissions: { 'admin-1': { writeArticles: true } },
+    });
+    const outsider = actor({ isSuperAdmin: true, tenantId: null });
+    const preview = await service.schedule(outsider, scheduleInput, 'preview');
+    expect(audits).toEqual([]);
+    const confirmed = await service.schedule(outsider, scheduleInput, 'confirm', tokenFrom(preview));
+    expect(confirmed.ok).toBe(true);
+    expect(audits).toEqual([{
+      actorUid: outsider.uid,
+      actorTenantId: null,
+      tenantId: 'sample',
+      action: 'schedule',
+      postId: 'reflection',
+      at: NOW,
+    }]);
+
+    const home = actor({ isSuperAdmin: true, tenantId: 'sample' });
+    const again = await service.publishNow(home, { ...scheduleInput, title: 'Sunday reflection' }, 'preview');
+    await service.publishNow(home, { ...scheduleInput, title: 'Sunday reflection' }, 'confirm', tokenFrom(again));
+    expect(audits).toHaveLength(1);
+    expect(saves.length).toBeGreaterThan(0);
+
+    const local = await service.createDraft(writer, { ...scheduleInput, title: 'Draft note', postId: null });
+    expect(local.ok).toBe(true);
+    expect(audits).toHaveLength(1);
+  });
+
+  it('does not write the post when the audit record fails', async () => {
+    const posts = new Map<string, StoredBlogPost>();
+    const ledger = memoryConfirmLedger();
+    const store: BlogStore = {
+      async getTenant() { return { name: 'Sample Ministry', status: 'active', ownerId: null }; },
+      async getAdminEmails() { return []; },
+      async getPermissions() { return { writeArticles: true }; },
+      async getPost(id) { return posts.get(id) ?? null; },
+      async insertPost(post) { posts.set(post.id, post); },
+      async savePost(post) { posts.set(post.id, post); },
+      async removePost(id) { posts.delete(id); },
+      async listByTenant() { return { posts: [], skipped: 0 }; },
+      async appendAudit() { throw new Error('audit down'); },
+    };
+    const service = createBlogService({
+      store,
+      ledger,
+      now: () => new Date(NOW),
+      newId: () => 'post-new',
+    });
+    const outsider = actor({ isSuperAdmin: true, tenantId: null });
+    await expect(service.createDraft(outsider, { ...scheduleInput, postId: null })).rejects.toThrow('audit down');
+    expect(posts.size).toBe(0);
   });
 });
 
@@ -460,6 +657,10 @@ describe('thin wrappers', () => {
     }
     expect(route).not.toContain('wallClockToUtcIso');
     expect(route).not.toContain('tenantAllows');
+    const ledger = source('src/lib/blog/firestore-confirm.ts');
+    expect(ledger).toContain(['run', 'Transaction'].join(''));
+    expect(ledger).toContain('decideConsume');
+    expect(ledger).toContain('blog_confirm_tokens');
   });
 
   it('an omitted mode previews and does not write', async () => {
@@ -470,7 +671,12 @@ describe('thin wrappers', () => {
     const result = await dispatchBlogAction(service, writer, { ...scheduleInput, action: 'schedule' });
     expect(result.status).toBe(200);
     expect(saves).toEqual([]);
-    expect(result.body).toMatchObject({ ok: true, preview: { visibility: 'hidden_until' } });
+    expect(result.body).toMatchObject({ ok: true, preview: { visibility: 'hidden_until' }, requiresConfirm: true });
+    expect(typeof (result.body as { confirmToken?: string }).confirmToken).toBe('string');
+    const refused = await dispatchBlogAction(service, writer, { ...scheduleInput, action: 'schedule', mode: 'confirm' });
+    expect(refused.status).toBe(400);
+    expect(refused.body).toMatchObject({ ok: false, error: 'confirm_required' });
+    expect(saves).toEqual([]);
   });
 
   it('maps failures to HTTP statuses', async () => {
