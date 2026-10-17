@@ -66,6 +66,11 @@
       "file": "src/components/AdminBlogPostEditor.tsx",
       "digest": "73f23eb067921ec4835b8c98dd30a29d6787f9f1e1f3f833d476137b5c3b0dea",
       "why": "#531 requires a future schedule date before saving and shows that sentence inline. A save that does not return unlocks the editor and says nothing changed. An existing post keeps its stored category, including none. The colour and scale literals are unchanged."
+    },
+    {
+      "file": "src/components/AdminBlog.tsx",
+      "digest": "0121b27c763b2c4ec65b09283ff7a75cd0015455751038b6218a30e4611b05eb",
+      "why": "#531 does not ask the automate route when no ministry is in scope. A super admin on the preview host has no tenant on the token, and that request was the 400. When a ministry is in scope the request names it. The colour and scale literals are unchanged."
     }
   ]
 }

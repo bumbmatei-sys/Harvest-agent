@@ -144,12 +144,22 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
    let cancelled = false;
    (async () => {
      try {
-       const resp = await authFetch('/api/blog/automate');
-       if (resp.ok && !cancelled) {
+       // No ministry in scope means there are no settings to load. A request
+       // with an empty tenant is a 400, and the preview host is that case.
+       const tenantId = await getTenantScope();
+       if (!tenantId || cancelled) return;
+       const resp = await authFetch(`/api/blog/automate?tenantId=${encodeURIComponent(tenantId)}`);
+       if (!resp.ok) {
+         if (!cancelled) notifyError('Automation settings could not be loaded.', new Error(`HTTP ${resp.status}`));
+         return;
+       }
+       if (!cancelled) {
          const data = await resp.json();
          setAutomation(a => ({ ...a, ...data }));
        }
-     } catch {}
+     } catch (e) {
+       if (!cancelled) notifyError('Automation settings could not be loaded.', e);
+     }
    })();
    return () => { cancelled = true; };
  }, [canAutomate, knowledgeBaseEnabled]);
@@ -182,9 +192,15 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  const handleSaveAutomation = async () => {
    setSavingAutomation(true);
    try {
+     const tenantId = await getTenantScope();
+     if (!tenantId) {
+       setErrorMessage('A ministry is required before automation settings can be saved.');
+       return;
+     }
      const resp = await authFetch('/api/blog/automate', {
        method: 'POST',
        body: JSON.stringify({
+         tenantId,
          enabled: automation.enabled,
          frequency: automation.frequency,
          dayOfWeek: automation.dayOfWeek,
@@ -213,6 +229,11 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  const handleGenerateNow = async () => {
    setGeneratingNow(true);
    try {
+     const tenantId = await getTenantScope();
+     if (!tenantId) {
+       setErrorMessage('A ministry is required before an article can be generated.');
+       return;
+     }
      const resp = await authFetch('/api/blog/generate', {
        method: 'POST',
        body: JSON.stringify({ topicHint: automation.topicHint }),
