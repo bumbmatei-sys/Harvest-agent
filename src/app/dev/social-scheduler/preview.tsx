@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, type CSSProperties } from 'react';
+import { useLayoutEffect, useMemo, type CSSProperties } from 'react';
 import { Radio } from 'lucide-react';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -21,17 +21,18 @@ const VIEWS = ['accounts', 'compose', 'calendar', 'queue'] as const;
 export function SocialSchedulerPreview({ view, theme }: { view?: string; theme?: string }) {
   const lg = useLgUp();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const choice: ThemeChoice = theme === 'dark' ? 'dark' : 'light';
+    try { localStorage.setItem('harvest-theme', choice); } catch { /* ignore */ }
     applyTheme(choice);
   }, [theme]);
 
   const workspace = useMemo(() => new MockSocialClient('preview', CLOCK).load(), []);
   const tabs = useMemo(() => new Map<string, ShellTabRef>([
+    ['crm', { id: 'crm', label: 'CRM', icon: Radio }],
+    ['events', { id: 'events', label: 'Events', icon: Radio }],
+    ['donations', { id: 'donations', label: 'Donations', icon: Radio }],
     ['social', { id: 'social', label: 'Social', icon: Radio }],
-    ['livestream', { id: 'livestream', label: 'Livestream', icon: Radio }],
-    ['blog', { id: 'blog', label: 'Blog', icon: Radio }],
-    ['courses', { id: 'courses', label: 'Courses', icon: Radio }],
   ]), []);
   const wall = view === 'wall';
   const initialView: SocialView = (VIEWS as readonly string[]).includes(view || '')
@@ -47,7 +48,7 @@ export function SocialSchedulerPreview({ view, theme }: { view?: string; theme?:
       >
         {lg && (
           <AdminDesktopSidebar
-            side="public"
+            side="people"
             onSide={() => {}}
             activeTab="social"
             placeholder={null}

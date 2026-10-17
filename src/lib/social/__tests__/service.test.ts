@@ -7,6 +7,7 @@ const h = vi.hoisted(() => ({
   set: vi.fn(),
   update: vi.fn(),
   tokens: new Map<string, Record<string, unknown>>(),
+  tokenSetFails: false,
   userDoc: { role: 'church_admin', permissions: {} as Record<string, unknown> },
   privateDoc: { adminEmails: [] as string[] },
   tenantDoc: {
@@ -28,6 +29,7 @@ vi.mock('@/lib/firebase-admin', () => ({
               return { exists: data !== undefined, data: () => data };
             },
             set: async (data: Record<string, unknown>) => {
+              if (h.tokenSetFails) throw new Error('Could not load the default credentials');
               h.tokens.set(key, { ...data });
             },
             update: async (patch: Record<string, unknown>) => {
@@ -94,6 +96,7 @@ describe('social service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     h.tokens.clear();
+    h.tokenSetFails = false;
     resetSocialMock();
     vi.stubEnv('NODE_ENV', 'test');
     vi.stubEnv('VERCEL_ENV', '');
@@ -237,26 +240,38 @@ describe('social service', () => {
     expect(saved.data.post.scheduledFor).toBeNull();
   });
 
+  function postContent(id: string): string | undefined {
+    return new MockSocialClient('tenant-a', new Date()).load().posts.find((post) => post.id === id)?.content;
+  }
+
   it('previews an edit and writes the new text only on confirm', async () => {
     const body = postBody('instagram');
     const preview = await update(actor, 'sample-scheduled', body, null);
-    expect(preview.ok).toBe(true);
-    if (!preview.ok || !('preview' in preview.data)) return;
-    expect(preview.data.preview).toMatchObject({
-      action: 'update',
-      ministryId: 'tenant-a',
-      ministryName: 'Sample Ministry',
-      platforms: ['instagram'],
-      content: 'Sunday at 10.',
-      postId: 'sample-scheduled',
-      publishNow: false,
+    expect(preview).toMatchObject({
+      ok: true,
+      data: {
+        requiresConfirm: true,
+        preview: {
+          action: 'update',
+          ministryId: 'tenant-a',
+          ministryName: 'Sample Ministry',
+          platforms: ['instagram'],
+          content: 'Sunday at 10.',
+          postId: 'sample-scheduled',
+          publishNow: false,
+        },
+      },
     });
-    const stored = new MockSocialClient('tenant-a', new Date()).load();
-    expect(stored.posts.find((post) => post.id === 'sample-scheduled')?.content).toContain('Verse of the day');
+    expect(typeof tokenOf(preview)).toBe('string');
+    expect(postContent('sample-scheduled')).toContain('Verse of the day');
+
+    const bare = await update(actor, 'sample-scheduled', { ...body, confirm: true }, null);
+    expect(bare).toMatchObject({ ok: false, error: 'confirm_token_required' });
+    expect(postContent('sample-scheduled')).toContain('Verse of the day');
 
     const saved = await update(actor, 'sample-scheduled', { ...body, confirmToken: tokenOf(preview) }, null);
     expect(saved.ok).toBe(true);
-    expect(new MockSocialClient('tenant-a', new Date()).load().posts.find((post) => post.id === 'sample-scheduled')?.content).toBe('Sunday at 10.');
+    expect(postContent('sample-scheduled')).toBe('Sunday at 10.');
 
     const sent = await update(actor, 'sample-sent', postBody('facebook', {
       targets: [{ platform: 'facebook', accountId: 'sample-fb', text: 'Sunday at 10.', madeWithAi: false }],
@@ -264,23 +279,129 @@ describe('social service', () => {
     expect(sent).toMatchObject({ ok: false, status: 404, error: 'post_not_editable' });
   });
 
+  it('refuses an edit token that is missing, changed, foreign, reused, or expired', async () => {
+    const body = postBody('instagram');
+    const preview = await update(actor, 'sample-scheduled', body, null);
+    const token = tokenOf(preview);
+
+    const changed = await update(actor, 'sample-scheduled', { ...body, content: 'Monday at 11.', confirmToken: token }, null);
+    expect(changed).toMatchObject({ ok: false, error: 'confirm_invalid' });
+    const otherMinistry = await update({ ...actor, tenantId: 'tenant-b' }, 'sample-scheduled', { ...body, confirmToken: token }, null);
+    expect(otherMinistry).toMatchObject({ ok: false, error: 'confirm_invalid' });
+    const otherPerson = await update({ ...actor, uid: 'admin-2' }, 'sample-scheduled', { ...body, confirmToken: token }, null);
+    expect(otherPerson).toMatchObject({ ok: false, error: 'confirm_invalid' });
+    expect(postContent('sample-scheduled')).toContain('Verse of the day');
+
+    const saved = await update(actor, 'sample-scheduled', { ...body, confirmToken: token }, null);
+    expect(saved.ok).toBe(true);
+    const reused = await update(actor, 'sample-scheduled', { ...body, confirmToken: token }, null);
+    expect(reused).toMatchObject({ ok: false, error: 'confirm_invalid' });
+
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(Date.UTC(2024, 5, 1, 12)));
+    try {
+      const later = postBody('instagram', { scheduledFor: new Date(Date.UTC(2024, 5, 8, 12)).toISOString() });
+      const expiring = await update(actor, 'sample-scheduled', later, null);
+      vi.setSystemTime(new Date(Date.UTC(2024, 5, 1, 12, 11)));
+      const expired = await update(actor, 'sample-scheduled', { ...later, confirmToken: tokenOf(expiring) }, null);
+      expect(expired).toMatchObject({ ok: false, error: 'confirm_invalid' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('cancel previews the post and deletes it only on confirm', async () => {
-    const preview = await cancel(actor, 'sample-draft', { confirm: false });
-    expect(preview.ok).toBe(true);
-    if (!preview.ok || !('preview' in preview.data)) return;
-    expect(preview.data.preview).toMatchObject({
-      action: 'cancel',
-      ministryId: 'tenant-a',
-      ministryName: 'Sample Ministry',
-      postId: 'sample-draft',
-      platforms: ['instagram'],
+    const preview = await cancel(actor, 'sample-draft', {});
+    expect(preview).toMatchObject({
+      ok: true,
+      data: {
+        requiresConfirm: true,
+        preview: {
+          action: 'cancel',
+          ministryId: 'tenant-a',
+          ministryName: 'Sample Ministry',
+          postId: 'sample-draft',
+          platforms: ['instagram'],
+        },
+      },
     });
-    expect(preview.data.preview.content).toContain('Sunday');
-    expect(new MockSocialClient('tenant-a', new Date()).load().posts.some((post) => post.id === 'sample-draft')).toBe(true);
+    expect(tokenOf(preview)).toEqual(expect.any(String));
+    expect(postContent('sample-draft')).toContain('Sunday');
+
+    const bare = await cancel(actor, 'sample-draft', { confirm: true });
+    expect(bare).toMatchObject({ ok: false, error: 'confirm_token_required' });
+    expect(postContent('sample-draft')).toContain('Sunday');
 
     const removed = await cancel(actor, 'sample-draft', { confirmToken: tokenOf(preview) });
     expect(removed.ok).toBe(true);
-    expect(new MockSocialClient('tenant-a', new Date()).load().posts.some((post) => post.id === 'sample-draft')).toBe(false);
+    expect(postContent('sample-draft')).toBeUndefined();
+  });
+
+  it('refuses a cancel token that is changed, foreign, reused, or expired', async () => {
+    const preview = await cancel(actor, 'sample-draft', {});
+    const token = tokenOf(preview);
+    const otherMinistry = await cancel({ ...actor, tenantId: 'tenant-b' }, 'sample-draft', { confirmToken: token });
+    expect(otherMinistry).toMatchObject({ ok: false, error: 'confirm_invalid' });
+    const otherPerson = await cancel({ ...actor, uid: 'admin-2' }, 'sample-draft', { confirmToken: token });
+    expect(otherPerson).toMatchObject({ ok: false, error: 'confirm_invalid' });
+    expect(postContent('sample-draft')).toContain('Sunday');
+
+    const removed = await cancel(actor, 'sample-draft', { confirmToken: token });
+    expect(removed.ok).toBe(true);
+    const reused = await cancel(actor, 'sample-scheduled', { confirmToken: token });
+    expect(reused).toMatchObject({ ok: false, error: 'confirm_invalid' });
+    expect(postContent('sample-scheduled')).toContain('Verse of the day');
+
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(Date.UTC(2024, 5, 1, 12)));
+    try {
+      const expiring = await cancel(actor, 'sample-scheduled', {});
+      vi.setSystemTime(new Date(Date.UTC(2024, 5, 1, 12, 11)));
+      const expired = await cancel(actor, 'sample-scheduled', { confirmToken: tokenOf(expiring) });
+      expect(expired).toMatchObject({ ok: false, error: 'confirm_invalid' });
+      expect(postContent('sample-scheduled')).toContain('Verse of the day');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('refuses a token bound to another action or another post', async () => {
+    const body = postBody('instagram');
+    const scheduled = await schedule(actor, body, null);
+    const scheduleToken = tokenOf(scheduled);
+    const asUpdate = await update(actor, 'sample-scheduled', { ...body, confirmToken: scheduleToken }, null);
+    expect(asUpdate).toMatchObject({ ok: false, error: 'confirm_invalid' });
+    expect(postContent('sample-scheduled')).toContain('Verse of the day');
+
+    const edited = await update(actor, 'sample-scheduled', body, null);
+    const updateToken = tokenOf(edited);
+    const otherPost = await update(actor, 'sample-draft', { ...body, confirmToken: updateToken }, null);
+    expect(otherPost).toMatchObject({ ok: false, error: 'confirm_invalid' });
+    expect(postContent('sample-draft')).toContain('parable');
+
+    const dropped = await cancel(actor, 'sample-draft', {});
+    const cancelToken = tokenOf(dropped);
+    const wrongPost = await cancel(actor, 'sample-scheduled', { confirmToken: cancelToken });
+    expect(wrongPost).toMatchObject({ ok: false, error: 'confirm_invalid' });
+    expect(postContent('sample-scheduled')).toContain('Verse of the day');
+    expect(postContent('sample-draft')).toContain('parable');
+  });
+
+  it('still confirms on a preview when Firestore cannot store the token', async () => {
+    vi.stubEnv('VERCEL_ENV', 'preview');
+    h.tokenSetFails = true;
+    const body = postBody('instagram');
+    const preview = await schedule(actor, body, null);
+    expect(preview.ok).toBe(true);
+    expect(typeof tokenOf(preview)).toBe('string');
+    const saved = await schedule(actor, { ...body, confirmToken: tokenOf(preview) }, null);
+    expect(saved.ok).toBe(true);
+  });
+
+  it('refuses a schedule that has no time', async () => {
+    const result = await schedule(actor, postBody('instagram', { scheduledFor: null }), null);
+    expect(result).toMatchObject({ ok: false, error: 'schedule_invalid' });
+    expect(new MockSocialClient('tenant-a', new Date()).load().posts.filter((post) => post.content === 'Sunday at 10.')).toHaveLength(0);
   });
 
   it('refuses a missing, changed, foreign, or reused confirm token', async () => {

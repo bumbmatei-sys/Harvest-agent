@@ -323,6 +323,9 @@ export async function schedule(
     prepared.draft.publishNow,
     null,
   );
+  if (!prepared.draft.publishNow && !prepared.draft.scheduledFor) {
+    return fail('schedule_invalid', 400);
+  }
   if (prepared.draft.publishNow && readConfirmToken(body) && !isIdempotencyKey(idempotencyKey)) {
     return fail('idempotency_key_required', 400);
   }
@@ -358,6 +361,9 @@ export async function update(
     prepared.draft.publishNow,
     id,
   );
+  if (!prepared.draft.publishNow && !prepared.draft.scheduledFor) {
+    return fail('schedule_invalid', 400);
+  }
   if (prepared.draft.publishNow && readConfirmToken(body) && !isIdempotencyKey(idempotencyKey)) {
     return fail('idempotency_key_required', 400);
   }

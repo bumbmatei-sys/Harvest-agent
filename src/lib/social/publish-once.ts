@@ -4,6 +4,9 @@ import type { SocialPost } from './types';
 const memory = new Map<string, SocialPost>();
 const inflight = new Map<string, Promise<SocialPost | null>>();
 
+/** A crashed publish must not pin the key forever. Two minutes covers a live call. */
+const PENDING_TTL_MS = 2 * 60 * 1000;
+
 export function resetPublishOnce(): void {
   memory.clear();
   inflight.clear();
@@ -36,6 +39,9 @@ export async function oncePublish(
       inflight.delete(id);
       if (post) memory.set(id, post);
       return post;
+    }, (error: unknown) => {
+      inflight.delete(id);
+      throw error;
     });
     inflight.set(id, run);
     return run;
@@ -48,14 +54,24 @@ export async function oncePublish(
     if (data.post && typeof data.post === 'object') {
       return { kind: 'replay' as const, post: data.post as SocialPost };
     }
-    if (data.pending === true) return { kind: 'pending' as const };
-    tx.set(ref, { pending: true }, { merge: true });
+    const pendingAt = typeof data.pendingAt === 'number' ? data.pendingAt : 0;
+    if (data.pending === true && Date.now() - pendingAt < PENDING_TTL_MS) {
+      return { kind: 'pending' as const };
+    }
+    tx.set(ref, { pending: true, pendingAt: Date.now() }, { merge: true });
     return { kind: 'fresh' as const };
   });
   if (gate.kind === 'replay') return gate.post;
   if (gate.kind === 'pending') return null;
 
-  const post = await create();
+  let post: SocialPost | null;
+  try {
+    post = await create();
+  } catch (error) {
+    console.error('Social scheduling publish did not finish', error);
+    await ref.set({ pending: false }, { merge: true });
+    return null;
+  }
   if (!post) {
     await ref.set({ pending: false }, { merge: true });
     return null;

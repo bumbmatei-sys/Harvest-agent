@@ -54,6 +54,7 @@ describe('shell nav mapping', () => {
 
   it('does not switch sides when opening Home', () => {
     expect(sideForTab('dashboard')).toBeNull();
+    expect(sideForTab('social')).toBeNull();
     expect(sideForTab('courses')).toBe('public');
     expect(sideForTab('crm')).toBe('people');
   });

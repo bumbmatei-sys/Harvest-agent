@@ -10,7 +10,9 @@ import {
   parseSocialPlatform,
   platformsSupportingMadeWithAi,
 } from '../platforms';
+import { calendarDayKey } from '../calendar';
 import { parseConnectPlatform, parseSocialDraft } from '../draft';
+import { wallTimeInZoneToIso } from '../schedule-time';
 import type { SocialPostDraft } from '../types';
 
 const ROOT = path.resolve(__dirname, '../../../..');
@@ -92,6 +94,23 @@ describe('draft parsing refuses a platform before a provider is asked', () => {
     if (!parsed.ok) return;
     expect(parsed.draft.targets[0]?.platform).toBe('instagram');
     expect(parsed.draft.targets[0]?.madeWithAi).toBe(false);
+  });
+
+  it('reads a west-of-UTC wall time as that calendar day, not as UTC', () => {
+    const wall = '2024-06-01T02:00';
+    const iso = wallTimeInZoneToIso(wall, 'America/Los_Angeles');
+    expect(iso).toBe('2024-06-01T09:00:00.000Z');
+    expect(calendarDayKey(iso, 'America/Los_Angeles')).toBe('2024-06-01');
+    expect(calendarDayKey('2024-06-01T02:00:00.000Z', 'America/Los_Angeles')).toBe('2024-05-31');
+    const parsed = parseSocialDraft({
+      ...draft('instagram'),
+      scheduledFor: wall,
+      timezone: 'America/Los_Angeles',
+    }, new Date('2024-05-01T00:00:00.000Z'));
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.draft.scheduledFor).toBe('2024-06-01T09:00:00.000Z');
+    expect(calendarDayKey(parsed.draft.scheduledFor, 'America/Los_Angeles')).toBe('2024-06-01');
   });
 
   it('rejects a past time, a distant time, and any media attachment', () => {

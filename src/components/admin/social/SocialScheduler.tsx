@@ -27,6 +27,7 @@ import {
   type SocialPlatform,
 } from '@/lib/social/platforms';
 import { calendarDayKey, defaultCalendarDay, postsOnCalendarDay, undatedDrafts } from '@/lib/social/calendar';
+import { isoToWallTime, wallTimeInZoneToIso } from '@/lib/social/schedule-time';
 import type { SocialAccount, SocialPost, SocialTarget, SocialWorkspace } from '@/lib/social/types';
 import { authFetch } from '@/utils/auth-fetch';
 import { SocialUpgradeWall } from './SocialUpgradeWall';
@@ -50,11 +51,44 @@ const FRIENDLY_ERROR: Record<string, string> = {
   confirm_token_required: 'Confirm the post before it is sent.',
   confirm_invalid: 'That confirmation expired. Preview the post again.',
   post_not_editable: 'That post can no longer be changed.',
+  social_unavailable: 'Social scheduling is not available right now. Nothing was scheduled.',
 };
+
+const MAX_SCHEDULE_MS = 366 * 24 * 60 * 60 * 1000;
+
+interface PendingAction {
+  title: string;
+  description: string;
+  url: string;
+  method: string;
+  payload: Record<string, unknown>;
+  headers?: Record<string, string>;
+  doneNotice: string;
+  applyLocal: () => void;
+}
 
 function friendlyError(error: unknown): string {
   if (typeof error === 'string' && FRIENDLY_ERROR[error]) return FRIENDLY_ERROR[error];
   return 'The post could not be saved.';
+}
+
+function formatDayHeading(key: string): string {
+  const [year, month, day] = key.split('-').map(Number);
+  const noon = new Date(Date.UTC(year, (month || 1) - 1, day || 1, 12));
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(noon);
+}
+
+function futureIso(wall: string, timeZone: string, now = Date.now()): string | null {
+  const iso = wallTimeInZoneToIso(wall, timeZone);
+  if (!iso) return null;
+  const parsed = Date.parse(iso);
+  if (!Number.isFinite(parsed) || parsed <= now || parsed > now + MAX_SCHEDULE_MS) return null;
+  return iso;
 }
 
 function dayFromKey(key: string): Date {
@@ -109,8 +143,11 @@ export function SocialScheduler({
   const [editing, setEditing] = useState<SocialPost | null>(null);
   const [editText, setEditText] = useState('');
   const [editWhen, setEditWhen] = useState('');
-  const [cancelling, setCancelling] = useState<SocialPost | null>(null);
   const [pickedDay, setPickedDay] = useState<string | null>(null);
+  const [pending, setPending] = useState<PendingAction | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [confirmToken, setConfirmToken] = useState<string | null>(null);
+  const [previewing, setPreviewing] = useState(false);
 
   useEffect(() => {
     if (initial) return;
@@ -159,6 +196,34 @@ export function SocialScheduler({
     };
   }, [initial]);
 
+  useEffect(() => {
+    if (!pending || initial) return;
+    let cancelled = false;
+    setPreviewing(true);
+    setPreviewError(null);
+    setConfirmToken(null);
+    authFetch(pending.url, {
+      method: pending.method,
+      headers: pending.headers,
+      body: JSON.stringify(pending.payload),
+    }).then(async (response) => {
+      const body = await response.json().catch(() => ({}));
+      if (cancelled) return;
+      if (!response.ok || typeof body.confirmToken !== 'string') {
+        setPreviewError(friendlyError(body.error));
+        return;
+      }
+      setConfirmToken(body.confirmToken);
+    }).catch(() => {
+      if (!cancelled) setPreviewError('The post could not be saved.');
+    }).finally(() => {
+      if (!cancelled) setPreviewing(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [pending, initial]);
+
   const accounts = data?.accounts ?? [];
   const posts = data?.posts ?? [];
   const aiPlatforms = platformsSupportingMadeWithAi(selected.filter((slug): slug is SocialPlatform =>
@@ -202,14 +267,11 @@ export function SocialScheduler({
     return <SocialUpgradeWall onUpgrade={onUpgrade} />;
   }
 
-  const connected = new Set(accounts.map((account) => account.platform));
-  const available = SOCIAL_PLATFORMS.filter((platform) => !connected.has(platform));
-
   async function refresh() {
     if (initial) return;
     const response = await authFetch('/api/social/bootstrap');
     if (!response.ok) {
-      setFailed(true);
+      setNotice('The list could not be refreshed. The post you wrote is still here.');
       return;
     }
     const body = await response.json();
@@ -221,8 +283,14 @@ export function SocialScheduler({
     }));
   }
 
-  async function schedule(publishNow: boolean) {
-    if (saving) return;
+  function ask(action: PendingAction) {
+    setPreviewError(null);
+    setConfirmToken(null);
+    setPending(action);
+  }
+
+  function schedule(publishNow: boolean) {
+    if (saving || pending) return;
     const targets = targetsFor(content, selected, accounts).map((target) => ({
       ...target,
       fields: fields[target.platform] || {},
@@ -232,69 +300,81 @@ export function SocialScheduler({
       setNotice('Write the post and choose at least one connected account.');
       return;
     }
-    if (initial) {
-      const post: SocialPost = {
-        id: `local-${posts.length + 1}`,
-        content: content.trim(),
-        status: publishNow ? 'sent' : when ? 'scheduled' : 'draft',
-        scheduledFor: publishNow ? new Date().toISOString() : when || null,
-        timezone: data?.timezone || 'UTC',
-        targets,
-        media: [],
-      };
-      setData({ ...data!, posts: [post, ...posts] });
-      setNotice(publishNow ? 'Saved in this preview. Nothing was published.' : 'Saved in this preview.');
-      return;
+    const zone = data?.timezone || 'UTC';
+    let scheduledFor: string | null = null;
+    if (!publishNow) {
+      scheduledFor = when ? futureIso(when, zone) : null;
+      if (!scheduledFor) {
+        setNotice('Choose a time in the future, within a year.');
+        return;
+      }
     }
     if (publishNow && !publishKey.current) publishKey.current = crypto.randomUUID();
+    const payload = {
+      content,
+      publishNow,
+      scheduledFor,
+      timezone: zone,
+      targets,
+      media: [],
+    };
+    const headers = publishNow && publishKey.current ? { 'Idempotency-Key': publishKey.current } : undefined;
+    const doneNotice = data?.sample || initial
+      ? 'Saved in this preview. Nothing was published.'
+      : (publishNow ? 'Posted.' : 'Scheduled.');
+    ask({
+      title: publishNow ? 'Post this now?' : 'Schedule this post?',
+      description: publishNow
+        ? 'Nothing is sent until you confirm.'
+        : `Scheduled for ${when.replace('T', ' ')} (${zone}). Nothing is sent until you confirm.`,
+      url: '/api/social/posts',
+      method: 'POST',
+      payload,
+      headers,
+      doneNotice,
+      applyLocal: () => {
+        const post: SocialPost = {
+          id: `local-${posts.length + 1}`,
+          content: content.trim(),
+          status: publishNow ? 'sent' : 'scheduled',
+          scheduledFor: publishNow ? new Date().toISOString() : scheduledFor,
+          timezone: zone,
+          targets,
+          media: [],
+        };
+        setData({ ...data!, posts: [post, ...posts] });
+        setNotice(doneNotice);
+      },
+    });
+  }
+
+  async function confirmPending() {
+    if (!pending || saving) return;
+    if (initial) {
+      pending.applyLocal();
+      setPending(null);
+      return;
+    }
+    if (!confirmToken) return;
     setSaving(true);
     try {
-      const response = await commit('/api/social/posts', 'POST', {
-        content,
-        publishNow,
-        scheduledFor: when || null,
-        timezone: data?.timezone,
-        targets,
-        media: [],
-      }, publishNow && publishKey.current ? { 'Idempotency-Key': publishKey.current } : undefined);
-      if (response.status === 503) {
-        setUnavailable(true);
+      const saved = await authFetch(pending.url, {
+        method: pending.method,
+        headers: pending.headers,
+        body: JSON.stringify({ ...pending.payload, confirmToken }),
+      });
+      const body = await saved.json().catch(() => ({}));
+      if (!saved.ok) {
+        setPreviewError(friendlyError(body.error));
         return;
       }
-      if (!response.ok) {
-        setNotice(friendlyError(response.body.error));
-        return;
-      }
-      if (publishNow) publishKey.current = null;
-      setNotice(data?.sample ? 'Saved in this preview. Nothing was published.' : 'Scheduled.');
+      if (pending.payload.publishNow === true) publishKey.current = null;
+      setNotice(pending.doneNotice);
+      setPending(null);
       await refresh();
     } finally {
       setSaving(false);
     }
-  }
-
-  async function commit(
-    url: string,
-    method: string,
-    payload: Record<string, unknown>,
-    headers?: Record<string, string>,
-  ): Promise<{ ok: boolean; status: number; body: { error?: unknown; confirmToken?: unknown } }> {
-    const previewResponse = await authFetch(url, {
-      method,
-      headers,
-      body: JSON.stringify(payload),
-    });
-    const previewBody = await previewResponse.json().catch(() => ({}));
-    if (!previewResponse.ok || typeof previewBody.confirmToken !== 'string') {
-      return { ok: previewResponse.ok, status: previewResponse.status, body: previewBody };
-    }
-    const saved = await authFetch(url, {
-      method,
-      headers,
-      body: JSON.stringify({ ...payload, confirmToken: previewBody.confirmToken }),
-    });
-    const body = await saved.json().catch(() => ({}));
-    return { ok: saved.ok, status: saved.status, body };
   }
 
   async function connect(platform: SocialPlatform) {
@@ -346,12 +426,12 @@ export function SocialScheduler({
         </TabsList>
 
         <TabsContent value="accounts" className="mt-4">
-          <AccountsPanel accounts={accounts} available={available} onConnect={connect} />
+          <AccountsPanel accounts={accounts} onConnect={connect} />
         </TabsContent>
 
         <TabsContent value="compose" className="mt-4">
-          <div className="flex w-full flex-col lg:-mr-4 lg:flex-row lg:items-stretch">
-            <div className="flex min-w-0 flex-1 justify-center">
+          <div className="flex w-full flex-col lg:-mr-4 lg:flex-row lg:items-stretch lg:justify-end lg:gap-4">
+            <div className="flex min-w-0 flex-1 lg:justify-end">
           <Card className="w-full lg:max-w-[640px]" data-testid="social-composer">
             <CardHeader>
               <CardTitle className="font-display text-2xl font-semibold">New post</CardTitle>
@@ -496,7 +576,7 @@ export function SocialScheduler({
               />
               <div className="flex flex-1 flex-col gap-4">
                 <section>
-                  <h2 className="mb-2 text-sm font-medium text-strong">This day</h2>
+                  <h2 className="mb-2 text-sm font-medium text-strong" data-testid="social-day-heading">{formatDayHeading(selectedDay)}</h2>
                   <ul className="flex flex-col gap-2" data-testid="social-day-posts">
                     {onDay.length === 0 && (
                       <li className="text-sm text-faint">No posts on this day.</li>
@@ -528,9 +608,23 @@ export function SocialScheduler({
             onEdit={(post) => {
               setEditing(post);
               setEditText(post.content);
-              setEditWhen(post.scheduledFor ? post.scheduledFor.slice(0, 16) : '');
+              const zone = post.timezone || data.timezone || 'UTC';
+              setEditWhen(post.scheduledFor ? isoToWallTime(post.scheduledFor, zone) : '');
             }}
-            onCancel={setCancelling}
+            onCancel={(post) => {
+              ask({
+                title: 'Cancel this post?',
+                description: 'It will leave the queue when you confirm. Nothing is changed before that.',
+                url: `/api/social/posts/${post.id}`,
+                method: 'DELETE',
+                payload: {},
+                doneNotice: 'Cancelled.',
+                applyLocal: () => {
+                  setData({ ...data, posts: posts.filter((row) => row.id !== post.id) });
+                  setNotice('Cancelled.');
+                },
+              });
+            }}
           />
         </TabsContent>
       </Tabs>
@@ -553,26 +647,37 @@ export function SocialScheduler({
             <Button
               type="button"
               className={CONTROL}
-              onClick={async () => {
+              onClick={() => {
                 if (!editing) return;
-                if (initial) {
-                  setData({
-                    ...data,
-                    posts: posts.map((post) => post.id === editing.id ? { ...post, content: editText, scheduledFor: editWhen || post.scheduledFor } : post),
-                  });
-                  setEditing(null);
+                const zone = editing.timezone || data.timezone || 'UTC';
+                const scheduledFor = editWhen ? futureIso(editWhen, zone) : null;
+                if (!scheduledFor) {
+                  setNotice('Choose a time in the future, within a year.');
                   return;
                 }
-                const response = await commit(`/api/social/posts/${editing.id}`, 'PATCH', {
-                  content: editText,
-                  scheduledFor: editWhen || null,
-                  timezone: data.timezone,
-                  targets: editing.targets,
-                  publishNow: false,
-                });
-                if (!response.ok) setNotice(friendlyError(response.body.error));
-                else await refresh();
+                const post = editing;
                 setEditing(null);
+                ask({
+                  title: 'Save this edit?',
+                  description: 'Nothing is changed until you confirm.',
+                  url: `/api/social/posts/${post.id}`,
+                  method: 'PATCH',
+                  payload: {
+                    content: editText,
+                    scheduledFor,
+                    timezone: zone,
+                    targets: post.targets,
+                    publishNow: false,
+                  },
+                  doneNotice: 'Saved.',
+                  applyLocal: () => {
+                    setData({
+                      ...data,
+                      posts: posts.map((row) => row.id === post.id ? { ...row, content: editText, scheduledFor } : row),
+                    });
+                    setNotice('Saved.');
+                  },
+                });
               }}
             >
               Save
@@ -581,31 +686,27 @@ export function SocialScheduler({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={Boolean(cancelling)} onOpenChange={(open) => { if (!open) setCancelling(null); }}>
-        <DialogContent>
+      <Dialog open={Boolean(pending)} onOpenChange={(open) => { if (!open) setPending(null); }}>
+        <DialogContent data-testid="social-confirm-dialog">
           <DialogHeader>
-            <DialogTitle>Cancel this post?</DialogTitle>
-            <DialogDescription>It will leave the queue. A sent post stays sent.</DialogDescription>
+            <DialogTitle>{pending?.title}</DialogTitle>
+            <DialogDescription>{pending?.description}</DialogDescription>
           </DialogHeader>
+          {previewError && (
+            <p className="text-sm text-faint" role="alert" data-testid="social-confirm-error">{previewError}</p>
+          )}
+          {previewing && <p className="text-sm text-faint">Checking this post.</p>}
           <DialogFooter>
+            <Button type="button" variant="outline" className={CONTROL} onClick={() => setPending(null)}>
+              Cancel
+            </Button>
             <Button
               type="button"
-              variant="destructive"
               className={CONTROL}
-              onClick={async () => {
-                if (!cancelling) return;
-                if (initial) {
-                  setData({ ...data, posts: posts.filter((post) => post.id !== cancelling.id) });
-                  setCancelling(null);
-                  return;
-                }
-                const response = await commit(`/api/social/posts/${cancelling.id}`, 'DELETE', {});
-                if (!response.ok) setNotice(friendlyError(response.body.error));
-                else await refresh();
-                setCancelling(null);
-              }}
+              disabled={saving || previewing || (!initial && !confirmToken)}
+              onClick={() => { void confirmPending(); }}
             >
-              Cancel post
+              Confirm
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -649,11 +750,9 @@ function SidePanel({ posts }: { posts: readonly SocialPost[] }) {
 
 function AccountsPanel({
   accounts,
-  available,
   onConnect,
 }: {
   accounts: readonly SocialAccount[];
-  available: readonly SocialPlatform[];
   onConnect: (platform: SocialPlatform) => void;
 }) {
   return (
@@ -674,24 +773,23 @@ function AccountsPanel({
             </li>
           ))}
         </ul>
-        {available.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <p className="text-sm text-faint">Connect another account</p>
-            <div className="flex flex-wrap gap-2">
-              {available.map((platform) => (
-                platform === 'youtube' ? (
-                  <Button key={platform} type="button" variant="outline" className={CONTROL} disabled>
-                    {labelFor(platform)}
-                  </Button>
-                ) : (
-                  <Button key={platform} type="button" variant="outline" className={CONTROL} onClick={() => onConnect(platform)}>
-                    {labelFor(platform)}
-                  </Button>
-                )
-              ))}
-            </div>
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-faint">Connect another account</p>
+          <div className="flex flex-wrap items-center gap-2">
+            {SOCIAL_PLATFORMS.map((platform) => (
+              platform === 'youtube' ? (
+                <Button key={platform} type="button" variant="outline" className={CONTROL} disabled data-testid="connect-youtube">
+                  {labelFor(platform)}
+                </Button>
+              ) : (
+                <Button key={platform} type="button" variant="outline" className={CONTROL} data-testid={`connect-${platform}`} onClick={() => onConnect(platform)}>
+                  {labelFor(platform)}
+                </Button>
+              )
+            ))}
+            <p className="text-sm text-faint" data-testid="connect-youtube-note">Video upload coming soon</p>
           </div>
-        )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -740,7 +838,7 @@ function Queue({
                             <p className="text-sm text-strong">{post.content}</p>
                             <p className="text-xs text-faint">
                               {post.targets.map((target) => labelFor(target.platform)).join(', ')}
-                              {post.scheduledFor ? ` · ${post.scheduledFor.slice(0, 16).replace('T', ' ')}` : ''}
+                              {post.scheduledFor ? ` · ${isoToWallTime(post.scheduledFor, post.timezone || 'UTC').replace('T', ' ')}` : ''}
                             </p>
                           </div>
                           {post.status !== 'sent' && (

@@ -63,6 +63,31 @@ describe('publish-once replay guard', () => {
     expect(second?.id).toBe(first?.id);
   });
 
+  it('recovers a pending key after the publish crashes or the claim goes stale', async () => {
+    const create = vi.fn(async () => post('live-1'));
+    store.docs.set('tenant-a_key-1', { pending: true, pendingAt: Date.now() });
+    const blocked = await oncePublish('tenant-a', 'key-1', true, create);
+    expect(blocked).toBeNull();
+    expect(create).not.toHaveBeenCalled();
+
+    store.docs.set('tenant-a_key-1', { pending: true, pendingAt: Date.now() - 3 * 60 * 1000 });
+    const recovered = await oncePublish('tenant-a', 'key-1', true, create);
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(recovered?.id).toBe('live-1');
+
+    store.docs.clear();
+    const crashing = vi.fn(async () => {
+      throw new Error('provider down');
+    });
+    const failed = await oncePublish('tenant-a', 'key-2', true, crashing);
+    expect(failed).toBeNull();
+    expect(store.docs.get('tenant-a_key-2')?.pending).toBe(false);
+    const retry = vi.fn(async () => post('live-2'));
+    const again = await oncePublish('tenant-a', 'key-2', true, retry);
+    expect(retry).toHaveBeenCalledTimes(1);
+    expect(again?.id).toBe('live-2');
+  });
+
   it('replays the stored post instead of creating again when the key is already published', async () => {
     let n = 0;
     const create = vi.fn(async () => post(`live-${++n}`));

@@ -198,6 +198,123 @@ describe('SocialScheduler', () => {
     expect(schedule?.hasAttribute('disabled')).toBe(false);
   });
 
+  it('lists Facebook, Instagram and YouTube even when sample accounts exist', async () => {
+    const workspace = new MockSocialClient('preview', clock).load();
+    await act(async () => {
+      root.render(
+        <SocialScheduler initial={{ ...workspace, entitled: true }} initialView="accounts" onUpgrade={() => {}} />,
+      );
+    });
+    expect(container.querySelector('[data-testid="connect-facebook"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="connect-instagram"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="connect-threads"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="connect-tiktok"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="connect-youtube"]')?.hasAttribute('disabled')).toBe(true);
+    expect(container.querySelector('[data-testid="connect-youtube-note"]')?.textContent).toBe('Video upload coming soon');
+  });
+
+  it('names the selected calendar day and lists that day\'s post', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(clock);
+    try {
+      const workspace = new MockSocialClient('preview', clock).load();
+      await act(async () => {
+        root.render(
+          <SocialScheduler initial={{ ...workspace, entitled: true }} initialView="calendar" onUpgrade={() => {}} />,
+        );
+      });
+      const heading = container.querySelector('[data-testid="social-day-heading"]');
+      expect(heading?.textContent).toBe('15 March 2024');
+      expect(container.querySelector('[data-testid="social-day-posts"]')?.textContent).not.toContain('Verse of the day');
+      const day = [...container.querySelectorAll('button')].find((button) => button.textContent === '12');
+      await act(async () => { day?.click(); });
+      expect(container.querySelector('[data-testid="social-day-heading"]')?.textContent).toBe('12 March 2024');
+      expect(container.querySelector('[data-testid="social-day-posts"]')?.textContent).toContain('Verse of the day');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('asks for a future time before the confirm dialog', async () => {
+    const workspace = new MockSocialClient('preview', clock).load();
+    await act(async () => {
+      root.render(
+        <SocialScheduler initial={{ ...workspace, entitled: true }} initialView="compose" onUpgrade={() => {}} />,
+      );
+    });
+    const before = container.textContent;
+    const schedule = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Schedule');
+    await act(async () => { schedule?.click(); });
+    expect(document.body.querySelector('[data-testid="social-confirm-dialog"]')).toBeNull();
+    expect(container.textContent).toContain('Choose a time in the future');
+    expect(container.textContent).toContain(before?.includes('This Sunday') ? 'This Sunday' : 'This Sunday');
+  });
+
+  it('opens confirm before writing, and cancel leaves the post unsent', async () => {
+    const workspace = new MockSocialClient('preview', clock).load();
+    await act(async () => {
+      root.render(
+        <SocialScheduler initial={{ ...workspace, entitled: true }} initialView="compose" onUpgrade={() => {}} />,
+      );
+    });
+    const time = container.querySelector<HTMLInputElement>('input[aria-label="Schedule time"]');
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(time, '2027-03-22T10:00');
+      time?.dispatchEvent(new Event('input', { bubbles: true }));
+      time?.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    const schedule = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Schedule');
+    await act(async () => { schedule?.click(); });
+    expect(document.body.querySelector('[data-testid="social-confirm-dialog"]')?.textContent).toContain('Schedule this post?');
+    const cancel = [...document.body.querySelectorAll('button')].find((button) => button.textContent === 'Cancel');
+    await act(async () => { cancel?.click(); });
+    expect(document.body.querySelector('[data-testid="social-confirm-dialog"]')).toBeNull();
+    expect(container.textContent).not.toContain('Saved in this preview');
+  });
+
+  it('keeps the composer when the preview call fails', async () => {
+    const workspace = new MockSocialClient('live', clock).load();
+    authFetch.mockImplementation(async (url: string) => {
+      if (String(url).includes('bootstrap')) {
+        return {
+          status: 200,
+          ok: true,
+          json: async () => ({
+            entitled: true,
+            sample: true,
+            timezone: workspace.timezone,
+            accounts: workspace.accounts,
+            posts: workspace.posts,
+          }),
+        };
+      }
+      return { status: 503, ok: false, json: async () => ({ error: 'social_unavailable' }) };
+    });
+    await act(async () => {
+      root.render(<SocialScheduler onUpgrade={() => {}} />);
+    });
+    const text = container.querySelector<HTMLTextAreaElement>('textarea');
+    const time = container.querySelector<HTMLInputElement>('input[aria-label="Schedule time"]');
+    await act(async () => {
+      const area = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+      const input = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      area?.call(text, 'Sunday at 10.');
+      text?.dispatchEvent(new Event('input', { bubbles: true }));
+      input?.call(time, '2027-03-22T10:00');
+      time?.dispatchEvent(new Event('input', { bubbles: true }));
+      time?.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    const schedule = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Schedule');
+    await act(async () => { schedule?.click(); });
+    await act(async () => { await Promise.resolve(); });
+    expect(container.querySelector('[data-testid="social-unavailable"]')).toBeNull();
+    expect(container.querySelector('textarea')?.value).toBe('Sunday at 10.');
+    expect(document.body.textContent).toContain('Nothing was scheduled');
+    const postsCalls = authFetch.mock.calls.filter((call) => String(call[0]).includes('/api/social/posts'));
+    expect(postsCalls).toHaveLength(1);
+  });
+
   it('does not alert or show a raw credential error', async () => {
     const alertSpy = vi.fn();
     window.alert = alertSpy;

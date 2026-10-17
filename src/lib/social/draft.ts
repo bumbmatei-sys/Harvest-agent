@@ -1,4 +1,5 @@
 import { parseSocialPlatform, supportsMadeWithAi, type SocialPlatform } from './platforms';
+import { hasTimeOffset, wallTimeInZoneToIso } from './schedule-time';
 import type { SocialPostDraft, SocialTarget } from './types';
 
 export interface DraftError {
@@ -71,19 +72,27 @@ export function parseSocialDraft(body: unknown, now = new Date()): DraftResult {
   }
 
   const publishNow = row.publishNow === true;
-  const scheduledRaw = typeof row.scheduledFor === 'string' && row.scheduledFor ? row.scheduledFor : null;
+  const timezone = typeof row.timezone === 'string' && row.timezone ? row.timezone.slice(0, 80) : 'UTC';
+  const scheduledRaw = typeof row.scheduledFor === 'string' && row.scheduledFor ? row.scheduledFor.trim() : null;
+  let scheduledFor: string | null = null;
   if (!publishNow && scheduledRaw) {
-    const parsed = Date.parse(scheduledRaw);
+    // A wall time without an offset is read in the ministry timezone. Date.parse
+    // of that string is UTC on the server, which moves a west-of-UTC morning
+    // onto the previous calendar day.
+    const absolute = hasTimeOffset(scheduledRaw)
+      ? scheduledRaw
+      : wallTimeInZoneToIso(scheduledRaw, timezone);
+    const parsed = absolute ? Date.parse(absolute) : Number.NaN;
     if (!Number.isFinite(parsed) || parsed <= now.getTime() || parsed > now.getTime() + MAX_SCHEDULE_MS) {
       return { ok: false, error: 'schedule_invalid' };
     }
+    scheduledFor = new Date(parsed).toISOString();
   }
-  const timezone = typeof row.timezone === 'string' && row.timezone ? row.timezone.slice(0, 80) : 'UTC';
   return {
     ok: true,
     draft: {
       content,
-      scheduledFor: publishNow ? null : scheduledRaw,
+      scheduledFor: publishNow ? null : scheduledFor,
       publishNow,
       timezone,
       targets,
