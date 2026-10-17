@@ -108,6 +108,7 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  const [savingAutomation, setSavingAutomation] = useState(false);
  const [generatingNow, setGeneratingNow] = useState(false);
  const [automationError, setAutomationError] = useState<string | null>(null);
+ const [generationNotice, setGenerationNotice] = useState<string | null>(null);
 
  useEffect(() => {
   let unsubscribe: (() => void) | null = null;
@@ -245,6 +246,7 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
    setGeneratingNow(true);
    try {
      setAutomationError(null);
+     setGenerationNotice(null);
      const tenantId = await getWriteTenantScope();
      if (!tenantId) {
        setAutomationError('A ministry is required before an article can be generated.');
@@ -256,8 +258,10 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
      });
      const data = await resp.json();
      if (!resp.ok) throw new Error(data.error || 'Failed to generate');
-     // The existing onSnapshot listener will pick up the new post automatically.
-     setShowAutomation(false);
+     // The route saves a draft. Publishing still goes through the editor's
+     // preview, so the panel stays open and says so. The list listener picks
+     // the new draft up on its own.
+     setGenerationNotice('Saved as a draft. Review it, then publish when you are ready.');
    } catch (e) {
      notifyError('Failed to generate article', e);
    } finally {
@@ -532,7 +536,7 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  AI generates SEO articles from your Knowledge Base
  </p>
  </div>
- <button onClick={() => { setAutomationError(null); setShowAutomation(false); }}>
+ <button onClick={() => { setAutomationError(null); setGenerationNotice(null); setShowAutomation(false); }}>
  <X size={20} className="text-faint" />
  </button>
  </div>
@@ -676,6 +680,9 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
 
  {automationError && (
  <p role="alert" className="text-sm text-danger">{automationError}</p>
+ )}
+ {generationNotice && (
+ <p role="status" className="text-sm text-body">{generationNotice}</p>
  )}
 
  {/* Actions */}
