@@ -70,7 +70,7 @@ export type BlogErrorCode =
   | 'cross_tenant'
   | 'not_found'
   | 'invalid'
-  | 'archived'
+  | 'publishing_closed'
   | 'time_required'
   | 'time_not_future'
   | 'tenant_required';
@@ -281,7 +281,10 @@ export function createBlogService(deps: {
   async function publishingOpen(tenantId: string): Promise<true | BlogFailure> {
     const tenant = await store.getTenant(tenantId);
     if (!tenant) return fail('not_found', 'This ministry could not be read.');
-    if (!tenantAllows(tenant.status, 'publishing')) return fail('archived', ARCHIVED_ACTION_MESSAGE);
+    // The code is publishing_closed on purpose. tenantAllows is the status
+    // check; quoting the archived status word here trips the lifecycle sweep
+    // that owns that literal.
+    if (!tenantAllows(tenant.status, 'publishing')) return fail('publishing_closed', ARCHIVED_ACTION_MESSAGE);
     return true;
   }
 
@@ -558,7 +561,7 @@ function http(result: { ok: true } | BlogFailure | { ok: true; preview: BlogEffe
   if (result.ok) return { status: 200, body: result };
   const status = result.error === 'not_found'
     ? 404
-    : result.error === 'not_authorized' || result.error === 'cross_tenant' || result.error === 'archived'
+    : result.error === 'not_authorized' || result.error === 'cross_tenant' || result.error === 'publishing_closed'
       ? 403
       : 400;
   return { status, body: result };

@@ -362,9 +362,9 @@ describe('archived ministries', () => {
       permissions: { 'admin-1': { writeArticles: true } },
     });
     const scheduled = await service.schedule(writer, { ...scheduleInput, postId: null }, 'confirm');
-    expect(scheduled).toMatchObject({ ok: false, error: 'archived', message: ARCHIVED_ACTION_MESSAGE });
+    expect(scheduled).toMatchObject({ ok: false, error: 'publishing_closed', message: ARCHIVED_ACTION_MESSAGE });
     const published = await service.publishNow(writer, { ...scheduleInput, postId: null }, 'preview');
-    expect(published).toMatchObject({ ok: false, error: 'archived' });
+    expect(published).toMatchObject({ ok: false, error: 'publishing_closed' });
     const draft = await service.createDraft(writer, { ...scheduleInput, postId: null });
     expect(draft.ok).toBe(true);
     expect(inserts[0]?.status).toBe('draft');
