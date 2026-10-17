@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     const tenantIdOrErr = await resolveMinistry(
       request,
       userOrErr,
-      request.nextUrl.searchParams.get('tenantId') || '',
+      request.nextUrl?.searchParams.get('tenantId') || '',
     );
     if (tenantIdOrErr instanceof NextResponse) return tenantIdOrErr;
     const tenantId = tenantIdOrErr;

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { requireAdmin } from '@/lib/api-auth';
+import { requireAdmin, requireTenantAdmin } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getMimoChatUrl, MIMO_MODEL } from '@/lib/ai-config';
@@ -257,9 +257,16 @@ export async function POST(request: NextRequest) {
     const userOrErr = await requireAdmin(request);
     if (userOrErr instanceof Response) return userOrErr;
 
-    const { tenantId } = userOrErr;
+    const body = await request.json().catch(() => ({}));
+    const named = typeof body?.tenantId === 'string' ? body.tenantId.trim() : '';
+    const own = userOrErr.tenantId || '';
+    const tenantId = named || own;
     if (!tenantId) {
       return NextResponse.json({ error: 'No tenant' }, { status: 400 });
+    }
+    if (named && named !== own) {
+      const allowed = await requireTenantAdmin(request, named);
+      if (allowed instanceof NextResponse) return allowed;
     }
 
     // Plan gate — derived from the `automatedBlog` matrix cell rather than a
@@ -274,7 +281,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json().catch(() => ({}));
     const topicHint: string = body.topicHint || '';
 
     return NextResponse.json(await generateAndSavePost(tenantId, topicHint));

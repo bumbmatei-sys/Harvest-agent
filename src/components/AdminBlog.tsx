@@ -145,9 +145,10 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
    let cancelled = false;
    (async () => {
      try {
-       // No ministry in scope means there are no settings to load. A request
-       // with an empty tenant is a 400, and the preview host is that case.
-       const tenantId = await getTenantScope();
+       // A read with no ministry stays unscoped. These settings are a write
+       // target, so the apex super admin resolves to the platform ministry
+       // instead of sending a request with an empty tenant.
+       const tenantId = await getWriteTenantScope();
        if (!tenantId || cancelled) return;
        const resp = await authFetch(`/api/blog/automate?tenantId=${encodeURIComponent(tenantId)}`);
        if (!resp.ok) {
@@ -194,7 +195,7 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
    setSavingAutomation(true);
    try {
      setAutomationError(null);
-     const tenantId = await getTenantScope();
+     const tenantId = await getWriteTenantScope();
      if (!tenantId) {
        setAutomationError('A ministry is required before automation settings can be saved.');
        return;
@@ -232,14 +233,14 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
    setGeneratingNow(true);
    try {
      setAutomationError(null);
-     const tenantId = await getTenantScope();
+     const tenantId = await getWriteTenantScope();
      if (!tenantId) {
        setAutomationError('A ministry is required before an article can be generated.');
        return;
      }
      const resp = await authFetch('/api/blog/generate', {
        method: 'POST',
-       body: JSON.stringify({ topicHint: automation.topicHint }),
+       body: JSON.stringify({ tenantId, topicHint: automation.topicHint }),
      });
      const data = await resp.json();
      if (!resp.ok) throw new Error(data.error || 'Failed to generate');
