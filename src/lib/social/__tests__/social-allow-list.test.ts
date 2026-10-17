@@ -242,6 +242,51 @@ describe('the live client', () => {
     expect(seen[0]?.url).not.toContain(key);
   });
 
+  it('sends one idempotency key on a scheduled create and on publish now', async () => {
+    const seen: Array<Record<string, string>> = [];
+    const fetchImpl = async (_url: string, init: RequestInit) => {
+      seen.push((init.headers || {}) as Record<string, string>);
+      return new Response(JSON.stringify({
+        post: {
+          id: 'p1',
+          content: 'Sunday',
+          status: 'scheduled',
+          platforms: [{ platform: 'instagram', accountId: 'ig' }],
+        },
+      }), { status: 200 });
+    };
+    const client = new LiveSocialClient(key, fetchImpl);
+    const idempotencyKey = '33333333-3333-4333-8333-333333333333';
+    const base = {
+      content: 'Sunday',
+      timezone: 'America/Los_Angeles',
+      media: [],
+      targets: [{
+        platform: 'instagram' as const,
+        accountId: 'ig',
+        text: 'Sunday',
+        fields: {},
+        madeWithAi: false,
+      }],
+      idempotencyKey,
+    };
+    const scheduled = await client.create('profile-1', {
+      ...base,
+      scheduledFor: '2024-06-02T15:00:00.000Z',
+      publishNow: false,
+    });
+    const published = await client.create('profile-1', {
+      ...base,
+      scheduledFor: null,
+      publishNow: true,
+    });
+    expect(scheduled?.id).toBe('p1');
+    expect(published?.id).toBe('p1');
+    expect(seen[0]?.['Idempotency-Key']).toBe(idempotencyKey);
+    expect(seen[1]?.['Idempotency-Key']).toBe(idempotencyKey);
+    expect(seen[0]?.Authorization).toBe(`Bearer ${key}`);
+  });
+
   it('names a new profile with the opaque id it was given', async () => {
     let body = '';
     const fetchImpl = async (_url: string, init: RequestInit) => {

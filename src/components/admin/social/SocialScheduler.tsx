@@ -310,7 +310,7 @@ export function SocialScheduler({
         return;
       }
     }
-    if (publishNow && !publishKey.current) publishKey.current = crypto.randomUUID();
+    if (!publishKey.current) publishKey.current = crypto.randomUUID();
     const payload = {
       content,
       publishNow,
@@ -319,7 +319,7 @@ export function SocialScheduler({
       targets,
       media: [],
     };
-    const headers = publishNow && publishKey.current ? { 'Idempotency-Key': publishKey.current } : undefined;
+    const headers = { 'Idempotency-Key': publishKey.current };
     const doneNotice = data?.sample || initial
       ? 'Saved in this preview. Nothing was published.'
       : (publishNow ? 'Posted.' : 'Scheduled.');
@@ -369,7 +369,7 @@ export function SocialScheduler({
         setPreviewError(friendlyError(body.error));
         return;
       }
-      if (pending.payload.publishNow === true) publishKey.current = null;
+      if (pending.url === '/api/social/posts' && pending.method === 'POST') publishKey.current = null;
       setNotice(pending.doneNotice);
       setPending(null);
       await refresh();

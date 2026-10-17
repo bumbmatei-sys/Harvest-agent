@@ -24,7 +24,7 @@ export interface ZernioRequest {
 export function buildZernioRequest(
   key: string,
   path: string,
-  init: { method?: string; body?: unknown } = {},
+  init: { method?: string; body?: unknown; idempotencyKey?: string | null } = {},
 ): ZernioRequest {
   const method = init.method || 'GET';
   return {
@@ -34,6 +34,7 @@ export function buildZernioRequest(
       Authorization: `Bearer ${key}`,
       Accept: 'application/json',
       ...(init.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      ...(init.idempotencyKey ? { 'Idempotency-Key': init.idempotencyKey } : {}),
     },
     ...(init.body !== undefined ? { body: JSON.stringify(init.body) } : {}),
   };
@@ -44,7 +45,7 @@ type FetchLike = (url: string, init: RequestInit) => Promise<Response>;
 async function call<T>(
   key: string,
   path: string,
-  init: { method?: string; body?: unknown },
+  init: { method?: string; body?: unknown; idempotencyKey?: string | null },
   fetchImpl: FetchLike,
 ): Promise<{ ok: true; data: T } | { ok: false; status: number; error: string }> {
   const request = buildZernioRequest(key, path, init);
@@ -189,10 +190,16 @@ export class LiveSocialClient {
   }
 
   async create(profileId: string, draft: SocialPostDraft): Promise<SocialPost | null> {
+    // POST /v1/posts accepts Idempotency-Key. The same key on a retry within
+    // 24 hours returns the original post, for a scheduled time and for publish now.
     const result = await call<{ post?: unknown }>(
       this.key,
       '/posts',
-      { method: 'POST', body: toProviderBody(profileId, draft) },
+      {
+        method: 'POST',
+        body: toProviderBody(profileId, draft),
+        idempotencyKey: draft.idempotencyKey,
+      },
       this.fetchImpl,
     );
     if (!result.ok) return null;

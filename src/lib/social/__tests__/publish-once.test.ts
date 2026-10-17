@@ -55,6 +55,16 @@ describe('publish-once replay guard', () => {
     store.docs.clear();
   });
 
+  it('clears the mock in-flight promise when create throws so the retry can create', async () => {
+    const create = vi.fn()
+      .mockRejectedValueOnce(new Error('provider down'))
+      .mockResolvedValueOnce(post('local-2'));
+    await expect(oncePublish('tenant-a', 'key-1', false, create)).rejects.toThrow('provider down');
+    const second = await oncePublish('tenant-a', 'key-1', false, create);
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(second?.id).toBe('local-2');
+  });
+
   it('calls the provider once when the same key is published twice in this process', async () => {
     const create = vi.fn(async () => post('local-1'));
     const first = await oncePublish('tenant-a', 'key-1', false, create);

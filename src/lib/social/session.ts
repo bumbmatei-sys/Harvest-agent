@@ -94,7 +94,7 @@ export async function createSocialPost(
   if (!ownsAccounts(workspace, draft)) return { ok: false, error: 'account_not_owned' };
 
   const create = () => providerCreate(tenantId, draft, workspace);
-  const post = draft.publishNow && draft.idempotencyKey
+  const post = draft.idempotencyKey
     ? await oncePublish(tenantId, draft.idempotencyKey, socialMode() === 'live', create)
     : await create();
   if (!post) return { ok: false, error: 'social_unavailable' };

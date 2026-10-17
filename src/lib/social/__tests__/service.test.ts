@@ -56,7 +56,10 @@ vi.mock('@/lib/firebase-admin', () => ({
   },
 }));
 
+import { resetPublishOnce } from '../publish-once';
 import { cancel, createDraft, list, schedule, update, validate } from '../service';
+
+const SCHEDULE_KEY = '22222222-2222-4222-8222-222222222222';
 
 const ADC = 'Could not load the default credentials. Browse to https://cloud.google.com/docs/authentication/getting-started for more information.';
 
@@ -98,6 +101,7 @@ describe('social service', () => {
     h.tokens.clear();
     h.tokenSetFails = false;
     resetSocialMock();
+    resetPublishOnce();
     vi.stubEnv('NODE_ENV', 'test');
     vi.stubEnv('VERCEL_ENV', '');
     vi.stubEnv('ZERNIO_API_KEY', '');
@@ -174,7 +178,11 @@ describe('social service', () => {
     expect(bare).toMatchObject({ ok: false, error: 'confirm_token_required' });
     expect(new MockSocialClient('tenant-a', new Date()).load().posts).toHaveLength(before);
 
-    const saved = await schedule(actor, { ...body, confirmToken: tokenOf(preview) }, null);
+    const missingKey = await schedule(actor, { ...body, confirmToken: tokenOf(preview) }, null);
+    expect(missingKey).toMatchObject({ ok: false, error: 'idempotency_key_required' });
+    expect(new MockSocialClient('tenant-a', new Date()).load().posts).toHaveLength(before);
+
+    const saved = await schedule(actor, { ...body, confirmToken: tokenOf(preview) }, SCHEDULE_KEY);
     expect(saved.ok).toBe(true);
     if (!saved.ok || !('post' in saved.data)) return;
     expect(saved.data.post.status).toBe('scheduled');
@@ -387,6 +395,27 @@ describe('social service', () => {
     expect(postContent('sample-draft')).toContain('parable');
   });
 
+  it('rejects an edit token spent on cancel of the same post', async () => {
+    const content = 'This Sunday: a short word on the parable of the sower. Service at 10.';
+    const body = {
+      content,
+      publishNow: false,
+      scheduledFor: null,
+      timezone: 'America/Chicago',
+      targets: [{
+        platform: 'instagram',
+        accountId: 'sample-ig',
+        text: content,
+        fields: {},
+        madeWithAi: false,
+      }],
+    };
+    const edited = await update(actor, 'sample-draft', body, null);
+    const spent = await cancel(actor, 'sample-draft', { confirmToken: tokenOf(edited) });
+    expect(spent).toMatchObject({ ok: false, error: 'confirm_invalid' });
+    expect(postContent('sample-draft')).toContain('parable');
+  });
+
   it('still confirms on a preview when Firestore cannot store the token', async () => {
     vi.stubEnv('VERCEL_ENV', 'preview');
     h.tokenSetFails = true;
@@ -394,7 +423,7 @@ describe('social service', () => {
     const preview = await schedule(actor, body, null);
     expect(preview.ok).toBe(true);
     expect(typeof tokenOf(preview)).toBe('string');
-    const saved = await schedule(actor, { ...body, confirmToken: tokenOf(preview) }, null);
+    const saved = await schedule(actor, { ...body, confirmToken: tokenOf(preview) }, SCHEDULE_KEY);
     expect(saved.ok).toBe(true);
   });
 
@@ -435,21 +464,21 @@ describe('social service', () => {
     const preview = await schedule(actor, body, null);
     const token = tokenOf(preview);
 
-    const changed = await schedule(actor, { ...body, content: 'Monday at 11.', confirmToken: token }, null);
+    const changed = await schedule(actor, { ...body, content: 'Monday at 11.', confirmToken: token }, SCHEDULE_KEY);
     expect(changed).toMatchObject({ ok: false, error: 'confirm_invalid' });
 
-    const otherMinistry = await schedule({ ...actor, tenantId: 'tenant-b' }, { ...body, confirmToken: token }, null);
+    const otherMinistry = await schedule({ ...actor, tenantId: 'tenant-b' }, { ...body, confirmToken: token }, SCHEDULE_KEY);
     expect(otherMinistry).toMatchObject({ ok: false, error: 'confirm_invalid' });
 
-    const otherPerson = await schedule({ ...actor, uid: 'admin-2' }, { ...body, confirmToken: token }, null);
+    const otherPerson = await schedule({ ...actor, uid: 'admin-2' }, { ...body, confirmToken: token }, SCHEDULE_KEY);
     expect(otherPerson).toMatchObject({ ok: false, error: 'confirm_invalid' });
 
     expect(new MockSocialClient('tenant-a', new Date()).load().posts).toHaveLength(before);
     expect(new MockSocialClient('tenant-b', new Date()).load().posts.filter((post) => post.content === body.content)).toHaveLength(0);
 
-    const saved = await schedule(actor, { ...body, confirmToken: token }, null);
+    const saved = await schedule(actor, { ...body, confirmToken: token }, SCHEDULE_KEY);
     expect(saved.ok).toBe(true);
-    const reused = await schedule(actor, { ...body, confirmToken: token }, null);
+    const reused = await schedule(actor, { ...body, confirmToken: token }, SCHEDULE_KEY);
     expect(reused).toMatchObject({ ok: false, error: 'confirm_invalid' });
     expect(new MockSocialClient('tenant-a', new Date()).load().posts).toHaveLength(before + 1);
   });
@@ -461,7 +490,7 @@ describe('social service', () => {
       const body = postBody('instagram', { scheduledFor: new Date(Date.UTC(2024, 5, 8, 12)).toISOString() });
       const preview = await schedule(actor, body, null);
       vi.setSystemTime(new Date(Date.UTC(2024, 5, 1, 12, 11)));
-      const expired = await schedule(actor, { ...body, confirmToken: tokenOf(preview) }, null);
+      const expired = await schedule(actor, { ...body, confirmToken: tokenOf(preview) }, SCHEDULE_KEY);
       expect(expired).toMatchObject({ ok: false, error: 'confirm_invalid' });
       const copies = new MockSocialClient('tenant-a', new Date()).load().posts.filter((post) => post.content === 'Sunday at 10.');
       expect(copies).toHaveLength(0);

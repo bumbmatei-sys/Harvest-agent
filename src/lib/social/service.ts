@@ -326,14 +326,14 @@ export async function schedule(
   if (!prepared.draft.publishNow && !prepared.draft.scheduledFor) {
     return fail('schedule_invalid', 400);
   }
-  if (prepared.draft.publishNow && readConfirmToken(body) && !isIdempotencyKey(idempotencyKey)) {
+  if (readConfirmToken(body) && !isIdempotencyKey(idempotencyKey)) {
     return fail('idempotency_key_required', 400);
   }
   const gate = await openOrSpend(actor, body, preview, prepared.access.sample, hashSocialDraft(prepared.draft));
   if (isPreview(gate)) return gate;
   const draft = {
     ...prepared.draft,
-    idempotencyKey: prepared.draft.publishNow ? idempotencyKey : null,
+    idempotencyKey,
   };
   const result = await createSocialPost(prepared.access.tenantId, draft, prepared.access.mockOnly);
   if (!result.ok) return fail(result.error, statusForMutation(result.error));

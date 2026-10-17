@@ -1,6 +1,6 @@
 {
   "ticket": "#530",
-  "note": "#530 is the social scheduler. It records the three files the ownership register already pinned whose digests moved: AdminDashboard.tsx, the-274-shadcn-batches-cde.test.ts, and the-248-discount-alignment.test.ts. Each digest is appended. Nothing already recorded is replaced. The firestore.rules entry below is a later append: clients may not write tenants.addons.",
+  "note": "#530 is the social scheduler. It records the three files the ownership register already pinned whose digests moved: AdminDashboard.tsx, the-274-shadcn-batches-cde.test.ts, and the-248-discount-alignment.test.ts. Each digest is appended. Nothing already recorded is replaced. This pull request does not change firestore.rules.",
   "entries": [
     {
       "file": "src/components/AdminDashboard.tsx",
@@ -16,11 +16,6 @@
       "file": "src/utils/__tests__/the-248-discount-alignment.test.ts",
       "digest": "e0e857bf89af25634874a205cde8e0ec54210b55267071da4d99fe45f696a968",
       "why": "#530 moves the feature-matrix digest because every tier gained socialScheduler set to false. No price moved and no existing cell changed. The previous digest is kept in the test comment. The nine plan prices stay where THE-248 left them."
-    },
-    {
-      "file": "firestore.rules",
-      "digest": "2c3d491cdd15b8b8a89afc47f799b43523b814df148efabe22ddee1f89cf6bff",
-      "why": "#530 appends addons to the tenants/{tenantId} update deny list, beside plan, status, and ownerId. The Dodo webhook writes that map through the Admin SDK, which bypasses rules. A branding or settings admin can no longer updateDoc socialScheduler or any other add-on count. The super-admin branch is unchanged. No other match block moved."
     }
   ]
 }
