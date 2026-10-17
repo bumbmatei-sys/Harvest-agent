@@ -257,9 +257,19 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
      setErrorMessage(typeof previewBody.message === 'string' ? previewBody.message : 'Failed to delete post. Please try again.');
      return;
    }
+   if (typeof previewBody.confirmToken !== 'string' || previewBody.confirmToken === '') {
+     setErrorMessage('The preview did not return a confirmation.');
+     return;
+   }
    const confirmed = await authFetch('/api/blog/actions', {
      method: 'POST',
-     body: JSON.stringify({ action: 'delete', mode: 'confirm', tenantId, postId: id }),
+     body: JSON.stringify({
+       action: 'delete',
+       mode: 'confirm',
+       tenantId,
+       postId: id,
+       confirmToken: previewBody.confirmToken,
+     }),
    });
    const confirmedBody = await confirmed.json();
    if (!confirmed.ok || confirmedBody.ok === false) {

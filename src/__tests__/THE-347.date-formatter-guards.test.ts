@@ -346,31 +346,29 @@ describe('no date field is rendered raw into JSX', () => {
 
   it('`blog_posts` is written with ONE representation, and it is the ISO string', () => {
     // Firestore orders across types by TYPE first, so a mixed field sorts wrong
-    // before it renders wrong. The editor used to write this collection; the
-    // blog service's store does now, still as an ISO string. AdminDocs was
-    // the writer that stored an object.
-    const writers = [
-      'src/lib/blog/firestore-store.ts',
-      'src/app/api/blog/generate/route.ts',
-      'src/components/AdminDocs.tsx',
-    ];
-    for (const rel of writers) {
-      const src = code(rel);
-      const blockStart = src.indexOf("'blog_posts'");
-      expect(blockStart, `${rel} no longer writes blog_posts`).toBeGreaterThan(-1);
-    }
-    // The specific regression: the note-to-blog-draft write.
+    // before it renders wrong. The note-to-blog copy used to write the
+    // collection from the browser. It now calls the blog service, and the
+    // service store still writes an ISO string. The generate route does too.
+    const store = code('src/lib/blog/firestore-store.ts');
+    expect(store.indexOf("'blog_posts'"), 'the store no longer writes blog_posts').toBeGreaterThan(-1);
+    expect(store, 'the store stopped writing createdAt').toContain('createdAt: post.createdAt');
+    expect(store, 'the store stamps a blog post with serverTimestamp()').not.toContain('serverTimestamp()');
+    const generate = code('src/app/api/blog/generate/route.ts');
+    const generatedStart = generate.indexOf("'blog_posts'");
+    const generated = generate.slice(generatedStart, generate.indexOf('blogAutomation', generatedStart));
+    expect(generated, 'generate no longer writes blog_posts').toContain('blog_posts');
+    expect(generated, 'generate stores a Timestamp on a blog post').not.toContain('serverTimestamp()');
+    expect(generated, 'generate stopped writing an ISO string').toContain('toISOString()');
+    expect(store, 'the store stopped writing createdAt').toContain('createdAt');
+    const service = code('src/lib/blog/service.ts');
+    expect(service, 'the service stopped stamping an ISO string').toContain('toISOString()');
     const docs = code('src/components/AdminDocs.tsx');
-    const draft = docs.slice(docs.indexOf("addDoc(collection(db, 'blog_posts')"));
-    const body = draft.slice(0, draft.indexOf('});') + 3);
-    expect(body, 'the blog draft is empty - the slice found nothing').toContain('createdAt');
+    expect(docs, 'the note copy left the service').toContain('/api/blog/actions');
+    expect(docs, 'the note copy no longer asks for a draft').toContain('createDraft');
     expect(
-      body,
-      'the note-to-blog-draft write stores a Timestamp again. `blog_posts` is ' +
-        'an ISO-string collection: its other two writers, its interface and the ' +
-        'public /blog/[id] <time> element and JSON-LD all require a string.',
-    ).not.toContain('serverTimestamp()');
-    expect(body, 'the draft stopped writing an ISO string').toContain('toISOString()');
+      docs,
+      'the note-to-blog copy writes blog_posts from the browser again',
+    ).not.toContain(["addDoc(collection(db, '", "blog_posts')"].join(''));
   });
 
   it('and `docs` keeps its own Timestamps - the change was scoped to blog_posts', () => {

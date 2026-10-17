@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useState, type CSSProperties } from 'react';
 import { Edit2, FileText, GraduationCap, Trash2, User } from 'lucide-react';
 
 import {
@@ -105,7 +105,7 @@ function shortStatus(post: SamplePost): string {
 
 function EditorShot() {
   return (
-    <div className="w-full max-w-6xl mx-auto pb-10" data-blog-shot="editor">
+    <div className="w-full min-w-0 max-w-full pb-10" data-blog-shot="editor">
       <div className="flex items-center justify-between gap-4 mb-6">
         <span className="text-[13px] font-semibold text-gold">Blog</span>
         <div className="flex items-center gap-2.5">
@@ -113,7 +113,7 @@ function EditorShot() {
           <AdminPrimaryButton type="button">Schedule</AdminPrimaryButton>
         </div>
       </div>
-      <div className="lg:grid lg:grid-cols-[1fr_340px] lg:gap-6 space-y-6 lg:space-y-0 items-start">
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(220px,340px)] lg:gap-6 space-y-6 lg:space-y-0 items-start">
         <AdminCard>
           <p className="w-full px-6 pt-6 pb-5 font-display text-[1.9rem] font-normal text-strong leading-tight">
             Sunday reflection
@@ -245,7 +245,10 @@ function Shell({ children }: { children: React.ReactNode }) {
             )}
           />
         )}
-        <SidebarInset className="min-w-0 overflow-y-auto bg-surface p-6 pb-24">
+        <SidebarInset
+          className="min-w-0 overflow-y-auto bg-surface p-6 pb-24"
+          style={{ background: 'var(--surface)', color: 'var(--text-strong)' }}
+        >
           {children}
         </SidebarInset>
       </SidebarProvider>
@@ -260,10 +263,11 @@ export function BlogSchedulePreview() {
     setBoot(readBoot());
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!boot) return;
     try { localStorage.setItem(THEME_STORAGE_KEY, boot.theme); } catch { /* private mode */ }
     applyTheme(boot.theme);
+    document.body.style.background = 'var(--surface)';
     document.documentElement.dataset.previewTheme = boot.theme;
   }, [boot]);
 

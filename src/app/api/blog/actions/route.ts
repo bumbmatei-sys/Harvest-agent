@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 import { verifyAuth } from '@/lib/api-auth';
+import { firestoreConfirmLedger } from '@/lib/blog/firestore-confirm';
 import { createBlogService, dispatchBlogAction, type BlogActionBody, type BlogActor } from '@/lib/blog/service';
 import { firestoreBlogStore } from '@/lib/blog/firestore-store';
 
@@ -23,7 +24,7 @@ async function run(request: NextRequest, body: BlogActionBody) {
     isAdmin: user.isAdmin,
     isSuperAdmin: user.isSuperAdmin,
   };
-  const service = createBlogService({ store: firestoreBlogStore });
+  const service = createBlogService({ store: firestoreBlogStore, ledger: firestoreConfirmLedger() });
   const result = await dispatchBlogAction(service, actor, body);
   return NextResponse.json(result.body, { status: result.status });
 }

@@ -41,15 +41,15 @@ export function BlogScheduleFields({
           spacing={0}
           orientation="vertical"
           aria-label="Publish"
-          className="mt-1.5 w-full"
+          className="mt-1.5 w-full flex-col items-stretch"
         >
-          <ToggleGroupItem value="published" className="w-full min-h-11 justify-start px-3" aria-label="Publish now">
+          <ToggleGroupItem value="published" className="h-auto w-full min-h-11 justify-start px-3" aria-label="Publish now">
             Publish now
           </ToggleGroupItem>
-          <ToggleGroupItem value="scheduled" className="w-full min-h-11 justify-start px-3" aria-label="Schedule">
+          <ToggleGroupItem value="scheduled" className="h-auto w-full min-h-11 justify-start px-3" aria-label="Schedule">
             Schedule
           </ToggleGroupItem>
-          <ToggleGroupItem value="draft" className="w-full min-h-11 justify-start px-3" aria-label="Draft">
+          <ToggleGroupItem value="draft" className="h-auto w-full min-h-11 justify-start px-3" aria-label="Draft">
             Draft
           </ToggleGroupItem>
         </ToggleGroup>

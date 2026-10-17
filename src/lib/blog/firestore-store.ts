@@ -4,7 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 import { adminDb } from '@/lib/firebase-admin';
 import { getTenantPrivate } from '@/lib/tenant-private';
-import type { BlogStore, StoredBlogPost } from '@/lib/blog/service';
+import type { BlogAuditEvent, BlogStore, StoredBlogPost } from '@/lib/blog/service';
 import type { BlogStoredStatus } from '@/lib/blog/visibility';
 
 function asStatus(value: unknown): BlogStoredStatus | null {
@@ -121,6 +121,17 @@ export const firestoreBlogStore: BlogStore = {
 
   async removePost(id) {
     await adminDb.collection('blog_posts').doc(id).delete();
+  },
+
+  async appendAudit(event: BlogAuditEvent) {
+    await adminDb.collection('blog_admin_audit').add({
+      actorUid: event.actorUid,
+      actorTenantId: event.actorTenantId,
+      tenantId: event.tenantId,
+      action: event.action,
+      postId: event.postId,
+      at: event.at,
+    });
   },
 
   async listByTenant(tenantId) {

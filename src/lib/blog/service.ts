@@ -2,6 +2,12 @@ import 'server-only';
 
 import { tenantAllows, ARCHIVED_ACTION_MESSAGE } from '@/lib/tenant-lifecycle';
 import {
+  hashBlogPayload,
+  type BlogConfirmAction,
+  type BlogConfirmPayload,
+  type ConfirmLedger,
+} from '@/lib/blog/confirm-token';
+import {
   formatInstantInZone,
   isBlogPostPublic,
   isValidTimeZone,
@@ -18,8 +24,10 @@ import {
  * what a schedule instant means.
  *
  * publishNow, schedule, unschedule and delete each take `preview` or `confirm`.
- * Preview writes nothing and describes the post, the time, the church and the
- * visibility that confirm will produce. Confirm performs that write.
+ * Preview writes nothing. It describes the post, the time, the church and the
+ * visibility, and it returns a single-use token bound to that description.
+ * Confirm presents the token. The ledger checks it and spends it before the
+ * write. `mode: 'confirm'` on its own does not write.
  */
 
 export interface BlogActor {
@@ -63,6 +71,17 @@ export interface BlogStore {
   savePost(post: StoredBlogPost): Promise<void>;
   removePost(id: string): Promise<void>;
   listByTenant(tenantId: string): Promise<{ posts: readonly StoredBlogPost[]; skipped: number }>;
+  appendAudit(event: BlogAuditEvent): Promise<void>;
+}
+
+/** A super admin acting on a ministry that is not their own. */
+export interface BlogAuditEvent {
+  readonly actorUid: string;
+  readonly actorTenantId: string | null;
+  readonly tenantId: string;
+  readonly action: string;
+  readonly postId: string | null;
+  readonly at: string;
 }
 
 export type BlogErrorCode =
@@ -73,7 +92,11 @@ export type BlogErrorCode =
   | 'publishing_closed'
   | 'time_required'
   | 'time_not_future'
-  | 'tenant_required';
+  | 'tenant_required'
+  | 'confirm_required'
+  | 'confirm_expired'
+  | 'confirm_reused'
+  | 'confirm_mismatch';
 
 export interface BlogFailure {
   readonly ok: false;
@@ -95,6 +118,11 @@ export interface BlogEffect {
   readonly visibility: BlogVisibilityOutcome;
   readonly becomesPublicAt: string | null;
 }
+
+export type BlogCommitResult =
+  | { ok: true; preview: BlogEffect; requiresConfirm: true; confirmToken: string }
+  | { ok: true; preview: BlogEffect; post?: StoredBlogPost }
+  | BlogFailure;
 
 export interface BlogCalendarItem {
   readonly id: string;
@@ -125,17 +153,11 @@ export interface BlogService {
   validate(actor: BlogActor, input: BlogDraftInput & { intent?: 'draft' | 'schedule' | 'publish' }): Promise<
     { ok: true; valid: true } | BlogFailure
   >;
-  schedule(actor: BlogActor, input: BlogDraftInput, mode: BlogMode): Promise<
-    { ok: true; preview: BlogEffect; post?: StoredBlogPost } | BlogFailure
-  >;
-  publishNow(actor: BlogActor, input: BlogDraftInput, mode: BlogMode): Promise<
-    { ok: true; preview: BlogEffect; post?: StoredBlogPost } | BlogFailure
-  >;
-  unschedule(actor: BlogActor, input: BlogDraftInput, mode: BlogMode): Promise<
-    { ok: true; preview: BlogEffect; post?: StoredBlogPost } | BlogFailure
-  >;
-  deletePost(actor: BlogActor, input: BlogDraftInput, mode: BlogMode): Promise<
-    { ok: true; preview: BlogEffect } | BlogFailure
+  schedule(actor: BlogActor, input: BlogDraftInput, mode: BlogMode, confirmToken?: string | null): Promise<BlogCommitResult>;
+  publishNow(actor: BlogActor, input: BlogDraftInput, mode: BlogMode, confirmToken?: string | null): Promise<BlogCommitResult>;
+  unschedule(actor: BlogActor, input: BlogDraftInput, mode: BlogMode, confirmToken?: string | null): Promise<BlogCommitResult>;
+  deletePost(actor: BlogActor, input: BlogDraftInput, mode: BlogMode, confirmToken?: string | null): Promise<
+    { ok: true; preview: BlogEffect; requiresConfirm?: true; confirmToken?: string } | BlogFailure
   >;
   listByDateRange(actor: BlogActor, input: { tenantId?: string | null; from?: string; to?: string }): Promise<
     | {
@@ -196,6 +218,7 @@ export function createBlogService(deps: {
   store: BlogStore;
   now?: () => Date;
   newId?: () => string;
+  ledger?: ConfirmLedger;
 }): BlogService {
   const now = deps.now ?? (() => new Date());
   const newId = deps.newId ?? (() => crypto.randomUUID());
@@ -312,6 +335,77 @@ export function createBlogService(deps: {
     else await store.insertPost(post);
   }
 
+  function ledgerOrThrow(): ConfirmLedger {
+    if (!deps.ledger) throw new Error('Blog confirmations have no ledger.');
+    return deps.ledger;
+  }
+
+  async function noteCrossChurch(actor: BlogActor, tenantId: string, action: string, postId: string | null): Promise<void> {
+    if (!actor.isSuperAdmin) return;
+    if (actor.tenantId === tenantId) return;
+    await store.appendAudit({
+      actorUid: actor.uid,
+      actorTenantId: actor.tenantId,
+      tenantId,
+      action,
+      postId,
+      at: now().toISOString(),
+    });
+  }
+
+  function bindingFor(
+    action: BlogConfirmAction,
+    actor: BlogActor,
+    tenantId: string,
+    postId: string,
+    fields: BlogPostFields,
+    wallClock: string | null,
+    timeZone: string | null,
+  ) {
+    const payload: BlogConfirmPayload = {
+      action,
+      tenantId,
+      postId,
+      title: fields.title,
+      category: fields.category,
+      content: fields.content,
+      featuredImage: fields.featuredImage,
+      tags: fields.tags,
+      wallClock,
+      timeZone,
+    };
+    return {
+      action,
+      tenantId,
+      uid: actor.uid,
+      postId,
+      draftHash: hashBlogPayload(payload),
+    };
+  }
+
+  async function openOrSpend(
+    actor: BlogActor,
+    mode: BlogMode,
+    confirmToken: string | null | undefined,
+    binding: ReturnType<typeof bindingFor>,
+    preview: BlogEffect,
+    persist: () => Promise<StoredBlogPost | void>,
+  ): Promise<BlogCommitResult> {
+    if (mode !== 'confirm') {
+      const issued = await ledgerOrThrow().issue(binding, now().getTime());
+      return { ok: true, preview, requiresConfirm: true, confirmToken: issued };
+    }
+    const presented = cleanText(confirmToken);
+    if (!presented) return fail('confirm_required', 'Preview this change and confirm it before it is saved.');
+    const decision = await ledgerOrThrow().consume(presented, binding, now().getTime());
+    if (decision === 'expired') return fail('confirm_expired', 'That confirmation expired. Preview the change again.');
+    if (decision === 'reused') return fail('confirm_reused', 'That confirmation was already used.');
+    if (decision !== 'ok') return fail('confirm_mismatch', 'That confirmation does not match this change.');
+    const stored = await persist();
+    if (stored) return { ok: true, preview: { ...preview, post: { ...preview.post, id: stored.id } }, post: stored };
+    return { ok: true, preview };
+  }
+
   return {
     async validate(actor, input) {
       const gated = await gate(actor, input.tenantId);
@@ -341,11 +435,12 @@ export function createBlogService(deps: {
       const fields = fieldsFrom(input, owned.post);
       if (!isFields(fields)) return fields;
       const post = stamp(owned.post, gated.tenantId, actor.uid, fields, 'draft', null, owned.post?.scheduleTimeZone ?? null, true);
+      await noteCrossChurch(actor, gated.tenantId, 'createDraft', post.id);
       await write(owned.post, post);
       return { ok: true, post };
     },
 
-    async schedule(actor, input, mode) {
+    async schedule(actor, input, mode, confirmToken) {
       const gated = await gate(actor, input.tenantId);
       if (!gated.ok) return gated;
       const open = await publishingOpen(gated.tenantId);
@@ -361,21 +456,25 @@ export function createBlogService(deps: {
       const utc = wallClockToUtcIso(wall, zone);
       if (!utc) return fail('invalid', 'That date does not exist in this timezone.');
       if (new Date(utc).getTime() <= now().getTime()) return fail('time_not_future', 'Scheduled date must be in the future.');
-      const post = stamp(owned.post, gated.tenantId, actor.uid, fields, 'scheduled', utc, zone, mode === 'confirm');
+      const described = stamp(owned.post, gated.tenantId, actor.uid, fields, 'scheduled', utc, zone, false);
       const preview = effect(
         'schedule',
         { id: gated.tenantId, name: gated.churchName },
-        { id: post.id, title: post.title, status: 'scheduled' },
+        { id: described.id, title: described.title, status: 'scheduled' },
         utc,
         zone,
         'hidden_until',
       );
-      if (mode === 'preview') return { ok: true, preview };
-      await write(owned.post, post);
-      return { ok: true, preview, post };
+      const postId = cleanText(input.postId);
+      return openOrSpend(actor, mode, confirmToken, bindingFor('schedule', actor, gated.tenantId, postId, fields, wall, zone), preview, async () => {
+        const post = stamp(owned.post, gated.tenantId, actor.uid, fields, 'scheduled', utc, zone, true);
+        await noteCrossChurch(actor, gated.tenantId, 'schedule', post.id);
+        await write(owned.post, post);
+        return post;
+      });
     },
 
-    async publishNow(actor, input, mode) {
+    async publishNow(actor, input, mode, confirmToken) {
       const gated = await gate(actor, input.tenantId);
       if (!gated.ok) return gated;
       const open = await publishingOpen(gated.tenantId);
@@ -389,67 +488,87 @@ export function createBlogService(deps: {
       const keep = owned.post?.status === 'published' && owned.post.publishedAt && new Date(owned.post.publishedAt).getTime() <= now().getTime()
         ? owned.post.publishedAt
         : now().toISOString();
-      const post = stamp(owned.post, gated.tenantId, actor.uid, fields, 'published', keep, zone, mode === 'confirm');
+      const described = stamp(owned.post, gated.tenantId, actor.uid, fields, 'published', keep, zone, false);
       const preview = effect(
         'publishNow',
         { id: gated.tenantId, name: gated.churchName },
-        { id: post.id, title: post.title, status: 'published' },
+        { id: described.id, title: described.title, status: 'published' },
         keep,
         zone,
         'public',
       );
-      if (mode === 'preview') return { ok: true, preview };
-      await write(owned.post, post);
-      return { ok: true, preview, post };
+      return openOrSpend(actor, mode, confirmToken, bindingFor('publishNow', actor, gated.tenantId, cleanText(input.postId), fields, null, zone), preview, async () => {
+        const post = stamp(owned.post, gated.tenantId, actor.uid, fields, 'published', keep, zone, true);
+        await noteCrossChurch(actor, gated.tenantId, 'publishNow', post.id);
+        await write(owned.post, post);
+        return post;
+      });
     },
 
-    async unschedule(actor, input, mode) {
+    async unschedule(actor, input, mode, confirmToken) {
       const gated = await gate(actor, input.tenantId);
       if (!gated.ok) return gated;
       const owned = await loadOwned(actor, gated.tenantId, input.postId);
       if (!owned.ok) return owned;
       if (!owned.post) return fail('not_found', 'That post does not exist.');
       const zone = owned.post.scheduleTimeZone || 'UTC';
-      const post = stamp(owned.post, gated.tenantId, actor.uid, {
+      const fields: BlogPostFields = {
         title: owned.post.title,
         category: owned.post.category,
         content: owned.post.content,
         featuredImage: owned.post.featuredImage,
         tags: owned.post.tags,
-      }, 'draft', null, null, true);
+      };
       const preview = effect(
         'unschedule',
         { id: gated.tenantId, name: gated.churchName },
-        { id: post.id, title: post.title, status: 'draft' },
+        { id: owned.post.id, title: owned.post.title, status: 'draft' },
         null,
         isValidTimeZone(zone) ? zone : 'UTC',
         'draft',
       );
-      if (mode === 'preview') return { ok: true, preview };
-      await write(owned.post, post);
-      return { ok: true, preview, post };
+      return openOrSpend(actor, mode, confirmToken, bindingFor('unschedule', actor, gated.tenantId, owned.post.id, fields, null, null), preview, async () => {
+        const post = stamp(owned.post, gated.tenantId, actor.uid, fields, 'draft', null, null, true);
+        await noteCrossChurch(actor, gated.tenantId, 'unschedule', post.id);
+        await write(owned.post, post);
+        return post;
+      });
     },
 
-    async deletePost(actor, input, mode) {
+    async deletePost(actor, input, mode, confirmToken) {
       const gated = await gate(actor, input.tenantId);
       if (!gated.ok) return gated;
       const owned = await loadOwned(actor, gated.tenantId, input.postId);
       if (!owned.ok) return owned;
       if (!owned.post) return fail('not_found', 'That post does not exist.');
-      const zone = owned.post.scheduleTimeZone && isValidTimeZone(owned.post.scheduleTimeZone)
-        ? owned.post.scheduleTimeZone
+      const target = owned.post;
+      const zone = target.scheduleTimeZone && isValidTimeZone(target.scheduleTimeZone)
+        ? target.scheduleTimeZone
         : 'UTC';
+      const fields: BlogPostFields = {
+        title: target.title,
+        category: target.category,
+        content: target.content,
+        featuredImage: target.featuredImage,
+        tags: target.tags,
+      };
       const preview = effect(
         'delete',
         { id: gated.tenantId, name: gated.churchName },
-        { id: owned.post.id, title: owned.post.title, status: 'removed' },
-        owned.post.publishedAt,
+        { id: target.id, title: target.title, status: 'removed' },
+        target.publishedAt,
         zone,
         'removed',
       );
-      if (mode === 'preview') return { ok: true, preview };
-      await store.removePost(owned.post.id);
-      return { ok: true, preview };
+      const spent = await openOrSpend(actor, mode, confirmToken, bindingFor('delete', actor, gated.tenantId, target.id, fields, null, null), preview, async () => {
+        await noteCrossChurch(actor, gated.tenantId, 'delete', target.id);
+        await store.removePost(target.id);
+      });
+      if (!spent.ok) return spent;
+      if ('confirmToken' in spent) {
+        return { ok: true, preview: spent.preview, requiresConfirm: true as const, confirmToken: spent.confirmToken };
+      }
+      return { ok: true, preview: spent.preview };
     },
 
     async listByDateRange(actor, input) {
@@ -526,6 +645,7 @@ export function createBlogService(deps: {
 export interface BlogActionBody extends BlogDraftInput {
   readonly action?: string;
   readonly mode?: BlogMode;
+  readonly confirmToken?: string | null;
   readonly from?: string;
   readonly to?: string;
   readonly intent?: 'draft' | 'schedule' | 'publish';
@@ -537,19 +657,20 @@ export async function dispatchBlogAction(
   body: BlogActionBody,
 ): Promise<{ status: number; body: unknown }> {
   const mode: BlogMode = body.mode === 'confirm' ? 'confirm' : 'preview';
+  const confirmToken = typeof body.confirmToken === 'string' ? body.confirmToken : null;
   switch (body.action) {
     case 'createDraft':
       return http(await service.createDraft(actor, body));
     case 'validate':
       return http(await service.validate(actor, body));
     case 'schedule':
-      return http(await service.schedule(actor, body, mode));
+      return http(await service.schedule(actor, body, mode, confirmToken));
     case 'publishNow':
-      return http(await service.publishNow(actor, body, mode));
+      return http(await service.publishNow(actor, body, mode, confirmToken));
     case 'unschedule':
-      return http(await service.unschedule(actor, body, mode));
+      return http(await service.unschedule(actor, body, mode, confirmToken));
     case 'delete':
-      return http(await service.deletePost(actor, body, mode));
+      return http(await service.deletePost(actor, body, mode, confirmToken));
     case 'listByDateRange':
       return http(await service.listByDateRange(actor, body));
     default:

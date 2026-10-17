@@ -60,6 +60,11 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
   // Wall-clock in the church or browser zone. The service stores the UTC instant.
   const [scheduledDate, setScheduledDate] = useState(() => initialWallClock(post?.publishedAt, timeZone));
   const [pendingPreview, setPendingPreview] = useState<string | null>(null);
+  const [pendingToken, setPendingToken] = useState<string | null>(null);
+  const clearPreview = () => {
+    setPendingPreview(null);
+    setPendingToken(null);
+  };
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [availableCategories, setAvailableCategories] = useState<string[]>(categories);
@@ -85,13 +90,13 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
       e.preventDefault();
       setTags([...tags, newTag.trim()]);
       setNewTag('');
-      setPendingPreview(null);
+      clearPreview();
     }
   };
 
   const removeTag = (tagToRemove: string) => {
     setTags(tags.filter(tag => tag !== tagToRemove));
-    setPendingPreview(null);
+    clearPreview();
   };
 
   const payload = () => ({
@@ -106,7 +111,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
     timeZone,
   });
 
-  const callService = async (action: string, mode?: 'preview' | 'confirm') => {
+  const callService = async (action: string, mode?: 'preview' | 'confirm', confirmToken?: string | null) => {
     const tenantId = await getWriteTenantScope();
     if (!tenantId) {
       setError('A ministry is required before this post can be saved.');
@@ -114,7 +119,13 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
     }
     const response = await authFetch('/api/blog/actions', {
       method: 'POST',
-      body: JSON.stringify({ ...payload(), tenantId, action, mode }),
+      body: JSON.stringify({
+        ...payload(),
+        tenantId,
+        action,
+        mode,
+        ...(confirmToken ? { confirmToken } : {}),
+      }),
     });
     const data = await response.json();
     if (!response.ok || data.ok === false) {
@@ -133,9 +144,18 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
     setError('');
     try {
       const action = saveStatus === 'draft' ? 'createDraft' : saveStatus === 'scheduled' ? 'schedule' : 'publishNow';
-      const data = await callService(action, saveStatus === 'draft' ? undefined : mode);
+      const data = await callService(
+        action,
+        saveStatus === 'draft' ? undefined : mode,
+        mode === 'confirm' ? pendingToken : undefined,
+      );
       if (!data) return;
       if (mode === 'preview' && saveStatus !== 'draft') {
+        if (typeof data.confirmToken !== 'string' || data.confirmToken === '') {
+          setError('The preview did not return a confirmation.');
+          return;
+        }
+        setPendingToken(data.confirmToken);
         setPendingPreview(schedulePreviewSentence(data.preview));
         return;
       }
@@ -163,7 +183,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
           <ArrowLeft size={16} /> Blog
         </button>
         <div className="flex items-center gap-2.5">
-          <AdminSecondaryButton onClick={() => { setPendingPreview(null); void handleSave('draft', 'confirm'); }} disabled={isSaving}>
+          <AdminSecondaryButton onClick={() => { clearPreview(); void handleSave('draft', 'confirm'); }} disabled={isSaving}>
             {isSaving ? 'Saving…' : 'Save draft'}
           </AdminSecondaryButton>
           <AdminPrimaryButton
@@ -184,7 +204,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
           <input
             type="text"
             value={title}
-            onChange={(e) => { setTitle(e.target.value); setError(''); setPendingPreview(null); }}
+            onChange={(e) => { setTitle(e.target.value); setError(''); clearPreview(); }}
             placeholder="Post title"
             className="w-full px-6 pt-6 pb-5 font-display text-[1.9rem] font-normal text-strong placeholder:text-stone-300 border-none outline-hidden bg-transparent leading-tight"
             autoFocus
@@ -192,7 +212,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
           <div className="border-t border-line px-6 py-5">
             <RichTextEditor
               content={content}
-              onChange={(c) => { setContent(c); setError(''); setPendingPreview(null); }}
+              onChange={(c) => { setContent(c); setError(''); clearPreview(); }}
               minHeight="46vh"
               placeholder="Write your article… Type '/' for formatting options"
             />
@@ -206,9 +226,9 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
 
             <BlogScheduleFields
               intent={status}
-              onIntent={(next) => { setStatus(next); setPendingPreview(null); }}
+              onIntent={(next) => { setStatus(next); clearPreview(); }}
               wallClock={scheduledDate}
-              onWallClock={(value) => { setScheduledDate(value); setPendingPreview(null); }}
+              onWallClock={(value) => { setScheduledDate(value); clearPreview(); }}
               timeZone={timeZone}
               preview={pendingPreview}
               fieldLabel={fieldLabel}
@@ -219,13 +239,13 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
               <label className={fieldLabel}>Category</label>
               {!isAddingCategory ? (
                 <div className="flex gap-2">
-                  <select value={category} onChange={(e) => { setCategory(e.target.value); setPendingPreview(null); }} className={`${fieldInput} flex-1 appearance-none`}>
+                  <select value={category} onChange={(e) => { setCategory(e.target.value); clearPreview(); }} className={`${fieldInput} flex-1 appearance-none`}>
                     <option value="" disabled>Select a category</option>
                     {availableCategories.map(cat => (<option key={cat} value={cat}>{cat}</option>))}
                   </select>
                   {category && (
                     <button
-                      onClick={() => { setAvailableCategories(availableCategories.filter(c => c !== category)); setCategory(''); }}
+                      onClick={() => { setAvailableCategories(availableCategories.filter(c => c !== category)); setCategory(''); clearPreview(); }}
                       className="px-2.5 rounded-brand text-danger hover:bg-danger-tint transition-colors"
                       title="Remove selected category"
                     >
@@ -275,7 +295,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
 
           <AdminCard className="p-5 space-y-3">
             <AdminSectionLabel>Featured image</AdminSectionLabel>
-            <ImageUpload value={featuredImage} onChange={(value) => { setFeaturedImage(value); setPendingPreview(null); }} placeholder="Upload or paste URL" />
+            <ImageUpload value={featuredImage} onChange={(value) => { setFeaturedImage(value); clearPreview(); }} placeholder="Upload or paste URL" />
           </AdminCard>
         </div>
       </div>
