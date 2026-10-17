@@ -1,6 +1,6 @@
 {
   "ticket": "#531",
-  "note": "Scheduled blog publishing. Digests are appended for the files the register already pinned, including the firestore.rules lockdown that closes client writes of blog_posts. Nothing already recorded is replaced. The rules file is changed in this PR and is not deployed.",
+  "note": "Scheduled blog publishing. Digests below are appended beside earlier ones and nothing already recorded is replaced. Client creates, updates and deletes of blog_posts are closed in firestore.rules; that change is in this PR and is not deployed. Share to blog draft goes through the blog service. Confirm tokens store expireAt for a Firestore TTL policy that is also not deployed.",
   "entries": [
     {
       "file": "src/components/AdminBlog.tsx",
@@ -51,6 +51,11 @@
       "file": "src/components/AdminBlogPostEditor.tsx",
       "digest": "3230232814702296d6c57c14f38fc0489ef059d8518b8e70b2174db4be356805",
       "why": "#531 keeps the confirmation token from the preview and sends it only when the admin confirms. Editing the title, body, category, tags, image, intent or time clears the token so a changed payload cannot be confirmed. The colour and scale literals are unchanged."
+    },
+    {
+      "file": "src/components/AdminBlogPostEditor.tsx",
+      "digest": "d90621b9b7f03df1bd2f662b591988abe50ae1056d2138940c4fbdbe1ddc8cfd",
+      "why": "#531 stops Save draft from turning a published or scheduled post into a draft. Saving the body keeps the current status. Choosing Draft on a live post calls unschedule, which previews and confirms before the post leaves the ministry page. The colour and scale literals are unchanged."
     }
   ]
 }

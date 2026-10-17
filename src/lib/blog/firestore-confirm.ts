@@ -2,7 +2,7 @@ import 'server-only';
 
 import { adminDb } from '@/lib/firebase-admin';
 import {
-  CONFIRM_TOKEN_TTL_MS,
+  confirmTokenFields,
   decideConsume,
   type ConfirmBinding,
   type ConfirmLedger,
@@ -29,20 +29,17 @@ function asRecord(data: Record<string, unknown> | undefined): ConfirmRecord | nu
 /**
  * Issues a token and spends it inside a transaction so two confirms cannot
  * both observe `consumed: false` and both write.
+ *
+ * The written row includes `expireAt`, a Firestore timestamp. A TTL policy
+ * on `blog_confirm_tokens.expireAt` can delete the row after that instant.
+ * The policy is not deployed from this repo. Creating it is a separate
+ * founder go, and this module does not call anything that would create it.
  */
 export function firestoreConfirmLedger(): ConfirmLedger {
   return {
     async issue(binding: ConfirmBinding, nowMs: number) {
       const id = crypto.randomUUID();
-      await adminDb.collection(BLOG_CONFIRM_TOKENS).doc(id).set({
-        action: binding.action,
-        tenantId: binding.tenantId,
-        uid: binding.uid,
-        postId: binding.postId,
-        draftHash: binding.draftHash,
-        expiresAt: nowMs + CONFIRM_TOKEN_TTL_MS,
-        consumed: false,
-      });
+      await adminDb.collection(BLOG_CONFIRM_TOKENS).doc(id).set(confirmTokenFields(binding, nowMs));
       return id;
     },
     async consume(token, binding, nowMs) {
