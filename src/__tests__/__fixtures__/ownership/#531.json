@@ -26,6 +26,11 @@
       "file": "src/components/MainApp.tsx",
       "digest": "c9a57fed9ca283b5ad1c9749334cbfbad69204b7d515459d94afd13d1f534238",
       "why": "#531 gates the saved-article opener with the same visibility predicate. A saved post that is still a draft or still waiting for its scheduled instant does not open. The shell, the nav, and the element tree are otherwise untouched."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "0a89ce7805cb544d0f7efa72f520fbc5f440d973a0413cd7aed2c9bb9eeb7589",
+      "why": "#531 appends BlogScheduleFields.tsx as a toggle-group adopter and does not replace earlier rows. The schedule control is one choice among Publish now, Schedule and Draft. switch, radio-group and checkbox are rejected in the recorded reason. No primitive was edited."
     }
   ]
 }
