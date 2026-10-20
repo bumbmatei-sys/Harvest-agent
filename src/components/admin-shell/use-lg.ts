@@ -21,7 +21,10 @@ function readLg(): boolean {
 }
 
 export function useLgUp(): boolean {
-  const [matches, setMatches] = useState(readLg);
+  // Start false so the server HTML and the first client render agree.
+  // `readLg()` is true in a wide browser and false on the server, and that
+  // mismatch is the Next.js hydration overlay on the scheduler screenshots.
+  const [matches, setMatches] = useState(false);
 
   useLayoutEffect(() => {
     if (typeof window.matchMedia !== 'function') return;

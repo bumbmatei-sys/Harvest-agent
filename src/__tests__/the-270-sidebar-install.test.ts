@@ -749,10 +749,12 @@ describe('sidebar importers are the phase-1 shell and nothing else', () => {
       if (f.includes(`${path.sep}__tests__${path.sep}`)) return false;
       return /@\/components\/ui\/sidebar/.test(readFileSync(f, 'utf8'));
     });
-    // The primitive stays unedited. These four are the phase-1 adoption: the
-    // dashboard mounts it only at lg, the sidebar block itself, the dev-only
-    // before/after preview, and the shell test that sits beside that code.
+    // The primitive stays unedited. The phase-1 adoption is the dashboard
+    // (lg only), the sidebar block, the dev-only before/after preview, and
+    // the shell test. The social scheduler screenshot harness mounts the same
+    // sidebar and is not a product screen.
     expect(importers.map((f) => rel(f)).sort()).toEqual([
+      'src/app/dev/social-scheduler/preview.tsx',
       'src/components/AdminDashboard.tsx',
       'src/components/admin-shell/AdminDesktopSidebar.tsx',
       'src/components/admin-shell/AdminShellPreview.tsx',

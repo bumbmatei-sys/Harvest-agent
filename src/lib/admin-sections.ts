@@ -79,6 +79,7 @@ const ADMIN_SECTION_TABLE = [
   ['forms', 'forms'],
   ['checkin', 'checkin'],
   ['livestream', 'livestream'],
+  ['social', 'social'],
   ['sms', 'sms'],
   ['community', 'community'],
   ['library', 'library'],

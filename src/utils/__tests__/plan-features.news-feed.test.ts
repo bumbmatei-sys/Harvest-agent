@@ -115,7 +115,7 @@ describe('THE-205 moved no cell on any tier a church pays for', () => {
       accountingTools: false, taxReceipt: false, communityGroups: false,
       customForms: false, checkInSystem: false, livestream: false,
       sermonNotes: false, automatedBlog: false, givingStatements: false,
-      pledgeCampaigns: false, textToGive: false, pwaApp: true,
+      pledgeCampaigns: false, textToGive: false, pwaApp: true, socialScheduler: false,
     },
     pro: {
       newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: true,
@@ -128,7 +128,7 @@ describe('THE-205 moved no cell on any tier a church pays for', () => {
       accountingTools: false, taxReceipt: false, communityGroups: false,
       customForms: false, checkInSystem: true, livestream: true,
       sermonNotes: true, automatedBlog: false, givingStatements: false,
-      pledgeCampaigns: false, textToGive: false, pwaApp: true,
+      pledgeCampaigns: false, textToGive: false, pwaApp: true, socialScheduler: false,
     },
     max: {
       newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: true,
@@ -140,7 +140,7 @@ describe('THE-205 moved no cell on any tier a church pays for', () => {
       accountingTools: true, taxReceipt: true, communityGroups: true,
       customForms: true, checkInSystem: true, livestream: true,
       sermonNotes: true, automatedBlog: true, givingStatements: true,
-      pledgeCampaigns: true, textToGive: true, pwaApp: true,
+      pledgeCampaigns: true, textToGive: true, pwaApp: true, socialScheduler: false,
     },
   };
 

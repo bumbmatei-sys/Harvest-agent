@@ -332,6 +332,8 @@ describe('THE-200 — FEATURE_MIN_PLAN still names the cheapest tier that HAS ea
       pledgeCampaigns: 'max',
       textToGive: 'max',        // 🔴 THE-314 — moves with smsAutomation above
       pwaApp: 'free',           // ⬅️ MOVED from 'plus' by THE-205
+      // null — no tier carries it. The add-on is the only path to true.
+      socialScheduler: null,
     };
     for (const [cell, expected] of Object.entries(EXPECTED) as [keyof PlanFeatures, TenantPlan | null][]) {
       expect(getMinPlanForFeatureCell(cell), `min plan for ${cell}`).toBe(expected);
@@ -387,7 +389,7 @@ describe('THE-200 — the three priced tiers are untouched', () => {
       accountingTools: false, taxReceipt: false, communityGroups: false,
       customForms: false, checkInSystem: false, livestream: false,
       sermonNotes: false, automatedBlog: false, givingStatements: false,
-      pledgeCampaigns: false, textToGive: false, pwaApp: true,
+      pledgeCampaigns: false, textToGive: false, pwaApp: true, socialScheduler: false,
     },
     pro: {
       newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: true,
@@ -400,7 +402,7 @@ describe('THE-200 — the three priced tiers are untouched', () => {
       accountingTools: false, taxReceipt: false, communityGroups: false,
       customForms: false, checkInSystem: true, livestream: true,
       sermonNotes: true, automatedBlog: false, givingStatements: false,
-      pledgeCampaigns: false, textToGive: false, pwaApp: true,
+      pledgeCampaigns: false, textToGive: false, pwaApp: true, socialScheduler: false,
     },
     max: {
       newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: true,
@@ -412,7 +414,7 @@ describe('THE-200 — the three priced tiers are untouched', () => {
       accountingTools: true, taxReceipt: true, communityGroups: true,
       customForms: true, checkInSystem: true, livestream: true,
       sermonNotes: true, automatedBlog: true, givingStatements: true,
-      pledgeCampaigns: true, textToGive: true, pwaApp: true,
+      pledgeCampaigns: true, textToGive: true, pwaApp: true, socialScheduler: false,
     },
   };
 
@@ -489,6 +491,7 @@ describe('THE-200 — add-ons layered on a free tenant (reported, not guarded)',
       aiAssistant: 1,
       adminSeats: 2,
       unlimitedContacts: false,
+      socialScheduler: 0,
     });
 
     // 🔴 ONE CAP CELL MOVES NOW, NOT THREE — THE-370. The contact-pack and
@@ -532,7 +535,7 @@ describe('THE-200 — add-ons layered on a free tenant (reported, not guarded)',
 
   it('leaves the base matrix untouched — getEffectiveFeatures is pure', () => {
     const before = { ...getPlanFeatures('free') };
-    getEffectiveFeatures('free', { aiAssistant: 9, adminSeats: 9, unlimitedContacts: true });
+    getEffectiveFeatures('free', { aiAssistant: 9, adminSeats: 9, unlimitedContacts: true, socialScheduler: 0 });
     expect(getPlanFeatures('free')).toEqual(before);
   });
 });

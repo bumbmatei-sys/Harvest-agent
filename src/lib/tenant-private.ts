@@ -62,6 +62,13 @@ export const TENANT_PRIVATE_FIELDS = [
    * BLOCKED. Losing it is losing the ability to change or cancel a plan.
    */
   'billingProcessor',
+  /**
+   * The ministry's Zernio profile id. One profile per tenant, created the
+   * first time the social scheduler needs one. It is an identifier for a
+   * third-party account, the same class as the billing ids above, and a
+   * subdomain rename that dropped it would create a second profile.
+   */
+  'zernioProfileId',
 ] as const;
 
 export type TenantPrivateField = (typeof TENANT_PRIVATE_FIELDS)[number];

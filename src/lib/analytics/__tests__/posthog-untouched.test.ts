@@ -524,7 +524,12 @@ const PINNED: ReadonlyArray<readonly [string, ...string[]]> = [
   // annual) on the same two product ids, and nothing here moved for it.
   ['src/lib/dodo/addons.ts',
     '46b254f7dc59b9a3fbe5056f6600741c355e52ab43e19b8bd63716c52e584557',
-    '9d6bcf4294e0157cf282717baa6a9f939ca7ce00c9e0b31fd338d32a0042b93d'],
+    '9d6bcf4294e0157cf282717baa6a9f939ca7ce00c9e0b31fd338d32a0042b93d',
+    // APPENDED for the social scheduler, the two above untouched. sameTenantAddons
+    // also compares socialScheduler so a webhook redelivery that only differs
+    // on that count is not treated as already applied. No price, no product id,
+    // and no new applyMeaning arm. The webhook still writes the field as zero.
+    '84ea5a39627e4876cb4d20a667487c49e00f009bf2f2d67091a518b8a172c89a'],
   ['src/lib/dodo/billing-context.ts', '0b6305b0e1db2eefb126ed6663d2ca808e2e2a1951b36b971339a8e186bb4e61'],
   // ─── THE-370 APPENDED TO THIS ONE, deliberately and with reason ─────────
   //

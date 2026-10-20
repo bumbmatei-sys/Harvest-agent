@@ -184,14 +184,18 @@ export function reportUnrecognisedDodoAddons(
  * Do two add-on sets say the same thing?
  *
  * Used to decide whether a `plan_changed` event has anything left to apply.
- * Field-by-field over the three meanings rather than a JSON compare: key order
- * off a Firestore document is not guaranteed, and a stringify would call two
- * identical sets different and rewrite the doc on every redelivery.
+ * Field-by-field over the stored add-on fields rather than a JSON compare: key
+ * order off a Firestore document is not guaranteed, and a stringify would call
+ * two identical sets different and rewrite the doc on every redelivery.
+ * `socialScheduler` is one of those fields even though no catalogue meaning
+ * maps to it yet — a redelivery that ignored it would treat two different
+ * counts as equal.
  */
 export function sameTenantAddons(a: TenantAddons, b: TenantAddons): boolean {
   return (
     a.aiAssistant === b.aiAssistant &&
     a.adminSeats === b.adminSeats &&
-    a.unlimitedContacts === b.unlimitedContacts
+    a.unlimitedContacts === b.unlimitedContacts &&
+    a.socialScheduler === b.socialScheduler
   );
 }

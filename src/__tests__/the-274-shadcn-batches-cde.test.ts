@@ -1369,8 +1369,18 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       + 'takes its Sheet path. It takes `toggle-group` for the two icon-only sides, People '
       + 'and Public, and `command` for the search dialog. `button-group` is rejected: the '
       + 'two sides are one selection, not a cluster of independent actions. `popover` is '
-      + 'rejected for the side names: each icon has a tooltip, and a popover would cover '
+      +       'rejected for the side names: each icon has a tooltip, and a popover would cover '
       + 'the groups underneath it.',
+  },
+  {
+    file: 'src/components/admin/social/SocialScheduler.tsx',
+    ticket: 'phase-2',
+    why:
+      'The social scheduler is the first screen that composes calendar, empty, scroll-area, '
+      + 'switch, textarea and toggle-group together. The month view is the calendar primitive, '
+      + 'the queue uses scroll-area and empty, the composer uses textarea and a multi-select '
+      + 'toggle-group, and the AI disclosure control is a switch that stays hidden unless Zernio '
+      + 'documents the flag for a platform this ministry is allowed to post to.',
   },
   {
     file: 'src/components/blog/BlogScheduleFields.tsx',

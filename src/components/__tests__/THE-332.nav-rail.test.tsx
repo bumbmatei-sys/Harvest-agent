@@ -55,6 +55,14 @@ const store = vi.hoisted(() => ({
 }));
 const currentUser = vi.hoisted(() => ({ current: { uid: 'user-1' } as { uid: string } | null }));
 const userQuery = vi.hoisted(() => ({ current: { data: undefined as unknown, isLoading: false } }));
+const tenantCtx = vi.hoisted(() => ({
+  current: {
+    branding: null as null,
+    isLoading: false,
+    tenantPlan: 'max' as string | null,
+    tenantAddons: undefined as { socialScheduler?: number } | undefined,
+  },
+}));
 
 vi.mock('react-router-dom', () => ({ useNavigate: () => navigate, useParams: () => params.current }));
 vi.mock('../../utils/tenant.utils', () => ({ checkRosterAdminStatus }));
@@ -83,7 +91,7 @@ vi.mock('../../hooks/queries/useTenantQueries', () => ({
   useTenant: () => ({ data: { name: 'Bumb Ministry', ownerId: 'someone-else' } }),
 }));
 vi.mock('../../contexts/TenantContext', () => ({
-  useTenant: () => ({ branding: null, isLoading: false, tenantPlan: 'max' }),
+  useTenant: () => tenantCtx.current,
 }));
 vi.mock('../../firebase', () => ({
   db: {},
@@ -211,6 +219,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.useRealTimers();
   store.current = { tenantPlan: 'max', currentTenantId: TENANT_ID, isAuthReady: true };
+  tenantCtx.current = { branding: null, isLoading: false, tenantPlan: 'max', tenantAddons: undefined };
   currentUser.current = { uid: UID };
   checkRosterAdminStatus.mockResolvedValue(true);
   container = document.createElement('div');
@@ -392,8 +401,12 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
     // 🔵 THE-335 — the same three ids the assertion above derives, for the same
     // reason: an id behind a master switch is NAMED in the group arrays (so the
     // flip restores it) but is not built, so it cannot be reached.
+    // Social is a shell-nav destination. It is not one of the 23
+    // DESKTOP_NAV_GROUPS ids and it is not a mobile-nav entry. The desktop
+    // sidebar reaches it; the frozen group arrays do not.
+    const shellOnly = ['social'];
     expect([...reached].sort())
-      .toEqual([...named].filter((id) => !behindAKillSwitch.includes(id)).sort());
+      .toEqual([...named, ...shellOnly].filter((id) => !behindAKillSwitch.includes(id)).sort());
   });
 
   it('🔴 5b · the rail\'s advertised tab model is exactly what its flyout renders', async () => {
@@ -502,6 +515,28 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
     /* And the gate is still spelled where it always was, rather than having
        been moved into the rail. */
     expect(codeOf(DASHBOARD_SRC)).toMatch(/isSuperAdmin\s*&&\s*\{\s*id:\s*'library'/);
+  });
+
+  it('shows Social on the desktop sidebar for the add-on, and keeps the mobile drawer entry without it', async () => {
+    await mount({ superAdmin: false, perms: { ...FULL_TENANT_PERMS, fullAccess: true } });
+    for (const label of ['People', 'Public'] as const) {
+      await showSide(label);
+      expect(
+        container.querySelector('[data-shell-side] [data-nav-tab="social"]'),
+        `${label} shows Social without the add-on`,
+      ).toBeNull();
+    }
+    const more = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('More'));
+    await act(async () => { more?.click(); });
+    await flush();
+    const mobileSocial = [...container.querySelectorAll('button')].filter((button) => button.textContent?.trim() === 'Social');
+    expect(mobileSocial.length).toBeGreaterThan(0);
+
+    await act(async () => { root.unmount(); });
+    mounted = false;
+    tenantCtx.current = { ...tenantCtx.current, tenantAddons: { socialScheduler: 1 } };
+    await mount({ superAdmin: false, perms: { ...FULL_TENANT_PERMS, fullAccess: true } });
+    expect(container.querySelector('[data-shell-side] [data-nav-tab="social"]')).toBeTruthy();
   });
 
   it("🔴 7b · a group whose tabs are all denied draws NO rail entry", async () => {

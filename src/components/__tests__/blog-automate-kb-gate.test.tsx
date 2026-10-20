@@ -172,7 +172,7 @@ import { isKnowledgeBaseEnabled } from '../../lib/knowledge-base-feature';
 import { getEffectiveFeatures, NO_ADDONS } from '../../utils/plan-features';
 import { PLATFORM_TENANT_ID } from '../../utils/tenant-scope';
 
-const ASSISTANT: TenantAddons = { aiAssistant: 1, adminSeats: 0, unlimitedContacts: false };
+const ASSISTANT: TenantAddons = { aiAssistant: 1, adminSeats: 0, unlimitedContacts: false, socialScheduler: 0 };
 
 let host: HTMLDivElement;
 let root: Root | null = null;

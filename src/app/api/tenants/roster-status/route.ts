@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/api-auth';
+import { firebaseAdminCredentialsAvailable } from '@/lib/firebase-admin-credentials';
 import { getTenantPrivate } from '@/lib/tenant-private';
 
 export const dynamic = 'force-dynamic';
@@ -25,11 +26,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'tenantId required' }, { status: 400 });
   }
 
-  const email = (callerOrErr.email || '').toLowerCase();
-  const adminEmails = (await getTenantPrivate(tenantId)).adminEmails;
-  const isRosterAdmin = !!email
-    && Array.isArray(adminEmails)
-    && adminEmails.some((e: string) => (e || '').toLowerCase() === email);
+  if (!firebaseAdminCredentialsAvailable()) {
+    console.error('roster-status skipped: Firebase admin credentials are not available');
+    return NextResponse.json({ error: 'unavailable' }, { status: 503 });
+  }
 
-  return NextResponse.json({ isRosterAdmin });
+  try {
+    const email = (callerOrErr.email || '').toLowerCase();
+    const adminEmails = (await getTenantPrivate(tenantId)).adminEmails;
+    const isRosterAdmin = !!email
+      && Array.isArray(adminEmails)
+      && adminEmails.some((e: string) => (e || '').toLowerCase() === email);
+
+    return NextResponse.json({ isRosterAdmin });
+  } catch (error) {
+    console.error('roster-status could not read Firebase admin', error);
+    return NextResponse.json({ error: 'unavailable' }, { status: 503 });
+  }
 }

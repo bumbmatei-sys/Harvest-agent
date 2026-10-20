@@ -49,7 +49,7 @@
       "react-dom" // paired with react; keeps the DOM renderer types in step
     ]
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": ["next-env.d.ts", "src/types/server-only.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   // functions/ is a separate Cloud Functions build with its own tsconfig
   // (commonjs, es2020), its own package.json and its own node_modules. The
   // "**/*.ts" include above was dragging it into this program, where it was

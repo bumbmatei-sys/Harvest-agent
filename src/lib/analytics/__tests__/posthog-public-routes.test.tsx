@@ -392,7 +392,16 @@ describe('1 — every route in the stated list emits a pageview', () => {
       expect(NEXT_ROUTES.map((r) => r.pattern)).not.toContain(route);
     }
 
-    expect(found.filter((r) => r !== catchAll && !devOnlyPreviews.includes(r)).sort()).toEqual(
+    // Social scheduler screenshots. Production, including a Vercel preview,
+    // calls notFound(), so there is no document to count.
+    const socialPreview = '/dev/social-scheduler';
+    expect(found).toContain(socialPreview);
+    const socialPage = readFileSync(path.join(ROOT, 'src/app/dev/social-scheduler/page.tsx'), 'utf8');
+    expect(socialPage).toContain("if (process.env.NODE_ENV === 'production') notFound();");
+    expect(socialPage).not.toMatch(/PublicRouteAnalytics/);
+    expect(NEXT_ROUTES.map((r) => r.pattern)).not.toContain(socialPreview);
+
+    expect(found.filter((r) => r !== catchAll && !devOnlyPreviews.includes(r) && r !== socialPreview).sort()).toEqual(
       NEXT_ROUTES.map((r) => r.pattern).sort(),
     );
   });

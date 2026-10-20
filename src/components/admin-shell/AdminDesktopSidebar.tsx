@@ -5,6 +5,7 @@ import {
   ChevronRight,
   Home,
   Moon,
+  Radio,
   Search,
   Sun,
 } from 'lucide-react';
@@ -83,6 +84,8 @@ export function AdminDesktopSidebar({
   accountMenu: ReactNode;
 }) {
   const groups = groupsForSide(side, tabs);
+  const social = tabs.get('social');
+  const socialInGroups = groups.some((group) => group.items.some((item) => item.id === 'social'));
   const { resolved, toggle } = useShellTheme();
   const [paletteOpen, setPaletteOpen] = useState(false);
 
@@ -173,6 +176,20 @@ export function AdminDesktopSidebar({
                 <span className="group-data-[collapsible=icon]:sr-only">Home</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
+            {social && !socialInGroups && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={activeTab === 'social' && placeholder === null}
+                  tooltip="Social"
+                  className={MENU_BUTTON}
+                  data-nav-tab="social"
+                  onClick={() => onNavigate('social')}
+                >
+                  <Radio />
+                  <span className="group-data-[collapsible=icon]:sr-only">Social</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
           </SidebarMenu>
         </SidebarGroup>
 
