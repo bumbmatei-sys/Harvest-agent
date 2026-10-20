@@ -12,6 +12,7 @@ import {
   PLAN_DISPLAY_NAMES,
   TOP_PLAN,
 } from '@/utils/plan-features';
+import { isAutomationTenantId } from '@/lib/blog/automation-settings-json';
 
 /** Cheapest plan whose matrix cell unlocks automated blog, for the 403 copy. */
 const AUTOMATED_BLOG_MIN_PLAN =
@@ -264,8 +265,12 @@ export async function POST(request: NextRequest) {
     // enough: Generate Now writes a blog_posts document.
     const named = typeof body?.tenantId === 'string' ? body.tenantId.trim() : '';
     const own = userOrErr.tenantId || '';
+    // A slash or other non-id character is a bad id, not another ministry.
+    if (named && !isAutomationTenantId(named)) {
+      return NextResponse.json({ error: 'No tenant' }, { status: 400 });
+    }
     const tenantId = named || own;
-    if (!tenantId) {
+    if (!tenantId || !isAutomationTenantId(tenantId)) {
       return NextResponse.json({ error: 'No tenant' }, { status: 400 });
     }
     if (named && named !== own && !userOrErr.isSuperAdmin) {

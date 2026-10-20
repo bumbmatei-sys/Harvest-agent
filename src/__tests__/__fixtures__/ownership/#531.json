@@ -96,6 +96,11 @@
       "file": "src/components/AdminBlog.tsx",
       "digest": "8d219dc8fad1b91e09d688a5d1c1c5d641f1d092e61806ad3806b0610ea9a1ac",
       "why": "#531 tells the admin that Generate Now saved a draft and leaves the panel open so that sentence is visible. Publishing still happens in the editor after preview. The colour and scale literals are unchanged."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "964173ae1cfc533eb7b48ced8b2909677add1d11f5d63af782ebfc460bf4644a",
+      "why": "#531 keeps the blog_posts client-write closure after rebasing onto #532. The file now also contains the addons deny list, so the hash moved. No earlier digest was replaced. This file auto-deploys on merge and this PR does not deploy it."
     }
   ]
 }

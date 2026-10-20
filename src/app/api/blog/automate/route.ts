@@ -26,8 +26,15 @@ function resolveMinistry(
 ): string | NextResponse {
   const own = user.tenantId || '';
   const named = requested.trim();
+  // A slash or other non-id character is a bad id, not another ministry.
+  // It must not be interpolated into the Firestore path or the REST URL.
+  if (named && !isAutomationTenantId(named)) {
+    return NextResponse.json({ error: 'No tenant' }, { status: 400 });
+  }
   const tenantId = named || own;
-  if (!tenantId) return NextResponse.json({ error: 'No tenant' }, { status: 400 });
+  if (!tenantId || !isAutomationTenantId(tenantId)) {
+    return NextResponse.json({ error: 'No tenant' }, { status: 400 });
+  }
   if (named && named !== own && !user.isSuperAdmin) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }

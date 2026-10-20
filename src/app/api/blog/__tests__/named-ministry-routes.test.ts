@@ -189,6 +189,14 @@ describe('/api/blog/automate named ministry', () => {
     expect(read.status).toBe(400);
     expect(write.status).toBe(400);
   });
+
+  it('answers 400 for a bad ministry id', async () => {
+    asSuperAdmin();
+    const read = await automateGet(settingsGet('hope/../grace'));
+    const write = await automatePost(postJson({ tenantId: 'hope/../grace', enabled: false }));
+    expect(read.status).toBe(400);
+    expect(write.status).toBe(400);
+  });
 });
 
 describe('/api/blog/generate named ministry', () => {
@@ -225,6 +233,13 @@ describe('/api/blog/generate named ministry', () => {
   it('answers 400 when no ministry is on the token or the request', async () => {
     asSuperAdmin();
     const res = await generatePost(postJson({ topicHint: 'grace' }));
+    expect(res.status).toBe(400);
+    expect(store.added).toBeNull();
+  });
+
+  it('answers 400 for a bad ministry id and does not write a post', async () => {
+    asSuperAdmin();
+    const res = await generatePost(postJson({ tenantId: 'hope/../grace', topicHint: 'grace' }));
     expect(res.status).toBe(400);
     expect(store.added).toBeNull();
   });
