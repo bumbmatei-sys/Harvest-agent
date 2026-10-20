@@ -1052,6 +1052,8 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ are byte-identical'
     'ede5f2a59a8107e8b0faf46d8b05d5a5cd34d16f993b4ee2389e2ed194745e87',
     // APPENDED BY the Eden shell follow-up. Home's breadcrumb is just Home. Every other route crumbs its sidebar group. No permission gate moved.
     'c76170af6567412fe8998170aeca376ab1998ba8545c2809f1b07ea5f859c940',
+    // APPENDED BY the Eden shell fix round. The platform bell is a shadcn Button (ghost, icon) with the gold active highlight, and the desktop content bar mounts only at lg so a phone does not fetch the payments inbox twice. No permission gate moved.
+    '51c9a678558d1bdf523bfaf524afaf0e3bc92dcfc230d471ba43def62a50fe68',
   ];
 
   it('AdminDashboard.tsx is untouched by THIS ticket — others legitimately own it', () => {

@@ -4,6 +4,7 @@ import {
   CalendarCheck,
   Church,
   ClipboardList,
+  ContactRound,
   FileText,
   Globe,
   GraduationCap,
@@ -74,7 +75,8 @@ export interface ShellSideMeta {
 }
 
 export const SHELL_SIDES: readonly ShellSideMeta[] = [
-  { id: 'people', label: 'People', icon: Users },
+  // ContactRound, not Users: CRM already uses Users, and both sit on screen together.
+  { id: 'people', label: 'People', icon: ContactRound },
   { id: 'public', label: 'Public', icon: Globe },
 ];
 

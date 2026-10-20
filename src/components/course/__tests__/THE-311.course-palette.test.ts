@@ -470,8 +470,12 @@ describe('5 — no new token was defined', () => {
 
   it('and no ui primitive, dependency or digest ledger moved', () => {
     // Eden shell pass restyles button.tsx and sidebar.tsx and re-records the
-    // two ledgers plus the token list. Anything else under ui/ still fails.
-    expect(changed('src/components/ui/').sort(), 'a primitive or its digest ledger was touched').toEqual([
+    // two ledgers plus the token list. Those six are allowed. An exact list
+    // is true only while this branch is unmerged: after it lands, the diff
+    // against main is empty and the assertion goes red on main. The
+    // disallowed extras must be empty, on this branch and after the merge.
+    // Anything else under ui/ still fails.
+    const UI_ALLOWED = new Set([
       'src/components/ui/__tests__/__fixtures__/globals-tokens.txt',
       'src/components/ui/__tests__/__fixtures__/primitive-class-counts.json',
       'src/components/ui/__tests__/__fixtures__/primitive-digests.json',
@@ -479,6 +483,9 @@ describe('5 — no new token was defined', () => {
       'src/components/ui/button.tsx',
       'src/components/ui/sidebar.tsx',
     ]);
+    const uiExtras = (files: readonly string[]) => files.filter((file) => !UI_ALLOWED.has(file));
+    expect(uiExtras(changed('src/components/ui/')), 'a primitive or its digest ledger was touched').toEqual([]);
+    expect(uiExtras([]), 'an empty ui/ diff is not a subset of the allow-list').toEqual([]);
     // A diff that must be empty is false on the branch that adds the one
     // approved dependency and true again after it merges, so it cannot be the
     // guard. The dependency NAMES are. Empty diffs still pass this.

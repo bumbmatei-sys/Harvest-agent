@@ -721,12 +721,14 @@ const ADMIN_DASHBOARD_ACCEPTED = [
   '5b52184914f227832a2e023d3467d351b291412e54c5968bbc0fd45dcaae40d1',
     // APPENDED BY #530 QA, nothing above removed or rewritten. The desktop sidebar shows Social only when the add-on is held or the viewer is a super admin. The mobile drawer entry stays. The composer receives knownEntitled so it can render while accounts load.
     'eec832262194852dcf12d71acd4c01fec168caf0aed1db96eb660895783f178b',
-    // APPENDED BY the Eden shell pass, nothing above removed or rewritten. Desktop content bar is shadcn Breadcrumb, Separator and SidebarTrigger. Inbox and the platform bell sit in the sidebar footer. Mobile header and bottom nav stay. No permission gate moved. Brand colours stay Harvest navy and gold.
+    // APPENDED BY the Eden shell pass, nothing above removed or rewritten. Desktop content bar is shadcn Breadcrumb, Separator and SidebarTrigger. This digest still puts the payments inbox in the sidebar footer; the next digest moves that inbox into the content bar and leaves the platform bell in the footer. Mobile header and bottom nav stay. No permission gate moved. Brand colours stay Harvest navy and gold.
     'bfab6720f1e6f64bcfc87a2aab6f844c92dff5c788f7b5f5711a3619c50fe7c4',
     // APPENDED BY the Eden shell follow-up. The payments inbox moves into the desktop content bar. The platform bell stays in the footer. No permission gate moved.
     'ede5f2a59a8107e8b0faf46d8b05d5a5cd34d16f993b4ee2389e2ed194745e87',
     // APPENDED BY the Eden shell follow-up. Home's breadcrumb is just Home. Every other route crumbs its sidebar group. No permission gate moved.
     'c76170af6567412fe8998170aeca376ab1998ba8545c2809f1b07ea5f859c940',
+    // APPENDED BY the Eden shell fix round. The platform bell is a shadcn Button (ghost, icon) with the gold active highlight, and the desktop content bar mounts only at lg so a phone does not fetch the payments inbox twice. No permission gate moved.
+    '51c9a678558d1bdf523bfaf524afaf0e3bc92dcfc230d471ba43def62a50fe68',
 ];
 
 describe('the files this ticket must not open are byte-identical', () => {
@@ -901,9 +903,12 @@ describe('the files this ticket must not open are byte-identical', () => {
     expect(deps).toContain('@tanstack/react-table');
     expect(deps).toHaveLength(70);
     // Eden shell pass restyles button.tsx and sidebar.tsx and re-records the
-    // ledgers. The list is the claim. An empty diff freeze would go red on
-    // this branch and stay red after it merges.
-    expect(changedSince('src/components/ui/').sort(), 'a ui primitive was added or edited').toEqual([
+    // ledgers. Those six are allowed. An exact list is true only while this
+    // branch is unmerged: after it lands, the diff against main is empty and
+    // the assertion goes red on main. The disallowed extras must be empty,
+    // which holds on this branch and after the merge. An unlisted ui file
+    // still fails.
+    const UI_ALLOWED = new Set([
       'src/components/ui/__tests__/__fixtures__/globals-tokens.txt',
       'src/components/ui/__tests__/__fixtures__/primitive-class-counts.json',
       'src/components/ui/__tests__/__fixtures__/primitive-digests.json',
@@ -911,5 +916,9 @@ describe('the files this ticket must not open are byte-identical', () => {
       'src/components/ui/button.tsx',
       'src/components/ui/sidebar.tsx',
     ]);
+    const uiExtras = (files: readonly string[]) => files.filter((file) => !UI_ALLOWED.has(file));
+    expect(uiExtras(changedSince('src/components/ui/')), 'a ui primitive was added or edited').toEqual([]);
+    // The diff is empty once this branch is on main. The same predicate passes.
+    expect(uiExtras([]), 'an empty ui/ diff is not a subset of the allow-list').toEqual([]);
   });
 });

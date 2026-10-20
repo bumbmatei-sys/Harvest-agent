@@ -5,7 +5,7 @@
     {
       "file": "src/components/AdminDashboard.tsx",
       "digest": "bfab6720f1e6f64bcfc87a2aab6f844c92dff5c788f7b5f5711a3619c50fe7c4",
-      "why": "Eden shell pass. The desktop top bar is the shared shadcn content bar (Breadcrumb, Separator, SidebarTrigger). Inbox and the platform bell move into the sidebar footer on desktop. The sidebar provider sets the Eden width. Mobile AdminScreenHeader and the bottom nav stay. No permission gate, nav id or screen mount was added or removed."
+      "why": "Eden shell pass. The desktop top bar is the shared shadcn content bar (Breadcrumb, Separator, SidebarTrigger). This digest still puts the payments inbox in the sidebar footer; the next entry moves that inbox into the content bar and leaves the platform bell in the footer. The sidebar provider sets the Eden width. Mobile AdminScreenHeader and the bottom nav stay. No permission gate, nav id or screen mount was added or removed."
     },
     {
       "file": "src/components/AdminDashboard.tsx",
@@ -18,14 +18,9 @@
       "why": "Eden shell pass follow-up. Home's breadcrumb is just Home. Every other route crumbs its sidebar group instead of the People or Public side. No permission gate, nav id or screen mount was added or removed."
     },
     {
-      "file": "src/components/AdminEvents.tsx",
-      "digest": "f3374eaa2861e95d3698f78aae725825aef2442becb91ce6cb81797c0eae3ade",
-      "why": "Eden shell pass. The List and Month switch uses the shared segmented tab classes built on shadcn Tabs. The 44px phone floor stays on the triggers. No nav, tab id, read, write or permission gate moved, which is what the events digest pins this file for."
-    },
-    {
-      "file": "src/components/AdminEvents.tsx",
-      "digest": "40f94e227d6b9024c233f12d671ab4eacf79ad9648105f3dc1ae409afe33631c",
-      "why": "Eden shell pass follow-up. List and Month stay on shadcn Tabs. Desktop segmented colour is gated at sm so the phone floor stays. Both triggers share one width so they measure equal. No nav, tab id, read, write or permission gate moved."
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "51c9a678558d1bdf523bfaf524afaf0e3bc92dcfc230d471ba43def62a50fe68",
+      "why": "Eden shell fix round. The platform bell is a shadcn Button (ghost, icon) with the gold active highlight, and the desktop content bar mounts only at lg so a phone does not fetch the payments inbox twice. No permission gate, nav id or screen mount was added or removed."
     },
     {
       "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",

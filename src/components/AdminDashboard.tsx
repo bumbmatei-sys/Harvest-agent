@@ -63,8 +63,9 @@ import { useAppStore } from '../store/useAppStore';
 import { useCurrentUser } from '../hooks/queries/useUserQueries';
 import { useTenant as useTenantDoc } from '../hooks/queries/useTenantQueries';
 import { useTenant } from '../contexts/TenantContext';
+import { Button } from '@/components/ui/button';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
-import { TooltipProvider } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { SLUG_TO_TAB, TAB_TO_SLUG } from '../lib/admin-sections';
 /**
  * THE-351 — the PER-TENANT inbox: someone said they paid for a ticket and a
@@ -82,6 +83,14 @@ import { SLUG_TO_TAB, TAB_TO_SLUG } from '../lib/admin-sections';
 import { TenantInbox } from './inbox/TenantInbox';
 
 const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
+
+/**
+ * Sidebar footer bell. `min-h-11` is the 44px phone floor (THE-356); `sm:min-h-0`
+ * lets the 32px icon size win from `sm` up, same as the theme toggle.
+ * `data-active:` is the gold highlight when the Platform Inbox tab is open.
+ */
+const PLATFORM_INBOX_BUTTON =
+  'relative size-8 min-h-11 shrink-0 text-sidebar-foreground hover:bg-sidebar-hover hover:text-sidebar-accent-foreground data-active:bg-sidebar-hover data-active:text-action sm:min-h-0 [&_svg]:size-[17px] [&_svg]:stroke-[1.7]';
 
 // URL slug ↔ internal tab id. Most ids map 1:1; only `ai` differs, so the URL
 // reads nicely (/admin/ai-knowledge).
@@ -1036,17 +1045,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           accountMenu={<MyAccountMenu {...accountMenuProps} variant="rail" />}
           accountLabel={accountMenuProps.displayName || 'Account'}
           footerExtra={showInbox ? (
-                <button
+            <Tooltip>
+              <TooltipTrigger render={<span className="inline-flex" />}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className={PLATFORM_INBOX_BUTTON}
+                  data-active={activeTab === 'inbox' ? true : undefined}
+                  aria-current={activeTab === 'inbox' ? 'page' : undefined}
                   onClick={() => go('inbox')}
-                  className="relative inline-flex size-8 items-center justify-center rounded-lg text-sidebar-foreground hover:bg-sidebar-hover"
-                  title="Platform Inbox"
                   aria-label="Platform Inbox"
                 >
-                  <Bell size={17} strokeWidth={1.7} />
+                  <Bell />
                   {unreadCount > 0 && (
                     <span className="absolute top-1 right-1 size-2 rounded-full bg-red-500" />
                   )}
-                </button>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Platform Inbox</TooltipContent>
+            </Tooltip>
           ) : undefined}
         />
       )}
@@ -1176,8 +1194,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         {/* Desktop toolbar — sidebar-07 pattern (trigger, separator, breadcrumb)
             with the screen's own actions on the right. The payments inbox sits
             in this bar. The platform bell stays in the sidebar footer. Mobile
-            keeps the header below, including its own inbox. */}
-        <div className="hidden lg:block">
+            keeps the header below, including its own inbox. Mounted only at lg
+            so a phone does not also mount this bar's inbox. */}
+        {lgUp && (
           <AdminContentBar
             section={sectionForTab(activeTab) ?? ''}
             title={headerOverride?.title ?? (activeTab === 'dashboard' ? 'Home' : headerTitle)}
@@ -1188,7 +1207,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               <TenantInbox tenantId={currentTenantId} />
             ) : undefined}
           />
-        </div>
+        )}
 
         {/* Mobile screen header — back + title + screen action + account. On
             desktop the branded top bar above carries title/action/back, so this

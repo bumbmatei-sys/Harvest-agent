@@ -888,16 +888,9 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
        this file for: handleSave, confirmDelete and firestorePathsOf are
        unchanged. */
     'db9fbb0478cbeb3f2425c9afdaa40c6c59770f211625da0fc598fa7c041276be',
-    /* APPENDED BY the Eden shell pass, never substituted. List and Month use
-       the shared segmented tab classes built on shadcn Tabs. The 44px phone
-       floor stays on the triggers. NO NAV, TAB ID, READ, WRITE OR PERMISSION
-       GATE MOVED, which is what THE-332 pins this file for. */
-    'f3374eaa2861e95d3698f78aae725825aef2442becb91ce6cb81797c0eae3ade',
-    /* APPENDED BY the Eden shell follow-up, never substituted. List and Month
-       keep the 44px phone floor and share one width so they measure equal.
-       Desktop segmented colour is sm:-gated. NO NAV, TAB ID, READ, WRITE OR
-       PERMISSION GATE MOVED, which is what THE-332 pins this file for. */
-    '40f94e227d6b9024c233f12d671ab4eacf79ad9648105f3dc1ae409afe33631c',
+    /* The Eden shell pass appended two AdminEvents digests (segmented List and
+       Month) and the follow-up restored this file to the #522 digest above.
+       Those two values are not accepted: a revert is not a second legal state. */
   ],
   'src/components/AdminServices.tsx': '17f508718d3c6b1ad016b9fb6be2c241629421705af4a9c0966b02739eba74ae',
   /* 🔴 AN ACCEPTED SET, APPENDED TO, NOT ONE VALUE SUBSTITUTED — the shape the

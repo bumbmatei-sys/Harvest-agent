@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { act, type CSSProperties } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
-import { Church, FileText, GraduationCap } from 'lucide-react';
+import { Church, FileText, GraduationCap, Home } from 'lucide-react';
 
 const analyticsGrant = vi.hoisted(() => ({ value: false }));
 
@@ -21,7 +21,7 @@ import { AdminHome, AdminHomeView } from './AdminHome';
 import { REASON } from '../dashboard/dashboard-data';
 import { countDatedInWindow, formatKpi, HOME_KPI_SOURCES, sumCentsInWindow } from './home-kpis';
 import { NO_TENANT, READ_FAILED } from './use-home-kpis';
-import { groupsForAllSides, groupsForSide, sectionForTab, sideForTab, type ShellSideId, type ShellTabRef } from './shell-nav';
+import { groupsForAllSides, groupsForSide, sectionForTab, SHELL_SIDES, sideForTab, type ShellSideId, type ShellTabRef } from './shell-nav';
 import { ensureLightDefault } from './use-shell-theme';
 
 const tabs = new Map<string, ShellTabRef>([
@@ -88,10 +88,13 @@ describe('shell nav mapping', () => {
       'livestream', 'sms', 'newsletter', 'courses',
     ];
     const all = new Map<string, ShellTabRef>(ids.map((id) => [id, { id, label: id, icon: Church }]));
-    const icons = groupsForAllSides(all).flatMap((group) => group.items.map((item) => item.icon));
-    expect(icons).toHaveLength(ids.length);
-    expect(new Set(icons).size).toBe(icons.length);
-    expect(icons.filter((icon) => icon === Church)).toHaveLength(1);
+    const itemIcons = groupsForAllSides(all).flatMap((group) => group.items.map((item) => item.icon));
+    // Side toggles and the pinned Home row are on screen with the items.
+    // Group labels render no icon, so the group glyph is not part of this set.
+    const visible = [...itemIcons, ...SHELL_SIDES.map((meta) => meta.icon), Home];
+    expect(itemIcons).toHaveLength(ids.length);
+    expect(new Set(visible).size).toBe(visible.length);
+    expect(itemIcons.filter((icon) => icon === Church)).toHaveLength(1);
   });
 
   it('does not label the Social item and its group with the same word', () => {
