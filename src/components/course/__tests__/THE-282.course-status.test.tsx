@@ -579,7 +579,9 @@ describe('6 — no colour is hardcoded and both palettes resolve', () => {
    */
   const BRIDGE = ['primary', 'primary-foreground', 'secondary', 'secondary-foreground',
     'muted', 'muted-foreground', 'foreground', 'background', 'border', 'input',
-    'ring', 'destructive', 'accent', 'accent-foreground', 'card', 'popover'];
+    'ring', 'destructive', 'accent', 'accent-foreground', 'card', 'popover',
+    // Eden shell pass — the default button paints Harvest gold through these.
+    'action', 'action-foreground', 'action-hover'];
 
   /** `hover:`, `focus-visible:`, `aria-invalid:`, `[a]:hover:`, `/80`, `!`. */
   const bare = (t: string) => t
@@ -891,8 +893,15 @@ describe('7 — the progress model, the editor and the adoption gate are untouch
       'src/components/ui/__tests__/__fixtures__/primitive-digests.json',
       'src/components/ui/__tests__/__fixtures__/primitive-class-counts.json',
     ];
+    // Eden shell pass restyles the button and the sidebar and re-records the
+    // token list. Named, so a further primitive still fails.
+    const EDEN_SHELL_UI = [
+      'src/components/ui/__tests__/__fixtures__/globals-tokens.txt',
+      'src/components/ui/button.tsx',
+      'src/components/ui/sidebar.tsx',
+    ];
     expect(
-      changedSince('src/components/ui/').filter((f) => !THE_295.includes(f)),
+      changedSince('src/components/ui/').filter((f) => !THE_295.includes(f) && !EDEN_SHELL_UI.includes(f)).sort(),
       'a ui primitive was added or edited',
     ).toEqual([]);
   });

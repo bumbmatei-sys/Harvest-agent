@@ -172,7 +172,11 @@ describe('text tokens are wired into Tailwind and resolve to the right CSS varia
  */
 describe('zero visual change in the light theme', () => {
   const swaps: Array<[legacy: string, prop: string, token: string]> = [
-    ['bg-white', 'background-color', 'bg-surface-raised'],
+    // `bg-white` / `bg-surface-raised` left with the Eden shell pass, for the
+    // same reason the three pairs below left with THE-338. --surface-raised is
+    // now the Eden card #FDFDFD. bg-white stays #FFFFFF. Keeping the pair would
+    // force the card back to white.
+    //
     // ⚠️ THREE PAIRS LEFT HERE WITH THE-338, for exactly the reason the fourth
     // left before them — see the note below, which was already the precedent.
     //
@@ -190,9 +194,8 @@ describe('zero visual change in the light theme', () => {
     // to be reverted — the whole ticket — to satisfy a vocabulary-era
     // equivalence.
     //
-    // `bg-white` stays because it is still true: --surface-raised is #FFFFFF
-    // in the promoted ramp exactly as it was in the warm one. What the tokens
-    // actually render, and that it clears contrast, is asserted in
+    // `bg-white` was the last pair, and it left with the Eden card. What the
+    // tokens actually render, and that they clear contrast, is asserted in
     // theming-neutral-palette.test.ts, which is the check that matters.
     //
     // ['text-warm-brown', 'color', 'text-muted'] was here and is deliberately
@@ -204,13 +207,15 @@ describe('zero visual change in the light theme', () => {
     // theming-stage3.test.ts, which is the check that actually matters.
   ];
 
-  it.each(swaps)('%s and %s render the same colour', async (legacy, prop, token) => {
-    const css = await compile(`<div class="${legacy} ${token}"></div>`);
-    const legacyValue = declOf(css, legacy, prop);
-    const tokenValue = declOf(css, token, prop);
-    expect(legacyValue).toBeDefined();
-    expect(tokenValue).toBeDefined();
-    expect(resolveColour(tokenValue!, allVars)).toBe(resolveColour(legacyValue!, allVars));
+  it('the Eden card is #FDFDFD and bg-white stays #FFFFFF', async () => {
+    expect(swaps, 'a vocabulary pair came back — see the note above').toEqual([]);
+    const css = await compile('<div class="bg-white bg-surface-raised"></div>');
+    const card = declOf(css, 'bg-surface-raised', 'background-color');
+    const white = declOf(css, 'bg-white', 'background-color');
+    expect(card).toBeDefined();
+    expect(white).toBeDefined();
+    expect(resolveColour(card!, allVars)).toBe('#FDFDFD');
+    expect(resolveColour(white!, allVars)).toBe('#FFFFFF');
   });
 
   it('the converted surface uses no opacity modifier on a variable-backed token', () => {

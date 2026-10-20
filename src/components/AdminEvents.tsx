@@ -23,7 +23,6 @@ import { useEvents } from '../hooks/queries/useEventQueries';
 import { HeroBand } from './member/desktopKit';
 import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { SEGMENTED_LIST_CLASS, SEGMENTED_TRIGGER_CLASS } from '@/components/admin-shell/SegmentedTabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   PAID_EVENTS_ENABLED, PAID_EVENTS_HIDDEN_TITLE, PAID_EVENTS_HIDDEN_MESSAGE,
@@ -1253,9 +1252,9 @@ const AdminEvents: React.FC = () => {
         and bottom at 47.0 — inside the box, on both axes.
       */}
       <Tabs value={listTab} onValueChange={(v) => setListTab(v as 'list' | 'month')}>
-        <TabsList className={SEGMENTED_LIST_CLASS}>
-          <TabsTrigger value="list" className={`${SEGMENTED_TRIGGER_CLASS} min-h-11 min-w-11 sm:min-h-0 sm:min-w-0`}>List</TabsTrigger>
-          <TabsTrigger value="month" className={`${SEGMENTED_TRIGGER_CLASS} min-h-11 min-w-11 sm:min-h-0 sm:min-w-0`}>Month</TabsTrigger>
+        <TabsList className="group-data-[orientation=horizontal]/tabs:h-auto sm:group-data-[orientation=horizontal]/tabs:h-8 sm:w-fit sm:gap-0.5 sm:rounded-xl sm:bg-seg-track sm:p-1">
+          <TabsTrigger value="list" className="min-h-11 min-w-11 w-20 flex-none sm:min-h-0 sm:min-w-0 sm:h-8 sm:rounded-lg sm:px-3 sm:text-[13px] sm:font-medium sm:shadow-none sm:data-active:bg-seg-active sm:data-active:text-foreground sm:data-active:shadow-seg sm:dark:data-active:border-transparent sm:dark:data-active:bg-seg-active">List</TabsTrigger>
+          <TabsTrigger value="month" className="min-h-11 min-w-11 w-20 flex-none sm:min-h-0 sm:min-w-0 sm:h-8 sm:rounded-lg sm:px-3 sm:text-[13px] sm:font-medium sm:shadow-none sm:data-active:bg-seg-active sm:data-active:text-foreground sm:data-active:shadow-seg sm:dark:data-active:border-transparent sm:dark:data-active:bg-seg-active">Month</TabsTrigger>
         </TabsList>
         <TabsContent value="month" className="mt-4">
           <React.Suspense fallback={null}>

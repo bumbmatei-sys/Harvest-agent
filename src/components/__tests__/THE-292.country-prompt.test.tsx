@@ -706,6 +706,9 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ byte-identical', ()
     'eec832262194852dcf12d71acd4c01fec168caf0aed1db96eb660895783f178b',
     // APPENDED BY the Eden shell pass, nothing above removed or rewritten. Desktop content bar is shadcn Breadcrumb, Separator and SidebarTrigger. Inbox and the platform bell sit in the sidebar footer. Mobile header and bottom nav stay. No permission gate moved. Brand colours stay Harvest navy and gold.
     'bfab6720f1e6f64bcfc87a2aab6f844c92dff5c788f7b5f5711a3619c50fe7c4',
+    'ede5f2a59a8107e8b0faf46d8b05d5a5cd34d16f993b4ee2389e2ed194745e87',
+    // APPENDED BY the Eden shell follow-up. Home's breadcrumb is just Home. Every other route crumbs its sidebar group. No permission gate moved.
+    'c76170af6567412fe8998170aeca376ab1998ba8545c2809f1b07ea5f859c940',
   ];
 
   it('🔴 AdminDashboard.tsx — not opened by this ticket', () => {

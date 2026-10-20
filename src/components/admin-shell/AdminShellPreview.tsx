@@ -23,7 +23,7 @@ import { SegmentedTabs, SegmentedTabsList, SegmentedTabsTrigger } from './Segmen
 import { AdminHomeView } from './AdminHome';
 import { HOME_KPI_ORDER, HOME_KPI_SOURCES } from './home-kpis';
 import { useLgUp } from './use-lg';
-import type { ShellSideId, ShellTabRef } from './shell-nav';
+import { sectionForTab, type ShellSideId, type ShellTabRef } from './shell-nav';
 
 const LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
 
@@ -259,7 +259,7 @@ function AfterChrome({ side, collapsed, screen, sheet }: { side: ShellSideId; co
           <SidebarInset className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card">
             <div className="hidden lg:block">
               <AdminContentBar
-                section={screen === 'events' ? 'Reach' : 'People'}
+                section={sectionForTab(screen === 'events' ? 'events' : 'dashboard') ?? ''}
                 title={screen === 'events' ? 'Events' : 'Home'}
                 onOpenApp={() => {}}
               />

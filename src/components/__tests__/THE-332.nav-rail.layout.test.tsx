@@ -375,13 +375,19 @@ describe('THE-332 · measured', () => {
        min-h-11 at the 14.5px root is 39.875px. Both axes, with a cap so a
        row cannot quietly become a card. */
     for (const v of VIEWPORTS.filter((x) => x >= 1024)) {
-      for (const key of ['tab', 'account'] as const) {
-        const box = sidebarShots[v][key];
-        expect(box, `no ${key} box at ${v}px`).toBeTruthy();
-        expect(box!.height, `${key} height at ${v}px`).toBeGreaterThanOrEqual(38);
-        expect(box!.height, `${key} height at ${v}px`).toBeLessThanOrEqual(64);
-        expect(box!.width, `${key} width at ${v}px`).toBeGreaterThanOrEqual(38);
-      }
+      const tab = sidebarShots[v].tab;
+      expect(tab, `no tab box at ${v}px`).toBeTruthy();
+      // Eden nav row is h-[30px], an absolute length, so the lg rem trim does not shrink it.
+      expect(tab!.height, `tab height at ${v}px`).toBeGreaterThanOrEqual(30);
+      expect(tab!.height, `tab height at ${v}px`).toBeLessThanOrEqual(36);
+      expect(tab!.width, `tab width at ${v}px`).toBeGreaterThanOrEqual(38);
+
+      const account = sidebarShots[v].account;
+      expect(account, `no account box at ${v}px`).toBeTruthy();
+      // Footer avatar is size-8 (2rem). At the 14.5px lg root that is 29px.
+      expect(account!.height, `account height at ${v}px`).toBeGreaterThanOrEqual(28);
+      expect(account!.height, `account height at ${v}px`).toBeLessThanOrEqual(44);
+      expect(account!.width, `account width at ${v}px`).toBeGreaterThanOrEqual(28);
     }
   });
 
@@ -392,8 +398,8 @@ describe('THE-332 · measured', () => {
     expect(probe.shown, `collapsed rail still shows "${probe.shown}"`).not.toMatch(/Home|CRM|People|Search|Ministry|Publish|Account/);
     expect(probe.overlapsAccount, 'the expand trigger overlaps the account avatar').toBe(false);
     expect(probe.triggerOwnsHit, 'the expand trigger is not the element under the pointer').toBe(true);
-    expect(probe.lightBg, 'collapsed rail is not the light sidebar ground').toBe('rgb(255, 255, 255)');
-    expect(probe.darkBg, 'dark mode did not reach the collapsed rail').toBe('rgb(31, 31, 31)');
+    expect(probe.lightBg, 'collapsed rail is not the light sidebar ground').toBe('rgb(243, 242, 239)');
+    expect(probe.darkBg, 'dark mode did not reach the collapsed rail').toBe('rgb(33, 33, 33)');
     expect(probe.darkButton, 'the collapsed search control stayed on the light ground').not.toBe('rgb(255, 255, 255)');
   });
 

@@ -16,17 +16,17 @@
  * ── The derivation, from the shell's own classes ─────────────────────────────
  * AdminDashboard.tsx stacks a desktop screen like this:
  *
- *   <div class="h-[100dvh] flex flex-col">        the right-hand column
- *     <div class="hidden lg:flex h-14 border-b">  the branded top bar
- *     <div class="flex-1 p-0 lg:p-6 lg:pb-8">     the content area
- *       <div class="p-4 lg:p-0">                  the per-tab wrapper
+ *   <div class="h-[100dvh]">                      the sidebar provider
+ *     <div class="flex-1 flex-col">               SidebarInset, the column
+ *       <header class="h-12 shrink-0">            AdminContentBar, no border
+ *       <div class="flex-1 p-0 lg:p-6 lg:pb-8">   the content area
  *         …the screen…
  *
- * So what a screen actually gets is the viewport, less the top bar and its
- * border, less the content area's own padding:
+ * So what a screen actually gets is the viewport, less the top bar, less the
+ * content area's own padding. The bar has no border:
  *
- *   100dvh − 3.5rem (h-14) − 1px (border-b) − 1.5rem (lg:p-6) − 2rem (lg:pb-8)
- *   = 100dvh − 7rem − 1px
+ *   100dvh − 3rem (h-12) − 1.5rem (lg:p-6) − 2rem (lg:pb-8)
+ *   = 100dvh − 6.5rem
  *
  * ── In rem, deliberately, not in px ──────────────────────────────────────────
  * globals.css trims the rem base to 14.5px at `min-width: 1024px`, so those
@@ -46,18 +46,18 @@
 
 /** The pieces the height is derived from, each named for the class it reads. */
 export const SHELL_CHROME = {
-  /** The desktop branded top bar — `h-14`. */
-  topBar: '3.5rem',
-  /** Its bottom hairline — `border-b`. */
-  topBarBorder: '1px',
+  /** The desktop content bar — `h-12` on AdminContentBar. */
+  topBar: '3rem',
+  /** The bar has no border. Kept so a later hairline is a named term again. */
+  topBarBorder: '0px',
   /** The content area's top padding — `lg:p-6`. */
   contentPaddingTop: '1.5rem',
   /** The content area's bottom padding — `lg:pb-8`, which overrides `p-6`. */
   contentPaddingBottom: '2rem',
 } as const;
 
-/** The three rem terms above, summed: 3.5 + 1.5 + 2. */
-export const SHELL_CHROME_REM = 7;
+/** The three rem terms above, summed: 3 + 1.5 + 2. */
+export const SHELL_CHROME_REM = 6.5;
 
 /**
  * The height class for a full-height admin screen, desktop only.
@@ -66,4 +66,6 @@ export const SHELL_CHROME_REM = 7;
  * shell scrolls the page normally — a phone gets one pane at natural height,
  * which is what both screens already do.
  */
-export const SHELL_SCREEN_HEIGHT = `lg:h-[calc(100dvh-${SHELL_CHROME_REM}rem-${SHELL_CHROME.topBarBorder})]`;
+export const SHELL_SCREEN_HEIGHT = SHELL_CHROME.topBarBorder === '0px'
+  ? `lg:h-[calc(100dvh-${SHELL_CHROME_REM}rem)]`
+  : `lg:h-[calc(100dvh-${SHELL_CHROME_REM}rem-${SHELL_CHROME.topBarBorder})]`;

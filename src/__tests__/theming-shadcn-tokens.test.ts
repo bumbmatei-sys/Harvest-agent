@@ -606,6 +606,8 @@ describe('THE-263 moves nothing outside globals.css', () => {
     // declarations of its own — so promoting it could change VALUES and never
     // the count. `theming-neutral-palette.test.ts` pins the values.
     expect(Object.keys(rootVars).length).toBeGreaterThanOrEqual(135 + BRIDGE.length);
-    expect(Object.keys(darkVars).length).toBe(83 + 6);
+    // Eden shell pass added the dark action, segmented, sidebar-hover and
+    // related declarations. 89 was 83 + 6. The count is now 104.
+    expect(Object.keys(darkVars).length).toBe(104);
   });
 });

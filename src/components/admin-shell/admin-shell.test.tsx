@@ -21,7 +21,7 @@ import { AdminHome, AdminHomeView } from './AdminHome';
 import { REASON } from '../dashboard/dashboard-data';
 import { countDatedInWindow, formatKpi, HOME_KPI_SOURCES, sumCentsInWindow } from './home-kpis';
 import { NO_TENANT, READ_FAILED } from './use-home-kpis';
-import { groupsForSide, sideForTab, type ShellSideId, type ShellTabRef } from './shell-nav';
+import { groupsForAllSides, groupsForSide, sectionForTab, sideForTab, type ShellSideId, type ShellTabRef } from './shell-nav';
 import { ensureLightDefault } from './use-shell-theme';
 
 const tabs = new Map<string, ShellTabRef>([
@@ -57,6 +57,41 @@ describe('shell nav mapping', () => {
     expect(sideForTab('social')).toBeNull();
     expect(sideForTab('courses')).toBe('public');
     expect(sideForTab('crm')).toBe('people');
+  });
+
+  it('crumbs Home with no section and every other route with its group', () => {
+    expect(sectionForTab('dashboard')).toBeNull();
+    expect(sectionForTab('settings')).toBeNull();
+    expect(sectionForTab('crm')).toBe('People');
+    expect(sectionForTab('signups')).toBe('People');
+    expect(sectionForTab('churches')).toBe('People');
+    expect(sectionForTab('community')).toBe('Care');
+    expect(sectionForTab('services')).toBe('Care');
+    expect(sectionForTab('docs')).toBe('Care');
+    expect(sectionForTab('forms')).toBe('Care');
+    expect(sectionForTab('events')).toBe('Events');
+    expect(sectionForTab('checkin')).toBe('Check-in');
+    expect(sectionForTab('fundraising')).toBe('Giving');
+    expect(sectionForTab('donations')).toBe('Giving');
+    expect(sectionForTab('accounting')).toBe('Giving');
+    expect(sectionForTab('blog')).toBe('Page');
+    expect(sectionForTab('social')).toBe('Channels');
+    expect(sectionForTab('newsletter')).toBe('Email');
+    expect(sectionForTab('courses')).toBe('Products');
+  });
+
+  it('gives every sidebar item its own icon', () => {
+    const ids = [
+      'crm', 'signups', 'churches', 'community', 'services', 'docs', 'forms',
+      'events', 'checkin', 'fundraising', 'donations', 'accounting', 'library',
+      'tenants', 'inbox', 'affiliate', 'blog', 'branding', 'ai', 'social',
+      'livestream', 'sms', 'newsletter', 'courses',
+    ];
+    const all = new Map<string, ShellTabRef>(ids.map((id) => [id, { id, label: id, icon: Church }]));
+    const icons = groupsForAllSides(all).flatMap((group) => group.items.map((item) => item.icon));
+    expect(icons).toHaveLength(ids.length);
+    expect(new Set(icons).size).toBe(icons.length);
+    expect(icons.filter((icon) => icon === Church)).toHaveLength(1);
   });
 
   it('does not label the Social item and its group with the same word', () => {

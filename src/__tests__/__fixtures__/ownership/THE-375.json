@@ -8,9 +8,24 @@
       "why": "Eden shell pass. The desktop top bar is the shared shadcn content bar (Breadcrumb, Separator, SidebarTrigger). Inbox and the platform bell move into the sidebar footer on desktop. The sidebar provider sets the Eden width. Mobile AdminScreenHeader and the bottom nav stay. No permission gate, nav id or screen mount was added or removed."
     },
     {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "ede5f2a59a8107e8b0faf46d8b05d5a5cd34d16f993b4ee2389e2ed194745e87",
+      "why": "Eden shell pass follow-up. The payments inbox moves from the sidebar footer into the desktop content bar so it stays top-right on desktop. The platform bell stays in the footer. Mobile AdminScreenHeader still mounts its own inbox. No permission gate, nav id or screen mount was added or removed."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "c76170af6567412fe8998170aeca376ab1998ba8545c2809f1b07ea5f859c940",
+      "why": "Eden shell pass follow-up. Home's breadcrumb is just Home. Every other route crumbs its sidebar group instead of the People or Public side. No permission gate, nav id or screen mount was added or removed."
+    },
+    {
       "file": "src/components/AdminEvents.tsx",
       "digest": "f3374eaa2861e95d3698f78aae725825aef2442becb91ce6cb81797c0eae3ade",
       "why": "Eden shell pass. The List and Month switch uses the shared segmented tab classes built on shadcn Tabs. The 44px phone floor stays on the triggers. No nav, tab id, read, write or permission gate moved, which is what the events digest pins this file for."
+    },
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "40f94e227d6b9024c233f12d671ab4eacf79ad9648105f3dc1ae409afe33631c",
+      "why": "Eden shell pass follow-up. List and Month stay on shadcn Tabs. Desktop segmented colour is gated at sm so the phone floor stays. Both triggers share one width so they measure equal. No nav, tab id, read, write or permission gate moved."
     },
     {
       "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",

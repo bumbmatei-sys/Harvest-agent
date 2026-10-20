@@ -5,8 +5,8 @@ import {
   ChevronRight,
   Home,
   Moon,
-  Radio,
   Search,
+  Share2,
   Sun,
 } from 'lucide-react';
 
@@ -69,7 +69,7 @@ export const SIDEBAR_WIDTH = '276px';
  */
 const MENU_BUTTON = 'h-[30px] min-h-0 gap-2 rounded-lg py-0 pr-3 pl-2 text-[14px] font-normal text-sidebar-foreground data-active:font-normal [&_svg]:size-[17px] [&_svg]:stroke-[1.7] group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0!';
 
-const ICON_BUTTON = 'size-8 shrink-0 text-sidebar-foreground hover:bg-sidebar-hover hover:text-sidebar-accent-foreground [&_svg]:size-[17px] [&_svg]:stroke-[1.7]';
+const ICON_BUTTON = 'size-8 min-h-11 shrink-0 text-sidebar-foreground hover:bg-sidebar-hover hover:text-sidebar-accent-foreground sm:min-h-0 [&_svg]:size-[17px] [&_svg]:stroke-[1.7]';
 
 export function AdminDesktopSidebar({
   side,
@@ -128,7 +128,7 @@ export function AdminDesktopSidebar({
       variant="inset"
       collapsible="icon"
       data-shell-side={side}
-      className="p-[8px] text-sidebar-foreground group-data-[collapsible=icon]:overflow-hidden"
+      className="p-[8px] text-sidebar-foreground"
     >
       <SidebarHeader className="gap-1.5 p-0 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:py-2">
         <div className="flex h-[52px] items-center gap-1.5 pr-3 pl-4 group-data-[collapsible=icon]:h-auto group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:px-0">
@@ -206,7 +206,7 @@ export function AdminDesktopSidebar({
                   data-nav-tab="social"
                   onClick={() => onNavigate('social')}
                 >
-                  <Radio />
+                  <Share2 />
                   <span className="group-data-[collapsible=icon]:sr-only">Social</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -267,7 +267,7 @@ export function AdminDesktopSidebar({
 
       <SidebarFooter className="gap-1 p-0 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:py-2">
         <div className="flex h-[52px] items-center gap-1 pr-3 pl-4 group-data-[collapsible=icon]:h-auto group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:px-0">
-          <div className="flex min-w-0 flex-1 items-center gap-2 group-data-[collapsible=icon]:flex-none [&_[data-nav-rail-account]_button]:size-8 [&_[data-shell-account-label]]:truncate group-data-[collapsible=icon]:[&_[data-shell-account-label]]:sr-only">
+          <div className="flex min-w-0 flex-1 items-center gap-2 group-data-[collapsible=icon]:flex-none [&_[data-nav-rail-account]_button]:size-8 [&_[role=menu]]:bottom-8! [&_[data-shell-account-label]]:truncate group-data-[collapsible=icon]:[&_[data-shell-account-label]]:sr-only">
             {accountMenu}
             {accountLabel ? (
               <span data-shell-account-label className="min-w-0 truncate text-[13px] font-medium text-sidebar-accent-foreground">

@@ -13,7 +13,7 @@ import { SocialUpgradeWall } from '@/components/admin/social/SocialUpgradeWall';
 import { applyTheme } from '@/lib/theme-runtime';
 import type { ThemeChoice } from '@/lib/theme';
 import { MockSocialClient } from '@/lib/social/mock-client';
-import type { ShellTabRef } from '@/components/admin-shell/shell-nav';
+import { sectionForTab, type ShellTabRef } from '@/components/admin-shell/shell-nav';
 
 const CLOCK = new Date(Date.UTC(2024, 2, 15, 12));
 const LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -64,12 +64,12 @@ export function SocialSchedulerPreview({ view, theme }: { view?: string; theme?:
             logoUrl={LOGO}
             onNavigate={() => {}}
             onPlaceholder={() => {}}
-            accountMenu={<Button type="button" variant="ghost" className="size-8 text-sidebar-foreground" aria-label="My account">Account</Button>}
+            accountMenu={<Button type="button" variant="ghost" className="size-8 min-h-11 text-sidebar-foreground sm:min-h-0" aria-label="My account">Account</Button>}
           />
         )}
         <SidebarInset className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card">
           <div className="hidden lg:block">
-            <AdminContentBar section="Public" title={viewTitle} onOpenApp={() => {}} />
+            <AdminContentBar section={sectionForTab('social') ?? ''} title={viewTitle} onOpenApp={() => {}} />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-4">
           {wall ? (

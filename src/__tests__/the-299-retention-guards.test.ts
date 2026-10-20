@@ -766,6 +766,10 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // APPENDED BY the Eden shell pass, nothing above removed or rewritten.
     ['bfab6720f1e6f64bcfc87a2aab6f844c92dff5c788f7b5f5711a3619c50fe7c4',
       `Eden shell pass - the desktop content bar is shadcn Breadcrumb, Separator and SidebarTrigger. Inbox and the platform bell sit in the sidebar footer. Eden widths and grouped nav. Mobile AdminScreenHeader and the bottom nav stay. No permission gate, nav id or screen mount moved. Brand colours stay Harvest navy and gold.`],
+    ['ede5f2a59a8107e8b0faf46d8b05d5a5cd34d16f993b4ee2389e2ed194745e87',
+      `Eden shell pass follow-up - the payments inbox moves from the sidebar footer into the desktop content bar so it stays top-right. The platform bell stays in the footer. Mobile AdminScreenHeader still mounts its own inbox. No permission gate, nav id or screen mount moved.`],
+    ['c76170af6567412fe8998170aeca376ab1998ba8545c2809f1b07ea5f859c940',
+      `Eden shell pass follow-up - Home's breadcrumb is just Home. Every other route crumbs its sidebar group instead of the People or Public side. No permission gate, nav id or screen mount moved.`],
   ],
   'firestore.indexes.json': [
     ['8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0', 'main at 133d557'],
@@ -837,7 +841,9 @@ describe('AdminDashboard.tsx, firestore.rules, firestore.indexes.json and functi
       .map((f) => `src/components/ui/${f}`);
     expect(files).toHaveLength(43);
     const tree = sha256(files.map((f) => `${f}:${sha256(readFileSync(path.join(REPO_ROOT, f)))}`).join('\n'));
-    expect(tree).toBe('f02a80fe809b4ff8a1cb4eaceb2deb4e28ad090f85d6682c1e862fd674a50aa7');
+    // Eden shell pass restyled button.tsx and sidebar.tsx. The previous tree was
+    // f02a80fe809b4ff8a1cb4eaceb2deb4e28ad090f85d6682c1e862fd674a50aa7.
+    expect(tree).toBe('43e9d40e48b09a5336f8d7272e3eb510dce900bf3bd74b18d2ceaf0eb3ac3610');
   });
 
   it('nothing in this slice imports the shell it may not open, or a parallel ticket\'s files', () => {

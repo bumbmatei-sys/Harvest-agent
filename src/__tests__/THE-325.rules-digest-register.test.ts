@@ -796,16 +796,16 @@ const CONTENT_ASSERTING_MOVED: Readonly<Record<string, readonly [digest: string,
   // the phase-2 social shots. *.png was already binary. The suite still asserts
   // content.
   'src/__tests__/the-268-line-endings.test.ts': [
-    'b7b04fc9850e51304fad0ba9f2a299a34e9fc332800c38bbd0db8d72fed8406e',
-    '#530',
-    'the merge keeps every PNG list: #530 phase-2 social shots, including the '
-      + 'centered compose screenshots, #536 blog-status-picker proofs, and #531 '
-      + 'phase-2c blog shots. The phase-1 paths and the original thirteen stay. '
+    'f314e3b78b11558464fce7f61a02b6dec2f03bf14fd0181bb830902f1a6f5012',
+    '#537',
+    'the Eden shell pass appends the proof PNGs under docs/redesign/eden-shell/. '
       + '*.png was already binary. The suite still asserts file content rather '
-      + 'than a digest pin. The previous digests were '
+      + 'than a digest pin. The previous current digest was '
+      + 'b7b04fc9850e51304fad0ba9f2a299a34e9fc332800c38bbd0db8d72fed8406e after #530. '
+      + 'Earlier digests stay in the history: '
       + '22f630620126698b1847e59b6708274dfed6f2766b3f290070a959e5f5d7ee8d after #536, '
       + '6c32acd216964124a4de8c05587c747cb407d1207d6befe3e12e677ed410361c for #530 '
-      + 'before this merge, 83ddc357e689278de72e184f4690249d9f3fc08f3ef26381c3b7c6d58693775c '
+      + 'before that merge, 83ddc357e689278de72e184f4690249d9f3fc08f3ef26381c3b7c6d58693775c '
       + 'for the earlier #530 and '
       + '9afa6f0fbc261d14c272730907acf4fd9ad0df1b283d04cf537a7255b44ffad5 for #531. '
       + 'The row in CONTENT_ASSERTING is untouched.',

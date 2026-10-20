@@ -426,13 +426,19 @@ const EMPTY_DIRECTION_FREEZES: Readonly<Record<string, number>> = {
   // now stated as what it means: the course editor imports and spells it
   // nowhere. The file is not unguarded — `the-303-giving-cluster` renders it and
   // asserts its behaviour, and THE-111 measures the plate in a real browser.
-  'src/components/__tests__/THE-305.course-editor-header.test.tsx': 8,
+  // 8 → 7, RETIRED BY the Eden shell pass. THE-305 froze `src/components/ui/`
+  // against an empty branch diff. The shell restyles button.tsx and sidebar.tsx
+  // on purpose, so the assertion now names those files. An empty freeze would
+  // stay red after this branch merges.
+  'src/components/__tests__/THE-305.course-editor-header.test.tsx': 7,
   'src/components/__tests__/THE-305.install-reachable.test.tsx': 1,
   'src/components/course/__tests__/THE-282.course-status.test.tsx': 4,
-  'src/components/course/__tests__/THE-311.course-palette.test.ts': 8,
+  // 8 → 7, RETIRED BY the Eden shell pass, for the same reason as THE-305.
+  // THE-311 now names the six ui files the shell touches.
+  'src/components/course/__tests__/THE-311.course-palette.test.ts': 7,
 };
 
-const EMPTY_DIRECTION_TOTAL = 22;  // 23 → 22: see THE-111's note above.
+const EMPTY_DIRECTION_TOTAL = 20;  // 22 → 20: THE-305 and THE-311 each retired one empty ui-primitive freeze.
 
 describe('3 · #454 would NOT catch §8 even with its blind spot closed', () => {
   /**
@@ -535,8 +541,9 @@ describe('3 · #454 would NOT catch §8 even with its blind spot closed', () => 
   });
 
   it('\u{1F534} and §8’s three are GONE from that finding, which is this ticket’s half of it', () => {
-    // Before this ticket THE-311 carried eleven; it carries eight. The three
-    // that went are §8's, and section 1 proves the section reads no diff at all.
+    // Before this ticket THE-311 carried eleven; §8 took it to eight. The Eden
+    // shell pass took the remaining empty ui-primitive freeze to an explicit
+    // file list, so the count is seven. Section 1 proves §8 reads no diff.
     expect(branchDiffAssertions(read(THE311)).length,
       'THE-311’s EMPTY-direction count moved').toBe(EMPTY_DIRECTION_FREEZES[THE311]);
     expect(branchDiffAssertions(read(THE311)).filter((f) => /THE-305/.test(f)),

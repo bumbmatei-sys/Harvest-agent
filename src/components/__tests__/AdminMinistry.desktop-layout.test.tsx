@@ -1193,6 +1193,22 @@ const THE_368_ADDED_COLOURS: Readonly<Record<string, Readonly<Record<string, rea
 };
 
 /**
+ * Eden shell pass — the Events List/Month bar picks up the segmented track on
+ * desktop only. Every token is `sm:`-gated, so a phone still paints the tabs
+ * primitive. Each name resolves through a theme token (seg track, seg active,
+ * foreground, transparent) rather than a hex.
+ */
+const EDEN_SHELL_EVENT_COLOURS: readonly string[] = [
+  'sm:bg-seg-track',
+  'sm:data-active:bg-seg-active',
+  'sm:data-active:shadow-seg',
+  'sm:data-active:text-foreground',
+  'sm:dark:data-active:bg-seg-active',
+  'sm:dark:data-active:border-transparent',
+  'sm:shadow-none',
+];
+
+/**
  * THE-308 — the TWENTY-FIVE colour-bearing classes `tabs` emits.
  *
  * Same provenance and the same proof as the heights above: every one appears
@@ -1619,6 +1635,15 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       '16px inset the bubbles already sit on. It fills the parent\'s padding ' +
       'box and never leaves its border box, so the shell\'s overflow-hidden has ' +
       'nothing to clip, and it sizes no tap target.',
+    'w-20':
+      'Eden shell pass — both Events List/Month triggers share one width so they ' +
+      'measure equal at every viewport, including 380px where content width made ' +
+      'Month 18px wider than List. 5rem is 80px at the phone root, above the 44px ' +
+      'floor, and it sizes the control rather than shrinking it.',
+    'flex-none':
+      'Eden shell pass — the tabs primitive sets flex-1 on a trigger. flex-none ' +
+      'lets the shared w-20 win, so the two words stay the same width. It does ' +
+      'not set a height and cannot pull a target under 44px.',
   };
 
   const toTokens = (layer: string[]) =>
@@ -1828,6 +1853,10 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
       // `sm:flex-none`, spelled at the call site exactly as AdminCourseEditor
       // already spells it for its own full-width buttons.
       'sm:w-auto',
+      // Eden shell pass — desktop-only geometry on the Events List/Month bar.
+      // Each is sm:-gated, so the phone floor stays the primitive padding plus
+      // min-h-11. None of these is a form-layout measure.
+      'sm:h-8', 'sm:p-1', 'sm:px-3', 'sm:gap-0.5', 'sm:w-fit',
     ]);
     // Only tokens this PR ADDED are in scope: the screens carry pre-existing
     // responsive tokens (a `sm:grid-cols-[auto_1fr]` template on the attendees
@@ -2459,6 +2488,7 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
         const expected = [
           ...BASELINE[name]![view].colours.filter((t: string) => !removed.has(t)),
           ...(THE_368_ADDED_COLOURS[name]?.[view] ?? []),
+          ...(name === 'AdminEvents' && view === 'default' ? EDEN_SHELL_EVENT_COLOURS : []),
         ].sort();
         expect(colourTokens(c).filter((t) => !excluded.has(t)), `${name}/${view} colours moved`)
           .toEqual(expected);
@@ -2483,6 +2513,7 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
           if (base.has(t)) continue;
           if (name === 'AdminEvents' && recorded.has(t)) continue;
           if ((THE_368_ADDED_COLOURS[name]?.[view] ?? []).includes(t)) continue;
+          if (name === 'AdminEvents' && view === 'default' && EDEN_SHELL_EVENT_COLOURS.includes(t)) continue;
           added.add(`${name}/${view}:${t}`);
         }
       }

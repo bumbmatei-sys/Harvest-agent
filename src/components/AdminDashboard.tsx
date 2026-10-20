@@ -19,7 +19,7 @@ import { NavEntitlementCatalog } from './admin-shell/NavEntitlementCatalog';
 import { ShellPlaceholder } from './admin-shell/ShellPlaceholder';
 import { useLgUp } from './admin-shell/use-lg';
 import { ensureLightDefault } from './admin-shell/use-shell-theme';
-import { SHELL_SIDES, sideForTab, type ShellPlaceholderId, type ShellSideId } from './admin-shell/shell-nav';
+import { sectionForTab, sideForTab, type ShellPlaceholderId, type ShellSideId } from './admin-shell/shell-nav';
 import AffiliateSection from './AffiliateSection';
 import NewsletterEditor from './NewsletterEditor';
 import NewsletterCampaigns from './NewsletterCampaigns';
@@ -1035,12 +1035,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           onPlaceholder={(id) => { setShellPlaceholder(id); const next = sideForTab(id); if (next) setShellSide(next); }}
           accountMenu={<MyAccountMenu {...accountMenuProps} variant="rail" />}
           accountLabel={accountMenuProps.displayName || 'Account'}
-          footerExtra={(
-            <>
-              {!platformOverride && currentTenantId && (
-                <TenantInbox tenantId={currentTenantId} triggerClassName="size-8 rounded-lg text-sidebar-foreground hover:bg-sidebar-hover" />
-              )}
-              {showInbox && (
+          footerExtra={showInbox ? (
                 <button
                   onClick={() => go('inbox')}
                   className="relative inline-flex size-8 items-center justify-center rounded-lg text-sidebar-foreground hover:bg-sidebar-hover"
@@ -1052,9 +1047,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                     <span className="absolute top-1 right-1 size-2 rounded-full bg-red-500" />
                   )}
                 </button>
-              )}
-            </>
-          )}
+          ) : undefined}
         />
       )}
       {process.env.NODE_ENV === 'test' && (
@@ -1181,16 +1174,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       {/* Main Container */}
       <SidebarInset data-admin-content className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card md:bg-card">
         {/* Desktop toolbar — sidebar-07 pattern (trigger, separator, breadcrumb)
-            with the screen's own actions on the right. The inbox and the
-            platform bell sit in the sidebar footer. Mobile keeps the header
-            below, including its own inbox. */}
+            with the screen's own actions on the right. The payments inbox sits
+            in this bar. The platform bell stays in the sidebar footer. Mobile
+            keeps the header below, including its own inbox. */}
         <div className="hidden lg:block">
           <AdminContentBar
-            section={SHELL_SIDES.find((meta) => meta.id === shellSide)?.label ?? 'People'}
-            title={headerOverride?.title ?? headerTitle}
+            section={sectionForTab(activeTab) ?? ''}
+            title={headerOverride?.title ?? (activeTab === 'dashboard' ? 'Home' : headerTitle)}
             onBack={headerOverride?.onBack}
             onOpenApp={headerOverride?.onBack ? undefined : handleViewApp}
             actions={(headerOverride ? headerOverride.action : headerAction) || undefined}
+            trailing={!platformOverride && currentTenantId ? (
+              <TenantInbox tenantId={currentTenantId} />
+            ) : undefined}
           />
         </div>
 
