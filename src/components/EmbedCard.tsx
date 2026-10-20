@@ -339,7 +339,7 @@ export const EmbedComposerChip: React.FC<{ embed: PostEmbed; tenantId: string | 
   const { Icon, label } = TYPE_META[embed.type];
 
   return (
-    <div className="relative flex items-center gap-3 rounded-xl border border-line bg-surface-sunken p-2.5 pr-9">
+    <div className="relative flex items-center gap-3 rounded-xl border border-line bg-surface-sunken p-2.5 pr-16 sm:pr-9">
       <div className="w-11 h-11 rounded-lg overflow-hidden bg-surface-sunken shrink-0 relative flex items-center justify-center">
         {data?.image ? (
           <Image src={data.image} alt="" fill sizes="44px" className="object-cover" referrerPolicy="no-referrer" />
@@ -355,13 +355,15 @@ export const EmbedComposerChip: React.FC<{ embed: PostEmbed; tenantId: string | 
           {status === 'loading' ? 'Loading…' : status === 'missing' ? 'Unavailable' : data?.title}
         </p>
       </div>
+      {/* icon-xs is 24px. Below sm, THE-356's 44px touch floor needs min-h-11;
+          sm:min-h-0 hands the corner back to the 24px circle. */}
       <Button
         type="button"
         size="icon-xs"
         variant="ghost"
         onClick={onRemove}
         aria-label="Remove attachment"
-        className="absolute top-2 right-2 rounded-full bg-black/60 text-white hover:bg-black/80 hover:text-white"
+        className="absolute top-2 right-2 min-h-11 min-w-11 rounded-full bg-black/60 text-white hover:bg-black/80 hover:text-white sm:min-h-0 sm:min-w-0"
       >
         <X />
       </Button>
