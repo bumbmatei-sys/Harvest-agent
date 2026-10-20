@@ -757,6 +757,10 @@ describe('sidebar importers are the phase-1 shell and nothing else', () => {
       'src/components/admin-shell/AdminDesktopSidebar.tsx',
       'src/components/admin-shell/AdminShellPreview.tsx',
       'src/components/admin-shell/admin-shell.test.tsx',
+      // APPENDED BY #531, nothing above removed. The dev-only schedule proof
+      // mounts the real desktop sidebar so the shots show the shell the editor
+      // lives in. It is not a second product surface.
+      'src/components/blog/BlogSchedulePreview.tsx',
     ].sort());
   });
 

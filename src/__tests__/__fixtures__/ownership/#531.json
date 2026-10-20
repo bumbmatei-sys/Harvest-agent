@@ -1,0 +1,106 @@
+{
+  "ticket": "#531",
+  "note": "Scheduled blog publishing. Digests below are appended beside earlier ones and nothing already recorded is replaced. Client creates, updates and deletes of blog_posts are closed in firestore.rules; that change is in this PR and is not deployed. Share to blog draft goes through the blog service. Confirm tokens store expireAt for a Firestore TTL policy that is also not deployed.",
+  "entries": [
+    {
+      "file": "src/components/AdminBlog.tsx",
+      "digest": "1cda4456a7b2d271e94d69d04d0af9202e3177c9997343ecde9bfe27305d60ba",
+      "why": "#531 owns the post-list status and the delete path. Desktop rows use the full Scheduled-for sentence; the existing mobile card keeps the short Draft, Scheduled, or Published word so the narrow list does not grow a new layout. Delete previews then confirms through the blog service instead of deleteDoc, and a failure is shown rather than returned silently."
+    },
+    {
+      "file": "src/components/AdminBlogPostEditor.tsx",
+      "digest": "3514ca3c3683dfce70c6d3bfb4858b12c9acb0e38940e7d47009f614a4fb81f9",
+      "why": "#531 replaces the status select with the shadcn Publish now, Schedule, and Draft control. The editor no longer writes blog_posts. Save draft, schedule, and publish now call the blog service; schedule and publish now preview the effect and only write on confirm. The recorded colour and scale literals are unchanged."
+    },
+    {
+      "file": "src/components/BlogTab.tsx",
+      "digest": "93bdb76e728ab4771805afbf1ec60a3264abb8de397c92add7da1d207a393f00",
+      "why": "#531 filters the member blog list with the shared read-time visibility predicate. A draft stays hidden, a scheduled post appears once its UTC instant has arrived without a status flip, and a published post with a future instant stays hidden. The tenant query and the date formatter are unchanged."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "80ef777e4ae3c6839c9572104a0e576e15ead0bc79d5f02747c8a21caf850591",
+      "why": "#531 applies the same read-time visibility predicate to both blog lists on the news tab, so a scheduled post does not surface in the picker or the article strip before its instant. No layout, colour, or news-post behaviour moved."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "c9a57fed9ca283b5ad1c9749334cbfbad69204b7d515459d94afd13d1f534238",
+      "why": "#531 gates the saved-article opener with the same visibility predicate. A saved post that is still a draft or still waiting for its scheduled instant does not open. The shell, the nav, and the element tree are otherwise untouched."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "0a89ce7805cb544d0f7efa72f520fbc5f440d973a0413cd7aed2c9bb9eeb7589",
+      "why": "#531 appends BlogScheduleFields.tsx as a toggle-group adopter and does not replace earlier rows. The schedule control is one choice among Publish now, Schedule and Draft. switch, radio-group and checkbox are rejected in the recorded reason. No primitive was edited."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "874260c6176e10ffc9360cfb4467a25bc9f936b6609d07d1b777858e920baee9",
+      "why": "#531 closes client creates, updates and deletes of blog_posts. Reads stay tenant-scoped. blog_confirm_tokens and blog_admin_audit are denied to clients because the blog service writes both through the Admin SDK. This file auto-deploys on merge and this PR does not deploy it."
+    },
+    {
+      "file": "src/components/AdminDocs.tsx",
+      "digest": "8080b494ea2b400358c5bde9756c4737e3742153a49fb924955f85b09e08aca4",
+      "why": "#531 moves Share to blog draft off a client addDoc of blog_posts and onto the blog service createDraft action. The note is still copied as a draft and nothing is published from the menu. The docs collection and its timestamps are unchanged."
+    },
+    {
+      "file": "src/components/AdminBlog.tsx",
+      "digest": "3a61ea2035592727aa8bebbedbf51612a43c5df1d47b6f797f7e3f2ae5ddbc69",
+      "why": "#531 sends the preview token back on delete confirm. A delete without the token returned by the preview is refused by the service, and the list still shows the failure instead of swallowing it. The desktop and mobile status labels are unchanged."
+    },
+    {
+      "file": "src/components/AdminBlogPostEditor.tsx",
+      "digest": "3230232814702296d6c57c14f38fc0489ef059d8518b8e70b2174db4be356805",
+      "why": "#531 keeps the confirmation token from the preview and sends it only when the admin confirms. Editing the title, body, category, tags, image, intent or time clears the token so a changed payload cannot be confirmed. The colour and scale literals are unchanged."
+    },
+    {
+      "file": "src/components/AdminBlogPostEditor.tsx",
+      "digest": "d90621b9b7f03df1bd2f662b591988abe50ae1056d2138940c4fbdbe1ddc8cfd",
+      "why": "#531 stops Save draft from turning a published or scheduled post into a draft. Saving the body keeps the current status. Choosing Draft on a live post calls unschedule, which previews and confirms before the post leaves the ministry page. The colour and scale literals are unchanged."
+    },
+    {
+      "file": "src/components/AdminBlog.tsx",
+      "digest": "b1887f1361179acee97a209371b7c3aef3ab34fd987dd097d6ee6a4427d50fc9",
+      "why": "#531 reads each post category through one helper in the list snapshot and the category filter. A missing or non-string category stays blank, so the list and the editor show the same value and a blank category is not offered as a filter."
+    },
+    {
+      "file": "src/components/AdminBlogPostEditor.tsx",
+      "digest": "73f23eb067921ec4835b8c98dd30a29d6787f9f1e1f3f833d476137b5c3b0dea",
+      "why": "#531 requires a future schedule date before saving and shows that sentence inline. A save that does not return unlocks the editor and says nothing changed. An existing post keeps its stored category, including none. The colour and scale literals are unchanged."
+    },
+    {
+      "file": "src/components/AdminBlog.tsx",
+      "digest": "0121b27c763b2c4ec65b09283ff7a75cd0015455751038b6218a30e4611b05eb",
+      "why": "#531 does not ask the automate route when no ministry is in scope. A super admin on the preview host has no tenant on the token, and that request was the 400. When a ministry is in scope the request names it. The colour and scale literals are unchanged."
+    },
+    {
+      "file": "src/components/AdminBlog.tsx",
+      "digest": "d05e728619f35674d94aca8e2d503e3bd6ee8856e41c7fa88be23b79f932ffa8",
+      "why": "#531 shows the missing-ministry sentence inside the automation panel. The page banner sits under that panel, so Save and Generate Now were refusing the request without a reason the admin could see. The colour and scale literals are unchanged."
+    },
+    {
+      "file": "src/components/AdminBlog.tsx",
+      "digest": "dda52ce2a377394a327390b0bbcb2ae34a6055dc01bbcd43e092fcfc1db01bb5",
+      "why": "#531 loads and saves automation through the write tenant scope. A null read scope on the apex stays an unscoped post list. A null write scope is the only case that stops, and that sentence stays inside the panel. The colour and scale literals are unchanged."
+    },
+    {
+      "file": "src/components/AdminBlog.tsx",
+      "digest": "64fc412d85069b749755000cbe7b67279386974cc3a94a8d444929af649d219c",
+      "why": "#531 shows a failed automation settings read inside the panel instead of an alert, and falls back to the ministry document when the route cannot read it. The post list still uses the read scope. The colour and scale literals are unchanged."
+    },
+    {
+      "file": "src/components/AdminBlogPostEditor.tsx",
+      "digest": "b03884d6b8be90e85a085ff83ad267f5920339bfea86c9ec8d6e316fb41bce76",
+      "why": "#531 shows Confirm before the editor calls the blog service, including for a new unsaved draft. A published post no longer starts Schedule on its past publish date, and a new draft starts with an empty category. A save that does not settle still unlocks and shows the timeout sentence. The colour and scale literals are unchanged."
+    },
+    {
+      "file": "src/components/AdminBlog.tsx",
+      "digest": "8d219dc8fad1b91e09d688a5d1c1c5d641f1d092e61806ad3806b0610ea9a1ac",
+      "why": "#531 tells the admin that Generate Now saved a draft and leaves the panel open so that sentence is visible. Publishing still happens in the editor after preview. The colour and scale literals are unchanged."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "964173ae1cfc533eb7b48ced8b2909677add1d11f5d63af782ebfc460bf4644a",
+      "why": "#531 keeps the blog_posts client-write closure after rebasing onto #532. The file now also contains the addons deny list, so the hash moved. No earlier digest was replaced. This file auto-deploys on merge and this PR does not deploy it."
+    }
+  ]
+}

@@ -1,5 +1,13 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import withPWAInit from "next-pwa";
 import { withSentryConfig } from "@sentry/nextjs";
+
+// Vendored `server-only` (vendor/server-only). The lockfile cannot take the
+// package, and Next resolves it from this directory the same way it resolves
+// a real install. The marker throws if a client component imports it.
+const vendorDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "vendor");
 
 /** @type {import('next-pwa').PWAConfig} */
 const withPWA = withPWAInit({
@@ -30,6 +38,11 @@ const nextConfig = {
   // initialized. Required on Next 14; the default from Next 15 onward.
   experimental: {
     instrumentationHook: true,
+  },
+  webpack: (config) => {
+    config.resolve.modules = config.resolve.modules || [];
+    config.resolve.modules.push(vendorDir);
+    return config;
   },
   images: {
     remotePatterns: [
