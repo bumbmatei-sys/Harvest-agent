@@ -144,6 +144,16 @@ function seedSelectDefaults(current: FieldValues, platforms: readonly string[]):
   return next;
 }
 
+/** Key order must not matter: the same fields entered in a different order are the same post. */
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const row = value as Record<string, unknown>;
+    return `{${Object.keys(row).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(row[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
+}
+
 function targetsFor(
   content: string,
   selected: readonly string[],
@@ -191,7 +201,7 @@ export function SocialScheduler({
   const [notice, setNotice] = useState<string | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const [saving, setSaving] = useState(false);
-  const publishKey = useRef<{ key: string; fingerprint: string } | null>(null);
+  const publishKey = useRef<{ key: string; payloadHash: string } | null>(null);
   const [editing, setEditing] = useState<SocialPost | null>(null);
   const [editText, setEditText] = useState('');
   const [editWhen, setEditWhen] = useState('');
@@ -381,9 +391,9 @@ export function SocialScheduler({
       targets,
       media: [],
     };
-    const fingerprint = JSON.stringify(payload);
-    if (!publishKey.current || publishKey.current.fingerprint !== fingerprint) {
-      publishKey.current = { key: crypto.randomUUID(), fingerprint };
+    const payloadHash = canonicalJson(payload);
+    if (!publishKey.current || publishKey.current.payloadHash !== payloadHash) {
+      publishKey.current = { key: crypto.randomUUID(), payloadHash };
     }
     const headers = { 'Idempotency-Key': publishKey.current.key };
     const doneNotice = data?.sample || initial
