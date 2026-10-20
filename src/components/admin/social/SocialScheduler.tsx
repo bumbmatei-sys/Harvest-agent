@@ -125,22 +125,31 @@ function ministryZone(reported: string | null | undefined, requested: string): s
   return workspaceTimeZone(reported, requested);
 }
 
-function withSelectDefaults(
-  platform: string,
-  current: Record<string, string | boolean> | undefined,
-): Record<string, string | boolean> {
-  const next = { ...(current || {}) };
-  const specs = PLATFORM_FIELDS[platform as SocialPlatform] || [];
-  for (const field of specs) {
-    if (field.kind !== 'select') continue;
-    if (next[field.key] !== undefined && next[field.key] !== '') continue;
-    const first = field.options[0]?.value;
-    if (first) next[field.key] = first;
+type FieldValues = Record<string, Record<string, string | boolean>>;
+
+/** Each Select shows its first option until the user picks, so that option is written into state when the platform is chosen. */
+function seedSelectDefaults(current: FieldValues, platforms: readonly string[]): FieldValues {
+  let next = current;
+  for (const platform of platforms) {
+    const specs = PLATFORM_FIELDS[platform as SocialPlatform] || [];
+    for (const field of specs) {
+      if (field.kind !== 'select') continue;
+      const held = next[platform]?.[field.key];
+      if (held !== undefined && held !== '') continue;
+      const first = field.options[0]?.value;
+      if (!first) continue;
+      next = { ...next, [platform]: { ...next[platform], [field.key]: first } };
+    }
   }
   return next;
 }
 
-function targetsFor(content: string, selected: readonly string[], accounts: readonly SocialAccount[]): SocialTarget[] {
+function targetsFor(
+  content: string,
+  selected: readonly string[],
+  accounts: readonly SocialAccount[],
+  fields: FieldValues,
+): SocialTarget[] {
   return selected.flatMap((slug) => {
     const platform = slug as SocialPlatform;
     const account = accounts.find((row) => row.platform === platform);
@@ -149,7 +158,7 @@ function targetsFor(content: string, selected: readonly string[], accounts: read
       platform,
       accountId: account.id,
       text: content,
-      fields: {},
+      fields: { ...fields[platform] },
       madeWithAi: false,
     }];
   });
@@ -176,7 +185,7 @@ export function SocialScheduler({
       ? [initial.accounts.find((account) => account.platform !== 'youtube')?.platform].filter(Boolean) as string[]
       : [],
   );
-  const [fields, setFields] = useState<Record<string, Record<string, string | boolean>>>({});
+  const [fields, setFields] = useState<FieldValues>(() => seedSelectDefaults({}, selected));
   const [madeWithAi, setMadeWithAi] = useState(false);
   const [when, setWhen] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
@@ -237,7 +246,10 @@ export function SocialScheduler({
         });
         const accounts = Array.isArray(body.accounts) ? body.accounts : [];
         const first = accounts.find((account: { platform?: unknown }) => account?.platform !== 'youtube')?.platform;
-        if (typeof first === 'string') setSelected([first]);
+        if (typeof first === 'string') {
+          setSelected([first]);
+          setFields((current) => seedSelectDefaults(current, [first]));
+        }
       })
       .catch(() => {
         if (!cancelled) setFailed(true);
@@ -344,9 +356,8 @@ export function SocialScheduler({
 
   function schedule(publishNow: boolean) {
     if (saving || pending) return;
-    const targets = targetsFor(content, selected, accounts).map((target) => ({
+    const targets = targetsFor(content, selected, accounts, fields).map((target) => ({
       ...target,
-      fields: withSelectDefaults(target.platform, fields[target.platform]),
       madeWithAi: madeWithAi && aiPlatforms.includes(target.platform),
     }));
     if (!content.trim() || targets.length === 0) {
@@ -507,7 +518,11 @@ export function SocialScheduler({
               <ToggleGroup
                 multiple
                 value={selected.filter((slug) => slug !== 'youtube')}
-                onValueChange={(next) => setSelected(next.filter((slug) => slug !== 'youtube'))}
+                onValueChange={(next) => {
+                  const chosen = next.filter((slug) => slug !== 'youtube');
+                  setSelected(chosen);
+                  setFields((current) => seedSelectDefaults(current, chosen));
+                }}
                 aria-label="Platforms"
                 className="flex flex-wrap"
               >
@@ -546,7 +561,7 @@ export function SocialScheduler({
                           />
                         ) : field.kind === 'select' ? (
                           <Select
-                            value={String(fields[platform]?.[field.key] ?? field.options[0]?.value ?? '')}
+                            value={String(fields[platform]?.[field.key] ?? '')}
                             onValueChange={(value: unknown) => {
                               if (typeof value !== 'string') return;
                               setFields((current) => ({
@@ -560,8 +575,8 @@ export function SocialScheduler({
                               aria-label={field.label}
                             >
                               <SelectValue>
-                                {() => {
-                                  const current = String(fields[platform]?.[field.key] ?? field.options[0]?.value ?? '');
+                                {(value: unknown) => {
+                                  const current = String(value ?? '');
                                   return field.options.find((option) => option.value === current)?.label ?? current;
                                 }}
                               </SelectValue>
