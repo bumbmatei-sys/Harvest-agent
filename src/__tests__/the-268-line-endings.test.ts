@@ -227,6 +227,21 @@ describe('binaries are not treated as text', () => {
   it('the binary set is the original 13 PNGs plus the #529 proof shots', () => {
     const binaries = FILES.filter((rel) => isDeclaredBinary(rel));
     expect(binaries).toEqual([
+      // APPENDED BY #536, nothing below removed. Blog post settings status
+      // picker: Draft, Publish now, and Schedule, light and dark, each as a
+      // full 1440 page and a card crop.
+      'docs/redesign/blog-status-picker/blog-post-settings-draft-dark-1440.png',
+      'docs/redesign/blog-status-picker/blog-post-settings-draft-dark-card.png',
+      'docs/redesign/blog-status-picker/blog-post-settings-draft-light-1440.png',
+      'docs/redesign/blog-status-picker/blog-post-settings-draft-light-card.png',
+      'docs/redesign/blog-status-picker/blog-post-settings-publish-now-dark-1440.png',
+      'docs/redesign/blog-status-picker/blog-post-settings-publish-now-dark-card.png',
+      'docs/redesign/blog-status-picker/blog-post-settings-publish-now-light-1440.png',
+      'docs/redesign/blog-status-picker/blog-post-settings-publish-now-light-card.png',
+      'docs/redesign/blog-status-picker/blog-post-settings-schedule-dark-1440.png',
+      'docs/redesign/blog-status-picker/blog-post-settings-schedule-dark-card.png',
+      'docs/redesign/blog-status-picker/blog-post-settings-schedule-light-1440.png',
+      'docs/redesign/blog-status-picker/blog-post-settings-schedule-light-card.png',
       // APPENDED BY #529, nothing below removed. Before and after shots at
       // 1440 and 390, light and dark, so the review can see them without a login.
       'docs/redesign/phase-1/1440-after-people-dark.png',
@@ -242,6 +257,25 @@ describe('binaries are not treated as text', () => {
       'docs/redesign/phase-1/390-after-light.png',
       'docs/redesign/phase-1/390-before-dark.png',
       'docs/redesign/phase-1/390-before-light.png',
+      // APPENDED BY #531, nothing above removed. Editor, list, and ministry
+      // page before and after the scheduled time. 1440 light and dark, plus
+      // 390 light as a no-break check. Seeded Sample Ministry only.
+      'docs/redesign/phase-2c/editor-1440-dark.png',
+      'docs/redesign/phase-2c/editor-1440-light.png',
+      'docs/redesign/phase-2c/editor-390-light.png',
+      'docs/redesign/phase-2c/list-1440-dark.png',
+      'docs/redesign/phase-2c/list-1440-light.png',
+      'docs/redesign/phase-2c/list-390-light.png',
+      'docs/redesign/phase-2c/page-after-1440-dark.png',
+      'docs/redesign/phase-2c/page-after-1440-light.png',
+      'docs/redesign/phase-2c/page-after-390-light.png',
+      'docs/redesign/phase-2c/page-before-1440-dark.png',
+      'docs/redesign/phase-2c/page-before-1440-light.png',
+      'docs/redesign/phase-2c/page-before-390-light.png',
+      // APPENDED BY #531 QA, nothing above removed. Publish now and Take down
+      // each show the confirm step at 1440, light.
+      'docs/redesign/phase-2c/publish-confirm-1440-light.png',
+      'docs/redesign/phase-2c/takedown-confirm-1440-light.png',
       'mockups/screenshot-canvas.png',
       'mockups/screenshot-integrations.png',
       'mockups/screenshot-newsletter.png',

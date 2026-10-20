@@ -3,32 +3,15 @@ import type { CSSProperties } from 'react';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import sanitizeHtml from 'sanitize-html';
-import { adminDb } from '@/lib/firebase-admin';
+import { createBlogService } from '@/lib/blog/service';
+import { firestoreBlogStore } from '@/lib/blog/firestore-store';
+import { publicPostMatchesHost } from '@/lib/blog/visibility';
 import { getTenantFromHost } from '@/lib/server-tenant';
 import { getPlanFeatures } from '@/utils/plan-features';
 import PublicRouteAnalytics from '@/components/PublicRouteAnalytics';
 
 const DEFAULT_BRAND_COLOR = '#D4AF37';
 const HEX_COLOR_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
-
-interface BlogPost {
-  id: string;
-  title: string;
-  content: string;
-  status: string;
-  featuredImage?: string;
-  tags?: string[];
-  publishedAt?: string;
-  createdAt: string;
-  tenantId?: string | null;
-  // SEO fields (present on AI-generated posts)
-  seoTitle?: string;
-  seoDescription?: string;
-  slug?: string;
-  keywords?: string[];
-  estimatedReadTime?: number;
-  isAiGenerated?: boolean;
-}
 
 const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
   allowedTags: [
@@ -43,18 +26,29 @@ const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
   allowedSchemes: ['https', 'http', 'mailto', 'tel'],
 };
 
+async function loadPublicArticle(id: string) {
+  const headersList = await headers();
+  const host = headersList.get('host') || '';
+  const [post, tenant] = await Promise.all([
+    createBlogService({ store: firestoreBlogStore }).readPublic(id),
+    getTenantFromHost(host),
+  ]);
+  if (!post || !publicPostMatchesHost(post.tenantId, tenant?.id ?? null)) {
+    return { post: null, tenant: null };
+  }
+  return { post, tenant };
+}
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const snap = await adminDb.collection('blog_posts').doc(id).get();
-  if (!snap.exists || snap.data()?.status !== 'published') {
+  const { post } = await loadPublicArticle(id);
+  if (!post) {
     return { title: 'Post Not Found' };
   }
-
-  const post = snap.data() as BlogPost;
   const excerpt = post.content.replace(/<[^>]*>/g, '').slice(0, 160).trim();
   const metaTitle = post.seoTitle || post.title;
   const metaDescription = post.seoDescription || excerpt;
@@ -67,7 +61,7 @@ export async function generateMetadata({
       title: metaTitle,
       description: metaDescription,
       type: 'article',
-      publishedTime: post.publishedAt,
+      ...(post.publishedAt ? { publishedTime: post.publishedAt } : {}),
       ...(post.featuredImage ? { images: [post.featuredImage] } : {}),
     },
     twitter: {
@@ -85,20 +79,11 @@ export default async function BlogPostPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const { post, tenant } = await loadPublicArticle(id);
 
-  const headersList = await headers();
-  const host = headersList.get('host') || '';
-
-  const [snap, tenant] = await Promise.all([
-    adminDb.collection('blog_posts').doc(id).get(),
-    getTenantFromHost(host),
-  ]);
-
-  if (!snap.exists || snap.data()?.status !== 'published') {
+  if (!post) {
     notFound();
   }
-
-  const post = { id: snap.id, ...snap.data() } as BlogPost;
   const safeContent = sanitizeHtml(post.content, SANITIZE_OPTIONS);
 
   const appUrl = '/';

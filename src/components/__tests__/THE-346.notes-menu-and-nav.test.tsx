@@ -110,6 +110,12 @@ vi.mock('firebase/firestore', () => ({
   arrayUnion: (v: unknown) => v, arrayRemove: (v: unknown) => v,
 }));
 
+const authFetchFn = vi.hoisted(() => vi.fn(async () => ({
+  ok: true,
+  json: async () => ({ ok: true, post: { id: 'created', status: 'draft' } }),
+})));
+vi.mock('../../utils/auth-fetch', () => ({ authFetch: authFetchFn }));
+
 const toastFns = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock('sonner', () => ({ toast: toastFns }));
 vi.mock('../../firebase', () => ({ db: {}, auth: { currentUser: { uid: 'u1', displayName: 'Ada' } } }));
@@ -464,15 +470,16 @@ describe('Share to blog draft creates a draft', () => {
     });
     await flush();
 
-    expect(addDocFn, 'no document was written').toHaveBeenCalledTimes(1);
-    const [ref, data] = addDocFn.mock.calls[0] as unknown as [
-      { __path: string },
-      Record<string, unknown>,
-    ];
-    expect(ref.__path, 'the draft did not go to blog_posts').toBe('blog_posts');
+    expect(addDocFn, 'the note wrote blog_posts from the browser').not.toHaveBeenCalled();
+    expect(authFetchFn, 'no draft was requested').toHaveBeenCalledTimes(1);
+    const [url, init] = authFetchFn.mock.calls[0] as unknown as [string, { body?: string }];
+    expect(url).toBe('/api/blog/actions');
+    const data = JSON.parse(init.body || '{}') as Record<string, unknown>;
     // A sermon note is written for a room, not for a church's public blog. A
-    // single menu tap must not put it on the open web.
-    expect(data.status, 'the draft was PUBLISHED').toBe('draft');
+    // single menu tap must not put it on the open web. createDraft is the
+    // service action that stores a draft and does not publish.
+    expect(data.action, 'the draft was PUBLISHED').toBe('createDraft');
+    expect(data.status).toBeUndefined();
     expect(data.tenantId).toBe('t1');
     expect(data.title).toBe('Sermon — Advent I');
     expect(toastFns.success).toHaveBeenCalledWith('Blog draft created');

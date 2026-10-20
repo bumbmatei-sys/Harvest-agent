@@ -1262,7 +1262,17 @@ describe('no behaviour changed on any screen in scope', () => {
         .replace(
           /<span className=X>\{event\.price > 0 \? `\$\$\{event\.price\}` : 'Free'\}<\/span>/g,
           'PRICE_QUOTE',
-        );
+        )
+        // #531 ADDS A THIRD PINNED DIFF, the same shape as THE-345's: both
+        // revisions fold to one token, so a fourth edit still fails. The member
+        // feed used to keep a post whose status was published and drop a
+        // scheduled one even after its time. Read-time visibility is the
+        // predicate, applied to the picker list and the articles list.
+        .replace(/import \{ isBlogPostPublic \} from '\.\.\/lib\/blog\/visibility'; /g, '')
+        .replace(/\.filter\(b => b\.status === 'published'\)/g, '.filter(b => BLOG_PUBLIC)')
+        .replace(/\.filter\(b => isBlogPostPublic\(b, Date\.now\(\)\)\)/g, '.filter(b => BLOG_PUBLIC)')
+        .replace(/\.filter\(a => \(a as any\)\.status === 'published'\)/g, '.filter(a => BLOG_PUBLIC)')
+        .replace(/\.filter\(a => isBlogPostPublic\(a, Date\.now\(\)\)\)/g, '.filter(a => BLOG_PUBLIC)');
     expect(norm(read('NewsTab.tsx'))).toBe(norm(at('NewsTab.tsx')));
   });
 

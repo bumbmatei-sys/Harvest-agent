@@ -201,6 +201,9 @@ const ROUTE_TABLE = [
   // is careful about. Public and signed-out by construction: the point of the
   // link is that somebody outside the church can open it.
   { pattern: '/n/[token]', entry: 'next-page', surface: 'public', public: true },
+  // The ministry page. Public posts only; a scheduled post stays off it until
+  // its UTC instant, decided at read time. Appended, never substituted.
+  { pattern: '/p', entry: 'next-page', surface: 'public', public: true },
 ] as const satisfies readonly AnalyticsRoute[];
 
 export const ANALYTICS_ROUTES: readonly AnalyticsRoute[] = Object.freeze(ROUTE_TABLE);

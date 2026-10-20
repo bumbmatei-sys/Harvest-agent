@@ -23,6 +23,7 @@ import ReferralTracker from './ReferralTracker';
 import { getEffectiveFeatures } from '../utils/plan-features';
 import { hasMemberVisibleCourses } from '../utils/member-courses';
 import { hasPlatformOverride } from '../utils/tenant-scope';
+import { isBlogPostPublic } from '../lib/blog/visibility';
 import { STRIPE_CONNECT_ENABLED } from '../lib/stripe-connect-feature';
 import { useAppStore } from '../store/useAppStore';
 import { useTenant } from '../contexts/TenantContext';
@@ -557,9 +558,10 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   const openSavedBlog = useCallback(async (postId: string) => {
     try {
       const snap = await getDoc(doc(db, 'blog_posts', postId));
-      if (snap.exists()) {
-        setFullScreenView({ type: 'article', data: { id: snap.id, ...snap.data() } });
-      }
+      if (!snap.exists()) return;
+      const data = snap.data();
+      if (!data || !isBlogPostPublic(data, Date.now())) return;
+      setFullScreenView({ type: 'article', data: { id: snap.id, ...data } });
     } catch (e) {
       console.error('Failed to open saved article', e);
     }

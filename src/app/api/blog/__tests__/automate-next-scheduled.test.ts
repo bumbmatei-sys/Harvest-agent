@@ -4,13 +4,20 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 const setSpy = vi.fn();
 // The snapshot the GET handler's `.get()` resolves to — set per test.
 let getSnap: any = { exists: false, data: () => undefined };
+let getError: Error | null = null;
 
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {
     collection: () => ({
       doc: () => ({
         collection: () => ({
-          doc: () => ({ set: setSpy, get: async () => getSnap }),
+          doc: () => ({
+            set: setSpy,
+            get: async () => {
+              if (getError) throw getError;
+              return getSnap;
+            },
+          }),
         }),
       }),
     }),
@@ -53,6 +60,7 @@ function makeRequest(body: unknown) {
 
 beforeEach(() => {
   setSpy.mockClear();
+  getError = null;
   vi.useFakeTimers();
 });
 
@@ -126,6 +134,7 @@ describe('automate GET — Timestamp normalization', () => {
         hour: 8,
         nextScheduledAt: fakeTimestamp('2026-07-16T08:00:00.000Z'),
         updatedAt: fakeTimestamp('2026-07-15T12:00:00.000Z'),
+        lastGeneratedAt: fakeTimestamp('2026-07-15T11:00:00.000Z'),
       }),
     };
 
@@ -134,6 +143,7 @@ describe('automate GET — Timestamp normalization', () => {
 
     expect(body.nextScheduledAt).toBe('2026-07-16T08:00:00.000Z');
     expect(body.updatedAt).toBe('2026-07-15T12:00:00.000Z');
+    expect(body.lastGeneratedAt).toBe('2026-07-15T11:00:00.000Z');
     expect(body.enabled).toBe(true);
     expect(body.frequency).toBe('daily');
   });
@@ -160,5 +170,37 @@ describe('automate GET — Timestamp normalization', () => {
     expect(body.enabled).toBe(false);
     // No stored Timestamp -> field is undefined (absent), not an object.
     expect(body.nextScheduledAt).toBeUndefined();
+  });
+
+  it('reads with the caller token when the admin SDK cannot', async () => {
+    getError = new Error('Could not load the default credentials');
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        fields: {
+          enabled: { booleanValue: true },
+          timezone: { stringValue: 'Europe/Bucharest' },
+          hour: { integerValue: '8' },
+          nextScheduledAt: { timestampValue: '2026-12-01T08:00:00.000Z' },
+        },
+      }),
+    } as Response);
+    try {
+      const res = await GET({
+        headers: { get: (name: string) => (name.toLowerCase() === 'authorization' ? 'Bearer user-token' : null) },
+        nextUrl: { searchParams: new URLSearchParams() },
+      } as never);
+      const body = await res.json();
+      expect(res.status).toBe(200);
+      expect(body.enabled).toBe(true);
+      expect(body.timezone).toBe('Europe/Bucharest');
+      expect(body.hour).toBe(8);
+      expect(body.nextScheduledAt).toBe('2026-12-01T08:00:00.000Z');
+      expect(String(fetchSpy.mock.calls[0]?.[0])).toContain('/tenants/tenant-1/blogAutomation/settings');
+      expect((fetchSpy.mock.calls[0]?.[1] as RequestInit).headers).toMatchObject({ Authorization: 'Bearer user-token' });
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 });
