@@ -23,11 +23,34 @@ volume-cap, confirm (token + ledger), service (draft/preview/confirm/due), store
 Routes: `POST /api/email/actions`, `GET|POST /api/email/unsubscribe` (public, one-click RFC 8058),
 `GET /api/email/cron` (due scheduled sends, `CRON_SECRET`).
 
+## One CRM (founder decision, supersedes the first draft of this plan)
+There is no separate newsletter contact list. Subscribers are a filtered view over the existing
+`contacts` documents, which gain email-consent fields: `emailStatus` (`subscribed`, `unsubscribed`,
+`bounced`, `complained`; absent means never opted in and is never emailed), `emailOptInAt`,
+`emailOptInSource`, `emailUnsubscribedAt`, `emailUnsubscribedFrom`.
+- CSV import creates new CRM people or merges onto the person with that email (opt-in recorded, tags added).
+  Someone suppressed is never re-subscribed by an import.
+- The public unsubscribe link and the one-click POST set `emailStatus: unsubscribed` on every CRM person
+  with that address. An address suppressed on any duplicate stays suppressed.
+- Audience filters read CRM tags and people kinds (Members, Donors).
+- Known gap: deleting a CRM person deletes their suppression with them. Reported, not solved here.
+
 ## Firestore
-All new data is server-only under `tenants/{id}/email*` (Admin SDK). Rules default-deny unmatched
-subcollections, so **no `firestore.rules` change**; a rules test pins that clients cannot read or write
-them (subscriber PII is only reachable through admin-gated routes). Plus `email_confirm_tokens` (server-only).
-No composite indexes (single-field `where` + in-memory sort, house convention).
+- Broadcasts, sender settings and the monthly usage counter are the only new data, under
+  `tenants/{id}/emailBroadcasts|emailConfig|emailUsage`, plus top-level `email_scheduled` and
+  `email_confirm_tokens`. All server-only (Admin SDK); no client rule exists, so they are denied by default.
+- **One rules change**, called out for the founder go: both `contacts` match blocks refuse a client
+  create or update that sets or changes any `email*` consent key. Without it a CRM admin's browser could
+  re-subscribe someone who unsubscribed or bounced. Reads and every other write are unchanged. Covered by
+  `tests/rules/email-consent.rules.test.ts` (CI runs the emulator; not run locally).
+- No composite indexes (single-field `where` + in-memory sort, house convention).
+
+## Branding (founder decision)
+Harvest branding always: navy and gold through the app's theme tokens (`bg-primary`, `bg-gold`,
+`bg-navy-*`, `bg-surface-*`, `text-strong|muted|faint`, `border-line`). No Eden hex anywhere in the UI; a
+guard test sweeps `components/email` for hex and raw Tailwind scales. Eden supplies layout and flows only.
+The one exception is the HTML of the email itself, which cannot read CSS variables, so `render.ts` spells
+the Harvest brand scale out and nowhere else.
 
 ## UI (`src/components/email/`, shadcn primitives, theme tokens)
 Overview, Broadcasts list (All/Drafts/Scheduled/Sent + empty state), Editor Write step (subject,
