@@ -431,7 +431,7 @@ describe('both palettes resolve every token this slice leans on', () => {
 describe('no new token was defined', () => {
   it('globals.css is byte-identical — the bridge has held through five batches', () => {
     expect(sha256(read('src/app/globals.css')))
-      .toBe('1fd6001c2d3bddc50a45b02ce1253b6b60802699fb33fa159f5ed42b8aeb9957');
+      .toBe('a23d07afde7b073e9b839f0826e4cd95983116c6dbc3c0b8d8391a7e179984a4');
     expect(rootVars['--chart-5']).toBeTruthy();
     expect(rootVars['--chart-6']).toBeUndefined();
   });
@@ -763,6 +763,9 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // APPENDED BY #530 QA, nothing above removed or rewritten.
     ['eec832262194852dcf12d71acd4c01fec168caf0aed1db96eb660895783f178b',
       `#530 QA - the desktop sidebar shows Social only when the add-on is held or the viewer is a super admin, and the composer is told when that is already known so it can render while accounts load. The mobile drawer entry, More groups, and the shell class string are unchanged.`],
+    // APPENDED BY the Eden shell pass, nothing above removed or rewritten.
+    ['bfab6720f1e6f64bcfc87a2aab6f844c92dff5c788f7b5f5711a3619c50fe7c4',
+      `Eden shell pass - the desktop content bar is shadcn Breadcrumb, Separator and SidebarTrigger. Inbox and the platform bell sit in the sidebar footer. Eden widths and grouped nav. Mobile AdminScreenHeader and the bottom nav stay. No permission gate, nav id or screen mount moved. Brand colours stay Harvest navy and gold.`],
   ],
   'firestore.indexes.json': [
     ['8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0', 'main at 133d557'],

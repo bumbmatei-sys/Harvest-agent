@@ -341,6 +341,9 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // APPENDED BY #530 QA, nothing above removed or rewritten.
     ['eec832262194852dcf12d71acd4c01fec168caf0aed1db96eb660895783f178b',
       `#530 QA - the desktop sidebar shows Social only when the add-on is held or the viewer is a super admin, and the composer is told when that is already known so it can render while accounts load. The mobile drawer entry, More groups, and the shell class string are unchanged.`],
+    // APPENDED BY the Eden shell pass, nothing above removed or rewritten.
+    ['bfab6720f1e6f64bcfc87a2aab6f844c92dff5c788f7b5f5711a3619c50fe7c4',
+      `Eden shell pass - the desktop content bar is shadcn Breadcrumb, Separator and SidebarTrigger. Inbox and the platform bell sit in the sidebar footer. Eden widths and grouped nav. Mobile AdminScreenHeader and the bottom nav stay. No permission gate, nav id or screen mount moved. Brand colours stay Harvest navy and gold.`],
   ],
   'firestore.indexes.json': [
     ['8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0', 'main at 625e3eb'],

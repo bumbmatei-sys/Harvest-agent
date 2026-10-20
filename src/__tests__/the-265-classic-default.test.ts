@@ -310,7 +310,7 @@ describe('6 — deriveOnDarkAccent clears AA against the Classic dark ground', (
        was — asserted against the literal the ticket moved away from, which is a
        real second value rather than the same one twice. */
     const BEFORE_THE_338 = '#1C1C1C';
-    expect(DARK_SURFACE, 'the ground stopped being the one THE-338 set').toBe('#141414');
+    expect(DARK_SURFACE, 'the ground stopped being the Eden canvas').toBe('#171717');
     expect(
       contrastRatio('#FAF8F5', DARK_SURFACE),
       'the ground got LIGHTER — an accent now has less room, not more',
@@ -560,8 +560,11 @@ describe('10 — the promotion kept every token the family never overrode', () =
     // The trap, stated as a number. The removed family declared 14 overrides
     // per mode and nothing of its own, so promoting it could only change
     // VALUES. A count that moved would mean a token was added or dropped.
-    expect(Object.keys(rootVars).length).toBe(167);
-    expect(Object.keys(harvestDarkVars).length).toBe(89);
+    // Eden shell pass added the harvest action, segmented track and shell
+    // shadow tokens. :root 167 -> 178, .dark 89 -> 104. The promotion itself
+    // still added none of its own.
+    expect(Object.keys(rootVars).length).toBe(178);
+    expect(Object.keys(harvestDarkVars).length).toBe(104);
   });
 });
 
@@ -593,7 +596,7 @@ describe('11 — globals.css, firestore.rules and functions/ are byte-identical'
     expect(
       digest('src/app/globals.css'),
       'globals.css changed — regenerate this digest only in the PR that changed the file, and say why',
-    ).toBe('1fd6001c2d3bddc50a45b02ce1253b6b60802699fb33fa159f5ed42b8aeb9957');
+    ).toBe('a23d07afde7b073e9b839f0826e4cd95983116c6dbc3c0b8d8391a7e179984a4');
   });
 
   it('firestore.rules is untouched', () => {

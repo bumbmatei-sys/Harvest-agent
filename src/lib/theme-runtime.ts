@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useLayoutEffect } from 'react';
 import {
+  BRAND_THEME,
   THEME_STORAGE_KEY,
   isThemeChoice,
   resolveTheme,
@@ -27,8 +28,13 @@ import { isPreAuthPath } from './preauth-theme';
  * stamped `data-palette` alongside `data-theme`/`.dark` and took a family
  * argument that defaulted to the stored preference; there is one palette
  * family now, the attribute matches no rule in globals.css, and both the
- * argument and the `readStoredFamily` reader are gone. Mode is the only axis
- * left, so this file is back to stamping one thing.
+ * argument and the `readStoredFamily` reader are gone.
+ *
+ * The brand theme is not that axis. Harvest is the default and the only
+ * theme shipped; its colours live on :root and .dark. applyTheme also stamps
+ * `data-brand-theme` so a later theme can override the same variables. The
+ * pre-paint script stays mode-only, because :root is already Harvest and the
+ * script is digest-pinned.
  */
 
 const prefersDark = (): boolean =>
@@ -42,13 +48,15 @@ const prefersDark = (): boolean =>
  * 🔴 THE-338 removed the FAMILY axis. This used to take a second argument and
  * stamp `data-palette` alongside `data-theme`; there is one palette family
  * now, so the attribute matches no rule in globals.css and is no longer
- * written. Mode is the only axis left, which is why this takes one argument.
+ * written. Mode is still the only ARGUMENT. The brand stamp is a constant,
+ * not a choice: every call writes `data-brand-theme="harvest"`.
  */
 export function applyTheme(choice: ThemeChoice): void {
   if (typeof document === 'undefined') return;
   const resolved = resolveTheme(choice, prefersDark());
   const el = document.documentElement;
   el.setAttribute('data-theme', resolved);
+  el.setAttribute('data-brand-theme', BRAND_THEME);
   el.classList.toggle('dark', resolved === 'dark');
 }
 

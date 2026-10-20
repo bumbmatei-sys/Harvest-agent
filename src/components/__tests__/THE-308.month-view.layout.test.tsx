@@ -16,6 +16,7 @@ import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
 import { DENSITY_PX, FORM_CONTAINER } from '../layout/form-layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SEGMENTED_LIST_CLASS, SEGMENTED_TRIGGER_CLASS } from '@/components/admin-shell/SegmentedTabs';
 import EventMonthView from '../events/EventMonthView';
 import { toMonthEvent, type MonthEvent } from '../events/month-view';
 
@@ -146,9 +147,9 @@ beforeAll(async () => {
                   numbers were right on their own; nobody had measured the
                   relationship. THE-346's own suite asserts containment.
                 */}
-                <TabsList className="group-data-[orientation=horizontal]/tabs:h-auto sm:group-data-[orientation=horizontal]/tabs:h-8">
-                  <TabsTrigger value="list" className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0">List</TabsTrigger>
-                  <TabsTrigger value="month" className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0">Month</TabsTrigger>
+                <TabsList className={SEGMENTED_LIST_CLASS}>
+                  <TabsTrigger value="list" className={`${SEGMENTED_TRIGGER_CLASS} min-h-11 min-w-11 sm:min-h-0 sm:min-w-0`}>List</TabsTrigger>
+                  <TabsTrigger value="month" className={`${SEGMENTED_TRIGGER_CLASS} min-h-11 min-w-11 sm:min-h-0 sm:min-w-0`}>Month</TabsTrigger>
                 </TabsList>
                 <TabsContent value="list" className="mt-4 space-y-6" />
               </Tabs>
@@ -415,11 +416,12 @@ describe('13b · the tab pair is a real target at 380px', () => {
   it('the replica matches the tab bar AdminEvents actually renders', () => {
     const screen = readFileSync(path.join(REPO_ROOT, 'src/components/AdminEvents.tsx'), 'utf8');
     for (const line of [
-      '<TabsList className="group-data-[orientation=horizontal]/tabs:h-auto sm:group-data-[orientation=horizontal]/tabs:h-8">',
-      '<TabsTrigger value="list" className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0">List</TabsTrigger>',
-      '<TabsTrigger value="month" className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0">Month</TabsTrigger>',
+      '<TabsList className={SEGMENTED_LIST_CLASS}>',
+      '<TabsTrigger value="list" className={`${SEGMENTED_TRIGGER_CLASS} min-h-11 min-w-11 sm:min-h-0 sm:min-w-0`}>List</TabsTrigger>',
+      '<TabsTrigger value="month" className={`${SEGMENTED_TRIGGER_CLASS} min-h-11 min-w-11 sm:min-h-0 sm:min-w-0`}>Month</TabsTrigger>',
     ]) {
       expect(screen, `the shipped tab bar no longer contains: ${line}`).toContain(line);
     }
+    expect(screen).toContain("from '@/components/admin-shell/SegmentedTabs'");
   });
 });

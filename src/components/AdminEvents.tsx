@@ -23,6 +23,7 @@ import { useEvents } from '../hooks/queries/useEventQueries';
 import { HeroBand } from './member/desktopKit';
 import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SEGMENTED_LIST_CLASS, SEGMENTED_TRIGGER_CLASS } from '@/components/admin-shell/SegmentedTabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   PAID_EVENTS_ENABLED, PAID_EVENTS_HIDDEN_TITLE, PAID_EVENTS_HIDDEN_MESSAGE,
@@ -1252,9 +1253,9 @@ const AdminEvents: React.FC = () => {
         and bottom at 47.0 — inside the box, on both axes.
       */}
       <Tabs value={listTab} onValueChange={(v) => setListTab(v as 'list' | 'month')}>
-        <TabsList className="group-data-[orientation=horizontal]/tabs:h-auto sm:group-data-[orientation=horizontal]/tabs:h-8">
-          <TabsTrigger value="list" className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0">List</TabsTrigger>
-          <TabsTrigger value="month" className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0">Month</TabsTrigger>
+        <TabsList className={SEGMENTED_LIST_CLASS}>
+          <TabsTrigger value="list" className={`${SEGMENTED_TRIGGER_CLASS} min-h-11 min-w-11 sm:min-h-0 sm:min-w-0`}>List</TabsTrigger>
+          <TabsTrigger value="month" className={`${SEGMENTED_TRIGGER_CLASS} min-h-11 min-w-11 sm:min-h-0 sm:min-w-0`}>Month</TabsTrigger>
         </TabsList>
         <TabsContent value="month" className="mt-4">
           <React.Suspense fallback={null}>

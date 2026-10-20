@@ -24,7 +24,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TabsContent } from '@/components/ui/tabs';
+import {
+  SegmentedTabs,
+  SegmentedTabsList,
+  SegmentedTabsTrigger,
+} from '@/components/admin-shell/SegmentedTabs';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
@@ -50,10 +55,10 @@ const CONTROL = 'min-h-11 sm:min-h-[38px]';
 /** Same floor as CONTROL, at the select trigger's own attribute specificity so its h-8 does not stick. */
 const SELECT_CONTROL = `${CONTROL} w-full data-[size=default]:h-11 sm:data-[size=default]:h-[38px]`;
 const FIELD_CONTROL = `${CONTROL} h-11 w-full sm:h-[38px]`;
-/** Eden: 12.5px / 600 buttons, 14px inline padding, a near-black primary and a black 5% secondary. */
+/** Eden size: 12.5px / 600, 14px inline padding. Colour is the Harvest action token. Height stays the existing 44/38 floor. */
 const ACTION = `${CONTROL} rounded-lg px-3.5 text-[12.5px] font-semibold active:scale-[0.98]`;
-const ACTION_PRIMARY = `${ACTION} bg-foreground text-background hover:bg-foreground/85`;
-const ACTION_SECONDARY = `${ACTION} border-transparent bg-foreground/5 text-foreground hover:bg-foreground/10 dark:bg-foreground/10 dark:hover:bg-foreground/15`;
+const ACTION_PRIMARY = `${ACTION} bg-action text-action-foreground hover:bg-action-hover`;
+const ACTION_SECONDARY = `${ACTION} border-transparent bg-action-secondary text-foreground hover:bg-action-secondary-hover`;
 /** An Eden option row: bordered, rounded-xl, title on the left and its control on the right. */
 const OPTION_ROW = 'flex items-center justify-between gap-3 rounded-xl border border-line bg-card px-3 py-2';
 const OPTION_TITLE = 'text-[13px] font-medium text-strong';
@@ -505,14 +510,14 @@ export function SocialScheduler({
       )}
       {notice && <p className="text-sm text-faint" role="status">{notice}</p>}
 
-      <Tabs value={view} onValueChange={(next) => setView(next as SocialView)}>
-        <TabsList className="h-auto">
+      <SegmentedTabs value={view} onValueChange={(next) => setView(next as SocialView)}>
+        <SegmentedTabsList>
           {(['accounts', 'compose', 'calendar', 'queue'] as const).map((id) => (
-            <TabsTrigger key={id} value={id} className={CONTROL}>
+            <SegmentedTabsTrigger key={id} value={id} className={CONTROL}>
               {id === 'accounts' ? 'Accounts' : id === 'compose' ? 'Compose' : id === 'calendar' ? 'Calendar' : 'Queue'}
-            </TabsTrigger>
+            </SegmentedTabsTrigger>
           ))}
-        </TabsList>
+        </SegmentedTabsList>
 
         <TabsContent value="accounts" className="mt-4">
           <AccountsPanel accounts={accounts} onConnect={connect} />
@@ -747,7 +752,7 @@ export function SocialScheduler({
             }}
           />
         </TabsContent>
-      </Tabs>
+      </SegmentedTabs>
 
       <Dialog open={Boolean(editing)} onOpenChange={(open) => { if (!open) { setEditing(null); setEditError(null); } }}>
         <DialogContent>
@@ -853,28 +858,21 @@ function SidePanel({ posts }: { posts: readonly SocialPost[] }) {
       className="hidden w-80 shrink-0 gap-3 rounded-xl border border-line bg-card p-3 lg:flex lg:flex-col"
       data-testid="social-side-panel"
     >
-      <Tabs
+      <SegmentedTabs
         value={tab}
         onValueChange={(next) => {
           if (next === 'draft' || next === 'scheduled' || next === 'sent') setTab(next);
         }}
         className="gap-0"
       >
-        <TabsList
-          aria-label="Drafts, scheduled and sent"
-          className="h-auto w-full rounded-xl bg-foreground/[0.045] p-1 group-data-[orientation=horizontal]/tabs:h-auto"
-        >
+        <SegmentedTabsList aria-label="Drafts, scheduled and sent" className="w-full">
           {(Object.keys(labels) as Array<keyof typeof labels>).map((id) => (
-            <TabsTrigger
-              key={id}
-              value={id}
-              className={`${CONTROL} h-auto flex-1 rounded-lg px-2 text-[13px] font-medium text-faint data-active:bg-card data-active:text-strong data-active:shadow-[0_1px_2px_rgba(0,0,0,0.08)] dark:data-active:border-transparent dark:data-active:bg-foreground/10`}
-            >
+            <SegmentedTabsTrigger key={id} value={id} className={`${CONTROL} h-auto flex-1 px-2`}>
               {labels[id]}
-            </TabsTrigger>
+            </SegmentedTabsTrigger>
           ))}
-        </TabsList>
-      </Tabs>
+        </SegmentedTabsList>
+      </SegmentedTabs>
       <ul className="flex flex-col gap-2">
         {rows.length === 0 && <li className="px-1 text-sm text-faint">Nothing in {labels[tab].toLowerCase()}.</li>}
         {rows.map((post) => (

@@ -5,7 +5,8 @@ import { Radio } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { AdminDesktopSidebar, SIDEBAR_ICON_WIDTH } from '@/components/admin-shell/AdminDesktopSidebar';
+import { AdminContentBar } from '@/components/admin-shell/AdminContentBar';
+import { AdminDesktopSidebar, SIDEBAR_ICON_WIDTH, SIDEBAR_WIDTH } from '@/components/admin-shell/AdminDesktopSidebar';
 import { useLgUp } from '@/components/admin-shell/use-lg';
 import { SocialScheduler, type SocialView } from '@/components/admin/social/SocialScheduler';
 import { SocialUpgradeWall } from '@/components/admin/social/SocialUpgradeWall';
@@ -30,26 +31,31 @@ export function SocialSchedulerPreview({ view, theme }: { view?: string; theme?:
 
   const workspace = useMemo(() => new MockSocialClient('preview', CLOCK).load(), []);
   const tabs = useMemo(() => new Map<string, ShellTabRef>([
-    ['crm', { id: 'crm', label: 'CRM', icon: Radio }],
-    ['events', { id: 'events', label: 'Events', icon: Radio }],
-    ['donations', { id: 'donations', label: 'Donations', icon: Radio }],
+    ['blog', { id: 'blog', label: 'Blog', icon: Radio }],
+    ['branding', { id: 'branding', label: 'Branding', icon: Radio }],
     ['social', { id: 'social', label: 'Social', icon: Radio }],
+    ['livestream', { id: 'livestream', label: 'Livestream', icon: Radio }],
+    ['courses', { id: 'courses', label: 'Courses', icon: Radio }],
   ]), []);
   const wall = view === 'wall';
   const initialView: SocialView = (VIEWS as readonly string[]).includes(view || '')
     ? (view as SocialView)
     : 'compose';
+  const viewTitle = initialView === 'accounts' ? 'Accounts'
+    : initialView === 'calendar' ? 'Calendar'
+    : initialView === 'queue' ? 'Queue'
+    : 'Compose';
 
   return (
     <TooltipProvider>
       <SidebarProvider
         defaultOpen
-        className="min-h-screen bg-background"
-        style={{ '--sidebar-width-icon': SIDEBAR_ICON_WIDTH } as CSSProperties}
+        className="h-[100dvh] min-h-0 overflow-hidden bg-surface"
+        style={{ '--sidebar-width': SIDEBAR_WIDTH, '--sidebar-width-icon': SIDEBAR_ICON_WIDTH } as CSSProperties}
       >
         {lg && (
           <AdminDesktopSidebar
-            side="people"
+            side="public"
             onSide={() => {}}
             activeTab="social"
             placeholder={null}
@@ -58,10 +64,14 @@ export function SocialSchedulerPreview({ view, theme }: { view?: string; theme?:
             logoUrl={LOGO}
             onNavigate={() => {}}
             onPlaceholder={() => {}}
-            accountMenu={<Button type="button" variant="ghost" className="min-h-11 px-3 text-sm">Account</Button>}
+            accountMenu={<Button type="button" variant="ghost" className="size-8 text-sidebar-foreground" aria-label="My account">Account</Button>}
           />
         )}
-        <SidebarInset className="min-w-0 bg-background p-4">
+        <SidebarInset className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card">
+          <div className="hidden lg:block">
+            <AdminContentBar section="Public" title={viewTitle} onOpenApp={() => {}} />
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-4">
           {wall ? (
             <SocialUpgradeWall onUpgrade={() => {}} />
           ) : (
@@ -71,6 +81,7 @@ export function SocialSchedulerPreview({ view, theme }: { view?: string; theme?:
               onUpgrade={() => {}}
             />
           )}
+          </div>
         </SidebarInset>
       </SidebarProvider>
     </TooltipProvider>

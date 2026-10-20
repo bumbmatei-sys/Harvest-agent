@@ -127,8 +127,8 @@ describe('the promoted palette, measured in Chromium', () => {
         sunken: hex('dark', '--surface-sunken'),
       },
     }).toEqual({
-      light: { surface: '#F7F7F7', raised: '#FFFFFF', sunken: '#EFEFEF' },
-      dark: { surface: '#141414', raised: '#1F1F1F', sunken: '#0C0C0C' },
+      light: { surface: '#FAFAF8', raised: '#FDFDFD', sunken: '#EFEFEF' },
+      dark: { surface: '#171717', raised: '#202020', sunken: '#0C0C0C' },
     });
   });
 

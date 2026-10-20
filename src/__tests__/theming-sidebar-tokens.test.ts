@@ -159,18 +159,25 @@ const ratio = (a: string, b: string): number => Math.round(contrastRatio(a, b) *
  * `via` names the token it points AT — that is the whole design, and test 2
  * asserts the CSS actually says so rather than repeating a value.
  */
-const SIDEBAR: { token: string; via: string; why: string }[] = [
-  { token: '--sidebar', via: '--surface-raised', why: 'the ramp token all three existing sidebars already use' },
-  { token: '--sidebar-foreground', via: '--text-body', why: 'ordinary copy; overridden in all four' },
-  { token: '--sidebar-primary', via: '--primary', why: 'a solid brand tile; chained so the AA pair cannot drift' },
-  { token: '--sidebar-primary-foreground', via: '--primary-foreground', why: 'the ink for that tile' },
-  { token: '--sidebar-accent', via: '--surface-chip', why: 'the raised interactive chip, as --accent' },
-  { token: '--sidebar-accent-foreground', via: '--text-strong', why: 'hover is the emphasised state' },
-  { token: '--sidebar-border', via: '--border-default', why: 'what border-line resolves to' },
-  { token: '--sidebar-ring', via: '--ring', why: 'chained so it inherits --ring’s own .dark restatement' },
+/**
+ * Eden shell pass. The neutral sidebar grounds are literals, restated per
+ * mode (the card is no longer --surface-raised). Brand aliases stay chained
+ * so gold and its ink cannot drift. --sidebar-hover is the composited wash.
+ */
+const CHAINED: { token: string; via: string }[] = [
+  { token: '--sidebar-primary', via: '--primary' },
+  { token: '--sidebar-primary-foreground', via: '--primary-foreground' },
+  { token: '--sidebar-accent-foreground', via: '--text-strong' },
+  { token: '--sidebar-ring', via: '--ring' },
 ];
-
-const SIDEBAR_TOKENS = SIDEBAR.map((s) => s.token);
+const LITERALS = [
+  '--sidebar',
+  '--sidebar-foreground',
+  '--sidebar-accent',
+  '--sidebar-border',
+  '--sidebar-hover',
+];
+const SIDEBAR_TOKENS = [...CHAINED.map((s) => s.token), ...LITERALS];
 
 /** Every utility the real sidebar.tsx and the sidebar-07 block spell. */
 const CONSUMED_UTILITIES = [
@@ -188,20 +195,27 @@ const CONSUMED_UTILITIES = [
 /* ═══ 1 · Every defined --sidebar-* token resolves, named one by one ═════ */
 
 describe('every --sidebar token is declared, and declared once', () => {
-  for (const { token, via, why } of SIDEBAR) {
-    it(`${token} is declared, in :root only, as an alias of ${via} — ${why}`, () => {
+  for (const { token, via } of CHAINED) {
+    it(`${token} aliases ${via}`, () => {
       expect(varsIn(IS_ROOT)[token], `${token} is not declared in :root`).toBe(`var(${via})`);
-      // Falling through is the DECISION. Restating any of these in .dark or a
-      // Classic block would change no computed value (test 2 proves each still
-      // differs per palette) and would add three more places to keep in sync.
-      for (const [label, test] of [['.dark', IS_DARK]] as const) {
-        expect(varsIn(test)[token], `${token} was restated in ${label}; it is meant to fall through`)
-          .toBeUndefined();
-      }
     });
   }
 
-  it('declares exactly these eight and no more', () => {
+  it('the three brand aliases are not restated in .dark', () => {
+    for (const token of ['--sidebar-primary', '--sidebar-primary-foreground', '--sidebar-ring']) {
+      expect(varsIn(IS_DARK)[token], `${token} was restated in .dark`).toBeUndefined();
+    }
+  });
+
+  it('the neutral grounds are Eden literals in both modes', () => {
+    for (const token of LITERALS) {
+      expect(varsIn(IS_ROOT)[token], `${token} missing in :root`).toBeTruthy();
+      expect(varsIn(IS_DARK)[token], `${token} missing in .dark`).toBeTruthy();
+      expect(varsIn(IS_ROOT)[token], `${token} is still an alias`).not.toMatch(/^var\(/);
+    }
+  });
+
+  it('declares exactly this family and no more', () => {
     const declared = new Set<string>();
     postcss.parse(GLOBALS).walkDecls((d) => {
       if (/^--sidebar/.test(d.prop)) declared.add(d.prop);
@@ -214,7 +228,7 @@ describe('every --sidebar token is declared, and declared once', () => {
 
 describe('each resolves in both palettes', () => {
   for (const name of PALETTE_NAMES) {
-    for (const { token } of SIDEBAR) {
+    for (const token of SIDEBAR_TOKENS) {
       it(`${name}: ${token} resolves to a literal colour`, () => {
         const hex = resolve(token, PALETTES[name]);
         expect(hex, `${token} does not resolve in ${name}`).toMatch(/^#[0-9A-F]{6}$/);
@@ -330,17 +344,17 @@ const EXPECTED_TEXT: Record<string, Record<string, number>> = {
   // untouched in both modes: this ticket removed a surface family, not the
   // accent, and --sidebar-primary/-primary-foreground are fixed hexes.
   Light: {
-    '--sidebar-foreground/--sidebar': 10.37,
-    '--sidebar-foreground/--sidebar-accent': 7.85,
-    '--sidebar-accent-foreground/--sidebar-accent': 13.18,
-    '--sidebar-accent-foreground/--sidebar': 17.4,
+    '--sidebar-foreground/--sidebar': 6.98,
+    '--sidebar-foreground/--sidebar-accent': 6.09,
+    '--sidebar-accent-foreground/--sidebar-accent': 13.56,
+    '--sidebar-accent-foreground/--sidebar': 15.55,
     '--sidebar-primary-foreground/--sidebar-primary': 5.69,
   },
   Dark: {
-    '--sidebar-foreground/--sidebar': 10.26,
-    '--sidebar-foreground/--sidebar-accent': 8.94,
-    '--sidebar-accent-foreground/--sidebar-accent': 12.82,
-    '--sidebar-accent-foreground/--sidebar': 14.72,
+    '--sidebar-foreground/--sidebar': 8.12,
+    '--sidebar-foreground/--sidebar-accent': 6.18,
+    '--sidebar-accent-foreground/--sidebar-accent': 10.96,
+    '--sidebar-accent-foreground/--sidebar': 14.38,
     '--sidebar-primary-foreground/--sidebar-primary': 5.69,
   },
 };
@@ -385,8 +399,8 @@ const EXPECTED_NON_TEXT: Record<string, { accentLift: number; borderOnSidebar: n
   // 1.10 to 1.12 on dark. Darkening the page ground by more than the raised
   // surface is what keeps the sidebar reading as a distinct panel rather than
   // flattening into the page, which was the risk in dropping both.
-  Light: { accentLift: 1.32, borderOnSidebar: 1.32, ringOnSidebar: 2.66, sidebarVsPage: 1.07 },
-  Dark: { accentLift: 1.15, borderOnSidebar: 1.21, ringOnSidebar: 6.21, sidebarVsPage: 1.12 },
+  Light: { accentLift: 1.15, borderOnSidebar: 1.15, ringOnSidebar: 2.37, sidebarVsPage: 1.07 },
+  Dark: { accentLift: 1.31, borderOnSidebar: 1.65, ringOnSidebar: 6.06, sidebarVsPage: 1.11 },
 };
 
 describe('the non-text pairs, measured and pinned', () => {
@@ -492,11 +506,11 @@ const PHASE_TWO_BASELINE: Record<keyof typeof PALETTES, Record<string, string>> 
   // modes. That is the evidence for the report's claim that this ticket
   // removed a surface family without touching the accent.
   Light: {
-    "--background": "#F7F7F7",
+    "--background": "#FAFAF8",
     "--foreground": "#404040",
-    "--card": "#FFFFFF",
+    "--card": "#FDFDFD",
     "--card-foreground": "#404040",
-    "--popover": "#FFFFFF",
+    "--popover": "#FDFDFD",
     "--popover-foreground": "#404040",
     "--primary": "#C9963A",
     "--secondary": "#E6B325",
@@ -507,7 +521,7 @@ const PHASE_TWO_BASELINE: Record<keyof typeof PALETTES, Record<string, string>> 
     "--accent": "#E0E0E0",
     "--accent-foreground": "#1A1A1A",
     "--destructive": "#A23C28",
-    "--border": "#E0E0E0",
+    "--border": "#E9E9E9",
     "--input": "#C7C7C7",
     "--ring": "#C9963A",
     "--chart-1": "#C9963A",
@@ -517,11 +531,11 @@ const PHASE_TWO_BASELINE: Record<keyof typeof PALETTES, Record<string, string>> 
     "--chart-5": "#C8BCA9",
   },
   Dark: {
-    "--background": "#141414",
+    "--background": "#171717",
     "--foreground": "#CCCCCC",
-    "--card": "#1F1F1F",
+    "--card": "#202020",
     "--card-foreground": "#CCCCCC",
-    "--popover": "#1F1F1F",
+    "--popover": "#202020",
     "--popover-foreground": "#CCCCCC",
     "--primary": "#C9963A",
     "--secondary": "#E6B325",
@@ -532,7 +546,7 @@ const PHASE_TWO_BASELINE: Record<keyof typeof PALETTES, Record<string, string>> 
     "--accent": "#2A2A2A",
     "--accent-foreground": "#F2F2F2",
     "--destructive": "#F0BFB2",
-    "--border": "#2E2E2E",
+    "--border": "#363636",
     "--input": "#404040",
     "--ring": "#C9963A",
     "--chart-1": "#E5B65C",
@@ -592,8 +606,8 @@ describe('the inverted pin still proves what it replaced', () => {
 
   it('catches an undeclared --sidebar-xyz', () => {
     const mutated = GLOBALS.replace(
-      '  --sidebar: var(--surface-raised);',
-      '  --sidebar: var(--surface-raised);\n  --sidebar-xyz: #FF0000;',
+      '  --sidebar: #F3F2EF;',
+      '  --sidebar: #F3F2EF;\n  --sidebar-xyz: #FF0000;',
     );
     expect(mutated).not.toBe(GLOBALS);
     expect(sidebarTokensIn(mutated)).toContain('--sidebar-xyz');
@@ -602,15 +616,15 @@ describe('the inverted pin still proves what it replaced', () => {
 
   it('catches a --sidebar-width smuggled in as a token', () => {
     const mutated = GLOBALS.replace(
-      '  --sidebar: var(--surface-raised);',
-      '  --sidebar: var(--surface-raised);\n  --sidebar-width: 16rem;',
+      '  --sidebar: #F3F2EF;',
+      '  --sidebar: #F3F2EF;\n  --sidebar-width: 16rem;',
     );
     expect(sidebarTokensIn(mutated)).toContain('--sidebar-width');
   });
 
   it('catches a removal from any one of the eight', () => {
-    for (const { token, via } of SIDEBAR) {
-      const mutated = GLOBALS.replace(`  ${token}: var(${via});\n`, '');
+    for (const token of SIDEBAR_TOKENS) {
+      const mutated = GLOBALS.replace(new RegExp(`^\\s*${token}\\s*:[^;]*;\\n`, 'gm'), '');
       expect(mutated, `${token} was not found to remove — the pin is matching nothing`).not.toBe(GLOBALS);
       expect(sidebarTokensIn(mutated), `removing ${token} did not fail the pin`).not.toContain(token);
     }
@@ -622,7 +636,9 @@ describe('the inverted pin still proves what it replaced', () => {
     // form is a superset: it catches both absence AND unexpected presence,
     // where the old one caught presence only.
     let stripped = GLOBALS;
-    for (const { token, via } of SIDEBAR) stripped = stripped.replace(`  ${token}: var(${via});\n`, '');
+    for (const token of SIDEBAR_TOKENS) {
+      stripped = stripped.replace(new RegExp(`^\\s*${token}\\s*:[^;]*;\\n`, 'gm'), '');
+    }
     expect(sidebarTokensIn(stripped)).toEqual([]);
     expect(sidebarTokensIn(stripped)).not.toEqual([...SIDEBAR_TOKENS].sort());
   });

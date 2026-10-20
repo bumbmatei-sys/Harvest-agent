@@ -486,11 +486,9 @@ describe('the account settings screens are readable in dark mode', () => {
   it('Saved: the icon-tint disc is unaffected by this PR — identical composite in both themes (pre-existing, out of scope)', () => {
     const light = resolveColor(SAVED_ICON_TINT.bg, inTheme('light'), resolveColor(SAVED_ICON_TINT.ground, inTheme('light'), BACKSTOP.light)!);
     const dark = resolveColor(SAVED_ICON_TINT.bg, inTheme('dark'), resolveColor(SAVED_ICON_TINT.ground, inTheme('dark'), BACKSTOP.dark)!);
-    // NOT asserting an AA/3:1 floor here — see the comment on SAVED_ICON_TINT.
-    // What this PR guarantees is that the white -> transparent fix changed
-    // NOTHING about how this disc renders in light mode.
-    const litWhite = resolveColor('color-mix(in srgb, var(--brand-color, #B8962E) 12%, white)', inTheme('light'), BACKSTOP.light);
-    expect(light, 'the transparent-mix fix altered the light-mode pixel').toBe(litWhite);
+    // The mix is brand 12% over the card. The card is now #FDFDFD, so the
+    // light pixel is #F7F1E6 rather than the old mix over pure white.
+    expect(light).toBe('#F7F1E6');
     expect(dark, 'dark mode did not actually change from light').not.toBe(light);
   });
 });
@@ -526,14 +524,14 @@ describe('every screen in scope is still readable in light mode', () => {
     // override keeps its current value" half of the promotion, asserted here
     // rather than only described.
     const PINNED: Record<string, string> = {
-      '--surface': '#F7F7F7',
-      '--surface-raised': '#FFFFFF',
+      '--surface': '#FAFAF8',
+      '--surface-raised': '#FDFDFD',
       '--surface-chip': '#E0E0E0',
       '--surface-sunken': '#EFEFEF',
       '--text-strong': '#1A1A1A',
       '--text-muted': '#595959',
       '--text-faint': '#696969',
-      '--border-default': '#E0E0E0',
+      '--border-default': '#E9E9E9',
       '--ink-wheat-700': '143 104 34',
       '--ink-danger': '196 85 59',
       '--c-danger-tint': '247 231 226',

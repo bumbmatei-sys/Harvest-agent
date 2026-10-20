@@ -1,0 +1,21 @@
+{
+  "ticket": "THE-375",
+  "note": "Eden shell pass. There is no assigned ticket number; THE-375 is the next free id after THE-374 so these digests can be appended without editing another ticket's file. Desktop admin chrome follows Eden's layout and neutral surfaces. Brand and accent stay Harvest navy and gold. Rename this file if a real ticket id is assigned, and keep the digests.",
+  "entries": [
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "bfab6720f1e6f64bcfc87a2aab6f844c92dff5c788f7b5f5711a3619c50fe7c4",
+      "why": "Eden shell pass. The desktop top bar is the shared shadcn content bar (Breadcrumb, Separator, SidebarTrigger). Inbox and the platform bell move into the sidebar footer on desktop. The sidebar provider sets the Eden width. Mobile AdminScreenHeader and the bottom nav stay. No permission gate, nav id or screen mount was added or removed."
+    },
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "f3374eaa2861e95d3698f78aae725825aef2442becb91ce6cb81797c0eae3ade",
+      "why": "Eden shell pass. The List and Month switch uses the shared segmented tab classes built on shadcn Tabs. The 44px phone floor stays on the triggers. No nav, tab id, read, write or permission gate moved, which is what the events digest pins this file for."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "b8a9d9a7d72c790c7be89ced602f121c4d98832da4f71506e73811670975c0b1",
+      "why": "Eden shell pass re-recorded contrast ratios because the neutral surfaces moved to the Eden ramp (canvas, card, dark page). The brand gold pair stays 5.69. No component behaviour changed in this file; it is a pin of measured colours."
+    }
+  ]
+}

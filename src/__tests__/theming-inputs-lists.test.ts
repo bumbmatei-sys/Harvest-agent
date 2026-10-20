@@ -554,10 +554,10 @@ describe('both surfaces remain readable in light mode', () => {
     // already made the neutral family the one a user with no stored
     // preference renders in, so these are the values that were on screen.
     const PINNED: Record<string, string> = {
-      '--surface': '#F7F7F7',
-      '--surface-raised': '#FFFFFF',
+      '--surface': '#FAFAF8',
+      '--surface-raised': '#FDFDFD',
       '--surface-sunken': '#EFEFEF',
-      '--surface-tint': '#F5F5F5',
+      '--surface-tint': '#F5F5F3',
       '--border-strong': '#C7C7C7',
       '--text-strong': '#1A1A1A',
       '--text-body': '#404040',

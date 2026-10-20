@@ -36,6 +36,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarRail,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -55,10 +56,20 @@ import {
 } from './shell-nav';
 import { useShellTheme } from './use-shell-theme';
 
-/** Wide enough for a 44px icon with the inset padding, at the 14.5px desktop root. */
-export const SIDEBAR_ICON_WIDTH = '3.75rem';
+/** Collapsed card is this wide plus the 8px margins; a 36px icon sits inside with room to spare. */
+export const SIDEBAR_ICON_WIDTH = '52px';
 
-const MENU_BUTTON = 'min-h-11 group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:size-11! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0!';
+/** The full card is 260px plus the 8px margin either side, which is what the primitive's width var counts. */
+export const SIDEBAR_WIDTH = '276px';
+
+/**
+ * Eden's entry: 30px tall, 8px left / 12px right, an 8px icon gap, 14px label at weight 400
+ * in neutral-600, 17px icons at stroke 1.7. Pixels, not rem: the desktop root is trimmed to
+ * 14.5px, which would turn a 14px label into 12.7px.
+ */
+const MENU_BUTTON = 'h-[30px] min-h-0 gap-2 rounded-lg py-0 pr-3 pl-2 text-[14px] font-normal text-sidebar-foreground data-active:font-normal [&_svg]:size-[17px] [&_svg]:stroke-[1.7] group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0!';
+
+const ICON_BUTTON = 'size-8 shrink-0 text-sidebar-foreground hover:bg-sidebar-hover hover:text-sidebar-accent-foreground [&_svg]:size-[17px] [&_svg]:stroke-[1.7]';
 
 export function AdminDesktopSidebar({
   side,
@@ -71,6 +82,8 @@ export function AdminDesktopSidebar({
   onNavigate,
   onPlaceholder,
   accountMenu,
+  accountLabel,
+  footerExtra,
 }: {
   side: ShellSideId;
   onSide: (side: ShellSideId) => void;
@@ -82,6 +95,10 @@ export function AdminDesktopSidebar({
   onNavigate: (id: string) => void;
   onPlaceholder: (id: ShellPlaceholderId) => void;
   accountMenu: ReactNode;
+  /** Name beside the avatar. Hidden when the rail is collapsed to icons. */
+  accountLabel?: string;
+  /** Desktop-only footer icons (inbox, theme stays separate). */
+  footerExtra?: ReactNode;
 }) {
   const groups = groupsForSide(side, tabs);
   const social = tabs.get('social');
@@ -111,59 +128,63 @@ export function AdminDesktopSidebar({
       variant="inset"
       collapsible="icon"
       data-shell-side={side}
-      className="bg-sidebar text-sidebar-foreground group-data-[collapsible=icon]:overflow-hidden group-data-[collapsible=icon]:p-1!"
+      className="p-[8px] text-sidebar-foreground group-data-[collapsible=icon]:overflow-hidden"
     >
-      <SidebarHeader className="gap-3 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-0">
-        <div className="flex items-center gap-2 px-1 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:px-0">
-          <img src={logoUrl} alt="" className="size-8 shrink-0 object-contain" />
-          <span className="min-w-0 flex-1 truncate font-display text-base font-semibold text-sidebar-foreground group-data-[collapsible=icon]:sr-only">
+      <SidebarHeader className="gap-1.5 p-0 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:py-2">
+        <div className="flex h-[52px] items-center gap-1.5 pr-3 pl-4 group-data-[collapsible=icon]:h-auto group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:px-0">
+          <img src={logoUrl} alt="" className="size-6 shrink-0 object-contain" />
+          <span className="min-w-0 flex-1 truncate font-display text-[17px] font-semibold text-sidebar-accent-foreground group-data-[collapsible=icon]:sr-only">
             {tenantName}
           </span>
-          <SidebarTrigger className="relative z-20 ml-auto min-h-11 min-w-11 shrink-0 group-data-[collapsible=icon]:ml-0" />
+          <Tooltip>
+            <TooltipTrigger render={<span className="inline-flex" />}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className={ICON_BUTTON}
+                onClick={() => setPaletteOpen(true)}
+                aria-label="Search"
+              >
+                <Search />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Search</TooltipContent>
+          </Tooltip>
+          <ToggleGroup
+            value={[side]}
+            onValueChange={(next) => {
+              const picked = next[0];
+              if (picked === 'people' || picked === 'public') onSide(picked);
+            }}
+            spacing={0}
+            className="h-8 w-[70px] shrink-0 gap-0 rounded-lg bg-seg-track p-0.5 group-data-[collapsible=icon]:h-auto group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:flex-col"
+            aria-label="Sidebar side"
+          >
+            {SHELL_SIDES.map((meta) => {
+              const Icon = meta.icon;
+              return (
+                <Tooltip key={meta.id}>
+                  <TooltipTrigger render={<span className="inline-flex flex-1" />}>
+                    <ToggleGroupItem
+                      value={meta.id}
+                      aria-label={meta.label}
+                      className="h-7 min-h-0 min-w-0 flex-1 rounded-md px-0 text-sidebar-foreground aria-pressed:bg-seg-active aria-pressed:text-sidebar-accent-foreground aria-pressed:shadow-seg data-pressed:bg-seg-active data-pressed:text-sidebar-accent-foreground data-pressed:shadow-seg [&_svg]:size-[15px] [&_svg]:stroke-[1.7]"
+                    >
+                      <Icon />
+                    </ToggleGroupItem>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">{meta.label}</TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </ToggleGroup>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          className="min-h-11 w-full justify-start gap-2 border-sidebar-border bg-sidebar px-3 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-11 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
-          onClick={() => setPaletteOpen(true)}
-          aria-label="Search"
-        >
-          <Search />
-          <span className="group-data-[collapsible=icon]:sr-only">Search</span>
-        </Button>
-        <ToggleGroup
-          value={[side]}
-          onValueChange={(next) => {
-            const picked = next[0];
-            if (picked === 'people' || picked === 'public') onSide(picked);
-          }}
-          spacing={0}
-          className="w-full justify-center group-data-[collapsible=icon]:flex-col"
-          aria-label="Sidebar side"
-        >
-          {SHELL_SIDES.map((meta) => {
-            const Icon = meta.icon;
-            return (
-              <Tooltip key={meta.id}>
-                <TooltipTrigger render={<span className="inline-flex" />}>
-                  <ToggleGroupItem
-                    value={meta.id}
-                    aria-label={meta.label}
-                    className="min-h-11 min-w-11"
-                  >
-                    <Icon />
-                  </ToggleGroupItem>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">{meta.label}</TooltipContent>
-              </Tooltip>
-            );
-          })}
-        </ToggleGroup>
       </SidebarHeader>
 
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarMenu>
+      <SidebarContent className="pt-1">
+        <SidebarGroup className="px-[13px] py-0 group-data-[collapsible=icon]:px-0">
+          <SidebarMenu className="gap-px">
             <SidebarMenuItem>
               <SidebarMenuButton
                 isActive={activeTab === 'dashboard' && placeholder === null}
@@ -198,7 +219,7 @@ export function AdminDesktopSidebar({
           return (
           <Collapsible key={group.id} defaultOpen className="group/collapsible">
             <SidebarGroup
-              className="group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-0"
+              className="mt-6 px-[13px] py-0 group-data-[collapsible=icon]:mt-3 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-0"
               {...(live.length > 0 ? {
                 'data-nav-group': group.id,
                 'data-nav-group-tabs': live.map((item) => item.id).join(','),
@@ -206,15 +227,15 @@ export function AdminDesktopSidebar({
               } : {})}
             >
               <SidebarGroupLabel
-                className="group-data-[collapsible=icon]:hidden"
-                render={<CollapsibleTrigger className="min-h-11 group-data-[collapsible=icon]:hidden" />}
+                className="h-6 gap-1 px-2 text-[12px] font-normal text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden"
+                render={<CollapsibleTrigger className="group-data-[collapsible=icon]:hidden" />}
               >
                 <span>{group.label}</span>
-                <ChevronRight className="ml-auto transition-transform group-data-open/collapsible:rotate-90 group-data-[collapsible=icon]:hidden" />
+                <ChevronRight className="size-[11px]! transition-transform group-data-open/collapsible:rotate-90 group-data-[collapsible=icon]:hidden" />
               </SidebarGroupLabel>
               <CollapsibleContent>
                 <SidebarGroupContent>
-                  <SidebarMenu>
+                  <SidebarMenu className="gap-px">
                     {group.items.map((item) => {
                       const Icon = item.icon;
                       const isActive = item.placeholder
@@ -244,22 +265,39 @@ export function AdminDesktopSidebar({
         })}
       </SidebarContent>
 
-      <SidebarFooter className="group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-0">
-        <Button
-          type="button"
-          variant="outline"
-          className="min-h-11 w-full justify-start gap-2 border-sidebar-border bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-11 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
-          onClick={toggle}
-          aria-label={resolved === 'dark' ? 'Switch to light' : 'Switch to dark'}
-          data-shell-theme={resolved}
-        >
-          {resolved === 'dark' ? <Sun /> : <Moon />}
-          <span className="group-data-[collapsible=icon]:sr-only">
-            {resolved === 'dark' ? 'Light' : 'Dark'}
-          </span>
-        </Button>
-        <div className="flex w-full items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:[&_[data-shell-account-label]]:sr-only">{accountMenu}</div>
+      <SidebarFooter className="gap-1 p-0 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:py-2">
+        <div className="flex h-[52px] items-center gap-1 pr-3 pl-4 group-data-[collapsible=icon]:h-auto group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:px-0">
+          <div className="flex min-w-0 flex-1 items-center gap-2 group-data-[collapsible=icon]:flex-none [&_[data-nav-rail-account]_button]:size-8 [&_[data-shell-account-label]]:truncate group-data-[collapsible=icon]:[&_[data-shell-account-label]]:sr-only">
+            {accountMenu}
+            {accountLabel ? (
+              <span data-shell-account-label className="min-w-0 truncate text-[13px] font-medium text-sidebar-accent-foreground">
+                {accountLabel}
+              </span>
+            ) : null}
+          </div>
+          {footerExtra}
+          <div className="flex items-center gap-1 group-data-[collapsible=icon]:flex-col">
+            <Tooltip>
+              <TooltipTrigger render={<span className="inline-flex" />}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className={ICON_BUTTON}
+                  onClick={toggle}
+                  aria-label={resolved === 'dark' ? 'Switch to light' : 'Switch to dark'}
+                  data-shell-theme={resolved}
+                >
+                  {resolved === 'dark' ? <Sun /> : <Moon />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">{resolved === 'dark' ? 'Light' : 'Dark'}</TooltipContent>
+            </Tooltip>
+            <SidebarTrigger className={ICON_BUTTON} />
+          </div>
+        </div>
       </SidebarFooter>
+      <SidebarRail />
 
       <CommandDialog open={paletteOpen} onOpenChange={setPaletteOpen} title="Search" description="Jump to a section">
         <Command>

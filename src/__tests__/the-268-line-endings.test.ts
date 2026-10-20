@@ -242,6 +242,20 @@ describe('binaries are not treated as text', () => {
       'docs/redesign/blog-status-picker/blog-post-settings-schedule-dark-card.png',
       'docs/redesign/blog-status-picker/blog-post-settings-schedule-light-1440.png',
       'docs/redesign/blog-status-picker/blog-post-settings-schedule-light-card.png',
+      // Eden shell pass. Home, compose, events, collapsed, the gold Schedule
+      // button, and the 390px sheet. Light and dark.
+      'docs/redesign/eden-shell/1440-collapsed-dark.png',
+      'docs/redesign/eden-shell/1440-collapsed-light.png',
+      'docs/redesign/eden-shell/1440-compose-dark.png',
+      'docs/redesign/eden-shell/1440-compose-light.png',
+      'docs/redesign/eden-shell/1440-events-dark.png',
+      'docs/redesign/eden-shell/1440-events-light.png',
+      'docs/redesign/eden-shell/1440-home-dark.png',
+      'docs/redesign/eden-shell/1440-home-light.png',
+      'docs/redesign/eden-shell/1440-schedule-dark.png',
+      'docs/redesign/eden-shell/1440-schedule-light.png',
+      'docs/redesign/eden-shell/390-sheet-dark.png',
+      'docs/redesign/eden-shell/390-sheet-light.png',
       // APPENDED BY #529, nothing below removed. Before and after shots at
       // 1440 and 390, light and dark, so the review can see them without a login.
       'docs/redesign/phase-1/1440-after-people-dark.png',

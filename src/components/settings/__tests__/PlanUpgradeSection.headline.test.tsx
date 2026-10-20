@@ -170,7 +170,7 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
     // still clears AA on the ground it paints on (6.54:1, versus the warm
     // ramp's 6.62:1). --surface-raised is unchanged — plain white in both.
     expect(globals).toContain('--text-muted:   #595959;');
-    expect(globals).toContain('--surface-raised:  #FFFFFF;');
+    expect(globals).toContain('--surface-raised:  #FDFDFD;');
   });
 
   it('no font size below 11px is written into the price block', () => {

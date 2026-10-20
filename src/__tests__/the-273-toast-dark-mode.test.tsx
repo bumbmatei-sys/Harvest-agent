@@ -538,12 +538,10 @@ describe('3 — the toast foreground clears AA on its own ground', () => {
       }),
     );
     expect(measured).toEqual({
-      // 🔴 THE-338 re-recorded these. Light is unchanged (it was already the
-      // neutral family's, the default since THE-265); dark rose 9.67 -> 10.26
-      // because the card darkened from #242424 to #1F1F1F and a darker ground
-      // can only improve text contrast.
-      Light: '10.37',
-      Dark: '10.26',
+      // Eden shell pass. Toast text sits on the card: #FDFDFD in light (10.19)
+      // and #202020 in dark (10.15).
+      Light: '10.19',
+      Dark: '10.15',
     });
   });
 
@@ -911,6 +909,10 @@ describe('9 — all 22 other primitives are byte-identical', () => {
     // class names in two files; no element, slot, variant, prop or API moved.
     'dialog.tsx': 'bfd230cea544d2de7650182341e082de92141174da80f6193843e8d71b622e41',
     'sheet.tsx': '68d13d9826a9b5b28e3d78a0ba632b347ca91b67a3333a38acb6310ade8846d4',
+    // Eden shell pass. button.tsx points the default variant at Harvest gold
+    // (--action). sidebar.tsx takes the inset card, shell shadow and hover wash.
+    'button.tsx': '91786d4927d890d722bed3daa2bb8dda5c25dc8dc65237acfeb73295849f085d',
+    'sidebar.tsx': 'ab6ef215de5cae4f79bca6d66f15e8a3ff3d461fbf8742a78bf603d4e08108c2',
   };
 
   it('🔴 every one of the 21 hashes to what main recorded, bar the one THE-276-FIX fixed', () => {
@@ -946,13 +948,15 @@ describe('9 — all 22 other primitives are byte-identical', () => {
     // ⚠️ Two movers now, not one: sonner.tsx (this ticket) and tabs.tsx
     // (THE-276-FIX, see MOVED_SINCE above). Both are named, so the claim is
     // still a DELTA — a third entry moving is still a failure.
-    // ⚠️ Four movers now, not two: sonner.tsx (this ticket), tabs.tsx
-    // (THE-276-FIX) and dialog.tsx + sheet.tsx (THE-295), all named in
-    // MOVED_SINCE above with their reason. Still a DELTA — a fifth entry
-    // moving is still a failure.
-    expect(moved, 'the primitive ledger moved for something other than the four named movers').toEqual([
+    // ⚠️ Six movers now: sonner.tsx (this ticket), tabs.tsx (THE-276-FIX),
+    // dialog.tsx + sheet.tsx (THE-295), and button.tsx + sidebar.tsx (the
+    // Eden shell pass), all named in MOVED_SINCE above. Still a DELTA — a
+    // seventh entry moving is still a failure.
+    expect(moved, 'the primitive ledger moved for something other than the six named movers').toEqual([
+      'src/components/ui/button.tsx',
       'src/components/ui/dialog.tsx',
       'src/components/ui/sheet.tsx',
+      'src/components/ui/sidebar.tsx',
       'src/components/ui/sonner.tsx',
       'src/components/ui/tabs.tsx',
     ]);
