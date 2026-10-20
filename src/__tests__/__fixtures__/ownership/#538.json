@@ -14,7 +14,7 @@
     },
     {
       "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
-      "digest": "1c1d47631ce1c6b66b845865b4944c142e5dcfd0279b56e9ea555343b2eccfb8",
+      "digest": "df98dc47eb054e472f96f40d1f1283510516846da63a2d9d94459f7f723a19cd",
       "why": "#538 appends six email components to RECORDED_ADOPTERS, each with a ticket and a reason of more than 80 characters, because they adopt calendar, checkbox, empty, popover, scroll-area, switch, textarea and toggle-group. Nothing already recorded was replaced or reworded."
     }
   ]
