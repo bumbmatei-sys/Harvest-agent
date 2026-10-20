@@ -39,7 +39,8 @@ There is no separate newsletter contact list. Subscribers are a filtered view ov
 - Broadcasts, sender settings and the monthly usage counter are the only new data, under
   `tenants/{id}/emailBroadcasts|emailConfig|emailUsage`, plus top-level `email_scheduled` and
   `email_confirm_tokens`. All server-only (Admin SDK); no client rule exists, so they are denied by default.
-- **One rules change**, called out for the founder go: both `contacts` match blocks refuse a client
+- **One rules change**, called out for the founder go: the top-level `contacts` match block (the CRM collection the app uses; the legacy nested
+  `tenants/{id}/contacts` block is untouched) refuses a client
   create or update that sets or changes any `email*` consent key. Without it a CRM admin's browser could
   re-subscribe someone who unsubscribed or bounced. Reads and every other write are unchanged. Covered by
   `tests/rules/email-consent.rules.test.ts` (CI runs the emulator; not run locally).

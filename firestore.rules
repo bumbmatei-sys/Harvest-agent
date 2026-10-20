@@ -630,9 +630,7 @@ service cloud.firestore {
 
       match /contacts/{contactId} {
         allow read: if isTenantAdmin(tenantId);
-        allow create: if hasPermission('manageCRM', tenantId) && contactCreateKeepsEmailConsent();
-        allow update: if hasPermission('manageCRM', tenantId) && contactUpdateKeepsEmailConsent();
-        allow delete: if hasPermission('manageCRM', tenantId);
+        allow write: if hasPermission('manageCRM', tenantId);
       }
 
       match /contactActivities/{activityId} {

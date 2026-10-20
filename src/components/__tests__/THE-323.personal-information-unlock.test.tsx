@@ -762,6 +762,13 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // PaymentLinkPicker USES the class as `min-h-11 sm:min-h-0` on each provider row,
       // the same phone floor the event picker had before that markup moved here.
       'src/components/donations/PaymentLinkPicker.tsx',
+      // APPENDED BY #538, NOTHING ABOVE OR BELOW REMOVED OR REWRITTEN. The email
+      // workspace spells the class twice. `kit.tsx` defines the shared `TAP` floor
+      // (`min-h-11`, 44px below `sm`, with the 38px rule above it left to the
+      // global control rule) and `BroadcastsView.tsx` uses the Rule-4 form
+      // `min-h-11 sm:min-h-0` on its row title button so table rows keep one height.
+      'src/components/email/BroadcastsView.tsx',
+      'src/components/email/kit.tsx',
       'src/components/events/RotaInviteView.tsx',   // THE-324: names it in a comment, does not use it
       'src/components/events/RotaRespondView.tsx',
       // 🔴 APPENDED BY THE-334, for the same reason and of the same KIND as

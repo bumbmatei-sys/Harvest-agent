@@ -4,13 +4,18 @@
   "entries": [
     {
       "file": "firestore.rules",
-      "digest": "620d2129c89a0496d79e563f093b582ba9f81f920672caad57bbee600486bb5f",
-      "why": "Adds emailConsentKeys, contactCreateKeepsEmailConsent and contactUpdateKeepsEmailConsent beside newsletterConsentOnCreate and applies them to BOTH contacts match blocks (top-level and tenants/{id}/contacts): a client CRM admin keeps every other contact write but can no longer create or change emailStatus, emailOptInAt, emailOptInSource, emailUnsubscribedAt or emailUnsubscribedFrom, so only the Admin SDK (CSV import, the unsubscribe link) can subscribe or unsubscribe a person. Read rules and every other match block are unchanged."
+      "digest": "66d46d6179f051990fb09aaf6b4aab9567bd576337ade33a762e0194baf86aee",
+      "why": "Adds emailConsentKeys, contactCreateKeepsEmailConsent and contactUpdateKeepsEmailConsent beside newsletterConsentOnCreate and applies them to the top-level contacts match block, which is the CRM collection the app reads and writes: a client CRM admin keeps every other contact write but can no longer create or change emailStatus, emailOptInAt, emailOptInSource, emailUnsubscribedAt or emailUnsubscribedFrom, so only the Admin SDK (CSV import, the unsubscribe link) can subscribe or unsubscribe a person. The legacy nested tenants/{id}/contacts block is deliberately untouched: nothing reads it and plan-features.crm-individual pins its text. Read rules and every other match block are unchanged."
     },
     {
       "file": "src/components/NewsletterCampaigns.tsx",
       "digest": "0a5e3ebc9d73e1be545bf99b40881dd86f9cd183b911a57df94b3fdd7d07e7d1",
       "why": "The newsletter tab's list screen stops listing Mailchimp campaigns and mounts the Plunk-backed EmailWorkspace. Its props and default export are unchanged so AdminDashboard's call site, plan gate and the NEWSLETTER_FEATURE_ENABLED switch stay byte-identical. NewsletterEditor.tsx is left on disk, unreachable, because THE-335 forbids deleting it."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "1c1d47631ce1c6b66b845865b4944c142e5dcfd0279b56e9ea555343b2eccfb8",
+      "why": "#538 appends six email components to RECORDED_ADOPTERS, each with a ticket and a reason of more than 80 characters, because they adopt calendar, checkbox, empty, popover, scroll-area, switch, textarea and toggle-group. Nothing already recorded was replaced or reworded."
     }
   ]
 }
