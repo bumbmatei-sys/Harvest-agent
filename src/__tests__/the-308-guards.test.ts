@@ -65,7 +65,10 @@ describe('3 · the 18 primitives the block depended on are untouched', () => {
    */
   const PINNED: Record<string, string> = {
     'card.tsx': 'd8113cbf964f8d1aadf2649d2944d8bbc6e3cfd49d36746f76868cbc4dde3cfe',
-    'button.tsx': 'd14549ab3ba7a9d5d1f424c2599233bffa0b317121abf3b6efa2fb902d5e2781',
+    // Eden shell pass re-recorded button.tsx (action token + 12.5px / h-8).
+    // The fixture primitive-digests.json carries the same digest. The other
+    // seventeen stay the bytes this guard was written against.
+    'button.tsx': '91786d4927d890d722bed3daa2bb8dda5c25dc8dc65237acfeb73295849f085d',
     'button-group.tsx': 'fe97631e1a07bc0add09503c5032002e37f4c71ef5dd3c7475b856a29848583d',
     'input.tsx': 'f7d6ecff9a4d631feeaf401c02bb87e26ddb38131c55d15a43b9290747390847',
     'badge.tsx': '968b0403af74a785c9408ca69a677235e49d0c80b2c27fb9858ad421a8778c7d',

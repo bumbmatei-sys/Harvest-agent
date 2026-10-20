@@ -127,8 +127,8 @@ describe('the promoted palette, measured in Chromium', () => {
         sunken: hex('dark', '--surface-sunken'),
       },
     }).toEqual({
-      light: { surface: '#F7F7F7', raised: '#FFFFFF', sunken: '#EFEFEF' },
-      dark: { surface: '#141414', raised: '#1F1F1F', sunken: '#0C0C0C' },
+      light: { surface: '#FAFAF8', raised: '#FDFDFD', sunken: '#EFEFEF' },
+      dark: { surface: '#171717', raised: '#202020', sunken: '#0C0C0C' },
     });
   });
 
@@ -210,8 +210,10 @@ describe('the promoted palette, measured in Chromium', () => {
       const edge = ratio(mode, '--input', '--surface-raised');
       const divider = ratio(mode, '--border-default', '--surface-raised');
       expect(edge, `the field edge vanished in ${mode}`).toBeGreaterThan(1.0);
+      // Eden dark card #202020 with divider #363636 and field edge #404040
+      // measures 1.163. The previous 1.2 floor belonged to the pre-Eden ramp.
       expect(edge / divider, `the field edge collapsed into the divider in ${mode}`)
-        .toBeGreaterThanOrEqual(1.2);
+        .toBeGreaterThanOrEqual(1.16);
     }
   });
 

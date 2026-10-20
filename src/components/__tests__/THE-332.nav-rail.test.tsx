@@ -623,14 +623,18 @@ describe('THE-332 · what this ticket may not disturb', () => {
        established the pattern (`--card: var(--surface-raised)`); THE-270 landed
        these. This ticket ADDS NONE and re-asserts them because it is the first
        consumer of the sidebar family. */
+    // Eden shell pass. Neutrals are measured literals, restated in .dark.
+    // Brand aliases stay chained. --sidebar-hover is the wash. The :root
+    // declaration is what this matches; the dark restatement is the same name.
     const MAP: Record<string, string> = {
-      '--sidebar': 'var(--surface-raised)',
-      '--sidebar-foreground': 'var(--text-body)',
-      '--sidebar-accent': 'var(--surface-chip)',
+      '--sidebar': '#F3F2EF',
+      '--sidebar-foreground': '#525252',
+      '--sidebar-accent': '#E4E3E0',
       '--sidebar-accent-foreground': 'var(--text-strong)',
+      '--sidebar-hover': '#E9E8E5',
       '--sidebar-primary': 'var(--primary)',
       '--sidebar-primary-foreground': 'var(--primary-foreground)',
-      '--sidebar-border': 'var(--border-default)',
+      '--sidebar-border': '#E4E3E1',
       '--sidebar-ring': 'var(--ring)',
     };
     for (const [name, value] of Object.entries(MAP)) {
@@ -650,8 +654,18 @@ describe('THE-332 · what this ticket may not disturb', () => {
        dropdown-menu, avatar, switch, label, sheet and SIDEBAR itself) plus a
        phantom `cn` dependency, so the block was installed into a scratch
        project instead and nothing was copied back into src/components/ui. */
+    // Eden shell pass restyled button.tsx and sidebar.tsx. The historical
+    // digest stays accepted; a third value still fails.
+    const EDEN_SHELL_PRIMITIVES: Record<string, string> = {
+      'button.tsx': '91786d4927d890d722bed3daa2bb8dda5c25dc8dc65237acfeb73295849f085d',
+      'sidebar.tsx': 'ab6ef215de5cae4f79bca6d66f15e8a3ff3d461fbf8742a78bf603d4e08108c2',
+    };
     for (const [file, digest] of Object.entries(PRIMITIVE_DIGESTS)) {
-      expect(sha256(read(`src/components/ui/${file}`)), `${file} was overwritten`).toBe(digest);
+      const accepted = file in EDEN_SHELL_PRIMITIVES
+        ? [digest, EDEN_SHELL_PRIMITIVES[file]]
+        : [digest];
+      const actual = sha256(read(`src/components/ui/${file}`));
+      expect(accepted, `${file} was overwritten (${actual})`).toContain(actual);
     }
   });
 
@@ -874,6 +888,9 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
        this file for: handleSave, confirmDelete and firestorePathsOf are
        unchanged. */
     'db9fbb0478cbeb3f2425c9afdaa40c6c59770f211625da0fc598fa7c041276be',
+    /* The Eden shell pass appended two AdminEvents digests (segmented List and
+       Month) and the follow-up restored this file to the #522 digest above.
+       Those two values are not accepted: a revert is not a second legal state. */
   ],
   'src/components/AdminServices.tsx': '17f508718d3c6b1ad016b9fb6be2c241629421705af4a9c0966b02739eba74ae',
   /* 🔴 AN ACCEPTED SET, APPENDED TO, NOT ONE VALUE SUBSTITUTED — the shape the

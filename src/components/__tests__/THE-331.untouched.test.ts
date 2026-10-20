@@ -77,6 +77,16 @@ const PRIMITIVES: Readonly<Record<string, string>> = {
   'tooltip.tsx': '2cea2294d4947b88d815860f64e0b5e0eb47a59bde47cfd194aac2230c923865',
 };
 
+/**
+ * Eden shell pass. button.tsx and sidebar.tsx were restyled on purpose.
+ * Historical digests stay in PRIMITIVES. A third value for either file still
+ * fails.
+ */
+const EDEN_SHELL_MOVED: Readonly<Record<string, string>> = {
+  'button.tsx': '91786d4927d890d722bed3daa2bb8dda5c25dc8dc65237acfeb73295849f085d',
+  'sidebar.tsx': 'ab6ef215de5cae4f79bca6d66f15e8a3ff3d461fbf8742a78bf603d4e08108c2',
+};
+
 /** The vendored cascader, as this ticket leaves it. */
 const CASCADER: Readonly<Record<string, string>> = {
   'cascader-async.tsx': 'a1220f9177c4d2ad466cf43f17918dfebcb72a6801f85db5b0262785052572dd',
@@ -109,17 +119,19 @@ describe('🔴 all pre-existing primitives are byte-identical', () => {
   });
 
   it.each(Object.entries(PRIMITIVES))('%s is unchanged', (file, digest) => {
+    const expected = EDEN_SHELL_MOVED[file] ?? digest;
     expect(
       digestOf('src/components/ui/' + file),
       'src/components/ui/' + file + ' MOVED. The cascader install wanted to ' +
         'overwrite button, spinner and scroll-area with a broken `cn` import; ' +
         'if this fails, that overwrite reached the repo.',
-    ).toBe(digest);
+    ).toBe(expected);
   });
 
   it('🔴 the three the CLI wanted to overwrite are named explicitly', () => {
+    const expected = { ...PRIMITIVES, ...EDEN_SHELL_MOVED };
     for (const f of ['button.tsx', 'spinner.tsx', 'scroll-area.tsx']) {
-      expect(digestOf('src/components/ui/' + f), f + ' was overwritten').toBe(PRIMITIVES[f]);
+      expect(digestOf('src/components/ui/' + f), f + ' was overwritten').toBe(expected[f]);
     }
   });
 

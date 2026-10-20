@@ -409,6 +409,15 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // APPENDED BY #530 QA, nothing above removed or rewritten.
     ['eec832262194852dcf12d71acd4c01fec168caf0aed1db96eb660895783f178b',
       `#530 QA - the desktop sidebar shows Social only when the add-on is held or the viewer is a super admin, and the composer is told when that is already known so it can render while accounts load. The mobile drawer entry, More groups, and the shell class string are unchanged.`],
+    // APPENDED BY the Eden shell pass, nothing above removed or rewritten.
+    ['bfab6720f1e6f64bcfc87a2aab6f844c92dff5c788f7b5f5711a3619c50fe7c4',
+      `Eden shell pass - the desktop content bar is shadcn Breadcrumb, Separator and SidebarTrigger. Inbox and the platform bell sit in the sidebar footer. Eden widths and grouped nav. Mobile AdminScreenHeader and the bottom nav stay. No permission gate, nav id or screen mount moved. Brand colours stay Harvest navy and gold.`],
+    ['ede5f2a59a8107e8b0faf46d8b05d5a5cd34d16f993b4ee2389e2ed194745e87',
+      `Eden shell pass follow-up - the payments inbox moves from the sidebar footer into the desktop content bar so it stays top-right. The platform bell stays in the footer. Mobile AdminScreenHeader still mounts its own inbox. No permission gate, nav id or screen mount moved.`],
+    ['c76170af6567412fe8998170aeca376ab1998ba8545c2809f1b07ea5f859c940',
+      `Eden shell pass follow-up - Home's breadcrumb is just Home. Every other route crumbs its sidebar group instead of the People or Public side. No permission gate, nav id or screen mount moved.`],
+    ['51c9a678558d1bdf523bfaf524afaf0e3bc92dcfc230d471ba43def62a50fe68',
+      `Eden shell fix round - the platform bell is a shadcn Button (ghost, icon) with the gold active highlight, and the desktop content bar mounts only at lg so a phone does not fetch the payments inbox twice. No permission gate, nav id or screen mount moved.`],
   ],
   'firestore.indexes.json': [
     ['8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0', 'main at 7fd4672'],

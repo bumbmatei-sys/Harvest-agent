@@ -14,14 +14,16 @@ import { applyTheme } from '@/lib/theme-runtime';
 import { THEME_STORAGE_KEY } from '@/lib/theme';
 import { NavRailFlyout, NavRailProvider } from '@/components/layout/nav-rail';
 import { DESKTOP_GROUP_ICONS, DESKTOP_GROUP_LABELS } from '@/components/layout/nav-rail-groups';
-import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarInset, SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
-import { AdminDesktopSidebar, SIDEBAR_ICON_WIDTH } from './AdminDesktopSidebar';
+import { AdminContentBar } from './AdminContentBar';
+import { AdminDesktopSidebar, SIDEBAR_ICON_WIDTH, SIDEBAR_WIDTH } from './AdminDesktopSidebar';
+import { SegmentedTabs, SegmentedTabsList, SegmentedTabsTrigger } from './SegmentedTabs';
 import { AdminHomeView } from './AdminHome';
 import { HOME_KPI_ORDER, HOME_KPI_SOURCES } from './home-kpis';
 import { useLgUp } from './use-lg';
-import type { ShellSideId, ShellTabRef } from './shell-nav';
+import { sectionForTab, type ShellSideId, type ShellTabRef } from './shell-nav';
 
 const LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
 
@@ -166,7 +168,45 @@ function BeforeChrome() {
   );
 }
 
-function AfterChrome({ side, collapsed }: { side: ShellSideId; collapsed: boolean }) {
+function ForceMobileSheet() {
+  const { isMobile, setOpenMobile } = useSidebar();
+  useEffect(() => {
+    if (isMobile) setOpenMobile(true);
+  }, [isMobile, setOpenMobile]);
+  return null;
+}
+
+const EVENT_ROWS = [
+  ['Sunday gathering', 'Sun 9:30', 'Main hall'],
+  ['Youth night', 'Fri 19:00', 'Annex'],
+  ['Members meeting', 'Tue 18:30', 'Chapel'],
+];
+
+function EventsPreview() {
+  return (
+    <div className="flex flex-col gap-4 px-4 pb-8">
+      <SegmentedTabs defaultValue="list">
+        <SegmentedTabsList>
+          <SegmentedTabsTrigger value="list">List</SegmentedTabsTrigger>
+          <SegmentedTabsTrigger value="month">Month</SegmentedTabsTrigger>
+        </SegmentedTabsList>
+      </SegmentedTabs>
+      <div className="overflow-hidden rounded-xl border border-border">
+        {EVENT_ROWS.map(([title, when, where]) => (
+          <div key={title} className="flex items-center gap-4 border-b border-border bg-surface-tint px-4 py-3 last:border-b-0">
+            <div className="min-w-0 flex-1">
+              <p className="text-[14px] text-foreground">{title}</p>
+              <p className="text-[12px] text-muted-foreground">{where}</p>
+            </div>
+            <span className="text-[13px] text-muted-foreground">{when}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AfterChrome({ side, collapsed, screen, sheet }: { side: ShellSideId; collapsed: boolean; screen: 'home' | 'events'; sheet: boolean }) {
   const lgUp = useLgUp();
   const [current, setCurrent] = useState<ShellSideId>(side);
   useEffect(() => { setCurrent(side); }, [side]);
@@ -187,14 +227,14 @@ function AfterChrome({ side, collapsed }: { side: ShellSideId; collapsed: boolea
         key={collapsed ? 'collapsed' : 'open'}
         defaultOpen={!collapsed}
         className="h-[100dvh] min-h-0 bg-surface"
-        style={{ '--sidebar-width-icon': SIDEBAR_ICON_WIDTH } as CSSProperties}
+        style={{ '--sidebar-width': SIDEBAR_WIDTH, '--sidebar-width-icon': SIDEBAR_ICON_WIDTH } as CSSProperties}
       >
         <div data-preview-view="after" className="contents">
-          {lgUp && (
+          {(lgUp || sheet) && (
             <AdminDesktopSidebar
               side={current}
               onSide={setCurrent}
-              activeTab="dashboard"
+              activeTab={screen === 'events' ? 'events' : 'dashboard'}
               placeholder={null}
               tabs={PREVIEW_TABS}
               tenantName="Grace Ministry"
@@ -214,8 +254,19 @@ function AfterChrome({ side, collapsed }: { side: ShellSideId; collapsed: boolea
               )}
             />
           )}
+          {sheet && <ForceMobileSheet />}
           <MobileBar className={AFTER_SHELL} />
-          <SidebarInset className="min-w-0 overflow-y-auto bg-surface p-6 pb-24">
+          <SidebarInset className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card">
+            <div className="hidden lg:block">
+              <AdminContentBar
+                section={sectionForTab(screen === 'events' ? 'events' : 'dashboard') ?? ''}
+                title={screen === 'events' ? 'Events' : 'Home'}
+                onOpenApp={() => {}}
+              />
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto pb-24">
+            {screen === 'events' ? <EventsPreview /> : (
+            <div className="p-6">
             <AdminHomeView
               tenantName="Grace Ministry"
               period={14}
@@ -235,6 +286,9 @@ function AfterChrome({ side, collapsed }: { side: ShellSideId; collapsed: boolea
               openTabIds={['courses', 'events']}
               onOpen={() => {}}
             />
+            </div>
+            )}
+            </div>
           </SidebarInset>
         </div>
       </SidebarProvider>
@@ -247,6 +301,8 @@ type PreviewBoot = {
   theme: 'light' | 'dark';
   side: ShellSideId;
   collapsed: boolean;
+  screen: 'home' | 'events';
+  sheet: boolean;
 };
 
 function readBoot(): PreviewBoot {
@@ -256,6 +312,8 @@ function readBoot(): PreviewBoot {
     theme: params.get('theme') === 'dark' ? 'dark' : 'light',
     side: params.get('side') === 'public' ? 'public' : 'people',
     collapsed: params.get('collapsed') === '1',
+    screen: params.get('screen') === 'events' ? 'events' : 'home',
+    sheet: params.get('sheet') === '1',
   };
 }
 
@@ -275,5 +333,5 @@ export function AdminShellPreview() {
 
   if (!boot) return null;
   if (boot.view === 'before') return <BeforeChrome />;
-  return <AfterChrome side={boot.side} collapsed={boot.collapsed} />;
+  return <AfterChrome side={boot.side} collapsed={boot.collapsed} screen={boot.screen} sheet={boot.sheet} />;
 }

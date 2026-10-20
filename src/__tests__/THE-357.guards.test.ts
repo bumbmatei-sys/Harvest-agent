@@ -426,13 +426,23 @@ const EMPTY_DIRECTION_FREEZES: Readonly<Record<string, number>> = {
   // now stated as what it means: the course editor imports and spells it
   // nowhere. The file is not unguarded — `the-303-giving-cluster` renders it and
   // asserts its behaviour, and THE-111 measures the plate in a real browser.
+  // 8 → 7, RETIRED BY the Eden shell pass. THE-305 froze `src/components/ui/`
+  // against an empty branch diff. The shell restyles button.tsx and sidebar.tsx
+  // on purpose.
+  // 7 → 8, the shell fix round. An exact six-file list is true only while the
+  // branch is unmerged and goes red on main. The assertion is now the
+  // disallowed extras (`changed` minus the six-file allow-list) equal to
+  // empty. That stays empty on this branch and after the merge, and an
+  // unlisted ui file still fails. The scanner counts that empty result.
   'src/components/__tests__/THE-305.course-editor-header.test.tsx': 8,
   'src/components/__tests__/THE-305.install-reachable.test.tsx': 1,
   'src/components/course/__tests__/THE-282.course-status.test.tsx': 4,
+  // 8 → 7, RETIRED BY the Eden shell pass, for the same reason as THE-305.
+  // 7 → 8, the shell fix round, same subset check as THE-305.
   'src/components/course/__tests__/THE-311.course-palette.test.ts': 8,
 };
 
-const EMPTY_DIRECTION_TOTAL = 22;  // 23 → 22: see THE-111's note above.
+const EMPTY_DIRECTION_TOTAL = 22;  // 20 → 22: THE-305 and THE-311 each count the ui/ allow-list subset (disallowed extras are empty).
 
 describe('3 · #454 would NOT catch §8 even with its blind spot closed', () => {
   /**
@@ -535,8 +545,10 @@ describe('3 · #454 would NOT catch §8 even with its blind spot closed', () => 
   });
 
   it('\u{1F534} and §8’s three are GONE from that finding, which is this ticket’s half of it', () => {
-    // Before this ticket THE-311 carried eleven; it carries eight. The three
-    // that went are §8's, and section 1 proves the section reads no diff at all.
+    // Before this ticket THE-311 carried eleven; §8 took it to eight. The Eden
+    // shell pass named the six ui files, then the fix round turned that exact
+    // list into an allow-list subset. The disallowed extras are an empty
+    // result, so the count is eight. Section 1 proves §8 reads no diff.
     expect(branchDiffAssertions(read(THE311)).length,
       'THE-311’s EMPTY-direction count moved').toBe(EMPTY_DIRECTION_FREEZES[THE311]);
     expect(branchDiffAssertions(read(THE311)).filter((f) => /THE-305/.test(f)),

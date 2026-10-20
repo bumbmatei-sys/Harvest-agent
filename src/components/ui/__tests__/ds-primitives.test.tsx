@@ -398,6 +398,7 @@ describe('the phases change nothing they audit', () => {
       '--sidebar-accent-foreground',
       '--sidebar-border',
       '--sidebar-foreground',
+      '--sidebar-hover',
       '--sidebar-primary',
       '--sidebar-primary-foreground',
       '--sidebar-ring',

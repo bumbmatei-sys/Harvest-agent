@@ -16,6 +16,14 @@ export type ResolvedTheme = 'light' | 'dark';
 
 export const THEME_CHOICES: readonly ThemeChoice[] = ['light', 'dark', 'system'] as const;
 
+/**
+ * The only brand theme shipped. Stamped as `data-brand-theme` by applyTheme.
+ * `data-theme` stays light | dark. A second theme overrides the same CSS
+ * variables under `[data-brand-theme="…"]`; components do not branch on this.
+ */
+export const BRAND_THEME = 'harvest' as const;
+export const BRAND_THEMES = ['harvest'] as const;
+
 export const isThemeChoice = (v: unknown): v is ThemeChoice =>
   typeof v === 'string' && (THEME_CHOICES as readonly string[]).includes(v);
 
@@ -31,8 +39,12 @@ export const isThemeChoice = (v: unknown): v is ThemeChoice =>
  *
  * The founder asked for the family to go ("remove harvest theme"), so the 14
  * overrides were promoted into `:root` / `.dark` in globals.css and BOTH the
- * attribute and the stored preference were removed. What that leaves is the
- * mode axis alone — light/dark — which is the axis this file still models.
+ * attribute and the stored preference were removed. What that leaves on the
+ * MODE axis is light/dark. The brand theme is a different axis: Harvest is
+ * the only one shipped, its colours are the variables already on :root/.dark,
+ * and applyTheme stamps `data-brand-theme` so a later theme can override
+ * those same variables. That is not a second surface family and it does not
+ * restore `data-palette` or `harvest-theme-family`.
  *
  * ⚠️ The stored `harvest-theme-family` key is deliberately NOT migrated or
  * cleared. Nothing reads it any more, so a value left in a returning user's
@@ -43,15 +55,15 @@ export const isThemeChoice = (v: unknown): v is ThemeChoice =>
 
 /** The dark page ground — see `--surface` in the `.dark` block of
  *  globals.css, which this must match EXACTLY for deriveOnDarkAccent's AA
- *  guarantee to hold. THE-338 darkened it from #1C1C1C (and, before the
- *  family promotion, Harvest's warm #1A1612) on the founder's note that the
- *  grey read lighter than his reference. */
-export const DARK_SURFACE = '#141414';
-/** The dark RAISED surface — cards, panels, the admin sidebar. An accent-
- *  tinted chip composites onto THIS, not onto the page ground, so it is the
- *  ground deriveOnTintAccent has to correct against. Must match
- *  `--surface-raised` in the `.dark` block of globals.css. */
-export const DARK_SURFACE_RAISED = '#1F1F1F';
+ *  guarantee to hold. THE-338 set #141414. The Eden shell pass moved the
+ *  canvas to #171717 (still darker than the #1C1C1C the founder called too
+ *  light). The sidebar is its own token and is not this ground. */
+export const DARK_SURFACE = '#171717';
+/** The dark RAISED surface — cards and panels. An accent-tinted chip
+ *  composites onto THIS, not onto the page ground, so it is the ground
+ *  deriveOnTintAccent has to correct against. Must match `--surface-raised`
+ *  in the `.dark` block of globals.css. Eden content card is #202020. */
+export const DARK_SURFACE_RAISED = '#202020';
 /** Brand cream — what an accent is lightened toward. Shared by both families:
  *  lightening toward cream (rather than toward each family's own near-white)
  *  is what keeps a corrected tenant accent reading as gold-tinted instead of
@@ -94,7 +106,7 @@ const mix = (a: string, b: string, t: number): string => {
  * An arbitrary tenant hex can vanish on a dark ground — deep navy on #1A1612 is
  * 1.01:1, i.e. invisible. This lightens the accent toward cream by the MINIMUM
  * amount that clears AA, so a colour that already works is returned untouched:
- * Harvest gold #C9963A is 6.77:1 on the dark ground and comes back unchanged,
+ * Harvest gold #C9963A is 6.75:1 on #171717 and comes back unchanged,
  * which is the point. A blunt fixed mix would have washed it out to a pale
  * #E2C99B and made the two themes look like different brands.
  *

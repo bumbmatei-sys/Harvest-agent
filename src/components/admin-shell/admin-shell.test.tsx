@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { act, type CSSProperties } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
-import { Church, FileText, GraduationCap } from 'lucide-react';
+import { Church, FileText, GraduationCap, Home } from 'lucide-react';
 
 const analyticsGrant = vi.hoisted(() => ({ value: false }));
 
@@ -21,7 +21,7 @@ import { AdminHome, AdminHomeView } from './AdminHome';
 import { REASON } from '../dashboard/dashboard-data';
 import { countDatedInWindow, formatKpi, HOME_KPI_SOURCES, sumCentsInWindow } from './home-kpis';
 import { NO_TENANT, READ_FAILED } from './use-home-kpis';
-import { groupsForSide, sideForTab, type ShellSideId, type ShellTabRef } from './shell-nav';
+import { groupsForAllSides, groupsForSide, sectionForTab, SHELL_SIDES, sideForTab, type ShellSideId, type ShellTabRef } from './shell-nav';
 import { ensureLightDefault } from './use-shell-theme';
 
 const tabs = new Map<string, ShellTabRef>([
@@ -57,6 +57,44 @@ describe('shell nav mapping', () => {
     expect(sideForTab('social')).toBeNull();
     expect(sideForTab('courses')).toBe('public');
     expect(sideForTab('crm')).toBe('people');
+  });
+
+  it('crumbs Home with no section and every other route with its group', () => {
+    expect(sectionForTab('dashboard')).toBeNull();
+    expect(sectionForTab('settings')).toBeNull();
+    expect(sectionForTab('crm')).toBe('People');
+    expect(sectionForTab('signups')).toBe('People');
+    expect(sectionForTab('churches')).toBe('People');
+    expect(sectionForTab('community')).toBe('Care');
+    expect(sectionForTab('services')).toBe('Care');
+    expect(sectionForTab('docs')).toBe('Care');
+    expect(sectionForTab('forms')).toBe('Care');
+    expect(sectionForTab('events')).toBe('Events');
+    expect(sectionForTab('checkin')).toBe('Check-in');
+    expect(sectionForTab('fundraising')).toBe('Giving');
+    expect(sectionForTab('donations')).toBe('Giving');
+    expect(sectionForTab('accounting')).toBe('Giving');
+    expect(sectionForTab('blog')).toBe('Page');
+    expect(sectionForTab('social')).toBe('Channels');
+    expect(sectionForTab('newsletter')).toBe('Email');
+    expect(sectionForTab('courses')).toBe('Products');
+  });
+
+  it('gives every sidebar item its own icon', () => {
+    const ids = [
+      'crm', 'signups', 'churches', 'community', 'services', 'docs', 'forms',
+      'events', 'checkin', 'fundraising', 'donations', 'accounting', 'library',
+      'tenants', 'inbox', 'affiliate', 'blog', 'branding', 'ai', 'social',
+      'livestream', 'sms', 'newsletter', 'courses',
+    ];
+    const all = new Map<string, ShellTabRef>(ids.map((id) => [id, { id, label: id, icon: Church }]));
+    const itemIcons = groupsForAllSides(all).flatMap((group) => group.items.map((item) => item.icon));
+    // Side toggles and the pinned Home row are on screen with the items.
+    // Group labels render no icon, so the group glyph is not part of this set.
+    const visible = [...itemIcons, ...SHELL_SIDES.map((meta) => meta.icon), Home];
+    expect(itemIcons).toHaveLength(ids.length);
+    expect(new Set(visible).size).toBe(visible.length);
+    expect(itemIcons.filter((icon) => icon === Church)).toHaveLength(1);
   });
 
   it('does not label the Social item and its group with the same word', () => {

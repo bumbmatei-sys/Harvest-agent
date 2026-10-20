@@ -1,14 +1,29 @@
 import {
+  BrainCircuit,
   Building2,
   CalendarCheck,
+  Church,
+  ClipboardList,
+  ContactRound,
   FileText,
   Globe,
   GraduationCap,
   HandCoins,
   Heart,
+  Inbox,
+  Library,
+  Link2,
+  ListChecks,
   Mail,
+  MessageSquare,
+  MessagesSquare,
+  Newspaper,
+  Palette,
   QrCode,
   Radio,
+  Receipt,
+  Share2,
+  UserPlus,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -60,7 +75,8 @@ export interface ShellSideMeta {
 }
 
 export const SHELL_SIDES: readonly ShellSideMeta[] = [
-  { id: 'people', label: 'People', icon: Users },
+  // ContactRound, not Users: CRM already uses Users, and both sit on screen together.
+  { id: 'people', label: 'People', icon: ContactRound },
   { id: 'public', label: 'Public', icon: Globe },
 ];
 
@@ -86,8 +102,8 @@ const PEOPLE_GROUPS: readonly GroupTemplate[] = [
     icon: Users,
     items: [
       { id: 'crm', label: 'CRM', icon: Users },
-      { id: 'signups', label: 'Signups', icon: Users },
-      { id: 'churches', label: 'Campuses', icon: Building2 },
+      { id: 'signups', label: 'Signups', icon: UserPlus },
+      { id: 'churches', label: 'Campuses', icon: Church },
     ],
   },
   {
@@ -95,10 +111,10 @@ const PEOPLE_GROUPS: readonly GroupTemplate[] = [
     label: 'Care',
     icon: Heart,
     items: [
-      { id: 'community', label: 'Community', icon: Heart },
-      { id: 'services', label: 'Services', icon: Heart },
+      { id: 'community', label: 'Community', icon: MessagesSquare },
+      { id: 'services', label: 'Services', icon: ListChecks },
       { id: 'docs', label: 'Notes', icon: FileText },
-      { id: 'forms', label: 'Forms', icon: FileText },
+      { id: 'forms', label: 'Forms', icon: ClipboardList },
     ],
   },
   {
@@ -120,7 +136,7 @@ const PEOPLE_GROUPS: readonly GroupTemplate[] = [
     items: [
       { id: 'fundraising', label: 'Fundraising', icon: Heart },
       { id: 'donations', label: 'Donations', icon: HandCoins },
-      { id: 'accounting', label: 'Accounting', icon: HandCoins },
+      { id: 'accounting', label: 'Accounting', icon: Receipt },
     ],
   },
   {
@@ -128,10 +144,10 @@ const PEOPLE_GROUPS: readonly GroupTemplate[] = [
     label: 'Platform',
     icon: Building2,
     items: [
-      { id: 'library', label: 'Library', icon: Building2 },
+      { id: 'library', label: 'Library', icon: Library },
       { id: 'tenants', label: 'Tenants', icon: Building2 },
-      { id: 'inbox', label: 'Platform Inbox', entitlementLabel: 'Platform Inbox', icon: Building2 },
-      { id: 'affiliate', label: 'Affiliate', icon: Building2 },
+      { id: 'inbox', label: 'Platform Inbox', entitlementLabel: 'Platform Inbox', icon: Inbox },
+      { id: 'affiliate', label: 'Affiliate', icon: Link2 },
     ],
   },
 ];
@@ -142,9 +158,9 @@ const PUBLIC_GROUPS: readonly GroupTemplate[] = [
     label: 'Page',
     icon: FileText,
     items: [
-      { id: 'blog', label: 'Blog', icon: FileText },
-      { id: 'branding', label: 'Branding', icon: FileText },
-      { id: 'ai', label: 'AI Knowledge', icon: FileText },
+      { id: 'blog', label: 'Blog', icon: Newspaper },
+      { id: 'branding', label: 'Branding', icon: Palette },
+      { id: 'ai', label: 'AI Knowledge', icon: BrainCircuit },
     ],
   },
   {
@@ -152,9 +168,9 @@ const PUBLIC_GROUPS: readonly GroupTemplate[] = [
     label: 'Channels',
     icon: Radio,
     items: [
-      { id: 'social', label: 'Social', icon: Radio },
+      { id: 'social', label: 'Social', icon: Share2 },
       { id: 'livestream', label: 'Livestream', icon: Radio },
-      { id: 'sms', label: 'SMS', icon: Radio },
+      { id: 'sms', label: 'SMS', icon: MessageSquare },
     ],
   },
   {
@@ -179,6 +195,20 @@ const GROUPS_BY_SIDE: Record<ShellSideId, readonly GroupTemplate[]> = {
 const PUBLIC_TAB_IDS = new Set(
   PUBLIC_GROUPS.flatMap((group) => group.items.map((item) => item.id)),
 );
+
+const SECTION_BY_TAB = new Map<string, string>(
+  [...PEOPLE_GROUPS, ...PUBLIC_GROUPS].flatMap((group) =>
+    group.items.map((item) => [item.id, group.label] as const),
+  ),
+);
+
+/**
+ * Sidebar group for a route, used as the breadcrumb section.
+ * Home (`dashboard`) is pinned above the groups, so it has no section.
+ */
+export function sectionForTab(tabId: string): string | null {
+  return SECTION_BY_TAB.get(tabId) ?? null;
+}
 
 /**
  * Which side a tab belongs on.
@@ -221,7 +251,9 @@ export function groupsForSide(
         id: tab.id,
         label: tab.label,
         entitlementLabel: item.entitlementLabel ?? tab.label,
-        icon: tab.icon,
+        // The shell owns the glyph. Callers often pass one shared icon, and
+        // using that would paint CRM, Campuses, Community and the rest alike.
+        icon: item.icon,
         placeholder: null,
       });
     }
