@@ -490,9 +490,11 @@ export function SocialScheduler({
                 return (
                   <fieldset key={platform} className="flex flex-col gap-2" data-testid={`fields-${platform}`}>
                     <legend className="text-sm font-medium text-strong">{labelFor(platform)}</legend>
-                    {specs.map((field) => (
-                      <label key={field.key} className="flex flex-col gap-1 text-sm text-faint">
-                        {field.label}
+                    {specs.map((field) => {
+                      const FieldWrap = field.kind === 'select' ? 'div' : 'label';
+                      return (
+                      <FieldWrap key={field.key} className="flex flex-col gap-1 text-sm text-faint">
+                        {field.kind === 'select' ? <span>{field.label}</span> : field.label}
                         {field.kind === 'boolean' ? (
                           <Switch
                             checked={fields[platform]?.[field.key] === true}
@@ -541,8 +543,9 @@ export function SocialScheduler({
                             }))}
                           />
                         )}
-                      </label>
-                    ))}
+                      </FieldWrap>
+                      );
+                    })}
                   </fieldset>
                 );
               })}
