@@ -719,6 +719,8 @@ const ADMIN_DASHBOARD_ACCEPTED = [
   '666b4cbf551ba1ed1711105035f9a112f3f9d74686b16bc748ca0a1998a0f078',
   // APPENDED BY the social scheduler, nothing above removed or rewritten. Public gains a Social tab that mounts the scheduler. The mobile bottom bar, More groups, and the shell class string are unchanged. The plan cell stays false on every tier, so the screen shows the add-on wall.
   '5b52184914f227832a2e023d3467d351b291412e54c5968bbc0fd45dcaae40d1',
+    // APPENDED BY #530 QA, nothing above removed or rewritten. The desktop sidebar shows Social only when the add-on is held or the viewer is a super admin. The mobile drawer entry stays. The composer receives knownEntitled so it can render while accounts load.
+    'eec832262194852dcf12d71acd4c01fec168caf0aed1db96eb660895783f178b',
 ];
 
 describe('the files this ticket must not open are byte-identical', () => {

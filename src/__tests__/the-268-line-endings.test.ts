@@ -277,6 +277,9 @@ describe('binaries are not treated as text', () => {
       'docs/redesign/phase-2/1600-compose-before-light.png',
       'docs/redesign/phase-2/1600-compose-dark.png',
       'docs/redesign/phase-2/1600-compose-light.png',
+      // APPENDED for the centered composer and the desktop Social link.
+      'docs/redesign/phase-2/1600-compose-sidebar-dark.png',
+      'docs/redesign/phase-2/1600-compose-sidebar-light.png',
       'docs/redesign/phase-2/1600-queue-dark.png',
       'docs/redesign/phase-2/1600-queue-light.png',
       'docs/redesign/phase-2/1600-wall-dark.png',

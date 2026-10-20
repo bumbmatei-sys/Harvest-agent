@@ -50,6 +50,7 @@ import { resetSocialMock } from '../mock-client';
 import { SOCIAL_SAMPLE_SCOPE } from '../mode';
 import { resetPublishOnce } from '../publish-once';
 import { createSocialPost, loadSocialWorkspace, updateSocialPost } from '../session';
+import { resetWorkspaceCache } from '../workspace-cache';
 import type { SocialPostDraft } from '../types';
 
 const clock = new Date(Date.UTC(2024, 2, 15, 12));
@@ -78,6 +79,7 @@ describe('loadSocialWorkspace mock boundary', () => {
     vi.clearAllMocks();
     resetSocialMock();
     resetPublishOnce();
+    resetWorkspaceCache();
     for (const key of envKeys) delete process.env[key];
     vi.stubEnv('NODE_ENV', 'test');
   });
@@ -139,6 +141,39 @@ describe('loadSocialWorkspace mock boundary', () => {
     expect(h.ensureProfile.mock.calls[0][0]).not.toContain('grace-chapel');
     expect(workspace?.profileId).toBe('profile-1');
     expect(workspace?.sample).toBe(false);
+  });
+
+  it('reuses one live load for the same ministry, and does not reuse a failed one', async () => {
+    process.env.VERCEL_ENV = 'production';
+    process.env.ZERNIO_API_KEY = 'secret';
+    process.env.ZERNIO_SOCIAL_LIVE = '1';
+    const ready = {
+      profileId: 'profile-1',
+      sample: false,
+      timezone: 'UTC',
+      accounts: [],
+      posts: [],
+    };
+    h.reserveZernioProfile.mockResolvedValue({ status: 'ready', profileId: 'profile-1' });
+    let release: (value: typeof ready) => void = () => {};
+    h.load.mockImplementation(() => new Promise((resolve) => { release = resolve; }));
+    const first = loadSocialWorkspace('grace-chapel', clock, false);
+    const second = loadSocialWorkspace('grace-chapel', clock, false);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(h.load).toHaveBeenCalledTimes(1);
+    release(ready);
+    expect(await first).toEqual(ready);
+    expect(await second).toEqual(ready);
+    expect(h.reserveZernioProfile).toHaveBeenCalledTimes(1);
+    await loadSocialWorkspace('grace-chapel', clock, false);
+    expect(h.load).toHaveBeenCalledTimes(1);
+
+    h.load.mockResolvedValue(null);
+    resetWorkspaceCache();
+    expect(await loadSocialWorkspace('grace-chapel', clock, false)).toBeNull();
+    expect(await loadSocialWorkspace('grace-chapel', clock, false)).toBeNull();
+    expect(h.load).toHaveBeenCalledTimes(3);
   });
 
   it('refuses a create whose account is not on this ministry, before the provider', async () => {

@@ -168,12 +168,47 @@ describe('SocialScheduler', () => {
     const rootEl = container.querySelector('[data-testid="social-scheduler"]');
     expect(rootEl?.className).not.toContain('max-w-5xl');
     expect(container.querySelector('[data-testid="social-composer"]')?.className).toContain('lg:max-w-[640px]');
+    const row = container.querySelector('[data-testid="social-compose-row"]');
+    expect(row?.className).toContain('lg:justify-center');
+    expect(row?.className).not.toContain('justify-end');
+    expect(row?.className).not.toContain('flex-1');
     const panel = container.querySelector('[data-testid="social-side-panel"]');
     expect(panel?.className).toContain('hidden');
     expect(panel?.className).toContain('lg:flex');
     expect(panel?.textContent).toContain('Drafts');
     expect(panel?.textContent).toContain('Scheduled');
     expect(panel?.textContent).toContain('Sent');
+  });
+
+  it('renders the composer while accounts are still loading, then the unavailable card if the load fails', async () => {
+    let release: (value: { status: number; ok: boolean; json: () => Promise<unknown> }) => void = () => {};
+    authFetch.mockImplementation(() => new Promise((resolve) => { release = resolve; }));
+    await act(async () => {
+      root.render(<SocialScheduler knownEntitled onUpgrade={() => {}} />);
+    });
+    expect(container.querySelector('[data-testid="social-composer"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="social-accounts-loading"]')?.textContent).toBe('Loading social accounts.');
+    const schedule = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Schedule');
+    expect(schedule?.hasAttribute('disabled')).toBe(true);
+    await act(async () => {
+      release({ status: 503, ok: false, json: async () => ({ error: 'social_unavailable' }) });
+    });
+    expect(container.querySelector('[data-testid="social-unavailable"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="social-composer"]')).toBeNull();
+  });
+
+  it('keeps the loading line in place until entitlement is known', async () => {
+    let release: (value: { status: number; ok: boolean; json: () => Promise<unknown> }) => void = () => {};
+    authFetch.mockImplementation(() => new Promise((resolve) => { release = resolve; }));
+    await act(async () => {
+      root.render(<SocialScheduler onUpgrade={() => {}} />);
+    });
+    expect(container.querySelector('[data-testid="social-composer"]')).toBeNull();
+    expect(container.textContent).toContain('Loading social accounts.');
+    await act(async () => {
+      release({ status: 503, ok: false, json: async () => ({ error: 'social_unavailable' }) });
+    });
+    expect(container.querySelector('[data-testid="social-unavailable"]')).toBeTruthy();
   });
 
   it('shows YouTube as not selectable until video upload exists', async () => {

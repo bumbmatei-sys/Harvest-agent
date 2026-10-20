@@ -154,18 +154,20 @@ export class LiveSocialClient {
   }
 
   async load(profileId: string): Promise<SocialWorkspace | null> {
-    const accounts = await call<{ accounts?: unknown[] }>(
-      this.key,
-      `/accounts?profileId=${encodeURIComponent(profileId)}`,
-      {},
-      this.fetchImpl,
-    );
-    const posts = await call<{ posts?: unknown[] }>(
-      this.key,
-      `/posts?profileId=${encodeURIComponent(profileId)}`,
-      {},
-      this.fetchImpl,
-    );
+    const [accounts, posts] = await Promise.all([
+      call<{ accounts?: unknown[] }>(
+        this.key,
+        `/accounts?profileId=${encodeURIComponent(profileId)}`,
+        {},
+        this.fetchImpl,
+      ),
+      call<{ posts?: unknown[] }>(
+        this.key,
+        `/posts?profileId=${encodeURIComponent(profileId)}`,
+        {},
+        this.fetchImpl,
+      ),
+    ]);
     if (!accounts.ok || !posts.ok) return null;
     return {
       profileId,

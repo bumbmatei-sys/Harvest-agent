@@ -137,6 +137,38 @@ describe('desktop sidebar', () => {
     });
   }
 
+  it('shows one Social link on the people side and opens the social section', async () => {
+    const onNavigate = vi.fn();
+    const withSocial = new Map(tabs);
+    withSocial.set('social', { id: 'social', label: 'Social', icon: FileText });
+    await act(async () => {
+      root = createRoot(container);
+      root.render(
+        <TooltipProvider>
+          <SidebarProvider>
+            <AdminDesktopSidebar
+              side="people"
+              onSide={() => {}}
+              activeTab="social"
+              placeholder={null}
+              tabs={withSocial}
+              tenantName="Grace Ministry"
+              logoUrl="https://example.com/logo.png"
+              onNavigate={onNavigate}
+              onPlaceholder={() => {}}
+              accountMenu={<span>Account</span>}
+            />
+          </SidebarProvider>
+        </TooltipProvider>,
+      );
+    });
+    const links = container.querySelectorAll('[data-nav-tab="social"]');
+    expect(links).toHaveLength(1);
+    expect(links[0]?.textContent).toContain('Social');
+    await act(async () => { (links[0] as HTMLButtonElement).click(); });
+    expect(onNavigate).toHaveBeenCalledWith('social');
+  });
+
   it('switches between the two icon-only sides', async () => {
     await mount();
     expect(container.querySelector('[data-shell-side]')?.getAttribute('data-shell-side')).toBe('people');

@@ -540,6 +540,9 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // APPENDED BY the social scheduler, nothing above removed or rewritten.
     ['5b52184914f227832a2e023d3467d351b291412e54c5968bbc0fd45dcaae40d1',
       `social scheduler - Public gains a Social tab that mounts the scheduler. The mobile bottom bar, More groups, and the shell class string are unchanged. The plan cell stays false on every tier, so the screen shows the add-on wall.`],
+    // APPENDED BY #530 QA, nothing above removed or rewritten.
+    ['eec832262194852dcf12d71acd4c01fec168caf0aed1db96eb660895783f178b',
+      `#530 QA - the desktop sidebar shows Social only when the add-on is held or the viewer is a super admin, and the composer is told when that is already known so it can render while accounts load. The mobile drawer entry, More groups, and the shell class string are unchanged.`],
   ],
   'firestore.indexes.json': [
     ['8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0', 'main at 133d557'],

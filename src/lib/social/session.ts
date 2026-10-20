@@ -4,6 +4,7 @@ import { SOCIAL_SAMPLE_SCOPE, socialMode } from './mode';
 import { commitZernioProfile, releaseZernioProfileClaim, reserveZernioProfile } from './profile-lock';
 import { oncePublish } from './publish-once';
 import { readZernioSocialKey } from './zernio-key';
+import { dropWorkspaceCache, shareLiveLoad } from './workspace-cache';
 import type { SocialPlatform } from './platforms';
 import type { SocialPost, SocialPostDraft, SocialWorkspace } from './types';
 
@@ -41,6 +42,10 @@ export async function loadSocialWorkspace(
   if (clientKind(mockOnly) !== 'live') return null;
   if (tenantId === SOCIAL_SAMPLE_SCOPE) return null;
 
+  return shareLiveLoad(tenantId, () => loadLiveWorkspace(tenantId));
+}
+
+async function loadLiveWorkspace(tenantId: string): Promise<SocialWorkspace | null> {
   const reserved = await reserveZernioProfile(tenantId);
   if (reserved.status === 'busy') return null;
   const key = readZernioSocialKey();
@@ -64,6 +69,7 @@ export async function connectSocialAccount(
 ): Promise<{ ok: true; authUrl: string | null; sample: boolean } | { ok: false }> {
   if (clientKind(mockOnly) === 'mock') {
     new MockSocialClient(tenantId, new Date()).connect(platform);
+    dropWorkspaceCache(tenantId);
     return { ok: true, authUrl: null, sample: true };
   }
   if (clientKind(mockOnly) !== 'live') return { ok: false };
@@ -71,6 +77,7 @@ export async function connectSocialAccount(
   if (!workspace) return { ok: false };
   const url = await new LiveSocialClient(readZernioSocialKey()).connectUrl(workspace.profileId, platform);
   if (!url) return { ok: false };
+  dropWorkspaceCache(tenantId);
   return { ok: true, authUrl: url, sample: false };
 }
 
@@ -98,6 +105,7 @@ export async function createSocialPost(
     ? await oncePublish(tenantId, draft.idempotencyKey, socialMode() === 'live', create)
     : await create();
   if (!post) return { ok: false, error: 'social_unavailable' };
+  dropWorkspaceCache(tenantId);
   return { ok: true, post };
 }
 
@@ -120,13 +128,20 @@ export async function updateSocialPost(
   if (clientKind(mockOnly) !== 'live') return { ok: false, error: 'social_unavailable' };
   const post = await new LiveSocialClient(readZernioSocialKey()).update(id, draft);
   if (!post) return { ok: false, error: 'social_unavailable' };
+  dropWorkspaceCache(tenantId);
   return { ok: true, post };
 }
 
 export async function cancelSocialPost(tenantId: string, id: string, mockOnly = false): Promise<boolean> {
-  if (clientKind(mockOnly) === 'mock') return new MockSocialClient(tenantId, new Date()).cancel(id);
+  if (clientKind(mockOnly) === 'mock') {
+    const cancelled = new MockSocialClient(tenantId, new Date()).cancel(id);
+    if (cancelled) dropWorkspaceCache(tenantId);
+    return cancelled;
+  }
   if (clientKind(mockOnly) !== 'live') return false;
   const workspace = await loadSocialWorkspace(tenantId, new Date(), mockOnly);
   if (!workspace || !workspace.posts.some((post) => post.id === id)) return false;
-  return new LiveSocialClient(readZernioSocialKey()).cancel(id);
+  const cancelled = await new LiveSocialClient(readZernioSocialKey()).cancel(id);
+  if (cancelled) dropWorkspaceCache(tenantId);
+  return cancelled;
 }

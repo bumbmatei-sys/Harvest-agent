@@ -849,9 +849,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     navAllows(features?.livestream) &&
       (hasFullAccess || perms.manageLivestream) &&
       { id: 'livestream', label: 'Livestream', icon: Radio },
-    // Social scheduling is an add-on on every tier, so the tab stays visible
-    // and the screen shows the upgrade wall. Gating the entry on the plan cell
-    // would hide the wall, because that cell is false everywhere.
+    // Social scheduling is an add-on on every tier. This entry stays in the
+    // mobile drawer, where the screen shows the upgrade wall. The desktop
+    // sidebar drops it unless the add-on is held or the viewer is a super
+    // admin. Gating the entry on the plan cell would hide the wall, because
+    // that cell is false everywhere.
     hasFullAccess && { id: 'social', label: 'Social', icon: Radio },
     // SMS Automation (Twilio)
     // Master switch first, exactly as the Affiliate entry below does it: while
@@ -937,6 +939,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     ...(showInbox ? [{ id: 'inbox', label: 'Inbox', icon: Inbox }] : []),
     ...(canSettings ? [{ id: 'settings', label: 'Settings', icon: Settings }] : []),
   ].forEach((t) => desktopNavById.set(t.id, t));
+  // Social stays in `allTabs` for the mobile drawer. The desktop sidebar shows
+  // the link only when the add-on is held, or the viewer is a super admin.
+  if (!(isSuperAdmin || features?.socialScheduler === true)) desktopNavById.delete('social');
 
   // THE-225 — the emptiness rule, now read from layout/nav-groups.ts instead of
   // restated inline. The behaviour is unchanged (this sidebar has omitted empty
@@ -1409,7 +1414,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               ? <div className="p-4 lg:p-0"><AdminLivestream /></div>
               : <PlanUpgradeScreen featureName="Livestream" featureKey="livestream" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'social' ? (
-            <div className="p-4 lg:p-0"><SocialScheduler onUpgrade={() => go('upgrade')} /></div>
+            <div className="p-4 lg:p-0"><SocialScheduler knownEntitled={isSuperAdmin || features?.socialScheduler === true} onUpgrade={() => go('upgrade')} /></div>
           ) : activeTab === 'sms' ? (
             // With SMS hidden the nav entry is gone, so this branch only catches
             // a typed or bookmarked /admin/sms — and it must not render AdminSms

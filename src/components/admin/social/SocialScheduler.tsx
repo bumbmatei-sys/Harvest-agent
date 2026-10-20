@@ -118,10 +118,13 @@ function targetsFor(content: string, selected: readonly string[], accounts: read
 export function SocialScheduler({
   initial,
   initialView = 'compose',
+  knownEntitled = false,
   onUpgrade,
 }: {
   initial?: SocialScreenData;
   initialView?: SocialView;
+  /** The shell already knows the add-on or the super-admin bypass, so the composer can render before accounts arrive. */
+  knownEntitled?: boolean;
   onUpgrade: () => void;
 }) {
   const [data, setData] = useState<SocialScreenData | null>(initial ?? null);
@@ -260,11 +263,12 @@ export function SocialScheduler({
     );
   }
 
-  if (!data) {
+  const accountsLoading = !data && knownEntitled && !initial;
+  if (!data && !accountsLoading) {
     return <p className="p-4 text-sm text-faint">Loading social accounts.</p>;
   }
 
-  if (!data.entitled && !data.sample) {
+  if (data && !data.entitled && !data.sample) {
     return <SocialUpgradeWall onUpgrade={onUpgrade} />;
   }
 
@@ -343,7 +347,8 @@ export function SocialScheduler({
           targets,
           media: [],
         };
-        setData({ ...data!, posts: [post, ...posts] });
+        if (!data) return;
+        setData({ ...data, posts: [post, ...posts] });
         setNotice(doneNotice);
       },
     });
@@ -396,7 +401,7 @@ export function SocialScheduler({
     if (typeof body.authUrl === 'string' && body.authUrl) window.location.assign(body.authUrl);
   }
 
-  const zone = data.timezone || 'UTC';
+  const zone = data?.timezone || 'UTC';
   const selectedDay = pickedDay ?? defaultCalendarDay(posts, zone, new Date());
   const onDay = postsOnCalendarDay(posts, selectedDay, zone);
   const drafts = undatedDrafts(posts);
@@ -407,10 +412,10 @@ export function SocialScheduler({
       <header>
         <h1 className="font-display text-4xl font-light tracking-tight text-strong">Social</h1>
         <p className="mt-2 text-sm text-faint">
-          Schedule a post to the accounts this ministry has connected. Timezone {data.timezone}.
+          Schedule a post to the accounts this ministry has connected. Timezone {data?.timezone || 'UTC'}.
         </p>
       </header>
-      {data.sample && (
+      {data?.sample && (
         <p className="rounded-lg border border-line bg-card px-4 py-3 text-sm text-faint" data-testid="social-sample-banner">
           Sample accounts and posts. Nothing here is a real ministry, and nothing is published.
         </p>
@@ -431,14 +436,16 @@ export function SocialScheduler({
         </TabsContent>
 
         <TabsContent value="compose" className="mt-4">
-          <div className="flex w-full flex-col lg:-mr-4 lg:flex-row lg:items-stretch lg:justify-end lg:gap-4">
-            <div className="flex min-w-0 flex-1 lg:justify-end">
-          <Card className="w-full lg:max-w-[640px]" data-testid="social-composer">
+          <div className="flex w-full flex-col items-center gap-4 lg:flex-row lg:items-start lg:justify-center" data-testid="social-compose-row">
+          <Card className="w-full lg:max-w-[640px] lg:shrink-0" data-testid="social-composer">
             <CardHeader>
               <CardTitle className="font-display text-2xl font-semibold">New post</CardTitle>
               <CardDescription>One text, then the accounts that should carry it.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
+              {accountsLoading && (
+                <p className="text-sm text-faint" data-testid="social-accounts-loading">Loading social accounts.</p>
+              )}
               <Textarea
                 value={content}
                 onChange={(event) => setContent(event.target.value)}
@@ -538,8 +545,8 @@ export function SocialScheduler({
                 />
               </label>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" className={CONTROL} disabled={saving || youtubeSelected} onClick={() => schedule(false)}>Schedule</Button>
-                <Button type="button" variant="outline" className={CONTROL} disabled={saving || youtubeSelected} onClick={() => schedule(true)}>Post now</Button>
+                <Button type="button" className={CONTROL} disabled={saving || youtubeSelected || accountsLoading} onClick={() => schedule(false)}>Schedule</Button>
+                <Button type="button" variant="outline" className={CONTROL} disabled={saving || youtubeSelected || accountsLoading} onClick={() => schedule(true)}>Post now</Button>
               </div>
               {youtubeSelected && (
                 <p className="text-sm text-faint" data-testid="youtube-needs-video">
@@ -548,7 +555,6 @@ export function SocialScheduler({
               )}
             </CardContent>
           </Card>
-            </div>
             <SidePanel posts={posts} />
           </div>
         </TabsContent>
@@ -560,7 +566,7 @@ export function SocialScheduler({
                 <CalendarIcon className="size-5" aria-hidden />
                 Calendar
               </CardTitle>
-              <CardDescription>Scheduled posts in {data.timezone}.</CardDescription>
+              <CardDescription>Scheduled posts in {zone}.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4 lg:flex-row">
               <Calendar
@@ -610,7 +616,7 @@ export function SocialScheduler({
               setEditing(post);
               setEditError(null);
               setEditText(post.content);
-              const zone = post.timezone || data.timezone || 'UTC';
+              const zone = post.timezone || data?.timezone || 'UTC';
               setEditWhen(post.scheduledFor ? isoToWallTime(post.scheduledFor, zone) : '');
             }}
             onCancel={(post) => {
@@ -622,6 +628,7 @@ export function SocialScheduler({
                 payload: {},
                 doneNotice: 'Cancelled.',
                 applyLocal: () => {
+                  if (!data) return;
                   setData({ ...data, posts: posts.filter((row) => row.id !== post.id) });
                   setNotice('Cancelled.');
                 },
@@ -654,7 +661,7 @@ export function SocialScheduler({
               className={CONTROL}
               onClick={() => {
                 if (!editing) return;
-                const zone = editing.timezone || data.timezone || 'UTC';
+                const zone = editing.timezone || data?.timezone || 'UTC';
                 const scheduledFor = editWhen ? futureIso(editWhen, zone) : null;
                 if (editWhen && !scheduledFor) {
                   setEditError('Choose a time in the future, within a year.');
@@ -681,6 +688,7 @@ export function SocialScheduler({
                   },
                   doneNotice: 'Saved.',
                   applyLocal: () => {
+                    if (!data) return;
                     setData({
                       ...data,
                       posts: posts.map((row) => row.id === post.id ? { ...row, content: editText, scheduledFor } : row),

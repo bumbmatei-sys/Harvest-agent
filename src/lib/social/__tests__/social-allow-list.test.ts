@@ -195,6 +195,22 @@ describe('mock mode', () => {
 describe('the live client', () => {
   const key = 'zernio-secret-not-for-the-browser';
 
+  it('reads accounts and posts together', async () => {
+    let open = 0;
+    let maxOpen = 0;
+    const fetchImpl = async (url: string) => {
+      open += 1;
+      maxOpen = Math.max(maxOpen, open);
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      open -= 1;
+      const body = url.includes('/accounts') ? { accounts: [] } : { posts: [] };
+      return new Response(JSON.stringify(body), { status: 200 });
+    };
+    const workspace = await new LiveSocialClient(key, fetchImpl).load('profile-1');
+    expect(workspace?.profileId).toBe('profile-1');
+    expect(maxOpen).toBe(2);
+  });
+
   it('puts the key on the header and never on the URL', () => {
     const request = buildZernioRequest(key, '/profiles', { method: 'POST', body: { name: 'harvest-a' } });
     expect(request.url).toBe('https://api.zernio.com/v1/profiles');

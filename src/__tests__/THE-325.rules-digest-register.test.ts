@@ -793,12 +793,11 @@ const CONTENT_ASSERTING_MOVED: Readonly<Record<string, readonly [digest: string,
   // the ten phase-1 proof PNGs. *.png was already binary. The assertion still
   // checks content (PNG magic, CRLF, the declared binary set) and pins no digest.
   'src/__tests__/the-268-line-endings.test.ts': [
-    'bfc06cbac4df6781c91000bda2f49d8f24215a38628b17141f18840e60115ba1',
+    '83ddc357e689278de72e184f4690249d9f3fc08f3ef26381c3b7c6d58693775c',
     '#530',
-    'phase 2 lists the social scheduler screenshots at 1280, 1440 and 1600, light and dark. '
-      + 'the-268 lists every PNG. The phase-1 paths stay. The previous map digest '
-      + '8e275d0e1e3d57164de1058de6c4c5ebd09b17ba350d7724df6fc341cc3fd76b was the '
-      + 'compose before/after width list, before the other views were added at 1280 and 1600. '
+    'phase 2 lists the centered compose screenshots with the desktop Social link, light and dark, at 1600. '
+      + 'the-268 lists every PNG. The phase-1 paths and the earlier phase-2 shots stay. The previous map digest '
+      + 'bfc06cbac4df6781c91000bda2f49d8f24215a38628b17141f18840e60115ba1 was the full phase-2 set before these two shots. '
       + 'The suite still asserts file content rather than a digest pin. The row in '
       + 'CONTENT_ASSERTING is untouched.',
   ],
