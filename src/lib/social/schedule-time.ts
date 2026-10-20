@@ -9,6 +9,27 @@
 
 const WALL = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/;
 
+export function isIanaTimeZone(timeZone: string): boolean {
+  if (!timeZone || timeZone.length > 80) return false;
+  try {
+    Intl.DateTimeFormat('en-US', { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A workspace that already names a zone keeps it (the sample ministry is
+ * America/Chicago). UTC is the unset sentinel from the live client, and the
+ * caller's IANA zone replaces it so a wall time is that civil time.
+ */
+export function workspaceTimeZone(reported: string | null | undefined, requested: string | null | undefined): string {
+  if (reported && reported !== 'UTC') return reported;
+  if (requested && isIanaTimeZone(requested)) return requested;
+  return 'UTC';
+}
+
 function part(parts: Intl.DateTimeFormatPart[], type: Intl.DateTimeFormatPartTypes): number {
   const value = parts.find((entry) => entry.type === type)?.value ?? '';
   const parsed = Number(value);

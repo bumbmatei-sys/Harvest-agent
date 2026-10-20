@@ -172,6 +172,8 @@ export class LiveSocialClient {
     return {
       profileId,
       sample: false,
+      // UTC means "no zone yet". list() replaces it with the caller's IANA zone.
+      // A zone already stored on the workspace, such as the sample ministry, stays.
       timezone: 'UTC',
       accounts: (accounts.data.accounts || []).map(readAccount).filter((row): row is SocialAccount => row !== null),
       posts: (posts.data.posts || []).map(readPost).filter((row): row is SocialPost => row !== null),

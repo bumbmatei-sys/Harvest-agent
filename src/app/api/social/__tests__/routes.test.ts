@@ -70,7 +70,11 @@ describe('social routes delegate to the service', () => {
 
   it('lists, updates, cancels and connects through the same actor', async () => {
     await bootstrap(request('GET', 'http://localhost/api/social/bootstrap'));
-    expect(service.list).toHaveBeenCalledWith(actor);
+    expect(service.list).toHaveBeenCalledWith(actor, null);
+    await bootstrap(request('GET', 'http://localhost/api/social/bootstrap', undefined, {
+      'x-social-timezone': 'America/Denver',
+    }));
+    expect(service.list).toHaveBeenLastCalledWith(actor, 'America/Denver');
 
     await PATCH(
       request('PATCH', 'http://localhost/api/social/posts/post-9', { content: 'edited', confirm: true }),

@@ -444,6 +444,180 @@ describe('SocialScheduler', () => {
     expect(new Set(keys).size).toBe(1);
   });
 
+  it('sends the placement the menu already shows', async () => {
+    const workspace = new MockSocialClient('live', clock).load();
+    authFetch.mockImplementation(async (url: string) => {
+      if (String(url).includes('bootstrap')) {
+        return {
+          status: 200,
+          ok: true,
+          json: async () => ({
+            entitled: true,
+            sample: false,
+            timezone: workspace.timezone,
+            accounts: workspace.accounts,
+            posts: workspace.posts,
+          }),
+        };
+      }
+      return { status: 200, ok: true, json: async () => ({ confirmToken: 'tok-1' }) };
+    });
+    await act(async () => {
+      root.render(<SocialScheduler onUpgrade={() => {}} />);
+    });
+    const text = container.querySelector<HTMLTextAreaElement>('textarea');
+    const time = container.querySelector<HTMLInputElement>('input[aria-label="Schedule time"]');
+    await act(async () => {
+      const area = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+      const input = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      area?.call(text, 'Sunday at 10.');
+      text?.dispatchEvent(new Event('input', { bubbles: true }));
+      input?.call(time, '2027-03-22T10:00');
+      time?.dispatchEvent(new Event('input', { bubbles: true }));
+      time?.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    const schedule = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Schedule');
+    await act(async () => { schedule?.click(); });
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    const preview = authFetch.mock.calls.find((call) => String(call[0]).includes('/api/social/posts'));
+    const init = preview?.[1] as { body?: string } | undefined;
+    const body = JSON.parse(String(init?.body || '{}')) as { targets?: { fields?: { contentType?: string } }[] };
+    expect(body.targets?.[0]?.fields?.contentType).toBe('feed');
+  });
+
+  it('mints a new Idempotency-Key when the draft changes after a failed confirm', async () => {
+    const workspace = new MockSocialClient('live', clock).load();
+    authFetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (String(url).includes('bootstrap')) {
+        return {
+          status: 200,
+          ok: true,
+          json: async () => ({
+            entitled: true,
+            sample: false,
+            timezone: workspace.timezone,
+            accounts: workspace.accounts,
+            posts: workspace.posts,
+          }),
+        };
+      }
+      const body = JSON.parse(String(init?.body || '{}')) as { confirmToken?: string };
+      if (!body.confirmToken) {
+        return { status: 200, ok: true, json: async () => ({ confirmToken: 'tok-1' }) };
+      }
+      return { status: 503, ok: false, json: async () => ({ error: 'social_unavailable' }) };
+    });
+    await act(async () => {
+      root.render(<SocialScheduler onUpgrade={() => {}} />);
+    });
+    const fill = async (copy: string) => {
+      const text = container.querySelector<HTMLTextAreaElement>('textarea');
+      const time = container.querySelector<HTMLInputElement>('input[aria-label="Schedule time"]');
+      await act(async () => {
+        const area = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+        const input = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        area?.call(text, copy);
+        text?.dispatchEvent(new Event('input', { bubbles: true }));
+        input?.call(time, '2027-03-22T10:00');
+        time?.dispatchEvent(new Event('input', { bubbles: true }));
+        time?.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    };
+    const schedule = () => [...container.querySelectorAll('button')].find((button) => button.textContent === 'Schedule');
+    await fill('Sunday at 10.');
+    await act(async () => { schedule()?.click(); });
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    const confirm = () => [...document.body.querySelectorAll('button')].find((button) => button.textContent === 'Confirm');
+    await act(async () => { confirm()?.click(); });
+    await act(async () => { await Promise.resolve(); });
+    const dialog = document.body.querySelector('[data-testid="social-confirm-dialog"]');
+    const dismiss = [...(dialog?.querySelectorAll('button') ?? [])].find((button) => button.textContent === 'Cancel');
+    await act(async () => { dismiss?.click(); });
+    await fill('Monday at 10.');
+    await act(async () => { schedule()?.click(); });
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    const keys = authFetch.mock.calls
+      .filter((call) => String(call[0]).includes('/api/social/posts'))
+      .map((call) => {
+        const init = call[1] as { headers?: Record<string, string> } | undefined;
+        return init?.headers?.['Idempotency-Key'];
+      })
+      .filter((key): key is string => typeof key === 'string' && key.length > 0);
+    expect(keys.length).toBeGreaterThanOrEqual(3);
+    expect(new Set(keys).size).toBe(2);
+  });
+
+  it('schedules a UTC workspace in the browser zone and keeps a named zone', async () => {
+    const native = Intl.DateTimeFormat.prototype.resolvedOptions;
+    const spy = vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockImplementation(function resolve(this: Intl.DateTimeFormat) {
+      return { ...native.call(this), timeZone: 'America/Denver' };
+    });
+    try {
+      authFetch.mockImplementation(async (url: string) => {
+        if (String(url).includes('bootstrap')) {
+          return {
+            status: 200,
+            ok: true,
+            json: async () => ({
+              entitled: true,
+              sample: false,
+              timezone: 'UTC',
+              accounts: [{ id: 'ig-1', platform: 'instagram', username: 'grace', displayName: 'Grace' }],
+              posts: [],
+            }),
+          };
+        }
+        return { status: 200, ok: true, json: async () => ({ confirmToken: 'tok-1' }) };
+      });
+      await act(async () => {
+        root.render(<SocialScheduler onUpgrade={() => {}} />);
+      });
+      const bootstrap = authFetch.mock.calls.find((call) => String(call[0]).includes('bootstrap'));
+      const bootstrapInit = bootstrap?.[1] as { headers?: Record<string, string> } | undefined;
+      expect(bootstrapInit?.headers?.['x-social-timezone']).toBe('America/Denver');
+      expect(container.textContent).toContain('Timezone America/Denver');
+      const text = container.querySelector<HTMLTextAreaElement>('textarea');
+      const time = container.querySelector<HTMLInputElement>('input[aria-label="Schedule time"]');
+      await act(async () => {
+        const area = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+        const input = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        area?.call(text, 'Sunday at 10.');
+        text?.dispatchEvent(new Event('input', { bubbles: true }));
+        input?.call(time, '2027-03-22T10:00');
+        time?.dispatchEvent(new Event('input', { bubbles: true }));
+        time?.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      const schedule = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Schedule');
+      await act(async () => { schedule?.click(); });
+      await act(async () => { await Promise.resolve(); });
+      const preview = authFetch.mock.calls.find((call) => String(call[0]).includes('/api/social/posts'));
+      const init = preview?.[1] as { body?: string } | undefined;
+      const body = JSON.parse(String(init?.body || '{}')) as { timezone?: string };
+      expect(body.timezone).toBe('America/Denver');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('keeps a named workspace zone ahead of the browser zone', async () => {
+    const native = Intl.DateTimeFormat.prototype.resolvedOptions;
+    const spy = vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockImplementation(function resolve(this: Intl.DateTimeFormat) {
+      return { ...native.call(this), timeZone: 'America/Denver' };
+    });
+    try {
+      const workspace = new MockSocialClient('preview', clock).load();
+      await act(async () => {
+        root.render(
+          <SocialScheduler initial={{ ...workspace, entitled: true }} initialView="compose" onUpgrade={() => {}} />,
+        );
+      });
+      expect(workspace.timezone).toBe('America/Chicago');
+      expect(container.textContent).toContain('Timezone America/Chicago');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it('does not alert or show a raw credential error', async () => {
     const alertSpy = vi.fn();
     window.alert = alertSpy;

@@ -12,7 +12,7 @@ import {
 } from '../platforms';
 import { calendarDayKey } from '../calendar';
 import { parseConnectPlatform, parseSocialDraft } from '../draft';
-import { wallTimeInZoneToIso } from '../schedule-time';
+import { wallTimeInZoneToIso, workspaceTimeZone } from '../schedule-time';
 import type { SocialPostDraft } from '../types';
 
 const ROOT = path.resolve(__dirname, '../../../..');
@@ -94,6 +94,15 @@ describe('draft parsing refuses a platform before a provider is asked', () => {
     if (!parsed.ok) return;
     expect(parsed.draft.targets[0]?.platform).toBe('instagram');
     expect(parsed.draft.targets[0]?.madeWithAi).toBe(false);
+  });
+
+  it('keeps a named zone and replaces only the UTC sentinel', () => {
+    expect(workspaceTimeZone('America/Chicago', 'America/New_York')).toBe('America/Chicago');
+    expect(workspaceTimeZone('UTC', 'America/New_York')).toBe('America/New_York');
+    expect(workspaceTimeZone('UTC', 'Not/AZone')).toBe('UTC');
+    expect(workspaceTimeZone('UTC', '')).toBe('UTC');
+    expect(workspaceTimeZone(null, null)).toBe('UTC');
+    expect(workspaceTimeZone(undefined, 'America/Denver')).toBe('America/Denver');
   });
 
   it('reads a west-of-UTC wall time as that calendar day, not as UTC', () => {

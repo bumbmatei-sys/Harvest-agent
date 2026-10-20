@@ -35,7 +35,7 @@ import {
   type SocialPlatform,
 } from '@/lib/social/platforms';
 import { calendarDayKey, defaultCalendarDay, postsOnCalendarDay, undatedDrafts } from '@/lib/social/calendar';
-import { isoToWallTime, wallTimeInZoneToIso } from '@/lib/social/schedule-time';
+import { isoToWallTime, wallTimeInZoneToIso, workspaceTimeZone } from '@/lib/social/schedule-time';
 import type { SocialAccount, SocialPost, SocialTarget, SocialWorkspace } from '@/lib/social/types';
 import { authFetch } from '@/utils/auth-fetch';
 import { SocialUpgradeWall } from './SocialUpgradeWall';
@@ -111,6 +111,35 @@ function labelFor(platform: SocialPlatform): string {
   return PLATFORM_LABELS[platform];
 }
 
+function browserTimeZone(): string {
+  try {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return typeof zone === 'string' && zone ? zone : 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
+/** Named workspace zones stay. UTC is the unset live sentinel. */
+function ministryZone(reported: string | null | undefined): string {
+  return workspaceTimeZone(reported, browserTimeZone());
+}
+
+function withSelectDefaults(
+  platform: string,
+  current: Record<string, string | boolean> | undefined,
+): Record<string, string | boolean> {
+  const next = { ...(current || {}) };
+  const specs = PLATFORM_FIELDS[platform as SocialPlatform] || [];
+  for (const field of specs) {
+    if (field.kind !== 'select') continue;
+    if (next[field.key] !== undefined && next[field.key] !== '') continue;
+    const first = field.options[0]?.value;
+    if (first) next[field.key] = first;
+  }
+  return next;
+}
+
 function targetsFor(content: string, selected: readonly string[], accounts: readonly SocialAccount[]): SocialTarget[] {
   return selected.flatMap((slug) => {
     const platform = slug as SocialPlatform;
@@ -153,7 +182,7 @@ export function SocialScheduler({
   const [notice, setNotice] = useState<string | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const [saving, setSaving] = useState(false);
-  const publishKey = useRef<string | null>(null);
+  const publishKey = useRef<{ key: string; fingerprint: string } | null>(null);
   const [editing, setEditing] = useState<SocialPost | null>(null);
   const [editText, setEditText] = useState('');
   const [editWhen, setEditWhen] = useState('');
@@ -167,7 +196,7 @@ export function SocialScheduler({
   useEffect(() => {
     if (initial) return;
     let cancelled = false;
-    authFetch('/api/social/bootstrap')
+    authFetch('/api/social/bootstrap', { headers: { 'x-social-timezone': browserTimeZone() } })
       .then(async (response) => {
         if (cancelled) return;
         if (response.status === 503) {
@@ -245,7 +274,7 @@ export function SocialScheduler({
     (SOCIAL_PLATFORMS as readonly string[]).includes(slug)));
 
   const marked = useMemo(() => {
-    const zone = data?.timezone || 'UTC';
+    const zone = ministryZone(data?.timezone);
     return (data?.posts ?? [])
       .map((post) => calendarDayKey(post.scheduledFor, zone))
       .filter((value): value is string => Boolean(value))
@@ -285,7 +314,7 @@ export function SocialScheduler({
 
   async function refresh() {
     if (initial) return;
-    const response = await authFetch('/api/social/bootstrap');
+    const response = await authFetch('/api/social/bootstrap', { headers: { 'x-social-timezone': browserTimeZone() } });
     if (!response.ok) {
       setNotice('The list could not be refreshed. The post you wrote is still here.');
       return;
@@ -296,6 +325,7 @@ export function SocialScheduler({
       accounts: body.accounts,
       posts: body.posts,
       sample: body.sample === true,
+      timezone: typeof body.timezone === 'string' ? body.timezone : current.timezone,
     }));
   }
 
@@ -309,14 +339,14 @@ export function SocialScheduler({
     if (saving || pending) return;
     const targets = targetsFor(content, selected, accounts).map((target) => ({
       ...target,
-      fields: fields[target.platform] || {},
+      fields: withSelectDefaults(target.platform, fields[target.platform]),
       madeWithAi: madeWithAi && aiPlatforms.includes(target.platform),
     }));
     if (!content.trim() || targets.length === 0) {
       setNotice('Write the post and choose at least one connected account.');
       return;
     }
-    const zone = data?.timezone || 'UTC';
+    const zone = ministryZone(data?.timezone);
     let scheduledFor: string | null = null;
     if (!publishNow) {
       scheduledFor = when ? futureIso(when, zone) : null;
@@ -325,7 +355,6 @@ export function SocialScheduler({
         return;
       }
     }
-    if (!publishKey.current) publishKey.current = crypto.randomUUID();
     const payload = {
       content,
       publishNow,
@@ -334,7 +363,11 @@ export function SocialScheduler({
       targets,
       media: [],
     };
-    const headers = { 'Idempotency-Key': publishKey.current };
+    const fingerprint = JSON.stringify(payload);
+    if (!publishKey.current || publishKey.current.fingerprint !== fingerprint) {
+      publishKey.current = { key: crypto.randomUUID(), fingerprint };
+    }
+    const headers = { 'Idempotency-Key': publishKey.current.key };
     const doneNotice = data?.sample || initial
       ? 'Saved in this preview. Nothing was published.'
       : (publishNow ? 'Posted.' : 'Scheduled.');
@@ -412,7 +445,7 @@ export function SocialScheduler({
     if (typeof body.authUrl === 'string' && body.authUrl) window.location.assign(body.authUrl);
   }
 
-  const zone = data?.timezone || 'UTC';
+  const zone = ministryZone(data?.timezone);
   const selectedDay = pickedDay ?? defaultCalendarDay(posts, zone, new Date());
   const onDay = postsOnCalendarDay(posts, selectedDay, zone);
   const drafts = undatedDrafts(posts);
@@ -423,7 +456,7 @@ export function SocialScheduler({
       <header>
         <h1 className="font-display text-4xl font-light tracking-tight text-strong">Social</h1>
         <p className="mt-2 text-sm text-faint">
-          Schedule a post to the accounts this ministry has connected. Timezone {data?.timezone || 'UTC'}.
+          Schedule a post to the accounts this ministry has connected. Timezone {zone}.
         </p>
       </header>
       {data?.sample && (
@@ -644,7 +677,7 @@ export function SocialScheduler({
               setEditing(post);
               setEditError(null);
               setEditText(post.content);
-              const zone = post.timezone || data?.timezone || 'UTC';
+              const zone = post.timezone || ministryZone(data?.timezone);
               setEditWhen(post.scheduledFor ? isoToWallTime(post.scheduledFor, zone) : '');
             }}
             onCancel={(post) => {
@@ -689,7 +722,7 @@ export function SocialScheduler({
               className={CONTROL}
               onClick={() => {
                 if (!editing) return;
-                const zone = editing.timezone || data?.timezone || 'UTC';
+                const zone = editing.timezone || ministryZone(data?.timezone);
                 const scheduledFor = editWhen ? futureIso(editWhen, zone) : null;
                 if (editWhen && !scheduledFor) {
                   setEditError('Choose a time in the future, within a year.');

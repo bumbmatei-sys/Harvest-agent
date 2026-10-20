@@ -19,6 +19,7 @@ import {
   loadSocialWorkspace,
   updateSocialPost,
 } from './session';
+import { workspaceTimeZone } from './schedule-time';
 import type { SocialPost, SocialPostDraft, SocialWorkspace } from './types';
 
 /**
@@ -252,7 +253,7 @@ export function socialResponse(result: SocialResult<unknown>): NextResponse {
   return NextResponse.json(result.data);
 }
 
-export async function list(actor: SocialActor): Promise<SocialResult<{
+export async function list(actor: SocialActor, requestedTimeZone?: string | null): Promise<SocialResult<{
   entitled: boolean;
   sample: boolean;
   timezone: string;
@@ -266,7 +267,9 @@ export async function list(actor: SocialActor): Promise<SocialResult<{
   return ok({
     entitled: access.entitled,
     sample: access.sample,
-    timezone: workspace.timezone,
+    // A named zone (the sample ministry) stays. UTC is the live client's
+    // unset sentinel, and the caller's IANA zone replaces only that.
+    timezone: workspaceTimeZone(workspace.timezone, requestedTimeZone),
     accounts: workspace.accounts,
     posts: workspace.posts,
   });

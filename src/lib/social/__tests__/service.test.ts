@@ -130,6 +130,13 @@ describe('social service', () => {
     expect(other).toMatchObject({ ok: false, status: 403, error: 'Access denied to this tenant' });
   });
 
+  it('keeps the sample ministry zone when the caller names another', async () => {
+    const listed = await list(actor, 'America/New_York');
+    expect(listed.ok).toBe(true);
+    if (!listed.ok) return;
+    expect(listed.data.timezone).toBe('America/Chicago');
+  });
+
   it('refuses an unentitled production ministry and a normal admin still needs the add-on', async () => {
     vi.stubEnv('VERCEL_ENV', 'production');
     h.tenantDoc = { plan: 'plus', addons: { socialScheduler: 0 } };
