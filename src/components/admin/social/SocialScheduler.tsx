@@ -52,15 +52,19 @@ const SELECT_CONTROL = `${CONTROL} w-full data-[size=default]:h-11 sm:data-[size
 const FIELD_CONTROL = `${CONTROL} h-11 w-full sm:h-[38px]`;
 /** Eden: 12.5px / 600 buttons, 14px inline padding, a near-black primary and a black 5% secondary. */
 const ACTION = `${CONTROL} rounded-lg px-3.5 text-[12.5px] font-semibold active:scale-[0.98]`;
-const ACTION_PRIMARY = `${ACTION} bg-accent-foreground text-background hover:bg-accent-foreground/85`;
+const ACTION_PRIMARY = ACTION;
 const ACTION_SECONDARY = `${ACTION} border-transparent bg-foreground/5 text-foreground hover:bg-foreground/10 dark:bg-foreground/10 dark:hover:bg-foreground/15`;
 /** An Eden option row: bordered, rounded-xl, title on the left and its control on the right. */
 const OPTION_ROW = 'flex items-center justify-between gap-3 rounded-xl border border-line bg-card px-3 py-2';
 const OPTION_TITLE = 'text-[13px] font-medium text-strong';
 
+/** Platforms that only post a video; upload does not exist yet, so the composer cannot select them. */
+const VIDEO_ONLY: readonly string[] = ['youtube', 'tiktok'];
+
 const FRIENDLY_ERROR: Record<string, string> = {
   platform_not_offered: 'That platform is not offered.',
   youtube_needs_video: 'YouTube posts need a video. They cannot be submitted until video upload is available.',
+  tiktok_needs_video: 'TikTok posts need a video. They cannot be submitted until video upload is available.',
   media_not_accepted: 'Media upload is not available yet.',
   schedule_invalid: 'Choose a time in the future, within a year.',
   post_incomplete: 'Write the post and choose at least one connected account.',
@@ -199,7 +203,7 @@ export function SocialScheduler({
   const [content, setContent] = useState(initial?.posts.find((post) => post.status === 'draft')?.content ?? '');
   const [selected, setSelected] = useState<string[]>(
     initial
-      ? [initial.accounts.find((account) => account.platform !== 'youtube')?.platform].filter(Boolean) as string[]
+      ? [initial.accounts.find((account) => !VIDEO_ONLY.includes(account.platform))?.platform].filter(Boolean) as string[]
       : [],
   );
   const [fields, setFields] = useState<FieldValues>(() => seedSelectDefaults({}, selected));
@@ -262,7 +266,7 @@ export function SocialScheduler({
           posts: Array.isArray(body.posts) ? body.posts : [],
         });
         const accounts = Array.isArray(body.accounts) ? body.accounts : [];
-        const first = accounts.find((account: { platform?: unknown }) => account?.platform !== 'youtube')?.platform;
+        const first = accounts.find((account: { platform?: unknown }) => typeof account?.platform === 'string' && !VIDEO_ONLY.includes(account.platform))?.platform;
         if (typeof first === 'string') {
           setSelected([first]);
           setFields((current) => seedSelectDefaults(current, [first]));
@@ -484,7 +488,7 @@ export function SocialScheduler({
   const selectedDay = pickedDay ?? defaultCalendarDay(posts, zone, new Date());
   const onDay = postsOnCalendarDay(posts, selectedDay, zone);
   const drafts = undatedDrafts(posts);
-  const youtubeSelected = selected.includes('youtube');
+  const videoOnlySelected = selected.some((slug) => VIDEO_ONLY.includes(slug));
 
   return (
     <div className="flex w-full flex-col gap-6 p-4 lg:p-0" data-testid="social-scheduler">
@@ -534,16 +538,16 @@ export function SocialScheduler({
               />
               <ToggleGroup
                 multiple
-                value={selected.filter((slug) => slug !== 'youtube')}
+                value={selected.filter((slug) => !VIDEO_ONLY.includes(slug))}
                 onValueChange={(next) => {
-                  const chosen = next.filter((slug) => slug !== 'youtube');
+                  const chosen = next.filter((slug) => !VIDEO_ONLY.includes(slug));
                   setSelected(chosen);
                   setFields((current) => seedSelectDefaults(current, chosen));
                 }}
                 aria-label="Platforms"
                 className="flex flex-wrap"
               >
-                {accounts.filter((account) => account.platform !== 'youtube').map((account) => (
+                {accounts.filter((account) => !VIDEO_ONLY.includes(account.platform)).map((account) => (
                   <ToggleGroupItem key={account.id} value={account.platform} className={CONTROL}>
                     {labelFor(account.platform)}
                   </ToggleGroupItem>
@@ -552,6 +556,9 @@ export function SocialScheduler({
               <div className="flex flex-wrap items-center gap-2">
                 <Button type="button" variant="outline" className={CONTROL} disabled data-testid="youtube-posting-disabled">
                   YouTube
+                </Button>
+                <Button type="button" variant="outline" className={CONTROL} disabled data-testid="tiktok-posting-disabled">
+                  TikTok
                 </Button>
                 <p className="text-sm text-faint" data-testid="youtube-coming-soon">Video upload coming soon</p>
               </div>
@@ -649,10 +656,10 @@ export function SocialScheduler({
                 />
               </label>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" className={ACTION_PRIMARY} disabled={saving || youtubeSelected || accountsLoading} onClick={() => schedule(false)}>Schedule</Button>
-                <Button type="button" variant="secondary" className={ACTION_SECONDARY} disabled={saving || youtubeSelected || accountsLoading} onClick={() => schedule(true)}>Post now</Button>
+                <Button type="button" className={ACTION_PRIMARY} disabled={saving || videoOnlySelected || accountsLoading} onClick={() => schedule(false)}>Schedule</Button>
+                <Button type="button" variant="secondary" className={ACTION_SECONDARY} disabled={saving || videoOnlySelected || accountsLoading} onClick={() => schedule(true)}>Post now</Button>
               </div>
-              {youtubeSelected && (
+              {videoOnlySelected && (
                 <p className="text-sm text-faint" data-testid="youtube-needs-video">
                   Video upload coming soon
                 </p>

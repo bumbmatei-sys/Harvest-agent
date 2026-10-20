@@ -44,6 +44,7 @@ export type SocialErrorCode =
   | 'schedule_invalid'
   | 'media_not_accepted'
   | 'youtube_needs_video'
+  | 'tiktok_needs_video'
   | 'idempotency_key_required'
   | 'confirm_token_required'
   | 'confirm_invalid'
@@ -87,6 +88,7 @@ const KNOWN_ERRORS = new Set<string>([
   'schedule_invalid',
   'media_not_accepted',
   'youtube_needs_video',
+  'tiktok_needs_video',
   'idempotency_key_required',
   'confirm_token_required',
   'confirm_invalid',

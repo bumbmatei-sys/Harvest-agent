@@ -4,7 +4,7 @@ import type { SocialPostDraft, SocialTarget } from './types';
 
 export interface DraftError {
   readonly ok: false;
-  readonly error: 'platform_not_offered' | 'post_incomplete' | 'schedule_invalid' | 'media_not_accepted' | 'youtube_needs_video';
+  readonly error: 'platform_not_offered' | 'post_incomplete' | 'schedule_invalid' | 'media_not_accepted' | 'youtube_needs_video' | 'tiktok_needs_video';
 }
 
 /** A scheduled post has to be in the future, and not more than a year out. */
@@ -35,6 +35,7 @@ function readFields(raw: unknown): Record<string, string | boolean> {
  * `platform_not_offered` and produces no draft, so the caller never reaches
  * Zernio. Media upload is refused. A YouTube target with no video is
  * `youtube_needs_video`, which is what a YouTube post is until upload exists.
+ * TikTok is the same: it is `tiktok_needs_video`.
  * `madeWithAi` is kept only for a platform Zernio documents the flag for, and
  * defaults to false.
  */
@@ -69,6 +70,9 @@ export function parseSocialDraft(body: unknown, now = new Date()): DraftResult {
 
   if (targets.some((target) => target.platform === 'youtube')) {
     return { ok: false, error: 'youtube_needs_video' };
+  }
+  if (targets.some((target) => target.platform === 'tiktok')) {
+    return { ok: false, error: 'tiktok_needs_video' };
   }
 
   const publishNow = row.publishNow === true;

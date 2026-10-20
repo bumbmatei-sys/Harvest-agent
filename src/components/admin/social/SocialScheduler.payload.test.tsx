@@ -16,6 +16,7 @@ const clock = new Date(Date.UTC(2024, 2, 15, 12));
 interface Account { id: string; platform: string; username: string; displayName: string }
 
 const TIKTOK: Account = { id: 'tt-1', platform: 'tiktok', username: 'grace', displayName: 'Grace' };
+const FACEBOOK: Account = { id: 'fb-1', platform: 'facebook', username: 'grace', displayName: 'Grace' };
 const INSTAGRAM: Account = { id: 'ig-1', platform: 'instagram', username: 'grace', displayName: 'Grace' };
 
 interface SentPost {
@@ -181,27 +182,51 @@ describe('SocialScheduler payload', () => {
   });
 
   it('sends the default of a Select the user never touched', async () => {
-    await mountLive([TIKTOK]);
-    expect(trigger('Who can view')?.textContent).toContain('Everyone');
+    await mountLive([INSTAGRAM]);
+    expect(trigger('Placement')?.textContent).toContain('Feed');
     await type('Sunday at 10.');
     await pressSchedule();
     const [preview] = postCalls();
     expect(preview.body.targets).toHaveLength(1);
-    expect(preview.body.targets[0].platform).toBe('tiktok');
-    expect(preview.body.targets[0].fields.privacyLevel).toBe('PUBLIC_TO_EVERYONE');
+    expect(preview.body.targets[0].platform).toBe('instagram');
+    expect(preview.body.targets[0].fields.contentType).toBe('feed');
   });
 
   it('sends the value the Select shows for a platform chosen after load', async () => {
-    await mountLive([INSTAGRAM, TIKTOK]);
+    await mountLive([FACEBOOK, INSTAGRAM]);
     const platforms = container.querySelector('[aria-label="Platforms"]');
-    await act(async () => { button('TikTok', platforms ?? container)?.click(); });
-    expect(trigger('Who can view')?.textContent).toContain('Everyone');
     await act(async () => { button('Instagram', platforms ?? container)?.click(); });
+    expect(trigger('Placement')?.textContent).toContain('Feed');
+    await act(async () => { button('Facebook', platforms ?? container)?.click(); });
     await type('Sunday at 10.');
     await pressSchedule();
     const [preview] = postCalls();
-    expect(preview.body.targets.map((target) => target.platform)).toEqual(['tiktok']);
-    expect(preview.body.targets[0].fields).toEqual({ privacyLevel: 'PUBLIC_TO_EVERYONE' });
+    expect(preview.body.targets.map((target) => target.platform)).toEqual(['instagram']);
+    expect(preview.body.targets[0].fields).toEqual({ contentType: 'feed' });
+  });
+
+  it('does not offer TikTok as selectable and never sends it', async () => {
+    await mountLive([TIKTOK, INSTAGRAM]);
+    const platforms = container.querySelector('[aria-label="Platforms"]');
+    expect(button('TikTok', platforms ?? container)).toBeUndefined();
+    const tiktok = container.querySelector('[data-testid="tiktok-posting-disabled"]');
+    expect(tiktok?.hasAttribute('disabled')).toBe(true);
+    expect(container.querySelector('[data-testid="youtube-coming-soon"]')?.textContent).toBe('Video upload coming soon');
+    await act(async () => { tiktok?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+    expect(trigger('Who can view')).toBeNull();
+    await type('Sunday at 10.');
+    await pressSchedule();
+    const calls = postCalls();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].body.targets.map((target) => target.platform)).toEqual(['instagram']);
+  });
+
+  it('selects nothing when the only connected account is TikTok', async () => {
+    await mountLive([TIKTOK]);
+    expect(trigger('Who can view')).toBeNull();
+    await type('Sunday at 10.');
+    await pressSchedule();
+    expect(postCalls()).toHaveLength(0);
   });
 
   it('rotates the Idempotency-Key when the draft changes and keeps it for an identical retry', async () => {

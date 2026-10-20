@@ -143,6 +143,14 @@ describe('draft parsing refuses a platform before a provider is asked', () => {
     }, now)).toEqual({ ok: false, error: 'media_not_accepted' });
   });
 
+  it('refuses a TikTok target until a video can be uploaded', () => {
+    const now = new Date('2024-06-01T00:00:00.000Z');
+    expect(parseSocialDraft(draft('tiktok'), now)).toEqual({ ok: false, error: 'tiktok_needs_video' });
+    const mixed = draft('instagram');
+    mixed.targets.push({ platform: 'tiktok', accountId: 'tt', text: 'no', madeWithAi: false });
+    expect(parseSocialDraft(mixed, now)).toEqual({ ok: false, error: 'tiktok_needs_video' });
+  });
+
   it('one refused target refuses the whole post', () => {
     const body = draft('instagram');
     body.targets.push({ platform: 'twitter', accountId: 'x', text: 'no', madeWithAi: false });
