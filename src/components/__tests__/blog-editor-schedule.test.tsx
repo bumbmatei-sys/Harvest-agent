@@ -447,9 +447,9 @@ describe('a non-JSON save response', () => {
     const group = host.querySelector('[aria-label="Publish"]');
     expect(group?.className).toContain('flex-col');
     expect(group?.className).toContain('lg:flex-row');
-    expect(group?.className).toContain('lg:bg-surface-sunken');
+    expect(group?.className).toContain('lg:bg-black/[0.045]');
     const choice = host.querySelector('button[aria-label="Publish now"]');
-    expect(choice?.className).toContain('data-[pressed]:bg-surface-gold');
+    expect(choice?.className).toContain('data-[pressed]:bg-[#fdfdfd]');
     expect(choice?.className).toContain('lg:whitespace-nowrap');
     expect(choice?.className).not.toContain('whitespace-normal');
     expect(choice?.className).toContain('min-h-11');
