@@ -52,8 +52,8 @@ export function DesignDialog({ open, onOpenChange, design, onChange }: {
                   className={cn(TAP, 'flex flex-col gap-2 rounded-lg border p-2 text-left text-sm', design.theme === t.value ? 'border-primary ring-1 ring-primary' : 'border-line')}
                 >
                   <span aria-hidden className={cn('flex h-12 flex-col justify-center gap-1 rounded-md px-2', t.value === 'plain' ? 'bg-surface-raised' : 'bg-surface-sunken')}>
-                    <span className={cn('h-1 w-8 rounded', t.value === 'bold' ? 'bg-gold' : 'bg-strong/70')} />
-                    <span className="h-1 w-12 rounded bg-faint/50" />
+                    <span className={cn('h-1 w-8 rounded', t.value === 'bold' ? 'bg-gold' : 'bg-foreground/70')} />
+                    <span className="h-1 w-12 rounded bg-muted-foreground/40" />
                   </span>
                   <span className="font-medium text-strong">{t.label}</span>
                 </button>

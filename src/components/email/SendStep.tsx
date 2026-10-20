@@ -163,7 +163,7 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
                 <span>{when.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
                 <CalendarDays data-icon="inline-end" />
               </PopoverTrigger>
-              <PopoverContent align="start" className="flex w-auto gap-0 p-0">
+              <PopoverContent align="start" className="flex w-auto flex-row gap-0 p-0">
                 <Calendar
                   mode="single"
                   selected={when}

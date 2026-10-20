@@ -11,6 +11,8 @@ const code = (f: string) => stripComments(readFileSync(path.join(DIR, f), 'utf8'
 // Needles are assembled from fragments so this file never contains what it greps for.
 const RENDER_BUTTON = new RegExp(['render=\\{\\s*<', 'Button'].join(''));
 const HEX = /#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/;
+// strong and faint are text-colour tokens only; as a bg-/border- utility they generate nothing.
+const TEXT_ONLY_TOKEN = /\b(?:bg|border|ring|fill)-(?:strong|faint)\b/;
 const RAW_SCALE = new RegExp(`\\b(?:bg|text|border|ring|from|to|via|fill|stroke)-(?:${['red', 'blue', 'green', 'gray', 'grey', 'slate', 'zinc', 'neutral', 'stone', 'amber', 'yellow', 'orange', 'emerald', 'indigo', 'violet', 'purple', 'pink', 'rose', 'sky', 'teal', 'cyan'].join('|')})-\\d{2,3}\\b`);
 
 describe('the email UI follows the house rules', () => {
@@ -28,10 +30,16 @@ describe('the email UI follows the house rules', () => {
     expect(src, `${f} uses a raw Tailwind colour scale`).not.toMatch(RAW_SCALE);
   });
 
+  it.each(files())('%s: no text-only token used as a background or border', (f) => {
+    expect(code(f)).not.toMatch(TEXT_ONLY_TOKEN);
+  });
+
   it('the guards can fail: planted violations are caught', () => {
     expect('<Popover render={<Button />}>').toMatch(RENDER_BUTTON);
     expect('const c = "#C9963A";').toMatch(HEX);
     expect('className="bg-blue-500"').toMatch(RAW_SCALE);
+    expect('className="bg-strong/70"').toMatch(TEXT_ONLY_TOKEN);
+    expect('className="border-line-strong text-strong"').not.toMatch(TEXT_ONLY_TOKEN);
     expect('className="bg-surface-gold text-strong"').not.toMatch(RAW_SCALE);
   });
 });

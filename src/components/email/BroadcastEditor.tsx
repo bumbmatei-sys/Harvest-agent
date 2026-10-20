@@ -229,7 +229,7 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
             </div>
             <Collapsible open={tipsOpen} onOpenChange={setTipsOpen} className="border-t border-line">
               <CollapsibleTrigger className={cn(TAP, 'flex w-full items-center gap-2 px-5 py-3 text-left text-sm')}>
-                <span aria-hidden className={cn('size-2 rounded-full', tips.some((t) => t.kind === 'fix') ? 'bg-gold' : tips.length ? 'bg-faint' : 'bg-primary')} />
+                <span aria-hidden className={cn('size-2 rounded-full', tips.some((t) => t.kind === 'fix') ? 'bg-gold' : tips.length ? 'bg-muted-foreground' : 'bg-primary')} />
                 <span className="font-medium text-strong">Inbox check</span>
                 <span className="text-muted">{inboxSummary(tips)}</span>
                 <span className="ml-auto flex items-center gap-1 text-faint">{plural(plainWords(bodyHtml), 'word', 'words')}{tipsOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}</span>
@@ -238,7 +238,7 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
                 <ul className="flex flex-col gap-3 px-5 pb-4">
                   {tips.map((t) => (
                     <li key={t.id} className="flex gap-2.5 text-sm">
-                      <span aria-hidden className={cn('mt-1.5 size-2 shrink-0 rounded-full', t.kind === 'fix' ? 'bg-gold' : 'bg-faint')} />
+                      <span aria-hidden className={cn('mt-1.5 size-2 shrink-0 rounded-full', t.kind === 'fix' ? 'bg-gold' : 'bg-muted-foreground')} />
                       <span><span className="font-medium text-strong">{t.title}</span>{t.kind === 'tip' && <span className="ml-1.5 text-xs text-faint">Tip</span>}<br /><span className="text-muted">{t.detail}</span></span>
                     </li>
                   ))}

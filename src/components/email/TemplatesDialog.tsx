@@ -28,9 +28,9 @@ export function TemplatesDialog({ open, onOpenChange, onPick, hasContent }: {
                 className={`${TAP} flex h-full w-full flex-col gap-2 rounded-lg border border-line p-3 text-left hover:bg-muted`}
               >
                 <span aria-hidden className="flex h-16 flex-col justify-center gap-1.5 rounded-md bg-surface-sunken px-3">
-                  <span className="h-1.5 w-10 rounded bg-strong/70" />
-                  <span className="h-1 w-full rounded bg-faint/40" />
-                  <span className="h-1 w-2/3 rounded bg-faint/40" />
+                  <span className="h-1.5 w-10 rounded bg-foreground/70" />
+                  <span className="h-1 w-full rounded bg-muted-foreground/40" />
+                  <span className="h-1 w-2/3 rounded bg-muted-foreground/40" />
                 </span>
                 <span className="text-sm font-semibold text-strong">{t.name}</span>
                 <span className="text-xs text-muted">{t.blurb}</span>
