@@ -657,6 +657,9 @@ describe('the out-of-scope files are untouched', () => {
       // The social scheduler screenshot harness mounts the same desktop sidebar,
       // so it needs the same provider. It is not a product screen.
       'src/app/dev/social-scheduler/preview.tsx',
+      // APPENDED BY #531. The schedule proof wraps the same sidebar, which
+      // needs TooltipProvider. The preview is dev-only.
+      'src/components/blog/BlogSchedulePreview.tsx',
     ],
     collapsible: [
       // Pre-existing, and invisible to the alias-only matcher until now.

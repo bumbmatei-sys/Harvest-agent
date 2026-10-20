@@ -550,17 +550,23 @@ describe('5 · the money path is byte-identical', () => {
      * single writer of `plan`.
      */
     /**
-     * --- 129 -> 133, the social scheduler ---
+     * --- 129 -> 134, the social scheduler and #531 ---
      *
-     * FOUR routes: `social/bootstrap`, `social/connect`, `social/posts` and
-     * `social/posts/[id]`. They read the caller's tenant from the token and
-     * talk to Zernio (or the mock) for that tenant only. The profile id is
-     * stored on `tenant_private`, not on the tenant document where `plan` and
-     * `addons` live. None of them writes `plan`, a feature flag, or an add-on
-     * count. The Dodo webhook remains the single writer of the social
-     * scheduler entitlement.
+     * FIVE routes. Four are the social scheduler: `social/bootstrap`,
+     * `social/connect`, `social/posts` and `social/posts/[id]`. They read the
+     * caller's tenant from the token and talk to Zernio (or the mock) for that
+     * tenant only. The profile id is stored on `tenant_private`, not on the
+     * tenant document where `plan` and `addons` live. None of them writes
+     * `plan`, a feature flag, or an add-on count.
+     *
+     * One is #531: `blog/actions`. Scheduled publishing for a ministry's own
+     * posts. It verifies the caller, then hands the body to the blog service,
+     * which writes `blog_posts` through the Admin SDK. It never writes the
+     * tenant document. A published post is not an entitlement.
+     *
+     * The Dodo webhook remains the single writer of `plan`.
      */
-    expect(routes.length, 'an API route was added or removed').toBe(133);
+    expect(routes.length, 'an API route was added or removed').toBe(134);
     expect(
       routes.some((f) => f.endsWith(path.join('app/api/sms/numbers/route.ts'))),
       'the route THE-314 added is missing — the count moved for some other reason',
@@ -592,6 +598,8 @@ describe('5 · the money path is byte-identical', () => {
       'app/api/social/connect/route.ts',
       'app/api/social/posts/route.ts',
       'app/api/social/posts/[id]/route.ts',
+      // APPENDED BY #531 — see the note on the count above.
+      'app/api/blog/actions/route.ts',
     ]) {
       expect(
         routes.some((f) => f.endsWith(path.join(added))),
@@ -661,6 +669,12 @@ describe('5 · the money path is byte-identical', () => {
       'src/app/api/church-export/complete/route.ts',
       'src/app/api/church-export/sweep/route.ts',
       'src/lib/church-export-run.ts',
+      /**
+       * #531's blog actions route, held to the same claim. It writes blog
+       * posts through the service, never the tenant document, where `plan`
+       * and `addons` live.
+       */
+      'src/app/api/blog/actions/route.ts',
     ]) {
       const src = read(rel);
       expect(src, `${rel} writes to the tenant document`)

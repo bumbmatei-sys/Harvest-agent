@@ -24,6 +24,13 @@ const platformOverride = vi.hoisted(() => ({ current: false }));
 const authFetch = vi.hoisted(() =>
   vi.fn(async (_url: string, _init?: RequestInit) => ({ ok: true, json: async () => ({}) })),
 );
+const notifyError = vi.hoisted(() => vi.fn());
+const getDoc = vi.hoisted(() => vi.fn(async (_ref?: unknown): Promise<{ exists: () => boolean; data: () => Record<string, unknown> }> => ({
+  exists: () => false,
+  data: () => ({}),
+})));
+const tenantScope = vi.hoisted(() => ({ current: 'grace' as string | null }));
+const writeScope = vi.hoisted(() => ({ current: 'grace' as string | null }));
 const store = vi.hoisted(() => ({
   current: {
     tenantPlan: null as string | null,
@@ -50,7 +57,8 @@ vi.mock('../../utils/tenant.utils', () => ({ checkRosterAdminStatus }));
 vi.mock('../../utils/tenant-scope', () => ({
   isSuperAdmin: isSuperAdminMock,
   hasPlatformOverride: () => platformOverride.current,
-  getTenantScope: async () => TENANT_ID,
+  getTenantScope: async () => tenantScope.current,
+  getWriteTenantScope: async () => writeScope.current,
   PLATFORM_TENANT_ID: 'harvest',
 }));
 vi.mock('../../store/useAppStore', () => ({ useAppStore: () => store.current }));
@@ -69,8 +77,8 @@ vi.mock('firebase/firestore', () => ({
   query: () => ({}),
   where: () => ({}),
   limit: () => ({}),
-  doc: () => ({}),
-  getDoc: async () => ({ exists: () => false, data: () => ({}) }),
+  doc: (...parts: string[]) => parts.join('/'),
+  getDoc,
   deleteDoc: async () => {},
   onSnapshot: (_q: unknown, next: (snap: { docs: unknown[] }) => void) => {
     next({ docs: [] });
@@ -78,7 +86,7 @@ vi.mock('firebase/firestore', () => ({
   },
 }));
 vi.mock('../../utils/auth-fetch', () => ({ authFetch }));
-vi.mock('../../utils/notify', () => ({ notifyError: () => {} }));
+vi.mock('../../utils/notify', () => ({ notifyError }));
 vi.mock('../../utils/firestore-errors', () => ({
   OperationType: { GET: 'get', DELETE: 'delete' },
   handleFirestoreError: () => {},
@@ -172,7 +180,13 @@ let root: Root | null = null;
 beforeEach(() => {
   blogMode.record = false;
   recorded.values = [];
-  authFetch.mockClear();
+  authFetch.mockReset();
+  authFetch.mockImplementation(async () => ({ ok: true, json: async () => ({}) }));
+  notifyError.mockClear();
+  getDoc.mockReset();
+  getDoc.mockResolvedValue({ exists: () => false, data: () => ({}) });
+  tenantScope.current = TENANT_ID;
+  writeScope.current = TENANT_ID;
   navigate.mockClear();
   platformOverride.current = false;
   isSuperAdminMock.mockReturnValue(false);
@@ -277,11 +291,75 @@ describe('AdminBlog hides Automate while the knowledge base is off', () => {
     expect(gatePending()).toBeNull();
     expect(newPost()).not.toBeNull();
     expect(automateFetches().length, 'settings were not loaded for a visible control').toBeGreaterThan(0);
+    expect(String(automateFetches()[0][0])).toContain('tenantId=grace');
 
     await act(async () => { (button as HTMLButtonElement).click(); });
 
     expect(host.textContent ?? '').toContain('Automated Blog');
     expect(host.textContent ?? '').toContain('Generate Now');
+  });
+
+  it('loads the ministry document when the settings route fails, without an alert', async () => {
+    authFetch.mockImplementation(async () => ({ ok: false, status: 500, json: async () => ({ error: 'down' }) }));
+    getDoc.mockResolvedValue({
+      exists: () => true,
+      data: () => ({
+        timezone: 'Europe/Bucharest',
+        enabled: true,
+        totalGenerated: 2,
+        nextScheduledAt: '2026-12-01T08:00:00.000Z',
+      }),
+    });
+    await renderBlog('max', true);
+
+    expect(notifyError, 'a failed settings read opened an alert').not.toHaveBeenCalled();
+    expect(String(getDoc.mock.calls[0]?.[0])).toContain('blogAutomation/settings');
+
+    await act(async () => { (automateButton() as HTMLButtonElement).click(); });
+    expect(host.textContent ?? '').toContain('Europe/Bucharest');
+    expect(host.textContent ?? '').not.toContain('could not be loaded');
+  });
+
+  it('shows a failed settings read in the panel and does not alert', async () => {
+    authFetch.mockImplementation(async () => ({ ok: false, status: 500, json: async () => ({}) }));
+    getDoc.mockRejectedValue(new Error('permission'));
+    await renderBlog('max', true);
+
+    expect(notifyError).not.toHaveBeenCalled();
+    await act(async () => { (automateButton() as HTMLButtonElement).click(); });
+    const panel = host.querySelector('.z-\\[200\\]');
+    expect(panel, 'the panel did not open').not.toBeNull();
+    expect(panel!.querySelector('[role="alert"]')?.textContent).toBe('Automation settings could not be loaded.');
+  });
+
+  it('does not request settings when no ministry is in scope', async () => {
+    writeScope.current = null;
+    await renderBlog('max', true);
+
+    expect(automateButton(), 'Automate stays available once a ministry is selected').not.toBeNull();
+    expect(automateFetches(), 'a host with no ministry was asked for settings').toEqual([]);
+
+    await act(async () => { (automateButton() as HTMLButtonElement).click(); });
+    const save = [...host.querySelectorAll('button')].find((b) => (b.textContent ?? '').includes('Save Settings'));
+    expect(save, 'the settings panel did not open').toBeTruthy();
+    await act(async () => { (save as HTMLButtonElement).click(); });
+    await flush();
+
+    expect(automateFetches(), 'saving with no ministry still called the route').toEqual([]);
+    const panel = host.querySelector('.z-\\[200\\]');
+    expect(panel, 'the automation panel closed instead of explaining').not.toBeNull();
+    expect(panel!.querySelector('[role="alert"]')?.textContent).toBe(
+      'A ministry is required before automation settings can be saved.',
+    );
+
+    const generate = [...panel!.querySelectorAll('button')].find((b) => (b.textContent ?? '').includes('Generate Now'));
+    expect(generate, 'Generate Now left the panel').toBeTruthy();
+    await act(async () => { (generate as HTMLButtonElement).click(); });
+    await flush();
+    expect(authFetch.mock.calls, 'generating with no ministry still called a blog route').toEqual([]);
+    expect(panel!.querySelector('[role="alert"]')?.textContent).toBe(
+      'A ministry is required before an article can be generated.',
+    );
   });
 
   it('closes the panel if the base turns off while it is open', async () => {

@@ -42,12 +42,9 @@ const sub = (rest: string) => `tenants/${T}/${rest}`;
 // ── The mapping under test (mirror of the hasPermission() call sites) ──
 const CASES: FeatureCase[] = [
   // Content
-  {
-    name: 'blog_posts', perm: 'writeArticles',
-    path: s => `blog_posts/post-${s}`,
-    createData: { tenantId: T, title: 'Hello', content: 'x', authorId: 'a' },
-    updateData: { title: 'Edited' },
-  },
+  // blog_posts is not in this matrix. Clients cannot create, update or delete
+  // a post; tests/rules/blog-posts.rules.test.ts covers that denial. The
+  // articles permission is still gated here by blogAutomation settings.
   {
     name: 'courses', perm: 'createCourses',
     path: s => `courses/course-${s}`,
@@ -344,7 +341,7 @@ describe('fullAccess sentinel', () => {
     perms.fullAccess = true;
     await seedAdmin('sentinel-admin', TENANT_A, perms);
     const db = (await asUid('sentinel-admin')).firestore();
-    await assertSucceeds(db.doc('blog_posts/sentinel-post').set({ tenantId: T, title: 'x', content: 'y', authorId: 'a' }));
+    await assertFails(db.doc('blog_posts/sentinel-post').set({ tenantId: T, title: 'x', content: 'y', authorId: 'a' }));
     await assertSucceeds(db.doc(sub('invoices/sentinel-inv')).set({ number: 'INV-9', total: 1 }));
     await assertSucceeds(db.doc(sub('checkinSessions/sentinel-cs')).set({ name: 'x', status: 'open' }));
   });
@@ -550,8 +547,11 @@ describe('tenant doc update [manageBranding || manageSettings]', () => {
     const branding = (await asUid(holderUid('manageBranding'))).firestore();
     await assertFails(branding.doc(`tenants/${T}`).update({ plan: 'ultra' }));
     await assertFails(branding.doc(`tenants/${T}`).update({ ownerId: 'me' }));
+    await assertFails(branding.doc(`tenants/${T}`).update({ 'addons.socialScheduler': 1 }));
+    await assertFails(branding.doc(`tenants/${T}`).update({ addons: { socialScheduler: 1, aiAssistant: 1 } }));
     const sa = (await superAdmin()).firestore();
     await assertSucceeds(sa.doc(`tenants/${T}`).update({ plan: 'ultra' }));
+    await assertSucceeds(sa.doc(`tenants/${T}`).update({ 'addons.socialScheduler': 1 }));
   });
 });
 

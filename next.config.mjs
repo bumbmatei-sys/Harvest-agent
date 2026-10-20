@@ -1,9 +1,14 @@
-import path from "path";
-import { fileURLToPath } from "url";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import withPWAInit from "next-pwa";
 import { withSentryConfig } from "@sentry/nextjs";
 
-const rootDir = path.dirname(fileURLToPath(import.meta.url));
+// Vendored `server-only` (vendor/server-only). The lockfile cannot take the
+// package, and Next resolves it from this directory the same way it resolves
+// a real install. The marker throws if a client component imports it.
+// node_modules stays first, and a second webpack pass does not add vendor twice.
+const vendorDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "vendor");
 
 /** @type {import('next-pwa').PWAConfig} */
 const withPWA = withPWAInit({
@@ -36,11 +41,8 @@ const nextConfig = {
     instrumentationHook: true,
   },
   webpack: (config) => {
-    // `server-only` is vendored (vendor/server-only) so the social key module
-    // can import it without a lockfile change. node_modules stays first.
     const modules = Array.isArray(config.resolve.modules) ? [...config.resolve.modules] : ["node_modules"];
-    const vendor = path.join(rootDir, "vendor");
-    if (!modules.includes(vendor)) modules.push(vendor);
+    if (!modules.includes(vendorDir)) modules.push(vendorDir);
     config.resolve.modules = modules;
     return config;
   },

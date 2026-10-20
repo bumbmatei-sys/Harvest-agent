@@ -1382,6 +1382,17 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       + 'toggle-group, and the AI disclosure control is a switch that stays hidden unless Zernio '
       + 'documents the flag for a platform this ministry is allowed to post to.',
   },
+  {
+    file: 'src/components/blog/BlogScheduleFields.tsx',
+    ticket: '#531',
+    why:
+      'APPENDED, never substituted. #531 is scheduled publishing for the ministry blog. The editor '
+      + 'control is one choice among Publish now, Schedule and Draft, so it takes toggle-group '
+      + 'rather than three independent buttons. switch is rejected: the three states are not a '
+      + 'boolean. radio-group is rejected: the control is a vertical stack of pills in the existing '
+      + 'editor rail, not a form field with a legend. checkbox is rejected: the states are exclusive. '
+      + 'The primitive is unedited.',
+  },
 ];
 
 it('only the recorded adopters import the new components, and each names its ticket', () => {

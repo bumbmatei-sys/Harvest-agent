@@ -273,10 +273,12 @@ And the structural rules:
 ## Standing constraints
 - **`firestore.rules` auto-deploys to production on merge.**
   `.github/workflows/deploy-rules.yml` fires on any push to `main` touching
-  `firestore.rules`, `storage.rules` or `firebase.json`. **CI runs no emulator rules
-  tests** — `npm test` only covers `src/**`. Run `npm run test:rules` yourself for any
-  rules change, because nothing else will. THE-313's one-line change turned 46 files red.
-  Never change this file without reporting the exact rule you changed.
+  `firestore.rules`, `storage.rules` or `firebase.json`. `npm test` only covers
+  `src/**`. The **Firestore rules** job in `.github/workflows/test.yml` runs
+  `npm run test:rules` on pull requests and does not deploy anything. A rules
+  change still needs a separate founder go before that workflow ships it.
+  THE-313's one-line change turned 46 files red. Never change this file without
+  reporting the exact rule you changed.
 - **`firestore.indexes.json` does NOT deploy.** That workflow runs
   `firebase deploy --only firestore:rules,storage`. Every composite index in the project
   was created by hand in the console. **A new composite index committed to this file is
@@ -486,8 +488,8 @@ for. The agent runtime also ships Node 22 earlier on `PATH`;
 
 `npm run dev` here listens on port 3000. In the marketing repo, `npm run dev`
 listens on port 5173. The environment start script launches both and is safe to
-run again. CI checks for this repo are `npm test`, `npm run typecheck`, and
-`npm run lint`. The marketing repo's check is `npm test` and then `npm run build`
+run again. CI checks for this repo are `npm test`, `npm run typecheck`,
+`npm run lint`, and `npm run test:rules` (the Firestore rules job). The marketing repo's check is `npm test` and then `npm run build`
 (that build is also its typecheck). `npm test` on this repo is large; on a small
 machine pass `--maxWorkers=2`.
 

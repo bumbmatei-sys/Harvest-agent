@@ -12,6 +12,7 @@ import {
   PLAN_DISPLAY_NAMES,
   TOP_PLAN,
 } from '@/utils/plan-features';
+import { isAutomationTenantId } from '@/lib/blog/automation-settings-json';
 
 /** Cheapest plan whose matrix cell unlocks automated blog, for the 403 copy. */
 const AUTOMATED_BLOG_MIN_PLAN =
@@ -257,9 +258,23 @@ export async function POST(request: NextRequest) {
     const userOrErr = await requireAdmin(request);
     if (userOrErr instanceof Response) return userOrErr;
 
-    const { tenantId } = userOrErr;
-    if (!tenantId) {
+    const body = await request.json().catch(() => ({}));
+    // Same rule as /api/blog/automate. The token's ministry is the caller's.
+    // Naming a different one is allowed only for a super admin, on production
+    // as well as on a preview. Roster membership of the other ministry is not
+    // enough: Generate Now writes a blog_posts document.
+    const named = typeof body?.tenantId === 'string' ? body.tenantId.trim() : '';
+    const own = userOrErr.tenantId || '';
+    // A slash or other non-id character is a bad id, not another ministry.
+    if (named && !isAutomationTenantId(named)) {
       return NextResponse.json({ error: 'No tenant' }, { status: 400 });
+    }
+    const tenantId = named || own;
+    if (!tenantId || !isAutomationTenantId(tenantId)) {
+      return NextResponse.json({ error: 'No tenant' }, { status: 400 });
+    }
+    if (named && named !== own && !userOrErr.isSuperAdmin) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Plan gate — derived from the `automatedBlog` matrix cell rather than a
@@ -274,15 +289,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json().catch(() => ({}));
     const topicHint: string = body.topicHint || '';
 
-    return NextResponse.json(await generateAndSavePost(tenantId, topicHint));
+    // Generate Now saves a draft. Publishing still goes through the editor's
+    // preview-then-confirm. The scheduled job calls generateAndSavePost
+    // without this flag and still publishes, because saving the schedule was
+    // the confirm.
+    return NextResponse.json(await generateAndSavePost(tenantId, topicHint, 'draft'));
   } catch (err: any) {
     console.error('Blog generate error:', err?.message || err);
-    // generateAndSavePost publishes the post BEFORE updating the automation
-    // stats, so a failure on that last write means a live published article the
-    // admin was told failed — and retrying publishes a second one.
+    // The article is written before the automation stats. A failure on that
+    // last write means the article exists even though this response says the
+    // generation failed. Generate Now's article is a draft; the scheduled
+    // job's article is published. Retrying can write a second one.
     captureHandledError(err, {
       step: 'blog-generate',
       diagnostics: err instanceof BlogGenerationError ? err.diagnostics : undefined,
@@ -294,10 +313,15 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/** Shared generation logic used by both the manual POST and the cron. */
+/**
+ * Shared generation logic used by the manual POST and the cron.
+ * `saveAs` defaults to published for the scheduled job. Generate Now passes
+ * `draft` so the article is not public until the admin confirms in the editor.
+ */
 export async function generateAndSavePost(
   tenantId: string,
   topicHint: string,
+  saveAs: 'published' | 'draft' = 'published',
 ): Promise<{ postId: string; title: string }> {
   if (!process.env.MIMO_API_KEY) throw new Error('MIMO_API_KEY not configured');
 
@@ -488,17 +512,20 @@ Schema (types shown as values; replace each with real content):
     if (!parsed[field]) throw new Error(`AI response missing field: ${field}`);
   }
 
-  // 6. Save to blog_posts
+  // 6. Save to blog_posts. Generate Now passes 'draft' so this write is not
+  // a publish. The cron keeps the default and the article goes live on the
+  // schedule the admin already saved.
   const now = new Date();
+  const asDraft = saveAs === 'draft';
   const ref = await adminDb.collection('blog_posts').add({
     tenantId,
     title: parsed.title,
     category: parsed.category || 'Faith',
-    status: 'published',
+    status: asDraft ? 'draft' : 'published',
     content: parsed.htmlContent,
     tags: parsed.tags || parsed.keywords?.slice(0, 5) || [],
     featuredImage: '',
-    publishedAt: now.toISOString(),
+    publishedAt: asDraft ? null : now.toISOString(),
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
     authorId: 'system',

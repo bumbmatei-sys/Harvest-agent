@@ -18,7 +18,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
       // The marker throws under Node's default export condition. Tests load
-      // the server graph, so they resolve the react-server entry instead.
+      // the server graph, so they resolve the empty test entry instead.
       'server-only': path.resolve(__dirname, './vendor/server-only/empty.js'),
     },
   },

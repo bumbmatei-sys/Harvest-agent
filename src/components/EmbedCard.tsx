@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { isBlogPostPublic } from '../lib/blog/visibility';
 import { FileText, HeartHandshake, Calendar as CalendarIcon, MapPin, Globe, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -65,6 +66,7 @@ async function resolveEmbed(embed: PostEmbed, tenantId: string | null | undefine
       const snap = await getDoc(doc(db, 'blog_posts', embed.id));
       if (!snap.exists()) return null;
       const d = snap.data() as any;
+      if (!isBlogPostPublic(d, Date.now())) return null;
       const raw = typeof d.content === 'string' ? stripHtml(d.content) : '';
       return {
         type: 'blog',
