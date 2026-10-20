@@ -126,6 +126,27 @@ function setClock(value: string) {
   input.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
+function jsonResponse(body: unknown, status = 200) {
+  const text = JSON.stringify(body);
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    text: async () => text,
+    json: async () => JSON.parse(text),
+  };
+}
+
+function textResponse(body: string, status: number) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    text: async () => body,
+    json: async () => {
+      throw new SyntaxError('Unexpected token');
+    },
+  };
+}
+
 function previewBody(action: string) {
   return {
     ok: true,
@@ -176,7 +197,7 @@ describe('scheduling from the editor', () => {
   it('previews a future schedule only after confirm, and writes on that confirm', async () => {
     authFetch.mockImplementation(async (_url: string, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body)) as { action: string };
-      return { ok: true, json: async () => previewBody(body.action) };
+      return jsonResponse(previewBody(body.action));
     });
     const onClose = await mountEditor();
     await chooseIntent('Schedule');
@@ -278,7 +299,7 @@ describe('scheduling from the editor', () => {
   it('confirms a new untitled draft before creating it', async () => {
     authFetch.mockImplementation(async (_url: string, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body)) as { action: string };
-      return { ok: true, json: async () => previewBody(body.action) };
+      return jsonResponse(previewBody(body.action));
     });
     await mountEditor(null, ['Communion', 'News']);
     const select = host.querySelector('select');
@@ -335,8 +356,8 @@ describe('publish and take down confirm', () => {
   it('publishes only after the confirm step', async () => {
     authFetch.mockImplementation(async (_url: string, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body)) as { action: string; mode?: string };
-      if (body.mode === 'confirm') return { ok: true, json: async () => ({ ok: true }) };
-      return { ok: true, json: async () => previewBody(body.action) };
+      if (body.mode === 'confirm') return jsonResponse({ ok: true });
+      return jsonResponse(previewBody(body.action));
     });
     const onClose = await mountEditor();
     await clickLabel('Publish now');
@@ -355,8 +376,8 @@ describe('publish and take down confirm', () => {
   it('publishes a new unsaved draft only after confirm', async () => {
     authFetch.mockImplementation(async (_url: string, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body)) as { action: string; mode?: string };
-      if (body.mode === 'confirm') return { ok: true, json: async () => ({ ok: true }) };
-      return { ok: true, json: async () => previewBody(body.action) };
+      if (body.mode === 'confirm') return jsonResponse({ ok: true });
+      return jsonResponse(previewBody(body.action));
     });
     await mountEditor(null);
     await chooseIntent('Publish now');
@@ -380,8 +401,8 @@ describe('publish and take down confirm', () => {
   it('takes a live post down only after confirm', async () => {
     authFetch.mockImplementation(async (_url: string, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body)) as { action: string; mode?: string };
-      if (body.mode === 'confirm') return { ok: true, json: async () => ({ ok: true }) };
-      return { ok: true, json: async () => previewBody(body.action) };
+      if (body.mode === 'confirm') return jsonResponse({ ok: true });
+      return jsonResponse(previewBody(body.action));
     });
     const onClose = await mountEditor();
     await chooseIntent('Draft');
@@ -405,7 +426,7 @@ describe('publish and take down confirm', () => {
   });
 
   it('saves a live post as a draft without taking it down', async () => {
-    authFetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true, post: { id: 'post-1' } }) });
+    authFetch.mockResolvedValue(jsonResponse({ ok: true, post: { id: 'post-1' } }));
     await mountEditor();
     await clickLabel('Save draft');
 
@@ -414,6 +435,78 @@ describe('publish and take down confirm', () => {
     ]);
     expect(sentBodies()[0].mode).toBeUndefined();
     expect(sentBodies()[0].action).not.toBe('unschedule');
+  });
+});
+
+describe('a non-JSON save response', () => {
+  it('keeps Publish now, Schedule and Draft, and the schedule field', async () => {
+    await mountEditor();
+    for (const label of ['Publish now', 'Schedule', 'Draft'] as const) {
+      expect(host.querySelector(`button[aria-label="${label}"]`)).toBeTruthy();
+    }
+    const group = host.querySelector('[aria-label="Publish"]');
+    expect(group?.className).toContain('flex-col');
+    expect(group?.className).toContain('lg:flex-row');
+    expect(group?.className).toContain('lg:bg-black/[0.045]');
+    const choice = host.querySelector('button[aria-label="Publish now"]');
+    expect(choice?.className).toContain('data-[pressed]:bg-[#fdfdfd]');
+    expect(choice?.className).toContain('lg:whitespace-nowrap');
+    expect(choice?.className).not.toContain('whitespace-normal');
+    expect(choice?.className).toContain('min-h-11');
+
+    await chooseIntent('Schedule');
+    const input = host.querySelector('#blog-schedule-time');
+    expect(input).toBeInstanceOf(HTMLInputElement);
+    expect((input as HTMLInputElement).type).toBe('datetime-local');
+    expect((input as HTMLInputElement).className).toContain('bg-surface-raised');
+    await chooseIntent('Draft');
+    expect(host.querySelector('#blog-schedule-time')).toBeNull();
+  });
+
+  it('shows the configuration message for a 503 HTML body, not a parse error', async () => {
+    authFetch.mockResolvedValue(textResponse('<html><body>Bad gateway page</body></html>', 503));
+    await mountEditor();
+    await chooseIntent('Schedule');
+    await act(async () => { setClock('2027-07-20T09:00'); });
+    await clickLabel('Schedule');
+    await clickLabel('Confirm');
+
+    const message = "The server isn't configured to save posts. Nothing was saved.";
+    expect(host.textContent).toContain(message);
+    expect(host.textContent).not.toContain('Unexpected token');
+    expect(host.querySelector('[role="alert"]')?.textContent).toBe(message);
+  });
+
+  it('shows the HTTP status when a non-OK body is not JSON', async () => {
+    authFetch.mockResolvedValue(textResponse('upstream failed', 502));
+    await mountEditor();
+    await clickLabel('Publish now');
+    await clickLabel('Confirm');
+
+    expect(host.textContent).toContain("Couldn't save the post (HTTP 502). Nothing was saved.");
+    expect(host.textContent).not.toContain('Unexpected token');
+  });
+
+  it('does not treat an OK non-JSON body as a successful save', async () => {
+    authFetch.mockResolvedValue(textResponse('saved, probably', 200));
+    const onClose = await mountEditor();
+    await clickLabel('Publish now');
+    await clickLabel('Confirm');
+
+    expect(host.textContent).toContain('The server sent an unexpected response. Refresh to check whether your changes were saved.');
+    expect(host.textContent).not.toContain('Unexpected token');
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('keeps a JSON message from the server', async () => {
+    authFetch.mockResolvedValue(jsonResponse({ ok: false, message: 'Choose a ministry.' }, 400));
+    await mountEditor();
+    await clickLabel('Publish now');
+    await clickLabel('Confirm');
+
+    expect(host.textContent).toContain('Choose a ministry.');
+    expect(host.textContent).not.toContain('HTTP 400');
+    expect(host.textContent).not.toContain('Unexpected token');
   });
 });
 
