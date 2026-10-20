@@ -1,15 +1,38 @@
 'use client';
 
+import { CalendarClock, FileText, Send } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Input } from '@/components/ui/input';
 import { wallClockAfterPickerChange } from '@/lib/blog/visibility';
 
 export type BlogEditorIntent = 'published' | 'scheduled' | 'draft';
 
 /**
- * Desktop publish control for a blog post.
- * The same block stacks inside the existing editor rail; there is no separate
- * mobile admin layout.
+ * Publish control for a blog post.
+ * Below `lg` it stays the stacked rail. From `lg` the same ToggleGroup is a
+ * horizontal segmented pill. Orientation stays vertical because the prop
+ * cannot change with the viewport; the row is a flex direction only.
+ *
+ * Base UI Toggle sets `aria-pressed` and, when on, `data-pressed`. It does
+ * not set `data-state=on` (that selector is the Radix one on the primitive).
+ * The raised shadow is `shadow-xs`, the subtle elevation token in app code.
+ * The active fill is `bg-surface-gold`, not raised: raised is pure white in
+ * light. The edge is `--border-gold` (there is no utility for that token;
+ * `border-gold` is the solid brand colour). In dark the fill is a 16% accent
+ * mix and the 52% gold edge is what separates it from the sunken track.
+ * Inactive segments carry a transparent border so the 1px edge does not
+ * change their height.
  */
+const intentItem = [
+  'h-auto w-full min-h-11 justify-start px-3',
+  'lg:w-auto lg:min-w-0! lg:flex-1 lg:shrink! lg:justify-center lg:gap-1 lg:px-1! lg:text-[13px] lg:whitespace-nowrap lg:rounded-md!',
+  'lg:border lg:border-transparent! lg:bg-transparent! lg:text-muted! lg:hover:bg-transparent! lg:hover:text-body!',
+  'lg:aria-pressed:border-[color:var(--border-gold)]! lg:aria-pressed:bg-surface-gold! lg:aria-pressed:text-strong! lg:aria-pressed:font-semibold! lg:aria-pressed:shadow-xs!',
+  'lg:aria-pressed:hover:border-[color:var(--border-gold)]! lg:aria-pressed:hover:bg-surface-gold! lg:aria-pressed:hover:text-strong!',
+  'lg:data-[pressed]:border-[color:var(--border-gold)]! lg:data-[pressed]:bg-surface-gold! lg:data-[pressed]:text-strong! lg:data-[pressed]:font-semibold! lg:data-[pressed]:shadow-xs!',
+  'lg:data-[pressed]:hover:border-[color:var(--border-gold)]! lg:data-[pressed]:hover:bg-surface-gold! lg:data-[pressed]:hover:text-strong!',
+].join(' ');
+
 export function BlogScheduleFields({
   intent,
   onIntent,
@@ -44,15 +67,18 @@ export function BlogScheduleFields({
           spacing={0}
           orientation="vertical"
           aria-label="Publish"
-          className="mt-1.5 w-full flex-col items-stretch"
+          className="mt-1.5 w-full flex-col items-stretch lg:flex-row lg:rounded-brand lg:border lg:border-line lg:bg-surface-sunken lg:p-1"
         >
-          <ToggleGroupItem value="published" className="h-auto w-full min-h-11 justify-start px-3" aria-label="Publish now">
+          <ToggleGroupItem value="published" className={intentItem} aria-label="Publish now">
+            <Send aria-hidden className="hidden size-3.5 lg:inline" />
             Publish now
           </ToggleGroupItem>
-          <ToggleGroupItem value="scheduled" className="h-auto w-full min-h-11 justify-start px-3" aria-label="Schedule">
+          <ToggleGroupItem value="scheduled" className={intentItem} aria-label="Schedule">
+            <CalendarClock aria-hidden className="hidden size-3.5 lg:inline" />
             Schedule
           </ToggleGroupItem>
-          <ToggleGroupItem value="draft" className="h-auto w-full min-h-11 justify-start px-3" aria-label="Draft">
+          <ToggleGroupItem value="draft" className={intentItem} aria-label="Draft">
+            <FileText aria-hidden className="hidden size-3.5 lg:inline" />
             Draft
           </ToggleGroupItem>
         </ToggleGroup>
@@ -60,7 +86,7 @@ export function BlogScheduleFields({
       {intent === 'scheduled' && (
         <div>
           <label className={fieldLabel} htmlFor="blog-schedule-time">Publish at</label>
-          <input
+          <Input
             id="blog-schedule-time"
             type="datetime-local"
             value={wallClock}
@@ -75,7 +101,7 @@ export function BlogScheduleFields({
               if (next !== event.target.value) event.target.value = next;
               if (next !== wallClock) onWallClock(next);
             }}
-            className={fieldInput}
+            className={`${fieldInput} h-auto dark:bg-surface-raised!`}
           />
           {scheduleError ? (
             <p className="mt-1.5 text-sm text-danger" role="alert">{scheduleError}</p>

@@ -134,13 +134,34 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
         ...(confirmToken ? { confirmToken } : {}),
       }),
     });
-    const data = await response.json();
+    const raw = await response.text();
     if (saveTimedOut.current || signal?.aborted) return null;
-    if (!response.ok || data.ok === false) {
-      const message = typeof data.message === 'string' ? data.message : 'Failed to save post';
+    let parsed: unknown;
+    try {
+      parsed = raw ? JSON.parse(raw) : undefined;
+    } catch {
+      parsed = undefined;
+    }
+    const fail = (message: string) => {
       setError(message);
       if (action === 'schedule') setScheduleError(message);
       return null;
+    };
+    const data = parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed as { ok?: unknown; message?: unknown; confirmToken?: unknown }
+      : null;
+    if (!data) {
+      if (response.ok) {
+        return fail('The server sent an unexpected response. Refresh to check whether your changes were saved.');
+      }
+      if (response.status === 503) {
+        return fail("The server isn't configured to save posts. Nothing was saved.");
+      }
+      return fail(`Couldn't save the post (HTTP ${response.status}). Nothing was saved.`);
+    }
+    if (!response.ok || data.ok === false) {
+      const message = typeof data.message === 'string' ? data.message : 'Failed to save post';
+      return fail(message);
     }
     return data;
   };
