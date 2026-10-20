@@ -789,22 +789,26 @@ const CONTENT_ASSERTING_MOVED: Readonly<Record<string, readonly [digest: string,
       + 'joins /api/contact on the theharvest.site allow-list; #517 merged with CI '
       + 'red, so the list never moved with it. No other line of the suite changed.',
   ],
-  // APPENDED BY #529, then the current digest moved by #531, then again when
-  // #530 merged main. This map holds one current digest, so the earlier hashes
-  // stay in the why. #529 added the phase-1 proof PNGs. #531 appends the
-  // phase-2c shots. #530 appends the phase-2 social shots. *.png was already
-  // binary. The suite still asserts content.
+  // APPENDED BY #529, then the current digest moved by #531, by #536, and again
+  // when #530 merged main. This map holds one current digest, so the earlier
+  // hashes stay in the why. #529 added the phase-1 proof PNGs. #531 appends the
+  // phase-2c shots. #536 appends the blog-status-picker proof PNGs. #530 appends
+  // the phase-2 social shots. *.png was already binary. The suite still asserts
+  // content.
   'src/__tests__/the-268-line-endings.test.ts': [
-    '6c32acd216964124a4de8c05587c747cb407d1207d6befe3e12e677ed410361c',
+    'b7b04fc9850e51304fad0ba9f2a299a34e9fc332800c38bbd0db8d72fed8406e',
     '#530',
-    'the merge keeps both PNG lists: #530 phase-2 social shots, including the '
-      + 'centered compose screenshots, and #531 phase-2c blog shots. The phase-1 '
-      + 'paths and the original thirteen stay. *.png was already binary. The suite '
-      + 'still asserts file content rather than a digest pin. The previous #530 '
-      + 'digest was 83ddc357e689278de72e184f4690249d9f3fc08f3ef26381c3b7c6d58693775c '
-      + 'and the #531 digest was '
-      + '9afa6f0fbc261d14c272730907acf4fd9ad0df1b283d04cf537a7255b44ffad5. The row in '
-      + 'CONTENT_ASSERTING is untouched.',
+    'the merge keeps every PNG list: #530 phase-2 social shots, including the '
+      + 'centered compose screenshots, #536 blog-status-picker proofs, and #531 '
+      + 'phase-2c blog shots. The phase-1 paths and the original thirteen stay. '
+      + '*.png was already binary. The suite still asserts file content rather '
+      + 'than a digest pin. The previous digests were '
+      + '22f630620126698b1847e59b6708274dfed6f2766b3f290070a959e5f5d7ee8d after #536, '
+      + '6c32acd216964124a4de8c05587c747cb407d1207d6befe3e12e677ed410361c for #530 '
+      + 'before this merge, 83ddc357e689278de72e184f4690249d9f3fc08f3ef26381c3b7c6d58693775c '
+      + 'for the earlier #530 and '
+      + '9afa6f0fbc261d14c272730907acf4fd9ad0df1b283d04cf537a7255b44ffad5 for #531. '
+      + 'The row in CONTENT_ASSERTING is untouched.',
   ],
   'src/utils/__tests__/plan-features.news-feed.test.ts': [
     'f588a613c3dbd33bc7c89f6f9d6e305da25a7405caade29ef8d4628bc350afc6',

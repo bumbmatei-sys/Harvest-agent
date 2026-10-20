@@ -42,6 +42,8 @@
 --chart-5
 --color-accent
 --color-accent-foreground
+--color-action
+--color-action-foreground
 --color-background
 --color-background-alt
 --color-background-dark

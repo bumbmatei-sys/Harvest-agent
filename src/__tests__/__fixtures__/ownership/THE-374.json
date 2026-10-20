@@ -1,0 +1,11 @@
+{
+  "ticket": "THE-374",
+  "note": "Local change on feat/blog-editor-status-picker-503. There is no assigned ticket number; THE-374 is the next free id after THE-373 so the digest can be appended without editing #531.json or THE-347.json. Rename this file if a real ticket id is assigned, and keep the digest.",
+  "entries": [
+    {
+      "file": "src/components/AdminBlogPostEditor.tsx",
+      "digest": "96636cda6a4107385deefabe875de11ead6d90c27c1c18541aaa2c50420b3650",
+      "why": "This change owns only callService's response parsing. The body is read as text and JSON.parse is tried; a non-JSON 503 says the server is not configured and nothing was saved, any other non-OK non-JSON body names the HTTP status, and an OK non-JSON body tells the admin to refresh. A JSON message string is still shown. Save, publish, and the confirm flow are unchanged."
+    }
+  ]
+}

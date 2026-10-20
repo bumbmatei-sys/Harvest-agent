@@ -227,6 +227,21 @@ describe('binaries are not treated as text', () => {
   it('the binary set is the original 13 PNGs plus the #529 proof shots', () => {
     const binaries = FILES.filter((rel) => isDeclaredBinary(rel));
     expect(binaries).toEqual([
+      // APPENDED BY #536, nothing below removed. Blog post settings status
+      // picker: Draft, Publish now, and Schedule, light and dark, each as a
+      // full 1440 page and a card crop.
+      'docs/redesign/blog-status-picker/blog-post-settings-draft-dark-1440.png',
+      'docs/redesign/blog-status-picker/blog-post-settings-draft-dark-card.png',
+      'docs/redesign/blog-status-picker/blog-post-settings-draft-light-1440.png',
+      'docs/redesign/blog-status-picker/blog-post-settings-draft-light-card.png',
+      'docs/redesign/blog-status-picker/blog-post-settings-publish-now-dark-1440.png',
+      'docs/redesign/blog-status-picker/blog-post-settings-publish-now-dark-card.png',
+      'docs/redesign/blog-status-picker/blog-post-settings-publish-now-light-1440.png',
+      'docs/redesign/blog-status-picker/blog-post-settings-publish-now-light-card.png',
+      'docs/redesign/blog-status-picker/blog-post-settings-schedule-dark-1440.png',
+      'docs/redesign/blog-status-picker/blog-post-settings-schedule-dark-card.png',
+      'docs/redesign/blog-status-picker/blog-post-settings-schedule-light-1440.png',
+      'docs/redesign/blog-status-picker/blog-post-settings-schedule-light-card.png',
       // APPENDED BY #529, nothing below removed. Before and after shots at
       // 1440 and 390, light and dark, so the review can see them without a login.
       'docs/redesign/phase-1/1440-after-people-dark.png',

@@ -52,6 +52,7 @@ const SELECT_CONTROL = `${CONTROL} w-full data-[size=default]:h-11 sm:data-[size
 const FIELD_CONTROL = `${CONTROL} h-11 w-full sm:h-[38px]`;
 /** Eden: 12.5px / 600 buttons, 14px inline padding, a near-black primary and a black 5% secondary. */
 const ACTION = `${CONTROL} rounded-lg px-3.5 text-[12.5px] font-semibold active:scale-[0.98]`;
+const ACTION_PRIMARY = `${ACTION} bg-action text-action-foreground hover:bg-action/85`;
 const ACTION_SECONDARY = `${ACTION} border-transparent bg-foreground/5 text-foreground hover:bg-foreground/10 dark:bg-foreground/10 dark:hover:bg-foreground/15`;
 /** An Eden option row: bordered, rounded-xl, title on the left and its control on the right. */
 const OPTION_ROW = 'flex items-center justify-between gap-3 rounded-xl border border-line bg-card px-3 py-2';
@@ -655,7 +656,7 @@ export function SocialScheduler({
                 />
               </label>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" className={ACTION} disabled={saving || videoOnlySelected || accountsLoading} onClick={() => schedule(false)}>Schedule</Button>
+                <Button type="button" className={ACTION_PRIMARY} disabled={saving || videoOnlySelected || accountsLoading} onClick={() => schedule(false)}>Schedule</Button>
                 <Button type="button" variant="secondary" className={ACTION_SECONDARY} disabled={saving || videoOnlySelected || accountsLoading} onClick={() => schedule(true)}>Post now</Button>
               </div>
               {videoOnlySelected && (
@@ -830,7 +831,7 @@ export function SocialScheduler({
             </Button>
             <Button
               type="button"
-              className={ACTION}
+              className={ACTION_PRIMARY}
               disabled={saving || previewing || (!initial && !confirmToken)}
               onClick={() => { void confirmPending(); }}
             >
