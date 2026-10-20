@@ -36,4 +36,18 @@ describe('workspace cache', () => {
     await loading;
     expect(readWorkspaceCache('tenant-a')).toBeNull();
   });
+
+  it('starts a new load after a drop instead of joining the one already running', async () => {
+    resetWorkspaceCache();
+    let release!: (value: SocialWorkspace) => void;
+    const pending = new Promise<SocialWorkspace>((resolve) => {
+      release = resolve;
+    });
+    const first = shareLiveLoad('tenant-a', () => pending);
+    dropWorkspaceCache('tenant-a');
+    const second = shareLiveLoad('tenant-a', async () => ({ ...workspace, profileId: 'profile-2' }));
+    release(workspace);
+    expect(await first).toEqual(workspace);
+    expect((await second)?.profileId).toBe('profile-2');
+  });
 });

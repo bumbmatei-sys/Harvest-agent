@@ -4,8 +4,10 @@ const h = vi.hoisted(() => ({
   constructed: vi.fn(),
   ensureProfile: vi.fn(),
   load: vi.fn(),
+  connectUrl: vi.fn(),
   create: vi.fn(),
   update: vi.fn(),
+  cancel: vi.fn(),
   reserveZernioProfile: vi.fn(),
   commitZernioProfile: vi.fn(),
   releaseZernioProfileClaim: vi.fn(),
@@ -21,13 +23,13 @@ vi.mock('../live-client', () => ({
 
     load = h.load;
 
-    connectUrl = vi.fn();
+    connectUrl = h.connectUrl;
 
     create = h.create;
 
     update = h.update;
 
-    cancel = vi.fn();
+    cancel = h.cancel;
   },
 }));
 
@@ -49,12 +51,44 @@ vi.mock('@/lib/firebase-admin', () => ({
 import { resetSocialMock } from '../mock-client';
 import { SOCIAL_SAMPLE_SCOPE } from '../mode';
 import { resetPublishOnce } from '../publish-once';
-import { createSocialPost, loadSocialWorkspace, updateSocialPost } from '../session';
+import {
+  cancelSocialPost,
+  connectSocialAccount,
+  createSocialPost,
+  loadSocialWorkspace,
+  updateSocialPost,
+} from '../session';
 import { resetWorkspaceCache } from '../workspace-cache';
-import type { SocialPostDraft } from '../types';
+import type { SocialPost, SocialPostDraft, SocialWorkspace } from '../types';
 
 const clock = new Date(Date.UTC(2024, 2, 15, 12));
 const envKeys = ['VERCEL_ENV', 'ZERNIO_API_KEY', 'ZERNIO_SOCIAL_LIVE', 'ZERNIO_SOCIAL_MODE'] as const;
+
+function liveEnv(): void {
+  process.env.VERCEL_ENV = 'production';
+  process.env.ZERNIO_API_KEY = 'secret';
+  process.env.ZERNIO_SOCIAL_LIVE = '1';
+}
+
+function liveWorkspace(profileId: string, posts: readonly SocialPost[] = []): SocialWorkspace {
+  return {
+    profileId,
+    sample: false,
+    timezone: 'UTC',
+    accounts: [{ id: 'owned', platform: 'instagram', username: 'grace', displayName: 'Grace' }],
+    posts,
+  };
+}
+
+const scheduled: SocialPost = {
+  id: 'post-1',
+  content: 'Sunday at 10.',
+  status: 'scheduled',
+  scheduledFor: '2027-03-22T15:00:00.000Z',
+  timezone: 'UTC',
+  targets: [],
+  media: [],
+};
 
 function draft(accountId: string, publishNow = false): SocialPostDraft {
   return {
@@ -247,5 +281,86 @@ describe('loadSocialWorkspace mock boundary', () => {
     expect(updated).toEqual({ ok: false, error: 'account_not_owned' });
     expect(h.create).not.toHaveBeenCalled();
     expect(h.update).not.toHaveBeenCalled();
+  });
+
+  it('loads a different workspace for each ministry', async () => {
+    liveEnv();
+    h.reserveZernioProfile.mockImplementation(async (tenantId: string) => ({
+      status: 'ready',
+      profileId: tenantId === 'tenant-a' ? 'profile-a' : 'profile-b',
+    }));
+    h.load.mockImplementation(async (profileId: string) => liveWorkspace(profileId));
+    const first = await loadSocialWorkspace('tenant-a', clock, false);
+    const second = await loadSocialWorkspace('tenant-b', clock, false);
+    expect(h.load).toHaveBeenCalledTimes(2);
+    expect(first?.profileId).toBe('profile-a');
+    expect(second?.profileId).toBe('profile-b');
+  });
+
+  it('reads the provider again after a mock connect', async () => {
+    liveEnv();
+    h.reserveZernioProfile.mockResolvedValue({ status: 'ready', profileId: 'profile-1' });
+    h.load.mockResolvedValue(liveWorkspace('profile-1'));
+    await loadSocialWorkspace('grace-chapel', clock, false);
+    delete process.env.VERCEL_ENV;
+    delete process.env.ZERNIO_API_KEY;
+    delete process.env.ZERNIO_SOCIAL_LIVE;
+    vi.stubEnv('NODE_ENV', 'test');
+    expect(await connectSocialAccount('grace-chapel', 'instagram', false)).toEqual({
+      ok: true,
+      authUrl: null,
+      sample: true,
+    });
+    liveEnv();
+    await loadSocialWorkspace('grace-chapel', clock, false);
+    expect(h.load).toHaveBeenCalledTimes(2);
+  });
+
+  it('reads the provider again after a live connect', async () => {
+    liveEnv();
+    h.reserveZernioProfile.mockResolvedValue({ status: 'ready', profileId: 'profile-1' });
+    h.load.mockResolvedValue(liveWorkspace('profile-1'));
+    h.connectUrl.mockResolvedValue('https://connect.example/start');
+    await loadSocialWorkspace('grace-chapel', clock, false);
+    expect(await connectSocialAccount('grace-chapel', 'instagram', false)).toEqual({
+      ok: true,
+      authUrl: 'https://connect.example/start',
+      sample: false,
+    });
+    await loadSocialWorkspace('grace-chapel', clock, false);
+    expect(h.load).toHaveBeenCalledTimes(2);
+  });
+
+  it('reads the provider again after a create', async () => {
+    liveEnv();
+    h.reserveZernioProfile.mockResolvedValue({ status: 'ready', profileId: 'profile-1' });
+    h.load.mockResolvedValue(liveWorkspace('profile-1'));
+    h.create.mockResolvedValue({ ...scheduled, id: 'post-new' });
+    await loadSocialWorkspace('grace-chapel', clock, false);
+    expect((await createSocialPost('grace-chapel', draft('owned'), false)).ok).toBe(true);
+    await loadSocialWorkspace('grace-chapel', clock, false);
+    expect(h.load).toHaveBeenCalledTimes(2);
+  });
+
+  it('reads the provider again after an update', async () => {
+    liveEnv();
+    h.reserveZernioProfile.mockResolvedValue({ status: 'ready', profileId: 'profile-1' });
+    h.load.mockResolvedValue(liveWorkspace('profile-1', [scheduled]));
+    h.update.mockResolvedValue({ ...scheduled, content: 'Edited.' });
+    await loadSocialWorkspace('grace-chapel', clock, false);
+    expect((await updateSocialPost('grace-chapel', 'post-1', draft('owned'), false)).ok).toBe(true);
+    await loadSocialWorkspace('grace-chapel', clock, false);
+    expect(h.load).toHaveBeenCalledTimes(2);
+  });
+
+  it('reads the provider again after a cancel', async () => {
+    liveEnv();
+    h.reserveZernioProfile.mockResolvedValue({ status: 'ready', profileId: 'profile-1' });
+    h.load.mockResolvedValue(liveWorkspace('profile-1', [scheduled]));
+    h.cancel.mockResolvedValue(true);
+    await loadSocialWorkspace('grace-chapel', clock, false);
+    expect(await cancelSocialPost('grace-chapel', 'post-1', false)).toBe(true);
+    await loadSocialWorkspace('grace-chapel', clock, false);
+    expect(h.load).toHaveBeenCalledTimes(2);
   });
 });

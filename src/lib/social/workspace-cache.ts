@@ -11,7 +11,7 @@ const TTL_MS = 15_000;
 
 const stored = new Map<string, { at: number; workspace: SocialWorkspace }>();
 const inflight = new Map<string, Promise<SocialWorkspace | null>>();
-/** Bumped by every drop so a load already in flight cannot write the pre-write snapshot back. */
+/** Bumped by every drop, and the in-flight entry is removed, so a later request cannot receive or store the pre-write snapshot. */
 const generation = new Map<string, number>();
 
 export function readWorkspaceCache(tenantId: string, now = Date.now()): SocialWorkspace | null {
@@ -30,6 +30,7 @@ export function rememberWorkspace(tenantId: string, workspace: SocialWorkspace, 
 
 export function dropWorkspaceCache(tenantId: string): void {
   stored.delete(tenantId);
+  inflight.delete(tenantId);
   generation.set(tenantId, (generation.get(tenantId) ?? 0) + 1);
 }
 
