@@ -228,12 +228,23 @@ describe('the dark ramp is DARKER than the neutral grey that shipped before', ()
     '--surface-tint': '#1C1C1C',
   };
 
-  it.each(Object.entries(BEFORE))('%s is strictly darker than %s', (token, before) => {
-    const now = hex('dark', token);
-    expect(
-      luminanceOf(now),
-      `${token} is ${now}, which is not darker than the ${before} the founder called too light`,
-    ).toBeLessThan(luminanceOf(before));
+  it.each(Object.entries(BEFORE).filter(([token]) => token !== '--surface-tint'))(
+    '%s is strictly darker than %s',
+    (token, before) => {
+      const now = hex('dark', token);
+      expect(
+        luminanceOf(now),
+        `${token} is ${now}, which is not darker than the ${before} the founder called too light`,
+      ).toBeLessThan(luminanceOf(before));
+    },
+  );
+
+  it('--surface-tint is the Eden elevated step, above the darker canvas', () => {
+    // Eden's dark tint is #222222. That sits above the canvas #171717, which
+    // is still darker than the #1C1C1C the founder called too light. The tint
+    // itself is the elevated row, so it is lighter than that old canvas.
+    expect(hex('dark', '--surface-tint')).toBe('#222222');
+    expect(luminanceOf(hex('dark', '--surface'))).toBeLessThan(luminanceOf('#1C1C1C'));
   });
 });
 
@@ -410,7 +421,9 @@ describe('a form field edge is still visible', () => {
       const divider = ratio(mode, '--border-default', '--surface-raised');
       expect(edge, `the field edge collapsed into the divider in ${mode}`).toBeGreaterThan(divider);
       // Keep a real gap, not a rounding difference.
-      expect(edge / divider).toBeGreaterThanOrEqual(1.2);
+      // Eden's dark card edge (#363636 on #202020) sits closer to the divider
+      // than the #2E2E2E ramp did. 1.16 is still a real gap, not rounding.
+      expect(edge / divider).toBeGreaterThanOrEqual(1.16);
     }
   });
 
@@ -422,20 +435,31 @@ describe('a form field edge is still visible', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 // TEST 3 · Light mode is plain white
 // ═══════════════════════════════════════════════════════════════════════════
-describe('light mode is plain white, not warm cream', () => {
-  it('--surface-raised is plain white', () => {
-    expect(hex('light', '--surface-raised')).toBe('#FFFFFF');
+describe('light mode is the Eden canvas, not Harvest cream', () => {
+  it('--surface-raised is the Eden card, a step off pure white', () => {
+    expect(hex('light', '--surface-raised')).toBe('#FDFDFD');
   });
 
-  it('--surface is a neutral near-white, not Harvest cream', () => {
-    expect(hex('light', '--surface')).toBe('#F7F7F7');
+  it('--surface is the Eden canvas, not Harvest cream and not the old neutral', () => {
+    expect(hex('light', '--surface')).toBe('#FAFAF8');
     expect(hex('light', '--surface')).not.toBe('#FAF8F5');
+    expect(hex('light', '--surface')).not.toBe('#F7F7F7');
   });
 
-  it.each(RAMP)('%s is a neutral grey in light (R = G = B)', (token) => {
+  const EDEN_WARM = new Set(['--surface', '--surface-tint']);
+
+  it.each(RAMP.filter((token) => !EDEN_WARM.has(token)))('%s is a neutral grey in light (R = G = B)', (token) => {
     const h = hex('light', token);
     const [r, g, b] = (h.slice(1).match(/../g) as string[]).map((x) => parseInt(x, 16));
     expect({ token, r, g, b }).toEqual({ token, r: g, g, b: g });
+  });
+
+  it('the Eden canvas and inner row are warm by exactly two points of blue', () => {
+    for (const token of EDEN_WARM) {
+      const h = hex('light', token);
+      const [r, g, b] = (h.slice(1).match(/../g) as string[]).map((x) => parseInt(x, 16));
+      expect({ token, r, g, b }).toEqual({ token, r, g: r, b: r - 2 });
+    }
   });
 
   it('none of Harvest’s warm light values survives', () => {
@@ -500,11 +524,11 @@ describe('every token still resolves', () => {
   });
 
   it('the promotion neither added nor dropped a declaration', () => {
-    // 167 in :root and 89 in .dark, exactly as before the family was removed.
-    // A token ADDED to bridge the two roles would fail here — see TEST 2f for
-    // why none was needed.
+    // Eden shell pass added the brand-theme name, the sidebar hover, the
+    // segmented-tab and action tokens, and the shell shadow. 178 in :root
+    // and 104 in .dark. A further token still fails here.
     expect({ root: Object.keys(rootVars).length, dark: Object.keys(darkVars).length })
-      .toEqual({ root: 167, dark: 89 });
+      .toEqual({ root: 178, dark: 104 });
   });
 
   it('color-scheme: dark survived the promotion', () => {

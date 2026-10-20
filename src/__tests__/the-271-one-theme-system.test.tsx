@@ -626,11 +626,15 @@ describe('5 — the pre-paint script and theme.ts still agree on the default', (
    * touch them.
    */
   const UNCHANGED: Record<string, string> = {
-    'src/lib/theme.ts': 'e05b9e51ee019db5b7926358a5ed9de9a291c5c8372040f2a7ac435e88e2ba0b',
-    'src/lib/theme-runtime.ts': 'fce9fa8e8a9bd76c0b57bce0decc450e394968c93855e9e6702c306958e2d6ee',
+    // Eden shell pass re-recorded these two. theme.ts carries the Eden dark
+    // ground (#171717 / #202020) and the harvest brand-theme name. theme-runtime
+    // stamps data-brand-theme inside the existing one-argument applyTheme.
+    // data-theme stays the light/dark axis. layout.tsx is still untouched.
+    'src/lib/theme.ts': '8faa2e97f142ea2052bff60ea02c06a4e713c0a5433a204b39dbb95b932b5996',
+    'src/lib/theme-runtime.ts': '8e18aeef43f70e7b2204881e9c71e69723651ce7b03a71cb1bae91b0297cb3ab',
     'src/lib/preauth-theme.ts': '1940796f21a9c5219ba6d35d15958eafb34aaada0e3a2670f5d858f65e840ad0',
     'src/lib/use-resolved-theme.ts': 'ec8961c8637fd0004c4cf8d6a9ba9830e88b7a02b65c730f52172acd396114a6',
-    'src/app/globals.css': '1fd6001c2d3bddc50a45b02ce1253b6b60802699fb33fa159f5ed42b8aeb9957',
+    'src/app/globals.css': 'a23d07afde7b073e9b839f0826e4cd95983116c6dbc3c0b8d8391a7e179984a4',
     'src/components/ThemeToggle.tsx': 'efd6790ae14ebb1e5238ce601828589724ffcd4931f6c90e631927d9e1522277',
     // 🔴 PaletteFamilyToggle.tsx LEFT THIS LIST AT THE-338: the file is
     // deleted with the palette family axis. Its absence is asserted below,

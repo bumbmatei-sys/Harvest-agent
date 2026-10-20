@@ -58,4 +58,15 @@ describe('GET /api/tenants/roster-status', () => {
     expect(res.status).toBe(200);
     expect(mockGetTenantPrivate).toHaveBeenCalledWith('grace');
   });
+
+  it('returns a safe unavailable response when the admin read throws a credential error', async () => {
+    const leaked = 'Could not load the default credentials. Browse to https://cloud.google.com/docs/authentication/getting-started for more information.';
+    mockGetTenantPrivate.mockRejectedValue(new Error(leaked));
+    const res = await GET(makeRequest('grace'));
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body).toEqual({ error: 'unavailable' });
+    expect(body.isRosterAdmin).toBeUndefined();
+    expect(JSON.stringify(body)).not.toContain('default credentials');
+  });
 });

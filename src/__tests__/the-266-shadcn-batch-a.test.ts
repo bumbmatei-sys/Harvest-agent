@@ -274,6 +274,9 @@ const MOVED_SINCE: Record<string, string> = {
   'sheet.tsx': '68d13d9826a9b5b28e3d78a0ba632b347ca91b67a3333a38acb6310ade8846d4',
   'sonner.tsx': '2ebc0c9ba968858cead2fbf2523dfd9da217715339967025e8c8df94f2131ab9',
   'tabs.tsx': '096e3d4b2a99b1eff95d16959f97daaa1747fdb7de6226d6c54b9693e22b3410',
+  // Eden shell pass. The default variant points at --action (Harvest gold)
+  // and the 12.5px / 600 / h-8 metrics. The historical digest stays above.
+  'button.tsx': '91786d4927d890d722bed3daa2bb8dda5c25dc8dc65237acfeb73295849f085d',
 };
 
 describe('the CLI rewrote nothing it should not have', () => {
@@ -353,11 +356,12 @@ describe('the token bridge held', () => {
   it('and the ledger’s only growth since THE-266 is THE-267’s sixteen lines', () => {
     const tokens = allDeclaredTokens();
     const sidebar = tokens.filter((t) => /^--(color-)?sidebar/.test(t));
-    expect(sidebar).toHaveLength(16);
-    // Every other name in the ledger predates this. Asserted as a count of the
-    // non-sidebar remainder, which is what THE-266 recorded: 181 lines, of
-    // which none was a sidebar token.
-    expect(tokens.length - sidebar.length).toBe(181);
+    // THE-267's sixteen, plus --sidebar-hover and --color-sidebar-hover.
+    expect(sidebar).toHaveLength(18);
+    // THE-266 recorded 181 non-sidebar names. The Eden shell pass added 19:
+    // --brand-theme, the action pair, the segmented-tab pair and the shell
+    // shadows, each on both halves of the bridge where a utility needs one.
+    expect(tokens.length - sidebar.length).toBe(200);
   });
 
   /**
@@ -378,13 +382,13 @@ describe('the token bridge held', () => {
     // which is the founder's "current dark grey is lighter than the one in
     // the screenshot" expressed as the four numbers these components read.
     light: {
-      '--background': '#F7F7F7',
+      '--background': '#FAFAF8',
       '--foreground': '#404040',
       '--muted': '#EFEFEF',
       '--muted-foreground': '#595959',
     },
     dark: {
-      '--background': '#141414',
+      '--background': '#171717',
       '--foreground': '#CCCCCC',
       '--muted': '#0C0C0C',
       '--muted-foreground': '#ABABAB',
@@ -524,6 +528,7 @@ it('the sidebar family is exactly the eight THE-267 mapped', () => {
     '--sidebar-accent-foreground',
     '--sidebar-border',
     '--sidebar-foreground',
+    '--sidebar-hover',
     '--sidebar-primary',
     '--sidebar-primary-foreground',
     '--sidebar-ring',
@@ -654,6 +659,9 @@ describe('the out-of-scope files are untouched', () => {
       'src/components/admin-shell/AdminDesktopSidebar.tsx',
       'src/components/admin-shell/AdminShellPreview.tsx',
       'src/components/admin-shell/admin-shell.test.tsx',
+      // The social scheduler screenshot harness mounts the same desktop sidebar,
+      // so it needs the same provider. It is not a product screen.
+      'src/app/dev/social-scheduler/preview.tsx',
       // APPENDED BY #531. The schedule proof wraps the same sidebar, which
       // needs TooltipProvider. The preview is dev-only.
       'src/components/blog/BlogSchedulePreview.tsx',
@@ -781,7 +789,12 @@ describe('the out-of-scope files are untouched', () => {
       'src/components/email/EmailWorkspace.tsx',
       'src/components/email/PreviewDialog.tsx',
     ],
-    breadcrumb: ['src/components/docs/DocsBreadcrumb.tsx'],
+    breadcrumb: [
+      'src/components/docs/DocsBreadcrumb.tsx',
+      // Eden shell pass. The desktop content bar is the sidebar-07 header:
+      // SidebarTrigger, Separator, Breadcrumb. It is the only new adopter.
+      'src/components/admin-shell/AdminContentBar.tsx',
+    ],
   };
 
   it('only the recorded adopters import the four, by either import spelling', () => {

@@ -11,10 +11,20 @@ import { HeroBand, Eyebrow } from './member/desktopKit';
 import { useTenant } from '@/contexts/TenantContext';
 import CampaignGivingOptions from './donations/CampaignGivingOptions';
 import { readGivingLinks } from './donations/giving-providers';
-import { resolveCampaignGiving } from '@/lib/payment-link-selection';
+import { resolveCampaignGiving, type ResolvedCampaignGiving } from '@/lib/payment-link-selection';
 import { isCardGivingOn } from '@/lib/card-giving';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 
-interface Campaign {
+export interface Campaign {
   id: string;
   title: string;
   description: string;
@@ -41,7 +51,28 @@ interface CampaignWidgetProps {
 
 const AMOUNT_PRESETS = [25, 50, 100, 250];
 
-const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
+const fmt = (n: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+
+function campaignProgress(campaign: Campaign) {
+  const percentage = campaign.goal > 0
+    ? Math.min(100, Math.round((campaign.raised / campaign.goal) * 100))
+    : 0;
+  const daysLeft = campaign.endDate
+    ? Math.max(0, Math.ceil((new Date(campaign.endDate).getTime() - Date.now()) / 86_400_000))
+    : null;
+  return { percentage, daysLeft };
+}
+
+/**
+ * Giving rails for one campaign. The widget uses them to decide whether Give
+ * Now has anywhere to go; the detail sheet uses the same answer to draw the
+ * links. One hook so the button and the sheet cannot disagree.
+ */
+function useCampaignRails(paymentProviders: string[] | undefined): {
+  giving: ResolvedCampaignGiving;
+  cardGivingOn: boolean;
+} {
   // THE-251 — the church's own payment links, for the campaign detail below.
   //
   // 🔴 THE SAME TABLE AND THE SAME VALIDATOR AS THE GIVE PAGE. `readGivingLinks`
@@ -50,84 +81,10 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
   // MainApp — one implementation, one answer, four surfaces.
   const { branding, tenantId: contextTenantId, stripeConnectStatus } = useTenant();
   const givingLinks = useMemo(() => readGivingLinks(branding), [branding]);
-
-  const [campaign, setCampaign] = useState<Campaign | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [showDetail, setShowDetail] = useState(false);
-  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
-  const [customAmount, setCustomAmount] = useState('');
-  const [donorName, setDonorName] = useState('');
-  const [donorEmail, setDonorEmail] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [donateError, setDonateError] = useState('');
   const giving = useMemo(
-    () => resolveCampaignGiving(givingLinks, campaign?.paymentProviders),
-    [givingLinks, campaign],
+    () => resolveCampaignGiving(givingLinks, paymentProviders),
+    [givingLinks, paymentProviders],
   );
-  // Pledge campaigns have their own public page (/pledge/[id]); regular
-  // (fundraising) donation campaigns live at /campaign/[id] — mirror the routing
-  // the public pages enforce (src/app/campaign/[campaignId]/page.tsx:29).
-  const shareUrl = usePublicShareUrl(
-    campaign ? `/${campaign.campaignType === 'pledge' ? 'pledge' : 'campaign'}/${campaign.id}` : null,
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    let unsub: (() => void) | null = null;
-
-    (async () => {
-      const tenantId = await getTenantScope();
-      if (cancelled) return;
-
-      // Single-field filter only (isActive); tenant scoping applied in-memory to avoid a composite index.
-      const q = tenantId
-        ? query(collection(db, 'campaigns'), where('tenantId', '==', tenantId), limit(20))
-        : query(collection(db, 'campaigns'), where('isActive', '==', true), limit(20));
-
-      unsub = onSnapshot(q, (snap) => {
-        if (cancelled) return;
-        const docs = snap.docs.filter(d => d.data().isActive === true);
-        if (docs.length > 0) {
-          const d = docs[0];
-          setCampaign({ id: d.id, ...d.data() } as Campaign);
-        } else {
-          setCampaign(null);
-        }
-        setLoading(false);
-      }, (err) => {
-        console.error('Failed to load campaign:', err);
-        if (!cancelled) setLoading(false);
-      });
-    })();
-
-    return () => { cancelled = true; unsub?.(); };
-  }, []);
-
-  useEffect(() => {
-    if (showDetail && auth.currentUser) {
-      setDonorName(auth.currentUser.displayName || '');
-      setDonorEmail(auth.currentUser.email || '');
-    }
-    if (!showDetail) {
-      setSelectedAmount(null);
-      setCustomAmount('');
-      setDonateError('');
-    }
-  }, [showDetail]);
-
-  if (loading || !campaign) return null;
-
-  const percentage = campaign.goal > 0
-    ? Math.min(100, Math.round((campaign.raised / campaign.goal) * 100))
-    : 0;
-
-  const daysLeft = campaign.endDate
-    ? Math.max(0, Math.ceil((new Date(campaign.endDate).getTime() - Date.now()) / 86_400_000))
-    : null;
-
-  const fmt = (n: number) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
-
   // `isCardGivingOn` is MainApp.tsx:255 (`hasStripeGiving`). `isMainSite` is
   // the same derivation MainApp uses just above that line. While this is
   // false the sheet below draws no card form, so it cannot post to the
@@ -135,23 +92,36 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
   const isWhiteLabel = !!contextTenantId && contextTenantId !== PLATFORM_TENANT_ID;
   const isMainSite = !isWhiteLabel || hasPlatformOverride();
   const cardGivingOn = isCardGivingOn({ isMainSite, stripeConnectStatus });
-  // Same shape as MainApp's `hasGivingRails`: a Give Now button with nowhere
-  // to land is a dead control. A legacy donateUrl, a published link, or card
-  // giving each count. None of them means the campaign card stays and the
-  // button does not. `onDonate` is a handoff, not a rail of its own.
-  const showGiveNow = Boolean(campaign.donateUrl) || giving.links.length > 0 || cardGivingOn;
+  return { giving, cardGivingOn };
+}
 
-  const handleDonateClick = () => {
-    if (campaign.donateUrl) {
-      window.open(campaign.donateUrl, '_blank', 'noopener,noreferrer');
-    } else if (giving.direct) {
-      window.open(giving.direct.url, '_blank', 'noopener,noreferrer');
-    } else if (onDonate) {
-      onDonate(campaign);
-    } else {
-      setShowDetail(true);
+/**
+ * The in-app campaign detail. The feed banner and a feed campaign card both
+ * open this, so a member never has to leave for `/campaign/[id]` — that route
+ * is the public share page, and it 404s when the host is not a tenant.
+ */
+export const CampaignDetailSheet: React.FC<{
+  campaign: Campaign;
+  onClose: () => void;
+}> = ({ campaign, onClose }) => {
+  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+  const [customAmount, setCustomAmount] = useState('');
+  const [donorName, setDonorName] = useState('');
+  const [donorEmail, setDonorEmail] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [donateError, setDonateError] = useState('');
+  const { giving, cardGivingOn } = useCampaignRails(campaign.paymentProviders);
+  const shareUrl = usePublicShareUrl(
+    `/${campaign.campaignType === 'pledge' ? 'pledge' : 'campaign'}/${campaign.id}`,
+  );
+  const { percentage, daysLeft } = campaignProgress(campaign);
+
+  useEffect(() => {
+    if (auth.currentUser) {
+      setDonorName(auth.currentUser.displayName || '');
+      setDonorEmail(auth.currentUser.email || '');
     }
-  };
+  }, []);
 
   const handleSubmitDonation = async () => {
     const amount = selectedAmount ?? (customAmount ? parseFloat(customAmount) : 0);
@@ -193,175 +163,305 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
   };
 
   return (
-    <>
-      {/* Navy "money band" campaign banner — the Harvest Member App design.
-          A cover photo (when set) washes behind the navy→gold gradient. Stacks
-          on mobile, goes horizontal on desktop. */}
-      <div className="mb-4 lg:mb-3">
-        <HeroBand
-          className="px-5 py-5 lg:px-6"
-          backdrop={campaign.coverImage ? (
-            <span aria-hidden className="absolute inset-0 pointer-events-none">
-              <Image
-                src={campaign.coverImage}
-                alt=""
-                fill
-                sizes="(max-width: 1024px) 100vw, 900px"
-                className="object-cover opacity-25"
-                style={{ objectPosition: 'center 35%' }}
-                referrerPolicy="no-referrer"
-              />
-            </span>
-          ) : null}
+    <Sheet
+      open
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+    >
+      <SheetContent
+        side="bottom"
+        showCloseButton={false}
+        data-testid="campaign-detail-sheet"
+        // Full-bleed page, not the primitive's bottom sheet. `cn` drops the
+        // conflicting utilities, so these do not need `!`. The starting
+        // translate uses the same variant as the primitive's slide, which is
+        // what lets it replace that class instead of fighting it.
+        className="inset-0 z-[300] flex h-dvh max-h-none w-full max-w-none gap-0 overflow-y-auto rounded-none border-0 bg-surface p-0 shadow-none data-[side=bottom]:inset-0 data-[side=bottom]:h-dvh data-[side=bottom]:max-h-none data-[side=bottom]:w-full data-[side=bottom]:border-0 data-[side=bottom]:data-starting-style:translate-none data-starting-style:opacity-100 sm:max-w-none"
+      >
+      <SheetHeader className="sticky top-0 z-10 flex-row items-center gap-3 border-b border-line bg-surface px-4 py-3">
+        {/* `Button` is a plain function, so `render={<Button />}` cannot take
+            the ref DialogClose needs and React warns. The close control is the
+            Sheet primitive wearing `buttonVariants`, the same workaround
+            AttachMenu uses. */}
+        <SheetClose
+          aria-label="Back"
+          className={buttonVariants({ variant: 'ghost', size: 'icon', className: 'size-11 shrink-0' })}
         >
-          <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="min-w-0">
-              <Eyebrow tone="glow" className="truncate">{campaign.title}</Eyebrow>
-              <div className="flex items-baseline gap-2 mt-1.5">
-                <span className="font-display font-light text-[30px] leading-none text-white tracking-[-0.02em]">{fmt(campaign.raised)}</span>
-                <span className="text-[13px] text-white/70">of {fmt(campaign.goal)}</span>
+          <ChevronLeft className="text-gold" strokeWidth={2.5} />
+        </SheetClose>
+        <SheetTitle className="min-w-0 flex-1 truncate font-display text-base font-bold text-strong">
+          {campaign.title}
+        </SheetTitle>
+        <ShareButton url={shareUrl} title={campaign.title} />
+      </SheetHeader>
+
+      <div className="mx-auto w-full space-y-4 p-4 pb-10 lg:max-w-2xl">
+        {campaign.coverImage && (
+          <div className="relative h-44 w-full flex-shrink-0 overflow-hidden rounded-xl border border-line bg-surface-sunken sm:h-52">
+            <Image src={campaign.coverImage} alt={campaign.title} fill sizes="(max-width: 672px) 100vw, 672px" className="object-cover" referrerPolicy="no-referrer" />
+            {daysLeft !== null && (
+              <div className="absolute top-3 right-3 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-xs">
+                <Clock size={12} />
+                {daysLeft === 0 ? 'Last day!' : `${daysLeft} days left`}
               </div>
-              <div className="mt-3 h-1.5 w-full lg:w-[220px] max-w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.2)' }}>
-                <div className="h-full rounded-full transition-[width] duration-700" style={{ width: `${percentage}%`, background: 'var(--wheat-glow)' }} />
-              </div>
-              <div className="mt-2 flex items-center gap-3 text-[11px] text-white/60">
-                <span className="font-semibold" style={{ color: 'var(--wheat-glow)' }}>{percentage}% funded</span>
-                {daysLeft !== null && (
-                  <span className="flex items-center gap-1"><Clock size={11} />{daysLeft === 0 ? 'Last day!' : `${daysLeft} days left`}</span>
-                )}
-              </div>
-            </div>
-            {showGiveNow && (
-              <button
-                onClick={handleDonateClick}
-                className="self-start lg:self-auto shrink-0 whitespace-nowrap px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                style={{ backgroundColor: 'var(--brand-color, #e6b325)', boxShadow: 'var(--glow-gold)' }}
-              >
-                Give Now
-              </button>
             )}
           </div>
-        </HeroBand>
+        )}
+
+        <div className="rounded-xl border border-line bg-surface-raised p-4">
+          <div className="mb-2.5 flex items-baseline justify-between text-sm">
+            <span className="font-semibold text-strong">{fmt(campaign.raised)} raised</span>
+            <span className="text-xs text-muted">of {fmt(campaign.goal)}</span>
+          </div>
+          <div className="mb-1.5 h-1.5 overflow-hidden rounded-full bg-surface-chip">
+            <div className="h-full rounded-full bg-gold" style={{ width: `${percentage}%` }} />
+          </div>
+          <div className="text-right text-xs font-semibold text-gold">{percentage}%</div>
+        </div>
+
+        <SheetDescription className="text-sm leading-relaxed text-body">
+          {campaign.description}
+        </SheetDescription>
+
+        {/* Card giving only. While the switch is off, none of this renders,
+            so this sheet cannot post to `/api/stripe/donate`. */}
+        {cardGivingOn && (
+          <>
+            <div>
+              <p className="text-sm font-bold text-strong mb-3">Select Amount</p>
+              <div className="grid grid-cols-4 gap-2 mb-3">
+                {AMOUNT_PRESETS.map(amt => (
+                  <Button
+                    key={amt}
+                    type="button"
+                    variant={selectedAmount === amt ? 'default' : 'outline'}
+                    onClick={() => { setSelectedAmount(amt); setCustomAmount(''); }}
+                    className="h-auto min-h-11 w-full py-2.5 font-bold"
+                  >
+                    ${amt}
+                  </Button>
+                ))}
+              </div>
+              <Input
+                type="number"
+                min={1}
+                value={customAmount}
+                onChange={e => { setCustomAmount(e.target.value); setSelectedAmount(null); }}
+                placeholder="Custom amount ($)"
+                className="h-auto rounded-xl px-3 py-2.5"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-sm font-bold text-strong">Your Information</p>
+              <Input
+                value={donorName}
+                onChange={e => setDonorName(e.target.value)}
+                placeholder="Your name"
+                className="h-auto rounded-xl px-3 py-2.5"
+              />
+              <Input
+                type="email"
+                value={donorEmail}
+                onChange={e => setDonorEmail(e.target.value)}
+                placeholder="Your email *"
+                className="h-auto rounded-xl px-3 py-2.5"
+              />
+            </div>
+
+            {donateError && (
+              <p className="text-xs font-medium text-destructive">{donateError}</p>
+            )}
+
+            <Button
+              type="button"
+              onClick={handleSubmitDonation}
+              disabled={isProcessing || (!selectedAmount && !customAmount)}
+              className="h-auto w-full gap-2 py-3.5 font-bold"
+            >
+              {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <Heart size={15} strokeWidth={2.5} />}
+              {isProcessing
+                ? 'Processing...'
+                : `Donate${selectedAmount ? ` $${selectedAmount}` : customAmount ? ` $${customAmount}` : ''}`}
+            </Button>
+          </>
+        )}
+
+        <CampaignGivingOptions
+          links={giving.links}
+          directLink={giving.direct}
+          narrowed={giving.narrowed}
+          showCardForm={cardGivingOn}
+          brandColor="var(--brand-color)"
+        />
       </div>
+      </SheetContent>
+    </Sheet>
+  );
+};
 
-      {/* Campaign Detail / Donation Modal */}
-      {showDetail && (
-        <div className="fixed inset-0 z-[300] flex flex-col bg-surface-raised overflow-y-auto">
-          {/* Header */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-line sticky top-0 bg-surface-raised z-10">
-            <button onClick={() => setShowDetail(false)} className="p-1">
-              <ChevronLeft size={24} color="var(--brand-color, #B8962E)" strokeWidth={2.5} />
-            </button>
-            <h2 className="text-base font-bold text-strong flex-1 truncate font-display">{campaign.title}</h2>
-            <ShareButton url={shareUrl} title={campaign.title} />
-          </div>
+/**
+ * The feed banner. Presentational: the widget owns the campaign, the rails and
+ * the sheet, and hands this the two things the banner can trigger.
+ */
+export const CampaignBanner: React.FC<{
+  campaign: Campaign;
+  showGiveNow: boolean;
+  onOpen: () => void;
+  onGiveNow: () => void;
+}> = ({ campaign, showGiveNow, onOpen, onGiveNow }) => {
+  const { percentage, daysLeft } = campaignProgress(campaign);
 
-          {/* Cover Image */}
-          {campaign.coverImage && (
-            <div className="relative h-52 bg-surface-sunken flex-shrink-0 lg:max-w-2xl lg:mx-auto w-full">
-              <Image src={campaign.coverImage} alt={campaign.title} fill sizes="100vw" className="object-cover" referrerPolicy="no-referrer" />
-              {daysLeft !== null && (
-                <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 text-white text-xs font-semibold px-2.5 py-1 rounded-full backdrop-blur-xs">
-                  <Clock size={12} />
-                  {daysLeft === 0 ? 'Last day!' : `${daysLeft} days left`}
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="p-4 space-y-5 pb-10 lg:max-w-2xl lg:mx-auto w-full">
-            {/* Progress */}
-            <div className="bg-surface-sunken rounded-2xl p-4">
-              <div className="flex justify-between items-baseline mb-2 text-sm">
-                <span className="font-bold text-strong">{fmt(campaign.raised)} raised</span>
-                <span className="text-muted">of {fmt(campaign.goal)}</span>
-              </div>
-              <div className="h-3 bg-surface-chip rounded-full overflow-hidden mb-1">
-                <div className="h-full rounded-full" style={{ width: `${percentage}%`, backgroundColor: 'var(--brand-color, #e6b325)' }} />
-              </div>
-              <div className="text-right text-xs font-bold" style={{ color: 'var(--brand-color, #e6b325)' }}>{percentage}%</div>
-            </div>
-
-            {/* Description */}
-            <p className="text-sm text-muted leading-relaxed">{campaign.description}</p>
-
-            {/* Card giving only. While the switch is off, none of this renders,
-                so this sheet cannot post to `/api/stripe/donate`. */}
-            {cardGivingOn && (
-              <>
-                <div>
-                  <p className="text-sm font-bold text-strong mb-3">Select Amount</p>
-                  <div className="grid grid-cols-4 gap-2 mb-3">
-                    {AMOUNT_PRESETS.map(amt => (
-                      <button
-                        key={amt}
-                        onClick={() => { setSelectedAmount(amt); setCustomAmount(''); }}
-                        className={`py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${
-                          selectedAmount === amt ? 'text-white border-transparent' : 'text-body border-line bg-surface-raised'
-                        }`}
-                        style={selectedAmount === amt ? { backgroundColor: 'var(--brand-color, #e6b325)', borderColor: 'var(--brand-color, #e6b325)' } : {}}
-                      >
-                        ${amt}
-                      </button>
-                    ))}
-                  </div>
-                  <input
-                    type="number"
-                    min={1}
-                    value={customAmount}
-                    onChange={e => { setCustomAmount(e.target.value); setSelectedAmount(null); }}
-                    placeholder="Custom amount ($)"
-                    className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-gold"
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <p className="text-sm font-bold text-strong">Your Information</p>
-                  <input
-                    value={donorName}
-                    onChange={e => setDonorName(e.target.value)}
-                    placeholder="Your name"
-                    className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-gold"
-                  />
-                  <input
-                    type="email"
-                    value={donorEmail}
-                    onChange={e => setDonorEmail(e.target.value)}
-                    placeholder="Your email *"
-                    className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-gold"
-                  />
-                </div>
-
-                {donateError && (
-                  <p className="text-xs text-red-500 font-medium">{donateError}</p>
-                )}
-
-                <button
-                  onClick={handleSubmitDonation}
-                  disabled={isProcessing || (!selectedAmount && !customAmount)}
-                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold text-white disabled:opacity-50 transition-opacity"
-                  style={{ backgroundColor: 'var(--brand-color, #e6b325)' }}
-                >
-                  {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <Heart size={15} strokeWidth={2.5} />}
-                  {isProcessing
-                    ? 'Processing...'
-                    : `Donate${selectedAmount ? ` $${selectedAmount}` : customAmount ? ` $${customAmount}` : ''}`}
-                </button>
-              </>
-            )}
-
-            <CampaignGivingOptions
-              links={giving.links}
-              directLink={giving.direct}
-              narrowed={giving.narrowed}
-              showCardForm={cardGivingOn}
-              brandColor="var(--brand-color, #e6b325)"
+  // Navy "money band" campaign banner — the Harvest Member App design. A cover
+  // photo (when set) washes behind the navy→gold gradient. Stacks on mobile,
+  // goes horizontal on desktop. The band is a plain container: the raised and
+  // goal figures stay text, "View details" is its own control stretched over
+  // the band, and Give Now is a sibling of that control. A click or key on
+  // Give Now therefore cannot activate the band, so it does not stop propagation.
+  return (
+    <div className="relative mb-4 rounded-xl lg:mb-3">
+      <HeroBand
+        radius="inherit"
+        className="pointer-events-none ring-1 ring-inset ring-white/10"
+        // The kit's root is `relative`. A class of `absolute` does not win
+        // against that, and the empty band then collapses. Inline position
+        // does win, so the navy fill covers the content box.
+        style={{ position: 'absolute', inset: 0 }}
+        backdrop={campaign.coverImage ? (
+          <span aria-hidden className="absolute inset-0 pointer-events-none">
+            <Image
+              src={campaign.coverImage}
+              alt=""
+              fill
+              sizes="(max-width: 1024px) 100vw, 900px"
+              className="object-cover opacity-25"
+              style={{ objectPosition: 'center 35%' }}
+              referrerPolicy="no-referrer"
             />
+          </span>
+        ) : null}
+      />
+      <div className="relative flex flex-col gap-4 px-4 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-5">
+        <div className="min-w-0">
+          <Eyebrow tone="glow" className="truncate">{campaign.title}</Eyebrow>
+          <div className="flex items-baseline gap-2 mt-1.5">
+            <span className="font-display font-light text-[30px] leading-none text-white tracking-[-0.02em]">{fmt(campaign.raised)}</span>
+            <span className="text-[13px] text-white/70">of {fmt(campaign.goal)}</span>
+          </div>
+          <div className="mt-3 h-1.5 w-full max-w-full overflow-hidden rounded-full bg-white/20 lg:w-[220px]">
+            <div className="h-full rounded-full transition-[width] duration-700" style={{ width: `${percentage}%`, background: 'var(--wheat-glow)' }} />
+          </div>
+          <div className="mt-2 flex items-center gap-3 text-[11px] text-white/60">
+            <span className="font-semibold" style={{ color: 'var(--wheat-glow)' }}>{percentage}% funded</span>
+            {daysLeft !== null && (
+              <span className="flex items-center gap-1"><Clock size={11} />{daysLeft === 0 ? 'Last day!' : `${daysLeft} days left`}</span>
+            )}
           </div>
         </div>
+        <Button
+          type="button"
+          variant="ghost"
+          aria-label={`View ${campaign.title}`}
+          onClick={onOpen}
+          className="absolute inset-0 z-0 h-auto min-h-11 w-full cursor-pointer rounded-xl bg-transparent p-0 font-normal hover:bg-transparent active:translate-y-0"
+        >
+          <span className="sr-only">View details</span>
+        </Button>
+        {showGiveNow && (
+          <Button
+            type="button"
+            onClick={onGiveNow}
+            className="relative z-10 h-11 self-start px-4 text-[12.5px] font-semibold lg:self-auto"
+          >
+            Give Now
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export const CampaignWidgetView: React.FC<{
+  campaign: Campaign;
+  onDonate?: (campaign: Campaign) => void;
+}> = ({ campaign, onDonate }) => {
+  const [showDetail, setShowDetail] = useState(false);
+  const { giving, cardGivingOn } = useCampaignRails(campaign.paymentProviders);
+
+  // Same shape as MainApp's `hasGivingRails`: a Give Now button with nowhere
+  // to land is a dead control. A legacy donateUrl, a published link, or card
+  // giving each count. None of them means the campaign card stays and the
+  // button does not. `onDonate` is a handoff, not a rail of its own.
+  const showGiveNow = Boolean(campaign.donateUrl) || giving.links.length > 0 || cardGivingOn;
+
+  const handleDonateClick = () => {
+    if (campaign.donateUrl) {
+      window.open(campaign.donateUrl, '_blank', 'noopener,noreferrer');
+    } else if (giving.direct) {
+      window.open(giving.direct.url, '_blank', 'noopener,noreferrer');
+    } else if (onDonate) {
+      onDonate(campaign);
+    } else {
+      setShowDetail(true);
+    }
+  };
+
+  return (
+    <>
+      <CampaignBanner
+        campaign={campaign}
+        showGiveNow={showGiveNow}
+        onOpen={() => setShowDetail(true)}
+        onGiveNow={handleDonateClick}
+      />
+
+      {showDetail && (
+        <CampaignDetailSheet campaign={campaign} onClose={() => setShowDetail(false)} />
       )}
     </>
   );
+};
+
+const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
+  const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    let unsub: (() => void) | null = null;
+
+    (async () => {
+      const tenantId = await getTenantScope();
+      if (cancelled) return;
+
+      // Single-field filter only (isActive); tenant scoping applied in-memory to avoid a composite index.
+      const q = tenantId
+        ? query(collection(db, 'campaigns'), where('tenantId', '==', tenantId), limit(20))
+        : query(collection(db, 'campaigns'), where('isActive', '==', true), limit(20));
+
+      unsub = onSnapshot(q, (snap) => {
+        if (cancelled) return;
+        const docs = snap.docs.filter(d => d.data().isActive === true);
+        if (docs.length > 0) {
+          const d = docs[0];
+          setCampaign({ id: d.id, ...d.data() } as Campaign);
+        } else {
+          setCampaign(null);
+        }
+        setLoading(false);
+      }, (err) => {
+        console.error('Failed to load campaign:', err);
+        if (!cancelled) setLoading(false);
+      });
+    })();
+
+    return () => { cancelled = true; unsub?.(); };
+  }, []);
+
+  if (loading || !campaign) return null;
+
+  return <CampaignWidgetView campaign={campaign} onDonate={onDonate} />;
 };
 
 export default CampaignWidget;

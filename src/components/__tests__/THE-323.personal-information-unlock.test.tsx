@@ -582,6 +582,9 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
     // the same kind as Profile.tsx: neither view spells it in a className, which
     // `the-324-guards.test.ts` asserts on the stripped source.
     expect(users).toEqual([
+      // The social scheduler screenshot harness. The stand-in account button
+      // uses min-h-11. It is not a product screen, and it 404s in production.
+      'src/app/dev/social-scheduler/preview.tsx',
       // 🔴 APPENDED BY THE-338, NOTHING BELOW REMOVED OR REWRITTEN. It sits
       // FIRST for the same reason THE-334's entry does: this list is the
       // sweep's own sorted order, not the order tickets arrived in.
@@ -606,10 +609,13 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // premise this section exists to keep honest.
       'src/components/AdminCourses.tsx',
       // Phase 1 removed the desktop icon rail, and those rail buttons were the
-      // only `min-h-11` spellings in AdminDashboard. The file is no longer in
-      // this list because the sweep matches the class, and the class left with
-      // the rail. The same ungated floor now lives on the desktop sidebar,
+      // only `min-h-11` spellings in AdminDashboard. The shell fix round puts
+      // the class back on the platform inbox bell: a shadcn Button, ghost and
+      // icon, spelled `min-h-11 sm:min-h-0` so the 44px phone floor holds and
+      // the 32px icon size wins from `sm` up, the same shape as the theme
+      // toggle. It USES the class. The desktop sidebar's ungated floor is
       // recorded below with the other admin-shell files.
+      'src/components/AdminDashboard.tsx',
       // APPENDED BY THE-346, NOTHING BELOW REMOVED OR REWRITTEN. Both entries
       // USE the class, in the Rule-4 form - `min-h-11 sm:min-h-0`.
       //
@@ -628,6 +634,20 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/AdminDocs.tsx',
       'src/components/AdminEvents.tsx',
       'src/components/AdminSettings.tsx',   // uses it: THE-316's TOUCH_FLOOR
+      /**
+       * APPENDED for the campaign banner sheet. Nothing around it removed or
+       * rewritten. Both files sit here because this list is the sweep's sorted
+       * order.
+       *
+       * Both USE the class, as a flat `min-h-11` with no `sm:min-h-0`. THE-356
+       * measures each `<Button>` with the text "Aa" and none of its children, so
+       * a banner or a feed card whose real content is far taller still reports
+       * the empty control. The amount presets are compact and need the floor
+       * themselves. There is no density token on these controls, so releasing
+       * the floor from `sm` up is not what keeps a desktop row at 38px.
+       */
+      'src/components/CampaignWidget.tsx',
+      'src/components/EmbedCard.tsx',
       /**
        * 🔴 APPENDED BY THE-358, NOTHING AROUND IT REMOVED OR REWRITTEN. It sits
        * here because this list is the sweep's own sorted order, not the order
@@ -751,6 +771,13 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // known to produce 44px below the breakpoint and 38px above it rather
       // than assumed to.
       'src/components/admin/GivingDocsLink.tsx',     // THE-368: USES it, as a phone-only 44px tap floor
+      // APPENDED for the social scheduler, nothing around it removed. Sorted
+      // here because this list is the sweep's own order. Both USE the class as
+      // `min-h-11 sm:min-h-[38px]`: 44px below sm, and 38px from sm up, which
+      // is the desktop control floor. A flat min-h-11 would sit under that
+      // floor once the root drops to 14.5px.
+      'src/components/admin/social/SocialScheduler.tsx',
+      'src/components/admin/social/SocialUpgradeWall.tsx',
       'src/components/attach/AttachMenu.tsx',        // THE-331: USES it, as a phone-only 44px tap floor
       // APPENDED BY #531, NOTHING AROUND IT REMOVED. Sorted position, not arrival
       // order. BlogScheduleFields USES the class as a flat min-h-11 on each of

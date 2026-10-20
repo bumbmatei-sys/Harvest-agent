@@ -325,7 +325,7 @@ describe('5 — the contact caps and add-on list point at plan-features.ts', () 
 
   it('🔴 the add-on COUNT the docs state is the count the type declares', () => {
     const keys = Object.keys(NO_ADDONS).sort();
-    expect(keys, 'the add-on set moved').toEqual(['adminSeats', 'aiAssistant', 'unlimitedContacts']);
+    expect(keys, 'the add-on set moved').toEqual(['adminSeats', 'aiAssistant', 'socialScheduler', 'unlimitedContacts']);
 
     const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six'];
     const stated = WORDS[keys.length];

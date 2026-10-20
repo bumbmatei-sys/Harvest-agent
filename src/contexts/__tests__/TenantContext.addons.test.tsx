@@ -58,14 +58,14 @@ function tenantDoc(data: Record<string, unknown>) {
 
 /** The three meanings, as `tenants/{id}.addons` carries them. */
 const OWNS = {
-  nothing: { aiAssistant: 0, adminSeats: 0, unlimitedContacts: false },
-  fiveSeats: { aiAssistant: 0, adminSeats: 5, unlimitedContacts: false },
+  nothing: { aiAssistant: 0, adminSeats: 0, unlimitedContacts: false, socialScheduler: 0 },
+  fiveSeats: { aiAssistant: 0, adminSeats: 5, unlimitedContacts: false, socialScheduler: 0 },
   aBitOfEverything: {
-    aiAssistant: 1, adminSeats: 2, unlimitedContacts: true,
+    aiAssistant: 1, adminSeats: 2, unlimitedContacts: true, socialScheduler: 0,
   },
   /** 🔴 THE-370 — a document still carrying the two retired keys. */
   legacyRetiredKeys: {
-    aiAssistant: 0, adminSeats: 0, unlimitedContacts: false, contactPacks: 3, campuses: 2,
+    aiAssistant: 0, adminSeats: 0, unlimitedContacts: false, socialScheduler: 0, contactPacks: 3, campuses: 2,
   },
 };
 
@@ -147,7 +147,7 @@ describe('the client sees the add-ons a tenant owns', () => {
     await renderProvider();
 
     expect(seen?.tenantAddons).toEqual({
-      aiAssistant: 0, adminSeats: 0, unlimitedContacts: false,
+      aiAssistant: 0, adminSeats: 0, unlimitedContacts: false, socialScheduler: 0,
     });
   });
 

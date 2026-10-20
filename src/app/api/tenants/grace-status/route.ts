@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requireAuth, requireTenantAdmin } from '@/lib/api-auth';
+import { firebaseAdminCredentialsAvailable } from '@/lib/firebase-admin-credentials';
 import { getTenantPrivate, DODO_ON_HOLD_FIELD } from '@/lib/tenant-private';
 import { resolveTenantGraceState, DODO_GRACE_PERIOD_MS } from '@/lib/tenant-lifecycle';
 import { convergeExpiredDodoGrace } from '@/lib/dodo/lifecycle';
@@ -99,15 +100,26 @@ export async function GET(request: NextRequest) {
    * user document would silently refuse a legitimate admin — THE-64 exactly — so
    * the helper does the work and nothing here re-implements it.
    */
-  const adminOrErr = await requireTenantAdmin(request, tenantId);
-  if (adminOrErr instanceof NextResponse) return adminOrErr;
+  if (!firebaseAdminCredentialsAvailable()) {
+    console.error('grace-status skipped: Firebase admin credentials are not available');
+    return NextResponse.json({ error: 'unavailable' }, { status: 503 });
+  }
+
+  let onHoldAt: unknown;
+  try {
+    const adminOrErr = await requireTenantAdmin(request, tenantId);
+    if (adminOrErr instanceof NextResponse) return adminOrErr;
+    onHoldAt = (await getTenantPrivate(tenantId))[DODO_ON_HOLD_FIELD];
+  } catch (error) {
+    console.error('grace-status could not read Firebase admin', error);
+    return NextResponse.json({ error: 'unavailable' }, { status: 503 });
+  }
 
   // One clock for both the answer and the convergence below, so the state that
   // is reported and the state that is written down can never be resolved against
   // two different `now`s.
   const now = Date.now();
 
-  const onHoldAt = (await getTenantPrivate(tenantId))[DODO_ON_HOLD_FIELD];
   const graceState = resolveTenantGraceState({ onHoldAt, now });
 
   const body: GraceStatusBody = { state: graceState };

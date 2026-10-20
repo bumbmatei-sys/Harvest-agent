@@ -7,6 +7,7 @@ import { withSentryConfig } from "@sentry/nextjs";
 // Vendored `server-only` (vendor/server-only). The lockfile cannot take the
 // package, and Next resolves it from this directory the same way it resolves
 // a real install. The marker throws if a client component imports it.
+// node_modules stays first, and a second webpack pass does not add vendor twice.
 const vendorDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "vendor");
 
 /** @type {import('next-pwa').PWAConfig} */
@@ -40,8 +41,9 @@ const nextConfig = {
     instrumentationHook: true,
   },
   webpack: (config) => {
-    config.resolve.modules = config.resolve.modules || [];
-    config.resolve.modules.push(vendorDir);
+    const modules = Array.isArray(config.resolve.modules) ? [...config.resolve.modules] : ["node_modules"];
+    if (!modules.includes(vendorDir)) modules.push(vendorDir);
+    config.resolve.modules = modules;
     return config;
   },
   images: {

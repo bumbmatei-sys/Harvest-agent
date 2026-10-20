@@ -73,9 +73,9 @@ const DASH = 'src/components/AdminDashboard.tsx';
 const HEADER = 'src/components/AdminScreenHeader.tsx';
 const INBOX = 'src/components/inbox/TenantInbox.tsx';
 
-/** The desktop top bar's own right-hand cluster. */
+/** The desktop content bar's right-hand cluster. The bar lives in its own file. */
 const desktopRightCluster = discover(
-  DASH,
+  'src/components/admin-shell/AdminContentBar.tsx',
   /\{\/\* Right: screen action · search · notifications · account \*\/\}\s*\n\s*<div className="([^"]+)">/,
   'the desktop top bar’s right cluster',
 );

@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { LayoutDashboard, Church, FileText, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, ListChecks, QrCode, Radio, ExternalLink, Link2, Palette, Bell, X, Library, HandCoins, UserPlus } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, BrainCircuit, Inbox, GraduationCap, ChevronRight, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, ListChecks, QrCode, Radio, Link2, Palette, Bell, X, Library, HandCoins, UserPlus } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import PlatformInbox from './PlatformInbox';
 import AdminChurches from './AdminChurches';
@@ -13,12 +13,13 @@ import AdminSettings from './AdminSettings';
 import AdminUpgradePage from './AdminUpgradePage';
 import AdminBranding from './AdminBranding';
 import { AdminHome } from './admin-shell/AdminHome';
-import { AdminDesktopSidebar, SIDEBAR_ICON_WIDTH } from './admin-shell/AdminDesktopSidebar';
+import { AdminContentBar } from './admin-shell/AdminContentBar';
+import { AdminDesktopSidebar, SIDEBAR_ICON_WIDTH, SIDEBAR_WIDTH } from './admin-shell/AdminDesktopSidebar';
 import { NavEntitlementCatalog } from './admin-shell/NavEntitlementCatalog';
 import { ShellPlaceholder } from './admin-shell/ShellPlaceholder';
 import { useLgUp } from './admin-shell/use-lg';
 import { ensureLightDefault } from './admin-shell/use-shell-theme';
-import { sideForTab, type ShellPlaceholderId, type ShellSideId } from './admin-shell/shell-nav';
+import { sectionForTab, sideForTab, type ShellPlaceholderId, type ShellSideId } from './admin-shell/shell-nav';
 import AffiliateSection from './AffiliateSection';
 import NewsletterEditor from './NewsletterEditor';
 import NewsletterCampaigns from './NewsletterCampaigns';
@@ -37,6 +38,7 @@ import AdminAccounting from './AdminAccounting';
 import AdminForms from './AdminForms';
 import AdminCheckin from './AdminCheckin';
 import AdminLivestream from './AdminLivestream';
+import { SocialScheduler } from './admin/social/SocialScheduler';
 import AdminSms from './AdminSms';
 import AdminEvents from './AdminEvents';
 import AdminServices from './AdminServices';
@@ -61,8 +63,9 @@ import { useAppStore } from '../store/useAppStore';
 import { useCurrentUser } from '../hooks/queries/useUserQueries';
 import { useTenant as useTenantDoc } from '../hooks/queries/useTenantQueries';
 import { useTenant } from '../contexts/TenantContext';
+import { Button } from '@/components/ui/button';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
-import { TooltipProvider } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { SLUG_TO_TAB, TAB_TO_SLUG } from '../lib/admin-sections';
 /**
  * THE-351 — the PER-TENANT inbox: someone said they paid for a ticket and a
@@ -80,6 +83,14 @@ import { SLUG_TO_TAB, TAB_TO_SLUG } from '../lib/admin-sections';
 import { TenantInbox } from './inbox/TenantInbox';
 
 const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
+
+/**
+ * Sidebar footer bell. `min-h-11` is the 44px phone floor (THE-356); `sm:min-h-0`
+ * lets the 32px icon size win from `sm` up, same as the theme toggle.
+ * `data-active:` is the gold highlight when the Platform Inbox tab is open.
+ */
+const PLATFORM_INBOX_BUTTON =
+  'relative size-8 min-h-11 shrink-0 text-sidebar-foreground hover:bg-sidebar-hover hover:text-sidebar-accent-foreground data-active:bg-sidebar-hover data-active:text-action sm:min-h-0 [&_svg]:size-[17px] [&_svg]:stroke-[1.7]';
 
 // URL slug ↔ internal tab id. Most ids map 1:1; only `ai` differs, so the URL
 // reads nicely (/admin/ai-knowledge).
@@ -848,6 +859,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     navAllows(features?.livestream) &&
       (hasFullAccess || perms.manageLivestream) &&
       { id: 'livestream', label: 'Livestream', icon: Radio },
+    // Social scheduling is an add-on on every tier. This entry stays in the
+    // mobile drawer, where the screen shows the upgrade wall. The desktop
+    // sidebar drops it unless the add-on is held or the viewer is a super
+    // admin. Gating the entry on the plan cell would hide the wall, because
+    // that cell is false everywhere.
+    hasFullAccess && { id: 'social', label: 'Social', icon: Radio },
     // SMS Automation (Twilio)
     // Master switch first, exactly as the Affiliate entry below does it: while
     // SMS is hidden NOBODY gets the entry, super admin included. The plan and
@@ -932,6 +949,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     ...(showInbox ? [{ id: 'inbox', label: 'Inbox', icon: Inbox }] : []),
     ...(canSettings ? [{ id: 'settings', label: 'Settings', icon: Settings }] : []),
   ].forEach((t) => desktopNavById.set(t.id, t));
+  // Social stays in `allTabs` for the mobile drawer. The desktop sidebar shows
+  // the link only when the add-on is held, or the viewer is a super admin.
+  if (!(isSuperAdmin || features?.socialScheduler === true)) desktopNavById.delete('social');
 
   // THE-225 — the emptiness rule, now read from layout/nav-groups.ts instead of
   // restated inline. The behaviour is unchanged (this sidebar has omitted empty
@@ -1009,7 +1029,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     <TooltipProvider>
     <SidebarProvider
       className="h-[100dvh] min-h-0 overflow-hidden bg-surface font-sans"
-      style={{ '--sidebar-width-icon': SIDEBAR_ICON_WIDTH } as React.CSSProperties}
+      style={{ '--sidebar-width': SIDEBAR_WIDTH, '--sidebar-width-icon': SIDEBAR_ICON_WIDTH } as React.CSSProperties}
     >
       {lgUp && (
         <AdminDesktopSidebar
@@ -1023,6 +1043,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           onNavigate={go}
           onPlaceholder={(id) => { setShellPlaceholder(id); const next = sideForTab(id); if (next) setShellSide(next); }}
           accountMenu={<MyAccountMenu {...accountMenuProps} variant="rail" />}
+          accountLabel={accountMenuProps.displayName || 'Account'}
+          footerExtra={showInbox ? (
+            <Tooltip>
+              <TooltipTrigger render={<span className="inline-flex" />}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className={PLATFORM_INBOX_BUTTON}
+                  data-active={activeTab === 'inbox' ? true : undefined}
+                  aria-current={activeTab === 'inbox' ? 'page' : undefined}
+                  onClick={() => go('inbox')}
+                  aria-label="Platform Inbox"
+                >
+                  <Bell />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1 right-1 size-2 rounded-full bg-red-500" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Platform Inbox</TooltipContent>
+            </Tooltip>
+          ) : undefined}
         />
       )}
       {process.env.NODE_ENV === 'test' && (
@@ -1147,80 +1190,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       </div>{/* /nav visibility wrapper — THE-346 */}
 
       {/* Main Container */}
-      <SidebarInset data-admin-content className="flex-1 flex flex-col h-[100dvh] min-w-0 overflow-hidden bg-surface">
-        {/* Desktop branded top bar — Open member app · centered page title ·
-            search / notifications / account. Matches the admin mockup. */}
-        <div className="hidden lg:flex bg-surface-raised border-b border-line h-14 items-center px-6 xl:px-8 z-10 w-full shrink-0">
-          {/* Left: back (when a sub-view overrides the header, e.g. an open chat
-              thread) — otherwise the "Open member app" shortcut. */}
-          {headerOverride?.onBack ? (
-            <button
-              onClick={headerOverride.onBack}
-              className="flex items-center gap-1.5 text-[13px] font-semibold text-strong hover:opacity-70 transition-opacity shrink-0"
-              aria-label="Back"
-            >
-              <ChevronLeft size={20} strokeWidth={2.5} className="text-gold" />
-              Back
-            </button>
-          ) : (
-            <button
-              onClick={handleViewApp}
-              className="flex items-center gap-2 rounded-full border border-line bg-surface-raised pl-1.5 pr-3 py-1.5 text-[13px] font-semibold text-strong hover:bg-surface-sunken transition-colors shrink-0"
-            >
-              {/* Same white -> transparent fix as the sidebar pill: this chip
-                  sits on --surface-raised (the button's own fill), so light is
-                  unchanged and dark stops rendering a bright block. No text
-                  sits on it — it holds the logo image — so it keeps its 14%. */}
-              <span className="w-6 h-6 rounded-md bg-[color-mix(in_srgb,var(--brand-color)_14%,transparent)] flex items-center justify-center shrink-0">
-                <img src={displayLogo} alt="" className="w-4 h-4 object-contain" />
-              </span>
-              Open member app
-              <ExternalLink size={13} className="text-muted" />
-            </button>
-          )}
-
-          {/* Center: active screen title */}
-          <h1 className="flex-1 text-center font-display text-xl font-normal tracking-[-0.01em] text-strong truncate px-4">
-            {headerOverride?.title ?? headerTitle}
-          </h1>
-
-          {/* Right: screen action · search · notifications · account */}
-          <div className="flex items-center gap-1 shrink-0">
-            {(headerOverride ? headerOverride.action : headerAction) && (
-              <div className="mr-1 flex items-center">{headerOverride ? headerOverride.action : headerAction}</div>
-            )}
-            {/* 🔴 THE-351 — "top right" on the DESKTOP shell is this cluster, and
-                it is the same one the platform bell has always sat in. It is
-                rendered for every tenant and for nobody on the platform apex:
-                `platformOverride` is the super-admin-on-apex context, which has
-                no church, no registrations and therefore nothing to confirm. */}
-            {!platformOverride && currentTenantId && (
+      <SidebarInset data-admin-content className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card md:bg-card">
+        {/* Desktop toolbar — sidebar-07 pattern (trigger, separator, breadcrumb)
+            with the screen's own actions on the right. The payments inbox sits
+            in this bar. The platform bell stays in the sidebar footer. Mobile
+            keeps the header below, including its own inbox. Mounted only at lg
+            so a phone does not also mount this bar's inbox. */}
+        {lgUp && (
+          <AdminContentBar
+            section={sectionForTab(activeTab) ?? ''}
+            title={headerOverride?.title ?? (activeTab === 'dashboard' ? 'Home' : headerTitle)}
+            onBack={headerOverride?.onBack}
+            onOpenApp={headerOverride?.onBack ? undefined : handleViewApp}
+            actions={(headerOverride ? headerOverride.action : headerAction) || undefined}
+            trailing={!platformOverride && currentTenantId ? (
               <TenantInbox tenantId={currentTenantId} />
-            )}
-            {showInbox && (
-              <button
-                onClick={() => go('inbox')}
-                className="w-9 h-9 rounded-full flex items-center justify-center text-muted hover:text-strong hover:bg-surface-sunken transition-colors relative"
-                style={activeTab === 'inbox' ? { color: 'var(--brand-color, #C9963A)' } : undefined}
-                title="Platform Inbox"
-                aria-label="Platform Inbox"
-              >
-                <Bell size={18} />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white" />
-                )}
-              </button>
-            )}
-            {/* 🔴 THE-334 — the desktop account avatar is GONE from the top bar:
-                "remove the profile image from top right since you put it in the
-                bottom sidebar". It is the same menu with the same entitlements,
-                now pinned at the rail's floor where the founder's ClickUp
-                reference pins Invite and Upgrade — one entry point, not two.
-                ⚠️ The MOBILE instance, on AdminScreenHeader below, STAYS: the
-                rail is `lg:`-only, so removing that one would leave a phone with
-                no way to reach Profile, Billing, Settings or Log out. */}
-          </div>
-        </div>
+            ) : undefined}
+          />
+        )}
 
         {/* Mobile screen header — back + title + screen action + account. On
             desktop the branded top bar above carries title/action/back, so this
@@ -1403,6 +1390,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             planAllows(features?.livestream)
               ? <div className="p-4 lg:p-0"><AdminLivestream /></div>
               : <PlanUpgradeScreen featureName="Livestream" featureKey="livestream" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
+          ) : activeTab === 'social' ? (
+            <div className="p-4 lg:p-0"><SocialScheduler knownEntitled={isSuperAdmin || features?.socialScheduler === true} onUpgrade={() => go('upgrade')} /></div>
           ) : activeTab === 'sms' ? (
             // With SMS hidden the nav entry is gone, so this branch only catches
             // a typed or bookmarked /admin/sms — and it must not render AdminSms

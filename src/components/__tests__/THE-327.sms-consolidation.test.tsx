@@ -953,7 +953,7 @@ describe('19 · no colour hardcoded, no emoji; both palettes resolve', () => {
   const COLOUR_BUDGET: Record<string, number> = {
     'components/AdminSms.tsx': 0,
     'components/settings/SmsSection.tsx': 0,
-    'components/AdminDashboard.tsx': 6,        // was 9 on main; the rail's three fallbacks left with the rail
+    'components/AdminDashboard.tsx': 5,        // was 9 on main; the rail's three fallbacks left with the rail, and the Eden shell dropped one more with the old top-bar chip
   };
 
   /** Same budget, for functional colour notation. Also pre-existing. */

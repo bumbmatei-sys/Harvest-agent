@@ -223,6 +223,7 @@ describe('plan_changed writes the add-on set', () => {
     expect(tenantDoc()?.addons).toEqual({
       aiAssistant: 2,
       adminSeats: 3,
+      socialScheduler: 0,
       unlimitedContacts: true,
     });
     // The tier still moved: this is one event and one write.
@@ -484,6 +485,7 @@ describe('no addon id is written to the tenant doc', () => {
     expect(tenantDoc()?.addons).toEqual({
       aiAssistant: 1,
       adminSeats: 2,
+      socialScheduler: 0,
       unlimitedContacts: true,
     });
   });
@@ -517,7 +519,7 @@ describe('no addon id is written to the tenant doc', () => {
     });
 
     expect(Object.keys(tenantDoc()!.addons).sort()).toEqual(
-      ['adminSeats', 'aiAssistant', 'unlimitedContacts'],
+      ['adminSeats', 'aiAssistant', 'socialScheduler', 'unlimitedContacts'],
     );
   });
 });

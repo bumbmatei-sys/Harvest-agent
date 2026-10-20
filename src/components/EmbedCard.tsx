@@ -6,6 +6,8 @@ import { db } from '../firebase';
 import { isBlogPostPublic } from '../lib/blog/visibility';
 import { FileText, HeartHandshake, Calendar as CalendarIcon, MapPin, Globe, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { CampaignDetailSheet, type Campaign } from './CampaignWidget';
+import { Button } from '@/components/ui/button';
 
 // A post carries at most ONE embed — a lightweight reference (type + id), not a
 // copy of the referenced content. The title/image/progress are resolved from
@@ -33,6 +35,11 @@ export interface ResolvedEmbed {
   // event
   dateLabel?: string;
   location?: string;
+  /**
+   * The live campaign, when this embed is a fundraiser. The member feed opens
+   * it in `CampaignDetailSheet` instead of navigating to the public page.
+   */
+  campaign?: Campaign;
 }
 
 type ResolveStatus = 'loading' | 'ready' | 'missing';
@@ -60,6 +67,26 @@ const fmtMoney = (n: number) =>
 
 const fmtDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
+function campaignFromDoc(id: string, d: Record<string, unknown>): Campaign {
+  const providers = Array.isArray(d.paymentProviders)
+    ? d.paymentProviders.filter((provider): provider is string => typeof provider === 'string')
+    : undefined;
+  return {
+    id,
+    title: typeof d.title === 'string' && d.title ? d.title : 'Campaign',
+    description: typeof d.description === 'string' ? d.description : '',
+    coverImage: typeof d.coverImage === 'string' ? d.coverImage : undefined,
+    goal: Number(d.goal) || 0,
+    raised: Number(d.raised) || 0,
+    endDate: typeof d.endDate === 'string' ? d.endDate : undefined,
+    isActive: d.isActive !== false,
+    donateUrl: typeof d.donateUrl === 'string' ? d.donateUrl : undefined,
+    paymentProviders: providers,
+    tenantId: typeof d.tenantId === 'string' ? d.tenantId : undefined,
+    campaignType: typeof d.campaignType === 'string' ? d.campaignType : undefined,
+  };
+}
+
 async function resolveEmbed(embed: PostEmbed, tenantId: string | null | undefined): Promise<ResolvedEmbed | null> {
   try {
     if (embed.type === 'blog') {
@@ -81,22 +108,25 @@ async function resolveEmbed(embed: PostEmbed, tenantId: string | null | undefine
     if (embed.type === 'fundraising') {
       const snap = await getDoc(doc(db, 'campaigns', embed.id));
       if (!snap.exists()) return null;
-      const d = snap.data() as any;
-      const goal = Number(d.goal) || 0;
-      const raised = Number(d.raised) || 0;
-      const percentage = goal > 0 ? Math.min(100, Math.round((raised / goal) * 100)) : 0;
-      // Pledge campaigns have their own public page; regular donation campaigns
-      // live at /campaign/[id] — mirror CampaignWidget's routing.
-      const isPledge = d.campaignType === 'pledge';
+      const d = snap.data() as Record<string, unknown>;
+      const campaign = campaignFromDoc(embed.id, d);
+      const percentage = campaign.goal > 0
+        ? Math.min(100, Math.round((campaign.raised / campaign.goal) * 100))
+        : 0;
+      // Pledge campaigns keep their public page. A fundraising campaign's
+      // public URL stays `/campaign/[id]` for shares; the member feed opens
+      // the in-app sheet instead of following that href.
+      const isPledge = campaign.campaignType === 'pledge';
       return {
         type: 'fundraising',
         id: embed.id,
-        title: d.title || 'Campaign',
-        image: d.coverImage || undefined,
-        raised,
-        goal,
+        title: campaign.title,
+        image: campaign.coverImage,
+        raised: campaign.raised,
+        goal: campaign.goal,
         percentage,
         href: `/${isPledge ? 'pledge' : 'campaign'}/${embed.id}`,
+        campaign,
       };
     }
     // event — lives under tenants/{tenantId}/events
@@ -169,47 +199,27 @@ export function useResolvedEmbed(embed: PostEmbed | null | undefined, tenantId: 
   return state;
 }
 
-/**
- * The rich preview card rendered below a post's text/images when it has an
- * embed. Whole card is a link to the referenced item's public page. A deleted
- * item degrades to a muted "no longer available" chip.
- */
-export const FeedEmbedCard: React.FC<{ embed: PostEmbed; tenantId: string | null | undefined }> = ({ embed, tenantId }) => {
-  const { status, data } = useResolvedEmbed(embed, tenantId);
+const EMBED_CARD_CLASS =
+  'group mb-3 flex overflow-hidden rounded-xl border border-line bg-surface-raised transition-colors hover:border-line-strong focus:outline-hidden focus-visible:ring-2 focus-visible:ring-gold';
 
-  if (status === 'loading') {
-    return <div className="mb-3 h-[76px] rounded-xl bg-surface-sunken border border-line animate-pulse" />;
-  }
-  if (status === 'missing' || !data) {
-    return (
-      <div className="mb-3 flex items-center gap-2 rounded-xl border border-line bg-surface-sunken px-3 py-2.5 text-xs text-muted">
-        <FileText size={14} className="text-faint shrink-0" />
-        This attachment is no longer available.
-      </div>
-    );
-  }
-
+const EmbedCardFace: React.FC<{ data: ResolvedEmbed }> = ({ data }) => {
   const { Icon, label } = TYPE_META[data.type];
-
   return (
-    <a
-      href={data.href}
-      className="group mb-3 flex overflow-hidden rounded-xl border border-line bg-surface-raised transition-colors hover:border-gold focus:outline-hidden focus-visible:ring-2 focus-visible:ring-gold"
-    >
+    <>
       {data.image ? (
-        <div className="relative w-24 sm:w-28 shrink-0 bg-surface-sunken">
+        <div className="relative w-24 shrink-0 border-r border-line bg-surface-sunken sm:w-28">
           <Image src={data.image} alt="" fill sizes="112px" className="object-cover" referrerPolicy="no-referrer" />
         </div>
       ) : (
-        <div className="w-24 sm:w-28 shrink-0 bg-surface-sunken flex items-center justify-center">
-          <Icon size={22} className="text-stone-300" />
+        <div className="flex w-24 shrink-0 items-center justify-center border-r border-line bg-surface-sunken sm:w-28">
+          <Icon size={22} className="text-faint" />
         </div>
       )}
       <div className="flex-1 min-w-0 p-3">
         <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold">
           <Icon size={11} /> {label}
         </span>
-        <h5 className="font-bold text-strong text-sm leading-snug line-clamp-2 mt-1 group-hover:text-gold transition-colors">
+        <h5 className="mt-1 line-clamp-2 text-sm font-semibold leading-snug text-strong transition-colors group-hover:text-gold">
           {data.title}
         </h5>
 
@@ -219,10 +229,10 @@ export const FeedEmbedCard: React.FC<{ embed: PostEmbed; tenantId: string | null
 
         {data.type === 'fundraising' && (
           <div className="mt-2">
-            <div className="h-1.5 bg-surface-sunken rounded-full overflow-hidden">
+            <div className="h-1.5 overflow-hidden rounded-full bg-surface-chip">
               <div
-                className="h-full rounded-full transition-[width] duration-700"
-                style={{ width: `${data.percentage}%`, backgroundColor: 'var(--brand-color, #e6b325)' }}
+                className="h-full rounded-full bg-gold transition-[width] duration-700"
+                style={{ width: `${data.percentage}%` }}
               />
             </div>
             <div className="flex justify-between text-[11px] text-muted mt-1">
@@ -249,8 +259,71 @@ export const FeedEmbedCard: React.FC<{ embed: PostEmbed; tenantId: string | null
           </div>
         )}
       </div>
+    </>
+  );
+};
+
+/**
+ * The rich preview card rendered below a post's text/images when it has an
+ * embed. Blog and event cards, and pledge campaigns, link to their public
+ * page. A fundraising campaign opens the same in-app detail sheet as the
+ * feed banner — `/campaign/[id]` stays the public share URL and is not where
+ * a signed-in member is sent. A deleted item degrades to a muted
+ * "no longer available" chip.
+ */
+export const ResolvedEmbedCard: React.FC<{ data: ResolvedEmbed }> = ({ data }) => {
+  const [open, setOpen] = useState(false);
+
+  // Pledge campaigns have their own public page. Every other fundraiser in
+  // the member feed opens the in-app sheet rather than `/campaign/[id]`.
+  const inAppCampaign = data.type === 'fundraising'
+    && !!data.campaign
+    && data.campaign.campaignType !== 'pledge';
+
+  if (inAppCampaign && data.campaign) {
+    return (
+      <>
+        <Button
+          type="button"
+          variant="ghost"
+          data-testid="feed-campaign-card"
+          aria-label={`View ${data.title}`}
+          onClick={() => setOpen(true)}
+          className={`${EMBED_CARD_CLASS} h-auto min-h-11 w-full cursor-pointer items-stretch justify-start whitespace-normal p-0 text-left font-normal hover:bg-transparent`}
+        >
+          <EmbedCardFace data={data} />
+        </Button>
+        {open && (
+          <CampaignDetailSheet campaign={data.campaign} onClose={() => setOpen(false)} />
+        )}
+      </>
+    );
+  }
+
+  return (
+    <a href={data.href} className={EMBED_CARD_CLASS}>
+      <EmbedCardFace data={data} />
     </a>
   );
+};
+
+export const FeedEmbedCard: React.FC<{ embed: PostEmbed; tenantId: string | null | undefined }> = ({ embed, tenantId }) => {
+  const { status, data } = useResolvedEmbed(embed, tenantId);
+
+  if (status === 'loading') {
+    return <div className="mb-3 h-[76px] rounded-xl bg-surface-sunken border border-line animate-pulse" />;
+  }
+  if (status === 'missing' || !data) {
+    return (
+      <div className="mb-3 flex items-center gap-2 rounded-xl border border-line bg-surface-sunken px-3 py-2.5 text-xs text-muted">
+        <FileText size={14} className="text-faint shrink-0" />
+        This attachment is no longer available.
+      </div>
+    );
+  }
+
+  // Keyed so a different embed in the same slot starts with the sheet closed.
+  return <ResolvedEmbedCard key={`${data.type}:${data.id}`} data={data} />;
 };
 
 /**
@@ -266,7 +339,7 @@ export const EmbedComposerChip: React.FC<{ embed: PostEmbed; tenantId: string | 
   const { Icon, label } = TYPE_META[embed.type];
 
   return (
-    <div className="relative flex items-center gap-3 rounded-xl border border-line bg-surface-sunken p-2.5 pr-9">
+    <div className="relative flex items-center gap-3 rounded-xl border border-line bg-surface-sunken p-2.5 pr-16 sm:pr-9">
       <div className="w-11 h-11 rounded-lg overflow-hidden bg-surface-sunken shrink-0 relative flex items-center justify-center">
         {data?.image ? (
           <Image src={data.image} alt="" fill sizes="44px" className="object-cover" referrerPolicy="no-referrer" />
@@ -282,14 +355,18 @@ export const EmbedComposerChip: React.FC<{ embed: PostEmbed; tenantId: string | 
           {status === 'loading' ? 'Loading…' : status === 'missing' ? 'Unavailable' : data?.title}
         </p>
       </div>
-      <button
+      {/* icon-xs is 24px. Below sm, THE-356's 44px touch floor needs min-h-11;
+          sm:min-h-0 hands the corner back to the 24px circle. */}
+      <Button
         type="button"
+        size="icon-xs"
+        variant="ghost"
         onClick={onRemove}
         aria-label="Remove attachment"
-        className="absolute top-2 right-2 w-5 h-5 flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+        className="absolute top-2 right-2 min-h-11 min-w-11 rounded-full bg-black/60 text-white hover:bg-black/80 hover:text-white sm:min-h-0 sm:min-w-0"
       >
-        <X size={12} />
-      </button>
+        <X />
+      </Button>
     </div>
   );
 };

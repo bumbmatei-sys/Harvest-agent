@@ -150,7 +150,7 @@ const PRE_EXISTING_HOOKS = [
 
 /** As of 767ca9b. None is this PR's business; all are asserted in section 9. */
 const LAYOUT_SHA = 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f';
-const GLOBALS_SHA = '1fd6001c2d3bddc50a45b02ce1253b6b60802699fb33fa159f5ed42b8aeb9957';
+const GLOBALS_SHA = 'a23d07afde7b073e9b839f0826e4cd95983116c6dbc3c0b8d8391a7e179984a4';
 const COMPONENTS_JSON_SHA = '5102c25c44791f19be9a94380f85f6e78934feccbfce7fe9ec54c316e99a76b4';
 /** main's, as of 5b780e8 — proves this PR adds no dependency. */
 /**
@@ -421,7 +421,8 @@ describe("sidebar's token classes all resolve", () => {
     const counts = Object.fromEntries(
       [...audit.classesByFile].map(([f, c]) => [path.basename(f), c.length]),
     );
-    expect(counts['sidebar.tsx']).toBe(167);
+    // Eden shell pass added the inset card, shell shadow and hover wash.
+    expect(counts['sidebar.tsx']).toBe(175);
   });
 
   it('and it really does reach for the sidebar family — 25 of its classes name one', () => {
@@ -431,7 +432,8 @@ describe("sidebar's token classes all resolve", () => {
     const sidebarClasses = (audit.classesByFile.get(SIDEBAR) ?? []).filter((c) =>
       /sidebar/.test(c),
     );
-    expect(sidebarClasses.length).toBe(30);
+    // Eden shell pass added bg-sidebar-hover.
+    expect(sidebarClasses.length).toBe(31);
     for (const cls of ['bg-sidebar', 'text-sidebar-foreground', 'ring-sidebar-ring']) {
       expect(sidebarClasses, `sidebar.tsx no longer spells ${cls}`).toContain(cls);
     }
@@ -518,6 +520,9 @@ const MOVED_SINCE: Record<string, string> = {
   'sheet.tsx': '68d13d9826a9b5b28e3d78a0ba632b347ca91b67a3333a38acb6310ade8846d4',
   'sonner.tsx': '2ebc0c9ba968858cead2fbf2523dfd9da217715339967025e8c8df94f2131ab9',
   'tabs.tsx': '096e3d4b2a99b1eff95d16959f97daaa1747fdb7de6226d6c54b9693e22b3410',
+  // Eden shell pass. The default variant points at --action (Harvest gold)
+  // and the 12.5px / 600 / h-8 metrics. The historical digest stays above.
+  'button.tsx': '91786d4927d890d722bed3daa2bb8dda5c25dc8dc65237acfeb73295849f085d',
 };
 
 describe('all 21 pre-existing primitives are byte-identical', () => {
@@ -611,6 +616,7 @@ describe('no new token was defined', () => {
       '--sidebar-accent-foreground',
       '--sidebar-border',
       '--sidebar-foreground',
+      '--sidebar-hover',
       '--sidebar-primary',
       '--sidebar-primary-foreground',
       '--sidebar-ring',
@@ -700,23 +706,23 @@ const RESOLVED: Record<keyof typeof PALETTES, Record<string, string>> = {
   // UNCHANGED at #C9963A in both modes, and the ink on it is still --earth:
   // this ticket removed a surface family, not the brand.
   light: {
-    '--sidebar': '#FFFFFF',
-    '--sidebar-foreground': '#404040',
+    '--sidebar': '#F3F2EF',
+    '--sidebar-foreground': '#525252',
     '--sidebar-primary': '#C9963A',
     '--sidebar-primary-foreground': '#2D2519',
-    '--sidebar-accent': '#E0E0E0',
+    '--sidebar-accent': '#E4E3E0',
     '--sidebar-accent-foreground': '#1A1A1A',
-    '--sidebar-border': '#E0E0E0',
+    '--sidebar-border': '#E4E3E1',
     '--sidebar-ring': '#C9963A',
   },
   dark: {
-    '--sidebar': '#1F1F1F',
-    '--sidebar-foreground': '#CCCCCC',
+    '--sidebar': '#212121',
+    '--sidebar-foreground': '#B8B8B8',
     '--sidebar-primary': '#C9963A',
     '--sidebar-primary-foreground': '#2D2519',
-    '--sidebar-accent': '#2A2A2A',
+    '--sidebar-accent': '#353535',
     '--sidebar-accent-foreground': '#F2F2F2',
-    '--sidebar-border': '#2E2E2E',
+    '--sidebar-border': '#444444',
     '--sidebar-ring': '#C9963A',
   },
 };
@@ -749,11 +755,14 @@ describe('sidebar importers are the phase-1 shell and nothing else', () => {
       if (f.includes(`${path.sep}__tests__${path.sep}`)) return false;
       return /@\/components\/ui\/sidebar/.test(readFileSync(f, 'utf8'));
     });
-    // The primitive stays unedited. These four are the phase-1 adoption: the
-    // dashboard mounts it only at lg, the sidebar block itself, the dev-only
-    // before/after preview, and the shell test that sits beside that code.
+    // The primitive stays unedited. The phase-1 adoption is the dashboard
+    // (lg only), the sidebar block, the dev-only before/after preview, and
+    // the shell test. The social scheduler screenshot harness mounts the same
+    // sidebar and is not a product screen.
     expect(importers.map((f) => rel(f)).sort()).toEqual([
+      'src/app/dev/social-scheduler/preview.tsx',
       'src/components/AdminDashboard.tsx',
+      'src/components/admin-shell/AdminContentBar.tsx',
       'src/components/admin-shell/AdminDesktopSidebar.tsx',
       'src/components/admin-shell/AdminShellPreview.tsx',
       'src/components/admin-shell/admin-shell.test.tsx',

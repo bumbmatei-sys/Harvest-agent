@@ -138,17 +138,13 @@ describe('both palettes resolve every token they declare', () => {
     // restatement, so chaining to it is what makes one here unnecessary). The
     // three unmoved counts below are the proof of that claim.
     //
-    // 🔴 THE-338 REMOVED THE TWO CLASSIC ROWS, and the two that remain did NOT
-    // move: 167 and 89, exactly as before. That is the load-bearing half of
-    // this assertion now. The removed family held only OVERRIDES — 14 tokens
-    // per mode, no declarations of its own — so promoting it could only change
-    // VALUES, never the count. A count that moved would mean the promotion had
-    // added a token or dropped one, which is the failure the whole ticket was
-    // written to avoid.
+    // Eden shell pass. :root is 178 and .dark is 104: the brand-theme name,
+    // sidebar hover, segmented-tab and action tokens, and the shell shadow.
+    // A further declaration still fails here.
     expect(Object.fromEntries(PALETTES.map((p) => [p.selector, Object.keys(declaredBy(css, p.selector)).length])))
       .toEqual({
-        ':root': 135 + 24 + 8,
-        '.dark, [data-theme="dark"]': 83 + 6,
+        ':root': 178,
+        '.dark, [data-theme="dark"]': 104,
       });
   });
 });
@@ -509,6 +505,7 @@ describe('the shadcn token bridge landed', () => {
     '--sidebar-accent-foreground',
     '--sidebar-border',
     '--sidebar-foreground',
+    '--sidebar-hover',
     '--sidebar-primary',
     '--sidebar-primary-foreground',
     '--sidebar-ring',

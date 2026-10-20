@@ -132,8 +132,11 @@ What you cannot read off the table, and therefore needs saying:
 - **A campus is a sub-entity of a tenant, never a tenant of its own.** The cap that counts
   them is `maxChurches`. A multi-campus ministry is one tenant, one subdomain, one
   subscription — do not model a second campus by provisioning a second tenant.
-- **There are exactly three add-ons**: AI Assistant, Admin Seats, Unlimited Contacts
-  (`TenantAddons` in `src/types/tenant.types.ts`). `contactPacks` and `campuses` were
+- **There are exactly four add-ons**: AI Assistant, Admin Seats, Unlimited Contacts,
+  and Social scheduler (`TenantAddons` in `src/types/tenant.types.ts`). Social scheduler
+  is not priced here and is not a Dodo catalogue meaning — no product, checkout, or price
+  is attached to it. The webhook still writes the field, as zero, until a product is
+  mapped, and `getEffectiveFeatures` lifts the plan cell with `||`. `contactPacks` and `campuses` were
   retired in THE-370 and their Dodo products detached from all nine plan products, so
   neither is purchasable. A stale `campuses: 2` may still sit in a live document;
   `readTenantAddons` reads only the fields it names, so a retired key grants nothing.

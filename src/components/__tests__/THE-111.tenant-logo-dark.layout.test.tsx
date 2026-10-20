@@ -404,8 +404,12 @@ describe('3 · every themeable tenant-logo surface carries the plate', () => {
      * an exemption written for two.
      */
     const onFile = images.filter((i) => i.file === 'components/AdminDashboard.tsx');
-    expect(onFile.length, 'AdminDashboard no longer renders the two logos the split-out assumes')
-      .toBe(2);
+    // Eden shell pass: the 16px chip inside "Open member app" left with the old
+    // top bar. The desktop rail mark moved to AdminDesktopSidebar as `logoUrl`,
+    // which this scanner does not bind. One `displayLogo` img remains, on the
+    // mobile nav shell.
+    expect(onFile.length, 'AdminDashboard no longer renders the logo the split-out assumes')
+      .toBe(1);
     expect(onFile.filter((i) => /\blogo-plate\b/.test(i.className)),
       'AdminDashboard was plated after all — take it out of SPLIT_OUT_SURFACES').toEqual([]);
   });

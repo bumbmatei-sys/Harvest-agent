@@ -154,7 +154,7 @@ const PRE_EXISTING_COUNTS: Record<string, number> = {
  */
 const LAYOUT_SHA = 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f';
 const TAILWIND_CODE_SHA = '491ebb5575d16eddfab00c6ed89900c725141b412e410e9e97342ff2108b2904';
-const GLOBALS_SHA = '1fd6001c2d3bddc50a45b02ce1253b6b60802699fb33fa159f5ed42b8aeb9957';
+const GLOBALS_SHA = 'a23d07afde7b073e9b839f0826e4cd95983116c6dbc3c0b8d8391a7e179984a4';
 
 /** functions/ — byte-identical, file for file. Not this PR's business either. */
 const FUNCTIONS_DIGESTS: Record<string, string> = {
@@ -308,6 +308,9 @@ describe("each new primitive's token classes resolve", () => {
 const COUNT_MOVED_SINCE: Readonly<Record<string, number>> = {
   'dialog.tsx': 54,
   'sheet.tsx': 62,
+  // Eden shell pass. Two new class names on the default button (the action
+  // token and the 12.5px size). The extractor's reading did not change.
+  'button.tsx': 82,
 };
 
   it('the comparison-operand fix moved no pre-existing count', () => {
@@ -410,6 +413,9 @@ const MOVED_SINCE: Record<string, string> = {
   'sheet.tsx': '68d13d9826a9b5b28e3d78a0ba632b347ca91b67a3333a38acb6310ade8846d4',
   'sonner.tsx': '2ebc0c9ba968858cead2fbf2523dfd9da217715339967025e8c8df94f2131ab9',
   'tabs.tsx': '096e3d4b2a99b1eff95d16959f97daaa1747fdb7de6226d6c54b9693e22b3410',
+  // Eden shell pass. The default variant points at --action (Harvest gold)
+  // and the 12.5px / 600 / h-8 metrics. The historical digest stays above.
+  'button.tsx': '91786d4927d890d722bed3daa2bb8dda5c25dc8dc65237acfeb73295849f085d',
 };
 
 describe('the CLI rewrote nothing it should not have', () => {
@@ -428,8 +434,11 @@ describe('the CLI rewrote nothing it should not have', () => {
     // declares `button` as a registry dependency and `chart` declares `card`,
     // so the CLI resolved and considered both. It reported "skipped
     // (identical)"; these two lines are the check that does not trust that.
+    // button.tsx is compared against the MOVED_SINCE overlay: the Eden shell
+    // pass restyled it on purpose. card.tsx is still the historical digest.
+    const expected = { ...PRE_EXISTING_DIGESTS, ...MOVED_SINCE };
     expect(sha256(readFileSync(path.join(UI_DIR, 'button.tsx'), 'utf8'))).toBe(
-      PRE_EXISTING_DIGESTS['button.tsx'],
+      expected['button.tsx'],
     );
     expect(sha256(readFileSync(path.join(UI_DIR, 'card.tsx'), 'utf8'))).toBe(
       PRE_EXISTING_DIGESTS['card.tsx'],
@@ -592,9 +601,10 @@ describe('THE-263’s chart series are untouched by this PR', () => {
       const c4 = contrastRatio(resolve(decls, PALETTES[palette], '--chart-4'), bg);
       const c5 = contrastRatio(resolve(decls, PALETTES[palette], '--chart-5'), bg);
       expect(c4).toBeGreaterThan(1.47);
-      expect(c4).toBeLessThan(1.51);
+      // Eden canvas #FAFAF8 moved the ground: chart-4 is 1.52, chart-5 is 1.79.
+      expect(c4).toBeLessThan(1.53);
       expect(c5).toBeGreaterThan(1.73);
-      expect(c5).toBeLessThan(1.78);
+      expect(c5).toBeLessThan(1.80);
     }
   });
 });
@@ -629,16 +639,15 @@ describe('every foreground/background pair the four components introduce clears 
   /**
    * The measured ratios. Pinned, not merely bounded.
    *
-   * 🔴 THE-338 — the LIGHT row is unchanged (it was already the neutral
-   * family's, which has been the default since THE-265). Every DARK ratio went
-   * UP, because darkening a ground can only improve text contrast: 10.61 ->
-   * 11.47, 7.42 -> 8.02, 11.57 -> 12.18, 8.09 -> 8.52. That direction is the
-   * whole reason the founder's "make it darker" was safe to do to a palette
-   * that was already at its floors.
+   * Eden shell pass re-recorded the page pairs. The canvas is #FAFAF8 and the
+   * dark page is #171717, so foreground and muted-foreground on --background
+   * moved: light 9.68 -> 9.92 and 6.54 -> 6.70, dark 11.47 -> 11.16 and
+   * 8.02 -> 7.81. The muted-ground pairs are unchanged. Gold is not in this
+   * list.
    */
   const RATIOS: Record<Palette, number[]> = {
-    light: [9.68, 6.54, 9.02, 6.09],
-    dark: [11.47, 8.02, 12.18, 8.52],
+    light: [9.92, 6.70, 9.02, 6.09],
+    dark: [11.16, 7.81, 12.18, 8.52],
   };
 
   for (const palette of Object.keys(PALETTES) as Palette[]) {

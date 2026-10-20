@@ -15,7 +15,7 @@ import { SHELL_CHROME, SHELL_CHROME_REM, SHELL_SCREEN_HEIGHT } from '../layout/s
  * The replacement is derived (see shell-height.ts), and a derivation is only as
  * good as its premises. Those premises are four Tailwind classes in
  * AdminDashboard.tsx — a file these screens do not own and cannot see. So they
- * are read back here: if the top bar stops being `h-14`, or the content area's
+ * are read back here: if the top bar stops being `h-12`, or the content area's
  * padding moves, this fails and names the class that moved, instead of the two
  * screens quietly going short again.
  *
@@ -39,23 +39,28 @@ const classOfLineWith = (marker: string): string => {
 };
 
 describe('the shell chrome the full-height screens subtract is still what they think', () => {
-  it('the right-hand column is a 100dvh flex column, so its children have a real height', () => {
-    // Without this, `flex-1` on the content area would size to content and
-    // there would be nothing to subtract FROM.
-    const col = classOfLineWith('flex-1 flex flex-col h-[100dvh]');
-    expect(col).toContain('h-[100dvh]');
+  it('the shell has a 100dvh parent and a flex column, so its children have a real height', () => {
+    // The provider is the 100dvh row. SidebarInset is the flex column inside it.
+    // Without both, `flex-1` on the content area would size to content.
+    const provider = classOfLineWith('h-[100dvh] min-h-0 overflow-hidden bg-surface');
+    expect(provider).toContain('h-[100dvh]');
+    const col = classOfLineWith('flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card');
     expect(col).toContain('flex-col');
+    expect(col).toContain('flex-1');
   });
 
-  it('the desktop top bar is still h-14 with a bottom border', () => {
-    const bar = classOfLineWith('hidden lg:flex bg-surface-raised border-b border-line h-14');
-    expect(bar, 'the top bar height moved — update SHELL_CHROME.topBar').toContain('h-14');
-    expect(bar, 'the top bar border moved — update SHELL_CHROME.topBarBorder').toContain('border-b');
+  it('the desktop top bar is h-12 and does not shrink', () => {
+    const barFile = read('components/admin-shell/AdminContentBar.tsx');
+    const line = barFile.split('\n').find((l) => l.includes('h-12 shrink-0'));
+    expect(line, 'the content bar no longer spells h-12 shrink-0').toBeDefined();
+    const bar = (line!.match(/className="([^"]*)"/) ?? [])[1] ?? '';
+    expect(bar, 'the top bar height moved — update SHELL_CHROME.topBar').toContain('h-12');
     expect(bar, 'the top bar must not shrink, or the subtraction is not a constant')
       .toContain('shrink-0');
-    // h-14 is 3.5rem. Spelled out so the class and the value cannot drift apart.
-    expect(SHELL_CHROME.topBar).toBe('3.5rem');
-    expect(SHELL_CHROME.topBarBorder).toBe('1px');
+    expect(bar, 'a border came back — update SHELL_CHROME.topBarBorder').not.toContain('border-b');
+    // h-12 is 3rem. Spelled out so the class and the value cannot drift apart.
+    expect(SHELL_CHROME.topBar).toBe('3rem');
+    expect(SHELL_CHROME.topBarBorder).toBe('0px');
   });
 
   it('the content area padding is the pair the derivation names', () => {
@@ -74,7 +79,7 @@ describe('the shell chrome the full-height screens subtract is still what they t
       rem(SHELL_CHROME.topBar) + rem(SHELL_CHROME.contentPaddingTop) + rem(SHELL_CHROME.contentPaddingBottom),
       'SHELL_CHROME_REM no longer equals the parts it is the sum of',
     ).toBe(SHELL_CHROME_REM);
-    expect(SHELL_SCREEN_HEIGHT).toBe('lg:h-[calc(100dvh-7rem-1px)]');
+    expect(SHELL_SCREEN_HEIGHT).toBe('lg:h-[calc(100dvh-6.5rem)]');
   });
 
   it('is gated at lg:, because below it the shell scrolls the page normally', () => {

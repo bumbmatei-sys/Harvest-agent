@@ -55,6 +55,14 @@ const store = vi.hoisted(() => ({
 }));
 const currentUser = vi.hoisted(() => ({ current: { uid: 'user-1' } as { uid: string } | null }));
 const userQuery = vi.hoisted(() => ({ current: { data: undefined as unknown, isLoading: false } }));
+const tenantCtx = vi.hoisted(() => ({
+  current: {
+    branding: null as null,
+    isLoading: false,
+    tenantPlan: 'max' as string | null,
+    tenantAddons: undefined as { socialScheduler?: number } | undefined,
+  },
+}));
 
 vi.mock('react-router-dom', () => ({ useNavigate: () => navigate, useParams: () => params.current }));
 vi.mock('../../utils/tenant.utils', () => ({ checkRosterAdminStatus }));
@@ -83,7 +91,7 @@ vi.mock('../../hooks/queries/useTenantQueries', () => ({
   useTenant: () => ({ data: { name: 'Bumb Ministry', ownerId: 'someone-else' } }),
 }));
 vi.mock('../../contexts/TenantContext', () => ({
-  useTenant: () => ({ branding: null, isLoading: false, tenantPlan: 'max' }),
+  useTenant: () => tenantCtx.current,
 }));
 vi.mock('../../firebase', () => ({
   db: {},
@@ -211,6 +219,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.useRealTimers();
   store.current = { tenantPlan: 'max', currentTenantId: TENANT_ID, isAuthReady: true };
+  tenantCtx.current = { branding: null, isLoading: false, tenantPlan: 'max', tenantAddons: undefined };
   currentUser.current = { uid: UID };
   checkRosterAdminStatus.mockResolvedValue(true);
   container = document.createElement('div');
@@ -392,8 +401,12 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
     // 🔵 THE-335 — the same three ids the assertion above derives, for the same
     // reason: an id behind a master switch is NAMED in the group arrays (so the
     // flip restores it) but is not built, so it cannot be reached.
+    // Social is a shell-nav destination. It is not one of the 23
+    // DESKTOP_NAV_GROUPS ids and it is not a mobile-nav entry. The desktop
+    // sidebar reaches it; the frozen group arrays do not.
+    const shellOnly = ['social'];
     expect([...reached].sort())
-      .toEqual([...named].filter((id) => !behindAKillSwitch.includes(id)).sort());
+      .toEqual([...named, ...shellOnly].filter((id) => !behindAKillSwitch.includes(id)).sort());
   });
 
   it('🔴 5b · the rail\'s advertised tab model is exactly what its flyout renders', async () => {
@@ -504,6 +517,28 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
     expect(codeOf(DASHBOARD_SRC)).toMatch(/isSuperAdmin\s*&&\s*\{\s*id:\s*'library'/);
   });
 
+  it('shows Social on the desktop sidebar for the add-on, and keeps the mobile drawer entry without it', async () => {
+    await mount({ superAdmin: false, perms: { ...FULL_TENANT_PERMS, fullAccess: true } });
+    for (const label of ['People', 'Public'] as const) {
+      await showSide(label);
+      expect(
+        container.querySelector('[data-shell-side] [data-nav-tab="social"]'),
+        `${label} shows Social without the add-on`,
+      ).toBeNull();
+    }
+    const more = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('More'));
+    await act(async () => { more?.click(); });
+    await flush();
+    const mobileSocial = [...container.querySelectorAll('button')].filter((button) => button.textContent?.trim() === 'Social');
+    expect(mobileSocial.length).toBeGreaterThan(0);
+
+    await act(async () => { root.unmount(); });
+    mounted = false;
+    tenantCtx.current = { ...tenantCtx.current, tenantAddons: { socialScheduler: 1 } };
+    await mount({ superAdmin: false, perms: { ...FULL_TENANT_PERMS, fullAccess: true } });
+    expect(container.querySelector('[data-shell-side] [data-nav-tab="social"]')).toBeTruthy();
+  });
+
   it("🔴 7b · a group whose tabs are all denied draws NO rail entry", async () => {
     await mount({ superAdmin: false, perms: FULL_TENANT_PERMS });
     for (const label of ['People', 'Public'] as const) {
@@ -588,14 +623,18 @@ describe('THE-332 · what this ticket may not disturb', () => {
        established the pattern (`--card: var(--surface-raised)`); THE-270 landed
        these. This ticket ADDS NONE and re-asserts them because it is the first
        consumer of the sidebar family. */
+    // Eden shell pass. Neutrals are measured literals, restated in .dark.
+    // Brand aliases stay chained. --sidebar-hover is the wash. The :root
+    // declaration is what this matches; the dark restatement is the same name.
     const MAP: Record<string, string> = {
-      '--sidebar': 'var(--surface-raised)',
-      '--sidebar-foreground': 'var(--text-body)',
-      '--sidebar-accent': 'var(--surface-chip)',
+      '--sidebar': '#F3F2EF',
+      '--sidebar-foreground': '#525252',
+      '--sidebar-accent': '#E4E3E0',
       '--sidebar-accent-foreground': 'var(--text-strong)',
+      '--sidebar-hover': '#E9E8E5',
       '--sidebar-primary': 'var(--primary)',
       '--sidebar-primary-foreground': 'var(--primary-foreground)',
-      '--sidebar-border': 'var(--border-default)',
+      '--sidebar-border': '#E4E3E1',
       '--sidebar-ring': 'var(--ring)',
     };
     for (const [name, value] of Object.entries(MAP)) {
@@ -615,8 +654,18 @@ describe('THE-332 · what this ticket may not disturb', () => {
        dropdown-menu, avatar, switch, label, sheet and SIDEBAR itself) plus a
        phantom `cn` dependency, so the block was installed into a scratch
        project instead and nothing was copied back into src/components/ui. */
+    // Eden shell pass restyled button.tsx and sidebar.tsx. The historical
+    // digest stays accepted; a third value still fails.
+    const EDEN_SHELL_PRIMITIVES: Record<string, string> = {
+      'button.tsx': '91786d4927d890d722bed3daa2bb8dda5c25dc8dc65237acfeb73295849f085d',
+      'sidebar.tsx': 'ab6ef215de5cae4f79bca6d66f15e8a3ff3d461fbf8742a78bf603d4e08108c2',
+    };
     for (const [file, digest] of Object.entries(PRIMITIVE_DIGESTS)) {
-      expect(sha256(read(`src/components/ui/${file}`)), `${file} was overwritten`).toBe(digest);
+      const accepted = file in EDEN_SHELL_PRIMITIVES
+        ? [digest, EDEN_SHELL_PRIMITIVES[file]]
+        : [digest];
+      const actual = sha256(read(`src/components/ui/${file}`));
+      expect(accepted, `${file} was overwritten (${actual})`).toContain(actual);
     }
   });
 
@@ -839,6 +888,9 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
        this file for: handleSave, confirmDelete and firestorePathsOf are
        unchanged. */
     'db9fbb0478cbeb3f2425c9afdaa40c6c59770f211625da0fc598fa7c041276be',
+    /* The Eden shell pass appended two AdminEvents digests (segmented List and
+       Month) and the follow-up restored this file to the #522 digest above.
+       Those two values are not accepted: a revert is not a second legal state. */
   ],
   'src/components/AdminServices.tsx': '17f508718d3c6b1ad016b9fb6be2c241629421705af4a9c0966b02739eba74ae',
   /* 🔴 AN ACCEPTED SET, APPENDED TO, NOT ONE VALUE SUBSTITUTED — the shape the

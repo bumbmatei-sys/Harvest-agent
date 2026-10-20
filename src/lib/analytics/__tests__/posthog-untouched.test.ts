@@ -171,8 +171,12 @@ const PINNED: ReadonlyArray<readonly [string, ...string[]]> = [
   // ticket could have broken it, which is persisting the resolved default and
   // thereby converting every existing user into someone who has *chosen*
   // Classic, past the reach of the one-value revert.
-  ['src/lib/theme-runtime.ts', 'fce9fa8e8a9bd76c0b57bce0decc450e394968c93855e9e6702c306958e2d6ee'],
-  ['src/lib/theme.ts', 'e05b9e51ee019db5b7926358a5ed9de9a291c5c8372040f2a7ac435e88e2ba0b'],
+  // APPENDED, never substituted. Eden shell pass: theme-runtime stamps
+  // data-brand-theme="harvest" from the existing one-argument applyTheme, and
+  // theme.ts records the Eden dark ground plus the harvest brand-theme name.
+  // The earlier digests stay accepted.
+  ['src/lib/theme-runtime.ts', 'fce9fa8e8a9bd76c0b57bce0decc450e394968c93855e9e6702c306958e2d6ee', '8e18aeef43f70e7b2204881e9c71e69723651ce7b03a71cb1bae91b0297cb3ab'],
+  ['src/lib/theme.ts', 'e05b9e51ee019db5b7926358a5ed9de9a291c5c8372040f2a7ac435e88e2ba0b', '8faa2e97f142ea2052bff60ea02c06a4e713c0a5433a204b39dbb95b932b5996'],
   ['src/components/layout/form-layout.ts', 'aa62c7e8c339b35222d9b305be5acf9c6e4c52543174030d8977457fa961ed48'],
   /**
    * 🔴 THE-325 · THE ROW STAYS, its accepted VALUES come from the shared
@@ -524,7 +528,12 @@ const PINNED: ReadonlyArray<readonly [string, ...string[]]> = [
   // annual) on the same two product ids, and nothing here moved for it.
   ['src/lib/dodo/addons.ts',
     '46b254f7dc59b9a3fbe5056f6600741c355e52ab43e19b8bd63716c52e584557',
-    '9d6bcf4294e0157cf282717baa6a9f939ca7ce00c9e0b31fd338d32a0042b93d'],
+    '9d6bcf4294e0157cf282717baa6a9f939ca7ce00c9e0b31fd338d32a0042b93d',
+    // APPENDED for the social scheduler, the two above untouched. sameTenantAddons
+    // also compares socialScheduler so a webhook redelivery that only differs
+    // on that count is not treated as already applied. No price, no product id,
+    // and no new applyMeaning arm. The webhook still writes the field as zero.
+    '84ea5a39627e4876cb4d20a667487c49e00f009bf2f2d67091a518b8a172c89a'],
   ['src/lib/dodo/billing-context.ts', '0b6305b0e1db2eefb126ed6663d2ca808e2e2a1951b36b971339a8e186bb4e61'],
   // ─── THE-370 APPENDED TO THIS ONE, deliberately and with reason ─────────
   //

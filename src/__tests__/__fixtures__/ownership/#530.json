@@ -1,0 +1,31 @@
+{
+  "ticket": "#530",
+  "note": "#530 is the social scheduler. It records the three files the ownership register already pinned whose digests moved: AdminDashboard.tsx, the-274-shadcn-batches-cde.test.ts, and the-248-discount-alignment.test.ts. Each digest is appended. Nothing already recorded is replaced. This pull request does not change firestore.rules.",
+  "entries": [
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "5b52184914f227832a2e023d3467d351b291412e54c5968bbc0fd45dcaae40d1",
+      "why": "#530 adds a Social tab on the Public side that mounts the scheduler. The mobile bottom bar, More groups, and the shell class string are unchanged. The plan cell stays false on every tier, so the screen shows the add-on wall when the ministry does not hold the add-on."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "eec832262194852dcf12d71acd4c01fec168caf0aed1db96eb660895783f178b",
+      "why": "#530 QA keeps the mobile Social entry and shows the desktop sidebar link only when the add-on is held or the viewer is a super admin. The composer is passed knownEntitled so it can render while accounts load. The previous digest 5b52184914f227832a2e023d3467d351b291412e54c5968bbc0fd45dcaae40d1 stays accepted. No firestore.rules change."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "54ca495622db09cf0a5789bc4ae56f4679afb446ba076023f002b211da1a5ba6",
+      "why": "#530 records SocialScheduler.tsx as an adopter of calendar, empty, scroll-area, switch, textarea, and toggle-group. Those primitives are in the new shadcn batches, so a non-test importer has to be named. No primitive file moved and no dependency was added."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "bb126193a97a103e0edcf7b6b184b7bd95e26e7c8b46394a4ffe689b604dda11",
+      "why": "#530 merges main after #531. RECORDED_ADOPTERS keeps SocialScheduler.tsx and appends BlogScheduleFields.tsx. The previous digest 54ca495622db09cf0a5789bc4ae56f4679afb446ba076023f002b211da1a5ba6 stays accepted. No primitive file moved and no dependency was added."
+    },
+    {
+      "file": "src/utils/__tests__/the-248-discount-alignment.test.ts",
+      "digest": "e0e857bf89af25634874a205cde8e0ec54210b55267071da4d99fe45f696a968",
+      "why": "#530 moves the feature-matrix digest because every tier gained socialScheduler set to false. No price moved and no existing cell changed. The previous digest is kept in the test comment. The nine plan prices stay where THE-248 left them."
+    }
+  ]
+}

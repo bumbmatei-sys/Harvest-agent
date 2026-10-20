@@ -169,10 +169,10 @@ describe('WCAG AA contrast in both themes', () => {
  */
 describe('the light theme ramp values are pinned', () => {
   it.each([
-    ['--surface', '#F7F7F7'],
-    ['--surface-raised', '#FFFFFF'],
+    ['--surface', '#FAFAF8'],
+    ['--surface-raised', '#FDFDFD'],
     ['--surface-sunken', '#EFEFEF'],
-    ['--border-default', '#E0E0E0'],
+    ['--border-default', '#E9E9E9'],
     ['--text-strong', '#1A1A1A'],
     ['--text-muted', '#595959'],
     ['--text-faint', '#696969'],

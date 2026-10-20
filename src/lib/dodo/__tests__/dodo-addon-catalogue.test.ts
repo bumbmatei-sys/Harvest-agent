@@ -202,6 +202,7 @@ describe('THE-370 — the campus and contactPack add-ons no longer exist', () =>
       aiAssistant: 0,
       adminSeats: 0,
       unlimitedContacts: false,
+      socialScheduler: 0,
     });
     // 🔴 AND NOT SILENTLY DROPPED — both are handed back to be reported, which
     // is what makes a church being charged for a retired product discoverable.
@@ -320,6 +321,7 @@ describe('an unrecognised add-on id is still reported, not silently dropped', ()
       aiAssistant: 0,
       adminSeats: 0,
       unlimitedContacts: false,
+      socialScheduler: 0,
     });
   });
 

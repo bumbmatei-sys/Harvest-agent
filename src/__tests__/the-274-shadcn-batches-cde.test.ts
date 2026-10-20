@@ -197,7 +197,7 @@ const PRE_EXISTING_COUNTS: Record<string, number> = {
 /** The out-of-scope files, pinned at 788a589. */
 const LAYOUT_SHA = 'b9bdf22ae920933587b39c5030cbf1ef4f89b02230578e5ad6c4b715b824c63f';
 const TAILWIND_CODE_SHA = '491ebb5575d16eddfab00c6ed89900c725141b412e410e9e97342ff2108b2904';
-const GLOBALS_SHA = '1fd6001c2d3bddc50a45b02ce1253b6b60802699fb33fa159f5ed42b8aeb9957';
+const GLOBALS_SHA = 'a23d07afde7b073e9b839f0826e4cd95983116c6dbc3c0b8d8391a7e179984a4';
 
 const FUNCTIONS_DIGESTS: Record<string, string> = {
   'functions/.gcloudignore': '9c20b803e45cd916',
@@ -413,6 +413,10 @@ describe("each new primitive's token classes resolve", () => {
 const COUNT_MOVED_SINCE: Readonly<Record<string, number>> = {
   'dialog.tsx': 54,
   'sheet.tsx': 62,
+  // Eden shell pass. button.tsx gained the action-token classes (80 -> 82).
+  // sidebar.tsx gained the inset card, shell shadow and hover wash (167 -> 175).
+  'button.tsx': 82,
+  'sidebar.tsx': 175,
 };
 
   it('the String.raw fix moved no pre-existing count', () => {
@@ -516,6 +520,12 @@ const MOVED_SINCE: Record<string, string> = {
   'dialog.tsx': 'bfd230cea544d2de7650182341e082de92141174da80f6193843e8d71b622e41',
   'sheet.tsx': '68d13d9826a9b5b28e3d78a0ba632b347ca91b67a3333a38acb6310ade8846d4',
   'tabs.tsx': '096e3d4b2a99b1eff95d16959f97daaa1747fdb7de6226d6c54b9693e22b3410',
+  // Eden shell pass. button.tsx points the default variant at Harvest gold
+  // (--action) with Eden's 12.5px / 600 / h-8 metrics. sidebar.tsx takes the
+  // inset floating card, the shell shadow and the hover wash. Historical
+  // digests stay in PRE_EXISTING_DIGESTS.
+  'button.tsx': '91786d4927d890d722bed3daa2bb8dda5c25dc8dc65237acfeb73295849f085d',
+  'sidebar.tsx': 'ab6ef215de5cae4f79bca6d66f15e8a3ff3d461fbf8742a78bf603d4e08108c2',
 };
 
 describe('the CLI rewrote nothing it should not have', () => {
@@ -632,34 +642,34 @@ describe('every token the earlier phases shipped still resolves to the same valu
     // what "classic light" held — the default since THE-265); dark is that
     // ramp darkened. The brand rows are untouched in both.
     light: {
-      '--background': '#F7F7F7',
+      '--background': '#FAFAF8',
       '--foreground': '#404040',
-      '--card': '#FFFFFF',
+      '--card': '#FDFDFD',
       '--muted': '#EFEFEF',
       '--muted-foreground': '#595959',
       '--primary': '#C9963A',
       '--primary-foreground': '#2D2519',
       '--accent': '#E0E0E0',
       '--accent-foreground': '#1A1A1A',
-      '--popover': '#FFFFFF',
+      '--popover': '#FDFDFD',
       '--popover-foreground': '#404040',
-      '--sidebar': '#FFFFFF',
-      '--sidebar-foreground': '#404040',
+      '--sidebar': '#F3F2EF',
+      '--sidebar-foreground': '#525252',
     },
     dark: {
-      '--background': '#141414',
+      '--background': '#171717',
       '--foreground': '#CCCCCC',
-      '--card': '#1F1F1F',
+      '--card': '#202020',
       '--muted': '#0C0C0C',
       '--muted-foreground': '#ABABAB',
       '--primary': '#C9963A',
       '--primary-foreground': '#2D2519',
       '--accent': '#2A2A2A',
       '--accent-foreground': '#F2F2F2',
-      '--popover': '#1F1F1F',
+      '--popover': '#202020',
       '--popover-foreground': '#CCCCCC',
-      '--sidebar': '#1F1F1F',
-      '--sidebar-foreground': '#CCCCCC',
+      '--sidebar': '#212121',
+      '--sidebar-foreground': '#B8B8B8',
     },
   };
 
@@ -682,6 +692,7 @@ describe('every token the earlier phases shipped still resolves to the same valu
       '--sidebar-accent-foreground',
       '--sidebar-border',
       '--sidebar-foreground',
+      '--sidebar-hover',
       '--sidebar-primary',
       '--sidebar-primary-foreground',
       '--sidebar-ring',
@@ -746,15 +757,14 @@ describe('every foreground/background pair the 21 components introduce clears AA
   /**
    * The measured ratios. Pinned, not merely bounded.
    *
-   * 🔴 THE-338 — the LIGHT row is unchanged (it is what 'classic light' held,
-   * and that family has been the default since THE-265). Every DARK figure
-   * except the gold pair went UP, because darkening a ground can only improve
-   * text contrast — 9.67 -> 10.26, 9.46 -> 10.05, 11.57 -> 12.18, 8.09 -> 8.52.
-   * The gold pair sits at 5.69 in both, untouched.
+   * Eden shell pass re-recorded the card and page pairs. The card is #FDFDFD
+   * in light and #202020 in dark, and the page is #FAFAF8 / #171717. The gold
+   * pair (index 6) stays 5.69. Accent on accent and the muted-ground pairs
+   * (indexes 4, 8 and 9) did not move past the pin tolerance.
    */
   const RATIOS: Record<Palette, number[]> = {
-    light: [10.37, 6.54, 10.37, 7.0, 13.18, 6.54, 5.69, 6.1, 9.02, 6.09],
-    dark: [10.26, 10.05, 10.26, 7.18, 12.82, 10.05, 5.69, 11.23, 12.18, 8.52],
+    light: [10.19, 6.43, 10.19, 6.89, 13.18, 6.43, 5.69, 6.25, 9.02, 6.09],
+    dark: [10.15, 9.93, 10.15, 7.10, 12.82, 9.93, 5.69, 10.93, 12.18, 8.52],
   };
 
   for (const palette of Object.keys(PALETTES) as Palette[]) {
@@ -832,9 +842,9 @@ describe('every foreground/background pair the 21 components introduce clears AA
         Number(ratio(decls, p, '--primary', '--background').toFixed(2)),
       ]),
     );
-    // ⚠️ The light figure is UNCHANGED at 2.48 — the accepted shortfall this
-    // ticket was told not to "fix". Dark rose 6.42 -> 6.94 with the ground.
-    expect(measured).toEqual({ light: 2.48, dark: 6.94 });
+    // Eden shell pass. Light gold on #FAFAF8 is 2.54. Dark gold on #171717 is
+    // 6.75. Both stay on the same side of the AA line as before.
+    expect(measured).toEqual({ light: 2.54, dark: 6.75 });
     // Asserted both ways, so a move in either direction fails here.
     expect(measured.light).toBeLessThan(AA_CONTRAST);
     expect(measured.dark).toBeGreaterThanOrEqual(AA_CONTRAST);
@@ -1369,8 +1379,18 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       + 'takes its Sheet path. It takes `toggle-group` for the two icon-only sides, People '
       + 'and Public, and `command` for the search dialog. `button-group` is rejected: the '
       + 'two sides are one selection, not a cluster of independent actions. `popover` is '
-      + 'rejected for the side names: each icon has a tooltip, and a popover would cover '
+      +       'rejected for the side names: each icon has a tooltip, and a popover would cover '
       + 'the groups underneath it.',
+  },
+  {
+    file: 'src/components/admin/social/SocialScheduler.tsx',
+    ticket: 'phase-2',
+    why:
+      'The social scheduler is the first screen that composes calendar, empty, scroll-area, '
+      + 'switch, textarea and toggle-group together. The month view is the calendar primitive, '
+      + 'the queue uses scroll-area and empty, the composer uses textarea and a multi-select '
+      + 'toggle-group, and the AI disclosure control is a switch that stays hidden unless Zernio '
+      + 'documents the flag for a platform this ministry is allowed to post to.',
   },
   {
     file: 'src/components/blog/BlogScheduleFields.tsx',

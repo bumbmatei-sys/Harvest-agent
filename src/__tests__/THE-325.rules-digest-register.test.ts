@@ -789,26 +789,40 @@ const CONTENT_ASSERTING_MOVED: Readonly<Record<string, readonly [digest: string,
       + 'joins /api/contact on the theharvest.site allow-list; #517 merged with CI '
       + 'red, so the list never moved with it. No other line of the suite changed.',
   ],
-  // APPENDED BY #529, then the current digest moved by #531 and again by #536. The row in
-  // CONTENT_ASSERTING is untouched. This map holds one current digest, so the
-  // earlier hashes stay in this comment and the value below is the file as
-  // #531 left it. #529 added the phase-1 proof PNGs. #531 appends the twelve
-  // phase-2c shots, then the Publish now and Take down confirm shots. *.png
-  // was already binary. The suite still asserts content.
+  // APPENDED BY #529, then the current digest moved by #531, by #536, and again
+  // when #530 merged main. This map holds one current digest, so the earlier
+  // hashes stay in the why. #529 added the phase-1 proof PNGs. #531 appends the
+  // phase-2c shots. #536 appends the blog-status-picker proof PNGs. #530 appends
+  // the phase-2 social shots. *.png was already binary. The suite still asserts
+  // content.
   'src/__tests__/the-268-line-endings.test.ts': [
-    '22f630620126698b1847e59b6708274dfed6f2766b3f290070a959e5f5d7ee8d',
-    '#536',
-    '#536 appends the twelve blog-status-picker proof PNGs to the binary '
-      + 'list. The previous current digest was '
-      + '9afa6f0fbc261d14c272730907acf4fd9ad0df1b283d04cf537a7255b44ffad5, after '
-      + '#531 appended the Publish now and Take down confirm shots to the binary '
-      + 'list that already held the twelve phase-2c shots and the phase-1 shots. '
-      + 'The original thirteen paths stay. *.png was already binary. The suite '
-      + 'still asserts PNG magic and the declared set, and it still pins no '
-      + 'digest. The digest before that was '
-      + '5da9d07037eb4a46c2f0ebe11863714e4ee8b34d51aaeceb4d9da4846cc1017c, and '
-      + 'the #529 digest was '
-      + 'bf5f6cef36b649f85d1a184bfbb8aab851c1a2e76f7c8f5adc95efdfe66a03c6.',
+    'f314e3b78b11558464fce7f61a02b6dec2f03bf14fd0181bb830902f1a6f5012',
+    '#537',
+    'the Eden shell pass appends the proof PNGs under docs/redesign/eden-shell/. '
+      + '*.png was already binary. The suite still asserts file content rather '
+      + 'than a digest pin. The previous current digest was '
+      + 'b7b04fc9850e51304fad0ba9f2a299a34e9fc332800c38bbd0db8d72fed8406e after #530. '
+      + 'Earlier digests stay in the history: '
+      + '22f630620126698b1847e59b6708274dfed6f2766b3f290070a959e5f5d7ee8d after #536, '
+      + '6c32acd216964124a4de8c05587c747cb407d1207d6befe3e12e677ed410361c for #530 '
+      + 'before that merge, 83ddc357e689278de72e184f4690249d9f3fc08f3ef26381c3b7c6d58693775c '
+      + 'for the earlier #530 and '
+      + '9afa6f0fbc261d14c272730907acf4fd9ad0df1b283d04cf537a7255b44ffad5 for #531. '
+      + 'The row in CONTENT_ASSERTING is untouched.',
+  ],
+  'src/utils/__tests__/plan-features.news-feed.test.ts': [
+    'f588a613c3dbd33bc7c89f6f9d6e305da25a7405caade29ef8d4628bc350afc6',
+    '#530',
+    'the news-feed matrix transcription gained socialScheduler false on every tier. '
+      + 'The suite still asserts the cell values. No price moved. The row in '
+      + 'CONTENT_ASSERTING is untouched.',
+  ],
+  'src/utils/__tests__/plan-flag-surface-guard.test.ts': [
+    '33f06751e189cf25f262327a0fc6d4f692a7991b287bc52b56820dc16522f8ce',
+    '#530',
+    'the flag-surface registry gained a gate for socialScheduler in lib/social/access.ts. '
+      + 'The suite still asserts that every plan cell is read. The row in '
+      + 'CONTENT_ASSERTING is untouched.',
   ],
 };
 

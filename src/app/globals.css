@@ -72,6 +72,10 @@
  --color-primary: #C9963A;
  --color-secondary: #e6b325;
  --brand-color: #C9963A;
+ /* The only brand theme shipped. Neutrals below may follow Eden; this name
+    is what a later [data-brand-theme] block overrides. data-theme stays the
+    light/dark mode axis, so the brand hook cannot reuse it. */
+ --brand-theme: harvest;
  --color-navy: #0C1526;
  --color-background-dark: #0C1526;
  --color-background-light: #FFFFFF;
@@ -147,10 +151,12 @@
     mode, high-contrast, richer per-tenant white-label) override these
     vars only — components keep their current utility classes until
     migrated incrementally in a later, separate PR. */
- --surface:         #F7F7F7;           /* page ground — plain near-white */
- --surface-raised:  #FFFFFF;           /* cards/panels, = Tailwind `white` (bg-white) */
+ /* Eden shell pass: the canvas is #FAFAF8 and a raised card is #FDFDFD. No
+    surface in the app is pure white any more; --text-strong stays the ink. */
+ --surface:         #FAFAF8;           /* page ground — Eden canvas */
+ --surface-raised:  #FDFDFD;           /* cards/panels — near-white, never #FFF */
  /* (--surface-sunken, --surface-gold, --surface-night already exist above) */
- --border-default:  #E0E0E0;           /* common border */
+ --border-default:  #E9E9E9;           /* common border — Eden card edge */
  --border-subtle:   #EFEFEF;           /* hairlines */
  --border-strong:   #C7C7C7;           /* emphasis border, and shadcn's --input */
  --text-strong:     #1A1A1A;           /* headings/emphasis  17.40:1 on raised */
@@ -167,10 +173,10 @@
     rather than converged because converging is a design decision and this
     ticket is a family removal. */
  --border-hairline: #EDEDED;            /* was border-[#EDEBE8], 47 uses */
- --surface-tint:    #F5F5F5;            /* was bg-[#F7F6F3], 26 uses */
+ --surface-tint:    #F5F5F3;            /* was bg-[#F7F6F3], 26 uses; Eden inner rows */
 
  /* Stage 3: the accent's on-dark variant. Harvest gold already clears AA on
-    the dark ground (6.77:1), so the default is the accent itself, untouched.
+    the dark ground (6.75:1 on #171717), so the default is the accent itself, untouched.
     A white-label tenant whose colour would vanish on dark gets a corrected
     value injected per-request from layout.tsx (deriveOnDarkAccent). Unused
     in the light theme — declared here only so the var always resolves. */
@@ -455,8 +461,14 @@
      The trade is a weaker hover lift in dark (1.15:1 raised vs 1.31:1 sunken);
      that is accepted because it is EXACTLY the lift --accent already ships on
      --popover, which is the same ground and the same role. */
-  --sidebar: var(--surface-raised);
-  --sidebar-foreground: var(--text-body);
+  /* ── Eden shell pass: the sidebar is its OWN ground now ─────────────────
+     It used to alias --surface-raised, i.e. white on a near-white page, and
+     the sidebar was told apart only by a hairline. Eden's is a warm grey card
+     (#F3F2EF) floating on the #FAFAF8 canvas, so it gets its own values in
+     both palettes. Everything below is declared here and restated in .dark.
+     --sidebar-foreground is Eden's neutral-600 label colour. */
+  --sidebar: #F3F2EF;
+  --sidebar-foreground: #525252;
 
   /* The hovered / active item ground. Same choice, and the same trap, as
      --accent: --surface-chip is the token that sits a step ABOVE the raised
@@ -467,8 +479,12 @@
      deliberately not held to 3:1: WCAG 1.4.11 covers a control's boundary
      when that boundary is the ONLY way to identify it, and here the label is
      always present and clears AA on both grounds (7.84:1 worst). */
-  --sidebar-accent: var(--surface-chip);
+  --sidebar-accent: #E4E3E0;
   --sidebar-accent-foreground: var(--text-strong);
+  /* Black 4% composited on the sidebar ground #F3F2EF. A solid hex, so the
+     token stays a colour: the sidebar length guard rejects a percentage.
+     On this ground it is the same pixel as the wash. */
+  --sidebar-hover: #E9E8E5;
 
   /* Not unconsumed. The ticket had these two down as dead, on the grounds
      that sidebar.tsx never spells them — which is true of the primitive and
@@ -487,7 +503,9 @@
      container hairline in this app it is ~1.3:1 against its own ground and is
      not held to 3:1: the sidebar is identified by its ground, which differs
      from the page ground in all four palettes, not by this line. */
-  --sidebar-border: var(--border-default);
+  /* Black 6% composited on #F3F2EF. A solid so contrast checks resolve it;
+     an alpha rgb() collapses to black in those resolvers. */
+  --sidebar-border: #E4E3E1;
 
   /* The focus ring. Chains to --ring rather than repeating its source, so it
      inherits --ring's .dark restatement (the contrast-corrected accent) and
@@ -502,6 +520,26 @@
      ticket forbids; the test asserts --sidebar-ring is IDENTICAL to --ring in
      all four palettes so the two can only ever be fixed together. */
   --sidebar-ring: var(--ring);
+
+  /* ── Eden shell pass: card elevation, segmented tabs, action buttons ────
+     Tokens only; no component spells a hex for any of these.
+     Harvest theme (the only one shipped): Eden owns elevation, the segmented
+     track and the secondary wash. The action colour is Harvest gold
+     (--brand-color) with --primary-foreground ink, because white on gold
+     fails AA. Hover mixes toward navy. A later theme overrides these same
+     variables from [data-brand-theme="…"] and .dark[data-brand-theme="…"].
+     That selector is not declared yet — custom properties are allowed in
+     exactly :root and .dark — and components do not branch on the name. */
+  --shell-shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 4px 14px rgb(0 0 0 / 3%);
+  --seg-track: rgb(0 0 0 / 4.5%);
+  --seg-active: var(--surface-raised);
+  --seg-active-shadow: 0 1px 2px rgb(0 0 0 / 8%);
+  --action: var(--brand-color);
+  --action-hover: color-mix(in srgb, var(--brand-color) 78%, var(--navy-800));
+  --action-foreground: var(--primary-foreground);
+  /* Secondary button: black 5%, a neutral wash, so it sits on any card. */
+  --action-secondary: rgb(0 0 0 / 5%);
+  --action-secondary-hover: rgb(0 0 0 / 8%);
  }
 
  /* ── Theming stage 2: where stage 3's dark palette goes ──────────────────
@@ -559,12 +597,12 @@
       NOTE --surface-raised INVERTS DIRECTION: in light it is whiter than the
       ground, in dark it must be LIGHTER than a dark ground, not brighter in
       absolute terms. --surface-sunken stays recessive, i.e. darker. */
-   --surface:         #141414;   /* page ground — near-black neutral chrome */
-   --surface-raised:  #1F1F1F;   /* cards/panels — lighter than the ground, 1.12:1 */
+   --surface:         #171717;   /* page ground — Eden dark canvas */
+   --surface-raised:  #202020;   /* cards/panels — lighter than the ground */
    --surface-sunken:  #0C0C0C;   /* recessed fills — darker than the ground */
 
-   --border-subtle:   #242424;   /* 1.06:1 on --surface-raised */
-   --border-default:  #2E2E2E;   /* 1.21:1 — the row divider `divide-line` draws */
+   --border-subtle:   #2A2A2A;   /* white ~10% on --surface-raised: Eden dividers */
+   --border-default:  #363636;   /* white ~14% on --surface-raised: Eden card edge */
    /* ⚠️ --border-strong ALSO feeds shadcn's --input, i.e. a form field's edge.
       It is darkened with the rest of the ramp but deliberately NOT collapsed
       onto --border-default: a decorative divider may go as dark as it likes,
@@ -577,8 +615,8 @@
    --surface-chip:    #2A2A2A;
    /* Track their nearest ramp neighbours in dark -- there is no reason to carry
       the light theme's off-by-2 accident into a new theme. */
-   --border-hairline: #242424;   /* = --border-subtle */
-   --surface-tint:    #141414;   /* = --surface */
+   --border-hairline: #2A2A2A;   /* = --border-subtle */
+   --surface-tint:    #222222;   /* Eden dark inner rows (#222 to #262626) */
 
    /* Neutral text ramp. Every step clears AA (4.5:1) against all three
       surfaces above, and the ramp is monotonic so the visual hierarchy
@@ -689,6 +727,28 @@
       declarations up: an unlifted dark tenant colour would otherwise produce
       a focus ring nobody can see. */
    --ring: var(--brand-color-on-dark, var(--brand-color));
+
+   /* ── Eden shell pass, dark. Sidebar #212121, content card #202020 (spec),
+      active row a step lighter, borders white at low alpha. */
+   --sidebar: #212121;
+   --sidebar-foreground: #B8B8B8;
+   --sidebar-accent: #353535;
+   --sidebar-accent-foreground: var(--text-strong);
+   /* White 5% composited on #212121. Solid, same reason as the light hover. */
+   --sidebar-hover: #2C2C2C;
+   /* White 16% composited on #212121. Solid for the same reason as light. */
+   --sidebar-border: #444444;
+   --shell-shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 4px 14px rgb(0 0 0 / 22%);
+   --seg-track: rgb(255 255 255 / 6%);
+   --seg-active: #353535;
+   --seg-active-shadow: 0 1px 2px rgb(0 0 0 / 30%);
+   /* Harvest gold, contrast-corrected against this ground by layout.tsx.
+      Not a near-white primary. */
+   --action: var(--brand-color-on-dark, var(--brand-color));
+   --action-hover: color-mix(in srgb, var(--brand-color-on-dark, var(--brand-color)) 84%, white);
+   --action-foreground: var(--primary-foreground);
+   --action-secondary: rgb(255 255 255 / 8%);
+   --action-secondary-hover: rgb(255 255 255 / 12%);
 
    /* The design ships PAL as day/night pairs; these are the night variants,
       and the first three are again the ramps globals.css already declares
@@ -833,6 +893,18 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-hover: var(--sidebar-hover);
+
+  /* Eden shell pass. */
+  --color-action: var(--action);
+  --color-action-hover: var(--action-hover);
+  --color-action-foreground: var(--action-foreground);
+  --color-action-secondary: var(--action-secondary);
+  --color-action-secondary-hover: var(--action-secondary-hover);
+  --color-seg-track: var(--seg-track);
+  --color-seg-active: var(--seg-active);
+  --shadow-shell: var(--shell-shadow);
+  --shadow-seg: var(--seg-active-shadow);
 
   /* Not a colour. See the --font-heading note above. */
   --font-heading: var(--font-display), Georgia, serif;

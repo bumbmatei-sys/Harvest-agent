@@ -272,16 +272,35 @@ const newsClipBtn = discover(
  * moved" rather than "the pill hangs out of its container at 380px". So the
  * absence is measured instead, and the geometry cases below are what fail.
  */
-const tabsListCls =
-  read(EVENTS).match(/<TabsList className="([^"]+)">/)?.[1] ??
-  (read(EVENTS).includes('<TabsList>')
-    ? ''
-    : (() => { throw new Error('the events TabsList is gone entirely'); })());
-const tabTriggerCls = discover(
-  EVENTS,
-  /<TabsTrigger value="list" className="([^"]+)">List<\/TabsTrigger>/,
-  'the events List trigger',
+/** Eden shell pass: AdminEvents applies the shared segmented constants.
+ *  A string-literal className is no longer how the screen is written, so the
+ *  extractor resolves the constant from SegmentedTabs.tsx and then the extra
+ *  mobile-floor classes still spelled on the trigger. */
+function segmentedConst(name: string): string {
+  const src = read('src/components/admin-shell/SegmentedTabs.tsx');
+  const m = src.match(new RegExp(`export const ${name} =\\n?\\s*'([^']*)'`));
+  if (!m) throw new Error(`${name} is not a string constant in SegmentedTabs.tsx`);
+  return m[1];
+}
+const eventsSrc = read(EVENTS);
+const tabsListRef = eventsSrc.match(/<TabsList className=\{([A-Z0-9_]+)\}>/);
+const tabsListLiteral = eventsSrc.match(/<TabsList className="([^"]+)">/);
+const tabsListCls = tabsListRef
+  ? segmentedConst(tabsListRef[1])
+  : tabsListLiteral?.[1] ??
+    (eventsSrc.includes('<TabsList>')
+      ? ''
+      : (() => { throw new Error('the events TabsList is gone entirely'); })());
+const triggerRef = eventsSrc.match(
+  /<TabsTrigger value="list" className=\{`\$\{([A-Z0-9_]+)\} ([^`]*)`\}>List<\/TabsTrigger>/,
 );
+const tabTriggerCls = triggerRef
+  ? `${segmentedConst(triggerRef[1])} ${triggerRef[2]}`
+  : discover(
+      EVENTS,
+      /<TabsTrigger value="list" className="([^"]+)">List<\/TabsTrigger>/,
+      'the events List trigger',
+    );
 
 // ── Readings ────────────────────────────────────────────────────────────────
 

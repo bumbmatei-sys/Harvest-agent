@@ -629,7 +629,7 @@ describe('a tenant document carrying a retired add-on key resolves as if it did 
   it('🔴 drops the retired keys entirely — the resolved set has exactly three', () => {
     const resolved = readTenantAddons(LEGACY_DOC);
     expect(Object.keys(resolved).sort()).toEqual(
-      ['adminSeats', 'aiAssistant', 'unlimitedContacts'],
+      ['adminSeats', 'aiAssistant', 'socialScheduler', 'unlimitedContacts'],
     );
     expect(resolved).not.toHaveProperty('contactPacks');
     expect(resolved).not.toHaveProperty('campuses');
