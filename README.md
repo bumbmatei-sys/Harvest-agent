@@ -35,12 +35,13 @@ Environment variables are documented in `.env.example`.
 npm test           # Vitest, src/**
 npm run typecheck  # tsc --noEmit
 npm run lint       # next lint
-npm run test:rules # Firestore rules, needs the emulator — NOT run by CI
+npm run test:rules # Firestore rules, needs the emulator and Java
 ```
 
-CI (`.github/workflows/test.yml`) runs the first three on every pull request. It does
-**not** run the rules tests, and `firestore.rules` auto-deploys to production on merge, so
-run `npm run test:rules` yourself for any rules change.
+CI (`.github/workflows/test.yml`) runs the first three as **Test & Lint**, and
+`npm run test:rules` as **Firestore rules**, on every pull request. The rules job
+does not deploy. `firestore.rules` still auto-deploys to production on merge to
+`main`, which is a separate founder go.
 
 `npm test` is a large suite. On a two-core runner, pass `--maxWorkers=2`: a higher worker
 count has produced failures on this repo that do not reproduce at two.

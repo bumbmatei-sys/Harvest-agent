@@ -654,6 +654,9 @@ describe('the out-of-scope files are untouched', () => {
       'src/components/admin-shell/AdminDesktopSidebar.tsx',
       'src/components/admin-shell/AdminShellPreview.tsx',
       'src/components/admin-shell/admin-shell.test.tsx',
+      // APPENDED BY #531. The schedule proof wraps the same sidebar, which
+      // needs TooltipProvider. The preview is dev-only.
+      'src/components/blog/BlogSchedulePreview.tsx',
     ],
     collapsible: [
       // Pre-existing, and invisible to the alias-only matcher until now.

@@ -177,6 +177,7 @@ const RESOLVED_PATH: Record<string, string> = {
   // document id, so section 9's assertion that the resolved path never leaves
   // as a property is the one that matters most for this row too.
   '/n/[token]': '/n/Pd7Kx2Nv9Qw4Bz6Rt1Yu8Ie5Oa3Sl0Gh7Jm2Cf6XaBc',
+  '/p': '/p',
 };
 
 /** The page file that must render `<PublicRouteAnalytics>` for each Next route. */
@@ -193,6 +194,7 @@ const PAGE_FILE: Record<string, string> = {
   '/post/[postId]': 'src/app/post/[postId]/page.tsx',
   '/rota/[token]': 'src/app/rota/[token]/page.tsx',
   '/n/[token]': 'src/app/n/[token]/page.tsx',
+  '/p': 'src/app/p/page.tsx',
 };
 
 const NEXT_ROUTES = ANALYTICS_ROUTES.filter((r) => r.entry === 'next-page');
@@ -348,6 +350,10 @@ describe('1 — every route in the stated list emits a pageview', () => {
       // document id, so section 9's "the resolved path never leaves as a
       // property" covers it too.
       '/n/[token]',
+      // The ministry page. APPENDED, never substituted: the routes above stay
+      // exactly the ones already named. A scheduled post is absent from this
+      // page until its instant, which is a read-time decision, not a new route.
+      '/p',
     ]);
   });
 
@@ -374,17 +380,19 @@ describe('1 — every route in the stated list emits a pageview', () => {
     const catchAll = '/[[...slug]]';
     expect(found).toContain(catchAll);
 
-    // Dev-only layout preview. Production calls notFound(), so there is no
-    // document to count and it is not an analytics route. A second unlisted
-    // page still fails the comparison below.
-    const devOnlyPreview = '/preview/admin-shell';
-    expect(found).toContain(devOnlyPreview);
-    const preview = readFileSync(path.join(ROOT, 'src/app/preview/admin-shell/page.tsx'), 'utf8');
-    expect(preview).toContain("if (process.env.NODE_ENV === 'production') notFound();");
-    expect(preview).not.toMatch(/PublicRouteAnalytics/);
-    expect(NEXT_ROUTES.map((r) => r.pattern)).not.toContain(devOnlyPreview);
+    // Dev-only layout previews. Production calls notFound(), so there is no
+    // document to count and they are not analytics routes. The list is named:
+    // any other page still fails the comparison below.
+    const devOnlyPreviews = ['/preview/admin-shell', '/preview/blog-schedule'];
+    for (const route of devOnlyPreviews) {
+      expect(found).toContain(route);
+      const preview = readFileSync(path.join(ROOT, `src/app${route}/page.tsx`), 'utf8');
+      expect(preview).toContain("if (process.env.NODE_ENV === 'production') notFound();");
+      expect(preview).not.toMatch(/PublicRouteAnalytics/);
+      expect(NEXT_ROUTES.map((r) => r.pattern)).not.toContain(route);
+    }
 
-    expect(found.filter((r) => r !== catchAll && r !== devOnlyPreview).sort()).toEqual(
+    expect(found.filter((r) => r !== catchAll && !devOnlyPreviews.includes(r)).sort()).toEqual(
       NEXT_ROUTES.map((r) => r.pattern).sort(),
     );
   });

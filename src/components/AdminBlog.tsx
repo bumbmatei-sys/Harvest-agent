@@ -1,12 +1,14 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, FileText, Sparkles, X, ChevronDown } from 'lucide-react';
-import { collection, onSnapshot, query, where, deleteDoc, doc, getDoc, limit } from 'firebase/firestore';
-import { db, auth } from '../firebase';
+import { collection, doc, getDoc, onSnapshot, query, where, limit } from 'firebase/firestore';
+import { db } from '../firebase';
 import AdminBlogPostEditor from './AdminBlogPostEditor';
 import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar, AdminCard, AdminBadge, statusTone } from './admin/AdminUI';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { getTenantScope, hasPlatformOverride } from '../utils/tenant-scope';
+import { getTenantScope, getWriteTenantScope, hasPlatformOverride } from '../utils/tenant-scope';
+import { blogListKind, blogStatusLabel, readBlogCategory } from '../lib/blog/visibility';
+import { automationSettingsJson } from '../lib/blog/automation-settings-json';
 import { sortByTime } from '../utils/query-helpers';
 import { formatFirestoreDate, type FirestoreDate } from '../utils/firestore-date';
 import { useAppStore } from '../store/useAppStore';
@@ -38,6 +40,7 @@ interface BlogPost {
  featuredImage?: string;
  tags?: string[];
  publishedAt?: FirestoreDate;
+ scheduleTimeZone?: string | null;
  isAiGenerated?: boolean;
 }
 
@@ -104,6 +107,8 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  });
  const [savingAutomation, setSavingAutomation] = useState(false);
  const [generatingNow, setGeneratingNow] = useState(false);
+ const [automationError, setAutomationError] = useState<string | null>(null);
+ const [generationNotice, setGenerationNotice] = useState<string | null>(null);
 
  useEffect(() => {
   let unsubscribe: (() => void) | null = null;
@@ -116,10 +121,14 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
       ? query(collection(db, 'blog_posts'), where('tenantId', '==', tenantId), limit(100))
       : query(collection(db, 'blog_posts'), limit(100));
     unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedPosts = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as BlogPost[];
+      const fetchedPosts = snapshot.docs.map(doc => {
+        const data = doc.data() as Partial<BlogPost>;
+        return {
+          ...data,
+          id: doc.id,
+          category: readBlogCategory(data),
+        };
+      }) as BlogPost[];
       setPosts(sortByTime(fetchedPosts, 'createdAt', 'desc'));
       setLoading(false);
     }, (error) => {
@@ -138,17 +147,39 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
    let cancelled = false;
    (async () => {
      try {
-       const resp = await authFetch('/api/blog/automate');
-       if (resp.ok && !cancelled) {
-         const data = await resp.json();
-         setAutomation(a => ({ ...a, ...data }));
+       // A read with no ministry stays unscoped. These settings are a write
+       // target, so the apex super admin resolves to the platform ministry
+       // instead of sending a request with an empty tenant.
+       const tenantId = await getWriteTenantScope();
+       if (!tenantId || cancelled) return;
+       let data: unknown = null;
+       try {
+         const resp = await authFetch(`/api/blog/automate?tenantId=${encodeURIComponent(tenantId)}`);
+         if (resp.ok) data = await resp.json();
+       } catch {
+         data = null;
        }
-     } catch {}
+       // The preview's admin SDK answers 500 for this read. The signed-in
+       // browser can still read the same document. A failure here is a
+       // sentence in the panel, not an alert over the editor.
+       if (data == null) {
+         const snap = await getDoc(doc(db, 'tenants', tenantId, 'blogAutomation', 'settings'));
+         data = snap.exists() ? (snap.data() ?? { enabled: false }) : { enabled: false };
+       }
+       if (cancelled) return;
+       const settings = automationSettingsJson(data);
+       if (settings && typeof settings === 'object') {
+         setAutomation(a => ({ ...a, ...(settings as object) }));
+         setAutomationError(null);
+       }
+     } catch {
+       if (!cancelled) setAutomationError('Automation settings could not be loaded.');
+     }
    })();
    return () => { cancelled = true; };
  }, [canAutomate, knowledgeBaseEnabled]);
 
- const categories = Array.from(new Set(posts.map(post => post.category)));
+ const categories = Array.from(new Set(posts.map(post => readBlogCategory(post)).filter((category) => category !== '')));
  const filterCategories = ['All', ...categories];
 
  const filteredPosts = posts.filter(post => {
@@ -176,9 +207,16 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  const handleSaveAutomation = async () => {
    setSavingAutomation(true);
    try {
+     setAutomationError(null);
+     const tenantId = await getWriteTenantScope();
+     if (!tenantId) {
+       setAutomationError('A ministry is required before automation settings can be saved.');
+       return;
+     }
      const resp = await authFetch('/api/blog/automate', {
        method: 'POST',
        body: JSON.stringify({
+         tenantId,
          enabled: automation.enabled,
          frequency: automation.frequency,
          dayOfWeek: automation.dayOfWeek,
@@ -207,14 +245,23 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  const handleGenerateNow = async () => {
    setGeneratingNow(true);
    try {
+     setAutomationError(null);
+     setGenerationNotice(null);
+     const tenantId = await getWriteTenantScope();
+     if (!tenantId) {
+       setAutomationError('A ministry is required before an article can be generated.');
+       return;
+     }
      const resp = await authFetch('/api/blog/generate', {
        method: 'POST',
-       body: JSON.stringify({ topicHint: automation.topicHint }),
+       body: JSON.stringify({ tenantId, topicHint: automation.topicHint }),
      });
      const data = await resp.json();
      if (!resp.ok) throw new Error(data.error || 'Failed to generate');
-     // The existing onSnapshot listener will pick up the new post automatically.
-     setShowAutomation(false);
+     // The route saves a draft. Publishing still goes through the editor's
+     // preview, so the panel stays open and says so. The list listener picks
+     // the new draft up on its own.
+     setGenerationNotice('Saved as a draft. Review it, then publish when you are ready.');
    } catch (e) {
      notifyError('Failed to generate article', e);
    } finally {
@@ -227,18 +274,54 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  setIsEditorOpen(true);
  };
 
+ const listZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+ const statusLabel = (post: BlogPost, full: boolean) => {
+   const nowMs = Date.now();
+   if (!full) {
+     const kind = blogListKind(post, nowMs);
+     if (kind === 'draft') return 'Draft';
+     if (kind === 'scheduled') return 'Scheduled';
+     return 'Published';
+   }
+   return blogStatusLabel(post, nowMs, listZone);
+ };
+
  const handleDeletePost = async (id: string) => {
  try {
-   const tenantId = await getTenantScope();
-   if (tenantId) {
-     const docSnap = await getDoc(doc(db, 'blog_posts', id));
-     if (docSnap.exists() && docSnap.data().tenantId && docSnap.data().tenantId !== tenantId) {
-       console.error('Tenant mismatch — cannot modify another tenant\'s document');
-       return;
-     }
+   const tenantId = await getWriteTenantScope();
+   if (!tenantId) {
+     setErrorMessage('A ministry is required before this post can be deleted.');
+     return;
    }
-   await deleteDoc(doc(db, 'blog_posts', id));
- setDeleteConfirmId(null);
+   const preview = await authFetch('/api/blog/actions', {
+     method: 'POST',
+     body: JSON.stringify({ action: 'delete', mode: 'preview', tenantId, postId: id }),
+   });
+   const previewBody = await preview.json();
+   if (!preview.ok || previewBody.ok === false) {
+     setErrorMessage(typeof previewBody.message === 'string' ? previewBody.message : 'Failed to delete post. Please try again.');
+     return;
+   }
+   if (typeof previewBody.confirmToken !== 'string' || previewBody.confirmToken === '') {
+     setErrorMessage('The preview did not return a confirmation.');
+     return;
+   }
+   const confirmed = await authFetch('/api/blog/actions', {
+     method: 'POST',
+     body: JSON.stringify({
+       action: 'delete',
+       mode: 'confirm',
+       tenantId,
+       postId: id,
+       confirmToken: previewBody.confirmToken,
+     }),
+   });
+   const confirmedBody = await confirmed.json();
+   if (!confirmed.ok || confirmedBody.ok === false) {
+     setErrorMessage(typeof confirmedBody.message === 'string' ? confirmedBody.message : 'Failed to delete post. Please try again.');
+     return;
+   }
+   setDeleteConfirmId(null);
  } catch (error) {
  try { handleFirestoreError(error, OperationType.DELETE, `blog_posts/${id}`); } catch (e) { console.error(e); }
  setErrorMessage("Failed to delete post. Please try again.");
@@ -247,7 +330,7 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  };
 
  if (isEditorOpen) {
- return <AdminBlogPostEditor post={editingPost} onClose={() => setIsEditorOpen(false)} categories={categories} />;
+ return <AdminBlogPostEditor key={editingPost?.id ?? 'new'} post={editingPost} onClose={() => setIsEditorOpen(false)} categories={categories} />;
  }
 
  return (
@@ -281,7 +364,7 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  {knowledgeBaseEnabled && automateGate === 'permitted' && (
  <button
  data-testid="blog-automate-button"
- onClick={() => setShowAutomation(true)}
+ onClick={() => { setShowAutomation(true); }}
  className="inline-flex items-center justify-center gap-1.5 min-h-[44px] sm:min-h-0 px-4 py-2.5 rounded-brand border border-line bg-surface-raised text-[13px] font-semibold text-strong hover:bg-surface-sunken transition-colors"
  >
  <Sparkles size={15} className="text-gold" /> Automate
@@ -342,7 +425,7 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  <span className="text-[11px] text-faint whitespace-nowrap">{formatDate(post.createdAt)}</span>
  </div>
  </div>
- <AdminBadge tone={statusTone(post.status)} className="shrink-0">{post.status}</AdminBadge>
+ <AdminBadge tone={statusTone(blogListKind(post, Date.now()))} className="shrink-0">{statusLabel(post, false)}</AdminBadge>
  <div className="flex items-center shrink-0">
  <button onClick={() => handleEditPost(post)} className="p-2 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors" title="Edit"><Edit2 size={15} /></button>
  <button onClick={() => setDeleteConfirmId(post.id)} className="p-2 rounded-brand text-faint hover:text-danger hover:bg-danger-tint transition-colors" title="Delete"><Trash2 size={15} /></button>
@@ -395,7 +478,7 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  </div>
  </td>
  <td className="px-6 py-3.5"><span className="text-sm text-muted">{post.category}</span></td>
- <td className="px-6 py-3.5"><AdminBadge tone={statusTone(post.status)}>{post.status}</AdminBadge></td>
+ <td className="px-6 py-3.5"><AdminBadge tone={statusTone(blogListKind(post, Date.now()))}>{statusLabel(post, true)}</AdminBadge></td>
  <td className="px-6 py-3.5"><span className="text-sm text-muted whitespace-nowrap">{formatDate(post.createdAt)}</span></td>
  <td className="px-6 py-3.5 text-right">
  <div className="flex items-center justify-end gap-1">
@@ -453,7 +536,7 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  AI generates SEO articles from your Knowledge Base
  </p>
  </div>
- <button onClick={() => setShowAutomation(false)}>
+ <button onClick={() => { setAutomationError(null); setGenerationNotice(null); setShowAutomation(false); }}>
  <X size={20} className="text-faint" />
  </button>
  </div>
@@ -593,6 +676,13 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  </span>
  )}
  </div>
+ )}
+
+ {automationError && (
+ <p role="alert" className="text-sm text-danger">{automationError}</p>
+ )}
+ {generationNotice && (
+ <p role="status" className="text-sm text-body">{generationNotice}</p>
  )}
 
  {/* Actions */}

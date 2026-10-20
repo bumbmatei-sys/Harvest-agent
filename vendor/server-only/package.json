@@ -1,0 +1,13 @@
+{
+  "name": "server-only",
+  "description": "Marker so a module cannot be imported from a Client Component. Vendored because the lockfile cannot take a new dependency; the export conditions match the package Next already compiles.",
+  "version": "0.0.1",
+  "license": "MIT",
+  "main": "index.js",
+  "exports": {
+    ".": {
+      "react-server": "./empty.js",
+      "default": "./index.js"
+    }
+  }
+}

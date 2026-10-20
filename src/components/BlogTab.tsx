@@ -8,6 +8,7 @@ import { FileText, Calendar, Tag, ArrowLeft, Search } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
 import { tsMillis } from '../utils/query-helpers';
+import { isBlogPostPublic } from '../lib/blog/visibility';
 import { formatFirestoreDate, type FirestoreDate } from '../utils/firestore-date';
 import { usePublicShareUrl } from '../utils/share-url';
 import ShareButton from './ShareButton';
@@ -58,7 +59,9 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
   let unsubscribe: (() => void) | null = null;
   let cancelled = false;
   (async () => {
-    // Only fetch published posts
+    // Tenant-scoped read, then read-time visibility below. The no-tenant
+    // fallback stays one status filter: an unconstrained collection read
+    // would cross ministries.
     const tenantId = await getTenantScope();
     if (cancelled) return;
     // Single-field filter only (status); tenant filter applied client-side.
@@ -71,18 +74,10 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
   id: doc.id,
   ...doc.data()
   })) as BlogPost[];
-  fetchedPosts = fetchedPosts.filter(p => (p as any).status === 'published');
- 
-  // Filter out scheduled posts that haven't reached their publish date yet
-  // THE-347 - compared as MILLISECONDS, not as strings. `publishedAt <= now`
-  // read as a lexicographic compare, which is only meaningful while every
-  // document holds an ISO string; against a Timestamp object it compares
-  // "[object Object]" and a scheduled post leaks out early. `tsMillis`
-  // resolves both representations, exactly as the sort below now does.
+  // Read-time visibility. A scheduled post stays hidden until its UTC instant,
+  // then appears without a status flip. Drafts never appear.
   const nowMs = Date.now();
-  const visiblePosts = fetchedPosts.filter(post =>
-  !post.publishedAt || tsMillis(post.publishedAt as never) <= nowMs
-  );
+  const visiblePosts = fetchedPosts.filter(post => isBlogPostPublic(post, nowMs));
  
   // Sort by publishedAt (descending), fallback to createdAt
   visiblePosts.sort((a, b) => {
