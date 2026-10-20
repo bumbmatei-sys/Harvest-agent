@@ -20,7 +20,8 @@ import { useLgUp } from './admin-shell/use-lg';
 import { ensureLightDefault } from './admin-shell/use-shell-theme';
 import { sideForTab, type ShellPlaceholderId, type ShellSideId } from './admin-shell/shell-nav';
 import AffiliateSection from './AffiliateSection';
-import { EmailWorkspace } from './email/EmailWorkspace';
+import NewsletterEditor from './NewsletterEditor';
+import NewsletterCampaigns from './NewsletterCampaigns';
 import CanvasList from './CanvasList';
 import CanvasEditor from './CanvasEditor';
 import { Permission, normalizePermissions } from './AdminRoles';
@@ -251,6 +252,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const [showBilling, setShowBilling] = useState(false);
   const [canvasId, setCanvasId] = useState<string | null>(null);
   const [canvasName, setCanvasName] = useState<string>('');
+  const [newsletterView, setNewsletterView] = useState<'list' | 'editor'>('list');
   const [shellSide, setShellSide] = useState<ShellSideId>('people');
   const [shellPlaceholder, setShellPlaceholder] = useState<ShellPlaceholderId | null>(null);
   const lgUp = useLgUp();
@@ -291,6 +293,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   /** Navigate to a tab by internal id (resets transient sub-views). */
   const go = useCallback((id: string) => {
     setShowMoreSheet(false);
+    setNewsletterView('list');
     setShellPlaceholder(null);
     const side = sideForTab(id);
     if (side) setShellSide(side);
@@ -1322,7 +1325,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                   <p className="text-lg font-medium">Page not found.</p>
                 </div>
               : planAllows(features?.newsletterAutomation)
-              ? <EmailWorkspace tenantId={tenantId || PLATFORM_TENANT_ID} />
+              ? <div className="p-4 lg:p-0">
+                  {newsletterView === 'editor' ? (
+                    <NewsletterEditor
+                      tenantId={tenantId || PLATFORM_TENANT_ID}
+                      tenantName={tenantName}
+                      onBack={() => setNewsletterView('list')}
+                      canAutoGenerate={platformOverride || !!(features?.automatedNewsletter)}
+                    />
+                  ) : (
+                    <NewsletterCampaigns
+                      tenantId={tenantId || PLATFORM_TENANT_ID}
+                      onBack={() => go('dashboard')}
+                      onCreateNew={() => setNewsletterView('editor')}
+                    />
+                  )}
+                </div>
               : <PlanUpgradeScreen featureName="Newsletter" featureKey="newsletterAutomation" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'canvas' ? (
             !canvasId ? (

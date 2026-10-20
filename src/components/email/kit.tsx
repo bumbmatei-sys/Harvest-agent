@@ -104,7 +104,7 @@ export function Segmented<T extends string>({ value, onChange, options, label }:
       className="rounded-lg bg-surface-sunken p-0.5"
     >
       {options.map((o) => (
-        <ToggleGroupItem key={o.value} value={o.value} className={cn(TAP, 'px-3 text-sm data-[pressed]:bg-surface-raised data-[pressed]:text-strong data-[pressed]:shadow-sm')}>
+        <ToggleGroupItem key={o.value} value={o.value} className={cn(TAP, 'px-3 text-sm data-[pressed]:bg-surface-raised data-[pressed]:text-strong data-[pressed]:shadow-xs')}>
           {o.label}
         </ToggleGroupItem>
       ))}

@@ -133,7 +133,7 @@ export function BodyEditor({ html, onChange }: { html: string; onChange: (html: 
       Placeholder.configure({ placeholder: 'Write your email…' }),
     ],
     content: html,
-    editorProps: { attributes: { class: 'prose prose-sm max-w-none min-h-56 px-5 py-4 text-strong outline-none', 'aria-label': 'Email body' } },
+    editorProps: { attributes: { class: 'prose prose-sm max-w-none min-h-56 px-5 py-4 text-strong outline-hidden', 'aria-label': 'Email body' } },
     onUpdate: ({ editor: e }) => onChange(e.getHTML()),
   });
 

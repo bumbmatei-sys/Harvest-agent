@@ -209,15 +209,15 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
               <div className="flex items-start gap-3">
                 {subjectB !== null && <span aria-hidden className="mt-2.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-[11px] font-semibold text-strong">A</span>}
                 <div className="flex-1">
-                  <Input aria-label="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject" className="h-auto border-0 bg-transparent px-0 py-2 text-xl font-semibold shadow-none focus-visible:ring-0" />
-                  <Input aria-label="Preview text" value={preheader} onChange={(e) => setPreheader(e.target.value)} placeholder="Add preview text, the line inboxes show after the subject" className="h-auto border-0 bg-transparent px-0 py-1 text-sm text-muted shadow-none focus-visible:ring-0" />
+                  <Input aria-label="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject" className="h-auto border-0 bg-transparent dark:bg-transparent px-0 py-2 text-xl font-semibold shadow-none focus-visible:ring-0" />
+                  <Input aria-label="Preview text" value={preheader} onChange={(e) => setPreheader(e.target.value)} placeholder="Add preview text, the line inboxes show after the subject" className="h-auto border-0 bg-transparent dark:bg-transparent px-0 py-1 text-sm text-muted shadow-none focus-visible:ring-0" />
                 </div>
               </div>
               {subjectB !== null && (
                 <div className="mt-2 flex items-start gap-3 border-t border-dashed border-line pt-3">
                   <span aria-hidden className="mt-2.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-surface-gold text-[11px] font-semibold text-strong">B</span>
                   <div className="flex-1">
-                    <Input aria-label="Another subject to try" value={subjectB} onChange={(e) => setSubjectB(e.target.value)} placeholder="Another subject to try" className="h-auto border-0 bg-transparent px-0 py-2 text-xl font-semibold shadow-none focus-visible:ring-0" />
+                    <Input aria-label="Another subject to try" value={subjectB} onChange={(e) => setSubjectB(e.target.value)} placeholder="Another subject to try" className="h-auto border-0 bg-transparent dark:bg-transparent px-0 py-2 text-xl font-semibold shadow-none focus-visible:ring-0" />
                     <p className="pb-1 text-xs text-faint">Half your list gets A and half gets B.</p>
                   </div>
                   <Button variant="ghost" size="icon" className={TAP} aria-label="Remove the second subject" onClick={() => setSubjectB(null)}><X /></Button>

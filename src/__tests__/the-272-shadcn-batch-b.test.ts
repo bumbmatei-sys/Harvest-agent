@@ -1124,6 +1124,14 @@ const PHASE_1_CHART_ADOPTERS = ['src/components/admin-shell/AdminHome.tsx'] as c
 const PHASE_1_TABLE_ADOPTERS = ['src/components/admin-shell/data-table.tsx'] as const;
 const PHASE_1_PROGRESS_ADOPTERS = ['src/components/admin-shell/AdminHome.tsx'] as const;
 
+/** APPENDED BY #538. The email workspace: broadcasts, subscribers and DNS records are tables; the overview's list bars and send-limit meter are progress. */
+const NEWSLETTER_TABLE_ADOPTERS = [
+  'src/components/email/BroadcastsView.tsx',
+  'src/components/email/EmailSettingsView.tsx',
+  'src/components/email/SubscribersView.tsx',
+] as const;
+const NEWSLETTER_PROGRESS_ADOPTERS = ['src/components/email/EmailOverview.tsx'] as const;
+
 it('only THE-276 adopts chart, THE-283/THE-290/THE-294/THE-319/THE-317 adopt table, THE-290/THE-319/THE-320 adopt progress, and pagination is still adopted by nothing', () => {
   const walk = (dir: string): string[] =>
     readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -1154,6 +1162,7 @@ it('only THE-276 adopts chart, THE-283/THE-290/THE-294/THE-319/THE-317 adopt tab
       ...THE_317_TABLE_ADOPTERS,
       ...THE_330_TABLE_ADOPTERS,
       ...PHASE_1_TABLE_ADOPTERS,
+      ...NEWSLETTER_TABLE_ADOPTERS,
     ].sort());
 
   const progressImporters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), 'progress'));
@@ -1163,6 +1172,7 @@ it('only THE-276 adopts chart, THE-283/THE-290/THE-294/THE-319/THE-317 adopt tab
       ...THE_319_PROGRESS_ADOPTERS,
       ...THE_320_PROGRESS_ADOPTERS,
       ...PHASE_1_PROGRESS_ADOPTERS,
+      ...NEWSLETTER_PROGRESS_ADOPTERS,
     ].sort());
 
   for (const name of ['pagination']) {
