@@ -50,6 +50,13 @@ const CONTROL = 'min-h-11 sm:min-h-[38px]';
 /** Same floor as CONTROL, at the select trigger's own attribute specificity so its h-8 does not stick. */
 const SELECT_CONTROL = `${CONTROL} w-full data-[size=default]:h-11 sm:data-[size=default]:h-[38px]`;
 const FIELD_CONTROL = `${CONTROL} h-11 w-full sm:h-[38px]`;
+/** Eden: 12.5px / 600 buttons, 14px inline padding, a near-black primary and a black 5% secondary. */
+const ACTION = `${CONTROL} rounded-lg px-3.5 text-[12.5px] font-semibold active:scale-[0.98]`;
+const ACTION_PRIMARY = `${ACTION} bg-accent-foreground text-background hover:bg-accent-foreground/85`;
+const ACTION_SECONDARY = `${ACTION} border-transparent bg-foreground/5 text-foreground hover:bg-foreground/10 dark:bg-foreground/10 dark:hover:bg-foreground/15`;
+/** An Eden option row: bordered, rounded-xl, title on the left and its control on the right. */
+const OPTION_ROW = 'flex items-center justify-between gap-3 rounded-xl border border-line bg-card px-3 py-2';
+const OPTION_TITLE = 'text-[13px] font-medium text-strong';
 
 const FRIENDLY_ERROR: Record<string, string> = {
   platform_not_offered: 'That platform is not offered.',
@@ -554,12 +561,16 @@ export function SocialScheduler({
                 if (specs.length === 0) return null;
                 return (
                   <fieldset key={platform} className="flex flex-col gap-2" data-testid={`fields-${platform}`}>
-                    <legend className="text-sm font-medium text-strong">{labelFor(platform)}</legend>
+                    <legend className="mb-2 text-[13px] font-semibold text-strong">{labelFor(platform)}</legend>
                     {specs.map((field) => {
                       const FieldWrap = field.kind === 'select' ? 'div' : 'label';
+                      const inline = field.kind !== 'text';
                       return (
-                      <FieldWrap key={field.key} className="flex flex-col gap-1 text-sm text-faint">
-                        {field.kind === 'select' ? <span>{field.label}</span> : field.label}
+                      <FieldWrap
+                        key={field.key}
+                        className={inline ? OPTION_ROW : 'flex flex-col gap-1.5 rounded-xl border border-line bg-card px-3 py-2'}
+                      >
+                        <span className={OPTION_TITLE}>{field.label}</span>
                         {field.kind === 'boolean' ? (
                           <Switch
                             checked={fields[platform]?.[field.key] === true}
@@ -581,7 +592,7 @@ export function SocialScheduler({
                             }}
                           >
                             <SelectTrigger
-                              className={`${SELECT_CONTROL} border-line bg-card px-3 text-strong`}
+                              className={`${SELECT_CONTROL} w-44 border-transparent bg-foreground/5 px-3 text-[13px] text-strong dark:bg-foreground/10`}
                               aria-label={field.label}
                             >
                               <SelectValue>
@@ -591,7 +602,7 @@ export function SocialScheduler({
                                 }}
                               </SelectValue>
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent alignItemWithTrigger={false} align="end" className="min-w-44 rounded-xl">
                               {field.options.map((option) => (
                                 <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                               ))}
@@ -599,7 +610,7 @@ export function SocialScheduler({
                           </Select>
                         ) : (
                           <Input
-                            className={`${FIELD_CONTROL} border-line bg-card px-3 text-strong`}
+                            className={`${FIELD_CONTROL} border-line bg-background px-3 text-strong`}
                             value={String(fields[platform]?.[field.key] ?? '')}
                             aria-label={field.label}
                             onChange={(event) => setFields((current) => ({
@@ -615,8 +626,8 @@ export function SocialScheduler({
                 );
               })}
               {aiPlatforms.length > 0 && (
-                <label className="flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2" data-testid="made-with-ai">
-                  <span className="text-sm text-strong">Made with AI</span>
+                <label className={OPTION_ROW} data-testid="made-with-ai">
+                  <span className={OPTION_TITLE}>Made with AI</span>
                   <Switch checked={madeWithAi} onCheckedChange={setMadeWithAi} aria-label="Made with AI" />
                 </label>
               )}
@@ -627,7 +638,7 @@ export function SocialScheduler({
                 </Button>
                 <p className="text-sm text-faint">Media upload is not available yet.</p>
               </div>
-              <label className="flex flex-col gap-1 text-sm text-faint">
+              <label className="flex flex-col gap-1.5 text-[13px] font-medium text-strong">
                 Schedule time
                 <Input
                   type="datetime-local"
@@ -638,8 +649,8 @@ export function SocialScheduler({
                 />
               </label>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" className={CONTROL} disabled={saving || youtubeSelected || accountsLoading} onClick={() => schedule(false)}>Schedule</Button>
-                <Button type="button" variant="outline" className={CONTROL} disabled={saving || youtubeSelected || accountsLoading} onClick={() => schedule(true)}>Post now</Button>
+                <Button type="button" className={ACTION_PRIMARY} disabled={saving || youtubeSelected || accountsLoading} onClick={() => schedule(false)}>Schedule</Button>
+                <Button type="button" variant="secondary" className={ACTION_SECONDARY} disabled={saving || youtubeSelected || accountsLoading} onClick={() => schedule(true)}>Post now</Button>
               </div>
               {youtubeSelected && (
                 <p className="text-sm text-faint" data-testid="youtube-needs-video">
@@ -808,12 +819,12 @@ export function SocialScheduler({
           )}
           {previewing && <p className="text-sm text-faint">Checking this post.</p>}
           <DialogFooter>
-            <Button type="button" variant="outline" className={CONTROL} onClick={() => setPending(null)}>
+            <Button type="button" variant="secondary" className={ACTION_SECONDARY} onClick={() => setPending(null)}>
               Cancel
             </Button>
             <Button
               type="button"
-              className={CONTROL}
+              className={ACTION_PRIMARY}
               disabled={saving || previewing || (!initial && !confirmToken)}
               onClick={() => { void confirmPending(); }}
             >
@@ -832,7 +843,7 @@ function SidePanel({ posts }: { posts: readonly SocialPost[] }) {
   const rows = posts.filter((post) => post.status === tab);
   return (
     <aside
-      className="hidden w-80 shrink-0 border-l border-line bg-card lg:flex lg:flex-col"
+      className="hidden w-80 shrink-0 gap-3 rounded-xl border border-line bg-card p-3 lg:flex lg:flex-col"
       data-testid="social-side-panel"
     >
       <Tabs
@@ -843,25 +854,24 @@ function SidePanel({ posts }: { posts: readonly SocialPost[] }) {
         className="gap-0"
       >
         <TabsList
-          variant="line"
           aria-label="Drafts, scheduled and sent"
-          className="h-auto w-full rounded-none border-b border-line bg-transparent p-0 group-data-[orientation=horizontal]/tabs:h-auto"
+          className="h-auto w-full rounded-xl bg-foreground/[0.045] p-1 group-data-[orientation=horizontal]/tabs:h-auto"
         >
           {(Object.keys(labels) as Array<keyof typeof labels>).map((id) => (
             <TabsTrigger
               key={id}
               value={id}
-              className={`${CONTROL} h-auto flex-1 rounded-none px-2 font-normal text-faint shadow-none after:hidden data-active:bg-transparent data-active:text-strong data-active:shadow-none dark:data-active:bg-transparent`}
+              className={`${CONTROL} h-auto flex-1 rounded-lg px-2 text-[13px] font-medium text-faint data-active:bg-card data-active:text-strong data-active:shadow-[0_1px_2px_rgba(0,0,0,0.08)] dark:data-active:border-transparent dark:data-active:bg-foreground/10`}
             >
               {labels[id]}
             </TabsTrigger>
           ))}
         </TabsList>
       </Tabs>
-      <ul className="flex flex-col gap-2 p-3">
-        {rows.length === 0 && <li className="text-sm text-faint">Nothing in {labels[tab].toLowerCase()}.</li>}
+      <ul className="flex flex-col gap-2">
+        {rows.length === 0 && <li className="px-1 text-sm text-faint">Nothing in {labels[tab].toLowerCase()}.</li>}
         {rows.map((post) => (
-          <li key={post.id} className="rounded-lg border border-line px-3 py-2 text-sm text-strong">{post.content}</li>
+          <li key={post.id} className="rounded-xl border border-line bg-background px-3 py-2 text-sm text-strong">{post.content}</li>
         ))}
       </ul>
     </aside>
