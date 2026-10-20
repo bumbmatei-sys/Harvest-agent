@@ -292,12 +292,14 @@ describe('scheduling from the editor', () => {
     await act(async () => { setClock('2026-12-01T10:00'); });
     await clickLabel('Schedule');
 
-    expect(authFetch).not.toHaveBeenCalled();
+    expect(authFetch).toHaveBeenCalledTimes(0);
     expect(host.querySelector('[data-blog-schedule-preview]')?.textContent).toContain('hidden until');
     expect(host.textContent).not.toContain('Saving…');
 
     await clickLabel('Confirm');
 
+    // Preview mints the token, then the write uses it. Both are after confirm.
+    expect(authFetch).toHaveBeenCalledTimes(2);
     expect(sentBodies()[0]).toMatchObject({
       action: 'schedule',
       mode: 'preview',
@@ -348,6 +350,31 @@ describe('publish and take down confirm', () => {
     expect(sentBodies()[0]).toMatchObject({ action: 'publishNow', mode: 'preview' });
     expect(sentBodies()[1]).toMatchObject({ action: 'publishNow', mode: 'confirm', confirmToken: 'tok-1' });
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('publishes a new unsaved draft only after confirm', async () => {
+    authFetch.mockImplementation(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as { action: string; mode?: string };
+      if (body.mode === 'confirm') return { ok: true, json: async () => ({ ok: true }) };
+      return { ok: true, json: async () => previewBody(body.action) };
+    });
+    await mountEditor(null);
+    await chooseIntent('Publish now');
+    await clickLabel('Publish now');
+
+    expect(authFetch).toHaveBeenCalledTimes(0);
+    expect(host.querySelector('[data-blog-schedule-preview]')?.textContent).toContain('becomes public on the ministry page now');
+
+    await clickLabel('Confirm');
+
+    expect(authFetch).toHaveBeenCalledTimes(2);
+    expect(sentBodies()[0]).toMatchObject({ action: 'publishNow', mode: 'preview', postId: null });
+    expect(sentBodies()[1]).toMatchObject({
+      action: 'publishNow',
+      mode: 'confirm',
+      postId: null,
+      confirmToken: 'tok-1',
+    });
   });
 
   it('takes a live post down only after confirm', async () => {
