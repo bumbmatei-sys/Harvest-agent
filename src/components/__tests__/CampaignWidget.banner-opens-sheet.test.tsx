@@ -104,9 +104,10 @@ async function mountWidget(
 const banner = () => container.querySelector<HTMLElement>('[role="button"]');
 const giveNow = () =>
   [...container.querySelectorAll('button')].find((b) => /give now/i.test(b.textContent || ''));
-const sheet = () => container.querySelector('[data-testid="campaign-detail-sheet"]');
+// The detail view is a Sheet, so it portals to document.body.
+const sheet = () => document.querySelector('[data-testid="campaign-detail-sheet"]');
 const renderedProviders = () =>
-  [...container.querySelectorAll('[data-provider]')].map((el) => el.getAttribute('data-provider'));
+  [...document.querySelectorAll('[data-provider]')].map((el) => el.getAttribute('data-provider'));
 
 async function click(el: Element) {
   await act(async () => {
@@ -145,7 +146,7 @@ describe('the campaign banner opens the in-app sheet', () => {
     expect(band!.tabIndex).toBe(0);
     await click(band!);
     expect(sheet()).not.toBeNull();
-    expect(container.textContent).toContain('Help us fix the roof');
+    expect(sheet()!.textContent).toContain('Help us fix the roof');
     expect(renderedProviders()).toEqual(['wise']);
     expect(window.open).not.toHaveBeenCalled();
   });
@@ -154,7 +155,7 @@ describe('the campaign banner opens the in-app sheet', () => {
     await mountWidget({ donateUrl: 'https://example.test/legacy' });
     await keydown(banner()!, 'Enter');
     expect(sheet()).not.toBeNull();
-    expect(container.textContent).toContain('Help us fix the roof');
+    expect(sheet()!.textContent).toContain('Help us fix the roof');
     expect(window.open).not.toHaveBeenCalled();
   });
 
@@ -189,7 +190,7 @@ describe('the campaign banner opens the in-app sheet', () => {
     expect(window.open).not.toHaveBeenCalled();
     expect(sheet()).not.toBeNull();
     expect(renderedProviders()).toEqual(['wise']);
-    expect(container.querySelector('[data-testid="giving-links"] h3')?.textContent).toBe('Ways to give');
+    expect(document.querySelector('[data-testid="giving-links"] h3')?.textContent).toBe('Ways to give');
     expect(errors, `console.error on Give Now: ${JSON.stringify(errors)}`).toEqual([]);
     spy.mockRestore();
   });
@@ -225,7 +226,7 @@ describe('a feed campaign card opens the in-app sheet', () => {
     expect(container.querySelector('a[href="/campaign/feed-roof"]')).toBeNull();
     await click(card!);
     expect(sheet()).not.toBeNull();
-    expect(container.textContent).toContain('Help us fix the roof');
+    expect(sheet()!.textContent).toContain('Help us fix the roof');
     expect(renderedProviders()).toEqual(['wise']);
     expect(window.location.href).toBe(before);
     expect(container.querySelector('a[href^="/campaign/"]')).toBeNull();

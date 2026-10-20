@@ -6,6 +6,7 @@ import { db } from '../firebase';
 import { FileText, HeartHandshake, Calendar as CalendarIcon, MapPin, Globe, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { CampaignDetailSheet, type Campaign } from './CampaignWidget';
+import { Button } from '@/components/ui/button';
 
 // A post carries at most ONE embed — a lightweight reference (type + id), not a
 // copy of the referenced content. The title/image/progress are resolved from
@@ -297,15 +298,16 @@ export const FeedEmbedCard: React.FC<{ embed: PostEmbed; tenantId: string | null
   if (inAppCampaign && data.campaign) {
     return (
       <>
-        <button
+        <Button
           type="button"
+          variant="ghost"
           data-testid="feed-campaign-card"
           aria-label={`View ${data.title}`}
           onClick={() => setOpen(true)}
-          className={`${EMBED_CARD_CLASS} w-full cursor-pointer text-left`}
+          className={`${EMBED_CARD_CLASS} h-auto w-full cursor-pointer items-stretch justify-start whitespace-normal p-0 text-left font-normal hover:bg-transparent`}
         >
           <EmbedCardFace data={data} />
-        </button>
+        </Button>
         {open && (
           <CampaignDetailSheet campaign={data.campaign} onClose={() => setOpen(false)} />
         )}

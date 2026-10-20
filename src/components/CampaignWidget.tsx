@@ -13,6 +13,16 @@ import CampaignGivingOptions from './donations/CampaignGivingOptions';
 import { readGivingLinks } from './donations/giving-providers';
 import { resolveCampaignGiving, type ResolvedCampaignGiving } from '@/lib/payment-link-selection';
 import { isCardGivingOn } from '@/lib/card-giving';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 
 export interface Campaign {
   id: string;
@@ -153,20 +163,34 @@ export const CampaignDetailSheet: React.FC<{
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[300] flex flex-col bg-surface-raised overflow-y-auto"
-      data-testid="campaign-detail-sheet"
-      role="dialog"
-      aria-modal="true"
-      aria-label={campaign.title}
+    <Sheet
+      open
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
     >
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-line sticky top-0 bg-surface-raised z-10">
-        <button onClick={onClose} className="p-1">
-          <ChevronLeft size={24} color="var(--brand-color, #B8962E)" strokeWidth={2.5} />
-        </button>
-        <h2 className="text-base font-bold text-strong flex-1 truncate font-display">{campaign.title}</h2>
+      <SheetContent
+        side="bottom"
+        showCloseButton={false}
+        data-testid="campaign-detail-sheet"
+        className="inset-0! top-0! z-[300]! flex h-dvh! max-h-none! w-full! max-w-none! gap-0 overflow-y-auto rounded-none border-0 bg-surface-raised p-0 shadow-none data-[side=bottom]:inset-0! data-[side=bottom]:h-dvh! data-[side=bottom]:max-h-none! data-[side=bottom]:w-full! data-[side=bottom]:border-0 data-starting-style:translate-none! data-starting-style:opacity-100! sm:max-w-none!"
+      >
+      <SheetHeader className="sticky top-0 z-10 flex-row items-center gap-3 border-b border-line bg-surface-raised px-4 py-3">
+        {/* `Button` is a plain function, so `render={<Button />}` cannot take
+            the ref DialogClose needs and React warns. The close control is the
+            Sheet primitive wearing `buttonVariants`, the same workaround
+            AttachMenu uses. */}
+        <SheetClose
+          aria-label="Back"
+          className={buttonVariants({ variant: 'ghost', size: 'icon', className: 'size-11 shrink-0' })}
+        >
+          <ChevronLeft className="text-[var(--brand-color)]" strokeWidth={2.5} />
+        </SheetClose>
+        <SheetTitle className="min-w-0 flex-1 truncate font-display text-base font-bold text-strong">
+          {campaign.title}
+        </SheetTitle>
         <ShareButton url={shareUrl} title={campaign.title} />
-      </div>
+      </SheetHeader>
 
       {campaign.coverImage && (
         <div className="relative h-52 bg-surface-sunken flex-shrink-0 lg:max-w-2xl lg:mx-auto w-full">
@@ -192,7 +216,9 @@ export const CampaignDetailSheet: React.FC<{
           <div className="text-right text-xs font-bold" style={{ color: 'var(--brand-color, #e6b325)' }}>{percentage}%</div>
         </div>
 
-        <p className="text-sm text-muted leading-relaxed">{campaign.description}</p>
+        <SheetDescription className="text-sm leading-relaxed text-muted">
+          {campaign.description}
+        </SheetDescription>
 
         {/* Card giving only. While the switch is off, none of this renders,
             so this sheet cannot post to `/api/stripe/donate`. */}
@@ -202,60 +228,59 @@ export const CampaignDetailSheet: React.FC<{
               <p className="text-sm font-bold text-strong mb-3">Select Amount</p>
               <div className="grid grid-cols-4 gap-2 mb-3">
                 {AMOUNT_PRESETS.map(amt => (
-                  <button
+                  <Button
                     key={amt}
+                    type="button"
+                    variant={selectedAmount === amt ? 'default' : 'outline'}
                     onClick={() => { setSelectedAmount(amt); setCustomAmount(''); }}
-                    className={`py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${
-                      selectedAmount === amt ? 'text-white border-transparent' : 'text-body border-line bg-surface-raised'
-                    }`}
-                    style={selectedAmount === amt ? { backgroundColor: 'var(--brand-color, #e6b325)', borderColor: 'var(--brand-color, #e6b325)' } : {}}
+                    className="h-auto w-full py-2.5 font-bold"
                   >
                     ${amt}
-                  </button>
+                  </Button>
                 ))}
               </div>
-              <input
+              <Input
                 type="number"
                 min={1}
                 value={customAmount}
                 onChange={e => { setCustomAmount(e.target.value); setSelectedAmount(null); }}
                 placeholder="Custom amount ($)"
-                className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-gold"
+                className="h-auto rounded-xl px-3 py-2.5"
               />
             </div>
 
             <div className="space-y-3">
               <p className="text-sm font-bold text-strong">Your Information</p>
-              <input
+              <Input
                 value={donorName}
                 onChange={e => setDonorName(e.target.value)}
                 placeholder="Your name"
-                className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-gold"
+                className="h-auto rounded-xl px-3 py-2.5"
               />
-              <input
+              <Input
                 type="email"
                 value={donorEmail}
                 onChange={e => setDonorEmail(e.target.value)}
                 placeholder="Your email *"
-                className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-gold"
+                className="h-auto rounded-xl px-3 py-2.5"
               />
             </div>
 
             {donateError && (
-              <p className="text-xs text-red-500 font-medium">{donateError}</p>
+              <p className="text-xs font-medium text-destructive">{donateError}</p>
             )}
 
-            <button
+            <Button
+              type="button"
               onClick={handleSubmitDonation}
               disabled={isProcessing || (!selectedAmount && !customAmount)}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold text-white disabled:opacity-50 transition-opacity"
-              style={{ backgroundColor: 'var(--brand-color, #e6b325)' }}
+              className="h-auto w-full gap-2 py-3.5 font-bold"
             >
               {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <Heart size={15} strokeWidth={2.5} />}
               {isProcessing
                 ? 'Processing...'
                 : `Donate${selectedAmount ? ` $${selectedAmount}` : customAmount ? ` $${customAmount}` : ''}`}
-            </button>
+            </Button>
           </>
         )}
 
@@ -267,7 +292,8 @@ export const CampaignDetailSheet: React.FC<{
           brandColor="var(--brand-color, #e6b325)"
         />
       </div>
-    </div>
+      </SheetContent>
+    </Sheet>
   );
 };
 
@@ -333,7 +359,7 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
 
   const openDetail = () => setShowDetail(true);
 
-  const onBannerKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+  const onBannerKeyDown = (event: { key: string; preventDefault: () => void }) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       openDetail();
@@ -348,16 +374,21 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
           in-app detail. Give Now keeps its own destination and must not also
           activate the band. */}
       <div className="mb-4 lg:mb-3">
-        <div
-          role="button"
-          tabIndex={0}
+        {/* `ui/button` has no `asChild` — it is Base UI. `nativeButton={false}`
+            is the equivalent: the band is the accessible control, and Give Now
+            stays a real button inside it. A native button here would nest two
+            buttons, which is invalid. */}
+        <Button
+          variant="ghost"
+          nativeButton={false}
+          render={<div />}
           aria-label={`View ${campaign.title}`}
           onClick={openDetail}
           onKeyDown={onBannerKeyDown}
-          className="cursor-pointer rounded-[var(--ds-radius-card)] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-gold"
+          className="block h-auto w-full cursor-pointer whitespace-normal rounded-[var(--ds-radius-card)] bg-transparent p-0 text-left font-normal hover:bg-transparent active:translate-y-0"
         >
           <HeroBand
-            className="px-5 py-5 lg:px-6"
+            className="w-full px-5 py-5 lg:px-6"
             backdrop={campaign.coverImage ? (
               <span aria-hidden className="absolute inset-0 pointer-events-none">
                 <Image
@@ -390,7 +421,7 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
                 </div>
               </div>
               {showGiveNow && (
-                <button
+                <Button
                   type="button"
                   onClick={(event) => {
                     event.stopPropagation();
@@ -399,15 +430,14 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
                   onKeyDown={(event) => {
                     event.stopPropagation();
                   }}
-                  className="self-start lg:self-auto shrink-0 whitespace-nowrap px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: 'var(--brand-color, #e6b325)', boxShadow: 'var(--glow-gold)' }}
+                  className="h-11 self-start px-5 lg:self-auto"
                 >
                   Give Now
-                </button>
+                </Button>
               )}
             </div>
           </HeroBand>
-        </div>
+        </Button>
       </div>
 
       {showDetail && (

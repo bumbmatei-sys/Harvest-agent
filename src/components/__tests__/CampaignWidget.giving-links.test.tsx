@@ -96,9 +96,10 @@ async function openDetail() {
   await flush();
 }
 
-const givingBlock = () => container.querySelector('[data-testid="giving-links"]');
+// The detail view is a Sheet, so its content portals out of the render container.
+const givingBlock = () => document.querySelector('[data-testid="giving-links"]');
 const renderedProviders = () =>
-  [...container.querySelectorAll('[data-provider]')].map((el) => el.getAttribute('data-provider'));
+  [...document.querySelectorAll('[data-provider]')].map((el) => el.getAttribute('data-provider'));
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -134,11 +135,11 @@ describe('a campaign shows the tenant’s payment links (member news feed)', () 
     // off. The links stay. The card Donate button does not.
     await mount(WITH_LINKS);
     await openDetail();
-    expect(container.textContent).not.toContain('Select Amount');
-    expect(container.querySelector('input[placeholder="Custom amount ($)"]')).toBeNull();
-    expect(container.textContent).not.toContain('Your Information');
-    expect(container.querySelector('input[placeholder="Your email *"]')).toBeNull();
-    const cardDonate = [...container.querySelectorAll('button')]
+    expect(document.body.textContent).not.toContain('Select Amount');
+    expect(document.querySelector('input[placeholder="Custom amount ($)"]')).toBeNull();
+    expect(document.body.textContent).not.toContain('Your Information');
+    expect(document.querySelector('input[placeholder="Your email *"]')).toBeNull();
+    const cardDonate = [...document.querySelectorAll('button')]
       .find((b) => /^Donate/.test((b.textContent || '').trim()));
     expect(cardDonate).toBeUndefined();
     expect(givingBlock()).not.toBeNull();
@@ -174,7 +175,7 @@ describe('a campaign shows the tenant’s payment links (member news feed)', () 
       },
     });
     await openDetail();
-    const hrefs = [...container.querySelectorAll('a[href]')].map((a) => a.getAttribute('href') || '');
+    const hrefs = [...document.querySelectorAll('a[href]')].map((a) => a.getAttribute('href') || '');
     expect(hrefs.some((h) => h.startsWith('javascript:'))).toBe(false);
     expect(hrefs.some((h) => h.includes('evil.example'))).toBe(false);
     // Both rows still render — each has a handle — but as cards, not links.

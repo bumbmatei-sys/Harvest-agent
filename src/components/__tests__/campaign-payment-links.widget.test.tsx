@@ -114,8 +114,9 @@ async function clickGiveNow() {
   await flush();
 }
 
+// The detail view is a Sheet, so its content portals out of the render container.
 const renderedProviders = () =>
-  [...container.querySelectorAll('[data-provider]')].map((el) => el.getAttribute('data-provider'));
+  [...document.querySelectorAll('[data-provider]')].map((el) => el.getAttribute('data-provider'));
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -158,7 +159,7 @@ describe('Give Now follows the campaign choice', () => {
       '_blank',
       'noopener,noreferrer',
     );
-    expect(container.querySelector('[data-testid="giving-links"]')).toBeNull();
+    expect(document.querySelector('[data-testid="giving-links"]')).toBeNull();
   });
 
   it('opens the sheet on only the chosen links when several are ticked', async () => {
@@ -166,7 +167,7 @@ describe('Give Now follows the campaign choice', () => {
     await clickGiveNow();
     expect(window.open).not.toHaveBeenCalled();
     expect(renderedProviders()).toEqual(['revolut', 'wise']);
-    expect(container.querySelector('[data-testid="giving-links"] h3')?.textContent)
+    expect(document.querySelector('[data-testid="giving-links"] h3')?.textContent)
       .toBe('Choose how to give');
   });
 
@@ -175,7 +176,7 @@ describe('Give Now follows the campaign choice', () => {
     await clickGiveNow();
     expect(window.open).not.toHaveBeenCalled();
     expect(renderedProviders()).toEqual(['paypal', 'zelle', 'revolut', 'wise']);
-    expect(container.querySelector('[data-testid="giving-links"] h3')?.textContent)
+    expect(document.querySelector('[data-testid="giving-links"] h3')?.textContent)
       .toBe('Ways to give');
   });
 
@@ -183,11 +184,11 @@ describe('Give Now follows the campaign choice', () => {
     expect(STRIPE_CONNECT_ENABLED).toBe(false);
     await mount({ paymentProviders: ['revolut', 'wise'] });
     await clickGiveNow();
-    expect(container.textContent).not.toContain('Select Amount');
-    expect(container.textContent).not.toContain('Your email *');
-    expect(container.querySelector('input[placeholder="Your email *"]')).toBeNull();
-    expect(container.querySelector('input[placeholder="Custom amount ($)"]')).toBeNull();
-    const cardDonate = [...container.querySelectorAll('button')]
+    expect(document.body.textContent).not.toContain('Select Amount');
+    expect(document.body.textContent).not.toContain('Your email *');
+    expect(document.querySelector('input[placeholder="Your email *"]')).toBeNull();
+    expect(document.querySelector('input[placeholder="Custom amount ($)"]')).toBeNull();
+    const cardDonate = [...document.querySelectorAll('button')]
       .find((b) => /^Donate/.test((b.textContent || '').trim()));
     expect(cardDonate).toBeUndefined();
   });
@@ -206,19 +207,19 @@ describe('Give Now follows the campaign choice', () => {
       endDate: '2099-01-01',
     });
     await clickGiveNow();
-    expect(container.textContent).not.toContain('Select Amount');
-    expect(container.querySelector('input[placeholder="Custom amount ($)"]')).toBeNull();
-    expect(container.textContent).not.toContain('Your Information');
-    expect(container.querySelector('input[placeholder="Your email *"]')).toBeNull();
-    expect(container.querySelector('input[placeholder="Your name"]')).toBeNull();
-    expect(container.textContent).not.toContain(STRIPE_CONNECT_HIDDEN_MESSAGE);
-    const cardDonate = [...container.querySelectorAll('button')]
+    expect(document.body.textContent).not.toContain('Select Amount');
+    expect(document.querySelector('input[placeholder="Custom amount ($)"]')).toBeNull();
+    expect(document.body.textContent).not.toContain('Your Information');
+    expect(document.querySelector('input[placeholder="Your email *"]')).toBeNull();
+    expect(document.querySelector('input[placeholder="Your name"]')).toBeNull();
+    expect(document.body.textContent).not.toContain(STRIPE_CONNECT_HIDDEN_MESSAGE);
+    const cardDonate = [...document.querySelectorAll('button')]
       .find((b) => /^Donate/.test((b.textContent || '').trim()));
     expect(cardDonate).toBeUndefined();
-    expect(container.querySelector('[data-cover-alt="Roof Fund"]')).not.toBeNull();
-    expect(container.textContent).toMatch(/days left/);
-    expect(container.textContent).toContain('$18,000');
-    expect(container.textContent).toContain('Help us fix the roof');
+    expect(document.querySelector('[data-cover-alt="Roof Fund"]')).not.toBeNull();
+    expect(document.body.textContent).toMatch(/days left/);
+    expect(document.body.textContent).toContain('$18,000');
+    expect(document.body.textContent).toContain('Help us fix the roof');
     expect(renderedProviders()).toEqual(['revolut', 'wise']);
   });
 
@@ -227,13 +228,13 @@ describe('Give Now follows the campaign choice', () => {
     await mount({ paymentProviders: ['wise', 'revolut'] });
     await clickGiveNow();
     expect(STRIPE_CONNECT_ENABLED).toBe(true);
-    expect(container.textContent).toContain('Select Amount');
-    expect(container.querySelector('input[placeholder="Custom amount ($)"]')).not.toBeNull();
-    expect(container.textContent).toContain('Your Information');
-    expect(container.querySelector('input[placeholder="Your email *"]')).not.toBeNull();
-    const cardDonate = [...container.querySelectorAll('button')]
+    expect(document.body.textContent).toContain('Select Amount');
+    expect(document.querySelector('input[placeholder="Custom amount ($)"]')).not.toBeNull();
+    expect(document.body.textContent).toContain('Your Information');
+    expect(document.querySelector('input[placeholder="Your email *"]')).not.toBeNull();
+    const cardDonate = [...document.querySelectorAll('button')]
       .find((b) => /^Donate/.test((b.textContent || '').trim()));
     expect(cardDonate).toBeTruthy();
-    expect(container.textContent).toContain('$25');
+    expect(document.body.textContent).toContain('$25');
   });
 });
