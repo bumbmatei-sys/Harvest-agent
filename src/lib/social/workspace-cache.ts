@@ -11,6 +11,8 @@ const TTL_MS = 15_000;
 
 const stored = new Map<string, { at: number; workspace: SocialWorkspace }>();
 const inflight = new Map<string, Promise<SocialWorkspace | null>>();
+/** Bumped by every drop so a load already in flight cannot write the pre-write snapshot back. */
+const generation = new Map<string, number>();
 
 export function readWorkspaceCache(tenantId: string, now = Date.now()): SocialWorkspace | null {
   const hit = stored.get(tenantId);
@@ -28,6 +30,7 @@ export function rememberWorkspace(tenantId: string, workspace: SocialWorkspace, 
 
 export function dropWorkspaceCache(tenantId: string): void {
   stored.delete(tenantId);
+  generation.set(tenantId, (generation.get(tenantId) ?? 0) + 1);
 }
 
 export function shareLiveLoad(
@@ -38,9 +41,10 @@ export function shareLiveLoad(
   if (cached) return Promise.resolve(cached);
   const pending = inflight.get(tenantId);
   if (pending) return pending;
+  const gen = generation.get(tenantId) ?? 0;
   const promise = load()
     .then((workspace) => {
-      if (workspace) rememberWorkspace(tenantId, workspace);
+      if (workspace && (generation.get(tenantId) ?? 0) === gen) rememberWorkspace(tenantId, workspace);
       return workspace;
     })
     .finally(() => {
@@ -53,4 +57,5 @@ export function shareLiveLoad(
 export function resetWorkspaceCache(): void {
   stored.clear();
   inflight.clear();
+  generation.clear();
 }
