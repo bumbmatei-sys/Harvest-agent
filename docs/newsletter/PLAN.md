@@ -21,7 +21,7 @@ Branch `feat/newsletter-plunk`. Specs: `2026-09-25-newsletter-optin-crm-spec`, r
 provider, plunk, ses (stub), unsubscribe (HMAC token), audience (filters + suppression partition),
 volume-cap, confirm (token + ledger), service (draft/preview/confirm/due), store (Firestore, Admin SDK).
 Routes: `POST /api/email/actions`, `GET|POST /api/email/unsubscribe` (public, one-click RFC 8058),
-`GET /api/email/cron` (due scheduled sends, `CRON_SECRET`).
+`GET /api/email/cron` (due scheduled sends, `CRON_SECRET`). The cron is daily (09:00 UTC) because the Vercel project is on Hobby, which rejects sub-daily crons; the Send step says so. Move it to every 10 minutes if the plan changes.
 
 ## One CRM (founder decision, supersedes the first draft of this plan)
 There is no separate newsletter contact list. Subscribers are a filtered view over the existing

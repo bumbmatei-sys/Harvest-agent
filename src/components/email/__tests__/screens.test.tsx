@@ -98,6 +98,7 @@ describe('Send step', () => {
     await click(need(byName('button', 'Pick a time'), 'pick'));
     expect(need(byName('button', 'Pick a date and time'), 'trigger')).toBeTruthy();
     expect(need(byName('button', /Schedule for/), 'schedule')).toBeTruthy();
+    expect(need(document.querySelector('[data-schedule-note]'), 'note').textContent).toContain('once a day');
   });
 
   it('time slots run every 15 minutes across the day and combine with a date', () => {

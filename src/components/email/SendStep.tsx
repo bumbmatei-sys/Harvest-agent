@@ -194,6 +194,12 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
           )}
         </div>
 
+        {mode === 'at' && (
+          <p className="mt-3 text-xs text-muted" data-schedule-note>
+            Scheduled emails are sent by a job that runs once a day, around 09:00 UTC. An email you schedule goes out at the first run after the time you pick, so it can be up to a day late.
+          </p>
+        )}
+
         <Separator className="my-6" />
 
         <dl className="grid grid-cols-[4rem_1fr] gap-y-2 text-sm">
