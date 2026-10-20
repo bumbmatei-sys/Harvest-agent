@@ -14,7 +14,15 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
@@ -39,6 +47,9 @@ export interface SocialScreenData extends SocialWorkspace {
 }
 
 const CONTROL = 'min-h-11 sm:min-h-[38px]';
+/** Same floor as CONTROL, at the select trigger's own attribute specificity so its h-8 does not stick. */
+const SELECT_CONTROL = `${CONTROL} w-full data-[size=default]:h-11 sm:data-[size=default]:h-[38px]`;
+const FIELD_CONTROL = `${CONTROL} h-11 w-full sm:h-[38px]`;
 
 const FRIENDLY_ERROR: Record<string, string> = {
   platform_not_offered: 'That platform is not offered.',
@@ -492,22 +503,36 @@ export function SocialScheduler({
                             aria-label={field.label}
                           />
                         ) : field.kind === 'select' ? (
-                          <select
-                            className={`${CONTROL} rounded-lg border border-line bg-card px-3 text-sm text-strong`}
+                          <Select
                             value={String(fields[platform]?.[field.key] ?? field.options[0]?.value ?? '')}
-                            aria-label={field.label}
-                            onChange={(event) => setFields((current) => ({
-                              ...current,
-                              [platform]: { ...current[platform], [field.key]: event.target.value },
-                            }))}
+                            onValueChange={(value: unknown) => {
+                              if (typeof value !== 'string') return;
+                              setFields((current) => ({
+                                ...current,
+                                [platform]: { ...current[platform], [field.key]: value },
+                              }));
+                            }}
                           >
-                            {field.options.map((option) => (
-                              <option key={option.value} value={option.value}>{option.label}</option>
-                            ))}
-                          </select>
+                            <SelectTrigger
+                              className={`${SELECT_CONTROL} border-line bg-card px-3 text-strong`}
+                              aria-label={field.label}
+                            >
+                              <SelectValue>
+                                {() => {
+                                  const current = String(fields[platform]?.[field.key] ?? field.options[0]?.value ?? '');
+                                  return field.options.find((option) => option.value === current)?.label ?? current;
+                                }}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {field.options.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         ) : (
-                          <input
-                            className={`${CONTROL} rounded-lg border border-line bg-card px-3 text-sm text-strong`}
+                          <Input
+                            className={`${FIELD_CONTROL} border-line bg-card px-3 text-strong`}
                             value={String(fields[platform]?.[field.key] ?? '')}
                             aria-label={field.label}
                             onChange={(event) => setFields((current) => ({
@@ -536,9 +561,9 @@ export function SocialScheduler({
               </div>
               <label className="flex flex-col gap-1 text-sm text-faint">
                 Schedule time
-                <input
+                <Input
                   type="datetime-local"
-                  className={`${CONTROL} rounded-lg border border-line bg-card px-3 text-sm text-strong`}
+                  className={`${FIELD_CONTROL} border-line bg-card px-3 text-strong`}
                   value={when}
                   onChange={(event) => setWhen(event.target.value)}
                   aria-label="Schedule time"
@@ -645,9 +670,9 @@ export function SocialScheduler({
             <DialogDescription>A sent post cannot be edited.</DialogDescription>
           </DialogHeader>
           <Textarea value={editText} onChange={(event) => setEditText(event.target.value)} aria-label="Edit post text" className="min-h-24" />
-          <input
+          <Input
             type="datetime-local"
-            className={`${CONTROL} rounded-lg border border-line bg-card px-3 text-sm`}
+            className={`${FIELD_CONTROL} border-line bg-card px-3`}
             value={editWhen}
             onChange={(event) => setEditWhen(event.target.value)}
             aria-label="New time"
@@ -742,20 +767,29 @@ function SidePanel({ posts }: { posts: readonly SocialPost[] }) {
       className="hidden w-80 shrink-0 border-l border-line bg-card lg:flex lg:flex-col"
       data-testid="social-side-panel"
     >
-      <div className="flex border-b border-line" role="tablist" aria-label="Drafts, scheduled and sent">
-        {(Object.keys(labels) as Array<keyof typeof labels>).map((id) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={tab === id}
-            className={`${CONTROL} flex-1 px-2 text-sm ${tab === id ? 'text-strong' : 'text-faint'}`}
-            onClick={() => setTab(id)}
-          >
-            {labels[id]}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        value={tab}
+        onValueChange={(next) => {
+          if (next === 'draft' || next === 'scheduled' || next === 'sent') setTab(next);
+        }}
+        className="gap-0"
+      >
+        <TabsList
+          variant="line"
+          aria-label="Drafts, scheduled and sent"
+          className="h-auto w-full rounded-none border-b border-line bg-transparent p-0 group-data-[orientation=horizontal]/tabs:h-auto"
+        >
+          {(Object.keys(labels) as Array<keyof typeof labels>).map((id) => (
+            <TabsTrigger
+              key={id}
+              value={id}
+              className={`${CONTROL} h-auto flex-1 rounded-none px-2 font-normal text-faint shadow-none after:hidden data-active:bg-transparent data-active:text-strong data-active:shadow-none dark:data-active:bg-transparent`}
+            >
+              {labels[id]}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
       <ul className="flex flex-col gap-2 p-3">
         {rows.length === 0 && <li className="text-sm text-faint">Nothing in {labels[tab].toLowerCase()}.</li>}
         {rows.map((post) => (

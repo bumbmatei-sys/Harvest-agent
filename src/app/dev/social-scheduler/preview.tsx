@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useMemo, type CSSProperties } from 'react';
 import { Radio } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { AdminDesktopSidebar, SIDEBAR_ICON_WIDTH } from '@/components/admin-shell/AdminDesktopSidebar';
@@ -57,7 +58,7 @@ export function SocialSchedulerPreview({ view, theme }: { view?: string; theme?:
             logoUrl={LOGO}
             onNavigate={() => {}}
             onPlaceholder={() => {}}
-            accountMenu={<button type="button" className="min-h-11 px-3 text-sm">Account</button>}
+            accountMenu={<Button type="button" variant="ghost" className="min-h-11 px-3 text-sm">Account</Button>}
           />
         )}
         <SidebarInset className="min-w-0 bg-background p-4">
