@@ -609,10 +609,13 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // premise this section exists to keep honest.
       'src/components/AdminCourses.tsx',
       // Phase 1 removed the desktop icon rail, and those rail buttons were the
-      // only `min-h-11` spellings in AdminDashboard. The file is no longer in
-      // this list because the sweep matches the class, and the class left with
-      // the rail. The same ungated floor now lives on the desktop sidebar,
+      // only `min-h-11` spellings in AdminDashboard. The shell fix round puts
+      // the class back on the platform inbox bell: a shadcn Button, ghost and
+      // icon, spelled `min-h-11 sm:min-h-0` so the 44px phone floor holds and
+      // the 32px icon size wins from `sm` up, the same shape as the theme
+      // toggle. It USES the class. The desktop sidebar's ungated floor is
       // recorded below with the other admin-shell files.
+      'src/components/AdminDashboard.tsx',
       // APPENDED BY THE-346, NOTHING BELOW REMOVED OR REWRITTEN. Both entries
       // USE the class, in the Rule-4 form - `min-h-11 sm:min-h-0`.
       //
