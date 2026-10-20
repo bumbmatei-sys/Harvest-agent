@@ -121,8 +121,8 @@ function browserTimeZone(): string {
 }
 
 /** Named workspace zones stay. UTC is the unset live sentinel. */
-function ministryZone(reported: string | null | undefined): string {
-  return workspaceTimeZone(reported, browserTimeZone());
+function ministryZone(reported: string | null | undefined, requested: string): string {
+  return workspaceTimeZone(reported, requested);
 }
 
 function withSelectDefaults(
@@ -192,6 +192,13 @@ export function SocialScheduler({
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [confirmToken, setConfirmToken] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState(false);
+  // UTC matches the server render. The effect fills the browser zone after
+  // mount, so the header does not hydrate one zone and paint another.
+  const [browserZone, setBrowserZone] = useState('UTC');
+
+  useEffect(() => {
+    setBrowserZone(browserTimeZone());
+  }, []);
 
   useEffect(() => {
     if (initial) return;
@@ -274,12 +281,12 @@ export function SocialScheduler({
     (SOCIAL_PLATFORMS as readonly string[]).includes(slug)));
 
   const marked = useMemo(() => {
-    const zone = ministryZone(data?.timezone);
+    const zone = ministryZone(data?.timezone, browserZone);
     return (data?.posts ?? [])
       .map((post) => calendarDayKey(post.scheduledFor, zone))
       .filter((value): value is string => Boolean(value))
       .map((value) => dayFromKey(value));
-  }, [data?.posts, data?.timezone]);
+  }, [browserZone, data?.posts, data?.timezone]);
 
   if (unavailable) {
     return (
@@ -346,7 +353,7 @@ export function SocialScheduler({
       setNotice('Write the post and choose at least one connected account.');
       return;
     }
-    const zone = ministryZone(data?.timezone);
+    const zone = ministryZone(data?.timezone, browserZone);
     let scheduledFor: string | null = null;
     if (!publishNow) {
       scheduledFor = when ? futureIso(when, zone) : null;
@@ -445,7 +452,7 @@ export function SocialScheduler({
     if (typeof body.authUrl === 'string' && body.authUrl) window.location.assign(body.authUrl);
   }
 
-  const zone = ministryZone(data?.timezone);
+  const zone = ministryZone(data?.timezone, browserZone);
   const selectedDay = pickedDay ?? defaultCalendarDay(posts, zone, new Date());
   const onDay = postsOnCalendarDay(posts, selectedDay, zone);
   const drafts = undatedDrafts(posts);
@@ -677,7 +684,7 @@ export function SocialScheduler({
               setEditing(post);
               setEditError(null);
               setEditText(post.content);
-              const zone = post.timezone || ministryZone(data?.timezone);
+              const zone = post.timezone || ministryZone(data?.timezone, browserZone);
               setEditWhen(post.scheduledFor ? isoToWallTime(post.scheduledFor, zone) : '');
             }}
             onCancel={(post) => {
@@ -722,7 +729,7 @@ export function SocialScheduler({
               className={CONTROL}
               onClick={() => {
                 if (!editing) return;
-                const zone = editing.timezone || ministryZone(data?.timezone);
+                const zone = editing.timezone || ministryZone(data?.timezone, browserZone);
                 const scheduledFor = editWhen ? futureIso(editWhen, zone) : null;
                 if (editWhen && !scheduledFor) {
                   setEditError('Choose a time in the future, within a year.');

@@ -1,5 +1,6 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MockSocialClient, resetSocialMock } from '@/lib/social/mock-client';
 import { SocialScheduler } from './SocialScheduler';
@@ -613,6 +614,20 @@ describe('SocialScheduler', () => {
       });
       expect(workspace.timezone).toBe('America/Chicago');
       expect(container.textContent).toContain('Timezone America/Chicago');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('renders the timezone label as UTC on the server when the browser zone differs', () => {
+    const native = Intl.DateTimeFormat.prototype.resolvedOptions;
+    const spy = vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockImplementation(function resolve(this: Intl.DateTimeFormat) {
+      return { ...native.call(this), timeZone: 'America/Denver' };
+    });
+    try {
+      const html = renderToString(<SocialScheduler knownEntitled onUpgrade={() => {}} />);
+      expect(html.replace(/<!-- -->/g, '')).toContain('Timezone UTC');
+      expect(html).not.toContain('America/Denver');
     } finally {
       spy.mockRestore();
     }
