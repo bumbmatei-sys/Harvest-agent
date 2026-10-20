@@ -1193,22 +1193,6 @@ const THE_368_ADDED_COLOURS: Readonly<Record<string, Readonly<Record<string, rea
 };
 
 /**
- * Eden shell pass — the Events List/Month bar picks up the segmented track on
- * desktop only. Every token is `sm:`-gated, so a phone still paints the tabs
- * primitive. Each name resolves through a theme token (seg track, seg active,
- * foreground, transparent) rather than a hex.
- */
-const EDEN_SHELL_EVENT_COLOURS: readonly string[] = [
-  'sm:bg-seg-track',
-  'sm:data-active:bg-seg-active',
-  'sm:data-active:shadow-seg',
-  'sm:data-active:text-foreground',
-  'sm:dark:data-active:bg-seg-active',
-  'sm:dark:data-active:border-transparent',
-  'sm:shadow-none',
-];
-
-/**
  * THE-308 — the TWENTY-FIVE colour-bearing classes `tabs` emits.
  *
  * Same provenance and the same proof as the heights above: every one appears
@@ -2488,7 +2472,6 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
         const expected = [
           ...BASELINE[name]![view].colours.filter((t: string) => !removed.has(t)),
           ...(THE_368_ADDED_COLOURS[name]?.[view] ?? []),
-          ...(name === 'AdminEvents' && view === 'default' ? EDEN_SHELL_EVENT_COLOURS : []),
         ].sort();
         expect(colourTokens(c).filter((t) => !excluded.has(t)), `${name}/${view} colours moved`)
           .toEqual(expected);
@@ -2513,7 +2496,6 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
           if (base.has(t)) continue;
           if (name === 'AdminEvents' && recorded.has(t)) continue;
           if ((THE_368_ADDED_COLOURS[name]?.[view] ?? []).includes(t)) continue;
-          if (name === 'AdminEvents' && view === 'default' && EDEN_SHELL_EVENT_COLOURS.includes(t)) continue;
           added.add(`${name}/${view}:${t}`);
         }
       }
