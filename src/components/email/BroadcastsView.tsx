@@ -4,12 +4,13 @@ import { useState } from 'react';
 import { MailOpen, MoreVertical, Plus } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 import { PageHeader, SetupBanner, TAP, formatStamp, plural, senderReady } from '@/components/email/kit';
 import type { Broadcast, Overview } from '@/components/email/email-api';
 
@@ -109,13 +110,13 @@ export function BroadcastsView({ data, onNew, onOpen, onDelete, onSettings }: {
                       <div className="flex flex-col gap-0.5">
                         <div className="flex items-center gap-2">
                           {editable ? (
-                            <button type="button" className={`${TAP} text-left font-medium text-strong hover:underline`} onClick={() => onOpen(b)}>
+                            <button type="button" className="min-h-11 text-left font-medium text-strong hover:underline sm:min-h-0" onClick={() => onOpen(b)}>
                               {b.subject || 'Untitled broadcast'}
                             </button>
                           ) : (
                             <span className="font-medium text-strong">{b.subject || 'Untitled broadcast'}</span>
                           )}
-                          <Badge variant={b.status === 'failed' || b.status === 'partial' ? 'destructive' : 'secondary'}>{STATUS_LABEL[b.status]}</Badge>
+                          <Badge variant={b.status === 'failed' || b.status === 'partial' ? 'destructive' : 'outline'} className={b.status === 'scheduled' ? 'border-transparent bg-surface-gold text-strong' : undefined}>{STATUS_LABEL[b.status]}</Badge>
                         </div>
                         {b.error && <span role="alert" className="text-xs text-danger">{b.error}</span>}
                         {!b.error && <span className="text-xs text-faint">Edited {formatStamp(b.updatedAt)}</span>}
@@ -127,7 +128,7 @@ export function BroadcastsView({ data, onNew, onOpen, onDelete, onSettings }: {
                     <TableCell>
                       {b.status !== 'sent' && b.status !== 'partial' && b.status !== 'sending' && (
                         <DropdownMenu>
-                          <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className={TAP} aria-label={`Actions for ${b.subject || 'untitled broadcast'}`} />}>
+                          <DropdownMenuTrigger className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'min-h-11 sm:min-h-0')} aria-label={`Actions for ${b.subject || 'untitled broadcast'}`}>
                             <MoreVertical />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">

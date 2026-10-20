@@ -6,6 +6,11 @@
       "file": "firestore.rules",
       "digest": "620d2129c89a0496d79e563f093b582ba9f81f920672caad57bbee600486bb5f",
       "why": "Adds emailConsentKeys, contactCreateKeepsEmailConsent and contactUpdateKeepsEmailConsent beside newsletterConsentOnCreate and applies them to BOTH contacts match blocks (top-level and tenants/{id}/contacts): a client CRM admin keeps every other contact write but can no longer create or change emailStatus, emailOptInAt, emailOptInSource, emailUnsubscribedAt or emailUnsubscribedFrom, so only the Admin SDK (CSV import, the unsubscribe link) can subscribe or unsubscribe a person. Read rules and every other match block are unchanged."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "5bc82d2434e68b4387de28820b03ba14bc9bd9fe7ec0e3710bf9d9f1d1cd5401",
+      "why": "Newsletter phase 3 swaps the body of the existing newsletter tab branch from NewsletterEditor and NewsletterCampaigns to EmailWorkspace, behind the unchanged NEWSLETTER_FEATURE_ENABLED switch, and drops the now-unused newsletterView state and the two component imports. No nav entry, plan gate, permission or other tab moved."
     }
   ]
 }
