@@ -18,7 +18,8 @@ import {
   type EmailConfirmLedger,
 } from '@/lib/email/confirm';
 import type { DomainStatus, EmailProvider } from '@/lib/email/provider';
-import { DEFAULT_EMAIL_DESIGN, renderEmail, type EmailDesign } from '@/lib/email/render';
+import { DEFAULT_EMAIL_DESIGN, fillMergeTags, renderEmail } from '@/lib/email/render';
+import type { EmailDesign } from '@/lib/email/design';
 import { listUnsubscribeHeaders, signUnsubscribe, unsubscribeUrl } from '@/lib/email/unsubscribe';
 import { MONTHLY_SEND_CAP, decideVolume, monthKey } from '@/lib/email/volume-cap';
 
@@ -315,7 +316,7 @@ export function createEmailService(deps: {
         });
         const result = await provider.send({
           to: person.email,
-          subject: useB && index % 2 === 1 ? (broadcast.subjectB as string) : broadcast.subject,
+          subject: fillMergeTags(useB && index % 2 === 1 ? (broadcast.subjectB as string) : broadcast.subject, { firstName: person.name.split(/\s+/)[0] ?? '', senderName: settings.fromName }),
           html,
           text,
           fromName: settings.fromName,
@@ -459,6 +460,26 @@ export function createEmailService(deps: {
       return { ok: true, outcome: done.outcome, preview, stats: done.broadcast.stats, message: done.message };
     },
 
+    /** The exact HTML a recipient would get, filled in for a sample person. Sends nothing. */
+    async preview(actor: EmailActor, tenantId: string | null | undefined, input: DraftInput & { dark?: boolean }) {
+      const g = await gate(actor, tenantId, { needPlan: true });
+      if (!g.ok) return g;
+      const settings = await store.getSettings(g.tenantId);
+      const design = { ...DEFAULT_EMAIL_DESIGN, ...(input.design ?? {}) };
+      const { html } = renderEmail({
+        design,
+        bodyHtml: String(input.bodyHtml ?? ''),
+        preheader: clean(input.preheader),
+        churchName: g.tenant.name,
+        senderName: settings.fromName,
+        firstName: 'Alex',
+        mailingAddress: settings.mailingAddress,
+        unsubscribeUrl: `${deps.appOrigin.replace(/\/$/, '')}/api/email/unsubscribe`,
+        dark: input.dark === true,
+      });
+      return { ok: true as const, html };
+    },
+
     /** Sends the actor a copy. Not counted against the cap, never reaches the list. */
     async sendTest(actor: EmailActor, tenantId: string | null | undefined, id: string) {
       const g = await gate(actor, tenantId, { needPlan: true });
@@ -477,7 +498,7 @@ export function createEmailService(deps: {
         senderName: settings.fromName, firstName: 'Alex', mailingAddress: settings.mailingAddress, unsubscribeUrl: url,
       });
       const result = await provider.send({
-        to, subject: `[Test] ${broadcast.subject}`, html, text, fromName: settings.fromName,
+        to, subject: `[Test] ${fillMergeTags(broadcast.subject, { firstName: 'Alex', senderName: settings.fromName })}`, html, text, fromName: settings.fromName,
         fromAddress: senderAddress(settings) as string, replyTo: settings.replyTo || null, headers: listUnsubscribeHeaders(url),
       });
       if (!result.ok) return fail('provider_unavailable', 'The test email could not be sent. Try again.');

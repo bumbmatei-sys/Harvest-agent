@@ -5,6 +5,7 @@ import type { EmailActor, EmailService, EmailFailure, DraftInput, ImportRow, Whe
 export type EmailActionBody =
   | { action: 'overview'; tenantId?: string | null }
   | { action: 'saveDraft'; tenantId?: string | null; draft: DraftInput }
+  | { action: 'preview'; tenantId?: string | null; draft: DraftInput & { dark?: boolean } }
   | { action: 'delete'; tenantId?: string | null; id: string }
   | { action: 'send'; tenantId?: string | null; id: string; when: WhenInput; mode: 'preview' | 'confirm'; confirmToken?: string | null }
   | { action: 'sendTest'; tenantId?: string | null; id: string }
@@ -46,6 +47,7 @@ export async function dispatchEmailAction(
   switch (body.action) {
     case 'overview': result = await service.list(actor, t); break;
     case 'saveDraft': result = await service.saveDraft(actor, t, body.draft ?? {}); break;
+    case 'preview': result = await service.preview(actor, t, body.draft ?? {}); break;
     case 'delete': result = await service.remove(actor, t, String(body.id ?? '')); break;
     case 'send':
       result = await service.send(actor, t, {

@@ -6,35 +6,10 @@ import sanitizeHtml from 'sanitize-html';
  * here and nowhere in the app UI.
  */
 
-export type EmailTheme = 'letter' | 'plain' | 'bold';
-export type EmailAccent = 'navy' | 'gold' | 'harbor';
-export type EmailFont = 'sans' | 'serif';
-export type EmailHeader = 'name' | 'logo' | 'none';
-export type EmailButtons = 'filled' | 'outline';
+import { DEFAULT_EMAIL_DESIGN, type EmailAccent, type EmailDesign } from '@/lib/email/design';
 
-export interface EmailDesign {
-  readonly theme: EmailTheme;
-  readonly accent: EmailAccent;
-  readonly font: EmailFont;
-  readonly header: EmailHeader;
-  readonly buttons: EmailButtons;
-  readonly footerText: string;
-}
-
-export const DEFAULT_EMAIL_DESIGN: EmailDesign = Object.freeze({
-  theme: 'letter',
-  accent: 'navy',
-  font: 'sans',
-  header: 'name',
-  buttons: 'filled',
-  footerText: '',
-});
-
-export const ACCENT_LABELS: Readonly<Record<EmailAccent, string>> = Object.freeze({
-  navy: 'Harvest navy',
-  gold: 'Wheat gold',
-  harbor: 'Harbor blue',
-});
+export { DEFAULT_EMAIL_DESIGN };
+export type { EmailDesign, EmailAccent };
 
 /**
  * Email clients cannot read CSS variables, so the Harvest brand scale
