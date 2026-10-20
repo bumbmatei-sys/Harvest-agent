@@ -231,8 +231,8 @@ const EmbedCardFace: React.FC<{ data: ResolvedEmbed }> = ({ data }) => {
           <div className="mt-2">
             <div className="h-1.5 overflow-hidden rounded-full bg-surface-chip">
               <div
-                className="h-full rounded-full transition-[width] duration-700"
-                style={{ width: `${data.percentage}%`, backgroundColor: 'var(--brand-color, #e6b325)' }}
+                className="h-full rounded-full bg-gold transition-[width] duration-700"
+                style={{ width: `${data.percentage}%` }}
               />
             </div>
             <div className="flex justify-between text-[11px] text-muted mt-1">
@@ -355,14 +355,16 @@ export const EmbedComposerChip: React.FC<{ embed: PostEmbed; tenantId: string | 
           {status === 'loading' ? 'Loading…' : status === 'missing' ? 'Unavailable' : data?.title}
         </p>
       </div>
-      <button
+      <Button
         type="button"
+        size="icon-xs"
+        variant="ghost"
         onClick={onRemove}
         aria-label="Remove attachment"
-        className="absolute top-2 right-2 w-5 h-5 flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+        className="absolute top-2 right-2 rounded-full bg-black/60 text-white hover:bg-black/80 hover:text-white"
       >
-        <X size={12} />
-      </button>
+        <X />
+      </Button>
     </div>
   );
 };
