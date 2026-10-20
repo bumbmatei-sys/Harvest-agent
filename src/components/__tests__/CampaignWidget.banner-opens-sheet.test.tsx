@@ -116,6 +116,12 @@ async function click(el: Element) {
   await flush();
 }
 
+async function keyup(el: Element, key: string) {
+  await act(async () => {
+    el.dispatchEvent(new KeyboardEvent('keyup', { key, bubbles: true, cancelable: true }));
+  });
+}
+
 async function keydown(el: Element, key: string) {
   await act(async () => {
     el.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
@@ -162,8 +168,19 @@ describe('the campaign banner opens the in-app sheet', () => {
   it('a keyboard Space opens the sheet', async () => {
     await mountWidget({ donateUrl: 'https://example.test/legacy' });
     await keydown(banner()!, ' ');
+    expect(sheet(), 'Space must not open on keydown, the sheet would take the keyup').toBeNull();
+    await keyup(banner()!, ' ');
     expect(sheet()).not.toBeNull();
     expect(window.open).not.toHaveBeenCalled();
+  });
+
+  it('Space on Give Now does not open the sheet', async () => {
+    await mountWidget({ donateUrl: 'https://wise.com/pay/business/legacy' });
+    const button = Array.from(container.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Give Now')!;
+    expect(button, 'Give Now was not rendered').toBeTruthy();
+    await keydown(button, ' ');
+    await keyup(button, ' ');
+    expect(sheet(), 'Space on Give Now also opened the sheet').toBeNull();
   });
 
   it('Give Now does not also open the sheet', async () => {

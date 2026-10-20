@@ -309,17 +309,13 @@ export const CampaignBanner: React.FC<{
 }> = ({ campaign, showGiveNow, onOpen, onGiveNow }) => {
   const { percentage, daysLeft } = campaignProgress(campaign);
 
-  const onBannerKeyDown = (event: { key: string; preventDefault: () => void }) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      onOpen();
-    }
-  };
-
   // Navy "money band" campaign banner — the Harvest Member App design. A cover
   // photo (when set) washes behind the navy→gold gradient. Stacks on mobile,
   // goes horizontal on desktop. The whole band opens the in-app detail. Give
-  // Now keeps its own destination and must not also activate the band.
+  // Now keeps its own destination and must not also activate the band. Enter
+  // and Space come from Base UI's non-native button (Enter on keydown, Space on
+  // keyup); a keydown handler here would open the sheet before the Space keyup
+  // lands on the sheet's focused Back control and closes it again.
   return (
     <div className="mb-4 lg:mb-3">
       {/* `ui/button` has no `asChild` — it is Base UI. `nativeButton={false}`
@@ -332,8 +328,7 @@ export const CampaignBanner: React.FC<{
         render={<div />}
         aria-label={`View ${campaign.title}`}
         onClick={onOpen}
-        onKeyDown={onBannerKeyDown}
-        className="block h-auto min-h-11 w-full cursor-pointer whitespace-normal rounded-xl bg-transparent p-0 text-left font-normal hover:bg-transparent active:translate-y-0"
+          className="block h-auto min-h-11 w-full cursor-pointer whitespace-normal rounded-xl bg-transparent p-0 text-left font-normal hover:bg-transparent active:translate-y-0"
       >
         <HeroBand
           radius="inherit"
@@ -377,6 +372,9 @@ export const CampaignBanner: React.FC<{
                   onGiveNow();
                 }}
                 onKeyDown={(event) => {
+                  event.stopPropagation();
+                }}
+                onKeyUp={(event) => {
                   event.stopPropagation();
                 }}
                 className="h-11 self-start px-4 text-[12.5px] font-semibold lg:self-auto"
