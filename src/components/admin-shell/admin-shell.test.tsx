@@ -16,6 +16,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { THEME_STORAGE_KEY } from '@/lib/theme';
 
+import { AdminContentBar } from './AdminContentBar';
 import { AdminDesktopSidebar, SIDEBAR_ICON_WIDTH } from './AdminDesktopSidebar';
 import { AdminHome, AdminHomeView } from './AdminHome';
 import { REASON } from '../dashboard/dashboard-data';
@@ -264,6 +265,106 @@ describe('desktop sidebar', () => {
     localStorage.setItem(THEME_STORAGE_KEY, 'system');
     ensureLightDefault();
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('system');
+  });
+
+  it('does not keep a search control in the sidebar', async () => {
+    await mount();
+    const sidebar = container.querySelector('[data-sidebar="sidebar"]');
+    expect(sidebar, 'the sidebar did not mount').toBeTruthy();
+    expect(sidebar!.querySelector('button[aria-label="Search"]')).toBeNull();
+    expect(sidebar!.querySelector('[data-admin-search-pill]')).toBeNull();
+  });
+
+  it('opens the existing command palette on ⌘K', async () => {
+    await mount();
+    expect(document.querySelector('[data-slot="command-input"]')).toBeNull();
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }));
+    });
+    const input = document.querySelector('[data-slot="command-input"]');
+    expect(input, '⌘K did not open the palette').toBeTruthy();
+    expect((input as HTMLInputElement).placeholder).toBe('Search sections');
+    expect(document.querySelectorAll('[data-slot="command-dialog"], [data-slot="dialog-content"]').length)
+      .toBeGreaterThan(0);
+  });
+});
+
+function ShellBarHarness() {
+  const [side, setSide] = useState<ShellSideId>('people');
+  return (
+    <TooltipProvider>
+      <SidebarProvider>
+        <AdminDesktopSidebar
+          side={side}
+          onSide={setSide}
+          activeTab="dashboard"
+          placeholder={null}
+          tabs={tabs}
+          tenantName="Grace Ministry"
+          logoUrl="https://example.com/logo.png"
+          onNavigate={() => {}}
+          onPlaceholder={() => {}}
+          accountMenu={<span>Account</span>}
+        />
+        <AdminContentBar section="" title="Home" onOpenApp={() => {}} />
+      </SidebarProvider>
+    </TooltipProvider>
+  );
+}
+
+describe('search pill in the content bar', () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    localStorage.clear();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    act(() => { root?.unmount(); });
+    container.remove();
+  });
+
+  async function mountBar() {
+    await act(async () => {
+      root = createRoot(container);
+      root.render(<ShellBarHarness />);
+    });
+  }
+
+  it('sits immediately left of Open member app, and the sidebar has no search row', async () => {
+    await mountBar();
+    const bar = container.querySelector('[data-admin-content-bar]');
+    expect(bar, 'the content bar did not mount').toBeTruthy();
+    const pill = bar!.querySelector('[data-admin-search-pill]');
+    expect(pill, 'the search pill is missing from the content bar').toBeTruthy();
+    expect(pill!.textContent).toMatch(/Search/);
+    const openApp = [...bar!.querySelectorAll('button')]
+      .find((button) => (button.textContent ?? '').includes('Open member app'));
+    expect(openApp, 'Open member app is missing').toBeTruthy();
+    expect(pill!.nextElementSibling, 'the pill is not immediately left of Open member app')
+      .toBe(openApp);
+    const sidebar = container.querySelector('[data-sidebar="sidebar"]');
+    expect(sidebar!.querySelector('button[aria-label="Search"]')).toBeNull();
+    expect(sidebar!.querySelector('[data-admin-search-pill]')).toBeNull();
+  });
+
+  it('opens the same palette from the pill and from ⌘K, once', async () => {
+    await mountBar();
+    const pill = container.querySelector<HTMLButtonElement>('[data-admin-search-pill]')!;
+    await act(async () => { pill.click(); });
+    expect(document.querySelector('[data-slot="command-input"]'), 'the pill did not open the palette')
+      .toBeTruthy();
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }));
+    });
+    const inputs = document.querySelectorAll('[data-slot="command-input"]');
+    expect(inputs, 'Ctrl-K did not open the palette').toHaveLength(1);
   });
 });
 
