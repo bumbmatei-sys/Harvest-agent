@@ -629,6 +629,20 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/AdminEvents.tsx',
       'src/components/AdminSettings.tsx',   // uses it: THE-316's TOUCH_FLOOR
       /**
+       * APPENDED for the campaign banner sheet. Nothing around it removed or
+       * rewritten. Both files sit here because this list is the sweep's sorted
+       * order.
+       *
+       * Both USE the class, as a flat `min-h-11` with no `sm:min-h-0`. THE-356
+       * measures each `<Button>` with the text "Aa" and none of its children, so
+       * a banner or a feed card whose real content is far taller still reports
+       * the empty control. The amount presets are compact and need the floor
+       * themselves. There is no density token on these controls, so releasing
+       * the floor from `sm` up is not what keeps a desktop row at 38px.
+       */
+      'src/components/CampaignWidget.tsx',
+      'src/components/EmbedCard.tsx',
+      /**
        * 🔴 APPENDED BY THE-358, NOTHING AROUND IT REMOVED OR REWRITTEN. It sits
        * here because this list is the sweep's own sorted order, not the order
        * tickets arrived in.
