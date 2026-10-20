@@ -319,23 +319,12 @@ service cloud.firestore {
     }
 
     // ─── Blog Posts ─────────────────────────────────────────────────
-    //
-    // Clients may read a post in their own ministry. They may not create,
-    // update or delete one. Those writes go through the blog service, which
-    // uses the Admin SDK. A direct client write used to be enough to publish.
 
     match /blog_posts/{postId} {
       allow read: if isAuthenticated() && belongsToTenant(resource.data.get('tenantId', ''));
-      allow create, update, delete: if false;
-    }
-
-    // Preview tokens and the super-admin audit trail. The Admin SDK writes
-    // both. A client must not mint a token or read one.
-    match /blog_confirm_tokens/{tokenId} {
-      allow read, write: if false;
-    }
-    match /blog_admin_audit/{eventId} {
-      allow read, write: if false;
+      allow create: if isAuthenticated() && hasPermission('writeArticles', request.resource.data.get('tenantId', ''));
+      allow update: if isAuthenticated() && hasPermission('writeArticles', resource.data.tenantId);
+      allow delete: if isAuthenticated() && hasPermission('writeArticles', resource.data.tenantId);
     }
 
     // ─── Courses ────────────────────────────────────────────────────
