@@ -233,7 +233,7 @@ export const CampaignDetailSheet: React.FC<{
                     type="button"
                     variant={selectedAmount === amt ? 'default' : 'outline'}
                     onClick={() => { setSelectedAmount(amt); setCustomAmount(''); }}
-                    className="h-auto w-full py-2.5 font-bold"
+                    className="h-auto min-h-11 w-full py-2.5 font-bold"
                   >
                     ${amt}
                   </Button>
@@ -385,7 +385,7 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
           aria-label={`View ${campaign.title}`}
           onClick={openDetail}
           onKeyDown={onBannerKeyDown}
-          className="block h-auto w-full cursor-pointer whitespace-normal rounded-[var(--ds-radius-card)] bg-transparent p-0 text-left font-normal hover:bg-transparent active:translate-y-0"
+          className="block h-auto min-h-11 w-full cursor-pointer whitespace-normal rounded-[var(--ds-radius-card)] bg-transparent p-0 text-left font-normal hover:bg-transparent active:translate-y-0"
         >
           <HeroBand
             className="w-full px-5 py-5 lg:px-6"

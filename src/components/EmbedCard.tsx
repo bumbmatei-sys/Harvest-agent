@@ -304,7 +304,7 @@ export const FeedEmbedCard: React.FC<{ embed: PostEmbed; tenantId: string | null
           data-testid="feed-campaign-card"
           aria-label={`View ${data.title}`}
           onClick={() => setOpen(true)}
-          className={`${EMBED_CARD_CLASS} h-auto w-full cursor-pointer items-stretch justify-start whitespace-normal p-0 text-left font-normal hover:bg-transparent`}
+          className={`${EMBED_CARD_CLASS} h-auto min-h-11 w-full cursor-pointer items-stretch justify-start whitespace-normal p-0 text-left font-normal hover:bg-transparent`}
         >
           <EmbedCardFace data={data} />
         </Button>
