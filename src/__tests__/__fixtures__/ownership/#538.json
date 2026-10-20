@@ -1,0 +1,11 @@
+{
+  "ticket": "#538",
+  "note": "Newsletter phase 3 (Plunk-backed broadcasts). One rules change, appended; earlier digests are not replaced.",
+  "entries": [
+    {
+      "file": "firestore.rules",
+      "digest": "620d2129c89a0496d79e563f093b582ba9f81f920672caad57bbee600486bb5f",
+      "why": "Adds emailConsentKeys, contactCreateKeepsEmailConsent and contactUpdateKeepsEmailConsent beside newsletterConsentOnCreate and applies them to BOTH contacts match blocks (top-level and tenants/{id}/contacts): a client CRM admin keeps every other contact write but can no longer create or change emailStatus, emailOptInAt, emailOptInSource, emailUnsubscribedAt or emailUnsubscribedFrom, so only the Admin SDK (CSV import, the unsubscribe link) can subscribe or unsubscribe a person. Read rules and every other match block are unchanged."
+    }
+  ]
+}
