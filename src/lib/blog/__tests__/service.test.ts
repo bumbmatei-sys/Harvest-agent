@@ -76,6 +76,7 @@ function harness(opts: {
   posts?: readonly StoredBlogPost[];
   permissions?: Record<string, Record<string, boolean>>;
   skipped?: number;
+  unreadable?: Record<string, unknown>[];
   now?: string;
   clock?: () => Date;
 }): Harness {
@@ -117,6 +118,7 @@ function harness(opts: {
       return {
         posts: [...posts.values()].filter((post) => post.tenantId === tenantId),
         skipped: opts.skipped ?? 0,
+        unreadable: opts.unreadable ?? [],
       };
     },
     async appendAudit(event) {
@@ -604,7 +606,7 @@ describe('super admin audit', () => {
       async insertPost(post) { posts.set(post.id, post); },
       async savePost(post) { posts.set(post.id, post); },
       async removePost(id) { posts.delete(id); },
-      async listByTenant() { return { posts: [], skipped: 0 }; },
+      async listByTenant() { return { posts: [], skipped: 0, unreadable: [] }; },
       async appendAudit() { throw new Error('audit down'); },
     };
     const service = createBlogService({
@@ -856,6 +858,22 @@ describe('date range and public visibility', () => {
     expect(renderBlogSitemap({ origin, posts: after.posts })).toContain('/blog/future');
     expect(await box.service.readPublic('future', Date.parse(NOW))).toBeNull();
     expect((await box.service.readPublic('future', Date.parse(SCHEDULED_AT)))?.status).toBe('scheduled');
+  });
+
+  it('does not take the public list down for an unreadable draft', async () => {
+    const { service } = harness({
+      posts: [samplePost({ id: 'live', tenantId: 'sample', status: 'published', publishedAt: '2026-01-04T16:00:00.000Z', title: 'Welcome' })],
+      tenants: { sample: { name: 'Sample Ministry' } },
+      unreadable: [
+        { status: 'draft', title: 'Legacy draft', tenantId: 'sample' },
+        { status: 'scheduled', publishedAt: '2026-12-01T16:00:00.000Z', tenantId: 'sample' },
+        { status: 'published', title: 'Broken live', tenantId: 'sample', publishedAt: '2026-06-01T00:00:00.000Z' },
+      ],
+    });
+    const listed = await service.listPublic('sample', Date.parse(NOW));
+    if (!listed.ok) throw new Error(listed.error);
+    expect(listed.posts.map((post) => post.id)).toEqual(['live']);
+    expect(listed.skipped).toBe(1);
   });
 
   it('fails when the ministry cannot be read instead of publishing an empty page', async () => {

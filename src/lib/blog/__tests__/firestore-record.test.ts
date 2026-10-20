@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { readStoredBlogPost } from '@/lib/blog/firestore-store';
+import { unreadableRowWouldBePublic } from '@/lib/blog/visibility';
 
 const CREATED = '2026-01-04T18:00:00.000Z';
 
@@ -42,5 +43,17 @@ describe('stored blog posts', () => {
       status: 'draft',
       tenantId: 'sample',
     })).toBeNull();
+  });
+
+  it('an unreadable draft is not a public miss, and an unreadable published post is', () => {
+    const now = Date.parse('2026-07-15T12:00:00.000Z');
+    const draft = { status: 'draft', title: 'Legacy', tenantId: 'sample' };
+    const live = { status: 'published', title: 'Broken', tenantId: 'sample', publishedAt: '2026-06-01T00:00:00.000Z' };
+    const waiting = { status: 'scheduled', publishedAt: '2026-12-01T16:00:00.000Z', tenantId: 'sample' };
+    expect(readStoredBlogPost('d', draft)).toBeNull();
+    expect(readStoredBlogPost('l', live)).toBeNull();
+    expect(unreadableRowWouldBePublic(draft, now)).toBe(false);
+    expect(unreadableRowWouldBePublic(waiting, now)).toBe(false);
+    expect(unreadableRowWouldBePublic(live, now)).toBe(true);
   });
 });

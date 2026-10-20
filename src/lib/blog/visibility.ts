@@ -40,6 +40,16 @@ export function isBlogPostPublic(post: BlogVisibilityPost, nowMs: number): boole
   return false;
 }
 
+/**
+ * A row the store could not parse. The public page, RSS, and sitemap only
+ * fail when this row would have been public. An unreadable draft stays off
+ * those surfaces and does not take them down.
+ */
+export function unreadableRowWouldBePublic(row: Record<string, unknown>, nowMs: number): boolean {
+  const status = typeof row.status === 'string' ? row.status : null;
+  return isBlogPostPublic({ status, publishedAt: row.publishedAt as FirestoreDate }, nowMs);
+}
+
 /** What the admin list calls the post, derived from status and the instant. */
 export type BlogListKind = 'draft' | 'scheduled' | 'published';
 

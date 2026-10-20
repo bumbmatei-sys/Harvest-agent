@@ -11,6 +11,7 @@ import {
   formatInstantInZone,
   isBlogPostPublic,
   isValidTimeZone,
+  unreadableRowWouldBePublic,
   wallClockToUtcIso,
   type BlogStoredStatus,
 } from '@/lib/blog/visibility';
@@ -62,6 +63,14 @@ export interface StoredBlogPost extends BlogPostFields {
   readonly keywords: readonly string[];
 }
 
+export interface BlogTenantList {
+  readonly posts: readonly StoredBlogPost[];
+  /** Every row the reader could not parse, public or not. */
+  readonly skipped: number;
+  /** The raw rows behind `skipped`, so a public list can ignore drafts. */
+  readonly unreadable: readonly Record<string, unknown>[];
+}
+
 export interface BlogStore {
   getTenant(tenantId: string): Promise<{ name: string; status: unknown; ownerId: string | null } | null>;
   getAdminEmails(tenantId: string): Promise<readonly string[]>;
@@ -70,7 +79,7 @@ export interface BlogStore {
   insertPost(post: StoredBlogPost): Promise<void>;
   savePost(post: StoredBlogPost): Promise<void>;
   removePost(id: string): Promise<void>;
-  listByTenant(tenantId: string): Promise<{ posts: readonly StoredBlogPost[]; skipped: number }>;
+  listByTenant(tenantId: string): Promise<BlogTenantList>;
   appendAudit(event: BlogAuditEvent): Promise<void>;
 }
 
@@ -641,7 +650,10 @@ export function createBlogService(deps: {
       const posts = listed.posts
         .filter((post) => post.tenantId === id && isBlogPostPublic(post, clock))
         .sort((a, b) => Date.parse(b.publishedAt || b.createdAt) - Date.parse(a.publishedAt || a.createdAt));
-      return { ok: true, posts, skipped: listed.skipped };
+      // An unreadable draft is not a public post. Counting it here made the
+      // ministry page, RSS, and sitemap fail while every live article loaded.
+      const skipped = listed.unreadable.filter((row) => unreadableRowWouldBePublic(row, clock)).length;
+      return { ok: true, posts, skipped };
     },
 
     async readPublic(id, nowMs) {

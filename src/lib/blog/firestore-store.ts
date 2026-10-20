@@ -143,12 +143,13 @@ export const firestoreBlogStore: BlogStore = {
   async listByTenant(tenantId) {
     const snap = await adminDb.collection('blog_posts').where('tenantId', '==', tenantId).get();
     const posts: StoredBlogPost[] = [];
-    let skipped = 0;
+    const unreadable: Record<string, unknown>[] = [];
     for (const doc of snap.docs) {
-      const post = readStoredBlogPost(doc.id, doc.data() as Record<string, unknown>);
+      const data = doc.data() as Record<string, unknown>;
+      const post = readStoredBlogPost(doc.id, data);
       if (post) posts.push(post);
-      else skipped += 1;
+      else unreadable.push(data);
     }
-    return { posts, skipped };
+    return { posts, skipped: unreadable.length, unreadable };
   },
 };
