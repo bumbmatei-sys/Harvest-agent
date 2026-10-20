@@ -200,26 +200,26 @@ export function useResolvedEmbed(embed: PostEmbed | null | undefined, tenantId: 
 }
 
 const EMBED_CARD_CLASS =
-  'group mb-3 flex overflow-hidden rounded-xl border border-line bg-surface-raised transition-colors hover:border-gold focus:outline-hidden focus-visible:ring-2 focus-visible:ring-gold';
+  'group mb-3 flex overflow-hidden rounded-xl border border-line bg-surface-raised transition-colors hover:border-line-strong focus:outline-hidden focus-visible:ring-2 focus-visible:ring-gold';
 
 const EmbedCardFace: React.FC<{ data: ResolvedEmbed }> = ({ data }) => {
   const { Icon, label } = TYPE_META[data.type];
   return (
     <>
       {data.image ? (
-        <div className="relative w-24 sm:w-28 shrink-0 bg-surface-sunken">
+        <div className="relative w-24 shrink-0 border-r border-line bg-surface-sunken sm:w-28">
           <Image src={data.image} alt="" fill sizes="112px" className="object-cover" referrerPolicy="no-referrer" />
         </div>
       ) : (
-        <div className="w-24 sm:w-28 shrink-0 bg-surface-sunken flex items-center justify-center">
-          <Icon size={22} className="text-stone-300" />
+        <div className="flex w-24 shrink-0 items-center justify-center border-r border-line bg-surface-sunken sm:w-28">
+          <Icon size={22} className="text-faint" />
         </div>
       )}
       <div className="flex-1 min-w-0 p-3">
         <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold">
           <Icon size={11} /> {label}
         </span>
-        <h5 className="font-bold text-strong text-sm leading-snug line-clamp-2 mt-1 group-hover:text-gold transition-colors">
+        <h5 className="mt-1 line-clamp-2 text-sm font-semibold leading-snug text-strong transition-colors group-hover:text-gold">
           {data.title}
         </h5>
 
@@ -229,7 +229,7 @@ const EmbedCardFace: React.FC<{ data: ResolvedEmbed }> = ({ data }) => {
 
         {data.type === 'fundraising' && (
           <div className="mt-2">
-            <div className="h-1.5 bg-surface-sunken rounded-full overflow-hidden">
+            <div className="h-1.5 overflow-hidden rounded-full bg-surface-chip">
               <div
                 className="h-full rounded-full transition-[width] duration-700"
                 style={{ width: `${data.percentage}%`, backgroundColor: 'var(--brand-color, #e6b325)' }}
@@ -271,25 +271,8 @@ const EmbedCardFace: React.FC<{ data: ResolvedEmbed }> = ({ data }) => {
  * a signed-in member is sent. A deleted item degrades to a muted
  * "no longer available" chip.
  */
-export const FeedEmbedCard: React.FC<{ embed: PostEmbed; tenantId: string | null | undefined }> = ({ embed, tenantId }) => {
-  const { status, data } = useResolvedEmbed(embed, tenantId);
+export const ResolvedEmbedCard: React.FC<{ data: ResolvedEmbed }> = ({ data }) => {
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    setOpen(false);
-  }, [embed.type, embed.id]);
-
-  if (status === 'loading') {
-    return <div className="mb-3 h-[76px] rounded-xl bg-surface-sunken border border-line animate-pulse" />;
-  }
-  if (status === 'missing' || !data) {
-    return (
-      <div className="mb-3 flex items-center gap-2 rounded-xl border border-line bg-surface-sunken px-3 py-2.5 text-xs text-muted">
-        <FileText size={14} className="text-faint shrink-0" />
-        This attachment is no longer available.
-      </div>
-    );
-  }
 
   // Pledge campaigns have their own public page. Every other fundraiser in
   // the member feed opens the in-app sheet rather than `/campaign/[id]`.
@@ -322,6 +305,25 @@ export const FeedEmbedCard: React.FC<{ embed: PostEmbed; tenantId: string | null
       <EmbedCardFace data={data} />
     </a>
   );
+};
+
+export const FeedEmbedCard: React.FC<{ embed: PostEmbed; tenantId: string | null | undefined }> = ({ embed, tenantId }) => {
+  const { status, data } = useResolvedEmbed(embed, tenantId);
+
+  if (status === 'loading') {
+    return <div className="mb-3 h-[76px] rounded-xl bg-surface-sunken border border-line animate-pulse" />;
+  }
+  if (status === 'missing' || !data) {
+    return (
+      <div className="mb-3 flex items-center gap-2 rounded-xl border border-line bg-surface-sunken px-3 py-2.5 text-xs text-muted">
+        <FileText size={14} className="text-faint shrink-0" />
+        This attachment is no longer available.
+      </div>
+    );
+  }
+
+  // Keyed so a different embed in the same slot starts with the sheet closed.
+  return <ResolvedEmbedCard key={`${data.type}:${data.id}`} data={data} />;
 };
 
 /**

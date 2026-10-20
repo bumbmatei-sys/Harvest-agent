@@ -173,9 +173,9 @@ export const CampaignDetailSheet: React.FC<{
         side="bottom"
         showCloseButton={false}
         data-testid="campaign-detail-sheet"
-        className="inset-0! top-0! z-[300]! flex h-dvh! max-h-none! w-full! max-w-none! gap-0 overflow-y-auto rounded-none border-0 bg-surface-raised p-0 shadow-none data-[side=bottom]:inset-0! data-[side=bottom]:h-dvh! data-[side=bottom]:max-h-none! data-[side=bottom]:w-full! data-[side=bottom]:border-0 data-starting-style:translate-none! data-starting-style:opacity-100! sm:max-w-none!"
+        className="inset-0! top-0! z-[300]! flex h-dvh! max-h-none! w-full! max-w-none! gap-0 overflow-y-auto rounded-none border-0 bg-surface p-0 shadow-none data-[side=bottom]:inset-0! data-[side=bottom]:h-dvh! data-[side=bottom]:max-h-none! data-[side=bottom]:w-full! data-[side=bottom]:border-0 data-starting-style:translate-none! data-starting-style:opacity-100! sm:max-w-none!"
       >
-      <SheetHeader className="sticky top-0 z-10 flex-row items-center gap-3 border-b border-line bg-surface-raised px-4 py-3">
+      <SheetHeader className="sticky top-0 z-10 flex-row items-center gap-3 border-b border-line bg-surface px-4 py-3">
         {/* `Button` is a plain function, so `render={<Button />}` cannot take
             the ref DialogClose needs and React warns. The close control is the
             Sheet primitive wearing `buttonVariants`, the same workaround
@@ -192,31 +192,31 @@ export const CampaignDetailSheet: React.FC<{
         <ShareButton url={shareUrl} title={campaign.title} />
       </SheetHeader>
 
-      {campaign.coverImage && (
-        <div className="relative h-52 bg-surface-sunken flex-shrink-0 lg:max-w-2xl lg:mx-auto w-full">
-          <Image src={campaign.coverImage} alt={campaign.title} fill sizes="100vw" className="object-cover" referrerPolicy="no-referrer" />
-          {daysLeft !== null && (
-            <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 text-white text-xs font-semibold px-2.5 py-1 rounded-full backdrop-blur-xs">
-              <Clock size={12} />
-              {daysLeft === 0 ? 'Last day!' : `${daysLeft} days left`}
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="p-4 space-y-5 pb-10 lg:max-w-2xl lg:mx-auto w-full">
-        <div className="bg-surface-sunken rounded-2xl p-4">
-          <div className="flex justify-between items-baseline mb-2 text-sm">
-            <span className="font-bold text-strong">{fmt(campaign.raised)} raised</span>
-            <span className="text-muted">of {fmt(campaign.goal)}</span>
+      <div className="mx-auto w-full space-y-4 p-4 pb-10 lg:max-w-2xl">
+        {campaign.coverImage && (
+          <div className="relative h-44 w-full flex-shrink-0 overflow-hidden rounded-xl border border-line bg-surface-sunken sm:h-52">
+            <Image src={campaign.coverImage} alt={campaign.title} fill sizes="(max-width: 672px) 100vw, 672px" className="object-cover" referrerPolicy="no-referrer" />
+            {daysLeft !== null && (
+              <div className="absolute top-3 right-3 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-xs">
+                <Clock size={12} />
+                {daysLeft === 0 ? 'Last day!' : `${daysLeft} days left`}
+              </div>
+            )}
           </div>
-          <div className="h-3 bg-surface-chip rounded-full overflow-hidden mb-1">
+        )}
+
+        <div className="rounded-xl border border-line bg-surface-raised p-4">
+          <div className="mb-2.5 flex items-baseline justify-between text-sm">
+            <span className="font-semibold text-strong">{fmt(campaign.raised)} raised</span>
+            <span className="text-xs text-muted">of {fmt(campaign.goal)}</span>
+          </div>
+          <div className="mb-1.5 h-1.5 overflow-hidden rounded-full bg-surface-chip">
             <div className="h-full rounded-full" style={{ width: `${percentage}%`, backgroundColor: 'var(--brand-color, #e6b325)' }} />
           </div>
-          <div className="text-right text-xs font-bold" style={{ color: 'var(--brand-color, #e6b325)' }}>{percentage}%</div>
+          <div className="text-right text-xs font-semibold" style={{ color: 'var(--brand-color, #e6b325)' }}>{percentage}%</div>
         </div>
 
-        <SheetDescription className="text-sm leading-relaxed text-muted">
+        <SheetDescription className="text-sm leading-relaxed text-body">
           {campaign.description}
         </SheetDescription>
 
@@ -297,11 +297,144 @@ export const CampaignDetailSheet: React.FC<{
   );
 };
 
+/**
+ * The feed banner. Presentational: the widget owns the campaign, the rails and
+ * the sheet, and hands this the two things the banner can trigger.
+ */
+export const CampaignBanner: React.FC<{
+  campaign: Campaign;
+  showGiveNow: boolean;
+  onOpen: () => void;
+  onGiveNow: () => void;
+}> = ({ campaign, showGiveNow, onOpen, onGiveNow }) => {
+  const { percentage, daysLeft } = campaignProgress(campaign);
+
+  const onBannerKeyDown = (event: { key: string; preventDefault: () => void }) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onOpen();
+    }
+  };
+
+  // Navy "money band" campaign banner — the Harvest Member App design. A cover
+  // photo (when set) washes behind the navy→gold gradient. Stacks on mobile,
+  // goes horizontal on desktop. The whole band opens the in-app detail. Give
+  // Now keeps its own destination and must not also activate the band.
+  return (
+    <div className="mb-4 lg:mb-3">
+      {/* `ui/button` has no `asChild` — it is Base UI. `nativeButton={false}`
+          is the equivalent: the band is the accessible control, and Give Now
+          stays a real button inside it. A native button here would nest two
+          buttons, which is invalid. */}
+      <Button
+        variant="ghost"
+        nativeButton={false}
+        render={<div />}
+        aria-label={`View ${campaign.title}`}
+        onClick={onOpen}
+        onKeyDown={onBannerKeyDown}
+        className="block h-auto min-h-11 w-full cursor-pointer whitespace-normal rounded-xl bg-transparent p-0 text-left font-normal hover:bg-transparent active:translate-y-0"
+      >
+        <HeroBand
+          radius="inherit"
+          className="w-full px-4 py-4 ring-1 ring-inset ring-white/10 lg:px-5"
+          backdrop={campaign.coverImage ? (
+            <span aria-hidden className="absolute inset-0 pointer-events-none">
+              <Image
+                src={campaign.coverImage}
+                alt=""
+                fill
+                sizes="(max-width: 1024px) 100vw, 900px"
+                className="object-cover opacity-25"
+                style={{ objectPosition: 'center 35%' }}
+                referrerPolicy="no-referrer"
+              />
+            </span>
+          ) : null}
+        >
+          <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <Eyebrow tone="glow" className="truncate">{campaign.title}</Eyebrow>
+              <div className="flex items-baseline gap-2 mt-1.5">
+                <span className="font-display font-light text-[30px] leading-none text-white tracking-[-0.02em]">{fmt(campaign.raised)}</span>
+                <span className="text-[13px] text-white/70">of {fmt(campaign.goal)}</span>
+              </div>
+              <div className="mt-3 h-1.5 w-full max-w-full overflow-hidden rounded-full bg-white/20 lg:w-[220px]">
+                <div className="h-full rounded-full transition-[width] duration-700" style={{ width: `${percentage}%`, background: 'var(--wheat-glow)' }} />
+              </div>
+              <div className="mt-2 flex items-center gap-3 text-[11px] text-white/60">
+                <span className="font-semibold" style={{ color: 'var(--wheat-glow)' }}>{percentage}% funded</span>
+                {daysLeft !== null && (
+                  <span className="flex items-center gap-1"><Clock size={11} />{daysLeft === 0 ? 'Last day!' : `${daysLeft} days left`}</span>
+                )}
+              </div>
+            </div>
+            {showGiveNow && (
+              <Button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onGiveNow();
+                }}
+                onKeyDown={(event) => {
+                  event.stopPropagation();
+                }}
+                className="h-11 self-start px-4 text-[12.5px] font-semibold lg:self-auto"
+              >
+                Give Now
+              </Button>
+            )}
+          </div>
+        </HeroBand>
+      </Button>
+    </div>
+  );
+};
+
+export const CampaignWidgetView: React.FC<{
+  campaign: Campaign;
+  onDonate?: (campaign: Campaign) => void;
+}> = ({ campaign, onDonate }) => {
+  const [showDetail, setShowDetail] = useState(false);
+  const { giving, cardGivingOn } = useCampaignRails(campaign.paymentProviders);
+
+  // Same shape as MainApp's `hasGivingRails`: a Give Now button with nowhere
+  // to land is a dead control. A legacy donateUrl, a published link, or card
+  // giving each count. None of them means the campaign card stays and the
+  // button does not. `onDonate` is a handoff, not a rail of its own.
+  const showGiveNow = Boolean(campaign.donateUrl) || giving.links.length > 0 || cardGivingOn;
+
+  const handleDonateClick = () => {
+    if (campaign.donateUrl) {
+      window.open(campaign.donateUrl, '_blank', 'noopener,noreferrer');
+    } else if (giving.direct) {
+      window.open(giving.direct.url, '_blank', 'noopener,noreferrer');
+    } else if (onDonate) {
+      onDonate(campaign);
+    } else {
+      setShowDetail(true);
+    }
+  };
+
+  return (
+    <>
+      <CampaignBanner
+        campaign={campaign}
+        showGiveNow={showGiveNow}
+        onOpen={() => setShowDetail(true)}
+        onGiveNow={handleDonateClick}
+      />
+
+      {showDetail && (
+        <CampaignDetailSheet campaign={campaign} onClose={() => setShowDetail(false)} />
+      )}
+    </>
+  );
+};
+
 const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showDetail, setShowDetail] = useState(false);
-  const { giving, cardGivingOn } = useCampaignRails(campaign?.paymentProviders);
 
   useEffect(() => {
     let cancelled = false;
@@ -337,114 +470,7 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
 
   if (loading || !campaign) return null;
 
-  const { percentage, daysLeft } = campaignProgress(campaign);
-
-  // Same shape as MainApp's `hasGivingRails`: a Give Now button with nowhere
-  // to land is a dead control. A legacy donateUrl, a published link, or card
-  // giving each count. None of them means the campaign card stays and the
-  // button does not. `onDonate` is a handoff, not a rail of its own.
-  const showGiveNow = Boolean(campaign.donateUrl) || giving.links.length > 0 || cardGivingOn;
-
-  const handleDonateClick = () => {
-    if (campaign.donateUrl) {
-      window.open(campaign.donateUrl, '_blank', 'noopener,noreferrer');
-    } else if (giving.direct) {
-      window.open(giving.direct.url, '_blank', 'noopener,noreferrer');
-    } else if (onDonate) {
-      onDonate(campaign);
-    } else {
-      setShowDetail(true);
-    }
-  };
-
-  const openDetail = () => setShowDetail(true);
-
-  const onBannerKeyDown = (event: { key: string; preventDefault: () => void }) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      openDetail();
-    }
-  };
-
-  return (
-    <>
-      {/* Navy "money band" campaign banner — the Harvest Member App design.
-          A cover photo (when set) washes behind the navy→gold gradient. Stacks
-          on mobile, goes horizontal on desktop. The whole band opens the
-          in-app detail. Give Now keeps its own destination and must not also
-          activate the band. */}
-      <div className="mb-4 lg:mb-3">
-        {/* `ui/button` has no `asChild` — it is Base UI. `nativeButton={false}`
-            is the equivalent: the band is the accessible control, and Give Now
-            stays a real button inside it. A native button here would nest two
-            buttons, which is invalid. */}
-        <Button
-          variant="ghost"
-          nativeButton={false}
-          render={<div />}
-          aria-label={`View ${campaign.title}`}
-          onClick={openDetail}
-          onKeyDown={onBannerKeyDown}
-          className="block h-auto min-h-11 w-full cursor-pointer whitespace-normal rounded-[var(--ds-radius-card)] bg-transparent p-0 text-left font-normal hover:bg-transparent active:translate-y-0"
-        >
-          <HeroBand
-            className="w-full px-5 py-5 lg:px-6"
-            backdrop={campaign.coverImage ? (
-              <span aria-hidden className="absolute inset-0 pointer-events-none">
-                <Image
-                  src={campaign.coverImage}
-                  alt=""
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 900px"
-                  className="object-cover opacity-25"
-                  style={{ objectPosition: 'center 35%' }}
-                  referrerPolicy="no-referrer"
-                />
-              </span>
-            ) : null}
-          >
-            <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="min-w-0">
-                <Eyebrow tone="glow" className="truncate">{campaign.title}</Eyebrow>
-                <div className="flex items-baseline gap-2 mt-1.5">
-                  <span className="font-display font-light text-[30px] leading-none text-white tracking-[-0.02em]">{fmt(campaign.raised)}</span>
-                  <span className="text-[13px] text-white/70">of {fmt(campaign.goal)}</span>
-                </div>
-                <div className="mt-3 h-1.5 w-full lg:w-[220px] max-w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.2)' }}>
-                  <div className="h-full rounded-full transition-[width] duration-700" style={{ width: `${percentage}%`, background: 'var(--wheat-glow)' }} />
-                </div>
-                <div className="mt-2 flex items-center gap-3 text-[11px] text-white/60">
-                  <span className="font-semibold" style={{ color: 'var(--wheat-glow)' }}>{percentage}% funded</span>
-                  {daysLeft !== null && (
-                    <span className="flex items-center gap-1"><Clock size={11} />{daysLeft === 0 ? 'Last day!' : `${daysLeft} days left`}</span>
-                  )}
-                </div>
-              </div>
-              {showGiveNow && (
-                <Button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    handleDonateClick();
-                  }}
-                  onKeyDown={(event) => {
-                    event.stopPropagation();
-                  }}
-                  className="h-11 self-start px-5 lg:self-auto"
-                >
-                  Give Now
-                </Button>
-              )}
-            </div>
-          </HeroBand>
-        </Button>
-      </div>
-
-      {showDetail && (
-        <CampaignDetailSheet campaign={campaign} onClose={() => setShowDetail(false)} />
-      )}
-    </>
-  );
+  return <CampaignWidgetView campaign={campaign} onDonate={onDonate} />;
 };
 
 export default CampaignWidget;
