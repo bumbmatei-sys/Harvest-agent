@@ -22,7 +22,7 @@ export const person = (email: string, over: Partial<EmailContact> = {}): EmailCo
 
 export const broadcast = (over: Partial<Broadcast> = {}): Broadcast => ({
   id: 'b1', tenantId: 'grace', subject: 'Sunday', subjectB: null, preheader: '', bodyHtml: '<p>Hi {{first_name}}, see you Sunday.</p>',
-  design: DEFAULT_EMAIL_DESIGN, filters: [], status: 'draft', scheduledAt: null, sentAt: null, stats: null, error: null,
+  design: DEFAULT_EMAIL_DESIGN, filters: [], status: 'draft', scheduledAt: null, sentAt: null, stats: null, error: null, sendId: null,
   createdBy: 'u', createdAt: '2031-01-01T00:00:00.000Z', updatedAt: '2031-01-02T10:00:00.000Z', ...over,
 });
 

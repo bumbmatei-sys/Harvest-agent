@@ -20,7 +20,8 @@ import {
 import type { DomainStatus, EmailProvider } from '@/lib/email/provider';
 import { DEFAULT_EMAIL_DESIGN, fillMergeTags, renderEmail } from '@/lib/email/render';
 import type { EmailDesign } from '@/lib/email/design';
-import { listUnsubscribeHeaders, signUnsubscribe, unsubscribeUrl } from '@/lib/email/unsubscribe';
+import { assertUnsubscribeConfigured, listUnsubscribeHeaders, signUnsubscribe, unsubscribeUrl } from '@/lib/email/unsubscribe';
+import type { ClaimRequest, ClaimResult, Settlement } from '@/lib/email/claim';
 import { resolveLimits, validateLimits, type EmailLimits } from '@/lib/email/limits';
 import { decidePause, decideSend, dayKey, isNewChurch, monthKey, nextMonthStart, percentUsed, type Health } from '@/lib/email/volume-cap';
 
@@ -48,6 +49,8 @@ export interface Broadcast {
   readonly sentAt: string | null;
   readonly stats: BroadcastStats | null;
   readonly error: string | null;
+  /** Set when a send claims the broadcast; ties the final write to that one claim. */
+  readonly sendId: string | null;
   readonly createdBy: string;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -110,8 +113,32 @@ export interface EmailStore {
   getSettings(tenantId: string): Promise<EmailSettings>;
   saveSettings(tenantId: string, settings: EmailSettings): Promise<void>;
   getBroadcast(tenantId: string, id: string): Promise<Broadcast | null>;
+  /** Creates a draft. Anything that changes an existing broadcast goes through a guarded write below. */
   saveBroadcast(broadcast: Broadcast): Promise<void>;
-  removeBroadcast(tenantId: string, id: string): Promise<void>;
+  /** Writes only if the stored broadcast is still in one of these states. One transaction. */
+  saveBroadcastIf(broadcast: Broadcast, statuses: readonly BroadcastStatus[]): Promise<boolean>;
+  /** Deletes only if the stored broadcast is still in one of these states. One transaction. */
+  removeBroadcastIf(tenantId: string, id: string, statuses: readonly BroadcastStatus[]): Promise<boolean>;
+  /**
+   * The atomic start of a send: in ONE transaction, check the broadcast is still
+   * in a claimable state, check the allowance, reserve `requested` emails against
+   * the month and the day, and move the broadcast to `sending`.
+   */
+  claimForSend(request: ClaimRequest): Promise<ClaimResult>;
+  /**
+   * The atomic end of a send: only if the broadcast is still `sending` under this
+   * sendId, write the final state, hand back the reserved emails that did not go
+   * out, and clear the in-flight marker. False means someone else settled it first.
+   */
+  settleSend(input: { broadcast: Broadcast; settlement: Settlement | null }): Promise<boolean>;
+  /** Sends claimed before `cutoffIso` that never settled: the function timed out or died. */
+  listStaleSending(cutoffIso: string): Promise<readonly { tenantId: string; broadcastId: string; sendId: string }[]>;
+  /** Server-only registry: one sending domain belongs to one ministry. True if this ministry holds it after the call. */
+  claimDomain(tenantId: string, domain: string): Promise<boolean>;
+  releaseDomain(tenantId: string, domain: string): Promise<void>;
+  getDomainOwner(domain: string): Promise<string | null>;
+  /** Addresses that opted out, bounced or complained. Survives the CRM person being deleted. */
+  listSuppressed(tenantId: string): Promise<ReadonlySet<string>>;
   listBroadcasts(tenantId: string): Promise<readonly Broadcast[]>;
   /** CRM people (`contacts`) for this ministry, with their email status. One list. */
   listContacts(tenantId: string): Promise<readonly EmailContact[]>;
@@ -121,16 +148,15 @@ export interface EmailStore {
   updateContacts(tenantId: string, updates: readonly ContactUpdate[]): Promise<void>;
   /** Emails sent under one key: a month ('2031-03') or a day ('2031-03-10'). */
   usage(tenantId: string, key: string): Promise<number>;
-  addUsage(tenantId: string, key: string, sent: number): Promise<void>;
   /** Sent, bounced and complained for one month. */
   health(tenantId: string, month: string): Promise<Health>;
   addFeedback(tenantId: string, month: string, kind: 'bounced' | 'complained'): Promise<void>;
-  /** Marks every CRM person with this address bounced or complained. Idempotent. */
+  /** Marks every CRM person with this address bounced or complained AND keeps a suppression record. Idempotent. */
   markContactStatus(tenantId: string, email: string, status: 'bounced' | 'complained', at: string): Promise<void>;
   queueScheduled(tenantId: string, broadcastId: string, at: string): Promise<void>;
   unqueueScheduled(tenantId: string, broadcastId: string): Promise<void>;
   listDue(nowIso: string): Promise<readonly { tenantId: string; broadcastId: string }[]>;
-  /** The opt-out record: marks every CRM person with this address unsubscribed. Idempotent. */
+  /** The opt-out record: marks every CRM person with this address unsubscribed AND keeps a suppression record. Idempotent. */
   recordOptOut(tenantId: string, email: string, broadcastId: string, at: string): Promise<void>;
 }
 
@@ -144,7 +170,7 @@ export interface SendingState {
 export type EmailErrorCode =
   | 'not_authorized' | 'cross_tenant' | 'not_found' | 'invalid' | 'plan_required' | 'publishing_closed'
   | 'sender_not_ready' | 'no_recipients' | 'volume_cap' | 'daily_cap' | 'domain_required' | 'sending_paused' | 'time_not_future' | 'already_sent'
-  | 'confirm_required' | 'confirm_expired' | 'confirm_reused' | 'confirm_mismatch' | 'provider_unavailable';
+  | 'confirm_required' | 'confirm_expired' | 'confirm_reused' | 'confirm_mismatch' | 'provider_unavailable' | 'domain_taken';
 
 export interface EmailFailure {
   readonly ok: false;
@@ -196,6 +222,11 @@ export interface ImportRow {
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const MAX_IMPORT_ROWS = 5000;
 const SEND_CONCURRENCY = 5;
+/** Stop starting new emails this long after a send began, so the function ends before its 300s limit. */
+export const SEND_BUDGET_MS = 240_000;
+/** A send still `sending` this long after it was claimed has died with its function. */
+export const STALE_SENDING_MS = 15 * 60 * 1000;
+const INTERRUPTED = 'This send was interrupted before it finished. Some emails may have gone out; they stay counted against your allowance. Check your list before sending again.';
 
 function clean(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -215,10 +246,15 @@ export function createEmailService(deps: {
   fallbackFrom?: string | null;
   now?: () => Date;
   newId?: () => string;
+  /** Wall clock for the send time budget; separate from `now` so a test can freeze dates and still run out of time. */
+  clockMs?: () => number;
+  sendBudgetMs?: number;
 }) {
   const { store, ledger } = deps;
   const now = deps.now ?? (() => new Date());
   const newId = deps.newId ?? (() => crypto.randomUUID());
+  const clockMs = deps.clockMs ?? (() => Date.now());
+  const sendBudgetMs = deps.sendBudgetMs ?? SEND_BUDGET_MS;
 
   async function gate(actor: EmailActor, requested: string | null | undefined, opts: { needPlan: boolean }) {
     const tenantId = clean(requested) || actor.tenantId || '';
@@ -251,6 +287,19 @@ export function createEmailService(deps: {
     return resolveLimits(await store.getLimits());
   }
 
+  /** The verified sender, but only for a domain this ministry holds in the registry. Plunk's verification is account-wide, so the registry is the tenant boundary. */
+  async function ownSenderAddress(tenantId: string, settings: EmailSettings): Promise<string | null> {
+    const address = senderAddress(settings);
+    if (!address) return null;
+    return (await store.getDomainOwner(settings.domain)) === tenantId ? address : null;
+  }
+
+  function capFailure(code: 'volume_cap' | 'daily_cap', remaining: number, cap: number, limits: EmailLimits): EmailFailure {
+    return code === 'volume_cap'
+      ? fail('volume_cap', `This send would pass your monthly allowance. You have ${remaining.toLocaleString()} of ${cap.toLocaleString()} emails left this month.`)
+      : fail('daily_cap', `New ministries can send up to ${cap.toLocaleString()} emails a day for their first ${limits.newChurch.days} days. You have ${remaining.toLocaleString()} left today.`);
+  }
+
   function pauseMessage(state: SendingState): string {
     const what = state.reason === 'complaint' ? 'spam complaints' : 'bounced emails';
     return `Sending is paused because ${what} passed ${(state.threshold * 100).toFixed(1).replace(/\.0$/, '')}% of what you sent this month (it reached ${(state.rate * 100).toFixed(1)}%). Check that your list only holds people who asked to hear from you, then ask Harvest to resume sending.`;
@@ -266,11 +315,11 @@ export function createEmailService(deps: {
     tenant: { plan: unknown; createdAt: unknown },
     settings: EmailSettings,
     requested: number,
-  ): Promise<EmailFailure | { ok: true; from: string; remaining: number }> {
+  ): Promise<EmailFailure | { ok: true; from: string; remaining: number; allowance: number; dailyCap: number | null }> {
     const limits = await loadLimits();
     const state = await store.getSendingState(tenantId);
     if (state) return fail('sending_paused', pauseMessage(state));
-    let from = senderAddress(settings);
+    let from = await ownSenderAddress(tenantId, settings);
     if (!from) {
       if (requested > limits.largeSendThreshold) {
         return fail('domain_required', `Sending to more than ${limits.largeSendThreshold.toLocaleString()} people needs a verified sending domain. Verify yours in Email settings.`);
@@ -281,20 +330,11 @@ export function createEmailService(deps: {
     const plan = toTenantPlan(typeof tenant.plan === 'string' ? tenant.plan : null);
     const at = now();
     const [usedMonth, usedToday] = await Promise.all([store.usage(tenantId, monthKey(at)), store.usage(tenantId, dayKey(at))]);
-    const decision = decideSend({
-      allowance: limits.monthlySends[plan],
-      usedMonth,
-      usedToday,
-      requested,
-      newChurch: isNewChurch(tenant.createdAt, at, limits.newChurch.days),
-      dailyCap: limits.newChurch.dailyCap,
-    });
-    if (!decision.ok) {
-      return decision.code === 'volume_cap'
-        ? fail('volume_cap', `This send would pass your monthly allowance. You have ${decision.remaining.toLocaleString()} of ${decision.cap.toLocaleString()} emails left this month.`)
-        : fail('daily_cap', `New ministries can send up to ${decision.cap.toLocaleString()} emails a day for their first ${limits.newChurch.days} days. You have ${decision.remaining.toLocaleString()} left today.`);
-    }
-    return { ok: true, from, remaining: decision.remaining };
+    const allowance = limits.monthlySends[plan];
+    const dailyCap = isNewChurch(tenant.createdAt, at, limits.newChurch.days) ? limits.newChurch.dailyCap : null;
+    const decision = decideSend({ allowance, usedMonth, usedToday, requested, newChurch: dailyCap !== null, dailyCap: dailyCap ?? 0 });
+    if (!decision.ok) return capFailure(decision.code, decision.remaining, decision.cap, limits);
+    return { ok: true, from, remaining: decision.remaining, allowance, dailyCap };
   }
 
   /** After any send or feedback: pause the ministry if a rate has passed its threshold. */
@@ -318,11 +358,12 @@ export function createEmailService(deps: {
       filters: input.filters !== undefined
         ? input.filters.filter((f) => f && clean(f.value) !== '').map((f) => ({ kind: f.kind, value: clean(f.value) }))
         : existing?.filters ?? [],
-      status: existing?.status ?? 'draft',
-      scheduledAt: existing?.scheduledAt ?? null,
+      status: 'draft',
+      scheduledAt: null,
       sentAt: existing?.sentAt ?? null,
       stats: existing?.stats ?? null,
       error: existing?.error ?? null,
+      sendId: existing?.sendId ?? null,
       createdBy: existing?.createdBy ?? actor.uid,
       createdAt: existing?.createdAt ?? stamp,
       updatedAt: stamp,
@@ -330,7 +371,8 @@ export function createEmailService(deps: {
   }
 
   async function audienceFor(broadcast: Broadcast) {
-    return resolveAudience(await store.listContacts(broadcast.tenantId), broadcast.filters);
+    const [contacts, suppressed] = await Promise.all([store.listContacts(broadcast.tenantId), store.listSuppressed(broadcast.tenantId)]);
+    return resolveAudience(contacts, broadcast.filters, suppressed);
   }
 
   function readiness(broadcast: Broadcast, settings: EmailSettings): EmailFailure | null {
@@ -351,80 +393,126 @@ export function createEmailService(deps: {
     return { at: new Date(ms).toISOString() };
   }
 
-  async function deliver(broadcast: Broadcast, settings: EmailSettings): Promise<{ broadcast: Broadcast; outcome: SendOutcome; message: string }> {
+  type Delivered = { broadcast: Broadcast; outcome: SendOutcome; message: string };
+
+  /**
+   * Claims the broadcast and reserves its emails against the allowance in one
+   * transaction, THEN sends. Whoever loses the claim sends nothing. The
+   * reservation counts every recipient up front, so a function that dies mid-send
+   * leaves them counted; a clean finish hands back what did not go out.
+   */
+  async function claimAndDeliver(
+    broadcast: Broadcast,
+    settings: EmailSettings,
+    tenant: { name: string; plan: unknown; createdAt: unknown },
+    from: readonly BroadcastStatus[],
+  ): Promise<Delivered | EmailFailure> {
+    assertUnsubscribeConfigured();
     const provider = await deps.getProvider();
     // Re-read at the moment of sending: someone may have unsubscribed since the preview.
     const audience = await audienceFor(broadcast);
-    const month = monthKey(now());
-    const tenant = await store.getTenant(broadcast.tenantId);
-    const stampBase = { ...broadcast, updatedAt: now().toISOString() };
-    const check = tenant
-      ? await checkSending(broadcast.tenantId, tenant, settings, audience.recipients.length)
-      : fail('not_found', 'This ministry could not be read.');
-    if (!check.ok) {
-      const failed: Broadcast = { ...stampBase, status: 'failed', error: check.message, scheduledAt: null };
-      await store.saveBroadcast(failed);
-      return { broadcast: failed, outcome: 'failed', message: check.message };
+    if (audience.recipients.length === 0) return fail('no_recipients', 'Nobody on this audience can be emailed right now.');
+    const check = await checkSending(broadcast.tenantId, tenant, settings, audience.recipients.length);
+    if (!check.ok) return check;
+    const startedAt = now();
+    const sendId = crypto.randomUUID();
+    const month = monthKey(startedAt);
+    const day = dayKey(startedAt);
+    const claim = await store.claimForSend({
+      tenantId: broadcast.tenantId,
+      broadcastId: broadcast.id,
+      from,
+      sendId,
+      nowIso: startedAt.toISOString(),
+      requested: audience.recipients.length,
+      allowance: check.allowance,
+      dailyCap: check.dailyCap,
+      month,
+      day,
+    });
+    if (!claim.ok) {
+      if (claim.code === 'not_found') return fail('not_found', 'That broadcast does not exist.');
+      if (claim.code === 'not_claimable') return fail('already_sent', 'This broadcast has already gone out.');
+      if (!('remaining' in claim)) return fail('already_sent', 'This broadcast has already gone out.');
+      return capFailure(claim.code, claim.remaining, claim.cap, await loadLimits());
     }
+
+    const sending: Broadcast = { ...broadcast, status: 'sending', sendId, error: null, scheduledAt: null, updatedAt: startedAt.toISOString() };
     const fromAddress: string = check.from;
-    const tenantName = tenant?.name ?? '';
     const useB = broadcast.subjectB != null;
+    const deadline = clockMs() + sendBudgetMs;
     let sent = 0;
-    let failed = 0;
     const queue = [...audience.recipients.entries()];
     async function worker() {
-      for (let next = queue.shift(); next; next = queue.shift()) {
+      for (let next = queue.shift(); next && clockMs() < deadline; next = queue.shift()) {
         const [index, person] = next;
-        const url = unsubscribeUrl(deps.appOrigin, signUnsubscribe({ tenantId: broadcast.tenantId, email: person.email, broadcastId: broadcast.id }));
-        const { html, text } = renderEmail({
-          design: broadcast.design,
-          bodyHtml: broadcast.bodyHtml,
-          preheader: broadcast.preheader,
-          churchName: tenantName,
-          senderName: settings.fromName,
-          firstName: person.name.split(/\s+/)[0] ?? '',
-          mailingAddress: settings.mailingAddress,
-          unsubscribeUrl: url,
-        });
-        const result = await provider.send({
-          to: person.email,
-          subject: fillMergeTags(useB && index % 2 === 1 ? (broadcast.subjectB as string) : broadcast.subject, { firstName: person.name.split(/\s+/)[0] ?? '', senderName: settings.fromName }),
-          html,
-          text,
-          fromName: settings.fromName,
-          fromAddress,
-          replyTo: settings.replyTo || null,
-          headers: listUnsubscribeHeaders(url),
-        });
-        if (result.ok) sent += 1;
-        else failed += 1;
+        const firstName = person.name.split(/\s+/)[0] ?? '';
+        try {
+          const url = unsubscribeUrl(deps.appOrigin, signUnsubscribe({ tenantId: broadcast.tenantId, email: person.email, broadcastId: broadcast.id }));
+          const { html, text } = renderEmail({
+            design: broadcast.design,
+            bodyHtml: broadcast.bodyHtml,
+            preheader: broadcast.preheader,
+            churchName: tenant.name,
+            senderName: settings.fromName,
+            firstName,
+            mailingAddress: settings.mailingAddress,
+            unsubscribeUrl: url,
+          });
+          const result = await provider.send({
+            to: person.email,
+            subject: fillMergeTags(useB && index % 2 === 1 ? (broadcast.subjectB as string) : broadcast.subject, { firstName, senderName: settings.fromName }),
+            html,
+            text,
+            fromName: settings.fromName,
+            fromAddress,
+            replyTo: settings.replyTo || null,
+            headers: listUnsubscribeHeaders(url),
+          });
+          if (result.ok) sent += 1;
+        } catch (error) {
+          console.error(`[email/send] ${error instanceof Error ? error.message : 'send failed'}`);
+        }
       }
     }
     await Promise.all(Array.from({ length: Math.min(SEND_CONCURRENCY, queue.length) }, worker));
-    if (sent > 0) {
-      await store.addUsage(broadcast.tenantId, month, sent);
-      await store.addUsage(broadcast.tenantId, dayKey(now()), sent);
-      await evaluatePause(broadcast.tenantId);
-    }
+
+    const total = audience.recipients.length;
+    const didNotSend = total - sent;
     const stats: BroadcastStats = {
-      recipients: audience.recipients.length,
+      recipients: total,
       sent,
-      failed,
+      failed: didNotSend,
       skippedSuppressed: audience.skipped.suppressed,
       skippedNotOptedIn: audience.skipped.notOptedIn,
     };
-    const outcome: SendOutcome = failed === 0 ? 'sent' : sent === 0 ? 'failed' : 'partial';
-    const error = failed === 0 ? null : `${failed} of ${stats.recipients} emails did not send.${sent > 0 ? ` ${sent} went out.` : ''}`;
+    const outcome: SendOutcome = didNotSend === 0 ? 'sent' : sent === 0 ? 'failed' : 'partial';
+    const error = didNotSend === 0 ? null : `${didNotSend} of ${total} emails did not send.${sent > 0 ? ` ${sent} went out.` : ''}`;
     const done: Broadcast = {
-      ...stampBase,
-      status: outcome === 'sent' ? 'sent' : outcome,
+      ...sending,
+      status: outcome,
       stats,
       error,
-      scheduledAt: null,
       sentAt: sent > 0 ? now().toISOString() : null,
+      updatedAt: now().toISOString(),
     };
-    await store.saveBroadcast(done);
+    const settled = await store.settleSend({ broadcast: done, settlement: { month, day, refund: didNotSend } });
+    if (sent > 0) await evaluatePause(broadcast.tenantId);
+    if (!settled) return { broadcast: done, outcome: 'partial', message: INTERRUPTED };
     return { broadcast: done, outcome, message: error ?? `Sent to ${sent} ${sent === 1 ? 'person' : 'people'}.` };
+  }
+
+  /** Marks sends that were claimed and never settled as failed, keeping their reservation counted. */
+  async function recoverStuck() {
+    const cutoff = new Date(now().getTime() - STALE_SENDING_MS).toISOString();
+    const recovered: { tenantId: string; broadcastId: string }[] = [];
+    for (const stale of await store.listStaleSending(cutoff)) {
+      const broadcast = await store.getBroadcast(stale.tenantId, stale.broadcastId);
+      if (!broadcast || broadcast.status !== 'sending' || broadcast.sendId !== stale.sendId) continue;
+      const failed: Broadcast = { ...broadcast, status: 'failed', error: INTERRUPTED, scheduledAt: null, updatedAt: now().toISOString() };
+      if (await store.settleSend({ broadcast: failed, settlement: null })) recovered.push({ tenantId: stale.tenantId, broadcastId: stale.broadcastId });
+    }
+    return recovered;
   }
 
   return {
@@ -435,11 +523,18 @@ export function createEmailService(deps: {
       if (input.id) {
         existing = await store.getBroadcast(g.tenantId, input.id);
         if (!existing) return fail('not_found', 'That broadcast does not exist.');
-        if (existing.status !== 'draft') return fail('already_sent', 'Only drafts can be edited.');
+        if (existing.status !== 'draft' && existing.status !== 'scheduled') return fail('already_sent', 'Only drafts and scheduled emails can be edited.');
       }
       const draft = normaliseDraft(input, existing, g, actor);
-      await store.saveBroadcast(draft);
-      return { ok: true as const, broadcast: draft };
+      if (!existing) {
+        await store.saveBroadcast(draft);
+        return { ok: true as const, broadcast: draft, unscheduled: false };
+      }
+      // Editing a scheduled email takes it back to a draft: what was previewed is no longer what would go out.
+      if (!(await store.saveBroadcastIf(draft, ['draft', 'scheduled']))) return fail('already_sent', 'This broadcast has started sending and can no longer be edited.');
+      const unscheduled = existing.status === 'scheduled';
+      if (unscheduled) await store.unqueueScheduled(g.tenantId, draft.id);
+      return { ok: true as const, broadcast: draft, unscheduled };
     },
 
     async list(actor: EmailActor, tenantId: string | null | undefined) {
@@ -514,11 +609,10 @@ export function createEmailService(deps: {
       if (!g.ok) return g;
       const existing = await store.getBroadcast(g.tenantId, id);
       if (!existing) return fail('not_found', 'That broadcast does not exist.');
-      if (existing.status === 'sending' || existing.status === 'sent' || existing.status === 'partial') {
+      if (!(await store.removeBroadcastIf(g.tenantId, id, ['draft', 'scheduled', 'failed']))) {
         return fail('already_sent', 'A broadcast that has gone out stays in your history.');
       }
       await store.unqueueScheduled(g.tenantId, id);
-      await store.removeBroadcast(g.tenantId, id);
       return { ok: true as const };
     },
 
@@ -579,12 +673,13 @@ export function createEmailService(deps: {
       if (decision === 'reused') return fail('confirm_reused', 'That confirmation was already used.');
       if (decision !== 'ok') return fail('confirm_mismatch', 'The email or audience changed after the preview. Preview it again.');
       if (when.at) {
-        await store.saveBroadcast({ ...broadcast, status: 'scheduled', scheduledAt: when.at, error: null, updatedAt: now().toISOString() });
+        const scheduled = await store.saveBroadcastIf({ ...broadcast, status: 'scheduled', scheduledAt: when.at, error: null, updatedAt: now().toISOString() }, ['draft', 'scheduled']);
+        if (!scheduled) return fail('already_sent', 'This broadcast has already gone out.');
         await store.queueScheduled(g.tenantId, broadcast.id, when.at);
         return { ok: true, outcome: 'scheduled', preview, stats: null, message: 'Scheduled.' };
       }
-      await store.saveBroadcast({ ...broadcast, status: 'sending', updatedAt: now().toISOString() });
-      const done = await deliver({ ...broadcast, status: 'sending' }, settings);
+      const done = await claimAndDeliver(broadcast, settings, g.tenant, ['draft', 'scheduled']);
+      if ('ok' in done) return done;
       return { ok: true, outcome: done.outcome, preview, stats: done.broadcast.stats, message: done.message };
     },
 
@@ -619,7 +714,7 @@ export function createEmailService(deps: {
       if (notReady) return notReady;
       const to = normalizeEmail(actor.email);
       if (!to) return fail('invalid', 'Your account has no email address to send a test to.');
-      const testFrom = senderAddress(settings) ?? deps.fallbackFrom ?? null;
+      const testFrom = (await ownSenderAddress(g.tenantId, settings)) ?? deps.fallbackFrom ?? null;
       if (!testFrom) return fail('sender_not_ready', 'Verify your sending domain in Email settings before sending.');
       const provider = await deps.getProvider();
       const url = unsubscribeUrl(deps.appOrigin, signUnsubscribe({ tenantId: g.tenantId, email: to, broadcastId: broadcast.id }));
@@ -650,7 +745,7 @@ export function createEmailService(deps: {
       if (!g.ok) return g;
       if (input.consentConfirmed !== true) return fail('invalid', 'Confirm that these people asked to hear from you.');
       if (input.rows.length > MAX_IMPORT_ROWS) return fail('invalid', `Import up to ${MAX_IMPORT_ROWS} people at a time.`);
-      const existing = await store.listContacts(g.tenantId);
+      const [existing, suppressed] = await Promise.all([store.listContacts(g.tenantId), store.listSuppressed(g.tenantId)]);
       const byEmail = new Map<string, EmailContact[]>();
       for (const c of existing) {
         const key = normalizeEmail(c.email);
@@ -671,7 +766,7 @@ export function createEmailService(deps: {
         touched.add(email);
         const tags = (row.tags ?? []).map(clean).filter(Boolean);
         const matches = byEmail.get(email) ?? [];
-        if (matches.some((c) => isSuppressed(c.status))) { blocked += 1; continue; }
+        if (suppressed.has(email) || matches.some((c) => isSuppressed(c.status))) { blocked += 1; continue; }
         if (matches.length === 0) {
           const [first = '', ...rest] = clean(row.name).split(/\s+/);
           creates.set(email, { email, firstName: first, lastName: rest.join(' '), tags, source: 'import', at });
@@ -719,12 +814,24 @@ export function createEmailService(deps: {
       const current = await store.getSettings(g.tenantId);
       const domain = (input.op === 'register' ? clean(input.domain) : current.domain).toLowerCase().replace(/^mail\./, '');
       if (!/^(?!-)[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(domain)) return fail('invalid', 'Enter your ministry domain, like gracechurch.org.');
+      const previous = current.domain;
+      const alreadyHeld = (await store.getDomainOwner(domain)) === g.tenantId;
+      if (!(await store.claimDomain(g.tenantId, domain))) {
+        return fail('domain_taken', 'That domain is already connected to another ministry on Harvest. If it is yours, contact Harvest support.');
+      }
       const provider = await deps.getProvider();
-      const status: DomainStatus = input.op === 'register'
-        ? await provider.registerDomain(`mail.${domain}`)
-        : await provider.getDomainStatus(`mail.${domain}`);
+      let status: DomainStatus;
+      try {
+        status = input.op === 'register'
+          ? await provider.registerDomain(`mail.${domain}`)
+          : await provider.getDomainStatus(`mail.${domain}`);
+      } catch (error) {
+        if (!alreadyHeld) await store.releaseDomain(g.tenantId, domain);
+        throw error;
+      }
       const next: EmailSettings = { ...current, domain, domainState: status.state, domainRecords: status.records };
       await store.saveSettings(g.tenantId, next);
+      if (previous && previous !== domain) await store.releaseDomain(g.tenantId, previous);
       return { ok: true as const, settings: next };
     },
 
@@ -733,28 +840,45 @@ export function createEmailService(deps: {
       await store.recordOptOut(tenantId, normalizeEmail(email), broadcastId, now().toISOString());
     },
 
-    /** Cron: sends every scheduled broadcast whose time has come. One failure never blocks the rest. */
+    /**
+     * Cron: first recovers sends that died mid-way, then sends every scheduled
+     * broadcast whose time has come. Each one is CLAIMED in a transaction before
+     * anything is sent, so an overlapping run skips what another run holds. One
+     * failure never blocks the rest.
+     */
     async runDue() {
-      const due = await store.listDue(now().toISOString());
       const results: { tenantId: string; broadcastId: string; outcome: SendOutcome | 'skipped'; message: string }[] = [];
+      for (const item of await recoverStuck()) results.push({ ...item, outcome: 'failed', message: INTERRUPTED });
+      const due = await store.listDue(now().toISOString());
       for (const item of due) {
         try {
           const broadcast = await store.getBroadcast(item.tenantId, item.broadcastId);
-          await store.unqueueScheduled(item.tenantId, item.broadcastId);
           if (!broadcast || broadcast.status !== 'scheduled') {
+            await store.unqueueScheduled(item.tenantId, item.broadcastId);
             results.push({ ...item, outcome: 'skipped', message: 'No longer scheduled.' });
             continue;
           }
+          const failScheduled = async (message: string) => {
+            await store.saveBroadcastIf({ ...broadcast, status: 'failed', error: message, scheduledAt: null, updatedAt: now().toISOString() }, ['scheduled']);
+            await store.unqueueScheduled(item.tenantId, item.broadcastId);
+            results.push({ ...item, outcome: 'failed', message });
+          };
           const tenant = await store.getTenant(item.tenantId);
           const plan = toTenantPlan(typeof tenant?.plan === 'string' ? tenant.plan : null);
           if (!tenant || !hasFeature(plan, 'newsletterAutomation') || !tenantAllows(tenant.status, 'publishing')) {
-            const blocked: Broadcast = { ...broadcast, status: 'failed', error: 'Sending is not available for this ministry.', scheduledAt: null, updatedAt: now().toISOString() };
-            await store.saveBroadcast(blocked);
-            results.push({ ...item, outcome: 'failed', message: blocked.error ?? '' });
+            await failScheduled('Sending is not available for this ministry.');
             continue;
           }
-          const done = await deliver({ ...broadcast, status: 'sending' }, await store.getSettings(item.tenantId));
-          results.push({ ...item, outcome: done.outcome, message: done.message });
+          const done = await claimAndDeliver(broadcast, await store.getSettings(item.tenantId), tenant, ['scheduled']);
+          if (!('ok' in done)) {
+            await store.unqueueScheduled(item.tenantId, item.broadcastId);
+            results.push({ ...item, outcome: done.outcome, message: done.message });
+          } else if (done.error === 'already_sent' || done.error === 'not_found') {
+            await store.unqueueScheduled(item.tenantId, item.broadcastId);
+            results.push({ ...item, outcome: 'skipped', message: 'Another run already took this one.' });
+          } else {
+            await failScheduled(done.message);
+          }
         } catch (error) {
           results.push({ ...item, outcome: 'failed', message: error instanceof Error ? error.message : 'Send failed.' });
         }

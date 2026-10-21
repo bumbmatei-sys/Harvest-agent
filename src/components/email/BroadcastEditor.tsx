@@ -25,15 +25,16 @@ const SAVE_LABEL: Record<Saving, string> = { saved: 'Saved', saving: 'Saving…'
 
 function SideAction({ icon, children, onClick, disabled, danger }: { icon: React.ReactNode; children: React.ReactNode; onClick: () => void; disabled?: boolean; danger?: boolean }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
       disabled={disabled}
       onClick={onClick}
-      className={cn(TAP, 'flex w-full items-center gap-2.5 rounded-lg px-2 text-left text-sm hover:bg-muted disabled:pointer-events-none disabled:opacity-50 sm:min-h-9', danger ? 'text-danger' : 'text-strong')}
+      className={cn('min-h-11 w-full justify-start gap-2.5 px-2 text-left text-sm font-normal sm:min-h-9', danger ? 'text-danger' : 'text-strong')}
     >
       <span aria-hidden className="text-muted [&_svg]:size-4">{icon}</span>
       {children}
-    </button>
+    </Button>
   );
 }
 
@@ -64,6 +65,7 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
   const [result, setResult] = useState<Extract<SendResponse, { outcome: string }> | null>(null);
 
   const idRef = useRef(id);
+  const wasScheduled = useRef(initial?.status === 'scheduled');
   const dirty = useRef(false);
   const chain = useRef<Promise<unknown>>(Promise.resolve());
   const draft = (): DraftFields => ({ id: idRef.current, subject, subjectB, preheader, bodyHtml, design, filters });
@@ -80,6 +82,10 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
         dirty.current = false;
         setSaving('saved');
         setError(null);
+        if (wasScheduled.current) {
+          wasScheduled.current = false;
+          setNotice('This email was scheduled. Editing it took it off the schedule, so schedule it again when you are done.');
+        }
       } catch (e) {
         setSaving('error');
         setError(e instanceof EmailApiError ? e.message : 'Your changes could not be saved.');
@@ -254,10 +260,10 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
 
           <aside className="flex flex-col gap-1 text-sm" aria-label="Broadcast tools">
             <h2 className="px-2 pb-1 text-xs text-faint">Design</h2>
-            <button type="button" onClick={() => setDesignOpen(true)} className={cn(TAP, 'flex items-center gap-3 rounded-xl border border-line bg-card p-3 text-left hover:bg-muted')}>
+            <Button type="button" variant="ghost" onClick={() => setDesignOpen(true)} className="h-auto min-h-11 w-full justify-start gap-3 whitespace-normal rounded-xl border-line bg-card p-3 text-left font-normal hover:bg-muted">
               <span aria-hidden className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground"><Palette className="size-4" /></span>
               <span className="flex-1"><span className="block font-medium text-strong">{THEME_LABELS[design.theme]} (current look)</span><span className="block text-xs text-muted">Colors, fonts, header, buttons</span></span>
-            </button>
+            </Button>
             <Separator />
             <h2 className="px-2 pb-1 pt-3 text-xs text-faint">Check it</h2>
             <SideAction icon={<Eye />} onClick={() => setPreviewOpen(true)}>Preview</SideAction>

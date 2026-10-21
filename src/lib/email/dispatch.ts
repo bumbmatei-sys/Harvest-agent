@@ -40,6 +40,7 @@ const STATUS: Record<string, number> = {
   confirm_reused: 409,
   confirm_mismatch: 409,
   provider_unavailable: 502,
+  domain_taken: 409,
 };
 
 export async function dispatchEmailAction(

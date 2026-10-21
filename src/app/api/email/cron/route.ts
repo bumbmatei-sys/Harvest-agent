@@ -2,12 +2,17 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 import { isEmailNotConfigured } from '@/lib/email/provider';
+import { NEWSLETTER_FEATURE_ENABLED, NEWSLETTER_HIDDEN_MESSAGE } from '@/lib/newsletter-feature';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
 /** Sends every scheduled broadcast whose time has come. Vercel Cron only. */
 export async function GET(request: NextRequest) {
+  // THE-335: nothing sends while the newsletter is hidden. Scheduled broadcasts wait where they are.
+  if (!NEWSLETTER_FEATURE_ENABLED) {
+    return NextResponse.json({ ok: false, error: 'newsletter_hidden', message: NEWSLETTER_HIDDEN_MESSAGE }, { status: 503 });
+  }
   const secret = process.env.CRON_SECRET;
   if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
     console.error('[email/cron] rejected: CRON_SECRET missing or mismatched');
@@ -16,6 +21,7 @@ export async function GET(request: NextRequest) {
   try {
     const { getEmailProvider } = await import('@/lib/email/provider');
     await getEmailProvider();
+    (await import('@/lib/email/unsubscribe')).assertUnsubscribeConfigured();
     const { firestoreEmailStore } = await import('@/lib/email/firestore-store');
     const { firestoreEmailLedger } = await import('@/lib/email/firestore-confirm');
     const { createEmailService } = await import('@/lib/email/service');

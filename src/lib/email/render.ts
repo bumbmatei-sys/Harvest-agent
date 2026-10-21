@@ -29,10 +29,12 @@ export const MERGE_TAGS = ['first_name', 'sender_name'] as const;
 export function fillMergeTags(
   text: string,
   values: { firstName: string; senderName: string },
+  options: { html?: boolean } = {},
 ): string {
-  return text
-    .replace(/\{\{\s*first_name\s*\}\}/g, values.firstName.trim() || 'friend')
-    .replace(/\{\{\s*sender_name\s*\}\}/g, values.senderName.trim());
+  const clean = (value: string) => (options.html ? esc(value) : value);
+  const first = clean(values.firstName.trim() || 'friend');
+  const sender = clean(values.senderName.trim());
+  return text.replace(/\{\{\s*(first_name|sender_name)\s*\}\}/g, (_match, tag: string) => (tag === 'first_name' ? first : sender));
 }
 
 const ALLOWED_TAGS = ['p', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'blockquote', 'strong', 'em', 's', 'a', 'br', 'img', 'hr'];
@@ -83,7 +85,7 @@ export function renderEmail(input: RenderInput): { html: string; text: string } 
   const buttonInk = design.buttons === 'filled' ? (dark && design.accent === 'navy' ? '#0C1526' : '#ffffff') : (dark && design.accent === 'navy' ? '#F5F5F5' : accent);
   const buttonBorder = design.buttons === 'filled' ? buttonBg : buttonInk;
 
-  const filled = fillMergeTags(sanitizeEmailBody(input.bodyHtml), input);
+  const filled = fillMergeTags(sanitizeEmailBody(input.bodyHtml), input, { html: true });
   const body = filled.replace(
     /<a ([^>]*?)data-button="true"([^>]*)>/g,
     `<a $1$2 style="display:inline-block;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:600;background:${buttonBg};color:${buttonInk};border:1.5px solid ${buttonBorder}">`,

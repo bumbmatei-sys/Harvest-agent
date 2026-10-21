@@ -3,9 +3,12 @@ import type { NextRequest } from 'next/server';
 
 import { AdminNotConfiguredError, assertAdminConfigured } from '@/lib/firebase-admin';
 import { isEmailNotConfigured } from '@/lib/email/provider';
+import { NEWSLETTER_FEATURE_ENABLED, NEWSLETTER_HIDDEN_MESSAGE } from '@/lib/newsletter-feature';
 import type { EmailActionBody } from '@/lib/email/dispatch';
 
 export const dynamic = 'force-dynamic';
+// A send runs inside this request; the service stops starting emails before the limit.
+export const maxDuration = 300;
 
 const NOT_CONFIGURED = 'Email sending is not set up on this server yet.';
 const INTERNAL = 'Something went wrong. Try again.';
@@ -28,6 +31,11 @@ function notConfigured() {
  * missing, before a confirm token can be spent.
  */
 export async function POST(request: NextRequest) {
+  // THE-335: while the newsletter is hidden every action refuses, before auth spends a read.
+  // /api/email/unsubscribe is a different route and stays live: an opt-out must always work.
+  if (!NEWSLETTER_FEATURE_ENABLED) {
+    return NextResponse.json({ ok: false, error: 'newsletter_hidden', message: NEWSLETTER_HIDDEN_MESSAGE }, { status: 503 });
+  }
   let body: EmailActionBody;
   try {
     body = await request.json();
@@ -46,7 +54,10 @@ export async function POST(request: NextRequest) {
     }
     const { dispatchEmailAction, needsProvider } = await import('@/lib/email/dispatch');
     const { getEmailProvider } = await import('@/lib/email/provider');
-    if (needsProvider(body)) await getEmailProvider();
+    if (needsProvider(body)) {
+      await getEmailProvider();
+      (await import('@/lib/email/unsubscribe')).assertUnsubscribeConfigured();
+    }
     const { firestoreEmailStore } = await import('@/lib/email/firestore-store');
     const { firestoreEmailLedger } = await import('@/lib/email/firestore-confirm');
     const { createEmailService } = await import('@/lib/email/service');

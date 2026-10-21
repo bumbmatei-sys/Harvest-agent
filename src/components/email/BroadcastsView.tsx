@@ -119,9 +119,9 @@ export function BroadcastsView({ data, api, tenantId, onChanged, onNew, onOpen, 
                       <div className="flex flex-col gap-0.5">
                         <div className="flex items-center gap-2">
                           {editable ? (
-                            <button type="button" className="min-h-11 text-left font-medium text-strong hover:underline sm:min-h-0" onClick={() => onOpen(b)}>
+                            <Button type="button" variant="link" className="h-auto min-h-11 justify-start whitespace-normal p-0 text-left font-medium text-strong sm:min-h-0" onClick={() => onOpen(b)}>
                               {b.subject || 'Untitled broadcast'}
-                            </button>
+                            </Button>
                           ) : (
                             <span className="font-medium text-strong">{b.subject || 'Untitled broadcast'}</span>
                           )}

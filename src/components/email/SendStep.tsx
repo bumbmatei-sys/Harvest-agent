@@ -185,14 +185,15 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
                       const active = s.value === `${String(when.getHours()).padStart(2, '0')}:${String(when.getMinutes()).padStart(2, '0')}`;
                       return (
                         <li key={s.value}>
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
                             aria-pressed={active}
                             onClick={() => setWhen(combine(when, s.value))}
-                            className={cn(TAP, 'w-full rounded-md px-2 text-left text-sm', active ? 'bg-primary text-primary-foreground' : 'text-strong hover:bg-muted')}
+                            className={cn('min-h-11 w-full justify-start px-2 text-left text-sm font-normal', active ? 'bg-primary text-primary-foreground hover:bg-primary' : 'text-strong')}
                           >
                             {s.label}
-                          </button>
+                          </Button>
                         </li>
                       );
                     })}
@@ -220,13 +221,13 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
         {senderIssue && (
           <p className="mt-4 text-sm text-muted">
             Finish your sender details and verify your domain before sending.{' '}
-            <button type="button" className="font-semibold text-strong hover:underline" onClick={onOpenSettings}>Open settings</button>
+            <Button type="button" variant="link" className="h-auto min-h-11 p-0 font-semibold text-strong" onClick={onOpenSettings}>Open settings</Button>
           </p>
         )}
         {fixes > 0 && (
           <div role="status" className="mt-4 rounded-lg bg-surface-gold px-4 py-3 text-sm text-strong">
             The inbox check found {plural(fixes, 'thing', 'things')} that could send this to spam.{' '}
-            <button type="button" className="font-semibold hover:underline" onClick={onSeeTips}>See it</button> under the email.
+            <Button type="button" variant="link" className="h-auto min-h-11 p-0 font-semibold" onClick={onSeeTips}>See it</Button> under the email.
           </div>
         )}
         {sending.paused && (

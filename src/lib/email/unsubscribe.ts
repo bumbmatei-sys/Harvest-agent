@@ -19,10 +19,20 @@ export interface UnsubscribePayload {
   readonly broadcastId: string;
 }
 
+/**
+ * Its own secret, never the vendor key: rotating the Plunk key must not
+ * invalidate every unsubscribe link already sitting in someone's inbox. With no
+ * secret, signing and verifying both refuse rather than fall back to anything.
+ */
 function secret(env: Readonly<Record<string, string | undefined>>): string {
-  const value = (env.EMAIL_UNSUBSCRIBE_SECRET ?? env.PLUNK_API_KEY ?? '').trim();
-  if (!value) throw new EmailNotConfiguredError('Unsubscribe signing is not configured.');
+  const value = (env.EMAIL_UNSUBSCRIBE_SECRET ?? '').trim();
+  if (!value) throw new EmailNotConfiguredError('EMAIL_UNSUBSCRIBE_SECRET is not set, so unsubscribe links cannot be signed or checked. Add it to the server environment.');
   return value;
+}
+
+/** Throws EmailNotConfiguredError when the signing secret is missing. Call before anything that sends. */
+export function assertUnsubscribeConfigured(env: Readonly<Record<string, string | undefined>> = process.env): void {
+  secret(env);
 }
 
 function sign(body: string, env: Readonly<Record<string, string | undefined>>): string {

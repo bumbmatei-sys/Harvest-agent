@@ -65,24 +65,31 @@ function matches(contact: EmailContact, filter: AudienceFilter): boolean {
  * Who a broadcast reaches. Only `subscribed` contacts can be reached, and
  * filters only narrow that set. If one address sits on several CRM records and
  * ANY of them is suppressed, the address is suppressed: an unsubscribe is never
- * undone by a duplicate.
+ * undone by a duplicate. `suppressed` is the server's own opt-out record, which
+ * outlives the CRM person it came from. Duplicates otherwise resolve toward the
+ * person who opted in: a newer record that never did cannot hide an older one
+ * that did, and a filter matches if any subscribed record of the address does.
  */
-export function resolveAudience(contacts: readonly EmailContact[], filters: readonly AudienceFilter[]): AudienceResult {
-  const blocked = new Set<string>();
-  for (const c of contacts) {
-    if (isSuppressed(c.status)) blocked.add(normalizeEmail(c.email));
-  }
-  const seen = new Set<string>();
-  const recipients: EmailContact[] = [];
-  let suppressed = 0;
-  let notOptedIn = 0;
+export function resolveAudience(
+  contacts: readonly EmailContact[],
+  filters: readonly AudienceFilter[],
+  suppressed: ReadonlySet<string> = new Set(),
+): AudienceResult {
+  const byAddress = new Map<string, EmailContact[]>();
   for (const contact of contacts) {
     const email = normalizeEmail(contact.email);
-    if (!email || seen.has(email)) continue;
-    seen.add(email);
-    if (blocked.has(email)) { suppressed += 1; continue; }
-    if (contact.status !== 'subscribed') { notOptedIn += 1; continue; }
-    if (filters.every((f) => matches(contact, f))) recipients.push({ ...contact, email });
+    if (!email) continue;
+    byAddress.set(email, [...(byAddress.get(email) ?? []), contact]);
   }
-  return { recipients, skipped: { suppressed, notOptedIn } };
+  const recipients: EmailContact[] = [];
+  let suppressedCount = 0;
+  let notOptedIn = 0;
+  for (const [email, records] of byAddress) {
+    if (suppressed.has(email) || records.some((c) => isSuppressed(c.status))) { suppressedCount += 1; continue; }
+    const optedIn = records.filter((c) => c.status === 'subscribed');
+    if (optedIn.length === 0) { notOptedIn += 1; continue; }
+    const hit = optedIn.find((c) => filters.every((f) => matches(c, f)));
+    if (hit) recipients.push({ ...hit, email });
+  }
+  return { recipients, skipped: { suppressed: suppressedCount, notOptedIn } };
 }

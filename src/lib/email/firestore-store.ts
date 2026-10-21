@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { createHash } from 'node:crypto';
+
 import { FieldValue } from 'firebase-admin/firestore';
 
 import { adminDb } from '@/lib/firebase-admin';
@@ -14,6 +16,7 @@ import {
   type EmailContact,
 } from '@/lib/email/audience';
 import { normalizeEmail } from '@/lib/donation-history';
+import { decideClaim, sendingMarkerId } from '@/lib/email/claim';
 import {
   EMPTY_SETTINGS,
   type Broadcast,
@@ -48,14 +51,21 @@ async function tenantContactDocs(tenantId: string) {
  */
 
 export const SCHEDULED_QUEUE = 'email_scheduled';
+/** Server-only, no client rule: one marker per send in flight, so a send that died can be found and closed. */
+export const SENDING_QUEUE = 'email_sending';
+/** Server-only, no client rule: email_domains/{domain} = { tenantId }. A sending domain belongs to one ministry. */
+export const DOMAIN_CLAIMS = 'email_domains';
+/** Server-only, under tenants/{id}: the opt-out record. Outlives the CRM person it came from. */
+export const SUPPRESSIONS = 'emailSuppressions';
 /** Server-only, no client rule: one document of platform-wide limits a super admin edits. */
 export const PLATFORM_CONFIG = 'platform_config';
 export const LIMITS_DOC = 'email_limits';
 
 const tenantDoc = (tenantId: string) => adminDb.collection('tenants').doc(tenantId);
 
+const str = (v: unknown) => (typeof v === 'string' ? v : '');
+
 function broadcastFrom(id: string, tenantId: string, data: Record<string, unknown>): Broadcast {
-  const str = (v: unknown) => (typeof v === 'string' ? v : '');
   return {
     id,
     tenantId,
@@ -70,6 +80,7 @@ function broadcastFrom(id: string, tenantId: string, data: Record<string, unknow
     sentAt: typeof data.sentAt === 'string' ? data.sentAt : null,
     stats: (data.stats as Broadcast['stats']) ?? null,
     error: typeof data.error === 'string' ? data.error : null,
+    sendId: typeof data.sendId === 'string' ? data.sendId : null,
     createdBy: str(data.createdBy),
     createdAt: str(data.createdAt),
     updatedAt: str(data.updatedAt),
@@ -145,8 +156,100 @@ export const firestoreEmailStore: EmailStore = {
     await tenantDoc(broadcast.tenantId).collection('emailBroadcasts').doc(broadcast.id).set(broadcast);
   },
 
-  async removeBroadcast(tenantId, id) {
-    await tenantDoc(tenantId).collection('emailBroadcasts').doc(id).delete();
+  async saveBroadcastIf(broadcast, statuses) {
+    const ref = tenantDoc(broadcast.tenantId).collection('emailBroadcasts').doc(broadcast.id);
+    return adminDb.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists || !statuses.includes(str(snap.data()?.status) as Broadcast['status'])) return false;
+      tx.set(ref, broadcast);
+      return true;
+    });
+  },
+
+  async removeBroadcastIf(tenantId, id, statuses) {
+    const ref = tenantDoc(tenantId).collection('emailBroadcasts').doc(id);
+    return adminDb.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists || !statuses.includes(str(snap.data()?.status) as Broadcast['status'])) return false;
+      tx.delete(ref);
+      return true;
+    });
+  },
+
+  async claimForSend(request) {
+    const broadcastRef = tenantDoc(request.tenantId).collection('emailBroadcasts').doc(request.broadcastId);
+    const monthRef = tenantDoc(request.tenantId).collection('emailUsage').doc(request.month);
+    const dayRef = tenantDoc(request.tenantId).collection('emailUsage').doc(request.day);
+    const markerRef = adminDb.collection(SENDING_QUEUE).doc(sendingMarkerId(request.tenantId, request.broadcastId));
+    return adminDb.runTransaction(async (tx) => {
+      const [broadcast, month, day] = await Promise.all([tx.get(broadcastRef), tx.get(monthRef), tx.get(dayRef)]);
+      const used = (snap: typeof month) => {
+        const sent = snap.exists ? snap.data()?.sent : 0;
+        return typeof sent === 'number' ? sent : 0;
+      };
+      const decision = decideClaim(broadcast.exists ? str(broadcast.data()?.status) : null, used(month), used(day), request);
+      if (!decision.ok) return decision;
+      tx.update(broadcastRef, { status: 'sending', sendId: request.sendId, error: null, scheduledAt: null, updatedAt: request.nowIso });
+      tx.set(monthRef, { sent: FieldValue.increment(request.requested) }, { merge: true });
+      tx.set(dayRef, { sent: FieldValue.increment(request.requested) }, { merge: true });
+      tx.set(markerRef, { tenantId: request.tenantId, broadcastId: request.broadcastId, sendId: request.sendId, claimedAt: request.nowIso });
+      tx.delete(adminDb.collection(SCHEDULED_QUEUE).doc(`${request.tenantId}__${request.broadcastId}`));
+      return decision;
+    });
+  },
+
+  async settleSend({ broadcast, settlement }) {
+    const broadcastRef = tenantDoc(broadcast.tenantId).collection('emailBroadcasts').doc(broadcast.id);
+    const markerRef = adminDb.collection(SENDING_QUEUE).doc(sendingMarkerId(broadcast.tenantId, broadcast.id));
+    return adminDb.runTransaction(async (tx) => {
+      const snap = await tx.get(broadcastRef);
+      const data = snap.exists ? snap.data() : null;
+      if (!data || data.status !== 'sending' || data.sendId !== broadcast.sendId) return false;
+      tx.set(broadcastRef, broadcast);
+      tx.delete(markerRef);
+      if (settlement && settlement.refund > 0) {
+        for (const key of [settlement.month, settlement.day]) {
+          tx.set(tenantDoc(broadcast.tenantId).collection('emailUsage').doc(key), { sent: FieldValue.increment(-settlement.refund) }, { merge: true });
+        }
+      }
+      return true;
+    });
+  },
+
+  async listStaleSending(cutoffIso) {
+    const snap = await adminDb.collection(SENDING_QUEUE).where('claimedAt', '<=', cutoffIso).get();
+    return snap.docs.map((d) => ({ tenantId: String(d.data().tenantId), broadcastId: String(d.data().broadcastId), sendId: String(d.data().sendId) }));
+  },
+
+  async claimDomain(tenantId, domain) {
+    const ref = adminDb.collection(DOMAIN_CLAIMS).doc(domain);
+    return adminDb.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const owner = snap.exists ? snap.data()?.tenantId : null;
+      if (owner && owner !== tenantId) return false;
+      if (!owner) tx.set(ref, { tenantId, claimedAt: new Date().toISOString() });
+      return true;
+    });
+  },
+
+  async releaseDomain(tenantId, domain) {
+    const ref = adminDb.collection(DOMAIN_CLAIMS).doc(domain);
+    await adminDb.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (snap.exists && snap.data()?.tenantId === tenantId) tx.delete(ref);
+    });
+  },
+
+  async getDomainOwner(domain) {
+    if (!domain) return null;
+    const snap = await adminDb.collection(DOMAIN_CLAIMS).doc(domain).get();
+    const owner = snap.exists ? snap.data()?.tenantId : null;
+    return typeof owner === 'string' ? owner : null;
+  },
+
+  async listSuppressed(tenantId) {
+    const snap = await tenantDoc(tenantId).collection(SUPPRESSIONS).get();
+    return new Set(snap.docs.map((d) => d.data().email).filter((e): e is string => typeof e === 'string'));
   },
 
   async listBroadcasts(tenantId) {
@@ -237,10 +340,6 @@ export const firestoreEmailStore: EmailStore = {
     return typeof sent === 'number' ? sent : 0;
   },
 
-  async addUsage(tenantId, key, sent) {
-    await tenantDoc(tenantId).collection('emailUsage').doc(key).set({ sent: FieldValue.increment(sent) }, { merge: true });
-  },
-
   async health(tenantId, month) {
     const snap = await tenantDoc(tenantId).collection('emailUsage').doc(month).get();
     const d = snap.exists ? snap.data() ?? {} : {};
@@ -266,6 +365,7 @@ export const firestoreEmailStore: EmailStore = {
   },
 
   async recordOptOut(tenantId, email, broadcastId, at) {
+    await recordSuppression(tenantId, email, 'unsubscribed', at, broadcastId);
     await markContacts(tenantId, email, {
       [EMAIL_STATUS_FIELD]: 'unsubscribed',
       emailUnsubscribedAt: at,
@@ -274,6 +374,7 @@ export const firestoreEmailStore: EmailStore = {
   },
 
   async markContactStatus(tenantId, email, status, at) {
+    await recordSuppression(tenantId, email, status, at, '');
     await markContacts(tenantId, email, { [EMAIL_STATUS_FIELD]: status, emailSuppressedAt: at });
   },
 };
@@ -285,4 +386,16 @@ async function markContacts(tenantId: string, email: string, fields: Record<stri
   const batch = adminDb.batch();
   for (const d of docs) batch.set(d.ref, { ...fields, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
   await batch.commit();
+}
+
+/**
+ * The opt-out lives here as well as on the CRM person. Deleting the person (the
+ * CRM does, from the browser) deletes the field, and an import could then
+ * subscribe the address again; this record is what keeps the opt-out true.
+ * Keyed by a hash of the address so the id is safe and the write is idempotent.
+ */
+async function recordSuppression(tenantId: string, email: string, status: string, at: string, from: string): Promise<void> {
+  const target = normalizeEmail(email);
+  const id = createHash('sha256').update(target).digest('hex');
+  await tenantDoc(tenantId).collection(SUPPRESSIONS).doc(id).set({ email: target, status, at, from }, { merge: true });
 }

@@ -83,6 +83,16 @@ describe('tenants/{id}/email* is closed to clients', () => {
     await assertFails(db.doc('email_confirm_tokens/x').set({ consumed: false }));
   });
 
+  it('the send-in-flight markers, domain claims and suppression records are closed, even to the owner and a super admin', async () => {
+    for (const ctx of [await owner(), await superAdmin()]) {
+      const db = ctx.firestore();
+      for (const path of ['email_sending/x', 'email_domains/gracechurch.org', `tenants/${TENANT_A}/emailSuppressions/x`]) {
+        await assertFails(db.doc(path).get());
+        await assertFails(db.doc(path).set({ tenantId: TENANT_A }));
+      }
+    }
+  });
+
   it('the platform limits document is closed to clients, even to a super admin', async () => {
     for (const ctx of [await owner(), await superAdmin()]) {
       const db = ctx.firestore();
