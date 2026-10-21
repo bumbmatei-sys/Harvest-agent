@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Copy, RefreshCw } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { EmailApiError, type EmailApi, type EmailSettings, type Overview } from '@/components/email/email-api';
+import { EmailApiError, type SettingsFocus, type EmailApi, type EmailSettings, type Overview } from '@/components/email/email-api';
 import { PlatformLimitsCard } from '@/components/email/PlatformLimitsCard';
 import { UsageMeter } from '@/components/email/UsageMeter';
 import { ErrorNote, PageHeader, TAP } from '@/components/email/kit';
@@ -23,9 +23,9 @@ const DOMAIN_BADGE = {
   failed: { label: 'Could not verify', variant: 'destructive' },
 } as const;
 
-function Section({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+function Section({ id, title, description, children }: { id?: string; title: string; description?: string; children: React.ReactNode }) {
   return (
-    <section className="flex flex-col gap-3">
+    <section id={id} className="flex scroll-mt-6 flex-col gap-3">
       <div>
         <h2 className="text-base font-semibold text-strong">{title}</h2>
         {description && <p className="mt-0.5 text-sm text-muted">{description}</p>}
@@ -35,9 +35,11 @@ function Section({ title, description, children }: { title: string; description?
   );
 }
 
-export function EmailSettingsView({ api, data, onSaved, onLimitsSaved }: {
+export function EmailSettingsView({ api, data, focus = null, onSaved, onLimitsSaved }: {
   api: Pick<EmailApi, 'saveSettings' | 'domain' | 'saveLimits'>;
   data: Pick<Overview, 'settings' | 'usage' | 'canEditLimits' | 'limits'>;
+  /** Scrolls to and focuses this part when the page opens, for a deep link from the send step. */
+  focus?: SettingsFocus | null;
   onSaved: (next: EmailSettings) => void;
   onLimitsSaved: () => void;
 }) {
@@ -52,6 +54,13 @@ export function EmailSettingsView({ api, data, onSaved, onLimitsSaved }: {
   const [domainError, setDomainError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const badge = DOMAIN_BADGE[settings.domainState];
+
+  useEffect(() => {
+    if (!focus) return;
+    const section = document.getElementById(focus === 'domain' ? 'email-domain-section' : 'email-sender-section');
+    section?.scrollIntoView?.({ block: 'start' });
+    document.getElementById(focus === 'domain' ? 'email-domain' : 'email-from-name')?.focus({ preventScroll: true });
+  }, [focus]);
 
   async function save() {
     setBusy('save');
@@ -83,7 +92,7 @@ export function EmailSettingsView({ api, data, onSaved, onLimitsSaved }: {
     <div className="flex flex-col gap-8">
       <PageHeader title="Email settings" subtitle="Who your emails come from and your sending domain." />
 
-      <Section title="Sender">
+      <Section id="email-sender-section" title="Sender">
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="email-from-name">From name</Label>
@@ -113,7 +122,7 @@ export function EmailSettingsView({ api, data, onSaved, onLimitsSaved }: {
         </div>
       </Section>
 
-      <Section title="Sending domain" description="Emails come from an address on your own domain, so your reputation stays yours.">
+      <Section id="email-domain-section" title="Sending domain" description="Emails come from an address on your own domain, so your reputation stays yours.">
         <div className="flex items-center gap-3">
           <Badge variant={badge.variant} data-domain-state={settings.domainState} className={settings.domainState === 'verified' ? 'border-transparent bg-surface-gold text-strong' : undefined}>{badge.label}</Badge>
           {settings.domainState === 'verified' && <span className="text-sm text-muted">Sending from {settings.fromLocal}@mail.{settings.domain}</span>}

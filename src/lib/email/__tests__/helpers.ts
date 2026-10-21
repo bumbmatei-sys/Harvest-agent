@@ -1,5 +1,5 @@
 import { memoryEmailLedger } from '@/lib/email/confirm';
-import { decideClaim, sendingMarkerId } from '@/lib/email/claim';
+import { contentHash, decideClaim, sendingMarkerId } from '@/lib/email/claim';
 import { dayKey, monthKey } from '@/lib/email/volume-cap';
 import type { EmailContact } from '@/lib/email/audience';
 import type { DomainStatus, EmailProvider, OutboundEmail } from '@/lib/email/provider';
@@ -18,7 +18,7 @@ import {
 export const TENANT = 'grace';
 export const NOW = new Date('2031-03-10T12:00:00.000Z');
 
-export function mockProvider(opts: { failFor?: ReadonlySet<string>; throwFor?: ReadonlySet<string>; delayMs?: number; onSend?: () => void } = {}): EmailProvider & { sent: OutboundEmail[] } {
+export function mockProvider(opts: { failFor?: ReadonlySet<string>; throwFor?: ReadonlySet<string>; delayMs?: number; onSend?: () => void; known?: Record<string, DomainStatus['state']> } = {}): EmailProvider & { sent: OutboundEmail[] } {
   const sent: OutboundEmail[] = [];
   const status: DomainStatus = { domain: 'mail.grace.org', state: 'verified', records: [] };
   return {
@@ -32,6 +32,7 @@ export function mockProvider(opts: { failFor?: ReadonlySet<string>; throwFor?: R
       sent.push(message);
       return { ok: true, id: `m${sent.length}` };
     },
+    async findDomain(domain) { const state = opts.known?.[domain]; return state ? { domain, state, records: [] } : null; },
     async registerDomain() { return status; },
     async getDomainStatus() { return status; },
   };
@@ -46,6 +47,8 @@ export function memoryStore(seed: {
   createdAt?: unknown;
   limits?: unknown;
   domainOwners?: Record<string, string>;
+  /** Domains a ministry released: domain -> the ministry that released it. */
+  releasedDomains?: Record<string, string>;
   permissions?: Record<string, boolean>;
   ownerId?: string | null;
   adminEmails?: string[];
@@ -72,6 +75,8 @@ export function memoryStore(seed: {
   const queue = new Map<string, string>();
   const sendingMarkers = new Map<string, { tenantId: string; broadcastId: string; sendId: string; claimedAt: string }>();
   const domainOwners = new Map<string, string>(Object.entries(seed.domainOwners ?? { 'grace.org': 'grace' }));
+  const released = new Map<string, string>(Object.entries(seed.releasedDomains ?? {}));
+  const feedbackEvents = new Set<string>();
   const suppressedEmails = new Set<string>(seed.suppressed ?? []);
   const created: NewContact[] = [];
   const updated: ContactUpdate[] = [];
@@ -87,9 +92,10 @@ export function memoryStore(seed: {
     async saveSettings(_t, next) { settings = next; },
     async getBroadcast(_t, id) { return broadcasts.get(id) ?? null; },
     async saveBroadcast(b) { broadcasts.set(b.id, b); },
-    async saveBroadcastIf(b, statuses) {
+    async saveBroadcastIf(b, statuses, expectedContentHash) {
       const cur = broadcasts.get(b.id);
       if (!cur || !statuses.includes(cur.status)) return false;
+      if (expectedContentHash !== undefined && contentHash(cur) !== expectedContentHash) return false;
       broadcasts.set(b.id, b);
       return true;
     },
@@ -102,7 +108,7 @@ export function memoryStore(seed: {
     // No await between the reads and the writes: like a Firestore transaction, nothing interleaves.
     async claimForSend(req) {
       const cur = broadcasts.get(req.broadcastId);
-      const decision = decideClaim(cur?.status ?? null, usage.get(req.month) ?? 0, usage.get(req.day) ?? 0, req);
+      const decision = decideClaim(cur?.status ?? null, cur ? contentHash(cur) : null, usage.get(req.month) ?? 0, usage.get(req.day) ?? 0, req);
       if (!decision.ok) return decision;
       broadcasts.set(req.broadcastId, { ...cur!, status: 'sending', sendId: req.sendId, error: null, scheduledAt: null, updatedAt: req.nowIso });
       usage.set(req.month, (usage.get(req.month) ?? 0) + req.requested);
@@ -125,11 +131,29 @@ export function memoryStore(seed: {
     async listStaleSending(cutoff) { return [...sendingMarkers.values()].filter((m) => m.claimedAt <= cutoff); },
     async claimDomain(tenantId, domain) {
       const owner = domainOwners.get(domain);
-      if (owner && owner !== tenantId) return false;
+      if (owner) return owner === tenantId ? 'own' : 'taken';
+      const releasedBy = released.get(domain);
+      if (releasedBy !== undefined) {
+        if (releasedBy !== tenantId) return 'released';
+        released.delete(domain);
+        domainOwners.set(domain, tenantId);
+        return 'own';
+      }
       domainOwners.set(domain, tenantId);
+      return 'fresh';
+    },
+    async releaseDomain(tenantId, domain) {
+      if (domainOwners.get(domain) !== tenantId) return;
+      domainOwners.delete(domain);
+      released.set(domain, tenantId);
+    },
+    async discardClaim(tenantId, domain) { if (domainOwners.get(domain) === tenantId) domainOwners.delete(domain); },
+    async claimFeedbackEvent(_t, key) {
+      if (feedbackEvents.has(key)) return false;
+      feedbackEvents.add(key);
       return true;
     },
-    async releaseDomain(tenantId, domain) { if (domainOwners.get(domain) === tenantId) domainOwners.delete(domain); },
+    async purgeExpiredFeedbackEvents() { const n = feedbackEvents.size; feedbackEvents.clear(); return n; },
     async getDomainOwner(domain) { return domainOwners.get(domain) ?? null; },
     async listSuppressed() { return suppressedEmails; },
     async listBroadcasts() { return [...broadcasts.values()]; },
@@ -164,7 +188,7 @@ export function memoryStore(seed: {
       for (const [id, c] of contacts) if (c.email === email) contacts.set(id, { ...c, status: 'unsubscribed' });
     },
   };
-  return { store, contacts, broadcasts, queue, sendingMarkers, domainOwners, suppressedEmails, created, updated, usage, feedback, get used() { return usage.get(monthKey(NOW)) ?? 0; }, get today() { return usage.get(dayKey(NOW)) ?? 0; }, get sending() { return sending; }, get limits() { return limits; } };
+  return { store, contacts, broadcasts, queue, sendingMarkers, domainOwners, released, feedbackEvents, suppressedEmails, created, updated, usage, feedback, get used() { return usage.get(monthKey(NOW)) ?? 0; }, get today() { return usage.get(dayKey(NOW)) ?? 0; }, get sending() { return sending; }, get limits() { return limits; } };
 }
 
 export function person(email: string, over: Partial<EmailContact> = {}): EmailContact {

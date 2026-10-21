@@ -1,18 +1,15 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+import { renderUnsubscribePage } from '@/lib/email/unsubscribe-page';
+
 export const dynamic = 'force-dynamic';
 
-function escapeHtml(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
-
-const SHELL_STYLE = 'font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:420px;margin:15vh auto;padding:0 20px;color:#171717';
-
-function page(title: string, body: string, status = 200, extra = '') {
-  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${title}</title></head>`
-    + `<body style="${SHELL_STYLE}"><h1 style="font-size:20px">${title}</h1><p style="color:#6b6b6b">${body}</p>${extra}</body></html>`;
-  return new NextResponse(html, { status, headers: { 'content-type': 'text/html; charset=utf-8' } });
+function page(title: string, body: string, ministry: string | null, status = 200, action?: string) {
+  return new NextResponse(renderUnsubscribePage({ title, body, ministry, action }), {
+    status,
+    headers: { 'content-type': 'text/html; charset=utf-8' },
+  });
 }
 
 async function readPayload(token: string | null) {
@@ -20,12 +17,24 @@ async function readPayload(token: string | null) {
   return token ? verifyUnsubscribe(token) : null;
 }
 
-async function optOut(token: string | null): Promise<boolean> {
+/** The ministry's name for the page. A failed read only costs the name; it never blocks an opt-out. */
+async function ministryName(tenantId: string): Promise<string | null> {
+  try {
+    const { firestoreEmailStore } = await import('@/lib/email/firestore-store');
+    const name = (await firestoreEmailStore.getTenant(tenantId))?.name.trim();
+    return name || null;
+  } catch (error) {
+    logFailure(error);
+    return null;
+  }
+}
+
+async function optOut(token: string | null): Promise<{ tenantId: string } | null> {
   const payload = await readPayload(token);
-  if (!payload) return false;
+  if (!payload) return null;
   const { firestoreEmailStore } = await import('@/lib/email/firestore-store');
   await firestoreEmailStore.recordOptOut(payload.tenantId, payload.email.toLowerCase(), payload.broadcastId, new Date().toISOString());
-  return true;
+  return { tenantId: payload.tenantId };
 }
 
 function logFailure(error: unknown) {
@@ -33,7 +42,6 @@ function logFailure(error: unknown) {
 }
 
 const INVALID = ['This link is not valid', 'The unsubscribe link looks incomplete. Reply to the email and we will remove you by hand.'] as const;
-const DONE = ['You are unsubscribed', 'You will not get any more emails from this list.'] as const;
 const RETRY = ['Please try again', 'We could not save that just now. Try the link again in a minute.'] as const;
 
 /**
@@ -45,14 +53,18 @@ const RETRY = ['Please try again', 'We could not save that just now. Try the lin
 export async function POST(request: NextRequest) {
   const wantsPage = await request.text().then((text) => new URLSearchParams(text).get('view') === 'page').catch(() => false);
   try {
-    const ok = await optOut(request.nextUrl.searchParams.get('t'));
-    if (wantsPage) return ok ? page(...DONE) : page(...INVALID, 400);
-    return ok
+    const done = await optOut(request.nextUrl.searchParams.get('t'));
+    if (wantsPage) {
+      if (!done) return page(...INVALID, null, 400);
+      const name = await ministryName(done.tenantId);
+      return page('You are unsubscribed', name ? `${name} will not send you any more emails from this list.` : 'You will not get any more emails from this list.', name);
+    }
+    return done
       ? NextResponse.json({ ok: true })
       : NextResponse.json({ ok: false, error: 'invalid_token' }, { status: 400 });
   } catch (error) {
     logFailure(error);
-    return wantsPage ? page(...RETRY, 503) : NextResponse.json({ ok: false, error: 'unavailable' }, { status: 503 });
+    return wantsPage ? page(...RETRY, null, 503) : NextResponse.json({ ok: false, error: 'unavailable' }, { status: 503 });
   }
 }
 
@@ -64,13 +76,19 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const token = request.nextUrl.searchParams.get('t');
-    if (!(await readPayload(token))) return page(...INVALID, 400);
+    const payload = await readPayload(token);
+    if (!payload) return page(...INVALID, null, 400);
+    const name = await ministryName(payload.tenantId);
     const action = `/api/email/unsubscribe?t=${encodeURIComponent(token ?? '')}`;
-    const form = `<form method="post" action="${escapeHtml(action)}"><input type="hidden" name="view" value="page">`
-      + '<button type="submit" style="min-height:44px;padding:0 20px;font-size:16px;border-radius:8px;border:0;background:#171717;color:#fff;cursor:pointer">Unsubscribe</button></form>';
-    return page('Unsubscribe from this list?', 'Press the button to stop getting emails from this list.', 200, form);
+    return page(
+      name ? `Unsubscribe from ${name}?` : 'Unsubscribe from this list?',
+      name ? `Press the button to stop getting emails from ${name}.` : 'Press the button to stop getting emails from this list.',
+      name,
+      200,
+      action,
+    );
   } catch (error) {
     logFailure(error);
-    return page(...RETRY, 503);
+    return page(...RETRY, null, 503);
   }
 }

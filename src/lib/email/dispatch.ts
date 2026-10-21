@@ -41,6 +41,7 @@ const STATUS: Record<string, number> = {
   confirm_mismatch: 409,
   provider_unavailable: 502,
   domain_taken: 409,
+  domain_reserved: 409,
 };
 
 export async function dispatchEmailAction(

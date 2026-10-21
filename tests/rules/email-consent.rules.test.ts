@@ -93,6 +93,17 @@ describe('tenants/{id}/email* is closed to clients', () => {
     }
   });
 
+  it('the webhook dedupe records are closed too, and so is a released-domain placeholder', async () => {
+    for (const ctx of [await owner(), await superAdmin()]) {
+      const db = ctx.firestore();
+      for (const path of [`email_feedback_events/${TENANT_A}__bounced:em_1`, 'email_domains/released.example.org']) {
+        await assertFails(db.doc(path).get());
+        await assertFails(db.doc(path).set({ tenantId: null, releasedBy: TENANT_A }));
+        await assertFails(db.doc(path).delete());
+      }
+    }
+  });
+
   it('the platform limits document is closed to clients, even to a super admin', async () => {
     for (const ctx of [await owner(), await superAdmin()]) {
       const db = ctx.firestore();

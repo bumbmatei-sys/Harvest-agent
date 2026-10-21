@@ -101,10 +101,10 @@ export function Segmented<T extends string>({ value, onChange, options, label }:
       onValueChange={(next) => { const picked = next[0]; if (picked) onChange(picked as T); }}
       spacing={0}
       aria-label={label}
-      className="rounded-lg bg-surface-sunken p-0.5"
+      className="rounded-lg bg-seg-track p-0.5"
     >
       {options.map((o) => (
-        <ToggleGroupItem key={o.value} value={o.value} className={cn(TAP, 'px-3 text-sm data-[pressed]:bg-surface-raised data-[pressed]:text-strong data-[pressed]:shadow-xs')}>
+        <ToggleGroupItem key={o.value} value={o.value} className={cn(TAP, 'px-3 text-sm hover:bg-seg-active/60 aria-pressed:bg-seg-active aria-pressed:text-strong aria-pressed:shadow-seg data-[pressed]:bg-seg-active data-[pressed]:text-strong data-[pressed]:shadow-seg')}>
           {o.label}
         </ToggleGroupItem>
       ))}

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 import { AdminNotConfiguredError, assertAdminConfigured } from '@/lib/firebase-admin';
-import { isEmailNotConfigured } from '@/lib/email/provider';
+import { isEmailNotConfigured, isEmailProviderError } from '@/lib/email/provider';
 import { NEWSLETTER_FEATURE_ENABLED, NEWSLETTER_HIDDEN_MESSAGE } from '@/lib/newsletter-feature';
 import type { EmailActionBody } from '@/lib/email/dispatch';
 
@@ -12,6 +12,7 @@ export const maxDuration = 300;
 
 const NOT_CONFIGURED = 'Email sending is not set up on this server yet.';
 const INTERNAL = 'Something went wrong. Try again.';
+const PROVIDER_DOWN = 'The email service did not respond in time. Nothing was changed. Try again in a moment.';
 
 function isAdminConfigFailure(error: unknown): boolean {
   if (error instanceof AdminNotConfiguredError) return true;
@@ -58,16 +59,8 @@ export async function POST(request: NextRequest) {
       await getEmailProvider();
       (await import('@/lib/email/unsubscribe')).assertUnsubscribeConfigured();
     }
-    const { firestoreEmailStore } = await import('@/lib/email/firestore-store');
-    const { firestoreEmailLedger } = await import('@/lib/email/firestore-confirm');
-    const { createEmailService } = await import('@/lib/email/service');
-    const service = createEmailService({
-      store: firestoreEmailStore,
-      ledger: firestoreEmailLedger(),
-      getProvider: getEmailProvider,
-      appOrigin: request.nextUrl.origin,
-      fallbackFrom: process.env.EMAIL_FALLBACK_FROM?.trim() || null,
-    });
+    const { buildEmailService } = await import('@/lib/email/runtime');
+    const service = buildEmailService(request.nextUrl.origin);
     const result = await dispatchEmailAction(service, {
       uid: user.uid,
       email: user.email ?? null,
@@ -79,6 +72,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error(`[email/actions] ${error instanceof Error ? `${error.name}: ${error.message}` : 'Unknown error'}`);
     if (isEmailNotConfigured(error) || isAdminConfigFailure(error)) return notConfigured();
+    if (isEmailProviderError(error)) {
+      return NextResponse.json({ ok: false, error: 'provider_unavailable', message: PROVIDER_DOWN }, { status: 502 });
+    }
     return NextResponse.json({ ok: false, error: 'internal', message: INTERNAL }, { status: 500 });
   }
 }

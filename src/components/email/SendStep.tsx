@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { resolveAudience, type AudienceFilter, type AudienceFilterKind, type EmailContact } from '@/lib/email/audience';
-import { EmailApiError, type EmailApi, type EmailSettings, type SendPreview, type SendResponse, type SendingStatus, type Usage } from '@/components/email/email-api';
+import { EmailApiError, type SettingsFocus, type EmailApi, type EmailSettings, type SendPreview, type SendResponse, type SendingStatus, type Usage } from '@/components/email/email-api';
 import { AddEmailsDialog } from '@/components/email/UsageMeter';
 import { ErrorNote, Pick, Segmented, TAP, formatStamp, plural } from '@/components/email/kit';
 import { inboxCheck } from '@/components/email/inbox-check';
@@ -21,6 +21,9 @@ const KINDS = [
   { value: 'no-tag', label: "Doesn't have a tag" },
   { value: 'member-of', label: 'Is a member of' },
 ] as const satisfies readonly { value: AudienceFilterKind; label: string }[];
+
+/** Server refusals that Email settings can fix. */
+const SETTINGS_CODES: ReadonlySet<string> = new Set(['domain_required', 'domain_taken', 'domain_reserved', 'sender_not_ready']);
 
 export function timeSlots(): { value: string; label: string }[] {
   const out: { value: string; label: string }[] = [];
@@ -64,7 +67,7 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
   usage: Usage;
   sending: SendingStatus;
   onBack: () => void;
-  onOpenSettings: () => void;
+  onOpenSettings: (focus?: SettingsFocus) => void;
   onSeeTips: () => void;
   onSent: (r: Extract<SendResponse, { outcome: string }>) => void;
 }) {
@@ -87,6 +90,9 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
   const label = mode === 'now' ? `Send to ${plural(count, 'person', 'people')}` : `Schedule for ${formatStamp(when.toISOString())}`;
   const left = Math.max(0, usage.cap - usage.used);
   const overAllowance = usage.cap > 0 && count > left;
+  // A refusal about the sender, the domain or the allowance for one: the fix is in Email settings, so say where.
+  const settingsCode = errorCode !== null && SETTINGS_CODES.has(errorCode);
+  const settingsFocus: SettingsFocus = address ? 'sender' : 'domain';
   const blocked = busy || count === 0 || senderIssue || !subject.trim() || overAllowance || sending.paused || (mode === 'at' && when.getTime() <= Date.now());
 
   const setFilter = (i: number, patch: Partial<AudienceFilter>) => onFilters(filters.map((f, j) => (j === i ? { ...f, ...patch } : f)));
@@ -221,7 +227,7 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
         {senderIssue && (
           <p className="mt-4 text-sm text-muted">
             Finish your sender details and verify your domain before sending.{' '}
-            <Button type="button" variant="link" className="h-auto min-h-11 p-0 font-semibold text-strong" onClick={onOpenSettings}>Open settings</Button>
+            <Button type="button" variant="link" className="h-auto min-h-11 p-0 font-semibold text-strong" onClick={() => onOpenSettings(settingsFocus)}>Open settings</Button>
           </p>
         )}
         {fixes > 0 && (
@@ -242,6 +248,7 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
         {error && !overAllowance && (
           <div className="mt-4 flex flex-col gap-2">
             <ErrorNote>{error}</ErrorNote>
+            {settingsCode && <Button variant="outline" className="min-h-11 self-start" onClick={() => onOpenSettings(errorCode === 'sender_not_ready' ? settingsFocus : 'domain')}>Open settings</Button>}
             {errorCode === 'volume_cap' && <Button variant="outline" className="min-h-11 self-start" onClick={() => setAdding(true)}>Add more emails</Button>}
           </div>
         )}
@@ -281,7 +288,7 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
               <dd className="text-strong">{confirm.preview.at ? formatStamp(confirm.preview.at) : 'Right now'}</dd>
             </dl>
           )}
-          <DialogFooter>
+          <DialogFooter className="border-line">
             <Button variant="outline" className="min-h-11" disabled={busy} onClick={() => setConfirm(null)}>Cancel</Button>
             <Button className="min-h-11" disabled={busy} onClick={commit}>{confirm?.preview.action === 'schedule' ? 'Confirm schedule' : 'Confirm send'}</Button>
           </DialogFooter>

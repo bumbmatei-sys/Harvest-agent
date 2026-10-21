@@ -41,8 +41,27 @@ export interface DomainStatus {
 export interface EmailProvider {
   readonly name: 'plunk' | 'ses';
   send(message: OutboundEmail): Promise<SendResult>;
+  /** The domain as the vendor knows it, or null if the vendor has never seen it. Registers nothing. */
+  findDomain(domain: string): Promise<DomainStatus | null>;
+  /** Idempotent: a domain the vendor already holds is returned, not duplicated. */
   registerDomain(domain: string): Promise<DomainStatus>;
   getDomainStatus(domain: string): Promise<DomainStatus>;
+}
+
+/** The vendor did not answer, or answered with a failure. Routes turn this into a 502, never a 500. */
+export class EmailProviderError extends Error {
+  constructor(
+    message: string,
+    readonly kind: 'timeout' | 'network' | 'http',
+    readonly status: number | null = null,
+  ) {
+    super(message);
+    this.name = 'EmailProviderError';
+  }
+}
+
+export function isEmailProviderError(error: unknown): error is EmailProviderError {
+  return error instanceof EmailProviderError || (error instanceof Error && error.name === 'EmailProviderError');
 }
 
 /** Missing credentials. Routes turn this into a 503, never a 500. */

@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { adminDb } from '@/lib/firebase-admin';
+import { purgeWhereAtOrBefore } from '@/lib/email/firestore-purge';
 import {
   EMAIL_CONFIRM_TTL_MS,
   decideConsume,
@@ -29,6 +30,9 @@ export function firestoreEmailLedger(): EmailConfirmLedger {
         if (decision === 'ok') tx.update(ref, { consumed: true });
         return decision;
       });
+    },
+    async purgeExpired(nowMs) {
+      return purgeWhereAtOrBefore(EMAIL_CONFIRM_TOKENS, 'expiresAt', nowMs);
     },
   };
 }

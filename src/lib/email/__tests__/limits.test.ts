@@ -224,7 +224,7 @@ describe('auto-pause on a high bounce or complaint rate', () => {
 
   it('a bounce rate over the threshold pauses sending, and the next send is blocked with a notice', async () => {
     const c = await drafted({ usage: 1000, health: { bounced: 50 } });
-    await c.service.recordFeedback(TENANT, 'a@x.org', 'bounced');
+    await c.service.recordFeedback(TENANT, 'a@x.org', 'bounced', 'evt-a@x.org');
     expect(c.mem.sending).toMatchObject({ reason: 'bounce' });
     expect(c.mem.contacts.get('c-a@x.org')?.status).toBe('bounced');
     const r = await preview(c);
@@ -234,26 +234,26 @@ describe('auto-pause on a high bounce or complaint rate', () => {
 
   it('a complaint rate over the threshold pauses sending', async () => {
     const c = await drafted({ usage: 1000, health: { complained: 3 } });
-    await c.service.recordFeedback(TENANT, 'b@x.org', 'complained');
+    await c.service.recordFeedback(TENANT, 'b@x.org', 'complained', 'evt-b@x.org');
     expect(c.mem.sending).toMatchObject({ reason: 'complaint' });
   });
 
   it('under the thresholds nothing pauses', async () => {
     const c = await drafted({ usage: 1000, health: { bounced: 10 } });
-    await c.service.recordFeedback(TENANT, 'a@x.org', 'bounced');
+    await c.service.recordFeedback(TENANT, 'a@x.org', 'bounced', 'evt-a@x.org');
     expect(c.mem.sending).toBeNull();
     expect(await preview(c)).toMatchObject({ ok: true });
   });
 
   it('thresholds are settings', async () => {
     const c = await drafted({ usage: 1000, health: { bounced: 10 }, limits: { autoPause: { bounceRate: 0.005, complaintRate: 0.003, minSent: 100 } } });
-    await c.service.recordFeedback(TENANT, 'a@x.org', 'bounced');
+    await c.service.recordFeedback(TENANT, 'a@x.org', 'bounced', 'evt-a@x.org');
     expect(c.mem.sending).toMatchObject({ reason: 'bounce' });
   });
 
   it('a paused ministry cannot send, and a scheduled send fails visibly instead of going out', async () => {
     const c = await drafted({ usage: 1000, health: { bounced: 50 } });
-    await c.service.recordFeedback(TENANT, 'a@x.org', 'bounced');
+    await c.service.recordFeedback(TENANT, 'a@x.org', 'bounced', 'evt-a@x.org');
     c.mem.broadcasts.set(c.id, { ...c.mem.broadcasts.get(c.id)!, status: 'scheduled' });
     c.mem.queue.set(`${TENANT}__${c.id}`, '2031-03-10T00:00:00.000Z');
     const [r] = await c.service.runDue();
@@ -263,7 +263,7 @@ describe('auto-pause on a high bounce or complaint rate', () => {
 
   it('only a super admin can resume, and then sending works again', async () => {
     const c = await drafted({ usage: 1000, health: { bounced: 50 } });
-    await c.service.recordFeedback(TENANT, 'a@x.org', 'bounced');
+    await c.service.recordFeedback(TENANT, 'a@x.org', 'bounced', 'evt-a@x.org');
     expect(await c.service.resumeSending(admin, TENANT)).toMatchObject({ ok: false, error: 'not_authorized' });
     const root = { ...admin, uid: 'root', isSuperAdmin: true, tenantId: null };
     expect(await c.service.resumeSending(root, TENANT)).toMatchObject({ ok: true });

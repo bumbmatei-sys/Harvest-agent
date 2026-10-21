@@ -3,11 +3,12 @@ import { NextRequest } from 'next/server';
 
 vi.mock('server-only', () => ({}));
 
-const { verifyAuth, assertAdminConfigured, recordOptOut, runDue, flag } = vi.hoisted(() => ({
+const { verifyAuth, assertAdminConfigured, recordOptOut, runDue, purgeExpired, flag } = vi.hoisted(() => ({
   verifyAuth: vi.fn(),
   assertAdminConfigured: vi.fn(),
   recordOptOut: vi.fn(),
   runDue: vi.fn(async () => [] as unknown[]),
+  purgeExpired: vi.fn(async () => ({ tokens: 2, feedback: 0 })),
   flag: { enabled: true },
 }));
 
@@ -15,7 +16,7 @@ vi.mock('@/lib/newsletter-feature', () => ({
   get NEWSLETTER_FEATURE_ENABLED() { return flag.enabled; },
   NEWSLETTER_HIDDEN_MESSAGE: 'Newsletter is temporarily unavailable.',
 }));
-vi.mock('@/lib/email/service', () => ({ createEmailService: () => ({ runDue }) }));
+vi.mock('@/lib/email/service', () => ({ createEmailService: () => ({ runDue, purgeExpired }) }));
 
 vi.mock('@/lib/firebase-admin', () => ({
   AdminNotConfiguredError: class extends Error {},
@@ -85,6 +86,17 @@ describe('POST /api/email/actions', () => {
     expect(vi.mocked(console.error).mock.calls.flat().join(' ')).toContain('EMAIL_UNSUBSCRIBE_SECRET');
   });
 
+  it('a vendor that does not answer is a 502 with a plain message, not a 500', async () => {
+    process.env.PLUNK_API_KEY = 'vendor-key';
+    const { EmailProviderError } = await import('@/lib/email/provider');
+    dispatch.mockRejectedValueOnce(new EmailProviderError('Plunk did not answer within 15 seconds.', 'timeout'));
+    const res = await actions.POST(post({ action: 'domain', op: 'check' }));
+    expect(res.status).toBe(502);
+    const body = await res.json();
+    expect(body).toMatchObject({ ok: false, error: 'provider_unavailable' });
+    expect(body.message).not.toMatch(/Plunk/);
+  });
+
   it('rejects a non-JSON body', async () => {
     const res = await actions.POST(new NextRequest('https://theharvest.app/api/email/actions', { method: 'POST', body: 'nope' }));
     expect(res.status).toBe(400);
@@ -103,12 +115,26 @@ describe('GET /api/email/cron', () => {
     expect(runDue).toHaveBeenCalledTimes(1);
   });
 
+  it('cleans up expired confirm tokens after the sends and reports how many', async () => {
+    const res = await cron.GET(req());
+    expect(purgeExpired).toHaveBeenCalledTimes(1);
+    expect(await res.json()).toMatchObject({ purged: { tokens: 2 } });
+  });
+
+  it('a failed cleanup never fails or delays the sends', async () => {
+    purgeExpired.mockRejectedValueOnce(new Error('firestore down'));
+    const res = await cron.GET(req());
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true, purged: { error: 'purge_failed' } });
+  });
+
   it('answers 503 and sends nothing while the switch is off, even with the right secret', async () => {
     flag.enabled = false;
     const res = await cron.GET(req());
     expect(res.status).toBe(503);
     expect(await res.json()).toMatchObject({ error: 'newsletter_hidden' });
     expect(runDue).not.toHaveBeenCalled();
+    expect(purgeExpired).not.toHaveBeenCalled();
   });
 
   it('still rejects a wrong secret', async () => {

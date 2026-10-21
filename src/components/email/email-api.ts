@@ -2,6 +2,7 @@ import type { AudienceFilter, EmailContact } from '@/lib/email/audience';
 import type { EmailDesign } from '@/lib/email/design';
 import type { EmailLimits } from '@/lib/email/limits';
 import type { Broadcast, EmailSettings, SendPreview, BroadcastStats } from '@/lib/email/service';
+import { NEWSLETTER_HIDDEN_MESSAGE } from '@/lib/newsletter-feature';
 
 /**
  * The browser's only view of the email backend. The screens take an
@@ -82,6 +83,9 @@ export class EmailApiError extends Error {
   }
 }
 
+/** Where "Open settings" should land inside Email settings. */
+export type SettingsFocus = 'sender' | 'domain';
+
 export const NOT_CONFIGURED_COPY = 'Email sending is not set up on this server yet. You can write and save drafts; nothing will be sent until it is.';
 
 export interface EmailApi {
@@ -107,7 +111,11 @@ async function run<T>(call: Call, body: Record<string, unknown>): Promise<T> {
   } catch {
     throw new EmailApiError('Could not reach the server. Check your connection and try again.', 'network', false);
   }
-  if (res.status === 503) throw new EmailApiError(NOT_CONFIGURED_COPY, 'not_configured', true);
+  if (res.status === 503) {
+    // The switch being off is not a setup problem: say so, in the server's own words.
+    if (res.json.error === 'newsletter_hidden') throw new EmailApiError(NEWSLETTER_HIDDEN_MESSAGE, 'newsletter_hidden', false);
+    throw new EmailApiError(NOT_CONFIGURED_COPY, 'not_configured', true);
+  }
   if (res.status >= 200 && res.status < 300 && res.json.ok !== false) return res.json as T;
   const message = typeof res.json.message === 'string' ? res.json.message : 'Something went wrong. Try again.';
   throw new EmailApiError(message, typeof res.json.error === 'string' ? res.json.error : 'error', false);

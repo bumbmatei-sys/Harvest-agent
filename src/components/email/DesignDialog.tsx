@@ -102,7 +102,7 @@ export function DesignDialog({ open, onOpenChange, design, onChange }: {
             <p className="text-xs text-faint">The unsubscribe link and your mailing address are always added below this.</p>
           </Row>
         </div>
-        <DialogFooter>
+        <DialogFooter className="border-line">
           <Button className="min-h-11" onClick={() => onOpenChange(false)}>Done</Button>
         </DialogFooter>
       </DialogContent>
