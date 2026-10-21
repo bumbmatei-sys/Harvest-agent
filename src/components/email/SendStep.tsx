@@ -190,7 +190,7 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
                             variant="ghost"
                             aria-pressed={active}
                             onClick={() => setWhen(combine(when, s.value))}
-                            className={cn('min-h-11 w-full justify-start px-2 text-left text-sm font-normal', active ? 'bg-primary text-primary-foreground hover:bg-primary' : 'text-strong')}
+                            className="min-h-11 w-full justify-start px-2 text-left text-sm font-normal text-strong aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:bg-primary"
                           >
                             {s.label}
                           </Button>

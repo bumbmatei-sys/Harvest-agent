@@ -30,7 +30,8 @@ function SideAction({ icon, children, onClick, disabled, danger }: { icon: React
       variant="ghost"
       disabled={disabled}
       onClick={onClick}
-      className={cn('min-h-11 w-full justify-start gap-2.5 px-2 text-left text-sm font-normal sm:min-h-9', danger ? 'text-danger' : 'text-strong')}
+      data-danger={danger ? 'true' : undefined}
+      className="min-h-11 w-full justify-start gap-2.5 px-2 text-left text-sm font-normal text-strong data-[danger=true]:text-danger sm:min-h-9"
     >
       <span aria-hidden className="text-muted [&_svg]:size-4">{icon}</span>
       {children}
