@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
-import { updatePassword, updateProfile, EmailAuthProvider, reauthenticateWithCredential, sendPasswordResetEmail } from 'firebase/auth';
+import { updatePassword, updateProfile, signOut, EmailAuthProvider, reauthenticateWithCredential, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
 import { authFetch } from '../../utils/auth-fetch';
@@ -46,7 +46,10 @@ export default function ProfileSection() {
   const [deleteState, setDeleteState] = useState<DeleteFlow>('idle');
   const [deleteMessage, setDeleteMessage] = useState('');
   const [deletePassword, setDeletePassword] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // React 18 does not forward `ref` through the pinned Input primitive, so the
+  // picker is reached through its wrapper.
+  const fileInputWrapRef = useRef<HTMLDivElement>(null);
+  const openPhotoPicker = () => fileInputWrapRef.current?.querySelector('input')?.click();
 
   const isEmailAuth = auth.currentUser?.providerData?.some((p) => p.providerId === 'password');
 
@@ -203,12 +206,18 @@ export default function ProfileSection() {
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setDeleteState('done');
-        setDeleteMessage('Your account has been deleted.');
+        setDeleteMessage('Your account and sign-in have been deleted. Signing you out now.');
+        signOut(auth).catch((err) => console.error('Error signing out after delete:', err));
         return;
       }
-      if (data?.code === 'requires-recent-login') {
-        setDeleteState('reauth');
-        setDeleteMessage('For your security, confirm your password to finish deleting your account.');
+      if (data?.code === 'auth/requires-recent-login') {
+        if (isEmailAuth) {
+          setDeleteState('reauth');
+          setDeleteMessage('For your security, confirm your password to finish deleting your account.');
+        } else {
+          setDeleteState('error');
+          setDeleteMessage('For your security, this needs a recent sign-in. Sign out, sign back in, and delete your account within a few minutes.');
+        }
         return;
       }
       setDeleteState('error');
@@ -279,30 +288,33 @@ export default function ProfileSection() {
       )}
 
       <div className="flex items-center gap-4">
-        <button
+        <Button
           type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className={`${TOUCH_FLOOR} rounded-full`}
+          variant="ghost"
+          onClick={openPhotoPicker}
+          className={`h-auto w-auto shrink-0 rounded-full p-0 ${TOUCH_FLOOR}`}
           aria-label="Change photo"
         >
-          <Avatar size="lg" className="size-16">
+          <Avatar size="lg">
             <AvatarImage src={photo || undefined} alt={name || 'Profile'} />
             <AvatarFallback>{initial}</AvatarFallback>
           </Avatar>
-        </button>
+        </Button>
         <div className="min-w-0">
           <p className="text-sm font-semibold text-strong truncate">{name || 'Admin'}</p>
           <p className="text-xs text-muted truncate">{email}</p>
           <Button
             type="button"
             variant="ghost"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={openPhotoPicker}
             className={`mt-1 h-auto px-0 text-xs font-semibold text-gold ${TOUCH_FLOOR} ${CONTROL_DENSITY.action}`}
           >
             Change photo
           </Button>
         </div>
-        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+        <div ref={fileInputWrapRef} className="hidden">
+          <Input type="file" accept="image/*" tabIndex={-1} aria-label="Photo file" onChange={handleFileChange} />
+        </div>
       </div>
 
       <div className="space-y-3">

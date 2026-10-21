@@ -35,11 +35,13 @@ import {
   SidebarProvider,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { isUnpricedTier } from "../../utils/plan-features";
+import { hasPlatformOverride } from "../../utils/tenant-scope";
+import { getPlanFeatures, isUnpricedTier } from "../../utils/plan-features";
 import type { TenantPlan } from "../../types/tenant.types";
 import AppearanceRow from "./AppearanceRow";
 import BrandingSection from "./BrandingSection";
 import CancelPlanBlock from "./CancelPlanBlock";
+import ChurchDataExportPanel from "./ChurchDataExportPanel";
 import GivingStatementsSection from "./GivingStatementsSection";
 import OnboardingSection from "./OnboardingSection";
 import PlanBillingSection from "./PlanBillingSection";
@@ -66,6 +68,27 @@ export interface SettingsDialogProps {
   email?: string;
   initialSection?: SettingsNavId;
   onManageSubscription?: () => void;
+  /** Plan cards are an owner action (the checkout and portal routes are owner-only). */
+  canUpgrade?: boolean;
+}
+
+function PaneSection({
+  id,
+  title,
+  children,
+}: {
+  id: string;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section aria-labelledby={id} className="space-y-4" data-settings-pane-section={id}>
+      <h3 id={id} className="font-display text-base font-semibold text-strong">
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
 }
 
 /**
@@ -83,10 +106,12 @@ export function SettingsDialog({
   email,
   initialSection,
   onManageSubscription,
+  canUpgrade = false,
 }: SettingsDialogProps) {
   const [section, setSection] = React.useState<SettingsNavId>(
     initialSection ?? 'profile',
   );
+  const mainRef = React.useRef<HTMLElement>(null);
 
   // Read on the open transition only. The Stripe/Dodo return params are
   // stripped from the URL by the billing pane after it mounts, so a later
@@ -104,6 +129,10 @@ export function SettingsDialog({
   const mainNav = nav.filter((item) => item.id !== 'danger');
   const dangerNav = nav.filter((item) => item.id === 'danger');
   const active = nav.find((item) => item.id === section) ?? nav[0];
+  // Same gate the mobile Settings page puts on the Giving statements row.
+  const showGivingStatements =
+    hasPlatformOverride() ||
+    (currentPlan !== undefined && !!getPlanFeatures(currentPlan).givingStatements);
 
   const handleManage = React.useCallback(async () => {
     if (onManageSubscription) {
@@ -141,7 +170,7 @@ export function SettingsDialog({
           isActive={item.id === active.id}
           onClick={() => setSection(item.id)}
           data-settings-nav={item.id}
-          className={`min-h-11 sm:min-h-0${destructive ? ' text-destructive hover:text-destructive' : ''}`}
+          className={`min-h-11 sm:min-h-0${destructive ? ' text-destructive hover:text-destructive active:text-destructive data-active:text-destructive' : ''}`}
         >
           <Icon />
           <span>{item.label}</span>
@@ -155,13 +184,14 @@ export function SettingsDialog({
       <DialogContent
         data-settings-popup
         showCloseButton
-        className="overflow-hidden p-0 sm:max-w-[700px] md:max-h-[500px] md:max-w-[700px] lg:max-w-[800px] shadow-[var(--ds-sh-lg)] bg-card"
+        initialFocus={mainRef}
+        className="h-[500px] max-h-[calc(100svh-2rem)] grid-rows-1 overflow-hidden p-0 sm:max-w-[700px] md:max-w-[700px] lg:max-w-[800px] shadow-[var(--ds-sh-lg)] bg-card [--surface-sunken:var(--surface-tint)] [--muted:var(--surface-tint)]"
       >
         <DialogTitle className="sr-only">Settings</DialogTitle>
         <DialogDescription className="sr-only">
           Customize your settings here.
         </DialogDescription>
-        <SidebarProvider className="items-start">
+        <SidebarProvider className="h-full min-h-0 items-start">
           <Sidebar collapsible="none" className="hidden md:flex">
             <SidebarContent>
               <SidebarGroup>
@@ -181,7 +211,11 @@ export function SettingsDialog({
               </SidebarFooter>
             )}
           </Sidebar>
-          <main className="flex h-[480px] flex-1 flex-col overflow-hidden">
+          <main
+            ref={mainRef}
+            tabIndex={-1}
+            className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden outline-hidden"
+          >
             <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
               <div className="flex items-center gap-2 px-4">
                 <Breadcrumb>
@@ -197,7 +231,11 @@ export function SettingsDialog({
                 </Breadcrumb>
               </div>
             </header>
-            <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4 pt-0">
+            <div
+              key={active.id}
+              className="flex flex-1 flex-col gap-4 overflow-y-auto p-4 pt-0"
+              data-settings-scroll
+            >
               {open && active.id === 'profile' && <ProfileSection />}
               {open && active.id === 'campus' && (
                 <div className="space-y-6" data-settings-section="campus">
@@ -210,12 +248,22 @@ export function SettingsDialog({
                   currentPlan={currentPlan}
                   tenantId={tenantId}
                   email={email}
+                  canUpgrade={canUpgrade}
                 />
               )}
               {open && active.id === 'setup' && (
-                <div className="space-y-6" data-settings-section="setup">
-                  <OnboardingSection />
-                  <GivingStatementsSection />
+                <div className="space-y-8" data-settings-section="setup">
+                  <PaneSection id="settings-setup-onboarding" title="Onboarding questions">
+                    <OnboardingSection embedded />
+                  </PaneSection>
+                  {showGivingStatements && (
+                    <PaneSection id="settings-setup-giving" title="Giving statements">
+                      <GivingStatementsSection embedded />
+                    </PaneSection>
+                  )}
+                  <PaneSection id="settings-setup-export" title="Data export">
+                    <ChurchDataExportPanel label="Export campus data" />
+                  </PaneSection>
                 </div>
               )}
               {open && active.id === 'danger' && hasSubscription && (

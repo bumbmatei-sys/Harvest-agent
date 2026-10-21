@@ -25,6 +25,8 @@ interface PlanBillingSectionProps {
   currentPlan?: TenantPlan;
   tenantId?: string;
   email?: string;
+  /** Only the plan owner can start a checkout or open the portal. */
+  canUpgrade?: boolean;
 }
 
 interface PlanDisplayRow {
@@ -47,6 +49,7 @@ export default function PlanBillingSection({
   currentPlan,
   tenantId,
   email,
+  canUpgrade = true,
 }: PlanBillingSectionProps) {
   const [stripeStatus, setStripeStatus] = useState<string | null>(null);
   const hasSubscription = currentPlan !== undefined && !isUnpricedTier(currentPlan);
@@ -174,12 +177,19 @@ export default function PlanBillingSection({
         </Item>
       )}
 
+      {/* The popup pane is ~540px wide: the shared plan track is a three-column
+          grid from `lg`, which squeezes each card to ~170px (badge over the
+          title, button text clipped). The selectors below out-rank the track's
+          own responsive classes, so the cards stack one per row here and the
+          shared component stays untouched. */}
+      <div className="[&_[data-testid=plan-card-track]]:grid [&_[data-testid=plan-card-track]]:grid-cols-1 [&_[data-testid=plan-card-track]]:overflow-visible">
       <PlanUpgradeSection
         currentPlan={currentPlan}
         tenantId={tenantId}
         email={email}
-        hideUpgrade={currentPlan === 'max'}
+        hideUpgrade={currentPlan === 'max' || !canUpgrade}
       />
+      </div>
     </div>
   );
 }

@@ -731,6 +731,8 @@ const ADMIN_DASHBOARD_ACCEPTED = [
     '51c9a678558d1bdf523bfaf524afaf0e3bc92dcfc230d471ba43def62a50fe68',
     // APPENDED BY the desktop settings popup. On lg, Settings opens the sidebar-13 dialog. Mobile still mounts AdminSettings. No permission gate moved.
     '9f781d73a826a925b99e3f1ddb0b6fc57f6f45fcc96794c16028f2d5387ee5c3',
+    // APPENDED BY the settings popup QA round 2. One prop on the SettingsDialog mount (canUpgrade). No permission gate moved.
+    '91bb69aeb07f1e7ab3be1a7f5f4f5961fe9463d55d6e1228a16def5753c9a33e',
 ];
 
 describe('the files this ticket must not open are byte-identical', () => {

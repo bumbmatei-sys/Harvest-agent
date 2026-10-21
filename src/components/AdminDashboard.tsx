@@ -1598,6 +1598,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           tenantId={tenantId ?? undefined}
           email={auth.currentUser?.email ?? undefined}
           initialSection={settingsSectionFromLocation()}
+          canUpgrade={billingAccess === 'yes'}
         />
       )}
 

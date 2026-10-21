@@ -4,11 +4,19 @@ import { createRoot } from 'react-dom/client';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+const authFetchMock = vi.hoisted(() => vi.fn());
+const signOutMock = vi.hoisted(() => vi.fn(async () => {}));
+const platform = vi.hoisted(() => ({ override: false }));
+
+vi.mock('../../../utils/tenant-scope', () => ({
+  hasPlatformOverride: () => platform.override,
+}));
 vi.mock('../../../firebase', () => ({
   auth: { currentUser: { uid: 'u1', email: 'admin@church.org', displayName: 'Ada', photoURL: null, providerData: [{ providerId: 'password' }], getIdToken: async () => 't' } },
   db: {},
 }));
 vi.mock('firebase/auth', () => ({
+  signOut: signOutMock,
   updateProfile: vi.fn(async () => {}),
   updatePassword: vi.fn(async () => {}),
   EmailAuthProvider: { credential: vi.fn() },
@@ -20,18 +28,21 @@ vi.mock('firebase/firestore', () => ({
   getDoc: async () => ({ exists: () => true, data: () => ({ displayName: 'Ada', tenantId: 't1' }) }),
   updateDoc: vi.fn(),
 }));
-vi.mock('../../../utils/auth-fetch', () => ({ authFetch: vi.fn(async () => ({ ok: true, json: async () => ({}) })) }));
+vi.mock('../../../utils/auth-fetch', () => ({ authFetch: authFetchMock }));
 vi.mock('../../../contexts/TenantContext', () => ({
   useTenant: () => ({ refreshBranding: vi.fn() }),
   useTenantOptional: () => null,
 }));
 vi.mock('../BrandingSection', () => ({ default: () => <div data-stub="branding">Campus name</div> }));
-vi.mock('../PlanUpgradeSection', () => ({ default: () => <div data-stub="plans">Plan cards</div> }));
+vi.mock('../PlanUpgradeSection', () => ({
+  default: ({ hideUpgrade }: { hideUpgrade?: boolean }) => (hideUpgrade ? null : <div data-stub="plans">Plan cards</div>),
+}));
 vi.mock('../OnboardingSection', () => ({ default: () => <div data-stub="onboarding">Onboarding Questions</div> }));
 vi.mock('../GivingStatementsSection', () => ({ default: () => <div data-stub="giving">Giving Statements</div> }));
 vi.mock('../../ThemeToggle', () => ({ default: () => <div role="radiogroup" aria-label="Colour theme" /> }));
 
 import { SettingsDialog } from '../SettingsDialog';
+import { getPlanFeatures, PLAN_ORDER } from '../../../utils/plan-features';
 import { SETTINGS_LEGACY_SECTIONS_ENABLED } from '../../../lib/settings-legacy-sections';
 
 async function mount(props: Partial<React.ComponentProps<typeof SettingsDialog>> = {}) {
@@ -61,7 +72,29 @@ function navLabels(host: HTMLElement): string[] {
 
 beforeEach(() => {
   document.body.innerHTML = '';
+  platform.override = false;
+  signOutMock.mockClear();
+  authFetchMock.mockReset();
+  authFetchMock.mockImplementation(async () => ({ ok: true, json: async () => ({}) }));
 });
+
+async function openSection(id: string) {
+  const nav = document.querySelector<HTMLElement>(`[data-settings-nav="${id}"]`);
+  expect(nav, `no ${id} nav row`).toBeTruthy();
+  await act(async () => { nav!.click(); });
+  await act(async () => { await Promise.resolve(); });
+}
+
+const buttonByText = (root: ParentNode, text: string) =>
+  Array.from(root.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.trim() === text);
+
+async function startDelete() {
+  await act(async () => { buttonByText(document.body, 'Delete account')!.click(); });
+  const confirm = buttonByText(document.body, 'Delete account');
+  expect(confirm, 'the delete confirmation did not open').toBeTruthy();
+  await act(async () => { confirm!.click(); });
+  await act(async () => { await Promise.resolve(); });
+}
 
 describe('desktop Settings popup (sidebar-13)', () => {
   it('is a Dialog with a left Sidebar nav and a breadcrumb header', async () => {
@@ -151,5 +184,125 @@ describe('desktop Settings popup (sidebar-13)', () => {
   it('does not offer Customize Navigation', async () => {
     await mount();
     expect(document.body.textContent).not.toContain('Customize Navigation');
+  });
+
+  describe('Delete account', () => {
+    it('asks for the password when the server answers auth/requires-recent-login', async () => {
+      authFetchMock.mockImplementation(async () => ({
+        ok: false,
+        json: async () => ({ code: 'auth/requires-recent-login', error: 'recent sign-in needed' }),
+      }));
+      await mount();
+      await startDelete();
+      expect(document.querySelector('input[aria-label="Password"]'),
+        'the re-auth prompt never appeared for the code the delete route actually returns').toBeTruthy();
+      expect(signOutMock).not.toHaveBeenCalled();
+    });
+
+    it('does not mistake the unprefixed code for a re-auth request', async () => {
+      authFetchMock.mockImplementation(async () => ({
+        ok: false,
+        json: async () => ({ code: 'requires-recent-login', error: 'Delete failed.' }),
+      }));
+      await mount();
+      await startDelete();
+      expect(document.querySelector('input[aria-label="Password"]')).toBeNull();
+    });
+
+    it('signs the user out after the account is deleted', async () => {
+      await mount();
+      await startDelete();
+      expect(authFetchMock).toHaveBeenCalledWith('/api/account/delete', expect.objectContaining({ method: 'POST' }));
+      expect(signOutMock, 'a deleted account stayed signed in').toHaveBeenCalledTimes(1);
+      expect(document.body.textContent).toMatch(/Signing you out/);
+    });
+
+    it('does not sign out when the delete fails', async () => {
+      authFetchMock.mockImplementation(async () => ({ ok: false, json: async () => ({ error: 'nope' }) }));
+      await mount();
+      await startDelete();
+      expect(signOutMock).not.toHaveBeenCalled();
+      expect(document.body.textContent).toMatch(/nope/);
+    });
+  });
+
+  describe('Campus setup', () => {
+    const entitled = PLAN_ORDER.find((p) => getPlanFeatures(p).givingStatements);
+    const unentitled = PLAN_ORDER.find((p) => !getPlanFeatures(p).givingStatements);
+
+    it('has both an entitled and an unentitled plan to test against', () => {
+      expect(entitled).toBeTruthy();
+      expect(unentitled).toBeTruthy();
+    });
+
+    it('hides Giving statements on a plan without them, as the mobile page does', async () => {
+      await mount({ currentPlan: unentitled as never, initialSection: 'setup' });
+      expect(document.querySelector('[data-settings-section="setup"]')).toBeTruthy();
+      expect(document.querySelector('[data-stub="giving"]'), 'an unentitled plan sees Giving statements').toBeNull();
+      expect(document.body.textContent).not.toMatch(/Giving statements/);
+    });
+
+    it('shows Giving statements on a plan that includes them', async () => {
+      await mount({ currentPlan: entitled as never, initialSection: 'setup' });
+      expect(document.querySelector('[data-stub="giving"]')).toBeTruthy();
+    });
+
+    it('shows Giving statements to a platform override on any plan', async () => {
+      platform.override = true;
+      await mount({ currentPlan: unentitled as never, initialSection: 'setup' });
+      expect(document.querySelector('[data-stub="giving"]')).toBeTruthy();
+    });
+
+    it('gives the section real headings', async () => {
+      await mount({ currentPlan: entitled as never, initialSection: 'setup' });
+      const headings = Array.from(document.querySelectorAll('[data-settings-section="setup"] h3'))
+        .map((h) => h.textContent);
+      expect(headings).toEqual(['Onboarding questions', 'Giving statements', 'Data export']);
+    });
+
+    it('offers the whole-campus data export on desktop, labelled for a campus', async () => {
+      await mount({ initialSection: 'setup' });
+      const exportRow = document.querySelector('[data-church-export]');
+      expect(exportRow, 'the whole-campus export did not come to the popup').toBeTruthy();
+      expect(exportRow!.querySelector('[aria-label="Export campus data"]')).toBeTruthy();
+      expect(document.body.textContent).not.toMatch(/Export church data/);
+    });
+  });
+
+  describe('plan upgrade block', () => {
+    it('is withheld from a non-owner and kept for the owner', async () => {
+      await mount({ initialSection: 'billing', canUpgrade: false });
+      expect(document.querySelector('[data-stub="plans"]'), 'a non-owner was shown the plan cards').toBeNull();
+      document.body.innerHTML = '';
+      await mount({ initialSection: 'billing', canUpgrade: true });
+      expect(document.querySelector('[data-stub="plans"]')).toBeTruthy();
+    });
+  });
+
+  describe('popup frame', () => {
+    it('is a fixed-height frame with a bounded sidebar, so Danger zone cannot sit below the edge', async () => {
+      await mount();
+      const popup = document.querySelector<HTMLElement>('[data-settings-popup]')!;
+      expect(popup.className).toMatch(/\bh-\[500px\]/);
+      const wrapper = popup.querySelector<HTMLElement>('[data-slot="sidebar-wrapper"]')!;
+      expect(wrapper.className).toMatch(/\bh-full\b/);
+      expect(wrapper.className).toMatch(/\bmin-h-0\b/);
+      expect(wrapper.className, 'the sidebar wrapper is still viewport-tall').not.toMatch(/min-h-svh/);
+    });
+
+    it('moves initial focus into the pane, not onto the Profile nav row', async () => {
+      await mount({ initialSection: 'billing' });
+      expect(document.activeElement?.getAttribute('data-settings-nav')).toBeNull();
+      expect(document.activeElement?.tagName).toBe('MAIN');
+    });
+
+    it('keeps the destructive tone on Danger zone when it is the selected row', async () => {
+      await mount({ initialSection: 'danger' });
+      const danger = document.querySelector<HTMLElement>('[data-settings-nav="danger"]')!;
+      expect(danger.hasAttribute('data-active')).toBe(true);
+      expect(danger.className).toMatch(/data-active:text-destructive/);
+      expect(document.querySelector('[data-settings-section="danger"], [data-settings-popup] main')!.textContent)
+        .toMatch(/Cancel your subscription/i);
+    });
   });
 });

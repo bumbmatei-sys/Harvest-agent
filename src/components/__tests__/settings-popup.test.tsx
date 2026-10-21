@@ -130,7 +130,8 @@ vi.mock('../settings/BrandingSection', () => ({
   default: () => React.createElement('div', { 'data-stub': 'branding' }),
 }));
 vi.mock('../settings/PlanUpgradeSection', () => ({
-  default: () => React.createElement('div', { 'data-stub': 'plans' }),
+  default: ({ hideUpgrade }: { hideUpgrade?: boolean }) =>
+    (hideUpgrade ? null : React.createElement('div', { 'data-stub': 'plans' })),
 }));
 vi.mock('../settings/OnboardingSection', () => ({
   default: () => React.createElement('div', { 'data-stub': 'onboarding' }),
@@ -204,7 +205,7 @@ function setMobile() {
   });
 }
 
-async function mount() {
+async function mount(user: Record<string, unknown> = {}) {
   isSuperAdminMock.mockReturnValue(false);
   hasPlatformOverrideMock.mockReturnValue(false);
   userQuery.current = {
@@ -213,6 +214,7 @@ async function mount() {
       permissions: FULL_TENANT_PERMS,
       displayName: 'B',
       email: 'bumb@theharvest.app',
+      ...user,
     },
     isLoading: false,
   };
@@ -314,5 +316,72 @@ describe('desktop Settings popup from the sidebar', () => {
     expect(dialog).toContain('SidebarProvider');
     expect(dialog).toContain('DialogContent');
     expect(dialog).toContain('Breadcrumb');
+  });
+});
+
+describe('closing the desktop Settings popup', () => {
+  const close = async () => {
+    const x = document.querySelector<HTMLElement>('[data-settings-popup] [data-slot="dialog-close"]');
+    expect(x, 'the popup has no close button').toBeTruthy();
+    navigate.mockClear();
+    await act(async () => { x!.click(); });
+    await flush();
+  };
+
+  it('goes back to the screen the admin came from when there is one', async () => {
+    setDesktop();
+    window.history.replaceState({ idx: 2 }, '', '/admin/settings');
+    params.current = { section: 'settings' };
+    await mount();
+    expect(document.querySelector('[data-settings-popup]')).toBeTruthy();
+    await close();
+    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(navigate).toHaveBeenCalledWith(-1);
+  });
+
+  it('falls back to the dashboard on a cold deep link, leaving /admin/settings', async () => {
+    setDesktop();
+    window.history.replaceState({ idx: 0 }, '', '/admin/settings');
+    params.current = { section: 'settings' };
+    await mount();
+    await close();
+    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(navigate).toHaveBeenCalledWith('/admin', { replace: true });
+  });
+});
+
+describe('desktop Settings popup gating', () => {
+  it('gives an admin without manageSettings no popup and sends them elsewhere', async () => {
+    setDesktop();
+    window.history.replaceState({ idx: 0 }, '', '/admin/settings');
+    checkRosterAdminStatus.mockResolvedValue(false);
+    params.current = { section: 'settings' };
+    await mount({ role: 'admin', permissions: { manageBlog: true } });
+    expect(document.querySelector('[data-settings-popup]'), 'a member without canSettings got the popup').toBeNull();
+    expect(navigate, 'the member was left on /admin/settings').toHaveBeenCalled();
+    const targets = navigate.mock.calls.map((c) => c[0]);
+    expect(targets).not.toContain('/admin/settings');
+    expect(targets.every((t) => typeof t === 'string' && t.startsWith('/admin'))).toBe(true);
+  });
+
+  it('shows the plan cards to the owner and hides them from an admin who is not', async () => {
+    setDesktop();
+    window.history.replaceState({}, '', '/admin/settings?section=billing');
+    params.current = { section: 'settings' };
+    await mount();
+    expect(document.querySelector('[data-settings-section="billing"]')).toBeTruthy();
+    expect(document.querySelector('[data-stub="plans"]'), 'the owner lost the plan cards').toBeTruthy();
+
+    if (mounted) await act(async () => { root.unmount(); });
+    mounted = false;
+    document.body.innerHTML = '';
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    checkRosterAdminStatus.mockResolvedValue(false);
+    currentUser.current = { ...currentUser.current, uid: 'someone-else' };
+    await mount({ role: 'church_admin' });
+    await flush();
+    expect(document.querySelector('[data-settings-section="billing"]')).toBeTruthy();
+    expect(document.querySelector('[data-stub="plans"]'), 'a non-owner was offered the plan cards').toBeNull();
   });
 });

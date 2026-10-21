@@ -21,6 +21,11 @@
       "file": "src/components/__tests__/AdminSettings.integrations-gating.test.tsx",
       "digest": "cc533d2a6f25929486b3b665042bcf9ca85a94736fc931fac69f3fb0264113f2",
       "why": "THE-376 mocks SETTINGS_LEGACY_SECTIONS_ENABLED true so THE-193 still measures the Integrations section when the popup hide is flipped back. No plan gate, provider list or CRM dead-end assertion was loosened."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "91bb69aeb07f1e7ab3be1a7f5f4f5961fe9463d55d6e1228a16def5753c9a33e",
+      "why": "Settings popup QA round 2. ONE prop on the existing <SettingsDialog /> mount: canUpgrade={billingAccess === 'yes'}, the same expression the account menu's Billing row already reads, so the plan-upgrade cards in Plan & billing are offered only to a billing-entitled admin. The Stripe checkout and portal routes are owner-only server-side; this only stops the UI offering a button that would be refused. No nav array, group, permission gate, tab id, route or other screen mount moved."
     }
   ]
 }

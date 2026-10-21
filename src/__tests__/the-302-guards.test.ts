@@ -144,6 +144,9 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // APPENDED BY the desktop settings popup, nothing above removed or rewritten.
     ['9f781d73a826a925b99e3f1ddb0b6fc57f6f45fcc96794c16028f2d5387ee5c3',
       `desktop settings popup - on lg the Settings tab opens the sidebar-13 dialog over the Home screen instead of the full page. Mobile still mounts AdminSettings. No permission gate or nav id moved; the only mount change is Home behind the popup on lg.`],
+    // APPENDED BY the settings popup QA round 2, nothing above removed or rewritten.
+    ['91bb69aeb07f1e7ab3be1a7f5f4f5961fe9463d55d6e1228a16def5753c9a33e',
+      `settings popup QA round 2 - one prop on the existing SettingsDialog mount, canUpgrade, wired to billingAccess === 'yes' so the plan-upgrade cards are offered only to a billing-entitled admin. No permission gate, nav id, route or screen mount moved.`],
   ],
   // 🔴 A NAMED STOP CONDITION on this ticket: "do not touch `runDodoPlanChange`
   // or `plan-change.ts` unless the fix genuinely requires it". It did not — part
