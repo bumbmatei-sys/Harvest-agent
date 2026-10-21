@@ -5,7 +5,6 @@ import {
   ChevronRight,
   Home,
   Moon,
-  Search,
   Share2,
   Sun,
 } from 'lucide-react';
@@ -54,6 +53,7 @@ import {
   type ShellSideId,
   type ShellTabRef,
 } from './shell-nav';
+import { isAdminSearchHotkeyClaimed, subscribeAdminSearch } from './admin-search';
 import { useShellTheme } from './use-shell-theme';
 
 /** Collapsed card is this wide plus the 8px margins; a 36px icon sits inside with room to spare. */
@@ -107,14 +107,20 @@ export function AdminDesktopSidebar({
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   useEffect(() => {
+    const open = () => setPaletteOpen(true);
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        if (isAdminSearchHotkeyClaimed()) return;
         event.preventDefault();
-        setPaletteOpen(true);
+        open();
       }
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    const unsub = subscribeAdminSearch(open);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      unsub();
+    };
   }, []);
 
   const openItem = (id: string, next: ShellPlaceholderId | null) => {
@@ -136,21 +142,6 @@ export function AdminDesktopSidebar({
           <span className="min-w-0 flex-1 truncate font-display text-[17px] font-semibold text-sidebar-accent-foreground group-data-[collapsible=icon]:sr-only">
             {tenantName}
           </span>
-          <Tooltip>
-            <TooltipTrigger render={<span className="inline-flex" />}>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className={ICON_BUTTON}
-                onClick={() => setPaletteOpen(true)}
-                aria-label="Search"
-              >
-                <Search />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Search</TooltipContent>
-          </Tooltip>
           <ToggleGroup
             value={[side]}
             onValueChange={(next) => {

@@ -1,7 +1,7 @@
 'use client';
 
-import type { ReactNode } from 'react';
-import { ChevronLeft, ExternalLink } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { ChevronLeft, ExternalLink, Search } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -14,6 +14,8 @@ import {
 } from '@/components/ui/breadcrumb';
 import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+
+import { openAdminSearch } from './admin-search';
 
 /**
  * Desktop content toolbar, in the sidebar-07 header pattern:
@@ -80,6 +82,7 @@ export function AdminContentBar({
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
         {actions}
         {trailing}
+        <SearchPill />
         {onOpenApp && (
           <Button type="button" variant="secondary" onClick={onOpenApp} className="h-8 min-h-[44px] sm:min-h-0">
             Open member app
@@ -88,5 +91,37 @@ export function AdminContentBar({
         )}
       </div>
     </header>
+  );
+}
+
+/**
+ * Same height as "Open member app" (`h-8`, 44px floor below `sm`). Full pill
+ * with "Search…" and the platform shortcut from `sm` up; a round icon button
+ * on smaller screens. There is no shadcn `Kbd` in this tree, so the hint is a
+ * native `<kbd>` on the existing token classes.
+ */
+function SearchPill() {
+  const [hint, setHint] = useState('Ctrl K');
+  useEffect(() => {
+    setHint(/Mac|iPhone|iPad|iPod/.test(navigator.platform) ? '⌘K' : 'Ctrl K');
+  }, []);
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      onClick={openAdminSearch}
+      aria-label="Search"
+      data-admin-search-pill
+      className="h-8 min-h-[44px] min-w-[44px] gap-2 rounded-full px-0 font-normal text-muted-foreground sm:min-h-0 sm:min-w-0 sm:px-3"
+    >
+      <Search />
+      <span className="hidden sm:inline">Search…</span>
+      <kbd
+        data-slot="kbd"
+        className="pointer-events-none hidden h-5 select-none items-center rounded-md border border-border bg-muted px-1.5 font-sans text-[10px] font-medium text-muted-foreground sm:inline-flex"
+      >
+        {hint}
+      </kbd>
+    </Button>
   );
 }

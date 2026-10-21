@@ -4,6 +4,7 @@ import { FileText, Share2 } from 'lucide-react';
 import {
   Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from '../ui/command';
+import { claimAdminSearchHotkey } from '../admin-shell/admin-search';
 import { folderPath } from './docs-tree-model';
 import { SHARED_GROUP_LABEL } from './DocsTree';
 import type { Doc, DocFolder } from '../../hooks/queries/useDocsQueries';
@@ -55,7 +56,11 @@ export const useQuickSwitcherShortcut = (onOpen: () => void) => {
       onOpen();
     };
     window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    const release = claimAdminSearchHotkey();
+    return () => {
+      window.removeEventListener('keydown', handler);
+      release();
+    };
   }, [onOpen]);
 };
 

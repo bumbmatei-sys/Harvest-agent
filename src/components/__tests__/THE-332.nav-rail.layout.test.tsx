@@ -299,7 +299,7 @@ setUpOrFail(async () => {
     document.documentElement.classList.add('dark');
     document.documentElement.setAttribute('data-theme', 'dark');
     const darkBg = getComputedStyle(rail).backgroundColor;
-    const button = rail.querySelector('button[aria-label="Search"]');
+    const button = rail.querySelector('button[data-shell-theme]');
     const darkButton = getComputedStyle(button).backgroundColor;
     return {
       lightBg,
@@ -400,7 +400,7 @@ describe('THE-332 · measured', () => {
     expect(probe.triggerOwnsHit, 'the expand trigger is not the element under the pointer').toBe(true);
     expect(probe.lightBg, 'collapsed rail is not the light sidebar ground').toBe('rgb(243, 242, 239)');
     expect(probe.darkBg, 'dark mode did not reach the collapsed rail').toBe('rgb(33, 33, 33)');
-    expect(probe.darkButton, 'the collapsed search control stayed on the light ground').not.toBe('rgb(255, 255, 255)');
+    expect(probe.darkButton, 'the collapsed theme toggle stayed on the light ground').not.toBe('rgb(255, 255, 255)');
   });
 
   it('🔴 the static shell no longer reserves a 64px rail', () => {
