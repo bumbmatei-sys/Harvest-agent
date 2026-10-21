@@ -1403,6 +1403,39 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       + 'editor rail, not a form field with a legend. checkbox is rejected: the states are exclusive. '
       + 'The primitive is unedited.',
   },
+  {
+    file: 'src/components/settings/AppearanceRow.tsx',
+    ticket: 'THE-376',
+    why:
+      'APPENDED, never substituted. THE-376 is the desktop Settings popup. The Appearance row '
+      + 'is the Item that already lived inside AdminSettings, extracted so the sidebar-13 dialog '
+      + 'and the mobile Settings page share one copy. It takes item because the row is a label, '
+      + 'a description and the theme control. button-group is rejected: ThemeToggle already is '
+      + 'the control. toggle-group is rejected: the mode pills live inside ThemeToggle. No new '
+      + 'primitive was installed and the Item primitive is unedited.',
+  },
+  {
+    file: 'src/components/settings/PlanBillingSection.tsx',
+    ticket: 'THE-376',
+    why:
+      'APPENDED, never substituted. THE-376 is the desktop Settings popup. Plan and billing reuses '
+      + 'the existing plan card and PlanUpgradeSection. It takes item for the plan card, the same '
+      + 'row-of-things shape AdminSettings already used, and alert for the Stripe return banners. '
+      + 'dialog is rejected for the plan card: this pane is already inside the settings Dialog. '
+      + 'empty is rejected: a missing plan is Super Admin, which is a state with a card. No new '
+      + 'primitive was installed.',
+  },
+  {
+    file: 'src/components/settings/ProfileSection.tsx',
+    ticket: 'THE-376',
+    why:
+      'APPENDED, never substituted. THE-376 is the desktop Settings popup. Profile is the signed-in '
+      + 'admin identity pane. It takes alert for a failed save and a failed delete, load-bearing '
+      + 'because role=alert is what carries a refused write to a screen reader. Each action carries '
+      + 'min-h-11 so THE-356 still holds. dialog is rejected for the pane itself: it already lives '
+      + 'inside the settings Dialog. empty is rejected: a signed-in admin always has a name or email. '
+      + 'No new primitive was installed.',
+  },
 ];
 
 it('only the recorded adopters import the new components, and each names its ticket', () => {

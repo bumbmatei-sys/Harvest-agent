@@ -468,6 +468,30 @@ export const RECORDED_EDITS: ReadonlyArray<RecordedEdit> = [
       + 'dependency was added, and the file still has no inline style.',
     digest: '52ae78339c99341d8f3389d5eab9d0178c89241ebfcd8f4edba075ebc47a4dda',
   },
+  {
+    file: 'src/components/AdminSettings.tsx',
+    ticket: 'THE-376',
+    why:
+      'DESKTOP SETTINGS POPUP. Appearance moved into a shared AppearanceRow so the sidebar-13 '
+      + 'dialog can reuse it. SMS, Integrations and Donations & payment links are gated on '
+      + 'SETTINGS_LEGACY_SECTIONS_ENABLED (false) in front of their existing plan/master-switch '
+      + 'gates — hide not delete; flip that flag to restore the rows. Customize Navigation is '
+      + 'lg:hidden so it stays on the mobile Settings page and is absent from the desktop popup. '
+      + 'No row was deleted, reordered or re-id-ed. The billing portal, Stripe-return forceOpen, '
+      + 'and cancel dialog are untouched. No firestore.rules, storage, indexes or workflow change.',
+    digest: '3acad4d6f401f5d806ad175737010d2450602736564a899fa1af9280b400ad50',
+  },
+  {
+    file: 'src/components/__tests__/AdminSettings.regroup.test.tsx',
+    ticket: 'THE-376',
+    why:
+      'THE-183 followed the hide. Payments and Connected Services leave the rendered heading list '
+      + 'while SETTINGS_LEGACY_SECTIONS_ENABLED is false; accordion open/close and the 44px touch '
+      + 'probe now use Onboarding Questions / Giving Statements instead of the hidden Donations '
+      + 'pointer. ThemeToggle source assertions read AppearanceRow.tsx, which is where the control '
+      + 'now lives so the popup and the mobile page share one copy. No layout number changed.',
+    digest: '20d06b9f2405c14f30e8d8adb0a0c24c12a263428011259d8a10598446d75e2a',
+  },
 ];
 
 /** A ticket reference the register will accept. */

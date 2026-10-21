@@ -425,6 +425,9 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
       `Eden shell pass follow-up - Home's breadcrumb is just Home. Every other route crumbs its sidebar group instead of the People or Public side. No permission gate, nav id or screen mount moved.`],
     ['51c9a678558d1bdf523bfaf524afaf0e3bc92dcfc230d471ba43def62a50fe68',
       `Eden shell fix round - the platform bell is a shadcn Button (ghost, icon) with the gold active highlight, and the desktop content bar mounts only at lg so a phone does not fetch the payments inbox twice. No permission gate, nav id or screen mount moved.`],
+    // APPENDED BY the desktop settings popup, nothing above removed or rewritten.
+    ['795f8155d042434a37b785571e452601fdf6dfd96fafec8b2c0d144cbdb415a0',
+      `desktop settings popup - on lg the Settings tab opens the sidebar-13 dialog instead of the full page. Mobile still mounts AdminSettings. No permission gate, nav id or other screen mount moved.`],
   ],
 };
 

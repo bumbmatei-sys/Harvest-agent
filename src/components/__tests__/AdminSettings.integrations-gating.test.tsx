@@ -68,6 +68,9 @@ vi.mock('../../utils/tenant-scope', () => ({
   getTenantScope: async () => 'tenant-1',
 }));
 vi.mock('next/image', () => ({ default: () => null }));
+vi.mock('../../lib/settings-legacy-sections', () => ({
+  SETTINGS_LEGACY_SECTIONS_ENABLED: true,
+}));
 
 /**
  * A synthetic tier that owns NONE of the section's providers — test 6. It is

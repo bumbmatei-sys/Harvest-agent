@@ -5,7 +5,9 @@ import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures, PLAN_DISPLAY_NAMES, PLAN_ORDER, formatPlanPrice, isUnpricedTier } from '../utils/plan-features';
 import { hasPlatformOverride } from '../utils/tenant-scope';
 import { SMS_FEATURE_ENABLED } from '../lib/sms-feature';
+import { SETTINGS_LEGACY_SECTIONS_ENABLED } from '../lib/settings-legacy-sections';
 import SettingsAccordion from './settings/SettingsAccordion';
+import AppearanceRow from './settings/AppearanceRow';
 import ChurchDataExportPanel from './settings/ChurchDataExportPanel';
 import OnboardingSection from './settings/OnboardingSection';
 import GivingStatementsSection from './settings/GivingStatementsSection';
@@ -13,7 +15,6 @@ import SmsSection from './settings/SmsSection';
 import IntegrationsSection from './settings/IntegrationsSection';
 import { hasAnyIntegrationProvider } from './settings/integration-providers';
 import { GIVING_PROVIDER_NAMES_OR } from './donations/giving-providers';
-import ThemeToggle from './ThemeToggle';
 import SectionHeading from './settings/SectionHeading';
 import { FORM_MEASURE, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
 /*
@@ -251,47 +252,10 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
       content: (
         /* THE-316 — label, description and controls IS an `Item`. The
            hand-written `flex flex-wrap items-center justify-between` wrapper
-           and its two bare `<p>`s were this primitive retyped. */
-        <Item className="flex-wrap justify-between gap-3 p-0">
-          <ItemContent className="flex-none">
-            <ItemTitle className="text-sm font-semibold text-strong">Colour theme</ItemTitle>
-            <ItemDescription className="text-sm text-muted">
-              Palette and light/dark, for your account on this device. System follows your device setting.
-            </ItemDescription>
-          </ItemContent>
-          {/* THE-183 — the palette family (Harvest / Classic) was reachable only
-              from the member Profile, so an admin who never opens the member app
-              could not select Classic at all. Same two components as the
-              Profile's Appearance row, in the same wrapper: `flex items-center
-              gap-2`, family on the LEFT and mode on the RIGHT, DOM order
-              matching visual order so tab order agrees with reading order.
-
-              Reused verbatim, not re-implemented and not re-sized. Both write
-              their own localStorage key and both stamp <html> through
-              applyTheme in lib/theme-runtime.ts — the ONE path THE-85
-              consolidated to. Two UI copies of a control writing the same keys
-              is fine; a second stamping path is not, and "no second stamping
-              path exists" asserts that by enumerating the whole of src/.
-
-              ThemeToggle moves from its `default` variant to `row` here: `row`
-              is documented as the sizing for when the row holds two controls
-              instead of one, which is now this row as well. That is also what
-              brings the icon-only fallback with it — below `sm` (640px), and
-              again from `xl` (1280px) up, where the Profile's settings column
-              splits and available width stops growing with the viewport
-              (THE-184). Admin Settings does not split at `xl`, so it has room
-              for the labels there; it takes the fallback anyway because
-              "match the member Profile exactly" is the requirement, and a
-              per-caller breakpoint would be a second answer to one question. */}
-          {/* ⚠️ `ItemActions` IS `flex items-center gap-2` — the exact class
-              string this wrapper already carried. THE-338 removed the
-              palette-family control that used to sit beside ThemeToggle, so
-              this row now holds one child; the wrapper is unchanged, which is
-              what keeps the remaining control's position identical. */}
-          <ItemActions>
-            <ThemeToggle variant="row" />
-          </ItemActions>
-        </Item>
+           and its two bare `<p>`s were this primitive retyped. AppearanceRow
+           is that Item, shared with the desktop popup so the two surfaces
+           cannot drift. */
+        <AppearanceRow />
       ),
     },
     {
@@ -363,7 +327,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
       //
       // Reads the FEATURE, not the tier, so nothing here has to be edited if a
       // future tier is sold without giving.
-      hidden: !platformOverride && !currentFeatures?.fundraising,
+      hidden: !SETTINGS_LEGACY_SECTIONS_ENABLED || (!platformOverride && !currentFeatures?.fundraising),
     },
     {
       id: 'onboarding',
@@ -410,7 +374,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
       // `smsAutomation` went false on plus and pro, and the row followed the
       // matrix. Reading the tier here instead would have needed a second edit,
       // and a second place for the two to disagree.
-      hidden: !SMS_FEATURE_ENABLED || (!platformOverride && !currentFeatures?.smsAutomation),
+      hidden: !SETTINGS_LEGACY_SECTIONS_ENABLED || !SMS_FEATURE_ENABLED || (!platformOverride && !currentFeatures?.smsAutomation),
     },
     {
       id: 'integrations',
@@ -434,7 +398,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
       // that is not sold — see `outboundSend` in integration-providers.ts. Free
       // therefore has no available provider at all and this section disappears
       // on its own; the three priced tiers are unmoved, and no plan flag changed.
-      hidden: !platformOverride && !hasAnyIntegrationProvider(currentFeatures, currentPlan),
+      hidden: !SETTINGS_LEGACY_SECTIONS_ENABLED || (!platformOverride && !hasAnyIntegrationProvider(currentFeatures, currentPlan)),
     },
     {
       // THE-183 — the Danger Zone. A destructive action was sitting in the same
@@ -655,7 +619,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
           That leaves it below the Danger Zone; see the note on the sections
           array for why "separated" and "last" are not the same requirement. */}
       {onCustomizeNav && (
-        <div>
+        <div className="lg:hidden" data-settings-navigation>
         <SectionHeading className="sm:mb-2.5">Navigation</SectionHeading>
         {/* THE-316 — a row of things, so an `Item`, rendered AS the button it
             has to be (`render={<button …/>}`) rather than a hand-written

@@ -729,6 +729,8 @@ const ADMIN_DASHBOARD_ACCEPTED = [
     'c76170af6567412fe8998170aeca376ab1998ba8545c2809f1b07ea5f859c940',
     // APPENDED BY the Eden shell fix round. The platform bell is a shadcn Button (ghost, icon) with the gold active highlight, and the desktop content bar mounts only at lg so a phone does not fetch the payments inbox twice. No permission gate moved.
     '51c9a678558d1bdf523bfaf524afaf0e3bc92dcfc230d471ba43def62a50fe68',
+    // APPENDED BY the desktop settings popup. On lg, Settings opens the sidebar-13 dialog. Mobile still mounts AdminSettings. No permission gate moved.
+    '795f8155d042434a37b785571e452601fdf6dfd96fafec8b2c0d144cbdb415a0',
 ];
 
 describe('the files this ticket must not open are byte-identical', () => {

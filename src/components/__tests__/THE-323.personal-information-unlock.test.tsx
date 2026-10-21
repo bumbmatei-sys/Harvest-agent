@@ -801,7 +801,11 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // the class, in the Rule-4 form `min-h-11 sm:min-h-0`, the same floor
       // Customize Navigation already takes. It is a real tap target, not a
       // comment that happens to name the class.
+      'src/components/settings/CancelPlanBlock.tsx',
       'src/components/settings/ChurchDataExportPanel.tsx',
+      'src/components/settings/PlanBillingSection.tsx',
+      'src/components/settings/ProfileSection.tsx',
+      'src/components/settings/SettingsDialog.tsx',
       // 🔴 APPENDED BY THE-330, NOTHING ABOVE REMOVED OR REWRITTEN. Another
       // COMMENT-ONLY mention, the same kind as the two THE-324 entries: the
       // ticket adds two native `<select>` pickers and records, at their call

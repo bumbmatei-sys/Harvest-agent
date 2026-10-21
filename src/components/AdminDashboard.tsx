@@ -10,6 +10,8 @@ import AdminRAG from './AdminRAG';
 import AdminTenants from './AdminTenants';
 import AdminLibraryCourses from './AdminLibraryCourses';
 import AdminSettings from './AdminSettings';
+import { SettingsDialog } from './settings/SettingsDialog';
+import { settingsSectionFromLocation } from './settings/settings-nav';
 import AdminUpgradePage from './AdminUpgradePage';
 import AdminBranding from './AdminBranding';
 import { AdminHome } from './admin-shell/AdminHome';
@@ -1446,6 +1448,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               />
             </div>
           ) : activeTab === 'settings' ? (
+            lgUp ? null : (
             <AdminSettings
               onBack={() => go('dashboard')}
               currentPlan={tenantPlan ?? undefined}
@@ -1459,6 +1462,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                  always renders the Donations branch of the switch below. */
               onOpenDonations={() => go('donations')}
             />
+            )
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-faint">
               <p className="text-lg font-medium">{allTabs.find(t => t.id === activeTab)?.label || 'Inbox'} coming soon.</p>
@@ -1589,6 +1593,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       {/* Billing & Payments — owner-only overlay. 'yes' only: an unresolved
           roster must not open it either. The /api/billing/* routes enforce the
           same three-identity owner gate server-side (requireOwner). */}
+      {lgUp && canSettings && (
+        <SettingsDialog
+          open={activeTab === 'settings'}
+          onOpenChange={(open) => { if (!open) smartBack(); }}
+          currentPlan={tenantPlan ?? undefined}
+          tenantId={tenantId ?? undefined}
+          email={auth.currentUser?.email ?? undefined}
+          initialSection={settingsSectionFromLocation()}
+        />
+      )}
+
       {showBilling && billingAccess === 'yes' && (
         <div className="fixed inset-0 z-[200] bg-surface flex flex-col">
           <div className="flex items-center gap-1 h-12 px-3 bg-surface-raised border-b border-line shrink-0">

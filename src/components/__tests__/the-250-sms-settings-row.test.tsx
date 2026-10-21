@@ -107,6 +107,11 @@ async function loadSettings(enabled: boolean) {
     SMS_FEATURE_ENABLED: enabled,
     SMS_HIDDEN_MESSAGE: 'SMS is temporarily unavailable.',
   }));
+  // Restore the Settings-popup hide so this suite still isolates the SMS
+  // master switch. Production keeps SETTINGS_LEGACY_SECTIONS_ENABLED false.
+  vi.doMock('../../lib/settings-legacy-sections', () => ({
+    SETTINGS_LEGACY_SECTIONS_ENABLED: true,
+  }));
   return (await import('../AdminSettings')).default;
 }
 
@@ -300,10 +305,12 @@ describe('4 — one switch, and nothing else moved', () => {
   it('🔴 the row reads the ONE switch — no second flag was invented', async () => {
     const src = readSrc('components/AdminSettings.tsx');
     expect(src).toMatch(
-      /hidden:\s*!SMS_FEATURE_ENABLED\s*\|\|\s*\(!platformOverride && !currentFeatures\?\.smsAutomation\)/,
+      /hidden:\s*!SETTINGS_LEGACY_SECTIONS_ENABLED\s*\|\|\s*!SMS_FEATURE_ENABLED\s*\|\|\s*\(!platformOverride && !currentFeatures\?\.smsAutomation\)/,
     );
     expect(src).toContain("import { SMS_FEATURE_ENABLED } from '../lib/sms-feature'");
-    // The one name, and no sibling with a similar one.
+    expect(src).toContain("import { SETTINGS_LEGACY_SECTIONS_ENABLED } from '../lib/settings-legacy-sections'");
+    // The SMS master switch is still one declared name. The settings-popup
+    // hide sits in front of it and is restored by flipping that other flag.
     const smsFlags = [...src.matchAll(/\b[A-Z][A-Z0-9_]*SMS[A-Z0-9_]*\b|\bSMS_[A-Z0-9_]+\b/g)]
       .map((m) => m[0]);
     expect([...new Set(smsFlags)]).toEqual(['SMS_FEATURE_ENABLED']);

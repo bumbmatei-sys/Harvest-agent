@@ -371,7 +371,9 @@ describe('THE-183 — admin Settings', () => {
     // The same component the member Profile renders, not a second copy:
     // AdminSettings imports it, and defines no radiogroup of its own.
     const src = readFileSync(SETTINGS_SRC, 'utf8');
-    expect(src).toMatch(/import\s+ThemeToggle\s+from\s+'\.\/ThemeToggle'/);
+    const appearance = readFileSync(path.join(SRC, 'components/settings/AppearanceRow.tsx'), 'utf8');
+    expect(src).toMatch(/import\s+AppearanceRow\s+from\s+'\.\/settings\/AppearanceRow'/);
+    expect(appearance).toMatch(/import\s+ThemeToggle\s+from\s+'\.\.\/ThemeToggle'/);
     expect(src, 'the palette family toggle is still imported').not.toContain('PaletteFamilyToggle');
     expect(src, 'admin Settings is building its own theme control instead of reusing one')
       .not.toMatch(/role=["']radiogroup["']/);
@@ -405,7 +407,7 @@ describe('THE-183 — admin Settings', () => {
       .not.toContain('PaletteFamilyToggle');
     expect(profile, 'the member Profile no longer renders the mode control')
       .toMatch(/<ThemeToggle variant="row" \/>/);
-    expect(readFileSync(SETTINGS_SRC, 'utf8'), 'admin Settings renders a different control')
+    expect(readFileSync(path.join(SRC, 'components/settings/AppearanceRow.tsx'), 'utf8'), 'admin Settings renders a different control')
       .toMatch(/<ThemeToggle variant="row" \/>/);
   });
 
@@ -678,9 +680,7 @@ describe('THE-183 — admin Settings', () => {
     expect(found).toEqual([
       'Account',
       'Appearance',
-      'Payments',
       'Church Setup',
-      'Connected Services',
       'Danger Zone',
       'Navigation',
     ]);
@@ -765,7 +765,7 @@ describe('THE-183 — admin Settings', () => {
     // The accordion rows and the navigation row — the targets this PR lays
     // out — clear 44px comfortably at every mobile width.
     for (const viewport of [380, 480, 639]) {
-      for (const label of ['Appearance', GIVING_ROW, 'Cancel Subscription']) {
+      for (const label of ['Appearance', 'Onboarding Questions', 'Cancel Subscription']) {
         const row = targets.find((t) => t.label.startsWith(label))!;
         expect(heightAt(row.el, viewport), `"${label}" is short at ${viewport}px`).toBeGreaterThanOrEqual(MIN);
       }
@@ -1091,16 +1091,16 @@ describe('THE-183 — admin Settings', () => {
 
     // (e) And every row still opens and closes, one at a time.
     const host = await mount();
-    await expandSection(host, GIVING_ROW);
+    await expandSection(host, 'Onboarding Questions');
     // A row holds its header button, plus a content panel while it is open.
     const open = () =>
       Array.from(host.querySelectorAll('[data-settings-row]'))
         .filter((r) => r.children.length > 1)
         .map((r) => r.getAttribute('data-settings-row'));
-    expect(open(), 'opening a row did not expand it').toEqual(['payments']);
-    await expandSection(host, 'Onboarding Questions');
-    expect(open(), 'two rows are open at once').toEqual(['onboarding']);
-    await expandSection(host, 'Onboarding Questions');
+    expect(open(), 'opening a row did not expand it').toEqual(['onboarding']);
+    await expandSection(host, 'Appearance');
+    expect(open(), 'two rows are open at once').toEqual(['appearance']);
+    await expandSection(host, 'Appearance');
     expect(open(), 'a row did not close again').toEqual([]);
   });
 

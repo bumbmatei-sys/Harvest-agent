@@ -1,0 +1,26 @@
+{
+  "ticket": "THE-376",
+  "note": "Desktop Settings popup (sidebar-13). There is no assigned ticket number; THE-376 is the next free id after THE-375. On lg, Settings opens a Dialog with a left Sidebar nav. Mobile keeps the Settings page. SMS, Integrations and Donations rows are hidden behind SETTINGS_LEGACY_SECTIONS_ENABLED. APPENDED, NEVER SUBSTITUTED. No firestore.rules change.",
+  "entries": [
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "795f8155d042434a37b785571e452601fdf6dfd96fafec8b2c0d144cbdb415a0",
+      "why": "Desktop Settings popup. On lg the settings tab mounts the sidebar-13 SettingsDialog instead of the full AdminSettings page. The sidebar Settings entry still navigates to /admin/settings so THE-332 keeps passing. Mobile still renders AdminSettings. No permission gate, nav id or other screen mount was added or removed."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "ec00e8a839badff1a2b41f99b507ef7f6d891e988caa5992899b5e0cd810ca39",
+      "why": "THE-376 records AppearanceRow, PlanBillingSection and ProfileSection as adopters of the already-installed item and alert primitives for the desktop Settings popup. APPENDED to RECORDED_ADOPTERS. No primitive file was edited and no new package was added."
+    },
+    {
+      "file": "src/components/__tests__/AdminSettings.free-tier-sections.test.tsx",
+      "digest": "1befc024a73f62872918cb5601814f4945723f98b42367b2c7ed11a6ba7719db",
+      "why": "THE-376 mocks SETTINGS_LEGACY_SECTIONS_ENABLED true so this suite still isolates the free-tier plan gates from the settings-popup hide. The priced-tier section lists and the Gmail reach cases stay the same claims they always were."
+    },
+    {
+      "file": "src/components/__tests__/AdminSettings.integrations-gating.test.tsx",
+      "digest": "cc533d2a6f25929486b3b665042bcf9ca85a94736fc931fac69f3fb0264113f2",
+      "why": "THE-376 mocks SETTINGS_LEGACY_SECTIONS_ENABLED true so THE-193 still measures the Integrations section when the popup hide is flipped back. No plan gate, provider list or CRM dead-end assertion was loosened."
+    }
+  ]
+}
