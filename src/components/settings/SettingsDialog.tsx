@@ -125,7 +125,9 @@ export function SettingsDialog({
   }, [open]);
 
   const hasSubscription = currentPlan !== undefined && !isUnpricedTier(currentPlan);
-  const nav = hasSubscription ? SETTINGS_NAV : SETTINGS_NAV.filter((item) => item.id !== 'danger');
+  // Cancelling is an owner action (the cancel route is requireOwner), so a non-owner admin gets no Danger zone.
+  const showDanger = hasSubscription && canUpgrade;
+  const nav = showDanger ? SETTINGS_NAV : SETTINGS_NAV.filter((item) => item.id !== 'danger');
   const mainNav = nav.filter((item) => item.id !== 'danger');
   const dangerNav = nav.filter((item) => item.id === 'danger');
   const active = nav.find((item) => item.id === section) ?? nav[0];
@@ -266,7 +268,7 @@ export function SettingsDialog({
                   </PaneSection>
                 </div>
               )}
-              {open && active.id === 'danger' && hasSubscription && (
+              {open && active.id === 'danger' && showDanger && (
                 <CancelPlanBlock onConfirm={handleManage} />
               )}
             </div>

@@ -57,6 +57,7 @@ async function mount(props: Partial<React.ComponentProps<typeof SettingsDialog>>
         currentPlan={'pro' as never}
         tenantId="t1"
         email="admin@church.org"
+        canUpgrade
         {...props}
       />,
     );
@@ -276,6 +277,27 @@ describe('desktop Settings popup (sidebar-13)', () => {
       document.body.innerHTML = '';
       await mount({ initialSection: 'billing', canUpgrade: true });
       expect(document.querySelector('[data-stub="plans"]')).toBeTruthy();
+    });
+  });
+
+  describe('Danger zone is an owner action', () => {
+    it('is not offered to an admin who is not the plan owner', async () => {
+      await mount({ canUpgrade: false });
+      expect(navLabels(document.body)).not.toContain('Danger zone');
+      expect(document.querySelector('[data-settings-nav="danger"]')).toBeNull();
+    });
+
+    it('sends a non-owner deep link to ?section=danger to Profile, with no Cancel Subscription', async () => {
+      await mount({ canUpgrade: false, initialSection: 'danger' });
+      expect(document.querySelector('[data-settings-section="profile"]')).toBeTruthy();
+      expect(document.querySelector('[data-settings-section="danger"]')).toBeNull();
+      expect(buttonByText(document.body, 'Cancel Subscription')).toBeUndefined();
+    });
+
+    it('is kept, with Cancel Subscription, for the owner', async () => {
+      await mount({ canUpgrade: true, initialSection: 'danger' });
+      expect(navLabels(document.body)).toContain('Danger zone');
+      expect(buttonByText(document.body, 'Cancel Subscription')).toBeTruthy();
     });
   });
 

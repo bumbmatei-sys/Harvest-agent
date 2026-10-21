@@ -430,7 +430,7 @@ describe('THE-200 — the three priced tiers are untouched', () => {
     expect(PLAN_DISPLAY_NAMES.max).toBe('Ministry');
     expect(PLAN_BLURBS.plus).toBe('For solo evangelists and missionaries.');
     expect(PLAN_BLURBS.pro).toBe('For small ministries growing as a team.');
-    expect(PLAN_BLURBS.max).toBe('For established churches going deeper.');
+    expect(PLAN_BLURBS.max).toBe('For established campuses going deeper.');
 
     // Free's own strings. The blurb names the AUDIENCE, which is what makes the
     // card differ from Individual's — both are aimed at evangelists, and only

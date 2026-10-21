@@ -9,6 +9,7 @@ import { AUTOSAVE_ERROR_TOAST_ID, AUTOSAVE_SAVED_TOAST_ID, AUTOSAVE_EXCLUDED } f
 import UNTOUCHED from './__fixtures__/the-286-untouched.json';
 import { foldedPaymentSectionDigest } from './__fixtures__/the-362-payment-section-fold';
 import { freezeFailure } from './__fixtures__/settings-freeze-register';
+import { PLAN_UPGRADE_SECTION } from '../../__tests__/__fixtures__/plan-copy-exemption';
 import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
 import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
 
@@ -398,13 +399,21 @@ describe('4 · money-path fields do NOT autosave', () => {
   const MONEY_PATH_EDITED_SINCE: ReadonlyArray<{ file: string; ticket: string }> = [
     { file: 'src/components/settings/AddOnsSection.tsx', ticket: 'THE-300' },
     { file: 'src/components/settings/BillingTermToggle.tsx', ticket: 'THE-300' },
+    // ⚠️ APPENDED BY PR-540 (PR #540 round 3). Matei approved 2026-10-21: display-copy + compact prop only.
+    // DIGEST-SCOPED, not skipped: the byte-identity loop below still hashes this file and
+    // compares it to the one recorded value, so an edit outside the approved lines fails.
+    { file: PLAN_UPGRADE_SECTION.file, ticket: 'PR-540' },
   ];
+  const SCOPED_DIGESTS: Readonly<Record<string, string>> = {
+    [PLAN_UPGRADE_SECTION.file]: PLAN_UPGRADE_SECTION.exemptDigest,
+  };
 
   it('the digest exemption list is exactly the edits that justify it', async () => {
     const { createHash } = await import('node:crypto');
     expect(MONEY_PATH_EDITED_SINCE.map((e) => `${e.ticket} ${e.file}`)).toEqual([
       'THE-300 src/components/settings/AddOnsSection.tsx',
       'THE-300 src/components/settings/BillingTermToggle.tsx',
+      'PR-540 src/components/settings/PlanUpgradeSection.tsx',
     ]);
     for (const { file } of MONEY_PATH_EDITED_SINCE) {
       const now = createHash('sha256').update(readFileSync(path.join(ROOT, file))).digest('hex');
@@ -419,8 +428,13 @@ describe('4 · money-path fields do NOT autosave', () => {
     for (const file of ['src/components/settings/PlanUpgradeSection.tsx',
                         'src/components/settings/AddOnsSection.tsx',
                         'src/components/settings/BillingTermToggle.tsx']) {
-      if (exempt.includes(file)) continue;
       const now = createHash('sha256').update(readFileSync(path.join(ROOT, file))).digest('hex');
+      if (file in SCOPED_DIGESTS) {
+        expect(now, `${file} is at a digest nobody recorded — the PR-540 exemption covers only its recorded lines`)
+          .toBe(SCOPED_DIGESTS[file]);
+        continue;
+      }
+      if (exempt.includes(file)) continue;
       expect(now, `${file} changed — the money path is out of scope for this slice`)
         .toBe(UNTOUCHED.otherSettingsSections[file as keyof typeof UNTOUCHED.otherSettingsSections]);
     }

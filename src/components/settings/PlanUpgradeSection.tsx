@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useRef, useCallback } from 'react';
 import { Check } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { TenantPlan } from '../../types/tenant.types';
 import {
   getPlanFeatures,
@@ -38,6 +39,8 @@ interface PlanUpgradeSectionProps {
    * "Manage Subscription" / cancel action stays available.
    */
   hideUpgrade?: boolean;
+  /** Settings popup only: one plan card per row and a theme-token Manage button. */
+  compact?: boolean;
   /**
    * Which processor owns this tenant's subscription, when the parent already
    * knows (BillingAndPayments reads it off /api/billing/invoices). Undefined
@@ -132,7 +135,7 @@ const CARD_FEATURES: CardFeature[] = [
   { key: 'maxContacts', count: ['contact', 'contacts'] },
   { key: 'maxAdmins', count: ['admin account', 'admin accounts'] },
   { key: 'maxCourses', count: ['course', 'courses'] },
-  { key: 'maxChurches', count: ['church', 'churches'] },
+  { key: 'maxChurches', count: ['campus', 'campuses'] },
   { key: 'blog', label: 'Blog' },
   { key: 'pwaApp', label: 'Mobile App (PWA)' },
   { key: 'aiChat', label: 'AI Chat' },
@@ -341,7 +344,7 @@ function platformFeeLabel(plan: TenantPlan): string {
   return `${Number(pct.toFixed(2))}%`;
 }
 
-const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, tenantId, email, hideUpgrade, processor }) => {
+const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, tenantId, email, hideUpgrade, processor, compact }) => {
   const [billingPeriod, setBillingPeriod] = useState<BillingTerm>('monthly');
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
@@ -530,7 +533,9 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
         onScroll={handlePlanScroll}
         data-testid="plan-card-track"
         className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scrollbar-hide sm:grid sm:grid-cols-2 sm:overflow-x-visible sm:pb-0 lg:grid-cols-3"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        style={compact
+          ? { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', overflow: 'visible' }
+          : { scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {/* 🔴 PRICED tiers only — see PRICED_PLAN_ORDER. Each card below ends in
             a checkout, and the Forever Free tier has no price and no Dodo
@@ -850,6 +855,16 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
         </div>
       ) : (
         <div className="flex flex-col items-center gap-3 pt-2">
+          {compact ? (
+            <Button
+              data-testid="billing-manage-action"
+              variant="outline"
+              onClick={handleManageSubscription}
+              disabled={portalLoading}
+            >
+              {portalLoading ? 'Opening portal...' : 'Manage Subscription'}
+            </Button>
+          ) : (
           <button
             data-testid="billing-manage-action"
             onClick={handleManageSubscription}
@@ -865,6 +880,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
               'Manage Subscription'
             )}
           </button>
+          )}
           {subscriptionProcessorAttribution(processor) && (
             <p className="text-xs text-faint">{subscriptionProcessorAttribution(processor)}</p>
           )}

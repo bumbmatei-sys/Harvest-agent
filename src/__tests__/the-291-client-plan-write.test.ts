@@ -375,6 +375,12 @@ describe('5 · the money path is byte-identical', () => {
          `newsletterAutomation` CELL is untouched, so the tiers that own the
          newsletter still own it and get the line back with the switch. */
       ['667a71285e506773f0d137654584f9c7ded1eedcb8de8998908b9b1aa2a9c935', 'main + THE-335 — the Newsletter card line withheld behind its master switch'],
+      /* 🔴 APPENDED BY PR #540 round 3 (Matei approved 2026-10-21: display-copy + compact prop only),
+         nothing above removed. Still NO client-side plan write, price, plan id, checkout or Dodo line:
+         the card copy says campuses, and a `compact` prop (settings popup only) stacks the cards one
+         per row and draws Manage Subscription as the shadcn Button. The seven hunks are listed in
+         __fixtures__/plan-copy-exemption.ts and pr-540.plan-copy-exemption.test.ts proves it. */
+      ['32984f29807bbfbfa6d79faf9f95712deed2e71c2ebc2c119dc5b3b3f3d61c08', 'PR #540 r3 — plan-card campus copy + compact prop (Matei approved 2026-10-21: display-copy + compact prop only)'],
     ],
   };
 
@@ -821,6 +827,10 @@ describe('6 · no plan cap or price changed', () => {
       // is false on every tier and a NO_ADDONS count the webhook writes as
       // zero. No price, no cap, and no client write of `plan` moved.
       ['social-scheduler', 'ea729463e52a02a69ada40f1796b919c5872077e379fbe03ca6c269a811fd38e'],
+      // APPENDED, never substituted (PR #540 round 3, Matei approved 2026-10-21: display-copy +
+      // compact prop only). One PLAN_BLURBS string ("churches" -> "campuses") and a one-line TODO
+      // for the marketing site. No price, no cap, no cell, no code path.
+      ['pr-540-r3-plan-copy', 'b5396ad175399ba2a736bb9a23df4c2399802337c18684737c44dab7009e4c3f'],
     ];
     expect(sha256(readFileSync(path.join(REPO, 'src/utils/plan-features.ts')))).toBe(
       PLAN_FEATURES_PINS[PLAN_FEATURES_PINS.length - 1][1],

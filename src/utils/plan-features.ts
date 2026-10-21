@@ -1402,7 +1402,8 @@ export const PLAN_BLURBS: Record<TenantPlan, string> = {
   free: 'For evangelists discipling one person at a time.',
   plus: 'For solo evangelists and missionaries.',
   pro:  'For small ministries growing as a team.',
-  max:  'For established churches going deeper.',
+  // TODO: harvest-presentation-site (src/components/Pricing.tsx) still says "churches"; change it to "campuses" there too.
+  max:  'For established campuses going deeper.',
 };
 
 /** Get the display name for a given plan. Defaults to 'Individual' if unknown. */
