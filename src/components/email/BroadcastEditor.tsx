@@ -81,6 +81,8 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
   // so nothing that merely re-runs an effect can make an untouched email look edited.
   const savedSnapshot = useRef<string | null>(null);
   if (savedSnapshot.current === null) savedSnapshot.current = snapshotOf(draft());
+  // The list behind this editor is stale once anything has been saved here, autosave included.
+  const savedThisSession = useRef(false);
 
   const persist = useCallback(() => {
     chain.current = chain.current.then(async () => {
@@ -91,6 +93,7 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
         idRef.current = saved.id;
         setId(saved.id);
         savedSnapshot.current = snapshotOf(sent);
+        savedThisSession.current = true;
         // Typing that landed while the save was in flight is still unsaved.
         dirty.current = snapshotOf(latest.current()) !== savedSnapshot.current;
         setSaving(dirty.current ? 'unsaved' : 'saved');
@@ -151,7 +154,11 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
 
   /** Back never writes an email nobody changed, and never touches a schedule on its own. */
   async function back() {
-    if (!dirty.current) { onBack(); return; }
+    if (!dirty.current) {
+      if (savedThisSession.current) onChanged();
+      onBack();
+      return;
+    }
     if (wasScheduled.current) { setPending('back'); return; }
     await persist();
     if (dirty.current) return;

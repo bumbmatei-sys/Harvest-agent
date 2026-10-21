@@ -120,6 +120,27 @@ describe('sends are atomic', () => {
     expect(ctx.mem.today).toBe(2);
   });
 
+  it('a timed-out send stays counted (it may have been delivered) and is never retried; a plain failure is refunded', async () => {
+    const provider = mockProvider({ timeoutFor: new Set(['p1@x.org']), failFor: new Set(['p2@x.org']) });
+    const ctx = build({ contacts: many(4) }, provider);
+    const id = await draftIn(ctx);
+    const r = await confirm(ctx, id, await previewToken(ctx, id));
+    expect(r).toMatchObject({ ok: true, outcome: 'partial', stats: { sent: 2, failed: 2 } });
+    expect(r).toMatchObject({ message: expect.stringMatching(/1 timed out and still count/) });
+    expect(ctx.mem.used).toBe(3);
+    expect(ctx.mem.today).toBe(3);
+    expect(provider.sent.map((m) => m.to).sort()).toEqual(['p0@x.org', 'p3@x.org']);
+  });
+
+  it('a send where every email times out ends failed with the whole reservation still counted', async () => {
+    const ctx = build({ contacts: many(2) }, mockProvider({ timeoutFor: new Set(['p0@x.org', 'p1@x.org']) }));
+    const id = await draftIn(ctx);
+    expect(await confirm(ctx, id, await previewToken(ctx, id))).toMatchObject({ ok: true, outcome: 'failed' });
+    expect(ctx.mem.broadcasts.get(id)?.status).toBe('failed');
+    expect(ctx.mem.used).toBe(2);
+    expect(ctx.mem.sendingMarkers.size).toBe(0);
+  });
+
   it('running out of time stops starting emails, ends the send and still counts what went out', async () => {
     let sends = 0;
     const provider = mockProvider({ onSend: () => { sends += 1; } });

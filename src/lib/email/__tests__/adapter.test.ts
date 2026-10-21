@@ -75,6 +75,7 @@ describe('plunk adapter (network mocked, shapes from Plunk\'s API source)', () =
   it('marks 429 and 5xx retryable and 4xx not, and names Plunk\'s error code', async () => {
     const mk = (s: number, body: unknown = {}) => createPlunkProvider({ apiKey: 'k', fetchImpl: fetchOnce(s, body) as unknown as typeof fetch }).send(message);
     expect(await mk(429)).toMatchObject({ ok: false, retryable: true });
+    expect(await mk(503)).not.toHaveProperty('maybeDelivered');
     expect(await mk(503)).toMatchObject({ ok: false, retryable: true });
     expect(await mk(403, { success: false, error: { code: 'DOMAIN_NOT_VERIFIED', message: 'x', statusCode: 403 } })).toEqual({ ok: false, error: 'Plunk answered 403 (DOMAIN_NOT_VERIFIED).', retryable: false });
   });
@@ -103,7 +104,7 @@ describe('plunk adapter (network mocked, shapes from Plunk\'s API source)', () =
 
     it('a send that never answers fails as a retryable, timed-out send', async () => {
       const r = await createPlunkProvider({ apiKey: 'k', fetchImpl: hang() as unknown as typeof fetch, timeoutMs: 20 }).send(message);
-      expect(r).toMatchObject({ ok: false, retryable: true, error: expect.stringMatching(/did not answer/) });
+      expect(r).toMatchObject({ ok: false, retryable: true, maybeDelivered: true, error: expect.stringMatching(/did not answer/) });
     });
 
     it('a domain call that never answers throws a typed timeout, which the route answers as 502', async () => {

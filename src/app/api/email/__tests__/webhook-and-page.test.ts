@@ -82,6 +82,12 @@ describe('POST /api/email/webhook', () => {
     expect(m.recordFeedback).toHaveBeenCalledWith('grace', 'Jane@Example.org', 'complained', 'em_1');
   });
 
+  it("treats a bounce type Plunk does not classify (e.g. 'Undetermined') as permanent, as Plunk itself suppresses it", async () => {
+    const res = await webhook.POST(hook('bounce', plunkBody({ bounceType: 'Undetermined' })));
+    expect(await res.json()).toMatchObject({ ok: true, applied: true });
+    expect(m.recordFeedback).toHaveBeenCalledWith('grace', 'Jane@Example.org', 'bounced', 'em_1');
+  });
+
   it('also reads a flat body written for the webhook step', async () => {
     await webhook.POST(hook('bounce', { email: 'a@x.org', from: 'hello@mail.grace.org', emailId: 'em_7', bounceType: 'Permanent' }));
     expect(m.recordFeedback).toHaveBeenCalledWith('grace', 'a@x.org', 'bounced', 'em_7');

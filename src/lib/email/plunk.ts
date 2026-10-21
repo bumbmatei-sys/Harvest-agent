@@ -154,7 +154,8 @@ export function createPlunkProvider(options: PlunkOptions): EmailProvider {
           }),
         });
       } catch (error) {
-        return { ok: false, error: error instanceof Error ? error.message : 'Network error', retryable: true };
+        const timedOut = error instanceof EmailProviderError && error.kind === 'timeout';
+        return { ok: false, error: error instanceof Error ? error.message : 'Network error', retryable: true, ...(timedOut ? { maybeDelivered: true } : {}) };
       }
       if (res.ok) {
         const body = await res.json().catch(() => null);

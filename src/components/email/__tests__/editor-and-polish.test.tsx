@@ -88,6 +88,27 @@ describe('Back in the editor', () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
+  it('refreshes the list on Back after an autosave, even though nothing is left unsaved', async () => {
+    const { api, onBack, onChanged } = await editor(broadcast());
+    await typeInto(subject(), 'Sunday news');
+    await new Promise((r) => setTimeout(r, 1000));
+    await flush();
+    expect(api.saveDraft).toHaveBeenCalledTimes(1);
+    await back();
+    await flush();
+    expect(api.saveDraft).toHaveBeenCalledTimes(1);
+    expect(onChanged).toHaveBeenCalledTimes(1);
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not refresh the list on Back when nothing was saved this session', async () => {
+    const { onBack, onChanged } = await editor(broadcast());
+    await back();
+    await flush();
+    expect(onChanged).not.toHaveBeenCalled();
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
   it('stays put and shows the error when a changed draft cannot be saved', async () => {
     const api = fakeApi({ saveDraft: vi.fn(async () => { throw new EmailApiError('Could not reach the server.', 'network', false); }) });
     const { onBack } = await editor(broadcast(), api);
