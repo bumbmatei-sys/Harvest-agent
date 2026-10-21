@@ -19,6 +19,7 @@ import { THEME_STORAGE_KEY } from '@/lib/theme';
 import { AdminContentBar } from './AdminContentBar';
 import { AdminDesktopSidebar, SIDEBAR_ICON_WIDTH } from './AdminDesktopSidebar';
 import { AdminHome, AdminHomeView } from './AdminHome';
+import { useQuickSwitcherShortcut } from '../docs/DocsQuickSwitcher';
 import { REASON } from '../dashboard/dashboard-data';
 import { countDatedInWindow, formatKpi, HOME_KPI_SOURCES, sumCentsInWindow } from './home-kpis';
 import { NO_TENANT, READ_FAILED } from './use-home-kpis';
@@ -351,20 +352,75 @@ describe('search pill in the content bar', () => {
     expect(sidebar!.querySelector('[data-admin-search-pill]')).toBeNull();
   });
 
-  it('opens the same palette from the pill and from ⌘K, once', async () => {
+  const paletteInputs = () => document.querySelectorAll('[data-slot="command-input"]');
+  const pressCtrlK = () => act(async () => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true, cancelable: true }));
+  });
+
+  it('opens the same palette from the pill and from Ctrl-K, once each, from a closed palette', async () => {
     await mountBar();
+    expect(paletteInputs(), 'the palette should start closed').toHaveLength(0);
+
     const pill = container.querySelector<HTMLButtonElement>('[data-admin-search-pill]')!;
     await act(async () => { pill.click(); });
-    expect(document.querySelector('[data-slot="command-input"]'), 'the pill did not open the palette')
-      .toBeTruthy();
+    expect(paletteInputs(), 'the pill did not open exactly one palette').toHaveLength(1);
+
     await act(async () => {
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      document.querySelector('[data-slot="command-input"]')!
+        .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
     });
+    expect(paletteInputs(), 'the palette did not close').toHaveLength(0);
+
+    await pressCtrlK();
+    expect(paletteInputs(), 'Ctrl-K from a closed palette did not open exactly one').toHaveLength(1);
+  });
+
+  it('removes its hotkey listener when the sidebar unmounts', async () => {
+    const added = vi.spyOn(window, 'addEventListener');
+    const removed = vi.spyOn(window, 'removeEventListener');
+    try {
+      await mountBar();
+      const keydown = added.mock.calls.filter(([type]) => type === 'keydown').map(([, fn]) => fn);
+      expect(keydown.length, 'the sidebar registered no keydown listener').toBeGreaterThan(0);
+      act(() => { root.unmount(); });
+      for (const fn of keydown) {
+        expect(removed.mock.calls.some(([type, handler]) => type === 'keydown' && handler === fn),
+          'a keydown listener outlived the sidebar').toBe(true);
+      }
+      await pressCtrlK();
+      expect(paletteInputs()).toHaveLength(0);
+    } finally {
+      added.mockRestore();
+      removed.mockRestore();
+    }
+  });
+
+  it('leaves Ctrl-K to a screen with its own switcher, and takes it back when that screen unmounts', async () => {
+    const onOpen = vi.fn();
+    function Switcher() {
+      useQuickSwitcherShortcut(onOpen);
+      return null;
+    }
+    function Harness({ withSwitcher }: { withSwitcher: boolean }) {
+      return (
+        <>
+          <ShellBarHarness />
+          {withSwitcher ? <Switcher /> : null}
+        </>
+      );
+    }
     await act(async () => {
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }));
+      root = createRoot(container);
+      root.render(<Harness withSwitcher />);
     });
-    const inputs = document.querySelectorAll('[data-slot="command-input"]');
-    expect(inputs, 'Ctrl-K did not open the palette').toHaveLength(1);
+    await pressCtrlK();
+    expect(onOpen, 'the screen switcher did not get Ctrl-K').toHaveBeenCalledTimes(1);
+    expect(paletteInputs(), 'Ctrl-K opened the admin palette as well').toHaveLength(0);
+
+    await act(async () => { root.render(<Harness withSwitcher={false} />); });
+    await pressCtrlK();
+    expect(paletteInputs(), 'the admin palette did not take Ctrl-K back').toHaveLength(1);
+    expect(onOpen).toHaveBeenCalledTimes(1);
   });
 });
 

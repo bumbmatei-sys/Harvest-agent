@@ -19,3 +19,20 @@ export function subscribeAdminSearch(fn: OpenFn): () => void {
     listeners.delete(fn);
   };
 }
+
+let hotkeyClaims = 0;
+
+/** A screen with its own ⌘K / Ctrl-K takes the key; the admin palette's hotkey stands down until released. */
+export function claimAdminSearchHotkey(): () => void {
+  hotkeyClaims += 1;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    hotkeyClaims -= 1;
+  };
+}
+
+export function isAdminSearchHotkeyClaimed(): boolean {
+  return hotkeyClaims > 0;
+}

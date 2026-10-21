@@ -53,7 +53,7 @@ import {
   type ShellSideId,
   type ShellTabRef,
 } from './shell-nav';
-import { subscribeAdminSearch } from './admin-search';
+import { isAdminSearchHotkeyClaimed, subscribeAdminSearch } from './admin-search';
 import { useShellTheme } from './use-shell-theme';
 
 /** Collapsed card is this wide plus the 8px margins; a 36px icon sits inside with room to spare. */
@@ -110,6 +110,7 @@ export function AdminDesktopSidebar({
     const open = () => setPaletteOpen(true);
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        if (isAdminSearchHotkeyClaimed()) return;
         event.preventDefault();
         open();
       }
