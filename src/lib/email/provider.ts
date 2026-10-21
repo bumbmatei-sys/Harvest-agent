@@ -22,7 +22,13 @@ export interface OutboundEmail {
 
 export type SendResult =
   | { readonly ok: true; readonly id: string | null }
-  | { readonly ok: false; readonly error: string; readonly retryable: boolean };
+  | {
+      readonly ok: false;
+      readonly error: string;
+      readonly retryable: boolean;
+      /** The request timed out, so the provider may have delivered it. Keep it counted; never refund or resend. */
+      readonly maybeDelivered?: boolean;
+    };
 
 export interface DnsRecord {
   readonly type: string;

@@ -278,6 +278,15 @@ describe('feedback events count once', () => {
     expect(await store.claimFeedbackEvent(`t-${uid()}`, 'bounced:em_1', NOW)).toBe(true);
   });
 
+  it('a released event can be claimed again, and releasing an unclaimed one is harmless', async () => {
+    const t = `t-${uid()}`;
+    expect(await store.claimFeedbackEvent(t, 'bounced:em_r', NOW)).toBe(true);
+    expect(await store.claimFeedbackEvent(t, 'bounced:em_r', NOW)).toBe(false);
+    await store.releaseFeedbackEvent(t, 'bounced:em_r');
+    expect(await store.claimFeedbackEvent(t, 'bounced:em_r', NOW)).toBe(true);
+    await expect(store.releaseFeedbackEvent(t, 'bounced:never')).resolves.toBeUndefined();
+  });
+
   it('purges events past their expiry only', async () => {
     const t = `t-${uid()}`;
     await store.claimFeedbackEvent(t, 'bounced:old', '2020-01-01T00:00:00.000Z');

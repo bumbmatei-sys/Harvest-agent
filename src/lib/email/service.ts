@@ -151,6 +151,8 @@ export interface EmailStore {
   getDomainOwner(domain: string): Promise<string | null>;
   /** Records a bounce or complaint event once. False means this event was already counted. */
   claimFeedbackEvent(tenantId: string, key: string, atIso: string): Promise<boolean>;
+  /** Gives a claimed event back, so a retry of the same event is counted. */
+  releaseFeedbackEvent(tenantId: string, key: string): Promise<void>;
   /** Deletes dedupe records past their expiry. Returns how many went. */
   purgeExpiredFeedbackEvents(nowIso: string): Promise<number>;
   /** Addresses that opted out, bounced or complained. Survives the CRM person being deleted. */
@@ -465,6 +467,7 @@ export function createEmailService(deps: {
     const useB = broadcast.subjectB != null;
     const deadline = clockMs() + sendBudgetMs;
     let sent = 0;
+    let maybeDelivered = 0;
     const queue = [...audience.recipients.entries()];
     async function worker() {
       for (let next = queue.shift(); next && clockMs() < deadline; next = queue.shift()) {
@@ -493,6 +496,7 @@ export function createEmailService(deps: {
             headers: listUnsubscribeHeaders(url),
           });
           if (result.ok) sent += 1;
+          else if (result.maybeDelivered) maybeDelivered += 1;
         } catch (error) {
           console.error(`[email/send] ${error instanceof Error ? error.message : 'send failed'}`);
         }
@@ -510,7 +514,9 @@ export function createEmailService(deps: {
       skippedNotOptedIn: audience.skipped.notOptedIn,
     };
     const outcome: SendOutcome = didNotSend === 0 ? 'sent' : sent === 0 ? 'failed' : 'partial';
-    const error = didNotSend === 0 ? null : `${didNotSend} of ${total} emails did not send.${sent > 0 ? ` ${sent} went out.` : ''}`;
+    const error = didNotSend === 0
+      ? null
+      : `${didNotSend} of ${total} emails did not send.${sent > 0 ? ` ${sent} went out.` : ''}${maybeDelivered > 0 ? ` ${maybeDelivered} timed out and still count against your allowance, because they may have been delivered.` : ''}`;
     const done: Broadcast = {
       ...sending,
       status: outcome,
@@ -519,7 +525,7 @@ export function createEmailService(deps: {
       sentAt: sent > 0 ? now().toISOString() : null,
       updatedAt: now().toISOString(),
     };
-    const settled = await store.settleSend({ broadcast: done, settlement: { month, day, refund: didNotSend } });
+    const settled = await store.settleSend({ broadcast: done, settlement: { month, day, refund: didNotSend - maybeDelivered } });
     if (sent > 0) await evaluatePause(broadcast.tenantId);
     if (!settled) return { broadcast: done, outcome: 'partial', message: INTERRUPTED };
     return { broadcast: done, outcome, message: error ?? `Sent to ${sent} ${sent === 1 ? 'person' : 'people'}.` };
@@ -630,12 +636,21 @@ export function createEmailService(deps: {
      * it against the month, and pauses sending if a rate has passed its limit.
      * `eventKey` identifies the provider's event: a repeat of it is ignored, so a
      * redelivered webhook cannot push a rate over its limit. Returns false for a repeat.
+     * Order matters for retries: the idempotent suppression is written first so a
+     * repeat still suppresses; the claim comes next; the claim is given back if the
+     * count fails, so the provider's retry of a failed delivery is counted once.
      */
     async recordFeedback(tenantId: string, email: string, kind: 'bounced' | 'complained', eventKey: string) {
       const at = now();
-      if (!(await store.claimFeedbackEvent(tenantId, `${kind}:${eventKey}`, at.toISOString()))) return false;
+      const claimKey = `${kind}:${eventKey}`;
       await store.markContactStatus(tenantId, normalizeEmail(email), kind, at.toISOString());
-      await store.addFeedback(tenantId, monthKey(at), kind);
+      if (!(await store.claimFeedbackEvent(tenantId, claimKey, at.toISOString()))) return false;
+      try {
+        await store.addFeedback(tenantId, monthKey(at), kind);
+      } catch (error) {
+        await store.releaseFeedbackEvent(tenantId, claimKey).catch(() => undefined);
+        throw error;
+      }
       await evaluatePause(tenantId);
       return true;
     },

@@ -404,6 +404,10 @@ export const firestoreEmailStore: EmailStore = {
     }
   },
 
+  async releaseFeedbackEvent(tenantId, key) {
+    await adminDb.collection(FEEDBACK_EVENTS).doc(`${tenantId}__${key}`).delete();
+  },
+
   async purgeExpiredFeedbackEvents(nowIso) {
     return purgeWhereAtOrBefore(FEEDBACK_EVENTS, 'expireAt', new Date(nowIso));
   },

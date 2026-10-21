@@ -235,6 +235,41 @@ describe('bounce and complaint feedback', () => {
     expect(ctx.mem.feedback.bounced).toBe(2);
   });
 
+  it('a retry after a failed count suppresses the address and counts the bounce exactly once', async () => {
+    const ctx = build({ contacts: [person('a@x.org')], usage: 1000 });
+    const realAdd = ctx.mem.store.addFeedback;
+    ctx.mem.store.addFeedback = async () => { throw new Error('firestore down'); };
+    await expect(ctx.service.recordFeedback(TENANT, 'a@x.org', 'bounced', 'em_1')).rejects.toThrow('firestore down');
+    expect(ctx.mem.suppressedEmails.has('a@x.org')).toBe(true);
+    expect(ctx.mem.feedback.bounced).toBe(0);
+    ctx.mem.store.addFeedback = realAdd;
+    expect(await ctx.service.recordFeedback(TENANT, 'a@x.org', 'bounced', 'em_1')).toBe(true);
+    expect(ctx.mem.feedback.bounced).toBe(1);
+    expect(await ctx.service.recordFeedback(TENANT, 'a@x.org', 'bounced', 'em_1')).toBe(false);
+    expect(ctx.mem.feedback.bounced).toBe(1);
+  });
+
+  it('a retry after a failed suppression write suppresses and counts, because nothing was claimed yet', async () => {
+    const ctx = build({ contacts: [person('a@x.org')], usage: 1000 });
+    const realMark = ctx.mem.store.markContactStatus;
+    ctx.mem.store.markContactStatus = async () => { throw new Error('firestore down'); };
+    await expect(ctx.service.recordFeedback(TENANT, 'a@x.org', 'bounced', 'em_1')).rejects.toThrow('firestore down');
+    expect(ctx.mem.feedbackEvents.size).toBe(0);
+    ctx.mem.store.markContactStatus = realMark;
+    expect(await ctx.service.recordFeedback(TENANT, 'a@x.org', 'bounced', 'em_1')).toBe(true);
+    expect(ctx.mem.suppressedEmails.has('a@x.org')).toBe(true);
+    expect(ctx.mem.feedback.bounced).toBe(1);
+  });
+
+  it('a redelivery of a counted event still re-asserts the suppression without counting again', async () => {
+    const ctx = build({ contacts: [person('a@x.org')], usage: 1000 });
+    await ctx.service.recordFeedback(TENANT, 'a@x.org', 'bounced', 'em_1');
+    ctx.mem.suppressedEmails.clear();
+    expect(await ctx.service.recordFeedback(TENANT, 'a@x.org', 'bounced', 'em_1')).toBe(false);
+    expect(ctx.mem.suppressedEmails.has('a@x.org')).toBe(true);
+    expect(ctx.mem.feedback.bounced).toBe(1);
+  });
+
   it('a bounce is a different event from a complaint with the same id', async () => {
     const ctx = build({ contacts: [person('a@x.org')] });
     await ctx.service.recordFeedback(TENANT, 'a@x.org', 'bounced', 'em_1');

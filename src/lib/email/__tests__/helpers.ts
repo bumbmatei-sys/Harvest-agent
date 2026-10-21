@@ -18,7 +18,7 @@ import {
 export const TENANT = 'grace';
 export const NOW = new Date('2031-03-10T12:00:00.000Z');
 
-export function mockProvider(opts: { failFor?: ReadonlySet<string>; throwFor?: ReadonlySet<string>; delayMs?: number; onSend?: () => void; known?: Record<string, DomainStatus['state']> } = {}): EmailProvider & { sent: OutboundEmail[] } {
+export function mockProvider(opts: { failFor?: ReadonlySet<string>; timeoutFor?: ReadonlySet<string>; throwFor?: ReadonlySet<string>; delayMs?: number; onSend?: () => void; known?: Record<string, DomainStatus['state']> } = {}): EmailProvider & { sent: OutboundEmail[] } {
   const sent: OutboundEmail[] = [];
   const status: DomainStatus = { domain: 'mail.grace.org', state: 'verified', records: [] };
   return {
@@ -28,6 +28,7 @@ export function mockProvider(opts: { failFor?: ReadonlySet<string>; throwFor?: R
       opts.onSend?.();
       if (opts.delayMs) await new Promise((r) => setTimeout(r, opts.delayMs));
       if (opts.throwFor?.has(message.to)) throw new Error('network down');
+      if (opts.timeoutFor?.has(message.to)) return { ok: false, error: 'Plunk did not answer within 15 seconds.', retryable: true, maybeDelivered: true };
       if (opts.failFor?.has(message.to)) return { ok: false, error: 'boom', retryable: false };
       sent.push(message);
       return { ok: true, id: `m${sent.length}` };
@@ -153,6 +154,7 @@ export function memoryStore(seed: {
       feedbackEvents.add(key);
       return true;
     },
+    async releaseFeedbackEvent(_t, key) { feedbackEvents.delete(key); },
     async purgeExpiredFeedbackEvents() { const n = feedbackEvents.size; feedbackEvents.clear(); return n; },
     async getDomainOwner(domain) { return domainOwners.get(domain) ?? null; },
     async listSuppressed() { return suppressedEmails; },
