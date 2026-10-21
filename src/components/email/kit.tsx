@@ -28,7 +28,7 @@ export function SetupBanner({ children, actionLabel, onAction }: { children: Rea
   return (
     <div role="status" className="flex items-center justify-between gap-3 rounded-lg bg-surface-gold px-4 py-3 text-sm text-strong">
       <span>{children}</span>
-      <Button variant="ghost" size="sm" className={cn(TAP, 'sm:min-h-0 font-semibold')} onClick={onAction}>{actionLabel}</Button>
+      <Button variant="ghost" size="sm" className="min-h-11 font-semibold" onClick={onAction}>{actionLabel}</Button>
     </div>
   );
 }

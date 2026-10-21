@@ -59,7 +59,7 @@ export function EmailWorkspace({ tenantId, api: injected, initialSection = 'over
     return (
       <div className="mx-auto flex w-full max-w-[1200px] flex-col items-start gap-3 px-4 py-8 lg:px-0">
         <ErrorNote>{error}</ErrorNote>
-        <Button variant="outline" className={TAP} onClick={() => void load()}>Try again</Button>
+        <Button variant="outline" className="min-h-11" onClick={() => void load()}>Try again</Button>
       </div>
     );
   }

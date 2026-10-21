@@ -104,7 +104,7 @@ export function EmailSettingsView({ api, settings, onSaved }: {
         </div>
         {error && <ErrorNote>{error}</ErrorNote>}
         <div className="flex items-center gap-3">
-          <Button className={TAP} disabled={busy !== null} onClick={() => void save()}>{busy === 'save' ? 'Saving…' : 'Save'}</Button>
+          <Button className="min-h-11" disabled={busy !== null} onClick={() => void save()}>{busy === 'save' ? 'Saving…' : 'Save'}</Button>
           {saved && <span role="status" className="text-sm text-muted">Saved.</span>}
         </div>
       </Section>
@@ -119,11 +119,11 @@ export function EmailSettingsView({ api, settings, onSaved }: {
             <Label htmlFor="email-domain">Your ministry domain</Label>
             <Input id="email-domain" className={`${TAP} w-72`} value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="gracechurch.org" />
           </div>
-          <Button className={TAP} disabled={busy !== null || !domain.trim()} onClick={() => void runDomain('register')}>
+          <Button className="min-h-11" disabled={busy !== null || !domain.trim()} onClick={() => void runDomain('register')}>
             {settings.domainState === 'none' ? 'Set up domain' : 'Use this domain'}
           </Button>
           {settings.domainState !== 'none' && (
-            <Button variant="outline" className={TAP} disabled={busy !== null} onClick={() => void runDomain('check')}>
+            <Button variant="outline" className="min-h-11" disabled={busy !== null} onClick={() => void runDomain('check')}>
               <RefreshCw data-icon="inline-start" />{busy === 'check' ? 'Checking…' : 'Check again'}
             </Button>
           )}
@@ -142,7 +142,7 @@ export function EmailSettingsView({ api, settings, onSaved }: {
                       <TableCell className="font-mono text-xs break-all">{r.name}</TableCell>
                       <TableCell className="font-mono text-xs break-all">{r.value}</TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon" className={TAP} aria-label={`Copy ${r.type} value`} onClick={() => void navigator.clipboard?.writeText(r.value)}><Copy /></Button>
+                        <Button variant="ghost" size="icon" className="min-h-11" aria-label={`Copy ${r.type} value`} onClick={() => void navigator.clipboard?.writeText(r.value)}><Copy /></Button>
                       </TableCell>
                     </TableRow>
                   ))}

@@ -139,7 +139,7 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
 
   const header = (
     <div className="flex items-center gap-3 border-b border-line pb-4">
-      <Button variant="ghost" size="icon" className={TAP} aria-label="Back to broadcasts" onClick={() => { void persist().then(() => { onChanged(); onBack(); }); }}><ArrowLeft /></Button>
+      <Button variant="ghost" size="icon" className="min-h-11" aria-label="Back to broadcasts" onClick={() => { void persist().then(() => { onChanged(); onBack(); }); }}><ArrowLeft /></Button>
       <h1 className="min-w-0 flex-1 truncate font-display text-lg font-semibold text-strong">{subject.trim() || 'Untitled broadcast'}</h1>
       <nav aria-label="Steps" className="flex items-center gap-2 text-sm">
         <span className={step === 'write' ? 'font-medium text-strong' : 'text-faint'} aria-current={step === 'write' ? 'step' : undefined}>Write</span>
@@ -147,7 +147,7 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
         <span className={step === 'send' ? 'font-medium text-strong' : 'text-faint'} aria-current={step === 'send' ? 'step' : undefined}>Send</span>
       </nav>
       <span className="text-sm text-faint" role="status" data-save-state={saving}>{SAVE_LABEL[saving]}</span>
-      {step === 'write' && <Button className={TAP} onClick={next}>Next<ArrowRight data-icon="inline-end" /></Button>}
+      {step === 'write' && <Button className="min-h-11" onClick={next}>Next<ArrowRight data-icon="inline-end" /></Button>}
     </div>
   );
 
@@ -168,7 +168,7 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
               <div><dt className="text-faint">Skipped</dt><dd className="font-display text-xl text-strong">{result.stats.skippedSuppressed + result.stats.skippedNotOptedIn}</dd></div>
             </dl>
           )}
-          <Button className={TAP} onClick={() => { onChanged(); onBack(); }}>Back to broadcasts</Button>
+          <Button className="min-h-11" onClick={() => { onChanged(); onBack(); }}>Back to broadcasts</Button>
         </section>
       </div>
     );
@@ -203,7 +203,7 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
               <div className="flex items-center justify-between text-sm">
                 <span className="text-faint">From <span className="text-strong">{data.settings.fromName || 'Add a sender name in settings'}</span></span>
                 {subjectB === null && (
-                  <Button variant="ghost" size="sm" className={cn(TAP, 'sm:min-h-0 text-muted')} onClick={() => setSubjectB('')}><Split data-icon="inline-start" />Test another subject line</Button>
+                  <Button variant="ghost" size="sm" className="min-h-11 text-muted" onClick={() => setSubjectB('')}><Split data-icon="inline-start" />Test another subject line</Button>
                 )}
               </div>
               <div className="flex items-start gap-3">
@@ -220,7 +220,7 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
                     <Input aria-label="Another subject to try" value={subjectB} onChange={(e) => setSubjectB(e.target.value)} placeholder="Another subject to try" className="h-auto border-0 bg-transparent dark:bg-transparent px-0 py-2 text-xl font-semibold shadow-none focus-visible:ring-0" />
                     <p className="pb-1 text-xs text-faint">Half your list gets A and half gets B.</p>
                   </div>
-                  <Button variant="ghost" size="icon" className={TAP} aria-label="Remove the second subject" onClick={() => setSubjectB(null)}><X /></Button>
+                  <Button variant="ghost" size="icon" className="min-h-11" aria-label="Remove the second subject" onClick={() => setSubjectB(null)}><X /></Button>
                 </div>
               )}
             </div>

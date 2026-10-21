@@ -41,7 +41,7 @@ export function EmailOverview({ data, onNew, onSettings, onSubscribers }: {
       <PageHeader
         title="Email"
         subtitle="How your list is growing and what you have sent."
-        action={<Button className={TAP} onClick={onNew}><Plus data-icon="inline-start" />New broadcast</Button>}
+        action={<Button className="min-h-11" onClick={onNew}><Plus data-icon="inline-start" />New broadcast</Button>}
       />
       {!senderReady(data.settings) && (
         <SetupBanner actionLabel="Open settings" onAction={onSettings}>Finish your sender details and verify your domain before you send.</SetupBanner>
@@ -57,7 +57,7 @@ export function EmailOverview({ data, onNew, onSettings, onSubscribers }: {
       <Card className="gap-0 p-0">
         <div className="flex items-baseline justify-between px-5 pt-5">
           <h2 className="text-base font-semibold text-strong">How your list reads</h2>
-          <Button variant="link" className={TAP} onClick={onSubscribers}>See subscribers</Button>
+          <Button variant="link" className="min-h-11" onClick={onSubscribers}>See subscribers</Button>
         </div>
         <ul className="flex flex-col gap-4 p-5">
           {rows.map((r) => (

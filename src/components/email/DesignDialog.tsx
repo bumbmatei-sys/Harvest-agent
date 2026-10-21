@@ -103,7 +103,7 @@ export function DesignDialog({ open, onOpenChange, design, onChange }: {
           </Row>
         </div>
         <DialogFooter>
-          <Button className={TAP} onClick={() => onOpenChange(false)}>Done</Button>
+          <Button className="min-h-11" onClick={() => onOpenChange(false)}>Done</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -62,7 +62,7 @@ export function BroadcastsView({ data, onNew, onOpen, onDelete, onSettings }: {
       <PageHeader
         title="Broadcasts"
         subtitle="One-time emails to your list, sent now or later."
-        action={<Button className={TAP} onClick={onNew}><Plus data-icon="inline-start" />New broadcast</Button>}
+        action={<Button className="min-h-11" onClick={onNew}><Plus data-icon="inline-start" />New broadcast</Button>}
       />
       {!senderReady(data.settings) && (
         <SetupBanner actionLabel="Open settings" onAction={onSettings}>Finish your sender details and verify your domain before you send.</SetupBanner>
@@ -85,7 +85,7 @@ export function BroadcastsView({ data, onNew, onOpen, onDelete, onSettings }: {
               <EmptyTitle>{tab === 'all' ? 'No broadcasts yet' : `Nothing in ${TABS.find((t) => t.value === tab)?.label.toLowerCase()}`}</EmptyTitle>
               <EmptyDescription>Write one email, pick who gets it, and send it now or schedule it.</EmptyDescription>
             </EmptyHeader>
-            <Button className={TAP} onClick={onNew}><Plus data-icon="inline-start" />New broadcast</Button>
+            <Button className="min-h-11" onClick={onNew}><Plus data-icon="inline-start" />New broadcast</Button>
           </Empty>
         </Card>
       ) : (

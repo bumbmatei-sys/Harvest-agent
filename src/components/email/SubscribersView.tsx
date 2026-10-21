@@ -59,7 +59,7 @@ export function SubscribersView({ data, onImport, onSettings }: { data: Overview
       )}
       <div className="flex items-center justify-between gap-4">
         <p className="text-sm text-muted">Bring your list from Mailchimp, Substack, or a CSV. It joins your CRM.</p>
-        <Button className={TAP} onClick={onImport}><FileUp data-icon="inline-start" />Import contacts</Button>
+        <Button className="min-h-11" onClick={onImport}><FileUp data-icon="inline-start" />Import contacts</Button>
       </div>
       <div className="relative">
         <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-faint" />

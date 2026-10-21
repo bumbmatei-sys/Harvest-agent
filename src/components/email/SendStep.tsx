@@ -136,13 +136,13 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
               ) : (
                 <span className="flex-1 px-2 text-sm text-faint">{f.kind === 'member-of' ? 'No groups yet' : 'No tags yet'}</span>
               )}
-              <Button variant="ghost" size="icon" className={TAP} aria-label="Remove filter" onClick={() => onFilters(filters.filter((_, j) => j !== i))}><X /></Button>
+              <Button variant="ghost" size="icon" className="min-h-11" aria-label="Remove filter" onClick={() => onFilters(filters.filter((_, j) => j !== i))}><X /></Button>
             </div>
           );
         })}
 
         <div className="mt-4">
-          <Button variant="ghost" className={TAP} onClick={() => onFilters([...filters, { kind: 'has-tag', value: '' }])}>
+          <Button variant="ghost" className="min-h-11" onClick={() => onFilters([...filters, { kind: 'has-tag', value: '' }])}>
             <Plus data-icon="inline-start" />Add a filter
           </Button>
         </div>
@@ -222,7 +222,7 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
         )}
         {error && <div className="mt-4"><ErrorNote>{error}</ErrorNote></div>}
 
-        <Button className={cn(TAP, 'mt-5 w-full')} disabled={blocked} onClick={preview}>
+        <Button className="mt-5 min-h-11 w-full" disabled={blocked} onClick={preview}>
           <Send data-icon="inline-start" />{label}
         </Button>
         {usage.cap > 0 && (
@@ -234,7 +234,7 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
           People who unsubscribe or bounce before it goes out are skipped. Scheduled emails can be cancelled before their time.
         </p>
       </section>
-      <Button variant="ghost" className={TAP} onClick={onBack}>Back to writing</Button>
+      <Button variant="ghost" className="min-h-11" onClick={onBack}>Back to writing</Button>
 
       <Dialog open={confirm !== null} onOpenChange={(o) => { if (!o && !busy) setConfirm(null); }}>
         <DialogContent className="sm:max-w-md">
@@ -257,8 +257,8 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
             </dl>
           )}
           <DialogFooter>
-            <Button variant="outline" className={TAP} disabled={busy} onClick={() => setConfirm(null)}>Cancel</Button>
-            <Button className={TAP} disabled={busy} onClick={commit}>{confirm?.preview.action === 'schedule' ? 'Confirm schedule' : 'Confirm send'}</Button>
+            <Button variant="outline" className="min-h-11" disabled={busy} onClick={() => setConfirm(null)}>Cancel</Button>
+            <Button className="min-h-11" disabled={busy} onClick={commit}>{confirm?.preview.action === 'schedule' ? 'Confirm schedule' : 'Confirm send'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -45,7 +45,7 @@ function isHttps(url: string): boolean {
 
 function ToolButton({ label, active, onClick, children }: { label: string; active?: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <Button type="button" variant="ghost" size="icon-sm" aria-label={label} aria-pressed={active ?? false} onClick={onClick} className={cn(TAP, 'sm:min-h-0', active && 'bg-muted text-strong')}>
+    <Button type="button" variant="ghost" size="icon-sm" aria-label={label} aria-pressed={active ?? false} onClick={onClick} className="min-h-11 aria-pressed:bg-muted aria-pressed:text-strong">
       {children}
     </Button>
   );
@@ -79,7 +79,7 @@ function UrlPopover({ label, icon, withLabel, onSubmit, disabled }: {
           <Input id={`${label}-url`} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://" aria-invalid={url !== 'https://' && !isHttps(url)} />
           {url !== 'https://' && !isHttps(url) && <p className="text-xs text-danger">Use a full https:// address.</p>}
         </div>
-        <Button type="button" disabled={!ok} onClick={() => { onSubmit(url, text); setOpen(false); setUrl('https://'); setText(''); }}>Add</Button>
+        <Button type="button" className="min-h-11" disabled={!ok} onClick={() => { onSubmit(url, text); setOpen(false); setUrl('https://'); setText(''); }}>Add</Button>
       </PopoverContent>
     </Popover>
   );
