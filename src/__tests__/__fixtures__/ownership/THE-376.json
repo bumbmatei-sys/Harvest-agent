@@ -4,8 +4,8 @@
   "entries": [
     {
       "file": "src/components/AdminDashboard.tsx",
-      "digest": "795f8155d042434a37b785571e452601fdf6dfd96fafec8b2c0d144cbdb415a0",
-      "why": "Desktop Settings popup. On lg the settings tab mounts the sidebar-13 SettingsDialog instead of the full AdminSettings page. The sidebar Settings entry still navigates to /admin/settings so THE-332 keeps passing. Mobile still renders AdminSettings. No permission gate, nav id or other screen mount was added or removed."
+      "digest": "9f781d73a826a925b99e3f1ddb0b6fc57f6f45fcc96794c16028f2d5387ee5c3",
+      "why": "Desktop Settings popup. On lg the settings tab mounts the sidebar-13 SettingsDialog over the Home screen instead of the full AdminSettings page. The sidebar Settings entry still navigates to /admin/settings so THE-332 keeps passing. Mobile still renders AdminSettings. No permission gate or nav id moved; the only mount change is Home behind the popup on lg."
     },
     {
       "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",

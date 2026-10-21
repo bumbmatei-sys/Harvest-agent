@@ -426,8 +426,8 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     ['51c9a678558d1bdf523bfaf524afaf0e3bc92dcfc230d471ba43def62a50fe68',
       `Eden shell fix round - the platform bell is a shadcn Button (ghost, icon) with the gold active highlight, and the desktop content bar mounts only at lg so a phone does not fetch the payments inbox twice. No permission gate, nav id or screen mount moved.`],
     // APPENDED BY the desktop settings popup, nothing above removed or rewritten.
-    ['795f8155d042434a37b785571e452601fdf6dfd96fafec8b2c0d144cbdb415a0',
-      `desktop settings popup - on lg the Settings tab opens the sidebar-13 dialog instead of the full page. Mobile still mounts AdminSettings. No permission gate, nav id or other screen mount moved.`],
+    ['9f781d73a826a925b99e3f1ddb0b6fc57f6f45fcc96794c16028f2d5387ee5c3',
+      `desktop settings popup - on lg the Settings tab opens the sidebar-13 dialog over the Home screen instead of the full page. Mobile still mounts AdminSettings. No permission gate or nav id moved; the only mount change is Home behind the popup on lg.`],
   ],
 };
 

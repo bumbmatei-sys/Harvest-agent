@@ -1055,7 +1055,7 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ are byte-identical'
     // APPENDED BY the Eden shell fix round. The platform bell is a shadcn Button (ghost, icon) with the gold active highlight, and the desktop content bar mounts only at lg so a phone does not fetch the payments inbox twice. No permission gate moved.
     '51c9a678558d1bdf523bfaf524afaf0e3bc92dcfc230d471ba43def62a50fe68',
     // APPENDED BY the desktop settings popup. On lg, Settings opens the sidebar-13 dialog. Mobile still mounts AdminSettings. No permission gate moved.
-    '795f8155d042434a37b785571e452601fdf6dfd96fafec8b2c0d144cbdb415a0',
+    '9f781d73a826a925b99e3f1ddb0b6fc57f6f45fcc96794c16028f2d5387ee5c3',
   ];
 
   it('AdminDashboard.tsx is untouched by THIS ticket — others legitimately own it', () => {

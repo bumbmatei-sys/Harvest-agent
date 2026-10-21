@@ -116,10 +116,11 @@ export default function ProfileSection() {
         canvas.height = height;
         canvas.getContext('2d')?.drawImage(img, 0, 0, width, height);
         const base64String = canvas.toDataURL('image/jpeg', 0.7);
+        const previousPhoto = photo;
         setPhoto(base64String);
         try {
           const uid = auth.currentUser?.uid;
-          if (!uid) return;
+          if (!uid) throw new Error('not signed in');
           await updateDoc(doc(db, 'users', uid), { photoURL: base64String });
           if (auth.currentUser) {
             try { await updateProfile(auth.currentUser, { photoURL: base64String }); }
@@ -127,6 +128,9 @@ export default function ProfileSection() {
           }
         } catch (error) {
           handleFirestoreError(error, OperationType.UPDATE, `users/${auth.currentUser?.uid}`);
+          setPhoto(previousPhoto);
+          setSaveState('error');
+          setSaveMessage('Your photo could not be saved. Your previous photo is still in place — check your connection and try again.');
         }
       };
       img.src = reader.result as string;

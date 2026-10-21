@@ -904,13 +904,16 @@ describe('13 · no colour hardcoded, no emoji; both palettes resolve — Classic
       expect(createHash('sha256').update(readFileSync(path.join(ROOT, rel))).digest('hex'),
         `${rel} changed — this slice must mint no token`).toBe(TOKEN_SOURCE_DIGESTS[rel]);
     }
-    // And settings/ gained no component file.
+    // And settings/ gained no component file. THE-376 APPENDED the six files of
+    // the desktop Settings popup (marked), nothing else was added or removed.
     const files = readdirSync(path.join(ROOT, 'src/components/settings')).filter((f) => /\.tsx?$/.test(f));
     expect(files.sort(), 'settings/ gained or lost a file').toEqual([
-      'AddOnsSection.tsx', 'BillingTermToggle.tsx', 'BrandingSection.tsx', 'ChurchDataExportPanel.tsx', 'DomainSection.tsx',
+      'AddOnsSection.tsx', 'AppearanceRow.tsx', 'BillingTermToggle.tsx', 'BrandingSection.tsx', 'CancelPlanBlock.tsx',
+      'ChurchDataExportPanel.tsx', 'DomainSection.tsx',
       'GivingStatementsSection.tsx', 'IntegrationsSection.tsx', 'OnboardingSection.tsx',
-      'PaymentSection.tsx', 'PlanUpgradeSection.tsx', 'SectionHeading.tsx', 'SettingsAccordion.tsx',
-      'SmsSection.tsx', 'autosave.ts', 'integration-providers.ts', 'useStripeReturn.ts',
+      'PaymentSection.tsx', 'PlanBillingSection.tsx', 'PlanUpgradeSection.tsx', 'ProfileSection.tsx', 'SectionHeading.tsx',
+      'SettingsAccordion.tsx', 'SettingsDialog.tsx',
+      'SmsSection.tsx', 'autosave.ts', 'integration-providers.ts', 'settings-nav.ts', 'useStripeReturn.ts',
       'useTenantId.ts',
     ]);
   });

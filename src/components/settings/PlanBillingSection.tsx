@@ -5,6 +5,7 @@ import { Crown, DollarSign, Check, AlertTriangle, X } from 'lucide-react';
 import { TenantPlan } from '../../types/tenant.types';
 import { getPlanFeatures, PLAN_DISPLAY_NAMES, PLAN_ORDER, formatPlanPrice, isUnpricedTier } from '../../utils/plan-features';
 import PlanUpgradeSection from './PlanUpgradeSection';
+import { summarizePlanFeatures } from '../AdminSettings';
 import { Alert, AlertTitle, AlertDescription, AlertAction } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -51,14 +52,7 @@ export default function PlanBillingSection({
   const hasSubscription = currentPlan !== undefined && !isUnpricedTier(currentPlan);
   const currentPlanData = currentPlan ? PLANS_DISPLAY.find((p) => p.id === currentPlan) : null;
   const currentFeatures = currentPlan ? getPlanFeatures(currentPlan) : null;
-  const planSummary = currentFeatures
-    ? [
-        `${currentFeatures.maxCourses === -1 ? 'Unlimited' : currentFeatures.maxCourses} courses`,
-        currentFeatures.blog ? 'Blog' : null,
-        currentFeatures.aiChat ? 'AI Chat' : null,
-        currentFeatures.crm ? 'CRM' : null,
-      ].filter(Boolean).join(' · ')
-    : '';
+  const planSummary = currentFeatures ? summarizePlanFeatures(currentFeatures) : '';
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

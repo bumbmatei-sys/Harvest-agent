@@ -26,12 +26,14 @@ import {
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
+  SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { isUnpricedTier } from "../../utils/plan-features";
 import type { TenantPlan } from "../../types/tenant.types";
@@ -86,14 +88,22 @@ export function SettingsDialog({
     initialSection ?? 'profile',
   );
 
+  // Read on the open transition only. The Stripe/Dodo return params are
+  // stripped from the URL by the billing pane after it mounts, so a later
+  // dashboard re-render hands this a different `initialSection`; following it
+  // would throw the admin off Plan & billing the moment the banner appears.
+  const initialSectionRef = React.useRef(initialSection);
+  initialSectionRef.current = initialSection;
   React.useEffect(() => {
     if (!open) return;
-    setSection(initialSection ?? settingsSectionFromLocation());
-  }, [open, initialSection]);
+    setSection(initialSectionRef.current ?? settingsSectionFromLocation());
+  }, [open]);
 
-  const active = SETTINGS_NAV.find((item) => item.id === section) ?? SETTINGS_NAV[0];
   const hasSubscription = currentPlan !== undefined && !isUnpricedTier(currentPlan);
   const nav = hasSubscription ? SETTINGS_NAV : SETTINGS_NAV.filter((item) => item.id !== 'danger');
+  const mainNav = nav.filter((item) => item.id !== 'danger');
+  const dangerNav = nav.filter((item) => item.id === 'danger');
+  const active = nav.find((item) => item.id === section) ?? nav[0];
 
   const handleManage = React.useCallback(async () => {
     if (onManageSubscription) {
@@ -123,6 +133,23 @@ export function SettingsDialog({
     }
   }, [onManageSubscription, tenantId]);
 
+  const renderNavItem = (item: (typeof SETTINGS_NAV)[number], destructive = false) => {
+    const Icon = NAV_ICONS[item.id];
+    return (
+      <SidebarMenuItem key={item.id}>
+        <SidebarMenuButton
+          isActive={item.id === active.id}
+          onClick={() => setSection(item.id)}
+          data-settings-nav={item.id}
+          className={`min-h-11 sm:min-h-0${destructive ? ' text-destructive hover:text-destructive' : ''}`}
+        >
+          <Icon />
+          <span>{item.label}</span>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -140,26 +167,19 @@ export function SettingsDialog({
               <SidebarGroup>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    {nav.map((item) => {
-                      const Icon = NAV_ICONS[item.id];
-                      return (
-                        <SidebarMenuItem key={item.id}>
-                          <SidebarMenuButton
-                            isActive={item.id === active.id}
-                            onClick={() => setSection(item.id)}
-                            data-settings-nav={item.id}
-                            className="min-h-11 sm:min-h-0"
-                          >
-                            <Icon />
-                            <span>{item.label}</span>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      );
-                    })}
+                    {mainNav.map((item) => renderNavItem(item))}
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
             </SidebarContent>
+            {dangerNav.length > 0 && (
+              <SidebarFooter>
+                <SidebarSeparator className="mx-0" />
+                <SidebarMenu>
+                  {dangerNav.map((item) => renderNavItem(item, true))}
+                </SidebarMenu>
+              </SidebarFooter>
+            )}
           </Sidebar>
           <main className="flex h-[480px] flex-1 flex-col overflow-hidden">
             <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">

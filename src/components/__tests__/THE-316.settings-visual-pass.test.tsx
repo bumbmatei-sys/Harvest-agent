@@ -704,7 +704,7 @@ describe('10 · the switched-off sections stay off and SMS stays live', () => {
     expect(
       read(SETTINGS),
       "the SMS row's gate moved — it must read the master switch then smsAutomation",
-    ).toMatch(/hidden:\s*!SETTINGS_LEGACY_SECTIONS_ENABLED\s*\|\|\s*!SMS_FEATURE_ENABLED\s*\|\|\s*\(!platformOverride\s*&&\s*!currentFeatures\?\.smsAutomation\)/);
+    ).toMatch(/hidden:\s*!SMS_FEATURE_ENABLED\s*\|\|\s*\(!platformOverride\s*&&\s*!currentFeatures\?\.smsAutomation\)/);
     expect(read(SETTINGS), 'the SMS row still mounts the section').toMatch(/<SmsSection\s*\/>/);
   });
 });

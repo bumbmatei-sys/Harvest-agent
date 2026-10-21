@@ -475,6 +475,9 @@ describe('no other hardcoded term list remains in a validation path', () => {
       'through `readSignupBillingPeriod`.',
     'components/AdminSettings.tsx':
       'LEGITIMATE. Names one term for a headline price.',
+    'components/settings/PlanBillingSection.tsx':
+      'LEGITIMATE. Names one term for a headline price, the same plan card as ' +
+      'AdminSettings rendered inside the desktop Settings popup.',
     'components/AdminTenants.tsx':
       'LEGITIMATE. Names one term for a headline price.',
     'components/PlanUpgradeScreen.tsx':

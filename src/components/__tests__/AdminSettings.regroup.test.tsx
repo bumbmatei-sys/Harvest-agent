@@ -371,9 +371,7 @@ describe('THE-183 — admin Settings', () => {
     // The same component the member Profile renders, not a second copy:
     // AdminSettings imports it, and defines no radiogroup of its own.
     const src = readFileSync(SETTINGS_SRC, 'utf8');
-    const appearance = readFileSync(path.join(SRC, 'components/settings/AppearanceRow.tsx'), 'utf8');
-    expect(src).toMatch(/import\s+AppearanceRow\s+from\s+'\.\/settings\/AppearanceRow'/);
-    expect(appearance).toMatch(/import\s+ThemeToggle\s+from\s+'\.\.\/ThemeToggle'/);
+    expect(src).toMatch(/import\s+ThemeToggle\s+from\s+'\.\/ThemeToggle'/);
     expect(src, 'the palette family toggle is still imported').not.toContain('PaletteFamilyToggle');
     expect(src, 'admin Settings is building its own theme control instead of reusing one')
       .not.toMatch(/role=["']radiogroup["']/);
@@ -407,7 +405,7 @@ describe('THE-183 — admin Settings', () => {
       .not.toContain('PaletteFamilyToggle');
     expect(profile, 'the member Profile no longer renders the mode control')
       .toMatch(/<ThemeToggle variant="row" \/>/);
-    expect(readFileSync(path.join(SRC, 'components/settings/AppearanceRow.tsx'), 'utf8'), 'admin Settings renders a different control')
+    expect(readFileSync(SETTINGS_SRC, 'utf8'), 'admin Settings renders a different control')
       .toMatch(/<ThemeToggle variant="row" \/>/);
   });
 

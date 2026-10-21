@@ -97,8 +97,45 @@ describe('desktop Settings popup (sidebar-13)', () => {
   it('opens the deep-linked section', async () => {
     await mount({ initialSection: 'billing' });
     expect(document.querySelector('[data-settings-section="billing"]')).toBeTruthy();
-    expect(document.querySelector('[data-settings-nav="billing"]')?.getAttribute('data-active')
-      || document.querySelector('[data-settings-nav="billing"]')?.getAttribute('data-slot')).toBeTruthy();
+    expect(document.querySelector('[data-settings-nav="billing"]')?.hasAttribute('data-active')).toBe(true);
+    expect(document.querySelector('[data-settings-nav="profile"]')?.hasAttribute('data-active')).toBe(false);
+  });
+
+  it('stays on the deep-linked section when the URL params are stripped after it opens', async () => {
+    // The billing pane strips ?stripe= on mount, so the dashboard's next render
+    // computes a different initialSection. The open pane must not follow it.
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    const render = (initialSection: 'billing' | 'profile') => act(async () => {
+      root.render(
+        <SettingsDialog open onOpenChange={() => {}} currentPlan={'pro' as never} tenantId="t1"
+          email="admin@church.org" initialSection={initialSection} />,
+      );
+    });
+    await render('billing');
+    expect(document.querySelector('[data-settings-section="billing"]')).toBeTruthy();
+    await render('profile');
+    expect(document.querySelector('[data-settings-section="billing"]'),
+      'the pane snapped back to Profile after the return params were stripped').toBeTruthy();
+    expect(document.querySelector('[data-settings-section="profile"]')).toBeFalsy();
+  });
+
+  it('puts Danger zone last, in the separated footer of the nav', async () => {
+    await mount();
+    const labels = navLabels(document.body);
+    expect(labels[labels.length - 1]).toBe('Danger zone');
+    const danger = document.querySelector('[data-settings-nav="danger"]')!;
+    expect(danger.closest('[data-slot="sidebar-footer"]'), 'Danger zone is not in the footer group').toBeTruthy();
+    expect(document.querySelector('[data-settings-nav="profile"]')!.closest('[data-slot="sidebar-footer"]')).toBeNull();
+    expect(document.querySelector('[data-slot="sidebar-separator"]'), 'no rule above Danger zone').toBeTruthy();
+  });
+
+  it('falls back to Profile, not a blank pane, for ?section=danger with no subscription', async () => {
+    await mount({ initialSection: 'danger', currentPlan: 'free' as never });
+    expect(navLabels(document.body)).not.toContain('Danger zone');
+    expect(document.querySelector('[data-settings-section="profile"]')).toBeTruthy();
+    expect(document.querySelector('[data-settings-section="danger"]')).toBeFalsy();
   });
 
   it('does not render SMS, Integrations, or Donations & payment links', async () => {

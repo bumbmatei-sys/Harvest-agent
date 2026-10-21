@@ -2,8 +2,8 @@
  * Settings popup hide-not-delete switch.
  *
  * ONE VALUE. Setting `SETTINGS_LEGACY_SECTIONS_ENABLED` to `true` restores the
- * three Settings rows this ticket hid — SMS, Integrations (Mailchimp /
- * Instagram / Gmail), and Donations & payment links (Stripe Connect) — on both
+ * three Settings rows this ticket hid — SMS, Integrations (the connected
+ * mail and social providers), and Donations & payment links (Stripe Connect) — on both
  * the desktop popup and the mobile Settings page. Nothing behind the switch was
  * deleted: the rows, their panels, and their existing plan / master-switch
  * gates stay in `AdminSettings`. Flip this, and those gates are what decide

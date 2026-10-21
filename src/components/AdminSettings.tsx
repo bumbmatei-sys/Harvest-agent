@@ -7,7 +7,6 @@ import { hasPlatformOverride } from '../utils/tenant-scope';
 import { SMS_FEATURE_ENABLED } from '../lib/sms-feature';
 import { SETTINGS_LEGACY_SECTIONS_ENABLED } from '../lib/settings-legacy-sections';
 import SettingsAccordion from './settings/SettingsAccordion';
-import AppearanceRow from './settings/AppearanceRow';
 import ChurchDataExportPanel from './settings/ChurchDataExportPanel';
 import OnboardingSection from './settings/OnboardingSection';
 import GivingStatementsSection from './settings/GivingStatementsSection';
@@ -15,6 +14,7 @@ import SmsSection from './settings/SmsSection';
 import IntegrationsSection from './settings/IntegrationsSection';
 import { hasAnyIntegrationProvider } from './settings/integration-providers';
 import { GIVING_PROVIDER_NAMES_OR } from './donations/giving-providers';
+import ThemeToggle from './ThemeToggle';
 import SectionHeading from './settings/SectionHeading';
 import { FORM_MEASURE, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
 /*
@@ -122,6 +122,18 @@ interface AdminSettingsProps {
   onOpenDonations: () => void;
 }
 
+/** The one place the plan card's summary line reads the crm cell: a render string, not a gate. */
+export function summarizePlanFeatures(features: ReturnType<typeof getPlanFeatures>): string {
+  return [
+    `${features.maxCourses === -1 ? 'Unlimited' : features.maxCourses} courses`,
+    features.blog ? 'Blog' : null,
+    features.aiChat ? 'AI Chat' : null,
+    features.crm ? 'CRM' : null,
+  ].filter(Boolean).join(' · ');
+}
+
+const LEGACY_SECTION_IDS: ReadonlyArray<string> = ['payments', 'sms', 'integrations'];
+
 const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tenantId, email, isPlanOwner, onCustomizeNav, onOpenDonations }) => {
   const [stripeStatus, setStripeStatus] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -142,14 +154,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
   const currentPlanData = currentPlan ? PLANS_DISPLAY.find(p => p.id === currentPlan) : null;
   const currentFeatures = currentPlan ? getPlanFeatures(currentPlan) : null;
   // Compact, comma/dot-separated plan summary, e.g. "Unlimited courses · Blog · AI Chat".
-  const planSummary = currentFeatures
-    ? [
-        `${currentFeatures.maxCourses === -1 ? 'Unlimited' : currentFeatures.maxCourses} courses`,
-        currentFeatures.blog ? 'Blog' : null,
-        currentFeatures.aiChat ? 'AI Chat' : null,
-        currentFeatures.crm ? 'CRM' : null,
-      ].filter(Boolean).join(' · ')
-    : '';
+  const planSummary = currentFeatures ? summarizePlanFeatures(currentFeatures) : '';
   const [forceOpen, setForceOpen] = useState<string | null>(null);
 
   // Handle Stripe return URL params
@@ -252,10 +257,47 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
       content: (
         /* THE-316 — label, description and controls IS an `Item`. The
            hand-written `flex flex-wrap items-center justify-between` wrapper
-           and its two bare `<p>`s were this primitive retyped. AppearanceRow
-           is that Item, shared with the desktop popup so the two surfaces
-           cannot drift. */
-        <AppearanceRow />
+           and its two bare `<p>`s were this primitive retyped. */
+        <Item className="flex-wrap justify-between gap-3 p-0">
+          <ItemContent className="flex-none">
+            <ItemTitle className="text-sm font-semibold text-strong">Colour theme</ItemTitle>
+            <ItemDescription className="text-sm text-muted">
+              Palette and light/dark, for your account on this device. System follows your device setting.
+            </ItemDescription>
+          </ItemContent>
+          {/* THE-183 — the palette family (Harvest / Classic) was reachable only
+              from the member Profile, so an admin who never opens the member app
+              could not select Classic at all. Same two components as the
+              Profile's Appearance row, in the same wrapper: `flex items-center
+              gap-2`, family on the LEFT and mode on the RIGHT, DOM order
+              matching visual order so tab order agrees with reading order.
+
+              Reused verbatim, not re-implemented and not re-sized. Both write
+              their own localStorage key and both stamp <html> through
+              applyTheme in lib/theme-runtime.ts — the ONE path THE-85
+              consolidated to. Two UI copies of a control writing the same keys
+              is fine; a second stamping path is not, and "no second stamping
+              path exists" asserts that by enumerating the whole of src/.
+
+              ThemeToggle moves from its `default` variant to `row` here: `row`
+              is documented as the sizing for when the row holds two controls
+              instead of one, which is now this row as well. That is also what
+              brings the icon-only fallback with it — below `sm` (640px), and
+              again from `xl` (1280px) up, where the Profile's settings column
+              splits and available width stops growing with the viewport
+              (THE-184). Admin Settings does not split at `xl`, so it has room
+              for the labels there; it takes the fallback anyway because
+              "match the member Profile exactly" is the requirement, and a
+              per-caller breakpoint would be a second answer to one question. */}
+          {/* ⚠️ `ItemActions` IS `flex items-center gap-2` — the exact class
+              string this wrapper already carried. THE-338 removed the
+              palette-family control that used to sit beside ThemeToggle, so
+              this row now holds one child; the wrapper is unchanged, which is
+              what keeps the remaining control's position identical. */}
+          <ItemActions>
+            <ThemeToggle variant="row" />
+          </ItemActions>
+        </Item>
       ),
     },
     {
@@ -327,7 +369,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
       //
       // Reads the FEATURE, not the tier, so nothing here has to be edited if a
       // future tier is sold without giving.
-      hidden: !SETTINGS_LEGACY_SECTIONS_ENABLED || (!platformOverride && !currentFeatures?.fundraising),
+      hidden: !platformOverride && !currentFeatures?.fundraising,
     },
     {
       id: 'onboarding',
@@ -374,7 +416,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
       // `smsAutomation` went false on plus and pro, and the row followed the
       // matrix. Reading the tier here instead would have needed a second edit,
       // and a second place for the two to disagree.
-      hidden: !SETTINGS_LEGACY_SECTIONS_ENABLED || !SMS_FEATURE_ENABLED || (!platformOverride && !currentFeatures?.smsAutomation),
+      hidden: !SMS_FEATURE_ENABLED || (!platformOverride && !currentFeatures?.smsAutomation),
     },
     {
       id: 'integrations',
@@ -398,7 +440,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
       // that is not sold — see `outboundSend` in integration-providers.ts. Free
       // therefore has no available provider at all and this section disappears
       // on its own; the three priced tiers are unmoved, and no plan flag changed.
-      hidden: !SETTINGS_LEGACY_SECTIONS_ENABLED || (!platformOverride && !hasAnyIntegrationProvider(currentFeatures, currentPlan)),
+      hidden: !platformOverride && !hasAnyIntegrationProvider(currentFeatures, currentPlan),
     },
     {
       // THE-183 — the Danger Zone. A destructive action was sitting in the same
@@ -611,7 +653,13 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
       </div>
 
       {/* Accordion Sections */}
-      <SettingsAccordion sections={sections} forceOpen={forceOpen} />
+      {/* The three rows hidden for the desktop popup ticket. Filtered here,
+          not inside each row's own `hidden`, so every row keeps the exact gate
+          it had; flipping SETTINGS_LEGACY_SECTIONS_ENABLED restores them. */}
+      <SettingsAccordion
+        sections={sections.filter((s) => SETTINGS_LEGACY_SECTIONS_ENABLED || !LEGACY_SECTION_IDS.includes(s.id))}
+        forceOpen={forceOpen}
+      />
 
       {/* Navigation — the bottom-bar / More-drawer reorder tool. It keeps the
           position it has always had, after the accordion, because moving it

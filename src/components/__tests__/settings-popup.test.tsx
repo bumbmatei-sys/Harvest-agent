@@ -308,7 +308,8 @@ describe('desktop Settings popup from the sidebar', () => {
   it('wires the popup from AdminDashboard rather than a hand-rolled replacement', () => {
     const src = read('src/components/AdminDashboard.tsx');
     expect(src).toContain("import { SettingsDialog } from './settings/SettingsDialog'");
-    expect(src).toMatch(/lgUp \? null/);
+    expect(src, 'Home no longer renders behind the popup on lg').toMatch(/activeTab === 'dashboard' \|\| \(activeTab === 'settings' && lgUp\)/);
+    expect(src).toMatch(/\{lgUp && canSettings && \(\s*<SettingsDialog/);
     const dialog = read('src/components/settings/SettingsDialog.tsx');
     expect(dialog).toContain('SidebarProvider');
     expect(dialog).toContain('DialogContent');

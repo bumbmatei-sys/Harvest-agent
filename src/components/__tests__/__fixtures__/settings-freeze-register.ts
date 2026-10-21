@@ -472,25 +472,25 @@ export const RECORDED_EDITS: ReadonlyArray<RecordedEdit> = [
     file: 'src/components/AdminSettings.tsx',
     ticket: 'THE-376',
     why:
-      'DESKTOP SETTINGS POPUP. Appearance moved into a shared AppearanceRow so the sidebar-13 '
-      + 'dialog can reuse it. SMS, Integrations and Donations & payment links are gated on '
-      + 'SETTINGS_LEGACY_SECTIONS_ENABLED (false) in front of their existing plan/master-switch '
-      + 'gates — hide not delete; flip that flag to restore the rows. Customize Navigation is '
-      + 'lg:hidden so it stays on the mobile Settings page and is absent from the desktop popup. '
-      + 'No row was deleted, reordered or re-id-ed. The billing portal, Stripe-return forceOpen, '
-      + 'and cancel dialog are untouched. No firestore.rules, storage, indexes or workflow change.',
-    digest: '3acad4d6f401f5d806ad175737010d2450602736564a899fa1af9280b400ad50',
+      'DESKTOP SETTINGS POPUP. SMS, Integrations and Donations & payment links are filtered out '
+      + 'of the accordion on SETTINGS_LEGACY_SECTIONS_ENABLED (false) at the point the sections '
+      + 'are handed to SettingsAccordion. Their own `hidden` gates are byte-identical, so every '
+      + 'existing pin on them still holds; flip the flag to restore the rows. Customize '
+      + 'Navigation is lg:hidden so it stays on the mobile Settings page and is absent from the '
+      + 'desktop popup. No row was deleted, reordered or re-id-ed. The Appearance row, the billing '
+      + 'portal, Stripe-return forceOpen and cancel dialog are untouched. No firestore.rules, '
+      + 'storage, indexes or workflow change.',
+    digest: 'f5ec67f9aaa9d3d80b9a144df18f380795206fb6f0829941ac0c03defa50dafa',
   },
   {
     file: 'src/components/__tests__/AdminSettings.regroup.test.tsx',
     ticket: 'THE-376',
     why:
       'THE-183 followed the hide. Payments and Connected Services leave the rendered heading list '
-      + 'while SETTINGS_LEGACY_SECTIONS_ENABLED is false; accordion open/close and the 44px touch '
-      + 'probe now use Onboarding Questions / Giving Statements instead of the hidden Donations '
-      + 'pointer. ThemeToggle source assertions read AppearanceRow.tsx, which is where the control '
-      + 'now lives so the popup and the mobile page share one copy. No layout number changed.',
-    digest: '20d06b9f2405c14f30e8d8adb0a0c24c12a263428011259d8a10598446d75e2a',
+      + 'while SETTINGS_LEGACY_SECTIONS_ENABLED is false; the accordion open/close case and the 44px '
+      + 'touch probe use Onboarding Questions / Appearance instead of the hidden Donations pointer. '
+      + 'No ThemeToggle, radiogroup or layout assertion changed and no layout number changed.',
+    digest: '9346d3f2d773371bb290e082ab34ae36ab4b8c01c785d0b15228ce727b290aa1',
   },
 ];
 

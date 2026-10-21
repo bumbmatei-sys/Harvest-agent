@@ -650,7 +650,7 @@ describe('10 · the three switched-off sections are still asserted off', () => {
   it('and all three switches are still false in the source', () => {
     expect(read('src/lib/stripe-connect-feature.ts')).toMatch(/STRIPE_CONNECT_ENABLED\s*=\s*false/);
     expect(read('src/lib/custom-domain-feature.ts')).toMatch(/CUSTOM_DOMAIN_ENABLED\s*=\s*false/);
-    expect(read(FROZEN_FILES.adminSettings)).toMatch(/hidden:\s*!SETTINGS_LEGACY_SECTIONS_ENABLED\s*\|\|\s*!SMS_FEATURE_ENABLED/);
+    expect(read(FROZEN_FILES.adminSettings)).toMatch(/hidden:\s*!SMS_FEATURE_ENABLED/);
   });
 });
 

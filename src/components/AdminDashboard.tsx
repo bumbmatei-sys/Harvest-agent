@@ -1259,7 +1259,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           </div>
           {shellPlaceholder ? (
             <ShellPlaceholder id={shellPlaceholder} />
-          ) : activeTab === 'dashboard' ? (
+          ) : activeTab === 'dashboard' || (activeTab === 'settings' && lgUp) ? (
             <div className="p-4 lg:p-0">
               <AdminHome
                 tenantId={tenantId ?? null}
@@ -1448,7 +1448,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               />
             </div>
           ) : activeTab === 'settings' ? (
-            lgUp ? null : (
             <AdminSettings
               onBack={() => go('dashboard')}
               currentPlan={tenantPlan ?? undefined}
@@ -1462,7 +1461,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                  always renders the Donations branch of the switch below. */
               onOpenDonations={() => go('donations')}
             />
-            )
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-faint">
               <p className="text-lg font-medium">{allTabs.find(t => t.id === activeTab)?.label || 'Inbox'} coming soon.</p>
@@ -1590,9 +1588,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         </div>
       )}
 
-      {/* Billing & Payments — owner-only overlay. 'yes' only: an unresolved
-          roster must not open it either. The /api/billing/* routes enforce the
-          same three-identity owner gate server-side (requireOwner). */}
+      {/* Desktop Settings popup (sidebar-13). The route is still /admin/settings, so
+          deep links work; on a phone the full AdminSettings page mounts instead. */}
       {lgUp && canSettings && (
         <SettingsDialog
           open={activeTab === 'settings'}
@@ -1604,6 +1601,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         />
       )}
 
+      {/* Billing & Payments — owner-only overlay. 'yes' only: an unresolved
+          roster must not open it either. The /api/billing/* routes enforce the
+          same three-identity owner gate server-side (requireOwner). */}
       {showBilling && billingAccess === 'yes' && (
         <div className="fixed inset-0 z-[200] bg-surface flex flex-col">
           <div className="flex items-center gap-1 h-12 px-3 bg-surface-raised border-b border-line shrink-0">
