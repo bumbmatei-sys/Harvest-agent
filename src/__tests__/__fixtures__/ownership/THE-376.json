@@ -9,7 +9,7 @@
     },
     {
       "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
-      "digest": "ec00e8a839badff1a2b41f99b507ef7f6d891e988caa5992899b5e0cd810ca39",
+      "digest": "657f76d5bf770b85138fd9f7b84c95f666b204fbdf449eb8afbbec8e88023758",
       "why": "THE-376 records AppearanceRow, PlanBillingSection and ProfileSection as adopters of the already-installed item and alert primitives for the desktop Settings popup. APPENDED to RECORDED_ADOPTERS. No primitive file was edited and no new package was added."
     },
     {

@@ -789,6 +789,26 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // PaymentLinkPicker USES the class as `min-h-11 sm:min-h-0` on each provider row,
       // the same phone floor the event picker had before that markup moved here.
       'src/components/donations/PaymentLinkPicker.tsx',
+      // APPENDED BY #538, NOTHING ABOVE OR BELOW REMOVED OR REWRITTEN. Every Button
+      // in the email workspace carries a literal `min-h-11` (44px below `sm`):
+      // THE-356's measured guard reads each Button className as a plain string and
+      // cannot read `cn(...)` or an imported token, so the floor is spelled out per
+      // call site. `kit.tsx` also defines the shared `TAP` token for non-Button
+      // controls. These are USES of the class, in the plain floor form.
+      'src/components/email/BodyEditor.tsx',
+      'src/components/email/BroadcastEditor.tsx',
+      'src/components/email/BroadcastsView.tsx',
+      'src/components/email/DesignDialog.tsx',
+      'src/components/email/EmailOverview.tsx',
+      'src/components/email/EmailSettingsView.tsx',
+      'src/components/email/EmailWorkspace.tsx',
+      'src/components/email/ImportDialog.tsx',
+      'src/components/email/PlatformLimitsCard.tsx',
+      'src/components/email/SendStep.tsx',
+      'src/components/email/SendingNotice.tsx',
+      'src/components/email/SubscribersView.tsx',
+      'src/components/email/UsageMeter.tsx',
+      'src/components/email/kit.tsx',
       'src/components/events/RotaInviteView.tsx',   // THE-324: names it in a comment, does not use it
       'src/components/events/RotaRespondView.tsx',
       // 🔴 APPENDED BY THE-334, for the same reason and of the same KIND as

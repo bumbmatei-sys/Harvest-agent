@@ -154,6 +154,21 @@ service cloud.firestore {
           && request.resource.data.newsletterOptInSource in ['signup-email', 'signup-google']);
     }
 
+    // Email-list consent on a CRM contact is written only by the server
+    // (Admin SDK: CSV import, the public unsubscribe link, bounce handling).
+    // A client write that set or changed these keys could re-subscribe someone
+    // who unsubscribed or bounced, so no client may, whatever its CRM permission.
+    function emailConsentKeys() {
+      return ['emailStatus', 'emailOptInAt', 'emailOptInSource',
+              'emailUnsubscribedAt', 'emailUnsubscribedFrom', 'emailSuppressedAt'];
+    }
+    function contactCreateKeepsEmailConsent() {
+      return !request.resource.data.keys().hasAny(emailConsentKeys());
+    }
+    function contactUpdateKeepsEmailConsent() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(emailConsentKeys());
+    }
+
     // ─── Users ───────────────────────────────────────────────────────
     //
     // newsletterOptIn / newsletterOptInAt / newsletterOptInSource: platform
@@ -863,8 +878,8 @@ service cloud.firestore {
 
     match /contacts/{contactId} {
       allow read: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
-      allow create: if isAuthenticated() && hasPermission('manageCRM', request.resource.data.get('tenantId', ''));
-      allow update: if isAuthenticated() && hasPermission('manageCRM', resource.data.get('tenantId', ''));
+      allow create: if isAuthenticated() && hasPermission('manageCRM', request.resource.data.get('tenantId', '')) && contactCreateKeepsEmailConsent();
+      allow update: if isAuthenticated() && hasPermission('manageCRM', resource.data.get('tenantId', '')) && contactUpdateKeepsEmailConsent();
       allow delete: if isAuthenticated() && hasPermission('manageCRM', resource.data.get('tenantId', ''));
     }
 

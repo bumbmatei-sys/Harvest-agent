@@ -682,6 +682,9 @@ describe('the out-of-scope files are untouched', () => {
       'src/components/AdminCRM.tsx',
       // Phase 1. The desktop sidebar's collapsible groups.
       'src/components/admin-shell/AdminDesktopSidebar.tsx',
+      // APPENDED BY #538. The email editor's Inbox check disclosure: a one-line
+      // summary that opens into the tips, with aria-expanded paired by the primitive.
+      'src/components/email/BroadcastEditor.tsx',
     ],
     // The first three are pre-existing and were invisible to the alias-only
     // matcher until THE-316 closed it; recorded here so the set stays closed.
@@ -780,6 +783,11 @@ describe('the out-of-scope files are untouched', () => {
       // unavailable figure renders the reason, and an empty testimonies table
       // renders its empty state — neither of those is a skeleton.
       'src/components/admin-shell/AdminHome.tsx',
+      // APPENDED BY #538. The email workspace's first load (a stack of cards of
+      // KNOWN shape) and the preview dialog's wait for the server-rendered email.
+      // A failed load is NOT a skeleton: it renders an alert with a retry.
+      'src/components/email/EmailWorkspace.tsx',
+      'src/components/email/PreviewDialog.tsx',
     ],
     breadcrumb: [
       'src/components/docs/DocsBreadcrumb.tsx',

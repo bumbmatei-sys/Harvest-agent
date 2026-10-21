@@ -1408,8 +1408,8 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
     ticket: 'THE-376',
     why:
       'APPENDED, never substituted. THE-376 is the desktop Settings popup. The Appearance row '
-      + 'is the Item that already lived inside AdminSettings, extracted so the sidebar-13 dialog '
-      + 'and the mobile Settings page share one copy. It takes item because the row is a label, '
+      + 'in the popup is the same Item shape AdminSettings already uses for its own Appearance '
+      + 'row, kept as a separate copy so AdminSettings stays byte-stable. It takes item because the row is a label, '
       + 'a description and the theme control. button-group is rejected: ThemeToggle already is '
       + 'the control. toggle-group is rejected: the mode pills live inside ThemeToggle. No new '
       + 'primitive was installed and the Item primitive is unedited.',
@@ -1435,6 +1435,48 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       + 'min-h-11 so THE-356 still holds. dialog is rejected for the pane itself: it already lives '
       + 'inside the settings Dialog. empty is rejected: a signed-in admin always has a name or email. '
       + 'No new primitive was installed.',
+  },
+  {
+    file: 'src/components/email/SendStep.tsx',
+    ticket: '#538',
+    why:
+      'Send step: the date-and-time picker takes calendar inside a popover with a scroll-area of 15-minute slots, because a scheduled send needs a real date and a time to the quarter hour, not a typed string. The primitives are unedited.',
+  },
+  {
+    file: 'src/components/email/ImportDialog.tsx',
+    ticket: '#538',
+    why:
+      'Import dialog: a checkbox records the admin\'s confirmation that these people asked to hear from the ministry before the CSV is accepted. It is a single independent yes, so checkbox rather than a switch. The primitive is unedited.',
+  },
+  {
+    file: 'src/components/email/BroadcastsView.tsx',
+    ticket: '#538',
+    why:
+      'Broadcasts list: the empty state for a ministry with no broadcasts takes the empty primitive with a New broadcast action, because an absent collection is what empty announces. A failed load is not this; it is an alert with a retry. Unedited.',
+  },
+  {
+    file: 'src/components/email/BodyEditor.tsx',
+    ticket: '#538',
+    why:
+      'Email body editor: the toolbar\'s link, button and image inputs open in popovers anchored to their own trigger, so the address field sits beside the control that needs it rather than in a modal. The primitive is unedited.',
+  },
+  {
+    file: 'src/components/email/EmailSettingsView.tsx',
+    ticket: '#538',
+    why:
+      'Email settings: a disabled switch marks the coming-soon option to bring your own Plunk or Mailchimp key, and a textarea holds the mailing address the law requires at the foot of every email. Both primitives are unedited.',
+  },
+  {
+    file: 'src/components/email/kit.tsx',
+    ticket: '#538',
+    why:
+      'Email kit: the Now / Pick a time and 7 / 30 / 90 day choices are one choice among a few exclusive states, so they take toggle-group rather than separate buttons or a select. The primitive is unedited.',
+  },
+  {
+    file: 'src/components/email/SendingNotice.tsx',
+    ticket: '#538',
+    why:
+      'The admin-visible notice that a ministry\'s sending was paused automatically for a high bounce or complaint rate. It takes alert in the destructive variant because something real failed and the person reading it needs to act, and the primitive carries role="alert" so it reaches a screen reader. The primitive is unedited.',
   },
 ];
 
