@@ -142,7 +142,7 @@ export function ProductWizard({
         )}
       </div>
 
-      <footer className="sticky bottom-0 z-30 -mx-4 border-t border-line bg-surface-raised/95 backdrop-blur-sm lg:mx-0" data-wizard-footer>
+      <footer className="sticky bottom-0 z-30 -mx-4 border-t border-line bg-surface-raised lg:mx-0" data-wizard-footer>
         <div className="flex w-full items-center justify-between gap-3 px-4 py-3 lg:px-0">
           <div className="flex items-center gap-2">
             {previous && (

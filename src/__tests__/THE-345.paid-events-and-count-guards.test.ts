@@ -538,7 +538,13 @@ describe('17 · control heights', () => {
       // arbitrary value going away, not the floor.
       [EVENTS]: [],
       // Pre-existing: the three 52px course/library thumbnail boxes.
-      [COURSES]: ['52', '52', '52'],
+      // AMENDED BY THE COURSES REMODEL: ['52','52','52'] -> ['52'], AND THE FILE
+      // SPENDS LESS, NOT MORE. Two of the three boxes were the own-courses list's
+      // mobile row and its adopted twin; that list is now the product cards in
+      // `courses/CourseProductList`, which draws its cover from a card header and
+      // no longer has a thumbnail box. The one that remains is the library
+      // catalogue card in this file, unchanged.
+      [COURSES]: ['52'],
       'src/components/PublicCalendar.tsx': [],
       // Pre-existing: the feed's 150px embed frame and three 18px reaction rows.
       'src/components/NewsTab.tsx': ['150', '18', '18', '18'],

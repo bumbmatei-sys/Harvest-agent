@@ -169,9 +169,15 @@ describe('unifying them changes behaviour', () => {
     expect(read(CANON)).toContain(note);
   });
 
-  it('the fork is what three screens import, so unifying is not a one-file edit', () => {
+  it('the fork is what two screens import, so unifying is not a one-file edit', () => {
+    // AMENDED BY THE COURSES REMODEL: three screens -> two. AdminCourses now opens
+    // the shared product wizard and types its rows as `ProductCourse`
+    // (types/course-product.types.ts), so it no longer imports AdminCourseEditor
+    // at all. The fork itself is untouched and still pinned field for field above;
+    // AdminLibraryCourses (the super-admin catalogue) and CourseDetails still use it.
+    expect(read('components/AdminCourses.tsx'), 'AdminCourses did not move to the course wizard')
+      .toContain('CourseWizard');
     for (const rel of [
-      'components/AdminCourses.tsx',
       'components/AdminLibraryCourses.tsx',
       'components/CourseDetails.tsx',
     ]) {

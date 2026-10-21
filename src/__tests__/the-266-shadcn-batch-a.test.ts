@@ -788,6 +788,14 @@ describe('the out-of-scope files are untouched', () => {
       // A failed load is NOT a skeleton: it renders an alert with a retry.
       'src/components/email/EmailWorkspace.tsx',
       'src/components/email/PreviewDialog.tsx',
+      // APPENDED BY THE COURSES REMODEL. The products list's first load (three
+      // cards of KNOWN shape), the Classroom's first load (the same), and the
+      // access picker's wait for the member list (one input-shaped bar). A failed
+      // load is NOT a skeleton in any of the three: each renders an alert or
+      // an error note with a retry, and an empty list renders an empty state.
+      'src/components/courses/ClassroomTab.tsx',
+      'src/components/courses/CourseProductList.tsx',
+      'src/components/courses/builder/AccessSection.tsx',
     ],
     breadcrumb: [
       'src/components/docs/DocsBreadcrumb.tsx',
