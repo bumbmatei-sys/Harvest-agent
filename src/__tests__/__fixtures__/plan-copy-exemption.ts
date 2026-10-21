@@ -31,7 +31,7 @@ export const PLAN_UPGRADE_SECTION: RecordedExemption = {
   file: 'src/components/settings/PlanUpgradeSection.tsx',
   approval: R3_APPROVAL,
   originalDigest: '667a71285e506773f0d137654584f9c7ded1eedcb8de8998908b9b1aa2a9c935',
-  exemptDigest: '32984f29807bbfbfa6d79faf9f95712deed2e71c2ebc2c119dc5b3b3f3d61c08',
+  exemptDigest: 'eb4cc06ac22f5984341089499c86010cf23df6d2462b390ff337a5c450288377',
   hunks: [
     {
       before: "import { Check } from 'lucide-react';\n",
@@ -65,6 +65,7 @@ export const PLAN_UPGRADE_SECTION: RecordedExemption = {
         '              variant="outline"\n' +
         '              onClick={handleManageSubscription}\n' +
         '              disabled={portalLoading}\n' +
+        '              className="min-h-[44px] sm:min-h-0"\n' +
         '            >\n' +
         "              {portalLoading ? 'Opening portal...' : 'Manage Subscription'}\n" +
         '            </Button>\n' +

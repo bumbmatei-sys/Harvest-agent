@@ -861,6 +861,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
               variant="outline"
               onClick={handleManageSubscription}
               disabled={portalLoading}
+              className="min-h-[44px] sm:min-h-0"
             >
               {portalLoading ? 'Opening portal...' : 'Manage Subscription'}
             </Button>

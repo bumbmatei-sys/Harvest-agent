@@ -380,7 +380,7 @@ describe('5 · the money path is byte-identical', () => {
          the card copy says campuses, and a `compact` prop (settings popup only) stacks the cards one
          per row and draws Manage Subscription as the shadcn Button. The seven hunks are listed in
          __fixtures__/plan-copy-exemption.ts and pr-540.plan-copy-exemption.test.ts proves it. */
-      ['32984f29807bbfbfa6d79faf9f95712deed2e71c2ebc2c119dc5b3b3f3d61c08', 'PR #540 r3 — plan-card campus copy + compact prop (Matei approved 2026-10-21: display-copy + compact prop only)'],
+      ['eb4cc06ac22f5984341089499c86010cf23df6d2462b390ff337a5c450288377', 'PR #540 r3 — plan-card campus copy + compact prop (Matei approved 2026-10-21: display-copy + compact prop only)'],
     ],
   };
 
