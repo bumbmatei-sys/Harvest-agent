@@ -248,7 +248,7 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
         <Button className="mt-5 min-h-11 w-full" disabled={blocked} onClick={preview}>
           <Send data-icon="inline-start" />{label}
         </Button>
-        {usage.cap > 0 && (
+        {usage.cap > 0 && !overAllowance && (
           <p className="mt-3 text-center text-xs text-muted">
             Uses {count.toLocaleString()} of your {left.toLocaleString()} emails left this month.
           </p>
