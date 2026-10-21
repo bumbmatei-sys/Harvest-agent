@@ -1,0 +1,144 @@
+import type { AudienceFilter, EmailContact } from '@/lib/email/audience';
+import type { EmailDesign } from '@/lib/email/design';
+import type { EmailLimits } from '@/lib/email/limits';
+import type { Broadcast, EmailSettings, SendPreview, BroadcastStats } from '@/lib/email/service';
+
+/**
+ * The browser's only view of the email backend. The screens take an
+ * `EmailApi` as a prop and never import a vendor, so the provider behind the
+ * server is invisible here and a test or screenshot harness can pass a fake.
+ */
+
+export type { Broadcast, EmailSettings, SendPreview, BroadcastStats, EmailContact, AudienceFilter, EmailDesign, EmailLimits };
+
+export interface Usage {
+  readonly used: number;
+  readonly cap: number;
+  readonly percent: number;
+  readonly warn: boolean;
+  readonly warnAtPercent: number;
+  /** ISO instant the monthly allowance resets (start of next month, UTC). */
+  readonly resetsAt: string;
+  readonly pack: { readonly size: number; readonly priceUsd: number | null };
+  /** Present only while the ministry is inside its new-ministry window. */
+  readonly daily: { readonly used: number; readonly cap: number; readonly days: number } | null;
+}
+
+export type SendingStatus =
+  | { readonly paused: false }
+  | { readonly paused: true; readonly reason: 'bounce' | 'complaint'; readonly rate: number; readonly threshold: number; readonly pausedAt: string };
+
+export interface Overview {
+  readonly broadcasts: readonly Broadcast[];
+  readonly subscribers: readonly EmailContact[];
+  readonly settings: EmailSettings;
+  readonly usage: Usage;
+  readonly sending: SendingStatus;
+  /** True only for a super admin, who may edit the platform-wide limits. */
+  readonly canEditLimits: boolean;
+  readonly limits: EmailLimits | null;
+}
+
+export interface DraftFields {
+  readonly id?: string | null;
+  readonly subject?: string;
+  readonly subjectB?: string | null;
+  readonly preheader?: string;
+  readonly bodyHtml?: string;
+  readonly design?: Partial<EmailDesign>;
+  readonly filters?: readonly AudienceFilter[];
+}
+
+export interface ImportRowInput {
+  readonly email: string;
+  readonly name?: string;
+  readonly tags?: readonly string[];
+}
+
+export interface ImportSummary {
+  readonly added: number;
+  readonly merged: number;
+  readonly alreadySubscribed: number;
+  readonly blocked: number;
+  readonly invalid: number;
+  readonly repeatedInFile: number;
+}
+
+export type SendWhen = { readonly mode: 'now' } | { readonly mode: 'at'; readonly at: string };
+
+export type SendResponse =
+  | { readonly requiresConfirm: true; readonly confirmToken: string; readonly preview: SendPreview }
+  | { readonly outcome: 'sent' | 'partial' | 'failed' | 'scheduled'; readonly preview: SendPreview; readonly stats: BroadcastStats | null; readonly message: string };
+
+/** What a failed call looks like. `notConfigured` is the friendly 503. */
+export class EmailApiError extends Error {
+  constructor(
+    message: string,
+    readonly code: string,
+    readonly notConfigured: boolean,
+  ) {
+    super(message);
+    this.name = 'EmailApiError';
+  }
+}
+
+export const NOT_CONFIGURED_COPY = 'Email sending is not set up on this server yet. You can write and save drafts; nothing will be sent until it is.';
+
+export interface EmailApi {
+  overview(): Promise<Overview>;
+  saveDraft(draft: DraftFields): Promise<Broadcast>;
+  remove(id: string): Promise<void>;
+  preview(draft: DraftFields & { dark?: boolean }): Promise<string>;
+  send(input: { id: string; when: SendWhen; mode: 'preview' | 'confirm'; confirmToken?: string }): Promise<SendResponse>;
+  sendTest(id: string): Promise<void>;
+  importContacts(rows: readonly ImportRowInput[], consentConfirmed: boolean): Promise<ImportSummary>;
+  saveSettings(settings: Partial<EmailSettings>): Promise<EmailSettings>;
+  saveLimits(limits: EmailLimits): Promise<EmailLimits>;
+  resumeSending(tenantId: string | null): Promise<void>;
+  domain(op: 'register' | 'check', domain?: string): Promise<EmailSettings>;
+}
+
+type Call = (body: Record<string, unknown>) => Promise<{ status: number; json: Record<string, unknown> }>;
+
+async function run<T>(call: Call, body: Record<string, unknown>): Promise<T> {
+  let res: { status: number; json: Record<string, unknown> };
+  try {
+    res = await call(body);
+  } catch {
+    throw new EmailApiError('Could not reach the server. Check your connection and try again.', 'network', false);
+  }
+  if (res.status === 503) throw new EmailApiError(NOT_CONFIGURED_COPY, 'not_configured', true);
+  if (res.status >= 200 && res.status < 300 && res.json.ok !== false) return res.json as T;
+  const message = typeof res.json.message === 'string' ? res.json.message : 'Something went wrong. Try again.';
+  throw new EmailApiError(message, typeof res.json.error === 'string' ? res.json.error : 'error', false);
+}
+
+export function createEmailApi(tenantId: string | null, call: Call): EmailApi {
+  const t = { tenantId };
+  return {
+    overview: () => run<Overview>(call, { ...t, action: 'overview' }),
+    saveDraft: async (draft) => (await run<{ broadcast: Broadcast }>(call, { ...t, action: 'saveDraft', draft })).broadcast,
+    remove: async (id) => { await run(call, { ...t, action: 'delete', id }); },
+    preview: async (draft) => (await run<{ html: string }>(call, { ...t, action: 'preview', draft })).html,
+    send: (input) => run<SendResponse>(call, { ...t, action: 'send', ...input }),
+    sendTest: async (id) => { await run(call, { ...t, action: 'sendTest', id }); },
+    importContacts: (rows, consentConfirmed) => run<ImportSummary>(call, { ...t, action: 'import', rows, consentConfirmed }),
+    saveSettings: async (settings) => (await run<{ settings: EmailSettings }>(call, { ...t, action: 'saveSettings', settings })).settings,
+    saveLimits: async (limits) => (await run<{ limits: EmailLimits }>(call, { ...t, action: 'saveLimits', limits })).limits,
+    resumeSending: async (tenantId) => { await run(call, { action: 'resumeSending', tenantId }); },
+    domain: async (op, domain) => (await run<{ settings: EmailSettings }>(call, { ...t, action: 'domain', op, domain })).settings,
+  };
+}
+
+/** The real transport: Firebase-authenticated POST to /api/email/actions. */
+export function authedCall(authFetch: (url: string, init?: RequestInit) => Promise<Response>): Call {
+  return async (body) => {
+    const res = await authFetch('/api/email/actions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    return { status: res.status, json };
+  };
+}

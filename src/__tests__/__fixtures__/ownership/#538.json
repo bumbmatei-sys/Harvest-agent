@@ -1,0 +1,21 @@
+{
+  "ticket": "#538",
+  "note": "Newsletter phase 3 (Plunk-backed broadcasts). One rules change, appended; earlier digests are not replaced.",
+  "entries": [
+    {
+      "file": "firestore.rules",
+      "digest": "5efc9fc6b2d4a9df4e00c54d3ac435463e1c62f4ff39912c53fd92ca7ae5771d",
+      "why": "Adds emailConsentKeys, contactCreateKeepsEmailConsent and contactUpdateKeepsEmailConsent beside newsletterConsentOnCreate and applies them to the top-level contacts match block, which is the CRM collection the app reads and writes: a client CRM admin keeps every other contact write but can no longer create or change emailStatus, emailOptInAt, emailOptInSource, emailUnsubscribedAt, emailUnsubscribedFrom or emailSuppressedAt, so only the Admin SDK (CSV import, the unsubscribe link) can subscribe or unsubscribe a person. The legacy nested tenants/{id}/contacts block is deliberately untouched: nothing reads it and plan-features.crm-individual pins its text. Read rules and every other match block are unchanged."
+    },
+    {
+      "file": "src/components/NewsletterCampaigns.tsx",
+      "digest": "0a5e3ebc9d73e1be545bf99b40881dd86f9cd183b911a57df94b3fdd7d07e7d1",
+      "why": "The newsletter tab's list screen stops listing Mailchimp campaigns and mounts the Plunk-backed EmailWorkspace. Its props and default export are unchanged so AdminDashboard's call site, plan gate and the NEWSLETTER_FEATURE_ENABLED switch stay byte-identical. NewsletterEditor.tsx is left on disk, unreachable, because THE-335 forbids deleting it."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "725cbcebc725020220e99c74e14d9598068374f9ba430ad49fc7fad378022164",
+      "why": "#538 appends six email components to RECORDED_ADOPTERS, each with a ticket and a reason of more than 80 characters, because they adopt calendar, checkbox, empty, popover, scroll-area, switch, textarea and toggle-group. Nothing already recorded was replaced or reworded."
+    }
+  ]
+}
