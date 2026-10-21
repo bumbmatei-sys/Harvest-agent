@@ -1,0 +1,21 @@
+{
+  "ticket": "#543",
+  "note": "Eden-style courses remodel. No rules change. Appended, never substituted: earlier digests for these files stay recorded under their own tickets.",
+  "entries": [
+    {
+      "file": "src/components/AdminCourses.tsx",
+      "digest": "fa825edc6cfb69296f8322dcee6f92a35b66c2aa8170662a3bb7ba65ba3b94bb",
+      "why": "The own-courses list becomes the product cards in courses/CourseProductList, New course opens the shared product-type picker and then the CourseWizard instead of AdminCourseEditor, and the row type is ProductCourse. NOTHING ELSE MOVED: the by-id adoption reads (THE-342), the counted slots and dangling-adoption notice (THE-345), the maxCourses gate, the adopt analytics event (THE-361), the library tab and the read-failure and truncation alerts are byte-for-byte what they were."
+    },
+    {
+      "file": "src/components/CoursePage.tsx",
+      "digest": "a8d8ee4100ac7c233d6c356c12eedde70b53993cfabfa41ca2e9fa3b21aa4dcf",
+      "why": "The member overview and lesson screens become the course landing page and the Eden-style player, and the library list now shows only courses the member may open, decided by lib/courses/access (canAccessCourse). Every read, bound and truncation notice from THE-342 is unchanged, as is the adopted-course resolution; the author screen is dropped because nothing links to it any more."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "56817c1c945652e54027368b1862a058ada6cbfcafd446a3431395385a311cfa",
+      "why": "#543 appends eight course components to RECORDED_ADOPTERS, each with a ticket and a reason of more than 80 characters, because they adopt alert-family primitives the register tracks (empty, popover, radio-group, scroll-area, switch and textarea). Nothing already recorded was replaced or reworded."
+    }
+  ]
+}

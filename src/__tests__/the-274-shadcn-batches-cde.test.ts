@@ -1445,6 +1445,54 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
     why:
       'The admin-visible notice that a ministry\'s sending was paused automatically for a high bounce or complaint rate. It takes alert in the destructive variant because something real failed and the person reading it needs to act, and the primitive carries role="alert" so it reaches a screen reader. The primitive is unedited.',
   },
+  {
+    file: 'src/components/courses/ClassroomTab.tsx',
+    ticket: '#543',
+    why:
+      "A community's Classroom with no courses attached renders the empty primitive, because an absent list is exactly what empty announces. A failed load is not this: it renders an error note with a retry, so a rejected read never reads as an empty Classroom. The primitive is unedited.",
+  },
+  {
+    file: 'src/components/courses/CoursePlayer.tsx',
+    ticket: '#543',
+    why:
+      "The course player's rail and notes: empty states for a course with no notes and for the not-yet-built Chats tab, scroll-area around the long lesson list so the rail scrolls independently of the reading column, and a textarea for the member's private lesson note. All three primitives are unedited.",
+  },
+  {
+    file: 'src/components/courses/CourseProductList.tsx',
+    ticket: '#543',
+    why:
+      'The products list for courses: a ministry with no courses and no adopted ones sees the empty primitive with the next step named, since an absent collection is what empty announces. A failed read is not this; AdminCourses renders its destructive alert above the list. The primitive is unedited.',
+  },
+  {
+    file: 'src/components/courses/builder/AccessSection.tsx',
+    ticket: '#543',
+    why:
+      'Course access: a radio-group chooses between everyone in the ministry and only the people chosen, because the two are exclusive; a switch per community attaches or detaches the course, because each attachment is its own independent yes; and empty explains the no-communities-yet state. All three are unedited.',
+  },
+  {
+    file: 'src/components/courses/builder/LessonBodyEditor.tsx',
+    ticket: '#543',
+    why:
+      "The lesson text editor's toolbar: link and image each open a popover anchored to its own trigger, so the https address field sits beside the control that needs it instead of in a modal. The same pattern the email body editor records. The primitive is unedited.",
+  },
+  {
+    file: 'src/components/courses/builder/LessonSheet.tsx',
+    ticket: '#543',
+    why:
+      "The lesson editor's quiz: each question's answers are a radio-group because exactly one answer is correct, and the group is the primitive that makes that exclusive choice and carries it to a screen reader. The primitive is unedited.",
+  },
+  {
+    file: 'src/components/courses/builder/LessonsStep.tsx',
+    ticket: '#543',
+    why:
+      "The Lessons step's two course-level choices, a certificate when members finish and requiring quizzes to be passed, are independent on/off settings, so each is a switch with its own label rather than a checkbox in a form. The primitive is unedited.",
+  },
+  {
+    file: 'src/components/courses/builder/PageStep.tsx',
+    ticket: '#543',
+    why:
+      "The Page step's description is several sentences of plain text on the course page, so it takes the textarea primitive, which gives it the same field styling and aria-invalid handling as every other input. The primitive is unedited.",
+  },
 ];
 
 it('only the recorded adopters import the new components, and each names its ticket', () => {

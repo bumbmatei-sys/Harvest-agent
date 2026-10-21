@@ -647,6 +647,17 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
        * the floor from `sm` up is not what keeps a desktop row at 38px.
        */
       'src/components/CampaignWidget.tsx',
+      /**
+       * APPENDED BY THE COURSES REMODEL (#543), NOTHING AROUND IT REMOVED OR
+       * REWRITTEN. Every entry from here to the product wizard USES the class as a
+       * flat `min-h-11` on a shadcn `<Button>`, the form THE-356 reads and
+       * measures: the wizard's rail, footer and header actions, the lesson rows and
+       * their menus, the player's top bar, rail and footer, the course cards'
+       * actions and the Classroom's. There is no density token on these controls,
+       * so the flat floor is what carries them, as the campaign banner's entry
+       * above records.
+       */
+      'src/components/CoursePage.tsx',
       'src/components/EmbedCard.tsx',
       /**
        * 🔴 APPENDED BY THE-358, NOTHING AROUND IT REMOVED OR REWRITTEN. It sits
@@ -785,6 +796,17 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // ToggleGroupItem's own padding leaves the row under 44px, so the floor
       // is what makes Publish now, Schedule and Draft a real target.
       'src/components/blog/BlogScheduleFields.tsx',
+      'src/components/courses/ClassroomTab.tsx',
+      'src/components/courses/CourseLanding.tsx',
+      'src/components/courses/CoursePlayer.tsx',
+      'src/components/courses/CourseProductList.tsx',
+      'src/components/courses/builder/AccessSection.tsx',
+      'src/components/courses/builder/CourseWizard.tsx',
+      'src/components/courses/builder/LessonBodyEditor.tsx',
+      'src/components/courses/builder/LessonSheet.tsx',
+      'src/components/courses/builder/LessonsStep.tsx',
+      'src/components/courses/builder/PageStep.tsx',
+      'src/components/courses/builder/PublishStep.tsx',
       // APPENDED FOR #0000, NOTHING AROUND IT REMOVED. Sorted position, not arrival order.
       // PaymentLinkPicker USES the class as `min-h-11 sm:min-h-0` on each provider row,
       // the same phone floor the event picker had before that markup moved here.
@@ -820,6 +842,8 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // the same `lg:`-only panel, so they take the same ungated 44px floor.
       'src/components/inbox/TenantInbox.tsx',
     'src/components/layout/nav-rail-recents.tsx',  // THE-324: names it in a comment, does not use it
+      'src/components/product-wizard/NewProductDialog.tsx',
+      'src/components/product-wizard/ProductWizard.tsx',
       // APPENDED BY THE-228, NOTHING ABOVE REMOVED OR REWRITTEN. It sits here
       // because this list is the sweep's own sorted order. The export row USES
       // the class, in the Rule-4 form `min-h-11 sm:min-h-0`, the same floor

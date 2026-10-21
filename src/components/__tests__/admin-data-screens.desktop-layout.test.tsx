@@ -1381,6 +1381,16 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
     // per-screen measure and no colour, and the screen still renders through
     // FORM_CONTAINER exactly as THE-345 left it. AdminDashboard stays EXEMPT
     // and un-re-recorded, exactly as the note above requires.
+    //
+    // AdminCourses.tsx was RE-RECORDED A FOURTH TIME by the Eden-style courses
+    // remodel (#543), by the same treatment and for a reason outside this
+    // batch's subject. The own-courses list stops being a hand-built mobile list
+    // plus a desktop table and becomes the product cards in
+    // `courses/CourseProductList`; New course opens the shared type picker and
+    // the course wizard. The screen still renders through FORM_CONTAINER, the
+    // search bar, the alerts and the library tab are untouched, and it mints no
+    // width, height, gap or colour of its own: the cards live in the new module.
+    // AdminDashboard stays EXEMPT and un-re-recorded, as the note above requires.
     const moved = Object.entries(SOURCE.digests)
       .filter(([f]) => existsSync(path.join(SRC, f)))
       .filter(([f]) => !EXEMPT_FILES.includes(f))
