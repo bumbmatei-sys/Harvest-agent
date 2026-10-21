@@ -42,6 +42,8 @@ export interface ProductWizardProps {
   /** When set, the final action is disabled and this says why. */
   publishBlockedReason?: string | null;
   publishLabel?: string;
+  /** The save button's words. A published product saves changes rather than a draft. */
+  saveLabel?: string;
   /** The active step's body. */
   children: ReactNode;
 }
@@ -55,7 +57,7 @@ export interface ProductWizardProps {
 export function ProductWizard({
   productLabel, title, untitledLabel, status, ownerLabel, steps, activeStepId, onStepChange,
   onBack, backLabel = 'Back', headerActions, preview, saving, error, saved, onSaveDraft, onPublish,
-  publishBlockedReason, publishLabel = 'Publish', children,
+  publishBlockedReason, publishLabel = 'Publish', saveLabel = 'Save draft', children,
 }: ProductWizardProps) {
   const index = Math.max(0, steps.findIndex((s) => s.id === activeStepId));
   const isLast = index === steps.length - 1;
@@ -154,7 +156,7 @@ export function ProductWizard({
             {publishBlockedReason && isLast && (
               <span className="hidden max-w-xs text-right text-xs text-muted md:inline" data-wizard-blocked>{publishBlockedReason}</span>
             )}
-            <Button type="button" variant="ghost" className="min-h-11" disabled={saving} onClick={onSaveDraft}>Save draft</Button>
+            <Button type="button" variant="ghost" className="min-h-11" disabled={saving} onClick={onSaveDraft}>{saveLabel}</Button>
             {isLast ? (
               <Button type="button" className="min-h-11 px-5" disabled={saving || Boolean(publishBlockedReason)} onClick={onPublish} data-wizard-primary="publish">
                 {publishLabel}

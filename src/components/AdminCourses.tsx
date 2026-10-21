@@ -1,10 +1,13 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, GraduationCap, Library, Check, Eye } from 'lucide-react';
+import { Plus, Library, Check, BookOpen } from 'lucide-react';
 import { collection, onSnapshot, query, where, deleteDoc, doc, getDoc, limit, orderBy, documentId, getCountFromServer } from 'firebase/firestore';
 import { db } from '../firebase';
 import { authFetch } from '../utils/auth-fetch';
-import AdminCourseEditor, { Course } from './AdminCourseEditor';
+import { CourseWizard } from './courses/builder/CourseWizard';
+import { CourseProductList } from './courses/CourseProductList';
+import { NewProductDialog, type ProductTypeOption } from './product-wizard';
+import type { ProductCourse as Course } from '../types/course-product.types';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
 import { sortByTime } from '../utils/query-helpers';
@@ -27,7 +30,7 @@ import {
 } from '../utils/course-adoption';
 import { CoursePreview } from './course/CoursePreview';
 import type { AdoptedCourse, Author, LibraryCourse } from '../types/course.types';
-import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar, AdminCard, AdminBadge, statusTone } from './admin/AdminUI';
+import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar, AdminCard, AdminBadge } from './admin/AdminUI';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { FORM_CONTAINER, CONTROL_DENSITY } from './layout/form-layout';
 import { ANALYTICS_EVENTS } from '../lib/analytics/events';
@@ -71,6 +74,14 @@ function reportAdoptionFailure(op: 'adopt' | 'unadopt' | 'override', error: unkn
   console.error(`[courses:${op}] ${message}`, error);
 }
 
+const PRODUCT_TYPES: readonly ProductTypeOption[] = [
+  { id: 'course', label: 'Course', description: 'Lessons people read or watch, in order, with progress.', membersGet: 'Lessons, progress and a certificate', icon: <BookOpen />, tag: 'Start here', available: true },
+  { id: 'fundraising', label: 'Fundraising', description: 'A campaign with a goal and a way to give.', membersGet: 'A giving page', icon: <Library />, available: false },
+  { id: 'event', label: 'Event', description: 'A gathering with a date, a place and a sign-up.', membersGet: 'A seat and a reminder', icon: <Library />, available: false },
+  { id: 'service', label: 'Service', description: 'A scheduled service with a plan and a team.', membersGet: 'The order of service', icon: <Library />, available: false },
+  { id: 'form', label: 'Form', description: 'Questions people answer, sign-ups and applications.', membersGet: 'A form to fill in', icon: <Library />, available: false },
+];
+
 const AdminCourses: React.FC = () => {
   const { tenantPlan } = useTenant();
   const [courses, setCourses] = useState<Course[]>([]);
@@ -92,6 +103,7 @@ const AdminCourses: React.FC = () => {
   const [overrideBusy, setOverrideBusy] = useState(false);
 
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [pickingType, setPickingType] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -524,7 +536,13 @@ const AdminCourses: React.FC = () => {
       setTimeout(() => setErrorMessage(null), 5000);
       return;
     }
-    setEditingCourse(null); setIsEditorOpen(true);
+    setPickingType(true);
+  };
+  const handlePickType = (id: string) => {
+    if (id !== 'course') return;
+    setPickingType(false);
+    setEditingCourse(null);
+    setIsEditorOpen(true);
   };
   const handleEditCourse = (course: Course) => { setEditingCourse(course); setIsEditorOpen(true); };
 
@@ -681,7 +699,7 @@ const AdminCourses: React.FC = () => {
 
   // The editor is a full in-shell screen; when open it replaces the list.
   if (isEditorOpen) {
-    return <AdminCourseEditor course={editingCourse} onClose={() => setIsEditorOpen(false)} />;
+    return <CourseWizard course={editingCourse} onClose={() => setIsEditorOpen(false)} />;
   }
 
   // The read-only preview is a full in-shell screen too, resolved fresh from the
@@ -953,201 +971,19 @@ const AdminCourses: React.FC = () => {
 
       {view === 'own' && (<>
 
-      {/* Mobile list — mockup course-card library: thumbnail (cover, else GraduationCap
-          on gold tint), title + status pill, and an author · lesson-count meta line.
-          Same loading / filteredCourses data and the same handleEditCourse (tap = open
-          the builder) / setDeleteConfirmId handlers as the desktop table below. */}
-      <div className="lg:hidden bg-surface-raised rounded-brand-xl border border-line shadow-[var(--ds-sh-sm)] overflow-hidden">
-        {loading ? (
-          <div className="px-3.5 py-10 flex items-center justify-center gap-2 text-muted">
-            <div className="w-4 h-4 border-2 border-gold border-t-transparent rounded-full animate-spin"></div>
-            <span>Loading courses…</span>
-          </div>
-        ) : filteredCourses.length === 0 && myAdoptedCourses.length === 0 ? (
-          <div className="px-3.5 py-14 flex flex-col items-center justify-center gap-1.5 text-center">
-            <GraduationCap size={30} className="text-stone-300 mb-1" />
-            <p className="font-display text-base text-strong">No courses found</p>
-            <p className="text-sm text-muted">Get started by creating a new course, or adopt one from the library.</p>
-          </div>
-        ) : (
-          filteredCourses.map((course, i) => {
-            const lessonCount = (course.levels || []).reduce(
-              (sum, lv) => sum + (lv.sections || []).reduce((s, sec) => s + (sec.lessons?.length || 0), 0),
-              0,
-            );
-            const meta = [course.author, lessonCount ? `${lessonCount} lesson${lessonCount === 1 ? '' : 's'}` : null]
-              .filter(Boolean)
-              .join(' · ');
-            return (
-              <div key={course.id} className={`flex items-center gap-3 px-3.5 py-3 ${i ? 'border-t border-line' : ''}`}>
-                <div className="w-[68px] h-[52px] rounded-brand bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0 overflow-hidden">
-                  {course.thumbnail
-                    ? <img src={course.thumbnail} alt="" className="w-full h-full object-cover" />
-                    : <GraduationCap size={20} />}
-                </div>
-                <button onClick={() => handleEditCourse(course)} className="flex-1 min-w-0 text-left">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="flex-1 min-w-0 text-sm font-semibold text-strong line-clamp-1">{course.title}</span>
-                    <AdminBadge tone={statusTone(course.status)} className="shrink-0">{course.status}</AdminBadge>
-                  </div>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    {(course as any).featured && <AdminBadge tone="gold">Featured</AdminBadge>}
-                    {meta && <span className="text-xs text-faint truncate">{meta}</span>}
-                  </div>
-                </button>
-                <button
-                  onClick={() => setDeleteConfirmId(course.id || null)}
-                  className="p-2 rounded-brand text-faint hover:text-danger hover:bg-danger-tint transition-colors shrink-0"
-                  title="Delete"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            );
-          })
-        )}
-        {/* Adopted library courses — read-only pointers. No Edit: the platform
-            owns the content and its edits reach every adopter. Remove un-adopts. */}
-        {myAdoptedCourses.map((course, i) => (
-          <div key={`adopted-${course.id}`} className={`flex items-center gap-3 px-3.5 py-3 ${(i || filteredCourses.length) ? 'border-t border-line' : ''}`}>
-            <div className="w-[68px] h-[52px] rounded-brand bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0 overflow-hidden">
-              {course.thumbnail
-                ? <img src={course.thumbnail} alt="" className="w-full h-full object-cover" />
-                : <Library size={20} />}
-            </div>
-            {/* Opens the read-only preview, which is also where this church's
-                own two settings live. Still NO Edit: the content is not theirs. */}
-            <button onClick={() => setPreviewId(course.id)} className="flex-1 min-w-0 text-left" title={`Preview ${course.title}`}>
-              <div className="flex items-center justify-between gap-2">
-                <span className="flex-1 min-w-0 text-sm font-semibold text-strong line-clamp-1">{course.title}</span>
-                <AdminBadge tone="gold" className="shrink-0">Adopted</AdminBadge>
-              </div>
-              <div className="text-xs text-faint mt-1 truncate">
-                From the Harvest library · View &amp; settings
-              </div>
-            </button>
-            <button
-              onClick={() => handleUnadopt(course.id)}
-              disabled={adoptingId === course.id}
-              className="p-2 rounded-brand text-faint hover:text-danger hover:bg-danger-tint transition-colors shrink-0 disabled:opacity-50"
-              title="Remove from your courses"
-            >
-              <Trash2 size={16} />
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {/* Desktop table — existing approved layout, unchanged (now lg-only). */}
-      <AdminCard className="hidden lg:block">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-line">
-                <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Title</th>
-                <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Author</th>
-                <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Status</th>
-                <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em] text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {loading ? (
-                <tr>
-                  <td colSpan={4} className="px-6 py-10 text-center text-muted">
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="w-4 h-4 border-2 border-gold border-t-transparent rounded-full animate-spin"></div>
-                      <span>Loading courses…</span>
-                    </div>
-                  </td>
-                </tr>
-              ) : filteredCourses.length === 0 && myAdoptedCourses.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-6 py-14 text-center">
-                    <div className="flex flex-col items-center justify-center gap-1.5">
-                      <GraduationCap size={30} className="text-stone-300 mb-1" />
-                      <p className="font-display text-base text-strong">No courses found</p>
-                      <p className="text-sm text-muted">Get started by creating a new course, or adopt one from the library.</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredCourses.map((course) => (
-                  <tr key={course.id} className="hover:bg-[color-mix(in_srgb,var(--surface-sunken)_60%,transparent)] transition-colors group">
-                    <td className="px-6 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <span className="w-9 h-9 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)] flex items-center justify-center shrink-0">
-                          <GraduationCap size={17} className="text-gold" />
-                        </span>
-                        <span className="text-sm font-semibold text-strong line-clamp-1">{course.title}</span>
-                        {(course as any).featured && <AdminBadge tone="gold">Featured</AdminBadge>}
-                      </div>
-                    </td>
-                    <td className="px-6 py-3.5"><span className="text-sm text-muted">{course.author}</span></td>
-                    <td className="px-6 py-3.5"><AdminBadge tone={statusTone(course.status)}>{course.status}</AdminBadge></td>
-                    <td className="px-6 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => handleEditCourse(course)}
-                          className="p-2 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors"
-                          title="Edit"
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirmId(course.id || null)}
-                          className="p-2 rounded-brand text-faint hover:text-danger hover:bg-danger-tint transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-              {/* Adopted library courses — read-only pointers (see the mobile
-                  list above). Rendered after the tenant's own, never editable. */}
-              {myAdoptedCourses.map((course) => (
-                <tr key={`adopted-${course.id}`} className="hover:bg-[color-mix(in_srgb,var(--surface-sunken)_60%,transparent)] transition-colors group">
-                  <td className="px-6 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <span className="w-9 h-9 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)] flex items-center justify-center shrink-0">
-                        <Library size={17} className="text-gold" />
-                      </span>
-                      <span className="text-sm font-semibold text-strong line-clamp-1">{course.title}</span>
-                      <AdminBadge tone="gold">Adopted</AdminBadge>
-                    </div>
-                  </td>
-                  <td className="px-6 py-3.5"><span className="text-sm text-muted">Harvest library</span></td>
-                  <td className="px-6 py-3.5"><AdminBadge tone={statusTone(course.status)}>{course.status}</AdminBadge></td>
-                  <td className="px-6 py-3.5 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      {/* View & settings, NOT Edit — the two tenant-owned flags
-                          only. #249 removed Edit deliberately. */}
-                      <button
-                        onClick={() => setPreviewId(course.id)}
-                        className="p-2 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors"
-                        title="View & settings"
-                      >
-                        <Eye size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleUnadopt(course.id)}
-                        disabled={adoptingId === course.id}
-                        className="p-2 rounded-brand text-faint hover:text-danger hover:bg-danger-tint transition-colors disabled:opacity-50"
-                        title="Remove from your courses"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </AdminCard>
+      <CourseProductList
+        courses={filteredCourses}
+        adopted={myAdoptedCourses}
+        loading={loading}
+        adoptingId={adoptingId}
+        onEdit={handleEditCourse}
+        onDelete={(id) => setDeleteConfirmId(id)}
+        onViewAdopted={(id) => setPreviewId(id)}
+        onRemoveAdopted={(id) => handleUnadopt(id)}
+      />
       </>)}
+
+      <NewProductDialog open={pickingType} onOpenChange={setPickingType} types={PRODUCT_TYPES} onSelect={handlePickType} />
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmId && (

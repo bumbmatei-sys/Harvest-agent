@@ -53,7 +53,8 @@ export interface CourseProductFields {
   tenantId?: string | null;
 }
 
-export type ProductCourse = Course & CourseProductFields;
+/** A course in the builder. It has no id until its first save. */
+export type ProductCourse = Omit<Course, 'id'> & { id?: string } & CourseProductFields;
 
 /** A community a course can be attached to. The Community remodel supplies these. */
 export interface CommunityRef {

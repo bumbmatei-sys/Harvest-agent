@@ -43,10 +43,10 @@ export function emptyLesson(type: LessonType = 'text'): ProductLesson {
     type,
     title: '',
     summary: '',
-    youtubeUrl: '',
     duration: '',
     authorId: '',
-    body: type === 'video' ? '' : '<p></p>',
+    ...(type === 'text' ? {} : { youtubeUrl: '' }),
+    ...(type === 'video' ? {} : { body: '<p></p>' }),
   };
 }
 

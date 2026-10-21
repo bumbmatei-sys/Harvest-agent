@@ -20,8 +20,8 @@ vi.mock('../../utils/tenant-scope', () => ({
   getTenantScope: async () => scope.read,
   getWriteTenantScope: async () => scope.write,
 }));
-vi.mock('../AdminCourseEditor', () => ({
-  default: () => <div data-testid="course-editor" />,
+vi.mock('../courses/builder/CourseWizard', () => ({
+  CourseWizard: () => <div data-testid="course-editor" />,
 }));
 
 const tenantCtx = vi.hoisted(() => ({ tenantPlan: undefined as string | undefined }));
@@ -120,6 +120,13 @@ async function mount() {
   });
 }
 
+/** "New course" opens the shared type picker first; picking Course starts the wizard. */
+async function pickCourseType() {
+  const card = document.body.querySelector<HTMLButtonElement>('[data-product-type="course"]');
+  if (!card) throw new Error('The product type picker did not open');
+  await act(async () => { card.click(); });
+}
+
 function newCourseButton(): HTMLButtonElement {
   const button = Array.from(container.querySelectorAll('button')).find((b) =>
     (b.textContent || '').trim().startsWith('New course')
@@ -159,6 +166,8 @@ describe('AdminCourses — maxCourses enforcement', () => {
     expect(button.disabled).toBe(false);
 
     await act(async () => { button.click(); });
+    expect(container.querySelector('[data-testid="course-editor"]')).toBeNull();
+    await pickCourseType();
     expect(container.querySelector('[data-testid="course-editor"]')).not.toBeNull();
   });
 
@@ -189,6 +198,8 @@ describe('AdminCourses — maxCourses enforcement', () => {
     expect(button.disabled).toBe(false);
 
     await act(async () => { button.click(); });
+    expect(container.querySelector('[data-testid="course-editor"]')).toBeNull();
+    await pickCourseType();
     expect(container.querySelector('[data-testid="course-editor"]')).not.toBeNull();
   });
 
@@ -222,7 +233,8 @@ describe('AdminCourses — maxCourses enforcement', () => {
     for (const course of mockCourses) {
       expect(container.textContent).toContain(course.title);
     }
-    expect(container.querySelectorAll('[title="Delete"]').length).toBeGreaterThanOrEqual(5);
+    expect(container.querySelectorAll('[data-edit-course]').length).toBeGreaterThanOrEqual(5);
+    expect(container.querySelectorAll('[aria-label^="Actions for"]').length).toBeGreaterThanOrEqual(5);
   });
 });
 
@@ -489,7 +501,7 @@ describe('AdminCourses — library adoption', () => {
     await act(async () => { libraryTab().click(); });
 
     expect(container.querySelector('[data-testid="course-editor"]')).toBeNull();
-    expect(container.querySelectorAll('[title="Edit"]')).toHaveLength(0);
+    expect(container.querySelectorAll('[data-edit-course]')).toHaveLength(0);
   });
 });
 
@@ -724,13 +736,13 @@ describe('AdminCourses — adopted courses under "Your courses"', () => {
     mockCourses = makeCourses(1);
     seedOneAdopted();
     await mount();
-    expect(container.querySelectorAll('[title="Edit"]')).toHaveLength(1);
+    expect(container.querySelectorAll('[data-edit-course]')).toHaveLength(1);
   });
 
   it('an adopted course with no own courses offers no edit control at all', async () => {
     seedOneAdopted();
     await mount();
-    expect(container.querySelectorAll('[title="Edit"]')).toHaveLength(0);
+    expect(container.querySelectorAll('[data-edit-course]')).toHaveLength(0);
   });
 
   it('removing an adopted course un-adopts it — it does not delete anything', async () => {
@@ -781,9 +793,9 @@ describe('AdminCourses — adopted courses under "Your courses"', () => {
       { id: 'lib-1', libraryCourseId: 'lib-1' },
     ];
     await mount();
-    // ×2: the mobile and desktop lists both render in happy-dom, which applies
-    // no CSS media queries, so each row appears once per viewport variant.
-    expect(container.querySelectorAll('[title="Remove from your courses"]')).toHaveLength(4);
+    // One card per adopted course. The product list no longer renders a second
+    // viewport variant, so the old x2 is gone.
+    expect(container.querySelectorAll('[title="Remove from your courses"]')).toHaveLength(2);
 
     const search = container.querySelector('input') as HTMLInputElement;
     await act(async () => {
@@ -791,7 +803,7 @@ describe('AdminCourses — adopted courses under "Your courses"', () => {
       setter.call(search, 'Prayer');
       search.dispatchEvent(new Event('input', { bubbles: true }));
     });
-    expect(container.querySelectorAll('[title="Remove from your courses"]')).toHaveLength(2);
+    expect(container.querySelectorAll('[title="Remove from your courses"]')).toHaveLength(1);
     expect(container.textContent).toContain('Prayer');
     expect(container.textContent).not.toContain('Fasting');
   });
@@ -1001,7 +1013,7 @@ describe('AdminCourses — previewing a catalogue course', () => {
     it('offer NO edit control for anything else', async () => {
       mockAdopted = [{ id: 'lib-0', libraryCourseId: 'lib-0' }];
       await openPreview();
-      expect(container.querySelectorAll('[title="Edit"]')).toHaveLength(0);
+      expect(container.querySelectorAll('[data-edit-course]')).toHaveLength(0);
       const switches = Array.from(container.querySelectorAll('[role="switch"]'));
       expect(switches.map((s) => s.getAttribute('aria-label')).sort())
         .toEqual(['Issue a certificate', 'Require the quiz']);
