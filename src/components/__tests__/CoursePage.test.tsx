@@ -21,7 +21,7 @@ import CoursePage from '../CoursePage';
  */
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-vi.mock('../../firebase', () => ({ db: {}, auth: { currentUser: null } }));
+vi.mock('../../firebase', () => ({ db: {}, auth: { currentUser: { uid: 'member-1' } } }));
 
 const scope = vi.hoisted(() => ({ read: 'tenant-1' as string | null, write: 'tenant-1' as string | null }));
 vi.mock('../../utils/tenant-scope', () => ({
@@ -334,5 +334,45 @@ describe('CoursePage — author and category resolution for an adopted course', 
     seedAdopted();
     await mount();
     expect(calls.wheres.filter((w) => w !== '__name__')).toEqual([]);
+  });
+});
+
+describe('CoursePage — the course access model', () => {
+  const restricted = (over: Record<string, unknown> = {}) => ({
+    id: 'r1', title: 'Leaders only', status: 'published', levels: [], accessMode: 'restricted', ...over,
+  });
+
+  it('keeps a restricted course out of the library for a member who is not on its list or in its communities', async () => {
+    data.courses = [
+      { id: 'open-1', title: 'For everyone', status: 'published', levels: [] },
+      restricted({ accessUserIds: ['someone-else'], communityIds: ['c-9'] }),
+    ];
+    await mount();
+    expect(titles()).toEqual(['For everyone']);
+  });
+
+  it('shows it to a member on the explicit access list', async () => {
+    data.courses = [restricted({ accessUserIds: ['member-1'] })];
+    await mount();
+    expect(titles()).toEqual(['Leaders only']);
+  });
+
+  it('shows it to a member of an attached community when the host says which communities they are in', async () => {
+    data.courses = [restricted({ communityIds: ['c-1'] })];
+    await mount();
+    expect(titles()).toEqual([]);
+    act(() => { root.unmount(); });
+    await act(async () => {
+      root = createRoot(container);
+      root.render(<CoursePage memberCommunityIds={['c-1']} />);
+      for (let i = 0; i < 12; i++) await Promise.resolve();
+    });
+    expect(titles()).toEqual(['Leaders only']);
+  });
+
+  it('keeps a legacy course (no accessMode) open to every member', async () => {
+    data.courses = [{ id: 'legacy', title: 'Written before access existed', status: 'published', levels: [] }];
+    await mount();
+    expect(titles()).toEqual(['Written before access existed']);
   });
 });

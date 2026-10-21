@@ -4,10 +4,14 @@ import { doc, getDoc, updateDoc, collection, query, where } from "firebase/fires
 import { db, auth } from "../firebase";
 import { Course, Lesson, Author, QuizAttempt, LibraryCourse, AdoptedCourse } from "../types/course.types";
 import { getAllLessons } from "../utils/course.utils";
+import { ArrowLeft } from "lucide-react";
 import { CourseLibrary } from "../components/course/CourseLibrary";
-import { CourseOverview } from "../components/course/CourseOverview";
-import { LessonView } from "../components/course/LessonView";
-import { AuthorProfile } from "../components/course/AuthorProfile";
+import { CourseLanding } from "./courses/CourseLanding";
+import { CoursePlayer } from "./courses/CoursePlayer";
+import { Button } from "./ui/button";
+import { canAccessCourse } from "../lib/courses/access";
+import { continueTarget } from "../lib/courses/lessons";
+import type { ProductCourse } from "../types/course-product.types";
 import { OperationType, handleFirestoreError } from "../utils/firestore-errors";
 import { getTenantScope, getWriteTenantScope } from "../utils/tenant-scope";
 import {
@@ -27,19 +31,21 @@ export default function CoursePage({
   onBack,
   initialCourseId,
   initialLessonId,
+  memberCommunityIds,
 }: {
   onOpenCourse?: (courseId: string, lessonId?: string) => void;
   onBack?: () => void;
   initialCourseId?: string;
   initialLessonId?: string;
+  /** Communities this member belongs to; a course attached to any of them opens for them. */
+  memberCommunityIds?: readonly string[];
 }) {
-  const [screen, setScreen] = useState<"library" | "overview" | "lesson" | "author">(
+  const [screen, setScreen] = useState<"library" | "overview" | "lesson">(
     initialLessonId ? "lesson" : initialCourseId ? "overview" : "library"
   );
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
-  const [selectedAuthor, setSelectedAuthor] = useState<Author | null>(null);
-  const [previousScreen, setPreviousScreen] = useState<"overview" | "lesson" | null>(null);
+  const [isStaff, setIsStaff] = useState(false);
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [quizAttempts, setQuizAttempts] = useState<Record<string, QuizAttempt>>({});
   const [lessonNotes, setLessonNotes] = useState<Record<string, string>>({});
@@ -89,6 +95,11 @@ export default function CoursePage({
           if (data.lessonNotes) {
             setLessonNotes(data.lessonNotes);
           }
+          // Course managers may open any course, drafts included. Members get
+          // in through the access model (lib/courses/access).
+          setIsStaff(
+            data.role === "admin" || data.role === "super_admin" || data.permissions?.createCourses === true,
+          );
         }
       } catch (error) {
         try { handleFirestoreError(error, OperationType.GET, `users/${auth.currentUser?.uid}`); } catch (e) { console.error(e); }
@@ -423,6 +434,14 @@ export default function CoursePage({
     }
   };
 
+  const accessSubject = {
+    userId: auth.currentUser?.uid ?? null,
+    isStaff,
+    communityIds: memberCommunityIds,
+  };
+  const accessFor = (course: Course) => canAccessCourse(course as ProductCourse, accessSubject);
+  const openable = courses.filter((c) => accessFor(c).allowed);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-surface-raised">
@@ -437,7 +456,7 @@ export default function CoursePage({
     >
       {screen === "library" && (
         <CourseLibrary
-          courses={courses}
+          courses={openable}
           authors={authors}
           categories={categories}
           onSelectCourse={goToCourse}
@@ -447,54 +466,41 @@ export default function CoursePage({
         />
       )}
       {screen === "overview" && selectedCourse && (
-        <CourseOverview
-          course={selectedCourse}
+        <div>
+          <div className="px-3 pt-3">
+            <Button type="button" variant="ghost" className="min-h-11 gap-1.5 px-2 text-muted" onClick={onBack || (() => setScreen("library"))}>
+              <ArrowLeft aria-hidden />Courses
+            </Button>
+          </div>
+          <CourseLanding
+            course={selectedCourse as ProductCourse}
+            mode="member"
+            access={accessFor(selectedCourse)}
+            doneCount={getAllLessons(selectedCourse).filter((l) => completed.has(l.id)).length}
+            onStart={() => {
+              const target = continueTarget(selectedCourse.levels, completed);
+              if (target) goToLesson(selectedCourse, target);
+            }}
+          />
+        </div>
+      )}
+      {screen === "lesson" && selectedCourse && selectedLesson && accessFor(selectedCourse).allowed && (
+        <CoursePlayer
+          course={selectedCourse as ProductCourse & { id: string }}
           adoption={adoptions.get(selectedCourse.id) ?? null}
-          authors={authors}
-          onBack={onBack || (() => setScreen("library"))}
-          onStartLesson={goToLesson}
+          lessonId={selectedLesson.id}
           completed={completed}
           quizAttempts={quizAttempts}
-          onSelectAuthor={(author) => {
-            setSelectedAuthor(author);
-            setPreviousScreen("overview");
-            setScreen("author");
-            window.scrollTo(0, 0);
-          }}
-        />
-      )}
-      {screen === "lesson" && selectedCourse && selectedLesson && (
-        <LessonView
-          course={selectedCourse}
-          lesson={selectedLesson}
-          authors={authors}
-          onBack={() => setScreen("overview")}
-          onComplete={toggleComplete}
-          completed={completed}
-          quizAttempts={quizAttempts}
-          onQuizSubmit={submitQuizAttempt}
           lessonNotes={lessonNotes}
-          onSaveNote={saveLessonNote}
           onSelectLesson={selectLesson}
-          onSelectAuthor={(author) => {
-            setSelectedAuthor(author);
-            setPreviousScreen("lesson");
-            setScreen("author");
-            window.scrollTo(0, 0);
-          }}
+          onToggleComplete={toggleComplete}
+          onQuizSubmit={submitQuizAttempt}
+          onSaveNote={saveLessonNote}
+          onClose={() => setScreen("overview")}
         />
       )}
-      {screen === "author" && selectedAuthor && (
-        <AuthorProfile
-          author={selectedAuthor}
-          onBack={() => setScreen(previousScreen || (selectedLesson ? "lesson" : "overview"))}
-          courses={courses}
-          onSelectCourse={(course) => {
-            setSelectedCourse(course);
-            setScreen("overview");
-            window.scrollTo(0, 0);
-          }}
-        />
+      {screen === "lesson" && selectedCourse && selectedLesson && !accessFor(selectedCourse).allowed && (
+        <CourseLanding course={selectedCourse as ProductCourse} mode="member" access={accessFor(selectedCourse)} />
       )}
     </div>
   );

@@ -4,6 +4,7 @@ import { CourseWizard, newCourse } from '@/components/courses/builder/CourseWiza
 import { emptyLesson } from '@/lib/courses/lessons';
 import type { MemberList } from '@/lib/courses/members';
 import type { ProductCourse } from '@/types/course-product.types';
+import type { Lesson } from '@/types/course.types';
 import { all, byName, click, flush, mount, need, text, type as typeInto, unmount } from '@/components/email/__tests__/dom';
 
 // TipTap needs a layout engine for its selection handling; the editor itself is
@@ -31,7 +32,7 @@ const textCourse = (extra: Partial<ProductCourse> = {}): ProductCourse => ({
   ...newCourse(),
   id: 'c1',
   title: 'Prayer basics',
-  levels: [{ id: 'l1', title: 'Course', sections: [{ id: 's1', title: 'Start here', lessons: [{ ...emptyLesson('text'), id: 'a', title: 'Why we pray', body: '<h2>Why</h2><p>Because.</p>' }] }] }],
+  levels: [{ id: 'l1', title: 'Course', sections: [{ id: 's1', title: 'Start here', lessons: [{ ...emptyLesson('text'), id: 'a', title: 'Why we pray', body: '<h2>Why</h2><p>Because.</p>' } as Lesson] }] }],
   ...extra,
 });
 
