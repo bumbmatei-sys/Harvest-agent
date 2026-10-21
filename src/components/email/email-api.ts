@@ -1,5 +1,6 @@
 import type { AudienceFilter, EmailContact } from '@/lib/email/audience';
 import type { EmailDesign } from '@/lib/email/design';
+import type { EmailLimits } from '@/lib/email/limits';
 import type { Broadcast, EmailSettings, SendPreview, BroadcastStats } from '@/lib/email/service';
 
 /**
@@ -8,13 +9,34 @@ import type { Broadcast, EmailSettings, SendPreview, BroadcastStats } from '@/li
  * server is invisible here and a test or screenshot harness can pass a fake.
  */
 
-export type { Broadcast, EmailSettings, SendPreview, BroadcastStats, EmailContact, AudienceFilter, EmailDesign };
+export type { Broadcast, EmailSettings, SendPreview, BroadcastStats, EmailContact, AudienceFilter, EmailDesign, EmailLimits };
+
+export interface Usage {
+  readonly used: number;
+  readonly cap: number;
+  readonly percent: number;
+  readonly warn: boolean;
+  readonly warnAtPercent: number;
+  /** ISO instant the monthly allowance resets (start of next month, UTC). */
+  readonly resetsAt: string;
+  readonly pack: { readonly size: number; readonly priceUsd: number | null };
+  /** Present only while the ministry is inside its new-ministry window. */
+  readonly daily: { readonly used: number; readonly cap: number; readonly days: number } | null;
+}
+
+export type SendingStatus =
+  | { readonly paused: false }
+  | { readonly paused: true; readonly reason: 'bounce' | 'complaint'; readonly rate: number; readonly threshold: number; readonly pausedAt: string };
 
 export interface Overview {
   readonly broadcasts: readonly Broadcast[];
   readonly subscribers: readonly EmailContact[];
   readonly settings: EmailSettings;
-  readonly usage: { readonly used: number; readonly cap: number };
+  readonly usage: Usage;
+  readonly sending: SendingStatus;
+  /** True only for a super admin, who may edit the platform-wide limits. */
+  readonly canEditLimits: boolean;
+  readonly limits: EmailLimits | null;
 }
 
 export interface DraftFields {
@@ -71,6 +93,8 @@ export interface EmailApi {
   sendTest(id: string): Promise<void>;
   importContacts(rows: readonly ImportRowInput[], consentConfirmed: boolean): Promise<ImportSummary>;
   saveSettings(settings: Partial<EmailSettings>): Promise<EmailSettings>;
+  saveLimits(limits: EmailLimits): Promise<EmailLimits>;
+  resumeSending(tenantId: string | null): Promise<void>;
   domain(op: 'register' | 'check', domain?: string): Promise<EmailSettings>;
 }
 
@@ -100,6 +124,8 @@ export function createEmailApi(tenantId: string | null, call: Call): EmailApi {
     sendTest: async (id) => { await run(call, { ...t, action: 'sendTest', id }); },
     importContacts: (rows, consentConfirmed) => run<ImportSummary>(call, { ...t, action: 'import', rows, consentConfirmed }),
     saveSettings: async (settings) => (await run<{ settings: EmailSettings }>(call, { ...t, action: 'saveSettings', settings })).settings,
+    saveLimits: async (limits) => (await run<{ limits: EmailLimits }>(call, { ...t, action: 'saveLimits', limits })).limits,
+    resumeSending: async (tenantId) => { await run(call, { action: 'resumeSending', tenantId }); },
     domain: async (op, domain) => (await run<{ settings: EmailSettings }>(call, { ...t, action: 'domain', op, domain })).settings,
   };
 }

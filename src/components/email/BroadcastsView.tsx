@@ -12,7 +12,9 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { PageHeader, SetupBanner, TAP, formatStamp, plural, senderReady } from '@/components/email/kit';
-import type { Broadcast, Overview } from '@/components/email/email-api';
+import type { Broadcast, EmailApi, Overview } from '@/components/email/email-api';
+import { SendingNotice } from '@/components/email/SendingNotice';
+import { UsageMeter } from '@/components/email/UsageMeter';
 
 type Tab = 'all' | 'drafts' | 'scheduled' | 'sent';
 
@@ -44,8 +46,11 @@ function Kpi({ label, value, note }: { label: string; value: string; note: strin
   );
 }
 
-export function BroadcastsView({ data, onNew, onOpen, onDelete, onSettings }: {
+export function BroadcastsView({ data, api, tenantId, onChanged, onNew, onOpen, onDelete, onSettings }: {
   data: Overview;
+  api: Pick<EmailApi, 'resumeSending'>;
+  tenantId: string | null;
+  onChanged: () => void;
   onNew: () => void;
   onOpen: (b: Broadcast) => void;
   onDelete: (b: Broadcast) => void;
@@ -64,8 +69,12 @@ export function BroadcastsView({ data, onNew, onOpen, onDelete, onSettings }: {
         subtitle="One-time emails to your list, sent now or later."
         action={<Button className="min-h-11" onClick={onNew}><Plus data-icon="inline-start" />New broadcast</Button>}
       />
+      <SendingNotice sending={data.sending} api={api} canResume={data.canEditLimits} tenantId={tenantId} onResumed={onChanged} />
       {!senderReady(data.settings) && (
         <SetupBanner actionLabel="Open settings" onAction={onSettings}>Finish your sender details and verify your domain before you send.</SetupBanner>
+      )}
+      {(data.usage.warn || data.usage.used >= data.usage.cap) && data.usage.cap > 0 && (
+        <Card className="gap-0 p-5"><UsageMeter usage={data.usage} compact /></Card>
       )}
       <Card className="grid gap-0 overflow-hidden p-0 md:grid-cols-3">
         <Kpi label="Subscribers" value={subscribed.toLocaleString()} note="Can get your emails" />

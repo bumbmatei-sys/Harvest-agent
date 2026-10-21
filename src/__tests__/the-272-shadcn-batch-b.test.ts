@@ -1139,7 +1139,7 @@ const NEWSLETTER_TABLE_ADOPTERS = [
   'src/components/email/EmailSettingsView.tsx',
   'src/components/email/SubscribersView.tsx',
 ] as const;
-const NEWSLETTER_PROGRESS_ADOPTERS = ['src/components/email/EmailOverview.tsx'] as const;
+const NEWSLETTER_PROGRESS_ADOPTERS = ['src/components/email/EmailOverview.tsx', 'src/components/email/UsageMeter.tsx'] as const;
 
 it('only THE-276 adopts chart, THE-283/THE-290/THE-294/THE-319/THE-317 adopt table, THE-290/THE-319/THE-320 adopt progress, and pagination is still adopted by nothing', () => {
   const walk = (dir: string): string[] =>

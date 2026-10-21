@@ -11,6 +11,8 @@ export type EmailActionBody =
   | { action: 'sendTest'; tenantId?: string | null; id: string }
   | { action: 'import'; tenantId?: string | null; rows: ImportRow[]; consentConfirmed: boolean }
   | { action: 'saveSettings'; tenantId?: string | null; settings: Partial<EmailSettings> }
+  | { action: 'saveLimits'; tenantId?: string | null; limits: unknown }
+  | { action: 'resumeSending'; tenantId?: string | null }
   | { action: 'domain'; tenantId?: string | null; op: 'register' | 'check'; domain?: string };
 
 /** Actions that reach the vendor. These need credentials; the rest do not. */
@@ -29,6 +31,9 @@ const STATUS: Record<string, number> = {
   already_sent: 409,
   time_not_future: 400,
   volume_cap: 429,
+  daily_cap: 429,
+  domain_required: 409,
+  sending_paused: 423,
   publishing_closed: 403,
   confirm_required: 409,
   confirm_expired: 409,
@@ -62,6 +67,8 @@ export async function dispatchEmailAction(
       result = await service.importContacts(actor, t, { rows: Array.isArray(body.rows) ? body.rows : [], consentConfirmed: body.consentConfirmed === true });
       break;
     case 'saveSettings': result = await service.saveSettings(actor, t, body.settings ?? {}); break;
+    case 'saveLimits': result = await service.saveLimits(actor, body.limits); break;
+    case 'resumeSending': result = await service.resumeSending(actor, t); break;
     case 'domain': result = await service.domain(actor, t, { op: body.op === 'register' ? 'register' : 'check', domain: body.domain }); break;
     default:
       return { status: 400, body: { ok: false, error: 'invalid', message: 'Unknown action.' } };

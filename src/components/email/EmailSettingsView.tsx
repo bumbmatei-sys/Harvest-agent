@@ -11,7 +11,9 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { EmailApiError, type EmailApi, type EmailSettings } from '@/components/email/email-api';
+import { EmailApiError, type EmailApi, type EmailSettings, type Overview } from '@/components/email/email-api';
+import { PlatformLimitsCard } from '@/components/email/PlatformLimitsCard';
+import { UsageMeter } from '@/components/email/UsageMeter';
 import { ErrorNote, PageHeader, TAP } from '@/components/email/kit';
 
 const DOMAIN_BADGE = {
@@ -33,11 +35,13 @@ function Section({ title, description, children }: { title: string; description?
   );
 }
 
-export function EmailSettingsView({ api, settings, onSaved }: {
-  api: Pick<EmailApi, 'saveSettings' | 'domain'>;
-  settings: EmailSettings;
+export function EmailSettingsView({ api, data, onSaved, onLimitsSaved }: {
+  api: Pick<EmailApi, 'saveSettings' | 'domain' | 'saveLimits'>;
+  data: Pick<Overview, 'settings' | 'usage' | 'canEditLimits' | 'limits'>;
   onSaved: (next: EmailSettings) => void;
+  onLimitsSaved: () => void;
 }) {
+  const { settings } = data;
   const [fromName, setFromName] = useState(settings.fromName);
   const [replyTo, setReplyTo] = useState(settings.replyTo);
   const [mailingAddress, setMailingAddress] = useState(settings.mailingAddress);
@@ -153,6 +157,10 @@ export function EmailSettingsView({ api, settings, onSaved }: {
         )}
       </Section>
 
+      <Section title="Emails this month" description="Your plan includes a monthly number of emails. Your list can be any size.">
+        <UsageMeter usage={data.usage} />
+      </Section>
+
       <Section title="Advanced">
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -162,6 +170,7 @@ export function EmailSettingsView({ api, settings, onSaved }: {
           <Switch disabled aria-label="Use your own Plunk or Mailchimp key" />
         </div>
       </Section>
+      {data.canEditLimits && data.limits && <PlatformLimitsCard api={api} limits={data.limits} onSaved={() => onLimitsSaved()} />}
     </div>
   );
 }

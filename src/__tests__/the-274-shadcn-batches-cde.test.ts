@@ -1439,6 +1439,12 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
     why:
       'Email kit: the Now / Pick a time and 7 / 30 / 90 day choices are one choice among a few exclusive states, so they take toggle-group rather than separate buttons or a select. The primitive is unedited.',
   },
+  {
+    file: 'src/components/email/SendingNotice.tsx',
+    ticket: '#538',
+    why:
+      'The admin-visible notice that a ministry\'s sending was paused automatically for a high bounce or complaint rate. It takes alert in the destructive variant because something real failed and the person reading it needs to act, and the primitive carries role="alert" so it reaches a screen reader. The primitive is unedited.',
+  },
 ];
 
 it('only the recorded adopters import the new components, and each names its ticket', () => {

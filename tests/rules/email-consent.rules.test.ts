@@ -16,7 +16,7 @@ import {
 
 const CONTACT = 'contact-email-1';
 const base = { tenantId: TENANT_A, firstName: 'Ruth', lastName: 'Lee', email: 'ruth@test.com', type: 'member' };
-const KEYS = ['emailStatus', 'emailOptInAt', 'emailOptInSource', 'emailUnsubscribedAt', 'emailUnsubscribedFrom'] as const;
+const KEYS = ['emailStatus', 'emailOptInAt', 'emailOptInSource', 'emailUnsubscribedAt', 'emailUnsubscribedFrom', 'emailSuppressedAt'] as const;
 
 beforeAll(async () => {
   await getEnv();
@@ -71,7 +71,7 @@ describe('contacts: email consent keys are server-only', () => {
 });
 
 describe('tenants/{id}/email* is closed to clients', () => {
-  it.each(['emailBroadcasts/b1', 'emailConfig/settings', 'emailUsage/2031-03'])('%s: no read or write, even for the owner', async (path) => {
+  it.each(['emailBroadcasts/b1', 'emailConfig/settings', 'emailConfig/sending', 'emailUsage/2031-03', 'emailUsage/2031-03-10'])('%s: no read or write, even for the owner', async (path) => {
     const db = (await owner()).firestore();
     await assertFails(db.doc(`tenants/${TENANT_A}/${path}`).get());
     await assertFails(db.doc(`tenants/${TENANT_A}/${path}`).set({ sent: 0 }));
@@ -81,5 +81,13 @@ describe('tenants/{id}/email* is closed to clients', () => {
     const db = (await owner()).firestore();
     await assertFails(db.doc('email_scheduled/x').get());
     await assertFails(db.doc('email_confirm_tokens/x').set({ consumed: false }));
+  });
+
+  it('the platform limits document is closed to clients, even to a super admin', async () => {
+    for (const ctx of [await owner(), await superAdmin()]) {
+      const db = ctx.firestore();
+      await assertFails(db.doc('platform_config/email_limits').get());
+      await assertFails(db.doc('platform_config/email_limits').set({ warnAtPercent: 1 }));
+    }
   });
 });

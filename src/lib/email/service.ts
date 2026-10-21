@@ -21,7 +21,8 @@ import type { DomainStatus, EmailProvider } from '@/lib/email/provider';
 import { DEFAULT_EMAIL_DESIGN, fillMergeTags, renderEmail } from '@/lib/email/render';
 import type { EmailDesign } from '@/lib/email/design';
 import { listUnsubscribeHeaders, signUnsubscribe, unsubscribeUrl } from '@/lib/email/unsubscribe';
-import { MONTHLY_SEND_CAP, decideVolume, monthKey } from '@/lib/email/volume-cap';
+import { resolveLimits, validateLimits, type EmailLimits } from '@/lib/email/limits';
+import { decidePause, decideSend, dayKey, isNewChurch, monthKey, nextMonthStart, percentUsed, type Health } from '@/lib/email/volume-cap';
 
 export type BroadcastStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'partial' | 'failed';
 
@@ -98,7 +99,12 @@ export interface EmailActor {
 }
 
 export interface EmailStore {
-  getTenant(tenantId: string): Promise<{ name: string; plan: unknown; status: unknown; ownerId: string | null } | null>;
+  getTenant(tenantId: string): Promise<{ name: string; plan: unknown; status: unknown; ownerId: string | null; createdAt: unknown } | null>;
+  /** The raw limits document, or null when nobody has saved one (defaults apply). */
+  getLimits(): Promise<unknown>;
+  saveLimits(limits: EmailLimits): Promise<void>;
+  getSendingState(tenantId: string): Promise<SendingState | null>;
+  setSendingState(tenantId: string, state: SendingState | null): Promise<void>;
   getAdminEmails(tenantId: string): Promise<readonly string[]>;
   getPermissions(uid: string): Promise<Readonly<Record<string, boolean>>>;
   getSettings(tenantId: string): Promise<EmailSettings>;
@@ -113,8 +119,14 @@ export interface EmailStore {
   createContacts(tenantId: string, rows: readonly NewContact[], uid: string): Promise<void>;
   /** Fields merged onto existing CRM people. Never touches status of a suppressed person. */
   updateContacts(tenantId: string, updates: readonly ContactUpdate[]): Promise<void>;
-  usage(tenantId: string, month: string): Promise<number>;
-  addUsage(tenantId: string, month: string, sent: number): Promise<void>;
+  /** Emails sent under one key: a month ('2031-03') or a day ('2031-03-10'). */
+  usage(tenantId: string, key: string): Promise<number>;
+  addUsage(tenantId: string, key: string, sent: number): Promise<void>;
+  /** Sent, bounced and complained for one month. */
+  health(tenantId: string, month: string): Promise<Health>;
+  addFeedback(tenantId: string, month: string, kind: 'bounced' | 'complained'): Promise<void>;
+  /** Marks every CRM person with this address bounced or complained. Idempotent. */
+  markContactStatus(tenantId: string, email: string, status: 'bounced' | 'complained', at: string): Promise<void>;
   queueScheduled(tenantId: string, broadcastId: string, at: string): Promise<void>;
   unqueueScheduled(tenantId: string, broadcastId: string): Promise<void>;
   listDue(nowIso: string): Promise<readonly { tenantId: string; broadcastId: string }[]>;
@@ -122,9 +134,16 @@ export interface EmailStore {
   recordOptOut(tenantId: string, email: string, broadcastId: string, at: string): Promise<void>;
 }
 
+export interface SendingState {
+  readonly pausedAt: string;
+  readonly reason: 'bounce' | 'complaint';
+  readonly rate: number;
+  readonly threshold: number;
+}
+
 export type EmailErrorCode =
   | 'not_authorized' | 'cross_tenant' | 'not_found' | 'invalid' | 'plan_required' | 'publishing_closed'
-  | 'sender_not_ready' | 'no_recipients' | 'volume_cap' | 'time_not_future' | 'already_sent'
+  | 'sender_not_ready' | 'no_recipients' | 'volume_cap' | 'daily_cap' | 'domain_required' | 'sending_paused' | 'time_not_future' | 'already_sent'
   | 'confirm_required' | 'confirm_expired' | 'confirm_reused' | 'confirm_mismatch' | 'provider_unavailable';
 
 export interface EmailFailure {
@@ -192,6 +211,8 @@ export function createEmailService(deps: {
   ledger: EmailConfirmLedger;
   getProvider: () => Promise<EmailProvider>;
   appOrigin: string;
+  /** Shared Harvest sender for SMALL sends from a ministry with no verified domain. Unset: a verified domain is always required. */
+  fallbackFrom?: string | null;
   now?: () => Date;
   newId?: () => string;
 }) {
@@ -226,8 +247,62 @@ export function createEmailService(deps: {
 
   type Gated = Exclude<Awaited<ReturnType<typeof gate>>, EmailFailure>;
 
-  function capFor(g: Gated): number {
-    return MONTHLY_SEND_CAP[g.plan];
+  async function loadLimits(): Promise<EmailLimits> {
+    return resolveLimits(await store.getLimits());
+  }
+
+  function pauseMessage(state: SendingState): string {
+    const what = state.reason === 'complaint' ? 'spam complaints' : 'bounced emails';
+    return `Sending is paused because ${what} passed ${(state.threshold * 100).toFixed(1).replace(/\.0$/, '')}% of what you sent this month (it reached ${(state.rate * 100).toFixed(1)}%). Check that your list only holds people who asked to hear from you, then ask Harvest to resume sending.`;
+  }
+
+  /**
+   * Every limit a send must clear, in one place, so a preview, a confirmed send
+   * and a scheduled send can never disagree: paused, domain, monthly allowance,
+   * new-ministry daily cap. Returns the sender address to use on success.
+   */
+  async function checkSending(
+    tenantId: string,
+    tenant: { plan: unknown; createdAt: unknown },
+    settings: EmailSettings,
+    requested: number,
+  ): Promise<EmailFailure | { ok: true; from: string; remaining: number }> {
+    const limits = await loadLimits();
+    const state = await store.getSendingState(tenantId);
+    if (state) return fail('sending_paused', pauseMessage(state));
+    let from = senderAddress(settings);
+    if (!from) {
+      if (requested > limits.largeSendThreshold) {
+        return fail('domain_required', `Sending to more than ${limits.largeSendThreshold.toLocaleString()} people needs a verified sending domain. Verify yours in Email settings.`);
+      }
+      if (!deps.fallbackFrom) return fail('sender_not_ready', 'Verify your sending domain in Email settings before sending.');
+      from = deps.fallbackFrom;
+    }
+    const plan = toTenantPlan(typeof tenant.plan === 'string' ? tenant.plan : null);
+    const at = now();
+    const [usedMonth, usedToday] = await Promise.all([store.usage(tenantId, monthKey(at)), store.usage(tenantId, dayKey(at))]);
+    const decision = decideSend({
+      allowance: limits.monthlySends[plan],
+      usedMonth,
+      usedToday,
+      requested,
+      newChurch: isNewChurch(tenant.createdAt, at, limits.newChurch.days),
+      dailyCap: limits.newChurch.dailyCap,
+    });
+    if (!decision.ok) {
+      return decision.code === 'volume_cap'
+        ? fail('volume_cap', `This send would pass your monthly allowance. You have ${decision.remaining.toLocaleString()} of ${decision.cap.toLocaleString()} emails left this month.`)
+        : fail('daily_cap', `New ministries can send up to ${decision.cap.toLocaleString()} emails a day for their first ${limits.newChurch.days} days. You have ${decision.remaining.toLocaleString()} left today.`);
+    }
+    return { ok: true, from, remaining: decision.remaining };
+  }
+
+  /** After any send or feedback: pause the ministry if a rate has passed its threshold. */
+  async function evaluatePause(tenantId: string): Promise<void> {
+    if (await store.getSendingState(tenantId)) return;
+    const limits = await loadLimits();
+    const decision = decidePause(await store.health(tenantId, monthKey(now())), limits.autoPause);
+    if (decision) await store.setSendingState(tenantId, { pausedAt: now().toISOString(), ...decision });
   }
 
   function normaliseDraft(input: DraftInput, existing: Broadcast | null, g: Gated, actor: EmailActor): Broadcast {
@@ -264,7 +339,6 @@ export function createEmailService(deps: {
     if (!settings.fromName.trim()) return fail('sender_not_ready', 'Add a sender name in Email settings before sending.');
     if (!settings.replyTo.trim()) return fail('sender_not_ready', 'Add a reply-to email in Email settings before sending.');
     if (!settings.mailingAddress.trim()) return fail('sender_not_ready', 'Add a mailing address in Email settings. It goes at the bottom of every email.');
-    if (!senderAddress(settings)) return fail('sender_not_ready', 'Verify your sending domain in Email settings before sending.');
     return null;
   }
 
@@ -282,19 +356,17 @@ export function createEmailService(deps: {
     // Re-read at the moment of sending: someone may have unsubscribed since the preview.
     const audience = await audienceFor(broadcast);
     const month = monthKey(now());
-    const used = await store.usage(broadcast.tenantId, month);
     const tenant = await store.getTenant(broadcast.tenantId);
-    const cap = MONTHLY_SEND_CAP[toTenantPlan(typeof tenant?.plan === 'string' ? tenant.plan : null)];
-    const volume = decideVolume({ cap, used, requested: audience.recipients.length });
-    const address = senderAddress(settings);
     const stampBase = { ...broadcast, updatedAt: now().toISOString() };
-    if (!address || !volume.ok) {
-      const error = !address ? 'Sending domain is not verified.' : `This would pass your monthly send limit (${volume.remaining} left).`;
-      const failed: Broadcast = { ...stampBase, status: 'failed', error, scheduledAt: null };
+    const check = tenant
+      ? await checkSending(broadcast.tenantId, tenant, settings, audience.recipients.length)
+      : fail('not_found', 'This ministry could not be read.');
+    if (!check.ok) {
+      const failed: Broadcast = { ...stampBase, status: 'failed', error: check.message, scheduledAt: null };
       await store.saveBroadcast(failed);
-      return { broadcast: failed, outcome: 'failed', message: error };
+      return { broadcast: failed, outcome: 'failed', message: check.message };
     }
-    const fromAddress: string = address;
+    const fromAddress: string = check.from;
     const tenantName = tenant?.name ?? '';
     const useB = broadcast.subjectB != null;
     let sent = 0;
@@ -329,7 +401,11 @@ export function createEmailService(deps: {
       }
     }
     await Promise.all(Array.from({ length: Math.min(SEND_CONCURRENCY, queue.length) }, worker));
-    if (sent > 0) await store.addUsage(broadcast.tenantId, month, sent);
+    if (sent > 0) {
+      await store.addUsage(broadcast.tenantId, month, sent);
+      await store.addUsage(broadcast.tenantId, dayKey(now()), sent);
+      await evaluatePause(broadcast.tenantId);
+    }
     const stats: BroadcastStats = {
       recipients: audience.recipients.length,
       sent,
@@ -369,13 +445,68 @@ export function createEmailService(deps: {
     async list(actor: EmailActor, tenantId: string | null | undefined) {
       const g = await gate(actor, tenantId, { needPlan: true });
       if (!g.ok) return g;
-      const [broadcasts, subscribers, settings, used] = await Promise.all([
+      const at = now();
+      const limits = await loadLimits();
+      const [broadcasts, subscribers, settings, usedMonth, usedToday, sending] = await Promise.all([
         store.listBroadcasts(g.tenantId),
         store.listContacts(g.tenantId),
         store.getSettings(g.tenantId),
-        store.usage(g.tenantId, monthKey(now())),
+        store.usage(g.tenantId, monthKey(at)),
+        store.usage(g.tenantId, dayKey(at)),
+        store.getSendingState(g.tenantId),
       ]);
-      return { ok: true as const, broadcasts, subscribers, settings, usage: { used, cap: capFor(g) } };
+      const cap = limits.monthlySends[g.plan];
+      const percent = percentUsed(usedMonth, cap);
+      const newChurch = isNewChurch(g.tenant.createdAt, at, limits.newChurch.days);
+      return {
+        ok: true as const,
+        broadcasts,
+        subscribers,
+        settings,
+        usage: {
+          used: usedMonth,
+          cap,
+          percent,
+          warn: cap > 0 && percent >= limits.warnAtPercent,
+          warnAtPercent: limits.warnAtPercent,
+          resetsAt: nextMonthStart(at).toISOString(),
+          pack: limits.pack,
+          daily: newChurch ? { used: usedToday, cap: limits.newChurch.dailyCap, days: limits.newChurch.days } : null,
+        },
+        sending: sending ? { paused: true as const, ...sending } : { paused: false as const },
+        canEditLimits: actor.isSuperAdmin,
+        limits: actor.isSuperAdmin ? limits : null,
+      };
+    },
+
+    /** Platform-wide limits. Super admin only: it changes what every ministry may send. */
+    async saveLimits(actor: EmailActor, raw: unknown) {
+      if (!actor.isSuperAdmin) return fail('not_authorized', 'Only Harvest can change sending limits.');
+      const checked = validateLimits(raw);
+      if (!checked.ok) return fail('invalid', checked.message);
+      await store.saveLimits(checked.limits);
+      return { ok: true as const, limits: checked.limits };
+    },
+
+    /** Lifts an auto-pause. Super admin only, after someone has looked at the list. */
+    async resumeSending(actor: EmailActor, tenantId: string | null | undefined) {
+      if (!actor.isSuperAdmin) return fail('not_authorized', 'Only Harvest can resume paused sending.');
+      const id = clean(tenantId);
+      if (!id) return fail('invalid', 'A ministry is required.');
+      await store.setSendingState(id, null);
+      return { ok: true as const };
+    },
+
+    /**
+     * A bounce or spam complaint from the provider. Marks the CRM person, counts
+     * it against the month, and pauses sending if a rate has passed its limit.
+     * Nothing calls this yet: it is the entry point for a provider webhook.
+     */
+    async recordFeedback(tenantId: string, email: string, kind: 'bounced' | 'complained') {
+      const at = now();
+      await store.markContactStatus(tenantId, normalizeEmail(email), kind, at.toISOString());
+      await store.addFeedback(tenantId, monthKey(at), kind);
+      await evaluatePause(tenantId);
     },
 
     async remove(actor: EmailActor, tenantId: string | null | undefined, id: string) {
@@ -409,21 +540,18 @@ export function createEmailService(deps: {
       if ('ok' in when) return when;
       const audience = await audienceFor(broadcast);
       if (audience.recipients.length === 0) return fail('no_recipients', 'Nobody on this audience can be emailed right now.');
-      const used = await store.usage(g.tenantId, monthKey(now()));
-      const volume = decideVolume({ cap: capFor(g), used, requested: audience.recipients.length });
-      if (!volume.ok) {
-        return fail('volume_cap', `This would pass your monthly send limit. You have ${volume.remaining} sends left this month.`);
-      }
+      const check = await checkSending(g.tenantId, g.tenant, settings, audience.recipients.length);
+      if (!check.ok) return check;
       const action: EmailConfirmAction = when.at ? 'schedule' : 'send';
       const preview: SendPreview = {
         broadcastId: broadcast.id,
         action,
         recipientCount: audience.recipients.length,
         skipped: audience.skipped,
-        from: `${settings.fromName} <${senderAddress(settings)}>`,
+        from: `${settings.fromName} <${check.from}>`,
         subject: broadcast.subject,
         at: when.at,
-        capRemainingAfter: volume.remaining,
+        capRemainingAfter: check.remaining,
       };
       const binding: EmailConfirmBinding = {
         action,
@@ -491,6 +619,8 @@ export function createEmailService(deps: {
       if (notReady) return notReady;
       const to = normalizeEmail(actor.email);
       if (!to) return fail('invalid', 'Your account has no email address to send a test to.');
+      const testFrom = senderAddress(settings) ?? deps.fallbackFrom ?? null;
+      if (!testFrom) return fail('sender_not_ready', 'Verify your sending domain in Email settings before sending.');
       const provider = await deps.getProvider();
       const url = unsubscribeUrl(deps.appOrigin, signUnsubscribe({ tenantId: g.tenantId, email: to, broadcastId: broadcast.id }));
       const { html, text } = renderEmail({
@@ -499,7 +629,7 @@ export function createEmailService(deps: {
       });
       const result = await provider.send({
         to, subject: `[Test] ${fillMergeTags(broadcast.subject, { firstName: 'Alex', senderName: settings.fromName })}`, html, text, fromName: settings.fromName,
-        fromAddress: senderAddress(settings) as string, replyTo: settings.replyTo || null, headers: listUnsubscribeHeaders(url),
+        fromAddress: testFrom, replyTo: settings.replyTo || null, headers: listUnsubscribeHeaders(url),
       });
       if (!result.ok) return fail('provider_unavailable', 'The test email could not be sent. Try again.');
       return { ok: true as const };

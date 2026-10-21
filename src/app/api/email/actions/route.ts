@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
       ledger: firestoreEmailLedger(),
       getProvider: getEmailProvider,
       appOrigin: request.nextUrl.origin,
+      fallbackFrom: process.env.EMAIL_FALLBACK_FROM?.trim() || null,
     });
     const result = await dispatchEmailAction(service, {
       uid: user.uid,

@@ -12,6 +12,9 @@ import { EmailApiError, type EmailApi, type ImportRowInput, type ImportSummary }
 import { ErrorNote, TAP, plural } from '@/components/email/kit';
 import { readImportRows } from '@/components/email/import-rows';
 
+/** Rows per request. Matches the server's per-request limit. */
+export const IMPORT_CHUNK = 5000;
+
 export function ImportDialog({ open, onOpenChange, api, onImported }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -46,7 +49,14 @@ export function ImportDialog({ open, onOpenChange, api, onImported }: {
     setBusy(true);
     setError(null);
     try {
-      setSummary(await api.importContacts(rows, consent));
+      // The server takes up to IMPORT_CHUNK rows a request; a bigger file is sent in
+      // pieces, so there is no limit on how large a list can be brought over.
+      const total: { -readonly [K in keyof ImportSummary]: number } = { added: 0, merged: 0, alreadySubscribed: 0, blocked: 0, invalid: 0, repeatedInFile: 0 };
+      for (let i = 0; i < rows.length; i += IMPORT_CHUNK) {
+        const part = await api.importContacts(rows.slice(i, i + IMPORT_CHUNK), consent);
+        for (const k of Object.keys(total) as (keyof ImportSummary)[]) total[k] += part[k];
+      }
+      setSummary(total);
       onImported();
     } catch (e) {
       setError(e instanceof EmailApiError ? e.message : 'The import could not be completed.');
@@ -80,7 +90,7 @@ export function ImportDialog({ open, onOpenChange, api, onImported }: {
             <div className="flex flex-col gap-2">
               <Label htmlFor="email-import-file">CSV file</Label>
               <Input id="email-import-file" type="file" accept=".csv,text/csv" className={TAP} onChange={(e) => void onFile(e.target.files?.[0])} />
-              <p className="text-xs text-faint">Needs a column headed Email. Name, First name, Last name and Tags columns are used when present. Up to 5,000 people at a time.</p>
+              <p className="text-xs text-faint">Needs a column headed Email. Name, First name, Last name and Tags columns are used when present. There is no limit on your list size.</p>
             </div>
             {fileName && (
               <div className="flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm">

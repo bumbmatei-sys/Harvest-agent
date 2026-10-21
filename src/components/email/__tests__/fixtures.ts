@@ -14,6 +14,8 @@ export const SETTINGS: EmailSettings = {
   domainRecords: [],
 };
 
+export const USAGE: Overview['usage'] = { used: 10, cap: 5000, percent: 0, warn: false, warnAtPercent: 80, resetsAt: '2031-04-01T00:00:00.000Z', pack: { size: 10000, priceUsd: null }, daily: null };
+
 export const person = (email: string, over: Partial<EmailContact> = {}): EmailContact => ({
   id: `c-${email}`, email, name: 'Alex Doe', status: 'subscribed', tags: [], groups: ['Members'], source: 'import', joinedAt: '2031-01-01T00:00:00.000Z', ...over,
 });
@@ -25,7 +27,7 @@ export const broadcast = (over: Partial<Broadcast> = {}): Broadcast => ({
 });
 
 export const overview = (over: Partial<Overview> = {}): Overview => ({
-  broadcasts: [], subscribers: [person('a@x.org', { tags: ['youth'] }), person('b@x.org')], settings: SETTINGS, usage: { used: 10, cap: 5000 }, ...over,
+  broadcasts: [], subscribers: [person('a@x.org', { tags: ['youth'] }), person('b@x.org')], settings: SETTINGS, usage: USAGE, sending: { paused: false }, canEditLimits: false, limits: null, ...over,
 });
 
 export function fakeApi(over: Partial<EmailApi> = {}): EmailApi & { [K in keyof EmailApi]: ReturnType<typeof vi.fn> } {
@@ -39,6 +41,8 @@ export function fakeApi(over: Partial<EmailApi> = {}): EmailApi & { [K in keyof 
     importContacts: vi.fn(async () => ({ added: 1, merged: 0, alreadySubscribed: 0, blocked: 0, invalid: 0, repeatedInFile: 0 })),
     saveSettings: vi.fn(async (s) => ({ ...SETTINGS, ...s })),
     domain: vi.fn(async () => SETTINGS),
+    saveLimits: vi.fn(async (l) => l),
+    resumeSending: vi.fn(async () => {}),
     ...over,
   };
   return api as never;

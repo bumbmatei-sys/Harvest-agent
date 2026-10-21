@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
       ledger: firestoreEmailLedger(),
       getProvider: getEmailProvider,
       appOrigin: process.env.NEXT_PUBLIC_APP_ORIGIN || 'https://theharvest.app',
+      fallbackFrom: process.env.EMAIL_FALLBACK_FROM?.trim() || null,
     });
     const results = await service.runDue();
     const failed = results.filter((r) => r.outcome === 'failed' || r.outcome === 'partial');

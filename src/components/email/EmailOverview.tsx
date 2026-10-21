@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { PageHeader, SetupBanner, TAP, plural, senderReady } from '@/components/email/kit';
-import type { Overview } from '@/components/email/email-api';
+import type { EmailApi, Overview } from '@/components/email/email-api';
+import { SendingNotice } from '@/components/email/SendingNotice';
+import { UsageMeter } from '@/components/email/UsageMeter';
 
 function Kpi({ label, value, note, children }: { label: string; value: string; note: string; children?: React.ReactNode }) {
   return (
@@ -19,8 +21,11 @@ function Kpi({ label, value, note, children }: { label: string; value: string; n
   );
 }
 
-export function EmailOverview({ data, onNew, onSettings, onSubscribers }: {
+export function EmailOverview({ data, api, tenantId, onNew, onSettings, onSubscribers, onChanged }: {
   data: Overview;
+  api: Pick<EmailApi, 'resumeSending'>;
+  tenantId: string | null;
+  onChanged: () => void;
   onNew: () => void;
   onSettings: () => void;
   onSubscribers: () => void;
@@ -43,14 +48,15 @@ export function EmailOverview({ data, onNew, onSettings, onSubscribers }: {
         subtitle="How your list is growing and what you have sent."
         action={<Button className="min-h-11" onClick={onNew}><Plus data-icon="inline-start" />New broadcast</Button>}
       />
+      <SendingNotice sending={data.sending} api={api} canResume={data.canEditLimits} tenantId={tenantId} onResumed={onChanged} />
       {!senderReady(data.settings) && (
         <SetupBanner actionLabel="Open settings" onAction={onSettings}>Finish your sender details and verify your domain before you send.</SetupBanner>
       )}
-      <Card className="grid gap-0 overflow-hidden p-0 md:grid-cols-4">
+      <Card className="gap-0 p-5">
+        <UsageMeter usage={data.usage} />
+      </Card>
+      <Card className="grid gap-0 overflow-hidden p-0 md:grid-cols-3">
         <Kpi label="Subscribers" value={subscribed.toLocaleString()} note={`${plural(data.subscribers.length, 'person', 'people')} in your CRM`} />
-        <Kpi label="Sent this month" value={data.usage.used.toLocaleString()} note={data.usage.cap > 0 ? `${data.usage.cap.toLocaleString()} sends a month` : 'Not included in your plan'}>
-          {data.usage.cap > 0 && <Progress value={Math.min(100, (data.usage.used / data.usage.cap) * 100)} className="my-1" />}
-        </Kpi>
         <Kpi label="Broadcasts sent" value={sent.toLocaleString()} note={`${plural(data.broadcasts.length, 'broadcast', 'broadcasts')} in all`} />
         <Kpi label="Unsubscribed" value={suppressed.toLocaleString()} note="Removed for good" />
       </Card>

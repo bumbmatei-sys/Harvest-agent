@@ -803,8 +803,11 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/email/EmailSettingsView.tsx',
       'src/components/email/EmailWorkspace.tsx',
       'src/components/email/ImportDialog.tsx',
+      'src/components/email/PlatformLimitsCard.tsx',
       'src/components/email/SendStep.tsx',
+      'src/components/email/SendingNotice.tsx',
       'src/components/email/SubscribersView.tsx',
+      'src/components/email/UsageMeter.tsx',
       'src/components/email/kit.tsx',
       'src/components/events/RotaInviteView.tsx',   // THE-324: names it in a comment, does not use it
       'src/components/events/RotaRespondView.tsx',

@@ -4,8 +4,8 @@
   "entries": [
     {
       "file": "firestore.rules",
-      "digest": "66d46d6179f051990fb09aaf6b4aab9567bd576337ade33a762e0194baf86aee",
-      "why": "Adds emailConsentKeys, contactCreateKeepsEmailConsent and contactUpdateKeepsEmailConsent beside newsletterConsentOnCreate and applies them to the top-level contacts match block, which is the CRM collection the app reads and writes: a client CRM admin keeps every other contact write but can no longer create or change emailStatus, emailOptInAt, emailOptInSource, emailUnsubscribedAt or emailUnsubscribedFrom, so only the Admin SDK (CSV import, the unsubscribe link) can subscribe or unsubscribe a person. The legacy nested tenants/{id}/contacts block is deliberately untouched: nothing reads it and plan-features.crm-individual pins its text. Read rules and every other match block are unchanged."
+      "digest": "5efc9fc6b2d4a9df4e00c54d3ac435463e1c62f4ff39912c53fd92ca7ae5771d",
+      "why": "Adds emailConsentKeys, contactCreateKeepsEmailConsent and contactUpdateKeepsEmailConsent beside newsletterConsentOnCreate and applies them to the top-level contacts match block, which is the CRM collection the app reads and writes: a client CRM admin keeps every other contact write but can no longer create or change emailStatus, emailOptInAt, emailOptInSource, emailUnsubscribedAt, emailUnsubscribedFrom or emailSuppressedAt, so only the Admin SDK (CSV import, the unsubscribe link) can subscribe or unsubscribe a person. The legacy nested tenants/{id}/contacts block is deliberately untouched: nothing reads it and plan-features.crm-individual pins its text. Read rules and every other match block are unchanged."
     },
     {
       "file": "src/components/NewsletterCampaigns.tsx",
@@ -14,7 +14,7 @@
     },
     {
       "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
-      "digest": "df98dc47eb054e472f96f40d1f1283510516846da63a2d9d94459f7f723a19cd",
+      "digest": "725cbcebc725020220e99c74e14d9598068374f9ba430ad49fc7fad378022164",
       "why": "#538 appends six email components to RECORDED_ADOPTERS, each with a ticket and a reason of more than 80 characters, because they adopt calendar, checkbox, empty, popover, scroll-area, switch, textarea and toggle-group. Nothing already recorded was replaced or reworded."
     }
   ]

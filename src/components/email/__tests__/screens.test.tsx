@@ -7,7 +7,7 @@ import { SendStep, combine, timeSlots } from '@/components/email/SendStep';
 import { SubscribersView, filterPeople } from '@/components/email/SubscribersView';
 import { EmailApiError, NOT_CONFIGURED_COPY, createEmailApi } from '@/components/email/email-api';
 import { byName, click, flush, mount, need, text, unmount } from './dom';
-import { SETTINGS, broadcast, fakeApi, overview, person } from './fixtures';
+import { SETTINGS, USAGE, broadcast, fakeApi, overview, person } from './fixtures';
 
 afterEach(unmount);
 
@@ -26,7 +26,8 @@ function sendStep(api: ReturnType<typeof fakeApi>, over: Partial<Parameters<type
       onFilters={() => {}}
       settings={SETTINGS}
       people={[person('a@x.org'), person('b@x.org'), person('gone@x.org', { status: 'unsubscribed' })]}
-      usage={{ used: 0, cap: 5000 }}
+      usage={USAGE}
+      sending={{ paused: false }}
       onBack={() => {}}
       onOpenSettings={() => {}}
       onSeeTips={() => {}}
@@ -127,14 +128,14 @@ describe('Broadcasts view', () => {
   });
 
   it('shows a partial send as a visible error in the row', async () => {
-    await mount(<BroadcastsView data={overview({ broadcasts: list })} onNew={noop} onOpen={noop} onDelete={noop} onSettings={noop} />);
+    await mount(<BroadcastsView api={fakeApi()} tenantId="grace" onChanged={noop} data={overview({ broadcasts: list })} onNew={noop} onOpen={noop} onDelete={noop} onSettings={noop} />);
     expect(need(document.querySelector('[data-broadcast-id="x"] [role=alert]'), 'row alert').textContent).toContain('1 of 2 emails did not send');
     expect(text()).toContain('Partly sent');
   });
 
   it('has an empty state with a New broadcast action', async () => {
     const onNew = vi.fn();
-    await mount(<BroadcastsView data={overview()} onNew={onNew} onOpen={noop} onDelete={noop} onSettings={noop} />);
+    await mount(<BroadcastsView api={fakeApi()} tenantId="grace" onChanged={noop} data={overview()} onNew={onNew} onOpen={noop} onDelete={noop} onSettings={noop} />);
     expect(text()).toContain('No broadcasts yet');
     await click(need(byName('button', 'New broadcast', ), 'new'));
     expect(onNew).toHaveBeenCalled();
@@ -142,7 +143,7 @@ describe('Broadcasts view', () => {
 
   it('nudges to settings until the sender is ready', async () => {
     const onSettings = vi.fn();
-    await mount(<BroadcastsView data={overview({ settings: { ...SETTINGS, replyTo: '' } })} onNew={noop} onOpen={noop} onDelete={noop} onSettings={onSettings} />);
+    await mount(<BroadcastsView api={fakeApi()} tenantId="grace" onChanged={noop} data={overview({ settings: { ...SETTINGS, replyTo: '' } })} onNew={noop} onOpen={noop} onDelete={noop} onSettings={onSettings} />);
     await click(need(byName('button', 'Open settings'), 'open settings'));
     expect(onSettings).toHaveBeenCalled();
   });
@@ -202,7 +203,7 @@ describe('Workspace', () => {
 describe('Settings view', () => {
   it('shows domain state, DNS records for a pending domain, and the disabled own-key option', async () => {
     const settings = { ...SETTINGS, domainState: 'pending' as const, domainRecords: [{ type: 'TXT', name: '_dk.mail.grace.org', value: 'v=DKIM1' }] };
-    await mount(<EmailSettingsView api={fakeApi()} settings={settings} onSaved={() => {}} />);
+    await mount(<EmailSettingsView api={fakeApi()} data={overview({ settings })} onSaved={() => {}} onLimitsSaved={() => {}} />);
     expect(need(document.querySelector('[data-domain-state]'), 'badge').textContent).toBe('Waiting for DNS');
     expect(text()).toContain('v=DKIM1');
     expect(text()).toContain('Coming soon');
@@ -211,7 +212,7 @@ describe('Settings view', () => {
 
   it('reports a not-configured domain call in plain words', async () => {
     const api = fakeApi({ domain: vi.fn(async () => { throw new EmailApiError(NOT_CONFIGURED_COPY, 'not_configured', true); }) });
-    await mount(<EmailSettingsView api={api} settings={{ ...SETTINGS, domainState: 'none', domain: 'grace.org' }} onSaved={() => {}} />);
+    await mount(<EmailSettingsView api={api} data={overview({ settings: { ...SETTINGS, domainState: 'none', domain: 'grace.org' } })} onSaved={() => {}} onLimitsSaved={() => {}} />);
     await click(need(byName('button', 'Set up domain'), 'set up'));
     await flush();
     expect(need(document.querySelector('[role=alert]'), 'alert').textContent).toContain('not set up on this server yet');

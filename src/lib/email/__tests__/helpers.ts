@@ -1,4 +1,5 @@
 import { memoryEmailLedger } from '@/lib/email/confirm';
+import { dayKey, monthKey } from '@/lib/email/volume-cap';
 import type { EmailContact } from '@/lib/email/audience';
 import type { DomainStatus, EmailProvider, OutboundEmail } from '@/lib/email/provider';
 import {
@@ -10,6 +11,7 @@ import {
   type EmailSettings,
   type EmailStore,
   type NewContact,
+  type SendingState,
 } from '@/lib/email/service';
 
 export const TENANT = 'grace';
@@ -36,6 +38,10 @@ export function memoryStore(seed: {
   contacts?: EmailContact[];
   settings?: Partial<EmailSettings>;
   usage?: number;
+  usageByKey?: Record<string, number>;
+  createdAt?: unknown;
+  limits?: unknown;
+  health?: Partial<{ bounced: number; complained: number }>;
 } = {}) {
   const contacts = new Map<string, EmailContact>((seed.contacts ?? []).map((c) => [c.id, c]));
   const broadcasts = new Map<string, Broadcast>();
@@ -48,12 +54,20 @@ export function memoryStore(seed: {
     domainState: 'verified',
     ...seed.settings,
   };
-  let used = seed.usage ?? 0;
+  const usage = new Map<string, number>(Object.entries(seed.usageByKey ?? {}));
+  if (seed.usage) usage.set(monthKey(NOW), seed.usage);
+  const feedback = { bounced: seed.health?.bounced ?? 0, complained: seed.health?.complained ?? 0 };
+  let limits: unknown = seed.limits ?? null;
+  let sending: SendingState | null = null;
   const queue = new Map<string, string>();
   const created: NewContact[] = [];
   const updated: ContactUpdate[] = [];
   const store: EmailStore = {
-    async getTenant() { return { name: 'Grace Church', plan: seed.plan ?? 'pro', status: 'active', ownerId: 'owner' }; },
+    async getTenant() { return { name: 'Grace Church', plan: seed.plan ?? 'pro', status: 'active', ownerId: 'owner', createdAt: 'createdAt' in seed ? seed.createdAt : '2020-01-01T00:00:00.000Z' }; },
+    async getLimits() { return limits; },
+    async saveLimits(l) { limits = l; },
+    async getSendingState() { return sending; },
+    async setSendingState(_t, state) { sending = state; },
     async getAdminEmails() { return []; },
     async getPermissions() { return {}; },
     async getSettings() { return settings; },
@@ -76,8 +90,13 @@ export function memoryStore(seed: {
         if (c) contacts.set(u.id, { ...c, status: u.subscribe ? 'subscribed' : c.status, tags: [...new Set([...c.tags, ...u.addTags])] });
       }
     },
-    async usage() { return used; },
-    async addUsage(_t, _m, n) { used += n; },
+    async usage(_t, key) { return usage.get(key) ?? 0; },
+    async addUsage(_t, key, n) { usage.set(key, (usage.get(key) ?? 0) + n); },
+    async health(_t, month) { return { sent: usage.get(month) ?? 0, ...feedback }; },
+    async addFeedback(_t, _m, kind) { feedback[kind] += 1; },
+    async markContactStatus(_t, email, status) {
+      for (const [id, c] of contacts) if (c.email === email) contacts.set(id, { ...c, status });
+    },
     async queueScheduled(t, id, at) { queue.set(`${t}__${id}`, at); },
     async unqueueScheduled(t, id) { queue.delete(`${t}__${id}`); },
     async listDue(nowIso) {
@@ -87,7 +106,7 @@ export function memoryStore(seed: {
       for (const [id, c] of contacts) if (c.email === email) contacts.set(id, { ...c, status: 'unsubscribed' });
     },
   };
-  return { store, contacts, broadcasts, queue, created, updated, get used() { return used; } };
+  return { store, contacts, broadcasts, queue, created, updated, usage, feedback, get used() { return usage.get(monthKey(NOW)) ?? 0; }, get today() { return usage.get(dayKey(NOW)) ?? 0; }, get sending() { return sending; }, get limits() { return limits; } };
 }
 
 export function person(email: string, over: Partial<EmailContact> = {}): EmailContact {
@@ -96,7 +115,7 @@ export function person(email: string, over: Partial<EmailContact> = {}): EmailCo
 
 export const admin: EmailActor = { uid: 'owner', email: 'owner@grace.org', tenantId: TENANT, isAdmin: true, isSuperAdmin: false };
 
-export function build(seed: Parameters<typeof memoryStore>[0] = {}, provider = mockProvider()) {
+export function build(seed: Parameters<typeof memoryStore>[0] = {}, provider = mockProvider(), fallbackFrom: string | null = null) {
   const mem = memoryStore(seed);
   const ledger = memoryEmailLedger();
   let n = 0;
@@ -105,6 +124,7 @@ export function build(seed: Parameters<typeof memoryStore>[0] = {}, provider = m
     ledger,
     getProvider: async () => provider,
     appOrigin: 'https://grace.theharvest.app',
+    fallbackFrom,
     now: () => NOW,
     newId: () => `b${++n}`,
   });

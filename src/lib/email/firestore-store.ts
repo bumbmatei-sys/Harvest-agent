@@ -48,6 +48,9 @@ async function tenantContactDocs(tenantId: string) {
  */
 
 export const SCHEDULED_QUEUE = 'email_scheduled';
+/** Server-only, no client rule: one document of platform-wide limits a super admin edits. */
+export const PLATFORM_CONFIG = 'platform_config';
+export const LIMITS_DOC = 'email_limits';
 
 const tenantDoc = (tenantId: string) => adminDb.collection('tenants').doc(tenantId);
 
@@ -83,7 +86,35 @@ export const firestoreEmailStore: EmailStore = {
       plan: d.plan,
       status: d.status,
       ownerId: typeof d.ownerId === 'string' ? d.ownerId : null,
+      createdAt: d.createdAt,
     };
+  },
+
+  async getLimits() {
+    const snap = await adminDb.collection(PLATFORM_CONFIG).doc(LIMITS_DOC).get();
+    return snap.exists ? snap.data() : null;
+  },
+
+  async saveLimits(limits) {
+    await adminDb.collection(PLATFORM_CONFIG).doc(LIMITS_DOC).set(limits);
+  },
+
+  async getSendingState(tenantId) {
+    const snap = await tenantDoc(tenantId).collection('emailConfig').doc('sending').get();
+    const d = snap.exists ? snap.data() : null;
+    if (!d || typeof d.pausedAt !== 'string') return null;
+    return {
+      pausedAt: d.pausedAt,
+      reason: d.reason === 'complaint' ? 'complaint' : 'bounce',
+      rate: typeof d.rate === 'number' ? d.rate : 0,
+      threshold: typeof d.threshold === 'number' ? d.threshold : 0,
+    };
+  },
+
+  async setSendingState(tenantId, state) {
+    const ref = tenantDoc(tenantId).collection('emailConfig').doc('sending');
+    if (state) await ref.set(state);
+    else await ref.delete();
   },
 
   async getAdminEmails(tenantId) {
@@ -200,14 +231,25 @@ export const firestoreEmailStore: EmailStore = {
     }
   },
 
-  async usage(tenantId, month) {
-    const snap = await tenantDoc(tenantId).collection('emailUsage').doc(month).get();
+  async usage(tenantId, key) {
+    const snap = await tenantDoc(tenantId).collection('emailUsage').doc(key).get();
     const sent = snap.exists ? snap.data()?.sent : 0;
     return typeof sent === 'number' ? sent : 0;
   },
 
-  async addUsage(tenantId, month, sent) {
-    await tenantDoc(tenantId).collection('emailUsage').doc(month).set({ sent: FieldValue.increment(sent) }, { merge: true });
+  async addUsage(tenantId, key, sent) {
+    await tenantDoc(tenantId).collection('emailUsage').doc(key).set({ sent: FieldValue.increment(sent) }, { merge: true });
+  },
+
+  async health(tenantId, month) {
+    const snap = await tenantDoc(tenantId).collection('emailUsage').doc(month).get();
+    const d = snap.exists ? snap.data() ?? {} : {};
+    const n = (v: unknown) => (typeof v === 'number' ? v : 0);
+    return { sent: n(d.sent), bounced: n(d.bounced), complained: n(d.complained) };
+  },
+
+  async addFeedback(tenantId, month, kind) {
+    await tenantDoc(tenantId).collection('emailUsage').doc(month).set({ [kind]: FieldValue.increment(1) }, { merge: true });
   },
 
   async queueScheduled(tenantId, broadcastId, at) {
@@ -224,22 +266,23 @@ export const firestoreEmailStore: EmailStore = {
   },
 
   async recordOptOut(tenantId, email, broadcastId, at) {
-    const target = normalizeEmail(email);
-    const docs = (await tenantContactDocs(tenantId)).filter((d) => normalizeEmail(String(d.data().email ?? '')) === target);
-    if (docs.length === 0) return;
-    const batch = adminDb.batch();
-    for (const d of docs) {
-      batch.set(
-        d.ref,
-        {
-          [EMAIL_STATUS_FIELD]: 'unsubscribed',
-          emailUnsubscribedAt: at,
-          emailUnsubscribedFrom: broadcastId,
-          updatedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true },
-      );
-    }
-    await batch.commit();
+    await markContacts(tenantId, email, {
+      [EMAIL_STATUS_FIELD]: 'unsubscribed',
+      emailUnsubscribedAt: at,
+      emailUnsubscribedFrom: broadcastId,
+    });
+  },
+
+  async markContactStatus(tenantId, email, status, at) {
+    await markContacts(tenantId, email, { [EMAIL_STATUS_FIELD]: status, emailSuppressedAt: at });
   },
 };
+
+async function markContacts(tenantId: string, email: string, fields: Record<string, unknown>): Promise<void> {
+  const target = normalizeEmail(email);
+  const docs = (await tenantContactDocs(tenantId)).filter((d) => normalizeEmail(String(d.data().email ?? '')) === target);
+  if (docs.length === 0) return;
+  const batch = adminDb.batch();
+  for (const d of docs) batch.set(d.ref, { ...fields, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  await batch.commit();
+}

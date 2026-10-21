@@ -91,11 +91,14 @@ export function EmailWorkspace({ tenantId, api: injected, initialSection = 'over
         />
       )}
       {view.kind === 'section' && view.section === 'overview' && (
-        <EmailOverview data={data} onNew={() => setView({ kind: 'editor', broadcast: null })} onSettings={() => go('settings')} onSubscribers={() => go('subscribers')} />
+        <EmailOverview data={data} api={api} tenantId={tenantId} onChanged={() => void load()} onNew={() => setView({ kind: 'editor', broadcast: null })} onSettings={() => go('settings')} onSubscribers={() => go('subscribers')} />
       )}
       {view.kind === 'section' && view.section === 'broadcasts' && (
         <BroadcastsView
           data={data}
+          api={api}
+          tenantId={tenantId}
+          onChanged={() => void load()}
           onNew={() => setView({ kind: 'editor', broadcast: null })}
           onOpen={(b) => setView({ kind: 'editor', broadcast: b })}
           onDelete={(b) => { void api.remove(b.id).then(load, (e: unknown) => setError(e instanceof EmailApiError ? e.message : 'The broadcast could not be deleted.')); }}
@@ -106,7 +109,7 @@ export function EmailWorkspace({ tenantId, api: injected, initialSection = 'over
         <SubscribersView data={data} onImport={() => setImporting(true)} onSettings={() => go('settings')} />
       )}
       {view.kind === 'section' && view.section === 'settings' && (
-        <EmailSettingsView api={api} settings={data.settings} onSaved={(settings) => setData({ ...data, settings })} />
+        <EmailSettingsView api={api} data={data} onSaved={(settings) => setData({ ...data, settings })} onLimitsSaved={() => void load()} />
       )}
       <ImportDialog open={importing} onOpenChange={setImporting} api={api} onImported={() => void load()} />
     </div>

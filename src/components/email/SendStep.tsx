@@ -10,7 +10,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { resolveAudience, type AudienceFilter, type AudienceFilterKind, type EmailContact } from '@/lib/email/audience';
-import { EmailApiError, type EmailApi, type EmailSettings, type SendPreview, type SendResponse } from '@/components/email/email-api';
+import { EmailApiError, type EmailApi, type EmailSettings, type SendPreview, type SendResponse, type SendingStatus, type Usage } from '@/components/email/email-api';
+import { AddEmailsDialog } from '@/components/email/UsageMeter';
 import { ErrorNote, Pick, Segmented, TAP, formatStamp, plural } from '@/components/email/kit';
 import { inboxCheck } from '@/components/email/inbox-check';
 import { cn } from '@/lib/utils';
@@ -49,7 +50,7 @@ function optionsFor(kind: AudienceFilterKind, people: readonly EmailContact[]): 
   return [...set].sort().map((v) => ({ value: v, label: v }));
 }
 
-export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyHtml, filters, onFilters, settings, people, usage, onBack, onOpenSettings, onSeeTips, onSent }: {
+export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyHtml, filters, onFilters, settings, people, usage, sending, onBack, onOpenSettings, onSeeTips, onSent }: {
   api: Pick<EmailApi, 'send'>;
   broadcastId: string;
   subject: string;
@@ -60,7 +61,8 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
   onFilters: (next: AudienceFilter[]) => void;
   settings: EmailSettings;
   people: readonly EmailContact[];
-  usage: { used: number; cap: number };
+  usage: Usage;
+  sending: SendingStatus;
   onBack: () => void;
   onOpenSettings: () => void;
   onSeeTips: () => void;
@@ -71,6 +73,8 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
   const [pickerOpen, setPickerOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   const [confirm, setConfirm] = useState<{ token: string; preview: SendPreview } | null>(null);
 
   const audience = useMemo(() => resolveAudience(people, filters), [people, filters]);
@@ -81,7 +85,9 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
   const senderIssue = !settings.fromName.trim() || !settings.replyTo.trim() || !settings.mailingAddress.trim() || !address;
   const count = audience.recipients.length;
   const label = mode === 'now' ? `Send to ${plural(count, 'person', 'people')}` : `Schedule for ${formatStamp(when.toISOString())}`;
-  const blocked = busy || count === 0 || senderIssue || !subject.trim() || (mode === 'at' && when.getTime() <= Date.now());
+  const left = Math.max(0, usage.cap - usage.used);
+  const overAllowance = usage.cap > 0 && count > left;
+  const blocked = busy || count === 0 || senderIssue || !subject.trim() || overAllowance || sending.paused || (mode === 'at' && when.getTime() <= Date.now());
 
   const setFilter = (i: number, patch: Partial<AudienceFilter>) => onFilters(filters.map((f, j) => (j === i ? { ...f, ...patch } : f)));
   const whenInput = (): { mode: 'now' } | { mode: 'at'; at: string } => (mode === 'now' ? { mode: 'now' } : { mode: 'at', at: when.toISOString() });
@@ -89,11 +95,13 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
   async function preview() {
     setBusy(true);
     setError(null);
+    setErrorCode(null);
     try {
       const r = await api.send({ id: broadcastId, when: whenInput(), mode: 'preview' });
       if ('requiresConfirm' in r) setConfirm({ token: r.confirmToken, preview: r.preview });
     } catch (e) {
       setError(e instanceof EmailApiError ? e.message : 'Something went wrong. Try again.');
+      setErrorCode(e instanceof EmailApiError ? e.code : null);
     } finally {
       setBusy(false);
     }
@@ -110,6 +118,7 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
     } catch (e) {
       setConfirm(null);
       setError(e instanceof EmailApiError ? e.message : 'Something went wrong. Try again.');
+      setErrorCode(e instanceof EmailApiError ? e.code : null);
     } finally {
       setBusy(false);
     }
@@ -220,14 +229,28 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
             <button type="button" className="font-semibold hover:underline" onClick={onSeeTips}>See it</button> under the email.
           </div>
         )}
-        {error && <div className="mt-4"><ErrorNote>{error}</ErrorNote></div>}
+        {sending.paused && (
+          <div className="mt-4"><ErrorNote>Sending is paused because too many emails bounced or were reported as spam. Nothing can go out until Harvest resumes it.</ErrorNote></div>
+        )}
+        {overAllowance && !sending.paused && (
+          <div className="mt-4 flex flex-col gap-2" data-over-allowance>
+            <ErrorNote>This send is {plural(count, 'email', 'emails')} and you have {left.toLocaleString()} of {usage.cap.toLocaleString()} left this month. It is blocked until your emails reset on {formatStamp(usage.resetsAt).split(',').slice(0, 2).join(',')}.</ErrorNote>
+            <Button variant="outline" className="min-h-11 self-start" onClick={() => setAdding(true)}>Add more emails</Button>
+          </div>
+        )}
+        {error && !overAllowance && (
+          <div className="mt-4 flex flex-col gap-2">
+            <ErrorNote>{error}</ErrorNote>
+            {errorCode === 'volume_cap' && <Button variant="outline" className="min-h-11 self-start" onClick={() => setAdding(true)}>Add more emails</Button>}
+          </div>
+        )}
 
         <Button className="mt-5 min-h-11 w-full" disabled={blocked} onClick={preview}>
           <Send data-icon="inline-start" />{label}
         </Button>
         {usage.cap > 0 && (
           <p className="mt-3 text-center text-xs text-muted">
-            Uses {count.toLocaleString()} of your {Math.max(0, usage.cap - usage.used).toLocaleString()} sends left this month.
+            Uses {count.toLocaleString()} of your {left.toLocaleString()} emails left this month.
           </p>
         )}
         <p className="mt-3 text-center text-xs text-muted">
@@ -235,6 +258,7 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
         </p>
       </section>
       <Button variant="ghost" className="min-h-11" onClick={onBack}>Back to writing</Button>
+      <AddEmailsDialog open={adding} onOpenChange={setAdding} usage={usage} />
 
       <Dialog open={confirm !== null} onOpenChange={(o) => { if (!o && !busy) setConfirm(null); }}>
         <DialogContent className="sm:max-w-md">

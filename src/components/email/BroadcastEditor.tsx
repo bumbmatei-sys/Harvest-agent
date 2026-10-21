@@ -191,6 +191,7 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
           settings={data.settings}
           people={data.subscribers}
           usage={data.usage}
+          sending={data.sending}
           onBack={() => setStep('write')}
           onOpenSettings={onOpenSettings}
           onSeeTips={() => { setStep('write'); setTipsOpen(true); }}
