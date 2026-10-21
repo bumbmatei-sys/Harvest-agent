@@ -24,6 +24,21 @@ const ACCENT_HEX: Readonly<Record<EmailAccent, string>> = Object.freeze({
 const NIGHT_PAGE = '#0C1526';
 const NIGHT_CARD = '#12203B';
 
+/**
+ * The brand scale for the one page outside the app that has no stylesheet to
+ * read the theme from: the public unsubscribe page. Same values as above and as
+ * globals.css (--navy-*, --wheat-*); spelled here so no other file spells them.
+ */
+export const BRAND_PALETTE = Object.freeze({
+  navy950: '#080F1D',
+  navy900: ACCENT_HEX.navy,
+  navy800: NIGHT_CARD,
+  navy600: ACCENT_HEX.harbor,
+  gold500: ACCENT_HEX.gold,
+  gold100: '#F5EDE0',
+  gold50: '#FBF4E6',
+});
+
 export const MERGE_TAGS = ['first_name', 'sender_name'] as const;
 
 export function fillMergeTags(

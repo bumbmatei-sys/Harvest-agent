@@ -31,6 +31,8 @@ export type ConsumeDecision = 'ok' | 'missing' | 'expired' | 'reused' | 'mismatc
 export interface EmailConfirmLedger {
   issue(binding: EmailConfirmBinding, nowMs: number): Promise<string>;
   consume(token: string, binding: EmailConfirmBinding, nowMs: number): Promise<ConsumeDecision>;
+  /** Deletes tokens past their expiry, used or not. Returns how many went. */
+  purgeExpired(nowMs: number): Promise<number>;
 }
 
 export interface EmailPayloadFacts {
@@ -79,6 +81,13 @@ export function memoryEmailLedger(): EmailConfirmLedger & { readonly records: Ma
       const decision = decideConsume(record, binding, nowMs);
       if (decision === 'ok' && record) records.set(token, { ...record, consumed: true });
       return decision;
+    },
+    async purgeExpired(nowMs) {
+      let removed = 0;
+      for (const [id, record] of records) {
+        if (record.expiresAt <= nowMs) { records.delete(id); removed += 1; }
+      }
+      return removed;
     },
   };
 }

@@ -22,19 +22,19 @@ export async function GET(request: NextRequest) {
     const { getEmailProvider } = await import('@/lib/email/provider');
     await getEmailProvider();
     (await import('@/lib/email/unsubscribe')).assertUnsubscribeConfigured();
-    const { firestoreEmailStore } = await import('@/lib/email/firestore-store');
-    const { firestoreEmailLedger } = await import('@/lib/email/firestore-confirm');
-    const { createEmailService } = await import('@/lib/email/service');
-    const service = createEmailService({
-      store: firestoreEmailStore,
-      ledger: firestoreEmailLedger(),
-      getProvider: getEmailProvider,
-      appOrigin: process.env.NEXT_PUBLIC_APP_ORIGIN || 'https://theharvest.app',
-      fallbackFrom: process.env.EMAIL_FALLBACK_FROM?.trim() || null,
-    });
+    const { buildEmailService } = await import('@/lib/email/runtime');
+    const service = buildEmailService(process.env.NEXT_PUBLIC_APP_ORIGIN || 'https://theharvest.app');
     const results = await service.runDue();
     const failed = results.filter((r) => r.outcome === 'failed' || r.outcome === 'partial');
-    return NextResponse.json({ ok: failed.length === 0, processed: results.length, failed: failed.length, results }, { status: failed.length ? 207 : 200 });
+    // Housekeeping after the sends, so a failure here never delays one.
+    let purged: { tokens: number; feedback: number } | { error: string };
+    try {
+      purged = await service.purgeExpired();
+    } catch (error) {
+      console.error(`[email/cron] purge failed: ${error instanceof Error ? error.message : 'unknown'}`);
+      purged = { error: 'purge_failed' };
+    }
+    return NextResponse.json({ ok: failed.length === 0, processed: results.length, failed: failed.length, purged, results }, { status: failed.length ? 207 : 200 });
   } catch (error) {
     console.error(`[email/cron] ${error instanceof Error ? error.message : 'failed'}`);
     if (isEmailNotConfigured(error)) {

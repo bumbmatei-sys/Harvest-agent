@@ -9,6 +9,7 @@ const { signUnsubscribe, verifyUnsubscribe, assertUnsubscribeConfigured } = awai
 const { resolveAudience } = await import('@/lib/email/audience');
 const { renderEmail, DEFAULT_EMAIL_DESIGN } = await import('@/lib/email/render');
 const { monthKey, dayKey } = await import('@/lib/email/volume-cap');
+const { contentHash } = await import('@/lib/email/claim');
 const { STALE_SENDING_MS } = await import('@/lib/email/service');
 const { memoryEmailLedger } = await import('@/lib/email/confirm');
 
@@ -137,7 +138,7 @@ describe('sends are atomic', () => {
     const b = ctx.mem.broadcasts.get(id)!;
     const claim = await ctx.mem.store.claimForSend({
       tenantId: TENANT, broadcastId: id, from: ['draft'], sendId: 'dead-run', nowIso: claimedAt, requested: 3,
-      allowance: 5000, dailyCap: null, month: monthKey(NOW), day: dayKey(NOW),
+      allowance: 5000, dailyCap: null, month: monthKey(NOW), day: dayKey(NOW), expectedContentHash: contentHash(ctx.mem.broadcasts.get(id)!),
     });
     expect(claim.ok).toBe(true);
     expect(ctx.mem.broadcasts.get(id)?.status).toBe('sending');
@@ -155,7 +156,7 @@ describe('sends are atomic', () => {
     const id = await draftIn(ctx);
     await ctx.mem.store.claimForSend({
       tenantId: TENANT, broadcastId: id, from: ['draft'], sendId: 'live-run', nowIso: NOW.toISOString(), requested: 3,
-      allowance: 5000, dailyCap: null, month: monthKey(NOW), day: dayKey(NOW),
+      allowance: 5000, dailyCap: null, month: monthKey(NOW), day: dayKey(NOW), expectedContentHash: contentHash(ctx.mem.broadcasts.get(id)!),
     });
     await ctx.service.runDue();
     expect(ctx.mem.broadcasts.get(id)?.status).toBe('sending');
@@ -166,7 +167,7 @@ describe('sends are atomic', () => {
     const id = await draftIn(ctx);
     await ctx.mem.store.claimForSend({
       tenantId: TENANT, broadcastId: id, from: ['draft'], sendId: 'x', nowIso: NOW.toISOString(), requested: 2,
-      allowance: 5000, dailyCap: null, month: monthKey(NOW), day: dayKey(NOW),
+      allowance: 5000, dailyCap: null, month: monthKey(NOW), day: dayKey(NOW), expectedContentHash: contentHash(ctx.mem.broadcasts.get(id)!),
     });
     expect(await ctx.service.saveDraft(admin, TENANT, { id, subject: 'Changed' })).toMatchObject({ ok: false, error: 'already_sent' });
     expect(await ctx.service.remove(admin, TENANT, id)).toMatchObject({ ok: false, error: 'already_sent' });

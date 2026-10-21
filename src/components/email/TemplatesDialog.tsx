@@ -1,8 +1,9 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { EMAIL_TEMPLATES, type EmailTemplate } from '@/components/email/templates';
-import { TAP } from '@/components/email/kit';
+import { TemplateThumb } from '@/components/email/TemplateThumb';
 
 export function TemplatesDialog({ open, onOpenChange, onPick, hasContent }: {
   open: boolean;
@@ -22,19 +23,16 @@ export function TemplatesDialog({ open, onOpenChange, onPick, hasContent }: {
         <ul className="grid gap-3 sm:grid-cols-2">
           {EMAIL_TEMPLATES.map((t) => (
             <li key={t.id}>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => { onPick(t); onOpenChange(false); }}
-                className={`${TAP} flex h-full w-full flex-col gap-2 rounded-lg border border-line p-3 text-left hover:bg-muted`}
+                className="h-auto min-h-11 w-full flex-col items-stretch justify-start gap-2 whitespace-normal rounded-lg border-line p-3 text-left font-normal hover:bg-accent"
               >
-                <span aria-hidden className="flex h-16 flex-col justify-center gap-1.5 rounded-md bg-surface-sunken px-3">
-                  <span className="h-1.5 w-10 rounded bg-foreground/70" />
-                  <span className="h-1 w-full rounded bg-muted-foreground/40" />
-                  <span className="h-1 w-2/3 rounded bg-muted-foreground/40" />
-                </span>
+                <TemplateThumb template={t} />
                 <span className="text-sm font-semibold text-strong">{t.name}</span>
                 <span className="text-xs text-muted">{t.blurb}</span>
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

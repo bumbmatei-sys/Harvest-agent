@@ -50,3 +50,35 @@ export const EMAIL_TEMPLATES: readonly EmailTemplate[] = [
     bodyHtml: '<p>Hi {{first_name}},</p><p>Thank you for being part of what God is doing here. Your time and prayers make a difference every week.</p><p>With gratitude,</p><p>{{sender_name}}</p>',
   },
 ];
+
+/** One block of a starter letter, reduced to what a thumbnail needs to draw it. */
+export type ThumbBlock =
+  | { readonly kind: 'heading'; readonly level: 1 | 2 | 3 }
+  | { readonly kind: 'text'; readonly lines: number }
+  | { readonly kind: 'list'; readonly items: number }
+  | { readonly kind: 'button' }
+  | { readonly kind: 'quote'; readonly lines: number };
+
+const plain = (html: string) => html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+/** About how many lines of body text a paragraph of this many characters wraps to, at a letter's width. */
+const wrapped = (chars: number) => Math.min(3, Math.max(1, Math.ceil(chars / 52)));
+
+/**
+ * Reads a template's own HTML into the shape a thumbnail draws, so each
+ * thumbnail is that letter and not a stock placeholder. Starter templates are
+ * fixed strings written in this file, which is why a small tag reader is enough.
+ */
+export function templateBlocks(html: string): ThumbBlock[] {
+  const out: ThumbBlock[] = [];
+  const block = /<(h[1-3]|p|ul|ol|blockquote)\b[^>]*>([\s\S]*?)<\/\1>/g;
+  for (let m = block.exec(html); m; m = block.exec(html)) {
+    const [, tag, inner] = m;
+    const text = plain(inner);
+    if (tag === 'ul' || tag === 'ol') out.push({ kind: 'list', items: Math.max(1, (inner.match(/<li\b/g) ?? []).length) });
+    else if (tag === 'blockquote') out.push({ kind: 'quote', lines: wrapped(text.length) });
+    else if (tag.startsWith('h')) out.push({ kind: 'heading', level: Number(tag[1]) as 1 | 2 | 3 });
+    else if (/data-button/.test(inner)) out.push({ kind: 'button' });
+    else if (text) out.push({ kind: 'text', lines: wrapped(text.length) });
+  }
+  return out;
+}

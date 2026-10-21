@@ -21,8 +21,9 @@ import type { DomainStatus, EmailProvider } from '@/lib/email/provider';
 import { DEFAULT_EMAIL_DESIGN, fillMergeTags, renderEmail } from '@/lib/email/render';
 import type { EmailDesign } from '@/lib/email/design';
 import { assertUnsubscribeConfigured, listUnsubscribeHeaders, signUnsubscribe, unsubscribeUrl } from '@/lib/email/unsubscribe';
-import type { ClaimRequest, ClaimResult, Settlement } from '@/lib/email/claim';
+import { contentHash, type ClaimRequest, type ClaimResult, type Settlement } from '@/lib/email/claim';
 import { resolveLimits, validateLimits, type EmailLimits } from '@/lib/email/limits';
+import { domainOfAddress, isReservedDomain } from '@/lib/email/reserved-domains';
 import { decidePause, decideSend, dayKey, isNewChurch, monthKey, nextMonthStart, percentUsed, type Health } from '@/lib/email/volume-cap';
 
 export type BroadcastStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'partial' | 'failed';
@@ -115,8 +116,11 @@ export interface EmailStore {
   getBroadcast(tenantId: string, id: string): Promise<Broadcast | null>;
   /** Creates a draft. Anything that changes an existing broadcast goes through a guarded write below. */
   saveBroadcast(broadcast: Broadcast): Promise<void>;
-  /** Writes only if the stored broadcast is still in one of these states. One transaction. */
-  saveBroadcastIf(broadcast: Broadcast, statuses: readonly BroadcastStatus[]): Promise<boolean>;
+  /**
+   * Writes only if the stored broadcast is still in one of these states and, when
+   * given, still has this `contentHash` (nobody edited it since it was read). One transaction.
+   */
+  saveBroadcastIf(broadcast: Broadcast, statuses: readonly BroadcastStatus[], expectedContentHash?: string): Promise<boolean>;
   /** Deletes only if the stored broadcast is still in one of these states. One transaction. */
   removeBroadcastIf(tenantId: string, id: string, statuses: readonly BroadcastStatus[]): Promise<boolean>;
   /**
@@ -133,10 +137,22 @@ export interface EmailStore {
   settleSend(input: { broadcast: Broadcast; settlement: Settlement | null }): Promise<boolean>;
   /** Sends claimed before `cutoffIso` that never settled: the function timed out or died. */
   listStaleSending(cutoffIso: string): Promise<readonly { tenantId: string; broadcastId: string; sendId: string }[]>;
-  /** Server-only registry: one sending domain belongs to one ministry. True if this ministry holds it after the call. */
-  claimDomain(tenantId: string, domain: string): Promise<boolean>;
+  /**
+   * Server-only registry: one sending domain belongs to one ministry, in one transaction.
+   * `fresh` and `own` mean this ministry holds it now. `taken` is held by another ministry.
+   * `released` is a placeholder left by a ministry that moved off it: only that ministry may take it back.
+   */
+  claimDomain(tenantId: string, domain: string): Promise<DomainClaim>;
+  /** Leaves a placeholder behind. The domain is not free for anyone else until Harvest support transfers it. */
   releaseDomain(tenantId: string, domain: string): Promise<void>;
+  /** Removes a claim this ministry created a moment ago and then could not use. Never a placeholder for a real release. */
+  discardClaim(tenantId: string, domain: string): Promise<void>;
+  /** The ministry that holds the domain now; null for a free domain or a placeholder. */
   getDomainOwner(domain: string): Promise<string | null>;
+  /** Records a bounce or complaint event once. False means this event was already counted. */
+  claimFeedbackEvent(tenantId: string, key: string, atIso: string): Promise<boolean>;
+  /** Deletes dedupe records past their expiry. Returns how many went. */
+  purgeExpiredFeedbackEvents(nowIso: string): Promise<number>;
   /** Addresses that opted out, bounced or complained. Survives the CRM person being deleted. */
   listSuppressed(tenantId: string): Promise<ReadonlySet<string>>;
   listBroadcasts(tenantId: string): Promise<readonly Broadcast[]>;
@@ -160,6 +176,8 @@ export interface EmailStore {
   recordOptOut(tenantId: string, email: string, broadcastId: string, at: string): Promise<void>;
 }
 
+export type DomainClaim = 'fresh' | 'own' | 'taken' | 'released';
+
 export interface SendingState {
   readonly pausedAt: string;
   readonly reason: 'bounce' | 'complaint';
@@ -170,7 +188,7 @@ export interface SendingState {
 export type EmailErrorCode =
   | 'not_authorized' | 'cross_tenant' | 'not_found' | 'invalid' | 'plan_required' | 'publishing_closed'
   | 'sender_not_ready' | 'no_recipients' | 'volume_cap' | 'daily_cap' | 'domain_required' | 'sending_paused' | 'time_not_future' | 'already_sent'
-  | 'confirm_required' | 'confirm_expired' | 'confirm_reused' | 'confirm_mismatch' | 'provider_unavailable' | 'domain_taken';
+  | 'confirm_required' | 'confirm_expired' | 'confirm_reused' | 'confirm_mismatch' | 'provider_unavailable' | 'domain_taken' | 'domain_reserved';
 
 export interface EmailFailure {
   readonly ok: false;
@@ -244,6 +262,8 @@ export function createEmailService(deps: {
   appOrigin: string;
   /** Shared Harvest sender for SMALL sends from a ministry with no verified domain. Unset: a verified domain is always required. */
   fallbackFrom?: string | null;
+  /** Harvest's own domains, on top of the built-in list. No ministry may register or send as one of these. */
+  reservedDomains?: readonly (string | null | undefined)[];
   now?: () => Date;
   newId?: () => string;
   /** Wall clock for the send time budget; separate from `now` so a test can freeze dates and still run out of time. */
@@ -255,6 +275,7 @@ export function createEmailService(deps: {
   const newId = deps.newId ?? (() => crypto.randomUUID());
   const clockMs = deps.clockMs ?? (() => Date.now());
   const sendBudgetMs = deps.sendBudgetMs ?? SEND_BUDGET_MS;
+  const reserved = (domain: string) => isReservedDomain(domain, deps.reservedDomains ?? []);
 
   async function gate(actor: EmailActor, requested: string | null | undefined, opts: { needPlan: boolean }) {
     const tenantId = clean(requested) || actor.tenantId || '';
@@ -290,7 +311,7 @@ export function createEmailService(deps: {
   /** The verified sender, but only for a domain this ministry holds in the registry. Plunk's verification is account-wide, so the registry is the tenant boundary. */
   async function ownSenderAddress(tenantId: string, settings: EmailSettings): Promise<string | null> {
     const address = senderAddress(settings);
-    if (!address) return null;
+    if (!address || reserved(settings.domain)) return null;
     return (await store.getDomainOwner(settings.domain)) === tenantId ? address : null;
   }
 
@@ -429,9 +450,11 @@ export function createEmailService(deps: {
       dailyCap: check.dailyCap,
       month,
       day,
+      expectedContentHash: contentHash(broadcast),
     });
     if (!claim.ok) {
       if (claim.code === 'not_found') return fail('not_found', 'That broadcast does not exist.');
+      if (claim.code === 'changed') return fail('confirm_mismatch', 'The email changed after the preview. Preview it again.');
       if (claim.code === 'not_claimable') return fail('already_sent', 'This broadcast has already gone out.');
       if (!('remaining' in claim)) return fail('already_sent', 'This broadcast has already gone out.');
       return capFailure(claim.code, claim.remaining, claim.cap, await loadLimits());
@@ -515,6 +538,15 @@ export function createEmailService(deps: {
     return recovered;
   }
 
+  /** Recovery must never block the action it rides along with, but a failure to recover is logged, not hidden. */
+  async function recoverQuietly() {
+    try {
+      await recoverStuck();
+    } catch (error) {
+      console.error(`[email/recover] ${error instanceof Error ? error.message : 'failed'}`);
+    }
+  }
+
   return {
     async saveDraft(actor: EmailActor, tenantId: string | null | undefined, input: DraftInput) {
       const g = await gate(actor, tenantId, { needPlan: true });
@@ -540,6 +572,7 @@ export function createEmailService(deps: {
     async list(actor: EmailActor, tenantId: string | null | undefined) {
       const g = await gate(actor, tenantId, { needPlan: true });
       if (!g.ok) return g;
+      await recoverQuietly();
       const at = now();
       const limits = await loadLimits();
       const [broadcasts, subscribers, settings, usedMonth, usedToday, sending] = await Promise.all([
@@ -595,13 +628,29 @@ export function createEmailService(deps: {
     /**
      * A bounce or spam complaint from the provider. Marks the CRM person, counts
      * it against the month, and pauses sending if a rate has passed its limit.
-     * Nothing calls this yet: it is the entry point for a provider webhook.
+     * `eventKey` identifies the provider's event: a repeat of it is ignored, so a
+     * redelivered webhook cannot push a rate over its limit. Returns false for a repeat.
      */
-    async recordFeedback(tenantId: string, email: string, kind: 'bounced' | 'complained') {
+    async recordFeedback(tenantId: string, email: string, kind: 'bounced' | 'complained', eventKey: string) {
       const at = now();
+      if (!(await store.claimFeedbackEvent(tenantId, `${kind}:${eventKey}`, at.toISOString()))) return false;
       await store.markContactStatus(tenantId, normalizeEmail(email), kind, at.toISOString());
       await store.addFeedback(tenantId, monthKey(at), kind);
       await evaluatePause(tenantId);
+      return true;
+    },
+
+    /** Which ministry sent from this address. Null when it is not a ministry's verified domain (a shared Harvest sender, or unknown). */
+    async tenantForSender(fromAddress: string): Promise<string | null> {
+      const domain = (domainOfAddress(fromAddress) ?? '').replace(/^mail\./, '');
+      if (!domain || reserved(domain)) return null;
+      return store.getDomainOwner(domain);
+    },
+
+    /** Housekeeping the daily cron runs: expired confirm tokens and expired dedupe records. */
+    async purgeExpired() {
+      const [tokens, feedback] = await Promise.all([ledger.purgeExpired(now().getTime()), store.purgeExpiredFeedbackEvents(now().toISOString())]);
+      return { tokens, feedback };
     },
 
     async remove(actor: EmailActor, tenantId: string | null | undefined, id: string) {
@@ -624,6 +673,7 @@ export function createEmailService(deps: {
       const g = await gate(actor, tenantId, { needPlan: true });
       if (!g.ok) return g;
       if (!tenantAllows(g.tenant.status, 'publishing')) return fail('publishing_closed', ARCHIVED_ACTION_MESSAGE);
+      await recoverQuietly();
       const broadcast = await store.getBroadcast(g.tenantId, input.id);
       if (!broadcast) return fail('not_found', 'That broadcast does not exist.');
       if (broadcast.status !== 'draft' && broadcast.status !== 'scheduled') return fail('already_sent', 'This broadcast has already gone out.');
@@ -673,8 +723,12 @@ export function createEmailService(deps: {
       if (decision === 'reused') return fail('confirm_reused', 'That confirmation was already used.');
       if (decision !== 'ok') return fail('confirm_mismatch', 'The email or audience changed after the preview. Preview it again.');
       if (when.at) {
-        const scheduled = await store.saveBroadcastIf({ ...broadcast, status: 'scheduled', scheduledAt: when.at, error: null, updatedAt: now().toISOString() }, ['draft', 'scheduled']);
-        if (!scheduled) return fail('already_sent', 'This broadcast has already gone out.');
+        const scheduled = await store.saveBroadcastIf({ ...broadcast, status: 'scheduled', scheduledAt: when.at, error: null, updatedAt: now().toISOString() }, ['draft', 'scheduled'], contentHash(broadcast));
+        if (!scheduled) {
+          const latest = await store.getBroadcast(g.tenantId, broadcast.id);
+          if (latest && (latest.status === 'draft' || latest.status === 'scheduled')) return fail('confirm_mismatch', 'The email changed after the preview. Preview it again.');
+          return fail('already_sent', 'This broadcast has already gone out.');
+        }
         await store.queueScheduled(g.tenantId, broadcast.id, when.at);
         return { ok: true, outcome: 'scheduled', preview, stats: null, message: 'Scheduled.' };
       }
@@ -814,19 +868,25 @@ export function createEmailService(deps: {
       const current = await store.getSettings(g.tenantId);
       const domain = (input.op === 'register' ? clean(input.domain) : current.domain).toLowerCase().replace(/^mail\./, '');
       if (!/^(?!-)[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(domain)) return fail('invalid', 'Enter your ministry domain, like gracechurch.org.');
+      if (reserved(domain)) return fail('domain_reserved', 'That domain belongs to Harvest and cannot be used for your emails. Use a domain your ministry owns.');
       const previous = current.domain;
-      const alreadyHeld = (await store.getDomainOwner(domain)) === g.tenantId;
-      if (!(await store.claimDomain(g.tenantId, domain))) {
-        return fail('domain_taken', 'That domain is already connected to another ministry on Harvest. If it is yours, contact Harvest support.');
-      }
+      const taken = () => fail('domain_taken', 'That domain is already connected to another ministry on Harvest. If it is yours, contact Harvest support to move it.');
+      const claim = await store.claimDomain(g.tenantId, domain);
+      if (claim === 'taken' || claim === 'released') return taken();
       const provider = await deps.getProvider();
       let status: DomainStatus;
       try {
+        // Plunk's verification is account-wide. A domain nobody here has claimed but that the account
+        // already verified was proven by somebody else's DNS: do not hand that proof to this ministry.
+        if (claim === 'fresh' && (await provider.findDomain(`mail.${domain}`))?.state === 'verified') {
+          await store.discardClaim(g.tenantId, domain);
+          return taken();
+        }
         status = input.op === 'register'
           ? await provider.registerDomain(`mail.${domain}`)
           : await provider.getDomainStatus(`mail.${domain}`);
       } catch (error) {
-        if (!alreadyHeld) await store.releaseDomain(g.tenantId, domain);
+        if (claim === 'fresh') await store.discardClaim(g.tenantId, domain);
         throw error;
       }
       const next: EmailSettings = { ...current, domain, domainState: status.state, domainRecords: status.records };
@@ -876,6 +936,8 @@ export function createEmailService(deps: {
           } else if (done.error === 'already_sent' || done.error === 'not_found') {
             await store.unqueueScheduled(item.tenantId, item.broadcastId);
             results.push({ ...item, outcome: 'skipped', message: 'Another run already took this one.' });
+          } else if (done.error === 'confirm_mismatch') {
+            results.push({ ...item, outcome: 'skipped', message: 'It was edited while this run was reading it. It stays queued for the next run.' });
           } else {
             await failScheduled(done.message);
           }

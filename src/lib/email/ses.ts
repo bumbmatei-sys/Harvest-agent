@@ -17,6 +17,7 @@ export function createSesProvider(): EmailProvider {
   return {
     name: 'ses',
     send: async () => unavailable(),
+    findDomain: async () => unavailable(),
     registerDomain: async () => unavailable(),
     getDomainStatus: async () => unavailable(),
   };

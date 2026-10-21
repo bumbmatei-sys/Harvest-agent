@@ -807,6 +807,10 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/email/SendStep.tsx',
       'src/components/email/SendingNotice.tsx',
       'src/components/email/SubscribersView.tsx',
+      // APPENDED BY the newsletter launch-blockers follow-up, NOTHING ABOVE OR BELOW REMOVED
+      // OR REWRITTEN. The template picker's cards were raw <button>s using the TAP token; they
+      // are shadcn Buttons now, so each carries the literal `min-h-11` THE-356 reads.
+      'src/components/email/TemplatesDialog.tsx',
       'src/components/email/UsageMeter.tsx',
       'src/components/email/kit.tsx',
       'src/components/events/RotaInviteView.tsx',   // THE-324: names it in a comment, does not use it

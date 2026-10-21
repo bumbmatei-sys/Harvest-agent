@@ -45,7 +45,7 @@ function isHttps(url: string): boolean {
 
 function ToolButton({ label, active, onClick, children }: { label: string; active?: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <Button type="button" variant="ghost" size="icon-sm" aria-label={label} aria-pressed={active ?? false} onClick={onClick} className="min-h-11 aria-pressed:bg-muted aria-pressed:text-strong">
+    <Button type="button" variant="ghost" size="icon-sm" aria-label={label} aria-pressed={active ?? false} onClick={onClick} className="min-h-11 aria-pressed:bg-accent aria-pressed:text-strong">
       {children}
     </Button>
   );

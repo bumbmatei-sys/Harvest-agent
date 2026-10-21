@@ -16,7 +16,8 @@ import {
   type EmailContact,
 } from '@/lib/email/audience';
 import { normalizeEmail } from '@/lib/donation-history';
-import { decideClaim, sendingMarkerId } from '@/lib/email/claim';
+import { contentHash, decideClaim, sendingMarkerId } from '@/lib/email/claim';
+import { purgeWhereAtOrBefore } from '@/lib/email/firestore-purge';
 import {
   EMPTY_SETTINGS,
   type Broadcast,
@@ -55,6 +56,9 @@ export const SCHEDULED_QUEUE = 'email_scheduled';
 export const SENDING_QUEUE = 'email_sending';
 /** Server-only, no client rule: email_domains/{domain} = { tenantId }. A sending domain belongs to one ministry. */
 export const DOMAIN_CLAIMS = 'email_domains';
+/** Server-only, no client rule: one document per bounce or complaint already counted, so a repeated webhook counts once. */
+export const FEEDBACK_EVENTS = 'email_feedback_events';
+const FEEDBACK_EVENT_TTL_MS = 62 * 24 * 60 * 60 * 1000;
 /** Server-only, under tenants/{id}: the opt-out record. Outlives the CRM person it came from. */
 export const SUPPRESSIONS = 'emailSuppressions';
 /** Server-only, no client rule: one document of platform-wide limits a super admin edits. */
@@ -156,11 +160,12 @@ export const firestoreEmailStore: EmailStore = {
     await tenantDoc(broadcast.tenantId).collection('emailBroadcasts').doc(broadcast.id).set(broadcast);
   },
 
-  async saveBroadcastIf(broadcast, statuses) {
+  async saveBroadcastIf(broadcast, statuses, expectedContentHash) {
     const ref = tenantDoc(broadcast.tenantId).collection('emailBroadcasts').doc(broadcast.id);
     return adminDb.runTransaction(async (tx) => {
       const snap = await tx.get(ref);
       if (!snap.exists || !statuses.includes(str(snap.data()?.status) as Broadcast['status'])) return false;
+      if (expectedContentHash !== undefined && contentHash(broadcastFrom(broadcast.id, broadcast.tenantId, snap.data() ?? {})) !== expectedContentHash) return false;
       tx.set(ref, broadcast);
       return true;
     });
@@ -187,7 +192,7 @@ export const firestoreEmailStore: EmailStore = {
         const sent = snap.exists ? snap.data()?.sent : 0;
         return typeof sent === 'number' ? sent : 0;
       };
-      const decision = decideClaim(broadcast.exists ? str(broadcast.data()?.status) : null, used(month), used(day), request);
+      const decision = decideClaim(broadcast.exists ? str(broadcast.data()?.status) : null, broadcast.exists ? contentHash(broadcastFrom(request.broadcastId, request.tenantId, broadcast.data() ?? {})) : null, used(month), used(day), request);
       if (!decision.ok) return decision;
       tx.update(broadcastRef, { status: 'sending', sendId: request.sendId, error: null, scheduledAt: null, updatedAt: request.nowIso });
       tx.set(monthRef, { sent: FieldValue.increment(request.requested) }, { merge: true });
@@ -225,14 +230,30 @@ export const firestoreEmailStore: EmailStore = {
     const ref = adminDb.collection(DOMAIN_CLAIMS).doc(domain);
     return adminDb.runTransaction(async (tx) => {
       const snap = await tx.get(ref);
-      const owner = snap.exists ? snap.data()?.tenantId : null;
-      if (owner && owner !== tenantId) return false;
-      if (!owner) tx.set(ref, { tenantId, claimedAt: new Date().toISOString() });
-      return true;
+      if (!snap.exists) {
+        tx.set(ref, { tenantId, claimedAt: new Date().toISOString() });
+        return 'fresh' as const;
+      }
+      const data = snap.data() ?? {};
+      if (typeof data.tenantId === 'string' && data.tenantId) return data.tenantId === tenantId ? ('own' as const) : ('taken' as const);
+      // A released claim is a placeholder. Only the ministry that released it may take it back.
+      if (data.releasedBy !== tenantId) return 'released' as const;
+      tx.set(ref, { tenantId, claimedAt: new Date().toISOString(), releasedBy: null, releasedAt: null });
+      return 'own' as const;
     });
   },
 
   async releaseDomain(tenantId, domain) {
+    const ref = adminDb.collection(DOMAIN_CLAIMS).doc(domain);
+    await adminDb.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (snap.exists && snap.data()?.tenantId === tenantId) {
+        tx.set(ref, { tenantId: null, releasedBy: tenantId, releasedAt: new Date().toISOString() });
+      }
+    });
+  },
+
+  async discardClaim(tenantId, domain) {
     const ref = adminDb.collection(DOMAIN_CLAIMS).doc(domain);
     await adminDb.runTransaction(async (tx) => {
       const snap = await tx.get(ref);
@@ -371,6 +392,20 @@ export const firestoreEmailStore: EmailStore = {
       emailUnsubscribedAt: at,
       emailUnsubscribedFrom: broadcastId,
     });
+  },
+
+  async claimFeedbackEvent(tenantId, key, at) {
+    try {
+      await adminDb.collection(FEEDBACK_EVENTS).doc(`${tenantId}__${key}`).create({ tenantId, at, expireAt: new Date(Date.parse(at) + FEEDBACK_EVENT_TTL_MS) });
+      return true;
+    } catch (error) {
+      if ((error as { code?: unknown }).code === 6) return false; // ALREADY_EXISTS
+      throw error;
+    }
+  },
+
+  async purgeExpiredFeedbackEvents(nowIso) {
+    return purgeWhereAtOrBefore(FEEDBACK_EVENTS, 'expireAt', new Date(nowIso));
   },
 
   async markContactStatus(tenantId, email, status, at) {

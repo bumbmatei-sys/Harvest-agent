@@ -83,7 +83,7 @@ export function ImportDialog({ open, onOpenChange, api, onImported }: {
               {summary.invalid > 0 && <li>{plural(summary.invalid, 'row', 'rows')} had no valid email and {summary.invalid === 1 ? 'was' : 'were'} skipped.</li>}
               {summary.repeatedInFile > 0 && <li>{plural(summary.repeatedInFile, 'repeat', 'repeats')} in the file {summary.repeatedInFile === 1 ? 'was' : 'were'} ignored.</li>}
             </ul>
-            <DialogFooter><Button className="min-h-11" onClick={() => reset(false)}>Close</Button></DialogFooter>
+            <DialogFooter className="border-line"><Button className="min-h-11" onClick={() => reset(false)}>Close</Button></DialogFooter>
           </div>
         ) : (
           <div className="flex flex-col gap-4">
@@ -107,7 +107,7 @@ export function ImportDialog({ open, onOpenChange, api, onImported }: {
             </div>
             <p className="text-xs text-muted">Anyone who already unsubscribed or bounced stays unsubscribed, even if they are in the file.</p>
             {error && <ErrorNote>{error}</ErrorNote>}
-            <DialogFooter>
+            <DialogFooter className="border-line">
               <Button variant="outline" className="min-h-11" onClick={() => reset(false)}>Cancel</Button>
               <Button className="min-h-11" disabled={busy || rows.length === 0 || !consent} onClick={() => void run()}>{busy ? 'Importing…' : 'Import'}</Button>
             </DialogFooter>

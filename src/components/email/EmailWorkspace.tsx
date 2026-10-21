@@ -12,7 +12,7 @@ import { EmailSettingsView } from '@/components/email/EmailSettingsView';
 import { ImportDialog } from '@/components/email/ImportDialog';
 import { SubscribersView } from '@/components/email/SubscribersView';
 import { ErrorNote, TAP } from '@/components/email/kit';
-import { EmailApiError, authedCall, createEmailApi, type Broadcast, type EmailApi, type Overview } from '@/components/email/email-api';
+import { EmailApiError, authedCall, createEmailApi, type SettingsFocus, type Broadcast, type EmailApi, type Overview } from '@/components/email/email-api';
 import { Button } from '@/components/ui/button';
 
 type Section = 'overview' | 'broadcasts' | 'subscribers' | 'settings';
@@ -40,6 +40,7 @@ export function EmailWorkspace({ tenantId, api: injected, initialSection = 'over
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>({ kind: 'section', section: initialSection });
   const [importing, setImporting] = useState(false);
+  const [settingsFocus, setSettingsFocus] = useState<SettingsFocus | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -52,7 +53,8 @@ export function EmailWorkspace({ tenantId, api: injected, initialSection = 'over
 
   useEffect(() => { void load(); }, [load]);
 
-  const go = (section: Section) => setView({ kind: 'section', section });
+  const go = (section: Section) => { setSettingsFocus(null); setView({ kind: 'section', section }); };
+  const openSettings = (focus?: SettingsFocus) => { setSettingsFocus(focus ?? null); setView({ kind: 'section', section: 'settings' }); };
 
   // A failed load is shown as a failure, never as an empty list.
   if (error && !data) {
@@ -85,7 +87,7 @@ export function EmailWorkspace({ tenantId, api: injected, initialSection = 'over
           data={data}
           initial={view.broadcast}
           onBack={() => go('broadcasts')}
-          onOpenSettings={() => go('settings')}
+          onOpenSettings={openSettings}
           onChanged={() => void load()}
           onOpen={(b) => setView({ kind: 'editor', broadcast: b })}
         />
@@ -109,7 +111,7 @@ export function EmailWorkspace({ tenantId, api: injected, initialSection = 'over
         <SubscribersView data={data} onImport={() => setImporting(true)} onSettings={() => go('settings')} />
       )}
       {view.kind === 'section' && view.section === 'settings' && (
-        <EmailSettingsView api={api} data={data} onSaved={(settings) => setData({ ...data, settings })} onLimitsSaved={() => void load()} />
+        <EmailSettingsView api={api} data={data} focus={settingsFocus} onSaved={(settings) => setData({ ...data, settings })} onLimitsSaved={() => void load()} />
       )}
       <ImportDialog open={importing} onOpenChange={setImporting} api={api} onImported={() => void load()} />
     </div>

@@ -23,7 +23,7 @@ export function AddEmailsDialog({ open, onOpenChange, usage }: { open: boolean; 
         <p className="text-sm text-muted">
           Your {usage.cap.toLocaleString()} emails come back on {formatDay(usage.resetsAt)}. Until then, sends that would go over are held back so nothing is half-sent.
         </p>
-        <DialogFooter>
+        <DialogFooter className="border-line">
           <Button className="min-h-11" onClick={() => onOpenChange(false)}>Got it</Button>
         </DialogFooter>
       </DialogContent>

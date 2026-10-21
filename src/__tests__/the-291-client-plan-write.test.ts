@@ -577,7 +577,17 @@ describe('5 · the money path is byte-identical', () => {
      * count. Sending a newsletter is not an entitlement. The plan is only READ,
      * to gate the feature. The Dodo webhook remains the single writer of `plan`.
      */
-    expect(routes.length, 'an API route was added or removed').toBe(137);
+    /**
+     * --- 137 -> 138, newsletter launch blockers (the follow-up to #538) ---
+     *
+     * ONE route: `email/webhook`. Plunk's bounce and complaint feedback, from a
+     * workflow webhook step that carries a shared secret. It marks the CRM person
+     * and bumps the month's bounce counter through the Admin SDK, and never
+     * writes the tenant document, so it cannot write `plan`, a feature flag or an
+     * add-on count. Suppressing a bounced address is not an entitlement. The
+     * Dodo webhook remains the single writer of `plan`.
+     */
+    expect(routes.length, 'an API route was added or removed').toBe(138);
     expect(
       routes.some((f) => f.endsWith(path.join('app/api/sms/numbers/route.ts'))),
       'the route THE-314 added is missing — the count moved for some other reason',
@@ -615,6 +625,8 @@ describe('5 · the money path is byte-identical', () => {
       'app/api/email/actions/route.ts',
       'app/api/email/unsubscribe/route.ts',
       'app/api/email/cron/route.ts',
+      // APPENDED BY the newsletter launch-blockers follow-up — see the note on the count above.
+      'app/api/email/webhook/route.ts',
     ]) {
       expect(
         routes.some((f) => f.endsWith(path.join(added))),

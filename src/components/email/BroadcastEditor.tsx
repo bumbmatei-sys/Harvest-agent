@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, Copy, Eye, LayoutTemplat
 
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { DEFAULT_EMAIL_DESIGN, THEME_LABELS, type EmailDesign } from '@/lib/email/design';
@@ -15,13 +16,16 @@ import { SendStep } from '@/components/email/SendStep';
 import { TemplatesDialog } from '@/components/email/TemplatesDialog';
 import { ErrorNote, TAP, formatStamp, plural } from '@/components/email/kit';
 import { inboxCheck, inboxSummary, plainWords } from '@/components/email/inbox-check';
-import { EmailApiError, type AudienceFilter, type Broadcast, type DraftFields, type EmailApi, type Overview, type SendResponse } from '@/components/email/email-api';
+import { EmailApiError, type SettingsFocus, type AudienceFilter, type Broadcast, type DraftFields, type EmailApi, type Overview, type SendResponse } from '@/components/email/email-api';
 import { cn } from '@/lib/utils';
 
 type Step = 'write' | 'send';
 type Saving = 'saved' | 'saving' | 'unsaved' | 'error';
 
 const SAVE_LABEL: Record<Saving, string> = { saved: 'Saved', saving: 'Saving…', unsaved: 'Unsaved', error: 'Not saved' };
+
+/** What would be saved, without the id: two drafts with the same snapshot are the same email. */
+const snapshotOf = (d: DraftFields) => JSON.stringify([d.subject, d.subjectB, d.preheader, d.bodyHtml, d.design, d.filters]);
 
 function SideAction({ icon, children, onClick, disabled, danger }: { icon: React.ReactNode; children: React.ReactNode; onClick: () => void; disabled?: boolean; danger?: boolean }) {
   return (
@@ -44,7 +48,7 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
   data: Overview;
   initial: Broadcast | null;
   onBack: () => void;
-  onOpenSettings: () => void;
+  onOpenSettings: (focus?: SettingsFocus) => void;
   onChanged: () => void;
   onOpen: (b: Broadcast) => void;
 }) {
@@ -64,6 +68,7 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
   const [previewOpen, setPreviewOpen] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [result, setResult] = useState<Extract<SendResponse, { outcome: string }> | null>(null);
+  const [pending, setPending] = useState<'back' | 'next' | 'test' | null>(null);
 
   const idRef = useRef(id);
   const wasScheduled = useRef(initial?.status === 'scheduled');
@@ -72,16 +77,23 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
   const draft = (): DraftFields => ({ id: idRef.current, subject, subjectB, preheader, bodyHtml, design, filters });
   const latest = useRef(draft);
   latest.current = draft;
+  // The email as last saved (or as opened). An edit is "unsaved" only while it differs from this,
+  // so nothing that merely re-runs an effect can make an untouched email look edited.
+  const savedSnapshot = useRef<string | null>(null);
+  if (savedSnapshot.current === null) savedSnapshot.current = snapshotOf(draft());
 
   const persist = useCallback(() => {
     chain.current = chain.current.then(async () => {
       setSaving('saving');
       try {
-        const saved = await api.saveDraft(latest.current());
+        const sent = latest.current();
+        const saved = await api.saveDraft(sent);
         idRef.current = saved.id;
         setId(saved.id);
-        dirty.current = false;
-        setSaving('saved');
+        savedSnapshot.current = snapshotOf(sent);
+        // Typing that landed while the save was in flight is still unsaved.
+        dirty.current = snapshotOf(latest.current()) !== savedSnapshot.current;
+        setSaving(dirty.current ? 'unsaved' : 'saved');
         setError(null);
         if (wasScheduled.current) {
           wasScheduled.current = false;
@@ -95,11 +107,12 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
     return chain.current;
   }, [api]);
 
-  const first = useRef(true);
   useEffect(() => {
-    if (first.current) { first.current = false; return; }
-    dirty.current = true;
+    dirty.current = snapshotOf(latest.current()) !== savedSnapshot.current;
+    if (!dirty.current) { setSaving(idRef.current ? 'saved' : 'unsaved'); return; }
     setSaving('unsaved');
+    // Saving a scheduled email takes it off the schedule, so that is never done behind the writer's back.
+    if (wasScheduled.current) return;
     const t = setTimeout(() => { void persist(); }, 800);
     return () => clearTimeout(t);
   }, [subject, subjectB, preheader, bodyHtml, design, filters, persist]);
@@ -107,21 +120,53 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
   const tips = inboxCheck({ subject, preheader, bodyHtml });
   const ready = data.settings.domainState === 'verified' && Boolean(data.settings.fromName && data.settings.replyTo && data.settings.mailingAddress);
 
-  async function next() {
-    await persist();
-    if (idRef.current) setStep('send');
+  /** Saves only what needs saving: unsaved edits, or a broadcast that has no id yet. */
+  async function saveIfNeeded() {
+    if (dirty.current || !idRef.current) await persist();
   }
 
-  async function sendTest() {
-    setNotice(null);
-    await persist();
-    if (!idRef.current) return;
+  async function next() {
+    // Saving a scheduled email unschedules it, so ask first.
+    if (wasScheduled.current && dirty.current) { setPending('next'); return; }
+    await saveIfNeeded();
+    if (idRef.current && !dirty.current) setStep('send');
+  }
+
+  async function deliverTest() {
+    await saveIfNeeded();
+    if (!idRef.current || dirty.current) return;
     try {
       await api.sendTest(idRef.current);
       setNotice('A test went to your own email address.');
     } catch (e) {
       setNotice(e instanceof EmailApiError ? e.message : 'The test could not be sent.');
     }
+  }
+
+  async function sendTest() {
+    setNotice(null);
+    if (wasScheduled.current && dirty.current) { setPending('test'); return; }
+    await deliverTest();
+  }
+
+  /** Back never writes an email nobody changed, and never touches a schedule on its own. */
+  async function back() {
+    if (!dirty.current) { onBack(); return; }
+    if (wasScheduled.current) { setPending('back'); return; }
+    await persist();
+    if (dirty.current) return;
+    onChanged();
+    onBack();
+  }
+
+  async function saveAndUnschedule() {
+    const kind = pending;
+    setPending(null);
+    await persist();
+    if (dirty.current) return;
+    if (kind === 'back') { onChanged(); onBack(); }
+    else if (kind === 'next') { if (idRef.current) setStep('send'); }
+    else if (kind === 'test') await deliverTest();
   }
 
   async function duplicate() {
@@ -146,7 +191,7 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
 
   const header = (
     <div className="flex items-center gap-3 border-b border-line pb-4">
-      <Button variant="ghost" size="icon" className="min-h-11" aria-label="Back to broadcasts" onClick={() => { void persist().then(() => { onChanged(); onBack(); }); }}><ArrowLeft /></Button>
+      <Button variant="ghost" size="icon" className="min-h-11" aria-label="Back to broadcasts" onClick={() => { void back(); }}><ArrowLeft /></Button>
       <h1 className="min-w-0 flex-1 truncate font-display text-lg font-semibold text-strong">{subject.trim() || 'Untitled broadcast'}</h1>
       <nav aria-label="Steps" className="flex items-center gap-2 text-sm">
         <span className={step === 'write' ? 'font-medium text-strong' : 'text-faint'} aria-current={step === 'write' ? 'step' : undefined}>Write</span>
@@ -278,6 +323,24 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
           </aside>
         </div>
       )}
+
+      <Dialog open={pending !== null} onOpenChange={(o) => { if (!o) setPending(null); }}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Take this email off the schedule?</DialogTitle>
+            <DialogDescription>
+              {initial?.scheduledAt ? `It is scheduled for ${formatStamp(initial.scheduledAt)}. ` : ''}Saving your changes takes it off the schedule, and you will need to schedule it again.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="border-line">
+            <Button variant="outline" className="min-h-11" onClick={() => setPending(null)}>Keep editing</Button>
+            {pending === 'back' && (
+              <Button variant="ghost" className="min-h-11" onClick={() => { setPending(null); onBack(); }}>Leave without saving</Button>
+            )}
+            <Button className="min-h-11" onClick={() => { void saveAndUnschedule(); }}>Save and unschedule</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <DesignDialog open={designOpen} onOpenChange={setDesignOpen} design={design} onChange={setDesign} />
       <PreviewDialog open={previewOpen} onOpenChange={setPreviewOpen} api={api} draft={{ subject, preheader, bodyHtml, design }} />
