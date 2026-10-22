@@ -5,6 +5,7 @@ import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures, PLAN_DISPLAY_NAMES, PLAN_ORDER, formatPlanPrice, isUnpricedTier } from '../utils/plan-features';
 import { hasPlatformOverride } from '../utils/tenant-scope';
 import { SMS_FEATURE_ENABLED } from '../lib/sms-feature';
+import { SETTINGS_LEGACY_SECTIONS_ENABLED } from '../lib/settings-legacy-sections';
 import SettingsAccordion from './settings/SettingsAccordion';
 import ChurchDataExportPanel from './settings/ChurchDataExportPanel';
 import OnboardingSection from './settings/OnboardingSection';
@@ -103,6 +104,13 @@ interface AdminSettingsProps {
    *  Owner by `tenants/{id}.ownerId` only — NOT the wider owner-or-roster gate
    *  that gates Billing. See AdminDashboard's `isPlanOwner` / `billingAccess`. */
   isPlanOwner?: boolean;
+  /**
+   * Manage and Cancel Subscription open the billing portal, and `/api/stripe/portal`
+   * is owner-only on the server. Required, so a caller cannot forget the gate:
+   * AdminDashboard passes `billingAccess === 'yes'`, the same answer the desktop
+   * popup's `canUpgrade` uses.
+   */
+  canManageBilling: boolean;
   /** Opens the bottom-bar / More-drawer customizer (lives in AdminDashboard). */
   onCustomizeNav?: () => void;
   /**
@@ -121,7 +129,19 @@ interface AdminSettingsProps {
   onOpenDonations: () => void;
 }
 
-const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tenantId, email, isPlanOwner, onCustomizeNav, onOpenDonations }) => {
+/** The one place the plan card's summary line reads the crm cell: a render string, not a gate. */
+export function summarizePlanFeatures(features: ReturnType<typeof getPlanFeatures>): string {
+  return [
+    `${features.maxCourses === -1 ? 'Unlimited' : features.maxCourses} courses`,
+    features.blog ? 'Blog' : null,
+    features.aiChat ? 'AI Chat' : null,
+    features.crm ? 'CRM' : null,
+  ].filter(Boolean).join(' · ');
+}
+
+const LEGACY_SECTION_IDS: ReadonlyArray<string> = ['payments', 'sms', 'integrations'];
+
+const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tenantId, email, isPlanOwner, canManageBilling, onCustomizeNav, onOpenDonations }) => {
   const [stripeStatus, setStripeStatus] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   // Platform-context super admins (apex) see every settings section. On a tenant
@@ -138,17 +158,12 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
   // rule `isPricedPlan` is written under. An UNRECOGNISED tier is not treated
   // as free — see `isUnpricedTier` — so a legacy record keeps its controls.
   const hasSubscription = currentPlan !== undefined && !isUnpricedTier(currentPlan);
+  // Manage and Cancel are owner actions; a non-owner admin sees neither.
+  const showBillingActions = hasSubscription && canManageBilling;
   const currentPlanData = currentPlan ? PLANS_DISPLAY.find(p => p.id === currentPlan) : null;
   const currentFeatures = currentPlan ? getPlanFeatures(currentPlan) : null;
   // Compact, comma/dot-separated plan summary, e.g. "Unlimited courses · Blog · AI Chat".
-  const planSummary = currentFeatures
-    ? [
-        `${currentFeatures.maxCourses === -1 ? 'Unlimited' : currentFeatures.maxCourses} courses`,
-        currentFeatures.blog ? 'Blog' : null,
-        currentFeatures.aiChat ? 'AI Chat' : null,
-        currentFeatures.crm ? 'CRM' : null,
-      ].filter(Boolean).join(' · ')
-    : '';
+  const planSummary = currentFeatures ? summarizePlanFeatures(currentFeatures) : '';
   const [forceOpen, setForceOpen] = useState<string | null>(null);
 
   // Handle Stripe return URL params
@@ -489,7 +504,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
       // 🔴 Hidden for a tier with no subscription as well as for a super admin:
       // there is nothing to cancel, and the button's only outcome is the
       // portal route's "please subscribe first".
-      hidden: !hasSubscription,
+      hidden: !showBillingActions,
       danger: true,
     },
   ];
@@ -613,7 +628,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
               route to the plan cards, and the two surfaces that DO (Billing and
               the upgrade page) each offer one. Inventing a third navigation
               here would be a new flow, not a fix. */}
-          {hasSubscription && (
+          {showBillingActions && (
             <ItemActions>
               {/* 🔴 THE-316 RAISED THIS TO THE TOUCH FLOOR. It was the one
                   action on the screen that did not clear 44px on a phone —
@@ -647,7 +662,13 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
       </div>
 
       {/* Accordion Sections */}
-      <SettingsAccordion sections={sections} forceOpen={forceOpen} />
+      {/* The three rows hidden for the desktop popup ticket. Filtered here,
+          not inside each row's own `hidden`, so every row keeps the exact gate
+          it had; flipping SETTINGS_LEGACY_SECTIONS_ENABLED restores them. */}
+      <SettingsAccordion
+        sections={sections.filter((s) => SETTINGS_LEGACY_SECTIONS_ENABLED || !LEGACY_SECTION_IDS.includes(s.id))}
+        forceOpen={forceOpen}
+      />
 
       {/* Navigation — the bottom-bar / More-drawer reorder tool. It keeps the
           position it has always had, after the accordion, because moving it
@@ -655,7 +676,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
           That leaves it below the Danger Zone; see the note on the sections
           array for why "separated" and "last" are not the same requirement. */}
       {onCustomizeNav && (
-        <div>
+        <div className="lg:hidden" data-settings-navigation>
         <SectionHeading className="sm:mb-2.5">Navigation</SectionHeading>
         {/* THE-316 — a row of things, so an `Item`, rendered AS the button it
             has to be (`render={<button …/>}`) rather than a hand-written

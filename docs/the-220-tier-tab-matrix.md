@@ -22,4 +22,3 @@
 | Livestream | visible · upgrade screen | hidden | visible · full | visible · full |
 | SMS | visible · upgrade screen | hidden | hidden | visible · full |
 | Community | visible · upgrade screen | hidden | hidden | visible · full |
-| Branding | hidden | hidden | hidden | visible · full |

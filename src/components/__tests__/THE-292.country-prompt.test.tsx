@@ -711,6 +711,16 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ byte-identical', ()
     'c76170af6567412fe8998170aeca376ab1998ba8545c2809f1b07ea5f859c940',
     // APPENDED BY the Eden shell fix round. The platform bell is a shadcn Button (ghost, icon) with the gold active highlight, and the desktop content bar mounts only at lg so a phone does not fetch the payments inbox twice. No permission gate moved.
     '51c9a678558d1bdf523bfaf524afaf0e3bc92dcfc230d471ba43def62a50fe68',
+    // APPENDED BY the desktop settings popup. On lg, Settings opens the sidebar-13 dialog. Mobile still mounts AdminSettings. No permission gate moved.
+    '9f781d73a826a925b99e3f1ddb0b6fc57f6f45fcc96794c16028f2d5387ee5c3',
+    // APPENDED BY the settings popup QA round 2. One prop on the SettingsDialog mount (canUpgrade). No permission gate moved.
+    '91bb69aeb07f1e7ab3be1a7f5f4f5961fe9463d55d6e1228a16def5753c9a33e',
+    // APPENDED BY the settings popup round 4. Billing and Branding open inside the desktop Settings popup; two props on the dialog and phone Settings mounts. No permission gate moved.
+    '0e7c5da62a647d60a773ac3c8da6beb7ca1a7138787fbcf646e5c5dddb23d92a',
+    // APPENDED BY the settings popup round 4 follow-up. A branding-only admin keeps one desktop Branding row. A settings admin still has none. No permission gate moved.
+    '735d23f8946c67052aa01f186eaaa518d12f3e5319ddeca91e3d21240bf078c0',
+    // APPENDED BY the settings popup round 4b, nothing above removed or rewritten. The desktop account menu drops Billing when Settings can open. The phone menu is unchanged. No permission gate moved.
+    '44dba8fb732054ce3e491cc479dc09fec134a57b2124e944050564e98f138b65',
   ];
 
   it('🔴 AdminDashboard.tsx — not opened by this ticket', () => {

@@ -14,6 +14,7 @@ import { DELETE_CONFIRM_COPY } from '../../lib/member-erasure-copy';
 import UNTOUCHED from './__fixtures__/the-286-untouched.json';
 import { foldedPaymentSectionDigest } from './__fixtures__/the-362-payment-section-fold';
 import { freezeFailure } from './__fixtures__/settings-freeze-register';
+import { PLAN_UPGRADE_SECTION, acceptedDigests, currentDigest } from '../../__tests__/__fixtures__/plan-copy-exemption';
 import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
 import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
 
@@ -1118,6 +1119,18 @@ describe('15 · the other 12 sections are byte-identical', () => {
       ticket: 'THE-111',
       why: "THE-111 edits this section's LIVE COLOUR PICKER and nothing else in it. `handleColorChange` wrote `--brand-color` alone through `documentElement.style.setProperty` - an INLINE style on <html>, which beats the server's `:root{}` block on specificity. `layout.tsx` stamps THREE properties together from one hex (`--brand-color` raw, `--brand-color-on-dark` corrected against the page ground, `--brand-color-on-tint` one layer up) and they are only correct AS A SET, so moving the raw accent alone left both DERIVED values at what the server computed from the PREVIOUS hex: on the dark theme every on-dark consumer painted an accent corrected against a colour no longer on screen. Here that disagreement is NOT brief - it persists for as long as the admin stays on the screen, which is precisely when they are judging the colour they just picked. The call now goes through `applyBrandAccent`, which writes all three or none. NO autosave was added and none may be: this file's save is an explicit action and it stays one. No read, no write, no endpoint, no control, no string and no chrome moved - the picker, the upload, the plan gate and the save button are untouched.",
     },
+    {
+      file: PLAN_UPGRADE_SECTION.file,
+      ticket: 'PR-540',
+      why:
+        PLAN_UPGRADE_SECTION.approval + '. Plan-card display copy ("Unlimited churches" and the Ministry blurb now '
+        + 'say campuses) plus a `compact` prop that only the settings popup passes: one plan card per row, and the '
+        + 'Manage Subscription button drawn as the shadcn Button on theme tokens. 🔴 NOT A SKIP: unlike the entries '
+        + 'above, this file is still compared by digest, against the one value recorded in '
+        + 'src/__tests__/__fixtures__/plan-copy-exemption.ts, and pr-540.plan-copy-exemption.test.ts proves that '
+        + 'value differs from the original pin by seven recorded hunks and by nothing else. No price, plan id, '
+        + 'checkout, Dodo, entitlement or billing-logic line moved.',
+    },
   ];
 
   it('the digest exemption list is exactly the edits that justify it', async () => {
@@ -1135,6 +1148,9 @@ describe('15 · the other 12 sections are byte-identical', () => {
       // ⚠️ APPENDED BY THE-111, never substituted: every entry above stays
       // exactly as it was. The tenant accent is written as a SET or not at all.
       'THE-111 src/components/settings/BrandingSection.tsx',
+      // ⚠️ APPENDED BY PR-540 (PR #540 round 3), never substituted. The one entry on this list
+      // that is DIGEST-SCOPED rather than skipped: see SCOPED_DIGESTS below.
+      'PR-540 src/components/settings/PlanUpgradeSection.tsx',
     ]);
     for (const { file, why } of EDITED_SINCE_MEASUREMENT) {
       expect(UNTOUCHED.otherSettingsSections, `${file} is exempted but was never recorded`)
@@ -1150,9 +1166,31 @@ describe('15 · the other 12 sections are byte-identical', () => {
 
   const EXEMPT = EDITED_SINCE_MEASUREMENT.map((e) => e.file);
 
+  /**
+   * 🔴 An exempt file listed here is NOT skipped. It must be at the digest recorded for its
+   * exemption, so any edit outside the approved lines still fails this assertion.
+   */
+  const SCOPED_DIGESTS: Readonly<Record<string, string>> = {
+    [PLAN_UPGRADE_SECTION.file]: currentDigest(PLAN_UPGRADE_SECTION),
+  };
+
+  it('the scoped exemption keeps the original pin in the fixture and records a different value beside it', () => {
+    expect(UNTOUCHED.otherSettingsSections[PLAN_UPGRADE_SECTION.file as keyof typeof UNTOUCHED.otherSettingsSections])
+      .toBe(PLAN_UPGRADE_SECTION.originalDigest);
+    expect(SCOPED_DIGESTS[PLAN_UPGRADE_SECTION.file]).not.toBe(PLAN_UPGRADE_SECTION.originalDigest);
+    // Round 3's digest and round 4's, beside the original: appended, never substituted.
+    expect(acceptedDigests(PLAN_UPGRADE_SECTION)).toHaveLength(3);
+  });
+
   it.each(Object.entries(UNTOUCHED.otherSettingsSections))('%s is unchanged', async (rel, digest) => {
-    if (EXEMPT.includes(rel)) return;
+    if (EXEMPT.includes(rel) && !(rel in SCOPED_DIGESTS)) return;
     const { createHash } = await import('node:crypto');
+    if (rel in SCOPED_DIGESTS) {
+      const scoped = createHash('sha256').update(readFileSync(path.join(ROOT, rel))).digest('hex');
+      expect(acceptedDigests(PLAN_UPGRADE_SECTION), `${rel} is at a digest nobody recorded — the PR-540 exemption covers only its recorded lines`)
+        .toContain(scoped);
+      return;
+    }
     // THE-362 folds ONE heading out of PaymentSection before hashing - see
     // `__fixtures__/the-362-payment-section-fold.ts`.
     const now = rel.endsWith('PaymentSection.tsx')

@@ -115,7 +115,7 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ afterName }) =
           type="text"
           value={ministryName}
           onChange={(e) => setMinistryName(e.target.value)}
-          placeholder="e.g. Grace Community Church"
+          placeholder="e.g. Grace Community Downtown Campus"
           className="w-full px-4 py-2.5 border border-line rounded-brand text-sm text-strong focus:outline-hidden focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent"
         />
         <p className="text-xs text-faint mt-1.5">Shown in your app header, login page, and emails for your white-label site.</p>

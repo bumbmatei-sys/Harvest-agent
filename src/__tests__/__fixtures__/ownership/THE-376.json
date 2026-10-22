@@ -1,0 +1,71 @@
+{
+  "ticket": "THE-376",
+  "note": "Desktop Settings popup (sidebar-13). There is no assigned ticket number; THE-376 is the next free id after THE-375. On lg, Settings opens a Dialog with a left Sidebar nav. Mobile keeps the Settings page. SMS, Integrations and Donations rows are hidden behind SETTINGS_LEGACY_SECTIONS_ENABLED. APPENDED, NEVER SUBSTITUTED. No firestore.rules change. ROUND 4 (branding gate, Billing and Branding into Settings, shell nav fixes, scheduler on Ministry): entries appended, none replaced. ROUND 4b (billing out of the desktop account menu): entries appended, none replaced.",
+  "entries": [
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "9f781d73a826a925b99e3f1ddb0b6fc57f6f45fcc96794c16028f2d5387ee5c3",
+      "why": "Desktop Settings popup. On lg the settings tab mounts the sidebar-13 SettingsDialog over the Home screen instead of the full AdminSettings page. The sidebar Settings entry still navigates to /admin/settings so THE-332 keeps passing. Mobile still renders AdminSettings. No permission gate or nav id moved; the only mount change is Home behind the popup on lg."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "657f76d5bf770b85138fd9f7b84c95f666b204fbdf449eb8afbbec8e88023758",
+      "why": "THE-376 records AppearanceRow, PlanBillingSection and ProfileSection as adopters of the already-installed item and alert primitives for the desktop Settings popup. APPENDED to RECORDED_ADOPTERS. No primitive file was edited and no new package was added."
+    },
+    {
+      "file": "src/components/__tests__/AdminSettings.free-tier-sections.test.tsx",
+      "digest": "1befc024a73f62872918cb5601814f4945723f98b42367b2c7ed11a6ba7719db",
+      "why": "THE-376 mocks SETTINGS_LEGACY_SECTIONS_ENABLED true so this suite still isolates the free-tier plan gates from the settings-popup hide. The priced-tier section lists and the Gmail reach cases stay the same claims they always were."
+    },
+    {
+      "file": "src/components/__tests__/AdminSettings.integrations-gating.test.tsx",
+      "digest": "cc533d2a6f25929486b3b665042bcf9ca85a94736fc931fac69f3fb0264113f2",
+      "why": "THE-376 mocks SETTINGS_LEGACY_SECTIONS_ENABLED true so THE-193 still measures the Integrations section when the popup hide is flipped back. No plan gate, provider list or CRM dead-end assertion was loosened."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "91bb69aeb07f1e7ab3be1a7f5f4f5961fe9463d55d6e1228a16def5753c9a33e",
+      "why": "Settings popup QA round 2. ONE prop on the existing <SettingsDialog /> mount: canUpgrade={billingAccess === 'yes'}, the same expression the account menu's Billing row already reads, so the plan-upgrade cards in Plan & billing are offered only to a billing-entitled admin. The Stripe checkout and portal routes are owner-only server-side; this only stops the UI offering a button that would be refused. No nav array, group, permission gate, tab id, route or other screen mount moved."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "0e7c5da62a647d60a773ac3c8da6beb7ca1a7138787fbcf646e5c5dddb23d92a",
+      "why": "Settings popup round 4. Billing & Payments from the account menu opens Settings > Plan & billing on desktop (the full-screen overlay stays for phones and for an admin who cannot open Settings); /admin/branding on desktop opens Settings > Campus & branding for an entitled admin; the SettingsDialog mount gains canBranding (the same expression the Branding tab uses) and the phone AdminSettings mount gains canManageBilling (billingAccess === 'yes'). No permission gate, plan gate, tab id, route or other screen mount moved, and no nav array changed. The desktop sidebar's Social entry still reads features.socialScheduler; the Ministry plan cell now makes that true."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "735d23f8946c67052aa01f186eaaa518d12f3e5319ddeca91e3d21240bf078c0",
+      "why": "Settings popup round 4 follow-up. A branding-only admin (manageBranding, no manageSettings) keeps one desktop Branding row, because the Settings popup does not open for them. A settings admin still has no Branding sidebar row: Campus & branding is in the popup. No permission gate or plan gate moved."
+    },
+    {
+      "file": "src/components/__tests__/AdminSettings.free-tier-sections.test.tsx",
+      "digest": "a5347c1d52631a52d511d512e01b46fd75ed6c8115c6283d9e583181d1ed88a0",
+      "why": "AdminSettings gained a required canManageBilling prop (Manage and Cancel Subscription are owner actions); the mount passes it, as it already passed isPlanOwner. Nothing asserted was loosened."
+    },
+    {
+      "file": "src/components/__tests__/AdminSettings.integrations-gating.test.tsx",
+      "digest": "f6419c4f2424afda4e7582a2c09b478a5a2e4ec809237575a238203f72eb12a1",
+      "why": "AdminSettings gained a required canManageBilling prop; the mount passes it, as it already passed isPlanOwner. Nothing asserted was loosened."
+    },
+    {
+      "file": "src/utils/__tests__/the-248-discount-alignment.test.ts",
+      "digest": "105d11b325e6645a33757a8984f0b967c65a0ba9d50fe81c40ebe21cda1d82fd",
+      "why": "Repinned the feature-matrix digest for one cell: socialScheduler false -> true on the Ministry plan, which Matei approved on 2026-10-21 (\"Include the scheduler in the Ministry plan\"). The previous digest is recorded in the test beside the new one. No price, checkout or plan id moved."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "081b40064d8480143b6eb3474118970a1ba59c179b7a7b45d1de6c30c7f4687f",
+      "why": "THE-376 round 4 APPENDS BillingActivity.tsx to RECORDED_ADOPTERS (table, empty, item, alert, badge, button), the invoice history and billing-summary PDF moved into the Plan & billing pane. Nothing above it was removed or rewritten, no primitive was edited and no package was added."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "44dba8fb732054ce3e491cc479dc09fec134a57b2124e944050564e98f138b65",
+      "why": "Settings popup round 4b. The desktop sidebar account menu passes hideBillingRow when the admin can open Settings, so Billing & Payments leaves that menu. Plan & billing inside the popup stays the only desktop route. The phone MyAccountMenu mount is unchanged, and an admin who can bill but cannot open Settings keeps the row. No permission gate, plan gate, nav id, route, price or checkout moved."
+    },
+    {
+      "file": "src/components/MyAccountMenu.tsx",
+      "digest": "5a6ce7517b5ae2cb07f68baca4697289e8d87f2a8b6b0bcce3ea2c6690f8f44e",
+      "why": "Settings popup round 4b. MyAccountMenu gains hideBillingRow, default false. When the desktop sidebar passes true, Billing & Payments is not rendered, including the unknown-window placeholder. Phones and every existing caller leave it false, so Documentation and the other rows stay, and an admin who cannot open Settings still has the billing row. No class, colour, or entitlement on the remaining rows moved."
+    }
+  ]
+}

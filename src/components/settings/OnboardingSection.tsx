@@ -128,7 +128,12 @@ const AutosaveError: React.FC<{ status: AutosaveStatus; onRetry: () => void }> =
     </FieldError>
   );
 
-const OnboardingSection: React.FC = () => {
+interface OnboardingSectionProps {
+  /** Inside the Settings popup, where there is no bottom nav to clear. */
+  embedded?: boolean;
+}
+
+const OnboardingSection: React.FC<OnboardingSectionProps> = ({ embedded = false }) => {
   const [onboardingQuestions, setOnboardingQuestions] = useState<OnboardingQuestion[]>([]);
   const [onboardingLoaded, setOnboardingLoaded] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<OnboardingQuestion | null>(null);
@@ -272,7 +277,7 @@ const OnboardingSection: React.FC = () => {
   };
 
   return (
-    <div className={`${CONTROL_DENSITY.sectionGap} space-y-6 ${NAV_CLEARANCE}`}>
+    <div className={`${CONTROL_DENSITY.sectionGap} space-y-6 ${embedded ? '' : NAV_CLEARANCE}`}>
       <p className="text-body">
         These are the questions new members see when signing up. Edit, reorder, or delete any
         question. Add your own custom questions below. Changes save on their own.

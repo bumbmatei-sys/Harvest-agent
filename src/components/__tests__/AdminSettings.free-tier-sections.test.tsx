@@ -85,6 +85,9 @@ vi.mock('../../lib/gmail-feature', () => ({
 }));
 
 vi.mock('next/image', () => ({ default: () => null }));
+vi.mock('../../lib/settings-legacy-sections', () => ({
+  SETTINGS_LEGACY_SECTIONS_ENABLED: true,
+}));
 
 import AdminSettings from '../AdminSettings';
 import { getPlanFeatures, PLAN_DISPLAY_NAMES, PLAN_PRICING } from '../../utils/plan-features';
@@ -111,6 +114,7 @@ async function mount(plan: string): Promise<HTMLElement> {
         tenantId="tenant-1"
         email="admin@church.org"
         isPlanOwner
+        canManageBilling
         onCustomizeNav={() => {}}
         onOpenDonations={() => {}}
       />,

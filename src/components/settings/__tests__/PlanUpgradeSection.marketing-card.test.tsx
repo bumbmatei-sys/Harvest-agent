@@ -934,8 +934,14 @@ describe('6 — the sub-640px rendering changes only where the marketing match r
      ⚠️ THE `newsletterAutomation` CELL IS UNTOUCHED, so this is a withheld LINE
      and not a withdrawn entitlement: flipping the switch restores the card to
      [-1, 0, +1] and this figure with it. */
+  /* 🔵 THE SCHEDULER ADDED ONE MORE LINE TO MINISTRY'S CARD, and the baseline
+     fixture is still not re-recorded. `socialScheduler` is now a Ministry plan
+     cell (Matei approved 2026-10-21: "Include the scheduler in the Ministry
+     plan"), and the card derives a 'Social Scheduler' line from that cell.
+     Individual and Small Team hold the cell only through the add-on, so
+     their cards print nothing for it. */
   /** Per card, in render order: Individual, Small Team, Ministry. */
-  const FEATURE_LINE_DELTA = [-1, NEWSLETTER_FEATURE_ENABLED ? 0 : -1, +1];
+  const FEATURE_LINE_DELTA = [-1, NEWSLETTER_FEATURE_ENABLED ? 0 : -1, +2];
 
   /** Strip every contiguous feature-line group, and report how many each card
    *  held. Cards are delimited by the row carrying `snap-center`. */

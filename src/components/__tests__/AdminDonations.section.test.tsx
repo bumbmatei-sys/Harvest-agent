@@ -70,6 +70,9 @@ vi.mock('../../lib/stripe-connect-feature', () => ({
   STRIPE_CONNECT_ENABLED: true,
   STRIPE_CONNECT_HIDDEN_MESSAGE: 'Temporarily unavailable',
 }));
+vi.mock('../../lib/settings-legacy-sections', () => ({
+  SETTINGS_LEGACY_SECTIONS_ENABLED: true,
+}));
 
 vi.mock('react-router-dom', () => ({ useNavigate: () => navigate, useParams: () => params.current }));
 vi.mock('../../utils/tenant.utils', () => ({ checkRosterAdminStatus: vi.fn(async () => 'not-admin') }));
@@ -193,6 +196,24 @@ type Who = { role?: string; permissions?: Record<string, boolean> };
 
 async function open(plan: TenantPlan | null, section: string, who: Who = {}) {
   await unmount();
+  // This suite walks the mobile Settings PAGE, which still holds the Donations
+  // pointer. Desktop opens the sidebar-13 popup instead, and that popup hides
+  // the pointer behind SETTINGS_LEGACY_SECTIONS_ENABLED.
+  Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: 390 });
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: (query: string) => {
+      const min = /min-width:\s*(\d+)px/.exec(query);
+      const matches = min ? 390 >= Number(min[1]) : false;
+      return {
+        matches, media: query,
+        addEventListener() {}, removeEventListener() {},
+        addListener() {}, removeListener() {},
+        dispatchEvent() { return false; }, onchange: null,
+      };
+    },
+  });
   store.current = { ...store.current, tenantPlan: plan };
   ctx.current = { ...ctx.current, tenantPlan: plan ?? undefined };
   params.current = section ? { section } : {};

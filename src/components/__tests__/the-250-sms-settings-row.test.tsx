@@ -107,6 +107,11 @@ async function loadSettings(enabled: boolean) {
     SMS_FEATURE_ENABLED: enabled,
     SMS_HIDDEN_MESSAGE: 'SMS is temporarily unavailable.',
   }));
+  // Restore the Settings-popup hide so this suite still isolates the SMS
+  // master switch. Production keeps SETTINGS_LEGACY_SECTIONS_ENABLED false.
+  vi.doMock('../../lib/settings-legacy-sections', () => ({
+    SETTINGS_LEGACY_SECTIONS_ENABLED: true,
+  }));
   return (await import('../AdminSettings')).default;
 }
 
@@ -124,6 +129,7 @@ async function mount(plan: TenantPlan, enabled: boolean): Promise<HTMLElement> {
         tenantId="tenant-1"
         email="admin@church.org"
         isPlanOwner
+        canManageBilling
         onCustomizeNav={() => {}}
         onOpenDonations={() => {}}
       />,

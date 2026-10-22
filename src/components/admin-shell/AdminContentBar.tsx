@@ -12,15 +12,13 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-import { Separator } from '@/components/ui/separator';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 
 import { openAdminSearch } from './admin-search';
 
 /**
- * Desktop content toolbar, in the sidebar-07 header pattern:
- * SidebarTrigger, Separator, Breadcrumb on the left; screen actions on the right.
- * It sits in the content card. Mobile keeps AdminScreenHeader.
+ * Desktop content toolbar: Breadcrumb on the left; screen actions on the right.
+ * The sidebar collapse button lives in the sidebar footer only. It sits in the
+ * content card. Mobile keeps AdminScreenHeader.
  */
 export function AdminContentBar({
   section,
@@ -43,8 +41,6 @@ export function AdminContentBar({
       data-admin-content-bar
       className="flex h-12 shrink-0 items-center gap-2 px-3"
     >
-      <SidebarTrigger className="size-8 text-muted-foreground hover:bg-muted" />
-      <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />
       <div className="flex min-w-0 items-center gap-1">
         {onBack ? (
           <Button

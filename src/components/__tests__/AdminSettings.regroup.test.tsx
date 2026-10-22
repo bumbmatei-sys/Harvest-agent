@@ -117,6 +117,7 @@ async function mount(props: Partial<React.ComponentProps<typeof AdminSettings>> 
         tenantId="tenant-1"
         email="admin@church.org"
         isPlanOwner
+        canManageBilling
         onCustomizeNav={() => {}}
         onOpenDonations={() => {}}
         {...props}
@@ -678,9 +679,7 @@ describe('THE-183 — admin Settings', () => {
     expect(found).toEqual([
       'Account',
       'Appearance',
-      'Payments',
       'Church Setup',
-      'Connected Services',
       'Danger Zone',
       'Navigation',
     ]);
@@ -765,7 +764,7 @@ describe('THE-183 — admin Settings', () => {
     // The accordion rows and the navigation row — the targets this PR lays
     // out — clear 44px comfortably at every mobile width.
     for (const viewport of [380, 480, 639]) {
-      for (const label of ['Appearance', GIVING_ROW, 'Cancel Subscription']) {
+      for (const label of ['Appearance', 'Onboarding Questions', 'Cancel Subscription']) {
         const row = targets.find((t) => t.label.startsWith(label))!;
         expect(heightAt(row.el, viewport), `"${label}" is short at ${viewport}px`).toBeGreaterThanOrEqual(MIN);
       }
@@ -1091,16 +1090,16 @@ describe('THE-183 — admin Settings', () => {
 
     // (e) And every row still opens and closes, one at a time.
     const host = await mount();
-    await expandSection(host, GIVING_ROW);
+    await expandSection(host, 'Onboarding Questions');
     // A row holds its header button, plus a content panel while it is open.
     const open = () =>
       Array.from(host.querySelectorAll('[data-settings-row]'))
         .filter((r) => r.children.length > 1)
         .map((r) => r.getAttribute('data-settings-row'));
-    expect(open(), 'opening a row did not expand it').toEqual(['payments']);
-    await expandSection(host, 'Onboarding Questions');
-    expect(open(), 'two rows are open at once').toEqual(['onboarding']);
-    await expandSection(host, 'Onboarding Questions');
+    expect(open(), 'opening a row did not expand it').toEqual(['onboarding']);
+    await expandSection(host, 'Appearance');
+    expect(open(), 'two rows are open at once').toEqual(['appearance']);
+    await expandSection(host, 'Appearance');
     expect(open(), 'a row did not close again').toEqual([]);
   });
 

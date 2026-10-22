@@ -9,7 +9,7 @@ const h = vi.hoisted(() => ({
   userDoc: { role: 'church_admin', permissions: {} as Record<string, unknown> },
   privateDoc: { adminEmails: [] as string[] },
   tenantDoc: {
-    plan: 'max',
+    plan: 'pro',
     addons: { aiAssistant: 0, adminSeats: 0, unlimitedContacts: false, socialScheduler: 0 },
   } as Record<string, unknown>,
 }));
@@ -47,7 +47,7 @@ describe('requireSocialAccess', () => {
     h.userDoc = { role: 'church_admin', permissions: {} };
     h.privateDoc = { adminEmails: [] };
     h.tenantDoc = {
-      plan: 'max',
+      plan: 'pro',
       addons: { aiAssistant: 0, adminSeats: 0, unlimitedContacts: false, socialScheduler: 0 },
     };
     h.requireAuth.mockResolvedValue({
@@ -166,6 +166,24 @@ describe('requireSocialAccess', () => {
     const response = await call();
     expect(response).toEqual({ tenantId: 'tenant-a', entitled: false, sample: true, mockOnly: true });
     expect(h.set).not.toHaveBeenCalled();
+  });
+
+  // Matei approved 2026-10-21: "Include the scheduler in the Ministry plan".
+  it('lets a Ministry plan in without the add-on, as the nav already does', async () => {
+    h.tenantDoc = { plan: 'max', addons: { socialScheduler: 0 } };
+    const response = await call();
+    expect(response).toMatchObject({ tenantId: 'tenant-a', entitled: true, sample: true });
+    expect(h.set).not.toHaveBeenCalled();
+  });
+
+  it('still refuses Small Team without the add-on', async () => {
+    process.env.VERCEL_ENV = 'production';
+    h.tenantDoc = { plan: 'pro', addons: { socialScheduler: 0 } };
+    const response = await call();
+    expect(response).toBeInstanceOf(NextResponse);
+    if (!(response instanceof NextResponse)) return;
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: 'social_scheduler_not_entitled' });
   });
 
   it('lifts a ministry that holds the count', async () => {

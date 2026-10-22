@@ -30,7 +30,12 @@ interface ExportJob {
  * The request carries no tenant id. The server reads the tenant from the
  * Firebase token, or from the user document when the claim is absent.
  */
-const ChurchDataExportPanel: React.FC = () => {
+interface ChurchDataExportPanelProps {
+  /** The row's name; the Settings popup says "campus". */
+  label?: string;
+}
+
+const ChurchDataExportPanel: React.FC<ChurchDataExportPanelProps> = ({ label = 'Export church data' }) => {
   const [job, setJob] = useState<ExportJob | null>(null);
   const [phase, setPhase] = useState<'idle' | 'preparing' | 'downloading' | 'opened'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -174,14 +179,14 @@ const ChurchDataExportPanel: React.FC = () => {
         render={<button type="button" onClick={start} disabled={preparing || phase === 'downloading'} />}
         className={ROW}
         aria-busy={preparing}
-        aria-label="Export church data"
+        aria-label={label}
       >
         <ItemMedia variant="icon">
           <Download size={18} className="text-gold shrink-0" />
         </ItemMedia>
         <ItemContent className="min-w-0">
           <ItemTitle className="text-sm font-semibold text-strong">
-            {preparing ? 'Preparing export…' : 'Export church data'}
+            {preparing ? 'Preparing export…' : label}
           </ItemTitle>
           <ItemDescription className="text-xs text-faint">
             Members, contacts, giving and events for this ministry, as CSV files. The link lasts 15 minutes and the file is removed after you download it.

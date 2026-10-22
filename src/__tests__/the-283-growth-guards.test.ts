@@ -350,6 +350,20 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
       `Eden shell pass follow-up - Home's breadcrumb is just Home. Every other route crumbs its sidebar group instead of the People or Public side. No permission gate, nav id or screen mount moved.`],
     ['51c9a678558d1bdf523bfaf524afaf0e3bc92dcfc230d471ba43def62a50fe68',
       `Eden shell fix round - the platform bell is a shadcn Button (ghost, icon) with the gold active highlight, and the desktop content bar mounts only at lg so a phone does not fetch the payments inbox twice. No permission gate, nav id or screen mount moved.`],
+    // APPENDED BY the desktop settings popup, nothing above removed or rewritten.
+    ['9f781d73a826a925b99e3f1ddb0b6fc57f6f45fcc96794c16028f2d5387ee5c3',
+      `desktop settings popup - on lg the Settings tab opens the sidebar-13 dialog over the Home screen instead of the full page. Mobile still mounts AdminSettings. No permission gate or nav id moved; the only mount change is Home behind the popup on lg.`],
+    // APPENDED BY the settings popup QA round 2, nothing above removed or rewritten.
+    ['91bb69aeb07f1e7ab3be1a7f5f4f5961fe9463d55d6e1228a16def5753c9a33e',
+      `settings popup QA round 2 - one prop on the existing SettingsDialog mount, canUpgrade, wired to billingAccess === 'yes' so the plan-upgrade cards are offered only to a billing-entitled admin. No permission gate, nav id, route or screen mount moved.`],
+    // APPENDED BY the settings popup round 4, nothing above removed or rewritten.
+    ['0e7c5da62a647d60a773ac3c8da6beb7ca1a7138787fbcf646e5c5dddb23d92a',
+      `settings popup round 4 - billing and branding open inside the desktop Settings popup (the Billing row, /admin/branding), canBranding on the SettingsDialog mount and canManageBilling on the phone AdminSettings mount. No permission gate, plan gate, nav id or route moved.`],
+    ['735d23f8946c67052aa01f186eaaa518d12f3e5319ddeca91e3d21240bf078c0',
+      `settings popup round 4 follow-up - a branding-only admin keeps one desktop Branding row, because Settings does not open without manageSettings. A settings admin still has no Branding sidebar row. No permission gate or plan gate moved.`],
+    // APPENDED BY the settings popup round 4b, nothing above removed or rewritten.
+    ['44dba8fb732054ce3e491cc479dc09fec134a57b2124e944050564e98f138b65',
+      `settings popup round 4b - the desktop account menu drops Billing & Payments when the admin can open Settings. Plan & billing inside the popup stays the only desktop route. The phone menu is unchanged, and an admin who can bill but cannot open Settings keeps the row. No permission gate, plan gate, nav id, route, price or checkout moved.`],
   ],
   'firestore.indexes.json': [
     ['8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0', 'main at 625e3eb'],

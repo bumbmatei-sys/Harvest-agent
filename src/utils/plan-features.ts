@@ -229,7 +229,8 @@ export interface PlanFeatures {
    * Social scheduling: connected accounts, a composer, a month calendar and a
    * queue.
    *
-   * 🔴 FALSE ON EVERY TIER. No plan includes it. The only path to `true` is
+   * 🔴 TRUE ON MINISTRY ONLY (Matei approved 2026-10-21: "Include the
+   * scheduler in the Ministry plan"). Every other tier reaches `true` only by
    * holding the social scheduler add-on, which `getEffectiveFeatures` lifts
    * with `||` and never assignment. There is no price and no Dodo product in
    * this repo. The webhook remains the single writer of
@@ -647,8 +648,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     pledgeCampaigns: true,
     textToGive: true,
     pwaApp: true,
-    // 🔴 FALSE ON EVERY TIER. Social scheduling is an add-on. See PlanFeatures.
-    socialScheduler: false,
+    // Included in Ministry (Matei approved 2026-10-21). Other tiers hold it via the add-on.
+    socialScheduler: true,
   },
 };
 
@@ -1402,7 +1403,8 @@ export const PLAN_BLURBS: Record<TenantPlan, string> = {
   free: 'For evangelists discipling one person at a time.',
   plus: 'For solo evangelists and missionaries.',
   pro:  'For small ministries growing as a team.',
-  max:  'For established churches going deeper.',
+  // TODO: harvest-presentation-site (src/components/Pricing.tsx) still says "churches"; change it to "campuses" there too.
+  max:  'For established campuses going deeper.',
 };
 
 /** Get the display name for a given plan. Defaults to 'Individual' if unknown. */

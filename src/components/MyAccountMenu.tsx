@@ -87,8 +87,16 @@ interface MyAccountMenuProps {
    * guard on this file still holds.
    */
   variant?: 'bar' | 'rail';
-  /** When provided AND billingAccess is 'yes', the Billing & Payments item is shown. */
+  /** When provided AND billingAccess is 'yes' AND the row is not hidden, the Billing & Payments item is shown. */
   onOpenBilling?: () => void;
+  /**
+   * Drop Billing & Payments, including the unknown-window placeholder.
+   * The desktop sidebar passes true when this admin can open Settings: Plan &
+   * billing inside that popup is the only desktop route. Default false, so a
+   * phone (no popup) and an admin who can bill but cannot open Settings keep
+   * the row — otherwise they would have no way in.
+   */
+  hideBillingRow?: boolean;
   /** Open the member app (same one-shot-intent action the More drawer used). The
    *  menu row is mobile-only; desktop keeps its "Open member app" top-bar pill. */
   onGoToUserApp: () => void;
@@ -122,7 +130,8 @@ const Avatar: React.FC<{ photoURL?: string | null; name?: string | null; email?:
 /**
  * Circular avatar button (admin header, top-right) that opens a small dropdown
  * with My Profile · Settings (if entitled) · Billing & Payments (owners, by
- * `ownerId` OR by the admin roster) · Documentation · Go to User App · Log out.
+ * `ownerId` OR by the admin roster, unless `hideBillingRow`) · Documentation ·
+ * Go to User App · Log out.
  * Closes on outside-click / Esc. Admin-side only — the user app has its own
  * Profile tab, and the docs are written for church ADMINS, so the member app
  * does not link them.
@@ -130,6 +139,7 @@ const Avatar: React.FC<{ photoURL?: string | null; name?: string | null; email?:
 const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
   photoURL, displayName, email, billingAccess, onOpenProfile, onOpenSettings, onOpenBilling, onGoToUserApp, onLogout,
   variant = 'bar',
+  hideBillingRow = false,
 }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -209,12 +219,15 @@ const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
               </button>
             )}
 
-            {/* Billing & Payments. The unknown window renders a BUSY row rather
+            {/* Billing & Payments. `hideBillingRow` drops the row entirely — the
+                settled one and the placeholder — because the desktop Settings
+                popup already holds Plan & billing. That is not a denial of
+                access. Otherwise the unknown window renders a BUSY row rather
                 than nothing: hiding it would tell the admin they have no billing
                 access at the one moment we do not yet know, which is the exact
                 shape of THE-64. It resolves in place to the real row or to
                 nothing once the roster answers. */}
-            {billingAccess === 'unknown' ? (
+            {hideBillingRow ? null : billingAccess === 'unknown' ? (
               <div
                 role="menuitem"
                 aria-disabled="true"

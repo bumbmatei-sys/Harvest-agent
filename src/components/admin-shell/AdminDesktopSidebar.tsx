@@ -103,6 +103,12 @@ export function AdminDesktopSidebar({
   const groups = groupsForSide(side, tabs);
   const social = tabs.get('social');
   const socialInGroups = groups.some((group) => group.items.some((item) => item.id === 'social'));
+  // Branding is not a sidebar group: Settings owns it. The row appears only
+  // when the tab is still in the map, which is the branding-only admin who
+  // cannot open Settings.
+  const branding = tabs.get('branding');
+  const brandingInGroups = groups.some((group) => group.items.some((item) => item.id === 'branding'));
+  const BrandingIcon = branding?.icon;
   const { resolved, toggle } = useShellTheme();
   const [paletteOpen, setPaletteOpen] = useState(false);
 
@@ -202,6 +208,20 @@ export function AdminDesktopSidebar({
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
+            {BrandingIcon && branding && !brandingInGroups && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={activeTab === 'branding' && placeholder === null}
+                  tooltip={branding.label}
+                  className={MENU_BUTTON}
+                  data-nav-tab="branding"
+                  onClick={() => onNavigate('branding')}
+                >
+                  <BrandingIcon />
+                  <span className="group-data-[collapsible=icon]:sr-only">{branding.label}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
           </SidebarMenu>
         </SidebarGroup>
 
@@ -258,7 +278,7 @@ export function AdminDesktopSidebar({
 
       <SidebarFooter className="gap-1 p-0 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:py-2">
         <div className="flex h-[52px] items-center gap-1 pr-3 pl-4 group-data-[collapsible=icon]:h-auto group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:px-0">
-          <div className="flex min-w-0 flex-1 items-center gap-2 group-data-[collapsible=icon]:flex-none [&_[data-nav-rail-account]_button]:size-8 [&_[role=menu]]:bottom-8! [&_[data-shell-account-label]]:truncate group-data-[collapsible=icon]:[&_[data-shell-account-label]]:sr-only">
+          <div className="flex min-w-0 flex-1 items-center gap-2 group-data-[collapsible=icon]:flex-none [&_[data-nav-rail-account]>button]:size-8 [&_[role=menu]]:bottom-8! [&_[data-shell-account-label]]:truncate group-data-[collapsible=icon]:[&_[data-shell-account-label]]:sr-only">
             {accountMenu}
             {accountLabel ? (
               <span data-shell-account-label className="min-w-0 truncate text-[13px] font-medium text-sidebar-accent-foreground">

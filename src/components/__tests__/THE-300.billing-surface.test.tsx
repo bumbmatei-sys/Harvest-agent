@@ -33,6 +33,7 @@ import { CONTROL_DENSITY, DENSITY_PX, DESKTOP_CONTROL_MAX_PX } from '../layout/f
 import UNTOUCHED from './__fixtures__/the-286-untouched.json';
 import { foldedPaymentSectionDigest } from './__fixtures__/the-362-payment-section-fold';
 import { freezeFailure } from './__fixtures__/settings-freeze-register';
+import { PLAN_UPGRADE_SECTION, acceptedDigests } from '../../__tests__/__fixtures__/plan-copy-exemption';
 import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
 
 /**
@@ -1015,6 +1016,12 @@ describe('15 · layout.tsx, firestore.rules and functions/ are byte-identical', 
       const now = rel.endsWith('PaymentSection.tsx')
         ? foldedPaymentSectionDigest(readFileSync(path.join(ROOT, rel), 'utf8'))
         : sha256(readFileSync(path.join(ROOT, rel)));
+      // PR-540: PlanUpgradeSection may be at its original pin or at the one digest recorded for the
+      // approved display-copy + compact-prop edit - never at a third value.
+      if (rel === PLAN_UPGRADE_SECTION.file) {
+        expect(acceptedDigests(PLAN_UPGRADE_SECTION), `${rel} changed`).toContain(now);
+        continue;
+      }
       expect(now, `${rel} changed`).toBe(digest);
     }
   });
@@ -1023,7 +1030,8 @@ describe('15 · layout.tsx, firestore.rules and functions/ are byte-identical', 
     // See the head of this file: its sub-640px layer is pinned byte-for-byte from
     // the card track onward, and the only way to lift its 40px plan button is to
     // RE-RECORD that baseline, which substitutes the value the guard measures.
-    expect(sha256(readFileSync(path.join(ROOT, PLAN))), 'PlanUpgradeSection changed')
-      .toBe(UNTOUCHED.otherSettingsSections[PLAN as keyof typeof UNTOUCHED.otherSettingsSections]);
+    // PR-540: the original pin, or the one recorded digest for the approved edit.
+    expect(acceptedDigests(PLAN_UPGRADE_SECTION), 'PlanUpgradeSection changed')
+      .toContain(sha256(readFileSync(path.join(ROOT, PLAN))));
   });
 });

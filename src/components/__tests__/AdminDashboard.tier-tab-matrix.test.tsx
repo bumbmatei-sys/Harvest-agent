@@ -198,7 +198,9 @@ const TABS: Row[] = [
   { label: 'Livestream', section: 'livestream', screen: 'AdminLivestream', feature: (f) => f.livestream },
   { label: 'SMS', section: 'sms', screen: 'AdminSms', feature: (f) => f.smsAutomation },
   { label: 'Community', section: 'community', screen: 'AdminCommunity', feature: (f) => f.communityGroups },
-  { label: 'Branding', section: 'branding', screen: 'AdminBranding', feature: (f) => f.customBranding || f.customDomain },
+  // Branding is not a row any more: it left the sidebar for Settings > Campus &
+  // branding, so "hidden from the nav" no longer describes it. Its plan and
+  // permission gate is asserted on the Settings popup in settings-popup.test.tsx.
 ];
 
 /**
@@ -401,7 +403,7 @@ describe('17 — the tier/tab matrix is generated from the real nav array and th
     expect(matrix.size).toBe(TABS.length);
   });
 
-  it('resolves the free column to eighteen visible tabs, and Branding hidden', async () => {
+  it('resolves the free column to eighteen visible tabs', async () => {
     const matrix = await buildMatrix();
     const visible = TABS.filter((r) => matrix.get(r.label)!.get('free')!.cell !== 'hidden');
     // ⚠️ Seventeen since THE-277, and free bought nothing to get the extra row:
@@ -411,7 +413,6 @@ describe('17 — the tier/tab matrix is generated from the real nav array and th
     // out of the Events screen carrying the same `eventRegistration` cell, so
     // one entitlement now opens two tabs there too.
     expect(visible.length, 'free must see all eighteen').toBe(18);
-    expect(matrix.get('Branding')!.get('free')!.cell).toBe('hidden');
   });
 
   it('resolves the Individual column without Reach', async () => {
@@ -554,7 +555,10 @@ describe('19 — no tab hidden from the nav renders fully when reached by URL', 
     // hidden on — two of them — and the count rises by two with no tier losing
     // reach it had. A rise of anything other than two here would mean the split
     // changed an entitlement, which is the thing it must not do.
-    expect(checked, 'the count of hidden cells moved — check the matrix above').toBe(21);
+    //
+    // ⚠️ AND IT FELL TO 18 when Branding left the sidebar for Settings: its three
+    // hidden cells (free, Individual, Small Team) went with the row.
+    expect(checked, 'the count of hidden cells moved — check the matrix above').toBe(18);
   });
 
   it('and a third layer bounces the URL too, so the wall is not the only refusal', async () => {

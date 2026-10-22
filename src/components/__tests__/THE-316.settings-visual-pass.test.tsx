@@ -80,6 +80,9 @@ vi.mock('../../utils/tenant-scope', () => ({
   getTenantScope: async () => 'tenant-1',
 }));
 vi.mock('next/image', () => ({ default: () => null }));
+vi.mock('../../lib/settings-legacy-sections', () => ({
+  SETTINGS_LEGACY_SECTIONS_ENABLED: true,
+}));
 
 import AdminSettings from '../AdminSettings';
 
@@ -95,6 +98,7 @@ async function mount(props: Partial<React.ComponentProps<typeof AdminSettings>> 
         tenantId="tenant-1"
         email="admin@church.org"
         isPlanOwner
+        canManageBilling
         onCustomizeNav={() => {}}
         onOpenDonations={() => {}}
         {...props}
