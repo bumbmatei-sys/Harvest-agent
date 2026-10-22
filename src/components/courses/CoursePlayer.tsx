@@ -50,11 +50,11 @@ const RAIL_TABS: readonly { id: RailTab; label: string; icon: React.ReactNode }[
 
 function RailTabs({ tab, onTab, vertical }: { tab: RailTab; onTab: (t: RailTab) => void; vertical: boolean }) {
   return (
-    <Tabs value={tab} onValueChange={(v) => onTab(String(v) as RailTab)} className="gap-0">
+    <Tabs value={tab} onValueChange={(v) => onTab(String(v) as RailTab)} orientation={vertical ? 'vertical' : 'horizontal'} className="gap-0">
       <TabsList
         aria-label="Course panels"
         variant="default"
-        className={vertical ? 'h-auto w-full flex-col gap-1 bg-transparent p-0' : 'h-auto w-full bg-transparent p-0'}
+        className={vertical ? 'w-full gap-1 bg-transparent p-0' : 'w-full bg-transparent p-0 group-data-[orientation=horizontal]/tabs:h-auto'}
       >
         {RAIL_TABS.map((t) => (
           <TabsTrigger
@@ -324,8 +324,10 @@ export function CoursePlayer({
             <span className="hidden sm:inline">Notes</span>
             <span className="sr-only sm:hidden">Notes</span>
           </Button>
-          <Button type="button" variant="ghost" className="hidden min-h-11 gap-1.5 px-3 text-sm sm:inline-flex" disabled title="Chats are coming soon">
-            <MessageCircle aria-hidden />Chat
+          <Button type="button" variant="ghost" className="min-h-11 gap-1.5 px-3 text-sm" disabled title="Chats are coming soon">
+            <MessageCircle aria-hidden />
+            <span className="hidden sm:inline">Chat</span>
+            <span className="sr-only sm:hidden">Chat</span>
           </Button>
           <Button type="button" variant="ghost" size="icon-sm" className="min-h-11 min-w-11" aria-label="Close the course" onClick={onClose} data-player-close>
             <X />

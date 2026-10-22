@@ -133,7 +133,7 @@ describe('CoursePlayer — the rail', () => {
     expect(all('[data-rail-tab]').map((t) => t.getAttribute('data-rail-tab'))).toEqual(['lessons', 'chats', 'notes']);
     await click(need(q('[data-rail-tab="chats"]'), 'chats'));
     expect(q('[data-chats-empty]')).not.toBeNull();
-    expect(need(byName('button', 'Chat'), 'chat button').hasAttribute('disabled')).toBe(true);
+    expect(need(q('button[title="Chats are coming soon"]'), 'chat button').hasAttribute('disabled')).toBe(true);
   });
 
   it('lists the lessons that have notes under Notes, and says so when there are none', async () => {
