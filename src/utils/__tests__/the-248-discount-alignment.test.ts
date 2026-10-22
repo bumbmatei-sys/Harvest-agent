@@ -681,11 +681,19 @@ describe('the plan feature matrix and the Dodo product ids are unchanged', () =>
 
        The social scheduler adds `socialScheduler: false` on every tier. No
        price moved. The per-cell contract in plan-features.test.ts moved in
-       the same commit. */
+       the same commit.
+
+       🔵 REPINNED FOR THE SCHEDULER ON MINISTRY, and THE-248's claim is again
+       untouched: one cell moved, `socialScheduler` false → true on `max`
+       alone. Matei approved 2026-10-21: "Include the scheduler in the Ministry plan". It is an
+       entitlement change only: no price, checkout or plan id moved, and the
+       add-on path still lifts the cell on every other tier.
+       Previous pin:
+         7e89af17c3a81b20fa333c881dcd7d3dd9c1fb1a8f1423b821ae111b200de8f6 (scheduler on no tier) */
       'the plan feature matrix changed. THE-248 is a REPRICE and must move no '
       + 'feature cell — if a later ticket legitimately does, update this digest '
       + 'and the per-cell contract in plan-features.test.ts together.',
-    ).toBe('7e89af17c3a81b20fa333c881dcd7d3dd9c1fb1a8f1423b821ae111b200de8f6');
+    ).toBe('fe136fdc5a1e10562f1068b2cdff17b184d4575369c5ccc278befee295b681cf');
   });
 
   it('and the tier ladder itself is untouched', () => {

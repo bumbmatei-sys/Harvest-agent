@@ -119,7 +119,12 @@ const AutosaveError: React.FC<{ status: AutosaveStatus; onRetry: () => void }> =
     </FieldError>
   );
 
-export const GivingStatementsSection: React.FC = () => {
+interface GivingStatementsSectionProps {
+  /** Inside the Settings popup, where there is no bottom nav to clear. */
+  embedded?: boolean;
+}
+
+export const GivingStatementsSection: React.FC<GivingStatementsSectionProps> = ({ embedded = false }) => {
   const [ein, setEin] = useState('');
   const [address, setAddress] = useState('');
   const [footer, setFooter] = useState('');
@@ -196,7 +201,7 @@ export const GivingStatementsSection: React.FC = () => {
   }, [loaded, einAuto, addressAuto, footerAuto]);
 
   return (
-    <div className={`${CONTROL_DENSITY.sectionGap} space-y-6 ${NAV_CLEARANCE}`}>
+    <div className={`${CONTROL_DENSITY.sectionGap} space-y-6 ${embedded ? '' : NAV_CLEARANCE}`}>
       <p className="text-body">
         These details appear on the annual giving statements (tax receipts) you send to donors.
         Changes save on their own.

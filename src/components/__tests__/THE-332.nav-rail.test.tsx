@@ -372,6 +372,9 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
       ...(NEWSLETTER_FEATURE_ENABLED ? [] : ['newsletter']),
       ...(SMS_FEATURE_ENABLED ? [] : ['sms']),
       'affiliate',
+      // Not a kill switch: Branding left the sidebar for Settings > Campus &
+      // branding, and its id stays a known tab so /admin/branding still resolves.
+      'branding',
     ];
     const missing = [...named].filter((id) => !reached.has(id));
 
@@ -517,15 +520,23 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
     expect(codeOf(DASHBOARD_SRC)).toMatch(/isSuperAdmin\s*&&\s*\{\s*id:\s*'library'/);
   });
 
-  it('shows Social on the desktop sidebar for the add-on, and keeps the mobile drawer entry without it', async () => {
-    await mount({ superAdmin: false, perms: { ...FULL_TENANT_PERMS, fullAccess: true } });
+  const socialInSidebar = async (): Promise<boolean> => {
+    let found = false;
     for (const label of ['People', 'Public'] as const) {
       await showSide(label);
-      expect(
-        container.querySelector('[data-shell-side] [data-nav-tab="social"]'),
-        `${label} shows Social without the add-on`,
-      ).toBeNull();
+      if (container.querySelector('[data-shell-side] [data-nav-tab="social"]')) found = true;
     }
+    return found;
+  };
+  const setPlan = (plan: string, tenantAddons?: { socialScheduler?: number }) => {
+    store.current = { ...store.current, tenantPlan: plan };
+    tenantCtx.current = { ...tenantCtx.current, tenantPlan: plan, tenantAddons };
+  };
+
+  it('shows Social on the desktop sidebar for the add-on, and keeps the mobile drawer entry without it', async () => {
+    setPlan('pro');
+    await mount({ superAdmin: false, perms: { ...FULL_TENANT_PERMS, fullAccess: true } });
+    expect(await socialInSidebar(), 'Small Team shows Social without the add-on').toBe(false);
     const more = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('More'));
     await act(async () => { more?.click(); });
     await flush();
@@ -534,9 +545,27 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
 
     await act(async () => { root.unmount(); });
     mounted = false;
-    tenantCtx.current = { ...tenantCtx.current, tenantAddons: { socialScheduler: 1 } };
+    setPlan('pro', { socialScheduler: 1 });
     await mount({ superAdmin: false, perms: { ...FULL_TENANT_PERMS, fullAccess: true } });
     expect(container.querySelector('[data-shell-side] [data-nav-tab="social"]')).toBeTruthy();
+  });
+
+  // Matei approved 2026-10-21: "Include the scheduler in the Ministry plan".
+  it.each([
+    ['free', false],
+    ['plus', false],
+    ['pro', false],
+    ['max', true],
+  ])('%s without the add-on: Social in the desktop sidebar is %s', async (plan, shown) => {
+    setPlan(plan);
+    await mount({ superAdmin: false, perms: { ...FULL_TENANT_PERMS, fullAccess: true } });
+    expect(await socialInSidebar()).toBe(shown);
+  });
+
+  it('Individual with the add-on still gets Social: the add-on path is kept for other plans', async () => {
+    setPlan('plus', { socialScheduler: 1 });
+    await mount({ superAdmin: false, perms: { ...FULL_TENANT_PERMS, fullAccess: true } });
+    expect(await socialInSidebar()).toBe(true);
   });
 
   it("🔴 7b · a group whose tabs are all denied draws NO rail entry", async () => {

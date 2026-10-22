@@ -140,7 +140,9 @@ describe('THE-205 moved no cell on any tier a church pays for', () => {
       accountingTools: true, taxReceipt: true, communityGroups: true,
       customForms: true, checkInSystem: true, livestream: true,
       sermonNotes: true, automatedBlog: true, givingStatements: true,
-      pledgeCampaigns: true, textToGive: true, pwaApp: true, socialScheduler: false,
+      // socialScheduler: the one cell that moved on Ministry since this snapshot.
+      // Matei approved 2026-10-21: "Include the scheduler in the Ministry plan".
+      pledgeCampaigns: true, textToGive: true, pwaApp: true, socialScheduler: true,
     },
   };
 

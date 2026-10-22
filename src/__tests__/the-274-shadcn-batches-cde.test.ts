@@ -1404,6 +1404,52 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       + 'The primitive is unedited.',
   },
   {
+    file: 'src/components/settings/AppearanceRow.tsx',
+    ticket: 'THE-376',
+    why:
+      'APPENDED, never substituted. THE-376 is the desktop Settings popup. The Appearance row '
+      + 'in the popup is the same Item shape AdminSettings already uses for its own Appearance '
+      + 'row, kept as a separate copy so AdminSettings stays byte-stable. It takes item because the row is a label, '
+      + 'a description and the theme control. button-group is rejected: ThemeToggle already is '
+      + 'the control. toggle-group is rejected: the mode pills live inside ThemeToggle. No new '
+      + 'primitive was installed and the Item primitive is unedited.',
+  },
+  {
+    file: 'src/components/settings/PlanBillingSection.tsx',
+    ticket: 'THE-376',
+    why:
+      'APPENDED, never substituted. THE-376 is the desktop Settings popup. Plan and billing reuses '
+      + 'the existing plan card and PlanUpgradeSection. It takes item for the plan card, the same '
+      + 'row-of-things shape AdminSettings already used, and alert for the Stripe return banners. '
+      + 'dialog is rejected for the plan card: this pane is already inside the settings Dialog. '
+      + 'empty is rejected: a missing plan is Super Admin, which is a state with a card. No new '
+      + 'primitive was installed.',
+  },
+  {
+    file: 'src/components/settings/ProfileSection.tsx',
+    ticket: 'THE-376',
+    why:
+      'APPENDED, never substituted. THE-376 is the desktop Settings popup. Profile is the signed-in '
+      + 'admin identity pane. It takes alert for a failed save and a failed delete, load-bearing '
+      + 'because role=alert is what carries a refused write to a screen reader. Each action carries '
+      + 'min-h-11 so THE-356 still holds. dialog is rejected for the pane itself: it already lives '
+      + 'inside the settings Dialog. empty is rejected: a signed-in admin always has a name or email. '
+      + 'No new primitive was installed.',
+  },
+  {
+    file: 'src/components/settings/BillingActivity.tsx',
+    ticket: 'THE-376',
+    why:
+      'APPENDED, never substituted. THE-376 round 4 moves invoice history and the billing-summary PDF '
+      + 'into the Plan & billing pane, so nothing is lost when the account menu stops opening the '
+      + 'full-screen Billing & Payments page on desktop. It takes table for the invoice list, empty '
+      + 'for "no payments yet" and the processor-held history, item for the next-billing row, alert '
+      + 'for a failed load, badge for the status and button for the PDF link and Generate statement. '
+      + 'card is rejected: the pane draws its own rows and the table sits in a bordered block. '
+      + 'data-table is rejected: it is eight rows of a read-only list. No new primitive was installed '
+      + 'and none was edited.',
+  },
+  {
     file: 'src/components/email/SendStep.tsx',
     ticket: '#538',
     why:

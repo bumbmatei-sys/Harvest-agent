@@ -468,6 +468,50 @@ export const RECORDED_EDITS: ReadonlyArray<RecordedEdit> = [
       + 'dependency was added, and the file still has no inline style.',
     digest: '52ae78339c99341d8f3389d5eab9d0178c89241ebfcd8f4edba075ebc47a4dda',
   },
+  {
+    file: 'src/components/AdminSettings.tsx',
+    ticket: 'THE-376',
+    why:
+      'DESKTOP SETTINGS POPUP. SMS, Integrations and Donations & payment links are filtered out '
+      + 'of the accordion on SETTINGS_LEGACY_SECTIONS_ENABLED (false) at the point the sections '
+      + 'are handed to SettingsAccordion. Their own `hidden` gates are byte-identical, so every '
+      + 'existing pin on them still holds; flip the flag to restore the rows. Customize '
+      + 'Navigation is lg:hidden so it stays on the mobile Settings page and is absent from the '
+      + 'desktop popup. No row was deleted, reordered or re-id-ed. The Appearance row, the billing '
+      + 'portal, Stripe-return forceOpen and cancel dialog are untouched. No firestore.rules, '
+      + 'storage, indexes or workflow change.',
+    digest: 'f5ec67f9aaa9d3d80b9a144df18f380795206fb6f0829941ac0c03defa50dafa',
+  },
+  {
+    file: 'src/components/__tests__/AdminSettings.regroup.test.tsx',
+    ticket: 'THE-376',
+    why:
+      'THE-183 followed the hide. Payments and Connected Services leave the rendered heading list '
+      + 'while SETTINGS_LEGACY_SECTIONS_ENABLED is false; the accordion open/close case and the 44px '
+      + 'touch probe use Onboarding Questions / Appearance instead of the hidden Donations pointer. '
+      + 'No ThemeToggle, radiogroup or layout assertion changed and no layout number changed.',
+    digest: '9346d3f2d773371bb290e082ab34ae36ab4b8c01c785d0b15228ce727b290aa1',
+  },
+  {
+    file: 'src/components/AdminSettings.tsx',
+    ticket: 'THE-376',
+    why:
+      'ROUND 4, OWNER-ONLY BILLING ACTIONS ON THE PHONE PAGE. A new required prop, canManageBilling, '
+      + 'hides the plan card Manage button and the Cancel Subscription row from an admin who is not '
+      + 'a billing owner, the same answer the desktop popup already gives (billingAccess === yes). '
+      + 'Both controls open the billing portal, whose route is owner-only, so a non-owner was offered '
+      + 'a button that could only fail. The row ids, the regions, the other gates and every string '
+      + 'are unchanged, and the file still has no inline style.',
+    digest: 'db930be282460d6d69ce77981e0f0820a67c21f7c00fd5b175021782b353f7e5',
+  },
+  {
+    file: 'src/components/__tests__/AdminSettings.regroup.test.tsx',
+    ticket: 'THE-376',
+    why:
+      'ROUND 4. The mount passes the new required canManageBilling prop, as it already passed '
+      + 'isPlanOwner. No assertion, class list or layout number changed.',
+    digest: 'd631d03254790daed7e4a95995ae61ab038e3993545733ea04b4d4e2d33eb19b',
+  },
 ];
 
 /** A ticket reference the register will accept. */

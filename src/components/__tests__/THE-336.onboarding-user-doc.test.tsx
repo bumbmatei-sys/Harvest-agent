@@ -721,6 +721,15 @@ const USER_DOC_UPDATES: ReadonlyArray<{
       + 'catch no longer returns. Aborting there withheld the set-claims call that follows, so a '
       + 'member whose refresh was refused was signed in with no tenantId claim at all.',
   },
+  {
+    file: 'src/components/settings/ProfileSection.tsx',
+    what: 'handleSave and handleFileChange \u2014 the signed-in admin edits their own name and photo (THE-376)',
+    verdict: 'correct as written',
+    why: 'Reached only from the admin Settings popup, so the admin is signed in and their users '
+      + 'document has already been read to open the dashboard. A create here would mint a profile '
+      + 'for an account that has none. Both writes surface a refusal: the name save sets an error '
+      + 'alert, and a refused photo write puts the previous photo back and sets the same alert.',
+  },
 ];
 
 describe('10. 🔴 every other updateDoc on a possibly-missing document is reported', () => {

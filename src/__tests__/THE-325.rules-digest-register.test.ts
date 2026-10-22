@@ -811,10 +811,12 @@ const CONTENT_ASSERTING_MOVED: Readonly<Record<string, readonly [digest: string,
       + 'The row in CONTENT_ASSERTING is untouched.',
   ],
   'src/utils/__tests__/plan-features.news-feed.test.ts': [
-    'f588a613c3dbd33bc7c89f6f9d6e305da25a7405caade29ef8d4628bc350afc6',
-    '#530',
-    'the news-feed matrix transcription gained socialScheduler false on every tier. '
-      + 'The suite still asserts the cell values. No price moved. The row in '
+    '9e277a398f1b836a65fc20ea3023107304d0cb922ae0c9923846b0449a37ebb2',
+    'THE-376',
+    'the Ministry row of the matrix transcription gained socialScheduler true, because Matei '
+      + 'approved the scheduler on the Ministry plan on 2026-10-21. One cell on one tier; the suite '
+      + 'still asserts every other cell and no price moved. The previous digest was '
+      + 'f588a613c3dbd33bc7c89f6f9d6e305da25a7405caade29ef8d4628bc350afc6 (#530). The row in '
       + 'CONTENT_ASSERTING is untouched.',
   ],
   'src/utils/__tests__/plan-flag-surface-guard.test.ts': [

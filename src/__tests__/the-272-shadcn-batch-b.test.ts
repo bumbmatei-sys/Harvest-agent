@@ -1139,6 +1139,8 @@ const NEWSLETTER_TABLE_ADOPTERS = [
   'src/components/email/EmailSettingsView.tsx',
   'src/components/email/SubscribersView.tsx',
 ] as const;
+/** APPENDED BY THE-376 round 4. The Plan & billing pane lists invoices in a table: BillingActivity.tsx, the history that moved in from Billing & Payments. */
+const SETTINGS_BILLING_TABLE_ADOPTERS = ['src/components/settings/BillingActivity.tsx'] as const;
 const NEWSLETTER_PROGRESS_ADOPTERS = ['src/components/email/EmailOverview.tsx', 'src/components/email/UsageMeter.tsx'] as const;
 
 /** APPENDED BY THE COURSES REMODEL. Progress through a course is a quantity out of a whole: the wizard's setup bar, the player's lessons-done bar and each Classroom card's. */
@@ -1179,6 +1181,7 @@ it('only THE-276 adopts chart, THE-283/THE-290/THE-294/THE-319/THE-317 adopt tab
       ...THE_330_TABLE_ADOPTERS,
       ...PHASE_1_TABLE_ADOPTERS,
       ...NEWSLETTER_TABLE_ADOPTERS,
+      ...SETTINGS_BILLING_TABLE_ADOPTERS,
     ].sort());
 
   const progressImporters = files.filter((f) => importsUi(readFileSync(f, 'utf8'), 'progress'));

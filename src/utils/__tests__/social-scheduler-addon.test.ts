@@ -22,9 +22,10 @@ import {
 const src = (rel: string) => readFileSync(path.join(__dirname, rel), 'utf8');
 
 describe('social scheduler add-on', () => {
-  it('is false on every tier', () => {
+  // Matei approved 2026-10-21: "Include the scheduler in the Ministry plan".
+  it('is a plan cell on Ministry and false on every other tier', () => {
     for (const plan of PLAN_ORDER) {
-      expect(getPlanFeatures(plan).socialScheduler, plan).toBe(false);
+      expect(getPlanFeatures(plan).socialScheduler, plan).toBe(plan === 'max');
     }
   });
 
@@ -38,7 +39,7 @@ describe('social scheduler add-on', () => {
 
   it('a positive count turns the cell on and a junk count does not', () => {
     for (const plan of PLAN_ORDER) {
-      expect(getEffectiveFeatures(plan, NO_ADDONS).socialScheduler, plan).toBe(false);
+      expect(getEffectiveFeatures(plan, NO_ADDONS).socialScheduler, plan).toBe(plan === 'max');
       expect(
         getEffectiveFeatures(plan, { ...NO_ADDONS, socialScheduler: 1 }).socialScheduler,
         plan,
@@ -46,13 +47,13 @@ describe('social scheduler add-on', () => {
     }
     expect(readTenantAddons({ socialScheduler: -3 }).socialScheduler).toBe(0);
     expect(readTenantAddons({ socialScheduler: 'yes' }).socialScheduler).toBe(0);
-    expect(getEffectiveFeatures('max', readTenantAddons({ socialScheduler: 0.4 })).socialScheduler).toBe(false);
+    expect(getEffectiveFeatures('pro', readTenantAddons({ socialScheduler: 0.4 })).socialScheduler).toBe(false);
   });
 
   it('the other add-ons do not turn it on', () => {
     const owned = { ...NO_ADDONS, aiAssistant: 3, adminSeats: 8, unlimitedContacts: true };
     for (const plan of PLAN_ORDER) {
-      expect(getEffectiveFeatures(plan, owned).socialScheduler, plan).toBe(false);
+      expect(getEffectiveFeatures(plan, owned).socialScheduler, plan).toBe(plan === 'max');
     }
   });
 

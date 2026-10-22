@@ -746,6 +746,9 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
       // twelve sections are untouched and are not on this list.
       // THE-351 — see the note on UserEvents above; same adoption, same reason.
       'src/components/inbox/TenantInbox.tsx',
+      // THE-376 — the desktop Settings popup's panes. They take the same density,
+      // action and measure rules as the sections they were moved from.
+      'src/components/settings/CancelPlanBlock.tsx',
       'src/components/settings/GivingStatementsSection.tsx',
       // THE-296 — the two remaining sections AdminSettings mounts, onto the same
       // chrome and for the same reason. Both take CONTROL_DENSITY only and no
@@ -758,6 +761,8 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
       // about them.
       'src/components/settings/IntegrationsSection.tsx',
       'src/components/settings/OnboardingSection.tsx',
+      'src/components/settings/PlanBillingSection.tsx',
+      'src/components/settings/ProfileSection.tsx',
       // ⚠️ THE-314 adds SmsSection.tsx. It was rewritten from a Twilio
       // credential form into the number purchase panel, and it takes
       // FIELD_WIDTH, ACTION_BUTTON and CONTROL_DENSITY — not Rule 1, because it
