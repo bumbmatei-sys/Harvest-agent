@@ -178,7 +178,7 @@ deleted.
 | Switch | File |
 |--------|------|
 | `SMS_FEATURE_ENABLED` | `src/lib/sms-feature.ts` |
-| `NEWSLETTER_FEATURE_ENABLED` | `src/lib/newsletter-feature.ts` |
+| `LEGACY_MAILCHIMP_NEWSLETTER_ENABLED` | `src/lib/newsletter-feature.ts` |
 | `QUICKBOOKS_FEATURE_ENABLED` | `src/lib/quickbooks-feature.ts` |
 | `GMAIL_FEATURE_ENABLED` | `src/lib/gmail-feature.ts` |
 | `CUSTOM_DOMAIN_ENABLED` | `src/lib/custom-domain-feature.ts` |
@@ -186,11 +186,17 @@ deleted.
 | `PAID_EVENTS_ENABLED` | `src/lib/paid-events-feature.ts` |
 | `AFFILIATE_PROGRAM_ENABLED` | `src/utils/plan-features.ts` |
 
-So: **SMS automation and text-to-give, the newsletter and automated newsletter, custom
-domains, the Gmail connection, QuickBooks, in-app card giving, paid-event charging and
-the affiliate programme are all unavailable today.** A plan cell may still read `true` for
+So: **SMS automation and text-to-give, the legacy Mailchimp newsletter sender and its
+Instagram and Mailchimp integration rows, custom domains, the Gmail connection,
+QuickBooks, in-app card giving, paid-event charging and the affiliate programme are all
+unavailable today.** A plan cell may still read `true` for
 one of them — the plan matrix says what a tier *entitles*, the switch says what the
 deployment *serves*, and the switch wins. Do not read a `true` cell as a shipped feature.
+
+The Plunk-backed newsletter workspace is not in that table: `NEWSLETTER_FEATURE_ENABLED`
+(same file) is true, and it gates the nav tab, `/api/email/*`, the plan-card line and the
+`newsletterAutomation` row of `/api/plans`. It is deliberately a separate value from the
+legacy one above, so turning the newsletter on does not bring the Mailchimp sender back.
 
 Two more that are easy to get wrong:
 

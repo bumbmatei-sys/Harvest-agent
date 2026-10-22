@@ -406,17 +406,21 @@ describe('6 — rota mail is transactional and no marketing guard catches it', (
       expect(codeOf(read(rel)), `${rel} gates a transactional send on the newsletter switch`)
         .not.toContain('NEWSLETTER_FEATURE_ENABLED');
     }
-    // ⚠️ AND THE SWITCH IS GENUINELY OFF, so this is measuring the live state
-    // rather than a hypothetical one.
+    // ⚠️ AND THE SWITCH IS GENUINELY ON, so this is measuring the live state
+    // rather than a hypothetical one: rota mail is not held back by the
+    // newsletter switch in either position.
     const { NEWSLETTER_FEATURE_ENABLED } = await import('@/lib/newsletter-feature');
-    expect(NEWSLETTER_FEATURE_ENABLED, 'this suite is measuring the wrong state').toBe(false);
+    expect(NEWSLETTER_FEATURE_ENABLED, 'this suite is measuring the wrong state').toBe(true);
   });
 
   it('the newsletter switch guards the newsletter route, and only routes like it', () => {
     /* Where the guard DOES bind — proving it is a composer gate rather than a
        send gate, which is why transactional mail passes it by. */
-    expect(read('src/app/api/newsletter/send/route.ts'),
+    expect(read('src/app/api/email/actions/route.ts'),
       'the newsletter route stopped honouring its own switch').toContain('NEWSLETTER_FEATURE_ENABLED');
+    expect(read('src/app/api/newsletter/send/route.ts'),
+      'the retired Mailchimp route stopped honouring its own switch')
+      .toContain('LEGACY_MAILCHIMP_NEWSLETTER_ENABLED');
   });
 
   it('🔴 no volume ceiling was invented; the one that already binds still does', async () => {

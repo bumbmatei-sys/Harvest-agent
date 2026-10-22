@@ -104,7 +104,7 @@ vi.mock('../../utils/plan-features', async (importOriginal) => {
 import AdminSettings from '../AdminSettings';
 import type { PlanFeatures } from '../../utils/plan-features';
 import { getPlanFeatures, PLAN_DISPLAY_NAMES } from '../../utils/plan-features';
-import { NEWSLETTER_FEATURE_ENABLED } from '../../lib/newsletter-feature';
+import { LEGACY_MAILCHIMP_NEWSLETTER_ENABLED } from '../../lib/newsletter-feature';
 import { GMAIL_FEATURE_ENABLED, GMAIL_PAUSED_NOTICE } from '../../lib/gmail-feature';
 import {
   INTEGRATION_PROVIDERS,
@@ -230,11 +230,11 @@ describe('THE-193 — Integrations gating', () => {
   });
 
 /** 🔴 THE-335 — the providers a tier may see, once the master switches have had
- *  their say. `NEWSLETTER_FEATURE_ENABLED` hides every `concern: 'newsletter'`
- *  provider from EVERY tier and from the platform override too, in the shape the
- *  SMS nav entry uses: the switch is ahead of the plan gate, so Instagram and
- *  Mailchimp are absent for everyone while the newsletter is a coming-soon
- *  entry.
+ *  their say. `LEGACY_MAILCHIMP_NEWSLETTER_ENABLED` hides every
+ *  `concern: 'newsletter'` provider from EVERY tier and from the platform
+ *  override too: the switch is ahead of the plan gate, so Instagram and
+ *  Mailchimp are absent for everyone. They only fed the retired Mailchimp
+ *  sender, so turning `NEWSLETTER_FEATURE_ENABLED` on does not bring them back.
  *
  *  🔴 THE-339 — AND GMAIL IS NOW HIDDEN TOO, ON ITS OWN SWITCH. The sentence
  *  that stood here said Gmail was unaffected because "it is the transport a rota
@@ -247,7 +247,7 @@ describe('THE-193 — Integrations gating', () => {
  *  expected set in the same motion that turns its feature back on — and so this
  *  list cannot silently agree with a component that hides the wrong one. */
 const EXPECTED_PROVIDERS = INTEGRATION_PROVIDERS
-  .filter((p) => NEWSLETTER_FEATURE_ENABLED || p.concern !== 'newsletter')
+  .filter((p) => LEGACY_MAILCHIMP_NEWSLETTER_ENABLED || p.concern !== 'newsletter')
   .filter((p) => GMAIL_FEATURE_ENABLED || p.id !== 'gmail')
   .map((p) => p.label);
 

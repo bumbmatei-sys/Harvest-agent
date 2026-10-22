@@ -13,8 +13,9 @@ This repository is the app. The marketing site (`theharvest.site`) and its docs
 **Harvest does not process payments for ministries.** A ministry collects giving through
 its own PayPal, Revolut, Wise, Venmo, Cash App or Zelle links, and records what arrived.
 Harvest stores the record and takes nothing. Harvest's own subscriptions bill through Dodo
-Payments. Several features you will find in the tree — SMS, the newsletter, custom
-domains, the Gmail and QuickBooks connections, in-app card giving — sit behind master
+Payments. Several features you will find in the tree — SMS, the legacy Mailchimp
+newsletter sender, custom domains, the Gmail and QuickBooks connections, in-app card
+giving — sit behind master
 switches that are currently off; the code is intact but the feature is not served.
 `AGENTS.md` lists every switch.
 
