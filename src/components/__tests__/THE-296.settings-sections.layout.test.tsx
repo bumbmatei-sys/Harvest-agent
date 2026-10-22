@@ -24,8 +24,8 @@ import { NAV_CLEARANCE } from '../settings/GivingStatementsSection';
 /* 🔴 THE-335 — THE NEWSLETTER SWITCH IS MOCKED ON.
    This suite MEASURES `IntegrationsSection` as itself, through its own
    `platformOverride` path, so that all three provider cards and their real
-   controls are on the page to measure. `NEWSLETTER_FEATURE_ENABLED` is false on
-   disk now, and the switch sits AHEAD of the override by design — a hidden
+   controls are on the page to measure. `LEGACY_MAILCHIMP_NEWSLETTER_ENABLED` is
+   false on disk, and the switch sits AHEAD of the override by design — a hidden
    feature is hidden from the super admin too — so Instagram and Mailchimp would
    both be absent and this file would be measuring one card where it means to
    measure three. Its own vacuity guard catches that, which is how it was found.
@@ -35,6 +35,7 @@ import { NAV_CLEARANCE } from '../settings/GivingStatementsSection';
    in `AdminSettings.integrations-gating.test.tsx`. */
 vi.mock('../../lib/newsletter-feature', () => ({
   NEWSLETTER_FEATURE_ENABLED: true,
+  LEGACY_MAILCHIMP_NEWSLETTER_ENABLED: true,
   NEWSLETTER_HIDDEN_MESSAGE: 'Newsletter is temporarily unavailable.',
 }));
 

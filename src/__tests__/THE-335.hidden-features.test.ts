@@ -4,7 +4,10 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 
 import { SMS_FEATURE_ENABLED, SMS_HIDDEN_MESSAGE } from '../lib/sms-feature';
-import { NEWSLETTER_FEATURE_ENABLED } from '../lib/newsletter-feature';
+import {
+  NEWSLETTER_FEATURE_ENABLED,
+  LEGACY_MAILCHIMP_NEWSLETTER_ENABLED,
+} from '../lib/newsletter-feature';
 import { QUICKBOOKS_FEATURE_ENABLED } from '../lib/quickbooks-feature';
 import { STRIPE_CONNECT_ENABLED } from '../lib/stripe-connect-feature';
 import { CUSTOM_DOMAIN_ENABLED } from '../lib/custom-domain-feature';
@@ -49,10 +52,10 @@ const sha256 = (b: Buffer) => createHash('sha256').update(b).digest('hex');
 
 /* ── 1 ─────────────────────────────────────────────────────────────────────
    The switches themselves.                                                   */
-describe('1 — three switches, each one declared value, all false', () => {
+describe('1 — each switch is one declared value; SMS, QuickBooks and the legacy Mailchimp sender are false', () => {
   const SWITCHES = [
     ['lib/sms-feature.ts', 'SMS_FEATURE_ENABLED', SMS_FEATURE_ENABLED],
-    ['lib/newsletter-feature.ts', 'NEWSLETTER_FEATURE_ENABLED', NEWSLETTER_FEATURE_ENABLED],
+    ['lib/newsletter-feature.ts', 'LEGACY_MAILCHIMP_NEWSLETTER_ENABLED', LEGACY_MAILCHIMP_NEWSLETTER_ENABLED],
     ['lib/quickbooks-feature.ts', 'QUICKBOOKS_FEATURE_ENABLED', QUICKBOOKS_FEATURE_ENABLED],
   ] as const;
 
@@ -62,6 +65,16 @@ describe('1 — three switches, each one declared value, all false', () => {
     expect(src).toMatch(new RegExp(`^export const ${name} = false;$`, 'm'));
     expect(src.match(new RegExp(`${name}\\s*=`, 'g')), `${name} is declared more than once`)
       .toHaveLength(1);
+  });
+
+  it('the newsletter switch is on, declared exactly once, and turning it on moved nothing legacy', () => {
+    expect(NEWSLETTER_FEATURE_ENABLED, 'the newsletter is not on').toBe(true);
+    const src = read('lib/newsletter-feature.ts');
+    expect(src).toMatch(/^export const NEWSLETTER_FEATURE_ENABLED = true;$/m);
+    expect(src.match(/\bNEWSLETTER_FEATURE_ENABLED\s*=/g), 'NEWSLETTER_FEATURE_ENABLED is declared more than once')
+      .toHaveLength(1);
+    expect(LEGACY_MAILCHIMP_NEWSLETTER_ENABLED, 'the legacy Mailchimp sender came back with the newsletter')
+      .toBe(false);
   });
 
   it.each(SWITCHES)('%s imports nothing, so a route handler can read it cheaply', (file) => {
@@ -131,6 +144,8 @@ describe('2 — no file was deleted, enumerated one by one', () => {
     expect(max.smsAutomation, 'the smsAutomation cell was removed or flipped').toBe(true);
     expect(max.textToGive, 'the textToGive cell was removed or flipped').toBe(true);
     expect(getPlanFeatures('pro').newsletterAutomation, 'the newsletterAutomation cell moved').toBe(true);
+    expect(getPlanFeatures('plus').newsletterAutomation, 'Individual was given the newsletter').toBe(false);
+    expect(getPlanFeatures('free').newsletterAutomation, 'free was given the newsletter').toBe(false);
     expect(max.accountingTools, 'accounting was hidden along with QuickBooks').toBe(true);
   });
 });
@@ -151,6 +166,7 @@ describe('3 — every gated surface reads the constant, never a copy of it', () 
 
   it.each([
     ['NEWSLETTER_FEATURE_ENABLED', 'newsletter-feature'],
+    ['LEGACY_MAILCHIMP_NEWSLETTER_ENABLED', 'newsletter-feature'],
     ['QUICKBOOKS_FEATURE_ENABLED', 'quickbooks-feature'],
   ])('%s is imported, never redeclared', (name, module) => {
     for (const f of sources) {
@@ -204,7 +220,10 @@ describe('4 — erasure and export still handle QuickBooks data', () => {
   it.each(['lib/member-erasure.ts', 'lib/member-export.ts'])(
     '%s reads none of the three switches', (file) => {
       const src = read(file);
-      for (const name of ['QUICKBOOKS_FEATURE_ENABLED', 'NEWSLETTER_FEATURE_ENABLED', 'SMS_FEATURE_ENABLED']) {
+      for (const name of [
+        'QUICKBOOKS_FEATURE_ENABLED', 'NEWSLETTER_FEATURE_ENABLED',
+        'LEGACY_MAILCHIMP_NEWSLETTER_ENABLED', 'SMS_FEATURE_ENABLED',
+      ]) {
         expect(src, `${file} gates a GDPR sweep on ${name}`).not.toContain(name);
       }
     },

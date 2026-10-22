@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { requireAdmin } from '@/lib/api-auth';
 import { executeComposioAction } from '@/lib/composio-client';
 import { adminDb } from '@/lib/firebase-admin';
-import { NEWSLETTER_FEATURE_ENABLED, NEWSLETTER_HIDDEN_MESSAGE } from '@/lib/newsletter-feature';
+import { LEGACY_MAILCHIMP_NEWSLETTER_ENABLED, LEGACY_MAILCHIMP_SEND_RETIRED_MESSAGE } from '@/lib/newsletter-feature';
 import { hasFeature } from '@/utils/plan-features';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
 import sanitizeHtml from 'sanitize-html';
@@ -13,11 +13,11 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    // 🔴 THE-335 — the master switch, before the auth check spends a read.
-    // The route is not deleted and its plan gate below is untouched; flipping
-    // NEWSLETTER_FEATURE_ENABLED brings both back exactly as they were.
-    if (!NEWSLETTER_FEATURE_ENABLED) {
-      return NextResponse.json({ error: NEWSLETTER_HIDDEN_MESSAGE }, { status: 503 });
+    // The legacy Mailchimp sender stays off while the newsletter itself is on:
+    // it has its own switch, separate from the newsletter's. Checked before the
+    // auth read. The route and its plan gate below are not deleted.
+    if (!LEGACY_MAILCHIMP_NEWSLETTER_ENABLED) {
+      return NextResponse.json({ error: LEGACY_MAILCHIMP_SEND_RETIRED_MESSAGE }, { status: 503 });
     }
     const userOrResponse = await requireAdmin(request);
     if (userOrResponse instanceof NextResponse) return userOrResponse;
