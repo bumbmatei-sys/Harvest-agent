@@ -14,6 +14,7 @@
  *   Dry run (default):  npx --yes tsx scripts/migrate-course-content.ts
  *   One ministry:       npx --yes tsx scripts/migrate-course-content.ts --tenant <tenantId>
  *   Apply:              npx --yes tsx scripts/migrate-course-content.ts --commit
+ *   Undo (for a revert): npx --yes tsx scripts/migrate-course-content.ts --restore --commit   (copies lessonContent back inline)
  *   Local emulator:     FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 GCLOUD_PROJECT=demo-test npx --yes tsx scripts/migrate-course-content.ts --commit
  *
  * Idempotent and lossless: content is written, read back, and only then is the
@@ -21,7 +22,7 @@
  */
 import { applicationDefault, getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import { migrateCourseContent } from '../src/lib/courses/migrate-content';
+import { migrateCourseContent, restoreInlineContent } from '../src/lib/courses/migrate-content';
 
 const args = process.argv.slice(2);
 const commit = args.includes('--commit');
@@ -36,6 +37,14 @@ if (getApps().length === 0) {
   initializeApp(process.env.FIRESTORE_EMULATOR_HOST ? { projectId: process.env.GCLOUD_PROJECT } : { credential: applicationDefault() });
 }
 
+if (args.includes('--restore')) {
+  restoreInlineContent(getFirestore(), { commit, tenantId })
+    .then((r) => {
+      console.log(`${commit ? 'RESTORED' : 'DRY RUN'} scanned ${r.scanned}, ${commit ? 'restored' : 'would restore'} ${r.restored}, nothing to do ${r.untouched}, failed ${r.failed}`);
+      process.exit(r.failed > 0 ? 1 : 0);
+    })
+    .catch((e) => { console.error(e); process.exit(1); });
+} else {
 migrateCourseContent(getFirestore(), { commit, tenantId })
   .then((r) => {
     console.log(`${commit ? 'APPLIED' : 'DRY RUN'}${tenantId ? ` for ${tenantId}` : ''}`);
@@ -44,3 +53,4 @@ migrateCourseContent(getFirestore(), { commit, tenantId })
     process.exit(r.failed > 0 ? 1 : 0);
   })
   .catch((e) => { console.error(e); process.exit(1); });
+}

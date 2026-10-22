@@ -1,5 +1,5 @@
 import type { Firestore } from 'firebase-admin/firestore';
-import { LESSON_CONTENT_COLLECTION, hasInlineContent, splitCourseContent } from '@/lib/courses/content';
+import { LESSON_CONTENT_COLLECTION, hasInlineContent, mergeCourseContent, splitCourseContent, type ContentByLesson } from '@/lib/courses/content';
 import type { Level } from '@/types/course.types';
 
 export interface MigrateOptions {
@@ -91,4 +91,48 @@ async function migrateOne(db: Firestore, id: string, levels: Level[], commit: bo
   } catch (e) {
     return { id, status: 'failed', error: e instanceof Error ? e.message : String(e) };
   }
+}
+
+export interface RestoreReport {
+  scanned: number;
+  restored: number;
+  untouched: number;
+  failed: number;
+}
+
+/**
+ * The way back, for a revert of the lesson-content lock: copies each course's
+ * lessonContent over its outline, inline, so the previous release (which reads
+ * lessons off the course document) sees full lessons again. Content documents
+ * are left in place, so running the forward migration again afterwards is safe.
+ * Without --commit nothing is written.
+ */
+export async function restoreInlineContent(db: Firestore, opts: MigrateOptions): Promise<RestoreReport> {
+  const report: RestoreReport = { scanned: 0, restored: 0, untouched: 0, failed: 0 };
+  const base = opts.tenantId ? db.collection('courses').where('tenantId', '==', opts.tenantId) : db.collection('courses');
+  let cursor: string | undefined;
+  for (;;) {
+    let q = base.orderBy('__name__').limit(PAGE);
+    if (cursor) q = q.startAfter(cursor);
+    const page = await q.get();
+    if (page.empty) break;
+    for (const snap of page.docs) {
+      report.scanned += 1;
+      try {
+        const content: ContentByLesson = {};
+        (await snap.ref.collection(LESSON_CONTENT_COLLECTION).get()).forEach((d) => { content[d.id] = d.data(); });
+        if (Object.keys(content).length === 0) { report.untouched += 1; continue; }
+        if (opts.commit) {
+          const merged = mergeCourseContent({ levels: (snap.data().levels ?? []) as Level[] }, content);
+          await snap.ref.update({ levels: merged.levels });
+        }
+        report.restored += 1;
+      } catch {
+        report.failed += 1;
+      }
+    }
+    cursor = page.docs[page.docs.length - 1].id;
+    if (page.size < PAGE) break;
+  }
+  return report;
 }

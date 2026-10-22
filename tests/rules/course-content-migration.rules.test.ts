@@ -6,7 +6,7 @@ import {
   seedBase, seedDoc, teardownEnv, member, member2, fullAdmin, adminB,
   TENANT_A, TENANT_B, MEMBER_UID,
 } from './helpers';
-import { migrateCourseContent } from '../../src/lib/courses/migrate-content';
+import { migrateCourseContent, restoreInlineContent } from '../../src/lib/courses/migrate-content';
 import { mergeCourseContent } from '../../src/lib/courses/content';
 
 /**
@@ -112,5 +112,19 @@ describe('migrateCourseContent on the emulator', () => {
   it('tenant B was not touched by the tenant A run', async () => {
     const doc = await adminDb().doc('courses/b-course').get();
     expect(JSON.stringify(doc.data())).toContain(SECRET);
+  });
+
+  it('restoreInlineContent is the way back: the previous release sees full lessons on the course doc again', async () => {
+    const dry = await restoreInlineContent(adminDb(), { commit: false, tenantId: TENANT_A });
+    expect(dry.restored).toBeGreaterThan(0);
+    expect(JSON.stringify((await adminDb().doc('courses/restricted').get()).data())).not.toContain(SECRET);
+
+    const r = await restoreInlineContent(adminDb(), { commit: true, tenantId: TENANT_A });
+    expect(r.failed).toBe(0);
+    const back = (await adminDb().doc('courses/restricted').get()).data() as { levels: ReturnType<typeof levelsOf> };
+    expect(back.levels[0].sections[0].lessons[0]).toEqual(legacyLesson('a'));
+    expect(back.levels[0].sections[0].lessons[1]).toEqual(legacyLesson('b'));
+    // The content documents stay, so migrating forward again is safe.
+    expect((await adminDb().collection('courses/restricted/lessonContent').get()).size).toBe(2);
   });
 });
