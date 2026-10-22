@@ -112,7 +112,7 @@ export function CommunityClassroom({ communityId, communityName, memberCommunity
     const uid = auth.currentUser?.uid ?? null;
     (async () => {
       const [all, progress] = await Promise.all([
-        fetchMemberCourses(),
+        fetchMemberCourses(memberCommunityIds),
         uid ? getDoc(doc(db, 'users', uid)) : Promise.resolve(null),
       ]);
       const data = progress && progress.exists() ? progress.data() : {};

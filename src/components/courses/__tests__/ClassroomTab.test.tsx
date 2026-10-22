@@ -26,6 +26,12 @@ const course = (id: string, over: Partial<ProductCourse> = {}): ProductCourse & 
 const q = (sel: string) => document.body.querySelector<HTMLElement>(sel);
 
 describe('ClassroomTab', () => {
+  it('hands the member\'s communities to the member course list so community-only courses survive its filter', async () => {
+    mocks.fetchMemberCourses.mockResolvedValue([]);
+    await mount(<CommunityClassroom communityId="c1" memberCommunityIds={['c1', 'c2']} onOpenCourse={() => {}} />);
+    expect(mocks.fetchMemberCourses).toHaveBeenCalledWith(['c1', 'c2']);
+  });
+
   it('draws one card per course with progress and a status-aware action', async () => {
     const onOpenCourse = vi.fn();
     await mount(
