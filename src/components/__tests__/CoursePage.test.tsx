@@ -431,6 +431,30 @@ describe('CoursePage — deep links and staff detection', () => {
     expect(container.textContent).not.toContain('Members only content');
   });
 
+  it('gives the locked landing a Courses back control that leaves the course', async () => {
+    data.courses = [withLesson({ accessUserIds: ['someone-else'] })];
+    await openDeepLink();
+
+    expect(locked()).not.toBeNull();
+    const back = container.querySelector<HTMLElement>('[data-courses-back] button');
+    expect(back?.textContent).toBe('Courses');
+    await act(async () => { back?.click(); });
+    expect(locked()).toBeNull();
+    expect(container.querySelector('[data-testid="library"]')).not.toBeNull();
+  });
+
+  it('calls the host onBack from the locked landing when one is given', async () => {
+    data.courses = [withLesson({ accessUserIds: ['someone-else'] })];
+    const onBack = vi.fn();
+    await act(async () => {
+      root = createRoot(container);
+      root.render(<CoursePage initialCourseId="r1" initialLessonId="l1" onBack={onBack} />);
+      for (let i = 0; i < 20; i++) await Promise.resolve();
+    });
+    await act(async () => { container.querySelector<HTMLElement>('[data-courses-back] button')?.click(); });
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
   it('opens the player for a member on the access list', async () => {
     data.courses = [withLesson({ accessUserIds: ['member-1'] })];
     await openDeepLink();

@@ -440,6 +440,14 @@ export default function CoursePage({
   const accessFor = (course: Course) => canAccessCourse(course as ProductCourse, accessSubject);
   const openable = courses.filter((c) => accessFor(c).allowed);
 
+  const coursesBack = (
+    <div className="px-3 pt-3" data-courses-back>
+      <Button type="button" variant="ghost" className="min-h-11 gap-1.5 px-2 text-muted" onClick={onBack || (() => setScreen("library"))}>
+        <ArrowLeft aria-hidden />Courses
+      </Button>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-surface-raised">
@@ -465,11 +473,7 @@ export default function CoursePage({
       )}
       {screen === "overview" && selectedCourse && (
         <div>
-          <div className="px-3 pt-3">
-            <Button type="button" variant="ghost" className="min-h-11 gap-1.5 px-2 text-muted" onClick={onBack || (() => setScreen("library"))}>
-              <ArrowLeft aria-hidden />Courses
-            </Button>
-          </div>
+          {coursesBack}
           <CourseLanding
             course={selectedCourse as ProductCourse}
             mode="member"
@@ -498,7 +502,10 @@ export default function CoursePage({
         />
       )}
       {screen === "lesson" && selectedCourse && selectedLesson && !accessFor(selectedCourse).allowed && (
-        <CourseLanding course={selectedCourse as ProductCourse} mode="member" access={accessFor(selectedCourse)} />
+        <div>
+          {coursesBack}
+          <CourseLanding course={selectedCourse as ProductCourse} mode="member" access={accessFor(selectedCourse)} />
+        </div>
       )}
     </div>
   );

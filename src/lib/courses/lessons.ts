@@ -37,6 +37,37 @@ export const hasBody = (lesson: ProductLesson): boolean => lessonTypeOf(lesson) 
 /** The words a text lesson holds, without markup. */
 export const bodyText = (lesson: ProductLesson): string => stripHtml(lesson.body ?? '');
 
+const escapeText = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/**
+ * The text of a lesson written before lesson types existed: it lives in
+ * `summary` and `outline`, never in `body`. Read as HTML (escaped) so the
+ * player can show it; stored data is not rewritten.
+ */
+function legacyHtml(lesson: ProductLesson): string {
+  if (lesson.type) return '';
+  const summary = lesson.summary?.trim();
+  return [
+    summary ? `<p>${escapeText(summary)}</p>` : '',
+    ...(lesson.outline ?? []).map((o) => {
+      const title = o.title?.trim();
+      const text = o.text?.trim();
+      return `${title ? `<h3>${escapeText(title)}</h3>` : ''}${text ? `<p>${escapeText(text)}</p>` : ''}`;
+    }),
+  ].join('');
+}
+
+/**
+ * The written part of a lesson, as unsanitised HTML ('' when there is none).
+ * A typed lesson reads its body when its type has one. A legacy lesson reads its
+ * body, else summary and outline, whether or not it also has a video.
+ */
+export function lessonHtml(lesson: ProductLesson): string {
+  if (bodyText(lesson) && (hasBody(lesson) || !lesson.type)) return lesson.body ?? '';
+  const legacy = legacyHtml(lesson);
+  return stripHtml(legacy) ? legacy : '';
+}
+
 export function emptyLesson(type: LessonType = 'text'): ProductLesson {
   return {
     id: newId(),
@@ -67,7 +98,7 @@ export function lessonProblem(lesson: ProductLesson): string | null {
     if (!url) return 'needs a video link';
     if (!extractYouTubeId(url)) return 'needs a valid YouTube link';
   }
-  if (type === 'text' && !bodyText(lesson)) return 'needs some text';
+  if (type === 'text' && !stripHtml(lessonHtml(lesson))) return 'needs some text';
   return null;
 }
 

@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { QuizPanel } from '@/components/course/QuizPanel';
 import { requestCertificate } from '@/lib/courses/certificate';
 import {
-  bodyText, continueTarget, hasBody, hasVideo, positionsOf, sectionProgress, sectionsOf, videoUrlOf,
+  continueTarget, hasVideo, lessonHtml, positionsOf, sectionProgress, sectionsOf, videoUrlOf,
 } from '@/lib/courses/lessons';
 import type { ProductCourse, ProductLesson } from '@/types/course-product.types';
 import type { Author, QuizAttempt } from '@/types/course.types';
@@ -254,7 +254,8 @@ export function CoursePlayer({
   const completion = verifyCourseCompletion(course, completed, quizAttempts ?? {});
   const certEligible = course.issueCertificate === true && completion.complete;
   const videoUrl = hasVideo(lesson) ? videoUrlOf(lesson) : '';
-  const words = hasBody(lesson) && bodyText(lesson) ? sanitizeHtml(lesson.body ?? '') : '';
+  const rawWords = lessonHtml(lesson);
+  const words = rawWords ? sanitizeHtml(rawWords) : '';
 
   const select = (l: ProductLesson) => { setRailOpen(false); onSelectLesson(l); };
   const markDoneAndNext = () => {

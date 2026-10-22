@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { Level } from '@/types/course.types';
 import type { ProductLesson } from '@/types/course-product.types';
 import {
-  addLesson, addSection, continueTarget, emptyLesson, lessonProblem, lessonTypeOf, lessonsOf, moveLesson,
+  addLesson, addSection, continueTarget, emptyLesson, lessonHtml, lessonProblem, lessonTypeOf, lessonsOf, moveLesson,
   positionsOf, publishReadiness, removeLesson, sectionProgress,
 } from '../lessons';
 
@@ -37,6 +37,43 @@ describe('lessonTypeOf', () => {
     expect(lessonTypeOf(legacy)).toBe('text');
     expect(lessonTypeOf({ ...legacy, youtubeId: 'dQw4w9WgXcQ' })).toBe('video');
     expect(lessonTypeOf({ ...legacy, type: 'video-text' })).toBe('video-text');
+  });
+});
+
+const legacy = (over: Record<string, unknown> = {}) =>
+  ({ id: 'x', title: 'Old lesson', duration: '', authorId: '', summary: '', ...over }) as ProductLesson;
+
+describe('legacy lessons keep their text in summary and outline', () => {
+  it('lessonProblem does not block a legacy lesson with text only in summary', () => {
+    expect(lessonProblem(legacy({ summary: 'Grace is a gift.' }))).toBeNull();
+  });
+  it('lessonProblem does not block a legacy lesson with text only in outline', () => {
+    expect(lessonProblem(legacy({ outline: [{ id: 'o', title: 'Point one', text: 'Pray daily.' }] }))).toBeNull();
+  });
+  it('still blocks a legacy lesson with nothing at all', () => {
+    expect(lessonProblem(legacy())).toBe('needs some text');
+    expect(lessonProblem(legacy({ summary: '  ', outline: [{ id: 'o', title: '', text: ' ' }] }))).toBe('needs some text');
+  });
+  it('a typed text lesson with an empty body is still blocked, whatever its summary says', () => {
+    expect(lessonProblem({ ...text('a', 'T', '<p></p>'), summary: 'Not the body' })).toBe('needs some text');
+  });
+  it('lets a course of legacy text lessons republish', () => {
+    expect(publishReadiness(course(levels(legacy({ summary: 'Words' })))).ready).toBe(true);
+  });
+  it('lessonHtml prefers body, then summary and outline escaped, and is empty otherwise', () => {
+    expect(lessonHtml(legacy({ body: '<p>Body</p>', summary: 'S' }))).toBe('<p>Body</p>');
+    expect(lessonHtml(legacy({ summary: 'A <b> & B', outline: [{ id: 'o', title: 'T', text: 'X' }] })))
+      .toBe('<p>A &lt;b&gt; &amp; B</p><h3>T</h3><p>X</p>');
+    expect(lessonHtml(legacy())).toBe('');
+  });
+  it('lessonHtml keeps a legacy lesson with a video: its notes are still its words', () => {
+    expect(lessonHtml(legacy({ youtubeId: 'dQw4w9WgXcQ', summary: 'Notes' }))).toBe('<p>Notes</p>');
+  });
+  it('lessonHtml shows the body of an untyped lesson that also has a video', () => {
+    expect(lessonHtml(legacy({ youtubeId: 'dQw4w9WgXcQ', body: '<p>Notes</p>', summary: 'S' }))).toBe('<p>Notes</p>');
+  });
+  it('lessonHtml never shows a typed video lesson\'s summary or stray body', () => {
+    expect(lessonHtml({ ...video('v'), summary: 'S', body: '<p>Stray</p>' })).toBe('');
   });
 });
 

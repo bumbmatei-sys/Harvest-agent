@@ -26,6 +26,11 @@
       "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
       "digest": "dfd61b4e5e01b8a9f7288dde69ec5743a813df8ae5d39f7c20ff0ce8f04b6bb3",
       "why": "Merge of main (#540 settings popup) into #543. Both PRs append entries to RECORDED_ADOPTERS in this file, so the merged file matches neither PR's recorded digest. This records the merged content; both sets of appended adopters are present and nothing already recorded was removed or reworded. The earlier #543 digest stays recorded because that head was a valid state of the file."
+    },
+    {
+      "file": "src/components/CoursePage.tsx",
+      "digest": "dce6f94fba1ae3a0e7b950c338f83bef17d21aed078ebebadf02bb3f915b4b99",
+      "why": "Review fix round 2 on #543. The member Courses back button is lifted into one `coursesBack` element and also rendered above the locked-lesson landing, so a member who deep-links into a lesson they cannot open has a way back to the Courses list. The gate itself (accessFor(...).allowed before CoursePlayer), every read and the staff rule are untouched; the earlier digests stay recorded because earlier heads stay valid states of this file."
     }
   ]
 }

@@ -105,6 +105,60 @@ describe('CoursePlayer — a video lesson', () => {
   });
 });
 
+describe('CoursePlayer — legacy lessons (text in summary and outline)', () => {
+  const legacyLesson = (over: Record<string, unknown> = {}) =>
+    ({ id: 'L', title: 'Old lesson', duration: '', authorId: '', summary: '', ...over }) as unknown as Lesson;
+  const only = (lesson: Lesson) => ({
+    ...COURSE, levels: [{ id: 'lv', title: 'C', sections: [{ id: 's', title: 'S', lessons: [lesson] }] }],
+  });
+
+  it('shows the summary and outline of a legacy text lesson instead of "no content yet"', async () => {
+    const lesson = legacyLesson({ summary: 'Grace is a gift.', outline: [{ id: 'o', title: 'Point one', text: 'Pray daily.' }] });
+    await mount(player({ course: only(lesson), lessonId: 'L' }).ui);
+    const body = need(q('[data-lesson-body]'), 'legacy body');
+    expect(body.textContent).toContain('Grace is a gift.');
+    expect(body.querySelector('h3')?.textContent).toBe('Point one');
+    expect(body.textContent).toContain('Pray daily.');
+    expect(q('[data-lesson-blank]')).toBeNull();
+  });
+
+  it('shows notes under the video for a legacy lesson that has both', async () => {
+    const lesson = legacyLesson({ youtubeId: 'dQw4w9WgXcQ', summary: 'Watch, then reflect.' });
+    await mount(player({ course: only(lesson), lessonId: 'L' }).ui);
+    const column = need(q('[data-reading-column]'), 'column');
+    expect(column.getAttribute('data-lesson-kind')).toBe('video-text');
+    expect(need(q('[data-testid="react-player"]'), 'video').getAttribute('data-url')).toContain('dQw4w9WgXcQ');
+    expect(need(q('[data-lesson-body]'), 'notes').textContent).toBe('Watch, then reflect.');
+  });
+
+  it('shows the body under the video for an untyped lesson that has both', async () => {
+    const lesson = legacyLesson({ youtubeId: 'dQw4w9WgXcQ', body: '<p>Body notes</p>' });
+    await mount(player({ course: only(lesson), lessonId: 'L' }).ui);
+    expect(q('[data-testid="react-player"]')).not.toBeNull();
+    expect(q('[data-lesson-body]')?.textContent).toBe('Body notes');
+  });
+
+  it('escapes legacy text and still routes it through the sanitiser', async () => {
+    sanitize.mockClear();
+    const lesson = legacyLesson({ summary: '<img src=x onerror=steal()>' });
+    await mount(player({ course: only(lesson), lessonId: 'L' }).ui);
+    expect(sanitize).toHaveBeenCalledWith('<p>&lt;img src=x onerror=steal()&gt;</p>');
+    expect(q('[data-lesson-body] img')).toBeNull();
+  });
+
+  it('still says "no content yet" for a legacy lesson with nothing written', async () => {
+    await mount(player({ course: only(legacyLesson()), lessonId: 'L' }).ui);
+    expect(q('[data-lesson-blank]')).not.toBeNull();
+  });
+
+  it('a video-text lesson shows its video and its body', async () => {
+    const lesson = { ...emptyLesson('video-text'), id: 'L', title: 'Both', youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', body: '<p>Notes here</p>' } as Lesson;
+    await mount(player({ course: only(lesson), lessonId: 'L' }).ui);
+    expect(q('[data-testid="react-player"]')).not.toBeNull();
+    expect(q('[data-lesson-body]')?.textContent).toBe('Notes here');
+  });
+});
+
 describe('CoursePlayer — the rail', () => {
   it('numbers the sections, counts progress, and offers Continue on the first unfinished lesson', async () => {
     await mount(player({ lessonId: 'b', completed: new Set(['a']) }).ui);
