@@ -23,7 +23,7 @@ import { CourseLibrary } from '../course/CourseLibrary';
  */
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-vi.mock('../../firebase', () => ({ db: {}, auth: { currentUser: null } }));
+vi.mock('../../firebase', () => ({ db: {}, auth: { currentUser: { uid: 'member-1' } } }));
 
 const scope = vi.hoisted(() => ({ read: 'tenant-1' as string | null, write: 'tenant-1' as string | null }));
 vi.mock('../../utils/tenant-scope', () => ({

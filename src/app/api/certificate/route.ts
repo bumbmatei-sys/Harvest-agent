@@ -11,6 +11,7 @@ import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
 import { getPlanFeatures } from '@/utils/plan-features';
 import { verifyCourseCompletion } from '@/utils/course.utils';
 import { applyCourseOverrides, type CourseOverrides } from '@/utils/course-adoption';
+import { canAccessCourse, isCourseStaff, isRestrictedCourse, type AccessibleCourse } from '@/lib/courses/access';
 import type { Course, QuizAttempt } from '@/types/course.types';
 import type { TenantPlan } from '@/types/tenant.types';
 import { captureHandledError } from '@/lib/money-path-sentry';
@@ -355,7 +356,7 @@ export async function POST(request: NextRequest) {
     if (!courseSnap.exists) {
       return NextResponse.json({ error: 'Course not found' }, { status: 404 });
     }
-    const course = { id: courseSnap.id, ...(courseSnap.data() as any) } as Course & { tenantId?: string };
+    const course = { id: courseSnap.id, ...(courseSnap.data() as any) } as Course & AccessibleCourse & { tenantId?: string };
 
     // The adopting church's own settings for this course, when there are any.
     // Read ONCE and used for two things: the entitlement check below, and the
@@ -397,6 +398,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // ── Server-read the AUTHED user's own progress (Admin SDK) ──────────────
+    const userSnap = await adminDb.collection('users').doc(uid).get();
+    const userData = userSnap.exists ? (userSnap.data() as any) : {};
+
+    // A tenant course is only certifiable by someone who can open it: published
+    // (staff excepted) and, when restricted, listed. Completion is self-written
+    // by the learner, so it proves nothing about entitlement. The server has no
+    // community source, so community-only members fail closed.
+    if (!isLibraryCourse && !isSuperAdmin) {
+      const staff = isCourseStaff(userData);
+      if (!staff) {
+        if (course.status !== 'published') {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+        if (
+          isRestrictedCourse(course) &&
+          !canAccessCourse(course, { userId: uid, isStaff: false, communityIds: [] }).allowed
+        ) {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+      }
+    }
+
     // ── Apply the adopting church's overrides ───────────────────────────────
     // From here on `effectiveCourse` is the course AS THIS CHURCH RUNS IT. The
     // platform's values are defaults; the tenant's choice wins in both
@@ -411,9 +435,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'This course does not issue certificates' }, { status: 403 });
     }
 
-    // ── Server-read the AUTHED user's own progress (Admin SDK) ──────────────
-    const userSnap = await adminDb.collection('users').doc(uid).get();
-    const userData = userSnap.exists ? (userSnap.data() as any) : {};
     const completedLessons: string[] = Array.isArray(userData.completedLessons) ? userData.completedLessons : [];
     const quizAttempts: Record<string, QuizAttempt | undefined> =
       userData.quizAttempts && typeof userData.quizAttempts === 'object' ? userData.quizAttempts : {};

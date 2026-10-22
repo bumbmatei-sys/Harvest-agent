@@ -1,0 +1,47 @@
+{
+  "ticket": "#543",
+  "note": "Eden-style courses remodel. No rules change. Appended, never substituted: earlier digests for these files stay recorded under their own tickets.",
+  "entries": [
+    {
+      "file": "src/components/AdminCourses.tsx",
+      "digest": "fa825edc6cfb69296f8322dcee6f92a35b66c2aa8170662a3bb7ba65ba3b94bb",
+      "why": "The own-courses list becomes the product cards in courses/CourseProductList, New course opens the shared product-type picker and then the CourseWizard instead of AdminCourseEditor, and the row type is ProductCourse. NOTHING ELSE MOVED: the by-id adoption reads (THE-342), the counted slots and dangling-adoption notice (THE-345), the maxCourses gate, the adopt analytics event (THE-361), the library tab and the read-failure and truncation alerts are byte-for-byte what they were."
+    },
+    {
+      "file": "src/components/CoursePage.tsx",
+      "digest": "a8d8ee4100ac7c233d6c356c12eedde70b53993cfabfa41ca2e9fa3b21aa4dcf",
+      "why": "The member overview and lesson screens become the course landing page and the Eden-style player, and the library list now shows only courses the member may open, decided by lib/courses/access (canAccessCourse). Every read, bound and truncation notice from THE-342 is unchanged, as is the adopted-course resolution; the author screen is dropped because nothing links to it any more."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "56817c1c945652e54027368b1862a058ada6cbfcafd446a3431395385a311cfa",
+      "why": "#543 appends eight course components to RECORDED_ADOPTERS, each with a ticket and a reason of more than 80 characters, because they adopt alert-family primitives the register tracks (empty, popover, radio-group, scroll-area, switch and textarea). Nothing already recorded was replaced or reworded."
+    },
+    {
+      "file": "src/components/CoursePage.tsx",
+      "digest": "fdedac9720b88faddac77026ca70460439409afb6c1d82051a2769e4bdd42d1b",
+      "why": "Review fix round 1 on #543. Staff detection moves out of the component into isCourseStaff in lib/courses/access, so the member course list reads the same definition; the rule itself is unchanged (admin, super_admin or permissions.createCourses). The deep-link player gate and every read are untouched, and the earlier digest stays recorded because the earlier head stays a valid state of this file."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "dfd61b4e5e01b8a9f7288dde69ec5743a813df8ae5d39f7c20ff0ce8f04b6bb3",
+      "why": "Merge of main (#540 settings popup) into #543. Both PRs append entries to RECORDED_ADOPTERS in this file, so the merged file matches neither PR's recorded digest. This records the merged content; both sets of appended adopters are present and nothing already recorded was removed or reworded. The earlier #543 digest stays recorded because that head was a valid state of the file."
+    },
+    {
+      "file": "src/components/CoursePage.tsx",
+      "digest": "dce6f94fba1ae3a0e7b950c338f83bef17d21aed078ebebadf02bb3f915b4b99",
+      "why": "Review fix round 2 on #543. The member Courses back button is lifted into one `coursesBack` element and also rendered above the locked-lesson landing, so a member who deep-links into a lesson they cannot open has a way back to the Courses list. The gate itself (accessFor(...).allowed before CoursePlayer), every read and the staff rule are untouched; the earlier digests stay recorded because earlier heads stay valid states of this file."
+    },
+    {
+      "file": "src/components/__tests__/AdminSettings.integrations-gating.test.tsx",
+      "digest": "5a343a12edc30da0aa214fa1313e33995513e5df907baf0eb733e8b48fd70dd5",
+      "why": "Merge of main (#544) into #543. #543 does not touch this file; it is byte-identical to origin/main at 20a3a0b, but the digest #544 recorded for it (8abdc8b8) does not match what landed on main, so THE-322's register fails on main itself and therefore on any branch that merges it. This records main's actual content so #543's guard run is green; nothing already recorded was removed or reworded."
+    }
+,
+    {
+      "file": "src/components/CoursePage.tsx",
+      "digest": "99ac7788d7e028e3f59e0413da81cbb2d8f4fe6f1ff361d4381fbdbf8ee032e2",
+      "why": "Review fix round 3 on #543 (Bugbot: staff access decided before the user loads). The page now holds its spinner until the user document has also been read, or there is no signed-in user, so a course manager never sees a locked landing or a library that hides restricted courses before isCourseStaff has run. The gate itself, every read and the staff rule are untouched; the earlier digests stay recorded because earlier heads stay valid states of this file."
+    }
+  ]
+}

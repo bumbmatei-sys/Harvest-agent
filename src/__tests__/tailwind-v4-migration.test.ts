@@ -385,6 +385,11 @@ describe('prose still drives off the theme ramp', () => {
     // is the same job the blog page above it does, so it takes the same `prose`
     // typography rather than minting a second one. APPENDED, never substituted
     // - the nine below are unchanged and still read off the class attributes.
+    // The Eden-style courses remodel APPENDS two more: `CourseLanding` (the
+    // course page's description) and `CoursePlayer` (a text lesson's body). Both
+    // render stored HTML through the same sanitiser the older course screens use
+    // and take the same `prose` typography, so they ride the theme ramp rather
+    // than minting a colour of their own. Appended, nothing above substituted.
     expect(proseCallSites()).toEqual([
       'src/app/blog/[id]/page.tsx',
       'src/app/n/[token]/page.tsx',
@@ -396,6 +401,8 @@ describe('prose still drives off the theme ramp', () => {
       'src/components/course/CourseOverview.tsx',
       'src/components/course/CoursePreview.tsx',
       'src/components/course/LessonView.tsx',
+      'src/components/courses/CourseLanding.tsx',
+      'src/components/courses/CoursePlayer.tsx',
     ]);
     expect(css, 'the .prose rule is not in the built stylesheet').toMatch(/\n\s*\.prose\s*\{/);
   });

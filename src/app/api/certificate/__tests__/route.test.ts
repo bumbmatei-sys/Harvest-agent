@@ -65,7 +65,7 @@ function lesson(id: string, withQuiz = false) {
 
 function seedCourse(over?: any) {
   store.courses.set('course-1', {
-    title: 'Foundations of Faith', tenantId: 'tenant-a', authorIds: ['auth-1'],
+    title: 'Foundations of Faith', tenantId: 'tenant-a', authorIds: ['auth-1'], status: 'published',
     issueCertificate: true, requireQuiz: false,
     levels: [{ id: 'lv1', title: 'L1', sections: [
       { id: 's1', title: 'A', lessons: [lesson('l1'), lesson('l2', true)] },
@@ -577,5 +577,147 @@ describe('POST /api/certificate — the adopting church\'s overrides', () => {
       uid: 'learner-1', email: 'platform@test.com', tenantId: 'tenant-a', isAdmin: true, isSuperAdmin: true,
     });
     expect((await POST(makeReq({ courseId: 'lib-course-1' }))).status).toBe(403);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Course access on the certificate path.
+//
+// Completion is self-written by the learner (users/{uid}.completedLessons), so
+// it proves nothing about whether they may open the course. The route must apply
+// the same published + access-list decision the player does, or an unlisted
+// member of a restricted course can mint a certificate in the church's name.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('POST /api/certificate — tenant course access', () => {
+  const nothingWritten = () => {
+    expect(mockCertSet).not.toHaveBeenCalled();
+    expect(mockFileSave).not.toHaveBeenCalled();
+    expect(store.certificates.size).toBe(0);
+  };
+
+  describe('restricted courses', () => {
+    it('403s an unlisted member who has every lesson marked done, and writes nothing', async () => {
+      seedCourse({ accessMode: 'restricted', accessUserIds: ['someone-else'] });
+      const res = await POST(makeReq({ courseId: 'course-1' }));
+      expect(res.status).toBe(403);
+      nothingWritten();
+    });
+
+    it('403s a member of a restricted course with an empty access list', async () => {
+      seedCourse({ accessMode: 'restricted' });
+      expect((await POST(makeReq({ courseId: 'course-1' }))).status).toBe(403);
+      nothingWritten();
+    });
+
+    it('403s a community-only member: the server has no community source, so it fails closed', async () => {
+      seedCourse({ accessMode: 'restricted', communityIds: ['comm-1'] });
+      store.users.set('learner-1', {
+        displayName: 'Grace Learner', completedLessons: ALL, quizAttempts: { l2: passAttempt }, communityIds: ['comm-1'],
+      });
+      expect((await POST(makeReq({ courseId: 'course-1' }))).status).toBe(403);
+      nothingWritten();
+    });
+
+    it('still issues to a listed member', async () => {
+      seedCourse({ accessMode: 'restricted', accessUserIds: ['learner-1'] });
+      const res = await POST(makeReq({ courseId: 'course-1' }));
+      expect(res.status).toBe(200);
+      expect(mockCertSet).toHaveBeenCalledTimes(1);
+      expect(mockFileSave).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('open courses', () => {
+    it('issues for a legacy course with no accessMode', async () => {
+      seedCourse();
+      expect((await POST(makeReq({ courseId: 'course-1' }))).status).toBe(200);
+    });
+
+    it("issues for accessMode 'everyone'", async () => {
+      seedCourse({ accessMode: 'everyone' });
+      expect((await POST(makeReq({ courseId: 'course-1' }))).status).toBe(200);
+    });
+  });
+
+  describe('unknown access modes fail closed', () => {
+    it.each(['private', 'Restricted', 'RESTRICTED', ''])("denies a typo mode %j", async (mode) => {
+      seedCourse({ accessMode: mode });
+      expect((await POST(makeReq({ courseId: 'course-1' }))).status).toBe(403);
+      nothingWritten();
+    });
+  });
+
+  describe('draft courses', () => {
+    it('403s a plain member of a draft course', async () => {
+      seedCourse({ status: 'draft' });
+      expect((await POST(makeReq({ courseId: 'course-1' }))).status).toBe(403);
+      nothingWritten();
+    });
+
+    it('403s a course with no status at all', async () => {
+      seedCourse({ status: undefined });
+      expect((await POST(makeReq({ courseId: 'course-1' }))).status).toBe(403);
+      nothingWritten();
+    });
+
+    it('403s a listed member of a draft restricted course', async () => {
+      seedCourse({ status: 'draft', accessMode: 'restricted', accessUserIds: ['learner-1'] });
+      expect((await POST(makeReq({ courseId: 'course-1' }))).status).toBe(403);
+      nothingWritten();
+    });
+
+    it('lets a super admin through a draft course', async () => {
+      seedCourse({ status: 'draft' });
+      mockRequireAuth.mockResolvedValue({
+        uid: 'learner-1', email: 'platform@test.com', tenantId: 'tenant-a', isAdmin: true, isSuperAdmin: true,
+      });
+      expect((await POST(makeReq({ courseId: 'course-1' }))).status).toBe(200);
+    });
+
+    it.each([
+      ['an admin', { role: 'admin' }],
+      ['a course manager', { permissions: { createCourses: true } }],
+    ])('lets %s through a draft course', async (_label, extra) => {
+      seedCourse({ status: 'draft' });
+      store.users.set('learner-1', {
+        displayName: 'Grace Learner', completedLessons: ALL, quizAttempts: { l2: passAttempt }, ...extra,
+      });
+      expect((await POST(makeReq({ courseId: 'course-1' }))).status).toBe(200);
+    });
+  });
+
+  describe('staff and super admin on a restricted course', () => {
+    it('lets a super admin through an unlisted restricted course', async () => {
+      seedCourse({ accessMode: 'restricted', accessUserIds: [] });
+      mockRequireAuth.mockResolvedValue({
+        uid: 'learner-1', email: 'platform@test.com', tenantId: 'tenant-a', isAdmin: true, isSuperAdmin: true,
+      });
+      expect((await POST(makeReq({ courseId: 'course-1' }))).status).toBe(200);
+    });
+
+    it('lets a course manager through an unlisted restricted course', async () => {
+      seedCourse({ accessMode: 'restricted', accessUserIds: [] });
+      store.users.set('learner-1', {
+        displayName: 'Grace Learner', completedLessons: ALL, quizAttempts: { l2: passAttempt },
+        permissions: { createCourses: true },
+      });
+      expect((await POST(makeReq({ courseId: 'course-1' }))).status).toBe(200);
+    });
+
+    it('does not treat a truthy non-true createCourses as staff', async () => {
+      seedCourse({ accessMode: 'restricted', accessUserIds: [] });
+      store.users.set('learner-1', {
+        displayName: 'Grace Learner', completedLessons: ALL, quizAttempts: { l2: passAttempt },
+        permissions: { createCourses: 'yes' },
+      });
+      expect((await POST(makeReq({ courseId: 'course-1' }))).status).toBe(403);
+    });
+  });
+
+  it('does not apply to an adopted library course (adoption is its entitlement)', async () => {
+    seedLibraryCourse({ accessMode: 'restricted', status: 'published' });
+    completeLibraryCourse();
+    adopt();
+    expect((await POST(makeReq({ courseId: 'lib-course-1' }))).status).toBe(200);
   });
 });

@@ -1143,6 +1143,13 @@ const NEWSLETTER_TABLE_ADOPTERS = [
 const SETTINGS_BILLING_TABLE_ADOPTERS = ['src/components/settings/BillingActivity.tsx'] as const;
 const NEWSLETTER_PROGRESS_ADOPTERS = ['src/components/email/EmailOverview.tsx', 'src/components/email/UsageMeter.tsx'] as const;
 
+/** APPENDED BY THE COURSES REMODEL. Progress through a course is a quantity out of a whole: the wizard's setup bar, the player's lessons-done bar and each Classroom card's. */
+const COURSES_PROGRESS_ADOPTERS = [
+  'src/components/courses/ClassroomTab.tsx',
+  'src/components/courses/CoursePlayer.tsx',
+  'src/components/product-wizard/ProductWizard.tsx',
+] as const;
+
 it('only THE-276 adopts chart, THE-283/THE-290/THE-294/THE-319/THE-317 adopt table, THE-290/THE-319/THE-320 adopt progress, and pagination is still adopted by nothing', () => {
   const walk = (dir: string): string[] =>
     readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -1184,6 +1191,7 @@ it('only THE-276 adopts chart, THE-283/THE-290/THE-294/THE-319/THE-317 adopt tab
       ...THE_319_PROGRESS_ADOPTERS,
       ...THE_320_PROGRESS_ADOPTERS,
       ...PHASE_1_PROGRESS_ADOPTERS,
+      ...COURSES_PROGRESS_ADOPTERS,
       ...NEWSLETTER_PROGRESS_ADOPTERS,
     ].sort());
 

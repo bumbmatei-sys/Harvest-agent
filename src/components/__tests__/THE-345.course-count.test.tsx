@@ -38,7 +38,7 @@ vi.mock('../../utils/tenant-scope', () => ({
   getTenantScope: async () => scope.read,
   getWriteTenantScope: async () => scope.write,
 }));
-vi.mock('../AdminCourseEditor', () => ({ default: () => <div data-testid="course-editor" /> }));
+vi.mock('../courses/builder/CourseWizard', () => ({ CourseWizard: () => <div data-testid="course-editor" /> }));
 
 const tenantCtx = vi.hoisted(() => ({ tenantPlan: undefined as string | undefined }));
 vi.mock('@/contexts/TenantContext', () => ({ useTenant: () => tenantCtx }));
