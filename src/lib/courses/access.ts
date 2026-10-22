@@ -30,6 +30,21 @@ export interface AccessSubject {
 }
 
 /**
+ * A course is open to the whole ministry only when it says so: no `accessMode`
+ * (written before the model existed) or an explicit `'everyone'`. Any other
+ * value, including a typo or a mode this build does not know, is restricted, so
+ * a bad import fails closed instead of opening the course to every member.
+ */
+export function isRestrictedCourse(course: AccessibleCourse): boolean {
+  return !(course.accessMode === undefined || course.accessMode === 'everyone');
+}
+
+/** Admins and course managers may open any course, drafts included. */
+export function isCourseStaff(user: { role?: unknown; permissions?: { createCourses?: unknown } | null }): boolean {
+  return user.role === 'admin' || user.role === 'super_admin' || user.permissions?.createCourses === true;
+}
+
+/**
  * The one place that decides whether a person may open a course.
  *
  * Access is the explicit access list OR membership of any attached community.
@@ -44,7 +59,7 @@ export function canAccessCourse(course: AccessibleCourse, subject: AccessSubject
   if (subject.isStaff) return { allowed: true, reason: 'staff' };
   if (!subject.userId) return { allowed: false, reason: 'none' };
   if (course.status !== 'published') return { allowed: false, reason: 'draft' };
-  if (course.accessMode !== 'restricted') return { allowed: true, reason: 'open' };
+  if (!isRestrictedCourse(course)) return { allowed: true, reason: 'open' };
   if (course.accessUserIds?.includes(subject.userId)) return { allowed: true, reason: 'access-list' };
   const attached = course.communityIds ?? [];
   if (attached.length > 0 && (subject.communityIds ?? []).some((id) => attached.includes(id))) {

@@ -142,7 +142,10 @@ export function ProductWizard({
         )}
       </div>
 
-      <footer className="sticky bottom-0 z-30 -mx-4 border-t border-line bg-surface-raised lg:mx-0" data-wizard-footer>
+      {/* Sticky insets are measured from the scroller's content box, and the admin scroller keeps
+          lg:pb-8 below its content, so bottom-0 would leave the bar 32px short with the page
+          showing through underneath. lg:-bottom-8 pins it flush with the viewport edge. */}
+      <footer className="sticky bottom-0 z-30 -mx-4 lg:-bottom-8 border-t border-line bg-surface-raised lg:mx-0" data-wizard-footer>
         <div className="flex w-full items-center justify-between gap-3 px-4 py-3 lg:px-0">
           <div className="flex items-center gap-2">
             {previous && (

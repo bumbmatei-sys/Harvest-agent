@@ -32,8 +32,9 @@
  * POST /api/courses/adopt.
  */
 
-import { collection, getDocs, limit, query, where } from 'firebase/firestore';
-import { db } from '../firebase';
+import { collection, doc, getDoc, getDocs, limit, query, where } from 'firebase/firestore';
+import { auth, db } from '../firebase';
+import { canAccessCourse, isCourseStaff, isRestrictedCourse, type AccessibleCourse, type AccessSubject } from '../lib/courses/access';
 import { getTenantScope, getWriteTenantScope } from './tenant-scope';
 import { LIBRARY_COURSE_COLLECTIONS } from './library-authoring';
 import { adoptableCourses, applyCourseOverrides, mergeCoursesForMembers } from './course-adoption';
@@ -129,6 +130,21 @@ async function fetchAdoptedCourses(): Promise<MemberCourse[]> {
 }
 
 /**
+ * Who is asking, for the access model. Read only when a restricted course is
+ * actually in the list, so a ministry with none pays no extra read. A failed
+ * read throws rather than quietly treating a manager as a plain member.
+ */
+async function resolveAccessSubject(memberCommunityIds?: readonly string[]): Promise<AccessSubject> {
+  const userId = auth.currentUser?.uid ?? null;
+  let isStaff = false;
+  if (userId) {
+    const snap = await getDoc(doc(db, 'users', userId));
+    if (snap.exists()) isStaff = isCourseStaff(snap.data());
+  }
+  return { userId, isStaff, communityIds: memberCommunityIds };
+}
+
+/**
  * The merged member list: own courses first, adopted after.
  *
  * 🔴 THE MERGE IS mergeCoursesForMembers(), NOT A SECOND COPY OF IT. It also
@@ -139,12 +155,18 @@ async function fetchAdoptedCourses(): Promise<MemberCourse[]> {
  *
  * Throws on a failed read; callers report through handleFirestoreError.
  */
-export async function fetchMemberCourses(): Promise<MemberCourse[]> {
+export async function fetchMemberCourses(memberCommunityIds?: readonly string[]): Promise<MemberCourse[]> {
   const [own, adopted] = await Promise.all([fetchOwnCourses(), fetchAdoptedCourses()]);
-  return mergeCoursesForMembers(
+  const merged = mergeCoursesForMembers(
     sortByTime(own, 'createdAt', 'desc'),
     sortByTime(adopted, 'createdAt', 'desc'),
   ) as MemberCourse[];
+  const access = (c: MemberCourse) => c as MemberCourse & AccessibleCourse;
+  // Restricted courses the member cannot open are not listed at all, the same
+  // decision CoursePage makes for its library.
+  if (!merged.some((c) => isRestrictedCourse(access(c)))) return merged;
+  const subject = await resolveAccessSubject(memberCommunityIds);
+  return merged.filter((c) => !isRestrictedCourse(access(c)) || canAccessCourse(access(c), subject).allowed);
 }
 
 /**

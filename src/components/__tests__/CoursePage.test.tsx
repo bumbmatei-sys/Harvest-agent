@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import CoursePage from '../CoursePage';
+import { emptyLesson } from '@/lib/courses/lessons';
 
 /**
  * The member-facing course screen, and specifically WHICH tenant its adopted
@@ -31,6 +32,9 @@ vi.mock('../../utils/tenant-scope', () => ({
 
 // Records every collection path read, so the adoption path can be asserted directly.
 const calls = vi.hoisted(() => ({ paths: [] as string[], wheres: [] as string[] }));
+
+// What users/member-1 holds; null means the user doc does not exist.
+const userDoc = vi.hoisted(() => ({ value: null as Record<string, unknown> | null }));
 
 const data = vi.hoisted(() => ({
   courses: [] as any[],
@@ -67,7 +71,10 @@ vi.mock('firebase/firestore', () => ({
   getCountFromServer: async (q: any) => ({ data: () => ({ count: rowsFor(q?.__path ?? '').length }) }),
   doc: (_db: unknown, ...seg: string[]) => ({ __path: seg.join('/') }),
   updateDoc: async () => {},
-  getDoc: async () => ({ exists: () => false, data: () => ({}) }),
+  getDoc: async (ref: any) => {
+    const mine = ref?.__path === 'users/member-1' ? userDoc.value : null;
+    return { exists: () => mine !== null, data: () => mine ?? {} };
+  },
   getDocs: async (ref: any) => {
     const path = ref?.__path ?? '';
     calls.paths.push(path);
@@ -90,6 +97,15 @@ vi.mock('../../components/course/CourseLibrary', () => ({
     received.categories = props.categories;
     return <div data-testid="library">{props.courses.map((c: any) => <span key={c.id}>{c.title}</span>)}</div>;
   },
+}));
+
+vi.mock('react-player/youtube', () => ({
+  default: ({ url }: { url: string }) => <div data-testid="react-player" data-url={url} />,
+}));
+// DOMPurify does not behave under happy-dom, and the sanitiser has its own suite.
+vi.mock('../../utils/sanitize', () => ({
+  sanitizeHtml: (html: string) => html,
+  stripHtml: (h: string) => h.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(),
 }));
 
 let container: HTMLDivElement;
@@ -123,6 +139,7 @@ beforeEach(() => {
   data.libraryAuthors = [];
   data.libraryCategories = [];
   data.adopted = [];
+  userDoc.value = null;
   scope.read = 'tenant-1';
   scope.write = 'tenant-1';
 });
@@ -374,5 +391,97 @@ describe('CoursePage — the course access model', () => {
     data.courses = [{ id: 'legacy', title: 'Written before access existed', status: 'published', levels: [] }];
     await mount();
     expect(titles()).toEqual(['Written before access existed']);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A deep link (?course=…&lesson=…) must go through the same gate as the list.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('CoursePage — deep links and staff detection', () => {
+  const withLesson = (over: Record<string, unknown> = {}) => ({
+    id: 'r1', title: 'Leaders only', status: 'published', accessMode: 'restricted',
+    levels: [{
+      id: 'lv', title: 'Course',
+      sections: [{ id: 's1', title: 'Start', lessons: [
+        { ...emptyLesson('text'), id: 'l1', title: 'Secret lesson', body: '<p>Members only content</p>' },
+      ] }],
+    }],
+    ...over,
+  });
+
+  async function openDeepLink() {
+    await act(async () => {
+      root = createRoot(container);
+      root.render(<CoursePage initialCourseId="r1" initialLessonId="l1" />);
+      for (let i = 0; i < 20; i++) await Promise.resolve();
+    });
+  }
+
+  const locked = () => container.querySelector('[data-landing-locked]');
+  const lessonBody = () => container.querySelector('[data-lesson-body]');
+  const playerColumn = () => container.querySelector('[data-reading-column]');
+
+  it('shows the locked landing, and no player or lesson body, to a member who is not entitled', async () => {
+    data.courses = [withLesson({ accessUserIds: ['someone-else'] })];
+    await openDeepLink();
+
+    expect(locked()).not.toBeNull();
+    expect(playerColumn()).toBeNull();
+    expect(lessonBody()).toBeNull();
+    expect(container.textContent).not.toContain('Members only content');
+  });
+
+  it('opens the player for a member on the access list', async () => {
+    data.courses = [withLesson({ accessUserIds: ['member-1'] })];
+    await openDeepLink();
+
+    expect(lessonBody()?.textContent).toBe('Members only content');
+    expect(locked()).toBeNull();
+  });
+
+  it('opens the player for a member of an attached community the host reports', async () => {
+    data.courses = [withLesson({ communityIds: ['c-1'] })];
+    await act(async () => {
+      root = createRoot(container);
+      root.render(<CoursePage initialCourseId="r1" initialLessonId="l1" memberCommunityIds={['c-1']} />);
+      for (let i = 0; i < 20; i++) await Promise.resolve();
+    });
+    expect(lessonBody()).not.toBeNull();
+  });
+
+  it('keeps an unknown accessMode closed on a deep link', async () => {
+    data.courses = [withLesson({ accessMode: 'private', accessUserIds: ['someone-else'] })];
+    await openDeepLink();
+    expect(locked()).not.toBeNull();
+    expect(lessonBody()).toBeNull();
+  });
+
+  describe('who counts as staff', () => {
+    beforeEach(() => {
+      data.courses = [withLesson({ accessUserIds: ['someone-else'] })];
+    });
+
+    it.each([
+      ['has no user document', null],
+      ['has a user document with no role or permissions', {}],
+      ['is a plain member', { role: 'member', permissions: { createCourses: false } }],
+      ['has createCourses set to a truthy non-true value', { role: 'member', permissions: { createCourses: 'yes' } }],
+    ])('a member who %s cannot open a restricted course they are not listed on', async (_label, doc) => {
+      userDoc.value = doc as Record<string, unknown> | null;
+      await openDeepLink();
+      expect(locked()).not.toBeNull();
+      expect(lessonBody()).toBeNull();
+    });
+
+    it.each([
+      ['an admin', { role: 'admin' }],
+      ['a super_admin', { role: 'super_admin' }],
+      ['a member with the createCourses permission', { role: 'member', permissions: { createCourses: true } }],
+    ])('%s can open it', async (_label, doc) => {
+      userDoc.value = doc;
+      await openDeepLink();
+      expect(lessonBody()?.textContent).toBe('Members only content');
+      expect(locked()).toBeNull();
+    });
   });
 });

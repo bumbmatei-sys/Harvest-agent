@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   attachCommunity,
   canAccessCourse,
+  isCourseStaff,
+  isRestrictedCourse,
   coursesForCommunity,
   detachCommunity,
   type AccessibleCourse,
@@ -12,6 +14,20 @@ const published = (extra: AccessibleCourse = {}): AccessibleCourse => ({ status:
 describe('canAccessCourse', () => {
   it('lets a legacy published course (no accessMode) open to every signed-in member', () => {
     expect(canAccessCourse(published(), { userId: 'u1' })).toEqual({ allowed: true, reason: 'open' });
+  });
+
+  it.each(['private', 'Restricted', 'RESTRICTED', '', 'leaders', null])(
+    'denies an unlisted member a published course whose accessMode is the unknown value %j',
+    (mode) => {
+      const course = published({ accessMode: mode as never, accessUserIds: ['u2'] });
+      expect(canAccessCourse(course, { userId: 'u1' })).toEqual({ allowed: false, reason: 'none' });
+    },
+  );
+
+  it('still lets the access list and attached communities open a course with an unknown accessMode', () => {
+    const course = published({ accessMode: 'private' as never, accessUserIds: ['u1'], communityIds: ['c1'] });
+    expect(canAccessCourse(course, { userId: 'u1' }).reason).toBe('access-list');
+    expect(canAccessCourse(course, { userId: 'u3', communityIds: ['c1'] }).reason).toBe('community');
   });
 
   it('keeps everyone-mode open even when an access list exists', () => {
@@ -74,5 +90,25 @@ describe('community attachment', () => {
     expect(attachCommunity(['c1'], 'c1')).toEqual(['c1']);
     expect(attachCommunity(undefined, 'c2')).toEqual(['c2']);
     expect(detachCommunity(['c1', 'c2'], 'c1')).toEqual(['c2']);
+  });
+});
+
+describe('isRestrictedCourse', () => {
+  it('is open only for an absent accessMode or an explicit everyone', () => {
+    expect(isRestrictedCourse({})).toBe(false);
+    expect(isRestrictedCourse({ accessMode: 'everyone' })).toBe(false);
+    expect(isRestrictedCourse({ accessMode: 'restricted' })).toBe(true);
+    expect(isRestrictedCourse({ accessMode: 'Everyone' as never })).toBe(true);
+  });
+});
+
+describe('isCourseStaff', () => {
+  it('is true for admin, super_admin and a createCourses holder only', () => {
+    expect(isCourseStaff({ role: 'admin' })).toBe(true);
+    expect(isCourseStaff({ role: 'super_admin' })).toBe(true);
+    expect(isCourseStaff({ role: 'member', permissions: { createCourses: true } })).toBe(true);
+    expect(isCourseStaff({})).toBe(false);
+    expect(isCourseStaff({ role: 'member', permissions: { createCourses: false } })).toBe(false);
+    expect(isCourseStaff({ role: 'member', permissions: null })).toBe(false);
   });
 });

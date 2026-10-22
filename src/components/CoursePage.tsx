@@ -9,7 +9,7 @@ import { CourseLibrary } from "../components/course/CourseLibrary";
 import { CourseLanding } from "./courses/CourseLanding";
 import { CoursePlayer } from "./courses/CoursePlayer";
 import { Button } from "./ui/button";
-import { canAccessCourse } from "../lib/courses/access";
+import { canAccessCourse, isCourseStaff } from "../lib/courses/access";
 import { continueTarget } from "../lib/courses/lessons";
 import type { ProductCourse } from "../types/course-product.types";
 import { OperationType, handleFirestoreError } from "../utils/firestore-errors";
@@ -97,9 +97,7 @@ export default function CoursePage({
           }
           // Course managers may open any course, drafts included. Members get
           // in through the access model (lib/courses/access).
-          setIsStaff(
-            data.role === "admin" || data.role === "super_admin" || data.permissions?.createCourses === true,
-          );
+          setIsStaff(isCourseStaff(data));
         }
       } catch (error) {
         try { handleFirestoreError(error, OperationType.GET, `users/${auth.currentUser?.uid}`); } catch (e) { console.error(e); }

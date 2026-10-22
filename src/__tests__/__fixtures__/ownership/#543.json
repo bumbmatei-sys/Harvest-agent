@@ -16,6 +16,11 @@
       "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
       "digest": "56817c1c945652e54027368b1862a058ada6cbfcafd446a3431395385a311cfa",
       "why": "#543 appends eight course components to RECORDED_ADOPTERS, each with a ticket and a reason of more than 80 characters, because they adopt alert-family primitives the register tracks (empty, popover, radio-group, scroll-area, switch and textarea). Nothing already recorded was replaced or reworded."
+    },
+    {
+      "file": "src/components/CoursePage.tsx",
+      "digest": "fdedac9720b88faddac77026ca70460439409afb6c1d82051a2769e4bdd42d1b",
+      "why": "Review fix round 1 on #543. Staff detection moves out of the component into isCourseStaff in lib/courses/access, so the member course list reads the same definition; the rule itself is unchanged (admin, super_admin or permissions.createCourses). The deep-link player gate and every read are untouched, and the earlier digest stays recorded because the earlier head stays a valid state of this file."
     }
   ]
 }

@@ -72,6 +72,15 @@ describe('ProductWizard shell', () => {
     expect(byName('[data-wizard-footer] button', 'Back')).toBeNull();
   });
 
+  it('pins the save bar flush to the bottom of the admin scroller, which keeps lg:pb-8 below its content', async () => {
+    await mount(<Harness start="offer" />);
+    const footer = need(document.querySelector<HTMLElement>('[data-wizard-footer]'), 'footer');
+    const classes = footer.className.split(/\s+/);
+    expect(classes).toContain('sticky');
+    expect(classes).toContain('bottom-0');
+    expect(classes).toContain('lg:-bottom-8');
+  });
+
   it('disables Publish and says why while the product is not ready, but still saves a draft', async () => {
     const onSave = vi.fn();
     await mount(<Harness start="publish" blocked="Add a lesson first." onSave={onSave} />);
