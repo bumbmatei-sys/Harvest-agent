@@ -91,12 +91,14 @@ vi.mock('../../utils/firestore-errors', () => ({
   handleFirestoreError: () => {},
 }));
 vi.mock('../AdminRoles', () => ({ normalizePermissions: (raw: unknown) => raw }));
-// The mobile header also mounts a MyAccountMenu; stubbing it leaves exactly one
-// account menu in the tree so "the Billing item" is unambiguous.
+// The phone header's right accessory is the phone account menu. Desktop tests
+// open the sidebar menu, which is first in the tree. A phone-width test has no
+// sidebar, so this accessory is the menu those tests open. The phone path still
+// lists Billing; the desktop sidebar does not, once Settings can open.
 vi.mock('../AdminScreenHeader', async () => {
   const React = await import('react');
   return {
-    AdminScreenHeader: () => null,
+    AdminScreenHeader: ({ rightAccessory }: { rightAccessory?: React.ReactNode }) => rightAccessory ?? null,
     AdminHeaderContext: React.createContext({
       setHeaderAction: () => {}, setHeaderOverride: () => {}, setHeaderHidden: () => {},
     }),
@@ -155,6 +157,30 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
+/** happy-dom defaults to 1024, which is `lg`. Pin it so a test states which shell it measures. */
+function setWidth(width: number) {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: width });
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: (query: string) => {
+      const min = /min-width:\s*(\d+)px/.exec(query);
+      const max = /max-width:\s*(\d+)px/.exec(query);
+      const matches = min ? width >= Number(min[1]) : max ? width <= Number(max[1]) : false;
+      return {
+        matches,
+        media: query,
+        addEventListener() {},
+        removeEventListener() {},
+        addListener() {},
+        removeListener() {},
+        dispatchEvent() { return false; },
+        onchange: null,
+      };
+    },
+  });
+}
+
 /** Open the account menu (the avatar dropdown that carries the Billing item). */
 async function openAccountMenu() {
   const trigger = container.querySelector<HTMLButtonElement>('[aria-label="My account"]');
@@ -191,6 +217,7 @@ async function mount(who: Who) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  setWidth(1440);
   store.current = { tenantPlan: 'max', currentTenantId: TENANT_ID, isAuthReady: true };
   currentUser.current = { uid: UID };
   tenantDoc.current = { data: { name: 'Bumb Ministry', ownerId: 'someone-else' } };
@@ -210,6 +237,8 @@ describe('AdminDashboard — who can reach Billing & Payments (THE-83)', () => {
   // ── The three identities the server already authorises ────────────────────
 
   it('shows Billing to the tenant owner by ownerId', async () => {
+    // Phone: no Settings popup, so the account-menu row is still the door.
+    setWidth(390);
     tenantDoc.current = { data: { name: 'Bumb Ministry', ownerId: UID } };
     // The roster says no: this owner's access comes from ownerId alone.
     checkRosterAdminStatus.mockResolvedValue('not-admin');
@@ -226,6 +255,10 @@ describe('AdminDashboard — who can reach Billing & Payments (THE-83)', () => {
     // 🔴 The regression test for THE-83. Someone else bought the plan, so
     // `ownerId` is not this user — their owner rights come from the tenant's
     // admin roster, exactly as `requireOwner` grants them server-side.
+    // Phone: no Settings popup, so this row is still how they reach billing.
+    // Once the roster settles they also gain full access, and on desktop the
+    // row leaves the account menu because Settings can open.
+    setWidth(390);
     tenantDoc.current = { data: { name: 'Bumb Ministry', ownerId: 'someone-else' } };
     checkRosterAdminStatus.mockResolvedValue('admin');
     await mount({ role: 'user', permissions: {} });
@@ -238,6 +271,8 @@ describe('AdminDashboard — who can reach Billing & Payments (THE-83)', () => {
   });
 
   it('shows Billing to a super admin', async () => {
+    // Phone: no Settings popup, so the account-menu row is still the door.
+    setWidth(390);
     isSuperAdminMock.mockReturnValue(true);
     tenantDoc.current = { data: { name: 'Bumb Ministry', ownerId: 'someone-else' } };
     checkRosterAdminStatus.mockResolvedValue('not-admin');
@@ -271,6 +306,9 @@ describe('AdminDashboard — who can reach Billing & Payments (THE-83)', () => {
   // ── The unknown window (THE-64) ───────────────────────────────────────────
 
   it('does not render Billing as unavailable while the roster answer is pending', async () => {
+    // Phone: the account menu is still this admin's billing door, so the
+    // unknown window must stay a busy row rather than a settled absence.
+    setWidth(390);
     // 🔴 The THE-64 test, and the one worth more than the rest.
     //
     // This admin holds `fullAccess`, so their NAV does not wait on the roster —
@@ -306,6 +344,51 @@ describe('AdminDashboard — who can reach Billing & Payments (THE-83)', () => {
   });
 
   // ── The roster stays server-side ──────────────────────────────────────────
+
+  it('on desktop, a roster admin reaches Settings instead of an account-menu Billing row', async () => {
+    // Settled roster admin => isChurchAdmin => canSettings. The popup is the
+    // desktop door, so the account menu must not also list Billing.
+    tenantDoc.current = { data: { name: 'Bumb Ministry', ownerId: 'someone-else' } };
+    checkRosterAdminStatus.mockResolvedValue('admin');
+    await mount({ role: 'user', permissions: {} });
+    await flush();
+    await openAccountMenu();
+
+    expect(menuItemByLabel(BILLING_LABEL), 'Billing stayed in the desktop account menu').toBeNull();
+    expect(menuItemByLabel('Settings'), 'a roster admin lost the Settings door').not.toBeNull();
+    expect(menuItemByLabel('Documentation')).not.toBeNull();
+  });
+
+  it('on desktop, an owner who can open Settings has no Billing row in the account menu', async () => {
+    tenantDoc.current = { data: { name: 'Bumb Ministry', ownerId: UID } };
+    checkRosterAdminStatus.mockResolvedValue('not-admin');
+    await mount({ role: 'church_admin', permissions: { fullAccess: true } });
+    await flush();
+    await openAccountMenu();
+
+    expect(menuItemByLabel(BILLING_LABEL), 'Billing stayed in the desktop account menu').toBeNull();
+    expect(menuItemByLabel('Settings'), 'Settings left with the billing row').not.toBeNull();
+    expect(menuItemByLabel('Documentation'), 'Documentation left with the billing row').not.toBeNull();
+  });
+
+  it('on desktop, a settings admin gets no Billing placeholder while the roster is pending', async () => {
+    // Same identity as the phone THE-64 case. Settings can already open, so the
+    // account menu does not carry a billing row to be busy or absent-as-denial.
+    const gate = deferred<string>();
+    checkRosterAdminStatus.mockReturnValue(gate.promise);
+    tenantDoc.current = { data: { name: 'Bumb Ministry', ownerId: 'someone-else' } };
+    await mount({ role: 'church_admin', permissions: { fullAccess: true } });
+    await flush();
+    await openAccountMenu();
+
+    expect(menuItemByLabel(BILLING_LABEL)).toBeNull();
+    expect(menuItemByLabel('Settings'), 'Settings disappeared with the billing row').not.toBeNull();
+
+    await act(async () => { gate.resolve('admin'); });
+    await flush();
+    expect(menuItemByLabel(BILLING_LABEL), 'the row came back after the roster settled').toBeNull();
+    expect(menuItemByLabel('Settings')).not.toBeNull();
+  });
 
   it("never exposes another admin's email to the client", async () => {
     checkRosterAdminStatus.mockResolvedValue('admin');

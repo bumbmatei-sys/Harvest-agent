@@ -456,12 +456,36 @@ describe('Billing & Payments and Branding open inside the desktop Settings popup
     await flush();
   };
 
-  it('the Billing row opens Settings at Plan & billing instead of the full-screen overlay', async () => {
+  it('a desktop owner who can open Settings sees no Billing row, and Plan & billing still renders billing', async () => {
     setDesktop();
     await mount();
-    await clickMenuRow('Billing');
-    expect(navigate).toHaveBeenCalledWith('/admin/settings?section=billing');
-    expect(document.querySelector('[aria-label="Close billing"]'), 'the old overlay opened as well').toBeNull();
+    const rail = container.querySelector<HTMLElement>('[data-nav-rail-account]');
+    expect(rail, 'no account menu in the sidebar').toBeTruthy();
+    const avatar = rail!.querySelector<HTMLElement>('button[aria-label="My account"]');
+    await act(async () => { avatar!.click(); });
+    await flush();
+    const labels = [...rail!.querySelectorAll<HTMLElement>('[role="menuitem"]')]
+      .map((el) => (el.textContent ?? '').replace(/\s+/g, ' ').trim());
+    expect(
+      labels.some((label) => label.startsWith('Billing')),
+      `Billing stayed in the desktop account menu: ${labels.join(' | ')}`,
+    ).toBe(false);
+    expect(labels, 'Settings left the account menu').toContain('Settings');
+    expect(labels, 'Documentation left the account menu').toContain('Documentation');
+    expect(labels).toContain('My Profile');
+    expect(labels).toContain('Log out');
+
+    if (mounted) await act(async () => { root.unmount(); });
+    mounted = false;
+    container.innerHTML = '';
+    window.history.replaceState({}, '', '/admin/settings?section=billing');
+    params.current = { section: 'settings' };
+    await mount();
+    expect(document.querySelector('[data-settings-popup]'), 'Settings did not open').toBeTruthy();
+    expect(document.querySelector('[data-settings-section="billing"]'), 'Plan & billing did not render').toBeTruthy();
+    expect(document.querySelector('[data-stub="plans"]'), 'the owner lost the plan cards').toBeTruthy();
+    expect(document.querySelector('[data-stub="billing-activity"]'), 'the owner lost the billing history').toBeTruthy();
+    expect(document.body.textContent).toContain('Small Team plan');
   });
 
   it('on a phone the Billing row still opens the full-screen Billing & Payments overlay', async () => {

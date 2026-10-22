@@ -683,6 +683,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
 
   // The desktop Settings popup owns Plan & billing and Campus & branding. On a
   // phone (no popup) the Billing & Payments overlay and the Branding tab remain.
+  // The sidebar account menu drops its Billing row only while this popup is the
+  // door. An admin who can bill but cannot open Settings keeps the row.
   const settingsPopup = lgUp && canSettings;
   const openBilling = useCallback(() => {
     if (settingsPopup) navigate('/admin/settings?section=billing');
@@ -1063,7 +1065,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           logoUrl={displayLogo}
           onNavigate={go}
           onPlaceholder={(id) => { setShellPlaceholder(id); const next = sideForTab(id); if (next) setShellSide(next); }}
-          accountMenu={<MyAccountMenu {...accountMenuProps} variant="rail" />}
+          accountMenu={<MyAccountMenu {...accountMenuProps} variant="rail" hideBillingRow={settingsPopup} />}
           accountLabel={accountMenuProps.displayName || 'Account'}
           footerExtra={showInbox ? (
             <Tooltip>

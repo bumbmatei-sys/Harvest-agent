@@ -719,6 +719,8 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ byte-identical', ()
     '0e7c5da62a647d60a773ac3c8da6beb7ca1a7138787fbcf646e5c5dddb23d92a',
     // APPENDED BY the settings popup round 4 follow-up. A branding-only admin keeps one desktop Branding row. A settings admin still has none. No permission gate moved.
     '735d23f8946c67052aa01f186eaaa518d12f3e5319ddeca91e3d21240bf078c0',
+    // APPENDED BY the settings popup round 4b, nothing above removed or rewritten. The desktop account menu drops Billing when Settings can open. The phone menu is unchanged. No permission gate moved.
+    '44dba8fb732054ce3e491cc479dc09fec134a57b2124e944050564e98f138b65',
   ];
 
   it('🔴 AdminDashboard.tsx — not opened by this ticket', () => {

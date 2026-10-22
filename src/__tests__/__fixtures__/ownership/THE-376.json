@@ -1,6 +1,6 @@
 {
   "ticket": "THE-376",
-  "note": "Desktop Settings popup (sidebar-13). There is no assigned ticket number; THE-376 is the next free id after THE-375. On lg, Settings opens a Dialog with a left Sidebar nav. Mobile keeps the Settings page. SMS, Integrations and Donations rows are hidden behind SETTINGS_LEGACY_SECTIONS_ENABLED. APPENDED, NEVER SUBSTITUTED. No firestore.rules change. ROUND 4 (branding gate, Billing and Branding into Settings, shell nav fixes, scheduler on Ministry): entries appended, none replaced.",
+  "note": "Desktop Settings popup (sidebar-13). There is no assigned ticket number; THE-376 is the next free id after THE-375. On lg, Settings opens a Dialog with a left Sidebar nav. Mobile keeps the Settings page. SMS, Integrations and Donations rows are hidden behind SETTINGS_LEGACY_SECTIONS_ENABLED. APPENDED, NEVER SUBSTITUTED. No firestore.rules change. ROUND 4 (branding gate, Billing and Branding into Settings, shell nav fixes, scheduler on Ministry): entries appended, none replaced. ROUND 4b (billing out of the desktop account menu): entries appended, none replaced.",
   "entries": [
     {
       "file": "src/components/AdminDashboard.tsx",
@@ -56,6 +56,16 @@
       "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
       "digest": "081b40064d8480143b6eb3474118970a1ba59c179b7a7b45d1de6c30c7f4687f",
       "why": "THE-376 round 4 APPENDS BillingActivity.tsx to RECORDED_ADOPTERS (table, empty, item, alert, badge, button), the invoice history and billing-summary PDF moved into the Plan & billing pane. Nothing above it was removed or rewritten, no primitive was edited and no package was added."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "44dba8fb732054ce3e491cc479dc09fec134a57b2124e944050564e98f138b65",
+      "why": "Settings popup round 4b. The desktop sidebar account menu passes hideBillingRow when the admin can open Settings, so Billing & Payments leaves that menu. Plan & billing inside the popup stays the only desktop route. The phone MyAccountMenu mount is unchanged, and an admin who can bill but cannot open Settings keeps the row. No permission gate, plan gate, nav id, route, price or checkout moved."
+    },
+    {
+      "file": "src/components/MyAccountMenu.tsx",
+      "digest": "5a6ce7517b5ae2cb07f68baca4697289e8d87f2a8b6b0bcce3ea2c6690f8f44e",
+      "why": "Settings popup round 4b. MyAccountMenu gains hideBillingRow, default false. When the desktop sidebar passes true, Billing & Payments is not rendered, including the unknown-window placeholder. Phones and every existing caller leave it false, so Documentation and the other rows stay, and an admin who cannot open Settings still has the billing row. No class, colour, or entitlement on the remaining rows moved."
     }
   ]
 }

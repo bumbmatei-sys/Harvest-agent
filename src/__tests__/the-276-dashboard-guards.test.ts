@@ -436,6 +436,9 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
       `settings popup round 4 - billing and branding open inside the desktop Settings popup (the Billing row, /admin/branding), canBranding on the SettingsDialog mount and canManageBilling on the phone AdminSettings mount. No permission gate, plan gate, nav id or route moved.`],
     ['735d23f8946c67052aa01f186eaaa518d12f3e5319ddeca91e3d21240bf078c0',
       `settings popup round 4 follow-up - a branding-only admin keeps one desktop Branding row, because Settings does not open without manageSettings. A settings admin still has no Branding sidebar row. No permission gate or plan gate moved.`],
+    // APPENDED BY the settings popup round 4b, nothing above removed or rewritten.
+    ['44dba8fb732054ce3e491cc479dc09fec134a57b2124e944050564e98f138b65',
+      `settings popup round 4b - the desktop account menu drops Billing & Payments when the admin can open Settings. Plan & billing inside the popup stays the only desktop route. The phone menu is unchanged, and an admin who can bill but cannot open Settings keeps the row. No permission gate, plan gate, nav id, route, price or checkout moved.`],
   ],
 };
 
