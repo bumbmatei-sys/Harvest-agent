@@ -3,6 +3,9 @@ import { act, type CSSProperties } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { Church, FileText, GraduationCap, Home } from 'lucide-react';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
 
 const analyticsGrant = vi.hoisted(() => ({ value: false }));
 
@@ -35,14 +38,28 @@ const tabs = new Map<string, ShellTabRef>([
 ]);
 
 describe('shell nav mapping', () => {
-  it('puts people, care, events, check-in and giving on the people side', () => {
-    const ids = groupsForSide('people', tabs).flatMap((group) => group.items.map((item) => item.id));
-    expect(ids).toContain('crm');
-    expect(ids).toContain('events');
-    expect(ids).toContain('checkin');
-    expect(ids).not.toContain('courses');
-    expect(ids).not.toContain('newsletter');
-    expect(ids).not.toContain('sms');
+  it('puts people, care and giving on the people side, and forms, events and check-in on the public side', () => {
+    const people = groupsForSide('people', tabs).flatMap((group) => group.items.map((item) => item.id));
+    expect(people).toContain('crm');
+    expect(people).not.toContain('events');
+    expect(people).not.toContain('checkin');
+    expect(people).not.toContain('forms');
+    expect(people).not.toContain('courses');
+    expect(people).not.toContain('newsletter');
+    expect(people).not.toContain('sms');
+  });
+
+  it('lists Forms, Events and Check-in in one Public group, and Branding in no sidebar group', () => {
+    const withForms = new Map(tabs);
+    withForms.set('forms', { id: 'forms', label: 'Forms', icon: FileText });
+    withForms.set('branding', { id: 'branding', label: 'Branding', icon: FileText });
+    const publicGroups = groupsForSide('public', withForms);
+    const engage = publicGroups.find((group) => group.items.some((item) => item.id === 'events'));
+    expect(engage, 'Events is not in the Public side').toBeTruthy();
+    expect(engage!.items.map((item) => item.id)).toEqual(['forms', 'events', 'checkin']);
+    for (const id of ['forms', 'events', 'checkin']) expect(sideForTab(id)).toBe('public');
+    const everywhere = groupsForAllSides(withForms).flatMap((group) => group.items.map((item) => item.id));
+    expect(everywhere, 'Branding is back in the sidebar; it lives in Settings > Campus & branding').not.toContain('branding');
   });
 
   it('keeps live public tabs and hides ministry page and publish until those screens exist', () => {
@@ -70,9 +87,9 @@ describe('shell nav mapping', () => {
     expect(sectionForTab('community')).toBe('Care');
     expect(sectionForTab('services')).toBe('Care');
     expect(sectionForTab('docs')).toBe('Care');
-    expect(sectionForTab('forms')).toBe('Care');
-    expect(sectionForTab('events')).toBe('Events');
-    expect(sectionForTab('checkin')).toBe('Check-in');
+    expect(sectionForTab('forms')).toBe('Engage');
+    expect(sectionForTab('events')).toBe('Engage');
+    expect(sectionForTab('checkin')).toBe('Engage');
     expect(sectionForTab('fundraising')).toBe('Giving');
     expect(sectionForTab('donations')).toBe('Giving');
     expect(sectionForTab('accounting')).toBe('Giving');
@@ -86,7 +103,7 @@ describe('shell nav mapping', () => {
     const ids = [
       'crm', 'signups', 'churches', 'community', 'services', 'docs', 'forms',
       'events', 'checkin', 'fundraising', 'donations', 'accounting', 'library',
-      'tenants', 'inbox', 'affiliate', 'blog', 'branding', 'ai', 'social',
+      'tenants', 'inbox', 'affiliate', 'blog', 'ai', 'social',
       'livestream', 'sms', 'newsletter', 'courses',
     ];
     const all = new Map<string, ShellTabRef>(ids.map((id) => [id, { id, label: id, icon: Church }]));
@@ -335,6 +352,16 @@ describe('search pill in the content bar', () => {
     });
   }
 
+  it('has one collapse button, in the sidebar footer, and none in the content bar', async () => {
+    await mountBar();
+    const bar = container.querySelector('[data-admin-content-bar]')!;
+    expect(bar.querySelector('[data-sidebar="trigger"]'), 'the content bar has a second collapse button').toBeNull();
+    expect(bar.querySelector('[data-slot="separator"]'), 'the content bar kept the separator that sat beside it').toBeNull();
+    const all = container.querySelectorAll('[data-sidebar="trigger"]');
+    expect(all, 'there should be exactly one collapse button on the page').toHaveLength(1);
+    expect(all[0].closest('[data-sidebar="footer"]'), 'the one collapse button is not in the sidebar footer').toBeTruthy();
+  });
+
   it('sits immediately left of Open member app, and the sidebar has no search row', async () => {
     await mountBar();
     const bar = container.querySelector('[data-admin-content-bar]');
@@ -559,5 +586,50 @@ describe('home analytics gate', () => {
     expect(container.textContent).toContain('Giving');
     expect(container.textContent).toContain('Engagement');
     expect(container.textContent).toContain('Content');
+  });
+});
+
+describe('account menu rows are not resized by the sidebar footer', () => {
+  const sidebarSource = stripComments(
+    readFileSync(join(process.cwd(), 'src/components/admin-shell/AdminDesktopSidebar.tsx'), 'utf8'),
+  );
+
+  // `[&_[data-nav-rail-account]_button]:size-8` matched every <button> inside the
+  // account menu, squeezing each row to 32px (wrapped labels, clipped icons).
+  it('sizes only the avatar trigger, a direct child of the account wrapper', () => {
+    const sizing = sidebarSource.match(/\[&_\[data-nav-rail-account\]([^\]]*)\]:size-8/);
+    expect(sizing, 'the account trigger is not sized by the sidebar footer any more').toBeTruthy();
+    expect(sizing![1], 'the size rule must use the child combinator').toBe('>button');
+    expect(sidebarSource).not.toMatch(/data-nav-rail-account\]_button/);
+  });
+
+  it('leaves every menu row at its own height and one line', async () => {
+    const { default: MyAccountMenu } = await import('../MyAccountMenu');
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(
+        <MyAccountMenu
+          variant="rail"
+          billingAccess="yes"
+          onOpenProfile={() => {}}
+          onOpenSettings={() => {}}
+          onOpenBilling={() => {}}
+          onGoToUserApp={() => {}}
+          onLogout={() => {}}
+        />,
+      );
+    });
+    await act(async () => { container.querySelector<HTMLButtonElement>('button[aria-label="My account"]')!.click(); });
+    const rows = [...container.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+    expect(rows.length).toBeGreaterThanOrEqual(4);
+    for (const row of rows) {
+      expect(row.className, `${row.textContent} is sized like the avatar`).not.toMatch(/\bsize-\d/);
+      expect(row.querySelectorAll('svg'), `${row.textContent} is not icon + label`).toHaveLength(1);
+      expect(row.querySelector('span')?.className ?? '', `${row.textContent} could wrap`).not.toMatch(/whitespace-normal/);
+    }
+    await act(async () => { root.unmount(); });
+    container.remove();
   });
 });

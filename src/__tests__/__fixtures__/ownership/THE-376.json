@@ -1,6 +1,6 @@
 {
   "ticket": "THE-376",
-  "note": "Desktop Settings popup (sidebar-13). There is no assigned ticket number; THE-376 is the next free id after THE-375. On lg, Settings opens a Dialog with a left Sidebar nav. Mobile keeps the Settings page. SMS, Integrations and Donations rows are hidden behind SETTINGS_LEGACY_SECTIONS_ENABLED. APPENDED, NEVER SUBSTITUTED. No firestore.rules change.",
+  "note": "Desktop Settings popup (sidebar-13). There is no assigned ticket number; THE-376 is the next free id after THE-375. On lg, Settings opens a Dialog with a left Sidebar nav. Mobile keeps the Settings page. SMS, Integrations and Donations rows are hidden behind SETTINGS_LEGACY_SECTIONS_ENABLED. APPENDED, NEVER SUBSTITUTED. No firestore.rules change. ROUND 4 (branding gate, Billing and Branding into Settings, shell nav fixes, scheduler on Ministry): entries appended, none replaced.",
   "entries": [
     {
       "file": "src/components/AdminDashboard.tsx",
@@ -26,6 +26,31 @@
       "file": "src/components/AdminDashboard.tsx",
       "digest": "91bb69aeb07f1e7ab3be1a7f5f4f5961fe9463d55d6e1228a16def5753c9a33e",
       "why": "Settings popup QA round 2. ONE prop on the existing <SettingsDialog /> mount: canUpgrade={billingAccess === 'yes'}, the same expression the account menu's Billing row already reads, so the plan-upgrade cards in Plan & billing are offered only to a billing-entitled admin. The Stripe checkout and portal routes are owner-only server-side; this only stops the UI offering a button that would be refused. No nav array, group, permission gate, tab id, route or other screen mount moved."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "0e7c5da62a647d60a773ac3c8da6beb7ca1a7138787fbcf646e5c5dddb23d92a",
+      "why": "Settings popup round 4. Billing & Payments from the account menu opens Settings > Plan & billing on desktop (the full-screen overlay stays for phones and for an admin who cannot open Settings); /admin/branding on desktop opens Settings > Campus & branding for an entitled admin; the SettingsDialog mount gains canBranding (the same expression the Branding tab uses) and the phone AdminSettings mount gains canManageBilling (billingAccess === 'yes'). No permission gate, plan gate, tab id, route or other screen mount moved, and no nav array changed. The desktop sidebar's Social entry still reads features.socialScheduler; the Ministry plan cell now makes that true."
+    },
+    {
+      "file": "src/components/__tests__/AdminSettings.free-tier-sections.test.tsx",
+      "digest": "a5347c1d52631a52d511d512e01b46fd75ed6c8115c6283d9e583181d1ed88a0",
+      "why": "AdminSettings gained a required canManageBilling prop (Manage and Cancel Subscription are owner actions); the mount passes it, as it already passed isPlanOwner. Nothing asserted was loosened."
+    },
+    {
+      "file": "src/components/__tests__/AdminSettings.integrations-gating.test.tsx",
+      "digest": "f6419c4f2424afda4e7582a2c09b478a5a2e4ec809237575a238203f72eb12a1",
+      "why": "AdminSettings gained a required canManageBilling prop; the mount passes it, as it already passed isPlanOwner. Nothing asserted was loosened."
+    },
+    {
+      "file": "src/utils/__tests__/the-248-discount-alignment.test.ts",
+      "digest": "105d11b325e6645a33757a8984f0b967c65a0ba9d50fe81c40ebe21cda1d82fd",
+      "why": "Repinned the feature-matrix digest for one cell: socialScheduler false -> true on the Ministry plan, which Matei approved on 2026-10-21 (\"Include the scheduler in the Ministry plan\"). The previous digest is recorded in the test beside the new one. No price, checkout or plan id moved."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "081b40064d8480143b6eb3474118970a1ba59c179b7a7b45d1de6c30c7f4687f",
+      "why": "THE-376 round 4 APPENDS BillingActivity.tsx to RECORDED_ADOPTERS (table, empty, item, alert, badge, button), the invoice history and billing-summary PDF moved into the Plan & billing pane. Nothing above it was removed or rewritten, no primitive was edited and no package was added."
     }
   ]
 }

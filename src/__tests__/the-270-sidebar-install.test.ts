@@ -757,12 +757,12 @@ describe('sidebar importers are the phase-1 shell and nothing else', () => {
     });
     // The primitive stays unedited. The phase-1 adoption is the dashboard
     // (lg only), the sidebar block, the dev-only before/after preview, and
-    // the shell test. The social scheduler screenshot harness mounts the same
+    // the shell test. The content bar no longer imports it: the collapse
+    // button lives in the sidebar footer only. The social scheduler screenshot harness mounts the same
     // sidebar and is not a product screen.
     expect(importers.map((f) => rel(f)).sort()).toEqual([
       'src/app/dev/social-scheduler/preview.tsx',
       'src/components/AdminDashboard.tsx',
-      'src/components/admin-shell/AdminContentBar.tsx',
       'src/components/admin-shell/AdminDesktopSidebar.tsx',
       'src/components/admin-shell/AdminShellPreview.tsx',
       'src/components/admin-shell/admin-shell.test.tsx',

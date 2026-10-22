@@ -104,6 +104,13 @@ interface AdminSettingsProps {
    *  Owner by `tenants/{id}.ownerId` only — NOT the wider owner-or-roster gate
    *  that gates Billing. See AdminDashboard's `isPlanOwner` / `billingAccess`. */
   isPlanOwner?: boolean;
+  /**
+   * Manage and Cancel Subscription open the billing portal, and `/api/stripe/portal`
+   * is owner-only on the server. Required, so a caller cannot forget the gate:
+   * AdminDashboard passes `billingAccess === 'yes'`, the same answer the desktop
+   * popup's `canUpgrade` uses.
+   */
+  canManageBilling: boolean;
   /** Opens the bottom-bar / More-drawer customizer (lives in AdminDashboard). */
   onCustomizeNav?: () => void;
   /**
@@ -134,7 +141,7 @@ export function summarizePlanFeatures(features: ReturnType<typeof getPlanFeature
 
 const LEGACY_SECTION_IDS: ReadonlyArray<string> = ['payments', 'sms', 'integrations'];
 
-const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tenantId, email, isPlanOwner, onCustomizeNav, onOpenDonations }) => {
+const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tenantId, email, isPlanOwner, canManageBilling, onCustomizeNav, onOpenDonations }) => {
   const [stripeStatus, setStripeStatus] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   // Platform-context super admins (apex) see every settings section. On a tenant
@@ -151,6 +158,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
   // rule `isPricedPlan` is written under. An UNRECOGNISED tier is not treated
   // as free — see `isUnpricedTier` — so a legacy record keeps its controls.
   const hasSubscription = currentPlan !== undefined && !isUnpricedTier(currentPlan);
+  // Manage and Cancel are owner actions; a non-owner admin sees neither.
+  const showBillingActions = hasSubscription && canManageBilling;
   const currentPlanData = currentPlan ? PLANS_DISPLAY.find(p => p.id === currentPlan) : null;
   const currentFeatures = currentPlan ? getPlanFeatures(currentPlan) : null;
   // Compact, comma/dot-separated plan summary, e.g. "Unlimited courses · Blog · AI Chat".
@@ -495,7 +504,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
       // 🔴 Hidden for a tier with no subscription as well as for a super admin:
       // there is nothing to cancel, and the button's only outcome is the
       // portal route's "please subscribe first".
-      hidden: !hasSubscription,
+      hidden: !showBillingActions,
       danger: true,
     },
   ];
@@ -619,7 +628,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, tena
               route to the plan cards, and the two surfaces that DO (Billing and
               the upgrade page) each offer one. Inventing a third navigation
               here would be a new flow, not a fix. */}
-          {hasSubscription && (
+          {showBillingActions && (
             <ItemActions>
               {/* 🔴 THE-316 RAISED THIS TO THE TOUCH FLOOR. It was the one
                   action on the screen that did not clear 44px on a phone —

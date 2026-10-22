@@ -715,6 +715,8 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ byte-identical', ()
     '9f781d73a826a925b99e3f1ddb0b6fc57f6f45fcc96794c16028f2d5387ee5c3',
     // APPENDED BY the settings popup QA round 2. One prop on the SettingsDialog mount (canUpgrade). No permission gate moved.
     '91bb69aeb07f1e7ab3be1a7f5f4f5961fe9463d55d6e1228a16def5753c9a33e',
+    // APPENDED BY the settings popup round 4. Billing and Branding open inside the desktop Settings popup; two props on the dialog and phone Settings mounts. No permission gate moved.
+    '0e7c5da62a647d60a773ac3c8da6beb7ca1a7138787fbcf646e5c5dddb23d92a',
   ];
 
   it('🔴 AdminDashboard.tsx — not opened by this ticket', () => {

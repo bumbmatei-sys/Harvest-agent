@@ -116,7 +116,7 @@ describe('desktop Settings popup (sidebar-13)', () => {
   });
 
   it('switches the right-hand pane when a nav row is clicked', async () => {
-    await mount();
+    await mount({ canBranding: true });
     expect(document.querySelector('[data-settings-section="profile"]')).toBeTruthy();
     const campus = document.querySelector<HTMLElement>('[data-settings-nav="campus"]');
     expect(campus).toBeTruthy();
@@ -298,6 +298,31 @@ describe('desktop Settings popup (sidebar-13)', () => {
       await mount({ canUpgrade: true, initialSection: 'danger' });
       expect(navLabels(document.body)).toContain('Danger zone');
       expect(buttonByText(document.body, 'Cancel Subscription')).toBeTruthy();
+    });
+  });
+
+  describe('Campus & branding is a branding-entitlement action', () => {
+    // The branding editor writes the tenant-wide logo, icon and colour. The
+    // admin Branding tab needs the plan feature AND manageBranding or full
+    // access; firestore.rules has no plan check, so this gate is the only one.
+    it('gives an admin without custom branding no editor, but still the Appearance row', async () => {
+      await mount({ initialSection: 'campus', canBranding: false });
+      expect(document.querySelector('[data-stub="branding"]'), 'a non-entitled admin was shown the branding editor').toBeNull();
+      expect(document.body.textContent).not.toMatch(/Campus name/);
+      expect(document.querySelector('[data-settings-section="campus"]')).toBeTruthy();
+      expect(document.querySelector('[role="radiogroup"][aria-label="Colour theme"]'), 'Appearance disappeared').toBeTruthy();
+      expect(document.body.textContent).toMatch(/Colour theme/);
+    });
+
+    it('fails closed when the caller says nothing', async () => {
+      await mount({ initialSection: 'campus' });
+      expect(document.querySelector('[data-stub="branding"]')).toBeNull();
+    });
+
+    it('still gives an entitled admin the editor, with Appearance beside it', async () => {
+      await mount({ initialSection: 'campus', canBranding: true });
+      expect(document.querySelector('[data-stub="branding"]')).toBeTruthy();
+      expect(document.querySelector('[role="radiogroup"][aria-label="Colour theme"]')).toBeTruthy();
     });
   });
 

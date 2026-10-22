@@ -381,6 +381,12 @@ describe('5 · the money path is byte-identical', () => {
          per row and draws Manage Subscription as the shadcn Button. The seven hunks are listed in
          __fixtures__/plan-copy-exemption.ts and pr-540.plan-copy-exemption.test.ts proves it. */
       ['eb4cc06ac22f5984341089499c86010cf23df6d2462b390ff337a5c450288377', 'PR #540 r3 — plan-card campus copy + compact prop (Matei approved 2026-10-21: display-copy + compact prop only)'],
+      /* 🔴 APPENDED BY PR #540 round 4 (Matei approved 2026-10-21: "Include the scheduler in the
+         Ministry plan"), nothing above removed. Still NO client-side plan write, price, plan id,
+         checkout or Dodo line: one plan card line, 'Social Scheduler', that the card derives from the
+         socialScheduler cell, so it prints on Ministry only. The hunk is recorded in
+         __fixtures__/plan-copy-exemption.ts and pr-540.plan-copy-exemption.test.ts proves it. */
+      ['2301202d994407ae7a00e0b41e92e9245bae3590db29fe7ca292c7adb78e115c', 'PR #540 r4 — Social Scheduler card line, derived from the Ministry plan cell (Matei approved 2026-10-21)'],
     ],
   };
 
@@ -831,6 +837,12 @@ describe('6 · no plan cap or price changed', () => {
       // compact prop only). One PLAN_BLURBS string ("churches" -> "campuses") and a one-line TODO
       // for the marketing site. No price, no cap, no cell, no code path.
       ['pr-540-r3-plan-copy', 'b5396ad175399ba2a736bb9a23df4c2399802337c18684737c44dab7009e4c3f'],
+      // APPENDED, never substituted (PR #540 round 4, Matei approved 2026-10-21: "Include the
+      // scheduler in the Ministry plan"). One feature cell, socialScheduler false -> true on the
+      // Ministry plan, with its two comment lines. No price, no cap, no other cell, no plan id, no
+      // code path, and no client write of `plan`. The add-on path (`||` in getEffectiveFeatures) is
+      // untouched. The hunks are recorded in __fixtures__/plan-copy-exemption.ts.
+      ['pr-540-r4-scheduler-ministry', '8ca381290333e0d02908a6289e15e3b6f6efe4e68a866a40f835f038891ad7d6'],
     ];
     expect(sha256(readFileSync(path.join(REPO, 'src/utils/plan-features.ts')))).toBe(
       PLAN_FEATURES_PINS[PLAN_FEATURES_PINS.length - 1][1],

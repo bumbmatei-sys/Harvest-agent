@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Crown, DollarSign, Check, AlertTriangle, X } from 'lucide-react';
 import { TenantPlan } from '../../types/tenant.types';
 import { getPlanFeatures, PLAN_DISPLAY_NAMES, PLAN_ORDER, formatPlanPrice, isUnpricedTier } from '../../utils/plan-features';
+import BillingActivity from './BillingActivity';
 import PlanUpgradeSection from './PlanUpgradeSection';
 import { summarizePlanFeatures } from '../AdminSettings';
 import { Alert, AlertTitle, AlertDescription, AlertAction } from '@/components/ui/alert';
@@ -190,6 +191,8 @@ export default function PlanBillingSection({
           Only the plan owner can change the plan.
         </p>
       )}
+
+      {hasSubscription && canUpgrade && <BillingActivity tenantId={tenantId} />}
     </div>
   );
 }

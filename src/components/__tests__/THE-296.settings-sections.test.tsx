@@ -9,7 +9,7 @@ import { AUTOSAVE_ERROR_TOAST_ID, AUTOSAVE_SAVED_TOAST_ID, AUTOSAVE_EXCLUDED } f
 import UNTOUCHED from './__fixtures__/the-286-untouched.json';
 import { foldedPaymentSectionDigest } from './__fixtures__/the-362-payment-section-fold';
 import { freezeFailure } from './__fixtures__/settings-freeze-register';
-import { PLAN_UPGRADE_SECTION } from '../../__tests__/__fixtures__/plan-copy-exemption';
+import { PLAN_UPGRADE_SECTION, acceptedDigests, currentDigest } from '../../__tests__/__fixtures__/plan-copy-exemption';
 import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
 import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
 
@@ -405,7 +405,7 @@ describe('4 · money-path fields do NOT autosave', () => {
     { file: PLAN_UPGRADE_SECTION.file, ticket: 'PR-540' },
   ];
   const SCOPED_DIGESTS: Readonly<Record<string, string>> = {
-    [PLAN_UPGRADE_SECTION.file]: PLAN_UPGRADE_SECTION.exemptDigest,
+    [PLAN_UPGRADE_SECTION.file]: currentDigest(PLAN_UPGRADE_SECTION),
   };
 
   it('the digest exemption list is exactly the edits that justify it', async () => {
@@ -430,8 +430,8 @@ describe('4 · money-path fields do NOT autosave', () => {
                         'src/components/settings/BillingTermToggle.tsx']) {
       const now = createHash('sha256').update(readFileSync(path.join(ROOT, file))).digest('hex');
       if (file in SCOPED_DIGESTS) {
-        expect(now, `${file} is at a digest nobody recorded — the PR-540 exemption covers only its recorded lines`)
-          .toBe(SCOPED_DIGESTS[file]);
+        expect(acceptedDigests(PLAN_UPGRADE_SECTION), `${file} is at a digest nobody recorded — the PR-540 exemption covers only its recorded lines`)
+          .toContain(now);
         continue;
       }
       if (exempt.includes(file)) continue;
@@ -920,9 +920,11 @@ describe('13 · no colour hardcoded, no emoji; both palettes resolve — Classic
     }
     // And settings/ gained no component file. THE-376 APPENDED the six files of
     // the desktop Settings popup (marked), nothing else was added or removed.
+    // APPENDED BY THE-376 round 4: BillingActivity.tsx, the invoice history and
+    // billing-summary PDF that moved into the Plan & billing pane.
     const files = readdirSync(path.join(ROOT, 'src/components/settings')).filter((f) => /\.tsx?$/.test(f));
     expect(files.sort(), 'settings/ gained or lost a file').toEqual([
-      'AddOnsSection.tsx', 'AppearanceRow.tsx', 'BillingTermToggle.tsx', 'BrandingSection.tsx', 'CancelPlanBlock.tsx',
+      'AddOnsSection.tsx', 'AppearanceRow.tsx', 'BillingActivity.tsx', 'BillingTermToggle.tsx', 'BrandingSection.tsx', 'CancelPlanBlock.tsx',
       'ChurchDataExportPanel.tsx', 'DomainSection.tsx',
       'GivingStatementsSection.tsx', 'IntegrationsSection.tsx', 'OnboardingSection.tsx',
       'PaymentSection.tsx', 'PlanBillingSection.tsx', 'PlanUpgradeSection.tsx', 'ProfileSection.tsx', 'SectionHeading.tsx',

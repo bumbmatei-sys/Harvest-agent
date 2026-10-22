@@ -791,8 +791,9 @@ describe('the out-of-scope files are untouched', () => {
     ],
     breadcrumb: [
       'src/components/docs/DocsBreadcrumb.tsx',
-      // Eden shell pass. The desktop content bar is the sidebar-07 header:
-      // SidebarTrigger, Separator, Breadcrumb. It is the only new adopter.
+      // Eden shell pass. The desktop content bar is a Breadcrumb with the screen
+      // actions on the right. Its SidebarTrigger and Separator were removed: the
+      // collapse button lives in the sidebar footer only. It is the only new adopter.
       'src/components/admin-shell/AdminContentBar.tsx',
       // THE-376. The desktop Settings popup is the sidebar-13 block, whose
       // header is a breadcrumb: Settings, then the open section.

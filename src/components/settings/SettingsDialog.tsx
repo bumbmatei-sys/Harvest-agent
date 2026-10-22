@@ -70,6 +70,8 @@ export interface SettingsDialogProps {
   onManageSubscription?: () => void;
   /** Plan cards are an owner action (the checkout and portal routes are owner-only). */
   canUpgrade?: boolean;
+  /** Same answer as the admin Branding tab: plan allows branding AND (full access or manageBranding). */
+  canBranding?: boolean;
 }
 
 function PaneSection({
@@ -107,6 +109,7 @@ export function SettingsDialog({
   initialSection,
   onManageSubscription,
   canUpgrade = false,
+  canBranding = false,
 }: SettingsDialogProps) {
   const [section, setSection] = React.useState<SettingsNavId>(
     initialSection ?? 'profile',
@@ -241,7 +244,7 @@ export function SettingsDialog({
               {open && active.id === 'profile' && <ProfileSection />}
               {open && active.id === 'campus' && (
                 <div className="space-y-6" data-settings-section="campus">
-                  <BrandingSection />
+                  {canBranding && <BrandingSection />}
                   <AppearanceRow />
                 </div>
               )}

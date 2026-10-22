@@ -263,7 +263,6 @@ function expectedNav(plan: TenantPlan): string[] {
     // capped at one now, so the label is always plural and this derivation is
     // gone rather than left computing a branch that cannot be taken.
     .map((t) => t.label);
-  if (hasBrandingAccess(f)) labels.push('Branding');
   return labels.sort();
 }
 
@@ -413,18 +412,14 @@ describe('1 — a free tenant sees all eighteen nav items', () => {
       .toEqual(['Courses', 'Signups']);
   });
 
-  it('Branding is NOT one of the sixteen, on free or on any tier below Ministry', async () => {
-    // ⚠️ `canBranding` gates the nav entry AND the render guard together, and it
-    // predates THE-202 — it was never in the family of clauses 49b2a0c removed,
-    // so THE-220 has nothing to restore there. Giving it the free clause would
-    // make the free nav SIXTEEN, contradicting the founder's own count, and
-    // would put a tab in the nav whose render guard still refuses it.
-    for (const plan of ['free', 'plus', 'pro'] as const) {
-      expect(hasBrandingAccess(getPlanFeatures(plan))).toBe(false);
-      expect((await navFor(plan)).nav, `${plan} gained a Branding tab`).not.toContain('Branding');
+  it('Branding is in no sidebar on any tier: it lives in Settings > Campus & branding', async () => {
+    // Branding left the sidebar (Public > Page) for the Settings popup. Whether an
+    // admin may edit it is `canBranding`, asserted on the popup in
+    // settings-popup.test.tsx. This pins that no tier gets the sidebar entry back.
+    for (const plan of PLAN_ORDER) {
+      expect((await navFor(plan)).nav, `${plan} has a Branding sidebar entry`).not.toContain('Branding');
     }
     expect(hasBrandingAccess(getPlanFeatures('max'))).toBe(true);
-    expect((await navFor('max')).nav).toContain('Branding');
   });
 });
 
@@ -493,10 +488,10 @@ describe('2 — an Individual tenant sees exactly its six', () => {
       await mount({}, '');
       const groups = [...container.querySelectorAll('[data-nav-group]')].map((el) => el.getAttribute('data-nav-group'));
       // The desktop rail's REACH group is gone. Check-In now lives in the
-      // check-in group of the phase-1 sidebar, advertised on the same attribute.
-      expect(groups, `${plan} lost Check-In's group`).toContain('check-in');
-      const checkin = container.querySelector('[data-nav-group="check-in"]');
-      expect(checkin?.getAttribute('data-nav-group-labels') ?? '', `${plan} check-in has no Check-In`).toContain('Check-In');
+      // Engage group (Public side) of the phase-1 sidebar, advertised on the same attribute.
+      expect(groups, `${plan} lost Check-In's group`).toContain('engage');
+      const checkin = container.querySelector('[data-nav-group="engage"]');
+      expect(checkin?.getAttribute('data-nav-group-labels') ?? '', `${plan} engage group has no Check-In`).toContain('Check-In');
       await unmount();
     }
   });
@@ -508,7 +503,7 @@ describe('3 — a Small Team tenant sees exactly its expected set', () => {
    * derivation has something to be checked against:
    * Dashboard · Church · Courses · Blog · Newsletter ·
    * Fundraising · Notes · CRM · Signups · Check-In · Livestream · SMS.
-   * Absent: Events, Accounting, Forms, Community, Branding.
+   * Absent: Events, Accounting, Forms, Community.
    */
   // ⚠️ 'AI Knowledge' WAS IN THIS LIST. THE-253 took `aiKnowledge` off every
   // tier — the Knowledge Base is the RAG chat's other half and is sold with it
@@ -527,7 +522,7 @@ describe('3 — a Small Team tenant sees exactly its expected set', () => {
     const { nav } = await navFor('pro');
     expect(nav).toEqual([...EXPECTED].sort());
     expect(nav).toEqual(expectedNav('pro'));
-    for (const label of ['Events', 'Accounting', 'Forms', 'Community', 'Branding']) {
+    for (const label of ['Events', 'Accounting', 'Forms', 'Community']) {
       expect(nav, `Small Team does not buy "${label}"`).not.toContain(label);
     }
   });
@@ -584,7 +579,8 @@ describe('3b — an entitled admin is not refused at the surface', () => {
 });
 
 describe('4 — a Ministry tenant sees exactly its expected set', () => {
-  /** Ministry (max) buys everything a PLAN can buy: the fifteen plus Branding.
+  /** Ministry (max) buys everything a PLAN can buy: the fifteen. Branding is no
+   *  longer a sidebar entry; it is in Settings.
    *  ⚠️ Was sixteen. 'AI Knowledge' is no longer among them — THE-253 made it
    *  part of the AI Assistant add-on, so even Ministry does not get it by
    *  paying for the tier. It returns for a Ministry tenant that holds the
@@ -598,11 +594,11 @@ describe('4 — a Ministry tenant sees exactly its expected set', () => {
       }
       expect(nav, `Ministry lost "${tab.label}"`).toContain(tab.label);
     }
-    expect(nav).toContain('Branding');
-    // ⚠️ SEVENTEEN PLUS BRANDING SINCE THE-326 — Services joined the set on the
+    expect(nav).not.toContain('Branding');
+    // ⚠️ SEVENTEEN SINCE THE-326 — Services joined the set on the
     // `eventRegistration` cell Ministry already holds, so the tier gained the
     // row it was always entitled to and lost nothing.
-    expect(nav.length, 'Ministry shows the seventeen plus Branding').toBe(18);
+    expect(nav.length, 'Ministry shows the seventeen').toBe(17);
     expect(nav).toEqual(expectedNav('max'));
   });
 
@@ -611,7 +607,7 @@ describe('4 — a Ministry tenant sees exactly its expected set', () => {
     // future cell is set on a cheaper tier but not a dearer one.
     const navs = new Map<TenantPlan, string[]>();
     for (const plan of PLAN_ORDER) navs.set(plan, (await navFor(plan)).nav);
-    const gated = (l: string[]) => l.filter((x) => x !== 'Campuses' && x !== 'Branding');
+    const gated = (l: string[]) => l.filter((x) => x !== 'Campuses');
     for (const [smaller, larger] of [['plus', 'pro'], ['pro', 'max'], ['max', 'free']] as const) {
       for (const label of gated(navs.get(smaller)!)) {
         expect(gated(navs.get(larger)!), `${larger} lost "${label}" that ${smaller} has`).toContain(label);
@@ -631,7 +627,7 @@ describe('5 — a super admin still sees everything through platformOverride', (
     for (const tab of TABS) {
       expect(nav, `platformOverride lost "${tab.label}"`).toContain(tab.label);
     }
-    expect(nav).toContain('Branding');
+    expect(nav).not.toContain('Branding');
     // A super-admin-only surface, which no tenant tier has at any price.
     // (`Library` is in `allTabs` but in no desktop nav GROUP, so it renders only
     // in the mobile More sheet — out of scope for a nav-label scrape.)

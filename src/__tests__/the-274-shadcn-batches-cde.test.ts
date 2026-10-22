@@ -1437,6 +1437,19 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       + 'No new primitive was installed.',
   },
   {
+    file: 'src/components/settings/BillingActivity.tsx',
+    ticket: 'THE-376',
+    why:
+      'APPENDED, never substituted. THE-376 round 4 moves invoice history and the billing-summary PDF '
+      + 'into the Plan & billing pane, so nothing is lost when the account menu stops opening the '
+      + 'full-screen Billing & Payments page on desktop. It takes table for the invoice list, empty '
+      + 'for "no payments yet" and the processor-held history, item for the next-billing row, alert '
+      + 'for a failed load, badge for the status and button for the PDF link and Generate statement. '
+      + 'card is rejected: the pane draws its own rows and the table sits in a bordered block. '
+      + 'data-table is rejected: it is eight rows of a read-only list. No new primitive was installed '
+      + 'and none was edited.',
+  },
+  {
     file: 'src/components/email/SendStep.tsx',
     ticket: '#538',
     why:

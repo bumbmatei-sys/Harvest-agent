@@ -681,6 +681,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // tab (canBranding), so a branding-only admin reaches Branding, not Settings.
   const canSettings = hasFullAccess || !!perms.manageSettings;
 
+  // The desktop Settings popup owns Plan & billing and Campus & branding. On a
+  // phone (no popup) the Billing & Payments overlay and the Branding tab remain.
+  const settingsPopup = lgUp && canSettings;
+  const openBilling = useCallback(() => {
+    if (settingsPopup) navigate('/admin/settings?section=billing');
+    else setShowBilling(true);
+  }, [settingsPopup, navigate]);
+  const brandingInSettings = settingsPopup && canBranding;
+  useEffect(() => {
+    if (brandingInSettings && activeTab === 'branding') {
+      navigate('/admin/settings?section=campus', { replace: true });
+    }
+  }, [brandingInSettings, activeTab, navigate]);
+
   /**
    * Donations tab entitlement — Stripe Connect and the church's own payment
    * links (THE-246). Like `canBranding` above, this feeds BOTH the nav entry
@@ -720,7 +734,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     onOpenSettings: canSettings ? () => go('settings') : undefined,
     // Billing item opens only on a settled 'yes' (MyAccountMenu guards too, and
     // renders the 'unknown' window as a busy row that has nothing to open).
-    onOpenBilling: billingAccess === 'yes' ? () => setShowBilling(true) : undefined,
+    onOpenBilling: billingAccess === 'yes' ? openBilling : undefined,
     // Member-app shortcut (same one-shot-intent action the More drawer used). The
     // menu row is mobile-only; desktop keeps its "Open member app" top-bar pill.
     onGoToUserApp: handleViewApp,
@@ -952,7 +966,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     ...(canSettings ? [{ id: 'settings', label: 'Settings', icon: Settings }] : []),
   ].forEach((t) => desktopNavById.set(t.id, t));
   // Social stays in `allTabs` for the mobile drawer. The desktop sidebar shows
-  // the link only when the add-on is held, or the viewer is a super admin.
+  // the link only when the plan includes it (Ministry) or the add-on is held,
+  // or the viewer is a super admin.
   if (!(isSuperAdmin || features?.socialScheduler === true)) desktopNavById.delete('social');
 
   // THE-225 — the emptiness rule, now read from layout/nav-groups.ts instead of
@@ -1259,7 +1274,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           </div>
           {shellPlaceholder ? (
             <ShellPlaceholder id={shellPlaceholder} />
-          ) : activeTab === 'dashboard' || (activeTab === 'settings' && lgUp) ? (
+          ) : activeTab === 'dashboard' || (activeTab === 'settings' && lgUp) || (activeTab === 'branding' && brandingInSettings) ? (
             <div className="p-4 lg:p-0">
               <AdminHome
                 tenantId={tenantId ?? null}
@@ -1288,7 +1303,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             /* THE-191 — the campus cap offers the add-on, so it needs the same
                billing door `MyAccountMenu` gets, gated the same way: undefined
                unless billing access has settled to 'yes'. */
-            <div className="p-4 lg:p-0"><AdminChurches onOpenBilling={billingAccess === 'yes' ? () => setShowBilling(true) : undefined} /></div>
+            <div className="p-4 lg:p-0"><AdminChurches onOpenBilling={billingAccess === 'yes' ? openBilling : undefined} /></div>
           ) : activeTab === 'courses' ? (
             planAllows(features && features.maxCourses !== 0)
               ? <div className="p-4 lg:p-0"><AdminCourses /></div>
@@ -1454,6 +1469,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               tenantId={tenantId ?? undefined}
               email={auth.currentUser?.email ?? undefined}
               isPlanOwner={isPlanOwner}
+              canManageBilling={billingAccess === 'yes'}
               onCustomizeNav={() => setShowNavCustomizer(true)}
               /* THE-246 — the Payments row is now a pointer at the Donations
                  section. Required rather than optional, so the link and the
@@ -1599,6 +1615,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           email={auth.currentUser?.email ?? undefined}
           initialSection={settingsSectionFromLocation()}
           canUpgrade={billingAccess === 'yes'}
+          canBranding={canBranding}
         />
       )}
 

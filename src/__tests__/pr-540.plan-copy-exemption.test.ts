@@ -6,9 +6,12 @@ import {
   PLAN_UPGRADE_SECTION,
   PLAN_FEATURES,
   R3_APPROVAL,
+  R4_APPROVAL,
   acceptedDigests,
+  currentDigest,
   reverseHunks,
   sha256Text,
+  undoRecordedChain,
   type RecordedExemption,
 } from './__fixtures__/plan-copy-exemption';
 import UNTOUCHED from '../components/__tests__/__fixtures__/the-286-untouched.json';
@@ -25,6 +28,10 @@ import UNTOUCHED from '../components/__tests__/__fixtures__/the-286-untouched.js
  *   2. an edit anywhere else (or inside a hunk) leaves both the accepted set and the hunk proof;
  *   3. the hunks spell no price, plan id, checkout, Dodo, entitlement or billing logic;
  *   4. every digest that was pinned before is still present in the guards.
+ *
+ * Round 4 is recorded the same way, as a successor on top of round 3: the scheduler on the
+ * Ministry plan (one plan cell, its doc comment, and the plan card line derived from it), approved
+ * by Matei on 2026-10-21. Round 3's digest, hunks and approval are untouched.
  */
 
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -35,23 +42,28 @@ const SUBJECTS: ReadonlyArray<RecordedExemption> = [PLAN_UPGRADE_SECTION, PLAN_F
 describe.each(SUBJECTS.map((s) => [s.file, s] as const))('%s', (_file, subject) => {
   const current = read(subject.file);
 
-  it('is at the recorded digest', () => {
-    expect(sha256Text(current)).toBe(subject.exemptDigest);
+  it('is at the latest recorded digest', () => {
+    expect(sha256Text(current)).toBe(currentDigest(subject));
   });
 
-  it('is the original pinned bytes plus exactly the recorded hunks', () => {
-    const undone = reverseHunks(current, subject.hunks);
-    expect(undone, 'a recorded hunk is missing from the file').not.toBeNull();
+  it('is the original pinned bytes plus exactly the recorded hunks, round by round', () => {
+    const undone = undoRecordedChain(current, subject);
+    expect(undone, 'a recorded hunk is missing from the file, or a digest in the chain does not hold').not.toBeNull();
     expect(sha256Text(undone!)).toBe(subject.originalDigest);
   });
 
-  it('carries the approval note', () => {
+  it('carries the approval notes', () => {
     expect(subject.approval).toBe(R3_APPROVAL);
     expect(subject.approval).toBe('Matei approved 2026-10-21: display-copy + compact prop only');
+    expect(subject.successors, 'round 4 is recorded as a successor').toHaveLength(1);
+    expect(subject.successors![0].approval).toBe(R4_APPROVAL);
+    expect(R4_APPROVAL).toContain('Include the scheduler in the Ministry plan');
   });
 
-  it('does not accept the original and the exempt digest as one value', () => {
-    expect(new Set(acceptedDigests(subject)).size).toBe(2);
+  it('does not accept the original, round 3 and round 4 as one value', () => {
+    expect(acceptedDigests(subject)).toHaveLength(3);
+    expect(new Set(acceptedDigests(subject)).size).toBe(3);
+    expect(acceptedDigests(subject).slice(0, 2)).toEqual([subject.originalDigest, subject.exemptDigest]);
   });
 });
 
@@ -62,9 +74,9 @@ describe('an edit outside the approved lines still fails the pin', () => {
   /** The guard's own predicate: the digest must be one of the recorded values. */
   const passesPin = (subject: RecordedExemption, text: string) =>
     acceptedDigests(subject).includes(sha256Text(text));
-  /** The exemption's own claim: undoing the hunks must give back the original. */
+  /** The exemption's own claim: undoing the recorded rounds must give back the original. */
   const onlyApprovedHunks = (subject: RecordedExemption, text: string) => {
-    const undone = reverseHunks(text, subject.hunks);
+    const undone = undoRecordedChain(text, subject);
     return undone !== null && sha256Text(undone) === subject.originalDigest;
   };
 
@@ -113,6 +125,57 @@ describe('an edit outside the approved lines still fails the pin', () => {
     expect(mutated, 'the mutation did not change the file').not.toBe(features);
     expect(passesPin(PLAN_FEATURES, mutated)).toBe(false);
     expect(onlyApprovedHunks(PLAN_FEATURES, mutated)).toBe(false);
+  });
+});
+
+describe('round 4 is one plan cell, its doc comment and the card line derived from it', () => {
+  const plan = read(PLAN_UPGRADE_SECTION.file);
+  const features = read(PLAN_FEATURES.file);
+  const passesPin = (subject: RecordedExemption, text: string) =>
+    acceptedDigests(subject).includes(sha256Text(text));
+  const onlyApprovedHunks = (subject: RecordedExemption, text: string) => {
+    const undone = undoRecordedChain(text, subject);
+    return undone !== null && sha256Text(undone) === subject.originalDigest;
+  };
+
+  it('Ministry has the cell, and no other tier does', () => {
+    const max = features.slice(features.indexOf('  max: {'));
+    expect(max).toMatch(/socialScheduler: true,\n\s*\},\n\};/);
+    expect(features.match(/socialScheduler: true,/g) ?? [], 'another tier gained the cell').toHaveLength(1);
+  });
+
+  it.each([
+    ['the cell flipped on another tier', (t: string) => t.replace('socialScheduler: false,', 'socialScheduler: true,')],
+    ['a price next to it', (t: string) => t.replace('monthly: 20,', 'monthly: 21,')],
+    ['the Ministry cell turned back off', (t: string) => t.replace('socialScheduler: true,', 'socialScheduler: false,')],
+  ])('plan-features: %s fails the pin and the chain', (_name, mutate) => {
+    const mutated = mutate(features);
+    expect(mutated).not.toBe(features);
+    expect(passesPin(PLAN_FEATURES, mutated)).toBe(false);
+    expect(onlyApprovedHunks(PLAN_FEATURES, mutated)).toBe(false);
+  });
+
+  it.each([
+    ['the scheduler line relabelled', (t: string) => t.replace("label: 'Social Scheduler'", "label: 'Scheduler'")],
+    ['a second new line', (t: string) => t.replace("  { key: 'socialScheduler', label: 'Social Scheduler' },\n", "  { key: 'socialScheduler', label: 'Social Scheduler' },\n  { key: 'aiChat', label: 'x' },\n")],
+  ])('PlanUpgradeSection: %s fails the pin and the chain', (_name, mutate) => {
+    const mutated = mutate(plan);
+    expect(mutated).not.toBe(plan);
+    expect(passesPin(PLAN_UPGRADE_SECTION, mutated)).toBe(false);
+    expect(onlyApprovedHunks(PLAN_UPGRADE_SECTION, mutated)).toBe(false);
+  });
+
+  it('the round-4 hunks name no price, plan id, checkout, Dodo or billing call', () => {
+    const money = new RegExp(
+      ['\\$\\d', 'PLAN_' + 'PRICING', 'format' + 'PlanPrice', 'run' + 'DodoPlanChange', 'check' + 'out',
+        'dod' + 'o', 'stri' + 'pe', 'auth' + 'Fetch', 'fet' + 'ch\\(', 'plan' + 'Id', 'TERM_' + 'MONTHS'].join('|'),
+      'i',
+    );
+    for (const subject of [PLAN_UPGRADE_SECTION, PLAN_FEATURES]) {
+      for (const hunk of subject.successors![0].hunks) {
+        expect(hunk.after, subject.file).not.toMatch(money);
+      }
+    }
   });
 });
 
@@ -173,6 +236,7 @@ describe('the guard digests were only appended', () => {
       '36f2b6c26662c4a5d95e7de4b15b8482a190c54a134f08c104fc209806352d5c',
       PLAN_FEATURES.originalDigest,
       PLAN_FEATURES.exemptDigest,
+      ...(PLAN_FEATURES.successors ?? []).map((x) => x.digest),
     ].map((d) => src.indexOf(`'${d}'`));
     expect(ORDER.every((i) => i > 0), 'a plan-features pin went missing').toBe(true);
     expect([...ORDER].sort((a, b) => a - b)).toEqual(ORDER);
@@ -184,14 +248,18 @@ describe('the guard digests were only appended', () => {
       '47311df03e1ca76cb51e5094360c2ef868e14f1d9bb6c70509a48fdff174a553',
       PLAN_UPGRADE_SECTION.originalDigest,
       PLAN_UPGRADE_SECTION.exemptDigest,
+      ...(PLAN_UPGRADE_SECTION.successors ?? []).map((x) => x.digest),
     ].map((d) => src.indexOf(`'${d}'`));
     expect(ORDER.every((i) => i > 0), 'a PlanUpgradeSection pin went missing').toBe(true);
     expect([...ORDER].sort((a, b) => a - b)).toEqual(ORDER);
   });
 
   it('the-291 records the same digests as the fixture', () => {
-    expect(sources['the-291']).toContain(`'${PLAN_UPGRADE_SECTION.exemptDigest}'`);
-    expect(sources['the-291']).toContain(`'${PLAN_FEATURES.exemptDigest}'`);
+    for (const subject of [PLAN_UPGRADE_SECTION, PLAN_FEATURES]) {
+      for (const digest of acceptedDigests(subject).slice(1)) {
+        expect(sources['the-291']).toContain(`'${digest}'`);
+      }
+    }
   });
 
   it('the THE-286 fixture still pins the original PlanUpgradeSection digest, unreplaced', () => {
@@ -209,5 +277,9 @@ describe('the guard digests were only appended', () => {
       .toBeGreaterThan(0);
     expect(t296).toContain('if (file in SCOPED_DIGESTS)');
     expect(sources['THE-300']).toContain('acceptedDigests(PLAN_UPGRADE_SECTION)');
+    // Round 4: the scoped checks accept any recorded digest, so round 3's value was not substituted.
+    const acceptsAny = /acceptedDigests\(PLAN_UPGRADE_SECTION\)[\s\S]{0,200}\.toContain\(/;
+    expect(t286).toMatch(acceptsAny);
+    expect(t296).toMatch(acceptsAny);
   });
 });

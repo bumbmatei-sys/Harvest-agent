@@ -85,7 +85,8 @@ vi.mock('../AdminRoles', () => ({ normalizePermissions: (raw: unknown) => raw })
 vi.mock('../AdminScreenHeader', async () => {
   const React = await import('react');
   return {
-    AdminScreenHeader: () => null,
+    // The phone header carries a second account menu in its right accessory.
+    AdminScreenHeader: ({ rightAccessory }: { rightAccessory?: React.ReactNode }) => rightAccessory ?? null,
     AdminHeaderContext: React.createContext({
       setHeaderAction: () => {}, setHeaderOverride: () => {}, setHeaderHidden: () => {},
     }),
@@ -101,7 +102,9 @@ vi.mock('../AdminRAG', stub);
 vi.mock('../AdminTenants', stub);
 vi.mock('../AdminLibraryCourses', stub);
 vi.mock('../AdminUpgradePage', stub);
-vi.mock('../AdminBranding', stub);
+vi.mock('../AdminBranding', () => ({
+  default: () => React.createElement('div', { 'data-stub': 'admin-branding' }),
+}));
 vi.mock('../AffiliateSection', stub);
 vi.mock('../NewsletterEditor', stub);
 vi.mock('../NewsletterCampaigns', stub);
@@ -132,6 +135,9 @@ vi.mock('../settings/BrandingSection', () => ({
 vi.mock('../settings/PlanUpgradeSection', () => ({
   default: ({ hideUpgrade }: { hideUpgrade?: boolean }) =>
     (hideUpgrade ? null : React.createElement('div', { 'data-stub': 'plans' })),
+}));
+vi.mock('../settings/BillingActivity', () => ({
+  default: () => React.createElement('div', { 'data-stub': 'billing-activity' }),
 }));
 vi.mock('../settings/OnboardingSection', () => ({
   default: () => React.createElement('div', { 'data-stub': 'onboarding' }),
@@ -383,5 +389,137 @@ describe('desktop Settings popup gating', () => {
     await flush();
     expect(document.querySelector('[data-settings-section="billing"]')).toBeTruthy();
     expect(document.querySelector('[data-stub="plans"]'), 'a non-owner was offered the plan cards').toBeNull();
+  });
+});
+
+describe('Campus & branding is gated like the admin Branding tab', () => {
+  const setPlan = (plan: string) => {
+    store.current = { ...store.current, tenantPlan: plan };
+    tenantCtx.current = { ...tenantCtx.current, tenantPlan: plan };
+  };
+  const openCampus = async (user: Record<string, unknown> = {}) => {
+    setDesktop();
+    window.history.replaceState({}, '', '/admin/settings?section=campus');
+    params.current = { section: 'settings' };
+    await mount(user);
+    await flush();
+    expect(document.querySelector('[data-settings-section="campus"]'), 'the Campus pane did not open').toBeTruthy();
+  };
+  const appearance = () => document.querySelector('[role="radiogroup"][aria-label="Colour theme"]');
+  const editor = () => document.querySelector('[data-stub="branding"]');
+
+  it.each(['free', 'plus', 'pro'])('a %s admin who can open Settings gets Appearance and no branding editor', async (plan) => {
+    setPlan(plan);
+    await openCampus({ role: 'church_admin' });
+    expect(editor(), `a ${plan} admin was handed the logo, icon and colour editor`).toBeNull();
+    expect(appearance(), 'Appearance disappeared with the editor').toBeTruthy();
+  });
+
+  it('an admin on the branding plan with full access still gets the editor and Appearance', async () => {
+    setPlan('max');
+    await openCampus({ role: 'church_admin' });
+    expect(editor()).toBeTruthy();
+    expect(appearance()).toBeTruthy();
+  });
+
+  it('a manageSettings-only admin on the branding plan gets no editor: the permission half of the gate', async () => {
+    setPlan('max');
+    checkRosterAdminStatus.mockResolvedValue(false);
+    await openCampus({ role: 'admin', permissions: { manageSettings: true } });
+    expect(editor(), 'manageSettings alone skipped the manageBranding split').toBeNull();
+    expect(appearance()).toBeTruthy();
+  });
+
+  it('a manageBranding admin on the branding plan who also manages settings gets the editor', async () => {
+    setPlan('max');
+    checkRosterAdminStatus.mockResolvedValue(false);
+    await openCampus({ role: 'admin', permissions: { manageSettings: true, manageBranding: true } });
+    expect(editor()).toBeTruthy();
+  });
+});
+
+describe('Billing & Payments and Branding open inside the desktop Settings popup', () => {
+  const setPlan = (plan: string) => {
+    store.current = { ...store.current, tenantPlan: plan };
+    tenantCtx.current = { ...tenantCtx.current, tenantPlan: plan };
+  };
+  const clickMenuRow = async (label: string) => {
+    const avatar = container.querySelector<HTMLElement>('[data-nav-rail-account] button[aria-label="My account"]');
+    expect(avatar, 'no account avatar in the sidebar').toBeTruthy();
+    await act(async () => { avatar!.click(); });
+    await flush();
+    const row = [...container.querySelectorAll<HTMLElement>('[role="menuitem"]')]
+      .find((b) => (b.textContent ?? '').trim().startsWith(label));
+    expect(row, `the account menu has no ${label} row`).toBeTruthy();
+    navigate.mockClear();
+    await act(async () => { row!.click(); });
+    await flush();
+  };
+
+  it('the Billing row opens Settings at Plan & billing instead of the full-screen overlay', async () => {
+    setDesktop();
+    await mount();
+    await clickMenuRow('Billing');
+    expect(navigate).toHaveBeenCalledWith('/admin/settings?section=billing');
+    expect(document.querySelector('[aria-label="Close billing"]'), 'the old overlay opened as well').toBeNull();
+  });
+
+  it('on a phone the Billing row still opens the full-screen Billing & Payments overlay', async () => {
+    setMobile();
+    await mount();
+    const avatar = [...container.querySelectorAll<HTMLElement>('button[aria-label="My account"]')]
+      .find((b) => !b.closest('[data-nav-rail-account]'));
+    expect(avatar, 'no phone account menu').toBeTruthy();
+    await act(async () => { avatar!.click(); });
+    await flush();
+    const row = [...container.querySelectorAll<HTMLElement>('[role="menuitem"]')]
+      .find((b) => (b.textContent ?? '').trim().startsWith('Billing'));
+    expect(row, 'the phone account menu has no Billing row').toBeTruthy();
+    navigate.mockClear();
+    await act(async () => { row!.click(); });
+    await flush();
+    expect(navigate).not.toHaveBeenCalledWith('/admin/settings?section=billing');
+    expect(document.querySelector('[aria-label="Close billing"]'), 'the phone overlay did not open').toBeTruthy();
+  });
+
+  it('an admin who cannot open Settings keeps the Billing overlay, so the row never dead-ends', async () => {
+    setDesktop();
+    // The buyer (ownerId) with a narrow role: billing access, but no manageSettings.
+    checkRosterAdminStatus.mockResolvedValue(false);
+    await mount({ role: 'admin', permissions: { manageBlog: true } });
+    await clickMenuRow('Billing');
+    expect(navigate).not.toHaveBeenCalledWith('/admin/settings?section=billing');
+    expect(document.querySelector('[aria-label="Close billing"]'), 'the overlay did not open').toBeTruthy();
+  });
+
+  it('/admin/branding on desktop opens Settings > Campus & branding for an entitled admin', async () => {
+    setDesktop();
+    setPlan('max');
+    window.history.replaceState({}, '', '/admin/branding');
+    params.current = { section: 'branding' };
+    await mount({ role: 'church_admin' });
+    expect(navigate).toHaveBeenCalledWith('/admin/settings?section=campus', { replace: true });
+    expect(document.querySelector('[data-stub="admin-branding"]'), 'the old Branding page still rendered').toBeNull();
+  });
+
+  it('/admin/branding is left alone where Settings is not the home for it', async () => {
+    // On a phone there is no popup, so the Branding tab remains.
+    setMobile();
+    setPlan('max');
+    window.history.replaceState({}, '', '/admin/branding');
+    params.current = { section: 'branding' };
+    await mount({ role: 'church_admin' });
+    expect(navigate).not.toHaveBeenCalledWith('/admin/settings?section=campus', { replace: true });
+    expect(document.querySelector('[data-stub="admin-branding"]')).toBeTruthy();
+  });
+
+  it('/admin/branding on a plan without branding is not sent to the editor', async () => {
+    setDesktop();
+    setPlan('pro');
+    window.history.replaceState({}, '', '/admin/branding');
+    params.current = { section: 'branding' };
+    await mount({ role: 'church_admin' });
+    expect(navigate).not.toHaveBeenCalledWith('/admin/settings?section=campus', { replace: true });
+    expect(document.querySelector('[data-stub="admin-branding"]')).toBeNull();
   });
 });

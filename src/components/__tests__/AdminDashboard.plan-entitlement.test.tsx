@@ -456,9 +456,9 @@ describe.each([
     expect(await entitledLabels(plan)).toEqual(expected);
   });
 
-  it('offers Branding only when the tier carries a branding-family cell', async () => {
+  it('offers no Branding sidebar entry on any tier', async () => {
     const { nav } = await openTab(plan, UNGATED_TABS[0]);
-    expect(nav.includes('Branding')).toBe(hasBrandingAccess(getPlanFeatures(plan)));
+    expect(nav, 'Branding is a Settings pane now, not a sidebar entry').not.toContain('Branding');
   });
 });
 
@@ -577,7 +577,8 @@ describe('a super admin still sees everything through platformOverride', () => {
     isSuperAdminMock.mockReturnValue(true);
     hasPlatformOverrideMock.mockReturnValue(true);
     const { nav } = await openTab(null, UNGATED_TABS[0], { role: 'super_admin' });
-    for (const label of ['Branding', 'Tenants']) expect(nav).toContain(label);
+    expect(nav).toContain('Tenants');
+    expect(nav, 'Branding is a Settings pane now, not a sidebar entry').not.toContain('Branding');
   });
 
   it('is still gated by the tenant plan on a tenant subdomain, where platformOverride is false', async () => {

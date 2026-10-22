@@ -332,8 +332,9 @@ describe('THE-200 — FEATURE_MIN_PLAN still names the cheapest tier that HAS ea
       pledgeCampaigns: 'max',
       textToGive: 'max',        // 🔴 THE-314 — moves with smsAutomation above
       pwaApp: 'free',           // ⬅️ MOVED from 'plus' by THE-205
-      // null — no tier carries it. The add-on is the only path to true.
-      socialScheduler: null,
+      // Ministry carries it (Matei approved 2026-10-21: "Include the scheduler in the Ministry plan");
+      // every other tier reaches true only through the add-on.
+      socialScheduler: 'max',
     };
     for (const [cell, expected] of Object.entries(EXPECTED) as [keyof PlanFeatures, TenantPlan | null][]) {
       expect(getMinPlanForFeatureCell(cell), `min plan for ${cell}`).toBe(expected);
@@ -414,7 +415,9 @@ describe('THE-200 — the three priced tiers are untouched', () => {
       accountingTools: true, taxReceipt: true, communityGroups: true,
       customForms: true, checkInSystem: true, livestream: true,
       sermonNotes: true, automatedBlog: true, givingStatements: true,
-      pledgeCampaigns: true, textToGive: true, pwaApp: true, socialScheduler: false,
+      // socialScheduler: the one cell that moved on Ministry since this snapshot.
+      // Matei approved 2026-10-21: "Include the scheduler in the Ministry plan".
+      pledgeCampaigns: true, textToGive: true, pwaApp: true, socialScheduler: true,
     },
   };
 

@@ -18,7 +18,6 @@ import {
   MessageSquare,
   MessagesSquare,
   Newspaper,
-  Palette,
   QrCode,
   Radio,
   Receipt,
@@ -32,8 +31,10 @@ import {
  * Phase 1 desktop sidebar.
  *
  * Two icon-only sides, matching Eden's workspace / store switch:
- *   people — people, care, events, check-in, giving records
- *   public — page, social, email, products
+ *   people — people, care, giving records
+ *   public — page, engage (forms, events, check-in), social, email, products
+ *
+ * Branding is not in the sidebar. It lives in Settings > Campus & branding.
  *
  * Every real entry is an existing admin tab id. Ministry page and Publish
  * stay out until those screens exist — a row that does not change the URL
@@ -114,20 +115,7 @@ const PEOPLE_GROUPS: readonly GroupTemplate[] = [
       { id: 'community', label: 'Community', icon: MessagesSquare },
       { id: 'services', label: 'Services', icon: ListChecks },
       { id: 'docs', label: 'Notes', icon: FileText },
-      { id: 'forms', label: 'Forms', icon: ClipboardList },
     ],
-  },
-  {
-    id: 'events',
-    label: 'Events',
-    icon: CalendarCheck,
-    items: [{ id: 'events', label: 'Events', icon: CalendarCheck }],
-  },
-  {
-    id: 'check-in',
-    label: 'Check-in',
-    icon: QrCode,
-    items: [{ id: 'checkin', label: 'Check-In', icon: QrCode }],
   },
   {
     id: 'giving',
@@ -159,8 +147,17 @@ const PUBLIC_GROUPS: readonly GroupTemplate[] = [
     icon: FileText,
     items: [
       { id: 'blog', label: 'Blog', icon: Newspaper },
-      { id: 'branding', label: 'Branding', icon: Palette },
       { id: 'ai', label: 'AI Knowledge', icon: BrainCircuit },
+    ],
+  },
+  {
+    id: 'engage',
+    label: 'Engage',
+    icon: CalendarCheck,
+    items: [
+      { id: 'forms', label: 'Forms', icon: ClipboardList },
+      { id: 'events', label: 'Events', icon: CalendarCheck },
+      { id: 'checkin', label: 'Check-In', icon: QrCode },
     ],
   },
   {

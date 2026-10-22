@@ -117,6 +117,7 @@ async function mount(props: Partial<React.ComponentProps<typeof AdminSettings>> 
         tenantId="tenant-1"
         email="admin@church.org"
         isPlanOwner
+        canManageBilling
         onCustomizeNav={() => {}}
         onOpenDonations={() => {}}
         {...props}

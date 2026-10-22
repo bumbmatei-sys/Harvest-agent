@@ -258,7 +258,7 @@ export function AdminDesktopSidebar({
 
       <SidebarFooter className="gap-1 p-0 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:py-2">
         <div className="flex h-[52px] items-center gap-1 pr-3 pl-4 group-data-[collapsible=icon]:h-auto group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:px-0">
-          <div className="flex min-w-0 flex-1 items-center gap-2 group-data-[collapsible=icon]:flex-none [&_[data-nav-rail-account]_button]:size-8 [&_[role=menu]]:bottom-8! [&_[data-shell-account-label]]:truncate group-data-[collapsible=icon]:[&_[data-shell-account-label]]:sr-only">
+          <div className="flex min-w-0 flex-1 items-center gap-2 group-data-[collapsible=icon]:flex-none [&_[data-nav-rail-account]>button]:size-8 [&_[role=menu]]:bottom-8! [&_[data-shell-account-label]]:truncate group-data-[collapsible=icon]:[&_[data-shell-account-label]]:sr-only">
             {accountMenu}
             {accountLabel ? (
               <span data-shell-account-label className="min-w-0 truncate text-[13px] font-medium text-sidebar-accent-foreground">

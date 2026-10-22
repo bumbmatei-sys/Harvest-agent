@@ -158,6 +158,7 @@ const CARD_FEATURES: CardFeature[] = [
   { key: 'sermonNotes', label: 'Sermon Notes → Livestream' },
   { key: 'automatedBlog', label: 'Automated Blog Articles' },
   { key: 'communityGroups', label: 'Community Groups' },
+  { key: 'socialScheduler', label: 'Social Scheduler' },
 ];
 
 // THE-245 withholds 'SMS Automation'. These cards are in-app MARKETING: they

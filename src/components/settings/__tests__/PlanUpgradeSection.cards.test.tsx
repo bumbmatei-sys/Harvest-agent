@@ -226,6 +226,20 @@ describe('PlanUpgradeSection plan cards', () => {
     expect(shownCells('pro')).toContain('docs');
   });
 
+  // Matei approved 2026-10-21: "Include the scheduler in the Ministry plan".
+  it('lists the Social Scheduler on the Ministry card and on no other', () => {
+    mount();
+    expect(getPlanFeatures('max').socialScheduler).toBe(true);
+    expect(shownCells('max'), 'the Ministry card does not list the scheduler').toContain('socialScheduler');
+    expect(container.querySelector('[data-testid="plan-card-features"][data-plan="max"] [data-feature="socialScheduler"]')
+      ?.textContent).toMatch(/Social Scheduler/);
+    for (const plan of ['plus', 'pro'] as const) {
+      expect(getPlanFeatures(plan).socialScheduler, PLAN_DISPLAY_NAMES[plan]).toBe(false);
+      expect(shownCells(plan), `${PLAN_DISPLAY_NAMES[plan]} advertises the scheduler it does not include`)
+        .not.toContain('socialScheduler');
+    }
+  });
+
   it('keeps the three-term toggle working and the current plan marked', () => {
     mount({ currentPlan: 'pro' });
 

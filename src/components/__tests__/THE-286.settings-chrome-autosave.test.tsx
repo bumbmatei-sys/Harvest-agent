@@ -14,7 +14,7 @@ import { DELETE_CONFIRM_COPY } from '../../lib/member-erasure-copy';
 import UNTOUCHED from './__fixtures__/the-286-untouched.json';
 import { foldedPaymentSectionDigest } from './__fixtures__/the-362-payment-section-fold';
 import { freezeFailure } from './__fixtures__/settings-freeze-register';
-import { PLAN_UPGRADE_SECTION, acceptedDigests } from '../../__tests__/__fixtures__/plan-copy-exemption';
+import { PLAN_UPGRADE_SECTION, acceptedDigests, currentDigest } from '../../__tests__/__fixtures__/plan-copy-exemption';
 import { rulesDigestFailure } from '../../__tests__/__fixtures__/firestore-rules-pin';
 import { stripComments } from '../../__tests__/__fixtures__/the-346-strip-comments';
 
@@ -1171,14 +1171,15 @@ describe('15 · the other 12 sections are byte-identical', () => {
    * exemption, so any edit outside the approved lines still fails this assertion.
    */
   const SCOPED_DIGESTS: Readonly<Record<string, string>> = {
-    [PLAN_UPGRADE_SECTION.file]: PLAN_UPGRADE_SECTION.exemptDigest,
+    [PLAN_UPGRADE_SECTION.file]: currentDigest(PLAN_UPGRADE_SECTION),
   };
 
   it('the scoped exemption keeps the original pin in the fixture and records a different value beside it', () => {
     expect(UNTOUCHED.otherSettingsSections[PLAN_UPGRADE_SECTION.file as keyof typeof UNTOUCHED.otherSettingsSections])
       .toBe(PLAN_UPGRADE_SECTION.originalDigest);
     expect(SCOPED_DIGESTS[PLAN_UPGRADE_SECTION.file]).not.toBe(PLAN_UPGRADE_SECTION.originalDigest);
-    expect(acceptedDigests(PLAN_UPGRADE_SECTION)).toHaveLength(2);
+    // Round 3's digest and round 4's, beside the original: appended, never substituted.
+    expect(acceptedDigests(PLAN_UPGRADE_SECTION)).toHaveLength(3);
   });
 
   it.each(Object.entries(UNTOUCHED.otherSettingsSections))('%s is unchanged', async (rel, digest) => {
@@ -1186,8 +1187,8 @@ describe('15 · the other 12 sections are byte-identical', () => {
     const { createHash } = await import('node:crypto');
     if (rel in SCOPED_DIGESTS) {
       const scoped = createHash('sha256').update(readFileSync(path.join(ROOT, rel))).digest('hex');
-      expect(scoped, `${rel} is at a digest nobody recorded — the PR-540 exemption covers only its recorded lines`)
-        .toBe(SCOPED_DIGESTS[rel]);
+      expect(acceptedDigests(PLAN_UPGRADE_SECTION), `${rel} is at a digest nobody recorded — the PR-540 exemption covers only its recorded lines`)
+        .toContain(scoped);
       return;
     }
     // THE-362 folds ONE heading out of PaymentSection before hashing - see

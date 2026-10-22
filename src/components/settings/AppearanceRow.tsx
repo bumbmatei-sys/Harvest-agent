@@ -18,7 +18,7 @@ import {
 export default function AppearanceRow() {
   return (
     <Item className="flex-wrap justify-between gap-3 p-0">
-      <ItemContent className="flex-none">
+      <ItemContent className="min-w-0 flex-1 basis-64">
         <ItemTitle className="text-sm font-semibold text-strong">Colour theme</ItemTitle>
         <ItemDescription className="text-sm text-muted">
           Palette and light/dark, for your account on this device. System follows your device setting.
