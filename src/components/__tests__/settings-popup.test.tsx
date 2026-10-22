@@ -513,6 +513,27 @@ describe('Billing & Payments and Branding open inside the desktop Settings popup
     expect(document.querySelector('[data-stub="admin-branding"]')).toBeTruthy();
   });
 
+  it('a settings admin has no Branding row in the sidebar: it lives in Settings', async () => {
+    setDesktop();
+    setPlan('max');
+    await mount({ role: 'church_admin' });
+    expect(container.querySelector('[data-shell-side] [data-nav-tab="branding"]'), 'Branding came back to the sidebar').toBeNull();
+  });
+
+  it('a branding-only admin keeps a desktop row, because Settings will not open', async () => {
+    setDesktop();
+    setPlan('max');
+    checkRosterAdminStatus.mockResolvedValue(false);
+    window.history.replaceState({}, '', '/admin/branding');
+    params.current = { section: 'branding' };
+    await mount({ role: 'admin', permissions: { manageBranding: true } });
+    await flush();
+    expect(container.querySelector('[data-shell-side] [data-nav-tab="branding"]'), 'a branding-only admin has no way to open branding').toBeTruthy();
+    expect(document.querySelector('[data-settings-popup]'), 'Settings opened for an admin who cannot manage it').toBeNull();
+    expect(navigate).not.toHaveBeenCalledWith('/admin/settings?section=campus', { replace: true });
+    expect(document.querySelector('[data-stub="admin-branding"]'), 'the branding editor disappeared').toBeTruthy();
+  });
+
   it('/admin/branding on a plan without branding is not sent to the editor', async () => {
     setDesktop();
     setPlan('pro');

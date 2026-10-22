@@ -969,6 +969,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // the link only when the plan includes it (Ministry) or the add-on is held,
   // or the viewer is a super admin.
   if (!(isSuperAdmin || features?.socialScheduler === true)) desktopNavById.delete('social');
+  // Settings owns Campus & branding, so the sidebar row goes away for an admin
+  // who can open the popup. A branding-only admin cannot, and the sidebar
+  // keeps the one row they have left.
+  if (brandingInSettings) desktopNavById.delete('branding');
 
   // THE-225 — the emptiness rule, now read from layout/nav-groups.ts instead of
   // restated inline. The behaviour is unchanged (this sidebar has omitted empty

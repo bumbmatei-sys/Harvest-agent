@@ -1060,6 +1060,8 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ are byte-identical'
     '91bb69aeb07f1e7ab3be1a7f5f4f5961fe9463d55d6e1228a16def5753c9a33e',
     // APPENDED BY the settings popup round 4. Billing and Branding open inside the desktop Settings popup; two props on the dialog and phone Settings mounts. No permission gate moved.
     '0e7c5da62a647d60a773ac3c8da6beb7ca1a7138787fbcf646e5c5dddb23d92a',
+    // APPENDED BY the settings popup round 4 follow-up. A branding-only admin keeps one desktop Branding row. A settings admin still has none. No permission gate moved.
+    '735d23f8946c67052aa01f186eaaa518d12f3e5319ddeca91e3d21240bf078c0',
   ];
 
   it('AdminDashboard.tsx is untouched by THIS ticket — others legitimately own it', () => {

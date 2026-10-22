@@ -103,6 +103,12 @@ export function AdminDesktopSidebar({
   const groups = groupsForSide(side, tabs);
   const social = tabs.get('social');
   const socialInGroups = groups.some((group) => group.items.some((item) => item.id === 'social'));
+  // Branding is not a sidebar group: Settings owns it. The row appears only
+  // when the tab is still in the map, which is the branding-only admin who
+  // cannot open Settings.
+  const branding = tabs.get('branding');
+  const brandingInGroups = groups.some((group) => group.items.some((item) => item.id === 'branding'));
+  const BrandingIcon = branding?.icon;
   const { resolved, toggle } = useShellTheme();
   const [paletteOpen, setPaletteOpen] = useState(false);
 
@@ -199,6 +205,20 @@ export function AdminDesktopSidebar({
                 >
                   <Share2 />
                   <span className="group-data-[collapsible=icon]:sr-only">Social</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+            {BrandingIcon && branding && !brandingInGroups && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={activeTab === 'branding' && placeholder === null}
+                  tooltip={branding.label}
+                  className={MENU_BUTTON}
+                  data-nav-tab="branding"
+                  onClick={() => onNavigate('branding')}
+                >
+                  <BrandingIcon />
+                  <span className="group-data-[collapsible=icon]:sr-only">{branding.label}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}

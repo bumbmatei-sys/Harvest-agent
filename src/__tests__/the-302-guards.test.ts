@@ -150,6 +150,8 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // APPENDED BY the settings popup round 4, nothing above removed or rewritten.
     ['0e7c5da62a647d60a773ac3c8da6beb7ca1a7138787fbcf646e5c5dddb23d92a',
       `settings popup round 4 - billing and branding open inside the desktop Settings popup (the Billing row, /admin/branding), canBranding on the SettingsDialog mount and canManageBilling on the phone AdminSettings mount. No permission gate, plan gate, nav id or route moved.`],
+    ['735d23f8946c67052aa01f186eaaa518d12f3e5319ddeca91e3d21240bf078c0',
+      `settings popup round 4 follow-up - a branding-only admin keeps one desktop Branding row, because Settings does not open without manageSettings. A settings admin still has no Branding sidebar row. No permission gate or plan gate moved.`],
   ],
   // 🔴 A NAMED STOP CONDITION on this ticket: "do not touch `runDodoPlanChange`
   // or `plan-change.ts` unless the fix genuinely requires it". It did not — part

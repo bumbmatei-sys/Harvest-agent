@@ -34,7 +34,9 @@ import {
  *   people — people, care, giving records
  *   public — page, engage (forms, events, check-in), social, email, products
  *
- * Branding is not in the sidebar. It lives in Settings > Campus & branding.
+ * Branding is not a sidebar group. It lives in Settings > Campus & branding.
+ * A branding-only admin, who cannot open Settings, still gets one row from
+ * the sidebar when that tab is in the map.
  *
  * Every real entry is an existing admin tab id. Ministry page and Publish
  * stay out until those screens exist — a row that does not change the URL

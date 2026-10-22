@@ -33,6 +33,11 @@
       "why": "Settings popup round 4. Billing & Payments from the account menu opens Settings > Plan & billing on desktop (the full-screen overlay stays for phones and for an admin who cannot open Settings); /admin/branding on desktop opens Settings > Campus & branding for an entitled admin; the SettingsDialog mount gains canBranding (the same expression the Branding tab uses) and the phone AdminSettings mount gains canManageBilling (billingAccess === 'yes'). No permission gate, plan gate, tab id, route or other screen mount moved, and no nav array changed. The desktop sidebar's Social entry still reads features.socialScheduler; the Ministry plan cell now makes that true."
     },
     {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "735d23f8946c67052aa01f186eaaa518d12f3e5319ddeca91e3d21240bf078c0",
+      "why": "Settings popup round 4 follow-up. A branding-only admin (manageBranding, no manageSettings) keeps one desktop Branding row, because the Settings popup does not open for them. A settings admin still has no Branding sidebar row: Campus & branding is in the popup. No permission gate or plan gate moved."
+    },
+    {
       "file": "src/components/__tests__/AdminSettings.free-tier-sections.test.tsx",
       "digest": "a5347c1d52631a52d511d512e01b46fd75ed6c8115c6283d9e583181d1ed88a0",
       "why": "AdminSettings gained a required canManageBilling prop (Manage and Cancel Subscription are owner actions); the mount passes it, as it already passed isPlanOwner. Nothing asserted was loosened."
