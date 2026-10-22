@@ -7,7 +7,7 @@ import {
   TENANT_A, TENANT_B, MEMBER_UID,
 } from './helpers';
 import { migrateCourseContent, restoreInlineContent } from '../../src/lib/courses/migrate-content';
-import { mergeCourseContent } from '../../src/lib/courses/content';
+import { mergeCourseContent, splitCourseContent } from '../../src/lib/courses/content';
 
 /**
  * The one-time move of lesson content out of the tenant-readable course doc,
@@ -39,7 +39,7 @@ describe('migrateCourseContent on the emulator', () => {
       title: 'D', tenantId: TENANT_A, status: 'published',
       levels: [{ id: 'lv', title: 'C', sections: [{ id: 's', title: 'S', lessons: [{ id: 'd1', title: 'D1', duration: '', authorId: '', type: 'text' }] }] }],
     });
-    // A pre-existing content document must survive untouched.
+    // A stale content document (left by an earlier migration) next to a course that has inline content again.
     await seedDoc('courses/open/lessonContent/c', { body: '<p>ALREADY MOVED</p>' });
   });
   afterAll(async () => { await teardownEnv(); });
@@ -85,9 +85,10 @@ describe('migrateCourseContent on the emulator', () => {
     expect(merged.levels[0].sections[0].lessons[0]).toEqual(legacyLesson('a'));
   });
 
-  it('never overwrites a content document that already exists', async () => {
+  it('overwrites a stale content document from the inline copy, which is the newer one', async () => {
     const doc = await adminDb().doc('courses/open/lessonContent/c').get();
-    expect(doc.data()).toEqual({ body: '<p>ALREADY MOVED</p>' });
+    expect(doc.data()).toEqual(splitCourseContent(levelsOf('c') as never).content.c);
+    expect(JSON.stringify(doc.data())).not.toContain('ALREADY MOVED');
   });
 
   it('afterwards an unentitled member cannot read the content, by any route', async () => {
@@ -126,5 +127,59 @@ describe('migrateCourseContent on the emulator', () => {
     expect(back.levels[0].sections[0].lessons[1]).toEqual(legacyLesson('b'));
     // The content documents stay, so migrating forward again is safe.
     expect((await adminDb().collection('courses/restricted/lessonContent').get()).size).toBe(2);
+  });
+});
+
+describe('migrating again after a revert: a stale lessonContent doc must not shadow newer inline content', () => {
+  const newer = (id: string) => ({ ...legacyLesson(id), body: `<p>NEWER EDIT ${id}</p>` });
+  const playerView = async (id: string) => {
+    const outline = (await adminDb().doc(`courses/${id}`).get()).data() as { levels: ReturnType<typeof levelsOf> };
+    const content: Record<string, Record<string, unknown>> = {};
+    (await adminDb().collection(`courses/${id}/lessonContent`).get()).forEach((d) => { content[d.id] = d.data(); });
+    return (mergeCourseContent(outline as never, content) as unknown as { levels: ReturnType<typeof levelsOf> }).levels[0].sections[0].lessons;
+  };
+
+  beforeAll(async () => {
+    await seedBase();
+    await seedDoc('courses/rr', { title: 'RR', tenantId: TENANT_A, status: 'published', levels: levelsOf('a', 'b') });
+  });
+  afterAll(async () => { await teardownEnv(); });
+
+  it('migrate, revert (restore), old release edits inline, re-apply and migrate: the newer edit wins and nothing is lost', async () => {
+    expect((await migrateCourseContent(adminDb(), { commit: true })).migrated).toBe(1);
+    expect((await restoreInlineContent(adminDb(), { commit: true })).restored).toBe(1);
+
+    // The old release saves lesson a inline. The content docs are now stale.
+    const inline = (await adminDb().doc('courses/rr').get()).data() as { levels: ReturnType<typeof levelsOf> };
+    inline.levels[0].sections[0].lessons[0] = newer('a') as never;
+    await adminDb().doc('courses/rr').update({ levels: inline.levels });
+
+    // Re-applied code, before the migration runs: the stale document is what the player sees.
+    expect(JSON.stringify(await playerView('rr'))).not.toContain('NEWER EDIT a');
+
+    const r = await migrateCourseContent(adminDb(), { commit: true });
+    expect(r).toMatchObject({ scanned: 1, migrated: 1, failed: 0 });
+
+    const newerA = splitCourseContent([{ id: 'lv', title: 'Course', sections: [{ id: 's', title: 'Start', lessons: [newer('a')] }] }] as never).content.a;
+    expect((await adminDb().doc('courses/rr/lessonContent/a').get()).data()).toEqual(newerA);
+    const lessons = await playerView('rr');
+    expect(lessons[0]).toEqual(newer('a'));
+    expect(lessons[1]).toEqual(legacyLesson('b'));
+    expect(JSON.stringify((await adminDb().doc('courses/rr').get()).data())).not.toContain('NEWER EDIT');
+  });
+
+  it('a lesson with no inline content keeps its existing content document', async () => {
+    const stub = (id: string) => ({ id, title: `Lesson ${id}`, duration: '5', authorId: 'au', type: 'video-text' });
+    await seedDoc('courses/mixed', {
+      title: 'M', tenantId: TENANT_A, status: 'published',
+      levels: [{ id: 'lv', title: 'Course', sections: [{ id: 's', title: 'Start', lessons: [newer('m1'), stub('m2')] }] }],
+    });
+    await seedDoc('courses/mixed/lessonContent/m1', { body: '<p>stale m1</p>' });
+    await seedDoc('courses/mixed/lessonContent/m2', { body: '<p>kept m2</p>' });
+
+    expect((await migrateCourseContent(adminDb(), { commit: true, tenantId: TENANT_A })).failed).toBe(0);
+
+    expect(((await adminDb().doc('courses/mixed/lessonContent/m1').get()).data() as { body: string }).body).toBe('<p>NEWER EDIT m1</p>');
+    expect((await adminDb().doc('courses/mixed/lessonContent/m2').get()).data()).toEqual({ body: '<p>kept m2</p>' });
   });
 });

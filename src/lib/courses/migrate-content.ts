@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import type { Firestore } from 'firebase-admin/firestore';
 import { LESSON_CONTENT_COLLECTION, hasInlineContent, mergeCourseContent, splitCourseContent, type ContentByLesson } from '@/lib/courses/content';
 import type { Level } from '@/types/course.types';
@@ -30,14 +31,20 @@ const BATCH = 400;
 /**
  * One-time move of lesson content out of the tenant-readable course document
  * into courses/{id}/lessonContent. Safe to re-run: a course already in the split
- * layout is skipped, and a content document that already exists is never
- * overwritten (at read time content wins over inline, so keeping it changes
- * nothing for readers).
+ * layout is skipped.
  *
- * Order is what makes it lossless: content is written first, READ BACK, and only
- * then is the inline copy stripped from the course document. A failure at any
- * step leaves the course document untouched and still readable by the player's
- * inline fallback. Content is never logged, only ids and counts.
+ * Inline content is authoritative. The builder never leaves content inline, so a
+ * course that has some was written by the old release or by --restore, after
+ * which any lessonContent document is stale (at read time content wins over
+ * inline). Such a document is therefore OVERWRITTEN from the inline copy; skipping
+ * it would strip the newer text and keep the stale one. A lesson with no inline
+ * content writes nothing, so an existing document for it is left alone.
+ *
+ * Order is what makes it lossless: content is written first, READ BACK and
+ * compared with what was written, and only then is the inline copy stripped from
+ * the course document. A failure at any step leaves the course document
+ * untouched and still readable by the player's inline fallback. Content is never
+ * logged, only ids and counts.
  */
 export async function migrateCourseContent(db: Firestore, opts: MigrateOptions): Promise<MigrateReport> {
   const report: MigrateReport = { scanned: 0, alreadySplit: 0, migrated: 0, wouldMigrate: 0, failed: 0, outcomes: [] };
@@ -72,9 +79,7 @@ async function migrateOne(db: Firestore, id: string, levels: Level[], commit: bo
     if (!commit) return { id, status: 'would-migrate', lessons: lessonIds.length };
 
     const col = db.collection('courses').doc(id).collection(LESSON_CONTENT_COLLECTION);
-    const refs = lessonIds.map((lessonId) => col.doc(lessonId));
-    const existing = refs.length ? await db.getAll(...refs) : [];
-    const toWrite = lessonIds.filter((lessonId, i) => !existing[i].exists && Object.keys(content[lessonId]).length > 0);
+    const toWrite = lessonIds.filter((lessonId) => Object.keys(content[lessonId]).length > 0);
 
     for (let i = 0; i < toWrite.length; i += BATCH) {
       const batch = db.batch();
@@ -83,8 +88,8 @@ async function migrateOne(db: Firestore, id: string, levels: Level[], commit: bo
     }
 
     const written = toWrite.length ? await db.getAll(...toWrite.map((lessonId) => col.doc(lessonId))) : [];
-    const missing = written.filter((d) => !d.exists).length;
-    if (missing > 0) throw new Error(`${missing} content documents did not read back; course document left untouched`);
+    const mismatched = written.filter((d, i) => !d.exists || !isDeepStrictEqual(d.data(), content[toWrite[i]])).length;
+    if (mismatched > 0) throw new Error(`${mismatched} content documents did not read back as written; course document left untouched`);
 
     await db.collection('courses').doc(id).update({ levels: outline });
     return { id, status: 'migrated', lessons: lessonIds.length, contentWritten: toWrite.length };
@@ -104,7 +109,8 @@ export interface RestoreReport {
  * The way back, for a revert of the lesson-content lock: copies each course's
  * lessonContent over its outline, inline, so the previous release (which reads
  * lessons off the course document) sees full lessons again. Content documents
- * are left in place, so running the forward migration again afterwards is safe.
+ * are left in place; they go stale once the old release edits inline, and the
+ * forward migration then overwrites them from the inline copy.
  * Without --commit nothing is written.
  */
 export async function restoreInlineContent(db: Firestore, opts: MigrateOptions): Promise<RestoreReport> {

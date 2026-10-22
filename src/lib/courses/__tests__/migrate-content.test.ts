@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { migrateCourseContent } from '../migrate-content';
 
 /** A minimal Admin Firestore double, enough to prove the ORDER of the migration's steps. */
-function fakeDb(opts: { readBackMissing: boolean }) {
+function fakeDb(opts: { readBackMissing: boolean; readBackStale?: boolean }) {
   const log: string[] = [];
   const course = {
     id: 'c1',
@@ -19,8 +19,7 @@ function fakeDb(opts: { readBackMissing: boolean }) {
     }),
     getAll: vi.fn(async (...refs: Array<{ id: string }>) => {
       log.push('getAll');
-      const first = log.filter((l) => l === 'getAll').length === 1;
-      return refs.map(() => ({ exists: first ? false : !opts.readBackMissing }));
+      return refs.map(() => ({ exists: !opts.readBackMissing, data: () => (opts.readBackStale ? { body: '<p>stale</p>' } : { body: '<p>x</p>' }) }));
     }),
     batch: () => ({ set: () => { log.push('set-content'); }, commit: async () => { log.push('commit'); } }),
   };
@@ -32,7 +31,7 @@ describe('migrateCourseContent ordering', () => {
     const { db, log } = fakeDb({ readBackMissing: false });
     const r = await migrateCourseContent(db, { commit: true });
     expect(r.migrated).toBe(1);
-    expect(log).toEqual(['getAll', 'set-content', 'commit', 'getAll', 'update-course']);
+    expect(log).toEqual(['set-content', 'commit', 'getAll', 'update-course']);
   });
 
   it('leaves the course document untouched when the content does not read back', async () => {
@@ -40,6 +39,13 @@ describe('migrateCourseContent ordering', () => {
     const r = await migrateCourseContent(db, { commit: true });
     expect(r.failed).toBe(1);
     expect(r.outcomes[0]).toMatchObject({ status: 'failed' });
+    expect(log).not.toContain('update-course');
+  });
+
+  it('leaves the course document untouched when the read-back differs from what was written', async () => {
+    const { db, log } = fakeDb({ readBackMissing: false, readBackStale: true });
+    const r = await migrateCourseContent(db, { commit: true });
+    expect(r.failed).toBe(1);
     expect(log).not.toContain('update-course');
   });
 

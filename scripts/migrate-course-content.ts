@@ -17,8 +17,10 @@
  *   Undo (for a revert): npx --yes tsx scripts/migrate-course-content.ts --restore --commit   (copies lessonContent back inline)
  *   Local emulator:     FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 GCLOUD_PROJECT=demo-test npx --yes tsx scripts/migrate-course-content.ts --commit
  *
- * Idempotent and lossless: content is written, read back, and only then is the
- * inline copy stripped. Prints ids and counts, never lesson content.
+ * Idempotent and lossless: content is written, read back and compared, and only
+ * then is the inline copy stripped. Inline content is authoritative: an existing
+ * lessonContent doc (stale after a revert) is overwritten from it. Prints ids and
+ * counts, never lesson content.
  */
 import { applicationDefault, getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
