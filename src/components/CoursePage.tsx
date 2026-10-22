@@ -9,6 +9,9 @@ import { CourseLibrary } from "../components/course/CourseLibrary";
 import { CourseLanding } from "./courses/CourseLanding";
 import { CoursePlayer } from "./courses/CoursePlayer";
 import { Button } from "./ui/button";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "./ui/empty";
+import { fetchCourseContent } from "../lib/courses/content-client";
+import { mergeCourseContent, type ContentByLesson } from "../lib/courses/content";
 import { canAccessCourse, isCourseStaff } from "../lib/courses/access";
 import { continueTarget } from "../lib/courses/lessons";
 import type { ProductCourse } from "../types/course-product.types";
@@ -443,6 +446,30 @@ export default function CoursePage({
   const accessFor = (course: Course) => canAccessCourse(course as ProductCourse, accessSubject);
   const openable = courses.filter((c) => accessFor(c).allowed);
 
+  // Lesson content of a church's own course is not on the course document: it
+  // sits behind rules in courses/{id}/lessonContent and is fetched once the
+  // player is about to open. Adopted library courses carry their content inline.
+  // A refusal is shown as an error, never as an empty lesson.
+  const [content, setContent] = useState<{ courseId: string; state: "ready" | "error"; map: ContentByLesson } | null>(null);
+  const [contentAttempt, setContentAttempt] = useState(0);
+  const playerCourseId =
+    screen === "lesson" && selectedCourse && selectedLesson && !adoptions.has(selectedCourse.id) && accessFor(selectedCourse).allowed
+      ? selectedCourse.id
+      : null;
+  useEffect(() => {
+    if (!playerCourseId) return;
+    let cancelled = false;
+    fetchCourseContent(playerCourseId)
+      .then((map) => { if (!cancelled) setContent({ courseId: playerCourseId, state: "ready", map }); })
+      .catch((error) => {
+        try { handleFirestoreError(error, OperationType.GET, `courses/${playerCourseId}/lessonContent`); } catch (e) { console.error(e); }
+        if (!cancelled) setContent({ courseId: playerCourseId, state: "error", map: {} });
+      });
+    return () => { cancelled = true; };
+  }, [playerCourseId, contentAttempt]);
+  const contentFor = content && content.courseId === playerCourseId ? content : null;
+  const playerCourse = selectedCourse && contentFor?.state === "ready" ? mergeCourseContent(selectedCourse, contentFor.map) : selectedCourse;
+
   const coursesBack = (
     <div className="px-3 pt-3" data-courses-back>
       <Button type="button" variant="ghost" className="min-h-11 gap-1.5 px-2 text-muted" onClick={onBack || (() => setScreen("library"))}>
@@ -489,9 +516,26 @@ export default function CoursePage({
           />
         </div>
       )}
-      {screen === "lesson" && selectedCourse && selectedLesson && accessFor(selectedCourse).allowed && (
+      {screen === "lesson" && selectedCourse && selectedLesson && playerCourseId && contentFor?.state === "error" && (
+        <div>
+          {coursesBack}
+          <Empty className="min-h-80" data-content-error>
+            <EmptyHeader>
+              <EmptyTitle>This lesson could not be loaded</EmptyTitle>
+              <EmptyDescription>Check your connection and try again. If it keeps happening, ask your ministry whether you still have access.</EmptyDescription>
+            </EmptyHeader>
+            <Button type="button" className="min-h-11" onClick={() => { setContent(null); setContentAttempt((n) => n + 1); }}>Try again</Button>
+          </Empty>
+        </div>
+      )}
+      {screen === "lesson" && selectedCourse && selectedLesson && playerCourseId && !contentFor && (
+        <div className="flex items-center justify-center min-h-80" data-content-loading>
+          <div className="w-8 h-8 border-4 border-gold border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
+      {screen === "lesson" && selectedCourse && selectedLesson && accessFor(selectedCourse).allowed && (!playerCourseId || contentFor?.state === "ready") && (
         <CoursePlayer
-          course={selectedCourse as ProductCourse & { id: string }}
+          course={playerCourse as ProductCourse & { id: string }}
           adoption={adoptions.get(selectedCourse.id) ?? null}
           lessonId={selectedLesson.id}
           completed={completed}

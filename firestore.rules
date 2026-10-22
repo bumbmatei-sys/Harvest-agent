@@ -355,11 +355,58 @@ service cloud.firestore {
 
     // ─── Courses ────────────────────────────────────────────────────
 
+    // The course doc is the LANDING record (title, cover, tagline, price, the
+    // outline of lesson titles) and stays readable by the whole tenant. Lesson
+    // CONTENT (body, video urls, quiz answers, notes) lives in the
+    // courses/{id}/lessonContent subcollection below, which is NOT tenant-wide.
+    // tenantId is pinned on update: a course can never be moved to another
+    // tenant, which would also change who the content rule below lets in.
     match /courses/{courseId} {
       allow read: if isAuthenticated() && belongsToTenant(resource.data.get('tenantId', ''));
       allow create: if isAuthenticated() && hasPermission('createCourses', request.resource.data.get('tenantId', ''));
-      allow update: if isAuthenticated() && hasPermission('createCourses', resource.data.tenantId);
+      allow update: if isAuthenticated()
+        && hasPermission('createCourses', resource.data.tenantId)
+        && request.resource.data.get('tenantId', null) == resource.data.get('tenantId', null);
       allow delete: if isAuthenticated() && hasPermission('createCourses', resource.data.tenantId);
+
+      // A course is open to every member only when it says so. Mirrors
+      // isRestrictedCourse() in src/lib/courses/access.ts: no accessMode
+      // (legacy) or 'everyone' is open; ANY other value, a typo included, is
+      // restricted. Fail closed.
+      function courseIsOpen(c) {
+        return !('accessMode' in c) || c.accessMode == 'everyone';
+      }
+
+      // Mirrors canAccessCourse() minus communities (rules cannot see them yet,
+      // so a community-only member is denied here, the same as the certificate
+      // route): staff always; otherwise a member of the course's own tenant, on
+      // a PUBLISHED course that is open or lists their uid.
+      function canReadCourseContent(c) {
+        return isAuthenticated() && (
+          isTenantAdmin(c.get('tenantId', '')) ||
+          hasPermission('createCourses', c.get('tenantId', '')) ||
+          (
+            belongsToTenant(c.get('tenantId', '')) &&
+            c.get('status', '') == 'published' &&
+            (courseIsOpen(c) || request.auth.uid in c.get('accessUserIds', []))
+          )
+        );
+      }
+
+      // Writes may land in the same batch that creates the course, when the
+      // parent does not exist yet: read the tenant after the batch in that case.
+      function contentWriteTenant() {
+        return exists(/databases/$(database)/documents/courses/$(courseId))
+          ? get(/databases/$(database)/documents/courses/$(courseId)).data.get('tenantId', '')
+          : getAfter(/databases/$(database)/documents/courses/$(courseId)).data.get('tenantId', '');
+      }
+
+      match /lessonContent/{lessonId} {
+        allow read: if isAuthenticated()
+          && exists(/databases/$(database)/documents/courses/$(courseId))
+          && canReadCourseContent(get(/databases/$(database)/documents/courses/$(courseId)).data);
+        allow write: if isAuthenticated() && hasPermission('createCourses', contentWriteTenant());
+      }
     }
 
     // ─── Platform course library (shared catalogue) ──────────────────

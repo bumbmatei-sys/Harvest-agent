@@ -28,7 +28,7 @@ export function videoUrlOf(lesson: Pick<Lesson, 'youtubeUrl' | 'youtubeId'>): st
  */
 export function lessonTypeOf(lesson: ProductLesson): LessonType {
   if (lesson.type) return lesson.type;
-  return videoUrlOf(lesson) ? 'video' : 'text';
+  return videoUrlOf(lesson) || lesson.hasVideo ? 'video' : 'text';
 }
 
 export const hasVideo = (lesson: ProductLesson): boolean => lessonTypeOf(lesson) !== 'text';

@@ -75,6 +75,7 @@ function seed() {
   tree.__seed('contacts', [{ id: 'c-1', tenantId: TENANT }, { id: 'c-2', tenantId: OTHER_TENANT }]);
   tree.__seed('community_posts', [{ id: 'p-1', tenantId: TENANT }]);
   tree.__seed('community_posts/p-1/comments', [{ id: 'cm-1', tenantId: TENANT }]);
+  tree.__seed('courses/co-1/lessonContent', [{ id: 'l-1', body: '<p>secret</p>' }]);
   tree.__seed('tenant_private', [{ id: TENANT, adminEmails: ['admin@grace.org'] }]);
 }
 
@@ -219,6 +220,14 @@ describe('the tenant cascade still removes the church\'s own data', () => {
     asSuperAdmin();
     await DELETE(request(TENANT));
     expect(tree.__count('community_posts/p-1/comments')).toBe(0);
+  });
+});
+
+describe('course lesson content is removed with its course', () => {
+  it('does not orphan courses/{id}/lessonContent', async () => {
+    asSuperAdmin();
+    await DELETE(request(TENANT));
+    expect(tree.__count('courses/co-1/lessonContent')).toBe(0);
   });
 });
 

@@ -21,7 +21,7 @@ vi.mock('../../utils/tenant-scope', () => ({
   getWriteTenantScope: async () => scope.write,
 }));
 vi.mock('../courses/builder/CourseWizard', () => ({
-  CourseWizard: () => <div data-testid="course-editor" />,
+  CourseWizard: ({ course }: { course: unknown }) => <div data-testid="course-editor" data-course={JSON.stringify(course)} />,
 }));
 
 const tenantCtx = vi.hoisted(() => ({ tenantPlan: undefined as string | undefined }));
@@ -33,6 +33,8 @@ let mockCourses: Array<{ id: string; title: string; author: string; status: stri
 let mockLibrary: Array<{ id: string; title: string; status: string }> = [];
 let mockLibraryAuthors: Array<{ id: string; name: string; bio?: string }> = [];
 let mockAdopted: Array<{ id: string; libraryCourseId: string }> = [];
+let mockContent: Array<{ id: string; body: string }> = [];
+let mockContentError: Error | null = null;
 
 // The read-only preview embeds the same player LessonView uses; the real one
 // needs a live YouTube iframe API.
@@ -64,6 +66,7 @@ function rowsFor(path: string): any[] {
   if (path === 'libraryCourses') return mockLibrary;
   if (path === 'libraryAuthors') return mockLibraryAuthors;
   if (path.includes('adoptedCourses')) return mockAdopted;
+  if (/^courses\/[^/]+\/lessonContent$/.test(path)) return mockContent;
   return [];
 }
 
@@ -78,6 +81,7 @@ vi.mock('firebase/firestore', () => ({
   getDocs: async (q: any) => {
     const path = q?.__path ?? '';
     calls.paths.push(path);
+    if (mockContentError && path.endsWith('/lessonContent')) throw mockContentError;
     // A by-id read carries where('__name__','in',[…]); serve exactly those.
     const inClause = (q?.args ?? []).find((a: any) => a?.__where?.field === '__name__');
     const ids: string[] | null = inClause ? inClause.__where.value : null;
@@ -1061,3 +1065,33 @@ function buttonInPreview(text: string): HTMLButtonElement | undefined {
     (b) => (b.textContent || '').trim().includes(text),
   ) as HTMLButtonElement | undefined;
 }
+
+describe('AdminCourses: editing a course with guarded lesson content', () => {
+  const editButton = () => container.querySelector<HTMLElement>('[data-edit-course="course-0"]');
+  const lessons = () => JSON.parse(container.querySelector('[data-testid="course-editor"]')!.getAttribute('data-course')!);
+
+  beforeEach(() => {
+    tenantCtx.tenantPlan = 'pro';
+    mockCourses = [{ id: 'course-0', title: 'Course 0', author: 'A', status: 'draft', levels: [
+      { id: 'lv', title: 'C', sections: [{ id: 's', title: 'S', lessons: [{ id: 'l1', title: 'One', duration: '', authorId: '', type: 'text' }] }] },
+    ] } as any];
+    mockContent = [{ id: 'l1', body: '<p>fetched for the editor</p>' }];
+    mockContentError = null;
+  });
+  afterEach(() => { mockContent = []; mockContentError = null; });
+
+  it('opens the editor with the lesson content laid over the outline', async () => {
+    await mount();
+    await act(async () => { editButton()!.click(); for (let i = 0; i < 6; i++) await Promise.resolve(); });
+    expect(container.querySelector('[data-testid="course-editor"]')).not.toBeNull();
+    expect(lessons().levels[0].sections[0].lessons[0].body).toBe('<p>fetched for the editor</p>');
+  });
+
+  it('does NOT open the editor on the bare outline when the content read fails (saving it would blank the lessons)', async () => {
+    mockContentError = Object.assign(new Error('denied'), { code: 'permission-denied' });
+    await mount();
+    await act(async () => { editButton()!.click(); for (let i = 0; i < 6; i++) await Promise.resolve(); });
+    expect(container.querySelector('[data-testid="course-editor"]')).toBeNull();
+    expect(container.textContent).toContain('Could not load');
+  });
+});

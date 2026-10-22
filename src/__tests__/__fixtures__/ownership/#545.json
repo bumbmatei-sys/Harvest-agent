@@ -1,0 +1,21 @@
+{
+  "ticket": "#545",
+  "note": "Lock restricted course lesson content behind rules (+ tenant pin on course updates, public page check). firestore.rules changes here: a courses/{id}/lessonContent subcollection rule and tenantId pinned on course updates. Appended, never substituted: earlier digests for these files stay recorded under their own tickets.",
+  "entries": [
+    {
+      "file": "firestore.rules",
+      "digest": "0e4f4030e849e71bec00e04e8e570de6e0d0dfc2b1cf3021079f3e0b0615c62c",
+      "why": "Lesson content of a church course moves to courses/{id}/lessonContent, readable only by staff or by a same-tenant member of a PUBLISHED course that is open or lists their uid (mirrors canAccessCourse; unknown accessMode is restricted). The course doc stays tenant-readable as the landing record. tenantId is now pinned on course updates. No other rule, billing, plan or pricing line moved. Auto-deploys on merge, so the rules deploy needs the founder's separate go."
+    },
+    {
+      "file": "src/components/AdminCourses.tsx",
+      "digest": "ee29511962457f0ead08766690e55734126377d057db1e1b9dedbfc3ce417b70",
+      "why": "Editing a course now fetches its lesson content from courses/{id}/lessonContent before the wizard opens, and refuses to open on the bare outline if that read fails (saving it would blank the lessons). Deleting a course goes through deleteCourse so its lessonContent is removed with it. Reads, caps, counts, adoption and every layout class are untouched."
+    },
+    {
+      "file": "src/components/CoursePage.tsx",
+      "digest": "8fad29f10075f27d48c747e36b40e7b03a28b4f56c342de137042231795a26ff",
+      "why": "The member player now reads a church course's lesson content from courses/{id}/lessonContent after the access check passes, lays it over the outline, and shows a could-not-load state instead of an empty lesson when the rules refuse. Adopted library courses still carry their content inline and are not read from it. Every other read, the access gate, the staff rule and the spinner are unchanged."
+    }
+  ]
+}

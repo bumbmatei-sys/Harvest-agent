@@ -44,6 +44,8 @@ const data = vi.hoisted(() => ({
   libraryAuthors: [] as any[],
   libraryCategories: [] as any[],
   adopted: [] as any[],
+  content: [] as any[],
+  contentError: null as Error | null,
 }));
 
 function rowsFor(path: string): any[] {
@@ -54,6 +56,7 @@ function rowsFor(path: string): any[] {
   if (path === 'libraryAuthors') return data.libraryAuthors;
   if (path === 'libraryCategories') return data.libraryCategories;
   if (path.includes('adoptedCourses')) return data.adopted;
+  if (/^courses\/[^/]+\/lessonContent$/.test(path)) return data.content;
   return [];
 }
 
@@ -79,6 +82,7 @@ vi.mock('firebase/firestore', () => ({
   getDocs: async (ref: any) => {
     const path = ref?.__path ?? '';
     calls.paths.push(path);
+    if (data.contentError && path.endsWith('/lessonContent')) throw data.contentError;
     // A by-id read carries where('__name__','in',[…]); serve exactly those.
     const inClause = (ref?.args ?? []).find((a: any) => a?.__where?.field === '__name__');
     const ids: string[] | null = inClause ? inClause.__where.value : null;
@@ -140,6 +144,8 @@ beforeEach(() => {
   data.libraryAuthors = [];
   data.libraryCategories = [];
   data.adopted = [];
+  data.content = [];
+  data.contentError = null;
   userDoc.value = null;
   userDoc.gate = null;
   scope.read = 'tenant-1';
@@ -544,3 +550,67 @@ describe('CoursePage — staff status is known before any access decision is sho
   });
 });
 
+
+describe('CoursePage: lesson content comes from the guarded lessonContent subcollection', () => {
+  const outline = (over: Record<string, unknown> = {}) => ({
+    id: 'r1', title: 'Leaders only', status: 'published', accessMode: 'restricted', accessUserIds: ['member-1'],
+    levels: [{ id: 'lv', title: 'Course', sections: [{ id: 's1', title: 'Start', lessons: [
+      { id: 'l1', title: 'Secret lesson', duration: '5', authorId: '', type: 'text' },
+    ] }] }],
+    ...over,
+  });
+
+  async function openDeepLink() {
+    await act(async () => {
+      root = createRoot(container);
+      root.render(<CoursePage initialCourseId="r1" initialLessonId="l1" />);
+      for (let i = 0; i < 25; i++) await Promise.resolve();
+    });
+  }
+  const lessonBody = () => container.querySelector('[data-lesson-body]');
+
+  it('reads the content of a church course and lays it over the outline', async () => {
+    data.courses = [outline()];
+    data.content = [{ id: 'l1', body: '<p>Fetched from the guarded collection</p>' }];
+    await openDeepLink();
+    expect(calls.paths).toContain('courses/r1/lessonContent');
+    expect(lessonBody()?.textContent).toBe('Fetched from the guarded collection');
+  });
+
+  it('still plays a course written before the split, whose content is inline and has no content docs', async () => {
+    data.courses = [outline({ levels: [{ id: 'lv', title: 'Course', sections: [{ id: 's1', title: 'Start', lessons: [
+      { id: 'l1', title: 'Old', duration: '', authorId: '', type: 'text', summary: '', body: '<p>Inline legacy body</p>' },
+    ] }] }] })];
+    await openDeepLink();
+    expect(lessonBody()?.textContent).toBe('Inline legacy body');
+  });
+
+  it('shows a could-not-load state, not an empty lesson, when the rules refuse the content', async () => {
+    data.courses = [outline()];
+    data.contentError = Object.assign(new Error('Missing or insufficient permissions.'), { code: 'permission-denied' });
+    await openDeepLink();
+    expect(container.querySelector('[data-content-error]')).not.toBeNull();
+    expect(container.querySelector('[data-reading-column]')).toBeNull();
+    expect(container.querySelector('[data-lesson-blank]')).toBeNull();
+  });
+
+  it('does not read content for a member who is not entitled', async () => {
+    data.courses = [outline({ accessUserIds: ['someone-else'] })];
+    await openDeepLink();
+    expect(calls.paths.some((p) => p.endsWith('/lessonContent'))).toBe(false);
+  });
+
+  it('does not read tenant content for an adopted library course, which carries its content inline', async () => {
+    data.adopted = [{ id: 'lib-1', libraryCourseId: 'lib-1' }];
+    data.libraryCourses = [{ id: 'lib-1', title: 'Library', status: 'published', levels: [{ id: 'lv', title: 'C', sections: [{ id: 's', title: 'S', lessons: [
+      { id: 'l1', title: 'L', duration: '', authorId: '', summary: '', type: 'text', body: '<p>Library body</p>' },
+    ] }] }] }];
+    await act(async () => {
+      root = createRoot(container);
+      root.render(<CoursePage initialCourseId="lib-1" initialLessonId="l1" />);
+      for (let i = 0; i < 25; i++) await Promise.resolve();
+    });
+    expect(calls.paths.some((p) => p.endsWith('/lessonContent'))).toBe(false);
+    expect(lessonBody()?.textContent).toBe('Library body');
+  });
+});

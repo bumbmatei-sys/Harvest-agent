@@ -164,8 +164,9 @@ describe('DELETE /api/tenants/delete — real cascade', () => {
     );
 
     // Subcollection-bearing collections + the tenant doc go via recursiveDelete
-    // (community_posts, churches, tenant) so nested docs are not orphaned.
-    expect(mockRecursiveDelete).toHaveBeenCalledTimes(3);
+    // (community_posts, churches, courses, tenant) so nested docs, including a
+    // course's lessonContent, are not orphaned.
+    expect(mockRecursiveDelete).toHaveBeenCalledTimes(4);
   });
 
   it('batches deletes for a collection with more than 500 docs', async () => {
@@ -207,14 +208,14 @@ describe('DELETE /api/tenants/delete — real cascade', () => {
   it('reports partial progress when a collection delete throws (no rollback)', async () => {
     mockVerifyIdToken.mockResolvedValue({ uid: 'u1', email: 'admin@test.com', superAdmin: true });
     mockGetDoc.mockResolvedValue({ exists: true });
-    __setCollectionDocs('courses', [{ tenantId: 't1' }]);
-    // Make the tenant-doc recursiveDelete blow up; courses should still be counted.
+    __setCollectionDocs('blog_posts', [{ tenantId: 't1' }]);
+    // Make the tenant-doc recursiveDelete blow up; blog posts should still be counted.
     mockRecursiveDelete.mockRejectedValue(new Error('Firestore error'));
 
     const res = await DELETE(makeRequest('tok', 't1'));
     expect(res.status).toBe(500);
     const json = await res.json();
-    expect(json.deleted.courses).toBe(1);
+    expect(json.deleted.blog_posts).toBe(1);
     expect(json.errors.some((e: { step: string }) => e.step === 'delete:tenant')).toBe(true);
   });
 });

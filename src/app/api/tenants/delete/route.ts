@@ -78,7 +78,7 @@ import {
  *     infra/audit data with no `tenantId` scoping.
  */
 const TENANT_COLLECTIONS: { name: string; recursive?: boolean }[] = [
-  { name: 'courses' },
+  { name: 'courses', recursive: true },
   { name: 'blog_posts' },
   { name: 'community_posts', recursive: true },
   { name: 'prayer_requests' },

@@ -755,8 +755,18 @@ describe('the delete routes and the export are unchanged', () => {
     'src/lib/member-export.ts': 'c06bf188ba7845eb1dc5f112e5f78a7f0d2100ec0032145f9ab87b461f06e0a1',
   };
 
+  /**
+   * APPENDED, never substituted: the digest above stays accepted. The tenant
+   * delete route now sweeps `courses` with recursiveDelete so a course's
+   * lessonContent subcollection is removed with it instead of being orphaned.
+   */
+  const LATER_ACCEPTED: Record<string, string[]> = {
+    'src/app/api/tenants/delete/route.ts': ['6ebd26acc7c9b3ef72e34c5034ccf88dff9bb0a20f356e9d5f04ab8928c62453'],
+  };
+
   it.each(Object.keys(PINNED))('%s is byte-for-byte what THE-229 found', (file) => {
     const contents = readFileSync(path.join(process.cwd(), file));
-    expect(createHash('sha256').update(contents).digest('hex')).toBe(PINNED[file]);
+    const hash = createHash('sha256').update(contents).digest('hex');
+    expect([PINNED[file], ...(LATER_ACCEPTED[file] ?? [])]).toContain(hash);
   });
 });

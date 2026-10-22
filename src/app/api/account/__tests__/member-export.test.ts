@@ -794,9 +794,16 @@ describe('the delete routes are unchanged', () => {
       'c92b7848dd354a6e9c1ebed76e4e883216e6cab54fdcd51fc91536288b453834',
   };
 
+  // APPENDED, never substituted: the digest above stays accepted. The tenant
+  // delete route now sweeps `courses` recursively so lessonContent goes with it.
+  const LATER_ACCEPTED: Record<string, string[]> = {
+    'src/app/api/tenants/delete/route.ts': ['6ebd26acc7c9b3ef72e34c5034ccf88dff9bb0a20f356e9d5f04ab8928c62453'],
+  };
+
   it.each(Object.keys(PINNED))('%s is byte-for-byte what PR 354 shipped', (file) => {
     const contents = readFileSync(path.join(process.cwd(), file));
-    expect(createHash('sha256').update(contents).digest('hex')).toBe(PINNED[file]);
+    const hash = createHash('sha256').update(contents).digest('hex');
+    expect([PINNED[file], ...(LATER_ACCEPTED[file] ?? [])]).toContain(hash);
   });
 
   it('the export never writes — no batch is ever committed during a run', async () => {
