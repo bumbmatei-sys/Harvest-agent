@@ -899,6 +899,8 @@ describe('7 — the progress model, the editor and the adoption gate are untouch
       'src/components/ui/__tests__/__fixtures__/globals-tokens.txt',
       'src/components/ui/button.tsx',
       'src/components/ui/sidebar.tsx',
+      // Palette highlight fix: data-[selected=true]: in place of data-selected:.
+      'src/components/ui/command.tsx',
     ];
     expect(
       changedSince('src/components/ui/').filter((f) => !THE_295.includes(f) && !EDEN_SHELL_UI.includes(f)).sort(),

@@ -85,6 +85,8 @@ const PRIMITIVES: Readonly<Record<string, string>> = {
 const EDEN_SHELL_MOVED: Readonly<Record<string, string>> = {
   'button.tsx': '91786d4927d890d722bed3daa2bb8dda5c25dc8dc65237acfeb73295849f085d',
   'sidebar.tsx': 'ab6ef215de5cae4f79bca6d66f15e8a3ff3d461fbf8742a78bf603d4e08108c2',
+  // Palette highlight fix: data-[selected=true]: in place of data-selected:.
+  'command.tsx': 'c8a76e6f59d77fff80f37e7027833ec0bce2001a6ee1e85add31ef572d038dda',
 };
 
 /** The vendored cascader, as this ticket leaves it. */

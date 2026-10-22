@@ -10,7 +10,7 @@
   "src/components/ui/chart.tsx": "0060b7708d85a5fffc914dcd1ee4753b5acfe83db7ba634b4cea280bd9f19c8f",
   "src/components/ui/checkbox.tsx": "7221fec06ed8f697d03157cec8e668f84fcc6706391f487a90773b7fe4fc762d",
   "src/components/ui/collapsible.tsx": "ead4349ff7b01d696ef89294a81d18ee1d3f732321398896462c834ab9b9e065",
-  "src/components/ui/command.tsx": "b80b0f0356add12993366cd4571ceae1416f50035ac189876373d0e5050308c5",
+  "src/components/ui/command.tsx": "c8a76e6f59d77fff80f37e7027833ec0bce2001a6ee1e85add31ef572d038dda",
   "src/components/ui/context-menu.tsx": "8658b48f25544047357bc809e6f6485d2309e72cf310c521e92430003b0d56a8",
   "src/components/ui/dialog.tsx": "bfd230cea544d2de7650182341e082de92141174da80f6193843e8d71b622e41",
   "src/components/ui/dropdown-menu.tsx": "1c1ae4ec02de9778286f84e0d15a1b74cc610c13c5b6a13c1ada2e6770eeb4e1",
