@@ -21,6 +21,11 @@
       "file": "src/components/CoursePage.tsx",
       "digest": "fdedac9720b88faddac77026ca70460439409afb6c1d82051a2769e4bdd42d1b",
       "why": "Review fix round 1 on #543. Staff detection moves out of the component into isCourseStaff in lib/courses/access, so the member course list reads the same definition; the rule itself is unchanged (admin, super_admin or permissions.createCourses). The deep-link player gate and every read are untouched, and the earlier digest stays recorded because the earlier head stays a valid state of this file."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "dfd61b4e5e01b8a9f7288dde69ec5743a813df8ae5d39f7c20ff0ce8f04b6bb3",
+      "why": "Merge of main (#540 settings popup) into #543. Both PRs append entries to RECORDED_ADOPTERS in this file, so the merged file matches neither PR's recorded digest. This records the merged content; both sets of appended adopters are present and nothing already recorded was removed or reworded. The earlier #543 digest stays recorded because that head was a valid state of the file."
     }
   ]
 }
