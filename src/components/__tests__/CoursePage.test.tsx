@@ -34,7 +34,7 @@ vi.mock('../../utils/tenant-scope', () => ({
 const calls = vi.hoisted(() => ({ paths: [] as string[], wheres: [] as string[] }));
 
 // What users/member-1 holds; null means the user doc does not exist.
-const userDoc = vi.hoisted(() => ({ value: null as Record<string, unknown> | null }));
+const userDoc = vi.hoisted(() => ({ value: null as Record<string, unknown> | null, gate: null as Promise<void> | null }));
 
 const data = vi.hoisted(() => ({
   courses: [] as any[],
@@ -72,6 +72,7 @@ vi.mock('firebase/firestore', () => ({
   doc: (_db: unknown, ...seg: string[]) => ({ __path: seg.join('/') }),
   updateDoc: async () => {},
   getDoc: async (ref: any) => {
+    if (ref?.__path === 'users/member-1' && userDoc.gate) await userDoc.gate;
     const mine = ref?.__path === 'users/member-1' ? userDoc.value : null;
     return { exists: () => mine !== null, data: () => mine ?? {} };
   },
@@ -140,6 +141,7 @@ beforeEach(() => {
   data.libraryCategories = [];
   data.adopted = [];
   userDoc.value = null;
+  userDoc.gate = null;
   scope.read = 'tenant-1';
   scope.write = 'tenant-1';
 });
@@ -509,3 +511,36 @@ describe('CoursePage — deep links and staff detection', () => {
     });
   });
 });
+
+describe('CoursePage — staff status is known before any access decision is shown', () => {
+  const restricted = () => ({
+    id: 'r1', title: 'Leaders only', status: 'published', accessMode: 'restricted', accessUserIds: ['someone-else'],
+    levels: [{ id: 'lv', title: 'Course', sections: [{ id: 's1', title: 'Start', lessons: [
+      { ...emptyLesson('text'), id: 'l1', title: 'Secret lesson', body: '<p>Members only content</p>' },
+    ] }] }],
+  });
+
+  it('shows a spinner, not the locked landing, while the user document is still loading, then opens the player for staff', async () => {
+    let release!: () => void;
+    userDoc.gate = new Promise<void>((r) => { release = r; });
+    userDoc.value = { role: 'admin' };
+    data.courses = [restricted()];
+
+    await act(async () => {
+      root = createRoot(container);
+      root.render(<CoursePage initialCourseId="r1" initialLessonId="l1" />);
+      for (let i = 0; i < 20; i++) await Promise.resolve();
+    });
+    expect(container.querySelector('[data-landing-locked]')).toBeNull();
+    expect(container.querySelector('[data-reading-column]')).toBeNull();
+    expect(container.querySelector('.animate-spin')).not.toBeNull();
+
+    await act(async () => {
+      release();
+      for (let i = 0; i < 20; i++) await Promise.resolve();
+    });
+    expect(container.querySelector('[data-landing-locked]')).toBeNull();
+    expect(container.querySelector('[data-reading-column]')).not.toBeNull();
+  });
+});
+

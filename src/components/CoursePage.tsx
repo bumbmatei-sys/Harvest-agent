@@ -46,6 +46,7 @@ export default function CoursePage({
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [isStaff, setIsStaff] = useState(false);
+  const [userLoaded, setUserLoaded] = useState(false);
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [quizAttempts, setQuizAttempts] = useState<Record<string, QuizAttempt>>({});
   const [lessonNotes, setLessonNotes] = useState<Record<string, string>>({});
@@ -80,7 +81,7 @@ export default function CoursePage({
   // Fetch user completed lessons
   useEffect(() => {
     const fetchUserData = async () => {
-      if (!auth.currentUser) return;
+      if (!auth.currentUser) { setUserLoaded(true); return; }
       try {
         const userRef = doc(db, "users", auth.currentUser.uid);
         const userSnap = await getDoc(userRef);
@@ -101,6 +102,8 @@ export default function CoursePage({
         }
       } catch (error) {
         try { handleFirestoreError(error, OperationType.GET, `users/${auth.currentUser?.uid}`); } catch (e) { console.error(e); }
+      } finally {
+        setUserLoaded(true);
       }
     };
     fetchUserData();
@@ -448,7 +451,7 @@ export default function CoursePage({
     </div>
   );
 
-  if (loading) {
+  if (loading || !userLoaded) {
     return (
       <div className="flex items-center justify-center h-screen bg-surface-raised">
         <div className="w-8 h-8 border-4 border-gold border-t-transparent rounded-full animate-spin" />

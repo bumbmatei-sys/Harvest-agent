@@ -1,3 +1,4 @@
+import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { CourseWizard, newCourse } from '@/components/courses/builder/CourseWizard';
@@ -121,6 +122,28 @@ describe('Offer step — price and access', () => {
     fetchSpy.mockRestore();
   });
 
+  it('keeps what was typed on the way to 19.99 and saves the finished amount', async () => {
+    const { ui, save } = wizard({ course: textCourse({ price: { mode: 'one-time' } }) });
+    await mount(ui);
+    const price = () => need(q('#course-price'), 'price') as HTMLInputElement;
+    await typeInto(price(), '19.');
+    expect(price().value).toBe('19.');
+    await typeInto(price(), '19.9');
+    expect(price().value).toBe('19.9');
+    await typeInto(price(), '19.99');
+    expect(price().value).toBe('19.99');
+    expect(q('[data-landing-price]')?.textContent).toBe('$19.99');
+    await click(need(byName('button', 'Save draft'), 'save'));
+    expect((save.mock.calls[0] as unknown as [ProductCourse])[0].price?.amountUsd).toBe(19.99);
+  });
+
+  it('keeps what was typed in the was-price field too', async () => {
+    await mount(wizard({ course: textCourse({ price: { mode: 'one-time', amountUsd: 25 } }) }).ui);
+    const was = () => need(q('#course-was-price'), 'was price') as HTMLInputElement;
+    await typeInto(was(), '39.');
+    expect(was().value).toBe('39.');
+  });
+
   it('adds and removes people on the access list from the member search', async () => {
     await mount(wizard({ course: textCourse({ accessMode: 'restricted', accessUserIds: [] }) }).ui);
     await flush();
@@ -182,6 +205,35 @@ describe('Lessons step — lesson types', () => {
     await click(need(byName('[data-lesson-sheet] button', 'Video + text'), 'both'));
     expect(q('[data-lesson-sheet] #lesson-video')).not.toBeNull();
     expect(q('[data-lesson-sheet] [aria-label="Lesson text"]')).not.toBeNull();
+  });
+
+  async function startNewLesson() {
+    await mount(wizard({ course: textCourse() }).ui);
+    await click(step('lessons'));
+    const trigger = need(q('button[aria-label="New lesson"]'), 'new lesson');
+    await act(async () => {
+      trigger.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+      trigger.click();
+    });
+    await flush();
+    await click(need(q('[data-new-lesson="text"]'), 'text item'));
+  }
+  const lessonRows = () => all('[data-lesson-row]').length;
+
+  it('does not add a lesson until Done: Cancel on a new lesson leaves the course as it was', async () => {
+    await startNewLesson();
+    expect(q('[data-lesson-sheet]')).not.toBeNull();
+    expect(lessonRows()).toBe(1);
+    await click(need(byName('[data-lesson-sheet] button', 'Cancel'), 'cancel'));
+    expect(lessonRows()).toBe(1);
+  });
+
+  it('adds the new lesson on Done, once', async () => {
+    await startNewLesson();
+    await typeInto(need(q('#lesson-title'), 'title'), 'A second lesson');
+    await click(need(byName('[data-lesson-sheet] button', 'Done'), 'done'));
+    expect(lessonRows()).toBe(2);
+    expect(text()).toContain('A second lesson');
   });
 
   it('edits a text lesson and keeps the change on Done, but discards it on Cancel', async () => {

@@ -338,3 +338,12 @@ describe('CourseLanding', () => {
 });
 
 export type { ProductLesson };
+
+describe('CoursePlayer — a lesson that is not in the course', () => {
+  it.each(['gone', ''])('shows the empty state, never the first lesson, for lessonId %j', async (lessonId) => {
+    await mount(player({ lessonId }).ui);
+    expect(q('[data-player-empty]')).not.toBeNull();
+    expect(q('[data-lesson-title]')).toBeNull();
+    expect(q('[data-lesson-body]')).toBeNull();
+  });
+});

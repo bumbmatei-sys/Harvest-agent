@@ -224,7 +224,7 @@ export function CoursePlayer({
   const scroller = useRef<HTMLDivElement>(null);
 
   const all = useMemo(() => positionsOf(course.levels), [course.levels]);
-  const index = Math.max(0, all.findIndex((p) => p.lesson.id === lessonId));
+  const index = all.findIndex((p) => p.lesson.id === lessonId);
   const here = all[index];
   const lesson = here?.lesson;
   const previous = all[index - 1]?.lesson;

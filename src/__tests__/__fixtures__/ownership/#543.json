@@ -37,6 +37,11 @@
       "digest": "5a343a12edc30da0aa214fa1313e33995513e5df907baf0eb733e8b48fd70dd5",
       "why": "Merge of main (#544) into #543. #543 does not touch this file; it is byte-identical to origin/main at 20a3a0b, but the digest #544 recorded for it (8abdc8b8) does not match what landed on main, so THE-322's register fails on main itself and therefore on any branch that merges it. This records main's actual content so #543's guard run is green; nothing already recorded was removed or reworded."
     }
-
+,
+    {
+      "file": "src/components/CoursePage.tsx",
+      "digest": "99ac7788d7e028e3f59e0413da81cbb2d8f4fe6f1ff361d4381fbdbf8ee032e2",
+      "why": "Review fix round 3 on #543 (Bugbot: staff access decided before the user loads). The page now holds its spinner until the user document has also been read, or there is no signed-in user, so a course manager never sees a locked landing or a library that hides restricted courses before isCourseStaff has run. The gate itself, every read and the staff rule are untouched; the earlier digests stay recorded because earlier heads stay valid states of this file."
+    }
   ]
 }

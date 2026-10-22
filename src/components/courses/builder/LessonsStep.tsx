@@ -85,15 +85,16 @@ function LessonRow({ lesson, number, onEdit, onMove, onDelete }: {
  */
 export function LessonsStep({ course, onChange }: { course: ProductCourse; onChange: (patch: Partial<ProductCourse>) => void }) {
   const [editing, setEditing] = useState<ProductLesson | null>(null);
+  const [creatingIn, setCreatingIn] = useState<string | null>(null);
   const sections = sectionsOf(course.levels);
   const lessonCount = sections.reduce((n, s) => n + s.lessons.length, 0);
   const setLevels = (levels: ProductCourse['levels']) => onChange({ levels });
 
   const createLesson = (sectionId: string, type: LessonType) => {
-    const lesson = emptyLesson(type);
-    setLevels(addLesson(course.levels, sectionId, lesson));
-    setEditing(lesson);
+    setCreatingIn(sectionId);
+    setEditing(emptyLesson(type));
   };
+  const closeSheet = () => { setEditing(null); setCreatingIn(null); };
 
   let counter = 0;
   return (
@@ -142,7 +143,7 @@ export function LessonsStep({ course, onChange }: { course: ProductCourse; onCha
                         key={lesson.id}
                         lesson={lesson as ProductLesson}
                         number={counter}
-                        onEdit={() => setEditing(lesson as ProductLesson)}
+                        onEdit={() => { setCreatingIn(null); setEditing(lesson as ProductLesson); }}
                         onMove={(d) => setLevels(moveLesson(course.levels, lesson.id, d))}
                         onDelete={() => setLevels(removeLesson(course.levels, lesson.id))}
                       />
@@ -183,8 +184,11 @@ export function LessonsStep({ course, onChange }: { course: ProductCourse; onCha
 
       <LessonSheet
         lesson={editing}
-        onClose={() => setEditing(null)}
-        onDone={(lesson) => { setLevels(updateLesson(course.levels, lesson.id, lesson)); setEditing(null); }}
+        onClose={closeSheet}
+        onDone={(lesson) => {
+          setLevels(creatingIn ? addLesson(course.levels, creatingIn, lesson) : updateLesson(course.levels, lesson.id, lesson));
+          closeSheet();
+        }}
       />
     </>
   );

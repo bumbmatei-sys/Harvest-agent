@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 import { ImageUpload } from '@/components/ImageUpload';
 import { Input } from '@/components/ui/input';
 import { Segmented, type Option } from '@/components/email/kit';
@@ -19,6 +21,26 @@ const toAmount = (raw: string): number | undefined => {
   const n = Number(raw);
   return raw.trim() !== '' && Number.isFinite(n) && n >= 0 ? n : undefined;
 };
+
+/** Keeps what was typed ("19." on the way to "19.99") while handing the parent only the parsed amount. */
+function AmountInput({ id, value, onChange, placeholder }: {
+  id: string;
+  value: number | undefined;
+  onChange: (amount: number | undefined) => void;
+  placeholder: string;
+}) {
+  const [raw, setRaw] = useState<string | null>(null);
+  return (
+    <Input
+      id={id}
+      inputMode="decimal"
+      value={raw !== null && toAmount(raw) === value ? raw : (value ?? '')}
+      onChange={(e) => { setRaw(e.target.value); onChange(toAmount(e.target.value)); }}
+      onBlur={() => setRaw(null)}
+      placeholder={placeholder}
+    />
+  );
+}
 
 /** Offer: what it is called, what it costs (stored, never charged), and who gets in. */
 export function OfferStep({ course, onChange, communities, loadMembers }: {
@@ -67,20 +89,18 @@ export function OfferStep({ course, onChange, communities, loadMembers }: {
           {paid && (
             <>
               <FieldRow label="Price in USD" htmlFor="course-price">
-                <Input
+                <AmountInput
                   id="course-price"
-                  inputMode="decimal"
-                  value={price.amountUsd ?? ''}
-                  onChange={(e) => onChange({ price: { ...price, amountUsd: toAmount(e.target.value) } })}
+                  value={price.amountUsd}
+                  onChange={(amountUsd) => onChange({ price: { ...price, amountUsd } })}
                   placeholder="25"
                 />
               </FieldRow>
               <FieldRow label="Was price" help="Optional. Shown crossed out beside the price." htmlFor="course-was-price">
-                <Input
+                <AmountInput
                   id="course-was-price"
-                  inputMode="decimal"
-                  value={price.wasAmountUsd ?? ''}
-                  onChange={(e) => onChange({ price: { ...price, wasAmountUsd: toAmount(e.target.value) } })}
+                  value={price.wasAmountUsd}
+                  onChange={(wasAmountUsd) => onChange({ price: { ...price, wasAmountUsd } })}
                   placeholder="None"
                 />
               </FieldRow>
