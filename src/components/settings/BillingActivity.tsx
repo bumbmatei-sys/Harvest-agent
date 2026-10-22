@@ -69,7 +69,17 @@ function StatusBadge({ status }: { status: string | null }) {
  * Reads the same owner-only /api/billing/* routes as the Billing & Payments
  * overlay, so the owner gate lives on the caller (`canUpgrade`).
  */
-export default function BillingActivity({ tenantId }: { tenantId?: string }) {
+export default function BillingActivity({
+  tenantId,
+  manageAvailable = true,
+}: {
+  tenantId?: string;
+  /**
+   * False on a free or unpriced plan: that pane has no Manage control, so the
+   * portal copy must not send the owner to a button that is not rendered.
+   */
+  manageAvailable?: boolean;
+}) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<BillingSubscription | null>(null);
@@ -185,7 +195,9 @@ export default function BillingActivity({ tenantId }: { tenantId?: string }) {
               <EmptyTitle>{historyInPortal ? 'History is with our payment processor' : 'No payments yet'}</EmptyTitle>
               {historyInPortal && (
                 <EmptyDescription>
-                  Your invoices and receipts are held by our payment processor. Open Manage above to view and download them.
+                  {manageAvailable
+                    ? 'Your invoices and receipts are held by our payment processor. Open Manage above to view and download them.'
+                    : 'Your invoices and receipts are held by our payment processor.'}
                 </EmptyDescription>
               )}
             </EmptyHeader>
@@ -239,7 +251,9 @@ export default function BillingActivity({ tenantId }: { tenantId?: string }) {
         </h3>
         <p className="text-sm text-muted">
           {historyInPortal
-            ? 'Your payment history is held by our payment processor. Open Manage above to download your invoices and receipts.'
+            ? manageAvailable
+              ? 'Your payment history is held by our payment processor. Open Manage above to download your invoices and receipts.'
+              : 'Your invoices and receipts are held by our payment processor.'
             : 'Download a consolidated PDF summary of your plan and all subscription payments.'}
         </p>
         <Button

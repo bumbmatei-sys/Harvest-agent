@@ -66,9 +66,23 @@ describe('BillingActivity (invoice history and billing summary in the Plan & bil
     authFetchMock.mockResolvedValue(respond({ ...INVOICES, invoices: [], historySource: 'portal' }));
     const host = await mountActivity();
     expect(host.querySelector('[data-testid="billing-history"]')?.textContent).toMatch(/payment processor/);
+    expect(host.textContent).toMatch(/Open Manage above/);
     expect(host.textContent).not.toMatch(/No payments yet/);
     const button = host.querySelector<HTMLButtonElement>('[data-testid="billing-statement"] button');
     expect(button?.disabled).toBe(true);
+  });
+
+  it('does not point at Manage when that control is not on the page', async () => {
+    authFetchMock.mockResolvedValue(respond({ ...INVOICES, invoices: [], historySource: 'portal' }));
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    await act(async () => { root.render(<BillingActivity tenantId="t1" manageAvailable={false} />); });
+    await act(async () => { await Promise.resolve(); });
+    expect(host.textContent).toMatch(/payment processor/);
+    expect(host.textContent, 'the copy named a Manage button this pane does not render').not.toMatch(/Manage/);
+    expect(host.textContent).not.toMatch(/No payments yet/);
+    expect(host.querySelector<HTMLButtonElement>('[data-testid="billing-statement"] button')?.disabled).toBe(true);
   });
 
   it('says "No payments yet" only when the list really is empty', async () => {
@@ -149,6 +163,27 @@ describe('PlanBillingSection mounts BillingActivity for an owner, with or withou
     expect(host.querySelector('[data-testid="billing-statement"]'), 'the billing-summary PDF was hidden').toBeTruthy();
     expect(host.querySelector('[data-stub="addons"]')?.getAttribute('data-processor')).toBe('dodo');
     expect(host.querySelector('[data-testid="settings-manage-action"]'), 'Manage opened with no subscription to portal').toBeNull();
+  });
+
+  it('a free owner whose history lives in the portal is not told to open Manage', async () => {
+    authFetchMock.mockResolvedValue(respond({
+      subscription: null,
+      invoices: [],
+      processor: 'dodo',
+      historySource: 'portal',
+    }));
+    const host = await mountSection({ currentPlan: 'free' as never, tenantId: 't1', canUpgrade: true });
+    expect(host.querySelector('[data-testid="settings-manage-action"]'), 'Manage opened with no subscription to portal').toBeNull();
+    expect(host.textContent).toMatch(/payment processor/);
+    expect(host.textContent, 'a free owner was sent to a Manage button that is not rendered').not.toMatch(/Manage/);
+    expect(host.textContent).not.toMatch(/No payments yet/);
+  });
+
+  it('a paid owner whose history lives in the portal is sent to Manage', async () => {
+    authFetchMock.mockResolvedValue(respond({ ...INVOICES, invoices: [], historySource: 'portal' }));
+    const host = await mountSection({ currentPlan: 'pro' as never, tenantId: 't1', canUpgrade: true });
+    expect(host.querySelector('[data-testid="settings-manage-action"]')).toBeTruthy();
+    expect(host.textContent).toMatch(/Open Manage above/);
   });
 
   it('an owner with no subscription and an empty history sees that empty state', async () => {
