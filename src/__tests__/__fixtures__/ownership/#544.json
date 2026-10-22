@@ -1,0 +1,31 @@
+{
+  "ticket": "#544",
+  "note": "Turns the newsletter on (NEWSLETTER_FEATURE_ENABLED true) and keeps the retired Mailchimp sender, its send route and the Mailchimp and Instagram integration rows off behind a new, separate LEGACY_MAILCHIMP_NEWSLETTER_ENABLED (false). Digests are appended to the accepted set for the files this PR changed; no earlier ticket's record is edited or replaced. firestore.rules, firestore.indexes.json, functions/ and src/app/layout.tsx are untouched and unrecorded, and no price, plan cell or dependency moved.",
+  "entries": [
+    {
+      "file": "src/lib/newsletter-feature.ts",
+      "digest": "0562f4c2566ac06234c2fceb2407cbbe88e6870fbf0dcc513b8625bb2a7f363f",
+      "why": "NEWSLETTER_FEATURE_ENABLED goes from false to true so the Plunk-backed newsletter is served, and a second value, LEGACY_MAILCHIMP_NEWSLETTER_ENABLED (false), is added in the same import-free file. The header is rewritten because its 'why it is OFF' section had become false; it keeps the founder's original 'put SMS and newsletter to coming soon' instruction as history. A new constant carries the 503 message for the retired Mailchimp send route. No other file's value moved and nothing was deleted."
+    },
+    {
+      "file": "src/components/settings/IntegrationsSection.tsx",
+      "digest": "11a3a750f4062ff20cc521e1fa5924ec54e6d2d91c65751708459243dd281d4b",
+      "why": "showProvider hides the two concern: 'newsletter' rows (Instagram, Mailchimp) on LEGACY_MAILCHIMP_NEWSLETTER_ENABLED instead of NEWSLETTER_FEATURE_ENABLED, because turning the newsletter on must not bring back two integrations that only fed the retired Mailchimp sender. The clause keeps its position ahead of the platform override and its keying on concern; the Gmail clause and the Gmail disconnect path are untouched. The comment is kept the same number of lines as before so THE-352's line-loss count still holds."
+    },
+    {
+      "file": "src/__tests__/THE-339.gmail-hidden.test.ts",
+      "digest": "ef4d7e33c9638855137aefcf6e7de1e13813048bb5cce500c0e083fd2f8d05d8",
+      "why": "Two assertions follow the new state and nothing else changes: the 'no other switch moved' table now expects NEWSLETTER_FEATURE_ENABLED to be true, and the clause check in IntegrationsSection now looks for the LEGACY_MAILCHIMP_NEWSLETTER_ENABLED && provider.concern === 'newsletter' shape. The Gmail assertions, the Gmail clause and every file-exists check are byte-identical."
+    },
+    {
+      "file": "src/__tests__/THE-340.rota-resend.test.ts",
+      "digest": "edf085b3a52f824af266d3c25d0f72949d3cf1b07ae1be29291b0d0061d1f7d6",
+      "why": "The rota-mail suite measured the newsletter switch as false; it now measures it as true, which is the live state, and still asserts neither the rota path nor the funnel reads the switch. The 'newsletter switch guards the newsletter route' case now checks the email actions route for NEWSLETTER_FEATURE_ENABLED and the retired send route for LEGACY_MAILCHIMP_NEWSLETTER_ENABLED. No transactional-email assertion moved."
+    },
+    {
+      "file": "src/components/__tests__/AdminSettings.integrations-gating.test.tsx",
+      "digest": "8abdc8b8520204098b7d528b2a63f0f8f10640ff00776962a1eefacdb4b81ac4",
+      "why": "EXPECTED_PROVIDERS is still derived from a flag rather than hardcoded, but the newsletter filter now reads LEGACY_MAILCHIMP_NEWSLETTER_ENABLED, since that switch is what hides Instagram and Mailchimp now. The tier cases follow it automatically, the Gmail filter is unchanged, and the assertions that the plan entitlement itself is untouched are kept."
+    }
+  ]
+}

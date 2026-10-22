@@ -3,8 +3,10 @@
 Branch `feat/newsletter-plunk`. Specs: `2026-09-25-newsletter-optin-crm-spec`, redesign plan Phase 3.
 
 ## Rules of the build
-- `NEWSLETTER_FEATURE_ENABLED` stays `false` (THE-335 pins it). The new workspace mounts in the
-  existing `newsletter` tab branch, so flipping that one switch is still the whole launch.
+- `NEWSLETTER_FEATURE_ENABLED` is `true`. The new workspace mounts in the existing `newsletter`
+  tab branch. The retired Mailchimp sender stays off on its own value,
+  `LEGACY_MAILCHIMP_NEWSLETTER_ENABLED` (`false`), so turning the newsletter on does not revive
+  `/api/newsletter/send` or the Mailchimp and Instagram integration rows.
 - Sending goes through `src/lib/email/provider.ts` (interface). `plunk.ts` is the only live
   implementation (server-only, `PLUNK_API_KEY`). `ses.ts` is a stub. UI imports no provider.
 - Default mode is the Harvest-managed shared Plunk account. A church verifies its own domain and

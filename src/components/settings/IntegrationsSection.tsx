@@ -8,7 +8,7 @@ import { hasPlatformOverride } from '../../utils/tenant-scope';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CONTROL_DENSITY } from '../layout/form-layout';
 import { NAV_CLEARANCE } from './GivingStatementsSection';
-import { NEWSLETTER_FEATURE_ENABLED } from '../../lib/newsletter-feature';
+import { LEGACY_MAILCHIMP_NEWSLETTER_ENABLED } from '../../lib/newsletter-feature';
 import { GMAIL_FEATURE_ENABLED, GMAIL_PAUSED_NOTICE } from '../../lib/gmail-feature';
 import {
   INTEGRATION_PROVIDERS,
@@ -51,17 +51,17 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ currentPlan, 
    *  at every card. */
   const showProvider = (id: IntegrationProviderId): boolean => {
     const provider = getIntegrationProvider(id);
-    // 🔴 THE-335 — the master switch FIRST, ahead of the platform override, in
-    // the shape the SMS nav entry uses: while the newsletter is hidden NOBODY
-    // sees a newsletter provider, super admin included. `concern` is what
-    // decides, not a list of ids, so a newsletter provider added tomorrow is
-    // hidden by this line rather than by a second one somebody has to remember.
+    // Instagram and Mailchimp only fed the retired Mailchimp sender, which the
+    // Plunk-backed newsletter never calls, so a connection here would go nowhere.
+    // The Mailchimp audience picker and the Instagram post import both end at
+    // that sender, so neither one has a working journey to offer.
     //
-    // 🔴 GMAIL IS UNAFFECTED and must be: its `concern` is 'crm', it is what
-    // sends a CRM contact an email, and it is the transport a rota invitation
-    // goes out on — the founder's stated replacement for SMS. Hiding it here to
-    // hide the newsletter would break the thing this ticket exists to protect.
-    if (!NEWSLETTER_FEATURE_ENABLED && provider.concern === 'newsletter') return false;
+    // They stay hidden for everyone, super admin included, on the legacy switch
+    // and not on the newsletter's own switch, which is now on. `concern` decides,
+    // so a newsletter provider added later is hidden by this line too.
+    //
+    // 🔴 GMAIL IS UNAFFECTED: its `concern` is 'crm' and it has its own switch.
+    if (!LEGACY_MAILCHIMP_NEWSLETTER_ENABLED && provider.concern === 'newsletter') return false;
     // 🔴 THE-339 — the Gmail switch, in the same position and for the same
     // reason: while Gmail is hidden NOBODY is offered the connection, super
     // admin included. `id` is what decides here rather than `concern`, because

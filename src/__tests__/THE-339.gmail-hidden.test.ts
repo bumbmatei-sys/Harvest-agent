@@ -330,7 +330,7 @@ describe('6 — member-erasure and member-export still handle Gmail data', () =>
 describe('7 — no other feature switch moved', () => {
   const OTHERS = [
     ['SMS_FEATURE_ENABLED', SMS_FEATURE_ENABLED, false],
-    ['NEWSLETTER_FEATURE_ENABLED', NEWSLETTER_FEATURE_ENABLED, false],
+    ['NEWSLETTER_FEATURE_ENABLED', NEWSLETTER_FEATURE_ENABLED, true],
     ['QUICKBOOKS_FEATURE_ENABLED', QUICKBOOKS_FEATURE_ENABLED, false],
     ['STRIPE_CONNECT_ENABLED', STRIPE_CONNECT_ENABLED, false],
     ['CUSTOM_DOMAIN_ENABLED', CUSTOM_DOMAIN_ENABLED, false],
@@ -351,7 +351,7 @@ describe('7 — no other feature switch moved', () => {
       .not.toMatch(/gmail/i);
     const section = code('src/components/settings/IntegrationsSection.tsx');
     expect(section, "the newsletter clause stopped keying on concern")
-      .toMatch(/!NEWSLETTER_FEATURE_ENABLED && provider\.concern === 'newsletter'/);
+      .toMatch(/!LEGACY_MAILCHIMP_NEWSLETTER_ENABLED && provider\.concern === 'newsletter'/);
     expect(section, 'the Gmail clause stopped keying on the provider id')
       .toMatch(/!GMAIL_FEATURE_ENABLED && provider\.id === 'gmail'/);
   });
