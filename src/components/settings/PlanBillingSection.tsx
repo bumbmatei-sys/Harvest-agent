@@ -192,7 +192,10 @@ export default function PlanBillingSection({
         </p>
       )}
 
-      {hasSubscription && canUpgrade && <BillingActivity tenantId={tenantId} />}
+      {/* History, the billing-summary PDF and add-ons follow owner access, not a
+          live subscription. A free, unpriced or cancelled plan still has invoices.
+          Manage above stays behind hasSubscription: there is nothing to portal. */}
+      {canUpgrade && <BillingActivity tenantId={tenantId} />}
     </div>
   );
 }

@@ -112,7 +112,7 @@ describe('BillingActivity (invoice history and billing summary in the Plan & bil
   });
 });
 
-describe('PlanBillingSection mounts BillingActivity for the owner of a subscription only', () => {
+describe('PlanBillingSection mounts BillingActivity for an owner, with or without a subscription', () => {
   async function mountSection(props: React.ComponentProps<typeof PlanBillingSection>) {
     const host = document.createElement('div');
     document.body.appendChild(host);
@@ -135,9 +135,27 @@ describe('PlanBillingSection mounts BillingActivity for the owner of a subscript
     expect(authFetchMock).not.toHaveBeenCalled();
   });
 
-  it('shows nothing to fetch on a plan with no subscription', async () => {
+  it('an owner with no subscription still sees invoices and the statement', async () => {
+    authFetchMock.mockResolvedValue(respond({
+      subscription: null,
+      invoices: INVOICES.invoices,
+      processor: 'dodo',
+    }));
     const host = await mountSection({ currentPlan: 'free' as never, tenantId: 't1', canUpgrade: true });
-    expect(host.querySelector('[data-testid="billing-history"]')).toBeNull();
-    expect(authFetchMock).not.toHaveBeenCalled();
+    expect(authFetchMock).toHaveBeenCalledWith('/api/billing/invoices');
+    const rows = host.querySelectorAll('[data-testid="billing-history"] tbody tr');
+    expect(rows, 'a free or cancelled owner lost the invoice history').toHaveLength(2);
+    expect(rows[0].querySelector('a')?.getAttribute('href')).toBe('https://pay.example/in_1.pdf');
+    expect(host.querySelector('[data-testid="billing-statement"]'), 'the billing-summary PDF was hidden').toBeTruthy();
+    expect(host.querySelector('[data-stub="addons"]')?.getAttribute('data-processor')).toBe('dodo');
+    expect(host.querySelector('[data-testid="settings-manage-action"]'), 'Manage opened with no subscription to portal').toBeNull();
+  });
+
+  it('an owner with no subscription and an empty history sees that empty state', async () => {
+    authFetchMock.mockResolvedValue(respond({ subscription: null, invoices: [], processor: null }));
+    const host = await mountSection({ currentPlan: 'free' as never, tenantId: 't1', canUpgrade: true });
+    expect(authFetchMock).toHaveBeenCalledWith('/api/billing/invoices');
+    expect(host.querySelector('[data-testid="billing-history"]')?.textContent).toMatch(/No payments yet/);
+    expect(host.querySelector('[data-testid="billing-statement"]')).toBeTruthy();
   });
 });

@@ -96,7 +96,17 @@ vi.mock('../AdminScreenHeader', async () => {
 const stub = vi.hoisted(() => () => ({ default: () => null }));
 vi.mock('../AdminBlog', stub);
 vi.mock('../PlatformInbox', stub);
-vi.mock('../AdminChurches', stub);
+vi.mock('../AdminChurches', () => ({
+  default: ({ onOpenBilling }: { onOpenBilling?: () => void }) => (
+    onOpenBilling
+      ? React.createElement(
+          'button',
+          { type: 'button', 'data-testid': 'campus-limit-billing', onClick: onOpenBilling },
+          'See the plans',
+        )
+      : null
+  ),
+}));
 vi.mock('../AdminCourses', stub);
 vi.mock('../AdminRAG', stub);
 vi.mock('../AdminTenants', stub);
@@ -443,18 +453,6 @@ describe('Billing & Payments and Branding open inside the desktop Settings popup
     store.current = { ...store.current, tenantPlan: plan };
     tenantCtx.current = { ...tenantCtx.current, tenantPlan: plan };
   };
-  const clickMenuRow = async (label: string) => {
-    const avatar = container.querySelector<HTMLElement>('[data-nav-rail-account] button[aria-label="My account"]');
-    expect(avatar, 'no account avatar in the sidebar').toBeTruthy();
-    await act(async () => { avatar!.click(); });
-    await flush();
-    const row = [...container.querySelectorAll<HTMLElement>('[role="menuitem"]')]
-      .find((b) => (b.textContent ?? '').trim().startsWith(label));
-    expect(row, `the account menu has no ${label} row`).toBeTruthy();
-    navigate.mockClear();
-    await act(async () => { row!.click(); });
-    await flush();
-  };
 
   it('a desktop owner who can open Settings sees no Billing row, and Plan & billing still renders billing', async () => {
     setDesktop();
@@ -506,14 +504,75 @@ describe('Billing & Payments and Branding open inside the desktop Settings popup
     expect(document.querySelector('[aria-label="Close billing"]'), 'the phone overlay did not open').toBeTruthy();
   });
 
-  it('an admin who cannot open Settings keeps the Billing overlay, so the row never dead-ends', async () => {
+  it('an owner with billing access who cannot open Settings keeps the menu row and the overlay', async () => {
     setDesktop();
-    // The buyer (ownerId) with a narrow role: billing access, but no manageSettings.
+    // The buyer (ownerId) with a narrow role: billing access, but no manageSettings,
+    // so the desktop Settings popup is not a door they can use.
     checkRosterAdminStatus.mockResolvedValue(false);
     await mount({ role: 'admin', permissions: { manageBlog: true } });
-    await clickMenuRow('Billing');
+    const rail = container.querySelector<HTMLElement>('[data-nav-rail-account]');
+    expect(rail, 'no account menu in the sidebar').toBeTruthy();
+    const avatar = rail!.querySelector<HTMLElement>('button[aria-label="My account"]');
+    await act(async () => { avatar!.click(); });
+    await flush();
+    const labels = [...rail!.querySelectorAll<HTMLElement>('[role="menuitem"]')]
+      .map((el) => (el.textContent ?? '').replace(/\s+/g, ' ').trim());
+    expect(labels.some((label) => label.startsWith('Billing')), `the billing row left the menu: ${labels.join(' | ')}`).toBe(true);
+    expect(labels, 'Settings appeared for an admin who cannot open it').not.toContain('Settings');
+    const row = [...rail!.querySelectorAll<HTMLElement>('[role="menuitem"]')]
+      .find((el) => (el.textContent ?? '').trim().startsWith('Billing'));
+    navigate.mockClear();
+    await act(async () => { row!.click(); });
+    await flush();
     expect(navigate).not.toHaveBeenCalledWith('/admin/settings?section=billing');
     expect(document.querySelector('[aria-label="Close billing"]'), 'the overlay did not open').toBeTruthy();
+  });
+
+  it('an owner on a free plan still sees invoice history in Plan & billing', async () => {
+    setDesktop();
+    setPlan('free');
+    window.history.replaceState({}, '', '/admin/settings?section=billing');
+    params.current = { section: 'settings' };
+    await mount();
+    expect(document.querySelector('[data-settings-section="billing"]')).toBeTruthy();
+    expect(document.querySelector('[data-stub="billing-activity"]'), 'a free owner lost invoice history').toBeTruthy();
+    expect(document.querySelector('[data-stub="plans"]'), 'the owner lost the plan cards').toBeTruthy();
+  });
+
+  const pressCampusBilling = async () => {
+    const link = container.querySelector<HTMLButtonElement>('[data-testid="campus-limit-billing"]');
+    expect(link, 'the campus-limit billing link was not passed through').toBeTruthy();
+    navigate.mockClear();
+    await act(async () => { link!.click(); });
+    await flush();
+  };
+
+  it('the campus-limit billing link opens Settings > Plan & billing on desktop', async () => {
+    setDesktop();
+    params.current = { section: 'churches' };
+    await mount();
+    await pressCampusBilling();
+    expect(navigate).toHaveBeenCalledWith('/admin/settings?section=billing');
+    expect(document.querySelector('[aria-label="Close billing"]'), 'the overlay opened instead of Settings').toBeNull();
+  });
+
+  it('the campus-limit billing link falls back to the overlay when Settings cannot open', async () => {
+    setDesktop();
+    params.current = { section: 'churches' };
+    checkRosterAdminStatus.mockResolvedValue(false);
+    await mount({ role: 'admin', permissions: { modifyChurches: true } });
+    await pressCampusBilling();
+    expect(navigate).not.toHaveBeenCalledWith('/admin/settings?section=billing');
+    expect(document.querySelector('[aria-label="Close billing"]'), 'the overlay did not open').toBeTruthy();
+  });
+
+  it('the campus-limit billing link falls back to the overlay on a phone', async () => {
+    setMobile();
+    params.current = { section: 'churches' };
+    await mount();
+    await pressCampusBilling();
+    expect(navigate).not.toHaveBeenCalledWith('/admin/settings?section=billing');
+    expect(document.querySelector('[aria-label="Close billing"]'), 'the phone overlay did not open').toBeTruthy();
   });
 
   it('/admin/branding on desktop opens Settings > Campus & branding for an entitled admin', async () => {
