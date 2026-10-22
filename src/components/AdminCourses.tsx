@@ -1,10 +1,12 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Plus, Library, Check, BookOpen } from 'lucide-react';
-import { collection, onSnapshot, query, where, deleteDoc, doc, getDoc, limit, orderBy, documentId, getCountFromServer } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, getDoc, limit, orderBy, documentId, getCountFromServer } from 'firebase/firestore';
 import { db } from '../firebase';
 import { authFetch } from '../utils/auth-fetch';
 import { CourseWizard } from './courses/builder/CourseWizard';
+import { hydrateCourse } from '../lib/courses/content-client';
+import { deleteCourse } from '../lib/courses/persist';
 import { CourseProductList } from './courses/CourseProductList';
 import { NewProductDialog, type ProductTypeOption } from './product-wizard';
 import type { ProductCourse as Course } from '../types/course-product.types';
@@ -544,7 +546,19 @@ const AdminCourses: React.FC = () => {
     setEditingCourse(null);
     setIsEditorOpen(true);
   };
-  const handleEditCourse = (course: Course) => { setEditingCourse(course); setIsEditorOpen(true); };
+  // The list holds only the outline; lesson content is fetched before the
+  // editor opens. If that read fails the editor must NOT open on the bare
+  // outline, because saving it would write empty lessons.
+  const handleEditCourse = async (course: Course) => {
+    try {
+      setEditingCourse(await hydrateCourse(course as Course & { id: string }));
+      setIsEditorOpen(true);
+    } catch (error) {
+      try { handleFirestoreError(error, OperationType.GET, `courses/${course.id}/lessonContent`); } catch (e) { console.error(e); }
+      setErrorMessage("Could not load this course's lessons, so it was not opened. Please try again.");
+      setTimeout(() => setErrorMessage(null), 6000);
+    }
+  };
 
   // Draft courses are neither browsable nor adoptable. This is the ONE place
   // that filter lives on the read path; /api/courses/adopt independently refuses
@@ -688,7 +702,7 @@ const AdminCourses: React.FC = () => {
           return;
         }
       }
-      await deleteDoc(doc(db, 'courses', id));
+      await deleteCourse(id);
       setDeleteConfirmId(null);
     } catch (error) {
       try { handleFirestoreError(error, OperationType.DELETE, `courses/${id}`); } catch (e) { console.error(e); }

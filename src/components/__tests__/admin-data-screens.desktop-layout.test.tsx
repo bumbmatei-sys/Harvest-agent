@@ -1390,6 +1390,11 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
     // the course wizard. The screen still renders through FORM_CONTAINER, the
     // search bar, the alerts and the library tab are untouched, and it mints no
     // width, height, gap or colour of its own: the cards live in the new module.
+    // AdminCourses.tsx was RE-RECORDED A FIFTH TIME by the lesson-content lock
+    // (restricted lessons move behind rules). The screen gains an import pair,
+    // an async edit handler that fetches the lessons before the wizard opens and
+    // a delete that also removes them. It renders nothing new: no width, height,
+    // gap, container class or colour, and it still renders through FORM_CONTAINER.
     // AdminDashboard stays EXEMPT and un-re-recorded, as the note above requires.
     const moved = Object.entries(SOURCE.digests)
       .filter(([f]) => existsSync(path.join(SRC, f)))

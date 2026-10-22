@@ -146,6 +146,32 @@ describe('POST /api/certificate — forgery paths all fail', () => {
     expect(res.status).toBe(403);
   });
 
+  describe('a course saved in the split layout (quiz questions live in guarded lessonContent, the outline keeps an id-only stub)', () => {
+    const splitLessons = (over: Record<string, unknown> = {}) => [
+      { id: 'l1', title: 'Lesson l1', duration: '10', authorId: 'auth-1', type: 'text' },
+      { id: 'l2', title: 'Lesson l2', duration: '10', authorId: 'auth-1', type: 'text', quiz: [{ id: 'l2-q' }], ...over },
+      { id: 'l3', title: 'Lesson l3', duration: '10', authorId: 'auth-1', type: 'text' },
+    ];
+    const seedSplit = () => seedCourse({
+      requireQuiz: true,
+      levels: [{ id: 'lv1', title: 'L1', sections: [{ id: 's1', title: 'A', lessons: splitLessons() }] }],
+    });
+
+    it('still refuses a learner who has not passed the quiz', async () => {
+      seedSplit();
+      store.users.set('learner-1', { completedLessons: ALL, quizAttempts: {} });
+      const res = await POST(makeReq({ courseId: 'course-1' }));
+      expect(res.status).toBe(403);
+      expect(mockFileSave).not.toHaveBeenCalled();
+    });
+
+    it('issues once the quiz is passed', async () => {
+      seedSplit();
+      const res = await POST(makeReq({ courseId: 'course-1' }));
+      expect(res.status).toBe(200);
+    });
+  });
+
   it('with requireQuiz, a lying passed:true (failing score) is still refused — the bar is recomputed', async () => {
     seedCourse({ requireQuiz: true });
     store.users.set('learner-1', { completedLessons: ALL, quizAttempts: { l2: { score: 0, total: 1, passed: true, answeredAt: 'x' } } });

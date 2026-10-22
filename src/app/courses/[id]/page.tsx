@@ -1,16 +1,9 @@
 import type { Metadata } from 'next';
-import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
-import { adminDb } from '@/lib/firebase-admin';
-import { getTenantFromHost } from '@/lib/server-tenant';
 import { stripHtml } from '@/utils/stripHtml';
-import type { Course, Level } from '@/types/course.types';
+import type { Level } from '@/types/course.types';
 import PublicRouteAnalytics from '@/components/PublicRouteAnalytics';
-
-interface CourseDoc extends Course {
-  status?: string;
-  tenantId?: string | null;
-}
+import { loadPublicCourse } from '@/lib/courses/public-course';
 
 function countLessons(levels: Level[]): number {
   return levels.reduce(
@@ -25,10 +18,10 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const snap = await adminDb.collection('courses').doc(id).get();
-  if (!snap.exists) return { title: 'Course Not Found' };
+  const found = await loadPublicCourse(id);
+  if (!found) return { title: 'Course Not Found' };
 
-  const course = snap.data() as CourseDoc;
+  const { course } = found;
   const plainDescription = course.description ? stripHtml(course.description) : undefined;
 
   return {
@@ -56,25 +49,16 @@ export default async function CoursePublicPage({
 }) {
   const { id } = await params;
 
-  const headersList = await headers();
-  const host = headersList.get('host') || '';
-
-  const [snap, tenant] = await Promise.all([
-    adminDb.collection('courses').doc(id).get(),
-    getTenantFromHost(host),
-  ]);
-
-  if (!snap.exists) notFound();
-
-  const course = { id: snap.id, ...snap.data() } as CourseDoc;
-
-  // Only expose published courses publicly
-  if (course.status && course.status !== 'published') notFound();
+  // Host tenant, exact 'published' status and ministry match are all decided in
+  // loadPublicCourse; anything it refuses is a plain 404.
+  const found = await loadPublicCourse(id);
+  if (!found) notFound();
+  const { course, tenant, restricted } = found;
 
   const lessonCount = countLessons(course.levels ?? []);
   const levelCount = course.levels?.length ?? 0;
   const appUrl = `/?course=${id}`;
-  const backLabel = tenant ? `Back to ${tenant.name}` : 'Back to Harvest';
+  const backLabel = `Back to ${tenant.name}`;
 
   return (
     <div className="min-h-screen bg-surface-raised">
@@ -121,18 +105,22 @@ export default async function CoursePublicPage({
           </p>
         )}
 
-        {/* Stats */}
+        {/* Stats. A restricted course says how many levels it has and nothing about its lessons. */}
         <div className="flex items-center gap-4 text-sm text-faint mb-8">
           <span>
             {levelCount} level{levelCount !== 1 ? 's' : ''}
           </span>
-          <span className="w-1 h-1 rounded-full bg-line-strong" />
-          <span>
-            {lessonCount} lesson{lessonCount !== 1 ? 's' : ''}
-          </span>
+          {!restricted && (
+            <>
+              <span className="w-1 h-1 rounded-full bg-line-strong" />
+              <span>
+                {lessonCount} lesson{lessonCount !== 1 ? 's' : ''}
+              </span>
+            </>
+          )}
         </div>
 
-        {/* Level preview — first level only */}
+        {/* Level preview, first level only. Restricted courses show titles and no lesson counts. */}
         {(course.levels ?? []).slice(0, 1).map(level => (
           <div key={level.id} className="mb-8 p-5 rounded-2xl bg-surface-tint">
             <p className="text-xs font-semibold uppercase tracking-wider text-faint mb-2">
@@ -147,7 +135,7 @@ export default async function CoursePublicPage({
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] flex-shrink-0" />
                   {section.title}
-                  {section.lessons.length > 0 && (
+                  {!restricted && section.lessons.length > 0 && (
                     <span className="text-faint">
                       · {section.lessons.length} lesson{section.lessons.length !== 1 ? 's' : ''}
                     </span>
@@ -168,11 +156,11 @@ export default async function CoursePublicPage({
           href={appUrl}
           className="block w-full text-center bg-[#D4AF37] text-white font-bold py-4 rounded-xl hover:bg-[#C9963A] transition-colors text-base"
         >
-          Start Learning
+          {restricted ? 'Open in the app' : 'Start Learning'}
         </a>
 
         <p className="text-center text-xs text-faint mt-3">
-          Free to access · Opens in the {tenant?.name || 'Harvest'} app
+          {restricted ? 'For people who have been given access' : 'Free to access'} · Opens in the {tenant.name} app
         </p>
       </main>
     </div>

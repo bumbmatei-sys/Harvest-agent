@@ -10,6 +10,8 @@ export interface ProductLesson extends Lesson {
   type?: LessonType;
   /** Rich-text body as TipTap HTML. Present on text and video + text lessons. */
   body?: string;
+  /** Outline-only: an untyped (legacy) lesson that has a video. */
+  hasVideo?: boolean;
 }
 
 export type CourseAccessMode = 'everyone' | 'restricted';
