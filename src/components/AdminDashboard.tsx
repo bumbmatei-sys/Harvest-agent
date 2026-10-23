@@ -305,14 +305,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     }
   }, [userData]);
 
-  /** Navigate to a tab by internal id (resets transient sub-views). */
-  const go = useCallback((id: string) => {
+  /** Navigate to a tab by internal id (resets transient sub-views). `itemId` opens one item on the screens that take it. */
+  const go = useCallback((id: string, itemId?: string | null) => {
     setShowMoreSheet(false);
     setNewsletterView('list');
     setShellPlaceholder(null);
     const side = sideForTab(id);
     if (side) setShellSide(side);
-    navigate(id === 'dashboard' ? '/admin' : `/admin/${TAB_TO_SLUG[id] || id}`);
+    navigate(id === 'dashboard' ? '/admin' : `/admin/${TAB_TO_SLUG[id] || id}${itemId ? `/${encodeURIComponent(itemId)}` : ''}`);
   }, [navigate]);
 
   /** Back arrow: go where the user came from, or fall back to the dashboard. */
@@ -1106,6 +1106,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           onPlaceholder={(id) => { setShellPlaceholder(id); const next = sideForTab(id); if (next) setShellSide(next); }}
           accountMenu={<MyAccountMenu {...accountMenuProps} variant="rail" hideBillingRow={settingsPopup} />}
           accountLabel={accountMenuProps.displayName || 'Account'}
+          search={{
+            tenantId,
+            uid: auth.currentUser?.uid ?? null,
+            access: new Set(allTabs.map((tab) => tab.id)),
+            onOpenItem: ({ tab, itemId }) => go(tab, itemId),
+          }}
           boardsSlot={notesTab ? (
             <BoardsSection
               tenantId={tenantId}
