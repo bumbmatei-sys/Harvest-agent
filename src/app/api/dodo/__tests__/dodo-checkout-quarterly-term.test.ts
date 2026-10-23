@@ -14,6 +14,13 @@ import { join, resolve } from 'node:path';
 import { BILLING_TERMS, PRICED_PLAN_ORDER } from '@/utils/plan-features';
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   🔴 THE QUARTERLY TERM WAS WITHDRAWN ON 2026-10-23. This file keeps its name —
+   other guards and comments name it by path — but it now pins the opposite of
+   what it was written for: `quarterly` is an UNRECOGNISED term here and is
+   refused with a 400 that never reaches Dodo, while monthly and yearly sell
+   and the allowlist is still derived from `BILLING_TERMS`. The history below is
+   the reason that derivation matters in both directions.
+
    THE-199 — `/api/dodo/checkout` refused every quarterly signup with a 400.
 
    The founder chose a quarterly plan, sat on "Setting up your account…", fell
@@ -37,7 +44,7 @@ import { BILLING_TERMS, PRICED_PLAN_ORDER } from '@/utils/plan-features';
    ═══════════════════════════════════════════════════════════════════════════ */
 
 process.env.DODO_PAYMENTS_API_KEY = 'dodo_test_key';
-process.env.DODO_PAYMENTS_WEBHOOK_KEY = 'whsec_' + Buffer.from('quarterly-secret').toString('base64');
+process.env.DODO_PAYMENTS_WEBHOOK_KEY = 'whsec_' + Buffer.from('checkout-terms-secret').toString('base64');
 process.env.DODO_PAYMENTS_ENVIRONMENT = 'test_mode';
 
 const mockCreatePlanCheckout = vi.fn();
@@ -100,12 +107,15 @@ function request(body: Record<string, unknown>, origin = 'https://theharvest.app
   });
 }
 
-/** The founder's request, as production logged it: a quarterly Individual plan. */
-const QUARTERLY_SIGNUP = {
+/** A yearly Individual signup — the discounted term this build still sells. */
+const YEARLY_SIGNUP = {
   plan: 'plus',
-  billing: 'quarterly',
+  billing: 'yearly',
   ministryName: 'Grace Community Church',
 };
+
+/** What the founder's THE-199 request looked like, and what is now refused. */
+const WITHDRAWN_QUARTERLY_SIGNUP = { ...YEARLY_SIGNUP, billing: 'quarterly' };
 
 let POST: Post;
 
@@ -120,8 +130,8 @@ beforeEach(async () => {
   });
   mockCollGet.mockResolvedValue({ empty: true, docs: [] });
   mockCreatePlanCheckout.mockResolvedValue({
-    url: 'https://test.checkout.dodopayments.com/session/cks_quarterly',
-    reference: 'cks_quarterly',
+    url: 'https://test.checkout.dodopayments.com/session/cks_yearly',
+    reference: 'cks_yearly',
   });
   POST = await loadCheckoutRoute();
 });
@@ -130,35 +140,41 @@ beforeEach(async () => {
 const checkoutArg = () => mockCreatePlanCheckout.mock.calls[0]?.[0];
 
 /* ─── TEST 1 ──────────────────────────────────────────────────────────────── */
-describe('a quarterly checkout request is accepted', () => {
-  it('🔴 reaches Dodo carrying the quarterly term — the request the founder made', async () => {
-    const res = await POST(request(QUARTERLY_SIGNUP));
+describe('a quarterly checkout request is refused — the term was withdrawn', () => {
+  it('🔴 answers 400 and never reaches Dodo', async () => {
+    const res = await POST(request(WITHDRAWN_QUARTERLY_SIGNUP));
 
-    expect(res.status).toBe(200);
-    expect(mockCreatePlanCheckout).toHaveBeenCalledTimes(1);
-    expect(checkoutArg().period).toBe('quarterly');
+    expect(res.status).toBe(400);
+    expect(mockCreatePlanCheckout).not.toHaveBeenCalled();
   });
 
-  it('🔴 no longer answers that request with the 400 that stranded him', async () => {
-    const res = await POST(request(QUARTERLY_SIGNUP));
+  it('🔴 names what it could not read, and substitutes no term for it', async () => {
+    const res = await POST(request(WITHDRAWN_QUARTERLY_SIGNUP));
     const body = await res.json();
 
-    // The exact response production returned three times over: the message the
-    // signup screen could do nothing with, so it fell back to "Complete your
-    // payment" and offered the same dead end again.
-    expect(body).not.toMatchObject({ error: 'Invalid plan/billing: plus/quarterly' });
-    expect(body.url).toBe('https://test.checkout.dodopayments.com/session/cks_quarterly');
+    // The refusal quotes the SUBMITTED value. A stale `?billing=quarterly` link
+    // must not turn into a monthly or yearly subscription the church never chose.
+    expect(body).toMatchObject({ error: 'Invalid plan/billing: plus/quarterly' });
+    expect(mockCreatePlanCheckout).not.toHaveBeenCalled();
+  });
+
+  it('is refused on every priced tier, not just one', async () => {
+    for (const plan of PRICED_PLAN_ORDER) {
+      const res = await POST(request({ ...WITHDRAWN_QUARTERLY_SIGNUP, plan }));
+      expect(res.status, plan).toBe(400);
+    }
+    expect(mockCreatePlanCheckout).not.toHaveBeenCalled();
   });
 
   // 🔴 PRICED_PLAN_ORDER, not PLAN_ORDER. "Every tier can be bought" is a claim
   // about tiers that CAN be bought; the Forever Free tier has no Dodo product,
   // and this endpoint now refuses it with a 400 by design (see readPlan). That
   // refusal is asserted in its own test directly below.
-  it.each(PRICED_PLAN_ORDER)('every priced tier can be bought quarterly, not just one — %s', async (plan) => {
-    const res = await POST(request({ ...QUARTERLY_SIGNUP, plan }));
+  it.each(PRICED_PLAN_ORDER)('every priced tier can be bought yearly, not just one — %s', async (plan) => {
+    const res = await POST(request({ ...YEARLY_SIGNUP, plan }));
 
     expect(res.status).toBe(200);
-    expect(checkoutArg()).toMatchObject({ plan, period: 'quarterly' });
+    expect(checkoutArg()).toMatchObject({ plan, period: 'yearly' });
   });
 
   it('🔴 REFUSES the Forever Free tier — it has no product to check out (THE-200)', async () => {
@@ -167,29 +183,29 @@ describe('a quarterly checkout request is accepted', () => {
     // would have accepted it and carried it into requireProductId('free', …) —
     // a 500 at best. It must be refused at the boundary, with the same 400 any
     // other unsellable value gets.
-    const res = await POST(request({ ...QUARTERLY_SIGNUP, plan: 'free' }));
+    const res = await POST(request({ ...YEARLY_SIGNUP, plan: 'free' }));
     expect(res.status).toBe(400);
     expect((await res.json()).error).toMatch(/Invalid plan\/billing/);
   });
 
-  it('stamps the quarterly term into subscription metadata, where the webhook reads it', async () => {
-    await POST(request(QUARTERLY_SIGNUP));
+  it('stamps the yearly term into subscription metadata, where the webhook reads it', async () => {
+    await POST(request(YEARLY_SIGNUP));
 
-    expect(checkoutArg().metadata).toMatchObject({ plan: 'plus', billing: 'quarterly' });
+    expect(checkoutArg().metadata).toMatchObject({ plan: 'plus', billing: 'yearly' });
   });
 });
 
 /* ─── TEST 2 ──────────────────────────────────────────────────────────────── */
 describe('monthly and yearly still work', () => {
   it('accepts a monthly signup', async () => {
-    const res = await POST(request({ ...QUARTERLY_SIGNUP, billing: 'monthly' }));
+    const res = await POST(request({ ...YEARLY_SIGNUP, billing: 'monthly' }));
 
     expect(res.status).toBe(200);
     expect(checkoutArg().period).toBe('monthly');
   });
 
   it('accepts a yearly signup', async () => {
-    const res = await POST(request({ ...QUARTERLY_SIGNUP, billing: 'yearly' }));
+    const res = await POST(request({ ...YEARLY_SIGNUP, billing: 'yearly' }));
 
     expect(res.status).toBe(200);
     expect(checkoutArg().period).toBe('yearly');
@@ -199,7 +215,7 @@ describe('monthly and yearly still work', () => {
     // Driven from `BILLING_TERMS` rather than from a list written here: a term
     // this repo starts pricing and this route stops selling is precisely the
     // shape of THE-199, and it should fail HERE rather than in production.
-    const res = await POST(request({ ...QUARTERLY_SIGNUP, billing: term }));
+    const res = await POST(request({ ...YEARLY_SIGNUP, billing: term }));
 
     expect(res.status).toBe(200);
     expect(checkoutArg().period).toBe(term);
@@ -215,6 +231,7 @@ describe('monthly and yearly still work', () => {
  * the processor's spelling had leaked into Harvest's front door.
  */
 const NOT_A_TERM: ReadonlyArray<readonly [string, unknown]> = [
+  ['the withdrawn quarterly term', 'quarterly'],
   ["Dodo's own word for the yearly term", 'annual'],
   ['the adverb form of a term', 'annually'],
   ['a capitalised term', 'Quarterly'],
@@ -236,7 +253,7 @@ const NOT_A_TERM: ReadonlyArray<readonly [string, unknown]> = [
 /* ─── TEST 3 ──────────────────────────────────────────────────────────────── */
 describe('an unrecognised billing value is still rejected with 400', () => {
   it.each(NOT_A_TERM)('refuses %s', async (_label, value) => {
-    const res = await POST(request({ ...QUARTERLY_SIGNUP, billing: value }));
+    const res = await POST(request({ ...YEARLY_SIGNUP, billing: value }));
 
     expect(res.status).toBe(400);
     expect(mockCreatePlanCheckout).not.toHaveBeenCalled();
@@ -250,7 +267,7 @@ describe('an unrecognised billing value is still rejected with 400', () => {
   });
 
   it('refuses a plan it does not sell, on a term it does', async () => {
-    const res = await POST(request({ ...QUARTERLY_SIGNUP, plan: 'ultra' }));
+    const res = await POST(request({ ...YEARLY_SIGNUP, plan: 'ultra' }));
 
     expect(res.status).toBe(400);
     expect(mockCreatePlanCheckout).not.toHaveBeenCalled();
@@ -260,7 +277,7 @@ describe('an unrecognised billing value is still rejected with 400', () => {
 /* ─── TEST 4 ──────────────────────────────────────────────────────────────── */
 describe('an unrecognised value never falls back to a term', () => {
   it.each(NOT_A_TERM)('does not substitute a term for %s', async (_label, value) => {
-    await POST(request({ ...QUARTERLY_SIGNUP, billing: value }));
+    await POST(request({ ...YEARLY_SIGNUP, billing: value }));
 
     // 🔴 THE REVENUE GUARD. Not "it 400s" — that is test 3 — but that no term
     // was invented on the church's behalf. A `?? 'monthly'` here would charge a
@@ -275,7 +292,7 @@ describe('an unrecognised value never falls back to a term', () => {
     // default" would produce: a $39-a-month church landing on the $329 year, or
     // a church that committed to a year being billed $39 at a time.
     for (const [, value] of NOT_A_TERM) {
-      await POST(request({ ...QUARTERLY_SIGNUP, billing: value }));
+      await POST(request({ ...YEARLY_SIGNUP, billing: value }));
     }
 
     const periodsSentToDodo = mockCreatePlanCheckout.mock.calls.map((call) => call[0]?.period);
@@ -284,14 +301,14 @@ describe('an unrecognised value never falls back to a term', () => {
   });
 
   it('says back what it could not read, rather than what it decided to use', async () => {
-    const res = await POST(request({ ...QUARTERLY_SIGNUP, billing: 'annual' }));
+    const res = await POST(request({ ...YEARLY_SIGNUP, billing: 'annual' }));
     const body = await res.json();
 
     // The refusal quotes the SUBMITTED value. A message naming a term the
     // request never carried would mean a substitution happened somewhere above
     // it, which is the thing this whole group exists to rule out.
     expect(body.error).toContain('annual');
-    expect(body.error).not.toContain('quarterly');
+    expect(body.error).not.toContain('yearly');
   });
 });
 
@@ -305,7 +322,7 @@ describe('the period allowlist is derived from BILLING_TERMS, not from string li
     // purchasable here on the same commit.
     const withFourthTerm = await loadCheckoutRoute([...BILLING_TERMS, 'biennial']);
 
-    const res = await withFourthTerm(request({ ...QUARTERLY_SIGNUP, billing: 'biennial' }));
+    const res = await withFourthTerm(request({ ...YEARLY_SIGNUP, billing: 'biennial' }));
 
     expect(res.status).toBe(200);
     expect(checkoutArg().period).toBe('biennial');
@@ -317,9 +334,9 @@ describe('the period allowlist is derived from BILLING_TERMS, not from string li
     // the list and the dropped terms must stop being sellable.
     const monthlyOnly = await loadCheckoutRoute(['monthly']);
 
-    expect((await monthlyOnly(request({ ...QUARTERLY_SIGNUP, billing: 'quarterly' }))).status).toBe(400);
-    expect((await monthlyOnly(request({ ...QUARTERLY_SIGNUP, billing: 'yearly' }))).status).toBe(400);
-    expect((await monthlyOnly(request({ ...QUARTERLY_SIGNUP, billing: 'monthly' }))).status).toBe(200);
+    expect((await monthlyOnly(request({ ...YEARLY_SIGNUP, billing: 'quarterly' }))).status).toBe(400);
+    expect((await monthlyOnly(request({ ...YEARLY_SIGNUP, billing: 'yearly' }))).status).toBe(400);
+    expect((await monthlyOnly(request({ ...YEARLY_SIGNUP, billing: 'monthly' }))).status).toBe(200);
   });
 
   it('writes no term of its own anywhere in the route', async () => {
@@ -340,18 +357,18 @@ describe('the period allowlist is derived from BILLING_TERMS, not from string li
 
 /* ─── TEST 6 ──────────────────────────────────────────────────────────────── */
 describe('the tenantId guard still returns 400', () => {
-  it('refuses a request carrying a tenantId, even a perfectly valid quarterly one', async () => {
+  it('refuses a request carrying a tenantId, even a perfectly valid yearly one', async () => {
     // An existing tenant belongs to a plan-change path. Falling through would
     // open a SECOND subscription for a church that already has one and bill
     // them twice — which is why this guard runs BEFORE the term is even read.
-    const res = await POST(request({ ...QUARTERLY_SIGNUP, tenantId: 'grace' }));
+    const res = await POST(request({ ...YEARLY_SIGNUP, tenantId: 'grace' }));
 
     expect(res.status).toBe(400);
     expect(mockCreatePlanCheckout).not.toHaveBeenCalled();
   });
 
   it('still names where a plan change belongs', async () => {
-    const res = await POST(request({ ...QUARTERLY_SIGNUP, tenantId: 'grace' }));
+    const res = await POST(request({ ...YEARLY_SIGNUP, tenantId: 'grace' }));
     const body = await res.json();
 
     expect(body.error).toBe(
@@ -360,7 +377,7 @@ describe('the tenantId guard still returns 400', () => {
   });
 
   it.each(BILLING_TERMS)('refuses on every term, so no term routes around it — %s', async (term) => {
-    const res = await POST(request({ ...QUARTERLY_SIGNUP, billing: term, tenantId: 'grace' }));
+    const res = await POST(request({ ...YEARLY_SIGNUP, billing: term, tenantId: 'grace' }));
 
     expect(res.status).toBe(400);
     expect(mockCreatePlanCheckout).not.toHaveBeenCalled();
@@ -377,7 +394,7 @@ describe('the already-belongs-to-an-organization guard is unchanged', () => {
       isSuperAdmin: false,
     });
 
-    const res = await POST(request(QUARTERLY_SIGNUP));
+    const res = await POST(request(YEARLY_SIGNUP));
     const body = await res.json();
 
     expect(res.status).toBe(400);
@@ -393,16 +410,16 @@ describe('the already-belongs-to-an-organization guard is unchanged', () => {
       isSuperAdmin: true,
     });
 
-    const res = await POST(request(QUARTERLY_SIGNUP));
+    const res = await POST(request(YEARLY_SIGNUP));
 
     expect(res.status).toBe(200);
-    expect(checkoutArg().period).toBe('quarterly');
+    expect(checkoutArg().period).toBe('yearly');
   });
 
   it('still requires authentication before anything else', async () => {
     mockRequireAuth.mockResolvedValue(new Response('nope', { status: 401 }));
 
-    const res = await POST(request(QUARTERLY_SIGNUP));
+    const res = await POST(request(YEARLY_SIGNUP));
 
     expect(res.status).toBe(401);
     expect(mockCreatePlanCheckout).not.toHaveBeenCalled();
@@ -428,25 +445,22 @@ describe('no other hardcoded term list remains in a validation path', () => {
     'app/api/stripe/checkout/route.ts':
       'VALIDATION, two-valued, LEFT ALONE AND REPORTED. `billingKey` narrows to ' +
       'the two keys `PLAN_PRICES` (lib/billing.ts) holds, because Stripe has ' +
-      'monthly and yearly price ids and no quarterly one. Widening it needs ' +
-      'three new Stripe prices and a changed checkout payload — a money-path ' +
-      'change outside THE-199, not a line edit. This is the ROLLBACK path; ' +
+      'monthly and yearly price ids. That now matches the Dodo term list, since ' +
+      'the quarterly term was withdrawn. This is the ROLLBACK path; ' +
       '`DODO_BILLING_ENABLED` is on, so signup does not use it today.',
 
     // ── The two-column ADD-ON domain. Legitimately not three. ───────────────
     'lib/dodo/catalogue.ts':
       'LEGITIMATE. `AddonBillingPeriod` and `addonPeriodFor` name the two ' +
       'columns add-ons are really sold on — Dodo charges an add-on on its ' +
-      "product's cycle and a quarterly product cycles in months. Verified " +
-      'against the live quarterly products and pinned by ' +
-      'dodo-quarterly-term.test.ts. `DodoBillingPeriod` is Dodo\'s own ' +
-      'three-word vocabulary; `DODO_BILLING_PERIOD` is the total map into it.',
+      "product's cycle. Pinned by dodo-quarterly-term.test.ts. " +
+      '`DodoBillingPeriod` is Dodo\'s own two-word vocabulary; ' +
+      '`DODO_BILLING_PERIOD` is the total map into it.',
     'utils/addon-change.ts':
       "LEGITIMATE, and its input FIXED. The client mirror of the add-on's two " +
-      'columns. `/api/dodo/addons` was sending the tenant\'s PLAN term into ' +
-      'it, so a quarterly church read as "unknown" and lost the price from ' +
-      'every add-on card; the route now reconciles through `addonPeriodFor` ' +
-      'before it answers.',
+      'columns. `/api/dodo/addons` reconciles the tenant\'s PLAN term through ' +
+      '`addonPeriodFor` before it answers, so the client only ever reads one ' +
+      'of the two add-on columns.',
 
     // ── Stripe-only plumbing, coupled to Stripe's two prices. ───────────────
     'app/api/stripe/webhook/route.ts':
@@ -560,9 +574,9 @@ describe('no other hardcoded term list remains in a validation path', () => {
 
   it('reconciles the plan term into the add-on cycle server-side, in one place', () => {
     // The other end of the same class of bug: `/api/dodo/addons` answers with
-    // the period its add-on PRICES recur on, which for a quarterly church is
-    // monthly. The client cannot compute that — the Dodo module is server-only
-    // — so the route must, through `addonPeriodFor` and not a second copy.
+    // the period its add-on PRICES recur on. The client cannot compute that —
+    // the Dodo module is server-only — so the route must, through
+    // `addonPeriodFor` and not a second copy.
     const src = codeOf(resolve(__dirname, '../addons/route.ts'));
     expect(src).toContain('addonPeriodFor(context.period)');
     expect(src).not.toMatch(/billing:\s*context\.period,\s*\n\s*plan:/);
@@ -571,8 +585,8 @@ describe('no other hardcoded term list remains in a validation path', () => {
 
 /* ─── TEST 9 ──────────────────────────────────────────────────────────────── */
 describe('the checkout payload and return_url logic are unchanged', () => {
-  it('sends Dodo exactly what it sent before, with quarterly in the term slot', async () => {
-    await POST(request(QUARTERLY_SIGNUP));
+  it('sends Dodo exactly what it sent before, with yearly in the term slot', async () => {
+    await POST(request(YEARLY_SIGNUP));
 
     // Whole-object equality, so a field quietly added to the money path fails
     // here: the trial is one of them. `trialDays` is ABSENT rather than
@@ -580,13 +594,13 @@ describe('the checkout payload and return_url logic are unchanged', () => {
     // number is deliberately not restated at the call site.
     expect(checkoutArg()).toEqual({
       plan: 'plus',
-      period: 'quarterly',
+      period: 'yearly',
       returnUrl: 'https://theharvest.app/?dodo=success',
       cancelUrl: 'https://theharvest.app/?dodo=cancel',
       customer: { email: 'pastor@grace.example', name: 'Grace Community Church' },
       metadata: {
         plan: 'plus',
-        billing: 'quarterly',
+        billing: 'yearly',
         ministryName: 'Grace Community Church',
         userId: 'uid_owner_1',
         newTenant: 'true',
@@ -598,7 +612,7 @@ describe('the checkout payload and return_url logic are unchanged', () => {
   it('returns the church to the SAME origin it signed up on', async () => {
     // Firebase auth is per-origin. Sending them to the canonical host instead
     // would drop the session they need to finish setup.
-    await POST(request(QUARTERLY_SIGNUP, 'https://grace.theharvest.app'));
+    await POST(request(YEARLY_SIGNUP, 'https://grace.theharvest.app'));
 
     expect(checkoutArg().returnUrl).toBe('https://grace.theharvest.app/?dodo=success');
     expect(checkoutArg().cancelUrl).toBe('https://grace.theharvest.app/?dodo=cancel');
@@ -611,7 +625,7 @@ describe('the checkout payload and return_url logic are unchanged', () => {
       const bare = new NextRequest('https://theharvest.app/api/dodo/checkout', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(QUARTERLY_SIGNUP),
+        body: JSON.stringify(YEARLY_SIGNUP),
       });
 
       await POST(bare);
@@ -623,13 +637,13 @@ describe('the checkout payload and return_url logic are unchanged', () => {
     }
   });
 
-  it('still carries the affiliate stamp on a quarterly signup', async () => {
+  it('still carries the affiliate stamp on a yearly signup', async () => {
     // Subscription metadata is the only place either webhook can read a
     // referrer from, and nothing retries a checkout already created — so a term
     // that skipped the stamp would be unattributable forever.
     mockCollGet.mockResolvedValue({ empty: false, docs: [{ id: 'uid_affiliate_9' }] });
 
-    await POST(request({ ...QUARTERLY_SIGNUP, referrerId: 'GRACE10' }));
+    await POST(request({ ...YEARLY_SIGNUP, referrerId: 'GRACE10' }));
 
     expect(checkoutArg().metadata.referrerId).toBe('uid_affiliate_9');
   });
@@ -638,7 +652,7 @@ describe('the checkout payload and return_url logic are unchanged', () => {
     mockCreatePlanCheckout.mockRejectedValue(new Error('dodo unavailable'));
     const err = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const res = await POST(request(QUARTERLY_SIGNUP));
+    const res = await POST(request(YEARLY_SIGNUP));
 
     expect(res.status).toBe(500);
     err.mockRestore();

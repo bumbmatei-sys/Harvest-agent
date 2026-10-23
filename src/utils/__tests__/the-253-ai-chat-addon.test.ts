@@ -338,12 +338,12 @@ describe('the webhook is still the only writer of the add-on set', () => {
 
 /* ── test 11 ───────────────────────────────────────────────────────────────── */
 describe('no price and no other add-on moved', () => {
-  it('the nine plan prices are exactly as they were', () => {
-    expect(PLAN_PRICING.plus).toEqual({ monthly: 20, quarterly: 54, yearly: 190 });
-    expect(PLAN_PRICING.pro).toEqual({ monthly: 40, quarterly: 108, yearly: 380 });
+  it('the six plan prices are exactly as they were', () => {
+    expect(PLAN_PRICING.plus).toEqual({ monthly: 20, yearly: 190 });
+    expect(PLAN_PRICING.pro).toEqual({ monthly: 40, yearly: 380 });
     // ⚠️ Moved by THE-343, not by this ticket — the add-on prices below are
     // what this file guards and they are untouched.
-    expect(PLAN_PRICING.max).toEqual({ monthly: 80, quarterly: 216, yearly: 752 });
+    expect(PLAN_PRICING.max).toEqual({ monthly: 80, yearly: 752 });
   });
 
   it('the three surviving add-on meanings and their live Dodo ids are unchanged', () => {

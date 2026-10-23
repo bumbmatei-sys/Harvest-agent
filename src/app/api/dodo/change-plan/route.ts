@@ -233,10 +233,7 @@ export async function POST(request: NextRequest) {
 
     if (period !== current.period) {
       // Each term is a separate Dodo product, so this call COULD switch term —
-      // but that is THE-88, its own decision, not a side door. Now that there
-      // are three terms the message names neither pair: a quarterly church told
-      // "monthly and annual" would reasonably think the refusal was not about
-      // them.
+      // but that is THE-88, its own decision, not a side door.
       //
       // 🔴 BOTH VALUES ARE NAMED, IN THE LOG AND IN THE BODY (THE-226). They
       // were named in NEITHER before, and that is not a cosmetic gap: this
@@ -247,8 +244,8 @@ export async function POST(request: NextRequest) {
       // it objected to cannot be diagnosed from production, only guessed at.
       //
       // ⚠️ THE PROSE IS UNCHANGED. `requested`/`current` are machine-readable
-      // siblings of `error`, not part of the sentence a church reads — a church
-      // has no use for the word "quarterly" here, and the copy is pinned.
+      // siblings of `error`, not part of the sentence a church reads, and the
+      // copy is pinned.
       console.warn(
         `[dodo] change-plan refused as a term switch: requested "${period}", ` +
           `current "${current.period}" (tenant ${ownerOrErr.tenantId}, subscription ${subscriptionId})`,

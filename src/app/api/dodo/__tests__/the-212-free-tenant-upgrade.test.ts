@@ -24,9 +24,10 @@ import { NextRequest } from 'next/server';
  * `createPlanCheckout` → `requireProductId(plan, period)` → the live catalogue.
  * Mocking the provider would have let a route that resolved a PRICE pass.
  *
- * ⚠️ LIVE MODE, deliberately. Quarterly is `DODO_PRODUCT_UNMAPPED` in test mode
- * (no test-mode quarterly product exists), so nine combinations can only be
- * nine in the catalogue a real card is charged against.
+ * ⚠️ LIVE MODE, deliberately: it is the catalogue a real card is charged
+ * against. (It used to be the only mode with all nine combinations, because the
+ * quarterly term had no test-mode product; the term was withdrawn on 2026-10-23
+ * and both modes are six.)
  *
  * 🔴 EVERY EXPECTED PRODUCT ID IS READ FROM THE CATALOGUE, never typed here.
  * A test that repeats the ids is a second source of truth that drifts silently,
@@ -170,8 +171,8 @@ describe('a free tenant can start an upgrade to each paid tier on each term', ()
     },
   );
 
-  it('covers all nine combinations, and the catalogue can name a product for every one', () => {
-    expect(EVERY_COMBINATION).toHaveLength(9);
+  it('covers all six combinations, and the catalogue can name a product for every one', () => {
+    expect(EVERY_COMBINATION).toHaveLength(6);
     for (const { plan, term } of EVERY_COMBINATION) {
       expect(DODO_ACTIVE_CATALOGUE[plan][term].productId, `${plan}/${term}`).toBeTruthy();
     }
@@ -209,7 +210,7 @@ describe('the upgrade resolves a product from plan and term, not from a price', 
   });
 
   it('never sends a price, an amount or a currency to the processor', async () => {
-    await firstSubscriptionPOST(post('api/dodo/first-subscription', { plan: 'max', billing: 'quarterly' }));
+    await firstSubscriptionPOST(post('api/dodo/first-subscription', { plan: 'max', billing: 'yearly' }));
 
     // 🔴 Dodo puts the price ON the product. A checkout body that named a
     // price, an amount or a currency would mean the app had decided what to
@@ -415,14 +416,14 @@ describe('the webhook is still the only writer of plan', () => {
 
 // ── 9 ────────────────────────────────────────────────────────────────────────
 describe('no price changed and free is still absent from PLAN_PRICING', () => {
-  it('holds the nine published prices', () => {
+  it('holds the six published prices', () => {
     expect(PLAN_PRICING).toEqual({
-      plus: { monthly: 20, quarterly: 54, yearly: 190 },
-      pro: { monthly: 40, quarterly: 108, yearly: 380 },
-      // ⚠️ THE-343 repriced Ministry ($80→$60, and THE-372 back to $80, with the quarter and year
+      plus: { monthly: 20, yearly: 190 },
+      pro: { monthly: 40, yearly: 380 },
+      // ⚠️ THE-343 repriced Ministry ($80→$60, and THE-372 back to $80, with the year
       // following at the same 10% / >20% discounts). `plus` and `pro` are
       // enumerated so a reprice that overreached its brief still fails here.
-      max: { monthly: 80, quarterly: 216, yearly: 752 },
+      max: { monthly: 80, yearly: 752 },
     });
   });
 

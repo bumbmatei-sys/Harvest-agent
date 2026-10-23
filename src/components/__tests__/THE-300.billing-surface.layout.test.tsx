@@ -96,7 +96,6 @@ const OWNED = [
   { key: 'addon-plus', label: 'Add-on: increment' },
   { key: 'addon-commit', label: 'Add-on: commit the charge' },
   { key: 'term-monthly', label: 'Billing term: Monthly' },
-  { key: 'term-quarterly', label: 'Billing term: Quarterly' },
   { key: 'term-yearly', label: 'Billing term: Yearly' },
 ] as const;
 
@@ -203,10 +202,6 @@ function page(): string {
               <div className={track}>
                 <button data-control="term-monthly" className={segment}>
                   <span className="block">Monthly</span>
-                </button>
-                <button data-control="term-quarterly" className={segment}>
-                  <span className="block">Quarterly</span>
-                  <span className="block text-[11px] font-bold text-gold">−10%</span>
                 </button>
                 <button data-control="term-yearly" className={segment}>
                   <span className="block">Yearly</span>

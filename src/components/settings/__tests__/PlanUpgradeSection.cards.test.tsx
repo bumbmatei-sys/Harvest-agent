@@ -261,22 +261,17 @@ describe('PlanUpgradeSection plan cards', () => {
     expect(container.textContent).not.toContain('equivalent');
     expect(container.textContent).not.toContain('billed as');
 
-    // 🔴 THE-196: every term, including the new middle one. The headline is now
-    // the PER-MONTH figure — "$33/mo" — and the charged total sits beneath it.
-    clickButtonWithText('Quarterly');
-    for (const plan of PRICED_PLAN_ORDER) {
-      expect(priceOf(plan), PLAN_DISPLAY_NAMES[plan])
-        .toBe(`${formatPlanMonthlyHeadline(plan, 'quarterly')}/mo`);
-    }
-    // …and the per-month headline never appears without the charged total.
-    expect(container.textContent).toContain('billed as');
-    expect(container.textContent).toContain('every 3 months');
-
+    // 🔴 THE-196: the headline is now the PER-MONTH figure — "$15.84/mo" — and
+    // the charged total sits beneath it. (The quarterly term, which used to sit
+    // between these two, was withdrawn on 2026-10-23 and has no button.)
+    expect(container.textContent).not.toContain('Quarterly');
     clickButtonWithText('Yearly');
     for (const plan of PRICED_PLAN_ORDER) {
       expect(priceOf(plan), PLAN_DISPLAY_NAMES[plan])
         .toBe(`${formatPlanMonthlyHeadline(plan, 'yearly')}/mo`);
     }
+    // …and the per-month headline never appears without the charged total.
+    expect(container.textContent).toContain('billed as');
     expect(container.textContent).toContain('every 12 months');
     // The marker survives the toggle — the two are independent state.
     expect(marked()).toEqual(['pro']);
@@ -289,7 +284,7 @@ describe('PlanUpgradeSection plan cards', () => {
   });
 
   it('renders the repriced tiers on every term', () => {
-    // The nine published numbers. There is no annual identity to derive any
+    // The six published numbers. There is no annual identity to derive any
     // more — the prices ARE the source, so each is asserted outright.
     expect(PLAN_PRICING.plus.monthly).toBe(20);
     expect(PLAN_PRICING.pro.monthly).toBe(40);

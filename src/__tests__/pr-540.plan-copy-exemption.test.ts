@@ -7,6 +7,7 @@ import {
   PLAN_FEATURES,
   R3_APPROVAL,
   R4_APPROVAL,
+  R5_APPROVAL,
   acceptedDigests,
   currentDigest,
   reverseHunks,
@@ -55,14 +56,18 @@ describe.each(SUBJECTS.map((s) => [s.file, s] as const))('%s', (_file, subject) 
   it('carries the approval notes', () => {
     expect(subject.approval).toBe(R3_APPROVAL);
     expect(subject.approval).toBe('Matei approved 2026-10-21: display-copy + compact prop only');
-    expect(subject.successors, 'round 4 is recorded as a successor').toHaveLength(1);
+    // Round 4 is the first successor on both files. plan-features.ts gained a fifth
+    // round (the quarterly term withdrawn, R5_APPROVAL), recorded after it.
+    expect(subject.successors, 'round 4 is recorded as a successor').toHaveLength(subject === PLAN_FEATURES ? 2 : 1);
     expect(subject.successors![0].approval).toBe(R4_APPROVAL);
+    if (subject === PLAN_FEATURES) expect(subject.successors![1].approval).toBe(R5_APPROVAL);
     expect(R4_APPROVAL).toContain('Include the scheduler in the Ministry plan');
   });
 
   it('does not accept the original, round 3 and round 4 as one value', () => {
-    expect(acceptedDigests(subject)).toHaveLength(3);
-    expect(new Set(acceptedDigests(subject)).size).toBe(3);
+    const expected = 2 + subject.successors!.length;
+    expect(acceptedDigests(subject)).toHaveLength(expected);
+    expect(new Set(acceptedDigests(subject)).size).toBe(expected);
     expect(acceptedDigests(subject).slice(0, 2)).toEqual([subject.originalDigest, subject.exemptDigest]);
   });
 });

@@ -781,15 +781,18 @@ describe('no pre-auth screen gained a dark treatment', () => {
 describe('the billing period still reaches checkout unchanged', () => {
   it('resolves every real term through the validating reader', async () => {
     const { resolveSignupBillingPeriod, readSignupBillingPeriod } = await import('../../utils/signup-checkout');
-    // The app's own three words — a church paying quarterly or annually must
-    // reach that product, not be quietly restarted on monthly.
+    // The app's own two words — a church paying annually must reach that
+    // product, not be quietly restarted on monthly.
     expect(resolveSignupBillingPeriod('?billing=yearly')).toBe('yearly');
-    expect(resolveSignupBillingPeriod('?billing=quarterly')).toBe('quarterly');
     expect(resolveSignupBillingPeriod('?billing=monthly')).toBe('monthly');
+    // A stale `?billing=quarterly` link (the term was withdrawn on 2026-10-23)
+    // lands on monthly rather than travelling onward to a product that is gone.
+    expect(resolveSignupBillingPeriod('?billing=quarterly')).toBe('monthly');
     // 🔴 Untrusted input still fails CLOSED rather than travelling onward to a
-    // lookup the catalogue has no fallback for. 'quarterly' moved from this
-    // list to the one above when THE-195 made it a term the app actually sells;
-    // what did NOT change is that anything outside the three lands on monthly.
+    // lookup the catalogue has no fallback for. 'quarterly' moved out of this
+    // list when THE-195 made it a term the app sold and back in when it was
+    // withdrawn; what never changed is that anything outside the real terms
+    // lands on monthly.
     expect(readSignupBillingPeriod('annual')).toBe('monthly');
     expect(readSignupBillingPeriod('biennial')).toBe('monthly');
     expect(readSignupBillingPeriod('Quarterly')).toBe('monthly');

@@ -110,7 +110,7 @@ anything. `THE-355.confirmed-wording.test.tsx` polices the wording.
 
 ## Plans, add-ons and prices
 Source of truth: `src/utils/plan-features.ts` — `PLAN_FEATURES` for the matrix,
-`PLAN_PRICING` for the nine prices, `TERM_MONTHS` for the term arithmetic. **This file
+`PLAN_PRICING` for the six prices, `TERM_MONTHS` for the term arithmetic. **This file
 deliberately restates none of those numbers.** The previous version of this section
 carried a full price-and-caps table; every cell in it was wrong by the time anyone read
 it again.
@@ -121,6 +121,13 @@ What you cannot read off the table, and therefore needs saying:
   Individual, Small Team, Ministry). `free` is **absent from `PLAN_PRICING` by design** —
   it is not a `$0` row, it has no price and no billing term, and `planPriceUsd('free', …)`
   is a compile error. Narrow with `isPricedPlan` first.
+- **There are two billing terms, `monthly` and `yearly`** (`BILLING_TERMS`). A quarterly
+  term existed and was withdrawn on 2026-10-23: its three Dodo products are archived, so a
+  stale `?billing=quarterly` link falls closed to monthly at signup and the checkout and
+  plan-change routes refuse the word outright. Dodo says `annual` where the app says
+  `yearly`; `src/lib/dodo/catalogue.ts` is the one place that reconciles them. A term is a
+  separate Dodo **product**, so adding one is a product, a catalogue row and a marketing
+  site change together, never one of the three alone.
 - **Free is capped, not unlimited, and it is capped at the same contact figure as the
   cheapest paid tier.** That is intentional as of THE-370: Individual is now bought for
   capability, not capacity. Free is for one evangelist doing personal discipleship — one
@@ -137,7 +144,7 @@ What you cannot read off the table, and therefore needs saying:
   is not priced here and is not a Dodo catalogue meaning — no product, checkout, or price
   is attached to it. The webhook still writes the field, as zero, until a product is
   mapped, and `getEffectiveFeatures` lifts the plan cell with `||`. `contactPacks` and `campuses` were
-  retired in THE-370 and their Dodo products detached from all nine plan products, so
+  retired in THE-370 and their Dodo products detached from every plan product, so
   neither is purchasable. A stale `campuses: 2` may still sit in a live document;
   `readTenantAddons` reads only the fields it names, so a retired key grants nothing.
 - **Add-on prices are not in this repo and must not be copied into it.** Prices are
@@ -146,11 +153,11 @@ What you cannot read off the table, and therefore needs saying:
   its product here once already.
 - **Dodo add-ons are `client.addons`, not `client.products`**, and they exist in two sets
   with different IDs — monthly and annual. `addonIdFor(meaning, period)` performs the
-  mapping; a quarterly subscription carries the monthly add-on IDs.
+  mapping, and the add-on set follows the plan's own term.
 - **`unlimitedContacts` is a separate boolean and stays one.** It is not folded into
   `maxContacts`, so `maxContacts` is always a real, finite, honest number and the
   unlimited fact travels beside it.
-- **The nine prices are contract-pinned across both repos.** The marketing site carries
+- **The six prices are contract-pinned across both repos.** The marketing site carries
   its own copy and a module-scope contract there compares the whole table against what
   this file publishes — the site's **build throws at prerender** if they disagree. A price
   change must land in both repos together.
@@ -473,7 +480,7 @@ itself.
 - `Harvest-agent` — the app (this repo).
 - `harvest-presentation-site` — the marketing site at `theharvest.site`. **Vite + React**
   with `vite-react-ssg` (statically prerendered), plus a markdown blog under `/blog`. Not
-  Next.js — do not assume App Router conventions there. It carries its own copy of the nine
+  Next.js — do not assume App Router conventions there. It carries its own copy of the six
   prices and a module-scope contract that throws at prerender if they disagree with
   `PLAN_PRICING` here, which is why a price change has to land in both repos together. It
   is reported to have CI now (a `Test & Build` workflow); older prompts in this project say

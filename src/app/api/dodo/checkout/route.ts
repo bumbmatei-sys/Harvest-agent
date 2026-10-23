@@ -66,18 +66,21 @@ function readPlan(raw: unknown): PricedPlan | null {
  * Validate the requested term, REFUSING anything unrecognised.
  *
  * 🔴 THE-199. This compared against the string literals 'monthly' and 'yearly'
- * — a hand-kept copy of the term list that was never updated when quarterly
- * shipped (THE-195). Every quarterly signup therefore resolved to `null`, fell
- * into the `!plan || !period` branch below, and was answered `400 Invalid
- * plan/billing: plus/quarterly`: a church that chose the term the site was
- * selling could not buy it, and never reached a payment page at all.
+ * — a hand-kept copy of the term list that was never updated when a third term
+ * shipped (THE-195). Every signup on that term therefore resolved to `null`,
+ * fell into the `!plan || !period` branch below, and was answered `400 Invalid
+ * plan/billing`: a church that chose the term the site was selling could not
+ * buy it, and never reached a payment page at all.
  *
  * ⚠️ IT TYPECHECKED THROUGHOUT, which is why nothing caught it. `BillingPeriod`
- * is an alias for `BillingTerm`, so widening that union from two members to
- * three made this function's `null` arm more reachable without making it
- * ill-typed — `null` is a valid `BillingPeriod | null` whatever the union holds.
- * Only a test that drives the term list can see the difference; see
- * `dodo-checkout-quarterly-term.test.ts`.
+ * is an alias for `BillingTerm`, so widening that union made this function's
+ * `null` arm more reachable without making it ill-typed — `null` is a valid
+ * `BillingPeriod | null` whatever the union holds. Only a test that drives the
+ * term list can see the difference; see `dodo-checkout-quarterly-term.test.ts`.
+ *
+ * The same property now runs the other way: `quarterly` was withdrawn on
+ * 2026-10-23, so `?billing=quarterly` is an unrecognised value here and answers
+ * 400 rather than being sold.
  *
  * Reads `BILLING_TERMS` for the same reason `readPlan` above reads
  * `PRICED_PLAN_ORDER`,

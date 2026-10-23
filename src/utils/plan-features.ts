@@ -661,11 +661,14 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
  *
  * ⚠️ CROSS-REPO VOCABULARY. Dodo's catalogue says `annual` where this app says
  * `yearly`; the reconciliation lives in src/lib/dodo/catalogue.ts and nowhere
- * else. Quarterly needs no reconciliation — Dodo bills it as
- * `payment_frequency_count: 3, interval: Month`, and "quarterly" is this app's
- * word for that.
+ * else.
+ *
+ * Two terms. A quarterly term was sold from 2026-08-20 and withdrawn on
+ * 2026-10-23, its three Dodo products archived; it had no live subscriber when
+ * it went. The word is deliberately absent from this list, so the checkout
+ * routes and `readSignupBillingPeriod` refuse it rather than sell it.
  */
-export const BILLING_TERMS = ['monthly', 'quarterly', 'yearly'] as const;
+export const BILLING_TERMS = ['monthly', 'yearly'] as const;
 
 export type BillingTerm = (typeof BILLING_TERMS)[number];
 
@@ -678,52 +681,46 @@ export type BillingTerm = (typeof BILLING_TERMS)[number];
  */
 export const TERM_MONTHS: Readonly<Record<BillingTerm, number>> = Object.freeze({
   monthly: 1,
-  quarterly: 3,
   yearly: 12,
 });
 
 /**
- * Base plan pricing in USD — the STORED TABLE. Nine numbers, one per
- * (tier, term), and every plan price in this app is one of these nine.
+ * Base plan pricing in USD — the STORED TABLE. Six numbers, one per
+ * (tier, term), and every plan price in this app is one of these six.
  *
  * ─── Why this is a table and no longer a multiplier ──────────────────────────
  *
  * This used to be `ANNUAL_BILLED_MONTHS = 9` — "pay 9 months, get 12", which is
  * exactly 25% — with `yearlyUsd` derived from it. That abstraction is GONE and
- * must not come back, because the discounts it has to express no longer divide
- * into whole months: 20% off a year is ×9.6 months and 10% off a quarter is
- * ×2.7 months. There is no integer to name. (The stored years are rounder still
- * — $190 is ×9.5 months, not ×9.6 — which is the next paragraph's point.)
+ * must not come back, because the discount it has to express no longer divides
+ * into whole months: 20% off a year is ×9.6 months. There is no integer to
+ * name. (The stored years are rounder still — $190 is ×9.5 months, not ×9.6 —
+ * which is the next paragraph's point.)
  *
  * The founder chose ROUNDED PRICES OVER EXACT PERCENTAGES, deliberately:
  * $405.45 on a pricing page reads like a spreadsheet error. So the prices are
  * the primitive and the percentages fall out of them, rather than the other way
- * round. The savings these nine numbers actually produce are:
+ * round. The savings these six numbers actually produce on the yearly term are:
  *
- *              Quarterly   Yearly
- *   Individual    10.0%     20.8%
- *   Small Team    10.0%     20.8%
- *   Ministry      10.0%     21.7%
+ *   Individual 20.8%   Small Team 20.8%   Ministry 21.7%
  *
- * ⚠️ THE QUARTERLY COLUMN IS FLAT; THE YEARLY COLUMN IS NOT, and THE-343 is
- * what separated them again. The quarters are still exactly nine tenths of
- * three months ($54/$60, $108/$120, $216/$240), so every tier saves 10.0% on a
- * quarter to the cent. The years no longer share a ratio: Individual and Small
- * Team are 190/240ths of twelve and Ministry is 752/960ths, which is 21.7%
- * against their 20.8%. (THE-372 put Ministry back to $80 and kept THE-343's
- * ratios exactly — 2.7x monthly a quarter, 9.4x a year — so this table's
- * percentages did not move.)
+ * ⚠️ THE YEARLY COLUMN IS NOT FLAT. Individual and Small Team are 190/240ths of
+ * twelve months and Ministry is 752/960ths, which is 21.7% against their 20.8%.
+ * Nothing here may assume the tiers share a ratio: they were 18.3 / 17.5 / 17.1
+ * apart two reprices ago, flat after THE-248, and spread again once Ministry
+ * alone was repriced (THE-343, kept by THE-372).
  *
- * ⚠️ THE-248 HAD MADE BOTH COLUMNS FLAT, and that was a property of those
- * prices rather than a rule. Nothing here may assume either shape: the tiers
- * were 18.3 / 17.5 / 17.1 apart two reprices ago, flat after THE-248, and
- * spread again on the yearly column now that Ministry alone was repriced.
+ * (The withdrawn quarterly column was flat: exactly nine tenths of three months
+ * on every tier — $54 against $60, $108 against $120, $216 against $240 — so
+ * each saved 10.0% to the cent. That flatness is gone with the term; do not
+ * read it back into the yearly column.)
  *
  * 🔴 DO NOT COMPUTE A BADGE FROM THIS TABLE. See `ADVERTISED_DISCOUNT_PCT` —
- * the yearly column is why that is still true even now the columns are flat.
+ * the yearly column is why: the founder advertises a round 20%, the prices
+ * deliver 20.8%.
  *
  * ⚠️ CROSS-REPO: the marketing site (harvest-presentation-site) carries its own
- * copy of these nine numbers in src/components/Pricing.tsx, and a module-scope
+ * copy of these six numbers in src/components/Pricing.tsx, and a module-scope
  * contract there compares the TABLE — tier by tier, term by term — against the
  * numbers this file publishes. The two repos cannot share code, so changing a
  * price here means changing it there IN THE SAME BREATH or the site's build
@@ -731,9 +728,9 @@ export const TERM_MONTHS: Readonly<Record<BillingTerm, number>> = Object.freeze(
  */
 export const PLAN_PRICING: Readonly<Record<PricedPlan, Readonly<Record<BillingTerm, number>>>> =
   Object.freeze({
-    plus: Object.freeze({ monthly: 20, quarterly: 54,  yearly: 190 }),
-    pro:  Object.freeze({ monthly: 40, quarterly: 108, yearly: 380 }),
-    max:  Object.freeze({ monthly: 80, quarterly: 216, yearly: 752 }),
+    plus: Object.freeze({ monthly: 20, yearly: 190 }),
+    pro:  Object.freeze({ monthly: 40, yearly: 380 }),
+    max:  Object.freeze({ monthly: 80, yearly: 752 }),
   });
 
 /**
@@ -807,19 +804,17 @@ export function planTermMonthlyExact(plan: PricedPlan, term: BillingTerm): numbe
  *
  * THE-196 makes it the headline — the biggest number on the card, the one a
  * church reads as "what this costs me". Rounding to nearest then becomes a
- * claim, and on two of the six discounted cells it is a claim that is too low:
+ * claim, and on one of the discounted cells it was a claim that was too low:
  *
  *     Individual yearly    $329/12 = $27.4167  →  round = $27  → implies $324
- *     Small Team quarterly $199/3  = $66.3333  →  round = $66  → implies $198
  *
  * A church reading "$27/mo" reasonably expects $324 a year and is charged $329.
  * That is the whole of this ticket, and it is a pricing misrepresentation
- * rather than a rounding preference. (The brief named the Individual yearly
- * cell; Small Team quarterly understates too, by $1.)
+ * rather than a rounding preference. (A Small Team quarterly cell, $199/3,
+ * understated too, by $1; the quarterly term has since been withdrawn.)
  *
- * ⚠️ THOSE TWO CELLS ARE HISTORY — THE RULE IS NOT, AND THE-343 IS WHY THAT
- * DISTINCTION EARNS ITS KEEP. Under today's prices the three quarters divide
- * exactly ($54/3, $108/3, $216/3 are $18, $36, $72) and all three years round
+ * ⚠️ THAT CELL IS HISTORY — THE RULE IS NOT, AND THE-343 IS WHY THAT
+ * DISTINCTION EARNS ITS KEEP. Under today's prices all three years round
  * UP ($190/12 → $16, $380/12 → $32, $752/12 → $63). So NO cell understates
  * under `Math.round` today — the one that did, Ministry's $760/12 = $63.3333 →
  * $63 → $756, was repriced away by THE-343, and THE-372's $752 overstates.
@@ -849,9 +844,8 @@ export function planTermMonthlyExact(plan: PricedPlan, term: BillingTerm): numbe
  * only figure on the card that is actually true.
  *
  * ⚠️ An exact division keeps its whole-dollar form — $108/3 is $36.00 and
- * prints as `$36`, not `$36.00`. See `formatPlanMonthlyHeadline`. All three
- * quarters divide exactly under THE-248, so this branch is now the common case
- * rather than the rare one.
+ * prints as `$36`, not `$36.00`. See `formatPlanMonthlyHeadline`. The monthly
+ * term divides exactly by definition, so this branch is the common case.
  *
  * The `toFixed(6)` before the ceiling is not decoration. `Math.ceil` on a
  * binary-float product turns an exact $33.00 into $33.01 the moment the
@@ -943,7 +937,7 @@ export function actualSavingPct(plan: PricedPlan, term: BillingTerm): number {
   return ((atMonthlyRate - planPriceUsd(plan, term)) * 100) / atMonthlyRate;
 }
 
-/** The two terms that carry a discount — every term except the monthly base. */
+/** The terms that carry a discount — every term except the monthly base. */
 export const DISCOUNTED_TERMS = BILLING_TERMS.filter((t) => t !== 'monthly');
 
 export type DiscountedTerm = Exclude<BillingTerm, 'monthly'>;
@@ -954,14 +948,13 @@ export type DiscountedTerm = Exclude<BillingTerm, 'monthly'>;
  * 🔴 NOT COMPUTED FROM `PLAN_PRICING`, and this is the whole point.
  *
  * The original reason was SPREAD: rounded prices produced a different real
- * saving on every tier — 15.4 / 16.0 / 16.4 on quarterly — so a computed badge
- * would have read "16%" beside the Ministry card and "15%" beside the
- * Individual one, on a toggle that sits above all three at once.
+ * saving on every tier, so a computed badge would have read a different number
+ * beside each card, on a toggle that sits above all three at once.
  *
- * ⚠️ THE-248 REMOVED THE SPREAD AND NOT THE REASON. All three tiers now save
- * 10.0% on a quarter and 20.8% on a year, so "one number cannot be derived from
- * three" no longer bites — but the YEARLY column still does, from the other
- * side. The founder advertises a ROUND 20%; the prices deliver 20.8%. A
+ * ⚠️ THE-248 REMOVED THE SPREAD AND NOT THE REASON. All three tiers saved 20.8%
+ * on a year, so "one number cannot be derived from three" no longer bit — but
+ * the YEARLY column still did, from the other side. The founder advertises a
+ * ROUND 20%; the prices deliver 20.8%. A
  * computed badge would print "Save 20.8%" (or round to "21%") beside a page
  * that says 20 everywhere else, and a percentage nobody chose is not more
  * honest for being arithmetically derived — it is just a number the copy, the
@@ -970,10 +963,9 @@ export type DiscountedTerm = Exclude<BillingTerm, 'monthly'>;
  * 🔴 SO THE SPLIT HOLDS: the NUMBER is a founder's decision and is stored; the
  * WORDING around it is derived (`discountClaimShape`), so the claim can never
  * outlive the prices. Do not "simplify" this to a computation because today's
- * quarterly happens to agree with one.
+ * yearly happens to agree with one.
  */
 export const ADVERTISED_DISCOUNT_PCT: Readonly<Record<DiscountedTerm, number>> = Object.freeze({
-  quarterly: 10,
   yearly: 20,
 });
 
@@ -984,17 +976,15 @@ export const ADVERTISED_DISCOUNT_PCT: Readonly<Record<DiscountedTerm, number>> =
  * actual one. A flat "save 30%" is a claim about every tier, so it is only true
  * when the WORST tier saves at least 30%.
  *
- *   quarterly  advertises 10, worst tier saves 10.0  → 'flat'  → "Save 10%"
  *   yearly     advertises 20, worst tier saves 20.8  → 'flat'  → "Save 20%"
  *
- * The WORST tier is what both lines turn on, so Ministry's better yearly saving
- * does not move either of them: 20.8 is still the smallest yearly figure.
+ * The WORST tier is what the line turns on, so Ministry's better yearly saving
+ * does not move it: 20.8 is still the smallest yearly figure.
  *
- * 🔴 QUARTERLY IS NOW THE CASE THIS DERIVATION TURNS ON, and it turns on
- * EQUALITY rather than clearance. Every tier's quarter is exactly 10.0% off, so
- * the claim does not clear the worst saving — it MEETS it, to the cent. `<=` is
- * therefore load-bearing in a way it never was before: with `<`, a claim the
- * prices honour exactly would print "up to 10%", hedging against nothing.
+ * 🔴 `<=` IS LOAD-BEARING. A claim the prices honour exactly MEETS the worst
+ * saving rather than clearing it (the withdrawn quarterly term was exactly
+ * 10.0% off on every tier), and with `<` that claim would print "up to 10%",
+ * hedging against nothing.
  *
  * ⚠️ AND EQUALITY IS WHERE BINARY FLOATING POINT BITES. `actualSavingPct` had
  * to change for this comparison to see a true 10 rather than 9.999999999999998
@@ -1636,39 +1626,37 @@ export function hasBrandingAccess(features: PlanFeatures): boolean {
  * The suffix each term's CHARGED figure carries — "$329/yr", not "$329/mo".
  *
  * 🔴 The suffix names the billing cycle, so the amount beside it is the amount
- * that leaves the church's account on that cycle. A quarterly plan is charged
- * $99 every three months and says so; the per-month arithmetic is a separate,
+ * that leaves the church's account on that cycle. A yearly plan is charged
+ * $329 once a year and says so; the per-month arithmetic is a separate,
  * clearly-labelled line (`planTermMonthlyEquivalent`), never this one.
  */
 export const TERM_PRICE_SUFFIX: Readonly<Record<BillingTerm, string>> = Object.freeze({
   monthly: 'mo',
-  quarterly: 'qtr',
   yearly: 'yr',
 });
 
 /**
- * How a term is described in running prose — "billed quarterly".
+ * How a term is described in running prose — "billed annually".
  *
  * A total map rather than a ternary, deliberately. The confirmation banner on
  * signup asked `billing === 'yearly' ? 'billed annually' : 'billed monthly'`,
  * which was correct while there were two terms and silently WRONG the moment
- * there were three: a church that chose quarterly was shown "billed monthly" on
- * the last screen before it paid. A record over the union cannot fall into an
+ * there were three: a church that chose the third term was shown "billed
+ * monthly" on the last screen before it paid. A record over the union cannot fall into an
  * else-branch that way — a new term is a type error here, not a wrong sentence.
  */
 export const TERM_BILLED_PHRASE: Readonly<Record<BillingTerm, string>> = Object.freeze({
   monthly: 'billed monthly',
-  quarterly: 'billed quarterly',
   yearly: 'billed annually',
 });
 
 /**
- * Format a plan's CHARGED price for a term, e.g. "$39/mo", "$99/qtr", "$329/yr".
+ * Format a plan's CHARGED price for a term, e.g. "$39/mo", "$329/yr".
  *
  * 🔴 Returns **'Free'** for the free tier, not `$0/mo`. It has no price and no
  * billing term, so a `/mo` suffix on it would be a claim about a billing cycle
- * that does not exist — and `$0/qtr` on a quarterly toggle reads as a product
- * you are billed nothing for quarterly, which is a different (and wrong) thing.
+ * that does not exist — and `$0/yr` on a yearly toggle reads as a product
+ * you are billed nothing for annually, which is a different (and wrong) thing.
  * The `!pricing` 'Custom' branch is kept for the Enterprise/unknown case it
  * always covered; free is checked BY NAME through `isPricedPlan` so a missing
  * pricing row can never silently render as free.

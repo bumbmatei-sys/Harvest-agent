@@ -46,8 +46,8 @@ export const WALLET_FALLBACK_LINE =
  * words. A test pins the two types mutually assignable so they cannot drift.
  *
  * Aliased to `BillingTerm` rather than restated, so the set of terms a signup
- * may carry is the same set the price table prices. Restating it is how
- * 'quarterly' would end up sellable on the site and unrecognised here.
+ * may carry is the same set the price table prices. Restating it is how a term
+ * would end up sellable on the site and unrecognised here.
  */
 export type SignupBillingPeriod = BillingTerm;
 
@@ -61,23 +61,20 @@ export type SignupBillingPeriod = BillingTerm;
  * validator exists to close. 'monthly' is the safe floor because a signup
  * carrying no period is exactly the signup the app sold before annual existed.
  *
- * ─── Why adding 'quarterly' is not a revenue hole ────────────────────────────
+ * ─── Why this is not a revenue hole ──────────────────────────────────────────
  *
- * This is an ALLOWLIST OF PURCHASABLE TERMS, not a discount grant, and widening
- * it to the three terms the product actually sells does not let a forged value
- * buy anything cheaply. A term selects a PRICE AND A DURATION TOGETHER, from one
- * table: `?billing=quarterly` charges $99 for three months of Individual, which
- * is precisely what the quarterly card offers anyone who clicks it. There is no
- * term whose price can be had without its commitment, so there is nothing for a
- * forged value to steal — the same reason `yearly` has been accepted here since
- * the annual term shipped, even though $329 is the lowest per-month figure the
- * product sells.
+ * This is an ALLOWLIST OF PURCHASABLE TERMS, not a discount grant. A term
+ * selects a PRICE AND A DURATION TOGETHER, from one table, so there is no term
+ * whose price can be had without its commitment and nothing for a forged value
+ * to steal.
  *
- * What must NOT change, and does not: anything OUTSIDE the three real terms
- * still lands on 'monthly', the most expensive per-month term. `BILLING_TERMS`
- * is read rather than restated so this list cannot drift from the catalogue's,
- * and a fourth term added there without products behind it would be caught by
- * the catalogue's total lookup, not silently sold here.
+ * What must NOT change, and does not: anything OUTSIDE the real terms still
+ * lands on 'monthly', the most expensive per-month term. That includes
+ * `?billing=quarterly`, a term withdrawn on 2026-10-23: an old bookmark or link
+ * floors to monthly rather than reaching a product that no longer exists.
+ * `BILLING_TERMS` is read rather than restated so this list cannot drift from
+ * the catalogue's, and a term added there without products behind it would be
+ * caught by the catalogue's total lookup, not silently sold here.
  */
 export function readSignupBillingPeriod(raw: unknown): SignupBillingPeriod {
   return (BILLING_TERMS as readonly string[]).includes(raw as string)

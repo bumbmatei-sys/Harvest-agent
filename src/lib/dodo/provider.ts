@@ -36,8 +36,7 @@ import type { BillingTerm } from '@/utils/plan-features';
 
 /**
  * Billing cadence, in the app's own vocabulary. Dodo's catalogue says 'annual'
- * where this says 'yearly'; 'quarterly' is Dodo's
- * `payment_frequency_count: 3, interval: Month`.
+ * where this says 'yearly'.
  *
  * Aliased to `BillingTerm` (utils/plan-features) rather than restated: the set
  * of cadences a subscription can be sold on IS the set the price table prices,

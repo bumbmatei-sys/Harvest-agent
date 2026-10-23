@@ -143,10 +143,11 @@ describe('the restarted checkout after an abandoned payment keeps the chosen per
   });
 
   it('an unrecognised period on the marker fails closed to monthly, never onward', async () => {
-    // ⚠️ This case used to use 'quarterly' as its unrecognised value. Quarterly
-    // is a REAL term now (THE-195), so the example had to move to something the
-    // allowlist genuinely rejects — otherwise the test would have kept passing
-    // while asserting the opposite of the truth.
+    // ⚠️ This case used to use 'quarterly' as its unrecognised value, then
+    // quarterly became a REAL term (THE-195) and the example moved to something
+    // the allowlist genuinely rejects. Quarterly was withdrawn on 2026-10-23 and
+    // is unrecognised again — it has its own case below — but 'biennial' stays,
+    // so this one keeps passing for a reason that does not depend on the history.
     await abandonAndRestart({ signupPlan: 'plus', signupBilling: 'biennial', signupMinistryName: 'Hope' });
     expect(restartBody().billing).toBe('monthly');
     expect(fetchMock.mock.calls[0][1].body).not.toContain('biennial');
@@ -159,12 +160,21 @@ describe('the restarted checkout after an abandoned payment keeps the chosen per
     expect(restartBody().billing).toBe('monthly');
   });
 
-  it('a quarterly restart keeps quarterly, now that it is a term the app sells', async () => {
-    // 🔴 The other half of the guard. Failing closed must not mean failing
-    // ALWAYS: a church that chose quarterly and abandoned checkout has to
-    // restart on quarterly, or the restart charges it a different way than the
-    // card it clicked.
+  it('a stale quarterly marker fails closed to monthly — the term was withdrawn', async () => {
+    // A session that began before the quarterly term was withdrawn (2026-10-23)
+    // can still carry `signupBilling: 'quarterly'` in storage. There is no
+    // quarterly product to restart it on, so the restart must NOT send the
+    // word onward; it lands on monthly like any other unrecognised value.
     await abandonAndRestart({ signupPlan: 'plus', signupBilling: 'quarterly', signupMinistryName: 'Hope' });
-    expect(restartBody().billing).toBe('quarterly');
+    expect(restartBody().billing).toBe('monthly');
+    expect(fetchMock.mock.calls[0][1].body).not.toContain('quarterly');
+  });
+
+  it('a yearly restart keeps yearly — failing closed must not mean failing ALWAYS', async () => {
+    // 🔴 The other half of the guard: a church that chose yearly and abandoned
+    // checkout has to restart on yearly, or the restart charges it a different
+    // way than the card it clicked.
+    await abandonAndRestart({ signupPlan: 'plus', signupBilling: 'yearly', signupMinistryName: 'Hope' });
+    expect(restartBody().billing).toBe('yearly');
   });
 });
