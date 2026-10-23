@@ -205,9 +205,9 @@ describe('2 — the switch being TRUE brings every surface back', () => {
     const { GET } = await import('@/app/api/plans/route');
     const body = await (await GET()).json();
     const priceOf = (id: string) => body.plans.find((p: { id: string }) => p.id === id)?.pricing;
-    expect(priceOf('plus')).toMatchObject({ monthlyUsd: 20, quarterlyUsd: 54, yearlyUsd: 190 });
-    expect(priceOf('pro')).toMatchObject({ monthlyUsd: 40, quarterlyUsd: 108, yearlyUsd: 380 });
-    expect(priceOf('max')).toMatchObject({ monthlyUsd: 80, quarterlyUsd: 216, yearlyUsd: 752 });
+    expect(priceOf('plus')).toMatchObject({ monthlyUsd: 20, yearlyUsd: 190 });
+    expect(priceOf('pro')).toMatchObject({ monthlyUsd: 40, yearlyUsd: 380 });
+    expect(priceOf('max')).toMatchObject({ monthlyUsd: 80, yearlyUsd: 752 });
   });
 });
 

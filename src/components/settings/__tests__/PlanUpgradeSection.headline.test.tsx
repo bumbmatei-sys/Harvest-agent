@@ -59,7 +59,7 @@ const headlineOf = (plan: PricedPlan) =>
 const noteOf = (plan: PricedPlan) =>
   card(plan).querySelector('[data-testid="plan-card-term-note"]');
 
-const TERM_LABEL = { monthly: 'Monthly', quarterly: 'Quarterly', yearly: 'Yearly' } as const;
+const TERM_LABEL = { monthly: 'Monthly', yearly: 'Yearly' } as const;
 
 beforeEach(() => {
   container = document.createElement('div');
@@ -82,9 +82,9 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
     }
   });
 
-  it('the term total is rendered beneath it on quarterly and yearly', () => {
+  it('the term total is rendered beneath it on the yearly term', () => {
     mount();
-    for (const term of ['quarterly', 'yearly'] as const) {
+    for (const term of ['yearly'] as const) {
       clickTerm(TERM_LABEL[term]);
       for (const plan of PRICED_PLAN_ORDER) {
         const note = noteOf(plan);
@@ -111,7 +111,7 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
 
   it('the per-month headline never states a figure that implies less than the charged total', () => {
     // 🔴 THE HONESTY GUARD on rendered output — one assertion per tier per
-    // term, nine in all. Under the old Math.round, Individual yearly headlined
+    // term, six in all. Under the old Math.round, Individual yearly headlined
     // $27, which implies $324 against a charged $329.
     mount();
     for (const term of BILLING_TERMS) {
@@ -185,7 +185,7 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
 
   it('the in-app card and the site card present a price the same way', () => {
     /* 🔴 THE CROSS-SURFACE CONTRACT, this repo's half. The site cannot import
-       this module, so both repos carry the same nine strings and the same
+       this module, so both repos carry the same six strings and the same
        wording, and a one-sided change fails one of them.
 
        harvest-presentation-site renders, in src/components/Pricing.tsx:
@@ -193,9 +193,9 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
          beneath    `billed as $${price} every ${TERM_MONTHS[term]} months`
          monthly    headline alone, no line beneath                            */
     const SITE_HEADLINES: Record<PricedPlan, Record<string, string>> = {
-      plus: { monthly: '$20', quarterly: '$18', yearly: '$15.84' },
-      pro:  { monthly: '$40', quarterly: '$36', yearly: '$31.67' },
-      max:  { monthly: '$80', quarterly: '$72', yearly: '$62.67' },
+      plus: { monthly: '$20', yearly: '$15.84' },
+      pro:  { monthly: '$40', yearly: '$31.67' },
+      max:  { monthly: '$80', yearly: '$62.67' },
     };
     mount();
     for (const term of BILLING_TERMS) {
@@ -208,12 +208,11 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
     }
   });
 
-  it('the nine prices are unchanged and still match the Dodo catalogue', () => {
+  it('the six prices are unchanged and still match the Dodo catalogue', () => {
     // Presentation only. Nothing in THE-196 may move a price.
     // ⚠️ Ministry's column moved at THE-343; Individual's and Small Team's did
     // not, and they are enumerated so a reprice that overreached still fails.
     expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'monthly'))).toEqual([20, 40, 80]);
-    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'quarterly'))).toEqual([54, 108, 216]);
     expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'yearly'))).toEqual([190, 380, 752]);
     // …and the displayed figure is derived from them, never stored beside them.
     for (const plan of PRICED_PLAN_ORDER) {

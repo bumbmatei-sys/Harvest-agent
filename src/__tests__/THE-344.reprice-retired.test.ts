@@ -11,7 +11,8 @@
  * Ministry products out of the catalogue suite's strict equality check.
  *
  * ⚠️ SUPERSEDED IN ITS FIGURES BY THE-372, which put Ministry back to $80
- * (8000 / 21600 / 75200 minor units, applied in Dodo first). The record this
+ * (8000 / 21600 / 75200 minor units, applied in Dodo first; the 21600 quarter was
+ * withdrawn with its term on 2026-10-23). The record this
  * file retires stays retired and no exclusion came back; what moved is the
  * table of live amounts below and the set of SUPERSEDED amounts the prose and
  * code sweeps hunt for.
@@ -182,8 +183,9 @@ const RETIRED_DERIVED = ['DODO', 'LIVE', 'IN', 'STEP'].join('_');
 
 /**
  * 🔴 WHAT THE LIVE DODO API RETURNED, per product id — transcribed by THE-344
- * from `products.retrieve` on each of the nine live ids, NOT read off this
- * repo's constants. A test that reads its own subject asserts only that the
+ * from `products.retrieve` on each of the live ids, NOT read off this
+ * repo's constants. (Nine ids until the quarterly term was withdrawn on
+ * 2026-10-23, when its three products were archived; six remain.) A test that reads its own subject asserts only that the
  * subject equals itself; this is the independent half.
  *
  * The three Ministry ids were re-read AFTER the reprice and confirmed at these
@@ -194,16 +196,14 @@ const RETIRED_DERIVED = ['DODO', 'LIVE', 'IN', 'STEP'].join('_');
  */
 const LIVE_DODO_MINOR = [
   { plan: 'plus', period: 'monthly', id: 'pdt_0NlJZKKU2AQSSH7E4ziKA', cents: 2000 },
-  { plan: 'plus', period: 'quarterly', id: 'pdt_0NloCamoWgvgYDih2UETS', cents: 5400 },
   { plan: 'plus', period: 'yearly', id: 'pdt_0NlJZMLLKZ5SVGEoSGDdk', cents: 19000 },
   { plan: 'pro', period: 'monthly', id: 'pdt_0NlJZMOMhmZWiG6UVDl8I', cents: 4000 },
-  { plan: 'pro', period: 'quarterly', id: 'pdt_0NloCaqg1QPMAlkfDnlOe', cents: 10800 },
   { plan: 'pro', period: 'yearly', id: 'pdt_0NlJZMRWL8tuAZseUIRTP', cents: 38000 },
   // ⚠️ MOVED AT THE-372: Ministry back to $80, with the quarter and year at
-  // $216 / $752 keeping THE-343's ratios. The founder applied all three in the
+  // $216 / $752 keeping THE-343's ratios (the quarter went with the term on
+  // 2026-10-23). The founder applied all three in the
   // live Dodo products first and verified them, trial intact.
   { plan: 'max', period: 'monthly', id: 'pdt_0NlJZMUUiT36FGMoiFXgl', cents: 8000 },
-  { plan: 'max', period: 'quarterly', id: 'pdt_0NloCatUWEkEUq1usWJ0n', cents: 21600 },
   { plan: 'max', period: 'yearly', id: 'pdt_0NlJZMXTnpRBAwTfBVpPs', cents: 75200 },
 ] as const;
 
@@ -309,7 +309,7 @@ describe('1 · the pending-reprice record no longer exists', () => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * 2 — all nine live products are in the STRICT equality check
+ * 2 — all six live products are in the STRICT equality check
  * ═══════════════════════════════════════════════════════════════════════════ */
 describe('2 · no exclusion branch lifts a product out of the strict check', () => {
   it('🔴 the catalogue suite filters nothing out of its live fixture', () => {
@@ -334,7 +334,7 @@ describe('2 · no exclusion branch lifts a product out of the strict check', () 
     }
   });
 
-  it('🔴 and the equality really holds for all nine, not just the six', () => {
+  it('🔴 and the equality really holds for all six live products', () => {
     for (const { plan, period, id, cents } of LIVE_DODO_MINOR) {
       const entry = DODO_LIVE_CATALOGUE[plan][period];
       expect(entry.productId, `${plan}/${period} product id`).toBe(id);
@@ -348,10 +348,10 @@ describe('2 · no exclusion branch lifts a product out of the strict check', () 
  * 3 — the fixture holds what Dodo charges, named per product (THE-372's since)
  * ═══════════════════════════════════════════════════════════════════════════ */
 describe('3 · the live fixture transcribes what Dodo now charges', () => {
-  it('🔴 it still has exactly nine rows, one per live product', () => {
+  it('🔴 it has exactly six rows, one per live product', () => {
     const rows = liveFixtureRows();
-    expect(rows.length, 'the live fixture no longer has nine rows').toBe(9);
-    expect(new Set(rows.map((r) => r.id)).size, 'an id is repeated').toBe(9);
+    expect(rows.length, 'the live fixture no longer has six rows').toBe(6);
+    expect(new Set(rows.map((r) => r.id)).size, 'an id is repeated').toBe(6);
   });
 
   it.each(MINISTRY)('🔴 $id ($plan/$period) is transcribed at $cents', ({ id, cents }) => {
@@ -361,17 +361,17 @@ describe('3 · the live fixture transcribes what Dodo now charges', () => {
       're-read the product from the live Dodo API before changing this').toBe(cents);
   });
 
-  it('🔴 and the three Ministry rows carry the ids they were read from', () => {
+  it('🔴 and the two Ministry rows carry the ids they were read from', () => {
     const rows = liveFixtureRows().filter((r) => r.plan === 'max');
     expect(rows.map((r) => r.id)).toEqual(MINISTRY.map((p) => p.id));
-    expect(rows.map((r) => r.cents)).toEqual([8000, 21600, 75200]);
+    expect(rows.map((r) => r.cents)).toEqual([8000, 75200]);
   });
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * 4 — the app and the catalogue agree on every one of the nine
+ * 4 — the app and the catalogue agree on every one of the six
  * ═══════════════════════════════════════════════════════════════════════════ */
-describe('4 · all nine prices agree across the app, the catalogue and Dodo', () => {
+describe('4 · all six prices agree across the app, the catalogue and Dodo', () => {
   it.each(LIVE_DODO_MINOR)(
     '$plan/$period is $cents minor units everywhere',
     ({ plan, period, cents }) => {
@@ -387,8 +387,8 @@ describe('4 · all nine prices agree across the app, the catalogue and Dodo', ()
     },
   );
 
-  it('🔴 the enumeration really is all nine, not a subset that agrees', () => {
-    expect(LIVE_DODO_MINOR.length).toBe(9);
+  it('🔴 the enumeration really is all six, not a subset that agrees', () => {
+    expect(LIVE_DODO_MINOR.length).toBe(6);
     const covered = new Set(LIVE_DODO_MINOR.map((p) => `${p.plan}/${p.period}`));
     for (const plan of PRICED_PLAN_ORDER) {
       for (const term of BILLING_TERMS) {
@@ -428,7 +428,6 @@ describe('5 · the trial survives, and is still checked', () => {
 
   it('🔴 the billing intervals the same update would have replaced are intact', () => {
     expect(DODO_LIVE_CATALOGUE.max.monthly.dodoBillingPeriod).toBe('monthly');
-    expect(DODO_LIVE_CATALOGUE.max.quarterly.dodoBillingPeriod).toBe('quarterly');
     expect(DODO_LIVE_CATALOGUE.max.yearly.dodoBillingPeriod).toBe('annual');
   });
 });
@@ -447,9 +446,9 @@ describe('6 · Individual and Small Team are unmoved', () => {
   });
 
   it('🔴 and the two tiers still read exactly as they did', () => {
-    expect(PLAN_PRICING.plus).toEqual({ monthly: 20, quarterly: 54, yearly: 190 });
-    expect(PLAN_PRICING.pro).toEqual({ monthly: 40, quarterly: 108, yearly: 380 });
-    expect(UNTOUCHED.length, 'the no-regression set shrank').toBe(6);
+    expect(PLAN_PRICING.plus).toEqual({ monthly: 20, yearly: 190 });
+    expect(PLAN_PRICING.pro).toEqual({ monthly: 40, yearly: 380 });
+    expect(UNTOUCHED.length, 'the no-regression set shrank').toBe(4);
   });
 });
 

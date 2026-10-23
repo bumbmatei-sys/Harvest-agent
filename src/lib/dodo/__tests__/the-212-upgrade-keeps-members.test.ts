@@ -121,7 +121,7 @@ const { DODO_ACTIVE_CATALOGUE } = await import('@/lib/dodo/catalogue');
 const { PRICED_PLAN_ORDER, BILLING_TERMS } = await import('@/utils/plan-features');
 
 /** The live product for a (plan, term) pair, read from the catalogue. */
-const productFor = (plan: 'plus' | 'pro' | 'max', term: 'monthly' | 'quarterly' | 'yearly') =>
+const productFor = (plan: 'plus' | 'pro' | 'max', term: 'monthly' | 'yearly') =>
   DODO_ACTIVE_CATALOGUE[plan][term].productId as string;
 
 const payload = (productId: string) => ({
@@ -202,7 +202,7 @@ describe('upgrading never removes or disables a member', () => {
 // ── 8 ────────────────────────────────────────────────────────────────────────
 describe('the webhook is still the only writer of plan', () => {
   it('the attach — which runs from subscription.active — is what writes the tier', async () => {
-    await attachFirstSubscriptionToTenant(payload(productFor('pro', 'quarterly')) as never);
+    await attachFirstSubscriptionToTenant(payload(productFor('pro', 'monthly')) as never);
 
     const planWrites = docWrites.filter((w) => (w.data as Record<string, unknown>)?.plan !== undefined);
     // Exactly two: the tenant's tier and the buying user's mirror of it.

@@ -1,0 +1,41 @@
+{
+  "ticket": "#549",
+  "note": "Withdrawing the quarterly billing term (user instruction): nine plan prices become six. Appended, never substituted: earlier digests for these files stay recorded under their own tickets. No firestore.rules, indexes, storage rules, env or tenant data change.",
+  "entries": [
+    {
+      "file": "src/__tests__/THE-344.reprice-retired.test.ts",
+      "digest": "58c0ebc417fea0e5eaa79d4ef12dac3fbed40764982e330904ce490042f55f0f",
+      "why": "The live-Dodo fixture drops its three quarterly rows when the quarterly term is withdrawn (nine rows become six, the Ministry rows [8000, 75200]), the count assertions follow, and the retired exclusion record and every sweep keep their population floors and planted-mutation proofs."
+    },
+    {
+      "file": "src/components/__tests__/AdminSettings.free-tier-sections.test.tsx",
+      "digest": "10579e926aa6b2b7dddede6f58eb247fd687c68d8c55d05e9ec27c68e91a0d6a",
+      "why": "The six-price no-regression pin loses its quarterly cells when the quarterly term is withdrawn; plus and pro stay enumerated so a reprice that reached past its brief still fails, and nothing about the free tier's sections was touched."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/dodo-catalogue.test.ts",
+      "digest": "04ba136970ea057c3705e24065a3a8bb320be65062af680d12ac6ad6ab08a7cc",
+      "why": "The live fixture drops its three quarterly rows (nine become six) and gains DODO_ARCHIVED_QUARTERLY_IDS as a ban list; a new test proves neither catalogue names an archived product and that resolvePlanFromProductId returns null for them in both modes. Every remaining row still goes through the strict equality check with no exclusion."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/dodo-quarterly-term.test.ts",
+      "digest": "0f8551986732a44c1b49f05f45c991f0390699b2b34464a1f0a7304c93bbb959",
+      "why": "The quarterly product assertions become 'quarterly is absent' assertions: monthly and yearly ids stay disjoint per tier, prices publish in both units, DODO_TERM_FREQUENCY has two members, and addonPeriodFor floors a legacy stored term to monthly. The file keeps its name because other guards name it by path. The retired-price sweep now also bans the three quarterly figures."
+    },
+    {
+      "file": "src/utils/__tests__/the-222-repricing.test.ts",
+      "digest": "818d9e07873859da5cade260123bcfd854e7316f7053c0e26349a354afa86002",
+      "why": "The current-table cells lose their quarterly column when the quarterly term is withdrawn; THE-222's own historical tables keep their quarterly cells, now typed as plain string-keyed history with the quarter's three months stated beside them."
+    },
+    {
+      "file": "src/utils/__tests__/the-248-discount-alignment.test.ts",
+      "digest": "b50b13a4c3215fc8e1a15763b9eb4c4f2c11dc40438c1fbcdead2426a6965ef1",
+      "why": "The live-Dodo and site-transcription tables lose their quarterly column and the claim, badge and arithmetic assertions become yearly-only. The knife-edge guard is proved on a year that is exactly ten percent off and on the source of actualSavingPct, since no live cell is exact any more. The restated-price sweep list is unchanged."
+    },
+    {
+      "file": "src/utils/__tests__/the-343-ministry-reprice.test.ts",
+      "digest": "38a7b09cc46e5c789f826981e2716f5535c32e70b537303db25840111a117275",
+      "why": "Every assertion naming the quarter drops or becomes a quarterly-is-absent check, the Ministry live-product record loses its quarterly row, and the max table is { monthly: 80, yearly: 752 }. The stripper, the entitlement no-regression pins, the platform fee and the client plan-write sweep are unchanged."
+    }
+  ]
+}

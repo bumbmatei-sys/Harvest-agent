@@ -105,9 +105,9 @@ describe('THE-200 — free is a tier, not a $0 price', () => {
     //     pointed at it.
     expect(() =>
       monthlyHeadlineContract(Math.round, {
-        plus: { monthly: 39, quarterly: 90, yearly: 360 },
-        pro: { monthly: 79, quarterly: 150, yearly: 600 },
-        max: { monthly: 159, quarterly: 399, yearly: 1325 },
+        plus: { monthly: 39, yearly: 360 },
+        pro: { monthly: 79, yearly: 600 },
+        max: { monthly: 159, yearly: 1325 },
       }),
     ).toThrow(/may never promise less than the bill/);
     expect(() => monthlyHeadlineContract(Math.floor)).toThrow();
@@ -124,9 +124,9 @@ describe('THE-200 — free is a tier, not a $0 price', () => {
         // DOWN to 110, implying 1320 against a charged 1325. plus and pro are
         // given exactly-divisible prices so they cannot throw first and the
         // message can only name max.
-        plus: { monthly: 39, quarterly: 90, yearly: 360 },
-        pro: { monthly: 79, quarterly: 150, yearly: 600 },
-        max: { monthly: 159, quarterly: 399, yearly: 1325 },
+        plus: { monthly: 39, yearly: 360 },
+        pro: { monthly: 79, yearly: 600 },
+        max: { monthly: 159, yearly: 1325 },
       }),
     ).toThrow(/max/);
   });
@@ -449,22 +449,23 @@ describe('THE-200 — the three priced tiers are untouched', () => {
 
 describe('THE-200 — no price, term or add-on price changed', () => {
   // ── 11 ─────────────────────────────────────────────────────────────────────
-  it('the nine stored prices are byte-for-byte what they were', () => {
+  it('the six stored prices are byte-for-byte what they were', () => {
     // ⚠️ THE SUBJECT OF THIS FILE IS THE FREE TIER, and the pin moves only when
     // a reprice ticket moves it. THE-343 was that ticket for `max` — $80 to
     // $60 — and THE-372 moved it back to $80, with the quarter and year at $216
     // and $752 keeping THE-343's ratios. `plus` and `pro` are enumerated here precisely so a reprice
     // that reached further than its brief cannot pass this file.
     expect(PLAN_PRICING).toEqual({
-      plus: { monthly: 20, quarterly: 54, yearly: 190 },
-      pro: { monthly: 40, quarterly: 108, yearly: 380 },
-      max: { monthly: 80, quarterly: 216, yearly: 752 },
+      plus: { monthly: 20, yearly: 190 },
+      pro: { monthly: 40, yearly: 380 },
+      max: { monthly: 80, yearly: 752 },
     });
   });
 
-  it('the billing terms and advertised discounts are unchanged', () => {
-    expect([...BILLING_TERMS]).toEqual(['monthly', 'quarterly', 'yearly']);
-    expect(ADVERTISED_DISCOUNT_PCT).toEqual({ quarterly: 10, yearly: 20 });
+  it('the billing terms and advertised discounts are as the quarterly withdrawal left them', () => {
+    // Two terms since the quarterly term was withdrawn on 2026-10-23.
+    expect([...BILLING_TERMS]).toEqual(['monthly', 'yearly']);
+    expect(ADVERTISED_DISCOUNT_PCT).toEqual({ yearly: 20 });
   });
 
   it('🔴 the contact pack is GONE, constant and all — THE-370', () => {

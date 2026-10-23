@@ -339,23 +339,24 @@ describe('a Dodo tenant can change plan', () => {
 
     const res = await post(dodoChangePlan, { tenantId: T.tenant, plan: 'pro', billing: 'yearly' });
     expect(res.status).toBe(400);
-    // ⚠️ The message no longer names "monthly and annual". With three terms
-    // that phrasing would tell a QUARTERLY church the refusal was about some
-    // other pair — so it names neither pair.
+    // ⚠️ The message no longer names "monthly and annual". It names neither pair
+    // (it was reworded when a third term existed, and was kept when that term was
+    // withdrawn, because the copy is pinned).
     expect((await res.json()).error).toContain('Switching billing terms is not available yet');
     expect(dodoStub.changePlan).not.toHaveBeenCalled();
   });
 
-  it('refuses a switch to QUARTERLY the same way, rather than accepting it', async () => {
-    // 🔴 The new term must land on the same refusal, not slip through as an
-    // unrecognised value the route happens to ignore.
+  it('refuses the withdrawn QUARTERLY term as an unrecognised value, rather than accepting it', async () => {
+    // 🔴 The quarterly term was withdrawn on 2026-10-23. It must not slip through
+    // as a term the route happens to ignore, and it must not reach the term-switch
+    // guard as if it were still sellable: it is unreadable, so it is a 400.
     seedDodoTenant();
     asOwner();
     pastTrialSubscription();
 
     const res = await post(dodoChangePlan, { tenantId: T.tenant, plan: 'pro', billing: 'quarterly' });
     expect(res.status).toBe(400);
-    expect((await res.json()).error).toContain('Switching billing terms is not available yet');
+    expect((await res.json()).error).toContain('Invalid plan/billing');
     expect(dodoStub.changePlan).not.toHaveBeenCalled();
   });
 

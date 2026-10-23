@@ -13,7 +13,6 @@ import {
 /** The label each term wears. Written once; both plan surfaces render these. */
 const TERM_LABELS: Readonly<Record<BillingTerm, string>> = Object.freeze({
   monthly: 'Monthly',
-  quarterly: 'Quarterly',
   yearly: 'Yearly',
 });
 
@@ -22,30 +21,28 @@ function isDiscounted(term: BillingTerm): term is DiscountedTerm {
 }
 
 /**
- * The term picker — Monthly / Quarterly / Yearly, one segment each.
+ * The term picker — Monthly / Yearly, one segment each.
  *
  * ─── 🔴 WHY THE BADGE IS INSIDE THE SEGMENT ──────────────────────────────────
  *
- * The two-term version of this control hung its discount badge off the segment
+ * An earlier version of this control hung its discount badge off the segment
  * with `absolute -top-2 -right-2`. An absolutely-positioned child is outside its
  * parent's layout entirely: it contributes nothing to the track's width and
- * overhangs the rounded container on both axes. With two segments there was
- * slack to overhang into. With THREE there is not, and PR 361 already fixed one
- * clip on these cards at 1120px — reintroducing an overhanging child is how that
+ * overhangs the rounded container on both axes. PR 361 already fixed one clip
+ * on these cards at 1120px — reintroducing an overhanging child is how that
  * comes straight back.
  *
  * So the badge is a second LINE inside the button, in normal flow. It is
  * measured, it is inside the border, and it cannot overhang anything.
  *
- * ─── How three segments are made to fit ──────────────────────────────────────
+ * ─── How the segments are made to fit ────────────────────────────────────────
  *
- * `grid-cols-3` over a full-width track, every column `minmax(0, 1fr)` via
+ * `grid-cols-2` over a full-width track, every column `minmax(0, 1fr)` via
  * `min-w-0`. There is no fixed segment width and no `whitespace-nowrap` on a
  * label that could force one, so the track is exactly as wide as its container
- * at every viewport and the three columns split it evenly. The narrowest case
- * measured is 380px, where each segment is ~110px against a ~58px label — the
- * control has slack rather than fitting exactly, which is what stops the next
- * font-size change from clipping it.
+ * at every viewport and the columns split it evenly. The control has slack
+ * rather than fitting exactly, which is what stops the next font-size change
+ * from clipping it.
  *
  * Nothing here drops below 11px: labels are 12px, badges 11px.
  */
@@ -62,7 +59,7 @@ export function BillingTermToggle({
         data-testid="billing-term-toggle"
         role="tablist"
         aria-label="Billing term"
-        className="grid grid-cols-3 gap-1 w-full max-w-md mx-auto bg-surface-tint rounded-2xl p-1"
+        className="grid grid-cols-2 gap-1 w-full max-w-md mx-auto bg-surface-tint rounded-2xl p-1"
       >
         {BILLING_TERMS.map((term) => {
           const selected = term === value;
@@ -76,24 +73,24 @@ export function BillingTermToggle({
               data-term={term}
               onClick={() => onChange(term)}
               /* `min-w-0` is load-bearing: a grid item's default `min-width:auto`
-                 refuses to shrink below its content, which is exactly how a third
+                 refuses to shrink below its content, which is exactly how an extra
                  segment pushes a track wider than its container. */
               /* THE-300 — ⚠️ NO TOUCH FLOOR IS SPELLED HERE, AND THAT IS A
                  MEASURED RESULT, NOT AN OVERSIGHT.
 
                  A draft of this ticket added `min-h-[44px]` to this segment on
                  the reasoning that Monthly carries no discount badge and is
-                 therefore the shortest of the three. Measured in Chromium at
-                 380px, that is simply not true: the track is `grid-cols-3` and
-                 a grid item's default `align-items: stretch` already sizes all
-                 three to the tallest row content, so every segment renders
+                 therefore the shortest segment. Measured in Chromium at
+                 380px, that is simply not true: the track is a grid and a grid
+                 item's default `align-items: stretch` already sizes every
+                 segment to the tallest row content, so every segment renders
                  44.75px WITH the floor and 44.75px WITHOUT it. The floor was a
                  no-op, and the mutation that removed it changed nothing —
                  which is how it was caught.
 
                  So it is gone rather than kept as decoration. The property is
                  real and is asserted where it can actually be observed: the
-                 layout suite measures all three segments at 380px. A class that
+                 layout suite measures every segment at 380px. A class that
                  changes no pixel is a claim a reader will trust and a later
                  ticket will preserve for no reason.
 

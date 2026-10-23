@@ -168,23 +168,25 @@ describe("the client-side period vocabulary IS the provider's BillingPeriod", ()
   });
 
   /* ─── THE-195 TEST 6 ──────────────────────────────────────────────────── */
-  it('the billing lane accepts monthly, quarterly and yearly', () => {
+  it('the billing lane accepts monthly and yearly — and no longer quarterly', () => {
     expect(readSignupBillingPeriod('monthly')).toBe('monthly');
-    expect(readSignupBillingPeriod('quarterly')).toBe('quarterly');
     expect(readSignupBillingPeriod('yearly')).toBe('yearly');
+    // Withdrawn 2026-10-23: a stale `?billing=quarterly` link floors to monthly,
+    // never to a product that no longer exists.
+    expect(readSignupBillingPeriod('quarterly')).toBe('monthly');
     // The accepted set IS the priced set — read, never restated.
     for (const term of BILLING_TERMS) expect(readSignupBillingPeriod(term)).toBe(term);
   });
 
   /* ─── 🔴 THE-195 TEST 7: THE REVENUE GUARD ────────────────────────────────
      Widening the allowlist to a third term must not widen what an UNTRUSTED
-     value can select. Everything outside the three real terms still lands on
+     value can select. Everything outside the real terms still lands on
      monthly — the most expensive per-month term, and the one a signup carrying
      no period has always meant. */
   it('an untrusted billing value still falls back to monthly', () => {
     const forged = [
       'annual',        // Dodo's vocabulary — the original silent mis-sell
-      'quarter', 'Quarterly', 'QUARTERLY', ' quarterly', 'quarterly ',
+      'quarter', 'quarterly', 'Quarterly', 'QUARTERLY', ' quarterly', 'quarterly ',
       'weekly', 'daily', 'lifetime', 'free', 'YEARLY', 'yearly ',
       '', null, undefined, 9, 0, {}, [], ['quarterly'], true, NaN,
     ];
@@ -198,7 +200,7 @@ describe("the client-side period vocabulary IS the provider's BillingPeriod", ()
     // fallback must be the term with the HIGHEST per-month cost, so that
     // failing closed can never be cheaper than choosing honestly.
     const perMonth = (term: (typeof BILLING_TERMS)[number]) =>
-      termPriceUsd('plus', term) / (term === 'monthly' ? 1 : term === 'quarterly' ? 3 : 12);
+      termPriceUsd('plus', term) / (term === 'monthly' ? 1 : 12);
     const dearest = [...BILLING_TERMS].sort((a, b) => perMonth(b) - perMonth(a))[0];
     expect(readSignupBillingPeriod('definitely-not-a-term')).toBe(dearest);
     expect(dearest).toBe('monthly');

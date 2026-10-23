@@ -810,16 +810,16 @@ describe('8 · PaymentSection still renders unavailable; DomainSection is still 
  * 9 — 🔴 no plan cap changed
  * ═══════════════════════════════════════════════════════════════════════════ */
 describe('9 · no plan cap changed', () => {
-  it('the nine plan prices are exactly what they were', () => {
+  it('the six plan prices are exactly what they were', () => {
     // ⚠️ Client-side plan caps are the SETTLED POSITION — course-adoption.ts:36
     // records it and THE-207/THE-55 closed as won't-fix. Nothing here reopens it.
     expect(PLAN_PRICING).toEqual({
-      plus: { monthly: 20, quarterly: 54, yearly: 190 },
-      pro: { monthly: 40, quarterly: 108, yearly: 380 },
-      // ⚠️ THE-343 repriced Ministry ($80→$60, and THE-372 back to $80, with the quarter and year
+      plus: { monthly: 20, yearly: 190 },
+      pro: { monthly: 40, yearly: 380 },
+      // ⚠️ THE-343 repriced Ministry ($80→$60, and THE-372 back to $80, with the year
       // following at the same 10% / >20% discounts). `plus` and `pro` are
       // enumerated so a reprice that overreached its brief still fails here.
-      max: { monthly: 80, quarterly: 216, yearly: 752 },
+      max: { monthly: 80, yearly: 752 },
     });
   });
 

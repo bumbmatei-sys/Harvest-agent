@@ -25,7 +25,7 @@ import path from 'node:path';
  * ─── The cross-repo half ─────────────────────────────────────────────────────
  *
  * The site (harvest-presentation-site) advertises this rate on its affiliate
- * surfaces. The two repos cannot share code, so they use the mechanism the nine
+ * surfaces. The two repos cannot share code, so they use the mechanism the six
  * plan prices already use: EACH REPO CARRIES THE NUMBER AS ITS OWN LITERAL, and
  * each side pins what the other is expected to publish. A one-sided edit fails
  * here or there. `SITE_ADVERTISED_PERCENT` below is the app's transcription of
@@ -208,14 +208,14 @@ describe('4 — what this change must NOT have moved', () => {
     expect(win).toContain('recomputes a stored `commission` amount. A legacy 20% row still pays 20%.');
   });
 
-  it('the nine plan prices are unchanged', async () => {
+  it('the six plan prices are unchanged', async () => {
     const { PLAN_PRICING } = await import('@/utils/plan-features');
     expect(PLAN_PRICING).toEqual({
-      plus: { monthly: 20, quarterly: 54,  yearly: 190 },
-      pro:  { monthly: 40, quarterly: 108, yearly: 380 },
+      plus: { monthly: 20, yearly: 190 },
+      pro:  { monthly: 40, yearly: 380 },
       // ⚠️ THE-343 repriced Ministry; the affiliate RATE is what this file
       // guards and it did not move with it.
-      max:  { monthly: 80, quarterly: 216, yearly: 752 },
+      max:  { monthly: 80, yearly: 752 },
     });
   });
 });
