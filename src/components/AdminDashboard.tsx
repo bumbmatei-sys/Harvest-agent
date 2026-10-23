@@ -1314,7 +1314,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             founder screenshotted. The bar now runs the full width, as it does in
             his ClickUp reference, and only the body below it is pushed aside. */}
         <div className="flex-1 flex min-h-0 min-w-0">
-        <div className={`flex-1 min-w-0 ${activeTab === 'community' ? 'overflow-hidden lg:overflow-y-auto pb-[65px] lg:pb-8' : 'overflow-y-auto pb-24 lg:pb-8'} p-0 lg:px-6 lg:pt-2 ${showMoreSheet ? 'overflow-hidden' : ''}`}>
+        <div className={`flex-1 min-w-0 ${activeTab === 'community' ? 'overflow-hidden lg:overflow-y-auto pb-[65px] lg:pb-8' : 'overflow-y-auto pb-24 lg:pb-8'} p-0 lg:p-6 ${showMoreSheet ? 'overflow-hidden' : ''}`}>
           {/* Billing grace window. Mounted in the SHELL rather than on one tab so a
               failed renewal is visible from whichever screen the admin happens to
               open — the point of the banner is that nobody currently finds out at
@@ -1420,7 +1420,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               : <PlanUpgradeScreen featureName="Donations" featureKey="fundraising" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'docs' ? (
             planAllows(features?.docs)
-              ? <div className="p-4 lg:p-0"><AdminDocs initialDocId={itemId?.startsWith('folder:') ? undefined : itemId} initialFolderId={itemId?.startsWith('folder:') ? itemId.slice('folder:'.length) : undefined} onItemConsumed={clearItemId} /></div>
+              ? <div className="p-4 lg:p-0"><AdminDocs initialDocId={itemId} onItemConsumed={clearItemId} /></div>
               : <PlanUpgradeScreen featureName="Notes" featureKey="docs" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'events' ? (
             planAllows(features?.eventRegistration)

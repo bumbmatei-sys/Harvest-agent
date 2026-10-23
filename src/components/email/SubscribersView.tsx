@@ -88,7 +88,7 @@ export function SubscribersView({ data, tenantId, onImport, onSettings }: { data
   return (
     <div className="flex flex-col gap-6">
       {!senderReady(data.settings) && (
-        <SetupBanner actionLabel="Open settings" onAction={onSettings}>Add your sender name, reply-to address and mailing address before you send. Emails go out from Harvest's own sending address.</SetupBanner>
+        <SetupBanner actionLabel="Open settings" onAction={onSettings}>Add your sender name, reply-to address and mailing address before you send. Emails go out from Harvest&apos;s own sending address.</SetupBanner>
       )}
       <SubscribeLinkCard tenantId={tenantId} />
       <div className="flex items-center justify-between gap-4">

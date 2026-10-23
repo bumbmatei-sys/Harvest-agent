@@ -1109,6 +1109,8 @@ describe('THE-334 · what it may not disturb', () => {
       'b8f838ab6182d888e95e5b20b91f6c788726c145b7b1140e50de044dcaa155f8',
       // 🔴 APPENDED BY THE-341 — BROADCASTING renamed to REACH, `forms` moved in.
       '225e9a747654609050fc2be0a2205dc396c5b83d105ef86f625059bae2848fa6',
+      // 🔴 APPENDED BY UI polish, 23 Oct (THE-377) - the Products tab joins the CONTENT group after Courses, on BOTH shells, so the drawer reaches the new Products page. No other id moved and the two arrays stay element-for-element equal.
+      '9b2b32084c6e04706fa80e8eb1e166960a676f55b21f07000cf1d7c6c9091ace',
     ];
     const more = src.split('const MORE_GROUPS')[1].split('\n];')[0];
     expect(

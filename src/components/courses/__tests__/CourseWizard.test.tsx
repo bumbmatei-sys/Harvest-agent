@@ -6,6 +6,7 @@ import { emptyLesson } from '@/lib/courses/lessons';
 import type { MemberList } from '@/lib/courses/members';
 import type { ProductCourse } from '@/types/course-product.types';
 import type { Lesson } from '@/types/course.types';
+import { AdminHeaderContext } from '@/components/AdminScreenHeader';
 import { all, byName, click, flush, mount, need, text, type as typeInto, unmount } from '@/components/email/__tests__/dom';
 
 // TipTap needs a layout engine for its selection handling; the editor itself is
@@ -274,13 +275,36 @@ describe('Lessons step — lesson types', () => {
 });
 
 describe('leaving', () => {
+  /** The top bar's breadcrumb is the way out: the wizard publishes where it is and how to leave. */
+  const crumb = { current: null as null | { title: string; onBack: () => void } };
+  const shell = (ui: React.ReactElement) => (
+    <AdminHeaderContext.Provider
+      value={{
+        setHeaderAction: () => {},
+        setHeaderHidden: () => {},
+        setNavHidden: () => {},
+        setHeaderOverride: (next) => { crumb.current = next && next.onBack ? { title: next.title, onBack: next.onBack } : null; },
+      }}
+    >
+      {ui}
+    </AdminHeaderContext.Provider>
+  );
+  const goBack = () => act(async () => { need(crumb.current, 'the breadcrumb back link').onBack(); });
+
+  it('has no Back button inside the page, and names the course in the breadcrumb', async () => {
+    await mount(shell(wizard({ course: textCourse() }).ui));
+    expect(byName('button', 'Courses')).toBeNull();
+    expect(byName('button', 'Back')).toBeNull();
+    expect(crumb.current?.title).toBe('Prayer basics');
+  });
+
   it('asks before discarding unsaved edits and not otherwise', async () => {
     const onClose = vi.fn();
-    await mount(wizard({ course: textCourse(), onClose }).ui);
-    await click(need(byName('button', 'Courses'), 'back'));
+    await mount(shell(wizard({ course: textCourse(), onClose }).ui));
+    await goBack();
     expect(onClose).toHaveBeenCalledTimes(1);
     await typeInto(need(q('#course-title'), 'title'), 'Changed');
-    await click(need(byName('button', 'Courses'), 'back'));
+    await goBack();
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(q('[data-leave-dialog]')).not.toBeNull();
     await click(need(byName('[data-leave-dialog] button', 'Leave'), 'leave'));

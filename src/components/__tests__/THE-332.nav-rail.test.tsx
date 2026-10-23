@@ -375,6 +375,11 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
       // Not a kill switch: Branding left the sidebar for Settings > Campus &
       // branding, and its id stays a known tab so /admin/branding still resolves.
       'branding',
+      // Not a kill switch either: Community left the sidebar for the top bar's Community
+      // menu, and Courses left it for the Products page. Both ids stay known tabs (the mobile
+      // drawer lists them, and /admin/community and /admin/courses resolve).
+      'community',
+      'courses',
     ];
     const missing = [...named].filter((id) => !reached.has(id));
 
@@ -394,13 +399,13 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
     expect(read('src/utils/plan-features.ts'))
       .toContain('export const AFFILIATE_PROGRAM_ENABLED = false');
 
-    /* The ticket's "23 tabs" is exactly DESKTOP_NAV_GROUPS' id count; Dashboard
+    /* The ticket's "23 tabs" (24 since `products` joined them) is exactly DESKTOP_NAV_GROUPS' id count; Dashboard
        is pinned OUTSIDE the groups on the rail and Settings sits in the account
-       menu at the rail's floor, so the nav reaches 25 destinations in all. 24 of them are reachable today — `affiliate` is
+       menu at the rail's floor, so the nav names 26 destinations in all. 24 of them are reachable today — `affiliate` is
        the kill-switched one. Every reachable id is enumerated below, so hiding
        any of them from every path fails this test and names it. */
-    expect(groups.flatMap((g) => g.ids).length, 'DESKTOP_NAV_GROUPS no longer holds 23 tabs').toBe(23);
-    expect(named.size).toBe(25);
+    expect(groups.flatMap((g) => g.ids).length, 'DESKTOP_NAV_GROUPS no longer holds 24 tabs').toBe(24);
+    expect(named.size).toBe(26);
     // 🔵 THE-335 — the same three ids the assertion above derives, for the same
     // reason: an id behind a master switch is NAMED in the group arrays (so the
     // flip restores it) but is not built, so it cannot be reached.
@@ -547,7 +552,8 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
     mounted = false;
     setPlan('pro', { socialScheduler: 1 });
     await mount({ superAdmin: false, perms: { ...FULL_TENANT_PERMS, fullAccess: true } });
-    expect(container.querySelector('[data-shell-side] [data-nav-tab="social"]')).toBeTruthy();
+    // Social lives under Channels on the Public side now, so look through both sides.
+    expect(await socialInSidebar()).toBe(true);
   });
 
   // Matei approved 2026-10-21: "Include the scheduler in the Ministry plan".
@@ -633,6 +639,8 @@ describe('THE-332 · what this ticket may not disturb', () => {
       '33f0aaa0e0caef51e1a19f14e526ee0afa919d61f944760afc438bb52cb0651b',
       // 🔴 APPENDED BY THE-341 — BROADCASTING renamed to REACH, `forms` moved in.
       '8b0789543891a489d0de9001ecd2326d248809111c4f1f1baf61b3ebddd4f0bd',
+      // 🔴 APPENDED BY UI polish, 23 Oct (THE-377) - the Products tab joins the CONTENT group after Courses, on BOTH shells, so the drawer reaches the new Products page. No other id moved and the two arrays stay element-for-element equal.
+      '518972cccc987e39db39beb341f7cb4c1a54abb32160dfd92a0b76541ee4ee25',
     ];
     const before = readFileSync(join(ROOT, 'src/components/AdminDashboard.tsx'), 'utf8');
     const slice = (src: string) => {
@@ -841,6 +849,8 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
        pane alone. No nav, tab id, read, write or permission gate moved, which is
        what THE-332 pins this file for. */
     'fedb1e028e2c74d0184411ed651c922a280369c7b549fff8943706b8c03257c9',
+    // APPENDED BY UI polish, 23 Oct (THE-377), nothing above removed or rewritten. AdminCommunity.tsx: Deep-link props (initialChannelId, startCreating, onItemConsumed) for the top-bar Community menu. No channel query, write or permission path moved.
+    '903d3b85e2445db238c1328c35e49f37ae0c601241e29e77bcb5d5e27c5b6b12',
   ],
   /* AN ACCEPTED SET, APPENDED TO, NOT ONE VALUE SUBSTITUTED - the same shape and
      the same reason as MORE_GROUPS_ACCEPTED above. CI runs against
@@ -917,11 +927,17 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
        this file for: handleSave, confirmDelete and firestorePathsOf are
        unchanged. */
     'db9fbb0478cbeb3f2425c9afdaa40c6c59770f211625da0fc598fa7c041276be',
+    // APPENDED BY UI polish, 23 Oct (THE-377), nothing above removed or rewritten. AdminEvents.tsx: Title/pill/Create event on the shared header line; the old List/Month TabsList is gone. No event, ticket-price, fee or checkout call moved.
+    '66b315f92bbe51da2daa234e44dd2e977e7805981c25b4572bd5bc9990936244',
     /* The Eden shell pass appended two AdminEvents digests (segmented List and
        Month) and the follow-up restored this file to the #522 digest above.
        Those two values are not accepted: a revert is not a second legal state. */
   ],
-  'src/components/AdminServices.tsx': '17f508718d3c6b1ad016b9fb6be2c241629421705af4a9c0966b02739eba74ae',
+  'src/components/AdminServices.tsx': [
+    '17f508718d3c6b1ad016b9fb6be2c241629421705af4a9c0966b02739eba74ae',
+    // APPENDED BY UI polish, 23 Oct (THE-377), nothing above removed or rewritten. AdminServices.tsx: the Services title moves to the top, the ministry eyebrow is deleted and the section pill joins the shared header. No service query or write moved.
+    '1cee40cb28204d9f450472d3cbd992cd3ef28c0dc9c1512da55b7f88be635bf5',
+  ],
   /* 🔴 AN ACCEPTED SET, APPENDED TO, NOT ONE VALUE SUBSTITUTED — the shape the
      entries above and below already use, and the rule this map states: THE-332's
      own value stays accepted and a digest that is NEITHER still fails.

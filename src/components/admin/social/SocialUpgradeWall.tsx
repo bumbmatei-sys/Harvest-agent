@@ -22,7 +22,7 @@ export function SocialUpgradeWall({ onUpgrade }: { onUpgrade: () => void }) {
           </div>
           <CardTitle className="font-display text-2xl font-semibold">Social scheduling is an add-on</CardTitle>
           <CardDescription>
-            This ministry's plan does not include it. A ministry on a plan that includes it, or one that holds the add-on, can connect accounts and schedule posts from here.
+            This ministry&apos;s plan does not include it. A ministry on a plan that includes it, or one that holds the add-on, can connect accounts and schedule posts from here.
           </CardDescription>
         </CardHeader>
         <CardContent>

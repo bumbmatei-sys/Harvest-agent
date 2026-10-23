@@ -1,6 +1,6 @@
 'use client';
 
-import { useSubviewHeader } from '@/components/AdminScreenHeader';
+import { useSubviewHeader } from '@/components/use-subview-header';
 import { useCallback, useMemo, useState } from 'react';
 import { Eye } from 'lucide-react';
 

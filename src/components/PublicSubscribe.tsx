@@ -17,7 +17,7 @@ const PublicSubscribe: React.FC<PublicSubscribeProps> = ({ tenantName, logo }) =
     <div className="flex flex-col items-center gap-3 text-center">
       {logo ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={logo} alt="" className="size-16 rounded-full object-cover" />
+        <img src={logo} alt={tenantName} className="logo-plate h-14 mx-auto object-contain" />
       ) : null}
       <h1 className="font-display text-3xl font-semibold tracking-tight text-strong">{tenantName}</h1>
     </div>

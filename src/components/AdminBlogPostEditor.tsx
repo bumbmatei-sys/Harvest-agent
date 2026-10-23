@@ -1,7 +1,7 @@
 "use client";
 import React, { useRef, useState } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
-import { useSubviewHeader } from './AdminScreenHeader';
+import { useSubviewHeader } from './use-subview-header';
 import { ImageUpload } from './ImageUpload';
 import RichTextEditor from './RichTextEditor';
 import { getWriteTenantScope } from '../utils/tenant-scope';

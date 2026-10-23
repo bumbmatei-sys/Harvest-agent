@@ -5,6 +5,7 @@
 // assertion below could tell a 44px day cell from a 28px one. Which is exactly
 // the number at stake here: `calendar` ships `[--cell-size:--spacing(7)]`, and
 // 28px is what a month grid draws unless somebody measures it.
+import { PageTabs } from '@/components/admin-shell/PageHeader';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
@@ -131,27 +132,13 @@ beforeAll(async () => {
               be rendered to a string here.
             */}
             <div data-tabs-scope>
-              <Tabs value="list">
-                {/*
-                  THE-346 moved this replica with the screen. The triggers still
-                  carry a 44px floor released at `sm` - spelled `min-h-11` /
-                  `min-w-11` off the spacing scale now rather than as arbitrary
-                  values, which is the same 44px - and the LIST now carries a
-                  height too.
-
-                  THAT LAST PART IS THE DEFECT THE-308 COULD NOT SEE. This suite
-                  measured the TRIGGERS and found a correct 44px, and passed
-                  while `ui/tabs.tsx` held the LIST at `h-8` (32px), so the pill
-                  hung 6px out of each end of the box it lived in. Both
-                  numbers were right on their own; nobody had measured the
-                  relationship. THE-346's own suite asserts containment.
-                */}
-                <TabsList className="group-data-[orientation=horizontal]/tabs:h-auto sm:group-data-[orientation=horizontal]/tabs:h-8">
-                  <TabsTrigger value="list" className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0">List</TabsTrigger>
-                  <TabsTrigger value="month" className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0">Month</TabsTrigger>
-                </TabsList>
-                <TabsContent value="list" className="mt-4 space-y-6" />
-              </Tabs>
+              {/* The REAL pill: AdminEvents puts List / Month in the page header with PageTabs. */}
+              <PageTabs
+                label="Events view"
+                value="list"
+                onValueChange={() => {}}
+                items={[{ value: 'list', label: 'List' }, { value: 'month', label: 'Month' }]}
+              />
             </div>
             <EventMonthView
               read={{ kind: 'complete', events: EVENTS, undated: 0 }}
@@ -412,14 +399,16 @@ describe('13b · the tab pair is a real target at 380px', () => {
    * to be the markup that ships — class for class — and drifts loudly if the
    * screen's tab bar is edited without this suite.
    */
-  it('the replica matches the tab bar AdminEvents actually renders', () => {
+  it('the screen renders that same pill: AdminEvents puts List and Month in the header with PageTabs', () => {
     const screen = readFileSync(path.join(REPO_ROOT, 'src/components/AdminEvents.tsx'), 'utf8');
     for (const line of [
-      '<TabsList className="group-data-[orientation=horizontal]/tabs:h-auto sm:group-data-[orientation=horizontal]/tabs:h-8">',
-      '<TabsTrigger value="list" className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0">List</TabsTrigger>',
-      '<TabsTrigger value="month" className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0">Month</TabsTrigger>',
+      '<PageTabs',
+      "{ value: 'list', label: 'List' }",
+      "{ value: 'month', label: 'Month' }",
     ]) {
       expect(screen, `the shipped tab bar no longer contains: ${line}`).toContain(line);
     }
+    // The old hand-sized TabsList is gone: PageTabs owns the 44px floor now.
+    expect(screen).not.toContain('<TabsList');
   });
 });

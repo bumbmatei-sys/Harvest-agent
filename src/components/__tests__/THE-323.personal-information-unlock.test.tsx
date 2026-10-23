@@ -802,10 +802,12 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/courses/CourseProductList.tsx',
       'src/components/courses/builder/AccessSection.tsx',
       'src/components/courses/builder/CourseWizard.tsx',
+      // UI-POLISH: What's included moved from the Page step to the Offer step, and its `min-h-11`
+      // buttons moved with it, into IncludedSection.
+      'src/components/courses/builder/IncludedSection.tsx',
       'src/components/courses/builder/LessonBodyEditor.tsx',
       'src/components/courses/builder/LessonSheet.tsx',
       'src/components/courses/builder/LessonsStep.tsx',
-      'src/components/courses/builder/PageStep.tsx',
       'src/components/courses/builder/PublishStep.tsx',
       // APPENDED FOR #0000, NOTHING AROUND IT REMOVED. Sorted position, not arrival order.
       // PaymentLinkPicker USES the class as `min-h-11 sm:min-h-0` on each provider row,
@@ -828,6 +830,8 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/email/PlatformLimitsCard.tsx',
       'src/components/email/SendStep.tsx',
       'src/components/email/SendingNotice.tsx',
+      // APPENDED BY UI-POLISH. The reusable newsletter sign-up block spells the 44px floor on its inputs and button.
+      'src/components/email/SubscribeBlock.tsx',
       'src/components/email/SubscribersView.tsx',
       // APPENDED BY the newsletter launch-blockers follow-up, NOTHING ABOVE OR BELOW REMOVED
       // OR REWRITTEN. The template picker's cards were raw <button>s using the TAP token; they

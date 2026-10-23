@@ -790,7 +790,7 @@ const AdminCourses: React.FC<AdminCoursesProps> = ({ productsPage = false, onOpe
         action={
           productsPage ? (
             <>
-              {onOpenCourses ? <Button type="button" variant="outline" className="h-9 min-h-[44px] sm:min-h-0" onClick={onOpenCourses}>Courses</Button> : null}
+              {onOpenCourses ? <Button type="button" variant="outline" className="min-h-11 sm:min-h-0" onClick={onOpenCourses}>Courses</Button> : null}
               <AdminPrimaryButton onClick={handleNewCourse} icon={<Plus size={16} />} disabled={atLimit} title={atLimit ? limitMessage : undefined}>New product</AdminPrimaryButton>
             </>
           ) : view === 'own'

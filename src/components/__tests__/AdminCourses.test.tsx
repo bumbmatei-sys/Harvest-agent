@@ -114,53 +114,113 @@ function makeCourses(n: number) {
 let container: HTMLDivElement;
 let root: Root;
 
-async function mount() {
+async function mount(props: React.ComponentProps<typeof AdminCourses> = {}) {
   await act(async () => {
     root = createRoot(container);
-    root.render(<AdminCourses />);
+    root.render(<AdminCourses {...props} />);
     // Flush the getTenantScope() microtask + onSnapshot callback inside the effect.
     await Promise.resolve();
     await Promise.resolve();
   });
 }
 
-/** "New course" opens the shared type picker first; picking Course starts the wizard. */
+/** On the Products page "New product" opens the shared type picker first; picking Course starts the wizard. */
 async function pickCourseType() {
   const card = document.body.querySelector<HTMLButtonElement>('[data-product-type="course"]');
   if (!card) throw new Error('The product type picker did not open');
   await act(async () => { card.click(); });
 }
 
-function newCourseButton(): HTMLButtonElement {
+function newCourseButton(label = 'New course'): HTMLButtonElement {
   const button = Array.from(container.querySelectorAll('button')).find((b) =>
-    (b.textContent || '').trim().startsWith('New course')
+    (b.textContent || '').trim().startsWith(label)
   );
-  if (!button) throw new Error('No "New course" button found');
+  if (!button) throw new Error(`No "${label}" button found`);
   return button as HTMLButtonElement;
 }
 
+beforeEach(() => {
+  container = document.createElement('div');
+  document.body.appendChild(container);
+  tenantCtx.tenantPlan = undefined;
+  mockCourses = [];
+  mockLibrary = [];
+  mockLibraryAuthors = [];
+  mockAdopted = [];
+  calls.paths = [];
+  calls.wheres = [];
+  calls.writes = [];
+  calls.fetches = [];
+  scope.read = 'tenant-1';
+  scope.write = 'tenant-1';
+});
+
+afterEach(() => {
+  act(() => { root?.unmount(); });
+  container.remove();
+});
+
+
+describe('AdminCourses as the Products page', () => {
+  it('is titled Products, has a New product button and no New course button, and no library tab', async () => {
+    tenantCtx.tenantPlan = 'max';
+    mockCourses = makeCourses(1);
+    await mount({ productsPage: true });
+    expect(container.querySelector('h1')?.textContent).toBe('Products');
+    expect(newCourseButton('New product')).toBeTruthy();
+    expect(() => newCourseButton('New course')).toThrow();
+    expect(container.querySelector('[role="tablist"]')).toBeNull();
+  });
+
+  it('New product opens a picker of product types only, and picking Course starts the wizard', async () => {
+    tenantCtx.tenantPlan = 'max';
+    mockCourses = makeCourses(1);
+    await mount({ productsPage: true });
+    await act(async () => { newCourseButton('New product').click(); });
+    const types = [...document.body.querySelectorAll('[data-product-type]')].map((e) => e.getAttribute('data-product-type'));
+    expect(types).toEqual(['course', 'digital-download', 'coaching', 'bundle']);
+    for (const banned of ['fundraising', 'event', 'service', 'form']) expect(types).not.toContain(banned);
+    expect(container.querySelector('[data-testid="course-editor"]')).toBeNull();
+    await pickCourseType();
+    expect(container.querySelector('[data-testid="course-editor"]')).not.toBeNull();
+  });
+
+  it('keeps the plan cap: at the limit New product is disabled and says why', async () => {
+    tenantCtx.tenantPlan = 'plus';
+    mockCourses = makeCourses(2);
+    await mount({ productsPage: true });
+    const button = newCourseButton('New product');
+    expect(button.disabled).toBe(true);
+    expect(button.title).toMatch(/plan includes up to 2 course/i);
+  });
+
+  it('links to the Courses page, where the library and adoptions live', async () => {
+    tenantCtx.tenantPlan = 'max';
+    mockCourses = makeCourses(1);
+    const onOpenCourses = vi.fn();
+    await mount({ productsPage: true, onOpenCourses });
+    const link = Array.from(container.querySelectorAll('button')).find((b) => (b.textContent || '').trim() === 'Courses');
+    expect(link).toBeTruthy();
+    await act(async () => { (link as HTMLButtonElement).click(); });
+    expect(onOpenCourses).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('AdminCourses — the Courses page header', () => {
+  it('puts the title, the Your courses / Library pill and New course on one header, pill before button', async () => {
+    tenantCtx.tenantPlan = 'max';
+    mockCourses = makeCourses(1);
+    await mount();
+    const header = container.querySelector('[data-page-header]')!;
+    expect(header.querySelector('h1')?.textContent).toBe('Courses');
+    const controls = header.querySelector('[data-page-header-controls]')!;
+    const kids = [...controls.children];
+    expect(kids[0].querySelector('[role="tablist"]')).toBeTruthy();
+    expect(kids.at(-1)?.textContent).toContain('New course');
+  });
+});
+
 describe('AdminCourses — maxCourses enforcement', () => {
-  beforeEach(() => {
-    container = document.createElement('div');
-    document.body.appendChild(container);
-    tenantCtx.tenantPlan = undefined;
-    mockCourses = [];
-    mockLibrary = [];
-    mockLibraryAuthors = [];
-    mockAdopted = [];
-    calls.paths = [];
-    calls.wheres = [];
-    calls.writes = [];
-    calls.fetches = [];
-    scope.read = 'tenant-1';
-    scope.write = 'tenant-1';
-  });
-
-  afterEach(() => {
-    act(() => { root?.unmount(); });
-    container.remove();
-  });
-
   it('allows creating a new course when under the plan limit', async () => {
     tenantCtx.tenantPlan = 'plus'; // maxCourses: 2
     mockCourses = makeCourses(1);
@@ -169,9 +229,9 @@ describe('AdminCourses — maxCourses enforcement', () => {
     const button = newCourseButton();
     expect(button.disabled).toBe(false);
 
+    // The Courses page already knows what is being made: no type picker, straight to the wizard.
     await act(async () => { button.click(); });
-    expect(container.querySelector('[data-testid="course-editor"]')).toBeNull();
-    await pickCourseType();
+    expect(document.body.querySelector('[data-product-type]')).toBeNull();
     expect(container.querySelector('[data-testid="course-editor"]')).not.toBeNull();
   });
 
@@ -202,8 +262,6 @@ describe('AdminCourses — maxCourses enforcement', () => {
     expect(button.disabled).toBe(false);
 
     await act(async () => { button.click(); });
-    expect(container.querySelector('[data-testid="course-editor"]')).toBeNull();
-    await pickCourseType();
     expect(container.querySelector('[data-testid="course-editor"]')).not.toBeNull();
   });
 

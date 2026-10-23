@@ -739,6 +739,8 @@ const ADMIN_DASHBOARD_ACCEPTED = [
     '735d23f8946c67052aa01f186eaaa518d12f3e5319ddeca91e3d21240bf078c0',
     // APPENDED BY the settings popup round 4b, nothing above removed or rewritten. The desktop account menu drops Billing when Settings can open. The phone menu is unchanged. No permission gate moved.
     '44dba8fb732054ce3e491cc479dc09fec134a57b2124e944050564e98f138b65',
+    // APPENDED BY UI polish, 23 Oct (THE-377), nothing above removed or rewritten. AdminDashboard.tsx: Sidebar regrouped (Channels, Engage, Products; People, Giving, Notes boards), the Community menu in the top bar, clickable breadcrumbs, and a Products tab that mounts AdminCourses. Every tab keeps its permission and plan gate; no route or write path moved.
+    '54553f44e3f886679f293b098921834ef70ee265d8e8671e670757f91420d503',
 ];
 
 describe('the files this ticket must not open are byte-identical', () => {

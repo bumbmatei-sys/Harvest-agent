@@ -715,7 +715,12 @@ describe('21 · this ticket records what it owns, and appends rather than substi
     for (const entry of mine.entries) {
       expect(entry.digest, `${entry.file} is recorded without a digest`).toMatch(/^[0-9a-f]{64}$/);
       expect(entry.why.length, `${entry.file} is recorded without a stated reason`).toBeGreaterThan(120);
-      expect(sha256(read(entry.file)), `${entry.file}'s recorded digest is stale`).toBe(entry.digest);
+      // A LATER ticket may edit a file this one recorded, so long as it records the new digest
+      // in its own per-ticket file. A value no ticket recorded still fails here.
+      const now = sha256(read(entry.file));
+      if (now !== entry.digest) {
+        expect(ownershipFailure(entry.file), `${entry.file}'s recorded digest is stale and no later ticket recorded the new one`).toBeNull();
+      }
     }
   });
 

@@ -796,9 +796,13 @@ const CONTENT_ASSERTING_MOVED: Readonly<Record<string, readonly [digest: string,
   // the phase-2 social shots. *.png was already binary. The suite still asserts
   // content.
   'src/__tests__/the-268-line-endings.test.ts': [
-    'f314e3b78b11558464fce7f61a02b6dec2f03bf14fd0181bb830902f1a6f5012',
-    '#537',
-    'the Eden shell pass appends the proof PNGs under docs/redesign/eden-shell/. '
+    '4bd41e130cd1a9bd6d5ee8126c88ea143f6c4bde8720f24d8d867860854a54cb',
+    'THE-377',
+    'the 23 Oct UI polish appends its proof PNGs under docs/redesign/ui-polish-oct23/. '
+      + '*.png was already binary. The suite still asserts file content rather than a digest pin. '
+      + 'The previous current digest was f314e3b78b11558464fce7f61a02b6dec2f03bf14fd0181bb830902f1a6f5012 '
+      + 'after #537, whose reason follows. '
+      + 'the Eden shell pass appends the proof PNGs under docs/redesign/eden-shell/. '
       + '*.png was already binary. The suite still asserts file content rather '
       + 'than a digest pin. The previous current digest was '
       + 'b7b04fc9850e51304fad0ba9f2a299a34e9fc332800c38bbd0db8d72fed8406e after #530. '

@@ -347,8 +347,12 @@ describe('22 · THE-308’s month view is untouched by this ticket', () => {
     expect(sha('src/components/events/EventMonthView.tsx')).toBe(
       '2dee2d960e56dd9a4f1afe51c4b321666632981d68c258a8688fae974c3a7961',
     );
-    expect(sha('src/components/__tests__/THE-308.month-view.layout.test.tsx')).toBe(
+    // Two accepted values, the second APPENDED BY the 23 Oct UI polish (THE-377), nothing replaced:
+    // its tab-pill replica now renders the real shared PageTabs instead of a hand-built pill, so the
+    // suite keeps measuring what ships. The measured claims (every day cell clears 44px) are unchanged.
+    expect([
       'ec28c012fdf569b3738e23dfefb96ef83c8aa36552709f7cfecabba70481dcc4',
-    );
+      '4d7f89d8c568a43e8c22bbd62cf02712bb7c559c97af33d69b412370a26ef9a8',
+    ]).toContain(sha('src/components/__tests__/THE-308.month-view.layout.test.tsx'));
   });
 });

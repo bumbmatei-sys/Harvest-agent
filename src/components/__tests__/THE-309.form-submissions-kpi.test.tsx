@@ -629,6 +629,7 @@ describe('the other readers of the same subcollection are untouched', () => {
       // assert those three things across EVERY accepted body. No submission
       // count, label or title moved.
       ['62107208566c3e1ba8bb17713965e5f40ecf8821876570418971b931a317a1b7', 'THE-366 — the rating and scale field types, their preview, and their CSV column'],
+      ['6bc6c8cd3617dd9fd5a11de7a291075b852b09acd622e507da56d09d4e1bbb0a', 'UI polish, 23 Oct (THE-377) - AdminForms.tsx. The eyebrow is removed from the header. No submissions read, form write or KPI query moved.'],
     ],
     'src/app/api/forms/get/route.ts': [
       ['8e8ad1d36349725c7219f1c45c7e2f4e103e07e05bcfe70e3c6a2c5de98de2cc', 'unchanged since THE-298'],

@@ -66,7 +66,7 @@ export function BroadcastsView({ data, api, tenantId, onChanged, onNew, onOpen, 
     <div className="flex flex-col gap-6">
       <SendingNotice sending={data.sending} api={api} canResume={data.canEditLimits} tenantId={tenantId} onResumed={onChanged} />
       {!senderReady(data.settings) && (
-        <SetupBanner actionLabel="Open settings" onAction={onSettings}>Add your sender name, reply-to address and mailing address before you send. Emails go out from Harvest's own sending address.</SetupBanner>
+        <SetupBanner actionLabel="Open settings" onAction={onSettings}>Add your sender name, reply-to address and mailing address before you send. Emails go out from Harvest&apos;s own sending address.</SetupBanner>
       )}
       {(data.usage.warn || data.usage.used >= data.usage.cap) && data.usage.cap > 0 && (
         <Card className="gap-0 p-5"><UsageMeter usage={data.usage} compact /></Card>

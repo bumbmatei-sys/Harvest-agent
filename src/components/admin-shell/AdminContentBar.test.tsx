@@ -2,7 +2,6 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { TooltipProvider } from '@/components/ui/tooltip';
 import { AdminContentBar, CommunityMenu } from './AdminContentBar';
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -12,7 +11,7 @@ let root: Root;
 beforeEach(() => { host = document.createElement('div'); document.body.appendChild(host); root = createRoot(host); });
 afterEach(() => { act(() => root.unmount()); host.remove(); document.body.innerHTML = ''; });
 
-const mount = (ui: React.ReactElement) => act(async () => { root.render(<TooltipProvider>{ui}</TooltipProvider>); });
+const mount = (ui: React.ReactElement) => act(async () => { root.render(ui); });
 const crumbButtons = () => [...host.querySelectorAll<HTMLElement>('nav[aria-label="breadcrumb"] button')];
 
 describe('the top bar breadcrumb', () => {

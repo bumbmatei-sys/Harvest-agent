@@ -315,7 +315,7 @@ describe('4 — the mobile drawer still mirrors the desktop sidebar', () => {
 
   it('🔴 enumerated whole, so two arrays that drifted TOGETHER still fail', () => {
     expect(navGroups('DESKTOP_NAV_GROUPS')).toEqual([
-      { label: 'CONTENT', ids: ['blog', 'courses', 'newsletter', 'ai', 'docs'] },
+      { label: 'CONTENT', ids: ['blog', 'courses', 'products', 'newsletter', 'ai', 'docs'] },
       {
         label: 'MINISTRY',
         ids: [
@@ -339,14 +339,15 @@ describe('4 — the mobile drawer still mirrors the desktop sidebar', () => {
 const ALL_TABS = [
   'accounting', 'affiliate', 'ai', 'blog', 'branding', 'checkin', 'churches',
   'community', 'courses', 'crm', 'docs', 'donations', 'events', 'forms',
-  'fundraising', 'inbox', 'library', 'livestream', 'newsletter', 'services',
+  'fundraising', 'inbox', 'library', 'livestream', 'newsletter', 'products', 'services',
   'signups', 'sms', 'tenants',
 ] as const;
 
 describe('5 — no tab was orphaned by the rename', () => {
   it('the enumeration is the 23 the product has', () => {
-    expect(ALL_TABS).toHaveLength(23);
-    expect(new Set(ALL_TABS).size, 'the enumeration repeats an id').toBe(23);
+    // 23 when this was written; `products` is the 24th (the Products page).
+    expect(ALL_TABS).toHaveLength(24);
+    expect(new Set(ALL_TABS).size, 'the enumeration repeats an id').toBe(24);
   });
 
   it.each(SHELLS)('%s (%s) reaches all 23, each exactly once', (name, which) => {
@@ -363,7 +364,7 @@ describe('5 — no tab was orphaned by the rename', () => {
     expect(missing, `${which} orphaned: ${missing.join(', ') || 'nothing'}`).toEqual([]);
     expect(unknown, `${which} lists an id no tab defines: ${unknown.join(', ')}`).toEqual([]);
     expect(twice, `${which} lists twice: ${twice.join(', ')}`).toEqual([]);
-    expect(flat.length, `${which} does not hold 23 ids`).toBe(23);
+    expect(flat.length, `${which} does not hold 23 ids`).toBe(24);
   });
 
   it('every id in either array has a real tab entry in allTabs', () => {

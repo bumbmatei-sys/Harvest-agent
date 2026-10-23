@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
 
-import { db } from '../firebase';
+import { db } from '../../firebase';
 
 export interface TenantCommunity {
   readonly id: string;

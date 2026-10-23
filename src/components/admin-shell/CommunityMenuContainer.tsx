@@ -3,7 +3,7 @@
 import { Users } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { useTenantCommunities } from '@/hooks/useTenantCommunities';
+import { useTenantCommunities } from './use-tenant-communities';
 
 import { CommunityMenu } from './AdminContentBar';
 import { ShellErrorBoundary } from './ShellErrorBoundary';

@@ -1,0 +1,61 @@
+{
+  "ticket": "THE-377",
+  "note": "UI polish, 23 Oct: social scheduler entitlement gate, one shared page header (PageHeader/PageTabs) with the top-bar breadcrumb as the only way back, sidebar regrouped (Channels / Engage / Products; People / Giving / Notes boards), Community dropdown in the top bar, Products page with a type picker, Courses (no price, What's included on Offer, no Chats in the player), newsletter (no custom sending domain, no Mailchimp, Advanced hidden, Navy/Gold/Custom accents, public subscribe form). There is no assigned ticket number; THE-377 is the next free id after THE-376. No firestore.rules, indexes, storage rules, env or tenant data change. APPENDED, NEVER SUBSTITUTED: no other ticket's record was edited.",
+  "entries": [
+    {
+      "file": "src/components/AdminBlog.tsx",
+      "digest": "f9fdf04debacf197feaf8c96841c485acaf10fcb58f6fb7f27f3a0c95c138b08",
+      "why": "UI polish, 23 Oct: the shared page header replaces the per-screen header and eyebrow, and the top-bar breadcrumb replaces the small back buttons. No query, write path, permission gate, price or checkout call changed; className, header markup and the section's own back control only."
+    },
+    {
+      "file": "src/components/AdminBlogPostEditor.tsx",
+      "digest": "7b6fe702a08498a9c8941735ea53d46ede1d3efd48088e1897e77e9512693d79",
+      "why": "UI polish, 23 Oct: the shared page header replaces the per-screen header and eyebrow, and the top-bar breadcrumb replaces the small back buttons. No query, write path, permission gate, price or checkout call changed; className, header markup and the section's own back control only."
+    },
+    {
+      "file": "src/components/AdminCommunity.tsx",
+      "digest": "903d3b85e2445db238c1328c35e49f37ae0c601241e29e77bcb5d5e27c5b6b12",
+      "why": "UI polish, 23 Oct: initialChannelId and startCreating props so the Community dropdown can open a channel or start a new one. No channel query, write or permission path changed."
+    },
+    {
+      "file": "src/components/AdminCourses.tsx",
+      "digest": "5b8daf96917999bb5e8184704108b709e646f32715fec139adc8e0fa9a175b77",
+      "why": "UI polish, 23 Oct: a Products mode (title, New product opening a type picker of product types only, a Courses button) and a Courses mode on the shared header with the Your courses/Library pill and New course. The local type list moved to product-wizard/product-types. No query, delete, adopt or save path changed."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "54553f44e3f886679f293b098921834ef70ee265d8e8671e670757f91420d503",
+      "why": "UI polish, 23 Oct: the sidebar groups gain Channels/Engage/Products and Giving/Notes boards, the Community tab leaves the sidebar for a top-bar dropdown, a Products tab mounts AdminCourses in its products-page mode, and the content bar takes clickable breadcrumbs. Every tab keeps its permission gate and plan gate; no route or data read moved except the two read-only readers of Notes boards and community channels, which sit in their own components behind an error boundary."
+    },
+    {
+      "file": "src/components/AdminDocs.tsx",
+      "digest": "d51b34735b8c8fb52fdce1aa05c88f6da569ad3816e1cfcc5a9aadbc6f6e32de",
+      "why": "UI polish, 23 Oct: shared page header, a note-board id that opens a folder from the sidebar (initialFolderId), and the Notes back button kept on phones only. No read, write, sharing or folder-permission path changed."
+    },
+    {
+      "file": "src/components/AdminEvents.tsx",
+      "digest": "66b315f92bbe51da2daa234e44dd2e977e7805981c25b4572bd5bc9990936244",
+      "why": "UI polish, 23 Oct: title/pill/Create event on the shared header line, the old TabsList removed. No event, ticket-price, fee or checkout call changed."
+    },
+    {
+      "file": "src/components/AdminForms.tsx",
+      "digest": "6bc6c8cd3617dd9fd5a11de7a291075b852b09acd622e507da56d09d4e1bbb0a",
+      "why": "UI polish, 23 Oct: the shared page header replaces the per-screen header and eyebrow, and the top-bar breadcrumb replaces the small back buttons. No query, write path, permission gate, price or checkout call changed; className, header markup and the section's own back control only."
+    },
+    {
+      "file": "src/components/AdminFundraising.tsx",
+      "digest": "5ab841ccd0ab1eb65b892bcba843a6c0ef91261f615c26d39433d5df0503240b",
+      "why": "UI polish, 23 Oct: the shared page header replaces the per-screen header and eyebrow, and the top-bar breadcrumb replaces the small back buttons. No query, write path, permission gate, price or checkout call changed; className, header markup and the section's own back control only."
+    },
+    {
+      "file": "src/components/AdminServices.tsx",
+      "digest": "1cee40cb28204d9f450472d3cbd992cd3ef28c0dc9c1512da55b7f88be635bf5",
+      "why": "UI polish, 23 Oct: the Services title moves to the top and the small ministry eyebrow is deleted; the section pill moves into the shared header. No service query or write changed."
+    },
+    {
+      "file": "src/components/AdminAccounting.tsx",
+      "digest": "31d1304b2a12af89901f167e5cc2aaa3c9e41e47e7ddc79161eacf80517ec5af",
+      "why": "UI polish, 23 Oct: the Accounting/Statements pill moves into the shared page header. No statement, receipt, CRM write or Stripe path changed."
+    }
+  ]
+}

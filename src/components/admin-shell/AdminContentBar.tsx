@@ -91,7 +91,7 @@ export function AdminContentBar({
           </BreadcrumbList>
         </Breadcrumb>
       </div>
-      {/* Right: screen action · search · community · notifications */}
+      {/* Right: screen action · search · notifications · account */}
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
         {actions}
         {trailing}

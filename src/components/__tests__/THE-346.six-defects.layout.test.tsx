@@ -15,6 +15,7 @@ import path from 'node:path';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
+import { cn } from '../../lib/utils';
 import { buildAppCss } from '../../test/support/tailwind-build';
 import { MeasuringBrowser } from '../../test/support/browser-measure';
 import { setUpOrFail } from '../../test/support/suite-setup';
@@ -283,24 +284,15 @@ function segmentedConst(name: string): string {
   return m[1];
 }
 const eventsSrc = read(EVENTS);
-const tabsListRef = eventsSrc.match(/<TabsList className=\{([A-Z0-9_]+)\}>/);
-const tabsListLiteral = eventsSrc.match(/<TabsList className="([^"]+)">/);
-const tabsListCls = tabsListRef
-  ? segmentedConst(tabsListRef[1])
-  : tabsListLiteral?.[1] ??
-    (eventsSrc.includes('<TabsList>')
-      ? ''
-      : (() => { throw new Error('the events TabsList is gone entirely'); })());
-const triggerRef = eventsSrc.match(
-  /<TabsTrigger value="list" className=\{`\$\{([A-Z0-9_]+)\} ([^`]*)`\}>List<\/TabsTrigger>/,
-);
-const tabTriggerCls = triggerRef
-  ? `${segmentedConst(triggerRef[1])} ${triggerRef[2]}`
-  : discover(
-      EVENTS,
-      /<TabsTrigger value="list" className="([^"]+)">List<\/TabsTrigger>/,
-      'the events List trigger',
-    );
+// UI-POLISH: the Events List / Month pill is the shared `PageTabs` in the page header. Its list and
+// trigger classes are the segmented constants plus the equal-width grid and the 44px phone floor that
+// PageTabs spells, all read off the shipped files at run time, never copied.
+const PAGE_HEADER = 'src/components/admin-shell/PageHeader.tsx';
+if (!eventsSrc.includes('<PageTabs')) throw new Error('the events List/Month pill is gone from AdminEvents (PageTabs)');
+const pageTabsListExtra = discover(PAGE_HEADER, /className=\{cn\('(grid grid-flow-col auto-cols-fr)', className\)\}/, 'the PageTabs list classes');
+const pageTabsTriggerExtra = discover(PAGE_HEADER, /<SegmentedTabsTrigger[^>]*className="([^"]+)"/, 'the PageTabs trigger classes');
+const tabsListCls = `${segmentedConst('SEGMENTED_LIST_CLASS')} ${pageTabsListExtra}`;
+const tabTriggerCls = `${segmentedConst('SEGMENTED_TRIGGER_CLASS')} ${pageTabsTriggerExtra}`;
 
 // ── Readings ────────────────────────────────────────────────────────────────
 
@@ -449,9 +441,9 @@ function page() {
       {/* ── Scene 5 · the Events List/Month control ─────────────────────────── */}
       <div data-events-scene className="px-4">
         <div className="group/tabs flex gap-2 data-[orientation=horizontal]:flex-col" data-orientation="horizontal">
-          <div data-slot="tabs-list" data-variant="default" data-events-list className={`group/tabs-list inline-flex w-fit items-center justify-center rounded-lg p-[3px] text-muted-foreground group-data-[orientation=horizontal]/tabs:h-8 data-[variant=line]:rounded-none bg-muted ${tabsListCls}`}>
-            <button data-slot="tabs-trigger" data-tab="list" className={`relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-sm font-medium whitespace-nowrap ${tabTriggerCls}`}>List</button>
-            <button data-slot="tabs-trigger" data-tab="month" className={`relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-sm font-medium whitespace-nowrap ${tabTriggerCls}`}>Month</button>
+          <div data-slot="tabs-list" data-variant="default" data-events-list className={cn('group/tabs-list inline-flex w-fit items-center justify-center rounded-lg p-[3px] text-muted-foreground group-data-[orientation=horizontal]/tabs:h-8 data-[variant=line]:rounded-none bg-muted', tabsListCls)}>
+            <button data-slot="tabs-trigger" data-tab="list" className={cn('relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-sm font-medium whitespace-nowrap', tabTriggerCls)}>List</button>
+            <button data-slot="tabs-trigger" data-tab="month" className={cn('relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-sm font-medium whitespace-nowrap', tabTriggerCls)}>Month</button>
           </div>
         </div>
       </div>
@@ -574,8 +566,8 @@ describe('the measured surfaces are the shipped ones', () => {
       [COMMUNITY, composerPill, 'composer pill'],
       [NEWS, newsActionRow, 'news action row'],
       [NEWS, newsClipBtn, 'news paperclip'],
-      [EVENTS, tabsListCls, 'events TabsList'],
-      [EVENTS, tabTriggerCls, 'events tab trigger'],
+      [PAGE_HEADER, pageTabsListExtra, 'PageTabs list'],
+      [PAGE_HEADER, pageTabsTriggerExtra, 'PageTabs trigger'],
     ];
     for (const [file, cls, what] of pairs) {
       expect(read(file), `${what} drifted away from the measured copy`).toContain(cls);
@@ -615,6 +607,13 @@ describe('the expand control sits immediately right of "Notes"', () => {
     for (const v of VIEWPORTS) {
       const back = box(v, 'docsBack');
       const expand = box(v, 'docsExpand');
+      // UI-POLISH: from `lg` the top bar's breadcrumb is the way out of the editor, so the
+      // "Notes" control is for phones only (display: none from lg). The claim is about the
+      // row it sits in on a phone; on a desktop there is no "Notes" to be next to.
+      if (v >= 1024) {
+        expect(back.display, `"Notes" is still drawn at ${v}px`).toBe('none');
+        continue;
+      }
       const gap = expand.x - back.right;
       expect(gap, `expand is ${gap}px from "Notes" at ${v}px — something is between them`)
         .toBeLessThanOrEqual(9);
@@ -837,7 +836,7 @@ describe('the List / Month control measures correctly at 380px', () => {
     const list = box(380, 'eventsList');
     const t = box(380, 'tabList');
     expect(list.h, `the List/Month container is ${list.h}px tall at 380px`)
-      .toBeLessThanOrEqual(t.h + 6 + 0.01);
+      .toBeLessThanOrEqual(t.h + 8 + 0.01); // UI-POLISH: the shared pill's track pads 4px a side (p-1), not the primitive's 3px
   });
 
   it('and the density is RESTORED above sm — this is a phone fix, not a redesign', () => {

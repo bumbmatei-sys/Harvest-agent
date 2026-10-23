@@ -337,6 +337,26 @@ describe('binaries are not treated as text', () => {
       // each show the confirm step at 1440, light.
       'docs/redesign/phase-2c/publish-confirm-1440-light.png',
       'docs/redesign/phase-2c/takedown-confirm-1440-light.png',
+      // APPENDED BY the 23 Oct UI polish PR, nothing above removed. One shot per changed
+      // screen: sidebar, community menu, header standard, Products, newsletter, Courses and
+      // the public subscribe page, at 1440 (and two at 390). Seeded Grace Campus only.
+      'docs/redesign/ui-polish-oct23/01-sidebar-public.png',
+      'docs/redesign/ui-polish-oct23/02-sidebar-people-note-boards.png',
+      'docs/redesign/ui-polish-oct23/03-community-dropdown.png',
+      'docs/redesign/ui-polish-oct23/04-breadcrumb-products-courses.png',
+      'docs/redesign/ui-polish-oct23/05-products-page.png',
+      'docs/redesign/ui-polish-oct23/06-new-product-picker.png',
+      'docs/redesign/ui-polish-oct23/07-header-standard-courses-accounting-events-services.png',
+      'docs/redesign/ui-polish-oct23/08-newsletter-overview.png',
+      'docs/redesign/ui-polish-oct23/09-newsletter-broadcasts.png',
+      'docs/redesign/ui-polish-oct23/10-newsletter-subscribers-share-link.png',
+      'docs/redesign/ui-polish-oct23/11-newsletter-settings-no-domain-no-advanced.png',
+      'docs/redesign/ui-polish-oct23/12-newsletter-design-accent-colors.png',
+      'docs/redesign/ui-polish-oct23/13-course-offer-step-whats-included.png',
+      'docs/redesign/ui-polish-oct23/14-course-player-notes-new-note.png',
+      'docs/redesign/ui-polish-oct23/15-public-subscribe-page.png',
+      'docs/redesign/ui-polish-oct23/16-mobile-newsletter-header.png',
+      'docs/redesign/ui-polish-oct23/17-mobile-header-standard.png',
       'mockups/screenshot-canvas.png',
       'mockups/screenshot-integrations.png',
       'mockups/screenshot-newsletter.png',

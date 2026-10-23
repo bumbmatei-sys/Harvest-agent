@@ -865,9 +865,13 @@ describe('the existing events list, its write paths and paid-event creation are 
     // The provider picker moved into PaymentLinkPicker. The five classNames
     // that left with it are its title, its help line, its list wrapper, the
     // option row, and the provider name. The inline-style count stays 7.
-    // A count that is not exactly 214 means something else moved too.
+    // A count that is not exactly 211 means something else moved too.
+    //
+    // AMENDED BY UI-POLISH: 214 -> 211. The List / Month pill moved into the shared page header
+    // (`PageTabs`), which took the `TabsList` and the two `TabsTrigger` classNames with it:
+    // three classNames left this file, and none was added. The inline-style count stays 7.
     const src = EVENTS();
-    expect((src.match(/className/g) || []).length, 'className count moved').toBe(214);
+    expect((src.match(/className/g) || []).length, 'className count moved').toBe(211);
     expect((src.match(/style=\{\{/g) || []).length, 'an inline style was added').toBe(7);
   });
 

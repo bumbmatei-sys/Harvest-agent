@@ -192,6 +192,8 @@ type Row = {
 const GATED_TABS: Row[] = [
   { label: 'Blog', section: 'blog', screen: 'AdminBlog', entitled: (f) => f.blog },
   { label: 'Courses', section: 'courses', screen: 'AdminCourses', entitled: (f) => f.maxCourses !== 0 },
+  // The Products page: the same screen in `productsPage` mode, on the same cell as Courses.
+  { label: 'Products', section: 'products', screen: 'AdminCourses', entitled: (f) => f.maxCourses !== 0 },
   { label: 'AI Knowledge', section: 'ai-knowledge', screen: 'AdminRAG', entitled: (f) => f.aiKnowledge },
   { label: 'Newsletter', section: 'newsletter', screen: 'NewsletterCampaigns', entitled: (f) => f.newsletterAutomation },
   { label: 'Fundraising', section: 'fundraising', screen: 'AdminFundraising', entitled: (f) => f.fundraising },
@@ -255,7 +257,7 @@ const UNGATED_TABS: Row[] = [
 // `smsAutomation: true` while SMS was bring-your-own and the plan cell gated
 // nothing. Harvest now resells and pays for every segment, so SMS is Ministry-
 // only and this tier no longer reaches the screen.
-const INDIVIDUAL_ENTITLED = ['Dashboard', 'Blog', 'Campus', 'Courses', 'CRM', 'Signups', 'Fundraising'];
+const INDIVIDUAL_ENTITLED = ['Dashboard', 'Blog', 'Campus', 'Courses', 'Products', 'CRM', 'Signups', 'Fundraising'];
 
 /**
  * What an Individual tenant can open. THE-373 removed Check-In: it was the
@@ -272,7 +274,7 @@ const flush = async () => {
 };
 
 const ALL_TAB_LABELS = [
-  'Dashboard', 'Campus', 'Campuses', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
+  'Dashboard', 'Campus', 'Campuses', 'Courses', 'Products', 'Blog', 'AI Knowledge', 'Newsletter',
   'Fundraising', 'Donations', 'Events', 'Services', 'Notes', 'CRM', 'Signups', 'Accounting', 'Forms', 'Check-In', 'Livestream',
   'SMS', 'Community', 'Library', 'Tenants', 'Affiliate', 'Branding', 'Settings',
 ];
@@ -316,6 +318,9 @@ function navLabels(): string[] {
     const name = b.getAttribute('aria-label') ?? '';
     if (ALL_TAB_LABELS.includes(name)) found.add(name);
   });
+  /* Courses has no sidebar row of its own: it is opened from the Products page, on the same plan
+     cell, so a tier that reaches Products reaches Courses and the two are reported together. */
+  if (found.has('Products')) found.add('Courses');
   return [...found].sort();
 }
 

@@ -3,7 +3,6 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { TooltipProvider } from '@/components/ui/tooltip';
 
 const q = vi.hoisted(() => ({ current: { data: undefined as unknown, isLoading: false, isError: false } }));
 vi.mock('@/hooks/queries/useDocsQueries', () => ({ useDocFolders: () => q.current }));
@@ -19,9 +18,9 @@ afterEach(() => { act(() => root.unmount()); host.remove(); document.body.innerH
 
 const mount = (props: Partial<React.ComponentProps<typeof NoteBoardsSection>> = {}) => act(async () => {
   root.render(
-    <TooltipProvider><SidebarProvider>
+    <SidebarProvider>
       <NoteBoardsSection tenantId="grace" enabled activeId={null} onOpen={() => {}} {...props} />
-    </SidebarProvider></TooltipProvider>,
+    </SidebarProvider>,
   );
 });
 
