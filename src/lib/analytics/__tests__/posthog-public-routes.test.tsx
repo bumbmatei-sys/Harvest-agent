@@ -165,6 +165,7 @@ const RESOLVED_PATH: Record<string, string> = {
   '/event/[eventId]': '/event/Qw8eR3tY6uI9oP2a',
   '/form/[formId]': '/form/aB3xQ7nJ5kL2mZ8w',
   '/giving': '/giving',
+  '/subscribe': '/subscribe',
   '/pledge/[campaignId]': '/pledge/Hj6Nb2Vc9Xz4Kq7M',
   '/post/[postId]': '/post/Tg5Yh8Uj3Ik6Ol1P',
   // THE-324 — 43 characters of base64url, the shape `TOKEN_RE` accepts. It is a
@@ -190,6 +191,7 @@ const PAGE_FILE: Record<string, string> = {
   '/event/[eventId]': 'src/app/event/[eventId]/page.tsx',
   '/form/[formId]': 'src/app/form/[formId]/page.tsx',
   '/giving': 'src/app/giving/page.tsx',
+  '/subscribe': 'src/app/subscribe/page.tsx',
   '/pledge/[campaignId]': 'src/app/pledge/[campaignId]/page.tsx',
   '/post/[postId]': 'src/app/post/[postId]/page.tsx',
   '/rota/[token]': 'src/app/rota/[token]/page.tsx',
@@ -334,6 +336,8 @@ describe('1 — every route in the stated list emits a pageview', () => {
       '/event/[eventId]',
       '/form/[formId]',
       '/giving',
+      // The newsletter sign-up page a ministry shares. APPENDED, not substituted.
+      '/subscribe',
       '/pledge/[campaignId]',
       '/post/[postId]',
       // THE-324 — the rota accept page. APPENDED, never substituted: the ten

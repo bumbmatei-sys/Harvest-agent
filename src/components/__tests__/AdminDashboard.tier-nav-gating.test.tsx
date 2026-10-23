@@ -208,6 +208,8 @@ const TABS: Tab[] = [
   { label: 'Dashboard', section: '', cell: null },
   { label: 'Campuses', section: 'churches', cell: null },
   { label: 'Courses', section: 'courses', cell: (f) => f.maxCourses !== 0 },
+  // The Products page opens the type picker and lists the same courses, on the same cell.
+  { label: 'Products', section: 'products', cell: (f) => f.maxCourses !== 0 },
   { label: 'Blog', section: 'blog', cell: (f) => f.blog },
   { label: 'AI Knowledge', section: 'ai-knowledge', cell: (f) => f.aiKnowledge },
   { label: 'Newsletter', section: 'newsletter', cell: (f) => f.newsletterAutomation },
@@ -275,7 +277,7 @@ const flush = async () => {
 };
 
 const ALL_TAB_LABELS = [
-  'Dashboard', 'Campuses', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
+  'Dashboard', 'Campuses', 'Courses', 'Products', 'Blog', 'AI Knowledge', 'Newsletter',
   'Fundraising', 'Events', 'Services', 'Notes', 'CRM', 'Signups', 'Accounting', 'Forms', 'Check-In', 'Livestream',
   'SMS', 'Community', 'Library', 'Tenants', 'Affiliate', 'Branding',
 ];
@@ -306,6 +308,10 @@ function navLabels(): string[] {
     const name = b.getAttribute('aria-label') ?? '';
     if (ALL_TAB_LABELS.includes(name)) found.add(name);
   });
+  /* Courses has no sidebar row of its own: it is opened from the Products page, on the same plan
+     cell. A tier that reaches Products therefore reaches Courses, so one is reported with the other
+     and every per-tier expectation below keeps both. */
+  if (found.has('Products')) found.add('Courses');
   return [...found].sort();
 }
 
@@ -392,7 +398,9 @@ describe('1 — a free tenant sees all eighteen nav items', () => {
     // ⚠️ EIGHTEEN since THE-326, and by the SAME mechanism: Services split out
     // of the Events screen, taking the same `eventRegistration` cell with it, so
     // every tier that had Events gained a row and no tier's reach changed.
-    expect(nav.length, 'the free nav is exactly the eighteen').toBe(18);
+    // ⚠️ NINETEEN with the Products page: it is reported together with Courses (see navLabels), so
+    // every tier that reaches Courses gains one row and no tier's reach changes.
+    expect(nav.length, 'the free nav is exactly the nineteen').toBe(19);
     expect(nav).toEqual(expectedNav('free'));
 
     // And it is genuinely the see-everything case: free's own cells unlock only
@@ -408,8 +416,8 @@ describe('1 — a free tenant sees all eighteen nav items', () => {
     // read straight off the matrix: free keeps the screen that shows who
     // enrolled, with their contact records and the CSV export, and loses the one
     // it was sharing a cell with.
-    expect(unlockedByCells, "free's cells unlock something other than Courses and Signups — check the matrix")
-      .toEqual(['Courses', 'Signups']);
+    expect(unlockedByCells, "free's cells unlock something other than Courses, Products and Signups — check the matrix")
+      .toEqual(['Courses', 'Products', 'Signups']);
   });
 
   it('Branding is in no sidebar on any tier: it lives in Settings > Campus & branding', async () => {
@@ -449,7 +457,7 @@ describe('2 — an Individual tenant sees exactly its six', () => {
     // group. It is gone. Signups is the item that makes six into seven.
     expect(nav, CHECKIN_NOTE).not.toContain('Check-In');
     expect(nav, CHECKIN_NOTE).not.toContain('Forms');
-    expect(nav.length, 'Individual shows its six plus Signups and nothing else').toBe(7);
+    expect(nav.length, 'Individual shows its six plus Signups and Products, and nothing else').toBe(8);
     expect(nav).toEqual(expectedNav('plus'));
   });
 
@@ -511,7 +519,7 @@ describe('3 — a Small Team tenant sees exactly its expected set', () => {
   // tenant HOLDING the add-on does see it: `AdminDashboard` gates on
   // `getEffectiveFeatures`, and `navFor` here mounts with no add-ons.
   const EXPECTED = [
-    'Dashboard', 'Campuses', 'Courses', 'Blog', 'Newsletter',
+    'Dashboard', 'Campuses', 'Courses', 'Products', 'Blog', 'Newsletter',
     // ⚠️ 'SMS' LEFT THIS SET — THE-314. Small Team lost the capability with
     // Individual, for the same reason: SMS is Ministry-only now that Harvest
     // pays for every segment rather than the church's own carrier account.
@@ -598,7 +606,7 @@ describe('4 — a Ministry tenant sees exactly its expected set', () => {
     // ⚠️ SEVENTEEN SINCE THE-326 — Services joined the set on the
     // `eventRegistration` cell Ministry already holds, so the tier gained the
     // row it was always entitled to and lost nothing.
-    expect(nav.length, 'Ministry shows the seventeen').toBe(17);
+    expect(nav.length, 'Ministry shows the seventeen, plus Products').toBe(18);
     expect(nav).toEqual(expectedNav('max'));
   });
 
@@ -810,7 +818,8 @@ describe('9 — the nav is derived from one tab array, not two', () => {
     const navGates = (CODE.match(/navAllows\(/g) ?? []).length;
     const gatedTabs = TABS.filter((t) => t.cell !== null).length;
     expect(navGates, 'a nav entry gained or lost its plan clause').toBe(gatedTabs);
-    expect(gatedTabs).toBe(15);
+    // 15 -> 16 IS THE PRODUCTS PAGE AND NOTHING ELSE: a nav clause that repeats Courses' own.
+    expect(gatedTabs).toBe(16);
   });
 
   it('withholds Check-In on Individual, and leaves Church without a plan clause', () => {

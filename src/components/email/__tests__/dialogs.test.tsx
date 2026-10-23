@@ -19,16 +19,48 @@ describe('Design dialog', () => {
     await mount(<DesignDialog open onOpenChange={() => {}} design={DEFAULT_EMAIL_DESIGN} onChange={onChange} />);
     await click(need(byName('[role=radio]', /Bold/), 'Bold'));
     expect(onChange).toHaveBeenLastCalledWith({ ...DEFAULT_EMAIL_DESIGN, theme: 'bold' });
-    await click(need(byName('[role=radio]', /Wheat gold/), 'gold'));
+    await click(need(byName('[role=radio]', 'Gold'), 'gold'));
     expect(onChange).toHaveBeenLastCalledWith({ ...DEFAULT_EMAIL_DESIGN, accent: 'gold' });
     await type(need(byName('input', 'Footer note'), 'footer'), 'Hello');
     expect(onChange).toHaveBeenLastCalledWith({ ...DEFAULT_EMAIL_DESIGN, footerText: 'Hello' });
   });
 
-  it('offers only the Harvest accents: navy, gold and harbor', async () => {
-    await mount(<DesignDialog open onOpenChange={() => {}} design={DEFAULT_EMAIL_DESIGN} onChange={() => {}} />);
-    const names = [...document.querySelectorAll('[aria-label="Accent color"] [role=radio]')].map((e) => e.textContent?.trim());
-    expect(names).toEqual(['Harvest navy', 'Wheat gold', 'Harbor blue']);
+  const names = () => [...document.querySelectorAll('[aria-label="Accent color"] [role=radio]')].map((e) => e.textContent?.trim());
+  const swatch = (accent: string) => need(document.querySelector<HTMLElement>(`[data-accent-swatch="${accent}"]`), `${accent} swatch`);
+
+  it('offers three accents: Navy, Gold and Custom', async () => {
+    await mount(<DesignDialog open onOpenChange={() => {}} design={DEFAULT_EMAIL_DESIGN} onChange={() => {}} brandColor="#B3261E" />);
+    expect(names()).toEqual(['Navy', 'Gold', 'Custom']);
+  });
+
+  it('draws Gold as the real Harvest gold even when the ministry is branded red', async () => {
+    await mount(<DesignDialog open onOpenChange={() => {}} design={DEFAULT_EMAIL_DESIGN} onChange={() => {}} brandColor="#B3261E" />);
+    expect(swatch('gold').style.backgroundColor.toLowerCase()).toBe('#c9963a');
+    expect(swatch('navy').style.backgroundColor.toLowerCase()).toBe('#0c1526');
+  });
+
+  it('shows the ministry branding colour on the Custom swatch and saves it with the design', async () => {
+    const onChange = vi.fn();
+    await mount(<DesignDialog open onOpenChange={() => {}} design={DEFAULT_EMAIL_DESIGN} onChange={onChange} brandColor="#2E7D32" />);
+    expect(swatch('custom').style.backgroundColor.toLowerCase()).toBe('#2e7d32');
+    await click(need(byName('[role=radio]', 'Custom'), 'custom'));
+    expect(onChange).toHaveBeenLastCalledWith({ ...DEFAULT_EMAIL_DESIGN, accent: 'custom', customColor: '#2E7D32' });
+  });
+
+  it('drops the custom colour again when another accent is picked', async () => {
+    const onChange = vi.fn();
+    await mount(<DesignDialog open onOpenChange={() => {}} design={{ ...DEFAULT_EMAIL_DESIGN, accent: 'custom', customColor: '#2E7D32' }} onChange={onChange} brandColor="#2E7D32" />);
+    await click(need(byName('[role=radio]', 'Navy'), 'navy'));
+    expect(onChange.mock.calls.at(-1)?.[0]).toEqual({ ...DEFAULT_EMAIL_DESIGN, accent: 'navy' });
+    expect('customColor' in onChange.mock.calls.at(-1)![0]).toBe(false);
+  });
+
+  it('cannot offer Custom without a usable branding colour', async () => {
+    for (const brandColor of [undefined, '', 'red', 'var(--brand-color)', '#fff']) {
+      await mount(<DesignDialog open onOpenChange={() => {}} design={DEFAULT_EMAIL_DESIGN} onChange={() => {}} brandColor={brandColor} />);
+      expect(need(byName('[role=radio]', 'Custom'), 'custom').hasAttribute('disabled')).toBe(true);
+      await unmount();
+    }
   });
 });
 

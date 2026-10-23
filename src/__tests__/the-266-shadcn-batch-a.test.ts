@@ -685,10 +685,19 @@ describe('the out-of-scope files are untouched', () => {
       // APPENDED BY #538. The email editor's Inbox check disclosure: a one-line
       // summary that opens into the tips, with aria-expanded paired by the primitive.
       'src/components/email/BroadcastEditor.tsx',
+      // APPENDED BY UI-POLISH. The sidebar's Boards section folds its list and each board's notes
+      // with the primitive, the way the sidebar's own groups do.
+      'src/components/admin-shell/BoardsSection.tsx',
     ],
     // The first three are pre-existing and were invisible to the alias-only
     // matcher until THE-316 closed it; recorded here so the set stays closed.
     skeleton: [
+      // APPENDED BY UI-POLISH. The social scheduler's wait for the server's entitlement answer: a known
+      // shape (a title, a switcher and a card), shown instead of an optimistic composer.
+      'src/components/admin/social/SocialScheduler.tsx',
+      // APPENDED BY UI-POLISH. A board's grid waits as the grid it will become: four card-shaped
+      // blocks, a shape known before any note arrives.
+      'src/components/boards/BoardGrid.tsx',
       'src/components/AdminDashboardHome.tsx',
       'src/components/dashboard/KpiCard.tsx',
       'src/components/dashboard/WidgetFrame.tsx',

@@ -845,9 +845,18 @@ describe('no statement, receipt, CRM write or Stripe path changed', () => {
       '9e9b77792d2316217b13fe2b700574db414fbce511ab9bd8945d04ed3b7faf0c',
   };
 
+  /**
+   * APPENDED BY the 23 Oct UI polish (THE-377), nothing above replaced. A LATER ticket may edit a
+   * file this one pinned, and records the digest it leaves. AdminAccounting's Accounting/Statements
+   * pill moves into the shared page header; no statement, receipt, CRM write or Stripe path changed.
+   */
+  const LATER_ACCEPTED: Record<string, readonly string[]> = {
+    'src/components/AdminAccounting.tsx': ['31d1304b2a12af89901f167e5cc2aaa3c9e41e47e7ddc79161eacf80517ec5af'],
+  };
+
   it.each(Object.keys(UNCHANGED))('%s is byte-for-byte unchanged', (file) => {
     const digest = createHash('sha256').update(readFileSync(join(ROOT, file))).digest('hex');
-    expect(digest, `${file} changed — this ticket is copy and placement only`).toBe(UNCHANGED[file]);
+    expect([UNCHANGED[file], ...(LATER_ACCEPTED[file] ?? [])], `${file} changed — this ticket is copy and placement only`).toContain(digest);
   });
 
   it('🔴 leaves firestore.rules and functions/ alone', () => {

@@ -599,7 +599,17 @@ describe('5 · the money path is byte-identical', () => {
      * add-on count. Suppressing a bounced address is not an entitlement. The
      * Dodo webhook remains the single writer of `plan`.
      */
-    expect(routes.length, 'an API route was added or removed').toBe(138);
+    /**
+     * --- 138 -> 140, the newsletter sign-up form ---
+     *
+     * TWO routes: `email/subscribe` (the public form's POST) and
+     * `email/subscribe/confirm` (the link in the confirmation email). They write one
+     * CRM contact's email fields through the Admin SDK and never write the tenant
+     * document, so they cannot write `plan`, a feature flag or an add-on count.
+     * Joining a mailing list is not an entitlement. The Dodo webhook remains the
+     * single writer of `plan`.
+     */
+    expect(routes.length, 'an API route was added or removed').toBe(140);
     expect(
       routes.some((f) => f.endsWith(path.join('app/api/sms/numbers/route.ts'))),
       'the route THE-314 added is missing — the count moved for some other reason',

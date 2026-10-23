@@ -8,6 +8,7 @@ import { SendStep } from '@/components/email/SendStep';
 import { TemplatesDialog } from '@/components/email/TemplatesDialog';
 import { EmailApiError, NOT_CONFIGURED_COPY, createEmailApi } from '@/components/email/email-api';
 import { EMAIL_TEMPLATES, templateBlocks } from '@/components/email/templates';
+import { AdminHeaderContext } from '@/components/AdminScreenHeader';
 import { all, byName, click, flush, mount, need, text, type as typeInto, unmount } from './dom';
 import { SETTINGS, USAGE, broadcast, fakeApi, overview, person } from './fixtures';
 
@@ -18,15 +19,30 @@ afterEach(async () => {
 
 const scheduled = (over = {}) => broadcast({ status: 'scheduled', scheduledAt: '2031-03-12T09:00:00.000Z', ...over });
 
+/** The shell's breadcrumb is how the editor is left: it publishes `onBack` here, as AdminDashboard would show it. */
+const crumb = { current: null as null | { title: string; onBack: () => void } };
+const headerApi = {
+  setHeaderAction: () => {},
+  setHeaderHidden: () => {},
+  setNavHidden: () => {},
+  setHeaderOverride: (next: { title: string; onBack?: () => void } | null) => {
+    crumb.current = next && next.onBack ? { title: next.title, onBack: next.onBack } : null;
+  },
+};
+const inShell = (ui: React.ReactElement) => <AdminHeaderContext.Provider value={headerApi}>{ui}</AdminHeaderContext.Provider>;
+
 async function editor(initial: ReturnType<typeof broadcast> | null, api = fakeApi(), strict = false) {
   const onBack = vi.fn();
   const onChanged = vi.fn();
   const ui = <BroadcastEditor api={api} data={overview()} initial={initial} onBack={onBack} onOpenSettings={() => {}} onChanged={onChanged} onOpen={() => {}} />;
-  await mount(strict ? <StrictMode>{ui}</StrictMode> : ui);
+  await mount(inShell(strict ? <StrictMode>{ui}</StrictMode> : ui));
   await flush();
   return { api, onBack, onChanged };
 }
-const back = () => click(need(byName('button', 'Back to broadcasts'), 'back'));
+const back = async () => {
+  const { act } = await import('react');
+  await act(async () => { need(crumb.current, 'the breadcrumb back link').onBack(); });
+};
 const subject = () => need(document.querySelector<HTMLElement>('[aria-label="Subject"]'), 'subject');
 
 describe('Back in the editor', () => {
@@ -190,18 +206,23 @@ describe('Send step: a refusal that Email settings can fix', () => {
   );
   const refuse = (code: string, message: string) => fakeApi({ send: vi.fn(async () => { throw new EmailApiError(message, code, false); }) as never });
 
-  it.each([['domain_required', 'domain'], ['domain_taken', 'domain'], ['domain_reserved', 'domain'], ['sender_not_ready', 'sender']] as const)(
-    '%s offers Open settings and opens the %s section',
-    async (code, focus) => {
-      const onOpenSettings = vi.fn();
-      await step(refuse(code, 'Verify your sending domain in Email settings.'), onOpenSettings);
-      await click(need(byName('button', /Send to 1 person/), 'send'));
-      await flush();
-      expect(need(document.querySelector('[role=alert]'), 'alert').textContent).toContain('Email settings');
-      await click(need(byName('[role=alert] ~ button', 'Open settings') ?? byName('button', 'Open settings'), 'open settings'));
-      expect(onOpenSettings).toHaveBeenCalledWith(focus);
-    },
-  );
+  it('sender_not_ready offers Open settings and opens the sender section', async () => {
+    const onOpenSettings = vi.fn();
+    await step(refuse('sender_not_ready', 'Add a sender name in Email settings before sending.'), onOpenSettings);
+    await click(need(byName('button', /Send to 1 person/), 'send'));
+    await flush();
+    expect(need(document.querySelector('[role=alert]'), 'alert').textContent).toContain('Email settings');
+    await click(need(byName('[role=alert] ~ button', 'Open settings') ?? byName('button', 'Open settings'), 'open settings'));
+    expect(onOpenSettings).toHaveBeenCalledWith('sender');
+  });
+
+  it.each(['domain_required', 'domain_taken', 'domain_reserved'])('%s never sends the writer off to verify a domain', async (code) => {
+    await step(refuse(code, 'Sending to more than 1,000 people at once is not available yet. Send to a smaller group.'));
+    await click(need(byName('button', /Send to 1 person/), 'send'));
+    await flush();
+    expect(need(document.querySelector('[role=alert]'), 'alert').textContent).not.toMatch(/verif|domain/i);
+    expect(byName('button', 'Open settings')).toBeNull();
+  });
 
   it('does not offer it for an error Email settings cannot fix', async () => {
     await step(refuse('volume_cap', 'This send would pass your monthly allowance.'));
@@ -210,11 +231,17 @@ describe('Send step: a refusal that Email settings can fix', () => {
     expect(byName('button', 'Open settings')).toBeNull();
   });
 
-  it('with the domain not yet verified, the inline Open settings link goes to the domain section', async () => {
+  it('an unverified domain is not a sender problem: with the sender details filled in there is no Open settings prompt', async () => {
+    await step(fakeApi(), vi.fn(), { ...SETTINGS, domainState: 'none', domain: '' });
+    expect(byName('button', 'Open settings')).toBeNull();
+    expect(need(byName('button', /Send to 1 person/), 'send').hasAttribute('disabled')).toBe(false);
+  });
+
+  it('with the sender details missing, the inline Open settings link goes to the sender section', async () => {
     const onOpenSettings = vi.fn();
-    await step(fakeApi(), onOpenSettings, { ...SETTINGS, domainState: 'pending' });
+    await step(fakeApi(), onOpenSettings, { ...SETTINGS, fromName: '' });
     await click(need(byName('button', 'Open settings'), 'open'));
-    expect(onOpenSettings).toHaveBeenCalledWith('domain');
+    expect(onOpenSettings).toHaveBeenCalledWith('sender');
   });
 });
 
@@ -223,13 +250,14 @@ describe('Email settings deep link', () => {
     <EmailSettingsView api={fakeApi()} data={overview()} focus={focus} onSaved={() => {}} onLimitsSaved={() => {}} />,
   );
 
-  it('focus=domain scrolls to the sending domain and puts the cursor in its field', async () => {
+  it('an old focus=domain deep link lands on the sender section: there is no domain section any more', async () => {
     const scroll = vi.fn();
     Element.prototype.scrollIntoView = scroll;
     await mountSettings('domain');
     expect(scroll).toHaveBeenCalledTimes(1);
-    expect((scroll.mock.contexts[0] as HTMLElement).id).toBe('email-domain-section');
-    expect(document.activeElement?.id).toBe('email-domain');
+    expect((scroll.mock.contexts[0] as HTMLElement).id).toBe('email-sender-section');
+    expect(document.activeElement?.id).toBe('email-from-name');
+    expect(document.getElementById('email-domain-section')).toBeNull();
   });
 
   it('focus=sender lands on the sender section', async () => {
@@ -243,24 +271,26 @@ describe('Email settings deep link', () => {
     Element.prototype.scrollIntoView = scroll;
     await mountSettings(null);
     expect(scroll).not.toHaveBeenCalled();
-    expect(document.activeElement?.id).not.toBe('email-domain');
+    expect(document.activeElement?.id).not.toBe('email-from-name');
   });
 
   it('the workspace carries the focus from the send step into Settings', async () => {
     Element.prototype.scrollIntoView = vi.fn();
-    const send = vi.fn(async () => { throw new EmailApiError('Sending to more than 1,000 people needs a verified sending domain.', 'domain_required', false); });
-    const api = fakeApi({ send: send as never, overview: vi.fn(async () => overview({ settings: { ...SETTINGS, domainState: 'none', domain: '' } })) });
-    await mount(<EmailWorkspace tenantId="grace" api={api} initialSection="broadcasts" />);
+    const send = vi.fn(async () => { throw new EmailApiError('Add a sender name in Email settings before sending.', 'sender_not_ready', false); });
+    const api = fakeApi({ send: send as never });
+    await mount(inShell(<EmailWorkspace tenantId="grace" api={api} initialSection="broadcasts" />));
     await flush();
     await click(need(byName('button', 'New broadcast'), 'new'));
     await flush();
     await typeInto(subject(), 'Easter');
     await click(need(byName('button', /^Next/), 'next'));
     await flush();
+    await click(need(byName('button', /^Send to/), 'send'));
+    await flush();
     await click(need(all('button').find((b) => /Open settings/.test(b.textContent ?? '')), 'open settings'));
     await flush();
-    expect(text()).toContain('Email settings');
-    expect(document.activeElement?.id).toBe('email-domain');
+    expect(text()).toContain('Sender');
+    expect(document.activeElement?.id).toBe('email-from-name');
   });
 });
 

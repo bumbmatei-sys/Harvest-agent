@@ -285,7 +285,9 @@ async function unmount() {
 async function clickTab(label: string) {
   const byText = () =>
     [...container.querySelectorAll('button'), ...document.querySelectorAll('button')]
-      .find((b) => b.textContent?.trim() === label);
+      // The top bar's Community MENU shares the label with the Community tab but does not navigate
+      // by itself: the tab is reached from the mobile More sheet.
+      .find((b) => b.textContent?.trim() === label && !b.hasAttribute('data-community-menu'));
 
   let button: Element | undefined = byText();
   if (!button) {

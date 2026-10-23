@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ReactPlayer from 'react-player/youtube';
-import { ArrowLeft, ArrowRight, Check, Circle, ListChecks, MessageCircle, NotebookPen, Play, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Circle, ListChecks, NotebookPen, Play, SquarePen, X } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -24,7 +24,7 @@ import { verifyCourseCompletion } from '@/utils/course.utils';
 import { sanitizeHtml } from '@/utils/sanitize';
 import type { AdoptedCourse } from '@/types/course.types';
 
-type RailTab = 'lessons' | 'chats' | 'notes';
+type RailTab = 'lessons' | 'notes';
 
 export interface CoursePlayerProps {
   course: ProductCourse & { id: string };
@@ -44,7 +44,6 @@ export interface CoursePlayerProps {
 
 const RAIL_TABS: readonly { id: RailTab; label: string; icon: React.ReactNode }[] = [
   { id: 'lessons', label: 'Lessons', icon: <ListChecks /> },
-  { id: 'chats', label: 'Chats', icon: <MessageCircle /> },
   { id: 'notes', label: 'Notes', icon: <NotebookPen /> },
 ];
 
@@ -161,50 +160,49 @@ function LessonsPanel({ course, current, completed, onSelect, onContinue, certif
   );
 }
 
-function NotesPanel({ course, notes, onOpen }: { course: ProductCourse; notes: Record<string, string>; onOpen: (l: ProductLesson) => void }) {
+function NotesPanel({ course, notes, lessonTitle, onOpen, onNew }: {
+  course: ProductCourse;
+  notes: Record<string, string>;
+  /** The lesson a new note would belong to, named on the button so nobody wonders where it goes. */
+  lessonTitle: string;
+  onOpen: (l: ProductLesson) => void;
+  onNew: () => void;
+}) {
   const withNotes = positionsOf(course.levels).filter((p) => (notes[p.lesson.id] ?? '').trim());
-  if (withNotes.length === 0) {
-    return (
-      <Empty className="border-0 py-10" data-notes-empty>
-        <EmptyHeader>
-          <EmptyMedia variant="icon"><NotebookPen /></EmptyMedia>
-          <EmptyTitle>No notes yet</EmptyTitle>
-          <EmptyDescription>Open Notes on any lesson to write something down. It is kept here, just for you.</EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    );
-  }
   return (
-    <ScrollArea className="min-h-0 flex-1">
-      <ul className="flex flex-col gap-1 pr-2" aria-label="Your notes">
-        {withNotes.map((p) => (
-          <li key={p.lesson.id}>
-            <Button type="button" variant="ghost" className="h-auto min-h-11 w-full flex-col items-start gap-0.5 whitespace-normal rounded-brand px-3 py-2 text-left" onClick={() => onOpen(p.lesson)} data-note-item={p.lesson.id}>
-              <span className="text-sm font-medium text-strong">{p.lesson.title}</span>
-              <span className="line-clamp-2 text-xs font-normal text-muted">{notes[p.lesson.id]}</span>
-            </Button>
-          </li>
-        ))}
-      </ul>
-    </ScrollArea>
-  );
-}
-
-function ChatsPanel() {
-  return (
-    <Empty className="border-0 py-10" data-chats-empty>
-      <EmptyHeader>
-        <EmptyMedia variant="icon"><MessageCircle /></EmptyMedia>
-        <EmptyTitle>Chats are coming soon</EmptyTitle>
-        <EmptyDescription>Asking questions about a lesson will live here.</EmptyDescription>
-      </EmptyHeader>
-    </Empty>
+    <div className="flex min-h-0 flex-1 flex-col gap-2" data-notes-panel>
+      <Button type="button" variant="outline" className="min-h-11 w-full justify-start gap-2" onClick={onNew} title={`A note on ${lessonTitle}`} data-new-note>
+        <SquarePen aria-hidden />New note
+      </Button>
+      {withNotes.length === 0 ? (
+        <Empty className="border-0 py-10" data-notes-empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon"><NotebookPen /></EmptyMedia>
+            <EmptyTitle>No notes yet</EmptyTitle>
+            <EmptyDescription>Start with New note. It is kept here, just for you.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <ScrollArea className="min-h-0 flex-1">
+          <ul className="flex flex-col gap-1 pr-2" aria-label="Your notes">
+            {withNotes.map((p) => (
+              <li key={p.lesson.id}>
+                <Button type="button" variant="ghost" className="h-auto min-h-11 w-full flex-col items-start gap-0.5 whitespace-normal rounded-brand px-3 py-2 text-left" onClick={() => onOpen(p.lesson)} data-note-item={p.lesson.id}>
+                  <span className="text-sm font-medium text-strong">{p.lesson.title}</span>
+                  <span className="line-clamp-2 text-xs font-normal text-muted">{notes[p.lesson.id]}</span>
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </ScrollArea>
+      )}
+    </div>
   );
 }
 
 /**
  * The member's reading and watching screen, laid out like Eden's player: a rail
- * with Lessons, Chats and Notes, a progress bar and a Continue card above
+ * with Lessons and Notes, a progress bar and a Continue card above
  * numbered sections, a centred reading column, and a footer of Previous and
  * "Mark done and next". A text lesson is just the reading column; a video lesson
  * puts the video above it.
@@ -287,9 +285,7 @@ export function CoursePlayer({
 
   const panel = tab === 'lessons'
     ? <LessonsPanel course={course} current={lesson.id} completed={completed} onSelect={select} onContinue={() => { const t = continueTarget(course.levels, completed); if (t) select(t); }} certificate={certificate} />
-    : tab === 'notes'
-      ? <NotesPanel course={course} notes={lessonNotes} onOpen={(l) => { select(l); setNotesOpen(true); }} />
-      : <ChatsPanel />;
+    : <NotesPanel course={course} notes={lessonNotes} lessonTitle={lesson.title} onOpen={(l) => { select(l); setNotesOpen(true); }} onNew={() => setNotesOpen(true)} />;
 
   return (
     <div className="flex h-[100dvh] min-h-[560px] w-full gap-3 bg-surface p-3" data-course-player>
@@ -324,11 +320,6 @@ export function CoursePlayer({
             <NotebookPen aria-hidden />
             <span className="hidden sm:inline">Notes</span>
             <span className="sr-only sm:hidden">Notes</span>
-          </Button>
-          <Button type="button" variant="ghost" className="min-h-11 gap-1.5 px-3 text-sm" disabled title="Chats are coming soon">
-            <MessageCircle aria-hidden />
-            <span className="hidden sm:inline">Chat</span>
-            <span className="sr-only sm:hidden">Chat</span>
           </Button>
           <Button type="button" variant="ghost" size="icon-sm" className="min-h-11 min-w-11" aria-label="Close the course" onClick={onClose} data-player-close>
             <X />
@@ -376,7 +367,7 @@ export function CoursePlayer({
         <SheetContent side="left" className="w-[88%] gap-3 p-3 sm:max-w-sm" data-rail-sheet>
           <SheetHeader className="p-0">
             <SheetTitle className="sr-only">Course contents</SheetTitle>
-            <SheetDescription className="sr-only">Lessons, chats and notes for this course.</SheetDescription>
+            <SheetDescription className="sr-only">Lessons and notes for this course.</SheetDescription>
           </SheetHeader>
           <RailTabs tab={tab} onTab={setTab} vertical={false} />
           {panel}

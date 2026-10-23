@@ -345,9 +345,9 @@ export function createEmailService(deps: {
     let from = await ownSenderAddress(tenantId, settings);
     if (!from) {
       if (requested > limits.largeSendThreshold) {
-        return fail('domain_required', `Sending to more than ${limits.largeSendThreshold.toLocaleString()} people needs a verified sending domain. Verify yours in Email settings.`);
+        return fail('domain_required', `Sending to more than ${limits.largeSendThreshold.toLocaleString()} people at once is not available yet. Send to a smaller group.`);
       }
-      if (!deps.fallbackFrom) return fail('sender_not_ready', 'Verify your sending domain in Email settings before sending.');
+      if (!deps.fallbackFrom) return fail('sender_not_ready', 'Email sending is not set up on this server yet, so nothing was sent. Contact Harvest.');
       from = deps.fallbackFrom;
     }
     const plan = toTenantPlan(typeof tenant.plan === 'string' ? tenant.plan : null);
@@ -784,7 +784,7 @@ export function createEmailService(deps: {
       const to = normalizeEmail(actor.email);
       if (!to) return fail('invalid', 'Your account has no email address to send a test to.');
       const testFrom = (await ownSenderAddress(g.tenantId, settings)) ?? deps.fallbackFrom ?? null;
-      if (!testFrom) return fail('sender_not_ready', 'Verify your sending domain in Email settings before sending.');
+      if (!testFrom) return fail('sender_not_ready', 'Email sending is not set up on this server yet, so nothing was sent. Contact Harvest.');
       const provider = await deps.getProvider();
       const url = unsubscribeUrl(deps.appOrigin, signUnsubscribe({ tenantId: g.tenantId, email: to, broadcastId: broadcast.id }));
       const { html, text } = renderEmail({

@@ -5,7 +5,7 @@ import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { PageHeader, SetupBanner, TAP, plural, senderReady } from '@/components/email/kit';
+import { SetupBanner, TAP, plural, senderReady } from '@/components/email/kit';
 import type { EmailApi, Overview } from '@/components/email/email-api';
 import { SendingNotice } from '@/components/email/SendingNotice';
 import { UsageMeter } from '@/components/email/UsageMeter';
@@ -43,14 +43,9 @@ export function EmailOverview({ data, api, tenantId, onNew, onSettings, onSubscr
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Email"
-        subtitle="How your list is growing and what you have sent."
-        action={<Button className="min-h-11" onClick={onNew}><Plus data-icon="inline-start" />New broadcast</Button>}
-      />
       <SendingNotice sending={data.sending} api={api} canResume={data.canEditLimits} tenantId={tenantId} onResumed={onChanged} />
       {!senderReady(data.settings) && (
-        <SetupBanner actionLabel="Open settings" onAction={onSettings}>Finish your sender details and verify your domain before you send.</SetupBanner>
+        <SetupBanner actionLabel="Open settings" onAction={onSettings}>Add your sender name, reply-to address and mailing address before you send. Emails go out from Harvest&apos;s own sending address.</SetupBanner>
       )}
       <Card className="gap-0 p-5">
         <UsageMeter usage={data.usage} />

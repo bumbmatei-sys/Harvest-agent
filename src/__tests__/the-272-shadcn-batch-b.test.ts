@@ -1136,7 +1136,7 @@ const PHASE_1_PROGRESS_ADOPTERS = ['src/components/admin-shell/AdminHome.tsx'] a
 /** APPENDED BY #538. The email workspace: broadcasts, subscribers and DNS records are tables; the overview's list bars and send-limit meter are progress. */
 const NEWSLETTER_TABLE_ADOPTERS = [
   'src/components/email/BroadcastsView.tsx',
-  'src/components/email/EmailSettingsView.tsx',
+  // UI-POLISH: EmailSettingsView left this list with its DNS-records table (the sending-domain setup is gone).
   'src/components/email/SubscribersView.tsx',
 ] as const;
 /** APPENDED BY THE-376 round 4. The Plan & billing pane lists invoices in a table: BillingActivity.tsx, the history that moved in from Billing & Payments. */

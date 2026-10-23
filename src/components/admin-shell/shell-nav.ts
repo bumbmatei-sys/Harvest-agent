@@ -5,7 +5,6 @@ import {
   Church,
   ClipboardList,
   ContactRound,
-  FileText,
   Globe,
   GraduationCap,
   HandCoins,
@@ -18,6 +17,7 @@ import {
   MessageSquare,
   MessagesSquare,
   Newspaper,
+  Package,
   QrCode,
   Radio,
   Receipt,
@@ -31,8 +31,11 @@ import {
  * Phase 1 desktop sidebar.
  *
  * Two icon-only sides, matching Eden's workspace / store switch:
- *   people — people, care, giving records
- *   public — page, engage (forms, events, check-in), social, email, products
+ *   people — home, people, giving (Boards is a section of its own, drawn by the sidebar)
+ *   public — channels (social, newsletter, livestream, blog), engage
+ *            (forms, events, check-in), products
+ *
+ * Community has no row. It is the menu in the top bar.
  *
  * Branding is not a sidebar group. It lives in Settings > Campus & branding.
  * A branding-only admin, who cannot open Settings, still gets one row from
@@ -98,6 +101,11 @@ interface GroupTemplate {
   readonly items: readonly ItemTemplate[];
 }
 
+/**
+ * A group with an empty label is drawn without a heading: its items sit flat
+ * in the list, the way Home does. Products is a single entry, so a heading over
+ * it would only repeat the row beneath it.
+ */
 const PEOPLE_GROUPS: readonly GroupTemplate[] = [
   {
     id: 'people',
@@ -107,16 +115,7 @@ const PEOPLE_GROUPS: readonly GroupTemplate[] = [
       { id: 'crm', label: 'CRM', icon: Users },
       { id: 'signups', label: 'Signups', icon: UserPlus },
       { id: 'churches', label: 'Campuses', icon: Church },
-    ],
-  },
-  {
-    id: 'care',
-    label: 'Care',
-    icon: Heart,
-    items: [
-      { id: 'community', label: 'Community', icon: MessagesSquare },
       { id: 'services', label: 'Services', icon: ListChecks },
-      { id: 'docs', label: 'Notes', icon: FileText },
     ],
   },
   {
@@ -144,12 +143,15 @@ const PEOPLE_GROUPS: readonly GroupTemplate[] = [
 
 const PUBLIC_GROUPS: readonly GroupTemplate[] = [
   {
-    id: 'page',
-    label: 'Page',
-    icon: FileText,
+    id: 'social',
+    label: 'Channels',
+    icon: Radio,
     items: [
+      { id: 'social', label: 'Social', icon: Share2 },
+      { id: 'newsletter', label: 'Newsletter', icon: Mail },
+      { id: 'livestream', label: 'Livestream', icon: Radio },
       { id: 'blog', label: 'Blog', icon: Newspaper },
-      { id: 'ai', label: 'AI Knowledge', icon: BrainCircuit },
+      { id: 'sms', label: 'SMS', icon: MessageSquare },
     ],
   },
   {
@@ -159,30 +161,20 @@ const PUBLIC_GROUPS: readonly GroupTemplate[] = [
     items: [
       { id: 'forms', label: 'Forms', icon: ClipboardList },
       { id: 'events', label: 'Events', icon: CalendarCheck },
-      { id: 'checkin', label: 'Check-In', icon: QrCode },
+      { id: 'checkin', label: 'Check-in', icon: QrCode },
     ],
-  },
-  {
-    id: 'social',
-    label: 'Channels',
-    icon: Radio,
-    items: [
-      { id: 'social', label: 'Social', icon: Share2 },
-      { id: 'livestream', label: 'Livestream', icon: Radio },
-      { id: 'sms', label: 'SMS', icon: MessageSquare },
-    ],
-  },
-  {
-    id: 'email',
-    label: 'Email',
-    icon: Mail,
-    items: [{ id: 'newsletter', label: 'Newsletter', icon: Mail }],
   },
   {
     id: 'products',
-    label: 'Products',
-    icon: GraduationCap,
-    items: [{ id: 'courses', label: 'Courses', icon: GraduationCap }],
+    label: '',
+    icon: Package,
+    items: [{ id: 'products', label: 'Products', icon: Package }],
+  },
+  {
+    id: 'knowledge',
+    label: '',
+    icon: BrainCircuit,
+    items: [{ id: 'ai', label: 'AI Knowledge', icon: BrainCircuit }],
   },
 ];
 
@@ -191,15 +183,33 @@ const GROUPS_BY_SIDE: Record<ShellSideId, readonly GroupTemplate[]> = {
   public: PUBLIC_GROUPS,
 };
 
-const PUBLIC_TAB_IDS = new Set(
-  PUBLIC_GROUPS.flatMap((group) => group.items.map((item) => item.id)),
-);
+/**
+ * Screens that are not a row in the sidebar but belong to a side and a section.
+ * Courses is opened from the Products page, so it has no row of its own, and the
+ * top bar reads "Products > Courses" with "Products" as a link back. Notes live
+ * in the Boards section the sidebar draws under the groups, so the top bar reads
+ * "Boards > ...".
+ */
+const OFF_SIDEBAR_TABS: readonly { id: string; side: ShellSideId; section: string }[] = [
+  { id: 'courses', side: 'public', section: 'Products' },
+  { id: 'docs', side: 'people', section: 'Boards' },
+];
 
-const SECTION_BY_TAB = new Map<string, string>(
-  [...PEOPLE_GROUPS, ...PUBLIC_GROUPS].flatMap((group) =>
-    group.items.map((item) => [item.id, group.label] as const),
+/** The tab a section crumb links to. Only sections that have a page of their own are links. */
+export const SECTION_LANDING_TAB: Readonly<Record<string, string>> = { Products: 'products' };
+
+const PUBLIC_TAB_IDS = new Set([
+  ...PUBLIC_GROUPS.flatMap((group) => group.items.map((item) => item.id)),
+  ...OFF_SIDEBAR_TABS.filter((tab) => tab.side === 'public').map((tab) => tab.id),
+]);
+
+const SECTION_BY_TAB = new Map<string, string>([
+  ...[...PEOPLE_GROUPS, ...PUBLIC_GROUPS].flatMap((group) =>
+    // A headless group has no section: the row is the whole trail.
+    group.label ? group.items.map((item) => [item.id, group.label] as const) : [],
   ),
-);
+  ...OFF_SIDEBAR_TABS.map((tab) => [tab.id, tab.section] as const),
+]);
 
 /**
  * Sidebar group for a route, used as the breadcrumb section.

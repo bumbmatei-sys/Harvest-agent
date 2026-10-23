@@ -69,7 +69,7 @@ export function SocialSchedulerPreview({ view, theme }: { view?: string; theme?:
         )}
         <SidebarInset className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card">
           <div className="hidden lg:block">
-            <AdminContentBar section={sectionForTab('social') ?? ''} title={viewTitle} onOpenApp={() => {}} />
+            <AdminContentBar crumbs={[{ label: sectionForTab('social') ?? '' }, { label: viewTitle }]} />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-4">
           {wall ? (

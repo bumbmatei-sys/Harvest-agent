@@ -110,7 +110,10 @@ import VolunteerRotaPanel from './events/VolunteerRotaPanel';
 import RotaInvitePanel from './events/RotaInvitePanel';
 import { fmtDay } from './events/volunteer-rota';
 import { AdminPageHeader } from './admin/AdminUI';
+import { PageTabs } from './admin-shell/PageHeader';
 import { FORM_CONTAINER, CONTROL_DENSITY } from './layout/form-layout';
+
+type ServicesSection = 'plan' | 'rota' | 'invites';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -293,19 +296,27 @@ const AdminServices: React.FC = () => {
     finally { setBusy(false); }
   };
 
+  const [section, setSection] = useState<ServicesSection>('plan');
+
   return (
     <div className={`w-full ${FORM_CONTAINER} space-y-6`} data-admin-services>
       <AdminPageHeader
-        eyebrow="Ministry"
-        title="Service planning"
+        title="Services"
+        tabs={(
+          <PageTabs
+            label="Service sections"
+            value={section}
+            onValueChange={setSection}
+            items={[
+              { value: 'plan', label: 'Order of service' },
+              { value: 'rota', label: 'Volunteer rota' },
+              { value: 'invites', label: 'Invitations' },
+            ]}
+          />
+        )}
       />
 
-      <Tabs defaultValue="plan">
-        <TabsList className="w-full min-h-[51px] sm:min-h-0">
-          <TabsTrigger value="plan" className={TAB}>Order of service</TabsTrigger>
-          <TabsTrigger value="rota" className={TAB}>Volunteer rota</TabsTrigger>
-          <TabsTrigger value="invites" className={TAB}>Invitations</TabsTrigger>
-        </TabsList>
+      <Tabs value={section} onValueChange={(next) => setSection(next as ServicesSection)}>
 
         {/* ── Part 1 · the run sheet, for one service ─────────────────────── */}
         <TabsContent value="plan" className="min-w-0 space-y-5" data-services-plan>

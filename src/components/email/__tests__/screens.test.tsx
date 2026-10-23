@@ -6,7 +6,7 @@ import { EmailWorkspace } from '@/components/email/EmailWorkspace';
 import { SendStep, combine, timeSlots } from '@/components/email/SendStep';
 import { SubscribersView, filterPeople } from '@/components/email/SubscribersView';
 import { EmailApiError, NOT_CONFIGURED_COPY, createEmailApi } from '@/components/email/email-api';
-import { byName, click, flush, mount, need, text, unmount } from './dom';
+import { byName, click, flush, mount, need, text, type, unmount } from './dom';
 import { SETTINGS, USAGE, broadcast, fakeApi, overview, person } from './fixtures';
 
 afterEach(unmount);
@@ -82,9 +82,19 @@ describe('Send step', () => {
     await mount(sendStep(fakeApi(), { people: [person('gone@x.org', { status: 'unsubscribed' })] }));
     expect(need(byName('button', /Send to 0 people/), 'send').hasAttribute('disabled')).toBe(true);
     await unmount();
-    await mount(sendStep(fakeApi(), { settings: { ...SETTINGS, domainState: 'pending' } }));
+    await mount(sendStep(fakeApi(), { settings: { ...SETTINGS, mailingAddress: '' } }));
     expect(need(byName('button', /Send to/), 'send').hasAttribute('disabled')).toBe(true);
-    expect(text()).toContain('verify your domain before sending');
+    expect(text()).toContain('Add your sender name, reply-to address and mailing address before sending');
+  });
+
+  it('does not wait on a sending domain: a ministry with sender details and no domain can send', async () => {
+    for (const domainState of ['none', 'pending', 'failed'] as const) {
+      await mount(sendStep(fakeApi(), { settings: { ...SETTINGS, domainState, domain: '' } }));
+      expect(need(byName('button', /Send to 2 people/), 'send').hasAttribute('disabled')).toBe(false);
+      expect(text()).not.toMatch(/verify your domain/i);
+      expect(text()).toContain('via Harvest');
+      await unmount();
+    }
   });
 
   it('adds a filter row, narrows the audience and offers the tags that exist', async () => {
@@ -167,15 +177,32 @@ describe('Subscribers view (a filtered view of the CRM)', () => {
   });
 
   it('lists opted-in CRM people by default and says so', async () => {
-    await mount(<SubscribersView data={overview({ subscribers: people })} onImport={() => {}} onSettings={() => {}} />);
-    expect(text()).toContain('1 person on your list');
-    expect(text()).toContain('people in your CRM who opted in to email');
+    await mount(<SubscribersView data={overview({ subscribers: people })} tenantId="grace" onImport={() => {}} onSettings={() => {}} />);
     expect(document.querySelectorAll('[data-contact-id]')).toHaveLength(1);
+    expect(text()).toContain('Subscribed');
   });
 
   it('says plainly when the list is empty', async () => {
-    await mount(<SubscribersView data={overview({ subscribers: [] })} onImport={() => {}} onSettings={() => {}} />);
+    await mount(<SubscribersView data={overview({ subscribers: [] })} tenantId="grace" onImport={() => {}} onSettings={() => {}} />);
     expect(text()).toContain('Nobody yet');
+  });
+
+  it('shows the shareable sign-up link and copies it', async () => {
+    const writeText = vi.fn(async () => {});
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    await mount(<SubscribersView data={overview({ subscribers: [] })} tenantId="grace" onImport={() => {}} onSettings={() => {}} />);
+    const field = need(document.querySelector<HTMLInputElement>('[aria-label="Sign-up link"]'), 'link field');
+    expect(field.value).toBe('https://grace.theharvest.app/subscribe');
+    expect(field.readOnly).toBe(true);
+    await click(need(byName('button', 'Copy link'), 'copy'));
+    expect(writeText).toHaveBeenCalledWith('https://grace.theharvest.app/subscribe');
+    expect(text()).toContain('Copied');
+  });
+
+  it('says so, rather than showing a broken link, when the ministry id cannot make one', async () => {
+    await mount(<SubscribersView data={overview({ subscribers: [] })} tenantId={null} onImport={() => {}} onSettings={() => {}} />);
+    expect(document.querySelector('[aria-label="Sign-up link"]')).toBeNull();
+    expect(text()).toContain('sign-up link is not available');
   });
 });
 
@@ -195,27 +222,47 @@ describe('Workspace', () => {
     expect(text()).toContain('How your list reads');
     await click(need(byName('[role=tab]', 'Broadcasts'), 'tab'));
     expect(text()).toContain('One-time emails to your list');
+    await click(need(byName('[role=tab]', 'Subscribers'), 'tab'));
+    expect(text()).toContain('Your sign-up link');
     await click(need(byName('[role=tab]', 'Settings'), 'tab'));
-    expect(text()).toContain('Email settings');
+    expect(text()).toContain('Sender');
   });
 });
 
 describe('Settings view', () => {
-  it('shows domain state, DNS records for a pending domain, and the disabled own-key option', async () => {
-    const settings = { ...SETTINGS, domainState: 'pending' as const, domainRecords: [{ type: 'TXT', name: '_dk.mail.grace.org', value: 'v=DKIM1' }] };
-    await mount(<EmailSettingsView api={fakeApi()} data={overview({ settings })} onSaved={() => {}} onLimitsSaved={() => {}} />);
-    expect(need(document.querySelector('[data-domain-state]'), 'badge').textContent).toBe('Waiting for DNS');
-    expect(text()).toContain('v=DKIM1');
-    expect(text()).toContain('Coming soon');
-    expect(need(document.querySelector('[aria-label="Use your own Plunk or Mailchimp key"]'), 'switch').hasAttribute('disabled') || document.querySelector('[aria-label="Use your own Plunk or Mailchimp key"]')?.getAttribute('aria-disabled') === 'true').toBe(true);
+  const view = (over: Partial<Parameters<typeof overview>[0]> = {}, api = fakeApi()) => mount(
+    <EmailSettingsView api={api} data={overview(over)} onSaved={() => {}} onLimitsSaved={() => {}} />,
+  );
+
+  it('has no sending-domain setup and no Advanced section, whatever the stored domain state', async () => {
+    for (const domainState of ['none', 'pending', 'verified', 'failed'] as const) {
+      await view({ settings: { ...SETTINGS, domainState, domain: 'grace.org', domainRecords: [{ type: 'TXT', name: '_dk.mail.grace.org', value: 'v=DKIM1' }] } });
+      expect(document.getElementById('email-domain-section')).toBeNull();
+      expect(document.getElementById('email-domain')).toBeNull();
+      expect(byName('button', 'Set up domain')).toBeNull();
+      expect(byName('button', 'Use this domain')).toBeNull();
+      expect(document.querySelector('[data-domain-state]')).toBeNull();
+      expect(text()).not.toContain('v=DKIM1');
+      expect(text()).not.toMatch(/Sending domain|Advanced|Mailchimp|Plunk/);
+      await unmount();
+    }
   });
 
-  it('reports a not-configured domain call in plain words', async () => {
-    const api = fakeApi({ domain: vi.fn(async () => { throw new EmailApiError(NOT_CONFIGURED_COPY, 'not_configured', true); }) });
-    await mount(<EmailSettingsView api={api} data={overview({ settings: { ...SETTINGS, domainState: 'none', domain: 'grace.org' } })} onSaved={() => {}} onLimitsSaved={() => {}} />);
-    await click(need(byName('button', 'Set up domain'), 'set up'));
+  it('keeps the sender details and says emails go out from Harvest', async () => {
+    await view();
+    expect(document.getElementById('email-from-name')).toBeTruthy();
+    expect(document.getElementById('email-reply-to')).toBeTruthy();
+    expect(document.getElementById('email-address')).toBeTruthy();
+    expect(need(document.querySelector('[data-sender-note]'), 'note').textContent).toContain('Harvest');
+  });
+
+  it('saves the sender details and leaves the stored send-from part untouched', async () => {
+    const api = fakeApi();
+    await view({ settings: { ...SETTINGS, fromLocal: 'office' } }, api);
+    await type(need(document.getElementById('email-from-name'), 'from name'), 'Grace');
+    await click(need(byName('button', 'Save'), 'save'));
     await flush();
-    expect(need(document.querySelector('[role=alert]'), 'alert').textContent).toContain('not set up on this server yet');
+    expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ fromName: 'Grace', fromLocal: 'office' }));
   });
 });
 

@@ -23,7 +23,7 @@ const KINDS = [
 ] as const satisfies readonly { value: AudienceFilterKind; label: string }[];
 
 /** Server refusals that Email settings can fix. */
-const SETTINGS_CODES: ReadonlySet<string> = new Set(['domain_required', 'domain_taken', 'domain_reserved', 'sender_not_ready']);
+const SETTINGS_CODES: ReadonlySet<string> = new Set(['sender_not_ready']);
 
 export function timeSlots(): { value: string; label: string }[] {
   const out: { value: string; label: string }[] = [];
@@ -84,15 +84,15 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
   const tips = inboxCheck({ subject, preheader, bodyHtml });
   const fixes = tips.filter((t) => t.kind === 'fix').length;
   const slots = useMemo(timeSlots, []);
-  const address = settings.domainState === 'verified' && settings.domain ? `${settings.fromLocal}@mail.${settings.domain}` : null;
-  const senderIssue = !settings.fromName.trim() || !settings.replyTo.trim() || !settings.mailingAddress.trim() || !address;
+  // Emails go out from Harvest's own sending address; the writer only has to fill in who they are from.
+  const senderIssue = !settings.fromName.trim() || !settings.replyTo.trim() || !settings.mailingAddress.trim();
   const count = audience.recipients.length;
   const label = mode === 'now' ? `Send to ${plural(count, 'person', 'people')}` : `Schedule for ${formatStamp(when.toISOString())}`;
   const left = Math.max(0, usage.cap - usage.used);
   const overAllowance = usage.cap > 0 && count > left;
   // A refusal about the sender, the domain or the allowance for one: the fix is in Email settings, so say where.
   const settingsCode = errorCode !== null && SETTINGS_CODES.has(errorCode);
-  const settingsFocus: SettingsFocus = address ? 'sender' : 'domain';
+  const settingsFocus: SettingsFocus = 'sender';
   const blocked = busy || count === 0 || senderIssue || !subject.trim() || overAllowance || sending.paused || (mode === 'at' && when.getTime() <= Date.now());
 
   const setFilter = (i: number, patch: Partial<AudienceFilter>) => onFilters(filters.map((f, j) => (j === i ? { ...f, ...patch } : f)));
@@ -220,13 +220,13 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
 
         <dl className="grid grid-cols-[4rem_1fr] gap-y-2 text-sm">
           <dt className="text-faint">From</dt>
-          <dd className="text-strong">{settings.fromName || 'No sender name yet'}{address ? <span className="text-muted"> &lt;{address}&gt;</span> : null}</dd>
+          <dd className="text-strong">{settings.fromName || 'No sender name yet'}<span className="text-muted"> via Harvest</span></dd>
           <dt className="text-faint">Subject</dt>
           <dd className="text-strong">{subject.trim() || '(no subject)'}{subjectB?.trim() ? <span className="text-muted"> / {subjectB}</span> : null}</dd>
         </dl>
         {senderIssue && (
           <p className="mt-4 text-sm text-muted">
-            Finish your sender details and verify your domain before sending.{' '}
+            Add your sender name, reply-to address and mailing address before sending.{' '}
             <Button type="button" variant="link" className="h-auto min-h-11 p-0 font-semibold text-strong" onClick={() => onOpenSettings(settingsFocus)}>Open settings</Button>
           </p>
         )}
@@ -248,7 +248,7 @@ export function SendStep({ api, broadcastId, subject, subjectB, preheader, bodyH
         {error && !overAllowance && (
           <div className="mt-4 flex flex-col gap-2">
             <ErrorNote>{error}</ErrorNote>
-            {settingsCode && <Button variant="outline" className="min-h-11 self-start" onClick={() => onOpenSettings(errorCode === 'sender_not_ready' ? settingsFocus : 'domain')}>Open settings</Button>}
+            {settingsCode && <Button variant="outline" className="min-h-11 self-start" onClick={() => onOpenSettings(settingsFocus)}>Open settings</Button>}
             {errorCode === 'volume_cap' && <Button variant="outline" className="min-h-11 self-start" onClick={() => setAdding(true)}>Add more emails</Button>}
           </div>
         )}

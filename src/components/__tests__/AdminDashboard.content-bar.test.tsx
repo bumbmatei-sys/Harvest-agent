@@ -200,13 +200,17 @@ describe('AdminDashboard content bar wiring', () => {
     expect(page?.textContent).toBe('CRM');
   });
 
-  it('keeps the screen title when that screen publishes Back', async () => {
-    headerProbe.current = { title: 'New Course', onBack: () => {} };
+  it('turns a published Back into a clickable parent crumb, with the screen title as the current page and no Back button', async () => {
+    const onBack = vi.fn();
+    headerProbe.current = { title: 'New Course', onBack };
     await mount('crm');
-    const back = bar().querySelector('[aria-label="Back"]');
-    expect(back, 'Back was dropped').not.toBeNull();
-    expect(back?.textContent).toMatch(/Back/);
+    expect(bar().querySelector('[aria-label="Back"]'), 'a Back button is back').toBeNull();
+    expect(crumbItems()).toEqual(['People', 'CRM', 'New Course']);
     expect(bar().querySelector('[data-slot="breadcrumb-page"]')?.textContent).toBe('New Course');
+    const parent = [...bar().querySelectorAll('nav[aria-label="breadcrumb"] button')].find((b) => b.textContent === 'CRM') as HTMLElement | undefined;
+    expect(parent, 'the parent crumb is not a link').toBeTruthy();
+    await act(async () => { parent!.click(); });
+    expect(onBack).toHaveBeenCalledTimes(1);
   });
 
   it('does not mount the desktop bar on a phone, so the payments inbox is not fetched twice', async () => {
@@ -216,16 +220,15 @@ describe('AdminDashboard content bar wiring', () => {
     expect(container.querySelectorAll('[data-tenant-inbox]')).toHaveLength(1);
   });
 
-  it('puts the search pill immediately left of Open member app', async () => {
+  it('puts the search pill immediately left of the Community menu, which replaces Open member app', async () => {
     await mount();
     const found = bar();
     const pill = found.querySelector('[data-admin-search-pill]');
     expect(pill, 'the search pill is missing from the content bar').toBeTruthy();
-    const openApp = [...found.querySelectorAll('button')]
-      .find((button) => (button.textContent ?? '').includes('Open member app'));
-    expect(openApp, 'Open member app is missing').toBeTruthy();
-    expect(pill!.nextElementSibling, 'the pill is not immediately left of Open member app')
-      .toBe(openApp);
+    const menu = found.querySelector('[data-community-menu]');
+    expect(menu, 'the Community menu is missing').toBeTruthy();
+    expect(pill!.nextElementSibling, 'the pill is not immediately left of the Community menu').toBe(menu);
+    expect(found.textContent).not.toContain('Open member app');
     const sidebar = container.querySelector('[data-sidebar="sidebar"]');
     expect(sidebar, 'the desktop sidebar did not mount').toBeTruthy();
     expect(sidebar!.querySelector('button[aria-label="Search"]')).toBeNull();

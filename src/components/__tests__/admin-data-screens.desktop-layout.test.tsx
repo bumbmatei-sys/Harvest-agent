@@ -508,6 +508,17 @@ const COMPOSED_SINCE_MEASUREMENT: ReadonlyArray<{ screen: string; file: string; 
       'the tokens that ARRIVE below sm are the 44px touch floors this section never asserted ' +
       '(see the header of section 2) and the primitives\' own class layer.',
   },
+  {
+    screen: 'AdminTenants',
+    file: 'AdminTenants.tsx',
+    ticket: 'UI-POLISH',
+    why:
+      'The screen\'s header is the shared PageHeader now: no gold eyebrow, the title in an h1, and a '
+      + 'wrapping row that gives a phone the same two rows it had (the title, then the main button). '
+      + 'The class layer is re-pinned by the measured page-header suite (page-header.layout.test.tsx), '
+      + 'which places the title, pill and button on one line and checks the pill does not move. No '
+      + 'tenant query, search, filter or action moved, and every colour is still a token.',
+  },
 ];
 
 /**
@@ -1117,6 +1128,19 @@ const EDITED_SINCE_MEASUREMENT: ReadonlyArray<{ file: string; ticket: string; wh
       + 'after, because the phone sheet was already correct. No blog query, draft state, '
       + 'publish path, container, measure or colour moved; the diff is two className strings.',
   },
+  {
+    file: 'AdminCourses.tsx',
+    ticket: 'UI-POLISH',
+    why:
+      'The Products page and the shared page header. The screen takes an optional `productsPage` '
+      + 'prop: with it the header reads "Products" and its main button is "New product", which opens '
+      + 'the type picker; without it this is the Courses page and "New course" goes straight into the '
+      + 'wizard. The header is the shared PageHeader, with the Your courses / Library switch as its '
+      + 'tab pill on the same line as the button. The picker lost Fundraising, Event, Service and Form '
+      + '(they have their own sections) and lives in product-wizard/product-types. No read, write, '
+      + 'adoption, plan cap or count moved: every query, the exact-count aggregation and the '
+      + 'cap arithmetic are the lines they were.',
+  },
 ];
 
 const EXEMPT_FILES = EDITED_SINCE_MEASUREMENT.map((e) => e.file);
@@ -1133,6 +1157,7 @@ describe('the digest exemption list is exactly the edits that justify it', () =>
       'THE-262 AdminDocs.tsx',
       'THE-275 AdminDocs.tsx',
       'THE-331 AdminBlog.tsx',
+      'UI-POLISH AdminCourses.tsx',
     ]);
   });
 
@@ -1171,7 +1196,8 @@ describe("the admin shell's container is unchanged", () => {
     const permTerms = [...readSrc('AdminDashboard.tsx').matchAll(/perms\.(\w+)/g)]
       .map((m) => m[1]).sort();
     expect(permTerms).toEqual([
-      'analytics', 'createCourses', 'fullAccess', 'fullAccess',
+      // 'createCourses' twice since the Products page: its nav clause repeats Courses' own.
+      'analytics', 'createCourses', 'createCourses', 'fullAccess', 'fullAccess',
       'manageAccounting', 'manageAccounting', 'manageAdmins', 'manageAffiliate',
       'manageBranding', 'manageCRM', 'manageCheckin', 'manageCheckin',
       // 🔴 `manageEvents` TWICE SINCE THE-326, and that is the assertion, not a

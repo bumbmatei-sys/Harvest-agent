@@ -317,7 +317,6 @@ const AdminDonations: React.FC = () => {
   return (
     <div className={`${FORM_MEASURE} ${CONTROL_DENSITY.sectionGap} space-y-7`}>
       <AdminPageHeader
-        eyebrow="Donations"
         title="How your church gets paid"
         subtitle="Take card gifts inside the app, and add your own payment links for everything else."
       />

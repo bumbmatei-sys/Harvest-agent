@@ -182,12 +182,25 @@ describe('CoursePlayer — the rail', () => {
     expect(props.onSelectLesson).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'b' }));
   });
 
-  it('has Lessons, Chats and Notes tabs; Chats says it is coming rather than pretending', async () => {
+  it('has Lessons and Notes tabs and no Chats section or Chat button', async () => {
     await mount(player().ui);
-    expect(all('[data-rail-tab]').map((t) => t.getAttribute('data-rail-tab'))).toEqual(['lessons', 'chats', 'notes']);
-    await click(need(q('[data-rail-tab="chats"]'), 'chats'));
-    expect(q('[data-chats-empty]')).not.toBeNull();
-    expect(need(q('button[title="Chats are coming soon"]'), 'chat button').hasAttribute('disabled')).toBe(true);
+    expect(all('[data-rail-tab]').map((t) => t.getAttribute('data-rail-tab'))).toEqual(['lessons', 'notes']);
+    expect(q('[data-rail-tab="chats"]')).toBeNull();
+    expect(q('[data-chats-empty]')).toBeNull();
+    expect(q('button[title="Chats are coming soon"]')).toBeNull();
+    expect(text()).not.toMatch(/\bChats?\b/);
+  });
+
+  it('puts a New note button at the top of the Notes sidebar, before the notes themselves', async () => {
+    await mount(player({ lessonNotes: { b: 'Remember to pray at dawn' } }).ui);
+    await click(need(q('[data-rail-tab="notes"]'), 'notes'));
+    const panel = need(q('[data-notes-panel]'), 'notes panel');
+    const button = need(panel.querySelector<HTMLElement>('[data-new-note]'), 'new note');
+    expect(button.textContent).toContain('New note');
+    expect(panel.firstElementChild).toBe(button);
+    expect(q('[data-notes-sheet]')).toBeNull();
+    await click(button);
+    expect(q('[data-notes-sheet]')).not.toBeNull();
   });
 
   it('lists the lessons that have notes under Notes, and says so when there are none', async () => {

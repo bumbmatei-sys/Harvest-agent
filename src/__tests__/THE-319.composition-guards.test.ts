@@ -499,6 +499,9 @@ describe("THE-298's decisions all survive the composition", () => {
      *  branch's. A value that is NEITHER — this ticket editing it — still fails. */
     const ADMIN_UI = [
       ['2e9ad4cb44b5638421cb085777e2be4f7957d4d850ef3d4a6ce62b1d9fbcda96', 'main at 0de1e2e — the value THE-190 and THE-298 both leave'],
+      // APPENDED BY the 23 Oct UI polish (THE-377), nothing above removed. AdminPageHeader is now the
+      // shared PageHeader and the editor header drops its back link; AdminSecondaryButton is untouched.
+      ['8eeb469bd28d6f49d994354a795f7f63afd932da89bffe92f0f03032cf79406a', 'UI polish, 23 Oct (THE-377) - shared PageHeader, no back link, AdminSecondaryButton unchanged'],
     ] as const;
     const actual = sha256(readFileSync(path.join(REPO_ROOT, 'src/components/admin/AdminUI.tsx')));
     expect(

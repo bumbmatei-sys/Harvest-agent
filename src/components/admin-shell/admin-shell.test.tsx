@@ -19,7 +19,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { THEME_STORAGE_KEY } from '@/lib/theme';
 
-import { AdminContentBar } from './AdminContentBar';
+import { AdminContentBar, CommunityMenu } from './AdminContentBar';
 import { AdminDesktopSidebar, SIDEBAR_ICON_WIDTH } from './AdminDesktopSidebar';
 import { AdminHome, AdminHomeView } from './AdminHome';
 import { useQuickSwitcherShortcut } from '../docs/DocsQuickSwitcher';
@@ -33,7 +33,7 @@ const tabs = new Map<string, ShellTabRef>([
   ['crm', { id: 'crm', label: 'CRM', icon: Church }],
   ['events', { id: 'events', label: 'Events', icon: FileText }],
   ['checkin', { id: 'checkin', label: 'Check-In', icon: FileText }],
-  ['courses', { id: 'courses', label: 'Courses', icon: GraduationCap }],
+  ['products', { id: 'products', label: 'Products', icon: GraduationCap }],
   ['blog', { id: 'blog', label: 'Blog', icon: FileText }],
 ]);
 
@@ -44,7 +44,7 @@ describe('shell nav mapping', () => {
     expect(people).not.toContain('events');
     expect(people).not.toContain('checkin');
     expect(people).not.toContain('forms');
-    expect(people).not.toContain('courses');
+    expect(people).not.toContain('products');
     expect(people).not.toContain('newsletter');
     expect(people).not.toContain('sms');
   });
@@ -65,7 +65,8 @@ describe('shell nav mapping', () => {
   it('keeps live public tabs and hides ministry page and publish until those screens exist', () => {
     const publicIds = groupsForSide('public', tabs).flatMap((group) => group.items.map((item) => item.id));
     expect(publicIds).toContain('blog');
-    expect(publicIds).toContain('courses');
+    expect(publicIds).toContain('products');
+    expect(publicIds).not.toContain('courses');
     expect(publicIds).not.toContain('church-page');
     expect(publicIds).not.toContain('publish');
     expect(publicIds).not.toContain('newsletter');
@@ -84,27 +85,28 @@ describe('shell nav mapping', () => {
     expect(sectionForTab('crm')).toBe('People');
     expect(sectionForTab('signups')).toBe('People');
     expect(sectionForTab('churches')).toBe('People');
-    expect(sectionForTab('community')).toBe('Care');
-    expect(sectionForTab('services')).toBe('Care');
-    expect(sectionForTab('docs')).toBe('Care');
+    expect(sectionForTab('services')).toBe('People');
+    expect(sectionForTab('docs')).toBe('Boards');
+    expect(sectionForTab('community')).toBeNull();
     expect(sectionForTab('forms')).toBe('Engage');
     expect(sectionForTab('events')).toBe('Engage');
     expect(sectionForTab('checkin')).toBe('Engage');
     expect(sectionForTab('fundraising')).toBe('Giving');
     expect(sectionForTab('donations')).toBe('Giving');
     expect(sectionForTab('accounting')).toBe('Giving');
-    expect(sectionForTab('blog')).toBe('Page');
+    expect(sectionForTab('blog')).toBe('Channels');
     expect(sectionForTab('social')).toBe('Channels');
-    expect(sectionForTab('newsletter')).toBe('Email');
+    expect(sectionForTab('newsletter')).toBe('Channels');
+    expect(sectionForTab('products')).toBeNull();
     expect(sectionForTab('courses')).toBe('Products');
   });
 
   it('gives every sidebar item its own icon', () => {
     const ids = [
-      'crm', 'signups', 'churches', 'community', 'services', 'docs', 'forms',
+      'crm', 'signups', 'churches', 'services', 'forms',
       'events', 'checkin', 'fundraising', 'donations', 'accounting', 'library',
       'tenants', 'inbox', 'affiliate', 'blog', 'ai', 'social',
-      'livestream', 'sms', 'newsletter', 'courses',
+      'livestream', 'sms', 'newsletter', 'products',
     ];
     const all = new Map<string, ShellTabRef>(ids.map((id) => [id, { id, label: id, icon: Church }]));
     const itemIcons = groupsForAllSides(all).flatMap((group) => group.items.map((item) => item.icon));
@@ -194,7 +196,7 @@ describe('desktop sidebar', () => {
     });
   }
 
-  it('shows one Social link on the people side and opens the social section', async () => {
+  it('shows one Social link, under Channels on the public side, and opens the social section', async () => {
     const onNavigate = vi.fn();
     const withSocial = new Map(tabs);
     withSocial.set('social', { id: 'social', label: 'Social', icon: FileText });
@@ -204,7 +206,7 @@ describe('desktop sidebar', () => {
         <TooltipProvider>
           <SidebarProvider>
             <AdminDesktopSidebar
-              side="people"
+              side="public"
               onSide={() => {}}
               activeTab="social"
               placeholder={null}
@@ -222,6 +224,7 @@ describe('desktop sidebar', () => {
     const links = container.querySelectorAll('[data-nav-tab="social"]');
     expect(links).toHaveLength(1);
     expect(links[0]?.textContent).toContain('Social');
+    expect(links[0]?.closest('[data-nav-group]')?.getAttribute('data-nav-group-tabs')?.split(',')[0]).toBe('social');
     await act(async () => { (links[0] as HTMLButtonElement).click(); });
     expect(onNavigate).toHaveBeenCalledWith('social');
   });
@@ -234,7 +237,8 @@ describe('desktop sidebar', () => {
     const publicSide = container.querySelector<HTMLButtonElement>('button[aria-label="Public"]')!;
     await act(async () => { publicSide.click(); });
     expect(container.querySelector('[data-shell-side]')?.getAttribute('data-shell-side')).toBe('public');
-    expect(container.textContent).toContain('Courses');
+    expect(container.textContent).toContain('Products');
+    expect(container.textContent).not.toContain('Courses');
   });
 
   it('persists a light default and then a dark choice on the existing key', async () => {
@@ -324,7 +328,7 @@ function ShellBarHarness() {
           onPlaceholder={() => {}}
           accountMenu={<span>Account</span>}
         />
-        <AdminContentBar section="" title="Home" onOpenApp={() => {}} />
+        <AdminContentBar crumbs={[{ label: 'Home' }]} community={<CommunityMenu onOpenDefault={() => {}} />} />
       </SidebarProvider>
     </TooltipProvider>
   );
@@ -362,18 +366,17 @@ describe('search pill in the content bar', () => {
     expect(all[0].closest('[data-sidebar="footer"]'), 'the one collapse button is not in the sidebar footer').toBeTruthy();
   });
 
-  it('sits immediately left of Open member app, and the sidebar has no search row', async () => {
+  it('sits immediately left of the Community menu, and the sidebar has no search row', async () => {
     await mountBar();
     const bar = container.querySelector('[data-admin-content-bar]');
     expect(bar, 'the content bar did not mount').toBeTruthy();
     const pill = bar!.querySelector('[data-admin-search-pill]');
     expect(pill, 'the search pill is missing from the content bar').toBeTruthy();
     expect(pill!.textContent).toMatch(/Search/);
-    const openApp = [...bar!.querySelectorAll('button')]
-      .find((button) => (button.textContent ?? '').includes('Open member app'));
-    expect(openApp, 'Open member app is missing').toBeTruthy();
-    expect(pill!.nextElementSibling, 'the pill is not immediately left of Open member app')
-      .toBe(openApp);
+    const menu = bar!.querySelector('[data-community-menu]');
+    expect(menu, 'the Community menu is missing').toBeTruthy();
+    expect(pill!.nextElementSibling, 'the pill is not immediately left of the Community menu').toBe(menu);
+    expect(bar!.textContent).not.toContain('Open member app');
     const sidebar = container.querySelector('[data-sidebar="sidebar"]');
     expect(sidebar!.querySelector('button[aria-label="Search"]')).toBeNull();
     expect(sidebar!.querySelector('[data-admin-search-pill]')).toBeNull();

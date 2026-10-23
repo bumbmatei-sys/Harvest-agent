@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { ArrowLeft, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,8 +27,6 @@ export interface ProductWizardProps {
   steps: readonly WizardStep[];
   activeStepId: string;
   onStepChange: (id: string) => void;
-  onBack?: () => void;
-  backLabel?: string;
   /** Buttons beside the title, e.g. "Preview as member". */
   headerActions?: ReactNode;
   /** The live preview pane. Hidden below xl, where the step takes the width. */
@@ -56,7 +54,7 @@ export interface ProductWizardProps {
  */
 export function ProductWizard({
   productLabel, title, untitledLabel, status, ownerLabel, steps, activeStepId, onStepChange,
-  onBack, backLabel = 'Back', headerActions, preview, saving, error, saved, onSaveDraft, onPublish,
+  headerActions, preview, saving, error, saved, onSaveDraft, onPublish,
   publishBlockedReason, publishLabel = 'Publish', saveLabel = 'Save draft', children,
 }: ProductWizardProps) {
   const index = Math.max(0, steps.findIndex((s) => s.id === activeStepId));
@@ -67,14 +65,8 @@ export function ProductWizard({
   const previous = steps[index - 1];
 
   return (
-    <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-6 px-4 pt-6 lg:px-0" data-product-wizard>
+    <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-6 px-4 lg:px-0" data-product-wizard>
       <header className="flex flex-col gap-3">
-        {onBack && (
-          <Button type="button" variant="ghost" size="sm" className="min-h-11 -ml-2 w-fit gap-1.5 px-2 text-muted" onClick={onBack}>
-            <ArrowLeft aria-hidden />
-            {backLabel}
-          </Button>
-        )}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-3">

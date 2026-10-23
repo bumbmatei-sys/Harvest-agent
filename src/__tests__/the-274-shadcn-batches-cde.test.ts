@@ -1383,6 +1383,15 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       + 'the groups underneath it.',
   },
   {
+    file: 'src/components/boards/BoardGrid.tsx',
+    ticket: 'ui-polish',
+    why:
+      'APPENDED, never substituted. A board is a grid of its notes, as Eden shows a space. Each note is a '
+      + '`card` with a stretched button over it, the empty board is the `empty` primitive, and a failed read '
+      + 'is an `alert`. `table` is rejected: a note is read by its first lines, not compared by column. '
+      + '`item` is rejected: a row would show a title only, and the point of the grid is the preview.',
+  },
+  {
     file: 'src/components/admin/social/SocialScheduler.tsx',
     ticket: 'phase-2',
     why:
