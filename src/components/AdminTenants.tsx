@@ -325,7 +325,6 @@ const AdminTenants: React.FC = () => {
     return (
       <div className={`w-full space-y-6 ${FORM_CONTAINER}`}>
         <AdminPageHeader
-          eyebrow="Super-admin"
           title="Affiliates"
           subtitle="Read-only. Commission figures are shown exactly as stored, never recomputed."
         />
@@ -338,7 +337,6 @@ const AdminTenants: React.FC = () => {
   return (
     <div className={`w-full space-y-6 ${FORM_CONTAINER}`}>
       <AdminPageHeader
-        eyebrow="Super-admin"
         title="Tenants"
         action={<AdminPrimaryButton onClick={openCreate} icon={<span className="text-[15px] leading-none">+</span>}>Add tenant</AdminPrimaryButton>}
       />

@@ -181,6 +181,8 @@ const ROUTE_TABLE = [
   // Text-to-Give reply all land here; before it existed they landed on the SPA
   // root, which bounced a signed-out visitor to auth.
   { pattern: '/giving', entry: 'next-page', surface: 'public', public: true },
+  // The newsletter subscribe page a ministry shares. Public by construction.
+  { pattern: '/subscribe', entry: 'next-page', surface: 'public', public: true },
   { pattern: '/pledge/[campaignId]', entry: 'next-page', surface: 'public', public: true },
   { pattern: '/post/[postId]', entry: 'next-page', surface: 'public', public: true },
   // THE-324 — the rota accept page. 🔴 THE SEGMENT IS A CAPABILITY, NOT AN ID:

@@ -185,7 +185,10 @@ describe('large sends need a verified domain', () => {
 
   it('a send over the threshold is refused without a verified domain, even with a shared sender configured', async () => {
     const c = await drafted({ contacts: many(1001), settings: unverified }, 'news@mail.theharvest.app');
-    expect(await preview(c)).toMatchObject({ ok: false, error: 'domain_required', message: expect.stringMatching(/more than 1,000 people needs a verified sending domain/) });
+    const refused = await preview(c);
+    expect(refused).toMatchObject({ ok: false, error: 'domain_required', message: expect.stringMatching(/more than 1,000 people at once is not available yet/) });
+    // The refusal is a size limit on the shared sender. It must not tell anyone to verify a domain.
+    expect((refused as { message: string }).message).not.toMatch(/verif|domain/i);
   });
 
   it('a send at the threshold is allowed from the shared sender when one is configured', async () => {
@@ -197,7 +200,9 @@ describe('large sends need a verified domain', () => {
 
   it('with no shared sender configured a verified domain is always required (fails closed)', async () => {
     const c = await drafted({ settings: unverified });
-    expect(await preview(c)).toMatchObject({ ok: false, error: 'sender_not_ready' });
+    const refused = await preview(c);
+    expect(refused).toMatchObject({ ok: false, error: 'sender_not_ready' });
+    expect((refused as { message: string }).message).not.toMatch(/verify your sending domain/i);
   });
 
   it('a verified domain sends from the ministry\'s own address at any size', async () => {

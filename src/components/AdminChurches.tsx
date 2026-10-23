@@ -219,7 +219,6 @@ const AdminChurches: React.FC<AdminChurchesProps> = ({ onOpenBilling }) => {
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6">
       <AdminPageHeader
-        eyebrow="Platform"
         title="Churches"
         /* 🔴 NO SUBTITLE. It used to print a per-church running total in dollars,
            behind `isMinistry` — see the module note on the deleted $10/mo path.

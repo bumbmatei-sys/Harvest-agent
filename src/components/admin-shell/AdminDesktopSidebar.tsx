@@ -5,7 +5,6 @@ import {
   ChevronRight,
   Home,
   Moon,
-  Share2,
   Sun,
 } from 'lucide-react';
 
@@ -84,6 +83,7 @@ export function AdminDesktopSidebar({
   accountMenu,
   accountLabel,
   footerExtra,
+  noteBoardsSlot,
 }: {
   side: ShellSideId;
   onSide: (side: ShellSideId) => void;
@@ -99,10 +99,10 @@ export function AdminDesktopSidebar({
   accountLabel?: string;
   /** Desktop-only footer icons (inbox, theme stays separate). */
   footerExtra?: ReactNode;
+  /** The Notes boards, drawn at the bottom of the People side. Omit to hide the list (no Notes access). */
+  noteBoardsSlot?: ReactNode;
 }) {
   const groups = groupsForSide(side, tabs);
-  const social = tabs.get('social');
-  const socialInGroups = groups.some((group) => group.items.some((item) => item.id === 'social'));
   // Branding is not a sidebar group: Settings owns it. The row appears only
   // when the tab is still in the map, which is the branding-only admin who
   // cannot open Settings.
@@ -194,20 +194,6 @@ export function AdminDesktopSidebar({
                 <span className="group-data-[collapsible=icon]:sr-only">Home</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            {social && !socialInGroups && (
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={activeTab === 'social' && placeholder === null}
-                  tooltip="Social"
-                  className={MENU_BUTTON}
-                  data-nav-tab="social"
-                  onClick={() => onNavigate('social')}
-                >
-                  <Share2 />
-                  <span className="group-data-[collapsible=icon]:sr-only">Social</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
             {BrandingIcon && branding && !brandingInGroups && (
               <SidebarMenuItem>
                 <SidebarMenuButton
@@ -227,15 +213,52 @@ export function AdminDesktopSidebar({
 
         {groups.map((group) => {
           const live = group.items.filter((item) => !item.placeholder);
+          const groupData = live.length > 0 ? {
+            'data-nav-group': group.id,
+            'data-nav-group-tabs': live.map((item) => item.id).join(','),
+            'data-nav-group-labels': live.map((item) => item.entitlementLabel).join('|'),
+          } : {};
+          const rows = (
+            <SidebarMenu className="gap-px">
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = item.placeholder
+                  ? placeholder === item.placeholder
+                  : placeholder === null && activeTab === item.id;
+                return (
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      tooltip={item.label}
+                      className={MENU_BUTTON}
+                      data-nav-tab={item.placeholder ? undefined : item.id}
+                      onClick={() => openItem(item.id, item.placeholder)}
+                    >
+                      <Icon />
+                      <span className="group-data-[collapsible=icon]:sr-only">{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          );
+          // A group with no label is a flat entry (Products, Notes): no heading, no fold.
+          if (!group.label) {
+            return (
+              <SidebarGroup
+                key={group.id}
+                className="mt-1 px-[13px] py-0 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-0"
+                {...groupData}
+              >
+                <SidebarGroupContent>{rows}</SidebarGroupContent>
+              </SidebarGroup>
+            );
+          }
           return (
           <Collapsible key={group.id} defaultOpen className="group/collapsible">
             <SidebarGroup
               className="mt-6 px-[13px] py-0 group-data-[collapsible=icon]:mt-3 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-0"
-              {...(live.length > 0 ? {
-                'data-nav-group': group.id,
-                'data-nav-group-tabs': live.map((item) => item.id).join(','),
-                'data-nav-group-labels': live.map((item) => item.entitlementLabel).join('|'),
-              } : {})}
+              {...groupData}
             >
               <SidebarGroupLabel
                 className="h-6 gap-1 px-2 text-[12px] font-normal text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden"
@@ -245,35 +268,14 @@ export function AdminDesktopSidebar({
                 <ChevronRight className="size-[11px]! transition-transform group-data-open/collapsible:rotate-90 group-data-[collapsible=icon]:hidden" />
               </SidebarGroupLabel>
               <CollapsibleContent>
-                <SidebarGroupContent>
-                  <SidebarMenu className="gap-px">
-                    {group.items.map((item) => {
-                      const Icon = item.icon;
-                      const isActive = item.placeholder
-                        ? placeholder === item.placeholder
-                        : placeholder === null && activeTab === item.id;
-                      return (
-                        <SidebarMenuItem key={item.id}>
-                          <SidebarMenuButton
-                            isActive={isActive}
-                            tooltip={item.label}
-                            className={MENU_BUTTON}
-                            data-nav-tab={item.placeholder ? undefined : item.id}
-                            onClick={() => openItem(item.id, item.placeholder)}
-                          >
-                            <Icon />
-                            <span className="group-data-[collapsible=icon]:sr-only">{item.label}</span>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      );
-                    })}
-                  </SidebarMenu>
-                </SidebarGroupContent>
+                <SidebarGroupContent>{rows}</SidebarGroupContent>
               </CollapsibleContent>
             </SidebarGroup>
           </Collapsible>
           );
         })}
+
+        {side === 'people' ? noteBoardsSlot : null}
       </SidebarContent>
 
       <SidebarFooter className="gap-1 p-0 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:py-2">
@@ -319,7 +321,7 @@ export function AdminDesktopSidebar({
               <CommandItem onSelect={() => openItem('dashboard', null)}>Home</CommandItem>
             </CommandGroup>
             {groupsForAllSides(tabs).map((group) => (
-              <CommandGroup key={group.id} heading={group.label}>
+              <CommandGroup key={group.id} heading={group.label || group.items[0]?.label}>
                 {group.items.map((item) => (
                   <CommandItem key={item.id} onSelect={() => openItem(item.id, item.placeholder)}>
                     {item.label}

@@ -6,15 +6,21 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ACCENT_LABELS, THEME_LABELS, type EmailAccent, type EmailDesign, type EmailTheme } from '@/lib/email/design';
+import { ACCENT_LABELS, THEME_LABELS, readHexColor, type EmailAccent, type EmailDesign, type EmailTheme } from '@/lib/email/design';
+import { BRAND_PALETTE } from '@/lib/email/render';
 import { Segmented, TAP } from '@/components/email/kit';
 import { cn } from '@/lib/utils';
 
 const THEMES = (Object.keys(THEME_LABELS) as EmailTheme[]).map((value) => ({ value, label: THEME_LABELS[value] }));
 const ACCENTS = (Object.keys(ACCENT_LABELS) as EmailAccent[]).map((value) => ({ value, label: ACCENT_LABELS[value] }));
 
-/** The swatch is the one place the brand palette shows in the app UI, through theme tokens. */
-const SWATCH: Record<EmailAccent, string> = { navy: 'bg-navy-900', gold: 'bg-gold', harbor: 'bg-navy-600' };
+/**
+ * Navy and Gold are Harvest's own two colours, so their swatches are the real
+ * brand values rather than theme tokens: a token follows the ministry's colour,
+ * and a ministry branded red would otherwise see "Gold" drawn red. Custom is the
+ * ministry's own branding colour, passed in.
+ */
+const FIXED_SWATCH = { navy: BRAND_PALETTE.navy900, gold: BRAND_PALETTE.gold500 } as const;
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -25,12 +31,19 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-export function DesignDialog({ open, onOpenChange, design, onChange }: {
+export function DesignDialog({ open, onOpenChange, design, onChange, brandColor }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   design: EmailDesign;
   onChange: (next: EmailDesign) => void;
+  /** The ministry's branding colour. Without a valid hex, Custom is not offered. */
+  brandColor?: string | null;
 }) {
+  const brand = readHexColor(brandColor);
+  const pickAccent = (accent: EmailAccent) => {
+    const { customColor: _drop, ...rest } = design;
+    onChange(accent === 'custom' && brand ? { ...rest, accent, customColor: brand } : { ...rest, accent });
+  };
   const set = <K extends keyof EmailDesign>(key: K, value: EmailDesign[K]) => onChange({ ...design, [key]: value });
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -62,21 +75,33 @@ export function DesignDialog({ open, onOpenChange, design, onChange }: {
           </Row>
           <Row label="Accent color">
             <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Accent color">
-              {ACCENTS.map((a) => (
-                <button
-                  key={a.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={design.accent === a.value}
-                  onClick={() => set('accent', a.value)}
-                  className={cn(TAP, 'flex items-center gap-2 rounded-lg border px-3 text-sm', design.accent === a.value ? 'border-primary ring-1 ring-primary' : 'border-line')}
-                >
-                  <span aria-hidden className={cn('flex size-5 items-center justify-center rounded-full text-white', SWATCH[a.value])}>
-                    {design.accent === a.value && <Check className="size-3" />}
-                  </span>
-                  {a.label}
-                </button>
-              ))}
+              {ACCENTS.map((a) => {
+                const swatch = a.value === 'custom' ? brand : FIXED_SWATCH[a.value];
+                const unavailable = a.value === 'custom' && !brand;
+                const selected = design.accent === a.value;
+                return (
+                  <button
+                    key={a.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    disabled={unavailable}
+                    title={unavailable ? 'Set a brand color in Branding to use it here' : undefined}
+                    onClick={() => pickAccent(a.value)}
+                    className={cn(TAP, 'flex items-center gap-2 rounded-lg border px-3 text-sm disabled:opacity-50', selected ? 'border-primary ring-1 ring-primary' : 'border-line')}
+                  >
+                    <span
+                      aria-hidden
+                      data-accent-swatch={a.value}
+                      className="flex size-5 items-center justify-center rounded-full border border-line text-white"
+                      style={swatch ? { backgroundColor: swatch } : undefined}
+                    >
+                      {selected && <Check className="size-3" />}
+                    </span>
+                    {a.label}
+                  </button>
+                );
+              })}
             </div>
           </Row>
           <div className="grid gap-5 sm:grid-cols-2">

@@ -17,7 +17,7 @@ import { DESKTOP_GROUP_ICONS, DESKTOP_GROUP_LABELS } from '@/components/layout/n
 import { SidebarInset, SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
-import { AdminContentBar } from './AdminContentBar';
+import { AdminContentBar, CommunityMenu } from './AdminContentBar';
 import { AdminDesktopSidebar, SIDEBAR_ICON_WIDTH, SIDEBAR_WIDTH } from './AdminDesktopSidebar';
 import { SegmentedTabs, SegmentedTabsList, SegmentedTabsTrigger } from './SegmentedTabs';
 import { AdminHomeView } from './AdminHome';
@@ -259,9 +259,8 @@ function AfterChrome({ side, collapsed, screen, sheet }: { side: ShellSideId; co
           <SidebarInset className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card">
             <div className="hidden lg:block">
               <AdminContentBar
-                section={sectionForTab(screen === 'events' ? 'events' : 'dashboard') ?? ''}
-                title={screen === 'events' ? 'Events' : 'Home'}
-                onOpenApp={() => {}}
+                crumbs={[{ label: sectionForTab(screen === 'events' ? 'events' : 'dashboard') ?? '' }, { label: screen === 'events' ? 'Events' : 'Home' }]}
+                community={<CommunityMenu items={[{ id: 'c1', name: 'Young adults' }]} loaded onOpen={() => {}} onCreate={() => {}} />}
               />
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto pb-24">

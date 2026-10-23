@@ -11,7 +11,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { PageHeader, SetupBanner, TAP, formatStamp, plural, senderReady } from '@/components/email/kit';
+import { SetupBanner, TAP, formatStamp, plural, senderReady } from '@/components/email/kit';
 import type { Broadcast, EmailApi, Overview } from '@/components/email/email-api';
 import { SendingNotice } from '@/components/email/SendingNotice';
 import { UsageMeter } from '@/components/email/UsageMeter';
@@ -64,14 +64,9 @@ export function BroadcastsView({ data, api, tenantId, onChanged, onNew, onOpen, 
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Broadcasts"
-        subtitle="One-time emails to your list, sent now or later."
-        action={<Button className="min-h-11" onClick={onNew}><Plus data-icon="inline-start" />New broadcast</Button>}
-      />
       <SendingNotice sending={data.sending} api={api} canResume={data.canEditLimits} tenantId={tenantId} onResumed={onChanged} />
       {!senderReady(data.settings) && (
-        <SetupBanner actionLabel="Open settings" onAction={onSettings}>Finish your sender details and verify your domain before you send.</SetupBanner>
+        <SetupBanner actionLabel="Open settings" onAction={onSettings}>Add your sender name, reply-to address and mailing address before you send. Emails go out from Harvest's own sending address.</SetupBanner>
       )}
       {(data.usage.warn || data.usage.used >= data.usage.cap) && data.usage.cap > 0 && (
         <Card className="gap-0 p-5"><UsageMeter usage={data.usage} compact /></Card>

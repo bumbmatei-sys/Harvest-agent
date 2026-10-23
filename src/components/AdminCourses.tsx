@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Plus, Library, Check, BookOpen } from 'lucide-react';
+import { Plus, Library, Check } from 'lucide-react';
 import { collection, onSnapshot, query, where, doc, getDoc, limit, orderBy, documentId, getCountFromServer } from 'firebase/firestore';
 import { db } from '../firebase';
 import { authFetch } from '../utils/auth-fetch';
@@ -8,7 +8,8 @@ import { CourseWizard } from './courses/builder/CourseWizard';
 import { hydrateCourse } from '../lib/courses/content-client';
 import { deleteCourse } from '../lib/courses/persist';
 import { CourseProductList } from './courses/CourseProductList';
-import { NewProductDialog, type ProductTypeOption } from './product-wizard';
+import { NewProductDialog, PRODUCT_TYPES } from './product-wizard';
+import { PageHeader, PageTabs } from './admin-shell/PageHeader';
 import type { ProductCourse as Course } from '../types/course-product.types';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
@@ -32,8 +33,9 @@ import {
 } from '../utils/course-adoption';
 import { CoursePreview } from './course/CoursePreview';
 import type { AdoptedCourse, Author, LibraryCourse } from '../types/course.types';
-import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar, AdminCard, AdminBadge } from './admin/AdminUI';
+import { AdminPrimaryButton, AdminSearchBar, AdminCard, AdminBadge } from './admin/AdminUI';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { Button } from './ui/button';
 import { FORM_CONTAINER, CONTROL_DENSITY } from './layout/form-layout';
 import { ANALYTICS_EVENTS } from '../lib/analytics/events';
 import { trackProductEvent } from '../lib/analytics/client';
@@ -76,15 +78,18 @@ function reportAdoptionFailure(op: 'adopt' | 'unadopt' | 'override', error: unkn
   console.error(`[courses:${op}] ${message}`, error);
 }
 
-const PRODUCT_TYPES: readonly ProductTypeOption[] = [
-  { id: 'course', label: 'Course', description: 'Lessons people read or watch, in order, with progress.', membersGet: 'Lessons, progress and a certificate', icon: <BookOpen />, tag: 'Start here', available: true },
-  { id: 'fundraising', label: 'Fundraising', description: 'A campaign with a goal and a way to give.', membersGet: 'A giving page', icon: <Library />, available: false },
-  { id: 'event', label: 'Event', description: 'A gathering with a date, a place and a sign-up.', membersGet: 'A seat and a reminder', icon: <Library />, available: false },
-  { id: 'service', label: 'Service', description: 'A scheduled service with a plan and a team.', membersGet: 'The order of service', icon: <Library />, available: false },
-  { id: 'form', label: 'Form', description: 'Questions people answer, sign-ups and applications.', membersGet: 'A form to fill in', icon: <Library />, available: false },
-];
+interface AdminCoursesProps {
+  /**
+   * Render as the Products page: every product the ministry has, a "New product"
+   * button that opens the type picker, and no library tab. Without it this is
+   * the Courses page, where "New course" goes straight into the course wizard.
+   */
+  productsPage?: boolean;
+  /** Products page only: opens the Courses page (library and adoptions). */
+  onOpenCourses?: () => void;
+}
 
-const AdminCourses: React.FC = () => {
+const AdminCourses: React.FC<AdminCoursesProps> = ({ productsPage = false, onOpenCourses }) => {
   const { tenantPlan } = useTenant();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
@@ -538,7 +543,9 @@ const AdminCourses: React.FC = () => {
       setTimeout(() => setErrorMessage(null), 5000);
       return;
     }
-    setPickingType(true);
+    // The Products page asks what to make; the Courses page already knows.
+    if (productsPage) setPickingType(true);
+    else handlePickType('course');
   };
   const handlePickType = (id: string) => {
     if (id !== 'course') return;
@@ -760,42 +767,37 @@ const AdminCourses: React.FC = () => {
         </div>
       )}
 
-      <AdminPageHeader
-        eyebrow="Discipleship"
-        title={
+      <PageHeader
+        title={productsPage ? 'Products' : 'Courses'}
+        subtitle={
           exactOwnTotal === null
-            ? 'Courses'
+            ? undefined
             : maxCourses === -1
               ? `${exactOwnTotal} course${exactOwnTotal === 1 ? '' : 's'}`
               : `${exactOwnTotal} of ${maxCourses} course${maxCourses === 1 ? '' : 's'} used`
         }
+        tabs={productsPage ? undefined : (
+          <PageTabs
+            label="Courses view"
+            value={view}
+            onValueChange={setView}
+            items={[
+              { value: 'own', label: ownTabCount === null ? 'Your courses' : `Your courses (${ownTabCount})` },
+              { value: 'library', label: `Library (${countedAdoptions} adopted)` },
+            ]}
+          />
+        )}
         action={
-          view === 'own'
+          productsPage ? (
+            <>
+              {onOpenCourses ? <Button type="button" variant="outline" className="h-9 min-h-[44px] sm:min-h-0" onClick={onOpenCourses}>Courses</Button> : null}
+              <AdminPrimaryButton onClick={handleNewCourse} icon={<Plus size={16} />} disabled={atLimit} title={atLimit ? limitMessage : undefined}>New product</AdminPrimaryButton>
+            </>
+          ) : view === 'own'
             ? <AdminPrimaryButton onClick={handleNewCourse} icon={<Plus size={16} />} disabled={atLimit} title={atLimit ? limitMessage : undefined}>New course</AdminPrimaryButton>
             : undefined
         }
       />
-
-      {/* Own courses vs the platform library. The count above spans BOTH — an
-          adopted course occupies a plan slot exactly like one you authored. */}
-      <div className="flex items-center gap-1 border-b border-line">
-        {([
-          { key: 'own', label: ownTabCount === null ? 'Your courses' : `Your courses (${ownTabCount})` },
-          { key: 'library', label: `Library (${countedAdoptions} adopted)` },
-        ] as const).map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setView(t.key)}
-            className={`px-4 py-2.5 text-sm font-semibold -mb-px border-b-2 transition-colors ${
-              view === t.key
-                ? 'border-gold text-strong'
-                : 'border-transparent text-muted hover:text-strong'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
 
       {atLimit && (
         <div className="bg-[var(--surface-gold)] text-strong rounded-brand p-3.5 text-sm border border-line">

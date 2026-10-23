@@ -1,5 +1,5 @@
 "use client";
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { ChevronLeft } from 'lucide-react';
 
 /**
@@ -141,5 +141,25 @@ export const AdminHeaderContext = createContext<AdminHeaderApi>({
   setNavHidden: () => {},
 });
 export const useAdminHeader = (): AdminHeaderApi => useContext(AdminHeaderContext);
+
+/**
+ * A sub-view (an editor, a detail page) publishes where it is and how to leave it.
+ *
+ * That is the whole back affordance. The desktop top bar draws it as a breadcrumb
+ * whose parent is a link (`Products > Courses > This course`), and the phone header
+ * draws it as the back chevron, so a screen no longer carries its own "Back to ..."
+ * button. Pass `null` while there is no sub-view open.
+ */
+export function useSubviewHeader(subview: { title: string; onBack: () => void } | null): void {
+  const { setHeaderOverride } = useAdminHeader();
+  const backRef = useRef<(() => void) | null>(null);
+  backRef.current = subview ? subview.onBack : null;
+  const title = subview ? subview.title : null;
+  useEffect(() => {
+    if (title === null) return;
+    setHeaderOverride({ title, onBack: () => backRef.current?.() });
+    return () => setHeaderOverride(null);
+  }, [title, setHeaderOverride]);
+}
 
 export default AdminScreenHeader;

@@ -6,7 +6,7 @@ import sanitizeHtml from 'sanitize-html';
  * here and nowhere in the app UI.
  */
 
-import { DEFAULT_EMAIL_DESIGN, type EmailAccent, type EmailDesign } from '@/lib/email/design';
+import { DEFAULT_EMAIL_DESIGN, readHexColor, type EmailAccent, type EmailDesign } from '@/lib/email/design';
 
 export { DEFAULT_EMAIL_DESIGN };
 export type { EmailDesign, EmailAccent };
@@ -16,11 +16,29 @@ export type { EmailDesign, EmailAccent };
  * (globals.css: --navy-900, --wheat-500, --navy-600) is spelled out here and
  * nowhere else in this feature. The app UI itself uses theme tokens only.
  */
-const ACCENT_HEX: Readonly<Record<EmailAccent, string>> = Object.freeze({
-  navy: '#0C1526',
-  gold: '#C9963A',
-  harbor: '#274067',
-});
+const NAVY = '#0C1526';
+const GOLD = '#C9963A';
+const NAVY_600 = '#274067';
+const ACCENT_HEX = Object.freeze({ navy: NAVY, gold: GOLD });
+
+/**
+ * The colour an email draws its accent in. `custom` uses the hex the design
+ * carries, and falls back to gold when that is missing or malformed. Anything
+ * else, including a `harbor` saved by an older version, reads as navy.
+ */
+export function accentHex(design: Pick<EmailDesign, 'accent' | 'customColor'>): string {
+  if (design.accent === 'gold') return GOLD;
+  if (design.accent === 'custom') return readHexColor(design.customColor) ?? GOLD;
+  return NAVY;
+}
+
+/** White or near-black, whichever reads on `hex`. */
+export function inkOn(hex: string): string {
+  const n = parseInt(hex.slice(1), 16);
+  const lin = (c: number) => { const v = c / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  const lum = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+  return lum > 0.45 ? '#1A1A1A' : '#ffffff';
+}
 const NIGHT_PAGE = '#0C1526';
 const NIGHT_CARD = '#12203B';
 
@@ -33,7 +51,7 @@ export const BRAND_PALETTE = Object.freeze({
   navy950: '#080F1D',
   navy900: ACCENT_HEX.navy,
   navy800: NIGHT_CARD,
-  navy600: ACCENT_HEX.harbor,
+  navy600: NAVY_600,
   gold500: ACCENT_HEX.gold,
   gold100: '#F5EDE0',
   gold50: '#FBF4E6',
@@ -89,15 +107,16 @@ function esc(text: string): string {
 export function renderEmail(input: RenderInput): { html: string; text: string } {
   const { design } = input;
   const dark0 = input.dark === true;
-  const accent = dark0 && design.accent === 'navy' ? ACCENT_HEX.gold : ACCENT_HEX[design.accent];
+  const isNavy = design.accent !== 'gold' && design.accent !== 'custom';
+  const accent = dark0 && isNavy ? ACCENT_HEX.gold : accentHex(design);
   const dark = input.dark === true;
   const page = dark ? NIGHT_PAGE : design.theme === 'plain' ? '#ffffff' : '#FAF8F5';
   const card = dark ? NIGHT_CARD : '#ffffff';
   const ink = dark ? '#F5F5F5' : '#1A1A1A';
   const quiet = dark ? '#a3a3a3' : '#6b6b6b';
   const family = design.font === 'serif' ? 'Georgia, "Times New Roman", serif' : '-apple-system, "Segoe UI", Helvetica, Arial, sans-serif';
-  const buttonBg = design.buttons === 'filled' ? (dark && design.accent === 'navy' ? '#F5F5F5' : accent) : 'transparent';
-  const buttonInk = design.buttons === 'filled' ? (dark && design.accent === 'navy' ? '#0C1526' : '#ffffff') : (dark && design.accent === 'navy' ? '#F5F5F5' : accent);
+  const buttonBg = design.buttons === 'filled' ? (dark && isNavy ? '#F5F5F5' : accent) : 'transparent';
+  const buttonInk = design.buttons === 'filled' ? (dark && isNavy ? '#0C1526' : inkOn(accent)) : (dark && isNavy ? '#F5F5F5' : accent);
   const buttonBorder = design.buttons === 'filled' ? buttonBg : buttonInk;
 
   const filled = fillMergeTags(sanitizeEmailBody(input.bodyHtml), input, { html: true });

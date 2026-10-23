@@ -1,5 +1,6 @@
 'use client';
 
+import { useSubviewHeader } from '@/components/AdminScreenHeader';
 import { useCallback, useMemo, useState } from 'react';
 import { Eye } from 'lucide-react';
 
@@ -101,6 +102,9 @@ export function CourseWizard({
     : `Still to do: ${readiness.items.filter((i) => i.blocking && !i.done).map((i) => i.label.toLowerCase()).join(', ')}.`;
 
   const goBack = () => { if (dirty && !saving) setLeaving(true); else onClose(); };
+  // The way back is the top bar's breadcrumb (Products > Courses > this course), which still
+  // asks first when there are unsaved changes.
+  useSubviewHeader({ title: course.title.trim() || 'New course', onBack: goBack });
 
   return (
     <>
@@ -113,8 +117,6 @@ export function CourseWizard({
         steps={steps}
         activeStepId={step}
         onStepChange={(id) => setStep(id as CourseStepId)}
-        onBack={goBack}
-        backLabel="Courses"
         saving={saving}
         saved={!dirty && Boolean(course.id)}
         error={error}

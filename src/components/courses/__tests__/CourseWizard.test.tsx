@@ -109,39 +109,45 @@ describe('CourseWizard — the shared product flow with a course step', () => {
   });
 });
 
-describe('Offer step — price and access', () => {
-  it('lets a price be set but says paid checkout is coming later, and makes no payment call', async () => {
+describe('Offer step — included, no price, and access', () => {
+  it('does not draw the price fields, and makes no payment call', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
     await mount(wizard({ course: textCourse() }).ui);
+    expect(q('#course-price')).toBeNull();
+    expect(q('#course-was-price')).toBeNull();
+    expect(byName('button', 'One-time')).toBeFalsy();
+    expect(byName('button', 'Membership')).toBeFalsy();
     expect(q('[data-checkout-later]')).toBeNull();
-    await click(need(byName('button', 'One-time'), 'one-time'));
-    expect(need(q('[data-checkout-later]'), 'note').textContent).toContain('Paid checkout is coming later');
-    await typeInto(need(q('#course-price'), 'price'), '25');
-    expect(q('[data-landing-price]')?.textContent).toBe('$25');
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
   });
 
-  it('keeps what was typed on the way to 19.99 and saves the finished amount', async () => {
-    const { ui, save } = wizard({ course: textCourse({ price: { mode: 'one-time' } }) });
+  it('keeps a price the course already carries when it is saved, without showing it', async () => {
+    const { ui, save } = wizard({ course: textCourse({ price: { mode: 'one-time', amountUsd: 25, wasAmountUsd: 39 } }) });
     await mount(ui);
-    const price = () => need(q('#course-price'), 'price') as HTMLInputElement;
-    await typeInto(price(), '19.');
-    expect(price().value).toBe('19.');
-    await typeInto(price(), '19.9');
-    expect(price().value).toBe('19.9');
-    await typeInto(price(), '19.99');
-    expect(price().value).toBe('19.99');
-    expect(q('[data-landing-price]')?.textContent).toBe('$19.99');
+    expect(q('#course-price')).toBeNull();
     await click(need(byName('button', 'Save draft'), 'save'));
-    expect((save.mock.calls[0] as unknown as [ProductCourse])[0].price?.amountUsd).toBe(19.99);
+    const saved = (save.mock.calls[0] as unknown as [ProductCourse])[0];
+    expect(saved.price).toEqual({ mode: 'one-time', amountUsd: 25, wasAmountUsd: 39 });
   });
 
-  it('keeps what was typed in the was-price field too', async () => {
-    await mount(wizard({ course: textCourse({ price: { mode: 'one-time', amountUsd: 25 } }) }).ui);
-    const was = () => need(q('#course-was-price'), 'was price') as HTMLInputElement;
-    await typeInto(was(), '39.');
-    expect(was().value).toBe('39.');
+  it('puts What is included on the Offer step, not on the Page step', async () => {
+    await mount(wizard({ course: textCourse() }).ui);
+    expect(q('[aria-label="What is included"]')).not.toBeNull();
+    expect(all('h2').map((h) => h.textContent)).toContain("What's included");
+    await click(step('page'));
+    expect(q('[aria-label="What is included"]')).toBeNull();
+    // The live preview still shows the member-facing checklist; only the editing section moved.
+    expect(all('h2').map((h) => h.textContent)).not.toContain("What's included");
+  });
+
+  it('edits the included lines from the Offer step and saves them', async () => {
+    const { ui, save } = wizard({ course: textCourse({ included: ['Lessons'] }) });
+    await mount(ui);
+    await click(need(byName('button', 'Add a line'), 'add'));
+    await typeInto(need(q('[aria-label="Included item 2"]'), 'second line'), 'A certificate');
+    await click(need(byName('button', 'Save draft'), 'save'));
+    expect((save.mock.calls[0] as unknown as [ProductCourse])[0].included).toEqual(['Lessons', 'A certificate']);
   });
 
   it('adds and removes people on the access list from the member search', async () => {

@@ -86,7 +86,6 @@ const AdminLibraryCourses: React.FC = () => {
       )}
 
       <AdminPageHeader
-        eyebrow="Platform library"
         title={`${courses.length} library course${courses.length === 1 ? '' : 's'}`}
         action={<AdminPrimaryButton onClick={handleNewCourse} icon={<Plus size={16} />}>New library course</AdminPrimaryButton>}
       />

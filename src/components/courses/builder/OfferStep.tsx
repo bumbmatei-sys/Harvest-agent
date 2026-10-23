@@ -1,56 +1,26 @@
 'use client';
 
-import { useState } from 'react';
-
 import { ImageUpload } from '@/components/ImageUpload';
 import { Input } from '@/components/ui/input';
-import { Segmented, type Option } from '@/components/email/kit';
 import { AccessSection } from '@/components/courses/builder/AccessSection';
+import { IncludedSection } from '@/components/courses/builder/IncludedSection';
 import { Card, FieldRow, StepSection } from '@/components/courses/builder/kit';
-import { PAID_COMING_LATER } from '@/lib/courses/page';
 import type { MemberList } from '@/lib/courses/members';
-import type { CommunityRef, CoursePriceMode, ProductCourse } from '@/types/course-product.types';
+import type { CommunityRef, ProductCourse } from '@/types/course-product.types';
 
-const PRICE_OPTIONS: readonly Option<CoursePriceMode>[] = [
-  { value: 'free', label: 'Free' },
-  { value: 'one-time', label: 'One-time' },
-  { value: 'membership', label: 'Membership' },
-];
-
-const toAmount = (raw: string): number | undefined => {
-  const n = Number(raw);
-  return raw.trim() !== '' && Number.isFinite(n) && n >= 0 ? n : undefined;
-};
-
-/** Keeps what was typed ("19." on the way to "19.99") while handing the parent only the parsed amount. */
-function AmountInput({ id, value, onChange, placeholder }: {
-  id: string;
-  value: number | undefined;
-  onChange: (amount: number | undefined) => void;
-  placeholder: string;
-}) {
-  const [raw, setRaw] = useState<string | null>(null);
-  return (
-    <Input
-      id={id}
-      inputMode="decimal"
-      value={raw !== null && toAmount(raw) === value ? raw : (value ?? '')}
-      onChange={(e) => { setRaw(e.target.value); onChange(toAmount(e.target.value)); }}
-      onBlur={() => setRaw(null)}
-      placeholder={placeholder}
-    />
-  );
-}
-
-/** Offer: what it is called, what it costs (stored, never charged), and who gets in. */
+/**
+ * Offer: what it is called, what is included, and who gets in.
+ *
+ * There is no price here. Courses are free until checkout exists, so the price
+ * fields are not drawn; `course.price` stays in the data model untouched, and a
+ * course that already carries one keeps it.
+ */
 export function OfferStep({ course, onChange, communities, loadMembers }: {
   course: ProductCourse;
   onChange: (patch: Partial<ProductCourse>) => void;
   communities: readonly CommunityRef[];
   loadMembers: () => Promise<MemberList>;
 }) {
-  const price = course.price ?? { mode: 'free' as const };
-  const paid = price.mode !== 'free';
   return (
     <>
       <StepSection title="Name" description="What people see first.">
@@ -76,39 +46,7 @@ export function OfferStep({ course, onChange, communities, loadMembers }: {
         </Card>
       </StepSection>
 
-      <StepSection title="Price" description="Free today. You can set a price now and it will be ready when paid checkout arrives.">
-        <Card>
-          <FieldRow label="How people pay" help="One payment for lasting access, or a membership that bills on a schedule.">
-            <Segmented
-              label="How people pay"
-              value={price.mode}
-              options={PRICE_OPTIONS}
-              onChange={(mode) => onChange({ price: mode === 'free' ? { mode } : { ...price, mode } })}
-            />
-          </FieldRow>
-          {paid && (
-            <>
-              <FieldRow label="Price in USD" htmlFor="course-price">
-                <AmountInput
-                  id="course-price"
-                  value={price.amountUsd}
-                  onChange={(amountUsd) => onChange({ price: { ...price, amountUsd } })}
-                  placeholder="25"
-                />
-              </FieldRow>
-              <FieldRow label="Was price" help="Optional. Shown crossed out beside the price." htmlFor="course-was-price">
-                <AmountInput
-                  id="course-was-price"
-                  value={price.wasAmountUsd}
-                  onChange={(wasAmountUsd) => onChange({ price: { ...price, wasAmountUsd } })}
-                  placeholder="None"
-                />
-              </FieldRow>
-              <p role="status" className="bg-surface-gold px-4 py-3 text-sm text-strong" data-checkout-later>{PAID_COMING_LATER}</p>
-            </>
-          )}
-        </Card>
-      </StepSection>
+      <IncludedSection course={course} onChange={onChange} />
 
       <AccessSection course={course} onChange={onChange} communities={communities} loadMembers={loadMembers} />
     </>

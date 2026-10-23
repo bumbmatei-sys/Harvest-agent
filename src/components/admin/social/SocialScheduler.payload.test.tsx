@@ -274,7 +274,8 @@ describe('SocialScheduler payload', () => {
     const mismatch = vi.fn();
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
-      const html = renderToString(<SocialScheduler knownEntitled onUpgrade={() => {}} />);
+      const unnamed = { ...new MockSocialClient('preview', new Date(Date.UTC(2024, 2, 15, 12))).load(), timezone: 'UTC', entitled: true };
+      const html = renderToString(<SocialScheduler initial={unnamed} initialView="compose" onUpgrade={() => {}} />);
       expect(spy).not.toHaveBeenCalled();
       expect(html.replace(/<!-- -->/g, '')).toContain('Timezone UTC');
 
@@ -284,7 +285,7 @@ describe('SocialScheduler payload', () => {
       server.innerHTML = html;
       let hydrated: Root | undefined;
       await act(async () => {
-        hydrated = hydrateRoot(server, <SocialScheduler knownEntitled onUpgrade={() => {}} />, { onRecoverableError: mismatch });
+        hydrated = hydrateRoot(server, <SocialScheduler initial={unnamed} initialView="compose" onUpgrade={() => {}} />, { onRecoverableError: mismatch });
       });
       expect(mismatch).not.toHaveBeenCalled();
       expect(consoleError.mock.calls.filter((call) => /Hydration failed|did not match|Text content does not match|hydrat\w* error/i.test(String(call[0])))).toEqual([]);

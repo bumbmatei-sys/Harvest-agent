@@ -23,13 +23,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { TabsContent } from '@/components/ui/tabs';
-import {
-  SegmentedTabs,
-  SegmentedTabsList,
-  SegmentedTabsTrigger,
-} from '@/components/admin-shell/SegmentedTabs';
+import { SegmentedTabs, SegmentedTabsList, SegmentedTabsTrigger } from '@/components/admin-shell/SegmentedTabs';
+import { PageHeader, PageTabs } from '@/components/admin-shell/PageHeader';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
@@ -193,17 +191,22 @@ function targetsFor(
 export function SocialScheduler({
   initial,
   initialView = 'compose',
-  knownEntitled = false,
+  planLoading = false,
   onUpgrade,
 }: {
   initial?: SocialScreenData;
   initialView?: SocialView;
-  /** The shell already knows the add-on or the super-admin bypass, so the composer can render before accounts arrive. */
-  knownEntitled?: boolean;
+  /**
+   * The shell has not resolved the tenant's plan yet. The gate shows a loading
+   * state until it has; it never guesses, because a guess that the server then
+   * overrules is the flash this prop exists to prevent.
+   */
+  planLoading?: boolean;
   onUpgrade: () => void;
 }) {
   const [data, setData] = useState<SocialScreenData | null>(initial ?? null);
   const [failed, setFailed] = useState(false);
+  const [forbidden, setForbidden] = useState<string | null>(null);
   const [view, setView] = useState<SocialView>(initialView);
   const [content, setContent] = useState(initial?.posts.find((post) => post.status === 'draft')?.content ?? '');
   const [selected, setSelected] = useState<string[]>(
@@ -246,14 +249,24 @@ export function SocialScheduler({
           return;
         }
         if (response.status === 403) {
-          setData({
-            entitled: false,
-            sample: false,
-            profileId: '',
-            timezone: 'UTC',
-            accounts: [],
-            posts: [],
-          });
+          // A 403 is three different answers: this ministry does not hold the
+          // scheduler, this person may not use it, or the request named another
+          // ministry. Only the first is an upgrade wall; showing it for the others
+          // told a Ministry-plan admin to buy something their plan already includes.
+          const body = await response.json().catch(() => ({}));
+          if (cancelled) return;
+          if (body?.error === 'social_scheduler_not_entitled') {
+            setData({
+              entitled: false,
+              sample: false,
+              profileId: '',
+              timezone: 'UTC',
+              accounts: [],
+              posts: [],
+            });
+          } else {
+            setForbidden(typeof body?.error === 'string' ? body.error : 'forbidden');
+          }
           return;
         }
         if (!response.ok) {
@@ -348,9 +361,30 @@ export function SocialScheduler({
     );
   }
 
-  const accountsLoading = !data && knownEntitled && !initial;
-  if (!data && !accountsLoading) {
-    return <p className="p-4 text-sm text-faint">Loading social accounts.</p>;
+  if (forbidden) {
+    return (
+      <Card className="m-4 lg:m-0" data-testid="social-forbidden">
+        <CardHeader>
+          <CardTitle>Social scheduling is not open to this account</CardTitle>
+          <CardDescription>
+            {forbidden === 'Admin access required'
+              ? 'Your plan includes it, but only an admin with full access can open it. Ask the ministry owner, or verify your email address and sign in again.'
+              : 'This request was refused for this account. Nothing was scheduled, and nothing was published.'}
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  if (!data || planLoading) {
+    return (
+      <div className="flex w-full flex-col gap-4 p-4 lg:p-0" data-testid="social-gate-loading" role="status" aria-label="Loading social scheduling">
+        <span className="sr-only">Loading social accounts.</span>
+        <Skeleton className="h-10 w-40" />
+        <Skeleton className="h-9 w-72" />
+        <Skeleton className="h-64 w-full max-w-[640px]" />
+      </div>
+    );
   }
 
   if (data && !data.entitled && !data.sample) {
@@ -497,12 +531,23 @@ export function SocialScheduler({
 
   return (
     <div className="flex w-full flex-col gap-6 p-4 lg:p-0" data-testid="social-scheduler">
-      <header>
-        <h1 className="font-display text-4xl font-light tracking-tight text-strong">Social</h1>
-        <p className="mt-2 text-sm text-faint">
-          Schedule a post to the accounts this ministry has connected. Timezone {zone}.
-        </p>
-      </header>
+      <PageHeader
+        title="Social"
+        subtitle={`Schedule a post to the accounts this ministry has connected. Timezone ${zone}.`}
+        tabs={(
+          <PageTabs
+            label="Social sections"
+            value={view}
+            onValueChange={setView}
+            items={[
+              { value: 'accounts', label: 'Accounts' },
+              { value: 'compose', label: 'Compose' },
+              { value: 'calendar', label: 'Calendar' },
+              { value: 'queue', label: 'Queue' },
+            ]}
+          />
+        )}
+      />
       {data?.sample && (
         <p className="rounded-lg border border-line bg-card px-4 py-3 text-sm text-faint" data-testid="social-sample-banner">
           Sample accounts and posts. Nothing here is a real ministry, and nothing is published.
@@ -511,14 +556,6 @@ export function SocialScheduler({
       {notice && <p className="text-sm text-faint" role="status">{notice}</p>}
 
       <SegmentedTabs value={view} onValueChange={(next) => setView(next as SocialView)}>
-        <SegmentedTabsList>
-          {(['accounts', 'compose', 'calendar', 'queue'] as const).map((id) => (
-            <SegmentedTabsTrigger key={id} value={id} className={CONTROL}>
-              {id === 'accounts' ? 'Accounts' : id === 'compose' ? 'Compose' : id === 'calendar' ? 'Calendar' : 'Queue'}
-            </SegmentedTabsTrigger>
-          ))}
-        </SegmentedTabsList>
-
         <TabsContent value="accounts" className="mt-4">
           <AccountsPanel accounts={accounts} onConnect={connect} />
         </TabsContent>
@@ -531,9 +568,6 @@ export function SocialScheduler({
               <CardDescription>One text, then the accounts that should carry it.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
-              {accountsLoading && (
-                <p className="text-sm text-faint" data-testid="social-accounts-loading">Loading social accounts.</p>
-              )}
               <Textarea
                 value={content}
                 onChange={(event) => setContent(event.target.value)}
@@ -661,8 +695,8 @@ export function SocialScheduler({
                 />
               </label>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" className={ACTION_PRIMARY} disabled={saving || videoOnlySelected || accountsLoading} onClick={() => schedule(false)}>Schedule</Button>
-                <Button type="button" variant="secondary" className={ACTION_SECONDARY} disabled={saving || videoOnlySelected || accountsLoading} onClick={() => schedule(true)}>Post now</Button>
+                <Button type="button" className={ACTION_PRIMARY} disabled={saving || videoOnlySelected} onClick={() => schedule(false)}>Schedule</Button>
+                <Button type="button" variant="secondary" className={ACTION_SECONDARY} disabled={saving || videoOnlySelected} onClick={() => schedule(true)}>Post now</Button>
               </div>
               {videoOnlySelected && (
                 <p className="text-sm text-faint" data-testid="youtube-needs-video">

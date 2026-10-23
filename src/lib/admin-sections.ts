@@ -62,6 +62,8 @@ const ADMIN_SECTION_TABLE = [
   ['dashboard', 'dashboard'],
   ['churches', 'churches'],
   ['courses', 'courses'],
+  // The Products page: every product the ministry sells or gives, with the type picker.
+  ['products', 'products'],
   ['blog', 'blog'],
   ['ai', 'ai-knowledge'],
   ['newsletter', 'newsletter'],

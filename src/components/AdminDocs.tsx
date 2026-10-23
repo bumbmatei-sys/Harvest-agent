@@ -22,7 +22,7 @@ import type { Doc, DocFolder, DocsRead } from '../hooks/queries/useDocsQueries';
 import { exportToPDF, exportToDOCX, exportToMarkdown } from '../utils/doc-export';
 import { markdownToHtml, titleFromMarkdown } from '../utils/markdown-import';
 import RichTextEditor, { COMPACT_PROSE_CLASS } from './RichTextEditor';
-import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
+import { useAdminHeader, useSubviewHeader, HeaderActionButton } from './AdminScreenHeader';
 import { Sidebar, SidebarProvider } from './ui/sidebar';
 import {
   DropdownMenu,
@@ -620,11 +620,13 @@ function phaseFor(
 interface AdminDocsProps {
   /** Deep-link: open this doc on mount (e.g. from a chat attachment card). */
   initialDocId?: string;
+  /** Deep-link: open this board (folder) in the tree, from the sidebar's board list. */
+  initialFolderId?: string;
   /** Called once the deep-linked doc has been opened, to clear the URL param. */
   onItemConsumed?: () => void;
 }
 
-const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) => {
+const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, initialFolderId, onItemConsumed }) => {
   const { setHeaderAction, setHeaderHidden, setNavHidden } = useAdminHeader();
   const queryClient = useQueryClient();
   // Fall back to the platform tenant for a super admin if the store value is
@@ -736,10 +738,18 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
   // Hold the open note's folder chain open so the tree shows where the note in
   // the editor lives — including when it was reached from ⌘K rather than by
   // walking the folders.
+  const [focusFolderId, setFocusFolderId] = useState<string | null>(null);
   const revealFolderIds = useMemo(
-    () => folderPathIds(openDoc?.folderId, folders),
-    [openDoc?.folderId, folders],
+    () => folderPathIds(focusFolderId ?? openDoc?.folderId, folders),
+    [focusFolderId, openDoc?.folderId, folders],
   );
+  // A board picked in the sidebar is held open until another note is opened.
+  useEffect(() => { setFocusFolderId(null); }, [openDoc?.id]);
+  useEffect(() => {
+    if (!initialFolderId || !folders.some(f => f.id === initialFolderId)) return;
+    setFocusFolderId(initialFolderId);
+    onItemConsumed?.();
+  }, [initialFolderId, folders]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useQuickSwitcherShortcut(useCallback(() => setSwitcherOpen(true), []));
 
@@ -1056,6 +1066,10 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
     setOpenDoc(null);
     setFocusMode(false);
   };
+
+  // The way back to the notes list is the top bar's breadcrumb (Notes > this note), and the
+  // back chevron on a phone, not a button inside the editor.
+  useSubviewHeader(openDoc ? { title: editTitle.trim() || openDoc.title?.trim() || 'Untitled', onBack: () => { void closeEditor(); } } : null);
 
   const createDoc = async (folderId?: string | null) => {
     try {
@@ -1600,12 +1614,6 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
               on the right is a row of the menu now. */}
           <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-3">
             <div className="flex min-w-0 items-center gap-2">
-              <button
-                onClick={closeEditor}
-                className="flex shrink-0 items-center gap-1.5 text-[13px] font-semibold text-gold transition-opacity hover:opacity-80"
-              >
-                <ArrowLeft size={15} /> Notes
-              </button>
               {/*
                  THE-346 · THE EXPAND CONTROL MOVED HERE, and "here" is the
                 point. The founder: *"The expand button should be in the left not
