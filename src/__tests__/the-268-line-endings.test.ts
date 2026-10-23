@@ -340,12 +340,7 @@ describe('binaries are not treated as text', () => {
       // APPENDED BY the 23 Oct UI polish PR, nothing above removed. One shot per changed
       // screen: sidebar, community menu, header standard, Products, newsletter, Courses and
       // the public subscribe page, at 1440 (and two at 390). Seeded Grace Campus only.
-      'docs/redesign/ui-polish-oct23/01-sidebar-public.png',
-      'docs/redesign/ui-polish-oct23/02-sidebar-people-note-boards.png',
-      'docs/redesign/ui-polish-oct23/03-community-dropdown.png',
-      'docs/redesign/ui-polish-oct23/04-breadcrumb-products-courses.png',
       'docs/redesign/ui-polish-oct23/05-products-page.png',
-      'docs/redesign/ui-polish-oct23/06-new-product-picker.png',
       'docs/redesign/ui-polish-oct23/07-header-standard-courses-accounting-events-services.png',
       'docs/redesign/ui-polish-oct23/08-newsletter-overview.png',
       'docs/redesign/ui-polish-oct23/09-newsletter-broadcasts.png',
@@ -357,6 +352,14 @@ describe('binaries are not treated as text', () => {
       'docs/redesign/ui-polish-oct23/15-public-subscribe-page.png',
       'docs/redesign/ui-polish-oct23/16-mobile-newsletter-header.png',
       'docs/redesign/ui-polish-oct23/17-mobile-header-standard.png',
+      'docs/redesign/ui-polish-oct23/18-sidebar-people-boards-folded.png',
+      'docs/redesign/ui-polish-oct23/19-sidebar-boards-unfolded.png',
+      'docs/redesign/ui-polish-oct23/20-sidebar-board-opened-3-newest-and-see-all.png',
+      'docs/redesign/ui-polish-oct23/21-board-grid.png',
+      'docs/redesign/ui-polish-oct23/22-all-notes-grid.png',
+      'docs/redesign/ui-polish-oct23/23-community-menu-default-community.png',
+      'docs/redesign/ui-polish-oct23/24-new-product-picker-community-and-more.png',
+      'docs/redesign/ui-polish-oct23/25-new-board-dialog.png',
       'mockups/screenshot-canvas.png',
       'mockups/screenshot-integrations.png',
       'mockups/screenshot-newsletter.png',

@@ -29,11 +29,17 @@ describe('the sidebar, as the founder specified it', () => {
     expect(groups[0]).toEqual(['social', 'newsletter', 'livestream', 'blog']);
   });
 
-  it('People: People (CRM, Signups, Campuses, Services), Giving (Fundraising, Donations, Accounting), Notes', () => {
+  it('People: People (CRM, Signups, Campuses, Services), Giving (Fundraising, Donations, Accounting), then Platform; Notes is not under Giving', () => {
     const groups = shape('people');
     expect(groups[0]).toEqual({ label: 'People', items: ['crm', 'signups', 'churches', 'services'] });
     expect(groups[1]).toEqual({ label: 'Giving', items: ['fundraising', 'donations', 'accounting'] });
-    expect(groups[2]).toEqual({ label: '', items: ['docs'] });
+    expect(groups[2].label).toBe('Platform');
+    expect(groups.flatMap((g) => g.items)).not.toContain('docs');
+  });
+
+  it('Notes live in the Boards section, which the sidebar draws itself: its trail reads Boards > ...', () => {
+    expect(sectionForTab('docs')).toBe('Boards');
+    expect(sideForTab('docs')).toBe('people');
   });
 
   it('Community has no sidebar row on either side', () => {
@@ -58,9 +64,8 @@ describe('the sidebar, as the founder specified it', () => {
     expect(SECTION_LANDING_TAB.Products).toBe('products');
   });
 
-  it('Products and Notes are single entries with no heading over them', () => {
+  it('Products is a single entry with no heading over it', () => {
     expect(sectionForTab('products')).toBeNull();
-    expect(sectionForTab('docs')).toBeNull();
   });
 
   it('every row is reachable from exactly one side', () => {

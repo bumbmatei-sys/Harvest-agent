@@ -1065,7 +1065,7 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ are byte-identical'
     // APPENDED BY the settings popup round 4b, nothing above removed or rewritten. The desktop account menu drops Billing when Settings can open. The phone menu is unchanged. No permission gate moved.
     '44dba8fb732054ce3e491cc479dc09fec134a57b2124e944050564e98f138b65',
     // APPENDED BY UI polish, 23 Oct (THE-377), nothing above removed or rewritten. AdminDashboard.tsx: Sidebar regrouped (Channels, Engage, Products; People, Giving, Notes boards), the Community menu in the top bar, clickable breadcrumbs, and a Products tab that mounts AdminCourses. Every tab keeps its permission and plan gate; no route or write path moved.
-    '54553f44e3f886679f293b098921834ef70ee265d8e8671e670757f91420d503',
+    '2b67b7456e1c32369bc8b41eb55782e8cd72ef63957018f4c0193bcfb2d7f89f',
   ];
 
   it('AdminDashboard.tsx is untouched by THIS ticket — others legitimately own it', () => {

@@ -619,21 +619,13 @@ function phaseFor(
 // ─── Main AdminDocs ──────────────────────────────────────────────
 
 interface AdminDocsProps {
-  /**
-   * Deep-link: open this doc on mount (e.g. from a chat attachment card). A
-   * `folder:<id>` value opens that board in the tree instead, which is how the
-   * sidebar's board list reaches it.
-   */
+  /** Deep-link: open this doc on mount (e.g. from a chat attachment card). */
   initialDocId?: string;
   /** Called once the deep-linked doc has been opened, to clear the URL param. */
   onItemConsumed?: () => void;
 }
 
-const BOARD_LINK_PREFIX = 'folder:';
-
-const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId: linkedId, onItemConsumed }) => {
-  const initialFolderId = linkedId?.startsWith(BOARD_LINK_PREFIX) ? linkedId.slice(BOARD_LINK_PREFIX.length) : undefined;
-  const initialDocId = initialFolderId === undefined ? linkedId : undefined;
+const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) => {
   const { setHeaderAction, setHeaderHidden, setNavHidden } = useAdminHeader();
   const queryClient = useQueryClient();
   // Fall back to the platform tenant for a super admin if the store value is
@@ -745,18 +737,10 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId: linkedId, onItemCon
   // Hold the open note's folder chain open so the tree shows where the note in
   // the editor lives — including when it was reached from ⌘K rather than by
   // walking the folders.
-  const [focusFolderId, setFocusFolderId] = useState<string | null>(null);
   const revealFolderIds = useMemo(
-    () => folderPathIds(focusFolderId ?? openDoc?.folderId, folders),
-    [focusFolderId, openDoc?.folderId, folders],
+    () => folderPathIds(openDoc?.folderId, folders),
+    [openDoc?.folderId, folders],
   );
-  // A board picked in the sidebar is held open until another note is opened.
-  useEffect(() => { setFocusFolderId(null); }, [openDoc?.id]);
-  useEffect(() => {
-    if (!initialFolderId || !folders.some(f => f.id === initialFolderId)) return;
-    setFocusFolderId(initialFolderId);
-    onItemConsumed?.();
-  }, [initialFolderId, folders]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useQuickSwitcherShortcut(useCallback(() => setSwitcherOpen(true), []));
 

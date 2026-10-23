@@ -439,7 +439,7 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     // APPENDED BY the settings popup round 4b, nothing above removed or rewritten.
     ['44dba8fb732054ce3e491cc479dc09fec134a57b2124e944050564e98f138b65',
       `settings popup round 4b - the desktop account menu drops Billing & Payments when the admin can open Settings. Plan & billing inside the popup stays the only desktop route. The phone menu is unchanged, and an admin who can bill but cannot open Settings keeps the row. No permission gate, plan gate, nav id, route, price or checkout moved.`],
-    ['54553f44e3f886679f293b098921834ef70ee265d8e8671e670757f91420d503', 'UI polish, 23 Oct (THE-377) - AdminDashboard.tsx. Sidebar regrouped (Channels, Engage, Products; People, Giving, Notes boards), the Community menu in the top bar, clickable breadcrumbs, and a Products tab that mounts AdminCourses. Every tab keeps its permission and plan gate; no route or write path moved.'],
+    ['2b67b7456e1c32369bc8b41eb55782e8cd72ef63957018f4c0193bcfb2d7f89f', 'UI polish, 23 Oct (THE-377) - AdminDashboard.tsx. Sidebar regrouped (Channels, Engage, Products; People, Giving, Notes boards), the Community menu in the top bar, clickable breadcrumbs, and a Products tab that mounts AdminCourses. Every tab keeps its permission and plan gate; no route or write path moved.'],
   ],
 };
 

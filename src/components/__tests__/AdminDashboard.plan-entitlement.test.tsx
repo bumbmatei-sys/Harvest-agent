@@ -740,7 +740,10 @@ describe('no nav item is shown by a bypass that skips its feature check', () => 
     // moves this total.
     const kbGate = (CODE.match(/isKnowledgeBaseEnabled\(/g) ?? []).length;
     expect(kbGate, 'the knowledge-base screen stopped sharing its one predicate').toBe(1);
-    expect(gateCount + kbGate).toBe(GATED_TABS.length + 1 + 1 + 1);
+    // APPENDED BY the 23 Oct UI polish: ONE more. A board's grid is a second screen of the Notes
+    // tab, and it asks the Notes tab's own cell (`features?.docs`) through the same helper, so it is
+    // refused to exactly the tiers the Notes editor is. Nothing about the helper itself moved.
+    expect(gateCount + kbGate).toBe(GATED_TABS.length + 1 + 1 + 1 + 1);
   });
 
   it('builds the NAV gate from the render gate plus exactly one term: the free tier', () => {

@@ -2014,15 +2014,8 @@ describe('no community query or write path changed', () => {
    * have pushed every channel row against the screen edge.
    */
   const THE_331_COMMUNITY = {
-    // UI polish, 23 Oct (THE-377) - RE-RECORDED, previous values kept here:
-    //   strippedSha:   3ea9a952c2c7645c1e0e1de628f57159367ec12ece1b9a42bdb4bcac236f21a0
-    //   strippedLines: 1367
-    // What moved is the deep link from the top-bar Community menu and nothing else: three props
-    // (`initialChannelId`, `startCreating`, `onItemConsumed`) and two effects that open a channel the
-    // list already holds, or call the existing `openNewChannel`. No read, write, handler or import moved,
-    // and `firestorePathsOf` above still passes unedited against the pre-PR revision.
-    strippedSha: '1669d4aaf189672983cb2cfa55ae1d5d1d88ea43e82e1cdf31e6caee834d0484',
-    strippedLines: 1386,
+    strippedSha: '3ea9a952c2c7645c1e0e1de628f57159367ec12ece1b9a42bdb4bcac236f21a0',
+    strippedLines: 1367,
     /**
      * The pre-PR list minus the one path that moved to attach-records.ts.
      * ⚠️ A FUNCTION, not a value: `PRE_PR` is loaded in `beforeAll`, so a

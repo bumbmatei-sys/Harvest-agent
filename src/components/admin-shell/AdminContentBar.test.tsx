@@ -2,6 +2,9 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
 import { AdminContentBar, CommunityMenu } from './AdminContentBar';
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -35,11 +38,10 @@ describe('the top bar breadcrumb', () => {
     expect(host.textContent).toContain('Channels');
   });
 
-  it('has no Back button and no "Open member app" button', async () => {
+  it('has no Back button: the trail is the way back', async () => {
     await mount(<AdminContentBar crumbs={[{ label: 'Products', onClick: () => {} }, { label: 'Courses' }]} />);
     const labels = [...host.querySelectorAll('button')].map((b) => (b.getAttribute('aria-label') || b.textContent || '').trim());
     expect(labels).not.toContain('Back');
-    expect(host.textContent).not.toContain('Open member app');
   });
 });
 
@@ -50,49 +52,34 @@ describe('the Community menu', () => {
   };
   const menuItems = () => [...document.querySelectorAll('[role="menuitem"]')].map((e) => e.textContent?.trim());
 
-  it('lists the current communities and ends with "Create new community"', async () => {
-    const onOpen = vi.fn();
-    const onCreate = vi.fn();
-    await mount(<CommunityMenu items={[{ id: 'a', name: 'Young adults' }, { id: 'b', name: 'Prayer team' }]} loaded onOpen={onOpen} onCreate={onCreate} />);
+  it('lists the one default community, then a "Create new community" row that is not available yet', async () => {
+    await mount(<CommunityMenu onOpenDefault={() => {}} />);
     await open();
-    expect(menuItems()).toEqual(['Young adults', 'Prayer team', 'Create new community']);
-    await act(async () => { (document.querySelectorAll('[role="menuitem"]')[1] as HTMLElement).click(); });
-    expect(onOpen).toHaveBeenCalledWith('b');
+    expect(menuItems()).toEqual(['Default community', 'Create new communitySoon']);
+    const create = document.querySelector<HTMLElement>('[data-community-create]')!;
+    expect(create.hasAttribute('data-disabled') || create.getAttribute('aria-disabled') === 'true').toBe(true);
   });
 
-  it('"Create new community" is the last item and runs onCreate', async () => {
-    const onCreate = vi.fn();
-    await mount(<CommunityMenu items={[{ id: 'a', name: 'Young adults' }]} loaded onOpen={() => {}} onCreate={onCreate} />);
+  it('choosing the default community opens the member app', async () => {
+    const onOpenDefault = vi.fn();
+    await mount(<CommunityMenu onOpenDefault={onOpenDefault} />);
     await open();
-    const items = [...document.querySelectorAll('[role="menuitem"]')] as HTMLElement[];
-    expect(items.at(-1)?.textContent).toContain('Create new community');
-    await act(async () => { items.at(-1)!.click(); });
-    expect(onCreate).toHaveBeenCalledTimes(1);
+    await act(async () => { document.querySelector<HTMLElement>('[data-community-default]')!.click(); });
+    expect(onOpenDefault).toHaveBeenCalledTimes(1);
   });
 
-  it('says "No communities yet" only once the list has loaded, and "Loading" before', async () => {
-    await mount(<CommunityMenu items={[]} loaded={false} onOpen={() => {}} onCreate={() => {}} />);
-    await open();
-    expect(document.body.textContent).toContain('Loading communities');
-    expect(document.body.textContent).not.toContain('No communities yet');
-    await act(async () => root.unmount());
-    root = createRoot(host);
-    await mount(<CommunityMenu items={[]} loaded onOpen={() => {}} onCreate={() => {}} />);
-    await open();
-    expect(document.body.textContent).toContain('No communities yet');
+  it('🔴 the trigger is a native button, not `render={<Button />}`: a function component there leaves the menu invisible', () => {
+    const source = readFileSync(path.join(__dirname, 'AdminContentBar.tsx'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+    const trigger = source.slice(source.indexOf('<DropdownMenuTrigger'), source.indexOf('</DropdownMenuTrigger>'));
+    expect(trigger).toContain('buttonVariants(');
+    expect(trigger).not.toContain('render=');
   });
 
-  it('shows a failed read as a failure, not as an empty list, and still offers Create', async () => {
-    await mount(<CommunityMenu items={[]} loaded error="Communities could not be loaded." onOpen={() => {}} onCreate={() => {}} />);
-    await open();
-    expect(document.body.textContent).toContain('Communities could not be loaded.');
-    expect(document.body.textContent).not.toContain('No communities yet');
-    expect(menuItems()).toContain('Create new community');
-  });
-
-  it('the bar mounts the menu in place of the old member-app button', async () => {
-    await mount(<AdminContentBar crumbs={[{ label: 'Home' }]} community={<CommunityMenu items={[]} loaded onOpen={() => {}} onCreate={() => {}} />} />);
+  it('the bar mounts the menu on the right, beside search', async () => {
+    await mount(<AdminContentBar crumbs={[{ label: 'Home' }]} community={<CommunityMenu onOpenDefault={() => {}} />} />);
     expect(host.querySelector('[data-community-menu]')?.textContent).toContain('Community');
-    expect(host.textContent).not.toContain('Open member app');
+    expect(host.querySelector('[data-admin-search-pill]')).toBeTruthy();
   });
 });

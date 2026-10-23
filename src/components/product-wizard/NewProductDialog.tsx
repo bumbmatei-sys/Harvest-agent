@@ -10,11 +10,13 @@ export interface ProductTypeOption {
   id: string;
   label: string;
   description: string;
-  /** The "Members get" line. */
-  membersGet: string;
+  /** The "Members get" line. A placeholder card has none. */
+  membersGet?: string;
   icon: ReactNode;
   /** A small tag beside the name, e.g. "Start here". */
   tag?: string;
+  /** A card that is not a type at all (the "more coming soon" note): no badge, never picked. */
+  placeholder?: boolean;
   /** Types that are not built yet are listed so the roadmap is visible, and cannot be picked. */
   available: boolean;
 }
@@ -56,10 +58,10 @@ export function NewProductDialog({ open, onOpenChange, types, onSelect, title = 
                   </span>
                   {t.available
                     ? t.tag && <Badge variant="secondary">{t.tag}</Badge>
-                    : <Badge variant="outline">Coming soon</Badge>}
+                    : t.placeholder ? null : <Badge variant="outline">Coming soon</Badge>}
                 </span>
                 <span className="text-sm text-muted">{t.description}</span>
-                <span className="text-sm text-strong"><span className="text-muted">Members get: </span>{t.membersGet}</span>
+                {t.membersGet ? <span className="text-sm text-strong"><span className="text-muted">Members get: </span>{t.membersGet}</span> : null}
               </Button>
             </li>
           ))}

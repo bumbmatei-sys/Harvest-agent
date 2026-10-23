@@ -358,6 +358,22 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
     expect(navigate, 'the Settings row navigated nowhere').toHaveBeenCalledWith('/admin/settings');
     reached.add('settings');
 
+    /* UI polish, 23 Oct (THE-377) — NOTES IS WALKED TOO. Notes left the rail for the Boards section
+       the People sidebar draws under its groups, so `docs` is reachable only if that section really
+       unfolds and its "All notes" row really navigates. */
+    await showSide('People');
+    const boardsToggle = container.querySelector<HTMLElement>('[data-boards-toggle]');
+    expect(boardsToggle, 'the People sidebar has no Boards section').toBeTruthy();
+    await act(async () => { boardsToggle!.click(); });
+    await flush();
+    const allNotes = container.querySelector<HTMLElement>('[data-board-all]');
+    expect(allNotes, 'the Boards section has no All notes row').toBeTruthy();
+    navigate.mockClear();
+    await act(async () => { allNotes!.click(); });
+    await flush();
+    expect(navigate, 'All notes navigated nowhere').toHaveBeenCalledWith('/admin/docs/board:all');
+    reached.add('docs');
+
     const named = new Set<string>([...groups.flatMap((g) => g.ids), 'dashboard', 'settings']);
     /* 🔵 THE-335 ADDED TWO MORE, on identical terms and for the same reason.
        `newsletter` and `sms` are behind their own master switches now
@@ -849,8 +865,6 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
        pane alone. No nav, tab id, read, write or permission gate moved, which is
        what THE-332 pins this file for. */
     'fedb1e028e2c74d0184411ed651c922a280369c7b549fff8943706b8c03257c9',
-    // APPENDED BY UI polish, 23 Oct (THE-377), nothing above removed or rewritten. AdminCommunity.tsx: Deep-link props (initialChannelId, startCreating, onItemConsumed) for the top-bar Community menu. No channel query, write or permission path moved.
-    '903d3b85e2445db238c1328c35e49f37ae0c601241e29e77bcb5d5e27c5b6b12',
   ],
   /* AN ACCEPTED SET, APPENDED TO, NOT ONE VALUE SUBSTITUTED - the same shape and
      the same reason as MORE_GROUPS_ACCEPTED above. CI runs against

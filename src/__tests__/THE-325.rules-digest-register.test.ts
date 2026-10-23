@@ -796,7 +796,7 @@ const CONTENT_ASSERTING_MOVED: Readonly<Record<string, readonly [digest: string,
   // the phase-2 social shots. *.png was already binary. The suite still asserts
   // content.
   'src/__tests__/the-268-line-endings.test.ts': [
-    '4bd41e130cd1a9bd6d5ee8126c88ea143f6c4bde8720f24d8d867860854a54cb',
+    'ab373b2a72824096d8db3d7c7987fc80e80a2ba02ca7e559ef3ea887b1241cbd',
     'THE-377',
     'the 23 Oct UI polish appends its proof PNGs under docs/redesign/ui-polish-oct23/. '
       + '*.png was already binary. The suite still asserts file content rather than a digest pin. '

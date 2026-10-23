@@ -86,7 +86,7 @@ describe('shell nav mapping', () => {
     expect(sectionForTab('signups')).toBe('People');
     expect(sectionForTab('churches')).toBe('People');
     expect(sectionForTab('services')).toBe('People');
-    expect(sectionForTab('docs')).toBeNull();
+    expect(sectionForTab('docs')).toBe('Boards');
     expect(sectionForTab('community')).toBeNull();
     expect(sectionForTab('forms')).toBe('Engage');
     expect(sectionForTab('events')).toBe('Engage');
@@ -103,7 +103,7 @@ describe('shell nav mapping', () => {
 
   it('gives every sidebar item its own icon', () => {
     const ids = [
-      'crm', 'signups', 'churches', 'services', 'docs', 'forms',
+      'crm', 'signups', 'churches', 'services', 'forms',
       'events', 'checkin', 'fundraising', 'donations', 'accounting', 'library',
       'tenants', 'inbox', 'affiliate', 'blog', 'ai', 'social',
       'livestream', 'sms', 'newsletter', 'products',
@@ -328,7 +328,7 @@ function ShellBarHarness() {
           onPlaceholder={() => {}}
           accountMenu={<span>Account</span>}
         />
-        <AdminContentBar crumbs={[{ label: 'Home' }]} community={<CommunityMenu items={[]} loaded onOpen={() => {}} onCreate={() => {}} />} />
+        <AdminContentBar crumbs={[{ label: 'Home' }]} community={<CommunityMenu onOpenDefault={() => {}} />} />
       </SidebarProvider>
     </TooltipProvider>
   );

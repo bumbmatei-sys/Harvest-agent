@@ -3,7 +3,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 
 /**
- * A shell widget that reads its own data (the Notes boards, the Community menu)
+ * A shell widget that reads its own data (the Boards section)
  * must not be able to take the whole admin down when that read throws. It
  * renders `fallback` in its place, and logs the cause so the failure is not a
  * silent blank.

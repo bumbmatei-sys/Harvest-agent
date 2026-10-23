@@ -1110,7 +1110,7 @@ describe('12 — AdminDocs.tsx, AdminDashboardHome.tsx, firestore.rules and func
        */
       '8080b494ea2b400358c5bde9756c4737e3742153a49fb924955f85b09e08aca4',
       // APPENDED BY UI polish, 23 Oct (THE-377), nothing above removed or rewritten. AdminDocs.tsx: Shared page header, a folder: deep link that opens a note board from the sidebar, and the Notes back button kept on phones only. No read, write, share or folder-permission path moved.
-      'd51b34735b8c8fb52fdce1aa05c88f6da569ad3816e1cfcc5a9aadbc6f6e32de',
+      '83865fa157b93a76422607b0cf822cf4aa0cd448627a764be08ff31a4374a8c7',
     ],
   };
 

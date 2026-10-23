@@ -5,7 +5,6 @@ import {
   Church,
   ClipboardList,
   ContactRound,
-  FileText,
   Globe,
   GraduationCap,
   HandCoins,
@@ -32,7 +31,7 @@ import {
  * Phase 1 desktop sidebar.
  *
  * Two icon-only sides, matching Eden's workspace / store switch:
- *   people — home, people, giving, notes
+ *   people — home, people, giving (Boards is a section of its own, drawn by the sidebar)
  *   public — channels (social, newsletter, livestream, blog), engage
  *            (forms, events, check-in), products
  *
@@ -104,8 +103,8 @@ interface GroupTemplate {
 
 /**
  * A group with an empty label is drawn without a heading: its items sit flat
- * in the list, the way Home does. Products and Notes are single entries, so a
- * heading over each would only repeat the row beneath it.
+ * in the list, the way Home does. Products is a single entry, so a heading over
+ * it would only repeat the row beneath it.
  */
 const PEOPLE_GROUPS: readonly GroupTemplate[] = [
   {
@@ -128,12 +127,6 @@ const PEOPLE_GROUPS: readonly GroupTemplate[] = [
       { id: 'donations', label: 'Donations', icon: HandCoins },
       { id: 'accounting', label: 'Accounting', icon: Receipt },
     ],
-  },
-  {
-    id: 'notes',
-    label: '',
-    icon: FileText,
-    items: [{ id: 'docs', label: 'Notes', icon: FileText }],
   },
   {
     id: 'platform',
@@ -193,10 +186,13 @@ const GROUPS_BY_SIDE: Record<ShellSideId, readonly GroupTemplate[]> = {
 /**
  * Screens that are not a row in the sidebar but belong to a side and a section.
  * Courses is opened from the Products page, so it has no row of its own, and the
- * top bar reads "Products > Courses" with "Products" as a link back.
+ * top bar reads "Products > Courses" with "Products" as a link back. Notes live
+ * in the Boards section the sidebar draws under the groups, so the top bar reads
+ * "Boards > ...".
  */
 const OFF_SIDEBAR_TABS: readonly { id: string; side: ShellSideId; section: string }[] = [
   { id: 'courses', side: 'public', section: 'Products' },
+  { id: 'docs', side: 'people', section: 'Boards' },
 ];
 
 /** The tab a section crumb links to. Only sections that have a page of their own are links. */

@@ -15,7 +15,7 @@ import { settingsSectionFromLocation } from './settings/settings-nav';
 import AdminUpgradePage from './AdminUpgradePage';
 import AdminBranding from './AdminBranding';
 import { AdminHome } from './admin-shell/AdminHome';
-import { AdminContentBar, type Crumb } from './admin-shell/AdminContentBar';
+import { AdminContentBar, CommunityMenu, type Crumb } from './admin-shell/AdminContentBar';
 import { AdminDesktopSidebar, SIDEBAR_ICON_WIDTH, SIDEBAR_WIDTH } from './admin-shell/AdminDesktopSidebar';
 import { NavEntitlementCatalog } from './admin-shell/NavEntitlementCatalog';
 import { ShellPlaceholder } from './admin-shell/ShellPlaceholder';
@@ -64,8 +64,8 @@ import { isSuperAdmin as checkIsSuperAdmin, hasPlatformOverride, getTenantScope,
 import { useAppStore } from '../store/useAppStore';
 import { useCurrentUser } from '../hooks/queries/useUserQueries';
 import { useTenant as useTenantDoc } from '../hooks/queries/useTenantQueries';
-import { NoteBoardsSection } from './admin-shell/NoteBoards';
-import { CommunityMenuContainer } from './admin-shell/CommunityMenuContainer';
+import { BoardsSection } from './admin-shell/BoardsSection';
+import { BoardGrid } from './boards/BoardGrid';
 import { useTenant } from '../contexts/TenantContext';
 import { Button } from '@/components/ui/button';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
@@ -1058,7 +1058,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // viewer can open the screen it leads to.
   const communityTab = allTabs.some((t) => t.id === 'community');
   const notesTab = allTabs.some((t) => t.id === 'docs');
-  const [activeBoardId, setActiveBoardId] = useState<string | null>(null);
+  // A board's grid is /admin/docs/board:<id> (or board:all); a note is /admin/docs/<noteId>.
+  const BOARD_ROUTE = 'board:';
+  const openBoardId = activeTab === 'docs' && itemId?.startsWith(BOARD_ROUTE) ? itemId.slice(BOARD_ROUTE.length) : null;
+  const [boardTitle, setBoardTitle] = useState('');
 
   // ── The top bar's trail ────────────────────────────────────────────────────
   // Every parent is a link back to it. A section crumb links only where the
@@ -1070,7 +1073,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   if (sectionLabel && sectionLabel !== tabCrumbLabel) {
     crumbs.push({ label: sectionLabel, onClick: landingTab ? () => go(landingTab) : undefined });
   }
-  if (headerOverride) {
+  if (openBoardId) {
+    crumbs.push({ label: boardTitle || 'Board' });
+  } else if (headerOverride) {
     crumbs.push({ label: tabCrumbLabel, onClick: headerOverride.onBack });
     crumbs.push({ label: headerOverride.title });
   } else {
@@ -1101,12 +1106,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           onPlaceholder={(id) => { setShellPlaceholder(id); const next = sideForTab(id); if (next) setShellSide(next); }}
           accountMenu={<MyAccountMenu {...accountMenuProps} variant="rail" hideBillingRow={settingsPopup} />}
           accountLabel={accountMenuProps.displayName || 'Account'}
-          noteBoardsSlot={notesTab ? (
-            <NoteBoardsSection
+          boardsSlot={notesTab ? (
+            <BoardsSection
               tenantId={tenantId}
               enabled={isAuthReady}
-              activeId={activeTab === 'docs' ? activeBoardId : null}
-              onOpen={(id) => { setActiveBoardId(id); navigate(`/admin/docs/folder:${id}`); }}
+              activeId={openBoardId}
+              onOpenBoard={(id) => navigate(`/admin/docs/${BOARD_ROUTE}${id}`)}
+              onOpenNote={(id) => navigate(`/admin/docs/${id}`)}
             />
           ) : undefined}
           footerExtra={showInbox ? (
@@ -1264,13 +1270,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         {lgUp && (
           <AdminContentBar
             crumbs={crumbs}
-            community={communityTab ? (
-              <CommunityMenuContainer
-                tenantId={tenantId}
-                onOpen={(id) => navigate(`/admin/community/${id}`)}
-                onCreate={() => navigate('/admin/community/new')}
-              />
-            ) : undefined}
+            community={communityTab ? <CommunityMenu onOpenDefault={handleViewApp} /> : undefined}
             actions={(headerOverride ? headerOverride.action : headerAction) || undefined}
             trailing={!platformOverride && currentTenantId ? (
               <TenantInbox tenantId={currentTenantId} />
@@ -1418,6 +1418,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             canDonations
               ? <div className="p-4 lg:p-0"><AdminDonations /></div>
               : <PlanUpgradeScreen featureName="Donations" featureKey="fundraising" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
+          ) : openBoardId && planAllows(features?.docs) ? (
+            <BoardGrid boardId={openBoardId} onTitle={setBoardTitle} onOpenNote={(id) => navigate(`/admin/docs/${id}`)} />
           ) : activeTab === 'docs' ? (
             planAllows(features?.docs)
               ? <div className="p-4 lg:p-0"><AdminDocs initialDocId={itemId} onItemConsumed={clearItemId} /></div>
@@ -1485,7 +1487,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                 : <PlanUpgradeScreen featureName="SMS" featureKey="smsAutomation" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'community' ? (
             planAllows(features?.communityGroups)
-              ? <div className="p-4 pb-0 lg:p-0 h-full"><AdminCommunity initialChannelId={itemId && itemId !== 'new' ? itemId : undefined} startCreating={itemId === 'new'} onItemConsumed={clearItemId} onOpenAttachment={(type, id) => {
+              ? <div className="p-4 pb-0 lg:p-0 h-full"><AdminCommunity onOpenAttachment={(type, id) => {
                   if (type === 'doc') navigate(`/admin/docs/${id}`);
                   else if (type === 'contact') navigate(`/admin/crm/${id}`);
                   else if (type === 'campaign') navigate(`/admin/fundraising/${id}`);

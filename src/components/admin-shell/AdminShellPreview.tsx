@@ -260,7 +260,7 @@ function AfterChrome({ side, collapsed, screen, sheet }: { side: ShellSideId; co
             <div className="hidden lg:block">
               <AdminContentBar
                 crumbs={[{ label: sectionForTab(screen === 'events' ? 'events' : 'dashboard') ?? '' }, { label: screen === 'events' ? 'Events' : 'Home' }]}
-                community={<CommunityMenu items={[{ id: 'c1', name: 'Young adults' }]} loaded onOpen={() => {}} onCreate={() => {}} />}
+                community={<CommunityMenu onOpenDefault={() => {}} />}
               />
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto pb-24">

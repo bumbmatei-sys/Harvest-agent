@@ -83,7 +83,7 @@ export function AdminDesktopSidebar({
   accountMenu,
   accountLabel,
   footerExtra,
-  noteBoardsSlot,
+  boardsSlot,
 }: {
   side: ShellSideId;
   onSide: (side: ShellSideId) => void;
@@ -99,8 +99,8 @@ export function AdminDesktopSidebar({
   accountLabel?: string;
   /** Desktop-only footer icons (inbox, theme stays separate). */
   footerExtra?: ReactNode;
-  /** The Notes boards, drawn at the bottom of the People side. Omit to hide the list (no Notes access). */
-  noteBoardsSlot?: ReactNode;
+  /** The Boards section, drawn right under the last group of the People side. Omit to hide it (no Notes access). */
+  boardsSlot?: ReactNode;
 }) {
   const groups = groupsForSide(side, tabs);
   // Branding is not a sidebar group: Settings owns it. The row appears only
@@ -275,7 +275,7 @@ export function AdminDesktopSidebar({
           );
         })}
 
-        {side === 'people' ? noteBoardsSlot : null}
+        {side === 'people' ? boardsSlot : null}
       </SidebarContent>
 
       <SidebarFooter className="gap-1 p-0 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:py-2">

@@ -754,6 +754,9 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       'src/components/admin-shell/AdminDesktopSidebar.tsx',
       'src/components/admin-shell/AdminHome.tsx',
       'src/components/admin-shell/AdminShellPreview.tsx',
+      // APPENDED BY UI-POLISH. The Boards section's dialog buttons and the board grid's New note and
+      // full-card open button take the phone's 44px floor.
+      'src/components/admin-shell/BoardsSection.tsx',
       // 🔴 APPENDED BY THE-331, NOTHING ABOVE OR BELOW REMOVED OR REWRITTEN.
       // ⚠️ NOT a comment-only mention — this one USES the class, which makes it
       // the same KIND as AdminSettings.tsx and only the second such entry in
@@ -796,6 +799,8 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // ToggleGroupItem's own padding leaves the row under 44px, so the floor
       // is what makes Publish now, Schedule and Draft a real target.
       'src/components/blog/BlogScheduleFields.tsx',
+      // APPENDED BY UI-POLISH. The board grid's full-card open button and New note take the 44px floor.
+      'src/components/boards/BoardGrid.tsx',
       'src/components/courses/ClassroomTab.tsx',
       'src/components/courses/CourseLanding.tsx',
       'src/components/courses/CoursePlayer.tsx',

@@ -1,9 +1,10 @@
 'use client';
 
 import { Fragment, useEffect, useState, type ReactNode } from 'react';
-import { ChevronDown, Plus, Search, Users } from 'lucide-react';
+import { ChevronDown, ExternalLink, Plus, Search, Users } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -30,11 +31,6 @@ export interface Crumb {
   readonly onClick?: () => void;
 }
 
-export interface CommunityOption {
-  readonly id: string;
-  readonly name: string;
-}
-
 /**
  * Desktop content toolbar: a clickable breadcrumb trail on the left; screen
  * actions, search and the Community menu on the right. There is no back
@@ -48,7 +44,7 @@ export function AdminContentBar({
   trailing,
 }: {
   crumbs: readonly Crumb[];
-  /** The Community menu. Omit to hide it (no Community access on this plan or role). */
+  /** The Community menu. */
   community?: ReactNode;
   actions?: ReactNode;
   /** Desktop-only extras in the right cluster, such as the payments inbox. */
@@ -103,55 +99,41 @@ export function AdminContentBar({
 }
 
 /**
- * The Community menu: the ministry's current communities, then "Create new
- * community" at the bottom. It replaces the old "Open member app" button; the
- * member app is still one tap away in the account menu.
+ * The Community menu. There is one community today, the ministry's default one,
+ * and it is the member app: choosing it opens the app. New communities are a
+ * product type that is not built yet, so "Create new community" is listed but
+ * cannot be picked, the same way the product picker lists it as coming soon.
+ *
+ * ⚠️ The trigger is the native button Base UI renders, dressed with `buttonVariants`.
+ * `render={<Button />}` hands `Menu.Positioner` a null ref on React 18, so the menu
+ * opens at the page's top-left corner at `opacity: 0` and nobody can see it (THE-337's
+ * paperclip had the same fault).
  */
-export function CommunityMenu({
-  items,
-  loaded,
-  error,
-  onOpen,
-  onCreate,
-}: {
-  items: readonly CommunityOption[];
-  loaded: boolean;
-  error?: string | null;
-  onOpen: (id: string) => void;
-  onCreate: () => void;
-}) {
+export function CommunityMenu({ onOpenDefault }: { onOpenDefault: () => void }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={
-          <Button type="button" variant="secondary" data-community-menu className="h-8 min-h-[44px] sm:min-h-0" />
-        }
+        data-community-menu
+        className={cn(buttonVariants({ variant: 'secondary' }), 'h-8 min-h-[44px] sm:min-h-0')}
       >
         <Users />
         Community
         <ChevronDown />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-56">
+      <DropdownMenuContent align="end" className="min-w-64">
         <DropdownMenuGroup>
           <DropdownMenuLabel>Your communities</DropdownMenuLabel>
-          {error ? (
-            <DropdownMenuLabel role="alert" className="font-normal text-danger">{error}</DropdownMenuLabel>
-          ) : !loaded ? (
-            <DropdownMenuLabel className="font-normal">Loading communities</DropdownMenuLabel>
-          ) : items.length === 0 ? (
-            <DropdownMenuLabel className="font-normal">No communities yet</DropdownMenuLabel>
-          ) : (
-            items.map((item) => (
-              <DropdownMenuItem key={item.id} onClick={() => onOpen(item.id)}>
-                {item.name}
-              </DropdownMenuItem>
-            ))
-          )}
+          <DropdownMenuItem data-community-default onClick={onOpenDefault}>
+            <Users />
+            Default community
+            <ExternalLink className="ml-auto" />
+          </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onCreate} data-community-create>
+        <DropdownMenuItem disabled data-community-create>
           <Plus />
           Create new community
+          <span className="ml-auto text-xs text-muted-foreground">Soon</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

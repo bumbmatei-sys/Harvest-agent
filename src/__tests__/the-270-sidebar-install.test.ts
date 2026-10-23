@@ -770,10 +770,10 @@ describe('sidebar importers are the phase-1 shell and nothing else', () => {
       // mounts the real desktop sidebar so the shots show the shell the editor
       // lives in. It is not a second product surface.
       'src/components/blog/BlogSchedulePreview.tsx',
-      // APPENDED BY UI-POLISH, nothing above removed. The Notes boards list at the bottom of the
-      // People sidebar is a SidebarGroup of its own, and its test mounts it inside the provider.
-      'src/components/admin-shell/NoteBoards.test.tsx',
-      'src/components/admin-shell/NoteBoards.tsx',
+      // APPENDED BY UI-POLISH, nothing above removed. The Boards section of the People sidebar
+      // is a SidebarGroup of its own, and its test mounts it inside the provider.
+      'src/components/admin-shell/BoardsSection.test.tsx',
+      'src/components/admin-shell/BoardsSection.tsx',
       // APPENDED BY THE-376, nothing above removed. The desktop Settings popup
       // is the official sidebar-13 block: a Dialog with a Sidebar nav.
       'src/components/settings/SettingsDialog.tsx',

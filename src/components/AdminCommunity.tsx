@@ -734,15 +734,9 @@ const DmThread: React.FC<{
 interface AdminCommunityProps {
   /** Navigate to an attached record (doc / contact / campaign) from a message card. */
   onOpenAttachment?: (type: MessageAttachment['type'], id: string) => void;
-  /** Deep-link from the top-bar Community menu: open this community. */
-  initialChannelId?: string;
-  /** Deep-link from the top-bar Community menu: start the "new community" dialog. */
-  startCreating?: boolean;
-  /** Called once the deep link has been acted on, to clear the URL param. */
-  onItemConsumed?: () => void;
 }
 
-const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment, initialChannelId, startCreating, onItemConsumed }) => {
+const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => {
   const { setHeaderOverride } = useAdminHeader();
   const [tab, setTab] = useState<MainTab>('channels');
   const [tenantId, setTenantId] = useState<string | null>(null);
@@ -951,22 +945,6 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment, initi
     setShowNewChannel(true);
     loadChannelPool();
   };
-
-  // Deep links from the top-bar Community menu. Each is acted on once the data it
-  // needs has arrived, then the URL param is cleared so a refresh does not repeat it.
-  useEffect(() => {
-    if (!startCreating || !tenantId || !currentUser) return;
-    openNewChannel();
-    onItemConsumed?.();
-  }, [startCreating, tenantId, currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!initialChannelId) return;
-    const channel = channels.find((c) => c.id === initialChannelId);
-    if (!channel) return;
-    setTab('channels');
-    setOpenChannel(channel);
-    onItemConsumed?.();
-  }, [initialChannelId, channels]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const createChannel = async () => {
     if (!newChannelName.trim() || !tenantId || !currentUser) return;

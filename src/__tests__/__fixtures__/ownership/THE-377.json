@@ -13,24 +13,9 @@
       "why": "UI polish, 23 Oct: the shared page header replaces the per-screen header and eyebrow, and the top-bar breadcrumb replaces the small back buttons. No query, write path, permission gate, price or checkout call changed; className, header markup and the section's own back control only."
     },
     {
-      "file": "src/components/AdminCommunity.tsx",
-      "digest": "903d3b85e2445db238c1328c35e49f37ae0c601241e29e77bcb5d5e27c5b6b12",
-      "why": "UI polish, 23 Oct: initialChannelId and startCreating props so the Community dropdown can open a channel or start a new one. No channel query, write or permission path changed."
-    },
-    {
       "file": "src/components/AdminCourses.tsx",
       "digest": "5b8daf96917999bb5e8184704108b709e646f32715fec139adc8e0fa9a175b77",
       "why": "UI polish, 23 Oct: a Products mode (title, New product opening a type picker of product types only, a Courses button) and a Courses mode on the shared header with the Your courses/Library pill and New course. The local type list moved to product-wizard/product-types. No query, delete, adopt or save path changed."
-    },
-    {
-      "file": "src/components/AdminDashboard.tsx",
-      "digest": "54553f44e3f886679f293b098921834ef70ee265d8e8671e670757f91420d503",
-      "why": "UI polish, 23 Oct: the sidebar groups gain Channels/Engage/Products and Giving/Notes boards, the Community tab leaves the sidebar for a top-bar dropdown, a Products tab mounts AdminCourses in its products-page mode, and the content bar takes clickable breadcrumbs. Every tab keeps its permission gate and plan gate; no route or data read moved except the two read-only readers of Notes boards and community channels, which sit in their own components behind an error boundary."
-    },
-    {
-      "file": "src/components/AdminDocs.tsx",
-      "digest": "d51b34735b8c8fb52fdce1aa05c88f6da569ad3816e1cfcc5a9aadbc6f6e32de",
-      "why": "UI polish, 23 Oct: shared page header, a note-board id that opens a folder from the sidebar (initialFolderId), and the Notes back button kept on phones only. No read, write, sharing or folder-permission path changed."
     },
     {
       "file": "src/components/AdminEvents.tsx",
@@ -56,6 +41,21 @@
       "file": "src/components/AdminAccounting.tsx",
       "digest": "31d1304b2a12af89901f167e5cc2aaa3c9e41e47e7ddc79161eacf80517ec5af",
       "why": "UI polish, 23 Oct: the Accounting/Statements pill moves into the shared page header. No statement, receipt, CRM write or Stripe path changed."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "2b67b7456e1c32369bc8b41eb55782e8cd72ef63957018f4c0193bcfb2d7f89f",
+      "why": "UI polish, 23 Oct: the sidebar groups gain Channels/Engage/Products and Giving/Notes boards, the Community tab leaves the sidebar for a top-bar dropdown, a Products tab mounts AdminCourses in its products-page mode, and the content bar takes clickable breadcrumbs. Every tab keeps its permission gate and plan gate; no route or data read moved except the two read-only readers of Notes boards and community channels, which sit in their own components behind an error boundary."
+    },
+    {
+      "file": "src/components/AdminDocs.tsx",
+      "digest": "83865fa157b93a76422607b0cf822cf4aa0cd448627a764be08ff31a4374a8c7",
+      "why": "UI polish, 23 Oct: shared page header, a note-board id that opens a folder from the sidebar (initialFolderId), and the Notes back button kept on phones only. No read, write, sharing or folder-permission path changed."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "640b4a4a7f54d2d5e06a512da8f86fd3343a9425d7d540963f1b1637bccb0f11",
+      "why": "UI polish, 23 Oct (THE-377) records the board grid (src/components/boards/BoardGrid.tsx) as an adopter of the already-installed card, empty, alert and skeleton primitives. APPENDED to the recorded adopters. No primitive file was edited and no package was added."
     }
   ]
 }
