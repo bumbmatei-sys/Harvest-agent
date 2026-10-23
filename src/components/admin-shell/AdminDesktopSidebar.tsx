@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   ChevronRight,
   Home,
@@ -9,15 +9,6 @@ import {
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import {
-  Command,
-  CommandDialog,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
 import {
   Collapsible,
   CollapsibleContent,
@@ -53,6 +44,7 @@ import {
   type ShellTabRef,
 } from './shell-nav';
 import { isAdminSearchHotkeyClaimed, subscribeAdminSearch } from './admin-search';
+import { AdminSearchPalette, type PalettePage, type PaletteSearchConfig } from './search/AdminSearchPalette';
 import { useShellTheme } from './use-shell-theme';
 
 /** Collapsed card is this wide plus the 8px margins; a 36px icon sits inside with room to spare. */
@@ -84,6 +76,7 @@ export function AdminDesktopSidebar({
   accountLabel,
   footerExtra,
   boardsSlot,
+  search,
 }: {
   side: ShellSideId;
   onSide: (side: ShellSideId) => void;
@@ -101,6 +94,8 @@ export function AdminDesktopSidebar({
   footerExtra?: ReactNode;
   /** The Boards section, drawn right under the last group of the People side. Omit to hide it (no Notes access). */
   boardsSlot?: ReactNode;
+  /** Turns on content search in the palette (people, notes, courses and so on). Omit for pages only. */
+  search?: PaletteSearchConfig;
 }) {
   const groups = groupsForSide(side, tabs);
   // Branding is not a sidebar group: Settings owns it. The row appears only
@@ -134,6 +129,26 @@ export function AdminDesktopSidebar({
     if (next) onPlaceholder(next);
     else onNavigate(id);
   };
+
+  const palettePages = useMemo<PalettePage[]>(() => {
+    const pages: PalettePage[] = [
+      { key: 'dashboard', label: 'Home', group: 'Home', icon: Home, onSelect: () => openItem('dashboard', null) },
+    ];
+    for (const group of groupsForAllSides(tabs)) {
+      for (const item of group.items) {
+        pages.push({
+          key: `${group.id}:${item.id}`,
+          label: item.label,
+          group: group.label || group.items[0]?.label || item.label,
+          icon: item.icon,
+          onSelect: () => openItem(item.id, item.placeholder),
+        });
+      }
+    }
+    return pages;
+    // `openItem` only closes the palette and forwards to the two callbacks.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabs, onNavigate, onPlaceholder]);
 
   return (
     <Sidebar
@@ -312,26 +327,7 @@ export function AdminDesktopSidebar({
       </SidebarFooter>
       <SidebarRail />
 
-      <CommandDialog open={paletteOpen} onOpenChange={setPaletteOpen} title="Search" description="Jump to a section">
-        <Command>
-          <CommandInput placeholder="Search sections" />
-          <CommandList>
-            <CommandEmpty>No matching section.</CommandEmpty>
-            <CommandGroup heading="Home">
-              <CommandItem onSelect={() => openItem('dashboard', null)}>Home</CommandItem>
-            </CommandGroup>
-            {groupsForAllSides(tabs).map((group) => (
-              <CommandGroup key={group.id} heading={group.label || group.items[0]?.label}>
-                {group.items.map((item) => (
-                  <CommandItem key={item.id} onSelect={() => openItem(item.id, item.placeholder)}>
-                    {item.label}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            ))}
-          </CommandList>
-        </Command>
-      </CommandDialog>
+      <AdminSearchPalette open={paletteOpen} onOpenChange={setPaletteOpen} pages={palettePages} search={search} />
     </Sidebar>
   );
 }

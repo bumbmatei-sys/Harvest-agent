@@ -796,9 +796,13 @@ const CONTENT_ASSERTING_MOVED: Readonly<Record<string, readonly [digest: string,
   // the phase-2 social shots. *.png was already binary. The suite still asserts
   // content.
   'src/__tests__/the-268-line-endings.test.ts': [
-    'ab373b2a72824096d8db3d7c7987fc80e80a2ba02ca7e559ef3ea887b1241cbd',
-    'THE-377',
-    'the 23 Oct UI polish appends its proof PNGs under docs/redesign/ui-polish-oct23/. '
+    '0ad5a2e64dcbe856900baa0d370f326d0d6ac1afc7235a3ed6007ba4137569ac',
+    '#548',
+    'the palette content search appends its proof PNGs under docs/redesign/content-search/. '
+      + '*.png was already binary. The suite still asserts file content rather than a digest pin. '
+      + 'This map holds one current digest, so the previous one stays here: '
+      + 'ab373b2a72824096d8db3d7c7987fc80e80a2ba02ca7e559ef3ea887b1241cbd after THE-377, whose reason follows. '
+      + 'the 23 Oct UI polish appends its proof PNGs under docs/redesign/ui-polish-oct23/. '
       + '*.png was already binary. The suite still asserts file content rather than a digest pin. '
       + 'The previous current digest was f314e3b78b11558464fce7f61a02b6dec2f03bf14fd0181bb830902f1a6f5012 '
       + 'after #537, whose reason follows. '

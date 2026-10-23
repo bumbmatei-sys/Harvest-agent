@@ -1066,6 +1066,8 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ are byte-identical'
     '44dba8fb732054ce3e491cc479dc09fec134a57b2124e944050564e98f138b65',
     // APPENDED BY UI polish, 23 Oct (THE-377), nothing above removed or rewritten. AdminDashboard.tsx: Sidebar regrouped (Channels, Engage, Products; People, Giving, Notes boards), the Community menu in the top bar, clickable breadcrumbs, and a Products tab that mounts AdminCourses. Every tab keeps its permission and plan gate; no route or write path moved.
     '2b67b7456e1c32369bc8b41eb55782e8cd72ef63957018f4c0193bcfb2d7f89f',
+    // APPENDED BY #548 (palette content search), nothing above removed or rewritten. AdminDashboard.tsx: go() takes an optional item id and the sidebar gets a search prop.
+    '1433310d5f03ed9f44631516f1f6874f29a40664b48ac90513cd0d4e029a74da',
   ];
 
   it('AdminDashboard.tsx is untouched by THIS ticket — others legitimately own it', () => {
