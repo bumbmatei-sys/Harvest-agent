@@ -567,6 +567,7 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     ['44dba8fb732054ce3e491cc479dc09fec134a57b2124e944050564e98f138b65',
       `settings popup round 4b - the desktop account menu drops Billing & Payments when the admin can open Settings. Plan & billing inside the popup stays the only desktop route. The phone menu is unchanged, and an admin who can bill but cannot open Settings keeps the row. No permission gate, plan gate, nav id, route, price or checkout moved.`],
     ['2b67b7456e1c32369bc8b41eb55782e8cd72ef63957018f4c0193bcfb2d7f89f', 'UI polish, 23 Oct (THE-377) - AdminDashboard.tsx. Sidebar regrouped (Channels, Engage, Products; People, Giving, Notes boards), the Community menu in the top bar, clickable breadcrumbs, and a Products tab that mounts AdminCourses. Every tab keeps its permission and plan gate; no route or write path moved.'],
+    ['1433310d5f03ed9f44631516f1f6874f29a40664b48ac90513cd0d4e029a74da', 'Palette content search (#548) - AdminDashboard.tsx. go() takes an optional item id and the sidebar gets a search prop. No nav array, entitlement, plan check, permission term, query or write path changed.'],
   ],
   'firestore.indexes.json': [
     ['8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0', 'main at 133d557'],

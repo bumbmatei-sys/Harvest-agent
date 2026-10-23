@@ -1392,6 +1392,15 @@ const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: stri
       + '`item` is rejected: a row would show a title only, and the point of the grid is the preview.',
   },
   {
+    file: 'src/components/admin-shell/search/AdminSearchPalette.tsx',
+    ticket: '#548',
+    why:
+      'APPENDED, never substituted. The Cmd-K palette\'s content search: the shadcn `command` primitive '
+      + 'already in the sidebar, now also listing people, notes and courses in groups, with a `spinner` '
+      + 'for the loading state. `empty` is rejected: cmdk\'s own `CommandEmpty` carries the no-results '
+      + 'state inside the list so keyboard focus stays on the input.',
+  },
+  {
     file: 'src/components/admin/social/SocialScheduler.tsx',
     ticket: 'phase-2',
     why:

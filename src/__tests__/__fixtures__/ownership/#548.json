@@ -1,0 +1,21 @@
+{
+  "ticket": "#548",
+  "note": "Cmd-K palette searches the tenant's content. Appended, never substituted: earlier digests for these files stay recorded under their own tickets. No firestore.rules, indexes, storage rules, env or tenant data change.",
+  "entries": [
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "1433310d5f03ed9f44631516f1f6874f29a40664b48ac90513cd0d4e029a74da",
+      "why": "Palette content search: go() takes an optional item id so a result can open one item (/admin/<section>/<id>) on the screens that already read it, and the desktop sidebar gets a search prop (tenant, signed-in uid, the tab ids the viewer holds, and an open-item callback). No nav array, entitlement, plan check, permission term, query or write path changed."
+    },
+    {
+      "file": "src/components/admin-shell/AdminDesktopSidebar.tsx",
+      "digest": "cb8afb45f9275291158550fd9675f8197895918cb497416ecc11de2d479af5af",
+      "why": "Palette content search: the inline command dialog moved to search/AdminSearchPalette, fed the same pages the dialog listed and an optional search config. The sidebar rows, groups, side toggle, hotkey and footer are unchanged."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "41ebf7332ef209e3b4ccf8991e5eec45187957f4a6f18ab41c7843c77389275f",
+      "why": "Palette content search: one entry appended to RECORDED_ADOPTERS for search/AdminSearchPalette.tsx, with a reason. No earlier entry was changed or removed."
+    }
+  ]
+}

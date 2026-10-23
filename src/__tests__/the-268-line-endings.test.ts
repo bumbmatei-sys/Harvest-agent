@@ -242,6 +242,18 @@ describe('binaries are not treated as text', () => {
       'docs/redesign/blog-status-picker/blog-post-settings-schedule-dark-card.png',
       'docs/redesign/blog-status-picker/blog-post-settings-schedule-light-1440.png',
       'docs/redesign/blog-status-picker/blog-post-settings-schedule-light-card.png',
+      // APPENDED BY #548 (palette content search), nothing above removed. Real palette in a real browser against the emulators.
+      'docs/redesign/content-search/00-loading-state.png',
+      'docs/redesign/content-search/01-search-a-name.png',
+      'docs/redesign/content-search/02-search-a-note-title.png',
+      'docs/redesign/content-search/03-search-a-course.png',
+      'docs/redesign/content-search/04-accent-insensitive.png',
+      'docs/redesign/content-search/05-grouped-results-and-see-all.png',
+      'docs/redesign/content-search/06-staff-role-sees-only-its-tabs.png',
+      'docs/redesign/content-search/06b-staff-role-events-forms.png',
+      'docs/redesign/content-search/07-no-results.png',
+      'docs/redesign/content-search/08-empty-box-pages.png',
+      'docs/redesign/content-search/09-enter-opens-the-note.png',
       // Eden shell pass. Home, compose, events, collapsed, the gold Schedule
       // button, and the 390px sheet. Light and dark.
       'docs/redesign/eden-shell/1440-collapsed-dark.png',
