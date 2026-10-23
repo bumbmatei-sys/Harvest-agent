@@ -860,7 +860,11 @@ describe('AdminDashboard.tsx, firestore.rules, firestore.indexes.json and functi
     const tree = sha256(files.map((f) => `${f}:${sha256(readFileSync(path.join(REPO_ROOT, f)))}`).join('\n'));
     // Eden shell pass restyled button.tsx and sidebar.tsx. The previous tree was
     // f02a80fe809b4ff8a1cb4eaceb2deb4e28ad090f85d6682c1e862fd674a50aa7.
-    expect(tree).toBe('43e9d40e48b09a5336f8d7272e3eb510dce900bf3bd74b18d2ceaf0eb3ac3610');
+    // command.tsx then matched cmdk's data-selected="false" with the bare
+    // data-selected: variant and highlighted every row; it now matches the
+    // value. The tree before that edit was
+    // 43e9d40e48b09a5336f8d7272e3eb510dce900bf3bd74b18d2ceaf0eb3ac3610.
+    expect(tree).toBe('7cf19b39bbf6b7fc6d6247b06819ac24fb9aa080b1ccac9b8092d42d0081ab38');
   });
 
   it('nothing in this slice imports the shell it may not open, or a parallel ticket\'s files', () => {

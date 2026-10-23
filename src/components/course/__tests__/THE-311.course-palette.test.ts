@@ -482,6 +482,8 @@ describe('5 — no new token was defined', () => {
       'src/components/ui/__tests__/ds-primitives.test.tsx',
       'src/components/ui/button.tsx',
       'src/components/ui/sidebar.tsx',
+      // Palette highlight fix: data-[selected=true]: in place of data-selected:.
+      'src/components/ui/command.tsx',
     ]);
     const uiExtras = (files: readonly string[]) => files.filter((file) => !UI_ALLOWED.has(file));
     expect(uiExtras(changed('src/components/ui/')), 'a primitive or its digest ledger was touched').toEqual([]);
