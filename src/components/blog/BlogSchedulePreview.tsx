@@ -151,7 +151,7 @@ function EditorShot({ step }: { step: 'schedule' | 'publish' | 'takedown' }) {
 function ListShot() {
   return (
     <div className="w-full space-y-6" data-blog-shot="list">
-      <AdminPageHeader eyebrow="Content" title={`${SAMPLE_POSTS.length} posts`} />
+      <AdminPageHeader title={`${SAMPLE_POSTS.length} posts`} />
       <div className="lg:hidden bg-surface-raised rounded-brand-xl border border-line shadow-[var(--ds-sh-sm)] overflow-hidden">
         {SAMPLE_POSTS.map((post, i) => (
           <div key={post.id} className={`flex items-center gap-3 px-3.5 py-3 ${i ? 'border-t border-line' : ''}`}>

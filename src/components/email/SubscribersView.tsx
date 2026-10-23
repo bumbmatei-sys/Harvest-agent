@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { FileUp, Search } from 'lucide-react';
+import { Copy, ExternalLink, FileUp, Search } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,8 +9,9 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { EmailContact, EmailStatus } from '@/lib/email/audience';
-import { PageHeader, Pick, SetupBanner, TAP, formatDay, plural, senderReady } from '@/components/email/kit';
+import { Pick, SetupBanner, TAP, formatDay, plural, senderReady } from '@/components/email/kit';
 import type { Overview } from '@/components/email/email-api';
+import { buildSubscribePageUrl } from '@/lib/email/subscribe-link';
 
 type StatusFilter = 'subscribed' | 'suppressed' | 'none' | 'all';
 
@@ -42,7 +43,40 @@ export function filterPeople(people: readonly EmailContact[], q: string, status:
   });
 }
 
-export function SubscribersView({ data, onImport, onSettings }: { data: Overview; onImport: () => void; onSettings: () => void }) {
+/** The public sign-up link, ready to copy or open. */
+export function SubscribeLinkCard({ tenantId }: { tenantId: string | null }) {
+  const url = buildSubscribePageUrl(tenantId);
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // A blocked clipboard is not an error worth a banner: the link is selectable in the field.
+    }
+  }
+  return (
+    <Card className="gap-3 p-5" data-subscribe-link-card>
+      <div>
+        <h2 className="text-base font-semibold text-strong">Your sign-up link</h2>
+        <p className="mt-0.5 text-sm text-muted">Share it anywhere. People give their name and email, then confirm from a link we email them, and they join this list.</p>
+      </div>
+      {url ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <Input readOnly aria-label="Sign-up link" value={url} onFocus={(e) => e.currentTarget.select()} className={`${TAP} min-w-0 flex-1 basis-64`} />
+          <Button variant="outline" className="min-h-11" onClick={() => void copy()}><Copy data-icon="inline-start" />{copied ? 'Copied' : 'Copy link'}</Button>
+          <Button variant="ghost" className="min-h-11" render={<a href={url} target="_blank" rel="noreferrer" />}><ExternalLink data-icon="inline-start" />Open</Button>
+        </div>
+      ) : (
+        <p role="status" className="text-sm text-muted">The sign-up link is not available for this ministry.</p>
+      )}
+    </Card>
+  );
+}
+
+export function SubscribersView({ data, tenantId, onImport, onSettings }: { data: Overview; tenantId: string | null; onImport: () => void; onSettings: () => void }) {
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<StatusFilter>('subscribed');
   const [tag, setTag] = useState('');
@@ -53,10 +87,10 @@ export function SubscribersView({ data, onImport, onSettings }: { data: Overview
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Subscribers" subtitle={`${plural(subscribed, 'person', 'people')} on your list. They are the people in your CRM who opted in to email.`} />
       {!senderReady(data.settings) && (
-        <SetupBanner actionLabel="Open settings" onAction={onSettings}>Finish your sender details and verify your domain before you send.</SetupBanner>
+        <SetupBanner actionLabel="Open settings" onAction={onSettings}>Add your sender name, reply-to address and mailing address before you send. Emails go out from Harvest&apos;s own sending address.</SetupBanner>
       )}
+      <SubscribeLinkCard tenantId={tenantId} />
       <div className="flex items-center justify-between gap-4">
         <p className="text-sm text-muted">Bring your list from Mailchimp, Substack, or a CSV. It joins your CRM.</p>
         <Button className="min-h-11" onClick={onImport}><FileUp data-icon="inline-start" />Import contacts</Button>

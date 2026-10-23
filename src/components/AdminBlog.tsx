@@ -342,7 +342,6 @@ const AdminBlog: React.FC<AdminBlogProps> = ({ knowledgeBaseEnabled = false }) =
  )}
 
  <AdminPageHeader
- eyebrow="Content"
  title={`${posts.length} post${posts.length === 1 ? '' : 's'}`}
  action={
  <div className="flex items-center gap-2.5">

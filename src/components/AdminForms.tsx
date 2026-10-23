@@ -812,7 +812,6 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
   return (
     <div className={`w-full ${FORM_MEASURE} space-y-6`} style={{ paddingBottom: 120 }}>
       <AdminPageHeader
-        eyebrow="Ministry"
         title={`${forms.length} form${forms.length === 1 ? '' : 's'}`}
         action={<AdminPrimaryButton onClick={() => openBuilder()} icon={<Plus size={16} />}>Create form</AdminPrimaryButton>}
       />

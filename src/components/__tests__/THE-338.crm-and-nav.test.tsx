@@ -234,7 +234,7 @@ describe('3 — the mobile drawer and the desktop sidebar are identical', () => 
     // Pinned whole rather than only compared to each other: two arrays that
     // drifted TOGETHER would satisfy the comparison above and nothing else.
     expect(desktop).toEqual([
-      { label: 'CONTENT', ids: ['blog', 'courses', 'newsletter', 'ai', 'docs'] },
+      { label: 'CONTENT', ids: ['blog', 'courses', 'products', 'newsletter', 'ai', 'docs'] },
       {
         // ⚠️ THE-341 moved `forms` out of here and into REACH. Everything else
         // in this block is THE-338's own order, unchanged.
@@ -251,10 +251,10 @@ describe('3 — the mobile drawer and the desktop sidebar are identical', () => 
     const ALL = [
       'accounting', 'affiliate', 'ai', 'blog', 'branding', 'checkin', 'churches',
       'community', 'courses', 'crm', 'docs', 'donations', 'events', 'forms',
-      'fundraising', 'inbox', 'library', 'livestream', 'newsletter', 'services',
+      'fundraising', 'inbox', 'library', 'livestream', 'newsletter', 'products', 'services',
       'signups', 'sms', 'tenants',
     ];
-    expect(ALL).toHaveLength(23);
+    expect(ALL).toHaveLength(24); // 23, plus `products`
     for (const arr of [mobile, desktop]) {
       const flat = arr.flatMap((g) => g.ids);
       expect([...flat].sort(), 'a tab was orphaned or duplicated').toEqual([...ALL].sort());

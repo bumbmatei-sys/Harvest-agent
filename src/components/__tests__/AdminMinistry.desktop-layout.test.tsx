@@ -1042,6 +1042,55 @@ const TABS_PRIMITIVE_CLASSES: readonly string[] = [
 ];
 
 /**
+ * UI-POLISH (page header standard) - the classes the shared `PageHeader` emits.
+ *
+ * Every admin screen's header is now the one `admin-shell/PageHeader` (the old
+ * `AdminPageHeader` is an alias of it), and the screens that have a tab pill put it
+ * in that header with `PageTabs`. So these tokens reach the phone layer of every
+ * screen that mounts a header, and the Events pill adds the `SegmentedTabs`
+ * ones. None is spelled by a screen: each appears VERBATIM in `PageHeader.tsx` or
+ * `SegmentedTabs.tsx`, which a case below asserts, so a hand-written class added here
+ * to silence a failure goes red naming itself.
+ *
+ * WHAT THEY DO ON A PHONE: the header becomes a wrapping row, so the pill and the main
+ * button sit under the title instead of squeezing it (`flex-wrap`, `gap-x-4`, `gap-y-3`,
+ * `max-sm:w-full`, `max-sm:justify-between`), and the pill is an equal-width grid whose
+ * triggers are 44px tall below `sm` (`max-sm:h-11`) and 32px above it (`h-8`, inside a
+ * `p-1` track). Nothing here shrinks a tap target: `h-8` is the trigger's desktop height,
+ * overridden to 44px by `max-sm:h-11`, and `h-auto` is the ABSENCE of a height on the
+ * track. Every colour-bearing one resolves through a theme token (`seg-track`,
+ * `seg-active`), so both palettes hold.
+ */
+const PAGE_HEADER_CLASSES: readonly string[] = [
+  'flex-wrap', 'gap-x-4', 'gap-y-3', 'max-sm:w-full', 'max-sm:justify-between',
+  'grid', 'grid-flow-col', 'auto-cols-fr', 'h-auto', 'h-8', 'p-1', 'max-sm:h-11', 'shadow-none',
+  'bg-seg-track', 'data-active:bg-seg-active', 'data-active:shadow-seg',
+  'dark:data-active:bg-seg-active', 'dark:data-active:border-transparent',
+];
+const PAGE_HEADER_UNPREFIXED_HEIGHTS: readonly string[] = ['h-8', 'h-auto', 'max-sm:h-11'];
+const PAGE_HEADER_COLOUR_CLASSES: readonly string[] = [
+  'bg-seg-track', 'data-active:bg-seg-active', 'data-active:shadow-seg',
+  'dark:data-active:bg-seg-active', 'dark:data-active:border-transparent', 'shadow-none',
+];
+const PAGE_HEADER_REASON =
+  'UI-POLISH - emitted by the shared PageHeader / PageTabs, not spelled by this screen. The ' +
+  'header is a wrapping row on a phone and the tab pill is an equal-width grid with 44px ' +
+  'triggers; see PAGE_HEADER_CLASSES. Verbatim in PageHeader.tsx / SegmentedTabs.tsx.';
+
+/**
+ * UI-POLISH - what the page header STOPPED rendering, as REMOVALS (a delta, not a re-recorded
+ * baseline). The header lost its gold eyebrow, its back link and the screen-specific title
+ * sizing; the tokens below were on the baseline phone layer because of them. Each one is
+ * either structural (spacing, text size, alignment) or a colour token (`text-gold`,
+ * `hover:text-body`) that went away with the element that carried it.
+ */
+const PAGE_HEADER_REMOVED_COLOURS: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = {
+  AdminFundraising: { detail: ['hover:text-body'], pledge: ['hover:text-body'] },
+  AdminForms: { builder: ['text-gold'], builderFields: ['text-gold'], submissions: ['text-gold'], answers: ['text-gold'] },
+  AdminCheckin: { create: ['text-gold'], detail: ['text-gold'] },
+};
+
+/**
  * THE-308 — the FOUR unprefixed heights `tabs` emits, and the ONE reason.
  *
  * 🔴 CI CAUGHT THESE; A LOCAL RUN COULD NOT. Both sweeps that read this list
@@ -1311,6 +1360,15 @@ describe('the sub-640px rendering of each file is unchanged', () => {
     ...Object.fromEntries(Object.entries(NON_BINDING_CAPS)
       .map(([t, px]) => [t, `a ${px}px cap, above the 639px top of the phone range`])),
     'mx-auto': 'auto side margins on a block whose width is auto resolve to 0 — it centred nothing until a cap gave it something to centre, and the cap is now sm:-gated with it',
+    // APPENDED BY UI-POLISH (the page header standard), NOTHING ABOVE REMOVED OR REWRITTEN.
+    // Spacing and type tokens that belonged to the old per-screen header chrome (the gold
+    // eyebrow, the back link, the title's own flex row). Each is structural; the colour ones
+    // are subtracted by name in PAGE_HEADER_REMOVED_COLOURS. The shared header replaces them
+    // with a wrapping row that gives a phone the same two rows it always had.
+    ...Object.fromEntries(['gap-4', 'gap-1.5', 'mb-1.5', 'mb-4', 'tracking-[0.16em]', 'text-[11px]', 'uppercase', 'text-gold', 'items-start', 'pt-1', 'text-[13px]', 'hover:opacity-80', 'transition-opacity', 'hover:text-body', 'text-sm', 'text-muted', 'mb-2', 'items-center', 'lucide-arrow-left', 'lucide-chevron-left', 'mb-3', 'gap-2', 'gap-3'].map((t) => [
+      t,
+      'UI-POLISH - belonged to header chrome the shared PageHeader replaced (eyebrow, back link, per-screen title row). Structural or removed with its element; removing it cannot move a phone, and the replacement row is documented in PAGE_HEADER_CLASSES.',
+    ])),
     // APPENDED BY THE-345, NOTHING ABOVE REMOVED OR REWRITTEN.
     'text-field-600':
       "THE-345 - the 'Free' half of the event card's price line, and it is REMOVED ON PURPOSE. events/{id}.price is quoted on four screens and charged by nothing: it is not read by /api/event-registration/submit, which totals ticketTypes[].price, and not by PublicEventRegistration, which does the same. So a church typed 50, published, and every one of those screens told a member the conference cost $50 while the flow confirmed them for free. While no payment rail exists eventPriceLabel() returns null and the whole span stops rendering, taking its token with it - '$50' is the lie the ticket exists to fix and 'Free' is a different one, since the church did not decide the conference was free. Phone-neutral by construction: nothing that remains changes size, spacing or layout, because an element that does not render cannot bind a rule. The stored price is untouched.",
@@ -1580,6 +1638,7 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       'here, which the baseline was recorded without. Margin carries no colour, and ' +
       'no tap target is sized by it.',
     ...Object.fromEntries(TABS_PRIMITIVE_CLASSES.map((t) => [t, TABS_PRIMITIVE_REASON])),
+    ...Object.fromEntries(PAGE_HEADER_CLASSES.map((t) => [t, PAGE_HEADER_REASON])),
 
     /* --- THE-346 - four tokens, APPENDED to everything above -----------------
        Every entry above stays exactly as its ticket wrote it. These three
@@ -1692,7 +1751,7 @@ describe('no touch target got smaller', () => {
     // that adopts it, recorded and provenance-checked above. Every other
     // screen, and every other token, is asserted exactly as before: a FIFTH
     // unprefixed height from `tabs`, or ANY from anywhere else, still fails.
-    const recorded = new Set([...TABS_UNPREFIXED_HEIGHTS, ...THE_346_UNPREFIXED_HEIGHTS]);
+    const recorded = new Set([...TABS_UNPREFIXED_HEIGHTS, ...THE_346_UNPREFIXED_HEIGHTS, ...PAGE_HEADER_UNPREFIXED_HEIGHTS]);
     for (const name of SCREENS) {
       for (const [view, c] of Object.entries(await surfaces(name))) {
         const base = new Set(BASELINE[name]![view].mobileLayer.flatMap((l) => l.split('\t')[2]?.split(' ') ?? []));
@@ -2197,8 +2256,15 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
    * Update `THE_308_EVENTS` only for a deliberate, reviewed change to
    * AdminEvents, and say which ticket in the same breath.
    */
-    strippedSha: '69aed7ec56c33aa685543a7428a7a1c648afa8b48bc86e80a24b57a9fa326fbe',
-    strippedLines: 1262,
+    // UI polish, 23 Oct (THE-377) - RE-RECORDED, previous values kept here:
+    //   strippedSha:   69aed7ec56c33aa685543a7428a7a1c648afa8b48bc86e80a24b57a9fa326fbe
+    //   strippedLines: 1262
+    // What moved is the header: the eyebrow is gone, the title is "Events" with the count as its
+    // subtitle, and the List/Month pill moved from a bare TabsList into the shared header's PageTabs
+    // beside "Create event". The count FELL because THE-346's 36-line JSX note, about the old TabsList's
+    // height, went with the TabsList it described. No read, write, price, fee or checkout call moved.
+    strippedSha: 'aa175dd534ed5778426623cc47573a10707563eb5a411afe46c8e39f4d779493',
+    strippedLines: 1231,
   };
 
   it('changes nothing in AdminEvents outside a className, THE-308', () => {
@@ -2307,8 +2373,14 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
    * fires through has no parameter to pass one.
    */
   const THE_251_FUNDRAISING = {
-    strippedSha: '6cd3074a14d8b2df5d51f2de7097f872d4affe7a19eee85498a77010a921b80a',
-    strippedLines: 854,
+    // UI polish, 23 Oct (THE-377) - RE-RECORDED, previous values kept here:
+    //   strippedSha:   6cd3074a14d8b2df5d51f2de7097f872d4affe7a19eee85498a77010a921b80a
+    //   strippedLines: 854
+    // What moved is the small "Back to campaigns" button (and its ArrowLeft import) and the "Campaigns"
+    // eyebrow: the top-bar breadcrumb is the way back now, and the screen already registers it through
+    // the header override. Nothing about the money moved; `firestorePathsOf` below is unchanged.
+    strippedSha: 'ba64c5152524932dbef4bb8050fbc7cd755d5205246579a286e2dd220be64e3c',
+    strippedLines: 850,
   };
 
   it('changes nothing in AdminFundraising outside a className, THE-251 and THE-254', () => {
@@ -2461,11 +2533,11 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
       // this guard into a hole on every screen but the one it is for.
       const excluded = new Set(
         name === 'AdminEvents'
-          ? [...TABS_PRIMITIVE_CLASSES, ...ALERT_PRIMITIVE_CLASSES]
+          ? [...TABS_PRIMITIVE_CLASSES, ...ALERT_PRIMITIVE_CLASSES, ...PAGE_HEADER_COLOUR_CLASSES]
           : TABS_PRIMITIVE_CLASSES,
       );
       for (const [view, c] of Object.entries(await surfaces(name))) {
-        const removed = new Set(THE_345_REMOVED_COLOURS[name]?.[view] ?? []);
+        const removed = new Set([...(THE_345_REMOVED_COLOURS[name]?.[view] ?? []), ...(PAGE_HEADER_REMOVED_COLOURS[name]?.[view] ?? [])]);
         // THE-368's addition is merged into the EXPECTATION, in sort order, so
         // the comparison stays element-wise against the recorded baseline rather
         // than being relaxed to a subset check.
@@ -2487,7 +2559,7 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
     // THE-345 appends `alert`'s colour-bearing classes beside THE-308's `tabs`
     // ones. Both are scoped to AdminEvents and both stay element-wise - neither
     // is ever relaxed to a count.
-    const recorded = new Set([...TABS_COLOUR_CLASSES, ...ALERT_PRIMITIVE_CLASSES]);
+    const recorded = new Set([...TABS_COLOUR_CLASSES, ...ALERT_PRIMITIVE_CLASSES, ...PAGE_HEADER_COLOUR_CLASSES]);
     const added = new Set<string>();
     for (const name of SCREENS) {
       for (const [view, c] of Object.entries(await surfaces(name))) {
@@ -2514,6 +2586,14 @@ describe('no colour is hardcoded, and both palettes resolve', () => {
     for (const t of [...TABS_UNPREFIXED_HEIGHTS, ...TABS_COLOUR_CLASSES]) {
       expect(tabsSrc.includes(t), `${t} is recorded as a tabs class but is not in ui/tabs.tsx`)
         .toBe(true);
+    }
+    // UI-POLISH - the same proof for the page header: every recorded class is verbatim in
+    // the shared header or the segmented tabs it is built on, and none hardcodes a colour.
+    const headerSrc = readFileSync(path.join(SRC, 'admin-shell/PageHeader.tsx'), 'utf8')
+      + readFileSync(path.join(SRC, 'admin-shell/SegmentedTabs.tsx'), 'utf8');
+    for (const t of PAGE_HEADER_CLASSES) {
+      expect(headerSrc.includes(t), `${t} is recorded as a page header class but is not in PageHeader.tsx / SegmentedTabs.tsx`).toBe(true);
+      expect(t, `${t} hardcodes a hex colour`).not.toMatch(/#[0-9a-fA-F]{3,8}/);
     }
     // THE-345 - the same proof for `alert`. A hand-written class added to
     // either alert list to silence a failure is not in `alert.tsx`, and this

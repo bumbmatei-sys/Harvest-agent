@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Heart, DollarSign, ChevronDown,
-  Copy, Check, Send, X, ArrowLeft, AlertTriangle,
+  Copy, Check, Send, X, AlertTriangle,
 } from 'lucide-react';
 import {
   collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp,
@@ -408,10 +408,6 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
 
     return (
       <div className={FORM_CONTAINER}>
-        <button onClick={() => setDetailCampaign(null)} className="flex items-center gap-1.5 text-sm text-muted mb-4 hover:text-body">
-          <ArrowLeft size={15} /> Back to campaigns
-        </button>
-
         {isPledge && (
           <div className="flex gap-2 mb-4">
             <button onClick={() => setTab('overview')} className={`px-4 py-2 rounded-xl text-sm font-semibold ${tab === 'overview' ? 'text-white' : 'text-muted bg-surface-sunken'}`} style={tab === 'overview' ? { backgroundColor: 'var(--brand-color, #d4a017)' } : undefined}>Overview</button>
@@ -691,7 +687,6 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
           the mockup's mobile list opens straight into the payment row + stat cards. */}
       <div className="hidden lg:block">
         <AdminPageHeader
-          eyebrow="Campaigns"
           title={`${campaigns.length} campaign${campaigns.length === 1 ? '' : 's'}`}
           action={<AdminPrimaryButton onClick={openCreate} icon={<Plus size={16} />}>New campaign</AdminPrimaryButton>}
         />

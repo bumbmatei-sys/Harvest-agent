@@ -455,16 +455,11 @@ describe('every control is ≥44px below sm; Rule 4’s 38px holds above', () =>
       .toContain(`className="${ANSWERS_ACTION_CLASS}"`);
   });
 
-  it('leaves the shell chrome it inherits exactly the size it was', () => {
-    // ⚠️ AdminEditorHeader's own "All forms" back button is a text link with no
-    // box of its own to lift, and it is shared chrome this ticket does not own.
-    // Recorded rather than silently passed over: it measures under the floor,
-    // it measured under the floor before this ticket, and nothing here shrank
-    // it. Raising it is a change to AdminUI.tsx and every screen that mounts it.
-    const back = at(380).controls.find((c) => c.label === 'All forms');
-    expect(back, 'the back control is gone').toBeTruthy();
-    expect(back!.height).toBeGreaterThan(0);
-    expect(back!.height).toBeLessThan(44);
+  it('no longer carries the editor header\u2019s own "All forms" back link: the top bar breadcrumb is the way back', () => {
+    // AdminEditorHeader's back link was shared chrome that measured under the 44px floor.
+    // The page-header standard removed it (the breadcrumb and, on a phone, the header
+    // chevron are the way back), so there is no sub-44px control left to record.
+    expect(at(380).controls.find((c) => c.label === 'All forms')).toBeUndefined();
   });
 
   it('holds Rule 4 above sm — 38px, deliberately under the 44px floor', () => {

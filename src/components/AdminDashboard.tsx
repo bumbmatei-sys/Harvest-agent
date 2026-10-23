@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { LayoutDashboard, Church, FileText, BrainCircuit, Inbox, GraduationCap, ChevronRight, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, ListChecks, QrCode, Radio, Link2, Palette, Bell, X, Library, HandCoins, UserPlus } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, BrainCircuit, Inbox, GraduationCap, ChevronRight, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, ListChecks, QrCode, Radio, Link2, Palette, Bell, X, Library, HandCoins, UserPlus, Package } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import PlatformInbox from './PlatformInbox';
 import AdminChurches from './AdminChurches';
@@ -15,13 +15,13 @@ import { settingsSectionFromLocation } from './settings/settings-nav';
 import AdminUpgradePage from './AdminUpgradePage';
 import AdminBranding from './AdminBranding';
 import { AdminHome } from './admin-shell/AdminHome';
-import { AdminContentBar } from './admin-shell/AdminContentBar';
+import { AdminContentBar, CommunityMenu, type Crumb } from './admin-shell/AdminContentBar';
 import { AdminDesktopSidebar, SIDEBAR_ICON_WIDTH, SIDEBAR_WIDTH } from './admin-shell/AdminDesktopSidebar';
 import { NavEntitlementCatalog } from './admin-shell/NavEntitlementCatalog';
 import { ShellPlaceholder } from './admin-shell/ShellPlaceholder';
 import { useLgUp } from './admin-shell/use-lg';
 import { ensureLightDefault } from './admin-shell/use-shell-theme';
-import { sectionForTab, sideForTab, type ShellPlaceholderId, type ShellSideId } from './admin-shell/shell-nav';
+import { SECTION_LANDING_TAB, sectionForTab, sideForTab, type ShellPlaceholderId, type ShellSideId } from './admin-shell/shell-nav';
 import AffiliateSection from './AffiliateSection';
 import NewsletterEditor from './NewsletterEditor';
 import NewsletterCampaigns from './NewsletterCampaigns';
@@ -64,6 +64,8 @@ import { isSuperAdmin as checkIsSuperAdmin, hasPlatformOverride, getTenantScope,
 import { useAppStore } from '../store/useAppStore';
 import { useCurrentUser } from '../hooks/queries/useUserQueries';
 import { useTenant as useTenantDoc } from '../hooks/queries/useTenantQueries';
+import { BoardsSection } from './admin-shell/BoardsSection';
+import { BoardGrid } from './boards/BoardGrid';
 import { useTenant } from '../contexts/TenantContext';
 import { Button } from '@/components/ui/button';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
@@ -143,7 +145,7 @@ const PLATFORM_INBOX_BUTTON =
 // would leave the guard that compares them unable to fail; two literals keep
 // the drift expressible, and therefore testable.
 const MORE_GROUPS: { label: string; ids: string[] }[] = [
-  { label: 'CONTENT', ids: ['blog', 'courses', 'newsletter', 'ai', 'docs'] },
+  { label: 'CONTENT', ids: ['blog', 'courses', 'products', 'newsletter', 'ai', 'docs'] },
   // Ministry: the "who" + giving. CRM is surfaced on the Dashboard home
   // (Members card / "View Members") as well — both are valid entry points.
   // Admin Roles lives inside the CRM screen as an internal tab, not as its own
@@ -188,7 +190,7 @@ const GROUPED_MORE_IDS = new Set(MORE_GROUPS.flatMap((g) => g.ids));
 // above the groups; Settings sits below them. Any id the admin isn't permitted
 // for is dropped, and a group with no permitted tabs is omitted entirely.
 export const DESKTOP_NAV_GROUPS: { label: string; ids: string[] }[] = [
-  { label: 'CONTENT', ids: ['blog', 'courses', 'newsletter', 'ai', 'docs'] },
+  { label: 'CONTENT', ids: ['blog', 'courses', 'products', 'newsletter', 'ai', 'docs'] },
   // 🔴 THE-326 — `services` in MINISTRY here too, in the SAME position. The two
   // arrays are the mobile drawer and the desktop sidebar; a section in one and
   // not the other is a section half the product cannot reach.
@@ -762,6 +764,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     // `maxCourses` is non-zero, so no tier's Courses tab moves.
     navAllows(features && features.maxCourses !== 0) &&
       (hasFullAccess || perms.createCourses) && { id: 'courses', label: 'Courses', icon: GraduationCap },
+    // Products is the page that lists everything the ministry makes and opens
+    // the "New product" picker. It carries the Courses gate exactly: course is
+    // the only product type with a builder, so the entitlement is the same one.
+    navAllows(features && features.maxCourses !== 0) &&
+      (hasFullAccess || perms.createCourses) && { id: 'products', label: 'Products', icon: Package },
     navAllows(features?.blog) &&
       (hasFullAccess || perms.writeArticles) && { id: 'blog', label: 'Blog', icon: FileText },
     navAllows(features?.aiKnowledge) &&
@@ -971,6 +978,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // the link only when the plan includes it (Ministry) or the add-on is held,
   // or the viewer is a super admin.
   if (!(isSuperAdmin || features?.socialScheduler === true)) desktopNavById.delete('social');
+  // Community has no sidebar row: it is the menu in the top bar. The tab itself
+  // stays (the mobile drawer and /admin/community still reach it).
+  desktopNavById.delete('community');
   // Settings owns Campus & branding, so the sidebar row goes away for an admin
   // who can open the popup. A branding-only admin cannot, and the sidebar
   // keeps the one row they have left.
@@ -1043,6 +1053,35 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     );
   };
 
+  // ── Shell data: the Community menu and the Notes boards list ───────────────
+  // Each reads its own data inside its own boundary, and only mounts when the
+  // viewer can open the screen it leads to.
+  const communityTab = allTabs.some((t) => t.id === 'community');
+  const notesTab = allTabs.some((t) => t.id === 'docs');
+  // A board's grid is /admin/docs/board:<id> (or board:all); a note is /admin/docs/<noteId>.
+  const BOARD_ROUTE = 'board:';
+  const openBoardId = activeTab === 'docs' && itemId?.startsWith(BOARD_ROUTE) ? itemId.slice(BOARD_ROUTE.length) : null;
+  const [boardTitle, setBoardTitle] = useState('');
+
+  // ── The top bar's trail ────────────────────────────────────────────────────
+  // Every parent is a link back to it. A section crumb links only where the
+  // section has a page of its own (Products); the rest are labels.
+  const tabCrumbLabel = activeTab === 'dashboard' ? 'Home' : headerTitle;
+  const sectionLabel = sectionForTab(activeTab);
+  const landingTab = sectionLabel ? SECTION_LANDING_TAB[sectionLabel] : undefined;
+  const crumbs: Crumb[] = [];
+  if (sectionLabel && sectionLabel !== tabCrumbLabel) {
+    crumbs.push({ label: sectionLabel, onClick: landingTab ? () => go(landingTab) : undefined });
+  }
+  if (openBoardId) {
+    crumbs.push({ label: boardTitle || 'Board' });
+  } else if (headerOverride) {
+    crumbs.push({ label: tabCrumbLabel, onClick: headerOverride.onBack });
+    crumbs.push({ label: headerOverride.title });
+  } else {
+    crumbs.push({ label: tabCrumbLabel });
+  }
+
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen bg-surface"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #C9963A)', borderTopColor: 'transparent' }}></div></div>;
   }
@@ -1067,6 +1106,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           onPlaceholder={(id) => { setShellPlaceholder(id); const next = sideForTab(id); if (next) setShellSide(next); }}
           accountMenu={<MyAccountMenu {...accountMenuProps} variant="rail" hideBillingRow={settingsPopup} />}
           accountLabel={accountMenuProps.displayName || 'Account'}
+          boardsSlot={notesTab ? (
+            <BoardsSection
+              tenantId={tenantId}
+              enabled={isAuthReady}
+              activeId={openBoardId}
+              onOpenBoard={(id) => navigate(`/admin/docs/${BOARD_ROUTE}${id}`)}
+              onOpenNote={(id) => navigate(`/admin/docs/${id}`)}
+            />
+          ) : undefined}
           footerExtra={showInbox ? (
             <Tooltip>
               <TooltipTrigger render={<span className="inline-flex" />}>
@@ -1221,10 +1269,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             so a phone does not also mount this bar's inbox. */}
         {lgUp && (
           <AdminContentBar
-            section={sectionForTab(activeTab) ?? ''}
-            title={headerOverride?.title ?? (activeTab === 'dashboard' ? 'Home' : headerTitle)}
-            onBack={headerOverride?.onBack}
-            onOpenApp={headerOverride?.onBack ? undefined : handleViewApp}
+            crumbs={crumbs}
+            community={communityTab ? <CommunityMenu onOpenDefault={handleViewApp} /> : undefined}
             actions={(headerOverride ? headerOverride.action : headerAction) || undefined}
             trailing={!platformOverride && currentTenantId ? (
               <TenantInbox tenantId={currentTenantId} />
@@ -1310,6 +1356,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                billing door `MyAccountMenu` gets, gated the same way: undefined
                unless billing access has settled to 'yes'. */
             <div className="p-4 lg:p-0"><AdminChurches onOpenBilling={billingAccess === 'yes' ? openBilling : undefined} /></div>
+          ) : activeTab === 'products' ? (
+            planAllows(features && features.maxCourses !== 0)
+              ? <div className="p-4 lg:p-0"><AdminCourses productsPage onOpenCourses={() => go('courses')} /></div>
+              : <PlanUpgradeScreen featureName="Products" featureKey="maxCourses" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'courses' ? (
             planAllows(features && features.maxCourses !== 0)
               ? <div className="p-4 lg:p-0"><AdminCourses /></div>
@@ -1368,6 +1418,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             canDonations
               ? <div className="p-4 lg:p-0"><AdminDonations /></div>
               : <PlanUpgradeScreen featureName="Donations" featureKey="fundraising" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
+          ) : openBoardId && planAllows(features?.docs) ? (
+            <BoardGrid boardId={openBoardId} onTitle={setBoardTitle} onOpenNote={(id) => navigate(`/admin/docs/${id}`)} />
           ) : activeTab === 'docs' ? (
             planAllows(features?.docs)
               ? <div className="p-4 lg:p-0"><AdminDocs initialDocId={itemId} onItemConsumed={clearItemId} /></div>
@@ -1414,7 +1466,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               ? <div className="p-4 lg:p-0"><AdminLivestream /></div>
               : <PlanUpgradeScreen featureName="Livestream" featureKey="livestream" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'social' ? (
-            <div className="p-4 lg:p-0"><SocialScheduler knownEntitled={isSuperAdmin || features?.socialScheduler === true} onUpgrade={() => go('upgrade')} /></div>
+            <div className="p-4 lg:p-0"><SocialScheduler planLoading={!isSuperAdmin && !resolvedPlan} onUpgrade={() => go('upgrade')} /></div>
           ) : activeTab === 'sms' ? (
             // With SMS hidden the nav entry is gone, so this branch only catches
             // a typed or bookmarked /admin/sms — and it must not render AdminSms

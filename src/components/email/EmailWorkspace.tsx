@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus } from 'lucide-react';
 import { authFetch } from '@/utils/auth-fetch';
 import { BroadcastEditor } from '@/components/email/BroadcastEditor';
 import { BroadcastsView } from '@/components/email/BroadcastsView';
@@ -11,7 +11,8 @@ import { EmailOverview } from '@/components/email/EmailOverview';
 import { EmailSettingsView } from '@/components/email/EmailSettingsView';
 import { ImportDialog } from '@/components/email/ImportDialog';
 import { SubscribersView } from '@/components/email/SubscribersView';
-import { ErrorNote, TAP } from '@/components/email/kit';
+import { ErrorNote } from '@/components/email/kit';
+import { PageHeader, PageTabs } from '@/components/admin-shell/PageHeader';
 import { EmailApiError, authedCall, createEmailApi, type SettingsFocus, type Broadcast, type EmailApi, type Overview } from '@/components/email/email-api';
 import { Button } from '@/components/ui/button';
 
@@ -24,6 +25,13 @@ const SECTIONS: readonly { value: Section; label: string }[] = [
   { value: 'subscribers', label: 'Subscribers' },
   { value: 'settings', label: 'Settings' },
 ];
+
+const SUBTITLES: Record<Section, string> = {
+  overview: 'How your list is growing and what you have sent.',
+  broadcasts: 'One-time emails to your list, sent now or later.',
+  subscribers: 'The people in your CRM who opted in to email.',
+  settings: 'Who your emails come from.',
+};
 
 /**
  * The email workspace: overview, broadcasts, the editor, subscribers and
@@ -59,26 +67,28 @@ export function EmailWorkspace({ tenantId, api: injected, initialSection = 'over
   // A failed load is shown as a failure, never as an empty list.
   if (error && !data) {
     return (
-      <div className="mx-auto flex w-full max-w-[1200px] flex-col items-start gap-3 px-4 py-8 lg:px-0">
+      <div className="mx-auto flex w-full max-w-[1200px] flex-col items-start gap-3 px-4 pb-8 lg:px-0">
         <ErrorNote>{error}</ErrorNote>
         <Button variant="outline" className="min-h-11" onClick={() => void load()}>Try again</Button>
       </div>
     );
   }
   if (!data) {
-    return <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-4 px-4 py-8 lg:px-0"><Skeleton className="h-10 w-48" /><Skeleton className="h-32 w-full" /><Skeleton className="h-64 w-full" /></div>;
+    return <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-4 px-4 pb-8 lg:px-0"><Skeleton className="h-10 w-48" /><Skeleton className="h-32 w-full" /><Skeleton className="h-64 w-full" /></div>;
   }
 
   const editing = view.kind === 'editor';
   return (
-    <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 py-8 lg:px-0" data-email-workspace>
+    <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 pb-8 lg:px-0" data-email-workspace>
       {error && <ErrorNote>{error}</ErrorNote>}
-      {!editing && (
-        <Tabs value={view.section} onValueChange={(v) => go(v as Section)}>
-          <TabsList aria-label="Email sections">
-            {SECTIONS.map((s) => <TabsTrigger key={s.value} value={s.value} className={TAP}>{s.label}</TabsTrigger>)}
-          </TabsList>
-        </Tabs>
+      {view.kind === 'section' && (
+        // The shared page header: the title on the left; the pill and the main button, in that order, on the right.
+        <PageHeader
+          title="Newsletter"
+          subtitle={SUBTITLES[view.section]}
+          tabs={<PageTabs label="Email sections" value={view.section} onValueChange={go} items={SECTIONS} />}
+          action={<Button className="min-h-11" onClick={() => setView({ kind: 'editor', broadcast: null })}><Plus data-icon="inline-start" />New broadcast</Button>}
+        />
       )}
       {view.kind === 'editor' && (
         <BroadcastEditor
@@ -108,7 +118,7 @@ export function EmailWorkspace({ tenantId, api: injected, initialSection = 'over
         />
       )}
       {view.kind === 'section' && view.section === 'subscribers' && (
-        <SubscribersView data={data} onImport={() => setImporting(true)} onSettings={() => go('settings')} />
+        <SubscribersView data={data} tenantId={tenantId} onImport={() => setImporting(true)} onSettings={() => go('settings')} />
       )}
       {view.kind === 'section' && view.section === 'settings' && (
         <EmailSettingsView api={api} data={data} focus={settingsFocus} onSaved={(settings) => setData({ ...data, settings })} onLimitsSaved={() => void load()} />

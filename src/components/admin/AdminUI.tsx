@@ -1,40 +1,24 @@
 "use client";
 import React from 'react';
 import { Search } from 'lucide-react';
+import { useSubviewHeader } from '../use-subview-header';
 
 /**
  * Shared admin desktop UI primitives — the design system extracted from the
  * Harvest admin mockups. Every admin screen composes these so the whole panel
- * reads as one system: gold eyebrow + Fraunces-light page title + gold action,
+ * reads as one system: Fraunces-light page title + gold action,
  * a standalone search bar, branded tables/cards, and status badges.
  *
  * Colors flow through the brand tokens (globals.css / tailwind), and every gold
  * accent uses --brand-color so tenant theming still overrides it.
  */
 
-/** Page header: gold eyebrow + big Fraunces-light title (e.g. "3 courses") +
- *  an optional primary action pinned to the right. Sits inside the content
- *  area (the branded top bar keeps just the screen name). */
-export const AdminPageHeader: React.FC<{
-  eyebrow?: string;
-  title: React.ReactNode;
-  subtitle?: React.ReactNode;
-  action?: React.ReactNode;
-  className?: string;
-}> = ({ eyebrow, title, subtitle, action, className = '' }) => (
-  <div className={`flex items-start justify-between gap-4 ${className}`}>
-    <div className="min-w-0">
-      {eyebrow && (
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold mb-1.5">{eyebrow}</p>
-      )}
-      <h2 className="font-display text-[1.75rem] lg:text-[2rem] leading-[1.1] font-light tracking-[-0.02em] text-strong">
-        {title}
-      </h2>
-      {subtitle && <p className="text-sm text-muted mt-1.5">{subtitle}</p>}
-    </div>
-    {action && <div className="shrink-0 pt-1">{action}</div>}
-  </div>
-);
+/**
+ * Page header: the one shared `PageHeader` (admin-shell/PageHeader), under the
+ * name the admin screens already import. Title on the left, a tab pill and the
+ * main button on the right, one line, nothing above the title.
+ */
+export { PageHeader as AdminPageHeader } from '../admin-shell/PageHeader';
 
 /** Primary (gold) action button — the "+ New …" call to action. */
 export const AdminPrimaryButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { icon?: React.ReactNode }> = ({
@@ -144,31 +128,29 @@ export const statusTone = (status?: string): BadgeTone => {
   }
 };
 
-/** Editor header row: back link · Fraunces-light title · subtitle · status +
- *  actions (Save / Publish) pinned right. Keeps the editor inside the shell. */
+/** Editor header row: Fraunces-light title · subtitle · status + actions (Save / Publish)
+ *  pinned right. The way back is the top bar's breadcrumb (published through
+ *  `useSubviewHeader`), so there is no back link here. Keeps the editor inside the shell. */
 export const AdminEditorHeader: React.FC<{
   onBack: () => void;
+  /** Kept for callers that still pass it; the breadcrumb names the parent now. */
   backLabel?: string;
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   actions?: React.ReactNode;
-}> = ({ onBack, backLabel = 'Back', title, subtitle, actions }) => (
-  <div className="mb-6">
-    <div className="flex items-start justify-between gap-4">
-      <div className="min-w-0">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-1.5 text-[13px] font-semibold text-gold hover:opacity-80 transition-opacity mb-2"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-          {backLabel}
-        </button>
-        <h1 className="font-display text-[1.75rem] lg:text-[2rem] leading-[1.1] font-light tracking-[-0.02em] text-strong truncate">
-          {title}
-        </h1>
-        {subtitle && <p className="text-sm text-muted mt-1.5">{subtitle}</p>}
+}> = ({ onBack, title, subtitle, actions }) => {
+  useSubviewHeader({ title: typeof title === 'string' && title.trim() ? title : 'Edit', onBack });
+  return (
+    <div className="mb-6">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="font-display text-[1.75rem] lg:text-[2rem] leading-[1.1] font-light tracking-[-0.02em] text-strong truncate">
+            {title}
+          </h1>
+          {subtitle && <p className="text-sm text-muted mt-1.5">{subtitle}</p>}
+        </div>
+        {actions && <div className="shrink-0 flex items-center gap-2.5 pt-1">{actions}</div>}
       </div>
-      {actions && <div className="shrink-0 flex items-center gap-2.5 pt-1">{actions}</div>}
     </div>
-  </div>
-);
+  );
+};

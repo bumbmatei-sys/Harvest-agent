@@ -23,6 +23,7 @@ import { exportToPDF, exportToDOCX, exportToMarkdown } from '../utils/doc-export
 import { markdownToHtml, titleFromMarkdown } from '../utils/markdown-import';
 import RichTextEditor, { COMPACT_PROSE_CLASS } from './RichTextEditor';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
+import { useSubviewHeader } from './use-subview-header';
 import { Sidebar, SidebarProvider } from './ui/sidebar';
 import {
   DropdownMenu,
@@ -1057,6 +1058,10 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
     setFocusMode(false);
   };
 
+  // The way back to the notes list is the top bar's breadcrumb (Notes > this note), and the
+  // back chevron on a phone, not a button inside the editor.
+  useSubviewHeader(openDoc ? { title: editTitle.trim() || openDoc.title?.trim() || 'Untitled', onBack: () => { void closeEditor(); } } : null);
+
   const createDoc = async (folderId?: string | null) => {
     try {
       const ref = await addDoc(collection(db, 'docs'), {
@@ -1600,9 +1605,12 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
               on the right is a row of the menu now. */}
           <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-3">
             <div className="flex min-w-0 items-center gap-2">
+              {/* Desktop leaves the editor through the top bar's breadcrumb (Notes > this note), so
+                  this control is for a phone only. It stays there on purpose: in focus mode a phone
+                  hides both the app header and the bottom nav, and this is the only way out. */}
               <button
                 onClick={closeEditor}
-                className="flex shrink-0 items-center gap-1.5 text-[13px] font-semibold text-gold transition-opacity hover:opacity-80"
+                className="flex shrink-0 items-center gap-1.5 text-[13px] font-semibold text-gold transition-opacity hover:opacity-80 lg:hidden"
               >
                 <ArrowLeft size={15} /> Notes
               </button>

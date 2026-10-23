@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, Copy, Eye, LayoutTemplate, Palette, Send, Split, Trash2, X } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronUp, Copy, Eye, LayoutTemplate, Palette, Send, Split, Trash2, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -18,6 +18,8 @@ import { ErrorNote, TAP, formatStamp, plural } from '@/components/email/kit';
 import { inboxCheck, inboxSummary, plainWords } from '@/components/email/inbox-check';
 import { EmailApiError, type SettingsFocus, type AudienceFilter, type Broadcast, type DraftFields, type EmailApi, type Overview, type SendResponse } from '@/components/email/email-api';
 import { cn } from '@/lib/utils';
+import { useAdminHeader } from '@/components/AdminScreenHeader';
+import { useTenantOptional } from '@/contexts/TenantContext';
 
 type Step = 'write' | 'send';
 type Saving = 'saved' | 'saving' | 'unsaved' | 'error';
@@ -121,7 +123,19 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
   }, [subject, subjectB, preheader, bodyHtml, design, filters, persist]);
 
   const tips = inboxCheck({ subject, preheader, bodyHtml });
-  const ready = data.settings.domainState === 'verified' && Boolean(data.settings.fromName && data.settings.replyTo && data.settings.mailingAddress);
+  const ready = Boolean(data.settings.fromName && data.settings.replyTo && data.settings.mailingAddress);
+
+  // The way back is the top bar's breadcrumb (Newsletter > this email), not a button
+  // in the page. `back()` is still what runs, so unsaved edits are saved first.
+  const brandColor = useTenantOptional()?.branding?.primaryColor;
+  const { setHeaderOverride } = useAdminHeader();
+  const backRef = useRef(back);
+  backRef.current = back;
+  const crumbTitle = subject.trim() || 'Untitled broadcast';
+  useEffect(() => {
+    setHeaderOverride({ title: crumbTitle, onBack: () => { void backRef.current(); } });
+    return () => setHeaderOverride(null);
+  }, [crumbTitle, setHeaderOverride]);
 
   /** Saves only what needs saving: unsaved edits, or a broadcast that has no id yet. */
   async function saveIfNeeded() {
@@ -198,7 +212,6 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
 
   const header = (
     <div className="flex items-center gap-3 border-b border-line pb-4">
-      <Button variant="ghost" size="icon" className="min-h-11" aria-label="Back to broadcasts" onClick={() => { void back(); }}><ArrowLeft /></Button>
       <h1 className="min-w-0 flex-1 truncate font-display text-lg font-semibold text-strong">{subject.trim() || 'Untitled broadcast'}</h1>
       <nav aria-label="Steps" className="flex items-center gap-2 text-sm">
         <span className={step === 'write' ? 'font-medium text-strong' : 'text-faint'} aria-current={step === 'write' ? 'step' : undefined}>Write</span>
@@ -349,7 +362,7 @@ export function BroadcastEditor({ api, data, initial, onBack, onOpenSettings, on
         </DialogContent>
       </Dialog>
 
-      <DesignDialog open={designOpen} onOpenChange={setDesignOpen} design={design} onChange={setDesign} />
+      <DesignDialog open={designOpen} onOpenChange={setDesignOpen} design={design} onChange={setDesign} brandColor={brandColor} />
       <PreviewDialog open={previewOpen} onOpenChange={setPreviewOpen} api={api} draft={{ subject, preheader, bodyHtml, design }} />
       <TemplatesDialog
         open={templatesOpen}

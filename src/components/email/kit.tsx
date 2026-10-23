@@ -11,18 +11,6 @@ import { cn } from '@/lib/utils';
 /** Below `sm` a control is at least 44px tall; the 38px floor above it is a global rule. */
 export const TAP = 'min-h-11';
 
-export function PageHeader({ title, subtitle, action }: { title: string; subtitle: string; action?: ReactNode }) {
-  return (
-    <div className="flex items-start justify-between gap-4">
-      <div>
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-strong">{title}</h1>
-        <p className="mt-1.5 text-sm text-muted">{subtitle}</p>
-      </div>
-      {action}
-    </div>
-  );
-}
-
 /** The soft gold strip Eden uses for "finish setup" nudges. */
 export function SetupBanner({ children, actionLabel, onAction }: { children: ReactNode; actionLabel: string; onAction: () => void }) {
   return (
@@ -60,8 +48,12 @@ export function plural(n: number, one: string, many: string): string {
   return `${n.toLocaleString()} ${n === 1 ? one : many}`;
 }
 
-export function senderReady(s: { fromName: string; replyTo: string; mailingAddress: string; domainState: string }): boolean {
-  return Boolean(s.fromName.trim() && s.replyTo.trim() && s.mailingAddress.trim() && s.domainState === 'verified');
+/**
+ * Whether the sender details a marketing email needs are filled in. Emails go out
+ * from Harvest's own sending address, so there is no domain to verify first.
+ */
+export function senderReady(s: { fromName: string; replyTo: string; mailingAddress: string }): boolean {
+  return Boolean(s.fromName.trim() && s.replyTo.trim() && s.mailingAddress.trim());
 }
 
 export interface Option<T extends string> { readonly value: T; readonly label: string }

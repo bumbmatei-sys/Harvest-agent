@@ -42,7 +42,7 @@ describe('SocialScheduler', () => {
     });
     expect(container.querySelector('[data-testid="social-upgrade-wall"]')).toBeTruthy();
     expect(container.textContent).toContain('Social scheduling is an add-on');
-    expect(container.textContent).toContain('not included with any plan');
+    expect(container.textContent).toContain("plan does not include it");
     expect(container.textContent).not.toMatch(/\$\d/);
     expect(container.querySelector('[data-testid="social-scheduler"]')).toBeNull();
   });
@@ -181,21 +181,67 @@ describe('SocialScheduler', () => {
     expect(panel?.textContent).toContain('Sent');
   });
 
-  it('renders the composer while accounts are still loading, then the unavailable card if the load fails', async () => {
+  it('shows a loading state, never the composer, until the server has answered, then the unavailable card if the load fails', async () => {
     let release: (value: { status: number; ok: boolean; json: () => Promise<unknown> }) => void = () => {};
     authFetch.mockImplementation(() => new Promise((resolve) => { release = resolve; }));
     await act(async () => {
-      root.render(<SocialScheduler knownEntitled onUpgrade={() => {}} />);
+      root.render(<SocialScheduler onUpgrade={() => {}} />);
     });
-    expect(container.querySelector('[data-testid="social-composer"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="social-accounts-loading"]')?.textContent).toBe('Loading social accounts.');
-    const schedule = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Schedule');
-    expect(schedule?.hasAttribute('disabled')).toBe(true);
+    expect(container.querySelector('[data-testid="social-gate-loading"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="social-composer"]')).toBeNull();
+    expect(container.querySelector('[data-testid="social-upgrade-wall"]')).toBeNull();
     await act(async () => {
       release({ status: 503, ok: false, json: async () => ({ error: 'social_unavailable' }) });
     });
     expect(container.querySelector('[data-testid="social-unavailable"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="social-composer"]')).toBeNull();
+    expect(container.querySelector('[data-testid="social-gate-loading"]')).toBeNull();
+  });
+
+  it('holds the loading state while the shell has not resolved the plan, even with data in hand', async () => {
+    const workspace = new MockSocialClient('preview', clock).load();
+    await act(async () => {
+      root.render(<SocialScheduler planLoading initial={{ ...workspace, entitled: false, sample: false }} onUpgrade={() => {}} />);
+    });
+    expect(container.querySelector('[data-testid="social-gate-loading"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="social-upgrade-wall"]')).toBeNull();
+    await act(async () => {
+      root.render(<SocialScheduler initial={{ ...workspace, entitled: false, sample: false }} onUpgrade={() => {}} />);
+    });
+    expect(container.querySelector('[data-testid="social-gate-loading"]')).toBeNull();
+    expect(container.querySelector('[data-testid="social-upgrade-wall"]')).toBeTruthy();
+  });
+
+  it.each([
+    ['Admin access required', 'only an admin with full access'],
+    ['Access denied to this tenant', 'refused for this account'],
+  ])('does not call a %s refusal an upgrade: a Ministry-plan admin is not told to buy the plan', async (error, copy) => {
+    authFetch.mockResolvedValue({ status: 403, ok: false, json: async () => ({ error }) });
+    await act(async () => {
+      root.render(<SocialScheduler onUpgrade={() => {}} />);
+    });
+    expect(container.querySelector('[data-testid="social-upgrade-wall"]')).toBeNull();
+    expect(container.querySelector('[data-testid="social-forbidden"]')?.textContent).toContain(copy);
+    expect(container.querySelector('[data-testid="social-gate-loading"]')).toBeNull();
+  });
+
+  it('settles on the scheduler without ever painting the wall when the server entitles a Ministry admin', async () => {
+    const workspace = new MockSocialClient('preview', clock).load();
+    let release: (value: { status: number; ok: boolean; json: () => Promise<unknown> }) => void = () => {};
+    authFetch.mockImplementation(() => new Promise((resolve) => { release = resolve; }));
+    const frames: string[] = [];
+    const observer = new MutationObserver(() => {
+      frames.push(container.querySelector('[data-testid="social-upgrade-wall"]') ? 'wall' : container.querySelector('[data-testid="social-scheduler"]') ? 'scheduler' : 'other');
+    });
+    observer.observe(container, { childList: true, subtree: true });
+    await act(async () => {
+      root.render(<SocialScheduler onUpgrade={() => {}} />);
+    });
+    await act(async () => {
+      release({ status: 200, ok: true, json: async () => ({ entitled: true, sample: false, timezone: workspace.timezone, accounts: workspace.accounts, posts: workspace.posts }) });
+    });
+    observer.disconnect();
+    expect(frames).not.toContain('wall');
+    expect(container.querySelector('[data-testid="social-scheduler"]')).toBeTruthy();
   });
 
   it('keeps the loading line in place until entitlement is known', async () => {
@@ -625,7 +671,8 @@ describe('SocialScheduler', () => {
       return { ...native.call(this), timeZone: 'America/Denver' };
     });
     try {
-      const html = renderToString(<SocialScheduler knownEntitled onUpgrade={() => {}} />);
+      const unnamed = { ...new MockSocialClient('preview', clock).load(), timezone: 'UTC', entitled: true };
+      const html = renderToString(<SocialScheduler initial={unnamed} initialView="compose" onUpgrade={() => {}} />);
       expect(html.replace(/<!-- -->/g, '')).toContain('Timezone UTC');
       expect(html).not.toContain('America/Denver');
     } finally {

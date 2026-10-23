@@ -121,9 +121,9 @@ async function mount() {
 
 /** The header figure, read off the rendered heading rather than reconstructed. */
 function headerText(): string {
-  return Array.from(container.querySelectorAll('h1, h2, h3'))
-    .map((h) => (h.textContent || '').trim())
-    .find((t) => /course/i.test(t)) ?? '';
+  // The figure ("1 of 15 courses used") is the page header's subtitle now, under the "Courses" title.
+  const header = container.querySelector('[data-page-header]');
+  return (header?.textContent || '').trim();
 }
 
 function tabLabel(which: 'own' | 'library'): string {

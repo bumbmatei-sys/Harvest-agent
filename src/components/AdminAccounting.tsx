@@ -15,6 +15,8 @@ import { openStatementPdf } from '../utils/open-statement-pdf';
 import { QUICKBOOKS_FEATURE_ENABLED } from '../lib/quickbooks-feature';
 import { FEATURE_MIN_PLAN } from '../utils/plan-features';
 import AdminGivingStatements from './AdminGivingStatements';
+import { AdminPageHeader } from './admin/AdminUI';
+import { PageTabs } from './admin-shell/PageHeader';
 import { GIVING_PROVIDER_NAMES_OR } from './donations/giving-providers';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 
@@ -411,27 +413,27 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
     return matchType && matchYear && matchSearch;
   });
 
-  // Native pill segmented control (matches the CRM Contacts/Analytics toggle).
-  const subTabBar = showBothSubTabs ? (
-    <div className="flex gap-1 bg-surface-sunken rounded-xl p-1 mb-5 w-fit">
-      <button
-        onClick={() => setSubTab('accounting')}
-        className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-          activeSubTab === 'accounting' ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'
-        }`}
-      >
-        Accounting
-      </button>
-      <button
-        onClick={() => setSubTab('statements')}
-        className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-          activeSubTab === 'statements' ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'
-        }`}
-      >
-        Statements
-      </button>
-    </div>
-  ) : null;
+  // The shared page header: "Accounting" on the left, the Accounting / Statements pill on
+  // the right (only when the viewer may open both), one line. It sits at the top of every
+  // state below, including loading, so the pill never moves when the view changes.
+  const pageHeader = (
+    <AdminPageHeader
+      title="Accounting"
+      hideTitleOnMobile
+      tabs={showBothSubTabs ? (
+        <PageTabs
+          label="Accounting sections"
+          value={activeSubTab}
+          onValueChange={setSubTab}
+          items={[
+            { value: 'accounting', label: 'Accounting' },
+            { value: 'statements', label: 'Statements' },
+          ]}
+        />
+      ) : undefined}
+    />
+  );
+  const subTabBar = <div className="mb-5">{pageHeader}</div>;
 
   // Statements sub-tab — the standalone giving-statements screen.
   if (activeSubTab === 'statements') {

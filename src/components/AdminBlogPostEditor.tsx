@@ -1,6 +1,7 @@
 "use client";
 import React, { useRef, useState } from 'react';
-import { ArrowLeft, X, Plus, Trash2 } from 'lucide-react';
+import { X, Plus, Trash2 } from 'lucide-react';
+import { useSubviewHeader } from './use-subview-header';
 import { ImageUpload } from './ImageUpload';
 import RichTextEditor from './RichTextEditor';
 import { getWriteTenantScope } from '../utils/tenant-scope';
@@ -257,13 +258,14 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
     void handleSave(next, pendingPreview ? 'commit' : 'local');
   };
 
+  // The way back to Blog is the top bar's breadcrumb, not a button in the page.
+  useSubviewHeader({ title: title.trim() || 'New post', onBack: onClose });
+
   return (
     <div className="w-full max-w-6xl mx-auto pb-10">
       {/* Header */}
       <div className="flex items-center justify-between gap-4 mb-6">
-        <button onClick={onClose} className="flex items-center gap-1.5 text-[13px] font-semibold text-gold hover:opacity-80 transition-opacity">
-          <ArrowLeft size={16} /> Blog
-        </button>
+        <h1 className="font-display text-[1.75rem] lg:text-[2rem] leading-[1.1] font-light tracking-[-0.02em] text-strong truncate min-w-0">{title.trim() || 'New post'}</h1>
         <div className="flex items-center gap-2.5">
           <AdminSecondaryButton
             onClick={() => {
