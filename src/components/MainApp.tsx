@@ -294,7 +294,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     return () => { cancelled = true; };
   }, []);
 
-  const [productsStatus, setProductsStatus] = useState<'loading' | 'empty' | 'present' | 'error'>('loading');
+  const [productsStatus, setProductsStatus] = useState<'loading' | 'empty' | 'present'>('loading');
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -305,7 +305,8 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
         if (typeof result.present !== 'boolean') throw new Error('Invalid product response');
         if (!cancelled) setProductsStatus(result.present ? 'present' : 'empty');
       } catch {
-        if (!cancelled) setProductsStatus('error');
+        // Hide the tab on error so it cannot open a broken products screen.
+        if (!cancelled) setProductsStatus('empty');
       }
     })();
     return () => { cancelled = true; };
@@ -717,7 +718,6 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   return (
     <div className="flex flex-col lg:flex-row h-screen bg-surface font-sans overflow-hidden transition-colors duration-300">
       <ReferralTracker />
-      {productsStatus === 'error' && <div role="alert" className="p-2 text-sm">Could not check for digital products. Please refresh to try again.</div>}
       
       {/* Side/Bottom Navigation */}
       <div className={`bg-surface-raised border-t lg:border-t-0 lg:border-r border-line flex justify-center lg:justify-start py-2 lg:py-5 px-2 lg:px-3 pb-[calc(8px+env(safe-area-inset-bottom))] lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-[224px]'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300 ${!isNavVisible || activeBottomTab === 'map' || isChatOpen ? 'max-lg:translate-y-full' : 'max-lg:translate-y-0'}`}>

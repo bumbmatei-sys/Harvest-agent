@@ -1,5 +1,5 @@
 'use client';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { ProductWizard } from '@/components/product-wizard';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -24,8 +24,9 @@ type Product = {
   fileSize?: number;
   entitled?: boolean;
 };
-async function api(path: string, body?: unknown) {
-  const response = await authFetch(path, body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) });
+export const DigitalFetchContext = createContext(authFetch);
+async function api(request: typeof authFetch, path: string, body?: unknown) {
+  const response = await request(path, body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || 'Request failed');
   return data;
@@ -39,16 +40,17 @@ function priceLabel(product: Product) {
   return product.priceCents ? `$${(product.priceCents / 100).toFixed(2)}` : 'Free';
 }
 function useProducts(admin: boolean) {
+  const request = useContext(DigitalFetchContext);
   const [products, setProducts] = useState<Product[] | null>(null);
   const [error, setError] = useState('');
   const load = useCallback(async () => {
     try {
       setError('');
-      setProducts((await api(`/api/digital-products${admin ? '?admin=1' : ''}`)).products);
+      setProducts((await api(request, `/api/digital-products${admin ? '?admin=1' : ''}`)).products);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load products');
     }
-  }, [admin]);
+  }, [admin, request]);
   useEffect(() => { void load(); }, [load]);
   return { products, setProducts, error };
 }
@@ -80,6 +82,7 @@ export function DigitalAdminList({ onEdit }: { onEdit: (product: Product) => voi
   );
 }
 export function DigitalEditor({ initial, onClose }: { initial?: Product | null; onClose: () => void }) {
+  const request = useContext(DigitalFetchContext);
   const [product, setProduct] = useState<Product>(() => initial || { id: crypto.randomUUID(), title: '', description: '', coverUrl: '', priceCents: 0, status: 'draft' });
   const [price, setPrice] = useState(() => initial ? (initial.priceCents / 100).toFixed(2) : '0');
   const pdfInput = useRef<HTMLInputElement>(null);
@@ -97,7 +100,7 @@ export function DigitalEditor({ initial, onClose }: { initial?: Product | null; 
     setBusy(true);
     setError('');
     try {
-      const result = await api(cover ? '/api/storage/presign' : '/api/digital-products/upload', cover
+      const result = await api(request, cover ? '/api/storage/presign' : '/api/digital-products/upload', cover
         ? { fileName: file.name, contentType: file.type, fileSize: file.size }
         : { productId: product.id, contentType: file.type, fileSize: file.size });
       const response = await fetch(result.uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
@@ -114,7 +117,7 @@ export function DigitalEditor({ initial, onClose }: { initial?: Product | null; 
     setBusy(true);
     setError('');
     try {
-      await api('/api/digital-products', { ...product, priceCents: Math.round(Number(price) * 100), status });
+      await api(request, '/api/digital-products', { ...product, priceCents: Math.round(Number(price) * 100), status });
       setProduct(p => ({ ...p, status, priceCents: Math.round(Number(price) * 100) }));
       setSaved(true);
     } catch (e) {
@@ -183,6 +186,7 @@ export function DigitalEditor({ initial, onClose }: { initial?: Product | null; 
   );
 }
 export function DigitalMemberProducts() {
+  const request = useContext(DigitalFetchContext);
   const { products, setProducts, error } = useProducts(false);
   const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
@@ -191,10 +195,10 @@ export function DigitalMemberProducts() {
     setActionError('');
     try {
       if (product.entitled) {
-        const result = await api('/api/digital-products/download', { productId: product.id });
+        const result = await api(request, '/api/digital-products/download', { productId: product.id });
         window.location.assign(result.url);
       } else {
-        await api('/api/digital-products/claim', { productId: product.id });
+        await api(request, '/api/digital-products/claim', { productId: product.id });
         setProducts(current => current?.map(p => p.id === product.id ? { ...p, entitled: true } : p) ?? null);
       }
     } catch (e) {

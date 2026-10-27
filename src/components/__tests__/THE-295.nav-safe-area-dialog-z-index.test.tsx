@@ -810,10 +810,9 @@ describe('8 · which tabs appear and their gating are unchanged', () => {
     // still fails on a wrapper, a moved block or a dropped node. The
     // tag-for-tag inventory is asserted in MemberScreens.desktop-layout.
     const tags = [...shell().matchAll(/<([A-Za-z][A-Za-z0-9.]*)/g)].map((m) => m[1]);
-    // DIGITAL-1 adds the gated Products view and a visible presence-read error.
+    // DIGITAL-1 adds the gated Products view.
     expect(shell()).toContain("effectiveTopTab === 'products' && <DigitalMemberProducts />");
-    expect(shell()).toContain("productsStatus === 'error' && <div");
-    expect(tags.length, 'the shell gained or lost an element').toBe(73 + 2);
+    expect(tags.length, 'the shell gained or lost an element').toBe(73 + 1);
   });
 
   it('and the deliberate inline brand-colour fallback is left alone', () => {

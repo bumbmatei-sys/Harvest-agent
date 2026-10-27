@@ -17,6 +17,11 @@
       "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
       "digest": "e247bd6f8defa1d73be6738d9c1b9aa3c3e4f7e034eec730d61112fd118d4bf3",
       "why": "DIGITAL-1 appends DigitalProducts.tsx to the primitive adopter register with its ticket and reason; no previous adopter or assertion is removed."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "04bedb0769977c65bc2369c65781021ae043239a13090545382ab85cf1609534",
+      "why": "DIGITAL-1 round 5 hides the Products tab on a failed presence read, matching the existing Courses gate without adding an element to the member shell."
     }
   ]
 }
