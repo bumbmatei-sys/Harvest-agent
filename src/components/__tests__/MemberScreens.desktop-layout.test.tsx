@@ -3,7 +3,9 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
+import { stripComments as parseStripped } from '../../__tests__/__fixtures__/the-346-strip-comments';
 
 /**
  * THE-190 batch H — the seven member-app screens, and the reading measure.
@@ -221,6 +223,12 @@ const at = (rel: string) => {
 const FIXTURES = path.join(__dirname, '__fixtures__');
 const RECORDING = !!process.env.UPDATE_LAYOUT_BASELINE;
 const FIXTURE = path.join(FIXTURES, 'member-screens-mobile.json');
+const COMMUNITY_FIXTURE = path.join(FIXTURES, 'member-screens-community-mobile.json');
+const COMMUNITY_SURFACES = ['NewsTab', 'MainApp', 'UserMessages', 'UserMessagesThread'] as const;
+const isCommunitySurface = (name: string) => (COMMUNITY_SURFACES as readonly string[]).includes(name);
+// The last tree before community step 1. Keep the original pre-PR revision above.
+const COMMUNITY_BEFORE = 'fc50e456';
+const beforeCommunity = (rel: string) => execSync(`git show ${COMMUNITY_BEFORE}:src/components/${rel}`, { cwd: ROOT, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
 
 interface Baseline { [surface: string]: { mobileLayer: string[]; colours: string[]; heights: string[] } }
 
@@ -301,6 +309,7 @@ const heightLayer = (root: ParentNode): string[] =>
 
 let BASELINE!: Baseline;
 let SURFACES!: Record<string, HTMLDivElement>;
+let COMMUNITY_BASELINE!: Baseline;
 
 const SCOPE = ['NewsTab', 'MainApp', 'UserMessages', 'BiblePage', 'LivestreamView', 'AllNews', 'AIChat'] as const;
 const ALL_SURFACES = [...SCOPE, 'UserMessagesThread', 'AIChatThread'] as const;
@@ -367,6 +376,54 @@ beforeAll(async () => {
   }
   BASELINE = JSON.parse(readFileSync(FIXTURE, 'utf8')) as Baseline;
   SURFACES = await surfaces();
+  COMMUNITY_BASELINE = JSON.parse(readFileSync(COMMUNITY_FIXTURE, 'utf8')) as Baseline;
+});
+
+/**
+ * Community step 1 intentionally adds the member composer, group search and
+ * entry gate. Preserve the original fixture and compare the four affected
+ * renderings to their own recorded fixture. The source digests pin the complete
+ * change, including paths the seeded render does not exercise. The historical
+ * source comparisons below still run against the last pre-community tree.
+ */
+describe('community step 1 pins', () => {
+  it.each([
+    ['NewsTab.tsx', '12f1ab6a48623eda537aff4f7de3d268be70200b4c62900f38ef2489fe43ab81'],
+    ['MainApp.tsx', '7bdd8d894bae432a07abdc08867b1a08c18c542e869b854c8b203f09e369fe1f'],
+    ['UserMessages.tsx', '5f72938d27614c717cf3ea89cf38b90308e5d8ab6c137e0a41c57cbfa1308150'],
+    ['community/GroupList.tsx', '8d60461ab80b7ceee6a7ee960b0f535c56468f7eab5b3c3f874b2d62557d3239'],
+    ['community/MemberPostComposer.tsx', '189fecc2625d8086636484e294d0a10b0e493f44f8f51dc47e3b84ee8fd4545d'],
+    ['community/AdminPostComposer.tsx', '308c589ce29d21222c2d36b21d708322feef8019f0f478ffa36d0b50bcb3ba14'],
+  ])('%s retains the reviewed community implementation', (file, digest) => {
+    expect(createHash('sha256').update(read(file)).digest('hex')).toBe(digest);
+  });
+
+  it('retains the earlier height inventory alongside the added composer avatar', () => {
+    for (const name of ['NewsTab', 'MainApp'] as const) {
+      const tokens = (rows: string[]) => rows.map((row) => row.split('\t')[1]);
+      const now = tokens(COMMUNITY_BASELINE[name].heights);
+      const old = tokens(BASELINE[name].heights);
+      const addedAvatar = now.indexOf('h-8');
+      expect(addedAvatar).toBeGreaterThan(-1);
+      now.splice(addedAvatar, 1);
+      expect(now).toEqual(old);
+    }
+    for (const name of THE_348_SURFACES) {
+      const [now, old] = undoTHE348(COMMUNITY_BASELINE[name].heights, BASELINE[name].heights);
+      expect(now).toEqual(old);
+    }
+  });
+
+  it('keeps both member channel constraints and the existing message paths', () => {
+    const src = parseStripped(read('UserMessages.tsx'));
+    expect(src).toContain("where('audience', '==', 'all')");
+    expect(src).toContain("where('members', 'array-contains', currentUser.uid)");
+    expect(src).toMatch(/'directMessages'\),\s*where\('participants', 'array-contains', currentUser\.uid\),\s*limit\(50\)/);
+    expect(src).toMatch(/'dmMessages'\),\s*where\('dmId', '==', dm\.id\),\s*limit\(300\)/);
+    expect(src).toMatch(/'channelMessages'\),\s*where\('channelId', '==', channel\.id\),\s*limit\(300\)/);
+    expect(src).toMatch(/updateDoc\(doc\(db, 'tenants', tenantId, 'dmMessages', d\.id\), \{ read: true \}\)/);
+    expect(src).toMatch(/addDoc\(collection\(db, 'tenants', tenantId, 'dmMessages'\), payload\)/);
+  });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -482,6 +539,10 @@ function undoTHE348(nowRows: string[], baseRows: string[]): [string[], string[]]
 
 describe('the sub-640px rendering of each file is unchanged', () => {
   it.each(ALL_SURFACES)('%s renders the same class layer below 640px as it did before', (name) => {
+    if (isCommunitySurface(name)) {
+      expect(mobileLayer(SURFACES[name])).toEqual(COMMUNITY_BASELINE[name].mobileLayer);
+      return;
+    }
     const now0 = undoTHE295(mobileLayer(SURFACES[name]));
     // THE-362 folds ONE class out of LivestreamView's rendered layer — see the
     // register above. The source-level fold cannot reach this comparison
@@ -547,8 +608,10 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       const wasTokens = new Set(BASELINE[name].mobileLayer.flatMap((r) => r.split('\t')[2]?.split(' ') ?? []));
       const added = [...new Set(rows.flatMap((r) => r.split('\t')[2]?.split(' ') ?? []))]
         .filter((t) => t && !wasTokens.has(t));
-      expect(added.sort(), `${name} gained a class nobody recorded`)
-        .toEqual([...THE_348_ADDED].sort());
+      const communityTokens = new Set(undoTHE295(COMMUNITY_BASELINE[name].mobileLayer).flatMap((r) => r.split('\t')[2]?.split(' ') ?? []));
+      const communityAdded = [...communityTokens].filter((t) => t && !wasTokens.has(t));
+      expect(added.sort(), `${name} gained a class beyond the community pin`).toEqual(communityAdded.sort());
+      for (const token of THE_348_ADDED) expect(added).toContain(token);
     }
   });
 
@@ -589,6 +652,10 @@ describe('the sub-640px rendering of each file is unchanged', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 describe('no touch target got smaller', () => {
   it.each(ALL_SURFACES)('%s renders the same height tokens on the same elements', (name) => {
+    if (isCommunitySurface(name)) {
+      expect(heightLayer(SURFACES[name])).toEqual(COMMUNITY_BASELINE[name].heights);
+      return;
+    }
     if ((THE_348_SURFACES as readonly string[]).includes(name)) {
       // 🔴 NOTHING SHRANK — and one thing GREW, which is the point. THE-348's
       // only height change is the send button gaining `min-h-11 min-w-11`
@@ -1140,7 +1207,7 @@ describe('the Messages gate is unchanged', () => {
    */
   it('UserMessages’ queries and gates survive — the call inventory lost exactly the picker', () => {
     const calls = (s: string) => (s.match(/(?:collection|doc|query|where|orderBy|limit|onSnapshot|getDocs|getDoc|addDoc|updateDoc|deleteDoc|setDoc)\(/g) ?? []).sort();
-    const now = calls(read('UserMessages.tsx'));
+    const now = calls(beforeCommunity('UserMessages.tsx'));
     const before = calls(at('UserMessages.tsx'));
 
     // 🔴 THE DELETED `FormPicker` HELD EXACTLY FIVE FIRESTORE CALLS — one
@@ -1158,7 +1225,7 @@ describe('the Messages gate is unchanged', () => {
 
   it('and every listener, filter and write path it had is still spelled the same way', () => {
     // The queries this test was standing for, named rather than proxied.
-    const src = stripComments(read('UserMessages.tsx'));
+    const src = stripComments(beforeCommunity('UserMessages.tsx'));
     expect(src, 'the DM list query moved').toMatch(/'directMessages'\),\s*where\('participants', 'array-contains', currentUser\.uid\),\s*limit\(50\)/);
     expect(src, 'the channel list query moved').toMatch(/'channels'\),\s*where\('members', 'array-contains', currentUser\.uid\),\s*limit\(50\)/);
     expect(src, 'the DM message listener moved').toMatch(/'dmMessages'\),\s*where\('dmId', '==', dm\.id\),\s*limit\(300\)/);
@@ -1278,7 +1345,7 @@ describe('no behaviour changed on any screen in scope', () => {
         .replace(/\.filter\(b => isBlogPostPublic\(b, Date\.now\(\)\)\)/g, '.filter(b => BLOG_PUBLIC)')
         .replace(/\.filter\(a => \(a as any\)\.status === 'published'\)/g, '.filter(a => BLOG_PUBLIC)')
         .replace(/\.filter\(a => isBlogPostPublic\(a, Date\.now\(\)\)\)/g, '.filter(a => BLOG_PUBLIC)');
-    expect(norm(read('NewsTab.tsx'))).toBe(norm(at('NewsTab.tsx')));
+    expect(norm(beforeCommunity('NewsTab.tsx'))).toBe(norm(at('NewsTab.tsx')));
   });
 
   it('AIChat differs only in class strings, the two inline properties it retired, THE-333\'s two rail controls, and THE-356\'s CSS scoping', () => {
@@ -1343,7 +1410,7 @@ describe('no behaviour changed on any screen in scope', () => {
     //     here.
     const tags = (src: string) =>
       [...stripComments(src).matchAll(/<([A-Za-z][A-Za-z0-9.]*)/g)].map((m) => m[1]);
-    expect(tags(read('MainApp.tsx')), 'MainApp changed its element tree').toEqual(tags(at('MainApp.tsx')));
+    expect(tags(beforeCommunity('MainApp.tsx')), 'MainApp changed its element tree before community').toEqual(tags(at('MainApp.tsx')));
 
     //   • EVERY CLASS LITERAL, in order. Three className expressions differ.
     //     Two do so only because `activeTopTab` was renamed `effectiveTopTab`
@@ -1390,12 +1457,16 @@ describe('no behaviour changed on any screen in scope', () => {
         .map((m) => (m[1] ?? m[2])
           .replace(/\beffectiveTopTab\b/g, 'activeTopTab')
           .replace('pb-[calc(8px+env(safe-area-inset-bottom))]', 'pb-safe'));
-    expect(classes(read('MainApp.tsx')), 'MainApp changed a class literal').toEqual(classes(at('MainApp.tsx')));
+    expect(classes(beforeCommunity('MainApp.tsx')), 'MainApp changed a class literal before community').toEqual(classes(at('MainApp.tsx')));
   });
 });
 
 describe('no colour is hardcoded, and both palettes resolve', () => {
   it.each(ALL_SURFACES)('%s renders exactly the colour tokens it rendered before', (name) => {
+    if (isCommunitySurface(name)) {
+      expect(colourTokens(SURFACES[name])).toEqual(COMMUNITY_BASELINE[name].colours);
+      return;
+    }
     if ((THE_348_SURFACES as readonly string[]).includes(name)) {
       // 🔴 THE-348 ADDS NO COLOUR AND REMOVES ONE: the paperclip button's
       // `hover:bg-[var(--border-hairline)]` leaves with the button. Asserted as
