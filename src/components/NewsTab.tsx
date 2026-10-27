@@ -3,11 +3,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, limit, where, getDoc, getDocs, getCountFromServer, addDoc, deleteDoc, deleteField, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, FileText, Tag, Calendar, MessageSquare, Send, MapPin, Globe, HeartHandshake, Paperclip, Pin, X } from 'lucide-react';
+import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, FileText, Tag, Calendar, MessageSquare, Send, MapPin, Globe, HeartHandshake, X } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
 import { sendPushNotification } from '../utils/send-notification';
-import { ImageUpload } from './ImageUpload';
 import { useShareBaseUrl } from '../utils/share-url';
 import ShareButton from './ShareButton';
 import SaveButton from './SaveButton';
@@ -25,8 +24,9 @@ import { HeroBand } from './member/desktopKit';
 import { useLiveNow } from '../hooks/useLiveNow';
 import { useCampaigns } from '../hooks/queries/useCampaignQueries';
 import EmbedPicker, { type PickerItem } from './EmbedPicker';
-import { FeedEmbedCard, EmbedComposerChip, type PostEmbed, type EmbedType } from './EmbedCard';
+import { FeedEmbedCard, type PostEmbed, type EmbedType } from './EmbedCard';
 import { ImageLightbox, PostImageGrid, postImages } from './feed/PostMedia';
+import { AdminPostComposer } from './community/AdminPostComposer';
 import { MemberPostComposer } from './community/MemberPostComposer';
 import { eventPriceLabel } from '../lib/paid-events-feature';
 
@@ -933,250 +933,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       {/* Admin announcement composer — text + up to 3 images + embed + poll + pin.
           Admin-only (posts are announcements); members read/like/comment only. */}
       {auth.currentUser && !canManage && <MemberPostComposer value={composerText} onChange={setComposerText} onSubmit={handleSubmitPost} posting={isPosting} editing={!!editingPostId} onCancel={resetComposer} />}
-      {canManage && auth.currentUser && (
-        <div className="bg-surface-raised rounded-2xl shadow-xs border border-line p-4 lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
-          {/* Post / Poll switch (ported from AdminPosts). Hidden while editing so
-              an existing post's type isn't accidentally flipped. */}
-          {!editingPostId && (
-            <div className="flex gap-1 bg-surface-sunken rounded-xl p-1 mb-3 w-fit">
-              <button
-                type="button"
-                onClick={() => setComposerMode('post')}
-                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${composerMode === 'post' ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'}`}
-              >
-                Post
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  // Poll is mutually exclusive with images/embeds — clear them.
-                  setComposerMode('poll');
-                  setComposerImages([]);
-                  setShowImageAttach(false);
-                  setComposerEmbed(null);
-                  setAttachMenuOpen(false);
-                }}
-                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${composerMode === 'poll' ? 'bg-surface-raised shadow-xs text-strong' : 'text-faint'}`}
-              >
-                Poll
-              </button>
-            </div>
-          )}
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-full bg-surface-chip overflow-hidden flex items-center justify-center text-sm font-bold text-muted flex-shrink-0 relative">
-              {auth.currentUser.photoURL ? (
-                <Image src={auth.currentUser.photoURL} alt="You" fill sizes="36px" className="object-cover" referrerPolicy="no-referrer" />
-              ) : (
-                (auth.currentUser.displayName || 'Y').charAt(0)
-              )}
-            </div>
-            <textarea
-              value={composerText}
-              onChange={(e) => setComposerText(e.target.value)}
-              placeholder={composerMode === 'poll' ? 'Ask a question…' : editingPostId ? 'Edit your post…' : 'Share an update with the community…'}
-              rows={2}
-              className="flex-1 min-w-0 bg-transparent border-none focus:ring-0 resize-none text-strong placeholder-[color:var(--text-faint)] text-sm p-0 pt-1.5 outline-hidden"
-            />
-          </div>
-
-          {/* Poll options — add/remove; needs at least two non-empty to post. */}
-          {composerMode === 'poll' && (
-            <div className="space-y-2 mt-3 pl-12">
-              {pollOptions.map((option, index) => (
-                <div key={option.id} className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={option.text}
-                    onChange={(e) => setPollOptions(prev => prev.map((o, i) => i === index ? { ...o, text: e.target.value } : o))}
-                    placeholder={`Option ${index + 1}`}
-                    className="flex-1 px-3 py-2 bg-surface-sunken border border-line rounded-lg text-sm text-strong focus:ring-1 focus:ring-gold outline-hidden"
-                  />
-                  {pollOptions.length > 2 && (
-                    <button
-                      type="button"
-                      onClick={() => setPollOptions(prev => prev.filter(o => o.id !== option.id))}
-                      aria-label={`Remove option ${index + 1}`}
-                      className="p-2 text-faint hover:text-red-500 transition-colors"
-                    >
-                      <X size={16} />
-                    </button>
-                  )}
-                </div>
-              ))}
-              {pollOptions.length < 5 && (
-                <button
-                  type="button"
-                  onClick={() => setPollOptions(prev => [...prev, { id: Date.now().toString(), text: '' }])}
-                  className="text-sm text-gold font-medium hover:underline"
-                >
-                  + Add option
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Attached image thumbnails + remove-each (post mode only) */}
-          {composerMode === 'post' && composerImages.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-3 pl-12">
-              {composerImages.map((url, i) => (
-                <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden bg-surface-sunken border border-line">
-                  <Image src={url} alt={`Attachment ${i + 1}`} fill sizes="80px" className="object-cover" referrerPolicy="no-referrer" />
-                  <button
-                    type="button"
-                    onClick={() => setComposerImages(prev => prev.filter((_, idx) => idx !== i))}
-                    aria-label={`Remove image ${i + 1}`}
-                    className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Image attach zone — reveals the uploader (reuses ImageUpload); appends to the array, capped at 3 */}
-          {composerMode === 'post' && showImageAttach && canPostImages && (
-            <div className="mt-3 pl-12">
-              <ImageUpload
-                value=""
-                onChange={(url) => {
-                  if (!url) return;
-                  setComposerImages(prev => prev.length < MAX_IMAGES ? [...prev, url] : prev);
-                }}
-                label={`Add image (${composerImages.length}/${MAX_IMAGES})`}
-              />
-            </div>
-          )}
-
-          {/* Attached embed preview — one per post, removable, replaced when a new one is picked */}
-          {composerMode === 'post' && composerEmbed && (
-            <div className="mt-3 pl-12">
-              <EmbedComposerChip embed={composerEmbed} tenantId={scopeTenantId} onRemove={() => setComposerEmbed(null)} />
-            </div>
-          )}
-
-          {/*
-             THE-346 · `pl-12` IS GONE, and that ONE class was the whole bug.
-
-            The founder: *"In news user app when creating a post put that
-            paperclip and pin button in the left to be in parallel with the user
-            profile picture."*
-
-            The composer's text row is `flex items-start gap-3` with a `w-9`
-            (36px) avatar, so the textarea beside it starts at 36 + 12 = 48px.
-            `pl-12` is exactly that 48px, and it is CORRECT on the four rows
-            above — poll options, the attachment chips, the image strip and the
-            embed card all continue the SENTENCE the textarea started, so they
-            line up with the text.
-
-             THIS ROW IS NOT ONE OF THOSE. It is the composer's action bar —
-            paperclip, Pin, Post — and it belongs to the whole composer, not to
-            the text column, which is what the founder is seeing when he says it
-            should be in parallel with the picture. Measured at 380px, before:
-            the paperclip's icon sat at x=64 against an avatar at x=16.
-
-             THE `-ml-2` ON THE PAPERCLIP STAYS, and it is why this is `pl-0`
-            rather than `pl-2`. That negative margin exists so the ICON, not the
-            44px hit area around it, is what aligns — the same optical trick the
-            row's right-hand `Post` button gets from its own padding. With the
-            indent gone the button's box starts 8px into the card's own padding
-            and the GLYPH lands at exactly the avatar's left edge, which is the
-            edge the founder is pointing at. Measured after: both at x=16.
-          */}
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-line">
-            <div className="flex items-center gap-1">
-              {/* Paperclip "add" menu — image + blog / fundraising / event embeds (post mode only). */}
-              {composerMode === 'post' && (
-                <div className="relative" ref={attachMenuRef}>
-                  <button
-                    type="button"
-                    onClick={() => setAttachMenuOpen(o => !o)}
-                    aria-label="Add attachment"
-                    aria-haspopup="menu"
-                    aria-expanded={attachMenuOpen}
-                    className="p-2 -ml-2 text-muted hover:text-gold hover:bg-surface-sunken rounded-full transition-colors"
-                  >
-                    <Paperclip size={18} />
-                  </button>
-                  {attachMenuOpen && (
-                    <div
-                      role="menu"
-                      className="absolute left-0 bottom-full mb-1 min-w-[160px] bg-surface-raised rounded-xl border border-line shadow-[0_8px_30px_rgba(0,0,0,0.12)] overflow-hidden z-20"
-                    >
-                      <button
-                        type="button"
-                        role="menuitem"
-                        disabled={!canPostImages}
-                        onClick={() => { setShowImageAttach(true); setAttachMenuOpen(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-body hover:bg-surface-sunken transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {canPostImages ? 'Add image' : 'Max 3 images'}
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => { setEmbedPicker('blog'); setAttachMenuOpen(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-body hover:bg-surface-sunken transition-colors"
-                      >
-                        Add blog article
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => { setEmbedPicker('fundraising'); setAttachMenuOpen(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-body hover:bg-surface-sunken transition-colors"
-                      >
-                        Add fundraising
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => { setEmbedPicker('event'); setAttachMenuOpen(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-body hover:bg-surface-sunken transition-colors"
-                      >
-                        Add event
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Pin-to-top toggle (admin). Writes `isPinned` — the field the feed sorts on. */}
-              <button
-                type="button"
-                onClick={() => setComposerPinned(p => !p)}
-                aria-pressed={composerPinned}
-                aria-label={composerPinned ? 'Unpin from top' : 'Pin to top'}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors ${composerPinned ? 'bg-[color-mix(in_srgb,var(--brand-color)_15%,transparent)] text-gold' : 'text-muted hover:bg-surface-sunken'}`}
-              >
-                <Pin size={15} className={composerPinned ? 'fill-current' : ''} />
-                {composerPinned ? 'Pinned' : 'Pin'}
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {editingPostId && (
-                <button
-                  type="button"
-                  onClick={resetComposer}
-                  className="px-4 py-1.5 text-sm font-medium text-muted hover:bg-surface-sunken rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={handleSubmitPost}
-                disabled={isPosting || !composerCanSubmit}
-                className="flex items-center gap-2 px-5 py-1.5 bg-gold text-white rounded-lg font-medium text-sm hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Send size={16} />
-                {editingPostId ? 'Update' : composerMode === 'poll' ? 'Post Poll' : 'Post'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {canManage && auth.currentUser && <AdminPostComposer user={auth.currentUser} editingPostId={editingPostId} composerMode={composerMode} setComposerMode={setComposerMode} composerText={composerText} setComposerText={setComposerText} composerImages={composerImages} setComposerImages={setComposerImages} composerEmbed={composerEmbed} setComposerEmbed={setComposerEmbed} showImageAttach={showImageAttach} setShowImageAttach={setShowImageAttach} attachMenuOpen={attachMenuOpen} setAttachMenuOpen={setAttachMenuOpen} attachMenuRef={attachMenuRef} pollOptions={pollOptions} setPollOptions={setPollOptions} scopeTenantId={scopeTenantId} setEmbedPicker={setEmbedPicker} composerPinned={composerPinned} setComposerPinned={setComposerPinned} resetComposer={resetComposer} handleSubmitPost={handleSubmitPost} isPosting={isPosting} composerCanSubmit={composerCanSubmit} canPostImages={canPostImages} />}
 
       {/* Fundraising campaign widget — pinned at the top, disappears when no campaign is active */}
       <CampaignWidget />

@@ -56,6 +56,31 @@
       "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
       "digest": "0a8af5d409630714bac5dffa64bb43576a9402003352510669d1920f1ea50722",
       "why": "The primitive adopter register includes the member post composer and group creation dialog so their shared form controls remain accounted for."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "624691f60391bfb64ab4cbc559baca978e19420a433036f2b3812acc2a7bef26",
+      "why": "Restore legacy community channel and direct message access while preserving tenant isolation and admin-only group membership."
+    },
+    {
+      "file": "src/components/UserMessages.tsx",
+      "digest": "49f60c6eb4439f20fd4143981cb4a637c6accf6abcaa5056e7db5f84b77136ca",
+      "why": "Restore legacy community channel and direct message access while preserving tenant isolation and admin-only group membership."
+    },
+    {
+      "file": "src/components/AdminCommunity.tsx",
+      "digest": "eca86542f3f017f35dc9fca7da43e44a42b0afc4de33d9e9846dbb5551c2a055",
+      "why": "Restore legacy community channel and direct message access while preserving tenant isolation and admin-only group membership."
+    },
+    {
+      "file": "src/components/UserMessages.tsx",
+      "digest": "5f72938d27614c717cf3ea89cf38b90308e5d8ab6c137e0a41c57cbfa1308150",
+      "why": "Keep legacy direct messages visible and verify the active counterpart before allowing any reply in the member interface."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "12f1ab6a48623eda537aff4f7de3d268be70200b4c62900f38ef2489fe43ab81",
+      "why": "Extract the existing admin post composer for a read-only development preview while retaining its feed state and submission behavior."
     }
   ]
 }

@@ -962,9 +962,13 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
 
   const createChannel = async (draft: GroupDraft) => {
     if (!tenantId || !currentUser) throw new Error('No ministry selected');
+    const adminMembers = draft.audience === 'admins'
+      ? (await getDocs(query(collection(db, 'users'), where('tenantId', '==', tenantId)))).docs
+          .filter(d => ['admin', 'church_admin', 'super_admin'].includes(d.data().role)).map(d => d.id)
+      : [];
     await addDoc(collection(db, 'tenants', tenantId, 'channels'), {
       ...draft,
-      members: draft.audience === 'selected' ? Array.from(new Set([currentUser.uid, ...draft.members])) : [],
+      members: draft.audience === 'selected' ? Array.from(new Set([currentUser.uid, ...draft.members])) : draft.audience === 'admins' ? Array.from(new Set([currentUser.uid, ...adminMembers])) : [],
       createdAt: serverTimestamp(), createdBy: currentUser.uid, type: 'announcement',
     });
   };

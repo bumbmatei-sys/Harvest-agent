@@ -5,15 +5,15 @@ import { NewGroupDialog } from './NewGroupDialog';
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 const fx = vi.hoisted(() => ({ role: 'user' }));
-vi.mock('@/firebase', () => ({ db: {}, auth: { currentUser: { uid: 'member', displayName: 'Member', email: 'member@test.com' } } }));
+vi.mock('@/firebase', () => ({ db: {}, auth: { currentUser: { uid: 'member', displayName: 'Member', email: 'member@test.com', getIdToken: async () => 'token' } } }));
 vi.mock('firebase/firestore', () => ({
   collection: (_db: unknown, ...parts: string[]) => ({ path: parts.join('/') }), doc: (_db: unknown, ...parts: string[]) => ({ path: parts.join('/') }),
   where: (field: string, op: string, value: unknown) => ({ field, op, value }), query: (ref: any, ...filters: any[]) => ({ ...ref, filters }),
   orderBy: () => ({}), limit: () => ({}), getDoc: async () => ({ exists: () => true, data: () => ({ role: fx.role, displayName: 'Member' }) }), getDocs: async () => ({ docs: [] }),
   onSnapshot: (q: any, callback: (snapshot: unknown) => void) => {
-    const groups = [ { id: 'selected', name: 'Selected group', audience: 'selected', members: ['member'] }, { id: 'all-members', name: 'All members', audience: 'all', members: [] }, { id: 'private', name: 'Admin secrets', audience: 'admins', members: ['member'] } ];
-    const dms = [{ id: 'admin-dm', participants: ['member', 'admin'], participantRoles: { member: 'user', admin: 'admin' }, participantNames: { admin: 'Pastor' } }, { id: 'member-dm', participants: ['member', 'other'], participantRoles: { member: 'user', other: 'user' }, participantNames: { other: 'Other member' } }];
-    const docs = q.path.endsWith('/channels') ? groups.filter(g => (q.filters || []).every((f: any) => !f.field || (f.op === '==' ? (g as any)[f.field] === f.value : ((g as any)[f.field] as string[]).includes(f.value)))) : q.path.endsWith('/directMessages') ? dms : [];
+    const groups = [ { id: 'legacy', name: 'Legacy group', members: ['member'] }, { id: 'selected', name: 'Selected group', audience: 'selected', members: ['member'] }, { id: 'all-members', name: 'All members', audience: 'all', members: [] }, { id: 'private', name: 'Admin secrets', audience: 'admins', members: ['member'] } ];
+    const dms = [{ id: 'admin-dm', participants: ['member', 'admin'], participantNames: { admin: 'Pastor' } }, { id: 'member-dm', participants: ['member', 'other'], participantRoles: { member: 'user', other: 'user' }, participantNames: { other: 'Other member' } }];
+    const docs = q.path.endsWith('/channels') ? groups.filter(g => (q.filters || []).every((f: any) => !f.field || (f.op === '==' ? (g as any)[f.field] === f.value : ((g as any)[f.field] as string[] | undefined)?.includes(f.value)))) : q.path.endsWith('/directMessages') ? dms : [];
     callback({ docs: docs.map(g => ({ id: g.id, data: () => g })) }); return () => {};
   },
   addDoc: async () => ({ id: 'new' }), updateDoc: async () => {}, serverTimestamp: () => 'time', Timestamp: class {},
@@ -32,15 +32,25 @@ async function click(el: HTMLElement) { await act(async () => { el.click(); awai
 afterEach(async () => { await act(async () => root?.unmount()); host?.remove(); });
 
 describe('member groups', () => {
-  it('pins All members, shows selected groups and hides admin-only groups', async () => {
+  it('pins All members and shows legacy groups and direct messages while hiding admin-only groups', async () => {
     await mount(<UserMessages onBack={() => {}} />);
     expect(host.textContent).toContain('#All members'); expect(host.textContent).toContain('#Selected group');
     expect(host.textContent!.indexOf('#All members')).toBeLessThan(host.textContent!.indexOf('#Selected group'));
     expect(host.textContent).not.toContain('#Admin secrets'); expect(host.textContent).not.toContain('New Message');
-    expect(host.textContent).toContain('Pastor'); expect(host.textContent).not.toContain('Other member');
+    expect(host.textContent).toContain('Pastor'); expect(host.textContent).toContain('Other member'); expect(host.textContent).toContain('#Legacy group');
+  });
+  it('allows replies to legacy admin threads and makes member threads read-only', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => ({ ok: true, json: async () => ({ isAdmin: url.includes('admin-dm') }) })));
+    await mount(<UserMessages onBack={() => {}} />);
+    await click(button('PPastor'));
+    expect(host.querySelector('input[placeholder="Type a message..."]')).not.toBeNull();
+    await click(button('OOther member'));
+    expect(host.textContent).toContain('Direct messages between members are turned off');
+    expect(host.querySelector('input[placeholder="Type a message..."]')).toBeNull();
+    vi.unstubAllGlobals();
   });
 });
-describe('new group', () => {
+describe('new group' , () => {
   it('creates a selected group with only the chosen people', async () => {
     const create = vi.fn().mockResolvedValue(undefined);
     await mount(<NewGroupDialog open onOpenChange={() => {}} people={[{ id: 'a', displayName: 'Alice' }, { id: 'b', displayName: 'Bob' }]} loadingPeople={false} peopleError={false} onCreate={create} />);

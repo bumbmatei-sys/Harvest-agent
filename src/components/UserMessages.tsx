@@ -8,6 +8,7 @@ import {
 import { db, auth } from '../firebase';
 import { getTenantScope, isPlatformContext, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { isSuperAdminEmail } from '../utils/super-admins';
+import { GroupList } from './community/GroupList';
 import { sortByTime } from '../utils/query-helpers';
 import { getOrCreateDm } from '../lib/dm';
 import { READING_MEASURE } from './layout/form-layout';
@@ -113,7 +114,7 @@ const SEND_TAP_TARGET = 'min-h-11 min-w-11 sm:min-h-0 sm:min-w-0';
 interface DirectMessage {
   id: string;
   participants: string[];
-  participantRoles: Record<string, string>;
+  participantRoles?: Record<string, string>;
   participantNames?: Record<string, string>;
   lastMessage: string;
   lastMessageAt: Timestamp | null;
@@ -287,7 +288,9 @@ const DmThread: React.FC<{
   isAdmin: boolean;
   /** Whether attachable records include the legacy null-tenant set. */
   includeNull: boolean;
-}> = ({ dm, tenantId, currentUser, otherName, onBack, isAdmin, includeNull }) => {
+  replyAllowed: boolean;
+  replyStatus: string;
+}> = ({ dm, tenantId, currentUser, otherName, onBack, isAdmin, includeNull, replyAllowed, replyStatus }) => {
   const [messages, setMessages] = useState<DmMessage[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -328,7 +331,7 @@ const DmThread: React.FC<{
   }, [messages]);
 
   const send = async () => {
-    if ((!text.trim() && attachments.length === 0) || sending) return;
+    if (!replyAllowed || (!text.trim() && attachments.length === 0) || sending) return;
     setSending(true);
     try {
       const content = text.trim();
@@ -407,7 +410,7 @@ const DmThread: React.FC<{
                   );
                 }
                 const senderRole = dm.participantRoles?.[m.senderId || ''];
-                const isAdminSender = ADMIN_ROLES.includes(senderRole);
+                const isAdminSender = ADMIN_ROLES.includes(senderRole || '');
                 return (
                   <div key={m.id} className="flex gap-2.5 items-end">
                     {isFirst ? (
@@ -441,7 +444,7 @@ const DmThread: React.FC<{
           the bottom nav, and inside a conversation the nav is now HIDDEN, so
           the composer is the bottom-most chrome and reserves the inset itself.
           Above `lg` there is no bottom nav to defer to in the first place. */}
-      <div data-composer className={`bg-surface-raised border-t border-line-hairline flex-shrink-0 px-4 pt-3 ${FIXED_COMPOSER} ${COMPOSER_PAD}`}>
+      {!replyAllowed ? <p role="status" className="p-4 text-sm text-muted">{replyStatus}</p> : <div data-composer className={`bg-surface-raised border-t border-line-hairline flex-shrink-0 px-4 pt-3 ${FIXED_COMPOSER} ${COMPOSER_PAD}`}>
         {attachments.length > 0 && (
           <div className={`flex flex-wrap gap-2 mb-2 lg:w-full ${READING_MEASURE}`}>
             {attachments.map((a, i) => (
@@ -493,7 +496,7 @@ const DmThread: React.FC<{
             <Send size={15} className="text-white" />
           </button>
         </div>
-      </div>
+      </div>}
     </div>
   );
 };
@@ -669,6 +672,8 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false, o
   const [groupSearch, setGroupSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [openDm, setOpenDm] = useState<DirectMessage | null>(null);
+  const [replyCheck, setReplyCheck] = useState<{ id: string; status: 'loading' | 'allowed' | 'disabled' | 'error' }>({ id: '', status: 'loading' });
+  const replyStatus = openDm && replyCheck.id === openDm.id ? replyCheck.status : 'loading';
   const [openChannel, setOpenChannel] = useState<Channel | null>(null);
   const [showNewMessage, setShowNewMessage] = useState(false);
   const [listCollapsed, setListCollapsed] = useState(false); // desktop conversation-list collapse
@@ -733,8 +738,8 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false, o
     return onSnapshot(q, snap => {
       const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }) as DirectMessage);
       rows.sort((a, b) => (b.lastMessageAt?.toMillis() || 0) - (a.lastMessageAt?.toMillis() || 0));
-      setDms(isAdmin ? rows : rows.filter(dm => dm.participants.some(id => id !== currentUser.uid && ADMIN_ROLES.includes(dm.participantRoles?.[id]))));
-    }, () => {});
+      setDms(rows);
+    }, () => setGroupError('Could not load direct messages. Please try again.'));
   }, [tenantId, currentUser, isAdmin]);
 
   // Rules are not filters: each member query must prove its audience access.
@@ -745,17 +750,35 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false, o
     const source = collection(db, 'tenants', tenantId, 'channels');
     const queries = isAdmin ? [query(source)] : [
       query(source, where('audience', '==', 'all')),
-      query(collection(db, 'tenants', tenantId, 'channels'), where('members', 'array-contains', currentUser.uid), where('audience', '==', 'selected')),
+      query(source, where('members', 'array-contains', currentUser.uid)),
     ];
     const parts: Channel[][] = queries.map(() => []);
     const unsubscribes = queries.map((q, index) => onSnapshot(q, snap => {
       parts[index] = snap.docs.map(d => ({ id: d.id, ...d.data() }) as Channel);
-      const merged = Array.from(new Map(parts.flat().map(channel => [channel.id, channel])).values());
+      const merged = Array.from(new Map(parts.flat().filter(channel => isAdmin || channel.audience !== 'admins').map(channel => [channel.id, channel])).values());
       merged.sort((a, b) => Number(b.id === 'all-members') - Number(a.id === 'all-members') || a.name.localeCompare(b.name));
       setChannels(merged);
     }, () => setGroupError('Could not load groups. Please try again.')));
     return () => unsubscribes.forEach(unsubscribe => unsubscribe());
   }, [tenantId, currentUser, isAdmin]);
+
+  useEffect(() => {
+    if (!openDm || !tenantId || !currentUser) return;
+    if (isAdmin) { setReplyCheck({ id: openDm.id, status: 'allowed' }); return; }
+    let cancelled = false;
+    setReplyCheck({ id: openDm.id, status: 'loading' });
+    const check = async () => {
+      try {
+        const token = await auth.currentUser!.getIdToken();
+        const response = await fetch(`/api/community/dm-counterpart?tenantId=${encodeURIComponent(tenantId)}&dmId=${encodeURIComponent(openDm.id)}`, { headers: { Authorization: `Bearer ${token}` } });
+        if (!response.ok) throw new Error('Could not check conversation');
+        const result = await response.json();
+        if (!cancelled) setReplyCheck({ id: openDm.id, status: result.isAdmin ? 'allowed' : 'disabled' });
+      } catch { if (!cancelled) setReplyCheck({ id: openDm.id, status: 'error' }); }
+    };
+    void check();
+    return () => { cancelled = true; };
+  }, [openDm, tenantId, currentUser, isAdmin]);
 
   /**
    * 🔴 THE CLEANUP IS THE POINT — see `onConversationOpenChange`'s doc comment.
@@ -881,7 +904,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false, o
   const selectedThread = openChannel && tenantId && currentUser ? (
     <ChannelView channel={openChannel} tenantId={tenantId} currentUser={currentUser} onBack={() => setOpenChannel(null)} />
   ) : openDm && tenantId && currentUser ? (
-    <DmThread dm={openDm} tenantId={tenantId} currentUser={currentUser} otherName={getOtherName(openDm)} onBack={() => setOpenDm(null)} isAdmin={isAdmin} includeNull={includeNullTenant} />
+    <DmThread dm={openDm} tenantId={tenantId} currentUser={currentUser} otherName={getOtherName(openDm)} onBack={() => setOpenDm(null)} isAdmin={isAdmin} includeNull={includeNullTenant} replyAllowed={replyStatus === 'allowed'} replyStatus={replyStatus === 'disabled' ? 'Direct messages between members are turned off' : replyStatus === 'error' ? 'Could not check this conversation. Please reopen it to try again.' : 'Checking conversation…'} />
   ) : null;
   const hasOpen = !!selectedThread;
 
@@ -942,29 +965,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false, o
           </div>
         ) : (
           <>
-            {channels.length > 0 && (
-              <div className="mb-5">
-                <p className="text-xs font-bold text-faint uppercase tracking-wider mb-2">Groups</p>
-                <div className="space-y-2">
-                  {channels.filter(ch => ch.name.toLowerCase().includes(groupSearch.toLowerCase())).map(ch => (
-                    <button
-                      key={ch.id}
-                      onClick={() => setOpenChannel(ch)}
-                      className="w-full bg-surface-raised rounded-2xl border border-line-hairline px-4 py-3.5 flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-xs transition-all text-left"
-                    >
-                      <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center lg:bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)]">
-                        <Hash size={18} style={{ color: 'var(--brand-color, #B8962E)' }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-strong truncate">#{ch.name}</p>
-                        <p className="text-xs text-faint truncate">{ch.lastMessage || ch.description || 'No messages yet'}</p>
-                      </div>
-                      {ch.lastMessageAt && <span className="text-[10px] text-faint flex-shrink-0">{fmtTime(ch.lastMessageAt)}</span>}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            <GroupList channels={channels.filter(ch => ch.name.toLowerCase().includes(groupSearch.toLowerCase()))} selectedId={openChannel?.id} onSelect={setOpenChannel} renderTime={ch => ch.lastMessageAt ? fmtTime(ch.lastMessageAt) : null} />
             {dms.length > 0 && (
               <p className="text-xs font-bold text-faint uppercase tracking-wider mb-2">Direct Messages</p>
             )}

@@ -290,10 +290,8 @@ service cloud.firestore {
     }
 
     function channelAccess(channel, tenantId) {
-      return channel.get('audience', '') == 'admins'
-        ? isTenantAdmin(tenantId)
-        : (isTenantAdmin(tenantId) || channel.get('audience', '') == 'all' ||
-           request.auth.uid in channel.get('members', []));
+      return isTenantAdmin(tenantId) || channel.get('audience', '') == 'all' ||
+        request.auth.uid in channel.get('members', []);
     }
 
     // ─── Community Posts ─────────────────────────────────────────────

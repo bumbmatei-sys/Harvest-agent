@@ -702,7 +702,7 @@ describe('no hex, rgb() or inline colour is introduced', () => {
 
   it.each(Object.keys(FILES) as ScreenKey[])('%s introduces no colour literal beyond its baseline', (key) => {
     expect(
-      literals(SOURCES[key]),
+      key === 'home' ? [...literals(SOURCES.home), ...literals(read('components/community/AdminPostComposer.tsx'))].sort() : literals(SOURCES[key]),
       `${FILES[key]}'s colour literals changed — a new one here opts that surface out of theming`,
     ).toEqual([...BASELINE[key]].sort());
   });
@@ -792,7 +792,7 @@ describe('no pre-auth surface gained a dark treatment', () => {
 
 describe('a value that is deliberately dark in both themes is unchanged', () => {
   it('NewsTab: the attached-image remove button is a black scrim on arbitrary user photos (control-over-media, not a page surface)', () => {
-    expect(SOURCES.home).toContain('rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors');
+    expect(read('components/community/AdminPostComposer.tsx')).toContain('rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors');
   });
 
   it('ChurchMap: the church marker pin is a fixed vivid colour with a white outline, legible on either basemap by design (like every map app\'s pins)', () => {

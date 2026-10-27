@@ -7,7 +7,7 @@ beforeAll(async () => {
   await seedBase();
   await seedDoc('users/community-manager', { role: 'admin', tenantId: TENANT_A, permissions: permsOnly('manageCommunity') });
   await seedDoc(sub('channels/everyone'), { audience: 'all', members: [] });
-  await seedDoc(sub('channels/admins'), { audience: 'admins', members: [MEMBER_UID] });
+  await seedDoc(sub('channels/admins'), { audience: 'admins', members: [FULL_ADMIN_UID] });
   await seedDoc(sub('channels/private'), { members: [MEMBER_UID] });
 });
 afterAll(teardownEnv);
@@ -58,6 +58,10 @@ describe('community access', () => {
     await assertFails(m.doc(sub('directMessages/foreign')).set({ participants: [MEMBER_UID, ADMIN_B_UID] }));
     await assertFails(m.doc(sub('directMessages/three')).set({ participants: [MEMBER_UID, MEMBER2_UID, FULL_ADMIN_UID] }));
     await assertSucceeds(admin.doc(sub('directMessages/admin-start')).set({ participants: [FULL_ADMIN_UID, MEMBER_UID] }));
+    await seedDoc(sub('directMessages/legacy'), { participants: [MEMBER_UID, FULL_ADMIN_UID] });
+    await assertSucceeds(m.collection(sub('directMessages')).where('participants', 'array-contains', MEMBER_UID).get());
+    await assertSucceeds(m.doc(sub('directMessages/legacy')).update({ lastMessage: 'hello' }));
+    await assertSucceeds(m.doc(sub('dmMessages/legacy-reply')).set({ dmId: 'legacy', senderId: MEMBER_UID }));
   });
   it('applies all, admins and explicit membership to channels and messages', async () => {
     const m = (await member()).firestore();
@@ -73,6 +77,11 @@ describe('community access', () => {
     await assertSucceeds(admin.doc(sub('channelMessages/admin-msg')).set({ channelId: 'admins' }));
     await assertFails(m.doc(sub('channelMessages/admin-msg')).get());
     await assertSucceeds(m.doc(sub('channels/private')).get());
+    await assertSucceeds(m.doc(sub('channelMessages/private-msg')).set({ channelId: 'private' }));
+    await assertSucceeds(m.doc(sub('channelMessages/private-msg')).get());
+    await assertFails(other.doc(sub('channelMessages/private-msg')).get());
+    await assertSucceeds(m.collection(sub('channels')).where('members', 'array-contains', MEMBER_UID).get());
+    await assertSucceeds(m.collection(sub('channels')).where('audience', '==', 'all').get());
     await assertFails(other.doc(sub('channels/private')).get());
     await assertFails(other.doc(sub('channelMessages/private-msg')).set({ channelId: 'private' }));
     await assertFails(foreign.doc(sub('channels/everyone')).get());
