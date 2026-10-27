@@ -35,6 +35,9 @@ import { useMemberPhoto, memberInitial } from '../hooks/useMemberPhoto';
 import { useCommunitySettings, useCommunityMember } from '../lib/community/use-community';
 import { needsCommunityEntry, type CommunityModule } from '../lib/community/settings';
 import { CommunityEntryDialog } from './community/CommunityEntryDialog';
+import { CommunitiesData, DiscoverData } from './community/DiscoveryData';
+import { CommunityIcon } from './icons/CommunityIcon';
+import { DiscoverIcon } from './icons/DiscoverIcon';
 
 const PLATFORM_TENANT_ID = process.env.NEXT_PUBLIC_PLATFORM_TENANT_ID || 'harvest';
 const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -485,7 +488,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
   // Desktop top bar (Phase 1.6): page title + date for Home; view name elsewhere.
   const desktopTitle = effectiveBottomTab === 'home'
     ? (effectiveTopTab === homeTabId ? 'Home' : (topTabs.find(t => t.id === effectiveTopTab)?.label ?? 'Home'))
-    : (effectiveBottomTab === 'chat' ? askLabel : (bottomTabs.find(t => t.id === activeBottomTab)?.label ?? ''));
+    : (effectiveBottomTab === 'communities' ? 'Communities' : effectiveBottomTab === 'discover' ? 'Discover' : effectiveBottomTab === 'chat' ? askLabel : (bottomTabs.find(t => t.id === activeBottomTab)?.label ?? ''));
   const showDesktopDate = effectiveBottomTab === 'home' && effectiveTopTab === homeTabId;
   const desktopDate = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date());
 
@@ -644,7 +647,8 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
         title={isSidebarCollapsed ? label : undefined}
       >
         <Icon
-          strokeWidth={isActive ? 2.5 : 2}
+          {...(Icon === CommunityIcon || Icon === DiscoverIcon ? { active: isActive } : {})}
+          strokeWidth={Icon === CommunityIcon || Icon === DiscoverIcon ? 2 : isActive ? 2.5 : 2}
           className="w-6 h-6 lg:w-5 lg:h-5 shrink-0"
           style={isActive ? { color: 'var(--brand-color, #e6b325)' } : undefined}
         />
@@ -755,6 +759,11 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
               'mobile'
             )
           )}
+
+          <div className="hidden lg:flex lg:flex-col lg:w-full lg:gap-1 lg:mb-4">
+            {renderNavButton('desktop-communities', 'Communities', CommunityIcon, effectiveBottomTab === 'communities', () => setActiveBottomTab('communities'), 'desktop')}
+            {renderNavButton('desktop-discover', 'Discover', DiscoverIcon, effectiveBottomTab === 'discover', () => setActiveBottomTab('discover'), 'desktop')}
+          </div>
 
           {/* Desktop sidebar — grouped under FEED / COMMUNITY / SUPPORT US (Phase 1.6) */}
           {desktopNavGroups.map((group, groupIndex) => (
@@ -868,7 +877,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
         {/* Main Content Area */}
         <ErrorBoundary>
         <div className={`flex-1 overflow-x-hidden relative ${effectiveBottomTab === 'map' ? '' : (effectiveBottomTab === 'chat' || (effectiveBottomTab === 'home' && effectiveTopTab === 'messages')) ? `overflow-hidden ${isChatOpen ? '' : 'pb-[65px]'} lg:pb-0` : 'overflow-y-auto pb-24 lg:pb-0'}`} onScroll={handleScroll}>
-          {effectiveBottomTab === 'home' ? (
+          {effectiveBottomTab === 'communities' ? <CommunitiesData uid={currentUser?.uid} currentTenantId={tenantId} onEnter={() => setActiveBottomTab('home')} onDiscover={() => setActiveBottomTab('discover')} /> : effectiveBottomTab === 'discover' ? <DiscoverData /> : effectiveBottomTab === 'home' ? (
             <DesktopContainer className="h-full">
             <div className="relative w-full h-full">
               <AnimatePresence initial={false} custom={direction} mode="popLayout">

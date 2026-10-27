@@ -121,6 +121,16 @@
       "file": "src/components/UserMessages.tsx",
       "digest": "47925008473452fc10c2a18a7879e8feab065f74273eb6cfda2b6c7015d6d0c6",
       "why": "Open the default group in the desktop split and switch cleanly between group and direct message threads."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "bd4fc9325fb27c76654171fce4419f78bec16f2ca247b28668ed3506e2272cc9",
+      "why": "Community step 2 adds discovery_listings public read / no client write and closes client writes on tenants/{tenantId}/settings/community; not deployed by this PR."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "435294253af118ca2048f9e6ee5b6b1cebc3bf009e7f3e0e5c10b5ab522c5da9",
+      "why": "Add Communities and Discover desktop navigation and render their member views while preserving existing module and entry gates."
     }
   ]
 }

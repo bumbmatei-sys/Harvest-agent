@@ -270,6 +270,21 @@ describe('a sidebar group with no visible items does not render', () => {
 });
 
 // ─── 2. Home, exactly once ───────────────────────────────────────────────────
+describe('community navigation', () => {
+  it('shows both sidebar entries and opens their views', async () => {
+    await mount('church');
+    const buttons = Array.from(container.querySelectorAll('button'));
+    const communities = buttons.find(button => button.textContent?.trim() === 'Communities');
+    const discover = buttons.find(button => button.textContent?.trim() === 'Discover');
+    expect(communities?.querySelector('svg')).toBeTruthy();
+    expect(discover?.querySelector('svg')).toBeTruthy();
+    await act(async () => { discover!.click(); });
+    expect(container.textContent).toContain('Discover communities');
+    await act(async () => { communities!.click(); });
+    expect(container.textContent).toContain('Your communities');
+  });
+});
+
 describe('Home appears in exactly one group, on every tier', () => {
   for (const plan of ['free', ...PRICED] as const) {
     for (const hasCourse of [true, false]) {
