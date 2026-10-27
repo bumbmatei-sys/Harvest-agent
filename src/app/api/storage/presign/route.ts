@@ -5,7 +5,8 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { requireAdmin } from '@/lib/api-auth';
 import { createR2Client, r2Bucket } from '@/lib/r2';
 import { tenantUploadKey } from '@/utils/r2-keys';
-import { MAX_IMAGE_UPLOAD_BYTES, MAX_PDF_UPLOAD_BYTES, limitMb } from '@/utils/upload-limits';
+import { MAX_IMAGE_UPLOAD_BYTES, MAX_PDF_UPLOAD_BYTES, MAX_SOCIAL_IMAGE_UPLOAD_BYTES, MAX_SOCIAL_VIDEO_UPLOAD_BYTES, limitMb } from '@/utils/upload-limits';
+import { SOCIAL_MEDIA_MIME_TYPES } from '@/lib/social/media-rules';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
 
 export const dynamic = 'force-dynamic';
@@ -24,14 +25,14 @@ export async function POST(request: NextRequest) {
   // as the other admin routes do. Never trust a client-supplied tenant id.
   const resolvedTenantId = authResult.tenantId || PLATFORM_TENANT_ID;
 
-  let body: { fileName?: string; contentType?: string; fileSize?: number };
+  let body: { fileName?: string; contentType?: string; fileSize?: number; purpose?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const { fileName, contentType, fileSize } = body;
+  const { fileName, contentType, fileSize, purpose } = body;
 
   if (!contentType || typeof contentType !== 'string') {
     return NextResponse.json({ error: 'Missing content type' }, { status: 400 });
@@ -42,18 +43,24 @@ export async function POST(request: NextRequest) {
   // through a Vercel Function's 4.5MB request body.
   const isImage = contentType.startsWith('image/');
   const isPdf = contentType === 'application/pdf';
-  if (!isImage && !isPdf) {
+  const social = purpose === 'social';
+  const socialImage = (SOCIAL_MEDIA_MIME_TYPES.image as readonly string[]).includes(contentType);
+  const socialVideo = (SOCIAL_MEDIA_MIME_TYPES.video as readonly string[]).includes(contentType);
+  if (social && !socialImage && !socialVideo) {
+    return NextResponse.json({ error: 'Unsupported social media type' }, { status: 400 });
+  }
+  if (!social && !isImage && !isPdf) {
     return NextResponse.json({ error: 'Only image and PDF uploads are allowed' }, { status: 400 });
   }
 
-  const maxBytes = isPdf ? MAX_PDF_UPLOAD_BYTES : MAX_IMAGE_UPLOAD_BYTES;
+  const maxBytes = social ? (socialVideo ? MAX_SOCIAL_VIDEO_UPLOAD_BYTES : MAX_SOCIAL_IMAGE_UPLOAD_BYTES) : (isPdf ? MAX_PDF_UPLOAD_BYTES : MAX_IMAGE_UPLOAD_BYTES);
 
   if (typeof fileSize !== 'number' || !Number.isFinite(fileSize) || fileSize <= 0) {
     return NextResponse.json({ error: 'Invalid file size' }, { status: 400 });
   }
   if (fileSize > maxBytes) {
     return NextResponse.json(
-      { error: `${isPdf ? 'PDF' : 'Image'} exceeds the ${limitMb(maxBytes)}MB limit` },
+      { error: `${socialVideo && social ? 'Video' : isPdf ? 'PDF' : 'Image'} exceeds the ${limitMb(maxBytes)}MB limit` },
       { status: 400 },
     );
   }

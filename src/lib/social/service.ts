@@ -193,12 +193,23 @@ interface Prepared {
   readonly ministryName: string;
 }
 
-async function prepare(actor: SocialActor, body: unknown): Promise<Prepared | SocialResult<never>> {
+async function prepare(actor: SocialActor, body: unknown, postId?: string): Promise<Prepared | SocialResult<never>> {
   const access = await authorizeSocialActor(actor);
   if (access instanceof NextResponse) return fromResponse(access);
-  const parsed = parseSocialDraft(body, new Date(), { tenantId: access.tenantId, publicUrl: process.env.R2_PUBLIC_URL });
+  // An edit may retain URLs returned by the provider for this specific post.
+  // Obtain them from the authorized workspace, never from the request body.
+  let workspace: SocialWorkspace | null = null;
+  let existingMediaUrls: string[] | undefined;
+  if (postId !== undefined) {
+    workspace = await loadSocialWorkspace(access.tenantId, new Date(), access.mockOnly);
+    if (!workspace) return fail('social_unavailable', 503);
+    const existing = workspace.posts.find(post => post.id === postId && post.status !== 'sent');
+    if (!existing) return fail('post_not_editable', 404);
+    existingMediaUrls = existing.media.flatMap(item => item.url ? [item.url] : []);
+  }
+  const parsed = parseSocialDraft(body, new Date(), { tenantId: access.tenantId, publicUrl: process.env.R2_PUBLIC_URL, existingMediaUrls });
   if (!parsed.ok) return fail(parsed.error, 400);
-  const workspace = await loadSocialWorkspace(access.tenantId, new Date(), access.mockOnly);
+  if (!workspace) workspace = await loadSocialWorkspace(access.tenantId, new Date(), access.mockOnly);
   if (!workspace) return fail('social_unavailable', 503);
   if (!ownsAccounts(workspace, parsed.draft)) return fail('account_not_owned', 403);
   return {
@@ -358,7 +369,7 @@ export async function update(
   body: unknown,
   idempotencyKey: string | null,
 ): Promise<SocialResult<SocialPreviewResult | { post: SocialPost; sample: boolean }>> {
-  const prepared = await prepare(actor, body);
+  const prepared = await prepare(actor, body, id);
   if (!isPrepared(prepared)) return prepared;
   const existing = prepared.workspace.posts.find((post) => post.id === id);
   if (!existing || existing.status === 'sent') return fail('post_not_editable', 404);

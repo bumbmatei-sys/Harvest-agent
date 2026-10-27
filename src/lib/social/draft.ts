@@ -30,7 +30,7 @@ function readFields(raw: unknown): Record<string, string | boolean> {
 }
 
 /** Turn an untrusted body into a draft, or refuse it. */
-export function parseSocialDraft(body: unknown, now = new Date(), context?: { tenantId: string; publicUrl: string | undefined }): DraftResult {
+export function parseSocialDraft(body: unknown, now = new Date(), context?: { tenantId: string; publicUrl: string | undefined; existingMediaUrls?: readonly string[] }): DraftResult {
   if (!body || typeof body !== 'object') return { ok: false, error: 'post_incomplete' };
   const row = body as Record<string, unknown>;
   if (row.media !== undefined && !Array.isArray(row.media)) return { ok: false, error: 'media_invalid' };
@@ -41,7 +41,7 @@ export function parseSocialDraft(body: unknown, now = new Date(), context?: { te
     if (typeof item.url !== 'string' || (item.kind !== 'image' && item.kind !== 'video') ||
       (item.mimeType !== undefined && typeof item.mimeType !== 'string') ||
       (item.alt !== undefined && typeof item.alt !== 'string')) return { ok: false, error: 'media_invalid' };
-    try {
+    if (!context?.existingMediaUrls?.includes(item.url)) try {
       if (!context?.publicUrl || !context.tenantId) return { ok: false, error: 'media_invalid' };
       const base = new URL(context.publicUrl);
       const url = new URL(item.url);

@@ -297,6 +297,21 @@ describe('social service', () => {
     expect(sent).toMatchObject({ ok: false, status: 404, error: 'post_not_editable' });
   });
 
+  it('retains only media already on the edited post, even when hosted by the provider', async () => {
+    const client = new MockSocialClient('tenant-a', new Date());
+    const original = client.load().posts.find(post => post.id === 'sample-draft')!;
+    const url = 'https://media.zernio.example/copied.jpg';
+    client.update(original.id, { ...original, publishNow: false, media: [{ name: url, url, kind: 'image' }] });
+    const body = postBody('instagram', { scheduledFor: null, media: [{ url, kind: 'image' }] });
+    const preview = await update(actor, original.id, body, null);
+    expect(preview.ok).toBe(true);
+    const saved = await update(actor, original.id, { ...body, confirmToken: tokenOf(preview) }, null);
+    expect(saved).toMatchObject({ ok: true, data: { post: { media: [{ url }] } } });
+    expect(await update(actor, original.id, { ...body, media: [{ url: `${url}?other`, kind: 'image' }] }, null)).toMatchObject({ ok: false, error: 'media_invalid' });
+    expect(await update(actor, 'sample-scheduled', { ...body, scheduledFor: future() }, null)).toMatchObject({ ok: false, error: 'media_invalid' });
+    expect(await createDraft(actor, body)).toMatchObject({ ok: false, error: 'media_invalid' });
+  });
+
   it('refuses an edit token that is missing, changed, foreign, reused, or expired', async () => {
     const body = postBody('facebook');
     const preview = await update(actor, 'sample-scheduled', body, null);
