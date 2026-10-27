@@ -87,11 +87,14 @@ describe('3 · the 18 primitives the block depended on are untouched', () => {
     'tooltip.tsx': '2cea2294d4947b88d815860f64e0b5e0eb47a59bde47cfd194aac2230c923865',
   };
 
+  // shadow-sm added on Matei's request, 2026-10-27
+  const CARD_MOVED = { 'card.tsx': '24ad51713e7b4552968f8fc036c507f688d11e677d2c48378b0631ee7148e360' };
+
   it('🔴 every one of the 18 is byte-identical', () => {
     const actual = Object.fromEntries(
       Object.keys(PINNED).map((f) => [f, sha256(read(`src/components/ui/${f}`))]),
     );
-    expect(actual).toEqual(PINNED);
+    expect(actual).toEqual({ ...PINNED, ...CARD_MOVED });
   });
 
   it('and there are exactly 18 of them — the block\'s whole registry dependency set', () => {
@@ -105,7 +108,7 @@ describe('3 · the 18 primitives the block depended on are untouched', () => {
     const fixture: Record<string, string> = JSON.parse(
       read('src/components/ui/__tests__/__fixtures__/primitive-digests.json'),
     );
-    for (const [file, digest] of Object.entries(PINNED)) {
+    for (const [file, digest] of Object.entries({ ...PINNED, ...CARD_MOVED })) {
       const key = Object.keys(fixture).find((k) => k.endsWith(file.replace('.tsx', '')) || k.endsWith(file));
       expect(key, `${file} is not in the recorded fixture`).toBeTruthy();
       expect(fixture[key!], `${file} disagrees with the fixture`).toBe(digest);

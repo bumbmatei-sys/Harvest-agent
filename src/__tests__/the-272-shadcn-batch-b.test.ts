@@ -306,6 +306,8 @@ describe("each new primitive's token classes resolve", () => {
  * which is the claim these counts are pinned for. See MOVED_SINCE below.
  */
 const COUNT_MOVED_SINCE: Readonly<Record<string, number>> = {
+  // shadow-sm added on Matei's request, 2026-10-27
+  'card.tsx': 45,
   'dialog.tsx': 54,
   'sheet.tsx': 62,
   // Eden shell pass. Two new class names on the default button (the action
@@ -409,6 +411,8 @@ it('the unresolved fixture is still empty', () => {
  * recorded, and a further file moving still fails.
  */
 const MOVED_SINCE: Record<string, string> = {
+  // shadow-sm added on Matei's request, 2026-10-27
+  'card.tsx': '24ad51713e7b4552968f8fc036c507f688d11e677d2c48378b0631ee7148e360',
   'dialog.tsx': 'bfd230cea544d2de7650182341e082de92141174da80f6193843e8d71b622e41',
   'sheet.tsx': '68d13d9826a9b5b28e3d78a0ba632b347ca91b67a3333a38acb6310ade8846d4',
   'sonner.tsx': '2ebc0c9ba968858cead2fbf2523dfd9da217715339967025e8c8df94f2131ab9',
@@ -435,13 +439,13 @@ describe('the CLI rewrote nothing it should not have', () => {
     // so the CLI resolved and considered both. It reported "skipped
     // (identical)"; these two lines are the check that does not trust that.
     // button.tsx is compared against the MOVED_SINCE overlay: the Eden shell
-    // pass restyled it on purpose. card.tsx is still the historical digest.
+    // pass restyled it on purpose. Card is also compared against the overlay.
     const expected = { ...PRE_EXISTING_DIGESTS, ...MOVED_SINCE };
     expect(sha256(readFileSync(path.join(UI_DIR, 'button.tsx'), 'utf8'))).toBe(
       expected['button.tsx'],
     );
     expect(sha256(readFileSync(path.join(UI_DIR, 'card.tsx'), 'utf8'))).toBe(
-      PRE_EXISTING_DIGESTS['card.tsx'],
+      expected['card.tsx'],
     );
   });
 

@@ -411,6 +411,8 @@ describe("each new primitive's token classes resolve", () => {
  * which is the claim these counts are pinned for. See MOVED_SINCE below.
  */
 const COUNT_MOVED_SINCE: Readonly<Record<string, number>> = {
+  // shadow-sm added on Matei's request, 2026-10-27
+  'card.tsx': 45,
   'dialog.tsx': 54,
   'sheet.tsx': 62,
   // Eden shell pass. button.tsx gained the action-token classes (80 -> 82).
@@ -517,6 +519,8 @@ it('the unresolved fixture is still empty, at zero bytes', () => {
  * recorded, and a further file moving still fails.
  */
 const MOVED_SINCE: Record<string, string> = {
+  // shadow-sm added on Matei's request, 2026-10-27
+  'card.tsx': '24ad51713e7b4552968f8fc036c507f688d11e677d2c48378b0631ee7148e360',
   'dialog.tsx': 'bfd230cea544d2de7650182341e082de92141174da80f6193843e8d71b622e41',
   'sheet.tsx': '68d13d9826a9b5b28e3d78a0ba632b347ca91b67a3333a38acb6310ade8846d4',
   'tabs.tsx': '096e3d4b2a99b1eff95d16959f97daaa1747fdb7de6226d6c54b9693e22b3410',

@@ -900,6 +900,8 @@ describe('9 — all 22 other primitives are byte-identical', () => {
    * other entry is still compared against what main recorded.
    */
   const MOVED_SINCE: Readonly<Record<string, string>> = {
+    // shadow-sm added on Matei's request, 2026-10-27
+    'card.tsx': '24ad51713e7b4552968f8fc036c507f688d11e677d2c48378b0631ee7148e360',
     'tabs.tsx': '096e3d4b2a99b1eff95d16959f97daaa1747fdb7de6226d6c54b9693e22b3410',
     // ⚠️ THE-295. Both shipped at the shadcn default `z-50` for scrim AND
     // panel, under the mobile bottom nav's `z-[100]` — so any dialog or sheet
@@ -950,10 +952,11 @@ describe('9 — all 22 other primitives are byte-identical', () => {
     // still a DELTA — a third entry moving is still a failure.
     // ⚠️ Six movers now: sonner.tsx (this ticket), tabs.tsx (THE-276-FIX),
     // dialog.tsx + sheet.tsx (THE-295), and button.tsx + sidebar.tsx (the
-    // Eden shell pass), all named in MOVED_SINCE above. Still a DELTA — a
-    // seventh entry moving is still a failure.
-    expect(moved, 'the primitive ledger moved for something other than the six named movers').toEqual([
+    // Eden shell pass), all named in MOVED_SINCE above. Card is the seventh.
+    expect(moved, 'the primitive ledger moved for something other than the seven named movers').toEqual([
       'src/components/ui/button.tsx',
+      // shadow-sm added on Matei's request, 2026-10-27
+      'src/components/ui/card.tsx',
       'src/components/ui/dialog.tsx',
       'src/components/ui/sheet.tsx',
       'src/components/ui/sidebar.tsx',

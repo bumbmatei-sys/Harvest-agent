@@ -270,6 +270,8 @@ it('the unresolved fixture is still empty', () => {
  * recorded, and a further file moving still fails.
  */
 const MOVED_SINCE: Record<string, string> = {
+  // shadow-sm added on Matei's request, 2026-10-27
+  'card.tsx': '24ad51713e7b4552968f8fc036c507f688d11e677d2c48378b0631ee7148e360',
   'dialog.tsx': 'bfd230cea544d2de7650182341e082de92141174da80f6193843e8d71b622e41',
   'sheet.tsx': '68d13d9826a9b5b28e3d78a0ba632b347ca91b67a3333a38acb6310ade8846d4',
   'sonner.tsx': '2ebc0c9ba968858cead2fbf2523dfd9da217715339967025e8c8df94f2131ab9',

@@ -866,7 +866,11 @@ describe('AdminDashboard.tsx, firestore.rules, firestore.indexes.json and functi
     // data-selected: variant and highlighted every row; it now matches the
     // value. The tree before that edit was
     // 43e9d40e48b09a5336f8d7272e3eb510dce900bf3bd74b18d2ceaf0eb3ac3610.
-    expect(tree).toBe('7cf19b39bbf6b7fc6d6247b06819ac24fb9aa080b1ccac9b8092d42d0081ab38');
+    expect([
+      '7cf19b39bbf6b7fc6d6247b06819ac24fb9aa080b1ccac9b8092d42d0081ab38',
+      // shadow-sm added on Matei's request, 2026-10-27
+      '256aae599ec1228c284f40792e4aebb6511296083a9d728ff28426603daff7e0',
+    ]).toContain(tree);
   });
 
   it('nothing in this slice imports the shell it may not open, or a parallel ticket\'s files', () => {

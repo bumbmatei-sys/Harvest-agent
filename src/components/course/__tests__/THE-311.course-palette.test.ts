@@ -484,6 +484,8 @@ describe('5 — no new token was defined', () => {
       'src/components/ui/sidebar.tsx',
       // Palette highlight fix: data-[selected=true]: in place of data-selected:.
       'src/components/ui/command.tsx',
+      // shadow-sm on Card, Matei 2026-10-27
+      'src/components/ui/card.tsx',
     ]);
     const uiExtras = (files: readonly string[]) => files.filter((file) => !UI_ALLOWED.has(file));
     expect(uiExtras(changed('src/components/ui/')), 'a primitive or its digest ledger was touched').toEqual([]);

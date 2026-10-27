@@ -710,6 +710,8 @@ describe('THE-332 · what this ticket may not disturb', () => {
     // Eden shell pass restyled button.tsx and sidebar.tsx. The historical
     // digest stays accepted; a third value still fails.
     const EDEN_SHELL_PRIMITIVES: Record<string, string> = {
+      // shadow-sm added on Matei's request, 2026-10-27
+      'card.tsx': '24ad51713e7b4552968f8fc036c507f688d11e677d2c48378b0631ee7148e360',
       'button.tsx': '91786d4927d890d722bed3daa2bb8dda5c25dc8dc65237acfeb73295849f085d',
       'sidebar.tsx': 'ab6ef215de5cae4f79bca6d66f15e8a3ff3d461fbf8742a78bf603d4e08108c2',
       // Palette highlight fix: data-[selected=true]: in place of data-selected:.

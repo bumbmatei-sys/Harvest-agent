@@ -933,6 +933,8 @@ describe('the files this ticket must not open are byte-identical', () => {
       'src/components/ui/sidebar.tsx',
       // Palette highlight fix: data-[selected=true]: in place of data-selected:.
       'src/components/ui/command.tsx',
+      // shadow-sm on Card, Matei 2026-10-27
+      'src/components/ui/card.tsx',
     ]);
     const uiExtras = (files: readonly string[]) => files.filter((file) => !UI_ALLOWED.has(file));
     expect(uiExtras(changedSince('src/components/ui/')), 'a ui primitive was added or edited').toEqual([]);

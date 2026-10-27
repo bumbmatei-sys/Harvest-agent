@@ -901,6 +901,8 @@ describe('7 — the progress model, the editor and the adoption gate are untouch
       'src/components/ui/sidebar.tsx',
       // Palette highlight fix: data-[selected=true]: in place of data-selected:.
       'src/components/ui/command.tsx',
+      // shadow-sm on Card, Matei 2026-10-27
+      'src/components/ui/card.tsx',
     ];
     expect(
       changedSince('src/components/ui/').filter((f) => !THE_295.includes(f) && !EDEN_SHELL_UI.includes(f)).sort(),
