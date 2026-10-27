@@ -1339,10 +1339,11 @@ describe('no behaviour changed on any screen in scope', () => {
     const tags = (src: string) =>
       [...stripComments(src).matchAll(/<([A-Za-z][A-Za-z0-9.]*)/g)].map((m) => m[1]);
     const mainAppTags = tags(read('MainApp.tsx'));
-    const blogIndex = mainAppTags.indexOf('BlogTab');
+    const productsIndex = mainAppTags.indexOf('DigitalMemberProducts');
     // DIGITAL-1 inserts the Products view between BlogTab and CourseExperience.
-    expect(mainAppTags.slice(blogIndex, blogIndex + 3)).toEqual(['BlogTab', 'DigitalMemberProducts', 'CourseExperience']);
-    mainAppTags.splice(blogIndex + 1, 1);
+    expect(mainAppTags.filter((tag) => tag === 'DigitalMemberProducts')).toHaveLength(1);
+    expect(mainAppTags.slice(productsIndex - 1, productsIndex + 2)).toEqual(['BlogTab', 'DigitalMemberProducts', 'CourseExperience']);
+    mainAppTags.splice(productsIndex, 1);
     expect(mainAppTags, 'MainApp changed its element tree').toEqual(tags(at('MainApp.tsx')));
 
     //   • EVERY CLASS LITERAL, in order. Three className expressions differ.
