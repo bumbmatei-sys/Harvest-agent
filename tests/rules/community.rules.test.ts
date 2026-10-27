@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, it } from 'vitest';
 import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
-import { seedBase, seedDoc, teardownEnv, member, member2, fullAdmin, adminB, asUid, permsOnly, TENANT_A, MEMBER_UID, MEMBER2_UID, FULL_ADMIN_UID, ADMIN_B_UID } from './helpers';
+import { seedBase, seedDoc, teardownEnv, member, member2, fullAdmin, adminB, asUid, getEnv, permsOnly, TENANT_A, MEMBER_UID, MEMBER2_UID, FULL_ADMIN_UID, ADMIN_B_UID } from './helpers';
 
 const sub = (p: string) => `tenants/${TENANT_A}/${p}`;
 beforeAll(async () => {
@@ -13,13 +13,22 @@ beforeAll(async () => {
 afterAll(teardownEnv);
 
 describe('community access', () => {
+  it('allows public listing reads but no client listing writes', async () => {
+    await seedDoc(`discovery_listings/${TENANT_A}`, { tenantId: TENANT_A, name: 'Public' });
+    const anonymous = (await getEnv()).unauthenticatedContext().firestore();
+    const admin = (await fullAdmin()).firestore();
+    await assertSucceeds(anonymous.collection('discovery_listings').get());
+    await assertSucceeds(anonymous.doc(`discovery_listings/${TENANT_A}`).get());
+    await assertFails(admin.doc(`discovery_listings/${TENANT_A}`).set({ name: 'Changed' }));
+    await assertFails(admin.doc(`discovery_listings/${TENANT_A}`).delete());
+  });
   it('scopes settings and member answers to their tenant and owner', async () => {
     const m = (await member()).firestore();
     const other = (await member2()).firestore();
     const admin = (await fullAdmin()).firestore();
     const manager = (await asUid('community-manager')).firestore();
     const foreign = (await adminB()).firestore();
-    await assertSucceeds(manager.doc(sub('settings/community')).set({ isPublic: false }));
+    await assertFails(manager.doc(sub('settings/community')).set({ isPublic: false }));
     await assertFails(manager.doc(sub('settings/other')).set({ value: true }));
     await assertSucceeds(m.doc(sub('settings/community')).get());
     await assertFails(m.doc(sub('settings/community')).set({ isPublic: true }));

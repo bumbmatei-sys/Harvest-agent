@@ -13,6 +13,8 @@ export type CommunityQuestion = {
 export type CommunitySettings = {
   modules: Record<CommunityModule, boolean>;
   isPublic: boolean;
+  shortDescription: string;
+  logoUrl: string;
   rules: { enabled: boolean; items: string[]; version: number };
   questions: { enabled: boolean; items: CommunityQuestion[] };
 };
@@ -21,6 +23,8 @@ export function defaultCommunitySettings(): CommunitySettings {
   return {
     modules: Object.fromEntries(COMMUNITY_MODULES.map(key => [key, true])) as Record<CommunityModule, boolean>,
     isPublic: false,
+    shortDescription: '',
+    logoUrl: '',
     rules: { enabled: false, items: [], version: 0 },
     questions: { enabled: false, items: [] },
   };
@@ -30,8 +34,10 @@ export function defaultCommunitySettings(): CommunitySettings {
 export function readCommunitySettings(value: unknown): CommunitySettings {
   if (value === undefined) return defaultCommunitySettings();
   if (!value || typeof value !== 'object') throw new Error('Invalid community settings');
-  const data = value as CommunitySettings;
+  const raw = value as Partial<CommunitySettings>;
+  const data = { ...raw, shortDescription: raw.shortDescription === undefined ? '' : raw.shortDescription, logoUrl: raw.logoUrl === undefined ? '' : raw.logoUrl } as CommunitySettings;
   if (!data.modules || COMMUNITY_MODULES.some(key => typeof data.modules[key] !== 'boolean') ||
+      typeof data.shortDescription !== 'string' || typeof data.logoUrl !== 'string' ||
       typeof data.isPublic !== 'boolean' || !data.rules || typeof data.rules.enabled !== 'boolean' ||
       !Array.isArray(data.rules.items) || data.rules.items.some(item => typeof item !== 'string') ||
       !Number.isSafeInteger(data.rules.version) || data.rules.version < 0 || !data.questions ||
@@ -66,4 +72,11 @@ export function needsCommunityEntry(settings: CommunitySettings, member: { rules
 export function requiredQuestionsAnswered(questions: CommunityQuestion[], answers: Record<string, string>): boolean {
   return questions.every(q => !q.required || (Boolean(answers[q.id]?.trim()) &&
     (q.type !== 'choice' || q.options.includes(answers[q.id]))));
+}
+
+/** Compare settings by value, independent of Firestore map key order. */
+export function communitySettingsFingerprint(settings: CommunitySettings): string {
+  return JSON.stringify([COMMUNITY_MODULES.map(key => settings.modules[key]), settings.isPublic,
+    settings.shortDescription, settings.logoUrl, settings.rules.enabled, settings.rules.items, settings.rules.version,
+    settings.questions.enabled, settings.questions.items.map(q => [q.id, q.type, q.label, q.options, q.required])]);
 }
