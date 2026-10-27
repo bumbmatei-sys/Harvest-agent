@@ -43,6 +43,9 @@ export type SocialErrorCode =
   | 'post_incomplete'
   | 'schedule_invalid'
   | 'media_not_accepted'
+  | 'media_invalid'
+  | 'media_too_many'
+  | 'instagram_needs_media'
   | 'youtube_needs_video'
   | 'tiktok_needs_video'
   | 'idempotency_key_required'
@@ -87,6 +90,9 @@ const KNOWN_ERRORS = new Set<string>([
   'post_incomplete',
   'schedule_invalid',
   'media_not_accepted',
+  'media_invalid',
+  'media_too_many',
+  'instagram_needs_media',
   'youtube_needs_video',
   'tiktok_needs_video',
   'idempotency_key_required',
@@ -190,7 +196,7 @@ interface Prepared {
 async function prepare(actor: SocialActor, body: unknown): Promise<Prepared | SocialResult<never>> {
   const access = await authorizeSocialActor(actor);
   if (access instanceof NextResponse) return fromResponse(access);
-  const parsed = parseSocialDraft(body);
+  const parsed = parseSocialDraft(body, new Date(), { tenantId: access.tenantId, publicUrl: process.env.R2_PUBLIC_URL });
   if (!parsed.ok) return fail(parsed.error, 400);
   const workspace = await loadSocialWorkspace(access.tenantId, new Date(), access.mockOnly);
   if (!workspace) return fail('social_unavailable', 503);

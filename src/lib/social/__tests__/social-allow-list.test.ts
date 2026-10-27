@@ -27,6 +27,9 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
+const context = { tenantId: 'a', publicUrl: 'https://cdn.example' };
+const image = { url: 'https://cdn.example/tenants/a/uploads/photo.jpg', kind: 'image' };
+
 const clock = new Date(Date.UTC(2024, 2, 15, 12));
 
 function draft(platform: string, extra: Record<string, unknown> = {}) {
@@ -89,7 +92,7 @@ describe('draft parsing refuses a platform before a provider is asked', () => {
   );
 
   it('keeps an offered platform and forces the AI flag off', () => {
-    const parsed = parseSocialDraft(draft('instagram'), new Date('2024-01-01T00:00:00.000Z'));
+    const parsed = parseSocialDraft({ ...draft('instagram'), media: [image] }, new Date('2024-01-01T00:00:00.000Z'), context);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.draft.targets[0]?.platform).toBe('instagram');
@@ -115,35 +118,36 @@ describe('draft parsing refuses a platform before a provider is asked', () => {
       ...draft('instagram'),
       scheduledFor: wall,
       timezone: 'America/Los_Angeles',
-    }, new Date('2024-05-01T00:00:00.000Z'));
+      media: [image],
+    }, new Date('2024-05-01T00:00:00.000Z'), context);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.draft.scheduledFor).toBe('2024-06-01T09:00:00.000Z');
     expect(calendarDayKey(parsed.draft.scheduledFor, 'America/Los_Angeles')).toBe('2024-06-01');
   });
 
-  it('rejects a past time, a distant time, and any media attachment', () => {
+  it('rejects a past time, a distant time, and malformed media', () => {
     const now = new Date('2024-06-01T00:00:00.000Z');
-    const past = draft('instagram');
+    const past = draft('facebook');
     past.scheduledFor = '2024-05-01T00:00:00.000Z';
     expect(parseSocialDraft(past, now)).toEqual({ ok: false, error: 'schedule_invalid' });
-    const far = draft('instagram');
+    const far = draft('facebook');
     far.scheduledFor = '2026-06-02T15:00:00.000Z';
     expect(parseSocialDraft(far, now)).toEqual({ ok: false, error: 'schedule_invalid' });
-    const soon = draft('instagram');
+    const soon = draft('facebook');
     soon.scheduledFor = '2024-06-02T15:00:00.000Z';
     expect(parseSocialDraft(soon, now).ok).toBe(true);
     expect(parseSocialDraft({ ...soon, media: [{ name: 'https://cdn.example/a.jpg', kind: 'image' }] }, now))
-      .toEqual({ ok: false, error: 'media_not_accepted' });
+      .toEqual({ ok: false, error: 'media_invalid' });
     const youtube = draft('youtube');
     expect(parseSocialDraft(youtube, now)).toEqual({ ok: false, error: 'youtube_needs_video' });
     expect(parseSocialDraft({
       ...youtube,
       media: [{ name: 'clip.mp4', kind: 'video' }],
-    }, now)).toEqual({ ok: false, error: 'media_not_accepted' });
+    }, now)).toEqual({ ok: false, error: 'media_invalid' });
   });
 
-  it('refuses a TikTok target until a video can be uploaded', () => {
+  it('requires a video for a TikTok target', () => {
     const now = new Date('2024-06-01T00:00:00.000Z');
     expect(parseSocialDraft(draft('tiktok'), now)).toEqual({ ok: false, error: 'tiktok_needs_video' });
     const mixed = draft('instagram');

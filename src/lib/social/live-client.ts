@@ -119,7 +119,7 @@ function readPost(value: unknown): SocialPost | null {
       const mediaRow = asRecord(item);
       const kind = mediaRow.type === 'video' ? 'video' : 'image';
       const name = typeof mediaRow.url === 'string' ? mediaRow.url : kind;
-      media.push({ name, kind });
+      media.push({ name, kind, ...(typeof mediaRow.url === 'string' ? { url: mediaRow.url } : {}) });
     }
   }
   return {
@@ -232,7 +232,7 @@ export class LiveSocialClient {
   }
 }
 
-function toProviderBody(profileId: string | null, draft: SocialPostDraft): Record<string, unknown> {
+export function toProviderBody(profileId: string | null, draft: SocialPostDraft): Record<string, unknown> {
   const platforms = [];
   for (const target of draft.targets) {
     const platform = parseSocialPlatform(target.platform);
@@ -255,7 +255,10 @@ function toProviderBody(profileId: string | null, draft: SocialPostDraft): Recor
     timezone: draft.timezone,
     ...(draft.publishNow ? { publishNow: true } : {}),
     ...(draft.scheduledFor && !draft.publishNow ? { scheduledFor: draft.scheduledFor } : {}),
-    mediaItems: [],
+    mediaItems: draft.media.map(item => {
+      if (!item.url) throw new Error('Social media URL is missing');
+      return { url: item.url, type: item.kind };
+    }),
     platforms,
   };
 }
