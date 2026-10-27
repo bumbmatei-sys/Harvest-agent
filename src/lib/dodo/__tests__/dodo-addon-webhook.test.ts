@@ -116,15 +116,15 @@ vi.mock('@/lib/money-path-sentry', () => ({ captureMoneyPathError: mockCapture }
 
 import { applyDodoPlanChange } from '../plan-change';
 import { receiveDodoWebhookEvent } from '../webhook-dispatch';
-import { DODO_TEST_ADDONS, requireProductId } from '../catalogue';
+import { DODO_TEST_ADDONS } from '../catalogue';
 import { NO_ADDONS } from '@/utils/plan-features';
 import type { DodoWebhookEvent } from '../events';
 
 const T = {
   tenant: 'grace-chapel',
   sub: 'sub_live_1',
-  plusMonthly: requireProductId('plus', 'monthly'),
-  proMonthly: requireProductId('pro', 'monthly'),
+  plusMonthly: 'pdt_0NlAMMZk44L0tL8lcLX6M',
+  proMonthly: 'pdt_0NlAMMhi90q5Ovk6QBzcf',
 };
 
 /**
@@ -227,7 +227,7 @@ describe('plan_changed writes the add-on set', () => {
       unlimitedContacts: true,
     });
     // The tier still moved: this is one event and one write.
-    expect(tenantDoc()?.plan).toBe('pro');
+    expect(tenantDoc()?.plan).toBe('church');
   });
 
   it('writes the unlimited flag as a boolean, from either billing period', async () => {
@@ -271,7 +271,7 @@ describe('plan_changed writes the add-on set', () => {
     });
 
     expect(outcome.outcome).toBe('plan-moved');
-    expect(tenantDoc()?.plan).toBe('plus');
+    expect(tenantDoc()?.plan).toBe('church');
     expect(tenantDoc()?.addons.adminSeats).toBe(1);
   });
 
@@ -316,7 +316,7 @@ describe('plan_changed writes the add-on set', () => {
     expect(outcome).toMatchObject({ outcome: 'plan-moved', addons: null });
     expect(tenantDoc()?.addons).toEqual(owned);
     // The readable half of the event still applied.
-    expect(tenantDoc()?.plan).toBe('pro');
+    expect(tenantDoc()?.plan).toBe('church');
   });
 
   it('is the same writer that moves the plan — one batch, both fields', async () => {
@@ -329,7 +329,7 @@ describe('plan_changed writes the add-on set', () => {
     });
 
     const doc = tenantDoc();
-    expect(doc?.plan).toBe('pro');
+    expect(doc?.plan).toBe('church');
     expect(doc?.addons.adminSeats).toBe(2);
     expect(doc?.updatedAt).toEqual(expect.any(String));
   });

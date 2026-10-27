@@ -167,7 +167,7 @@ describe('a gate renders neither permitted nor denied while the plan is unknown'
     expect(resolvePlanGateState('automatedBlog', { plan: undefined })).toBe('unknown');
 
     // And the two definite answers are still definite.
-    expect(resolvePlanGateState('automatedBlog', { plan: 'max' })).toBe('permitted');
+    expect(resolvePlanGateState('automatedBlog', { plan: 'ministry' })).toBe('permitted');
     expect(resolvePlanGateState('automatedBlog', { plan: 'free' })).toBe('denied');
   });
 
@@ -268,7 +268,7 @@ describe('the Blog Automate button does not flicker', () => {
     // A fetch fired on an unresolved entitlement asks for something nobody has
     // established the church can have.
     expect(planGatePermits(resolvePlanGateState('automatedBlog', { plan: null }))).toBe(false);
-    expect(planGatePermits(resolvePlanGateState('automatedBlog', { plan: 'max' }))).toBe(true);
+    expect(planGatePermits(resolvePlanGateState('automatedBlog', { plan: 'ministry' }))).toBe(true);
   });
 });
 

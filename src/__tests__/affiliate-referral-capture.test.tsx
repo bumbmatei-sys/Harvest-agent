@@ -93,7 +93,7 @@ describe('referral capture is NOT gated on the affiliate programme flag', () => 
 
     act(() => {
       root = createRoot(container);
-      root.render(<AdminUpgradePage currentPlan="plus" tenantId="grace" email="p@grace.org" onBack={() => {}} />);
+      root.render(<AdminUpgradePage currentPlan="church" tenantId="grace" email="p@grace.org" onBack={() => {}} />);
     });
 
     const upgrade = Array.from(container.querySelectorAll('button')).find(
@@ -110,7 +110,7 @@ describe('referral capture is NOT gated on the affiliate programme flag', () => 
   it('omits referrerId entirely when there was no capture (unchanged, no empty attribution)', async () => {
     act(() => {
       root = createRoot(container);
-      root.render(<AdminUpgradePage currentPlan="plus" tenantId="grace" email="p@grace.org" onBack={() => {}} />);
+      root.render(<AdminUpgradePage currentPlan="church" tenantId="grace" email="p@grace.org" onBack={() => {}} />);
     });
 
     const upgrade = Array.from(container.querySelectorAll('button')).find(

@@ -168,7 +168,7 @@ describe('THE-92 — an abandoned signup stays recoverable', () => {
     // marker is written here, before checkout exists — that is the behaviour
     // under test, not an accident of ordering.
     sessionStorage.setItem(SIGNUP_BILLING_STORAGE_KEY, 'yearly');
-    mount(<ChurchOnboarding onComplete={() => {}} signupPlan="pro" />);
+    mount(<ChurchOnboarding onComplete={() => {}} signupPlan="church" />);
     await fillFormAndContinue();
 
     const marker = writtenMarker();
@@ -209,19 +209,19 @@ describe('THE-92 — an abandoned signup stays recoverable', () => {
     // off the marker the abandoned form left behind.
     expect(fetchMock, 'the resume button started no checkout').toHaveBeenCalled();
     const resumed = checkoutBody();
-    expect(resumed.plan).toBe('pro');
+    expect(resumed.plan).toBe('church');
     expect(resumed.billing).toBe('yearly');
     expect(resumed.ministryName).toBe('Grace Chapel');
   });
 
   it('the chosen billing period still reaches checkout unchanged', async () => {
     sessionStorage.setItem(SIGNUP_BILLING_STORAGE_KEY, 'yearly');
-    mount(<ChurchOnboarding onComplete={() => {}} signupPlan="max" />);
+    mount(<ChurchOnboarding onComplete={() => {}} signupPlan="ministry" />);
     expect(container.textContent, 'the annual term is not shown before the church commits to it')
       .toMatch(/billed annually/i);
     await fillFormAndContinue();
     expect(checkoutBody().billing).toBe('yearly');
-    expect(checkoutBody().plan).toBe('max');
+    expect(checkoutBody().plan).toBe('ministry');
     // The marker carries the term too, so the restart above re-buys annual.
     expect(writtenMarker().signupBilling).toBe('yearly');
   });

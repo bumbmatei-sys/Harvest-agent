@@ -94,7 +94,7 @@ async function mount(props: Partial<React.ComponentProps<typeof AdminSettings>> 
     root.render(
       <AdminSettings
         onBack={() => {}}
-        currentPlan={'pro' as never}
+        currentPlan="church"
         tenantId="tenant-1"
         email="admin@church.org"
         isPlanOwner

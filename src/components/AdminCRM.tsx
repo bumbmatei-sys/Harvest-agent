@@ -1221,7 +1221,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
               timeline, and cannot be undone.
             </p>
             <p className="text-sm text-muted mb-5">
-              Their giving stays on your books: a receipt is never deleted, so your accounting
+              Their giving stays on your books: a receipt is never deleted, so your giving records
               totals and giving statements do not change. If they have an app account, this does
               not remove it &mdash; only they can do that, from their own profile.
             </p>
@@ -1414,7 +1414,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
    * IS the record of the money and the timeline row REFERENCES it, carrying
    * `amount: null` so nothing sums the gift twice. Which means a delete that
    * removed only the row would take the gift off ONE screen and leave it in the
-   * dashboard figure, in accounting, in the member's own giving history and on
+   * dashboard figure, in giving records, in the member's own giving history and on
    * their giving statement - while the church watched the row vanish and
    * reasonably concluded the money had moved with it. Every one of the three
    * reasons to delete a gift (wrong contact, wrong amount, never happened) is
@@ -1578,7 +1578,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         body:
           'This row points at a receipt on your books, but its amount is not available on '
           + 'this screen \u2014 so there is no way to tell you what deleting it would take out '
-          + 'of your accounting. Nothing has been deleted. Reload the timeline and try again.',
+          + 'of your giving records. Nothing has been deleted. Reload the timeline and try again.',
       }
     : null;
 
@@ -2225,7 +2225,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                         from your books, not only this row on the timeline.
                       </p>
                       <p className="text-sm text-muted mb-2">
-                        Your dashboard giving figure and your accounting totals both fall by{' '}
+                        Your dashboard giving figure and your giving records totals both fall by{' '}
                         {formatCents(deleteActivityCents as number)}, the gift leaves this
                         person&rsquo;s own giving history, and a giving statement generated from now
                         on will no longer include it. Its receipt number is not reused, so your
@@ -2239,7 +2239,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                   ) : (
                     <p className="text-sm text-muted mb-5" data-activity-delete-plain>
                       This removes it from {selected ? 'their' : 'the'} timeline and cannot be
-                      undone. It carries no money, so your accounting totals and giving statements
+                      undone. It carries no money, so your giving records totals and giving statements
                       do not change.
                     </p>
                   )}
@@ -2334,7 +2334,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                     */}
                     <p className="text-[11px] text-muted leading-relaxed mt-2" data-testid="manual-donation-reach">
                       Recording this adds a donation receipt to your books, so the gift counts on your
-                      dashboard, in accounting, and on this year&apos;s giving statement.
+                      dashboard, in giving records, and on this year&apos;s giving statement.
                     </p>
                     {/*
                       🔴 THE CONSEQUENCE OF NO EMAIL, ON SCREEN, BEFORE THE SAVE.
@@ -2363,7 +2363,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                         <AlertTriangle size={14} className="text-gold shrink-0 mt-0.5" aria-hidden="true" />
                         <p className="text-[11px] text-body leading-relaxed">
                           <b className="text-strong">This contact has no email address.</b> The gift will still
-                          count on your dashboard, in accounting and on your giving statements &mdash; but{' '}
+                          count on your dashboard, in giving records and on your giving statements &mdash; but{' '}
                           {selected?.firstName || 'this person'} will never see it in their own donation history,
                           and no receipt can reach them. Add an email to the contact first if they should.
                         </p>

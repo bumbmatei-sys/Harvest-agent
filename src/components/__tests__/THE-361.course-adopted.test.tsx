@@ -404,9 +404,9 @@ describe('3 · it does not fire on a failed adopt', () => {
   it('a PLAN CAP refused by the client never reaches the route either', async () => {
     // The other half of the same cap. `atLimit` returns before the request, so
     // there is no response to be right or wrong about.
-    tenantCtx.tenantPlan = 'plus';
-    mockCourses = makeCourses(2);
-    mockLibrary = makeLibrary(3);
+    tenantCtx.tenantPlan = 'church';
+    mockCourses = makeCourses(5);
+    mockLibrary = makeLibrary(6);
     await mount();
     await click(libraryTab());
 
@@ -934,7 +934,7 @@ describe("12 · THE-345's ghost-adoption work is undisturbed", () => {
 
   it('a ghost adoption still does not consume a plan slot', async () => {
     // The behaviour, not only the expression: one pointer at a library course
-    // that no longer exists, and the church is not at its 2-course limit.
+    // that no longer exists, and the church is not at its course limit.
     tenantCtx.tenantPlan = 'plus';
     mockCourses = makeCourses(1);
     mockLibrary = makeLibrary(1);

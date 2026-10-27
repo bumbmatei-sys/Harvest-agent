@@ -1,0 +1,111 @@
+{
+  "ticket": "THE-378",
+  "note": "The two-plan repricing: Church at $30 a month or $300 a year and Ministry at $90 a month or $900 a year replace plus, pro and max (approved by the founder, 2026-10-27). There is no assigned ticket number; THE-378 is the next free id after THE-377. Stored plus and pro ids are read as Church and max as Ministry at read time through canonicalPlanId; no Firestore document is written or migrated. No firestore.rules, indexes, storage rules, env var or tenant data change. APPENDED, NEVER SUBSTITUTED: no other ticket's record was edited.",
+  "entries": [
+    {
+      "file": "src/App.tsx",
+      "digest": "7651b77fb157a156d6e298105a52682e23e1b182a4a6dc26e00ce7dc42a31e5e",
+      "why": "Two-plan repricing. The signup tier and the user-doc plan are read through canonicalPlanId in place of PLAN_ORDER and a bare cast, so a link or document written before the repricing still resolves. No route was added or reordered and no funnel marker moved."
+    },
+    {
+      "file": "src/__tests__/THE-344.reprice-retired.test.ts",
+      "digest": "b2702140ab6c984275c3d01fce6cfd38b967923c08e2a19c4f8af3c96dd2b1c5",
+      "why": "Two-plan repricing. The live-product fixture this suite reads back now lists the four Church and Ministry products (monthly 3000 and 9000 cents, yearly 30000 and 90000) in place of the six retired plus, pro and max ones, which stay recognised through the legacy table. The suite still pins each id, price, trial and billing frequency against what the live API returned, and still asserts no retired identifier survives in comments."
+    },
+    {
+      "file": "src/__tests__/the-324-guards.test.ts",
+      "digest": "96a79fc18b9633cd20ecaf43ea4919530742efb1505afb4323bd8fcf780acc44",
+      "why": "Two-plan repricing. The sms-usage.ts meter pin gains an append path through the ownership register with its original baseline literal kept, because the meter now reads the plan through toTenantPlan. The opt-out, funnel, rules and functions assertions are unchanged."
+    },
+    {
+      "file": "src/app/api/event-payment/confirm/route.ts",
+      "digest": "150f2f7a3e3f517df2fa1ffaa8e95abd099466de158c5e726014b4255b95176e",
+      "why": "Two-plan repricing. One error string says check your giving records before retrying where it said check your accounting, following the Accounting to Giving records rename. No gate, write path, claim check or response status changed."
+    },
+    {
+      "file": "src/components/AdminAccounting.tsx",
+      "digest": "c64fc0d07db1cd6b26e4770dbe43094f00cca55d7a0ac470e1927b5eaa78928b",
+      "why": "Two-plan repricing. The screen is titled and described as Giving records, never as accounting software or a QuickBooks replacement. The route, the accounting tab id, the accountingTools cell and the manageAccounting permission keep their names. No statement, receipt, CRM write or Stripe path changed."
+    },
+    {
+      "file": "src/components/AdminCRM.tsx",
+      "digest": "6e7dbac96166d0f7987f4dd095029ce2b5357b9a5c10f1d4995638d90633b411",
+      "why": "Two-plan repricing. The manual-gift copy says giving records where it said accounting, following the Accounting to Giving records rename. No CRM read, write, query or permission term changed."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "3c1d4d893b3980eab1e64e692f6094456325d0b14e69fe118ebe7d7f4791e14f",
+      "why": "Two-plan repricing. The plan is read through canonicalPlanId so a retired id the store still holds is read as the tier it became, the Check-In withholding keys off church (the cheapest paid tier) in place of plus, and the Accounting entry is labelled Giving records. No route, permission term, plan gate cell or write path moved."
+    },
+    {
+      "file": "src/components/AdminRoles.tsx",
+      "digest": "a08bb5a91971f4dad90de376678abb01f16e392fc13855fa19c5664a575e58f8",
+      "why": "Two-plan repricing. The manageAccounting permission row is labelled Giving records. The stored permission key, its description and every gate are unchanged, so every existing role keeps what it had."
+    },
+    {
+      "file": "src/components/AuthPage.tsx",
+      "digest": "c6a7c2c4bcff74f2346fdd0ed7decd7dc3cc7f6b4ccd49a5d18370484ae0601d",
+      "why": "Two-plan repricing. The custom-branding check reads the ministry tier in place of the retired max id. A stored max resolves to ministry before it reaches this line, so no tenant gained or lost branding."
+    },
+    {
+      "file": "src/components/ChurchOnboarding.tsx",
+      "digest": "8bd56a85c5d93051a7c55c202d9a32bc3fea969b1194721c3d7559d316650d77",
+      "why": "Two-plan repricing. A plan in the signup link is read through canonicalPlanId, so a stale plus or pro link lands on Church and a max link on Ministry, and the fallback is church. The checkout call, the consent gate and every funnel marker are unchanged."
+    },
+    {
+      "file": "src/components/FirstRunSetup.tsx",
+      "digest": "8b76fead3d79378887a66d0db96e7ccb72097ca81b09bc6fd0c5376e18cd85ea",
+      "why": "Two-plan repricing. The plan it reads is resolved through toTenantPlan, so a stored retired id shows the tier it became and the fallback is church. The canFinish gate, the finish call and the domain panel are unchanged."
+    },
+    {
+      "file": "src/components/Onboarding.tsx",
+      "digest": "1a2e1ad4ea2bf43ce174d3152e3179b34977b871e9ae66b60e60b0d02f40c6bb",
+      "why": "Two-plan repricing. The custom-branding check reads the ministry tier in place of the retired max id. A stored max resolves to ministry before it reaches this line, so no tenant gained or lost branding."
+    },
+    {
+      "file": "src/components/__tests__/AdminSettings.free-tier-sections.test.tsx",
+      "digest": "028f251347faec176ca176da93690d38de59952e0dcdccc04ca8b507ec0877d5",
+      "why": "Two-plan repricing. The priced tiers this suite walks are church and ministry in place of plus, pro and max, and the per-tier Settings row lists follow. The free tier's list, the row gates and the assertions about which row is hidden where are unchanged."
+    },
+    {
+      "file": "src/components/__tests__/AdminSettings.integrations-gating.test.tsx",
+      "digest": "ccb6872d04bda5e83f8366f2de7e7d578c1b462f61105983ee213746e1d95376",
+      "why": "Two-plan repricing. The tiers this suite walks are church and ministry in place of plus, pro and max, and the display names asserted are Church and Ministry. The integrations rows and the gates in front of them are unchanged."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/dodo-catalogue.test.ts",
+      "digest": "e2a8bf1e18cfd43e969f3e0fa0c00036a9f016cfb09bf6dd2d483227583db4f0",
+      "why": "Two-plan repricing. The catalogue suite pins the four Church and Ministry live product ids character for character, the unmapped test-mode cells that refuse a checkout, and the retired plus, pro and max products as recognised but never offered. Prices are still transcribed from the live API rather than read from PLAN_PRICING."
+    },
+    {
+      "file": "src/lib/dodo/__tests__/dodo-quarterly-term.test.ts",
+      "digest": "0500742d03baf881d8a402e7aa2d01861faaa8fa9b03824530b7620e7f094eb8",
+      "why": "Two-plan repricing. The archived-quarterly and price assertions follow the new catalogue: the four live products at 3000, 30000, 9000 and 90000 minor units. The quarterly term is still absent from every table and every archived quarterly id is still refused."
+    },
+    {
+      "file": "src/lib/event-payment-claims.ts",
+      "digest": "c8305de790e0e94512edad8f2551b91b5a981119502cbe23d5a1beb6f1a5c702",
+      "why": "Two-plan repricing. One confirmation sentence says the gift is now in your giving records where it said accounting, following the rename. The claim lifecycle, the cents arithmetic and every status are unchanged."
+    },
+    {
+      "file": "src/lib/sms-usage.ts",
+      "digest": "fbd96bb8e4f880946b81c7a18dfb6d018b7abb4e11ea89c10cb9c05615dc866d",
+      "why": "Two-plan repricing. The meter reads the tenant plan through toTenantPlan so a stored retired id is metered as the tier it became, and the missing-plan fallback is church. The segment arithmetic, the caps, the BYO count and the TTL are unchanged."
+    },
+    {
+      "file": "src/utils/__tests__/the-222-repricing.test.ts",
+      "digest": "eac69387983bbf90fdb16435609d8cff7ebf0ef104b3c69b31bf1827c06133f3",
+      "why": "Two-plan repricing. The THE-222 and old tables this suite compares are keyed by the retired ids they describe, and the live table is the two-plan one (Church 30 and 300, Ministry 90 and 900). The discount arithmetic and the no-literal-price sweep are unchanged."
+    },
+    {
+      "file": "src/utils/__tests__/the-248-discount-alignment.test.ts",
+      "digest": "7aca1c3abe209700db4b37fbb1fea93462f47affe3caf1311d225f9b92752029",
+      "why": "Two-plan repricing. The suite's live-price transcription, the matrix digest and the tier ladder follow the two-plan table, the yearly claim is the real 16 percent rounded down (two months free), and the retired quarterly arithmetic stays withdrawn. The shape and honesty rules the file exists for are unchanged."
+    },
+    {
+      "file": "src/utils/__tests__/the-343-ministry-reprice.test.ts",
+      "digest": "afcde29cc23456980ce85f7aaa18fac9063074d23facb386ec86071d5d551348",
+      "why": "Two-plan repricing. This suite's history is kept, but its live-price and ministry-row assertions are re-keyed to the two-plan table, PLATFORM_FEE_MAP is asserted exactly as the money path still holds it (plus, pro and max at zero), and the byte-identity pins follow the recorded chain."
+    }
+  ]
+}

@@ -6,7 +6,7 @@ import AdminCourses from '../AdminCourses';
 /**
  * Pins maxCourses enforcement (mirrors the maxChurches fail-closed pattern in
  * AdminChurches): the "New course" button must disable once the tenant's
- * course count reaches their plan's maxCourses, fall back to 'plus' on an
+ * course count reaches their plan's maxCourses, fall back to 'church' on an
  * unknown/loading plan, treat -1 as unlimited, and never hide or delete
  * courses a tenant already has beyond their (possibly downgraded) limit.
  */
@@ -186,12 +186,12 @@ describe('AdminCourses as the Products page', () => {
   });
 
   it('keeps the plan cap: at the limit New product is disabled and says why', async () => {
-    tenantCtx.tenantPlan = 'plus';
-    mockCourses = makeCourses(2);
+    tenantCtx.tenantPlan = 'church';
+    mockCourses = makeCourses(5);
     await mount({ productsPage: true });
     const button = newCourseButton('New product');
     expect(button.disabled).toBe(true);
-    expect(button.title).toMatch(/plan includes up to 2 course/i);
+    expect(button.title).toMatch(/plan includes up to 5 course/i);
   });
 
   it('links to the Courses page, where the library and adoptions live', async () => {
@@ -222,8 +222,8 @@ describe('AdminCourses — the Courses page header', () => {
 
 describe('AdminCourses — maxCourses enforcement', () => {
   it('allows creating a new course when under the plan limit', async () => {
-    tenantCtx.tenantPlan = 'plus'; // maxCourses: 2
-    mockCourses = makeCourses(1);
+    tenantCtx.tenantPlan = 'church'; // maxCourses: 5
+    mockCourses = makeCourses(4);
     await mount();
 
     const button = newCourseButton();
@@ -236,13 +236,13 @@ describe('AdminCourses — maxCourses enforcement', () => {
   });
 
   it('blocks creating a new course at the plan limit', async () => {
-    tenantCtx.tenantPlan = 'plus'; // maxCourses: 2
-    mockCourses = makeCourses(2);
+    tenantCtx.tenantPlan = 'church'; // maxCourses: 5
+    mockCourses = makeCourses(5);
     await mount();
 
     const button = newCourseButton();
     expect(button.disabled).toBe(true);
-    expect(button.title).toMatch(/plan includes up to 2 course/i);
+    expect(button.title).toMatch(/plan includes up to 5 course/i);
 
     await act(async () => { button.click(); });
     // Disabled buttons don't dispatch click handlers — the editor never opens.
@@ -275,9 +275,9 @@ describe('AdminCourses — maxCourses enforcement', () => {
     expect(newCourseButton().disabled).toBe(true);
   });
 
-  it('fails closed to the plus limit when the plan is unknown/still loading', async () => {
+  it('fails closed to the Church limit when the plan is unknown/still loading', async () => {
     tenantCtx.tenantPlan = undefined;
-    mockCourses = makeCourses(2); // at plus's cap of 2
+    mockCourses = makeCourses(5); // at Church's cap of 5
     await mount();
 
     const button = newCourseButton();
@@ -285,8 +285,8 @@ describe('AdminCourses — maxCourses enforcement', () => {
   });
 
   it('never hides or deletes existing courses when a tenant is already over their limit', async () => {
-    tenantCtx.tenantPlan = 'plus'; // maxCourses: 2, tenant has 5 (e.g. after a downgrade)
-    mockCourses = makeCourses(5);
+    tenantCtx.tenantPlan = 'church'; // maxCourses: 5, tenant has 8 (e.g. after a downgrade)
+    mockCourses = makeCourses(8);
     await mount();
 
     // Creation is blocked...
@@ -295,8 +295,8 @@ describe('AdminCourses — maxCourses enforcement', () => {
     for (const course of mockCourses) {
       expect(container.textContent).toContain(course.title);
     }
-    expect(container.querySelectorAll('[data-edit-course]').length).toBeGreaterThanOrEqual(5);
-    expect(container.querySelectorAll('[aria-label^="Actions for"]').length).toBeGreaterThanOrEqual(5);
+    expect(container.querySelectorAll('[data-edit-course]').length).toBeGreaterThanOrEqual(8);
+    expect(container.querySelectorAll('[aria-label^="Actions for"]').length).toBeGreaterThanOrEqual(8);
   });
 });
 
@@ -325,7 +325,7 @@ function makeLibrary(n: number, status = 'published') {
  *
  * The cap is the load-bearing one. maxCourses has always been computed from
  * `courses.length` alone; an adopted course now occupies a slot too, so a tenant
- * with one own course and one adoption is at the Individual limit of 2 — the
+ * with four own courses and one adoption is at the Church limit of 5 — the
  * exact case a count of own courses would miss.
  */
 describe('AdminCourses — library adoption', () => {
@@ -372,20 +372,20 @@ describe('AdminCourses — library adoption', () => {
      * outcome from the opposite fixture - and they fail if this file's fix is
      * reverted, which is what makes the pair meaningful.
      */
-    it('one own course + one adoption reaches the Individual limit of 2', async () => {
-      tenantCtx.tenantPlan = 'plus';
-      mockCourses = makeCourses(1);
+    it('four own courses + one adoption reaches the Church limit of 5', async () => {
+      tenantCtx.tenantPlan = 'church';
+      mockCourses = makeCourses(4);
       mockLibrary = makeLibrary(1);
       mockAdopted = [{ id: 'lib-0', libraryCourseId: 'lib-0' }];
       await mount();
 
       expect(newCourseButton().disabled).toBe(true);
-      expect(newCourseButton().title).toMatch(/up to 2 courses/i);
+      expect(newCourseButton().title).toMatch(/up to 5 courses/i);
     });
 
     it('mentions adopted courses in the cap message', async () => {
-      tenantCtx.tenantPlan = 'plus';
-      mockCourses = makeCourses(1);
+      tenantCtx.tenantPlan = 'church';
+      mockCourses = makeCourses(4);
       mockLibrary = makeLibrary(1);
       mockAdopted = [{ id: 'lib-0', libraryCourseId: 'lib-0' }];
       await mount();
@@ -393,21 +393,18 @@ describe('AdminCourses — library adoption', () => {
     });
 
     it('adoptions alone can exhaust the plan', async () => {
-      tenantCtx.tenantPlan = 'plus';
+      tenantCtx.tenantPlan = 'church';
       mockCourses = [];
-      mockLibrary = makeLibrary(2);
-      mockAdopted = [
-        { id: 'lib-0', libraryCourseId: 'lib-0' },
-        { id: 'lib-1', libraryCourseId: 'lib-1' },
-      ];
+      mockLibrary = makeLibrary(5);
+      mockAdopted = Array.from({ length: 5 }, (_, i) => ({ id: `lib-${i}`, libraryCourseId: `lib-${i}` }));
       await mount();
       expect(newCourseButton().disabled).toBe(true);
     });
 
     it('blocks adopting once the cap is reached', async () => {
-      tenantCtx.tenantPlan = 'plus';
-      mockCourses = makeCourses(2);
-      mockLibrary = makeLibrary(3);
+      tenantCtx.tenantPlan = 'church';
+      mockCourses = makeCourses(5);
+      mockLibrary = makeLibrary(6);
       await mount();
       await act(async () => { libraryTab().click(); });
 
@@ -431,13 +428,10 @@ describe('AdminCourses — library adoption', () => {
       for (const b of adoptButtons()) expect(b.disabled).toBe(false);
     });
 
-    it('fails closed to the plus limit when the plan is still loading', async () => {
+    it('fails closed to the Church limit when the plan is still loading', async () => {
       tenantCtx.tenantPlan = undefined;
-      mockLibrary = makeLibrary(2);
-      mockAdopted = [
-        { id: 'lib-0', libraryCourseId: 'lib-0' },
-        { id: 'lib-1', libraryCourseId: 'lib-1' },
-      ];
+      mockLibrary = makeLibrary(5);
+      mockAdopted = Array.from({ length: 5 }, (_, i) => ({ id: `lib-${i}`, libraryCourseId: `lib-${i}` }));
       await mount();
       expect(newCourseButton().disabled).toBe(true);
     });
@@ -966,12 +960,12 @@ describe('AdminCourses — previewing a catalogue course', () => {
 
   it('does not count a preview against the plan cap', async () => {
     // Looking is free; only adopting spends a slot.
-    tenantCtx.tenantPlan = 'plus'; // 2
+    tenantCtx.tenantPlan = 'church'; // 5
     mockCourses = makeCourses(1);
     await openPreview();
     await act(async () => { buttonInPreview('Back to the library')!.click(); });
     // One own course, nothing adopted — the preview spent nothing.
-    expect(container.textContent).toContain('1 of 2 courses used');
+    expect(container.textContent).toContain('1 of 5 courses used');
     const ownTab = Array.from(container.querySelectorAll('button'))
       .find((b) => (b.textContent || '').startsWith('Your courses')) as HTMLButtonElement;
     await act(async () => { ownTab.click(); });
@@ -1030,12 +1024,12 @@ describe('AdminCourses — previewing a catalogue course', () => {
     });
 
     it('disables Adopt at the cap, with the same message the card shows', async () => {
-      tenantCtx.tenantPlan = 'plus';
-      mockCourses = makeCourses(2);
+      tenantCtx.tenantPlan = 'church';
+      mockCourses = makeCourses(5);
       await openPreview();
       const adopt = buttonInPreview('Adopt')!;
       expect(adopt.disabled).toBe(true);
-      expect(adopt.title).toMatch(/plan includes up to 2 course/i);
+      expect(adopt.title).toMatch(/plan includes up to 5 course/i);
     });
   });
 

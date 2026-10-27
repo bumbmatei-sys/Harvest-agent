@@ -426,6 +426,8 @@ describe('5 · with Stripe off, neither page shows a Stripe control or an apolog
     const ACCEPTED_SWITCH_DIGESTS = [
       'ae4767b86754d414d6d8a052756c15b27c5cdee9fec33dc77dbc9ec1acb11d67',
       '22b5d92d7225fe91d38288a6570bdd8d9551ee8be9095d86a2798945cfce2b30',
+      // APPENDED BY THE TWO-PLAN REPRICING (THE-378), nothing above removed or rewritten. stripe-connect-feature.ts: the hidden message says giving records where it said accounting; STRIPE_CONNECT_ENABLED is still false.
+      '4e9ea4ff9c09ce6d475d319aaa80497b62a85d6d0da720e39279431c3f196f2a',
     ];
     expect(ACCEPTED_SWITCH_DIGESTS, 'stripe-connect-feature.ts is at a digest no ticket recorded')
       .toContain(sha(read('src/lib/stripe-connect-feature.ts')));

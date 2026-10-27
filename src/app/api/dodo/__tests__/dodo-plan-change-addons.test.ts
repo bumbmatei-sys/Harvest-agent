@@ -21,7 +21,7 @@ import { NextRequest } from 'next/server';
 vi.hoisted(() => {
   process.env.DODO_PAYMENTS_API_KEY = 'dodo_test_key';
   process.env.DODO_PAYMENTS_WEBHOOK_KEY = 'whsec_' + Buffer.from('testsecret').toString('base64');
-  process.env.DODO_PAYMENTS_ENVIRONMENT = 'test_mode';
+  process.env.DODO_PAYMENTS_ENVIRONMENT = 'live_mode';
 });
 
 const T = { tenant: 'grace-chapel', sub: 'sub_live_1' };
@@ -133,9 +133,9 @@ const ADD_ON = {
   unlimitedContacts: { id: 'adn_9Mg6RhAcUk2Xp7Yr4', name: 'Unlimited Contacts - Monthly' },
 } as const;
 
-const INDIVIDUAL = requireProductId('plus', 'monthly');
-const SMALL_TEAM = requireProductId('pro', 'monthly');
-const MINISTRY = requireProductId('max', 'monthly');
+const INDIVIDUAL = requireProductId('church', 'monthly');
+const SMALL_TEAM = requireProductId('ministry', 'monthly');
+const MINISTRY = 'pdt_0NlJZMUUiT36FGMoiFXgl';
 
 /** Which product offers which add-ons — what `products.retrieve` reports. */
 const OFFERED_BY_PRODUCT: Record<string, string[]> = {
@@ -244,8 +244,8 @@ function post(body: Record<string, unknown>) {
   );
 }
 
-const upgradeToSmallTeam = { tenantId: T.tenant, plan: 'pro', billing: 'monthly' };
-const downgradeToIndividual = { tenantId: T.tenant, plan: 'plus', billing: 'monthly' };
+const upgradeToSmallTeam = { tenantId: T.tenant, plan: 'ministry', billing: 'monthly' };
+const downgradeToIndividual = { tenantId: T.tenant, plan: 'church', billing: 'monthly' };
 
 /** The `addons` argument of the single call made to a stubbed Dodo method. */
 function addonsSentTo(stub: { mock: { calls: any[][] } }): unknown {

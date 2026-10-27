@@ -44,15 +44,15 @@ describe('THE-200 — free is a tier, not a $0 price', () => {
     // definition of "cheapest tier with this feature".
     expect(PLAN_ORDER).toContain('free');
     expect(PLAN_ORDER[0]).toBe('free');
-    expect([...PLAN_ORDER]).toEqual(['free', 'plus', 'pro', 'max']);
+    expect([...PLAN_ORDER]).toEqual(['free', 'church', 'ministry']);
   });
 
   // ── 2 ──────────────────────────────────────────────────────────────────────
   it('TOP_PLAN is still max — adding a tier at the bottom did not move the top', () => {
     // TOP_PLAN is the last PLAN_ORDER entry and is the fallback every upgrade
     // string falls back to. A tier added at the wrong end silently repoints it.
-    expect(TOP_PLAN).toBe('max');
-    expect(PLAN_ORDER[PLAN_ORDER.length - 1]).toBe('max');
+    expect(TOP_PLAN).toBe('ministry');
+    expect(PLAN_ORDER[PLAN_ORDER.length - 1]).toBe('ministry');
   });
 
   // ── 3 ── 🔴 THE SEAM ───────────────────────────────────────────────────────
@@ -62,11 +62,11 @@ describe('THE-200 — free is a tier, not a $0 price', () => {
     // all. PRICED_PLANS (and everything derived from it: every discount claim,
     // every headline, the Dodo catalogue) reads this table's own keys.
     expect(Object.prototype.hasOwnProperty.call(PLAN_PRICING, 'free')).toBe(false);
-    expect(Object.keys(PLAN_PRICING).sort()).toEqual(['max', 'plus', 'pro']);
-    expect(Object.keys(PLAN_PRICING)).toHaveLength(3);
+    expect(Object.keys(PLAN_PRICING).sort()).toEqual(['church', 'ministry']);
+    expect(Object.keys(PLAN_PRICING)).toHaveLength(2);
 
     // And the two orderings differ by exactly the free tier.
-    expect([...PRICED_PLAN_ORDER]).toEqual(['plus', 'pro', 'max']);
+    expect([...PRICED_PLAN_ORDER]).toEqual(['church', 'ministry']);
     expect(PRICED_PLAN_ORDER).not.toContain('free' as unknown as PricedPlan);
     expect(PLAN_ORDER.length - PRICED_PLAN_ORDER.length).toBe(1);
 
@@ -105,12 +105,11 @@ describe('THE-200 — free is a tier, not a $0 price', () => {
     //     pointed at it.
     expect(() =>
       monthlyHeadlineContract(Math.round, {
-        plus: { monthly: 39, yearly: 360 },
-        pro: { monthly: 79, yearly: 600 },
-        max: { monthly: 159, yearly: 1325 },
+        church: { monthly: 39, yearly: 360 },
+        ministry: { monthly: 159, yearly: 1325 },
       }),
     ).toThrow(/may never promise less than the bill/);
-    expect(() => monthlyHeadlineContract(Math.floor)).toThrow();
+    expect(() => monthlyHeadlineContract(Math.floor, { church: { monthly: 39, yearly: 361 }, ministry: { monthly: 159, yearly: 1325 } })).toThrow();
 
     // And it names the TIER it caught. Note the mutation here must be of the
     // RULE, not of the table: `ceilToCent` cannot understate by construction —
@@ -124,11 +123,10 @@ describe('THE-200 — free is a tier, not a $0 price', () => {
         // DOWN to 110, implying 1320 against a charged 1325. plus and pro are
         // given exactly-divisible prices so they cannot throw first and the
         // message can only name max.
-        plus: { monthly: 39, yearly: 360 },
-        pro: { monthly: 79, yearly: 600 },
-        max: { monthly: 159, yearly: 1325 },
+        church: { monthly: 39, yearly: 360 },
+        ministry: { monthly: 159, yearly: 1325 },
       }),
-    ).toThrow(/max/);
+    ).toThrow(/ministry/);
   });
 });
 
@@ -272,12 +270,12 @@ describe('THE-200 — FEATURE_MIN_PLAN still names the cheapest tier that HAS ea
     // keyed on GATE names (`FEATURE_MAP`), and the Signups screen is gated on
     // its cell directly rather than through a gate key.
     expect(FEATURE_MIN_PLAN).toEqual({
-      fundraising: 'Individual',
+      fundraising: 'Church',
       event_registration: 'Ministry',
-      docs: 'Small Team',
-      crm: 'Individual', // ⬅️ MOVED BACK (THE-335). Free no longer carries CRM.
+      docs: 'Church',
+      crm: 'Church', // ⬅️ MOVED BACK (THE-335). Free no longer carries CRM.
       accounting: 'Ministry',
-      community_chat: 'Ministry',
+      community_chat: 'Church',
       tax_receipts: 'Ministry',
     });
   });
@@ -287,54 +285,16 @@ describe('THE-200 — FEATURE_MIN_PLAN still names the cheapest tier that HAS ea
     // moved to 'free', and all three are caps free genuinely has a value for
     // (500 contacts, 1 course, 1 admin) rather than capabilities it lacks.
     const EXPECTED: Record<keyof PlanFeatures, TenantPlan | null> = {
-      blog: 'plus',
-      // ⬅️ NEW CELL (THE-205). free is false, so the feed's floor is the
-      // cheapest tier that pays — the same answer `blog` gives, and for the
-      // same reason. The feed was ungated entirely before this cell existed.
-      newsFeed: 'plus',
-      // 🔴 null, not 'pro' — MOVED by THE-253. `getMinPlanForFeatureCell` walks
-      // PLAN_ORDER for the first tier carrying the cell and answers null when
-      // none does. No plan includes the RAG chat or its knowledge base; they
-      // are the AI Assistant add-on. A tier name here would put "Available on
-      // Small Team and above" onto upgrade copy for a thing upgrading does not
-      // buy — which is exactly what this table exists to prevent.
-      aiChat: null,
-      aiKnowledge: null,
-      map: 'pro',
-      maxChurches: 'plus',      // free is 0 → falsy → unchanged
-      maxContacts: 'free',      // ⬅️ MOVED from 'plus'
-      maxCourses: 'free',       // ⬅️ MOVED from 'plus'
-      maxAdmins: 'free',        // ⬅️ MOVED from 'plus'
-      // 🔴 `aiChat`/`aiKnowledge` are `null`, not 'pro' — no tier grants either
-      // as of THE-253, so there is no minimum plan to name. `aiAssistant` is
-      // absent entirely: the cell was deleted with the Telegram assistant.
-      customDomain: 'max',
-      customBranding: 'max',
-      newsletterAutomation: 'pro',
-      automatedNewsletter: 'max',
-      // 🔴 THE-314 — MOVED from 'plus' to 'max'. SMS is Ministry-only, so the
-      // upgrade screens that read this now name Ministry rather than Individual.
-      smsAutomation: 'max',
-      fundraising: 'plus',      // 🔴 UNCHANGED — free has no donate page
-      eventRegistration: 'max',
-      docs: 'pro',
-      crm: 'plus',              // ⬅️ MOVED BACK to 'plus' (THE-335)
-      signups: 'free',          // ⬅️ NEW CELL (THE-335) — free is what it exists for
-      accountingTools: 'max',
-      taxReceipt: 'max',
-      communityGroups: 'max',
-      customForms: 'max',
-      checkInSystem: 'pro',
-      livestream: 'pro',
-      sermonNotes: 'pro',
-      automatedBlog: 'max',
-      givingStatements: 'max',
-      pledgeCampaigns: 'max',
-      textToGive: 'max',        // 🔴 THE-314 — moves with smsAutomation above
-      pwaApp: 'free',           // ⬅️ MOVED from 'plus' by THE-205
-      // Ministry carries it (Matei approved 2026-10-21: "Include the scheduler in the Ministry plan");
-      // every other tier reaches true only through the add-on.
-      socialScheduler: 'max',
+      blog: 'church', newsFeed: 'church', aiChat: null, aiKnowledge: 'ministry', map: 'ministry',
+      maxChurches: 'church', maxContacts: 'free', maxCourses: 'free', maxAdmins: 'free',
+      maxProducts: 'church', maxCommunities: 'church', aiMessagesPerMonth: 'church',
+      customDomain: 'ministry', customBranding: 'ministry', newsletterAutomation: 'ministry',
+      automatedNewsletter: 'ministry', smsAutomation: 'ministry', fundraising: 'church',
+      eventRegistration: 'ministry', docs: 'church', crm: 'church', signups: 'free',
+      accountingTools: 'ministry', taxReceipt: 'ministry', communityGroups: 'church',
+      customForms: 'ministry', checkInSystem: 'ministry', livestream: 'ministry',
+      sermonNotes: 'ministry', automatedBlog: 'ministry', givingStatements: 'ministry',
+      pledgeCampaigns: 'ministry', textToGive: 'ministry', pwaApp: 'free', socialScheduler: 'ministry',
     };
     for (const [cell, expected] of Object.entries(EXPECTED) as [keyof PlanFeatures, TenantPlan | null][]) {
       expect(getMinPlanForFeatureCell(cell), `min plan for ${cell}`).toBe(expected);
@@ -378,62 +338,40 @@ describe('THE-200 — the three priced tiers are untouched', () => {
   // here so this row keeps being a no-regression check on EVERY OTHER cell
   // rather than failing wholesale on the two that were meant to move.
 
-  const BEFORE: Record<PricedPlan, PlanFeatures> = {
-    plus: {
+  const EXPECTED: Record<PricedPlan, PlanFeatures> = {
+    church: {
       newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: false,
-      maxChurches: UNLIMITED_CAP, maxContacts: 500, maxCourses: 2, maxAdmins: 2,
-      customDomain: false, customBranding: false,
-      newsletterAutomation: false, automatedNewsletter: false,
-      // 🔴 THE-314 — SMS is Ministry-only. plus and pro LOST these two cells.
-      smsAutomation: false, fundraising: true,
-      eventRegistration: false, docs: false, crm: true, signups: true,
-      accountingTools: false, taxReceipt: false, communityGroups: false,
-      customForms: false, checkInSystem: false, livestream: false,
-      sermonNotes: false, automatedBlog: false, givingStatements: false,
-      pledgeCampaigns: false, textToGive: false, pwaApp: true, socialScheduler: false,
+      maxChurches: UNLIMITED_CAP, maxContacts: 500, maxCourses: 5, maxAdmins: 2,
+      maxProducts: 3, maxCommunities: 1, aiMessagesPerMonth: 300,
+      customDomain: false, customBranding: false, newsletterAutomation: false, automatedNewsletter: false,
+      smsAutomation: false, fundraising: true, eventRegistration: false, docs: true, crm: true, signups: true,
+      accountingTools: false, taxReceipt: false, communityGroups: true, customForms: false,
+      checkInSystem: false, livestream: false, sermonNotes: false, automatedBlog: false,
+      givingStatements: false, pledgeCampaigns: false, textToGive: false, pwaApp: true, socialScheduler: false,
     },
-    pro: {
-      newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: true,
-      maxChurches: UNLIMITED_CAP, maxContacts: 2_000, maxCourses: 5, maxAdmins: 5,
-      customDomain: false, customBranding: false,
-      newsletterAutomation: true, automatedNewsletter: false,
-      // 🔴 THE-314 — SMS is Ministry-only. plus and pro LOST these two cells.
-      smsAutomation: false, fundraising: true,
-      eventRegistration: false, docs: true, crm: true, signups: true,
-      accountingTools: false, taxReceipt: false, communityGroups: false,
-      customForms: false, checkInSystem: true, livestream: true,
-      sermonNotes: true, automatedBlog: false, givingStatements: false,
-      pledgeCampaigns: false, textToGive: false, pwaApp: true, socialScheduler: false,
-    },
-    max: {
-      newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: true,
-      maxChurches: UNLIMITED_CAP, maxContacts: 4_000, maxCourses: 15, maxAdmins: 15,
-      customDomain: true, customBranding: true,
-      newsletterAutomation: true, automatedNewsletter: true,
-      smsAutomation: true, fundraising: true,
-      eventRegistration: true, docs: true, crm: true, signups: true,
-      accountingTools: true, taxReceipt: true, communityGroups: true,
-      customForms: true, checkInSystem: true, livestream: true,
-      sermonNotes: true, automatedBlog: true, givingStatements: true,
-      // socialScheduler: the one cell that moved on Ministry since this snapshot.
-      // Matei approved 2026-10-21: "Include the scheduler in the Ministry plan".
-      pledgeCampaigns: true, textToGive: true, pwaApp: true, socialScheduler: true,
+    ministry: {
+      newsFeed: true, blog: true, aiChat: false, aiKnowledge: true, map: true,
+      maxChurches: UNLIMITED_CAP, maxContacts: 5000, maxCourses: 15, maxAdmins: 15,
+      maxProducts: UNLIMITED_CAP, maxCommunities: UNLIMITED_CAP, aiMessagesPerMonth: 5000,
+      customDomain: true, customBranding: true, newsletterAutomation: true, automatedNewsletter: true,
+      smsAutomation: true, fundraising: true, eventRegistration: true, docs: true, crm: true, signups: true,
+      accountingTools: true, taxReceipt: true, communityGroups: true, customForms: true,
+      checkInSystem: true, livestream: true, sermonNotes: true, automatedBlog: true,
+      givingStatements: true, pledgeCampaigns: true, textToGive: true, pwaApp: true, socialScheduler: true,
     },
   };
 
-  for (const plan of ['plus', 'pro', 'max'] as const) {
-    it(`${plan} — every feature cell is exactly what it was before the free tier`, () => {
-      expect(getPlanFeatures(plan)).toEqual(BEFORE[plan]);
+  for (const plan of ['church', 'ministry'] as const) {
+    it(`${plan} — every feature cell matches the repricing`, () => {
+      expect(getPlanFeatures(plan)).toEqual(EXPECTED[plan]);
     });
   }
 
-  it('their display names and blurbs did not move, and free added its own', () => {
-    expect(PLAN_DISPLAY_NAMES.plus).toBe('Individual');
-    expect(PLAN_DISPLAY_NAMES.pro).toBe('Small Team');
-    expect(PLAN_DISPLAY_NAMES.max).toBe('Ministry');
-    expect(PLAN_BLURBS.plus).toBe('For solo evangelists and missionaries.');
-    expect(PLAN_BLURBS.pro).toBe('For small ministries growing as a team.');
-    expect(PLAN_BLURBS.max).toBe('For established campuses going deeper.');
+  it('their display names and blurbs match the repricing, and free keeps its own', () => {
+    expect(PLAN_DISPLAY_NAMES.church).toBe('Church');
+    expect(PLAN_DISPLAY_NAMES.ministry).toBe('Ministry');
+    expect(PLAN_BLURBS.church).toBe('For a ministry running one community.');
+    expect(PLAN_BLURBS.ministry).toBe('For ministries with many communities and campuses.');
 
     // Free's own strings. The blurb names the AUDIENCE, which is what makes the
     // card differ from Individual's — both are aimed at evangelists, and only
@@ -456,16 +394,15 @@ describe('THE-200 — no price, term or add-on price changed', () => {
     // and $752 keeping THE-343's ratios. `plus` and `pro` are enumerated here precisely so a reprice
     // that reached further than its brief cannot pass this file.
     expect(PLAN_PRICING).toEqual({
-      plus: { monthly: 20, yearly: 190 },
-      pro: { monthly: 40, yearly: 380 },
-      max: { monthly: 80, yearly: 752 },
+      church: { monthly: 30, yearly: 300 },
+      ministry: { monthly: 90, yearly: 900 },
     });
   });
 
   it('the billing terms and advertised discounts are as the quarterly withdrawal left them', () => {
     // Two terms since the quarterly term was withdrawn on 2026-10-23.
     expect([...BILLING_TERMS]).toEqual(['monthly', 'yearly']);
-    expect(ADVERTISED_DISCOUNT_PCT).toEqual({ yearly: 20 });
+    expect(ADVERTISED_DISCOUNT_PCT).toEqual({ yearly: 16 });
   });
 
   it('🔴 the contact pack is GONE, constant and all — THE-370', () => {

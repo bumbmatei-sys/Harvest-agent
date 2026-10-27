@@ -226,7 +226,7 @@ const TABS: Tab[] = [
   // what free gets, and a shared cell could not express it: crm:false on free
   // took this screen and its analytics away in the same edit.
   { label: 'Signups', section: 'signups', cell: (f) => f.signups },
-  { label: 'Accounting', section: 'accounting', cell: (f) => f.accountingTools || f.givingStatements },
+  { label: 'Giving records', section: 'accounting', cell: (f) => f.accountingTools || f.givingStatements },
   { label: 'Forms', section: 'forms', cell: (f) => f.customForms },
   { label: 'Check-In', section: 'checkin', cell: null },
   { label: 'Livestream', section: 'livestream', cell: (f) => f.livestream },
@@ -242,9 +242,9 @@ const TABS: Tab[] = [
  * SMS and Livestream are already off — and the founder asked for the group to
  * be gone. Free still has the tab. Small Team and Ministry still have it,
  * because they bought attendance. The cell stays null so free's open nav clause
- * is not what decides this; `expectedNav` drops the label on `plus` alone.
+ * is not what decides this; `expectedNav` drops the label on `church` alone.
  */
-const CHECKIN_NOTE = 'Reach is hidden on Individual; Check-In stays on every other tier';
+const CHECKIN_NOTE = 'Reach is hidden on Church; Check-In stays on every other tier';
 
 /**
  * The nav a tier is expected to show. DERIVED — free takes everything, a priced
@@ -257,7 +257,7 @@ function expectedNav(plan: TenantPlan): string[] {
     .filter((t) => {
       // THE-373 — Individual has no Reach group. Check-In is the only Reach tab
       // whose cell is null, so without this it is the group.
-      if (plan === 'plus' && t.label === 'Check-In') return false;
+      if (plan === 'church' && t.label === 'Check-In') return false;
       return plan === FREE_PLAN || t.cell === null || t.cell(f);
     })
     // 🔴 THE CHURCHES LABEL IS NO LONGER PER-TIER — THE-370. It used to read
@@ -278,7 +278,7 @@ const flush = async () => {
 
 const ALL_TAB_LABELS = [
   'Dashboard', 'Campuses', 'Courses', 'Products', 'Blog', 'AI Knowledge', 'Newsletter',
-  'Fundraising', 'Events', 'Services', 'Notes', 'CRM', 'Signups', 'Accounting', 'Forms', 'Check-In', 'Livestream',
+  'Fundraising', 'Events', 'Services', 'Notes', 'CRM', 'Signups', 'Giving records', 'Forms', 'Check-In', 'Livestream',
   'SMS', 'Community', 'Library', 'Tenants', 'Affiliate', 'Branding',
 ];
 function navLabels(): string[] {
@@ -427,70 +427,69 @@ describe('1 — a free tenant sees all eighteen nav items', () => {
     for (const plan of PLAN_ORDER) {
       expect((await navFor(plan)).nav, `${plan} has a Branding sidebar entry`).not.toContain('Branding');
     }
-    expect(hasBrandingAccess(getPlanFeatures('max'))).toBe(true);
+    expect(hasBrandingAccess(getPlanFeatures('ministry'))).toBe(true);
   });
 });
 
 // ── 2–4 ──────────────────────────────────────────────────────────────────────
-describe('2 — an Individual tenant sees exactly its six', () => {
+describe('2 — a Church tenant sees exactly its ten', () => {
   /** The founder's report, named individually rather than derived.
    *
    * ⚠️ SIX UNTIL THE-314, WHICH TOOK SMS AWAY. Individual carried
    * `smsAutomation: true` while SMS was bring-your-own and the cell gated
    * nothing. Harvest now resells and pays for every segment, so the founder made
    * SMS Ministry-only and this tier lost the tab with the capability. */
-  const SIX = ['Dashboard', 'Blog', 'Campuses', 'Courses', 'CRM', 'Fundraising'];
-
-  /** 🔴 The nine the ticket says must go, by label — plus SMS, which THE-314
-   *  added to this set by making the capability Ministry-only. */
-  const NINE_HIDDEN = [
-    'Newsletter', 'AI Knowledge', 'Notes', 'Community', 'Forms',
-    'Accounting', 'Events', 'Livestream', 'SMS',
+  const CHURCH_SET = [
+    'Dashboard', 'Campuses', 'Courses', 'Products', 'Blog', 'Fundraising', 'Notes', 'CRM', 'Signups', 'Community',
   ];
 
-  it('an Individual tenant sees exactly its six', async () => {
-    const { nav } = await navFor('plus');
-    for (const label of SIX) {
-      expect(nav, `Individual lost "${label}", one of its six`).toContain(label);
+  /** 🔴 What the spec leaves off Church, by label. Check-In is the recorded
+   *  exception: its tab has no cell, and Reach is withheld on this tier by name. */
+  const HIDDEN = [
+    'Newsletter', 'AI Knowledge', 'Forms', 'Giving records', 'Events', 'Services', 'Livestream', 'SMS',
+  ];
+
+  it('a Church tenant sees exactly its ten', async () => {
+    const { nav } = await navFor('church');
+    for (const label of CHURCH_SET) {
+      expect(nav, `Church lost "${label}", one of its ten`).toContain(label);
     }
-    // THE-373 — Check-In was the seventh extra, and it was the whole Reach
-    // group. It is gone. Signups is the item that makes six into seven.
+    // THE-373 — Check-In was the whole Reach group on the cheapest paid tier.
     expect(nav, CHECKIN_NOTE).not.toContain('Check-In');
     expect(nav, CHECKIN_NOTE).not.toContain('Forms');
-    expect(nav.length, 'Individual shows its six plus Signups and Products, and nothing else').toBe(8);
-    expect(nav).toEqual(expectedNav('plus'));
+    expect(nav.length, 'Church shows its ten, and nothing else').toBe(10);
+    expect(nav).toEqual(expectedNav('church'));
+    expect(nav).toEqual([...CHURCH_SET].sort());
   });
 
-  it('hides the nine, including Check-In, which used to survive for its QR half', async () => {
-    const { nav } = await navFor('plus');
-    const f = getPlanFeatures('plus');
-    for (const label of [...NINE_HIDDEN, 'Check-In']) {
-      expect(nav, `"${label}" is still in an Individual nav`).not.toContain(label);
+  it('hides what Church does not buy, including Check-In, which used to survive for its QR half', async () => {
+    const { nav } = await navFor('church');
+    const f = getPlanFeatures('church');
+    for (const label of [...HIDDEN, 'Check-In']) {
+      expect(nav, `"${label}" is still in a Church nav`).not.toContain(label);
     }
-    // Every cell the ticket names is false on plus — asserted, not assumed, so
-    // the hiding above is attributable to the matrix and not to a lost tab.
+    // Every cell behind those labels is false on church — asserted, not assumed,
+    // so the hiding above is attributable to the matrix and not to a lost tab.
     for (const cell of [
-      'newsletterAutomation', 'aiKnowledge', 'docs', 'communityGroups', 'customForms',
+      'newsletterAutomation', 'aiKnowledge', 'customForms',
       'accountingTools', 'eventRegistration', 'checkInSystem', 'livestream',
-      // THE-314 — the tenth cell, and the one this ticket moved.
       'smsAutomation',
     ] as const) {
-      expect(f[cell], `${cell} is not false on plus`).toBe(false);
+      expect(f[cell], `${cell} is not false on church`).toBe(false);
     }
-    // THE-373 — Check-In left this nav. It is no longer the recorded exception.
     expect(nav, CHECKIN_NOTE).not.toContain('Check-In');
   });
 
-  it('THE-373 — Individual has no Reach group, and the other tiers still do', async () => {
-    store.current = { ...store.current, tenantPlan: 'plus' };
-    ctx.current = { ...ctx.current, tenantPlan: 'plus' };
+  it('THE-373 — Church has no Reach group, and the other tiers still do', async () => {
+    store.current = { ...store.current, tenantPlan: 'church' };
+    ctx.current = { ...ctx.current, tenantPlan: 'church' };
     await mount({}, '');
-    const plusGroups = [...container.querySelectorAll('[data-nav-group]')].map((el) => el.getAttribute('data-nav-group'));
-    expect(plusGroups, 'Individual still draws a Reach section').not.toContain('REACH');
+    const churchGroups = [...container.querySelectorAll('[data-nav-group]')].map((el) => el.getAttribute('data-nav-group'));
+    expect(churchGroups, 'Church still draws a Reach section').not.toContain('REACH');
     expect(navLabels()).not.toContain('Check-In');
     await unmount();
 
-    for (const plan of ['free', 'pro', 'max'] as const) {
+    for (const plan of ['free', 'ministry'] as const) {
       store.current = { ...store.current, tenantPlan: plan };
       ctx.current = { ...ctx.current, tenantPlan: plan };
       await mount({}, '');
@@ -505,34 +504,17 @@ describe('2 — an Individual tenant sees exactly its six', () => {
   });
 });
 
-describe('3 — a Small Team tenant sees exactly its expected set', () => {
-  /**
-   * Small Team (pro), read off the matrix and stated here by name so the
-   * derivation has something to be checked against:
-   * Dashboard · Church · Courses · Blog · Newsletter ·
-   * Fundraising · Notes · CRM · Signups · Check-In · Livestream · SMS.
-   * Absent: Events, Accounting, Forms, Community.
-   */
-  // ⚠️ 'AI Knowledge' WAS IN THIS LIST. THE-253 took `aiKnowledge` off every
-  // tier — the Knowledge Base is the RAG chat's other half and is sold with it
-  // as the AI Assistant add-on — so no PLAN grants the screen. A Small Team
-  // tenant HOLDING the add-on does see it: `AdminDashboard` gates on
-  // `getEffectiveFeatures`, and `navFor` here mounts with no add-ons.
-  const EXPECTED = [
-    'Dashboard', 'Campuses', 'Courses', 'Products', 'Blog', 'Newsletter',
-    // ⚠️ 'SMS' LEFT THIS SET — THE-314. Small Team lost the capability with
-    // Individual, for the same reason: SMS is Ministry-only now that Harvest
-    // pays for every segment rather than the church's own carrier account.
-    'Fundraising', 'Notes', 'CRM', 'Signups', 'Check-In', 'Livestream',
-  ];
-
-  it('a Small Team tenant sees exactly its expected set', async () => {
-    const { nav } = await navFor('pro');
-    expect(nav).toEqual([...EXPECTED].sort());
-    expect(nav).toEqual(expectedNav('pro'));
-    for (const label of ['Events', 'Accounting', 'Forms', 'Community']) {
-      expect(nav, `Small Team does not buy "${label}"`).not.toContain(label);
-    }
+describe('3 — a stored retired plan id shows the nav of the tier it became', () => {
+  // Nothing was migrated: a tenant document may still say plus, pro or max. They
+  // are read as Church, Church and Ministry, and the nav follows.
+  it.each([
+    ['plus', 'church'],
+    ['pro', 'church'],
+    ['max', 'ministry'],
+  ] as const)('%s shows exactly the %s nav', async (legacy, current) => {
+    const { nav } = await navFor(legacy as TenantPlan);
+    expect(nav).toEqual((await navFor(current)).nav);
+    expect(nav).toEqual(expectedNav(current));
   });
 });
 
@@ -555,68 +537,73 @@ describe('3b — an entitled admin is not refused at the surface', () => {
     aiAssistant: 0, adminSeats: 0, contactPacks: 0, unlimitedContacts: false, campuses: 0, socialScheduler: 0,
   } as const;
 
-  /* ⚠️ THE THREE PRICED TIERS, NOT ALL FOUR. `free` is the permissive fallback
+  /* ⚠️ THE TWO PRICED TIERS, NOT ALL THREE. `free` is the permissive fallback
      in this harness — test 1 above pins that a free tenant hides only Branding
      — so it cannot show the add-on making a difference. It is also the tier
      that cannot buy this add-on at all: no Dodo subscription to attach it to,
      and `queryTokensPerMonth: 0` if one ever arrived. Both facts are pinned in
      the-253-ai-chat-addon.test.ts. */
-  it.each(['plus', 'pro', 'max'] as const)(
-    '%s: the AI Knowledge entry appears when the add-on is held', async (plan) => {
-    const without = await navFor(plan, {}, '', { ...OWNS_NOTHING });
-    expect(without.nav, `${plan} shows AI Knowledge owning nothing`).not.toContain('AI Knowledge');
+  it('church: the AI Knowledge entry appears when the add-on is held', async () => {
+    const without = await navFor('church', {}, '', { ...OWNS_NOTHING });
+    expect(without.nav, 'church shows AI Knowledge owning nothing').not.toContain('AI Knowledge');
 
-    const withAddon = await navFor(plan, {}, '', { ...OWNS_ADDON });
-    expect(withAddon.nav, `${plan} BOUGHT the add-on and was still refused`).toContain('AI Knowledge');
+    const withAddon = await navFor('church', {}, '', { ...OWNS_ADDON });
+    expect(withAddon.nav, 'church BOUGHT the add-on and was still refused').toContain('AI Knowledge');
+  });
+
+  it('ministry: the AI Knowledge entry comes with the tier, and the add-on does not remove it', async () => {
+    // The spec lists the knowledge base under Ministry, so the cell is true there.
+    const without = await navFor('ministry', {}, '', { ...OWNS_NOTHING });
+    expect(without.nav, 'ministry lost the knowledge base it includes').toContain('AI Knowledge');
+    const withAddon = await navFor('ministry', {}, '', { ...OWNS_ADDON });
+    expect(withAddon.nav).toContain('AI Knowledge');
   });
 
   it('🔴 the AI Knowledge SCREEN renders for an entitled admin, not an upgrade wall', async () => {
     // The nav entry appearing is not enough: THE-213's defect was a tab hidden
     // from the nav that still rendered by URL, and this is its mirror — a tab
     // the church is entitled to that answers with a wall when reached.
-    const { screen, wall } = await navFor('plus', {}, 'ai-knowledge', { ...OWNS_ADDON });
+    const { screen, wall } = await navFor('church', {}, 'ai-knowledge', { ...OWNS_ADDON });
     expect(wall, 'an entitled admin got an upgrade wall').toBeNull();
     expect(screen, 'the AI Knowledge screen did not render for an entitled admin').toBe('AdminRAG');
   });
 
   it('and an unentitled admin still gets the wall, so the gate is real', async () => {
-    const { screen, wall } = await navFor('max', {}, 'ai-knowledge', { ...OWNS_NOTHING });
-    expect(screen, 'Ministry reached AI Knowledge without the add-on').not.toBe('AdminRAG');
+    const { screen, wall } = await navFor('church', {}, 'ai-knowledge', { ...OWNS_NOTHING });
+    expect(screen, 'Church reached AI Knowledge without the add-on').not.toBe('AdminRAG');
     expect(wall, 'no upgrade wall for an unentitled admin').not.toBeNull();
   });
 });
 
 describe('4 — a Ministry tenant sees exactly its expected set', () => {
-  /** Ministry (max) buys everything a PLAN can buy: the fifteen. Branding is no
+  /** Ministry buys everything a PLAN can buy: the fifteen. Branding is no
    *  longer a sidebar entry; it is in Settings.
    *  ⚠️ Was sixteen. 'AI Knowledge' is no longer among them — THE-253 made it
    *  part of the AI Assistant add-on, so even Ministry does not get it by
    *  paying for the tier. It returns for a Ministry tenant that holds the
    *  add-on, through `getEffectiveFeatures`. */
   it('a Ministry tenant sees exactly its expected set', async () => {
-    const { nav } = await navFor('max');
+    const { nav } = await navFor('ministry');
+    // The spec lists the AI knowledge base under Ministry, so the cell is true
+    // there and the tab appears with the tier — add-on or not.
     for (const tab of TABS) {
-      if (tab.label === 'AI Knowledge') {
-        expect(nav, 'Ministry claims AI Knowledge without the add-on').not.toContain(tab.label);
-        continue;
-      }
       expect(nav, `Ministry lost "${tab.label}"`).toContain(tab.label);
     }
     expect(nav).not.toContain('Branding');
     // ⚠️ SEVENTEEN SINCE THE-326 — Services joined the set on the
     // `eventRegistration` cell Ministry already holds, so the tier gained the
     // row it was always entitled to and lost nothing.
-    expect(nav.length, 'Ministry shows the seventeen, plus Products').toBe(18);
-    expect(nav).toEqual(expectedNav('max'));
+    expect(nav.length, 'Ministry shows all nineteen').toBe(19);
+    expect(nav).toEqual(expectedNav('ministry'));
   });
 
-  it('the tiers are nested: free ⊇ Ministry ⊇ Small Team ⊇ Individual', async () => {
+  it('the tiers are nested: free ⊇ Ministry ⊇ Church', async () => {
     // A monotonic matrix must produce a monotonic nav. This is what fails if a
     // future cell is set on a cheaper tier but not a dearer one.
     const navs = new Map<TenantPlan, string[]>();
     for (const plan of PLAN_ORDER) navs.set(plan, (await navFor(plan)).nav);
     const gated = (l: string[]) => l.filter((x) => x !== 'Campuses');
-    for (const [smaller, larger] of [['plus', 'pro'], ['pro', 'max'], ['max', 'free']] as const) {
+    for (const [smaller, larger] of [['church', 'ministry'], ['ministry', 'free']] as const) {
       for (const label of gated(navs.get(smaller)!)) {
         expect(gated(navs.get(larger)!), `${larger} lost "${label}" that ${smaller} has`).toContain(label);
       }
@@ -631,7 +618,7 @@ describe('5 — a super admin still sees everything through platformOverride', (
     hasPlatformOverrideMock.mockReturnValue(true);
 
     // On the cheapest tier there is, which is where a lost bypass would show.
-    const { nav } = await navFor('plus', { role: 'super_admin' });
+    const { nav } = await navFor('church', { role: 'super_admin' });
     for (const tab of TABS) {
       expect(nav, `platformOverride lost "${tab.label}"`).toContain(tab.label);
     }
@@ -647,8 +634,8 @@ describe('5 — a super admin still sees everything through platformOverride', (
     // is the PLATFORM context, not the role. THE-220 must not widen it into one.
     isSuperAdminMock.mockReturnValue(true);
     hasPlatformOverrideMock.mockReturnValue(false);
-    const { nav } = await navFor('plus', { role: 'super_admin' });
-    expect(nav, 'a super admin on a paid subdomain now bypasses that plan').not.toContain('Community');
+    const { nav } = await navFor('church', { role: 'super_admin' });
+    expect(nav, 'a super admin on a paid subdomain now bypasses that plan').not.toContain('Newsletter');
   });
 });
 
@@ -658,9 +645,9 @@ describe("6 — a limited admin's permission gates still apply on top of the pla
     // ⚠️ BOTH conditions must hold. Ministry buys every feature, so anything
     // missing here is the permission clause doing its job — the plan clause
     // cannot be what removed it.
-    const onlyBlog = await navFor('max', { role: 'admin', permissions: { writeArticles: true } });
+    const onlyBlog = await navFor('ministry', { role: 'admin', permissions: { writeArticles: true } });
     expect(onlyBlog.nav).toContain('Blog');
-    for (const label of ['CRM', 'Newsletter', 'Community', 'Accounting', 'Forms', 'Livestream', 'SMS']) {
+    for (const label of ['CRM', 'Newsletter', 'Community', 'Giving records', 'Forms', 'Livestream', 'SMS']) {
       expect(onlyBlog.nav, `a writeArticles-only admin reached "${label}"`).not.toContain(label);
     }
   });
@@ -680,9 +667,9 @@ describe("6 — a limited admin's permission gates still apply on top of the pla
   it('a permission the admin holds on a tier that lacks the feature still hides the tab', async () => {
     // The converse, and the reason both clauses are needed: holding the
     // permission is not enough when the tenant never bought the feature.
-    const { nav } = await navFor('plus', { role: 'admin', permissions: { manageCommunity: true } });
-    expect(nav, 'a permission granted a tab the tier did not buy').not.toContain('Community');
-    expect(getPlanFeatures('plus').communityGroups).toBe(false);
+    const { nav } = await navFor('church', { role: 'admin', permissions: { manageEvents: true } });
+    expect(nav, 'a permission granted a tab the tier did not buy').not.toContain('Events');
+    expect(getPlanFeatures('church').eventRegistration).toBe(false);
   });
 });
 
@@ -693,25 +680,23 @@ describe('7 — a hidden tab still refuses when reached by URL', () => {
     // path, and THE-220 did not touch it. Every tab now absent from an
     // Individual nav must still answer PlanUpgradeScreen — never its screen —
     // when `/admin/<section>` is opened directly.
-    const f = getPlanFeatures('plus');
+    const f = getPlanFeatures('church');
     const hidden = TABS.filter((t) => t.cell !== null && !t.cell(f));
-    // 🔴 NINE SINCE THE-314, not eight: `smsAutomation` went false on plus.
-    // 🔴 TEN SINCE THE-326: Services carries Events' own `eventRegistration`
-    // cell, which is already false on plus, so the split added one more hidden
-    // tab and changed nothing about what plus can reach.
-    expect(hidden.length, 'nothing is hidden from Individual — the gate did not apply').toBe(10);
+    // Eight: AI Knowledge, Newsletter, Events, Services, Giving records, Forms,
+    // Livestream and SMS. Notes and Community are on Church now.
+    expect(hidden.length, 'nothing is hidden from Church — the gate did not apply').toBe(8);
 
     for (const tab of hidden) {
-      const { screen, wall } = await navFor('plus', {}, tab.section);
+      const { screen, wall } = await navFor('church', {}, tab.section);
       expect(screen, `"${tab.label}" rendered its screen when reached by URL`).toBeNull();
       expect(wall, `"${tab.label}" showed no upgrade wall when reached by URL`).not.toBeNull();
     }
   });
 
   it('and the nav entry really is gone, so this is a second layer and not the only one', async () => {
-    const f = getPlanFeatures('plus');
+    const f = getPlanFeatures('church');
     for (const tab of TABS.filter((t) => t.cell !== null && !t.cell(f))) {
-      const { nav } = await navFor('plus', {}, tab.section);
+      const { nav } = await navFor('church', {}, tab.section);
       expect(nav, `"${tab.label}" is still in the nav`).not.toContain(tab.label);
     }
   });
@@ -722,55 +707,47 @@ describe('8 — no feature flag changed', () => {
   it('no feature flag changed', () => {
     // Named per cell per tier rather than digested: a digest says "something
     // moved", this says which. Every cell any nav clause in this ticket reads.
+    // Columns are PLAN_ORDER: free, church, ministry.
     const CELLS = [
-      ['blog', [false, true, true, true]],
-      // 🔴 MOVED BY THE-253. Was
-      // [false, false, true, true]. The Knowledge Base is the RAG chat's other
-      // half and is sold with it, so no tier includes it; the add-on lifts it.
-      ['aiKnowledge', [false, false, false, false]],
-      ['newsletterAutomation', [false, false, true, true]],
-      ['fundraising', [false, true, true, true]],
-      ['eventRegistration', [false, false, false, true]],
-      ['docs', [false, false, true, true]],
-      // 🔴 MOVED BY THE-335, the THIRD cell in this table to move, and the only
-      // one whose move is about FREE. Was [true, true, true, true]. The founder
-      // split what free gets — "The free plan should have signup feature not CRM
-      // since we separated them" — so free is false and the three priced tiers
-      // are untouched.
-      ['crm', [false, true, true, true]],
-      // 🔴 NEW AT THE-335, and it is READ: `AdminDashboard` gates both the
-      // `signups` nav entry and the `signups` render branch on it. It exists
-      // because both screens shared `crm`, so crm:false on free would have taken
-      // the Signups screen — and the analytics that has lived on it since
-      // THE-277 — away in the same edit. No `analytics` cell was invented.
-      ['signups', [true, true, true, true]],
-      ['accountingTools', [false, false, false, true]],
-      ['givingStatements', [false, false, false, true]],
-      ['customForms', [false, false, false, true]],
-      ['checkInSystem', [false, false, true, true]],
-      ['livestream', [false, false, true, true]],
-      // 🔴 MOVED BY THE-314, the second cell in this table to move. Was
-      // [false, true, true, true]. SMS was true on every paid tier while it was
-      // bring-your-own and the cell gated nothing; Harvest now resells and pays
-      // for every segment, so the founder made it Ministry-only and Individual
-      // and Small Team both lost it.
-      ['smsAutomation', [false, false, false, true]],
-      ['communityGroups', [false, false, false, true]],
-      ['customBranding', [false, false, false, true]],
-      ['customDomain', [false, false, false, true]],
+      ['blog', [false, true, true]],
+      // 🔴 MOVED BY THE TWO-PLAN REPRICING. The spec lists the AI knowledge base
+      // under Ministry, so it is true there for the first time (THE-253 had it
+      // false everywhere). The chat that answers from it stays the add-on.
+      ['aiKnowledge', [false, false, true]],
+      ['newsletterAutomation', [false, false, true]],
+      ['fundraising', [false, true, true]],
+      ['eventRegistration', [false, false, true]],
+      // Notes are on Church in the spec.
+      ['docs', [false, true, true]],
+      // 🔴 THE-335 — free has no CRM, the priced tiers do.
+      ['crm', [false, true, true]],
+      // 🔴 THE-335 — read by both the `signups` nav entry and render branch.
+      ['signups', [true, true, true]],
+      ['accountingTools', [false, false, true]],
+      ['givingStatements', [false, false, true]],
+      ['customForms', [false, false, true]],
+      ['checkInSystem', [false, false, true]],
+      ['livestream', [false, false, true]],
+      // 🔴 THE-314 — SMS is Ministry-only.
+      ['smsAutomation', [false, false, true]],
+      // One community with its feed and chat is on Church; the cell is the
+      // chat's gate, and `maxCommunities` is what bounds it.
+      ['communityGroups', [false, true, true]],
+      ['customBranding', [false, false, true]],
+      ['customDomain', [false, false, true]],
     ] as const;
     for (const [cell, perTier] of CELLS) {
       expect(PLAN_ORDER.map((p) => getPlanFeatures(p)[cell]), `${cell} moved`).toEqual([...perTier]);
     }
     // The one numeric cell a nav clause reads, and the reason Courses is on
     // every tier: no tier has zero courses.
-    expect(PLAN_ORDER.map((p) => getPlanFeatures(p).maxCourses)).toEqual([1, 2, 5, 15]);
+    expect(PLAN_ORDER.map((p) => getPlanFeatures(p).maxCourses)).toEqual([1, 5, 15]);
     // 🔴 MOVED BY THE-370. Was [0, 1, 1, 1]. The founder retired the campus
     // add-on — "remove the campus addon. let them add as many as they want" —
     // so every PAID tier is unlimited. Free is still 0, which is what keeps the
     // Campuses nav entry meaningful as a paid capability.
     expect(PLAN_ORDER.map((p) => getPlanFeatures(p).maxChurches))
-      .toEqual([0, UNLIMITED_CAP, UNLIMITED_CAP, UNLIMITED_CAP]);
+      .toEqual([0, UNLIMITED_CAP, UNLIMITED_CAP]);
   });
 });
 
@@ -822,11 +799,11 @@ describe('9 — the nav is derived from one tab array, not two', () => {
     expect(gatedTabs).toBe(16);
   });
 
-  it('withholds Check-In on Individual, and leaves Church without a plan clause', () => {
-    // Dropping `resolvedPlan !== 'plus'` puts Check-In — and therefore Reach —
-    // back on Individual. The permission clause stays; it is not the plan gate.
+  it('withholds Check-In on Church, and leaves the Campuses entry without a plan clause', () => {
+    // Dropping `resolvedPlan !== 'church'` puts Check-In — and therefore Reach —
+    // back on Church. The permission clause stays; it is not the plan gate.
     expect(CODE).toMatch(
-      /\(planUnlocked \|\| resolvedPlan !== 'plus'\) &&\s*\(hasFullAccess \|\| perms\.manageCheckin \|\| perms\.manageQR\) &&\s*\{ id: 'checkin'/,
+      /\(planUnlocked \|\| resolvedPlan !== 'church'\) &&\s*\(hasFullAccess \|\| perms\.manageCheckin \|\| perms\.manageQR\) &&\s*\{ id: 'checkin'/,
     );
     expect(CODE).toMatch(/\(hasFullAccess \|\| perms\.modifyChurches\) && \{ id: 'churches'/);
   });

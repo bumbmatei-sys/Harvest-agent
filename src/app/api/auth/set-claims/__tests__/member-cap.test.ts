@@ -181,21 +181,21 @@ describe('an existing member of an over-cap tenant still signs in (AC-2)', () =>
 });
 
 // ── AC-3 ── the off-by-one, through the route ───────────────────────────────
-describe('the cap-th is allowed and the next is refused on a pro tenant (AC-3)', () => {
-  // 🔴 pro caps at 2,000 since THE-370 (was 500). The property is the
+describe('the cap-th is allowed and the next is refused on a ministry tenant (AC-3)', () => {
+  // 🔴 Ministry caps at 5,000 (was a stored pro's 2,000). The property is the
   // OFF-BY-ONE, asserted at whatever the real boundary is.
   beforeEach(() => {
-    h.tenantGet.mockResolvedValue({ exists: true, data: () => ({ plan: 'pro' }) });
+    h.tenantGet.mockResolvedValue({ exists: true, data: () => ({ plan: 'ministry' }) });
   });
 
-  it('total 2,000 → 200 and claims minted', async () => {
-    h.countGet.mockResolvedValue(countsTo(2_000));
+  it('total 5,000 → 200 and claims minted', async () => {
+    h.countGet.mockResolvedValue(countsTo(5_000));
     expect((await POST(post())).status).toBe(200);
     expect(h.setCustomClaims).toHaveBeenCalledTimes(1);
   });
 
-  it('total 2,001 → 403 and claims withheld', async () => {
-    h.countGet.mockResolvedValue(countsTo(2_001));
+  it('total 5,001 → 403 and claims withheld', async () => {
+    h.countGet.mockResolvedValue(countsTo(5_001));
     expect((await POST(post())).status).toBe(403);
     expect(h.setCustomClaims).not.toHaveBeenCalled();
   });
@@ -293,7 +293,7 @@ describe('paying for room lifts the gate at the enforcement point itself', () =>
     h.verifyIdToken.mockResolvedValue({ uid: APPLICANT, superAdmin: false });
     asNewApplicantOf('gracechurch');
     h.countGet.mockResolvedValue(countsTo(651));
-    // `max` (Ministry) caps at 2,000 (plan-features.ts:366). No migration, no
+    // A stored `max` reads as Ministry, which caps at 5,000. No migration, no
     // backfill, no cached value between the two requests.
     h.tenantGet.mockResolvedValue({ exists: true, data: () => ({ plan: 'max' }) });
 
@@ -303,6 +303,21 @@ describe('paying for room lifts the gate at the enforcement point itself', () =>
 });
 
 // ── AC-7 ── the count is always scoped to a concrete tenant ─────────────────
+describe('a stored legacy pro is read as Church (cap 500)', () => {
+  it('refuses at 501 and allows at 500, exactly as church does', async () => {
+    h.tenantGet.mockResolvedValue({ exists: true, data: () => ({ plan: 'pro' }) });
+    h.countGet.mockResolvedValue(countsTo(501));
+    expect((await POST(post())).status).toBe(403);
+
+    vi.clearAllMocks();
+    h.verifyIdToken.mockResolvedValue({ uid: APPLICANT, superAdmin: false });
+    asNewApplicantOf('gracechurch');
+    h.tenantGet.mockResolvedValue({ exists: true, data: () => ({ plan: 'pro' }) });
+    h.countGet.mockResolvedValue(countsTo(500));
+    expect((await POST(post())).status).toBe(200);
+  });
+});
+
 describe('the count query never runs unscoped (AC-7)', () => {
   it('issues exactly one single-field where() carrying a concrete non-empty id', async () => {
     h.countGet.mockResolvedValue(countsTo(3));

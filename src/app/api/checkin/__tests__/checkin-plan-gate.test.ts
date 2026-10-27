@@ -14,13 +14,12 @@ import { PLAN_ORDER, PLAN_DISPLAY_NAMES, getPlanFeatures } from '@/utils/plan-fe
  * still reached a working check-in: a hidden sub-tab is not a gate (THE-193)
  * and a disabled button is a suggestion.
  *
- * ⚠️ `checkInSystem` IS FALSE ON INDIVIDUAL TOO, not only on free — see the
+ * ⚠️ `checkInSystem` IS FALSE ON CHURCH TOO, not only on free — see the
  * matrix-derived table below, which is read out of `PLAN_FEATURES` rather than
  * typed here so it cannot drift. That is not this PR overreaching; it is the
- * cell doing what it says. Individual has had no Check-In screen all along, so
- * what actually changes for a paying Individual church is that a link kept from
- * before stops working — which is the hole. Small Team and Ministry, the two
- * tiers whose cell is true, are untouched, and section 3 asserts that per tier.
+ * cell doing what it says. Church has no Check-In screen, so a link kept from
+ * before stops working for it — which is the hole. Ministry, the one
+ * tier whose cell is true, is untouched, and section 3 asserts that per tier.
  *
  * ⚠️ REFUSES THE SURFACE, NEVER THE DATA. Section 4 pins that a refusal performs
  * no write of any kind: no session, attendee, activity or SMS. A tenant that
@@ -168,7 +167,7 @@ describe('the check-in gate reads EFFECTIVE features', () => {
 
     h.tenantGet.mockResolvedValue({
       exists: true,
-      data: () => ({ plan: 'pro', addons: { contactPacks: 4, adminSeats: 3, campuses: 2 } }),
+      data: () => ({ plan: 'ministry', addons: { contactPacks: 4, adminSeats: 3, campuses: 2 } }),
     });
 
     expect((await submitCheckin()).status).toBe(200);
@@ -177,7 +176,7 @@ describe('the check-in gate reads EFFECTIVE features', () => {
   it('coerces a corrupt plan field closed rather than throwing mid-request', async () => {
     h.tenantGet.mockResolvedValue({ exists: true, data: () => ({ plan: 'enterprise-999' }) });
 
-    // `toTenantPlan` resolves an unrecognised id to 'plus', whose cell is false.
+    // `toTenantPlan` resolves an unrecognised id to Church, whose cell is false.
     expect((await submitCheckin()).status).toBe(404);
   });
 });
@@ -217,7 +216,7 @@ describe('every tier is answered by its own matrix cell', () => {
   });
 
   it('a permitted tier still gets every downstream behaviour — nothing else moved', async () => {
-    onPlan('pro');
+    onPlan('ministry');
     h.contactsGet.mockResolvedValue({
       docs: [{ id: 'c1', data: () => ({ tenantId: 't1', phone: '+15550100' }) }],
     });
@@ -230,8 +229,19 @@ describe('every tier is answered by its own matrix cell', () => {
     expect(h.sessionSet, 'the attendee count stopped incrementing').toHaveBeenCalledTimes(1);
   });
 
+  it.each([
+    ['plus', 404],
+    ['pro', 404],
+    ['max', 200],
+  ])('reads a stored legacy %s as the tier it became (check-in answers %i)', async (legacy, status) => {
+    // The spec puts check-in on Ministry only, so a stored `pro` loses it with
+    // the rest of its old row, while `max` keeps it as Ministry.
+    onPlan(legacy as never);
+    expect((await submitCheckin()).status).toBe(status);
+  });
+
   it('a permitted tier keeps the closed-session and missing-session answers', async () => {
-    onPlan('max');
+    onPlan('ministry');
     h.sessionGet.mockResolvedValue({ exists: true, data: () => ({ status: 'closed', name: 'x' }) });
     expect((await submitCheckin()).status).toBe(410);
 

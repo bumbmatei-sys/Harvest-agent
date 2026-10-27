@@ -144,13 +144,13 @@ describe('Bug report — the "Affiliate" area option', () => {
     const areas = await openAdminAreaPicker(false);
     expect(areas).not.toContain('Affiliate');
     // The rest of the picker is untouched.
-    expect(areas).toEqual(expect.arrayContaining(['Accounting', 'Livestream', 'Other']));
+    expect(areas).toEqual(expect.arrayContaining(['Giving records', 'Livestream', 'Other']));
   });
 
   it('is offered again with the flag on, in its original position', async () => {
     const areas = await openAdminAreaPicker(true);
     expect(areas).toContain('Affiliate');
-    expect(areas.indexOf('Affiliate')).toBe(areas.indexOf('Accounting') + 1);
+    expect(areas.indexOf('Affiliate')).toBe(areas.indexOf('Giving records') + 1);
     expect(areas.indexOf('Livestream')).toBe(areas.indexOf('Affiliate') + 1);
   });
 });

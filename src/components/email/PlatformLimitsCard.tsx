@@ -11,9 +11,8 @@ import { ErrorNote } from '@/components/email/kit';
 
 const PLANS = [
   { id: 'free', label: 'Forever Free' },
-  { id: 'plus', label: 'Individual' },
-  { id: 'pro', label: 'Small Team' },
-  { id: 'max', label: 'Ministry' },
+  { id: 'church', label: 'Church' },
+  { id: 'ministry', label: 'Ministry' },
 ] as const;
 
 function Field({ id, label, hint, value, onChange, placeholder }: { id: string; label: string; hint?: string; value: string; onChange: (v: string) => void; placeholder?: string }) {

@@ -107,10 +107,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Plan resolved SERVER-SIDE from the tenant document — never from the
-    // client, which could claim any tier. Fail closed to 'plus' (2) when the
+    // client, which could claim any tier. Fail closed to 'church' when the
     // tenant doc has no plan, matching AdminCourses' long-standing fallback.
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
-    const plan = (tenantDoc.data()?.plan as string | undefined) ?? 'plus';
+    const plan = tenantDoc.data()?.plan as string | undefined;
     const maxCourses = getPlanFeatures(toTenantPlan(plan)).maxCourses;
 
     if (maxCourses !== UNLIMITED) {

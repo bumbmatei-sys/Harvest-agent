@@ -1068,6 +1068,8 @@ describe('AdminDashboard.tsx, firestore.rules and functions/ are byte-identical'
     '2b67b7456e1c32369bc8b41eb55782e8cd72ef63957018f4c0193bcfb2d7f89f',
     // APPENDED BY #548 (palette content search), nothing above removed or rewritten. AdminDashboard.tsx: go() takes an optional item id and the sidebar gets a search prop.
     '1433310d5f03ed9f44631516f1f6874f29a40664b48ac90513cd0d4e029a74da',
+    // APPENDED BY THE TWO-PLAN REPRICING (THE-378), nothing above removed or rewritten. AdminDashboard.tsx: the plan is read through canonicalPlanId, the Check-In withholding keys off church instead of plus, and the Accounting entry is labelled Giving records. No route, permission term or write path moved.
+    '3c1d4d893b3980eab1e64e692f6094456325d0b14e69fe118ebe7d7f4791e14f',
   ];
 
   it('AdminDashboard.tsx is untouched by THIS ticket — others legitimately own it', () => {

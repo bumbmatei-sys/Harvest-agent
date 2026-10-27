@@ -362,9 +362,9 @@ describe('the Donations section appears only where fundraising is true', () => {
     // than an absent tab.
     const onlyFundraising = { role: 'admin', permissions: { manageFundraising: true } };
     const onlySettings = { role: 'admin', permissions: { manageSettings: true } };
-    await open('max', '', onlyFundraising);
+    await open('ministry', '', onlyFundraising);
     expect(navLabels(), 'the fundraising role alone opened the links editor').not.toContain('Donations');
-    await open('max', '', onlySettings);
+    await open('ministry', '', onlySettings);
     expect(navLabels()).toContain('Donations');
   });
 });
@@ -385,7 +385,7 @@ describe('Stripe Connect is reachable from the Donations section', () => {
     // The button is the real `PaymentSection`, so this is the actual route the
     // church has always been sent to — nothing about Connect moved, only where
     // the panel is mounted.
-    await open('pro', 'donations');
+    await open('church', 'donations');
     await click(connectStripeButton(), 'the Connect Stripe button');
     /**
      * ─── AMENDED BY THE-351 — narrowed to STRIPE, which is the whole claim ────
@@ -417,7 +417,7 @@ describe('Stripe Connect is reachable from the Donations section', () => {
   });
 
   it('holds the links editor beside it — one screen, both ways of being paid', async () => {
-    await open('pro', 'donations');
+    await open('church', 'donations');
     expect(linksEditor(), 'the payment-links editor is missing').not.toBeNull();
     for (const provider of GIVING_PROVIDERS) {
       expect(container.querySelector(`#giving-${provider.id}-url`), `${provider.id} has no URL field`).not.toBeNull();
@@ -480,7 +480,7 @@ describe('no path points at a hidden or removed Settings screen', () => {
     // SMS_FEATURE_ENABLED off it is absent for a reason that is not this
     // ticket's, and with it on this guard must catch the Donations move
     // breaking it again. A hardcoded list would have to pick one of those.
-    await open('max', 'settings');
+    await open('ministry', 'settings');
     const labels = navLabels();
     for (const row of ['Appearance', 'Onboarding Questions', 'Giving Statements',
                        ...(SMS_FEATURE_ENABLED ? ['SMS'] : []), 'Integrations']) {
@@ -509,7 +509,7 @@ describe('a free tenant reaches none of this', () => {
   });
 
   it('gives a paying tier the same URL in full — the gate, not a broken route', async () => {
-    await open('plus', 'donations');
+    await open('church', 'donations');
     expect(connectStripeButton()).not.toBeNull();
     expect(linksEditor()).not.toBeNull();
   });
@@ -520,7 +520,7 @@ describe('a free tenant reaches none of this', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 describe('the admin copy states that Harvest does not process these gifts and that statements will not include them', () => {
   it('says Harvest is not in the flow, in the church\'s own words', async () => {
-    await open('pro', 'donations');
+    await open('church', 'donations');
     const copy = container.textContent || '';
     expect(copy, 'the church is not told Harvest does not process these')
       .toMatch(/Harvest does not process these gifts/i);
@@ -546,7 +546,7 @@ describe('the admin copy states that Harvest does not process these gifts and th
      * through a church's own link, so nothing records it on its own. What
      * changed is the remedy — it is now whole, and the copy has to say which.
      */
-    await open('pro', 'donations');
+    await open('church', 'donations');
     const copy = container.textContent || '';
     expect(copy, 'the gap is not stated')
       .toMatch(/not recorded until you record them/i);
@@ -569,7 +569,7 @@ describe('the admin copy states that Harvest does not process these gifts and th
     // `tenants/{id}` is world-readable by rule, so an address here is published
     // the moment it is saved. Asserted as DOCUMENT ORDER: a warning a person
     // reads after they have finished is a warning that did not work.
-    await open('pro', 'donations');
+    await open('church', 'donations');
     const copy = container.textContent || '';
     expect(copy).toMatch(/shown publicly on your Give page, including the email/i);
 
@@ -583,7 +583,7 @@ describe('the admin copy states that Harvest does not process these gifts and th
   });
 
   it('marks Stripe as the half that IS recorded and receipted', async () => {
-    await open('pro', 'donations');
+    await open('church', 'donations');
     expect(container.textContent, 'the Stripe block no longer says what it buys')
       .toMatch(/records every gift, sends\s*the receipt/i);
   });
@@ -594,7 +594,7 @@ describe('the admin copy states that Harvest does not process these gifts and th
 // ═════════════════════════════════════════════════════════════════════════════
 describe('the links editor writes only validated values, at a dotted path', () => {
   it('stores a good paste and drops a look-alike, in the same save', async () => {
-    await open('pro', 'donations');
+    await open('church', 'donations');
     const type = async (id: string, value: string) => {
       const input = container.querySelector(`#${id}`) as HTMLInputElement;
       expect(input, `${id} is missing`).not.toBeNull();
@@ -634,7 +634,7 @@ describe('the links editor writes only validated values, at a dotted path', () =
     tenantDoc.current = {
       config: { givingLinks: { venmo: { url: 'https://venmo.com/u/grace', handle: '@grace' } } },
     };
-    await open('pro', 'donations');
+    await open('church', 'donations');
     expect((container.querySelector('#giving-venmo-url') as HTMLInputElement).value)
       .toBe('https://venmo.com/u/grace');
     expect((container.querySelector('#giving-venmo-handle') as HTMLInputElement).value).toBe('@grace');

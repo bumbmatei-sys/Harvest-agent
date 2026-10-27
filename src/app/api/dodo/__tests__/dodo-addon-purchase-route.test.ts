@@ -124,11 +124,10 @@ import {
   DODO_ADDON_MEANINGS,
   DODO_TEST_ADDONS,
   addonIdFor,
-  requireProductId,
   type DodoAddonMeaning,
 } from '@/lib/dodo/catalogue';
 import type { BillingPeriod } from '@/lib/dodo/provider';
-import type { PricedPlan } from '@/types/tenant.types';
+import type { LegacyPlanId } from '@/types/tenant.types';
 import { __setDodoClientForTests } from '@/lib/dodo/dodo-provider';
 
 // ── The add-ons in play, named through the REAL catalogue ────────────────────
@@ -151,10 +150,15 @@ const ADDON_NAMES: Record<string, string> = {
   [DODO_TEST_ADDONS.unlimitedContacts.yearly as string]: 'Unlimited Contacts - Annual',
 };
 
-const PLUS_MONTHLY = requireProductId('plus', 'monthly');
-const PLUS_YEARLY = requireProductId('plus', 'yearly');
-const PRO_MONTHLY = requireProductId('pro', 'monthly');
-const MAX_MONTHLY = requireProductId('max', 'monthly');
+const LEGACY_PRODUCTS: Record<LegacyPlanId, Record<BillingPeriod, string>> = {
+  plus: { monthly: 'pdt_0NlAMMZk44L0tL8lcLX6M', yearly: 'pdt_0NlAMMeWwZDSlfNdti8FD' },
+  pro: { monthly: 'pdt_0NlAMMhi90q5Ovk6QBzcf', yearly: 'pdt_0NlAMMlsVKeYG8ukapmzE' },
+  max: { monthly: 'pdt_0NlAMMp4QndR3qPzlD8sG', yearly: 'pdt_0NlAMMsQBzMvRVNCY7zws' },
+};
+const PLUS_MONTHLY = LEGACY_PRODUCTS.plus.monthly;
+const PLUS_YEARLY = LEGACY_PRODUCTS.plus.yearly;
+const PRO_MONTHLY = LEGACY_PRODUCTS.pro.monthly;
+const MAX_MONTHLY = LEGACY_PRODUCTS.max.monthly;
 
 // ── 🔴 THE TIER LADDER, AS DODO HOLDS IT (THE-160) ───────────────────────────
 //
@@ -170,7 +174,7 @@ const MAX_MONTHLY = requireProductId('max', 'monthly');
 // DETACHED from every one of the nine, so no plan offers them and both meanings
 // are gone from the vocabulary. Named by MEANING and resolved to ids through the
 // real catalogue, never retyped.
-const ATTACHED_MEANINGS: Readonly<Record<PricedPlan, readonly DodoAddonMeaning[]>> = {
+const ATTACHED_MEANINGS: Readonly<Record<LegacyPlanId, readonly DodoAddonMeaning[]>> = {
   plus: ['aiAssistant', 'adminSeat'],
   pro: ['aiAssistant', 'adminSeat'],
   max: ['aiAssistant', 'adminSeat', 'unlimitedContacts'],
@@ -179,10 +183,10 @@ const ATTACHED_MEANINGS: Readonly<Record<PricedPlan, readonly DodoAddonMeaning[]
 /** productId → the add-on ids Dodo reports on it, for all six products. */
 function attachmentByProduct(): Map<string, string[]> {
   const byProduct = new Map<string, string[]>();
-  for (const plan of Object.keys(ATTACHED_MEANINGS) as PricedPlan[]) {
+  for (const plan of Object.keys(ATTACHED_MEANINGS) as LegacyPlanId[]) {
     for (const period of ['monthly', 'yearly'] as BillingPeriod[]) {
       byProduct.set(
-        requireProductId(plan, period),
+        LEGACY_PRODUCTS[plan][period],
         ATTACHED_MEANINGS[plan].map((meaning) => addonIdFor(meaning, period) as string),
       );
     }

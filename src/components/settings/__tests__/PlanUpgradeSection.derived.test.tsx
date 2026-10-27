@@ -80,7 +80,7 @@ function linesOf(plan: TenantPlan): Array<[string, string]> {
 
 /** Which cells are numbers, read off the matrix rather than named here. */
 const numericCells = (): string[] =>
-  Object.entries(getPlanFeatures('max') as unknown as Record<string, unknown>)
+  Object.entries(getPlanFeatures('ministry') as unknown as Record<string, unknown>)
     .filter(([, v]) => typeof v === 'number')
     .map(([k]) => k);
 
@@ -113,20 +113,20 @@ describe('the feature list is derived from getPlanFeatures, not hardcoded string
     // top tier prints rather than named here — so this does not go stale when
     // the matrix is repriced.
     mount();
-    const topOnly = linesOf('max').find(([cell]) => cell !== '' && typeof (getPlanFeatures('plus') as unknown as Record<string, unknown>)[cell] === 'boolean');
+    const topOnly = linesOf('ministry').find(([cell]) => cell !== '' && typeof (getPlanFeatures('church') as unknown as Record<string, unknown>)[cell] === 'boolean');
     expect(topOnly, 'the top tier adds no boolean line to move').toBeTruthy();
     const [cell, text] = topOnly!;
-    expect(linesOf('plus').map(([c]) => c)).not.toContain(cell);
+    expect(linesOf('church').map(([c]) => c)).not.toContain(cell);
     unmount();
 
     // Grant it to the bottom tier. Nothing in the component changes.
-    override.rows = { plus: { [cell]: true } };
+    override.rows = { church: { [cell]: true } };
     mount();
-    expect(linesOf('plus').map(([c]) => c), `${cell} did not reach the Individual card`).toContain(cell);
+    expect(linesOf('church').map(([c]) => c), `${cell} did not reach the Individual card`).toContain(cell);
     // …with the same wording it had on the tier that already had it.
-    expect(linesOf('plus').find(([c]) => c === cell)![1]).toBe(text);
+    expect(linesOf('church').find(([c]) => c === cell)![1]).toBe(text);
     // …and it drops off the tier above, because that tier no longer ADDS it.
-    expect(linesOf('pro').map(([c]) => c)).not.toContain(cell);
+    expect(linesOf('ministry').map(([c]) => c)).not.toContain(cell);
     unmount();
 
     // Take it away from everyone: it leaves every card.
@@ -139,24 +139,24 @@ describe('the feature list is derived from getPlanFeatures, not hardcoded string
 
   it('follows a cap that moves, on the card that names it', () => {
     mount();
-    const capCell = linesOf('plus').find(([cell]) => numericCells().includes(cell))![0];
+    const capCell = linesOf('church').find(([cell]) => numericCells().includes(cell))![0];
     unmount();
 
-    override.rows = { plus: { [capCell]: 4242 } };
+    override.rows = { church: { [capCell]: 4242 } };
     mount();
-    const line = linesOf('plus').find(([c]) => c === capCell);
+    const line = linesOf('church').find(([c]) => c === capCell);
     expect(line, `${capCell} left the Individual card`).toBeTruthy();
     expect(line![1]).toContain('4,242');
   });
 
   it('prints an unlimited cap as unlimited, not as its sentinel', () => {
     mount();
-    const capCell = linesOf('plus').find(([cell]) => numericCells().includes(cell))![0];
+    const capCell = linesOf('church').find(([cell]) => numericCells().includes(cell))![0];
     unmount();
 
-    override.rows = { plus: { [capCell]: UNLIMITED_CAP } };
+    override.rows = { church: { [capCell]: UNLIMITED_CAP } };
     mount();
-    const line = linesOf('plus').find(([c]) => c === capCell)!;
+    const line = linesOf('church').find(([c]) => c === capCell)!;
     expect(line[1]).toContain('Unlimited');
     expect(line[1], 'the sentinel leaked to the card').not.toContain(String(UNLIMITED_CAP));
   });

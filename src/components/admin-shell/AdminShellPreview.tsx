@@ -60,7 +60,7 @@ const PREVIEW_TABS = new Map<string, ShellTabRef>([
   ['checkin', { id: 'checkin', label: 'Check-In', icon: FileText }],
   ['fundraising', { id: 'fundraising', label: 'Fundraising', icon: Church }],
   ['donations', { id: 'donations', label: 'Donations', icon: Church }],
-  ['accounting', { id: 'accounting', label: 'Accounting', icon: Church }],
+  ['accounting', { id: 'accounting', label: 'Giving records', icon: Church }],
   ['blog', { id: 'blog', label: 'Blog', icon: FileText }],
   ['branding', { id: 'branding', label: 'Branding', icon: FileText }],
   ['ai', { id: 'ai', label: 'AI Knowledge', icon: FileText }],

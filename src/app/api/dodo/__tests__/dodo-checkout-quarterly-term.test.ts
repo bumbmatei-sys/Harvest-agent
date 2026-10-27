@@ -107,9 +107,9 @@ function request(body: Record<string, unknown>, origin = 'https://theharvest.app
   });
 }
 
-/** A yearly Individual signup — the discounted term this build still sells. */
+/** A yearly Church signup — the discounted term this build still sells. */
 const YEARLY_SIGNUP = {
-  plan: 'plus',
+  plan: 'church',
   billing: 'yearly',
   ministryName: 'Grace Community Church',
 };
@@ -154,7 +154,7 @@ describe('a quarterly checkout request is refused — the term was withdrawn', (
 
     // The refusal quotes the SUBMITTED value. A stale `?billing=quarterly` link
     // must not turn into a monthly or yearly subscription the church never chose.
-    expect(body).toMatchObject({ error: 'Invalid plan/billing: plus/quarterly' });
+    expect(body).toMatchObject({ error: 'Invalid plan/billing: church/quarterly' });
     expect(mockCreatePlanCheckout).not.toHaveBeenCalled();
   });
 
@@ -188,10 +188,19 @@ describe('a quarterly checkout request is refused — the term was withdrawn', (
     expect((await res.json()).error).toMatch(/Invalid plan\/billing/);
   });
 
+  it.each(['plus', 'pro', 'max'])('🔴 REFUSES the retired plan id %s — it is resolved when read, never sold', async (retired) => {
+    // A stored legacy id keeps resolving to Church / Ministry, but a signup body
+    // naming one is a stale link, not a stored value. Answering it with a Church
+    // checkout would sell a price the visitor never saw.
+    const res = await POST(request({ ...YEARLY_SIGNUP, plan: retired }));
+    expect(res.status).toBe(400);
+    expect(mockCreatePlanCheckout).not.toHaveBeenCalled();
+  });
+
   it('stamps the yearly term into subscription metadata, where the webhook reads it', async () => {
     await POST(request(YEARLY_SIGNUP));
 
-    expect(checkoutArg().metadata).toMatchObject({ plan: 'plus', billing: 'yearly' });
+    expect(checkoutArg().metadata).toMatchObject({ plan: 'church', billing: 'yearly' });
   });
 });
 
@@ -260,7 +269,7 @@ describe('an unrecognised billing value is still rejected with 400', () => {
   });
 
   it('refuses a body carrying no billing field at all', async () => {
-    const res = await POST(request({ plan: 'plus', ministryName: 'Grace Community Church' }));
+    const res = await POST(request({ plan: 'church', ministryName: 'Grace Community Church' }));
 
     expect(res.status).toBe(400);
     expect(mockCreatePlanCheckout).not.toHaveBeenCalled();
@@ -469,6 +478,9 @@ describe('no other hardcoded term list remains in a validation path', () => {
       'the Stripe checkout route above.',
 
     // ── Naming ONE term, which is not a list. ───────────────────────────────
+    'app/api/plans/route.ts':
+      "LEGITIMATE. Publishes the yearly saving's wording by asking " +
+      "`discountClaim` about the one discounted term; it validates nothing.",
     'utils/plan-features.ts':
       'LEGITIMATE. `BILLING_TERMS` IS the single source. `DISCOUNTED_TERMS` ' +
       'and `actualSavingPct` name the one term that carries no discount and ' +
@@ -593,13 +605,13 @@ describe('the checkout payload and return_url logic are unchanged', () => {
     // undefined — the 14 days are configured on the Dodo products and the
     // number is deliberately not restated at the call site.
     expect(checkoutArg()).toEqual({
-      plan: 'plus',
+      plan: 'church',
       period: 'yearly',
       returnUrl: 'https://theharvest.app/?dodo=success',
       cancelUrl: 'https://theharvest.app/?dodo=cancel',
       customer: { email: 'pastor@grace.example', name: 'Grace Community Church' },
       metadata: {
-        plan: 'plus',
+        plan: 'church',
         billing: 'yearly',
         ministryName: 'Grace Community Church',
         userId: 'uid_owner_1',

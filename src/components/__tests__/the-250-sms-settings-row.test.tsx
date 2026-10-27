@@ -80,7 +80,7 @@ import type { TenantPlan } from '../../types/tenant.types';
 const ROOT = path.resolve(__dirname, '../../..');
 const readSrc = (rel: string) => fs.readFileSync(path.join(ROOT, 'src', rel), 'utf8');
 
-const PRICED: TenantPlan[] = ['plus', 'pro', 'max'];
+const PRICED: TenantPlan[] = ['church', 'ministry'];
 /** ⚠️ THE LABEL LOST ITS VENDOR — THE-314. It read "SMS (Twilio)" when a church
  *  connected its own Twilio account and the parenthetical told it whose
  *  credentials the panel wanted. Harvest now RESELLS on one account, so there
@@ -89,8 +89,8 @@ const SMS_ROW = 'SMS';
 
 /** The tiers that own `smsAutomation` after THE-314 made SMS Ministry-only.
  *  Individual and Small Team both lost it. */
-const SMS_TIERS: TenantPlan[] = ['max'];
-const NON_SMS_TIERS: TenantPlan[] = ['free', 'plus', 'pro'];
+const SMS_TIERS: TenantPlan[] = ['ministry'];
+const NON_SMS_TIERS: TenantPlan[] = ['free', 'church'];
 
 /**
  * Load AdminSettings with `SMS_FEATURE_ENABLED` forced to `enabled`.
@@ -185,7 +185,7 @@ describe('1 — the SMS settings row does not render while the switch is off', (
     // admin cannot use a feature the server answers 503 to either, so showing
     // them the row would be the same empty panel with a better excuse.
     scope.platformOverride = true;
-    const host = await mount('max', false);
+    const host = await mount('ministry', false);
     expect(rows(host)).not.toContain(SMS_ROW);
     expect(host.textContent || '').not.toMatch(/twilio/i);
   });
@@ -218,7 +218,7 @@ describe('2 — flipping the switch on restores it, on the tier that owns it', (
   }
 
   it('🔴 returns under "Connected Services", not appended somewhere new', async () => {
-    const host = await mount('max', true);
+    const host = await mount('ministry', true);
     const order = rows(host);
     // Position is the claim: THE-183's regions ARE the array order, so a row
     // that came back in the wrong place would silently re-file itself into a
@@ -244,7 +244,7 @@ describe('2 — flipping the switch on restores it, on the tier that owns it', (
   });
 
   it('and the row behind it opens onto real content, not an empty panel', async () => {
-    const host = await mount('max', true);
+    const host = await mount('ministry', true);
     const header = Array.from(host.querySelectorAll('button')).find(
       (b) => (b.textContent || '').trim().startsWith(SMS_ROW),
     );
@@ -274,9 +274,9 @@ describe('2 — flipping the switch on restores it, on the tier that owns it', (
    STOP 5 — the hide breaks neither the ordering nor THE-183's grouping.      */
 describe('3 — hiding the row breaks no ordering and orphans no heading', () => {
   it('every other row keeps its place, in the same order', async () => {
-    const off = rows(await mount('max', false));
+    const off = rows(await mount('ministry', false));
     act(() => { root?.unmount(); }); root = null; container.innerHTML = '';
-    const on = rows(await mount('max', true));
+    const on = rows(await mount('ministry', true));
     // The ONLY difference between the two renders is the SMS row itself.
     expect(on.filter((r) => r !== SMS_ROW)).toEqual(off);
     expect(on).toContain(SMS_ROW);
@@ -287,15 +287,15 @@ describe('3 — hiding the row breaks no ordering and orphans no heading', () =>
     // the label, so a region is at risk only when ALL its rows go. Connected
     // Services holds SMS, AI Assistant (hidden by its own flag) and
     // Integrations — Integrations keeps the region alive on the priced tiers.
-    const host = await mount('max', false);
+    const host = await mount('ministry', false);
     expect(regions(host)).toContain('Connected Services');
     expect(rows(host)).toContain('Integrations');
   });
 
   it('the region order is identical with the switch off and on', async () => {
-    const off = regions(await mount('max', false));
+    const off = regions(await mount('ministry', false));
     act(() => { root?.unmount(); }); root = null; container.innerHTML = '';
-    const on = regions(await mount('max', true));
+    const on = regions(await mount('ministry', true));
     expect(off).toEqual(on);
   });
 });
@@ -335,19 +335,18 @@ describe('4 — one switch, and nothing else moved', () => {
     // decides who may spend Harvest's money and the founder's call is Ministry.
     // The two cells move together — Text-to-Give is inbound SMS end to end.
     const { getPlanFeatures } = await import('../../utils/plan-features');
-    expect(PRICED.map((p) => !!getPlanFeatures(p)?.smsAutomation)).toEqual([false, false, true]);
+    expect(PRICED.map((p) => !!getPlanFeatures(p)?.smsAutomation)).toEqual([false, true]);
     expect(getPlanFeatures('free')?.smsAutomation).toBeFalsy();
-    expect(PRICED.map((p) => !!getPlanFeatures(p)?.textToGive)).toEqual([false, false, true]);
+    expect(PRICED.map((p) => !!getPlanFeatures(p)?.textToGive)).toEqual([false, true]);
     expect(getPlanFeatures('free')?.textToGive).toBeFalsy();
   });
 
   it('🔴 no price changed', async () => {
     const { PLAN_PRICING } = await import('../../utils/plan-features');
-    expect(PLAN_PRICING.plus.monthly).toBe(20);
-    expect(PLAN_PRICING.pro.monthly).toBe(40);
+    expect(PLAN_PRICING.church).toEqual({ monthly: 30, yearly: 300 });
     // ⚠️ 80, then 60 from THE-343, and 80 again since THE-372. Plus and pro
     // above are what this file actually guards: an SMS switch may not move a price.
-    expect(PLAN_PRICING.max.monthly).toBe(80);
+    expect(PLAN_PRICING.ministry).toEqual({ monthly: 90, yearly: 900 });
   });
 
   it('🔴 this ticket deletes no data and touches no rules or functions', async () => {

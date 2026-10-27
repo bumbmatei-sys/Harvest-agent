@@ -160,6 +160,9 @@ const FLAG_SURFACES: Registry = {
   maxAdmins:     { gates: ['utils/admin-seats.ts', 'components/AdminRoles.tsx'] },
 
   // ─── cells that gate nothing, ON PURPOSE ──────────────────────────────────
+  maxProducts: { flagless: 'Published allowance only; product checkout is not built, so the cap is not yet enforced. The plan comparison labels this as coming soon and no checkout claims it is live.' },
+  maxCommunities: { flagless: 'Published allowance only; multiple communities are not built, so the cap is not yet enforced. The plan comparison labels extra communities as coming soon and does not claim they are available.' },
+  aiMessagesPerMonth: { flagless: 'Published allowance only; the metered assistant is not built, so this number gates no usage yet. The plan comparison labels the allowance as coming soon and does not claim it is live.' },
   textToGive: {
     flagless:
       'Read by nothing, deliberately — the matrix says so in as many words. ' +
@@ -233,7 +236,7 @@ describe('THE GUARD — every plan flag is mapped to the surface that refuses it
   it('🔴 names the flagless cells out loud, so the list cannot grow quietly', () => {
     // Two today. A third appearing is a decision somebody has to make in review
     // rather than a consequence of adding a cell and moving on.
-    expect(CELLS.filter((c) => 'flagless' in (FLAG_SURFACES[c] ?? {}))).toEqual(['textToGive', 'pwaApp']);
+    expect(CELLS.filter((c) => 'flagless' in (FLAG_SURFACES[c] ?? {}))).toEqual(['maxProducts', 'maxCommunities', 'aiMessagesPerMonth', 'textToGive', 'pwaApp']);
   });
 
   it('🔴 every cell free carries as false has a gate, or is one of the two pinned exceptions', () => {
@@ -250,7 +253,7 @@ describe('THE GUARD — every plan flag is mapped to the surface that refuses it
       const off = free[cell] === false || free[cell] === 0;
       return off && !('gates' in (FLAG_SURFACES[cell] ?? {}));
     });
-    expect(ungated, 'a cell free turns off can be reached by a free tenant').toEqual(['textToGive']);
+    expect(ungated, 'a cell free turns off can be reached by a free tenant').toEqual(['maxProducts', 'maxCommunities', 'aiMessagesPerMonth', 'textToGive']);
   });
 });
 
@@ -399,7 +402,7 @@ describe('the gates refuse surfaces and change no data or rule', () => {
     // enforce it, which is the point, and is asserted per tier in the check-in
     // suites rather than papered over here.
     expect(getPlanFeatures('plus').checkInSystem).toBe(false);
-    expect(getPlanFeatures('pro').checkInSystem).toBe(true);
+    expect(getPlanFeatures('pro').checkInSystem).toBe(false);
     expect(getPlanFeatures('max').checkInSystem).toBe(true);
   });
 });

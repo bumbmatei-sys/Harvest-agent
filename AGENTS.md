@@ -110,17 +110,43 @@ anything. `THE-355.confirmed-wording.test.tsx` polices the wording.
 
 ## Plans, add-ons and prices
 Source of truth: `src/utils/plan-features.ts` — `PLAN_FEATURES` for the matrix,
-`PLAN_PRICING` for the six prices, `TERM_MONTHS` for the term arithmetic. **This file
+`PLAN_PRICING` for the four prices, `PLAN_FEES` for what Harvest keeps, `TERM_MONTHS` for the term arithmetic. **This file
 deliberately restates none of those numbers.** The previous version of this section
 carried a full price-and-caps table; every cell in it was wrong by the time anyone read
 it again.
 
 What you cannot read off the table, and therefore needs saying:
 
-- **There are four tiers: `free`, `plus`, `pro`, `max`** (displayed Forever Free,
-  Individual, Small Team, Ministry). `free` is **absent from `PLAN_PRICING` by design** —
-  it is not a `$0` row, it has no price and no billing term, and `planPriceUsd('free', …)`
-  is a compile error. Narrow with `isPricedPlan` first.
+- **There are three tiers: `free`, `church`, `ministry`** (displayed Free, Church,
+  Ministry). `free` is **absent from `PLAN_PRICING` by design** — it is not a zero-priced row, it
+  has no price and no billing term, and `planPriceUsd('free', …)` is a compile error.
+  Narrow with `isPricedPlan` first.
+- **Three retired ids can still be stored: `plus`, `pro`, `max`.** The app sold them
+  before the two-plan repricing and no document was migrated, so `tenants/{id}.plan`, a
+  user's `plan`, and a Dodo subscription may still say one. `plus` and `pro` resolve to
+  Church and `max` to Ministry, **at read time**, through `canonicalPlanId`
+  (`src/utils/plan-id.ts`) — `toTenantPlan`, `getPlanFeatures`, `getPlanLimits` and
+  `TenantContext` all go through it. Never compare a raw stored `plan` to a tier id;
+  normalise first. A legacy id is a `LegacyPlanId`, not a `TenantPlan`, and nothing may
+  key a record on one. The retired Dodo products stay active and recognisable
+  (`DODO_LEGACY_*_PRODUCTS`) but are never offered: `productIdFor` reads only the offered
+  catalogue.
+- **Harvest's fees are `PLAN_FEES`, and product sales are not live.** Donations carry no
+  Harvest fee on any tier; product sales carry one on Church and a smaller one on
+  Ministry, and `PAID_PRODUCT_CHECKOUT_ENABLED` is false, so every surface that prints the
+  product rate prints "coming soon" beside it and says the payment processor's own fee
+  applies on top. `PLATFORM_FEE_MAP` (`src/lib/stripe-connect.ts`, a pinned money path
+  on a closed account) still lists only the retired ids at 0, so a Church or Ministry lookup
+  falls back to the same 0 and the reprice test keeps the two honest. The AI assistant allowance
+  (`aiMessagesPerMonth`) is likewise config for a feature that is not built: print the
+  real number with "coming soon", never "unlimited".
+- **The yearly saving is worded "2 months free"**, derived by `discountClaim` from the
+  price table. The stored `ADVERTISED_DISCOUNT_PCT` is the real saving rounded down, so it
+  can never claim more than the prices deliver.
+- **"Accounting" is labelled "Giving records"** (nav, page title, permission row). The
+  route `/admin/accounting`, the `accounting` tab id, `accountingTools` and
+  `manageAccounting` keep their names so every link and stored permission still works.
+  Never describe it as accounting software or as a QuickBooks replacement.
 - **There are two billing terms, `monthly` and `yearly`** (`BILLING_TERMS`). A quarterly
   term existed and was withdrawn on 2026-10-23: its three Dodo products are archived, so a
   stale `?billing=quarterly` link falls closed to monthly at signup and the checkout and
@@ -129,7 +155,7 @@ What you cannot read off the table, and therefore needs saying:
   separate Dodo **product**, so adding one is a product, a catalogue row and a marketing
   site change together, never one of the three alone.
 - **Free is capped, not unlimited, and it is capped at the same contact figure as the
-  cheapest paid tier.** That is intentional as of THE-370: Individual is now bought for
+  cheapest paid tier.** That is intentional as of THE-370: Church is now bought for
   capability, not capacity. Free is for one evangelist doing personal discipleship — one
   admin, one adopted course, no feed, no giving page, and zero campuses ("a free tenant is
   one evangelist, not a multi-campus ministry").
@@ -157,7 +183,7 @@ What you cannot read off the table, and therefore needs saying:
 - **`unlimitedContacts` is a separate boolean and stays one.** It is not folded into
   `maxContacts`, so `maxContacts` is always a real, finite, honest number and the
   unlimited fact travels beside it.
-- **The six prices are contract-pinned across both repos.** The marketing site carries
+- **The four prices are contract-pinned across both repos.** The marketing site carries
   its own copy and a module-scope contract there compares the whole table against what
   this file publishes — the site's **build throws at prerender** if they disagree. A price
   change must land in both repos together.
@@ -480,7 +506,7 @@ itself.
 - `Harvest-agent` — the app (this repo).
 - `harvest-presentation-site` — the marketing site at `theharvest.site`. **Vite + React**
   with `vite-react-ssg` (statically prerendered), plus a markdown blog under `/blog`. Not
-  Next.js — do not assume App Router conventions there. It carries its own copy of the six
+  Next.js — do not assume App Router conventions there. It carries its own copy of the four
   prices and a module-scope contract that throws at prerender if they disagree with
   `PLAN_PRICING` here, which is why a price change has to land in both repos together. It
   is reported to have CI now (a `Test & Build` workflow); older prompts in this project say

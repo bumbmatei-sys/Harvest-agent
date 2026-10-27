@@ -8,12 +8,11 @@ import { Resend } from 'resend';
 import { requireAuth } from '@/lib/api-auth';
 import { adminDb, getReceiptsBucket } from '@/lib/firebase-admin';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
-import { getPlanFeatures } from '@/utils/plan-features';
+import { getPlanFeatures, toTenantPlan } from '@/utils/plan-features';
 import { verifyCourseCompletion } from '@/utils/course.utils';
 import { applyCourseOverrides, type CourseOverrides } from '@/utils/course-adoption';
 import { canAccessCourse, isCourseStaff, isRestrictedCourse, type AccessibleCourse } from '@/lib/courses/access';
 import type { Course, QuizAttempt } from '@/types/course.types';
-import type { TenantPlan } from '@/types/tenant.types';
 import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
@@ -490,8 +489,7 @@ export async function POST(request: NextRequest) {
       const tenantSnap = await adminDb.collection('tenants').doc(resolvedTenantId).get();
       if (tenantSnap.exists) {
         const tData = tenantSnap.data() as any;
-        const plan = (tData.plan as TenantPlan) || 'plus';
-        const canBrand = getPlanFeatures(plan).customBranding;
+        const canBrand = getPlanFeatures(toTenantPlan(tData.plan)).customBranding;
         if (canBrand) {
           branded = true;
           if (typeof tData.name === 'string' && tData.name.trim()) ministryName = tData.name.trim();

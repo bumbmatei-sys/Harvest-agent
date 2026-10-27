@@ -421,8 +421,15 @@ describe('5 — onboarding is still completable and no funnel marker moved', () 
    * still get into its app.
    */
   it('🔴 all three signup components are byte-for-byte unchanged', () => {
-    expect(digest('src/components/ChurchOnboarding.tsx'))
-      .toBe('39a73c9c55bf71cd217b502da7721f1feeccf5f69b55b4694663ec0d65eb9d17');
+    // APPENDED BY THE TWO-PLAN REPRICING (THE-378), the baseline literal kept: signup now reads the
+    // plan in the link through canonicalPlanId, so a stale ?plan=pro lands on Church. THIS ticket's
+    // claim, that it did not open the file, survives; the later edit is recorded in the register.
+    expect(
+      ownershipFailureWithBaseline(
+        'src/components/ChurchOnboarding.tsx',
+        '39a73c9c55bf71cd217b502da7721f1feeccf5f69b55b4694663ec0d65eb9d17',
+      ),
+    ).toBeNull();
     /**
      * ⚠️ THE-336 gave THIS ONE an append path; the other two stay bare literals
      * because nothing has opened them. The baseline is not replaced — it is
@@ -437,8 +444,13 @@ describe('5 — onboarding is still completable and no funnel marker moved', () 
         'e0d3d0a6d10e0254bb9be0dc7df8cc2d81e1a65c7f65069e900f79142952f057',
       ),
     ).toBeNull();
-    expect(digest('src/components/FirstRunSetup.tsx'))
-      .toBe('684e614319ac4ccf0e94b68ee9ead3438f0096ab8164cdcef437e9f2208de0cb');
+    // APPENDED BY THE TWO-PLAN REPRICING (THE-378): the plan it reads is resolved through toTenantPlan.
+    expect(
+      ownershipFailureWithBaseline(
+        'src/components/FirstRunSetup.tsx',
+        '684e614319ac4ccf0e94b68ee9ead3438f0096ab8164cdcef437e9f2208de0cb',
+      ),
+    ).toBeNull();
   });
 
   it('🔴 no funnel marker moved — App.tsx and post-auth-route are unchanged', () => {
@@ -461,8 +473,15 @@ describe('5 — onboarding is still completable and no funnel marker moved', () 
      * what actually guards the invariant. This line guards that the change was
      * looked at.
      */
-    expect(digest('src/App.tsx'))
-      .toBe('360e4c640c90364d0633edb03dd89fa74ec50eb446ed334e841d77da66ec7ee6');
+    // APPENDED BY THE TWO-PLAN REPRICING (THE-378), the baseline literal kept: ?signup=<tier> and the user
+    // doc plan are read through canonicalPlanId. No route was added, none reordered, no funnel marker moved,
+    // which the next test and THE-292.country-prompt.test.tsx assert by name.
+    expect(
+      ownershipFailureWithBaseline(
+        'src/App.tsx',
+        '360e4c640c90364d0633edb03dd89fa74ec50eb446ed334e841d77da66ec7ee6',
+      ),
+    ).toBeNull();
     expect(digest('src/utils/post-auth-route.ts'))
       .toBe('9571ded38eeb30eb428345abcaceff0512f8028404354fcf4da18f8adaf21718');
   });

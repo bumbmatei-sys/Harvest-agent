@@ -13,7 +13,17 @@
  * cheapest → most expensive and `FEATURE_MIN_PLAN` walks it to name the
  * cheapest tier carrying a feature.
  */
-export type TenantPlan = 'free' | 'plus' | 'pro' | 'max';
+export type TenantPlan = 'free' | 'church' | 'ministry';
+
+/**
+ * The three tier ids this app stored before the two-plan repricing (Church and
+ * Ministry). Nobody pays for plus or pro today and no document is migrated, so
+ * these can still sit in `tenants/{id}.plan` and in Dodo subscriptions; they
+ * resolve at READ time through `canonicalPlanId` (src/utils/plan-id.ts) and are
+ * never produced by the app any more. Not a `TenantPlan`: nothing may key a
+ * record on one.
+ */
+export type LegacyPlanId = 'plus' | 'pro' | 'max';
 
 /**
  * Every tier a church can BUY — `TenantPlan` minus the free one.

@@ -387,7 +387,7 @@ describe('AdminBlog hides Automate while the knowledge base is off', () => {
 describe('AdminDashboard feeds the blog screen the same answer the knowledge base uses', () => {
   type Scene = {
     label: string;
-    plan: 'max' | null;
+    plan: 'church' | 'ministry' | null;
     addons: TenantAddons | null;
     platform: boolean;
     tenantId: string | null;
@@ -403,10 +403,11 @@ describe('AdminDashboard feeds the blog screen the same answer the knowledge bas
   }
 
   const SCENES: Scene[] = [
-    { label: 'Ministry, no add-ons', plan: 'max', addons: null, platform: false, tenantId: TENANT_ID },
-    { label: 'Ministry holding the AI Assistant add-on', plan: 'max', addons: ASSISTANT, platform: false, tenantId: TENANT_ID },
-    { label: 'Ministry, platform bypass', plan: 'max', addons: NO_ADDONS, platform: true, tenantId: TENANT_ID },
-    { label: 'no tenant in scope', plan: 'max', addons: null, platform: false, tenantId: null },
+    { label: 'Church, no add-ons', plan: 'church', addons: null, platform: false, tenantId: TENANT_ID },
+    { label: 'Church holding the AI Assistant add-on', plan: 'church', addons: ASSISTANT, platform: false, tenantId: TENANT_ID },
+    { label: 'Ministry, no add-ons (the knowledge base comes with the tier)', plan: 'ministry', addons: null, platform: false, tenantId: TENANT_ID },
+    { label: 'Church, platform bypass', plan: 'church', addons: NO_ADDONS, platform: true, tenantId: TENANT_ID },
+    { label: 'no tenant in scope', plan: 'church', addons: null, platform: false, tenantId: null },
     { label: 'unresolved plan', plan: null, addons: null, platform: false, tenantId: TENANT_ID },
   ];
 
@@ -464,20 +465,27 @@ describe('AdminDashboard feeds the blog screen the same answer the knowledge bas
     }
   });
 
-  it('a Ministry tenant with no add-ons is handed false, and the add-on flips it', async () => {
+  it('a Church tenant with no add-ons is handed false, the add-on flips it, and Ministry has it already', async () => {
     // Said again by name, so the two cases the gate exists for cannot hide
     // inside the derived table above. A roster resolution re-renders the
     // shell, so the prop is asserted on every render rather than by count.
     const passed = () => recorded.values;
     await open(
-      { label: '', plan: 'max', addons: null, platform: false, tenantId: TENANT_ID },
+      { label: '', plan: 'church', addons: null, platform: false, tenantId: TENANT_ID },
       'blog',
     );
     expect(passed().length).toBeGreaterThan(0);
     expect(passed().every((value) => value === false)).toBe(true);
 
     await open(
-      { label: '', plan: 'max', addons: ASSISTANT, platform: false, tenantId: TENANT_ID },
+      { label: '', plan: 'church', addons: ASSISTANT, platform: false, tenantId: TENANT_ID },
+      'blog',
+    );
+    expect(passed().length).toBeGreaterThan(0);
+    expect(passed().every((value) => value === true)).toBe(true);
+
+    await open(
+      { label: '', plan: 'ministry', addons: null, platform: false, tenantId: TENANT_ID },
       'blog',
     );
     expect(passed().length).toBeGreaterThan(0);

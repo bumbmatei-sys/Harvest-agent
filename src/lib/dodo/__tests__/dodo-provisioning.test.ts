@@ -108,7 +108,11 @@ const {
   DodoProvisioningError,
 } = await import('../provisioning');
 const { receiveDodoWebhookEvent } = await import('../webhook-dispatch');
-const { requireProductId } = await import('../catalogue');
+const legacyProducts = {
+  plus: { monthly: 'pdt_0NlAMMZk44L0tL8lcLX6M', yearly: 'pdt_0NlAMMeWwZDSlfNdti8FD' },
+  pro: { monthly: 'pdt_0NlAMMhi90q5Ovk6QBzcf', yearly: 'pdt_0NlAMMlsVKeYG8ukapmzE' },
+  max: { monthly: 'pdt_0NlAMMp4QndR3qPzlD8sG', yearly: 'pdt_0NlAMMsQBzMvRVNCY7zws' },
+} as const;
 const { TENANT_PRIVATE_FIELDS } = await import('@/lib/tenant-private');
 const { NO_ADDONS } = await import('@/utils/plan-features');
 
@@ -120,7 +124,7 @@ const OWNER_EMAIL = 'pastor@grace.example';
 function subscription(over: Record<string, any> = {}) {
   return {
     subscription_id: 'sub_dodo_1',
-    product_id: requireProductId('max', 'monthly'),
+    product_id: legacyProducts.max.monthly,
     status: 'active',
     created_at: '2026-08-11T12:00:00Z',
     customer: { customer_id: 'cus_dodo_1', email: OWNER_EMAIL, name: 'Grace Community Church' },
@@ -185,7 +189,7 @@ describe('a completed Dodo checkout creates a tenant with every field the Stripe
       name: 'Grace Community Church',
       subdomain: tenantId,
       // From the PRODUCT, not from metadata. See test 4.
-      plan: 'max',
+      plan: 'ministry',
       // 🔴 An EMPTY write, not an absent field (REP-5a). Nothing sells an add-on
       // at signup, so every value is zero — but the key exists, so a tenant with
       // no add-ons is distinguishable from a tenant whose add-on write failed.
@@ -213,7 +217,7 @@ describe('a completed Dodo checkout creates a tenant with every field the Stripe
       adminEmails: [OWNER_EMAIL],
       dodoCustomerId: 'cus_dodo_1',
       dodoSubscriptionId: 'sub_dodo_1',
-      dodoProductId: requireProductId('max', 'monthly'),
+      dodoProductId: legacyProducts.max.monthly,
       // 🔴 THE-79: who owns this subscription, stated rather than inferred. Every
       // billing write path routes on it; without it a later plan change would
       // open a SECOND subscription on Stripe and bill this church twice.
@@ -252,7 +256,7 @@ describe('a completed Dodo checkout creates a tenant with every field the Stripe
     expect(user).toMatchObject({
       tenantId,
       role: 'admin',
-      plan: 'max',
+      plan: 'ministry',
       onboardingCompleted: true,
       // Releases OnboardingGate from its "Setting up your account…" poll.
       signupInProgress: false,
@@ -585,12 +589,12 @@ describe('an unknown product id fails loudly and provisions nothing', () => {
   });
 
   it('resolves every product in the catalogue and nothing else', () => {
-    expect(requirePlanForProduct(requireProductId('plus', 'monthly'))).toEqual({ plan: 'plus', period: 'monthly' });
-    expect(requirePlanForProduct(requireProductId('plus', 'yearly'))).toEqual({ plan: 'plus', period: 'yearly' });
-    expect(requirePlanForProduct(requireProductId('pro', 'monthly'))).toEqual({ plan: 'pro', period: 'monthly' });
-    expect(requirePlanForProduct(requireProductId('pro', 'yearly'))).toEqual({ plan: 'pro', period: 'yearly' });
-    expect(requirePlanForProduct(requireProductId('max', 'monthly'))).toEqual({ plan: 'max', period: 'monthly' });
-    expect(requirePlanForProduct(requireProductId('max', 'yearly'))).toEqual({ plan: 'max', period: 'yearly' });
+    expect(requirePlanForProduct(legacyProducts.plus.monthly)).toEqual({ plan: 'church', period: 'monthly' });
+    expect(requirePlanForProduct(legacyProducts.plus.yearly)).toEqual({ plan: 'church', period: 'yearly' });
+    expect(requirePlanForProduct(legacyProducts.pro.monthly)).toEqual({ plan: 'church', period: 'monthly' });
+    expect(requirePlanForProduct(legacyProducts.pro.yearly)).toEqual({ plan: 'church', period: 'yearly' });
+    expect(requirePlanForProduct(legacyProducts.max.monthly)).toEqual({ plan: 'ministry', period: 'monthly' });
+    expect(requirePlanForProduct(legacyProducts.max.yearly)).toEqual({ plan: 'ministry', period: 'yearly' });
   });
 
   it('takes the plan from the PRODUCT even when metadata claims another one', async () => {
@@ -598,13 +602,13 @@ describe('an unknown product id fails loudly and provisions nothing', () => {
     // actually charge. If they ever disagree, the charge wins.
     await provisionTenantFromDodoSubscription(
       subscription({
-        product_id: requireProductId('max', 'yearly'),
+        product_id: legacyProducts.max.yearly,
         metadata: { ...subscription().metadata, plan: 'plus', billing: 'monthly' },
       }),
     );
 
-    expect(tenantDoc()![1].plan).toBe('max');
-    expect(db.current.store.get(`users/${OWNER_UID}`).plan).toBe('max');
+    expect(tenantDoc()![1].plan).toBe('ministry');
+    expect(db.current.store.get(`users/${OWNER_UID}`).plan).toBe('ministry');
   });
 });
 

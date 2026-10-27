@@ -1,4 +1,5 @@
 import type { TenantPlan } from '@/types/tenant.types';
+import { LEGACY_PLAN_ALIASES } from '@/utils/plan-id';
 
 /**
  * Newsletter limits, in ONE place and ONE shape.
@@ -31,7 +32,7 @@ export interface EmailLimits {
 }
 
 export const DEFAULT_EMAIL_LIMITS: EmailLimits = Object.freeze({
-  monthlySends: Object.freeze({ free: 0, plus: 5000, pro: 5000, max: 10000 }),
+  monthlySends: Object.freeze({ free: 0, church: 5000, ministry: 10000 }),
   pack: Object.freeze({ size: 10000, priceUsd: null }),
   warnAtPercent: 80,
   newChurch: Object.freeze({ dailyCap: 500, days: 14 }),
@@ -39,7 +40,22 @@ export const DEFAULT_EMAIL_LIMITS: EmailLimits = Object.freeze({
   autoPause: Object.freeze({ bounceRate: 0.05, complaintRate: 0.003, minSent: 100 }),
 });
 
-const PLANS: readonly TenantPlan[] = ['free', 'plus', 'pro', 'max'];
+const PLANS: readonly TenantPlan[] = ['free', 'church', 'ministry'];
+
+/**
+ * The keys a tier's stored allowance may sit under: its own id first, then the
+ * retired ids that resolve to it. `platform_config/email_limits` is a live
+ * document a super admin edited under the old ids and nothing migrates it, so a
+ * value saved as `max` still applies to Ministry until it is saved again.
+ */
+const STORED_KEYS: Readonly<Record<TenantPlan, readonly string[]>> = Object.freeze(
+  Object.fromEntries(
+    PLANS.map((p) => [
+      p,
+      [p, ...Object.entries(LEGACY_PLAN_ALIASES).filter(([, to]) => to === p).map(([legacy]) => legacy)],
+    ]),
+  ) as unknown as Record<TenantPlan, readonly string[]>,
+);
 
 const isInt = (v: unknown, min: number, max = Number.MAX_SAFE_INTEGER): v is number =>
   typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
@@ -57,7 +73,12 @@ export function resolveLimits(raw: unknown): EmailLimits {
   const nc = obj(r.newChurch);
   const ap = obj(r.autoPause);
   return {
-    monthlySends: Object.fromEntries(PLANS.map((p) => [p, isInt(monthly[p], 0) ? monthly[p] : d.monthlySends[p]])) as Record<TenantPlan, number>,
+    monthlySends: Object.fromEntries(
+      PLANS.map((p) => {
+        const key = STORED_KEYS[p].find((k) => isInt(monthly[k], 0));
+        return [p, key === undefined ? d.monthlySends[p] : monthly[key]];
+      }),
+    ) as Record<TenantPlan, number>,
     pack: {
       size: isInt(pack.size, 1) ? pack.size : d.pack.size,
       priceUsd: typeof pack.priceUsd === 'number' && pack.priceUsd >= 0 ? pack.priceUsd : null,

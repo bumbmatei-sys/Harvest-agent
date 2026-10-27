@@ -33,12 +33,10 @@ import type { PricedPlan } from '@/types/tenant.types';
 // ── A second implementation, with no knowledge of Dodo ───────────────────────
 
 const LEDGER_SKUS: Record<`${PricedPlan}:${BillingPeriod}`, string> = {
-  'plus:monthly': 'SKU-IND-M',
-  'plus:yearly': 'SKU-IND-Y',
-  'pro:monthly': 'SKU-TEAM-M',
-  'pro:yearly': 'SKU-TEAM-Y',
-  'max:monthly': 'SKU-MIN-M',
-  'max:yearly': 'SKU-MIN-Y',
+  'church:monthly': 'SKU-IND-M',
+  'church:yearly': 'SKU-IND-Y',
+  'ministry:monthly': 'SKU-MIN-M',
+  'ministry:yearly': 'SKU-MIN-Y',
 };
 
 /**
@@ -128,7 +126,7 @@ describe('a second implementation satisfies the interface', () => {
 
   it('creates a checkout for a plan', async () => {
     const checkout = await provider.createPlanCheckout({
-      plan: 'max',
+      plan: 'ministry',
       period: 'yearly',
       returnUrl: 'https://grace.theharvest.app/?paid=1',
       cancelUrl: 'https://grace.theharvest.app/pricing',
@@ -142,7 +140,7 @@ describe('a second implementation satisfies the interface', () => {
 
   it('reads a subscription back as the app’s own vocabulary', async () => {
     const { reference } = await provider.createPlanCheckout({
-      plan: 'pro',
+      plan: 'church',
       period: 'monthly',
       returnUrl: 'https://x.test/ok',
       cancelUrl: 'https://x.test/no',
@@ -150,7 +148,7 @@ describe('a second implementation satisfies the interface', () => {
     });
 
     const sub = await provider.getSubscription(reference);
-    expect(sub).toMatchObject({ id: reference, status: 'pending', plan: 'pro', period: 'monthly' });
+    expect(sub).toMatchObject({ id: reference, status: 'pending', plan: 'church', period: 'monthly' });
   });
 
   it('maps its own failure state onto `grace`', async () => {
@@ -159,7 +157,7 @@ describe('a second implementation satisfies the interface', () => {
     // one word and does not care which processor produced it.
     const ledger = new LedgerBillingProvider();
     const { reference } = await ledger.createPlanCheckout({
-      plan: 'plus',
+      plan: 'church',
       period: 'monthly',
       returnUrl: 'https://x.test/ok',
       cancelUrl: 'https://x.test/no',
@@ -174,7 +172,7 @@ describe('a second implementation satisfies the interface', () => {
     // REP-4's recorded decision is downgrade, never lock out. The interface has
     // to be able to say "stop renewing" separately from "stop now".
     const { reference } = await provider.createPlanCheckout({
-      plan: 'plus',
+      plan: 'church',
       period: 'yearly',
       returnUrl: 'https://x.test/ok',
       cancelUrl: 'https://x.test/no',
@@ -189,7 +187,7 @@ describe('a second implementation satisfies the interface', () => {
 
   it('cancels immediately when asked to', async () => {
     const { reference } = await provider.createPlanCheckout({
-      plan: 'plus',
+      plan: 'church',
       period: 'monthly',
       returnUrl: 'https://x.test/ok',
       cancelUrl: 'https://x.test/no',
@@ -202,7 +200,7 @@ describe('a second implementation satisfies the interface', () => {
   it('resolves a plan from ITS OWN product reference, not a Dodo product id', () => {
     // `productRef` is deliberately vague so each implementation can mean its own
     // thing: a SKU here, a product id in Dodo, a price id in Stripe.
-    expect(provider.resolvePlanFromProductRef('SKU-MIN-Y')).toEqual({ plan: 'max', period: 'yearly' });
+    expect(provider.resolvePlanFromProductRef('SKU-MIN-Y')).toEqual({ plan: 'ministry', period: 'yearly' });
     expect(provider.resolvePlanFromProductRef('pdt_0NlAMMsQBzMvRVNCY7zws')).toBeNull();
   });
 });
@@ -250,7 +248,7 @@ describe('the Dodo implementation satisfies the interface too', () => {
 
   it('resolves the catalogue’s product ids through the neutral method name', () => {
     expect(dodo.resolvePlanFromProductRef('pdt_0NlAMMsQBzMvRVNCY7zws')).toEqual({
-      plan: 'max',
+      plan: 'ministry',
       period: 'yearly',
     });
     expect(dodo.resolvePlanFromProductRef('SKU-MIN-Y')).toBeNull();
@@ -294,7 +292,7 @@ describe('the Dodo implementation satisfies the interface too', () => {
     ).toEqual({
       id: 'sub_abc',
       status: 'grace',
-      plan: 'pro',
+      plan: 'church',
       period: 'monthly',
       cancelAtPeriodEnd: false,
       currentPeriodEndsAt: '2026-09-11T00:00:00Z',

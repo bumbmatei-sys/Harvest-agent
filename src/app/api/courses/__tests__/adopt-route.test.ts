@@ -152,41 +152,41 @@ describe('POST /api/courses/adopt', () => {
 
   describe('the plan cap, resolved server-side', () => {
     it('403s at the cap', async () => {
-      h.tenantDoc = { data: () => ({ plan: 'plus' }) }; // 2
-      h.ownCount = 1;
-      h.adoptedCount = 1;
+      h.tenantDoc = { data: () => ({ plan: 'church' }) }; // 5
+      h.ownCount = 3;
+      h.adoptedCount = 2;
       const res = await POST(req(GOOD));
       expect(res.status).toBe(403);
-      expect(await res.json()).toMatchObject({ code: 'course_limit_reached', maxCourses: 2 });
+      expect(await res.json()).toMatchObject({ code: 'course_limit_reached', maxCourses: 5 });
       expect(h.writes).toHaveLength(0);
     });
 
     it('counts own courses AND adoptions, not just one', async () => {
-      h.tenantDoc = { data: () => ({ plan: 'plus' }) };
-      h.ownCount = 2;
+      h.tenantDoc = { data: () => ({ plan: 'church' }) };
+      h.ownCount = 5;
       h.adoptedCount = 0;
       expect((await POST(req(GOOD))).status).toBe(403);
     });
 
     it('allows the write under the cap', async () => {
-      h.tenantDoc = { data: () => ({ plan: 'plus' }) };
-      h.ownCount = 1;
-      h.adoptedCount = 0;
+      h.tenantDoc = { data: () => ({ plan: 'church' }) };
+      h.ownCount = 3;
+      h.adoptedCount = 1;
       expect((await POST(req(GOOD))).status).toBe(200);
       expect(h.writes).toHaveLength(1);
     });
 
-    it('allows an adoption under the Ministry (max) cap', async () => {
+    it('allows an adoption under the Ministry cap', async () => {
       // Was "treats -1 as unlimited" on ultra. No tier is unlimited now, so this
       // pins the under-cap branch on the top tier (15) instead.
-      h.tenantDoc = { data: () => ({ plan: 'max' }) };
+      h.tenantDoc = { data: () => ({ plan: 'ministry' }) };
       h.ownCount = 10;
       h.adoptedCount = 2;
       expect((await POST(req(GOOD))).status).toBe(200);
     });
 
-    it('blocks an adoption at the Ministry (max) cap of 15', async () => {
-      h.tenantDoc = { data: () => ({ plan: 'max' }) };
+    it('blocks an adoption at the Ministry cap of 15', async () => {
+      h.tenantDoc = { data: () => ({ plan: 'ministry' }) };
       h.ownCount = 10;
       h.adoptedCount = 5;
       const res = await POST(req(GOOD));
@@ -194,18 +194,31 @@ describe('POST /api/courses/adopt', () => {
       expect(await res.json()).toMatchObject({ maxCourses: 15 });
     });
 
-    it('fails closed to plus when the tenant doc carries no plan', async () => {
-      h.tenantDoc = { data: () => ({}) };
-      h.ownCount = 2;
+    it.each([
+      ['plus', 5],
+      ['pro', 5],
+      ['max', 15],
+    ])('reads a stored legacy %s as the tier it became (cap %i)', async (legacy, cap) => {
+      h.tenantDoc = { data: () => ({ plan: legacy }) };
+      h.ownCount = cap;
+      h.adoptedCount = 0;
       const res = await POST(req(GOOD));
       expect(res.status).toBe(403);
-      expect(await res.json()).toMatchObject({ maxCourses: 2 });
+      expect(await res.json()).toMatchObject({ maxCourses: cap });
+    });
+
+    it('fails closed to Church when the tenant doc carries no plan', async () => {
+      h.tenantDoc = { data: () => ({}) };
+      h.ownCount = 5;
+      const res = await POST(req(GOOD));
+      expect(res.status).toBe(403);
+      expect(await res.json()).toMatchObject({ maxCourses: 5 });
     });
 
     it('ignores any plan the CLIENT claims — only the tenant doc is trusted', async () => {
-      h.tenantDoc = { data: () => ({ plan: 'plus' }) };
-      h.ownCount = 2;
-      const res = await POST(req({ ...GOOD, plan: 'max', maxCourses: -1 }));
+      h.tenantDoc = { data: () => ({ plan: 'church' }) };
+      h.ownCount = 5;
+      const res = await POST(req({ ...GOOD, plan: 'ministry', maxCourses: -1 }));
       expect(res.status).toBe(403);
     });
   });

@@ -279,9 +279,9 @@ export async function POST(request: NextRequest) {
 
     // Plan gate — derived from the `automatedBlog` matrix cell rather than a
     // literal tier list, so the gate follows the matrix instead of drifting from
-    // it. Unknown/missing plan fails closed to 'plus' via toTenantPlan.
+    // it. Unknown/missing plan fails closed to 'church' via toTenantPlan.
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
-    const plan = tenantDoc.data()?.plan || 'plus';
+    const plan = tenantDoc.data()?.plan;
     if (!hasFeature(toTenantPlan(plan), 'automatedBlog')) {
       return NextResponse.json(
         { error: `Automated blog requires the ${AUTOMATED_BLOG_MIN_PLAN} plan` },

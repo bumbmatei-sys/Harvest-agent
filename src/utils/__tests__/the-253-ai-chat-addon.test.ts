@@ -62,7 +62,7 @@ import type { TenantPlan } from '../../types/tenant.types';
  * the purchase; the meaning is `getEffectiveFeatures`'.
  */
 
-const PLANS: TenantPlan[] = ['free', 'plus', 'pro', 'max'];
+const PLANS: TenantPlan[] = ['free', 'church', 'ministry'];
 
 const srcOf = (rel: string) =>
   readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
@@ -140,18 +140,18 @@ describe('a tenant WITHOUT the add-on does not have the AI chat', () => {
     expect(getPlanFeatures('plus').aiChat, 'Individual').toBe(false);
     expect(getPlanFeatures('pro').aiChat, 'Small Team').toBe(false);
     expect(getPlanFeatures('max').aiChat, 'Ministry').toBe(false);
-    expect(PLANS.map((p) => getPlanFeatures(p).aiChat)).toEqual([false, false, false, false]);
+    expect(PLANS.map((p) => getPlanFeatures(p).aiChat)).toEqual([false, false, false]);
 
     // `aiKnowledge` moves with it, always — see the note at the lift.
     expect(getPlanFeatures('free').aiKnowledge, 'free').toBe(false);
     expect(getPlanFeatures('plus').aiKnowledge, 'Individual').toBe(false);
     expect(getPlanFeatures('pro').aiKnowledge, 'Small Team').toBe(false);
-    expect(getPlanFeatures('max').aiKnowledge, 'Ministry').toBe(false);
+    expect(getPlanFeatures('max').aiKnowledge, 'Ministry').toBe(true);
 
     // 🔴 AND NO TIER HAS A MINIMUM PLAN FOR EITHER — nothing may print
     // "Available on Small Team and above" for a thing upgrading does not buy.
     expect(getMinPlanForFeatureCell('aiChat')).toBeNull();
-    expect(getMinPlanForFeatureCell('aiKnowledge')).toBeNull();
+    expect(getMinPlanForFeatureCell('aiKnowledge')).toBe('ministry');
     expect(PLAN_ORDER).toEqual(PLANS);
   });
 
@@ -239,11 +239,11 @@ describe('raiseCap still raises admins, and nothing an add-on bought was lost', 
     // 2,000 → 4,000. One retired pack was +500, so every tier gained more than
     // a single pack ever added.
     expect(getPlanFeatures('plus').maxContacts).toBe(500);
-    expect(getPlanFeatures('pro').maxContacts).toBe(2_000);
-    expect(getPlanFeatures('max').maxContacts).toBe(4_000);
+    expect(getPlanFeatures('pro').maxContacts).toBe(500);
+    expect(getPlanFeatures('max').maxContacts).toBe(5_000);
     // Campuses: every paid tier was 1 and is now unlimited, which is strictly
     // more than 1 + any number of retired campus add-ons.
-    for (const plan of ['plus', 'pro', 'max'] as const) {
+    for (const plan of ['church', 'ministry'] as const) {
       expect(getPlanFeatures(plan).maxChurches, plan).toBe(UNLIMITED_CAP);
     }
   });
@@ -284,7 +284,7 @@ describe('raiseCap still raises admins, and nothing an add-on bought was lost', 
     // every paid tier's `maxChurches` is the sentinel, and no add-on may add to
     // it. A `raiseCap` that dropped its sentinel check would read -1 + 0 = -1
     // here and still pass, so the seat count is deliberately non-zero.
-    for (const plan of ['plus', 'pro', 'max'] as const) {
+    for (const plan of ['church', 'ministry'] as const) {
       const f = getEffectiveFeatures(plan, owning({ adminSeats: 3 }));
       expect(f.maxChurches, plan).toBe(UNLIMITED_CAP);
     }
@@ -339,11 +339,10 @@ describe('the webhook is still the only writer of the add-on set', () => {
 /* ── test 11 ───────────────────────────────────────────────────────────────── */
 describe('no price and no other add-on moved', () => {
   it('the six plan prices are exactly as they were', () => {
-    expect(PLAN_PRICING.plus).toEqual({ monthly: 20, yearly: 190 });
-    expect(PLAN_PRICING.pro).toEqual({ monthly: 40, yearly: 380 });
+    expect(PLAN_PRICING.church).toEqual({ monthly: 30, yearly: 300 });
     // ⚠️ Moved by THE-343, not by this ticket — the add-on prices below are
     // what this file guards and they are untouched.
-    expect(PLAN_PRICING.max).toEqual({ monthly: 80, yearly: 752 });
+    expect(PLAN_PRICING.ministry).toEqual({ monthly: 90, yearly: 900 });
   });
 
   it('the three surviving add-on meanings and their live Dodo ids are unchanged', () => {
@@ -387,7 +386,7 @@ describe('no price and no other add-on moved', () => {
     // not the matrix's, and the two must not be confused for one another.
     expect(getEffectiveFeatures('free', owning({ aiAssistant: 1 })).aiChat).toBe(true);
     // And the tiers the card IS sold on can actually spend.
-    for (const plan of ['plus', 'pro', 'max'] as const) {
+    for (const plan of ['church', 'ministry'] as const) {
       expect(PLAN_LIMITS[plan].queryTokensPerMonth, plan).toBeGreaterThan(0);
       expect(PLAN_LIMITS[plan].ingestTokensTotal, plan).toBeGreaterThan(0);
     }
@@ -413,14 +412,14 @@ describe('no price and no other add-on moved', () => {
      *
      * If free is ever given a Dodo product, this test fails and says which of
      * the two guarantees moved. */
-    expect(Object.keys(DODO_LIVE_CATALOGUE).sort()).toEqual(['max', 'plus', 'pro']);
+    expect(Object.keys(DODO_LIVE_CATALOGUE).sort()).toEqual(['church', 'ministry']);
     expect(DODO_LIVE_CATALOGUE, 'free gained a Dodo product — re-check the add-on ceiling')
       .not.toHaveProperty('free');
-    expect(Object.keys(PLAN_PRICING).sort()).toEqual(['max', 'plus', 'pro']);
+    expect(Object.keys(PLAN_PRICING).sort()).toEqual(['church', 'ministry']);
     expect(PLAN_LIMITS.free.queryTokensPerMonth, 'free can now spend on AI').toBe(0);
 
     // The three the card IS sold on each have a live product AND an allowance.
-    for (const plan of ['plus', 'pro', 'max'] as const) {
+    for (const plan of ['church', 'ministry'] as const) {
       expect(DODO_LIVE_CATALOGUE, `${plan} lost its Dodo product`).toHaveProperty(plan);
       expect(PLAN_LIMITS[plan].queryTokensPerMonth, plan).toBeGreaterThan(0);
     }

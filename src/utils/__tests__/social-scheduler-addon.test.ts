@@ -25,7 +25,7 @@ describe('social scheduler add-on', () => {
   // Matei approved 2026-10-21: "Include the scheduler in the Ministry plan".
   it('is a plan cell on Ministry and false on every other tier', () => {
     for (const plan of PLAN_ORDER) {
-      expect(getPlanFeatures(plan).socialScheduler, plan).toBe(plan === 'max');
+      expect(getPlanFeatures(plan).socialScheduler, plan).toBe(plan === 'ministry');
     }
   });
 
@@ -39,7 +39,7 @@ describe('social scheduler add-on', () => {
 
   it('a positive count turns the cell on and a junk count does not', () => {
     for (const plan of PLAN_ORDER) {
-      expect(getEffectiveFeatures(plan, NO_ADDONS).socialScheduler, plan).toBe(plan === 'max');
+      expect(getEffectiveFeatures(plan, NO_ADDONS).socialScheduler, plan).toBe(plan === 'ministry');
       expect(
         getEffectiveFeatures(plan, { ...NO_ADDONS, socialScheduler: 1 }).socialScheduler,
         plan,
@@ -53,7 +53,7 @@ describe('social scheduler add-on', () => {
   it('the other add-ons do not turn it on', () => {
     const owned = { ...NO_ADDONS, aiAssistant: 3, adminSeats: 8, unlimitedContacts: true };
     for (const plan of PLAN_ORDER) {
-      expect(getEffectiveFeatures(plan, owned).socialScheduler, plan).toBe(plan === 'max');
+      expect(getEffectiveFeatures(plan, owned).socialScheduler, plan).toBe(plan === 'ministry');
     }
   });
 

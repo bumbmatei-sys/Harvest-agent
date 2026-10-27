@@ -11,6 +11,7 @@ import {
   formatPlanMonthlyHeadline,
   formatPlanPrice,
   isPricedPlan,
+  getPlanFeatures,
   type BillingTerm,
 } from '../utils/plan-features';
 import { authFetch } from '../utils/auth-fetch';
@@ -32,10 +33,15 @@ interface AdminUpgradePageProps {
 // which offers only tiers that can be bought. Typing it on the full union would
 // force a `free` entry that nothing renders — a dead cell that later reads as
 // the free tier's advertised feature list and drifts from the matrix unnoticed.
+//
+// ⚠️ THE NUMBERS ARE DERIVED FROM THE MATRIX, never typed: a hand-written "500
+// contacts" is how a highlight outlives a reprice. Only the wording is written
+// here, and anything not built yet says so.
+const people = (plan: PricedPlan) => `${getPlanFeatures(plan).maxContacts.toLocaleString()} people`;
+const admins = (plan: PricedPlan) => `${getPlanFeatures(plan).maxAdmins} admins`;
 const PLAN_HIGHLIGHTS: Record<PricedPlan, string[]> = {
-  plus: ['Blog & Posts', 'Fundraising campaigns', 'Mobile app (PWA)', '150 contacts', '2 admins'],
-  pro: ['Everything in Individual', 'AI Chat & Knowledge', 'CRM & Check-In', '500 contacts', '5 admins'],
-  max: ['Everything in Small Team', 'Custom domain & branding', 'Accounting & Giving Statements', '2,000 contacts', '15 admins'],
+  church: ['One community: feed & chat', 'Courses, blog & notes', 'Donations & fundraising campaigns', people('church'), admins('church')],
+  ministry: ['Everything in Church', 'Events, forms & check-in', 'Giving records & statements', 'Custom branding', `${people('ministry')} & ${admins('ministry')}`],
 };
 
 const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenantId, email }) => {
@@ -197,12 +203,12 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
   };
 
   const currentIdx = currentPlan ? PLAN_ORDER.indexOf(currentPlan) : -1;
-  // Recommended = the plan one tier above current (Community for new/super-admin).
+  // Recommended = the plan one tier above current (Ministry for new/super-admin).
   // null when already on the top tier — never recommend a downgrade.
   const recommendedId: TenantPlan | null =
     currentIdx >= 0
       ? (currentIdx < PLAN_ORDER.length - 1 ? PLAN_ORDER[currentIdx + 1] : null)
-      : 'max';
+      : 'ministry';
   const currentName = currentPlan ? PLAN_DISPLAY_NAMES[currentPlan] : null;
 
   return (

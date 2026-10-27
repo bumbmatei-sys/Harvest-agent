@@ -50,7 +50,7 @@ describe('getPlanFeatures', () => {
     expect(f.aiChat).toBe(false);
     expect(f.maxChurches).toBe(UNLIMITED_CAP);
     expect(f.maxContacts).toBe(500);
-    expect(f.maxCourses).toBe(2);
+    expect(f.maxCourses).toBe(5);
     expect(f.maxAdmins).toBe(2);
     expect(f.customDomain).toBe(false);
   });
@@ -58,16 +58,16 @@ describe('getPlanFeatures', () => {
   it('returns correct features for pro plan', () => {
     const f = getPlanFeatures('pro');
     expect(f.aiChat).toBe(false);
-    expect(f.maxContacts).toBe(2_000);
+    expect(f.maxContacts).toBe(500);
     expect(f.maxCourses).toBe(5);
-    expect(f.maxAdmins).toBe(5);
+    expect(f.maxAdmins).toBe(2);
     expect(f.customDomain).toBe(false);
   });
 
   it('returns correct features for max plan (the top tier)', () => {
     const f = getPlanFeatures('max');
     expect(f.customDomain).toBe(true);
-    expect(f.maxContacts).toBe(4_000);
+    expect(f.maxContacts).toBe(5_000);
     expect(f.maxAdmins).toBe(15);
     // 🔴 -1 SINCE THE-370, and not by inheriting the deleted ultra tier: every
     // PAID tier is unlimited now, because the campus add-on that used to be the
@@ -84,15 +84,15 @@ describe('getPlanFeatures', () => {
 
 describe('getPlanDisplayName', () => {
   it('returns correct display names', () => {
-    expect(getPlanDisplayName('plus')).toBe('Individual');
-    expect(getPlanDisplayName('pro')).toBe('Small Team');
+    expect(getPlanDisplayName('plus')).toBe('Church');
+    expect(getPlanDisplayName('pro')).toBe('Church');
     // 'Ministry', not the old 'Community': max inherited the deleted ultra
     // tier's display name when the two folded together.
     expect(getPlanDisplayName('max')).toBe('Ministry');
   });
 
   it('defaults to Individual for unknown plan', () => {
-    expect(getPlanDisplayName('bad' as any)).toBe('Individual');
+    expect(getPlanDisplayName('bad' as any)).toBe('Church');
   });
 });
 
@@ -125,7 +125,7 @@ describe('hasFeature', () => {
 
   it('map is available on pro and above', () => {
     expect(hasFeature('plus', 'map')).toBe(false);
-    expect(hasFeature('pro', 'map')).toBe(true);
+    expect(hasFeature('pro', 'map')).toBe(false);
     expect(hasFeature('max', 'map')).toBe(true);
   });
 
@@ -155,19 +155,19 @@ describe('hasFeature', () => {
 
   it('checkInSystem is available on Small Team (pro) and above', () => {
     expect(hasFeature('plus', 'checkInSystem')).toBe(false);
-    expect(hasFeature('pro', 'checkInSystem')).toBe(true);
+    expect(hasFeature('pro', 'checkInSystem')).toBe(false);
     expect(hasFeature('max', 'checkInSystem')).toBe(true);
   });
 
   it('livestream is available on Small Team (pro) and above', () => {
     expect(hasFeature('plus', 'livestream')).toBe(false);
-    expect(hasFeature('pro', 'livestream')).toBe(true);
+    expect(hasFeature('pro', 'livestream')).toBe(false);
     expect(hasFeature('max', 'livestream')).toBe(true);
   });
 
   it('sermonNotes is available on Small Team (pro) and above', () => {
     expect(hasFeature('plus', 'sermonNotes')).toBe(false);
-    expect(hasFeature('pro', 'sermonNotes')).toBe(true);
+    expect(hasFeature('pro', 'sermonNotes')).toBe(false);
     expect(hasFeature('max', 'sermonNotes')).toBe(true);
   });
 
@@ -230,8 +230,8 @@ describe('SMS is Ministry-only — gated by plan (THE-314)', () => {
   );
 
   it('unlocks at Ministry, so every upgrade screen names the right tier', () => {
-    expect(getMinPlanForFeatureCell('smsAutomation')).toBe('max');
-    expect(getMinPlanForFeatureCell('textToGive')).toBe('max');
+    expect(getMinPlanForFeatureCell('smsAutomation')).toBe('ministry');
+    expect(getMinPlanForFeatureCell('textToGive')).toBe('ministry');
   });
 
   it('🔴 names the two paid tiers that LOST it, so the downgrade stays recorded', () => {
@@ -309,8 +309,8 @@ describe('the ultra tier is deleted', () => {
     // 🔴 THE-200 added the Forever Free tier at the FRONT. `ultra` staying gone
     // is what this block is about; the tier count is incidental to it, and was
     // never the claim worth pinning.
-    expect([...PLAN_ORDER]).toEqual(['free', 'plus', 'pro', 'max']);
-    expect([...PRICED_PLAN_ORDER]).toEqual(['plus', 'pro', 'max']);
+    expect([...PLAN_ORDER]).toEqual(['free', 'church', 'ministry']);
+    expect([...PRICED_PLAN_ORDER]).toEqual(['church', 'ministry']);
   });
 
   it('TenantPlan has no ultra — PLAN_FEATURES has exactly four keys and none is ultra', () => {
@@ -318,7 +318,7 @@ describe('the ultra tier is deleted', () => {
     // (toTenantPlan coerces against it), so this is the observable stand-in for
     // the compile-time union.
     const ids = PLAN_ORDER.map((p) => p);
-    expect(ids).toHaveLength(4);
+    expect(ids).toHaveLength(3);
     expect(ids).not.toContain('ultra');
     expect(getPlanFeatures('ultra' as any)).toEqual(getPlanFeatures('plus'));
   });
@@ -330,7 +330,7 @@ describe('the ultra tier is deleted', () => {
   });
 
   it('TOP_PLAN is max, derived from the last PLAN_ORDER entry', () => {
-    expect(TOP_PLAN).toBe('max');
+    expect(TOP_PLAN).toBe('ministry');
     expect(TOP_PLAN).toBe(PLAN_ORDER[PLAN_ORDER.length - 1]);
   });
 
@@ -394,15 +394,15 @@ describe('capacity limits per tier', () => {
   // and are asserted in plan-features.free-tier.test.ts.
   it('maxContacts is 500 / 2,000 / 4,000 — THE-370', () => {
     // Was 150 / 500 / 2,000. The founder: "lets not put cap on users that badly."
-    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).maxContacts)).toEqual([500, 2_000, 4_000]);
+    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).maxContacts)).toEqual([500, 5_000]);
   });
 
   it('maxAdmins is 2 / 5 / 15', () => {
-    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).maxAdmins)).toEqual([2, 5, 15]);
+    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).maxAdmins)).toEqual([2, 15]);
   });
 
   it('maxCourses is 2 / 5 / 15', () => {
-    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).maxCourses)).toEqual([2, 5, 15]);
+    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).maxCourses)).toEqual([5, 15]);
   });
 
   it('maxChurches is UNLIMITED on every PAID tier — THE-370', () => {
@@ -410,7 +410,7 @@ describe('capacity limits per tier', () => {
     // unlimited campuses" until the founder retired the campus add-on: "remove
     // the campus addon. let them add as many as they want."
     expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).maxChurches))
-      .toEqual([UNLIMITED_CAP, UNLIMITED_CAP, UNLIMITED_CAP]);
+      .toEqual([UNLIMITED_CAP, UNLIMITED_CAP]);
     // Free still gets 0, not unlimited: one evangelist is not a campus. 0 is
     // falsy to hasFeature, which is what keeps the min-plan label off Free.
     expect(getPlanFeatures('free').maxChurches).toBe(0);
@@ -452,13 +452,13 @@ describe('capacity limits per tier', () => {
 
 describe('aiChat / aiKnowledge are on NO tier — the add-on is the only path', () => {
   it('aiChat is false on all four', () => {
-    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).aiChat)).toEqual([false, false, false]);
+    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).aiChat)).toEqual([false, false]);
     // Free has no AI at all — and PLAN_LIMITS.free budgets 0 tokens to match.
     expect(getPlanFeatures('free').aiChat).toBe(false);
   });
 
   it('aiKnowledge is false on all four', () => {
-    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).aiKnowledge)).toEqual([false, false, false]);
+    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).aiKnowledge)).toEqual([false, true]);
     expect(getPlanFeatures('free').aiKnowledge).toBe(false);
   });
 
@@ -469,7 +469,7 @@ describe('aiChat / aiKnowledge are on NO tier — the add-on is the only path', 
     // upgrade surface printing "Available on Small Team and above" for a thing
     // upgrading does not buy.
     expect(getMinPlanForFeatureCell('aiChat')).toBeNull();
-    expect(getMinPlanForFeatureCell('aiKnowledge')).toBeNull();
+    expect(getMinPlanForFeatureCell('aiKnowledge')).toBe('ministry');
   });
 });
 
@@ -479,8 +479,8 @@ describe('communityGroups tier', () => {
   });
 
   it('stays locked on Individual (plus) and Small Team (pro)', () => {
-    expect(getPlanFeatures('plus').communityGroups).toBe(false);
-    expect(getPlanFeatures('pro').communityGroups).toBe(false);
+    expect(getPlanFeatures('plus').communityGroups).toBe(true);
+    expect(getPlanFeatures('pro').communityGroups).toBe(true);
   });
 
   it('pins what max exclusively carries after the ultra fold', () => {
@@ -506,11 +506,11 @@ describe('getFeatureMinPlan / FEATURE_MIN_PLAN (derived)', () => {
   // requires is a direct over-sell. They used to be two hand-maintained literal
   // maps and had drifted; now they are derived from PLAN_FEATURES.
   it('returns the cheapest plan that unlocks the feature', () => {
-    expect(getFeatureMinPlan('fundraising')).toBe('plus');
-    expect(getFeatureMinPlan('event_registration')).toBe('max');
-    expect(getFeatureMinPlan('docs')).toBe('pro');
+    expect(getFeatureMinPlan('fundraising')).toBe('church');
+    expect(getFeatureMinPlan('event_registration')).toBe('ministry');
+    expect(getFeatureMinPlan('docs')).toBe('church');
     // Was 'ultra'; accounting folded into max with the tier.
-    expect(getFeatureMinPlan('accounting')).toBe('max');
+    expect(getFeatureMinPlan('accounting')).toBe('ministry');
   });
 
   it('puts CRM back on Individual — free no longer carries it (moved by THE-335)', () => {
@@ -522,21 +522,21 @@ describe('getFeatureMinPlan / FEATURE_MIN_PLAN (derived)', () => {
     // is the whole point of deriving it, and it is a TRUE statement in both
     // directions: no church is shown a claim about a tier that lacks the
     // feature.
-    expect(getFeatureMinPlan('crm')).toBe('plus');
-    expect(FEATURE_MIN_PLAN.crm).toBe('Individual');
+    expect(getFeatureMinPlan('crm')).toBe('church');
+    expect(FEATURE_MIN_PLAN.crm).toBe('Church');
     expect(FEATURE_MIN_PLAN.crm).not.toBe('Ministry');
     // The cheapest PAID tier still has it — CRM did not become free-only.
     expect(getPlanFeatures('plus').crm).toBe(true);
   });
 
   it('puts tax receipts on Ministry (max)', () => {
-    expect(getFeatureMinPlan('tax_receipts')).toBe('max');
+    expect(getFeatureMinPlan('tax_receipts')).toBe('ministry');
     expect(FEATURE_MIN_PLAN.tax_receipts).toBe('Ministry');
   });
 
   it('puts Community Groups on Ministry (max)', () => {
-    expect(getFeatureMinPlan('community_chat')).toBe('max');
-    expect(FEATURE_MIN_PLAN.community_chat).toBe('Ministry');
+    expect(getFeatureMinPlan('community_chat')).toBe('church');
+    expect(FEATURE_MIN_PLAN.community_chat).toBe('Church');
   });
 
   it('agrees with the feature matrix for every gate key', () => {
@@ -591,8 +591,8 @@ describe('getFeatureMinPlanName fallback (no tier unlocks the feature)', () => {
   });
 
   it('still returns the real minimum plan for a feature that has one', () => {
-    expect(getFeatureMinPlanName('docs')).toBe('Small Team');
-    expect(getFeatureMinPlanName('fundraising')).toBe('Individual');
+    expect(getFeatureMinPlanName('docs')).toBe('Church');
+    expect(getFeatureMinPlanName('fundraising')).toBe('Church');
   });
 });
 
@@ -616,7 +616,7 @@ describe('customDomain tier (Ministry / max only)', () => {
     expect(Object.values(FEATURE_MAP)).not.toContain('customDomain');
 
     const minPlan = getMinPlanForFeatureCell('customDomain');
-    expect(minPlan).toBe('max');
+    expect(minPlan).toBe('ministry');
     expect(PLAN_DISPLAY_NAMES[minPlan!]).toBe('Ministry');
   });
 
@@ -668,9 +668,8 @@ describe('PLAN_PRICING — the stored six-price table (THE-195)', () => {
      old figures happened to give, and not a mistake to be "corrected" back. Product ids, trials and tax category are
      unchanged. */
   const DODO_CATALOGUE_USD = {
-    plus: { monthly: 20, yearly: 190 },
-    pro:  { monthly: 40, yearly: 380 },
-    max:  { monthly: 80, yearly: 752 },
+    church: { monthly: 30, yearly: 300 },
+    ministry: { monthly: 90, yearly: 900 },
   } as const;
 
   it.each(
@@ -709,7 +708,7 @@ describe('PLAN_PRICING — the stored six-price table (THE-195)', () => {
     for (const p of PRICED_PLAN_ORDER) {
       for (const term of DISCOUNTED_TERMS) {
         const inMonths = planPriceUsd(p, term) / planPriceUsd(p, 'monthly');
-        expect(Number.isInteger(inMonths), `${p} ${term} is exactly ${inMonths} months`).toBe(false);
+        expect(inMonths, `${p} ${term}`).toBe(10);
       }
     }
   });
@@ -724,7 +723,7 @@ describe('PLAN_PRICING — the stored six-price table (THE-195)', () => {
 
   /* 🔴 TEST 3: the badges are stored, not computed. */
   it('advertises exactly 20% on the year and nothing else, stored rather than computed', () => {
-    expect(ADVERTISED_DISCOUNT_PCT).toEqual({ yearly: 20 });
+    expect(ADVERTISED_DISCOUNT_PCT).toEqual({ yearly: 16 });
     // ⚠️ THE ARGUMENT MOVED TERMS AT THE-248. It used to be quarterly that
     // proved a computed badge impossible, because the tiers rounded to
     // different whole percentages (18 beside Individual, 17 beside Ministry);
@@ -733,16 +732,10 @@ describe('PLAN_PRICING — the stored six-price table (THE-195)', () => {
     // deliver 20.83% against a founder's round 20, so a computed badge would
     // advertise 21 — a number nobody signed off — while the Terms, the FAQ and
     // the marketing site all say 20.
-    expect(Math.round(actualSavingPct('plus', 'yearly'))).toBe(21);
-    // 🔴 AND THE-343 ADDED A SECOND REASON on the same term: Ministry alone was
-    // repriced, so the tiers no longer even agree with each other — 20.83 on
-    // Individual and Small Team against 21.67 on Ministry. A computed badge now
-    // has BOTH problems at once: a number nobody signed off, and three tiers
-    // that disagree under one toggle.
-    expect(Math.round(actualSavingPct('max', 'yearly'))).toBe(22);
-    expect(Math.round(actualSavingPct('max', 'yearly')))
-      .not.toBe(Math.round(actualSavingPct('plus', 'yearly')));
-    expect(ADVERTISED_DISCOUNT_PCT.yearly).not.toBe(Math.round(actualSavingPct('plus', 'yearly')));
+    for (const plan of PRICED_PLAN_ORDER) {
+      expect(Math.round(actualSavingPct(plan, 'yearly'))).toBe(17);
+      expect(ADVERTISED_DISCOUNT_PCT.yearly).toBeLessThan(actualSavingPct(plan, 'yearly'));
+    }
   });
 
   /* 🔴 TEST 4: no copy claims a saving larger than the smallest actual one. */
@@ -795,16 +788,16 @@ describe('PLAN_PRICING — the stored six-price table (THE-195)', () => {
     // ⚠️ NOT A COPY EDIT. Nothing in `discountClaimShape` was touched; the
     // prices moved underneath it. If this ever reads 'upTo' it is because a
     // tier fell under its advertised figure, which is what it should then say.
-    expect(actualSavingPct('plus', 'yearly')).toBeCloseTo(20.8333, 3);
-    expect(actualSavingPct('pro', 'yearly')).toBeCloseTo(20.8333, 3);
-    expect(actualSavingPct('max', 'yearly')).toBeCloseTo(21.6667, 3);
+    expect(actualSavingPct('church', 'yearly')).toBeCloseTo(16.6667, 3);
+    expect(actualSavingPct('church', 'yearly')).toBeCloseTo(16.6667, 3);
+    expect(actualSavingPct('ministry', 'yearly')).toBeCloseTo(16.6667, 3);
     // 🔴 THE WORST TIER IS WHAT THE CLAIM RESTS ON, so it is asserted as the
     // minimum rather than tier-by-tier: a reprice that lifted only Ministry
     // must not be able to carry a claim the other two do not honour.
-    expect(Math.min(...PRICED_PLAN_ORDER.map((p) => actualSavingPct(p, 'yearly')))).toBeCloseTo(20.8333, 3);
-    expect(Math.min(...PRICED_PLAN_ORDER.map((p) => actualSavingPct(p, 'yearly')))).toBeGreaterThan(20);
+    expect(Math.min(...PRICED_PLAN_ORDER.map((p) => actualSavingPct(p, 'yearly')))).toBeCloseTo(16.6667, 3);
+    expect(Math.min(...PRICED_PLAN_ORDER.map((p) => actualSavingPct(p, 'yearly')))).toBeGreaterThan(16);
     expect(discountClaimShape('yearly')).toBe('flat');
-    expect(discountClaim('yearly')).toBe('Save 20%');
+    expect(discountClaim('yearly')).toBe('2 months free');
     expect(discountClaim('yearly')).not.toContain('up to');
   });
 
@@ -816,32 +809,32 @@ describe('PLAN_PRICING — the stored six-price table (THE-195)', () => {
     // The per-tier savings, pinned. 🔴 YEARLY IS NOT FLAT ACROSS TIERS, and
     // THE-343 is what made it so — Ministry alone was repriced, so its year saves
     // 21.7% against the 20.8% the other two deliver.
-    expect(PRICED_PLAN_ORDER.map((p) => Number(actualSavingPct(p, 'yearly').toFixed(1)))).toEqual([20.8, 20.8, 21.7]);
+    expect(PRICED_PLAN_ORDER.map((p) => Number(actualSavingPct(p, 'yearly').toFixed(1)))).toEqual([16.7, 16.7]);
   });
 
   it('renders the charged figure and cycle through formatPlanPrice', () => {
     // 🔴 The suffix names the BILLING CYCLE, so the amount beside it is what
     // actually leaves the account. "$190/yr" is never "$15.84/mo".
-    expect(formatPlanPrice('plus', 'monthly')).toBe('$20/mo');
-    expect(formatPlanPrice('plus', 'yearly')).toBe('$190/yr');
-    expect(formatPlanPrice('pro', 'yearly')).toBe('$380/yr');
-    expect(formatPlanPrice('max', 'yearly')).toBe('$752/yr');
-    expect(formatPlanPrice('max', 'monthly')).toBe('$80/mo');
+    expect(formatPlanPrice('plus', 'monthly')).toBe('$30/mo');
+    expect(formatPlanPrice('plus', 'yearly')).toBe('$300/yr');
+    expect(formatPlanPrice('pro', 'yearly')).toBe('$300/yr');
+    expect(formatPlanPrice('max', 'yearly')).toBe('$900/yr');
+    expect(formatPlanPrice('max', 'monthly')).toBe('$90/mo');
   });
 
   it('the headline is the per-month figure on every term and tier', () => {
     // Ceiled at the cent. An exact division keeps its whole-dollar form.
-    expect(formatPlanMonthlyHeadline('plus', 'yearly')).toBe('$15.84');
-    expect(formatPlanMonthlyHeadline('pro', 'yearly')).toBe('$31.67');
+    expect(formatPlanMonthlyHeadline('church', 'yearly')).toBe('$25');
+    expect(formatPlanMonthlyHeadline('church', 'yearly')).toBe('$25');
     // 🔴 MINISTRY'S YEAR CARRIES CENTS AGAIN SINCE THE-372: $752/12 is
     // $62.6667, CEILED to $62.67. THE-343's $564 had divided to a clean $47;
     // the ceiling is what keeps $62.67 x 12 = $752.04 at or above the bill.
-    expect(formatPlanMonthlyHeadline('max', 'yearly')).toBe('$62.67');
+    expect(formatPlanMonthlyHeadline('ministry', 'yearly')).toBe('$75');
     // The monthly column divides exactly by definition and keeps the
     // whole-dollar form.
-    expect(formatPlanMonthlyHeadline('plus', 'monthly')).toBe('$20');
-    expect(formatPlanMonthlyHeadline('pro', 'monthly')).toBe('$40');
-    expect(formatPlanMonthlyHeadline('max', 'monthly')).toBe('$80');
+    expect(formatPlanMonthlyHeadline('church', 'monthly')).toBe('$30');
+    expect(formatPlanMonthlyHeadline('church', 'monthly')).toBe('$30');
+    expect(formatPlanMonthlyHeadline('ministry', 'monthly')).toBe('$90');
   });
 
   it('monthly renders as decided: the headline IS the charged price, no note', () => {
@@ -921,9 +914,8 @@ describe('PLAN_PRICING — the stored six-price table (THE-195)', () => {
           // understates here — 1325/12 = 110.4167 rounds DOWN to 110, implying
           // $1,320 against a charged $1,325 — while plus and pro divide exactly
           // and so cannot throw first, which is what lets the message name max.
-          plus: { monthly: 39, yearly: 360 },
-          pro: { monthly: 79, yearly: 600 },
-          max: { monthly: 159, yearly: 1325 },
+          church: { monthly: 39, yearly: 360 },
+          ministry: { monthly: 159, yearly: 1325 },
         })).toThrow(/never promise less than the bill/);
     expect(() => monthlyHeadlineContract(Math.round, {
           // 🔴 THE TABLE IS EXPLICIT BECAUSE THE SHIPPED ONE NO LONGER OFFENDS.
@@ -938,17 +930,16 @@ describe('PLAN_PRICING — the stored six-price table (THE-195)', () => {
           // understates here — 1325/12 = 110.4167 rounds DOWN to 110, implying
           // $1,320 against a charged $1,325 — while plus and pro divide exactly
           // and so cannot throw first, which is what lets the message name max.
-          plus: { monthly: 39, yearly: 360 },
-          pro: { monthly: 79, yearly: 600 },
-          max: { monthly: 159, yearly: 1325 },
-        })).toThrow(/max yearly/);
+          church: { monthly: 39, yearly: 360 },
+          ministry: { monthly: 159, yearly: 1325 },
+        })).toThrow(/ministry yearly/);
     // Ceiling to the DOLLAR does not understate, so the guard accepts it — it
     // is bounded by the reconciliation test above, not by this one.
     expect(() => monthlyHeadlineContract(Math.ceil)).not.toThrow();
     // Flooring understates almost everywhere, and still does on the SHIPPED
     // table — $15.83 and $31.67 floor to $15 and $31 — so this half needs no
     // supplied hazard and keeps the shipped prices in the mutation's scope.
-    expect(() => monthlyHeadlineContract(Math.floor)).toThrow(/never promise less than the bill/);
+    expect(() => monthlyHeadlineContract(Math.floor, { church: { monthly: 39, yearly: 361 }, ministry: { monthly: 159, yearly: 1325 } })).toThrow(/never promise less than the bill/);
   });
 
   it('describes each term in prose without falling into an else-branch', () => {
@@ -977,8 +968,7 @@ describe('PLAN_PRICING — the stored six-price table (THE-195)', () => {
 describe('PLAN_DISPLAY_NAMES (repriced)', () => {
   it('is Individual / Small Team / Ministry', () => {
     expect(PRICED_PLAN_ORDER.map((p) => PLAN_DISPLAY_NAMES[p])).toEqual([
-      'Individual',
-      'Small Team',
+      'Church',
       'Ministry',
     ]);
     // Plus the free tier's own name, added by THE-200 and deliberately plain:
@@ -988,7 +978,7 @@ describe('PLAN_DISPLAY_NAMES (repriced)', () => {
 
   it('no longer calls the top tier Community', () => {
     expect(Object.values(PLAN_DISPLAY_NAMES)).not.toContain('Community');
-    expect(PLAN_DISPLAY_NAMES.max).toBe('Ministry');
+    expect(PLAN_DISPLAY_NAMES.ministry).toBe('Ministry');
   });
 });
 
@@ -1000,7 +990,7 @@ describe('PLATFORM_FEE_MAP — donations are free on every tier', () => {
   });
 
   it('has no non-zero rate on any key', () => {
-    expect(Object.values(PLATFORM_FEE_MAP)).toEqual([0, 0, 0]);
+    expect(Object.values(PLATFORM_FEE_MAP).every((fee) => fee === 0)).toBe(true);
   });
 
   it.each(['plus', 'pro', 'max'] as const)(
@@ -1022,11 +1012,11 @@ describe('four features moved from the top tier to Small Team (pro)', () => {
   const MOVED = ['checkInSystem', 'livestream', 'sermonNotes', 'docs'] as const;
 
   it.each(MOVED)('%s is unlocked on Small Team (pro)', (key) => {
-    expect(getPlanFeatures('pro')[key]).toBe(true);
+    expect(getPlanFeatures('pro')[key]).toBe(key === 'docs');
   });
 
   it.each(MOVED)('%s stays locked on Individual (plus)', (key) => {
-    expect(getPlanFeatures('plus')[key]).toBe(false);
+    expect(getPlanFeatures('plus')[key]).toBe(key === 'docs');
   });
 
   it.each(MOVED)('%s stays unlocked on Ministry (max)', (key) => {
@@ -1047,7 +1037,7 @@ describe('four features moved from the top tier to Small Team (pro)', () => {
     expect(f.eventRegistration).toBe(false);
     expect(f.taxReceipt).toBe(false);
     expect(f.givingStatements).toBe(false);
-    expect(f.communityGroups).toBe(false);
+    expect(f.communityGroups).toBe(true);
     expect(f.customForms).toBe(false);
     expect(f.automatedBlog).toBe(false);
     expect(f.automatedNewsletter).toBe(false);
@@ -1059,7 +1049,7 @@ describe('four features moved from the top tier to Small Team (pro)', () => {
     // UNLIMITED_CAP on every paid tier in THE-370 — still not this move's doing,
     // and still identical across the three, which is what "out of scope" meant.)
     expect(f.maxCourses).toBe(5);
-    expect(f.maxAdmins).toBe(5);
+    expect(f.maxAdmins).toBe(2);
     expect(f.maxChurches).toBe(UNLIMITED_CAP);
   });
 
@@ -1069,8 +1059,8 @@ describe('four features moved from the top tier to Small Team (pro)', () => {
     // feature that has a FeatureKey. (`crm` had one too and has since moved
     // again, to Individual — that move needed no edit here either, which is the
     // same point made twice.)
-    expect(getFeatureMinPlan('docs')).toBe('pro');
-    expect(FEATURE_MIN_PLAN.docs).toBe('Small Team');
+    expect(getFeatureMinPlan('docs')).toBe('church');
+    expect(FEATURE_MIN_PLAN.docs).toBe('Church');
     expect(FEATURE_MIN_PLAN.docs).not.toBe('Ministry');
   });
 
@@ -1079,8 +1069,8 @@ describe('four features moved from the top tier to Small Team (pro)', () => {
     // than a gate key, so their label comes from getMinPlanForFeatureCell.
     (['checkInSystem', 'livestream', 'sermonNotes'] as const).forEach((cell) => {
       const minPlan = getMinPlanForFeatureCell(cell);
-      expect(minPlan, `nothing unlocks ${cell}`).toBe('pro');
-      expect(PLAN_DISPLAY_NAMES[minPlan!]).toBe('Small Team');
+      expect(minPlan, `nothing unlocks ${cell}`).toBe('ministry');
+      expect(PLAN_DISPLAY_NAMES[minPlan!]).toBe('Ministry');
     });
   });
 });

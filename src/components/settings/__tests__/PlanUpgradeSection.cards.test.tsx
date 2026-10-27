@@ -145,16 +145,15 @@ describe('PlanUpgradeSection plan cards', () => {
       card(plan).querySelector('[data-testid="plan-card-rollup"]')?.textContent?.trim() ?? null;
 
     // Individual is the floor: nothing to roll up, so no line.
-    expect(rollupOf('plus')).toBeNull();
-    expect(rollupOf('pro')).toBe(`Everything in ${PLAN_DISPLAY_NAMES.plus}`);
-    expect(rollupOf('max')).toBe(`Everything in ${PLAN_DISPLAY_NAMES.pro}`);
+    expect(rollupOf('church')).toBeNull();
+    expect(rollupOf('ministry')).toBe(`Everything in ${PLAN_DISPLAY_NAMES.church}`);
 
     // And the rollup is load-bearing, not decoration: each upper card is
     // strictly shorter than the full list its tier unlocks, because the shared
     // lines are the ones the rollup stands in for.
     const nameable = new Set<string>();
     for (const plan of PRICED_PLAN_ORDER) shownCells(plan).forEach((cell) => nameable.add(cell));
-    for (const plan of ['pro', 'max'] as const) {
+    for (const plan of ['ministry'] as const) {
       const features = getPlanFeatures(plan) as unknown as Record<string, unknown>;
       const whole = [...nameable].filter((cell) => unlocked(features[cell]));
       expect(shownCells(plan).length, PLAN_DISPLAY_NAMES[plan]).toBeLessThan(whole.length);
@@ -216,24 +215,24 @@ describe('PlanUpgradeSection plan cards', () => {
     // than repeated. Asserting it three times would be asserting that the
     // rollup does NOT work.
     mount();
-    expect(shownCells('plus')).toContain('crm');
+    expect(shownCells('church')).toContain('crm');
     for (const plan of PRICED_PLAN_ORDER) {
       expect(getPlanFeatures(plan).crm, PLAN_DISPLAY_NAMES[plan]).toBe(true);
       expect(shownCells(plan), PLAN_DISPLAY_NAMES[plan]).not.toHaveLength(0);
     }
     // …and Notes still only above Individual, on the same surface.
-    expect(shownCells('plus')).not.toContain('docs');
-    expect(shownCells('pro')).toContain('docs');
+    expect(shownCells('church')).toContain('docs');
+    expect(getPlanFeatures('ministry').docs).toBe(true);
   });
 
   // Matei approved 2026-10-21: "Include the scheduler in the Ministry plan".
   it('lists the Social Scheduler on the Ministry card and on no other', () => {
     mount();
     expect(getPlanFeatures('max').socialScheduler).toBe(true);
-    expect(shownCells('max'), 'the Ministry card does not list the scheduler').toContain('socialScheduler');
-    expect(container.querySelector('[data-testid="plan-card-features"][data-plan="max"] [data-feature="socialScheduler"]')
+    expect(shownCells('ministry'), 'the Ministry card does not list the scheduler').toContain('socialScheduler');
+    expect(container.querySelector('[data-testid="plan-card-features"][data-plan="ministry"] [data-feature="socialScheduler"]')
       ?.textContent).toMatch(/Social Scheduler/);
-    for (const plan of ['plus', 'pro'] as const) {
+    for (const plan of ['church'] as const) {
       expect(getPlanFeatures(plan).socialScheduler, PLAN_DISPLAY_NAMES[plan]).toBe(false);
       expect(shownCells(plan), `${PLAN_DISPLAY_NAMES[plan]} advertises the scheduler it does not include`)
         .not.toContain('socialScheduler');
@@ -241,15 +240,15 @@ describe('PlanUpgradeSection plan cards', () => {
   });
 
   it('keeps the three-term toggle working and the current plan marked', () => {
-    mount({ currentPlan: 'pro' });
+    mount({ currentPlan: 'church' });
 
     const marked = () =>
       Array.from(container.querySelectorAll('[data-testid="plan-card"]'))
         .filter((el) => el.querySelector('[data-testid="plan-card-current"]'))
         .map((el) => el.getAttribute('data-plan'));
 
-    expect(marked()).toEqual(['pro']);
-    const currentButton = card('pro').querySelector('button')!;
+    expect(marked()).toEqual(['church']);
+    const currentButton = card('church').querySelector('button')!;
     expect(currentButton.textContent).toContain('Current Plan');
     expect((currentButton as HTMLButtonElement).disabled).toBe(true);
 
@@ -274,22 +273,20 @@ describe('PlanUpgradeSection plan cards', () => {
     expect(container.textContent).toContain('billed as');
     expect(container.textContent).toContain('every 12 months');
     // The marker survives the toggle — the two are independent state.
-    expect(marked()).toEqual(['pro']);
+    expect(marked()).toEqual(['church']);
 
     clickButtonWithText('Monthly');
     for (const plan of PRICED_PLAN_ORDER) {
       expect(priceOf(plan), PLAN_DISPLAY_NAMES[plan]).toBe(formatPlanPrice(plan, 'monthly'));
     }
-    expect(marked()).toEqual(['pro']);
+    expect(marked()).toEqual(['church']);
   });
 
   it('renders the repriced tiers on every term', () => {
     // The six published numbers. There is no annual identity to derive any
     // more — the prices ARE the source, so each is asserted outright.
-    expect(PLAN_PRICING.plus.monthly).toBe(20);
-    expect(PLAN_PRICING.pro.monthly).toBe(40);
-    // ⚠️ 80, then 60 from THE-343, and 80 again since THE-372.
-    expect(PLAN_PRICING.max.monthly).toBe(80);
+    expect(PLAN_PRICING.church).toEqual({ monthly: 30, yearly: 300 });
+    expect(PLAN_PRICING.ministry).toEqual({ monthly: 90, yearly: 900 });
     for (const plan of PRICED_PLAN_ORDER) {
       for (const term of BILLING_TERMS) {
         expect(planPriceUsd(plan, term), `${PLAN_DISPLAY_NAMES[plan]} ${term}`)

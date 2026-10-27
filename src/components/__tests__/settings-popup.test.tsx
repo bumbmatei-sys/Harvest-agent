@@ -20,7 +20,7 @@ const checkRosterAdminStatus = vi.hoisted(() => vi.fn());
 const isSuperAdminMock = vi.hoisted(() => vi.fn(() => false));
 const hasPlatformOverrideMock = vi.hoisted(() => vi.fn(() => false));
 const store = vi.hoisted(() => ({
-  current: { tenantPlan: 'pro' as string | null, currentTenantId: 'bumb' as string | null, isAuthReady: true },
+  current: { tenantPlan: 'church' as string | null, currentTenantId: 'bumb' as string | null, isAuthReady: true },
 }));
 const currentUser = vi.hoisted(() => ({ current: { uid: 'user-1', email: 'bumb@theharvest.app', displayName: 'B', photoURL: null, providerData: [{ providerId: 'password' }], getIdToken: async () => 't' } as Record<string, unknown> | null }));
 const userQuery = vi.hoisted(() => ({ current: { data: undefined as unknown, isLoading: false } }));
@@ -28,7 +28,7 @@ const tenantCtx = vi.hoisted(() => ({
   current: {
     branding: null as null,
     isLoading: false,
-    tenantPlan: 'pro' as string | null,
+    tenantPlan: 'church' as string | null,
     tenantAddons: undefined as { socialScheduler?: number } | undefined,
     refreshBranding: () => {},
   },
@@ -244,8 +244,8 @@ async function mount(user: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  store.current = { tenantPlan: 'pro', currentTenantId: TENANT_ID, isAuthReady: true };
-  tenantCtx.current = { branding: null, isLoading: false, tenantPlan: 'pro', tenantAddons: undefined, refreshBranding: () => {} };
+  store.current = { tenantPlan: 'church', currentTenantId: TENANT_ID, isAuthReady: true };
+  tenantCtx.current = { branding: null, isLoading: false, tenantPlan: 'church', tenantAddons: undefined, refreshBranding: () => {} };
   currentUser.current = { uid: UID, email: 'bumb@theharvest.app', displayName: 'B', photoURL: null, providerData: [{ providerId: 'password' }], getIdToken: async () => 't' };
   checkRosterAdminStatus.mockResolvedValue(true);
   params.current = {};
@@ -418,7 +418,7 @@ describe('Campus & branding is gated like the admin Branding tab', () => {
   const appearance = () => document.querySelector('[role="radiogroup"][aria-label="Colour theme"]');
   const editor = () => document.querySelector('[data-stub="branding"]');
 
-  it.each(['free', 'plus', 'pro'])('a %s admin who can open Settings gets Appearance and no branding editor', async (plan) => {
+  it.each(['free', 'church'])('a %s admin who can open Settings gets Appearance and no branding editor', async (plan) => {
     setPlan(plan);
     await openCampus({ role: 'church_admin' });
     expect(editor(), `a ${plan} admin was handed the logo, icon and colour editor`).toBeNull();
@@ -426,14 +426,14 @@ describe('Campus & branding is gated like the admin Branding tab', () => {
   });
 
   it('an admin on the branding plan with full access still gets the editor and Appearance', async () => {
-    setPlan('max');
+    setPlan('ministry');
     await openCampus({ role: 'church_admin' });
     expect(editor()).toBeTruthy();
     expect(appearance()).toBeTruthy();
   });
 
   it('a manageSettings-only admin on the branding plan gets no editor: the permission half of the gate', async () => {
-    setPlan('max');
+    setPlan('ministry');
     checkRosterAdminStatus.mockResolvedValue(false);
     await openCampus({ role: 'admin', permissions: { manageSettings: true } });
     expect(editor(), 'manageSettings alone skipped the manageBranding split').toBeNull();
@@ -441,7 +441,7 @@ describe('Campus & branding is gated like the admin Branding tab', () => {
   });
 
   it('a manageBranding admin on the branding plan who also manages settings gets the editor', async () => {
-    setPlan('max');
+    setPlan('ministry');
     checkRosterAdminStatus.mockResolvedValue(false);
     await openCampus({ role: 'admin', permissions: { manageSettings: true, manageBranding: true } });
     expect(editor()).toBeTruthy();
@@ -483,7 +483,7 @@ describe('Billing & Payments and Branding open inside the desktop Settings popup
     expect(document.querySelector('[data-settings-section="billing"]'), 'Plan & billing did not render').toBeTruthy();
     expect(document.querySelector('[data-stub="plans"]'), 'the owner lost the plan cards').toBeTruthy();
     expect(document.querySelector('[data-stub="billing-activity"]'), 'the owner lost the billing history').toBeTruthy();
-    expect(document.body.textContent).toContain('Small Team plan');
+    expect(document.body.textContent).toContain('Church plan');
   });
 
   it('on a phone the Billing row still opens the full-screen Billing & Payments overlay', async () => {
@@ -577,7 +577,7 @@ describe('Billing & Payments and Branding open inside the desktop Settings popup
 
   it('/admin/branding on desktop opens Settings > Campus & branding for an entitled admin', async () => {
     setDesktop();
-    setPlan('max');
+    setPlan('ministry');
     window.history.replaceState({}, '', '/admin/branding');
     params.current = { section: 'branding' };
     await mount({ role: 'church_admin' });
@@ -588,7 +588,7 @@ describe('Billing & Payments and Branding open inside the desktop Settings popup
   it('/admin/branding is left alone where Settings is not the home for it', async () => {
     // On a phone there is no popup, so the Branding tab remains.
     setMobile();
-    setPlan('max');
+    setPlan('ministry');
     window.history.replaceState({}, '', '/admin/branding');
     params.current = { section: 'branding' };
     await mount({ role: 'church_admin' });
@@ -598,14 +598,14 @@ describe('Billing & Payments and Branding open inside the desktop Settings popup
 
   it('a settings admin has no Branding row in the sidebar: it lives in Settings', async () => {
     setDesktop();
-    setPlan('max');
+    setPlan('ministry');
     await mount({ role: 'church_admin' });
     expect(container.querySelector('[data-shell-side] [data-nav-tab="branding"]'), 'Branding came back to the sidebar').toBeNull();
   });
 
   it('a branding-only admin keeps a desktop row, because Settings will not open', async () => {
     setDesktop();
-    setPlan('max');
+    setPlan('ministry');
     checkRosterAdminStatus.mockResolvedValue(false);
     window.history.replaceState({}, '', '/admin/branding');
     params.current = { section: 'branding' };
@@ -619,7 +619,7 @@ describe('Billing & Payments and Branding open inside the desktop Settings popup
 
   it('/admin/branding on a plan without branding is not sent to the editor', async () => {
     setDesktop();
-    setPlan('pro');
+    setPlan('church');
     window.history.replaceState({}, '', '/admin/branding');
     params.current = { section: 'branding' };
     await mount({ role: 'church_admin' });

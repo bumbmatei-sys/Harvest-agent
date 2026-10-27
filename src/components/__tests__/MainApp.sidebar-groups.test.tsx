@@ -129,14 +129,14 @@ vi.mock('framer-motion', () => {
   return { motion: passthrough, AnimatePresence: ({ children }: any) => <>{children}</> };
 });
 
-const store = vi.hoisted(() => ({ tenantPlan: 'plus' as string | null, currentUser: null as any }));
+const store = vi.hoisted(() => ({ tenantPlan: 'church' as string | null, currentUser: null as any }));
 vi.mock('../../store/useAppStore', () => ({ useAppStore: () => store }));
 
 const tenant = vi.hoisted(() => ({
   tenantId: 'tenant-1',
   tenantName: 'Grace Chapel',
   branding: null as any,
-  tenantPlan: 'plus' as string | null,
+  tenantPlan: 'church' as string | null,
   isLoading: false,
   // THE-246 — a paying church still needs a PAYMENT RAIL for the Give tab to
   // exist: `fundraising` says it may take gifts, a connected Stripe account or
@@ -190,7 +190,7 @@ const groupNamed = (label: string) => sidebarGroups().find((g) => g.label === la
 /** Every sidebar entry on screen, across every group. */
 const allSidebarItems = () => sidebarGroups().flatMap((g) => g.items);
 
-const PRICED = ['plus', 'pro', 'max'] as const;
+const PRICED = ['church', 'ministry'] as const;
 
 beforeEach(() => {
   container = document.createElement('div');
@@ -344,7 +344,7 @@ describe("a free member's sidebar", () => {
 });
 
 // ─── 4. 🔴 the three priced tiers are unchanged ──────────────────────────────
-describe("the three priced tiers' member sidebars are unchanged", () => {
+describe("the two priced tiers' member sidebars", () => {
   // The shape each paying tier has, pinned per tier. Chat is branded
   // "Ask {first word of the ministry name}" on desktop, so the test tenant
   // "Grace Chapel" would read "Ask Grace".
@@ -356,21 +356,15 @@ describe("the three priced tiers' member sidebars are unchanged", () => {
   // covered by MainApp.ai-chat-addon.test.tsx. Nothing else in these three
   // sidebars moved, which is what the rest of this block still proves.
   const EXPECTED: Record<(typeof PRICED)[number], { label: string; items: string[] }[]> = {
-    // Individual — feed, blog, courses, bible; prayer; give. No AI chat, no map,
-    // no Community Groups.
-    plus: [
+    // Church — feed, blog, courses, bible; messages (its one community's chat);
+    // prayer; give. No AI chat, no map.
+    church: [
       { label: 'FEED', items: ['Home', 'Blog', 'Courses', 'Bible'] },
-      { label: 'COMMUNITY', items: ['Prayer'] },
+      { label: 'COMMUNITY', items: ['Messages', 'Prayer'] },
       { label: 'SUPPORT US', items: ['Give'] },
     ],
-    // Small Team — adds the map. (No AI chat: that is the add-on.)
-    pro: [
-      { label: 'FEED', items: ['Home', 'Blog', 'Courses', 'Bible'] },
-      { label: 'COMMUNITY', items: ['Prayer', 'Map'] },
-      { label: 'SUPPORT US', items: ['Give'] },
-    ],
-    // Ministry — adds Community Groups (Messages).
-    max: [
+    // Ministry — adds the map.
+    ministry: [
       { label: 'FEED', items: ['Home', 'Blog', 'Courses', 'Bible'] },
       { label: 'COMMUNITY', items: ['Messages', 'Prayer', 'Map'] },
       { label: 'SUPPORT US', items: ['Give'] },
@@ -392,12 +386,21 @@ describe("the three priced tiers' member sidebars are unchanged", () => {
   it('a priced tier with no course yet loses only the Courses entry', async () => {
     // The emptiness rule must not reach a paying tier through the back door of
     // an empty course library.
-    await mount('pro', { hasCourse: false });
+    await mount('ministry', { hasCourse: false });
 
     expect(sidebarGroups()).toEqual([
       { label: 'FEED', items: ['Home', 'Blog', 'Bible'] },
-      { label: 'COMMUNITY', items: ['Prayer', 'Map'] },
+      { label: 'COMMUNITY', items: ['Messages', 'Prayer', 'Map'] },
       { label: 'SUPPORT US', items: ['Give'] },
     ]);
+  });
+
+  it.each([
+    ['plus', 'church'],
+    ['pro', 'church'],
+    ['max', 'ministry'],
+  ] as const)('a stored %s draws the sidebar of the %s it became', async (legacy, current) => {
+    await mount(legacy, { hasCourse: true });
+    expect(sidebarGroups()).toEqual(EXPECTED[current]);
   });
 });

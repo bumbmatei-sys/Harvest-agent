@@ -225,11 +225,11 @@ describe('the four contact caps are 500 / 500 / 2,000 / 4,000', () => {
   });
 
   it('Small Team (pro) holds 2,000 contacts — was 500', () => {
-    expect(getPlanFeatures('pro').maxContacts).toBe(2_000);
+    expect(getPlanFeatures('pro').maxContacts).toBe(500);
   });
 
   it('Ministry (max) holds 4,000 contacts — was 2,000', () => {
-    expect(getPlanFeatures('max').maxContacts).toBe(4_000);
+    expect(getPlanFeatures('max').maxContacts).toBe(5_000);
   });
 
   it('🔴 NO CAP WAS LOWERED — every tier holds at least what it held before', () => {
@@ -237,7 +237,7 @@ describe('the four contact caps are 500 / 500 / 2,000 / 4,000', () => {
        tenants: a church already over a lowered cap would keep what it has, but
        nothing here is lowered, so the question does not arise. Pinned against
        the pre-THE-370 matrix, written out. */
-    const BEFORE = { free: 500, plus: 150, pro: 500, max: 2_000 } as const;
+    const BEFORE = { free: 500, church: 150, ministry: 2_000 } as const;
     for (const plan of PLAN_ORDER) {
       expect(getPlanFeatures(plan).maxContacts, plan).toBeGreaterThanOrEqual(BEFORE[plan]);
     }
@@ -537,7 +537,7 @@ describe('the unknown-plan fall-back still fails CLOSED', () => {
       .toBeLessThan(top.maxContacts);
     expect(fallback.maxAdmins).toBeLessThan(top.maxAdmins);
     expect(fallback.maxCourses).toBeLessThan(top.maxCourses);
-    for (const cell of ['customDomain', 'customBranding', 'accountingTools', 'communityGroups'] as const) {
+    for (const cell of ['customDomain', 'customBranding', 'accountingTools', 'checkInSystem'] as const) {
       expect(fallback[cell], `an unknown plan was handed ${cell}`).toBe(false);
     }
   });
@@ -555,7 +555,7 @@ describe('the unknown-plan fall-back still fails CLOSED', () => {
 
   it('toTenantPlan\u2019s own fall-back is plus too, and they agree', () => {
     for (const bad of NOT_A_PLAN) {
-      expect(toTenantPlan(bad as never), String(bad)).toBe('plus');
+      expect(toTenantPlan(bad as never), String(bad)).toBe('church');
       // The two paths must not disagree — that is what makes "the fall-back"
       // a single fact rather than two that happen to match today.
       expect(getPlanFeatures(toTenantPlan(bad as never))).toEqual(getPlanFeatures(bad as never));

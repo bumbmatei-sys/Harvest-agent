@@ -8,7 +8,9 @@ import {
   NO_ADDONS,
   getEffectiveFeatures,
   readTenantAddons,
+  toTenantPlan,
   TOP_PLAN,
+  type StoredPlan,
 } from '../utils/plan-features';
 import {
   tenantCapabilities,
@@ -123,7 +125,7 @@ export interface TenantContextValue {
    */
   capabilities: Readonly<Record<TenantCapability, boolean>>;
   /** Update the tenant plan locally (e.g. after a plan change) */
-  setTenantPlan: (plan: TenantPlan) => void;
+  setTenantPlan: (plan: StoredPlan) => void;
   /**
    * Re-read the tier from Firestore and apply it — `refreshTenantAddons`'s
    * counterpart, and the half the plan side never had (THE-217).
@@ -246,9 +248,10 @@ export interface TenantProviderProps {
    */
   initialTenantId?: string | null;
   /**
-   * Optional override: if a parent already fetched the plan, pass it here.
+   * Optional override: if a parent already fetched the plan, pass it here. A
+   * retired id (plus, pro, max) is accepted and resolved to its tier.
    */
-  initialPlan?: TenantPlan;
+  initialPlan?: StoredPlan;
 }
 
 export const TenantProvider: React.FC<TenantProviderProps> = ({
@@ -258,7 +261,9 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
 }) => {
   const [tenantId, setTenantId] = useState<string | null>(initialTenantId ?? null);
   const [tenantName, setTenantName] = useState<string | null>(null);
-  const [tenantPlan, setTenantPlanState] = useState<TenantPlan | undefined>(initialPlan);
+  const [tenantPlan, setTenantPlanState] = useState<TenantPlan | undefined>(
+    initialPlan ? toTenantPlan(initialPlan) : undefined,
+  );
   const [tenantAddons, setTenantAddonsState] = useState<TenantAddons>(NO_ADDONS);
   const [tenantStatus, setTenantStatus] = useState<TenantStatus | undefined>(undefined);
   const [stripeConnectStatus, setStripeConnectStatus] =
@@ -280,7 +285,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
    * A failed read leaves this untouched, so a dropped request costs one attempt
    * out of the bound rather than the whole window.
    */
-  const lastReadPlan = useRef<TenantPlan | undefined>(initialPlan);
+  const lastReadPlan = useRef<TenantPlan | undefined>(initialPlan ? toTenantPlan(initialPlan) : undefined);
   /**
    * The add-on set's one-shot latch — the same decision as `planInitialized`,
    * for the same reason, with one deliberate difference.
@@ -404,7 +409,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
         // tier that lands after this read is no longer unreachable without a
         // reload.
         if (!planInitialized.current && data.plan) {
-          applyPlan(data.plan as TenantPlan);
+          applyPlan(toTenantPlan(data.plan));
         }
         // The add-on set, from THE SAME fetch that already supplies the plan —
         // `tenants/{id}` carries both, so this costs no additional read and no
@@ -451,8 +456,8 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
     return () => { cancelled = true; };
   }, [tenantId, initialPlan, initialTenantId, applyBranding, applyPlan]);
 
-  const setTenantPlan = useCallback((plan: TenantPlan) => {
-    setTenantPlanState(plan);
+  const setTenantPlan = useCallback((plan: StoredPlan) => {
+    setTenantPlanState(toTenantPlan(plan));
   }, []);
 
   const setTenantAddons = useCallback((addons: TenantAddons) => {
@@ -472,7 +477,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
       // takes. Coercing it to a tier here would be this refresh inventing the
       // downgrade it exists to prevent.
       if (!plan) return;
-      applyPlan(plan as TenantPlan);
+      applyPlan(toTenantPlan(plan));
     } catch (e) {
       // Same posture as `refreshTenantAddons` and `refreshBranding`: a failed
       // refresh leaves the last known tier in place. Falling back to a default

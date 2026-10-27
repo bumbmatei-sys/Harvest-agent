@@ -727,7 +727,7 @@ describe('7 · what replaces it is TRUE', () => {
     const { GIVING_SHARE_CARD_GIVING_OFF } = await import('@/components/donations/giving-share');
     expect(GIVING_SHARE_CARD_GIVING_OFF).toBe(
       'Card giving inside the app is off. These are the ways your members can give, and a gift you '
-      + 'record in the CRM counts on your dashboard, in accounting and on your giving statements.',
+      + 'record in the CRM counts on your dashboard, in giving records and on your giving statements.',
     );
 
     // 🔴 CLAIM 1 — "Card giving inside the app is off."
@@ -799,9 +799,11 @@ describe('8 · the-313-guards is not weakened', () => {
     expect(guard, 'THE-313’s own digest for giving-share.ts was REPLACED, not appended to')
       .toContain('b28d762c711c016c57f593b83d70f131fe92f8418395a34bf1e644b06a1ae01b');
     // And the file on disk is at THE-357's appended value.
-    expect(sha256(readFileSync(path.join(ROOT, SHARE))),
-      'giving-share.ts is not at the digest THE-357 recorded')
-      .toBe('cb82182d615d85a737709dc049734bc1906c4801bd1ac73e9f5ba477f0dc8ba9');
+    // APPENDED BY THE TWO-PLAN REPRICING (THE-378), nothing replaced: the share-sheet copy now says
+    // giving records where it said accounting. THE-357's value stays accepted and so does the later one.
+    expect(['cb82182d615d85a737709dc049734bc1906c4801bd1ac73e9f5ba477f0dc8ba9', '0cb36dcf11675387d5e25e6e693cd6c76b62ac17ea2ea600923e44ab1b80c60b'],
+      'giving-share.ts is not at the digest THE-357 recorded, or a later one that was recorded')
+      .toContain(sha256(readFileSync(path.join(ROOT, SHARE))));
     expect(guard, 'THE-357’s appended value is not recorded in THE-313’s set')
       .toContain('cb82182d615d85a737709dc049734bc1906c4801bd1ac73e9f5ba477f0dc8ba9');
   });
@@ -814,9 +816,10 @@ describe('8 · the-313-guards is not weakened', () => {
     const at = guard.indexOf(SHARE);
     const block = guard.slice(at, guard.indexOf('];', at));
     const digests = [...block.matchAll(/'([0-9a-f]{64})'/g)].map((m) => m[1]);
-    expect(digests, 'the accepted set for giving-share.ts is not the two recorded values').toEqual([
+    expect(digests, 'the accepted set for giving-share.ts is not the recorded values, in order').toEqual([
       'b28d762c711c016c57f593b83d70f131fe92f8418395a34bf1e644b06a1ae01b',
       'cb82182d615d85a737709dc049734bc1906c4801bd1ac73e9f5ba477f0dc8ba9',
+      '0cb36dcf11675387d5e25e6e693cd6c76b62ac17ea2ea600923e44ab1b80c60b',
     ]);
     expect(guard, 'the assertion that compares the digest is gone').toContain('accepted.find(([digest]) => digest === actual)');
   });

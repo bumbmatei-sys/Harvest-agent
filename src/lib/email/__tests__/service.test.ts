@@ -23,14 +23,14 @@ async function sendNow(ctx: Awaited<ReturnType<typeof drafted>>) {
 }
 
 describe('plan gating', () => {
-  it.each(['free', 'plus'])('%s cannot use email', async (plan) => {
+  it.each(['free', 'plus', 'pro', 'church'])('%s cannot use email', async (plan) => {
     const { service } = build({ plan });
     const r = await service.saveDraft(admin, TENANT, draft);
     expect(r).toMatchObject({ ok: false, error: 'plan_required' });
   });
 
   it('pro can, and a super admin bypasses the plan', async () => {
-    expect((await build({ plan: 'pro' }).service.saveDraft(admin, TENANT, draft)).ok).toBe(true);
+    expect((await build({ plan: 'ministry' }).service.saveDraft(admin, TENANT, draft)).ok).toBe(true);
     const root = { ...admin, uid: 'root', isSuperAdmin: true, tenantId: null };
     expect((await build({ plan: 'free' }).service.saveDraft(root, TENANT, draft)).ok).toBe(true);
   });
@@ -149,7 +149,7 @@ describe('suppression, opt-out and one-click unsubscribe', () => {
 
 describe('volume cap and partial sends', () => {
   it('refuses a send that would pass the monthly cap', async () => {
-    const c = await drafted({ contacts: [person('a@x.org'), person('b@x.org')], usage: 4999 });
+    const c = await drafted({ contacts: [person('a@x.org'), person('b@x.org')], usage: 9999 });
     const r = await c.service.send(admin, TENANT, { id: c.id, when: { mode: 'now' }, mode: 'preview' });
     expect(r).toMatchObject({ ok: false, error: 'volume_cap' });
   });

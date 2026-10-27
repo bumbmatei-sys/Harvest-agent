@@ -140,13 +140,13 @@ describe('2 — no file was deleted, enumerated one by one', () => {
   it('🔴 and no plan-matrix cell was deleted either', () => {
     // The cells the three switches sit in front of are untouched, so each flip
     // restores the identical entitlement rather than an approximation of it.
-    const max = getPlanFeatures('max');
-    expect(max.smsAutomation, 'the smsAutomation cell was removed or flipped').toBe(true);
-    expect(max.textToGive, 'the textToGive cell was removed or flipped').toBe(true);
-    expect(getPlanFeatures('pro').newsletterAutomation, 'the newsletterAutomation cell moved').toBe(true);
-    expect(getPlanFeatures('plus').newsletterAutomation, 'Individual was given the newsletter').toBe(false);
+    const ministry = getPlanFeatures('ministry');
+    expect(ministry.smsAutomation, 'the smsAutomation cell was removed or flipped').toBe(true);
+    expect(ministry.textToGive, 'the textToGive cell was removed or flipped').toBe(true);
+    expect(ministry.newsletterAutomation, 'the newsletterAutomation cell moved').toBe(true);
+    expect(getPlanFeatures('church').newsletterAutomation, 'Church was given the newsletter').toBe(false);
     expect(getPlanFeatures('free').newsletterAutomation, 'free was given the newsletter').toBe(false);
-    expect(max.accountingTools, 'accounting was hidden along with QuickBooks').toBe(true);
+    expect(ministry.accountingTools, 'giving records were hidden along with QuickBooks').toBe(true);
   });
 });
 

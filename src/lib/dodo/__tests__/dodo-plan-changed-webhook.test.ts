@@ -146,7 +146,7 @@ function planChangedEvent(productId: string, subscriptionId = T.sub): DodoWebhoo
 /** A Dodo-owned tenant on Individual (plus) monthly, with two members. */
 function seedDodoTenant() {
   currentDb.store.set(`tenants/${T.tenant}`, {
-    name: 'Grace Chapel', plan: 'plus', status: 'active', ownerId: 'owner_1',
+    name: 'Grace Chapel', plan: 'church', status: 'active', ownerId: 'owner_1',
   });
   currentDb.store.set(`tenant_private/${T.tenant}`, {
     billingProcessor: 'dodo',
@@ -155,9 +155,9 @@ function seedDodoTenant() {
     dodoProductId: T.plusMonthly,
     adminEmails: ['pastor@grace.example'],
   });
-  currentDb.store.set('users/owner_1', { tenantId: T.tenant, role: 'admin', plan: 'plus' });
-  currentDb.store.set('users/member_1', { tenantId: T.tenant, plan: 'plus' });
-  currentDb.store.set('users/unrelated', { tenantId: 'other-church', plan: 'max' });
+  currentDb.store.set('users/owner_1', { tenantId: T.tenant, role: 'admin', plan: 'church' });
+  currentDb.store.set('users/member_1', { tenantId: T.tenant, plan: 'church' });
+  currentDb.store.set('users/unrelated', { tenantId: 'other-church', plan: 'ministry' });
 }
 
 beforeEach(() => {
@@ -176,13 +176,13 @@ describe('plan_changed moves the tenant plan', () => {
     });
     expect(result.outcome).toBe('routed');
 
-    expect(currentDb.store.get(`tenants/${T.tenant}`)?.plan).toBe('pro');
+    expect(currentDb.store.get(`tenants/${T.tenant}`)?.plan).toBe('church');
     expect(currentDb.store.get(`tenant_private/${T.tenant}`)?.dodoProductId).toBe(T.proMonthly);
     // The per-user copies move with the church — same fanout as the Stripe path.
-    expect(currentDb.store.get('users/owner_1')?.plan).toBe('pro');
-    expect(currentDb.store.get('users/member_1')?.plan).toBe('pro');
+    expect(currentDb.store.get('users/owner_1')?.plan).toBe('church');
+    expect(currentDb.store.get('users/member_1')?.plan).toBe('church');
     // Another church's members are untouched.
-    expect(currentDb.store.get('users/unrelated')?.plan).toBe('max');
+    expect(currentDb.store.get('users/unrelated')?.plan).toBe('ministry');
   });
 
   it('does NOT touch status — a plan change is not a lifecycle event', async () => {
@@ -203,7 +203,7 @@ describe('plan_changed moves the tenant plan', () => {
     });
 
     expect(outcome.outcome).toBe('unknown-product');
-    expect(currentDb.store.get(`tenants/${T.tenant}`)?.plan).toBe('plus');
+    expect(currentDb.store.get(`tenants/${T.tenant}`)?.plan).toBe('church');
     expect(mockCapture).toHaveBeenCalledWith(
       expect.any(Error),
       expect.objectContaining({ step: 'dodo-plan-changed-unknown-product' }),
@@ -220,7 +220,7 @@ describe('plan_changed is idempotent on redelivery', () => {
 
     const first = await receiveDodoWebhookEvent('whk_pc_dup', planChangedEvent(T.proMonthly), { store });
     expect(first.outcome).toBe('routed');
-    expect(currentDb.store.get(`tenants/${T.tenant}`)?.plan).toBe('pro');
+    expect(currentDb.store.get(`tenants/${T.tenant}`)?.plan).toBe('church');
 
     // Simulate drift between deliveries so a second APPLY would be visible.
     currentDb.store.get(`tenants/${T.tenant}`)!.plan = 'canary';
@@ -250,7 +250,7 @@ describe('plan_changed is idempotent on redelivery', () => {
 
 describe('plan_changed refuses a subscription this tenant does not own', () => {
   it('refuses a Stripe-owned tenant that somehow matches the subscription id', async () => {
-    currentDb.store.set(`tenants/${T.tenant}`, { plan: 'plus', status: 'active', ownerId: 'owner_1' });
+    currentDb.store.set(`tenants/${T.tenant}`, { plan: 'church', status: 'active', ownerId: 'owner_1' });
     currentDb.store.set(`tenant_private/${T.tenant}`, {
       // Carries the Dodo subscription id (so the lookup matches) but the stored
       // processor says Stripe and there are Stripe identifiers: not Dodo's.
@@ -263,7 +263,7 @@ describe('plan_changed refuses a subscription this tenant does not own', () => {
     const outcome = await applyDodoPlanChange({ subscription_id: T.sub, product_id: T.proMonthly });
 
     expect(outcome.outcome).toBe('not-dodo-owned');
-    expect(currentDb.store.get(`tenants/${T.tenant}`)?.plan).toBe('plus');
+    expect(currentDb.store.get(`tenants/${T.tenant}`)?.plan).toBe('church');
     expect(mockCapture).toHaveBeenCalledWith(
       expect.any(Error),
       expect.objectContaining({ step: 'dodo-plan-changed-ownership-refused' }),
@@ -271,7 +271,7 @@ describe('plan_changed refuses a subscription this tenant does not own', () => {
   });
 
   it('refuses the conflicted tenant — the double-billed fingerprint', async () => {
-    currentDb.store.set(`tenants/${T.tenant}`, { plan: 'plus', status: 'active', ownerId: 'owner_1' });
+    currentDb.store.set(`tenants/${T.tenant}`, { plan: 'church', status: 'active', ownerId: 'owner_1' });
     currentDb.store.set(`tenant_private/${T.tenant}`, {
       dodoSubscriptionId: T.sub,
       dodoCustomerId: 'cus_1',
@@ -282,7 +282,7 @@ describe('plan_changed refuses a subscription this tenant does not own', () => {
     const outcome = await applyDodoPlanChange({ subscription_id: T.sub, product_id: T.proMonthly });
 
     expect(outcome.outcome).toBe('not-dodo-owned');
-    expect(currentDb.store.get(`tenants/${T.tenant}`)?.plan).toBe('plus');
+    expect(currentDb.store.get(`tenants/${T.tenant}`)?.plan).toBe('church');
   });
 
   it('does nothing for a subscription no tenant carries', async () => {

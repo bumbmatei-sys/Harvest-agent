@@ -81,11 +81,11 @@ describe('GET /api/plans — the newsletter row', () => {
     }
   });
 
-  it('says Small Team and Ministry include it, and Forever Free and Individual do not', async () => {
+  it('says Ministry includes it, and Forever Free and Church do not', async () => {
     const body = await (await plans.GET()).json();
     const byId = Object.fromEntries(
       body.plans.map((p: { id: string; features: { newsletterAutomation: boolean } }) => [p.id, p.features.newsletterAutomation]),
     );
-    expect(byId).toEqual({ free: false, plus: false, pro: true, max: true });
+    expect(byId).toEqual({ free: false, church: false, ministry: true });
   });
 });

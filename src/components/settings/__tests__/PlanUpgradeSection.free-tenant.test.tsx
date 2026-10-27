@@ -136,7 +136,7 @@ describe('a free tenant sees an upgrade action in Billing, not a manage action',
   });
 
   it('a paid tenant is unchanged: the manage action is still there', () => {
-    mount({ currentPlan: 'max', tenantId: 't1', processor: 'dodo' });
+    mount({ currentPlan: 'ministry', tenantId: 't1', processor: 'dodo' });
 
     expect(container.querySelector('[data-testid="billing-manage-action"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="billing-upgrade-action"]')).toBeNull();
@@ -163,7 +163,7 @@ describe('the free tenant’s Upgrade button starts a Dodo first subscription', 
 
   it('never touches the Stripe checkout or the Stripe portal', async () => {
     mount({ currentPlan: 'free', tenantId: 't1', processor: 'stripe' });
-    await clickAndSettle(planButton('plus'));
+    await clickAndSettle(planButton('church'));
 
     expect(calledUrls()).not.toContain('/api/stripe/checkout');
     expect(calledUrls()).not.toContain('/api/stripe/portal');
@@ -174,14 +174,14 @@ describe('the free tenant’s Upgrade button starts a Dodo first subscription', 
 
   it('redirects to the Dodo checkout the route returns', async () => {
     mount({ currentPlan: 'free', tenantId: 't1', processor: 'stripe' });
-    await clickAndSettle(planButton('pro'));
+    await clickAndSettle(planButton('church'));
 
     expect(window.location.href).toBe('https://dodo/checkout/1');
   });
 
   it('applies no tier locally — the webhook is the only writer of plan', async () => {
     mount({ currentPlan: 'free', tenantId: 't1', processor: 'stripe' });
-    await clickAndSettle(planButton('max'));
+    await clickAndSettle(planButton('ministry'));
 
     // One call, and it is the checkout. No write of any kind, and no re-render
     // into the tier that was merely REQUESTED: the card still reads Free.
@@ -195,7 +195,7 @@ describe('the free tenant’s Upgrade button starts a Dodo first subscription', 
 describe('a paid Dodo tenant’s manage action reaches Dodo’s portal, not Stripe', () => {
   it('posts to the one routing portal endpoint, which sends Dodo tenants to Dodo', async () => {
     mockAuthFetch.mockResolvedValue(jsonResponse({ url: 'https://dodo/portal/1' }));
-    mount({ currentPlan: 'max', tenantId: 't1', processor: 'dodo' });
+    mount({ currentPlan: 'ministry', tenantId: 't1', processor: 'dodo' });
 
     const manage = container.querySelector('[data-testid="billing-manage-action"]') as HTMLElement;
     await clickAndSettle(manage);
@@ -215,15 +215,15 @@ describe('a paid Dodo tenant’s manage action reaches Dodo’s portal, not Stri
     // thing it is named for.
     mockAuthFetch.mockImplementation(async (url: string) =>
       String(url).startsWith('/api/dodo/change-plan?')
-        ? jsonResponse({ plan: 'plus', billing: 'monthly' })
+        ? jsonResponse({ plan: 'church', billing: 'monthly' })
         : jsonResponse({ preview: { amountDueNow: 0, currency: 'USD' } }),
     );
     // happy-dom has no window.confirm; the owner declining the proration is
     // what keeps this test to the PREVIEW call, which is the routing assertion.
     window.confirm = vi.fn(() => false);
-    mount({ currentPlan: 'plus', tenantId: 't1', processor: 'dodo' });
+    mount({ currentPlan: 'church', tenantId: 't1', processor: 'dodo' });
 
-    await clickAndSettle(planButton('max'));
+    await clickAndSettle(planButton('ministry'));
 
     // ⚠️ Matched on the PATH, not the whole URL (THE-226). The client now reads
     // the tenant's real billing term from `GET /api/dodo/change-plan?tenantId=…`

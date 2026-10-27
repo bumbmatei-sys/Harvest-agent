@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { stripComments } from '@/__tests__/__fixtures__/the-346-strip-comments';
 import path from 'node:path';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -168,7 +169,7 @@ const TABS: Tab[] = [
   { label: 'Events', section: 'events', cell: (f) => f.eventRegistration },
   { label: 'Notes', section: 'docs', cell: (f) => f.docs },
   { label: 'CRM', section: 'crm', cell: (f) => f.crm },
-  { label: 'Accounting', section: 'accounting', cell: (f) => f.accountingTools || f.givingStatements },
+  { label: 'Giving records', section: 'accounting', cell: (f) => f.accountingTools || f.givingStatements },
   { label: 'Forms', section: 'forms', cell: (f) => f.customForms },
   { label: 'Check-In', section: 'checkin', cell: null },
   { label: 'Livestream', section: 'livestream', cell: (f) => f.livestream },
@@ -204,7 +205,7 @@ function expectedNav(plan: TenantPlan): string[] {
   const labels = TABS
     .filter((t) => {
       // THE-373 — Individual has no Reach group, so no Check-In tab.
-      if (plan === 'plus' && t.label === 'Check-In') return false;
+      if (plan === 'church' && t.label === 'Check-In') return false;
       return plan === FREE_PLAN || t.cell === null || t.cell(f);
     })
     // The churches label is per-tier: a tier capped at one campus says 'Campus'.
@@ -223,7 +224,7 @@ const flush = async () => {
 
 const ALL_TAB_LABELS = [
   'Dashboard', 'Campus', 'Campuses', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
-  'Fundraising', 'Events', 'Notes', 'CRM', 'Accounting', 'Forms', 'Check-In', 'Livestream',
+  'Fundraising', 'Events', 'Notes', 'CRM', 'Giving records', 'Forms', 'Check-In', 'Livestream',
   'SMS', 'Community', 'Library', 'Tenants', 'Affiliate', 'Branding',
 ];
 function navLabels(): string[] {
@@ -331,7 +332,7 @@ describe('1 — NO tier reaches the SMS nav entry, free and super admin included
      to mean anything. The plan and permission clauses behind it are untouched;
      flipping SMS_FEATURE_ENABLED restores the identical Ministry-only
      entitlement THE-314 built, which is what section 1b proves. */
-  for (const plan of ['plus', 'pro', 'max'] as TenantPlan[]) {
+  for (const plan of ['church', 'ministry'] as TenantPlan[]) {
     it(`🔴 is absent on ${plan}`, async () => {
       const { nav } = await navFor(plan);
       expect(nav, `${plan} still reaches SMS`).not.toContain('SMS');
@@ -342,7 +343,7 @@ describe('1 — NO tier reaches the SMS nav entry, free and super admin included
       }
       // THE-373 — Check-In is gone on Individual only. It was that plan's entire
       // Reach group. Small Team and Ministry still have the tab.
-      if (plan === 'plus') {
+      if (plan === 'church') {
         expect(nav, 'Individual still lists Check-In').not.toContain('Check-In');
       } else {
         expect(nav, `${plan} lost Check-In`).toContain('Check-In');
@@ -375,7 +376,7 @@ describe('1 — NO tier reaches the SMS nav entry, free and super admin included
 
   it('🔴 the manageSms permission does not open it either', async () => {
     // The stored grant is UNTOUCHED in Firestore — it just has nothing to open.
-    const { nav } = await navFor('max', { role: 'church_admin', permissions: { manageSms: true } });
+    const { nav } = await navFor('ministry', { role: 'church_admin', permissions: { manageSms: true } });
     expect(nav, 'the manageSms permission overrode the master switch').not.toContain('SMS');
   });
 });
@@ -401,8 +402,8 @@ describe('1b — the Ministry-only entitlement is intact behind the switch', () 
   // ⚠️ `path.resolve(__dirname, …)` rather than `new URL(import.meta.url)`: this
   // suite runs under a DOM environment where `import.meta.url` is not a file:
   // URL, and `readFileSync` refuses it.
-  const SRC = readFileSync(
-    path.resolve(__dirname, '../AdminDashboard.tsx'), 'utf8');
+  const SRC = stripComments(readFileSync(
+    path.resolve(__dirname, '../AdminDashboard.tsx'), 'utf8'));
 
   it('🔴 the plan and permission clauses are still written, behind the switch', () => {
     const entry = /SMS_FEATURE_ENABLED &&[\s\S]{0,240}?id: 'sms'/.exec(SRC);
@@ -425,7 +426,7 @@ describe('1b — the Ministry-only entitlement is intact behind the switch', () 
     // The entitlement the flip would restore, read off the matrix rather than
     // off the nav: THE-314's Ministry-only decision is untouched by THE-335.
     expect(getPlanFeatures('max').smsAutomation, 'Ministry lost smsAutomation').toBe(true);
-    for (const plan of ['free', 'plus', 'pro'] as TenantPlan[]) {
+    for (const plan of ['free', 'church'] as TenantPlan[]) {
       expect(getPlanFeatures(plan).smsAutomation, `${plan} gained smsAutomation`).toBe(false);
     }
   });
@@ -434,7 +435,7 @@ describe('1b — the Ministry-only entitlement is intact behind the switch', () 
 /* ── 2 ─────────────────────────────────────────────────────────────────────
    🔴 And a typed or bookmarked URL does not get in either.                    */
 describe('2 — /admin/sms renders nothing for anyone, and does not crash', () => {
-  for (const plan of ['plus', 'pro', 'max'] as TenantPlan[]) {
+  for (const plan of ['church', 'ministry'] as TenantPlan[]) {
     it(`🔴 a typed URL renders neither the screen nor an upgrade wall on ${plan}`, async () => {
       /* 🔴 NOT PlanUpgradeScreen, and that is the decision rather than an
          oversight. That screen sells the tier that includes what you asked for,
@@ -469,7 +470,7 @@ describe('2 — /admin/sms renders nothing for anyone, and does not crash', () =
     // The control. If /admin/sms is the only URL that stopped working, the gate
     // is where it says it is.
     for (const [section, expected] of [['crm', 'AdminCRM'], ['blog', 'AdminBlog'], ['checkin', 'AdminCheckin']] as const) {
-      const { screen } = await screenFor('max', {}, section);
+      const { screen } = await screenFor('ministry', {}, section);
       expect(screen, `/admin/${section} broke`).toBe(expected);
     }
   });

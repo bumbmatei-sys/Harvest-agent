@@ -40,7 +40,7 @@ const call = (body: unknown, host = 'grace.theharvest.app') =>
   }));
 
 beforeEach(() => {
-  h.tenant.current = { id: 'grace', name: 'Grace Church', plan: 'pro' };
+  h.tenant.current = { id: 'grace', name: 'Grace Church', plan: 'ministry' };
   h.attempts.current = 0;
   h.added.length = 0;
   vi.clearAllMocks();
@@ -73,6 +73,15 @@ describe('POST /api/email/subscribe', () => {
     h.tenant.current = { id: 'grace', name: 'Grace Church', plan: 'free' };
     expect((await call({ name: 'Ana', email: 'ana@x.org' })).status).toBe(404);
     expect(h.store.createPending).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['max', 200],
+    ['pro', 404],
+    ['plus', 404],
+  ])('reads a stored legacy %s as the tier it became (newsletter answers %i)', async (legacy, status) => {
+    h.tenant.current = { id: 'grace', name: 'Grace Church', plan: legacy };
+    expect((await call({ name: 'Ana', email: 'ana@x.org' })).status).toBe(status);
   });
 
   it('answers 429 over the rate limit and writes nothing', async () => {

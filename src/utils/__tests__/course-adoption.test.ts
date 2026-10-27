@@ -29,21 +29,26 @@ const libCourse = (over: Partial<LibraryCourse> & { id: string }): LibraryCourse
 
 describe('course adoption', () => {
   describe('the plan cap counts adopted courses', () => {
-    it('fails closed to the plus limit (2) when the plan is unknown or loading', () => {
-      expect(resolveCourseLimit(undefined)).toBe(2);
-      expect(resolveCourseLimit(null)).toBe(2);
+    it('fails closed to the Church limit (5) when the plan is unknown or loading', () => {
+      expect(resolveCourseLimit(undefined)).toBe(5);
+      expect(resolveCourseLimit(null)).toBe(5);
     });
 
     it('resolves each plan tier', () => {
-      expect(resolveCourseLimit('plus')).toBe(2);
-      expect(resolveCourseLimit('pro')).toBe(5);
-      // max is a finite 15 now — it did NOT inherit the deleted ultra tier's
+      expect(resolveCourseLimit('church')).toBe(5);
+      // Ministry is a finite 15 — it did NOT inherit the deleted ultra tier's
       // unlimited (-1) course allowance.
+      expect(resolveCourseLimit('ministry')).toBe(15);
+    });
+
+    it('resolves the retired ids to the tier they became', () => {
+      expect(resolveCourseLimit('plus')).toBe(5);
+      expect(resolveCourseLimit('pro')).toBe(5);
       expect(resolveCourseLimit('max')).toBe(15);
     });
 
     it('no tier is unlimited any more', () => {
-      for (const plan of ['plus', 'pro', 'max']) {
+      for (const plan of ['church', 'ministry', 'plus', 'pro', 'max']) {
         expect(resolveCourseLimit(plan), `${plan} is unlimited`).not.toBe(UNLIMITED);
       }
     });

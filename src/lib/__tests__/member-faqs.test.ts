@@ -79,13 +79,13 @@ const BANNED: readonly BannedPhrase[] = [
  * Pricing vocabulary. Derived from `plan-features.ts` where possible so a
  * repricing cannot leave this list stale.
  *
- * ⚠️ `PLAN_DISPLAY_NAMES.max` is 'Ministry', which is ALSO the ordinary
+ * ⚠️ `PLAN_DISPLAY_NAMES.ministry` is 'Ministry', which is ALSO the ordinary
  * user-facing word for a church (AGENTS.md: "Ministries" NOT "churches"), and
  * the FAQ uses it in that sense throughout. Banning it would ban the correct
  * copy. The other two display names are unambiguous and are banned; a leak of
  * the top tier's name specifically is accepted as the cost of the collision.
  */
-const AMBIGUOUS_PLAN_NAME = PLAN_DISPLAY_NAMES.max; // 'Ministry' — see above.
+const AMBIGUOUS_PLAN_NAME = PLAN_DISPLAY_NAMES.ministry; // 'Ministry' — see above.
 
 const PRICING_BANNED: readonly BannedPhrase[] = [
   {
@@ -154,7 +154,7 @@ describe('member FAQ — nothing about price, plans or billing', () => {
     // drift into member-facing copy ("it's free!"), so it being banned here —
     // the member FAQ must say nothing about price, plans or billing — is the
     // carve-out working, not an oversight.
-    expect(banned.sort()).toEqual(['Free', 'Individual', 'Small Team']);
+    expect(banned.sort()).toEqual(['Church', 'Free']);
   });
 });
 
@@ -193,8 +193,8 @@ describe('member FAQ — the guard catches the copy it was built for', () => {
   });
 
   it('flags a price and a plan name', () => {
-    expect(scan('The Small Team plan is $99/mo.')).toEqual(
-      expect.arrayContaining(['a currency amount', 'the plan name "Small Team"']),
+    expect(scan('The Church plan is $30/mo.')).toEqual(
+      expect.arrayContaining(['a currency amount', 'the plan name "Church"']),
     );
   });
 

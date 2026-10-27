@@ -146,6 +146,14 @@ function renderedOwnRows(): number {
 }
 
 const REAL = { id: 'lib-real', title: 'Real Adopted Course', status: 'published' };
+/** Five distinct published library courses: exactly Church's whole allowance. */
+const REAL_FIVE = [
+  REAL,
+  ...Array.from({ length: 4 }, (_, i) => ({ id: `lib-${i + 2}`, title: `Course ${i + 2}`, status: 'published' })),
+];
+/** `n` courses the church authored itself. */
+const OWN = (n: number) =>
+  Array.from({ length: n }, (_, i) => ({ id: `own-${i + 1}`, title: `Ours ${i + 1}`, author: 'A', status: 'draft' }));
 
 describe('THE-345 · a dangling adoption is not a course', () => {
   beforeEach(() => {
@@ -199,9 +207,11 @@ describe('THE-345 · a dangling adoption is not a course', () => {
   /* ═══ 10 · the plan slot ══════════════════════════════════════════════════ */
 
   it('10 · a dangling adoption does not consume a plan slot', async () => {
-    // Two slots, one real adoption, one ghost. Before THE-345 this church was
-    // at its limit and could not create a course; the slot was spent on nothing.
-    tenantCtx.tenantPlan = 'plus'; // maxCourses: 2
+    // Five slots: three own courses, one real adoption, one ghost. Before
+    // THE-345 this church was at its limit and could not create a course; the
+    // slot was spent on nothing.
+    tenantCtx.tenantPlan = 'church'; // maxCourses: 5
+    mockCourses = OWN(3);
     mockLibrary = [REAL];
     mockAdopted = [
       { id: REAL.id, libraryCourseId: REAL.id },
@@ -261,24 +271,21 @@ describe('THE-345 · a dangling adoption is not a course', () => {
     // Deliberate, and recorded as such in AdminCourses: an adopted course
     // occupies a plan slot exactly like one the church authored. ONLY the ghost
     // stops counting.
-    tenantCtx.tenantPlan = 'plus'; // maxCourses: 2
-    mockCourses = [{ id: 'own-1', title: 'Ours', author: 'A', status: 'draft' }];
+    tenantCtx.tenantPlan = 'church'; // maxCourses: 5
+    mockCourses = OWN(4);
     mockLibrary = [REAL];
     mockAdopted = [{ id: REAL.id, libraryCourseId: REAL.id }];
     await mount();
 
-    expect(headerText(), 'a real adoption stopped counting').toContain('2 of 2');
+    expect(headerText(), 'a real adoption stopped counting').toContain('5 of 5');
     expect(newCourseButton().disabled, 'a real adoption stopped occupying a slot').toBe(true);
     expect(newCourseButton().title).toMatch(/including adopted/i);
   });
 
-  it('12b · two real adoptions alone still exhaust the plan', async () => {
-    tenantCtx.tenantPlan = 'plus';
-    mockLibrary = [REAL, { id: 'lib-2', title: 'Second', status: 'published' }];
-    mockAdopted = [
-      { id: REAL.id, libraryCourseId: REAL.id },
-      { id: 'lib-2', libraryCourseId: 'lib-2' },
-    ];
+  it('12b · five real adoptions alone still exhaust the plan', async () => {
+    tenantCtx.tenantPlan = 'church';
+    mockLibrary = REAL_FIVE;
+    mockAdopted = REAL_FIVE.map((c) => ({ id: c.id, libraryCourseId: c.id }));
     await mount();
 
     expect(newCourseButton().disabled).toBe(true);
@@ -286,17 +293,14 @@ describe('THE-345 · a dangling adoption is not a course', () => {
 
   /* ═══ 13 · the cap still fails closed — no-regression on THE-342 ══════════ */
 
-  it('13 · an unknown or loading plan still falls back to plus and fails closed', async () => {
-    tenantCtx.tenantPlan = undefined; // maxCourses: 2
-    mockLibrary = [REAL, { id: 'lib-2', title: 'Second', status: 'published' }];
-    mockAdopted = [
-      { id: REAL.id, libraryCourseId: REAL.id },
-      { id: 'lib-2', libraryCourseId: 'lib-2' },
-    ];
+  it('13 · an unknown or loading plan still falls back to Church and fails closed', async () => {
+    tenantCtx.tenantPlan = undefined; // maxCourses: 5
+    mockLibrary = REAL_FIVE;
+    mockAdopted = REAL_FIVE.map((c) => ({ id: c.id, libraryCourseId: c.id }));
     await mount();
 
     expect(newCourseButton().disabled, 'an unknown plan stopped failing closed').toBe(true);
-    expect(newCourseButton().title).toMatch(/up to 2 course/i);
+    expect(newCourseButton().title).toMatch(/up to 5 course/i);
   });
 
   /* ═══ 14 · a failed read is a FAILURE, never a smaller number ═════════════ */
@@ -306,17 +310,14 @@ describe('THE-345 · a dangling adoption is not a course', () => {
     // rejected read leave `adoptedCourseDocs` short; if the screen treated them
     // alike, THE-345 would have turned a broken read into "you have fewer
     // courses" and, worse, into a free plan slot.
-    tenantCtx.tenantPlan = 'plus'; // maxCourses: 2
-    mockLibrary = [REAL, { id: 'lib-2', title: 'Second', status: 'published' }];
-    mockAdopted = [
-      { id: REAL.id, libraryCourseId: REAL.id },
-      { id: 'lib-2', libraryCourseId: 'lib-2' },
-    ];
+    tenantCtx.tenantPlan = 'church'; // maxCourses: 5
+    mockLibrary = REAL_FIVE;
+    mockAdopted = REAL_FIVE.map((c) => ({ id: c.id, libraryCourseId: c.id }));
     byIdRejects = true;
     await mount();
 
     // The figure does NOT shrink: it stays at the raw pointer count.
-    expect(headerText(), 'a failed read read as fewer courses').toContain('2 of 2');
+    expect(headerText(), 'a failed read read as fewer courses').toContain('5 of 5');
     // The cap does NOT open.
     expect(newCourseButton().disabled, 'a failed read handed the church a free slot').toBe(true);
     // And the church is TOLD, rather than shown a quietly smaller number. The

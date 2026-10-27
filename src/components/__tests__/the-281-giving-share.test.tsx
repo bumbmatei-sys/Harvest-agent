@@ -251,6 +251,7 @@ describe('3 — 🔴 Stripe Connect appears as static "soon" copy, not a live co
     const ACCEPTED: ReadonlyArray<readonly [digest: string, source: string]> = [
       ['ae4767b86754d414d6d8a052756c15b27c5cdee9fec33dc77dbc9ec1acb11d67', 'THE-256/THE-281 — before the copy correction'],
       ['22b5d92d7225fe91d38288a6570bdd8d9551ee8be9095d86a2798945cfce2b30', 'THE-350 — the hidden message no longer says "temporarily"'],
+      ['4e9ea4ff9c09ce6d475d319aaa80497b62a85d6d0da720e39279431c3f196f2a', 'Two-plan repricing - the hidden message says giving records where it said accounting; the switch is still false (THE-378)'],
     ];
     const actual = createHash('sha256').update(src).digest('hex');
     expect(

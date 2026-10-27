@@ -161,7 +161,7 @@ describe('6 · the donations explainer is collapsible and its text is unchanged'
     'the same as someone who has never given.',
     'To record one, open the contact in your CRM, press Add Activity, choose Donation and enter the amount.',
     'That adds to their total given, dates the gift, and writes a donation receipt',
-    "so the gift counts on your dashboard, in your accounting, on this year's giving statement, and in the member's own donation history.",
+    "so the gift counts on your dashboard, in your giving records, on this year's giving statement, and in the member's own donation history.",
     'A contact with no email address is the one exception: the gift still counts for your church, but nothing can reach the person who gave it, and the CRM says so before you save.',
     'Everything you enter here is shown publicly on your Give page, including the email addresses',
     'that is how a member sends to the right account. Use an address you are happy to publish.',
@@ -264,7 +264,7 @@ describe('7 · accounting explains that cash and non-Stripe gifts do not appear'
     expect(text, 'the CRM remedy is not connected to the $0')
       .toContain('Recording one in your CRM does count here.');
     expect(text).toContain('Add Activity');
-    expect(text, 'the double-count reason is not given').toContain('would count a card gift twice');
+    expect(text, 'the double-count reason is not given').toContain('the same gift twice');
     // AMENDED BY THE-362. This pinned the tail of "a giving statement generated
     // here will not include it either" - the false half of the old sentence.
     // What it was asserting is that the note reaches all the way to the giving

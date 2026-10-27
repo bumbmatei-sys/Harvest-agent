@@ -125,7 +125,7 @@ const PEOPLE_GROUPS: readonly GroupTemplate[] = [
     items: [
       { id: 'fundraising', label: 'Fundraising', icon: Heart },
       { id: 'donations', label: 'Donations', icon: HandCoins },
-      { id: 'accounting', label: 'Accounting', icon: Receipt },
+      { id: 'accounting', label: 'Giving records', icon: Receipt },
     ],
   },
   {

@@ -156,7 +156,7 @@ describe('with the flag true, signup posts to Dodo and no Stripe checkout is cre
       new NextRequest('https://theharvest.app/api/dodo/checkout', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ plan: 'max', billing: 'monthly', ministryName: 'X' }),
+        body: JSON.stringify({ plan: 'ministry', billing: 'monthly', ministryName: 'X' }),
       }) as never,
     );
 
@@ -204,7 +204,7 @@ describe('with the flag false, signup posts to Stripe and no Dodo call is made',
       new NextRequest('https://theharvest.app/api/dodo/checkout', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ plan: 'max', billing: 'monthly', ministryName: 'X' }),
+        body: JSON.stringify({ plan: 'ministry', billing: 'monthly', ministryName: 'X' }),
       }) as never,
     );
 

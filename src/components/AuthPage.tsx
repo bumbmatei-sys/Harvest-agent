@@ -245,7 +245,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
   const [isChurchSignup, setIsChurchSignup] = useState(false);
   const { branding, tenantId: ctxTenantId, tenantName, tenantPlan } = useTenant();
   const isSubdomain = !!ctxTenantId;
-  const hasCustomBranding = tenantPlan === 'max';
+  const hasCustomBranding = tenantPlan === 'ministry';
 
   const [error, setError] = useState('');
   // Set only for auth/email-already-in-use, so the error banner can offer the

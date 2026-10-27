@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { R6_PLAN_FEATURES, R6_PLAN_UPGRADE_SECTION } from './plan-copy-exemption-r6';
 
 /**
  * The one recorded, narrow exemption to the PlanUpgradeSection / plan-features
@@ -57,6 +58,15 @@ export const R4_APPROVAL = 'Matei approved 2026-10-21: "Include the scheduler in
  * stretch of an earlier approval. `PlanUpgradeSection.tsx` is not part of it.
  */
 export const R5_APPROVAL = 'user instructed 2026-10-23: delete the quarterly plan, keep monthly and yearly';
+
+/**
+ * Round 6 is the two-plan repricing, approved by the founder on 2026-10-27: Church at
+ * $30/mo and $300/yr, Ministry at $90/mo and $900/yr, replacing plus / pro / max. It
+ * rewrites both files wholesale (the plan matrix, the prices, the plan copy and the card
+ * list), so its hunks live in plan-copy-exemption-r6.ts. Nothing about how a plan is
+ * charged for, changed or written moved: `plan` is still written only by the webhook.
+ */
+export const R6_APPROVAL = 'Matei approved 2026-10-27: reprice to two plans, Church $30/mo $300/yr and Ministry $90/mo $900/yr';
 
 export const PLAN_UPGRADE_SECTION: RecordedExemption = {
   file: 'src/components/settings/PlanUpgradeSection.tsx',
@@ -122,6 +132,7 @@ export const PLAN_UPGRADE_SECTION: RecordedExemption = {
         },
       ],
     },
+    { approval: R6_APPROVAL, digest: R6_PLAN_UPGRADE_SECTION.digest, hunks: R6_PLAN_UPGRADE_SECTION.hunks },
   ],
 };
 
@@ -248,6 +259,7 @@ export const PLAN_FEATURES: RecordedExemption = {
         },
       ],
     },
+    { approval: R6_APPROVAL, digest: R6_PLAN_FEATURES.digest, hunks: R6_PLAN_FEATURES.hunks },
   ],
 };
 

@@ -83,7 +83,7 @@ beforeEach(() => {
 
 describe('/api/dodo/first-subscription — the plan it will accept', () => {
   it('opens a checkout for a free tenant buying a priced tier', async () => {
-    const res = await firstSubPOST(req(FIRST_SUB_URL, { plan: 'plus', billing: 'monthly' }));
+    const res = await firstSubPOST(req(FIRST_SUB_URL, { plan: 'church', billing: 'monthly' }));
     expect(res.status).toBe(200);
     expect(mockCreateCheckout).toHaveBeenCalledTimes(1);
   });
@@ -118,7 +118,7 @@ describe('/api/dodo/first-subscription — the plan it will accept', () => {
   });
 
   it('refuses an unrecognised billing term rather than substituting one', async () => {
-    const res = await firstSubPOST(req(FIRST_SUB_URL, { plan: 'plus', billing: 'biennial' }));
+    const res = await firstSubPOST(req(FIRST_SUB_URL, { plan: 'church', billing: 'biennial' }));
     expect(res.status).toBe(400);
     expect(mockCreateCheckout).not.toHaveBeenCalled();
   });
@@ -127,7 +127,7 @@ describe('/api/dodo/first-subscription — the plan it will accept', () => {
 describe('/api/dodo/first-subscription — who and what it will act on', () => {
   it('refuses a caller with no tenant, and points at the signup route', async () => {
     mockRequireAuth.mockResolvedValue({ uid: 'u1', email: 'a@b.c', tenantId: null, isAdmin: true, isSuperAdmin: false });
-    const res = await firstSubPOST(req(FIRST_SUB_URL, { plan: 'plus', billing: 'monthly' }));
+    const res = await firstSubPOST(req(FIRST_SUB_URL, { plan: 'church', billing: 'monthly' }));
     expect(res.status).toBe(400);
     expect((await res.json()).error).toMatch(/\/api\/dodo\/checkout/);
     expect(mockCreateCheckout).not.toHaveBeenCalled();
@@ -135,14 +135,14 @@ describe('/api/dodo/first-subscription — who and what it will act on', () => {
 
   it('refuses a member of the tenant who is not an admin', async () => {
     mockRequireAuth.mockResolvedValue({ uid: 'u2', email: 'm@b.c', tenantId: 't1', isAdmin: false, isSuperAdmin: false });
-    const res = await firstSubPOST(req(FIRST_SUB_URL, { plan: 'plus', billing: 'monthly' }));
+    const res = await firstSubPOST(req(FIRST_SUB_URL, { plan: 'church', billing: 'monthly' }));
     expect(res.status).toBe(403);
     expect(mockCreateCheckout).not.toHaveBeenCalled();
   });
 
-  it.each(['plus', 'pro', 'max'])('refuses a tenant already on %s', async (plan) => {
+  it.each(['church', 'church', 'ministry'])('refuses a tenant already on %s', async (plan) => {
     mockTenantGet.mockResolvedValue({ exists: true, data: () => ({ plan }) });
-    const res = await firstSubPOST(req(FIRST_SUB_URL, { plan: 'pro', billing: 'monthly' }));
+    const res = await firstSubPOST(req(FIRST_SUB_URL, { plan: 'church', billing: 'monthly' }));
     expect(res.status).toBe(400);
     expect((await res.json()).error).toMatch(/change-plan/);
     expect(mockCreateCheckout).not.toHaveBeenCalled();
@@ -150,21 +150,21 @@ describe('/api/dodo/first-subscription — who and what it will act on', () => {
 
   it('🔴 refuses a tenant that already has a Dodo subscription', async () => {
     mockPrivateGet.mockResolvedValue({ exists: true, data: () => ({ dodoSubscriptionId: 'sub_1' }) });
-    const res = await firstSubPOST(req(FIRST_SUB_URL, { plan: 'plus', billing: 'monthly' }));
+    const res = await firstSubPOST(req(FIRST_SUB_URL, { plan: 'church', billing: 'monthly' }));
     expect(res.status).toBe(400);
     expect(mockCreateCheckout, 'a second subscription could have been opened').not.toHaveBeenCalled();
   });
 
   it('🔴 refuses a tenant that already has a STRIPE subscription', async () => {
     mockPrivateGet.mockResolvedValue({ exists: true, data: () => ({ stripeSubscriptionId: 'sub_s' }) });
-    const res = await firstSubPOST(req(FIRST_SUB_URL, { plan: 'plus', billing: 'monthly' }));
+    const res = await firstSubPOST(req(FIRST_SUB_URL, { plan: 'church', billing: 'monthly' }));
     expect(res.status).toBe(400);
     expect(mockCreateCheckout).not.toHaveBeenCalled();
   });
 
   it('refuses a tenant that does not exist', async () => {
     mockTenantGet.mockResolvedValue({ exists: false, data: () => null });
-    const res = await firstSubPOST(req(FIRST_SUB_URL, { plan: 'plus', billing: 'monthly' }));
+    const res = await firstSubPOST(req(FIRST_SUB_URL, { plan: 'church', billing: 'monthly' }));
     expect(res.status).toBe(404);
     expect(mockCreateCheckout).not.toHaveBeenCalled();
   });
@@ -172,7 +172,7 @@ describe('/api/dodo/first-subscription — who and what it will act on', () => {
 
 describe('/api/dodo/first-subscription — the checkout it builds', () => {
   it('stamps firstSubscription and the tenant, and NEVER newTenant', async () => {
-    await firstSubPOST(req(FIRST_SUB_URL, { plan: 'plus', billing: 'monthly' }));
+    await firstSubPOST(req(FIRST_SUB_URL, { plan: 'church', billing: 'monthly' }));
     const meta = mockCreateCheckout.mock.calls[0][0].metadata;
     expect(meta).toMatchObject({ firstSubscription: 'true', tenantId: 't1', userId: 'u1' });
     // `newTenant: 'true'` is what the provisioner keys on to BUILD a church.
@@ -181,7 +181,7 @@ describe('/api/dodo/first-subscription — the checkout it builds', () => {
   });
 
   it('passes no trialDays, leaving the product’s own trial to apply', async () => {
-    await firstSubPOST(req(FIRST_SUB_URL, { plan: 'plus', billing: 'monthly' }));
+    await firstSubPOST(req(FIRST_SUB_URL, { plan: 'church', billing: 'monthly' }));
     expect(mockCreateCheckout.mock.calls[0][0]).not.toHaveProperty('trialDays');
   });
 });

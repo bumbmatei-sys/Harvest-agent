@@ -78,12 +78,14 @@ describe('1 — the switch is one value, in one place', () => {
      *
      * So the line still has ONE wording pinned in ONE place; what changed is
      * that the wording no longer tells a church to wait for something that is
-     * not coming. The three assertions below are the rule, not the string:
+     * not coming. (The two-plan repricing renamed Accounting to Giving records,
+     * and the sentence followed the label.) The three assertions below are the
+     * rule, not the string:
      * whatever this says, it may not carry a promise.
      */
     const { STRIPE_CONNECT_HIDDEN_MESSAGE } = await import('../stripe-connect-feature');
     expect(STRIPE_CONNECT_HIDDEN_MESSAGE).toBe(
-      'Card giving inside the app is off. Your own payment links still work, and a gift you record in the CRM counts on your dashboard, in accounting and on your giving statements.',
+      'Card giving inside the app is off. Your own payment links still work, and a gift you record in the CRM counts on your dashboard, in giving records and on your giving statements.',
     );
     // 🔴 No "temporarily", no "migration", no "soon", and no date.
     expect(STRIPE_CONNECT_HIDDEN_MESSAGE, 'the hidden message promises card giving is coming back')

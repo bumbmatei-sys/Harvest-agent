@@ -195,22 +195,14 @@ const RETIRED_DERIVED = ['DODO', 'LIVE', 'IN', 'STEP'].join('_');
  * products were re-read in the same pass and had not moved.
  */
 const LIVE_DODO_MINOR = [
-  { plan: 'plus', period: 'monthly', id: 'pdt_0NlJZKKU2AQSSH7E4ziKA', cents: 2000 },
-  { plan: 'plus', period: 'yearly', id: 'pdt_0NlJZMLLKZ5SVGEoSGDdk', cents: 19000 },
-  { plan: 'pro', period: 'monthly', id: 'pdt_0NlJZMOMhmZWiG6UVDl8I', cents: 4000 },
-  { plan: 'pro', period: 'yearly', id: 'pdt_0NlJZMRWL8tuAZseUIRTP', cents: 38000 },
-  // ⚠️ MOVED AT THE-372: Ministry back to $80, with the quarter and year at
-  // $216 / $752 keeping THE-343's ratios (the quarter went with the term on
-  // 2026-10-23). The founder applied all three in the
-  // live Dodo products first and verified them, trial intact.
-  { plan: 'max', period: 'monthly', id: 'pdt_0NlJZMUUiT36FGMoiFXgl', cents: 8000 },
-  { plan: 'max', period: 'yearly', id: 'pdt_0NlJZMXTnpRBAwTfBVpPs', cents: 75200 },
+  { plan: 'church', period: 'monthly', id: 'pdt_0NqdacJTREPtSJuqtPCjm', cents: 3000 },
+  { plan: 'church', period: 'yearly', id: 'pdt_0NqdacQf9gvgmw6DU7449', cents: 30000 },
+  { plan: 'ministry', period: 'monthly', id: 'pdt_0NqdacWLx9z6CKsGRIKCW', cents: 9000 },
+  { plan: 'ministry', period: 'yearly', id: 'pdt_0Nqdaca89LIHeUvrNxXwZ', cents: 90000 },
 ] as const;
 
-/** The three Ministry ids, by term — the products THE-344 repriced. */
-const MINISTRY = LIVE_DODO_MINOR.filter((p) => p.plan === 'max');
-/** The six nobody touched. */
-const UNTOUCHED = LIVE_DODO_MINOR.filter((p) => p.plan !== 'max');
+const MINISTRY = LIVE_DODO_MINOR.filter((p) => p.plan === 'ministry');
+const UNTOUCHED = LIVE_DODO_MINOR.filter((p) => p.plan === 'church');
 
 /**
  * The live fixture rows, PARSED out of the catalogue suite's own array literal
@@ -232,7 +224,7 @@ const liveFixtureRows = (): FixtureRow[] => {
   expect(close, 'the live fixture array is never closed').toBeGreaterThan(open);
   const body = code.slice(open, close);
   const row =
-    /\{\s*plan:\s*'([a-z]+)',\s*period:\s*'([a-z]+)',\s*id:\s*'([^']+)',\s*name:\s*'([^']*)',\s*cents:\s*(\d+),/g;
+    /\{\s*plan:\s*'([a-z]+)',\s*period:\s*'([a-z]+)',\s*id:\s*'([^']+)',\s*label:\s*'([^']*)',\s*cents:\s*(\d+),/g;
   const out: FixtureRow[] = [];
   for (const m of body.matchAll(row)) {
     out.push({ plan: m[1], period: m[2], id: m[3], name: m[4], cents: Number(m[5]) });
@@ -329,7 +321,7 @@ describe('2 · no exclusion branch lifts a product out of the strict check', () 
     // And no it.each runs over anything else derived from it.
     const anyEach = [...code.matchAll(/it\.each\(\s*([A-Z_][A-Z0-9_]*)\s*\)/g)].map((m) => m[1]);
     for (const name of anyEach) {
-      expect(['DODO_LIVE_PRODUCTS_AS_VERIFIED', 'DODO_TEST_PRODUCTS_AS_VERIFIED'], `it.each runs over ${name}`)
+      expect(['DODO_LIVE_PRODUCTS_AS_VERIFIED', 'LEGACY_TEST_PRODUCTS', 'LEGACY_LIVE_PRODUCTS'], `it.each runs over ${name}`)
         .toContain(name);
     }
   });
@@ -350,8 +342,8 @@ describe('2 · no exclusion branch lifts a product out of the strict check', () 
 describe('3 · the live fixture transcribes what Dodo now charges', () => {
   it('🔴 it has exactly six rows, one per live product', () => {
     const rows = liveFixtureRows();
-    expect(rows.length, 'the live fixture no longer has six rows').toBe(6);
-    expect(new Set(rows.map((r) => r.id)).size, 'an id is repeated').toBe(6);
+    expect(rows.length, 'the live fixture no longer has four rows').toBe(4);
+    expect(new Set(rows.map((r) => r.id)).size, 'an id is repeated').toBe(4);
   });
 
   it.each(MINISTRY)('🔴 $id ($plan/$period) is transcribed at $cents', ({ id, cents }) => {
@@ -362,9 +354,9 @@ describe('3 · the live fixture transcribes what Dodo now charges', () => {
   });
 
   it('🔴 and the two Ministry rows carry the ids they were read from', () => {
-    const rows = liveFixtureRows().filter((r) => r.plan === 'max');
+    const rows = liveFixtureRows().filter((r) => r.plan === 'ministry');
     expect(rows.map((r) => r.id)).toEqual(MINISTRY.map((p) => p.id));
-    expect(rows.map((r) => r.cents)).toEqual([8000, 75200]);
+    expect(rows.map((r) => r.cents)).toEqual([9000, 90000]);
   });
 });
 
@@ -388,7 +380,7 @@ describe('4 · all six prices agree across the app, the catalogue and Dodo', () 
   );
 
   it('🔴 the enumeration really is all six, not a subset that agrees', () => {
-    expect(LIVE_DODO_MINOR.length).toBe(6);
+    expect(LIVE_DODO_MINOR.length).toBe(4);
     const covered = new Set(LIVE_DODO_MINOR.map((p) => `${p.plan}/${p.period}`));
     for (const plan of PRICED_PLAN_ORDER) {
       for (const term of BILLING_TERMS) {
@@ -427,8 +419,8 @@ describe('5 · the trial survives, and is still checked', () => {
   });
 
   it('🔴 the billing intervals the same update would have replaced are intact', () => {
-    expect(DODO_LIVE_CATALOGUE.max.monthly.dodoBillingPeriod).toBe('monthly');
-    expect(DODO_LIVE_CATALOGUE.max.yearly.dodoBillingPeriod).toBe('annual');
+    expect(DODO_LIVE_CATALOGUE.ministry.monthly.dodoBillingPeriod).toBe('monthly');
+    expect(DODO_LIVE_CATALOGUE.ministry.yearly.dodoBillingPeriod).toBe('annual');
   });
 });
 
@@ -446,9 +438,9 @@ describe('6 · Individual and Small Team are unmoved', () => {
   });
 
   it('🔴 and the two tiers still read exactly as they did', () => {
-    expect(PLAN_PRICING.plus).toEqual({ monthly: 20, yearly: 190 });
-    expect(PLAN_PRICING.pro).toEqual({ monthly: 40, yearly: 380 });
-    expect(UNTOUCHED.length, 'the no-regression set shrank').toBe(4);
+    expect(PLAN_PRICING.church).toEqual({ monthly: 30, yearly: 300 });
+    expect(PLAN_PRICING.ministry).toEqual({ monthly: 90, yearly: 900 });
+    expect(UNTOUCHED.length, 'the Church product set is incomplete').toBe(2);
   });
 });
 

@@ -64,7 +64,7 @@ function request(body: Record<string, unknown>) {
   });
 }
 
-const SIGNUP = { plan: 'max', billing: 'monthly', ministryName: 'Grace Community Church' };
+const SIGNUP = { plan: 'ministry', billing: 'monthly', ministryName: 'Grace Community Church' };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -126,7 +126,7 @@ describe('referrerId survives into Dodo subscription metadata', () => {
     await POST(request({ ...SIGNUP, referrerId: 'uid_affiliate_abcdefghijklmnop' }));
 
     expect(metadataOf()).toEqual({
-      plan: 'max',
+      plan: 'ministry',
       billing: 'monthly',
       ministryName: 'Grace Community Church',
       userId: 'uid_owner_1',
@@ -140,10 +140,10 @@ describe('referrerId survives into Dodo subscription metadata', () => {
 
 describe('the checkout it asks Dodo for', () => {
   it('sends the plan and period, and lets the PRODUCT own the trial length', async () => {
-    await POST(request({ plan: 'pro', billing: 'yearly', ministryName: 'X' }));
+    await POST(request({ plan: 'church', billing: 'yearly', ministryName: 'X' }));
 
     const arg = mockCreatePlanCheckout.mock.calls[0][0];
-    expect(arg.plan).toBe('pro');
+    expect(arg.plan).toBe('church');
     expect(arg.period).toBe('yearly');
     // Omitted, not undefined: the catalogue's configured trial applies, and the
     // trial length is deliberately not restated at the call site.
@@ -163,8 +163,8 @@ describe('the checkout it asks Dodo for', () => {
   it('rejects a plan or period it does not sell, before calling Dodo', async () => {
     for (const body of [
       { plan: 'ultra', billing: 'monthly' },
-      { plan: 'max', billing: 'weekly' },
-      { plan: 'max' },
+      { plan: 'ministry', billing: 'weekly' },
+      { plan: 'ministry' },
       {},
     ]) {
       const res = await POST(request(body));

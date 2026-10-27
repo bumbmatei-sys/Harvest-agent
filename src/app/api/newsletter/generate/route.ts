@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { requireAdmin } from '@/lib/api-auth';
 import { executeComposioAction } from '@/lib/composio-client';
 import { adminDb } from '@/lib/firebase-admin';
-import { hasFeature } from '@/utils/plan-features';
+import { hasFeature, toTenantPlan } from '@/utils/plan-features';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
 import { getMimoChatUrl, MIMO_MODEL } from '@/lib/ai-config';
 import { captureHandledError } from '@/lib/money-path-sentry';
@@ -38,12 +38,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Tenant data missing' }, { status: 404 });
     }
 
-    const tenantPlan = tenantData.plan || 'plus';
+    const tenantPlan = toTenantPlan(tenantData.plan);
     const tenantName = tenantData.name || 'Your Ministry';
 
     if (!isSuperAdmin && !hasFeature(tenantPlan, 'automatedNewsletter')) {
       return NextResponse.json(
-        { error: 'AI newsletter generation requires the Community plan or higher.' },
+        { error: 'AI newsletter generation requires the Ministry plan.' },
         { status: 403 }
       );
     }

@@ -25,9 +25,8 @@ import { NextRequest } from 'next/server';
  * Mocking the provider would have let a route that resolved a PRICE pass.
  *
  * ⚠️ LIVE MODE, deliberately: it is the catalogue a real card is charged
- * against. (It used to be the only mode with all nine combinations, because the
- * quarterly term had no test-mode product; the term was withdrawn on 2026-10-23
- * and both modes are six.)
+ * against. (It is the only mode with a Church and a Ministry product; test mode maps
+ * none of the four yet.)
  *
  * 🔴 EVERY EXPECTED PRODUCT ID IS READ FROM THE CATALOGUE, never typed here.
  * A test that repeats the ids is a second source of truth that drifts silently,
@@ -108,7 +107,7 @@ const { PLAN_PRICES } = await import('@/lib/billing');
 type Plan = (typeof PRICED_PLAN_ORDER)[number];
 type Term = (typeof BILLING_TERMS)[number];
 
-/** Every (plan, term) pair the app sells — nine of them, derived, never listed. */
+/** Every (plan, term) pair the app sells — four of them, derived, never listed. */
 const EVERY_COMBINATION: { plan: Plan; term: Term }[] = PRICED_PLAN_ORDER.flatMap((plan) =>
   BILLING_TERMS.map((term) => ({ plan, term })),
 );
@@ -171,15 +170,15 @@ describe('a free tenant can start an upgrade to each paid tier on each term', ()
     },
   );
 
-  it('covers all six combinations, and the catalogue can name a product for every one', () => {
-    expect(EVERY_COMBINATION).toHaveLength(6);
+  it('covers all four combinations, and the catalogue can name a product for every one', () => {
+    expect(EVERY_COMBINATION).toHaveLength(4);
     for (const { plan, term } of EVERY_COMBINATION) {
       expect(DODO_ACTIVE_CATALOGUE[plan][term].productId, `${plan}/${term}`).toBeTruthy();
     }
   });
 
   it('stamps firstSubscription, never newTenant, so no second church is built', async () => {
-    await firstSubscriptionPOST(post('api/dodo/first-subscription', { plan: 'pro', billing: 'yearly' }));
+    await firstSubscriptionPOST(post('api/dodo/first-subscription', { plan: 'church', billing: 'yearly' }));
 
     const metadata = mockCheckoutCreate.mock.calls[0][0].metadata;
     expect(metadata).toMatchObject({ firstSubscription: 'true', tenantId: 't1', userId: 'u1' });
@@ -187,7 +186,7 @@ describe('a free tenant can start an upgrade to each paid tier on each term', ()
   });
 
   it('sends no trial override, so the product’s own 14-day trial applies (THE-208)', async () => {
-    await firstSubscriptionPOST(post('api/dodo/first-subscription', { plan: 'plus', billing: 'monthly' }));
+    await firstSubscriptionPOST(post('api/dodo/first-subscription', { plan: 'church', billing: 'monthly' }));
 
     // Absent, not `undefined` and not zero: an explicit value is a request to
     // CHANGE the trial, and the trial lives on the product by decision.
@@ -210,7 +209,7 @@ describe('the upgrade resolves a product from plan and term, not from a price', 
   });
 
   it('never sends a price, an amount or a currency to the processor', async () => {
-    await firstSubscriptionPOST(post('api/dodo/first-subscription', { plan: 'max', billing: 'yearly' }));
+    await firstSubscriptionPOST(post('api/dodo/first-subscription', { plan: 'ministry', billing: 'yearly' }));
 
     // 🔴 Dodo puts the price ON the product. A checkout body that named a
     // price, an amount or a currency would mean the app had decided what to
@@ -345,7 +344,7 @@ describe('the checkout route still refuses when tenantId is set', () => {
     });
 
     const res = await dodoCheckoutPOST(
-      post('api/dodo/checkout', { plan: 'pro', billing: 'monthly', tenantId: 't1', ministryName: 'Grace' }),
+      post('api/dodo/checkout', { plan: 'church', billing: 'monthly', tenantId: 't1', ministryName: 'Grace' }),
     );
 
     expect(res.status).toBe(400);
@@ -363,7 +362,7 @@ describe('the checkout route still refuses when tenantId is set', () => {
     });
 
     const res = await dodoCheckoutPOST(
-      post('api/dodo/checkout', { plan: 'max', billing: 'yearly', tenantId: 't1', ministryName: 'Grace' }),
+      post('api/dodo/checkout', { plan: 'ministry', billing: 'yearly', tenantId: 't1', ministryName: 'Grace' }),
     );
 
     expect(res.status).toBe(400);
@@ -379,7 +378,7 @@ describe('the checkout route still refuses when tenantId is set', () => {
     });
 
     const res = await firstSubscriptionPOST(
-      post('api/dodo/first-subscription', { plan: 'pro', billing: 'monthly' }),
+      post('api/dodo/first-subscription', { plan: 'church', billing: 'monthly' }),
     );
 
     expect(res.status).toBe(400);
@@ -392,7 +391,7 @@ describe('the checkout route still refuses when tenantId is set', () => {
       mockPrivateGet.mockResolvedValue({ exists: true, data: () => held });
 
       const res = await firstSubscriptionPOST(
-        post('api/dodo/first-subscription', { plan: 'pro', billing: 'monthly' }),
+        post('api/dodo/first-subscription', { plan: 'church', billing: 'monthly' }),
       );
 
       expect(res.status, JSON.stringify(held)).toBe(400);
@@ -405,7 +404,7 @@ describe('the checkout route still refuses when tenantId is set', () => {
 describe('the webhook is still the only writer of plan', () => {
   it('the upgrade route writes nothing at all — it returns a checkout url', async () => {
     const res = await firstSubscriptionPOST(
-      post('api/dodo/first-subscription', { plan: 'max', billing: 'yearly' }),
+      post('api/dodo/first-subscription', { plan: 'ministry', billing: 'yearly' }),
     );
 
     expect(res.status).toBe(200);
@@ -415,15 +414,11 @@ describe('the webhook is still the only writer of plan', () => {
 });
 
 // ── 9 ────────────────────────────────────────────────────────────────────────
-describe('no price changed and free is still absent from PLAN_PRICING', () => {
-  it('holds the six published prices', () => {
+describe('the two published plans and free is still absent from PLAN_PRICING', () => {
+  it('holds the four published prices', () => {
     expect(PLAN_PRICING).toEqual({
-      plus: { monthly: 20, yearly: 190 },
-      pro: { monthly: 40, yearly: 380 },
-      // ⚠️ THE-343 repriced Ministry ($80→$60, and THE-372 back to $80, with the year
-      // following at the same 10% / >20% discounts). `plus` and `pro` are
-      // enumerated so a reprice that overreached its brief still fails here.
-      max: { monthly: 80, yearly: 752 },
+      church: { monthly: 30, yearly: 300 },
+      ministry: { monthly: 90, yearly: 900 },
     });
   });
 

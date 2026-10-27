@@ -504,16 +504,16 @@ describe('4 · no figure, no copy and no measured value changed', () => {
 describe('5 · SMS is still Ministry-only', () => {
   it('grants smsAutomation and textToGive on max and on no other tier', () => {
     const granted = (PLAN_ORDER as readonly TenantPlan[]).filter((p) => getPlanFeatures(p).smsAutomation);
-    expect(granted, 'the SMS tier was widened').toEqual(['max']);
+    expect(granted, 'the SMS tier was widened').toEqual(['ministry']);
     const t2g = (PLAN_ORDER as readonly TenantPlan[]).filter((p) => getPlanFeatures(p).textToGive);
-    expect(t2g, 'the Text-to-Give tier was widened').toEqual(['max']);
+    expect(t2g, 'the Text-to-Give tier was widened').toEqual(['ministry']);
   });
 
   it('named per tier, so a new tier cannot quietly inherit it', () => {
     for (const plan of PLAN_ORDER as readonly TenantPlan[]) {
       const f = getPlanFeatures(plan);
-      expect(f.smsAutomation, `${plan} reaches SMS`).toBe(plan === 'max');
-      expect(f.textToGive, `${plan} reaches Text-to-Give`).toBe(plan === 'max');
+      expect(f.smsAutomation, `${plan} reaches SMS`).toBe(plan === 'ministry');
+      expect(f.textToGive, `${plan} reaches Text-to-Give`).toBe(plan === 'ministry');
     }
   });
 });

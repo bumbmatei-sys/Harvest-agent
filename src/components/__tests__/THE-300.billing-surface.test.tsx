@@ -810,16 +810,12 @@ describe('8 · PaymentSection still renders unavailable; DomainSection is still 
  * 9 — 🔴 no plan cap changed
  * ═══════════════════════════════════════════════════════════════════════════ */
 describe('9 · no plan cap changed', () => {
-  it('the six plan prices are exactly what they were', () => {
+  it('the four plan prices are exactly the two-plan repricing', () => {
     // ⚠️ Client-side plan caps are the SETTLED POSITION — course-adoption.ts:36
     // records it and THE-207/THE-55 closed as won't-fix. Nothing here reopens it.
     expect(PLAN_PRICING).toEqual({
-      plus: { monthly: 20, yearly: 190 },
-      pro: { monthly: 40, yearly: 380 },
-      // ⚠️ THE-343 repriced Ministry ($80→$60, and THE-372 back to $80, with the year
-      // following at the same 10% / >20% discounts). `plus` and `pro` are
-      // enumerated so a reprice that overreached its brief still fails here.
-      max: { monthly: 80, yearly: 752 },
+      church: { monthly: 30, yearly: 300 },
+      ministry: { monthly: 90, yearly: 900 },
     });
   });
 
@@ -838,11 +834,11 @@ describe('9 · no plan cap changed', () => {
       const f = getPlanFeatures(tier as never);
       return `${tier}|${f.maxAdmins}|${f.maxChurches}|${f.maxContacts}`;
     });
+    // RE-TRANSCRIBED AT THE TWO-PLAN REPRICING: admins 2 and 15, people 500 and 5,000.
     expect(caps, 'a plan cap moved — THE-207/THE-55 closed as won\'t-fix').toEqual([
       'free|1|0|500',
-      'plus|2|-1|500',
-      'pro|5|-1|2000',
-      'max|15|-1|4000',
+      'church|2|-1|500',
+      'ministry|15|-1|5000',
     ]);
   });
 });

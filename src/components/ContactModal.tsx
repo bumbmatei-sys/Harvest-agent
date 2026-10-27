@@ -24,7 +24,7 @@ const ADMIN_AREAS = [
  'Dashboard', 'Posts', 'Blog', 'Courses', 'Newsletter', 'AI Knowledge', 'CRM',
  'Fundraising', 'Events', 'Check-In', 'Forms',
  ...(SMS_FEATURE_ENABLED ? ['SMS'] : []),
- 'Accounting',
+ 'Giving records',
  ...(AFFILIATE_PROGRAM_ENABLED ? ['Affiliate'] : []),
  'Livestream', 'Branding', 'Settings', 'Other',
 ];

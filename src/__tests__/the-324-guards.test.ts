@@ -21,6 +21,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { rulesDigestFailure } from './__fixtures__/firestore-rules-pin';
+import { ownershipFailureWithBaseline } from './__fixtures__/ownership-register';
 
 const REPO_ROOT = path.resolve(__dirname, '../..');
 const read = (rel: string): string => readFileSync(path.join(REPO_ROOT, rel), 'utf8');
@@ -932,8 +933,16 @@ describe('19 — firestore.rules, firestore.indexes.json, functions/ and sms-opt
     // And the funnel that consults it, and the meter it protects.
     expect(sha256(read('src/lib/sms-send.ts')), 'THE-314\'s funnel moved')
       .toBe('b812bb195535e7a01be409975059672fad148c51cca966da08895ee26dcd98c9');
-    expect(sha256(read('src/lib/sms-usage.ts')), 'the meter moved')
-      .toBe('63ddb849bbe26a81b1da69a2ce087c71646d97ed94333946b0462a0e9930c19a');
+    // APPENDED BY THE TWO-PLAN REPRICING (THE-378), the baseline literal kept: the meter now reads the
+    // plan through toTenantPlan, so a stored retired id is metered as the tier it became. The segment
+    // arithmetic, the caps and the BYO count are untouched.
+    expect(
+      ownershipFailureWithBaseline(
+        'src/lib/sms-usage.ts',
+        '63ddb849bbe26a81b1da69a2ce087c71646d97ed94333946b0462a0e9930c19a',
+      ),
+      'the meter moved',
+    ).toBeNull();
   });
 
   it('functions/ is byte-identical, file for file', () => {

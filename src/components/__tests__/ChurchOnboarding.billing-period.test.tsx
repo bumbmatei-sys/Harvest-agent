@@ -126,7 +126,7 @@ describe('signup carrying the annual period buys the annual term', () => {
     mount(<ChurchOnboarding onComplete={() => {}} />);
     await signUp();
     expect(checkoutBody().billing).toBe('yearly');
-    expect(checkoutBody().plan).toBe('pro');
+    expect(checkoutBody().plan).toBe('church');
   });
 
   it('writes signupBilling: yearly next to signupPlan on the marker, so a restart keeps the term', async () => {
@@ -135,7 +135,7 @@ describe('signup carrying the annual period buys the annual term', () => {
     await signUp();
     const marker = writtenMarker();
     expect(marker.signupBilling).toBe('yearly');
-    expect(marker.signupPlan).toBe('pro');
+    expect(marker.signupPlan).toBe('church');
   });
 
   it('also persists the period on an existing user doc (updateDoc branch)', async () => {

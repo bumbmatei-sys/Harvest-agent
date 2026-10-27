@@ -413,20 +413,20 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
     return matchType && matchYear && matchSearch;
   });
 
-  // The shared page header: "Accounting" on the left, the Accounting / Statements pill on
+  // The shared page header: "Giving records" on the left, the Records / Statements pill on
   // the right (only when the viewer may open both), one line. It sits at the top of every
   // state below, including loading, so the pill never moves when the view changes.
   const pageHeader = (
     <AdminPageHeader
-      title="Accounting"
+      title="Giving records"
       hideTitleOnMobile
       tabs={showBothSubTabs ? (
         <PageTabs
-          label="Accounting sections"
+          label="Giving records sections"
           value={activeSubTab}
           onValueChange={setSubTab}
           items={[
-            { value: 'accounting', label: 'Accounting' },
+            { value: 'accounting', label: 'Records' },
             { value: 'statements', label: 'Statements' },
           ]}
         />
@@ -459,7 +459,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
       {subTabBar}
 
       {/* Mobile: no in-content page title — the shell's mobile header already
-          renders "Accounting", so an H1 here would duplicate it. */}
+          renders "Giving records", so an H1 here would duplicate it. */}
 
       {/* Summary Cards — mobile: 2-col stat cards with gold icon disc + serif
           value (mockup StatRow). Same computed totals as the desktop grid;
@@ -555,8 +555,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
             <div className="px-4 pb-4 pt-1 text-sm text-body leading-relaxed space-y-2 border-t border-line">
               <p>
                 <b className="text-strong">These totals count every gift with a receipt.</b> Every
-                figure on this screen is built from the receipts on your ledger — the one Harvest
-                issues when it processes a card gift, and the one it issues when you record a gift
+                figure on this screen is built from the receipts on your ledger when you record a gift
                 by hand. Cash, a cheque, a bank transfer and anything sent through your own
                 {GIVING_PROVIDER_NAMES_OR} links never passes through Harvest, so none of them has
                 a receipt until somebody records it.
@@ -573,8 +572,8 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
                 <b className="text-strong">What is still missing is a gift nobody recorded.</b> Until
                 somebody enters it, a cash or payment-link gift reads as $0 here, and your own bank
                 and provider statements remain the record for it. The CRM&apos;s own total given on a
-                contact is never added to these figures: a card gift already writes both, so adding
-                them together would count a card gift twice.
+                contact is never added to these figures: adding both records together would count
+                the same gift twice.
               </p>
             </div>
           </CollapsibleContent>

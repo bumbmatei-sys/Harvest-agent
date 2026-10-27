@@ -181,7 +181,7 @@ async function expand(host: HTMLElement, label: string): Promise<void> {
 const GIVING_ROW = 'Donations & payment links';
 
 const FREE: TenantPlan = 'free';
-const PRICED: TenantPlan[] = ['plus', 'pro', 'max'];
+const PRICED: TenantPlan[] = ['church', 'ministry'];
 
 beforeEach(() => {
   scope.platformOverride = false;
@@ -276,34 +276,9 @@ describe("the three priced tiers' Settings sections are unchanged", () => {
   // on max so the flag still governs, and the two lower tiers say in as many
   // words why the row is absent rather than silently omitting it.
   const EXPECTED: Record<string, string[]> = {
-    plus: [
-      'Appearance',
-      GIVING_ROW,
-      'Onboarding Questions',
-      // No 'SMS' row — THE-314 made the capability Ministry-only.
-      'Integrations',
-      'Cancel Subscription',
-      'Customize Navigation',
-    ],
-    pro: [
-      'Appearance',
-      GIVING_ROW,
-      'Onboarding Questions',
-      // No 'SMS' row — THE-314 made the capability Ministry-only.
-      'Integrations',
-      'Cancel Subscription',
-      'Customize Navigation',
-    ],
-    max: [
-      'Appearance',
-      GIVING_ROW,
-      'Onboarding Questions',
-      'Giving Statements',
-      ...(SMS_FEATURE_ENABLED ? ['SMS'] : []),
-      'Integrations',
-      'Cancel Subscription',
-      'Customize Navigation',
-    ],
+    church: ['Appearance', GIVING_ROW, 'Onboarding Questions', 'Integrations', 'Cancel Subscription', 'Customize Navigation'],
+    ministry: ['Appearance', GIVING_ROW, 'Onboarding Questions', 'Giving Statements',
+      ...(SMS_FEATURE_ENABLED ? ['SMS'] : []), 'Integrations', 'Cancel Subscription', 'Customize Navigation'],
   };
 
   for (const plan of PRICED) {
@@ -420,12 +395,11 @@ describe('no feature flag or price moved', () => {
 
   it('the six prices are untouched', () => {
     expect(PLAN_PRICING).toEqual({
-      plus: { monthly: 20, yearly: 190 },
-      pro: { monthly: 40, yearly: 380 },
+      church: { monthly: 30, yearly: 300 },
       // ⚠️ THE-343 repriced Ministry ($80→$60, and THE-372 back to $80, with the year
       // following at the same 10% / >20% discounts). `plus` and `pro` are
       // enumerated so a reprice that overreached its brief still fails here.
-      max: { monthly: 80, yearly: 752 },
+      ministry: { monthly: 90, yearly: 900 },
     });
     expect(Object.keys(PLAN_PRICING), 'free gained a price').not.toContain('free');
   });

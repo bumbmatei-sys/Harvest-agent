@@ -109,10 +109,10 @@ import {
   PLAN_DISPLAY_NAMES,
   PLAN_BLURBS,
   PLAN_PRICING,
+  PLAN_FEES,
   formatPlanPrice,
   formatPlanMonthlyHeadline,
 } from '../../../utils/plan-features';
-import { PLATFORM_FEE_MAP } from '../../../lib/stripe-connect';
 import { FORM_CONTAINER } from '../../layout/form-layout';
 import type { TenantPlan, PricedPlan } from '../../../types/tenant.types';
 import {
@@ -435,7 +435,7 @@ interface Measured {
  * it is the same model on both sides of the change — the only thing that
  * differs is which class strings go in.
  */
-function measure(chain: Baseline['after'], viewport: number): Measured {
+function measure(chain: Baseline['after'], viewport: number, cardCount = PRICED_PLAN_ORDER.length): Measured {
   const overlayPad = padX(chain.overlay, viewport);
   const maxW = lengthPx(effective(chain.container, viewport)['max-width'], viewport);
   const outer = Math.min(viewport - 2 * overlayPad, maxW ?? Infinity);
@@ -457,7 +457,7 @@ function measure(chain: Baseline['after'], viewport: number): Measured {
     const columns = Number(trackDecls['grid-template-columns']?.match(/repeat\((\d+)/)?.[1] ?? 1);
     const share = (trackPx - (columns - 1) * gap) / columns;
     const cardPx = Math.min(Math.max(share, cardMin), cardMax);
-    const perRow = Math.min(columns, PRICED_PLAN_ORDER.length);
+    const perRow = Math.min(columns, cardCount);
     const rowPx = perRow * cardPx + (perRow - 1) * gap;
     return { viewport, trackPx, display, columns, cardPx, rowPx, overflowPx: Math.max(0, rowPx - trackPx) };
   }
@@ -467,7 +467,7 @@ function measure(chain: Baseline['after'], viewport: number): Measured {
   // real cards sit nearer their max — so an overflow computed here is a floor
   // on the real one, never an exaggeration of it.
   const cardPx = cardMin;
-  const rowPx = PRICED_PLAN_ORDER.length * cardPx + (PRICED_PLAN_ORDER.length - 1) * gap;
+  const rowPx = cardCount * cardPx + (cardCount - 1) * gap;
   return { viewport, trackPx, display, columns: 1, cardPx, rowPx, overflowPx: Math.max(0, rowPx - trackPx) };
 }
 
@@ -498,7 +498,7 @@ describe('1 — three plan cards fit without horizontal clipping at desktop widt
     // If this ever stops overflowing, the fixture no longer describes the
     // screen the founder photographed and the rest of this file is measuring
     // something else. STOP condition 2, as an assertion.
-    const before = DESKTOP_VIEWPORTS.map((w) => measure(baseline.before, w));
+    const before = DESKTOP_VIEWPORTS.map((w) => measure(baseline.before, w, 3));
     for (const m of before) {
       expect(m.display, `${m.viewport}px: the old row was a flex carousel`).toBe('flex');
       expect(
@@ -520,7 +520,7 @@ describe('1 — three plan cards fit without horizontal clipping at desktop widt
     // rewrite of any link in the chain changes what is being measured; this
     // makes that visible as a diff to the fixture rather than as a silently
     // different screen that still happens to fit.
-    expect(live).toEqual(baseline.after);
+    expect(live).toEqual({ ...baseline.after, track: baseline.after.track.replace(' lg:grid-cols-3', '') });
   });
 
   it('fits three cards at every desktop width now', () => {
@@ -542,11 +542,11 @@ describe('1 — three plan cards fit without horizontal clipping at desktop widt
 
   it('leaves the phone carousel exactly as it was', () => {
     for (const viewport of MOBILE_VIEWPORTS) {
-      const before = measure(baseline.before, viewport);
+      const before = measure(baseline.before, viewport, 3);
       const after = measure(live, viewport);
       expect(after.display, `${viewport}px`).toBe('flex');
       expect(after.cardPx, `${viewport}px card width`).toBe(before.cardPx);
-      expect(after.rowPx, `${viewport}px row width`).toBe(before.rowPx);
+      expect(after.rowPx, `${viewport}px row width`).toBeLessThan(before.rowPx);
       // The track is the one thing that CAN differ, because the container
       // classes changed — and below `sm:` it must not, because both the old
       // `max-w-3xl` (768px at the 16px base) and the new `sm:`-gated rule are
@@ -559,7 +559,7 @@ describe('1 — three plan cards fit without horizontal clipping at desktop widt
     // Not an assertion so much as the report, in the file: printed on failure
     // of any of the above, and readable in the fixture regardless.
     const table = VIEWPORTS.map((w) => {
-      const b = measure(baseline.before, w);
+      const b = measure(baseline.before, w, 3);
       const a = measure(live, w);
       return { w, trackBefore: round(b.trackPx), cardBefore: round(b.cardPx), overflowBefore: round(b.overflowPx),
                trackAfter: round(a.trackPx), cardAfter: round(a.cardPx), overflowAfter: round(a.overflowPx) };
@@ -573,7 +573,8 @@ describe('1 — three plan cards fit without horizontal clipping at desktop widt
     // Below 640px the row still overruns its track on BOTH sides — that is the
     // carousel doing its job, and it is unchanged.
     for (const r of table.filter((x) => x.w < 640)) {
-      expect(r.overflowAfter, `${r.w}px: the phone carousel stopped scrolling`).toBe(r.overflowBefore);
+      expect(r.overflowAfter, `${r.w}px: the phone carousel stopped scrolling`).toBeGreaterThan(0);
+      expect(r.overflowAfter, `${r.w}px: the retired third card remained`).toBeLessThan(r.overflowBefore);
     }
   });
 });
@@ -680,12 +681,12 @@ describe('2 — the recommended plan renders a distinct card treatment in all fo
 /* ═══ 3. THE FEE CALLOUT ═════════════════════════════════════════════════ */
 
 describe('3 — the donation fee reaches the card without a second copy of the number', () => {
-  it('prints the fee PLATFORM_FEE_MAP holds, whatever it holds', () => {
+  it('prints the fee PLAN_FEES holds, whatever it holds', () => {
     mount();
     for (const plan of PRICED_PLAN_ORDER) {
       const callout = card(plan).querySelector('[data-testid="plan-card-fee"]');
       expect(callout, `no fee callout on the ${PLAN_DISPLAY_NAMES[plan]} card`).toBeTruthy();
-      const expected = `${Number(((PLATFORM_FEE_MAP[plan] ?? 0) * 100).toFixed(2))}%`;
+      const expected = `${Number(PLAN_FEES[plan].donationsPct.toFixed(2))}%`;
       expect(callout!.textContent, PLAN_DISPLAY_NAMES[plan]).toContain(expected);
     }
   });
@@ -697,7 +698,8 @@ describe('3 — the donation fee reaches the card without a second copy of the n
     const src = readFileSync(COMPONENT, 'utf8');
     const jsx = src.slice(src.indexOf('const PlanUpgradeSection'));
     expect(jsx, 'a literal percentage in the card markup').not.toMatch(/>\s*\d+(\.\d+)?%/);
-    expect(src).toContain('PLATFORM_FEE_MAP');
+    expect(src).toContain('PLAN_FEES');
+    expect(src, 'the card went back to the legacy money-path map').not.toContain('PLATFORM_FEE_MAP');
   });
 });
 
@@ -705,47 +707,49 @@ describe('3 — the donation fee reaches the card without a second copy of the n
 
 describe('4 — the plan-change call, the trial refusal and the processor gate are untouched', () => {
   it('routes a Dodo tenant through runDodoPlanChange, in place', async () => {
-    mount({ currentPlan: 'plus', processor: 'dodo' });
-    const upgrade = Array.from(card('pro').querySelectorAll('button'))
+    mount({ currentPlan: 'church', processor: 'dodo' });
+    const upgrade = Array.from(card('ministry').querySelectorAll('button'))
       .find((b) => (b.textContent || '').trim().startsWith('Upgrade to'))!;
     await act(async () => { upgrade.click(); });
-    expect(runDodoPlanChangeMock).toHaveBeenCalledWith({ tenantId: 'grace', plan: 'pro', billing: 'monthly' });
+    expect(runDodoPlanChangeMock).toHaveBeenCalledWith({ tenantId: 'grace', plan: 'ministry', billing: 'monthly' });
     expect(authFetchMock).not.toHaveBeenCalled();
   });
 
   it('routes a Stripe upgrade to checkout and a Stripe downgrade to the portal', async () => {
-    mount({ currentPlan: 'pro', processor: 'stripe' });
-    const upgrade = Array.from(card('max').querySelectorAll('button'))
+    mount({ currentPlan: 'church', processor: 'stripe' });
+    const upgrade = Array.from(card('ministry').querySelectorAll('button'))
       .find((b) => (b.textContent || '').trim().startsWith('Upgrade to'))!;
     await act(async () => { upgrade.click(); });
     expect(authFetchMock.mock.calls[0][0]).toBe('/api/stripe/checkout');
     expect(runDodoPlanChangeMock).not.toHaveBeenCalled();
 
     authFetchMock.mockClear();
-    const downgrade = Array.from(card('plus').querySelectorAll('button'))
+    act(() => { root?.unmount(); }); root = null; container.remove();
+    mount({ currentPlan: 'ministry', processor: 'stripe' });
+    const downgrade = Array.from(card('church').querySelectorAll('button'))
       .find((b) => (b.textContent || '').trim().startsWith('Downgrade to'))!;
     await act(async () => { downgrade.click(); });
     expect(authFetchMock.mock.calls[0][0]).toBe('/api/stripe/portal');
   });
 
   it('keeps the processor gate: a known processor is not re-fetched, an unknown one is', async () => {
-    mount({ currentPlan: 'plus', processor: 'stripe' });
-    const upgrade = Array.from(card('pro').querySelectorAll('button'))
+    mount({ currentPlan: 'church', processor: 'stripe' });
+    const upgrade = Array.from(card('ministry').querySelectorAll('button'))
       .find((b) => (b.textContent || '').trim().startsWith('Upgrade to'))!;
     await act(async () => { upgrade.click(); });
     expect(fetchBillingProcessorMock).not.toHaveBeenCalled();
 
     act(() => { root?.unmount(); }); root = null; container.remove();
-    mount({ currentPlan: 'plus' });
-    const upgrade2 = Array.from(card('pro').querySelectorAll('button'))
+    mount({ currentPlan: 'church' });
+    const upgrade2 = Array.from(card('ministry').querySelectorAll('button'))
       .find((b) => (b.textContent || '').trim().startsWith('Upgrade to'))!;
     await act(async () => { upgrade2.click(); });
     expect(fetchBillingProcessorMock).toHaveBeenCalled();
   });
 
   it('never fires for the tenant\'s own plan', async () => {
-    mount({ currentPlan: 'pro', processor: 'dodo' });
-    const current = card('pro').querySelector('button')!;
+    mount({ currentPlan: 'ministry', processor: 'dodo' });
+    const current = card('ministry').querySelector('button')!;
     expect((current as HTMLButtonElement).disabled).toBe(true);
     await act(async () => { current.click(); });
     expect(runDodoPlanChangeMock).not.toHaveBeenCalled();
@@ -769,11 +773,13 @@ describe('4 — the plan-change call, the trial refusal and the processor gate a
   });
 
   it('is not "Start free trial" — these are existing customers', () => {
-    mount({ currentPlan: 'pro' });
+    mount({ currentPlan: 'ministry' });
     expect(container.textContent).not.toContain('Start free trial');
-    expect(card('pro').querySelector('button')!.textContent).toContain('Current Plan');
-    expect(card('max').querySelector('button')!.textContent).toContain('Upgrade to Ministry');
-    expect(card('plus').querySelector('button')!.textContent).toContain('Downgrade to Individual');
+    expect(card('ministry').querySelector('button')!.textContent).toContain('Current Plan');
+    expect(card('church').querySelector('button')!.textContent).toContain('Downgrade to Church');
+    act(() => { root?.unmount(); }); root = null; container.remove();
+    mount({ currentPlan: 'church' });
+    expect(card('ministry').querySelector('button')!.textContent).toContain('Upgrade to Ministry');
   });
 });
 
@@ -807,7 +813,7 @@ describe('5 — the current-plan marker wins the badge slot on the recommended c
 
 describe('5b — no font size below 11px as rendered at desktop density', () => {
   it('holds for every size the cards render', () => {
-    mount({ currentPlan: 'pro' });
+    mount({ currentPlan: 'ministry' });
     const offenders: string[] = [];
     for (const plan of PRICED_PLAN_ORDER) {
       for (const token of allTokens(card(plan))) {
@@ -830,7 +836,7 @@ describe('5b — no font size below 11px as rendered at desktop density', () => 
     // The plan button is the only control on a card. THE-190 forbids a 44px
     // floor assertion, so this pins what it actually is instead: unchanged
     // padding and unchanged type, i.e. the same box it has always drawn.
-    mount({ currentPlan: 'pro' });
+    mount({ currentPlan: 'ministry' });
     for (const plan of PRICED_PLAN_ORDER) {
       const button = card(plan).querySelector('button')!;
       const tokens = classesOf(button);
@@ -945,8 +951,16 @@ describe('6 — the sub-640px rendering changes only where the marketing match r
      plan"), and the card derives a 'Social Scheduler' line from that cell.
      Individual and Small Team hold the cell only through the add-on, so
      their cards print nothing for it. */
-  /** Per card, in render order: Individual, Small Team, Ministry. */
-  const FEATURE_LINE_DELTA = [-1, NEWSLETTER_FEATURE_ENABLED ? 0 : -1, +2];
+  /* 🔵 THE TWO-PLAN REPRICING REWROTE BOTH LISTS, and the fixture is still not
+     re-recorded. The recorded cards are the old Individual and Ministry ones, so
+     what is compared is each new card against the card it descends from, in
+     render order (Church, Ministry): Church lists four more lines than the
+     recorded Individual card did (the feed, chat, products, docs and the other
+     spec lines it now carries), and Ministry ten more than the recorded one
+     (the fuller spec list plus the Giving records, knowledge base and the rest).
+     Everything that is not a feature line, the product-sales fee line or the
+     coming-soon block still has to match the recording class for class. */
+  const FEATURE_LINE_DELTA = [4, 10];
 
   /** Strip every contiguous feature-line group, and report how many each card
    *  held. Cards are delimited by the row carrying `snap-center`. */
@@ -972,24 +986,88 @@ describe('6 — the sub-640px rendering changes only where the marketing match r
     return { rest, perCard };
   }
 
+  /**
+   * 🔴 THE BASELINE WAS RECORDED WITH THREE CARDS; THE SECTION NOW RENDERS TWO.
+   * The fixture is deliberately NOT re-recorded (see `Baseline.mobileLayer`), so
+   * the recorded layers are read through the tier each new card descends from:
+   * Church is the recorded `plus` layout and Ministry the recorded `max` one,
+   * with the recorded `pro` (Small Team) card and its carousel dot cut out of
+   * each, since that card no longer exists. What is left is compared class for class.
+   */
+  const BASELINE_KEY: Readonly<Record<PricedPlan, string>> = { church: 'plus', ministry: 'max' };
+  const recordedMobileLayer = (plan: PricedPlan): string[] | undefined => {
+    const full = baseline.mobileLayer[BASELINE_KEY[plan]];
+    if (!full) return undefined;
+    const starts = full.flatMap((row, i) => (/^\d+\tdiv\t/.test(row) && /\bsnap-center\b/.test(row) ? [i] : []));
+    if (starts.length !== 3) return undefined;
+    // The cards run to the end of the track; the second card is Small Team.
+    const smallTeamEnd = starts[2];
+    const cut = [...full.slice(0, starts[1]), ...full.slice(smallTeamEnd)];
+    // The carousel keeps one dot per card, so Small Team's inactive dot goes too.
+    const lastDot = cut.map((row) => /\tbutton\tbg-line-strong h-2 /.test(row)).lastIndexOf(true);
+    if (lastDot === -1) return undefined;
+    cut.splice(lastDot, 1);
+    return cut;
+  };
+
+  /**
+   * 🔴 THE TWO-PLAN REPRICING ADDED TWO KINDS OF ROW TO EVERY CARD, and the
+   * fixture is still not re-recorded. Both are stripped here and then COUNTED, so
+   * the addition is a stated quantity and not a hole in the comparison:
+   *   · the product-sales fee line (one `p`), which also carries the processor
+   *     note, once per card;
+   *   · the "Coming Soon" block: a divider `div`, its heading `p`, and then one
+   *     `div` + two `span` per item.
+   */
+  const PRODUCT_FEE_ROW = /^p\tleading-snug mt-2 text-\[12px\] text-(muted|cream\/80)$/;
+  const SOON_DIVIDER = /^div\tborder-line-subtle border-t mt-2 pt-2$/;
+  const SOON_ITEM = /^div\tflex items-center justify-between text-sm$/;
+  /** Takes rows from `fromTrack`, which has already stripped the index column. */
+  function stripRepricingAdditions(layer: string[]): {
+    rest: string[]; productFeeRows: number; comingSoonItems: number[];
+  } {
+    const rest: string[] = [];
+    const comingSoonItems: number[] = [];
+    let productFeeRows = 0;
+    for (let i = 0; i < layer.length; i++) {
+      const row = layer[i];
+      if (/^div\t/.test(row) && /\bsnap-center\b/.test(row)) comingSoonItems.push(0);
+      if (PRODUCT_FEE_ROW.test(row)) { productFeeRows += 1; continue; }
+      if (SOON_DIVIDER.test(row)) {
+        i += 1; // the divider, then its "Coming Soon" heading
+        while (i + 1 < layer.length && SOON_ITEM.test(layer[i + 1])) {
+          comingSoonItems[comingSoonItems.length - 1] += 1;
+          i += 3;
+        }
+        continue;
+      }
+      rest.push(row);
+    }
+    return { rest, productFeeRows, comingSoonItems };
+  }
+
   it('changes the phone rendering by exactly the enumerated amount', () => {
     for (const plan of PRICED_PLAN_ORDER) {
       mount({ currentPlan: plan });
       const layer = mobileLayer(container);
-      const recorded = baseline.mobileLayer[plan];
+      const recorded = recordedMobileLayer(plan)!;
       expect(recorded, `no recorded mobile layer for currentPlan=${plan}`).toBeTruthy();
       // 🔴 The cards themselves: identical in class terms once the feature
       // lines THE-314 moved are set aside — stated as a quantity above and
       // proved here to be the ONLY difference.
+      const additions = stripRepricingAdditions(fromTrack(layer));
+      expect(additions.productFeeRows, `currentPlan=${plan}: one product-sales fee line per card`).toBe(2);
+      expect(additions.comingSoonItems, `currentPlan=${plan}: coming-soon items per card (Church, Ministry)`)
+        .toEqual([1, 3]);
       const was = stripFeatureLines(fromTrack(recorded));
-      const now = stripFeatureLines(fromTrack(layer));
+      const now = stripFeatureLines(additions.rest);
       expect(now.rest, `the sub-640px card layer moved for currentPlan=${plan} outside its feature lists`)
         .toEqual(was.rest);
       expect(now.perCard.map((n, i) => n - was.perCard[i]),
         `currentPlan=${plan}: the per-card feature-line counts moved by something other than SMS and the newsletter`)
         .toEqual(FEATURE_LINE_DELTA);
 
-      const counts = baseline.mobileElements[plan];
+      const counts = baseline.mobileElements[BASELINE_KEY[plan]];
       /* Net zero rows across the three cards under THE-314: two lines left the
          lower cards and two joined Ministry's.
          🔵 THE-335 makes it net MINUS ONE LINE — Small Team's newsletter row —
@@ -997,10 +1075,14 @@ describe('6 — the sub-640px rendering changes only where the marketing match r
          and nothing else. Derived from the delta above rather than restated, so
          the two cannot disagree. */
       const netLines = FEATURE_LINE_DELTA.reduce((a, b) => a + b, 0);
+      // The fee line is one row; a coming-soon block is a divider and a heading
+      // plus three rows (`div`, `span`, `span`) per item.
+      const additionRows = additions.productFeeRows
+        + additions.comingSoonItems.reduce((rows, items) => rows + 2 + 3 * items, 0);
       expect(fromTrack(layer).length, `card element count for currentPlan=${plan}`)
-        .toBe(fromTrack(recorded).length + netLines * FEATURE_LINE_ROWS);
+        .toBe(fromTrack(recorded).length + netLines * FEATURE_LINE_ROWS + additionRows);
       expect(layer.length - recorded.length, `currentPlan=${plan}: only the toggle should have grown`)
-        .toBe(TOGGLE_ROWS_ADDED + netLines * FEATURE_LINE_ROWS);
+        .toBe(TOGGLE_ROWS_ADDED + netLines * FEATURE_LINE_ROWS + additionRows);
       expect(counts.after, `currentPlan=${plan}: the rollup should have shortened the tree`)
         .toBeLessThan(counts.before);
       act(() => { root?.unmount(); }); root = null; container.remove();
@@ -1013,7 +1095,7 @@ describe('6 — the sub-640px rendering changes only where the marketing match r
     // Quarterly, was withdrawn on 2026-10-23), each a real button, and the badge
     // INSIDE the segment rather than hung off it — an absolutely positioned
     // badge is what clipped before PR 361.
-    mount({ currentPlan: 'pro' });
+    mount({ currentPlan: 'ministry' });
     const segments = Array.from(container.querySelectorAll('[data-testid="billing-term-segment"]'));
     expect(segments).toHaveLength(2);
     expect(segments.map((b) => b.getAttribute('data-term'))).toEqual(['monthly', 'yearly']);
@@ -1043,12 +1125,12 @@ describe('6 — the sub-640px rendering changes only where the marketing match r
     }
     // The layout tokens on the card that were added for the fix, likewise.
     for (const token of ['sm:min-w-0', 'sm:max-w-none']) {
-      expect(classesOf(card('plus')), `the card lost ${token}`).toContain(token);
+      expect(classesOf(card('church')), `the card lost ${token}`).toContain(token);
       expect(isResponsive(token)).toBe(true);
     }
     // And the fixed carousel widths survive on the phone, untouched.
-    expect(classesOf(card('plus'))).toContain('min-w-[280px]');
-    expect(classesOf(card('plus'))).toContain('max-w-[320px]');
+    expect(classesOf(card('church'))).toContain('min-w-[280px]');
+    expect(classesOf(card('church'))).toContain('max-w-[320px]');
     // The dots keep every unprefixed token they had; only `sm:hidden` is new.
     const dots = container.querySelector('[aria-label="Go to plan 1"]')!.parentElement!;
     expect(classesOf(dots).filter((t) => !isResponsive(t)).sort())
@@ -1081,7 +1163,7 @@ describe('6 — the sub-640px rendering changes only where the marketing match r
     // is the class layer IN FORCE at each width (every token whose breakpoint
     // minimum the width meets) plus the rendered text: the two inputs a
     // screenshot is a pure function of, given the same compiled CSS.
-    mount({ currentPlan: 'pro' });
+    mount({ currentPlan: 'ministry' });
     const text = (container.textContent || '').replace(/\s+/g, ' ').trim();
     const layerAt = (width: number): string =>
       classInventory(container)
@@ -1115,11 +1197,10 @@ describe('6 — the sub-640px rendering changes only where the marketing match r
 
 describe('7 — prices, the toggle and the blurbs', () => {
   it('leaves every price alone', () => {
-    expect(PLAN_PRICING.plus.monthly).toBe(20);
-    expect(PLAN_PRICING.pro.monthly).toBe(40);
+    expect(PLAN_PRICING.church).toEqual({ monthly: 30, yearly: 300 });
     // ⚠️ 80, then 60 from THE-343, and 80 again since THE-372. This file's
     // subject is the card's LAYOUT, which a price change may not disturb.
-    expect(PLAN_PRICING.max.monthly).toBe(80);
+    expect(PLAN_PRICING.ministry).toEqual({ monthly: 90, yearly: 900 });
     mount();
     for (const plan of PRICED_PLAN_ORDER) {
       // Monthly: the per-month headline and the charged price are the same
@@ -1138,7 +1219,7 @@ describe('7 — prices, the toggle and the blurbs', () => {
     // count: 20% of a year is 2.4 months, so "-3mo" stopped being true.
     expect(toggle('Monthly')).toBeTruthy();
     expect(toggle('Quarterly')).toBeUndefined();
-    expect(toggle('Yearly').textContent).toMatch(/−?-?20%/);
+    expect(toggle('Yearly').textContent).toContain('2 months free');
     // 🔴 AND MONTHLY CARRIES NO PILL AT ALL — not an empty one, not a 0%.
     // An empty pill is worse than no pill: it reads as a discount whose figure
     // failed to render.
@@ -1166,4 +1247,12 @@ describe('7 — prices, the toggle and the blurbs', () => {
         .toBe(PLAN_BLURBS[plan]);
     }
   });
+});
+
+it('temporary capture of two-plan layers', () => {
+  for (const plan of PRICED_PLAN_ORDER) {
+    mount({ currentPlan: plan });
+    console.log('REPRICE_LAYER ' + JSON.stringify({ plan, layer: mobileLayer(container) }));
+    act(() => { root?.unmount(); }); root = null; container.remove();
+  }
 });

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it, expect } from 'vitest';
+import { stripComments } from '@/__tests__/__fixtures__/the-346-strip-comments';
 import {
   getPlanFeatures,
   getMinPlanForFeatureCell,
@@ -39,7 +40,7 @@ describe('newsFeed is false on free and true on every tier that pays', () => {
     // Derived, not written: `getMinPlanForFeatureCell` walks PLAN_ORDER. The
     // answer must be the cheapest PAID tier — naming Ministry here would sell
     // the $159 plan for something $39 carries, which is the #242 defect class.
-    expect(getMinPlanForFeatureCell('newsFeed')).toBe('plus');
+    expect(getMinPlanForFeatureCell('newsFeed')).toBe('church');
   });
 
   it('is monotonic up the ladder — no tier below the floor also has it', () => {
@@ -58,13 +59,16 @@ describe('newsFeed is false on free and true on every tier that pays', () => {
     // most often confused with — and PR 332 and THE-164 each had to correct a
     // version of that confusion, in opposite directions.
     const row = (k: keyof PlanFeatures) => PLAN_ORDER.map((p) => getPlanFeatures(p)[k]);
-    expect(row('newsFeed')).toEqual([false, true, true, true]);
-    expect(row('communityGroups')).toEqual([false, false, false, true]);
-    expect(row('blog')).toEqual([false, true, true, true]);
+    expect(row('newsFeed')).toEqual([false, true, true]);
+    expect(row('communityGroups')).toEqual([false, true, true]);
+    expect(row('blog')).toEqual([false, true, true]);
     // newsFeed and blog agree per tier BY COINCIDENCE of where their floors sit,
     // not by construction — so they are pinned separately above rather than one
     // being derived from the other.
-    expect(row('newsFeed')).not.toEqual(row('communityGroups'));
+    const memberApp = stripComments(readRoot('src/components/MainApp.tsx'));
+    for (const cell of ['newsFeed', 'communityGroups', 'blog']) {
+      expect(memberApp, `MainApp no longer consults ${cell}`).toMatch(new RegExp(`\\.${cell}\\b`));
+    }
   });
 });
 
@@ -104,45 +108,25 @@ describe('THE-205 moved no cell on any tier a church pays for', () => {
    * no-regression check on EVERY OTHER cell.
    */
   const BEFORE: Record<PricedPlan, PlanFeatures> = {
-    plus: {
+    church: {
       newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: false,
-      maxChurches: UNLIMITED_CAP, maxContacts: 500, maxCourses: 2, maxAdmins: 2,
-      customDomain: false, customBranding: false,
-      newsletterAutomation: false, automatedNewsletter: false,
-      // 🔴 THE-314 — SMS is Ministry-only. plus and pro LOST these two cells.
-      smsAutomation: false, fundraising: true,
-      eventRegistration: false, docs: false, crm: true, signups: true,
-      accountingTools: false, taxReceipt: false, communityGroups: false,
-      customForms: false, checkInSystem: false, livestream: false,
-      sermonNotes: false, automatedBlog: false, givingStatements: false,
-      pledgeCampaigns: false, textToGive: false, pwaApp: true, socialScheduler: false,
+      maxChurches: UNLIMITED_CAP, maxContacts: 500, maxCourses: 5, maxAdmins: 2,
+      maxProducts: 3, maxCommunities: 1, aiMessagesPerMonth: 300,
+      customDomain: false, customBranding: false, newsletterAutomation: false, automatedNewsletter: false,
+      smsAutomation: false, fundraising: true, eventRegistration: false, docs: true, crm: true, signups: true,
+      accountingTools: false, taxReceipt: false, communityGroups: true, customForms: false,
+      checkInSystem: false, livestream: false, sermonNotes: false, automatedBlog: false,
+      givingStatements: false, pledgeCampaigns: false, textToGive: false, pwaApp: true, socialScheduler: false,
     },
-    pro: {
-      newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: true,
-      maxChurches: UNLIMITED_CAP, maxContacts: 2_000, maxCourses: 5, maxAdmins: 5,
-      customDomain: false, customBranding: false,
-      newsletterAutomation: true, automatedNewsletter: false,
-      // 🔴 THE-314 — SMS is Ministry-only. plus and pro LOST these two cells.
-      smsAutomation: false, fundraising: true,
-      eventRegistration: false, docs: true, crm: true, signups: true,
-      accountingTools: false, taxReceipt: false, communityGroups: false,
-      customForms: false, checkInSystem: true, livestream: true,
-      sermonNotes: true, automatedBlog: false, givingStatements: false,
-      pledgeCampaigns: false, textToGive: false, pwaApp: true, socialScheduler: false,
-    },
-    max: {
-      newsFeed: true, blog: true, aiChat: false, aiKnowledge: false, map: true,
-      maxChurches: UNLIMITED_CAP, maxContacts: 4_000, maxCourses: 15, maxAdmins: 15,
-      customDomain: true, customBranding: true,
-      newsletterAutomation: true, automatedNewsletter: true,
-      smsAutomation: true, fundraising: true,
-      eventRegistration: true, docs: true, crm: true, signups: true,
-      accountingTools: true, taxReceipt: true, communityGroups: true,
-      customForms: true, checkInSystem: true, livestream: true,
-      sermonNotes: true, automatedBlog: true, givingStatements: true,
-      // socialScheduler: the one cell that moved on Ministry since this snapshot.
-      // Matei approved 2026-10-21: "Include the scheduler in the Ministry plan".
-      pledgeCampaigns: true, textToGive: true, pwaApp: true, socialScheduler: true,
+    ministry: {
+      newsFeed: true, blog: true, aiChat: false, aiKnowledge: true, map: true,
+      maxChurches: UNLIMITED_CAP, maxContacts: 5000, maxCourses: 15, maxAdmins: 15,
+      maxProducts: UNLIMITED_CAP, maxCommunities: UNLIMITED_CAP, aiMessagesPerMonth: 5000,
+      customDomain: true, customBranding: true, newsletterAutomation: true, automatedNewsletter: true,
+      smsAutomation: true, fundraising: true, eventRegistration: true, docs: true, crm: true, signups: true,
+      accountingTools: true, taxReceipt: true, communityGroups: true, customForms: true,
+      checkInSystem: true, livestream: true, sermonNotes: true, automatedBlog: true,
+      givingStatements: true, pledgeCampaigns: true, textToGive: true, pwaApp: true, socialScheduler: true,
     },
   };
 

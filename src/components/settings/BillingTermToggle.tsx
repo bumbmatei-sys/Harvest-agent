@@ -2,7 +2,6 @@
 
 import React from 'react';
 import {
-  ADVERTISED_DISCOUNT_PCT,
   BILLING_TERMS,
   discountClaim,
   type BillingTerm,
@@ -126,7 +125,7 @@ export function BillingTermToggle({
                      utility at all. */
                   className={`block text-[11px] font-bold text-gold ${selected ? '' : 'opacity-80'}`}
                 >
-                  {`−${ADVERTISED_DISCOUNT_PCT[term]}%`}
+                  {discountClaim(term)}
                 </span>
               )}
             </button>

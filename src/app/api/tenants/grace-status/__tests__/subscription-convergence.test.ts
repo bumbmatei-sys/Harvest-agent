@@ -173,7 +173,7 @@ function subscription(status: BillingSubscriptionStatus): BillingSubscription {
   return {
     id: 'sub_grace',
     status,
-    plan: 'plus',
+    plan: 'church',
     period: 'monthly',
     cancelAtPeriodEnd: false,
     currentPeriodEndsAt: null,

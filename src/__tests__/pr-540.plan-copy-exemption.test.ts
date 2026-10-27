@@ -8,6 +8,7 @@ import {
   R3_APPROVAL,
   R4_APPROVAL,
   R5_APPROVAL,
+  R6_APPROVAL,
   acceptedDigests,
   currentDigest,
   reverseHunks,
@@ -57,10 +58,12 @@ describe.each(SUBJECTS.map((s) => [s.file, s] as const))('%s', (_file, subject) 
     expect(subject.approval).toBe(R3_APPROVAL);
     expect(subject.approval).toBe('Matei approved 2026-10-21: display-copy + compact prop only');
     // Round 4 is the first successor on both files. plan-features.ts gained a fifth
-    // round (the quarterly term withdrawn, R5_APPROVAL), recorded after it.
-    expect(subject.successors, 'round 4 is recorded as a successor').toHaveLength(subject === PLAN_FEATURES ? 2 : 1);
+    // round (the quarterly term withdrawn, R5_APPROVAL), recorded after it. Round 6, the
+    // two-plan repricing (R6_APPROVAL), is the last successor on both files.
+    expect(subject.successors, 'rounds 4 and 6 are recorded as successors').toHaveLength(subject === PLAN_FEATURES ? 3 : 2);
     expect(subject.successors![0].approval).toBe(R4_APPROVAL);
     if (subject === PLAN_FEATURES) expect(subject.successors![1].approval).toBe(R5_APPROVAL);
+    expect(subject.successors![subject.successors!.length - 1].approval).toBe(R6_APPROVAL);
     expect(R4_APPROVAL).toContain('Include the scheduler in the Ministry plan');
   });
 
@@ -121,10 +124,10 @@ describe('an edit outside the approved lines still fails the pin', () => {
   });
 
   it.each([
-    ['a price', (t: string) => t.replace('monthly: 20,', 'monthly: 21,')],
+    ['a price', (t: string) => t.replace('monthly: 30,', 'monthly: 31,')],
     ['a trailing comment', (t: string) => `${t}\n// x\n`],
-    ['a plan blurb next to the edited one', (t: string) => t.replace("'For small ministries growing as a team.'", "'For small campuses growing as a team.'")],
-    ['the edited blurb itself', (t: string) => t.replace('For established campuses going deeper.', 'For established ministries going deeper.')],
+    ['a plan blurb next to the edited one', (t: string) => t.replace("'For a ministry running one community.'", "'For a ministry running one campus.'")],
+    ['the Ministry blurb itself', (t: string) => t.replace('For ministries with many communities and campuses.', 'For ministries with many communities.')],
   ])('plan-features: %s', (_name, mutate) => {
     const mutated = mutate(features);
     expect(mutated, 'the mutation did not change the file').not.toBe(features);
@@ -144,14 +147,14 @@ describe('round 4 is one plan cell, its doc comment and the card line derived fr
   };
 
   it('Ministry has the cell, and no other tier does', () => {
-    const max = features.slice(features.indexOf('  max: {'));
-    expect(max).toMatch(/socialScheduler: true,\n\s*\},\n\};/);
+    const ministryRow = features.slice(features.indexOf('  ministry: {'));
+    expect(ministryRow).toMatch(/socialScheduler: true,\n\s*\},\n\};/);
     expect(features.match(/socialScheduler: true,/g) ?? [], 'another tier gained the cell').toHaveLength(1);
   });
 
   it.each([
     ['the cell flipped on another tier', (t: string) => t.replace('socialScheduler: false,', 'socialScheduler: true,')],
-    ['a price next to it', (t: string) => t.replace('monthly: 20,', 'monthly: 21,')],
+    ['a price next to it', (t: string) => t.replace('monthly: 30,', 'monthly: 31,')],
     ['the Ministry cell turned back off', (t: string) => t.replace('socialScheduler: true,', 'socialScheduler: false,')],
   ])('plan-features: %s fails the pin and the chain', (_name, mutate) => {
     const mutated = mutate(features);

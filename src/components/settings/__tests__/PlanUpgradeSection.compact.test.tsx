@@ -39,22 +39,22 @@ const manage = () => container.querySelector<HTMLElement>('[data-testid="billing
 
 describe('plan card copy says campus, not church', () => {
   it('prints "Unlimited campuses" and never "Unlimited churches"', () => {
-    mount({ currentPlan: 'plus' });
+    mount({ currentPlan: 'church' });
     expect(container.textContent).toContain('Unlimited campuses');
     expect(container.textContent).not.toMatch(/Unlimited churches/i);
   });
 
   it('prints the campus blurb on the Ministry card', () => {
-    mount({ currentPlan: 'plus' });
-    const max = container.querySelector('[data-testid="plan-card"][data-plan="max"]')!;
+    mount({ currentPlan: 'church' });
+    const max = container.querySelector('[data-testid="plan-card"][data-plan="ministry"]')!;
     expect(max.querySelector('[data-testid="plan-card-blurb"]')!.textContent!.trim())
-      .toBe('For established campuses going deeper.');
-    expect(PLAN_BLURBS.max).toBe('For established campuses going deeper.');
+      .toBe('For ministries with many communities and campuses.');
+    expect(PLAN_BLURBS.ministry).toBe('For ministries with many communities and campuses.');
     expect(container.textContent).not.toMatch(/established churches/i);
   });
 
   it('prints a campus line on every priced tier that includes one, and no church line', () => {
-    mount({ currentPlan: 'plus' });
+    mount({ currentPlan: 'church' });
     const floor = container.querySelector(`[data-plan="${PRICED_PLAN_ORDER[0]}"][data-testid="plan-card"]`)!;
     expect(floor.querySelector('[data-feature="maxChurches"]')!.textContent).toMatch(/campuses/);
     expect(container.querySelector('[data-feature="maxChurches"]')!.textContent).not.toMatch(/church/i);
@@ -63,36 +63,38 @@ describe('plan card copy says campus, not church', () => {
 
 describe('the compact prop', () => {
   it('stacks the plan cards one per row', () => {
-    mount({ currentPlan: 'plus', compact: true });
+    mount({ currentPlan: 'church', compact: true });
     expect(track().style.display).toBe('grid');
     expect(track().style.gridTemplateColumns).toBe('minmax(0, 1fr)');
     expect(track().style.overflow).toBe('visible');
   });
 
   it('leaves the default layout exactly as it was', () => {
-    mount({ currentPlan: 'plus' });
+    mount({ currentPlan: 'church' });
     expect(track().style.display).toBe('');
     expect(track().style.gridTemplateColumns).toBe('');
     expect(track().className).toContain('snap-x');
-    expect(track().className).toContain('lg:grid-cols-3');
+    // Two cards now, so the three-column step is gone and two columns remain.
+    expect(track().className).toContain('sm:grid-cols-2');
+    expect(track().className).not.toContain('lg:grid-cols-3');
   });
 
   it('draws Manage Subscription as the shadcn Button on theme tokens', () => {
-    mount({ currentPlan: 'plus', compact: true });
+    mount({ currentPlan: 'church', compact: true });
     expect(manage().getAttribute('data-slot')).toBe('button');
     expect(manage().className).not.toMatch(/\bbg-earth\b|\bdark:bg-cream\b|\btext-cream\b|dark:hover:bg-stone-200/);
     expect(manage().textContent).toBe('Manage Subscription');
   });
 
   it('keeps the original Manage Subscription button outside the popup', () => {
-    mount({ currentPlan: 'plus' });
+    mount({ currentPlan: 'church' });
     expect(manage().getAttribute('data-slot')).toBeNull();
     expect(manage().className).toContain('bg-earth');
   });
 
   it.each([true, false])('compact=%s opens the same billing portal route with the same body', async (compact) => {
     mockAuthFetch.mockClear();
-    mount({ currentPlan: 'plus', compact });
+    mount({ currentPlan: 'church', compact });
     await act(async () => { manage().click(); });
     await act(async () => { await Promise.resolve(); });
     expect(mockAuthFetch).toHaveBeenCalledTimes(1);

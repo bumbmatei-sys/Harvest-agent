@@ -149,7 +149,7 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
       { key: "manageCommunity", label: "Community Groups", desc: "Moderate community chat channels", icon: MessageCircle },
       { key: "manageForms", label: "Forms", desc: "Build forms and work submissions into the pipeline", icon: ClipboardList },
       { key: "manageFundraising", label: "Fundraising", desc: "Run campaigns and track pledges", icon: Heart },
-      { key: "manageAccounting", label: "Accounting", desc: "Manage invoices and giving receipts", icon: Receipt },
+      { key: "manageAccounting", label: "Giving records", desc: "Manage invoices and giving receipts", icon: Receipt },
       { key: "manageGivingStatements", label: "Giving Statements", desc: "Generate and send year-end tax statements", icon: FileSpreadsheet },
     ],
   },

@@ -174,7 +174,7 @@ describe("the cron's current state is established", () => {
 
   it('the feature it gates is real and Ministry-only — there is nothing to disable', () => {
     expect(hasFeature(toTenantPlan('max'), 'automatedBlog')).toBe(true);
-    for (const plan of PLAN_ORDER.filter((p) => p !== 'max')) {
+    for (const plan of PLAN_ORDER.filter((p) => p !== 'ministry')) {
       expect(hasFeature(toTenantPlan(plan), 'automatedBlog'), plan).toBe(false);
     }
   });

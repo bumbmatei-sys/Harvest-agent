@@ -5,6 +5,10 @@ import {
   PLAN_PRICING,
   TERM_MONTHS,
   PLAN_ORDER,
+  PLAN_FEES,
+  PAID_PRODUCT_CHECKOUT_ENABLED,
+  PROCESSOR_FEE_NOTE,
+  discountClaim,
   isPricedPlan,
 } from '@/utils/plan-features';
 import { NEWSLETTER_FEATURE_ENABLED } from '@/lib/newsletter-feature';
@@ -49,6 +53,9 @@ export async function GET() {
             monthlyUsd: PLAN_PRICING[id].monthly,
             yearlyUsd: PLAN_PRICING[id].yearly,
             yearlyOriginalUsd: PLAN_PRICING[id].monthly * TERM_MONTHS.yearly,
+            // The yearly saving in words ("2 months free"), derived from the
+            // table by `discountClaim`; never a percentage a consumer computes.
+            yearlyClaim: discountClaim('yearly'),
           }
         : null,
       // `donationRetentionPct` is intentionally absent. Every tier now charges
@@ -56,6 +63,15 @@ export async function GET() {
       // constant 100 — and it was a hand-maintained complement of the real fee
       // (PLATFORM_FEE_MAP), the duplication that once let "keeps 100%" ship
       // against a real 2.5% charge. See plan-features.ts.
+      // What Harvest keeps of money a ministry takes in. Read from PLAN_FEES, the
+      // one place a rate is written down. `productSalesPct` is `null` where the
+      // tier cannot list a product at all.
+      fees: {
+        donationsPct: PLAN_FEES[id].donationsPct,
+        productSalesPct: PLAN_FEES[id].productSalesPct,
+        productSalesComingSoon: !PAID_PRODUCT_CHECKOUT_ENABLED,
+        processorFeeNote: PROCESSOR_FEE_NOTE,
+      },
       features: {
         blog: features.blog,
         // The church news feed (`/community_posts`). Published because the
@@ -70,6 +86,14 @@ export async function GET() {
         maxContacts: features.maxContacts,
         maxCourses: features.maxCourses,
         maxAdmins: features.maxAdmins,
+        // Published caps for things that are not all built. `maxProducts` and
+        // `maxCommunities` are allowances; `aiMessagesPerMonth` meters an
+        // assistant that does not exist yet. A consumer printing any of them
+        // labels the unbuilt ones "coming soon" (see `comingSoon` below) and
+        // prints the real number, never "unlimited" for the AI allowance.
+        maxProducts: features.maxProducts,
+        maxCommunities: features.maxCommunities,
+        aiMessagesPerMonth: features.aiMessagesPerMonth,
         // 🔴 THE-280 — custom domains are hidden while the feature cannot work,
         // so this catalogue stops publishing a per-tier value and no consumer
         // can render a plan row from one. Identical treatment to SMS below, and

@@ -42,31 +42,22 @@ async function main() {
   const data = {
     name: 'Harvest',
     subdomain: 'harvest',
-    // THE-218 — the PLAN ID 'max', not the display name 'Ministry'.
+    // The PLAN ID 'ministry', the top tier Harvest's own tenant is entitled to.
     //
-    // 🔴 This field is a `TenantPlan` id: 'free' | 'plus' | 'pro' | 'max'
-    // (src/types/tenant.types.ts). 'ministry' is what the `max` tier is CALLED
-    // on the pricing screen (PLAN_DISPLAY_NAMES), and writing the label where
-    // the id belongs produced a value no lookup recognises. Every resolver then
-    // fell through to its unknown-plan default, which is INDIVIDUAL — the most
-    // restrictive paid tier — so Harvest's own tenant ran on the caps and
-    // features of a $49 church:
+    // History (THE-218): this field once held the DISPLAY NAME 'Ministry' while
+    // the id of that tier was 'max', so no lookup recognised it and every resolver
+    // fell through to the unknown-plan default, the cheapest paid tier. The
+    // repricing renamed the tiers so that the id and the name are the same word:
+    // 'ministry' is now the id itself, and the retired 'max' still resolves to it
+    // at read time (src/utils/plan-id.ts). Writing the id here means the platform
+    // tenant never depends on that alias.
     //
-    //   getPlanFeatures('ministry') -> PLAN_FEATURES.plus   (plan-features.ts)
-    //   getPlanLimits('ministry')   -> PLAN_LIMITS.plus     (planLimits.ts)
-    //   toTenantPlan('ministry')    -> 'plus'               (plan-features.ts)
-    //
-    // ⚠️ FIXED AT THE SEED, NOT AT READ TIME. A special case teaching one
-    // resolver that 'ministry' means 'max' would leave the other two wrong and
-    // add a cell nothing else honours — the defect `plan-features.ts` records
-    // three deleted cells for. The seed is the only writer of this field on the
-    // platform tenant, so correcting it here corrects every reader at once.
-    //
-    // 🔴 THIS SCRIPT MUST BE RE-RUN for the fix to reach production: the live
-    // `tenants/harvest` document still holds 'ministry' until the "Seed Platform
-    // Tenant" workflow (workflow_dispatch) is dispatched again. It is
+    // 🔴 THIS SCRIPT MUST BE RE-RUN to rewrite the stored value: the live
+    // `tenants/harvest` document is untouched by a merge. Until the "Seed Platform
+    // Tenant" workflow (workflow_dispatch) is dispatched again it keeps whatever
+    // it holds, and both 'max' and 'ministry' already resolve to Ministry. It is
     // idempotent and merges, so re-running is safe.
-    plan: 'max',
+    plan: 'ministry',
     status: 'active',
     updatedAt: now,
   };

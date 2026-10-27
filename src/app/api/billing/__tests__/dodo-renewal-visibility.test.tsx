@@ -330,7 +330,7 @@ describe('THE-131: the billing screen', () => {
 
     await act(async () => {
       root.render(
-        <BillingAndPayments currentPlan="max" tenantId="grace" email="o@example.com" />,
+        <BillingAndPayments currentPlan="ministry" tenantId="grace" email="o@example.com" />,
       );
     });
 

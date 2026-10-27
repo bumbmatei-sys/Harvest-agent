@@ -166,10 +166,10 @@ afterEach(async () => {
 describe('a tenant owner on any paid plan can see the dashboard', () => {
   const PAID_TIERS = PLAN_ORDER.filter((p) => p !== FREE_PLAN);
 
-  it('there are three paid tiers, and they are the ones named below', () => {
+  it('there are two paid tiers, and they are the ones named below', () => {
     // Guards the loop: a fifth tier added to PLAN_ORDER must be named here
     // before it can be silently left untested.
-    expect([...PAID_TIERS]).toEqual(['plus', 'pro', 'max']);
+    expect([...PAID_TIERS]).toEqual(['church', 'ministry']);
   });
 
   it.each(PAID_TIERS)(
