@@ -72,7 +72,12 @@ vi.mock('firebase/firestore', () => ({
   doc: (_db: unknown, ...seg: string[]) => ({ __path: seg.join('/') }),
   getDoc: async () => ({ exists: () => false, data: () => ({}) }),
   getDocs: async () => ({ docs: [], forEach: () => {} }),
-  onSnapshot: (_ref: unknown, next: (snap: unknown) => void, onError?: (e: Error) => void) => {
+  onSnapshot: (_ref: { __path?: string }, next: (snap: unknown) => void, onError?: (e: Error) => void) => {
+    // Community settings are a separate document from the photo under test.
+    if (_ref.__path?.endsWith('/settings/community')) {
+      next({ exists: () => false });
+      return () => {};
+    }
     if (userDoc.failWith) {
       onError?.(userDoc.failWith);
       return () => {};

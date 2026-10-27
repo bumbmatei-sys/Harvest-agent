@@ -257,7 +257,11 @@ describe('the DM list, channel list, compose-new, search and back all still work
   });
 
   it('the channel list still queries channels by membership', () => {
-    expect(src).toMatch(/'channels'\),\s*where\('members', 'array-contains'/);
+    // Community step 1 shares the collection reference with the all-members
+    // audience query; neither query uses an unordered limit.
+    expect(src).toMatch(/const source = collection\(db, 'tenants', tenantId, 'channels'\)/);
+    expect(src).toMatch(/query\(source, where\('members', 'array-contains', currentUser\.uid\)\)/);
+    expect(src).toMatch(/query\(source, where\('audience', '==', 'all'\)\)/);
   });
 
   it('compose-new (PenSquare) still opens the admin picker, still gated on canStartDm', () => {

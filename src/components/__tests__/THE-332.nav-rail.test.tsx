@@ -870,6 +870,8 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
        pane alone. No nav, tab id, read, write or permission gate moved, which is
        what THE-332 pins this file for. */
     'fedb1e028e2c74d0184411ed651c922a280369c7b549fff8943706b8c03257c9',
+    // Community step 1 adds groups and onboarding answers to this screen.
+    'eca86542f3f017f35dc9fca7da43e44a42b0afc4de33d9e9846dbb5551c2a055',
   ],
   /* AN ACCEPTED SET, APPENDED TO, NOT ONE VALUE SUBSTITUTED - the same shape and
      the same reason as MORE_GROUPS_ACCEPTED above. CI runs against
@@ -1004,5 +1006,7 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
     // APPENDED BY THE-348 - the fixed composer, the shared attach menu and the
     // admin gate. Measured in Chromium at five widths.
     '60a43ca453f322d7b0a14aa2c574ccfa539259bf4ffc37a4db2cdd7be09a680f',
+    // Community step 1 adds audience-scoped groups and gates member replies.
+    '5f72938d27614c717cf3ea89cf38b90308e5d8ab6c137e0a41c57cbfa1308150',
   ],
 };

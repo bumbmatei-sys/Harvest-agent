@@ -53,7 +53,7 @@ const LOREM = 'The Lord is my shepherd; I shall not want. He maketh me to lie do
 const fx = vi.hoisted(() => ({ lorem: 'The Lord is my shepherd; I shall not want. He maketh me to lie down in green pastures: he leadeth me beside the still waters. He restoreth my soul.' }));
 
 vi.mock('../../firebase', () => ({
-  db: {}, auth: { currentUser: { uid: 'me', email: 'me@t.com', displayName: 'Maria Bumb' } },
+  db: {}, auth: { currentUser: { uid: 'me', email: 'me@t.com', displayName: 'Maria Bumb', getIdToken: async () => 'token' } },
 }));
 vi.mock('../../utils/tenant-scope', () => ({
   getTenantScope: async () => 'tenant-1',
@@ -90,6 +90,8 @@ vi.mock('firebase/firestore', () => {
       const p = String(q?.__path ?? '');
       queueMicrotask(() => {
         if (typeof cb !== 'function') return;
+        // Community settings and the DM counterpart check are separate reads.
+        if (p.endsWith('/settings/community')) return cb({ exists: () => false });
         if (p.includes('comments')) return cb(snapOf(Array.from({ length: 3 }, (_, i) => ({ id: `k${i}`, name: 'Grace Miller', text: fx.lorem.slice(0, 70) }))));
         if (p.includes('livestream')) return cb({ exists: () => true, data: () => ({ active: true, sessionId: 's1', youtubeVideoId: 'abc123', title: 'Sunday Morning Service', viewerCount: 42, sermonNote: { title: 'The Good Shepherd', contentHtml: `<p>${fx.lorem}</p>` } }) });
         if (p.includes('community_posts')) return cb(snapOf(posts));
@@ -134,6 +136,9 @@ const VERSES = [
   'And God saw the light, that it was good: and God divided the light from the darkness.',
 ];
 globalThis.fetch = (async (url: any) => {
+  if (String(url).includes('/api/community/dm-counterpart')) {
+    return { ok: true, json: async () => ({ isAdmin: true }) };
+  }
   if (String(url).includes('available_translations')) {
     return { ok: true, json: async () => ({ translations: [{ id: 'BSB', name: 'Berean Standard Bible', englishName: 'Berean Standard Bible', shortName: 'BSB', language: 'eng', licenseUrl: 'https://x' }] }) };
   }

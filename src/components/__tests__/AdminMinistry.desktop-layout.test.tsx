@@ -190,6 +190,12 @@ vi.mock('firebase/firestore', () => ({
   documentId: () => '__name__',
   startAfter: (...a: unknown[]) => a,
   getDoc: async () => ({ exists: () => true, data: () => ({}) }),
+  // Community setup ensures the default group transactionally. This fixture
+  // represents an existing group, and records any attempted transaction write.
+  runTransaction: async (_db: unknown, fn: (tx: unknown) => Promise<void>) => fn({
+    get: async () => ({ exists: () => true }),
+    set: (r: { __path?: string }) => { writes.push(`set:${r?.__path}`); },
+  }),
   addDoc: async (r: { __path?: string }) => { writes.push(`add:${r?.__path}`); return { id: 'x' }; },
   updateDoc: async (r: { __path?: string }) => { writes.push(`update:${r?.__path}`); },
   deleteDoc: async (r: { __path?: string }) => { writes.push(`delete:${r?.__path}`); },
@@ -2027,7 +2033,13 @@ describe('no community query or write path changed', () => {
 
   it('reads and writes the same four collections, spelled the same way', () => {
     const after = read('AdminCommunity.tsx');
-    expect(firestorePathsOf(after)).toEqual(THE_331_COMMUNITY.firestorePaths());
+    // Community step 1 ensures the default group and loads the group roster.
+    const expected = THE_331_COMMUNITY.firestorePaths();
+    const channelList = expected.indexOf("'tenants', tenantId, 'channels'");
+    expected.splice(channelList, 0, "'tenants', tenantId, 'channels', 'all-members'");
+    const directList = expected.indexOf("'tenants', tenantId, 'directMessages'", channelList);
+    expected.splice(directList + 1, 0, "'users'", "'users'");
+    expect(firestorePathsOf(after)).toEqual(expected);
     for (const c of COLLECTIONS) expect(after.includes(c), `${c} disappeared`).toBe(true);
   });
 
@@ -2044,15 +2056,14 @@ describe('no community query or write path changed', () => {
     ).toContain(moved);
   });
 
-  it('changes nothing in AdminCommunity outside a className', () => {
+  it('pins AdminCommunity outside presentation after community step 1', () => {
     const now = stripPresentation(read('AdminCommunity.tsx'));
-    expect(now.split('\n').length, DIFF_HINT('AdminCommunity')).toBe(
-      THE_331_COMMUNITY.strippedLines,
-    );
-    expect(sha(now), DIFF_HINT('AdminCommunity')).toBe(THE_331_COMMUNITY.strippedSha);
+    // Community step 1 changes group creation and exposes onboarding answers.
+    expect(now.split('\n').length, DIFF_HINT('AdminCommunity')).toBe(1285);
+    expect(sha(now), DIFF_HINT('AdminCommunity')).toBe('260913648f9e957b8bec6fbce8f9ade5e41bb6119907a0f005fef7d374c329ec');
   });
 
-  it('writes nothing while the screen is merely rendered', async () => {
+  it('writes nothing on render when the default group already exists', async () => {
     await screen('AdminCommunity');
     expect(writes).toEqual([]);
   });
