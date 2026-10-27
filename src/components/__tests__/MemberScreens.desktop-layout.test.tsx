@@ -1338,7 +1338,12 @@ describe('no behaviour changed on any screen in scope', () => {
     //     here.
     const tags = (src: string) =>
       [...stripComments(src).matchAll(/<([A-Za-z][A-Za-z0-9.]*)/g)].map((m) => m[1]);
-    expect(tags(read('MainApp.tsx')), 'MainApp changed its element tree').toEqual(tags(at('MainApp.tsx')));
+    const mainAppTags = tags(read('MainApp.tsx'));
+    const blogIndex = mainAppTags.indexOf('BlogTab');
+    // DIGITAL-1 inserts the Products view between BlogTab and CourseExperience.
+    expect(mainAppTags.slice(blogIndex, blogIndex + 3)).toEqual(['BlogTab', 'DigitalMemberProducts', 'CourseExperience']);
+    mainAppTags.splice(blogIndex + 1, 1);
+    expect(mainAppTags, 'MainApp changed its element tree').toEqual(tags(at('MainApp.tsx')));
 
     //   • EVERY CLASS LITERAL, in order. Three className expressions differ.
     //     Two do so only because `activeTopTab` was renamed `effectiveTopTab`
@@ -1372,7 +1377,7 @@ describe('no behaviour changed on any screen in scope', () => {
     //         className match, not a second className.
     //
     //     🔴 NO ELEMENT WAS ADDED, REMOVED OR REORDERED, which is why the
-    //     element-tree inventory directly above still passes UNFOLDED — the
+    //     element-tree inventory directly above still passes apart from DIGITAL-1 — the
     //     stronger of the two claims, and the one THE-348 deliberately kept by
     //     hiding the nav through a condition the shell already carried rather
     //     than through a wrapper. A third class edit hiding behind these two
