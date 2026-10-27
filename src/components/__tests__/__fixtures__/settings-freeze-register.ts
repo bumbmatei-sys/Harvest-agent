@@ -512,6 +512,17 @@ export const RECORDED_EDITS: ReadonlyArray<RecordedEdit> = [
       + 'isPlanOwner. No assertion, class list or layout number changed.',
     digest: 'd631d03254790daed7e4a95995ae61ab038e3993545733ea04b4d4e2d33eb19b',
   },
+  {
+    file: 'src/components/AdminSettings.tsx',
+    ticket: 'THE-378',
+    why:
+      'The two-plan repricing replaced plus / pro / max with Church and Ministry, and the per-tier '
+      + 'colour map this screen draws the plan badge from followed: plus, pro and max became church '
+      + 'and ministry (three hexes became two). NO ROW WAS ADDED OR REMOVED, no `group` changed, no '
+      + '`hidden:` clause changed and no gate moved; the colours are presentation, and the screen '
+      + 'still reads the plan it is handed.',
+    digest: 'c9656aa334141dfd62c21bab9b092c91d1c5fe39c131a9d5b51cafcfe900a4fd',
+  },
 ];
 
 /** A ticket reference the register will accept. */

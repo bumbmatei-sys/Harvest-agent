@@ -81,7 +81,7 @@ vi.mock('../../utils/auth-fetch', () => ({
       } as any;
     }
     if (url.startsWith('/api/dodo/change-plan?')) {
-      return { ok: true, json: async () => ({ plan: 'plus', billing: wire.termOnServer }) } as any;
+      return { ok: true, json: async () => ({ plan: 'church', billing: wire.termOnServer }) } as any;
     }
     if (url === '/api/dodo/change-plan' && method === 'POST') {
       const body = JSON.parse(init.body);
@@ -141,7 +141,7 @@ let container: HTMLDivElement;
 let root: Root;
 
 /** The real upgrade page, under the real provider. */
-async function renderUpgradePage(tenantId: string | null = TENANT, currentPlan: any = 'plus') {
+async function renderUpgradePage(tenantId: string | null = TENANT, currentPlan: any = 'church') {
   await act(async () => {
     root.render(
       <TenantProvider initialTenantId={tenantId}>
@@ -235,19 +235,19 @@ afterEach(async () => {
 
 describe('an in-app plan change reflects the new tier without a manual reload', () => {
   it('🔴 the whole ticket: press Upgrade, and the tier moves in the mounted tree', async () => {
-    // The church is on Individual and presses Upgrade to Small Team.
-    tenantDoc({ plan: 'plus', status: 'active' });
+    // The church is on Individual and presses Upgrade to Ministry.
+    tenantDoc({ plan: 'church', status: 'active' });
     await renderUpgradePage();
-    expect(seen?.tenantPlan).toBe('plus');
+    expect(seen?.tenantPlan).toBe('church');
 
-    await press(/Upgrade to Small Team/i);
+    await press(/Upgrade to Ministry/i);
 
     // Dodo accepted the change; the webhook — the single writer — records it.
-    tenantDoc({ plan: 'pro', status: 'active' });
+    tenantDoc({ plan: 'ministry', status: 'active' });
     await act(async () => { await vi.advanceTimersByTimeAsync(PLAN_REFRESH_INTERVAL_MS); });
 
     // 🔴 Same tree, no remount, no reload, no user action: the tier moved.
-    expect(seen?.tenantPlan).toBe('pro');
+    expect(seen?.tenantPlan).toBe('ministry');
   });
 
   it('🔴 neither in-app caller reloads the page any more', () => {
@@ -269,35 +269,35 @@ describe('an in-app plan change reflects the new tier without a manual reload', 
     // the same `tenants/{id}.plan`, read server-side — ahead of the live tier.
     // Drop the reload without following the context and the bounded re-read
     // would move the tier while this card kept rendering the pre-purchase one.
-    wire.subscriptionPlan = 'plus';
-    tenantDoc({ plan: 'plus', status: 'active' });
+    wire.subscriptionPlan = 'church';
+    tenantDoc({ plan: 'church', status: 'active' });
 
     await act(async () => {
       root.render(
         <TenantProvider initialTenantId={TENANT}>
           <Probe />
-          <BillingAndPayments currentPlan="plus" tenantId={TENANT} />
+          <BillingAndPayments currentPlan="church" tenantId={TENANT} />
         </TenantProvider>,
       );
     });
     await settle();
-    expect(currentPlanLabel()).toBe('Individual');
+    expect(currentPlanLabel()).toBe('Church');
 
     // The webhook records the purchase and the window picks it up.
-    tenantDoc({ plan: 'pro', status: 'active' });
+    tenantDoc({ plan: 'ministry', status: 'active' });
     await act(async () => { seen?.armPlanRefresh(); });
     await runOutTheWindow();
 
-    expect(seen?.tenantPlan).toBe('pro');
-    // The snapshot still says 'plus'; the page must not.
-    expect(wire.subscriptionPlan).toBe('plus');
-    expect(currentPlanLabel()).toBe('Small Team');
+    expect(seen?.tenantPlan).toBe('ministry');
+    // The snapshot still says 'church'; the page must not.
+    expect(wire.subscriptionPlan).toBe('church');
+    expect(currentPlanLabel()).toBe('Ministry');
   });
 
   it('the billing page falls back to the snapshot when the context has no tier', async () => {
     // Platform context, or a tier that has not loaded: the chain is exactly
     // what it was before this ticket. The live value wins only when it exists.
-    wire.subscriptionPlan = 'max';
+    wire.subscriptionPlan = 'ministry';
     mockGetDoc.mockResolvedValue({ exists: () => false, data: () => undefined });
 
     await act(async () => {
@@ -315,17 +315,17 @@ describe('an in-app plan change reflects the new tier without a manual reload', 
   });
 
   it('the capability matrix moves with the tier, not just the label', async () => {
-    tenantDoc({ plan: 'plus', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
     await renderUpgradePage();
     const before = seen?.planFeatures?.maxAdmins;
 
-    await press(/Upgrade to Small Team/i);
-    tenantDoc({ plan: 'pro', status: 'active' });
+    await press(/Upgrade to Ministry/i);
+    tenantDoc({ plan: 'ministry', status: 'active' });
     await act(async () => { await vi.advanceTimersByTimeAsync(PLAN_REFRESH_INTERVAL_MS); });
 
     // A tier that moves without its entitlements is a label, not an upgrade.
     expect(seen?.planFeatures?.maxAdmins).not.toBe(before);
-    expect(seen?.tenantPlan).toBe('pro');
+    expect(seen?.tenantPlan).toBe('ministry');
   });
 });
 
@@ -337,67 +337,67 @@ describe('it survives a webhook that lands after the call resolves', () => {
     // the change. The webhook has not written `plan` yet, and will not for
     // another two reads. A single re-read fired on resolution would read the old
     // tier and stop — the defect, in a smaller window.
-    webhookLandsAfter(3, { plan: 'plus', status: 'active' }, { plan: 'pro', status: 'active' });
+    webhookLandsAfter(3, { plan: 'church', status: 'active' }, { plan: 'ministry', status: 'active' });
     await renderUpgradePage();
-    expect(seen?.tenantPlan).toBe('plus');
+    expect(seen?.tenantPlan).toBe('church');
 
-    await press(/Upgrade to Small Team/i);
+    await press(/Upgrade to Ministry/i);
 
     // Nothing was applied on the strength of the request itself.
-    expect(seen?.tenantPlan).toBe('plus');
+    expect(seen?.tenantPlan).toBe('church');
 
     // The first re-read still loses the race…
     await act(async () => { await vi.advanceTimersByTimeAsync(PLAN_REFRESH_INTERVAL_MS); });
-    expect(seen?.tenantPlan).toBe('plus');
+    expect(seen?.tenantPlan).toBe('church');
 
     // …and the window keeps going until the writer answers.
     await runOutTheWindow();
-    expect(seen?.tenantPlan).toBe('pro');
+    expect(seen?.tenantPlan).toBe('ministry');
   });
 
   it('a single re-read would not have been enough — the window is what saves it', async () => {
-    webhookLandsAfter(3, { plan: 'plus', status: 'active' }, { plan: 'pro', status: 'active' });
+    webhookLandsAfter(3, { plan: 'church', status: 'active' }, { plan: 'ministry', status: 'active' });
     await renderProvider();
 
     // One re-read, exactly what a `refreshTenantPlan()` on resolution would do.
     await act(async () => { await seen?.refreshTenantPlan(); });
-    expect(seen?.tenantPlan).toBe('plus');
+    expect(seen?.tenantPlan).toBe('church');
 
     // The window, on the same document, gets there.
     await act(async () => { seen?.armPlanRefresh(); });
     await runOutTheWindow();
-    expect(seen?.tenantPlan).toBe('pro');
+    expect(seen?.tenantPlan).toBe('ministry');
   });
 
   it('the window closes the moment the writer answers, not after its whole budget', async () => {
-    tenantDoc({ plan: 'plus', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
     await renderProvider();
 
     const afterFirstRead = mockGetDoc.mock.calls.length;
-    tenantDoc({ plan: 'pro', status: 'active' });
+    tenantDoc({ plan: 'ministry', status: 'active' });
     await act(async () => { seen?.armPlanRefresh(); });
     await runOutTheWindow(5);
 
     expect(mockGetDoc.mock.calls.length).toBe(afterFirstRead + 1);
-    expect(seen?.tenantPlan).toBe('pro');
+    expect(seen?.tenantPlan).toBe('ministry');
   });
 
   it('a second change in the same tree opens a second window', async () => {
     // A counter, not a flag: re-arming a boolean that is already `true` re-runs
     // no effect, so an admin who changed plan twice without reloading would get
     // no refresh the second time.
-    tenantDoc({ plan: 'plus', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
     await renderProvider();
 
-    tenantDoc({ plan: 'pro', status: 'active' });
+    tenantDoc({ plan: 'ministry', status: 'active' });
     await act(async () => { seen?.armPlanRefresh(); });
     await runOutTheWindow();
-    expect(seen?.tenantPlan).toBe('pro');
+    expect(seen?.tenantPlan).toBe('ministry');
 
-    tenantDoc({ plan: 'max', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
     await act(async () => { seen?.armPlanRefresh(); });
     await runOutTheWindow();
-    expect(seen?.tenantPlan).toBe('max');
+    expect(seen?.tenantPlan).toBe('church');
   });
 });
 
@@ -407,7 +407,7 @@ describe('the retry is bounded, on the existing budget', () => {
   it('🔴 an in-app arm spends PLAN_REFRESH_ATTEMPTS reads and no more', async () => {
     // The webhook never lands. An unbounded poll would read forever after every
     // plan change — a rate-limit and billing problem traded for a display one.
-    tenantDoc({ plan: 'plus', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
     await renderProvider();
 
     const afterFirstRead = mockGetDoc.mock.calls.length;
@@ -444,7 +444,7 @@ describe('the retry is bounded, on the existing budget', () => {
   });
 
   it('a failed attempt costs one attempt, not the window', async () => {
-    tenantDoc({ plan: 'pro', status: 'active' });
+    tenantDoc({ plan: 'ministry', status: 'active' });
     await renderProvider();
 
     const afterFirstRead = mockGetDoc.mock.calls.length;
@@ -453,11 +453,11 @@ describe('the retry is bounded, on the existing budget', () => {
     await runOutTheWindow(5);
 
     expect(mockGetDoc.mock.calls.length).toBe(afterFirstRead + PLAN_REFRESH_ATTEMPTS);
-    expect(seen?.tenantPlan).toBe('pro');
+    expect(seen?.tenantPlan).toBe('ministry');
   });
 
   it('an in-app arm stops when the tree unmounts mid-window', async () => {
-    tenantDoc({ plan: 'plus', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
     await renderProvider();
 
     await act(async () => { seen?.armPlanRefresh(); });
@@ -472,7 +472,7 @@ describe('the retry is bounded, on the existing budget', () => {
   });
 
   it('an ordinary load still arms nothing', async () => {
-    tenantDoc({ plan: 'pro', status: 'active' });
+    tenantDoc({ plan: 'ministry', status: 'active' });
     await renderProvider();
     await runOutTheWindow(5);
 
@@ -486,7 +486,7 @@ describe('the retry is bounded, on the existing budget', () => {
 
 describe('a failed refresh leaves the last known tier in place', () => {
   it('🔴 a rejected read never downgrades an armed window', async () => {
-    tenantDoc({ plan: 'pro', status: 'active' });
+    tenantDoc({ plan: 'ministry', status: 'active' });
     await renderProvider();
 
     mockGetDoc.mockRejectedValue(new Error('offline'));
@@ -495,11 +495,11 @@ describe('a failed refresh leaves the last known tier in place', () => {
 
     // This ticket is about UNDER-granting after a charge. A refresh that could
     // strip a tier on a dropped request would commit the very defect it removes.
-    expect(seen?.tenantPlan).toBe('pro');
+    expect(seen?.tenantPlan).toBe('ministry');
   });
 
   it('a document with no plan field never downgrades', async () => {
-    tenantDoc({ plan: 'pro', status: 'active' });
+    tenantDoc({ plan: 'ministry', status: 'active' });
     await renderProvider();
 
     tenantDoc({ status: 'active' });
@@ -507,30 +507,30 @@ describe('a failed refresh leaves the last known tier in place', () => {
     await runOutTheWindow(5);
 
     // An absent `plan` is silence, not "free".
-    expect(seen?.tenantPlan).toBe('pro');
+    expect(seen?.tenantPlan).toBe('ministry');
   });
 
   it('a missing document never downgrades', async () => {
-    tenantDoc({ plan: 'pro', status: 'active' });
+    tenantDoc({ plan: 'ministry', status: 'active' });
     await renderProvider();
 
     mockGetDoc.mockResolvedValue({ exists: () => false, data: () => undefined });
     await act(async () => { seen?.armPlanRefresh(); });
     await runOutTheWindow(5);
 
-    expect(seen?.tenantPlan).toBe('pro');
+    expect(seen?.tenantPlan).toBe('ministry');
   });
 
   it('a plan change whose refresh never succeeds leaves the church where it was', async () => {
-    tenantDoc({ plan: 'plus', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
     await renderUpgradePage();
 
     mockGetDoc.mockRejectedValue(new Error('offline'));
-    await press(/Upgrade to Small Team/i);
+    await press(/Upgrade to Ministry/i);
     await runOutTheWindow(5);
 
-    // Not 'pro' — nobody confirmed that — and not 'free' either.
-    expect(seen?.tenantPlan).toBe('plus');
+    // Not 'ministry' — nobody confirmed that — and not 'free' either.
+    expect(seen?.tenantPlan).toBe('church');
   });
 });
 
@@ -674,7 +674,7 @@ describe('no client-side write to plan exists', () => {
   it('both detectors catch a planted violation', () => {
     // A sweep nobody has proven can fail is not a guard.
     const planted = `import { doc, updateDoc } from 'firebase/firestore';
-      await updateDoc(doc(db, 'tenants', id), { plan: 'pro', updatedAt: now });`;
+      await updateDoc(doc(db, 'tenants', id), { plan: 'ministry', updatedAt: now });`;
     expect(planWritesIn(planted)).toHaveLength(1);
     expect(tenantPlanWritesIn(planted)).toHaveLength(1);
 
@@ -685,12 +685,12 @@ describe('no client-side write to plan exists', () => {
     expect(tenantPlanWritesIn(shorthand)).toHaveLength(1);
 
     const fieldPath = `import { updateDoc } from 'firebase/firestore';
-      await updateDoc(doc(db, 'tenants', id), 'plan', 'pro');`;
+      await updateDoc(doc(db, 'tenants', id), 'plan', 'ministry');`;
     expect(tenantPlanWritesIn(fieldPath)).toHaveLength(1);
 
     // …and neither fires on a comment about the rule, nor on the add-on set.
     const innocent = `import { updateDoc } from 'firebase/firestore';
-      // never write { plan: 'pro' } from the client
+      // never write { plan: 'ministry' } from the client
       await updateDoc(doc(db, 'tenants', id), { addons: owned });`;
     expect(planWritesIn(innocent)).toEqual([]);
     expect(tenantPlanWritesIn(innocent)).toEqual([]);
@@ -755,15 +755,15 @@ describe('no client-side write to plan exists', () => {
     // payment. Here the church asks for Ministry and the webhook records Small
     // Team. A client that applied what it asked for would be claiming an
     // entitlement nobody confirmed.
-    tenantDoc({ plan: 'plus', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
     await renderUpgradePage();
 
     await press(/Upgrade to Ministry/i);
-    tenantDoc({ plan: 'pro', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
     await runOutTheWindow();
 
-    expect(seen?.tenantPlan).toBe('pro');
-    expect(seen?.tenantPlan).not.toBe('max');
+    expect(seen?.tenantPlan).toBe('church');
+    expect(seen?.tenantPlan).not.toBe('ministry');
   });
 });
 
@@ -772,7 +772,7 @@ describe('no client-side write to plan exists', () => {
 describe('nothing runs in platform context where tenantId is null', () => {
   it('🔴 an in-app arm reads nothing when there is no tenant', async () => {
     mockHasPlatformOverride.mockReturnValue(true);
-    tenantDoc({ plan: 'pro', status: 'active' });
+    tenantDoc({ plan: 'ministry', status: 'active' });
     await renderProvider(null);
 
     await act(async () => { seen?.armPlanRefresh(); });
@@ -825,7 +825,7 @@ describe('AdminUpgradePage still sends no billing (THE-226)', () => {
 
   it('🔴 the wire carries the tenant’s real term while the page browses another', async () => {
     wire.termOnServer = 'monthly';
-    tenantDoc({ plan: 'plus', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
     await renderUpgradePage();
 
     // The owner flips the toggle to compare Ministry's yearly price…
@@ -835,10 +835,10 @@ describe('AdminUpgradePage still sends no billing (THE-226)', () => {
     await act(async () => { yearly.click(); });
 
     // …and then presses Upgrade. They never asked to change term.
-    await press(/Upgrade to Small Team/i);
+    await press(/Upgrade to Ministry/i);
 
     const preview = calls.find((c) => c.url === '/api/dodo/change-plan' && c.method === 'POST' && !c.body?.confirm);
-    expect(preview?.body).toEqual({ tenantId: TENANT, plan: 'pro', billing: 'monthly' });
+    expect(preview?.body).toEqual({ tenantId: TENANT, plan: 'ministry', billing: 'monthly' });
     expect(preview?.body.billing).not.toBe('yearly');
   });
 });
@@ -854,10 +854,10 @@ describe('the checkout-return path still arms (THE-217 / PR #399)', () => {
     // The whole THE-217 defect, on screen: paid, looking at the free dashboard.
     expect(seen?.tenantPlan).toBe('free');
 
-    tenantDoc({ plan: 'pro', status: 'active' });
+    tenantDoc({ plan: 'ministry', status: 'active' });
     await act(async () => { await vi.advanceTimersByTimeAsync(PLAN_REFRESH_INTERVAL_MS); });
 
-    expect(seen?.tenantPlan).toBe('pro');
+    expect(seen?.tenantPlan).toBe('ministry');
   });
 
   it('the checkout hop is still read once, at mount', () => {
@@ -876,12 +876,12 @@ describe('the checkout-return path still arms (THE-217 / PR #399)', () => {
 
   it('the checkout hop still arms even after an in-app arm has been used', async () => {
     arriveFromCheckout('stripe');
-    tenantDoc({ plan: 'plus', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
     await renderProvider();
 
-    tenantDoc({ plan: 'max', status: 'active' });
+    tenantDoc({ plan: 'ministry', status: 'active' });
     await act(async () => { await vi.advanceTimersByTimeAsync(PLAN_REFRESH_INTERVAL_MS); });
-    expect(seen?.tenantPlan).toBe('max');
+    expect(seen?.tenantPlan).toBe('ministry');
   });
 });
 
@@ -892,7 +892,7 @@ describe('the first-subscription path is unchanged', () => {
     tenantDoc({ plan: 'free', status: 'active' });
     await renderUpgradePage(TENANT, 'free');
 
-    await press(/Upgrade to Small Team|Get Small Team|Choose Small Team/i);
+    await press(/Upgrade to Ministry|Get Small Team|Choose Small Team/i);
 
     // The most sensitive funnel in the repo: a free tenant owns no subscription
     // to change, so the tier is the question and not the processor.
@@ -946,13 +946,13 @@ describe('both isReturningFromCheckout spellings still recognised', () => {
   for (const flag of ['dodo', 'stripe'] as const) {
     it(`the window still arms on ?${flag}=success`, async () => {
       arriveFromCheckout(flag);
-      tenantDoc({ plan: 'plus', status: 'active' });
+      tenantDoc({ plan: 'church', status: 'active' });
       await renderProvider();
 
-      tenantDoc({ plan: 'max', status: 'active' });
+      tenantDoc({ plan: 'ministry', status: 'active' });
       await act(async () => { await vi.advanceTimersByTimeAsync(PLAN_REFRESH_INTERVAL_MS); });
 
-      expect(seen?.tenantPlan).toBe('max');
+      expect(seen?.tenantPlan).toBe('ministry');
     });
   }
 

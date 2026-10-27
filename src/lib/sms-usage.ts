@@ -1,6 +1,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getPlanLimits } from '@/lib/planLimits';
+import { toTenantPlan } from '@/utils/plan-features';
 import { monthKey, monthlyUsageTtl } from '@/lib/rag-usage';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -61,8 +62,8 @@ function readByoSegments(snap: { exists: boolean; data: () => any }): number {
   return (snap.exists ? snap.data()?.smsSegmentsByo : 0) ?? 0;
 }
 
-/** Resolve a tenant's monthly segment cap. Missing/unknown plan → 'plus' (the
- * most restrictive default). `null` keeps #213's meaning: NOT metered. */
+/** Resolve a tenant's monthly segment cap. Missing/unknown plan → 'church' (the
+ * most restrictive paid default). `null` keeps #213's meaning: NOT metered. */
 export async function getSmsSegmentCap(tenantId: string): Promise<number | null> {
   try {
     const snap = await adminDb.collection('tenants').doc(tenantId).get();
@@ -214,7 +215,7 @@ export async function getSmsUsageSnapshot(
     adminDb.collection('tenants').doc(tenantId).get(),
     monthRef(tenantId, month).get(),
   ]);
-  const plan = (tenantSnap.exists ? (tenantSnap.data()?.plan as string | undefined) : undefined) || 'plus';
+  const plan = toTenantPlan(tenantSnap.exists ? (tenantSnap.data()?.plan as string | undefined) : undefined);
   return {
     plan,
     month,

@@ -819,20 +819,34 @@ const CONTENT_ASSERTING_MOVED: Readonly<Record<string, readonly [digest: string,
       + 'The row in CONTENT_ASSERTING is untouched.',
   ],
   'src/utils/__tests__/plan-features.news-feed.test.ts': [
-    '9e277a398f1b836a65fc20ea3023107304d0cb922ae0c9923846b0449a37ebb2',
-    'THE-376',
+    'b68ef54ddf01c368ae1b9af55e2b5d3079ee874f25bfc1ac5c5f0c89127ffb8b',
+    'THE-378',
     'the Ministry row of the matrix transcription gained socialScheduler true, because Matei '
       + 'approved the scheduler on the Ministry plan on 2026-10-21. One cell on one tier; the suite '
       + 'still asserts every other cell and no price moved. The previous digest was '
       + 'f588a613c3dbd33bc7c89f6f9d6e305da25a7405caade29ef8d4628bc350afc6 (#530). The row in '
-      + 'CONTENT_ASSERTING is untouched.',
+      + 'CONTENT_ASSERTING is untouched. '
+      + 'Moved again by THE-378, the two-plan repricing: the matrix transcription now has the free, church and ministry rows in place of free, plus, pro and max. The suite still asserts every cell of every tier. The previous current digest was 9e277a398f1b836a65fc20ea3023107304d0cb922ae0c9923846b0449a37ebb2 (THE-376). The row in CONTENT_ASSERTING is untouched.',
   ],
   'src/utils/__tests__/plan-flag-surface-guard.test.ts': [
-    '33f06751e189cf25f262327a0fc6d4f692a7991b287bc52b56820dc16522f8ce',
-    '#530',
+    'a2fcd58b7b66fa1f29f6e445846ce4b159122d4ae3d419d4a5b6f3ffcf3d19f8',
+    'THE-378',
     'the flag-surface registry gained a gate for socialScheduler in lib/social/access.ts. '
       + 'The suite still asserts that every plan cell is read. The row in '
-      + 'CONTENT_ASSERTING is untouched.',
+      + 'CONTENT_ASSERTING is untouched. '
+      + 'Moved again by THE-378, the two-plan repricing: the flag-surface registry follows the two-plan matrix. The suite still asserts that every plan cell is read. The previous current digest was 33f06751e189cf25f262327a0fc6d4f692a7991b287bc52b56820dc16522f8ce (#530). The row in CONTENT_ASSERTING is untouched.',
+  ],
+  'src/components/__tests__/THE-320.sms-composition.test.tsx': [
+    '5a3c690aba446e8ecc91edcdd8d0ca1cea18dd158dce493f92c36cb88eadd88f',
+    'THE-378',
+    'the two-plan repricing moved the tier the SMS composition fixtures use from the retired max id to ministry. The assertions about what the composer does are unchanged. '
+      + 'The suite still asserts content rather than a digest pin, and the row in CONTENT_ASSERTING is untouched.',
+  ],
+  'src/utils/__tests__/plan-features.crm-individual.test.ts': [
+    '30846184f36d1ceed25362f907a5c6328f715636a2e9276dc73725b8a4af96f9',
+    'THE-378',
+    'the matrix transcription now has the free, church and ministry rows in place of free, plus, pro and max. The suite still asserts every cell of every tier and the legacy ids resolve to the tier they became. '
+      + 'The suite still asserts content rather than a digest pin, and the row in CONTENT_ASSERTING is untouched.',
   ],
 };
 

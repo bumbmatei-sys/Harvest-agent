@@ -228,7 +228,7 @@ export function givingShareUrls(payload: GivingSharePayload): string[] {
  *   · "Card giving inside the app is off" — `STRIPE_CONNECT_ENABLED` is false.
  *   · "These are the ways your members can give" — the links this very payload
  *     carries, re-validated by `readGivingLinks`, rendered directly above it.
- *   · "a gift you record in the CRM counts on your dashboard, in accounting and
+ *   · "a gift you record in the CRM counts on your dashboard, in giving records and
  *     on your giving statements" — THE-350 built that path: the CRM posts to
  *     `/api/donations/manual`, the writer writes the ledger, and all three
  *     surfaces read it.
@@ -239,4 +239,4 @@ export function givingShareUrls(payload: GivingSharePayload): string[] {
  * copy that contradicts it.
  */
 export const GIVING_SHARE_CARD_GIVING_OFF =
-  'Card giving inside the app is off. These are the ways your members can give, and a gift you record in the CRM counts on your dashboard, in accounting and on your giving statements.';
+  'Card giving inside the app is off. These are the ways your members can give, and a gift you record in the CRM counts on your dashboard, in giving records and on your giving statements.';

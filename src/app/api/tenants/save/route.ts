@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireSuperAdmin } from '@/lib/api-auth';
 import { captureHandledError } from '@/lib/money-path-sentry';
 import { tenantPrivateRef } from '@/lib/tenant-private';
+import { canonicalPlanId } from '@/utils/plan-id';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
     batch.create(adminDb.collection('tenants').doc(id), {
       name,
       subdomain: id,
-      plan: body.plan || 'plus',
+      plan: canonicalPlanId(body.plan) ?? 'church',
       status: 'active',
       config,
       createdAt: now,

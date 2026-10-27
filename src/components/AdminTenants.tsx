@@ -18,13 +18,12 @@ import AdminAffiliates from './AdminAffiliates';
 // cap was 108px narrower on a monitor than on a tablet. 1120px is 1120px at
 // every width.
 import { FORM_CONTAINER } from './layout/form-layout';
-import { PLAN_DISPLAY_NAMES, PLAN_ORDER, formatPlanPrice } from '../utils/plan-features';
+import { PLAN_DISPLAY_NAMES, PLAN_ORDER, formatPlanPrice, toTenantPlan } from '../utils/plan-features';
 
 const PLAN_LABELS: Record<TenantPlan, string> = {
   free: 'Free',
-  plus: 'Plus',
-  pro: 'Pro',
-  max: 'Max',
+  church: 'Church',
+  ministry: 'Ministry',
 };
 
 // Marketing labels with price, shown in the (read-only) edit view. Intentionally
@@ -41,7 +40,7 @@ const PLAN_DISPLAY: Record<TenantPlan, string> = Object.fromEntries(
 ) as Record<TenantPlan, string>;
 
 const PLAN_COLORS: Record<TenantPlan, string> = {
-  // Neutral, deliberately. The three paid tiers ascend blue → purple → amber;
+  // Neutral, deliberately. The two paid tiers ascend blue → amber;
   // a free tenant is not a step on that ladder and must not read as one in a
   // super admin's tenant list.
   //
@@ -52,9 +51,8 @@ const PLAN_COLORS: Record<TenantPlan, string> = {
   // trips them. This is the same pair `cancelled`/`archived` use below, for the
   // same reason.
   free: 'bg-surface-sunken text-muted',
-  plus: 'bg-blue-100 text-blue-700',
-  pro: 'bg-purple-100 text-purple-700',
-  max: 'bg-amber-100 text-amber-700',
+  church: 'bg-blue-100 text-blue-700',
+  ministry: 'bg-amber-100 text-amber-700',
 };
 
 const STATUS_COLORS: Record<TenantStatus, string> = {
@@ -90,7 +88,7 @@ interface FormData {
 const EMPTY_FORM: FormData = {
   name: '',
   subdomain: '',
-  plan: 'plus',
+  plan: 'church',
   adminEmail: '',
   description: '',
   customDomain: '',
@@ -172,7 +170,7 @@ const AdminTenants: React.FC = () => {
     setForm({
       name: tenant.name,
       subdomain: tenant.subdomain,
-      plan: tenant.plan,
+      plan: toTenantPlan(tenant.plan),
       adminEmail: rosters[tenant.id]?.[0] || '',
       description: tenant.config?.description || '',
       customDomain: tenant.config?.customDomain || '',
@@ -373,8 +371,8 @@ const AdminTenants: React.FC = () => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-1">
                     <h3 className="font-display text-lg font-semibold text-strong truncate">{tenant.name}</h3>
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${PLAN_COLORS[tenant.plan]}`}>
-                      {PLAN_LABELS[tenant.plan]}
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${PLAN_COLORS[toTenantPlan(tenant.plan)]}`}>
+                      {PLAN_LABELS[toTenantPlan(tenant.plan)]}
                     </span>
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[tenant.status]}`}>
                       {tenant.status}
@@ -596,7 +594,7 @@ const AdminTenants: React.FC = () => {
                 )}
               </div>
 
-              {form.plan === 'max' && (
+              {form.plan === 'ministry' && (
                 <div>
                   <label className="block text-sm font-semibold text-body mb-1">Custom Domain</label>
                   <input

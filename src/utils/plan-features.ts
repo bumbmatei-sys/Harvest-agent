@@ -1,4 +1,5 @@
-import { TenantAddons, TenantPlan, PricedPlan } from '../types/tenant.types';
+import { TenantAddons, TenantPlan, PricedPlan, LegacyPlanId } from '../types/tenant.types';
+import { canonicalPlanId } from './plan-id';
 
 export interface PlanFeatures {
   /** Show blog tab in user app + blog management in admin */
@@ -38,7 +39,7 @@ export interface PlanFeatures {
   aiChat: boolean;
   /** Show AI Knowledge Base in admin */
   aiKnowledge: boolean;
-  /** Show church map in user app (pro and above) */
+  /** Show church map in user app — Ministry */
   map: boolean;
   // `churchDirectory` ("global multi-church discovery directory, Ministry only")
   // was removed: it was read nowhere in the app — no gate, route, query or
@@ -86,9 +87,35 @@ export interface PlanFeatures {
   maxCourses: number;
   /** Max number of admin accounts (-1 = unlimited) */
   maxAdmins: number;
-  /** Allow custom domain (Community / max+) */
+  /**
+   * Max number of products a tenant may list (-1 = unlimited).
+   *
+   * 🔴 CONFIG ONLY. Paid product checkout is not live, so nothing enforces this
+   * yet and nothing may describe it as a working storefront. It exists so the
+   * published number (Church 3) is declared once, where the other caps are.
+   */
+  maxProducts: number;
+  /**
+   * Max number of communities, each with its own feed and chat (-1 = unlimited).
+   *
+   * 🔴 CONFIG ONLY, like `maxProducts`: the app has one community per tenant
+   * today. Ministry's "unlimited communities" is a published allowance, and the
+   * livestream, chat and prayer-request spaces it describes are coming soon.
+   */
+  maxCommunities: number;
+  /**
+   * AI assistant messages per month. `0` means the tier has none; it is never an
+   * "unlimited" sentinel, and a surface that shows it shows the real number.
+   *
+   * 🔴 CONFIG ONLY. The assistant this number meters is not built, and the copy
+   * beside it says "coming soon". It is separate from `aiChat`, which gates the
+   * live RAG chat bought as an add-on, and from `PLAN_LIMITS.queryTokensPerMonth`,
+   * which meters that chat's token spend.
+   */
+  aiMessagesPerMonth: number;
+  /** Allow custom domain — Ministry */
   customDomain: boolean;
-  /** Allow custom branding — logo, colors, ministry name (Community / max+) */
+  /** Allow custom branding — logo, colors, ministry name — Ministry */
   customBranding: boolean;
   // `customBackground` ("custom auth-page background image") was removed: no
   // background uploader was ever built anywhere in the app, so the flag sold a
@@ -104,9 +131,9 @@ export interface PlanFeatures {
   // no tier's access — it only stopped the matrix (and the public /api/plans
   // catalog) advertising a capability that was never built. Don't re-add it
   // unless a calendar ships with it.
-  /** Newsletter (manual + Mailchimp) — Small Team / pro+ */
+  /** Newsletter — Ministry */
   newsletterAutomation: boolean;
-  /** AI-generated newsletter from Instagram (Community / max+) */
+  /** AI-generated newsletter from Instagram — Ministry */
   automatedNewsletter: boolean;
   /**
    * SMS: manual broadcasts + automated event-registration/check-in/pledge
@@ -128,8 +155,8 @@ export interface PlanFeatures {
    * the cell is read for the first time by a real SERVER-SIDE gate — inside the
    * single send funnel in `lib/sms-send.ts` — rather than by nav alone.
    *
-   * 🔴 TWO PAID TIERS LOSE A CAPABILITY THEY WERE PROMISED. Individual (`plus`)
-   * and Small Team (`pro`) both carried `true` and now carry `false`. That is a
+   * 🔴 TWO PAID TIERS LOSE A CAPABILITY THEY WERE PROMISED. The retired plus and
+   * pro both carried `true` and Church, which absorbed them, carries `false`. That is a
    * downgrade, not a tidy-up, and it is recorded as one so nobody later reads
    * these cells as having always been Ministry-only.
    *
@@ -156,9 +183,9 @@ export interface PlanFeatures {
   fundraising: boolean;
   /** Event registration integration */
   eventRegistration: boolean;
-  /** Docs / TipTap notes integration (Small Team / pro+) */
+  /** Docs / TipTap notes integration — Church and above */
   docs: boolean;
-  /** CRM for donors and members (Small Team / pro+) */
+  /** CRM for donors and members — Church and above */
   crm: boolean;
   /**
    * The Signups screen — members who created an account: city search, the
@@ -188,25 +215,25 @@ export interface PlanFeatures {
    * membership, never on plan.
    */
   signups: boolean;
-  /** Accounting tools integration */
+  /** Giving records screen (formerly labelled Accounting; the cell keeps its name) */
   accountingTools: boolean;
-  /** Tax receipt generation */
+  /** Year-end giving receipts */
   taxReceipt: boolean;
-  /** Community groups — private channels + DMs (Community / max+) */
+  /** Community groups — private channels + DMs. Church has one community, Ministry unlimited */
   communityGroups: boolean;
-  /** Custom forms → CRM pipeline (Community / max+) */
+  /** Custom forms → CRM pipeline — Ministry */
   customForms: boolean;
-  /** Check-in system with QR attendance (Small Team / pro+) */
+  /** Check-in system with QR attendance — Ministry */
   checkInSystem: boolean;
-  /** Livestream + live giving (Small Team / pro+) */
+  /** Livestream + live giving — Ministry */
   livestream: boolean;
   /** Sermon notes shared to livestream (viewer read-only panel) */
   sermonNotes: boolean;
   /** AI-generated SEO blog articles on schedule from Knowledge Base */
   automatedBlog: boolean;
-  /** Annual giving statements (year-end tax summaries) — Ministry / max+ */
+  /** Giving records: statements and year-end giving receipts — Ministry */
   givingStatements: boolean;
-  /** Pledge campaigns — Ministry (max) and above */
+  /** Pledge campaigns — Ministry */
   pledgeCampaigns: boolean;
   /**
    * Text-to-Give via inbound SMS keyword (`AdminSms.tsx`'s Text-to-Give panel,
@@ -242,10 +269,10 @@ export interface PlanFeatures {
   // removed with the move to a flat 0% platform fee on every tier. It was a
   // hand-maintained complement of PLATFORM_FEE_MAP (`100 - fee * 100`), and
   // that duplication is what once let the app advertise "keeps 100%" while
-  // actually charging 2.5%. With PLATFORM_FEE_MAP now { plus: 0, pro: 0,
-  // max: 0 } the field is a constant 100 on every tier — it carries no
-  // information and can only drift again. Read PLATFORM_FEE_MAP
-  // (src/lib/stripe-connect.ts) directly; it is the rate actually charged.
+  // actually charging 2.5%. With the donation fee a flat 0 on every tier
+  // (`PLAN_FEES`) the field is a constant 100 — it carries no information and
+  // can only drift again. Read PLATFORM_FEE_MAP (src/lib/stripe-connect.ts)
+  // directly; it is the rate actually charged.
 }
 
 // ─── Feature matrix ───────────────────────────────────────────────────────────
@@ -355,6 +382,11 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     // raises it through `getEffectiveFeatures` if a free tenant ever holds one —
     // see the note there.
     maxAdmins: 1,
+    // Zero products, zero communities and no AI assistant: free is one
+    // evangelist's discipleship page. 0 is the honest cap, not "unlimited".
+    maxProducts: 0,
+    maxCommunities: 0,
+    aiMessagesPerMonth: 0,
     customDomain: false,
     customBranding: false,
     newsletterAutomation: false,
@@ -443,60 +475,52 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     // 🔴 FALSE ON EVERY TIER. Social scheduling is an add-on. See PlanFeatures.
     socialScheduler: false,
   },
-  // Individual — $49/mo
-  plus: {
+  // ─── Church — $30/mo, $300/yr ─────────────────────────────────────────────
+  //
+  // The only paid tier below Ministry. One community with its feed and chat,
+  // courses, up to three products, donations and fundraising campaigns, a CRM of
+  // up to 500 people, signups, campuses, the blog, notes and two admins.
+  //
+  // 🔴 THIS TIER ABSORBS THE RETIRED `plus` AND `pro`. Both resolve here at read
+  // time (`canonicalPlanId`), so a stored `pro` gets this row, not its old one.
+  // Where the spec is silent the row keeps the more generous of the two old
+  // values rather than taking something from a legacy tenant: `maxCourses` is
+  // 5 (pro's), `maxChurches` is unlimited (both). Where the spec is explicit it
+  // wins even over a legacy `pro`: two admins, not five; no check-in, no
+  // livestream, no newsletter.
+  //
+  // ⚠️ THE AI ASSISTANT IS NOT BUILT. `aiMessagesPerMonth: 300` is a published
+  // number and "coming soon" copy and nothing else. `aiChat` stays false on every
+  // tier: it gates the live RAG chat, which is an add-on (THE-253) and must not
+  // be re-sold as included.
+  church: {
     blog: true,
-    // Unchanged by THE-205 — the feed is on every tier that pays.
     newsFeed: true,
-    // Was "available on Small Team (pro) and above" — no longer true of any
-    // tier. See the note on `pro` below: the chat is an add-on, not a plan cell.
     aiChat: false,
     aiKnowledge: false,
     map: false,
-    // 🔴 UNLIMITED — THE-370. Was 1, with additional campuses sold as an add-on.
-    // The founder retired that add-on ("remove the campus addon. let them add as
-    // many as they want"), so campuses are a property of paying at all rather
-    // than a thing to buy. Identical on all three paid tiers, by design.
     maxChurches: UNLIMITED_CAP,
-    // 🔴 500 — THE-370. Was 150. See the note on free's cap: this tier no longer
-    // holds fewer contacts than the tier that costs nothing.
     maxContacts: 500,
-    maxCourses: 2,
+    maxCourses: 5,
     maxAdmins: 2,
+    maxProducts: 3,
+    maxCommunities: 1,
+    aiMessagesPerMonth: 300,
     customDomain: false,
     customBranding: false,
     newsletterAutomation: false,
     automatedNewsletter: false,
-    // 🔴 FALSE — THE-314. Individual LOSES SMS. It carried `true` under
-    // bring-your-own, where the cell gated nothing because the church supplied
-    // its own Twilio account and paid Twilio directly. Harvest now resells and
-    // pays for every segment, and the founder's call is Ministry only.
-    // See the block comment above `smsAutomation` in PlanFeatures.
     smsAutomation: false,
     fundraising: true,
     eventRegistration: false,
-    docs: false,
-    // CRM is on EVERY tier, Individual included. A $49 church has members to
-    // keep track of, and shipping the cheapest plan without a roster left it no
-    // way to see who they are.
-    //
-    // VISIBILITY ONLY, exactly as the note on `pro` below describes: no rule,
-    // route or query keys off this cell. Firestore scopes `contacts` and
-    // `contactActivities` on the `manageCRM` permission and `isTenantAdmin`, not
-    // on plan; both /api/crm routes gate the same way and import nothing from
-    // this module. So this widens what the tier ADVERTISES and which nav entry
-    // renders — it does not widen who may read a contact.
-    //
-    // `maxContacts` (150 here) is what scopes it, and is enforced separately.
+    docs: true,
     crm: true,
-    // 🔴 TRUE — unchanged by THE-335, which only split what FREE gets. Every
-    // paid tier that had the CRM also had Signups (both gates read `crm`),
-    // so carrying this cell across at the same value is what makes the split
-    // a change to free alone rather than a re-derivation of the ladder.
     signups: true,
     accountingTools: false,
     taxReceipt: false,
-    communityGroups: false,
+    // One community with a feed and a chat. `communityGroups` is the cell the
+    // chat surfaces read; `maxCommunities: 1` is what bounds it.
+    communityGroups: true,
     customForms: false,
     checkInSystem: false,
     livestream: false,
@@ -504,137 +528,52 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     automatedBlog: false,
     givingStatements: false,
     pledgeCampaigns: false,
-    // 🔴 FALSE — THE-314, moving with `smsAutomation` directly above. Inbound
-    // and outbound SMS are one capability; see the interface comment.
     textToGive: false,
     pwaApp: true,
-    // 🔴 FALSE ON EVERY TIER. Social scheduling is an add-on. See PlanFeatures.
+    // 🔴 FALSE ON EVERY TIER BUT MINISTRY. See PlanFeatures.
     socialScheduler: false,
   },
-  // Small Team — $99/mo
-  pro: {
+  // ─── Ministry — $90/mo, $900/yr. The top tier. ────────────────────────────
+  //
+  // Everything in Church, plus unlimited communities, the newsletter, the social
+  // scheduler, SMS and text-to-give, events with registration and check-in,
+  // custom forms, services, Giving records (statements and year-end giving
+  // receipts), the AI knowledge base, custom branding, 5,000 people and 15
+  // admins. Absorbs the retired `max` one for one.
+  //
+  // ⚠️ SEVERAL OF THESE ARE COMING SOON AND THE CELLS ARE ENTITLEMENT, NOT
+  // SHIPPING. The storefront, the website builder with templates, and the
+  // livestream, chat and prayer-request spaces of an extra community are not
+  // built; the copy says so. `smsAutomation`, `textToGive`, `customDomain` and
+  // the newsletter are additionally behind the master switches in AGENTS.md, and
+  // the switch wins over a `true` cell.
+  //
+  // `aiKnowledge` is true here for the first time on any tier: the spec lists the
+  // knowledge base under Ministry. `aiChat` stays false, so the knowledge base
+  // is something an admin can fill, and the chat that answers from it is the
+  // add-on until the assistant ships.
+  ministry: {
     blog: true,
-    // Unchanged by THE-205 — the feed is on every tier that pays.
     newsFeed: true,
-    // 🔴 FALSE ON EVERY TIER (THE-253). NO PLAN INCLUDES THE AI RAG CHAT —
-    // founder: "NO PLAN HAS ANY AI RAG CHAT. Of course there should be no AI
-    // RAG chat in any plan if we sell it as an add-on." The ONLY path to
-    // `aiChat: true` is holding the AI Assistant add-on, which
-    // `getEffectiveFeatures` lifts with `||`. Setting this cell true on any
-    // tier re-sells as included the one thing that is sold separately, and is
-    // exactly what this ticket removed.
-    //
-    // ⚠️ `aiKnowledge` MOVES WITH IT, always. The chat answers ONLY from the
-    // knowledge base, so a tier with the base and no chat has a screen feeding
-    // nothing, and a tier with the chat and no base has a chat that can only
-    // answer "I don't have that". One purchase, one coherent capability — the
-    // lift in `getEffectiveFeatures` raises both together for the same reason.
     aiChat: false,
-    aiKnowledge: false,
+    aiKnowledge: true,
     map: true,
-    // 🔴 UNLIMITED — THE-370, same as Individual above.
     maxChurches: UNLIMITED_CAP,
-    // 🔴 2,000 — THE-370. Was 500.
-    maxContacts: 2_000,
-    maxCourses: 5,
-    maxAdmins: 5,
-    customDomain: false,
-    customBranding: false,
-    newsletterAutomation: true,
-    automatedNewsletter: false,
-    // 🔴 FALSE — THE-314. Small Team LOSES SMS, for the same reason and by the
-    // same decision as Individual above. See `smsAutomation` in PlanFeatures.
-    smsAutomation: false,
-    fundraising: true,
-    eventRegistration: false,
-    // Moved down from the top tier in an earlier repricing: Small Team carries
-    // Notes/Docs, Check-In, Livestream and Sermon Notes. CRM moved further still
-    // and is now on every tier, Individual included — see the note on `plus`
-    // above; `pro` is no longer its floor. Visibility only — no rule, route or
-    // query keys off these cells (CRM's Firestore rules scope on the `manageCRM`
-    // permission, not on plan).
-    docs: true,
-    crm: true,
-    // 🔴 TRUE — unchanged by THE-335, which only split what FREE gets. Every
-    // paid tier that had the CRM also had Signups (both gates read `crm`),
-    // so carrying this cell across at the same value is what makes the split
-    // a change to free alone rather than a re-derivation of the ladder.
-    signups: true,
-    accountingTools: false,
-    taxReceipt: false,
-    communityGroups: false,
-    customForms: false,
-    checkInSystem: true,
-    livestream: true,
-    sermonNotes: true,
-    automatedBlog: false,
-    givingStatements: false,
-    pledgeCampaigns: false,
-    // 🔴 FALSE — THE-314, moving with `smsAutomation` above.
-    textToGive: false,
-    pwaApp: true,
-    // 🔴 FALSE ON EVERY TIER. Social scheduling is an add-on. See PlanFeatures.
-    socialScheduler: false,
-  },
-  // Ministry — $199/mo. The top tier.
-  //
-  // Absorbed the deleted `ultra` tier: accountingTools folded in here.
-  // (Ultra's `aiAssistant: 1` folded in too, and went with the Telegram
-  // assistant in THE-253 — see the note on its old declaration site.)
-  //
-  // 🔴 `maxChurches` NOW CARRIES ultra's -1 AFTER ALL — THE-370, and not by
-  // inheritance. This comment used to read "deliberately did NOT inherit ultra's
-  // -1 — every tier is capped at 1 campus and additional campuses become a paid
-  // add-on"; both halves are false now. The campus add-on is retired and all
-  // three PAID tiers are `UNLIMITED_CAP`, so this is not Ministry reclaiming a
-  // top-tier privilege — it is the cap ceasing to be a product on every tier
-  // that pays. Free stays at 0, which is the only campus distinction left.
-  //
-  // Ultra's third folded-in cell, `churchDirectory`, was later removed
-  // entirely — see the comment on its old declaration site above `maxChurches`
-  // in the PlanFeatures interface.
-  max: {
-    blog: true,
-    // Unchanged by THE-205 — the feed is on every tier that pays.
-    newsFeed: true,
-    // 🔴 FALSE ON EVERY TIER (THE-253). NO PLAN INCLUDES THE AI RAG CHAT —
-    // founder: "NO PLAN HAS ANY AI RAG CHAT. Of course there should be no AI
-    // RAG chat in any plan if we sell it as an add-on." The ONLY path to
-    // `aiChat: true` is holding the AI Assistant add-on, which
-    // `getEffectiveFeatures` lifts with `||`. Setting this cell true on any
-    // tier re-sells as included the one thing that is sold separately, and is
-    // exactly what this ticket removed.
-    //
-    // ⚠️ `aiKnowledge` MOVES WITH IT, always. The chat answers ONLY from the
-    // knowledge base, so a tier with the base and no chat has a screen feeding
-    // nothing, and a tier with the chat and no base has a chat that can only
-    // answer "I don't have that". One purchase, one coherent capability — the
-    // lift in `getEffectiveFeatures` raises both together for the same reason.
-    aiChat: false,
-    aiKnowledge: false,
-    map: true,
-    // 🔴 UNLIMITED — THE-370, same as the two tiers below.
-    maxChurches: UNLIMITED_CAP,
-    // 🔴 4,000 — THE-370. Was 2,000.
-    maxContacts: 4_000,
+    maxContacts: 5_000,
     maxCourses: 15,
     maxAdmins: 15,
+    maxProducts: UNLIMITED_CAP,
+    maxCommunities: UNLIMITED_CAP,
+    aiMessagesPerMonth: 5_000,
     customDomain: true,
     customBranding: true,
     newsletterAutomation: true,
     automatedNewsletter: true,
-    // 🔴 THE ONLY TIER WITH SMS — THE-314. Unchanged in value, changed in
-    // meaning: this cell now decides who can send, and Harvest pays for what
-    // goes out. See `smsAutomation` in PlanFeatures.
     smsAutomation: true,
     fundraising: true,
     eventRegistration: true,
     docs: true,
     crm: true,
-    // 🔴 TRUE — unchanged by THE-335, which only split what FREE gets. Every
-    // paid tier that had the CRM also had Signups (both gates read `crm`),
-    // so carrying this cell across at the same value is what makes the split
-    // a change to free alone rather than a re-derivation of the ladder.
     signups: true,
     accountingTools: true,
     taxReceipt: true,
@@ -648,7 +587,6 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     pledgeCampaigns: true,
     textToGive: true,
     pwaApp: true,
-    // Included in Ministry (Matei approved 2026-10-21). Other tiers hold it via the add-on.
     socialScheduler: true,
   },
 };
@@ -685,52 +623,37 @@ export const TERM_MONTHS: Readonly<Record<BillingTerm, number>> = Object.freeze(
 });
 
 /**
- * Base plan pricing in USD — the STORED TABLE. Six numbers, one per
- * (tier, term), and every plan price in this app is one of these six.
+ * Base plan pricing in USD — the STORED TABLE. Four numbers, one per
+ * (tier, term), and every plan price in this app is one of these four.
  *
- * ─── Why this is a table and no longer a multiplier ──────────────────────────
+ * Church is $30 a month or $300 a year, Ministry $90 or $900. A year is ten
+ * months' price, which is what "2 months free" says; that is 16.67% off, not the
+ * 20% the retired three-tier table advertised. The prices are the primitive and
+ * the percentage falls out of them, so the stored discount below
+ * (`ADVERTISED_DISCOUNT_PCT`) is rounded DOWN and never claims more than the
+ * bill delivers.
  *
- * This used to be `ANNUAL_BILLED_MONTHS = 9` — "pay 9 months, get 12", which is
- * exactly 25% — with `yearlyUsd` derived from it. That abstraction is GONE and
- * must not come back, because the discount it has to express no longer divides
- * into whole months: 20% off a year is ×9.6 months. There is no integer to
- * name. (The stored years are rounder still — $190 is ×9.5 months, not ×9.6 —
- * which is the next paragraph's point.)
+ * ⚠️ BOTH TIERS SAVE THE SAME FRACTION on a year (300/360 and 900/1080), so
+ * nothing here needs to treat the tiers separately, but nothing may assume it
+ * either: the guards below walk every tier.
  *
- * The founder chose ROUNDED PRICES OVER EXACT PERCENTAGES, deliberately:
- * $405.45 on a pricing page reads like a spreadsheet error. So the prices are
- * the primitive and the percentages fall out of them, rather than the other way
- * round. The savings these six numbers actually produce on the yearly term are:
- *
- *   Individual 20.8%   Small Team 20.8%   Ministry 21.7%
- *
- * ⚠️ THE YEARLY COLUMN IS NOT FLAT. Individual and Small Team are 190/240ths of
- * twelve months and Ministry is 752/960ths, which is 21.7% against their 20.8%.
- * Nothing here may assume the tiers share a ratio: they were 18.3 / 17.5 / 17.1
- * apart two reprices ago, flat after THE-248, and spread again once Ministry
- * alone was repriced (THE-343, kept by THE-372).
- *
- * (The withdrawn quarterly column was flat: exactly nine tenths of three months
- * on every tier — $54 against $60, $108 against $120, $216 against $240 — so
- * each saved 10.0% to the cent. That flatness is gone with the term; do not
- * read it back into the yearly column.)
- *
- * 🔴 DO NOT COMPUTE A BADGE FROM THIS TABLE. See `ADVERTISED_DISCOUNT_PCT` —
- * the yearly column is why: the founder advertises a round 20%, the prices
- * deliver 20.8%.
+ * 🔴 DO NOT COMPUTE A BADGE FROM THIS TABLE. See `ADVERTISED_DISCOUNT_PCT`.
  *
  * ⚠️ CROSS-REPO: the marketing site (harvest-presentation-site) carries its own
- * copy of these six numbers in src/components/Pricing.tsx, and a module-scope
- * contract there compares the TABLE — tier by tier, term by term — against the
- * numbers this file publishes. The two repos cannot share code, so changing a
- * price here means changing it there IN THE SAME BREATH or the site's build
- * fails and names the disagreement.
+ * copy of these numbers in src/components/Pricing.tsx, and a module-scope
+ * contract there compares the table against what this file publishes. The two
+ * repos cannot share code, so a price change here means changing it there in the
+ * same breath or the site's build fails and names the disagreement.
+ *
+ * The retired plus ($20/$190), pro ($40/$380) and max ($80/$752) rows are gone
+ * from this table on purpose. Their Dodo products stay active and recognisable
+ * (see `src/lib/dodo/catalogue.ts`), but a legacy tier is priced as the tier it
+ * resolves to, never by its old figure.
  */
 export const PLAN_PRICING: Readonly<Record<PricedPlan, Readonly<Record<BillingTerm, number>>>> =
   Object.freeze({
-    plus: Object.freeze({ monthly: 20, yearly: 190 }),
-    pro:  Object.freeze({ monthly: 40, yearly: 380 }),
-    max:  Object.freeze({ monthly: 80, yearly: 752 }),
+    church:   Object.freeze({ monthly: 30, yearly: 300 }),
+    ministry: Object.freeze({ monthly: 90, yearly: 900 }),
   });
 
 /**
@@ -945,28 +868,20 @@ export type DiscountedTerm = Exclude<BillingTerm, 'monthly'>;
 /**
  * The percentages the product ADVERTISES. Stored, deliberately.
  *
- * 🔴 NOT COMPUTED FROM `PLAN_PRICING`, and this is the whole point.
+ * 🔴 YEARLY IS 16, AND THE COPY LEADS WITH "2 MONTHS FREE" INSTEAD. A year costs
+ * ten months' price, which is 16.67% off. The number stored here is that figure
+ * ROUNDED DOWN, because a stored percentage may never claim more than the prices
+ * deliver and 17 would. It is the cross-repo contract value (the marketing site
+ * stores the same 16) and what a consumer that needs a number reads; the words
+ * a card prints come from `discountClaim`, which says "2 months free".
  *
- * The original reason was SPREAD: rounded prices produced a different real
- * saving on every tier, so a computed badge would have read a different number
- * beside each card, on a toggle that sits above all three at once.
- *
- * ⚠️ THE-248 REMOVED THE SPREAD AND NOT THE REASON. All three tiers saved 20.8%
- * on a year, so "one number cannot be derived from three" no longer bit — but
- * the YEARLY column still did, from the other side. The founder advertises a
- * ROUND 20%; the prices deliver 20.8%. A
- * computed badge would print "Save 20.8%" (or round to "21%") beside a page
- * that says 20 everywhere else, and a percentage nobody chose is not more
- * honest for being arithmetically derived — it is just a number the copy, the
- * Terms and the FAQ would then all have to chase.
- *
- * 🔴 SO THE SPLIT HOLDS: the NUMBER is a founder's decision and is stored; the
- * WORDING around it is derived (`discountClaimShape`), so the claim can never
- * outlive the prices. Do not "simplify" this to a computation because today's
- * yearly happens to agree with one.
+ * 🔴 NOT COMPUTED FROM `PLAN_PRICING`. The NUMBER is a founder's decision and is
+ * stored; the WORDING around it is derived (`discountClaimShape`, `discountClaim`)
+ * so the claim can never outlive the prices. Do not "simplify" this to a
+ * computation because today's yearly happens to agree with one.
  */
 export const ADVERTISED_DISCOUNT_PCT: Readonly<Record<DiscountedTerm, number>> = Object.freeze({
-  yearly: 20,
+  yearly: 16,
 });
 
 /**
@@ -976,10 +891,10 @@ export const ADVERTISED_DISCOUNT_PCT: Readonly<Record<DiscountedTerm, number>> =
  * actual one. A flat "save 30%" is a claim about every tier, so it is only true
  * when the WORST tier saves at least 30%.
  *
- *   yearly     advertises 20, worst tier saves 20.8  → 'flat'  → "Save 20%"
+ *   yearly     advertises 16, worst tier saves 16.67 → 'flat'  → "Save 16%"
  *
- * The WORST tier is what the line turns on, so Ministry's better yearly saving
- * does not move it: 20.8 is still the smallest yearly figure.
+ * The WORST tier is what the line turns on, so a tier that saved more would not
+ * move it: the smallest yearly figure is the one that counts.
  *
  * 🔴 `<=` IS LOAD-BEARING. A claim the prices honour exactly MEETS the worst
  * saving rather than clearing it (the withdrawn quarterly term was exactly
@@ -991,10 +906,9 @@ export const ADVERTISED_DISCOUNT_PCT: Readonly<Record<DiscountedTerm, number>> =
  * — see the block comment there. The operator is right; the arithmetic feeding
  * it was not. Do not "fix" a future knife edge by loosening this to `<`.
  *
- * Yearly clears with room: 20 advertised against 20.83 delivered on Individual
- * and Small Team, and 21.67 on Ministry since THE-343 repriced it alone. The
- * claim is bounded by the WORST tier, so it is 20.83 that keeps this 'flat' —
- * Ministry saving more cannot make a 20% claim any less true.
+ * Yearly clears by two thirds of a point: 16 advertised against 16.67 delivered
+ * on both tiers. That is the rounded-down figure doing its job, and it is why the
+ * advertised number is 16 and not 17.
  *
  * ⚠️ NOTHING IN THIS FUNCTION CHANGED to make that happen, and that is the
  * point of deriving it: the wording followed the prices without an edit. Do not
@@ -1021,8 +935,33 @@ export function discountClaimShape(term: DiscountedTerm): DiscountClaimShape {
   return ADVERTISED_DISCOUNT_PCT[term] <= worst ? 'flat' : 'upTo';
 }
 
-/** The advertised saving for a term, in words. The one phrasing, app-wide. */
+/**
+ * Whole months of service `plan` on `term` gives away against paying monthly, or
+ * `null` when the saving is not a whole number of months. $300 against twelve
+ * $30 months is exactly two, and so is $900 against twelve $90.
+ */
+export function termFreeMonths(plan: PricedPlan, term: BillingTerm): number | null {
+  const monthly = planPriceUsd(plan, 'monthly');
+  if (monthly === 0) return null;
+  const free = (monthly * TERM_MONTHS[term] - planPriceUsd(plan, term)) / monthly;
+  return Number.isInteger(free) && free > 0 ? free : null;
+}
+
+/**
+ * The advertised saving for a term, in words. The one phrasing, app-wide.
+ *
+ * Leads with months free ("2 months free") when EVERY priced tier gives away the
+ * same whole number of months, because that is the claim the prices make exactly
+ * and it needs no rounding. Otherwise it falls back to the stored percentage,
+ * worded by `discountClaimShape`. Derived from the table both ways: a reprice
+ * that breaks the months moves the words without an edit here.
+ */
 export function discountClaim(term: DiscountedTerm): string {
+  const months = new Set(PRICED_PLANS.map((plan) => termFreeMonths(plan, term)));
+  const [only] = [...months];
+  if (months.size === 1 && only !== null) {
+    return `${only} month${only === 1 ? '' : 's'} free`;
+  }
   const pct = ADVERTISED_DISCOUNT_PCT[term];
   return discountClaimShape(term) === 'flat' ? `Save ${pct}%` : `Save up to ${pct}%`;
 }
@@ -1154,14 +1093,77 @@ export const AFFILIATE_PROGRAM_ENABLED = false;
  */
 export const DODO_BILLING_ENABLED = true;
 
+// ─── Harvest fees ─────────────────────────────────────────────────────────────
+
+/**
+ * What Harvest keeps of money a ministry takes in, per tier, in percent.
+ *
+ *   donationsPct     0 on every tier. A ministry collects its own giving through
+ *                    its own payment links and Harvest never holds the money.
+ *   productSalesPct  5 on Church, 2 on Ministry; `null` on Free, which cannot list
+ *                    a product at all (`maxProducts` is 0), so "0%" would be a
+ *                    claim about a thing that cannot happen.
+ *
+ * 🔴 PRODUCT SALES ARE NOT LIVE. `PAID_PRODUCT_CHECKOUT_ENABLED` is false, so the
+ * 5 and 2 are a published rate for a checkout that does not exist yet, and any
+ * surface that prints them prints "coming soon" beside them. The payment
+ * processor's own fee applies on top of Harvest's (`PROCESSOR_FEE_NOTE`).
+ *
+ * This is the one place a rate is written down. `PLATFORM_FEE_MAP`
+ * (src/lib/stripe-connect.ts) is a pinned legacy table that is 0 on every id it
+ * lists; the reprice test keeps it agreeing with `donationsPct`.
+ */
+export interface PlanFees {
+  readonly donationsPct: number;
+  readonly productSalesPct: number | null;
+}
+
+export const PLAN_FEES: Readonly<Record<TenantPlan, PlanFees>> = Object.freeze({
+  free: Object.freeze({ donationsPct: 0, productSalesPct: null }),
+  church: Object.freeze({ donationsPct: 0, productSalesPct: 5 }),
+  ministry: Object.freeze({ donationsPct: 0, productSalesPct: 2 }),
+});
+
+/** Harvest's own cut is not the only fee on a sale; say so wherever a rate is shown. */
+export const PROCESSOR_FEE_NOTE = "The payment processor's own fee applies on top.";
+
+/**
+ * Paid product checkout. False: a ministry cannot take a card payment for a
+ * product through Harvest yet, so every product-sales fee is labelled coming soon.
+ * Flip it together with the checkout, never before.
+ */
+export const PAID_PRODUCT_CHECKOUT_ENABLED = false;
+
+/** The product-sales fee as a card prints it: "5% on product sales (coming soon)". */
+export function formatProductSalesFee(plan: StoredPlan): string {
+  const pct = PLAN_FEES[canonicalPlanId(plan) ?? 'church'].productSalesPct;
+  if (pct === null) return 'No product sales';
+  return `${pct}% on product sales${PAID_PRODUCT_CHECKOUT_ENABLED ? '' : ' (coming soon)'}`;
+}
+
+/** The donation fee as a card prints it: "0% on donations". */
+export function formatDonationFee(plan: StoredPlan): string {
+  return `${PLAN_FEES[canonicalPlanId(plan) ?? 'church'].donationsPct}% on donations`;
+}
+
 // ─── Accessors ────────────────────────────────────────────────────────────────
 
 /**
- * Get feature flags for a given plan.
- * Defaults to 'plus' if plan is unknown.
+ * A plan value as it can arrive at a boundary: a tier this build sells, or one of
+ * the three ids it stored before the repricing. Anything wider goes through
+ * `toTenantPlan` first.
  */
-export function getPlanFeatures(plan: TenantPlan): PlanFeatures {
-  return PLAN_FEATURES[plan] || PLAN_FEATURES.plus;
+export type StoredPlan = TenantPlan | LegacyPlanId;
+
+/**
+ * Get feature flags for a given plan.
+ *
+ * A legacy id (plus, pro, max) resolves to the tier it became, and anything
+ * unrecognised fails closed to Church, the cheapest paid tier, exactly as the
+ * old `|| PLAN_FEATURES.plus` did.
+ */
+export function getPlanFeatures(plan: StoredPlan): PlanFeatures {
+  return PLAN_FEATURES[canonicalPlanId(plan) ?? 'church'];
 }
 
 // ─── Add-ons layered on a plan (REP-5a) ──────────────────────────────────────
@@ -1308,7 +1310,7 @@ function raiseCap(base: number, extra: number): number {
  * add-on can never take away something the PLAN grants.
  */
 export function getEffectiveFeatures(
-  plan: TenantPlan,
+  plan: StoredPlan,
   addons?: TenantAddons | null,
 ): EffectiveFeatures {
   const base = getPlanFeatures(plan);
@@ -1329,27 +1331,25 @@ export function getEffectiveFeatures(
 
 /**
  * Coerce an untrusted plan value — a Firestore field, an API body, or a plan
- * that is still loading — to a TenantPlan, failing closed to 'plus'.
+ * that is still loading — to a TenantPlan, failing closed to 'church'.
  *
- * This is the same fallback getPlanFeatures() has always applied at runtime via
- * `|| PLAN_FEATURES.plus`; callers just had no way to say so in the type system
- * and were passing a bare `string`. PLAN_FEATURES is the source of truth for
- * which ids are real, so adding a tier cannot leave this behind.
+ * A legacy stored id resolves to the tier it became (plus and pro to Church, max
+ * to Ministry) through `canonicalPlanId`, so this is the one read boundary every
+ * stored plan passes through. An unrecognised value, the retired `ultra`
+ * included, gets the same fallback `getPlanFeatures` applies: Church, never a
+ * more generous tier.
  */
 export function toTenantPlan(plan: string | null | undefined): TenantPlan {
-  return plan && Object.prototype.hasOwnProperty.call(PLAN_FEATURES, plan)
-    ? (plan as TenantPlan)
-    : 'plus';
+  return canonicalPlanId(plan) ?? 'church';
 }
 
 /**
  * Human-readable display names for each plan tier.
- * Internal IDs (plus/pro/max) stay the same.
  *
- * `max` displays as 'Ministry', not the old 'Community'. That is not a rename
- * of the product: 'Ministry' was the deleted `ultra` tier's name, and `max`
- * inherited it when the two folded together. The top tier is still called what
- * it was always called.
+ * The ids are the display names lowercased: `church` is "Church" and `ministry`
+ * is "Ministry". The retired plus ("Individual"), pro ("Small Team") and max
+ * ("Ministry") have no row; a stored legacy id is shown as the tier it resolves
+ * to, through `getPlanDisplayName`.
  */
 export const PLAN_DISPLAY_NAMES: Record<TenantPlan, string> = {
   // 'Free' rather than a product-ish name ('Starter', 'Evangelist'). The
@@ -1359,9 +1359,8 @@ export const PLAN_DISPLAY_NAMES: Record<TenantPlan, string> = {
   // noun rendered mid-sentence in upgrade copy — `FEATURE_MIN_PLAN` puts this
   // string directly into "Available on Free and above".
   free: 'Free',
-  plus: 'Individual',
-  pro: 'Small Team',
-  max: 'Ministry',
+  church: 'Church',
+  ministry: 'Ministry',
 };
 
 /**
@@ -1371,35 +1370,22 @@ export const PLAN_DISPLAY_NAMES: Record<TenantPlan, string> = {
  * These are the only strings on a plan card that are typed rather than derived.
  * Everything else a card prints comes out of `PLAN_FEATURES` above, because a
  * hand-written list of what a tier includes is how this product once advertised
- * "keeps 100%" against a real 2.5% fee. A blurb has nothing in the matrix to
- * derive from — "for solo evangelists" is an audience, not a capability — so it
- * is written down, once, HERE rather than in a component, so the in-app card and
- * anything else that ever wants it read the same sentence.
+ * "keeps 100%" against a real 2.5% fee.
  *
- * ⚠️ CROSS-REPO, same shape as `ANNUAL_BILLED_MONTHS` above: the marketing site
- * (harvest-presentation-site) carries its OWN copy of these three sentences in
- * src/components/Pricing.tsx. The two repos cannot share code, so a reworded
- * tagline here does NOT reach theharvest.site and the two will drift. That
- * drift is cosmetic — a tagline is a description of an audience, not a claim
- * about what the plan does, so a stale one cannot mis-sell the way a stale
- * price or a stale feature list can — but it is real, and changing one of these
- * means changing it there too if the two are meant to read alike.
+ * ⚠️ CROSS-REPO: the marketing site carries its OWN copy of these sentences in
+ * src/components/Pricing.tsx. A reworded tagline here does not reach it; the
+ * drift is cosmetic, since a tagline describes an audience rather than making a
+ * claim, but change them together if the two are meant to read alike.
  */
 export const PLAN_BLURBS: Record<TenantPlan, string> = {
-  // Names the audience and the ONE thing the tier does, in that order. It has
-  // to sit beside "For solo evangelists and missionaries." (Individual) without
-  // reading as the same product, which is why it says PERSONAL discipleship
-  // and one course rather than repeating "evangelists" alone.
   free: 'For evangelists discipling one person at a time.',
-  plus: 'For solo evangelists and missionaries.',
-  pro:  'For small ministries growing as a team.',
-  // TODO: harvest-presentation-site (src/components/Pricing.tsx) still says "churches"; change it to "campuses" there too.
-  max:  'For established campuses going deeper.',
+  church: 'For a ministry running one community.',
+  ministry: 'For ministries with many communities and campuses.',
 };
 
-/** Get the display name for a given plan. Defaults to 'Individual' if unknown. */
-export function getPlanDisplayName(plan: TenantPlan): string {
-  return PLAN_DISPLAY_NAMES[plan] || PLAN_DISPLAY_NAMES.plus;
+/** Get the display name for a given plan. A legacy id shows as its new tier; unknown is Church. */
+export function getPlanDisplayName(plan: StoredPlan): string {
+  return PLAN_DISPLAY_NAMES[canonicalPlanId(plan) ?? 'church'];
 }
 
 /**
@@ -1411,7 +1397,7 @@ export function getPlanDisplayName(plan: TenantPlan): string {
  * with the Telegram assistant (THE-253) — the branch stays because the caps
  * still need it.
  */
-export function hasFeature(plan: TenantPlan, feature: keyof PlanFeatures): boolean {
+export function hasFeature(plan: StoredPlan, feature: keyof PlanFeatures): boolean {
   const features = getPlanFeatures(plan);
   const value = features[feature];
   if (typeof value === 'boolean') return value;
@@ -1436,7 +1422,7 @@ export function hasFeature(plan: TenantPlan, feature: keyof PlanFeatures): boole
  * `PLAN_PRICING`) is the one to walk for anything about money. Contrast the two
  * before adding a consumer.
  */
-export const PLAN_ORDER: readonly TenantPlan[] = ['free', 'plus', 'pro', 'max'] as const;
+export const PLAN_ORDER: readonly TenantPlan[] = ['free', 'church', 'ministry'] as const;
 
 /**
  * The one tier that is not sold, named once.
@@ -1614,7 +1600,7 @@ export function crmLabel(features: Pick<PlanFeatures, 'fundraising'>): string {
  * tiers where `customBranding` is true — at the time Community/max and the
  * since-deleted Ministry/ultra — so removing it left every tier's Branding
  * access unchanged:
- *   Individual (plus) hidden · Small Team (pro) hidden · Ministry (max) shown.
+ *   Church hidden · Ministry shown.
  * Folding ultra into max did not change that either: max already had both
  * `customBranding` and `customDomain`.
  */
@@ -1661,7 +1647,8 @@ export const TERM_BILLED_PHRASE: Readonly<Record<BillingTerm, string>> = Object.
  * always covered; free is checked BY NAME through `isPricedPlan` so a missing
  * pricing row can never silently render as free.
  */
-export function formatPlanPrice(plan: TenantPlan, term: BillingTerm): string {
+export function formatPlanPrice(rawPlan: StoredPlan, term: BillingTerm): string {
+  const plan = canonicalPlanId(rawPlan) ?? 'church';
   if (!isPricedPlan(plan)) return 'Free';
   const pricing = PLAN_PRICING[plan];
   if (!pricing) return 'Custom';

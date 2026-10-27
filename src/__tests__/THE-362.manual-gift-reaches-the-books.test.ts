@@ -561,7 +561,7 @@ describe('1 - no surface claims a CRM-recorded gift does not affect accounting o
      * that ticket shipped.
      */
     expect(proseOf('src/components/AdminCRM.tsx'))
-      .toContain('so the gift counts on your dashboard, in accounting, and on this year');
+      .toContain('so the gift counts on your dashboard, in giving records, and on this year');
     expect(proseOf('src/components/AdminDonations.tsx'))
       .toContain('Gifts given this way are not recorded until you record them.');
   });
@@ -593,7 +593,7 @@ describe('3 - the replacement copy agrees with STRIPE_CONNECT_HIDDEN_MESSAGE', (
    *
    *   "Card giving inside the app is off. Your own payment links still work,
    *    and a gift you record in the CRM counts on your dashboard, in
-   *    accounting and on your giving statements."
+   *    giving records and on your giving statements."
    *
    * It was TRUE and the accounting screens were FALSE - established by running
    * both halves in section 2, not by preferring one sentence over another.
@@ -602,7 +602,7 @@ describe('3 - the replacement copy agrees with STRIPE_CONNECT_HIDDEN_MESSAGE', (
     const m = STRIPE_CONNECT_HIDDEN_MESSAGE.toLowerCase();
     expect(m).toContain('record in the crm counts');
     expect(m).toContain('dashboard');
-    expect(m).toContain('accounting');
+    expect(m).toContain('giving records');
     expect(m).toContain('giving statements');
   });
 

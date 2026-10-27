@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/api-auth';
 import { executeComposioAction } from '@/lib/composio-client';
 import { adminDb } from '@/lib/firebase-admin';
 import { LEGACY_MAILCHIMP_NEWSLETTER_ENABLED, LEGACY_MAILCHIMP_SEND_RETIRED_MESSAGE } from '@/lib/newsletter-feature';
-import { hasFeature } from '@/utils/plan-features';
+import { hasFeature, toTenantPlan } from '@/utils/plan-features';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
 import sanitizeHtml from 'sanitize-html';
 import { captureHandledError } from '@/lib/money-path-sentry';
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Tenant data missing' }, { status: 404 });
     }
 
-    const tenantPlan = tenantData.plan || 'plus';
+    const tenantPlan = toTenantPlan(tenantData.plan);
     const tenantName = tenantData.name || 'Your Ministry';
 
     if (!isSuperAdmin && !hasFeature(tenantPlan, 'newsletterAutomation')) {

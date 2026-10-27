@@ -152,4 +152,4 @@ export const STRIPE_CONNECT_ENABLED = false;
  * differently — the same reason `SMS_HIDDEN_MESSAGE` is one.
  */
 export const STRIPE_CONNECT_HIDDEN_MESSAGE =
-  'Card giving inside the app is off. Your own payment links still work, and a gift you record in the CRM counts on your dashboard, in accounting and on your giving statements.';
+  'Card giving inside the app is off. Your own payment links still work, and a gift you record in the CRM counts on your dashboard, in giving records and on your giving statements.';

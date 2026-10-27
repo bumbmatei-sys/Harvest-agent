@@ -433,6 +433,7 @@ const PINNED: ReadonlyArray<readonly [string, ...string[]]> = [
     'src/app/api/dodo/addons/route.ts',
     '0a7f2bcae18c89f25f4eefa8fc6ccd263a0e45d46ad968ca934465d9ab659322',
     'e3099c3c20744dab647b85df1dab1a69aec569439d3e44f201c1c9e8fbdf71a6',
+    '557e6add4243d5477f499c6f649ef75d51273303010cca87ebbe91f6f55427ea', // THE-378 two-plan repricing
   ],
   // 🔴 REPINNED FOR THE-226, AND WHAT DID NOT MOVE.
   //
@@ -575,9 +576,10 @@ const PINNED: ReadonlyArray<readonly [string, ...string[]]> = [
   ['src/lib/dodo/catalogue.ts',
     '63819b7313479a5b351f56e10c6f43752453ac40cd743fdca2389ab6e5b193d7',
     'd23c8fbfa59ef31f55ca196964f72959f8e2b5f9d25d29349adc08ff352d0a32',
-    '68e2f4d2f7537d129c768c551b7abb5a4890c1c5def71c1f174b6d649ad374e3'],
+    '68e2f4d2f7537d129c768c551b7abb5a4890c1c5def71c1f174b6d649ad374e3',
+    '1ef91427cb2288ff394fa081cbf529f9a017f5369a38ac50eb134b1b7f8cbe66'],
   ['src/lib/dodo/config.ts', '1ecb3d021960e7b4c09f0a1d15324e74978cda97799830709ae6f6f3cfdfb26a'],
-  ['src/lib/dodo/dodo-provider.ts', '2b3e0b168d87b8b88c231fe49a450bc9416561f1a32a7668bd207bd7861d125d'],
+  ['src/lib/dodo/dodo-provider.ts', '2b3e0b168d87b8b88c231fe49a450bc9416561f1a32a7668bd207bd7861d125d', 'd2048a653e6065a13cf2a9748a8ec2b39ab6c33470f0745ea081d6ea0405356a'],
   ['src/lib/dodo/events.ts', '0b94d1275c6120a0ccb5c4dfeb3f5c68545e6ecbccf7c276ad87910985034ea9'],
   ['src/lib/dodo/lifecycle.ts', 'cbb85d69d7fccf88f6cf41598f64e5a24e4d4f723c5eab46071fdea9c8aaf1c2'],
   ['src/lib/dodo/plan-change.ts', '7f583417d59d476ddc41c6530acbfe3cd9dcaaf9e8d15279842b9d3db984ce9f'],

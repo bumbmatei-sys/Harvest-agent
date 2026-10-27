@@ -61,27 +61,22 @@ describe('PlanUpgradeSection yearly pricing copy', () => {
     expect(container.querySelectorAll('.line-through').length).toBe(0);
   });
 
-  it('derives the yearly copy from PLAN_PRICING for Ministry (max)', () => {
+  it('derives the yearly copy from PLAN_PRICING for Ministry', () => {
     mount();
     clickButtonWithText('Yearly');
     // 🔴 THE-196 flipped the hierarchy. The PER-MONTH figure headlines the
-    // card and the charged total sits beneath it.
-    //
-    // ⚠️ MINISTRY CARRIES CENTS AGAIN SINCE THE-372. $752/12 is $62.6667,
-    // ceiled to $62.67 — THE-343's $564 had divided to a clean $47. The
-    // ceiling keeps $62.67 x 12 = $752.04 at or above the charged total.
-    expect(container.textContent).toContain('$62.67');
-    expect(container.textContent).toContain('billed as $752 every 12 months');
+    // card and the charged total sits beneath it. $900/12 divides cleanly to
+    // $75, so "2 months free" carries no ceiling artefact on this tier.
+    expect(container.textContent).toContain('$75');
+    expect(container.textContent).toContain('billed as $900 every 12 months');
   });
 
-  it('derives the yearly copy from PLAN_PRICING for Individual (plus)', () => {
+  it('derives the yearly copy from PLAN_PRICING for Church', () => {
     mount();
     clickButtonWithText('Yearly');
-    // $190/12 is $15.8333, ceiled to $15.84. THE-222 left Individual as the one
-    // yearly cell that divided cleanly ($13.75); THE-248 removes that — all
-    // three years now carry a ceiling artefact.
-    expect(container.textContent).toContain('$15.84');
-    expect(container.textContent).toContain('billed as $190 every 12 months');
+    // $300/12 is a clean $25.
+    expect(container.textContent).toContain('$25');
+    expect(container.textContent).toContain('billed as $300 every 12 months');
   });
 
   it('offers no quarterly term — it was withdrawn on 2026-10-23', () => {
@@ -101,12 +96,12 @@ describe('PlanUpgradeSection yearly pricing copy', () => {
     mount();
     // Monthly is the default tab; assert the monthly prices render and no
     // longer-term copy (old strikethrough or the equivalent line) leaks in.
-    expect(container.textContent).toContain('$20/mo');
-    expect(container.textContent).toContain('$80/mo');
+    expect(container.textContent).toContain('$30/mo');
+    expect(container.textContent).toContain('$90/mo');
     expect(container.textContent).not.toContain('equivalent');
     // 🔴 MONTHLY RENDERS AS DECIDED: headline alone, no note beneath. On
     // monthly the headline already IS the charged amount on the charged cycle,
-    // so "billed as $20 every 1 month" would be the same sentence twice.
+    // so "billed as $30 every 1 month" would be the same sentence twice.
     expect(container.textContent).not.toContain('billed as');
     expect(container.querySelectorAll('.line-through').length).toBe(0);
 

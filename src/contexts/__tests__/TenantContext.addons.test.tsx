@@ -108,15 +108,15 @@ afterEach(async () => {
 
 describe('the client sees the add-ons a tenant owns', () => {
   it('carries the stored add-on set onto the context', async () => {
-    tenantDoc({ plan: 'pro', status: 'active', addons: OWNS.aBitOfEverything });
+    tenantDoc({ plan: 'church', status: 'active', addons: OWNS.aBitOfEverything });
     await renderProvider();
 
     expect(seen?.tenantAddons).toEqual(OWNS.aBitOfEverything);
-    expect(seen?.tenantPlan).toBe('pro');
+    expect(seen?.tenantPlan).toBe('church');
   });
 
   it('comes from the SAME fetch that already supplies the plan — no second read', async () => {
-    tenantDoc({ plan: 'pro', status: 'active', addons: OWNS.fiveSeats });
+    tenantDoc({ plan: 'church', status: 'active', addons: OWNS.fiveSeats });
     await renderProvider();
 
     // 🔴 `tenants/{id}` carries `plan` and `addons` on one document, so the
@@ -129,7 +129,7 @@ describe('the client sees the add-ons a tenant owns', () => {
   it('reports owning nothing for a tenant that predates add-ons', async () => {
     // Every tenant created before REP-5a has NO `addons` field at all. That is a
     // real answer — "owns nothing" — not a missing one.
-    tenantDoc({ plan: 'max', status: 'active' });
+    tenantDoc({ plan: 'ministry', status: 'active' });
     await renderProvider();
 
     expect(seen?.tenantAddons).toEqual(NO_ADDONS);
@@ -140,7 +140,7 @@ describe('the client sees the add-ons a tenant owns', () => {
     // so the one direction an add-on may never move a cap — DOWN — is impossible,
     // and a garbage value can only ever under-report.
     tenantDoc({
-      plan: 'pro',
+      plan: 'church',
       status: 'active',
       addons: { adminSeats: -5, aiAssistant: 'lots', unlimitedContacts: 'yes' },
     });
@@ -155,7 +155,7 @@ describe('the client sees the add-ons a tenant owns', () => {
     // `contactPacks` and `campuses` left `TenantAddons`, but a stale value may
     // still sit in Firestore. The reader names the fields it wants and never
     // enumerates the document's keys, so a retired one is not read at all.
-    tenantDoc({ plan: 'pro', status: 'active', addons: OWNS.legacyRetiredKeys });
+    tenantDoc({ plan: 'church', status: 'active', addons: OWNS.legacyRetiredKeys });
     await renderProvider();
 
     expect(seen?.tenantAddons).toEqual(OWNS.nothing);
@@ -163,7 +163,7 @@ describe('the client sees the add-ons a tenant owns', () => {
     expect(seen?.tenantAddons).not.toHaveProperty('campuses');
 
     // And it granted nothing: every cap is the tier's own.
-    const tier = getPlanFeatures('pro');
+    const tier = getPlanFeatures('church');
     expect(seen?.planFeatures?.maxChurches).toBe(tier.maxChurches);
     expect(seen?.planFeatures?.maxContacts).toBe(tier.maxContacts);
     expect(seen?.planFeatures?.maxAdmins).toBe(tier.maxAdmins);
@@ -174,22 +174,22 @@ describe('the client sees the add-ons a tenant owns', () => {
 
 describe('effective caps include owned add-ons', () => {
   it('raises maxAdmins by the seats the church bought', async () => {
-    tenantDoc({ plan: 'pro', status: 'active', addons: OWNS.fiveSeats });
+    tenantDoc({ plan: 'church', status: 'active', addons: OWNS.fiveSeats });
     await renderProvider();
 
     // 🔴 Against the REAL matrix, read at assertion time. The claim is "five
     // higher than the tier", not "five higher than a number typed here".
-    const tierCap = getPlanFeatures('pro').maxAdmins;
+    const tierCap = getPlanFeatures('church').maxAdmins;
     expect(seen?.planFeatures?.maxAdmins).toBe(tierCap + 5);
     // And the tier's own published allowance is untouched by any of this.
-    expect(tierCap).toBe(getPlanFeatures('pro').maxAdmins);
+    expect(tierCap).toBe(getPlanFeatures('church').maxAdmins);
   });
 
   it('raises every cell an add-on is supposed to raise, and nothing else', async () => {
-    tenantDoc({ plan: 'pro', status: 'active', addons: OWNS.aBitOfEverything });
+    tenantDoc({ plan: 'church', status: 'active', addons: OWNS.aBitOfEverything });
     await renderProvider();
 
-    const tier = getPlanFeatures('pro');
+    const tier = getPlanFeatures('church');
     const features = seen?.planFeatures;
 
     expect(features?.maxAdmins).toBe(tier.maxAdmins + 2);
@@ -232,21 +232,21 @@ describe('effective caps include owned add-ons', () => {
   });
 
   it('is exactly what getEffectiveFeatures says — the context adds no arithmetic', async () => {
-    tenantDoc({ plan: 'max', status: 'active', addons: OWNS.aBitOfEverything });
+    tenantDoc({ plan: 'ministry', status: 'active', addons: OWNS.aBitOfEverything });
     await renderProvider();
 
     // 🔴 The context LAYERS, it does not compute. A second implementation of the
     // add-on arithmetic in the provider is the thing this pins out of existence.
-    expect(seen?.planFeatures).toEqual(getEffectiveFeatures('max', OWNS.aBitOfEverything));
+    expect(seen?.planFeatures).toEqual(getEffectiveFeatures('ministry', OWNS.aBitOfEverything));
   });
 
   it('a tenant owning nothing reads exactly its tier — the no-regression case', async () => {
-    tenantDoc({ plan: 'plus', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
     await renderProvider();
 
     // The overwhelmingly common case, and every tenant that predates REP-5a.
     // Switching `planFeatures` to `getEffectiveFeatures` must not have moved it.
-    const tier = getPlanFeatures('plus');
+    const tier = getPlanFeatures('church');
     for (const key of Object.keys(tier) as (keyof typeof tier)[]) {
       expect(seen?.planFeatures?.[key], `${key} moved`).toEqual(tier[key]);
     }
@@ -286,7 +286,7 @@ describe('add-ons for a platform super admin resolve to owning nothing', () => {
     // The provider read a tenant doc holding add-ons, and then the override
     // applies. What the super admin sees must still be the tier, not this
     // church's purchased capacity attributed to the platform.
-    tenantDoc({ plan: 'plus', status: 'active', addons: OWNS.aBitOfEverything });
+    tenantDoc({ plan: 'church', status: 'active', addons: OWNS.aBitOfEverything });
     mockHasPlatformOverride.mockReturnValue(true);
     await renderProvider();
 
@@ -307,11 +307,11 @@ describe('add-ons for a platform super admin resolve to owning nothing', () => {
     // `hasPlatformOverride` is false on a tenant subdomain — everyone, super
     // admins included, is gated by that tenant's actual plan. Unchanged rule.
     mockHasPlatformOverride.mockReturnValue(false);
-    tenantDoc({ plan: 'plus', status: 'active', addons: OWNS.fiveSeats });
+    tenantDoc({ plan: 'church', status: 'active', addons: OWNS.fiveSeats });
     await renderProvider();
 
     expect(seen?.tenantAddons).toEqual(OWNS.fiveSeats);
-    expect(seen?.planFeatures?.maxAdmins).toBe(getPlanFeatures('plus').maxAdmins + 5);
+    expect(seen?.planFeatures?.maxAdmins).toBe(getPlanFeatures('church').maxAdmins + 5);
   });
 });
 
@@ -319,14 +319,14 @@ describe('add-ons for a platform super admin resolve to owning nothing', () => {
 
 describe('the add-on set updates after a purchase without a page reload', () => {
   it('moves the caps when the refreshed document shows the purchase', async () => {
-    tenantDoc({ plan: 'pro', status: 'active', addons: OWNS.nothing });
+    tenantDoc({ plan: 'church', status: 'active', addons: OWNS.nothing });
     await renderProvider();
 
-    const before = getPlanFeatures('pro').maxAdmins;
+    const before = getPlanFeatures('church').maxAdmins;
     expect(seen?.planFeatures?.maxAdmins).toBe(before);
 
     // The webhook — the single writer — has now recorded the purchase.
-    tenantDoc({ plan: 'pro', status: 'active', addons: OWNS.fiveSeats });
+    tenantDoc({ plan: 'church', status: 'active', addons: OWNS.fiveSeats });
     await act(async () => { await seen?.refreshTenantAddons(); });
 
     // 🔴 Same mounted tree, no remount, no reload: the caps moved in place.
@@ -335,11 +335,11 @@ describe('the add-on set updates after a purchase without a page reload', () => 
   });
 
   it('re-reads rather than assuming what was asked for', async () => {
-    tenantDoc({ plan: 'pro', status: 'active', addons: OWNS.nothing });
+    tenantDoc({ plan: 'church', status: 'active', addons: OWNS.nothing });
     await renderProvider();
 
     const readsBefore = mockGetDoc.mock.calls.length;
-    tenantDoc({ plan: 'pro', status: 'active', addons: OWNS.fiveSeats });
+    tenantDoc({ plan: 'church', status: 'active', addons: OWNS.fiveSeats });
     await act(async () => { await seen?.refreshTenantAddons(); });
 
     // 🔴 `on_payment_failure: 'prevent_change'` means Dodo decides whether a
@@ -350,7 +350,7 @@ describe('the add-on set updates after a purchase without a page reload', () => 
   });
 
   it('keeps the last known set when the refresh fails', async () => {
-    tenantDoc({ plan: 'pro', status: 'active', addons: OWNS.fiveSeats });
+    tenantDoc({ plan: 'church', status: 'active', addons: OWNS.fiveSeats });
     await renderProvider();
 
     mockGetDoc.mockRejectedValue(new Error('offline'));
@@ -362,19 +362,19 @@ describe('the add-on set updates after a purchase without a page reload', () => 
   });
 
   it('setTenantAddons moves the caps directly — setTenantPlan’s counterpart', async () => {
-    tenantDoc({ plan: 'pro', status: 'active', addons: OWNS.nothing });
+    tenantDoc({ plan: 'church', status: 'active', addons: OWNS.nothing });
     await renderProvider();
 
     await act(async () => { seen?.setTenantAddons(OWNS.aBitOfEverything); });
 
-    expect(seen?.planFeatures).toEqual(getEffectiveFeatures('pro', OWNS.aBitOfEverything));
+    expect(seen?.planFeatures).toEqual(getEffectiveFeatures('church', OWNS.aBitOfEverything));
   });
 
   it('🔴 the one-shot latch does not undo a refresh', async () => {
-    tenantDoc({ plan: 'pro', status: 'active', addons: OWNS.nothing });
+    tenantDoc({ plan: 'church', status: 'active', addons: OWNS.nothing });
     await renderProvider();
 
-    tenantDoc({ plan: 'pro', status: 'active', addons: OWNS.fiveSeats });
+    tenantDoc({ plan: 'church', status: 'active', addons: OWNS.fiveSeats });
     await act(async () => { await seen?.refreshTenantAddons(); });
     expect(seen?.tenantAddons).toEqual(OWNS.fiveSeats);
 
@@ -382,7 +382,7 @@ describe('the add-on set updates after a purchase without a page reload', () => 
     // the one it read first. That is exactly what `addonsInitialized` — the
     // mirror of `planInitialized` — is for, and it is why a purchase surface can
     // rely on the refresh sticking.
-    tenantDoc({ plan: 'pro', status: 'active', addons: OWNS.nothing });
+    tenantDoc({ plan: 'church', status: 'active', addons: OWNS.nothing });
     await act(async () => {
       root.render(
         <TenantProvider initialTenantId={TENANT}>

@@ -899,7 +899,7 @@ export const CONFIRM_BUTTON_HELP = 'Only after you have found it in your own acc
  * vouched, in the same sentence as the word "recorded".
  */
 export const CONFIRM_SUCCESS =
-  'Recorded on your say-so. The gift is now in your accounting and on the '
+  'Recorded on your say-so. The gift is now in your giving records and on the '
   + "member's giving history.";
 
 /**

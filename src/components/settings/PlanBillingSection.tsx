@@ -184,7 +184,7 @@ export default function PlanBillingSection({
           currentPlan={currentPlan}
           tenantId={tenantId}
           email={email}
-          hideUpgrade={currentPlan === 'max'}
+          hideUpgrade={currentPlan === 'ministry'}
         />
       ) : (
         <p data-testid="settings-owner-only-plan" className="text-sm text-muted">

@@ -21,7 +21,7 @@ import { SUPER_ADMIN_EMAILS } from '../super-admins';
 const admin = (id: string, email = `${id}@church.org`) => ({ id, role: 'admin', email });
 
 describe('resolveAdminLimit — caps come from PLAN_FEATURES, never a literal', () => {
-  it('resolves 1 / 2 / 5 / 15 across PLAN_ORDER from the matrix itself', () => {
+  it('resolves 1 / 2 / 15 across PLAN_ORDER from the matrix itself', () => {
     // Compared against getPlanFeatures rather than hardcoded, so a matrix change
     // moves this test with it instead of leaving a stale literal behind.
     expect(PLAN_ORDER.map((p) => resolveAdminLimit(p))).toEqual(
@@ -31,15 +31,15 @@ describe('resolveAdminLimit — caps come from PLAN_FEATURES, never a literal', 
     // front of PLAN_ORDER with maxAdmins: 1 — one evangelist is one admin, and
     // a tier with no card must not become a free shared workspace. The three
     // PAID seat counts are unchanged.
-    expect(PLAN_ORDER.map((p) => resolveAdminLimit(p))).toEqual([1, 2, 5, 15]);
-    expect(PRICED_PLAN_ORDER.map((p) => resolveAdminLimit(p))).toEqual([2, 5, 15]);
+    expect(PLAN_ORDER.map((p) => resolveAdminLimit(p))).toEqual([1, 2, 15]);
+    expect(PRICED_PLAN_ORDER.map((p) => resolveAdminLimit(p))).toEqual([2, 15]);
   });
 
   it('fails closed to Individual (2) on an unknown, null or still-loading plan', () => {
-    expect(resolveAdminLimit(undefined)).toBe(getPlanFeatures('plus').maxAdmins);
-    expect(resolveAdminLimit(null)).toBe(getPlanFeatures('plus').maxAdmins);
-    expect(resolveAdminLimit('ultra')).toBe(getPlanFeatures('plus').maxAdmins);
-    expect(resolveAdminLimit('')).toBe(getPlanFeatures('plus').maxAdmins);
+    expect(resolveAdminLimit(undefined)).toBe(getPlanFeatures('church').maxAdmins);
+    expect(resolveAdminLimit(null)).toBe(getPlanFeatures('church').maxAdmins);
+    expect(resolveAdminLimit('ultra')).toBe(getPlanFeatures('church').maxAdmins);
+    expect(resolveAdminLimit('')).toBe(getPlanFeatures('church').maxAdmins);
   });
 });
 

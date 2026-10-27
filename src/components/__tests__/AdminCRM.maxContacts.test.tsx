@@ -282,7 +282,7 @@ describe('a tenant over its cap', () => {
 // ── 3 ── UNDER THE CAP: NOTHING CHANGES ─────────────────────────────────────
 describe('a tenant under its cap', () => {
   beforeEach(() => {
-    tenantCtx.tenantPlan = 'pro'; // Small Team — 500
+    tenantCtx.tenantPlan = 'church'; // 500
     contactsResult.current = {
       data: Array.from({ length: 3 }, (_, i) => accountRow(i)),
       isLoading: false, isError: false, error: null, refetch: vi.fn(),
@@ -419,9 +419,12 @@ describe('the plan owner', () => {
 // ── 8 ── THE NUMBER COMES FROM THE PLAN MATRIX ──────────────────────────────
 describe('each plan enforces its own published allowance', () => {
   it.each([
+    ['church', 500],
+    ['ministry', 5_000],
+    // Stored legacy ids read as the tier they became.
     ['plus', 500],
-    ['pro', 2_000],
-    ['max', 4_000],
+    ['pro', 500],
+    ['max', 5_000],
   ] as const)('%s is capped at %i — the PLAN_FEATURES cell, not a literal', async (plan, expected) => {
     expect(getPlanFeatures(plan).maxContacts).toBe(expected);
     tenantCtx.tenantPlan = plan;

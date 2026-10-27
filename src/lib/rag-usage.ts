@@ -1,6 +1,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getPlanLimits, type PlanLimits } from '@/lib/planLimits';
+import { toTenantPlan } from '@/utils/plan-features';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HARVEST — RAG usage metering (server-only; Admin SDK)
@@ -59,8 +60,8 @@ export function approxTokens(text: string): number {
   return Math.ceil((text?.length ?? 0) / 4);
 }
 
-/** Read a tenant's plan and resolve its limits. Missing/unknown plan → 'plus'
- * (the most restrictive default). Never throws. */
+/** Read a tenant's plan and resolve its limits. Missing/unknown plan → 'church'
+ * (the most restrictive paid default). Never throws. */
 export async function getTenantPlanLimits(tenantId: string): Promise<PlanLimits> {
   try {
     const snap = await adminDb.collection('tenants').doc(tenantId).get();
@@ -193,7 +194,7 @@ export async function getUsageSnapshot(tenantId: string, date: Date = new Date()
     queryRef(tenantId, month).get(),
     ingestRef(tenantId).get(),
   ]);
-  const plan = (tenantSnap.exists ? (tenantSnap.data()?.plan as string | undefined) : undefined) || 'plus';
+  const plan = toTenantPlan(tenantSnap.exists ? (tenantSnap.data()?.plan as string | undefined) : undefined);
   const limits = getPlanLimits(plan);
   const queryTokensUsed: number = (qSnap.exists ? qSnap.data()?.queryTokens : 0) ?? 0;
   const ingestTokensUsed: number = (iSnap.exists ? iSnap.data()?.ingestTokens : 0) ?? 0;

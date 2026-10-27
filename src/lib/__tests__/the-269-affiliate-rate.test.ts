@@ -208,14 +208,11 @@ describe('4 — what this change must NOT have moved', () => {
     expect(win).toContain('recomputes a stored `commission` amount. A legacy 20% row still pays 20%.');
   });
 
-  it('the six plan prices are unchanged', async () => {
+  it('the four plan prices are the two-plan repricing, and the affiliate rate did not move with them', async () => {
     const { PLAN_PRICING } = await import('@/utils/plan-features');
     expect(PLAN_PRICING).toEqual({
-      plus: { monthly: 20, yearly: 190 },
-      pro:  { monthly: 40, yearly: 380 },
-      // ⚠️ THE-343 repriced Ministry; the affiliate RATE is what this file
-      // guards and it did not move with it.
-      max:  { monthly: 80, yearly: 752 },
+      church:   { monthly: 30, yearly: 300 },
+      ministry: { monthly: 90, yearly: 900 },
     });
   });
 });

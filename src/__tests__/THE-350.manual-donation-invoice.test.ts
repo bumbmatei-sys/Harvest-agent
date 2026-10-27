@@ -1083,7 +1083,7 @@ describe('17d — whatever replaces it is TRUE', () => {
 
     // Quoted, so the claim is reviewable rather than described.
     expect(STRIPE_CONNECT_HIDDEN_MESSAGE).toBe(
-      'Card giving inside the app is off. Your own payment links still work, and a gift you record in the CRM counts on your dashboard, in accounting and on your giving statements.',
+      'Card giving inside the app is off. Your own payment links still work, and a gift you record in the CRM counts on your dashboard, in giving records and on your giving statements.',
     );
 
     // 🔴 CLAIM 1 — "card giving inside the app is off". The switch says so.
@@ -1159,7 +1159,7 @@ describe('17e — the rest of the sweep: REPORTED, and pinned so the report cann
     const { GIVING_SHARE_CARD_GIVING_OFF } = await import('@/components/donations/giving-share');
     expect(GIVING_SHARE_CARD_GIVING_OFF,
       'the share sheet copy changed — re-read the report in this test before accepting it')
-      .toBe('Card giving inside the app is off. These are the ways your members can give, and a gift you record in the CRM counts on your dashboard, in accounting and on your giving statements.');
+      .toBe('Card giving inside the app is off. These are the ways your members can give, and a gift you record in the CRM counts on your dashboard, in giving records and on your giving statements.');
     expect(GIVING_SHARE_CARD_GIVING_OFF, 'the share sheet promises card giving again')
       .not.toMatch(/temporar|migrat|coming soon|shortly|in the meantime|for now|until then|soon\b|\b20\d{2}\b/i);
     // And the file is still under THE-313's pin, at an APPENDED accepted value:

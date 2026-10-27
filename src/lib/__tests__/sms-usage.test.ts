@@ -134,9 +134,8 @@ describe('SMS is metered again — and only Ministry can spend (THE-314)', () =>
     // let that path spend without limit.
     const { PLAN_LIMITS } = await import('../planLimits');
     expect(PLAN_LIMITS.free.smsSegmentsPerMonth).toBe(0);
-    expect(PLAN_LIMITS.plus.smsSegmentsPerMonth).toBe(0);
-    expect(PLAN_LIMITS.pro.smsSegmentsPerMonth).toBe(0);
-    expect(PLAN_LIMITS.max.smsSegmentsPerMonth).toBe(2_000);
+    expect(PLAN_LIMITS.church.smsSegmentsPerMonth).toBe(0);
+    expect(PLAN_LIMITS.ministry.smsSegmentsPerMonth).toBe(2_000);
   });
 
   it('leaves no tier UNMETERED — null anywhere would be an unbounded bill', async () => {
@@ -152,7 +151,7 @@ describe('SMS is metered again — and only Ministry can spend (THE-314)', () =>
     // deleted and folded into max, and a row reappearing here would mean it
     // came back through a Record<TenantPlan, …> nobody read.
     const { PLAN_LIMITS } = await import('../planLimits');
-    expect(Object.keys(PLAN_LIMITS)).toEqual(['free', 'plus', 'pro', 'max']);
+    expect(Object.keys(PLAN_LIMITS)).toEqual(['free', 'church', 'ministry']);
     expect(Object.keys(PLAN_LIMITS)).not.toContain('ultra');
   });
 
@@ -171,8 +170,8 @@ describe('SMS is metered again — and only Ministry can spend (THE-314)', () =>
 
   it('keeps max on its own token numbers — it did not inherit ultra 150M/30M', async () => {
     const { PLAN_LIMITS } = await import('../planLimits');
-    expect(PLAN_LIMITS.max.queryTokensPerMonth).toBe(50_000_000);
-    expect(PLAN_LIMITS.max.ingestTokensTotal).toBe(10_000_000);
+    expect(PLAN_LIMITS.ministry.queryTokensPerMonth).toBe(50_000_000);
+    expect(PLAN_LIMITS.ministry.ingestTokensTotal).toBe(10_000_000);
   });
 });
 
@@ -386,7 +385,7 @@ describe('getSmsUsageSnapshot', () => {
     store.set('tenants/t1', { plan: 'max' });
     store.set(JULY_DOC, { smsSegments: 1_234, smsSegmentsByo: 56 });
     expect(await getSmsUsageSnapshot('t1', JULY)).toEqual({
-      plan: 'max',
+      plan: 'ministry',
       month: '2026-07',
       smsSegmentsUsed: 1_234,
       smsSegmentsByoUsed: 56,
@@ -411,7 +410,7 @@ describe('getSmsUsageSnapshot', () => {
     const snap = await getSmsUsageSnapshot('t-fresh', JULY);
     expect(snap.smsSegmentsUsed).toBe(0);
     expect(snap.smsSegmentsByoUsed).toBe(0);
-    expect(snap.plan).toBe('plus');
+    expect(snap.plan).toBe('church');
     expect(snap.smsSegmentsCap).toBe(PLUS_CAP);
   });
 });

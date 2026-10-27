@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     const connection = await findQuickBooksConnection(resolvedTenantId, uid);
     if (!connection) {
       return NextResponse.json(
-        { error: 'QuickBooks is not connected. Connect it in the Accounting section first.' },
+        { error: 'QuickBooks is not connected. Connect it in Giving records first.' },
         { status: 400 }
       );
     }

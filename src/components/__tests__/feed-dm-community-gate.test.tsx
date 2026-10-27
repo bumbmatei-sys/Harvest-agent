@@ -83,7 +83,7 @@ vi.mock('../../utils/firestore-errors', () => ({
 
 // usePlanGate reads the tenant plan through this context; nothing else in the
 // feed does, so a bare value is enough.
-const tenant = vi.hoisted(() => ({ tenantPlan: 'plus' as string | null }));
+const tenant = vi.hoisted(() => ({ tenantPlan: 'church' as string | null }));
 vi.mock('../../contexts/TenantContext', () => ({
   useTenantOptional: () => tenant,
   useTenant: () => tenant,
@@ -110,7 +110,7 @@ beforeEach(() => {
   document.body.appendChild(container);
   fx.snapshots = {};
   fx.dmCalls = [];
-  tenant.tenantPlan = 'plus';
+  tenant.tenantPlan = 'church';
 });
 
 afterEach(async () => {
@@ -166,29 +166,34 @@ for (const [label, importer] of [
       Array.from(container.querySelectorAll('button')).map((b) => (b.textContent || '').trim());
 
     it('is offered on Ministry', async () => {
-      expect(await openCommentMenu('max'), 'the comment menu was not reachable').toBe(true);
+      expect(await openCommentMenu('ministry'), 'the comment menu was not reachable').toBe(true);
       expect(menuLabels()).toContain('Message privately');
     });
 
-    it('is withheld on Individual', async () => {
-      expect(await openCommentMenu('plus')).toBe(true);
+    it('is offered on Church, whose one community carries the chat', async () => {
+      expect(await openCommentMenu('church')).toBe(true);
+      expect(menuLabels()).toContain('Message privately');
+    });
+
+    it.each(['plus', 'pro', 'max'])('is offered for a stored %s, read as the tier it became', async (legacy) => {
+      expect(await openCommentMenu(legacy)).toBe(true);
+      expect(menuLabels()).toContain('Message privately');
+    });
+
+    it('is withheld on Free, which has no Community Groups', async () => {
+      expect(await openCommentMenu('free')).toBe(true);
       expect(menuLabels()).not.toContain('Message privately');
     });
 
-    it('is withheld on Small Team', async () => {
-      expect(await openCommentMenu('pro')).toBe(true);
-      expect(menuLabels()).not.toContain('Message privately');
-    });
-
-    it('leaves comment moderation alone on Individual', async () => {
+    it('leaves comment moderation alone on Free', async () => {
       // Deleting a comment is moderation, not Community Groups. If this goes
       // missing the gate has reached past the feature it is meant to cover.
-      expect(await openCommentMenu('plus')).toBe(true);
+      expect(await openCommentMenu('free')).toBe(true);
       expect(menuLabels()).toContain('Delete comment');
     });
 
-    it('creates no DM on Individual, because there is nothing to click', async () => {
-      expect(await openCommentMenu('plus')).toBe(true);
+    it('creates no DM on Free, because there is nothing to click', async () => {
+      expect(await openCommentMenu('free')).toBe(true);
       const dmButton = Array.from(container.querySelectorAll('button')).find(
         (b) => (b.textContent || '').includes('Message privately'),
       );

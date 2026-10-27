@@ -773,9 +773,8 @@ const PLAN_SWATCH: Record<TenantPlan, string> = {
   // Neutral grey — the paid swatches (indigo / gold / bronze) are a value
   // ladder and free is not a rung on it.
   free: '#64748b',
-  plus: '#6366f1',
-  pro: '#d4a017',
-  max: '#b45309',
+  church: '#6366f1',
+  ministry: '#b45309',
 };
 
 /** Shape of a plan summary row. Annotated rather than inferred: the array is

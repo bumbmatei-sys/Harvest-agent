@@ -1,4 +1,5 @@
 import type { TenantPlan } from '@/types/tenant.types';
+import { canonicalPlanId } from '@/utils/plan-id';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HARVEST — shared per-plan usage limits (single source of truth)
@@ -23,7 +24,7 @@ import type { TenantPlan } from '@/types/tenant.types';
 //     (shares the month-keyed usage doc with queryTokens).
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type PlanId = TenantPlan; // 'free' | 'plus' | 'pro' | 'max'
+export type PlanId = TenantPlan; // 'free' | 'church' | 'ministry'
 
 export interface PlanLimits {
   /** Monthly RAG/chat query budget, in MiMo tokens. Resets each month. */
@@ -54,14 +55,15 @@ export interface PlanLimits {
 
 // TUNE THESE — starting proposal, NOT verified against real tenant data.
 // Query = monthly (resets). Ingest = total embedded tokens (persistent, never
-// resets). Query numbers are the confirmed roadmap values. Ingest numbers are a
-// proposal (plus ≈ 750 pages, max ≈ 15,000 pages @ ~660 embed tokens/page) —
-// left tunable on purpose; they are NOT locked.
+// resets). Both are the same numbers the retired tiers carried: Church takes
+// plus's (the most restrictive paid row, the one unknown plans always got) and
+// Ministry takes max's. A legacy stored `pro` therefore resolves to Church and
+// its 10M/2M budget drops to 2M/500k; nobody pays for pro today, and these two
+// fields only bind a tenant that holds the AI Assistant add-on.
 //
-// `max` keeps its OWN token numbers (50M query / 10M ingest). It did not
-// inherit the deleted `ultra` tier's 150M/30M: those are pure COGS with no
-// marketing value at the higher number, and max sells at $199, not the $299
-// ultra carried.
+// 🔴 THESE ARE NOT THE PUBLISHED AI ALLOWANCE. "300 / 5,000 messages a month" is
+// `PlanFeatures.aiMessagesPerMonth` and belongs to an assistant that is not
+// built. These token budgets meter the live RAG chat the add-on buys.
 //
 // SMS segments — 0 EVERYWHERE EXCEPT MINISTRY (THE-314), which carries 2,000.
 //
@@ -102,17 +104,20 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
   // AI. If the free tier is ever given a taste of AI chat, this is the one line
   // that changes.
   free: { queryTokensPerMonth: 0,          ingestTokensTotal: 0,          smsSegmentsPerMonth: 0 },
-  plus: { queryTokensPerMonth: 2_000_000,  ingestTokensTotal: 500_000,    smsSegmentsPerMonth: 0 },
-  pro:  { queryTokensPerMonth: 10_000_000, ingestTokensTotal: 2_000_000,  smsSegmentsPerMonth: 0 },
-  max:  { queryTokensPerMonth: 50_000_000, ingestTokensTotal: 10_000_000, smsSegmentsPerMonth: 2_000 },
+  church:   { queryTokensPerMonth: 2_000_000,  ingestTokensTotal: 500_000,    smsSegmentsPerMonth: 0 },
+  ministry: { queryTokensPerMonth: 50_000_000, ingestTokensTotal: 10_000_000, smsSegmentsPerMonth: 2_000 },
 };
 
-/** Fallback tier when a tenant's plan is missing/unknown — the most restrictive,
- * matching getPlanFeatures' 'plus' default so an unrecognized plan never gets
- * an accidentally generous cap. */
-export const DEFAULT_PLAN_ID: PlanId = 'plus';
+/** Fallback tier when a tenant's plan is missing/unknown — the cheapest paid
+ * tier, matching getPlanFeatures' default so an unrecognized plan never gets an
+ * accidentally generous cap. */
+export const DEFAULT_PLAN_ID: PlanId = 'church';
 
-/** Resolve the limits for a plan id. Unknown/missing → DEFAULT_PLAN_ID limits. */
+/**
+ * Resolve the limits for a plan id. A retired id resolves to the tier it became
+ * (plus and pro to Church, max to Ministry); unknown/missing gets
+ * DEFAULT_PLAN_ID limits.
+ */
 export function getPlanLimits(plan: string | null | undefined): PlanLimits {
-  return PLAN_LIMITS[plan as PlanId] ?? PLAN_LIMITS[DEFAULT_PLAN_ID];
+  return PLAN_LIMITS[canonicalPlanId(plan) ?? DEFAULT_PLAN_ID];
 }

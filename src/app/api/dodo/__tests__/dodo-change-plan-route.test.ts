@@ -19,15 +19,15 @@ import { NextRequest } from 'next/server';
 vi.hoisted(() => {
   process.env.DODO_PAYMENTS_API_KEY = 'dodo_test_key';
   process.env.DODO_PAYMENTS_WEBHOOK_KEY = 'whsec_' + Buffer.from('testsecret').toString('base64');
-  process.env.DODO_PAYMENTS_ENVIRONMENT = 'test_mode';
+  process.env.DODO_PAYMENTS_ENVIRONMENT = 'live_mode';
   process.env.STRIPE_SECRET_KEY = 'sk_test_route_test';
 });
 
 const T = {
   tenant: 'grace-chapel',
   sub: 'sub_live_1',
-  plusMonthly: 'pdt_0NlAMMZk44L0tL8lcLX6M',
-  proMonthly: 'pdt_0NlAMMhi90q5Ovk6QBzcf',
+  plusMonthly: 'pdt_0NlJZKKU2AQSSH7E4ziKA',
+  proMonthly: 'pdt_0NqdacWLx9z6CKsGRIKCW',
 };
 
 // ── In-memory Firestore (the parts requireOwner + the routes read) ───────────
@@ -297,7 +297,7 @@ function post(handler: (req: NextRequest) => Promise<Response>, body: Record<str
   );
 }
 
-const changePlanBody = { tenantId: T.tenant, plan: 'pro', billing: 'monthly' };
+const changePlanBody = { tenantId: T.tenant, plan: 'ministry', billing: 'monthly' };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -318,7 +318,7 @@ describe('a Dodo tenant can change plan', () => {
     const previewRes = await post(dodoChangePlan, changePlanBody);
     expect(previewRes.status).toBe(200);
     const previewData = await previewRes.json();
-    expect(previewData.preview).toMatchObject({ amountDueNow: 2500, currency: 'USD', plan: 'pro' });
+    expect(previewData.preview).toMatchObject({ amountDueNow: 2500, currency: 'USD', plan: 'ministry' });
     // The preview charges nothing.
     expect(dodoStub.changePlan).not.toHaveBeenCalled();
 
@@ -337,7 +337,7 @@ describe('a Dodo tenant can change plan', () => {
     asOwner();
     pastTrialSubscription();
 
-    const res = await post(dodoChangePlan, { tenantId: T.tenant, plan: 'pro', billing: 'yearly' });
+    const res = await post(dodoChangePlan, { tenantId: T.tenant, plan: 'ministry', billing: 'yearly' });
     expect(res.status).toBe(400);
     // ⚠️ The message no longer names "monthly and annual". It names neither pair
     // (it was reworded when a third term existed, and was kept when that term was
@@ -354,7 +354,7 @@ describe('a Dodo tenant can change plan', () => {
     asOwner();
     pastTrialSubscription();
 
-    const res = await post(dodoChangePlan, { tenantId: T.tenant, plan: 'pro', billing: 'quarterly' });
+    const res = await post(dodoChangePlan, { tenantId: T.tenant, plan: 'ministry', billing: 'quarterly' });
     expect(res.status).toBe(400);
     expect((await res.json()).error).toContain('Invalid plan/billing');
     expect(dodoStub.changePlan).not.toHaveBeenCalled();
@@ -369,7 +369,7 @@ describe('a Dodo tenant can change plan', () => {
     asOwner();
     pastTrialSubscription();
 
-    const res = await post(dodoChangePlan, { tenantId: T.tenant, plan: 'pro', billing: 'biennial' });
+    const res = await post(dodoChangePlan, { tenantId: T.tenant, plan: 'ministry', billing: 'biennial' });
     expect(res.status).toBe(400);
     expect((await res.json()).error).toContain('Invalid plan/billing');
     expect(dodoStub.changePlan).not.toHaveBeenCalled();
@@ -717,7 +717,7 @@ describe('THE-128: a church whose renewal failed is told what actually happened'
 
     const previewRes = await post(dodoChangePlan, changePlanBody);
     expect(previewRes.status).toBe(200);
-    expect((await previewRes.json()).preview).toMatchObject({ amountDueNow: 2500, plan: 'pro' });
+    expect((await previewRes.json()).preview).toMatchObject({ amountDueNow: 2500, plan: 'ministry' });
 
     const confirmRes = await post(dodoChangePlan, { ...changePlanBody, confirm: true });
     expect(confirmRes.status).toBe(200);

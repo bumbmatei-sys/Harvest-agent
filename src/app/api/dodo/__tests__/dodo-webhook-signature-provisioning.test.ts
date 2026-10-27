@@ -85,11 +85,13 @@ vi.mock('@/lib/set-custom-claims', () => ({ setCustomClaims: mockSetCustomClaims
 vi.mock('@/lib/money-path-sentry', () => ({ captureMoneyPathError: vi.fn() }));
 
 let POST: (req: NextRequest) => Promise<Response>;
-let productIdFor: (plan: string, period: string) => string;
+// Test mode sells no Church / Ministry product yet, so the subscription under test
+// sits on the retired test-mode max and plus products, which still resolve.
+const MAX_MONTHLY = 'pdt_0NlAMMp4QndR3qPzlD8sG';
+const PLUS_MONTHLY = 'pdt_0NlAMMZk44L0tL8lcLX6M';
 
 beforeAll(async () => {
   ({ POST } = await import('@/app/api/dodo/webhook/route'));
-  ({ productIdFor } = (await import('@/lib/dodo/catalogue')) as never);
 });
 
 function body() {
@@ -100,7 +102,7 @@ function body() {
     data: {
       payload_type: 'Subscription',
       subscription_id: 'sub_dodo_1',
-      product_id: productIdFor('max', 'monthly'),
+      product_id: MAX_MONTHLY,
       status: 'active',
       created_at: '2026-08-11T12:00:00Z',
       customer: { customer_id: 'cus_1', email: 'pastor@grace.example', name: 'Grace' },
@@ -172,7 +174,7 @@ describe('a signature failure provisions nothing', () => {
     const err = vi.spyOn(console, 'error').mockImplementation(() => {});
     const at = new Date();
     const signed = body();
-    const tampered = signed.replace(productIdFor('max', 'monthly'), productIdFor('plus', 'monthly'));
+    const tampered = signed.replace(MAX_MONTHLY, PLUS_MONTHLY);
     expect(tampered).not.toBe(signed);
 
     const res = await POST(
@@ -201,7 +203,7 @@ describe('a signature failure provisions nothing', () => {
     expect(res.status).toBe(200);
     expect(tenants()).toHaveLength(1);
     expect(privates()).toHaveLength(1);
-    expect(db.current.store.get('users/uid_owner_1')).toMatchObject({ role: 'admin', plan: 'max' });
+    expect(db.current.store.get('users/uid_owner_1')).toMatchObject({ role: 'admin', plan: 'ministry' });
   });
 
   it('reserves the webhook-id in Firestore, so a redelivery is skipped end to end', async () => {

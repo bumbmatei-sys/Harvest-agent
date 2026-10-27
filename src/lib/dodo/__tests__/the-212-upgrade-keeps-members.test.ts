@@ -117,12 +117,12 @@ vi.mock('@/lib/tenant-private', () => ({
 vi.mock('@/lib/money-path-sentry', () => ({ captureMoneyPathError: mockCapture, captureHandledError: vi.fn() }));
 
 const { attachFirstSubscriptionToTenant } = await import('@/lib/dodo/first-subscription');
-const { DODO_ACTIVE_CATALOGUE } = await import('@/lib/dodo/catalogue');
+const { requireProductId } = await import('@/lib/dodo/catalogue');
 const { PRICED_PLAN_ORDER, BILLING_TERMS } = await import('@/utils/plan-features');
 
 /** The live product for a (plan, term) pair, read from the catalogue. */
-const productFor = (plan: 'plus' | 'pro' | 'max', term: 'monthly' | 'yearly') =>
-  DODO_ACTIVE_CATALOGUE[plan][term].productId as string;
+const productFor = (plan: 'church' | 'ministry', term: 'monthly' | 'yearly') =>
+  requireProductId(plan, term);
 
 const payload = (productId: string) => ({
   subscription_id: 'sub_first',
@@ -156,7 +156,7 @@ describe('upgrading never removes or disables a member', () => {
   });
 
   it('writes to exactly one user document — the buyer’s — and to no other', async () => {
-    await attachFirstSubscriptionToTenant(payload(productFor('plus', 'monthly')) as never);
+    await attachFirstSubscriptionToTenant(payload(productFor('church', 'monthly')) as never);
 
     const userWrites = docWrites.filter((w) => w.collection === 'users');
     expect(userWrites).toHaveLength(1);
@@ -167,7 +167,7 @@ describe('upgrading never removes or disables a member', () => {
   });
 
   it('never enumerates the members, so it cannot act on them', async () => {
-    await attachFirstSubscriptionToTenant(payload(productFor('plus', 'monthly')) as never);
+    await attachFirstSubscriptionToTenant(payload(productFor('church', 'monthly')) as never);
 
     // A collection-wide read is the shape that precedes an eviction. The one
     // user document this path touches is addressed by id, never found by query.
@@ -175,9 +175,9 @@ describe('upgrading never removes or disables a member', () => {
   });
 
   it('moves a 500-member free tenant to Individual (cap 150) and keeps all 500', async () => {
-    const result = await attachFirstSubscriptionToTenant(payload(productFor('plus', 'monthly')) as never);
+    const result = await attachFirstSubscriptionToTenant(payload(productFor('church', 'monthly')) as never);
 
-    expect(result).toMatchObject({ outcome: 'attached', plan: 'plus', period: 'monthly' });
+    expect(result).toMatchObject({ outcome: 'attached', plan: 'church', period: 'monthly' });
     // The tenant write carries the tier and the add-on set. It carries no
     // member count, no roster, and no cap enforcement of any kind — the tenant
     // keeps the 500 it had.
@@ -191,7 +191,7 @@ describe('upgrading never removes or disables a member', () => {
     // dangerous version of this bug is a half-applied upgrade.
     mockPrivateGet.mockResolvedValue({ exists: true, data: () => ({ dodoSubscriptionId: 'sub_existing' }) });
 
-    const result = await attachFirstSubscriptionToTenant(payload(productFor('max', 'yearly')) as never);
+    const result = await attachFirstSubscriptionToTenant(payload(productFor('ministry', 'yearly')) as never);
 
     expect(result).toMatchObject({ outcome: 'refused' });
     expect(docWrites).toEqual([]);
@@ -202,12 +202,12 @@ describe('upgrading never removes or disables a member', () => {
 // ── 8 ────────────────────────────────────────────────────────────────────────
 describe('the webhook is still the only writer of plan', () => {
   it('the attach — which runs from subscription.active — is what writes the tier', async () => {
-    await attachFirstSubscriptionToTenant(payload(productFor('pro', 'monthly')) as never);
+    await attachFirstSubscriptionToTenant(payload(productFor('ministry', 'monthly')) as never);
 
     const planWrites = docWrites.filter((w) => (w.data as Record<string, unknown>)?.plan !== undefined);
     // Exactly two: the tenant's tier and the buying user's mirror of it.
     expect(planWrites.map((w) => w.collection).sort()).toEqual(['tenants', 'users']);
-    expect((planWrites.find((w) => w.collection === 'tenants')?.data as Record<string, unknown>).plan).toBe('pro');
+    expect((planWrites.find((w) => w.collection === 'tenants')?.data as Record<string, unknown>).plan).toBe('ministry');
   });
 
   it('takes the tier from the PRODUCT Dodo confirmed, not from anything requested', async () => {
@@ -215,17 +215,17 @@ describe('the webhook is still the only writer of plan', () => {
     // the browser asked for is trusted here: a request for Ministry that Dodo
     // fulfilled as Individual lands as Individual.
     await attachFirstSubscriptionToTenant(
-      { ...payload(productFor('plus', 'yearly')), metadata: { firstSubscription: 'true', tenantId: 't1', userId: 'buyer', plan: 'max', billing: 'monthly' } } as never,
+      { ...payload(productFor('church', 'yearly')), metadata: { firstSubscription: 'true', tenantId: 't1', userId: 'buyer', plan: 'max', billing: 'monthly' } } as never,
     );
 
     const tenantWrite = docWrites.find((w) => w.op === 'batch.update');
-    expect((tenantWrite?.data as Record<string, unknown>).plan).toBe('plus');
+    expect((tenantWrite?.data as Record<string, unknown>).plan).toBe('church');
   });
 
   it('is idempotent, so a redelivered event is not a second write', async () => {
     mockPrivateGet.mockResolvedValue({ exists: true, data: () => ({ dodoSubscriptionId: 'sub_first' }) });
 
-    const result = await attachFirstSubscriptionToTenant(payload(productFor('plus', 'monthly')) as never);
+    const result = await attachFirstSubscriptionToTenant(payload(productFor('church', 'monthly')) as never);
 
     expect(result).toEqual({ outcome: 'already-attached', tenantId: 't1' });
     expect(docWrites).toEqual([]);
@@ -234,7 +234,7 @@ describe('the webhook is still the only writer of plan', () => {
   it('refuses to attach to a tenant that is no longer free, rather than rewriting its tier', async () => {
     mockTenantGet.mockReturnValue({ exists: true, data: () => ({ plan: 'pro', name: 'Grace' }) });
 
-    const result = await attachFirstSubscriptionToTenant(payload(productFor('plus', 'monthly')) as never);
+    const result = await attachFirstSubscriptionToTenant(payload(productFor('church', 'monthly')) as never);
 
     expect(result).toMatchObject({ outcome: 'refused' });
     expect(docWrites).toEqual([]);

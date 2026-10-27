@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { CheckCircle, Loader2, ArrowRight, Instagram, Mail, Globe, Palette } from 'lucide-react';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { getPlanDisplayName, toTenantPlan } from '../utils/plan-features';
 
 interface PostPurchaseWizardProps {
   tenantId: string;
@@ -40,7 +41,7 @@ const PostPurchaseWizard: React.FC<PostPurchaseWizardProps> = ({ tenantId, onCom
         if (!tenantDoc.exists()) return;
         const data = tenantDoc.data();
         if (data?.plan && data.plan !== 'free') {
-          setPlan(data.plan);
+          setPlan(toTenantPlan(data.plan));
           setPolling(false);
           clearInterval(interval);
           return;
@@ -48,8 +49,7 @@ const PostPurchaseWizard: React.FC<PostPurchaseWizardProps> = ({ tenantId, onCom
         if (pollCountRef.current >= 30) {
           clearInterval(interval);
           setPolling(false);
-          if (data?.plan) setPlan(data.plan);
-          else setPlan('plus');
+          setPlan(toTenantPlan(data?.plan));
         }
       } catch { /* keep polling */ }
     }, 2000);
@@ -59,9 +59,8 @@ const PostPurchaseWizard: React.FC<PostPurchaseWizardProps> = ({ tenantId, onCom
   const loadPlan = async () => {
     try {
       const tenantDoc = await getDoc(doc(db, 'tenants', tenantId));
-      if (tenantDoc.exists()) setPlan(tenantDoc.data()?.plan || 'plus');
-      else setPlan('plus');
-    } catch { setPlan('plus'); }
+      setPlan(toTenantPlan(tenantDoc.exists() ? tenantDoc.data()?.plan : undefined));
+    } catch { setPlan(toTenantPlan(undefined)); }
   };
 
   const getSteps = (p: PlanTier): Step[] => {
@@ -71,12 +70,12 @@ const PostPurchaseWizard: React.FC<PostPurchaseWizardProps> = ({ tenantId, onCom
         title: isUpgrade ? 'Plan upgraded!' : 'Welcome to Harvest!',
         description: isUpgrade
           ? 'Your new features are active and ready to use.'
-          : `Your ${p} plan is active. Let\'s get you set up in a few quick steps.`,
+          : `Your ${getPlanDisplayName(toTenantPlan(p))} plan is active. Let\'s get you set up in a few quick steps.`,
         icon: <CheckCircle size={28} className="text-green-500" />,
       },
     ];
 
-    if (['pro', 'max'].includes(p)) {
+    if (p === 'ministry') {
       steps.push({
         id: 'instagram',
         title: 'Connect Instagram',
@@ -95,7 +94,7 @@ const PostPurchaseWizard: React.FC<PostPurchaseWizardProps> = ({ tenantId, onCom
       });
     }
 
-    if (['max'].includes(p)) {
+    if (p === 'ministry') {
       steps.push({
         id: 'domain',
         title: 'Custom Domain',

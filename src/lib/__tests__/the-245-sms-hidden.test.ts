@@ -196,18 +196,16 @@ describe('2 — the switch being TRUE brings every surface back', () => {
     const claim = (id: string) =>
       body.plans.find((p: { id: string }) => p.id === id)?.features?.smsAutomation;
     expect(claim('free')).toBe(false);
-    expect(claim('plus')).toBe(false);
-    expect(claim('pro')).toBe(false);
-    expect(claim('max')).toBe(true);
+    expect(claim('church')).toBe(false);
+    expect(claim('ministry')).toBe(true);
   });
 
   it('🔴 no price changed', async () => {
     const { GET } = await import('@/app/api/plans/route');
     const body = await (await GET()).json();
     const priceOf = (id: string) => body.plans.find((p: { id: string }) => p.id === id)?.pricing;
-    expect(priceOf('plus')).toMatchObject({ monthlyUsd: 20, yearlyUsd: 190 });
-    expect(priceOf('pro')).toMatchObject({ monthlyUsd: 40, yearlyUsd: 380 });
-    expect(priceOf('max')).toMatchObject({ monthlyUsd: 80, yearlyUsd: 752 });
+    expect(priceOf('church')).toMatchObject({ monthlyUsd: 30, yearlyUsd: 300 });
+    expect(priceOf('ministry')).toMatchObject({ monthlyUsd: 90, yearlyUsd: 900 });
   });
 });
 
@@ -463,27 +461,28 @@ describe('4 — hide, not delete; and swap, not delete', () => {
     expect(read('lib/sms-send.ts')).toContain("collection('integrations').doc('twilio')");
   });
 
-  it('🔴 smsAutomation and textToGive are TRUE on max only', async () => {
+  it('🔴 smsAutomation and textToGive are TRUE on ministry only', async () => {
     // ⚠️ REVERSED BY THE-314. THE-245 asserted these were true on every PAID
     // tier and that the gate went in front of the matrix without editing it.
     // The matrix has now moved, deliberately: Harvest resells, so the cell
     // decides who spends Harvest's money, and the founder's call is Ministry.
     const { getPlanFeatures } = await import('../../utils/plan-features');
     expect(getPlanFeatures('free').smsAutomation, 'free').toBe(false);
-    expect(getPlanFeatures('plus').smsAutomation, 'plus (Individual)').toBe(false);
-    expect(getPlanFeatures('pro').smsAutomation, 'pro (Small Team)').toBe(false);
-    expect(getPlanFeatures('max').smsAutomation, 'max (Ministry)').toBe(true);
+    expect(getPlanFeatures('church').smsAutomation, 'church').toBe(false);
+    expect(getPlanFeatures('ministry').smsAutomation, 'ministry').toBe(true);
+    // A stored retired id is read as the tier it became.
+    expect(getPlanFeatures('pro').smsAutomation, 'pro reads as Church').toBe(false);
+    expect(getPlanFeatures('max').smsAutomation, 'max reads as Ministry').toBe(true);
 
     expect(getPlanFeatures('free').textToGive, 'free').toBe(false);
-    expect(getPlanFeatures('plus').textToGive, 'plus (Individual)').toBe(false);
-    expect(getPlanFeatures('pro').textToGive, 'pro (Small Team)').toBe(false);
-    expect(getPlanFeatures('max').textToGive, 'max (Ministry)').toBe(true);
+    expect(getPlanFeatures('church').textToGive, 'church').toBe(false);
+    expect(getPlanFeatures('ministry').textToGive, 'ministry').toBe(true);
 
     // Asserted on the source too, so a value edited to match a changed
     // expectation still fails.
     const matrix = readFileSync(path.join(SRC, 'utils/plan-features.ts'), 'utf8');
-    expect((matrix.match(/^\s*smsAutomation: (true|false),$/gm) ?? []).length).toBe(4);
-    expect((matrix.match(/^\s*textToGive: (true|false),$/gm) ?? []).length).toBe(4);
+    expect((matrix.match(/^\s*smsAutomation: (true|false),$/gm) ?? []).length).toBe(3);
+    expect((matrix.match(/^\s*textToGive: (true|false),$/gm) ?? []).length).toBe(3);
     expect((matrix.match(/^\s*smsAutomation: true,$/gm) ?? []).length, 'exactly one tier sells SMS').toBe(1);
     expect((matrix.match(/^\s*textToGive: true,$/gm) ?? []).length, 'exactly one tier sells Text-to-Give').toBe(1);
   });

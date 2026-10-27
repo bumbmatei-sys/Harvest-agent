@@ -192,12 +192,12 @@ describe('AdminRoles — maxAdmins enforcement', () => {
     expect(editorIsOpen()).toBe(true);
   });
 
-  it('below the cap on a larger plan: Small Team gets 5 seats, not Individual 2', async () => {
-    tenantCtx.tenantPlan = 'pro'; // maxAdmins: 5
+  it('below the cap on a larger plan: Ministry gets 15 seats, not Church 2', async () => {
+    tenantCtx.tenantPlan = 'ministry'; // maxAdmins: 15
     mockUsers = [fullAdmin('a'), fullAdmin('b'), fullAdmin('c')];
     await mount();
     expect(addAdminButton().disabled).toBe(false);
-    expect(seatUsageText()).toBe('3 of 5 admins used');
+    expect(seatUsageText()).toBe('3 of 15 admins used');
   });
 
   // ── 3. THE IMPORTANT ONE: over the cap, nobody loses access ───────────────
@@ -342,14 +342,14 @@ describe('AdminRoles — maxAdmins enforcement', () => {
 
   // ── 7. caps come from PLAN_FEATURES, not literals ────────────────────────
 
-  it("each plan's cap resolves from PLAN_FEATURES — 1 / 2 / 5 / 15", async () => {
+  it("each plan's cap resolves from PLAN_FEATURES — 1 / 2 / 15", async () => {
     // 🔴 THE-200 put the Forever Free tier at the front of PLAN_ORDER with
     // maxAdmins: 1 — one evangelist is one admin, and a tier with no card must
     // not become a free shared workspace for an arbitrary number of people.
     // The three PAID seat counts are unchanged, asserted separately so a
     // regression on a plan a church pays for cannot hide inside the new list.
-    expect(PLAN_ORDER.map((p) => getPlanFeatures(p).maxAdmins)).toEqual([1, 2, 5, 15]);
-    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).maxAdmins)).toEqual([2, 5, 15]);
+    expect(PLAN_ORDER.map((p) => getPlanFeatures(p).maxAdmins)).toEqual([1, 2, 15]);
+    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).maxAdmins)).toEqual([2, 15]);
 
     for (const plan of PLAN_ORDER) {
       const cap = getPlanFeatures(plan).maxAdmins;

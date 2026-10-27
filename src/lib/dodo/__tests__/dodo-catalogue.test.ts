@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { stripComments } from '@/__tests__/__fixtures__/the-346-strip-comments';
 
 // catalogue.ts consumes the validated dodoConfig, so config.ts evaluates on
 // import and the three required variables must exist first. Hoisted above the
@@ -12,150 +13,107 @@ vi.hoisted(() => {
 });
 
 import {
+  DODO_LEGACY_LIVE_PRODUCTS,
+  DODO_LEGACY_TEST_PRODUCTS,
   DODO_LIVE_CATALOGUE,
   DODO_TEST_CATALOGUE,
   DODO_TRIAL_DAYS,
   allCatalogueProductIds,
+  allLegacyProductIds,
   DODO_PRODUCT_UNMAPPED,
   DODO_TERM_FREQUENCY,
   catalogueEntry,
+  legacyTierForProductId,
   offerableTerms,
   productIdFor,
   requireProductId,
   resolvePlanFromProductId,
   termPriceUsd,
 } from '../catalogue';
-import { BILLING_TERMS, PLAN_PRICING, planPriceUsd } from '@/utils/plan-features';
-import type { TenantPlan } from '@/types/tenant.types';
+import { PLAN_PRICING, planPriceUsd } from '@/utils/plan-features';
+import type { LegacyPlanId, PricedPlan } from '@/types/tenant.types';
 import type { BillingPeriod } from '../provider';
 
 /**
- * The Dodo catalogues: six test products, six live products, and the prices
- * they charge.
+ * The Dodo catalogues for the two-plan price list: Church and Ministry, each on
+ * a monthly and a yearly product.
  *
- * Three independent things are pinned here, because they fail differently.
+ * Four independent things are pinned here, because they fail differently.
  *
- *  1. VALUES. Each `(plan, period)` resolves to the right product id at the
- *     right price, in each mode. A drifted product id is a SILENT failure —
- *     checkout succeeds, the church is charged, and the amount is wrong.
- *     Nothing about that is visible in a log.
- *  2. DERIVATION. Every price is READ FROM `PLAN_PRICING` rather than typed
- *     here. (It used to be computed from ANNUAL_BILLED_MONTHS; that multiplier
- *     is gone — the discounts no longer divide into whole months — so the table
- *     is the source and this module reads it.) A literal that happens to be
- *     correct today passes every value assertion and drifts the moment the
- *     table changes, so the source itself is scanned.
- *  3. SELECTION. The active catalogue follows the validated
- *     `dodoConfig.environment` and nothing else — no env read in catalogue.ts,
- *     no `??`, no third mode.
- *
- * The fixtures below were read back from Dodo's API — the test-mode products on
- * 2026-08-11, and the live products re-read on 2026-08-20 for THE-195
- * (`products.retrieve` on each id). They are transcribed from Dodo's responses,
- * NOT computed from this repo's constants, which is what makes them an
- * independent check rather than a restatement of the code.
- *
- * (The live fixture was NINE products until 2026-10-23, when the quarterly term
- * was withdrawn and its three products archived; it is six now, and the three
- * archived ids are recorded below as a ban list rather than as products.)
+ *  1. VALUES. Each `(plan, period)` resolves to the right LIVE product id at the
+ *     right price. A drifted product id is a SILENT failure: checkout succeeds,
+ *     the church is charged, and the amount is wrong. The fixture below is typed
+ *     out from the product ids the founder created in Dodo on 2026-10-27, not
+ *     computed from this repo's constants, which is what makes it an independent
+ *     check rather than a restatement of the code.
+ *  2. THE TEST-MODE GAP. No test-mode Church or Ministry product exists yet, so
+ *     every test-mode cell is `DODO_PRODUCT_UNMAPPED` and a test-mode checkout
+ *     for either plan is REFUSED, never quietly pointed at a retired product.
+ *  3. LEGACY RECOGNITION. The retired products (plus / pro / max) stay active in
+ *     Dodo, so a subscription on one must still resolve to a plan (plus and pro
+ *     to Church, max to Ministry) while none of them can ever be offered.
+ *  4. SELECTION. The active catalogue follows the validated
+ *     `dodoConfig.environment` and nothing else: no env read in catalogue.ts, no
+ *     `??`, no third mode.
  */
 
-type VerifiedProduct = { plan: TenantPlan; period: BillingPeriod; id: string; name: string; cents: number; interval: string };
+type VerifiedProduct = { plan: PricedPlan; period: BillingPeriod; id: string; label: string; cents: number; interval: string };
 
 /**
- * What Dodo's TEST MODE has on these products, transcribed from the API
- * response of 2026-08-11.
+ * The four LIVE products, typed from the ids created in Dodo on 2026-10-27 (14-day
+ * trial; the two Ministry products carry the same three add-ons the retired `max`
+ * product did). `plan_key` in their Dodo metadata is `church` / `ministry` and
+ * `billing_period` is `monthly` / `annual`; neither field is read by the app,
+ * which resolves a subscription by `product_id` alone.
  *
- * ⚠️ THESE CENTS ARE THE OLD PRICES, AND THAT IS THE POINT. The six test-mode
- * products were created before THE-195 repriced everything. The catalogue's entries take `priceUsd`
- * from the CURRENT table like every other entry, so under test mode the app's
- * published figure and Dodo's stored figure genuinely disagree.
- *
- * That divergence is recorded here rather than papered over with a second price
- * table, and it is safe for exactly one reason: `dodoConfig.environment` is
- * `live_mode` for anything a real card touches, and the live catalogue IS
- * verified figure-for-figure below. What must not happen is this file quietly
- * asserting the old prices and thereby claiming test mode is in step when it is
- * not.
- */
-const DODO_TEST_PRODUCTS_AS_VERIFIED = [
-  { plan: 'plus', period: 'monthly', id: 'pdt_0NlAMMZk44L0tL8lcLX6M', name: 'Harvest Individual - Monthly', cents: 4900, interval: 'Month' },
-  { plan: 'plus', period: 'yearly', id: 'pdt_0NlAMMeWwZDSlfNdti8FD', name: 'Harvest Individual - Annual', cents: 44100, interval: 'Year' },
-  { plan: 'pro', period: 'monthly', id: 'pdt_0NlAMMhi90q5Ovk6QBzcf', name: 'Harvest Small Team - Monthly', cents: 9900, interval: 'Month' },
-  { plan: 'pro', period: 'yearly', id: 'pdt_0NlAMMlsVKeYG8ukapmzE', name: 'Harvest Small Team - Annual', cents: 89100, interval: 'Year' },
-  { plan: 'max', period: 'monthly', id: 'pdt_0NlAMMp4QndR3qPzlD8sG', name: 'Harvest Ministry - Monthly', cents: 19900, interval: 'Month' },
-  { plan: 'max', period: 'yearly', id: 'pdt_0NlAMMsQBzMvRVNCY7zws', name: 'Harvest Ministry - Annual', cents: 179100, interval: 'Year' },
-] as const satisfies readonly VerifiedProduct[];
-
-/**
- * What Dodo's LIVE MODE has on these products. Transcribed from the
- * authenticated live API response of 2026-08-27, NOT from catalogue.ts.
- *
- * 🔴 THE-248 RAISED THE SIX DISCOUNTED AMOUNTS AND NOTHING ELSE. The years
- * were 16500 / 32900 / 65900. Every id, the
- * three monthly amounts, the 14-day trials, the `saas` tax category and add-on
- * attachment were confirmed unchanged in the same read.
- *
- * ⚠️ THE TEST-MODE LIST ABOVE IS DELIBERATELY NOT IN STEP and did not move:
- * 4900 there is Individual MONTHLY on a stale test product, not Individual's
- * quarter. Two different products, the same four digits — which is exactly why
- * each row here is anchored to its product id.
- *
- * 🔴 A live id transposed or mistyped in the catalogue is a real card charged
- * at the wrong price. These six lines are the independent record it is checked
+ * 🔴 A live id transposed or mistyped in the catalogue is a real card charged at
+ * the wrong price. These four lines are the independent record it is checked
  * against, character for character.
- *
- * ✅ ALL SIX ROWS ARE IN STEP WITH THE APP, AND THE-344 IS WHY. THE-343
- * repriced Ministry to $60 / $162 / $564 in `PLAN_PRICING` and could not touch
- * Dodo itself, so for a window the three Ministry rows carried the superseded
- * amounts and a second table recorded the gap from both sides. Those three live
- * products have since been repriced, and THE-344 READ THEM BACK from the
- * authenticated live API before changing a line here — THE-343's $60 / $162 /
- * $564 — with the 14-day free trial (`trial_period_days: 14`, `trial_type: 'free'`),
- * the 1 Month / 3 Month / 1 Year frequencies, `currency: USD`,
- * `tax_inclusive: false` and `tax_category: saas` all intact. `products.update`
- * REPLACES the whole price object, so each of those fields was resent
- * deliberately and each was verified afterwards rather than assumed.
- *
- * ⚠️ THE-372 PUT MINISTRY BACK TO $80, with the quarter and year at $216 and
- * $752 keeping THE-343's ratios. The founder applied all three to the live
- * products first and verified them, trial and frequencies intact, so the three
- * Ministry rows below moved with them and still go through the strict check.
- *
- * 🔴 SO THE SECOND TABLE IS GONE AND ALL SIX ROWS GO THROUGH THE STRICT
- * EQUALITY CHECK BELOW, like every other product. A record of a divergence that
- * has been resolved is not a harmless leftover — it is the false comfort this
- * repo keeps finding, the same shape as CARTO's "no API key" comment, which was
- * true when it was written and quietly became a lie. THE-344's own guard suite
- * sweeps for both the retired identifier and the retired amounts, over
- * COMMENT-STRIPPED source for the code and over COMMENTS for the prose, which
- * is why neither is restated in this docblock.
  */
 const DODO_LIVE_PRODUCTS_AS_VERIFIED = [
-  { plan: 'plus', period: 'monthly', id: 'pdt_0NlJZKKU2AQSSH7E4ziKA', name: 'Harvest Individual - Monthly', cents: 2000, interval: 'Month' },
-  { plan: 'plus', period: 'yearly', id: 'pdt_0NlJZMLLKZ5SVGEoSGDdk', name: 'Harvest Individual - Annual', cents: 19000, interval: 'Year' },
-  { plan: 'pro', period: 'monthly', id: 'pdt_0NlJZMOMhmZWiG6UVDl8I', name: 'Harvest Small Team - Monthly', cents: 4000, interval: 'Month' },
-  { plan: 'pro', period: 'yearly', id: 'pdt_0NlJZMRWL8tuAZseUIRTP', name: 'Harvest Small Team - Annual', cents: 38000, interval: 'Year' },
-  { plan: 'max', period: 'monthly', id: 'pdt_0NlJZMUUiT36FGMoiFXgl', name: 'Harvest Ministry - Monthly', cents: 8000, interval: 'Month' },
-  { plan: 'max', period: 'yearly', id: 'pdt_0NlJZMXTnpRBAwTfBVpPs', name: 'Harvest Ministry - Annual', cents: 75200, interval: 'Year' },
+  { plan: 'church', period: 'monthly', id: 'pdt_0NqdacJTREPtSJuqtPCjm', label: 'Church monthly', cents: 3000, interval: 'Month' },
+  { plan: 'church', period: 'yearly', id: 'pdt_0NqdacQf9gvgmw6DU7449', label: 'Church annual', cents: 30000, interval: 'Year' },
+  { plan: 'ministry', period: 'monthly', id: 'pdt_0NqdacWLx9z6CKsGRIKCW', label: 'Ministry monthly', cents: 9000, interval: 'Month' },
+  { plan: 'ministry', period: 'yearly', id: 'pdt_0Nqdaca89LIHeUvrNxXwZ', label: 'Ministry annual', cents: 90000, interval: 'Year' },
 ] as const satisfies readonly VerifiedProduct[];
 
+type LegacyFixture = { id: string; legacyTier: LegacyPlanId; plan: PricedPlan; period: BillingPeriod };
+
 /**
- * 🔴 THE THREE QUARTERLY PRODUCTS, ARCHIVED IN DODO ON 2026-10-23.
- *
- * The quarterly term (`3 × Month`, $54 / $108 / $216) was withdrawn from the app
- * and the marketing site on the same day, and these three live products were
- * archived. None had a live subscription: the Individual one had two, both
- * cancelled, and the other two never had one. They are a BAN LIST and not a
- * fixture — no catalogue may name them in either mode, and a webhook carrying one
- * must resolve to nothing rather than to a plan. A re-created product would get
- * a new id, so an archived one coming back into a catalogue is always a mistake.
+ * The retired LIVE products (created 2026-08-13). They stay active in Dodo, so a
+ * subscription may still be on one.
+ */
+const LEGACY_LIVE_PRODUCTS = [
+  { id: 'pdt_0NlJZKKU2AQSSH7E4ziKA', legacyTier: 'plus', plan: 'church', period: 'monthly' },
+  { id: 'pdt_0NlJZMLLKZ5SVGEoSGDdk', legacyTier: 'plus', plan: 'church', period: 'yearly' },
+  { id: 'pdt_0NlJZMOMhmZWiG6UVDl8I', legacyTier: 'pro', plan: 'church', period: 'monthly' },
+  { id: 'pdt_0NlJZMRWL8tuAZseUIRTP', legacyTier: 'pro', plan: 'church', period: 'yearly' },
+  { id: 'pdt_0NlJZMUUiT36FGMoiFXgl', legacyTier: 'max', plan: 'ministry', period: 'monthly' },
+  { id: 'pdt_0NlJZMXTnpRBAwTfBVpPs', legacyTier: 'max', plan: 'ministry', period: 'yearly' },
+] as const satisfies readonly LegacyFixture[];
+
+/** The retired TEST-mode products (created 2026-08-11). */
+const LEGACY_TEST_PRODUCTS = [
+  { id: 'pdt_0NlAMMZk44L0tL8lcLX6M', legacyTier: 'plus', plan: 'church', period: 'monthly' },
+  { id: 'pdt_0NlAMMeWwZDSlfNdti8FD', legacyTier: 'plus', plan: 'church', period: 'yearly' },
+  { id: 'pdt_0NlAMMhi90q5Ovk6QBzcf', legacyTier: 'pro', plan: 'church', period: 'monthly' },
+  { id: 'pdt_0NlAMMlsVKeYG8ukapmzE', legacyTier: 'pro', plan: 'church', period: 'yearly' },
+  { id: 'pdt_0NlAMMp4QndR3qPzlD8sG', legacyTier: 'max', plan: 'ministry', period: 'monthly' },
+  { id: 'pdt_0NlAMMsQBzMvRVNCY7zws', legacyTier: 'max', plan: 'ministry', period: 'yearly' },
+] as const satisfies readonly LegacyFixture[];
+
+/**
+ * 🔴 THE THREE QUARTERLY PRODUCTS, ARCHIVED IN DODO ON 2026-10-23. A BAN LIST and
+ * not a fixture: no catalogue may name them in either mode, and a webhook
+ * carrying one must resolve to nothing rather than to a plan.
  */
 const DODO_ARCHIVED_QUARTERLY_IDS = [
-  'pdt_0NloCamoWgvgYDih2UETS', // Harvest Individual - Quarterly, $54
-  'pdt_0NloCaqg1QPMAlkfDnlOe', // Harvest Small Team - Quarterly, $108
-  'pdt_0NloCatUWEkEUq1usWJ0n', // Harvest Ministry - Quarterly, $216
+  'pdt_0NloCamoWgvgYDih2UETS',
+  'pdt_0NloCaqg1QPMAlkfDnlOe',
+  'pdt_0NloCatUWEkEUq1usWJ0n',
 ] as const;
+
+const PLANS: readonly PricedPlan[] = ['church', 'ministry'];
 
 const catalogueIds = (catalogue: typeof DODO_TEST_CATALOGUE): string[] =>
   Object.values(catalogue).flatMap((periods) =>
@@ -164,178 +122,182 @@ const catalogueIds = (catalogue: typeof DODO_TEST_CATALOGUE): string[] =>
       .filter((id): id is string => id !== DODO_PRODUCT_UNMAPPED),
   );
 
-// ── The test catalogue: the six verified test-mode products ──────────────────
+const withEnvironment = async (mode: string) => {
+  vi.resetModules();
+  const previous = process.env.DODO_PAYMENTS_ENVIRONMENT;
+  process.env.DODO_PAYMENTS_ENVIRONMENT = mode;
+  try {
+    return await import('../catalogue');
+  } finally {
+    process.env.DODO_PAYMENTS_ENVIRONMENT = previous;
+    vi.resetModules();
+  }
+};
 
-describe('the test catalogue holds exactly the six verified test-mode products', () => {
-  it.each(DODO_TEST_PRODUCTS_AS_VERIFIED)(
-    '$name ($plan/$period) maps to $id',
-    ({ plan, period, id }) => {
-      // Under this file's test_mode env the active catalogue IS the test
-      // catalogue, so the public lookups are exercised directly.
-      expect(productIdFor(plan, period)).toBe(id);
-      expect(requireProductId(plan, period)).toBe(id);
-    },
-  );
+// ── The test catalogue: nothing mapped, so nothing can be sold ───────────────
 
-  it("publishes the CURRENT table price, which test mode's Dodo products predate", () => {
-    // ⚠️ The recorded divergence, asserted rather than hidden. Every entry takes
-    // its price from `PLAN_PRICING`; the test-mode products in Dodo still hold
-    // the pre-THE-195 figures. Asserting BOTH sides means the day someone
-    // recreates the test catalogue, this test fails and tells them to update the
-    // fixture — instead of the mismatch living on as folklore.
-    for (const { plan, period, cents } of DODO_TEST_PRODUCTS_AS_VERIFIED) {
-      expect(catalogueEntry(plan, period).priceUsd).toBe(planPriceUsd(plan, period));
-      expect(catalogueEntry(plan, period).priceUsd).not.toBe(cents / 100);
-    }
-  });
-
-  it('🔴 sells exactly two terms in test mode, and has no quarterly entry to substitute', () => {
-    // The quarterly term was withdrawn on 2026-10-23. It has no row in either
-    // catalogue, so there is no product to look up and no term to fall back to:
-    // a church that asked for a year must never be charged a month, or the
-    // reverse.
-    for (const plan of ['plus', 'pro', 'max'] as const) {
+describe('the test catalogue maps no Church or Ministry product yet', () => {
+  it('has the two plans and the two terms, every cell unmapped', () => {
+    expect(Object.keys(DODO_TEST_CATALOGUE)).toEqual(['church', 'ministry']);
+    for (const plan of PLANS) {
       expect(Object.keys(DODO_TEST_CATALOGUE[plan])).toEqual(['monthly', 'yearly']);
-      expect(offerableTerms(plan)).toEqual(['monthly', 'yearly']);
-      expect(requireProductId(plan, 'monthly')).toBeTruthy();
-      expect(requireProductId(plan, 'yearly')).toBeTruthy();
+      for (const period of ['monthly', 'yearly'] as const) {
+        expect(DODO_TEST_CATALOGUE[plan][period].productId).toBe(DODO_PRODUCT_UNMAPPED);
+      }
     }
+    expect(catalogueIds(DODO_TEST_CATALOGUE)).toEqual([]);
   });
 
-  it('carries the 14-day trial Dodo has configured on every product', () => {
-    expect(DODO_TRIAL_DAYS).toBe(14);
-    for (const { plan, period } of DODO_TEST_PRODUCTS_AS_VERIFIED) {
-      expect(catalogueEntry(plan, period).trialDays).toBe(14);
+  it('🔴 a test-mode checkout for either plan is REFUSED, and offers no term at all', () => {
+    // Under this file's test_mode env the active catalogue IS the test
+    // catalogue. `null` is "this build cannot sell that", and `requireProductId`
+    // is what every checkout path calls: it throws, naming the gap, instead of
+    // substituting another term or a retired product.
+    for (const plan of PLANS) {
+      expect(offerableTerms(plan)).toEqual([]);
+      for (const period of ['monthly', 'yearly'] as const) {
+        expect(productIdFor(plan, period)).toBeNull();
+        expect(() => requireProductId(plan, period)).toThrow(new RegExp(`no ${period} product for plan "${plan}" in test_mode`));
+      }
+    }
+    expect(allCatalogueProductIds()).toEqual([]);
+  });
+
+  it('carries the TODO that says what is missing, once per cell', () => {
+    const source = readFileSync(resolve(__dirname, '../catalogue.ts'), 'utf8');
+    const todo = 'TODO(dodo): create test-mode Church/Ministry products';
+    expect(source.split(todo).length - 1).toBe(4);
+  });
+
+  it('still publishes the current table price for the cells it cannot sell', () => {
+    for (const plan of PLANS) {
+      for (const period of ['monthly', 'yearly'] as const) {
+        expect(catalogueEntry(plan, period).priceUsd).toBe(planPriceUsd(plan, period));
+      }
     }
   });
 
   it("labels annual entries with Dodo's own word for the period, not the app's", () => {
-    // The catalogue metadata in Dodo says `annual`; the app says `yearly`. The
-    // two vocabularies meet here and nowhere else.
-    expect(catalogueEntry('max', 'yearly').dodoBillingPeriod).toBe('annual');
-    expect(catalogueEntry('max', 'monthly').dodoBillingPeriod).toBe('monthly');
+    expect(catalogueEntry('ministry', 'yearly').dodoBillingPeriod).toBe('annual');
+    expect(catalogueEntry('ministry', 'monthly').dodoBillingPeriod).toBe('monthly');
+  });
+
+  it('carries the 14-day trial on every entry', () => {
+    expect(DODO_TRIAL_DAYS).toBe(14);
+    for (const plan of PLANS) {
+      for (const period of ['monthly', 'yearly'] as const) {
+        expect(catalogueEntry(plan, period).trialDays).toBe(14);
+      }
+    }
   });
 });
 
-// ── The live catalogue: the six verified live products ───────────────────────
+// ── The live catalogue: the four verified live products ──────────────────────
 
-describe('every live product id is pinned exactly as verified against Dodo', () => {
+describe('every live product id is pinned exactly as created in Dodo', () => {
   it.each(DODO_LIVE_PRODUCTS_AS_VERIFIED)(
-    '$name ($plan/$period) maps to $id at $cents minor units',
+    '$label ($plan/$period) maps to $id at $cents minor units',
     ({ plan, period, id, cents }) => {
       const entry = DODO_LIVE_CATALOGUE[plan][period];
-      // 🔴 THE ID IS PINNED FOR ALL SIX, unconditionally. A wrong id is a card
-      // charged against the wrong product, and no reprice window excuses one.
+      // 🔴 THE ID IS PINNED FOR ALL FOUR, unconditionally.
       expect(entry.productId).toBe(id);
-      // 🔴 AND SO IS THE PRICE, FOR ALL SIX. THE-343 put three of them out of
-      // step for as long as Dodo held the old amounts; THE-344 read the live
-      // API back and folded those three rows in here, so there is no branch
-      // left that could weaken this into a conditional.
       expect(entry.priceMinorUnits).toBe(cents);
       expect(entry.priceUsd).toBe(cents / 100);
       // Both sides of the pair the whole file exists for: what Dodo charges,
       // and what every app surface publishes.
       expect(planPriceUsd(plan, period)).toBe(cents / 100);
+      expect(termPriceUsd(plan, period)).toBe(cents / 100);
     },
   );
 
-  it('the trial is 14 days on every live entry', () => {
-    for (const { plan, period } of DODO_LIVE_PRODUCTS_AS_VERIFIED) {
-      expect(DODO_LIVE_CATALOGUE[plan][period].trialDays).toBe(14);
-    }
-  });
-
-  it("labels live annual entries with Dodo's own word for the period", () => {
-    expect(DODO_LIVE_CATALOGUE.max.yearly.dodoBillingPeriod).toBe('annual');
-    expect(DODO_LIVE_CATALOGUE.max.monthly.dodoBillingPeriod).toBe('monthly');
-  });
-
-  it('🔴 carries no row for a quarterly term, and names none of the archived quarterly products', () => {
-    for (const plan of ['plus', 'pro', 'max'] as const) {
-      expect(Object.keys(DODO_LIVE_CATALOGUE[plan])).toEqual(['monthly', 'yearly']);
-    }
-    for (const id of DODO_ARCHIVED_QUARTERLY_IDS) {
-      expect(catalogueIds(DODO_LIVE_CATALOGUE), `the live catalogue names archived product ${id}`).not.toContain(id);
-      expect(catalogueIds(DODO_TEST_CATALOGUE), `the test catalogue names archived product ${id}`).not.toContain(id);
-    }
-  });
-});
-
-describe('the two catalogues are disjoint and complete', () => {
-  it('each catalogue names only mapped ids and reuses none', () => {
-    for (const catalogue of [DODO_TEST_CATALOGUE, DODO_LIVE_CATALOGUE]) {
-      const ids = catalogueIds(catalogue);
-      // Six in each: three tiers x monthly and yearly.
-      expect(ids.length).toBe(6);
-      expect(new Set(ids).size).toBe(ids.length); // no id reused across two plans or terms
-    }
-  });
-
-  it('live and test ids never overlap', () => {
-    const testIds = catalogueIds(DODO_TEST_CATALOGUE);
-    const liveIds = catalogueIds(DODO_LIVE_CATALOGUE);
-    const testSet = new Set(testIds);
-    for (const id of liveIds) expect(testSet.has(id)).toBe(false);
-    expect(new Set([...testIds, ...liveIds]).size).toBe(testIds.length + liveIds.length);
-  });
-});
-
-// ── Prices, in both catalogues ───────────────────────────────────────────────
-
-describe('prices resolve to the six figures in the table', () => {
-  it.each([
-    ['plus', 20, 190],
-    ['pro', 40, 380],
-    ['max', 80, 752],
-  ] as const)('%s is $%i monthly and $%i annually', (plan, monthly, annual) => {
-    expect(termPriceUsd(plan, 'monthly')).toBe(monthly);
-    expect(termPriceUsd(plan, 'yearly')).toBe(annual);
-    expect(catalogueEntry(plan, 'monthly').priceUsd).toBe(monthly);
-    expect(catalogueEntry(plan, 'yearly').priceUsd).toBe(annual);
-  });
-
-  // 🔴 ALL SIX, at full strength. This was the SIX in step while Dodo still
-  // held Ministry's old amounts; THE-344 read the live API back, folded the
-  // three Ministry rows in and deleted the list that excluded them, so the
-  // exact equality now covers every live product with no branch to weaken it.
   it.each(DODO_LIVE_PRODUCTS_AS_VERIFIED)(
-    'live $name ($plan/$period) publishes $$cents minor units',
+    '$plan/$period publishes the independently transcribed Dodo amount',
     ({ plan, period, cents }) => {
-      expect(DODO_LIVE_CATALOGUE[plan][period].priceUsd).toBe(cents / 100);
+      expect(PLAN_PRICING[plan][period]).toBe(cents / 100);
       expect(DODO_LIVE_CATALOGUE[plan][period].priceMinorUnits).toBe(cents);
     },
   );
 
   it.each(DODO_LIVE_PRODUCTS_AS_VERIFIED)(
-    '$name ($plan/$period) agrees with the price the app publishes',
-    ({ plan, period, cents }) => {
-      // 🔴 The whole point. `PLAN_PRICING` is what every app surface renders and
-      // what the marketing site's cross-repo contract compares against; `cents`
-      // above is what Dodo will actually charge a card. If those two disagree,
-      // the app advertises one number and the church is billed another.
-      expect(planPriceUsd(plan, period)).toBe(cents / 100);
-      expect(termPriceUsd(plan, period)).toBe(cents / 100);
+    '$plan/$period retains the configured trial',
+    ({ plan, period }) => {
+      expect(DODO_LIVE_CATALOGUE[plan][period].trialDays).toBe(14);
     },
   );
 
-  it('🔴 reads the price table rather than deriving from a multiplier', () => {
-    // ANNUAL_BILLED_MONTHS is gone: 20% off a year is x9.6 months, so there is
-    // no integer to name. What replaced it is a
-    // stored table, and this proves the catalogue READS it — no term's price is
-    // a whole number of months at the monthly rate, so no multiplier could have
-    // produced these figures.
-    for (const plan of ['plus', 'pro', 'max'] as const) {
-      for (const term of ['yearly'] as const) {
-        const inMonths =
-          DODO_LIVE_CATALOGUE[plan][term].priceUsd / DODO_LIVE_CATALOGUE[plan].monthly.priceUsd;
-        expect(Number.isInteger(inMonths), `${plan} ${term} is exactly ${inMonths} months`).toBe(false);
-      }
+  it('has exactly two plans and two terms, and no row for a retired tier', () => {
+    expect(Object.keys(DODO_LIVE_CATALOGUE)).toEqual(['church', 'ministry']);
+    for (const plan of PLANS) {
+      expect(Object.keys(DODO_LIVE_CATALOGUE[plan])).toEqual(['monthly', 'yearly']);
+    }
+  });
+
+  it('the trial is 14 days and annual is labelled the way Dodo labels it', () => {
+    for (const { plan, period } of DODO_LIVE_PRODUCTS_AS_VERIFIED) {
+      expect(DODO_LIVE_CATALOGUE[plan][period].trialDays).toBe(14);
+    }
+    expect(DODO_LIVE_CATALOGUE.ministry.yearly.dodoBillingPeriod).toBe('annual');
+    expect(DODO_LIVE_CATALOGUE.church.monthly.dodoBillingPeriod).toBe('monthly');
+  });
+
+  it('🔴 names none of the archived quarterly products, and no retired product is OFFERED', () => {
+    const offered = catalogueIds(DODO_LIVE_CATALOGUE);
+    for (const id of DODO_ARCHIVED_QUARTERLY_IDS) {
+      expect(offered, `the live catalogue names archived product ${id}`).not.toContain(id);
+    }
+    for (const { id } of [...LEGACY_LIVE_PRODUCTS, ...LEGACY_TEST_PRODUCTS]) {
+      expect(offered, `the live catalogue OFFERS retired product ${id}`).not.toContain(id);
+      expect(catalogueIds(DODO_TEST_CATALOGUE)).not.toContain(id);
+    }
+  });
+});
+
+describe('the catalogues are disjoint and complete', () => {
+  it('the live catalogue names four distinct ids and the test catalogue none', () => {
+    const ids = catalogueIds(DODO_LIVE_CATALOGUE);
+    expect(ids.length).toBe(4);
+    expect(new Set(ids).size).toBe(4);
+    expect(catalogueIds(DODO_TEST_CATALOGUE).length).toBe(0);
+  });
+
+  it('offered, retired-live and retired-test ids never overlap', () => {
+    const groups = [
+      catalogueIds(DODO_LIVE_CATALOGUE),
+      Object.keys(DODO_LEGACY_LIVE_PRODUCTS),
+      Object.keys(DODO_LEGACY_TEST_PRODUCTS),
+    ];
+    const all = groups.flat();
+    expect(all.length).toBe(4 + 6 + 6);
+    expect(new Set(all).size).toBe(all.length);
+  });
+});
+
+// ── Prices ───────────────────────────────────────────────────────────────────
+
+describe('prices resolve to the four figures in the table', () => {
+  it.each([
+    ['church', 30, 300],
+    ['ministry', 90, 900],
+  ] as const)('%s is $%i monthly and $%i annually', (plan, monthly, annual) => {
+    expect(termPriceUsd(plan, 'monthly')).toBe(monthly);
+    expect(termPriceUsd(plan, 'yearly')).toBe(annual);
+    expect(catalogueEntry(plan, 'monthly').priceUsd).toBe(monthly);
+    expect(catalogueEntry(plan, 'yearly').priceUsd).toBe(annual);
+    expect(PLAN_PRICING[plan]).toEqual({ monthly, yearly: annual });
+    for (const [period, price] of [['monthly', monthly], ['yearly', annual]] as const) {
+      expect(DODO_LIVE_CATALOGUE[plan][period].priceUsd).toBe(price);
+      expect(DODO_LIVE_CATALOGUE[plan][period].priceMinorUnits).toBe(price * 100);
+      expect(catalogueEntry(plan, period).priceMinorUnits).toBe(price * 100);
+    }
+  });
+
+  it('a year is exactly ten months of the monthly price: "2 months free"', () => {
+    for (const plan of PLANS) {
+      expect(DODO_LIVE_CATALOGUE[plan].yearly.priceUsd).toBe(DODO_LIVE_CATALOGUE[plan].monthly.priceUsd * 10);
     }
   });
 
   it('cycles monthly products monthly and yearly products yearly, and nothing else', () => {
-    // Verified against the live API: `payment_frequency_count: 1` on a `Month`
-    // or a `Year`. The 3 x Month cycle belonged to the withdrawn quarterly term.
     expect(DODO_TERM_FREQUENCY).toEqual({
       monthly: { count: 1, interval: 'Month' },
       yearly: { count: 1, interval: 'Year' },
@@ -346,32 +308,23 @@ describe('prices resolve to the six figures in the table', () => {
   });
 });
 
-// ── The annual figures are DERIVED, not typed ────────────────────────────────
+// ── The figures are READ from the table, not typed ───────────────────────────
 
-describe('annual figures are derived in source, not written as literals', () => {
+describe('prices are read in source, not written as literals', () => {
   const cataloguePath = resolve(__dirname, '../catalogue.ts');
 
-  /**
-   * Strip comments before scanning.
-   *
-   * The docblock deliberately lists the published prices ("$441/yr") so a reader
-   * can see the catalogue at a glance; that is documentation, not a second source
-   * of truth. Only executable source is subject to the rule below.
-   */
-  const codeOnly = readFileSync(cataloguePath, 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/^[ \t]*\/\/.*$/gm, '');
+  /** Strip comments before scanning: only executable source is subject to the rule. */
+  const codeOnly = stripComments(readFileSync(cataloguePath, 'utf8'));
 
-  it.each([441, 891, 1791, 44100, 89100, 179100])(
+  it.each([3000, 9000, 30000, 90000, 300, 900])(
     'does not contain %i as a literal anywhere in its code',
     (literal) => {
-      // Bounded so a product id such as pdt_0NlAMMZk44L0tL8lcLX6M cannot trip it.
+      // Bounded so a product id cannot trip it.
       const asLiteral = new RegExp(`(?<![\\w.])${literal}(?![\\w.])`);
       expect(
         asLiteral.test(codeOnly),
-        `catalogue.ts writes ${literal} as a literal. Annual prices must be derived ` +
-          'from ANNUAL_BILLED_MONTHS — a typed-out annual figure is a second source ' +
-          'of truth that drifts silently and bills the wrong amount.',
+        `catalogue.ts writes ${literal} as a literal. Prices must be read from PLAN_PRICING: ` +
+          'a typed-out figure is a second source of truth that drifts silently and bills the wrong amount.',
       ).toBe(false);
     },
   );
@@ -381,10 +334,6 @@ describe('annual figures are derived in source, not written as literals', () => 
   });
 
   it('reads no environment variable and has no ?? fallback — #207 in one line', () => {
-    // billing.ts's `process.env.X ?? 'price_test_...'` is the defect this
-    // catalogue exists to avoid repeating. There is no env read here at all:
-    // the live/test selection consumes the already-validated dodoConfig from
-    // config.ts, which is the one module allowed to touch the environment.
     expect(codeOnly).not.toContain('process.env');
     expect(codeOnly).not.toContain('??');
     expect(codeOnly).toContain('dodoConfig');
@@ -394,55 +343,48 @@ describe('annual figures are derived in source, not written as literals', () => 
 // ── The reverse lookup the subscription webhook depends on ───────────────────
 
 describe('resolvePlanFromProductId — product id back to a plan', () => {
-  it.each(DODO_TEST_PRODUCTS_AS_VERIFIED)('resolves $id to $plan/$period in test mode', ({ plan, period, id }) => {
-    expect(resolvePlanFromProductId(id)).toEqual({ plan, period });
+  it.each(LEGACY_TEST_PRODUCTS)(
+    'resolves retired test product $id ($legacyTier/$period) to $plan/$period in test mode',
+    ({ id, legacyTier, plan, period }) => {
+      expect(resolvePlanFromProductId(id)).toEqual({ plan, period });
+      expect(legacyTierForProductId(id)).toBe(legacyTier);
+    },
+  );
+
+  it('maps plus and pro to Church and max to Ministry, and never to a retired tier name', () => {
+    for (const { id, legacyTier } of LEGACY_TEST_PRODUCTS) {
+      const resolved = resolvePlanFromProductId(id);
+      expect(resolved?.plan).toBe(legacyTier === 'max' ? 'ministry' : 'church');
+    }
   });
 
-  it('round-trips every MAPPED entry of the active catalogue', () => {
-    for (const [plan, periods] of Object.entries(DODO_TEST_CATALOGUE)) {
-      for (const [period, entry] of Object.entries(periods)) {
-        // An unmapped term has no id to round-trip. Skipping it here is not a
-        // hole: `resolvePlanFromProductId` is separately pinned below to refuse
-        // a null rather than treat two gaps as a match.
-        if (entry.productId === DODO_PRODUCT_UNMAPPED) continue;
-        expect(resolvePlanFromProductId(entry.productId)).toEqual({ plan, period });
-      }
-    }
-    expect(new Set(allCatalogueProductIds())).toEqual(new Set(catalogueIds(DODO_TEST_CATALOGUE)));
+  it('every retired product of the active mode is recognised and none is offered', () => {
+    expect(new Set(allLegacyProductIds())).toEqual(new Set(LEGACY_TEST_PRODUCTS.map((p) => p.id)));
+    expect(allCatalogueProductIds()).toEqual([]);
+    expect(Object.keys(DODO_LEGACY_TEST_PRODUCTS).length).toBe(6);
+    expect(Object.keys(DODO_LEGACY_LIVE_PRODUCTS).length).toBe(6);
   });
 
   it('returns null for a foreign id rather than defaulting to a plan', () => {
-    // An add-on product (REP-5), a Stripe price, a typo — and, just as foreign,
-    // a LIVE product id while this build runs in test mode. Every one of them
-    // must be "unknown", never "the cheapest plan" — defaulting here would
-    // silently grant a tier nobody paid for.
+    // An add-on product, a Stripe price, a typo — and, just as foreign, a LIVE
+    // product id while this build runs in test mode. Every one of them must be
+    // "unknown", never "the cheapest plan".
     expect(resolvePlanFromProductId('pdt_not_ours')).toBeNull();
     expect(resolvePlanFromProductId('price_1TjKTb1YKkcSbTf3kxXDuq5X')).toBeNull();
     expect(resolvePlanFromProductId('')).toBeNull();
-    for (const { id } of DODO_LIVE_PRODUCTS_AS_VERIFIED) {
+    expect(legacyTierForProductId('')).toBeNull();
+    for (const { id } of [...DODO_LIVE_PRODUCTS_AS_VERIFIED, ...LEGACY_LIVE_PRODUCTS]) {
       expect(resolvePlanFromProductId(id)).toBeNull();
     }
   });
 
   it('🔴 resolves an archived quarterly product to nothing, in either mode', async () => {
-    // A webhook for a subscription on one of the three archived products must
-    // be "unknown" and REPORT — never "the cheapest plan" and never a quiet
-    // grant. None exists today (the only two ever created are cancelled), so
-    // this holds the door shut rather than describing a live path.
     for (const id of DODO_ARCHIVED_QUARTERLY_IDS) {
       expect(resolvePlanFromProductId(id)).toBeNull();
     }
-    vi.resetModules();
-    const previous = process.env.DODO_PAYMENTS_ENVIRONMENT;
-    process.env.DODO_PAYMENTS_ENVIRONMENT = 'live_mode';
-    try {
-      const live = await import('../catalogue');
-      for (const id of DODO_ARCHIVED_QUARTERLY_IDS) {
-        expect(live.resolvePlanFromProductId(id), `${id} still resolves in live mode`).toBeNull();
-      }
-    } finally {
-      process.env.DODO_PAYMENTS_ENVIRONMENT = previous;
-      vi.resetModules();
+    const live = await withEnvironment('live_mode');
+    for (const id of DODO_ARCHIVED_QUARTERLY_IDS) {
+      expect(live.resolvePlanFromProductId(id), `${id} still resolves in live mode`).toBeNull();
     }
   });
 });
@@ -450,40 +392,43 @@ describe('resolvePlanFromProductId — product id back to a plan', () => {
 // ── Selection: the active catalogue follows the validated environment ────────
 
 describe('the active catalogue follows DODO_PAYMENTS_ENVIRONMENT', () => {
-  const withEnvironment = async (mode: string) => {
-    vi.resetModules();
-    const previous = process.env.DODO_PAYMENTS_ENVIRONMENT;
-    process.env.DODO_PAYMENTS_ENVIRONMENT = mode;
-    try {
-      return await import('../catalogue');
-    } finally {
-      process.env.DODO_PAYMENTS_ENVIRONMENT = previous;
-      vi.resetModules();
-    }
-  };
-
-  it('selects the live catalogue under live_mode, and resolves only it', async () => {
+  it('selects the live catalogue under live_mode and resolves the new AND the retired products', async () => {
     const live = await withEnvironment('live_mode');
     for (const { plan, period, id } of DODO_LIVE_PRODUCTS_AS_VERIFIED) {
       expect(live.productIdFor(plan, period)).toBe(id);
-      // Round-trip of the active (live) catalogue.
+      expect(live.requireProductId(plan, period)).toBe(id);
       expect(live.resolvePlanFromProductId(id)).toEqual({ plan, period });
+      expect(live.legacyTierForProductId(id)).toBeNull();
     }
     expect(new Set(live.allCatalogueProductIds())).toEqual(
       new Set(DODO_LIVE_PRODUCTS_AS_VERIFIED.map((product) => product.id)),
     );
-    // Test-mode ids are FOREIGN under live mode, by decision: every test-mode
-    // tenant is a cancelled test artifact, and a live deployment that treated a
-    // test product id as valid would be a bug surface.
-    for (const { id } of DODO_TEST_PRODUCTS_AS_VERIFIED) {
+    expect(live.offerableTerms('church')).toEqual(['monthly', 'yearly']);
+    expect(live.offerableTerms('ministry')).toEqual(['monthly', 'yearly']);
+
+    // 🔴 A legacy subscription still resolves, to the tier it became…
+    for (const { id, legacyTier, plan, period } of LEGACY_LIVE_PRODUCTS) {
+      expect(live.resolvePlanFromProductId(id)).toEqual({ plan, period });
+      expect(live.legacyTierForProductId(id)).toBe(legacyTier);
+    }
+    // …and can never be put in a cart.
+    const offered = new Set(live.allCatalogueProductIds());
+    for (const { id } of LEGACY_LIVE_PRODUCTS) expect(offered.has(id)).toBe(false);
+
+    // Test-mode ids are FOREIGN under live mode, by decision.
+    for (const { id } of LEGACY_TEST_PRODUCTS) {
       expect(live.resolvePlanFromProductId(id)).toBeNull();
     }
   });
 
-  it('selects the test catalogue under test_mode', async () => {
+  it('selects the test catalogue under test_mode: nothing offered, retired products recognised', async () => {
     const test = await withEnvironment('test_mode');
-    for (const { plan, period, id } of DODO_TEST_PRODUCTS_AS_VERIFIED) {
-      expect(test.productIdFor(plan, period)).toBe(id);
+    for (const plan of PLANS) {
+      expect(test.offerableTerms(plan)).toEqual([]);
+      expect(() => test.requireProductId(plan, 'monthly')).toThrow();
+    }
+    for (const { id, plan, period } of LEGACY_TEST_PRODUCTS) {
+      expect(test.resolvePlanFromProductId(id)).toEqual({ plan, period });
     }
   });
 });

@@ -193,9 +193,8 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
          beneath    `billed as $${price} every ${TERM_MONTHS[term]} months`
          monthly    headline alone, no line beneath                            */
     const SITE_HEADLINES: Record<PricedPlan, Record<string, string>> = {
-      plus: { monthly: '$20', yearly: '$15.84' },
-      pro:  { monthly: '$40', yearly: '$31.67' },
-      max:  { monthly: '$80', yearly: '$62.67' },
+      church: { monthly: '$30', yearly: '$25' },
+      ministry: { monthly: '$90', yearly: '$75' },
     };
     mount();
     for (const term of BILLING_TERMS) {
@@ -212,8 +211,8 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
     // Presentation only. Nothing in THE-196 may move a price.
     // ⚠️ Ministry's column moved at THE-343; Individual's and Small Team's did
     // not, and they are enumerated so a reprice that overreached still fails.
-    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'monthly'))).toEqual([20, 40, 80]);
-    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'yearly'))).toEqual([190, 380, 752]);
+    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'monthly'))).toEqual([30, 90]);
+    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'yearly'))).toEqual([300, 900]);
     // …and the displayed figure is derived from them, never stored beside them.
     for (const plan of PRICED_PLAN_ORDER) {
       for (const term of BILLING_TERMS) {

@@ -391,7 +391,7 @@ describe('it points to the manual entry path', () => {
     expect(text(), 'what the manual entry actually achieves is not said')
       .toMatch(/adds to their total given, dates the gift, and writes a donation receipt/i);
     expect(text(), 'the dashboard is not named').toMatch(/counts on your dashboard/i);
-    expect(text(), 'accounting is not named').toMatch(/in your accounting/i);
+    expect(text(), 'giving records are not named').toMatch(/in your giving records/i);
     expect(text(), 'the giving statement is not named').toMatch(/giving statement/i);
     expect(text(), "the member's own history is not named").toMatch(/own donation history/i);
   });
@@ -851,7 +851,7 @@ describe('no statement, receipt, CRM write or Stripe path changed', () => {
    * pill moves into the shared page header; no statement, receipt, CRM write or Stripe path changed.
    */
   const LATER_ACCEPTED: Record<string, readonly string[]> = {
-    'src/components/AdminAccounting.tsx': ['31d1304b2a12af89901f167e5cc2aaa3c9e41e47e7ddc79161eacf80517ec5af'],
+    'src/components/AdminAccounting.tsx': ['31d1304b2a12af89901f167e5cc2aaa3c9e41e47e7ddc79161eacf80517ec5af', 'c64fc0d07db1cd6b26e4770dbe43094f00cca55d7a0ac470e1927b5eaa78928b'],
   };
 
   it.each(Object.keys(UNCHANGED))('%s is byte-for-byte unchanged', (file) => {

@@ -218,7 +218,7 @@ const GATED_TABS: Row[] = [
   // the analytics that lives on it — away in the same edit. Still no `analytics`
   // cell; "free gets analytics" is now `signups: true` and nothing else.
   { label: 'Signups', section: 'signups', screen: 'AdminSignups', entitled: (f) => f.signups },
-  { label: 'Accounting', section: 'accounting', screen: 'AdminAccounting', entitled: (f) => f.accountingTools || f.givingStatements },
+  { label: 'Giving records', section: 'accounting', screen: 'AdminAccounting', entitled: (f) => f.accountingTools || f.givingStatements },
   { label: 'Forms', section: 'forms', screen: 'AdminForms', entitled: (f) => f.customForms },
   { label: 'Livestream', section: 'livestream', screen: 'AdminLivestream', entitled: (f) => f.livestream },
   { label: 'SMS', section: 'sms', screen: 'AdminSms', entitled: (f) => f.smsAutomation },
@@ -244,26 +244,23 @@ const UNGATED_TABS: Row[] = [
 ];
 
 /**
- * The surfaces an Individual tenant may actually use. From the ticket, which
- * listed seven.
+ * The surfaces a Church tenant may actually use. The spec lists them: courses and
+ * products, the feed and chat (Community), donations and fundraising campaigns,
+ * the CRM and signups, campuses, the blog and notes.
  *
- * ⚠️ EIGHT SINCE THE-277, and the tier bought nothing new to get the eighth.
- * Signups was the CRM screen's Analytics sub-tab and is now its own page on the
- * SAME `crm` cell, so one entitlement that used to open one row now opens two.
- * An Individual tenant reached this exact screen before the split, by clicking
- * "Analytics" inside the CRM tab it is listed as owning here.
+ * ⚠️ A STORED RETIRED `plus` OR `pro` IS READ AS CHURCH, so this is also what
+ * those tenants reach now. Pro lost Check-In, Livestream and the newsletter in
+ * that move; the spec is explicit that Church has none of them.
  */
-// ⚠️ SEVEN SINCE THE-314, not eight: 'SMS' left this set. Individual carried
-// `smsAutomation: true` while SMS was bring-your-own and the plan cell gated
-// nothing. Harvest now resells and pays for every segment, so SMS is Ministry-
-// only and this tier no longer reaches the screen.
-const INDIVIDUAL_ENTITLED = ['Dashboard', 'Blog', 'Campus', 'Courses', 'Products', 'CRM', 'Signups', 'Fundraising'];
+const CHURCH_ENTITLED = [
+  'Dashboard', 'Blog', 'Campus', 'Courses', 'Products', 'CRM', 'Signups', 'Fundraising', 'Notes', 'Community',
+];
 
 /**
- * What an Individual tenant can open. THE-373 removed Check-In: it was the
- * only Reach tab left on this plan, and Reach is hidden there.
+ * What a Church tenant can open. Check-In is not here: Reach is hidden on this
+ * plan (THE-373), and the tab answers "page not found".
  */
-const INDIVIDUAL_REACHABLE = [...INDIVIDUAL_ENTITLED];
+const CHURCH_REACHABLE = [...CHURCH_ENTITLED];
 
 let container: HTMLDivElement;
 let root: Root;
@@ -275,7 +272,7 @@ const flush = async () => {
 
 const ALL_TAB_LABELS = [
   'Dashboard', 'Campus', 'Campuses', 'Courses', 'Products', 'Blog', 'AI Knowledge', 'Newsletter',
-  'Fundraising', 'Donations', 'Events', 'Services', 'Notes', 'CRM', 'Signups', 'Accounting', 'Forms', 'Check-In', 'Livestream',
+  'Fundraising', 'Donations', 'Events', 'Services', 'Notes', 'CRM', 'Signups', 'Giving records', 'Forms', 'Check-In', 'Livestream',
   'SMS', 'Community', 'Library', 'Tenants', 'Affiliate', 'Branding', 'Settings',
 ];
 function navLabels(): string[] {
@@ -399,20 +396,25 @@ afterEach(async () => {
 });
 
 // ── 1. The regression ────────────────────────────────────────────────────────
-describe("an Individual tenant's admin nav is exactly the seven correct items", () => {
-  it('reaches exactly the seven entitled surfaces, and an upgrade wall on every other', async () => {
-    expect(await entitledLabels('plus')).toEqual([...INDIVIDUAL_REACHABLE].sort());
-    // Said again as the ticket says it, so the eight are pinned by name and the
-    // one deviation cannot hide inside a derived list.
-    for (const label of INDIVIDUAL_ENTITLED) {
-      expect(await entitledLabels('plus'), `"${label}" is one of the seven`).toContain(label);
+describe("a Church tenant's admin nav is exactly the ten correct items", () => {
+  it('reaches exactly the ten entitled surfaces, and an upgrade wall on every other', async () => {
+    expect(await entitledLabels('church')).toEqual([...CHURCH_REACHABLE].sort());
+    // Said again by name, so a deviation cannot hide inside a derived list.
+    for (const label of CHURCH_ENTITLED) {
+      expect(await entitledLabels('church'), `"${label}" is one of the ten`).toContain(label);
     }
   }, 20_000);
 
-  it('shows the upgrade wall — naming the feature — on each of the nine it did not buy', async () => {
+  it('reads the retired plus and pro ids as Church, and max as Ministry', async () => {
+    expect(await entitledLabels('plus' as TenantPlan)).toEqual([...CHURCH_REACHABLE].sort());
+    expect(await entitledLabels('pro' as TenantPlan)).toEqual([...CHURCH_REACHABLE].sort());
+    expect(await entitledLabels('max' as TenantPlan)).toEqual(await entitledLabels('ministry'));
+  }, 40_000);
+
+  it('shows the upgrade wall — naming the feature — on each of the eight it did not buy', async () => {
     const walled: string[] = [];
     for (const row of GATED_TABS) {
-      const { screen, wall } = await openTab('plus', row);
+      const { screen, wall } = await openTab('church', row);
       if (wall !== null) {
         walled.push(row.label);
         expect(screen, `${row.label} mounted its screen behind an upgrade wall`).toBeNull();
@@ -427,21 +429,21 @@ describe("an Individual tenant's admin nav is exactly the seven correct items", 
     // meets it on Services too. ⚠️ Nothing Individual could reach before became
     // unreachable: the run sheet was behind Events, which was already walled.
     expect(walled.sort()).toEqual(
-      ['AI Knowledge', 'Accounting', 'Community', 'Events', 'Forms', 'Livestream', 'Newsletter', 'Notes', 'SMS', 'Services'].sort(),
+      ['AI Knowledge', 'Giving records', 'Events', 'Forms', 'Livestream', 'Newsletter', 'SMS', 'Services'].sort(),
     );
   });
 
-  it('does not mount Check-In for Individual — Reach is hidden on that plan', async () => {
-    const { screen, nav } = await openTab('plus', UNGATED_TABS[2]);
-    expect(screen, 'Individual still opens Check-In').toBeNull();
-    expect(nav, 'Individual still lists Check-In').not.toContain('Check-In');
-    expect(getPlanFeatures('plus').checkInSystem, 'attendance was already off').toBe(false);
-    expect(getPlanFeatures('plus').customForms, 'Forms was not added').toBe(false);
+  it('does not mount Check-In for Church — Reach is hidden on that plan', async () => {
+    const { screen, nav } = await openTab('church', UNGATED_TABS[2]);
+    expect(screen, 'Church still opens Check-In').toBeNull();
+    expect(nav, 'Church still lists Check-In').not.toContain('Check-In');
+    expect(getPlanFeatures('church').checkInSystem, 'attendance was already off').toBe(false);
+    expect(getPlanFeatures('church').customForms, 'Forms was not added').toBe(false);
   });
 
-  it('does not put Branding in an Individual nav', async () => {
-    const { nav } = await openTab('plus', UNGATED_TABS[0]);
-    expect(hasBrandingAccess(getPlanFeatures('plus'))).toBe(false);
+  it('does not put Branding in a Church nav', async () => {
+    const { nav } = await openTab('church', UNGATED_TABS[0]);
+    expect(hasBrandingAccess(getPlanFeatures('church'))).toBe(false);
     expect(nav).not.toContain('Branding');
   });
 });
@@ -449,8 +451,7 @@ describe("an Individual tenant's admin nav is exactly the seven correct items", 
 // ── 2–4. Every other tier ────────────────────────────────────────────────────
 describe.each([
   ['a free tenant', 'free' as const],
-  ['a Small Team tenant', 'pro' as const],
-  ['a Ministry tenant', 'max' as const],
+  ['a Ministry tenant', 'ministry' as const],
 ])("%s's nav is correct", (_name, plan) => {
   it('reaches exactly the surfaces its tier carries, and no others', async () => {
     const features = getPlanFeatures(plan);
@@ -483,11 +484,11 @@ describe.each([
 describe('only the free tier shows every tab; a priced tier shows what it bought (THE-220)', () => {
   it('keeps the free nav whole, and it is the ONLY tier whose nav ignores its own cells', async () => {
     const navs = new Map<string, string[]>();
-    for (const plan of ['free', 'plus', 'pro'] as const) {
+    for (const plan of ['free', 'church', 'ministry'] as const) {
       navs.set(plan, (await openTab(plan, UNGATED_TABS[0])).nav);
     }
-    // The churches label is the one intentional per-tier difference: a tier
-    // capped at one campus says 'Campus', an uncapped/unknown one 'Campuses'.
+    // The churches label can differ per tier: a tier capped at one campus says
+    // 'Campus', an uncapped/unknown one 'Campuses'.
     const withoutChurch = (l: string[]) => l.filter((x) => x !== 'Campus' && x !== 'Campuses');
 
     // Free carries every gated tab, none of which its own cells unlock.
@@ -495,24 +496,22 @@ describe('only the free tier shows every tab; a priced tier shows what it bought
       expect(navs.get('free')!, `free lost "${row.label}" — the point of the tier`).toContain(row.label);
     }
     // And the priced tiers are now strictly narrower, which is the correction.
-    expect(withoutChurch(navs.get('plus')!).length)
+    expect(withoutChurch(navs.get('church')!).length)
       .toBeLessThan(withoutChurch(navs.get('free')!).length);
-    expect(withoutChurch(navs.get('pro')!).length)
-      .toBeLessThan(withoutChurch(navs.get('free')!).length);
-    // Individual ⊂ Small Team ⊂ free, as the matrix is monotonic by tier.
-    for (const label of withoutChurch(navs.get('plus')!)) {
-      expect(navs.get('pro')!, `Small Team lost "${label}" that Individual has`).toContain(label);
+    // Ministry carries everything Church does, bar the one tab Reach hides.
+    for (const label of withoutChurch(navs.get('church')!)) {
+      expect(navs.get('ministry')!, `Ministry lost "${label}" that Church has`).toContain(label);
     }
   });
 
-  it('drops from an Individual nav every gated tab that tier did not buy', async () => {
-    const { nav } = await openTab('plus', UNGATED_TABS[0]);
-    const plusFeatures = getPlanFeatures('plus');
+  it('drops from a Church nav every gated tab that tier did not buy', async () => {
+    const { nav } = await openTab('church', UNGATED_TABS[0]);
+    const churchFeatures = getPlanFeatures('church');
     for (const row of GATED_TABS) {
-      if (row.entitled(plusFeatures)) {
-        expect(nav, `"${row.label}" is one of Individual's own tabs`).toContain(row.label);
+      if (row.entitled(churchFeatures)) {
+        expect(nav, `"${row.label}" is one of Church's own tabs`).toContain(row.label);
       } else {
-        expect(nav, `"${row.label}" is a tab Individual cannot use and must not see`)
+        expect(nav, `"${row.label}" is a tab Church cannot use and must not see`)
           .not.toContain(row.label);
       }
     }
@@ -525,20 +524,20 @@ describe('a tenant upgraded from free has the same nav as one that signed up pai
     // The upgrade path writes `tenants/{id}.plan` in the webhook and the client
     // re-reads it on the return hop, so "upgraded" and "signed up paid" differ
     // only in which of the two plan sources answers first. Both are asserted.
-    const signedUpPaid = await entitledLabels('plus');
+    const signedUpPaid = await entitledLabels('church');
 
     // Upgraded: the store's copy has not caught up yet, so AdminDashboard falls
     // back to the context plan from the freshly-read tenant doc.
     const upgraded: string[] = [];
     for (const row of [...UNGATED_TABS, ...GATED_TABS]) {
       store.current = { ...store.current, tenantPlan: null };
-      ctx.current = { ...ctx.current, tenantPlan: 'plus' };
+      ctx.current = { ...ctx.current, tenantPlan: 'church' };
       await mount({}, row.section);
       if (activeScreen().screen === row.screen) upgraded.push(row.label);
       await unmount();
     }
     expect(upgraded.sort()).toEqual(signedUpPaid);
-    expect(upgraded.sort()).toEqual([...INDIVIDUAL_REACHABLE].sort());
+    expect(upgraded.sort()).toEqual([...CHURCH_REACHABLE].sort());
   });
 
   it('refuses a paid feature while a stale free plan is still what resolved', async () => {
@@ -592,7 +591,7 @@ describe('a super admin still sees everything through platformOverride', () => {
     // tenant's. Pinned so the narrowing cannot be "fixed" by widening it back.
     isSuperAdminMock.mockReturnValue(true);
     hasPlatformOverrideMock.mockReturnValue(false);
-    const { screen, wall } = await openTab('plus', GATED_TABS.find((r) => r.label === 'AI Knowledge')!, {
+    const { screen, wall } = await openTab('church', GATED_TABS.find((r) => r.label === 'AI Knowledge')!, {
       role: 'super_admin',
     });
     expect(screen).toBeNull();
@@ -614,28 +613,21 @@ describe('a super admin still sees everything through platformOverride', () => {
      *
      * `harvest.theharvest.app` resolves as a tenant slug, so `platformOverride`
      * is false there. `scripts/seed-platform-tenant.js` USED TO WRITE that
-     * tenant `plan: 'ministry'` — NOT one of the four ids in PLAN_ORDER — so
-     * `getPlanFeatures` fell through its `|| PLAN_FEATURES.plus` default and the
-     * platform's own admin surface was silently gated to INDIVIDUAL. `plan`
-     * being truthy also meant `!isTenantAdmin` was false, so the old bypass
-     * never fired here either.
+     * tenant a plan id the matrix did not know, so `getPlanFeatures` fell through
+     * to its default and the platform's own admin surface was silently gated to
+     * the cheapest paid tier.
      *
      * `!isWhiteLabel` now answers this the way every other platform-tenant check
      * in the shell already does (`isPlanReady`, `showInbox`, the logo choice):
-     * Harvest is not a customer, so there is no tier to hold it to.
-     *
-     * 🔴 THE SEED IS FIXED — THE-107/THE-218 moved it to `plan: 'max'`, and
-     * `THE-218.platform-tenant-plan.test.ts` pins that. THIS TEST IS UNCHANGED
-     * AND STILL RIGHT, because what it asserts was never "the seed writes
-     * 'ministry'": it is that an UNRECOGNISED plan id resolves to Individual,
-     * and that `!isWhiteLabel` unlocks the platform tenant REGARDLESS of what
-     * its plan field happens to say. Both remain true, and the second is the
-     * reason the shell was never actually gated on the seed being right.
+     * Harvest is not a customer, so there is no tier to hold it to. What this
+     * asserts is that the platform tenant is unlocked REGARDLESS of what its plan
+     * field happens to say, so it holds the tenant to a plan that WOULD wall the
+     * screen (free has no Notes) and shows the screen mounts anyway.
      */
     store.current = { ...store.current, currentTenantId: 'harvest' };
     hasPlatformOverrideMock.mockReturnValue(false);
-    const { screen } = await openTab('ministry' as TenantPlan, GATED_TABS.find((r) => r.label === 'Notes')!);
-    expect(getPlanFeatures('ministry' as TenantPlan).docs, "the seed's plan id falls back to Individual").toBe(false);
+    const { screen } = await openTab('free', GATED_TABS.find((r) => r.label === 'Notes')!);
+    expect(getPlanFeatures('free').docs, 'the plan on the platform tenant would wall Notes').toBe(false);
     expect(screen).toBe('AdminDocs');
   });
 });
@@ -644,12 +636,12 @@ describe('a super admin still sees everything through platformOverride', () => {
 describe("a limited admin's role gates still apply independently of plan", () => {
   it('withholds a tab the permission denies even on the tier that carries it', async () => {
     /* Ministry carries every cell, so anything missing here is the ROLE gate. */
-    const { nav } = await openTab('max', UNGATED_TABS[0], {
+    const { nav } = await openTab('ministry', UNGATED_TABS[0], {
       role: 'admin',
       permissions: { manageNewsletter: true },
     });
     expect(nav).toContain('Newsletter');
-    for (const denied of ['AI Knowledge', 'Notes', 'Forms', 'Accounting', 'Livestream', 'Community']) {
+    for (const denied of ['AI Knowledge', 'Notes', 'Forms', 'Giving records', 'Livestream', 'Community']) {
       expect(nav, `"${denied}" appeared without its permission`).not.toContain(denied);
     }
   });
@@ -658,7 +650,7 @@ describe("a limited admin's role gates still apply independently of plan", () =>
     const withSettings = await openTab('free', UNGATED_TABS[0], {
       role: 'admin', permissions: { manageSettings: true },
     });
-    const without = await openTab('max', UNGATED_TABS[0], {
+    const without = await openTab('ministry', UNGATED_TABS[0], {
       role: 'admin', permissions: { manageNewsletter: true },
     });
     expect(withSettings.nav, 'manageSettings on the cheapest tier still reaches Settings').toContain('Settings');
@@ -671,8 +663,8 @@ describe("a limited admin's role gates still apply independently of plan", () =>
     // and firestore.rules lets only manageBranding / manageSettings update that
     // document. Gating on the fundraising role would hand the editor to admins
     // whose Save can only ever be denied.
-    const noPerm = await openTab('max', UNGATED_TABS[0], { role: 'admin', permissions: { manageFundraising: true } });
-    const withPerm = await openTab('max', UNGATED_TABS[0], { role: 'admin', permissions: { manageSettings: true } });
+    const noPerm = await openTab('ministry', UNGATED_TABS[0], { role: 'admin', permissions: { manageFundraising: true } });
+    const withPerm = await openTab('ministry', UNGATED_TABS[0], { role: 'admin', permissions: { manageSettings: true } });
     // 🔴 And free — which has `fundraising: false` and no donate page — gets no
     // entry even holding the permission. Not a walled tab: an absent one.
     const freeTier = await openTab('free', UNGATED_TABS[0], { role: 'admin', permissions: { manageSettings: true } });
@@ -682,9 +674,9 @@ describe("a limited admin's role gates still apply independently of plan", () =>
   });
 
   it('needs BOTH the plan cell and the permission for Branding', async () => {
-    const noPerm = await openTab('max', UNGATED_TABS[0], { role: 'admin', permissions: {} });
-    const withPerm = await openTab('max', UNGATED_TABS[0], { role: 'admin', permissions: { manageBranding: true } });
-    const wrongTier = await openTab('plus', UNGATED_TABS[0], { role: 'admin', permissions: { manageBranding: true } });
+    const noPerm = await openTab('ministry', UNGATED_TABS[0], { role: 'admin', permissions: {} });
+    const withPerm = await openTab('ministry', UNGATED_TABS[0], { role: 'admin', permissions: { manageBranding: true } });
+    const wrongTier = await openTab('church', UNGATED_TABS[0], { role: 'admin', permissions: { manageBranding: true } });
     expect(noPerm.nav).not.toContain('Branding');
     expect(withPerm.nav).toContain('Branding');
     expect(wrongTier.nav).not.toContain('Branding');
@@ -799,6 +791,12 @@ describe('no feature flag changed', () => {
     // have taken the Signups screen and the analytics on it away in the same
     // edit. 🔴 NO PRICED TIER MOVED: all three still carry `crm: true`.
     //
+    // ⚠️ THE TWO-PLAN REPRICING collapsed plus / pro / max into Church and
+    // Ministry (a stored retired id reads as the tier it became), so the table
+    // below has two paid rows. Church carries the community chat (`communityGroups`)
+    // and notes (`docs`) that the old Individual row did not, and Ministry carries
+    // `aiKnowledge`, which the spec lists under it.
+    //
     // ⚠️ `smsAutomation` MOVED IN THE-314: true → false on plus and pro. SMS was
     // true on every paid tier while a church brought its own Twilio account and
     // the cell gated nothing. Harvest now RESELLS and pays for every segment, so
@@ -822,20 +820,14 @@ describe('no feature flag changed', () => {
         livestream: false, blog: false, crm: false, signups: true, fundraising: false, smsAutomation: false,
         customBranding: false, customDomain: false,
       },
-      plus: {
-        newsletterAutomation: false, aiKnowledge: false, docs: false, communityGroups: false,
+      church: {
+        newsletterAutomation: false, aiKnowledge: false, docs: true, communityGroups: true,
         customForms: false, accountingTools: false, eventRegistration: false, checkInSystem: false,
         livestream: false, blog: true, crm: true, signups: true, fundraising: true, smsAutomation: false,
         customBranding: false, customDomain: false,
       },
-      pro: {
-        newsletterAutomation: true, aiKnowledge: false, docs: true, communityGroups: false,
-        customForms: false, accountingTools: false, eventRegistration: false, checkInSystem: true,
-        livestream: true, blog: true, crm: true, signups: true, fundraising: true, smsAutomation: false,
-        customBranding: false, customDomain: false,
-      },
-      max: {
-        newsletterAutomation: true, aiKnowledge: false, docs: true, communityGroups: true,
+      ministry: {
+        newsletterAutomation: true, aiKnowledge: true, docs: true, communityGroups: true,
         customForms: true, accountingTools: true, eventRegistration: true, checkInSystem: true,
         livestream: true, blog: true, crm: true, signups: true, fundraising: true, smsAutomation: true,
         customBranding: true, customDomain: true,
@@ -844,6 +836,6 @@ describe('no feature flag changed', () => {
   });
 
   it('keeps the tier count and order the gates are derived from', () => {
-    expect(PLAN_ORDER).toEqual(['free', 'plus', 'pro', 'max']);
+    expect(PLAN_ORDER).toEqual(['free', 'church', 'ministry']);
   });
 });

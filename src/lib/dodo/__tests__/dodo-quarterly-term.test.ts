@@ -5,6 +5,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { stripComments } from '@/__tests__/__fixtures__/the-346-strip-comments';
 
 // `config.ts` throws at module load on a missing variable — by design, so a
 // missing env cannot silently bill the wrong catalogue. Hoisted so it runs
@@ -48,7 +49,9 @@ describe('the quarterly term is gone from the catalogue; the other two stay dist
 
   it.each(PRICED_PLAN_ORDER)('%s has a monthly and a yearly product and no quarterly one', (plan) => {
     expect(Object.keys(DODO_LIVE_CATALOGUE[plan])).toEqual(['monthly', 'yearly']);
-    expect(Object.values(DODO_LIVE_CATALOGUE[plan]).map((e) => e.productId)).not.toContain(ARCHIVED_QUARTERLY[plan]);
+    for (const id of Object.values(ARCHIVED_QUARTERLY)) {
+      expect(Object.values(DODO_LIVE_CATALOGUE[plan]).map((e) => e.productId)).not.toContain(id);
+    }
   });
 
   it('gives each tier its OWN product on each term — no id is shared', () => {
@@ -71,9 +74,8 @@ describe('the quarterly term is gone from the catalogue; the other two stay dist
     // built from; the live side is pinned per product id in
     // dodo-catalogue.test.ts, which owns it.
     const CENTS = {
-      plus: { monthly: 2000, yearly: 19000 },
-      pro: { monthly: 4000, yearly: 38000 },
-      max: { monthly: 8000, yearly: 75200 },
+      church: { monthly: 3000, yearly: 30000 },
+      ministry: { monthly: 9000, yearly: 90000 },
     } as const;
     for (const plan of PRICED_PLAN_ORDER) {
       for (const term of BILLING_TERMS) {
@@ -93,8 +95,8 @@ describe('the quarterly term is gone from the catalogue; the other two stay dist
   it("carries the app's own word into the product metadata, not Dodo's", () => {
     // Dodo says `annual` where the app says `yearly`. The reconciliation lives in
     // catalogue.ts and nowhere else.
-    expect(DODO_LIVE_CATALOGUE.max.yearly.dodoBillingPeriod).toBe('annual');
-    expect(DODO_LIVE_CATALOGUE.max.monthly.dodoBillingPeriod).toBe('monthly');
+    expect(DODO_LIVE_CATALOGUE.ministry.yearly.dodoBillingPeriod).toBe('annual');
+    expect(DODO_LIVE_CATALOGUE.ministry.monthly.dodoBillingPeriod).toBe('monthly');
   });
 });
 
@@ -234,10 +236,12 @@ describe('no price literal appears outside the single source', () => {
    * than obeyed. Comments carrying stale figures are still worth fixing; they
    * are not what this test is for.
    */
-  const codeOf = (file: string) =>
-    readFileSync(file, 'utf8')
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/^[ \t]*\/\/.*$/gm, '');
+  const stripped = new Map(modules.map((file) => [file, stripComments(readFileSync(file, 'utf8'))]));
+  const codeOf = (file: string) => {
+    const code = stripped.get(file);
+    if (code === undefined) throw new Error(`Missing source: ${file}`);
+    return code;
+  };
 
   it.each(CURRENT)('no module outside plan-features.ts restates $%s', (digits) => {
     for (const file of modules) {
@@ -253,7 +257,7 @@ describe('no price literal appears outside the single source', () => {
     }
   });
 
-  it('leaves PLAN_PRICING as the only table, with the six numbers in it', () => {
+  it('leaves PLAN_PRICING as the only table, with the four numbers in it', () => {
     expect(Object.keys(PLAN_PRICING).sort()).toEqual([...PRICED_PLAN_ORDER].sort());
     for (const plan of PRICED_PLAN_ORDER) {
       expect(Object.keys(PLAN_PRICING[plan]).sort()).toEqual([...BILLING_TERMS].sort());

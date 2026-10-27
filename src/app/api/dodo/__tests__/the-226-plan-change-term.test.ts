@@ -66,8 +66,8 @@ vi.hoisted(() => {
 const P = {
   individualMonthly: 'pdt_0NlJZKKU2AQSSH7E4ziKA',
   individualYearly: 'pdt_0NlJZMLLKZ5SVGEoSGDdk',
-  smallTeamMonthly: 'pdt_0NlJZMOMhmZWiG6UVDl8I',
-  smallTeamYearly: 'pdt_0NlJZMRWL8tuAZseUIRTP',
+  smallTeamMonthly: 'pdt_0NqdacWLx9z6CKsGRIKCW',
+  smallTeamYearly: 'pdt_0Nqdaca89LIHeUvrNxXwZ',
 } as const;
 
 const T = { tenant: 'final-test', sub: 'sub_0Nm71Tmd5dD90j2XipJD5' };
@@ -277,13 +277,13 @@ describe('an Individual tenant can change plan to Small Team on the same term', 
     dodoStub.changePlan.mockResolvedValue(undefined);
 
     const preview = await post(dodoChangePlan, {
-      tenantId: T.tenant, plan: 'pro', billing: 'monthly',
+      tenantId: T.tenant, plan: 'ministry', billing: 'monthly',
     });
     expect(preview.status).toBe(200);
-    expect((await preview.json()).preview).toMatchObject({ plan: 'pro', billing: 'monthly' });
+    expect((await preview.json()).preview).toMatchObject({ plan: 'ministry', billing: 'monthly' });
 
     const confirm = await post(dodoChangePlan, {
-      tenantId: T.tenant, plan: 'pro', billing: 'monthly', confirm: true,
+      tenantId: T.tenant, plan: 'ministry', billing: 'monthly', confirm: true,
     });
     expect(confirm.status).toBe(200);
     // 🔴 By LABEL: Small Team on the term the tenant was already on.
@@ -299,7 +299,7 @@ describe('an Individual tenant can change plan to Small Team on the same term', 
 
     const res = await get(dodoCurrentTerm, T.tenant);
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ plan: 'plus', billing: 'monthly' });
+    expect(await res.json()).toEqual({ plan: 'church', billing: 'monthly' });
   });
 });
 
@@ -319,7 +319,7 @@ describe('the same works on yearly', () => {
       dodoStub.changePlan.mockResolvedValue(undefined);
 
       const res = await post(dodoChangePlan, {
-        tenantId: T.tenant, plan: 'pro', billing: term, confirm: true,
+        tenantId: T.tenant, plan: 'ministry', billing: term, confirm: true,
       });
       expect(res.status).toBe(200);
       expect(dodoStub.changePlan).toHaveBeenCalledWith(
@@ -353,7 +353,7 @@ describe('a genuine term switch is still refused', () => {
       pastTrialOn(P.individualMonthly);
 
       const res = await post(dodoChangePlan, {
-        tenantId: T.tenant, plan: 'pro', billing: requested, confirm: true,
+        tenantId: T.tenant, plan: 'ministry', billing: requested, confirm: true,
       });
       expect(res.status).toBe(400);
       const body = await res.json();
@@ -373,7 +373,7 @@ describe('a genuine term switch is still refused', () => {
     pastTrialOn(P.individualMonthly);
 
     const res = await post(dodoChangePlan, {
-      tenantId: T.tenant, plan: 'pro', billing: 'quarterly', confirm: true,
+      tenantId: T.tenant, plan: 'ministry', billing: 'quarterly', confirm: true,
     });
     expect(res.status).toBe(400);
     expect((await res.json()).error).toContain('Invalid plan/billing');
@@ -388,7 +388,7 @@ describe('a genuine term switch is still refused', () => {
     pastTrialOn(P.individualYearly);
 
     const res = await post(dodoChangePlan, {
-      tenantId: T.tenant, plan: 'plus', billing: 'monthly', confirm: true,
+      tenantId: T.tenant, plan: 'church', billing: 'monthly', confirm: true,
     });
     expect(res.status).toBe(400);
     expect((await res.json()).error).toContain('Switching billing terms is not available yet');
@@ -462,7 +462,7 @@ describe('the ownership and failed-renewal guards still refuse', () => {
     });
     currentDb.store.set('users/member_9', { tenantId: T.tenant, role: 'member', plan: 'plus' });
 
-    const res = await post(dodoChangePlan, { tenantId: T.tenant, plan: 'pro', billing: 'monthly' });
+    const res = await post(dodoChangePlan, { tenantId: T.tenant, plan: 'ministry', billing: 'monthly' });
     expect(res.status).toBe(403);
     expect(dodoStub.changePlan).not.toHaveBeenCalled();
   });
@@ -486,7 +486,7 @@ describe('the ownership and failed-renewal guards still refuse', () => {
     });
     asOwner();
 
-    const res = await post(dodoChangePlan, { tenantId: T.tenant, plan: 'pro', billing: 'monthly' });
+    const res = await post(dodoChangePlan, { tenantId: T.tenant, plan: 'ministry', billing: 'monthly' });
     expect(res.status).toBe(409);
     const body = await res.json();
     expect(body.code).toBe('plan-change-unavailable-payment-failed');
@@ -506,7 +506,7 @@ describe('the ownership and failed-renewal guards still refuse', () => {
     currentDb.store.set('users/owner_1', { tenantId: T.tenant, role: 'admin', plan: 'plus' });
     asOwner();
 
-    expect((await post(dodoChangePlan, { tenantId: T.tenant, plan: 'pro', billing: 'monthly' })).status).toBe(409);
+    expect((await post(dodoChangePlan, { tenantId: T.tenant, plan: 'ministry', billing: 'monthly' })).status).toBe(409);
     expect((await get(dodoCurrentTerm, T.tenant)).status).toBe(409);
   });
 });
@@ -517,7 +517,7 @@ describe('the checkout route still refuses when tenantId is set', () => {
   it('refuses a signup checkout carrying a tenantId — the second-subscription guard', async () => {
     asOwner();
     const res = await post(dodoCheckout, {
-      plan: 'pro', billing: 'monthly', tenantId: T.tenant, email: 'pastor@final.example',
+      plan: 'ministry', billing: 'monthly', tenantId: T.tenant, email: 'pastor@final.example',
     });
     expect(res.status).toBe(400);
     expect((await res.json()).error).toContain('creates new ministries only');
@@ -535,6 +535,8 @@ describe('no price or product id changed', () => {
       'pdt_0NlJZKKU2AQSSH7E4ziKA', 'pdt_0NlJZMLLKZ5SVGEoSGDdk',
       'pdt_0NlJZMOMhmZWiG6UVDl8I', 'pdt_0NlJZMRWL8tuAZseUIRTP',
       'pdt_0NlJZMUUiT36FGMoiFXgl', 'pdt_0NlJZMXTnpRBAwTfBVpPs',
+      'pdt_0NqdacJTREPtSJuqtPCjm', 'pdt_0NqdacQf9gvgmw6DU7449',
+      'pdt_0NqdacWLx9z6CKsGRIKCW', 'pdt_0Nqdaca89LIHeUvrNxXwZ',
     ]) {
       expect(catalogue, id).toContain(id);
     }
@@ -550,16 +552,15 @@ describe('no price or product id changed', () => {
 
   it('pins the six prices, by tier and term', async () => {
     const { PLAN_PRICING } = await import('@/utils/plan-features');
-    expect(PLAN_PRICING.plus).toMatchObject({ monthly: 20, yearly: 190 });
-    expect(PLAN_PRICING.pro).toMatchObject({ monthly: 40, yearly: 380 });
+    expect(PLAN_PRICING.church).toMatchObject({ monthly: 30, yearly: 300 });
     // ⚠️ Moved by THE-343. The product ids this file pins are unchanged.
-    expect(PLAN_PRICING.max).toMatchObject({ monthly: 80, yearly: 752 });
+    expect(PLAN_PRICING.ministry).toMatchObject({ monthly: 90, yearly: 900 });
   });
 
   it('leaves every resolver mapping intact', () => {
-    expect(resolvePlanFromProductId(P.individualMonthly)).toEqual({ plan: 'plus', period: 'monthly' });
-    expect(resolvePlanFromProductId(P.individualYearly)).toEqual({ plan: 'plus', period: 'yearly' });
-    expect(resolvePlanFromProductId(P.smallTeamMonthly)).toEqual({ plan: 'pro', period: 'monthly' });
-    expect(resolvePlanFromProductId(P.smallTeamYearly)).toEqual({ plan: 'pro', period: 'yearly' });
+    expect(resolvePlanFromProductId(P.individualMonthly)).toEqual({ plan: 'church', period: 'monthly' });
+    expect(resolvePlanFromProductId(P.individualYearly)).toEqual({ plan: 'church', period: 'yearly' });
+    expect(resolvePlanFromProductId(P.smallTeamMonthly)).toEqual({ plan: 'ministry', period: 'monthly' });
+    expect(resolvePlanFromProductId(P.smallTeamYearly)).toEqual({ plan: 'ministry', period: 'yearly' });
   });
 });

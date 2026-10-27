@@ -205,6 +205,7 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
        `GIVING_SHARE_CARD_GIVING_OFF` with it. */
     ['cb82182d615d85a737709dc049734bc1906c4801bd1ac73e9f5ba477f0dc8ba9',
       'main + THE-357 — the share-sheet copy stops promising card giving; the URL builder and the host validation are byte-identical'],
+    ['0cb36dcf11675387d5e25e6e693cd6c76b62ac17ea2ea600923e44ab1b80c60b', 'Two-plan repricing - the share-sheet copy says giving records where it said accounting; the URL builder and the host validation are byte-identical (THE-378)'],
   ],
 };
 

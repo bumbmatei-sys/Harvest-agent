@@ -464,7 +464,7 @@ const AdminDonations: React.FC = () => {
                 stage &mdash; the same as someone who has never given. To record one, open the
                 contact in your CRM, press Add Activity, choose Donation and enter the amount.
                 That adds to their total given, dates the gift, and writes a donation receipt
-                &mdash; so the gift counts on your dashboard, in your accounting, on this
+                &mdash; so the gift counts on your dashboard, in your giving records, on this
                 year&apos;s giving statement, and in the member&apos;s own donation history.
                 A contact with no email address is the one exception: the gift still counts
                 for your church, but nothing can reach the person who gave it, and the CRM

@@ -111,7 +111,7 @@ afterEach(() => {
 });
 
 describe('POST /api/domains/provision — plan gate', () => {
-  it('returns 403 for a Small Team (pro) tenant', async () => {
+  it('returns 403 for a Church tenant (and a stored legacy pro, which reads as Church)', async () => {
     mockRequireAdmin.mockResolvedValue(mockUser());
     onPlan('pro');
     const fetchMock = mockVercelOk();
@@ -199,7 +199,7 @@ describe('POST /api/domains/provision — plan gate', () => {
 });
 
 describe('GET /api/domains/provision — plan gate', () => {
-  it('returns 403 for a Small Team (pro) tenant', async () => {
+  it('returns 403 for a Church tenant (and a stored legacy pro, which reads as Church)', async () => {
     mockRequireAdmin.mockResolvedValue(mockUser());
     onPlan('pro');
     const fetchMock = mockVercelOk();

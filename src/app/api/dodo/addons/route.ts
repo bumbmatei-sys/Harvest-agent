@@ -512,6 +512,7 @@ export async function POST(request: NextRequest) {
         context.plan,
         context.period,
         resolved.desired,
+        context.productId,
       );
       return NextResponse.json({
         preview: {
@@ -534,6 +535,7 @@ export async function POST(request: NextRequest) {
       context.plan,
       context.period,
       resolved.desired,
+      context.productId,
     );
 
     return NextResponse.json({

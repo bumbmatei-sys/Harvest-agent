@@ -4,7 +4,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { CheckCircle2, AlertCircle, Loader2, Sparkles, Rocket } from 'lucide-react';
 import { auth, db } from '../firebase';
 import { isSubdomainAvailable } from '../utils/tenant.utils';
-import { getPlanFeatures } from '../utils/plan-features';
+import { getPlanFeatures, toTenantPlan } from '../utils/plan-features';
 import { TenantPlan } from '../types/tenant.types';
 import { authFetch } from '../utils/auth-fetch';
 import BrandingSection from './settings/BrandingSection';
@@ -47,15 +47,15 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
         const snap = await getDoc(doc(db, 'tenants', tenantId));
         if (snap.exists()) {
           const data = snap.data();
-          setPlan((data.plan as TenantPlan) || 'plus');
+          setPlan(toTenantPlan(data.plan));
           setSubdomain((data.subdomain as string) || tenantId);
         } else {
           setSubdomain(tenantId);
-          setPlan('plus');
+          setPlan(toTenantPlan(undefined));
         }
       } catch {
         setSubdomain(tenantId);
-        setPlan('plus');
+        setPlan(toTenantPlan(undefined));
       }
     })();
   }, [tenantId]);
@@ -158,7 +158,7 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
                 `setupCompleted: false`, and a Forever Free tenant has paid
                 nothing to get here. Read off the tenant's OWN plan, loaded just
                 above, and failing closed to the payment badge: `plan` is null
-                until that read resolves and falls back to 'plus' when it
+                until that read resolves and falls back to 'church' when it
                 fails, so a church that paid is never left unacknowledged.
 
                 Free tenants created from THE-214 onward choose their address at

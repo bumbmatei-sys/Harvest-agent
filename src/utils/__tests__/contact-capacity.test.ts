@@ -46,12 +46,12 @@ const donorRows = (n: number) => Array.from({ length: n }, donorOnly);
 
 describe('resolveContactLimit — the number comes from PLAN_FEATURES', () => {
   // ── 8 ──────────────────────────────────────────────────────────────────────
-  it('resolves 500 / 2,000 / 4,000 for Individual / Small Team / Ministry', () => {
+  it('resolves 500 / 5,000 for Church / Ministry', () => {
     // 🔴 THE-370 RAISED ALL THREE, from 150 / 500 / 2,000. Free is asserted
     // separately below rather than folded into this list, because its 500 is a
     // different KIND of number — a bound on a free tier, not a rung on the paid
     // capacity ladder.
-    expect(PRICED_PLAN_ORDER.map((p) => resolveContactLimit(p))).toEqual([500, 2_000, 4_000]);
+    expect(PRICED_PLAN_ORDER.map((p) => resolveContactLimit(p))).toEqual([500, 5_000]);
   });
 
   it('resolves 500 for the Forever Free tier (THE-200)', () => {

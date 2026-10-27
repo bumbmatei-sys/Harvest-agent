@@ -433,14 +433,14 @@ describe('5d · no invoice is ever deleted SILENTLY', () => {
       .toContain('not only this row on the timeline');
   });
 
-  it('🔴 it names ACCOUNTING and the member’s GIVING STATEMENT by name', async () => {
+  it('🔴 it names GIVING RECORDS and the member’s GIVING STATEMENT by name', async () => {
     await mountCRM();
     await openContact('Grace Giver');
     await openRowMenuAndDelete('act-gift');
     const text = dialogText();
     for (const claim of [
       'dashboard giving figure',
-      'accounting totals',
+      'giving records totals',
       'giving history',
       'giving statement',
       'receipt number is not reused',
@@ -462,8 +462,8 @@ describe('5d · no invoice is ever deleted SILENTLY', () => {
     await openRowMenuAndDelete('a1');
     const text = dialogText();
     expect(text).not.toContain('receipt');
-    expect(text, 'a note is not said to leave accounting alone')
-      .toContain('your accounting totals and giving statements do not change');
+    expect(text, 'a note is not said to leave giving records alone')
+      .toContain('your giving records totals and giving statements do not change');
   });
 
   it(

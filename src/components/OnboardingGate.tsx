@@ -7,6 +7,7 @@ import { auth, db } from '../firebase';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { checkRosterAdmin } from '../utils/tenant.utils';
 import { TenantPlan } from '../types/tenant.types';
+import { canonicalPlanId } from '../utils/plan-id';
 import { SIGNUP_CHECKOUT_ENDPOINT, WALLET_FALLBACK_LINE, isReturningFromCheckout, readSignupBillingPeriod, type SignupBillingPeriod } from '../utils/signup-checkout';
 import {
   PAYMENT_CONFIRMATION_EVENT,
@@ -135,14 +136,14 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
         const tId = (data?.tenantId as string) || null;
         const role = (data?.role as string) || 'user';
         const inProgress = data?.signupInProgress === true;
-        setSignupPlan((data?.signupPlan as TenantPlan) || null);
+        setSignupPlan(canonicalPlanId(data?.signupPlan));
         // Validated on read-back, not just on write: the marker is a Firestore
         // doc the user can write to, and an unrecognised period must fall
         // closed to 'monthly' rather than travel into a checkout body.
         setSignupBilling(readSignupBillingPeriod(data?.signupBilling));
         setSignupMinistryName((data?.signupMinistryName as string) || '');
         setSignupSubdomain((data?.signupSubdomain as string) || '');
-        setAccountPlan((data?.plan as TenantPlan) || null);
+        setAccountPlan(canonicalPlanId(data?.plan));
 
         /**
          * 🔴 THE-214 — WATCHING A FREE SIGNUP COMPLETE, so the evangelist is
@@ -172,8 +173,8 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
          * which nothing here may do. `signupPlan` is read from the snapshot in
          * hand rather than from state, which has not re-rendered yet.
          */
-        const freeSignup = (data?.signupPlan as TenantPlan) === 'free'
-          || (data?.plan as TenantPlan) === 'free';
+        const freeSignup = canonicalPlanId(data?.signupPlan) === 'free'
+          || canonicalPlanId(data?.plan) === 'free';
         if (inProgress && !tId && freeSignup) freeSignupInFlight.current = true;
         if (tId && freeSignupInFlight.current) {
           freeSignupInFlight.current = false;
@@ -356,7 +357,7 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          plan: signupPlan || 'plus',
+          plan: signupPlan || 'church',
           billing: signupBilling,
           ministryName: signupMinistryName || '',
           ...(referrerId ? { referrerId } : {}),

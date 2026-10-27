@@ -51,6 +51,7 @@ import BillingAndPayments from './BillingAndPayments';
 import GraceWindowBanner from './GraceWindowBanner';
 import { AdminScreenHeader, AdminHeaderContext, AdminHeaderOverride } from './AdminScreenHeader';
 import { getEffectiveFeatures, hasBrandingAccess, AFFILIATE_PROGRAM_ENABLED, FREE_PLAN } from '../utils/plan-features';
+import { canonicalPlanId } from '../utils/plan-id';
 import { SMS_FEATURE_ENABLED } from '../lib/sms-feature';
 import { NEWSLETTER_FEATURE_ENABLED } from '../lib/newsletter-feature';
 import { isKnowledgeBaseEnabled } from '../lib/knowledge-base-feature';
@@ -469,7 +470,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // so it can lag the authoritative context value by a render on first mount. Fall
   // back to the context plan so `features`/`isTenantAdmin` are correct on the first
   // render once the plan is known, rather than waiting on that lagging sync.
-  const resolvedPlan = tenantPlan ?? ctxTenantPlan ?? null;
+  // Read through `canonicalPlanId`: the `=== 'church'` checks below compare to a
+  // tier id, and a retired id the store still holds must not slip past them.
+  const resolvedPlan = canonicalPlanId(tenantPlan ?? ctxTenantPlan) ?? null;
   // 🔴 `getEffectiveFeatures`, NEVER `getPlanFeatures` (THE-253). Every gate
   // below asks what THIS CHURCH holds, not what its tier publishes. The AI
   // Knowledge Base screen gates on `aiKnowledge`, which the AI Assistant add-on
@@ -859,7 +862,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     // and the admin holds either permission.
     navAllows(features && (features.accountingTools || features.givingStatements)) &&
       (hasFullAccess || perms.manageAccounting || perms.manageGivingStatements) &&
-      { id: 'accounting', label: 'Accounting', icon: Receipt },
+      { id: 'accounting', label: 'Giving records', icon: Receipt },
     // Custom Forms → CRM pipeline
     navAllows(features?.customForms) &&
       (hasFullAccess || perms.manageForms) &&
@@ -868,8 +871,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     // screen, which is why free still has the tab: attendance itself is off
     // there, and the QR half is what the tab is for on that plan.
     //
-    // 🔴 THE-373 — NOT ON INDIVIDUAL. The founder: hide Reach entirely on
-    // Individual. The other Reach ids are already off on that plan, so the
+    // 🔴 THE-373 — NOT ON CHURCH. The founder: hide Reach entirely on the
+    // cheapest paid tier (Individual then, Church now: it absorbed plus and pro).
+    // The other Reach ids are already off on that plan, so the
     // group was only this tab, and this tab was only visible because it had
     // no plan clause. Withholding it here empties the group, and an empty
     // group is omitted. Free keeps the tab. Small Team and Ministry keep it
@@ -877,7 +881,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     // would have taken the tab from free as well, which this is not. A platform
     // override still sees it: that bypass is how a super admin inspects a plan
     // they are not on.
-    (planUnlocked || resolvedPlan !== 'plus') &&
+    (planUnlocked || resolvedPlan !== 'church') &&
       (hasFullAccess || perms.manageCheckin || perms.manageQR) &&
       { id: 'checkin', label: 'Check-In', icon: QrCode },
     // Livestream (YouTube + live giving)
@@ -1452,7 +1456,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           ) : activeTab === 'accounting' ? (
             planAllows(features && (features.accountingTools || features.givingStatements))
               ? <div className="p-4 lg:p-0"><AdminAccounting canManageAccounting={hasFullAccess || !!perms.manageAccounting} canManageStatements={hasFullAccess || !!perms.manageGivingStatements} /></div>
-              : <PlanUpgradeScreen featureName="Accounting" featureKey="accounting" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
+              : <PlanUpgradeScreen featureName="Giving records" featureKey="accounting" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'forms' ? (
             planAllows(features?.customForms)
               ? <div className="p-4 lg:p-0"><AdminForms /></div>
@@ -1462,7 +1466,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             // must not mount this screen; the unknown-tab guard also sends the
             // URL back to the dashboard. Free still mounts it (the QR half),
             // and so does every plan except Individual.
-            resolvedPlan === 'plus' && !planUnlocked
+            resolvedPlan === 'church' && !planUnlocked
               ? <div className="flex flex-col items-center justify-center h-full text-faint">
                   <p className="text-lg font-medium">Page not found.</p>
                 </div>

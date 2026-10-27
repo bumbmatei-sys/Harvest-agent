@@ -82,8 +82,8 @@ const AdminChurches: React.FC<AdminChurchesProps> = ({ onOpenBilling }) => {
   // only, which is the one tier that still has a campus cap.
   const [showCampusOffer, setShowCampusOffer] = useState(false);
 
-  // 🔴 THE UNKNOWN/LOADING PLAN STILL FALLS BACK TO 'plus', AND STILL FAILS
-  // CLOSED — unchanged by THE-370. `plus` is the cheapest PAID tier, so falling
+  // 🔴 THE UNKNOWN/LOADING PLAN STILL FALLS BACK TO 'church', AND STILL FAILS
+  // CLOSED — unchanged by THE-370. `church` is the cheapest PAID tier, so falling
   // back to it grants the least of anything a payer gets. What it grants for
   // campuses is now UNLIMITED rather than 1, and that is the same direction as
   // before, not a loosening: the fallback's job is to avoid showing a paying
@@ -91,7 +91,7 @@ const AdminChurches: React.FC<AdminChurchesProps> = ({ onOpenBilling }) => {
   // longer a thing any paying church can be refused. The cap that still bites —
   // free's 0 — is never reached by this fallback, because an unknown plan is not
   // free.
-  const maxChurches = getPlanFeatures(tenantPlan ?? 'plus').maxChurches;
+  const maxChurches = getPlanFeatures(tenantPlan ?? 'church').maxChurches;
 
   // 🔴 UNLIMITED IS -1, SO IT IS TESTED BEFORE THE COMPARISON. `length >= -1` is
   // true forever, which would turn "unlimited" into "at the limit immediately" —

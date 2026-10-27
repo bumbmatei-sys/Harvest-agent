@@ -84,9 +84,9 @@ const {
   getUsageSnapshot,
 } = await import('../rag-usage');
 
-// plus limits (the default): ingestTokensTotal 500_000, queryTokensPerMonth 2_000_000
-const PLUS_CEIL = 500_000;
-const PLUS_QUERY_CAP = 2_000_000;
+// church limits (the default): ingestTokensTotal 500_000, queryTokensPerMonth 2_000_000
+const CHURCH_CEIL = 500_000;
+const CHURCH_QUERY_CAP = 2_000_000;
 const JULY = new Date(Date.UTC(2026, 6, 15)); // 2026-07-15
 
 beforeEach(() => {
@@ -111,16 +111,25 @@ describe('monthKey / approxTokens', () => {
 
 describe('getTenantPlanLimits', () => {
   it('reads the tenant plan', async () => {
-    store.set('tenants/t-pro', { plan: 'pro' });
-    const limits = await getTenantPlanLimits('t-pro');
-    expect(limits.queryTokensPerMonth).toBe(10_000_000);
-    expect(limits.ingestTokensTotal).toBe(2_000_000);
+    store.set('tenants/t-ministry', { plan: 'ministry' });
+    const limits = await getTenantPlanLimits('t-ministry');
+    expect(limits.queryTokensPerMonth).toBe(50_000_000);
+    expect(limits.ingestTokensTotal).toBe(10_000_000);
   });
 
-  it('falls back to plus for a missing tenant or unknown plan', async () => {
-    expect((await getTenantPlanLimits('t-missing')).ingestTokensTotal).toBe(PLUS_CEIL);
+  it('reads a stored legacy id as the tier it became (plus/pro -> church, max -> ministry)', async () => {
+    store.set('tenants/t-plus', { plan: 'plus' });
+    store.set('tenants/t-pro', { plan: 'pro' });
+    store.set('tenants/t-max', { plan: 'max' });
+    expect((await getTenantPlanLimits('t-plus')).ingestTokensTotal).toBe(CHURCH_CEIL);
+    expect((await getTenantPlanLimits('t-pro')).ingestTokensTotal).toBe(CHURCH_CEIL);
+    expect((await getTenantPlanLimits('t-max')).ingestTokensTotal).toBe(10_000_000);
+  });
+
+  it('falls back to church for a missing tenant or unknown plan', async () => {
+    expect((await getTenantPlanLimits('t-missing')).ingestTokensTotal).toBe(CHURCH_CEIL);
     store.set('tenants/t-weird', { plan: 'enterprise-x' });
-    expect((await getTenantPlanLimits('t-weird')).ingestTokensTotal).toBe(PLUS_CEIL);
+    expect((await getTenantPlanLimits('t-weird')).ingestTokensTotal).toBe(CHURCH_CEIL);
   });
 });
 
@@ -131,7 +140,7 @@ describe('checkAndReserveIngest', () => {
     const gate = await checkAndReserveIngest('t1', 100);
     expect(gate.allowed).toBe(true);
     expect(gate.used).toBe(100);
-    expect(gate.ceiling).toBe(PLUS_CEIL);
+    expect(gate.ceiling).toBe(CHURCH_CEIL);
     expect(store.get('tenants/t1/usage/ingest')?.ingestTokens).toBe(100);
   });
 
@@ -143,23 +152,23 @@ describe('checkAndReserveIngest', () => {
   });
 
   it('BLOCKS and writes nothing when the doc would exceed the ceiling', async () => {
-    store.set('tenants/t1/usage/ingest', { ingestTokens: PLUS_CEIL - 10 });
+    store.set('tenants/t1/usage/ingest', { ingestTokens: CHURCH_CEIL - 10 });
     const gate = await checkAndReserveIngest('t1', 20);
     expect(gate.allowed).toBe(false);
-    expect(gate.used).toBe(PLUS_CEIL - 10);
+    expect(gate.used).toBe(CHURCH_CEIL - 10);
     // No reservation written on a block.
-    expect(store.get('tenants/t1/usage/ingest')?.ingestTokens).toBe(PLUS_CEIL - 10);
+    expect(store.get('tenants/t1/usage/ingest')?.ingestTokens).toBe(CHURCH_CEIL - 10);
   });
 
   it('two concurrent near-limit reserves cannot BOTH pass (transaction correctness)', async () => {
-    store.set('tenants/t1/usage/ingest', { ingestTokens: PLUS_CEIL - 50 });
+    store.set('tenants/t1/usage/ingest', { ingestTokens: CHURCH_CEIL - 50 });
     const [a, b] = await Promise.all([
       checkAndReserveIngest('t1', 40),
       checkAndReserveIngest('t1', 40),
     ]);
     const passed = [a, b].filter((g) => g.allowed).length;
     expect(passed).toBe(1); // exactly one — the second sees the first's write
-    expect(store.get('tenants/t1/usage/ingest')?.ingestTokens).toBe(PLUS_CEIL - 10);
+    expect(store.get('tenants/t1/usage/ingest')?.ingestTokens).toBe(CHURCH_CEIL - 10);
   });
 });
 
@@ -186,13 +195,13 @@ describe('checkQueryBudget', () => {
     const b = await checkQueryBudget('t1', JULY);
     expect(b.allowed).toBe(true);
     expect(b.used).toBe(0);
-    expect(b.cap).toBe(PLUS_QUERY_CAP);
+    expect(b.cap).toBe(CHURCH_QUERY_CAP);
   });
 
   it('blocks at/over cap, allows strictly under', async () => {
-    store.set('tenants/t1/usage/2026-07', { queryTokens: PLUS_QUERY_CAP });
+    store.set('tenants/t1/usage/2026-07', { queryTokens: CHURCH_QUERY_CAP });
     expect((await checkQueryBudget('t1', JULY)).allowed).toBe(false);
-    store.set('tenants/t1/usage/2026-07', { queryTokens: PLUS_QUERY_CAP - 1 });
+    store.set('tenants/t1/usage/2026-07', { queryTokens: CHURCH_QUERY_CAP - 1 });
     expect((await checkQueryBudget('t1', JULY)).allowed).toBe(true);
   });
 });
@@ -217,17 +226,17 @@ describe('incrementQueryTokens', () => {
 
 describe('getUsageSnapshot', () => {
   it('reads both counters + plan limits, missing docs as 0', async () => {
-    store.set('tenants/t1', { plan: 'pro' });
+    store.set('tenants/t1', { plan: 'ministry' });
     store.set('tenants/t1/usage/ingest', { ingestTokens: 1234 });
     store.set('tenants/t1/usage/2026-07', { queryTokens: 5678 });
     const snap = await getUsageSnapshot('t1', JULY);
     expect(snap).toEqual({
-      plan: 'pro',
+      plan: 'ministry',
       month: '2026-07',
       queryTokensUsed: 5678,
-      queryTokensCap: 10_000_000,
+      queryTokensCap: 50_000_000,
       ingestTokensUsed: 1234,
-      ingestTokensCeiling: 2_000_000,
+      ingestTokensCeiling: 10_000_000,
     });
   });
 
@@ -235,6 +244,6 @@ describe('getUsageSnapshot', () => {
     const snap = await getUsageSnapshot('t-fresh', JULY);
     expect(snap.queryTokensUsed).toBe(0);
     expect(snap.ingestTokensUsed).toBe(0);
-    expect(snap.plan).toBe('plus');
+    expect(snap.plan).toBe('church');
   });
 });

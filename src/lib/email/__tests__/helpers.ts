@@ -82,7 +82,7 @@ export function memoryStore(seed: {
   const created: NewContact[] = [];
   const updated: ContactUpdate[] = [];
   const store: EmailStore = {
-    async getTenant() { return { name: 'Grace Church', plan: seed.plan ?? 'pro', status: 'active', ownerId: 'ownerId' in seed ? seed.ownerId ?? null : 'owner', createdAt: 'createdAt' in seed ? seed.createdAt : '2020-01-01T00:00:00.000Z' }; },
+    async getTenant() { return { name: 'Grace Church', plan: seed.plan ?? 'ministry', status: 'active', ownerId: 'ownerId' in seed ? seed.ownerId ?? null : 'owner', createdAt: 'createdAt' in seed ? seed.createdAt : '2020-01-01T00:00:00.000Z' }; },
     async getLimits() { return limits; },
     async saveLimits(l) { limits = l; },
     async getSendingState() { return sending; },

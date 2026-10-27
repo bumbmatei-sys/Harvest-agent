@@ -104,12 +104,12 @@ import {
 } from '@/lib/dodo/catalogue';
 import { __setDodoClientForTests } from '@/lib/dodo/dodo-provider';
 
-const PLUS_MONTHLY = requireProductId('plus', 'monthly');
+const PLUS_MONTHLY = requireProductId('church', 'monthly');
 
 /**
  * 🔴 WHAT THE LIVE INDIVIDUAL PRODUCT CARRIES, as Dodo reports it (THE-160).
  *
- * Read from the live `pdt_…` behind `requireProductId('plus', 'monthly')`:
+ * Read from the live `pdt_…` behind `requireProductId('church', 'monthly')`:
  * AI Assistant and Admin Seat — and NOT Unlimited Contacts, which is attached to
  * the Ministry products only and is the attachment THE-160 exists to respect.
  *

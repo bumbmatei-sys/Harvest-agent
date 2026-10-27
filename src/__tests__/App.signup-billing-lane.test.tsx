@@ -207,11 +207,11 @@ afterEach(() => {
 
 describe('the billing period survives the auth redirect (THE-135)', () => {
   it('an annual signup link survives the auth redirect and buys the annual product', async () => {
-    const { url, body } = await signupFunnel('/?signup=max&billing=yearly');
+    const { url, body } = await signupFunnel('/?signup=ministry&billing=yearly');
     // The client's full say on which product is bought is (plan, billing) —
     // this pair is what the server maps to the annual Ministry product.
     expect(body.billing).toBe('yearly');
-    expect(body.plan).toBe('max');
+    expect(body.plan).toBe('ministry');
     expect(url).toBe('/api/dodo/checkout');
     // The marker agrees, so the restart-after-abandonment path re-buys annual.
     expect(setDoc).toHaveBeenCalledTimes(1);
@@ -219,13 +219,27 @@ describe('the billing period survives the auth redirect (THE-135)', () => {
   });
 
   it('a monthly signup still buys monthly', async () => {
-    const { body } = await signupFunnel('/?signup=pro&billing=monthly');
+    const { body } = await signupFunnel('/?signup=church&billing=monthly');
     expect(body.billing).toBe('monthly');
-    expect(body.plan).toBe('pro');
+    expect(body.plan).toBe('church');
+  });
+
+  it('a link written before the repricing still lands on the tier it became', async () => {
+    // The marketing site used to send ?signup=max and ?signup=pro. Those links
+    // are in the wild; they resolve at read time and buy Ministry and Church.
+    const annual = await signupFunnel('/?signup=max&billing=yearly');
+    expect(annual.body.plan).toBe('ministry');
+    expect(annual.body.billing).toBe('yearly');
+  });
+
+  it('a legacy pro link buys Church, monthly', async () => {
+    const { body } = await signupFunnel('/?signup=pro&billing=monthly');
+    expect(body.plan).toBe('church');
+    expect(body.billing).toBe('monthly');
   });
 
   it('no billing period in the link still buys monthly', async () => {
-    const { body } = await signupFunnel('/?signup=pro');
+    const { body } = await signupFunnel('/?signup=church');
     expect(body.billing).toBe('monthly');
     // Nothing was stored either: an absent period is not a value.
     expect(sessionStorage.getItem(SIGNUP_BILLING_STORAGE_KEY)).toBeNull();
@@ -234,7 +248,7 @@ describe('the billing period survives the auth redirect (THE-135)', () => {
   it('an invalid stored period fails closed to monthly', async () => {
     // Captured raw off the URL exactly as a hostile/mangled link would write
     // it; validation happens on read-back, and the raw value never leaves.
-    const { body } = await signupFunnel('/?signup=pro&billing=every-decade');
+    const { body } = await signupFunnel('/?signup=church&billing=every-decade');
     expect(body.billing).toBe('monthly');
     expect(fetchMock.mock.calls[0][1].body).not.toContain('every-decade');
   });
@@ -244,7 +258,7 @@ describe('the lane has the same lifecycle as the plan', () => {
   it('a stale period does not leak into a later non-signup visit in the same tab', async () => {
     // (a) Funnel finished: onboardingCompleted clears the plan — the period
     // must go with it, or the NEXT signup in this tab buys a term nobody chose.
-    sessionStorage.setItem('harvest_signup', 'max');
+    sessionStorage.setItem('harvest_signup', 'ministry');
     sessionStorage.setItem(SIGNUP_BILLING_STORAGE_KEY, 'yearly');
     state.user = USER;
     state.userDoc = { exists: true, data: { role: 'user', tenantId: null, onboardingCompleted: true } };
@@ -257,7 +271,7 @@ describe('the lane has the same lifecycle as the plan', () => {
   it('the affiliate surface drops a stale period exactly as it drops the stale plan', async () => {
     // (b) The non-signup surface: the affiliate host clears any stashed signup
     // intent — the period is cleared beside it.
-    sessionStorage.setItem('harvest_signup', 'max');
+    sessionStorage.setItem('harvest_signup', 'ministry');
     sessionStorage.setItem(SIGNUP_BILLING_STORAGE_KEY, 'yearly');
     setURL('https://affiliate.theharvest.app/auth');
     await mountApp();
@@ -270,9 +284,9 @@ describe('the lane has the same lifecycle as the plan', () => {
     // (no ?billing=) in the same tab. The stale 'yearly' must not survive into
     // that signup — that is the live defect pointed the other way, and worse.
     sessionStorage.setItem(SIGNUP_BILLING_STORAGE_KEY, 'yearly');
-    setURL(`${APEX}/?signup=pro`);
+    setURL(`${APEX}/?signup=church`);
     await mountApp();
-    expect(sessionStorage.getItem('harvest_signup')).toBe('pro');
+    expect(sessionStorage.getItem('harvest_signup')).toBe('church');
     expect(sessionStorage.getItem(SIGNUP_BILLING_STORAGE_KEY)).toBeNull();
   });
 });

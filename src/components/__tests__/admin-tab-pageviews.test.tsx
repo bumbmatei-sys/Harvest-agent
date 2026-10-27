@@ -359,7 +359,7 @@ describe('10 — changing an admin tab emits a pageview', () => {
     // route of its own — so the walk is still seven distinct sections.
     // 'Campuses', not 'Campus': THE-370 made the nav label unconditionally
     // plural, because no tier is capped at one campus any more.
-    for (const label of ['CRM', 'Campuses', 'Courses', 'Notes', 'Accounting', 'Forms', 'Livestream']) {
+    for (const label of ['CRM', 'Campuses', 'Courses', 'Notes', 'Giving records', 'Forms', 'Livestream']) {
       await clickTab(label);
     }
     // One for the load, then one per tab change. None of them silent.
@@ -367,7 +367,7 @@ describe('10 — changing an admin tab emits a pageview', () => {
     // 🔴 THE-227, and the whole point of it: seven tab changes are seven
     // DISTINCT routes now, not seven copies of one bucket. This assertion was
     // `Array(7).fill('/admin/[section]')` — a sequence that is identical whether
-    // the founder walked CRM or walked Accounting seven times.
+    // the founder walked CRM or walked Giving records seven times.
     expect(routes().slice(1)).toEqual([
       '/admin/crm',
       '/admin/churches',

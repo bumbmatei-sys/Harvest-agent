@@ -464,6 +464,13 @@ function addonsPayload(addons: readonly DodoAddonSelection[]): Array<DodoAddonSe
 /**
  * What confirming a plan change would charge, before anything is charged.
  *
+ * 🔴 `currentProductId` IS FOR THE ADD-ON PATH ONLY. An add-on change keeps the
+ * subscription on the product it is already on, which for a legacy subscription
+ * is a retired product that `requireProductId` will never return (the offered
+ * catalogue cannot name one). Omitting it would silently MOVE that church onto
+ * the new Church or Ministry product as a side effect of buying a seat. A
+ * real plan change omits it and gets the target plan's product.
+ *
  * A church committing to a proration it cannot see is the statement-PDF bug in
  * a different shape, so the route shows this to the owner before it will accept
  * a confirm.
@@ -477,8 +484,9 @@ export async function previewDodoPlanChange(
   plan: PricedPlan,
   period: BillingPeriod,
   addons: readonly DodoAddonSelection[],
+  currentProductId?: string,
 ): Promise<DodoPlanChangePreview> {
-  const productId = requireProductId(plan, period);
+  const productId = currentProductId || requireProductId(plan, period);
   const preview = await client().subscriptions.previewChangePlan(subscriptionId, {
     product_id: productId,
     // `quantity` is the count of the BASE PRODUCT — one subscription, one plan.
@@ -516,8 +524,9 @@ export async function executeDodoPlanChange(
   plan: PricedPlan,
   period: BillingPeriod,
   addons: readonly DodoAddonSelection[],
+  currentProductId?: string,
 ): Promise<void> {
-  const productId = requireProductId(plan, period);
+  const productId = currentProductId || requireProductId(plan, period);
   await client().subscriptions.changePlan(subscriptionId, {
     product_id: productId,
     // The base product's count, not an add-on's. See `previewDodoPlanChange`.

@@ -69,7 +69,7 @@ describe('sends are atomic', () => {
   });
 
   it('concurrent broadcasts of one ministry cannot both pass the monthly allowance', async () => {
-    const ctx = build({ contacts: many(3), usage: 4996 }, mockProvider({ delayMs: 5 }));
+    const ctx = build({ contacts: many(3), usage: 9996 }, mockProvider({ delayMs: 5 }));
     const a = await draftIn(ctx, { subject: 'A' });
     const b = await draftIn(ctx, { subject: 'B' });
     const [ta, tb] = [await previewToken(ctx, a), await previewToken(ctx, b)];
@@ -77,8 +77,8 @@ describe('sends are atomic', () => {
     expect(results.filter((r) => r.ok)).toHaveLength(1);
     expect(results.filter((r) => !r.ok)).toMatchObject([{ error: 'volume_cap' }]);
     expect(ctx.provider.sent).toHaveLength(3);
-    expect(ctx.mem.used).toBe(4999);
-    expect(ctx.mem.used).toBeLessThanOrEqual(5000);
+    expect(ctx.mem.used).toBe(9999);
+    expect(ctx.mem.used).toBeLessThanOrEqual(10000);
   });
 
   it('the allowance is reserved before the first email goes out', async () => {

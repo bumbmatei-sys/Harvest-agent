@@ -209,15 +209,17 @@ describe('10 - it is not shown on a plan without it', () => {
       .toMatch(/onDonate\?:\s*\(\)\s*=>\s*void/);
   });
 
-  it('livestream itself is a Pro and Ministry feature, and gated where it is reached', () => {
+  it('livestream itself is a Ministry feature, and gated where it is reached', () => {
     /**
      * The plan matrix by NAME rather than by line - THE-331 pinned
      * `AdminCommunity.tsx:491` and a deletion moved it to `:311`.
      */
     expect(getPlanFeatures('free').livestream, 'Free gained livestream').toBe(false);
-    expect(getPlanFeatures('plus').livestream, 'Individual gained livestream').toBe(false);
-    expect(getPlanFeatures('pro').livestream, 'Small Team lost livestream').toBe(true);
-    expect(getPlanFeatures('max').livestream, 'Ministry lost livestream').toBe(true);
+    expect(getPlanFeatures('church').livestream, 'Church gained livestream').toBe(false);
+    expect(getPlanFeatures('ministry').livestream, 'Ministry lost livestream').toBe(true);
+    // A stored retired id reads as the tier it became, so `pro` loses it with Church.
+    expect(getPlanFeatures('pro').livestream, 'a stored pro is read as Church').toBe(false);
+    expect(getPlanFeatures('max').livestream, 'a stored max is read as Ministry').toBe(true);
 
     // The admin screen that starts a stream is plan-gated, so a plan without
     // the feature has no way to make one ACTIVE ...

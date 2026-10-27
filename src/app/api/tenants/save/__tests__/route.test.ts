@@ -57,7 +57,7 @@ describe('POST /api/tenants/save — super-admin tenant create/update with dual-
 
   it('creates the public doc WITHOUT the roster and the tenant_private doc WITH it, in one batch', async () => {
     const res = await POST(makeRequest({
-      name: 'Grace', subdomain: 'Grace-Church', plan: 'pro',
+      name: 'Grace', subdomain: 'Grace-Church', plan: 'pro', // a retired id is stored as the tier it became
       adminEmails: ['pastor@grace.org'], config: { description: 'A church' },
     }));
     expect(res.status).toBe(200);
@@ -67,7 +67,7 @@ describe('POST /api/tenants/save — super-admin tenant create/update with dual-
     expect(mockBatchCreate).toHaveBeenCalledWith(
       expect.objectContaining({ __coll: 'tenants', id: 'grace-church' }),
       expect.objectContaining({
-        name: 'Grace', subdomain: 'grace-church', plan: 'pro', status: 'active',
+        name: 'Grace', subdomain: 'grace-church', plan: 'church', status: 'active',
       }),
     );
     expect(mockBatchCreate.mock.calls[0][1].adminEmails).toBeUndefined();

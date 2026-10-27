@@ -128,15 +128,15 @@ describe('platform limits editor (super admin)', () => {
     const onSaved = vi.fn();
     await mount(<PlatformLimitsCard api={api} limits={DEFAULT_EMAIL_LIMITS} onSaved={onSaved} />);
     const field = (id: string) => need(document.querySelector<HTMLInputElement>(`#${id}`), id);
-    expect(field('limit-monthly-max').value).toBe('10000');
+    expect(field('limit-monthly-ministry').value).toBe('10000');
     expect(field('limit-bounce').value).toBe('5');
-    await type(field('limit-monthly-pro'), '7500');
+    await type(field('limit-monthly-church'), '7500');
     await type(field('limit-warn'), '90');
     await type(field('limit-bounce'), '2');
     await click(need(byName('button', 'Save limits'), 'save'));
     await flush();
     expect(api.saveLimits).toHaveBeenCalledWith(expect.objectContaining({
-      monthlySends: { free: 0, plus: 5000, pro: 7500, max: 10000 },
+      monthlySends: { free: 0, church: 7500, ministry: 10000 },
       warnAtPercent: 90,
       pack: { size: 10000, priceUsd: null },
       autoPause: expect.objectContaining({ bounceRate: 0.02 }),

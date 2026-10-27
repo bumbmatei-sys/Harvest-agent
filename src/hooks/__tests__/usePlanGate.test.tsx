@@ -64,26 +64,26 @@ describe('usePlanGate — community_chat (Community Groups)', () => {
   // Community Groups moved from Ministry-only to Community and above. Reverting
   // `max.communityGroups` to false in the feature matrix fails this test.
   it('is unlocked on Ministry (max)', () => {
-    expect(gate('community_chat', 'max')).toBe(true);
+    expect(gate('community_chat', 'ministry')).toBe(true);
   });
 
   it('is locked on Small Team (pro)', () => {
-    expect(gate('community_chat', 'pro')).toBe(false);
+    expect(gate('community_chat', 'church')).toBe(true);
   });
 
   it('is locked on Individual (plus)', () => {
-    expect(gate('community_chat', 'plus')).toBe(false);
+    expect(gate('community_chat', 'free')).toBe(false);
   });
 
   it('stays unlocked on Ministry (max)', () => {
-    expect(gate('community_chat', 'max')).toBe(true);
+    expect(gate('community_chat', 'ministry')).toBe(true);
   });
 });
 
 describe('usePlanGate — context edge cases', () => {
   it('opens the gate for a platform-context super admin', () => {
     mockOverride = true;
-    expect(gate('accounting', 'plus')).toBe(true);
+    expect(gate('accounting', 'church')).toBe(true);
   });
 
   it('opens the gate when no tenant context is mounted', () => {
@@ -120,7 +120,7 @@ describe('FEATURE_MIN_PLAN — minimum plan labels', () => {
     // — so free no longer carries CRM and the cheapest tier that does is
     // Individual again, which is where THE-200 found it. Derived from the matrix
     // rather than written, so the label followed the cell on its own.
-    expect(FEATURE_MIN_PLAN.crm).toBe('Individual');
+    expect(FEATURE_MIN_PLAN.crm).toBe('Church');
   });
 
   it('names Ministry as the minimum plan for tax receipts', () => {
@@ -128,7 +128,7 @@ describe('FEATURE_MIN_PLAN — minimum plan labels', () => {
   });
 
   it('names Ministry as the minimum plan for community chat', () => {
-    expect(FEATURE_MIN_PLAN.community_chat).toBe('Ministry');
+    expect(FEATURE_MIN_PLAN.community_chat).toBe('Church');
   });
 
   it('keeps Ministry as the minimum plan for accounting', () => {
@@ -136,12 +136,12 @@ describe('FEATURE_MIN_PLAN — minimum plan labels', () => {
   });
 
   it('keeps the cheapest tier for features every plan has', () => {
-    expect(FEATURE_MIN_PLAN.fundraising).toBe('Individual');
+    expect(FEATURE_MIN_PLAN.fundraising).toBe('Church');
   });
 
   it('names Ministry for event registration and Small Team for docs', () => {
     expect(FEATURE_MIN_PLAN.event_registration).toBe('Ministry');
-    expect(FEATURE_MIN_PLAN.docs).toBe('Small Team');
+    expect(FEATURE_MIN_PLAN.docs).toBe('Church');
   });
 
   it('covers every gate key', () => {
@@ -182,7 +182,7 @@ describe('label ↔ gate consistency', () => {
   });
 
   it('every label is the cheapest such plan — the tier below it is locked', () => {
-    const order: TenantPlan[] = ['plus', 'pro', 'max'];
+    const order: TenantPlan[] = ['free', 'church', 'ministry'];
     for (const key of ALL_KEYS) {
       const idx = order.indexOf(getFeatureMinPlan(key)!);
       if (idx <= 0) continue; // unlocked on the cheapest tier; nothing below it

@@ -120,25 +120,25 @@ afterEach(() => {
 describe('the restarted checkout after an abandoned payment keeps the chosen period', () => {
   it('restarts an annual signup on the annual term, same plan, same ministry name', async () => {
     await abandonAndRestart({
-      signupPlan: 'pro',
+      signupPlan: 'church',
       signupBilling: 'yearly',
       signupMinistryName: 'Grace Chapel',
     });
     const body = restartBody();
     expect(body.billing).toBe('yearly');
-    expect(body.plan).toBe('pro');
+    expect(body.plan).toBe('church');
     expect(body.ministryName).toBe('Grace Chapel');
   });
 
   it('restarts a monthly signup on monthly, unchanged', async () => {
-    await abandonAndRestart({ signupPlan: 'plus', signupBilling: 'monthly', signupMinistryName: 'Hope' });
+    await abandonAndRestart({ signupPlan: 'church', signupBilling: 'monthly', signupMinistryName: 'Hope' });
     expect(restartBody().billing).toBe('monthly');
   });
 
   it('a marker WITHOUT a period (written before this change) restarts on monthly', async () => {
     // Every in-flight signup that predates signupBilling behaves exactly as it
     // would have: the term it was actually sold.
-    await abandonAndRestart({ signupPlan: 'plus', signupMinistryName: 'Hope' });
+    await abandonAndRestart({ signupPlan: 'church', signupMinistryName: 'Hope' });
     expect(restartBody().billing).toBe('monthly');
   });
 
@@ -148,7 +148,7 @@ describe('the restarted checkout after an abandoned payment keeps the chosen per
     // the allowlist genuinely rejects. Quarterly was withdrawn on 2026-10-23 and
     // is unrecognised again — it has its own case below — but 'biennial' stays,
     // so this one keeps passing for a reason that does not depend on the history.
-    await abandonAndRestart({ signupPlan: 'plus', signupBilling: 'biennial', signupMinistryName: 'Hope' });
+    await abandonAndRestart({ signupPlan: 'church', signupBilling: 'biennial', signupMinistryName: 'Hope' });
     expect(restartBody().billing).toBe('monthly');
     expect(fetchMock.mock.calls[0][1].body).not.toContain('biennial');
   });
@@ -156,7 +156,7 @@ describe('the restarted checkout after an abandoned payment keeps the chosen per
   it("Dodo's own word for the annual term is still refused", async () => {
     // The original silent mis-sell: 'annual' is Dodo's vocabulary, not the
     // app's, and it must fail closed rather than start an annual subscription.
-    await abandonAndRestart({ signupPlan: 'plus', signupBilling: 'annual', signupMinistryName: 'Hope' });
+    await abandonAndRestart({ signupPlan: 'church', signupBilling: 'annual', signupMinistryName: 'Hope' });
     expect(restartBody().billing).toBe('monthly');
   });
 
@@ -165,7 +165,7 @@ describe('the restarted checkout after an abandoned payment keeps the chosen per
     // can still carry `signupBilling: 'quarterly'` in storage. There is no
     // quarterly product to restart it on, so the restart must NOT send the
     // word onward; it lands on monthly like any other unrecognised value.
-    await abandonAndRestart({ signupPlan: 'plus', signupBilling: 'quarterly', signupMinistryName: 'Hope' });
+    await abandonAndRestart({ signupPlan: 'church', signupBilling: 'quarterly', signupMinistryName: 'Hope' });
     expect(restartBody().billing).toBe('monthly');
     expect(fetchMock.mock.calls[0][1].body).not.toContain('quarterly');
   });
@@ -174,7 +174,7 @@ describe('the restarted checkout after an abandoned payment keeps the chosen per
     // 🔴 The other half of the guard: a church that chose yearly and abandoned
     // checkout has to restart on yearly, or the restart charges it a different
     // way than the card it clicked.
-    await abandonAndRestart({ signupPlan: 'plus', signupBilling: 'yearly', signupMinistryName: 'Hope' });
+    await abandonAndRestart({ signupPlan: 'church', signupBilling: 'yearly', signupMinistryName: 'Hope' });
     expect(restartBody().billing).toBe('yearly');
   });
 });

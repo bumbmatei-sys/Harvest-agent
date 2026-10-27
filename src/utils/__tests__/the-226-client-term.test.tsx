@@ -10,7 +10,7 @@ import { createRoot } from 'react-dom/client';
  * ─── What was measured, before anything was changed ──────────────────────────
  *
  * The real `AdminUpgradePage` was driven through the real `runDodoPlanChange`
- * with `authFetch` captured. Clicking "Upgrade to Small Team" posted:
+ * with `authFetch` captured. Clicking "Upgrade to Ministry" posted:
  *
  *   toggle on Yearly     → {"tenantId":"final-test","plan":"pro","billing":"yearly"}
  *   toggle on Quarterly  → {"tenantId":"final-test","plan":"pro","billing":"quarterly"}
@@ -123,7 +123,7 @@ describe('the client sends the term the tenant is on, never the toggle’s state
       document.body.appendChild(host);
       const root = createRoot(host);
       await act(async () => {
-        root.render(<AdminUpgradePage currentPlan="plus" tenantId={TENANT} onBack={() => {}} />);
+        root.render(<AdminUpgradePage currentPlan="church" tenantId={TENANT} onBack={() => {}} />);
       });
 
       // The owner flips the toggle to compare Small Team's price.
@@ -133,12 +133,12 @@ describe('the client sends the term the tenant is on, never the toggle’s state
 
       // …and presses Upgrade. They never asked to change term.
       const upgrade = [...host.querySelectorAll('button')]
-        .find((b) => /Upgrade to Small Team/i.test(b.textContent || '')) as HTMLButtonElement;
+        .find((b) => /Upgrade to Ministry/i.test(b.textContent || '')) as HTMLButtonElement;
       await act(async () => { upgrade.click(); });
       await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
 
       // 🔴 THE ASSERTION: the term the tenant is BILLED on, not the one on screen.
-      expect(previewPost()?.body).toEqual({ tenantId: TENANT, plan: 'pro', billing: 'monthly' });
+      expect(previewPost()?.body).toEqual({ tenantId: TENANT, plan: 'ministry', billing: 'monthly' });
       expect(previewPost()?.body.billing).not.toBe(browsed);
 
       // And it got all the way through, which is the founder's report.
@@ -151,7 +151,7 @@ describe('the client sends the term the tenant is on, never the toggle’s state
     // That argument must be inert: the wire carries the server's answer.
     state.termOnServer = 'yearly';
     const result = await runDodoPlanChange({
-      tenantId: TENANT, plan: 'pro', billing: 'monthly',
+      tenantId: TENANT, plan: 'ministry', billing: 'monthly',
     });
     expect(result.ok).toBe(true);
     expect(previewPost()?.body.billing).toBe('yearly');
@@ -160,7 +160,7 @@ describe('the client sends the term the tenant is on, never the toggle’s state
 
   it('asks the server BEFORE it posts, and asks the change-plan route itself', async () => {
     // The same route, so the same resolver — the identity the fix depends on.
-    await runDodoPlanChange({ tenantId: TENANT, plan: 'pro' });
+    await runDodoPlanChange({ tenantId: TENANT, plan: 'ministry' });
     const termRead = calls.findIndex((c) => c.url.startsWith('/api/dodo/change-plan?'));
     const preview = calls.findIndex((c) => c.url === '/api/dodo/change-plan' && c.method === 'POST');
     expect(termRead).toBeGreaterThanOrEqual(0);
@@ -170,7 +170,7 @@ describe('the client sends the term the tenant is on, never the toggle’s state
 
   it('quotes the preview and the confirm from ONE body, so the amount describes the call', async () => {
     state.termOnServer = 'yearly';
-    await runDodoPlanChange({ tenantId: TENANT, plan: 'pro' });
+    await runDodoPlanChange({ tenantId: TENANT, plan: 'ministry' });
     expect(confirmPost()?.body).toEqual({ ...previewPost()?.body, confirm: true });
   });
 
@@ -179,7 +179,7 @@ describe('the client sends the term the tenant is on, never the toggle’s state
     // this bug look like a term switch, and a wrong term here would be a request
     // to move a paying church onto a different Dodo product.
     state.termOk = false;
-    const result = await runDodoPlanChange({ tenantId: TENANT, plan: 'pro' });
+    const result = await runDodoPlanChange({ tenantId: TENANT, plan: 'ministry' });
     expect(result.ok).toBe(false);
     // The server's own sentence, passed through rather than replaced.
     expect(result.message).toContain('did not go through');

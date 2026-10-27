@@ -29,7 +29,8 @@ import AnalyticsBridge from './components/AnalyticsBridge';
 import PostPurchaseWizard from './components/PostPurchaseWizard';
 import { OperationType, handleFirestoreError } from './utils/firestore-errors';
 import { TenantPlan } from './types/tenant.types';
-import { PLAN_ORDER, AFFILIATE_PROGRAM_ENABLED } from './utils/plan-features';
+import { AFFILIATE_PROGRAM_ENABLED } from './utils/plan-features';
+import { canonicalPlanId } from './utils/plan-id';
 import { TenantProvider, useTenant } from './contexts/TenantContext';
 import { SavedItemsProvider } from './contexts/SavedItemsContext';
 import { useClaimsFreshness } from './hooks/useClaimsFreshness';
@@ -272,11 +273,11 @@ const AppInner: React.FC = () => {
   const isStripeReturn = typeof window !== 'undefined'
     && new URLSearchParams(window.location.search).has('stripe');
   const isChurchSignup = signupParam === 'church';
-  // Validated against PLAN_ORDER, not a literal list: `?signup=<tier>` is
-  // attacker-controlled and a stale literal would keep accepting a deleted tier
-  // (e.g. ?signup=ultra) long after it stopped existing in the matrix.
-  const signupPlan = signupParam && (PLAN_ORDER as readonly string[]).includes(signupParam)
-    ? signupParam as TenantPlan : undefined;
+  // Resolved through `canonicalPlanId`, not a literal list: `?signup=<tier>` is
+  // attacker-controlled, and the one reader of which ids exist keeps a deleted
+  // tier (e.g. ?signup=ultra) out. A link written before the repricing still
+  // works: ?signup=plus or pro lands on Church and ?signup=max on Ministry.
+  const signupPlan = canonicalPlanId(signupParam) ?? undefined;
   // Affiliate host (affiliate.theharvest.app): the subdomain implies affiliate
   // intent (no ?signup param). An affiliate is a tenant-less account, so it must
   // skip BOTH the church funnel and the member onboarding (whose default steps
@@ -316,7 +317,7 @@ const AppInner: React.FC = () => {
               //  - Off a subdomain (apex/admin domain), fall back to the user doc plan.
               const onSubdomain = getTenantIdFromHost() !== null;
               if (!onSubdomain && isAdminDomain) {
-                const userPlan = data.plan as TenantPlan | undefined;
+                const userPlan = canonicalPlanId(data.plan) ?? undefined;
                 if (userPlan) {
                   setTenantPlan(userPlan);
                   ctxSetTenantPlan(userPlan);

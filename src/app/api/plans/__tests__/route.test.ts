@@ -23,7 +23,7 @@ describe('GET /api/plans — retired AI Assistant add-on', () => {
     }
   });
 
-  it('still REPORTS the RAG capabilities, and reports them false on every plan', async () => {
+  it('still REPORTS the RAG capabilities: the chat is false on every plan, the knowledge base is Ministry only', async () => {
     /* WAS 'still advertises the RAG capabilities (aiChat + aiKnowledge)',
        asserting Ministry carried both true — the flags THE-224 was careful not
        to withdraw along with the Telegram add-on.
@@ -36,15 +36,17 @@ describe('GET /api/plans — retired AI Assistant add-on', () => {
        "no" instead of crashing or defaulting to yes. */
     const res = await GET();
     const body = await res.json();
-    const max = body.plans.find((p: any) => p.id === 'max');
-    expect(max).toBeDefined();
-    expect(max.features.aiChat).toBe(false);
-    expect(max.features.aiKnowledge).toBe(false);
+    const ministry = body.plans.find((p: any) => p.id === 'ministry');
+    expect(ministry).toBeDefined();
+    // The two-plan repricing lists the AI knowledge base under Ministry, so that
+    // one cell is true there. The chat that answers from it stays an add-on.
+    expect(ministry.features.aiChat).toBe(false);
+    expect(ministry.features.aiKnowledge).toBe(true);
     for (const plan of body.plans) {
       expect(typeof plan.features.aiChat, plan.id).toBe('boolean');
       expect(typeof plan.features.aiKnowledge, plan.id).toBe('boolean');
       expect(plan.features.aiChat, `${plan.id} still claims the chat`).toBe(false);
-      expect(plan.features.aiKnowledge, `${plan.id} still claims the KB`).toBe(false);
+      expect(plan.features.aiKnowledge, `${plan.id} KB claim`).toBe(plan.id === 'ministry');
     }
   });
 });

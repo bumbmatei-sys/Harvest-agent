@@ -19,11 +19,13 @@ import {
   type BillingTerm,
   PlanFeatures,
   PLAN_BLURBS,
+  PROCESSOR_FEE_NOTE,
+  PLAN_FEES,
+  formatProductSalesFee,
 } from '../../utils/plan-features';
 import { NEWSLETTER_FEATURE_ENABLED } from '../../lib/newsletter-feature';
 import { SMS_FEATURE_ENABLED } from '../../lib/sms-feature';
 import { CUSTOM_DOMAIN_ENABLED } from '../../lib/custom-domain-feature';
-import { PLATFORM_FEE_MAP } from '../../lib/stripe-connect';
 import { authFetch } from '../../utils/auth-fetch';
 import { fetchBillingProcessor, needsFirstSubscription, runDodoPlanChange, startFirstSubscription, subscriptionProcessorAttribution, PlanChangeProcessor } from '../../utils/plan-change';
 import { getTenantId } from './useTenantId';
@@ -67,14 +69,28 @@ interface PlanUpgradeSectionProps {
  * rather than true-with-an-exemption: there is now no colour literal in this
  * file at all.
  *
- * `recommended` moved from `pro` to `max`: on the marketing site the
+ * `recommended` is Ministry: on the marketing site the
  * recommended card is Ministry, and it is the dark one. This is the flag that
  * decides the card TREATMENT, not just a badge.
  */
 const PLANS: { id: TenantPlan; name: string; recommended?: boolean; comingSoon: string[] }[] = [
-  { id: 'plus', name: 'Individual', comingSoon: [] },
-  { id: 'pro',  name: 'Small Team', comingSoon: [] },
-  { id: 'max',  name: 'Ministry', recommended: true, comingSoon: [] },
+  {
+    id: 'church',
+    name: 'Church',
+    comingSoon: [
+      'Paid checkout for products',
+    ],
+  },
+  {
+    id: 'ministry',
+    name: 'Ministry',
+    recommended: true,
+    comingSoon: [
+      'Paid checkout and storefront for products',
+      'Website builder with pre-made templates',
+      'Livestream, chat and prayer requests for extra communities',
+    ],
+  },
 ];
 
 // Keyed lookup so we can resolve plan metadata by id (icon/color/popular).
@@ -99,11 +115,9 @@ const PLAN_META = Object.fromEntries(PLANS.map((p) => [p.id, p])) as Record<
  * cell, printed as `label` when the tier has it and left out when it does not.
  *
  * The platform donation fee is deliberately NOT here. It was the one row the
- * deleted comparison table hardcoded (`staticValue: '0%'`), because
- * PLATFORM_FEE_MAP (src/lib/stripe-connect.ts) is server-only and
- * `getPlanFeatures` does not carry the fee at all — so on a card that derives
- * every line it has nowhere to come from. That is a gap in the feature matrix,
- * not a string to retype here.
+ * deleted comparison table hardcoded (`staticValue: '0%'`). The fee is not a
+ * matrix cell; it comes from `PLAN_FEES` (`platformFeeLabel` below), not from a
+ * string typed here.
  */
 type CardFeature = {
   key: keyof PlanFeatures;
@@ -119,6 +133,10 @@ type CardFeature = {
   labelFor?: (features: PlanFeatures) => string;
   /** Numeric cell — [singular, plural] noun printed against the tier's count. */
   count?: readonly [string, string];
+  /** The feature behind this line is not built yet: print "(coming soon)" after it. */
+  soon?: boolean;
+  /** Same, but only when the cell is the unlimited sentinel (a bounded count is built). */
+  soonWhenUnlimited?: boolean;
 };
 
 /**
@@ -136,6 +154,9 @@ const CARD_FEATURES: CardFeature[] = [
   { key: 'maxAdmins', count: ['admin account', 'admin accounts'] },
   { key: 'maxCourses', count: ['course', 'courses'] },
   { key: 'maxChurches', count: ['campus', 'campuses'] },
+  { key: 'maxCommunities', count: ['community', 'communities'], soonWhenUnlimited: true },
+  { key: 'maxProducts', count: ['product', 'products'] },
+  { key: 'aiMessagesPerMonth', count: ['AI assistant message a month', 'AI assistant messages a month'], soon: true },
   { key: 'blog', label: 'Blog' },
   { key: 'pwaApp', label: 'Mobile App (PWA)' },
   { key: 'aiChat', label: 'AI Chat' },
@@ -148,9 +169,9 @@ const CARD_FEATURES: CardFeature[] = [
   { key: 'eventRegistration', label: 'Event Registration' },
   { key: 'docs', label: 'Notes' },
   { key: 'crm', labelFor: crmLabel },
-  { key: 'accountingTools', label: 'Accounting Tools' },
-  { key: 'taxReceipt', label: 'Tax Receipts' },
-  { key: 'givingStatements', label: 'Giving Statements' },
+  { key: 'accountingTools', label: 'Giving records' },
+  { key: 'taxReceipt', label: 'Year-end giving receipts' },
+  { key: 'givingStatements', label: 'Giving statements' },
   { key: 'customForms', label: 'Custom Forms → CRM' },
   { key: 'checkInSystem', label: 'Check-In (QR)' },
   { key: 'livestream', label: 'Livestream + Live Giving' },
@@ -220,8 +241,9 @@ function cardLine(feature: CardFeature, features: PlanFeatures): string | null {
     const [one, many] = feature.count;
     const n = value as number;
     if (n === 0) return null;
-    if (n === UNLIMITED_CAP) return `Unlimited ${many}`;
-    return `${n.toLocaleString()} ${n === 1 ? one : many}`;
+    const soon = feature.soon || (feature.soonWhenUnlimited && n === UNLIMITED_CAP) ? ' (coming soon)' : '';
+    if (n === UNLIMITED_CAP) return `Unlimited ${many}${soon}`;
+    return `${n.toLocaleString()} ${n === 1 ? one : many}${soon}`;
   }
   if (!value) return null;
   return feature.labelFor ? feature.labelFor(features) : feature.label!;
@@ -329,20 +351,13 @@ function rollupLines(features: PlanFeatures, below: PlanFeatures): RenderedLine[
 /**
  * The platform's cut of a donation or a paid ticket, as the card prints it.
  *
- * 🔴 READ FROM `PLATFORM_FEE_MAP`, NOT TYPED. The previous card had no fee line
- * at all, on the reading that the map is server-only — it is not. It is a
- * 36-line module with no imports, no `server-only` marker, no env access and no
- * SDK: a bare `Record<string, number>` and its documentation. So the number can
- * reach a client component directly, which is the ONLY acceptable way to put it
- * on a card. A `0%` typed into this file would be the exact duplication that
- * once let the app advertise "keeps 100%" against a real 2.5% charge.
- *
- * Formatted rather than interpolated raw so a future 2.5% prints as "2.5%" and
- * not "2.5000000000000004%".
+ * Read from `PLAN_FEES`, never typed: a `0%` written into this file would be the
+ * duplication that once let the app advertise "keeps 100%" against a real 2.5%
+ * charge. Formatted rather than interpolated raw so a future 2.5% prints as
+ * "2.5%" and not "2.5000000000000004%".
  */
 function platformFeeLabel(plan: TenantPlan): string {
-  const pct = (PLATFORM_FEE_MAP[plan] ?? 0) * 100;
-  return `${Number(pct.toFixed(2))}%`;
+  return `${Number(PLAN_FEES[plan].donationsPct.toFixed(2))}%`;
 }
 
 const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, tenantId, email, hideUpgrade, processor, compact }) => {
@@ -520,11 +535,8 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
           of. 209.25px over, and what a founder saw of the third card was the
           70.75px that fit — a column of checkmarks against "2,00…", "15 a…".
 
-          The grid is `sm:grid-cols-2 lg:grid-cols-3` rather than three columns
-          everywhere. Three across a 768px tablet is a 221px card; two is 332px
-          and the third wraps, which is what "fit or wrap" is for. `lg` is also
-          where the rem base changes and where the app's other desktop rules
-          gate, so nothing new reflows at a width nothing else reflows at.
+          Two paid plans now share a two-column grid from `sm` upward, so
+          neither card is squeezed into an unused third column on desktop.
 
           Every token added here is breakpoint-prefixed, so the carousel — and
           the phone rendering of it — is untouched. */}
@@ -533,7 +545,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
         ref={planScrollRef}
         onScroll={handlePlanScroll}
         data-testid="plan-card-track"
-        className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scrollbar-hide sm:grid sm:grid-cols-2 sm:overflow-x-visible sm:pb-0 lg:grid-cols-3"
+        className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scrollbar-hide sm:grid sm:grid-cols-2 sm:overflow-x-visible sm:pb-0"
         style={compact
           ? { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', overflow: 'visible' }
           : { scrollbarWidth: 'none', msOverflowStyle: 'none' }}
@@ -560,7 +572,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
           // more as a headline than it did as a footnote.
           const monthlyHeadline = formatPlanMonthlyHeadline(planId, billingPeriod);
           const isCurrent = planId === currentPlan;
-          const isDowngrade = PLAN_ORDER.indexOf(planId) < PLAN_ORDER.indexOf(currentPlan ?? 'plus');
+          const isDowngrade = PLAN_ORDER.indexOf(planId) < PLAN_ORDER.indexOf(currentPlan ?? 'church');
 
           // The tier below this one, and therefore whether this card rolls up.
           // Individual is the floor and prints its list whole.
@@ -702,6 +714,15 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                   on every gift and paid ticket
                 </span>
               </div>
+              {/* The product-sales rate, read from PLAN_FEES and labelled coming
+                  soon while paid product checkout is not live. The processor's
+                  own fee is a separate charge and the card says so. */}
+              <p
+                data-testid="plan-card-product-fee"
+                className={`mt-2 text-[12px] leading-snug ${isRecommended ? 'text-cream/80' : 'text-muted'}`}
+              >
+                {formatProductSalesFee(planId)}. {PROCESSOR_FEE_NOTE}
+              </p>
 
               {/* What this tier includes. Every line is derived from `features`
                   above — the card names no feature the matrix did not hand it,
@@ -739,11 +760,11 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
 
                 {plan.comingSoon.length > 0 && (
                   <div className="pt-2 mt-2 border-t border-line-subtle">
-                    <p className="text-[11px] font-semibold text-amber-500 uppercase tracking-wider mb-1.5">Coming Soon</p>
+                    <p className="text-[11px] font-semibold text-gold uppercase tracking-wider mb-1.5">Coming Soon</p>
                     {plan.comingSoon.map((item) => (
                       <div key={item} className="flex items-center justify-between text-sm">
                         <span className="text-muted">{item}</span>
-                        <span className="text-amber-500 text-xs font-semibold">Soon</span>
+                        <span className="text-gold text-[11px] font-semibold">Soon</span>
                       </div>
                     ))}
                   </div>

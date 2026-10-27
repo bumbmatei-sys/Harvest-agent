@@ -26,21 +26,21 @@ async function sendNow(c: Awaited<ReturnType<typeof drafted>>) {
 
 describe('the allowance by plan comes from one config map', () => {
   it('founder numbers: 5,000 on the lower plans, 10,000 on the top plan, none on free', () => {
-    expect(DEFAULT_EMAIL_LIMITS.monthlySends).toEqual({ free: 0, plus: 5000, pro: 5000, max: 10000 });
+    expect(DEFAULT_EMAIL_LIMITS.monthlySends).toEqual({ free: 0, church: 5000, ministry: 10000 });
   });
 
   it('the overview reports the plan\'s allowance, so the meter reads "X of Y"', async () => {
     const pro = await drafted({ usage: 1200 });
     const r = await pro.service.list(admin, TENANT);
-    expect(r).toMatchObject({ ok: true, usage: { used: 1200, cap: 5000, percent: 24, warn: false, warnAtPercent: 80 } });
+    expect(r).toMatchObject({ ok: true, usage: { used: 1200, cap: 10000, percent: 12, warn: false, warnAtPercent: 80 } });
     const max = build({ plan: 'max' });
     expect(await max.service.list(admin, TENANT)).toMatchObject({ usage: { cap: 10000 } });
   });
 
   it('a super admin can raise a number and it applies with no code change', async () => {
     const root = { ...admin, uid: 'root', isSuperAdmin: true, tenantId: null };
-    const c = build({ plan: 'pro' });
-    const next = { ...DEFAULT_EMAIL_LIMITS, monthlySends: { ...DEFAULT_EMAIL_LIMITS.monthlySends, pro: 7500 } };
+    const c = build({ plan: 'ministry' });
+    const next = { ...DEFAULT_EMAIL_LIMITS, monthlySends: { ...DEFAULT_EMAIL_LIMITS.monthlySends, ministry: 7500 } };
     expect(await c.service.saveLimits(root, next)).toMatchObject({ ok: true });
     expect(await c.service.list(admin, TENANT)).toMatchObject({ usage: { cap: 7500 } });
   });
@@ -60,7 +60,7 @@ describe('the allowance by plan comes from one config map', () => {
 
   it('a field missing or invalid in the stored document falls back to its default', () => {
     const l = resolveLimits({ monthlySends: { pro: 9000, max: 'lots' }, warnAtPercent: 0 });
-    expect(l.monthlySends).toMatchObject({ pro: 9000, max: 10000 });
+    expect(l.monthlySends).toMatchObject({ church: 9000, ministry: 10000 });
     expect(l.warnAtPercent).toBe(80);
     expect(resolveLimits(null)).toEqual(DEFAULT_EMAIL_LIMITS);
   });
@@ -90,29 +90,29 @@ describe('contacts are never metered', () => {
 
 describe('monthly allowance: usage, warning and reset', () => {
   it('warns from 80% of the allowance', async () => {
-    const at79 = await drafted({ usage: 3950 });
+    const at79 = await drafted({ usage: 7900 });
     expect(await at79.service.list(admin, TENANT)).toMatchObject({ usage: { percent: 79, warn: false } });
-    const at80 = await drafted({ usage: 4000 });
+    const at80 = await drafted({ usage: 8000 });
     expect(await at80.service.list(admin, TENANT)).toMatchObject({ usage: { percent: 80, warn: true } });
   });
 
   it('the warning threshold is an adjustable setting', async () => {
-    const c = await drafted({ usage: 2600, limits: { warnAtPercent: 50 } });
+    const c = await drafted({ usage: 5200, limits: { warnAtPercent: 50 } });
     expect(await c.service.list(admin, TENANT)).toMatchObject({ usage: { warn: true, warnAtPercent: 50 } });
   });
 
   it('the allowance resets each calendar month', async () => {
     const lastMonth = monthKey(new Date(Date.UTC(2031, 1, 20)));
     expect(lastMonth).not.toBe(monthKey(NOW));
-    const c = await drafted({ usageByKey: { [lastMonth]: 4999 } });
-    expect(await c.service.list(admin, TENANT)).toMatchObject({ usage: { used: 0, cap: 5000, resetsAt: '2031-04-01T00:00:00.000Z' } });
+    const c = await drafted({ usageByKey: { [lastMonth]: 9999 } });
+    expect(await c.service.list(admin, TENANT)).toMatchObject({ usage: { used: 0, cap: 10000, resetsAt: '2031-04-01T00:00:00.000Z' } });
     expect(await preview(c)).toMatchObject({ ok: true, requiresConfirm: true });
   });
 
   it('at the cap a new send is blocked with a clear message, and nothing is sent', async () => {
-    const c = await drafted({ usage: 4999 });
+    const c = await drafted({ usage: 9999 });
     const r = await sendNow(c);
-    expect(r).toMatchObject({ ok: false, error: 'volume_cap', message: expect.stringMatching(/1 of 5,000 emails left this month/) });
+    expect(r).toMatchObject({ ok: false, error: 'volume_cap', message: expect.stringMatching(/1 of 10,000 emails left this month/) });
     expect(c.provider.sent).toHaveLength(0);
   });
 
@@ -129,7 +129,7 @@ describe('monthly allowance: usage, warning and reset', () => {
     const p = await c.service.send(admin, TENANT, { id: c.id, when: { mode: 'at', at }, mode: 'preview' });
     if (!p.ok || !('confirmToken' in p)) throw new Error();
     await c.service.send(admin, TENANT, { id: c.id, when: { mode: 'at', at }, mode: 'confirm', confirmToken: p.confirmToken });
-    c.mem.usage.set(monthKey(NOW), 5000);
+    c.mem.usage.set(monthKey(NOW), 10000);
     c.mem.queue.set(`${TENANT}__${c.id}`, '2031-03-10T00:00:00.000Z');
     const [r] = await c.service.runDue();
     expect(r.outcome).toBe('failed');

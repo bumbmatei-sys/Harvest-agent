@@ -134,13 +134,13 @@ describe('a plan that arrives after the first read is picked up without a reload
     expect(seen?.tenantPlan).toBe('free');
 
     // The webhook — the single writer — has now recorded the purchase.
-    tenantDoc({ plan: 'pro', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
     await act(async () => { await seen?.refreshTenantPlan(); });
 
     // 🔴 Same tree, no remount, no reload: the tier moved in place, and the
     // capability matrix moved with it.
-    expect(seen?.tenantPlan).toBe('pro');
-    expect(seen?.planFeatures?.maxAdmins).toBe(getPlanFeatures('pro').maxAdmins);
+    expect(seen?.tenantPlan).toBe('church');
+    expect(seen?.planFeatures?.maxAdmins).toBe(getPlanFeatures('church').maxAdmins);
   });
 
   it('re-reads rather than applying what the purchase asked for', async () => {
@@ -148,7 +148,7 @@ describe('a plan that arrives after the first read is picked up without a reload
     await renderProvider();
 
     const readsBefore = mockGetDoc.mock.calls.length;
-    tenantDoc({ plan: 'pro', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
     await act(async () => { await seen?.refreshTenantPlan(); });
 
     // 🔴 `on_payment_failure: 'prevent_change'` means Dodo decides whether a
@@ -168,34 +168,34 @@ describe('a plan that arrives after the first read is picked up without a reload
     expect(seen?.tenantPlan).toBe('free');
 
     // The webhook lands a moment later. Nobody reloads anything.
-    tenantDoc({ plan: 'pro', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
     await act(async () => { await vi.advanceTimersByTimeAsync(PLAN_REFRESH_INTERVAL_MS); });
 
-    expect(seen?.tenantPlan).toBe('pro');
+    expect(seen?.tenantPlan).toBe('church');
   });
 
   it('recognises both spellings of the hop, exactly as the gate does', async () => {
     vi.useFakeTimers();
     arriveFromCheckout('stripe');
-    tenantDoc({ plan: 'plus', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
     await renderProvider();
 
-    tenantDoc({ plan: 'max', status: 'active' });
+    tenantDoc({ plan: 'ministry', status: 'active' });
     await act(async () => { await vi.advanceTimersByTimeAsync(PLAN_REFRESH_INTERVAL_MS); });
 
     // A payer mid-checkout when the processor flag flipped comes back carrying
     // the other processor's marker. Failing to recognise it would leave exactly
     // the church this ticket is about on the tier they were on.
-    expect(seen?.tenantPlan).toBe('max');
+    expect(seen?.tenantPlan).toBe('ministry');
   });
 
   it('the latch does not undo the refresh', async () => {
     tenantDoc({ plan: 'free', status: 'active' });
     await renderProvider();
 
-    tenantDoc({ plan: 'pro', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
     await act(async () => { await seen?.refreshTenantPlan(); });
-    expect(seen?.tenantPlan).toBe('pro');
+    expect(seen?.tenantPlan).toBe('church');
 
     // A later validation pass must not overwrite the newer value with the one it
     // read first — the same guarantee `addonsInitialized` gives the add-on set,
@@ -203,7 +203,7 @@ describe('a plan that arrives after the first read is picked up without a reload
     tenantDoc({ plan: 'free', status: 'active' });
     await renderProvider();
 
-    expect(seen?.tenantPlan).toBe('pro');
+    expect(seen?.tenantPlan).toBe('church');
   });
 });
 
@@ -242,13 +242,13 @@ describe('the retry is bounded', () => {
     await renderProvider();
 
     const afterFirstRead = mockGetDoc.mock.calls.length;
-    tenantDoc({ plan: 'pro', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
     await runOutTheWindow(5);
 
     // One re-read learned the answer; the window closes rather than spending the
     // rest of its budget confirming it.
     expect(mockGetDoc.mock.calls.length).toBe(afterFirstRead + 1);
-    expect(seen?.tenantPlan).toBe('pro');
+    expect(seen?.tenantPlan).toBe('church');
   });
 
   it('stops when the tree unmounts mid-window', async () => {
@@ -273,7 +273,7 @@ describe('the retry is bounded', () => {
 
 describe('a failed refresh leaves the last known plan in place', () => {
   it('a rejected read never downgrades', async () => {
-    tenantDoc({ plan: 'pro', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
     await renderProvider();
 
     mockGetDoc.mockRejectedValue(new Error('offline'));
@@ -281,29 +281,29 @@ describe('a failed refresh leaves the last known plan in place', () => {
 
     // 🔴 Falling back to a default on a dropped request would strip a tier a
     // church pays for — the exact direction this ticket exists to stop.
-    expect(seen?.tenantPlan).toBe('pro');
-    expect(seen?.planFeatures?.maxAdmins).toBe(getPlanFeatures('pro').maxAdmins);
+    expect(seen?.tenantPlan).toBe('church');
+    expect(seen?.planFeatures?.maxAdmins).toBe(getPlanFeatures('church').maxAdmins);
   });
 
   it('a document with no plan field never downgrades', async () => {
-    tenantDoc({ plan: 'pro', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
     await renderProvider();
 
     tenantDoc({ status: 'active' });
     await act(async () => { await seen?.refreshTenantPlan(); });
 
     // An absent `plan` is silence, not "free" — the same reading the latch takes.
-    expect(seen?.tenantPlan).toBe('pro');
+    expect(seen?.tenantPlan).toBe('church');
   });
 
   it('a missing document never downgrades', async () => {
-    tenantDoc({ plan: 'pro', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
     await renderProvider();
 
     mockGetDoc.mockResolvedValue({ exists: () => false, data: () => undefined });
     await act(async () => { await seen?.refreshTenantPlan(); });
 
-    expect(seen?.tenantPlan).toBe('pro');
+    expect(seen?.tenantPlan).toBe('church');
   });
 
   it('a failed attempt costs one attempt, not the window', async () => {
@@ -411,17 +411,17 @@ describe('no client-side write to plan exists', () => {
   it('the detector catches a planted violation', () => {
     // A sweep nobody has proven can fail is not a guard.
     const planted = `import { doc, updateDoc } from 'firebase/firestore';
-      await updateDoc(doc(db, 'tenants', id), { plan: 'pro', updatedAt: now });`;
+      await updateDoc(doc(db, 'tenants', id), { plan: 'church', updatedAt: now });`;
     expect(planWritesIn(planted).length).toBe(1);
 
     const fieldPath = `import { updateDoc } from 'firebase/firestore';
-      await updateDoc(ref, 'plan', 'pro');`;
+      await updateDoc(ref, 'plan', 'church');`;
     expect(planWritesIn(fieldPath).length).toBe(1);
 
     // …and does not fire on a comment that merely discusses the rule, nor on
     // the add-on set the webhook also owns.
     const innocent = `import { updateDoc } from 'firebase/firestore';
-      // never write { plan: 'pro' } from the client
+      // never write { plan: 'church' } from the client
       await updateDoc(ref, { addons: owned, updatedAt: now });`;
     expect(planWritesIn(innocent)).toEqual([]);
   });
@@ -462,17 +462,17 @@ describe('the add-on latch still guards on the READ', () => {
   });
 
   it('a tenant document with no addons field still latches on the read', async () => {
-    tenantDoc({ plan: 'pro', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
     await renderProvider();
 
     expect(seen?.tenantAddons).toEqual(NO_ADDONS);
 
     // The plan refresh is the only thing this ticket added, and it moves the
     // tier alone — the add-on set is untouched by it.
-    tenantDoc({ plan: 'max', status: 'active', addons: { ...NO_ADDONS, adminSeats: 5 } });
+    tenantDoc({ plan: 'ministry', status: 'active', addons: { ...NO_ADDONS, adminSeats: 5 } });
     await act(async () => { await seen?.refreshTenantPlan(); });
 
-    expect(seen?.tenantPlan).toBe('max');
+    expect(seen?.tenantPlan).toBe('ministry');
     expect(seen?.tenantAddons).toEqual(NO_ADDONS);
   });
 });
@@ -488,8 +488,8 @@ describe('tenantStatus and stripeConnectStatus are still unconditional', () => {
 
   it('🔴 both move on a re-read while the latched tier does not', async () => {
     tenantDocsById({
-      [TENANT]: { plan: 'pro', status: 'active', stripeConnectStatus: 'active' },
-      'second-church': { plan: 'plus', status: 'archived', stripeConnectStatus: 'pending' },
+      [TENANT]: { plan: 'church', status: 'active', stripeConnectStatus: 'active' },
+      'second-church': { plan: 'ministry', status: 'archived', stripeConnectStatus: 'pending' },
     });
     await renderProvider(TENANT);
     expect(seen?.tenantStatus).toBe('active');
@@ -501,7 +501,7 @@ describe('tenantStatus and stripeConnectStatus are still unconditional', () => {
     expect(seen?.tenantStatus).toBe('archived');
     expect(seen?.stripeConnectStatus).toBe('pending');
     // …and the tier is still latched, exactly as before this change.
-    expect(seen?.tenantPlan).toBe('pro');
+    expect(seen?.tenantPlan).toBe('church');
   });
 });
 
@@ -512,7 +512,7 @@ describe('nothing refreshes in platform context, where tenantId is null', () => 
     vi.useFakeTimers();
     mockHasPlatformOverride.mockReturnValue(true);
     arriveFromCheckout();
-    tenantDoc({ plan: 'pro', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
 
     await renderProvider(null);
     await runOutTheWindow(5);
@@ -539,7 +539,7 @@ describe('nothing refreshes in platform context, where tenantId is null', () => 
 describe('an admin who was already on the correct plan sees no extra reads', () => {
   it('🔴 an ordinary dashboard load costs exactly one read', async () => {
     vi.useFakeTimers();
-    tenantDoc({ plan: 'pro', status: 'active' });
+    tenantDoc({ plan: 'church', status: 'active' });
     await renderProvider();
 
     await runOutTheWindow(5);
@@ -548,17 +548,17 @@ describe('an admin who was already on the correct plan sees no extra reads', () 
     // poll armed on every load — would put a permanent Firestore cost on every
     // admin in the platform to cover a race that only exists after a checkout.
     expect(mockGetDoc.mock.calls.length).toBe(1);
-    expect(seen?.tenantPlan).toBe('pro');
+    expect(seen?.tenantPlan).toBe('church');
   });
 
   it('the tier the first read found is left exactly where it is', async () => {
     vi.useFakeTimers();
-    tenantDoc({ plan: 'max', status: 'active' });
+    tenantDoc({ plan: 'ministry', status: 'active' });
     await renderProvider();
 
     await runOutTheWindow(5);
 
-    expect(seen?.tenantPlan).toBe('max');
-    expect(seen?.planFeatures?.maxAdmins).toBe(getPlanFeatures('max').maxAdmins);
+    expect(seen?.tenantPlan).toBe('ministry');
+    expect(seen?.planFeatures?.maxAdmins).toBe(getPlanFeatures('ministry').maxAdmins);
   });
 });

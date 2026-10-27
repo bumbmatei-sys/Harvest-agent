@@ -7,12 +7,18 @@ import { getPlanFeatures } from '../../utils/plan-features';
 /**
  * THE-162 — Community Groups leaked to every tier in the member app.
  *
- * `communityGroups` ("private channels + DMs") is false on plus/pro and true on
- * max, and the admin app has gated on it since it shipped. The member app never
- * did: `{ id: 'messages', label: 'Messages' }` was an unconditional literal in
- * MainApp's `topTabs`, so a $49 Individual church and a $99 Small Team church
- * both got the tab, the desktop COMMUNITY sidebar entry, and UserMessages with
- * its channel + DM listeners.
+ * `communityGroups` ("private channels + DMs") gates the member app's Messages.
+ * The member app once did not honour it: `{ id: 'messages', label: 'Messages' }`
+ * was an unconditional literal in MainApp's `topTabs`, so a church whose plan
+ * lacked the cell still got the tab, the desktop COMMUNITY sidebar entry, and
+ * UserMessages with its channel + DM listeners.
+ *
+ * ⚠️ AFTER THE TWO-PLAN REPRICING THE CELL IS TRUE ON CHURCH AND MINISTRY (the
+ * spec gives Church "one community (feed + chat)") AND FALSE ONLY ON FREE, which
+ * has no feed to jump from. So no REAL plan is left that has the feed and lacks
+ * the cell. This suite therefore keeps the gate honest by FORCING the cell off
+ * for a Church tenant (`noGroups` below) and asserting the same refusals, and
+ * pins the real matrix separately in section 8.
  *
  * ⚠️ THE OVERSHOOT IS AS BAD AS THE LEAK. Every other entitlement bug in this
  * project was access wrongly WITHHELD; this one is access wrongly GRANTED, and
@@ -128,14 +134,14 @@ vi.mock('framer-motion', () => {
 
 // MainApp reads the plan from the store AND from TenantContext, preferring
 // whichever resolves first; both are driven together here.
-const store = vi.hoisted(() => ({ tenantPlan: 'plus' as string | null, currentUser: null as any }));
+const store = vi.hoisted(() => ({ tenantPlan: 'church' as string | null, currentUser: null as any }));
 vi.mock('../../store/useAppStore', () => ({ useAppStore: () => store }));
 
 const tenant = vi.hoisted(() => ({
   tenantId: 'tenant-1',
   tenantName: 'Grace Chapel',
   branding: null as any,
-  tenantPlan: 'plus' as string | null,
+  tenantPlan: 'church' as string | null,
   isLoading: false,
   // THE-246 — a paying church still needs a PAYMENT RAIL for the Give tab to
   // exist: `fundraising` says it may take gifts, a connected Stripe account or
@@ -147,8 +153,30 @@ const tenant = vi.hoisted(() => ({
 }));
 vi.mock('../../contexts/TenantContext', () => ({ useTenant: () => tenant }));
 
+// Forces `communityGroups` for the tenant under test, leaving every other cell
+// alone. `undefined` is the real matrix.
+const forced = vi.hoisted(() => ({ communityGroups: undefined as boolean | undefined }));
+vi.mock('../../utils/plan-features', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../utils/plan-features')>();
+  return {
+    ...actual,
+    getEffectiveFeatures: (...args: Parameters<typeof actual.getEffectiveFeatures>) => {
+      const features = actual.getEffectiveFeatures(...args);
+      return forced.communityGroups === undefined
+        ? features
+        : { ...features, communityGroups: forced.communityGroups };
+    },
+  };
+});
+
 let container: HTMLDivElement;
 let root: Root;
+
+/** Mount a Church tenant whose plan does NOT carry Community Groups. */
+async function mountWithoutGroups(plan: string = 'church') {
+  forced.communityGroups = false;
+  await mount(plan);
+}
 
 /** Mount the member app for a tenant on `plan`. `null` = plan not resolved yet. */
 async function mount(plan: string | null, opts: { isLoading?: boolean } = {}) {
@@ -205,7 +233,7 @@ beforeEach(() => {
   container = document.createElement('div');
   document.body.appendChild(container);
   fx.mutations = [];
-
+  forced.communityGroups = undefined;
 });
 
 afterEach(async () => {
@@ -214,16 +242,16 @@ afterEach(async () => {
 });
 
 // ─── 1. the regression ───────────────────────────────────────────────────────
-describe("an Individual tenant's members cannot reach the community surfaces", () => {
+describe("a tenant without Community Groups: members cannot reach the community surfaces", () => {
   it('offers no Messages control anywhere in the member app', async () => {
-    await mount('plus');
+    await mountWithoutGroups();
 
     expect(topTab('messages'), 'the Messages top-tab is still in the strip').toBeNull();
     expect(navControls('Messages'), 'a Messages nav entry survives somewhere').toHaveLength(0);
   });
 
   it('drops Messages from the desktop COMMUNITY group but keeps the rest of it', async () => {
-    await mount('plus');
+    await mountWithoutGroups();
 
     const group = sidebarGroup('COMMUNITY');
     expect(group, 'the COMMUNITY sidebar group did not render at all').not.toEqual([]);
@@ -242,34 +270,33 @@ describe("an Individual tenant's members cannot reach the community surfaces", (
   });
 });
 
-// ─── 2. the tier nobody had looked at ────────────────────────────────────────
-describe("a Small Team tenant's members cannot either", () => {
-  it('offers no Messages control anywhere in the member app', async () => {
-    await mount('pro');
+// ─── 2. the retired tiers are read as the tier they became ──────────────────
+describe("a stored retired plan id is read as the tier it became", () => {
+  it.each(['plus', 'pro', 'max'])('keeps Messages for a stored %s (Church or Ministry both carry it)', async (legacy) => {
+    await mount(legacy);
 
-    expect(topTab('messages')).toBeNull();
-    expect(navControls('Messages')).toHaveLength(0);
-    expect(messagesScreen()).toBeNull();
+    expect(topTab('messages')).not.toBeNull();
+    expect(navControls('Messages').length).toBeGreaterThan(0);
   });
 });
 
 // ─── 3. the overshoot guard — worth as much as test 1 ────────────────────────
 describe("a Ministry tenant's members still can", () => {
   it('keeps the Messages top-tab', async () => {
-    await mount('max');
+    await mount('ministry');
 
     expect(topTab('messages'), 'Ministry lost a feature it pays for').not.toBeNull();
     expect(navControls('Messages').length).toBeGreaterThan(0);
   });
 
   it('keeps Messages in the desktop COMMUNITY group', async () => {
-    await mount('max');
+    await mount('ministry');
 
     expect(sidebarGroup('COMMUNITY')).toContain('Messages');
   });
 
   it('opens the real channel + DM screen, not an upgrade prompt', async () => {
-    await mount('max');
+    await mount('ministry');
     await click(topTab('messages'));
 
     expect(messagesScreen(), 'Ministry got the upgrade screen instead of Messages').not.toBeNull();
@@ -283,16 +310,16 @@ describe('a direct URL to a gated surface is refused, not just hidden from the n
   // "direct URL" here is the app's own non-nav way in: the feed's comment menu
   // sets the Messages tab directly, bypassing the strip entirely. If only the
   // nav entry were gated, this would still mount UserMessages.
-  it('refuses the feed jump into Messages on Individual', async () => {
-    await mount('plus');
+  it('refuses the feed jump into Messages when the plan lacks the cell', async () => {
+    await mountWithoutGroups();
     await click(container.querySelector('[data-testid="feed-jump-to-messages"]'));
 
     expect(messagesScreen(), 'the route opened even though the nav entry was hidden').toBeNull();
     expect(upgradeScreen(), 'the surface was reachable with no explanation').not.toBeNull();
   });
 
-  it('refuses the feed jump into Messages on Small Team', async () => {
-    await mount('pro');
+  it('refuses it on a Ministry tenant too if its cell were ever off', async () => {
+    await mountWithoutGroups('ministry');
     await click(container.querySelector('[data-testid="feed-jump-to-messages"]'));
 
     expect(messagesScreen()).toBeNull();
@@ -300,7 +327,7 @@ describe('a direct URL to a gated surface is refused, not just hidden from the n
   });
 
   it('still lets Ministry through the same jump', async () => {
-    await mount('max');
+    await mount('ministry');
     await click(container.querySelector('[data-testid="feed-jump-to-messages"]'));
 
     expect(messagesScreen()).not.toBeNull();
@@ -309,32 +336,26 @@ describe('a direct URL to a gated surface is refused, not just hidden from the n
 
 // ─── 5. what must NOT move ───────────────────────────────────────────────────
 describe('a surface that is not communityGroups is unaffected', () => {
-  it('keeps Prayer on Individual — a public prayer wall is not a private channel', async () => {
-    await mount('plus');
+  it('keeps Prayer without Community Groups — a public prayer wall is not a private channel', async () => {
+    await mountWithoutGroups();
 
     expect(topTab('prayer'), 'Prayer was gated as if it were a community feature').not.toBeNull();
     await click(topTab('prayer'));
     expect(container.querySelector('[data-testid="prayer-wall"]')).not.toBeNull();
   });
 
-  it('keeps Prayer on Small Team too', async () => {
-    await mount('pro');
-
-    expect(topTab('prayer')).not.toBeNull();
-  });
-
-  it('leaves Map on its own `map` flag — present on Small Team, where Messages is not', async () => {
+  it('leaves Map on its own `map` flag — present on Ministry, where Messages has been forced off', async () => {
     // The sharpest statement of the scope: Map and Messages sit in the same
-    // desktop "COMMUNITY" sidebar group, and on pro they now disagree. A gate
-    // keyed on that group heading instead of on the flag could not do this.
-    await mount('pro');
+    // desktop "COMMUNITY" sidebar group, and here they disagree. A gate keyed on
+    // that group heading instead of on the flag could not do this.
+    await mountWithoutGroups('ministry');
 
     expect(navControls('Map').length, 'Map lost its own entitlement').toBeGreaterThan(0);
     expect(navControls('Messages')).toHaveLength(0);
   });
 
-  it('leaves the news feed, Give and Bible alone on Individual', async () => {
-    await mount('plus');
+  it('leaves the news feed, Give and Bible alone without Community Groups', async () => {
+    await mountWithoutGroups();
 
     // /community_posts is the church news feed, not Community Groups.
     expect(topTab('news')).not.toBeNull();
@@ -346,19 +367,20 @@ describe('a surface that is not communityGroups is unaffected', () => {
 // ─── 6. what the blocked member actually reads ───────────────────────────────
 describe('a member sees an explanation, not a dead end', () => {
   it('names the feature and the plan that carries it', async () => {
-    await mount('plus');
+    await mountWithoutGroups();
     await click(container.querySelector('[data-testid="feed-jump-to-messages"]'));
 
     const text = upgradeScreen()!.textContent || '';
     expect(text).toMatch(/Community Groups/);
-    expect(text, 'the required plan is derived from the matrix, not hardcoded').toMatch(/Ministry/);
+    // Derived from the matrix, not hardcoded: Church is the cheapest tier that carries the cell.
+    expect(text, 'the required plan is derived from the matrix, not hardcoded').toMatch(/Church/);
   });
 
   it('does not hand a member an Upgrade button they cannot act on', async () => {
     // A member is not an admin and cannot buy a plan. The admin variant of this
     // screen offers "Upgrade"; the member variant must say who can, instead of
     // offering a button that goes nowhere.
-    await mount('plus');
+    await mountWithoutGroups();
     await click(container.querySelector('[data-testid="feed-jump-to-messages"]'));
 
     const buttons = Array.from(upgradeScreen()!.querySelectorAll('button')).map(
@@ -369,7 +391,7 @@ describe('a member sees an explanation, not a dead end', () => {
   });
 
   it('offers a way back out of the blocked surface', async () => {
-    await mount('plus');
+    await mountWithoutGroups();
     await click(container.querySelector('[data-testid="feed-jump-to-messages"]'));
 
     const back = Array.from(upgradeScreen()!.querySelectorAll('button')).find(
@@ -385,29 +407,23 @@ describe('a member sees an explanation, not a dead end', () => {
 
 // ─── 7. gating hides, it does not destroy ────────────────────────────────────
 describe('no community data is deleted', () => {
-  it('writes nothing when the gate closes on Individual', async () => {
-    await mount('plus');
+  it('writes nothing when the gate closes', async () => {
+    await mountWithoutGroups();
     await click(container.querySelector('[data-testid="feed-jump-to-messages"]'));
 
     expect(fx.mutations, 'the gate performed a Firestore mutation').toEqual([]);
   });
 
-  it('writes nothing when the gate closes on Small Team', async () => {
-    await mount('pro');
-    await click(container.querySelector('[data-testid="feed-jump-to-messages"]'));
-
-    expect(fx.mutations).toEqual([]);
-  });
-
   it('shows the same screen again once the tenant is on Ministry', async () => {
     // The messages, channels and DMs live in Firestore and are never touched by
-    // this change: the same tenant, re-read on max, gets the same screen back
-    // with its history intact. Gating is a hidden surface, not a deletion.
-    await mount('plus');
+    // this change: the same tenant, re-read with the cell on, gets the same screen
+    // back with its history intact. Gating is a hidden surface, not a deletion.
+    await mountWithoutGroups();
     expect(messagesScreen()).toBeNull();
     await act(async () => { root.unmount(); });
+    forced.communityGroups = undefined;
 
-    await mount('max');
+    await mount('ministry');
     await click(topTab('messages'));
     expect(messagesScreen()).not.toBeNull();
     expect(fx.mutations).toEqual([]);
@@ -415,18 +431,24 @@ describe('no community data is deleted', () => {
 });
 
 // ─── 8. the matrix this whole fix rests on ───────────────────────────────────
-describe('communityGroups is still Ministry only in plan-features', () => {
-  // The gate above is only correct while these three cells are. Nothing in this
-  // change edits plan-features.ts; this is the contract it depends on.
-  it('is off on Individual (plus)', () => {
-    expect(getPlanFeatures('plus').communityGroups).toBe(false);
+describe('communityGroups is on Church and Ministry, and off on Free, in plan-features', () => {
+  // The gate above is only correct while these cells are. This is the contract it
+  // depends on: the spec gives Church "one community (feed + chat)".
+  it('is off on Free', () => {
+    expect(getPlanFeatures('free').communityGroups).toBe(false);
   });
 
-  it('is off on Small Team (pro)', () => {
-    expect(getPlanFeatures('pro').communityGroups).toBe(false);
+  it('is on for Church', () => {
+    expect(getPlanFeatures('church').communityGroups).toBe(true);
   });
 
-  it('is on for Ministry (max)', () => {
+  it('is on for Ministry', () => {
+    expect(getPlanFeatures('ministry').communityGroups).toBe(true);
+  });
+
+  it('reads the retired ids as the tier they became', () => {
+    expect(getPlanFeatures('plus').communityGroups).toBe(true);
+    expect(getPlanFeatures('pro').communityGroups).toBe(true);
     expect(getPlanFeatures('max').communityGroups).toBe(true);
   });
 });
@@ -434,7 +456,7 @@ describe('communityGroups is still Ministry only in plan-features', () => {
 // ─── 9. both themes ──────────────────────────────────────────────────────────
 describe('no colour is hardcoded', () => {
   it('carries no literal colour in the blocked member surface', async () => {
-    await mount('plus');
+    await mountWithoutGroups();
     await click(container.querySelector('[data-testid="feed-jump-to-messages"]'));
 
     const offenders = Array.from(upgradeScreen()!.querySelectorAll<HTMLElement>('*'))
@@ -449,7 +471,7 @@ describe('no colour is hardcoded', () => {
     // The plate used to be `#fcefc7` with a `#d4a017` icon — fixed cream and
     // fixed gold, which stay cream and gold on the dark ramp. Both now resolve
     // through --surface-gold / --brand-color, which the dark block redefines.
-    await mount('plus');
+    await mountWithoutGroups();
     await click(container.querySelector('[data-testid="feed-jump-to-messages"]'));
 
     const plate = upgradeScreen()!.querySelector('.bg-surface-gold');

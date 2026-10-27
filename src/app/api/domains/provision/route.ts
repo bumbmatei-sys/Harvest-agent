@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, type AuthenticatedUser } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
-import { hasFeature } from '@/utils/plan-features';
-import type { TenantPlan } from '@/types/tenant.types';
+import { hasFeature, toTenantPlan } from '@/utils/plan-features';
 import { captureHandledError } from '@/lib/money-path-sentry';
 import { CUSTOM_DOMAIN_ENABLED, CUSTOM_DOMAIN_HIDDEN_MESSAGE } from '@/lib/custom-domain-feature';
 
@@ -60,7 +59,7 @@ async function resolveTenantId(request: NextRequest, user: { tenantId: string | 
  * from anything the client sends — and refuses with 403 unless that plan has
  * `customDomain`. Mirrors the established pattern in
  * `api/newsletter/generate/route.ts`: super admins bypass, and an absent/unknown
- * plan falls back to 'plus' so the gate fails closed.
+ * plan falls back to 'church' so the gate fails closed.
  *
  * Returns a NextResponse to return to the caller, or null when the caller is
  * entitled and the handler should continue.
@@ -78,7 +77,7 @@ async function requireCustomDomainPlan(
     return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
   }
 
-  const plan = (tenantDoc.data()?.plan as TenantPlan) || 'plus';
+  const plan = toTenantPlan(tenantDoc.data()?.plan);
   if (!hasFeature(plan, 'customDomain')) {
     return NextResponse.json(
       { error: 'Custom domains require the Community plan or higher.' },

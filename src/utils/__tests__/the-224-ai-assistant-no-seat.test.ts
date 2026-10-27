@@ -70,7 +70,7 @@ import type { TenantPlan } from '../../types/tenant.types';
  * The new entitlement's own tests live in `the-253-ai-chat-addon.test.ts`.
  * ═══════════════════════════════════════════════════════════════════════════ */
 
-const PLANS: TenantPlan[] = ['free', 'plus', 'pro', 'max'];
+const PLANS: TenantPlan[] = ['free', 'church', 'ministry'];
 
 const srcOf = (rel: string) =>
   readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
@@ -85,7 +85,7 @@ describe('aiChat is on no tier at all', () => {
        🔴 THE-253 INVERTS IT ON FOUNDER DIRECTION — "NO PLAN HAS ANY AI RAG
        CHAT ... if we sell it as an add-on". The two `true`s were the reason the
        $20 card charged Small Team and Ministry for what they already had. */
-    expect(PLANS.map((p) => getPlanFeatures(p).aiChat)).toEqual([false, false, false, false]);
+    expect(PLANS.map((p) => getPlanFeatures(p).aiChat)).toEqual([false, false, false]);
     expect(PLAN_ORDER).toEqual(PLANS);
   });
 
@@ -149,7 +149,7 @@ describe('the assistant is available to NO tier without the add-on', () => {
       expect(getEffectiveFeatures(plan, NO_ADDONS).aiChat).toBe(base.aiChat);
       expect(getEffectiveFeatures(plan, NO_ADDONS).aiKnowledge).toBe(base.aiKnowledge);
     }
-    expect(PLANS.map((p) => getPlanFeatures(p).aiChat)).toEqual([false, false, false, false]);
+    expect(PLANS.map((p) => getPlanFeatures(p).aiChat)).toEqual([false, false, false]);
   });
 
   it('the count the add-on used to move does not exist any more', () => {
@@ -247,7 +247,7 @@ describe('nothing enforces a per-seat AI limit', () => {
        "a token top-up" a genuine product to build and not a copy change. */
     expect(Object.keys(PLAN_LIMITS).sort()).toEqual([...PLANS].sort());
     expect(PLANS.map((p) => PLAN_LIMITS[p].queryTokensPerMonth))
-      .toEqual([0, 2_000_000, 10_000_000, 50_000_000]);
+      .toEqual([0, 2_000_000, 50_000_000]);
 
     const usage = srcOf('../../lib/rag-usage.ts');
     expect(usage).toMatch(/checkQueryBudget\(tenantId: string/);

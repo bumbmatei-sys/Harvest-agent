@@ -104,11 +104,11 @@ describe('the stored period is recovered after the redirect drops the query', ()
   it('an annual signup link survives the auth redirect and buys the annual product', async () => {
     // What App.tsx stashed before navigate('/auth') wiped the URL.
     sessionStorage.setItem(SIGNUP_BILLING_STORAGE_KEY, 'yearly');
-    mount(<ChurchOnboarding onComplete={() => {}} signupPlan="max" />);
+    mount(<ChurchOnboarding onComplete={() => {}} signupPlan="ministry" />);
     expect(container.textContent).toMatch(/billed annually/i);
     await signUp();
     expect(checkoutBody().billing).toBe('yearly');
-    expect(checkoutBody().plan).toBe('max');
+    expect(checkoutBody().plan).toBe('ministry');
   });
 
   it('the restart-after-abandonment path re-buys the chosen term', async () => {
@@ -120,7 +120,7 @@ describe('the stored period is recovered after the redirect drops the query', ()
     // restarted checkout body out — is pinned in
     // OnboardingGate.restart-period.test.tsx.
     sessionStorage.setItem(SIGNUP_BILLING_STORAGE_KEY, 'yearly');
-    mount(<ChurchOnboarding onComplete={() => {}} signupPlan="max" />);
+    mount(<ChurchOnboarding onComplete={() => {}} signupPlan="ministry" />);
     await signUp();
     expect(writtenMarker().signupBilling).toBe('yearly');
     expect(writtenMarker().signupInProgress).toBe(true);

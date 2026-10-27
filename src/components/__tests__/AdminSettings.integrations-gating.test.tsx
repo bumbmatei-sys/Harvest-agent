@@ -180,9 +180,9 @@ async function providersOn(plan: string): Promise<string[]> {
   return visibleProviderCards(host);
 }
 
-const ALL_PLANS: TenantPlan[] = ['plus', 'pro', 'max'];
-const INDIVIDUAL: TenantPlan = 'plus';
-const SMALL_TEAM: TenantPlan = 'pro';
+const ALL_PLANS: TenantPlan[] = ['church', 'ministry'];
+const INDIVIDUAL: TenantPlan = 'church';
+const SMALL_TEAM: TenantPlan = 'ministry';
 
 beforeEach(() => {
   scope.platformOverride = false;
@@ -193,7 +193,7 @@ describe('THE-193 — Integrations gating', () => {
   // 1 ── 🔴 the regression the founder hit
   it('an Individual tenant sees the Integrations section', async () => {
     // Named by tier label, so the test says what a human would say.
-    expect(PLAN_DISPLAY_NAMES[INDIVIDUAL]).toBe('Individual');
+    expect(PLAN_DISPLAY_NAMES[INDIVIDUAL]).toBe('Church');
     const host = await mount(INDIVIDUAL);
     expect(rowHeader(host, 'Integrations'), 'Individual has no Integrations row in Settings').toBeTruthy();
   });
@@ -257,7 +257,7 @@ const EXPECTED_PROVIDERS = INTEGRATION_PROVIDERS
 
   // 4
   it('a Small Team tenant sees every provider a switch has not withheld', async () => {
-    expect(PLAN_DISPLAY_NAMES[SMALL_TEAM]).toBe('Small Team');
+    expect(PLAN_DISPLAY_NAMES[SMALL_TEAM]).toBe('Ministry');
     expect(await providersOn(SMALL_TEAM)).toEqual(EXPECTED_PROVIDERS);
     // 🔴 THE ENTITLEMENT IS UNTOUCHED behind the switch: Small Team still owns
     // `newsletterAutomation`, so flipping the flag restores both providers here

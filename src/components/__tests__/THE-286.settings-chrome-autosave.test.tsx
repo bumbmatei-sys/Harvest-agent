@@ -1178,8 +1178,9 @@ describe('15 · the other 12 sections are byte-identical', () => {
     expect(UNTOUCHED.otherSettingsSections[PLAN_UPGRADE_SECTION.file as keyof typeof UNTOUCHED.otherSettingsSections])
       .toBe(PLAN_UPGRADE_SECTION.originalDigest);
     expect(SCOPED_DIGESTS[PLAN_UPGRADE_SECTION.file]).not.toBe(PLAN_UPGRADE_SECTION.originalDigest);
-    // Round 3's digest and round 4's, beside the original: appended, never substituted.
-    expect(acceptedDigests(PLAN_UPGRADE_SECTION)).toHaveLength(3);
+    // Round 3's digest, round 4's and the two-plan repricing's, beside the original:
+    // appended, never substituted.
+    expect(acceptedDigests(PLAN_UPGRADE_SECTION)).toHaveLength(4);
   });
 
   it.each(Object.entries(UNTOUCHED.otherSettingsSections))('%s is unchanged', async (rel, digest) => {

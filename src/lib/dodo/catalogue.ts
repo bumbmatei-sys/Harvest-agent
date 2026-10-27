@@ -1,4 +1,5 @@
-import type { TenantPlan, PricedPlan } from '@/types/tenant.types';
+import type { LegacyPlanId, PricedPlan } from '@/types/tenant.types';
+import { LEGACY_PLAN_ALIASES } from '@/utils/plan-id';
 import { BILLING_TERMS, PLAN_PRICING, TERM_MONTHS, planPriceUsd } from '@/utils/plan-features';
 import { DODO_LIVE_MODE, DODO_TEST_MODE, dodoConfig, type DodoEnvironment } from './config';
 import type { BillingPeriod } from './provider';
@@ -8,7 +9,7 @@ import type { BillingPeriod } from './provider';
  *
  * ⚠️ DODO PUTS THE PRICE ON THE PRODUCT. There is no separate price object, so
  * EACH TERM IS A DIFFERENT PRODUCT, not another price on the same one. This map
- * has SIX entries and no price-ID concept. Do NOT model it on Stripe's product/price
+ * has FOUR entries (two plans, two terms) and no price-ID concept. Do NOT model it on Stripe's product/price
  * split (`billing.ts`'s `{ monthly, yearly }` under one plan key): that split is
  * the single biggest structural difference between the two processors, and
  * carrying it over is how you end up looking for a price that does not exist.
@@ -88,7 +89,7 @@ export const DODO_TRIAL_DAYS = 14;
  * The price of a plan on a term, in whole USD.
  *
  * READ FROM THE TABLE, never typed here. `PLAN_PRICING` (utils/plan-features)
- * is the one place the nine plan prices exist; a price written as a literal in
+ * is the one place the four plan prices exist; a price written as a literal in
  * this file would be a second source of truth that drifts silently, and a
  * drifted figure paired with a real product id is a checkout that SUCCEEDS at
  * the wrong price.
@@ -175,72 +176,113 @@ export const DODO_PRODUCT_UNMAPPED = null;
 export type DodoCatalogue = Readonly<Record<PricedPlan, Readonly<Record<BillingPeriod, DodoCatalogueEntry>>>>;
 
 /**
- * The products, in Dodo TEST MODE. All six.
+ * The OFFERED products, in Dodo TEST MODE.
  *
- * Created 2026-08-11 with a 14-day trial on every product and `plan_key` /
- * `billing_period` in metadata. `plan_key` carries the app's internal plan id
- * (plus / pro / max), not the display name, so the reverse lookup below and the
- * product metadata agree on one vocabulary.
+ * 🔴 NOTHING IS MAPPED HERE YET. The Church and Ministry products were created in
+ * LIVE mode only, so every cell is `DODO_PRODUCT_UNMAPPED` and a test-mode
+ * checkout for either plan is refused by `requireProductId` with the gap named.
+ * That is the point of the sentinel: a test environment that quietly carted a
+ * retired product would be charging yesterday's price for today's plan.
  *
- * ⚠️ NOTE ON THE PRICES. These six test products were created against the OLD
- * price list ($49 / $99 / $199 monthly, 9-of-12 annual). The entries below take
- * their `priceUsd` from the CURRENT table like every other entry, so under test
- * mode the app's published figure and Dodo's stored figure disagree by design
- * until the test catalogue is recreated. That is a test-mode-only artifact —
- * `dodoConfig.environment` is `live_mode` for anything a real card touches —
- * and it is recorded here rather than papered over with a second price table.
- *
- * NO ADD-ON PRODUCTS. Dodo supports them natively — products carry an `addons`
- * array and `subscriptions.create` accepts `addons: [{ addon_id, quantity }]` —
- * and all six products above currently have an empty `addons` array. Add-ons are
- * REP-5.
+ * The old test products still exist and still resolve (see
+ * `DODO_LEGACY_TEST_PRODUCTS`), they are just not offered.
  */
 export const DODO_TEST_CATALOGUE: DodoCatalogue = Object.freeze({
-  plus: Object.freeze({
-    monthly: entry('plus', 'monthly', 'pdt_0NlAMMZk44L0tL8lcLX6M'),
-    yearly: entry('plus', 'yearly', 'pdt_0NlAMMeWwZDSlfNdti8FD'),
+  church: Object.freeze({
+    // TODO(dodo): create test-mode Church/Ministry products, then pin their ids here.
+    monthly: entry('church', 'monthly', DODO_PRODUCT_UNMAPPED),
+    // TODO(dodo): create test-mode Church/Ministry products, then pin their ids here.
+    yearly: entry('church', 'yearly', DODO_PRODUCT_UNMAPPED),
   }),
-  pro: Object.freeze({
-    monthly: entry('pro', 'monthly', 'pdt_0NlAMMhi90q5Ovk6QBzcf'),
-    yearly: entry('pro', 'yearly', 'pdt_0NlAMMlsVKeYG8ukapmzE'),
-  }),
-  max: Object.freeze({
-    monthly: entry('max', 'monthly', 'pdt_0NlAMMp4QndR3qPzlD8sG'),
-    yearly: entry('max', 'yearly', 'pdt_0NlAMMsQBzMvRVNCY7zws'),
+  ministry: Object.freeze({
+    // TODO(dodo): create test-mode Church/Ministry products, then pin their ids here.
+    monthly: entry('ministry', 'monthly', DODO_PRODUCT_UNMAPPED),
+    // TODO(dodo): create test-mode Church/Ministry products, then pin their ids here.
+    yearly: entry('ministry', 'yearly', DODO_PRODUCT_UNMAPPED),
   }),
 });
 
 /**
- * The six products, in Dodo LIVE MODE.
+ * The OFFERED products, in Dodo LIVE MODE: Church and Ministry, monthly and
+ * annual, created 2026-10-27 with a 14-day trial and `plan_key` (`church` /
+ * `ministry`) and `billing_period` (`monthly` / `annual`) in product metadata.
+ * The two Ministry products carry the same three add-ons the retired `max`
+ * product did, so `DODO_LIVE_ADDONS` below is unchanged and still valid for them.
  *
- * Created 2026-08-13 and verified field-by-field against the authenticated live
- * API: `USD`, `saas` tax category, a 14-day free trial, and the period-matched
- * add-on set attached to each.
+ * Neither metadata field is read by this app: a subscription names its plan by
+ * `product_id` and `resolvePlanFromProductId` is the only reader, so the ids here
+ * and the `church` / `ministry` plan ids are the whole contract.
  *
- * The three QUARTERLY products (created 2026-08-20, `3 x Month`) are not here.
- * The term was withdrawn on 2026-10-23 and the products archived in Dodo, which
- * had no live subscription on any of them. The three ids are deliberately not
- * kept in this file: an archived id left in the table would be a checkout the
- * processor refuses, and `resolvePlanFromProductId` returns null for it so a
- * stale one can never be read as a plan.
+ * The three QUARTERLY products are not here and never come back: the term was
+ * withdrawn on 2026-10-23, the products archived. `resolvePlanFromProductId`
+ * returns null for an archived id so a stale one can never be read as a plan.
  *
  * 🔴 These ids are what a real card is charged against. They are pinned
  * character-for-character in `dodo-catalogue.test.ts`; a wrong id here is a
  * checkout that SUCCEEDS at the wrong price, not one that fails.
  */
 export const DODO_LIVE_CATALOGUE: DodoCatalogue = Object.freeze({
-  plus: Object.freeze({
-    monthly: entry('plus', 'monthly', 'pdt_0NlJZKKU2AQSSH7E4ziKA'),
-    yearly: entry('plus', 'yearly', 'pdt_0NlJZMLLKZ5SVGEoSGDdk'),
+  church: Object.freeze({
+    monthly: entry('church', 'monthly', 'pdt_0NqdacJTREPtSJuqtPCjm'),
+    yearly: entry('church', 'yearly', 'pdt_0NqdacQf9gvgmw6DU7449'),
   }),
-  pro: Object.freeze({
-    monthly: entry('pro', 'monthly', 'pdt_0NlJZMOMhmZWiG6UVDl8I'),
-    yearly: entry('pro', 'yearly', 'pdt_0NlJZMRWL8tuAZseUIRTP'),
+  ministry: Object.freeze({
+    monthly: entry('ministry', 'monthly', 'pdt_0NqdacWLx9z6CKsGRIKCW'),
+    yearly: entry('ministry', 'yearly', 'pdt_0Nqdaca89LIHeUvrNxXwZ'),
   }),
-  max: Object.freeze({
-    monthly: entry('max', 'monthly', 'pdt_0NlJZMUUiT36FGMoiFXgl'),
-    yearly: entry('max', 'yearly', 'pdt_0NlJZMXTnpRBAwTfBVpPs'),
-  }),
+});
+
+/**
+ * A product from the three-tier price list that is no longer SOLD but is still
+ * ACTIVE in Dodo, so a subscription may still be on it.
+ *
+ * `legacyTier` is the id it was sold as; `plan` is the tier it resolves to now
+ * (plus and pro to Church, max to Ministry, the same mapping as
+ * `LEGACY_PLAN_ALIASES`) and `period` is the term it bills on.
+ */
+export interface DodoLegacyProduct {
+  readonly legacyTier: LegacyPlanId;
+  readonly plan: PricedPlan;
+  readonly period: BillingPeriod;
+}
+
+type DodoLegacyTable = Readonly<Record<string, DodoLegacyProduct>>;
+
+function legacy(legacyTier: LegacyPlanId, period: BillingPeriod): DodoLegacyProduct {
+  return Object.freeze({ legacyTier, plan: LEGACY_PLAN_ALIASES[legacyTier], period });
+}
+
+/**
+ * The retired products in Dodo TEST MODE (created 2026-08-11). Recognised, never
+ * offered: `productIdFor` reads the offered catalogue only.
+ */
+export const DODO_LEGACY_TEST_PRODUCTS: DodoLegacyTable = Object.freeze({
+  pdt_0NlAMMZk44L0tL8lcLX6M: legacy('plus', 'monthly'),
+  pdt_0NlAMMeWwZDSlfNdti8FD: legacy('plus', 'yearly'),
+  pdt_0NlAMMhi90q5Ovk6QBzcf: legacy('pro', 'monthly'),
+  pdt_0NlAMMlsVKeYG8ukapmzE: legacy('pro', 'yearly'),
+  pdt_0NlAMMp4QndR3qPzlD8sG: legacy('max', 'monthly'),
+  pdt_0NlAMMsQBzMvRVNCY7zws: legacy('max', 'yearly'),
+});
+
+/**
+ * The retired products in Dodo LIVE MODE (created 2026-08-13). They stay active
+ * in Dodo so any subscription already on one keeps renewing, and this table is
+ * what lets the webhook, lifecycle and renewal paths name its plan. Nobody pays
+ * on plus or pro today; the rows exist because "nobody" is a claim about the
+ * data and this is a billing path.
+ *
+ * 🔴 NEVER OFFERED. Not in `DODO_LIVE_CATALOGUE`, so `productIdFor`,
+ * `requireProductId` and `offerableTerms` cannot return one and no checkout can
+ * cart one.
+ */
+export const DODO_LEGACY_LIVE_PRODUCTS: DodoLegacyTable = Object.freeze({
+  pdt_0NlJZKKU2AQSSH7E4ziKA: legacy('plus', 'monthly'),
+  pdt_0NlJZMLLKZ5SVGEoSGDdk: legacy('plus', 'yearly'),
+  pdt_0NlJZMOMhmZWiG6UVDl8I: legacy('pro', 'monthly'),
+  pdt_0NlJZMRWL8tuAZseUIRTP: legacy('pro', 'yearly'),
+  pdt_0NlJZMUUiT36FGMoiFXgl: legacy('max', 'monthly'),
+  pdt_0NlJZMXTnpRBAwTfBVpPs: legacy('max', 'yearly'),
 });
 
 /**
@@ -256,6 +298,13 @@ const CATALOGUES_BY_ENVIRONMENT: Readonly<Record<DodoEnvironment, DodoCatalogue>
 });
 
 export const DODO_ACTIVE_CATALOGUE: DodoCatalogue = CATALOGUES_BY_ENVIRONMENT[dodoConfig.environment];
+
+const LEGACY_PRODUCTS_BY_ENVIRONMENT: Readonly<Record<DodoEnvironment, DodoLegacyTable>> = Object.freeze({
+  [DODO_TEST_MODE]: DODO_LEGACY_TEST_PRODUCTS,
+  [DODO_LIVE_MODE]: DODO_LEGACY_LIVE_PRODUCTS,
+});
+
+export const DODO_ACTIVE_LEGACY_PRODUCTS: DodoLegacyTable = LEGACY_PRODUCTS_BY_ENVIRONMENT[dodoConfig.environment];
 
 /** The active catalogue's entry for a plan on a billing period. Total. */
 export function catalogueEntry(plan: PricedPlan, period: BillingPeriod): DodoCatalogueEntry {
@@ -312,9 +361,16 @@ export function offerableTerms(plan: PricedPlan): BillingPeriod[] {
  * The direct counterpart of `billing.ts`'s `getPlanFromPriceId`, and the reason
  * the subscription webhook can name a plan at all: a Dodo subscription payload
  * carries `product_id` and nothing that says "Ministry, annual". Resolves the
- * ACTIVE catalogue only, and returns null for anything else — an add-on product,
- * a product created by hand in the dashboard, or the OTHER MODE's ids — so an
- * unknown id can never be silently treated as the cheapest plan.
+ * ACTIVE mode only — the offered catalogue first, then the retired products
+ * still active in Dodo — and returns null for anything else: an add-on product,
+ * a product created by hand in the dashboard, an archived quarterly product, or
+ * the OTHER MODE's ids. An unknown id can never be silently treated as the
+ * cheapest plan.
+ *
+ * A retired product resolves to the tier it became (plus and pro to Church, max
+ * to Ministry), so a legacy subscription is provisioned, renewed and held to the
+ * same limits as a new one. It is resolvable and not purchasable: that is the
+ * whole difference between this function and `productIdFor`.
  *
  * The other-mode case is deliberate: under live mode a test product id is
  * foreign. Every existing test-mode tenant is a cancelled test artifact, and a
@@ -337,16 +393,37 @@ export function resolvePlanFromProductId(
       }
     }
   }
+  if (productId && Object.prototype.hasOwnProperty.call(DODO_ACTIVE_LEGACY_PRODUCTS, productId)) {
+    const { plan, period } = DODO_ACTIVE_LEGACY_PRODUCTS[productId];
+    return { plan, period };
+  }
   return null;
 }
 
-/** Every product id the active catalogue can name. Six, in both modes. */
+/**
+ * The retired tier a product id was sold as (plus, pro or max), or null for a
+ * current product and for anything unknown. For reporting only: nothing may
+ * gate on it, because every gate reads the resolved `plan`.
+ */
+export function legacyTierForProductId(productId: string): LegacyPlanId | null {
+  if (productId && Object.prototype.hasOwnProperty.call(DODO_ACTIVE_LEGACY_PRODUCTS, productId)) {
+    return DODO_ACTIVE_LEGACY_PRODUCTS[productId].legacyTier;
+  }
+  return null;
+}
+
+/** Every product id the active mode can OFFER for a new checkout. Four in live, none in test. */
 export function allCatalogueProductIds(): string[] {
   return Object.values(DODO_ACTIVE_CATALOGUE).flatMap((periods) =>
     Object.values(periods)
       .map((entry) => entry.productId)
       .filter((id): id is string => id !== DODO_PRODUCT_UNMAPPED),
   );
+}
+
+/** Every retired product id the active mode still recognises but never offers. */
+export function allLegacyProductIds(): string[] {
+  return Object.keys(DODO_ACTIVE_LEGACY_PRODUCTS);
 }
 
 // ─── The add-on catalogue (REP-5a) ───────────────────────────────────────────

@@ -278,7 +278,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'The gift was recorded but this ticket could not be updated. '
-          + 'Do not confirm it again — check your accounting before retrying.',
+          + 'Do not confirm it again — check your giving records before retrying.',
         invoiceId: donation.invoiceId,
       },
       { status: 500 },

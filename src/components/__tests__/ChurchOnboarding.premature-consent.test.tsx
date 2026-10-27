@@ -139,7 +139,7 @@ afterEach(() => {
 
 describe('THE-73 — consent is only recorded where it is given', () => {
   it('termsAccepted is never written by a screen that displays no terms', async () => {
-    mount(<ChurchOnboarding onComplete={() => {}} signupPlan="plus" />);
+    mount(<ChurchOnboarding onComplete={() => {}} signupPlan="church" />);
 
     // The premise, asserted rather than assumed: this screen presents nothing
     // to consent to. If terms are ever added here the premise changes and this
@@ -170,7 +170,7 @@ describe('THE-73 — consent is only recorded where it is given', () => {
     // The returning church: a user doc already exists, carrying whatever
     // consent AuthPage recorded when they signed in.
     getDoc.mockResolvedValue({ exists: () => true });
-    mount(<ChurchOnboarding onComplete={() => {}} signupPlan="plus" />);
+    mount(<ChurchOnboarding onComplete={() => {}} signupPlan="church" />);
     await completeOnboarding();
 
     expect(setDoc, 'an existing user doc was replaced rather than updated').not.toHaveBeenCalled();

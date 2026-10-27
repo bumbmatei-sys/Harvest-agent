@@ -392,6 +392,11 @@ describe('5 · the money path is byte-identical', () => {
          socialScheduler cell, so it prints on Ministry only. The hunk is recorded in
          __fixtures__/plan-copy-exemption.ts and pr-540.plan-copy-exemption.test.ts proves it. */
       ['2301202d994407ae7a00e0b41e92e9245bae3590db29fe7ca292c7adb78e115c', 'PR #540 r4 — Social Scheduler card line, derived from the Ministry plan cell (Matei approved 2026-10-21)'],
+      /* 🔴 APPENDED BY THE TWO-PLAN REPRICING (Matei approved 2026-10-27), nothing above removed.
+         Still NO client-side plan write: the cards are now Church and Ministry, derived from the new
+         matrix, with the fee and coming-soon lines. The hunks are recorded in
+         __fixtures__/plan-copy-exemption-r6.ts and pr-540.plan-copy-exemption.test.ts proves them. */
+      ['442e27f6e67f9affc7e51c07c556c9233944ead46d73c9277e9d5f3ff0d47c98', 'reprice — Church and Ministry cards, fee and coming-soon lines (Matei approved 2026-10-27)'],
     ],
   };
 
@@ -743,13 +748,12 @@ describe('5 · the money path is byte-identical', () => {
 describe('6 · no plan cap or price changed', () => {
   it('the six plan prices are exactly what they were', () => {
     expect(PLAN_PRICING).toEqual({
-      plus: { monthly: 20, yearly: 190 },
-      pro: { monthly: 40, yearly: 380 },
+      church: { monthly: 30, yearly: 300 },
       // ⚠️ THE-343 repriced Ministry ($80→$60, and THE-372 back to $80, with the year
       // following at the same >20% discount). `plus` and `pro` are
       // enumerated so a reprice that overreached its brief still fails here.
       // (There were nine until the quarterly term was withdrawn on 2026-10-23.)
-      max: { monthly: 80, yearly: 752 },
+      ministry: { monthly: 90, yearly: 900 },
     });
   });
 
@@ -765,9 +769,8 @@ describe('6 · no plan cap or price changed', () => {
     // so this keeps guarding `maxCourses` and `maxAdmins`, which did not move.
     expect(caps).toEqual({
       free: { maxCourses: 1, maxAdmins: 1, maxContacts: 500 },
-      plus: { maxCourses: 2, maxAdmins: 2, maxContacts: 500 },
-      pro: { maxCourses: 5, maxAdmins: 5, maxContacts: 2_000 },
-      max: { maxCourses: 15, maxAdmins: 15, maxContacts: 4_000 },
+      church: { maxCourses: 5, maxAdmins: 2, maxContacts: 500 },
+      ministry: { maxCourses: 15, maxAdmins: 15, maxContacts: 5_000 },
     });
   });
 
@@ -878,6 +881,11 @@ describe('6 · no plan cap or price changed', () => {
       // moved, and nothing writes `plan` from the client. The hunks are recorded in
       // __fixtures__/plan-copy-exemption.ts (round 5) and pr-540.plan-copy-exemption.test.ts proves them.
       ['quarterly-withdrawn', '691314fe71658a90b2a6f92a7d091c8c02507ce5193c743552cae921012fc4ef'],
+      // APPENDED, never substituted (the two-plan repricing, Matei approved 2026-10-27). plus / pro /
+      // max become Church and Ministry: new matrix rows, PLAN_PRICING, fees, the legacy-id aliases and
+      // the plan copy. Nothing writes `plan` from the client; the webhook is still its only writer.
+      // The hunks are recorded in __fixtures__/plan-copy-exemption-r6.ts.
+      ['reprice-church-ministry', '7f2994c24baa44900f169cbe4e33b9948fe81e2e487cdaf6cef5b18cecbc56be'],
     ];
     expect(sha256(readFileSync(path.join(REPO, 'src/utils/plan-features.ts')))).toBe(
       PLAN_FEATURES_PINS[PLAN_FEATURES_PINS.length - 1][1],

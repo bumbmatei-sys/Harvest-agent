@@ -192,7 +192,7 @@ const TABS: Row[] = [
   // a shared cell could not express it: crm:false on free took this screen — and
   // the analytics on it — away in the same edit.
   { label: 'Signups', section: 'signups', screen: 'AdminSignups', feature: (f) => f.signups },
-  { label: 'Accounting', section: 'accounting', screen: 'AdminAccounting', feature: (f) => f.accountingTools || f.givingStatements },
+  { label: 'Giving records', section: 'accounting', screen: 'AdminAccounting', feature: (f) => f.accountingTools || f.givingStatements },
   { label: 'Forms', section: 'forms', screen: 'AdminForms', feature: (f) => f.customForms },
   { label: 'Check-In', section: 'checkin', screen: 'AdminCheckin', feature: (f) => f.checkInSystem, note: 'hosts TWO products — see KNOWN_TWO_LAYER_EXCEPTIONS' },
   { label: 'Livestream', section: 'livestream', screen: 'AdminLivestream', feature: (f) => f.livestream },
@@ -219,9 +219,9 @@ const KNOWN_TWO_LAYER_EXCEPTIONS: ReadonlyArray<{ label: string; tiers: TenantPl
     tiers: ['free'],
     why:
       'The tab hosts two products. QR Codes stays on free deliberately, and the attendance half self-gates '
-      + 'inside AdminCheckin and again server-side. THE-373 took the tab off Individual: it was the only '
+      + 'inside AdminCheckin and again server-side. THE-373 took the tab off Church: it was the only '
       + 'Reach entry that plan could see, and the founder hid that section. Free is now the only tier '
-      + 'where the tab is visible in full while checkInSystem is false. Small Team and Ministry carry the cell.',
+      + 'where the tab is visible in full while checkInSystem is false. Ministry carries the cell.',
   },
 ];
 
@@ -235,7 +235,7 @@ const flush = async () => {
 
 const ALL_TAB_LABELS = [
   'Dashboard', 'Campus', 'Campuses', 'Courses', 'Blog', 'AI Knowledge', 'Newsletter',
-  'Fundraising', 'Events', 'Services', 'Notes', 'CRM', 'Signups', 'Accounting', 'Forms', 'Check-In', 'Livestream',
+  'Fundraising', 'Events', 'Services', 'Notes', 'CRM', 'Signups', 'Giving records', 'Forms', 'Check-In', 'Livestream',
   'SMS', 'Community', 'Library', 'Tenants', 'Affiliate', 'Branding',
 ];
 function navLabels(): string[] {
@@ -415,20 +415,21 @@ describe('17 — the tier/tab matrix is generated from the real nav array and th
     expect(visible.length, 'free must see all eighteen').toBe(18);
   });
 
-  it('resolves the Individual column without Reach', async () => {
+  it('resolves the Church column without Reach', async () => {
     const matrix = await buildMatrix();
     const visible = TABS
-      .filter((r) => matrix.get(r.label)!.get('plus')!.cell !== 'hidden')
+      .filter((r) => matrix.get(r.label)!.get('church')!.cell !== 'hidden')
       .map((r) => r.label);
     expect(visible.sort()).toEqual(
-      // THE-373 — Check-In left this column. It was the only Reach tab Individual
-      // could see, and the section is hidden. Forms was not added.
-      ['Blog', 'CRM', 'Campus', 'Courses', 'Dashboard', 'Fundraising', 'Signups'].sort(),
+      // THE-373 — Check-In is not in this column: it was the only Reach tab the
+      // cheapest paid tier could see, and the section is hidden. Notes and
+      // Community are on Church in the two-plan spec.
+      ['Blog', 'CRM', 'Campus', 'Community', 'Courses', 'Dashboard', 'Fundraising', 'Notes', 'Signups'].sort(),
     );
-    // And every one of them is FULL — an Individual tenant meets no wall on a
+    // And every one of them is FULL — a Church tenant meets no wall on a
     // tab it can see. That is the product promise the nav gate now keeps.
     for (const label of visible) {
-      expect(matrix.get(label)!.get('plus')!.cell, `${label} is visible but walled on Individual`)
+      expect(matrix.get(label)!.get('church')!.cell, `${label} is visible but walled on Church`)
         .toBe('visible · full');
     }
   });
@@ -516,10 +517,10 @@ describe('19 — no tab hidden from the nav renders fully when reached by URL', 
         // does not exist on that plan, so a typed URL is "page not found" and
         // the unknown-tab guard sends it home. Every other hidden cell is still
         // a wall.
-        if (row.label === 'Check-In' && plan === 'plus') {
-          expect(resolved.wall, 'Individual Check-In became an upgrade wall').toBeNull();
-          expect(resolved.screen, 'Individual Check-In still mounted').toBeNull();
-          expect(resolved.redirected, 'Individual Check-In URL was not bounced').toBe(true);
+        if (row.label === 'Check-In' && plan === 'church') {
+          expect(resolved.wall, 'Church Check-In became an upgrade wall').toBeNull();
+          expect(resolved.screen, 'Church Check-In still mounted').toBeNull();
+          expect(resolved.redirected, 'Church Check-In URL was not bounced').toBe(true);
           continue;
         }
         expect(resolved.wall, `${row.label}/${plan} refused with no upgrade screen`).not.toBeNull();
@@ -527,38 +528,13 @@ describe('19 — no tab hidden from the nav renders fully when reached by URL', 
       }
     }
     // A guard on the guard: if the nav gate ever stopped hiding anything, the
-    // loop above would pass by never running. Nineteen cells, and the breakdown
-    // is the ticket's own arithmetic PLUS THE-253's two and THE-314's two:
-    //   Individual  eight of the nine plus Branding                        (9)
-    //   Small Team  Events, Accounting, Forms, Community plus Branding     (5)
-    //   free        Branding alone                                         (1)
-    //   Ministry    AI Knowledge — it hid nothing before                   (1)
-    //   Small Team  AI Knowledge, which it used to have                    (1)
-    //   Individual  SMS, which it used to have                             (1)
-    //   Small Team  SMS, which it used to have                             (1)
-    //
-    // ⚠️ MINISTRY NOW HIDES SOMETHING, which it never did before: THE-253 took
-    // `aiKnowledge` off every tier, so even the top plan reaches the AI
-    // Knowledge screen only by holding the AI Assistant add-on. That the screen
-    // answers with an upgrade WALL rather than rendering is the property this
-    // test is for, and it now covers the top tier too.
-    //
-    // ⚠️ AND THE-314 MOVED IT AGAIN, in the opposite direction: SMS went from
-    // every paid tier to Ministry alone, so Individual and Small Team each hide
-    // one more. That is the WALL half of a downgrade — two paying tiers now meet
-    // an upgrade screen where they used to reach a feature — and it is asserted
-    // rather than merely allowed, because a downgrade that silently rendered a
-    // broken screen would be worse than one that says what happened.
-    //
-    // ⚠️ AND THE-326 MOVED IT TO 21. Services carries Events' own
-    // `eventRegistration` cell, so it is hidden on exactly the tiers Events is
-    // hidden on — two of them — and the count rises by two with no tier losing
-    // reach it had. A rise of anything other than two here would mean the split
-    // changed an entitlement, which is the thing it must not do.
-    //
-    // ⚠️ AND IT FELL TO 18 when Branding left the sidebar for Settings: its three
-    // hidden cells (free, Individual, Small Team) went with the row.
-    expect(checked, 'the count of hidden cells moved — check the matrix above').toBe(18);
+    // loop above would pass by never running. Eight cells, all on Church:
+    // AI Knowledge, Newsletter, Events, Services, Giving records, Forms,
+    // Livestream and SMS. (Check-In is hidden there too, but is counted by the
+    // bounce above.) Free sees every tab and Ministry holds every cell, so
+    // neither hides anything. Branding left the sidebar for Settings, so it is
+    // not a row.
+    expect(checked, 'the count of hidden cells moved — check the matrix above').toBe(8);
   });
 
   it('and a third layer bounces the URL too, so the wall is not the only refusal', async () => {

@@ -23,10 +23,13 @@ const SRC = resolve(__dirname, '../../..');
 // Hoisted above the static imports: the catalogue consumes the validated
 // dodoConfig, so config.ts evaluates when '../catalogue' is imported and the
 // three required variables must already exist.
+//
+// LIVE MODE, because that is the only mode in which a Church or Ministry product
+// exists yet. The test-mode gap is pinned separately at the foot of this file.
 vi.hoisted(() => {
   process.env.DODO_PAYMENTS_API_KEY = 'k';
   process.env.DODO_PAYMENTS_WEBHOOK_KEY = 'whsec_' + Buffer.from('x').toString('base64');
-  process.env.DODO_PAYMENTS_ENVIRONMENT = 'test_mode';
+  process.env.DODO_PAYMENTS_ENVIRONMENT = 'live_mode';
 });
 
 beforeEach(() => {
@@ -39,9 +42,11 @@ beforeEach(() => {
  */
 async function postSignupCheckout(
   body: Record<string, unknown>,
-  { flag = true }: { flag?: boolean } = {},
+  { flag = true, environment = 'live_mode' }: { flag?: boolean; environment?: string } = {},
 ) {
   vi.resetModules();
+  const previousEnvironment = process.env.DODO_PAYMENTS_ENVIRONMENT;
+  process.env.DODO_PAYMENTS_ENVIRONMENT = environment;
   vi.doMock('@/utils/plan-features', async (importOriginal) => ({
     ...(await importOriginal<typeof import('@/utils/plan-features')>()),
     DODO_BILLING_ENABLED: flag,
@@ -77,6 +82,7 @@ async function postSignupCheckout(
   );
 
   providerMod.__setDodoClientForTests(null);
+  process.env.DODO_PAYMENTS_ENVIRONMENT = previousEnvironment;
   vi.doUnmock('@/utils/plan-features');
   vi.doUnmock('@/lib/api-auth');
   vi.doUnmock('@/lib/money-path-sentry');
@@ -86,9 +92,9 @@ async function postSignupCheckout(
 }
 
 describe('signup carrying the annual period buys the annual product', () => {
-  it('puts the catalogue product for (pro, yearly) in the cart — looked up, not guessed', async () => {
+  it('puts the catalogue product for (church, yearly) in the cart — looked up, not guessed', async () => {
     const { res, createSession } = await postSignupCheckout({
-      plan: 'pro', billing: 'yearly', ministryName: 'Grace Chapel',
+      plan: 'church', billing: 'yearly', ministryName: 'Grace Chapel',
     });
 
     expect(res.status).toBe(200);
@@ -100,28 +106,28 @@ describe('signup carrying the annual period buys the annual product', () => {
 
     // The id in the cart is the catalogue's own entry for the annual term…
     expect(cart.product_cart).toEqual([
-      { product_id: catalogueEntry('pro', 'yearly').productId, quantity: 1 },
+      { product_id: catalogueEntry('church', 'yearly').productId, quantity: 1 },
     ]);
-    expect(cart.product_cart[0].product_id).toBe(productIdFor('pro', 'yearly'));
+    expect(cart.product_cart[0].product_id).toBe(productIdFor('church', 'yearly'));
     // …and it round-trips through the reverse lookup the webhook will use, so
     // the tenant this checkout provisions can be named annual after the fact.
     expect(resolvePlanFromProductId(cart.product_cart[0].product_id)).toEqual({
-      plan: 'pro', period: 'yearly',
+      plan: 'church', period: 'yearly',
     });
     // The metadata the webhook receives carries the period alongside the plan.
     expect(cart.metadata.billing).toBe('yearly');
-    expect(cart.metadata.plan).toBe('pro');
+    expect(cart.metadata.plan).toBe('church');
   });
 
   it('still buys the monthly product when the body says monthly — no regression', async () => {
     const { res, createSession } = await postSignupCheckout({
-      plan: 'plus', billing: 'monthly', ministryName: 'Hope',
+      plan: 'church', billing: 'monthly', ministryName: 'Hope',
     });
     expect(res.status).toBe(200);
     const cart = (createSession.mock.calls[0] as unknown[])[0] as {
       product_cart: Array<{ product_id: string }>;
     };
-    expect(cart.product_cart[0].product_id).toBe(productIdFor('plus', 'monthly'));
+    expect(cart.product_cart[0].product_id).toBe(productIdFor('church', 'monthly'));
   });
 });
 
@@ -130,7 +136,7 @@ describe('an unrecognised period never reaches a product lookup', () => {
     'billing=%s is refused by the real readPeriod with a 400, and no session is created',
     async (bad) => {
       const { res, createSession } = await postSignupCheckout({
-        plan: 'pro', billing: bad, ministryName: 'Grace Chapel',
+        plan: 'church', billing: bad, ministryName: 'Grace Chapel',
       });
       expect(res.status).toBe(400);
       expect(createSession).not.toHaveBeenCalled();
@@ -139,7 +145,7 @@ describe('an unrecognised period never reaches a product lookup', () => {
 
   it('a body with NO billing at all is refused too — the monthly default lives in the client, the server never guesses', async () => {
     const { res, createSession } = await postSignupCheckout({
-      plan: 'pro', ministryName: 'Grace Chapel',
+      plan: 'church', ministryName: 'Grace Chapel',
     });
     expect(res.status).toBe(400);
     expect(createSession).not.toHaveBeenCalled();
@@ -149,7 +155,7 @@ describe('an unrecognised period never reaches a product lookup', () => {
 describe('with DODO_BILLING_ENABLED off, the path refuses', () => {
   it('returns 503 for an annual signup without touching the catalogue or the SDK', async () => {
     const { res, createSession } = await postSignupCheckout(
-      { plan: 'pro', billing: 'yearly', ministryName: 'Grace Chapel' },
+      { plan: 'church', billing: 'yearly', ministryName: 'Grace Chapel' },
       { flag: false },
     );
     expect(res.status).toBe(503);
@@ -200,7 +206,7 @@ describe("the client-side period vocabulary IS the provider's BillingPeriod", ()
     // fallback must be the term with the HIGHEST per-month cost, so that
     // failing closed can never be cheaper than choosing honestly.
     const perMonth = (term: (typeof BILLING_TERMS)[number]) =>
-      termPriceUsd('plus', term) / (term === 'monthly' ? 1 : 12);
+      termPriceUsd('church', term) / (term === 'monthly' ? 1 : 12);
     const dearest = [...BILLING_TERMS].sort((a, b) => perMonth(b) - perMonth(a))[0];
     expect(readSignupBillingPeriod('definitely-not-a-term')).toBe(dearest);
     expect(dearest).toBe('monthly');
@@ -217,7 +223,7 @@ describe('no plan price appears as a literal in the signup surfaces', () => {
   // The forbidden figures are DERIVED from the catalogue, not typed here — the
   // same discipline this test enforces. Whole-USD and minor-unit forms both.
   // 🔴 PRICED_PLAN_ORDER, and NOT a cast. This read
-  // `(PLAN_ORDER as readonly ('plus'|'pro'|'max')[])` — a hand-written copy of
+  // `(PLAN_ORDER as readonly ('church'|'church'|'ministry')[])` — a hand-written copy of
   // the tier list, asserted over the real one. THE-200 added the Forever Free
   // tier to PLAN_ORDER, the cast went on lying about the element type, and
   // `termPriceUsd('free', …)` threw at COLLECTION time on a tier that has no
@@ -287,7 +293,7 @@ describe('no plan price appears as a literal in the signup surfaces', () => {
    * match, or the narrowing did not actually happen.
    */
   it('still catches a typed price, and still ignores a padding class and a timer', () => {
-    const price = termPriceUsd('plus', 'monthly');
+    const price = termPriceUsd('church', 'monthly');
     const cents = price * 100;
     const matches = (src: string, literal: number) =>
       moneyPositions(literal).some((re) => re.test(src));
@@ -303,4 +309,38 @@ describe('no plan price appears as a literal in the signup surfaces', () => {
     expect(matches(`elapsed += ${cents};`, cents)).toBe(false);
     expect(matches(`setTimeout(poll, ${cents});`, cents)).toBe(false);
   });
+});
+
+describe('🔴 a plan with no product in this mode is REFUSED, never carted as something else', () => {
+  it.each(['church', 'ministry'])(
+    'test mode has no %s product yet: the checkout fails with the gap named and no session is created',
+    async (plan) => {
+      for (const billing of ['monthly', 'yearly']) {
+        const { res, createSession } = await postSignupCheckout(
+          { plan, billing, ministryName: 'Grace Chapel' },
+          { environment: 'test_mode' },
+        );
+        expect(res.status).toBe(500);
+        const body = await res.json();
+        expect(body.error).toMatch(new RegExp(`no ${billing} product for plan "${plan}" in test_mode`));
+        expect(createSession).not.toHaveBeenCalled();
+      }
+    },
+  );
+
+  it.each(['plus', 'pro', 'max'])(
+    'a retired plan id (%s) in the request body is refused outright, in both modes',
+    async (plan) => {
+      // A stale tab still holding the old bundle must get an error rather than a
+      // different price from the one it displayed.
+      for (const environment of ['live_mode', 'test_mode']) {
+        const { res, createSession } = await postSignupCheckout(
+          { plan, billing: 'monthly', ministryName: 'Grace Chapel' },
+          { environment },
+        );
+        expect(res.status).toBe(400);
+        expect(createSession).not.toHaveBeenCalled();
+      }
+    },
+  );
 });

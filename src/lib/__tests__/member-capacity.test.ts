@@ -56,7 +56,7 @@ const countsTo = (n: unknown) => ({ data: () => ({ count: n }) });
 
 beforeEach(() => {
   vi.clearAllMocks();
-  h.tenantGet.mockResolvedValue(tenantDoc({ plan: 'pro', name: 'Grace Church' }));
+  h.tenantGet.mockResolvedValue(tenantDoc({ plan: 'church', name: 'Grace Church' }));
   h.countGet.mockResolvedValue(countsTo(0));
 });
 
@@ -128,11 +128,11 @@ describe('readTenantMemberAllowance', () => {
        where it would do damage if `readTenantAddons` still honoured it. It must
        resolve to plus's own 500. */
     h.tenantGet.mockResolvedValue(
-      tenantDoc({ plan: 'plus', addons: { contactPacks: 1 }, name: 'Grace Church' }),
+      tenantDoc({ plan: 'church', addons: { contactPacks: 1 }, name: 'Grace Church' }),
     );
     const allowance = await readTenantMemberAllowance('gracechurch');
     expect(allowance.maxContacts).toBe(500);
-    expect(allowance.plan).toBe('plus');
+    expect(allowance.plan).toBe('church');
     expect(allowance.ministryName).toBe('Grace Church');
   });
 
@@ -144,20 +144,20 @@ describe('readTenantMemberAllowance', () => {
   it('a doc that EXISTS with a garbage plan still coerces to plus, intentionally', async () => {
     h.tenantGet.mockResolvedValue(tenantDoc({ plan: 'not-a-real-tier' }));
     const allowance = await readTenantMemberAllowance('t');
-    expect(allowance.plan).toBe('plus');
-    // 🔴 THE FALL-BACK IS UNCHANGED — still 'plus', the cheapest PAID tier.
+    expect(allowance.plan).toBe('church');
+    // 🔴 THE FALL-BACK IS UNCHANGED — still 'church', the cheapest PAID tier.
     // Only the number behind it moved, 150 → 500 (THE-370).
     expect(allowance.maxContacts).toBe(500);
   });
 
   it('returns null for a missing/blank ministry name rather than the tenant id', async () => {
-    h.tenantGet.mockResolvedValue(tenantDoc({ plan: 'pro', name: '   ' }));
+    h.tenantGet.mockResolvedValue(tenantDoc({ plan: 'church', name: '   ' }));
     expect((await readTenantMemberAllowance('gracechurch')).ministryName).toBeNull();
   });
 });
 
 // ── AC-3 ── the off-by-one, both directions in one test ─────────────────────
-describe('the 500th is allowed and the 501st is refused on a pro tenant (AC-3)', () => {
+describe('the 500th is allowed and the 501st is refused on a Church tenant (AC-3)', () => {
   const applicant = {
     uid: 'applicant-uid',
     applicantTenantId: 'gracechurch',
@@ -165,21 +165,21 @@ describe('the 500th is allowed and the 501st is refused on a pro tenant (AC-3)',
   };
 
   it('total 500 → othersCount 499 → allowed; total 501 → othersCount 500 → refused', async () => {
-    h.tenantGet.mockResolvedValue(tenantDoc({ plan: 'pro', name: 'Grace Church' }));
+    h.tenantGet.mockResolvedValue(tenantDoc({ plan: 'church', name: 'Grace Church' }));
 
-    // 🔴 pro's cap is 2,000 since THE-370 (was 500), so the boundary moved with
-    // it. The property under test is the OFF-BY-ONE — the cap-th is allowed and
-    // the cap-plus-first is refused — which is asserted at the real boundary.
-    h.countGet.mockResolvedValue(countsTo(2_000));
+    // Church's cap is 500. The property under test is the OFF-BY-ONE — the
+    // cap-th is allowed and the cap-plus-first is refused — which is asserted at
+    // the real boundary.
+    h.countGet.mockResolvedValue(countsTo(500));
     const atCap = await decideMemberCapacity(applicant);
-    expect(atCap).toEqual({ status: 'allowed', cap: 2_000, othersCount: 1_999 });
+    expect(atCap).toEqual({ status: 'allowed', cap: 500, othersCount: 499 });
 
-    h.countGet.mockResolvedValue(countsTo(2_001));
+    h.countGet.mockResolvedValue(countsTo(501));
     const overCap = await decideMemberCapacity(applicant);
     expect(overCap).toMatchObject({
       status: 'refused',
-      cap: 2_000,
-      othersCount: 2_000,
+      cap: 500,
+      othersCount: 500,
       ministryName: 'Grace Church',
     });
   });
@@ -187,21 +187,21 @@ describe('the 500th is allowed and the 501st is refused on a pro tenant (AC-3)',
 
 // ── AC-6 ── a tier upgrade alone lifts the gate ─────────────────────────────
 describe('a tier upgrade lifts the gate with no migration and no cached value (AC-6)', () => {
-  it('same tenant, same 500 members: plus refuses, pro allows', async () => {
+  it('same tenant, same 1,000 members: Church refuses, Ministry allows', async () => {
     const applicant = {
       uid: 'u',
       applicantTenantId: 'gracechurch',
       existingClaimTenantId: null,
     };
-    // 🔴 THE NUMBERS MOVED WITH THE CAPS (THE-370): plus is 500 and pro is
-    // 2,000. 1,000 members on the tenant, the applicant's own doc among them
-    // (D4), so othersCount = 999: over `plus`'s 500, under `pro`'s 2,000.
+    // Church is 500 and Ministry is 5,000. 1,000 members on the tenant, the
+    // applicant's own doc among them (D4), so othersCount = 999: over Church's
+    // 500, under Ministry's 5,000.
     h.countGet.mockResolvedValue(countsTo(1_000)); // othersCount 999
 
-    h.tenantGet.mockResolvedValue(tenantDoc({ plan: 'plus' }));
+    h.tenantGet.mockResolvedValue(tenantDoc({ plan: 'church' }));
     expect((await decideMemberCapacity(applicant)).status).toBe('refused');
 
-    h.tenantGet.mockResolvedValue(tenantDoc({ plan: 'pro' }));
+    h.tenantGet.mockResolvedValue(tenantDoc({ plan: 'ministry' }));
     expect((await decideMemberCapacity(applicant)).status).toBe('allowed');
   });
 });
@@ -218,7 +218,7 @@ describe('THE-370 — a retired add-on key does NOT lift the gate (AC-4)', () =>
 
        A doc claiming TEN packs would have been +5,000 under the old model. It
        is worth nothing now: the cap is plus's own 500. */
-    h.tenantGet.mockResolvedValue(tenantDoc({ plan: 'plus', addons: { contactPacks: 10 } }));
+    h.tenantGet.mockResolvedValue(tenantDoc({ plan: 'church', addons: { contactPacks: 10 } }));
 
     h.countGet.mockResolvedValue(countsTo(500)); // othersCount 499, cap 500
     expect((await decideMemberCapacity(applicant)).status).toBe('allowed');
@@ -230,7 +230,7 @@ describe('THE-370 — a retired add-on key does NOT lift the gate (AC-4)', () =>
   });
 
   it('🔴 a stale campuses value does not reach this decision either', async () => {
-    h.tenantGet.mockResolvedValue(tenantDoc({ plan: 'plus', addons: { campuses: 9 } }));
+    h.tenantGet.mockResolvedValue(tenantDoc({ plan: 'church', addons: { campuses: 9 } }));
     h.countGet.mockResolvedValue(countsTo(501));
     expect((await decideMemberCapacity(applicant)).status).toBe('refused');
   });
@@ -242,7 +242,7 @@ describe('Unlimited Contacts lifts the gate entirely, without counting (AC-5)', 
 
   it('the unlimitedContacts add-on skips, and NO count query is issued', async () => {
     h.tenantGet.mockResolvedValue(
-      tenantDoc({ plan: 'plus', addons: { unlimitedContacts: true } }),
+      tenantDoc({ plan: 'church', addons: { unlimitedContacts: true } }),
     );
     h.countGet.mockResolvedValue(countsTo(10_000));
 
@@ -287,7 +287,7 @@ describe('who is not gated at all', () => {
 
   it('a uid holding ANOTHER tenant claim IS gated — they are new to this ministry', async () => {
     h.countGet.mockResolvedValue(countsTo(501));
-    h.tenantGet.mockResolvedValue(tenantDoc({ plan: 'plus' }));
+    h.tenantGet.mockResolvedValue(tenantDoc({ plan: 'church' }));
 
     expect(
       (
@@ -322,7 +322,7 @@ describe('a failed capacity check is a third outcome, never a guess (AC-13/C3)',
 
     const outcome = await decideMemberCapacity(applicant);
     expect(outcome).toEqual({ status: 'unavailable', reason: 'tenant-read-failed' });
-    // The tell: had it fallen back to 'plus', a 0-member tenant would read
+    // The tell: had it fallen back to 'church', a 0-member tenant would read
     // `allowed` with cap 150. It must not reach the count at all.
     expect(h.usersWhere).not.toHaveBeenCalled();
     expect(h.capture).toHaveBeenCalledTimes(1);
@@ -337,7 +337,7 @@ describe('a failed capacity check is a third outcome, never a guess (AC-13/C3)',
 // ── the pre-flight shares the decision ──────────────────────────────────────
 describe('canTenantAcceptNewMember', () => {
   it('does NOT subtract a self — no account exists yet', async () => {
-    h.tenantGet.mockResolvedValue(tenantDoc({ plan: 'plus' }));
+    h.tenantGet.mockResolvedValue(tenantDoc({ plan: 'church' }));
     h.countGet.mockResolvedValue(countsTo(500));
 
     // 500 others against plus's cap of 500 (THE-370; was 150) → refused. Had it

@@ -37,7 +37,7 @@ function cardLines(): Record<string, string[]> {
   });
   const out: Record<string, string[]> = {};
   // Keyed by render order, not by searching the text: the Ministry card says
-  // "Everything in Small Team", so a text search files it under the wrong tier.
+  // "Everything in Church", so a text search files it under the wrong tier.
   [...container.querySelectorAll('.snap-center')].forEach((card, i) => {
     out[PLAN_DISPLAY_NAMES[PRICED_PLAN_ORDER[i]]] = [...card.querySelectorAll('li')].map((li) => li.textContent ?? '');
   });
@@ -45,13 +45,13 @@ function cardLines(): Record<string, string[]> {
 }
 
 describe('in-app plan cards — the Newsletter line', () => {
-  it('prints Newsletter on Small Team, the tier that owns it, and not on Individual', () => {
+  it('prints Newsletter on Ministry, the tier that owns it, and not on Church', () => {
     const lines = cardLines();
     expect(Object.keys(lines), 'a priced card did not render').toEqual(
       PRICED_PLAN_ORDER.map((p) => PLAN_DISPLAY_NAMES[p]),
     );
-    expect(lines['Small Team'], 'Small Team lost its Newsletter line').toContain('Newsletter');
-    expect(lines['Individual'], 'Individual was shown a Newsletter line').not.toContain('Newsletter');
+    expect(lines['Ministry'], 'Ministry lost its Newsletter line').toContain('Newsletter');
+    expect(lines['Church'], 'Church was shown a Newsletter line').not.toContain('Newsletter');
   });
 
   it('never mentions Mailchimp or Instagram', () => {

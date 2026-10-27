@@ -73,51 +73,51 @@ describe('the attribution string has one source', () => {
 
 describe('a Dodo tenant is never told its subscription is powered by Stripe', () => {
   it('PlanUpgradeSection (under "Manage Subscription") attributes the processor it was given', async () => {
-    await mount(<PlanUpgradeSection currentPlan="plus" tenantId="grace" processor="dodo" />);
+    await mount(<PlanUpgradeSection currentPlan="church" tenantId="grace" processor="dodo" />);
     expect(container.textContent).toContain('Powered by Dodo Payments');
     expect(container.textContent).not.toContain('Powered by Stripe');
   });
 
   it('AdminUpgradePage resolves the processor at mount and attributes it', async () => {
     billingRespondsWith('dodo');
-    await mount(<AdminUpgradePage currentPlan="plus" tenantId="grace" email="p@grace.org" onBack={() => {}} />);
+    await mount(<AdminUpgradePage currentPlan="church" tenantId="grace" email="p@grace.org" onBack={() => {}} />);
     expect(authFetch).toHaveBeenCalledWith('/api/billing/invoices');
     expect(container.textContent).toContain('Powered by Dodo Payments');
     expect(container.textContent).not.toContain('Powered by Stripe');
   });
 
   it('a Stripe tenant still reads Powered by Stripe on both surfaces', async () => {
-    await mount(<PlanUpgradeSection currentPlan="plus" tenantId="grace" processor="stripe" />);
+    await mount(<PlanUpgradeSection currentPlan="church" tenantId="grace" processor="stripe" />);
     expect(container.textContent).toContain('Powered by Stripe');
     act(() => { root?.unmount(); });
     root = null;
 
     billingRespondsWith('stripe');
-    await mount(<AdminUpgradePage currentPlan="plus" tenantId="grace" email="p@grace.org" onBack={() => {}} />);
+    await mount(<AdminUpgradePage currentPlan="church" tenantId="grace" email="p@grace.org" onBack={() => {}} />);
     expect(container.textContent).toContain('Powered by Stripe');
   });
 });
 
 describe('no attribution renders while the processor is unknown', () => {
   it('PlanUpgradeSection with the fetch not yet resolved (undefined) claims nothing', async () => {
-    await mount(<PlanUpgradeSection currentPlan="plus" tenantId="grace" processor={undefined} />);
+    await mount(<PlanUpgradeSection currentPlan="church" tenantId="grace" processor={undefined} />);
     expect(container.textContent).not.toMatch(/powered by/i);
   });
 
   it('PlanUpgradeSection with an undeterminable processor (null) claims nothing', async () => {
-    await mount(<PlanUpgradeSection currentPlan="plus" tenantId="grace" processor={null} />);
+    await mount(<PlanUpgradeSection currentPlan="church" tenantId="grace" processor={null} />);
     expect(container.textContent).not.toMatch(/powered by/i);
   });
 
   it('AdminUpgradePage claims nothing while its mount fetch is in flight', async () => {
     authFetch.mockReturnValue(new Promise(() => {})); // never resolves
-    await mount(<AdminUpgradePage currentPlan="plus" tenantId="grace" email="p@grace.org" onBack={() => {}} />);
+    await mount(<AdminUpgradePage currentPlan="church" tenantId="grace" email="p@grace.org" onBack={() => {}} />);
     expect(container.textContent).not.toMatch(/powered by/i);
   });
 
   it('AdminUpgradePage claims nothing when the processor cannot be determined', async () => {
     authFetch.mockResolvedValue({ ok: false, json: async () => ({}) });
-    await mount(<AdminUpgradePage currentPlan="plus" tenantId="grace" email="p@grace.org" onBack={() => {}} />);
+    await mount(<AdminUpgradePage currentPlan="church" tenantId="grace" email="p@grace.org" onBack={() => {}} />);
     expect(container.textContent).not.toMatch(/powered by/i);
   });
 });

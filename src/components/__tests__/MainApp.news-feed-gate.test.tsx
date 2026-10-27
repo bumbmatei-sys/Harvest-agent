@@ -18,7 +18,7 @@ import { getPlanFeatures, PLAN_ORDER } from '../../utils/plan-features';
  *
  *   news feed        → NewsTab / AllNews → /community_posts. THIS. Free only.
  *   Community Groups → UserMessages → tenants/{t}/{channels,directMessages,…}.
- *                      `communityGroups`, Ministry only. PR 332 drew this line
+ *                      `communityGroups`, Church and Ministry. PR 332 drew this line
  *                      explicitly and named the feed as a surface its fix must
  *                      NOT take with it. Untouched — section 3 proves it.
  *   blog             → BlogTab → /blog_posts. `blog`, Individual and above.
@@ -137,14 +137,14 @@ vi.mock('framer-motion', () => {
   return { motion: passthrough, AnimatePresence: ({ children }: any) => <>{children}</> };
 });
 
-const store = vi.hoisted(() => ({ tenantPlan: 'plus' as string | null, currentUser: null as any }));
+const store = vi.hoisted(() => ({ tenantPlan: 'church' as string | null, currentUser: null as any }));
 vi.mock('../../store/useAppStore', () => ({ useAppStore: () => store }));
 
 const tenant = vi.hoisted(() => ({
   tenantId: 'tenant-1',
   tenantName: 'Grace Chapel',
   branding: null as any,
-  tenantPlan: 'plus' as string | null,
+  tenantPlan: 'church' as string | null,
   isLoading: false,
 }));
 vi.mock('../../contexts/TenantContext', () => ({ useTenant: () => tenant }));
@@ -259,8 +259,9 @@ describe('a free tenant has no news feed', () => {
 });
 
 // ─── 2. 🔴 the three priced tiers still have the news feed ───────────────────
-describe('the three priced tiers still have the news feed', () => {
-  for (const plan of ['plus', 'pro', 'max'] as const) {
+describe('the priced tiers still have the news feed', () => {
+  // Church and Ministry, plus the retired ids that are read as one of them.
+  for (const plan of ['church', 'ministry', 'plus', 'pro', 'max'] as const) {
     it(`${plan} keeps the News tab, and it is still Home`, async () => {
       await mount(plan);
 
@@ -297,19 +298,17 @@ describe('the three priced tiers still have the news feed', () => {
 });
 
 // ─── 3. the neighbouring gates are untouched ─────────────────────────────────
-describe('community groups is still Ministry only and blog is still unchanged per tier', () => {
-  it('Community Groups is on Ministry and nowhere else — in the matrix', () => {
+describe('community groups follows the paid tiers and blog is still unchanged per tier', () => {
+  it('Community Groups is on Church and Ministry and not on free — in the matrix', () => {
     expect(getPlanFeatures('free').communityGroups).toBe(false);
-    expect(getPlanFeatures('plus').communityGroups).toBe(false);
-    expect(getPlanFeatures('pro').communityGroups).toBe(false);
-    expect(getPlanFeatures('max').communityGroups).toBe(true);
+    expect(getPlanFeatures('church').communityGroups).toBe(true);
+    expect(getPlanFeatures('ministry').communityGroups).toBe(true);
   });
 
-  it('Blog is on Individual and above — in the matrix', () => {
+  it('Blog is on Church and above — in the matrix', () => {
     expect(getPlanFeatures('free').blog).toBe(false);
-    expect(getPlanFeatures('plus').blog).toBe(true);
-    expect(getPlanFeatures('pro').blog).toBe(true);
-    expect(getPlanFeatures('max').blog).toBe(true);
+    expect(getPlanFeatures('church').blog).toBe(true);
+    expect(getPlanFeatures('ministry').blog).toBe(true);
   });
 
   it('🔴 Ministry keeps Messages, which a feed gate must not have taken', async () => {
@@ -317,18 +316,18 @@ describe('community groups is still Ministry only and blog is still unchanged pe
     // "COMMUNITY"/"FEED" headings and both were once unconditional literals in
     // the same array — a gate that reached one line too far takes a $159
     // feature from the tier that pays for it.
-    await mount('max');
+    await mount('ministry');
 
     expect(topTab('messages'), 'Ministry lost Community Groups to the feed gate').not.toBeNull();
     expect(topTab('news'), 'Ministry lost the feed').not.toBeNull();
   });
 
-  it('Individual keeps the Blog tab and the feed, and still has no Messages', async () => {
-    await mount('plus');
+  it('Church keeps the Blog tab and the feed, and has Messages — the spec gives it one community with chat', async () => {
+    await mount('church');
 
-    expect(topTab('blog'), 'Individual lost the Blog tab').not.toBeNull();
-    expect(topTab('news'), 'Individual lost the feed').not.toBeNull();
-    expect(topTab('messages'), 'Individual gained Community Groups').toBeNull();
+    expect(topTab('blog'), 'Church lost the Blog tab').not.toBeNull();
+    expect(topTab('news'), 'Church lost the feed').not.toBeNull();
+    expect(topTab('messages'), 'Church lost its community chat').not.toBeNull();
   });
 
   it('free keeps Prayer and Bible, which are on every tier and are not the feed', async () => {
@@ -390,7 +389,7 @@ describe('a free member lands on their course, not a blank feed', () => {
   it('🔴 leaves the FEED group reading exactly as before on a tier with the feed', async () => {
     // The dedupe is a free-tier consequence, not a reordering. On Ministry the
     // group must still read Home(News), Blog, Courses, Bible — in that order.
-    await mount('max', { hasCourse: true });
+    await mount('ministry', { hasCourse: true });
 
     expect(sidebarGroup('FEED')).toEqual(['Home', 'Blog', 'Courses', 'Bible']);
   });
@@ -409,7 +408,7 @@ describe('a free member lands on their course, not a blank feed', () => {
   it('🔴 leaves Home as the FEED on every tier that has one', async () => {
     // The no-regression half of the Home move: a paying tier's Home must not
     // have become the course.
-    for (const plan of ['plus', 'pro', 'max'] as const) {
+    for (const plan of ['church', 'ministry', 'plus', 'pro', 'max'] as const) {
       await act(async () => { root?.unmount(); });
       container.remove();
       container = document.createElement('div');

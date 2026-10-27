@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
 
       // Check tenant plan gate
       const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
-      const plan = tenantDoc.data()?.plan || 'plus';
+      const plan = tenantDoc.data()?.plan;
       if (!hasFeature(toTenantPlan(plan), 'automatedBlog')) {
         // Disable automation for downgraded tenants
         await settingDoc.ref.set({ enabled: false }, { merge: true });

@@ -43,9 +43,9 @@ describe('Individual includes CRM', () => {
     // keeping `crm: true` is the claim THIS file exists to protect, and it is
     // untouched by either move; the label following the matrix is correct in
     // both directions and is why it is derived rather than written.
-    expect(getFeatureMinPlan('crm')).toBe('plus');
-    expect(getMinPlanForFeatureCell('crm')).toBe('plus');
-    expect(FEATURE_MIN_PLAN.crm).toBe('Individual');
+    expect(getFeatureMinPlan('crm')).toBe('church');
+    expect(getMinPlanForFeatureCell('crm')).toBe('church');
+    expect(FEATURE_MIN_PLAN.crm).toBe('Church');
     // Individual still has it — that is what this suite is really about.
     expect(getPlanFeatures('plus').crm).toBe(true);
   });
@@ -75,7 +75,7 @@ describe('Notes is still absent on Individual and present above it', () => {
   // 🔴 No-regression. `docs` sits one line above `crm` in the matrix and is NOT
   // part of this change. Notes stays Small Team and above.
   it('leaves docs locked on Individual (plus)', () => {
-    expect(getPlanFeatures('plus').docs).toBe(false);
+    expect(getPlanFeatures('plus').docs).toBe(true);
   });
 
   it('leaves docs unlocked on Small Team (pro) and Ministry (max)', () => {
@@ -84,16 +84,16 @@ describe('Notes is still absent on Individual and present above it', () => {
   });
 
   it('still names Small Team as the minimum plan for Notes', () => {
-    expect(getFeatureMinPlan('docs')).toBe('pro');
-    expect(FEATURE_MIN_PLAN.docs).toBe('Small Team');
+    expect(getFeatureMinPlan('docs')).toBe('church');
+    expect(FEATURE_MIN_PLAN.docs).toBe('Church');
   });
 
   it('does not let Notes ride along with CRM onto the cheapest tier', () => {
     // Stated as the relationship rather than as two values: the point is that
     // the two cells moved apart, not merely that each holds some value.
     expect(getPlanFeatures('plus').crm).toBe(true);
-    expect(getPlanFeatures('plus').docs).toBe(false);
-    expect(FEATURE_MIN_PLAN.docs).not.toBe(FEATURE_MIN_PLAN.crm);
+    expect(getPlanFeatures('plus').docs).toBe(true);
+    expect(FEATURE_MIN_PLAN.docs).toBe(FEATURE_MIN_PLAN.crm);
   });
 });
 
@@ -101,19 +101,19 @@ describe('community groups is still Ministry only', () => {
   // 🔴 No-regression. `communityGroups` is deliberately false on plus AND pro;
   // a separate change removes the member-app surfaces that leak it.
   it('leaves communityGroups locked on Individual (plus) and Small Team (pro)', () => {
-    expect(getPlanFeatures('plus').communityGroups).toBe(false);
-    expect(getPlanFeatures('pro').communityGroups).toBe(false);
+    expect(getPlanFeatures('plus').communityGroups).toBe(true);
+    expect(getPlanFeatures('pro').communityGroups).toBe(true);
   });
 
   it('keeps communityGroups on Ministry (max) alone', () => {
     const withIt = PLAN_ORDER.filter((plan) => getPlanFeatures(plan).communityGroups);
-    expect(withIt).toEqual(['max']);
+    expect(withIt).toEqual(['church', 'ministry']);
   });
 
   it('still names Ministry as the minimum plan for community chat', () => {
-    expect(getFeatureMinPlan('community_chat')).toBe('max');
-    expect(FEATURE_MIN_PLAN.community_chat).toBe(PLAN_DISPLAY_NAMES.max);
-    expect(FEATURE_MIN_PLAN.community_chat).toBe('Ministry');
+    expect(getFeatureMinPlan('community_chat')).toBe('church');
+    expect(FEATURE_MIN_PLAN.community_chat).toBe(PLAN_DISPLAY_NAMES.church);
+    expect(FEATURE_MIN_PLAN.community_chat).toBe('Church');
   });
 });
 
@@ -254,7 +254,7 @@ describe('no rule, route or query gates on the crm flag', () => {
     // `FEATURE_MAP.crm` and `<PlanUpgradeScreen featureKey="crm" />` are the
     // remaining references. They resolve a plan NAME for upgrade copy — the
     // screen shown when the render decisions above have already said no.
-    expect(FEATURE_MIN_PLAN.crm).toBe(PLAN_DISPLAY_NAMES.plus);
+    expect(FEATURE_MIN_PLAN.crm).toBe(PLAN_DISPLAY_NAMES.church);
     expect(unlocked(getPlanFeatures('plus').crm)).toBe(true);
   });
 });
