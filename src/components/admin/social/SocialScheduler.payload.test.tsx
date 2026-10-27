@@ -8,6 +8,8 @@ import { SocialScheduler } from './SocialScheduler';
 const authFetch = vi.hoisted(() => vi.fn());
 
 vi.mock('@/utils/auth-fetch', () => ({ authFetch }));
+vi.mock('@/firebase', () => ({ auth: { currentUser: { getIdToken: async () => 'test-token' } } }));
+vi.mock('@/lib/social/upload-media', () => ({ uploadSocialMedia: async (file: File) => ({ name: file.name, kind: 'image', mimeType: file.type, url: 'https://example.test/image.png' }) }));
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -43,6 +45,12 @@ describe('SocialScheduler payload', () => {
     await act(async () => { root.unmount(); });
     container.remove();
   });
+
+  async function attachImage() {
+    const input = container.querySelector<HTMLInputElement>('input[aria-label="Choose media files"]');
+    Object.defineProperty(input, 'files', { configurable: true, value: [new File(['image'], 'image.png', { type: 'image/png' })] });
+    await act(async () => { input?.dispatchEvent(new Event('change', { bubbles: true })); });
+  }
 
   function serve(accounts: Account[]) {
     authFetch.mockImplementation(async (url: string, init?: RequestInit) => {
@@ -146,6 +154,7 @@ describe('SocialScheduler payload', () => {
     expect(trigger('Placement')?.getAttribute('aria-expanded')).toBe('false');
 
     await type('Sunday at 10.');
+    await attachImage();
     await pressSchedule();
     const [preview] = postCalls();
     expect(preview.body.targets[0].fields.contentType).toBe('reel');
@@ -185,6 +194,7 @@ describe('SocialScheduler payload', () => {
     await mountLive([INSTAGRAM]);
     expect(trigger('Placement')?.textContent).toContain('Feed');
     await type('Sunday at 10.');
+    await attachImage();
     await pressSchedule();
     const [preview] = postCalls();
     expect(preview.body.targets).toHaveLength(1);
@@ -199,31 +209,25 @@ describe('SocialScheduler payload', () => {
     expect(trigger('Placement')?.textContent).toContain('Feed');
     await act(async () => { button('Facebook', platforms ?? container)?.click(); });
     await type('Sunday at 10.');
+    await attachImage();
     await pressSchedule();
     const [preview] = postCalls();
     expect(preview.body.targets.map((target) => target.platform)).toEqual(['instagram']);
     expect(preview.body.targets[0].fields).toEqual({ contentType: 'feed' });
   });
 
-  it('does not offer TikTok as selectable and never sends it', async () => {
-    await mountLive([TIKTOK, INSTAGRAM]);
-    const platforms = container.querySelector('[aria-label="Platforms"]');
-    expect(button('TikTok', platforms ?? container)).toBeUndefined();
-    const tiktok = container.querySelector('[data-testid="tiktok-posting-disabled"]');
-    expect(tiktok?.hasAttribute('disabled')).toBe(true);
-    expect(container.querySelector('[data-testid="youtube-coming-soon"]')?.textContent).toBe('Video upload coming soon');
-    await act(async () => { tiktok?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
-    expect(trigger('Who can view')).toBeNull();
+  it('offers TikTok and requires a video before scheduling', async () => {
+    await mountLive([TIKTOK]);
+    expect(trigger('Who can view')).toBeTruthy();
+    expect(container.textContent).toContain('TikTok needs exactly one video.');
     await type('Sunday at 10.');
     await pressSchedule();
-    const calls = postCalls();
-    expect(calls).toHaveLength(1);
-    expect(calls[0].body.targets.map((target) => target.platform)).toEqual(['instagram']);
+    expect(postCalls()).toHaveLength(0);
   });
 
-  it('selects nothing when the only connected account is TikTok', async () => {
+  it('selects the only connected TikTok account and blocks a post without video', async () => {
     await mountLive([TIKTOK]);
-    expect(trigger('Who can view')).toBeNull();
+    expect(trigger('Who can view')).toBeTruthy();
     await type('Sunday at 10.');
     await pressSchedule();
     expect(postCalls()).toHaveLength(0);
@@ -232,6 +236,7 @@ describe('SocialScheduler payload', () => {
   it('rotates the Idempotency-Key when the draft changes and keeps it for an identical retry', async () => {
     await mountLive([INSTAGRAM]);
     await type('Sunday at 10.');
+    await attachImage();
     await pressSchedule();
     await dismissConfirm();
     await pressSchedule();

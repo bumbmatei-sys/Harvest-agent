@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Calendar as CalendarIcon, ImagePlus } from 'lucide-react';
+import { Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,6 +41,8 @@ import { calendarDayKey, defaultCalendarDay, postsOnCalendarDay, undatedDrafts }
 import { isoToWallTime, wallTimeInZoneToIso, workspaceTimeZone } from '@/lib/social/schedule-time';
 import type { SocialAccount, SocialPost, SocialTarget, SocialWorkspace } from '@/lib/social/types';
 import { authFetch } from '@/utils/auth-fetch';
+import { validateSocialMedia } from '@/lib/social/media-rules';
+import { MediaAttachments, PostMediaThumb, attachmentsFromMedia, type Attachment } from './MediaAttachments';
 import { SocialUpgradeWall } from './SocialUpgradeWall';
 
 export type SocialView = 'accounts' | 'compose' | 'calendar' | 'queue';
@@ -61,14 +63,13 @@ const ACTION_SECONDARY = `${ACTION} border-transparent bg-action-secondary text-
 const OPTION_ROW = 'flex items-center justify-between gap-3 rounded-xl border border-line bg-card px-3 py-2';
 const OPTION_TITLE = 'text-[13px] font-medium text-strong';
 
-/** Platforms that only post a video; upload does not exist yet, so the composer cannot select them. */
-const VIDEO_ONLY: readonly string[] = ['youtube', 'tiktok'];
-
 const FRIENDLY_ERROR: Record<string, string> = {
   platform_not_offered: 'That platform is not offered.',
-  youtube_needs_video: 'YouTube posts need a video. They cannot be submitted until video upload is available.',
-  tiktok_needs_video: 'TikTok posts need a video. They cannot be submitted until video upload is available.',
-  media_not_accepted: 'Media upload is not available yet.',
+  youtube_needs_video: 'YouTube needs exactly one video.',
+  tiktok_needs_video: 'TikTok needs exactly one video.',
+  instagram_needs_media: 'Instagram needs at least one image or video.',
+  media_invalid: 'Choose supported media: one video or images only.',
+  media_too_many: 'Choose no more than 10 media files.',
   schedule_invalid: 'Choose a time in the future, within a year.',
   post_incomplete: 'Write the post and choose at least one connected account.',
   account_not_owned: 'That account is not connected to this ministry.',
@@ -211,7 +212,7 @@ export function SocialScheduler({
   const [content, setContent] = useState(initial?.posts.find((post) => post.status === 'draft')?.content ?? '');
   const [selected, setSelected] = useState<string[]>(
     initial
-      ? [initial.accounts.find((account) => !VIDEO_ONLY.includes(account.platform))?.platform].filter(Boolean) as string[]
+      ? [initial.accounts[0]?.platform].filter(Boolean) as string[]
       : [],
   );
   const [fields, setFields] = useState<FieldValues>(() => seedSelectDefaults({}, selected));
@@ -222,6 +223,8 @@ export function SocialScheduler({
   const [saving, setSaving] = useState(false);
   const publishKey = useRef<{ key: string; payloadHash: string } | null>(null);
   const [editing, setEditing] = useState<SocialPost | null>(null);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [editAttachments, setEditAttachments] = useState<Attachment[]>([]);
   const [editText, setEditText] = useState('');
   const [editWhen, setEditWhen] = useState('');
   const [editError, setEditError] = useState<string | null>(null);
@@ -284,7 +287,7 @@ export function SocialScheduler({
           posts: Array.isArray(body.posts) ? body.posts : [],
         });
         const accounts = Array.isArray(body.accounts) ? body.accounts : [];
-        const first = accounts.find((account: { platform?: unknown }) => typeof account?.platform === 'string' && !VIDEO_ONLY.includes(account.platform))?.platform;
+        const first = accounts.find((account: { platform?: unknown }) => typeof account?.platform === 'string')?.platform;
         if (typeof first === 'string') {
           setSelected([first]);
           setFields((current) => seedSelectDefaults(current, [first]));
@@ -415,7 +418,7 @@ export function SocialScheduler({
   }
 
   function schedule(publishNow: boolean) {
-    if (saving || pending) return;
+    if (saving || pending || mediaBlocked) return;
     const targets = targetsFor(content, selected, accounts, fields).map((target) => ({
       ...target,
       madeWithAi: madeWithAi && aiPlatforms.includes(target.platform),
@@ -439,7 +442,7 @@ export function SocialScheduler({
       scheduledFor,
       timezone: zone,
       targets,
-      media: [],
+      media: attachments.map(({ media }) => media),
     };
     const payloadHash = canonicalJson(payload);
     if (!publishKey.current || publishKey.current.payloadHash !== payloadHash) {
@@ -467,7 +470,7 @@ export function SocialScheduler({
           scheduledFor: publishNow ? new Date().toISOString() : scheduledFor,
           timezone: zone,
           targets,
-          media: [],
+          media: attachments.map(({ media }) => media),
         };
         if (!data) return;
         setData({ ...data, posts: [post, ...posts] });
@@ -527,7 +530,13 @@ export function SocialScheduler({
   const selectedDay = pickedDay ?? defaultCalendarDay(posts, zone, new Date());
   const onDay = postsOnCalendarDay(posts, selectedDay, zone);
   const drafts = undatedDrafts(posts);
-  const videoOnlySelected = selected.some((slug) => VIDEO_ONLY.includes(slug));
+  const media = attachments.map((item) => item.media);
+  const mediaError = validateSocialMedia(media, []);
+  const platformErrors = selected.map((platform) => validateSocialMedia(media, [platform as SocialPlatform])).filter((error) => error && error !== mediaError);
+  const mediaBlocked = Boolean(mediaError || platformErrors.length || attachments.some((item) => item.progress !== undefined || item.error || !item.media.url));
+  const editMedia = editAttachments.map((item) => item.media);
+  const editMediaError = editing ? validateSocialMedia(editMedia, editing.targets.map((target) => target.platform)) : null;
+  const editMediaBlocked = Boolean(editMediaError || editAttachments.some((item) => item.progress !== undefined || item.error || !item.media.url));
 
   return (
     <div className="flex w-full flex-col gap-6 p-4 lg:p-0" data-testid="social-scheduler">
@@ -568,6 +577,7 @@ export function SocialScheduler({
               <CardDescription>One text, then the accounts that should carry it.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
+              <MediaAttachments items={attachments} setItems={setAttachments}>
               <Textarea
                 value={content}
                 onChange={(event) => setContent(event.target.value)}
@@ -575,32 +585,24 @@ export function SocialScheduler({
                 className="min-h-32"
                 aria-label="Post text"
               />
+              </MediaAttachments>
               <ToggleGroup
                 multiple
-                value={selected.filter((slug) => !VIDEO_ONLY.includes(slug))}
+                value={selected}
                 onValueChange={(next) => {
-                  const chosen = next.filter((slug) => !VIDEO_ONLY.includes(slug));
+                  const chosen = next;
                   setSelected(chosen);
                   setFields((current) => seedSelectDefaults(current, chosen));
                 }}
                 aria-label="Platforms"
                 className="flex flex-wrap"
               >
-                {accounts.filter((account) => !VIDEO_ONLY.includes(account.platform)).map((account) => (
+                {accounts.map((account) => (
                   <ToggleGroupItem key={account.id} value={account.platform} className={CONTROL}>
                     {labelFor(account.platform)}
                   </ToggleGroupItem>
                 ))}
               </ToggleGroup>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button type="button" variant="outline" className={CONTROL} disabled data-testid="youtube-posting-disabled">
-                  YouTube
-                </Button>
-                <Button type="button" variant="outline" className={CONTROL} disabled data-testid="tiktok-posting-disabled">
-                  TikTok
-                </Button>
-                <p className="text-sm text-faint" data-testid="youtube-coming-soon">Video upload coming soon</p>
-              </div>
               {selected.map((slug) => {
                 const platform = slug as SocialPlatform;
                 const specs = PLATFORM_FIELDS[platform] || [];
@@ -677,13 +679,8 @@ export function SocialScheduler({
                   <Switch checked={madeWithAi} onCheckedChange={setMadeWithAi} aria-label="Made with AI" />
                 </label>
               )}
-              <div className="flex flex-wrap items-center gap-2">
-                <Button type="button" variant="outline" className={CONTROL} disabled>
-                  <ImagePlus className="size-4" aria-hidden />
-                  Add media
-                </Button>
-                <p className="text-sm text-faint">Media upload is not available yet.</p>
-              </div>
+              {mediaError && <p className="text-sm text-destructive" role="alert">{friendlyError(mediaError)}</p>}
+              {platformErrors.map((error) => error && <p key={error} className="text-sm text-destructive" role="alert">{friendlyError(error)}</p>)}
               <label className="flex flex-col gap-1.5 text-[13px] font-medium text-strong">
                 Schedule time
                 <Input
@@ -695,14 +692,9 @@ export function SocialScheduler({
                 />
               </label>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" className={ACTION_PRIMARY} disabled={saving || videoOnlySelected} onClick={() => schedule(false)}>Schedule</Button>
-                <Button type="button" variant="secondary" className={ACTION_SECONDARY} disabled={saving || videoOnlySelected} onClick={() => schedule(true)}>Post now</Button>
+                <Button type="button" className={ACTION_PRIMARY} disabled={saving || mediaBlocked} onClick={() => schedule(false)}>Schedule</Button>
+                <Button type="button" variant="secondary" className={ACTION_SECONDARY} disabled={saving || mediaBlocked} onClick={() => schedule(true)}>Post now</Button>
               </div>
-              {videoOnlySelected && (
-                <p className="text-sm text-faint" data-testid="youtube-needs-video">
-                  Video upload coming soon
-                </p>
-              )}
             </CardContent>
           </Card>
             <SidePanel posts={posts} />
@@ -739,7 +731,7 @@ export function SocialScheduler({
                       <li className="text-sm text-faint">No posts on this day.</li>
                     )}
                     {onDay.map((post) => (
-                      <li key={post.id} className="rounded-lg border border-line px-3 py-2 text-sm text-strong">{post.content}</li>
+                      <li key={post.id} className="rounded-lg border border-line px-3 py-2 text-sm text-strong"><PostMediaThumb media={post.media} />{post.content}</li>
                     ))}
                   </ul>
                 </section>
@@ -750,7 +742,7 @@ export function SocialScheduler({
                       <li className="text-sm text-faint">No undated drafts.</li>
                     )}
                     {drafts.map((post) => (
-                      <li key={post.id} className="rounded-lg border border-line px-3 py-2 text-sm text-strong">{post.content}</li>
+                      <li key={post.id} className="rounded-lg border border-line px-3 py-2 text-sm text-strong"><PostMediaThumb media={post.media} />{post.content}</li>
                     ))}
                   </ul>
                 </section>
@@ -766,6 +758,7 @@ export function SocialScheduler({
               setEditing(post);
               setEditError(null);
               setEditText(post.content);
+              setEditAttachments(attachmentsFromMedia(post.media));
               const zone = post.timezone || ministryZone(data?.timezone, browserZone);
               setEditWhen(post.scheduledFor ? isoToWallTime(post.scheduledFor, zone) : '');
             }}
@@ -795,6 +788,8 @@ export function SocialScheduler({
             <DialogDescription>A sent post cannot be edited.</DialogDescription>
           </DialogHeader>
           <Textarea value={editText} onChange={(event) => setEditText(event.target.value)} aria-label="Edit post text" className="min-h-24" />
+          <MediaAttachments items={editAttachments} setItems={setEditAttachments} />
+          {editMediaError && <p className="text-sm text-destructive" role="alert">{friendlyError(editMediaError)}</p>}
           <Input
             type="datetime-local"
             className={`${FIELD_CONTROL} border-line bg-card px-3`}
@@ -809,8 +804,9 @@ export function SocialScheduler({
             <Button
               type="button"
               className={CONTROL}
+              disabled={editMediaBlocked}
               onClick={() => {
-                if (!editing) return;
+                if (!editing || editMediaBlocked) return;
                 const zone = editing.timezone || ministryZone(data?.timezone, browserZone);
                 const scheduledFor = editWhen ? futureIso(editWhen, zone) : null;
                 if (editWhen && !scheduledFor) {
@@ -834,6 +830,7 @@ export function SocialScheduler({
                     scheduledFor,
                     timezone: zone,
                     targets: post.targets,
+                    media: editMedia,
                     publishNow: false,
                   },
                   doneNotice: 'Saved.',
@@ -841,7 +838,7 @@ export function SocialScheduler({
                     if (!data) return;
                     setData({
                       ...data,
-                      posts: posts.map((row) => row.id === post.id ? { ...row, content: editText, scheduledFor } : row),
+                      posts: posts.map((row) => row.id === post.id ? { ...row, content: editText, scheduledFor, media: editMedia } : row),
                     });
                     setNotice('Saved.');
                   },
@@ -910,7 +907,7 @@ function SidePanel({ posts }: { posts: readonly SocialPost[] }) {
       <ul className="flex flex-col gap-2">
         {rows.length === 0 && <li className="px-1 text-sm text-faint">Nothing in {labels[tab].toLowerCase()}.</li>}
         {rows.map((post) => (
-          <li key={post.id} className="rounded-xl border border-line bg-background px-3 py-2 text-sm text-strong">{post.content}</li>
+          <li key={post.id} className="rounded-xl border border-line bg-background px-3 py-2 text-sm text-strong"><PostMediaThumb media={post.media} />{post.content}</li>
         ))}
       </ul>
     </aside>
@@ -935,9 +932,6 @@ function AccountsPanel({
           {accounts.map((account) => (
             <li key={account.id} className="flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2">
               <span className="text-sm text-strong">{labelFor(account.platform)}</span>
-              {account.platform === 'youtube' && (
-                <span className="text-sm text-faint">Video upload coming soon</span>
-              )}
               <span className="text-sm text-faint">{account.displayName} · @{account.username}</span>
             </li>
           ))}
@@ -946,17 +940,10 @@ function AccountsPanel({
           <p className="text-sm text-faint">Connect another account</p>
           <div className="flex flex-wrap items-center gap-2">
             {SOCIAL_PLATFORMS.map((platform) => (
-              platform === 'youtube' ? (
-                <Button key={platform} type="button" variant="outline" className={CONTROL} disabled data-testid="connect-youtube">
-                  {labelFor(platform)}
-                </Button>
-              ) : (
-                <Button key={platform} type="button" variant="outline" className={CONTROL} data-testid={`connect-${platform}`} onClick={() => onConnect(platform)}>
-                  {labelFor(platform)}
-                </Button>
-              )
+              <Button key={platform} type="button" variant="outline" className={CONTROL} data-testid={`connect-${platform}`} onClick={() => onConnect(platform)}>
+                {labelFor(platform)}
+              </Button>
             ))}
-            <p className="text-sm text-faint" data-testid="connect-youtube-note">Video upload coming soon</p>
           </div>
         </div>
       </CardContent>
@@ -1003,12 +990,13 @@ function Queue({
                     <ul className="flex flex-col gap-2">
                       {rows.map((post) => (
                         <li key={post.id} className="flex flex-col gap-2 rounded-lg border border-line px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <p className="text-sm text-strong">{post.content}</p>
+                          <div className="flex items-center gap-3">
+                            <PostMediaThumb media={post.media} />
+                            <div><p className="text-sm text-strong">{post.content}</p>
                             <p className="text-xs text-faint">
                               {post.targets.map((target) => labelFor(target.platform)).join(', ')}
                               {post.scheduledFor ? ` · ${isoToWallTime(post.scheduledFor, post.timezone || 'UTC').replace('T', ' ')}` : ''}
-                            </p>
+                            </p></div>
                           </div>
                           {post.status !== 'sent' && (
                             <div className="flex gap-2">
