@@ -1,0 +1,22 @@
+{
+  "ticket": "THE-999999",
+  "recordedIn": "DIGITAL-1",
+  "note": "DIGITAL-1: synthetic THE-format identifier required by the ownership register validation.",
+  "entries": [
+    {
+      "file": "src/components/AdminCourses.tsx",
+      "digest": "8eb88a25bdfce3acd48927dcf0b58369b0c814e2ab6b698c6831d54a4804042b",
+      "why": "DIGITAL-1 adds digital product list and editor access, checks its separate product cap, and disables the course picker card at the existing course limit with a visible reason."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "1dfcf83a018bdfd41dab1b7f95a5cf0609fba892f403bc2a15a9bd6f7a0209b7",
+      "why": "DIGITAL-1 adds the member Products tab only when a published digital product exists, displays presence-read failures, and renders the digital catalogue for that tab."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "e247bd6f8defa1d73be6738d9c1b9aa3c3e4f7e034eec730d61112fd118d4bf3",
+      "why": "DIGITAL-1 appends DigitalProducts.tsx to the primitive adopter register with its ticket and reason; no previous adopter or assertion is removed."
+    }
+  ]
+}

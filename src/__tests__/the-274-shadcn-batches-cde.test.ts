@@ -903,6 +903,7 @@ it('border-strong, border-faint, border-subtle and border-hairline still produce
  * review — which is the property that made the original assertion worth having.
  */
 const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: string }> = [
+  { file: 'src/components/digital-products/DigitalProducts.tsx', ticket: 'DIGITAL-1', why: 'DIGITAL-1 uses the existing dialog and other primitives for digital product editing and member catalogue actions; the primitives themselves are unchanged.' },
   {
     file: 'src/components/AdminEvents.tsx',
     ticket: 'THE-345',
