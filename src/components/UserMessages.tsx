@@ -136,6 +136,7 @@ interface Channel {
   name: string;
   description: string;
   members?: string[];
+  audience?: 'all' | 'selected' | 'admins';
   lastMessage?: string;
   lastMessageAt?: Timestamp | null;
 }
@@ -664,6 +665,8 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false, o
   const [currentUser, setCurrentUser] = useState<{ uid: string; name: string } | null>(null);
   const [dms, setDms] = useState<DirectMessage[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
+  const [groupError, setGroupError] = useState('');
+  const [groupSearch, setGroupSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [openDm, setOpenDm] = useState<DirectMessage | null>(null);
   const [openChannel, setOpenChannel] = useState<Channel | null>(null);
@@ -730,22 +733,29 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false, o
     return onSnapshot(q, snap => {
       const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }) as DirectMessage);
       rows.sort((a, b) => (b.lastMessageAt?.toMillis() || 0) - (a.lastMessageAt?.toMillis() || 0));
-      setDms(rows);
+      setDms(isAdmin ? rows : rows.filter(dm => dm.participants.some(id => id !== currentUser.uid && ADMIN_ROLES.includes(dm.participantRoles?.[id]))));
     }, () => {});
-  }, [tenantId, currentUser]);
+  }, [tenantId, currentUser, isAdmin]);
 
-  // Channels the user is a member of (array-contains needs no composite index).
+  // Rules are not filters: each member query must prove its audience access.
   useEffect(() => {
     if (!tenantId || !currentUser) return;
-    const q = query(
-      collection(db, 'tenants', tenantId, 'channels'),
-      where('members', 'array-contains', currentUser.uid),
-      limit(50)
-    );
-    return onSnapshot(q, snap => {
-      setChannels(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Channel));
-    }, () => {});
-  }, [tenantId, currentUser]);
+    setGroupError('');
+    setChannels([]);
+    const source = collection(db, 'tenants', tenantId, 'channels');
+    const queries = isAdmin ? [query(source)] : [
+      query(source, where('audience', '==', 'all')),
+      query(collection(db, 'tenants', tenantId, 'channels'), where('members', 'array-contains', currentUser.uid), where('audience', '==', 'selected')),
+    ];
+    const parts: Channel[][] = queries.map(() => []);
+    const unsubscribes = queries.map((q, index) => onSnapshot(q, snap => {
+      parts[index] = snap.docs.map(d => ({ id: d.id, ...d.data() }) as Channel);
+      const merged = Array.from(new Map(parts.flat().map(channel => [channel.id, channel])).values());
+      merged.sort((a, b) => Number(b.id === 'all-members') - Number(a.id === 'all-members') || a.name.localeCompare(b.name));
+      setChannels(merged);
+    }, () => setGroupError('Could not load groups. Please try again.')));
+    return () => unsubscribes.forEach(unsubscribe => unsubscribe());
+  }, [tenantId, currentUser, isAdmin]);
 
   /**
    * 🔴 THE CLEANUP IS THE POINT — see `onConversationOpenChange`'s doc comment.
@@ -917,7 +927,10 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false, o
       )}
 
       <div className="flex-1 p-4 lg:overflow-y-auto lg:min-h-0">
-        {dms.length === 0 && channels.length === 0 ? (
+        <label className="sr-only" htmlFor="group-search">Search groups</label>
+        <input id="group-search" value={groupSearch} onChange={e => setGroupSearch(e.target.value)} placeholder="Search groups" className="mb-4 w-full rounded-lg border border-line bg-surface-raised px-3 py-2 text-sm" />
+        {groupError && <p role="alert" className="mb-3 text-destructive">{groupError}</p>}
+        {!groupError && dms.length === 0 && channels.length === 0 ? (
           <div className="text-center py-16 text-faint">
             <MessageSquare size={40} className="mx-auto mb-3 opacity-30" />
             <p className="font-medium">No messages yet</p>
@@ -931,9 +944,9 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false, o
           <>
             {channels.length > 0 && (
               <div className="mb-5">
-                <p className="text-xs font-bold text-faint uppercase tracking-wider mb-2">Channels</p>
+                <p className="text-xs font-bold text-faint uppercase tracking-wider mb-2">Groups</p>
                 <div className="space-y-2">
-                  {channels.map(ch => (
+                  {channels.filter(ch => ch.name.toLowerCase().includes(groupSearch.toLowerCase())).map(ch => (
                     <button
                       key={ch.id}
                       onClick={() => setOpenChannel(ch)}

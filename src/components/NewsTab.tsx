@@ -27,6 +27,7 @@ import { useCampaigns } from '../hooks/queries/useCampaignQueries';
 import EmbedPicker, { type PickerItem } from './EmbedPicker';
 import { FeedEmbedCard, EmbedComposerChip, type PostEmbed, type EmbedType } from './EmbedCard';
 import { ImageLightbox, PostImageGrid, postImages } from './feed/PostMedia';
+import { MemberPostComposer } from './community/MemberPostComposer';
 import { eventPriceLabel } from '../lib/paid-events-feature';
 
 interface Comment {
@@ -120,14 +121,6 @@ interface NewsTabProps {
   onOpenMessages?: () => void;
 }
 
-/**
- * Feed post composer is admin-only: posts are announcements — members read,
- * like, and comment but do not get a composer. The underlying create path and
- * firestore.rules already permit member posting; this flag only gates the UI.
- * Flip it to `true` to re-enable member posting — a one-line change.
- */
-const ALLOW_MEMBER_POSTS = false;
-
 const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantId = null, onOpenLivestream, onGoToPartner, onOpenMessages }) => {
   const [allPosts, setAllPosts] = useState<CommunityPost[]>([]);
   const shareBase = useShareBaseUrl();
@@ -165,7 +158,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
   const canUseCommunityGroups = usePlanGate('community_chat');
 
   // Admin announcement composer state (text + up to 3 images + embed + poll + pin).
-  // Gated to admins via `canCompose` below; members read/like/comment only.
+  // Rich controls are reserved for users with createPosts.
   const [composerText, setComposerText] = useState('');
   const [composerImages, setComposerImages] = useState<string[]>([]);
   const [showImageAttach, setShowImageAttach] = useState(false);
@@ -292,7 +285,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
   const handleSubmitPost = async () => {
     const text = composerText.trim();
-    const isPoll = composerMode === 'poll';
+    const isPoll = canManage && composerMode === 'poll';
+    if (!canManage && (!text || composerText.length > 500)) return;
     // Poll needs a question + at least two non-empty options (mirrors AdminPosts).
     const validPollOptions = pollOptions.filter(o => o.text.trim());
     if (isPoll) {
@@ -310,8 +304,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
     setIsPosting(true);
     try {
       // Poll posts carry no images/embeds; post-mode posts carry no poll.
-      const images = isPoll ? [] : composerImages.slice(0, MAX_IMAGES);
-      const embed = isPoll ? null : composerEmbed;
+      const images = isPoll || !canManage ? [] : composerImages.slice(0, MAX_IMAGES);
+      const embed = isPoll || !canManage ? null : composerEmbed;
       const pollDocOptions = validPollOptions.map(o => ({ id: o.id, text: o.text.trim(), votes: o.votes || [] }));
 
       if (editingPostId) {
@@ -360,7 +354,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
           authorPhoto,
           content: text,
           likes: [],
-          isPinned: composerPinned,
+          isPinned: canManage && composerPinned,
           createdAt: new Date().toISOString(),
           tenantId: await getWriteTenantScope(),
         };
@@ -899,10 +893,6 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
   const canPostImages = composerImages.length < MAX_IMAGES;
 
-  // Composer is admin-only (posts are announcements). `canManage` starts false
-  // and only flips true after the async role check resolves, so a regular user
-  // never sees the composer flash. Flip ALLOW_MEMBER_POSTS to re-enable members.
-  const canCompose = canManage || ALLOW_MEMBER_POSTS;
   // Poll submit needs a question + two non-empty options; post submit needs text or an image.
   const composerCanSubmit = composerMode === 'poll'
     ? Boolean(composerText.trim()) && pollOptions.filter(o => o.text.trim()).length >= 2
@@ -942,7 +932,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
     <div className="space-y-4 lg:space-y-3 w-full">
       {/* Admin announcement composer — text + up to 3 images + embed + poll + pin.
           Admin-only (posts are announcements); members read/like/comment only. */}
-      {canCompose && auth.currentUser && (
+      {auth.currentUser && !canManage && <MemberPostComposer value={composerText} onChange={setComposerText} onSubmit={handleSubmitPost} posting={isPosting} editing={!!editingPostId} onCancel={resetComposer} />}
+      {canManage && auth.currentUser && (
         <div className="bg-surface-raised rounded-2xl shadow-xs border border-line p-4 lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
           {/* Post / Poll switch (ported from AdminPosts). Hidden while editing so
               an existing post's type isn't accidentally flipped. */}
@@ -1269,7 +1260,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                 ariaLabel="Post options"
                 items={[
                   // Author can edit their own post or poll (legacy events aren't editable here).
-                  ...(auth.currentUser?.uid === post.authorId && (post.type === 'post' || post.type === 'poll')
+                  ...(auth.currentUser?.uid === post.authorId && (post.type === 'post' || (canManage && post.type === 'poll'))
                     ? [{ label: post.type === 'poll' ? 'Edit poll' : 'Edit post', onClick: () => beginEditPost(post) }]
                     : []),
                   ...(canManage || auth.currentUser?.uid === post.authorId
