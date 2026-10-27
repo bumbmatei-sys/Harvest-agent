@@ -1,9 +1,11 @@
 "use client";
+import { getPlanFeatures } from '@/utils/plan-features';
 import React, { useState, useEffect } from 'react';
 import { Plus, Library, Check } from 'lucide-react';
 import { collection, onSnapshot, query, where, doc, getDoc, limit, orderBy, documentId, getCountFromServer } from 'firebase/firestore';
 import { db } from '../firebase';
 import { authFetch } from '../utils/auth-fetch';
+import { DigitalAdminList, DigitalEditor } from './digital-products/DigitalProducts';
 import { CourseWizard } from './courses/builder/CourseWizard';
 import { hydrateCourse } from '../lib/courses/content-client';
 import { deleteCourse } from '../lib/courses/persist';
@@ -111,6 +113,20 @@ const AdminCourses: React.FC<AdminCoursesProps> = ({ productsPage = false, onOpe
 
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [pickingType, setPickingType] = useState(false);
+  const [digitalEditor, setDigitalEditor] = useState<{ initial?: React.ComponentProps<typeof DigitalEditor>['initial'] } | null>(null);
+  const [digitalListVersion, setDigitalListVersion] = useState(0);
+  const [digitalCount, setDigitalCount] = useState<number | null>(null);
+  useEffect(() => {
+    if (!productsPage) return;
+    let cancelled = false;
+    setDigitalCount(null);
+    authFetch('/api/digital-products?admin=1').then(async response => {
+      if (!response.ok) throw new Error('Could not load digital products');
+      return response.json();
+    }).then(data => { if (!cancelled) setDigitalCount(data.products.length); })
+      .catch(() => { if (!cancelled) setErrorMessage('Could not check the digital product limit.'); });
+    return () => { cancelled = true; };
+  }, [digitalListVersion, productsPage]);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -537,6 +553,7 @@ const AdminCourses: React.FC<AdminCoursesProps> = ({ productsPage = false, onOpe
   const libraryListTruncated = libraryCount !== null && libraryCourses.length < libraryCount;
 
   const handleNewCourse = () => {
+    if (productsPage) { setPickingType(true); return; }
     if (loading) return; // course count not known yet — can't decide the cap
     if (atLimit) {
       setErrorMessage(limitMessage);
@@ -548,7 +565,18 @@ const AdminCourses: React.FC<AdminCoursesProps> = ({ productsPage = false, onOpe
     else handlePickType('course');
   };
   const handlePickType = (id: string) => {
+    if (id === 'digital-download') {
+      setPickingType(false);
+      const cap = tenantPlan ? getPlanFeatures(tenantPlan).maxProducts : 0;
+      if (digitalCount === null || (cap !== -1 && digitalCount >= cap)) {
+        setErrorMessage(digitalCount === null ? 'Could not check the digital product limit.' : 'Your plan has reached its digital product limit.');
+        return;
+      }
+      setDigitalEditor({});
+      return;
+    }
     if (id !== 'course') return;
+    if (loading || atLimit) { setPickingType(false); setErrorMessage(limitMessage); return; }
     setPickingType(false);
     setEditingCourse(null);
     setIsEditorOpen(true);
@@ -719,6 +747,7 @@ const AdminCourses: React.FC<AdminCoursesProps> = ({ productsPage = false, onOpe
   };
 
   // The editor is a full in-shell screen; when open it replaces the list.
+  if (digitalEditor) return <DigitalEditor initial={digitalEditor.initial} onClose={() => { setDigitalEditor(null); setDigitalListVersion(v => v + 1); }} />;
   if (isEditorOpen) {
     return <CourseWizard course={editingCourse} onClose={() => setIsEditorOpen(false)} />;
   }
@@ -791,7 +820,7 @@ const AdminCourses: React.FC<AdminCoursesProps> = ({ productsPage = false, onOpe
           productsPage ? (
             <>
               {onOpenCourses ? <Button type="button" variant="outline" className="min-h-11 sm:min-h-0" onClick={onOpenCourses}>Courses</Button> : null}
-              <AdminPrimaryButton onClick={handleNewCourse} icon={<Plus size={16} />} disabled={atLimit} title={atLimit ? limitMessage : undefined}>New product</AdminPrimaryButton>
+              <AdminPrimaryButton onClick={handleNewCourse} icon={<Plus size={16} />}>New product</AdminPrimaryButton>
             </>
           ) : view === 'own'
             ? <AdminPrimaryButton onClick={handleNewCourse} icon={<Plus size={16} />} disabled={atLimit} title={atLimit ? limitMessage : undefined}>New course</AdminPrimaryButton>
@@ -987,6 +1016,7 @@ const AdminCourses: React.FC<AdminCoursesProps> = ({ productsPage = false, onOpe
 
       {view === 'own' && (<>
 
+      {productsPage && <DigitalAdminList key={digitalListVersion} onEdit={initial => setDigitalEditor({ initial })} />}
       <CourseProductList
         courses={filteredCourses}
         adopted={myAdoptedCourses}
@@ -999,7 +1029,7 @@ const AdminCourses: React.FC<AdminCoursesProps> = ({ productsPage = false, onOpe
       />
       </>)}
 
-      <NewProductDialog open={pickingType} onOpenChange={setPickingType} types={PRODUCT_TYPES} onSelect={handlePickType} />
+      <NewProductDialog open={pickingType} onOpenChange={setPickingType} types={PRODUCT_TYPES.map(type => type.id === 'course' && (loading || atLimit) ? { ...type, blockedReason: loading || ownCount === null ? 'Could not check the course limit yet.' : limitMessage } : type)} onSelect={handlePickType} />
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmId && (

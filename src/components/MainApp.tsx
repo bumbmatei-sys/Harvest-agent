@@ -1,6 +1,7 @@
 "use client";
+import { authFetch } from '@/utils/auth-fetch';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Home, BookOpen, MessageCircle, Map as MapIcon, User, Play, ChevronLeft, ChevronRight, Newspaper, FileText, GraduationCap, MessageSquare, HandHeart, HeartHandshake } from 'lucide-react';
+import { Home, BookOpen, MessageCircle, Map as MapIcon, User, Play, ChevronLeft, ChevronRight, Newspaper, FileText, FileDown, GraduationCap, MessageSquare, HandHeart, HeartHandshake } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { doc, getDoc } from 'firebase/firestore';
@@ -14,6 +15,7 @@ import NewsTab from './NewsTab';
 import PrayerWall from './PrayerWall';
 import AllNews from './AllNews';
 import CourseExperience from '../components/CoursePage';
+import { DigitalMemberProducts } from './digital-products/DigitalProducts';
 import AIChat from './AIChat';
 import UserMessages from './UserMessages';
 import ErrorBoundary from './ErrorBoundary';
@@ -48,6 +50,7 @@ const TOP_TAB_ICONS: Record<string, any> = {
   news: Newspaper,
   blog: FileText,
   courses: GraduationCap,
+  products: FileDown,
   messages: MessageSquare,
   prayer: HandHeart,
   partner: HeartHandshake,
@@ -67,7 +70,7 @@ const DESKTOP_SIDEBAR_GROUPS: readonly {
   topTabIds: readonly string[];
   bottomTabIds: readonly string[];
 }[] = [
-  { label: 'FEED', hostsHome: true, topTabIds: ['news', 'blog', 'courses'], bottomTabIds: ['bible'] },
+  { label: 'FEED', hostsHome: true, topTabIds: ['news', 'blog', 'courses', 'products'], bottomTabIds: ['bible'] },
   { label: 'COMMUNITY', topTabIds: ['messages', 'prayer'], bottomTabIds: ['map'] },
   { label: 'SUPPORT US', topTabIds: ['partner'], bottomTabIds: ['chat'] },
 ];
@@ -291,6 +294,23 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     return () => { cancelled = true; };
   }, []);
 
+  const [productsStatus, setProductsStatus] = useState<'loading' | 'empty' | 'present' | 'error'>('loading');
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await authFetch('/api/digital-products?presence=1');
+        if (!response.ok) throw new Error('Could not load products');
+        const result = await response.json();
+        if (typeof result.present !== 'boolean') throw new Error('Invalid product response');
+        if (!cancelled) setProductsStatus(result.present ? 'present' : 'empty');
+      } catch {
+        if (!cancelled) setProductsStatus('error');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const topTabs = [
     // 🔴 WAS AN UNCONDITIONAL LITERAL, exactly as `messages` was before THE-162.
     // The feed is every tier's Home, so this is the entry whose absence moves
@@ -299,6 +319,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     (isMainSite || (isPlanReady && features?.blog === true)) && { id: 'blog', label: 'Blog' },
     // Only include Courses tab once we know at least 1 course exists
     coursesStatus === 'present' && { id: 'courses', label: 'Courses' },
+    productsStatus === 'present' && { id: 'products', label: 'Products' },
     hasCommunityGroups && { id: 'messages', label: 'Messages' },  // Ministry (max) only
     { id: 'prayer', label: 'Prayer' },        // all plans, all users
     // Give — plan-gated. A free tenant has `fundraising: false` and the donate
@@ -696,6 +717,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   return (
     <div className="flex flex-col lg:flex-row h-screen bg-surface font-sans overflow-hidden transition-colors duration-300">
       <ReferralTracker />
+      {productsStatus === 'error' && <div role="alert" className="p-2 text-sm">Could not check for digital products. Please refresh to try again.</div>}
       
       {/* Side/Bottom Navigation */}
       <div className={`bg-surface-raised border-t lg:border-t-0 lg:border-r border-line flex justify-center lg:justify-start py-2 lg:py-5 px-2 lg:px-3 pb-[calc(8px+env(safe-area-inset-bottom))] lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-[224px]'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300 ${!isNavVisible || activeBottomTab === 'map' || isChatOpen ? 'max-lg:translate-y-full' : 'max-lg:translate-y-0'}`}>
@@ -905,6 +927,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                   {effectiveTopTab === 'blog' && (
                     <BlogTab onOpenArticle={(post) => setFullScreenView({type: 'article', data: post})} />
                   )}
+                  {effectiveTopTab === 'products' && <DigitalMemberProducts />}
                   {effectiveTopTab === 'courses' && (
                     <CourseExperience onOpenCourse={(courseId, lessonId) => setFullScreenView({type: 'course', data: {courseId, lessonId}})} />
                   )}
@@ -931,7 +954,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                   {effectiveTopTab === 'prayer' && (
                     <PrayerWall />
                   )}
-                  {effectiveTopTab !== 'news' && effectiveTopTab !== 'partner' && effectiveTopTab !== 'blog' && effectiveTopTab !== 'courses' && effectiveTopTab !== 'messages' && effectiveTopTab !== 'prayer' && (
+                  {effectiveTopTab !== 'news' && effectiveTopTab !== 'partner' && effectiveTopTab !== 'blog' && effectiveTopTab !== 'courses' && effectiveTopTab !== 'products' && effectiveTopTab !== 'messages' && effectiveTopTab !== 'prayer' && (
                     <div className="flex flex-col items-center justify-center h-64 text-faint">
                       <p>{topTabs.find(t => t.id === effectiveTopTab)?.label} content coming soon.</p>
                     </div>
