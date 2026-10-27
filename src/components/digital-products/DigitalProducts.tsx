@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { getWriteTenantScope } from '@/utils/tenant-scope';
 import { authFetch } from '@/utils/auth-fetch';
 import { MAX_PDF_UPLOAD_BYTES } from '@/utils/upload-limits';
 import { PAID_PRODUCT_CHECKOUT_ENABLED } from '@/utils/plan-features';
@@ -46,7 +47,9 @@ function useProducts(admin: boolean) {
   const load = useCallback(async () => {
     try {
       setError('');
-      setProducts((await api(request, `/api/digital-products${admin ? '?admin=1' : ''}`)).products);
+      const tenantId = admin ? await getWriteTenantScope() : null;
+      if (admin && !tenantId) throw new Error('Tenant required');
+      setProducts((await api(request, `/api/digital-products${admin ? `?admin=1&tenantId=${encodeURIComponent(tenantId!)}` : ''}`)).products);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load products');
     }
@@ -85,7 +88,7 @@ export function DigitalEditor({ initial, onClose }: { initial?: Product | null; 
   const request = useContext(DigitalFetchContext);
   const [product, setProduct] = useState<Product>(() => initial || { id: crypto.randomUUID(), title: '', description: '', coverUrl: '', priceCents: 0, status: 'draft' });
   const [price, setPrice] = useState(() => initial ? (initial.priceCents / 100).toFixed(2) : '0');
-  const pdfInput = useRef<HTMLInputElement>(null);
+  const pdfInputWrap = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState('details');
   const [error, setError] = useState('');
   const [pdfError, setPdfError] = useState('');
@@ -102,9 +105,11 @@ export function DigitalEditor({ initial, onClose }: { initial?: Product | null; 
     setBusy(true);
     setUploadError('');
     try {
+      const tenantId = cover ? null : await getWriteTenantScope();
+      if (!cover && !tenantId) throw new Error('Tenant required');
       const result = await api(request, cover ? '/api/storage/presign' : '/api/digital-products/upload', cover
         ? { fileName: file.name, contentType: file.type, fileSize: file.size }
-        : { productId: product.id, contentType: file.type, fileSize: file.size });
+        : { tenantId, productId: product.id, contentType: file.type, fileSize: file.size });
       const response = await fetch(result.uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
       if (!response.ok) throw new Error('Upload failed');
       change(cover ? { coverUrl: result.publicUrl } : { objectKey: result.key, fileName: file.name, fileSize: file.size });
@@ -119,7 +124,9 @@ export function DigitalEditor({ initial, onClose }: { initial?: Product | null; 
     setBusy(true);
     setError('');
     try {
-      await api(request, '/api/digital-products', { ...product, priceCents: Math.round(Number(price) * 100), status });
+      const tenantId = await getWriteTenantScope();
+      if (!tenantId) throw new Error('Tenant required');
+      await api(request, '/api/digital-products', { ...product, tenantId, priceCents: Math.round(Number(price) * 100), status });
       setProduct(p => ({ ...p, status, priceCents: Math.round(Number(price) * 100) }));
       setSaved(true);
     } catch (e) {
@@ -168,17 +175,17 @@ export function DigitalEditor({ initial, onClose }: { initial?: Product | null; 
                 <>
                   <p className="break-words">{product.fileName || 'PDF uploaded'}{product.fileSize ? ` · ${(product.fileSize / 1024 / 1024).toFixed(2)} MB` : ''}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <Button type="button" variant="outline" className="min-h-11" aria-label="Replace PDF" disabled={busy} onClick={() => pdfInput.current?.click()}>Replace</Button>
+                    <Button type="button" variant="outline" className="min-h-11" aria-label="Replace PDF" disabled={busy} onClick={() => pdfInputWrap.current?.querySelector('input')?.click()}>Replace</Button>
                     <Button type="button" variant="outline" className="min-h-11" aria-label="Remove PDF" disabled={busy} onClick={() => { change({ objectKey: undefined, fileName: undefined, fileSize: undefined }); setPdfError(''); }}>Remove</Button>
                   </div>
                 </>
               ) : (
                 <>
                   <p className="text-sm text-muted">Drop a PDF here or choose a file.</p>
-                  <Button type="button" variant="outline" className="mt-3 min-h-11" disabled={busy} onClick={() => pdfInput.current?.click()}>Choose a PDF</Button>
+                  <Button type="button" variant="outline" className="mt-3 min-h-11" disabled={busy} onClick={() => pdfInputWrap.current?.querySelector('input')?.click()}>Choose a PDF</Button>
                 </>
               )}
-              <input ref={pdfInput} className="sr-only" id="digital-pdf" type="file" accept="application/pdf,.pdf" disabled={busy} onChange={e => { const file = e.target.files?.[0]; if (file) void upload(file); e.target.value = ''; }} />
+              <div ref={pdfInputWrap} className="hidden"><Input aria-label="Choose PDF file" id="digital-pdf" type="file" accept="application/pdf,.pdf" disabled={busy} onChange={e => { const file = e.target.files?.[0]; if (file) void upload(file); e.target.value = ''; }} /></div>
             </div>
             {pdfError && (
               <Alert variant="destructive">
@@ -239,6 +246,7 @@ export function DigitalMemberProducts() {
             <CardContent className="space-y-3">
               <h2 className="font-display text-xl">{product.title}</h2>
               <p className="whitespace-pre-wrap">{product.description}</p>
+              {product.status !== 'published' && <Badge variant="secondary">No longer listed</Badge>}
               <Badge variant="secondary">{product.priceCents > 0 && !product.entitled ? 'Coming soon' : priceLabel(product)}</Badge>
               {(product.entitled || product.priceCents === 0) && (
                 <Button className="min-h-11 w-full" disabled={busy === product.id} onClick={() => void act(product)}>

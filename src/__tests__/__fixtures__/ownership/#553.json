@@ -27,6 +27,11 @@
       "file": "src/components/AdminCourses.tsx",
       "digest": "e24586624f2a6bb344b96ca6c3bec39bc27f385a26f22b16338bec60791188b4",
       "why": "Keep the last digital product count during refresh and distinguish a loading plan or count from a failed limit check."
+    },
+    {
+      "file": "src/components/AdminCourses.tsx",
+      "digest": "dc00af14edee1f81c0dacf7eb9966168f54c2074db76b0cdf4fd52e165ab12e5",
+      "why": "Pass the selected tenant to the digital product permission gate for product counts, so the server checks the same scope the admin is managing."
     }
   ]
 }

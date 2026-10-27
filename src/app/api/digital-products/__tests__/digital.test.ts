@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
 const mocks = vi.hoisted(() => ({ auth: vi.fn(), docGet: vi.fn(), sign: vi.fn(), send: vi.fn(), transaction: vi.fn() }));
-vi.mock('@/lib/api-auth', () => ({ requireAuth: mocks.auth, requireAdmin: mocks.auth }));
+vi.mock('@/lib/api-auth', () => ({ requireAuth: mocks.auth, requireTenantPermission: mocks.auth }));
 vi.mock('@/lib/firebase-admin', () => {
   const ref: any = { collection: () => ref, doc: () => ref, get: mocks.docGet };
   return { adminDb: { collection: () => ref, runTransaction: mocks.transaction } };
@@ -12,7 +12,7 @@ import { hasDigitalEntitlement, DIGITAL_URL_TTL_SECONDS } from '@/lib/digital-pr
 import { POST as save } from '../route';
 import { POST as download } from '../download/route';
 import { POST as upload } from '../upload/route';
-const request = (body: unknown) => new NextRequest('http://localhost/api', { method: 'POST', body: JSON.stringify(body) });
+const request = (body: unknown) => new NextRequest('http://localhost/api', { method: 'POST', body: JSON.stringify({ tenantId: 'tenant1', ...(body as object) }) });
 const user = { uid: 'user1', tenantId: 'tenant1', isAdmin: true };
 describe('digital products security', () => {
   beforeEach(() => { vi.resetAllMocks(); mocks.auth.mockResolvedValue(user); mocks.sign.mockResolvedValue('https://signed.example'); });

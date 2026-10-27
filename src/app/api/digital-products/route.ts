@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { FieldPath } from 'firebase-admin/firestore';
-import { HeadObjectCommand } from '@aws-sdk/client-s3';
-import { requireAuth, requireAdmin } from '@/lib/api-auth';
+import { DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { requireAuth, requireTenantPermission } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import { isDigitalKey, SAFE_DIGITAL_ID, hasDigitalEntitlement } from '@/lib/digital-products';
 import { createR2Client, r2Bucket } from '@/lib/r2';
@@ -21,26 +20,29 @@ function validProduct(body: any, tenantId: string): boolean {
 }
 
 export async function GET(request: NextRequest) {
-  const user = await requireAuth(request);
-  if (user instanceof NextResponse) return user;
-  if (!user.tenantId || !SAFE_DIGITAL_ID.test(user.tenantId)) return NextResponse.json({ error: 'Tenant required' }, { status: 403 });
-  const tenantId = user.tenantId;
   const admin = request.nextUrl.searchParams.get('admin') === '1';
-  if (admin && !user.isAdmin && !user.isSuperAdmin) return NextResponse.json({ error: 'Admin required' }, { status: 403 });
+  const requestedTenant = request.nextUrl.searchParams.get('tenantId');
+  if (admin && (!requestedTenant || !SAFE_DIGITAL_ID.test(requestedTenant))) return NextResponse.json({ error: 'Tenant required' }, { status: 400 });
+  const user = admin ? await requireTenantPermission(request, requestedTenant!, 'createCourses') : await requireAuth(request);
+  if (user instanceof NextResponse) return user;
+  const tenantId = admin ? requestedTenant! : user.tenantId;
+  if (!tenantId || !SAFE_DIGITAL_ID.test(tenantId)) return NextResponse.json({ error: 'Tenant required' }, { status: 403 });
   try {
-    if (!admin && request.nextUrl.searchParams.get('presence') === '1') {
-      const docs = await collection(tenantId).where('status', '==', 'published').orderBy(FieldPath.documentId()).limit(1).get();
-      return NextResponse.json({ present: !docs.empty }, { headers: { 'Cache-Control': 'no-store' } });
-    }
     const docs = await collection(tenantId).get();
-    const products = await Promise.all(docs.docs.filter(d => admin || d.data().status === 'published').map(async d => {
+    const visible = await Promise.all(docs.docs.map(async d => {
       const data = d.data();
+      const entitled = admin ? false : await hasDigitalEntitlement(tenantId, d.id, user.uid);
+      if (!admin && data.status !== 'published' && !entitled) return null;
       return {
         id: d.id, title: data.title, description: data.description, coverUrl: data.coverUrl,
         priceCents: data.priceCents, status: data.status,
-        ...(admin ? { objectKey: data.objectKey, fileName: data.fileName, fileSize: data.fileSize } : { entitled: await hasDigitalEntitlement(tenantId, d.id, user.uid) }),
+        ...(admin ? { objectKey: data.objectKey, fileName: data.fileName, fileSize: data.fileSize } : { entitled }),
       };
     }));
+    const products = visible.filter(product => product !== null);
+    if (!admin && request.nextUrl.searchParams.get('presence') === '1') {
+      return NextResponse.json({ present: products.length > 0 }, { headers: { 'Cache-Control': 'no-store' } });
+    }
     return NextResponse.json({ products }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('Digital products read failed', error);
@@ -49,11 +51,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const user = await requireAdmin(request);
-  if (user instanceof NextResponse) return user;
-  if (!user.tenantId || !SAFE_DIGITAL_ID.test(user.tenantId)) return NextResponse.json({ error: 'Tenant required' }, { status: 403 });
-  const tenantId = user.tenantId;
   const body = await request.json().catch(() => null);
+  const tenantId = body?.tenantId;
+  if (typeof tenantId !== 'string' || !SAFE_DIGITAL_ID.test(tenantId)) return NextResponse.json({ error: 'Tenant required' }, { status: 400 });
+  const user = await requireTenantPermission(request, tenantId, 'createCourses');
+  if (user instanceof NextResponse) return user;
   if (!validProduct(body, tenantId)) return NextResponse.json({ error: 'Invalid product details or PDF' }, { status: 400 });
   try {
     const bucket = r2Bucket();
@@ -81,9 +83,13 @@ export async function POST(request: NextRequest) {
         fileName: typeof body.fileName === 'string' ? body.fileName.slice(0, 255) : '',
         fileSize: object.ContentLength, updatedAt: Date.now(),
       });
-      return true;
+      return { previousKey: existing.exists ? existing.data()?.objectKey : undefined };
     });
     if (!saved) return NextResponse.json({ error: 'Your plan has reached its digital product limit.', code: 'product_limit_reached' }, { status: 403 });
+    if (saved.previousKey !== body.objectKey && isDigitalKey(saved.previousKey, tenantId, body.id)) {
+      try { await createR2Client().send(new DeleteObjectCommand({ Bucket: bucket, Key: saved.previousKey })); }
+      catch (error) { console.error('Digital product cleanup failed', error); }
+    }
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('Digital product save failed', error);

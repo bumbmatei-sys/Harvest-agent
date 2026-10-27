@@ -1,7 +1,11 @@
+import { readFileSync } from 'fs';
+import path from 'path';
+import { stripComments } from '@/__tests__/__fixtures__/the-346-strip-comments';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { describe, expect, it, vi } from 'vitest';
-import { DigitalEditor, DigitalFetchContext } from '../DigitalProducts';
+import { DigitalEditor, DigitalFetchContext, DigitalMemberProducts } from '../DigitalProducts';
+vi.mock('@/utils/tenant-scope', () => ({ getWriteTenantScope: vi.fn().mockResolvedValue('tenant1') }));
 vi.mock('@/utils/auth-fetch', () => ({ authFetch: vi.fn() }));
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 describe('digital PDF upload', () => {
@@ -14,6 +18,9 @@ describe('digital PDF upload', () => {
       await act(async () => root.render(<DigitalFetchContext.Provider value={request}><DigitalEditor initial={{ id: 'product1', title: 'Guide', description: '', coverUrl: '', priceCents: 0, status: 'draft' }} onClose={() => {}} /></DigitalFetchContext.Provider>));
       await act(async () => [...host.querySelectorAll('button')].find(b => b.textContent?.includes('PDF'))!.click());
       expect(host.textContent).toContain('Drop a PDF here or choose a file.');
+      const picker = vi.spyOn(host.querySelector<HTMLInputElement>('#digital-pdf')!, 'click').mockImplementation(() => {});
+      await act(async () => [...host.querySelectorAll('button')].find(b => b.textContent === 'Choose a PDF')!.click());
+      expect(picker).toHaveBeenCalledOnce();
       const file = new File(['pdf content'], 'guide.pdf', { type: 'application/pdf' });
       const input = host.querySelector<HTMLInputElement>('#digital-pdf')!;
       Object.defineProperty(input, 'files', { configurable: true, value: [file] });
@@ -22,7 +29,7 @@ describe('digital PDF upload', () => {
       expect(host.textContent).not.toContain('Drop a PDF here or choose a file.');
       expect(host.textContent).toContain('guide.pdf');
       expect(host.querySelector('[aria-label="Replace PDF"]')?.textContent).toBe('Replace');
-      const picker = vi.spyOn(input, 'click').mockImplementation(() => {});
+      picker.mockClear();
       await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Replace PDF"]')!.click());
       expect(picker).toHaveBeenCalledOnce();
       const remove = host.querySelector<HTMLButtonElement>('[aria-label="Remove PDF"]')!;
@@ -84,4 +91,20 @@ describe('digital product status', () => {
       expect(host.textContent).toContain('Add a title.');
     } finally { await act(async () => root.unmount()); host.remove(); }
   });
+});
+
+it('uses the shared Input primitive for the PDF picker', () => {
+  const source = stripComments(readFileSync(path.resolve(process.cwd(), 'src/components/digital-products/DigitalProducts.tsx'), 'utf8'));
+  expect(source).not.toMatch(/<input\b/);
+});
+
+it('shows an owned unpublished product with its download action', async () => {
+  const host = document.createElement('div'); document.body.appendChild(host);
+  const root = createRoot(host);
+  const request = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ products: [{ id: 'product1', title: 'Guide', description: '', coverUrl: '', priceCents: 0, status: 'draft', entitled: true }] }) });
+  try {
+    await act(async () => root.render(<DigitalFetchContext.Provider value={request}><DigitalMemberProducts /></DigitalFetchContext.Provider>));
+    expect(host.textContent).toContain('No longer listed');
+    expect([...host.querySelectorAll('button')].some(button => button.textContent === 'Download')).toBe(true);
+  } finally { await act(async () => root.unmount()); host.remove(); }
 });

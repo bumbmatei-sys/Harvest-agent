@@ -120,7 +120,10 @@ const AdminCourses: React.FC<AdminCoursesProps> = ({ productsPage = false, onOpe
   useEffect(() => {
     if (!productsPage) return;
     let cancelled = false;
-    authFetch('/api/digital-products?admin=1').then(async response => {
+    getWriteTenantScope().then(tenantId => {
+      if (!tenantId) throw new Error('Tenant required');
+      return authFetch('/api/digital-products?admin=1' + `&tenantId=${encodeURIComponent(tenantId)}`);
+    }).then(async response => {
       if (!response.ok) throw new Error('Could not load digital products');
       return response.json();
     }).then(data => { if (!cancelled) { setDigitalCount(data.products.length); setDigitalCountError(false); } })
