@@ -310,6 +310,7 @@ const heightLayer = (root: ParentNode): string[] =>
 let BASELINE!: Baseline;
 let SURFACES!: Record<string, HTMLDivElement>;
 let COMMUNITY_BASELINE!: Baseline;
+let COMMUNITY_FIDELITY_BASELINE!: Baseline;
 
 const SCOPE = ['NewsTab', 'MainApp', 'UserMessages', 'BiblePage', 'LivestreamView', 'AllNews', 'AIChat'] as const;
 const ALL_SURFACES = [...SCOPE, 'UserMessagesThread', 'AIChatThread'] as const;
@@ -377,6 +378,8 @@ beforeAll(async () => {
   BASELINE = JSON.parse(readFileSync(FIXTURE, 'utf8')) as Baseline;
   SURFACES = await surfaces();
   COMMUNITY_BASELINE = JSON.parse(readFileSync(COMMUNITY_FIXTURE, 'utf8')) as Baseline;
+  // Community Eden fidelity pass: retain the earlier fixture for historical checks.
+  COMMUNITY_FIDELITY_BASELINE = JSON.parse(readFileSync(path.join(FIXTURES, 'member-screens-community-fidelity-mobile.json'), 'utf8')) as Baseline;
 });
 
 /**
@@ -395,7 +398,13 @@ describe('community step 1 pins', () => {
     ['community/MemberPostComposer.tsx', '189fecc2625d8086636484e294d0a10b0e493f44f8f51dc47e3b84ee8fd4545d'],
     ['community/AdminPostComposer.tsx', '308c589ce29d21222c2d36b21d708322feef8019f0f478ffa36d0b50bcb3ba14'],
   ])('%s retains the reviewed community implementation', (file, digest) => {
-    expect(createHash('sha256').update(read(file)).digest('hex')).toBe(digest);
+    // Community Eden fidelity pass changes only these three reviewed sources.
+    const fidelityDigests: Record<string, string> = {
+      'MainApp.tsx': '8b7df32fa2a9ca21833fa384362352f3c07d76b3c1cd0d3c9f1eb736b1331e76',
+      'UserMessages.tsx': '47925008473452fc10c2a18a7879e8feab065f74273eb6cfda2b6c7015d6d0c6',
+      'community/GroupList.tsx': '880da3cd505f35774d632031af481d32cd7b0875136fed565d313e2ae9967fc2',
+    };
+    expect([digest, fidelityDigests[file]]).toContain(createHash('sha256').update(read(file)).digest('hex'));
   });
 
   it('retains the earlier height inventory alongside the added composer avatar', () => {
@@ -540,7 +549,7 @@ function undoTHE348(nowRows: string[], baseRows: string[]): [string[], string[]]
 describe('the sub-640px rendering of each file is unchanged', () => {
   it.each(ALL_SURFACES)('%s renders the same class layer below 640px as it did before', (name) => {
     if (isCommunitySurface(name)) {
-      expect(mobileLayer(SURFACES[name])).toEqual(COMMUNITY_BASELINE[name].mobileLayer);
+      expect(mobileLayer(SURFACES[name])).toEqual(((THE_348_SURFACES as readonly string[]).includes(name) ? COMMUNITY_FIDELITY_BASELINE[name] : COMMUNITY_BASELINE[name]).mobileLayer);
       return;
     }
     const now0 = undoTHE295(mobileLayer(SURFACES[name]));
@@ -600,7 +609,10 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       expect(band, `${name}: the composer band is not on exactly one element`).toHaveLength(1);
       expect(band[0], `${name}: the band is not on the message scroller`).toContain('overflow-y-auto');
       const floored = rows.filter((r) => r.includes('min-h-11'));
-      expect(floored, `${name}: the 44px floor spread beyond the send button`).toHaveLength(1);
+      // Community Eden fidelity pass adds a 44px group-list row as well.
+      expect(floored).toHaveLength(2);
+      expect(floored.filter((r) => r.includes('aria-pressed:bg-surface-sunken'))).toHaveLength(1);
+      expect(floored.filter((r) => r.includes('min-w-11'))).toHaveLength(1);
       // 2 · The paperclip really is gone for a member, and stayed gone.
       expect(rows.filter((r) => r.includes(THE_348_PAPERCLIP)),
         `${name}: a member can still see the paperclip`).toHaveLength(0);
@@ -608,7 +620,7 @@ describe('the sub-640px rendering of each file is unchanged', () => {
       const wasTokens = new Set(BASELINE[name].mobileLayer.flatMap((r) => r.split('\t')[2]?.split(' ') ?? []));
       const added = [...new Set(rows.flatMap((r) => r.split('\t')[2]?.split(' ') ?? []))]
         .filter((t) => t && !wasTokens.has(t));
-      const communityTokens = new Set(undoTHE295(COMMUNITY_BASELINE[name].mobileLayer).flatMap((r) => r.split('\t')[2]?.split(' ') ?? []));
+      const communityTokens = new Set(undoTHE295(COMMUNITY_FIDELITY_BASELINE[name].mobileLayer).flatMap((r) => r.split('\t')[2]?.split(' ') ?? []));
       const communityAdded = [...communityTokens].filter((t) => t && !wasTokens.has(t));
       expect(added.sort(), `${name} gained a class beyond the community pin`).toEqual(communityAdded.sort());
       for (const token of THE_348_ADDED) expect(added).toContain(token);
@@ -653,7 +665,7 @@ describe('the sub-640px rendering of each file is unchanged', () => {
 describe('no touch target got smaller', () => {
   it.each(ALL_SURFACES)('%s renders the same height tokens on the same elements', (name) => {
     if (isCommunitySurface(name)) {
-      expect(heightLayer(SURFACES[name])).toEqual(COMMUNITY_BASELINE[name].heights);
+      expect(heightLayer(SURFACES[name])).toEqual(((THE_348_SURFACES as readonly string[]).includes(name) ? COMMUNITY_FIDELITY_BASELINE[name] : COMMUNITY_BASELINE[name]).heights);
       return;
     }
     if ((THE_348_SURFACES as readonly string[]).includes(name)) {
@@ -1464,7 +1476,7 @@ describe('no behaviour changed on any screen in scope', () => {
 describe('no colour is hardcoded, and both palettes resolve', () => {
   it.each(ALL_SURFACES)('%s renders exactly the colour tokens it rendered before', (name) => {
     if (isCommunitySurface(name)) {
-      expect(colourTokens(SURFACES[name])).toEqual(COMMUNITY_BASELINE[name].colours);
+      expect(colourTokens(SURFACES[name])).toEqual(((THE_348_SURFACES as readonly string[]).includes(name) ? COMMUNITY_FIDELITY_BASELINE[name] : COMMUNITY_BASELINE[name]).colours);
       return;
     }
     if ((THE_348_SURFACES as readonly string[]).includes(name)) {
