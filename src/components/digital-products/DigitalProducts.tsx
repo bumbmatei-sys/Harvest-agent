@@ -162,12 +162,21 @@ export function DigitalEditor({ initial, onClose }: { initial?: Product | null; 
                 if (file && !busy) void upload(file);
               }}
             >
-              {product.objectKey && <p>{product.fileName || 'PDF uploaded'}{product.fileSize ? ` · ${(product.fileSize / 1024 / 1024).toFixed(2)} MB` : ''}</p>}
-              <p className="text-sm text-muted">Drop a PDF here or choose a file.</p>
-              <Button type="button" variant="outline" className="mt-3 min-h-11" disabled={busy} onClick={() => pdfInput.current?.click()}>
-                {product.objectKey ? 'Replace' : 'Choose a PDF'}
-              </Button>
-              <Input ref={pdfInput} className="sr-only" id="digital-pdf" type="file" accept="application/pdf,.pdf" disabled={busy} onChange={e => { const file = e.target.files?.[0]; if (file) void upload(file); e.target.value = ''; }} />
+              {product.objectKey ? (
+                <>
+                  <p>{product.fileName || 'PDF uploaded'}{product.fileSize ? ` · ${(product.fileSize / 1024 / 1024).toFixed(2)} MB` : ''}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button type="button" variant="outline" className="min-h-11" aria-label="Replace PDF" disabled={busy} onClick={() => pdfInput.current?.click()}>Replace</Button>
+                    <Button type="button" variant="outline" className="min-h-11" aria-label="Remove PDF" disabled={busy} onClick={() => { change({ objectKey: undefined, fileName: undefined, fileSize: undefined }); setPdfError(''); }}>Remove</Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-muted">Drop a PDF here or choose a file.</p>
+                  <Button type="button" variant="outline" className="mt-3 min-h-11" disabled={busy} onClick={() => pdfInput.current?.click()}>Choose a PDF</Button>
+                </>
+              )}
+              <input ref={pdfInput} className="sr-only" id="digital-pdf" type="file" accept="application/pdf,.pdf" disabled={busy} onChange={e => { const file = e.target.files?.[0]; if (file) void upload(file); e.target.value = ''; }} />
             </div>
             {pdfError && (
               <Alert variant="destructive">

@@ -53,9 +53,18 @@ describe('digital products security', () => {
     expect((await response.json()).code).toBe('product_limit_reached');
     expect(set).not.toHaveBeenCalled();
   });
-  it('rejects non-PDF and oversized uploads before signing', async () => {
-    expect((await upload(request({ productId: 'product1', contentType: 'image/png', fileSize: 10 }))).status).toBe(400);
-    expect((await upload(request({ productId: 'product1', contentType: 'application/pdf', fileSize: 15 * 1024 * 1024 + 1 }))).status).toBe(400);
+  it.each([
+    ['application/pdf', 1024.5], ['application/pdf', 0], ['application/pdf', -1],
+    ['application/pdf', 15 * 1024 * 1024 + 1], ['application/pdf', '1024'],
+    ['application/octet-stream', 1024], ['image/png', 1024],
+  ])('rejects type %s and size %s before signing', async (contentType, fileSize) => {
+    expect((await upload(request({ productId: 'product1', contentType, fileSize }))).status).toBe(400);
     expect(mocks.sign).not.toHaveBeenCalled();
+  });
+  it('binds the PDF type and size to the upload signature', async () => {
+    expect((await upload(request({ productId: 'product1', contentType: 'application/pdf', fileSize: 1024 }))).status).toBe(200);
+    expect(mocks.sign).toHaveBeenCalledOnce();
+    expect(mocks.sign.mock.calls[0][1].input).toMatchObject({ ContentType: 'application/pdf', ContentLength: 1024 });
+    expect(mocks.sign.mock.calls[0][2]).toEqual({ expiresIn: 300, signableHeaders: new Set(['content-type', 'content-length']) });
   });
 });

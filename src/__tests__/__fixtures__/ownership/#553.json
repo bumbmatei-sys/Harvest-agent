@@ -1,7 +1,7 @@
 {
-  "ticket": "THE-999999",
-  "recordedIn": "DIGITAL-1",
-  "note": "DIGITAL-1: synthetic THE-format identifier required by the ownership register validation.",
+  "ticket": "#553",
+  "recordedIn": "#553",
+  "note": "DIGITAL-1 (PR #553): digital products step 1 adds the member catalogue and admin editor.",
   "entries": [
     {
       "file": "src/components/AdminCourses.tsx",

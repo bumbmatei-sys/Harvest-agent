@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 
 function validUpload(body: any): boolean {
   return !!body && SAFE_DIGITAL_ID.test(body.productId || '') && body.contentType === 'application/pdf' &&
-    typeof body.fileSize === 'number' && Number.isFinite(body.fileSize) &&
+    typeof body.fileSize === 'number' && Number.isInteger(body.fileSize) &&
     body.fileSize > 0 && body.fileSize <= MAX_PDF_UPLOAD_BYTES;
 }
 
@@ -28,8 +28,8 @@ export async function POST(request: NextRequest) {
     if (!bucket) throw new Error('Storage not configured');
     const key = `${digitalKeyPrefix(user.tenantId, body.productId)}${randomUUID()}.pdf`;
     const uploadUrl = await getSignedUrl(createR2Client(), new PutObjectCommand({
-      Bucket: bucket, Key: key, ContentType: 'application/pdf',
-    }), { expiresIn: 300 });
+      Bucket: bucket, Key: key, ContentType: 'application/pdf', ContentLength: body.fileSize,
+    }), { expiresIn: 300, signableHeaders: new Set(['content-type', 'content-length']) });
     return NextResponse.json({ uploadUrl, key });
   } catch (error) {
     console.error('Digital upload preparation failed', error);
