@@ -116,6 +116,7 @@ const PEOPLE_GROUPS: readonly GroupTemplate[] = [
       { id: 'signups', label: 'Signups', icon: UserPlus },
       { id: 'churches', label: 'Campuses', icon: Church },
       { id: 'services', label: 'Services', icon: ListChecks },
+      { id: 'community-setup', label: 'Community setup', icon: MessagesSquare },
     ],
   },
   {

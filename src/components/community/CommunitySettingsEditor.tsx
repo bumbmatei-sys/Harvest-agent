@@ -16,7 +16,7 @@ const labels: Record<CommunityModule, string> = {
 type Props = {
   settings: CommunitySettings;
   available: Record<CommunityModule, boolean>;
-  onSave: (settings: CommunitySettings) => Promise<void>;
+  onSave: (settings: CommunitySettings, previous: CommunitySettings) => Promise<void>;
 };
 
 export function CommunitySettingsEditor({ settings, available, onSave }: Props) {
@@ -32,7 +32,7 @@ export function CommunitySettingsEditor({ settings, available, onSave }: Props) 
     try {
       const next = prepareCommunitySettings(saved, draft);
       setSaving(true);
-      await onSave(next);
+      await onSave(next, saved);
       setSaved(next);
       setDraft(next);
     } catch (e) {

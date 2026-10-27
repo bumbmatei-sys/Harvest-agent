@@ -36,6 +36,7 @@ import AdminCRM from './AdminCRM';
 import AdminSignups from './AdminSignups';
 import AdminDocs from './AdminDocs';
 import AdminCommunity from './AdminCommunity';
+import { CommunitySettingsScreen } from './community/CommunitySettingsScreen';
 import AdminAccounting from './AdminAccounting';
 import AdminForms from './AdminForms';
 import AdminCheckin from './AdminCheckin';
@@ -163,7 +164,7 @@ const MORE_GROUPS: { label: string; ids: string[] }[] = [
   // 🔴 THE-341 — `forms` LEFT MINISTRY for REACH at the founder's instruction.
   // It is the only id this ticket moved between groups; every other id is where
   // THE-338 left it, on both shells.
-  { label: 'MINISTRY', ids: ['churches', 'crm', 'signups', 'services', 'community', 'fundraising', 'donations', 'accounting'] },
+  { label: 'MINISTRY', ids: ['churches', 'crm', 'signups', 'services', 'community', 'community-setup', 'fundraising', 'donations', 'accounting'] },
   // 🔴 THE-341 — REACH, renamed from BROADCASTING. The founder was asked whether
   // "forms should go into reach section" meant a rename or a new group and
   // answered "renames", so the group KEEPS ITS IDENTITY and changes its name:
@@ -203,7 +204,7 @@ export const DESKTOP_NAV_GROUPS: { label: string; ids: string[] }[] = [
   // `DESKTOP_GROUP_SECTIONS` draws the separators between them; the
   // order lives HERE so what the group advertises on `data-nav-group-tabs` is
   // the order its flyout actually renders, and the two cannot drift.
-  { label: 'MINISTRY', ids: ['churches', 'crm', 'signups', 'services', 'community', 'fundraising', 'donations', 'accounting'] },
+  { label: 'MINISTRY', ids: ['churches', 'crm', 'signups', 'services', 'community', 'community-setup', 'fundraising', 'donations', 'accounting'] },
   { label: 'REACH', ids: ['events', 'checkin', 'forms', 'sms', 'livestream'] },
   // 🔴 THE-327 — `library` here too, and in the SAME relative position: next to
   // `tenants`, its co-gated sibling. It goes in GROW rather than a new PLATFORM
@@ -912,6 +913,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     navAllows(features?.communityGroups) &&
       (hasFullAccess || perms.manageCommunity) &&
       { id: 'community', label: 'Community', icon: MessageSquare },
+    canSettings && { id: 'community-setup', label: 'Community setup', icon: MessageSquare },
     // Platform course library — super admin authors the shared catalogue that
     // every tenant can adopt. Same super-admin-only gate as Tenants below.
     isSuperAdmin && { id: 'library', label: 'Library', icon: Library },
@@ -1495,6 +1497,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               : planAllows(features?.smsAutomation)
                 ? <div className="p-4 lg:p-0"><AdminSms /></div>
                 : <PlanUpgradeScreen featureName="SMS" featureKey="smsAutomation" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
+          ) : activeTab === 'community-setup' && canSettings ? (
+            <CommunitySettingsScreen tenantId={tenantId} available={{
+              news: planAllows(features?.newsFeed), blog: planAllows(features?.blog),
+              courses: true, events: true, messages: planAllows(features?.communityGroups),
+              prayer: true, give: planAllows(features?.fundraising),
+              livestream: planAllows(features?.livestream), bible: true, map: planAllows(features?.map),
+            }} />
           ) : activeTab === 'community' ? (
             planAllows(features?.communityGroups)
               ? <div className="p-4 pb-0 lg:p-0 h-full"><AdminCommunity onOpenAttachment={(type, id) => {
