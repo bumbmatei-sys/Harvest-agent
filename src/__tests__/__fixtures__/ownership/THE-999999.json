@@ -16,6 +16,46 @@
       "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
       "digest": "3ab0d19e0f4071dafea48d4306d7331022a288770d179b3bea61691c47079453",
       "why": "The primitive adopter register records the community settings editor and entry dialog, which use the existing switch and checkbox components."
+    },
+    {
+      "file": "src/App.tsx",
+      "digest": "1e80eb684659d4d3f44ab1f9227bad0ab28f51febcf7b1c8a733d1ce58ebba4f",
+      "why": "Community setup and member access integrate with existing navigation, feed, and group messaging while preserving the surrounding application behavior."
+    },
+    {
+      "file": "src/components/AdminCommunity.tsx",
+      "digest": "342274b04b9360f7484630900e598918f330cbe1d9e8d72d7ff8207dc040e28e",
+      "why": "Community setup and member access integrate with existing navigation, feed, and group messaging while preserving the surrounding application behavior."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "7bdd8d894bae432a07abdc08867b1a08c18c542e869b854c8b203f09e369fe1f",
+      "why": "Community setup and member access integrate with existing navigation, feed, and group messaging while preserving the surrounding application behavior."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "637d882325f940a7fdec78171d0cb8d5d7fb710f62111638c28d6eef28a53b9d",
+      "why": "Community setup and member access integrate with existing navigation, feed, and group messaging while preserving the surrounding application behavior."
+    },
+    {
+      "file": "src/components/UserMessages.tsx",
+      "digest": "3f9f51c2bb0a23e2a3c08dcb200306c5d0c17536a7c083888b14c8514ee63161",
+      "why": "Community setup and member access integrate with existing navigation, feed, and group messaging while preserving the surrounding application behavior."
+    },
+    {
+      "file": "src/components/admin-shell/shell-nav.ts",
+      "digest": "859914b555c68db52f06b2ba5c25a21865ba0ee53a84d6373c777b046aef8abc",
+      "why": "Community setup and member access integrate with existing navigation, feed, and group messaging while preserving the surrounding application behavior."
+    },
+    {
+      "file": "src/lib/admin-sections.ts",
+      "digest": "8437d025e5d999df29ea902dab6179191519235df7d371e95570bd374c1c9014",
+      "why": "Community setup and member access integrate with existing navigation, feed, and group messaging while preserving the surrounding application behavior."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "0a8af5d409630714bac5dffa64bb43576a9402003352510669d1920f1ea50722",
+      "why": "The primitive adopter register includes the member post composer and group creation dialog so their shared form controls remain accounted for."
     }
   ]
 }
