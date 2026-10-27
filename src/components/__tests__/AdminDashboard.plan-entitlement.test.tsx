@@ -735,7 +735,8 @@ describe('no nav item is shown by a bypass that skips its feature check', () => 
     // APPENDED BY the 23 Oct UI polish: ONE more. A board's grid is a second screen of the Notes
     // tab, and it asks the Notes tab's own cell (`features?.docs`) through the same helper, so it is
     // refused to exactly the tiers the Notes editor is. Nothing about the helper itself moved.
-    expect(gateCount + kbGate).toBe(GATED_TABS.length + 1 + 1 + 1 + 1);
+    // Community setup applies six existing plan cells to its module availability.
+    expect(gateCount + kbGate).toBe(GATED_TABS.length + 1 + 1 + 1 + 1 + 6);
   });
 
   it('builds the NAV gate from the render gate plus exactly one term: the free tier', () => {

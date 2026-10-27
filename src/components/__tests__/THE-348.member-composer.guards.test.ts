@@ -122,9 +122,10 @@ describe('🔴 a non-admin CANNOT be stopped by the button alone — what the ru
       .not.toMatch(/attachments/);
   });
 
-  it('channelMessages create is the same shape — any channel member, any payload', () => {
+  it('channelMessages create checks channel access without constraining the payload', () => {
     const clause = createClause(ruleBlock('channelMessages'));
-    expect(clause, 'the member branch is gone').toContain("data.get('members', [])");
+    expect(clause).toContain("channelAccess(get(");
+    expect(read('firestore.rules')).toContain("request.auth.uid in channel.get('members', [])");
     expect(clause, 'a field allowlist appeared — the report in this file is now stale')
       .not.toMatch(/hasOnly|hasAll|affectedKeys/);
   });

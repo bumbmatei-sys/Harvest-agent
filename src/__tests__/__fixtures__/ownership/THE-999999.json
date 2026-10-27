@@ -1,0 +1,21 @@
+{
+  "ticket": "THE-999999",
+  "note": "Provisional community work identifier; replace with the actual ticket identifier when assigned.",
+  "entries": [
+    {
+      "file": "firestore.rules",
+      "digest": "f3fdc5efd418a8cb1bad94f7ba90f778284a6669e02b36a45a46cb484a4becd7",
+      "why": "Community settings and member entry records are tenant-scoped; member posts, direct messages, and channel audiences now have explicit authorization boundaries."
+    },
+    {
+      "file": "src/components/AdminDashboard.tsx",
+      "digest": "1c23acf8db78f646c830687b50358a36c510f31a9d7ce5e35f051b625a5b9158",
+      "why": "The community setup screen is added to the admin navigation and routed with its existing permission and plan gates; no unrelated dashboard behavior changes."
+    },
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "3ab0d19e0f4071dafea48d4306d7331022a288770d179b3bea61691c47079453",
+      "why": "The primitive adopter register records the community settings editor and entry dialog, which use the existing switch and checkbox components."
+    }
+  ]
+}

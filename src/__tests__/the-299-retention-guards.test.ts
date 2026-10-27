@@ -789,6 +789,7 @@ const UNTOUCHED: Record<string, ReadonlyArray<readonly [digest: string, source: 
     ['2b67b7456e1c32369bc8b41eb55782e8cd72ef63957018f4c0193bcfb2d7f89f', 'UI polish, 23 Oct (THE-377) - AdminDashboard.tsx. Sidebar regrouped (Channels, Engage, Products; People, Giving, Notes boards), the Community menu in the top bar, clickable breadcrumbs, and a Products tab that mounts AdminCourses. Every tab keeps its permission and plan gate; no route or write path moved.'],
     ['1433310d5f03ed9f44631516f1f6874f29a40664b48ac90513cd0d4e029a74da', 'Palette content search (#548) - AdminDashboard.tsx. go() takes an optional item id and the sidebar gets a search prop. No nav array, entitlement, plan check, permission term, query or write path changed.'],
     ['3c1d4d893b3980eab1e64e692f6094456325d0b14e69fe118ebe7d7f4791e14f', 'Two-plan repricing - AdminDashboard.tsx. The plan is read through canonicalPlanId, the Check-In withholding keys off church (the cheapest paid tier) instead of plus, and the Accounting entry is labelled Giving records. No route, permission term, plan gate cell or write path moved. (THE-378)'],
+    ['1c23acf8db78f646c830687b50358a36c510f31a9d7ce5e35f051b625a5b9158', 'Community setup adds its settings screen and navigation entry while retaining the existing permission gate.'],
   ],
   'firestore.indexes.json': [
     ['8ae29121ceb65f8fc06df89435829496cd06ee0abff98c1ad24f6f470da2c6b0', 'main at 133d557'],

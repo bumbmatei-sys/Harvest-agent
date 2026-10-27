@@ -745,6 +745,8 @@ const ADMIN_DASHBOARD_ACCEPTED = [
     '1433310d5f03ed9f44631516f1f6874f29a40664b48ac90513cd0d4e029a74da',
     // APPENDED BY THE TWO-PLAN REPRICING (THE-378), nothing above removed or rewritten. AdminDashboard.tsx: the plan is read through canonicalPlanId, the Check-In withholding keys off church instead of plus, and the Accounting entry is labelled Giving records. No route, permission term or write path moved.
     '3c1d4d893b3980eab1e64e692f6094456325d0b14e69fe118ebe7d7f4791e14f',
+    // Community setup adds its screen and navigation entry.
+    '1c23acf8db78f646c830687b50358a36c510f31a9d7ce5e35f051b625a5b9158',
 ];
 
 describe('the files this ticket must not open are byte-identical', () => {

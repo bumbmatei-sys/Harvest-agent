@@ -903,6 +903,8 @@ it('border-strong, border-faint, border-subtle and border-hairline still produce
  * review — which is the property that made the original assertion worth having.
  */
 const RECORDED_ADOPTERS: ReadonlyArray<{ file: string; ticket: string; why: string }> = [
+  { file: 'src/components/community/CommunitySettingsEditor.tsx', ticket: 'THE-999999', why: 'The community setup editor uses switches for module visibility, rules and questions so each setting is presented using the shared accessible primitive.' },
+  { file: 'src/components/community/CommunityEntryDialog.tsx', ticket: 'THE-999999', why: 'The community entry dialog uses the shared checkbox to record a member’s explicit acceptance of the ministry’s community rules.' },
   {
     file: 'src/components/AdminEvents.tsx',
     ticket: 'THE-345',

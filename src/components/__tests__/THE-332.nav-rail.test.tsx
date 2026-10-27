@@ -420,8 +420,9 @@ describe('THE-332 · the desktop nav is a rail with flyouts', () => {
        menu at the rail's floor, so the nav names 26 destinations in all. 24 of them are reachable today — `affiliate` is
        the kill-switched one. Every reachable id is enumerated below, so hiding
        any of them from every path fails this test and names it. */
-    expect(groups.flatMap((g) => g.ids).length, 'DESKTOP_NAV_GROUPS no longer holds 24 tabs').toBe(24);
-    expect(named.size).toBe(26);
+    // Community setup adds one destination to both the group and the named set.
+    expect(groups.flatMap((g) => g.ids).length, 'DESKTOP_NAV_GROUPS no longer holds 25 tabs').toBe(25);
+    expect(named.size).toBe(27);
     // 🔵 THE-335 — the same three ids the assertion above derives, for the same
     // reason: an id behind a master switch is NAMED in the group arrays (so the
     // flip restores it) but is not built, so it cannot be reached.
@@ -657,6 +658,8 @@ describe('THE-332 · what this ticket may not disturb', () => {
       '8b0789543891a489d0de9001ecd2326d248809111c4f1f1baf61b3ebddd4f0bd',
       // 🔴 APPENDED BY UI polish, 23 Oct (THE-377) - the Products tab joins the CONTENT group after Courses, on BOTH shells, so the drawer reaches the new Products page. No other id moved and the two arrays stay element-for-element equal.
       '518972cccc987e39db39beb341f7cb4c1a54abb32160dfd92a0b76541ee4ee25',
+      // Community setup joins the Ministry group on both admin shells.
+      '7e69678e0050a76e47ca27d143afc0648b5d69c9900fe4a6d2ac103725ae1e5e',
     ];
     const before = readFileSync(join(ROOT, 'src/components/AdminDashboard.tsx'), 'utf8');
     const slice = (src: string) => {
