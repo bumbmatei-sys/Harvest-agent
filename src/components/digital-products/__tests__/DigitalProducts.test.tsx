@@ -15,10 +15,12 @@ describe('digital PDF upload', () => {
     const select = async (file: File) => { Object.defineProperty(input, 'files', { configurable: true, value: [file] }); await act(async () => input.dispatchEvent(new Event('change', { bubbles: true }))); };
     await select(new File(['x'], 'photo.png', { type: 'image/png' }));
     expect(host.querySelector('[role=alert]')?.textContent).toContain('Choose a PDF');
+    expect(host.querySelectorAll('[role=alert]')).toHaveLength(1);
     const file = new File(['x'], 'large.pdf', { type: 'application/pdf' });
     Object.defineProperty(file, 'size', { value: 15 * 1024 * 1024 + 1 });
     await select(file);
     expect(host.querySelector('[role=alert]')?.textContent).toContain('15MB');
+    expect(host.querySelectorAll('[role=alert]')).toHaveLength(1);
     await act(async () => root.unmount()); host.remove();
   });
 });

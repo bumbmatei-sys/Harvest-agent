@@ -88,6 +88,7 @@ export function DigitalEditor({ initial, onClose }: { initial?: Product | null; 
   const pdfInput = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState('details');
   const [error, setError] = useState('');
+  const [pdfError, setPdfError] = useState('');
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   function change(patch: Partial<Product>) {
@@ -96,9 +97,10 @@ export function DigitalEditor({ initial, onClose }: { initial?: Product | null; 
   }
   async function upload(file: File, cover = false) {
     const invalid = cover ? (!file.type.startsWith('image/') ? 'Choose an image.' : '') : validateDigitalPdf(file);
-    if (invalid) { setError(invalid); return; }
+    const setUploadError = cover ? setError : setPdfError;
+    if (invalid) { setUploadError(invalid); return; }
     setBusy(true);
-    setError('');
+    setUploadError('');
     try {
       const result = await api(request, cover ? '/api/storage/presign' : '/api/digital-products/upload', cover
         ? { fileName: file.name, contentType: file.type, fileSize: file.size }
@@ -107,7 +109,7 @@ export function DigitalEditor({ initial, onClose }: { initial?: Product | null; 
       if (!response.ok) throw new Error('Upload failed');
       change(cover ? { coverUrl: result.publicUrl } : { objectKey: result.key, fileName: file.name, fileSize: file.size });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Upload failed');
+      setUploadError(e instanceof Error ? e.message : 'Upload failed');
     } finally { setBusy(false); }
   }
   const validPrice = /^\d+(?:\.\d{1,2})?$/.test(price) && Number.isSafeInteger(Math.round(Number(price) * 100));
@@ -167,9 +169,9 @@ export function DigitalEditor({ initial, onClose }: { initial?: Product | null; 
               </Button>
               <Input ref={pdfInput} className="sr-only" id="digital-pdf" type="file" accept="application/pdf,.pdf" disabled={busy} onChange={e => { const file = e.target.files?.[0]; if (file) void upload(file); e.target.value = ''; }} />
             </div>
-            {error && (
+            {pdfError && (
               <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>{pdfError}</AlertDescription>
               </Alert>
             )}
           </div>
@@ -178,7 +180,7 @@ export function DigitalEditor({ initial, onClose }: { initial?: Product | null; 
           <div className="space-y-3">
             <Label htmlFor="digital-price">Price in USD (0 for free)</Label>
             <Input id="digital-price" inputMode="decimal" value={price} onChange={e => { setPrice(e.target.value); setSaved(false); }} />
-            {Number(price) > 0 && !PAID_PRODUCT_CHECKOUT_ENABLED && <p>Paid checkout coming soon. Your price is saved, and members will see Coming soon.</p>}
+            {Number(price) > 0 && !PAID_PRODUCT_CHECKOUT_ENABLED && <p className="text-sm text-muted">Paid checkout coming soon. Your price is saved, and members will see Coming soon.</p>}
           </div>
         )}
       </ProductWizard>
