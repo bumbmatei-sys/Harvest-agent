@@ -1,0 +1,17 @@
+{
+  "ticket": "THE-379",
+  "recordedIn": "THE-379",
+  "note": "THE EVENTS REMODEL. Recurring events (a series with runs, Eden's model), Eden one-at-a-time registration questions, an 'open to anyone' members-only gate, and enforcement of the registration deadline that was previously stored but never read. Every new field (recurrence, timeZone, registrationQuestions, openToAnyone on the event; runDate, answers on the registration) is optional and defaults to the existing behaviour, so no prior event or registration changes shape. The recurrence math lives in one new pure module, src/lib/events/recurrence.ts, so nothing else re-derives a schedule; capacity for a recurring event is counted PER RUN via registrationMatchesRun, and a registration with no runDate (every row written before this ticket) still matches the single implicit run. No firestore.rules or firestore.indexes.json change: the new fields carry no field-level validation today and every new/changed query is still a single-field where, filtered or counted in memory.",
+  "entries": [
+    {
+      "file": "src/app/api/event-registration/submit/route.ts",
+      "digest": "516e9fe1327c99c60316bb260f810cc9f07c633ff38749e50660614e29d6c019",
+      "why": "FOUR ADDITIONS, EACH GATED SO AN EXISTING EVENT NEVER REACHES THE NEW CODE. (1) `event.openToAnyone === false` now requires a verified token whose tenantId matches, checked right after the existing published+registrationEnabled gate — absent/true (every event today) is unchanged. (2) `event.registrationDeadline`, stored since before this ticket but never read here, now 410s once it has passed. (3) A recurring event (`event.recurrence` present) requires a `runDate` in the body, validated against `expandRuns` so a cancelled or invented date 410s instead of silently taking a seat; a non-recurring event never reaches this branch. (4) `validateAnswers` runs against `event.registrationQuestions` (empty/absent means no questions and no validation) and the capacity query's `soldForType` reduce now also calls `registrationMatchesRun(r.runDate, targetRunDate)`, which is true for every existing registration (no runDate) against every non-recurring event (targetRunDate null) — so capacity counting for every event that existed before this ticket is unchanged. The Stripe direct-charge branch, the discount-code accounting, the automated SMS and the confirmation email are untouched."
+    },
+    {
+      "file": "src/hooks/queries/useEventQueries.ts",
+      "digest": "288455d90e7ae152da8e69ec60b1d3385fa8d71f6481cca91547cdd15686d4c5",
+      "why": "A PURE APPEND, AND NO READ OR QUERY SHAPE MOVED. `Event` gains optional `recurrence`, `timeZone`, `registrationQuestions` and `openToAnyone`; `Registration` gains optional `runDate` and `answers`; `Registration.status` gains the two legacy-but-already-written literal members `'pending_payment'` and `'expired'` that the type previously omitted even though the webhook and the Stripe paid-ticket branch already wrote them, which is a type-accuracy fix with no runtime effect. New `RecurrenceRule` and `RegistrationQuestion` interfaces are exported for `src/lib/events/recurrence.ts` and the submit route to import. `useEvents`' `orderBy('startDate','desc').limit(100)`, `useEvent`'s `get`, and `useEventRegistrations`' single-field `where('eventId', ...)` + client-side sort are byte-identical."
+    }
+  ]
+}

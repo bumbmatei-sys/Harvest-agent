@@ -19,6 +19,9 @@ import {
 } from '@/lib/event-payment-claims';
 import { randomBytes } from 'node:crypto';
 import { captureHandledError, captureMoneyPathError } from '@/lib/money-path-sentry';
+import { expandRuns, registrationMatchesRun } from '@/lib/events/recurrence';
+import { validateAnswers } from '@/lib/events/registration-questions';
+import type { RecurrenceRule, RegistrationQuestion } from '@/hooks/queries/useEventQueries';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,6 +59,10 @@ export async function POST(request: NextRequest) {
     phone?: string;
     additionalAttendees?: AdditionalAttendee[];
     discountCode?: string;
+    /** Required when the event recurs — which run (YYYY-MM-DD) the registrant picked. */
+    runDate?: string;
+    /** Answers to `event.registrationQuestions`, keyed by question id. */
+    answers?: unknown;
   };
   try {
     body = await request.json();
@@ -100,6 +107,57 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Registration is not available for this event.' }, { status: 410 });
     }
 
+    // Eden "Open to anyone": absent/true means the public share link is open
+    // to anyone, which is every event's behaviour today. `false` restricts
+    // registration to a signed-in member of THIS tenant.
+    if (event.openToAnyone === false && (!authedUser || authedUser.tenantId !== tenantId)) {
+      return NextResponse.json(
+        { error: 'This event is open to members only. Please sign in to register.' },
+        { status: 403 },
+      );
+    }
+
+    // A registration deadline, once set, is enforced here — it was stored but
+    // never read before this change.
+    if (event.registrationDeadline?.toDate && Date.now() > event.registrationDeadline.toDate().getTime()) {
+      return NextResponse.json({ error: 'The registration deadline for this event has passed.' }, { status: 410 });
+    }
+
+    // Recurring events (Eden "series with runs") require the registrant to
+    // say which run they mean, and that run must still be a real, uncancelled
+    // occurrence of the series. Non-recurring events ignore `runDate`
+    // entirely, so every existing single-run event is untouched.
+    let targetRunDate: string | null = null;
+    const recurrence: RecurrenceRule | null | undefined = event.recurrence;
+    if (recurrence) {
+      const requestedRunDate = typeof body.runDate === 'string' ? body.runDate.trim() : '';
+      const eventStart: Date | null = event.startDate?.toDate ? event.startDate.toDate() : null;
+      const eventEnd: Date | null = event.endDate?.toDate ? event.endDate.toDate() : eventStart;
+      if (!requestedRunDate || !eventStart) {
+        return NextResponse.json({ error: 'Please choose which date you are registering for.' }, { status: 400 });
+      }
+      const runs = expandRuns(
+        { startDate: eventStart, endDate: eventEnd || eventStart, timeZone: event.timeZone, recurrence },
+        new Date(0),
+        new Date(Date.UTC(9999, 0, 1)),
+      );
+      if (!runs.some((r) => r.runDate === requestedRunDate)) {
+        return NextResponse.json({ error: 'That date is no longer available for this event.' }, { status: 410 });
+      }
+      targetRunDate = requestedRunDate;
+    }
+
+    // Registration questions (Eden one-at-a-time), validated server-side —
+    // required-but-blank and an out-of-set choice are rejected; free text is
+    // truncated to its kind's cap, never silently dropped.
+    const questions: RegistrationQuestion[] | undefined = event.registrationQuestions;
+    const answersResult = validateAnswers(questions, body.answers);
+    if (!answersResult.ok) {
+      return NextResponse.json({ error: answersResult.error }, { status: 400 });
+    }
+    const answerFields = Object.keys(answersResult.answers).length ? { answers: answersResult.answers } : {};
+    const runDateFields = targetRunDate ? { runDate: targetRunDate } : {};
+
     const ticketTypes: TicketType[] = Array.isArray(event.ticketTypes) ? event.ticketTypes : [];
     const ticketType = ticketTypes.find((t) => t.id === ticketTypeId);
     if (!ticketType) {
@@ -118,11 +176,16 @@ export async function POST(request: NextRequest) {
       .get();
     // Capacity is counted in SEATS, not registrations: a registration for a couple
     // holds `quantity` seats (BUG 5). Legacy rows with no `quantity` field count as 1.
+    // For a recurring event, capacity is counted PER RUN: a registration for
+    // one date must never count against a different date's capacity. A
+    // registration with no `runDate` at all (every registration written
+    // before recurrence existed, and every registration on a non-recurring
+    // event) matches the event's single implicit run.
     const soldForType = regSnap.docs.reduce((sum, d) => {
       const r = d.data();
-      return r.ticketTypeId === ticketTypeId && r.status === 'confirmed'
-        ? sum + (Number(r.quantity) || 1)
-        : sum;
+      if (r.ticketTypeId !== ticketTypeId || r.status !== 'confirmed') return sum;
+      if (!registrationMatchesRun(r.runDate, targetRunDate)) return sum;
+      return sum + (Number(r.quantity) || 1);
     }, 0);
 
     // Headcount for THIS registration = primary registrant + named additional
@@ -290,6 +353,8 @@ export async function POST(request: NextRequest) {
         discountAmount: discountAmount || 0,
         additionalAttendees,
         registeredAt: FieldValue.serverTimestamp(),
+        ...runDateFields,
+        ...answerFields,
       });
 
       // Everything the webhook needs to finalize this registration server-side.
@@ -416,6 +481,8 @@ export async function POST(request: NextRequest) {
       additionalAttendees,
       registeredAt: FieldValue.serverTimestamp(),
       ...paymentFields,
+      ...runDateFields,
+      ...answerFields,
     });
 
     // ── Increment discount usage (read-modify-write the array) ──

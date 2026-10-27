@@ -507,3 +507,156 @@ describe('POST /api/event-registration/submit — userId identity link', () => {
     expect(mockAdd).not.toHaveBeenCalledWith(expect.objectContaining({ userId: 'victim_uid' }));
   });
 });
+
+describe('POST /api/event-registration/submit — registration questions', () => {
+  const freeEvent = {
+    ...PAID_EVENT,
+    ticketTypes: [{ id: 'tt1', name: 'Free', price: 0, capacity: null, order: 0 }],
+    registrationQuestions: [{ id: 'q1', label: 'Dietary needs', kind: 'short', required: true }],
+  };
+
+  it('rejects a missing required answer and writes nothing', async () => {
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => freeEvent });
+    const res = await POST(makeRequest({ ...baseBody, answers: {} }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain('Dietary needs');
+    expect(mockAdd).not.toHaveBeenCalled();
+  });
+
+  it('stores validated answers on the registration, trimmed', async () => {
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => freeEvent });
+    const res = await POST(makeRequest({ ...baseBody, answers: { q1: '  Gluten free  ' } }));
+    expect(res.status).toBe(200);
+    expect(mockAdd).toHaveBeenCalledWith(expect.objectContaining({ answers: { q1: 'Gluten free' } }));
+  });
+
+  it('an event with no registrationQuestions never requires or stores answers', async () => {
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => PAID_EVENT_FREE });
+    const res = await POST(makeRequest(baseBody));
+    expect(res.status).toBe(200);
+    const call = mockAdd.mock.calls[0][0];
+    expect(call.answers).toBeUndefined();
+  });
+});
+
+const PAID_EVENT_FREE = {
+  ...PAID_EVENT,
+  ticketTypes: [{ id: 'tt1', name: 'Free', price: 0, capacity: null, order: 0 }],
+};
+
+describe('POST /api/event-registration/submit — registration deadline', () => {
+  it('rejects registration once the deadline has passed', async () => {
+    const pastDeadlineEvent = {
+      ...PAID_EVENT_FREE,
+      registrationDeadline: { toDate: () => new Date(Date.now() - 60_000) },
+    };
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => pastDeadlineEvent });
+    const res = await POST(makeRequest(baseBody));
+    expect(res.status).toBe(410);
+    expect((await res.json()).error).toMatch(/deadline/i);
+    expect(mockAdd).not.toHaveBeenCalled();
+  });
+
+  it('allows registration before the deadline', async () => {
+    const futureDeadlineEvent = {
+      ...PAID_EVENT_FREE,
+      registrationDeadline: { toDate: () => new Date(Date.now() + 60_000) },
+    };
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => futureDeadlineEvent });
+    const res = await POST(makeRequest(baseBody));
+    expect(res.status).toBe(200);
+  });
+});
+
+describe('POST /api/event-registration/submit — openToAnyone', () => {
+  it('refuses a logged-out registrant when openToAnyone is false', async () => {
+    mockVerifyAuth.mockResolvedValue(null);
+    const membersOnlyEvent = { ...PAID_EVENT_FREE, openToAnyone: false };
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => membersOnlyEvent });
+    const res = await POST(makeRequest(baseBody));
+    expect(res.status).toBe(403);
+    expect(mockAdd).not.toHaveBeenCalled();
+  });
+
+  it('refuses a member of a DIFFERENT tenant when openToAnyone is false', async () => {
+    mockVerifyAuth.mockResolvedValue({ uid: 'u1', email: 'x@example.com', tenantId: 'other-tenant' });
+    const membersOnlyEvent = { ...PAID_EVENT_FREE, openToAnyone: false };
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => membersOnlyEvent });
+    const res = await POST(makeRequest(baseBody));
+    expect(res.status).toBe(403);
+  });
+
+  it('allows a signed-in member of THIS tenant when openToAnyone is false', async () => {
+    mockVerifyAuth.mockResolvedValue({ uid: 'u1', email: 'x@example.com', tenantId: 't1' });
+    const membersOnlyEvent = { ...PAID_EVENT_FREE, openToAnyone: false };
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => membersOnlyEvent });
+    const res = await POST(makeRequest(baseBody));
+    expect(res.status).toBe(200);
+  });
+
+  it('defaults to open (absent field) — every existing event keeps working for logged-out visitors', async () => {
+    mockVerifyAuth.mockResolvedValue(null);
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => PAID_EVENT_FREE });
+    const res = await POST(makeRequest(baseBody));
+    expect(res.status).toBe(200);
+  });
+});
+
+describe('POST /api/event-registration/submit — recurring event runs', () => {
+  const recurringEvent = {
+    ...PAID_EVENT_FREE,
+    startDate: { toDate: () => new Date('2027-01-04T10:00:00.000Z') },
+    endDate: { toDate: () => new Date('2027-01-04T11:00:00.000Z') },
+    recurrence: { freq: 'weekly', count: 4 },
+  };
+
+  it('requires a runDate for a recurring event', async () => {
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => recurringEvent });
+    const res = await POST(makeRequest(baseBody));
+    expect(res.status).toBe(400);
+    expect(mockAdd).not.toHaveBeenCalled();
+  });
+
+  it('rejects a runDate that is not a real occurrence of the series', async () => {
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => recurringEvent });
+    const res = await POST(makeRequest({ ...baseBody, runDate: '2027-02-01' }));
+    expect(res.status).toBe(410);
+    expect(mockAdd).not.toHaveBeenCalled();
+  });
+
+  it('accepts a real run and stamps runDate on the registration', async () => {
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => recurringEvent });
+    const res = await POST(makeRequest({ ...baseBody, runDate: '2027-01-11' }));
+    expect(res.status).toBe(200);
+    expect(mockAdd).toHaveBeenCalledWith(expect.objectContaining({ runDate: '2027-01-11' }));
+  });
+
+  it('counts capacity PER RUN — a full run does not block a different run of the same series', async () => {
+    const cappedRecurring = {
+      ...recurringEvent,
+      ticketTypes: [{ id: 'tt1', name: 'Free', price: 0, capacity: 1, order: 0 }],
+      waitlistEnabled: false,
+    };
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => cappedRecurring });
+    // One seat already taken, but on a DIFFERENT run date.
+    mockCollGet.mockResolvedValueOnce({
+      docs: [{ data: () => ({ ticketTypeId: 'tt1', status: 'confirmed', quantity: 1, runDate: '2027-01-04' }) }],
+    });
+    const res = await POST(makeRequest({ ...baseBody, runDate: '2027-01-11' }));
+    expect(res.status).toBe(200);
+  });
+
+  it('counts capacity PER RUN — the same run date is still blocked once full', async () => {
+    const cappedRecurring = {
+      ...recurringEvent,
+      ticketTypes: [{ id: 'tt1', name: 'Free', price: 0, capacity: 1, order: 0 }],
+      waitlistEnabled: false,
+    };
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => cappedRecurring });
+    mockCollGet.mockResolvedValueOnce({
+      docs: [{ data: () => ({ ticketTypeId: 'tt1', status: 'confirmed', quantity: 1, runDate: '2027-01-11' }) }],
+    });
+    const res = await POST(makeRequest({ ...baseBody, runDate: '2027-01-11' }));
+    expect(res.status).toBe(410);
+  });
+});
