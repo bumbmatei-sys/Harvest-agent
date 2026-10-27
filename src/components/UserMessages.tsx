@@ -503,18 +503,22 @@ const DmThread: React.FC<{
 
 // ─── Read-only Channel View (members can read, not post) ──────────────────────
 
-const ChannelView: React.FC<{
+export const ChannelView: React.FC<{
   channel: Channel;
   tenantId: string;
   currentUser: { uid: string; name: string };
   onBack: () => void;
-}> = ({ channel, tenantId, currentUser, onBack }) => {
-  const [messages, setMessages] = useState<ChannelMessage[]>([]);
+  previewMessages?: ChannelMessage[];
+}> = ({ channel, tenantId, currentUser, onBack, previewMessages }) => {
+  const [messages, setMessages] = useState<ChannelMessage[]>(previewMessages || []);
+  const [channelError, setChannelError] = useState('');
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setChannelError('');
+    if (previewMessages) { setMessages(previewMessages); return; }
     // Single-field filter only (channelId); sort client-side to avoid a composite index.
     const q = query(
       collection(db, 'tenants', tenantId, 'channelMessages'),
@@ -523,13 +527,14 @@ const ChannelView: React.FC<{
     );
     return onSnapshot(q, snap => {
       setMessages(sortByTime(snap.docs.map(d => ({ id: d.id, ...d.data() }) as ChannelMessage), 'createdAt', 'asc'));
-    }, () => {});
-  }, [channel.id, tenantId]);
+      setChannelError('');
+    }, () => { setChannelError('Could not load messages. Please reopen this group to try again.'); });
+  }, [channel.id, tenantId, previewMessages]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
   const send = async () => {
-    if (!text.trim() || sending) return;
+    if (!text.trim() || sending || previewMessages) return;
     setSending(true);
     try {
       const content = text.trim();
@@ -562,7 +567,7 @@ const ChannelView: React.FC<{
           <Hash size={16} style={{ color: 'var(--brand-color, #B8962E)' }} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-strong text-sm truncate">#{channel.name}</p>
+          <p className="font-bold text-strong text-sm truncate"># {channel.name}{channel.audience !== 'all' && channel.members ? ` · ${channel.members.length} members` : ''}</p>
           {channel.description && <p className="text-xs text-faint truncate">{channel.description}</p>}
         </div>
       </div>
@@ -570,7 +575,8 @@ const ChannelView: React.FC<{
       {/* Rule 6 — a channel is the same reading surface as a DM, so it takes
           the same measure. Was unbounded here too. */}
       <div data-thread-scroller className={`flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-4 space-y-3 lg:w-full ${COMPOSER_BAND} ${READING_MEASURE}`}>
-        {messages.length === 0 && (
+        {channelError && <p role="alert" className="text-sm text-destructive">{channelError}</p>}
+        {!channelError && messages.length === 0 && (
           <div className="text-center py-12 text-faint">
             <Megaphone size={32} className="mx-auto mb-2 opacity-30" />
             <p className="text-sm">No messages yet</p>
@@ -621,7 +627,7 @@ const ChannelView: React.FC<{
             value={text}
             onChange={e => setText(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), send())}
-            placeholder={`Message #${channel.name}`}
+            placeholder={`Message # ${channel.name}`}
             className="flex-1 bg-transparent outline-hidden text-sm text-strong placeholder-[color:var(--text-faint)]"
           />
           <button
@@ -675,6 +681,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false, o
   const [replyCheck, setReplyCheck] = useState<{ id: string; status: 'loading' | 'allowed' | 'disabled' | 'error' }>({ id: '', status: 'loading' });
   const replyStatus = openDm && replyCheck.id === openDm.id ? replyCheck.status : 'loading';
   const [openChannel, setOpenChannel] = useState<Channel | null>(null);
+  const initialChannelChosen = useRef(false);
   const [showNewMessage, setShowNewMessage] = useState(false);
   const [listCollapsed, setListCollapsed] = useState(false); // desktop conversation-list collapse
   const [admins, setAdmins] = useState<AdminContact[]>([]);
@@ -741,6 +748,14 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false, o
       setDms(rows);
     }, () => setGroupError('Could not load direct messages. Please try again.'));
   }, [tenantId, currentUser, isAdmin]);
+
+  useEffect(() => {
+    if (initialChannelChosen.current || !channels.length) return;
+    initialChannelChosen.current = true;
+    if (window.matchMedia('(min-width: 1024px)').matches) {
+      setOpenChannel(channels.find(channel => channel.id === 'all-members') || channels[0]);
+    }
+  }, [channels]);
 
   // Rules are not filters: each member query must prove its audience access.
   useEffect(() => {
@@ -965,7 +980,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false, o
           </div>
         ) : (
           <>
-            <GroupList channels={channels.filter(ch => ch.name.toLowerCase().includes(groupSearch.toLowerCase()))} selectedId={openChannel?.id} onSelect={setOpenChannel} renderTime={ch => ch.lastMessageAt ? fmtTime(ch.lastMessageAt) : null} />
+            <GroupList channels={channels.filter(ch => ch.name.toLowerCase().includes(groupSearch.toLowerCase()))} selectedId={openChannel?.id} onSelect={channel => { setOpenDm(null); setOpenChannel(channel); }} renderTime={ch => ch.lastMessageAt ? fmtTime(ch.lastMessageAt) : null} />
             {dms.length > 0 && (
               <p className="text-xs font-bold text-faint uppercase tracking-wider mb-2">Direct Messages</p>
             )}
@@ -973,7 +988,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false, o
             {dms.map(dm => (
               <button
                 key={dm.id}
-                onClick={() => setOpenDm(dm)}
+                onClick={() => { setOpenChannel(null); setOpenDm(dm); }}
                 className="w-full bg-surface-raised rounded-2xl border border-line-hairline px-4 py-3.5 flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-xs transition-all text-left"
               >
                 <div className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white"

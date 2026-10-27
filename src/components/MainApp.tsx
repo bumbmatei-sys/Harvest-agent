@@ -665,7 +665,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false })
   if (!isAdminPreview && currentUser && tenantId && (community.loading || (entryEnabled && entry.loading))) return renderLoading();
   if (entryEnabled && entry.error) return <p role="alert">{entry.error}</p>;
   if (entryEnabled && currentUser && tenantId && needsCommunityEntry(community.settings, entry.member)) {
-    return <CommunityEntryDialog settings={community.settings} initialAnswers={entry.member?.answers} onSubmit={answers => entry.save(community.settings, answers)} />;
+    return <CommunityEntryDialog communityName={tenantName || 'the community'} logoUrl={branding?.logo} settings={community.settings} initialAnswers={entry.member?.answers} onSubmit={answers => entry.save(community.settings, answers)} />;
   }
 
   // The ROUTE, gated as well as its entry point — the same reasoning written on

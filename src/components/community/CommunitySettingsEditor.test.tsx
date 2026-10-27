@@ -15,6 +15,8 @@ describe('community settings editor', () => {
     const root = createRoot(host);
     await act(async () => root.render(<CommunitySettingsEditor settings={defaultCommunitySettings()} available={available} onSave={save} />));
     expect(host.textContent).toContain('Not on your plan');
+    expect(host.textContent).toContain('Connect in group conversations.');
+    expect(host.textContent).toContain('appear in Discovery');
     expect(host.querySelector('[aria-label="Messages and groups"]')?.getAttribute('aria-disabled')).toBe('true');
     const button = Array.from(host.querySelectorAll('button')).find(b => b.textContent === 'Save changes')!;
     await act(async () => button.click());

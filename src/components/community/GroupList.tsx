@@ -1,21 +1,24 @@
 'use client';
-import { Hash } from 'lucide-react';
+import { Hash, Users } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 export interface GroupListItem {
   id: string;
   name: string;
   description?: string;
   lastMessage?: string;
+  unreadCount?: number;
 }
 
 export function GroupList<T extends GroupListItem>({ channels, selectedId, onSelect, renderTime }: { channels: T[]; selectedId?: string; onSelect: (channel: T) => void; renderTime?: (channel: T) => React.ReactNode }) {
   if (!channels.length) return null;
+  const ordered = [...channels].sort((a, b) => Number(b.id === 'all-members') - Number(a.id === 'all-members'));
   return <div className="mb-5">
-    <p className="text-xs font-bold text-faint uppercase tracking-wider mb-2">Groups</p>
-    <div className="space-y-2">{channels.map(ch => <button key={ch.id} onClick={() => onSelect(ch)} aria-pressed={selectedId === ch.id} className="w-full bg-surface-raised rounded-2xl border border-line-hairline px-4 py-3.5 flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-xs transition-all text-left">
-      <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center lg:bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)]"><Hash size={18} style={{ color: 'var(--brand-color, #B8962E)' }} /></div>
-      <div className="flex-1 min-w-0"><p className="text-sm font-bold text-strong truncate">#{ch.name}</p><p className="text-xs text-faint truncate">{ch.lastMessage || ch.description || 'No messages yet'}</p></div>
-      {renderTime && <span className="text-[10px] text-faint flex-shrink-0">{renderTime(ch)}</span>}
+    <p className="mb-2 text-xs font-bold uppercase tracking-wider text-faint">Groups</p>
+    <div className="space-y-1">{ordered.map(ch => <button key={ch.id} onClick={() => onSelect(ch)} aria-pressed={selectedId === ch.id} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-surface-sunken aria-pressed:bg-surface-sunken">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-chip text-muted">{ch.id === 'all-members' ? <Users size={19} /> : <Hash size={19} />}</div>
+      <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-strong">#{ch.name}</p><p className="truncate text-xs text-faint">{ch.lastMessage || ch.description || 'No messages yet'}</p></div>
+      <div className="flex shrink-0 flex-col items-end gap-1"><span className="text-[10px] text-faint">{renderTime?.(ch)}</span>{typeof ch.unreadCount === 'number' && ch.unreadCount > 0 && <Badge>{ch.unreadCount}</Badge>}</div>
     </button>)}</div>
   </div>;
 }

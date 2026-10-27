@@ -81,6 +81,46 @@
       "file": "src/components/NewsTab.tsx",
       "digest": "12f1ab6a48623eda537aff4f7de3d268be70200b4c62900f38ef2489fe43ab81",
       "why": "Extract the existing admin post composer for a read-only development preview while retaining its feed state and submission behavior."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "5a66587cf4a737fddaef92b4bb389e87aaf13f2ee50ae87f1b1d89dfd21ffbaa",
+      "why": "Align community setup, entry, and group chat with the Eden interface while preserving existing access and data behavior."
+    },
+    {
+      "file": "src/components/UserMessages.tsx",
+      "digest": "4f4374fa3f3f40d22c9f1cce36c140df097fc74e40c494725cd26b9a289a7bd3",
+      "why": "Align community setup, entry, and group chat with the Eden interface while preserving existing access and data behavior."
+    },
+    {
+      "file": "src/components/community/GroupList.tsx",
+      "digest": "880da3cd505f35774d632031af481d32cd7b0875136fed565d313e2ae9967fc2",
+      "why": "Align community setup, entry, and group chat with the Eden interface while preserving existing access and data behavior."
+    },
+    {
+      "file": "src/components/community/NewGroupDialog.tsx",
+      "digest": "07ae91d896e23410d2fd7d6d7b66fd0fd392e6a2a4d2863450627b8eb44b6fb9",
+      "why": "Align community setup, entry, and group chat with the Eden interface while preserving existing access and data behavior."
+    },
+    {
+      "file": "src/components/community/CommunitySettingsEditor.tsx",
+      "digest": "06e9063659aa17042ed4ed5493cbedc3c4473a702d0d1cb252c48b8c36b6f82e",
+      "why": "Align community setup, entry, and group chat with the Eden interface while preserving existing access and data behavior."
+    },
+    {
+      "file": "src/components/community/CommunityEntryDialog.tsx",
+      "digest": "980d1ce531ca49af85704d838d52845fe0d21df0b41148435ef5b2201c80c7e3",
+      "why": "Align community setup, entry, and group chat with the Eden interface while preserving existing access and data behavior."
+    },
+    {
+      "file": "src/components/MainApp.tsx",
+      "digest": "8b7df32fa2a9ca21833fa384362352f3c07d76b3c1cd0d3c9f1eb736b1331e76",
+      "why": "Handle an unavailable branding object while passing the tenant logo to the community entry dialog."
+    },
+    {
+      "file": "src/components/UserMessages.tsx",
+      "digest": "47925008473452fc10c2a18a7879e8feab065f74273eb6cfda2b6c7015d6d0c6",
+      "why": "Open the default group in the desktop split and switch cleanly between group and direct message threads."
     }
   ]
 }

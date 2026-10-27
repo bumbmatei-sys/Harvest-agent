@@ -19,6 +19,14 @@ describe('community entry', () => {
     const button = Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Enter community')!;
     expect(button.disabled).toBe(true);
     expect(document.body.textContent).toContain('Be kind');
+    expect(document.querySelector('ol li')?.textContent).toContain('1.');
+    const answer = document.querySelector<HTMLInputElement>('input[aria-label="Your goal"]')!;
+    await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(answer, 'Grow'); answer.dispatchEvent(new Event('input', { bubbles: true })); });
+    expect(button.disabled).toBe(true);
+    await act(async () => { (document.querySelector('label') as HTMLElement).click(); });
+    expect(button.disabled).toBe(false);
+    await act(async () => button.click());
+    expect(submit).toHaveBeenCalledWith({ q: 'Grow' });
     await act(async () => root.unmount());
     host.remove();
   });

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { BookOpen, Calendar, Gift, Globe, Heart, Lock, Map, MessageSquare, Newspaper, Radio, Rss } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,6 +13,14 @@ import { COMMUNITY_MODULES, type CommunityModule, type CommunityQuestion, type C
 const labels: Record<CommunityModule, string> = {
   news: 'News feed', blog: 'Blog', courses: 'Courses', events: 'Events', messages: 'Messages and groups',
   prayer: 'Prayer', give: 'Give', livestream: 'Livestream', bible: 'Bible', map: 'Map',
+};
+
+const moduleDetails: Record<CommunityModule, { icon: typeof Rss; description: string }> = {
+  news: { icon: Rss, description: 'Share updates with your community.' }, blog: { icon: Newspaper, description: 'Publish articles and stories.' },
+  courses: { icon: BookOpen, description: 'Learn and grow together.' }, events: { icon: Calendar, description: 'Bring members together.' },
+  messages: { icon: MessageSquare, description: 'Connect in group conversations.' }, prayer: { icon: Heart, description: 'Share prayer requests.' },
+  give: { icon: Gift, description: 'Share ways to give.' }, livestream: { icon: Radio, description: 'Watch live together.' },
+  bible: { icon: BookOpen, description: 'Read and explore scripture.' }, map: { icon: Map, description: 'Find members and places.' },
 };
 
 type Props = {
@@ -44,8 +54,8 @@ export function CommunitySettingsEditor({ settings, available, onSave }: Props) 
     <Tabs defaultValue="modules">
       <TabsList><TabsTrigger value="modules">Modules</TabsTrigger><TabsTrigger value="rules">Rules</TabsTrigger><TabsTrigger value="questions">Questions</TabsTrigger></TabsList>
       <TabsContent value="modules"><Card><CardHeader><CardTitle>Modules</CardTitle></CardHeader><CardContent className="space-y-4">
-        {COMMUNITY_MODULES.map(key => <div className="flex items-center justify-between gap-4" key={key}><div><p className="text-sm font-medium">{labels[key]}</p>{!available[key] && <p className="text-xs text-muted">Not on your plan</p>}</div><Switch aria-label={labels[key]} checked={draft.modules[key]} disabled={!available[key]} onCheckedChange={checked => setDraft(d => ({ ...d, modules: { ...d.modules, [key]: checked } }))} /></div>)}
-        <div className="flex items-center justify-between gap-4 border-t border-line pt-4"><div><p className="text-sm font-medium">Public community</p><p className="text-xs text-muted">Allow this community to appear in Discovery.</p></div><Switch aria-label="Public community" checked={draft.isPublic} onCheckedChange={checked => setDraft(d => ({ ...d, isPublic: checked }))} /></div>
+        {COMMUNITY_MODULES.map(key => { const Icon = moduleDetails[key].icon; return <div className="flex items-center justify-between gap-4 border-b border-line py-3" key={key}><div className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-sunken text-muted"><Icon size={18} /></span><div><p className="text-sm font-medium">{labels[key]}</p><p className="text-xs text-muted">{moduleDetails[key].description}</p>{!available[key] && <Badge variant="outline" className="mt-1"><Lock size={12} /> Not on your plan</Badge>}</div></div><Switch aria-label={labels[key]} checked={draft.modules[key]} disabled={!available[key]} onCheckedChange={checked => setDraft(d => ({ ...d, modules: { ...d.modules, [key]: checked } }))} /></div>; })}
+        <div className="flex items-center justify-between gap-4 border-t border-line pt-4"><div><p className="flex items-center gap-2 text-sm font-medium"><Globe size={16} /> Public community</p><p className="text-xs text-muted">Allow this community to appear in Discovery.</p></div><Switch aria-label="Public community" checked={draft.isPublic} onCheckedChange={checked => setDraft(d => ({ ...d, isPublic: checked }))} /></div>
       </CardContent></Card></TabsContent>
       <TabsContent value="rules"><Card><CardHeader><CardTitle>Community rules</CardTitle></CardHeader><CardContent className="space-y-3"><div className="flex items-center justify-between"><span>Require members to accept rules</span><Switch aria-label="Require rules" checked={draft.rules.enabled} onCheckedChange={enabled => setDraft(d => ({ ...d, rules: { ...d.rules, enabled } }))} /></div>
         {draft.rules.items.map((rule, index) => <div className="flex gap-2" key={index}><Input aria-label={`Rule ${index + 1}`} value={rule} onChange={e => setDraft(d => ({ ...d, rules: { ...d.rules, items: d.rules.items.map((item, i) => i === index ? e.target.value : item) } }))} /><Button variant="outline" onClick={() => setDraft(d => ({ ...d, rules: { ...d.rules, items: d.rules.items.filter((_, i) => i !== index) } }))}>Remove</Button></div>)}

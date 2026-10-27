@@ -55,15 +55,17 @@ describe('new group' , () => {
     const create = vi.fn().mockResolvedValue(undefined);
     await mount(<NewGroupDialog open onOpenChange={() => {}} people={[{ id: 'a', displayName: 'Alice' }, { id: 'b', displayName: 'Bob' }]} loadingPeople={false} peopleError={false} onCreate={create} />);
     await change(input('Group name'), ' Team '); await change(input('Description (optional)'), ' Welcome ');
-    await click(input('Selected people')); expect(button('Create group').disabled).toBe(true);
-    await click(Array.from(document.querySelectorAll('label')).find(l => l.textContent?.trim() === 'Alice')!);
+    await click(Array.from(document.querySelectorAll('label')).find(l => l.textContent?.trim() === 'Selected people')!.querySelector('[role=radio]') as HTMLElement); expect(button('Create group').disabled).toBe(true);
+    await change(document.querySelector('input[aria-label="Search people"]')!, 'Alice');
+    expect(document.body.textContent).not.toContain('Bob');
+    await click(Array.from(document.querySelectorAll('label')).find(l => l.textContent?.trim().endsWith('Alice'))!);
     await click(button('Create group'));
     expect(create).toHaveBeenCalledWith({ name: 'Team', description: 'Welcome', audience: 'selected', members: ['a'] });
   });
   it('offers everyone and admin-only audiences and reports save errors', async () => {
     const create = vi.fn().mockRejectedValue(new Error('offline'));
     await mount(<NewGroupDialog open onOpenChange={() => {}} people={[]} loadingPeople={false} peopleError={false} onCreate={create} />);
-    expect(input('Everyone').checked).toBe(true); await change(input('Group name'), 'Leaders'); await click(input('Admins only')); await click(button('Create group'));
+    expect(Array.from(document.querySelectorAll('label')).find(l => l.textContent?.trim() === 'Everyone')!.querySelector('[role=radio]')?.getAttribute('aria-checked')).toBe('true'); await change(input('Group name'), 'Leaders'); await click(Array.from(document.querySelectorAll('label')).find(l => l.textContent?.trim() === 'Admins only')!.querySelector('[role=radio]') as HTMLElement); await click(button('Create group'));
     expect(create).toHaveBeenCalledWith({ name: 'Leaders', description: '', audience: 'admins', members: [] });
     expect(document.querySelector('[role="alert"]')?.textContent).toContain('Could not create');
   });
