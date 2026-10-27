@@ -132,7 +132,9 @@ export function DigitalEditor({ initial, onClose }: { initial?: Product | null; 
       <ProductWizard productLabel="Digital download" title={product.title} untitledLabel="Untitled download" status={product.status}
         steps={[{ id: 'details', label: 'Details', done: !!product.title.trim() }, { id: 'file', label: 'PDF', done: !!product.objectKey }, { id: 'price', label: 'Price and publish', done: validPrice }]}
         activeStepId={step} onStepChange={setStep} saving={busy} error={error} saved={saved}
-        onSaveDraft={() => void save('draft')} onPublish={() => void save('published')} publishBlockedReason={blocked}>
+        onSaveDraft={() => void save(product.status)} onPublish={() => void save('published')} publishBlockedReason={blocked}
+        saveLabel={product.status === 'published' ? 'Save changes' : 'Save draft'}
+        headerActions={product.status === 'published' ? <Button type="button" variant="outline" className="min-h-11" disabled={busy} onClick={() => void save('draft')}>Unpublish</Button> : undefined}>
         {step === 'details' && (
           <div className="space-y-4">
             <div>
@@ -164,7 +166,7 @@ export function DigitalEditor({ initial, onClose }: { initial?: Product | null; 
             >
               {product.objectKey ? (
                 <>
-                  <p>{product.fileName || 'PDF uploaded'}{product.fileSize ? ` · ${(product.fileSize / 1024 / 1024).toFixed(2)} MB` : ''}</p>
+                  <p className="break-words">{product.fileName || 'PDF uploaded'}{product.fileSize ? ` · ${(product.fileSize / 1024 / 1024).toFixed(2)} MB` : ''}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button type="button" variant="outline" className="min-h-11" aria-label="Replace PDF" disabled={busy} onClick={() => pdfInput.current?.click()}>Replace</Button>
                     <Button type="button" variant="outline" className="min-h-11" aria-label="Remove PDF" disabled={busy} onClick={() => { change({ objectKey: undefined, fileName: undefined, fileSize: undefined }); setPdfError(''); }}>Remove</Button>

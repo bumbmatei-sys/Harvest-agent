@@ -56,3 +56,32 @@ describe('digital PDF upload', () => {
     await act(async () => root.unmount()); host.remove();
   });
 });
+
+describe('digital product status', () => {
+  it.each([
+    ['published', 'Save changes', 'published'],
+    ['published', 'Unpublish', 'draft'],
+    ['draft', 'Save draft', 'draft'],
+  ] as const)('%s: %s sends %s', async (status, label, expected) => {
+    const host = document.createElement('div'); document.body.appendChild(host);
+    const root = createRoot(host);
+    const request = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    try {
+      await act(async () => root.render(<DigitalFetchContext.Provider value={request}><DigitalEditor initial={{ id: 'product1', title: 'Guide', description: '', coverUrl: '', priceCents: 0, status, objectKey: 'pdf-key' }} onClose={() => {}} /></DigitalFetchContext.Provider>));
+      const button = [...host.querySelectorAll('button')].find(b => b.textContent === label)!;
+      await act(async () => button.click());
+      expect(JSON.parse(request.mock.calls[0][1].body).status).toBe(expected);
+    } finally { await act(async () => root.unmount()); host.remove(); }
+  });
+  it('does not save invalid edits to a published product', async () => {
+    const host = document.createElement('div'); document.body.appendChild(host);
+    const root = createRoot(host);
+    const request = vi.fn();
+    try {
+      await act(async () => root.render(<DigitalFetchContext.Provider value={request}><DigitalEditor initial={{ id: 'product1', title: '', description: '', coverUrl: '', priceCents: 0, status: 'published', objectKey: 'pdf-key' }} onClose={() => {}} /></DigitalFetchContext.Provider>));
+      await act(async () => [...host.querySelectorAll('button')].find(b => b.textContent === 'Save changes')!.click());
+      expect(request).not.toHaveBeenCalled();
+      expect(host.textContent).toContain('Add a title.');
+    } finally { await act(async () => root.unmount()); host.remove(); }
+  });
+});

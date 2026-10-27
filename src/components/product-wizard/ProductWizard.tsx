@@ -65,7 +65,7 @@ export function ProductWizard({
   const previous = steps[index - 1];
 
   return (
-    <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-6 px-4 lg:px-0" data-product-wizard>
+    <div className="mx-auto flex min-w-0 w-full max-w-[1320px] flex-col gap-6 px-4 lg:px-0" data-product-wizard>
       <header className="flex flex-col gap-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
@@ -83,13 +83,13 @@ export function ProductWizard({
         </div>
       </header>
 
-      <div className="grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)_380px]">
-        <nav aria-label={`${productLabel} steps`} className="flex flex-col gap-3 lg:sticky lg:top-6 lg:self-start">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)_380px]">
+        <nav aria-label={`${productLabel} steps`} className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-6 lg:self-start">
           <div className="hidden flex-col gap-2 lg:flex">
             <p className="text-xs font-medium text-muted" data-wizard-progress-label>{doneCount} of {steps.length} steps done</p>
             <Progress value={progress} aria-label="Setup progress" />
           </div>
-          <ol className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
+          <ol className="flex min-w-0 max-w-full gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
             {steps.map((step, i) => (
               <li key={step.id} className="shrink-0 lg:shrink">
                 <Button

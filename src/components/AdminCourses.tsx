@@ -116,15 +116,15 @@ const AdminCourses: React.FC<AdminCoursesProps> = ({ productsPage = false, onOpe
   const [digitalEditor, setDigitalEditor] = useState<{ initial?: React.ComponentProps<typeof DigitalEditor>['initial'] } | null>(null);
   const [digitalListVersion, setDigitalListVersion] = useState(0);
   const [digitalCount, setDigitalCount] = useState<number | null>(null);
+  const [digitalCountError, setDigitalCountError] = useState(false);
   useEffect(() => {
     if (!productsPage) return;
     let cancelled = false;
-    setDigitalCount(null);
     authFetch('/api/digital-products?admin=1').then(async response => {
       if (!response.ok) throw new Error('Could not load digital products');
       return response.json();
-    }).then(data => { if (!cancelled) setDigitalCount(data.products.length); })
-      .catch(() => { if (!cancelled) setErrorMessage('Could not check the digital product limit.'); });
+    }).then(data => { if (!cancelled) { setDigitalCount(data.products.length); setDigitalCountError(false); } })
+      .catch(() => { if (!cancelled) { setDigitalCount(null); setDigitalCountError(true); } });
     return () => { cancelled = true; };
   }, [digitalListVersion, productsPage]);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
@@ -566,10 +566,11 @@ const AdminCourses: React.FC<AdminCoursesProps> = ({ productsPage = false, onOpe
   };
   const handlePickType = (id: string) => {
     if (id === 'digital-download') {
+      if (digitalCountError || digitalCount === null || !tenantPlan) return;
       setPickingType(false);
-      const cap = tenantPlan ? getPlanFeatures(tenantPlan).maxProducts : 0;
-      if (digitalCount === null || (cap !== -1 && digitalCount >= cap)) {
-        setErrorMessage(digitalCount === null ? 'Could not check the digital product limit.' : 'Your plan has reached its digital product limit.');
+      const cap = getPlanFeatures(tenantPlan).maxProducts;
+      if (cap !== -1 && digitalCount >= cap) {
+        setErrorMessage('Your plan has reached its digital product limit.');
         return;
       }
       setDigitalEditor({});
@@ -1029,7 +1030,7 @@ const AdminCourses: React.FC<AdminCoursesProps> = ({ productsPage = false, onOpe
       />
       </>)}
 
-      <NewProductDialog open={pickingType} onOpenChange={setPickingType} types={PRODUCT_TYPES.map(type => type.id === 'course' && (loading || atLimit) ? { ...type, blockedReason: loading || ownCount === null ? 'Could not check the course limit yet.' : limitMessage } : type)} onSelect={handlePickType} />
+      <NewProductDialog open={pickingType} onOpenChange={setPickingType} types={PRODUCT_TYPES.map(type => type.id === 'course' && (loading || atLimit) ? { ...type, blockedReason: loading || ownCount === null ? 'Could not check the course limit yet.' : limitMessage } : type.id === 'digital-download' && (digitalCountError || digitalCount === null || !tenantPlan) ? { ...type, blockedReason: digitalCountError ? 'Could not check the digital product limit.' : 'Checking your plan…' } : type)} onSelect={handlePickType} />
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmId && (

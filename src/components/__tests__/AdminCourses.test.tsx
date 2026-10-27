@@ -143,6 +143,7 @@ beforeEach(() => {
   container = document.createElement('div');
   document.body.appendChild(container);
   tenantCtx.tenantPlan = undefined;
+  mockAuthFetch.mockReset().mockResolvedValue({ ok: true, json: async () => ({ ok: true, products: [] }) });
   mockCourses = [];
   mockLibrary = [];
   mockLibraryAuthors = [];
@@ -196,6 +197,52 @@ describe('AdminCourses as the Products page', () => {
     expect(course.title).toMatch(/plan includes up to 5 course/i);
     expect(digital.disabled).toBe(false);
     expect(container.querySelector('[data-testid="course-editor"]')).toBeNull();
+  });
+
+  it('keeps the digital option disabled while its count or plan is loading', async () => {
+    mockAuthFetch.mockImplementation(() => new Promise(() => {}));
+    await mount({ productsPage: true });
+    await act(async () => { newCourseButton('New product').click(); });
+    const digital = document.body.querySelector<HTMLButtonElement>('[data-product-type="digital-download"]')!;
+    expect(digital.disabled).toBe(true);
+    expect(digital.textContent).toContain('Checking your plan');
+    expect(document.body.textContent).not.toContain('Could not check the digital product limit.');
+    await act(async () => digital.click());
+    expect(container.textContent).not.toContain('Back to products');
+  });
+
+  it('keeps the last count while refreshing after closing the editor', async () => {
+    tenantCtx.tenantPlan = 'church';
+    await mount({ productsPage: true });
+    await act(async () => { newCourseButton('New product').click(); });
+    await act(async () => document.body.querySelector<HTMLButtonElement>('[data-product-type="digital-download"]')!.click());
+    expect(container.textContent).toContain('Back to products');
+    mockAuthFetch.mockImplementation(() => new Promise(() => {}));
+    await act(async () => [...container.querySelectorAll('button')].find(b => b.textContent === 'Back to products')!.click());
+    await act(async () => { newCourseButton('New product').click(); });
+    const digital = document.body.querySelector<HTMLButtonElement>('[data-product-type="digital-download"]')!;
+    expect(digital.disabled).toBe(false);
+    await act(async () => digital.click());
+    expect(container.textContent).toContain('Back to products');
+  });
+
+  it('blocks creation at the digital cap', async () => {
+    tenantCtx.tenantPlan = 'free';
+    await mount({ productsPage: true });
+    await act(async () => { newCourseButton('New product').click(); });
+    await act(async () => document.body.querySelector<HTMLButtonElement>('[data-product-type="digital-download"]')!.click());
+    expect(container.textContent).toContain('Your plan has reached its digital product limit.');
+    expect(container.textContent).not.toContain('Back to products');
+  });
+
+  it('shows a failed count read in the picker', async () => {
+    tenantCtx.tenantPlan = 'church';
+    mockAuthFetch.mockRejectedValue(new Error('offline'));
+    await mount({ productsPage: true });
+    await act(async () => { newCourseButton('New product').click(); });
+    const digital = document.body.querySelector<HTMLButtonElement>('[data-product-type="digital-download"]')!;
+    expect(digital.disabled).toBe(true);
+    expect(digital.textContent).toContain('Could not check the digital product limit.');
   });
 
   it('links to the Courses page, where the library and adoptions live', async () => {
