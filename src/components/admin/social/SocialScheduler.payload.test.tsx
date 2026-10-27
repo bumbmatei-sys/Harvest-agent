@@ -6,10 +6,11 @@ import { MockSocialClient, resetSocialMock } from '@/lib/social/mock-client';
 import { SocialScheduler } from './SocialScheduler';
 
 const authFetch = vi.hoisted(() => vi.fn());
+const upload = vi.hoisted(() => vi.fn());
 
 vi.mock('@/utils/auth-fetch', () => ({ authFetch }));
 vi.mock('@/firebase', () => ({ auth: { currentUser: { getIdToken: async () => 'test-token' } } }));
-vi.mock('@/lib/social/upload-media', () => ({ uploadSocialMedia: async (file: File) => ({ name: file.name, kind: 'image', mimeType: file.type, url: 'https://example.test/image.png' }) }));
+vi.mock('@/lib/social/upload-media', () => ({ uploadSocialMedia: upload }));
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -25,6 +26,7 @@ interface SentPost {
   headers: Record<string, string> | undefined;
   body: {
     confirmToken?: string;
+    media: { name: string; kind: string; url: string }[];
     targets: { platform: string; fields: Record<string, string | boolean> }[];
   };
 }
@@ -36,6 +38,8 @@ describe('SocialScheduler payload', () => {
   beforeEach(() => {
     resetSocialMock();
     authFetch.mockReset();
+    upload.mockReset();
+    upload.mockImplementation(async (file: File) => ({ name: file.name, kind: file.type.startsWith('video/') ? 'video' : 'image', mimeType: file.type, url: `https://example.test/${file.name}` }));
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -214,6 +218,64 @@ describe('SocialScheduler payload', () => {
     const [preview] = postCalls();
     expect(preview.body.targets.map((target) => target.platform)).toEqual(['instagram']);
     expect(preview.body.targets[0].fields).toEqual({ contentType: 'feed' });
+  });
+
+  it('attaches, reorders and removes images and includes them in the create payload', async () => {
+    await mountLive([FACEBOOK]);
+    const input = container.querySelector<HTMLInputElement>('input[aria-label="Choose media files"]')!;
+    Object.defineProperty(input, 'files', { configurable: true, value: [new File(['a'], 'a.png', { type: 'image/png' })] });
+    await act(async () => { input.dispatchEvent(new Event('change', { bubbles: true })); });
+    Object.defineProperty(input, 'files', { configurable: true, value: [new File(['b'], 'b.png', { type: 'image/png' })] });
+    await act(async () => { input.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(container.querySelector('img[alt="a.png"]')?.getAttribute('src')).toBe('https://example.test/a.png');
+    await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Move b.png left"]')?.click(); });
+    await type('A post');
+    expect(button('Schedule')?.disabled).toBe(false);
+    await pressSchedule();
+    expect(postCalls()).toHaveLength(1);
+    expect(postCalls()[0].body.media.map((item) => item.name)).toEqual(['b.png', 'a.png']);
+    await dismissConfirm();
+    await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Remove a.png"]')?.click(); });
+    expect(container.querySelector('img[alt="a.png"]')).toBeNull();
+  });
+
+  it('blocks Instagram without media and blocks scheduling while an upload is pending', async () => {
+    await mountLive([INSTAGRAM]);
+    expect(container.textContent).toContain('Instagram needs at least one image or video.');
+    expect(button('Schedule')?.disabled).toBe(true);
+    let finish!: (value: unknown) => void;
+    upload.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    await attachImage();
+    expect(container.querySelector('[aria-label="Uploading image.png"]')).toBeTruthy();
+    expect(button('Schedule')?.disabled).toBe(true);
+    await act(async () => { finish({ name: 'image.png', kind: 'image', url: 'https://example.test/image.png', mimeType: 'image/png' }); });
+    expect(button('Schedule')?.disabled).toBe(false);
+  });
+
+  it('enables YouTube for one video and refuses an image and video mix', async () => {
+    await mountLive([{ id: 'yt', platform: 'youtube', username: 'sample', displayName: 'Sample' }]);
+    const input = container.querySelector<HTMLInputElement>('input[aria-label="Choose media files"]')!;
+    Object.defineProperty(input, 'files', { configurable: true, value: [new File(['v'], 'video.mp4', { type: 'video/mp4' })] });
+    await act(async () => { input.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(button('Schedule')?.disabled).toBe(false);
+    await attachImage();
+    expect(button('Schedule')?.disabled).toBe(true);
+  });
+
+  it('sends existing media in an update payload and displays queue thumbnails and legacy fallbacks', async () => {
+    const workspace = new MockSocialClient('preview', clock).load();
+    const media = [{ name: 'one.png', kind: 'image' as const, url: 'https://example.test/one.png' }, { name: 'two.png', kind: 'image' as const, url: 'https://example.test/two.png' }, { name: 'three.png', kind: 'image' as const, url: 'https://example.test/three.png' }];
+    authFetch.mockImplementation(async (url: string) => String(url).includes('bootstrap')
+      ? { status: 200, ok: true, json: async () => ({ ...workspace, entitled: true, sample: false, posts: workspace.posts.map((post, i) => ({ ...post, media: i === 0 ? media : [{ name: 'legacy', kind: 'image' }] })) }) }
+      : { status: 200, ok: true, json: async () => ({ confirmToken: 'tok' }) });
+    await act(async () => { root.render(<SocialScheduler onUpgrade={() => {}} initialView="queue" />); });
+    expect(container.querySelector('img[alt="one.png"]')).toBeTruthy();
+    expect(container.textContent).toContain('+2');
+    expect(container.querySelector('[aria-label="1 media attachment"] svg')).toBeTruthy();
+    await act(async () => { button('Edit')?.click(); });
+    await act(async () => { button('Save', document.body)?.click(); });
+    await act(async () => { await Promise.resolve(); });
+    expect(postCalls()[0].body.media).toEqual(media);
   });
 
   it('offers TikTok and requires a video before scheduling', async () => {
