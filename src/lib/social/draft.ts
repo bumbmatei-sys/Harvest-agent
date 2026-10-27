@@ -1,10 +1,12 @@
 import { parseSocialPlatform, supportsMadeWithAi, type SocialPlatform } from './platforms';
 import { hasTimeOffset, wallTimeInZoneToIso } from './schedule-time';
-import type { SocialPostDraft, SocialTarget } from './types';
+import type { SocialMedia, SocialPostDraft, SocialTarget } from './types';
+import { isTenantUploadKey } from '@/utils/r2-keys';
+import { validateSocialMedia, type MediaRuleError } from './media-rules';
 
 export interface DraftError {
   readonly ok: false;
-  readonly error: 'platform_not_offered' | 'post_incomplete' | 'schedule_invalid' | 'media_not_accepted' | 'youtube_needs_video' | 'tiktok_needs_video';
+  readonly error: 'platform_not_offered' | 'post_incomplete' | 'schedule_invalid' | 'media_not_accepted' | MediaRuleError;
 }
 
 /** A scheduled post has to be in the future, and not more than a year out. */
@@ -27,23 +29,35 @@ function readFields(raw: unknown): Record<string, string | boolean> {
   return fields;
 }
 
-/**
- * Turn an untrusted body into a draft, or refuse it.
- *
- * Every platform string is parsed through the allow-list. A body that names
- * X, Twitter, or any other slug outside the five publishing platforms is
- * `platform_not_offered` and produces no draft, so the caller never reaches
- * Zernio. Media upload is refused. A YouTube target with no video is
- * `youtube_needs_video`, which is what a YouTube post is until upload exists.
- * TikTok is the same: it is `tiktok_needs_video`.
- * `madeWithAi` is kept only for a platform Zernio documents the flag for, and
- * defaults to false.
- */
-export function parseSocialDraft(body: unknown, now = new Date()): DraftResult {
+/** Turn an untrusted body into a draft, or refuse it. */
+export function parseSocialDraft(body: unknown, now = new Date(), context?: { tenantId: string; publicUrl: string | undefined; existingMediaUrls?: readonly string[] }): DraftResult {
   if (!body || typeof body !== 'object') return { ok: false, error: 'post_incomplete' };
   const row = body as Record<string, unknown>;
-  if (Array.isArray(row.media) && row.media.length > 0) {
-    return { ok: false, error: 'media_not_accepted' };
+  if (row.media !== undefined && !Array.isArray(row.media)) return { ok: false, error: 'media_invalid' };
+  const media: SocialMedia[] = [];
+  for (const raw of (row.media as unknown[] | undefined) ?? []) {
+    if (!raw || typeof raw !== 'object') return { ok: false, error: 'media_invalid' };
+    const item = raw as Record<string, unknown>;
+    if (typeof item.url !== 'string' || (item.kind !== 'image' && item.kind !== 'video') ||
+      (item.mimeType !== undefined && typeof item.mimeType !== 'string') ||
+      (item.alt !== undefined && typeof item.alt !== 'string')) return { ok: false, error: 'media_invalid' };
+    if (!context?.existingMediaUrls?.includes(item.url)) try {
+      if (!context?.publicUrl || !context.tenantId) return { ok: false, error: 'media_invalid' };
+      const base = new URL(context.publicUrl);
+      const url = new URL(item.url);
+      const basePath = base.pathname.replace(/\/+$/, '');
+      if (base.protocol !== 'https:' || base.username || base.password || base.search || base.hash ||
+        url.origin !== base.origin || url.username || url.password || url.search || url.hash ||
+        !url.pathname.startsWith(`${basePath}/`) ||
+        !isTenantUploadKey(url.pathname.slice(basePath.length + 1).replace(/^\/+/, ''), context.tenantId)) {
+        return { ok: false, error: 'media_invalid' };
+      }
+    } catch {
+      return { ok: false, error: 'media_invalid' };
+    }
+    media.push({ name: item.url, url: item.url, kind: item.kind,
+      ...(typeof item.mimeType === 'string' ? { mimeType: item.mimeType } : {}),
+      ...(typeof item.alt === 'string' ? { alt: item.alt.slice(0, 500) } : {}) });
   }
   const content = typeof row.content === 'string' ? row.content.trim() : '';
   const targetsRaw = Array.isArray(row.targets) ? row.targets : [];
@@ -68,12 +82,8 @@ export function parseSocialDraft(body: unknown, now = new Date()): DraftResult {
     });
   }
 
-  if (targets.some((target) => target.platform === 'youtube')) {
-    return { ok: false, error: 'youtube_needs_video' };
-  }
-  if (targets.some((target) => target.platform === 'tiktok')) {
-    return { ok: false, error: 'tiktok_needs_video' };
-  }
+  const mediaError = validateSocialMedia(media, targets.map(target => target.platform));
+  if (mediaError) return { ok: false, error: mediaError };
 
   const publishNow = row.publishNow === true;
   const timezone = typeof row.timezone === 'string' && row.timezone ? row.timezone.slice(0, 80) : 'UTC';
@@ -100,7 +110,7 @@ export function parseSocialDraft(body: unknown, now = new Date()): DraftResult {
       publishNow,
       timezone,
       targets,
-      media: [],
+      media,
       idempotencyKey: null,
     },
   };

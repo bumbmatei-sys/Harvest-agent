@@ -79,6 +79,7 @@ const { mockRequireAdmin } = vi.hoisted(() => ({ mockRequireAdmin: vi.fn() }));
 vi.mock('@/lib/api-auth', () => ({ requireAdmin: mockRequireAdmin }));
 // `tenant-scope` drags in the firebase client SDK; only the constant matters.
 vi.mock('@/utils/tenant-scope', () => ({ PLATFORM_TENANT_ID: 'harvest' }));
+vi.mock('@/lib/social/access', () => ({ requireSocialAccess: async () => ({ tenantId: 'shadcn' }) }));
 
 // 🔴 `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner` and `@/lib/r2` are
 // deliberately NOT mocked. The signature is the thing under test; a stubbed
@@ -157,6 +158,11 @@ function recomputeSignature(url: URL, method = 'PUT'): string {
 /* ═══ 7 · The signature property ═════════════════════════════════════════════ */
 
 describe('the signed headers match what the client sends', () => {
+  it('signs the social upload length and content type with the real SDK', async () => {
+    const { status, json } = await presign({ fileName: FILE_NAME, contentType: CONTENT_TYPE, fileSize: 512_000, purpose: 'social' });
+    expect(status).toBe(200);
+    expect(new URL(json.uploadUrl).searchParams.get('X-Amz-SignedHeaders')).toBe('content-length;content-type;host');
+  });
   it('signs `host` and nothing else, exactly as the production trace shows', async () => {
     const { json } = await presign();
     const url = new URL(json.uploadUrl);

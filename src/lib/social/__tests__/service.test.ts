@@ -91,6 +91,7 @@ function postBody(platform: string, extra: Record<string, unknown> = {}) {
     publishNow: false,
     scheduledFor: future(),
     confirm: false,
+    ...(platform === 'instagram' ? { media: [{ url: 'https://cdn.example/tenants/tenant-a/uploads/photo.jpg', kind: 'image' }] } : {}),
     targets: [{ platform, accountId: 'sample-ig', text: 'Sunday at 10.', madeWithAi: true }],
     ...extra,
   };
@@ -103,6 +104,7 @@ describe('social service', () => {
     h.tokenSetFails = false;
     resetSocialMock();
     resetPublishOnce();
+    vi.stubEnv('R2_PUBLIC_URL', 'https://cdn.example');
     vi.stubEnv('NODE_ENV', 'test');
     vi.stubEnv('VERCEL_ENV', '');
     vi.stubEnv('ZERNIO_API_KEY', '');
@@ -227,7 +229,7 @@ describe('social service', () => {
     expect(result).toMatchObject({ ok: false, status: 403, error: 'account_not_owned' });
   });
 
-  it('refuses YouTube until a video can be uploaded, and still refuses an attached file', async () => {
+  it('requires a video for YouTube and refuses a malformed attachment', async () => {
     const bare = await schedule(actor, postBody('youtube', {
       targets: [{ platform: 'youtube', accountId: 'sample-yt', text: 'A short.', madeWithAi: false }],
     }), null);
@@ -236,7 +238,7 @@ describe('social service', () => {
       media: [{ name: 'clip.mp4', kind: 'video' }],
       targets: [{ platform: 'youtube', accountId: 'sample-yt', text: 'A short.', madeWithAi: false }],
     }), null);
-    expect(withFile).toMatchObject({ ok: false, error: 'media_not_accepted' });
+    expect(withFile).toMatchObject({ ok: false, error: 'media_invalid' });
   });
 
   it('validate reads and does not write', async () => {
@@ -295,8 +297,23 @@ describe('social service', () => {
     expect(sent).toMatchObject({ ok: false, status: 404, error: 'post_not_editable' });
   });
 
+  it('retains only media already on the edited post, even when hosted by the provider', async () => {
+    const client = new MockSocialClient('tenant-a', new Date());
+    const original = client.load().posts.find(post => post.id === 'sample-draft')!;
+    const url = 'https://media.zernio.example/copied.jpg';
+    client.update(original.id, { ...original, publishNow: false, media: [{ name: url, url, kind: 'image' }] });
+    const body = postBody('instagram', { scheduledFor: null, media: [{ url, kind: 'image' }] });
+    const preview = await update(actor, original.id, body, null);
+    expect(preview.ok).toBe(true);
+    const saved = await update(actor, original.id, { ...body, confirmToken: tokenOf(preview) }, null);
+    expect(saved).toMatchObject({ ok: true, data: { post: { media: [{ url }] } } });
+    expect(await update(actor, original.id, { ...body, media: [{ url: `${url}?other`, kind: 'image' }] }, null)).toMatchObject({ ok: false, error: 'media_invalid' });
+    expect(await update(actor, 'sample-scheduled', { ...body, scheduledFor: future() }, null)).toMatchObject({ ok: false, error: 'media_invalid' });
+    expect(await createDraft(actor, body)).toMatchObject({ ok: false, error: 'media_invalid' });
+  });
+
   it('refuses an edit token that is missing, changed, foreign, reused, or expired', async () => {
-    const body = postBody('instagram');
+    const body = postBody('facebook');
     const preview = await update(actor, 'sample-scheduled', body, null);
     const token = tokenOf(preview);
 
@@ -407,6 +424,7 @@ describe('social service', () => {
     const content = 'This Sunday: a short word on the parable of the sower. Service at 10.';
     const body = {
       content,
+      media: [{ url: 'https://cdn.example/tenants/tenant-a/uploads/photo.jpg', kind: 'image' }],
       publishNow: false,
       scheduledFor: null,
       timezone: 'America/Chicago',
@@ -467,7 +485,7 @@ describe('social service', () => {
   });
 
   it('refuses a missing, changed, foreign, or reused confirm token', async () => {
-    const body = postBody('instagram');
+    const body = postBody('facebook');
     const before = new MockSocialClient('tenant-a', new Date()).load().posts.length;
     const preview = await schedule(actor, body, null);
     const token = tokenOf(preview);

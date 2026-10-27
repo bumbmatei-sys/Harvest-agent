@@ -8,6 +8,8 @@ import { SocialScheduler } from './SocialScheduler';
 const authFetch = vi.hoisted(() => vi.fn());
 
 vi.mock('@/utils/auth-fetch', () => ({ authFetch }));
+vi.mock('@/firebase', () => ({ auth: { currentUser: { getIdToken: async () => 'test-token' } } }));
+vi.mock('@/lib/social/upload-media', () => ({ uploadSocialMedia: async (file: File) => ({ name: file.name, kind: 'image', mimeType: file.type, url: 'https://example.test/image.png' }) }));
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -29,6 +31,12 @@ describe('SocialScheduler', () => {
     await act(async () => { root.unmount(); });
     container.remove();
   });
+
+  async function attachImage() {
+    const input = container.querySelector<HTMLInputElement>('input[aria-label="Choose media files"]');
+    Object.defineProperty(input, 'files', { configurable: true, value: [new File(['image'], 'image.png', { type: 'image/png' })] });
+    await act(async () => { input?.dispatchEvent(new Event('change', { bubbles: true })); });
+  }
 
   it('shows the upgrade wall when the ministry does not hold the add-on', async () => {
     const workspace = new MockSocialClient('preview', clock).load();
@@ -258,27 +266,16 @@ describe('SocialScheduler', () => {
     expect(container.querySelector('[data-testid="social-unavailable"]')).toBeTruthy();
   });
 
-  it('shows YouTube as not selectable until video upload exists', async () => {
+  it('offers connected YouTube and requires a video before scheduling', async () => {
     const workspace = new MockSocialClient('preview', clock).load();
-    await act(async () => {
-      root.render(
-        <SocialScheduler
-          initial={{ ...workspace, entitled: true }}
-          initialView="compose"
-          onUpgrade={() => {}}
-        />,
-      );
-    });
-    const youtube = container.querySelector('[data-testid="youtube-posting-disabled"]');
-    expect(youtube?.hasAttribute('disabled')).toBe(true);
-    expect(container.querySelector('[data-testid="youtube-coming-soon"]')?.textContent).toBe('Video upload coming soon');
-    await act(async () => {
-      youtube?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    });
+    await act(async () => { root.render(<SocialScheduler initial={{ ...workspace, entitled: true }} onUpgrade={() => {}} />); });
+    const platforms = container.querySelector('[aria-label="Platforms"]');
+    const youtube = [...(platforms?.querySelectorAll('button') ?? [])].find((button) => button.textContent === 'YouTube');
+    await act(async () => { youtube?.click(); });
     expect(container.textContent).not.toContain('LinkedIn');
     expect(container.textContent).not.toContain('Twitter');
-    const schedule = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Schedule');
-    expect(schedule?.hasAttribute('disabled')).toBe(false);
+    expect(container.textContent).toContain('YouTube needs exactly one video.');
+    expect([...container.querySelectorAll('button')].find((button) => button.textContent === 'Schedule')?.disabled).toBe(true);
   });
 
   it('lists Facebook, Instagram and YouTube even when sample accounts exist', async () => {
@@ -292,8 +289,7 @@ describe('SocialScheduler', () => {
     expect(container.querySelector('[data-testid="connect-instagram"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="connect-threads"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="connect-tiktok"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="connect-youtube"]')?.hasAttribute('disabled')).toBe(true);
-    expect(container.querySelector('[data-testid="connect-youtube-note"]')?.textContent).toBe('Video upload coming soon');
+    expect(container.querySelector('[data-testid="connect-youtube"]')?.hasAttribute('disabled')).toBe(false);
   });
 
   it('names the selected calendar day and lists that day\'s post', async () => {
@@ -322,7 +318,7 @@ describe('SocialScheduler', () => {
     const workspace = new MockSocialClient('preview', clock).load();
     await act(async () => {
       root.render(
-        <SocialScheduler initial={{ ...workspace, entitled: true }} initialView="queue" onUpgrade={() => {}} />,
+        <SocialScheduler initial={{ ...workspace, posts: workspace.posts.map((post) => ({ ...post, media: [{ name: 'image.png', kind: 'image' as const, url: 'https://example.test/image.png', mimeType: 'image/png' }] })), entitled: true }} initialView="queue" onUpgrade={() => {}} />,
       );
     });
     const edits = [...container.querySelectorAll('button')].filter((button) => button.textContent === 'Edit');
@@ -357,6 +353,7 @@ describe('SocialScheduler', () => {
       );
     });
     const before = container.textContent;
+    await attachImage();
     const schedule = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Schedule');
     await act(async () => { schedule?.click(); });
     expect(document.body.querySelector('[data-testid="social-confirm-dialog"]')).toBeNull();
@@ -378,6 +375,7 @@ describe('SocialScheduler', () => {
       time?.dispatchEvent(new Event('input', { bubbles: true }));
       time?.dispatchEvent(new Event('change', { bubbles: true }));
     });
+    await attachImage();
     const schedule = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Schedule');
     await act(async () => { schedule?.click(); });
     expect(document.body.querySelector('[data-testid="social-confirm-dialog"]')?.textContent).toContain('Schedule this post?');
@@ -419,6 +417,7 @@ describe('SocialScheduler', () => {
       time?.dispatchEvent(new Event('input', { bubbles: true }));
       time?.dispatchEvent(new Event('change', { bubbles: true }));
     });
+    await attachImage();
     const schedule = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Schedule');
     await act(async () => { schedule?.click(); });
     await act(async () => { await Promise.resolve(); });
@@ -470,6 +469,7 @@ describe('SocialScheduler', () => {
       time?.dispatchEvent(new Event('input', { bubbles: true }));
       time?.dispatchEvent(new Event('change', { bubbles: true }));
     });
+    await attachImage();
     const schedule = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Schedule');
     await act(async () => { schedule?.click(); });
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });
@@ -523,6 +523,7 @@ describe('SocialScheduler', () => {
       time?.dispatchEvent(new Event('input', { bubbles: true }));
       time?.dispatchEvent(new Event('change', { bubbles: true }));
     });
+    await attachImage();
     const schedule = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Schedule');
     await act(async () => { schedule?.click(); });
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });
@@ -570,6 +571,7 @@ describe('SocialScheduler', () => {
         time?.dispatchEvent(new Event('change', { bubbles: true }));
       });
     };
+    await attachImage();
     const schedule = () => [...container.querySelectorAll('button')].find((button) => button.textContent === 'Schedule');
     await fill('Sunday at 10.');
     await act(async () => { schedule()?.click(); });
@@ -634,7 +636,8 @@ describe('SocialScheduler', () => {
         time?.dispatchEvent(new Event('input', { bubbles: true }));
         time?.dispatchEvent(new Event('change', { bubbles: true }));
       });
-      const schedule = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Schedule');
+      await attachImage();
+    const schedule = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Schedule');
       await act(async () => { schedule?.click(); });
       await act(async () => { await Promise.resolve(); });
       const preview = authFetch.mock.calls.find((call) => String(call[0]).includes('/api/social/posts'));
