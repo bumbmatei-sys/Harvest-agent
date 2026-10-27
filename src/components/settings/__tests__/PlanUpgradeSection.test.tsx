@@ -79,25 +79,22 @@ describe('PlanUpgradeSection yearly pricing copy', () => {
     clickButtonWithText('Yearly');
     // $190/12 is $15.8333, ceiled to $15.84. THE-222 left Individual as the one
     // yearly cell that divided cleanly ($13.75); THE-248 removes that — all
-    // three years now carry a ceiling artefact, and all three quarters lost
-    // theirs instead.
+    // three years now carry a ceiling artefact.
     expect(container.textContent).toContain('$15.84');
     expect(container.textContent).toContain('billed as $190 every 12 months');
   });
 
-  it('derives the quarterly copy, the term this change added', () => {
+  it('offers no quarterly term — it was withdrawn on 2026-10-23', () => {
     mount();
-    clickButtonWithText('Quarterly');
-    // 🔴 ALL THREE QUARTERS STILL DIVIDE EXACTLY — $54/3, $108/3 and $216/3
-    // are $18, $36 and $72 — so none of them shows cents. Each headline
-    // is asserted beside the charged line that names its cycle rather than on
-    // its own, because a bare "$36" says nothing about which tier drew it.
-    expect(container.textContent).toContain('$18');
-    expect(container.textContent).toContain('billed as $54 every 3 months');
-    expect(container.textContent).toContain('$36');
-    expect(container.textContent).toContain('billed as $108 every 3 months');
-    expect(container.textContent).toContain('$72');
-    expect(container.textContent).toContain('billed as $216 every 3 months');
+    // The term picker is Monthly and Yearly. A quarterly button, or any copy
+    // that bills "every 3 months", would be selling a product that no longer
+    // exists in Dodo.
+    expect(container.textContent).not.toContain('Quarterly');
+    expect(container.textContent).not.toContain('every 3 months');
+    for (const label of ['Monthly', 'Yearly']) {
+      clickButtonWithText(label);
+      expect(container.textContent).not.toContain('every 3 months');
+    }
   });
 
   it('leaves the monthly view unchanged', () => {
@@ -113,10 +110,9 @@ describe('PlanUpgradeSection yearly pricing copy', () => {
     expect(container.textContent).not.toContain('billed as');
     expect(container.querySelectorAll('.line-through').length).toBe(0);
 
-    // Round-trip back through both longer terms confirms the monthly view
+    // Round-trip back through the longer term confirms the monthly view
     // stays clean too.
     clickButtonWithText('Yearly');
-    clickButtonWithText('Quarterly');
     clickButtonWithText('Monthly');
     expect(container.textContent).not.toContain('equivalent');
     expect(container.querySelectorAll('.line-through').length).toBe(0);

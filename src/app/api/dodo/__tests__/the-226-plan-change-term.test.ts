@@ -27,8 +27,9 @@ import { NextRequest } from 'next/server';
  *   period (sent) = the BillingTermToggle's state, whatever it happened to be
  *       Captured by driving the real `AdminUpgradePage` through the real
  *       `runDodoPlanChange`; see the client half of this suite. Browsing the
- *       yearly prices posted `billing: 'yearly'`, quarterly posted
- *       `'quarterly'`, and an untouched toggle posted `'monthly'`.
+ *       yearly prices posted `billing: 'yearly'`, quarterly (a third term,
+ *       withdrawn 2026-10-23) posted `'quarterly'`, and an untouched toggle
+ *       posted `'monthly'`.
  *
  * So the toggle is a PRICE VIEWER whose state was being sent as a statement
  * about what the church pays. A church comparing Small Team's yearly price
@@ -43,10 +44,9 @@ import { NextRequest } from 'next/server';
  * the guard and watching that test fail.
  *
  * ⚠️ RUNS IN LIVE MODE, deliberately, unlike `dodo-change-plan-route.test.ts`.
- * Quarterly is `DODO_PRODUCT_UNMAPPED` in test mode, so a quarterly church
- * cannot be represented there at all — and quarterly is exactly the term whose
- * refusal message the founder would have found most confusing. These are also
- * the product ids a real card is charged against.
+ * These are the product ids a real card is charged against. (This note used to
+ * explain that the quarterly term was unmapped in test mode; the term was
+ * withdrawn on 2026-10-23 and no longer exists in either.)
  */
 
 vi.hoisted(() => {
@@ -65,10 +65,8 @@ vi.hoisted(() => {
  */
 const P = {
   individualMonthly: 'pdt_0NlJZKKU2AQSSH7E4ziKA',
-  individualQuarterly: 'pdt_0NloCamoWgvgYDih2UETS',
   individualYearly: 'pdt_0NlJZMLLKZ5SVGEoSGDdk',
   smallTeamMonthly: 'pdt_0NlJZMOMhmZWiG6UVDl8I',
-  smallTeamQuarterly: 'pdt_0NloCaqg1QPMAlkfDnlOe',
   smallTeamYearly: 'pdt_0NlJZMRWL8tuAZseUIRTP',
 } as const;
 
@@ -307,9 +305,8 @@ describe('an Individual tenant can change plan to Small Team on the same term', 
 
 // ── Test 2: the other two terms ──────────────────────────────────────────────
 
-describe('the same works on quarterly and on yearly', () => {
+describe('the same works on yearly', () => {
   const cases = [
-    { term: 'quarterly', from: P.individualQuarterly, to: P.smallTeamQuarterly },
     { term: 'yearly', from: P.individualYearly, to: P.smallTeamYearly },
   ] as const;
 
@@ -345,11 +342,11 @@ describe('the same works on quarterly and on yearly', () => {
 
 describe('a genuine term switch is still refused', () => {
   /**
-   * 🔴 THE-88 IS REAL AND THIS IS THE TEST THAT KEEPS IT. Nine products exist
+   * 🔴 THE-88 IS REAL AND THIS IS THE TEST THAT KEEPS IT. Six products exist
    * and a mismatched (plan, term) pair charges the wrong amount. Every cross-term
    * pair a monthly tenant could form is refused, and Dodo is never called.
    */
-  for (const requested of ['quarterly', 'yearly'] as const) {
+  for (const requested of ['yearly'] as const) {
     it(`refuses monthly → ${requested} and calls Dodo not at all`, async () => {
       seedIndividualOn(P.individualMonthly);
       asOwner();
@@ -366,6 +363,22 @@ describe('a genuine term switch is still refused', () => {
       expect(dodoStub.changePlan).not.toHaveBeenCalled();
     });
   }
+
+  it('refuses the withdrawn quarterly term as an unrecognised value, and calls Dodo not at all', async () => {
+    // The quarterly term was withdrawn on 2026-10-23. It is no longer a term the
+    // route reads, so it is refused at the boundary like any other unreadable
+    // value rather than reaching the term-switch guard — and never substituted.
+    seedIndividualOn(P.individualMonthly);
+    asOwner();
+    pastTrialOn(P.individualMonthly);
+
+    const res = await post(dodoChangePlan, {
+      tenantId: T.tenant, plan: 'pro', billing: 'quarterly', confirm: true,
+    });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain('Invalid plan/billing');
+    expect(dodoStub.changePlan).not.toHaveBeenCalled();
+  });
 
   it('refuses a term switch that does NOT move plan either', async () => {
     // The term guard runs BEFORE the same-plan refusal, so a pure term switch
@@ -396,7 +409,6 @@ describe('a subscription created by first-subscription records the same term as 
    */
   const terms = [
     { term: 'monthly', product: P.individualMonthly },
-    { term: 'quarterly', product: P.individualQuarterly },
     { term: 'yearly', product: P.individualYearly },
   ] as const;
 
@@ -517,31 +529,37 @@ describe('the checkout route still refuses when tenantId is set', () => {
 describe('no price or product id changed', () => {
   const repoFile = (rel: string) => readFileSync(resolve(join(process.cwd(), 'src', rel)), 'utf8');
 
-  it('pins the nine live product ids character-for-character', () => {
+  it('pins the six live product ids character-for-character', () => {
     const catalogue = repoFile('lib/dodo/catalogue.ts');
     for (const id of [
-      'pdt_0NlJZKKU2AQSSH7E4ziKA', 'pdt_0NloCamoWgvgYDih2UETS', 'pdt_0NlJZMLLKZ5SVGEoSGDdk',
-      'pdt_0NlJZMOMhmZWiG6UVDl8I', 'pdt_0NloCaqg1QPMAlkfDnlOe', 'pdt_0NlJZMRWL8tuAZseUIRTP',
-      'pdt_0NlJZMUUiT36FGMoiFXgl', 'pdt_0NloCatUWEkEUq1usWJ0n', 'pdt_0NlJZMXTnpRBAwTfBVpPs',
+      'pdt_0NlJZKKU2AQSSH7E4ziKA', 'pdt_0NlJZMLLKZ5SVGEoSGDdk',
+      'pdt_0NlJZMOMhmZWiG6UVDl8I', 'pdt_0NlJZMRWL8tuAZseUIRTP',
+      'pdt_0NlJZMUUiT36FGMoiFXgl', 'pdt_0NlJZMXTnpRBAwTfBVpPs',
     ]) {
       expect(catalogue, id).toContain(id);
     }
   });
 
-  it('pins the nine prices, by tier and term', async () => {
+  it('names none of the three archived quarterly products', () => {
+    const catalogue = repoFile('lib/dodo/catalogue.ts');
+    for (const id of ['pdt_0NloCamoWgvgYDih2UETS', 'pdt_0NloCaqg1QPMAlkfDnlOe', 'pdt_0NloCatUWEkEUq1usWJ0n']) {
+      expect(catalogue, `catalogue.ts names archived product ${id}`).not.toContain(id);
+      expect(resolvePlanFromProductId(id), `${id} still resolves`).toBeNull();
+    }
+  });
+
+  it('pins the six prices, by tier and term', async () => {
     const { PLAN_PRICING } = await import('@/utils/plan-features');
-    expect(PLAN_PRICING.plus).toMatchObject({ monthly: 20, quarterly: 54, yearly: 190 });
-    expect(PLAN_PRICING.pro).toMatchObject({ monthly: 40, quarterly: 108, yearly: 380 });
+    expect(PLAN_PRICING.plus).toMatchObject({ monthly: 20, yearly: 190 });
+    expect(PLAN_PRICING.pro).toMatchObject({ monthly: 40, yearly: 380 });
     // ⚠️ Moved by THE-343. The product ids this file pins are unchanged.
-    expect(PLAN_PRICING.max).toMatchObject({ monthly: 80, quarterly: 216, yearly: 752 });
+    expect(PLAN_PRICING.max).toMatchObject({ monthly: 80, yearly: 752 });
   });
 
   it('leaves every resolver mapping intact', () => {
     expect(resolvePlanFromProductId(P.individualMonthly)).toEqual({ plan: 'plus', period: 'monthly' });
-    expect(resolvePlanFromProductId(P.individualQuarterly)).toEqual({ plan: 'plus', period: 'quarterly' });
     expect(resolvePlanFromProductId(P.individualYearly)).toEqual({ plan: 'plus', period: 'yearly' });
     expect(resolvePlanFromProductId(P.smallTeamMonthly)).toEqual({ plan: 'pro', period: 'monthly' });
-    expect(resolvePlanFromProductId(P.smallTeamQuarterly)).toEqual({ plan: 'pro', period: 'quarterly' });
     expect(resolvePlanFromProductId(P.smallTeamYearly)).toEqual({ plan: 'pro', period: 'yearly' });
   });
 });

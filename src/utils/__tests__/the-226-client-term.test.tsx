@@ -14,6 +14,9 @@ import { createRoot } from 'react-dom/client';
  *
  *   toggle on Yearly     → {"tenantId":"final-test","plan":"pro","billing":"yearly"}
  *   toggle on Quarterly  → {"tenantId":"final-test","plan":"pro","billing":"quarterly"}
+ *                          (a third term, withdrawn on 2026-10-23; the page now
+ *                          offers Monthly and Yearly, and the yearly case below
+ *                          is the one that still exercises this)
  *   toggle untouched     → {"tenantId":"final-test","plan":"pro","billing":"monthly"}
  *
  * The tenant was on MONTHLY throughout — live Dodo subscription
@@ -114,7 +117,7 @@ describe('the client sends the term the tenant is on, never the toggle’s state
    * The regression, driven through the REAL page: browse another term's prices,
    * then change plan. Before the fix each of these posted the browsed term.
    */
-  for (const browsed of ['yearly', 'quarterly'] as const) {
+  for (const browsed of ['yearly'] as const) {
     it(`posts the tenant’s monthly term while the page is browsing ${browsed} prices`, async () => {
       const host = document.createElement('div');
       document.body.appendChild(host);
@@ -146,13 +149,13 @@ describe('the client sends the term the tenant is on, never the toggle’s state
   it('reads the term from the server even when a caller still passes the toggle', async () => {
     // `PlanUpgradeSection` is frozen under THE-225 and still passes `billing`.
     // That argument must be inert: the wire carries the server's answer.
-    state.termOnServer = 'quarterly';
+    state.termOnServer = 'yearly';
     const result = await runDodoPlanChange({
-      tenantId: TENANT, plan: 'pro', billing: 'yearly',
+      tenantId: TENANT, plan: 'pro', billing: 'monthly',
     });
     expect(result.ok).toBe(true);
-    expect(previewPost()?.body.billing).toBe('quarterly');
-    expect(confirmPost()?.body.billing).toBe('quarterly');
+    expect(previewPost()?.body.billing).toBe('yearly');
+    expect(confirmPost()?.body.billing).toBe('yearly');
   });
 
   it('asks the server BEFORE it posts, and asks the change-plan route itself', async () => {

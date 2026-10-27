@@ -360,6 +360,11 @@ describe('5 · the money path is byte-identical', () => {
     ],
     'src/app/api/dodo/change-plan/route.ts': [
       ['5ec0e4ce1bd22586e148d78dfb87f690ff6000f4519d81c0c3db48c224d6e298', 'main at 902763a'],
+      /* 🔴 APPENDED when the quarterly term was withdrawn, nothing above removed. COMMENT-ONLY: the
+         term-switch refusal's note no longer says "now that there are three terms", and no
+         statement, branch, status, message or field moved. The validator still reads BILLING_TERMS,
+         which is why `quarterly` is now answered 400 by it. */
+      ['3ca81a4639b1ce47e0e55a37e91f468953c8d3b915b1ef1f4dc07310bfe79b10', 'quarterly withdrawn — comment-only rewording of the term-switch note'],
     ],
     'src/lib/dodo/webhook-dispatch.ts': [
       ['6d5d6e18824efa41eb2b00273c60d8a4724eb15a9f9559fe83913950e07d0e5e', 'main at 902763a'],
@@ -736,14 +741,15 @@ describe('5 · the money path is byte-identical', () => {
 });
 
 describe('6 · no plan cap or price changed', () => {
-  it('the nine plan prices are exactly what they were', () => {
+  it('the six plan prices are exactly what they were', () => {
     expect(PLAN_PRICING).toEqual({
-      plus: { monthly: 20, quarterly: 54, yearly: 190 },
-      pro: { monthly: 40, quarterly: 108, yearly: 380 },
-      // ⚠️ THE-343 repriced Ministry ($80→$60, and THE-372 back to $80, with the quarter and year
-      // following at the same 10% / >20% discounts). `plus` and `pro` are
+      plus: { monthly: 20, yearly: 190 },
+      pro: { monthly: 40, yearly: 380 },
+      // ⚠️ THE-343 repriced Ministry ($80→$60, and THE-372 back to $80, with the year
+      // following at the same >20% discount). `plus` and `pro` are
       // enumerated so a reprice that overreached its brief still fails here.
-      max: { monthly: 80, quarterly: 216, yearly: 752 },
+      // (There were nine until the quarterly term was withdrawn on 2026-10-23.)
+      max: { monthly: 80, yearly: 752 },
     });
   });
 
@@ -865,6 +871,13 @@ describe('6 · no plan cap or price changed', () => {
       // code path, and no client write of `plan`. The add-on path (`||` in getEffectiveFeatures) is
       // untouched. The hunks are recorded in __fixtures__/plan-copy-exemption.ts.
       ['pr-540-r4-scheduler-ministry', '8ca381290333e0d02908a6289e15e3b6f6efe4e68a866a40f835f038891ad7d6'],
+      // APPENDED, never substituted (the quarterly term withdrawn; the user instructed it). The
+      // quarterly member leaves BILLING_TERMS, TERM_MONTHS, PLAN_PRICING, ADVERTISED_DISCOUNT_PCT,
+      // TERM_PRICE_SUFFIX and TERM_BILLED_PHRASE, and the prose around them is rewritten. Nine
+      // prices become six; no monthly or yearly price, no cap, no feature cell and no code path
+      // moved, and nothing writes `plan` from the client. The hunks are recorded in
+      // __fixtures__/plan-copy-exemption.ts (round 5) and pr-540.plan-copy-exemption.test.ts proves them.
+      ['quarterly-withdrawn', '691314fe71658a90b2a6f92a7d091c8c02507ce5193c743552cae921012fc4ef'],
     ];
     expect(sha256(readFileSync(path.join(REPO, 'src/utils/plan-features.ts')))).toBe(
       PLAN_FEATURES_PINS[PLAN_FEATURES_PINS.length - 1][1],

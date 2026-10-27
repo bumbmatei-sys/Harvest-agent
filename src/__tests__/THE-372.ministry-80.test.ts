@@ -58,22 +58,22 @@ const REPO = path.resolve(__dirname, '../..');
 const read = (rel: string): string => readFileSync(path.join(REPO, rel), 'utf8');
 
 /**
- * The three live Ministry products, transcribed from Dodo after the founder
- * repriced them — NOT from `PLAN_PRICING`, so asserting the two equal is a
+ * The live Ministry products, transcribed from Dodo after the founder
+ * repriced them (three then; the quarterly one, `pdt_0NloCatUWEkEUq1usWJ0n` at
+ * $216, was archived with its term and is gone from this list) — NOT from `PLAN_PRICING`, so asserting the two equal is a
  * check and not a restatement. Minor units; the unit is in the field name.
  */
 const DODO_MINISTRY_LIVE: ReadonlyArray<{ term: BillingTerm; productId: string; priceCents: number }> = [
   { term: 'monthly', productId: 'pdt_0NlJZMUUiT36FGMoiFXgl', priceCents: 8000 },
-  { term: 'quarterly', productId: 'pdt_0NloCatUWEkEUq1usWJ0n', priceCents: 21600 },
   { term: 'yearly', productId: 'pdt_0NlJZMXTnpRBAwTfBVpPs', priceCents: 75200 },
 ];
 
-/** All nine, written out: an equality check against a table derived from
+/** All six, written out: an equality check against a table derived from
  *  `PLAN_PRICING` could never fail. No row is excluded. */
-const ALL_NINE_USD = {
-  plus: { monthly: 20, quarterly: 54, yearly: 190 },
-  pro: { monthly: 40, quarterly: 108, yearly: 380 },
-  max: { monthly: 80, quarterly: 216, yearly: 752 },
+const ALL_SIX_USD = {
+  plus: { monthly: 20, yearly: 190 },
+  pro: { monthly: 40, yearly: 380 },
+  max: { monthly: 80, yearly: 752 },
 } as const;
 
 /* ── the swept tree ───────────────────────────────────────────────────────── */
@@ -137,9 +137,9 @@ function offerLabelHits(files: ReadonlyMap<string, string>): string[] {
 }
 
 /* ── 1 ──────────────────────────────────────────────────────────────────────── */
-describe('1 · Ministry is $80 monthly, $216 quarterly, $752 annual — and matches Dodo', () => {
+describe('1 · Ministry is $80 monthly and $752 annual — and matches Dodo', () => {
   it('in PLAN_PRICING, the one table', () => {
-    expect(PLAN_PRICING.max).toEqual({ monthly: 80, quarterly: 216, yearly: 752 });
+    expect(PLAN_PRICING.max).toEqual({ monthly: 80, yearly: 752 });
   });
 
   it('and every live Ministry product charges exactly that, product id by product id', () => {
@@ -151,23 +151,21 @@ describe('1 · Ministry is $80 monthly, $216 quarterly, $752 annual — and matc
       expect(termPriceUsd('max', term), `${term} catalogue`).toBe(priceCents / 100);
       // The unit crosses to dollars through the one formatter, never by hand.
       expect(formatCents(entry.priceMinorUnits)).toBe(`$${planPriceUsd('max', term)}.00`);
-      // All three keep the 14-day free trial.
+      // Both keep the 14-day free trial.
       expect(entry.trialDays, `${term} trial`).toBe(DODO_TRIAL_DAYS);
     }
     expect(DODO_TRIAL_DAYS).toBe(14);
   });
 
-  it('the quarter and year keep Ministry\'s discount RATIOS exactly — 2.7x and 9.4x', () => {
+  it('the year keeps Ministry\'s discount RATIO exactly — 9.4x', () => {
     // Integer arithmetic, so no float can round a wrong figure into a pass.
-    expect(PLAN_PRICING.max.quarterly * 10).toBe(PLAN_PRICING.max.monthly * 27);
+    // (The quarter's 2.7x went with the quarterly term.)
     expect(PLAN_PRICING.max.yearly * 10).toBe(PLAN_PRICING.max.monthly * 94);
   });
 
   it('and the app renders it that way — charged figure and per-month headline', () => {
     expect(formatPlanPrice('max', 'monthly')).toBe('$80/mo');
-    expect(formatPlanPrice('max', 'quarterly')).toBe('$216/qtr');
     expect(formatPlanPrice('max', 'yearly')).toBe('$752/yr');
-    expect(formatPlanMonthlyHeadline('max', 'quarterly')).toBe('$72');
     // $752 / 12 = $62.6667, CEILED at the cent: never implies less than the bill.
     expect(formatPlanMonthlyHeadline('max', 'yearly')).toBe('$62.67');
   });
@@ -176,11 +174,11 @@ describe('1 · Ministry is $80 monthly, $216 quarterly, $752 annual — and matc
 /* ── 2 ──────────────────────────────────────────────────────────────────────── */
 describe('2 · Individual and Small Team are unchanged', () => {
   it('six cells, enumerated, in the table and in the live catalogue', () => {
-    expect(PLAN_PRICING.plus).toEqual({ monthly: 20, quarterly: 54, yearly: 190 });
-    expect(PLAN_PRICING.pro).toEqual({ monthly: 40, quarterly: 108, yearly: 380 });
+    expect(PLAN_PRICING.plus).toEqual({ monthly: 20, yearly: 190 });
+    expect(PLAN_PRICING.pro).toEqual({ monthly: 40, yearly: 380 });
     for (const plan of ['plus', 'pro'] as const) {
       for (const term of BILLING_TERMS) {
-        expect(DODO_LIVE_CATALOGUE[plan][term].priceMinorUnits).toBe(ALL_NINE_USD[plan][term] * 100);
+        expect(DODO_LIVE_CATALOGUE[plan][term].priceMinorUnits).toBe(ALL_SIX_USD[plan][term] * 100);
       }
     }
   });
@@ -228,7 +226,7 @@ describe('3 · no surface shows a Ministry price of $60, $162 or $564', () => {
     expect(one(`// Ministry was ${D}564 a year\nexport const a = 1;`)).toEqual([]);
     expect(one(`export const s = 'Ministry, ${D}564/yr';`)).toHaveLength(1);
     expect(one(`export const s = 'Ministry is ${D}${'6'}0/mo';`)).toHaveLength(1);
-    expect(one(`export const t = { max: { ${'month'}ly: ${'6'}0, quarterly: 1, yearly: 2 } };`)).toHaveLength(1);
+    expect(one(`export const t = { max: { ${'month'}ly: ${'6'}0, yearly: 2 } };`)).toHaveLength(1);
     expect(one(`export const s = '${D}${'4'}${'7'}/mo';`)).toHaveLength(1);
     // And it does not fire on a figure that merely starts the same way.
     expect(one(`export const s = '${D}600 raised, ${D}1,620, ${D}47.50';`)).toEqual([]);
@@ -278,18 +276,18 @@ describe('5 · no crossed-out or "was" price — $80 is the price, not a discoun
 });
 
 /* ── 6 ──────────────────────────────────────────────────────────────────────── */
-describe('6 · all nine prices pass the strict equality check — no exclusion', () => {
+describe('6 · all six prices pass the strict equality check — no exclusion', () => {
   it('every cell, against the table written above and the live catalogue', () => {
     let cells = 0;
     for (const plan of PRICED_PLAN_ORDER) {
       for (const term of BILLING_TERMS) {
-        expect(PLAN_PRICING[plan][term], `${plan}/${term}`).toBe(ALL_NINE_USD[plan][term]);
+        expect(PLAN_PRICING[plan][term], `${plan}/${term}`).toBe(ALL_SIX_USD[plan][term]);
         expect(DODO_LIVE_CATALOGUE[plan][term].priceMinorUnits, `${plan}/${term} live`)
-          .toBe(ALL_NINE_USD[plan][term] * 100);
+          .toBe(ALL_SIX_USD[plan][term] * 100);
         cells += 1;
       }
     }
-    expect(cells).toBe(9);
+    expect(cells).toBe(6);
   });
 
   it('and the retired exclusion record is not back in any module, test or not', () => {
@@ -356,7 +354,7 @@ describe('10 · AGENTS.md and CLAUDE.md state no price — they point at the tab
         expect(text, `${doc} quotes $${f}`).not.toMatch(new RegExp(`\\$${f}(?![\\d,])`));
       }
     }
-    expect(read('AGENTS.md')).toContain('`PLAN_PRICING` for the nine prices');
+    expect(read('AGENTS.md')).toContain('`PLAN_PRICING` for the six prices');
   });
 });
 

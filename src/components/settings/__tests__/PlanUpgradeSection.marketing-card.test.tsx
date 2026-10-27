@@ -172,8 +172,8 @@ interface Baseline {
    * promise it. No class changed; two items stopped rendering.
    *
    * 🔴 THE CHROME ABOVE THE TRACK WAS DELIBERATELY NOT RE-RECORDED. This array
-   * is the layer as it stood BEFORE the three-segment billing toggle, and
-   * `TOGGLE_ROWS_ADDED` below is the 6-row delta that proves the toggle is the
+   * is the layer as it stood BEFORE the billing toggle grew a third segment, and
+   * `TOGGLE_ROWS_ADDED` below is the 3-row delta that proves the toggle is the
    * only thing that grew. Re-recording the whole layer from today's component
    * would fold the toggle into the baseline and quietly make that delta zero —
    * so only the slice `fromTrack` compares was replaced.
@@ -882,16 +882,21 @@ describe('6 — the sub-640px rendering changes only where the marketing match r
     return layer.slice(at).map((row) => row.split('\t').slice(1).join('\t'));
   };
   /**
-   * The two-segment toggle was: a flex container, two buttons, and an absolutely
+   * The baseline toggle was: a flex container, two buttons, and an absolutely
    * positioned badge inside the second — plus a conditional 🎉 line below it.
-   * The three-segment one is: a wrapper, a grid track, three buttons each with a
-   * label span, two of them carrying a badge span, and a claim line.
+   * The current one is: a wrapper, a grid track, two buttons each with a label
+   * span, one of them carrying a badge span, and a claim line.
+   *
+   * 🔴 THIS WAS 6 WITH A THIRD (QUARTERLY) SEGMENT. Withdrawing that term on
+   * 2026-10-23 removed one button, its label span and its badge span, which is
+   * exactly three rows, and nothing else in the layer moved — the measured
+   * figure went 10 → 7 for Individual, and the other two cards by the same 3.
    *
    * Pinned as a number so the growth is a stated quantity rather than whatever
    * the tree happens to produce. If the toggle changes again this fails and the
    * new figure has to be justified in the enumeration above.
    */
-  const TOGGLE_ROWS_ADDED = 6;
+  const TOGGLE_ROWS_ADDED = 3;
 
   /**
    * 🔴 THE-314 — SMS moved to Ministry, and the CARDS followed it.
@@ -1002,24 +1007,25 @@ describe('6 — the sub-640px rendering changes only where the marketing match r
     }
   });
 
-  it('grew the chrome by a THIRD TOGGLE SEGMENT and nothing else', () => {
+  it('has a TWO-SEGMENT TOGGLE, Monthly and Yearly, and nothing else', () => {
     // The other half of the split above: the card layer is pinned identical, so
-    // this is what has to account for the whole delta. Three segments, each a
-    // real button, and the badge INSIDE the segment rather than hung off it —
-    // an absolutely positioned badge is what clipped before PR 361.
+    // this is what has to account for the whole delta. Two segments (a third,
+    // Quarterly, was withdrawn on 2026-10-23), each a real button, and the badge
+    // INSIDE the segment rather than hung off it — an absolutely positioned
+    // badge is what clipped before PR 361.
     mount({ currentPlan: 'pro' });
     const segments = Array.from(container.querySelectorAll('[data-testid="billing-term-segment"]'));
-    expect(segments).toHaveLength(3);
-    expect(segments.map((b) => b.getAttribute('data-term'))).toEqual(['monthly', 'quarterly', 'yearly']);
-    expect(container.querySelectorAll('[data-testid="billing-term-badge"]')).toHaveLength(2);
+    expect(segments).toHaveLength(2);
+    expect(segments.map((b) => b.getAttribute('data-term'))).toEqual(['monthly', 'yearly']);
+    expect(container.querySelectorAll('[data-testid="billing-term-badge"]')).toHaveLength(1);
     for (const seg of segments) {
       expect(classesOf(seg), 'a segment hangs its badge outside the track').not.toContain('absolute');
-      expect(classesOf(seg), 'a segment cannot shrink, so three of them will overflow').toContain('min-w-0');
+      expect(classesOf(seg), 'a segment cannot shrink, so a row of them will overflow').toContain('min-w-0');
     }
     // The track divides its container rather than sizing to content.
     const toggle = container.querySelector('[data-testid="billing-term-toggle"]')!;
     expect(classesOf(toggle)).toContain('grid');
-    expect(classesOf(toggle)).toContain('grid-cols-3');
+    expect(classesOf(toggle)).toContain('grid-cols-2');
     expect(classesOf(toggle)).toContain('w-full');
   });
 
@@ -1123,25 +1129,25 @@ describe('7 — prices, the toggle and the blurbs', () => {
     }
   });
 
-  it('keeps a three-segment term toggle and its discount pills', () => {
+  it('keeps a two-segment term toggle and its discount pill', () => {
     mount();
     const toggle = (label: string) =>
       Array.from(container.querySelectorAll('button')).find((b) => (b.textContent || '').trim().startsWith(label))!;
 
-    // Three segments, and the pill is a PERCENTAGE now, not a months-free
+    // Two segments, and the pill is a PERCENTAGE now, not a months-free
     // count: 20% of a year is 2.4 months, so "-3mo" stopped being true.
     expect(toggle('Monthly')).toBeTruthy();
-    expect(toggle('Quarterly').textContent).toMatch(/−?-?10%/);
+    expect(toggle('Quarterly')).toBeUndefined();
     expect(toggle('Yearly').textContent).toMatch(/−?-?20%/);
     // 🔴 AND MONTHLY CARRIES NO PILL AT ALL — not an empty one, not a 0%.
     // An empty pill is worse than no pill: it reads as a discount whose figure
     // failed to render.
     expect(toggle('Monthly').textContent).not.toMatch(/%/);
     expect(toggle('Monthly').querySelector('[data-testid="billing-term-badge"]')).toBeNull();
-    expect(container.querySelectorAll('[data-testid="billing-term-segment"]')).toHaveLength(3);
+    expect(container.querySelectorAll('[data-testid="billing-term-segment"]')).toHaveLength(2);
 
-    for (const term of ['yearly', 'quarterly', 'monthly'] as const) {
-      const label = term === 'yearly' ? 'Yearly' : term === 'quarterly' ? 'Quarterly' : 'Monthly';
+    for (const term of ['yearly', 'monthly'] as const) {
+      const label = term === 'yearly' ? 'Yearly' : 'Monthly';
       act(() => { toggle(label).click(); });
       for (const plan of PRICED_PLAN_ORDER) {
         // THE-196: the headline is the per-month figure on every term.

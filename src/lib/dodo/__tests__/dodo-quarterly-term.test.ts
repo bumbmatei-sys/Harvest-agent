@@ -27,63 +27,72 @@ import { BILLING_TERMS, PRICED_PLAN_ORDER, PLAN_PRICING, planPriceUsd } from '@/
 
 /* ═══════════════════════════════════════════════════════════════════════════
    THE-195, the parts that live between the catalogue and the add-on table.
+
+   🔴 THE QUARTERLY TERM WAS WITHDRAWN ON 2026-10-23, and this file keeps its
+   name on purpose: other guards name it by path (THE-344's sweeps, the ownership
+   register), and it is now the suite that says the term is GONE rather than that
+   it works. The three quarterly Dodo products were archived; none had a live
+   subscription. What survives here is what was always about the catalogue and the
+   add-on table: ids disjoint, prices published in both units, the cycle each term
+   bills on, the add-on columns, and the price-literal sweep.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ─── TEST 2 ──────────────────────────────────────────────────────────────── */
-describe('the three quarterly product ids resolve', () => {
-  /** Read back from the authenticated LIVE Dodo API on 2026-08-20. */
-  const QUARTERLY = {
+describe('the quarterly term is gone from the catalogue; the other two stay distinct', () => {
+  /** The three live products archived on 2026-10-23. None may come back. */
+  const ARCHIVED_QUARTERLY = {
     plus: 'pdt_0NloCamoWgvgYDih2UETS',
     pro: 'pdt_0NloCaqg1QPMAlkfDnlOe',
     max: 'pdt_0NloCatUWEkEUq1usWJ0n',
   } as const;
 
-  it.each(PRICED_PLAN_ORDER)('%s resolves to its verified quarterly product', (plan) => {
-    expect(DODO_LIVE_CATALOGUE[plan].quarterly.productId).toBe(QUARTERLY[plan]);
+  it.each(PRICED_PLAN_ORDER)('%s has a monthly and a yearly product and no quarterly one', (plan) => {
+    expect(Object.keys(DODO_LIVE_CATALOGUE[plan])).toEqual(['monthly', 'yearly']);
+    expect(Object.values(DODO_LIVE_CATALOGUE[plan]).map((e) => e.productId)).not.toContain(ARCHIVED_QUARTERLY[plan]);
   });
 
-  it('gives each tier its OWN quarterly product — no id is shared', () => {
+  it('gives each tier its OWN product on each term — no id is shared', () => {
     // A shared id is a church on one tier billed at another's price, and it
-    // would satisfy every per-tier assertion above taken one at a time.
-    const ids = PRICED_PLAN_ORDER.map((p) => DODO_LIVE_CATALOGUE[p].quarterly.productId);
-    expect(new Set(ids).size).toBe(ids.length);
-  });
-
-  it('never collides with a monthly or annual id', () => {
-    const others = PRICED_PLAN_ORDER.flatMap((p) => [
-      DODO_LIVE_CATALOGUE[p].monthly.productId,
-      DODO_LIVE_CATALOGUE[p].yearly.productId,
-    ]);
-    for (const plan of PRICED_PLAN_ORDER) {
-      expect(others).not.toContain(DODO_LIVE_CATALOGUE[plan].quarterly.productId);
+    // would satisfy every per-tier assertion taken one at a time.
+    for (const term of BILLING_TERMS) {
+      const ids = PRICED_PLAN_ORDER.map((p) => DODO_LIVE_CATALOGUE[p][term].productId);
+      expect(new Set(ids).size).toBe(ids.length);
     }
   });
 
-  it('publishes the quarterly price this app charges, in both units', () => {
-    // ✅ AND ON MINISTRY IT IS THE SAME NUMBER AGAIN. THE-372 put Ministry's
-    // quarter back to $216 (21600); the founder repriced the live product in
-    // Dodo first and verified it, so the catalogue and live Dodo agree on all
-    // three quarters. These figures are still what the CATALOGUE
-    // publishes, which is what a checkout cart is built from; the live side is
-    // pinned per product id in dodo-catalogue.test.ts, which owns it.
-    const CENTS = { plus: 5400, pro: 10800, max: 21600 } as const;
+  it('never collides a monthly id with a yearly one', () => {
+    const monthly = PRICED_PLAN_ORDER.map((p) => DODO_LIVE_CATALOGUE[p].monthly.productId);
+    const yearly = PRICED_PLAN_ORDER.map((p) => DODO_LIVE_CATALOGUE[p].yearly.productId);
+    for (const id of monthly) expect(yearly).not.toContain(id);
+  });
+
+  it('publishes the price this app charges, in both units', () => {
+    // ✅ These are what the CATALOGUE publishes, which is what a checkout cart is
+    // built from; the live side is pinned per product id in
+    // dodo-catalogue.test.ts, which owns it.
+    const CENTS = {
+      plus: { monthly: 2000, yearly: 19000 },
+      pro: { monthly: 4000, yearly: 38000 },
+      max: { monthly: 8000, yearly: 75200 },
+    } as const;
     for (const plan of PRICED_PLAN_ORDER) {
-      expect(DODO_LIVE_CATALOGUE[plan].quarterly.priceMinorUnits).toBe(CENTS[plan]);
-      expect(DODO_LIVE_CATALOGUE[plan].quarterly.priceUsd).toBe(CENTS[plan] / 100);
-      expect(planPriceUsd(plan, 'quarterly')).toBe(CENTS[plan] / 100);
+      for (const term of BILLING_TERMS) {
+        expect(DODO_LIVE_CATALOGUE[plan][term].priceMinorUnits).toBe(CENTS[plan][term]);
+        expect(DODO_LIVE_CATALOGUE[plan][term].priceUsd).toBe(CENTS[plan][term] / 100);
+        expect(planPriceUsd(plan, term)).toBe(CENTS[plan][term] / 100);
+      }
     }
   });
 
-  it('bills quarterly as 3 × Month, which is how Dodo expresses a quarter', () => {
-    expect(DODO_TERM_FREQUENCY.quarterly).toEqual({ count: 3, interval: 'Month' });
+  it('bills a month as 1 x Month and a year as 1 x Year, and has no 3 x Month cycle', () => {
     expect(DODO_TERM_FREQUENCY.monthly).toEqual({ count: 1, interval: 'Month' });
     expect(DODO_TERM_FREQUENCY.yearly).toEqual({ count: 1, interval: 'Year' });
+    expect(Object.keys(DODO_TERM_FREQUENCY)).toEqual(['monthly', 'yearly']);
   });
 
   it("carries the app's own word into the product metadata, not Dodo's", () => {
-    // Dodo says `annual` where the app says `yearly`; quarterly is the same word
-    // on both sides. The reconciliation lives in catalogue.ts and nowhere else.
-    expect(DODO_LIVE_CATALOGUE.max.quarterly.dodoBillingPeriod).toBe('quarterly');
+    // Dodo says `annual` where the app says `yearly`. The reconciliation lives in
+    // catalogue.ts and nowhere else.
     expect(DODO_LIVE_CATALOGUE.max.yearly.dodoBillingPeriod).toBe('annual');
     expect(DODO_LIVE_CATALOGUE.max.monthly.dodoBillingPeriod).toBe('monthly');
   });
@@ -91,23 +100,28 @@ describe('the three quarterly product ids resolve', () => {
 
 /* ─── TEST 9 ──────────────────────────────────────────────────────────────── */
 describe('every add-on price is unchanged and add-ons are still not discounted annually', () => {
-  it('🔴 a quarterly plan buys add-ons from the MONTHLY column', () => {
-    // Dodo charges an add-on on its PRODUCT's cycle, and a quarterly product
-    // cycles in months — verified against the live API, where all three
-    // quarterly products carry the monthly add-on ids. So a quarterly church
-    // pays the MONTHLY add-on price, every month, exactly as a monthly church
-    // does. There is no quarterly add-on and none was invented.
-    expect(addonPeriodFor('quarterly')).toBe('monthly');
+  it('🔴 a monthly plan buys add-ons from the MONTHLY column and a yearly plan from the YEARLY one', () => {
+    // Dodo charges an add-on on its PRODUCT's cycle, so the add-on column is the
+    // plan's own term. There is no third add-on column and none was invented.
     expect(addonPeriodFor('monthly')).toBe('monthly');
     expect(addonPeriodFor('yearly')).toBe('yearly');
     for (const meaning of ['aiAssistant', 'adminSeat', 'unlimitedContacts'] as const) {
-      expect(addonIdFor(meaning, 'quarterly')).toBe(addonIdFor(meaning, 'monthly'));
-      expect(addonIdFor(meaning, 'quarterly')).not.toBe(addonIdFor(meaning, 'yearly'));
+      expect(addonIdFor(meaning, 'monthly')).not.toBe(addonIdFor(meaning, 'yearly'));
     }
   });
 
-  it('offers a quarterly church exactly what a monthly one is offered', () => {
-    expect(offerableAddonMeanings('quarterly')).toEqual(offerableAddonMeanings('monthly'));
+  it('floors a legacy stored term to the monthly column rather than throwing', () => {
+    // A tenant document written while the quarterly term existed may still say
+    // `quarterly`. That value is no longer a `BillingPeriod`, but a stored string
+    // can be anything, so the one reconciliation function must answer for it:
+    // such a church is quoted the MONTHLY add-on price, which is what its
+    // quarterly product actually charged, and is never refused a card.
+    expect(addonPeriodFor('quarterly' as never)).toBe('monthly');
+  });
+
+  it('offers a monthly church the three add-ons the table maps', () => {
+    expect(offerableAddonMeanings('monthly')).toEqual(['aiAssistant', 'adminSeat', 'unlimitedContacts']);
+    expect(offerableAddonMeanings('yearly')).toEqual(offerableAddonMeanings('monthly'));
   });
 
   it('grew no third column in the add-on table', () => {
@@ -118,8 +132,8 @@ describe('every add-on price is unchanged and add-ons are still not discounted a
     }
   });
 
-  it('pins the live monthly add-on ids the quarterly products actually attach', () => {
-    // Transcribed from the live quarterly products' `addons` arrays. THE-370
+  it('pins the live monthly add-on ids the monthly products actually attach', () => {
+    // Transcribed from the live products' `addons` arrays. THE-370
     // detached Campus and Contacts +500 from every plan product, so the three
     // below are the whole attachment now. Asserted against DODO_LIVE_ADDONS
     // rather than through
@@ -158,7 +172,7 @@ describe('no price literal appears outside the single source', () => {
 
   /**
    * `PLAN_PRICING` in utils/plan-features.ts is the ONE place a plan price is
-   * written. Its own test file states the nine numbers independently, which is
+   * written. Its own test file states the six numbers independently, which is
    * what makes that file a checked claim rather than a loose copy.
    */
   const PRICE_BEARING = ['utils/plan-features.ts'];
@@ -199,7 +213,12 @@ describe('no price literal appears outside the single source', () => {
    * figures and are banned outright. A mutation that put `$39/mo` back into the AdminTenants labels is
    * the case this catches, and it is the same mutation `$49/mo` used to be.
    */
-  const RETIRED = ['441', '891', '1791', '37', '74', '149', '39', '79', '159', '399', '1329'];
+  const RETIRED = [
+    '441', '891', '1791', '37', '74', '149', '39', '79', '159', '399', '1329',
+    // The quarterly term's three prices, retired with it on 2026-10-23. Each is
+    // a price on no tier and no term now.
+    '54', '108', '216',
+  ];
 
   it('finds the modules to scan at all', () => {
     expect(modules.length).toBeGreaterThan(50);
@@ -234,7 +253,7 @@ describe('no price literal appears outside the single source', () => {
     }
   });
 
-  it('leaves PLAN_PRICING as the only table, with the nine numbers in it', () => {
+  it('leaves PLAN_PRICING as the only table, with the six numbers in it', () => {
     expect(Object.keys(PLAN_PRICING).sort()).toEqual([...PRICED_PLAN_ORDER].sort());
     for (const plan of PRICED_PLAN_ORDER) {
       expect(Object.keys(PLAN_PRICING[plan]).sort()).toEqual([...BILLING_TERMS].sort());

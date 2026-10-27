@@ -201,18 +201,18 @@ describe('🔴 the comment stripper is verified before any guard relies on it', 
 
 /* ── 1 & 2 · the table ────────────────────────────────────────────────────── */
 describe('1 & 2 · PLAN_PRICING.max is exactly what THE-372 restored, and nothing else moved', () => {
-  it('max is exactly { monthly: 80, quarterly: 216, yearly: 752 } (moved at THE-372)', () => {
-    expect(PLAN_PRICING.max).toEqual({ monthly: 80, quarterly: 216, yearly: 752 });
+  it('max is exactly { monthly: 80, yearly: 752 } (moved at THE-372; the quarter went on 2026-10-23)', () => {
+    expect(PLAN_PRICING.max).toEqual({ monthly: 80, yearly: 752 });
   });
 
   it('🔴 plus and pro are UNCHANGED — enumerated, every cell', () => {
-    expect(PLAN_PRICING.plus).toEqual({ monthly: 20, quarterly: 54, yearly: 190 });
-    expect(PLAN_PRICING.pro).toEqual({ monthly: 40, quarterly: 108, yearly: 380 });
+    expect(PLAN_PRICING.plus).toEqual({ monthly: 20, yearly: 190 });
+    expect(PLAN_PRICING.pro).toEqual({ monthly: 40, yearly: 380 });
     // As one object too, so a FOURTH tier cannot appear unnoticed.
     expect(PLAN_PRICING).toEqual({
-      plus: { monthly: 20, quarterly: 54, yearly: 190 },
-      pro: { monthly: 40, quarterly: 108, yearly: 380 },
-      max: { monthly: 80, quarterly: 216, yearly: 752 },
+      plus: { monthly: 20, yearly: 190 },
+      pro: { monthly: 40, yearly: 380 },
+      max: { monthly: 80, yearly: 752 },
     });
   });
 
@@ -221,25 +221,29 @@ describe('1 & 2 · PLAN_PRICING.max is exactly what THE-372 restored, and nothin
     for (const plan of PRICED_PLAN_ORDER) expect(Object.isFrozen(PLAN_PRICING[plan])).toBe(true);
   });
 
-  it('THE-343 was a cut on every term; THE-372 reversed it on month and quarter, and the year stays below THE-248', () => {
-    // ⚠️ INVERTED AT THE-372. THE-343 cut all three from THE-248's 80 / 216 /
-    // 760. THE-372 restored the month and the quarter exactly and derived the
-    // year from THE-343's ratio, so it lands at 752 — still $8 under 760.
-    const THE_248 = { monthly: 80, quarterly: 216, yearly: 760 } as const;
+  it('THE-343 was a cut on every term; THE-372 reversed it on the month, and the year stays below THE-248', () => {
+    // ⚠️ INVERTED AT THE-372. THE-343 cut all three terms from THE-248's 80 /
+    // 216 / 760. THE-372 restored the month exactly and derived the year from
+    // THE-343's ratio, so it lands at 752 — still $8 under 760. (The 216 quarter
+    // was withdrawn with the term on 2026-10-23.)
+    const THE_248 = { monthly: 80, yearly: 760 } as const;
     expect(PLAN_PRICING.max.monthly).toBe(THE_248.monthly);
-    expect(PLAN_PRICING.max.quarterly).toBe(THE_248.quarterly);
     expect(PLAN_PRICING.max.yearly).toBeLessThan(THE_248.yearly);
   });
 });
 
 /* ── 3 & 4 · the discounts ────────────────────────────────────────────────── */
 describe('3 & 4 · the delivered discounts, and the validator', () => {
-  it('🔴 quarterly is EXACTLY 10% off on all three tiers', () => {
+  it('🔴 there is no quarterly term — withdrawn 2026-10-23, so it is sold nowhere', () => {
+    // The quarter was exactly 10% off on all three tiers. It is gone from the
+    // term list, the price table and the discount table, so it cannot be
+    // selected, priced or advertised.
+    expect([...BILLING_TERMS]).toEqual(['monthly', 'yearly']);
     for (const plan of PRICED_PLAN_ORDER) {
-      expect(actualSavingPct(plan, 'quarterly'), `${plan} quarterly`).toBe(10);
-      // Stated as arithmetic too, so the claim is legible without the helper.
-      expect(planPriceUsd(plan, 'quarterly')).toBe(planPriceUsd(plan, 'monthly') * 3 * 0.9);
+      expect(Object.keys(PLAN_PRICING[plan]), `${plan} still carries a quarterly price`)
+        .toEqual(['monthly', 'yearly']);
     }
+    expect(Object.keys(ADVERTISED_DISCOUNT_PCT)).toEqual(['yearly']);
   });
 
   it('🔴 THE DELIVERED YEARLY PERCENTAGES, per tier — Ministry now differs', () => {
@@ -260,10 +264,8 @@ describe('3 & 4 · the delivered discounts, and the validator', () => {
   it('🔴 the module-scope validator PASSES — proved by the module having loaded', () => {
     // The guard runs at import. If it threw, nothing in this file would run at
     // all — so this assertion is really about the wording it feeds.
-    expect(ADVERTISED_DISCOUNT_PCT).toEqual({ quarterly: 10, yearly: 20 });
-    expect(discountClaimShape('quarterly')).toBe('flat');
+    expect(ADVERTISED_DISCOUNT_PCT).toEqual({ yearly: 20 });
     expect(discountClaimShape('yearly')).toBe('flat');
-    expect(discountClaim('quarterly')).toBe('Save 10%');
     expect(discountClaim('yearly')).toBe('Save 20%');
     for (const term of DISCOUNTED_TERMS) {
       expect(discountClaim(term), `${term} hedged`).not.toContain('up to');
@@ -278,16 +280,14 @@ describe('3 & 4 · the delivered discounts, and the validator', () => {
 
   it('🔴 and the advertised figures were NOT bent to make the validator pass', () => {
     // The STOP condition on this ticket: if the validator had thrown, the fix
-    // was never to lower the advertised percentage. Both are still the
-    // founder's round numbers, and the source still STORES rather than computes.
-    expect(ADVERTISED_DISCOUNT_PCT.quarterly).toBe(10);
+    // was never to lower the advertised percentage. It is still the founder's
+    // round number, and the source still STORES rather than computes.
     expect(ADVERTISED_DISCOUNT_PCT.yearly).toBe(20);
     const decl = PLAN_FEATURES_CODE.slice(
       PLAN_FEATURES_CODE.indexOf('export const ADVERTISED_DISCOUNT_PCT'),
     ).slice(0, 200);
     expect(decl.length, 'the declaration slice is empty — this guard would be vacuous')
       .toBeGreaterThan(50);
-    expect(decl).toContain('quarterly: 10');
     expect(decl).toContain('yearly: 20');
     // Not derived from the prices: no call into the saving helper here.
     expect(decl).not.toContain('actualSavingPct');
@@ -326,10 +326,10 @@ describe("5 · Ministry's monthly equivalent", () => {
   it('the other two tiers keep the cents they already had', () => {
     expect(formatPlanMonthlyHeadline('plus', 'yearly')).toBe('$15.84');
     expect(formatPlanMonthlyHeadline('pro', 'yearly')).toBe('$31.67');
-    // All three quarters still divide exactly.
-    expect(formatPlanMonthlyHeadline('plus', 'quarterly')).toBe('$18');
-    expect(formatPlanMonthlyHeadline('pro', 'quarterly')).toBe('$36');
-    expect(formatPlanMonthlyHeadline('max', 'quarterly')).toBe('$72');
+    // The monthly column divides exactly by definition.
+    expect(formatPlanMonthlyHeadline('plus', 'monthly')).toBe('$20');
+    expect(formatPlanMonthlyHeadline('pro', 'monthly')).toBe('$40');
+    expect(formatPlanMonthlyHeadline('max', 'monthly')).toBe('$80');
   });
 
   it('🔴 and no headline promises less than the bill, on any tier or term', () => {
@@ -347,7 +347,6 @@ describe("5 · Ministry's monthly equivalent", () => {
 describe('6 · no price literal on a surface — every figure goes through the helpers', () => {
   it('formatPlanPrice renders the charged figure and its cycle, per tier and term', () => {
     expect(formatPlanPrice('max', 'monthly')).toBe('$80/mo');
-    expect(formatPlanPrice('max', 'quarterly')).toBe('$216/qtr');
     expect(formatPlanPrice('max', 'yearly')).toBe('$752/yr');
     expect(formatPlanPrice('plus', 'monthly')).toBe('$20/mo');
     expect(formatPlanPrice('pro', 'yearly')).toBe('$380/yr');
@@ -399,7 +398,7 @@ describe('6 · no price literal on a surface — every figure goes through the h
         .some((price) => new RegExp(`\\$${price}(?![\\d.])`).test(lit));
     expect(catches('Ministry is $80/mo'), 'a planted $80 would not be caught').toBe(true);
     expect(catches('billed as $752 every 12 months'), 'a planted $752 would not be caught').toBe(true);
-    expect(catches('$216/qtr'), 'a planted $216 would not be caught').toBe(true);
+    expect(catches('$190/yr'), 'a planted $190 would not be caught').toBe(true);
     // And it does NOT fire on things that are not plan prices.
     expect(catches('borderRadius 60'), 'a bare number was read as a price').toBe(false);
     expect(catches('$600 raised'), 'a longer figure was read as a price').toBe(false);
@@ -536,10 +535,10 @@ describe('the Dodo reprice, which THE-344 completed', () => {
    *  front; it is now the same figure the app publishes, which is what makes
    *  asserting the two EQUAL a check rather than a restatement.
    *  ⚠️ MOVED AT THE-372: the founder repriced the three products to $80 /
-   *  $216 / $752 in Dodo first and verified them; the app followed. */
+   *  $216 / $752 in Dodo first and verified them; the app followed. The $216
+   *  quarterly product was archived on 2026-10-23 with the term. */
   const MINISTRY = {
     monthly: { live: 8000, app: 8000, id: 'pdt_0NlJZMUUiT36FGMoiFXgl' },
-    quarterly: { live: 21600, app: 21600, id: 'pdt_0NloCatUWEkEUq1usWJ0n' },
     yearly: { live: 75200, app: 75200, id: 'pdt_0NlJZMXTnpRBAwTfBVpPs' },
   } as const;
 
@@ -561,7 +560,7 @@ describe('the Dodo reprice, which THE-344 completed', () => {
       expect(entry.priceMinorUnits, `${term} app-side minor units`).toBe(MINISTRY[term].app);
     }
     expect(BILLING_TERMS.map((t) => DODO_LIVE_CATALOGUE.max[t].priceMinorUnits))
-      .toEqual([8000, 21600, 75200]);
+      .toEqual([8000, 75200]);
   });
 
   it('🔴 and the window is CLOSED: the app and live Dodo agree on all three', () => {
@@ -588,7 +587,6 @@ describe('the Dodo reprice, which THE-344 completed', () => {
       expect(DODO_LIVE_CATALOGUE.max[term].trialDays, `${term} trial`).toBe(14);
     }
     expect(DODO_LIVE_CATALOGUE.max.yearly.dodoBillingPeriod).toBe('annual');
-    expect(DODO_LIVE_CATALOGUE.max.quarterly.dodoBillingPeriod).toBe('quarterly');
     expect(DODO_LIVE_CATALOGUE.max.monthly.dodoBillingPeriod).toBe('monthly');
   });
 });

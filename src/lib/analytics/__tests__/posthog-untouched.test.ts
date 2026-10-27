@@ -426,7 +426,14 @@ const PINNED: ReadonlyArray<readonly [string, ...string[]]> = [
   //     passed validation and reached `requireProductId('free', …)`. They now
   //     validate against `PRICED_PLAN_ORDER` and answer 400, which is asserted
   //     in dodo-checkout-quarterly-term.test.ts.
-  ['src/app/api/dodo/addons/route.ts', '0a7f2bcae18c89f25f4eefa8fc6ccd263a0e45d46ad968ca934465d9ab659322'],
+  // APPENDED, never substituted, when the quarterly billing term was withdrawn (the user instructed it).
+  // COMMENT-ONLY here: the add-on route's note no longer describes a quarterly church. The
+  // `addonPeriodFor(context.period)` reconciliation and every statement are unchanged.
+  [
+    'src/app/api/dodo/addons/route.ts',
+    '0a7f2bcae18c89f25f4eefa8fc6ccd263a0e45d46ad968ca934465d9ab659322',
+    'e3099c3c20744dab647b85df1dab1a69aec569439d3e44f201c1c9e8fbdf71a6',
+  ],
   // 🔴 REPINNED FOR THE-226, AND WHAT DID NOT MOVE.
   //
   // The plan-change route gained a GET that REPORTS the term a tenant is billed
@@ -445,8 +452,20 @@ const PINNED: ReadonlyArray<readonly [string, ...string[]]> = [
   // then the same `resolveDodoSubscriptionContext` the POST runs, so it is
   // behind every guard the POST is behind and can only ever answer with a pair
   // the POST would itself have resolved.
-  ['src/app/api/dodo/change-plan/route.ts', '5ec0e4ce1bd22586e148d78dfb87f690ff6000f4519d81c0c3db48c224d6e298'],
-  ['src/app/api/dodo/checkout/route.ts', '0e992294895880a5148b61f864869326fd6092c31fe8169cb878a8eee4a08776'],
+  // APPENDED, never substituted, when the quarterly billing term was withdrawn (the user instructed it).
+  // COMMENT-ONLY in both routes: the term-switch note and `readPeriod`'s history are reworded; no
+  // statement moved. Both still validate against BILLING_TERMS, which is two members now, so a
+  // `quarterly` body is answered 400 by the validator that already existed.
+  [
+    'src/app/api/dodo/change-plan/route.ts',
+    '5ec0e4ce1bd22586e148d78dfb87f690ff6000f4519d81c0c3db48c224d6e298',
+    '3ca81a4639b1ce47e0e55a37e91f468953c8d3b915b1ef1f4dc07310bfe79b10',
+  ],
+  [
+    'src/app/api/dodo/checkout/route.ts',
+    '0e992294895880a5148b61f864869326fd6092c31fe8169cb878a8eee4a08776',
+    '66c3da3e33d2fc111cab839951d4da17cf103a5564c820508c3abdb5866e5aff',
+  ],
   // THE-302 appended: a failed idempotency reservation is answered 5xx so Dodo
   // redelivers, instead of being reported as an already-handled duplicate.
   [
@@ -548,15 +567,25 @@ const PINNED: ReadonlyArray<readonly [string, ...string[]]> = [
   // still throws at module scope during the marketing site's prerender, and the
   // three surviving add-on ids — Unlimited Contacts' included, whose Dodo PRICE
   // moved — are unchanged, which is the property `the-248` pins.
+  // APPENDED, never substituted, when the quarterly billing term was withdrawn (the user instructed it).
+  // THE THREE QUARTERLY ROWS (one per tier) and their ids leave the live catalogue, and
+  // `DODO_TERM_FREQUENCY` / `DODO_BILLING_PERIOD` / `DodoBillingPeriod` lose the quarterly member.
+  // The six remaining product ids and every price derivation are byte-identical, and the three
+  // archived ids are pinned as absent in dodo-catalogue.test.ts.
   ['src/lib/dodo/catalogue.ts',
     '63819b7313479a5b351f56e10c6f43752453ac40cd743fdca2389ab6e5b193d7',
-    'd23c8fbfa59ef31f55ca196964f72959f8e2b5f9d25d29349adc08ff352d0a32'],
+    'd23c8fbfa59ef31f55ca196964f72959f8e2b5f9d25d29349adc08ff352d0a32',
+    '68e2f4d2f7537d129c768c551b7abb5a4890c1c5def71c1f174b6d649ad374e3'],
   ['src/lib/dodo/config.ts', '1ecb3d021960e7b4c09f0a1d15324e74978cda97799830709ae6f6f3cfdfb26a'],
   ['src/lib/dodo/dodo-provider.ts', '2b3e0b168d87b8b88c231fe49a450bc9416561f1a32a7668bd207bd7861d125d'],
   ['src/lib/dodo/events.ts', '0b94d1275c6120a0ccb5c4dfeb3f5c68545e6ecbccf7c276ad87910985034ea9'],
   ['src/lib/dodo/lifecycle.ts', 'cbb85d69d7fccf88f6cf41598f64e5a24e4d4f723c5eab46071fdea9c8aaf1c2'],
   ['src/lib/dodo/plan-change.ts', '7f583417d59d476ddc41c6530acbfe3cd9dcaaf9e8d15279842b9d3db984ce9f'],
-  ['src/lib/dodo/provider.ts', '81a795086eee9b9c0d9599bf1cbdf65ceb6820dcd3453629bad5c2838d187bb9'],
+  // APPENDED, never substituted, when the quarterly billing term was withdrawn (the user instructed it).
+  // COMMENT-ONLY: `BillingPeriod`'s note no longer calls quarterly Dodo's 3 x Month cycle.
+  ['src/lib/dodo/provider.ts',
+    '81a795086eee9b9c0d9599bf1cbdf65ceb6820dcd3453629bad5c2838d187bb9',
+    'bd995fd18416d9e80988502642e7b6eec8c95863902f380cd273a181aaa84e08'],
   // ─── THE-203 REGENERATED THIS ONE, deliberately and with reason ───────────
   //
   // Two changes, both structural, neither touching what an existing paid signup

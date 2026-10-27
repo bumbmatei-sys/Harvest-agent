@@ -38,17 +38,16 @@ export async function GET() {
       //
       // 🔴 `null` FOR THE FOREVER FREE TIER, not a block of zeros. Free has no
       // price and no billing term, so there is no `monthlyUsd` to state and no
-      // "original" for a saving to be measured against — `quarterlyOriginalUsd:
+      // "original" for a saving to be measured against — `yearlyOriginalUsd:
       // 0` would invite the consumer to render "$0, was $0, save 0%". `null` is
       // the one value a marketing card cannot mistake for a price, and the free
       // card must lead with the audience and the 500-member cap rather than a
-      // figure. The three priced entries' shape is UNCHANGED.
+      // figure. `quarterlyUsd` and `quarterlyOriginalUsd` are gone with the
+      // quarterly term (2026-10-23); no consumer should read them.
       pricing: isPricedPlan(id)
         ? {
             monthlyUsd: PLAN_PRICING[id].monthly,
-            quarterlyUsd: PLAN_PRICING[id].quarterly,
             yearlyUsd: PLAN_PRICING[id].yearly,
-            quarterlyOriginalUsd: PLAN_PRICING[id].monthly * TERM_MONTHS.quarterly,
             yearlyOriginalUsd: PLAN_PRICING[id].monthly * TERM_MONTHS.yearly,
           }
         : null,
