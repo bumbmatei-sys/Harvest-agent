@@ -272,6 +272,8 @@ describe('SocialScheduler', () => {
     const platforms = container.querySelector('[aria-label="Platforms"]');
     const youtube = [...(platforms?.querySelectorAll('button') ?? [])].find((button) => button.textContent === 'YouTube');
     await act(async () => { youtube?.click(); });
+    expect(container.textContent).not.toContain('LinkedIn');
+    expect(container.textContent).not.toContain('Twitter');
     expect(container.textContent).toContain('YouTube needs exactly one video.');
     expect([...container.querySelectorAll('button')].find((button) => button.textContent === 'Schedule')?.disabled).toBe(true);
   });

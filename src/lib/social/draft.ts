@@ -49,7 +49,7 @@ export function parseSocialDraft(body: unknown, now = new Date(), context?: { te
       if (base.protocol !== 'https:' || base.username || base.password || base.search || base.hash ||
         url.origin !== base.origin || url.username || url.password || url.search || url.hash ||
         !url.pathname.startsWith(`${basePath}/`) ||
-        !isTenantUploadKey(url.pathname.slice(basePath.length + 1), context.tenantId)) {
+        !isTenantUploadKey(url.pathname.slice(basePath.length + 1).replace(/^\/+/, ''), context.tenantId)) {
         return { ok: false, error: 'media_invalid' };
       }
     } catch {

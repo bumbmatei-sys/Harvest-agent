@@ -3,6 +3,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { ArrowLeft, ArrowRight, ImageIcon, ImagePlus, Play, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { SOCIAL_MEDIA_MIME_TYPES, validateSocialMedia } from '@/lib/social/media-rules';
 import { uploadSocialMedia } from '@/lib/social/upload-media';
@@ -35,7 +36,7 @@ export function PostMediaThumb({ media }: { media: readonly SocialMedia[] }) {
 }
 
 export function MediaAttachments({ items, setItems, children }: { items: Attachment[]; setItems: React.Dispatch<React.SetStateAction<Attachment[]>>; children?: ReactNode }) {
-  const input = useRef<HTMLInputElement>(null);
+  const inputWrap = useRef<HTMLDivElement>(null);
   const root = useRef<HTMLDivElement>(null);
 
   async function addFiles(files: File[]) {
@@ -96,7 +97,9 @@ export function MediaAttachments({ items, setItems, children }: { items: Attachm
   return (
     <div ref={root} className="flex flex-col gap-2">
       {children}
-      <input ref={input} type="file" multiple accept={[...SOCIAL_MEDIA_MIME_TYPES.image, ...SOCIAL_MEDIA_MIME_TYPES.video].join(',')} className="sr-only" aria-label="Choose media files" onChange={(event) => { void addFiles(Array.from(event.target.files || [])); event.target.value = ''; }} />
+      <div ref={inputWrap} className="hidden">
+        <Input type="file" multiple accept={[...SOCIAL_MEDIA_MIME_TYPES.image, ...SOCIAL_MEDIA_MIME_TYPES.video].join(',')} aria-label="Choose media files" onChange={(event) => { void addFiles(Array.from(event.target.files || [])); event.target.value = ''; }} />
+      </div>
       <div className="flex flex-wrap gap-2">
         {items.map((item, index) => (
           <div key={item.id} className="w-36 rounded-lg border border-line bg-card p-2">
@@ -113,7 +116,7 @@ export function MediaAttachments({ items, setItems, children }: { items: Attachm
           </div>
         ))}
       </div>
-      <div><Button type="button" variant="outline" className="min-h-[44px] sm:min-h-[38px]" onClick={() => input.current?.click()}><ImagePlus className="size-4" aria-hidden />Add media</Button></div>
+      <div><Button type="button" variant="outline" className="min-h-[44px] sm:min-h-[38px]" onClick={() => inputWrap.current?.querySelector('input')?.click()}><ImagePlus className="size-4" aria-hidden />Add media</Button></div>
     </div>
   );
 }

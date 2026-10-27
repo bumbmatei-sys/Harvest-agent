@@ -8,23 +8,17 @@ import { tenantUploadKey } from '@/utils/r2-keys';
 import { MAX_IMAGE_UPLOAD_BYTES, MAX_PDF_UPLOAD_BYTES, MAX_SOCIAL_IMAGE_UPLOAD_BYTES, MAX_SOCIAL_VIDEO_UPLOAD_BYTES, limitMb } from '@/utils/upload-limits';
 import { SOCIAL_MEDIA_MIME_TYPES } from '@/lib/social/media-rules';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
+import { requireSocialAccess } from '@/lib/social/access';
+import { SOCIAL_SAMPLE_SCOPE } from '@/lib/social/mode';
 
 export const dynamic = 'force-dynamic';
 
 // Hard caps on uploaded size. Cloudinary's unsigned preset silently enforced one
 // for images before; with the R2 flow this route is the only thing keeping it
-// real, so validate here. `fileSize` is client-declared and therefore advisory —
-// it stops the obvious case cheaply; the PDF path re-checks the true size from
-// R2 in /api/rag/extract before doing any work with the bytes.
+// real, so validate here. Social uploads bind the declared size and type to
+// the signature; the PDF path re-checks the true size in /api/rag/extract.
 
 export async function POST(request: NextRequest) {
-  const authResult = await requireAdmin(request);
-  if (authResult instanceof NextResponse) return authResult;
-
-  // Super admin has tenantId: null — fall back to the platform tenant, exactly
-  // as the other admin routes do. Never trust a client-supplied tenant id.
-  const resolvedTenantId = authResult.tenantId || PLATFORM_TENANT_ID;
-
   let body: { fileName?: string; contentType?: string; fileSize?: number; purpose?: string };
   try {
     body = await request.json();
@@ -33,6 +27,20 @@ export async function POST(request: NextRequest) {
   }
 
   const { fileName, contentType, fileSize, purpose } = body;
+  const social = purpose === 'social';
+  let resolvedTenantId: string;
+  if (social) {
+    const access = await requireSocialAccess(request);
+    if (access instanceof NextResponse) return access;
+    if (!access.tenantId || access.tenantId === SOCIAL_SAMPLE_SCOPE) {
+      return NextResponse.json({ error: 'A tenant is required for uploads' }, { status: 403 });
+    }
+    resolvedTenantId = access.tenantId;
+  } else {
+    const authResult = await requireAdmin(request);
+    if (authResult instanceof NextResponse) return authResult;
+    resolvedTenantId = authResult.tenantId || PLATFORM_TENANT_ID;
+  }
 
   if (!contentType || typeof contentType !== 'string') {
     return NextResponse.json({ error: 'Missing content type' }, { status: 400 });
@@ -43,7 +51,6 @@ export async function POST(request: NextRequest) {
   // through a Vercel Function's 4.5MB request body.
   const isImage = contentType.startsWith('image/');
   const isPdf = contentType === 'application/pdf';
-  const social = purpose === 'social';
   const socialImage = (SOCIAL_MEDIA_MIME_TYPES.image as readonly string[]).includes(contentType);
   const socialVideo = (SOCIAL_MEDIA_MIME_TYPES.video as readonly string[]).includes(contentType);
   if (social && !socialImage && !socialVideo) {
@@ -80,8 +87,11 @@ export async function POST(request: NextRequest) {
         Bucket: r2Bucket(),
         Key: key,
         ContentType: contentType,
+        ...(social ? { ContentLength: fileSize } : {}),
       }),
-      { expiresIn: 5 * 60 }, // 5 minutes
+      social
+        ? { expiresIn: 300, signableHeaders: new Set(['content-type', 'content-length']) }
+        : { expiresIn: 300 },
     );
 
     return NextResponse.json({
@@ -90,7 +100,7 @@ export async function POST(request: NextRequest) {
       // `key` straight back to /api/rag/extract, which re-derives ownership
       // from the caller's own token rather than trusting this value.
       key,
-      publicUrl: `${process.env.R2_PUBLIC_URL}/${key}`,
+      publicUrl: `${process.env.R2_PUBLIC_URL?.replace(/\/+$/, '')}/${key}`,
     });
   } catch (e: any) {
     console.error('presign error:', e?.message || e);

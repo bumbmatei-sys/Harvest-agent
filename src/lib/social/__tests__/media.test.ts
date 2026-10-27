@@ -42,6 +42,12 @@ describe('social media rules', () => {
 });
 
 describe('untrusted draft media', () => {
+  it.each([base, `${base}/`])('accepts normal and legacy double-slash URLs with base %s', (publicUrl) => {
+    for (const url of [image.url, image.url.replace('/tenants/', '//tenants/')]) {
+      expect(parseSocialDraft(body('facebook', [{ ...image, url }]), now, { ...context, publicUrl }).ok).toBe(true);
+      expect(parseSocialDraft(body('facebook', [{ ...image, url: url.replace('ministry-a', 'ministry-b') }]), now, { ...context, publicUrl })).toEqual({ ok: false, error: 'media_invalid' });
+    }
+  });
   it('accepts tenant media and applies platform rules', () => {
     expect(parseSocialDraft(body('instagram', [image]), now, context)).toMatchObject({ ok: true, draft: { media: [{ url: image.url, kind: image.kind, mimeType: image.mimeType }] } });
     for (const platform of ['youtube', 'tiktok']) expect(parseSocialDraft(body(platform, [video]), now, context).ok).toBe(true);
