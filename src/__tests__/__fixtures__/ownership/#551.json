@@ -1,0 +1,10 @@
+{
+  "ticket": "#551",
+  "entries": [
+    {
+      "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
+      "digest": "e0cfe4fb984d7aef7a18c2751aa882a9d5a24da2d46758fd4c18c86fd712f208",
+      "why": "shadow-sm on Card, Matei 2026-10-27: record the new Card digest and class count in the existing overlays, preserving the historical pins and checks for every other primitive."
+    }
+  ]
+}
