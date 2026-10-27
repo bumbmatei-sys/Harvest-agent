@@ -7,12 +7,13 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Input } from '@/components/ui/input';
 import { type CommunitySettings, requiredQuestionsAnswered } from '@/lib/community/settings';
 
-export function CommunityEntryDialog({ settings, onSubmit }: {
+export function CommunityEntryDialog({ settings, onSubmit, initialAnswers = {} }: {
   settings: CommunitySettings;
+  initialAnswers?: Record<string, string>;
   onSubmit: (answers: Record<string, string>) => Promise<void>;
 }) {
   const [accepted, setAccepted] = useState(false);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<Record<string, string>>(initialAnswers);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const canSubmit = (!settings.rules.enabled || accepted) &&

@@ -48,6 +48,7 @@ vi.mock('firebase/firestore', () => ({
   limit: () => ({}),
   doc: (_db: unknown, ...seg: string[]) => ({ __path: seg.join('/') }),
   getDoc: async () => ({ exists: () => false, data: () => ({}) }),
+  onSnapshot: (_ref: unknown, next: (snapshot: unknown) => void) => { next({ exists: () => false }); return () => {}; },
   getDocs: async (ref: any) => {
     const rows = rowsFor(ref?.__path ?? '');
     const docs = rows.map((r) => ({ id: r.id, data: () => r }));

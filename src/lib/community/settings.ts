@@ -58,9 +58,9 @@ export function prepareCommunitySettings(previous: CommunitySettings, draft: Com
   return { ...draft, rules: { ...draft.rules, version: previous.rules.version + (rulesChanged ? 1 : 0) } };
 }
 
-export function needsCommunityEntry(settings: CommunitySettings, member: { rulesAcceptedVersion?: number; answeredAt?: unknown } | null): boolean {
+export function needsCommunityEntry(settings: CommunitySettings, member: { rulesAcceptedVersion?: number; answeredAt?: unknown; answers?: Record<string, string> } | null): boolean {
   return (settings.rules.enabled && member?.rulesAcceptedVersion !== settings.rules.version) ||
-    (settings.questions.enabled && !member?.answeredAt);
+    (settings.questions.enabled && (!member?.answeredAt || member.answers?.__community_questions_pending__ === 'true'));
 }
 
 export function requiredQuestionsAnswered(questions: CommunityQuestion[], answers: Record<string, string>): boolean {

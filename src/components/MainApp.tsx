@@ -32,6 +32,9 @@ import LivestreamView from './LivestreamView';
 import { DesktopContainer } from './layout/DesktopLayout';
 import { visibleNavGroups } from './layout/nav-groups';
 import { useMemberPhoto, memberInitial } from '../hooks/useMemberPhoto';
+import { useCommunitySettings, useCommunityMember } from '../lib/community/use-community';
+import { needsCommunityEntry, type CommunityModule } from '../lib/community/settings';
+import { CommunityEntryDialog } from './community/CommunityEntryDialog';
 
 const PLATFORM_TENANT_ID = process.env.NEXT_PUBLIC_PLATFORM_TENANT_ID || 'harvest';
 const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -44,6 +47,8 @@ const getServerTenantLogo = (): string | null =>
   typeof document !== 'undefined' ? document.body?.dataset?.tenantLogo || null : null;
 
 // Icons for the former top-tabs, now also surfaced as desktop-only sidebar items (Phase 1.5).
+const TOP_TAB_MODULES: Record<string, CommunityModule> = { news: 'news', blog: 'blog', courses: 'courses', messages: 'messages', prayer: 'prayer', partner: 'give' };
+
 const TOP_TAB_ICONS: Record<string, any> = {
   news: Newspaper,
   blog: FileText,
@@ -76,13 +81,18 @@ const ChurchMap = dynamic(() => import('./ChurchMap'), { ssr: false });
 
 interface MainAppProps {
   onNavigate: (page: string) => void;
+  isAdminPreview?: boolean;
 }
 
-const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
+const MainApp: React.FC<MainAppProps> = ({ onNavigate, isAdminPreview = false }) => {
   const { tenantPlan, currentUser } = useAppStore();
   // THE-141 - the member's own photo, from the Firestore user document.
   const { photoURL: memberPhotoURL } = useMemberPhoto();
   const { tenantId, tenantName, branding, tenantPlan: ctxTenantPlan, tenantAddons, isLoading: tenantLoading, stripeConnectStatus } = useTenant();
+  const community = useCommunitySettings(tenantId);
+  const modules = community.settings.modules;
+  const entryEnabled = !isAdminPreview && (community.settings.rules.enabled || community.settings.questions.enabled);
+  const entry = useCommunityMember(tenantId, currentUser?.uid, entryEnabled);
   // White-label tenants (any real tenant other than the platform) show their own
   // name + logo; the platform / super-admin view keeps the "Harvest" brand.
   const isWhiteLabel = !!tenantId && tenantId !== PLATFORM_TENANT_ID;
@@ -119,7 +129,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
    * DISCOVERED by four measured suites and interpolating into it broke all
    * four. This nav is a different element in a different shell: its class
    * string is already a template literal, no guard discovers it, and it
-   * already carries `activeBottomTab === 'map' ? 'max-lg:translate-y-full'` —
+   * already carries `effectiveBottomTab === 'map' ? 'max-lg:translate-y-full'` —
    * a nav-hiding condition, shipped, for exactly this purpose. Adding a term
    * to it introduces NO element, so MainApp's element-tree pin is untouched.
    *
@@ -295,18 +305,18 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     // 🔴 WAS AN UNCONDITIONAL LITERAL, exactly as `messages` was before THE-162.
     // The feed is every tier's Home, so this is the entry whose absence moves
     // where a free member lands — see `homeTabId` below.
-    hasNewsFeed && { id: 'news', label: 'News' },
-    (isMainSite || (isPlanReady && features?.blog === true)) && { id: 'blog', label: 'Blog' },
+    modules.news && hasNewsFeed && { id: 'news', label: 'News' },
+    modules.blog && (isMainSite || (isPlanReady && features?.blog === true)) && { id: 'blog', label: 'Blog' },
     // Only include Courses tab once we know at least 1 course exists
-    coursesStatus === 'present' && { id: 'courses', label: 'Courses' },
-    hasCommunityGroups && { id: 'messages', label: 'Messages' },  // Ministry (max) only
-    { id: 'prayer', label: 'Prayer' },        // all plans, all users
+    modules.courses && coursesStatus === 'present' && { id: 'courses', label: 'Courses' },
+    modules.messages && hasCommunityGroups && { id: 'messages', label: 'Messages' },  // Ministry (max) only
+    modules.prayer && { id: 'prayer', label: 'Prayer' },        // all plans, all users
     // Give — plan-gated. A free tenant has `fundraising: false` and the donate
     // route refuses it server-side (THE-202), so an always-on Give tab would be
     // a member-facing link to a 403. See `hasGiving` above: the tab entry is
     // only one of the three ways this screen is reached, and it was for a while
     // the only one that asked.
-    hasGiving && { id: 'partner', label: 'Give' },
+    modules.give && hasGiving && { id: 'partner', label: 'Give' },
   ].filter(Boolean) as { id: string; label: string }[];
 
   /**
@@ -332,7 +342,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     topTabs.find((t) => t.id === 'news')?.id
     ?? topTabs.find((t) => t.id === 'courses')?.id
     ?? topTabs[0]?.id
-    ?? 'news';
+    ?? 'home-empty';
 
   /**
    * The tab actually RENDERED. `activeTopTab` is what the member last selected;
@@ -355,7 +365,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
    * downgrade lands on Home — the feed's exact precedent, one line above.
    */
   const effectiveTopTab =
-    (activeTopTab === 'news' && !hasNewsFeed) || (activeTopTab === 'partner' && !hasGiving)
+    (TOP_TAB_MODULES[activeTopTab] && !modules[TOP_TAB_MODULES[activeTopTab]]) || (activeTopTab === 'news' && !hasNewsFeed) || (activeTopTab === 'partner' && !hasGiving) || (activeTopTab === 'blog' && !(isMainSite || (isPlanReady && features?.blog === true)))
       ? homeTabId
       : activeTopTab;
 
@@ -369,11 +379,20 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
 
   const bottomTabs = [
     { id: 'home', label: 'Home', icon: Home },
-    { id: 'bible', label: 'Bible', icon: BookOpen },
+    modules.bible && { id: 'bible', label: 'Bible', icon: BookOpen },
     (isMainSite || (isPlanReady && features?.aiChat === true)) && { id: 'chat', label: 'Chat', icon: MessageCircle },
-    (isMainSite || (isPlanReady && features?.map === true)) && { id: 'map', label: 'Map', icon: MapIcon },
+    modules.map && (isMainSite || (isPlanReady && features?.map === true)) && { id: 'map', label: 'Map', icon: MapIcon },
     { id: 'profile', label: 'My Profile', icon: User },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
+  const effectiveBottomTab = (activeBottomTab === 'bible' && !modules.bible) || (activeBottomTab === 'map' && (!modules.map || !(isMainSite || (isPlanReady && features?.map === true)))) ? 'home' : activeBottomTab;
+  useEffect(() => {
+    if (activeBottomTab !== effectiveBottomTab) setActiveBottomTab('home');
+    if (TOP_TAB_MODULES[activeTopTab] && !modules[TOP_TAB_MODULES[activeTopTab]]) setActiveTopTab(homeTabId);
+    if ((fullScreenView.type === 'all-news' && !modules.news) ||
+        (fullScreenView.type === 'article' && !modules.blog) ||
+        (fullScreenView.type === 'course' && !modules.courses) ||
+        (fullScreenView.type === 'livestream' && !modules.livestream)) setFullScreenView({ type: 'none' });
+  }, [activeBottomTab, effectiveBottomTab, activeTopTab, homeTabId, modules, fullScreenView.type]);
   // 'home' is always the unconditional first entry above — desktop's grouped
   // sidebar replaces it with the "Home" alias of whichever top-tab `homeTabId`
   // resolves to (see below), so only the rest are looked up by id for the
@@ -389,6 +408,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
 
   const desktopTopTabItem = (id: string): DesktopNavItem | null => {
     const tab = topTabs.find(t => t.id === id);
+    if (!tab && id === 'home-empty') return { id: 'desktop-home-empty', label: 'Home', icon: Home, isActive: effectiveBottomTab === 'home', onClick: () => setActiveBottomTab('home') };
     if (!tab) return null;
     // Whichever top-tab IS Home for this tier is the desktop sidebar's "Home"
     // entry point (mobile's own label inside the Home top-tabs is untouched).
@@ -400,7 +420,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
       id: `desktop-${tab.id}`,
       label: isHome ? 'Home' : tab.label,
       icon: isHome ? Home : TOP_TAB_ICONS[tab.id],
-      isActive: activeBottomTab === 'home' && effectiveTopTab === tab.id,
+      isActive: effectiveBottomTab === 'home' && effectiveTopTab === tab.id,
       onClick: () => { setActiveBottomTab('home'); handleTopTabClick(tab.id); },
     };
   };
@@ -413,7 +433,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
       // Chat is branded "Ask {ministry}" on desktop; mobile keeps "Chat".
       label: tab.id === 'chat' ? askLabel : tab.label,
       icon: tab.icon,
-      isActive: activeBottomTab === tab.id,
+      isActive: effectiveBottomTab === tab.id,
       onClick: () => setActiveBottomTab(tab.id),
     };
   };
@@ -463,10 +483,10 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   );
 
   // Desktop top bar (Phase 1.6): page title + date for Home; view name elsewhere.
-  const desktopTitle = activeBottomTab === 'home'
+  const desktopTitle = effectiveBottomTab === 'home'
     ? (effectiveTopTab === homeTabId ? 'Home' : (topTabs.find(t => t.id === effectiveTopTab)?.label ?? 'Home'))
-    : (activeBottomTab === 'chat' ? askLabel : (bottomTabs.find(t => t.id === activeBottomTab)?.label ?? ''));
-  const showDesktopDate = activeBottomTab === 'home' && effectiveTopTab === homeTabId;
+    : (effectiveBottomTab === 'chat' ? askLabel : (bottomTabs.find(t => t.id === activeBottomTab)?.label ?? ''));
+  const showDesktopDate = effectiveBottomTab === 'home' && effectiveTopTab === homeTabId;
   const desktopDate = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date());
 
   useEffect(() => {
@@ -641,13 +661,20 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     </div>
   );
 
+  if (community.error) return <p role="alert">{community.error}</p>;
+  if (!isAdminPreview && currentUser && tenantId && (community.loading || (entryEnabled && entry.loading))) return renderLoading();
+  if (entryEnabled && entry.error) return <p role="alert">{entry.error}</p>;
+  if (entryEnabled && currentUser && tenantId && needsCommunityEntry(community.settings, entry.member)) {
+    return <CommunityEntryDialog settings={community.settings} initialAnswers={entry.member?.answers} onSubmit={answers => entry.save(community.settings, answers)} />;
+  }
+
   // The ROUTE, gated as well as its entry point — the same reasoning written on
   // the Messages route below. `onOpenAllNews` lives inside NewsTab, which a
   // tier without the feed never mounts, so this state should be unreachable
   // there; "should be unreachable" is exactly what THE-193 assumed about a
   // hidden screen. AllNews opens its own `/community_posts` listeners, so it is
   // refused here rather than merely unlinked.
-  if (fullScreenView.type === 'all-news' && hasNewsFeed) {
+  if (fullScreenView.type === 'all-news' && hasNewsFeed && modules.news) {
     return (
       <AllNews
         onBack={() => setFullScreenView({type: 'none'})}
@@ -656,13 +683,13 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     );
   }
 
-  if (fullScreenView.type === 'article' && fullScreenView.data) {
+  if (fullScreenView.type === 'article' && fullScreenView.data && modules.blog && (isMainSite || (isPlanReady && features?.blog === true))) {
     return (
       <BlogTab initialPost={fullScreenView.data} onBack={() => setFullScreenView({type: 'none'})} isFullScreen={true} />
     );
   }
 
-  if (fullScreenView.type === 'course' && fullScreenView.data) {
+  if (fullScreenView.type === 'course' && fullScreenView.data && modules.courses) {
     return (
       <CourseExperience
         initialCourseId={fullScreenView.data.courseId}
@@ -672,7 +699,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     );
   }
 
-  if (fullScreenView.type === 'livestream') {
+  if (fullScreenView.type === 'livestream' && modules.livestream && (isMainSite || features?.livestream === true)) {
     return (
       <LivestreamView
         tenantId={tenantId}
@@ -684,7 +711,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
            `PartnerWithUsTab` renders and the one `?giving=1` exists to reach.
            `undefined` when there is no Give page — LivestreamView then draws no
            button, rather than one that lands on Home. */
-        onDonate={hasGiving ? () => {
+        onDonate={modules.give && hasGiving ? () => {
           setFullScreenView({ type: 'none' });
           setActiveBottomTab('home');
           setActiveTopTab('partner');
@@ -698,7 +725,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
       <ReferralTracker />
       
       {/* Side/Bottom Navigation */}
-      <div className={`bg-surface-raised border-t lg:border-t-0 lg:border-r border-line flex justify-center lg:justify-start py-2 lg:py-5 px-2 lg:px-3 pb-[calc(8px+env(safe-area-inset-bottom))] lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-[224px]'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300 ${!isNavVisible || activeBottomTab === 'map' || isChatOpen ? 'max-lg:translate-y-full' : 'max-lg:translate-y-0'}`}>
+      <div className={`bg-surface-raised border-t lg:border-t-0 lg:border-r border-line flex justify-center lg:justify-start py-2 lg:py-5 px-2 lg:px-3 pb-[calc(8px+env(safe-area-inset-bottom))] lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-[224px]'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300 ${!isNavVisible || effectiveBottomTab === 'map' || isChatOpen ? 'max-lg:translate-y-full' : 'max-lg:translate-y-0'}`}>
         <div className={`flex lg:flex-col justify-around lg:justify-start items-center lg:items-stretch w-full lg:max-w-none lg:gap-2 ${isSidebarCollapsed ? 'lg:items-center' : ''}`}>
           {/* Desktop Logo */}
           <div className={`hidden lg:flex items-center mb-6 shrink-0 ${isSidebarCollapsed ? 'justify-center px-0 w-full' : 'gap-2.5 px-3'}`}>
@@ -723,7 +750,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
               tab.id,
               tab.label,
               tab.icon,
-              activeBottomTab === tab.id,
+              effectiveBottomTab === tab.id,
               () => setActiveBottomTab(tab.id),
               'mobile'
             )
@@ -813,7 +840,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
         </div>
 
         {/* Top Navigation (only visible when Home is active; mobile only — desktop nav lives in the sidebar) */}
-        {activeBottomTab === 'home' && (
+        {effectiveBottomTab === 'home' && (
           <div className="bg-surface-raised pt-3 pb-0 px-4 border-b border-line z-10 flex-shrink-0 transition-colors duration-300 lg:hidden">
             <DesktopContainer>
             <div ref={topTabsRef} className="flex overflow-x-auto gap-6 pb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] snap-x scroll-smooth w-full">
@@ -840,8 +867,8 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
 
         {/* Main Content Area */}
         <ErrorBoundary>
-        <div className={`flex-1 overflow-x-hidden relative ${activeBottomTab === 'map' ? '' : (activeBottomTab === 'chat' || (activeBottomTab === 'home' && effectiveTopTab === 'messages')) ? `overflow-hidden ${isChatOpen ? '' : 'pb-[65px]'} lg:pb-0` : 'overflow-y-auto pb-24 lg:pb-0'}`} onScroll={handleScroll}>
-          {activeBottomTab === 'home' ? (
+        <div className={`flex-1 overflow-x-hidden relative ${effectiveBottomTab === 'map' ? '' : (effectiveBottomTab === 'chat' || (effectiveBottomTab === 'home' && effectiveTopTab === 'messages')) ? `overflow-hidden ${isChatOpen ? '' : 'pb-[65px]'} lg:pb-0` : 'overflow-y-auto pb-24 lg:pb-0'}`} onScroll={handleScroll}>
+          {effectiveBottomTab === 'home' ? (
             <DesktopContainer className="h-full">
             <div className="relative w-full h-full">
               <AnimatePresence initial={false} custom={direction} mode="popLayout">
@@ -858,7 +885,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                   }}
                   drag={enableSwipe ? "x" : false}
                   dragConstraints={{ left: 0, right: 0 }}
-                  dragElastic={{ left: effectiveTopTab === topTabs[topTabs.length - 1].id ? 0 : 1, right: effectiveTopTab === topTabs[0].id ? 0 : 1 }}
+                  dragElastic={{ left: effectiveTopTab === topTabs[topTabs.length - 1]?.id ? 0 : 1, right: effectiveTopTab === topTabs[0]?.id ? 0 : 1 }}
                   onDragEnd={handleDragEnd}
                   className="absolute w-full h-full p-4 space-y-6 lg:space-y-4"
                 >
@@ -875,15 +902,15 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                       {/* Live banner is mobile-only — on desktop the right rail's
                           "Live Now" card already surfaces the live stream, so the
                           full-width banner would be redundant. */}
-                      <div className="lg:hidden">
+                      {modules.livestream && (isMainSite || features?.livestream === true) && <div className="lg:hidden">
                         <LiveNowBanner tenantId={tenantId} onOpen={() => setFullScreenView({ type: 'livestream' })} />
-                      </div>
+                      </div>}
                       <NewsTab
                         tenantId={tenantId}
                         onOpenAllNews={() => setFullScreenView({type: 'all-news'})}
                         onOpenArticle={(post) => setFullScreenView({type: 'article', data: post})}
-                        onOpenLivestream={() => setFullScreenView({ type: 'livestream' })}
-                        onGoToPartner={hasGiving ? () => setActiveTopTab('partner') : undefined}
+                        onOpenLivestream={modules.livestream && (isMainSite || features?.livestream === true) ? () => setFullScreenView({ type: 'livestream' }) : undefined}
+                        onGoToPartner={modules.give && hasGiving ? () => setActiveTopTab('partner') : undefined}
                         onOpenMessages={() => setActiveTopTab('messages')}
                       />
                     </>
@@ -933,14 +960,14 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                   )}
                   {effectiveTopTab !== 'news' && effectiveTopTab !== 'partner' && effectiveTopTab !== 'blog' && effectiveTopTab !== 'courses' && effectiveTopTab !== 'messages' && effectiveTopTab !== 'prayer' && (
                     <div className="flex flex-col items-center justify-center h-64 text-faint">
-                      <p>{topTabs.find(t => t.id === effectiveTopTab)?.label} content coming soon.</p>
+                      <p>{effectiveTopTab === 'home-empty' ? 'No community modules are available.' : `${topTabs.find(t => t.id === effectiveTopTab)?.label} content coming soon.`}</p>
                     </div>
                   )}
                 </motion.div>
               </AnimatePresence>
             </div>
             </DesktopContainer>
-          ) : activeBottomTab === 'profile' ? (
+          ) : effectiveBottomTab === 'profile' ? (
             <div className="w-full">
               <Profile
                 onNavigate={onNavigate}
@@ -950,27 +977,27 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                    straight back Home — a button that visibly does nothing,
                    which is the THE-193 dead end rather than a gate. Profile
                    hides the CTA when this prop is absent. */
-                onGoToPartner={hasGiving ? () => { setActiveBottomTab('home'); setActiveTopTab('partner'); } : undefined}
+                onGoToPartner={modules.give && hasGiving ? () => { setActiveBottomTab('home'); setActiveTopTab('partner'); } : undefined}
                 onGoToMap={() => setActiveBottomTab('map')}
                 onOpenSavedBlog={openSavedBlog}
                 onOpenSavedLesson={openSavedLesson}
                 onOpenSavedPost={openSavedPost}
               />
             </div>
-          ) : activeBottomTab === 'chat' ? (
+          ) : effectiveBottomTab === 'chat' ? (
              // Wider than the other bottom-tab views so the desktop chat can fit
              // its 280px history rail alongside a readable ~800px message column.
              <div className="w-full h-full">
               <AIChat onBack={() => setActiveBottomTab('home')} />
              </div>
-          ) : activeBottomTab === 'map' ? (
+          ) : effectiveBottomTab === 'map' ? (
              <div className="w-full h-full">
               <ChurchMap 
                 onBack={() => setActiveBottomTab('home')} 
                 onMapInteraction={(interacting) => setIsNavVisible(!interacting)} 
               />
              </div>
-          ) : activeBottomTab === 'bible' ? (
+          ) : effectiveBottomTab === 'bible' ? (
              <div className="w-full h-full">
               <BiblePage />
              </div>

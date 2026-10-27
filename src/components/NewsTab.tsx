@@ -1606,7 +1606,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
   const rail = (
     <div className="hidden lg:flex lg:flex-col lg:gap-3 lg:sticky lg:top-4">
-      {isLive && (
+      {isLive && onOpenLivestream && (
         <DesktopCard elevation="sm" className="p-4">
           <button onClick={onOpenLivestream} className="w-full flex items-center gap-3 text-left">
             <span className="relative flex h-3 w-3 shrink-0">

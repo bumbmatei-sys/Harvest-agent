@@ -16,6 +16,7 @@ import { notifyError } from '../utils/notify';
 import { sortByTime } from '../utils/query-helpers';
 import { useAdminHeader } from './AdminScreenHeader';
 import { SHELL_SCREEN_HEIGHT } from './layout/shell-height';
+import { OnboardingAnswers } from './community/OnboardingAnswers';
 
 /**
  * Fetch documents in a flat collection scoped by a `tenantId` field, using only
@@ -764,6 +765,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
   const [memberDms, setMemberDms] = useState<DirectMessage[]>([]);
   const [openMemberDm, setOpenMemberDm] = useState<DirectMessage | null>(null);
   const [showMemberPicker, setShowMemberPicker] = useState(false);
+  const [answersMember, setAnswersMember] = useState<AdminUser | null>(null);
   const [members, setMembers] = useState<AdminUser[]>([]);
   const [memberSearch, setMemberSearch] = useState('');
 
@@ -1498,8 +1500,8 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 <div className="text-center py-8 text-faint text-sm">No users found in this tenant</div>
               ) : (
                 filteredMembers.map(m => (
+                  <div key={m.id}>
                   <button
-                    key={m.id}
                     onClick={() => startMemberDm(m)}
                     className="w-full flex items-center gap-3 px-5 py-3 hover:bg-surface-sunken text-left"
                   >
@@ -1512,6 +1514,9 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                       {membershipBadge(m.id)}
                     </div>
                   </button>
+                  <button type="button" className="px-5 pb-3 text-sm underline" onClick={() => setAnswersMember(answersMember?.id === m.id ? null : m)}>Onboarding answers</button>
+                  {answersMember?.id === m.id && tenantId && <OnboardingAnswers tenantId={tenantId} uid={m.id} />}
+                  </div>
                 ))
               )}
             </div>

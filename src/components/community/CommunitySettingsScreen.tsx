@@ -31,7 +31,7 @@ export function CommunitySettingsScreen({ tenantId, available }: {
   }, [tenantId]);
   if (error) return <p role="alert" className="p-4">{error}</p>;
   if (!settings || !tenantId) return <p className="p-4">Loading community settings…</p>;
-  return <><p role="status" className="p-4">Community settings are saved, but are not yet applied to the member app.</p><CommunitySettingsEditor key={tenantId} settings={settings} available={available}
+  return <><CommunitySettingsEditor key={tenantId} settings={settings} available={available}
     onSave={(next, previous) => runTransaction(db, async transaction => {
       const ref = doc(db, 'tenants', tenantId, 'settings', 'community');
       const snapshot = await transaction.get(ref);
