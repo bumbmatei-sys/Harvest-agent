@@ -80,7 +80,11 @@ describe('tenants/{id}/email* is closed to clients', () => {
   it('the saved themes under emailConfig/themes are browser-dead: no read, no write, no subdocument', async () => {
     for (const ctx of [await owner(), await superAdmin()]) {
       const db = ctx.firestore();
-      for (const path of [`tenants/${TENANT_A}/emailConfig/themes`, `tenants/${TENANT_A}/emailConfig/themes/t1`]) {
+      // Both must be even-segment document paths: the themes doc itself and a
+      // theme inside one of its subcollections. An odd-segment string is not a
+      // document reference at all and the emulator rejects it before the rules
+      // are ever asked.
+      for (const path of [`tenants/${TENANT_A}/emailConfig/themes`, `tenants/${TENANT_A}/emailConfig/themes/items/t1`]) {
         await assertFails(db.doc(path).get());
         await assertFails(db.doc(path).set({ name: 'Sunday letter' }));
         await assertFails(db.doc(path).delete());

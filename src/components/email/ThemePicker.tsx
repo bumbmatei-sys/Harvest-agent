@@ -94,7 +94,10 @@ function ThemeTile({ choice, name, selected, defaultTheme, onSelect, onDelete }:
           type="button"
           aria-label={`Delete ${name}`}
           onClick={onDelete}
-          className={cn(TAP, 'absolute left-2.5 top-2.5 flex size-6 items-center justify-center rounded-full border border-line bg-card/90 text-muted hover:text-danger')}
+          // Top-right, so the thumbnail's "Aa" stays visible. Below sm the
+          // THE-356 touch floor governs (literal min-h-11 min-w-11); above it
+          // the chip returns to icon size.
+          className={cn(TAP, 'absolute right-1.5 top-1.5 flex size-6 min-h-11 min-w-11 items-center justify-center rounded-full border border-line bg-card/90 text-muted hover:text-danger sm:min-h-0 sm:min-w-0')}
         >
           <Trash2 className="size-3" />
         </button>

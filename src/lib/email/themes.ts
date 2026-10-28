@@ -133,12 +133,18 @@ export function accentHex(design: Pick<EmailDesign, 'accent' | 'customColor'>): 
  * Web-safe fallback stacks. A web font is named first — Gmail and Outlook fall
  * back to the rest of the stack and never fetch it, which is exactly the point:
  * the email must look right with only the fallbacks installed.
+ *
+ * The single quotes around the multi-word family names are load-bearing.
+ * render.ts interpolates these stacks inside double-quoted `style="..."`
+ * attributes, and one double quote ends the attribute early — every
+ * declaration after font-family (colour first of all) is then dropped from the
+ * tag. That is how a Box title once rendered black on navy.
  */
 const FONT_STACKS: Readonly<Record<ThemeFontKind, string>> = Object.freeze({
-  fraunces: 'Fraunces, Georgia, "Times New Roman", serif',
-  georgia: 'Georgia, "Times New Roman", serif',
-  inter: 'Inter, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif',
-  system: '-apple-system, "Segoe UI", Helvetica, Arial, sans-serif',
+  fraunces: "Fraunces, Georgia, 'Times New Roman', serif",
+  georgia: "Georgia, 'Times New Roman', serif",
+  inter: "Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif",
+  system: "-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif",
 });
 
 export function fontStack(kind: ThemeFontKind): string {

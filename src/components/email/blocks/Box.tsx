@@ -22,6 +22,7 @@ import {
   type RawBox,
 } from '@/lib/email/blocks';
 import { resolveTheme, type EmailThemeTokens } from '@/lib/email/themes';
+import { boxFillColors, inkOn } from '@/lib/email/theme-contrast';
 import { cn } from '@/lib/utils';
 
 /**
@@ -121,6 +122,13 @@ export const BoxNode = Node.create({
  */
 const EDITOR_TOKENS: EmailThemeTokens = resolveTheme({ themeId: 'letter' }).tokens;
 const swatchColor = (tint: BoxTint): string => boxTintBase(tint, EDITOR_TOKENS);
+/** The Letter stand-in's own button scheme, for the shared Box derivation below. */
+const EDITOR_BUTTON = {
+  heading: EDITOR_TOKENS.heading,
+  ink: EDITOR_TOKENS.text,
+  buttonBg: EDITOR_TOKENS.accent,
+  buttonInk: inkOn(EDITOR_TOKENS.accent),
+} as const;
 const VARIANT_OPTIONS: readonly Option<BoxVariant>[] = [
   { value: 'filled', label: 'Filled' },
   { value: 'outline', label: 'Outline' },
@@ -144,22 +152,46 @@ function BoxView({ node, updateAttributes, selected }: NodeViewProps) {
   const urlOk = attrs.buttonUrl === '' || safeBlockUrl(attrs.buttonUrl) !== '';
   const tint = swatchColor(attrs.tint);
   const filled = attrs.variant === 'filled';
+  // The same derivation the email renderer's boxHtml uses (theme-contrast's
+  // boxFillColors — one copy of the maths), so a filled Box draws the colours
+  // here that the sent email will draw: readable inks against the actual fill,
+  // and a chip button when the theme's button ground would vanish into it.
+  const box = filled ? boxFillColors(tint, EDITOR_TOKENS.card, EDITOR_BUTTON, true) : null;
 
   return (
     <NodeViewWrapper className={cn('my-3', selected && 'ring-2 ring-brand rounded-lg')} data-testid="box-block">
       <div
         className="rounded-lg px-5 py-4"
-        style={filled
-          ? { background: tint, border: `1px solid ${tint}` }
+        style={box
+          ? { background: box.fill, border: `1px solid ${box.border}` }
           : { background: 'transparent', border: `1px solid ${tint}` }}
       >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            {attrs.label && <div className="text-[11px] font-semibold uppercase tracking-widest text-faint">{attrs.label}</div>}
-            <div className="mt-1 font-display text-lg font-semibold text-strong">{attrs.title || 'Box title'}</div>
-            {(attrs.blurb || !attrs.title) && <div className="mt-1 text-sm text-body">{attrs.blurb || 'A short line about this.'}</div>}
+            {attrs.label && (
+              <div
+                className={cn('text-[11px] font-semibold uppercase tracking-widest', !box && 'text-faint')}
+                style={box ? { color: box.label } : undefined}
+              >
+                {attrs.label}
+              </div>
+            )}
+            <div
+              className={cn('mt-1 font-display text-lg font-semibold', !box && 'text-strong')}
+              style={box ? { color: box.title } : undefined}
+            >
+              {attrs.title || 'Box title'}
+            </div>
+            {(attrs.blurb || !attrs.title) && (
+              <div className={cn('mt-1 text-sm', !box && 'text-body')} style={box ? { color: box.blurb } : undefined}>
+                {attrs.blurb || 'A short line about this.'}
+              </div>
+            )}
             {attrs.buttonText && (
-              <span className="mt-3 inline-block rounded-md bg-brand px-3 py-1.5 text-sm font-semibold text-white">
+              <span
+                className={cn('mt-3 inline-block rounded-md px-3 py-1.5 text-sm font-semibold', !box && 'bg-brand text-white')}
+                style={box ? { backgroundColor: box.buttonBg, color: box.buttonInk } : undefined}
+              >
                 {attrs.buttonText}
               </span>
             )}

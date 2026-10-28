@@ -31,7 +31,7 @@ import {
   type RawIssueHeader,
 } from '@/lib/email/blocks';
 import { DEFAULT_EMAIL_DESIGN, type EmailAccent, type EmailDesign } from '@/lib/email/design';
-import { inkOn, mixHex, readableTextOn } from '@/lib/email/theme-contrast';
+import { boxFillColors, inkOn, mixHex, readableTextOn, type BoxFillColors } from '@/lib/email/theme-contrast';
 import {
   buttonPadding,
   buttonRadius,
@@ -192,13 +192,17 @@ function themePalette(tokens: EmailThemeTokens, dark: boolean): { palette: Palet
 }
 
 /** The inline style on a `data-button` link. Legacy tokens reproduce the exact historic string. */
-function buttonStyle(tokens: EmailThemeTokens, palette: Palette): string {
+function buttonStyle(
+  tokens: EmailThemeTokens,
+  palette: Palette,
+  colors: Pick<BoxFillColors, 'buttonBg' | 'buttonInk' | 'buttonBorder'> = palette,
+): string {
   const b = tokens.buttons;
   const display = b.width === 'full' ? 'block' : 'inline-block';
   const extra = b.width === 'full' ? `;width:100%${b.align === 'center' ? ';text-align:center' : ''}` : '';
   return `display:${display};padding:${buttonPadding(b.size)};border-radius:${buttonRadius(b.shape)}px`
-    + `;text-decoration:none;font-weight:600;background:${palette.buttonBg};color:${palette.buttonInk}`
-    + `;border:1.5px solid ${palette.buttonBorder}${extra}`;
+    + `;text-decoration:none;font-weight:600;background:${colors.buttonBg};color:${colors.buttonInk}`
+    + `;border:1.5px solid ${colors.buttonBorder}${extra}`;
 }
 
 /**
@@ -308,19 +312,19 @@ function issueHeaderHtml(attrs: IssueHeaderAttrs, tokens: EmailThemeTokens, pale
 /** The tinted Box: label, title, blurb and an optional button. */
 function boxHtml(attrs: BoxAttrs, tokens: EmailThemeTokens, palette: Palette): string {
   const base = boxTintBase(attrs.tint, tokens);
-  const filled = attrs.variant === 'filled';
-  const darkBase = inkOn(base) === '#ffffff';
-  const fill = filled ? (darkBase ? mixHex(palette.card, base, 0.9) : mixHex(palette.card, base, 0.22)) : palette.card;
-  const border = mixHex(fill, base, 0.45);
+  // One shared derivation with the editor's Box node view: every ink below is
+  // readable against the actual fill, and a filled Box's button is chip-coloured
+  // when the theme's own button ground would vanish into that fill.
+  const box = boxFillColors(base, palette.card, palette, attrs.variant === 'filled');
   const parts: string[] = [];
-  if (attrs.label) parts.push(`<div style="font-size:11px;line-height:1.4;letter-spacing:0.12em;font-weight:600;color:${readableTextOn(fill, base)};margin:0 0 6px">${esc(attrs.label.toUpperCase())}</div>`);
-  if (attrs.title) parts.push(`<div style="font-family:${fontStack(tokens.headingFont)};font-size:20px;line-height:1.3;font-weight:700;color:${readableTextOn(fill, palette.heading)};margin:0">${esc(attrs.title)}</div>`);
-  if (attrs.blurb) parts.push(`<div style="font-size:15px;line-height:1.55;color:${readableTextOn(fill, palette.ink)};margin:${attrs.title ? 8 : 0}px 0 0">${esc(attrs.blurb)}</div>`);
+  if (attrs.label) parts.push(`<div style="font-size:11px;line-height:1.4;letter-spacing:0.12em;font-weight:600;color:${box.label};margin:0 0 6px">${esc(attrs.label.toUpperCase())}</div>`);
+  if (attrs.title) parts.push(`<div style="font-family:${fontStack(tokens.headingFont)};font-size:20px;line-height:1.3;font-weight:700;color:${box.title};margin:0">${esc(attrs.title)}</div>`);
+  if (attrs.blurb) parts.push(`<div style="font-size:15px;line-height:1.55;color:${box.blurb};margin:${attrs.title ? 8 : 0}px 0 0">${esc(attrs.blurb)}</div>`);
   const url = safeBlockUrl(attrs.buttonUrl);
-  if (attrs.buttonText && url) parts.push(`<div style="margin:16px 0 0"><a href="${esc(url)}" style="${buttonStyle(tokens, palette)}">${esc(attrs.buttonText)}</a></div>`);
+  if (attrs.buttonText && url) parts.push(`<div style="margin:16px 0 0"><a href="${esc(url)}" style="${buttonStyle(tokens, palette, box)}">${esc(attrs.buttonText)}</a></div>`);
   if (!parts.length) return '';
   const corners = tokens.layout === 'flat' ? 0 : tokens.corners;
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;margin:20px 0"><tr><td style="background:${fill};border:1px solid ${border};border-radius:${corners}px;padding:20px">${parts.join('')}</td></tr></table>`;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;margin:20px 0"><tr><td style="background:${box.fill};border:1px solid ${box.border};border-radius:${corners}px;padding:20px">${parts.join('')}</td></tr></table>`;
 }
 
 /** Block markers become email-safe tables. No marker in, byte-identical string out. */

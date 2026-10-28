@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { sanitizeEmailBody, renderEmail, DEFAULT_EMAIL_DESIGN } from '@/lib/email/render';
+import { AA_CONTRAST, boxFillColors, contrastRatio, luminance } from '@/lib/email/theme-contrast';
 
 const base = {
   design: DEFAULT_EMAIL_DESIGN,
@@ -52,6 +53,49 @@ describe('the two slash-menu blocks render as email-safe tables', () => {
     const filled = html(box({ 'data-variant': 'filled' }));
     const outline = html(box({ 'data-variant': 'outline' }));
     expect(filled).not.toEqual(outline);
+  });
+
+  it('a navy filled Box renders a light title colour and a button whose background contrasts >= 3:1 with the fill', () => {
+    const out = html(box({
+      'data-tint': 'navy',
+      'data-variant': 'filled',
+      'data-button-text': 'Reserve a seat',
+      'data-button-url': 'https://x.org/rsvp',
+    }));
+
+    // The Box cell is the only element painted with a plain `border:1px solid`.
+    const cell = /background:(#[0-9A-Fa-f]{6});border:1px solid/.exec(out);
+    expect(cell, 'the Box cell carries its fill').not.toBeNull();
+    const fill = cell![1];
+
+    const title = /font-weight:700;color:(#[0-9A-Fa-f]{6});margin:0">Sunday supper/.exec(out);
+    expect(title, 'the Box title carries its colour').not.toBeNull();
+    const titleColor = title![1];
+    expect(contrastRatio(titleColor, fill), 'the title is readable on the fill').toBeGreaterThanOrEqual(AA_CONTRAST);
+    expect(luminance(titleColor), 'a navy fill draws the light ink').toBeGreaterThan(luminance(fill));
+
+    const button = /font-weight:600;background:(#[0-9A-Fa-f]{6});color:(#[0-9A-Fa-f]{6});border:1.5px solid/.exec(out);
+    expect(button, 'the Box button carries its colours').not.toBeNull();
+    const [, buttonBg, buttonInk] = button!;
+    expect(contrastRatio(buttonBg, fill), 'the button ground clears the 3:1 non-text floor against the fill').toBeGreaterThanOrEqual(3);
+    expect(contrastRatio(buttonInk, buttonBg), 'the button words read on their own ground').toBeGreaterThanOrEqual(AA_CONTRAST);
+  });
+
+  it('the shared derivation the Box node view mirrors swaps a vanishing themed button for a chip', () => {
+    // Letter's navy button on a navy filled Box cannot clear 3:1 against the
+    // fill, so boxFillColors hands back the inkOn(fill) chip with contrasting
+    // text. Box.tsx's node view imports this same helper — one copy of the
+    // maths — so the editor preview draws exactly what this asserts.
+    const colors = boxFillColors(
+      '#0C1526',
+      '#FFFFFF',
+      { heading: '#0C1526', ink: '#1A1A1A', buttonBg: '#0C1526', buttonInk: '#FFFFFF' },
+      true,
+    );
+    expect(colors.buttonBg).not.toBe('#0C1526'); // the themed navy is gone from the button
+    expect(contrastRatio(colors.buttonBg, colors.fill), 'the chip clears 3:1 against the fill').toBeGreaterThanOrEqual(3);
+    expect(contrastRatio(colors.buttonInk, colors.buttonBg), 'the chip text reads on the chip').toBeGreaterThanOrEqual(AA_CONTRAST);
+    expect(luminance(colors.title), 'the title is the light ink on a navy fill').toBeGreaterThan(luminance(colors.fill));
   });
 
   it('no marker in, byte-identical markup out, and no block residue ever', () => {

@@ -408,7 +408,16 @@ describe('1 — every route in the stated list emits a pageview', () => {
     expect(socialPage).not.toMatch(/PublicRouteAnalytics/);
     expect(NEXT_ROUTES.map((r) => r.pattern)).not.toContain(socialPreview);
 
-    expect(found.filter((r) => r !== catchAll && !devOnlyPreviews.includes(r) && r !== socialPreview).sort()).toEqual(
+    // Email theme screenshots. Production, including a Vercel preview,
+    // calls notFound(), so there is no document to count.
+    const themesPreview = '/dev/email-themes';
+    expect(found).toContain(themesPreview);
+    const themesPage = readFileSync(path.join(ROOT, 'src/app/dev/email-themes/page.tsx'), 'utf8');
+    expect(themesPage).toContain("if (process.env.NODE_ENV === 'production') notFound();");
+    expect(themesPage).not.toMatch(/PublicRouteAnalytics/);
+    expect(NEXT_ROUTES.map((r) => r.pattern)).not.toContain(themesPreview);
+
+    expect(found.filter((r) => r !== catchAll && !devOnlyPreviews.includes(r) && r !== socialPreview && r !== themesPreview).sort()).toEqual(
       NEXT_ROUTES.map((r) => r.pattern).sort(),
     );
   });

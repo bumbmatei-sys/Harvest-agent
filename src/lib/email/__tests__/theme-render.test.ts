@@ -46,7 +46,7 @@ describe('each of the five presets renders its own stable markers', () => {
     expect(out).toContain('background:#FAF8F5');
     expect(out).toContain('max-width:560px');
     expect(out).toContain('border-radius:12px');
-    expect(out).toContain('font-family:Fraunces, Georgia, "Times New Roman", serif');
+    expect(out).toContain("font-family:Fraunces, Georgia, 'Times New Roman', serif");
     expect(out).toContain('font-size:22px;font-weight:700;color:#0C1526');
   });
 
@@ -55,7 +55,7 @@ describe('each of the five presets renders its own stable markers', () => {
     expect(out).toContain('max-width:480px');
     expect(out).toContain('border-radius:0px');
     expect(out).toContain('font-size:18px;line-height:1.7');
-    expect(out).toContain('font-family:Georgia, "Times New Roman", serif');
+    expect(out).toContain("font-family:Georgia, 'Times New Roman', serif");
     expect(out).toContain('font-size:15px;font-weight:700;color:#2E2A26');
   });
 
@@ -91,6 +91,26 @@ describe('each of the five presets renders its own stable markers', () => {
     for (const preset of THEME_PRESETS) {
       expect(forPreset(preset.id).html).toEqual(forPreset(preset.id).html);
     }
+  });
+});
+
+describe('font stacks never end a style attribute early', () => {
+  it('no rendered font-family value contains a double quote, in any preset or the legacy path', () => {
+    // A double quote inside a stack closes style="..." at that point, and every
+    // declaration after font-family — colour first — is then lost from the tag.
+    // The regex matches exactly that shape: a quote before the declaration's
+    // own semicolon. It goes red the moment a stack is re-quoted with doubles.
+    const outs = [...THEME_PRESETS.map((p) => forPreset(p.id).html), html('<p>Old words</p>').html];
+    expect(outs.length, 'an empty slice would pass vacuously').toBeGreaterThan(0);
+    for (const out of outs) {
+      expect(out).not.toMatch(/font-family:[^;"]*"/);
+    }
+  });
+
+  it('the legacy body keeps its colour after font-family, which the double quotes used to swallow', () => {
+    const out = html('<p>Old words</p>', { design: { ...DEFAULT_EMAIL_DESIGN, font: 'serif' } }).html;
+    expect(out).toContain("font-family:Georgia, 'Times New Roman', serif;color:#1A1A1A");
+    expect(out).not.toMatch(/font-family:[^;"]*"/);
   });
 });
 

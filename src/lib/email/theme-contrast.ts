@@ -63,3 +63,57 @@ export function readableTextOn(background: string, preferred: string): string {
   }
   return extreme;
 }
+
+/** WCAG 1.4.11's non-text floor: a control must clear 3:1 against its ground. */
+export const UI_CONTRAST = 3;
+
+export interface BoxFillColors {
+  /** The painted ground of the Box — the fill every ink below is chosen against. */
+  readonly fill: string;
+  /** The hairline between the fill and the tint base. */
+  readonly border: string;
+  readonly label: string;
+  readonly title: string;
+  readonly blurb: string;
+  readonly buttonBg: string;
+  readonly buttonInk: string;
+  readonly buttonBorder: string;
+}
+
+/**
+ * The colours a Box draws inside its tint — ONE derivation shared by the email
+ * renderer's `boxHtml` and the editor's Box node view, so the preview and the
+ * sent email can never disagree (import this helper; never copy its maths).
+ *
+ * Every ink is `readableTextOn` against the actual fill, keeping each
+ * preferred hue as long as it reads. A filled Box's button keeps the theme's
+ * own colours only while its background clears the 3:1 non-text floor against
+ * that fill; otherwise the button becomes a light/dark chip in `inkOn(fill)`
+ * with contrasting text — a themed button vanishing into its own Box is the
+ * failure this replaces.
+ */
+export function boxFillColors(
+  base: string,
+  card: string,
+  theme: { heading: string; ink: string; buttonBg: string; buttonInk: string },
+  filled: boolean,
+): BoxFillColors {
+  const darkBase = inkOn(base) === '#ffffff';
+  const fill = filled ? mixHex(card, base, darkBase ? 0.9 : 0.22) : card;
+  let buttonBg = theme.buttonBg;
+  let buttonInk = theme.buttonInk;
+  if (filled && (buttonBg === 'transparent' || contrastRatio(buttonBg, fill) < UI_CONTRAST)) {
+    buttonBg = inkOn(fill);
+    buttonInk = readableTextOn(buttonBg, fill);
+  }
+  return {
+    fill,
+    border: mixHex(fill, base, 0.45),
+    label: readableTextOn(fill, base),
+    title: readableTextOn(fill, theme.heading),
+    blurb: readableTextOn(fill, theme.ink),
+    buttonBg,
+    buttonInk,
+    buttonBorder: buttonBg === 'transparent' ? buttonInk : buttonBg,
+  };
+}
