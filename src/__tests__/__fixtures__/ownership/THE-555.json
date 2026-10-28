@@ -280,6 +280,36 @@
       "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
       "digest": "26449e63f402e050caeb5699d754f4474fb27eee88b34f1db58dd567cb0fc0f2",
       "why": "THE-555 mobile community navigation wraps existing member screens, adds the profile sheet and updates the corresponding layout inventory."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "0bfc431a0dd40f4122a5b060f20e52de70d1005d2c60297d8a91af1f4dac5bb8",
+      "why": "Records the automatic merge of PR 554 admin and channel authorization with PR 555 public discovery and server-owned reviews; no additional rule edits were made during conflict resolution."
+    },
+    {
+      "file": "src/components/__tests__/MemberScreens.desktop-layout.test.tsx",
+      "digest": "b9ce065b04e1ebd1a9c1e05fefabf43e1a6196901863baa8a9ca31a7faf55d79",
+      "why": "Unions both branches of the reviewed source pins and appends the combined feed digests while retaining historical pins, community inventories and re-anchored layout checks."
+    },
+    {
+      "file": "src/components/NewsTab.tsx",
+      "digest": "3f8b6c169f7a09bc769a199011894a9350fae3c97390598311c83eb178f9ebb1",
+      "why": "Records the automatic merge of PR 554 bounded comment activity, event gating and member pin preservation with PR 555 mobile composer and post detail sheets."
+    },
+    {
+      "file": "src/components/AllNews.tsx",
+      "digest": "f4ae1ea79545016032ec8abf64a73d14224030ca5afeb27d0f033f59d7fdd640",
+      "why": "Resolves the import conflict by retaining PR 555 mobile post sheets and PR 554 shared comment activity, bounded comments, event gating and post card presentation."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "ed820427c5913a6dce0bef1fe3a62df0cd5d8361fa37b71d0c60702b3f36ec34",
+      "why": "Retains the PR 554 dropdown trigger and PR 555 discovery touch inventories, recording that the mobile header touch targets now reside in MobileCommunityNav instead of MainApp."
+    },
+    {
+      "file": "src/components/community/MemberFeed.test.tsx",
+      "digest": "0199648d85d2014ff49b2d1a7ac064032bce87e7ac856d9bf5de6bad5aa05cac",
+      "why": "Updates the pin-preservation test to select the shared dropdown menu item by role; a planted unconditional isPinned write still makes the original assertion fail."
     }
   ]
 }

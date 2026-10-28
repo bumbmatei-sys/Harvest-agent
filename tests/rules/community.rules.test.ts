@@ -2,11 +2,12 @@ import { afterAll, beforeAll, describe, it } from 'vitest';
 import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
-import { seedBase, seedDoc, teardownEnv, member, member2, fullAdmin, adminB, asUid, getEnv, permsOnly, TENANT_A, MEMBER_UID, MEMBER2_UID, FULL_ADMIN_UID, ADMIN_B_UID } from './helpers';
+import { seedBase, seedDoc, teardownEnv, member, member2, fullAdmin, adminB, superAdmin, asUid, getEnv, permsOnly, TENANT_A, MEMBER_UID, MEMBER2_UID, FULL_ADMIN_UID, ADMIN_B_UID } from './helpers';
 
 const sub = (p: string) => `tenants/${TENANT_A}/${p}`;
 beforeAll(async () => {
   await seedBase();
+  await seedDoc('email_log/private', { tenantId: 'other', subject: 'private' });
   await seedDoc('users/settings-manager', { role: 'admin', tenantId: TENANT_A, permissions: permsOnly('manageSettings') });
   await seedDoc('users/community-manager', { role: 'admin', tenantId: TENANT_A, permissions: permsOnly('manageCommunity') });
   await seedDoc('users/church-admin', { role: 'church_admin', tenantId: TENANT_A, displayName: 'Church admin' });
@@ -43,6 +44,23 @@ describe('community access', () => {
     await assertFails(m.doc(sub(`settings/community/reviews/${MEMBER2_UID}`)).set({ uid: MEMBER2_UID, rating: 5, text: 'Good' }));
     await assertFails(admin.doc(sub('settings/community')).update({ ratingSum: 0, ratingCount: 0, ratingAvg: 0 }));
     await assertFails(admin.doc(`discovery_listings/${TENANT_A}`).set({ ratingSum: 5, ratingCount: 1, ratingAvg: 5 }));
+  });
+  it('keeps email logs platform-admin only while preserving scoped church admin access', async () => {
+    const churchAdmin = (await asUid('church-admin')).firestore();
+    await assertFails(churchAdmin.collection('email_log').get());
+    await assertFails(churchAdmin.doc('email_log/private').get());
+    await assertSucceeds((await superAdmin()).firestore().collection('email_log').get());
+    await assertSucceeds(churchAdmin.doc(sub('settings/community')).get());
+    await assertFails(churchAdmin.doc('tenants/other/settings/community').get());
+  });
+  it('restricts limited admins to permitted channels when posting', async () => {
+    const limited = (await asUid('settings-manager')).firestore();
+    const manager = (await asUid('community-manager')).firestore();
+    const message = { senderId: 'settings-manager', senderName: 'Member', senderRole: 'admin' };
+    await assertFails(limited.doc(sub('channelMessages/limited-private')).set({ ...message, channelId: 'private' }));
+    await assertFails(limited.doc(sub('channelMessages/limited-admins')).set({ ...message, channelId: 'admins' }));
+    await assertSucceeds(limited.doc(sub('channelMessages/limited-all')).set({ ...message, channelId: 'everyone' }));
+    await assertSucceeds(manager.doc(sub('channelMessages/manager-private')).set({ channelId: 'private', senderId: 'community-manager', senderName: 'Member', senderRole: 'admin' }));
   });
   it('scopes settings and member answers to their tenant and owner', async () => {
     const m = (await member()).firestore();

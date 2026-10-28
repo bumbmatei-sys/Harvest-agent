@@ -431,7 +431,11 @@ describe('community step 1 pins', () => {
       'NewsTab.tsx': 'aeb826197db16e273ccfe2dac15594fd7b83920bb6a058a9f2db034d1cd830f3',
     };
     const mergedDigests: Record<string, string> = { 'MainApp.tsx': '4a6ea1fac346f6e6f4adcfa9372566bb607c773bbd91ab1940be5048c7c6db19', 'NewsTab.tsx': '54081e74750f543c736b7ae695a354e190120baea3d8d8ee18a37f1991bce659' };
-    expect([file === 'MainApp.tsx' ? '48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d' : undefined, mergedDigests[file], digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], file === 'MainApp.tsx' ? '5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12' : undefined, file === 'MainApp.tsx' ? '64706ddae5fbad4d45e70b401d87e12446fbdce3e96a046f2727ace97cb5f7f3' : undefined]).toContain(createHash('sha256').update(read(file)).digest('hex'));
+    // PR 554 review round two bounds comment reads.
+    const reviewRoundTwo: Record<string, string> = { 'NewsTab.tsx': '126815f89e469deceefcc98afe7aa8b0e7e35b9fa179e115c29179a5b45c1773' };
+    // PR 555 merge retains the mobile shell and PR 554 bounded comment activity.
+    const discoveryMergeDigests: Record<string, string> = {"MainApp.tsx": "48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d", "NewsTab.tsx": "3f8b6c169f7a09bc769a199011894a9350fae3c97390598311c83eb178f9ebb1"};
+    expect([file === 'MainApp.tsx' ? '48b56ed7a3cc00fb5f4141c96bfac34d3891fc42007641f464dc0a193e024d7d' : undefined, mergedDigests[file], discoveryMergeDigests[file], digest, fidelityDigests[file], laterDigests[file], reviewDigests[file], postCardDigests[file], buttonFloorDigests[file], staticButtonDigests[file], reviewRoundTwo[file], file === 'MainApp.tsx' ? '5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12' : undefined, file === 'MainApp.tsx' ? '64706ddae5fbad4d45e70b401d87e12446fbdce3e96a046f2727ace97cb5f7f3' : undefined]).toContain(createHash('sha256').update(read(file)).digest('hex'));
   });
 
   it('retains the earlier height inventory alongside the added composer avatar', () => {
@@ -1340,7 +1344,10 @@ describe('no behaviour changed on any screen in scope', () => {
     expect(['ba858c6c4bafaef98d0199d6e2ffb4c1166f8c517d2622b9558a7f00e7494ab4',
       'b0faa74512a3f177d9c8cf3c4e0555879684757f9bd5e04e47f6ab32b947d004',
       '5bacbe8374fcc2e7ebcedc6597d8167c03ba5c0ceccbbf2d69fbfffffe67c94f',
-      '92eb27823acf63d9bd93bc62d167facde2aa20f1a723453331bac6a67571e5ac'])
+      '92eb27823acf63d9bd93bc62d167facde2aa20f1a723453331bac6a67571e5ac',
+      'f9bfb84ef1c909223c91be9d4d728cafc9972f618b411300c00b26d744720495',
+      // PR 555 merge keeps the mobile post sheet and PR 554 comment activity.
+      'f4ae1ea79545016032ec8abf64a73d14224030ca5afeb27d0f033f59d7fdd640'])
       .toContain(createHash('sha256').update(read('AllNews.tsx')).digest('hex'));
   });
 

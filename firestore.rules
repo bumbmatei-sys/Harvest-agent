@@ -41,7 +41,7 @@ service cloud.firestore {
       return isAuthenticated() && (
         isSuperAdmin() ||
         request.auth.token.get('admin', false) == true ||
-        userRole() in ['admin', 'church_admin', 'super_admin']
+        userRole() in ['admin', 'super_admin']
       );
     }
 
@@ -62,7 +62,7 @@ service cloud.firestore {
     function isTenantAdmin(tenantId) {
       return isAuthenticated() && (
         isSuperAdmin() ||
-        (isAdmin() && userTenantId() == tenantId) ||
+        ((isAdmin() || userRole() == 'church_admin') && userTenantId() == tenantId) ||
         inTenantAdminEmails(tenantId)
       );
     }
@@ -288,6 +288,10 @@ service cloud.firestore {
           get(path).data.get('role', 'user') in ['admin', 'church_admin', 'super_admin']) ||
         isTenantOwner(uid, tenantId)
       );
+    }
+
+    function channelMemberAccess(channel) {
+      return channel.get('audience', '') == 'all' || request.auth.uid in channel.get('members', []);
     }
 
     function channelAccess(channel, tenantId) {
@@ -778,7 +782,8 @@ service cloud.firestore {
           request.resource.data.get('senderName', '') == (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('displayName', '') != '' ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName : request.auth.token.get('name', 'Member')) &&
           (request.resource.data.get('senderRole', '') == 'user' ||
             (request.resource.data.get('senderRole', '') == 'admin' && isTenantAdmin(tenantId))) &&
-          channelAccess(get(/databases/$(database)/documents/tenants/$(tenantId)/channels/$(request.resource.data.channelId)).data, tenantId);
+          (hasPermission('manageCommunity', tenantId) ||
+            channelMemberAccess(get(/databases/$(database)/documents/tenants/$(tenantId)/channels/$(request.resource.data.channelId)).data));
         allow update, delete: if hasPermission('manageCommunity', tenantId);
       }
 

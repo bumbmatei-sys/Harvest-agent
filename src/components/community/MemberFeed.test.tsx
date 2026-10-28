@@ -59,7 +59,7 @@ describe('member feed composer', () => {
     const client = new QueryClient(); host = document.createElement('div'); document.body.appendChild(host); root = createRoot(host);
     await act(async () => { root.render(<QueryClientProvider client={client}><NewsTab onOpenAllNews={() => {}} onOpenArticle={() => {}} /></QueryClientProvider>); await Promise.resolve(); await Promise.resolve(); });
     await act(async () => (host.querySelector('[aria-label="Post options"]') as HTMLElement).click());
-    await act(async () => Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Edit post')!.click());
+    await act(async () => Array.from(document.querySelectorAll<HTMLElement>('[role="menuitem"]')).find(b => b.textContent === 'Edit post')!.click());
     const input = host.querySelector('textarea[aria-label="Share an update"]') as HTMLTextAreaElement;
     await act(async () => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(input, 'Edited'); input.dispatchEvent(new Event('input', { bubbles: true })); });
     await act(async () => { Array.from(host.querySelectorAll('button')).find(b => b.textContent === 'Update')!.click(); await Promise.resolve(); await Promise.resolve(); });
