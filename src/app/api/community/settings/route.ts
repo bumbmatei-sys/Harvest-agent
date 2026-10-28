@@ -3,6 +3,7 @@ import { requireTenantAdmin, requireTenantPermission } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import { isTenantUploadKey } from '@/utils/r2-keys';
 import { makeDiscoveryListing } from '@/lib/community/listing';
+import { readReviewAggregate } from '@/lib/community/review-aggregate';
 import { communitySettingsFingerprint, prepareCommunitySettings, readCommunitySettings } from '@/lib/community/settings';
 
 export const dynamic = 'force-dynamic';
@@ -42,9 +43,10 @@ export async function POST(request: NextRequest) {
       const current = readCommunitySettings(saved.exists ? saved.data() : undefined);
       if (communitySettingsFingerprint(current) !== communitySettingsFingerprint(previous)) throw new Error('Community settings changed elsewhere. Reload this page before saving.');
       if (!tenant.exists) throw new Error('Ministry not found.');
-      if (next.isPublic) tx.set(listingRef, makeDiscoveryListing(tenantId, tenant.data()!, next, count, new Date()));
+      const aggregate = readReviewAggregate(saved.exists ? saved.data() : undefined);
+      if (next.isPublic) tx.set(listingRef, { ...makeDiscoveryListing(tenantId, tenant.data()!, next, count, new Date()), ...aggregate });
       else tx.delete(listingRef);
-      tx.set(settingsRef, next);
+      tx.set(settingsRef, { ...next, ...aggregate });
     });
     return NextResponse.json({ ok: true });
   } catch (error) {

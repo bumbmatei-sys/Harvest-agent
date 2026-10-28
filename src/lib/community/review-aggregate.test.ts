@@ -11,6 +11,11 @@ describe('review aggregates', () => {
     expect(updateReviewAggregate(edited, 3, null)).toEqual({ ratingSum: 1, ratingCount: 1, ratingAvg: 1 });
     expect(updateReviewAggregate({ ratingSum: 1, ratingCount: 1, ratingAvg: 1 }, 1, null)).toEqual({ ratingSum: 0, ratingCount: 0, ratingAvg: 0 });
   });
+  it('rounds averages to one decimal and accepts them on subsequent edits', () => {
+    const first = updateReviewAggregate({ ratingSum: 10, ratingCount: 3, ratingAvg: 3.3 }, null, 5);
+    expect(first).toEqual({ ratingSum: 15, ratingCount: 4, ratingAvg: 3.8 });
+    expect(updateReviewAggregate(first, 5, null).ratingAvg).toBe(3.3);
+  });
   it('rejects invalid ratings and inconsistent summaries', () => {
     expect(() => updateReviewAggregate({ ratingSum: 0, ratingCount: 0, ratingAvg: 0 }, null, 6)).toThrow();
     expect(() => updateReviewAggregate({ ratingSum: 4, ratingCount: 1, ratingAvg: 5 }, null, 5)).toThrow();

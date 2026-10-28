@@ -30,6 +30,51 @@
       "file": "src/lib/community/public-listing.test.ts",
       "digest": "43cc54d6480eeea77f516a72845c9e0ce42f812a2e728bfe96dd9bf4fa61bfca",
       "why": "Checks valid, missing and malformed public rating summaries. This preserves coverage for discovery behavior as the feature evolves."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "82192141a02e00cfcadab5cb76049e6235f35ffc011f68f89e6fdeef9a592d6e",
+      "why": "Adds tenant-member review reads and denies all client writes beneath community settings; server transactions own the review records and aggregate."
+    },
+    {
+      "file": "src/lib/community/review-aggregate.ts",
+      "digest": "963b6a633f626592c51fa18b6ffed77cb0a0b036f23c022945a31ce050c76d97",
+      "why": "Rounds the server-maintained average to one decimal and validates persisted aggregate state before applying review deltas."
+    },
+    {
+      "file": "src/lib/community/review-aggregate.test.ts",
+      "digest": "37dd2b56d2651e0c6e708cc92335927bc864f7d22b7e76665df12201eabcb0f1",
+      "why": "Tests rounded averages and subsequent changes alongside the create edit and delete aggregate invariants."
+    },
+    {
+      "file": "src/app/api/community/reviews/route.ts",
+      "digest": "46c25749e1e6bee4767ff2ffdcadbed4928bb7c532d114443768e67efaf27016",
+      "why": "Provides authenticated review writes and paginated public projection while maintaining both aggregate documents transactionally."
+    },
+    {
+      "file": "src/app/api/community/reviews/route.test.ts",
+      "digest": "225156b30732256b13a62bb430da23a8f52c0565f904a0b142aa9fb6e2ae2be8",
+      "why": "Covers membership and admin refusals, validation, review changes, aggregate updates, and the public privacy projection."
+    },
+    {
+      "file": "src/app/api/community/settings/route.ts",
+      "digest": "e7222334111174356f767bf6db6fe4ae3253d404eb789446d87d5b5b68b40b79",
+      "why": "Preserves the server-owned review aggregate when saving settings and regenerating a public community listing."
+    },
+    {
+      "file": "src/app/api/community/settings/route.test.ts",
+      "digest": "9ccee6a9dd402d0637d43d75b05101c55c5e137597e8d918d791505a8b0357cd",
+      "why": "Checks that settings saves ignore submitted ratings and preserve the stored aggregate on the public listing."
+    },
+    {
+      "file": "src/app/discover/page.test.tsx",
+      "digest": "7f74dbfdb7379320c066cf46f7a643c9922b1122e7b478b2b2398ff4c6fda980",
+      "why": "Records the existing discovery routing test digest already present in this branch for the ownership guard."
+    },
+    {
+      "file": "src/components/community/CommunitySettingsEditor.tsx",
+      "digest": "547c08b5ef15a8e4e03008e5c2501c55087169f8ce85400861743eb7a10330e7",
+      "why": "Records the existing community settings editor digest already present in this branch for the ownership guard."
     }
   ]
 }

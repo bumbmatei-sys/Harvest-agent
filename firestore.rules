@@ -643,6 +643,11 @@ service cloud.firestore {
         allow write: if settingId != 'community' && hasPermission('manageSettings', tenantId);
       }
 
+      match /settings/community/reviews/{uid} {
+        allow read: if belongsToTenant(tenantId);
+        allow write: if false;
+      }
+
       match /communityMembers/{uid} {
         allow read: if belongsToTenant(tenantId) && (request.auth.uid == uid || isTenantAdmin(tenantId));
         allow create, update: if belongsToTenant(tenantId) && request.auth.uid == uid &&

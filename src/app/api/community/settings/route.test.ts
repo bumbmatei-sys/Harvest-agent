@@ -35,7 +35,14 @@ describe('community settings API', () => {
     expect(result.status).toBe(200);
     expect(h.set).toHaveBeenCalledWith(expect.objectContaining({ path: 'discovery_listings/ministry' }), expect.objectContaining({ tenantId: 'ministry', memberCount: 7, shortDescription: 'Hello' }));
     const listing = h.set.mock.calls[0][1];
-    expect(Object.keys(listing).sort()).toEqual(['logoUrl', 'memberCount', 'name', 'shortDescription', 'slug', 'tenantId', 'updatedAt', 'coverUrl', 'galleryUrls', 'longDescription', 'ownerName', 'isPublic'].sort());
+    expect(Object.keys(listing).sort()).toEqual(['logoUrl', 'memberCount', 'name', 'shortDescription', 'slug', 'tenantId', 'updatedAt', 'coverUrl', 'galleryUrls', 'longDescription', 'ownerName', 'isPublic', 'ratingSum', 'ratingCount', 'ratingAvg'].sort());
+  });
+  it('preserves server-owned ratings when settings are saved or republished', async () => {
+    h.get.mockImplementation((ref: { path: string }) => ref.path.includes('/settings/') ? { exists: true, data: () => ({ ...defaultCommunitySettings(), ratingSum: 9, ratingCount: 2, ratingAvg: 4.5 }) } : { exists: true, data: () => ({ name: 'Ministry', subdomain: 'ministry' }) });
+    const next = { ...defaultCommunitySettings(), isPublic: true, ratingSum: 999, ratingCount: 1, ratingAvg: 5 };
+    expect((await POST(request(next))).status).toBe(200);
+    expect(h.set).toHaveBeenCalledWith(expect.objectContaining({ path: 'discovery_listings/ministry' }), expect.objectContaining({ ratingSum: 9, ratingCount: 2, ratingAvg: 4.5 }));
+    expect(h.set).toHaveBeenCalledWith(expect.objectContaining({ path: 'tenants/ministry/settings/community' }), expect.objectContaining({ ratingSum: 9, ratingCount: 2, ratingAvg: 4.5 }));
   });
   it('accepts tenant uploads and rejects foreign, malformed and oversized media', async () => {
     vi.stubEnv('R2_PUBLIC_URL', 'https://media.example');
