@@ -4,7 +4,7 @@ import {
   getEnv, seedBase, seedAdmin, seedDoc, teardownEnv,
   superAdmin, owner, rosterAdmin, member, adminB, asUid,
   permsOnly, permsAllBut,
-  TENANT_A, MEMBER_UID,
+  TENANT_A, MEMBER_UID, FULL_ADMIN_UID,
   type PermKey,
 } from './helpers';
 
@@ -478,17 +478,17 @@ describe('community messaging [manageCommunity]', () => {
 
   it('directMessages: a participant opens/updates/deletes their own thread; a manageCommunity admin can moderate', async () => {
     const db = (await member()).firestore();
-    await assertSucceeds(db.doc(sub('directMessages/t1')).set({ participants: [MEMBER_UID, 'x'], lastMessage: '' }));
+    await assertSucceeds(db.doc(sub('directMessages/t1')).set({ participants: [MEMBER_UID, FULL_ADMIN_UID], lastMessage: '' }));
     await assertSucceeds(db.doc(sub('directMessages/t1')).update({ lastMessage: 'hi', lastMessageAt: 1 }));
     // A manageCommunity admin can now read and delete a thread (moderation)...
     const holder = (await asUid(holderUid('manageCommunity'))).firestore();
     await assertSucceeds(holder.doc(sub('directMessages/t1')).get());
     await assertSucceeds(holder.doc(sub('directMessages/t1')).delete());
     // ...while a participant may also delete their own thread.
-    await seedDoc(sub('directMessages/t2'), { participants: [MEMBER_UID, 'x'], lastMessage: '' });
+    await seedDoc(sub('directMessages/t2'), { participants: [MEMBER_UID, FULL_ADMIN_UID], lastMessage: '' });
     await assertSucceeds(db.doc(sub('directMessages/t2')).delete());
     // A limited admin without manageCommunity is denied read/delete.
-    await seedDoc(sub('directMessages/t3'), { participants: [MEMBER_UID, 'x'], lastMessage: '' });
+    await seedDoc(sub('directMessages/t3'), { participants: [MEMBER_UID, FULL_ADMIN_UID], lastMessage: '' });
     const non = (await asUid(nonHolderUid('manageCommunity'))).firestore();
     await assertFails(non.doc(sub('directMessages/t3')).get());
     await assertFails(non.doc(sub('directMessages/t3')).delete());

@@ -121,6 +121,11 @@
       "file": "src/components/UserMessages.tsx",
       "digest": "47925008473452fc10c2a18a7879e8feab065f74273eb6cfda2b6c7015d6d0c6",
       "why": "Open the default group in the desktop split and switch cleanly between group and direct message threads."
+    },
+    {
+      "file": "firestore.rules",
+      "digest": "c3cf91cbc331360778228bf0ed14b2cfa001aaffaf6bc63e9cb894c9aa6d9d0f",
+      "why": "Allow legacy text posts without a type while retaining member rich-content restrictions."
     }
   ]
 }

@@ -117,7 +117,7 @@ const WRAPPER_TEMPLATE = extractTemplate(
  * silently measuring a stale copy.
  */
 function evalTemplate(tpl: string, vars: Record<string, unknown>): string {
-  const names = ['isSidebarCollapsed', 'isNavVisible', 'activeBottomTab', 'effectiveTopTab', 'isChatOpen'];
+  const names = ['isSidebarCollapsed', 'isNavVisible', 'activeBottomTab', 'effectiveBottomTab', 'effectiveTopTab', 'isChatOpen'];
   const fn = new Function(...names, 'return `' + tpl + '`') as (...a: unknown[]) => string;
   return fn(...names.map((n) => vars[n]));
 }
@@ -126,6 +126,7 @@ const SHELL_VARS = {
   isSidebarCollapsed: false,
   isNavVisible: true,
   activeBottomTab: 'home',
+  effectiveBottomTab: 'home',
   effectiveTopTab: 'messages',
 };
 

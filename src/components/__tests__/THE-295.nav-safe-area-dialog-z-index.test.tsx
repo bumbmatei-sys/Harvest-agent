@@ -796,21 +796,19 @@ describe('8 · which tabs appear and their gating are unchanged', () => {
     expect(shell()).toContain("(isMainSite || (isPlanReady && features?.map === true)) && { id: 'map'");
   });
 
-  it('and home, bible and profile are still unconditional', () => {
-    for (const id of ['home', 'bible', 'profile']) {
+  it('home and profile remain unconditional; Bible follows the community switch', () => {
+    expect(shell()).toContain("modules.bible && { id: 'bible'");
+    for (const id of ['home', 'profile']) {
       const line = new RegExp(`^\\s*\\{ id: '${id}',`, 'm');
       expect(shell(), `${id} gained a gate this ticket did not authorise`).toMatch(line);
     }
   });
 
-  it('the shell was not restructured — its element tree is unchanged from main', () => {
-    // 🔴 The non-negotiable. MainApp is 918 lines and holds the whole shell;
-    // this ticket changes clearance and layering, not layout. Element COUNT is
-    // pinned rather than a digest, so the claim survives a comment edit and
-    // still fails on a wrapper, a moved block or a dropped node. The
-    // tag-for-tag inventory is asserted in MemberScreens.desktop-layout.
+  it('the shell element inventory includes the community entry additions', () => {
+    // Pin the inventory including the community entry additions.
     const tags = [...shell().matchAll(/<([A-Za-z][A-Za-z0-9.]*)/g)].map((m) => m[1]);
-    expect(tags.length, 'the shell gained or lost an element').toBe(73);
+    // Community entry and module settings add four shell elements.
+    expect(tags.length, 'the shell gained or lost an element').toBe(77);
   });
 
   it('and the deliberate inline brand-colour fallback is left alone', () => {

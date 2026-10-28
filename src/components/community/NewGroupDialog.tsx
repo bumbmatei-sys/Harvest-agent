@@ -46,7 +46,7 @@ export function NewGroupDialog({ open, onOpenChange, people, loadingPeople, peop
         {loadingPeople ? <p>Loading people…</p> : peopleError ? <p role="alert">Could not load people.</p> : <div className="max-h-48 overflow-y-auto">{people.filter(p => `${p.displayName || ''} ${p.email || ''}`.toLowerCase().includes(search.toLowerCase())).map(person => <label className="flex min-h-11 items-center gap-3" key={person.id}><Checkbox checked={members.includes(person.id)} onCheckedChange={checked => setMembers(current => checked ? [...current, person.id] : current.filter(id => id !== person.id))} /><Avatar><AvatarFallback>{(person.displayName || person.email || '?').charAt(0).toUpperCase()}</AvatarFallback></Avatar><span>{person.displayName || person.email || 'Unknown'}</span></label>)}</div>}
       </div>}
       {error && <p role="alert" className="text-destructive">{error}</p>}
-      <div className="flex justify-end gap-2"><Button variant="outline" disabled={saving} onClick={close}>Cancel</Button><Button disabled={saving || !name.trim() || (audience === 'selected' && (!members.length || peopleError || loadingPeople))} onClick={create}>{saving ? 'Creating…' : 'Create group'}</Button></div>
+      <div className="flex justify-end gap-2"><Button className="min-h-11 sm:min-h-0" variant="outline" disabled={saving} onClick={close}>Cancel</Button><Button className="min-h-11 sm:min-h-0" disabled={saving || !name.trim() || (audience === 'selected' && (!members.length || peopleError || loadingPeople))} onClick={create}>{saving ? 'Creating…' : 'Create group'}</Button></div>
     </DialogContent>
   </Dialog>;
 }
