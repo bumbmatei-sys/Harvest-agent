@@ -404,7 +404,12 @@ describe('community step 1 pins', () => {
       'UserMessages.tsx': '47925008473452fc10c2a18a7879e8feab065f74273eb6cfda2b6c7015d6d0c6',
       'community/GroupList.tsx': '880da3cd505f35774d632031af481d32cd7b0875136fed565d313e2ae9967fc2',
     };
-    expect([digest, fidelityDigests[file]]).toContain(createHash('sha256').update(read(file)).digest('hex'));
+    // Keep the earlier pins while accepting the touch-floor and digital products merge.
+    const laterDigests: Record<string, string> = {
+      'MainApp.tsx': '5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12',
+      'community/MemberPostComposer.tsx': '0855af4e84c321a856fc459ff25cf2a5e75891c844b8b9dbdb7e7cbcd61bdd34',
+    };
+    expect([digest, fidelityDigests[file], laterDigests[file]]).toContain(createHash('sha256').update(read(file)).digest('hex'));
   });
 
   it('retains the earlier height inventory alongside the added composer avatar', () => {
@@ -549,7 +554,16 @@ function undoTHE348(nowRows: string[], baseRows: string[]): [string[], string[]]
 describe('the sub-640px rendering of each file is unchanged', () => {
   it.each(ALL_SURFACES)('%s renders the same class layer below 640px as it did before', (name) => {
     if (isCommunitySurface(name)) {
-      expect(mobileLayer(SURFACES[name])).toEqual(((THE_348_SURFACES as readonly string[]).includes(name) ? COMMUNITY_FIDELITY_BASELINE[name] : COMMUNITY_BASELINE[name]).mobileLayer);
+      const expected = ((THE_348_SURFACES as readonly string[]).includes(name) ? COMMUNITY_FIDELITY_BASELINE[name] : COMMUNITY_BASELINE[name]).mobileLayer;
+      if (name === 'NewsTab' || name === 'MainApp') {
+        // The seeded composer has one submit button; only its touch floor changed.
+        const rows = mobileLayer(SURFACES[name]);
+        const candidates = rows.filter((row, i) => row.includes('\tbutton\t') && row.includes(' min-h-11 ') && rows[i - 1]?.endsWith('\tflex gap-2') && rows[i - 4]?.includes('\ttextarea\t'));
+        expect(candidates).toHaveLength(1);
+        expect(rows.map((row) => row === candidates[0] ? row.replace(' min-h-11 ', ' ') : row)).toEqual(expected);
+      } else {
+        expect(mobileLayer(SURFACES[name])).toEqual(expected);
+      }
       return;
     }
     const now0 = undoTHE295(mobileLayer(SURFACES[name]));
@@ -1423,7 +1437,13 @@ describe('no behaviour changed on any screen in scope', () => {
     const tags = (src: string) =>
       [...stripComments(src).matchAll(/<([A-Za-z][A-Za-z0-9.]*)/g)].map((m) => m[1]);
     expect(tags(beforeCommunity('MainApp.tsx')), 'MainApp changed its element tree before community').toEqual(tags(at('MainApp.tsx')));
-    const mainAppTags = tags(read('MainApp.tsx'));
+    let mainAppSource = read('MainApp.tsx');
+    // These two map annotations are TypeScript generics, not JSX elements.
+    for (const annotation of ['Record<string, CommunityModule>', 'Record<string, any>']) {
+      expect(mainAppSource.split(annotation)).toHaveLength(2);
+      mainAppSource = mainAppSource.replace(annotation, 'Record');
+    }
+    const mainAppTags = tags(mainAppSource);
     const productsIndex = mainAppTags.indexOf('DigitalMemberProducts');
     // DIGITAL-1 inserts the Products view between BlogTab and CourseExperience.
     expect(mainAppTags.filter((tag) => tag === 'DigitalMemberProducts')).toHaveLength(1);
@@ -1432,9 +1452,6 @@ describe('no behaviour changed on any screen in scope', () => {
     const entryIndex = mainAppTags.indexOf('CommunityEntryDialog');
     expect(mainAppTags.slice(entryIndex - 2, entryIndex + 1)).toEqual(['p', 'p', 'CommunityEntryDialog']);
     mainAppTags.splice(entryIndex - 2, 3);
-    // The tag matcher also sees the community module map's TypeScript generic.
-    expect(mainAppTags.filter((tag) => tag === 'string')).toHaveLength(1);
-    mainAppTags.splice(mainAppTags.indexOf('string'), 1);
     expect(mainAppTags, 'MainApp changed its element tree').toEqual(tags(at('MainApp.tsx')));
 
     //   • EVERY CLASS LITERAL, in order. Three className expressions differ.

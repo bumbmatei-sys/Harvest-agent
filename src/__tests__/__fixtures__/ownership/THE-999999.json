@@ -160,17 +160,17 @@
     {
       "file": "src/__tests__/the-274-shadcn-batches-cde.test.ts",
       "digest": "ba30cde12ae7fef224065a3401c520a759aefcf90a2acf4840e616a173aba7e0",
-      "why": "Record the combined community and digital products changes after merging main."
+      "why": "Record the combined community and digital products primitive adopter changes after merging main, retaining both sets of existing adopters."
     },
     {
       "file": "src/components/MainApp.tsx",
       "digest": "5415b60be12d26b27154d1b6173616ea744cf8d70119e1fdb9d2436cdadd4a12",
-      "why": "Record the combined community and digital products changes after merging main."
+      "why": "Record the combined community navigation and digital products member view after merging main, preserving both features in the shell."
     },
     {
       "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
       "digest": "222efce52690bdd8b5b379f1a12f60317ec6773657f4477b7938b1cae52b55e0",
-      "why": "Record the combined community and digital products changes after merging main."
+      "why": "Record the combined community touch-floor and digital products assertions after merging main, preserving both sets of checks."
     }
   ]
 }
