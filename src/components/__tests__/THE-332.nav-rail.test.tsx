@@ -945,6 +945,17 @@ const NOT_OURS: Record<string, string | readonly string[]> = {
     'db9fbb0478cbeb3f2425c9afdaa40c6c59770f211625da0fc598fa7c041276be',
     // APPENDED BY UI polish, 23 Oct (THE-377), nothing above removed or rewritten. AdminEvents.tsx: Title/pill/Create event on the shared header line; the old List/Month TabsList is gone. No event, ticket-price, fee or checkout call moved.
     '66b315f92bbe51da2daa234e44dd2e977e7805981c25b4572bd5bc9990936244',
+    /* APPENDED BY THE-379 (events remodel), nothing above removed or
+       rewritten. The create/edit form becomes a shadcn Dialog with Where
+       (ToggleGroup + map), time zone/Repeats/Ends, Open to anyone (Switch), a
+       single-select payment-link RadioGroup and a Registration Questions
+       builder; the list gains an Upcoming/Drafts/Past filter and an Eden
+       empty state. Full accounting in THE-379.json and in
+       AdminMinistry.desktop-layout.test.tsx's THE_308_EVENTS re-record. NO
+       NAV, TAB ID, READ, WRITE OR PERMISSION GATE MOVED, which is what
+       THE-332 pins this file for: every new field writes onto the same
+       tenants/{id}/events/{id} document this screen always wrote. */
+    'afe0952f1093453c0afccac0f5bc154ec9edd398df097cc07607b04ce45b2db0',
     /* The Eden shell pass appended two AdminEvents digests (segmented List and
        Month) and the follow-up restored this file to the #522 digest above.
        Those two values are not accepted: a revert is not a second legal state. */
