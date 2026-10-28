@@ -37,7 +37,7 @@ export function CommunityEntryDialog({ settings, onSubmit, initialAnswers = {}, 
       {settings.rules.enabled && <section className="space-y-3"><h2 className="font-semibold">Community rules</h2><ol className="space-y-2">{settings.rules.items.map((rule, i) => <li className="flex gap-3 rounded-lg border border-line bg-surface-sunken p-3 text-sm" key={i}><span className="font-semibold text-muted">{i + 1}.</span><span>{rule}</span></li>)}</ol><label className="flex items-center gap-3"><Checkbox checked={accepted} onCheckedChange={setAccepted} />I agree to the community rules</label></section>}
       {settings.questions.enabled && settings.questions.items.map(q => <fieldset key={q.id} className="space-y-2"><legend className="font-medium">{q.label}{q.required ? ' *' : ''}</legend>{q.type === 'short' ? <Input aria-label={q.label} value={answers[q.id] || ''} onChange={e => setAnswers(a => ({ ...a, [q.id]: e.target.value }))} /> : <RadioGroup value={answers[q.id] || ''} onValueChange={value => setAnswers(a => ({ ...a, [q.id]: value }))}>{q.options.map(option => <label className="flex min-h-11 items-center gap-3" key={option}><RadioGroupItem value={option} />{option}</label>)}</RadioGroup>}</fieldset>)}
       {error && <p role="alert" className="text-destructive">{error}</p>}
-      <Button disabled={!canSubmit || saving} onClick={submit}>{saving ? 'Saving…' : 'Enter community'}</Button>
+      <Button className="min-h-11 sm:min-h-0" disabled={!canSubmit || saving} onClick={submit}>{saving ? 'Saving…' : 'Enter community'}</Button>
     </DialogContent>
   </Dialog>;
 }

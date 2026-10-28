@@ -10,7 +10,7 @@ export function MemberPostComposer({ value, onChange, onSubmit, posting, editing
     <Textarea aria-label="Share an update" placeholder="Share an update with the community…" maxLength={500} value={value} onChange={e => onChange(e.target.value)} />
     <div className="flex items-center justify-between">
       <span className="text-xs text-muted" aria-live="polite">{value.length} / 500</span>
-      <div className="flex gap-2">{editing && <Button variant="outline" onClick={onCancel}>Cancel</Button>}<Button onClick={onSubmit} disabled={posting || !value.trim() || value.length > 500}>{posting ? 'Saving…' : editing ? 'Update' : 'Post'}</Button></div>
+      <div className="flex gap-2">{editing && <Button className="min-h-11 sm:min-h-0" variant="outline" onClick={onCancel}>Cancel</Button>}<Button className="min-h-11 sm:min-h-0" onClick={onSubmit} disabled={posting || !value.trim() || value.length > 500}>{posting ? 'Saving…' : editing ? 'Update' : 'Post'}</Button></div>
     </div>
   </div>;
 }

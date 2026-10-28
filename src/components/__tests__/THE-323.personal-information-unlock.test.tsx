@@ -585,7 +585,7 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // The social scheduler screenshot harness. The stand-in account button
       // uses min-h-11. It is not a product screen, and it 404s in production.
       // The local development harness is ignored and may be absent in CI.
-      ...(existsSync(path.join(ROOT, 'src/app/dev/community/preview.tsx')) ? ['src/app/dev/community/preview.tsx'] : []),
+      ...(existsSync(path.join(ROOT, 'src/app/dev/community/preview.tsx')) && /\bmin-h-11\b/.test(read('src/app/dev/community/preview.tsx')) ? ['src/app/dev/community/preview.tsx'] : []),
       'src/app/dev/social-scheduler/preview.tsx',
       // 🔴 APPENDED BY THE-338, NOTHING BELOW REMOVED OR REWRITTEN. It sits
       // FIRST for the same reason THE-334's entry does: this list is the
@@ -804,7 +804,9 @@ describe('6 · `min-h-11` — the premise THE-323 was given, corrected', () => {
       // APPENDED BY UI-POLISH. The board grid's full-card open button and New note take the 44px floor.
       'src/components/boards/BoardGrid.tsx',
       'src/components/community/CommunityEntryDialog.tsx',
+      'src/components/community/CommunitySettingsEditor.tsx',
       'src/components/community/GroupList.tsx',
+      'src/components/community/MemberPostComposer.tsx',
       'src/components/community/NewGroupDialog.tsx',
       'src/components/courses/ClassroomTab.tsx',
       'src/components/courses/CourseLanding.tsx',

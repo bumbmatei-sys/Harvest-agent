@@ -126,6 +126,36 @@
       "file": "firestore.rules",
       "digest": "c3cf91cbc331360778228bf0ed14b2cfa001aaffaf6bc63e9cb894c9aa6d9d0f",
       "why": "Allow legacy text posts without a type while retaining member rich-content restrictions."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "0b82fa140f520a511dc2bfc0362621384527e3b1ce87dc8008456e0a90219083",
+      "why": "Apply and record the 44px phone touch floor on community dialog, settings, and composer buttons."
+    },
+    {
+      "file": "src/components/community/CommunityEntryDialog.tsx",
+      "digest": "c91d8f8cf3289ed05066b20e91f45dbc816956ccd084c9b3a3ac481cc180b715",
+      "why": "Apply and record the 44px phone touch floor on community dialog, settings, and composer buttons."
+    },
+    {
+      "file": "src/components/community/CommunitySettingsEditor.tsx",
+      "digest": "92c9a3f7e8ded670ddfe1345a018bfebb9fc04bf81734e76419c49970efaa338",
+      "why": "Apply and record the 44px phone touch floor on community dialog, settings, and composer buttons."
+    },
+    {
+      "file": "src/components/community/MemberPostComposer.tsx",
+      "digest": "0855af4e84c321a856fc459ff25cf2a5e75891c844b8b9dbdb7e7cbcd61bdd34",
+      "why": "Apply and record the 44px phone touch floor on community dialog, settings, and composer buttons."
+    },
+    {
+      "file": "src/components/__tests__/THE-323.personal-information-unlock.test.tsx",
+      "digest": "72c3587cec1e62d9523a208d995b0d1b0808af718a6ac610db8084cee816c08e",
+      "why": "Record the community button floors and handle the optional local preview according to its actual classes."
+    },
+    {
+      "file": "src/components/community/NewGroupDialog.tsx",
+      "digest": "569e3a239f260c54a27dca0785503a84956e3d7da312534540a50879bac00bb6",
+      "why": "Record the phone touch floors added to the group creation dialog buttons in the preceding community CI fix."
     }
   ]
 }

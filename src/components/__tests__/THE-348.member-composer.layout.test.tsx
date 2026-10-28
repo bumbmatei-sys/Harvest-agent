@@ -248,7 +248,7 @@ export const Timestamp = { fromMillis: ts };
 `;
 
 const FIREBASE_STUB = `export const db = {} as unknown;
-export const auth = { currentUser: { uid: 'me', email: 'maria@example.org', displayName: 'Maria Bumb' } } as unknown;
+export const auth = { currentUser: { uid: 'me', email: 'maria@example.org', displayName: 'Maria Bumb', getIdToken: async () => 'fixture-token' } } as unknown;
 export const storage = {} as unknown;
 export default {};
 `;
@@ -264,6 +264,12 @@ function entrySource(): string {
 import { createRoot } from 'react-dom/client';
 import UserMessages from '@/components/UserMessages';
 import { AttachTypeIcon } from '@/components/attach/AttachMenu';
+
+// The fixture DM is with an admin, so the production counterpart check permits replies.
+const originalFetch = window.fetch.bind(window);
+window.fetch = (input, init) => String(input).startsWith('/api/community/dm-counterpart?')
+  ? Promise.resolve(new Response(JSON.stringify({ isAdmin: true }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+  : originalFetch(input, init);
 
 const NAV_SHOWN = ${JSON.stringify(NAV_SHOWN)};
 const NAV_HIDDEN = ${JSON.stringify(NAV_HIDDEN)};
